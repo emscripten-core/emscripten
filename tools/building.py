@@ -84,6 +84,11 @@ def get_building_env():
   return env
 
 
+# Given a list of LLVM .o object files, returns a dictionary of
+# filename -> set(undefined symbols)
+# objects that specify the U symbols (undefs) in each file.
+# This is used to track which file(s) a missing link input
+# dependency came from.
 @ToolchainProfiler.profile()
 def find_undef_symbols(files):
   cmd = get_command_with_possible_response_file([LLVM_NM, '--print-file-name'] + files)

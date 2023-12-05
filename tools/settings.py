@@ -80,6 +80,7 @@ COMPILE_TIME_SETTINGS = {
     'LTO',
     'OPT_LEVEL',
     'DEBUG_LEVEL',
+    'LINKER_INPUTS',
 
     # Affects ports
     'GL_ENABLE_GET_PROC_ADDRESS', # NOTE: if SDL2 is updated to not rely on eglGetProcAddress(), this can be removed

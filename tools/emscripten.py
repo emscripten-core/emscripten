@@ -173,6 +173,28 @@ def apply_static_code_hooks(forwarded_json, code):
   return code
 
 
+# Finds all occurrences of undefined symbols with "referenced by top-level compiled C/C++ code"
+# coming from compiler.js, and exhaustively searches all linker input files to tell the user
+# which inputs those undefined symbols were referenced in.
+def print_compiler_error_with_undefs(stderr):
+  undefs = building.find_undef_symbols(settings.LINKER_INPUTS)
+  errs = []
+  for line in stderr.split('\n'):
+    top_level_undefined = re.match('error: undefined symbol: (.*) \\(referenced by top-level compiled C/C\\+\\+ code\\)', line)
+    if top_level_undefined:
+      undef = top_level_undefined[1]
+      refs = []
+      for filename, nm in undefs.items():
+        if undef in list(nm):
+          refs += [filename]
+
+      refs = ','.join(refs) if len(refs) > 0 else 'referenced by top-level compiled C/C++ code'
+      errs += [f'undefined symbol: {undef} (referenced by {refs})']
+    else:
+      errs += [line]
+  logger.error('\n'.join(errs))
+
+
 def compile_javascript(symbols_only=False):
   stderr_file = os.environ.get('EMCC_STDERR_FILE')
   if stderr_file:
@@ -197,27 +219,16 @@ def compile_javascript(symbols_only=False):
                           cwd=path_from_root('src'), env=env, encoding='utf-8')
     out = ret.stdout
 
-    if ret.stderr:
-      undefs = building.find_undef_symbols(settings.LINKER_INPUTS)
+    # If compiler.js fails, it may have one or more of undefined symbol errors in it.
+    # To make these errors more readable for the user, search through all linker
+    # inputs (but do this only when necessary, since that search is relatively costly)
+    if ret.stderr and 'referenced by top-level compiled' in ret.stderr:
+      print_compiler_error_with_undefs(ret.stderr)
+    else:
+      # Compiler failed on something else than on undefined symbols, so we can print
+      # out the error directly.
+      logger.error(ret.stderr)
 
-      errs = []
-      for line in ret.stderr.split('\n'):
-        top_level_undefined = re.match('error: undefined symbol: (.*) \\(referenced by top-level compiled C/C\\+\\+ code\\)', line)
-        if top_level_undefined:
-          undef = top_level_undefined[1]
-          logger.error(f'"{undef}" is undefined, searching')
-
-          refs = []
-          for filename, nm in undefs.items():
-            logger.error(f'searching file {filename}, got {nm}')
-            if undef in list(nm):
-              refs += [filename]
-
-          refs = ','.join(refs) if len(refs) > 0 else 'referenced by top-level compiled C/C++ code'
-          errs += [f'undefined symbol: {undef} (referenced by {refs})']
-        else:
-          errs += [line]
-      logger.error('\n'.join(errs))
     if ret.returncode:
       sys.exit(ret.returncode)
   if symbols_only:

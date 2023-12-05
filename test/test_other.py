@@ -2458,6 +2458,30 @@ int f() {
     self.run_process([EMCC, 'main.c', '-Wl,--unresolved-symbols=ignore-all'])
     self.run_process([EMCC, 'main.c', '-Wl,--allow-undefined'])
 
+  # Tests that when C/C++ code has an undefined symbol at link time,
+  # that the error message that is presented is a readable one.
+  def test_readable_undefined_symbols_error(self):
+    create_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  qwer__deps: ['zxcv'],
+  qwer: function() {
+
+  },
+  this_is_undefined__deps: ['qwer'],
+  this_is_undefined: function(){}
+});
+''')
+    create_file('file_is_missing_symbol.c', r'''
+    void this_is_undefined(void);
+
+    int main() {
+      this_is_undefined();
+    }
+    ''')
+    output = self.expect_fail([EMCC, 'file_is_missing_symbol.c', '--js-library', 'lib.js'])
+    self.assertContained('asdf', output)
+
+
   def test_GetProcAddress_LEGACY_GL_EMULATION(self):
     # without legacy gl emulation, getting a proc from there should fail
     self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.cpp', args=['0'], emcc_args=['-sLEGACY_GL_EMULATION=0', '-sGL_ENABLE_GET_PROC_ADDRESS'])
