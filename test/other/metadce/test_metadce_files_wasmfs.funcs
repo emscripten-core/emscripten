@@ -72,7 +72,7 @@ $std::__2::basic_string<char\2c\20std::__2::char_traits<char>\2c\20std::__2::all
 $std::__2::basic_string<char\2c\20std::__2::char_traits<char>\2c\20std::__2::allocator<char>>::__grow_by_and_replace\28unsigned\20long\2c\20unsigned\20long\2c\20unsigned\20long\2c\20unsigned\20long\2c\20unsigned\20long\2c\20unsigned\20long\2c\20char\20const*\29
 $std::__2::basic_string<char\2c\20std::__2::char_traits<char>\2c\20std::__2::allocator<char>>::__init_copy_ctor_external\28char\20const*\2c\20unsigned\20long\29
 $std::__2::basic_string<char\2c\20std::__2::char_traits<char>\2c\20std::__2::allocator<char>>::__throw_length_error\5babi:un170004\5d\28\29\20const
-$std::__2::char_traits<char>::copy\5babi:un170004\5d\28char*\2c\20char\20const*\2c\20unsigned\20long\29
+$std::__2::enable_if<__has_random_access_iterator_category<char\20const*>::value\2c\20char*>::type\20std::__2::copy_n\5babi:un170004\5d<char\20const*\2c\20unsigned\20long\2c\20char*>\28char\20const*\2c\20unsigned\20long\2c\20char*\29
 $std::__2::shared_ptr<wasmfs::SpecialFiles::\28anonymous\20namespace\29::RandomFile>\20std::__2::make_shared\5babi:un170004\5d<wasmfs::SpecialFiles::\28anonymous\20namespace\29::RandomFile\2c\20void>\28\29
 $std::__2::vector<unsigned\20char\2c\20std::__2::allocator<unsigned\20char>>::__append\28unsigned\20long\29
 $std::__2::vector<wasmfs::MemoryDirectory::ChildEntry\2c\20std::__2::allocator<wasmfs::MemoryDirectory::ChildEntry>>::erase\5babi:un170004\5d\28std::__2::__wrap_iter<wasmfs::MemoryDirectory::ChildEntry\20const*>\29
