@@ -14241,3 +14241,7 @@ addToLibrary({
   def test_force_filesystem_error(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sFILESYSTEM=0', '-sFORCE_FILESYSTEM'])
     self.assertContained('emcc: error: `-sFORCE_FILESYSTEM` cannot be used with `-sFILESYSTEM=0`', err)
+
+  def test_aligned_alloc(self):
+    self.do_runf('test_aligned_alloc.c', '',
+                 emcc_args=['-Wno-non-power-of-two-alignment'])
