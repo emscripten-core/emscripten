@@ -311,6 +311,9 @@ var LibraryHtml5WebGL = {
     '$webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
     '$webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance',
 #endif
+    '$webgl_enable_EXT_polygon_offset_clamp',
+    '$webgl_enable_EXT_clip_control',
+    '$webgl_enable_WEBGL_polygon_mode',
     '$webgl_enable_WEBGL_multi_draw',
 #endif
   ],
@@ -339,21 +342,23 @@ var LibraryHtml5WebGL = {
 #endif
 
     if (extString == 'WEBGL_multi_draw') webgl_enable_WEBGL_multi_draw(GLctx);
+    if (extString == 'EXT_polygon_offset_clamp') webgl_enable_EXT_polygon_offset_clamp(GLctx);
+    if (extString == 'EXT_clip_control') webgl_enable_EXT_clip_control(GLctx);
+    if (extString == 'WEBGL_polygon_mode') webgl_enable_WEBGL_polygon_mode(GLctx);
 
-#else
-
-#if ASSERTIONS || GL_ASSERTIONS
+#elif ASSERTIONS || GL_ASSERTIONS
     if (['ANGLE_instanced_arrays',
          'OES_vertex_array_object',
          'WEBGL_draw_buffers',
          'WEBGL_multi_draw',
+         'EXT_polygon_offset_clamp',
+         'EXT_clip_control',
+         'WEBGL_polygon_mode',
          'WEBGL_draw_instanced_base_vertex_base_instance',
          'WEBGL_multi_draw_instanced_base_vertex_base_instance'].includes(extString)) {
       err('When building with -sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0, function emscripten_webgl_enable_extension() cannot be used to enable extension '
                     + extString + '! Use one of the functions emscripten_webgl_enable_*() to enable it!');
     }
-#endif
-
 #endif
 
     var ext = context.GLctx.getExtension(extString);

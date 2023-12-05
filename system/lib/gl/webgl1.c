@@ -818,6 +818,9 @@ void *emscripten_webgl1_get_proc_address(const char *name) {
   RETURN_FN(glGetQueryObjectuivEXT);
   RETURN_FN(glGetQueryObjecti64vEXT);
   RETURN_FN(glGetQueryObjectui64vEXT);
+  RETURN_FN(glPolygonOffsetClampEXT);
+  RETURN_FN(glClipControlEXT);
+  RETURN_FN(glPolygonModeWEBGL);
 
   return 0;
 }
