@@ -200,18 +200,24 @@ def compile_javascript(symbols_only=False):
     if ret.stderr:
       undefs = building.find_undef_symbols(settings.LINKER_INPUTS)
 
+      errs = []
       for line in ret.stderr.split('\n'):
         top_level_undefined = re.match('error: undefined symbol: (.*) \\(referenced by top-level compiled C/C\\+\\+ code\\)', line)
         if top_level_undefined:
           undef = top_level_undefined[1]
+          logger.error(f'"{undef}" is undefined, searching')
 
           refs = []
           for filename, nm in undefs.items():
+            logger.error(f'searching file {filename}, got {nm}')
             if undef in list(nm):
               refs += [filename]
 
           refs = ','.join(refs) if len(refs) > 0 else 'referenced by top-level compiled C/C++ code'
-          logger.error(f'undefined symbol: {undef} (referenced by {refs})')
+          errs += [f'undefined symbol: {undef} (referenced by {refs})']
+        else:
+          errs += [line]
+      logger.error('\n'.join(errs))
     if ret.returncode:
       sys.exit(ret.returncode)
   if symbols_only:
