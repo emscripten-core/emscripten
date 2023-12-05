@@ -26,7 +26,7 @@ static void setDevicePixelRatio(float ratio) {
   EM_ASM({
     GLFW.mockDevicePixelRatio = $0;
     // mocking/simulating the fact that an event should be raised when devicePixelRatio changes
-    if (GLFW.devicePixelRatioMQS) {
+    if (GLFW.devicePixelRatioMQL) {
       GLFW.onDevicePixelRatioChange();
     }
   }, ratio);
