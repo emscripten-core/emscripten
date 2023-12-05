@@ -1638,7 +1638,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
             self.assertContained(expected_output, js_output, regex=regex)
             if assert_returncode == 0 and check_for_error:
               self.assertNotContained('ERROR', js_output)
-        except Exception:
+        except self.failureException:
           print('(test did not pass in JS engine: %s)' % engine)
           raise
     return js_output
@@ -1982,7 +1982,7 @@ class BrowserCore(RunnerCore):
           output = unquote(output)
           try:
             self.assertContained(expected, output)
-          except Exception as e:
+          except self.failureException as e:
             if extra_tries > 0:
               print('[test error (see below), automatically retrying]')
               print(e)
