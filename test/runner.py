@@ -382,6 +382,9 @@ def parse_args(args):
   parser.add_argument('tests', nargs='*')
   parser.add_argument('--failfast', action='store_const', const=True, default=False)
   parser.add_argument('--start-at', metavar='NAME', help='Skip all tests up until <NAME>')
+  parser.add_argument('--continue', dest='_continue', action='store_true',
+                      help='Resume from the last run test.'
+                           'Useful when combined with --failfast')
   parser.add_argument('--force64', action='store_const', const=True, default=None)
   parser.add_argument('--crossplatform-only', action='store_true')
   return parser.parse_args()
@@ -465,6 +468,11 @@ def main(args):
     tests = tests_with_expanded_wildcards(tests, all_tests)
     tests = skip_requested_tests(tests, modules)
     tests = args_for_random_tests(tests, modules)
+
+  if not options.start_at and options._continue:
+    if os.path.exists(common.LAST_TEST):
+      options.start_at = utils.read_file(common.LAST_TEST).strip()
+
   suites, unmatched_tests = load_test_suites(tests, modules, options.start_at)
   if unmatched_tests:
     print('ERROR: could not find the following tests: ' + ' '.join(unmatched_tests))

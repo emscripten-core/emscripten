@@ -76,6 +76,7 @@ if 'EM_BUILD_VERBOSE' in os.environ:
 NON_ZERO = -1
 
 TEST_ROOT = path_from_root('test')
+LAST_TEST = path_from_root('out/last_test.txt')
 
 WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 
@@ -901,6 +902,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       else:
         print('Creating new test output directory')
         ensure_dir(self.working_dir)
+      utils.write_file(LAST_TEST, self.id() + '\n')
     os.chdir(self.working_dir)
 
   def runningInParallel(self):
