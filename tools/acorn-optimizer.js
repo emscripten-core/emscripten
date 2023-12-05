@@ -26,6 +26,15 @@ function assert(condition, text) {
   }
 }
 
+function assertAt(condition, node, message = '') {
+  if (!condition) {
+    const loc = acorn.getLineInfo(input, node.start);
+    throw new Error(
+      `${infile}:${loc.line}: ${message} (use EMCC_DEBUG_SAVE=1 to preserve temporary inputs)`,
+    );
+  }
+}
+
 function warnOnce(msg) {
   if (!warnOnce.msgs) warnOnce.msgs = {};
   if (msg in warnOnce.msgs) return;
@@ -190,7 +199,7 @@ function restoreForVars(node) {
   let restored = 0;
   function fix(init) {
     if (init && init.type === 'EmptyStatement') {
-      assert(init.oldDeclarations);
+      assertAt(init.oldDeclarations, init);
       init.type = 'VariableDeclaration';
       init.declarations = init.oldDeclarations;
       restored++;
@@ -427,12 +436,16 @@ function runJSDCE(ast, aggressive) {
           });
         } else if (id.type === 'ArrayPattern') {
           id.elements.forEach((node) => {
-            assert(node.type === 'Identifier');
+            assertAt(
+              node.type === 'Identifier',
+              node,
+              `expected Indentifier but found ${node.type}`,
+            );
             const name = node.name;
             ensureData(scopes[scopes.length - 1], name).def = 1;
           });
         } else {
-          assert(id.type === 'Identifier');
+          assertAt(id.type === 'Identifier', id);
           const name = id.name;
           ensureData(scopes[scopes.length - 1], name).def = 1;
         }
@@ -726,7 +739,7 @@ function emitDCEGraph(ast) {
           // use the left hand identifier.
           value = value.left;
         }
-        assert(value.type === 'Identifier');
+        assertAt(value.type === 'Identifier', value);
         imports.push(value.name); // the name doesn't matter, only the value which is that actual thing we are importing
       });
       foundWasmImportsAssign = true;
@@ -786,7 +799,7 @@ function emitDCEGraph(ast) {
               //  var x = Module['x'] = 1234;
               // this form occurs when global addresses are exported from the
               // module.  It doesn't constitute a usage.
-              assert(typeof value.right.value === 'number');
+              assertAt(typeof value.right.value === 'number', value.right);
               emptyOut(node);
             }
           }
@@ -1723,7 +1736,7 @@ function minifyLocals(ast) {
         // locals are just numbers, not functions; functions are all declared
         // in the outer scope. If a local is called, that is a bug.
         if (node.callee.type === 'Identifier') {
-          assert(!isLocalName(node.callee.name), 'cannot call a local');
+          assertAt(!isLocalName(node.callee.name), node.callee, 'cannot call a local');
         }
       },
     });
