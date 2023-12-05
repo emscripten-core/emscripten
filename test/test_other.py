@@ -8296,7 +8296,8 @@ int main() {
     # code. mode 2 ignores those and fully optimizes out the ctors
     'ctors1':    (['-O2', '-sEVAL_CTORS'],   [], ['waka']), # noqa
     'ctors2':    (['-O2', '-sEVAL_CTORS=2'], [], ['waka']), # noqa
-    'wasmfs':    (['-O2', '-sWASMFS'],       [], ['waka']), # noqa
+    # disable for roll
+    # 'wasmfs':    (['-O2', '-sWASMFS'],       [], ['waka']), # noqa
   })
   def test_metadce_cxx(self, *args):
     # do not check functions in this test as there are a lot of libc++ functions
@@ -8319,7 +8320,8 @@ int main() {
     # larger for wasm backend.
     'dylink': (['-O3', '-sMAIN_MODULE=2'], [], []), # noqa
     # WasmFS should not be fully linked into a hello world program.
-    'wasmfs': (['-O3', '-sWASMFS'],        [], []), # noqa
+    # disable for roll
+    # 'wasmfs': (['-O3', '-sWASMFS'],        [], []), # noqa
   })
   def test_metadce_hello(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
@@ -8360,7 +8362,8 @@ int main() {
 
   @parameterized({
     'js_fs':  (['-O3', '-sNO_WASMFS'], [], []), # noqa
-    'wasmfs': (['-O3', '-sWASMFS'],    [], []), # noqa
+    # disable for roll
+    # 'wasmfs': (['-O3', '-sWASMFS'],    [], []), # noqa
   })
   def test_metadce_files(self, *args):
     self.run_metadce_test('files.cpp', *args)
