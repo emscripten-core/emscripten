@@ -23,14 +23,11 @@ function dump(item) {
     return '// ' + JSON.stringify(item, null, '  ').replace(/\n/g, '\n// ');
   } catch (e) {
     const ret = [];
-    for (const i in item) {
-      if (Object.prototype.hasOwnProperty.call(item, i)) {
-        const j = item[i];
-        if (typeof j == 'string' || typeof j == 'number') {
-          ret.push(`${i}: ${j}`);
-        } else {
-          ret.push(`${i}: [?]`);
-        }
+    for (const [i, j] of Object.entries(item)) {
+      if (typeof j == 'string' || typeof j == 'number') {
+        ret.push(`${i}: ${j}`);
+      } else {
+        ret.push(`${i}: [?]`);
       }
     }
     return ret.join(',\n');
