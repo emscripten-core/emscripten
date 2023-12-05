@@ -1183,6 +1183,9 @@ def phase_linker_setup(options, state, newargs):
     # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
     settings.FORCE_FILESYSTEM = 1
 
+  if settings.FORCE_FILESYSTEM and not settings.FILESYSTEM:
+    exit_with_error('`-sFORCE_FILESYSTEM` cannot be used with `-sFILESYSTEM=0`')
+
   if settings.WASMFS:
     if settings.NODERAWFS:
       # wasmfs will be included normally in system_libs.py, but we must include
