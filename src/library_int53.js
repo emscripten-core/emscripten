@@ -142,7 +142,7 @@ addToLibrary({
 });
 
 #if WASM_BIGINT
-global.i53ConversionDeps = ['$bigintToI53Checked'];
+globalThis.i53ConversionDeps = ['$bigintToI53Checked'];
 #else
-global.i53ConversionDeps = ['$convertI32PairToI53Checked'];
+globalThis.i53ConversionDeps = ['$convertI32PairToI53Checked'];
 #endif

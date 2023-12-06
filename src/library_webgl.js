@@ -9,7 +9,7 @@
 {{{ GL_POOL_TEMP_BUFFERS_SIZE = 2*9*16 }}} // = 288
 
 {{{
-  global.isCurrentContextWebGL2 = () => {
+  globalThis.isCurrentContextWebGL2 = () => {
     if (MIN_WEBGL_VERSION >= 2) return 'true';
     if (MAX_WEBGL_VERSION <= 1) return 'false';
     return 'GL.currentContext.version >= 2';

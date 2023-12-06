@@ -37,7 +37,7 @@
 
 var LibraryGLFW = {
   $GLFW_Window__docs: '/** @constructor */',
-  $GLFW_Window: function(id, width, height, title, monitor, share) {
+  $GLFW_Window: function(id, width, height, framebufferWidth, framebufferHeight, title, monitor, share) {
       this.id = id;
       this.x = 0;
       this.y = 0;
@@ -46,6 +46,8 @@ var LibraryGLFW = {
       this.storedY = 0; // Used to store Y before fullscreen
       this.width = width;
       this.height = height;
+      this.framebufferWidth = framebufferWidth;
+      this.framebufferHeight = framebufferHeight;
       this.storedWidth = width; // Used to store width before fullscreen
       this.storedHeight = height; // Used to store height before fullscreen
       this.title = title;
@@ -105,6 +107,7 @@ var LibraryGLFW = {
     versionString: null,
     initialTime: null,
     extensions: null,
+    devicePixelRatioMQL: null, // MediaQueryList from window.matchMedia
     hints: null,
     primaryTouchId: null,
     defaultHints: {
@@ -114,7 +117,7 @@ var LibraryGLFW = {
       0x00020004:1, // GLFW_VISIBLE
       0x00020005:1, // GLFW_DECORATED
       0x0002000A:0, // GLFW_TRANSPARENT_FRAMEBUFFER
-      0x0002200C:0, // GLFW_SCALE_TO_MONITOR. can we emulate this?
+      0x0002200C:0, // GLFW_SCALE_TO_MONITOR
 
       0x00021001:8, // GLFW_RED_BITS
       0x00021002:8, // GLFW_GREEN_BITS
@@ -616,44 +619,49 @@ var LibraryGLFW = {
       event.preventDefault();
     },
 
-    onCanvasResize: (width, height) => {
+    // width/height are the dimensions in screen coordinates the user interact with (ex: drawing, mouse coordinates...)
+    // framebufferWidth/framebufferHeight are the dimensions in pixel coordinates used for rendering
+    // in a HiDPI scenario framebufferWidth = devicePixelRatio * width
+    onCanvasResize: (width, height, framebufferWidth, framebufferHeight) => {
       if (!GLFW.active) return;
 
-      var resizeNeeded = true;
+      var resizeNeeded = false;
 
       // If the client is requesting fullscreen mode
       if (document["fullscreen"] || document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
-        GLFW.active.storedX = GLFW.active.x;
-        GLFW.active.storedY = GLFW.active.y;
-        GLFW.active.storedWidth = GLFW.active.width;
-        GLFW.active.storedHeight = GLFW.active.height;
-        GLFW.active.x = GLFW.active.y = 0;
-        GLFW.active.width = screen.width;
-        GLFW.active.height = screen.height;
-        GLFW.active.fullscreen = true;
-
+        if (!GLFW.active.fullscreen) {
+          resizeNeeded = width != screen.width || height != screen.height;
+          GLFW.active.storedX = GLFW.active.x;
+          GLFW.active.storedY = GLFW.active.y;
+          GLFW.active.storedWidth = GLFW.active.width;
+          GLFW.active.storedHeight = GLFW.active.height;
+          GLFW.active.x = GLFW.active.y = 0;
+          GLFW.active.width = screen.width;
+          GLFW.active.height = screen.height;
+          GLFW.active.fullscreen = true;
+        }
       // If the client is reverting from fullscreen mode
       } else if (GLFW.active.fullscreen == true) {
+        resizeNeeded = width != GLFW.active.storedWidth || height != GLFW.active.storedHeight;
         GLFW.active.x = GLFW.active.storedX;
         GLFW.active.y = GLFW.active.storedY;
         GLFW.active.width = GLFW.active.storedWidth;
         GLFW.active.height = GLFW.active.storedHeight;
         GLFW.active.fullscreen = false;
-
-      // If the width/height values do not match current active window sizes
-      } else if (GLFW.active.width != width || GLFW.active.height != height) {
-          GLFW.active.width = width;
-          GLFW.active.height = height;
-      } else {
-        resizeNeeded = false;
       }
 
-      // If any of the above conditions were true, we need to resize the canvas
       if (resizeNeeded) {
-        // resets the canvas size to counter the aspect preservation of Browser.updateCanvasDimensions
-        Browser.setCanvasSize(GLFW.active.width, GLFW.active.height, true);
-        // TODO: Client dimensions (clientWidth/clientHeight) vs pixel dimensions (width/height) of
-        // the canvas should drive window and framebuffer size respectfully.
+        // width or height is changed (fullscreen / exit fullscreen) which will call this listener back
+        // with proper framebufferWidth/framebufferHeight
+        Browser.setCanvasSize(GLFW.active.width, GLFW.active.height);
+      } else if (GLFW.active.width != width ||
+                 GLFW.active.height != height ||
+                 GLFW.active.framebufferWidth != framebufferWidth ||
+                 GLFW.active.framebufferHeight != framebufferHeight) {
+        GLFW.active.width = width;
+        GLFW.active.height = height;
+        GLFW.active.framebufferWidth = framebufferWidth;
+        GLFW.active.framebufferHeight = framebufferHeight;
         GLFW.onWindowSizeChanged();
         GLFW.onFramebufferSizeChanged();
       }
@@ -677,7 +685,7 @@ var LibraryGLFW = {
 
 #if USE_GLFW == 3
       if (GLFW.active.framebufferSizeFunc) {
-        {{{ makeDynCall('vpii', 'GLFW.active.framebufferSizeFunc') }}}(GLFW.active.id, GLFW.active.width, GLFW.active.height);
+        {{{ makeDynCall('vpii', 'GLFW.active.framebufferSizeFunc') }}}(GLFW.active.id, GLFW.active.framebufferWidth, GLFW.active.framebufferHeight);
       }
 #endif
     },
@@ -1047,18 +1055,7 @@ var LibraryGLFW = {
       if (!win) return;
 
       if (GLFW.active.id == win.id) {
-        Browser.setCanvasSize(width, height);
-        win.width = width;
-        win.height = height;
-      }
-
-      if (win.windowSizeFunc) {
-#if USE_GLFW == 2
-        {{{ makeDynCall('vii', 'win.windowSizeFunc') }}}(width, height);
-#endif
-#if USE_GLFW == 3
-        {{{ makeDynCall('vpii', 'win.windowSizeFunc') }}}(win.id, width, height);
-#endif
+        Browser.setCanvasSize(width, height); // triggers the listener (onCanvasResize) + windowSizeFunc
       }
     },
 
@@ -1112,7 +1109,8 @@ var LibraryGLFW = {
       if (!Module.ctx && useWebGL) return 0;
 
       // Get non alive id
-      var win = new GLFW_Window(id, width, height, title, monitor, share);
+      const canvas = Module['canvas'];
+      var win = new GLFW_Window(id, canvas.clientWidth, canvas.clientHeight, canvas.width, canvas.height, title, monitor, share);
 
       // Set window to array
       if (id - 1 == GLFW.windows.length) {
@@ -1122,6 +1120,7 @@ var LibraryGLFW = {
       }
 
       GLFW.active = win;
+      GLFW.adjustCanvasDimensions();
       return win.id;
     },
 
@@ -1147,6 +1146,179 @@ var LibraryGLFW = {
     },
 
     swapBuffers: (winid) => {
+    },
+
+    // Overrides Browser.requestFullscreen to notify listeners even if Browser.resizeCanvas is false
+    requestFullscreen(lockPointer, resizeCanvas) {
+      Browser.lockPointer = lockPointer;
+      Browser.resizeCanvas = resizeCanvas;
+      if (typeof Browser.lockPointer == 'undefined') Browser.lockPointer = true;
+      if (typeof Browser.resizeCanvas == 'undefined') Browser.resizeCanvas = false;
+
+      var canvas = Module['canvas'];
+      function fullscreenChange() {
+        Browser.isFullscreen = false;
+        var canvasContainer = canvas.parentNode;
+        if ((document['fullscreenElement'] || document['mozFullScreenElement'] ||
+          document['msFullscreenElement'] || document['webkitFullscreenElement'] ||
+          document['webkitCurrentFullScreenElement']) === canvasContainer) {
+          canvas.exitFullscreen = Browser.exitFullscreen;
+          if (Browser.lockPointer) canvas.requestPointerLock();
+          Browser.isFullscreen = true;
+          if (Browser.resizeCanvas) {
+            Browser.setFullscreenCanvasSize();
+          } else {
+            Browser.updateCanvasDimensions(canvas);
+            Browser.updateResizeListeners();
+          }
+        } else {
+          // remove the full screen specific parent of the canvas again to restore the HTML structure from before going full screen
+          canvasContainer.parentNode.insertBefore(canvas, canvasContainer);
+          canvasContainer.parentNode.removeChild(canvasContainer);
+
+          if (Browser.resizeCanvas) {
+            Browser.setWindowedCanvasSize();
+          } else {
+            Browser.updateCanvasDimensions(canvas);
+            Browser.updateResizeListeners();
+          }
+        }
+        if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullscreen);
+        if (Module['onFullscreen']) Module['onFullscreen'](Browser.isFullscreen);
+      }
+
+      if (!Browser.fullscreenHandlersInstalled) {
+        Browser.fullscreenHandlersInstalled = true;
+        document.addEventListener('fullscreenchange', fullscreenChange, false);
+        document.addEventListener('mozfullscreenchange', fullscreenChange, false);
+        document.addEventListener('webkitfullscreenchange', fullscreenChange, false);
+        document.addEventListener('MSFullscreenChange', fullscreenChange, false);
+      }
+
+      // create a new parent to ensure the canvas has no siblings. this allows browsers to optimize full screen performance when its parent is the full screen root
+      var canvasContainer = document.createElement("div");
+      canvas.parentNode.insertBefore(canvasContainer, canvas);
+      canvasContainer.appendChild(canvas);
+
+      // use parent of canvas as full screen root to allow aspect ratio correction (Firefox stretches the root to screen size)
+      canvasContainer.requestFullscreen = canvasContainer['requestFullscreen'] ||
+        canvasContainer['mozRequestFullScreen'] ||
+        canvasContainer['msRequestFullscreen'] ||
+        (canvasContainer['webkitRequestFullscreen'] ? () => canvasContainer['webkitRequestFullscreen'](Element['ALLOW_KEYBOARD_INPUT']) : null) ||
+        (canvasContainer['webkitRequestFullScreen'] ? () => canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) : null);
+
+      canvasContainer.requestFullscreen();
+    },
+
+    // Overrides Browser.updateCanvasDimensions to account for hi dpi scaling
+    updateCanvasDimensions(canvas, wNative, hNative) {
+      const scale = GLFW.getHiDPIScale();
+
+      if (wNative && hNative) {
+        canvas.widthNative = wNative;
+        canvas.heightNative = hNative;
+      } else {
+        wNative = canvas.widthNative;
+        hNative = canvas.heightNative;
+      }
+      var w = wNative;
+      var h = hNative;
+      if (Module['forcedAspectRatio'] && Module['forcedAspectRatio'] > 0) {
+        if (w/h < Module['forcedAspectRatio']) {
+          w = Math.round(h * Module['forcedAspectRatio']);
+        } else {
+          h = Math.round(w / Module['forcedAspectRatio']);
+        }
+      }
+      if (((document['fullscreenElement'] || document['mozFullScreenElement'] ||
+        document['msFullscreenElement'] || document['webkitFullscreenElement'] ||
+        document['webkitCurrentFullScreenElement']) === canvas.parentNode) && (typeof screen != 'undefined')) {
+        var factor = Math.min(screen.width / w, screen.height / h);
+        w = Math.round(w * factor);
+        h = Math.round(h * factor);
+      }
+      if (Browser.resizeCanvas) {
+        wNative = w;
+        hNative = h;
+      }
+      const wNativeScaled = Math.floor(wNative * scale);
+      const hNativeScaled = Math.floor(hNative * scale);
+      if (canvas.width  != wNativeScaled) canvas.width  = wNativeScaled;
+      if (canvas.height != hNativeScaled) canvas.height = hNativeScaled;
+      if (typeof canvas.style != 'undefined') {
+        if (wNativeScaled != wNative || hNativeScaled != hNative) {
+          canvas.style.setProperty( "width", wNative + "px", "important");
+          canvas.style.setProperty("height", hNative + "px", "important");
+        } else {
+          canvas.style.removeProperty( "width");
+          canvas.style.removeProperty("height");
+        }
+      }
+    },
+
+    // Overrides Browser.calculateMouseCoords to account for hi dpi scaling
+    calculateMouseCoords(pageX, pageY) {
+      // Calculate the movement based on the changes
+      // in the coordinates.
+      var rect = Module["canvas"].getBoundingClientRect();
+      var cw = Module["canvas"].clientWidth;
+      var ch = Module["canvas"].clientHeight;
+
+      // Neither .scrollX or .pageXOffset are defined in a spec, but
+      // we prefer .scrollX because it is currently in a spec draft.
+      // (see: http://www.w3.org/TR/2013/WD-cssom-view-20131217/)
+      var scrollX = ((typeof window.scrollX != 'undefined') ? window.scrollX : window.pageXOffset);
+      var scrollY = ((typeof window.scrollY != 'undefined') ? window.scrollY : window.pageYOffset);
+#if ASSERTIONS
+      // If this assert lands, it's likely because the browser doesn't support scrollX or pageXOffset
+      // and we have no viable fallback.
+      assert((typeof scrollX != 'undefined') && (typeof scrollY != 'undefined'), 'Unable to retrieve scroll position, mouse positions likely broken.');
+#endif
+      var adjustedX = pageX - (scrollX + rect.left);
+      var adjustedY = pageY - (scrollY + rect.top);
+
+      // the canvas might be CSS-scaled compared to its backbuffer;
+      // SDL-using content will want mouse coordinates in terms
+      // of backbuffer units.
+      adjustedX = adjustedX * (cw / rect.width);
+      adjustedY = adjustedY * (ch / rect.height);
+
+      return { x: adjustedX, y: adjustedY };
+    },
+
+    setWindowAttrib: (winid, attrib, value) => {
+      var win = GLFW.WindowFromId(winid);
+      if (!win) return;
+      const isHiDPIAware = GLFW.isHiDPIAware();
+      win.attributes[attrib] = value;
+      if (isHiDPIAware !== GLFW.isHiDPIAware())
+        GLFW.adjustCanvasDimensions();
+    },
+
+    getDevicePixelRatio() {
+      return (typeof devicePixelRatio == 'number' && devicePixelRatio) || 1.0;
+    },
+
+    isHiDPIAware() {
+      if (GLFW.active)
+        return GLFW.active.attributes[0x0002200C] > 0; // GLFW_SCALE_TO_MONITOR
+      else
+        return false;
+    },
+
+    adjustCanvasDimensions() {
+      const canvas = Module['canvas'];
+      Browser.updateCanvasDimensions(canvas, canvas.clientWidth, canvas.clientHeight);
+      Browser.updateResizeListeners();
+    },
+
+    getHiDPIScale() {
+      return GLFW.isHiDPIAware() ? GLFW.scale : 1.0;
+    },
+
+    onDevicePixelRatioChange() {
+      GLFW.onWindowContentScaleChanged(GLFW.getDevicePixelRatio());
+      GLFW.adjustCanvasDimensions();
     },
 
     GLFW2ParamToGLFW3Param: (param) => {
@@ -1189,7 +1361,7 @@ var LibraryGLFW = {
 /*******************************************************************************
  * GLFW FUNCTIONS
  ******************************************************************************/
-  glfwInit__deps: ['emscripten_get_device_pixel_ratio', 'malloc', 'free'],
+  glfwInit__deps: ['malloc', 'free'],
   glfwInit: () => {
     if (GLFW.windows) return 1; // GL_TRUE
 
@@ -1197,7 +1369,7 @@ var LibraryGLFW = {
     GLFW.defaultWindowHints();
     GLFW.windows = new Array()
     GLFW.active = null;
-    GLFW.scale  = _emscripten_get_device_pixel_ratio();
+    GLFW.scale  = GLFW.getDevicePixelRatio();
 
 
     window.addEventListener("gamepadconnected", GLFW.onGamepadConnected, true);
@@ -1206,13 +1378,11 @@ var LibraryGLFW = {
     window.addEventListener("keypress", GLFW.onKeyPress, true);
     window.addEventListener("keyup", GLFW.onKeyup, true);
     window.addEventListener("blur", GLFW.onBlur, true);
-    // from https://stackoverflow.com/a/70514686/7484780 . maybe add this to browser.js?
-    // no idea how to remove this listener.
-    (function updatePixelRatio(){
-      window.matchMedia("(resolution: " + window.devicePixelRatio + "dppx)")
-      .addEventListener('change', updatePixelRatio, {once: true});
-      GLFW.onWindowContentScaleChanged(_emscripten_get_device_pixel_ratio());
-      })();
+
+    // watch for devicePixelRatio changes
+    GLFW.devicePixelRatioMQL = window.matchMedia('(resolution: ' + GLFW.getDevicePixelRatio() + 'dppx)');
+    GLFW.devicePixelRatioMQL.addEventListener('change', GLFW.onDevicePixelRatioChange);
+
     Module["canvas"].addEventListener("touchmove", GLFW.onMousemove, true);
     Module["canvas"].addEventListener("touchstart", GLFW.onMouseButtonDown, true);
     Module["canvas"].addEventListener("touchcancel", GLFW.onMouseButtonUp, true);
@@ -1227,7 +1397,20 @@ var LibraryGLFW = {
     Module["canvas"].addEventListener('drop', GLFW.onDrop, true);
     Module["canvas"].addEventListener('dragover', GLFW.onDragover, true);
 
-    Browser.resizeListeners.push(GLFW.onCanvasResize);
+    // Overriding implementation to account for HiDPI
+    Browser.requestFullscreen = GLFW.requestFullscreen;
+    Browser.calculateMouseCoords = GLFW.calculateMouseCoords;
+    Browser.updateCanvasDimensions = GLFW.updateCanvasDimensions;
+
+    Browser.resizeListeners.push((width, height) => {
+      if (GLFW.isHiDPIAware()) {
+        var canvas = Module['canvas'];
+        GLFW.onCanvasResize(canvas.clientWidth, canvas.clientHeight, width, height);
+      } else {
+        GLFW.onCanvasResize(width, height, width, height);
+      }
+    });
+
     return 1; // GL_TRUE
   },
 
@@ -1252,6 +1435,8 @@ var LibraryGLFW = {
     Module["canvas"].removeEventListener('drop', GLFW.onDrop, true);
     Module["canvas"].removeEventListener('dragover', GLFW.onDragover, true);
 
+    if (GLFW.devicePixelRatioMQL)
+      GLFW.devicePixelRatioMQL.removeEventListener('change', GLFW.onDevicePixelRatioChange);
 
     Module["canvas"].width = Module["canvas"].height = 1;
     GLFW.windows = null;
@@ -1432,8 +1617,8 @@ var LibraryGLFW = {
 
     var win = GLFW.WindowFromId(winid);
     if (win) {
-      ww = win.width;
-      wh = win.height;
+      ww = win.framebufferWidth;
+      wh = win.framebufferHeight;
     }
 
     if (width) {
@@ -1484,11 +1669,7 @@ var LibraryGLFW = {
     return win.attributes[attrib];
   },
 
-  glfwSetWindowAttrib: (winid, attrib, value) => {
-    var win = GLFW.WindowFromId(winid);
-    if (!win) return;
-    win.attributes[attrib] = value;
-  },
+  glfwSetWindowAttrib: (winid, attrib, value) => GLFW.setWindowAttrib(winid, attrib, value),
 
   glfwSetWindowUserPointer: (winid, ptr) => {
     var win = GLFW.WindowFromId(winid);
