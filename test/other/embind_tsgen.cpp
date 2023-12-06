@@ -89,6 +89,14 @@ int function_with_callback_param(CallbackType ct) {
 
 int global_fn(int, int) { return 0; }
 
+std::string string_test(std::string arg) {
+  return "hi";
+}
+
+std::wstring wstring_test(std::wstring arg) {
+  return L"hi";
+}
+
 class BaseClass {
  public:
   virtual ~BaseClass() = default;
@@ -155,6 +163,9 @@ EMSCRIPTEN_BINDINGS(Test) {
   class_<Foo>("Foo").function("process", &Foo::process);
 
   function("global_fn", &global_fn);
+
+  function("string_test", &string_test);
+  function("wstring_test", &wstring_test);
 
   class_<ClassWithConstructor>("ClassWithConstructor")
       .constructor<int, const ValArr&>()

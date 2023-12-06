@@ -28,6 +28,7 @@ import tempfile
 import time
 import webbrowser
 import unittest
+import queue
 
 import clang_native
 import jsrun
@@ -76,6 +77,7 @@ if 'EM_BUILD_VERBOSE' in os.environ:
 NON_ZERO = -1
 
 TEST_ROOT = path_from_root('test')
+LAST_TEST = path_from_root('out/last_test.txt')
 
 WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 
@@ -901,6 +903,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       else:
         print('Creating new test output directory')
         ensure_dir(self.working_dir)
+      utils.write_file(LAST_TEST, self.id() + '\n')
     os.chdir(self.working_dir)
 
   def runningInParallel(self):
@@ -1638,7 +1641,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
             self.assertContained(expected_output, js_output, regex=regex)
             if assert_returncode == 0 and check_for_error:
               self.assertNotContained('ERROR', js_output)
-        except Exception:
+        except self.failureException:
           print('(test did not pass in JS engine: %s)' % engine)
           raise
     return js_output
@@ -1875,29 +1878,29 @@ class BrowserCore(RunnerCore):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
 
-  @staticmethod
-  def browser_open(url):
-    if not EMTEST_BROWSER:
-      logger.info('Using default system browser')
-      webbrowser.open_new(url)
-      return
+  @classmethod
+  def browser_restart(cls):
+    # Kill existing browser
+    logger.info("Restarting browser process")
+    cls.browser_proc.terminate()
+    # If the browser doesn't shut down gracefully (in response to SIGTERM)
+    # after 2 seconds kill it with force (SIGKILL).
+    try:
+      cls.browser_proc.wait(2)
+    except subprocess.TimeoutExpired:
+      cls.browser_proc.kill()
+      cls.browser_proc.wait()
+    cls.browser_open(cls.harness_url)
 
+  @classmethod
+  def browser_open(cls, url):
+    global EMTEST_BROWSER
+    if not EMTEST_BROWSER:
+      logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
+      EMTEST_BROWSER = 'google-chrome'
     browser_args = shlex.split(EMTEST_BROWSER)
-    # If the given browser is a scalar, treat it like one of the possible types
-    # from https://docs.python.org/2/library/webbrowser.html
-    if len(browser_args) == 1:
-      try:
-        # This throws if the type of browser isn't available
-        webbrowser.get(browser_args[0]).open_new(url)
-        logger.info('Using Emscripten browser: %s', browser_args[0])
-        return
-      except webbrowser.Error:
-        # Ignore the exception and fallback to the custom command logic
-        pass
-    # Else assume the given browser is a specific program with additional
-    # parameters and delegate to that
-    logger.info('Using Emscripten browser: %s', str(browser_args))
-    subprocess.Popen(browser_args + [url])
+    logger.info('Launching browser: %s', str(browser_args))
+    cls.browser_proc = subprocess.Popen(browser_args + [url])
 
   @classmethod
   def setUpClass(cls):
@@ -1912,7 +1915,8 @@ class BrowserCore(RunnerCore):
     cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.port))
     cls.harness_server.start()
     print('[Browser harness server on process %d]' % cls.harness_server.pid)
-    cls.browser_open('http://localhost:%s/run_harness' % cls.port)
+    cls.harness_url = 'http://localhost:%s/run_harness' % cls.port
+    cls.browser_open(cls.harness_url)
 
   @classmethod
   def tearDownClass(cls):
@@ -1944,7 +1948,7 @@ class BrowserCore(RunnerCore):
     if not has_browser():
       return
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
-      self.skipTest('too many unresponsive tests, skipping browser launch - check your setup!')
+      self.skipTest('too many unresponsive tests, skipping remaining tests')
     self.assert_out_queue_empty('previous test')
     if DEBUG:
       print('[browser launch:', html_file, ']')
@@ -1955,24 +1959,21 @@ class BrowserCore(RunnerCore):
           'http://localhost:%s/%s' % (self.port, html_file),
           self.get_dir()
         ))
-        received_output = False
-        output = '[no http server activity]'
-        start = time.time()
         if timeout is None:
           timeout = self.browser_timeout
-        while time.time() - start < timeout:
-          if not self.harness_out_queue.empty():
-            output = self.harness_out_queue.get()
-            received_output = True
-            break
-          time.sleep(0.1)
-        if not received_output:
+        try:
+          output = self.harness_out_queue.get(block=True, timeout=timeout)
+        except queue.Empty:
           BrowserCore.unresponsive_tests += 1
           print('[unresponsive tests: %d]' % BrowserCore.unresponsive_tests)
+          self.browser_restart()
+          # Rather than fail the test here, let fail on the `assertContained` so
+          # that the test can be retried via `extra_tries`
+          output = '[no http server activity]'
         if output is None:
           # the browser harness reported an error already, and sent a None to tell
           # us to also fail the test
-          raise Exception('failing test due to browser harness error')
+          self.fail('browser harness error')
         if output.startswith('/report_result?skipped:'):
           self.skipTest(unquote(output[len('/report_result?skipped:'):]).strip())
         else:
@@ -1980,7 +1981,7 @@ class BrowserCore(RunnerCore):
           output = unquote(output)
           try:
             self.assertContained(expected, output)
-          except Exception as e:
+          except self.failureException as e:
             if extra_tries > 0:
               print('[test error (see below), automatically retrying]')
               print(e)

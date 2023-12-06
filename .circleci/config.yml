@@ -753,6 +753,7 @@ jobs:
           test_targets: "
             other.test_gen_struct_info
             other.test_native_call_before_init
+            other.test_js_optimizer_verbose
             other.test_node_unhandled_rejection
             other.test_full_js_library*
             core2.test_hello_world"
@@ -768,6 +769,7 @@ jobs:
             other.test_gen_struct_info
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
+            other.test_js_optimizer_verbose
             other.test_min_node_version
             other.test_node_emscripten_num_logical_cores
             core2.test_pthread_create
@@ -840,6 +842,7 @@ jobs:
       EMTEST_SKIP_SIMD: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_BROWSER: "0"
     steps:
       - checkout
       - run:

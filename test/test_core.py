@@ -139,6 +139,12 @@ def no_wasm2js(note=''):
 # that is mainly useful for the wasm2js compiler and not LLVM. LLVM tests its
 # own codegen, while wasm2js testing is split between the binaryen repo (which
 # tests wat files) and this repo (which tests C/C++ files).
+#
+# Note that some tests here may seem excessive, e.g., testing 16-bit math, as
+# LLVM turns those things into i32 values in wasm anyhow before wasm2js.
+# However, it is still useful to test wasm2js there as LLVM emits patterns of
+# shifts and such around those values to ensure they operate as 16-bit, and we
+# want coverage of that.
 def only_wasm2js(note=''):
   assert not callable(note)
 
@@ -538,17 +544,21 @@ class TestCoreBase(RunnerCore):
   def test_nested_struct_varargs(self):
     self.do_core_test('test_nested_struct_varargs.c')
 
+  @only_wasm2js('tests 32-bit multiplication')
   def test_i32_mul_precise(self):
     self.do_core_test('test_i32_mul_precise.c')
 
+  @only_wasm2js('tests operations on 16-bit values')
   def test_i16_emcc_intrinsic(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_i16_emcc_intrinsic.c')
 
+  @only_wasm2js('tests 64-bit conversions')
   def test_double_i64_conversion(self):
     self.do_core_test('test_double_i64_conversion.c')
 
+  @only_wasm2js('tests float32 ops')
   def test_float32_precise(self):
     self.do_core_test('test_float32_precise.c')
 
@@ -558,6 +568,7 @@ class TestCoreBase(RunnerCore):
   def test_literal_negative_zero(self):
     self.do_core_test('test_literal_negative_zero.c')
 
+  @only_wasm2js('tests byte conversions')
   @also_with_standalone_wasm()
   def test_bswap64(self):
     self.do_core_test('test_bswap64.cpp')
@@ -586,71 +597,7 @@ class TestCoreBase(RunnerCore):
                          ('64bitisslow', '64D8470573635EC354FEE7B7F87C566FCAF1EFB491041670')]:
       self.do_run('src.js', 'hash value: ' + output, args=[text], no_build=True)
 
-  def test_unaligned(self):
-    self.skipTest('LLVM marks the reads of s as fully aligned, making this test invalid')
-    src = r'''
-      #include <stdio.h>
-
-      struct S {
-        double x;
-        int y;
-      };
-
-      int main() {
-        // the 64-bit value here will not be 8-byte aligned
-        S s0[3] = { {0x12a751f430142, 22}, {0x17a5c85bad144, 98}, {1, 1}};
-        char buffer[10*sizeof(S)];
-        int b = int(buffer);
-        S *s = (S*)(b + 4-b%8);
-        s[0] = s0[0];
-        s[1] = s0[1];
-        s[2] = s0[2];
-
-        printf("*%d : %d : %d\n", sizeof(S), ((unsigned long)&s[0]) % 8 != ((unsigned long)&s[1]) % 8,
-                                             ((unsigned long)&s[1]) - ((unsigned long)&s[0]));
-        s[0].x++;
-        s[0].y++;
-        s[1].x++;
-        s[1].y++;
-        printf("%.1f,%d,%.1f,%d\n", s[0].x, s[0].y, s[1].x, s[1].y);
-        return 0;
-      }
-      '''
-
-    # TODO: A version of this with int64s as well
-
-    self.do_run(src, '*12 : 1 : 12\n328157500735811.0,23,416012775903557.0,99\n')
-
-    return # TODO: continue to the next part here
-
-    # Test for undefined behavior in C. This is not legitimate code, but does exist
-
-    src = r'''
-      #include <stdio.h>
-
-      int main()
-      {
-        int x[10];
-        char *p = (char*)&x[0];
-        p++;
-        short *q = (short*)p;
-        *q = 300;
-        printf("*%d:%ld*\n", *q, ((long)q)%2);
-        int *r = (int*)p;
-        *r = 515559;
-        printf("*%d*\n", *r);
-        long long *t = (long long*)p;
-        *t = 42949672960;
-        printf("*%lld*\n", *t);
-        return 0;
-      }
-    '''
-
-    try:
-      self.do_run(src, '*300:1*\n*515559*\n*42949672960*\n')
-    except Exception as e:
-      assert 'must be aligned' in str(e), e # expected to fail without emulation
-
+  @only_wasm2js('tests 64-bit alignment of structs')
   def test_align64(self):
     src = r'''
       #include <stdio.h>
@@ -699,12 +646,7 @@ class TestCoreBase(RunnerCore):
 0.00,10,123.46,0.00 : 0.00,10,123.46,0.00
 ''')
 
-  @no_asan('asan errors on corner cases we check')
-  @no_lsan('lsan errors on corner cases we check')
-  def test_aligned_alloc(self):
-    self.do_runf('test_aligned_alloc.c', '',
-                 emcc_args=['-Wno-non-power-of-two-alignment'])
-
+  @only_wasm2js('tests signed vs unsigned values')
   def test_unsigned(self):
     src = '''
       #include <stdio.h>
@@ -790,12 +732,14 @@ class TestCoreBase(RunnerCore):
     '''
     self.do_run(src, '*255*\n*65535*\n*-1*\n*-1*\n*-1*')
 
+  @only_wasm2js('tests 1-bit fields')
   def test_bitfields(self):
     self.do_core_test('test_bitfields.c')
 
   def test_floatvars(self):
     self.do_core_test('test_floatvars.cpp')
 
+  @only_wasm2js('tests pointer casts')
   def test_closebitcasts(self):
     self.do_core_test('closebitcasts.c')
 
@@ -803,9 +747,11 @@ class TestCoreBase(RunnerCore):
     self.emcc_args += ['-ffast-math']
     self.do_core_test('test_fast_math.c', args=['5', '6', '8'])
 
+  @only_wasm2js('tests division by zero')
   def test_zerodiv(self):
     self.do_core_test('test_zerodiv.c')
 
+  @only_wasm2js('tests multiplication by zero')
   def test_zero_multiplication(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')

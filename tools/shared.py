@@ -762,7 +762,7 @@ def read_and_preprocess(filename, expand_macros=False):
   if expand_macros:
     args += ['--expandMacros']
 
-  run_js_tool(path_from_root('tools/preprocessor.js'), args, stdout=open(stdout, 'w'), cwd=dirname)
+  run_js_tool(path_from_root('tools/preprocessor.mjs'), args, stdout=open(stdout, 'w'), cwd=dirname)
   out = utils.read_file(stdout)
 
   return out

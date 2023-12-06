@@ -1,10 +1,8 @@
 #!/usr/bin/env node
 
-'use strict';
-
-const acorn = require('acorn');
-const terser = require('../third_party/terser/terser');
-const fs = require('fs');
+import * as acorn from 'acorn';
+import * as terser from '../third_party/terser/terser.js';
+import * as fs from 'fs';
 
 // Utilities
 
@@ -433,7 +431,7 @@ function runJSDCE(ast, aggressive) {
             }
           } else if (id.type === 'ArrayPattern') {
             for (const elem of id.elements) {
-              traverse(elem);
+              if (elem) traverse(elem);
             }
           } else {
             assertAt(id.type === 'Identifier', id, `expected Indentifier but found ${id.type}`);

@@ -14,13 +14,19 @@
 
 'use strict';
 
-const fs = require('fs');
-const path = require('path');
-global.vm = require('vm');
+import * as fs from 'fs';
+import * as path from 'path';
+import * as vm from 'vm';
+import assert from 'assert';
+import * as url from 'url';
 
-const arguments_ = process.argv.slice(2);
+const args = process.argv.slice(2);
 const debug = false;
 
+// Anything needed by the script that we load below must be added to the
+// global object.  These, for example, are all needed by parseTools.js.
+global.vm = vm;
+global.assert = assert;
 global.print = (x) => {
   process.stdout.write(x + '\n');
 };
@@ -28,10 +34,9 @@ global.printErr = (x) => {
   process.stderr.write(x + '\n');
 };
 
-global.assert = require('assert');
-
 function find(filename) {
-  const prefixes = [process.cwd(), path.join(__dirname, '..', 'src')];
+  const dirname = url.fileURLToPath(new URL('.', import.meta.url));
+  const prefixes = [process.cwd(), path.join(dirname, '..', 'src')];
   for (let i = 0; i < prefixes.length; ++i) {
     const combined = path.join(prefixes[i], filename);
     if (fs.existsSync(combined)) {
@@ -50,9 +55,10 @@ global.load = (f) => {
   (0, eval)(read(f) + '//# sourceURL=' + find(f));
 };
 
-const settingsFile = arguments_[0];
-const inputFile = arguments_[1];
-const expandMacros = arguments_.includes('--expandMacros');
+assert(args.length >= 2);
+const settingsFile = args[0];
+const inputFile = args[1];
+const expandMacros = args.includes('--expandMacros');
 
 load(settingsFile);
 load('utility.js');

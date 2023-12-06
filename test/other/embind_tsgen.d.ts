@@ -91,4 +91,6 @@ export interface MainModule {
   smart_ptr_function(_0: ClassWithSmartPtrConstructor): number;
   smart_ptr_function_with_params(foo: ClassWithSmartPtrConstructor): number;
   function_with_callback_param(_0: (message: string) => void): number;
+  string_test(_0: ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string): string;
+  wstring_test(_0: string): string;
 }
