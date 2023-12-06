@@ -241,7 +241,7 @@ def generate_js_sym_info():
   # mode of the js compiler that would generate a list of all possible symbols
   # that could be checked in.
   _, forwarded_data = emscripten.compile_javascript(symbols_only=True)
-  # When running in symbols_only mode compiler.js outputs a flat list of C symbols.
+  # When running in symbols_only mode compiler.mjs outputs a flat list of C symbols.
   return json.loads(forwarded_data)
 
 

@@ -233,7 +233,7 @@ function isPowerOfTwo(x) {
 }
 
 /** @constructor */
-function Benchmarker() {
+globalThis.Benchmarker = function() {
   const totals = {};
   const ids = [];
   const lastTime = 0;
