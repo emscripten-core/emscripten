@@ -760,41 +760,25 @@ class TestCoreBase(RunnerCore):
   def test_isnan(self):
     self.do_core_test('test_isnan.c')
 
+  @only_wasm2js('tests globals in static data')
   def test_globaldoubles(self):
     self.do_core_test('test_globaldoubles.c')
 
   def test_math(self):
     self.do_core_test('test_math.c')
 
-  def test_erf(self):
-    self.do_core_test('test_erf.c')
-
-  def test_math_hyperbolic(self):
-    self.do_core_test('test_math_hyperbolic.c')
-
+  @only_wasm2js('tests lgamma and signbit')
   def test_math_lgamma(self):
     self.do_run_in_out_file_test('math/lgamma.c', assert_returncode=NON_ZERO)
 
+  @only_wasm2js('tests fmodf (which may use JS math)')
   def test_math_fmodf(self):
     self.do_run_in_out_file_test('math/fmodf.c')
-
-  def test_frexp(self):
-    self.do_core_test('test_frexp.c')
 
   def test_rounding(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_rounding.c')
-
-  def test_fcvt(self):
-    self.do_core_test('test_fcvt.cpp')
-
-  def test_llrint(self):
-    self.do_core_test('test_llrint.c')
-
-  def test_getgep(self):
-    # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP
-    self.do_core_test('test_getgep.c')
 
   def test_multiply_defined_symbols(self):
     create_file('a1.c', 'int f() { return 1; }')

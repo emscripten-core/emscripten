@@ -14248,3 +14248,18 @@ addToLibrary({
   def test_aligned_alloc(self):
     self.do_runf('test_aligned_alloc.c', '',
                  emcc_args=['-Wno-non-power-of-two-alignment'])
+
+  def test_erf(self):
+    self.do_runf('core/test_erf.c')
+
+  def test_math_hyperbolic(self):
+    self.do_runf('core/test_math_hyperbolic.c')
+
+  def test_frexp(self):
+    self.do_runf('core/test_frexp.c')
+
+  def test_fcvt(self):
+    self.do_runf('core/test_fcvt.cpp')
+
+  def test_llrint(self):
+    self.do_runf('core/test_llrint.c')
