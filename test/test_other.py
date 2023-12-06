@@ -211,7 +211,7 @@ class other(RunnerCore):
     self.assertTrue(building.is_wasm_dylib(filename))
 
   def do_other_test(self, testname, emcc_args=None, **kwargs):
-    return self.do_run_in_out_file_test('other', testname, emcc_args=emcc_args, **kwargs)
+    return self.do_run_in_out_file_test(test_file('other', testname), emcc_args=emcc_args, **kwargs)
 
   def run_on_pty(self, cmd):
     master, slave = os.openpty()
@@ -3957,7 +3957,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
     self.assertContained('duplicated_func_2.js: Symbol re-definition in JavaScript library: duplicatedFunc. Do not use noOverride if this is intended', err)
 
   def test_override_stub(self):
-    self.do_run_from_file(test_file('other/test_override_stub.c'), test_file('other/test_override_stub.out'))
+    self.do_other_test('test_override_stub.c')
 
   def test_js_lib_missing_sig(self):
     create_file('some_func.c', '''
@@ -8630,7 +8630,7 @@ int main() {
   def test_lto_wasm_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG')
     self.emcc_args += ['-fwasm-exceptions', '-flto']
-    self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
+    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
   def test_wasm_nope(self):
     for opts in [[], ['-O2']]:
@@ -11794,17 +11794,14 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
   })
   def test_support_errno(self, args):
     self.emcc_args += args
-    src = test_file('other/test_support_errno.c')
-    output = test_file('other/test_support_errno.out')
 
-    self.do_run_from_file(src, output)
+    self.do_other_test('test_support_errno.c')
     size_default = os.path.getsize('test_support_errno.js')
 
     # Run the same test again but with SUPPORT_ERRNO disabled.  This time we don't expect errno
     # to be set after the failing syscall.
     self.emcc_args += ['-sSUPPORT_ERRNO=0']
-    output = test_file('other/test_support_errno_disabled.out')
-    self.do_run_from_file(src, output)
+    self.do_other_test('test_support_errno.c', out_suffix='_disabled')
 
     # Verify the JS output was smaller
     self.assertLess(os.path.getsize('test_support_errno.js'), size_default)
@@ -11956,7 +11953,7 @@ int main () {
     self.set_setting('WASM_BIGINT')
     self.wasm_engines = []
     self.emcc_args += ['-fwasm-exceptions']
-    self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
+    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
   def test_missing_malloc_export(self):
     # we used to include malloc by default. show a clear error in builds with
