@@ -72,6 +72,7 @@ MINIMAL_TASKS = [
     'libnoexit',
     'sqlite3',
     'sqlite3-mt',
+    'libwebgpu',
     'libwebgpu_cpp',
 ]
 

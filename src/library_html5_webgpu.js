@@ -5,11 +5,11 @@
       return `
 LibraryHTML5WebGPU.emscripten_webgpu_import_${snake_case}__deps = ['$WebGPU', '$JsValStore'];
 LibraryHTML5WebGPU.emscripten_webgpu_import_${snake_case} = (handle) =>
-  WebGPU.mgr${CamelCase}.create(JsValStore.get(handle));
+  WebGPU._tableInsert(JsValStore.get(handle));
 
 LibraryHTML5WebGPU.emscripten_webgpu_export_${snake_case}__deps = ['$WebGPU', '$JsValStore'];
 LibraryHTML5WebGPU.emscripten_webgpu_export_${snake_case} = (handle) =>
-  JsValStore.add(WebGPU.mgr${CamelCase}.get(handle));`
+  JsValStore.add(WebGPU._tableGet(handle));`
     },
   };
   null;
@@ -48,17 +48,17 @@ var LibraryHTML5WebGPU = {
   emscripten_webgpu_release_js_handle__deps: ['$JsValStore'],
   emscripten_webgpu_release_js_handle: (id) => JsValStore.remove(id),
 
-  emscripten_webgpu_get_device__deps: ['$WebGPU'],
+  emscripten_webgpu_get_device__deps: ['$WebGPU', 'emwgpuAddRef'],
   emscripten_webgpu_get_device: () => {
 #if ASSERTIONS
     assert(Module['preinitializedWebGPUDevice']);
 #endif
     if (WebGPU.preinitializedDeviceId === undefined) {
       var device = Module['preinitializedWebGPUDevice'];
-      var deviceWrapper = { queueId: WebGPU.mgrQueue.create(device["queue"]) };
-      WebGPU.preinitializedDeviceId = WebGPU.mgrDevice.create(device, deviceWrapper);
+      var deviceWrapper = { queueId: WebGPU._tableInsert(device["queue"]) };
+      WebGPU.preinitializedDeviceId = WebGPU._tableInsert(device, deviceWrapper);
     }
-    WebGPU.mgrDevice.reference(WebGPU.preinitializedDeviceId);
+    _emwgpuAddRef(WebGPU.preinitializedDeviceId);
     return WebGPU.preinitializedDeviceId;
   },
 };
