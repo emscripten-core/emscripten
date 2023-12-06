@@ -2617,7 +2617,7 @@ int f() {
     input = test_file(input)
     expected_file = os.path.splitext(input)[0] + '-output.js'
     # test calling optimizer
-    js = self.run_process(config.NODE_JS + [path_from_root('tools/acorn-optimizer.js'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
+    js = self.run_process(config.NODE_JS + [path_from_root('tools/acorn-optimizer.mjs'), input] + passes, stdin=PIPE, stdout=PIPE).stdout
     if common.EMTEST_REBASELINE:
       write_file(expected_file, js)
     else:
@@ -14241,3 +14241,7 @@ addToLibrary({
   def test_force_filesystem_error(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sFILESYSTEM=0', '-sFORCE_FILESYSTEM'])
     self.assertContained('emcc: error: `-sFORCE_FILESYSTEM` cannot be used with `-sFILESYSTEM=0`', err)
+
+  def test_aligned_alloc(self):
+    self.do_runf('test_aligned_alloc.c', '',
+                 emcc_args=['-Wno-non-power-of-two-alignment'])

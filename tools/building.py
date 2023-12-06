@@ -349,7 +349,7 @@ def js_optimizer(filename, passes):
 
 # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
 def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
-  optimizer = path_from_root('tools/acorn-optimizer.js')
+  optimizer = path_from_root('tools/acorn-optimizer.mjs')
   original_filename = filename
   if extra_info is not None:
     temp_files = shared.get_temp_files()
@@ -579,7 +579,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/minimal_runtime_worker_externs.js')]
 
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
-  # Keep in sync with ecmaVersion in tools/acorn-optimizer.js
+  # Keep in sync with ecmaVersion in tools/acorn-optimizer.mjs
   args += ['--language_in', 'ECMASCRIPT_2021']
   # Tell closure not to do any transpiling or inject any polyfills.
   # At some point we may want to look into using this as way to convert to ES5 but

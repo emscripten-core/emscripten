@@ -28,6 +28,7 @@ import tempfile
 import time
 import webbrowser
 import unittest
+import queue
 
 import clang_native
 import jsrun
@@ -76,6 +77,7 @@ if 'EM_BUILD_VERBOSE' in os.environ:
 NON_ZERO = -1
 
 TEST_ROOT = path_from_root('test')
+LAST_TEST = path_from_root('out/last_test.txt')
 
 WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 
@@ -901,6 +903,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       else:
         print('Creating new test output directory')
         ensure_dir(self.working_dir)
+      utils.write_file(LAST_TEST, self.id() + '\n')
     os.chdir(self.working_dir)
 
   def runningInParallel(self):
@@ -1956,25 +1959,21 @@ class BrowserCore(RunnerCore):
           'http://localhost:%s/%s' % (self.port, html_file),
           self.get_dir()
         ))
-        received_output = False
-        output = '[no http server activity]'
-        start = time.time()
         if timeout is None:
           timeout = self.browser_timeout
-        while time.time() - start < timeout:
-          if not self.harness_out_queue.empty():
-            output = self.harness_out_queue.get()
-            received_output = True
-            break
-          time.sleep(0.1)
-        if not received_output:
+        try:
+          output = self.harness_out_queue.get(block=True, timeout=timeout)
+        except queue.Empty:
           BrowserCore.unresponsive_tests += 1
           print('[unresponsive tests: %d]' % BrowserCore.unresponsive_tests)
           self.browser_restart()
+          # Rather than fail the test here, let fail on the `assertContained` so
+          # that the test can be retried via `extra_tries`
+          output = '[no http server activity]'
         if output is None:
           # the browser harness reported an error already, and sent a None to tell
           # us to also fail the test
-          raise Exception('failing test due to browser harness error')
+          self.fail('browser harness error')
         if output.startswith('/report_result?skipped:'):
           self.skipTest(unquote(output[len('/report_result?skipped:'):]).strip())
         else:
