@@ -9,15 +9,15 @@
 // Convert analyzed data to javascript. Everything has already been calculated
 // before this stage, which just does the final conversion to JavaScript.
 
-global.addedLibraryItems = {};
+globalThis.addedLibraryItems = {};
 
-global.extraLibraryFuncs = [];
+globalThis.extraLibraryFuncs = [];
 
 // Some JS-implemented library functions are proxied to be called on the main
 // browser thread, if the Emscripten runtime is executing in a Web Worker.
 // Each such proxied function is identified via an ordinal number (this is not
 // the same namespace as function pointers in general).
-global.proxiedFunctionTable = [];
+globalThis.proxiedFunctionTable = [];
 
 // Mangles the given C/JS side function name to assembly level function name (adds an underscore)
 function mangleCSymbolName(f) {

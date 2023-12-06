@@ -8,15 +8,15 @@
 // LLVM => JavaScript compiler, main entry point
 
 const fs = require('fs');
-global.vm = require('vm');
-global.assert = require('assert');
-global.nodePath = require('path');
+globalThis.vm = require('vm');
+globalThis.assert = require('assert');
+globalThis.nodePath = require('path');
 
-global.print = (x) => {
+globalThis.print = (x) => {
   process.stdout.write(x + '\n');
 };
 
-global.printErr = (x) => {
+globalThis.printErr = (x) => {
   process.stderr.write(x + '\n');
 };
 
@@ -32,7 +32,7 @@ function find(filename) {
   return filename;
 }
 
-global.read = (filename) => {
+globalThis.read = (filename) => {
   assert(filename);
   const absolute = find(filename);
   return fs.readFileSync(absolute).toString();
@@ -62,7 +62,7 @@ assert(settingsFile);
 const settings = JSON.parse(read(settingsFile));
 Object.assign(global, settings);
 
-global.symbolsOnly = symbolsOnlyArg != -1;
+globalThis.symbolsOnly = symbolsOnlyArg != -1;
 
 // In case compiler.js is run directly (as in gen_sig_info)
 // ALL_INCOMING_MODULE_JS_API might not be populated yet.
@@ -81,7 +81,7 @@ if (symbolsOnly) {
 }
 
 // Side modules are pure wasm and have no JS
-assert(!SIDE_MODULE || (ASYNCIFY && global.symbolsOnly), 'JS compiler should only run on side modules if asyncify is used.');
+assert(!SIDE_MODULE || (ASYNCIFY && globalThis.symbolsOnly), 'JS compiler should only run on side modules if asyncify is used.');
 
 // Load compiler code
 

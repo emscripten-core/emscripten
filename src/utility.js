@@ -36,8 +36,8 @@ function dump(item) {
   }
 }
 
-global.warnings = false;
-global.currentFile = null;
+globalThis.warnings = false;
+globalThis.currentFile = null;
 
 function errorPrefix() {
   if (currentFile) {
@@ -48,7 +48,7 @@ function errorPrefix() {
 }
 
 function warn(a, msg) {
-  global.warnings = true;
+  globalThis.warnings = true;
   if (!msg) {
     msg = a;
     a = false;
@@ -71,7 +71,7 @@ function warnOnce(a, msg) {
   }
 }
 
-global.abortExecution = false;
+globalThis.abortExecution = false;
 
 function error(msg) {
   abortExecution = true;
