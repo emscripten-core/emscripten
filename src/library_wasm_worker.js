@@ -7,9 +7,9 @@
 #if WASM_WORKERS == 2
 // Helpers for _wasmWorkerBlobUrl used in WASM_WORKERS == 2 mode
 {{{
-  global.captureModuleArg = () => MODULARIZE ? '' : 'self.Module=d;';
-  global.instantiateModule = () => MODULARIZE ? `${EXPORT_NAME}(d);` : '';
-  global.instantiateWasm = () => MINIMAL_RUNTIME ? '' : 'd[`instantiateWasm`]=(i,r)=>{var n=new WebAssembly.Instance(d[`wasm`],i);return r(n,d[`wasm`]);};';
+  globalThis.captureModuleArg = () => MODULARIZE ? '' : 'self.Module=d;';
+  globalThis.instantiateModule = () => MODULARIZE ? `${EXPORT_NAME}(d);` : '';
+  globalThis.instantiateWasm = () => MINIMAL_RUNTIME ? '' : 'd[`instantiateWasm`]=(i,r)=>{var n=new WebAssembly.Instance(d[`wasm`],i);return r(n,d[`wasm`]);};';
   null;
 }}}
 #endif

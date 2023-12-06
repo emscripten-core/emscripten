@@ -18,9 +18,9 @@ function genArgSequence(n) {
 }
 
 // List of symbols that were added from the library.
-global.librarySymbols = [];
+globalThis.librarySymbols = [];
 
-global.LibraryManager = {
+globalThis.LibraryManager = {
   library: {},
   structs: {},
   loaded: false,
