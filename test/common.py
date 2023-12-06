@@ -1881,13 +1881,14 @@ class BrowserCore(RunnerCore):
   @classmethod
   def browser_restart(cls):
     # Kill existing browser
-    logger.info("Restarting browser process")
+    logger.info('Restarting browser process')
     cls.browser_proc.terminate()
     # If the browser doesn't shut down gracefully (in response to SIGTERM)
     # after 2 seconds kill it with force (SIGKILL).
     try:
       cls.browser_proc.wait(2)
     except subprocess.TimeoutExpired:
+      logger.info('Browser did not respond to `terminate`.  Using `kill`')
       cls.browser_proc.kill()
       cls.browser_proc.wait()
     cls.browser_open(cls.harness_url)
