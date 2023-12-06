@@ -14250,16 +14250,16 @@ addToLibrary({
                  emcc_args=['-Wno-non-power-of-two-alignment'])
 
   def test_erf(self):
-    self.do_runf('core/test_erf.c')
+    self.do_other_test('test_erf.c')
 
   def test_math_hyperbolic(self):
-    self.do_runf('core/test_math_hyperbolic.c')
+    self.do_other_test('test_math_hyperbolic.c')
 
   def test_frexp(self):
-    self.do_runf('core/test_frexp.c')
+    self.do_other_test('test_frexp.c')
 
   def test_fcvt(self):
-    self.do_runf('core/test_fcvt.cpp')
+    self.do_other_test('test_fcvt.cpp')
 
   def test_llrint(self):
-    self.do_runf('core/test_llrint.c')
+    self.do_other_test('test_llrint.c')
