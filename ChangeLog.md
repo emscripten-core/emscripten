@@ -33,7 +33,7 @@ See docs/process.md for more on how version tagging works.
   this feature is disabled. You can enable it before creating a window by calling 
   `glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE)`. You can also 
   dynamically change it after the window has been created by calling
-  `glfwSetWindowAttrib(window, GLFW_SCALE_TO_MONITOR, GLFW_TRUE)`.
+  `glfwSetWindowAttrib(window, GLFW_SCALE_TO_MONITOR, GLFW_TRUE)`. (#20584)
 
 3.1.50 - 11/29/23
 -----------------
