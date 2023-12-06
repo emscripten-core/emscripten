@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 3.1.51 (in development)
 -----------------------
+- Breaking change: Using the `*glGetProcAddress()` family of functions now
+  requires passing a linker flag -sGL_ENABLE_GET_PROC_ADDRESS. This prevents
+  ports of native GL renderers from later accidentally attempting to activate
+  "dormant" features if web browser implementations gain new WebGL extensions in
+  the future, which `*glGetProcAddress()` is not able to support. (#20802)
 
 3.1.50 - 11/29/23
 -----------------

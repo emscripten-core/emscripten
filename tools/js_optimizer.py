@@ -22,7 +22,7 @@ from tools import building, config, shared, utils
 temp_files = shared.get_temp_files()
 
 
-ACORN_OPTIMIZER = path_from_root('tools/acorn-optimizer.js')
+ACORN_OPTIMIZER = path_from_root('tools/acorn-optimizer.mjs')
 
 NUM_CHUNKS_PER_CORE = 3
 MIN_CHUNK_SIZE = int(os.environ.get('EMCC_JSOPT_MIN_CHUNK_SIZE') or 512 * 1024) # configuring this is just for debugging purposes
@@ -35,6 +35,15 @@ DEBUG = os.environ.get('EMCC_DEBUG')
 func_sig = re.compile(r'function ([_\w$]+)\(')
 func_sig_json = re.compile(r'\["defun", ?"([_\w$]+)",')
 import_sig = re.compile(r'(var|const) ([_\w$]+ *=[^;]+);')
+
+
+def get_acorn_cmd():
+  node = config.NODE_JS
+  if not any('--stack-size' in arg for arg in node):
+    # Use an 8Mb stack (rather than the ~1Mb default) when running the
+    # js optimizer since larger inputs can cause terser to use a lot of stack.
+    node.append('--stack-size=8192')
+  return node + [ACORN_OPTIMIZER]
 
 
 def split_funcs(js):
@@ -56,7 +65,7 @@ def split_funcs(js):
 
 class Minifier:
   """minification support. We calculate minification of
-  globals here, then pass that into the parallel acorn-optimizer.js runners which
+  globals here, then pass that into the parallel acorn-optimizer.mjs runners which
   perform minification of locals.
   """
 
@@ -66,7 +75,7 @@ class Minifier:
     self.profiling_funcs = False
 
   def minify_shell(self, shell, minify_whitespace):
-    # Run through acorn-optimizer.js to find and minify the global symbols
+    # Run through acorn-optimizer.mjs to find and minify the global symbols
     # We send it the globals, which it parses at the proper time. JS decides how
     # to minify all global names, we receive a dictionary back, which is then
     # used by the function processors
@@ -88,7 +97,7 @@ class Minifier:
         f.write('\n')
         f.write('// EXTRA_INFO:' + json.dumps(self.serialize()))
 
-      cmd = config.NODE_JS + [ACORN_OPTIMIZER, temp_file, 'minifyGlobals']
+      cmd = get_acorn_cmd() + [temp_file, 'minifyGlobals']
       if minify_whitespace:
         cmd.append('minifyWhitespace')
       output = shared.run_process(cmd, stdout=subprocess.PIPE).stdout
@@ -139,8 +148,8 @@ def chunkify(funcs, chunk_size):
   return [''.join(func[1] for func in chunk) for chunk in chunks] # remove function names
 
 
-@ToolchainProfiler.profile_block('js_optimizer.run_on_js')
-def run_on_js(filename, passes, extra_info=None):
+@ToolchainProfiler.profile_block('js_optimizer.run_on_file')
+def run_on_file(filename, passes, extra_info=None):
   with ToolchainProfiler.profile_block('js_optimizer.split_markers'):
     if not isinstance(passes, list):
       passes = [passes]
@@ -261,7 +270,7 @@ EMSCRIPTEN_FUNCS();
       filenames = [write_chunk(chunk, i) for i, chunk in enumerate(chunks)]
 
   with ToolchainProfiler.profile_block('run_optimizer'):
-    commands = [config.NODE_JS + [ACORN_OPTIMIZER, f] + passes for f in filenames]
+    commands = [get_acorn_cmd() + [f] + passes for f in filenames]
     filenames = shared.run_multiple_processes(commands, route_stdout_to_temp_files_suffix='js_opt.jo.js')
 
   with ToolchainProfiler.profile_block('split_closure_cleanup'):
@@ -348,7 +357,7 @@ def main():
     sys.argv = sys.argv[:-1]
   else:
     extra_info = None
-  out = run_on_js(sys.argv[1], sys.argv[2:], extra_info=extra_info)
+  out = run_on_file(sys.argv[1], sys.argv[2:], extra_info=extra_info)
   shutil.copyfile(out, sys.argv[1] + '.jsopt.js')
   return 0
 

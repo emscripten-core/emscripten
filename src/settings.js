@@ -589,6 +589,13 @@ var GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN = false;
 // Set this to 0 to force-disable the workaround if you know the issue will not affect you.
 var GL_WORKAROUND_SAFARI_GETCONTEXT_BUG = true;
 
+// If 1, link with support to *glGetProcAddress() functionality.
+// In WebGL, *glGetProcAddress() causes a substantial code size and performance impact, since WebGL
+// does not natively provide such functionality, and it must be emulated. Using *glGetProcAddress()
+// is not recommended. If you still need to use this, e.g. when porting an existing renderer,
+// you can link with -sGL_ENABLE_GET_PROC_ADDRESS=1 to get support for this functionality.
+var GL_ENABLE_GET_PROC_ADDRESS = false;
+
 // Use JavaScript math functions like Math.tan. This saves code size as we can avoid shipping
 // compiled musl code. However, it can be significantly slower as it calls out to JS. It
 // also may give different results as JS math is specced somewhat differently than libc, and
@@ -1684,6 +1691,13 @@ var TEXTDECODER = 1;
 // Disable this to support binary data transfer.
 // [link]
 var EMBIND_STD_STRING_IS_UTF8 = true;
+
+// Embind specific: If enabled, generate Embind's JavaScript invoker functions
+// at compile time and include them in the JS output file. When used with
+// DYNAMIC_EXECUTION=0 this allows exported bindings to be just as fast as
+// DYNAMIC_EXECUTION=1 mode, but without the need for eval(). If there are many
+// bindings the JS output size may be larger though.
+var EMBIND_AOT = false;
 
 // If set to 1, enables support for transferring canvases to pthreads and
 // creating WebGL contexts in them, as well as explicit swap control for GL

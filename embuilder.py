@@ -59,6 +59,7 @@ MINIMAL_TASKS = [
     'libmimalloc',
     'libmimalloc-mt',
     'libGL',
+    'libGL-getprocaddr',
     'libhtml5',
     'libsockets',
     'libstubs',

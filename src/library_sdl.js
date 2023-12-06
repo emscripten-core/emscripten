@@ -30,6 +30,8 @@ var LibrarySDL = {
     '$SDL_unicode', '$SDL_ttfContext', '$SDL_audio',
     // For makeCEvent().
     '$intArrayFromString',
+    // Many SDL functions depend on malloc/free
+    'malloc', 'free',
   ],
   $SDL: {
     defaults: {
@@ -1342,7 +1344,7 @@ var LibrarySDL = {
     return SDL.version;
   },
 
-  SDL_Init__deps: ['$zeroMemory', 'malloc', 'free', 'memcpy'],
+  SDL_Init__deps: ['$zeroMemory', 'memcpy'],
   SDL_Init__proxy: 'sync',
   SDL_Init__docs: '/** @param{number} initFlags */',
   SDL_Init: (initFlags) => {
@@ -1808,7 +1810,6 @@ var LibrarySDL = {
 
   SDL_SetError: (fmt, varargs) => {},
 
-  SDL_CreateRGBSurface__deps: ['malloc', 'free'],
   SDL_CreateRGBSurface__proxy: 'sync',
   SDL_CreateRGBSurface: (flags, width, height, depth, rmask, gmask, bmask, amask) => SDL.makeSurface(width, height, flags, false, 'CreateRGBSurface', rmask, gmask, bmask, amask),
 
@@ -1986,7 +1987,6 @@ var LibrarySDL = {
   SDL_PollEvent: (ptr) => SDL.pollEvent(ptr),
 
   SDL_PushEvent__proxy: 'sync',
-  SDL_PushEvent__deps: ['malloc'],
   SDL_PushEvent: (ptr) => {
     var copy = _malloc({{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
     _memcpy(copy, ptr, {{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
@@ -2031,7 +2031,6 @@ var LibrarySDL = {
   // An Emscripten-specific extension to SDL: Some browser APIs require that they are called from within an event handler function.
   // Allow recording a callback that will be called for each received event.
   emscripten_SDL_SetEventHandler__proxy: 'sync',
-  emscripten_SDL_SetEventHandler__deps: ['malloc'],
   emscripten_SDL_SetEventHandler: (handler, userdata) => {
     SDL.eventHandler = handler;
     SDL.eventHandlerContext = userdata;
@@ -2303,7 +2302,7 @@ var LibrarySDL = {
 
   // SDL_Audio
 
-  SDL_OpenAudio__deps: ['$autoResumeAudioContext', '$safeSetTimeout', 'malloc'],
+  SDL_OpenAudio__deps: ['$autoResumeAudioContext', '$safeSetTimeout'],
   SDL_OpenAudio__proxy: 'sync',
   SDL_OpenAudio: (desired, obtained) => {
     try {

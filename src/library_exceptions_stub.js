@@ -22,7 +22,7 @@ var LibraryExceptions = {};
 ].forEach(function(name) {
   LibraryExceptions[name] = function() { abort(); };
 #if !INCLUDE_FULL_LIBRARY
-  // This method of link-time error genertation is not compatible with INCLUDE_FULL_LIBRARY
+  // This method of link-time error generation is not compatible with INCLUDE_FULL_LIBRARY
   LibraryExceptions[name + '__deps'] = [function() {
     error(`DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but such support is required by symbol '${name}'. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.`);
   }];

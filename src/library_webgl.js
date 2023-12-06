@@ -739,6 +739,58 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       disableHalfFloatExtensionIfBroken(ctx);
 #endif
 
+      // If end user enables *glGetProcAddress() functionality, then we must filter out
+      // all future WebGL extensions from being passed to the user, and only restrict to advertising
+      // extensions that the *glGetProcAddress() function knows to handle.
+#if GL_ENABLE_GET_PROC_ADDRESS
+      var _allSupportedExtensions = ctx.getSupportedExtensions;
+      var supportedExtensionsForGetProcAddress = [
+#if MIN_WEBGL_VERSION == 1
+        // WebGL 1 extensions
+        'ANGLE_instanced_arrays',
+        'EXT_blend_minmax',
+        'EXT_disjoint_timer_query',
+        'EXT_frag_depth',
+        'EXT_shader_texture_lod',
+        'EXT_sRGB',
+        'OES_element_index_uint',
+        'OES_fbo_render_mipmap',
+        'OES_standard_derivatives',
+        'OES_texture_float',
+        'OES_texture_half_float',
+        'OES_texture_half_float_linear',
+        'OES_vertex_array_object',
+        'WEBGL_color_buffer_float',
+        'WEBGL_depth_texture',
+        'WEBGL_draw_buffers',
+#endif
+#if MAX_WEBGL_VERSION >= 2
+        // WebGL 2 extensions
+        'EXT_color_buffer_float',
+        'EXT_disjoint_timer_query_webgl2',
+        'EXT_texture_norm16',
+        'WEBGL_clip_cull_distance',
+#endif
+        // WebGL 1 and WebGL 2 extensions
+        'EXT_color_buffer_half_float',
+        'EXT_float_blend',
+        'EXT_texture_compression_bptc',
+        'EXT_texture_compression_rgtc',
+        'EXT_texture_filter_anisotropic',
+        'KHR_parallel_shader_compile',
+        'OES_texture_float_linear',
+        'WEBGL_compressed_texture_s3tc',
+        'WEBGL_compressed_texture_s3tc_srgb',
+        'WEBGL_debug_renderer_info',
+        'WEBGL_debug_shaders',
+        'WEBGL_lose_context',
+        'WEBGL_multi_draw',
+      ];
+      ctx.getSupportedExtensions = function() {
+        return (_allSupportedExtensions.apply(this) || []).filter(ext => supportedExtensionsForGetProcAddress.includes(ext));
+      }
+#endif
+
       return handle;
     },
 
@@ -4218,6 +4270,27 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 #endif
 };
+
+#if !GL_ENABLE_GET_PROC_ADDRESS
+[
+  'emscripten_webgl1_get_proc_address',
+  'emscripten_webgl2_get_proc_address',
+  'emscripten_webgl_get_proc_address',
+  'SDL_GL_GetProcAddress',
+  'eglGetProcAddress',
+  'glfwGetProcAddress'
+].forEach(function(name) {
+  LibraryGL[name] = function(name) { abort(); return 0; };
+  // Due to the two pass nature of compiling .js files,
+  // in INCLUDE_FULL_LIBRARY mode, we must include the above
+  // stub functions, but not their __deps message handlers.
+#if !INCLUDE_FULL_LIBRARY
+  LibraryGL[name + '__deps'] = [function() {
+    error(`linker: Undefined symbol: ${name}(). Please pass -sGL_ENABLE_GET_PROC_ADDRESS at link time to link in ${name}().`);
+  }];
+#endif
+});
+#endif
 
 // Simple pass-through functions.
 // - Starred ones have return values.
