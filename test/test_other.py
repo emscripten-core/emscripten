@@ -203,6 +203,15 @@ def llvm_nm(file):
   return symbols
 
 
+def get_file_gzipped_size(f):
+  f_gz = f + '.gz'
+  with gzip.open(f_gz, 'wb') as gzf:
+    gzf.write(read_binary(f))
+  size = os.path.getsize(f_gz)
+  delete_file(f_gz)
+  return size
+
+
 class other(RunnerCore):
   def assertIsObjectFile(self, filename):
     self.assertTrue(building.is_wasm(filename))
@@ -8218,11 +8227,14 @@ int main() {
       wasm_size = os.path.getsize('a.out.nodebug.wasm')
       size_file = expected_basename + '.size'
       js_size = os.path.getsize('a.out.js')
+      gz_size = get_file_gzipped_size('a.out.js')
       if '-pthread' in args:
         js_size += os.path.getsize('a.out.worker.js')
       js_size_file = expected_basename + '.jssize'
+      gz_size_file = expected_basename + '.gzsize'
       self.check_expected_size_in_file('wasm', size_file, wasm_size)
       self.check_expected_size_in_file('js', js_size_file, js_size)
+      self.check_expected_size_in_file('gz', gz_size_file, gz_size)
 
     imports, exports, funcs = self.parse_wasm('a.out.wasm')
     imports.sort()
@@ -10545,14 +10557,6 @@ int main () {
     args = [compiler_for(sources[0]), '-o', 'a.html'] + args + sources
     print(shared.shlex_join(args))
     self.run_process(args)
-
-    def get_file_gzipped_size(f):
-      f_gz = f + '.gz'
-      with gzip.open(f_gz, 'wb') as gzf:
-        gzf.write(read_binary(f))
-      size = os.path.getsize(f_gz)
-      delete_file(f_gz)
-      return size
 
     # For certain tests, don't just check the output size but check
     # the full JS output matches the expectations.  That means that
