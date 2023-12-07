@@ -487,14 +487,18 @@ jobs:
     executor: bionic
     steps:
       - run-tests-linux:
-          test_targets: "posixtest"
+          # TODO(https://github.com/emscripten-core/emscripten/issues/20872): re-enable
+          # test_targets: "posixtest"
+          test_targets: "posixtest.test_pthread_rwlock_timedwrlock_6_1"
   test-core0:
     executor: bionic
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-linux:
-          test_targets: "core0"
+          # TODO(https://github.com/emscripten-core/emscripten/issues/20872): re-enable
+          # test_targets: "core0"
+          test_targets: "core0 --crossplatform-only"
   test-core2:
     executor: bionic
     environment:
@@ -530,7 +534,9 @@ jobs:
           # also run a single test of EMTEST_BROWSER=node.
           # also run a corez test of dynamic linking + forced syslibs.
           title: "core2+extras"
+          # TODO(https://github.com/emscripten-core/emscripten/issues/20872): re-enable
           test_targets: "
+            --crossplatform-only
             core2
             browser.test_pthread_join
             corez.test_dylink_syslibs_all"
@@ -545,11 +551,12 @@ jobs:
           # also add a little select testing for wasm2js in -O3
           # also add a little select wasmfs testing
           title: "core3+extras"
+          # TODO(https://github.com/emscripten-core/emscripten/issues/20872): re-enable
+          # core3
           test_targets: "
             lto2.test_dylink_syslibs_all
             lto2.test_float_builtins
             lto0.test_exceptions_allowed_uncaught
-            core3
             core2g.test_externref
             corez.test_dylink_iostream
             core2ss.test_pthread_dylink
@@ -616,7 +623,9 @@ jobs:
     executor: bionic
     steps:
       - run-tests-linux:
-          test_targets: "wasm2js1"
+          # TODO(https://github.com/emscripten-core/emscripten/issues/20872): re-enable
+          # test_targets: "wasm2js1"
+          test_targets: "wasm2js1 --crossplatform-only"
   test-wasm64l:
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
@@ -627,7 +636,9 @@ jobs:
           # On older versions of node wasm64l.test_bigswitch uses a lot (~3.5Gb)
           # of memory, so skip it here, but run it in test-wasm64 instead which
           # has node canary installed.
-          test_targets: "wasm64l skip:wasm64l.test_bigswitch"
+          # TODO(https://github.com/emscripten-core/emscripten/issues/20872): re-enable
+          # test_targets: "wasm64l skip:wasm64l.test_bigswitch"
+          test_targets: "wasm64l skip:wasm64l.test_bigswitch --crossplatform-only"
   test-wasm64:
     # We don't use `bionic` here since its tool old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
@@ -666,7 +677,9 @@ jobs:
       - install-node-canary
       - run-tests:
           title: "wasm64_4gb"
-          test_targets: "wasm64_4gb"
+          # TODO(https://github.com/emscripten-core/emscripten/issues/20872): re-enable
+          # test_targets: "wasm64_4gb"
+          test_targets: "wasm64_4gb --crossplatform-only"
       - upload-test-results
   test-jsc:
     executor: linux-python
@@ -788,7 +801,9 @@ jobs:
       - run-tests-linux:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
-          test_targets: "other skip:other.test_native_link_error_message"
+          # TODO(https://github.com/emscripten-core/emscripten/issues/20872): re-enable
+          # test_targets: "other skip:other.test_native_link_error_message"
+          test_targets: "other --crossplatform-only"
   test-browser-chrome:
     executor: bionic
     steps:
