@@ -1187,7 +1187,7 @@ var LibraryEmbind = {
       }
     }
 
-    if (!handle.$$) {
+    if (!handle || !handle.$$) {
       throwBindingError(`Cannot pass "${embindRepr(handle)}" as a ${this.name}`);
     }
     if (!handle.$$.ptr) {
@@ -1548,7 +1548,8 @@ var LibraryEmbind = {
     record.count = { value: 1 };
     return attachFinalizer(Object.create(prototype, {
       $$: {
-          value: record,
+        value: record,
+        writable: true,
       },
     }));
   },
