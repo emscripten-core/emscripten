@@ -2190,10 +2190,6 @@ var LibraryWebGPU = {
 
   // Instance
 
-  wgpuCreateInstance: (descriptor) => 1,
-  wgpuInstanceReference: (instance) => {}, // no-op
-  wgpuInstanceRelease: (instance) => {}, // no-op
-
   wgpuInstanceCreateSurface__deps: ['$findCanvasEventTarget'],
   wgpuInstanceCreateSurface: (instanceId, descriptor) => {
     {{{ gpu.makeCheck('descriptor') }}}

@@ -10,6 +10,8 @@
 
 #include <webgpu/webgpu.h>
 
+#include <cassert>
+
 //
 // Declarations for JS emwgpu functions (defined in library_webgpu.js)
 //
@@ -39,6 +41,18 @@ void emwgpuDestroy(void* id);
 // WebGPU function definitions, with methods organized by "class". Note these
 // don't need to be extern "C" because they are already declared in webgpu.h.
 //
+
+// Standalone (non-method) functions
+
+WGPUInstance wgpuCreateInstance(const WGPUInstanceDescriptor* descriptor) {
+  assert(descriptor == nullptr); // descriptor not implemented yet
+  return reinterpret_cast<WGPUInstance>(1);
+}
+
+// Instance
+
+void wgpuInstanceReference(WGPUInstance) { /* no-op for now */ }
+void wgpuInstanceRelease(WGPUInstance) { /* no-op for now */ }
 
 // Surface
 
