@@ -271,11 +271,9 @@ function handleMessage(e) {
   } catch(ex) {
 #if ASSERTIONS
     err(`worker.js onmessage() captured an uncaught exception: ${ex}`);
-    if (ex && ex.stack) err(ex.stack);
+    if (ex?.stack) err(ex.stack);
 #endif
-    if (Module['__emscripten_thread_crashed']) {
-      Module['__emscripten_thread_crashed']();
-    }
+    Module['__emscripten_thread_crashed']?.();
     throw ex;
   }
 };

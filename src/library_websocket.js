@@ -137,7 +137,7 @@ var LibraryWebSocket = {
 //    if (thread == {{{ cDefs.EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD }}} ||
 //      (thread == _pthread_self()) return emscripten_websocket_set_onopen_callback_on_calling_thread(socketId, userData, callbackFunc);
 
-    if (!WS.socketEvent) WS.socketEvent = _malloc(1024); // TODO: sizeof(EmscriptenWebSocketCloseEvent), which is the largest event struct
+    WS.socketEvent ||= _malloc(1024); // TODO: sizeof(EmscriptenWebSocketCloseEvent), which is the largest event struct
 
     var socket = WS.sockets[socketId];
     if (!socket) {
@@ -163,7 +163,7 @@ var LibraryWebSocket = {
   emscripten_websocket_set_onerror_callback_on_thread__deps: ['$WS'],
   emscripten_websocket_set_onerror_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onerror_callback_on_thread: (socketId, userData, callbackFunc, thread) => {
-    if (!WS.socketEvent) WS.socketEvent = _malloc(1024); // TODO: sizeof(EmscriptenWebSocketCloseEvent), which is the largest event struct
+    WS.socketEvent ||= _malloc(1024); // TODO: sizeof(EmscriptenWebSocketCloseEvent), which is the largest event struct
 
     var socket = WS.sockets[socketId];
     if (!socket) {
@@ -189,7 +189,7 @@ var LibraryWebSocket = {
   emscripten_websocket_set_onclose_callback_on_thread__deps: ['$WS', '$stringToUTF8'],
   emscripten_websocket_set_onclose_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onclose_callback_on_thread: (socketId, userData, callbackFunc, thread) => {
-    if (!WS.socketEvent) WS.socketEvent = _malloc(1024); // TODO: sizeof(EmscriptenWebSocketCloseEvent), which is the largest event struct
+    WS.socketEvent ||= _malloc(1024); // TODO: sizeof(EmscriptenWebSocketCloseEvent), which is the largest event struct
 
     var socket = WS.sockets[socketId];
     if (!socket) {
@@ -218,7 +218,7 @@ var LibraryWebSocket = {
   emscripten_websocket_set_onmessage_callback_on_thread__deps: ['$WS', '$stringToNewUTF8', 'malloc', 'free'],
   emscripten_websocket_set_onmessage_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onmessage_callback_on_thread: (socketId, userData, callbackFunc, thread) => {
-    if (!WS.socketEvent) WS.socketEvent = _malloc(1024); // TODO: sizeof(EmscriptenWebSocketCloseEvent), which is the largest event struct
+    WS.socketEvent ||= _malloc(1024); // TODO: sizeof(EmscriptenWebSocketCloseEvent), which is the largest event struct
 
     var socket = WS.sockets[socketId];
     if (!socket) {

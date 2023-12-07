@@ -16,55 +16,53 @@ addToLibrary({
         // no supported
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       }
-      if (!MEMFS.ops_table) {
-        MEMFS.ops_table = {
-          dir: {
-            node: {
-              getattr: MEMFS.node_ops.getattr,
-              setattr: MEMFS.node_ops.setattr,
-              lookup: MEMFS.node_ops.lookup,
-              mknod: MEMFS.node_ops.mknod,
-              rename: MEMFS.node_ops.rename,
-              unlink: MEMFS.node_ops.unlink,
-              rmdir: MEMFS.node_ops.rmdir,
-              readdir: MEMFS.node_ops.readdir,
-              symlink: MEMFS.node_ops.symlink
-            },
-            stream: {
-              llseek: MEMFS.stream_ops.llseek
-            }
+      MEMFS.ops_table ||= {
+        dir: {
+          node: {
+            getattr: MEMFS.node_ops.getattr,
+            setattr: MEMFS.node_ops.setattr,
+            lookup: MEMFS.node_ops.lookup,
+            mknod: MEMFS.node_ops.mknod,
+            rename: MEMFS.node_ops.rename,
+            unlink: MEMFS.node_ops.unlink,
+            rmdir: MEMFS.node_ops.rmdir,
+            readdir: MEMFS.node_ops.readdir,
+            symlink: MEMFS.node_ops.symlink
           },
-          file: {
-            node: {
-              getattr: MEMFS.node_ops.getattr,
-              setattr: MEMFS.node_ops.setattr
-            },
-            stream: {
-              llseek: MEMFS.stream_ops.llseek,
-              read: MEMFS.stream_ops.read,
-              write: MEMFS.stream_ops.write,
-              allocate: MEMFS.stream_ops.allocate,
-              mmap: MEMFS.stream_ops.mmap,
-              msync: MEMFS.stream_ops.msync
-            }
-          },
-          link: {
-            node: {
-              getattr: MEMFS.node_ops.getattr,
-              setattr: MEMFS.node_ops.setattr,
-              readlink: MEMFS.node_ops.readlink
-            },
-            stream: {}
-          },
-          chrdev: {
-            node: {
-              getattr: MEMFS.node_ops.getattr,
-              setattr: MEMFS.node_ops.setattr
-            },
-            stream: FS.chrdev_stream_ops
+          stream: {
+            llseek: MEMFS.stream_ops.llseek
           }
-        };
-      }
+        },
+        file: {
+          node: {
+            getattr: MEMFS.node_ops.getattr,
+            setattr: MEMFS.node_ops.setattr
+          },
+          stream: {
+            llseek: MEMFS.stream_ops.llseek,
+            read: MEMFS.stream_ops.read,
+            write: MEMFS.stream_ops.write,
+            allocate: MEMFS.stream_ops.allocate,
+            mmap: MEMFS.stream_ops.mmap,
+            msync: MEMFS.stream_ops.msync
+          }
+        },
+        link: {
+          node: {
+            getattr: MEMFS.node_ops.getattr,
+            setattr: MEMFS.node_ops.setattr,
+            readlink: MEMFS.node_ops.readlink
+          },
+          stream: {}
+        },
+        chrdev: {
+          node: {
+            getattr: MEMFS.node_ops.getattr,
+            setattr: MEMFS.node_ops.setattr
+          },
+          stream: FS.chrdev_stream_ops
+        }
+      };
       var node = FS.createNode(parent, name, mode, dev);
       if (FS.isDir(node.mode)) {
         node.node_ops = MEMFS.ops_table.dir.node;

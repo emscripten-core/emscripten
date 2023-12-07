@@ -12784,7 +12784,7 @@ void foo() {}
   def test_node_unhandled_rejection(self):
     create_file('pre.js', '''
     async function foo() {
-      var a = missing;
+      abort("this error will become an unhandled rejection");
     }
     async function doReject() {
       return foo();
@@ -12805,7 +12805,7 @@ void foo() {}
     self.build('main.c', emcc_args=['--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION'])
     output = self.run_js('main.js', assert_returncode=NON_ZERO)
     self.assertContained('unhandledRejection', read_file('main.js'))
-    self.assertContained('ReferenceError: missing is not defined', output)
+    self.assertContained('RuntimeError: Aborted(this error will become an unhandled rejection)', output)
     self.assertContained('at foo (', output)
 
     # Without NODEJS_CATCH_REJECTION we expect node to log the unhandled rejection
@@ -12818,7 +12818,7 @@ void foo() {}
       self.skipTest('old behaviour of node JS cannot be tested on node v15 or above')
 
     output = self.run_js('main.js')
-    self.assertContained('ReferenceError: missing is not defined', output)
+    self.assertContained('RuntimeError: Aborted(this error will become an unhandled rejection)', output)
     self.assertContained('at foo (', output)
 
   def test_default_pthread_stack_size(self):
@@ -13652,10 +13652,10 @@ foo/version.txt
     self.assertTextDataIdentical(expected, response)
 
   def test_min_browser_version(self):
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=120000'])
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=120000'])
     self.assertContained('emcc: error: MIN_SAFARI_VERSION=120000 is not compatible with WASM_BIGINT (150000 or above required)', err)
 
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '-pthread', '-sMIN_CHROME_VERSION=73'])
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_CHROME_VERSION=73'])
     self.assertContained('emcc: error: MIN_CHROME_VERSION=73 is not compatible with pthreads (74 or above required)', err)
 
   def test_signext_lowering(self):

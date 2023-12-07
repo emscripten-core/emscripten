@@ -63,9 +63,7 @@ var LibraryTracing = {
       req.addEventListener('load', function() {
         var blob = new Blob([this.responseText], { type: 'text/javascript' });
         var worker = new Worker(window.URL.createObjectURL(blob));
-        if (ready) {
-          ready.call(scope, worker);
-        }
+        ready?.call(scope, worker);
       }, req);
       req.open("get", url, false);
       req.send();

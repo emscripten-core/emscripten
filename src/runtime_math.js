@@ -27,7 +27,7 @@ if (!Math.fround) {
 
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/clz32
 #if POLYFILL_OLD_MATH_FUNCTIONS || MIN_CHROME_VERSION < 38 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 31 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED // || MIN_NODE_VERSION < 0.12
-if (!Math.clz32) Math.clz32 = (x) => {
+Math.clz32 ||= (x) => {
   var n = 32;
   var y = x >> 16; if (y) { n -= 16; x = y; }
   y = x >> 8; if (y) { n -= 8; x = y; }
@@ -40,7 +40,7 @@ if (!Math.clz32) Math.clz32 = (x) => {
 
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/trunc
 #if POLYFILL_OLD_MATH_FUNCTIONS || MIN_CHROME_VERSION < 38 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 25 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 80000 // || MIN_NODE_VERSION < 0.12
-if (!Math.trunc) Math.trunc = (x) => {
+Math.trunc ||= (x) => {
   return x < 0 ? Math.ceil(x) : Math.floor(x);
 };
 #endif

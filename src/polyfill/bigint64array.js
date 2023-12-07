@@ -39,9 +39,7 @@ if (typeof globalThis.BigInt64Array === "undefined") {
       var proxy = new Proxy(
         {
           slice(min, max) {
-            if (max === undefined) {
-              max = array.length;
-            }
+            max ??= array.length;
             var new_buf = array.slice(min * 2, max * 2);
             return createBigInt64Array(new_buf);
           },
@@ -64,9 +62,7 @@ if (typeof globalThis.BigInt64Array === "undefined") {
             return proxy;
           },
           set(source, targetOffset) {
-            if (targetOffset === undefined) {
-              targetOffset = 0;
-            }
+            targetOffset ??= 0;
             if (2 * (source.length + targetOffset) > array.length) {
               // This is the Chrome error message
               // Firefox: "invalid or out-of-range index"
