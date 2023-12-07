@@ -270,8 +270,8 @@ def link_lld(args, target, external_symbols=None):
   if settings.STRICT:
     args.append('--fatal-warnings')
 
-  if '--strip-all' in args:
-    # Tell wasm-ld to always generate a target_features section even if --strip-all
+  if any(a in args for a in ('--strip-all', '-s')):
+    # Tell wasm-ld to always generate a target_features section even if --strip-all/-s
     # is passed.
     args.append('--keep-section=target_features')
 
