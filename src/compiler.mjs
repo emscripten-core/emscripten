@@ -7,10 +7,15 @@
 
 // LLVM => JavaScript compiler, main entry point
 
-const fs = require('fs');
-globalThis.vm = require('vm');
-globalThis.assert = require('assert');
-globalThis.nodePath = require('path');
+import * as fs from 'fs';
+import * as path from 'path';
+import * as vm from 'vm';
+import * as url from 'url';
+import assert from 'assert';
+
+globalThis.vm = vm;
+globalThis.assert = assert;
+globalThis.nodePath = path;
 
 globalThis.print = (x) => {
   process.stdout.write(x + '\n');
@@ -22,9 +27,10 @@ globalThis.printErr = (x) => {
 
 function find(filename) {
   assert(filename);
-  const prefixes = [__dirname, process.cwd()];
+  const dirname = url.fileURLToPath(new URL('.', import.meta.url));
+  const prefixes = [dirname, process.cwd()];
   for (let i = 0; i < prefixes.length; ++i) {
-    const combined = nodePath.join(prefixes[i], filename);
+    const combined = path.join(prefixes[i], filename);
     if (fs.existsSync(combined)) {
       return combined;
     }
@@ -96,7 +102,7 @@ if (!STRICT) {
 // Main
 // ===============================
 
-B = new Benchmarker();
+const B = new Benchmarker();
 
 try {
   runJSify();
