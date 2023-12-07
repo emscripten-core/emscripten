@@ -251,13 +251,8 @@ def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: mutable defau
 
 
 def get_npm_cmd(name):
-  if WINDOWS:
-    cmd = [path_from_root('node_modules/.bin', name + '.cmd')]
-  else:
-    cmd = config.NODE_JS + [path_from_root('node_modules/.bin', name)]
-  if not os.path.exists(cmd[-1]):
-    exit_with_error(f'{name} was not found! Please run "npm install" in Emscripten root directory to set up npm dependencies')
-  return cmd
+  npx = os.path.join(get_node_directory(), 'npx')
+  return [npx, '--prefix', path_from_root('node_modules'), name]
 
 
 # TODO(sbc): Replace with functools.cache, once we update to python 3.7
@@ -324,7 +319,7 @@ def check_llvm():
 
 
 def get_node_directory():
-  return os.path.dirname(config.NODE_JS[0] if type(config.NODE_JS) is list else config.NODE_JS)
+  return os.path.dirname(config.NODE_JS[0])
 
 
 # When we run some tools from npm (closure, html-minifier-terser), those
