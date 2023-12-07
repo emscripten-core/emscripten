@@ -14224,6 +14224,7 @@ addToLibrary({
     # Test that even with `-Wl,--strip-all` the target features section is generated
     # by wasm-ld so that later phases (e.g. wasm-opt) can read it.
     self.do_runf('hello_world.c', emcc_args=['-Wl,--strip-all', '-pthread'])
+    self.do_runf('hello_world.c', emcc_args=['-Wl,-s', '-pthread'])
 
   def test_embind_no_duplicate_symbols(self):
     # Embind implementation lives almost entirely in headers, which have special rules
