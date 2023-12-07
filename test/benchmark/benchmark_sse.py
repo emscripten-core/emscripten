@@ -294,12 +294,12 @@ def run_benchmark(benchmark_file, results_file, build_args):
 if __name__ == '__main__':
     suite = sys.argv[1].lower() if len(sys.argv) == 2 else None
     if suite in ['sse', 'sse1']:
-        run_benchmark(test_file('sse', 'benchmark_sse1.cpp'), 'results_sse1.html', ['-msse'])
+        run_benchmark(test_file('sse/benchmark_sse1.cpp'), 'results_sse1.html', ['-msse'])
     elif suite == 'sse2':
-        run_benchmark(test_file('sse', 'benchmark_sse2.cpp'), 'results_sse2.html', ['-msse2'])
+        run_benchmark(test_file('sse/benchmark_sse2.cpp'), 'results_sse2.html', ['-msse2'])
     elif suite == 'sse3':
-        run_benchmark(test_file('sse', 'benchmark_sse3.cpp'), 'results_sse3.html', ['-msse3'])
+        run_benchmark(test_file('sse/benchmark_sse3.cpp'), 'results_sse3.html', ['-msse3'])
     elif suite == 'ssse3':
-        run_benchmark(test_file('sse', 'benchmark_ssse3.cpp'), 'results_ssse3.html', ['-mssse3'])
+        run_benchmark(test_file('sse/benchmark_ssse3.cpp'), 'results_ssse3.html', ['-mssse3'])
     else:
         raise Exception('Usage: python test/benchmark_sse.py sse1|sse2|sse3')
