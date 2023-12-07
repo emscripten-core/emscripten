@@ -3032,9 +3032,11 @@ int f() {
 
   def test_embind_tsgen_ignore(self):
     create_file('fail.js', 'assert(false);')
+    self.emcc_args += ['-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts']
     # These extra arguments are not related to TS binding generation but we want to
     # verify that they do not interfere with it.
     extra_args = ['-sALLOW_MEMORY_GROWTH=1',
+                  '-Wno-pthreads-mem-growth',
                   '-sMAXIMUM_MEMORY=4GB',
                   '--pre-js', 'fail.js',
                   '--post-js', 'fail.js',
@@ -3045,28 +3047,30 @@ int f() {
                   '--preload-file', 'fail.js',
                   '-O3',
                   '-msimd128',
-                  '-sUSE_PTHREADS',
+                  '-pthread',
                   '-sPROXY_TO_PTHREAD',
                   '-sPTHREAD_POOL_SIZE=1',
                   '-sSINGLE_FILE',
                   '-lembind', # Test duplicated link option.
                   ]
-    self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
-                      '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
+    self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
     # Test these args separately since they conflict with arguments in the first test.
     extra_args = ['-sMODULARIZE',
                   '--embed-file', 'fail.js',
                   '-sMINIMAL_RUNTIME=2',
                   '-sEXPORT_ES6=1']
-    self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
-                      '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
+    self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_test_embind(self):
     self.run_process([EMCC, test_file('embind/embind_test.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen_test_embind.d.ts',
-                      '-DSKIP_UNBOUND_TYPES']) # TypeScript generation requires all type to be bound.
+                      # This test explicitly creates std::string from unsigned char pointers
+                      # which is deprecated in upstream LLVM.
+                      '-Wno-deprecated-declarations',
+                      # TypeScript generation requires all type to be bound.
+                      '-DSKIP_UNBOUND_TYPES'] + self.get_emcc_args())
     self.assertExists('embind_tsgen_test_embind.d.ts')
 
   def test_embind_tsgen_val(self):
@@ -3087,7 +3091,8 @@ int f() {
   def test_embind_tsgen_memory64(self):
     # Check that when memory64 is enabled longs & unsigned longs are mapped to bigint in the generated TS bindings
     self.run_process([EMCC, test_file('other/embind_tsgen_memory64.cpp'),
-                      '-lembind', '--embind-emit-tsd', 'embind_tsgen_memory64.d.ts', '-sMEMORY64'])
+                      '-lembind', '--embind-emit-tsd', 'embind_tsgen_memory64.d.ts', '-sMEMORY64', '-Wno-experimental'] +
+                     self.get_emcc_args())
     self.assertFileContents(test_file('other/embind_tsgen_memory64.d.ts'), read_file('embind_tsgen_memory64.d.ts'))
 
   def test_emconfig(self):

@@ -895,14 +895,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         if EMTEST_SAVE_DIR == 2:
           print('Not clearing existing test directory')
         else:
-          print('Clearing existing test directory')
+          logger.debug('Clearing existing test directory: %s', self.working_dir)
           # Even when --save-dir is used we still try to start with an empty directory as many tests
           # expect this.  --no-clean can be used to keep the old contents for the new test
           # run. This can be useful when iterating on a given test with extra files you want to keep
           # around in the output directory.
           force_delete_contents(self.working_dir)
       else:
-        print('Creating new test output directory')
+        logger.debug('Creating new test output directory: %s', self.working_dir)
         ensure_dir(self.working_dir)
       utils.write_file(LAST_TEST, self.id() + '\n')
     os.chdir(self.working_dir)
