@@ -13130,7 +13130,6 @@ myMethod: 43
         self.assertContained('foo(arg="hello")', js)
         self.assertContained(['() => 2', '()=>2'], js)
         self.assertContained('const ', js)
-        self.assertContained('let ', js)
         self.assertContained('?.[', js)
         self.assertContained('?.(', js)
         self.assertContained('??=', js)
@@ -13142,7 +13141,6 @@ myMethod: 43
         self.assertNotContained('() => 2', js)
         self.assertNotContained('()=>2', js)
         self.assertNotContained('const ', js)
-        self.assertNotContained('let ', js)
         self.assertNotContained('??', js)
         self.assertNotContained('?.', js)
         self.assertNotContained('||=', js)
@@ -13162,13 +13160,12 @@ myMethod: 43
     self.do_runf('test.c', expected, output_basename='test_old')
     check_for_es6('test_old.js', False)
 
-    # If we add `--closure=0` that transpiler (closure) is not run at all
-    print('with old browser + --closure=0')
-    self.do_runf('test.c', expected, emcc_args=['--closure=0'], output_basename='test_no_closure')
+    # If we add `-sPOLYFILL=0` that transpiler is not run at all
+    print('with old browser + -sPOLYFILL=0')
+    self.do_runf('test.c', expected, emcc_args=['-sPOLYFILL=0'], output_basename='test_no_closure')
     check_for_es6('test_no_closure.js', True)
 
-    # If we use `--closure=1` closure will run in full optimization mode
-    # and also transpile to ES5
+    # Test that transpiling is compatible with `--closure=1`
     print('with old browser + --closure=1')
     self.do_runf('test.c', expected, emcc_args=['--closure=1'], output_basename='test_closure')
     check_for_es6('test_closure.js', False)

@@ -243,10 +243,9 @@ var LINK_AS_CXX = false;
 // emitted in that case for closure compiler.
 var MAYBE_CLOSURE_COMPILER = false;
 
-// Set when some minimum browser version triggers doesn't support the
-// minimum set of ES6 features.  This triggers transpilation to ES5
-// using closure compiler.
-var TRANSPILE_TO_ES5 = false;
+// Set when some minimum browser version triggers doesn't support the minimum
+// set of JavaScript features.  This triggers transpilation using babel.
+var TRANSPILE = false;
 
 // A copy of the default the default INCOMING_MODULE_JS_API. (Soon to
 // include additional items).
