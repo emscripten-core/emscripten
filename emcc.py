@@ -44,7 +44,6 @@ from tools.shared import DYNAMICLIB_ENDINGS, STATICLIB_ENDINGS
 from tools.response_file import substitute_response_files
 from tools import config
 from tools import cache
-from tools import link
 from tools.settings import default_setting, user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
 from tools.utils import read_file, removeprefix
 
@@ -628,19 +627,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if state.mode == Mode.POST_LINK_ONLY:
     if len(input_files) != 1:
       exit_with_error('--post-link requires a single input file')
+    # Delay import of link.py to avoid processing this file when only compiling
+    from tools import link
     link.run_post_link(input_files[0][1], options, state, newargs)
     return 0
 
   ## Compile source code to object files
   linker_inputs = phase_compile_inputs(options, state, newargs, input_files)
 
-  if state.mode != Mode.COMPILE_AND_LINK:
+  if state.mode == Mode.COMPILE_AND_LINK:
+    # Delay import of link.py to avoid processing this file when only compiling
+    from tools import link
+    return link.run(linker_inputs, options, state, newargs)
+  else:
     logger.debug('stopping after compile phase')
     for flag in state.link_flags:
       diagnostics.warning('unused-command-line-argument', "argument unused during compilation: '%s'" % flag[1])
     return 0
-
-  return link.run(linker_inputs, options, state, newargs)
 
 
 def normalize_boolean_setting(name, value):
