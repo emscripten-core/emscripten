@@ -682,7 +682,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
         (canvas.getContext("webgl", webGLContextAttributes)
           // https://caniuse.com/#feat=webgl
-#if MIN_IE_VERSION <= 10 || MIN_EDGE_VERSION <= 18 || MIN_FIREFOX_VERSION <= 23 || MIN_CHROME_VERSION <= 32 || MIN_SAFARI_VERSION <= 70101
+#if MIN_IE_VERSION <= 10 || MIN_FIREFOX_VERSION <= 23 || MIN_CHROME_VERSION <= 32 || MIN_SAFARI_VERSION <= 70101
           || canvas.getContext("experimental-webgl", webGLContextAttributes)
 #endif
           );

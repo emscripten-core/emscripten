@@ -1805,21 +1805,6 @@ var MIN_SAFARI_VERSION = 140100;
 // [link]
 var MIN_IE_VERSION = 0x7FFFFFFF;
 
-// Specifies the oldest version of Edge (EdgeHTML, the non-Chromium based
-// flavor) to target. E.g. pass -sMIN_EDGE_VERSION=40 to drop support for
-// EdgeHTML 39 and older.
-// EdgeHTML 44.17763 was released on November 13, 2018
-// EdgeHTML was completely in April 2021 and replaced by the current
-// Chromium-based Edge.
-// Since version 79, Edge version numbers have mirrored chromium version
-// numbers, so it no longer makes sense specify MIN_EDGE_VERSION independenly.
-// If Chromium and Edge ever start to diverage this setting may be revived with
-// more modern post-chromium default value.
-// See https://en.wikipedia.org/wiki/Microsoft_Edge#New_Edge_release_history
-// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// [link]
-var MIN_EDGE_VERSION = 0x7FFFFFFF;
-
 // Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 // drop support for Chrome 57 and older.
 // Chrome 85 was released on 2020-08-25.
@@ -2179,4 +2164,5 @@ var LEGACY_SETTINGS = [
   ['USES_DYNAMIC_ALLOC', [1], 'No longer supported. Use -sMALLOC=none'],
   ['REVERSE_DEPS', ['auto', 'all', 'none'], 'No longer needed'],
   ['RUNTIME_LOGGING', 'RUNTIME_DEBUG'],
+  ['MIN_EDGE_VERSION', [0x7FFFFFFF], 'No longer supported'],
 ];

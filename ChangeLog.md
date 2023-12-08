@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.51 (in development)
 -----------------------
+- Support for explicitly targeting the legacy EdgeHTML browser (edge version
+  prior to the chromium-based edge) via `-sMIN_EDGE_VERSION` was removed.
+  Using `-sLEGACY_VM_SUPPORT` should still work if anyone still wanted to target
+  this or any other legacy browser.
 - Breaking change: Using the `*glGetProcAddress()` family of functions now
   requires passing a linker flag -sGL_ENABLE_GET_PROC_ADDRESS. This prevents
   ports of native GL renderers from later accidentally attempting to activate
