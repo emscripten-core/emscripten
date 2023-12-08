@@ -402,7 +402,7 @@ addToLibrary({
   // so we cannot override parts of it, and therefore cannot use libc_optz.
 #if (SHRINK_LEVEL < 2 || LINKABLE || process.env.EMCC_FORCE_STDLIBS) && !STANDALONE_WASM && !BULK_MEMORY
 
-#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101
+#if MIN_CHROME_VERSION < 45 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/copyWithin lists browsers that support TypedArray.prototype.copyWithin, but it
   // has outdated information for Safari, saying it would not support it.
   // https://github.com/WebKit/webkit/commit/24a800eea4d82d6d595cdfec69d0f68e733b5c52#diff-c484911d8df319ba75fce0d8e7296333R1 suggests support was added on Aug 28, 2015.
@@ -3090,7 +3090,7 @@ addToLibrary({
   },
 
   $listenOnce: (object, event, func) => {
-#if MIN_CHROME_VERSION < 55 || MIN_EDGE_VERSION < 18 || MIN_FIREFOX_VERSION < 50 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED // https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
+#if MIN_CHROME_VERSION < 55 || MIN_FIREFOX_VERSION < 50 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED // https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
     object.addEventListener(event, function handler() {
       func();
       object.removeEventListener(event, handler);

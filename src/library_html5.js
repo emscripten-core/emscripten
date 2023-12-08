@@ -32,7 +32,7 @@ var LibraryHTML5 = {
     // so that we can report information about that element in the event message.
     previousFullscreenElement: null,
 
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
     // Remember the current mouse coordinates in case we need to emulate movementXY generation for browsers that don't support it.
     // Some browsers (e.g. Safari 6.0.5) only give movementXY when Pointerlock is active.
     previousScreenX: null,
@@ -469,7 +469,7 @@ var LibraryHTML5 = {
 #if MIN_CHROME_VERSION <= 36 // || MIN_ANDROID_BROWSER_VERSION <= 4.4.4
       || e["webkitMovementX"]
 #endif
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
       || (e.screenX-JSEvents.previousScreenX)
 #endif
       ;
@@ -481,7 +481,7 @@ var LibraryHTML5 = {
 #if MIN_CHROME_VERSION <= 36 // || MIN_ANDROID_BROWSER_VERSION <= 4.4.4
       || e["webkitMovementY"]
 #endif
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
       || (e.screenY-JSEvents.previousScreenY)
 #endif
       ;
@@ -500,7 +500,7 @@ var LibraryHTML5 = {
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetX / 4 }}}] = e.clientX - rect.left;
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetY / 4 }}}] = e.clientY - rect.top;
 
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
 #if MIN_CHROME_VERSION <= 76
     // wheel and mousewheel events contain wrong screenX/screenY on chrome/opera <= 76,
     // so there we should not record previous screen coordinates on wheel events.
@@ -1284,10 +1284,10 @@ var LibraryHTML5 = {
 #if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=mdn-api_documentorshadowroot_fullscreenelement
         || document.mozFullScreenElement
 #endif
-#if MIN_EDGE_VERSION != TARGET_NOT_SUPPORTED || MIN_CHROME_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=mdn-api_documentorshadowroot_fullscreenelement
+#if MIN_CHROME_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=mdn-api_documentorshadowroot_fullscreenelement
         || document.webkitFullscreenElement
 #endif
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION < 76
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
         || document.msFullscreenElement
 #endif
         ;
@@ -1781,7 +1781,7 @@ var LibraryHTML5 = {
     } else if (target.webkitRequestPointerLock) {
       target.webkitRequestPointerLock();
 #endif
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION < 76
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
     } else if (target.msRequestPointerLock) {
       target.msRequestPointerLock();
 #endif
@@ -1795,7 +1795,7 @@ var LibraryHTML5 = {
 #if MIN_CHROME_VERSION <= 36 // https://caniuse.com/#feat=pointerlock
         || document.body.webkitRequestPointerLock
 #endif
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION < 76
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
         || document.body.msRequestPointerLock
 #endif
         ) {
@@ -1821,7 +1821,7 @@ var LibraryHTML5 = {
 #if MIN_CHROME_VERSION <= 36 // https://caniuse.com/#feat=pointerlock
       && !target.webkitRequestPointerLock
 #endif
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION < 76
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
       && !target.msRequestPointerLock
 #endif
       ) {
@@ -1854,7 +1854,7 @@ var LibraryHTML5 = {
 
     if (document.exitPointerLock) {
       document.exitPointerLock();
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION < 76
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
     } else if (document.msExitPointerLock) {
       document.msExitPointerLock();
 #endif

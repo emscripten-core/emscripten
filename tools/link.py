@@ -1099,7 +1099,6 @@ def phase_linker_setup(options, state, newargs):
     settings.MIN_FIREFOX_VERSION = 0
     settings.MIN_SAFARI_VERSION = 0
     settings.MIN_IE_VERSION = 0
-    settings.MIN_EDGE_VERSION = 0
     settings.MIN_CHROME_VERSION = 0
     settings.MIN_NODE_VERSION = 0
 
@@ -1130,16 +1129,15 @@ def phase_linker_setup(options, state, newargs):
     # Emscripten requires certain ES6+ constructs by default in library code
     # - (various ES6 operators available in all browsers listed below)
     # - https://caniuse.com/mdn-javascript_operators_nullish_coalescing:
-    #                                          EDGE:80 FF:72 CHROME:80 SAFARI:13.1 NODE:14
+    #                                          FF:72 CHROME:80 SAFARI:13.1 NODE:14
     # - https://caniuse.com/mdn-javascript_operators_optional_chaining:
-    #                                          EDGE:80 FF:74 CHROME:80 SAFARI:13.1 NODE:14
+    #                                          FF:74 CHROME:80 SAFARI:13.1 NODE:14
     # - https://caniuse.com/mdn-javascript_operators_logical_or_assignment:
-    #                                          EDGE:85 FF:79 CHROME:85 SAFARI:14 NODE:16
+    #                                          FF:79 CHROME:85 SAFARI:14 NODE:16
     # Taking the highest requirements gives is our minimum:
-    #                             Max Version: EDGE:85 FF:79 CHROME:85 SAFARI:14 NODE:16
+    #                             Max Version: FF:79 CHROME:85 SAFARI:14 NODE:16
     # TODO: replace this with feature matrix in the future.
-    settings.TRANSPILE_TO_ES5 = (settings.MIN_EDGE_VERSION < 85 or
-                                 settings.MIN_FIREFOX_VERSION < 79 or
+    settings.TRANSPILE_TO_ES5 = (settings.MIN_FIREFOX_VERSION < 79 or
                                  settings.MIN_CHROME_VERSION < 85 or
                                  settings.MIN_SAFARI_VERSION < 140000 or
                                  settings.MIN_NODE_VERSION < 160000 or
@@ -1148,9 +1146,8 @@ def phase_linker_setup(options, state, newargs):
     if options.use_closure_compiler is None and settings.TRANSPILE_TO_ES5:
       diagnostics.warning('transpile', 'enabling transpilation via closure due to browser version settings.  This warning can be suppressed by passing `--closure=1` or `--closure=0` to opt into this explicitly.')
 
-  # https://caniuse.com/class: EDGE:13 FF:45 CHROME:49 SAFARI:9
-  supports_es6_classes = (settings.MIN_EDGE_VERSION >= 13 and
-                          settings.MIN_FIREFOX_VERSION >= 45 and
+  # https://caniuse.com/class: FF:45 CHROME:49 SAFARI:9
+  supports_es6_classes = (settings.MIN_FIREFOX_VERSION >= 45 and
                           settings.MIN_CHROME_VERSION >= 49 and
                           settings.MIN_SAFARI_VERSION >= 90000 and
                           settings.MIN_IE_VERSION == 0x7FFFFFFF)
