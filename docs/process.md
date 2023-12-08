@@ -1,5 +1,8 @@
 # Development Processes
 
+More information can be found in the [Contribution
+section](https://emscripten.org/docs/contributing/contributing.html) of the
+webside.
 
 ## Landing PRs
 
