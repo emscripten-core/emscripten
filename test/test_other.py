@@ -1642,33 +1642,6 @@ int f() {
       WARNING = 'encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)'
       self.assertContainedIf(WARNING, proc.stderr, expected)
 
-  def test_local_link(self):
-    # Linking a local library directly, like /usr/lib/libsomething.so, cannot work of course since it
-    # doesn't contain bitcode. However, when we see that we should look for a bitcode file for that
-    # library in the -L paths and system/lib
-    create_file('main.c', '''
-      extern void printey();
-      int main() {
-        printey();
-        return 0;
-      }
-    ''')
-
-    ensure_dir('subdir')
-    create_file('subdir/libfile.so.1.2.3', 'this is not llvm bitcode!')
-
-    create_file('libfile.c', '''
-      #include <stdio.h>
-      void printey() {
-        printf("hello from lib\\n");
-      }
-    ''')
-
-    self.run_process([EMCC, 'libfile.c', '-shared', '-o', 'libfile.so'], stderr=PIPE)
-    err = self.run_process([EMCC, 'main.c', Path('subdir/libfile.so.1.2.3'), '-L.'], stderr=PIPE).stderr
-    self.assertContained('Mapping to `-lfile` and hoping for the best [-Wmap-unrecognized-libraries]', err)
-    self.assertContained('hello from lib', self.run_js('a.out.js'))
-
   def test_identical_basenames(self):
     # Issue 287: files in different dirs but with the same basename get confused as the same,
     # causing multiply defined symbol errors

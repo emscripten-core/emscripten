@@ -761,16 +761,7 @@ def phase_setup(options, state, newargs):
         else:
           message = arg + ': Unknown format, not a static library!'
         exit_with_error(message)
-      if file_suffix in DYNAMICLIB_ENDINGS and not building.is_bitcode(arg) and not building.is_wasm(arg):
-        # For shared libraries that are neither bitcode nor wasm, assuming its local native
-        # library and attempt to find a library by the same name in our own library path.
-        # TODO(sbc): Do we really need this feature?  See test_other.py:test_local_link
-        libname = removeprefix(get_library_basename(arg), 'lib')
-        flag = '-l' + libname
-        diagnostics.warning('map-unrecognized-libraries', f'unrecognized file type: `{arg}`.  Mapping to `{flag}` and hoping for the best')
-        state.add_link_flag(i, flag)
-      else:
-        input_files.append((i, arg))
+      input_files.append((i, arg))
     elif arg.startswith('-L'):
       state.add_link_flag(i, arg)
       newargs[i] = ''

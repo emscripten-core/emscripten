@@ -23,6 +23,17 @@ See docs/process.md for more on how version tagging works.
 - Support for explicitly targeting the legacy Interet Explorer or EdgeHTML
   (edge version prior to the chromium-based edge) browsers via
   `-sMIN_EDGE_VERSION/-sMIN_IE_VERSION` was removed. (#20881)
+- Emscripten is now more strict about handling unsupported shared library
+  inputs.  For example, under the old behaviour if a system shared library
+  such as `/usr/lib/libz.so` was passed to emscripten it would silently re-write
+  this to `-lz`, which would then search this a libz in its own sysroot.  Now
+  this file is passed though the linker like any other input file and you will
+  see an `unknown file type` error from the linker (just like you would with the
+  native clang or gcc toolchains). (#20886)
+- Support for explicitly targeting the legacy EdgeHTML browser (edge version
+  prior to the chromium-based edge) via `-sMIN_EDGE_VERSION` was removed.
+  Using `-sLEGACY_VM_SUPPORT` should still work if anyone still wanted to target
+  this or any other legacy browser.
 - Breaking change: Using the `*glGetProcAddress()` family of functions now
   requires passing a linker flag -sGL_ENABLE_GET_PROC_ADDRESS. This prevents
   ports of native GL renderers from later accidentally attempting to activate
