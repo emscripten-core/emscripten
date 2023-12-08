@@ -43,7 +43,6 @@ if (EMSCRIPTEN)
 	# emulation code may be present for old browser quirks.
 	append_linker_flags("-sMIN_FIREFOX_VERSION=70")
 	append_linker_flags("-sMIN_SAFARI_VERSION=130000")
-	append_linker_flags("-sMIN_IE_VERSION=0x7FFFFFFF") # Do not support Internet Explorer at all (this is the Emscripten default, shown here for posterity)
 	append_linker_flags("-sMIN_CHROME_VERSION=80")
 
 	# Fine tuning for code size: do not generate code to abort program execution on malloc() failures, that will
