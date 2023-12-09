@@ -715,9 +715,7 @@ var SyscallsLibrary = {
   __syscall_getdents64__deps: ['$stringToUTF8'],
   __syscall_getdents64: (fd, dirp, count) => {
     var stream = SYSCALLS.getStreamFromFD(fd)
-    if (!stream.getdents) {
-      stream.getdents = FS.readdir(stream.path);
-    }
+    stream.getdents ||= FS.readdir(stream.path);
 
     var struct_size = {{{ C_STRUCTS.dirent.__size__ }}};
     var pos = 0;

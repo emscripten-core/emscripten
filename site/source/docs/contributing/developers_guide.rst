@@ -8,7 +8,8 @@ This article provides information that is relevant to people who want to
 contribute to Emscripten. We welcome contributions from anyone that is
 interested in helping out!
 
-.. tip:: The information will be less relevant if you're just using Emscripten, but may still be of interest.
+.. tip:: The information will be less relevant if you're just using Emscripten,
+   but may still be of interest.
 
 .. _developers-guide-setting-up:
 

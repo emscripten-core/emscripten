@@ -865,6 +865,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       )
       if node_version < emcc_min_node_version:
         self.emcc_args += building.get_emcc_node_flags(node_version)
+        self.emcc_args.append('-Wno-transpile')
 
     self.v8_args = ['--wasm-staging']
     self.env = {}
@@ -894,14 +895,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         if EMTEST_SAVE_DIR == 2:
           print('Not clearing existing test directory')
         else:
-          print('Clearing existing test directory')
+          logger.debug('Clearing existing test directory: %s', self.working_dir)
           # Even when --save-dir is used we still try to start with an empty directory as many tests
           # expect this.  --no-clean can be used to keep the old contents for the new test
           # run. This can be useful when iterating on a given test with extra files you want to keep
           # around in the output directory.
           force_delete_contents(self.working_dir)
       else:
-        print('Creating new test output directory')
+        logger.debug('Creating new test output directory: %s', self.working_dir)
         ensure_dir(self.working_dir)
       utils.write_file(LAST_TEST, self.id() + '\n')
     os.chdir(self.working_dir)
@@ -1573,12 +1574,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def do_runf(self, filename, expected_output=None, **kwargs):
     return self._build_and_run(filename, expected_output, **kwargs)
 
-  ## Just like `do_run` but with filename of expected output
-  def do_run_from_file(self, filename, expected_output_filename, **kwargs):
-    return self._build_and_run(filename, read_file(expected_output_filename), **kwargs)
-
-  def do_run_in_out_file_test(self, *path, **kwargs):
-    srcfile = test_file(*path)
+  def do_run_in_out_file_test(self, srcfile, **kwargs):
+    if not os.path.exists(srcfile):
+      srcfile = test_file(srcfile)
     out_suffix = kwargs.pop('out_suffix', '')
     outfile = shared.unsuffixed(srcfile) + out_suffix + '.out'
     if EMTEST_REBASELINE:
@@ -1881,13 +1879,14 @@ class BrowserCore(RunnerCore):
   @classmethod
   def browser_restart(cls):
     # Kill existing browser
-    logger.info("Restarting browser process")
+    logger.info('Restarting browser process')
     cls.browser_proc.terminate()
     # If the browser doesn't shut down gracefully (in response to SIGTERM)
     # after 2 seconds kill it with force (SIGKILL).
     try:
       cls.browser_proc.wait(2)
     except subprocess.TimeoutExpired:
+      logger.info('Browser did not respond to `terminate`.  Using `kill`')
       cls.browser_proc.kill()
       cls.browser_proc.wait()
     cls.browser_open(cls.harness_url)

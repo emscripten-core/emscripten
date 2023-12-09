@@ -33,6 +33,7 @@ from .shared import LLVM_DWARFDUMP, demangle_c_symbol_name
 from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
 from .utils import WINDOWS
 from .settings import settings, default_setting
+from .feature_matrix import UNSUPPORTED
 
 logger = logging.getLogger('building')
 
@@ -270,8 +271,8 @@ def link_lld(args, target, external_symbols=None):
   if settings.STRICT:
     args.append('--fatal-warnings')
 
-  if '--strip-all' in args:
-    # Tell wasm-ld to always generate a target_features section even if --strip-all
+  if any(a in args for a in ('--strip-all', '-s')):
+    # Tell wasm-ld to always generate a target_features section even if --strip-all/-s
     # is passed.
     args.append('--keep-section=target_features')
 
@@ -509,14 +510,39 @@ def get_closure_compiler_and_env(user_args):
   return closure_cmd, env
 
 
+def version_split(v):
+  """Split version setting number (e.g. 162000) into versions string (e.g. "16.2.0")
+  """
+  v = str(v).rjust(6, '0')
+  assert len(v) == 6
+  m = re.match(r'(\d{2})(\d{2})(\d{2})', v)
+  major, minor, rev = m.group(1, 2, 3)
+  return f'{int(major)}.{int(minor)}.{int(rev)}'
+
+
 @ToolchainProfiler.profile()
-def closure_transpile(filename):
-  user_args = []
-  closure_cmd, env = get_closure_compiler_and_env(user_args)
-  closure_cmd += ['--language_out', 'ES5']
-  closure_cmd += ['--compilation_level', 'SIMPLE_OPTIMIZATIONS']
-  closure_cmd += ['--formatting', 'PRETTY_PRINT']
-  return run_closure_cmd(closure_cmd, filename, env)
+def transpile(filename):
+  config = {
+    'sourceType': 'script',
+    'targets': {}
+  }
+  if settings.MIN_CHROME_VERSION != UNSUPPORTED:
+    config['targets']['chrome'] = str(settings.MIN_CHROME_VERSION)
+  if settings.MIN_FIREFOX_VERSION != UNSUPPORTED:
+    config['targets']['firefox'] = str(settings.MIN_FIREFOX_VERSION)
+  if settings.MIN_IE_VERSION != UNSUPPORTED:
+    config['targets']['ie'] = str(settings.MIN_IE_VERSION)
+  if settings.MIN_SAFARI_VERSION != UNSUPPORTED:
+    config['targets']['safari'] = version_split(settings.MIN_SAFARI_VERSION)
+  if settings.MIN_NODE_VERSION != UNSUPPORTED:
+    config['targets']['node'] = version_split(settings.MIN_NODE_VERSION)
+  config_json = json.dumps(config, indent=2)
+  outfile = shared.get_temp_files().get('babel.js').name
+  config_file = shared.get_temp_files().get('babel_config.json').name
+  utils.write_file(config_file, config_json)
+  cmd = shared.get_npm_cmd('babel') + [filename, '-o', outfile, '--presets', '@babel/preset-env', '--config-file', config_file]
+  check_call(cmd, cwd=path_from_root())
+  return outfile
 
 
 @ToolchainProfiler.profile()
@@ -581,13 +607,8 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
   # Keep in sync with ecmaVersion in tools/acorn-optimizer.mjs
   args += ['--language_in', 'ECMASCRIPT_2021']
-  # Tell closure not to do any transpiling or inject any polyfills.
-  # At some point we may want to look into using this as way to convert to ES5 but
-  # babel is perhaps a better tool for that.
-  if settings.TRANSPILE_TO_ES5:
-    args += ['--language_out', 'ES5']
-  else:
-    args += ['--language_out', 'NO_TRANSPILE']
+  # We do transpilation using babel
+  args += ['--language_out', 'NO_TRANSPILE']
   # Tell closure never to inject the 'use strict' directive.
   args += ['--emit_use_strict=false']
 

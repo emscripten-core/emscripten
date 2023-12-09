@@ -582,7 +582,7 @@ class TestCoreBase(RunnerCore):
   def test_cube2md5(self):
     self.emcc_args += ['--embed-file', 'cube2md5.txt']
     shutil.copyfile(test_file('cube2md5.txt'), 'cube2md5.txt')
-    self.do_run_from_file(test_file('cube2md5.cpp'), test_file('cube2md5.ok'), assert_returncode=NON_ZERO)
+    self.do_run_in_out_file_test('cube2md5.cpp', assert_returncode=NON_ZERO)
 
   @also_with_standalone_wasm()
   @needs_make('make')
@@ -760,41 +760,25 @@ class TestCoreBase(RunnerCore):
   def test_isnan(self):
     self.do_core_test('test_isnan.c')
 
+  @only_wasm2js('tests globals in static data')
   def test_globaldoubles(self):
     self.do_core_test('test_globaldoubles.c')
 
   def test_math(self):
     self.do_core_test('test_math.c')
 
-  def test_erf(self):
-    self.do_core_test('test_erf.c')
-
-  def test_math_hyperbolic(self):
-    self.do_core_test('test_math_hyperbolic.c')
-
+  @only_wasm2js('tests lgamma and signbit')
   def test_math_lgamma(self):
     self.do_run_in_out_file_test('math/lgamma.c', assert_returncode=NON_ZERO)
 
+  @only_wasm2js('tests fmodf (which may use JS math)')
   def test_math_fmodf(self):
     self.do_run_in_out_file_test('math/fmodf.c')
-
-  def test_frexp(self):
-    self.do_core_test('test_frexp.c')
 
   def test_rounding(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_rounding.c')
-
-  def test_fcvt(self):
-    self.do_core_test('test_fcvt.cpp')
-
-  def test_llrint(self):
-    self.do_core_test('test_llrint.c')
-
-  def test_getgep(self):
-    # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP
-    self.do_core_test('test_getgep.c')
 
   def test_multiply_defined_symbols(self):
     create_file('a1.c', 'int f() { return 1; }')
@@ -1143,7 +1127,7 @@ int main()
   def test_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG')
     self.maybe_closure()
-    self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
+    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
   def test_exceptions_with_and_without_longjmp(self):
     self.set_setting('EXCEPTION_DEBUG')
@@ -1152,7 +1136,7 @@ int main()
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     for support_longjmp in [0, 'emscripten']:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
-      self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
+      self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
     # Wasm EH with and without Wasm SjLj support
     self.clear_setting('DISABLE_EXCEPTION_CATCHING')
     if not self.is_wasm():
@@ -1164,7 +1148,7 @@ int main()
     self.emcc_args.append('-fwasm-exceptions')
     for support_longjmp in [0, 'wasm']:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
-      self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
+      self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
   def test_exceptions_off(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING')
@@ -1183,11 +1167,11 @@ int main()
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-      self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
+      self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
       self.set_setting('EXCEPTION_DEBUG')
       self.set_setting('DISABLE_EXCEPTION_CATCHING')
-      self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_uncaught.out'), assert_returncode=NON_ZERO)
+      self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_uncaught', assert_returncode=NON_ZERO)
 
   @with_both_eh_sjlj
   def test_exceptions_custom(self):
@@ -1291,25 +1275,23 @@ int main(int argc, char **argv) {
     shutil.copyfile('test_exceptions_allowed.js', 'orig.js')
 
     # check that an empty allow list works properly (as in, same as exceptions disabled)
-    src = test_file('core/test_exceptions_allowed.cpp')
-    empty_output = test_file('core/test_exceptions_allowed_empty.out')
 
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', [])
-    self.do_run_from_file(src, empty_output, assert_returncode=NON_ZERO)
+    self.do_run_in_out_file_test('core/test_exceptions_allowed.cpp', out_suffix='_empty', assert_returncode=NON_ZERO)
     empty_size = os.path.getsize('test_exceptions_allowed.js')
     if self.is_wasm():
       empty_size += os.path.getsize('test_exceptions_allowed.wasm')
     shutil.copyfile('test_exceptions_allowed.js', 'empty.js')
 
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['fake'])
-    self.do_run_from_file(src, empty_output, assert_returncode=NON_ZERO)
+    self.do_run_in_out_file_test('core/test_exceptions_allowed.cpp', out_suffix='_empty', assert_returncode=NON_ZERO)
     fake_size = os.path.getsize('test_exceptions_allowed.js')
     if self.is_wasm():
       fake_size += os.path.getsize('test_exceptions_allowed.wasm')
     shutil.copyfile('test_exceptions_allowed.js', 'fake.js')
 
     self.clear_setting('EXCEPTION_CATCHING_ALLOWED')
-    self.do_run_from_file(src, empty_output, assert_returncode=NON_ZERO)
+    self.do_run_in_out_file_test('core/test_exceptions_allowed.cpp', out_suffix='_empty', assert_returncode=NON_ZERO)
     disabled_size = os.path.getsize('test_exceptions_allowed.js')
     if self.is_wasm():
       disabled_size += os.path.getsize('test_exceptions_allowed.wasm')
@@ -2140,13 +2122,13 @@ int main(int argc, char **argv) {
   # they will also get tested in MAIN_THREAD_EM_ASM form.
   def test_main_thread_em_asm(self):
     src = read_file(test_file('core/test_em_asm_2.cpp'))
-    create_file('src.cpp', src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
+    create_file('test.cpp', src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
 
     expected_result = read_file(test_file('core/test_em_asm_2.out'))
-    create_file('result.out', expected_result.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
+    create_file('test.out', expected_result.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
 
-    self.do_run_from_file('src.cpp', 'result.out')
-    self.do_run_from_file('src.cpp', 'result.out', force_c=True)
+    self.do_run_in_out_file_test('test.cpp')
+    self.do_run_in_out_file_test('test.cpp', force_c=True)
 
   @needs_dylink
   @parameterized({
@@ -6493,17 +6475,6 @@ PORT: 3979
   @with_env_modify({'LC_ALL': 'latin-1', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'})
   @crossplatform
   def test_unicode_js_library(self):
-    create_file('main.c', '''
-      #include <stdio.h>
-
-      extern void printey();
-
-      int main() {
-        printey();
-        return 0;
-      }
-    ''')
-
     # First verify that we have correct overridden the default python file encoding.
     # The follow program should fail, assuming the above LC_CTYPE + PYTHONUTF8
     # are having the desired effect.
@@ -6515,7 +6486,7 @@ PORT: 3979
 
     create_file('modularize_post.js', '(async function main(){await Module();})()')
     self.emcc_args += ['-sMODULARIZE', '--js-library', test_file('unicode_library.js'), '--extern-post-js', 'modularize_post.js', '--post-js', test_file('unicode_postjs.js')]
-    self.do_run_from_file('main.c', test_file('test_unicode_js_library.out'))
+    self.do_run_in_out_file_test('test_unicode_js_library.c')
 
   def test_funcptr_import_type(self):
     self.emcc_args += ['--js-library', test_file('core/test_funcptr_import_type.js')]
@@ -6938,34 +6909,33 @@ void* operator new(size_t size) {
 
     # Not needed for js, but useful for debugging
     shutil.copyfile(test_file('freetype/LiberationSansBold.ttf'), 'font.ttf')
+    ftlib = self.get_freetype_library()
 
     # Main
-    self.do_run_from_file(test_file('freetype/main.c'),
-                          test_file('freetype/ref.txt'),
-                          args=['font.ttf', 'test!', '150', '120', '25'],
-                          libraries=self.get_freetype_library(),
-                          includes=[test_file('third_party/freetype/include')])
+    self.do_run_in_out_file_test('freetype/main.c',
+                                 args=['font.ttf', 'test!', '150', '120', '25'],
+                                 libraries=ftlib,
+                                 includes=[test_file('third_party/freetype/include')])
 
     # github issue 324
     print('[issue 324]')
-    self.do_run_from_file(test_file('freetype/main_2.c'),
-                          test_file('freetype/ref_2.txt'),
-                          args=['font.ttf', 'w', '32', '32', '25'],
-                          libraries=self.get_freetype_library(),
-                          includes=[test_file('third_party/freetype/include')])
+    self.do_run_in_out_file_test('freetype/main_2.c',
+                                 args=['font.ttf', 'w', '32', '32', '25'],
+                                 libraries=ftlib,
+                                 includes=[test_file('third_party/freetype/include')])
 
     print('[issue 324 case 2]')
-    self.do_run_from_file(test_file('freetype/main_3.c'),
-                          test_file('freetype/ref_3.txt'),
-                          args=['font.ttf', 'W', '32', '32', '0'],
-                          libraries=self.get_freetype_library(),
-                          includes=[test_file('third_party/freetype/include')])
+    self.do_run_in_out_file_test('freetype/main_3.c',
+                                 args=['font.ttf', 'W', '32', '32', '0'],
+                                 libraries=ftlib,
+                                 includes=[test_file('third_party/freetype/include')])
 
     print('[issue 324 case 3]')
-    self.do_run('main_3.js',
-                read_file(test_file('freetype/ref_4.txt')),
-                args=['font.ttf', 'ea', '40', '32', '0'],
-                no_build=True)
+    self.do_run_in_out_file_test('freetype/main_3.c',
+                                 out_suffix='_alt',
+                                 args=['font.ttf', 'ea', '40', '32', '0'],
+                                 libraries=ftlib,
+                                 includes=[test_file('third_party/freetype/include')])
 
   @no_asan('local count too large for VMs')
   @no_ubsan('local count too large for VMs')
@@ -6999,11 +6969,7 @@ void* operator new(size_t size) {
 
     # example.c uses K&R style function declarations
     self.emcc_args += ['-Wno-deprecated-non-prototype']
-    self.do_run_from_file(
-        test_file('third_party/zlib/example.c'),
-        test_file('core/test_zlib.out'),
-        libraries=zlib,
-        includes=[test_file('third_party/zlib')])
+    self.do_core_test('test_zlib.c', libraries=zlib, includes=[test_file('third_party/zlib')])
 
   @needs_make('make')
   @is_slow_test
@@ -7945,8 +7911,7 @@ void* operator new(size_t size) {
     if allow_memory_growth:
       self.set_setting('ALLOW_MEMORY_GROWTH')
 
-    expected = test_file('webidl/output_%s.txt' % mode)
-    self.do_run_from_file(test_file('webidl/test.cpp'), expected, includes=['.'])
+    self.do_run_in_out_file_test(test_file('webidl/test.cpp'), out_suffix='_' + mode, includes=['.'])
 
   # Test that we can perform fully-synchronous initialization when combining WASM_ASYNC_COMPILATION=0 + PTHREAD_POOL_DELAY_LOAD=1.
   # Also checks that PTHREAD_POOL_DELAY_LOAD=1 adds a pthreadPoolReady promise that users can wait on for pthread initialization.

@@ -362,9 +362,7 @@ function addRunDependency(id) {
   runDependencies++;
 
 #if expectToReceiveOnModule('monitorRunDependencies')
-  if (Module['monitorRunDependencies']) {
-    Module['monitorRunDependencies'](runDependencies);
-  }
+  Module['monitorRunDependencies']?.(runDependencies);
 #endif
 
 #if ASSERTIONS
@@ -402,9 +400,7 @@ function removeRunDependency(id) {
   runDependencies--;
 
 #if expectToReceiveOnModule('monitorRunDependencies')
-  if (Module['monitorRunDependencies']) {
-    Module['monitorRunDependencies'](runDependencies);
-  }
+  Module['monitorRunDependencies']?.(runDependencies);
 #endif
 
 #if ASSERTIONS
@@ -431,9 +427,7 @@ function removeRunDependency(id) {
 /** @param {string|number=} what */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
-  if (Module['onAbort']) {
-    Module['onAbort'](what);
-  }
+  Module['onAbort']?.(what);
 #endif
 
   what = 'Aborted(' + what + ')';
@@ -763,9 +757,7 @@ function instantiateSync(file, info) {
       }
     }
   }
-  if (!module) {
-    module = new WebAssembly.Module(binary);
-  }
+  module ||= new WebAssembly.Module(binary);
   if (ENVIRONMENT_IS_NODE && !hasCached) {
 #if RUNTIME_DEBUG
     dbg('NODE_CODE_CACHING: saving module');

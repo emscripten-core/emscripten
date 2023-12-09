@@ -9,7 +9,7 @@
 {{{ GL_POOL_TEMP_BUFFERS_SIZE = 2*9*16 }}} // = 288
 
 {{{
-  global.isCurrentContextWebGL2 = () => {
+  globalThis.isCurrentContextWebGL2 = () => {
     if (MIN_WEBGL_VERSION >= 2) return 'true';
     if (MAX_WEBGL_VERSION <= 1) return 'false';
     return 'GL.currentContext.version >= 2';
@@ -682,7 +682,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
         (canvas.getContext("webgl", webGLContextAttributes)
           // https://caniuse.com/#feat=webgl
-#if MIN_IE_VERSION <= 10 || MIN_EDGE_VERSION <= 18 || MIN_FIREFOX_VERSION <= 23 || MIN_CHROME_VERSION <= 32 || MIN_SAFARI_VERSION <= 70101
+#if MIN_IE_VERSION <= 10 || MIN_FIREFOX_VERSION <= 23 || MIN_CHROME_VERSION <= 32 || MIN_SAFARI_VERSION <= 70101
           || canvas.getContext("experimental-webgl", webGLContextAttributes)
 #endif
           );
@@ -1157,7 +1157,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       // Active Emscripten GL layer context object.
       GL.currentContext = GL.contexts[contextHandle];
       // Active WebGL context object.
-      Module.ctx = GLctx = GL.currentContext && GL.currentContext.GLctx;
+      Module.ctx = GLctx = GL.currentContext?.GLctx;
       return !(contextHandle && !GLctx);
     },
 
@@ -1194,7 +1194,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     initExtensions: (context) => {
       // If this function is called without a specific context object, init the
       // extensions of the currently active context.
-      if (!context) context = GL.currentContext;
+      context ||= GL.currentContext;
 
       if (context.initExtensionsDone) return;
       context.initExtensionsDone = true;

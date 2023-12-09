@@ -8,7 +8,7 @@
  * Tests live in test/other/test_parseTools.js.
  */
 
-global.FOUR_GB = 4 * 1024 * 1024 * 1024;
+globalThis.FOUR_GB = 4 * 1024 * 1024 * 1024;
 const FLOAT_TYPES = new Set(['float', 'double']);
 
 // Does simple 'macro' substitution, using Django-like syntax,
@@ -175,8 +175,8 @@ function needsQuoting(ident) {
   return true;
 }
 
-global.POINTER_SIZE = MEMORY64 ? 8 : 4;
-global.STACK_ALIGN = 16;
+globalThis.POINTER_SIZE = MEMORY64 ? 8 : 4;
+globalThis.STACK_ALIGN = 16;
 const POINTER_BITS = POINTER_SIZE * 8;
 const POINTER_TYPE = `u${POINTER_BITS}`;
 const POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
@@ -645,13 +645,13 @@ function makeEval(code) {
   return ret;
 }
 
-global.ATINITS = [];
+globalThis.ATINITS = [];
 
 function addAtInit(code) {
   ATINITS.push(code);
 }
 
-global.ATEXITS = [];
+globalThis.ATEXITS = [];
 
 function addAtExit(code) {
   if (EXIT_RUNTIME) {
@@ -767,7 +767,7 @@ function isSymbolNeeded(symName) {
 
 function makeRemovedModuleAPIAssert(moduleName, localName) {
   if (!ASSERTIONS) return '';
-  if (!localName) localName = moduleName;
+  localName ||= moduleName;
   return `legacyModuleProp('${moduleName}', '${localName}');`;
 }
 
@@ -779,7 +779,7 @@ function checkReceiving(name) {
 
 // Make code to receive a value on the incoming Module object.
 function makeModuleReceive(localName, moduleName) {
-  if (!moduleName) moduleName = localName;
+  moduleName ||= localName;
   checkReceiving(moduleName);
   let ret = '';
   if (expectToReceiveOnModule(moduleName)) {
@@ -801,7 +801,7 @@ function makeModuleReceiveExpr(name, defaultValue) {
 }
 
 function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert) {
-  if (!moduleName) moduleName = localName;
+  moduleName ||= localName;
   checkReceiving(moduleName);
   let ret = `var ${localName}`;
   if (!expectToReceiveOnModule(moduleName)) {

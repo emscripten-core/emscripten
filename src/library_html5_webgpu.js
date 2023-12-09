@@ -1,6 +1,6 @@
 {{{
   // Helper functions for code generation
-  global.html5_gpu = {
+  globalThis.html5_gpu = {
     makeImportExport: (snake_case, CamelCase) => {
       return `
 LibraryHTML5WebGPU.emscripten_webgpu_import_${snake_case}__deps = ['$WebGPU', '$JsValStore'];

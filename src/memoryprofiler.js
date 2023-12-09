@@ -190,7 +190,7 @@ var emscriptenMemoryProfiler = {
     if (!self.pagePreRunIsFinished) self.sizeOfPreRunAllocatedPtr[ptr] = size;
 
     var loc = new Error().stack.toString();
-    if (!self.allocationsAtLoc[loc]) self.allocationsAtLoc[loc] = [0, 0, self.filterCallstackForMalloc(loc)];
+    self.allocationsAtLoc[loc] ||= [0, 0, self.filterCallstackForMalloc(loc)];
     self.allocationsAtLoc[loc][0] += 1;
     self.allocationsAtLoc[loc][1] += size;
     self.allocationSitePtrs[ptr] = loc;
@@ -247,7 +247,7 @@ var emscriptenMemoryProfiler = {
     emscriptenMemoryProfiler.recordStackWatermark();
 
     // Add a tracking mechanism to detect when VFS loading is complete.
-    if (!Module['preRun']) Module['preRun'] = [];
+    Module['preRun'] ||= [];
     Module['preRun'].push(emscriptenMemoryProfiler.onPreloadComplete);
 
     if (emscriptenMemoryProfiler.hookStackAlloc && typeof stackAlloc == 'function') {
@@ -563,9 +563,7 @@ var emscriptenMemoryProfiler = {
           stack = self.filterCallstackAfterFunctionName(stack, s);
         }
         sbrk.filteredStack = stack;
-        if (!uniqueSources[stack]) {
-          uniqueSources[stack] = self.hsvToRgb(Object.keys(uniqueSources).length * 0.618033988749895 % 1, 0.5, 0.95);
-        }
+        uniqueSources[stack] ||= self.hsvToRgb(Object.keys(uniqueSources).length * 0.618033988749895 % 1, 0.5, 0.95);
         self.drawContext.fillStyle = sbrk.color = uniqueSources[stack];
         self.fillRect(sbrk.begin, sbrk.end, 0.25);
       }

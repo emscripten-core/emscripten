@@ -99,9 +99,7 @@ var LibraryGLEW = {
     },
 
     extensionIsSupported(name) {
-      if (!GLEW.extensions) {
-        GLEW.extensions = GL.getExtensions();
-      }
+      GLEW.extensions ||= GL.getExtensions();
 
       if (GLEW.extensions.includes(name))
         return 1;

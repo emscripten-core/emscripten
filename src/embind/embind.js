@@ -175,7 +175,7 @@ var LibraryEmbind = {
   }),
   // All browsers that support WebAssembly also support configurable function name,
   // but we might be building for very old browsers via WASM2JS.
-#if MIN_CHROME_VERSION < 43 || MIN_EDGE_VERSION < 14 || MIN_SAFARI_VERSION < 100101 || MIN_FIREFOX_VERSION < 38
+#if MIN_CHROME_VERSION < 43 || MIN_SAFARI_VERSION < 100101 || MIN_FIREFOX_VERSION < 38
   // In that case, check if configurable function name is supported at init time
   // and, if not, replace with a fallback that returns function as-is as those browsers
   // don't support other methods either.
@@ -1187,7 +1187,7 @@ var LibraryEmbind = {
       }
     }
 
-    if (!handle.$$) {
+    if (!handle || !handle.$$) {
       throwBindingError(`Cannot pass "${embindRepr(handle)}" as a ${this.name}`);
     }
     if (!handle.$$.ptr) {
@@ -1307,9 +1307,7 @@ var LibraryEmbind = {
         return ptr;
       },
       destructor(ptr) {
-        if (this.rawDestructor) {
-          this.rawDestructor(ptr);
-        }
+        this.rawDestructor?.(ptr);
       },
       'argPackAdvance': GenericWireTypeSize,
       'readValueFromPointer': readPointer,
@@ -1550,7 +1548,8 @@ var LibraryEmbind = {
     record.count = { value: 1 };
     return attachFinalizer(Object.create(prototype, {
       $$: {
-          value: record,
+        value: record,
+        writable: true,
       },
     }));
   },
@@ -1743,12 +1742,8 @@ var LibraryEmbind = {
                            rawDestructor) => {
     name = readLatin1String(name);
     getActualType = embind__requireFunction(getActualTypeSignature, getActualType);
-    if (upcast) {
-      upcast = embind__requireFunction(upcastSignature, upcast);
-    }
-    if (downcast) {
-      downcast = embind__requireFunction(downcastSignature, downcast);
-    }
+    upcast &&= embind__requireFunction(upcastSignature, upcast);
+    downcast &&= embind__requireFunction(downcastSignature, downcast);
     rawDestructor = embind__requireFunction(destructorSignature, rawDestructor);
     var legalFunctionName = makeLegalFunctionName(name);
 
@@ -1803,9 +1798,7 @@ var LibraryEmbind = {
 
         if (registeredClass.baseClass) {
           // Keep track of class hierarchy. Used to allow sub-classes to inherit class functions.
-          if (registeredClass.baseClass.__derivedClasses === undefined) {
-            registeredClass.baseClass.__derivedClasses = [];
-          }
+          registeredClass.baseClass.__derivedClasses ??= [];
 
           registeredClass.baseClass.__derivedClasses.push(registeredClass);
         }

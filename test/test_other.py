@@ -206,6 +206,15 @@ def llvm_nm(file):
   return symbols
 
 
+def get_file_gzipped_size(f):
+  f_gz = f + '.gz'
+  with gzip.open(f_gz, 'wb') as gzf:
+    gzf.write(read_binary(f))
+  size = os.path.getsize(f_gz)
+  delete_file(f_gz)
+  return size
+
+
 class other(RunnerCore):
   def assertIsObjectFile(self, filename):
     self.assertTrue(building.is_wasm(filename))
@@ -214,7 +223,7 @@ class other(RunnerCore):
     self.assertTrue(building.is_wasm_dylib(filename))
 
   def do_other_test(self, testname, emcc_args=None, **kwargs):
-    return self.do_run_in_out_file_test('other', testname, emcc_args=emcc_args, **kwargs)
+    return self.do_run_in_out_file_test(test_file('other', testname), emcc_args=emcc_args, **kwargs)
 
   def run_on_pty(self, cmd):
     master, slave = os.openpty()
@@ -2946,9 +2955,11 @@ int f() {
     'o2': ['-O2'],
     'o2_mem_growth': ['-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')],
     'o2_closure': ['-O2', '--closure=1', '--closure-args', '--externs ' + shlex.quote(test_file('embind/underscore-externs.js'))],
+    'strict_js': ['-sSTRICT_JS']
   })
   def test_embind(self, *extra_args):
     self.emcc_args += [
+      '--no-entry',
       # This test explicitly creates std::string from unsigned char pointers
       # which is deprecated in upstream LLVM.
       '-Wno-deprecated-declarations',
@@ -3024,9 +3035,11 @@ int f() {
 
   def test_embind_tsgen_ignore(self):
     create_file('fail.js', 'assert(false);')
+    self.emcc_args += ['-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts']
     # These extra arguments are not related to TS binding generation but we want to
     # verify that they do not interfere with it.
     extra_args = ['-sALLOW_MEMORY_GROWTH=1',
+                  '-Wno-pthreads-mem-growth',
                   '-sMAXIMUM_MEMORY=4GB',
                   '--pre-js', 'fail.js',
                   '--post-js', 'fail.js',
@@ -3037,28 +3050,30 @@ int f() {
                   '--preload-file', 'fail.js',
                   '-O3',
                   '-msimd128',
-                  '-sUSE_PTHREADS',
+                  '-pthread',
                   '-sPROXY_TO_PTHREAD',
                   '-sPTHREAD_POOL_SIZE=1',
                   '-sSINGLE_FILE',
                   '-lembind', # Test duplicated link option.
                   ]
-    self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
-                      '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
+    self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
     # Test these args separately since they conflict with arguments in the first test.
     extra_args = ['-sMODULARIZE',
                   '--embed-file', 'fail.js',
                   '-sMINIMAL_RUNTIME=2',
                   '-sEXPORT_ES6=1']
-    self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
-                      '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
+    self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_test_embind(self):
     self.run_process([EMCC, test_file('embind/embind_test.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen_test_embind.d.ts',
-                      '-DSKIP_UNBOUND_TYPES']) # TypeScript generation requires all type to be bound.
+                      # This test explicitly creates std::string from unsigned char pointers
+                      # which is deprecated in upstream LLVM.
+                      '-Wno-deprecated-declarations',
+                      # TypeScript generation requires all type to be bound.
+                      '-DSKIP_UNBOUND_TYPES'] + self.get_emcc_args())
     self.assertExists('embind_tsgen_test_embind.d.ts')
 
   def test_embind_tsgen_val(self):
@@ -3079,7 +3094,8 @@ int f() {
   def test_embind_tsgen_memory64(self):
     # Check that when memory64 is enabled longs & unsigned longs are mapped to bigint in the generated TS bindings
     self.run_process([EMCC, test_file('other/embind_tsgen_memory64.cpp'),
-                      '-lembind', '--embind-emit-tsd', 'embind_tsgen_memory64.d.ts', '-sMEMORY64'])
+                      '-lembind', '--embind-emit-tsd', 'embind_tsgen_memory64.d.ts', '-sMEMORY64', '-Wno-experimental'] +
+                     self.get_emcc_args())
     self.assertFileContents(test_file('other/embind_tsgen_memory64.d.ts'), read_file('embind_tsgen_memory64.d.ts'))
 
   def test_emconfig(self):
@@ -3960,7 +3976,7 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
     self.assertContained('duplicated_func_2.js: Symbol re-definition in JavaScript library: duplicatedFunc. Do not use noOverride if this is intended', err)
 
   def test_override_stub(self):
-    self.do_run_from_file(test_file('other/test_override_stub.c'), test_file('other/test_override_stub.out'))
+    self.do_other_test('test_override_stub.c')
 
   def test_js_lib_missing_sig(self):
     create_file('some_func.c', '''
@@ -8219,11 +8235,14 @@ int main() {
       wasm_size = os.path.getsize('a.out.nodebug.wasm')
       size_file = expected_basename + '.size'
       js_size = os.path.getsize('a.out.js')
+      gz_size = get_file_gzipped_size('a.out.js')
       if '-pthread' in args:
         js_size += os.path.getsize('a.out.worker.js')
       js_size_file = expected_basename + '.jssize'
+      gz_size_file = expected_basename + '.gzsize'
       self.check_expected_size_in_file('wasm', size_file, wasm_size)
       self.check_expected_size_in_file('js', js_size_file, js_size)
+      self.check_expected_size_in_file('gz', gz_size_file, gz_size)
 
     imports, exports, funcs = self.parse_wasm('a.out.wasm')
     imports.sort()
@@ -8633,7 +8652,7 @@ int main() {
   def test_lto_wasm_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG')
     self.emcc_args += ['-fwasm-exceptions', '-flto']
-    self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
+    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
   def test_wasm_nope(self):
     for opts in [[], ['-O2']]:
@@ -10563,14 +10582,6 @@ int main () {
     print(shared.shlex_join(args))
     self.run_process(args)
 
-    def get_file_gzipped_size(f):
-      f_gz = f + '.gz'
-      with gzip.open(f_gz, 'wb') as gzf:
-        gzf.write(read_binary(f))
-      size = os.path.getsize(f_gz)
-      delete_file(f_gz)
-      return size
-
     # For certain tests, don't just check the output size but check
     # the full JS output matches the expectations.  That means that
     # any change that touches those core lines of output will need
@@ -10643,7 +10654,7 @@ int main () {
   # Test that legacy settings that have been fixed to a specific value and their value can no longer be changed,
   def test_legacy_settings_forbidden_to_change(self):
     stderr = self.expect_fail([EMCC, '-sMEMFS_APPEND_TO_TYPED_ARRAYS=0', test_file('hello_world.c')])
-    self.assertContained('MEMFS_APPEND_TO_TYPED_ARRAYS=0 is no longer supported', stderr)
+    self.assertContained('emcc: error: invalid command line setting `-sMEMFS_APPEND_TO_TYPED_ARRAYS=0`: Starting from Emscripten 1.38.26, MEMFS_APPEND_TO_TYPED_ARRAYS=0 is no longer supported', stderr)
 
     self.run_process([EMCC, '-sMEMFS_APPEND_TO_TYPED_ARRAYS', test_file('hello_world.c')])
     self.run_process([EMCC, '-sPRECISE_I64_MATH=2', test_file('hello_world.c')])
@@ -11813,17 +11824,14 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
   })
   def test_support_errno(self, args):
     self.emcc_args += args
-    src = test_file('other/test_support_errno.c')
-    output = test_file('other/test_support_errno.out')
 
-    self.do_run_from_file(src, output)
+    self.do_other_test('test_support_errno.c')
     size_default = os.path.getsize('test_support_errno.js')
 
     # Run the same test again but with SUPPORT_ERRNO disabled.  This time we don't expect errno
     # to be set after the failing syscall.
     self.emcc_args += ['-sSUPPORT_ERRNO=0']
-    output = test_file('other/test_support_errno_disabled.out')
-    self.do_run_from_file(src, output)
+    self.do_other_test('test_support_errno.c', out_suffix='_disabled')
 
     # Verify the JS output was smaller
     self.assertLess(os.path.getsize('test_support_errno.js'), size_default)
@@ -11975,7 +11983,7 @@ int main () {
     self.set_setting('WASM_BIGINT')
     self.wasm_engines = []
     self.emcc_args += ['-fwasm-exceptions']
-    self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
+    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
   def test_missing_malloc_export(self):
     # we used to include malloc by default. show a clear error in builds with
@@ -12806,7 +12814,7 @@ void foo() {}
   def test_node_unhandled_rejection(self):
     create_file('pre.js', '''
     async function foo() {
-      var a = missing;
+      abort("this error will become an unhandled rejection");
     }
     async function doReject() {
       return foo();
@@ -12827,7 +12835,7 @@ void foo() {}
     self.build('main.c', emcc_args=['--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION'])
     output = self.run_js('main.js', assert_returncode=NON_ZERO)
     self.assertContained('unhandledRejection', read_file('main.js'))
-    self.assertContained('ReferenceError: missing is not defined', output)
+    self.assertContained('RuntimeError: Aborted(this error will become an unhandled rejection)', output)
     self.assertContained('at foo (', output)
 
     # Without NODEJS_CATCH_REJECTION we expect node to log the unhandled rejection
@@ -12840,7 +12848,7 @@ void foo() {}
       self.skipTest('old behaviour of node JS cannot be tested on node v15 or above')
 
     output = self.run_js('main.js')
-    self.assertContained('ReferenceError: missing is not defined', output)
+    self.assertContained('RuntimeError: Aborted(this error will become an unhandled rejection)', output)
     self.assertContained('at foo (', output)
 
   def test_default_pthread_stack_size(self):
@@ -13141,7 +13149,6 @@ myMethod: 43
         self.assertContained('foo(arg="hello")', js)
         self.assertContained(['() => 2', '()=>2'], js)
         self.assertContained('const ', js)
-        self.assertContained('let ', js)
         self.assertContained('?.[', js)
         self.assertContained('?.(', js)
         self.assertContained('??=', js)
@@ -13153,7 +13160,6 @@ myMethod: 43
         self.assertNotContained('() => 2', js)
         self.assertNotContained('()=>2', js)
         self.assertNotContained('const ', js)
-        self.assertNotContained('let ', js)
         self.assertNotContained('??', js)
         self.assertNotContained('?.', js)
         self.assertNotContained('||=', js)
@@ -13173,13 +13179,12 @@ myMethod: 43
     self.do_runf('test.c', expected, output_basename='test_old')
     check_for_es6('test_old.js', False)
 
-    # If we add `--closure=0` that transpiler (closure) is not run at all
-    print('with old browser + --closure=0')
-    self.do_runf('test.c', expected, emcc_args=['--closure=0'], output_basename='test_no_closure')
+    # If we add `-sPOLYFILL=0` that transpiler is not run at all
+    print('with old browser + -sPOLYFILL=0')
+    self.do_runf('test.c', expected, emcc_args=['-sPOLYFILL=0'], output_basename='test_no_closure')
     check_for_es6('test_no_closure.js', True)
 
-    # If we use `--closure=1` closure will run in full optimization mode
-    # and also transpile to ES5
+    # Test that transpiling is compatible with `--closure=1`
     print('with old browser + --closure=1')
     self.do_runf('test.c', expected, emcc_args=['--closure=1'], output_basename='test_closure')
     check_for_es6('test_closure.js', False)
@@ -13674,10 +13679,10 @@ foo/version.txt
     self.assertTextDataIdentical(expected, response)
 
   def test_min_browser_version(self):
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=120000'])
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=120000'])
     self.assertContained('emcc: error: MIN_SAFARI_VERSION=120000 is not compatible with WASM_BIGINT (150000 or above required)', err)
 
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '-pthread', '-sMIN_CHROME_VERSION=73'])
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_CHROME_VERSION=73'])
     self.assertContained('emcc: error: MIN_CHROME_VERSION=73 is not compatible with pthreads (74 or above required)', err)
 
   def test_signext_lowering(self):
@@ -14240,6 +14245,7 @@ addToLibrary({
     # Test that even with `-Wl,--strip-all` the target features section is generated
     # by wasm-ld so that later phases (e.g. wasm-opt) can read it.
     self.do_runf('hello_world.c', emcc_args=['-Wl,--strip-all', '-pthread'])
+    self.do_runf('hello_world.c', emcc_args=['-Wl,-s', '-pthread'])
 
   def test_embind_no_duplicate_symbols(self):
     # Embind implementation lives almost entirely in headers, which have special rules
@@ -14264,3 +14270,18 @@ addToLibrary({
   def test_aligned_alloc(self):
     self.do_runf('test_aligned_alloc.c', '',
                  emcc_args=['-Wno-non-power-of-two-alignment'])
+
+  def test_erf(self):
+    self.do_other_test('test_erf.c')
+
+  def test_math_hyperbolic(self):
+    self.do_other_test('test_math_hyperbolic.c')
+
+  def test_frexp(self):
+    self.do_other_test('test_frexp.c')
+
+  def test_fcvt(self):
+    self.do_other_test('test_fcvt.cpp')
+
+  def test_llrint(self):
+    self.do_other_test('test_llrint.c')

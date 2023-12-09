@@ -241,7 +241,7 @@ def generate_js_sym_info():
   # mode of the js compiler that would generate a list of all possible symbols
   # that could be checked in.
   _, forwarded_data = emscripten.compile_javascript(symbols_only=True)
-  # When running in symbols_only mode compiler.js outputs a flat list of C symbols.
+  # When running in symbols_only mode compiler.mjs outputs a flat list of C symbols.
   return json.loads(forwarded_data)
 
 
@@ -1099,7 +1099,6 @@ def phase_linker_setup(options, state, newargs):
     settings.MIN_FIREFOX_VERSION = 0
     settings.MIN_SAFARI_VERSION = 0
     settings.MIN_IE_VERSION = 0
-    settings.MIN_EDGE_VERSION = 0
     settings.MIN_CHROME_VERSION = 0
     settings.MIN_NODE_VERSION = 0
 
@@ -1126,27 +1125,26 @@ def phase_linker_setup(options, state, newargs):
 
   setup_environment_settings()
 
-  if options.use_closure_compiler != 0 and settings.POLYFILL:
-    # Emscripten requires certain ES6 constructs by default in library code
-    # - https://caniuse.com/let              : EDGE:12 FF:44 CHROME:49 SAFARI:11
-    # - https://caniuse.com/const            : EDGE:12 FF:36 CHROME:49 SAFARI:11
-    # - https://caniuse.com/arrow-functions: : EDGE:12 FF:22 CHROME:45 SAFARI:10
-    # - https://caniuse.com/mdn-javascript_builtins_object_assign:
-    #                                          EDGE:12 FF:34 CHROME:45 SAFARI:9
+  if settings.POLYFILL:
+    # Emscripten requires certain ES6+ constructs by default in library code
+    # - (various ES6 operators available in all browsers listed below)
+    # - https://caniuse.com/mdn-javascript_operators_nullish_coalescing:
+    #                                          FF:72 CHROME:80 SAFARI:13.1 NODE:14
+    # - https://caniuse.com/mdn-javascript_operators_optional_chaining:
+    #                                          FF:74 CHROME:80 SAFARI:13.1 NODE:14
+    # - https://caniuse.com/mdn-javascript_operators_logical_or_assignment:
+    #                                          FF:79 CHROME:85 SAFARI:14 NODE:16
     # Taking the highest requirements gives is our minimum:
-    #                             Max Version: EDGE:12 FF:44 CHROME:49 SAFARI:11
-    settings.TRANSPILE_TO_ES5 = (settings.MIN_EDGE_VERSION < 12 or
-                                 settings.MIN_FIREFOX_VERSION < 44 or
-                                 settings.MIN_CHROME_VERSION < 49 or
-                                 settings.MIN_SAFARI_VERSION < 110000 or
-                                 settings.MIN_IE_VERSION != 0x7FFFFFFF)
+    #                             Max Version: FF:79 CHROME:85 SAFARI:14 NODE:16
+    # TODO: replace this with feature matrix in the future.
+    settings.TRANSPILE = (settings.MIN_FIREFOX_VERSION < 79 or
+                          settings.MIN_CHROME_VERSION < 85 or
+                          settings.MIN_SAFARI_VERSION < 140000 or
+                          settings.MIN_NODE_VERSION < 160000 or
+                          settings.MIN_IE_VERSION != 0x7FFFFFFF)
 
-    if options.use_closure_compiler is None and settings.TRANSPILE_TO_ES5:
-      diagnostics.warning('transpile', 'enabling transpilation via closure due to browser version settings.  This warning can be suppressed by passing `--closure=1` or `--closure=0` to opt into this explicitly.')
-
-  # https://caniuse.com/class: EDGE:13 FF:45 CHROME:49 SAFARI:9
-  supports_es6_classes = (settings.MIN_EDGE_VERSION >= 13 and
-                          settings.MIN_FIREFOX_VERSION >= 45 and
+  # https://caniuse.com/class: FF:45 CHROME:49 SAFARI:9
+  supports_es6_classes = (settings.MIN_FIREFOX_VERSION >= 45 and
                           settings.MIN_CHROME_VERSION >= 49 and
                           settings.MIN_SAFARI_VERSION >= 90000 and
                           settings.MIN_IE_VERSION == 0x7FFFFFFF)
@@ -2199,14 +2197,15 @@ def phase_binaryen(target, options, wasm_target, memfile):
     with ToolchainProfiler.profile_block('asyncify_lazy_load_code'):
       building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
 
-  if final_js and (options.use_closure_compiler or settings.TRANSPILE_TO_ES5):
+  if final_js:
     if options.use_closure_compiler:
       with ToolchainProfiler.profile_block('closure_compile'):
         final_js = building.closure_compiler(final_js, extra_closure_args=options.closure_args)
-    else:
-      with ToolchainProfiler.profile_block('closure_transpile'):
-        final_js = building.closure_transpile(final_js)
-    save_intermediate_with_wasm('closure', wasm_target)
+      save_intermediate_with_wasm('closure', wasm_target)
+    if settings.TRANSPILE:
+      with ToolchainProfiler.profile_block('transpile'):
+        final_js = building.transpile(final_js)
+      save_intermediate_with_wasm('traspile', wasm_target)
 
   symbols_file = None
   if options.emit_symbol_map:

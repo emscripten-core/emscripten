@@ -13,6 +13,8 @@ from . import diagnostics
 
 logger = logging.getLogger('feature_matrix')
 
+UNSUPPORTED = 0x7FFFFFFF
+
 
 class Feature(IntEnum):
   NON_TRAPPING_FPTOINT = auto()
@@ -84,11 +86,6 @@ def caniuse(feature):
   if settings.MIN_CHROME_VERSION < min_versions['chrome']:
     report_missing('MIN_CHROME_VERSION')
     return False
-  # For edge we just use the same version requirements as chrome since,
-  # at least for modern versions of edge, they share version numbers.
-  if settings.MIN_EDGE_VERSION < min_versions['chrome']:
-    report_missing('MIN_EDGE_VERSION')
-    return False
   if settings.MIN_FIREFOX_VERSION < min_versions['firefox']:
     report_missing('MIN_FIREFOX_VERSION')
     return False
@@ -96,7 +93,7 @@ def caniuse(feature):
     report_missing('MIN_SAFARI_VERSION')
     return False
   # IE don't support any non-MVP features
-  if settings.MIN_IE_VERSION != 0x7FFFFFFF:
+  if settings.MIN_IE_VERSION != UNSUPPORTED:
     report_missing('MIN_IE_VERSION')
     return False
   if 'node' in min_versions and settings.MIN_NODE_VERSION < min_versions['node']:

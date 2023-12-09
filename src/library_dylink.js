@@ -218,9 +218,7 @@ var LibraryDylink = {
       }
 #endif
 
-      if (!GOT[symName]) {
-        GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
-      }
+      GOT[symName] ||= new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
       if (replace || GOT[symName].value == 0) {
 #if DYLINK_DEBUG == 2
         dbg(`updateGOT: before: ${symName} : ${GOT[symName].value}`);
@@ -710,7 +708,7 @@ var LibraryDylink = {
           if (!(prop in stubs)) {
             var resolved;
             stubs[prop] = function() {
-              if (!resolved) resolved = resolveSymbol(prop);
+              resolved ||= resolveSymbol(prop);
               return resolved.apply(null, arguments);
             };
           }
@@ -895,9 +893,7 @@ var LibraryDylink = {
       dbg(`setDylinkStackLimits for '${name}'`);
 #endif
       var lib = LDSO.loadedLibsByName[name];
-      if (lib.exports['__set_stack_limits']) {
-        lib.exports['__set_stack_limits']({{{ to64("stackTop") }}}, {{{ to64("stackMax") }}});
-      }
+      lib.exports['__set_stack_limits']?.({{{ to64("stackTop") }}}, {{{ to64("stackMax") }}});
     }
   },
 #endif

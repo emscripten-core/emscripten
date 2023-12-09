@@ -32,7 +32,7 @@ var LibraryHTML5 = {
     // so that we can report information about that element in the event message.
     previousFullscreenElement: null,
 
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
     // Remember the current mouse coordinates in case we need to emulate movementXY generation for browsers that don't support it.
     // Some browsers (e.g. Safari 6.0.5) only give movementXY when Pointerlock is active.
     previousScreenX: null,
@@ -234,7 +234,7 @@ var LibraryHTML5 = {
       if (!target) return '';
       if (target == window) return '#window';
       if (target == screen) return '#screen';
-      return (target && target.nodeName) ? target.nodeName : '';
+      return target?.nodeName || '';
     },
 
     fullscreenEnabled() {
@@ -469,7 +469,7 @@ var LibraryHTML5 = {
 #if MIN_CHROME_VERSION <= 36 // || MIN_ANDROID_BROWSER_VERSION <= 4.4.4
       || e["webkitMovementX"]
 #endif
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
       || (e.screenX-JSEvents.previousScreenX)
 #endif
       ;
@@ -481,7 +481,7 @@ var LibraryHTML5 = {
 #if MIN_CHROME_VERSION <= 36 // || MIN_ANDROID_BROWSER_VERSION <= 4.4.4
       || e["webkitMovementY"]
 #endif
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
       || (e.screenY-JSEvents.previousScreenY)
 #endif
       ;
@@ -500,7 +500,7 @@ var LibraryHTML5 = {
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetX / 4 }}}] = e.clientX - rect.left;
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetY / 4 }}}] = e.clientY - rect.top;
 
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION <= 80000 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
 #if MIN_CHROME_VERSION <= 76
     // wheel and mousewheel events contain wrong screenX/screenY on chrome/opera <= 76,
     // so there we should not record previous screen coordinates on wheel events.
@@ -1070,7 +1070,7 @@ var LibraryHTML5 = {
     // If transitioning to windowed mode, report info about the element that just was fullscreen.
     var reportedElement = isFullscreen ? fullscreenElement : JSEvents.previousFullscreenElement;
     var nodeName = JSEvents.getNodeNameForTarget(reportedElement);
-    var id = (reportedElement && reportedElement.id) ? reportedElement.id : '';
+    var id = reportedElement?.id || '';
     stringToUTF8(nodeName, eventStruct + {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.nodeName }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
     stringToUTF8(id, eventStruct + {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.id }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.elementWidth, 'reportedElement ? reportedElement.clientWidth : 0', 'i32') }}};
@@ -1284,10 +1284,10 @@ var LibraryHTML5 = {
 #if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=mdn-api_documentorshadowroot_fullscreenelement
         || document.mozFullScreenElement
 #endif
-#if MIN_EDGE_VERSION != TARGET_NOT_SUPPORTED || MIN_CHROME_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=mdn-api_documentorshadowroot_fullscreenelement
+#if MIN_CHROME_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=mdn-api_documentorshadowroot_fullscreenelement
         || document.webkitFullscreenElement
 #endif
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION < 76
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
         || document.msFullscreenElement
 #endif
         ;
@@ -1550,7 +1550,7 @@ var LibraryHTML5 = {
   emscripten_enter_soft_fullscreen__proxy: 'sync',
   emscripten_enter_soft_fullscreen: (target, fullscreenStrategy) => {
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
-    if (!target) target = '#canvas';
+    target ||= '#canvas';
 #endif
     target = findEventTarget(target);
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
@@ -1608,7 +1608,7 @@ var LibraryHTML5 = {
   emscripten_exit_soft_fullscreen__deps: ['$restoreOldWindowedStyle'],
   emscripten_exit_soft_fullscreen__proxy: 'sync',
   emscripten_exit_soft_fullscreen: () => {
-    if (restoreOldWindowedStyle) restoreOldWindowedStyle();
+    restoreOldWindowedStyle?.();
     restoreOldWindowedStyle = null;
 
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
@@ -1655,7 +1655,7 @@ var LibraryHTML5 = {
 #endif
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenPointerlockChangeEvent.isActive, 'isPointerlocked', 'i32') }}};
     var nodeName = JSEvents.getNodeNameForTarget(pointerLockElement);
-    var id = (pointerLockElement && pointerLockElement.id) ? pointerLockElement.id : '';
+    var id = pointerLockElement?.id || '';
     stringToUTF8(nodeName, eventStruct + {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.nodeName }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
     stringToUTF8(id, eventStruct + {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.id }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
   },
@@ -1781,7 +1781,7 @@ var LibraryHTML5 = {
     } else if (target.webkitRequestPointerLock) {
       target.webkitRequestPointerLock();
 #endif
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION < 76
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
     } else if (target.msRequestPointerLock) {
       target.msRequestPointerLock();
 #endif
@@ -1795,7 +1795,7 @@ var LibraryHTML5 = {
 #if MIN_CHROME_VERSION <= 36 // https://caniuse.com/#feat=pointerlock
         || document.body.webkitRequestPointerLock
 #endif
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION < 76
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
         || document.body.msRequestPointerLock
 #endif
         ) {
@@ -1821,7 +1821,7 @@ var LibraryHTML5 = {
 #if MIN_CHROME_VERSION <= 36 // https://caniuse.com/#feat=pointerlock
       && !target.webkitRequestPointerLock
 #endif
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION < 76
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
       && !target.msRequestPointerLock
 #endif
       ) {
@@ -1854,7 +1854,7 @@ var LibraryHTML5 = {
 
     if (document.exitPointerLock) {
       document.exitPointerLock();
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION < 76
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
     } else if (document.msExitPointerLock) {
       document.msExitPointerLock();
 #endif
@@ -2323,7 +2323,7 @@ var LibraryHTML5 = {
     if (!canvas.controlTransferredOffscreen) {
 #endif
       var autoResizeViewport = false;
-      if (canvas.GLctxObject && canvas.GLctxObject.GLctx) {
+      if (canvas.GLctxObject?.GLctx) {
         var prevViewport = canvas.GLctxObject.GLctx.getParameter(0xBA2 /* GL_VIEWPORT */);
         // TODO: Perhaps autoResizeViewport should only be true if FBO 0 is currently active?
         autoResizeViewport = (prevViewport[0] === 0 && prevViewport[1] === 0 && prevViewport[2] === canvas.width && prevViewport[3] === canvas.height);

@@ -36,8 +36,8 @@ function dump(item) {
   }
 }
 
-global.warnings = false;
-global.currentFile = null;
+globalThis.warnings = false;
+globalThis.currentFile = null;
 
 function errorPrefix() {
   if (currentFile) {
@@ -48,7 +48,7 @@ function errorPrefix() {
 }
 
 function warn(a, msg) {
-  global.warnings = true;
+  globalThis.warnings = true;
   if (!msg) {
     msg = a;
     a = false;
@@ -64,14 +64,14 @@ function warnOnce(a, msg) {
     a = false;
   }
   if (!a) {
-    if (!warnOnce.msgs) warnOnce.msgs = {};
+    warnOnce.msgs ||= {};
     if (msg in warnOnce.msgs) return;
     warnOnce.msgs[msg] = true;
     warn(msg);
   }
 }
 
-global.abortExecution = false;
+globalThis.abortExecution = false;
 
 function error(msg) {
   abortExecution = true;
@@ -233,7 +233,7 @@ function isPowerOfTwo(x) {
 }
 
 /** @constructor */
-function Benchmarker() {
+globalThis.Benchmarker = function() {
   const totals = {};
   const ids = [];
   const lastTime = 0;
@@ -244,7 +244,7 @@ function Benchmarker() {
     }
     lastTime = now;
     ids.push(id);
-    totals[id] = totals[id] || 0;
+    totals[id] ||= 0;
   };
   this.stop = function(id) {
     const now = Date.now();

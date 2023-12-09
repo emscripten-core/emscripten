@@ -364,9 +364,7 @@ addToLibrary({
     assert(typeof maxBytesToWrite == 'number', 'stringToUTF16(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
 #endif
     // Backwards compatibility: if max bytes is not specified, assume unsafe unbounded write is allowed.
-    if (maxBytesToWrite === undefined) {
-      maxBytesToWrite = 0x7FFFFFFF;
-    }
+    maxBytesToWrite ??= 0x7FFFFFFF;
     if (maxBytesToWrite < 2) return 0;
     maxBytesToWrite -= 2; // Null terminator.
     var startPtr = outPtr;
@@ -439,9 +437,7 @@ addToLibrary({
     assert(typeof maxBytesToWrite == 'number', 'stringToUTF32(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
 #endif
     // Backwards compatibility: if max bytes is not specified, assume unsafe unbounded write is allowed.
-    if (maxBytesToWrite === undefined) {
-      maxBytesToWrite = 0x7FFFFFFF;
-    }
+    maxBytesToWrite ??= 0x7FFFFFFF;
     if (maxBytesToWrite < 4) return 0;
     var startPtr = outPtr;
     var endPtr = startPtr + maxBytesToWrite - 4;

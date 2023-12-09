@@ -1886,7 +1886,7 @@ var LibraryOpenAL = {
     };
 
     // The latest way to call getUserMedia()
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    if (navigator.mediaDevices?.getUserMedia) {
       navigator.mediaDevices
            .getUserMedia({audio: true})
            .then(onSuccess)
@@ -1911,11 +1911,11 @@ var LibraryOpenAL = {
     // This clean-up might be unnecessary (paranoid) ?
 
     // May happen if user hasn't decided to grant or deny input
-    if (c.mediaStreamSourceNode) c.mediaStreamSourceNode.disconnect();
-    if (c.mergerNode) c.mergerNode.disconnect();
-    if (c.splitterNode) c.splitterNode.disconnect();
+    c.mediaStreamSourceNode?.disconnect();
+    c.mergerNode?.disconnect();
+    c.splitterNode?.disconnect();
     // May happen if user hasn't decided to grant or deny input
-    if (c.scriptProcessorNode) c.scriptProcessorNode.disconnect();
+    c.scriptProcessorNode?.disconnect();
     if (c.mediaStream) {
       // Disabling the microphone of the browser.
       // Without this operation, the red dot on the browser tab page will remain.

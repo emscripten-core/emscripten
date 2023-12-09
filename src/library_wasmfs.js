@@ -512,9 +512,8 @@ FS.init();
   })),
 
   $FS_create__deps: ['$FS_mknod'],
-  $FS_create: (path, mode) => {
-    // Default settings copied from the legacy JS FS API.
-    mode = mode !== undefined ? mode : 438 /* 0666 */;
+  // Default settings copied from the legacy JS FS API.
+  $FS_create: (path, mode = 438 /* 0666 */) => {
     mode &= {{{ cDefs.S_IALLUGO }}};
     mode |= {{{ cDefs.S_IFREG }}};
     return FS_mknod(path, mode, 0);
@@ -541,8 +540,7 @@ FS.init();
   }),
 
   $FS_mkdir__deps: ['_wasmfs_mkdir'],
-  $FS_mkdir: (path, mode) => FS.handleError(withStackSave(() => {
-    mode = mode !== undefined ? mode : 511 /* 0777 */;
+  $FS_mkdir: (path, mode = 511 /* 0777 */) => FS.handleError(withStackSave(() => {
     var buffer = stringToUTF8OnStack(path);
     return __wasmfs_mkdir(buffer, mode);
   })),

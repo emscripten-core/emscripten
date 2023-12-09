@@ -807,6 +807,7 @@ jobs:
             browser64
             skip:browser64.test_4gb_fail
             browser64_4gb.test_async_*
+            browser64_4gb.test_audio_worklet*
             browser64_4gb.test_emscripten_log
             "
   test-browser-firefox:

@@ -459,9 +459,7 @@ FS.staticInit();` +
         // override node's stream ops with the device's
         stream.stream_ops = device.stream_ops;
         // forward the open call
-        if (stream.stream_ops.open) {
-          stream.stream_ops.open(stream);
-        }
+        stream.stream_ops.open?.(stream);
       },
       llseek() {
         throw new FS.ErrnoError({{{ cDefs.ESPIPE }}});
@@ -1607,7 +1605,7 @@ FS.staticInit();` +
         },
         close(stream) {
           // flush any pending line data
-          if (output && output.buffer && output.buffer.length) {
+          if (output?.buffer?.length) {
             output({{{ charCode('\n') }}});
           }
         },

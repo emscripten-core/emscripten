@@ -20,11 +20,29 @@ See docs/process.md for more on how version tagging works.
 
 3.1.51 (in development)
 -----------------------
+- Support for explicitly targeting the legacy EdgeHTML browser (edge version
+  prior to the chromium-based edge) via `-sMIN_EDGE_VERSION` was removed.
+  Using `-sLEGACY_VM_SUPPORT` should still work if anyone still wanted to target
+  this or any other legacy browser.
 - Breaking change: Using the `*glGetProcAddress()` family of functions now
   requires passing a linker flag -sGL_ENABLE_GET_PROC_ADDRESS. This prevents
   ports of native GL renderers from later accidentally attempting to activate
   "dormant" features if web browser implementations gain new WebGL extensions in
   the future, which `*glGetProcAddress()` is not able to support. (#20802)
+- Added Hi DPI support to GLFW. When enabled, GLFW automatically accounts for
+  the `devicePixelRatio` browser property and changes the size of the canvas
+  accordingly (including dynamically if the canvas is moved from a 4K screen to
+  a 2K screen and vice-versa). `glfwGetFramebufferSize` now properly returns the
+  canvas size in pixels, while `glfwGetWindowSize` returns the canvas size is
+  screen size. By default, this feature is disabled. You can enable it before
+  creating a window by calling `glfwWindowHint(GLFW_SCALE_TO_MONITOR,
+  GLFW_TRUE)`. You can also dynamically change it after the window has been
+  created by calling `glfwSetWindowAttrib(window, GLFW_SCALE_TO_MONITOR,
+  GLFW_TRUE)`. (#20584)
+- Transpilation to support older environments/browsers is now performed by babel
+  rather than closure compiler.  This means that folks targeting older browsers
+  (e.g. `-sLEGACY_VM_SUPPORT`) do not need to ensure their code is closure
+  compliant. (#20879)
 
 3.1.50 - 11/29/23
 -----------------
