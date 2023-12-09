@@ -535,6 +535,7 @@ class Library:
         # Use relative paths to reduce the length of the command line.
         # This allows to avoid switching to a response file as often.
         src = os.path.relpath(src, build_dir)
+        src = utils.normalize_path(src)
         batches.setdefault(tuple(cmd), []).append(src)
       objects.add(o)
 
