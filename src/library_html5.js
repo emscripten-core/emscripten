@@ -2150,7 +2150,7 @@ var LibraryHTML5 = {
       navigator.getGamepads();
     } catch(e) {
 #if ASSERTIONS
-      console.error(`navigator.getGamepads() exists, but failed to execute with exception ${e}. Disabling Gamepad access.`);
+      err(`navigator.getGamepads() exists, but failed to execute with exception ${e}. Disabling Gamepad access.`);
 #endif
       navigator.getGamepads = null; // Disable getGamepads() so that other functions will not attempt to use it.
       return 1;
