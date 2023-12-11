@@ -10488,7 +10488,6 @@ int main () {
                                '-sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0',
                                '-sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0',
                                '-sGL_TRACK_ERRORS=0',
-                               '-sGL_SUPPORT_EXPLICIT_SWAP_CONTROL=0',
                                '-sGL_POOL_TEMP_BUFFERS=0',
                                '-sGL_WORKAROUND_SAFARI_GETCONTEXT_BUG=0',
                                '-sNO_FILESYSTEM',
