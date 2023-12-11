@@ -11662,9 +11662,10 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
   # I.e. -sMIN_X_VERSION=-1 is equal to -sMIN_X_VERSION=Infinity
   def test_drop_support_for_browser(self):
     # Test that -1 means "not supported"
-    self.run_process([EMCC, test_file('test_html5_core.c'), '-sMIN_IE_VERSION=-1'])
-    self.assertContained('allowsDeferredCalls: true', read_file('a.out.js'))
-    self.assertNotContained('allowsDeferredCalls: JSEvents.isInternetExplorer()', read_file('a.out.js'))
+    self.run_process([EMCC, test_file('test_html5_core.c')])
+    self.assertContained('document.webkitFullscreenEnabled', read_file('a.out.js'))
+    self.run_process([EMCC, test_file('test_html5_core.c'), '-sMIN_SAFARI_VERSION=-1'])
+    self.assertNotContained('document.webkitFullscreenEnabled', read_file('a.out.js'))
 
   def test_errno_type(self):
     create_file('errno_type.c', '''
