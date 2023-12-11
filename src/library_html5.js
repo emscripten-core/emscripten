@@ -2144,24 +2144,37 @@ var LibraryHTML5 = {
     return JSEvents.registerOrRemoveHandler(eventHandler);
   },
 
+  $disableGamepadApiIfItThrows: () => {
+    try {
+      navigator.getGamepads();
+    } catch(e) {
+#if ASSERTIONS
+      console.error(`navigator.getGamepads() exists, but failed to execute with exception ${e}. Disabling Gamepad access.`);
+#endif
+      navigator.getGamepads = null; // Disable getGamepads() so that other functions will not attempt to use it.
+      return 1;
+    }
+  },
+
   emscripten_set_gamepadconnected_callback_on_thread__proxy: 'sync',
-  emscripten_set_gamepadconnected_callback_on_thread__deps: ['$registerGamepadEventCallback'],
+  emscripten_set_gamepadconnected_callback_on_thread__deps: ['$registerGamepadEventCallback', '$disableGamepadApiIfItThrows'],
   emscripten_set_gamepadconnected_callback_on_thread: (userData, useCapture, callbackfunc, targetThread) => {
-    if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    if (!navigator.getGamepads || disableGamepadApiIfItThrows()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     return registerGamepadEventCallback({{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}}, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_GAMEPADCONNECTED }}}, "gamepadconnected", targetThread);
   },
 
   emscripten_set_gamepaddisconnected_callback_on_thread__proxy: 'sync',
-  emscripten_set_gamepaddisconnected_callback_on_thread__deps: ['$registerGamepadEventCallback'],
+  emscripten_set_gamepaddisconnected_callback_on_thread__deps: ['$registerGamepadEventCallback', '$disableGamepadApiIfItThrows'],
   emscripten_set_gamepaddisconnected_callback_on_thread: (userData, useCapture, callbackfunc, targetThread) => {
-    if (!navigator.getGamepads && !navigator.webkitGetGamepads) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    if (!navigator.getGamepads || disableGamepadApiIfItThrows()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     return registerGamepadEventCallback({{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}}, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_GAMEPADDISCONNECTED }}}, "gamepaddisconnected", targetThread);
   },
 
   emscripten_sample_gamepad_data__proxy: 'sync',
-  emscripten_sample_gamepad_data__deps: ['$JSEvents'],
+  emscripten_sample_gamepad_data__deps: ['$JSEvents', '$disableGamepadApiIfItThrows'],
   emscripten_sample_gamepad_data: () => {
-    return (JSEvents.lastGamepadState = (navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : null)))
+    if (!navigator.getGamepads || disableGamepadApiIfItThrows()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    return (JSEvents.lastGamepadState = navigator.getGamepads())
       ? {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}} : {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
   },
 
@@ -2182,7 +2195,6 @@ var LibraryHTML5 = {
 #if ASSERTIONS
     if (!JSEvents.lastGamepadState) throw 'emscripten_get_gamepad_status() can only be called after having first called emscripten_sample_gamepad_data() and that function has returned EMSCRIPTEN_RESULT_SUCCESS!';
 #endif
-
     // INVALID_PARAM is returned on a Gamepad index that never was there.
     if (index < 0 || index >= JSEvents.lastGamepadState.length) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
 
