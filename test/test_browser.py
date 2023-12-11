@@ -4256,21 +4256,26 @@ Module["preRun"] = () => {
     delete_file('test.worker.js')
     self.run_browser('test2.html', '/report_result?exit:0')
 
-  # Test that if the main thread is performing a futex wait while a pthread needs it to do a proxied operation (before that pthread would wake up the main thread), that it's not a deadlock.
+  # Test that if the main thread is performing a futex wait while a pthread
+  # needs it to do a proxied operation (before that pthread would wake up the
+  # main thread), that it's not a deadlock.
   @requires_threads
   def test_pthread_proxying_in_futex_wait(self):
     self.btest_exit('pthread/test_pthread_proxying_in_futex_wait.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
   # Test that sbrk() operates properly in multithreaded conditions
   @requires_threads
-  def test_pthread_sbrk(self):
-    for aborting_malloc in [0, 1]:
-      print('aborting malloc=' + str(aborting_malloc))
-      # With aborting malloc = 1, test allocating memory in threads
-      # With aborting malloc = 0, allocate so much memory in threads that some of the allocations fail.
-      self.btest_exit('pthread/test_pthread_sbrk.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '-sABORTING_MALLOC=' + str(aborting_malloc), '-DABORTING_MALLOC=' + str(aborting_malloc), '-sINITIAL_MEMORY=128MB'])
+  @parameterized({
+    '': (['-DABORTING_MALLOC=0', '-sABORTING_MALLOC=0'],),
+    'aborting_malloc': (['-DABORTING_MALLOC=1'],),
+  })
+  def test_pthread_sbrk(self, args):
+    # With aborting malloc = 1, test allocating memory in threads
+    # With aborting malloc = 0, allocate so much memory in threads that some of the allocations fail.
+    self.btest_exit('pthread/test_pthread_sbrk.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '-sINITIAL_MEMORY=128MB'] + args)
 
-  # Test that -sABORTING_MALLOC=0 works in both pthreads and non-pthreads builds. (sbrk fails gracefully)
+  # Test that -sABORTING_MALLOC=0 works in both pthreads and non-pthreads
+  # builds. (sbrk fails gracefully)
   @parameterized({
     '': ([],),
     'mt': (['-pthread'],),
@@ -4280,7 +4285,8 @@ Module["preRun"] = () => {
     for opts in [[], ['-O2']]:
       self.btest('gauge_available_memory.cpp', expected='1', args=['-sABORTING_MALLOC=0'] + args + opts)
 
-  # Test that the proxying operations of user code from pthreads to main thread work
+  # Test that the proxying operations of user code from pthreads to main thread
+  # work
   @disabled('https://github.com/emscripten-core/emscripten/issues/18210')
   @requires_threads
   def test_pthread_run_on_main_thread(self):
@@ -4291,12 +4297,14 @@ Module["preRun"] = () => {
   def test_pthread_run_on_main_thread_flood(self):
     self.btest_exit('pthread/test_pthread_run_on_main_thread_flood.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
-  # Test that it is possible to asynchronously call a JavaScript function on the main thread.
+  # Test that it is possible to asynchronously call a JavaScript function on the
+  # main thread.
   @requires_threads
   def test_pthread_call_async(self):
     self.btest_exit('pthread/call_async.c', args=['-pthread'])
 
-  # Test that it is possible to synchronously call a JavaScript function on the main thread and get a return value back.
+  # Test that it is possible to synchronously call a JavaScript function on the
+  # main thread and get a return value back.
   @requires_threads
   def test_pthread_call_sync_on_main_thread(self):
     self.set_setting('EXPORTED_FUNCTIONS', '_main,_malloc')
@@ -4304,14 +4312,16 @@ Module["preRun"] = () => {
     self.btest_exit('pthread/call_sync_on_main_thread.c', args=['-O3', '-pthread', '-DPROXY_TO_PTHREAD=0', '--js-library', test_file('pthread/call_sync_on_main_thread.js')])
     self.btest_exit('pthread/call_sync_on_main_thread.c', args=['-Oz', '-DPROXY_TO_PTHREAD=0', '--js-library', test_file('pthread/call_sync_on_main_thread.js')])
 
-  # Test that it is possible to asynchronously call a JavaScript function on the main thread.
+  # Test that it is possible to asynchronously call a JavaScript function on the
+  # main thread.
   @requires_threads
   def test_pthread_call_async_on_main_thread(self):
     self.btest('pthread/call_async_on_main_thread.c', expected='7', args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD', '-DPROXY_TO_PTHREAD=1', '--js-library', test_file('pthread/call_async_on_main_thread.js')])
     self.btest('pthread/call_async_on_main_thread.c', expected='7', args=['-O3', '-pthread', '-DPROXY_TO_PTHREAD=0', '--js-library', test_file('pthread/call_async_on_main_thread.js')])
     self.btest('pthread/call_async_on_main_thread.c', expected='7', args=['-Oz', '-DPROXY_TO_PTHREAD=0', '--js-library', test_file('pthread/call_async_on_main_thread.js')])
 
-  # Tests that spawning a new thread does not cause a reinitialization of the global data section of the application memory area.
+  # Tests that spawning a new thread does not cause a reinitialization of the
+  # global data section of the application memory area.
   @requires_threads
   def test_pthread_global_data_initialization(self):
     # --memory-init-file mode disabled because WASM=0 does not seem to work with EXPORT_NAME
@@ -4332,7 +4342,9 @@ Module["preRun"] = () => {
       args = ['-sWASM_ASYNC_COMPILATION=0']
       self.btest_exit('pthread/test_pthread_global_data_initialization.c', args=args + mem_init_mode + ['-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
 
-  # Test that emscripten_get_now() reports coherent wallclock times across all pthreads, instead of each pthread independently reporting wallclock times since the launch of that pthread.
+  # Test that emscripten_get_now() reports coherent wallclock times across all
+  # pthreads, instead of each pthread independently reporting wallclock times
+  # since the launch of that pthread.
   @requires_threads
   def test_pthread_clock_drift(self):
     self.btest_exit('pthread/test_pthread_clock_drift.cpp', args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD'])
@@ -4341,7 +4353,8 @@ Module["preRun"] = () => {
   def test_pthread_utf8_funcs(self):
     self.btest_exit('pthread/test_pthread_utf8_funcs.cpp', args=['-pthread', '-sPTHREAD_POOL_SIZE'])
 
-  # Test the emscripten_futex_wake(addr, INT_MAX); functionality to wake all waiters
+  # Test the emscripten_futex_wake(addr, INT_MAX); functionality to wake all
+  # waiters
   @also_with_wasm2js
   @requires_threads
   def test_pthread_wake_all(self):
@@ -4605,8 +4618,10 @@ Module["preRun"] = () => {
     if not self.is_wasm64():
       self.assertLess(abs(size - 4800), 100)
 
-  # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
-  # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
+  # Tests that it is possible to initialize and render WebGL content in a
+  # pthread by using OffscreenCanvas.  -DTEST_CHAINED_WEBGL_CONTEXT_PASSING:
+  # Tests that it is possible to transfer WebGL canvas in a chain from main
+  # thread -> thread 1 -> thread 2 and then init and render WebGL content there.
   @no_chrome('see https://crbug.com/961765')
   @parameterized({
     '': ([],),
@@ -4618,8 +4633,11 @@ Module["preRun"] = () => {
   def test_webgl_offscreen_canvas_in_pthread(self, args):
     self.btest('gl_in_pthread.cpp', expected='1', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
 
-  # Tests that it is possible to render WebGL content on a <canvas> on the main thread, after it has once been used to render WebGL content in a pthread first
-  # -DTEST_MAIN_THREAD_EXPLICIT_COMMIT: Test the same (WebGL on main thread after pthread), but by using explicit .commit() to swap on the main thread instead of implicit "swap when rAF ends" logic
+  # Tests that it is possible to render WebGL content on a <canvas> on the main
+  # thread, after it has once been used to render WebGL content in a pthread
+  # first -DTEST_MAIN_THREAD_EXPLICIT_COMMIT: Test the same (WebGL on main
+  # thread after pthread), but by using explicit .commit() to swap on the main
+  # thread instead of implicit "swap when rAF ends" logic
   @parameterized({
     '': ([],),
     'explicit': (['-DTEST_MAIN_THREAD_EXPLICIT_COMMIT'],),
@@ -4698,12 +4716,15 @@ Module["preRun"] = () => {
     '': ([],),
     'threads': (['-pthread', '-sPROXY_TO_PTHREAD'],)
   })
-  def test_webgl_offscreen_framebuffer(self, threads):
+  @parameterized({
+    'v1': ([],),
+    'v2': (['-sFULL_ES2'],),
+    'v3': (['-sFULL_ES3'],),
+  })
+  def test_webgl_offscreen_framebuffer(self, version, threads):
     # Tests all the different possible versions of libgl
-    for version in [[], ['-sFULL_ES3'], ['-sFULL_ES3']]:
-      args = ['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1'] + threads + version
-      print('with args: %s' % str(args))
-      self.btest_exit('webgl_draw_triangle.c', args=args)
+    args = ['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1'] + threads + version
+    self.btest_exit('webgl_draw_triangle.c', args=args)
 
   # Tests that VAOs can be used even if WebGL enableExtensionsByDefault is set to 0.
   @requires_graphics_hardware
@@ -4739,9 +4760,16 @@ Module["preRun"] = () => {
   def test_webgl_array_of_structs_uniform(self):
     self.btest('webgl_array_of_structs_uniform.c', args=['-lGL', '-sMAX_WEBGL_VERSION=2'], reference='browser/webgl_array_of_structs_uniform.png')
 
-  # Tests that if a WebGL context is created in a pthread on a canvas that has not been transferred to that pthread, WebGL calls are then proxied to the main thread
-  # -DTEST_OFFSCREEN_CANVAS=1: Tests that if a WebGL context is created on a pthread that has the canvas transferred to it via using Emscripten's EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES="#canvas", then OffscreenCanvas is used
-  # -DTEST_OFFSCREEN_CANVAS=2: Tests that if a WebGL context is created on a pthread that has the canvas transferred to it via automatic transferring of Module.canvas when EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES is not defined, then OffscreenCanvas is also used
+  # Tests that if a WebGL context is created in a pthread on a canvas that has
+  # not been transferred to that pthread, WebGL calls are then proxied to the
+  # main thread -DTEST_OFFSCREEN_CANVAS=1: Tests that if a WebGL context is
+  # created on a pthread that has the canvas transferred to it via using
+  # Emscripten's EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES="#canvas", then
+  # OffscreenCanvas is used -DTEST_OFFSCREEN_CANVAS=2: Tests that if a WebGL
+  # context is created on a pthread that has the canvas transferred to it via
+  # automatic transferring of Module.canvas when
+  # EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES is not defined, then OffscreenCanvas
+  # is also used
   @parameterized({
     '': ([False],),
     'asyncify': ([True],),
@@ -4750,38 +4778,49 @@ Module["preRun"] = () => {
   @requires_offscreen_canvas
   @requires_graphics_hardware
   def test_webgl_offscreen_canvas_in_proxied_pthread(self, asyncify):
-    cmd = ['-pthread', '-sOFFSCREENCANVAS_SUPPORT', '-lGL', '-sGL_DEBUG', '-sPROXY_TO_PTHREAD']
+    args = ['-pthread', '-sOFFSCREENCANVAS_SUPPORT', '-lGL', '-sGL_DEBUG', '-sPROXY_TO_PTHREAD']
     if asyncify:
       # given the synchronous render loop here, asyncify is needed to see intermediate frames and
       # the gradual color change
-      cmd += ['-sASYNCIFY', '-DASYNCIFY']
-    print(str(cmd))
-    self.btest_exit('gl_in_proxy_pthread.cpp', args=cmd)
+      args += ['-sASYNCIFY', '-DASYNCIFY']
+    self.btest_exit('gl_in_proxy_pthread.cpp', args=args)
 
   @parameterized({
-    'proxy': (['-sPROXY_TO_PTHREAD'],),
     '': ([],),
+    'proxy': (['-sPROXY_TO_PTHREAD'],),
+  })
+  @parameterized({
+    '': ([],),
+    'blocking': (['-DTEST_SYNC_BLOCKING_LOOP=1'],),
+  })
+  @parameterized({
+    '': ([],),
+    'offscreen': (['-sOFFSCREENCANVAS_SUPPORT', '-sOFFSCREEN_FRAMEBUFFER'],),
   })
   @requires_threads
   @requires_graphics_hardware
   @requires_offscreen_canvas
-  def test_webgl_resize_offscreencanvas_from_main_thread(self, args):
-    for args2 in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
-      for args3 in [[], ['-sOFFSCREENCANVAS_SUPPORT', '-sOFFSCREEN_FRAMEBUFFER']]:
-        cmd = args + args2 + args3 + ['-pthread', '-lGL', '-sGL_DEBUG']
-        print(str(cmd))
-        self.btest_exit('resize_offscreencanvas_from_main_thread.cpp', args=cmd)
+  def test_webgl_resize_offscreencanvas_from_main_thread(self, args1, args2, args3):
+    cmd = args1 + args2 + args3 + ['-pthread', '-lGL', '-sGL_DEBUG']
+    print(str(cmd))
+    self.btest_exit('resize_offscreencanvas_from_main_thread.cpp', args=cmd)
 
   @requires_graphics_hardware
-  def test_webgl_simple_enable_extensions(self):
-    for webgl_version in [1, 2]:
-      for simple_enable_extensions in [0, 1]:
-        cmd = ['-DWEBGL_CONTEXT_VERSION=' + str(webgl_version),
-               '-DWEBGL_SIMPLE_ENABLE_EXTENSION=' + str(simple_enable_extensions),
-               '-sMAX_WEBGL_VERSION=2',
-               '-sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=' + str(simple_enable_extensions),
-               '-sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=' + str(simple_enable_extensions)]
-        self.btest_exit('webgl2_simple_enable_extensions.c', args=cmd)
+  @parameterized({
+    'v1': (1,),
+    'v2': (2,),
+  })
+  @parameterized({
+    'enable': (1,),
+    'disable': (0,),
+  })
+  def test_webgl_simple_extensions(self, simple_enable_extensions, webgl_version):
+    cmd = ['-DWEBGL_CONTEXT_VERSION=' + str(webgl_version),
+           '-DWEBGL_SIMPLE_ENABLE_EXTENSION=' + str(simple_enable_extensions),
+           '-sMAX_WEBGL_VERSION=2',
+           '-sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=' + str(simple_enable_extensions),
+           '-sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=' + str(simple_enable_extensions)]
+    self.btest_exit('webgl2_simple_enable_extensions.c', args=cmd)
 
   @parameterized({
     '': ([],),
