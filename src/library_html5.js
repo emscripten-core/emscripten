@@ -2144,6 +2144,7 @@ var LibraryHTML5 = {
     return JSEvents.registerOrRemoveHandler(eventHandler);
   },
 
+  $disableGamepadApiIfItThrows__docs: '/** @suppress {checkTypes} */',
   $disableGamepadApiIfItThrows: () => {
     try {
       navigator.getGamepads();
