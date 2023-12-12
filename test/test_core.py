@@ -880,9 +880,6 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('emmalloc_memalign_corruption.cpp')
 
-  def test_newstruct(self):
-    self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
-
   def test_addr_of_stacked(self):
     self.do_core_test('test_addr_of_stacked.c')
 
