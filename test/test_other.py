@@ -11458,7 +11458,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
 
   def test_linker_flags_unused(self):
     err = self.run_process([EMXX, test_file('hello_world.cpp'), '-c', '-lbar'], stderr=PIPE).stderr
-    self.assertContained("warning: argument unused during compilation: '-lbar' [-Wunused-command-line-argument]", err)
+    self.assertContained("warning: -lbar: 'linker' input unused [-Wunused-command-line-argument]", err)
 
   def test_linker_input_unused(self):
     self.run_process([EMXX, '-c', test_file('hello_world.cpp')])
@@ -14279,3 +14279,7 @@ addToLibrary({
 
   def test_errar(self):
     self.do_other_test('test_errar.c')
+
+  def test_no_input_files(self):
+    err = self.expect_fail([EMCC, '-c'])
+    self.assertContained('clang: error: no input files', err)

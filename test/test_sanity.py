@@ -142,11 +142,13 @@ class sanity(RunnerCore):
   def check_working(self, command, expected=None):
     if type(command) is not list:
       command = [command]
+    if command == [EMCC]:
+      command = [EMCC, '--version']
     if expected is None:
       if command[0] == EMCC or (len(command) >= 2 and command[1] == EMCC):
-        expected = 'no input files'
+        expected = 'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld)'
       else:
-        expected = "could not find the following tests: blahblah"
+        expected = 'could not find the following tests: blahblah'
 
     output = self.do(command)
     self.assertContained(expected, output)
