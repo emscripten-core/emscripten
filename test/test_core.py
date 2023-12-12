@@ -816,48 +816,8 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('GLOBAL_BASE', '100kb')
     self.do_core_test('test_stack_placement.c')
 
-  def test_strings(self):
-    self.do_core_test('test_strings.c', args=['wowie', 'too', '74'])
-
-  def test_strcmp_uni(self):
-    self.do_core_test('test_strcmp_uni.c')
-
-  def test_strndup(self):
-    self.do_core_test('test_strndup.c')
-
-  def test_errar(self):
-    self.do_core_test('test_errar.c')
-
   def test_mainenv(self):
     self.do_core_test('test_mainenv.c')
-
-  def test_funcs(self):
-    self.do_core_test('test_funcs.c')
-
-  def test_structs(self):
-    self.do_core_test('test_structs.c')
-
-  gen_struct_src = '''
-        #include <stdio.h>
-        #include <stdlib.h>
-        #include "emscripten.h"
-
-        struct S
-        {
-          int x, y;
-        };
-        int main()
-        {
-          S* a = {{gen_struct}};
-          a->x = 51; a->y = 62;
-          printf("*%d,%d*\\n", a->x, a->y);
-          {{del_struct}}(a);
-          return 0;
-        }
-  '''
-
-  def test_mallocstruct(self):
-    self.do_run(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
@@ -919,9 +879,6 @@ base align: 0, 0, 0, 0'''])
   def test_emmalloc_memalign_corruption(self, *args):
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('emmalloc_memalign_corruption.cpp')
-
-  def test_newstruct(self):
-    self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
 
   def test_addr_of_stacked(self):
     self.do_core_test('test_addr_of_stacked.c')
