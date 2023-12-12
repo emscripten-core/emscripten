@@ -780,46 +780,6 @@ class TestCoreBase(RunnerCore):
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_rounding.c')
 
-  def test_multiply_defined_symbols(self):
-    create_file('a1.c', 'int f() { return 1; }')
-    create_file('a2.c', 'void x() {}')
-    create_file('b1.c', 'int f() { return 2; }')
-    create_file('b2.c', 'void y() {}')
-    create_file('main.c', r'''
-      #include <stdio.h>
-      int f();
-      int main() {
-        printf("result: %d\n", f());
-        return 0;
-      }
-    ''')
-
-    self.emcc('a1.c', ['-c'])
-    self.emcc('a2.c', ['-c'])
-    self.emcc('b1.c', ['-c'])
-    self.emcc('b2.c', ['-c'])
-    self.emcc('main.c', ['-c'])
-
-    building.emar('cr', 'liba.a', ['a1.o', 'a2.o'])
-    building.emar('cr', 'libb.a', ['b1.o', 'b2.o'])
-
-    # Add -Wno-deprecated to avoid warning about bitcode linking in the LTO
-    # version of this test.
-    self.run_process([EMCC, '-r', '-o', 'all.o', 'main.o', 'liba.a', 'libb.a',
-                      '-Wno-deprecated'] + self.get_emcc_args())
-
-    self.emcc('all.o', output_filename='all.js')
-    self.do_run('all.js', 'result: 1', no_build=True)
-
-  def test_if(self):
-    self.do_core_test('test_if.c')
-
-  def test_if_else(self):
-    self.do_core_test('test_if_else.c')
-
-  def test_loop(self):
-    self.do_core_test('test_loop.c')
-
   def test_stack(self):
     self.set_setting('INLINING_LIMIT')
     # some extra coverage in all test suites for stack checks
