@@ -5282,6 +5282,15 @@ int main() {
   def test_dylink_no_filesystem(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sMAIN_MODULE=2', '-sNO_FILESYSTEM'])
 
+  def test_dylink_4gb_max(self):
+    # Test main module with 4GB of memory. we need to emit a "maximum"
+    # clause then, even though 4GB is the maximum; see
+    # https://github.com/emscripten-core/emscripten/issues/14130
+    self.set_setting('MAIN_MODULE', '1')
+    self.set_setting('ALLOW_MEMORY_GROWTH', '1')
+    self.set_setting('MAXIMUM_MEMORY', '4GB')
+    self.do_runf(test_file('hello_world.c'))
+
   def test_dashS(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-S'])
     self.assertExists('hello_world.s')
