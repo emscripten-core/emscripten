@@ -789,9 +789,7 @@ def phase_setup(options, state, newargs):
       newargs[i] = ''
       newargs[i + 1] = ''
     elif arg == '-s':
-      # -s and some other compiler flags are normally passed onto the linker
-      # TODO(sbc): Pass this and other flags through when using lld
-      # link_flags.append((i, arg))
+      state.add_link_flag(i, newargs[i])
       newargs[i] = ''
     elif arg == '-':
       input_files.append((i, arg))

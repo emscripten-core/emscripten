@@ -14196,10 +14196,29 @@ addToLibrary({
     self.assertNotIn(b'hello from dtor', read_binary('test_unused_destructor.wasm'))
 
   def test_strip_all(self):
-    # Test that even with `-Wl,--strip-all` the target features section is generated
-    # by wasm-ld so that later phases (e.g. wasm-opt) can read it.
+    def has_debug_section(wasm):
+      with webassembly.Module('hello_world.wasm') as wasm:
+        return wasm.get_custom_section('.debug_info') is not None
+
+    # Use -O2 to ensure wasm-opt gets run
+    self.emcc_args += ['-g', '-O2']
+
+    # First, verify that `-g` produces a debug section
+    self.do_runf('hello_world.c')
+    self.assertTrue(has_debug_section('hello_world.wasm'))
+
+    # Test `-Wl,--strip-all` will strip the debug section, but that the
+    # the target features section is preserved so that later phases
+    # (e.g. wasm-opt) can read it.
     self.do_runf('hello_world.c', emcc_args=['-Wl,--strip-all', '-pthread'])
+    self.assertFalse(has_debug_section('hello_world.wasm'))
+
+    # Verify that `-Wl,-s` and `-s` also both have the same effect
     self.do_runf('hello_world.c', emcc_args=['-Wl,-s', '-pthread'])
+    self.assertFalse(has_debug_section('hello_world.wasm'))
+
+    self.do_runf('hello_world.c', emcc_args=['-s', '-pthread'])
+    self.assertFalse(has_debug_section('hello_world.wasm'))
 
   def test_embind_no_duplicate_symbols(self):
     # Embind implementation lives almost entirely in headers, which have special rules
