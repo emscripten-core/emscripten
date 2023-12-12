@@ -14248,3 +14248,16 @@ addToLibrary({
 
   def test_llrint(self):
     self.do_other_test('test_llrint.c')
+
+  def test_strings(self):
+    self.do_other_test('test_strings.c', args=['wowie', 'too', '74'])
+
+  def test_strcmp_uni(self):
+    self.do_other_test('test_strcmp_uni.c')
+
+  def test_strndup(self):
+    self.do_other_test('test_strndup.c')
+
+  def test_errar(self):
+    self.do_other_test('test_errar.c')
+
