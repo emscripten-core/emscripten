@@ -528,14 +528,6 @@ Options that are modified or new in *emcc* are listed below:
   directory itself, and then in the user's home directory (``~/.emscripten``).
   This can be overridden using the ``EM_CONFIG`` environment variable.
 
-``--default-obj-ext <.ext>``
-  [compile]
-  Specifies the output suffix to use when compiling with ``-c`` in the absence
-  of ``-o``.  For example, when compiling multiple sources files with ``emcc -c
-  *.c`` the compiler will normally output files with the ``.o`` extension, but
-  ``--default-obj-ext .obj`` can be used to instead generate files with the
-  `.obj` extension.
-
 ``--valid-abspath <path>``
   [compile+link]
   Note an allowed absolute path, which we should not warn about (absolute

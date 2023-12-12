@@ -4188,13 +4188,6 @@ printErr('dir was ' + process.env.EMCC_BUILD_DIR);
     err = self.expect_fail([EMCC, '-c', test_file('hello_world.c'), '-o', 'out_dir/'])
     self.assertContained('error: unable to open output file', err)
 
-  def test_default_obj_ext(self):
-    self.run_process([EMCC, '-c', test_file('hello_world.c')])
-    self.assertExists('hello_world.o')
-
-    self.run_process([EMCC, '-c', test_file('hello_world.c'), '--default-obj-ext', 'obj'])
-    self.assertExists('hello_world.obj')
-
   def test_doublestart_bug(self):
     create_file('code.c', r'''
 #include <stdio.h>
@@ -12584,10 +12577,6 @@ kill -9 $$
   def test_link_only_flag_warning(self):
     err = self.run_process([EMCC, '--embed-file', 'file', '-c', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained("warning: linker flag ignored during compilation: '--embed-file' [-Wunused-command-line-argument]", err)
-
-  def test_compile_only_flag_warning(self):
-    err = self.run_process([EMCC, '--default-obj-ext', 'foo', test_file('hello_world.c')], stderr=PIPE).stderr
-    self.assertContained("warning: compiler flag ignored during linking: '--default-obj-ext' [-Wunused-command-line-argument]", err)
 
   def test_no_deprecated(self):
     # Test that -Wno-deprecated is passed on to clang driver
