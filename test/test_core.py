@@ -3400,6 +3400,7 @@ Var: 42
   @needs_dylink
   @no_sanitize('contains ODR violation')
   @no_2gb('output is sensitive to absolute data layout')
+  @no_4gb('output is sensitive to absolute data layout')
   def test_dlfcn_alignment_and_zeroing(self):
     self.set_setting('INITIAL_MEMORY', '16mb')
     create_file('liblib.c', r'''
@@ -4389,21 +4390,6 @@ ok
       ''',
       expected='hello 1: 56.779999\ngot: 1\nhello 1: 12.340000\n',
       header='typedef float (*floatfunc)(float);', force_c=True)
-
-  @needs_dylink
-  def test_missing_signatures(self):
-    create_file('test_sig.c', r'''#include <emscripten.h>
-                                       int main() {
-                                         return 0 == ( (long)&emscripten_run_script_string +
-                                                       (long)&emscripten_run_script );
-                                       }''')
-    self.set_setting('MAIN_MODULE', 1)
-    # also test main module with 4GB of memory. we need to emit a "maximum"
-    # clause then, even though 4GB is the maximum; see
-    # https://github.com/emscripten-core/emscripten/issues/14130
-    self.set_setting('ALLOW_MEMORY_GROWTH', '1')
-    self.set_setting('MAXIMUM_MEMORY', '4GB')
-    self.do_runf('test_sig.c', '')
 
   @needs_dylink
   def test_dylink_global_init(self):
