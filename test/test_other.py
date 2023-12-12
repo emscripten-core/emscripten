@@ -136,6 +136,23 @@ def also_with_wasmfs_all_backends(f):
   return metafunc
 
 
+def also_with_sanitizers(f):
+  assert callable(f)
+
+  @wraps(f)
+  def metafunc(self, sanitizers):
+    if sanitizers:
+      self.set_setting('ALLOW_MEMORY_GROWTH')
+      self.emcc_args.append('-fsanitize=undefined,leak,address')
+      f(self)
+    else:
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'sanitizers': (True,)}
+  return metafunc
+
+
 def requires_ninja(func):
   assert callable(func)
 
@@ -14249,33 +14266,43 @@ addToLibrary({
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sFILESYSTEM=0', '-sFORCE_FILESYSTEM'])
     self.assertContained('emcc: error: `-sFORCE_FILESYSTEM` cannot be used with `-sFILESYSTEM=0`', err)
 
+  @also_with_sanitizers
   def test_aligned_alloc(self):
     self.do_runf('test_aligned_alloc.c', '',
                  emcc_args=['-Wno-non-power-of-two-alignment'])
 
+  @also_with_sanitizers
   def test_erf(self):
     self.do_other_test('test_erf.c')
 
+  @also_with_sanitizers
   def test_math_hyperbolic(self):
     self.do_other_test('test_math_hyperbolic.c')
 
+  @also_with_sanitizers
   def test_frexp(self):
     self.do_other_test('test_frexp.c')
 
+  @also_with_sanitizers
   def test_fcvt(self):
     self.do_other_test('test_fcvt.cpp')
 
+  @also_with_sanitizers
   def test_llrint(self):
     self.do_other_test('test_llrint.c')
 
+  @also_with_sanitizers
   def test_strings(self):
     self.do_other_test('test_strings.c', args=['wowie', 'too', '74'])
 
+  @also_with_sanitizers
   def test_strcmp_uni(self):
     self.do_other_test('test_strcmp_uni.c')
 
+  @also_with_sanitizers
   def test_strndup(self):
     self.do_other_test('test_strndup.c')
 
+  @also_with_sanitizers
   def test_errar(self):
     self.do_other_test('test_errar.c')
