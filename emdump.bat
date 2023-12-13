@@ -23,8 +23,8 @@
 :: %~dp0 expansions will not work.
 :: So first try if %~dp0 might work, and if not, manually look up this script from PATH.
 @if exist %~f0 (
-  set MYDIR=%~dp0
-  goto FOUND_MYDIR
+  @set MYDIR=%~dp0
+  @goto FOUND_MYDIR
 )
 @for %%I in (tools\emdump.bat) do (
   @if exist %%~$PATH:I (
