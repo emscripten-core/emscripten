@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.51 (in development)
 -----------------------
+- The `--default-obj-ext` command line flag was removed. (#20917)
 - Support for explicitly targeting the legacy Interet Explorer or EdgeHTML
   (edge version prior to the chromium-based edge) browsers via
   `-sMIN_EDGE_VERSION/-sMIN_IE_VERSION` was removed. (#20881)
