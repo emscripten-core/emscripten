@@ -14311,9 +14311,9 @@ addToLibrary({
 
       int main() {
         EM_ASM(
-          console.log(Module.value.neg.value);
-          console.log(Module.value.zero.value);
-          console.log(Module.value.pos.value);
+        console.log(Module.value.neg.value);
+        console.log(Module.value.zero.value);
+        console.log(Module.value.pos.value);
         );
       }
 
@@ -14324,10 +14324,10 @@ addToLibrary({
       };
 
       EMSCRIPTEN_BINDINGS(utility) {
-          enum_<value>("value")
-              .value("neg", value::neg)
-              .value("zero", value::zero)
-              .value("pos", value::pos);
+        enum_<value>("value")
+          .value("neg", value::neg)
+          .value("zero", value::zero)
+          .value("pos", value::pos);
       }
     '''
     expected = '-1\n0\n1\n'
