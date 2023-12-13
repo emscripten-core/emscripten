@@ -300,7 +300,7 @@ sigs = {
   _embind_register_constant__sig: 'vppd',
   _embind_register_emval__sig: 'vpp',
   _embind_register_enum__sig: 'vpppi',
-  _embind_register_enum_value__sig: 'vppp',
+  _embind_register_enum_value__sig: 'vppi',
   _embind_register_float__sig: 'vppp',
   _embind_register_function__sig: 'vpippppi',
   _embind_register_integer__sig: 'vpppii',

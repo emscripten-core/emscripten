@@ -14298,3 +14298,38 @@ addToLibrary({
   def test_no_input_files(self):
     err = self.expect_fail([EMCC, '-c'])
     self.assertContained('clang: error: no input files', err)
+
+  def test_embind_negative_enum_values(self):
+    # Test if negative enum values are printed correctly and not overflown to
+    # large values when CAN_ADDRESS_2GB is true.
+    src = r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+      #include <emscripten/bind.h>
+
+      using namespace emscripten;
+
+      int main() {
+        EM_ASM(
+        console.log(Module.value.neg.value);
+        console.log(Module.value.zero.value);
+        console.log(Module.value.pos.value);
+        );
+      }
+
+      enum class value {
+        neg = -1,
+        zero = 0,
+        pos = 1,
+      };
+
+      EMSCRIPTEN_BINDINGS(utility) {
+        enum_<value>("value")
+          .value("neg", value::neg)
+          .value("zero", value::zero)
+          .value("pos", value::pos);
+      }
+    '''
+    expected = '-1\n0\n1\n'
+    self.do_run(src, expected_output=expected,
+                emcc_args=['-lembind', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB'])

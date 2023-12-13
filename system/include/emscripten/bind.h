@@ -37,7 +37,7 @@ enum class sharing_policy {
 
 namespace internal {
 
-typedef long GenericEnumValue;
+typedef int GenericEnumValue;
 
 typedef void* GenericFunction;
 typedef void (*VoidFunctionPtr)(void);
