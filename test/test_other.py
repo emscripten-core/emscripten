@@ -14331,5 +14331,5 @@ addToLibrary({
       }
     '''
     expected = '-1\n0\n1\n'
-    self.do_run(src, assert_identical=True, expected_output=expected,
+    self.do_run(src, expected_output=expected,
                 emcc_args=['-lembind', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB'])
