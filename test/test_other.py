@@ -3269,6 +3269,7 @@ int f() {
     self.run_process([FILE_PACKAGER, 'test.data', '--js-output=test.js', '--depfile=test.data.d', '--from-emcc', '--preload', '.'])
     output = read_file('test.data.d')
     file_packager = utils.normalize_path(shared.replace_suffix(FILE_PACKAGER, '.py'))
+    file_packager = file_packager.replace(' ', '\\ ')
     lines = output.splitlines()
     split = lines.index(': \\')
     before, after = set(lines[:split]), set(lines[split + 1:])
@@ -14333,3 +14334,9 @@ addToLibrary({
     expected = '-1\n0\n1\n'
     self.do_run(src, expected_output=expected,
                 emcc_args=['-lembind', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB'])
+
+  @crossplatform
+  def test_no_extra_output(self):
+    self.run_process([EMCC, '-c', test_file('hello_world.c')])
+    output = self.run_process([EMCC, '-c', test_file('hello_world.c')], stdout=PIPE, stderr=STDOUT).stdout
+    self.assertEqual(output, '')
