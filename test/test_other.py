@@ -14302,7 +14302,7 @@ addToLibrary({
   def test_embind_negative_enum_values(self):
     # Test if negative enum values are printed correctly and not overflown to
     # large values when CAN_ADDRESS_2GB is true.
-    src =  r'''
+    src = r'''
       #include <stdio.h>
       #include <emscripten.h>
       #include <emscripten/bind.h>
