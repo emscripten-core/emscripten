@@ -934,17 +934,6 @@ def get_clang_output_extension(state):
     return '.o'
 
 
-def exec_subprocess_and_exit(cmd):
-  if utils.WINDOWS:
-    shared.check_call(cmd)
-    sys.exit(0)
-  else:
-    shared.print_compiler_stage(cmd)
-    sys.stdout.flush()
-    sys.stderr.flush()
-    os.execv(cmd[0], cmd)
-
-
 @ToolchainProfiler.profile_block('compile inputs')
 def phase_compile_inputs(options, state, newargs, input_files):
   if shared.run_via_emxx:
@@ -993,7 +982,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     # output the dependency rule. Warning: clang and gcc behave differently
     # with -MF! (clang seems to not recognize it)
     logger.debug(('just preprocessor ' if state.has_dash_E else 'just dependencies: ') + ' '.join(cmd))
-    exec_subprocess_and_exit(cmd)
+    shared.exec_process(cmd)
 
   # Precompiled headers support
   if state.mode == Mode.PCH:
@@ -1005,7 +994,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     if options.output_file:
       cmd += ['-o', options.output_file]
     logger.debug(f"running (for precompiled headers): {cmd[0]} {' '.join(cmd[1:])}")
-    exec_subprocess_and_exit(cmd)
+    shared.exec_process(cmd)
 
   if state.mode == Mode.COMPILE_ONLY:
     inputs = [i[1] for i in input_files]
@@ -1020,7 +1009,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     ext = get_clang_output_extension(state)
     if not options.output_file and options.default_object_extension != ext:
       # If we are using a non-standard output file extention we cannot use
-      # exec_subprocess_and_exit here since we need to rename the files
+      # exec_process here since we need to rename the files
       # after clang runs (since clang does not support --default-obj-ext)
       # TODO: Remove '--default-obj-ext' to reduce this complexity
       shared.check_call(cmd)
@@ -1030,7 +1019,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
         shutil.move(output, new_output)
       sys.exit(0)
     else:
-      exec_subprocess_and_exit(cmd)
+      shared.exec_process(cmd)
 
   # In COMPILE_AND_LINK we need to compile source files too, but we also need to
   # filter out the link flags
