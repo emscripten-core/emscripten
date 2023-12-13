@@ -940,6 +940,8 @@ def exec_subprocess_and_exit(cmd):
     sys.exit(0)
   else:
     shared.print_compiler_stage(cmd)
+    sys.stdout.flush()
+    sys.stderr.flush()
     os.execv(cmd[0], cmd)
 
 
