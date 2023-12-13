@@ -14299,7 +14299,7 @@ addToLibrary({
     err = self.expect_fail([EMCC, '-c'])
     self.assertContained('clang: error: no input files', err)
 
-  def test_negative_enum_values(self):
+  def test_embind_negative_enum_values(self):
     # Test if negative enum values are printed correctly and not overflown to
     # large values when CAN_ADDRESS_2GB is true.
     src =  r'''
