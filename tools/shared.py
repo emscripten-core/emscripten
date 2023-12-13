@@ -240,6 +240,17 @@ def check_call(cmd, *args, **kw):
     exit_with_error("'%s' failed: %s", shlex_join(cmd), str(e))
 
 
+def exec_process(cmd):
+  if utils.WINDOWS:
+    rtn = run_process(cmd, stdin=sys.stdin, check=False).returncode
+    sys.exit(rtn)
+  else:
+    print_compiler_stage(cmd)
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os.execv(cmd[0], cmd)
+
+
 def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: mutable default args
   """Execute a javascript tool.
 
