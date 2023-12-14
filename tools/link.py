@@ -1101,9 +1101,6 @@ def phase_linker_setup(options, state, newargs):
     settings.MIN_CHROME_VERSION = 0
     settings.MIN_NODE_VERSION = 0
 
-  if settings.MIN_CHROME_VERSION <= 37:
-    settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 1
-
   # 10.19.0 is the oldest version of node that we do any testing with.
   # Keep this in sync with the test-node-compat in .circleci/config.yml
   # and MINIMUM_NODE_VERSION in tools/shared.py
@@ -1153,7 +1150,6 @@ def phase_linker_setup(options, state, newargs):
   # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
   if not settings.WASM2JS:
     settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
-    settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0
 
   if settings.STB_IMAGE and final_suffix in EXECUTABLE_ENDINGS:
     state.forced_stdlibs.append('libstb_image')

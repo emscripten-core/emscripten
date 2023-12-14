@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.52 (in development)
 -----------------------
+- The WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG setting was
+  removed.  This was a workaround from 2018 (#7459) that should no longer be
+  needed. (#20925)
 - The `--default-obj-ext` command line flag was removed. (#20917)
 - emcc will now treat `.bc` files as source files.  These means that will get
   compiled by clang before being passed to the linker.  This matches the

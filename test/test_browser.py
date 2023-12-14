@@ -2794,7 +2794,7 @@ Module["preRun"] = () => {
   @requires_graphics_hardware
   @parameterized({
     'legacy_browser': (['-sMIN_CHROME_VERSION=0', '-Wno-transpile'],),
-    'closure': (['-O2', '-g1', '--closure=1', '-sWORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG'],),
+    'closure': (['-O2', '-g1', '--closure=1'],),
     'full_es2': (['-sFULL_ES2'],),
   })
   def test_webgl2(self, args):
@@ -4749,11 +4749,6 @@ Module["preRun"] = () => {
       ]:
       cmd = args + ['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1']
       self.btest_exit('webgl_offscreen_framebuffer_swap_with_bad_state.c', args=cmd)
-
-  # Tests that -sWORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG rendering works.
-  @requires_graphics_hardware
-  def test_webgl_workaround_webgl_uniform_upload_bug(self):
-    self.btest_exit('webgl_draw_triangle_with_uniform_color.c',  args=['-lGL', '-sWORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG'])
 
   # Tests that using an array of structs in GL uniforms works.
   @requires_graphics_hardware

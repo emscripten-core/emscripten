@@ -492,13 +492,6 @@ var GL_SUPPORT_EXPLICIT_SWAP_CONTROL = false;
 // [link]
 var GL_POOL_TEMP_BUFFERS = true;
 
-// Some old Android WeChat (Chromium 37?) browser has a WebGL bug that it ignores
-// the offset of a typed array view pointing to an ArrayBuffer. Set this to
-// 1 to enable a polyfill that works around the issue when it appears. This
-// bug is only relevant to WebGL 1, the affected browsers do not support WebGL 2.
-// [link]
-var WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = false;
-
 // If true, enables support for the EMSCRIPTEN_explicit_uniform_location WebGL
 // extension. See docs/EMSCRIPTEN_explicit_uniform_location.txt
 var GL_EXPLICIT_UNIFORM_LOCATION = false;
@@ -611,7 +604,6 @@ var POLYFILL_OLD_MATH_FUNCTIONS = false;
 // the highest possible probability of the code working everywhere, even in rare old
 // browsers and shell environments. Specifically:
 //  * Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround. (-sPOLYFILL_OLD_MATH_FUNCTIONS)
-//  * Work around old Chromium WebGL 1 bug (-sWORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG)
 //  * Disable WebAssembly. (Must be paired with -sWASM=0)
 //  * Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
 //  * Avoid TypedArray.fill, if necessary, in zeroMemory utility function.
@@ -2159,4 +2151,5 @@ var LEGACY_SETTINGS = [
   ['RUNTIME_LOGGING', 'RUNTIME_DEBUG'],
   ['MIN_EDGE_VERSION', [0x7FFFFFFF], 'No longer supported'],
   ['MIN_IE_VERSION', [0x7FFFFFFF], 'No longer supported'],
+  ['WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG', [0], 'No longer supported'],
 ];

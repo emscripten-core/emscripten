@@ -1065,41 +1065,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
         GLctx: ctx
       };
 
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      context.cannotHandleOffsetsInUniformArrayViews = (function(g) {
-        function b(c, t) {
-          var s = g.createShader(t);
-          g.shaderSource(s, c);
-          g.compileShader(s);
-          return s;
-        }
-        try {
-          // Note: we do not delete this program so it stays part of the context
-          // we created, but that is ok - it does not do anything and we want to
-          // keep this detection size minimal.
-          var p = g.createProgram();
-          g.attachShader(p, b("attribute vec4 p;void main(){gl_Position=p;}", 0x8B31 /*GL_VERTEX_SHADER*/));
-          g.attachShader(p, b("precision lowp float;uniform vec4 u;void main(){gl_FragColor=u;}", 0x8B30 /*GL_FRAGMENT_SHADER*/));
-          g.linkProgram(p);
-          var h = new Float32Array(8);
-          h[4] = 1;
-          g.useProgram(p);
-          var l = g.getUniformLocation(p, "u");
-          // Uploading a 4-vector GL uniform from last four elements of array
-          // [0,0,0,0,1,0,0,0], i.e. uploading vec4=(1,0,0,0) at offset=4.
-          g.uniform4fv(l, h.subarray(4, 8));
-          // in proper WebGL we expect to read back the vector we just uploaded:
-          // (1,0,0,0). On buggy browser would instead have uploaded offset=0 of
-          // above array, i.e. vec4=(0,0,0,0)
-          return !g.getUniform(p, l)[0];i
-        } catch(e) {
-          // If we get an exception, we assume we got some other error, and do
-          // not trigger this workaround.
-          return false;
-        }
-      })();
-#endif
-
       // Store the created context object so that we can access the context
       // given a canvas without having to pass the parameters again.
       if (ctx.canvas) ctx.canvas.GLctxObject = context;
@@ -2515,9 +2480,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Int32Array(view);
-#endif
     }
     GLctx.uniform1iv(webglGetUniformLocation(location), view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -2560,9 +2522,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('32', 'value', 'value+count*8') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Int32Array(view);
-#endif
     }
     GLctx.uniform2iv(webglGetUniformLocation(location), view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -2606,9 +2565,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('32', 'value', 'value+count*12') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Int32Array(view);
-#endif
     }
     GLctx.uniform3iv(webglGetUniformLocation(location), view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -2655,9 +2611,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('32', 'value', 'value+count*16') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Int32Array(view);
-#endif
     }
     GLctx.uniform4iv(webglGetUniformLocation(location), view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -2699,9 +2652,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
-#endif
     }
     GLctx.uniform1fv(webglGetUniformLocation(location), view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -2746,9 +2696,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*8') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
-#endif
     }
     GLctx.uniform2fv(webglGetUniformLocation(location), view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -2794,9 +2741,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*12') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
-#endif
     }
     GLctx.uniform3fv(webglGetUniformLocation(location), view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -2847,9 +2791,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
-#endif
     }
     GLctx.uniform4fv(webglGetUniformLocation(location), view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -2896,9 +2837,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
-#endif
     }
     GLctx.uniformMatrix2fv(webglGetUniformLocation(location), !!transpose, view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -2950,9 +2888,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*36') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
-#endif
     }
     GLctx.uniformMatrix3fv(webglGetUniformLocation(location), !!transpose, view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -3015,9 +2950,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*64') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
-#endif
     }
     GLctx.uniformMatrix4fv(webglGetUniformLocation(location), !!transpose, view);
 #endif // MIN_WEBGL_VERSION >= 2
