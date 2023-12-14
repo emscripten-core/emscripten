@@ -27,7 +27,7 @@ def generate(env, emscripten_path=None, **kw):
               'EMSCRIPTEN_SUPPRESS_USAGE_WARNING', 'NODE_PATH', 'EMCC_JSOPT_MIN_CHUNK_SIZE',
               'EMCC_JSOPT_MAX_CHUNK_SIZE', 'EMCC_CORES', 'EMCC_NO_OPT_SORT',
               'EMCC_BUILD_DIR', 'EMCC_DEBUG_SAVE', 'EMCC_SKIP_SANITY_CHECK',
-              'EM_PKG_CONFIG_PATH', 'EMCC_CLOSURE_ARGS', 'JAVA_HEAP_SIZE',
+              'EM_PKG_CONFIG_PATH', 'EMCC_CLOSURE_ARGS',
               'EMCC_FORCE_STDLIBS', 'EMCC_ONLY_FORCED_STDLIBS', 'EM_PORTS', 'IDL_CHECKS', 'IDL_VERBOSE']:
     if os.environ.get(var):
       env['ENV'][var] = os.environ.get(var)

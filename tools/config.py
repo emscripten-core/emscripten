@@ -28,7 +28,6 @@ LLVM_ROOT = None
 LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
-JAVA = None
 JS_ENGINES: List[List[str]] = []
 WASMER = None
 WASMTIME = None
@@ -130,7 +129,6 @@ def parse_config_file():
     'LLVM_ADD_VERSION',
     'CLANG_ADD_VERSION',
     'CLOSURE_COMPILER',
-    'JAVA',
     'JS_ENGINES',
     'WASMER',
     'WASMTIME',
