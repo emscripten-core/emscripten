@@ -471,7 +471,9 @@ class Library:
     cflags = self.get_cflags()
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
+      relative_source_dir = os.path.relpath(source_dir, build_dir)
       cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
+                 f'-ffile-prefix-map={relative_source_dir}/=',
                  '-fdebug-compilation-dir=/emsdk/emscripten']
     asflags = get_base_cflags(preprocess=False)
     input_files = self.get_files()
@@ -491,7 +493,9 @@ class Library:
     cflags = self.get_cflags()
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
+      relative_source_dir = os.path.relpath(source_dir, build_dir)
       cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
+                 f'-ffile-prefix-map={relative_source_dir}/=',
                  '-fdebug-compilation-dir=/emsdk/emscripten']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
@@ -531,6 +535,7 @@ class Library:
         # Use relative paths to reduce the length of the command line.
         # This allows to avoid switching to a response file as often.
         src = os.path.relpath(src, build_dir)
+        src = utils.normalize_path(src)
         batches.setdefault(tuple(cmd), []).append(src)
       objects.add(o)
 

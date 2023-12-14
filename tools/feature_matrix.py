@@ -92,10 +92,6 @@ def caniuse(feature):
   if settings.MIN_SAFARI_VERSION < min_versions['safari']:
     report_missing('MIN_SAFARI_VERSION')
     return False
-  # IE don't support any non-MVP features
-  if settings.MIN_IE_VERSION != UNSUPPORTED:
-    report_missing('MIN_IE_VERSION')
-    return False
   if 'node' in min_versions and settings.MIN_NODE_VERSION < min_versions['node']:
     report_missing('MIN_NODE_VERSION')
     return False

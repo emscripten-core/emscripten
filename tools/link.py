@@ -1098,7 +1098,6 @@ def phase_linker_setup(options, state, newargs):
     # Support all old browser versions
     settings.MIN_FIREFOX_VERSION = 0
     settings.MIN_SAFARI_VERSION = 0
-    settings.MIN_IE_VERSION = 0
     settings.MIN_CHROME_VERSION = 0
     settings.MIN_NODE_VERSION = 0
 
@@ -1140,14 +1139,12 @@ def phase_linker_setup(options, state, newargs):
     settings.TRANSPILE = (settings.MIN_FIREFOX_VERSION < 79 or
                           settings.MIN_CHROME_VERSION < 85 or
                           settings.MIN_SAFARI_VERSION < 140000 or
-                          settings.MIN_NODE_VERSION < 160000 or
-                          settings.MIN_IE_VERSION != 0x7FFFFFFF)
+                          settings.MIN_NODE_VERSION < 160000)
 
   # https://caniuse.com/class: FF:45 CHROME:49 SAFARI:9
   supports_es6_classes = (settings.MIN_FIREFOX_VERSION >= 45 and
                           settings.MIN_CHROME_VERSION >= 49 and
-                          settings.MIN_SAFARI_VERSION >= 90000 and
-                          settings.MIN_IE_VERSION == 0x7FFFFFFF)
+                          settings.MIN_SAFARI_VERSION >= 90000)
 
   if not settings.DISABLE_EXCEPTION_CATCHING and settings.EXCEPTION_STACK_TRACES and not supports_es6_classes:
     diagnostics.warning('transpile', '-sEXCEPTION_STACK_TRACES requires an engine that support ES6 classes.')

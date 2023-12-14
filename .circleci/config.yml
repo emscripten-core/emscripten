@@ -828,6 +828,7 @@ jobs:
   # windows and mac do not have separate build and test jobs, as they only run
   # a limited set of tests; it is simpler and faster to do it all in one job.
   test-windows:
+    working_directory: "~/path with spaces"
     executor:
       name: win/vs2019
       shell: bash.exe -eo pipefail

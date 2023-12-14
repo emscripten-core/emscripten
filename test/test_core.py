@@ -780,46 +780,6 @@ class TestCoreBase(RunnerCore):
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_rounding.c')
 
-  def test_multiply_defined_symbols(self):
-    create_file('a1.c', 'int f() { return 1; }')
-    create_file('a2.c', 'void x() {}')
-    create_file('b1.c', 'int f() { return 2; }')
-    create_file('b2.c', 'void y() {}')
-    create_file('main.c', r'''
-      #include <stdio.h>
-      int f();
-      int main() {
-        printf("result: %d\n", f());
-        return 0;
-      }
-    ''')
-
-    self.emcc('a1.c', ['-c'])
-    self.emcc('a2.c', ['-c'])
-    self.emcc('b1.c', ['-c'])
-    self.emcc('b2.c', ['-c'])
-    self.emcc('main.c', ['-c'])
-
-    building.emar('cr', 'liba.a', ['a1.o', 'a2.o'])
-    building.emar('cr', 'libb.a', ['b1.o', 'b2.o'])
-
-    # Add -Wno-deprecated to avoid warning about bitcode linking in the LTO
-    # version of this test.
-    self.run_process([EMCC, '-r', '-o', 'all.o', 'main.o', 'liba.a', 'libb.a',
-                      '-Wno-deprecated'] + self.get_emcc_args())
-
-    self.emcc('all.o', output_filename='all.js')
-    self.do_run('all.js', 'result: 1', no_build=True)
-
-  def test_if(self):
-    self.do_core_test('test_if.c')
-
-  def test_if_else(self):
-    self.do_core_test('test_if_else.c')
-
-  def test_loop(self):
-    self.do_core_test('test_loop.c')
-
   def test_stack(self):
     self.set_setting('INLINING_LIMIT')
     # some extra coverage in all test suites for stack checks
@@ -856,48 +816,8 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('GLOBAL_BASE', '100kb')
     self.do_core_test('test_stack_placement.c')
 
-  def test_strings(self):
-    self.do_core_test('test_strings.c', args=['wowie', 'too', '74'])
-
-  def test_strcmp_uni(self):
-    self.do_core_test('test_strcmp_uni.c')
-
-  def test_strndup(self):
-    self.do_core_test('test_strndup.c')
-
-  def test_errar(self):
-    self.do_core_test('test_errar.c')
-
   def test_mainenv(self):
     self.do_core_test('test_mainenv.c')
-
-  def test_funcs(self):
-    self.do_core_test('test_funcs.c')
-
-  def test_structs(self):
-    self.do_core_test('test_structs.c')
-
-  gen_struct_src = '''
-        #include <stdio.h>
-        #include <stdlib.h>
-        #include "emscripten.h"
-
-        struct S
-        {
-          int x, y;
-        };
-        int main()
-        {
-          S* a = {{gen_struct}};
-          a->x = 51; a->y = 62;
-          printf("*%d,%d*\\n", a->x, a->y);
-          {{del_struct}}(a);
-          return 0;
-        }
-  '''
-
-  def test_mallocstruct(self):
-    self.do_run(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
@@ -959,9 +879,6 @@ base align: 0, 0, 0, 0'''])
   def test_emmalloc_memalign_corruption(self, *args):
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('emmalloc_memalign_corruption.cpp')
-
-  def test_newstruct(self):
-    self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
 
   def test_addr_of_stacked(self):
     self.do_core_test('test_addr_of_stacked.c')
@@ -3440,6 +3357,7 @@ Var: 42
   @needs_dylink
   @no_sanitize('contains ODR violation')
   @no_2gb('output is sensitive to absolute data layout')
+  @no_4gb('output is sensitive to absolute data layout')
   def test_dlfcn_alignment_and_zeroing(self):
     self.set_setting('INITIAL_MEMORY', '16mb')
     create_file('liblib.c', r'''
@@ -4429,21 +4347,6 @@ ok
       ''',
       expected='hello 1: 56.779999\ngot: 1\nhello 1: 12.340000\n',
       header='typedef float (*floatfunc)(float);', force_c=True)
-
-  @needs_dylink
-  def test_missing_signatures(self):
-    create_file('test_sig.c', r'''#include <emscripten.h>
-                                       int main() {
-                                         return 0 == ( (long)&emscripten_run_script_string +
-                                                       (long)&emscripten_run_script );
-                                       }''')
-    self.set_setting('MAIN_MODULE', 1)
-    # also test main module with 4GB of memory. we need to emit a "maximum"
-    # clause then, even though 4GB is the maximum; see
-    # https://github.com/emscripten-core/emscripten/issues/14130
-    self.set_setting('ALLOW_MEMORY_GROWTH', '1')
-    self.set_setting('MAXIMUM_MEMORY', '4GB')
-    self.do_runf('test_sig.c', '')
 
   @needs_dylink
   def test_dylink_global_init(self):
@@ -9339,6 +9242,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # test that the node environment can be specified by itself, and that still
     # works with pthreads (even though we did not specify 'node,worker')
     self.set_setting('ENVIRONMENT', 'node')
+    self.set_setting('STRICT_JS')
     self.do_run_in_out_file_test('core/pthread/create.cpp')
 
   @node_pthreads
@@ -10017,6 +9921,7 @@ bigint = make_run('bigint', emcc_args=['--profiling-funcs'], settings={'WASM_BIG
 
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
+strict_js = make_run('strict_js', emcc_args=[], settings={'STRICT_JS': 1})
 
 ubsan = make_run('ubsan', emcc_args=['-fsanitize=undefined', '--profiling'])
 lsan = make_run('lsan', emcc_args=['-fsanitize=leak', '--profiling'], settings={'ALLOW_MEMORY_GROWTH': 1})

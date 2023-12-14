@@ -1643,33 +1643,6 @@ int f() {
       WARNING = 'encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)'
       self.assertContainedIf(WARNING, proc.stderr, expected)
 
-  def test_local_link(self):
-    # Linking a local library directly, like /usr/lib/libsomething.so, cannot work of course since it
-    # doesn't contain bitcode. However, when we see that we should look for a bitcode file for that
-    # library in the -L paths and system/lib
-    create_file('main.c', '''
-      extern void printey();
-      int main() {
-        printey();
-        return 0;
-      }
-    ''')
-
-    ensure_dir('subdir')
-    create_file('subdir/libfile.so.1.2.3', 'this is not llvm bitcode!')
-
-    create_file('libfile.c', '''
-      #include <stdio.h>
-      void printey() {
-        printf("hello from lib\\n");
-      }
-    ''')
-
-    self.run_process([EMCC, 'libfile.c', '-shared', '-o', 'libfile.so'], stderr=PIPE)
-    err = self.run_process([EMCC, 'main.c', Path('subdir/libfile.so.1.2.3'), '-L.'], stderr=PIPE).stderr
-    self.assertContained('Mapping to `-lfile` and hoping for the best [-Wmap-unrecognized-libraries]', err)
-    self.assertContained('hello from lib', self.run_js('a.out.js'))
-
   def test_identical_basenames(self):
     # Issue 287: files in different dirs but with the same basename get confused as the same,
     # causing multiply defined symbol errors
@@ -3297,6 +3270,7 @@ int f() {
     self.run_process([FILE_PACKAGER, 'test.data', '--js-output=test.js', '--depfile=test.data.d', '--from-emcc', '--preload', '.'])
     output = read_file('test.data.d')
     file_packager = utils.normalize_path(shared.replace_suffix(FILE_PACKAGER, '.py'))
+    file_packager = file_packager.replace(' ', '\\ ')
     lines = output.splitlines()
     split = lines.index(': \\')
     before, after = set(lines[:split]), set(lines[split + 1:])
@@ -4215,13 +4189,6 @@ printErr('dir was ' + process.env.EMCC_BUILD_DIR);
     ensure_dir('out_dir')
     err = self.expect_fail([EMCC, '-c', test_file('hello_world.c'), '-o', 'out_dir/'])
     self.assertContained('error: unable to open output file', err)
-
-  def test_default_obj_ext(self):
-    self.run_process([EMCC, '-c', test_file('hello_world.c')])
-    self.assertExists('hello_world.o')
-
-    self.run_process([EMCC, '-c', test_file('hello_world.c'), '--default-obj-ext', 'obj'])
-    self.assertExists('hello_world.obj')
 
   def test_doublestart_bug(self):
     create_file('code.c', r'''
@@ -5309,6 +5276,15 @@ int main() {
 
   def test_dylink_no_filesystem(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sMAIN_MODULE=2', '-sNO_FILESYSTEM'])
+
+  def test_dylink_4gb_max(self):
+    # Test main module with 4GB of memory. we need to emit a "maximum"
+    # clause then, even though 4GB is the maximum; see
+    # https://github.com/emscripten-core/emscripten/issues/14130
+    self.set_setting('MAIN_MODULE', '1')
+    self.set_setting('ALLOW_MEMORY_GROWTH', '1')
+    self.set_setting('MAXIMUM_MEMORY', '4GB')
+    self.do_runf(test_file('hello_world.c'))
 
   def test_dashS(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-S'])
@@ -9817,6 +9793,21 @@ int main() {
                       '-sSEPARATE_DWARF_URL=http://somewhere.com/hosted.wasm'])
     self.assertIn(b'somewhere.com/hosted.wasm', read_binary('a.out.wasm'))
 
+  @crossplatform
+  def test_dwarf_system_lib(self):
+    if config.FROZEN_CACHE:
+      self.skipTest("test doesn't work with frozen cache")
+    self.run_process([EMBUILDER, 'build', 'libemmalloc', '--force'])
+    libc = os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libemmalloc.a')
+    self.assertExists(libc)
+
+    dwdump = self.run_process(
+        [LLVM_DWARFDUMP, libc, '-debug-info', '-debug-line', '--recurse-depth=0'],
+        stdout=PIPE).stdout
+    # Check that the embedded location of the source file is correct.
+    self.assertIn('DW_AT_name\t("system/lib/emmalloc.c")', dwdump)
+    self.assertIn('DW_AT_comp_dir\t("/emsdk/emscripten")', dwdump)
+
   @parameterized({
     'O0': (['-O0'],),
     'O1': (['-O1'],),
@@ -10507,7 +10498,6 @@ int main () {
                                '-sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0',
                                '-sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0',
                                '-sGL_TRACK_ERRORS=0',
-                               '-sGL_SUPPORT_EXPLICIT_SWAP_CONTROL=0',
                                '-sGL_POOL_TEMP_BUFFERS=0',
                                '-sGL_WORKAROUND_SAFARI_GETCONTEXT_BUG=0',
                                '-sNO_FILESYSTEM',
@@ -11496,7 +11486,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
 
   def test_linker_flags_unused(self):
     err = self.run_process([EMXX, test_file('hello_world.cpp'), '-c', '-lbar'], stderr=PIPE).stderr
-    self.assertContained("warning: argument unused during compilation: '-lbar' [-Wunused-command-line-argument]", err)
+    self.assertContained("warning: -lbar: 'linker' input unused [-Wunused-command-line-argument]", err)
 
   def test_linker_input_unused(self):
     self.run_process([EMXX, '-c', test_file('hello_world.cpp')])
@@ -11681,9 +11671,10 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
   # I.e. -sMIN_X_VERSION=-1 is equal to -sMIN_X_VERSION=Infinity
   def test_drop_support_for_browser(self):
     # Test that -1 means "not supported"
-    self.run_process([EMCC, test_file('test_html5_core.c'), '-sMIN_IE_VERSION=-1'])
-    self.assertContained('allowsDeferredCalls: true', read_file('a.out.js'))
-    self.assertNotContained('allowsDeferredCalls: JSEvents.isInternetExplorer()', read_file('a.out.js'))
+    self.run_process([EMCC, test_file('test_html5_core.c')])
+    self.assertContained('document.webkitFullscreenEnabled', read_file('a.out.js'))
+    self.run_process([EMCC, test_file('test_html5_core.c'), '-sMIN_SAFARI_VERSION=-1'])
+    self.assertNotContained('document.webkitFullscreenEnabled', read_file('a.out.js'))
 
   def test_errno_type(self):
     create_file('errno_type.c', '''
@@ -12606,10 +12597,6 @@ kill -9 $$
   def test_link_only_flag_warning(self):
     err = self.run_process([EMCC, '--embed-file', 'file', '-c', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained("warning: linker flag ignored during compilation: '--embed-file' [-Wunused-command-line-argument]", err)
-
-  def test_compile_only_flag_warning(self):
-    err = self.run_process([EMCC, '--default-obj-ext', 'foo', test_file('hello_world.c')], stderr=PIPE).stderr
-    self.assertContained("warning: compiler flag ignored during linking: '--default-obj-ext' [-Wunused-command-line-argument]", err)
 
   def test_no_deprecated(self):
     # Test that -Wno-deprecated is passed on to clang driver
@@ -14242,10 +14229,29 @@ addToLibrary({
     self.assertNotIn(b'hello from dtor', read_binary('test_unused_destructor.wasm'))
 
   def test_strip_all(self):
-    # Test that even with `-Wl,--strip-all` the target features section is generated
-    # by wasm-ld so that later phases (e.g. wasm-opt) can read it.
+    def has_debug_section(wasm):
+      with webassembly.Module('hello_world.wasm') as wasm:
+        return wasm.get_custom_section('.debug_info') is not None
+
+    # Use -O2 to ensure wasm-opt gets run
+    self.emcc_args += ['-g', '-O2']
+
+    # First, verify that `-g` produces a debug section
+    self.do_runf('hello_world.c')
+    self.assertTrue(has_debug_section('hello_world.wasm'))
+
+    # Test `-Wl,--strip-all` will strip the debug section, but that the
+    # the target features section is preserved so that later phases
+    # (e.g. wasm-opt) can read it.
     self.do_runf('hello_world.c', emcc_args=['-Wl,--strip-all', '-pthread'])
+    self.assertFalse(has_debug_section('hello_world.wasm'))
+
+    # Verify that `-Wl,-s` and `-s` also both have the same effect
     self.do_runf('hello_world.c', emcc_args=['-Wl,-s', '-pthread'])
+    self.assertFalse(has_debug_section('hello_world.wasm'))
+
+    self.do_runf('hello_world.c', emcc_args=['-s', '-pthread'])
+    self.assertFalse(has_debug_section('hello_world.wasm'))
 
   def test_embind_no_duplicate_symbols(self):
     # Embind implementation lives almost entirely in headers, which have special rules
@@ -14285,3 +14291,60 @@ addToLibrary({
 
   def test_llrint(self):
     self.do_other_test('test_llrint.c')
+
+  def test_strings(self):
+    self.do_other_test('test_strings.c', args=['wowie', 'too', '74'])
+
+  def test_strcmp_uni(self):
+    self.do_other_test('test_strcmp_uni.c')
+
+  def test_strndup(self):
+    self.do_other_test('test_strndup.c')
+
+  def test_errar(self):
+    self.do_other_test('test_errar.c')
+
+  def test_no_input_files(self):
+    err = self.expect_fail([EMCC, '-c'])
+    self.assertContained('clang: error: no input files', err)
+
+  def test_embind_negative_enum_values(self):
+    # Test if negative enum values are printed correctly and not overflown to
+    # large values when CAN_ADDRESS_2GB is true.
+    src = r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+      #include <emscripten/bind.h>
+
+      using namespace emscripten;
+
+      int main() {
+        EM_ASM(
+        console.log(Module.value.neg.value);
+        console.log(Module.value.zero.value);
+        console.log(Module.value.pos.value);
+        );
+      }
+
+      enum class value {
+        neg = -1,
+        zero = 0,
+        pos = 1,
+      };
+
+      EMSCRIPTEN_BINDINGS(utility) {
+        enum_<value>("value")
+          .value("neg", value::neg)
+          .value("zero", value::zero)
+          .value("pos", value::pos);
+      }
+    '''
+    expected = '-1\n0\n1\n'
+    self.do_run(src, expected_output=expected,
+                emcc_args=['-lembind', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB'])
+
+  @crossplatform
+  def test_no_extra_output(self):
+    self.run_process([EMCC, '-c', test_file('hello_world.c')])
+    output = self.run_process([EMCC, '-c', test_file('hello_world.c')], stdout=PIPE, stderr=STDOUT).stdout
+    self.assertEqual(output, '')

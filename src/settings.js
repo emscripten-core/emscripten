@@ -1798,13 +1798,6 @@ var MIN_FIREFOX_VERSION = 79;
 // [link]
 var MIN_SAFARI_VERSION = 140100;
 
-// Specifies the oldest version of Internet Explorer to target. E.g. pass -s
-// MIN_IE_VERSION = 11 to drop support for IE 10 and older.
-// Internet Explorer is at end of life and does not support WebAssembly.
-// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// [link]
-var MIN_IE_VERSION = 0x7FFFFFFF;
-
 // Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 // drop support for Chrome 57 and older.
 // Chrome 85 was released on 2020-08-25.
@@ -2165,4 +2158,5 @@ var LEGACY_SETTINGS = [
   ['REVERSE_DEPS', ['auto', 'all', 'none'], 'No longer needed'],
   ['RUNTIME_LOGGING', 'RUNTIME_DEBUG'],
   ['MIN_EDGE_VERSION', [0x7FFFFFFF], 'No longer supported'],
+  ['MIN_IE_VERSION', [0x7FFFFFFF], 'No longer supported'],
 ];
