@@ -463,8 +463,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     'c': [EMCC, '.c'],
     'cxx': [EMXX, '.cpp']})
   def test_emcc_2(self, compiler, suffix):
-    # emcc src.cpp -c    and   emcc -c src.cpp -o src.[o|bc|so] ==> should always give an object file
-    for args in [[], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so']]:
+    # emcc src.cpp -c    and   emcc -c src.cpp -o src.[o|foo|so] ==> should always give an object file
+    for args in [[], ['-o', 'src.o'], ['-o', 'src.foo'], ['-o', 'src.so']]:
       print('args:', args)
       target = args[1] if len(args) == 2 else 'hello_world.o'
       self.clear()
@@ -475,9 +475,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # we also expect to have the '__original_main' wrapper and __main_void alias.
       # TODO(sbc): Should be 4 once https://reviews.llvm.org/D75277 lands
       self.assertIn(len(syms['defs']), (2, 3))
-      if target == 'js': # make sure emcc can recognize the target as a bitcode file
-        shutil.move(target, target + '.bc')
-        target += '.bc'
       self.run_process([compiler, target, '-o', target + '.js'])
       self.assertContained('hello, world!', self.run_js(target + '.js'))
 
@@ -4600,9 +4597,8 @@ Waste<3> *getMore() {
     # native building on CI may not always work well
     create_file('minimal.c', 'int main() { return 0; }')
     self.run_process([CLANG_CC, 'minimal.c', '-target', 'x86_64-linux', '-c', '-emit-llvm', '-o', 'a.bc'] + clang_native.get_clang_native_args(), env=clang_native.get_clang_native_env())
-    # wasm backend will hard fail where as fastcomp only warns
-    err = self.expect_fail([EMCC, 'a.bc'])
-    self.assertContained('machine type must be wasm32', err)
+    err = self.expect_fail([EMCC, '-Werror', 'a.bc'])
+    self.assertContained('error: overriding the module target triple with wasm32-unknown-emscripten [-Werror,-Woverride-module]', err)
 
   def test_valid_abspath(self):
     # Test whether abspath warning appears
@@ -12623,18 +12619,10 @@ void foo() {}
     self.assertContained('crt1_proxy_main.o: undefined symbol: main', err)
 
   def test_archive_bad_extension(self):
-    # Regression test for https://github.com/emscripten-core/emscripten/issues/14012
-    # where llvm_nm_multiple would be confused by archives names like object files.
-    create_file('main.c', '''
-    #include <sys/socket.h>
-    int main() {
-       return (int)(long)&accept;
-    }
-    ''')
-
-    self.run_process([EMCC, '-c', 'main.c'])
-    self.run_process([EMAR, 'crs', 'libtest.bc', 'main.o'])
-    self.run_process([EMCC, 'libtest.bc', 'libtest.bc'])
+    self.run_process([EMCC, '-c', test_file('hello_world.c')])
+    self.run_process([EMAR, 'crs', 'libtest.bc', 'hello_world.o'])
+    err = self.expect_fail([EMCC, 'libtest.bc'])
+    self.assertContained('libtest.bc:1:2: error: expected integer', err)
 
   def test_split_dwarf_implicit_compile(self):
     # Verify that the dwo file is generated in the current working directory, even when implicitly

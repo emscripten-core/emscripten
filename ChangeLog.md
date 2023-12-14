@@ -21,6 +21,9 @@ See docs/process.md for more on how version tagging works.
 3.1.52 (in development)
 -----------------------
 - The `--default-obj-ext` command line flag was removed. (#20917)
+- emcc will now treat `.bc` files as source files.  These means that will get
+  compiled by clang before being passed to the linker.  This matches the
+  behaviour of clang. (#20922)
 
 3.1.51 - 12/13/23
 -----------------

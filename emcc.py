@@ -65,7 +65,7 @@ OBJCXX_ENDINGS = ['.mm', '.mii']
 SPECIAL_ENDINGLESS_FILENAMES = [os.devnull]
 C_ENDINGS += SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
 
-SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + ['.ll', '.S']
+SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + ['.bc', '.ll', '.S']
 ASSEMBLY_ENDINGS = ['.s']
 HEADER_ENDINGS = ['.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH']
 
