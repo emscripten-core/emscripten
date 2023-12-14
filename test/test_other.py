@@ -9,6 +9,7 @@
 from functools import wraps
 import glob
 import gzip
+import importlib
 import itertools
 import json
 import os
@@ -9588,6 +9589,24 @@ int main() {
 
     ensure_dir('inner')
     test('inner/a.cpp', 'inner')
+
+  def test_wasm_sourcemap_extract_comp_dir_map(self):
+    wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
+
+    def test(dump_file):
+      dwarfdump_output = read_file(
+          test_file(
+              os.path.join('other/wasm_sourcemap_extract_comp_dir_map',
+                           dump_file)))
+      map_stmt_list_to_comp_dir = wasm_sourcemap.extract_comp_dir_map(
+          dwarfdump_output)
+      self.assertEqual(map_stmt_list_to_comp_dir,
+                       {'0x00000000': '/emsdk/emscripten'})
+
+    # Make sure we can extract the compilation directories no matter what the
+    # order of `DW_AT_*` attributes is.
+    test('foo.wasm.dump')
+    test('bar.wasm.dump')
 
   def test_emsymbolizer(self):
     def check_dwarf_loc_info(address, funcs, locs):
