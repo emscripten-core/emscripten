@@ -9560,6 +9560,8 @@ int main() {
     self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]+,[A-Za-z0-9+/]+"')
 
   def test_wasm_sourcemap_relative_paths(self):
+    ensure_dir('build')
+
     def test(infile, source_map_added_dir=''):
       expected_source_map_path = 'a.cpp'
       if source_map_added_dir:
@@ -9573,8 +9575,14 @@ int main() {
       ]
       for curr in infiles:
         print('  ', curr)
+        print('    ', 'same CWD for compiler and linker')
         self.run_process([EMCC, curr, '-gsource-map'])
         self.assertIn('"%s"' % expected_source_map_path, read_file('a.out.wasm.map'))
+
+        print('    ', 'different CWD for compiler and linker')
+        self.run_process([EMCC, curr, '-g', '-c', '-o', 'build/a.o'])
+        self.run_process([EMCC, 'a.o', '-gsource-map'], cwd='build')
+        self.assertIn('"../%s"' % expected_source_map_path, read_file('build/a.out.wasm.map'))
 
     test('a.cpp')
 

@@ -224,12 +224,12 @@ def read_dwarf_entries(wasm, options):
 
     include_directories = {'0': comp_dir}
     for dir in re.finditer(r"include_directories\[\s*(\d+)\] = \"([^\"]*)", line_chunk):
-      include_directories[dir.group(1)] = dir.group(2)
+      include_directories[dir.group(1)] = os.path.join(comp_dir, dir.group(2))
 
     files = {}
     for file in re.finditer(r"file_names\[\s*(\d+)\]:\s+name: \"([^\"]*)\"\s+dir_index: (\d+)", line_chunk):
       dir = include_directories[file.group(3)]
-      file_path = (dir + '/' if file.group(2)[0] != '/' else '') + file.group(2)
+      file_path = os.path.join(dir, file.group(2))
       files[file.group(1)] = file_path
 
     for line in re.finditer(r"\n0x([0-9a-f]+)\s+(\d+)\s+(\d+)\s+(\d+)(.*?end_sequence)?", line_chunk):
