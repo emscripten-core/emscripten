@@ -33,6 +33,12 @@ See docs/process.md for more on how version tagging works.
 - emcc will now treat `.bc` files as source files.  These means that will get
   compiled by clang before being passed to the linker.  This matches the
   behaviour of clang. (#20922)
+- Emscripten now only supports browsers going back to certain versions. The
+  current set of minimum versions are: Chrome 32, Firefox 34, Safari 9.
+  Attempting to targets version older this using, for example
+  `MIN_CHROME_VERSION` will now result in build-time error.  All of these
+  browser versions are at least 8 years old now so the hope is that nobody
+  is intending to target them today.  (#20924)
 
 3.1.51 - 12/13/23
 -----------------
