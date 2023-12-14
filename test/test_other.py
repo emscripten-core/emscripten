@@ -46,8 +46,6 @@ from tools import line_endings
 from tools import webassembly
 from tools.settings import settings
 
-wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
-
 scons_path = shutil.which('scons')
 emmake = shared.bat_suffix(path_from_root('emmake'))
 emconfig = shared.bat_suffix(path_from_root('em-config'))
@@ -9613,6 +9611,8 @@ int main() {
     test('inner/a.cpp', 'inner')
 
   def test_wasm_sourcemap_extract_comp_dir_map(self):
+    wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
+
     def test(dump_file):
       dwarfdump_output = read_file(
           test_file(
