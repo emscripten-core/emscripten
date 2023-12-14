@@ -520,8 +520,8 @@ def check_sanity(force=False):
 
     if os.path.exists(sanity_file):
       sanity_data = utils.read_file(sanity_file)
-      logger.info('old sanity: %s' % sanity_data)
-      logger.info('new sanity: %s' % expected)
+      logger.info('old sanity: %s', sanity_data.strip())
+      logger.info('new sanity: %s', expected.strip())
       logger.info('(Emscripten: config changed, clearing cache)')
       cache.erase()
     else:
