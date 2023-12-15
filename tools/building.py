@@ -454,24 +454,18 @@ def get_closure_compiler():
   return cmd
 
 
-def check_closure_compiler(cmd, args, env, allowed_to_fail):
+def check_closure_compiler(cmd, args, env):
   cmd = cmd + args + ['--version']
   try:
     output = run_process(cmd, stdout=PIPE, env=env).stdout
   except Exception as e:
-    if allowed_to_fail:
-      return False
     if isinstance(e, subprocess.CalledProcessError):
       sys.stderr.write(e.stdout)
     sys.stderr.write(str(e) + '\n')
     exit_with_error('closure compiler (%s) did not execute properly!' % shared.shlex_join(cmd))
 
   if 'Version:' not in output:
-    if allowed_to_fail:
-      return False
     exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (shared.shlex_join(cmd), output))
-
-  return True
 
 
 # Remove this once we require python3.7 and can use std.isascii.
@@ -488,25 +482,7 @@ def isascii(s):
 def get_closure_compiler_and_env(user_args):
   env = shared.env_with_node_in_path()
   closure_cmd = get_closure_compiler()
-
-  native_closure_compiler_works = check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=True)
-  if not native_closure_compiler_works and not any(a.startswith('--platform') for a in user_args):
-    # Run with Java Closure compiler as a fallback if the native version does not work
-    user_args.append('--platform=java')
-    check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=False)
-
-  if config.JAVA and '--platform=java' in user_args:
-    # Closure compiler expects JAVA_HOME to be set *and* java.exe to be in the PATH in order
-    # to enable use the java backend.  Without this it will only try the native and JavaScript
-    # versions of the compiler.
-    java_bin = os.path.dirname(config.JAVA)
-    if java_bin:
-      def add_to_path(dirname):
-        env['PATH'] = env['PATH'] + os.pathsep + dirname
-      add_to_path(java_bin)
-      java_home = os.path.dirname(java_bin)
-      env.setdefault('JAVA_HOME', java_home)
-
+  check_closure_compiler(closure_cmd, user_args, env)
   return closure_cmd, env
 
 

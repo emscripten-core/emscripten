@@ -19,8 +19,6 @@ BINARYEN_ROOT = '{{{ BINARYEN_ROOT }}}' # directory
 # This engine must exist, or nothing can be compiled.
 NODE_JS = '{{{ NODE }}}' # executable
 
-JAVA = 'java' # executable
-
 ################################################################################
 #
 # Test suite options:

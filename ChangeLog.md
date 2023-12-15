@@ -20,6 +20,12 @@ See docs/process.md for more on how version tagging works.
 
 3.1.52 (in development)
 -----------------------
+- Remove JAVA from the list of `.emscripten` config file settings.  In the
+  past we used this to run the java version of closure compiler.  If there are
+  folks who prefer to use the java version of closure compiler for some reason
+  it should be possible by adding `--platform=java` to `--closure-args` or
+  `EMCC_CLOSURE_ARGS` but emscripten will no longer do this automatically.
+  (#20919)
 - The WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG setting was
   removed.  This was a workaround from 2018 (#7459) that should no longer be
   needed. (#20925)
