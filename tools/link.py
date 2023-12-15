@@ -187,10 +187,10 @@ def setup_environment_settings():
       (settings.ENVIRONMENT_MAY_BE_NODE and settings.PTHREADS)
 
   if not settings.ENVIRONMENT_MAY_BE_WORKER and settings.PROXY_TO_WORKER:
-    exit_with_error('If you specify --proxy-to-worker and specify a "-sENVIRONMENT=" directive, it must include "worker" as a target! (Try e.g. -sENVIRONMENT=web,worker)')
+    exit_with_error('if you specify --proxy-to-worker and specify a "-sENVIRONMENT=" directive, it must include "worker" as a target! (Try e.g. -sENVIRONMENT=web,worker)')
 
   if not settings.ENVIRONMENT_MAY_BE_WORKER and settings.SHARED_MEMORY:
-    exit_with_error('When building with multithreading enabled and a "-sENVIRONMENT=" directive is specified, it must include "worker" as a target! (Try e.g. -sENVIRONMENT=web,worker)')
+    exit_with_error('when building with multithreading enabled and a "-sENVIRONMENT=" directive is specified, it must include "worker" as a target! (Try e.g. -sENVIRONMENT=web,worker)')
 
 
 def embed_memfile(options):
@@ -797,7 +797,7 @@ def phase_linker_setup(options, state, newargs):
     # For a command we always want EXIT_RUNTIME=1
     # For a reactor we always want EXIT_RUNTIME=0
     if 'EXIT_RUNTIME' in user_settings:
-      exit_with_error('Explicitly setting EXIT_RUNTIME not compatible with STANDALONE_WASM.  EXIT_RUNTIME will always be True for programs (with a main function) and False for reactors (not main function).')
+      exit_with_error('explicitly setting EXIT_RUNTIME not compatible with STANDALONE_WASM.  EXIT_RUNTIME will always be True for programs (with a main function) and False for reactors (not main function).')
     settings.EXIT_RUNTIME = settings.EXPECT_MAIN
     settings.IGNORE_MISSING_MAIN = 0
     # the wasm must be runnable without the JS, so there cannot be anything that
@@ -928,7 +928,7 @@ def phase_linker_setup(options, state, newargs):
 
   if 'CLOSURE_WARNINGS' in user_settings:
     if settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
-      exit_with_error('Invalid option -sCLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % settings.CLOSURE_WARNINGS)
+      exit_with_error('invalid option -sCLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % settings.CLOSURE_WARNINGS)
 
     diagnostics.warning('deprecated', 'CLOSURE_WARNINGS is deprecated, use -Wclosure/-Wno-closure instread')
     closure_warnings = diagnostics.manager.warnings['closure']
@@ -1117,7 +1117,7 @@ def phase_linker_setup(options, state, newargs):
     default_setting('NODEJS_CATCH_REJECTION', 0)
     default_setting('NODEJS_CATCH_EXIT', 0)
     if settings.NODEJS_CATCH_REJECTION or settings.NODEJS_CATCH_EXIT:
-      exit_with_error('Cannot use -sNODEJS_CATCH_REJECTION or -sNODEJS_CATCH_EXIT with -sMODULARIZE')
+      exit_with_error('cannot use -sNODEJS_CATCH_REJECTION or -sNODEJS_CATCH_EXIT with -sMODULARIZE')
 
   setup_environment_settings()
 
@@ -2077,7 +2077,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     delete_file(memfile)
 
   if settings.SPLIT_MODULE:
-    diagnostics.warning('experimental', 'The SPLIT_MODULE setting is experimental and subject to change')
+    diagnostics.warning('experimental', 'the SPLIT_MODULE setting is experimental and subject to change')
     do_split_module(wasm_target, options)
 
   if not settings.SINGLE_FILE:
@@ -2409,7 +2409,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   if settings.EXPORT_NAME != 'Module' and options.shell_path == DEFAULT_SHELL_HTML:
     # the minimal runtime shell HTML is designed to support changing the export
     # name, but the normal one does not support that currently
-    exit_with_error('Customizing EXPORT_NAME requires that the HTML be customized to use that name (see https://github.com/emscripten-core/emscripten/issues/10086)')
+    exit_with_error('customizing EXPORT_NAME requires that the HTML be customized to use that name (see https://github.com/emscripten-core/emscripten/issues/10086)')
 
   shell = shared.read_and_preprocess(options.shell_path)
   if '{{{ SCRIPT }}}' not in shell:

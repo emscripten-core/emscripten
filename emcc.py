@@ -431,7 +431,7 @@ def get_cflags(user_args, is_cxx):
 
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     if '-msimd128' not in user_args and '-mrelaxed-simd' not in user_args:
-      exit_with_error('Passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128 (or -mrelaxed-simd)!')
+      exit_with_error('passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128 (or -mrelaxed-simd)!')
     cflags += ['-D__SSE__=1']
 
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):
@@ -852,7 +852,7 @@ def phase_setup(options, state, newargs):
     # -fwasm-exceptions takes care of enabling them, so users aren't supposed to
     # pass them explicitly, regardless of their values
     if 'DISABLE_EXCEPTION_CATCHING' in user_settings or 'DISABLE_EXCEPTION_THROWING' in user_settings:
-      diagnostics.warning('emcc', 'You no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions')
+      diagnostics.warning('emcc', 'you no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions')
     settings.DISABLE_EXCEPTION_CATCHING = 1
     settings.DISABLE_EXCEPTION_THROWING = 1
 

@@ -218,7 +218,7 @@ def run_multiple_processes(commands,
       idx = get_finished_process()
       finished_process = processes.pop(idx)
       if finished_process.returncode != 0:
-        exit_with_error('Subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
+        exit_with_error('subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
       num_completed += 1
 
   if route_stdout_to_temp_files_suffix:
@@ -411,7 +411,7 @@ def check_node():
   try:
     run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
   except Exception as e:
-    exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
+    exit_with_error('the configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
 
 
 def set_version_globals():
@@ -448,7 +448,7 @@ def perform_sanity_checks():
   with ToolchainProfiler.profile_block('sanity LLVM'):
     for cmd in [CLANG_CC, LLVM_AR]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
-        exit_with_error('Cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
+        exit_with_error('cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
 
 
 @ToolchainProfiler.profile()

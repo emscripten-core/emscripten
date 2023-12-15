@@ -1594,12 +1594,12 @@ int main() {
     # test setting includes -Werror.
     self.set_setting('DISABLE_EXCEPTION_THROWING', 1)
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-fwasm-exceptions'] + self.get_emcc_args())
-    self.assertContained('error: You no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions', err)
+    self.assertContained('error: you no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions', err)
     clear_all_relevant_settings(self)
 
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-fwasm-exceptions'] + self.get_emcc_args())
-    self.assertContained('error: You no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions', err)
+    self.assertContained('error: you no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions', err)
     clear_all_relevant_settings(self)
 
     # Emscripten SjLj and Wasm EH cannot mix
