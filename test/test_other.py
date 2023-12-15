@@ -715,6 +715,7 @@ f.close()
           out = self.run_js('a.out.js', engine=engine)
           self.assertContained('hello, world!', out)
 
+  @crossplatform
   def test_emcc_cflags(self):
     output = self.run_process([EMCC, '--cflags'], stdout=PIPE)
     flags = output.stdout.strip()

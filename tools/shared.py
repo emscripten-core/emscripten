@@ -241,11 +241,11 @@ def check_call(cmd, *args, **kw):
 
 
 def exec_process(cmd):
+  print_compiler_stage(cmd)
   if utils.WINDOWS:
     rtn = run_process(cmd, stdin=sys.stdin, check=False).returncode
     sys.exit(rtn)
   else:
-    print_compiler_stage(cmd)
     sys.stdout.flush()
     sys.stderr.flush()
     os.execv(cmd[0], cmd)
