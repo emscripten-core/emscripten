@@ -6260,7 +6260,7 @@ int main(void) {
 
   def test_EXPORT_NAME_with_html(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-o', 'a.html', '-sEXPORT_NAME=Other'])
-    self.assertContained('Customizing EXPORT_NAME requires that the HTML be customized to use that name', err)
+    self.assertContained('error: customizing EXPORT_NAME requires that the HTML be customized to use that name', err)
 
   def test_modularize_sync_compilation(self):
     create_file('post.js', r'''
