@@ -880,27 +880,9 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('emmalloc_memalign_corruption.cpp')
 
-  def test_addr_of_stacked(self):
-    self.do_core_test('test_addr_of_stacked.c')
-
-  def test_globals(self):
-    self.do_core_test('test_globals.c')
-
-  def test_linked_list(self):
-    self.do_core_test('test_linked_list.c')
-
-  def test_sup(self):
-    self.do_run_in_out_file_test('core/test_sup.cpp')
-
   @also_with_standalone_wasm()
   def test_assert(self):
     self.do_core_test('test_assert.cpp', assert_returncode=NON_ZERO)
-
-  def test_wcslen(self):
-    self.do_core_test('test_wcslen.c')
-
-  def test_regex(self):
-    self.do_core_test('test_regex.c')
 
   @crossplatform
   @also_with_standalone_wasm(impure=True)

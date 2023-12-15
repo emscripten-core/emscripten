@@ -14299,6 +14299,12 @@ addToLibrary({
   def test_errar(self):
     self.do_other_test('test_errar.c')
 
+  def test_wcslen(self):
+    self.do_other_test('test_wcslen.c')
+
+  def test_regex(self):
+    self.do_other_test('test_regex.c')
+
   def test_no_input_files(self):
     err = self.expect_fail([EMCC, '-c'])
     self.assertContained('clang: error: no input files', err)
