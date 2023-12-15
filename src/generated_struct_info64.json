@@ -1421,7 +1421,7 @@
             "iov_len": 8
         },
         "msghdr": {
-            "__size__": 48,
+            "__size__": 56,
             "msg_iov": 16,
             "msg_iovlen": 24,
             "msg_name": 0,
