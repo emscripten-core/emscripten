@@ -25,6 +25,7 @@ __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
 from tools import utils
+from tools import system_libs
 
 logger = logging.getLogger('wasm-sourcemap')
 
@@ -238,8 +239,8 @@ def read_dwarf_entries(wasm, options):
     for file in re.finditer(r"file_names\[\s*(\d+)\]:\s+name: \"([^\"]*)\"\s+dir_index: (\d+)", line_chunk):
       dir = include_directories[file.group(3)]
       file_path = os.path.join(dir, file.group(2))
-      if file_path.startswith('/emsdk/emscripten/'):
-        sub_dir = os.path.relpath(file_path, '/emsdk/emscripten')
+      if file_path.startswith(f'{system_libs.DUMMY_EMSCRIPTEN_ROOT}/'):
+        sub_dir = os.path.relpath(file_path, system_libs.DUMMY_EMSCRIPTEN_ROOT)
         file_path = utils.path_from_root(sub_dir)
       files[file.group(1)] = file_path
 

@@ -39,6 +39,9 @@ LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
 # link time.
 USE_NINJA = int(os.environ.get('EMCC_USE_NINJA', '0'))
 
+# A dummy path used as a compilation directory for deterministic builds.
+DUMMY_EMSCRIPTEN_ROOT = '/emsdk/emscripten'
+
 
 def files_in_path(path, filenames):
   srcdir = utils.path_from_root(path)
@@ -472,9 +475,9 @@ class Library:
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
       relative_source_dir = os.path.relpath(source_dir, build_dir)
-      cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
+      cflags += [f'-ffile-prefix-map={source_dir}={DUMMY_EMSCRIPTEN_ROOT}',
                  f'-ffile-prefix-map={relative_source_dir}/=',
-                 '-fdebug-compilation-dir=/emsdk/emscripten']
+                 f'-fdebug-compilation-dir={DUMMY_EMSCRIPTEN_ROOT}']
     asflags = get_base_cflags(preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
@@ -494,9 +497,9 @@ class Library:
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
       relative_source_dir = os.path.relpath(source_dir, build_dir)
-      cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
+      cflags += [f'-ffile-prefix-map={source_dir}={DUMMY_EMSCRIPTEN_ROOT}',
                  f'-ffile-prefix-map={relative_source_dir}/=',
-                 '-fdebug-compilation-dir=/emsdk/emscripten']
+                 f'-fdebug-compilation-dir={DUMMY_EMSCRIPTEN_ROOT}']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
       ext = shared.suffix(src)
