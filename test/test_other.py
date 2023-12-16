@@ -9561,6 +9561,18 @@ int main() {
     # has only two entries
     self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]+,[A-Za-z0-9+/]+"')
 
+  def test_wasm_sourcemap_resolve_dummy_comp_dir(self):
+    wasm_map_cmd = [PYTHON, path_from_root('tools/wasm-sourcemap.py'),
+                    '--dwarfdump-output',
+                    test_file('other/wasm_sourcemap_resolve_dummy_comp_dir/foo.wasm.dump'),
+                    '-o', 'a.out.wasm.map',
+                    test_file('other/wasm_sourcemap_resolve_dummy_comp_dir/foo.wasm'),
+                    '--basepath=' + path_from_root()]
+    self.run_process(wasm_map_cmd, stdout=PIPE, stderr=PIPE)
+    output = read_file('a.out.wasm.map')
+    # has an actual path to the source file of system library, not a dummy path (/emsdk/emscripten/**)
+    self.assertIn('"system/lib/compiler-rt/stack_ops.S"', output)
+
   def test_wasm_sourcemap_relative_paths(self):
     ensure_dir('build')
 
@@ -9803,11 +9815,11 @@ int main() {
     if config.FROZEN_CACHE:
       self.skipTest("test doesn't work with frozen cache")
     self.run_process([EMBUILDER, 'build', 'libemmalloc', '--force'])
-    libc = os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libemmalloc.a')
-    self.assertExists(libc)
+    system_lib = os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libemmalloc.a')
+    self.assertExists(system_lib)
 
     dwdump = self.run_process(
-        [LLVM_DWARFDUMP, libc, '-debug-info', '-debug-line', '--recurse-depth=0'],
+        [LLVM_DWARFDUMP, system_lib, '-debug-info', '-debug-line', '--recurse-depth=0'],
         stdout=PIPE).stdout
     # Check that the embedded location of the source file is correct.
     self.assertIn('DW_AT_name\t("system/lib/emmalloc.c")', dwdump)
