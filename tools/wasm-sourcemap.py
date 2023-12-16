@@ -239,7 +239,7 @@ def read_dwarf_entries(wasm, options):
     for file in re.finditer(r"file_names\[\s*(\d+)\]:\s+name: \"([^\"]*)\"\s+dir_index: (\d+)", line_chunk):
       dir = include_directories[file.group(3)]
       file_path = os.path.join(dir, file.group(2))
-      if file_path.startswith(f'{system_libs.DUMMY_EMSCRIPTEN_ROOT}/'):
+      if file_path.startswith(f'{system_libs.DUMMY_EMSCRIPTEN_ROOT}{os.path.sep}'):
         sub_dir = os.path.relpath(file_path, system_libs.DUMMY_EMSCRIPTEN_ROOT)
         file_path = utils.path_from_root(sub_dir)
       files[file.group(1)] = file_path
