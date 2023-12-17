@@ -1028,7 +1028,7 @@ Embind supports generating TypeScript definition files from :cpp:func:`EMSCRIPTE
 blocks. To generate **.d.ts** files invoke *emcc* with the
 :ref:`embind-emit-tsd <emcc-embind-emit-tsd>` option::
 
-   emcc -lembind quick_example.cpp --embind-emit-tsd interface.d.ts
+   emcc -lembind quick_example.cpp --embind-emit-tsd=interface.d.ts
 
 Running this command will build the program with an instrumented version of embind
 that is then run in *node* to generate the definition files.
