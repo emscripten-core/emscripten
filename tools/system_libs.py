@@ -487,15 +487,17 @@ class Library:
     By default, this builds all the source files returned by `self.get_files()`,
     with the `cflags` returned by `self.get_cflags()`.
     """
+    batch_inputs = int(os.environ.get('EMCC_BATCH_BUILD', '1'))
     batches = {}
     commands = []
     objects = set()
     cflags = self.get_cflags()
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
-      relative_source_dir = os.path.relpath(source_dir, build_dir)
+      if batch_inputs:
+        relative_source_dir = os.path.relpath(source_dir, build_dir)
+        cflags += [f'-ffile-prefix-map={relative_source_dir}/=']
       cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
-                 f'-ffile-prefix-map={relative_source_dir}/=',
                  '-fdebug-compilation-dir=/emsdk/emscripten']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
@@ -531,24 +533,27 @@ class Library:
           object_uuid += 1
           o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
         commands.append(cmd + [src, '-o', o])
-      else:
+      elif batch_inputs:
         # Use relative paths to reduce the length of the command line.
         # This allows to avoid switching to a response file as often.
         src = os.path.relpath(src, build_dir)
         src = utils.normalize_path(src)
         batches.setdefault(tuple(cmd), []).append(src)
+      else:
+        commands.append(cmd + [src, '-o', o])
       objects.add(o)
 
-    # Choose a chunk size that is large enough to avoid too many subprocesses
-    # but not too large to avoid task starvation.
-    # For now the heuristic is to split inputs by 2x number of cores.
-    chunk_size = max(1, len(objects) // (2 * shared.get_num_cores()))
-    # Convert batches to commands.
-    for cmd, srcs in batches.items():
-      cmd = list(cmd)
-      for i in range(0, len(srcs), chunk_size):
-        chunk_srcs = srcs[i:i + chunk_size]
-        commands.append(building.get_command_with_possible_response_file(cmd + chunk_srcs))
+    if batch_inputs:
+      # Choose a chunk size that is large enough to avoid too many subprocesses
+      # but not too large to avoid task starvation.
+      # For now the heuristic is to split inputs by 2x number of cores.
+      chunk_size = max(1, len(objects) // (2 * shared.get_num_cores()))
+      # Convert batches to commands.
+      for cmd, srcs in batches.items():
+        cmd = list(cmd)
+        for i in range(0, len(srcs), chunk_size):
+          chunk_srcs = srcs[i:i + chunk_size]
+          commands.append(building.get_command_with_possible_response_file(cmd + chunk_srcs))
 
     run_build_commands(commands, num_inputs=len(objects), build_dir=build_dir)
     return objects
