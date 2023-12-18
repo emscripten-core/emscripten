@@ -400,6 +400,18 @@ class other(RunnerCore):
     src = read_file('a.out.js')
     self.assertContained('export{doNothing};', src)
 
+  def test_export_es6_pthread(self):
+    # Test ES6 + pthreads + running the output in node.
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6',
+                      '-pthread', '-o', 'hello.mjs'])
+    # Node requires that we load the module in the following manner (this is
+    # parallel to the code we emit for HTML in ScriptSource.replacement).
+    create_file('runner.mjs', '''
+      import initModule from "./hello.mjs";
+      initModule();
+    ''')
+    self.assertContained('hello, world!', self.run_js('runner.mjs'))
+
   def test_emcc_out_file(self):
     # Verify that "-ofile" works in addition to "-o" "file"
     self.run_process([EMCC, '-c', '-ofoo.o', test_file('hello_world.c')])
