@@ -1,8 +1,8 @@
-.. _Asyncify:
+.. _asyncify section:
 
-========================
+========
 Asyncify
-========================
+========
 
 Asyncify lets **synchronous** C or C++ code interact with **asynchronous**
 JavaScript. This allows things like:
