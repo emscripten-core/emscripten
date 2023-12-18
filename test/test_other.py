@@ -400,15 +400,18 @@ class other(RunnerCore):
     src = read_file('a.out.js')
     self.assertContained('export{doNothing};', src)
 
-  def test_export_es6_pthread(self):
-    # Test ES6 + pthreads + running the output in node.
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread'],),
+  })
+  def test_export_es6(self, args):
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6',
-                      '-pthread', '-o', 'hello.mjs'])
-    # Node requires that we load the module in the following manner (this is
-    # parallel to the code we emit for HTML in ScriptSource.replacement).
+                      '-o', 'hello.mjs'] + args)
+    # In ES6 mode we use MODULARIZE, so we must instantiate an instance of the
+    # module to run it.
     create_file('runner.mjs', '''
-      import initModule from "./hello.mjs";
-      initModule();
+      import Hello from "./hello.mjs";
+      Hello();
     ''')
     self.assertContained('hello, world!', self.run_js('runner.mjs'))
 
