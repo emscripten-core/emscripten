@@ -2401,6 +2401,7 @@ are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 for Firefox versions older than < majorVersion.
 Firefox 79 was released on 2020-07-28.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
+Minimum supported value is 34 which was released on 2014-12-01.
 
 .. _min_safari_version:
 
@@ -2417,6 +2418,7 @@ NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 see https://github.com/emscripten-core/emscripten/pull/7191.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
+Minimum supported value is 90000 which was released in 2015.
 
 .. _min_chrome_version:
 
@@ -2427,6 +2429,7 @@ Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 drop support for Chrome 57 and older.
 Chrome 85 was released on 2020-08-25.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
+Minimum supported value is 32, which was released on 2014-01-04.
 
 .. _min_node_version:
 
@@ -2436,7 +2439,8 @@ MIN_NODE_VERSION
 Specifies minimum node version to target for the generated code.  This is
 distinct from the minimum version required run the emscripten compiler.
 This version aligns with the current Ubuuntu TLS 20.04 (Focal).
-Version is encoded in MMmmVV, e.g. 1814101 denotes Node 18.14.01.
+Version is encoded in MMmmVV, e.g. 181401 denotes Node 18.14.01.
+Minimum supported value is 101900, which was released 2020-02-05.
 
 .. _support_errno:
 
