@@ -9098,6 +9098,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  expected_output=expected_output, assert_all=True,
                  check_for_error=False, assert_returncode=NON_ZERO)
 
+  def test_asan_mimalloc(self):
+    # Run one of the asan tests in mimalloc (leaving the main coverage for
+    # the default allocator).
+    self.set_setting('MALLOC', 'mimalloc')
+    self.test_asan_use_after_free_c()
+
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   @no_wasm64('TODO: ASAN in memory64')
