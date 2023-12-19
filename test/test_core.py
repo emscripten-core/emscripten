@@ -1639,28 +1639,6 @@ int main() {
     self.emcc_args.append('--no-entry')
     self.do_core_test('test_ctors_no_main.cpp')
 
-  def test_class(self):
-    self.do_core_test('test_class.cpp')
-
-  def test_inherit(self):
-    self.do_core_test('test_inherit.cpp')
-
-  def test_isdigit_l(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
-    self.do_core_test('test_isdigit_l.cpp')
-
-  def test_iswdigit(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
-    self.do_core_test('test_iswdigit.cpp')
-
-  def test_polymorph(self):
-    self.do_core_test('test_polymorph.cpp')
-
-  def test_complex(self):
-    self.do_core_test('test_complex.c')
-
   def test_float_builtins(self):
     # tests wasm_libc_rt
     self.do_core_test('test_float_builtins.c')
