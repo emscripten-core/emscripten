@@ -587,6 +587,7 @@ var GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN = false;
 // context version was passed. See https://bugs.webkit.org/show_bug.cgi?id=222758 and
 // https://github.com/emscripten-core/emscripten/issues/13295.
 // Set this to 0 to force-disable the workaround if you know the issue will not affect you.
+// [link]
 var GL_WORKAROUND_SAFARI_GETCONTEXT_BUG = true;
 
 // If 1, link with support to glGetProcAddress() functionality.
@@ -594,7 +595,8 @@ var GL_WORKAROUND_SAFARI_GETCONTEXT_BUG = true;
 // does not natively provide such functionality, and it must be emulated. Using glGetProcAddress()
 // is not recommended. If you still need to use this, e.g. when porting an existing renderer,
 // you can link with -sGL_ENABLE_GET_PROC_ADDRESS=1 to get support for this functionality.
-var GL_ENABLE_GET_PROC_ADDRESS = false;
+// [link]
+var GL_ENABLE_GET_PROC_ADDRESS = true;
 
 // Use JavaScript math functions like Math.tan. This saves code size as we can avoid shipping
 // compiled musl code. However, it can be significantly slower as it calls out to JS. It
