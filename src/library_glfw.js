@@ -1468,9 +1468,9 @@ var LibraryGLFW = {
     GLFW.initialTime = GLFW.getTime() - time;
   },
 
-  glfwExtensionSupported__deps: ['glGetString'],
+  glfwExtensionSupported__deps: ['glGetString', '$webglGetExtensions'],
   glfwExtensionSupported: (extension) => {
-    GLFW.extensions ||= GL.getExtensions();
+    GLFW.extensions ||= webglGetExtensions();
 
     if (GLFW.extensions.includes(extension)) return 1;
 

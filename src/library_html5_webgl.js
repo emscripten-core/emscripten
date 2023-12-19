@@ -440,6 +440,9 @@ var LibraryHtml5WebGL = {
 
   emscripten_webgl_get_supported_extensions__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_supported_extensions__deps: ['$stringToNewUTF8'],
+  // Here we report the full list of extensions supported by WebGL rather than
+  // using getEmscriptenSupportedExtensions which filters the list based on
+  // what is has explicit support in.
   emscripten_webgl_get_supported_extensions: () =>
     stringToNewUTF8(GLctx.getSupportedExtensions().join(' ')),
 
