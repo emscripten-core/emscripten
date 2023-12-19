@@ -14321,6 +14321,19 @@ addToLibrary({
   def test_regex(self):
     self.do_other_test('test_regex.c')
 
+  def test_isdigit_l(self):
+    # needs to flush stdio streams
+    self.set_setting('EXIT_RUNTIME')
+    self.do_other_test('test_isdigit_l.cpp')
+
+  def test_iswdigit(self):
+    # needs to flush stdio streams
+    self.set_setting('EXIT_RUNTIME')
+    self.do_other_test('test_iswdigit.cpp')
+
+  def test_complex(self):
+    self.do_other_test('test_complex.c')
+
   def test_no_input_files(self):
     err = self.expect_fail([EMCC, '-c'])
     self.assertContained('clang: error: no input files', err)
