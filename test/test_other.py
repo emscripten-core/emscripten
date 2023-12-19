@@ -400,6 +400,21 @@ class other(RunnerCore):
     src = read_file('a.out.js')
     self.assertContained('export{doNothing};', src)
 
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread'],),
+  })
+  def test_export_es6(self, args):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6',
+                      '-o', 'hello.mjs'] + args)
+    # In ES6 mode we use MODULARIZE, so we must instantiate an instance of the
+    # module to run it.
+    create_file('runner.mjs', '''
+      import Hello from "./hello.mjs";
+      Hello();
+    ''')
+    self.assertContained('hello, world!', self.run_js('runner.mjs'))
+
   def test_emcc_out_file(self):
     # Verify that "-ofile" works in addition to "-o" "file"
     self.run_process([EMCC, '-c', '-ofoo.o', test_file('hello_world.c')])
