@@ -414,6 +414,7 @@ jobs:
     steps:
       - checkout
       - pip-install
+      - run: tools/maint/update_settings_docs.py --check
       - run: make -C site text
       - run: tools/maint/check_emcc_help_text.py
       - run: make -C site html

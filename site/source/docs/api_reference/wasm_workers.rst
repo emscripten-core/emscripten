@@ -1,4 +1,4 @@
-.. _wasm_workers:
+.. _wasm workers section:
 
 ================
 Wasm Workers API
