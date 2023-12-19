@@ -515,6 +515,7 @@ def transpile(filename):
   config_json = json.dumps(config, indent=2)
   outfile = shared.get_temp_files().get('babel.js').name
   config_file = shared.get_temp_files().get('babel_config.json').name
+  logger.debug(config_json)
   utils.write_file(config_file, config_json)
   cmd = shared.get_npm_cmd('babel') + [filename, '-o', outfile, '--presets', '@babel/preset-env', '--config-file', config_file]
   check_call(cmd, cwd=path_from_root())

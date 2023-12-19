@@ -13173,7 +13173,7 @@ myMethod: 43
     # to transpile.
     print('with old browser')
     self.emcc_args.remove('-Werror')
-    self.set_setting('MIN_CHROME_VERSION', '10')
+    self.set_setting('LEGACY_VM_SUPPORT')
     self.do_runf('test.c', expected, output_basename='test_old')
     check_for_es6('test_old.js', False)
 
@@ -14365,3 +14365,7 @@ addToLibrary({
     self.run_process([EMCC, '-c', test_file('hello_world.c')])
     output = self.run_process([EMCC, '-c', test_file('hello_world.c')], stdout=PIPE, stderr=STDOUT).stdout
     self.assertEqual(output, '')
+
+  def test_browser_too_old(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMIN_CHROME_VERSION=10'])
+    self.assertContained('emcc: error: MIN_CHROME_VERSION older than 32 is not supported', err)

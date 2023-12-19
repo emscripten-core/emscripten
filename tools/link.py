@@ -621,6 +621,26 @@ def set_max_memory():
     exit_with_error('MAXIMUM_MEMORY cannot be less than INITIAL_MEMORY')
 
 
+def check_browser_versions():
+  # Map of setting all VM version settings to the minimum version
+  # we support.
+  min_version_setttings = {
+    'MIN_FIREFOX_VERSION': feature_matrix.OLDEST_SUPPORTED_FIREFOX,
+    'MIN_CHROME_VERSION': feature_matrix.OLDEST_SUPPORTED_CHROME,
+    'MIN_SAFARI_VERSION': feature_matrix.OLDEST_SUPPORTED_SAFARI,
+    'MIN_NODE_VERSION': feature_matrix.OLDEST_SUPPORTED_NODE,
+  }
+
+  if settings.LEGACY_VM_SUPPORT:
+    # Default all browser versions to zero
+    for key in min_version_setttings.keys():
+      default_setting(key, 0)
+
+  for key, oldest in min_version_setttings.items():
+    if settings[key] != 0 and settings[key] < oldest:
+      exit_with_error(f'{key} older than {oldest} is not supported')
+
+
 @ToolchainProfiler.profile_block('linker_setup')
 def phase_linker_setup(options, state, newargs):
   system_libpath = '-L' + str(cache.get_lib_dir(absolute=True))
@@ -1091,24 +1111,13 @@ def phase_linker_setup(options, state, newargs):
     if settings.MINIMAL_RUNTIME and options.oformat == OFormat.HTML and not settings.PTHREADS:
       settings.EXPORT_READY_PROMISE = 0
 
-  if settings.LEGACY_VM_SUPPORT:
-    if settings.WASM2JS:
-      settings.POLYFILL_OLD_MATH_FUNCTIONS = 1
+  if settings.WASM2JS and settings.LEGACY_VM_SUPPORT:
+    settings.POLYFILL_OLD_MATH_FUNCTIONS = 1
 
-    # Support all old browser versions
-    settings.MIN_FIREFOX_VERSION = 0
-    settings.MIN_SAFARI_VERSION = 0
-    settings.MIN_CHROME_VERSION = 0
-    settings.MIN_NODE_VERSION = 0
+  check_browser_versions()
 
-  # 10.19.0 is the oldest version of node that we do any testing with.
-  # Keep this in sync with the test-node-compat in .circleci/config.yml
-  # and MINIMUM_NODE_VERSION in tools/shared.py
-  if settings.MIN_NODE_VERSION:
-    if settings.MIN_NODE_VERSION < 101900:
-      exit_with_error('targeting node older than 10.19.00 is not supported')
-    if settings.MIN_NODE_VERSION >= 150000:
-      default_setting('NODEJS_CATCH_REJECTION', 0)
+  if settings.MIN_NODE_VERSION >= 150000:
+    default_setting('NODEJS_CATCH_REJECTION', 0)
 
   # Do not catch rejections or exits in modularize mode, as these options
   # are for use when running emscripten modules standalone

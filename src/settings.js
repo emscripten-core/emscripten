@@ -1774,6 +1774,7 @@ var AUTO_NATIVE_LIBRARIES = true;
 // for Firefox versions older than < majorVersion.
 // Firefox 79 was released on 2020-07-28.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
+// Minimum supported value is 34 which was released on 2014-12-01.
 // [link]
 var MIN_FIREFOX_VERSION = 79;
 
@@ -1787,6 +1788,7 @@ var MIN_FIREFOX_VERSION = 79;
 // older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 // see https://github.com/emscripten-core/emscripten/pull/7191.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
+// Minimum supported value is 90000 which was released in 2015.
 // [link]
 var MIN_SAFARI_VERSION = 140100;
 
@@ -1794,13 +1796,15 @@ var MIN_SAFARI_VERSION = 140100;
 // drop support for Chrome 57 and older.
 // Chrome 85 was released on 2020-08-25.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
+// Minimum supported value is 32, which was released on 2014-01-04.
 // [link]
 var MIN_CHROME_VERSION = 85;
 
 // Specifies minimum node version to target for the generated code.  This is
 // distinct from the minimum version required run the emscripten compiler.
 // This version aligns with the current Ubuuntu TLS 20.04 (Focal).
-// Version is encoded in MMmmVV, e.g. 1814101 denotes Node 18.14.01.
+// Version is encoded in MMmmVV, e.g. 181401 denotes Node 18.14.01.
+// Minimum supported value is 101900, which was released 2020-02-05.
 var MIN_NODE_VERSION = 160000;
 
 // Tracks whether we are building with errno support enabled. Set to 0
