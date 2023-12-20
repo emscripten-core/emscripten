@@ -1147,9 +1147,9 @@ var LibraryGLFW = {
         if (GLFW.windows[i] !== null) return;
 
       const canvas = Module['canvas'];
-      if (!GLFW.hasExternalSizing) {
-        canvas.style.removeProperty( "width");
-        canvas.style.removeProperty("height");
+      if (!GLFW.hasExternalSizing && typeof canvas.style != 'undefined') {
+        canvas.style.removeProperty('width');
+        canvas.style.removeProperty('height');
       }
       Module.ctx = Browser.destroyContext(canvas, true, true);
     },
@@ -1254,15 +1254,13 @@ var LibraryGLFW = {
       const hNativeScaled = Math.floor(hNative * scale);
       if (canvas.width  != wNativeScaled) canvas.width  = wNativeScaled;
       if (canvas.height != hNativeScaled) canvas.height = hNativeScaled;
-      if (!GLFW.hasExternalSizing) {
-        if (typeof canvas.style != 'undefined') {
-          if (wNativeScaled != wNative || hNativeScaled != hNative) {
-            canvas.style.setProperty( "width", wNative + "px", "important");
-            canvas.style.setProperty("height", hNative + "px", "important");
-          } else {
-            canvas.style.removeProperty( "width");
-            canvas.style.removeProperty("height");
-          }
+      if (!GLFW.hasExternalSizing && typeof canvas.style != 'undefined') {
+        if (wNativeScaled != wNative || hNativeScaled != hNative) {
+          canvas.style.setProperty( 'width', wNative + 'px', 'important');
+          canvas.style.setProperty('height', hNative + 'px', 'important');
+        } else {
+          canvas.style.removeProperty('width');
+          canvas.style.removeProperty('height');
         }
       }
     },
