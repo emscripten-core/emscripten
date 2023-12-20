@@ -935,7 +935,7 @@ function to64(x) {
 
 // Add assertions to catch common errors when using the Promise object we
 // create on Module.ready() and return from MODULARIZE Module() invocations.
-function addReadyPromiseAssertions(promise) {
+function addReadyPromiseAssertions() {
   // Warn on someone doing
   //
   //  var instance = Module();
@@ -948,8 +948,8 @@ function addReadyPromiseAssertions(promise) {
   const warningEnding = ' on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js';
   const res = JSON.stringify(properties);
   return res + `.forEach((prop) => {
-  if (!Object.getOwnPropertyDescriptor(${promise}, prop)) {
-    Object.defineProperty(${promise}, prop, {
+  if (!Object.getOwnPropertyDescriptor(readyPromise, prop)) {
+    Object.defineProperty(readyPromise, prop, {
       get: () => abort('You are getting ' + prop + '${warningEnding}'),
       set: () => abort('You are setting ' + prop + '${warningEnding}'),
     });

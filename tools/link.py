@@ -2312,14 +2312,12 @@ def modularize():
      shared.target_environment_may_be('web'):
     async_emit = 'async '
 
-  # Return the incoming `moduleArg`.  This is is equeivielt to the `Module` var within the
-  # generated code but its not run through closure minifiection so we can reference it in
-  # the the return statement.
-  return_value = 'moduleArg'
   if settings.WASM_ASYNC_COMPILATION:
-    return_value += '.ready'
-  if not settings.EXPORT_READY_PROMISE:
-    return_value = '{}'
+    return_value = 'readyPromise'
+    if not settings.EXPORT_READY_PROMISE:
+      return_value = '{}'
+  else:
+    return_value = 'Module'
 
   # TODO: Remove when https://bugs.webkit.org/show_bug.cgi?id=223533 is resolved.
   if async_emit != '' and settings.EXPORT_NAME == 'config':
