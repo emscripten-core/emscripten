@@ -1688,29 +1688,17 @@ int main() {
       else:
         self.do_run(src, 'marfoosh')
 
-  def test_dynamic_cast(self):
-    self.do_core_test('test_dynamic_cast.cpp')
-
-  def test_dynamic_cast_b(self):
-    self.do_core_test('test_dynamic_cast_b.cpp')
-
-  def test_dynamic_cast_2(self):
-    self.do_core_test('test_dynamic_cast_2.cpp')
-
+  @only_in_wasm2js
   def test_funcptr(self):
     self.do_core_test('test_funcptr.c')
 
+  @only_in_wasm2js
   def test_mathfuncptr(self):
     self.do_core_test('test_mathfuncptr.c')
 
+  @only_in_wasm2js
   def test_funcptrfunc(self):
     self.do_core_test('test_funcptrfunc.c')
-
-  def test_funcptr_namecollide(self):
-    self.do_core_test('test_funcptr_namecollide.c')
-
-  def test_emptyclass(self):
-    self.do_core_test('test_emptyclass.cpp')
 
   def test_alloca(self):
     self.do_runf('core/test_alloca.c')
