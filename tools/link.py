@@ -2341,53 +2341,54 @@ def modularize():
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
     # Single threaded MINIMAL_RUNTIME programs do not need access to
     # document.currentScript, so a simple export declaration is enough.
-    src = '/** @nocollapse */ var %s=%s' % (settings.EXPORT_NAME, src)
+    src = '/** @nocollapse */ var %s = %s' % (settings.EXPORT_NAME, src)
   else:
     script_url_node = ''
     # When MODULARIZE this JS may be executed later,
     # after document.currentScript is gone, so we save it.
-    # In EXPORT_ES6 + PTHREADS the 'thread' is actually an ES6 module webworker running in strict mode,
-    # so doesn't have access to 'document'. In this case use 'import.meta' instead.
+    # In EXPORT_ES6 + PTHREADS the 'thread' is actually an ES6 module
+    # webworker running in strict mode, so doesn't have access to 'document'.
+    # In this case use 'import.meta' instead.
     if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
       script_url = 'import.meta.url'
     else:
       script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
       if shared.target_environment_may_be('node'):
-        script_url_node = "if (typeof __filename !== 'undefined') _scriptDir = _scriptDir || __filename;"
+        script_url_node = "if (typeof __filename !== 'undefined') _scriptDir ||= __filename;"
     src = '''%(node_imports)s
 var %(EXPORT_NAME)s = (() => {
   var _scriptDir = %(script_url)s;
   %(script_url_node)s
   return (%(src)s);
 })();
-%(capture_module_function_for_audio_worklet)s;
 ''' % {
       'node_imports': node_es6_imports(),
       'EXPORT_NAME': settings.EXPORT_NAME,
       'script_url': script_url,
       'script_url_node': script_url_node,
       'src': src,
-      # Given the async nature of how the Module function and Module object come into existence in AudioWorkletGlobalScope,
-      # store the Module function under a different variable name so that AudioWorkletGlobalScope will be able to reference
-      # it without aliasing/conflicting with the Module variable name.
-      'capture_module_function_for_audio_worklet': 'globalThis.AudioWorkletModule = ' + settings.EXPORT_NAME if settings.AUDIO_WORKLET and settings.MODULARIZE else ''
     }
+    # Given the async nature of how the Module function and Module object
+    # come into existence in AudioWorkletGlobalScope, store the Module
+    # function under a different variable name so that AudioWorkletGlobalScope
+    # will be able to reference it without aliasing/conflicting with the
+    # Module variable name.
+    if settings.AUDIO_WORKLET and settings.MODULARIZE:
+      src += f'globalThis.AudioWorkletModule = {settings.EXPORT_NAME};'
 
-  final_js += '.modular.js'
-  with open(final_js, 'w', encoding='utf-8') as f:
-    f.write(src)
-
-    # Export using a UMD style export, or ES6 exports if selected
-    if settings.EXPORT_ES6:
-      f.write('export default %s;' % settings.EXPORT_NAME)
-    elif not settings.MINIMAL_RUNTIME:
-      f.write('''\
+  # Export using a UMD style export, or ES6 exports if selected
+  if settings.EXPORT_ES6:
+    src += 'export default %s;' % settings.EXPORT_NAME
+  elif not settings.MINIMAL_RUNTIME:
+    src += '''\
 if (typeof exports === 'object' && typeof module === 'object')
   module.exports = %(EXPORT_NAME)s;
 else if (typeof define === 'function' && define['amd'])
   define([], () => %(EXPORT_NAME)s);
-''' % {'EXPORT_NAME': settings.EXPORT_NAME})
+''' % {'EXPORT_NAME': settings.EXPORT_NAME}
 
+  final_js += '.modular.js'
+  write_file(final_js, src)
   shared.get_temp_files().note(final_js)
   save_intermediate('modularized')
 
