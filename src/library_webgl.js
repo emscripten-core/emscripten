@@ -739,10 +739,11 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       disableHalfFloatExtensionIfBroken(ctx);
 #endif
 
-      // If end user enables *glGetProcAddress() functionality, then we must filter out
+      // If end user enables *glGetProcAddress() functionality or
+      // GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS, then we must filter out
       // all future WebGL extensions from being passed to the user, and only restrict to advertising
       // extensions that the *glGetProcAddress() function knows to handle.
-#if GL_ENABLE_GET_PROC_ADDRESS
+#if GL_ENABLE_GET_PROC_ADDRESS || GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
       var _allSupportedExtensions = ctx.getSupportedExtensions;
       var supportedExtensionsForGetProcAddress = [
 #if MIN_WEBGL_VERSION == 1
