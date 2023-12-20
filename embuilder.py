@@ -92,6 +92,7 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libdlmalloc-mt',
     'libGL-emu',
     'libGL-emu-webgl2',
+    'libGL-emu-webgl2-getprocaddr.a',
     'libGL-mt',
     'libGL-mt-getprocaddr',
     'libGL-mt-emu',
