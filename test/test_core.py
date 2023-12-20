@@ -1688,15 +1688,15 @@ int main() {
       else:
         self.do_run(src, 'marfoosh')
 
-  @only_in_wasm2js
+  @only_wasm2js('tests function pointer calls')
   def test_funcptr(self):
     self.do_core_test('test_funcptr.c')
 
-  @only_in_wasm2js
+  @only_wasm2js('tests function pointer calls')
   def test_mathfuncptr(self):
     self.do_core_test('test_mathfuncptr.c')
 
-  @only_in_wasm2js
+  @only_wasm2js('tests function pointer calls')
   def test_funcptrfunc(self):
     self.do_core_test('test_funcptrfunc.c')
 
