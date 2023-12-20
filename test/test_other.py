@@ -8330,7 +8330,7 @@ int main() {
     'wasmfs': (['-O3', '-sWASMFS'],        [], []), # noqa
   })
   def test_metadce_hello(self, *args):
-    self.run_metadce_test('hello_world.cpp', *args)
+    self.run_metadce_test('hello_world.c', *args)
 
   @parameterized({
     'O3':                 ('mem.c', ['-O3'],
