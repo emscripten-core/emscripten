@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.52 (in development)
 -----------------------
+- Fix bug where `main` was mistakenly included in debug builds but not in
+  release builds. (#20971)
 - Remove JAVA from the list of `.emscripten` config file settings.  In the
   past we used this to run the java version of closure compiler.  If there are
   folks who prefer to use the java version of closure compiler for some reason
