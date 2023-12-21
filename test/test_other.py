@@ -7924,10 +7924,10 @@ int main() {}
     test("Module['print']('print'); Module['printErr']('err'); ", 'print\nerr', ['-sEXPORTED_RUNTIME_METHODS=print,printErr', '-Wno-js-compiler'])
 
   def test_warn_unexported_main(self):
-    WARNING = 'main() is in the input files, but "_main" is not in EXPORTED_FUNCTIONS, which means it may be eliminated as dead code. Export it if you want main() to run.'
+    warning = 'emcc: warning: `main` is defined in the input files, but `_main` is not in `EXPORTED_FUNCTIONS`, which means it may be eliminated as dead code. Export it if you want `main` to run. [-Wunused-main]'
 
     proc = self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=[]'], stderr=PIPE)
-    self.assertContained(WARNING, proc.stderr)
+    self.assertContained(warning, proc.stderr)
 
   def test_source_file_with_fixed_language_mode(self):
     create_file('src_tmp_fixed_lang', '''

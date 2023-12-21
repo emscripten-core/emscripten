@@ -1866,7 +1866,7 @@ int main() {
     # Sanitizers are not compatible with LINKABLE (dynamic linking.
     if not is_sanitizing(self.emcc_args) and not self.is_wasm64():
       # test EXPORT_ALL
-      self.set_setting('EXPORTED_FUNCTIONS', [])
+      self.clear_setting('EXPORTED_FUNCTIONS')
       self.set_setting('EXPORT_ALL')
       self.set_setting('LINKABLE')
       self.do_core_test('test_emscripten_api.cpp')

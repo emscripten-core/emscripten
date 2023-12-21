@@ -568,8 +568,8 @@ def finalize_wasm(infile, outfile, js_syms):
   unexpected_exports = [e for e in metadata.all_exports if treat_as_user_export(e)]
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
-  if '_main' in unexpected_exports:
-    logger.warning('main() is in the input files, but "_main" is not in EXPORTED_FUNCTIONS, which means it may be eliminated as dead code. Export it if you want main() to run.')
+  if not settings.STANDALONE_WASM and '_main' in unexpected_exports:
+    diagnostics.warning('unused-main', '`main` is defined in the input files, but `_main` is not in `EXPORTED_FUNCTIONS`, which means it may be eliminated as dead code. Export it if you want `main` to run.')
     unexpected_exports.remove('_main')
 
   building.user_requested_exports.update(unexpected_exports)
