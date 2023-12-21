@@ -1078,6 +1078,8 @@ var LibraryGLFW = {
 
       // check whether css is modifying the size
       const canvas = Module['canvas'];
+      const originalCanvasWidth = canvas.width;
+      const orginalCanvasHeight = canvas.height;
       canvas.width = 1; canvas.height = 1;
       GLFW.hasExternalSizing = canvas.clientWidth != 1 || canvas.clientHeight != 1;
 
@@ -1116,6 +1118,9 @@ var LibraryGLFW = {
       // Get non alive id
       var win = new GLFW_Window(id, canvas.clientWidth, canvas.clientHeight, canvas.width, canvas.height, title, monitor, share);
 
+      win.originalCanvasWidth = originalCanvasWidth;
+      win.orginalCanvasHeight = orginalCanvasHeight;
+
       // Set window to array
       if (id - 1 == GLFW.windows.length) {
         GLFW.windows.push(win);
@@ -1152,6 +1157,8 @@ var LibraryGLFW = {
         canvas.style.removeProperty('height');
       }
       Module.ctx = Browser.destroyContext(canvas, true, true);
+      canvas.width = win.originalCanvasWidth;
+      canvas.height = win.orginalCanvasHeight;
     },
 
     swapBuffers: (winid) => {
