@@ -14335,6 +14335,15 @@ addToLibrary({
   def test_complex(self):
     self.do_other_test('test_complex.c')
 
+  def test_dynamic_cast(self):
+    self.do_other_test('test_dynamic_cast.cpp')
+
+  def test_dynamic_cast_b(self):
+    self.do_other_test('test_dynamic_cast_b.cpp')
+
+  def test_dynamic_cast_2(self):
+    self.do_other_test('test_dynamic_cast_2.cpp')
+
   def test_no_input_files(self):
     err = self.expect_fail([EMCC, '-c'])
     self.assertContained('clang: error: no input files', err)
