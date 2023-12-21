@@ -210,13 +210,22 @@ def set_memory(static_bump):
   settings.HEAP_BASE = align_memory(stack_high)
 
 
-def report_missing_symbols(js_symbols):
-  # Report any symbol that was explicitly exported but is present neither
-  # as a native function nor as a JS library function.
-  defined_symbols = set(asmjs_mangle(e) for e in settings.WASM_EXPORTS).union(js_symbols)
-  missing = set(settings.USER_EXPORTED_FUNCTIONS) - defined_symbols
-  for symbol in sorted(missing):
-    diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
+def report_missing_exports_wasm_only(metadata):
+  if diagnostics.is_enabled('undefined'):
+    defined_symbols = set(asmjs_mangle(e) for e in metadata.all_exports)
+    missing = set(settings.USER_EXPORTED_FUNCTIONS) - defined_symbols
+    for symbol in sorted(missing):
+      diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
+
+
+def report_missing_exports(js_symbols):
+  if diagnostics.is_enabled('undefined'):
+    # Report any symbol that was explicitly exported but is present neither
+    # as a native function nor as a JS library function.
+    defined_symbols = set(asmjs_mangle(e) for e in settings.WASM_EXPORTS).union(js_symbols)
+    missing = set(settings.USER_EXPORTED_FUNCTIONS) - defined_symbols
+    for symbol in sorted(missing):
+      diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
 
   # Special hanlding for the `_main` symbol
 
@@ -359,7 +368,9 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
       if proc.returncode:
         exit_with_error(f'EM_JS function validation failed (node returned {proc.returncode})')
 
-    logger.debug('emscript: skipping remaining js glue generation')
+  if not outfile_js:
+    report_missing_exports_wasm_only(metadata)
+    logger.debug('emscript: skipping js glue generation')
     return
 
   # memory and global initializers
@@ -398,11 +409,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
         pre += f"  ignoredModuleProp('{sym}');\n"
     pre += "}\n"
 
-  report_missing_symbols(forwarded_json['librarySymbols'])
-
-  if not outfile_js:
-    logger.debug('emscript: skipping remaining js glue generation')
-    return
+  report_missing_exports(forwarded_json['librarySymbols'])
 
   if settings.MINIMAL_RUNTIME:
     # In MINIMAL_RUNTIME, atinit exists in the postamble part
