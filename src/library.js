@@ -48,8 +48,8 @@ addToLibrary({
 #if SAFE_HEAP
   // Trivial wrappers around runtime functions that make these symbols available
   // to native code.
-  segfault: () => segfault(),
-  alignfault: () => alignfault(),
+  segfault: '=segfault',
+  alignfault: '=alignfault',
 #endif
 
   // ==========================================================================
@@ -851,7 +851,7 @@ addToLibrary({
 
         return getWeekBasedYear(date).toString().substring(2);
       },
-      '%G': (date) => getWeekBasedYear(date),
+      '%G': getWeekBasedYear,
       '%H': (date) => leadingNulls(date.tm_hour, 2),
       '%I': (date) => {
         var twelveHour = date.tm_hour;
@@ -3032,7 +3032,7 @@ addToLibrary({
   // Converts a JS string to an integer base-10, with signaling error
   // handling (throws a JS exception on error). E.g. jstoi_s("123abc")
   // throws an exception.
-  $jstoi_s: (str) => Number(str),
+  $jstoi_s: 'Number',
 
 #if LINK_AS_CXX
   // libunwind

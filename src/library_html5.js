@@ -364,8 +364,7 @@ var LibraryHTML5 = {
 #endif
   },
 #else
-  $findCanvasEventTarget__deps: ['$findEventTarget'],
-  $findCanvasEventTarget: (target) => findEventTarget(target),
+  $findCanvasEventTarget: '$findEventTarget',
 #endif
 
 #else
