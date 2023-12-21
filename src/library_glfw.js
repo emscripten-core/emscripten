@@ -1076,6 +1076,13 @@ var LibraryGLFW = {
       // not valid
       if (width <= 0 || height <= 0) return 0;
 
+      // check whether css is modifying the size
+      const canvas = Module['canvas'];
+      const originalCanvasWidth = canvas.width;
+      const orginalCanvasHeight = canvas.height;
+      canvas.width = 1; canvas.height = 1;
+      GLFW.hasExternalSizing = canvas.clientWidth != 1 || canvas.clientHeight != 1;
+
       if (monitor) {
         Browser.requestFullscreen();
       } else {
@@ -1109,8 +1116,10 @@ var LibraryGLFW = {
       if (!Module.ctx && useWebGL) return 0;
 
       // Get non alive id
-      const canvas = Module['canvas'];
       var win = new GLFW_Window(id, canvas.clientWidth, canvas.clientHeight, canvas.width, canvas.height, title, monitor, share);
+
+      win.originalCanvasWidth = originalCanvasWidth;
+      win.orginalCanvasHeight = orginalCanvasHeight;
 
       // Set window to array
       if (id - 1 == GLFW.windows.length) {
@@ -1142,7 +1151,14 @@ var LibraryGLFW = {
       for (var i = 0; i < GLFW.windows.length; i++)
         if (GLFW.windows[i] !== null) return;
 
-      Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
+      const canvas = Module['canvas'];
+      if (!GLFW.hasExternalSizing && typeof canvas.style != 'undefined') {
+        canvas.style.removeProperty('width');
+        canvas.style.removeProperty('height');
+      }
+      Module.ctx = Browser.destroyContext(canvas, true, true);
+      canvas.width = win.originalCanvasWidth;
+      canvas.height = win.orginalCanvasHeight;
     },
 
     swapBuffers: (winid) => {
@@ -1245,13 +1261,13 @@ var LibraryGLFW = {
       const hNativeScaled = Math.floor(hNative * scale);
       if (canvas.width  != wNativeScaled) canvas.width  = wNativeScaled;
       if (canvas.height != hNativeScaled) canvas.height = hNativeScaled;
-      if (typeof canvas.style != 'undefined') {
+      if (!GLFW.hasExternalSizing && typeof canvas.style != 'undefined') {
         if (wNativeScaled != wNative || hNativeScaled != hNative) {
-          canvas.style.setProperty( "width", wNative + "px", "important");
-          canvas.style.setProperty("height", hNative + "px", "important");
+          canvas.style.setProperty( 'width', wNative + 'px', 'important');
+          canvas.style.setProperty('height', hNative + 'px', 'important');
         } else {
-          canvas.style.removeProperty( "width");
-          canvas.style.removeProperty("height");
+          canvas.style.removeProperty('width');
+          canvas.style.removeProperty('height');
         }
       }
     },
