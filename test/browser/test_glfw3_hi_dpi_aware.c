@@ -51,19 +51,17 @@ static void checkWindowSize(GLFWwindow *window, int expectedWidth, int expectedH
   assert(fbw == (int) (expectedWidth * ratio) && fbh == (int) (expectedHeight * ratio));
 }
 
-static void checkCanvasSize(int expectedWidth, int expectedHeight)
-{
+static void checkCanvasSize(int expectedWidth, int expectedHeight) {
   int w, h;
   emscripten_get_canvas_element_size("#canvas", &w, &h);
-  printf("canvas => %d == %d && %d == %d\n", w, expectedWidth, h, expectedHeight);
+  printf("canvas size => %d == %d && %d == %d\n", w, expectedWidth, h, expectedHeight);
   assert(w == expectedWidth && h == expectedHeight);
 }
 
-static void checkCanvasFramebufferSize(int expectedWidth, int expectedHeight)
-{
+static void checkCanvasFramebufferSize(int expectedWidth, int expectedHeight) {
   double fbw, fbh;
   emscripten_get_element_css_size("#canvas", &fbw, &fbh);
-  printf("framebufferSize => %d == %d && %d == %d\n", (int) fbw, (int) expectedWidth, (int) fbh, expectedHeight);
+  printf("canvas framebufferSize => %d == %d && %d == %d\n", (int) fbw, (int) expectedWidth, (int) fbh, expectedHeight);
   assert((int) fbw == expectedWidth && (int) fbh == expectedHeight);
 }
 
