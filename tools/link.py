@@ -1331,11 +1331,6 @@ def phase_linker_setup(options, state, newargs):
     settings.WASM_BIGINT = 1
 
   if settings.WASM_WORKERS:
-    # TODO: After #15982 is resolved, these dependencies can be declared in library_wasm_worker.js
-    #       instead of having to record them here.
-    wasm_worker_imports = ['_emscripten_wasm_worker_initialize', '___set_thread_state']
-    settings.EXPORTED_FUNCTIONS += wasm_worker_imports
-    building.user_requested_exports.update(wasm_worker_imports)
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$_wasmWorkerInitializeRuntime']
     # set location of Wasm Worker bootstrap JS file
     if settings.WASM_WORKERS == 1:
