@@ -7923,11 +7923,24 @@ int main() {}
     # test backwards compatibility
     test("Module['print']('print'); Module['printErr']('err'); ", 'print\nerr', ['-sEXPORTED_RUNTIME_METHODS=print,printErr', '-Wno-js-compiler'])
 
-  def test_warn_unexported_main(self):
-    warning = 'emcc: warning: `main` is defined in the input files, but `_main` is not in `EXPORTED_FUNCTIONS`, which means it may be eliminated as dead code. Export it if you want `main` to run. [-Wunused-main]'
+  @parameterized({
+    '': ([],),
+    'O2': (['-O2'],),
+  })
+  def test_warn_unexported_main(self, args):
+    warning = 'emcc: warning: `main` is defined in the input files, but `_main` is not in `EXPORTED_FUNCTIONS`. Add it to this list if you want `main` to run. [-Wunused-main]'
 
-    proc = self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=[]'], stderr=PIPE)
-    self.assertContained(warning, proc.stderr)
+    proc = self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=[]'] + args, stderr=PIPE)
+    # This warning only shows up when ASSERTIONS are enabled.
+    # We run both ways those to ensure that main doesn't get run in either case.
+    if '-O2' in args:
+      self.assertNotContained(warning, proc.stderr)
+    else:
+      self.assertContained(warning, proc.stderr)
+
+    # Verify that main indeed does not run
+    output = self.run_js('a.out.js')
+    self.assertEqual('', output)
 
   def test_source_file_with_fixed_language_mode(self):
     create_file('src_tmp_fixed_lang', '''

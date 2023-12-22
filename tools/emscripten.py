@@ -568,9 +568,16 @@ def finalize_wasm(infile, outfile, js_syms):
   unexpected_exports = [e for e in metadata.all_exports if treat_as_user_export(e)]
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
+
+  # If `_main` was unexpectedly exported we assume it was added to
+  # EXPORT_IF_DEFINED by emcc.py in order that we can detect it and
+  # report this warning.  In this case we explicitly ignore the export
+  # and run as if there was no main function since that is defined is
+  # behaviour for programs that don't include `_main` in EXPORTED_FUNCTIONS.
   if not settings.STANDALONE_WASM and '_main' in unexpected_exports:
-    diagnostics.warning('unused-main', '`main` is defined in the input files, but `_main` is not in `EXPORTED_FUNCTIONS`, which means it may be eliminated as dead code. Export it if you want `main` to run.')
+    diagnostics.warning('unused-main', '`main` is defined in the input files, but `_main` is not in `EXPORTED_FUNCTIONS`. Add it to this list if you want `main` to run.')
     unexpected_exports.remove('_main')
+    metadata.all_exports.remove('main')
 
   building.user_requested_exports.update(unexpected_exports)
   settings.EXPORTED_FUNCTIONS.extend(unexpected_exports)
