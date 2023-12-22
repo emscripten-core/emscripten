@@ -810,11 +810,13 @@ def phase_linker_setup(options, state, newargs):
     # 2. If the user doesn't export anything we default to exporting `_main` (unless `--no-entry`
     #    is specified (see above).
     if 'EXPORTED_FUNCTIONS' in user_settings:
-      if '_main' not in settings.USER_EXPORTED_FUNCTIONS:
+      if '_main' in settings.USER_EXPORTED_FUNCTIONS:
+        settings.EXPORTED_FUNCTIONS.remove('_main')
+        settings.EXPORT_IF_DEFINED.append('main')
+      else:
         settings.EXPECT_MAIN = 0
     else:
-      assert not settings.EXPORTED_FUNCTIONS
-      settings.EXPORTED_FUNCTIONS = ['_main']
+      settings.EXPORT_IF_DEFINED.append('main')
 
   if settings.STANDALONE_WASM:
     # In STANDALONE_WASM mode we either build a command or a reactor.
@@ -838,7 +840,7 @@ def phase_linker_setup(options, state, newargs):
   # Note the exports the user requested
   building.user_requested_exports.update(settings.EXPORTED_FUNCTIONS)
 
-  if '_main' in settings.EXPORTED_FUNCTIONS:
+  if '_main' in settings.EXPORTED_FUNCTIONS or 'main' in settings.EXPORT_IF_DEFINED:
     settings.EXPORT_IF_DEFINED.append('__main_argc_argv')
   elif settings.ASSERTIONS and not settings.STANDALONE_WASM:
     # In debug builds when `main` is not explicitly requested as an
