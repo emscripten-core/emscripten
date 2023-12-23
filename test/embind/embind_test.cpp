@@ -2443,6 +2443,11 @@ int overloaded_function(int i, int j) {
   return 2;
 }
 
+int overloaded_function(std::string text) {
+    assert(text == "dummy");
+    return 3;
+}
+
 class MultipleCtors {
 public:
   int value = 0;
@@ -2462,6 +2467,14 @@ public:
     assert(j == 30);
     assert(k == 30);
   }
+  MultipleCtors(std::string text) {
+    value = 4;
+    assert(text == "dummy");
+  }
+  MultipleCtors(Base b) {
+    value = 5;
+    assert(b.name == "Base");
+  }
 
   int WhichCtorCalled() const {
     return value;
@@ -2471,6 +2484,7 @@ public:
 class MultipleSmartCtors {
 public:
   int value = 0;
+  int constValue = 3;
 
   MultipleSmartCtors(int i) {
     value = 1;
@@ -2480,6 +2494,19 @@ public:
     value = 2;
     assert(i == 20);
     assert(j == 20);
+  }
+  MultipleSmartCtors(std::string text) {
+    value = 3;
+    assert(text == "dummy");
+  }
+  MultipleSmartCtors(Base b) {
+    value = 4;
+    assert(b.name == "Base");
+  }
+
+  MultipleSmartCtors(std::shared_ptr<MultipleSmartCtors> b) {
+    value = 5;
+    assert(b->constValue == 3);
   }
 
   int WhichCtorCalled() const {
@@ -2506,6 +2533,12 @@ public:
     return 2;
   }
 
+  int Func(std::string text) {
+    assert(text == "dummy");
+    value = 3;
+    return 3;
+  }
+
   int WhichFuncCalled() const {
     return value;
   }
@@ -2520,6 +2553,12 @@ public:
     assert(j == 20);
     staticValue = 2;
     return 2;
+  }
+
+  static int StaticFunc(std::string text) {
+    assert(text == "dummy");
+    staticValue = 3;
+    return 3;
   }
 
   static int WhichStaticFuncCalled() {
@@ -2620,11 +2659,14 @@ DummyForOverloads getDummy(DummyForOverloads d) {
 EMSCRIPTEN_BINDINGS(overloads) {
   function("overloaded_function", select_overload<int(int)>(&overloaded_function));
   function("overloaded_function", select_overload<int(int, int)>(&overloaded_function));
+  function("overloaded_function", select_overload<int(std::string)>(&overloaded_function));
 
   class_<MultipleCtors>("MultipleCtors")
     .constructor<int>()
     .constructor<int, int>()
     .constructor<int, int, int>()
+    .constructor<std::string>()
+    .constructor<Base>()
     .function("WhichCtorCalled", &MultipleCtors::WhichCtorCalled)
     ;
 
@@ -2632,6 +2674,9 @@ EMSCRIPTEN_BINDINGS(overloads) {
     .smart_ptr<std::shared_ptr<MultipleSmartCtors>>("shared_ptr<MultipleSmartCtors>")
     .constructor(&std::make_shared<MultipleSmartCtors, int>)
     .constructor(&std::make_shared<MultipleSmartCtors, int, int>)
+    .constructor(&std::make_shared<MultipleSmartCtors, std::string>)
+    .constructor(&std::make_shared<MultipleSmartCtors, Base>)
+    .constructor(&std::make_shared<MultipleSmartCtors, std::shared_ptr<MultipleSmartCtors>>)
     .function("WhichCtorCalled", &MultipleSmartCtors::WhichCtorCalled)
     ;
 
@@ -2639,9 +2684,11 @@ EMSCRIPTEN_BINDINGS(overloads) {
     .constructor<>()
     .function("Func", select_overload<int(int)>(&MultipleOverloads::Func))
     .function("Func", select_overload<int(int, int)>(&MultipleOverloads::Func))
+    .function("Func", select_overload<int(std::string)>(&MultipleOverloads::Func))
     .function("WhichFuncCalled", &MultipleOverloads::WhichFuncCalled)
     .class_function("StaticFunc", select_overload<int(int)>(&MultipleOverloads::StaticFunc))
     .class_function("StaticFunc", select_overload<int(int,int)>(&MultipleOverloads::StaticFunc))
+    .class_function("StaticFunc", select_overload<int(std::string)>(&MultipleOverloads::StaticFunc))
     .class_function("WhichStaticFuncCalled", &MultipleOverloads::WhichStaticFuncCalled)
     ;
 
