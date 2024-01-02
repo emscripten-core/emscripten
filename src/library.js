@@ -3524,7 +3524,9 @@ addToLibrary({
   $asyncLoad: (url, onload, onerror, noRunDep) => {
     var dep = !noRunDep ? getUniqueRunDependency(`al ${url}`) : '';
     readAsync(url, (arrayBuffer) => {
+#if ASSERTIONS
       assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
+#endif
       onload(new Uint8Array(arrayBuffer));
       if (dep) removeRunDependency(dep);
     }, (event) => {
