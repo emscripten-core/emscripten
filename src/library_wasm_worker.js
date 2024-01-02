@@ -69,7 +69,15 @@ addToLibrary({
 
   // src/postamble_minimal.js brings this symbol in to the build, and calls this
   // function synchronously from main JS file at the startup of each Worker.
-  $_wasmWorkerInitializeRuntime__deps: ['$_wasmWorkerDelayedMessageQueue', '$_wasmWorkerRunPostMessage', '$_wasmWorkerAppendToQueue', 'emscripten_wasm_worker_initialize'],
+  $_wasmWorkerInitializeRuntime__deps: [
+    '$_wasmWorkerDelayedMessageQueue',
+    '$_wasmWorkerRunPostMessage',
+    '$_wasmWorkerAppendToQueue',
+    'emscripten_wasm_worker_initialize',
+#if PTHREADS
+    '__set_thread_state',
+#endif
+  ],
   $_wasmWorkerInitializeRuntime: () => {
     let m = Module;
 #if ASSERTIONS
