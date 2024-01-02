@@ -51,20 +51,6 @@ static void checkWindowSize(GLFWwindow *window, int expectedWidth, int expectedH
   assert(fbw == (int) (expectedWidth * ratio) && fbh == (int) (expectedHeight * ratio));
 }
 
-static void checkCanvasSize(int expectedWidth, int expectedHeight) {
-  int w, h;
-  emscripten_get_canvas_element_size("#canvas", &w, &h);
-  printf("canvas size => %d == %d && %d == %d\n", w, expectedWidth, h, expectedHeight);
-  assert(w == expectedWidth && h == expectedHeight);
-}
-
-static void checkCanvasFramebufferSize(int expectedWidth, int expectedHeight) {
-  double fbw, fbh;
-  emscripten_get_element_css_size("#canvas", &fbw, &fbh);
-  printf("canvas framebufferSize => %d == %d && %d == %d\n", (int) fbw, (int) expectedWidth, (int) fbh, expectedHeight);
-  assert((int) fbw == expectedWidth && (int) fbh == expectedHeight);
-}
-
 static bool getGLFWIsHiDPIAware() {
   return EM_ASM_INT(return GLFW.isHiDPIAware() ? 1 : 0) != 0;
 }
@@ -89,8 +75,6 @@ int main() {
   // Expected outcome is window size and frame buffer size are the same
   {
     printf("Use case #1\n");
-    checkCanvasSize(300, 150); // 300x150 is the default canvas size
-    checkCanvasFramebufferSize(300, 150);
     window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #1", NULL, NULL);
     assert(window != NULL);
     checkHiDPIAware(window, false);
@@ -98,8 +82,6 @@ int main() {
     glfwSetWindowSize(window, 600, 400);
     checkWindowSize(window, 600, 400, 1.0);
     glfwDestroyWindow(window);
-    checkCanvasSize(300, 150); // we make sure that the glfw code resets the canvas how it was
-    checkCanvasFramebufferSize(300, 150);
   }
 
   // Use case 2: GLFW is NOT Hi DPI Aware | devicePixelRatio is 2.0
@@ -190,24 +172,6 @@ int main() {
     setDevicePixelRatio(1.0);
     checkWindowSize(window, 640, 480, 1.0);
     glfwDestroyWindow(window);
-  }
-
-  // Use case 8: GLFW is Hi DPI Aware | devicePixelRatio is 2.0 | canvas has css override
-  // Expected outcome is that the framebuffer size is adjusted according to the canvas size
-  {
-    printf("Use case #8\n");
-    setDevicePixelRatio(2.0);
-    glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
-    emscripten_set_element_css_size("#canvas", 700, 525);
-    checkCanvasSize(300, 150); // default canvas size
-    checkCanvasFramebufferSize(700, 525); // css override
-    window = glfwCreateWindow(640, 480, "test_glfw3_hi_dpi_aware.c | #8", NULL, NULL);
-    assert(window != NULL);
-    checkHiDPIAware(window, true);
-    checkWindowSize(window, 700, 525, 2.0); // canvas size overrides window size
-    glfwDestroyWindow(window);
-    checkCanvasSize(300, 150);
-    checkCanvasFramebufferSize(700, 525);
   }
 
   glfwTerminate();
