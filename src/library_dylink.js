@@ -1006,7 +1006,7 @@ var LibraryDylink = {
       var libFile = locateFile(libName);
       if (flags.loadAsync) {
         return new Promise(function(resolve, reject) {
-          asyncLoad(libFile, (data) => resolve(data), reject);
+          asyncLoad(libFile, resolve, reject);
         });
       }
 

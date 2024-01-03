@@ -24,7 +24,7 @@ var LibraryWebGL2 = {
     }
     switch (name) {
       case 0x1F03 /* GL_EXTENSIONS */:
-        var exts = GL.getExtensions().map((e) => stringToNewUTF8(e));
+        var exts = GL.getExtensions().map(stringToNewUTF8);
         stringiCache = GL.stringiCache[name] = exts;
         if (index < 0 || index >= stringiCache.length) {
           GL.recordError(0x501/*GL_INVALID_VALUE*/);

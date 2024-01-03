@@ -2558,7 +2558,7 @@ void *getBindBuffer() {
     ''' % self.port
 
     create_file('pre_runtime.js', r'''
-      Module.onRuntimeInitialized = () => myJSCallback();
+      Module.onRuntimeInitialized = myJSCallback;
     ''')
 
     for filename, extra_args, second_code in [

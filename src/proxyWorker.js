@@ -380,7 +380,7 @@ function messageResender() {
   if (calledMain) {
     assert(messageBuffer && messageBuffer.length > 0);
     messageResenderTimeout = null;
-    messageBuffer.forEach((message) => onmessage(message));
+    messageBuffer.forEach(onmessage);
     messageBuffer = null;
   } else {
     messageResenderTimeout = setTimeout(messageResender, 100);
