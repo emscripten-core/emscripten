@@ -3082,6 +3082,12 @@ int f() {
                      self.get_emcc_args())
     self.assertFileContents(test_file('other/embind_tsgen_memory64.d.ts'), read_file('embind_tsgen_memory64.d.ts'))
 
+  def test_embind_tsgen_exceptions(self):
+    # Check that when Wasm exceptions and assertions are enabled bindings still generate.
+    self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
+                      '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts', '-fwasm-exceptions', '-sASSERTIONS'])
+    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
+
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, config.LLVM_ROOT)

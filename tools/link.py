@@ -1929,8 +1929,6 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   setup_environment_settings()
   # Use a separate Wasm file so the JS does not need to be modified after emscripten.run.
   settings.SINGLE_FILE = False
-  # Disable support for wasm exceptions
-  settings.WASM_EXCEPTIONS = False
   # Embind may be included multiple times, de-duplicate the list first.
   settings.JS_LIBRARIES = dedup_list(settings.JS_LIBRARIES)
   # Replace embind with the TypeScript generation version.
@@ -1944,6 +1942,8 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   node_args = []
   if settings.MEMORY64:
     node_args += shared.node_memory64_flags()
+  if settings.WASM_EXCEPTIONS:
+    node_args += shared.node_exception_flags()
   # Run the generated JS file with the proper flags to generate the TypeScript bindings.
   out = shared.run_js_tool(outfile_js, [], node_args, stdout=PIPE)
   settings.restore(original_settings)
