@@ -1203,10 +1203,43 @@ var LibraryWebGPU = {
     return WebGPU.mgrComputePipeline.create(device["createComputePipeline"](desc));
   },
 
+  wgpuDeviceCreateComputePipelineAsync__deps: ['$callUserCallback', '$stringToUTF8OnStack'],
   wgpuDeviceCreateComputePipelineAsync: (deviceId, descriptor, callback, userdata) => {
-    abort('TODO: wgpuDeviceCreateComputePipelineAsync unimplemented');
-  },
+    var desc = {
+      "label": undefined,
+      "layout": WebGPU.makePipelineLayout(
+        {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePipelineDescriptor.layout, '*') }}}),
+      "compute": WebGPU.makeProgrammableStageDescriptor(
+        descriptor + {{{ C_STRUCTS.WGPUComputePipelineDescriptor.compute }}}),
+    };
+    var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePipelineDescriptor.label, '*') }}};
+    if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
+    var device = WebGPU.mgrDevice.get(deviceId);
+    {{{ runtimeKeepalivePush() }}}
+    device["createComputePipelineAsync"](desc).then((pipeline) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        var pipelineId = WebGPU.mgrComputePipeline.create(pipeline);
+        {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Success }}}, pipelineId, 0, userdata);
+      });
+    }, (pipelineError) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        withStackSave(() => {
+          var messagePtr = stringToUTF8OnStack(pipelineError.message);
+          if (pipelineError.reason === 'validation') {
+            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.ValidationError }}}, 0, messagePtr, userdata);
+          } else if (pipelineError.reason === 'internal') {
+            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.InternalError }}}, 0, messagePtr, userdata);
+          } else {
+            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Unknown }}}, 0, messagePtr, userdata);
+          }
+        });
+      });
+    });
+  },
+  
   $generateRenderPipelineDesc__internal: true,
   $generateRenderPipelineDesc: (descriptor) => {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
