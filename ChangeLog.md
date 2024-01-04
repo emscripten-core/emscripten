@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.52 (in development)
 -----------------------
+- Certain settings that only apply when generating JavaScript output will now
+  trigger a warning if used when generating only Wasm.
 - Fix bug where `main` was mistakenly included in debug builds but not in
   release builds. (#20971)
 - Remove JAVA from the list of `.emscripten` config file settings.  In the
