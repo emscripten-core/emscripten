@@ -38,7 +38,7 @@ from .utils import removeprefix, exit_with_error
 from .shared import in_temp, safe_copy, do_replace, run_process, OFormat
 from .shared import DEBUG, WINDOWS, DYNAMICLIB_ENDINGS, STATICLIB_ENDINGS
 from .shared import unsuffixed, unsuffixed_basename, get_file_suffix
-from .settings import settings, default_setting, user_settings
+from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS
 from .minimal_runtime_shell import generate_minimal_runtime_html
 
 import tools.line_endings
@@ -752,6 +752,11 @@ def phase_linker_setup(options, state, newargs):
       options.oformat = OFormat.HTML
     else:
       options.oformat = OFormat.JS
+
+  if options.oformat in (OFormat.WASM, OFormat.OBJECT):
+    for s in JS_ONLY_SETTINGS:
+      if s in user_settings:
+        diagnostics.warning('unused-command-line-argument', f'{s} is only valid when generating JavaScript output')
 
   if options.oformat == OFormat.MJS:
     settings.EXPORT_ES6 = 1
