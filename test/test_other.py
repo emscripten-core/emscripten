@@ -7924,13 +7924,17 @@ int main() {}
     test("Module['print']('print'); Module['printErr']('err'); ", 'print\nerr', ['-sEXPORTED_RUNTIME_METHODS=print,printErr', '-Wno-js-compiler'])
 
   @parameterized({
+    '': ('hello_world.c',),
+    'argv': ('hello_world_argv.c',),
+  })
+  @parameterized({
     '': ([],),
     'O2': (['-O2'],),
   })
-  def test_warn_unexported_main(self, args):
+  def test_warn_unexported_main(self, args, filename):
     warning = 'emcc: warning: `main` is defined in the input files, but `_main` is not in `EXPORTED_FUNCTIONS`. Add it to this list if you want `main` to run. [-Wunused-main]'
 
-    proc = self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=[]'] + args, stderr=PIPE)
+    proc = self.run_process([EMCC, test_file(filename), '-sEXPORTED_FUNCTIONS=[]'] + args, stderr=PIPE)
     # This warning only shows up when ASSERTIONS are enabled.
     # We run both ways those to ensure that main doesn't get run in either case.
     if '-O2' in args:

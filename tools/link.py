@@ -847,7 +847,7 @@ def phase_linker_setup(options, state, newargs):
     # See other.test_warn_unexported_main.
     # This is not needed in STANDALONE_WASM mode since we export _start
     # (unconditionally) rather than main.
-    settings.EXPORT_IF_DEFINED.append('main')
+    settings.EXPORT_IF_DEFINED += ['main', '__main_argc_argv']
 
   if settings.ASSERTIONS:
     # Exceptions are thrown with a stack trace by default when ASSERTIONS is

@@ -577,7 +577,10 @@ def finalize_wasm(infile, outfile, js_syms):
   if not settings.STANDALONE_WASM and '_main' in unexpected_exports:
     diagnostics.warning('unused-main', '`main` is defined in the input files, but `_main` is not in `EXPORTED_FUNCTIONS`. Add it to this list if you want `main` to run.')
     unexpected_exports.remove('_main')
-    metadata.all_exports.remove('main')
+    if 'main' in metadata.all_exports:
+      metadata.all_exports.remove('main')
+    else:
+      metadata.all_exports.remove('__main_argc_argv')
 
   building.user_requested_exports.update(unexpected_exports)
   settings.EXPORTED_FUNCTIONS.extend(unexpected_exports)
