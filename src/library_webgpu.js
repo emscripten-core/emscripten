@@ -1543,7 +1543,11 @@ var LibraryWebGPU = {
     var buffer = WebGPU.mgrBuffer.get(bufferId);
     // There is a size limitation for ArrayBufferView. Work around by passing in a subarray
     // instead of the whole heap. crbug.com/1201109
+#if PTHREADS
+    var subarray = HEAPU8.splice(data, data + size);
+#else
     var subarray = HEAPU8.subarray(data, data + size);
+#endif
     queue["writeBuffer"](buffer, bufferOffset, subarray, 0, size);
   },
 
@@ -1556,7 +1560,11 @@ var LibraryWebGPU = {
     var writeSize = WebGPU.makeExtent3D(writeSizePtr);
     // This subarray isn't strictly necessary, but helps work around an issue
     // where Chromium makes a copy of the entire heap. crbug.com/1134457
-    var subarray = HEAPU8.subarray(data, data + dataSize);
+#if PTHREADS
+    var subarray = HEAPU8.splice(data, data + dataSize);
+#else
+    var subarray = HEAPU8.subarray(data, data + size);
+#endif
     queue["writeTexture"](destination, subarray, dataLayout, writeSize);
   },
 
