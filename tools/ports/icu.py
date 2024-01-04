@@ -99,9 +99,5 @@ def clear(ports, settings, shared):
   shared.cache.erase_lib(get_lib_name(libname_libicu_io, settings))
 
 
-def process_args(ports):
-  return []
-
-
 def show():
   return 'icu (USE_ICU=1; Unicode License)'

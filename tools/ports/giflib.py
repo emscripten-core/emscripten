@@ -33,9 +33,5 @@ def clear(ports, settings, shared):
   shared.cache.erase_lib('libgif.a')
 
 
-def process_args(ports):
-  return []
-
-
 def show():
   return 'giflib (USE_GIFLIB=1; MIT license)'

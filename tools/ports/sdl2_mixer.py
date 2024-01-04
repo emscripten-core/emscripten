@@ -114,9 +114,5 @@ def process_dependencies(settings):
     settings.USE_MODPLUG = 1
 
 
-def process_args(ports):
-  return []
-
-
 def show():
   return 'SDL2_mixer (USE_SDL_MIXER=2; zlib license)'

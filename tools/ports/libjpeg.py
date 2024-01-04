@@ -37,10 +37,6 @@ def clear(ports, settings, shared):
   shared.cache.erase_lib('libjpeg.a')
 
 
-def process_args(ports):
-  return []
-
-
 def show():
   return 'libjpeg (USE_LIBJPEG=1; BSD license)'
 

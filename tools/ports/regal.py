@@ -125,9 +125,5 @@ def linker_setup(ports, settings):
   settings.FULL_ES2 = 1
 
 
-def process_args(ports):
-  return []
-
-
 def show():
   return 'regal (USE_REGAL=1; Regal license)'
