@@ -14,7 +14,6 @@ from tools.toolchain_profiler import ToolchainProfiler
 import os
 import json
 import subprocess
-import time
 import logging
 import pprint
 import shutil
@@ -172,6 +171,7 @@ def apply_static_code_hooks(forwarded_json, code):
   return code
 
 
+@ToolchainProfiler.profile()
 def compile_javascript(symbols_only=False):
   stderr_file = os.environ.get('EMCC_STDERR_FILE')
   if stderr_file:
@@ -362,10 +362,6 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
     logger.debug('emscript: skipping remaining js glue generation')
     return
 
-  if DEBUG:
-    logger.debug('emscript: js compiler glue')
-    t = time.time()
-
   # memory and global initializers
 
   if settings.RELOCATABLE:
@@ -387,9 +383,6 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
 
   glue, forwarded_data = compile_javascript()
-  if DEBUG:
-    logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
-    t = time.time()
 
   forwarded_json = json.loads(forwarded_data)
 
