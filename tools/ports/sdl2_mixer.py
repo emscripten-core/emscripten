@@ -5,8 +5,8 @@
 
 import os
 
-TAG = 'release-2.0.4'
-HASH = '5ba387f997219a1deda868f380bf7ee8bc0842261dd54772ad2d560f5282fcbe7bc130e8d16dccc259eeb8cda993a0f34cd3be103fc38f8c6a68428a10e5db4c'
+TAG = 'release-2.6.0'
+HASH = '5909e06fe334eadf1753b97233a6f82c60e03bfafaaca4cb90b0468cb94343e72cd7513b57096e543282eefaef76e80fb0f23f4d4da4ccc43229ea74beb14ce1'
 
 deps = ['sdl2']
 variants = {
@@ -53,7 +53,6 @@ def get(ports, settings, shared):
 
     if "mp3" in settings.SDL2_MIXER_FORMATS:
       flags += [
-        '-Wno-incompatible-function-pointer-types',
         '-sUSE_MPG123',
         '-DMUSIC_MP3_MPG123',
       ]
@@ -70,6 +69,12 @@ def get(ports, settings, shared):
       ]
 
     build_dir = ports.clear_project_build('sdl2_mixer')
+    include_path = os.path.join(source_path, 'include')
+    includes = [
+      include_path,
+      os.path.join(source_path, 'src'),
+      os.path.join(source_path, 'src', 'codecs')
+    ]
     ports.build_port(
       source_path,
       final,
@@ -82,11 +87,12 @@ def get(ports, settings, shared):
       exclude_dirs=[
         'native_midi',
         'external',
-      ]
+        'Xcode',
+      ],
+      includes=includes,
     )
 
-    # copy header to a location so it can be used as 'SDL2/'
-    ports.install_headers(source_path, pattern='SDL_*.h', target='SDL2')
+    ports.install_headers(include_path, target='SDL2')
 
   return [shared.cache.get_lib(libname, create, what='port')]
 
