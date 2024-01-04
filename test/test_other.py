@@ -2376,6 +2376,15 @@ int f() {
     self.run_process(cmd)
 
     # adding a missing symbol to EXPORTED_FUNCTIONS should cause failure
+    cmd += ['-sEXPORTED_FUNCTIONS=_foobar']
+    err = self.expect_fail(cmd)
+    self.assertContained('wasm-ld: error: symbol exported via --export not found: foobar', err)
+
+  def test_undefined_exported_js_function(self):
+    cmd = [EMXX, test_file('hello_world.cpp')]
+    self.run_process(cmd)
+
+    # adding a missing symbol to EXPORTED_FUNCTIONS should cause failure
     cmd += ['-sEXPORTED_FUNCTIONS=foobar']
     err = self.expect_fail(cmd)
     self.assertContained('undefined exported symbol: "foobar"', err)
@@ -7226,7 +7235,7 @@ int main() {
     err = self.expect_fail([EMCC, test_file('hello_world.c'),
                             '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=alGetError',
                             '-sEXPORTED_FUNCTIONS=_main,_alGet'])
-    self.assertContained('error: undefined exported symbol: "_alGet" [-Wundefined] [-Werror]', err)
+    self.assertContained('wasm-ld: error: symbol exported via --export not found: alGet', err)
 
   def test_musl_syscalls(self):
     self.run_process([EMCC, test_file('hello_world.c')])
@@ -10074,7 +10083,7 @@ _d
       # stray slash
       ('EXPORTED_FUNCTIONS=["_a", "_b",\\ "_c", "_d"]', 'undefined exported symbol: "\\\\ "_c"'),
       # missing comma
-      ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'emcc: error: undefined exported symbol: "_b" "_c" [-Wundefined] [-Werror]'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'wasm-ld: error: symbol exported via --export not found: b" "_c'),
     ]:
       print(export_arg)
       proc = self.run_process([EMCC, 'src.c', '-s', export_arg], stdout=PIPE, stderr=PIPE, check=not expected)
