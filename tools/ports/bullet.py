@@ -52,7 +52,7 @@ def clear(ports, settings, shared):
 
 
 def process_args(ports):
-  return ['-I' + ports.get_include_dir('bullet')]
+  return ['-isystem', ports.get_include_dir('bullet')]
 
 
 def show():
