@@ -36,9 +36,5 @@ def process_dependencies(settings):
   settings.USE_SDL = 2
 
 
-def process_args(ports):
-  return []
-
-
 def show():
   return 'SDL2_gfx (zlib license)'
