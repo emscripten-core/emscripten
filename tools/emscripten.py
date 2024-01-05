@@ -983,7 +983,3 @@ function applySignatureConversions(wasmExports) {
   wrappers += 'return wasmExports;\n}'
 
   return wrappers
-
-
-def run(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
-  emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize)
