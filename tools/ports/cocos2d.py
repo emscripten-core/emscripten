@@ -69,7 +69,7 @@ def process_dependencies(settings):
 def process_args(ports):
   args = []
   for include in make_includes(ports.get_include_dir('cocos2d')):
-    args.append('-I' + include)
+    args += ['-isystem', include]
   return args
 
 

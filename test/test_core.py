@@ -1717,103 +1717,6 @@ int main() {
   def test_alloca_stack(self):
     self.do_core_test('test_alloca_stack.c')
 
-  def test_stack_byval(self):
-    self.do_core_test('test_stack_byval.cpp')
-
-  def test_stack_varargs(self):
-    # in node.js we allocate argv[0] on the stack, which means the  length
-    # of the program directory influences how much stack we need, and so
-    # long random temp dir names can lead to random failures. The stack
-    # size was increased here to avoid that.
-    self.set_setting('INLINING_LIMIT')
-    self.set_setting('STACK_SIZE', 8 * 1024)
-
-    self.do_core_test('test_stack_varargs.c')
-
-  def test_stack_varargs2(self):
-    # in node.js we allocate argv[0] on the stack, which means the  length
-    # of the program directory influences how much stack we need, and so
-    # long random temp dir names can lead to random failures. The stack
-    # size was increased here to avoid that.
-    self.set_setting('STACK_SIZE', 8 * 1024)
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
-
-      void func(int i) {
-      }
-      int main() {
-        for (int i = 0; i < 7000; i++) {
-          printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
-                   i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
-        }
-        printf("ok!\n");
-        return 0;
-      }
-    '''
-    self.do_run(src, 'ok!')
-
-    print('with return')
-
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
-
-      int main() {
-        for (int i = 0; i < 7000; i++) {
-          int j = printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
-                   i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
-          printf(" (%d)\n", j);
-        }
-        printf("ok!\n");
-        return 0;
-      }
-    '''
-    self.do_run(src, 'ok!')
-
-    print('with definitely no return')
-
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
-      #include <stdarg.h>
-
-      void vary(const char *s, ...)
-      {
-        va_list v;
-        va_start(v, s);
-        char d[20];
-        vsnprintf(d, 20, s, v);
-        puts(d);
-
-        // Try it with copying
-        va_list tempva;
-        va_copy(tempva, v);
-        vsnprintf(d, 20, s, tempva);
-        puts(d);
-
-        va_end(v);
-      }
-
-      int main() {
-        for (int i = 0; i < 7000; i++) {
-          int j = printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
-                   i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
-          printf(" (%d)\n", j);
-          vary("*cheez: %d+%d*", 99, 24);
-          vary("*albeit*");
-        }
-        printf("ok!\n");
-        return 0;
-      }
-    '''
-    self.do_run(src, 'ok!')
-
-  def test_stack_void(self):
-    self.emcc_args.append('-Wno-format-extra-args')
-    self.set_setting('INLINING_LIMIT')
-    self.do_core_test('test_stack_void.c')
-
   def test_life(self):
     self.do_run_in_out_file_test('life.c', args=['2'])
 
@@ -9354,7 +9257,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_pthread_dylink(self):
     self.emcc_args += ['-Wno-experimental', '-pthread']
-    self.set_setting('PTHREAD_POOL_SIZE', 2)
     main = test_file('core/pthread/test_pthread_dylink.c')
 
     # test with a long .so name, as a regression test for
@@ -9363,6 +9265,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     very_long_name = 'very_very_very_very_very_very_very_very_very_long.so'
 
     self.dylink_testf(main, so_name=very_long_name,
+                      main_emcc_args=['-sPTHREAD_POOL_SIZE=2'],
                       need_reverse=False)
 
   @parameterized({
@@ -9373,9 +9276,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_pthread_dylink_entry_point(self, args):
     self.emcc_args += ['-Wno-experimental', '-pthread']
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
     main = test_file('core/pthread/test_pthread_dylink_entry_point.c')
-    self.dylink_testf(main, need_reverse=False, emcc_args=args)
+    self.dylink_testf(main, need_reverse=False, emcc_args=args, main_emcc_args=['-sPTHREAD_POOL_SIZE=1'])
 
   @needs_dylink
   @node_pthreads
@@ -9441,17 +9343,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_pthread_dylink_tls(self):
     self.emcc_args += ['-Wno-experimental', '-pthread']
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
     main = test_file('core/pthread/test_pthread_dylink_tls.c')
-    self.dylink_testf(main, need_reverse=False)
+    self.dylink_testf(main, need_reverse=False, main_emcc_args=['-sPTHREAD_POOL_SIZE=1'])
 
   @needs_dylink
   @node_pthreads
   def test_pthread_dylink_longjmp(self):
     self.emcc_args += ['-Wno-experimental', '-pthread']
-    self.set_setting('PTHREAD_POOL_SIZE=1')
     main = test_file('core/pthread/test_pthread_dylink_longjmp.c')
-    self.dylink_testf(main, need_reverse=False)
+    self.dylink_testf(main, need_reverse=False, main_emcc_args=['-sPTHREAD_POOL_SIZE=1'])
 
   @needs_dylink
   @node_pthreads

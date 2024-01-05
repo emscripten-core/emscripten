@@ -1417,8 +1417,7 @@ var LibrarySDL = {
   // bits-per-pixel of the closest available mode with the given width, height and requested surface flags
   SDL_VideoModeOK: (width, height, depth, flags) => depth, // all modes are ok.
 
-  SDL_AudioDriverName__deps: ['SDL_VideoDriverName'],
-  SDL_AudioDriverName: (buf, max_size) => _SDL_VideoDriverName(buf, max_size),
+  SDL_AudioDriverName: 'SDL_VideoDriverName',
 
   SDL_VideoDriverName__proxy: 'sync',
   SDL_VideoDriverName: (buf, max_size) => {

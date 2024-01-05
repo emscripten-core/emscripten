@@ -80,10 +80,6 @@ def clear(ports, settings, shared):
   shared.cache.erase_lib('libmpg123.a')
 
 
-def process_args(ports):
-  return []
-
-
 def show():
   return 'mpg123 (USE_MPG123=1; zlib license)'
 

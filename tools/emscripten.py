@@ -14,7 +14,6 @@ from tools.toolchain_profiler import ToolchainProfiler
 import os
 import json
 import subprocess
-import time
 import logging
 import pprint
 import shutil
@@ -31,7 +30,7 @@ from tools import extract_metadata
 from tools.utils import exit_with_error, path_from_root, removeprefix
 from tools.shared import DEBUG, asmjs_mangle
 from tools.shared import treat_as_user_export
-from tools.settings import settings
+from tools.settings import settings, user_settings
 
 sys.path.append(path_from_root('third_party'))
 import leb128
@@ -172,6 +171,7 @@ def apply_static_code_hooks(forwarded_json, code):
   return code
 
 
+@ToolchainProfiler.profile()
 def compile_javascript(symbols_only=False):
   stderr_file = os.environ.get('EMCC_STDERR_FILE')
   if stderr_file:
@@ -362,10 +362,6 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
     logger.debug('emscript: skipping remaining js glue generation')
     return
 
-  if DEBUG:
-    logger.debug('emscript: js compiler glue')
-    t = time.time()
-
   # memory and global initializers
 
   if settings.RELOCATABLE:
@@ -387,9 +383,6 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
 
   glue, forwarded_data = compile_javascript()
-  if DEBUG:
-    logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
-    t = time.time()
 
   forwarded_json = json.loads(forwarded_data)
 
@@ -555,6 +548,7 @@ def finalize_wasm(infile, outfile, js_syms):
 
   expected_exports = set(settings.EXPORTED_FUNCTIONS)
   expected_exports.update(asmjs_mangle(s) for s in settings.REQUIRED_EXPORTS)
+  expected_exports.update(asmjs_mangle(s) for s in settings.EXPORT_IF_DEFINED)
   # Assume that when JS symbol dependencies are exported it is because they
   # are needed by by a JS symbol and are not being explicitly exported due
   # to EMSCRIPTEN_KEEPALIVE (llvm.used).
@@ -569,15 +563,21 @@ def finalize_wasm(infile, outfile, js_syms):
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
 
-  # If `_main` was unexpectedly exported we assume it was added to
-  # EXPORT_IF_DEFINED by emcc.py in order that we can detect it and
-  # report this warning.  In this case we explicitly ignore the export
-  # and run as if there was no main function since that is defined is
-  # behaviour for programs that don't include `_main` in EXPORTED_FUNCTIONS.
-  if not settings.STANDALONE_WASM and '_main' in unexpected_exports:
-    diagnostics.warning('unused-main', '`main` is defined in the input files, but `_main` is not in `EXPORTED_FUNCTIONS`. Add it to this list if you want `main` to run.')
-    unexpected_exports.remove('_main')
-    metadata.all_exports.remove('main')
+  if not settings.STANDALONE_WASM and 'main' in metadata.all_exports or '__main_argc_argv' in metadata.all_exports:
+    if 'EXPORTED_FUNCTIONS' in user_settings and '_main' not in settings.USER_EXPORTED_FUNCTIONS:
+      # If `_main` was unexpectedly exported we assume it was added to
+      # EXPORT_IF_DEFINED by `phase_linker_setup` in order that we can detect
+      # it and report this warning.  After reporting the warning we explicitly
+      # ignore the export and run as if there was no main function since that
+      # is defined is behaviour for programs that don't include `_main` in
+      # EXPORTED_FUNCTIONS.
+      diagnostics.warning('unused-main', '`main` is defined in the input files, but `_main` is not in `EXPORTED_FUNCTIONS`. Add it to this list if you want `main` to run.')
+      if 'main' in metadata.all_exports:
+        metadata.all_exports.remove('main')
+      else:
+        metadata.all_exports.remove('__main_argc_argv')
+    else:
+      unexpected_exports.append('_main')
 
   building.user_requested_exports.update(unexpected_exports)
   settings.EXPORTED_FUNCTIONS.extend(unexpected_exports)

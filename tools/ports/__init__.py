@@ -30,7 +30,7 @@ logger = logging.getLogger('ports')
 
 
 def read_ports():
-  expected_attrs = ['get', 'clear', 'process_args', 'show', 'needed']
+  expected_attrs = ['get', 'clear', 'show', 'needed']
   for filename in os.listdir(ports_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
@@ -47,6 +47,8 @@ def read_ports():
       port.linker_setup = lambda x, y: 0
     if not hasattr(port, 'deps'):
       port.deps = []
+    if not hasattr(port, 'process_args'):
+      port.process_args = lambda x: []
     if not hasattr(port, 'variants'):
       # port variants (default: no variants)
       port.variants = {}

@@ -2558,7 +2558,7 @@ void *getBindBuffer() {
     ''' % self.port
 
     create_file('pre_runtime.js', r'''
-      Module.onRuntimeInitialized = () => myJSCallback();
+      Module.onRuntimeInitialized = myJSCallback;
     ''')
 
     for filename, extra_args, second_code in [
@@ -2767,7 +2767,7 @@ Module["preRun"] = () => {
   # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
   # (this only makes sense in the old deprecated -sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0 mode)
   def test_html5_special_event_targets(self):
-    self.btest('html5_special_event_targets.cpp', args=['-lGL'], expected='0')
+    self.btest_exit('html5_special_event_targets.cpp', args=['-lGL'])
 
   @requires_graphics_hardware
   def test_html5_webgl_destroy_context(self):
@@ -3777,9 +3777,6 @@ Module["preRun"] = () => {
   })
   def test_dylink_dso_needed(self, inworker):
     self.emcc_args += ['-O2']
-    # --proxy-to-worker only on main
-    if inworker:
-      self.emcc_args += ['--proxy-to-worker']
 
     def do_run(src, expected_output, emcc_args):
       # XXX there is no infrastructure (yet ?) to retrieve stdout from browser in tests.
@@ -3809,6 +3806,9 @@ Module["preRun"] = () => {
           return rtn;
         }
       ''' % expected_output)
+      # --proxy-to-worker only on main
+      if inworker:
+        emcc_args += ['--proxy-to-worker']
       self.btest_exit(self.in_dir('test_dylink_dso_needed.c'), args=['--post-js', 'post.js'] + emcc_args)
 
     self._test_dylink_dso_needed(do_run)

@@ -72,9 +72,5 @@ def process_dependencies(settings):
     settings.USE_LIBJPEG = 1
 
 
-def process_args(ports):
-  return []
-
-
 def show():
   return 'SDL2_image (USE_SDL_IMAGE=2; zlib license)'

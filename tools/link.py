@@ -38,7 +38,7 @@ from .utils import removeprefix, exit_with_error
 from .shared import in_temp, safe_copy, do_replace, run_process, OFormat
 from .shared import DEBUG, WINDOWS, DYNAMICLIB_ENDINGS, STATICLIB_ENDINGS
 from .shared import unsuffixed, unsuffixed_basename, get_file_suffix
-from .settings import settings, default_setting, user_settings
+from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS
 from .minimal_runtime_shell import generate_minimal_runtime_html
 
 import tools.line_endings
@@ -753,6 +753,11 @@ def phase_linker_setup(options, state, newargs):
     else:
       options.oformat = OFormat.JS
 
+  if options.oformat in (OFormat.WASM, OFormat.OBJECT):
+    for s in JS_ONLY_SETTINGS:
+      if s in user_settings:
+        diagnostics.warning('unused-command-line-argument', f'{s} is only valid when generating JavaScript output')
+
   if options.oformat == OFormat.MJS:
     settings.EXPORT_ES6 = 1
     settings.MODULARIZE = 1
@@ -805,11 +810,13 @@ def phase_linker_setup(options, state, newargs):
     # 2. If the user doesn't export anything we default to exporting `_main` (unless `--no-entry`
     #    is specified (see above).
     if 'EXPORTED_FUNCTIONS' in user_settings:
-      if '_main' not in settings.USER_EXPORTED_FUNCTIONS:
+      if '_main' in settings.USER_EXPORTED_FUNCTIONS:
+        settings.EXPORTED_FUNCTIONS.remove('_main')
+        settings.EXPORT_IF_DEFINED.append('main')
+      else:
         settings.EXPECT_MAIN = 0
     else:
-      assert not settings.EXPORTED_FUNCTIONS
-      settings.EXPORTED_FUNCTIONS = ['_main']
+      settings.EXPORT_IF_DEFINED.append('main')
 
   if settings.STANDALONE_WASM:
     # In STANDALONE_WASM mode we either build a command or a reactor.
@@ -833,7 +840,7 @@ def phase_linker_setup(options, state, newargs):
   # Note the exports the user requested
   building.user_requested_exports.update(settings.EXPORTED_FUNCTIONS)
 
-  if '_main' in settings.EXPORTED_FUNCTIONS:
+  if '_main' in settings.EXPORTED_FUNCTIONS or 'main' in settings.EXPORT_IF_DEFINED:
     settings.EXPORT_IF_DEFINED.append('__main_argc_argv')
   elif settings.ASSERTIONS and not settings.STANDALONE_WASM:
     # In debug builds when `main` is not explicitly requested as an
@@ -842,7 +849,7 @@ def phase_linker_setup(options, state, newargs):
     # See other.test_warn_unexported_main.
     # This is not needed in STANDALONE_WASM mode since we export _start
     # (unconditionally) rather than main.
-    settings.EXPORT_IF_DEFINED.append('main')
+    settings.EXPORT_IF_DEFINED += ['main', '__main_argc_argv']
 
   if settings.ASSERTIONS:
     # Exceptions are thrown with a stack trace by default when ASSERTIONS is

@@ -64,4 +64,3 @@ int main(int argc, char **argv) {
   emscripten_runtime_keepalive_push();
   return 0;
 }
-

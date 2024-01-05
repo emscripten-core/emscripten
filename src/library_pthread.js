@@ -1289,7 +1289,7 @@ var LibraryPThread = {
   _emscripten_notify_mailbox_postmessage__deps: ['$checkMailbox'],
   _emscripten_notify_mailbox_postmessage: (targetThreadId, currThreadId, mainThreadId) => {
     if (targetThreadId == currThreadId) {
-      setTimeout(() => checkMailbox());
+      setTimeout(checkMailbox);
     } else if (ENVIRONMENT_IS_PTHREAD) {
       postMessage({'targetThread' : targetThreadId, 'cmd' : 'checkMailbox'});
     } else {

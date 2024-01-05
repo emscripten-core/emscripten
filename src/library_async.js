@@ -407,7 +407,7 @@ addToLibrary({
         _free(Asyncify.currData);
         Asyncify.currData = null;
         // Call all sleep callbacks now that the sleep-resume is all done.
-        Asyncify.sleepCallbacks.forEach((func) => callUserCallback(func));
+        Asyncify.sleepCallbacks.forEach(callUserCallback);
       } else {
         abort(`invalid state: ${Asyncify.state}`);
       }
@@ -446,9 +446,7 @@ addToLibrary({
       }
     },
     handleSleep(startAsync) {
-      return Asyncify.handleAsync(() => (
-        new Promise((wakeUp) => startAsync(wakeUp))
-      ));
+      return Asyncify.handleAsync(() => new Promise(startAsync));
     },
     makeAsyncFunction(original) {
 #if ASYNCIFY_DEBUG

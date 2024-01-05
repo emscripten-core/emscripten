@@ -29,10 +29,6 @@ def clear(ports, settings, shared):
   shared.cache.erase_lib('libogg.a')
 
 
-def process_args(ports):
-  return []
-
-
 def show():
   return 'ogg (USE_OGG=1; zlib license)'
 

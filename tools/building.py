@@ -191,19 +191,19 @@ def lld_flags_for_executable(external_symbols):
   c_exports = [e for e in settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
   # Strip the leading underscores
   c_exports = [demangle_c_symbol_name(e) for e in c_exports]
-  c_exports += settings.EXPORT_IF_DEFINED
   # Filter out symbols external/JS symbols
   c_exports = [e for e in c_exports if e not in external_symbols]
+  c_exports += settings.REQUIRED_EXPORTS
   if settings.MAIN_MODULE:
     c_exports += side_module_external_deps(external_symbols)
   for export in c_exports:
-    cmd.append('--export-if-defined=' + export)
-
-  for export in settings.REQUIRED_EXPORTS:
     if settings.ERROR_ON_UNDEFINED_SYMBOLS:
       cmd.append('--export=' + export)
     else:
       cmd.append('--export-if-defined=' + export)
+
+  for e in settings.EXPORT_IF_DEFINED:
+    cmd.append('--export-if-defined=' + e)
 
   if settings.RELOCATABLE:
     cmd.append('--experimental-pic')
