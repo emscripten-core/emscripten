@@ -216,7 +216,7 @@ def report_missing_symbols(js_symbols):
   defined_symbols = set(asmjs_mangle(e) for e in settings.WASM_EXPORTS).union(js_symbols)
   missing = set(settings.USER_EXPORTED_FUNCTIONS) - defined_symbols
   for symbol in sorted(missing):
-    diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
+    exit_with_error(f'undefined exported symbol: "{symbol}"')
 
   # Special hanlding for the `_main` symbol
 

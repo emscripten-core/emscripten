@@ -2389,10 +2389,6 @@ int f() {
     err = self.expect_fail(cmd)
     self.assertContained('undefined exported symbol: "foobar"', err)
 
-    # setting `-Wno-undefined` should suppress error
-    cmd += ['-Wno-undefined']
-    self.run_process(cmd)
-
   @parameterized({
     'warn': ('WARN',),
     'error': ('ERROR',),
@@ -7682,9 +7678,11 @@ high = 1234
     self.assertContained('error: undefined exported symbol: "foo"', err)
 
   def test_dash_s_hex(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-nostdlib', '-sERROR_ON_UNDEFINED_SYMBOLS=0'])
+    create_file('undefined.c', 'extern int foo(); int main() { return foo(); }')
+    self.expect_fail([EMCC, 'undefined.c'])
+    self.run_process([EMCC, 'undefined.c', '-sERROR_ON_UNDEFINED_SYMBOLS=0'])
     # Ensure that 0x0 is parsed as a zero and not as the string '0x0'.
-    self.run_process([EMCC, test_file('hello_world.c'), '-nostdlib', '-sERROR_ON_UNDEFINED_SYMBOLS=0x0'])
+    self.run_process([EMCC, 'undefined.c', '-sERROR_ON_UNDEFINED_SYMBOLS=0x0'])
 
   def test_zeroinit(self):
     create_file('src.c', r'''

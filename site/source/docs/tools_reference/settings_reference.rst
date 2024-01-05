@@ -1509,8 +1509,10 @@ implement everything, when you know what is not going to actually be called
 (and don't want to mess with the existing buildsystem), and functions might
 be implemented later on, say in --pre-js, so you may want to build with -s
 WARN_ON_UNDEFINED_SYMBOLS=0 to disable the warnings if they annoy you.  See
-also ERROR_ON_UNDEFINED_SYMBOLS.  Any undefined symbols that are listed in-
-EXPORTED_FUNCTIONS will also be reported.
+also ERROR_ON_UNDEFINED_SYMBOLS.
+
+Note: This does not effect symbols that are explictly exported (e.g. via
+EXPORTED_FUNCTIONS).
 
 .. _error_on_undefined_symbols:
 
@@ -1520,8 +1522,10 @@ ERROR_ON_UNDEFINED_SYMBOLS
 If set to 1, we will give a link-time error on any undefined symbols (see
 WARN_ON_UNDEFINED_SYMBOLS). To allow undefined symbols at link time set this
 to 0, in which case if an undefined function is called a runtime error will
-occur.  Any undefined symbols that are listed in EXPORTED_FUNCTIONS will also
-be reported.
+occur.
+
+Note: This does not effect symbols that are explictly exported (e.g. via
+EXPORTED_FUNCTIONS).
 
 .. _small_xhr_chunks:
 

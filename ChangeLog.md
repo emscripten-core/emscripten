@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.52 (in development)
 -----------------------
+- Symbols that are explicitly exported using `EXPORTED_FUNCTIONS` will now always
+  generate a linker error if they are not found.  The
+  `ERROR_ON_UNDEFINED_SYMBOLS` flag does not affect these explicitly exported
+  symbols. (#21020)
 - Include paths added by ports (e.g. `-sUSE_SDL=2`) now use `-isystem` rather
   then `-I`.  This means that files in user-specified include directories will
   now take precedence over port includes. (#21014)

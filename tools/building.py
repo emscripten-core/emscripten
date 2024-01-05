@@ -194,13 +194,15 @@ def lld_flags_for_executable(external_symbols):
   # Filter out symbols external/JS symbols
   c_exports = [e for e in c_exports if e not in external_symbols]
   c_exports += settings.REQUIRED_EXPORTS
-  if settings.MAIN_MODULE:
-    c_exports += side_module_external_deps(external_symbols)
   for export in c_exports:
-    if settings.ERROR_ON_UNDEFINED_SYMBOLS:
-      cmd.append('--export=' + export)
-    else:
-      cmd.append('--export-if-defined=' + export)
+    cmd.append('--export=' + export)
+
+  if settings.MAIN_MODULE:
+    for export in side_module_external_deps(external_symbols):
+      if settings.ERROR_ON_UNDEFINED_SYMBOLS:
+        cmd.append('--export=' + export)
+      else:
+        cmd.append('--export-if-defined=' + export)
 
   for e in settings.EXPORT_IF_DEFINED:
     cmd.append('--export-if-defined=' + e)
