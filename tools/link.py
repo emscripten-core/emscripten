@@ -1902,7 +1902,7 @@ def phase_emscript(options, in_wasm, wasm_target, js_syms):
   if shared.SKIP_SUBPROCS:
     return
 
-  emscripten.run(in_wasm, wasm_target, final_js, js_syms)
+  emscripten.emscript(in_wasm, wasm_target, final_js, js_syms)
   save_intermediate('original')
 
 
@@ -1934,7 +1934,7 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   # import names.
   settings.MINIFY_WASM_IMPORTED_MODULES = False
   setup_environment_settings()
-  # Use a separate Wasm file so the JS does not need to be modified after emscripten.run.
+  # Use a separate Wasm file so the JS does not need to be modified after emscripten.emscript.
   settings.SINGLE_FILE = False
   # Disable support for wasm exceptions
   settings.WASM_EXCEPTIONS = False
@@ -1944,9 +1944,9 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   embind_index = settings.JS_LIBRARIES.index('embind/embind.js')
   settings.JS_LIBRARIES[embind_index] = 'embind/embind_gen.js'
   outfile_js = in_temp('tsgen_a.out.js')
-  # The Wasm outfile may be modified by emscripten.run, so use a temporary file.
+  # The Wasm outfile may be modified by emscripten.emscript, so use a temporary file.
   outfile_wasm = in_temp('tsgen_a.out.wasm')
-  emscripten.run(wasm_target, outfile_wasm, outfile_js, js_syms, False)
+  emscripten.emscript(wasm_target, outfile_wasm, outfile_js, js_syms, False)
   # Build the flags needed by Node.js to properly run the output file.
   node_args = []
   if settings.MEMORY64:
