@@ -2197,11 +2197,6 @@ def phase_binaryen(target, options, wasm_target, memfile):
                                            debug_info=intermediate_debug_info)
         save_intermediate_with_wasm('postclean', wasm_target)
 
-  if settings.ASYNCIFY_LAZY_LOAD_CODE:
-    with ToolchainProfiler.profile_block('asyncify_lazy_load_code'):
-      building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
-
-  if final_js:
     if options.use_closure_compiler:
       with ToolchainProfiler.profile_block('closure_compile'):
         final_js = building.closure_compiler(final_js, extra_closure_args=options.closure_args)
@@ -2210,6 +2205,10 @@ def phase_binaryen(target, options, wasm_target, memfile):
       with ToolchainProfiler.profile_block('transpile'):
         final_js = building.transpile(final_js)
       save_intermediate_with_wasm('traspile', wasm_target)
+
+  if settings.ASYNCIFY_LAZY_LOAD_CODE:
+    with ToolchainProfiler.profile_block('asyncify_lazy_load_code'):
+      building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
 
   symbols_file = None
   if options.emit_symbol_map:
