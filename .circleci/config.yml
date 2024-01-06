@@ -2,6 +2,7 @@ version: 2.1
 
 orbs:
   win: circleci/windows@1.0.0
+  codecov: codecov/codecov@3
 
 executors:
   linux-node:
@@ -251,6 +252,24 @@ commands:
             env
             ./test/runner << parameters.test_targets >>
             $EMSDK_PYTHON ./test/check_clean.py
+  run-tests-coverage:
+    description: "Runs emscripten tests (with coverage)"
+    parameters:
+      test_targets:
+        description: "Test suites to run"
+        type: string
+      title:
+        description: "Name of given test suite"
+        type: string
+        default: ""
+    steps:
+      - run:
+          name: run tests (<< parameters.title >>)
+          command: |
+            ./tools/emcoverage.py ./test/runner.py << parameters.test_targets >>
+            $EMSDK_PYTHON ./test/check_clean.py
+      - run: tools/emcoverage.py xml
+      - codecov/upload
   freeze-cache:
     description: "Freeze emscripten cache"
     steps:
@@ -527,7 +546,7 @@ jobs:
             lsan.test_pthread_create
             lsan.test_pthread_exit_main_stub"
       - freeze-cache
-      - run-tests:
+      - run-tests-coverage:
           # also run a single test of EMTEST_BROWSER=node.
           # also run a corez test of dynamic linking + forced syslibs.
           title: "core2+extras"

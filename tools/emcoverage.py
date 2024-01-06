@@ -72,7 +72,12 @@ def main():
   if not os.path.exists(sys.argv[1]):
     # If argv[1] is not a file path, instead try to interpret it as an emscripten command.
     # This allows `emcoverage.py emcc` or `emcoverage.py embuilder` to work.
-    sys.argv[1] = os.path.join(os.path.dirname(sys.executable), '..', sys.argv[1] + '.py')
+    pyfile = os.path.join(os.path.dirname(sys.executable), '..', sys.argv[1] + '.py')
+    if os.path.exists(pyfile):
+      sys.argv[1] = pyfile
+
+  if sys.argv[1] == '-E':
+    del sys.argv[1]
 
   try:
     os.mkdir(store)
