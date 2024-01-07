@@ -32,7 +32,7 @@ var LibraryEmVal = {
       {value: true},
       {value: false},
     );
-    emval_handles.reserved = emval_handles.allocated.length
+    Object.assign(emval_handles, /** @lends {emval_handles} */ { reserved: emval_handles.allocated.length }),
     Module['count_emval_handles'] = count_emval_handles;
   },
 
