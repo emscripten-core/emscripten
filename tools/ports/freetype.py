@@ -112,7 +112,7 @@ def clear(ports, settings, shared):
 
 
 def process_args(ports):
-  return ['-I' + ports.get_include_dir('freetype2')]
+  return ['-isystem', ports.get_include_dir('freetype2')]
 
 
 def show():

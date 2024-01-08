@@ -1902,7 +1902,7 @@ def phase_emscript(options, in_wasm, wasm_target, js_syms):
   if shared.SKIP_SUBPROCS:
     return
 
-  emscripten.run(in_wasm, wasm_target, final_js, js_syms)
+  emscripten.emscript(in_wasm, wasm_target, final_js, js_syms)
   save_intermediate('original')
 
 
@@ -1934,7 +1934,7 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   # import names.
   settings.MINIFY_WASM_IMPORTED_MODULES = False
   setup_environment_settings()
-  # Use a separate Wasm file so the JS does not need to be modified after emscripten.run.
+  # Use a separate Wasm file so the JS does not need to be modified after emscripten.emscript.
   settings.SINGLE_FILE = False
   # Disable support for wasm exceptions
   settings.WASM_EXCEPTIONS = False
@@ -1944,9 +1944,9 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   embind_index = settings.JS_LIBRARIES.index('embind/embind.js')
   settings.JS_LIBRARIES[embind_index] = 'embind/embind_gen.js'
   outfile_js = in_temp('tsgen_a.out.js')
-  # The Wasm outfile may be modified by emscripten.run, so use a temporary file.
+  # The Wasm outfile may be modified by emscripten.emscript, so use a temporary file.
   outfile_wasm = in_temp('tsgen_a.out.wasm')
-  emscripten.run(wasm_target, outfile_wasm, outfile_js, js_syms, False)
+  emscripten.emscript(wasm_target, outfile_wasm, outfile_js, js_syms, False)
   # Build the flags needed by Node.js to properly run the output file.
   node_args = []
   if settings.MEMORY64:
@@ -2197,11 +2197,6 @@ def phase_binaryen(target, options, wasm_target, memfile):
                                            debug_info=intermediate_debug_info)
         save_intermediate_with_wasm('postclean', wasm_target)
 
-  if settings.ASYNCIFY_LAZY_LOAD_CODE:
-    with ToolchainProfiler.profile_block('asyncify_lazy_load_code'):
-      building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
-
-  if final_js:
     if options.use_closure_compiler:
       with ToolchainProfiler.profile_block('closure_compile'):
         final_js = building.closure_compiler(final_js, extra_closure_args=options.closure_args)
@@ -2210,6 +2205,10 @@ def phase_binaryen(target, options, wasm_target, memfile):
       with ToolchainProfiler.profile_block('transpile'):
         final_js = building.transpile(final_js)
       save_intermediate_with_wasm('traspile', wasm_target)
+
+  if settings.ASYNCIFY_LAZY_LOAD_CODE:
+    with ToolchainProfiler.profile_block('asyncify_lazy_load_code'):
+      building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
 
   symbols_file = None
   if options.emit_symbol_map:
