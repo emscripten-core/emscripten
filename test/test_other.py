@@ -2371,17 +2371,35 @@ int f() {
 ''', output)
     self.assertNotContained('warning: library.js memcpy should not be running, it is only for testing!', output)
 
-  def test_undefined_exported_function(self):
-    cmd = [EMCC, test_file('hello_world.c')]
+  @parameterized({
+    '': ('out.js',),
+    'standalone': ('out.wasm',)
+  })
+  def test_undefined_exported_function(self, outfile):
+    cmd = [EMCC, test_file('hello_world.c'), '-o', outfile]
     self.run_process(cmd)
 
-    # adding a missing symbol to EXPORTED_FUNCTIONS should cause failure
+    # Adding a missing symbol to EXPORTED_FUNCTIONS should cause a link failure
     cmd += ['-sEXPORTED_FUNCTIONS=_foobar']
     err = self.expect_fail(cmd)
     self.assertContained('wasm-ld: error: symbol exported via --export not found: foobar', err)
 
-  def test_undefined_exported_js_function(self):
-    cmd = [EMXX, test_file('hello_world.cpp')]
+    # Adding -sERROR_ON_UNDEFINED_SYMBOLS=0 means the error gets reported later
+    # by emscripten.py.
+    cmd += ['-sERROR_ON_UNDEFINED_SYMBOLS=0']
+    err = self.expect_fail(cmd)
+    self.assertContained('undefined exported symbol: "_foobar"', err)
+
+    # setting `-Wno-undefined` should suppress the error
+    cmd += ['-Wno-undefined']
+    self.run_process(cmd)
+
+  @parameterized({
+    '': ('out.js',),
+    'standalone': ('out.wasm',)
+  })
+  def test_undefined_exported_js_function(self, outfile):
+    cmd = [EMXX, test_file('hello_world.cpp'), '-o', outfile]
     self.run_process(cmd)
 
     # adding a missing symbol to EXPORTED_FUNCTIONS should cause failure
@@ -2389,7 +2407,7 @@ int f() {
     err = self.expect_fail(cmd)
     self.assertContained('undefined exported symbol: "foobar"', err)
 
-    # setting `-Wno-undefined` should suppress error
+    # setting `-Wno-undefined` should suppress the error
     cmd += ['-Wno-undefined']
     self.run_process(cmd)
 
