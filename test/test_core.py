@@ -2692,6 +2692,7 @@ The current type of b is: 9
     self.do_core_test('test_strptime_tm.c')
 
   def test_strptime_days(self):
+    self.maybe_closure()
     self.do_core_test('test_strptime_days.c')
 
   def test_strptime_reentrant(self):
