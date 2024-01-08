@@ -358,6 +358,8 @@ namespace wgpu {
 
     static_assert(static_cast<uint32_t>(StorageTextureAccess::Undefined) == WGPUStorageTextureAccess_Undefined, "value mismatch for StorageTextureAccess::Undefined");
     static_assert(static_cast<uint32_t>(StorageTextureAccess::WriteOnly) == WGPUStorageTextureAccess_WriteOnly, "value mismatch for StorageTextureAccess::WriteOnly");
+    static_assert(static_cast<uint32_t>(StorageTextureAccess::ReadOnly) == WGPUStorageTextureAccess_ReadOnly, "value mismatch for StorageTextureAccess::ReadOnly");
+    static_assert(static_cast<uint32_t>(StorageTextureAccess::ReadWrite) == WGPUStorageTextureAccess_ReadWrite, "value mismatch for StorageTextureAccess::ReadWrite");
 
     // StoreOp
 
