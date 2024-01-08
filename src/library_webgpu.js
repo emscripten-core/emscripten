@@ -491,6 +491,8 @@ var LibraryWebGPU = {
     StorageTextureAccess: [
       undefined,
       'write-only',
+      'read-only',
+      'read-write',
     ],
     StoreOp: [
       undefined,

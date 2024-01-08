@@ -19,9 +19,9 @@ Dawn additionally autogenerates two "snippets" that are used in Emscripten:
 Once that's done, you need to update the auto-generated files with the commands below:
 
 ```
-./tools/gen_struct_info.py
-./tools/gen_struct_info.py --wasm64
-./tools/gen_sig_info.py
+./tools/maint/gen_struct_info.py
+./tools/maint/gen_struct_info.py --wasm64
+./tools/maint/gen_sig_info.py
 ```
 
 ## Testing
