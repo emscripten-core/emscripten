@@ -5,6 +5,10 @@
  * found in the LICENSE file.
  */
 
+// glibc requires _XOPEN_SOURCE to be defined in order to get strptime.
+#define _XOPEN_SOURCE
+
+#include <assert.h>
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
@@ -31,9 +35,14 @@ int main() {
   for (int i = 0; i < sizeof(day_tests) / sizeof(day_tests[0]); ++i) {
     memset(&tm, '\0', sizeof(tm));
     char *ptr = strptime(day_tests[i].input, day_tests[i].format, &tm);
+    assert(ptr);
 
-    printf("%s: %d/%d/%d (%dth DoW, %dth DoY)\n",
-           (ptr != NULL && *ptr == '\0') ? "OK" : "ERR", tm.tm_mon + 1,
-           tm.tm_mday, 1900 + tm.tm_year, tm.tm_wday, tm.tm_yday);
+    printf("%-23s -> %02d/%02d/%4d (%dth DoW, %3dth DoY)\n",
+           day_tests[i].input,
+           tm.tm_mon + 1,
+           tm.tm_mday,
+           1900 + tm.tm_year,
+           tm.tm_wday,
+           tm.tm_yday);
   }
 }
