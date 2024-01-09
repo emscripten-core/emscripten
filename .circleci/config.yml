@@ -127,7 +127,7 @@ commands:
             tar -xf node-v15.14.0-linux-x64.tar.xz
             export PATH="`pwd`/node-v15.14.0-linux-x64/bin:${PATH}"
             npm install jsvu -g
-            jsvu --os=default --engines=v8 v8@12.2.181
+            jsvu --os=default --engines=v8
   install-emsdk:
     description: "Install emsdk"
     steps:
@@ -149,7 +149,7 @@ commands:
             # persisted workspace (see below).
             echo "CACHE = os.path.expanduser('~/cache')" >> .emscripten
             # Refer to commit 0bc3640 if we need to pin V8 version.
-            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/bin/v8-12.2.181')]" >> .emscripten
+            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/bin/v8')]" >> .emscripten
             echo "JS_ENGINES = [NODE_JS]" >> .emscripten
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> .emscripten
             echo "WASM_ENGINES = []" >> .emscripten
