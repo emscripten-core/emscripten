@@ -18,14 +18,7 @@
 #if ENVIRONMENT_MAY_BE_NODE
 var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string';
 if (ENVIRONMENT_IS_NODE) {
-  let nodeWorkerThreads;
-  try {
-    nodeWorkerThreads = require('worker_threads');
-  } catch (e) {
-    console.error('The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?');
-    throw e;
-  }
-  global.Worker = nodeWorkerThreads.Worker;
+  global.Worker = require('worker_threads').Worker;
   var Module = Module || {}
 } else
 #endif
