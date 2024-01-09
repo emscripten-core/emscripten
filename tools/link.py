@@ -2011,6 +2011,7 @@ def fix_es6_import_statements(js_file):
              .replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
              .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import'))
 
+
 def create_worker_file(input_file, target_dir, output_file):
   output_file = os.path.join(target_dir, output_file)
   input_file = utils.path_from_root(input_file)
