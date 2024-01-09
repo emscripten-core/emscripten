@@ -40,7 +40,7 @@ if (ENVIRONMENT_IS_NODE) {
     Module,
     location: {
       // __filename is undefined in ES6 modules
-      href: typeof __filename !== 'undefined' ? __filename : undefined
+      href: typeof __filename !== 'undefined' ? __filename : import.meta.url
     },
     Worker: nodeWorkerThreads.Worker,
     importScripts: (f) => vm.runInThisContext(fs.readFileSync(f, 'utf8'), {filename: f}),
