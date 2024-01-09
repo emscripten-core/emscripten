@@ -513,6 +513,10 @@ def do_split_module(wasm_file, options):
   building.run_binaryen_command('wasm-split', wasm_file + '.orig', outfile=wasm_file, args=args)
 
 
+def get_worker_js_suffix():
+  return '.worker.mjs' if settings.EXPORT_ES6 else '.worker.js'
+
+
 def setup_pthreads(target):
   if settings.RELOCATABLE:
     # phtreads + dyanmic linking has certain limitations
@@ -569,7 +573,7 @@ def setup_pthreads(target):
   building.user_requested_exports.update(worker_imports)
 
   # set location of worker.js
-  settings.PTHREAD_WORKER_FILE = unsuffixed_basename(target) + '.worker.js'
+  settings.PTHREAD_WORKER_FILE = unsuffixed_basename(target) + get_worker_js_suffix()
 
   if settings.MINIMAL_RUNTIME:
     building.user_requested_exports.add('exit')
@@ -2606,7 +2610,7 @@ def generate_worker_js(target, js_target, target_basename):
     proxy_worker_filename = get_subresource_location(js_target)
   else:
     # compiler output goes in .worker.js file
-    move_file(js_target, shared.replace_suffix(js_target, '.worker.js'))
+    move_file(js_target, shared.replace_suffix(js_target, get_worker_js_suffix()))
     worker_target_basename = target_basename + '.worker'
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
 
