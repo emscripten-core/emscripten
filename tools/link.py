@@ -1999,11 +1999,25 @@ def phase_memory_initializer(memfile):
   final_js += '.mem.js'
 
 
+# Unmangle previously mangled `import.meta` and `await import` references in
+# both main code and libraries.
+# See also: `preprocess` in parseTools.js.
+def fix_es6_import_statements(js_file):
+  if not settings.EXPORT_ES6 or not settings.USE_ES6_IMPORT_META:
+    return
+
+  src = read_file(js_file)
+  write_file(js_file, src
+             .replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
+             .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import'))
+
 def create_worker_file(input_file, target_dir, output_file):
   output_file = os.path.join(target_dir, output_file)
   input_file = utils.path_from_root(input_file)
   contents = shared.read_and_preprocess(input_file, expand_macros=True)
   write_file(output_file, contents)
+
+  fix_es6_import_statements(output_file)
 
   # Minify the worker JS file, if JS minification is enabled.
   if settings.MINIFY_WHITESPACE:
@@ -2045,17 +2059,8 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     # mode)
     final_js = building.closure_compiler(final_js, advanced=False, extra_closure_args=options.closure_args)
 
-  # Unmangle previously mangled `import.meta` and `await import` references in
-  # both main code and libraries.
-  # See also: `preprocess` in parseTools.js.
-  if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
-    src = read_file(final_js)
-    final_js += '.esmeta.js'
-    write_file(final_js, src
-               .replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
-               .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import'))
-    shared.get_temp_files().note(final_js)
-    save_intermediate('es6-module')
+  fix_es6_import_statements(final_js)
+  save_intermediate('es6-module')
 
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:
