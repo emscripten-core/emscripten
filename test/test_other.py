@@ -2968,6 +2968,7 @@ int f() {
     'no_utf8': ['-sEMBIND_STD_STRING_IS_UTF8=0'],
     'no_dynamic': ['-sDYNAMIC_EXECUTION=0'],
     'aot_js': ['-sDYNAMIC_EXECUTION=0', '-sEMBIND_AOT', '-DSKIP_UNBOUND_TYPES'],
+    'wasm64': ['-sMEMORY64', '-Wno-experimental'],
   })
   @parameterized({
     '': [],
@@ -2980,6 +2981,8 @@ int f() {
     'strict_js': ['-sSTRICT_JS']
   })
   def test_embind(self, *extra_args):
+    if '-sMEMORY64' in extra_args:
+      self.require_wasm64()
     self.emcc_args += [
       '--no-entry',
       # This test explicitly creates std::string from unsigned char pointers

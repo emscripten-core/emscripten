@@ -432,9 +432,14 @@ var LibraryEmbind = {
         if (typeof value != "bigint" && typeof value != "number") {
           throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${this.name}`);
         }
+        if (typeof value == "number") {
+          value = BigInt(value);
+        }
+#if ASSERTIONS
         if (value < minRange || value > maxRange) {
           throw new TypeError(`Passing a number "${embindRepr(value)}" from JS side to C/C++ side to an argument of type "${name}", which is outside the valid range [${minRange}, ${maxRange}]!`);
         }
+#endif
         return value;
       },
       'argPackAdvance': GenericWireTypeSize,
@@ -551,7 +556,7 @@ var LibraryEmbind = {
           length = value.length;
         }
 
-        // assumes 4-byte alignment
+        // assumes POINTER_SIZE alignment
         var base = _malloc({{{ POINTER_SIZE }}} + length + 1);
         var ptr = base + {{{ POINTER_SIZE }}};
         {{{ makeSetValue('base', '0', 'length', SIZE_TYPE) }}};
@@ -616,10 +621,10 @@ var LibraryEmbind = {
         var HEAP = getHeap();
         var str;
 
-        var decodeStartPtr = value + 4;
+        var decodeStartPtr = value + {{{ POINTER_SIZE }}};
         // Looping here to support possible embedded '0' bytes
         for (var i = 0; i <= length; ++i) {
-          var currentBytePtr = value + 4 + i * charSize;
+          var currentBytePtr = value + {{{ POINTER_SIZE }}} + i * charSize;
           if (i == length || HEAP[currentBytePtr >> shift] == 0) {
             var maxReadBytes = currentBytePtr - decodeStartPtr;
             var stringSegment = decodeString(decodeStartPtr, maxReadBytes);
@@ -642,12 +647,12 @@ var LibraryEmbind = {
           throwBindingError(`Cannot pass non-string to C++ string type ${name}`);
         }
 
-        // assumes 4-byte alignment
+        // assumes POINTER_SIZE alignment
         var length = lengthBytesUTF(value);
-        var ptr = _malloc(4 + length + charSize);
-        HEAPU32[ptr >> 2] = length >> shift;
+        var ptr = _malloc({{{ POINTER_SIZE }}} + length + charSize);
+        {{{ makeSetValue('ptr', '0', 'length >> shift', SIZE_TYPE) }}};
 
-        encodeString(value, ptr + 4, length + charSize);
+        encodeString(value, ptr + {{{ POINTER_SIZE }}}, length + charSize);
 
         if (destructors !== null) {
           destructors.push(_free, ptr);

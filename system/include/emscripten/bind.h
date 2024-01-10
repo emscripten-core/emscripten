@@ -519,6 +519,12 @@ struct SignatureCode<size_t> {
         return 'p';
     }
 };
+template<>
+struct SignatureCode<long> {
+    static constexpr char get() {
+        return 'j';
+    }
+};
 #endif
 
 template<typename... Args>
@@ -532,6 +538,7 @@ template<> struct SignatureTranslator<void> { using type = void; };
 template<> struct SignatureTranslator<float> { using type = float; };
 template<> struct SignatureTranslator<double> { using type = double; };
 #ifdef __wasm64__
+template<> struct SignatureTranslator<long> { using type = long; };
 template<> struct SignatureTranslator<size_t> { using type = size_t; };
 template<typename PtrType>
 struct SignatureTranslator<PtrType*> { using type = void*; };

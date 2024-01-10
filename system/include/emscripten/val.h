@@ -540,6 +540,28 @@ public:
     return fromGenericWireType<T>(result);
   }
 
+#ifdef __wasm64__
+  template<>
+  long as<long>() const {
+    using namespace internal;
+
+    typedef BindingType<long> BT;
+    typename WithPolicies<>::template ArgTypeList<long> targetType;
+
+    return _emval_as_int64(as_handle(), targetType.getTypes()[0]);
+  }
+
+  template<>
+  unsigned long as<unsigned long>() const {
+    using namespace internal;
+
+    typedef BindingType<unsigned long> BT;
+    typename WithPolicies<>::template ArgTypeList<unsigned long> targetType;
+
+    return _emval_as_uint64(as_handle(), targetType.getTypes()[0]);
+  }
+#endif
+
   template<>
   int64_t as<int64_t>() const {
     using namespace internal;

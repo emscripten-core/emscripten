@@ -85,9 +85,6 @@ int main()
   assert_js("v64.size() === 5");
   assert_js("v64.get(4) === 1234n");
 
-  test("vector<int64_t> Cannot convert number to int64_t");
-  ensure_js_throws("v64.push_back(1234)", "TypeError");
-
   test("vector<int64_t> Cannot convert bigint that is too big");
   ensure_js_throws("v64.push_back(12345678901234567890123456n)", "TypeError");
 
@@ -103,8 +100,9 @@ int main()
   assert_js("vU64.size() === 5");
   assert_js("vU64.get(4) === 1234n");
 
-  test("vector<uint64_t> Cannot convert number to uint64_t");
-  ensure_js_throws("vU64.push_back(1234)", "TypeError");
+  execute_js("vU64.push_back(1234)");
+  assert_js("vU64.size() === 6");
+  assert_js("vU64.get(5) === 1234n");
 
   test("vector<uint64_t> Cannot convert bigint that is too big");
   ensure_js_throws("vU64.push_back(12345678901234567890123456n)", "TypeError");

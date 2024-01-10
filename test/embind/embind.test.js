@@ -852,10 +852,17 @@ module({
                 assert.throws(TypeError, function() { cm.int_to_string(2147483648); });
                 assert.throws(TypeError, function() { cm.unsigned_int_to_string(-1); });
                 assert.throws(TypeError, function() { cm.unsigned_int_to_string(4294967296); });
-                assert.throws(TypeError, function() { cm.long_to_string(-2147483649); });
-                assert.throws(TypeError, function() { cm.long_to_string(2147483648); });
-                assert.throws(TypeError, function() { cm.unsigned_long_to_string(-1); });
-                assert.throws(TypeError, function() { cm.unsigned_long_to_string(4294967296); });
+                if (cm.getCompilerSetting('MEMORY64')) {
+                    assert.throws(TypeError, function() { cm.long_to_string(-18446744073709551616n); });
+                    assert.throws(TypeError, function() { cm.long_to_string(18446744073709551616n); });
+                    assert.throws(TypeError, function() { cm.unsigned_long_to_string(-1n); });
+                    assert.throws(TypeError, function() { cm.unsigned_long_to_string(18446744073709551616n); });
+                } else {
+                    assert.throws(TypeError, function() { cm.long_to_string(-2147483649); });
+                    assert.throws(TypeError, function() { cm.long_to_string(2147483648); });
+                    assert.throws(TypeError, function() { cm.unsigned_long_to_string(-1); });
+                    assert.throws(TypeError, function() { cm.unsigned_long_to_string(4294967296); });
+                }
             } else {
                 // test that an out of range value doesn't throw without assertions.
                 assert.equal("-129", cm.char_to_string(-129));
@@ -2726,7 +2733,11 @@ module({
             assert.equal(127,   cm.val_as_char(127));
             assert.equal(32767, cm.val_as_short(32767));
             assert.equal(65536, cm.val_as_int(65536));
-            assert.equal(65536, cm.val_as_long(65536));
+            if (cm.getCompilerSetting('MEMORY64')) {
+                assert.equal(65536n, cm.val_as_long(65536));
+            } else {
+                assert.equal(65536, cm.val_as_long(65536));
+            }
             assert.equal(10.5,  cm.val_as_float(10.5));
             assert.equal(10.5,  cm.val_as_double(10.5));
 
