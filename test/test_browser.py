@@ -5833,7 +5833,7 @@ Module["preRun"] = () => {
     if not is_firefox():
       self.skipTest('https://github.com/emscripten-core/emscripten/pull/21050')
 
-    create_file('main.c', r'''
+    create_file('main.cpp', r'''
       #include <stdexcept>
       int main() {
         throw std::runtime_error("my message");
