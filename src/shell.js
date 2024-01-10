@@ -265,14 +265,7 @@ if (ENVIRONMENT_IS_NODE) {
   Module['inspect'] = () => '[Emscripten Module object]';
 
 #if PTHREADS || WASM_WORKERS
-  let nodeWorkerThreads;
-  try {
-    nodeWorkerThreads = require('worker_threads');
-  } catch (e) {
-    console.error('The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?');
-    throw e;
-  }
-  global.Worker = nodeWorkerThreads.Worker;
+  global.Worker = require('worker_threads').Worker;
 #endif
 
 #if WASM == 2

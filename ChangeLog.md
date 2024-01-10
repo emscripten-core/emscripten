@@ -20,6 +20,15 @@ See docs/process.md for more on how version tagging works.
 
 3.1.52 (in development)
 -----------------------
+- Building with `pthreads+EXPORT_ES6` will now emit the worker file as
+  `NAME.worker.mjs` rather than `.js`. This is a necessary breaking change to
+  resolve other `pthreads+EXPORT_ES6` issues in Node.js (because Node.js is
+  affected by the suffix in some cases). (#21041)
+- Include paths added by ports (e.g. `-sUSE_SDL=2`) now use `-isystem` rather
+  then `-I`.  This means that files in user-specified include directories will
+  now take precedence over port includes. (#21014)
+- Certain settings that only apply when generating JavaScript output will now
+  trigger a warning if used when generating only Wasm.
 - Fix bug where `main` was mistakenly included in debug builds but not in
   release builds. (#20971)
 - Remove JAVA from the list of `.emscripten` config file settings.  In the

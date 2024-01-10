@@ -513,6 +513,8 @@ function(${args}) {
         if (contentText.match(/^\s*([^}]*)\s*=>/s)) {
           // Handle arrow functions
           contentText = `var ${mangled} = ` + contentText + ';';
+        } else if (contentText.startsWith('class ')) {
+          contentText = contentText.replace(/^class /, `class ${mangled} `);
         } else {
           // Handle regular (non-arrow) functions
           contentText = contentText.replace(/function(?:\s+([^(]+))?\s*\(/, `function ${mangled}(`);

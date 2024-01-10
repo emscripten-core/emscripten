@@ -38,7 +38,7 @@ from .utils import removeprefix, exit_with_error
 from .shared import in_temp, safe_copy, do_replace, run_process, OFormat
 from .shared import DEBUG, WINDOWS, DYNAMICLIB_ENDINGS, STATICLIB_ENDINGS
 from .shared import unsuffixed, unsuffixed_basename, get_file_suffix
-from .settings import settings, default_setting, user_settings
+from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS
 from .minimal_runtime_shell import generate_minimal_runtime_html
 
 import tools.line_endings
@@ -513,6 +513,10 @@ def do_split_module(wasm_file, options):
   building.run_binaryen_command('wasm-split', wasm_file + '.orig', outfile=wasm_file, args=args)
 
 
+def get_worker_js_suffix():
+  return '.worker.mjs' if settings.EXPORT_ES6 else '.worker.js'
+
+
 def setup_pthreads(target):
   if settings.RELOCATABLE:
     # phtreads + dyanmic linking has certain limitations
@@ -569,7 +573,7 @@ def setup_pthreads(target):
   building.user_requested_exports.update(worker_imports)
 
   # set location of worker.js
-  settings.PTHREAD_WORKER_FILE = unsuffixed_basename(target) + '.worker.js'
+  settings.PTHREAD_WORKER_FILE = unsuffixed_basename(target) + get_worker_js_suffix()
 
   if settings.MINIMAL_RUNTIME:
     building.user_requested_exports.add('exit')
@@ -753,6 +757,11 @@ def phase_linker_setup(options, state, newargs):
     else:
       options.oformat = OFormat.JS
 
+  if options.oformat in (OFormat.WASM, OFormat.OBJECT):
+    for s in JS_ONLY_SETTINGS:
+      if s in user_settings:
+        diagnostics.warning('unused-command-line-argument', f'{s} is only valid when generating JavaScript output')
+
   if options.oformat == OFormat.MJS:
     settings.EXPORT_ES6 = 1
     settings.MODULARIZE = 1
@@ -805,11 +814,13 @@ def phase_linker_setup(options, state, newargs):
     # 2. If the user doesn't export anything we default to exporting `_main` (unless `--no-entry`
     #    is specified (see above).
     if 'EXPORTED_FUNCTIONS' in user_settings:
-      if '_main' not in settings.USER_EXPORTED_FUNCTIONS:
+      if '_main' in settings.USER_EXPORTED_FUNCTIONS:
+        settings.EXPORTED_FUNCTIONS.remove('_main')
+        settings.EXPORT_IF_DEFINED.append('main')
+      else:
         settings.EXPECT_MAIN = 0
     else:
-      assert not settings.EXPORTED_FUNCTIONS
-      settings.EXPORTED_FUNCTIONS = ['_main']
+      settings.EXPORT_IF_DEFINED.append('main')
 
   if settings.STANDALONE_WASM:
     # In STANDALONE_WASM mode we either build a command or a reactor.
@@ -833,7 +844,7 @@ def phase_linker_setup(options, state, newargs):
   # Note the exports the user requested
   building.user_requested_exports.update(settings.EXPORTED_FUNCTIONS)
 
-  if '_main' in settings.EXPORTED_FUNCTIONS:
+  if '_main' in settings.EXPORTED_FUNCTIONS or 'main' in settings.EXPORT_IF_DEFINED:
     settings.EXPORT_IF_DEFINED.append('__main_argc_argv')
   elif settings.ASSERTIONS and not settings.STANDALONE_WASM:
     # In debug builds when `main` is not explicitly requested as an
@@ -842,7 +853,7 @@ def phase_linker_setup(options, state, newargs):
     # See other.test_warn_unexported_main.
     # This is not needed in STANDALONE_WASM mode since we export _start
     # (unconditionally) rather than main.
-    settings.EXPORT_IF_DEFINED.append('main')
+    settings.EXPORT_IF_DEFINED += ['main', '__main_argc_argv']
 
   if settings.ASSERTIONS:
     # Exceptions are thrown with a stack trace by default when ASSERTIONS is
@@ -1895,7 +1906,7 @@ def phase_emscript(options, in_wasm, wasm_target, js_syms):
   if shared.SKIP_SUBPROCS:
     return
 
-  emscripten.run(in_wasm, wasm_target, final_js, js_syms)
+  emscripten.emscript(in_wasm, wasm_target, final_js, js_syms)
   save_intermediate('original')
 
 
@@ -1927,23 +1938,23 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   # import names.
   settings.MINIFY_WASM_IMPORTED_MODULES = False
   setup_environment_settings()
-  # Use a separate Wasm file so the JS does not need to be modified after emscripten.run.
+  # Use a separate Wasm file so the JS does not need to be modified after emscripten.emscript.
   settings.SINGLE_FILE = False
-  # Disable support for wasm exceptions
-  settings.WASM_EXCEPTIONS = False
   # Embind may be included multiple times, de-duplicate the list first.
   settings.JS_LIBRARIES = dedup_list(settings.JS_LIBRARIES)
   # Replace embind with the TypeScript generation version.
   embind_index = settings.JS_LIBRARIES.index('embind/embind.js')
   settings.JS_LIBRARIES[embind_index] = 'embind/embind_gen.js'
   outfile_js = in_temp('tsgen_a.out.js')
-  # The Wasm outfile may be modified by emscripten.run, so use a temporary file.
+  # The Wasm outfile may be modified by emscripten.emscript, so use a temporary file.
   outfile_wasm = in_temp('tsgen_a.out.wasm')
-  emscripten.run(wasm_target, outfile_wasm, outfile_js, js_syms, False)
+  emscripten.emscript(wasm_target, outfile_wasm, outfile_js, js_syms, False)
   # Build the flags needed by Node.js to properly run the output file.
   node_args = []
   if settings.MEMORY64:
     node_args += shared.node_memory64_flags()
+  if settings.WASM_EXCEPTIONS:
+    node_args += shared.node_exception_flags()
   # Run the generated JS file with the proper flags to generate the TypeScript bindings.
   out = shared.run_js_tool(outfile_js, [], node_args, stdout=PIPE)
   settings.restore(original_settings)
@@ -1992,11 +2003,26 @@ def phase_memory_initializer(memfile):
   final_js += '.mem.js'
 
 
+# Unmangle previously mangled `import.meta` and `await import` references in
+# both main code and libraries.
+# See also: `preprocess` in parseTools.js.
+def fix_es6_import_statements(js_file):
+  if not settings.EXPORT_ES6 or not settings.USE_ES6_IMPORT_META:
+    return
+
+  src = read_file(js_file)
+  write_file(js_file, src
+             .replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
+             .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import'))
+
+
 def create_worker_file(input_file, target_dir, output_file):
   output_file = os.path.join(target_dir, output_file)
   input_file = utils.path_from_root(input_file)
   contents = shared.read_and_preprocess(input_file, expand_macros=True)
   write_file(output_file, contents)
+
+  fix_es6_import_statements(output_file)
 
   # Minify the worker JS file, if JS minification is enabled.
   if settings.MINIFY_WHITESPACE:
@@ -2038,17 +2064,8 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     # mode)
     final_js = building.closure_compiler(final_js, advanced=False, extra_closure_args=options.closure_args)
 
-  # Unmangle previously mangled `import.meta` and `await import` references in
-  # both main code and libraries.
-  # See also: `preprocess` in parseTools.js.
-  if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
-    src = read_file(final_js)
-    final_js += '.esmeta.js'
-    write_file(final_js, src
-               .replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
-               .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import'))
-    shared.get_temp_files().note(final_js)
-    save_intermediate('es6-module')
+  fix_es6_import_statements(final_js)
+  save_intermediate('es6-module')
 
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:
@@ -2190,11 +2207,6 @@ def phase_binaryen(target, options, wasm_target, memfile):
                                            debug_info=intermediate_debug_info)
         save_intermediate_with_wasm('postclean', wasm_target)
 
-  if settings.ASYNCIFY_LAZY_LOAD_CODE:
-    with ToolchainProfiler.profile_block('asyncify_lazy_load_code'):
-      building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
-
-  if final_js:
     if options.use_closure_compiler:
       with ToolchainProfiler.profile_block('closure_compile'):
         final_js = building.closure_compiler(final_js, extra_closure_args=options.closure_args)
@@ -2203,6 +2215,10 @@ def phase_binaryen(target, options, wasm_target, memfile):
       with ToolchainProfiler.profile_block('transpile'):
         final_js = building.transpile(final_js)
       save_intermediate_with_wasm('traspile', wasm_target)
+
+  if settings.ASYNCIFY_LAZY_LOAD_CODE:
+    with ToolchainProfiler.profile_block('asyncify_lazy_load_code'):
+      building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
 
   symbols_file = None
   if options.emit_symbol_map:
@@ -2594,7 +2610,7 @@ def generate_worker_js(target, js_target, target_basename):
     proxy_worker_filename = get_subresource_location(js_target)
   else:
     # compiler output goes in .worker.js file
-    move_file(js_target, shared.replace_suffix(js_target, '.worker.js'))
+    move_file(js_target, shared.replace_suffix(js_target, get_worker_js_suffix()))
     worker_target_basename = target_basename + '.worker'
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
 

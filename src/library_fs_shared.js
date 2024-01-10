@@ -76,7 +76,7 @@ addToLibrary({
     }
     addRunDependency(dep);
     if (typeof url == 'string') {
-      asyncLoad(url, (byteArray) => processData(byteArray), onerror);
+      asyncLoad(url, processData, onerror);
     } else {
       processData(url);
     }

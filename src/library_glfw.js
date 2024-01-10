@@ -343,6 +343,7 @@ var LibraryGLFW = {
         case 0x11:return 341; // DOM_VK_CONTROL -> GLFW_KEY_LEFT_CONTROL
         case 0x12:return 342; // DOM_VK_ALT -> GLFW_KEY_LEFT_ALT
         case 0x5B:return 343; // DOM_VK_WIN -> GLFW_KEY_LEFT_SUPER
+        case 0xE0:return 343; // DOM_VK_META -> GLFW_KEY_LEFT_SUPER
         // case 0x10:return 344; // DOM_VK_SHIFT -> GLFW_KEY_RIGHT_SHIFT (DOM_KEY_LOCATION_RIGHT)
         // case 0x11:return 345; // DOM_VK_CONTROL -> GLFW_KEY_RIGHT_CONTROL (DOM_KEY_LOCATION_RIGHT)
         // case 0x12:return 346; // DOM_VK_ALT -> GLFW_KEY_RIGHT_ALT (DOM_KEY_LOCATION_RIGHT)
@@ -359,7 +360,7 @@ var LibraryGLFW = {
       if (win.keys[340]) mod |= 0x0001; // GLFW_MOD_SHIFT
       if (win.keys[341]) mod |= 0x0002; // GLFW_MOD_CONTROL
       if (win.keys[342]) mod |= 0x0004; // GLFW_MOD_ALT
-      if (win.keys[343]) mod |= 0x0008; // GLFW_MOD_SUPER
+      if (win.keys[343] || win.keys[348]) mod |= 0x0008; // GLFW_MOD_SUPER
       // add caps and num lock keys? only if lock_key_mod is set
       return mod;
     },
@@ -1467,9 +1468,9 @@ var LibraryGLFW = {
     GLFW.initialTime = GLFW.getTime() - time;
   },
 
-  glfwExtensionSupported__deps: ['glGetString'],
+  glfwExtensionSupported__deps: ['glGetString', '$webglGetExtensions'],
   glfwExtensionSupported: (extension) => {
-    GLFW.extensions ||= GL.getExtensions();
+    GLFW.extensions ||= webglGetExtensions();
 
     if (GLFW.extensions.includes(extension)) return 1;
 

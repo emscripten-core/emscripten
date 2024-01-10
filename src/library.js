@@ -48,8 +48,8 @@ addToLibrary({
 #if SAFE_HEAP
   // Trivial wrappers around runtime functions that make these symbols available
   // to native code.
-  segfault: () => segfault(),
-  alignfault: () => alignfault(),
+  segfault: '=segfault',
+  alignfault: '=alignfault',
 #endif
 
   // ==========================================================================
@@ -851,7 +851,7 @@ addToLibrary({
 
         return getWeekBasedYear(date).toString().substring(2);
       },
-      '%G': (date) => getWeekBasedYear(date),
+      '%G': getWeekBasedYear,
       '%H': (date) => leadingNulls(date.tm_hour, 2),
       '%I': (date) => {
         var twelveHour = date.tm_hour;
@@ -3032,7 +3032,7 @@ addToLibrary({
   // Converts a JS string to an integer base-10, with signaling error
   // handling (throws a JS exception on error). E.g. jstoi_s("123abc")
   // throws an exception.
-  $jstoi_s: (str) => Number(str),
+  $jstoi_s: 'Number',
 
 #if LINK_AS_CXX
   // libunwind
@@ -3524,7 +3524,9 @@ addToLibrary({
   $asyncLoad: (url, onload, onerror, noRunDep) => {
     var dep = !noRunDep ? getUniqueRunDependency(`al ${url}`) : '';
     readAsync(url, (arrayBuffer) => {
+#if ASSERTIONS
       assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
+#endif
       onload(new Uint8Array(arrayBuffer));
       if (dep) removeRunDependency(dep);
     }, (event) => {
@@ -3621,41 +3623,37 @@ addToLibrary({
 #endif
   },
 
-  $handleAllocatorInit: function() {
-    Object.assign(HandleAllocator.prototype, /** @lends {HandleAllocator.prototype} */ {
-      get(id) {
-  #if ASSERTIONS
-        assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);
-  #endif
-        return this.allocated[id];
-      },
-      has(id) {
-        return this.allocated[id] !== undefined;
-      },
-      allocate(handle) {
-        var id = this.freelist.pop() || this.allocated.length;
-        this.allocated[id] = handle;
-        return id;
-      },
-      free(id) {
-  #if ASSERTIONS
-        assert(this.allocated[id] !== undefined);
-  #endif
-        // Set the slot to `undefined` rather than using `delete` here since
-        // apparently arrays with holes in them can be less efficient.
-        this.allocated[id] = undefined;
-        this.freelist.push(id);
-      }
-    });
-  },
-
-  $HandleAllocator__postset: 'handleAllocatorInit()',
-  $HandleAllocator__deps: ['$handleAllocatorInit'],
-  $HandleAllocator__docs: '/** @constructor */',
-  $HandleAllocator: function() {
-    // Reserve slot 0 so that 0 is always an invalid handle
-    this.allocated = [undefined];
-    this.freelist = [];
+  $HandleAllocator: class {
+    constructor() {
+      // TODO(sbc): Use class fields once we allow/enable es2022 in
+      // JavaScript input to acorn and closure.
+      // Reserve slot 0 so that 0 is always an invalid handle
+      this.allocated = [undefined];
+      this.freelist = [];
+    }
+    get(id) {
+#if ASSERTIONS
+      assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);
+#endif
+      return this.allocated[id];
+    };
+    has(id) {
+      return this.allocated[id] !== undefined;
+    };
+    allocate(handle) {
+      var id = this.freelist.pop() || this.allocated.length;
+      this.allocated[id] = handle;
+      return id;
+    };
+    free(id) {
+#if ASSERTIONS
+      assert(this.allocated[id] !== undefined);
+#endif
+      // Set the slot to `undefined` rather than using `delete` here since
+      // apparently arrays with holes in them can be less efficient.
+      this.allocated[id] = undefined;
+      this.freelist.push(id);
+    };
   },
 
   $getNativeTypeSize__deps: ['$POINTER_SIZE'],

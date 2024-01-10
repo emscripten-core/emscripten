@@ -394,6 +394,8 @@ namespace wgpu {
     enum class StorageTextureAccess : uint32_t {
         Undefined = 0x00000000,
         WriteOnly = 0x00000001,
+        ReadOnly = 0x00000002,
+        ReadWrite = 0x00000003,
     };
 
     enum class StoreOp : uint32_t {

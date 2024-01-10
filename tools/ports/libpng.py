@@ -57,10 +57,6 @@ def process_dependencies(settings):
   settings.USE_ZLIB = 1
 
 
-def process_args(ports):
-  return []
-
-
 def show():
   return 'libpng (-sUSE_LIBPNG; zlib license)'
 

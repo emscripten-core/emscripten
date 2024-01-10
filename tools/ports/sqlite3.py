@@ -77,9 +77,5 @@ def clear(ports, settings, shared):
   shared.cache.erase_lib(get_lib_name(settings))
 
 
-def process_args(ports):
-  return []
-
-
 def show():
   return 'sqlite (USE_SQLITE3=1); public domain)'
