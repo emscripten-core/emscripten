@@ -5825,6 +5825,25 @@ Module["preRun"] = () => {
     shutil.copyfile('webpack/src/hello.wasm', 'webpack/dist/hello.wasm')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
 
+  def test_exceptions_stack_trace_and_message_wasm_eh(self):
+    # Currently writing to WebAssembly.Exception.stack property is not allowed
+    # in Firefox, but we need to ensure generating stack traces runs on FireFox
+    # without erroring out, even though stack trace simplification will not be
+    # done. See https://github.com/emscripten-core/emscripten/pull/21050
+    if not is_firefox():
+      self.skipTest('https://github.com/emscripten-core/emscripten/pull/21050')
+
+    create_file('main.c', r'''
+      #include <stdexcept>
+      int main() {
+        throw std::runtime_error("my message");
+        return 0;
+      }
+                ''')
+    self.emcc_args = ['-g', '-fwasm-exceptions']
+    self.set_setting('EXCEPTION_STACK_TRACES', 1)
+    self.btest_exit('main.c')
+
 
 class emrun(RunnerCore):
   def test_emrun_info(self):

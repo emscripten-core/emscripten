@@ -335,17 +335,17 @@ var LibraryExceptions = {
     //     ...
     //
     // Remove this JS function name, which is in the second line, from the stack
-    // trace. Note that .stack does not yet exist in all browsers (see #18828).
-    if (e.stack) {
-      // WebAssembly.Exception.stack is currently readonly, but this can change,
-      // and it is implemented as writable in Chrome and Node. Will check the
-      // 'writable' condition for now and later resolve this by either deleting
-      // this altogether or removing this condition check.
-      if (Object.getOwnPropertyDescriptor(e, 'stack').writable) {
-        var arr = e.stack.split('\n');
-        arr.splice(1,1);
-        e.stack = arr.join('\n');
-      }
+    // trace.
+    //
+    // Note that .stack does not yet exist in all browsers (see #18828).
+    // Also, WebAssembly.Exception.stack is currently readonly, but this can
+    // change, and it is implemented as writable in Chrome and Node. Will check
+    // the 'writable' condition for now and later resolve this by either
+    // deleting this altogether or removing this condition check.
+    if (e.stack && Object.getOwnPropertyDescriptor(e, 'stack').writable) {
+      var arr = e.stack.split('\n');
+      arr.splice(1,1);
+      e.stack = arr.join('\n');
     }
     throw e;
   },
