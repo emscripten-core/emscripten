@@ -1081,10 +1081,11 @@
         "WGPURenderPassColorAttachment": {
             "__size__": 56,
             "clearValue": 24,
-            "loadOp": 12,
+            "depthSlice": 8,
+            "loadOp": 16,
             "nextInChain": 0,
-            "resolveTarget": 8,
-            "storeOp": 16,
+            "resolveTarget": 12,
+            "storeOp": 20,
             "view": 4
         },
         "WGPURenderPassDepthStencilAttachment": {

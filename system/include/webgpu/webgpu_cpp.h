@@ -136,6 +136,7 @@ namespace wgpu {
 
     static constexpr uint32_t kArrayLayerCountUndefined = WGPU_ARRAY_LAYER_COUNT_UNDEFINED;
     static constexpr uint32_t kCopyStrideUndefined = WGPU_COPY_STRIDE_UNDEFINED;
+    static constexpr uint32_t kDepthSliceUndefined = WGPU_DEPTH_SLICE_UNDEFINED;
     static constexpr uint32_t kLimitU32Undefined = WGPU_LIMIT_U32_UNDEFINED;
     static constexpr uint64_t kLimitU64Undefined = WGPU_LIMIT_U64_UNDEFINED;
     static constexpr uint32_t kMipLevelCountUndefined = WGPU_MIP_LEVEL_COUNT_UNDEFINED;
@@ -1647,6 +1648,7 @@ namespace wgpu {
     struct RenderPassColorAttachment {
         ChainedStruct const * nextInChain = nullptr;
         TextureView view = nullptr;
+        uint32_t depthSlice = WGPU_DEPTH_SLICE_UNDEFINED;
         TextureView resolveTarget = nullptr;
         LoadOp loadOp;
         StoreOp storeOp;

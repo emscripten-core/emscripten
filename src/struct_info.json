@@ -1538,6 +1538,7 @@
             "WGPURenderPassColorAttachment": [
                 "nextInChain",
                 "view",
+                "depthSlice",
                 "resolveTarget",
                 "loadOp",
                 "storeOp",
