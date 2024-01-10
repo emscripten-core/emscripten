@@ -376,7 +376,7 @@ def type_to_cdec(raw):
 
 
 def render_function(class_name, func_name, sigs, return_type, non_pointer,
-                    copy, operator, constructor, func_scope,
+                    copy, operator, constructor, is_static, func_scope,
                     call_content=None, const=False, array_attribute=False):
   legacy_mode = CHECKS not in ['ALL', 'FAST']
   all_checks = CHECKS == 'ALL'
@@ -399,7 +399,9 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
   # JS
 
   cache = ('getCache(%s)[this.ptr] = this;' % class_name) if constructor else ''
-  call_prefix = '' if not constructor else 'this.ptr = '
+  call_prefix = ''
+  if constructor:
+    call_prefix += 'this.ptr = '
   call_postfix = ''
   if return_type != 'Void' and not constructor:
     call_prefix = 'return '
@@ -415,7 +417,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
       call_postfix += ')'
 
   args = [(all_args[i].identifier.name if isinstance(all_args[i], WebIDL.IDLArgument) else ('arg%d' % i)) for i in range(max_args)]
-  if not constructor:
+  if not constructor and not is_static:
     body = '  var self = this.ptr;\n'
     pre_arg = ['self']
   else:
@@ -530,21 +532,27 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
       sig = [x.replace('[]', '') for x in sig] # for arrays, ignore that this is an array - our get/set methods operate on the elements
 
     c_arg_types = list(map(type_to_c, sig))
+    c_class_name = type_to_c(class_name, non_pointing=True)
 
     normal_args = ', '.join(['%s %s' % (c_arg_types[j], args[j]) for j in range(i)])
-    if constructor:
+    if constructor or is_static:
       full_args = normal_args
     else:
-      full_args = type_to_c(class_name, non_pointing=True) + '* self' + ('' if not normal_args else ', ' + normal_args)
+      full_args = c_class_name + '* self'
+      if normal_args:
+        full_args += ', ' + normal_args
     call_args = ', '.join(['%s%s' % ('*' if raw[j].getExtendedAttribute('Ref') else '', args[j]) for j in range(i)])
     if constructor:
-      call = 'new ' + type_to_c(class_name, non_pointing=True)
-      call += '(' + call_args + ')'
+      call = 'new ' + c_class_name + '(' + call_args + ')'
     elif call_content is not None:
       call = call_content
     else:
-      call = 'self->' + func_name
-      call += '(' + call_args + ')'
+      call = func_name + '(' + call_args + ')'
+      if is_static:
+
+        call = c_class_name + '::' + call
+      else:
+        call = 'self->' + call
 
     if operator:
       cast_self = 'self'
@@ -702,6 +710,7 @@ for name in names:
                     m.getExtendedAttribute('Value'),
                     (m.getExtendedAttribute('Operator') or [None])[0],
                     constructor,
+                    is_static=m.isStatic(),
                     func_scope=m.parentScope.identifier.name,
                     const=m.getExtendedAttribute('Const'))
     mid_js += [';\n']
@@ -741,6 +750,7 @@ for name in names:
                     None,
                     None,
                     False,
+                    False,
                     func_scope=interface,
                     call_content=get_call_content,
                     const=m.getExtendedAttribute('Const'),
@@ -760,6 +770,7 @@ for name in names:
                       None,
                       None,
                       False,
+                      False,
                       func_scope=interface,
                       call_content=set_call_content,
                       const=m.getExtendedAttribute('Const'),
@@ -776,6 +787,7 @@ for name in names:
                     None,
                     None,
                     None,
+                    False,
                     False,
                     func_scope=interface,
                     call_content='delete self')
