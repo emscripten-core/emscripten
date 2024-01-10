@@ -7,6 +7,17 @@
 
 namespace wgpu {
 
+    // WGSLFeatureName
+
+    static_assert(sizeof(WGSLFeatureName) == sizeof(WGPUWGSLFeatureName), "sizeof mismatch for WGSLFeatureName");
+    static_assert(alignof(WGSLFeatureName) == alignof(WGPUWGSLFeatureName), "alignof mismatch for WGSLFeatureName");
+
+    static_assert(static_cast<uint32_t>(WGSLFeatureName::Undefined) == WGPUWGSLFeatureName_Undefined, "value mismatch for WGSLFeatureName::Undefined");
+    static_assert(static_cast<uint32_t>(WGSLFeatureName::ReadonlyAndReadwriteStorageTextures) == WGPUWGSLFeatureName_ReadonlyAndReadwriteStorageTextures, "value mismatch for WGSLFeatureName::ReadonlyAndReadwriteStorageTextures");
+    static_assert(static_cast<uint32_t>(WGSLFeatureName::Packed4x8IntegerDotProduct) == WGPUWGSLFeatureName_Packed4x8IntegerDotProduct, "value mismatch for WGSLFeatureName::Packed4x8IntegerDotProduct");
+    static_assert(static_cast<uint32_t>(WGSLFeatureName::UnrestrictedPointerParameters) == WGPUWGSLFeatureName_UnrestrictedPointerParameters, "value mismatch for WGSLFeatureName::UnrestrictedPointerParameters");
+    static_assert(static_cast<uint32_t>(WGSLFeatureName::PointerCompositeAccess) == WGPUWGSLFeatureName_PointerCompositeAccess, "value mismatch for WGSLFeatureName::PointerCompositeAccess");
+
     // AdapterType
 
     static_assert(sizeof(AdapterType) == sizeof(WGPUAdapterType), "sizeof mismatch for AdapterType");
@@ -2021,6 +2032,10 @@ namespace wgpu {
     Surface Instance::CreateSurface(SurfaceDescriptor const * descriptor) const {
         auto result = wgpuInstanceCreateSurface(Get(), reinterpret_cast<WGPUSurfaceDescriptor const * >(descriptor));
         return Surface::Acquire(result);
+    }
+    bool Instance::HasWGSLLanguageFeature(WGSLFeatureName feature) const {
+        auto result = wgpuInstanceHasWGSLLanguageFeature(Get(), static_cast<WGPUWGSLFeatureName>(feature));
+        return result;
     }
     void Instance::ProcessEvents() const {
         wgpuInstanceProcessEvents(Get());

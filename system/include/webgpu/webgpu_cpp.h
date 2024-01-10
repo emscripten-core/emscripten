@@ -143,6 +143,14 @@ namespace wgpu {
     static constexpr size_t kWholeMapSize = WGPU_WHOLE_MAP_SIZE;
     static constexpr uint64_t kWholeSize = WGPU_WHOLE_SIZE;
 
+    enum class WGSLFeatureName : uint32_t {
+        Undefined = 0x00000000,
+        ReadonlyAndReadwriteStorageTextures = 0x00000001,
+        Packed4x8IntegerDotProduct = 0x00000002,
+        UnrestrictedPointerParameters = 0x00000003,
+        PointerCompositeAccess = 0x00000004,
+    };
+
     enum class AdapterType : uint32_t {
         DiscreteGPU = 0x00000000,
         IntegratedGPU = 0x00000001,
@@ -983,6 +991,7 @@ namespace wgpu {
         using ObjectBase::operator=;
 
         Surface CreateSurface(SurfaceDescriptor const * descriptor) const;
+        bool HasWGSLLanguageFeature(WGSLFeatureName feature) const;
         void ProcessEvents() const;
         void RequestAdapter(RequestAdapterOptions const * options, RequestAdapterCallback callback, void * userdata) const;
 
