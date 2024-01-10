@@ -343,10 +343,10 @@ class other(RunnerCore):
                       test_file('hello_world.c')] + args)
     src = read_file('subdir/hello_world.mjs')
     self.assertContained("new URL('hello_world.wasm', import.meta.url)", src)
-    self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url), {type: 'module'})", src)
+    self.assertContained("new Worker(new URL('hello_world.worker.mjs', import.meta.url), {type: 'module'})", src)
     self.assertContained("new Worker(pthreadMainJs, {type: 'module'})", src)
     self.assertContained('export default Module;', src)
-    src = read_file('subdir/hello_world.worker.js')
+    src = read_file('subdir/hello_world.worker.mjs')
     self.assertContained("import('./hello_world.mjs')", src)
     self.assertContained('hello, world!', self.run_js('subdir/hello_world.mjs'))
 
@@ -358,7 +358,7 @@ class other(RunnerCore):
                       test_file('hello_world.c'), '-sSINGLE_FILE'])
     src = read_file('hello_world.mjs')
     self.assertNotContained("new URL('data:", src)
-    self.assertContained("new Worker(new URL('hello_world.worker.js', import.meta.url), {type: 'module'})", src)
+    self.assertContained("new Worker(new URL('hello_world.worker.mjs', import.meta.url), {type: 'module'})", src)
     self.assertContained("new Worker(pthreadMainJs, {type: 'module'})", src)
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
@@ -401,10 +401,15 @@ class other(RunnerCore):
     self.assertContained('export{doNothing};', src)
 
   @parameterized({
-    '': ([],),
-    'pthreads': (['-pthread'],),
+    '': (False,),
+    'package_json': (True,),
   })
-  def test_export_es6(self, args):
+  @parameterized({
+    '': ([],),
+    # load a worker before startup to check ES6 modules there as well
+    'pthreads': (['-pthread', '-sPTHREAD_POOL_SIZE=1'],),
+  })
+  def test_export_es6(self, args, package_json):
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6',
                       '-o', 'hello.mjs'] + args)
     # In ES6 mode we use MODULARIZE, so we must instantiate an instance of the
@@ -413,6 +418,12 @@ class other(RunnerCore):
       import Hello from "./hello.mjs";
       Hello();
     ''')
+
+    if package_json:
+      # This makes node load all files in the directory as ES6 modules,
+      # including the worker.js file.
+      create_file('package.json', '{"type":"module"}')
+
     self.assertContained('hello, world!', self.run_js('runner.mjs'))
 
   def test_emcc_out_file(self):
