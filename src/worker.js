@@ -47,7 +47,7 @@ if (ENVIRONMENT_IS_NODE) {
 #if EXPORT_ES6
       href: typeof __filename !== 'undefined' ? __filename : import.meta.url
 #else
-      href: typeof __filename
+      href: __filename
 #endif
     },
     Worker: nodeWorkerThreads.Worker,
