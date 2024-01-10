@@ -137,19 +137,22 @@ function runJSify() {
       const newArgs = [];
       let innerArgs = [];
       let argConvertions = '';
-      for (let i = 1; i < sig.length; i++) {
-        const name = argNames[i - 1];
-        if (!name) {
-          error(`handleI64Signatures: missing name for argument ${i} in ${symbol}`);
-          return snippet;
-        }
-        if (WASM_BIGINT && ((MEMORY64 && sig[i] == 'p') || (i53abi && sig[i] == 'j'))) {
+      if (sig.length > argNames.length + 1) {
+        error(`handleI64Signatures: signature too long for ${symbol}`);
+        return snippet;
+      }
+      for (let i = 0; i < argNames.length; i++) {
+        const name = argNames[i];
+        // If sig is shorter than argNames list then argType will be undefined
+        // here, which will result in the default case below.
+        const argType = sig[i + 1];
+        if (WASM_BIGINT && ((MEMORY64 && argType == 'p') || (i53abi && argType == 'j'))) {
           argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
         } else {
-          if (sig[i] == 'j' && i53abi) {
+          if (argType == 'j' && i53abi) {
             argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
             newArgs.push(defineI64Param(name));
-          } else if (sig[i] == 'p' && CAN_ADDRESS_2GB) {
+          } else if (argType == 'p' && CAN_ADDRESS_2GB) {
             argConvertions += `  ${name} >>>= 0;\n`;
             newArgs.push(name);
           } else {
