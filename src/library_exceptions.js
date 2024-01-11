@@ -327,20 +327,6 @@ var LibraryExceptions = {
   __throw_exception_with_stack_trace: (ex) => {
     var e = new WebAssembly.Exception(getCppExceptionTag(), [ex], {traceStack: true});
     e.message = getExceptionMessage(e);
-    // The generated stack trace will be in the form of:
-    //
-    // Error
-    //     at ___throw_exception_with_stack_trace(test.js:1139:13)
-    //     at __cxa_throw (wasm://wasm/009a7c9a:wasm-function[1551]:0x24367)
-    //     ...
-    //
-    // Remove this JS function name, which is in the second line, from the stack
-    // trace. Note that .stack does not yet exist in all browsers (see #18828).
-    if (e.stack) {
-      var arr = e.stack.split('\n');
-      arr.splice(1,1);
-      e.stack = arr.join('\n');
-    }
     throw e;
   },
 #endif
