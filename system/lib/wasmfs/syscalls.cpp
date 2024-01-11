@@ -1525,16 +1525,6 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
       // Always error for now, until we implement byte-range locks.
       return -EACCES;
     }
-    case F_GETOWN_EX:
-    case F_SETOWN:
-      // These are for sockets. We don't have them fully implemented yet.
-      return -EINVAL;
-    case F_GETOWN:
-      // Work around what seems to be a musl bug, where they do not set errno
-      // in the caller. This has been an issue since the JS filesystem and had
-      // the same workaround there.
-      errno = EINVAL;
-      return -1;
     default: {
       // TODO: support any remaining cmds
       return -EINVAL;
