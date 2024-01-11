@@ -41,29 +41,12 @@ int run_js(string js_code)
   }, js_code_pointer);
 }
 
-void ensure_js_throws(string js_code, string error_type)
-{
-  js_code.append(";");
-  const char* js_code_pointer = js_code.c_str();
-  const char* error_type_pointer = error_type.c_str();
-  assert(EM_ASM_INT({
-    var js_code = UTF8ToString($0);
-    var error_type = UTF8ToString($1);
-    try {
-      eval(js_code);
-    }
-    catch(error_thrown)
-    {
-      return error_thrown.name === error_type;
-    }
-    return false;
-  }, js_code_pointer, error_type_pointer));
-}
-
 EMSCRIPTEN_BINDINGS(tests) {
   register_vector<int64_t>("Int64Vector");
   register_vector<uint64_t>("UInt64Vector");
 }
+
+extern "C" void ensure_js_throws_with_assertions_enabled(const char* js_code, const char* error_type);
 
 int main()
 {
@@ -86,7 +69,7 @@ int main()
   assert_js("v64.get(4) === 1234n");
 
   test("vector<int64_t> Cannot convert bigint that is too big");
-  ensure_js_throws("v64.push_back(12345678901234567890123456n)", "TypeError");
+  ensure_js_throws_with_assertions_enabled("v64.push_back(12345678901234567890123456n)", "TypeError");
 
   test("vector<uint64_t>");
   val myval2(vector<uint64_t>{1, 2, 3, 4});
@@ -105,10 +88,10 @@ int main()
   assert_js("vU64.get(5) === 1234n");
 
   test("vector<uint64_t> Cannot convert bigint that is too big");
-  ensure_js_throws("vU64.push_back(12345678901234567890123456n)", "TypeError");
+  ensure_js_throws_with_assertions_enabled("vU64.push_back(12345678901234567890123456n)", "TypeError");
 
   test("vector<uint64_t> Cannot convert bigint that is negative");
-  ensure_js_throws("vU64.push_back(-1n)", "TypeError");
+  ensure_js_throws_with_assertions_enabled("vU64.push_back(-1n)", "TypeError");
 
   myval.call<void>("delete");
   myval2.call<void>("delete");
