@@ -1304,10 +1304,6 @@ def phase_linker_setup(options, state, newargs):
       # helping people see when they should have enabled EXIT_RUNTIME)
       settings.EXPORT_IF_DEFINED += ['fflush']
 
-    if settings.SUPPORT_ERRNO:
-      # so setErrNo JS library function can report errno back to C
-      settings.REQUIRED_EXPORTS += ['__errno_location']
-
   if settings.SAFE_HEAP:
     # SAFE_HEAP check includes calling emscripten_get_sbrk_ptr() from wasm
     settings.REQUIRED_EXPORTS += ['emscripten_get_sbrk_ptr', 'emscripten_stack_get_base']
