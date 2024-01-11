@@ -135,6 +135,56 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   emscripten_webgl_enable_WEBGL_multi_draw__deps: ['$webgl_enable_WEBGL_multi_draw'],
   emscripten_webgl_enable_WEBGL_multi_draw: (ctx) => webgl_enable_WEBGL_multi_draw(GL.contexts[ctx].GLctx),
 
+  $getEmscriptenSupportedExtensions__internal: true,
+  $getEmscriptenSupportedExtensions: function(ctx) {
+    // Restrict the list of advertised extensions to those that we actually
+    // support.
+    var supportedExtensions = [
+#if MIN_WEBGL_VERSION == 1
+      // WebGL 1 extensions
+      'ANGLE_instanced_arrays',
+      'EXT_blend_minmax',
+      'EXT_disjoint_timer_query',
+      'EXT_frag_depth',
+      'EXT_shader_texture_lod',
+      'EXT_sRGB',
+      'OES_element_index_uint',
+      'OES_fbo_render_mipmap',
+      'OES_standard_derivatives',
+      'OES_texture_float',
+      'OES_texture_half_float',
+      'OES_texture_half_float_linear',
+      'OES_vertex_array_object',
+      'WEBGL_color_buffer_float',
+      'WEBGL_depth_texture',
+      'WEBGL_draw_buffers',
+#endif
+#if MAX_WEBGL_VERSION >= 2
+      // WebGL 2 extensions
+      'EXT_color_buffer_float',
+      'EXT_disjoint_timer_query_webgl2',
+      'EXT_texture_norm16',
+      'WEBGL_clip_cull_distance',
+#endif
+      // WebGL 1 and WebGL 2 extensions
+      'EXT_color_buffer_half_float',
+      'EXT_float_blend',
+      'EXT_texture_compression_bptc',
+      'EXT_texture_compression_rgtc',
+      'EXT_texture_filter_anisotropic',
+      'KHR_parallel_shader_compile',
+      'OES_texture_float_linear',
+      'WEBGL_compressed_texture_s3tc',
+      'WEBGL_compressed_texture_s3tc_srgb',
+      'WEBGL_debug_renderer_info',
+      'WEBGL_debug_shaders',
+      'WEBGL_lose_context',
+      'WEBGL_multi_draw',
+    ];
+    // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+    return (ctx.getSupportedExtensions() || []).filter(ext => supportedExtensions.includes(ext));
+  },
+
   $GL__postset: 'var GLctx;',
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
   // If GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS is enabled, GL.initExtensions() will call to initialize these.
@@ -153,8 +203,9 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     '$webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance',
 #endif
     '$webgl_enable_WEBGL_multi_draw',
+    '$getEmscriptenSupportedExtensions',
   ],
-#endif
+#endif // GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
   $GL: {
 #if GL_DEBUG
     debug: true,
@@ -738,60 +789,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       }
       disableHalfFloatExtensionIfBroken(ctx);
 #endif
-
-      // If end user enables *glGetProcAddress() functionality or
-      // GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS, then we must filter out
-      // all future WebGL extensions from being passed to the user, and only restrict to advertising
-      // extensions that the *glGetProcAddress() function knows to handle.
-#if GL_ENABLE_GET_PROC_ADDRESS || GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
-      var _allSupportedExtensions = ctx.getSupportedExtensions;
-      var supportedExtensionsForGetProcAddress = [
-#if MIN_WEBGL_VERSION == 1
-        // WebGL 1 extensions
-        'ANGLE_instanced_arrays',
-        'EXT_blend_minmax',
-        'EXT_disjoint_timer_query',
-        'EXT_frag_depth',
-        'EXT_shader_texture_lod',
-        'EXT_sRGB',
-        'OES_element_index_uint',
-        'OES_fbo_render_mipmap',
-        'OES_standard_derivatives',
-        'OES_texture_float',
-        'OES_texture_half_float',
-        'OES_texture_half_float_linear',
-        'OES_vertex_array_object',
-        'WEBGL_color_buffer_float',
-        'WEBGL_depth_texture',
-        'WEBGL_draw_buffers',
-#endif
-#if MAX_WEBGL_VERSION >= 2
-        // WebGL 2 extensions
-        'EXT_color_buffer_float',
-        'EXT_disjoint_timer_query_webgl2',
-        'EXT_texture_norm16',
-        'WEBGL_clip_cull_distance',
-#endif
-        // WebGL 1 and WebGL 2 extensions
-        'EXT_color_buffer_half_float',
-        'EXT_float_blend',
-        'EXT_texture_compression_bptc',
-        'EXT_texture_compression_rgtc',
-        'EXT_texture_filter_anisotropic',
-        'KHR_parallel_shader_compile',
-        'OES_texture_float_linear',
-        'WEBGL_compressed_texture_s3tc',
-        'WEBGL_compressed_texture_s3tc_srgb',
-        'WEBGL_debug_renderer_info',
-        'WEBGL_debug_shaders',
-        'WEBGL_lose_context',
-        'WEBGL_multi_draw',
-      ];
-      ctx.getSupportedExtensions = function() {
-        return (_allSupportedExtensions.apply(this) || []).filter(ext => supportedExtensionsForGetProcAddress.includes(ext));
-      }
-#endif
-
       return handle;
     },
 
@@ -1206,10 +1203,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 
       webgl_enable_WEBGL_multi_draw(GLctx);
 
-      // .getSupportedExtensions() can return null if context is lost, so coerce
-      // to empty array.
-      var exts = GLctx.getSupportedExtensions() || [];
-      exts.forEach((ext) => {
+      getEmscriptenSupportedExtensions(GLctx).forEach((ext) => {
         // WEBGL_lose_context, WEBGL_debug_renderer_info and WEBGL_debug_shaders
         // are not enabled by default.
         if (!ext.includes('lose_context') && !ext.includes('debug')) {
@@ -1220,14 +1214,16 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     },
 #endif
 
-    getExtensions() {
-      // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
-      var exts = GLctx.getSupportedExtensions() || [];
+  },
+
+  $webglGetExtensions__internal: true,
+  $webglGetExtensions__deps: ['$getEmscriptenSupportedExtensions'],
+  $webglGetExtensions() {
+    var exts = getEmscriptenSupportedExtensions(GLctx);
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-      exts = exts.concat(exts.map((e) => "GL_" + e));
+    exts = exts.concat(exts.map((e) => "GL_" + e));
 #endif
-      return exts;
-    },
+    return exts;
   },
 
   glPixelStorei: (pname, param) => {
@@ -1237,13 +1233,13 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     GLctx.pixelStorei(pname, param);
   },
 
-  glGetString__deps: ['$stringToNewUTF8'],
+  glGetString__deps: ['$stringToNewUTF8', '$webglGetExtensions'],
   glGetString: (name_) => {
     var ret = GL.stringCache[name_];
     if (!ret) {
       switch (name_) {
         case 0x1F03 /* GL_EXTENSIONS */:
-          ret = stringToNewUTF8(GL.getExtensions().join(' '));
+          ret = stringToNewUTF8(webglGetExtensions().join(' '));
           break;
         case 0x1F00 /* GL_VENDOR */:
         case 0x1F01 /* GL_RENDERER */:
@@ -1305,7 +1301,11 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     return ret;
   },
 
-  $emscriptenWebGLGet__deps: ['$writeI53ToI64'],
+  $emscriptenWebGLGet__deps: ['$writeI53ToI64',
+#if MAX_WEBGL_VERSION >= 2
+    '$webglGetExtensions', // For GL_NUM_EXTENSIONS
+#endif
+  ],
   $emscriptenWebGLGet: (name_, p, type) => {
     // Guard against user passing a null pointer.
     // Note that GLES2 spec does not say anything about how passing a null
@@ -1368,15 +1368,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
           return;
         }
 #endif
-        // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
-        var exts = GLctx.getSupportedExtensions() || [];
-#if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-        // each extension is duplicated, first in unprefixed WebGL form, and
-        // then a second time with "GL_" prefix.
-        ret = 2 * exts.length;
-#else
-        ret = exts.length;
-#endif
+        ret = webglGetExtensions().length;
         break;
       case 0x821B: // GL_MAJOR_VERSION
       case 0x821C: // GL_MINOR_VERSION

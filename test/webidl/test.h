@@ -35,7 +35,7 @@ public:
   Child2() : Parent(9) { printf("Child2:%d\n", value); };
   virtual ~Child2() = default;
   int getValCube() { return value*value*value; }
-  static void printStatic() { printf("*static*\n"); }
+  static void printStatic(int arg0) { printf("*static*: %d\n", arg0); }
 
   virtual void virtualFunc() { printf("*virtualf*\n"); }
   virtual void virtualFunc2() { printf("*virtualf2*\n"); }

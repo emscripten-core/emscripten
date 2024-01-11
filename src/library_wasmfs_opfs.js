@@ -16,7 +16,7 @@ addToLibrary({
 
 #if !PTHREADS
   // OPFS will only be used on modern browsers that supports JS classes.
-  $FileSystemAsyncAccessHandle: class FileSystemAsyncAccessHandle {
+  $FileSystemAsyncAccessHandle: class {
     // This class implements the same interface as the sync version, but has
     // async reads and writes. Hopefully this will one day be implemented by the
     // platform so we can remove it.

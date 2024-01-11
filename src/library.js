@@ -3623,41 +3623,37 @@ addToLibrary({
 #endif
   },
 
-  $handleAllocatorInit: function() {
-    Object.assign(HandleAllocator.prototype, /** @lends {HandleAllocator.prototype} */ {
-      get(id) {
-  #if ASSERTIONS
-        assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);
-  #endif
-        return this.allocated[id];
-      },
-      has(id) {
-        return this.allocated[id] !== undefined;
-      },
-      allocate(handle) {
-        var id = this.freelist.pop() || this.allocated.length;
-        this.allocated[id] = handle;
-        return id;
-      },
-      free(id) {
-  #if ASSERTIONS
-        assert(this.allocated[id] !== undefined);
-  #endif
-        // Set the slot to `undefined` rather than using `delete` here since
-        // apparently arrays with holes in them can be less efficient.
-        this.allocated[id] = undefined;
-        this.freelist.push(id);
-      }
-    });
-  },
-
-  $HandleAllocator__postset: 'handleAllocatorInit()',
-  $HandleAllocator__deps: ['$handleAllocatorInit'],
-  $HandleAllocator__docs: '/** @constructor */',
-  $HandleAllocator: function() {
-    // Reserve slot 0 so that 0 is always an invalid handle
-    this.allocated = [undefined];
-    this.freelist = [];
+  $HandleAllocator: class {
+    constructor() {
+      // TODO(sbc): Use class fields once we allow/enable es2022 in
+      // JavaScript input to acorn and closure.
+      // Reserve slot 0 so that 0 is always an invalid handle
+      this.allocated = [undefined];
+      this.freelist = [];
+    }
+    get(id) {
+#if ASSERTIONS
+      assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);
+#endif
+      return this.allocated[id];
+    };
+    has(id) {
+      return this.allocated[id] !== undefined;
+    };
+    allocate(handle) {
+      var id = this.freelist.pop() || this.allocated.length;
+      this.allocated[id] = handle;
+      return id;
+    };
+    free(id) {
+#if ASSERTIONS
+      assert(this.allocated[id] !== undefined);
+#endif
+      // Set the slot to `undefined` rather than using `delete` here since
+      // apparently arrays with holes in them can be less efficient.
+      this.allocated[id] = undefined;
+      this.freelist.push(id);
+    };
   },
 
   $getNativeTypeSize__deps: ['$POINTER_SIZE'],

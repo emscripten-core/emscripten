@@ -246,6 +246,7 @@ function ensureString(value) {
   }
   return value;
 }
+
 /** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function ensureInt8(value) {
   if (typeof value === 'object') {
@@ -255,6 +256,7 @@ function ensureInt8(value) {
   }
   return value;
 }
+
 /** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function ensureInt16(value) {
   if (typeof value === 'object') {
@@ -264,6 +266,7 @@ function ensureInt16(value) {
   }
   return value;
 }
+
 /** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function ensureInt32(value) {
   if (typeof value === 'object') {
@@ -273,6 +276,7 @@ function ensureInt32(value) {
   }
   return value;
 }
+
 /** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function ensureFloat32(value) {
   if (typeof value === 'object') {
@@ -282,6 +286,7 @@ function ensureFloat32(value) {
   }
   return value;
 }
+
 /** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function ensureFloat64(value) {
   if (typeof value === 'object') {
@@ -291,7 +296,6 @@ function ensureFloat64(value) {
   }
   return value;
 }
-
 ''']
 
 C_FLOATS = ['float', 'double']
@@ -376,7 +380,7 @@ def type_to_cdec(raw):
 
 
 def render_function(class_name, func_name, sigs, return_type, non_pointer,
-                    copy, operator, constructor, func_scope,
+                    copy, operator, constructor, is_static, func_scope,
                     call_content=None, const=False, array_attribute=False):
   legacy_mode = CHECKS not in ['ALL', 'FAST']
   all_checks = CHECKS == 'ALL'
@@ -394,12 +398,14 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
       if isinstance(a, WebIDL.IDLArgument):
         print(' ', a.identifier.name, a.identifier, a.type, a.optional)
       else:
-        print("  arg%d" % i)
+        print('  arg%d' % i)
 
   # JS
 
   cache = ('getCache(%s)[this.ptr] = this;' % class_name) if constructor else ''
-  call_prefix = '' if not constructor else 'this.ptr = '
+  call_prefix = ''
+  if constructor:
+    call_prefix += 'this.ptr = '
   call_postfix = ''
   if return_type != 'Void' and not constructor:
     call_prefix = 'return '
@@ -415,7 +421,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
       call_postfix += ')'
 
   args = [(all_args[i].identifier.name if isinstance(all_args[i], WebIDL.IDLArgument) else ('arg%d' % i)) for i in range(max_args)]
-  if not constructor:
+  if not constructor and not is_static:
     body = '  var self = this.ptr;\n'
     pre_arg = ['self']
   else:
@@ -424,8 +430,6 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
 
   if any(arg.type.isString() or arg.type.isArray() for arg in all_args):
     body += '  ensureCache.prepare();\n'
-
-  full_name = "%s::%s" % (class_name, func_name)
 
   for i, (js_arg, arg) in enumerate(zip(args, all_args)):
     if i >= min_args:
@@ -442,7 +446,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
       else:
         arg_name = ''
       # Format assert fail message
-      check_msg = "[CHECK FAILED] %s(%s:%s): " % (full_name, js_arg, arg_name)
+      check_msg = "[CHECK FAILED] %s::%s(%s:%s): " % (class_name, func_name, js_arg, arg_name)
       if isinstance(arg.type, WebIDL.IDLWrapperType):
         inner = arg.type.inner
       else:
@@ -515,9 +519,10 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
   body += '  %s%s(%s)%s;\n' % (call_prefix, '_' + c_names[max_args], ', '.join(pre_arg + args), call_postfix)
   if cache:
     body += '  ' + cache + '\n'
-  mid_js.append(r'''%sfunction%s(%s) {
+  mid_js.append(r'''function%s(%s) {
 %s
-};''' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, (' ' + func_name) if constructor else '', ', '.join(args), body[:-1]))
+};
+''' % ((' ' + func_name) if constructor else '', ', '.join(args), body[:-1]))
 
   # C
 
@@ -530,21 +535,27 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
       sig = [x.replace('[]', '') for x in sig] # for arrays, ignore that this is an array - our get/set methods operate on the elements
 
     c_arg_types = list(map(type_to_c, sig))
+    c_class_name = type_to_c(class_name, non_pointing=True)
 
     normal_args = ', '.join(['%s %s' % (c_arg_types[j], args[j]) for j in range(i)])
-    if constructor:
+    if constructor or is_static:
       full_args = normal_args
     else:
-      full_args = type_to_c(class_name, non_pointing=True) + '* self' + ('' if not normal_args else ', ' + normal_args)
+      full_args = c_class_name + '* self'
+      if normal_args:
+        full_args += ', ' + normal_args
     call_args = ', '.join(['%s%s' % ('*' if raw[j].getExtendedAttribute('Ref') else '', args[j]) for j in range(i)])
     if constructor:
-      call = 'new ' + type_to_c(class_name, non_pointing=True)
-      call += '(' + call_args + ')'
+      call = 'new ' + c_class_name + '(' + call_args + ')'
     elif call_content is not None:
       call = call_content
     else:
-      call = 'self->' + func_name
-      call += '(' + call_args + ')'
+      call = func_name + '(' + call_args + ')'
+      if is_static:
+
+        call = c_class_name + '::' + call
+      else:
+        call = 'self->' + call
 
     if operator:
       cast_self = 'self'
@@ -649,8 +660,8 @@ names = sorted(interfaces.keys(), key=lambda x: nodeHeight.get(x, 0), reverse=Tr
 for name in names:
   interface = interfaces[name]
 
-  mid_js += ['\n// ' + name + '\n']
-  mid_c += ['\n// ' + name + '\n']
+  mid_js += ['\n// Interface: ' + name + '\n\n']
+  mid_c += ['\n// Interface: ' + name + '\n\n']
 
   js_impl_methods: List[str] = []
 
@@ -666,7 +677,7 @@ for name in names:
 
   # Ensure a constructor even if one is not specified.
   if not any(m.identifier.name == name for m in interface.members):
-    mid_js += ['%sfunction %s() { throw "cannot construct a %s, no constructor in IDL" }\n' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, name, name)]
+    mid_js += ['%s\nfunction %s() { throw "cannot construct a %s, no constructor in IDL" }\n' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, name, name)]
     mid_js += build_constructor(name)
 
   for m in interface.members:
@@ -682,9 +693,9 @@ for name in names:
         temp = temp.parentScope
       if parent_constructor:
         continue
+    mid_js += [CONSTRUCTOR_CLOSURE_SUPPRESSIONS, '\n']
     if not constructor:
-      mid_js += [r'''
-%s.prototype['%s'] = %s.prototype.%s = ''' % (name, m.identifier.name, name, m.identifier.name)]
+      mid_js += ["%s.prototype['%s'] = %s.prototype.%s = " % (name, m.identifier.name, name, m.identifier.name)]
     sigs = {}
     return_type = None
     for ret, args in m.signatures():
@@ -702,9 +713,10 @@ for name in names:
                     m.getExtendedAttribute('Value'),
                     (m.getExtendedAttribute('Operator') or [None])[0],
                     constructor,
+                    is_static=m.isStatic(),
                     func_scope=m.parentScope.identifier.name,
                     const=m.getExtendedAttribute('Const'))
-    mid_js += [';\n']
+    mid_js += ['\n']
     if constructor:
       mid_js += build_constructor(name)
 
@@ -733,13 +745,14 @@ for name in names:
       set_call_content = 'self->' + attr + ' = ' + deref_if_nonpointer(m) + 'arg0'
 
     get_name = 'get_' + attr
-    mid_js += [r'''
-  %s.prototype['%s'] = %s.prototype.%s = ''' % (name, get_name, name, get_name)]
+    mid_js += [r'''%s
+%s.prototype['%s'] = %s.prototype.%s = ''' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, name, get_name, name, get_name)]
     render_function(name,
                     get_name, get_sigs, m.type.name,
                     None,
                     None,
                     None,
+                    False,
                     False,
                     func_scope=interface,
                     call_content=get_call_content,
@@ -748,34 +761,40 @@ for name in names:
 
     if m.readonly:
       mid_js += [r'''
-    /** @suppress {checkTypes} */
-    Object.defineProperty(%s.prototype, '%s', { get: %s.prototype.%s });''' % (name, attr, name, get_name)]
+/** @suppress {checkTypes} */
+Object.defineProperty(%s.prototype, '%s', { get: %s.prototype.%s });
+''' % (name, attr, name, get_name)]
     else:
       set_name = 'set_' + attr
       mid_js += [r'''
-    %s.prototype['%s'] = %s.prototype.%s = ''' % (name, set_name, name, set_name)]
+%s
+%s.prototype['%s'] = %s.prototype.%s = ''' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, name, set_name, name, set_name)]
       render_function(name,
                       set_name, set_sigs, 'Void',
                       None,
                       None,
                       None,
                       False,
+                      False,
                       func_scope=interface,
                       call_content=set_call_content,
                       const=m.getExtendedAttribute('Const'),
                       array_attribute=m.type.isArray())
       mid_js += [r'''
-    /** @suppress {checkTypes} */
-    Object.defineProperty(%s.prototype, '%s', { get: %s.prototype.%s, set: %s.prototype.%s });''' % (name, attr, name, get_name, name, set_name)]
+/** @suppress {checkTypes} */
+Object.defineProperty(%s.prototype, '%s', { get: %s.prototype.%s, set: %s.prototype.%s });
+''' % (name, attr, name, get_name, name, set_name)]
 
   if not interface.getExtendedAttribute('NoDelete'):
     mid_js += [r'''
-  %s.prototype['__destroy__'] = %s.prototype.__destroy__ = ''' % (name, name)]
+%s
+%s.prototype['__destroy__'] = %s.prototype.__destroy__ = ''' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, name, name)]
     render_function(name,
                     '__destroy__', {0: []}, 'Void',
                     None,
                     None,
                     None,
+                    False,
                     False,
                     func_scope=interface,
                     call_content='delete self')

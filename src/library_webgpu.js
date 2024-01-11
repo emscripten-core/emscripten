@@ -330,21 +330,21 @@ var LibraryWebGPU = {
     },
 
     // Map from enum string back to enum number, for callbacks.
-    BufferMapState: {
+    Int_BufferMapState: {
       'unmapped': 0,
       'pending': 1,
       'mapped': 2,
     },
-    CompilationMessageType : {
+    Int_CompilationMessageType : {
       'error': 0,
       'warning': 1,
       'info': 2,
     },
-    DeviceLostReason: {
+    Int_DeviceLostReason: {
       'undefined': 0,
       'destroyed': 1,
     },
-    PreferredFormat: {
+    Int_PreferredFormat: {
       'rgba8unorm': 0x12,
       'bgra8unorm': 0x17,
     },
@@ -491,6 +491,8 @@ var LibraryWebGPU = {
     StorageTextureAccess: [
       undefined,
       'write-only',
+      'read-only',
+      'read-write',
     ],
     StoreOp: [
       undefined,
@@ -1812,7 +1814,7 @@ var LibraryWebGPU = {
           messageStringPtrs.push(messagePtr);
           stringToUTF8(compilationMessage.message, messagePtr, messageSize);
           {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.message, 'messagePtr', '*') }}};
-          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.type, 'WebGPU.CompilationMessageType[compilationMessage.type]', 'i32') }}};
+          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.type, 'WebGPU.Int_CompilationMessageType[compilationMessage.type]', 'i32') }}};
           {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.lineNum, 'compilationMessage.lineNum', 'i64') }}};
           {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.linePos, 'compilationMessage.linePos', 'i64') }}};
           {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.offset, 'compilationMessage.offset', 'i64') }}};
@@ -1909,7 +1911,7 @@ var LibraryWebGPU = {
 
   wgpuBufferGetMapState: (bufferId) => {
     var buffer = WebGPU.mgrBuffer.get(bufferId);
-    return WebGPU.BufferMapState[buffer.mapState];
+    return WebGPU.Int_BufferMapState[buffer.mapState];
   },
 
   // In webgpu.h offset and size are passed in as size_t.
@@ -2577,7 +2579,7 @@ var LibraryWebGPU = {
         if (deviceLostCallbackPtr) {
           device["lost"].then((info) => {
             callUserCallback(() => WebGPU.errorCallback(deviceLostCallbackPtr,
-              WebGPU.DeviceLostReason[info.reason], info.message, deviceLostUserdataPtr));
+              WebGPU.Int_DeviceLostReason[info.reason], info.message, deviceLostUserdataPtr));
           });
         }
         {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestDeviceStatus.Success }}}, deviceId, 0, userdata);
@@ -2604,7 +2606,7 @@ var LibraryWebGPU = {
 
   wgpuSurfaceGetPreferredFormat: (surfaceId, adapterId) => {
     var format = navigator["gpu"]["getPreferredCanvasFormat"]();
-    return WebGPU.PreferredFormat[format];
+    return WebGPU.Int_PreferredFormat[format];
   },
 
   // WGPUSwapChain

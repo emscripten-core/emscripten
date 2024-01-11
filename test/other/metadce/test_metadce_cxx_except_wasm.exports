@@ -1,4 +1,3 @@
-__errno_location
 __indirect_function_table
 __trap
 __wasm_call_ctors

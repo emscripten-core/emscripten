@@ -87,10 +87,6 @@ def clear(ports, settings, shared):
   shared.cache.erase_lib('libmodplug.a')
 
 
-def process_args(ports):
-  return []
-
-
 def show():
   return 'libmodplug (USE_MODPLUG=1; public domain)'
 

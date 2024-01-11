@@ -127,6 +127,22 @@ unsigned emval_test_sum(val v) {
     return rv;
 }
 
+struct DestructorCounter {
+    static int count;
+    ~DestructorCounter() {
+        count++;
+    };
+};
+
+int DestructorCounter::count = 0;
+
+void emval_test_callback_arg_lifetime(val callback) {
+    DestructorCounter dc;
+    int destructorCount = DestructorCounter::count;
+    callback(dc);
+    assert(destructorCount == DestructorCounter::count);
+}
+
 std::string get_non_ascii_string(bool embindStdStringUTF8Support) {
     if(embindStdStringUTF8Support) {
         //ASCII
@@ -1827,6 +1843,9 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("emval_test_add", &emval_test_add);
     function("const_ref_adder", &const_ref_adder);
     function("emval_test_sum", &emval_test_sum);
+
+    class_<DestructorCounter>("DestructorCounter");
+    function("emval_test_callback_arg_lifetime", &emval_test_callback_arg_lifetime);
 
     function("get_non_ascii_string", &get_non_ascii_string);
     function("get_non_ascii_wstring", &get_non_ascii_wstring);

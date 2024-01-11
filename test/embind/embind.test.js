@@ -707,6 +707,10 @@ module({
             cm.emval_test_take_and_return_std_string_const_ref("foobar");
         });
 
+        test("val callback arguments are not destroyed", function() {
+            cm.emval_test_callback_arg_lifetime(function() {});
+        });
+
         test("can get global", function(){
             /*jshint evil:true*/
             assert.equal((new Function("return this;"))(), cm.embind_test_getglobal());
