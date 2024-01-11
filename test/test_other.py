@@ -10423,7 +10423,7 @@ ok.
     self.do_runf('sockets/test_getnameinfo.c', 'success')
 
   def test_gethostbyname(self):
-    self.do_runf('sockets/test_gethostbyname.c', 'success')
+    self.do_run_in_out_file_test('sockets/test_gethostbyname.c')
 
   def test_getprotobyname(self):
     self.do_runf('sockets/test_getprotobyname.c', 'success')
