@@ -2404,6 +2404,9 @@ var LibraryWebGPU = {
   },
 
   wgpuInstanceHasWGSLLanguageFeature: (instance, featureEnumValue) => {
+    if (!('wgslLanguageFeatures' in navigator["gpu"])) {
+      return false;
+    }
     return navigator["gpu"]["wgslLanguageFeatures"].has(WebGPU.WGSLFeatureName[featureEnumValue]);
   },
 
