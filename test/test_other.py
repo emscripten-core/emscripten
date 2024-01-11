@@ -14479,3 +14479,19 @@ addToLibrary({
   def test_js_only_settings(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '-o', 'foo.wasm', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=emscripten_get_heap_max'], stderr=PIPE).stderr
     self.assertContained('emcc: warning: DEFAULT_LIBRARY_FUNCS_TO_INCLUDE is only valid when generating JavaScript output', err)
+
+  def test_uuid(self):
+    # We run this test in Node/SPIDERMONKEY and browser environments because we
+    # try to make use of high quality crypto random number generators such as
+    # crypto.getRandomValues or randomBytes (if available).
+
+    # Use closure compiler so we can check that require('crypto').randomBytes and
+    # window.crypto.getRandomValues doesn't get minified out.
+    self.do_runf('test_uuid.c', emcc_args=['-O2', '--closure=1', '-luuid'])
+
+    js_out = read_file('test_uuid.js')
+
+    # Check that test.js compiled with --closure 1 contains ").randomBytes" and
+    # "window.crypto.getRandomValues"
+    self.assertContained(").randomBytes", js_out)
+    self.assertContained("window.crypto.getRandomValues", js_out)
