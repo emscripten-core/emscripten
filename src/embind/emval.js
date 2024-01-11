@@ -335,9 +335,6 @@ var LibraryEmVal = {
         offset += types[i]['argPackAdvance'];
       }
       var rv = kind === /* CONSTRUCTOR */ 1 ? reflectConstruct(func, argN) : func.apply(obj, argN);
-      for (var i = 0; i < argCount; ++i) {
-        types[i].deleteObject?.(argN[i]);
-      }
       return emval_returnValue(retType, destructorsRef, rv);
     };
 #else
@@ -362,12 +359,6 @@ var LibraryEmVal = {
     var invoker = kind === /* CONSTRUCTOR */ 1 ? 'new func' : 'func.call';
     functionBody +=
       `  var rv = ${invoker}(${argsList.join(", ")});\n`;
-    for (var i = 0; i < argCount; ++i) {
-      if (types[i]['deleteObject']) {
-        functionBody +=
-          `  argType${i}.deleteObject(arg${i});\n`;
-      }
-    }
     if (!retType.isVoid) {
       params.push("emval_returnValue");
       args.push(emval_returnValue);

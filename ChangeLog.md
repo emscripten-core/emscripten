@@ -50,6 +50,9 @@ See docs/process.md for more on how version tagging works.
   `MIN_CHROME_VERSION` will now result in build-time error.  All of these
   browser versions are at least 8 years old now so the hope is that nobody
   is intending to target them today.  (#20924)
+- C++ objects passed into embind's val via constructors, methods, and call
+  function will not be automatically destroyed after the function call. This
+  makes the behavior consistent for invocations. 
 
 3.1.51 - 12/13/23
 -----------------

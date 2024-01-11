@@ -678,9 +678,6 @@ var LibraryEmbind = {
       'argPackAdvance': GenericWireTypeSize,
       'readValueFromPointer': simpleReadValueFromPointer,
       destructorFunction: null, // This type does not need a destructor
-
-      // TODO: do we need a deleteObject here?  write a test where
-      // emval is passed into JS via an interface
     });
   },
 
@@ -1311,11 +1308,6 @@ var LibraryEmbind = {
       },
       'argPackAdvance': GenericWireTypeSize,
       'readValueFromPointer': readPointer,
-      'deleteObject'(handle) {
-        if (handle !== null) {
-          handle['delete']();
-        }
-      },
       'fromWireType': RegisteredPointer_fromWireType,
     });
   },
