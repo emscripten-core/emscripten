@@ -4029,6 +4029,28 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
     err = self.expect_fail([EMCC, 'some_func.c'] + self.get_emcc_args())
     self.assertContained('some_func.js: __sig is missing for function: someFunc. Do not use checkSig if this is intended', err)
 
+  def test_js_lib_extra_args(self):
+    # Verify that extra arguments in addition to those listed in `__sig` are still present
+    # in the generated JS library function.
+    # See https://github.com/emscripten-core/emscripten/issues/21056
+    create_file('some_func.js', '''
+      addToLibrary({
+        someFunc: (arg1, arg2) => {
+          err('arg1:' + arg1);
+          err('arg2:' + arg2);
+        },
+        someFunc__sig: 'pp',
+      });
+    ''')
+    create_file('test.c', '''
+    void someFunc(long p);
+    int main() {
+      someFunc(42);
+    }
+    ''')
+    self.emcc_args += ['--js-library', 'some_func.js', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4Gb']
+    self.do_runf('test.c', 'arg1:42\narg2:undefined\n')
+
   def test_js_lib_quoted_key(self):
     create_file('lib.js', r'''
 addToLibrary({
