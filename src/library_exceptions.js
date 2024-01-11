@@ -342,10 +342,13 @@ var LibraryExceptions = {
     // change, and it is implemented as writable in Chrome and Node. Will check
     // the 'writable' condition for now and later resolve this by either
     // deleting this altogether or removing this condition check.
-    if (e.stack && Object.getOwnPropertyDescriptor(e, 'stack').writable) {
-      var arr = e.stack.split('\n');
-      arr.splice(1,1);
-      e.stack = arr.join('\n');
+    if (e.stack) {
+      var pd = Object.getOwnPropertyDescriptor(e, 'stack');
+      if (pd && pd.writable) {
+        var arr = e.stack.split('\n');
+        arr.splice(1,1);
+        e.stack = arr.join('\n');
+      }
     }
     throw e;
   },

@@ -27,7 +27,7 @@ import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
-from common import read_file, read_binary, requires_v8, requires_node, requires_node_canary
+from common import read_file, read_binary, requires_v8, requires_node, requires_node_canary, requires_spidermonkey
 from common import compiler_for, crossplatform, no_4gb, no_2gb
 from common import with_both_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
@@ -9640,6 +9640,25 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_wasm_worker_wait_async(self):
     self.prep_wasm_worker_in_node()
     self.do_runf('atomic/test_wait_async.c', emcc_args=['-sWASM_WORKERS'])
+
+  @requires_spidermonkey
+  def test_exceptions_stack_trace_and_message_wasm_eh(self):
+    # Currently writing to WebAssembly.Exception.stack property is not allowed
+    # in Firefox, but we need to ensure generating stack traces runs on FireFox
+    # without erroring out, even though stack trace simplification will not be
+    # done. See https://github.com/emscripten-core/emscripten/pull/21050
+    src = r'''
+      #include <stdexcept>
+      int main() {
+        throw std::runtime_error("my message");
+        return 0;
+      }
+    '''
+    self.emcc_args = ['--profiling-funcs', '-gsource-map']
+    self.emcc_args = ['-g', '-fwasm-exceptions']
+    self.set_setting('EXCEPTION_STACK_TRACES', 1)
+    err = self.do_run(src, assert_returncode=NON_ZERO)
+    self.assertNotContained('setting getter-only property "stack"', err)
 
 
 # Generate tests for everything

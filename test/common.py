@@ -301,6 +301,16 @@ def requires_v8(func):
   return decorated
 
 
+def requires_spidermonkey(func):
+  assert callable(func)
+
+  def decorated(self, *args, **kwargs):
+    self.require_spidermonkey()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def node_pthreads(f):
   @wraps(f)
   def decorated(self, *args, **kwargs):
@@ -697,6 +707,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('test requires node canary and EMTEST_SKIP_NODE_CANARY is set')
     else:
       self.fail('node canary required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
+
+  def require_spidermonkey(self):
+    if not config.SPIDERMONKEY_ENGINE or config.SPIDERMONKEY_ENGINE not in config.JS_ENGINES:
+      if 'EMTEST_SKIP_SPIDERMONKEY' in os.environ:
+        self.skipTest('test requires spidermonkey and EMTEST_SKIP_SPIDERMONKEY is set')
+      else:
+        self.fail('spidermonkey required to run this test.  Use EMTEST_SKIP_SPIDERMONKEY to skip')
+    self.require_engine(config.SPIDERMONKEY_ENGINE)
 
   def require_engine(self, engine):
     logger.debug(f'require_engine: {engine}')
