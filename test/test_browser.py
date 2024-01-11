@@ -2666,29 +2666,7 @@ void *getBindBuffer() {
     self.btest_exit('hello_world_gles.c', args=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '--cpuprofiler', '--memoryprofiler', '-lGL', '-lglut', '-DANIMATE'] + opts)
 
   def test_uuid(self):
-    # Run with ./runner browser.test_uuid
-    # We run this test in Node/SPIDERMONKEY and browser environments because we try to make use of
-    # high quality crypto random number generators such as crypto.getRandomValues or randomBytes (if available).
-
-    # First run tests in Node and/or SPIDERMONKEY using self.run_js. Use closure compiler so we can check that
-    # require('crypto').randomBytes and window.crypto.getRandomValues doesn't get minified out.
-    self.run_process([EMCC, '-O2', '--closure=1', test_file('uuid/test.c'), '-o', 'test.js', '-luuid'])
-
-    test_js_closure = read_file('test.js')
-
-    # Check that test.js compiled with --closure 1 contains ").randomBytes" and "window.crypto.getRandomValues"
-    assert ").randomBytes" in test_js_closure
-    assert "window.crypto.getRandomValues" in test_js_closure
-
-    out = self.run_js('test.js')
-    print(out)
-
-    # Tidy up files that might have been created by this test.
-    delete_file(test_file('uuid/test.js'))
-    delete_file(test_file('uuid/test.js.map'))
-
-    # Now run test in browser
-    self.btest_exit('uuid/test.c', args=['-luuid'])
+    self.btest_exit('test_uuid.c', args=['-luuid'])
 
   @requires_graphics_hardware
   def test_glew(self):

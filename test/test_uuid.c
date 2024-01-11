@@ -9,8 +9,6 @@
 #include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <emscripten.h>
 
 int isUUID(char* p, int upper) {
     char* p1 = p;
@@ -25,7 +23,7 @@ int isUUID(char* p, int upper) {
         return 1;
     } else {
         return 0;
-    }   
+    }
 }
 
 int main() {
@@ -40,7 +38,7 @@ int main() {
     assert(uuid_variant(uuid) == UUID_VARIANT_DCE);
     assert((uuid[8] & 0xC0) == 0x80); // RFC-4122 variant marker
 
-    char *generated = (char *)malloc(37*sizeof(char));
+    char generated[37];
     uuid_unparse(uuid, generated);
     assert(isUUID(generated, 0) == 1); // Check it's a valid lower case UUID string.
     printf("\nuuid = %s\n", generated);
@@ -56,7 +54,6 @@ int main() {
     assert(isUUID(generated, 1) == 1); // Check it's a valid upper case UUID string.
     printf("uuid = %s\n", generated);
 
-
     uuid_copy(uuid2, uuid);
     assert(uuid_compare(uuid2, uuid) == 0);
 
@@ -64,7 +61,6 @@ int main() {
     assert(uuid_compare(empty_uuid, uuid) == 0);
 
     assert(uuid_is_null(uuid) == 1);
-
     return 0;
 }
 

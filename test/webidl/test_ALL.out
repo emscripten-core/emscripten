@@ -41,7 +41,7 @@ Child2:9
 0
 0
 1
-*static*
+*static*: 42
 *virtualf*
 *virtualf*
 *virtualf2*

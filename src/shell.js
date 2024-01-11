@@ -262,8 +262,6 @@ if (ENVIRONMENT_IS_NODE) {
     throw toThrow;
   };
 
-  Module['inspect'] = () => '[Emscripten Module object]';
-
 #if PTHREADS || WASM_WORKERS
   global.Worker = require('worker_threads').Worker;
 #endif

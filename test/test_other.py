@@ -4029,6 +4029,28 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
     err = self.expect_fail([EMCC, 'some_func.c'] + self.get_emcc_args())
     self.assertContained('some_func.js: __sig is missing for function: someFunc. Do not use checkSig if this is intended', err)
 
+  def test_js_lib_extra_args(self):
+    # Verify that extra arguments in addition to those listed in `__sig` are still present
+    # in the generated JS library function.
+    # See https://github.com/emscripten-core/emscripten/issues/21056
+    create_file('some_func.js', '''
+      addToLibrary({
+        someFunc: (arg1, arg2) => {
+          err('arg1:' + arg1);
+          err('arg2:' + arg2);
+        },
+        someFunc__sig: 'pp',
+      });
+    ''')
+    create_file('test.c', '''
+    void someFunc(long p);
+    int main() {
+      someFunc(42);
+    }
+    ''')
+    self.emcc_args += ['--js-library', 'some_func.js', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4Gb']
+    self.do_runf('test.c', 'arg1:42\narg2:undefined\n')
+
   def test_js_lib_quoted_key(self):
     create_file('lib.js', r'''
 addToLibrary({
@@ -14457,3 +14479,19 @@ addToLibrary({
   def test_js_only_settings(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '-o', 'foo.wasm', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=emscripten_get_heap_max'], stderr=PIPE).stderr
     self.assertContained('emcc: warning: DEFAULT_LIBRARY_FUNCS_TO_INCLUDE is only valid when generating JavaScript output', err)
+
+  def test_uuid(self):
+    # We run this test in Node/SPIDERMONKEY and browser environments because we
+    # try to make use of high quality crypto random number generators such as
+    # crypto.getRandomValues or randomBytes (if available).
+
+    # Use closure compiler so we can check that require('crypto').randomBytes and
+    # window.crypto.getRandomValues doesn't get minified out.
+    self.do_runf('test_uuid.c', emcc_args=['-O2', '--closure=1', '-luuid'])
+
+    js_out = read_file('test_uuid.js')
+
+    # Check that test.js compiled with --closure 1 contains ").randomBytes" and
+    # "window.crypto.getRandomValues"
+    self.assertContained(").randomBytes", js_out)
+    self.assertContained("window.crypto.getRandomValues", js_out)
