@@ -758,7 +758,6 @@ var SyscallsLibrary = {
     FS.llseek(stream, idx * struct_size, {{{ cDefs.SEEK_SET }}});
     return pos;
   },
-  __syscall_fcntl64__deps: ['$setErrNo'],
   __syscall_fcntl64: (fd, cmd, varargs) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
@@ -800,20 +799,16 @@ var SyscallsLibrary = {
       case {{{ cDefs.F_SETLK }}}:
       case {{{ cDefs.F_SETLKW }}}:
         return 0; // Pretend that the locking is successful.
+#if SYSCALL_DEBUG
       case {{{ cDefs.F_GETOWN_EX }}}:
       case {{{ cDefs.F_SETOWN }}}:
-        return -{{{ cDefs.EINVAL }}}; // These are for sockets. We don't have them fully implemented yet.
       case {{{ cDefs.F_GETOWN }}}:
-        // musl trusts getown return values, due to a bug where they must be, as they overlap with errors. just return -1 here, so fcntl() returns that, and we set errno ourselves.
-        setErrNo({{{ cDefs.EINVAL }}});
-        return -1;
-      default: {
-#if SYSCALL_DEBUG
+        return -{{{ cDefs.EINVAL }}};
+      default:
         dbg(`warning: fcntl unrecognized command ${cmd}`);
 #endif
-        return -{{{ cDefs.EINVAL }}};
-      }
     }
+    return -{{{ cDefs.EINVAL }}};
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
