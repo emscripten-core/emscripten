@@ -1603,6 +1603,9 @@ var LibraryWebGPU = {
         return undefined;
       }
 
+      var depthSlice = {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.depthSlice) }}};
+      {{{ gpu.convertSentinelToUndefined('depthSlice') }}}
+
       var loadOpInt = {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.loadOp) }}};
       #if ASSERTIONS
           assert(loadOpInt !== {{{ gpu.LoadOp.Undefined }}});
@@ -1617,6 +1620,7 @@ var LibraryWebGPU = {
 
       return {
         "view": WebGPU.mgrTextureView.get(viewPtr),
+        "depthSlice": depthSlice,
         "resolveTarget": WebGPU.mgrTextureView.get(
           {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.resolveTarget) }}}),
         "clearValue": clearValue,
