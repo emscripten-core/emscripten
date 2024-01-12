@@ -11918,7 +11918,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     'minimal': (['-sMINIMAL_RUNTIME', '-sSUPPORT_ERRNO'],),
   })
   def test_support_errno(self, args):
-    self.emcc_args += args
+    self.emcc_args += args + ['-sEXPORTED_FUNCTIONS=_main,___errno_location']
 
     self.do_other_test('test_support_errno.c')
     size_default = os.path.getsize('test_support_errno.js')

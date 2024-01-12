@@ -1824,57 +1824,11 @@ addToLibrary({
     }
   },
 
-  // note: lots of leaking here!
-  gethostbyaddr__deps: ['$DNS', '$getHostByName', '$inetNtop4', '$setErrNo'],
-  gethostbyaddr__proxy: 'sync',
-  gethostbyaddr: (addr, addrlen, type) => {
-    if (type !== {{{ cDefs.AF_INET }}}) {
-      setErrNo({{{ cDefs.EAFNOSUPPORT }}});
-      // TODO: set h_errno
-      return null;
-    }
-    addr = {{{ makeGetValue('addr', '0', 'i32') }}}; // addr is in_addr
-    var host = inetNtop4(addr);
-    var lookup = DNS.lookup_addr(host);
-    if (lookup) {
-      host = lookup;
-    }
-    return getHostByName(host);
-  },
-
-  gethostbyname__deps: ['$getHostByName'],
-  gethostbyname__proxy: 'sync',
-  gethostbyname: (name) => getHostByName(UTF8ToString(name)),
-
-  $getHostByName__deps: ['malloc', '$stringToNewUTF8', '$DNS', '$inetPton4'],
-  $getHostByName: (name) => {
-    // generate hostent
-    var ret = _malloc({{{ C_STRUCTS.hostent.__size__ }}}); // XXX possibly leaked, as are others here
-    var nameBuf = stringToNewUTF8(name);
-    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_name, 'nameBuf', POINTER_TYPE) }}};
-    var aliasesBuf = _malloc(4);
-    {{{ makeSetValue('aliasesBuf', '0', '0', POINTER_TYPE) }}};
-    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_aliases, 'aliasesBuf', 'i8**') }}};
-    var afinet = {{{ cDefs.AF_INET }}};
-    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_addrtype, 'afinet', 'i32') }}};
-    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_length, '4', 'i32') }}};
-    var addrListBuf = _malloc(12);
-    {{{ makeSetValue('addrListBuf', '0', 'addrListBuf+8', POINTER_TYPE) }}};
-    {{{ makeSetValue('addrListBuf', '4', '0', POINTER_TYPE) }}};
-    {{{ makeSetValue('addrListBuf', '8', 'inetPton4(DNS.lookup_name(name))', 'i32') }}};
-    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_addr_list, 'addrListBuf', 'i8**') }}};
-    return ret;
-  },
-
-  gethostbyname_r__deps: ['gethostbyname', 'memcpy', 'free'],
-  gethostbyname_r__proxy: 'sync',
-  gethostbyname_r: (name, ret, buf, buflen, out, err) => {
-    var data = _gethostbyname(name);
-    _memcpy(ret, data, {{{ C_STRUCTS.hostent.__size__ }}});
-    _free(data);
-    {{{ makeSetValue('err', '0', '0', 'i32') }}};
-    {{{ makeSetValue('out', '0', 'ret', '*') }}};
-    return 0;
+  _emscripten_lookup_name__deps: ['$UTF8ToString', '$DNS', '$inetPton4'],
+  _emscripten_lookup_name: (name) => {
+    // uint32_t _emscripten_lookup_name(const char *name);
+    var nameString = UTF8ToString(name);
+    return inetPton4(DNS.lookup_name(nameString));
   },
 
   getaddrinfo__deps: ['$Sockets', '$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr', 'malloc', 'htonl'],
