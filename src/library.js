@@ -437,7 +437,7 @@ addToLibrary({
   // ==========================================================================
 
   _mktime_js__i53abi: true,
-  _mktime_js__deps: ['$ydayFromDate', '$setErrNo'],
+  _mktime_js__deps: ['$ydayFromDate'],
   _mktime_js: (tmPtr) => {
     var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
@@ -479,7 +479,6 @@ addToLibrary({
 
     var timeMs = date.getTime();
     if (isNaN(timeMs)) {
-      setErrNo({{{ cDefs.EOVERFLOW }}});
       return -1;
     }
     // Return time in microseconds
