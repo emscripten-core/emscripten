@@ -287,7 +287,7 @@ var LibraryExceptions = {
 
 #endif
 #if WASM_EXCEPTIONS || !DISABLE_EXCEPTION_CATCHING
-  $getExceptionMessageCommon__deps: ['__get_exception_message', 'free', '$withStackSave'],
+  $getExceptionMessageCommon__deps: ['__get_exception_message', 'free', '$withStackSave', 'stackAlloc'],
   $getExceptionMessageCommon: (ptr) => withStackSave(() => {
     var type_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
     var message_addr_addr = stackAlloc({{{ POINTER_SIZE }}});

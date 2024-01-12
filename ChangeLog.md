@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.52 (in development)
 -----------------------
+- The core stack manipulation functions (`stackSave`, `stackRestore`,
+  `stackAlloc`) are no longer exported by default.  Users of these function
+  now need to depend on them explictly (either via `__deps` attributes or via
+  `-sEXPORTED_FUNCTIONS`). (#21075)
 - Building with `pthreads+EXPORT_ES6` will now emit the worker file as
   `NAME.worker.mjs` rather than `.js`. This is a necessary breaking change to
   resolve other `pthreads+EXPORT_ES6` issues in Node.js (because Node.js is

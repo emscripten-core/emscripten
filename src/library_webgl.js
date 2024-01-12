@@ -4003,7 +4003,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   glMultiDrawElements: 'glMultiDrawElementsWEBGL',
   glMultiDrawElementsANGLE: 'glMultiDrawElementsWEBGL',
 #if MEMORY64
-  glMultiDrawElementsWEBGL__deps: ['$convertOffsets'],
+  glMultiDrawElementsWEBGL__deps: ['$convertOffsets', 'stackSave', 'stackRestore'],
 #endif
   glMultiDrawElementsWEBGL: (mode, counts, type, offsets, drawcount) => {
 #if MEMORY64
@@ -4026,7 +4026,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   glMultiDrawElementsInstancedWEBGL__sig: 'vipippi',
   glMultiDrawElementsInstancedANGLE: 'glMultiDrawElementsInstancedWEBGL',
 #if MEMORY64
-  glMultiDrawElementsInstancedWEBGL__deps: ['$convertOffsets'],
+  glMultiDrawElementsInstancedWEBGL__deps: ['$convertOffsets', 'stackSave', 'stackRestore'],
 #endif
   glMultiDrawElementsInstancedWEBGL: (mode, counts, type, offsets, instanceCounts, drawcount) => {
 #if MEMORY64
