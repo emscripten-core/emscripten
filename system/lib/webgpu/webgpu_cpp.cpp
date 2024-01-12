@@ -1424,6 +1424,8 @@ namespace wgpu {
             "offsetof mismatch for RenderPassColorAttachment::nextInChain");
     static_assert(offsetof(RenderPassColorAttachment, view) == offsetof(WGPURenderPassColorAttachment, view),
             "offsetof mismatch for RenderPassColorAttachment::view");
+    static_assert(offsetof(RenderPassColorAttachment, depthSlice) == offsetof(WGPURenderPassColorAttachment, depthSlice),
+            "offsetof mismatch for RenderPassColorAttachment::depthSlice");
     static_assert(offsetof(RenderPassColorAttachment, resolveTarget) == offsetof(WGPURenderPassColorAttachment, resolveTarget),
             "offsetof mismatch for RenderPassColorAttachment::resolveTarget");
     static_assert(offsetof(RenderPassColorAttachment, loadOp) == offsetof(WGPURenderPassColorAttachment, loadOp),

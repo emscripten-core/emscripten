@@ -1079,12 +1079,13 @@
             "stencilReadOnly": 41
         },
         "WGPURenderPassColorAttachment": {
-            "__size__": 64,
-            "clearValue": 32,
-            "loadOp": 24,
+            "__size__": 72,
+            "clearValue": 40,
+            "depthSlice": 16,
+            "loadOp": 32,
             "nextInChain": 0,
-            "resolveTarget": 16,
-            "storeOp": 28,
+            "resolveTarget": 24,
+            "storeOp": 36,
             "view": 8
         },
         "WGPURenderPassDepthStencilAttachment": {
