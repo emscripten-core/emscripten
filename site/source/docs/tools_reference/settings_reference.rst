@@ -315,6 +315,8 @@ options: 'quiet', 'warn', 'error'. If set to 'warn', Closure warnings are
 printed out to console. If set to 'error', Closure warnings are treated like
 errors, similar to -Werror compiler flag.
 
+.. note:: This setting is deprecated
+
 .. _ignore_closure_compiler_errors:
 
 IGNORE_CLOSURE_COMPILER_ERRORS
@@ -1176,6 +1178,8 @@ EXTRA_EXPORTED_RUNTIME_METHODS
 ==============================
 
 Deprecated, use EXPORTED_RUNTIME_METHODS instead.
+
+.. note:: This setting is deprecated
 
 .. _incoming_module_js_api:
 
@@ -2447,12 +2451,10 @@ Minimum supported value is 101900, which was released 2020-02-05.
 SUPPORT_ERRNO
 =============
 
-Tracks whether we are building with errno support enabled. Set to 0
-to disable compiling errno support in altogether. This saves a little
-bit of generated code size in applications that do not care about
-POSIX errno variable. Setting this to 0 also requires using --closure
-for effective code size optimizations to take place.
+Whether we support setting errno from JS library code.
 In MINIMAL_RUNTIME builds, this option defaults to 0.
+
+.. note:: This setting is deprecated
 
 .. _minimal_runtime:
 

@@ -729,6 +729,9 @@ def phase_linker_setup(options, state, newargs):
 
   final_suffix = get_file_suffix(target)
 
+  if 'SUPPORT_ERRNO' in user_settings:
+    diagnostics.warning('deprecated', 'SUPPORT_ERRNO is deprecated since emscripten no longer uses the setErrNo library function')
+
   if settings.EXTRA_EXPORTED_RUNTIME_METHODS:
     diagnostics.warning('deprecated', 'EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead')
     settings.EXPORTED_RUNTIME_METHODS += settings.EXTRA_EXPORTED_RUNTIME_METHODS
@@ -879,7 +882,6 @@ def phase_linker_setup(options, state, newargs):
   # It is unlikely that developers targeting "native web" APIs with MINIMAL_RUNTIME need
   # errno support by default.
   if settings.MINIMAL_RUNTIME:
-    default_setting('SUPPORT_ERRNO', 0)
     # Require explicit -lfoo.js flags to link with JS libraries.
     default_setting('AUTO_JS_LIBRARIES', 0)
     # When using MINIMAL_RUNTIME, symbols should only be exported if requested.

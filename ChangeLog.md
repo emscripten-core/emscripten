@@ -57,6 +57,9 @@ See docs/process.md for more on how version tagging works.
 - C++ objects passed into embind's val via constructors, methods, and call
   function will not be automatically destroyed after the function call. This
   makes the behavior consistent for invocations. 
+- The `SUPPORT_ERRNO` setting is now deprecated as it only controlled setting
+  errno from JS library functions and emscripten no longer requires this.
+  (#21074)
 
 3.1.51 - 12/13/23
 -----------------

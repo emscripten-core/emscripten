@@ -10596,7 +10596,6 @@ int main () {
                                '-sTEXTDECODER=2',
                                '-sABORTING_MALLOC=0',
                                '-sALLOW_MEMORY_GROWTH=0',
-                               '-sSUPPORT_ERRNO=0',
                                '-sDECLARE_ASM_MODULE_EXPORTS',
                                '-sMALLOC=emmalloc',
                                '-sGL_EMULATE_GLES_VERSION_STRING_FORMAT=0',
@@ -11921,7 +11920,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     'minimal': (['-sMINIMAL_RUNTIME', '-sSUPPORT_ERRNO'],),
   })
   def test_support_errno(self, args):
-    self.emcc_args += args + ['-sEXPORTED_FUNCTIONS=_main,___errno_location']
+    self.emcc_args += args + ['-sEXPORTED_FUNCTIONS=_main,___errno_location', '-Wno-deprecated']
 
     self.do_other_test('test_support_errno.c')
     size_default = os.path.getsize('test_support_errno.js')

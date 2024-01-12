@@ -75,4 +75,19 @@ addToLibrary({
 
   $allocateUTF8: '$stringToNewUTF8',
   $allocateUTF8OnStack: '$stringToUTF8OnStack',
+
+#if SUPPORT_ERRNO
+  $setErrNo__deps: ['__errno_location'],
+  $setErrNo: (value) => {
+    {{{makeSetValue("___errno_location()", 0, 'value', 'i32') }}};
+    return value;
+  },
+#else
+  $setErrNo: (value) => {
+#if ASSERTIONS
+    err('failed to set errno from JS');
+#endif
+    return 0;
+  },
+#endif
 });
