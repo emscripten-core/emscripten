@@ -1642,6 +1642,7 @@ sigs = {
   wgpuDeviceSetUncapturedErrorCallback__sig: 'vppp',
   wgpuGetProcAddress__sig: 'ppp',
   wgpuInstanceCreateSurface__sig: 'ppp',
+  wgpuInstanceHasWGSLLanguageFeature__sig: 'ipi',
   wgpuInstanceProcessEvents__sig: 'vp',
   wgpuInstanceReference__sig: 'vp',
   wgpuInstanceRelease__sig: 'vp',

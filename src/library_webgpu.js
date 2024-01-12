@@ -350,6 +350,13 @@ var LibraryWebGPU = {
     },
 
     // This section is auto-generated. See system/include/webgpu/README.md for details.
+    WGSLFeatureName: [
+      undefined,
+      'readonly_and_readwrite_storage_textures',
+      'packed_4x8_integer_dot_product',
+      'unrestricted_pointer_parameters',
+      'pointer_composite_access',
+    ],
     AddressMode: [
       'repeat',
       'mirror-repeat',
@@ -2398,6 +2405,13 @@ var LibraryWebGPU = {
     if (labelPtr) context.surfaceLabelWebGPU = UTF8ToString(labelPtr);
 
     return WebGPU.mgrSurface.create(context);
+  },
+
+  wgpuInstanceHasWGSLLanguageFeature: (instance, featureEnumValue) => {
+    if (!('wgslLanguageFeatures' in navigator["gpu"])) {
+      return false;
+    }
+    return navigator["gpu"]["wgslLanguageFeatures"].has(WebGPU.WGSLFeatureName[featureEnumValue]);
   },
 
   wgpuInstanceProcessEvents: (instance) => {

@@ -41,5 +41,6 @@ test/runner browser.test_webgpu_basic_rendering --browser="google-chrome-unstabl
 Alternatively you can test your emscripten updates by building the source file, and then serve (e.g. use node http-server) and view in browser to make sure things work fine.
 
 ```
+emcc --clear-cache
 emcc test/webgpu_basic_rendering.cpp -sUSE_WEBGPU -o path/to/index.html
 ```
