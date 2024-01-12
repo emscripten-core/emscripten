@@ -151,6 +151,14 @@ Note that this setting does not affect the behavior of operator new in C++.
 This function will always abort on allocation failure if exceptions are disabled.
 If you want new to return 0 on failure, use it with std::nothrow.
 
+.. _initial_heap:
+
+INITIAL_HEAP
+============
+
+The initial amount of heap memory to use. This value is appended to the
+other memory required by the output module, such as static data or stack.
+
 .. _initial_memory:
 
 INITIAL_MEMORY
@@ -161,6 +169,9 @@ cause us to expand the heap, which can be costly with typed arrays:
 we need to copy the old heap into a new one in that case.
 If ALLOW_MEMORY_GROWTH is set, this initial amount of memory can increase
 later; if not, then it is the final and total amount of memory.
+
+By default, this value is calculated based on INITIAL_HEAP, STACK_SIZE,
+as well the size of static data in input modules.
 
 (This option was formerly called TOTAL_MEMORY.)
 
