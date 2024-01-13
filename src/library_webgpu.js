@@ -921,7 +921,8 @@ var LibraryWebGPU = {
     var viewFormatCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUTextureDescriptor.viewFormatCount) }}};
     if (viewFormatCount) {
       var viewFormatsPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUTextureDescriptor.viewFormats, '*') }}};
-      desc["viewFormats"] = Array.from({{{ makeHEAPView(`32`, 'viewFormatsPtr', `viewFormatsPtr + viewFormatCount * 4`) }}},
+      // viewFormatsPtr pointer to an array of TextureFormat which is an enum of size uint32_t
+      desc["viewFormats"] = Array.from({{{ makeHEAPView('32', 'viewFormatsPtr', `viewFormatsPtr + viewFormatCount * 4`) }}},
         function(format) { return WebGPU.TextureFormat[format]; });
     }
 
@@ -2516,7 +2517,7 @@ var LibraryWebGPU = {
       var requiredFeaturesCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredFeaturesCount) }}};
       if (requiredFeaturesCount) {
         var requiredFeaturesPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredFeatures, '*') }}};
-        desc["requiredFeatures"] = Array.from({{{ makeHEAPView(`${POINTER_BITS}`, 'requiredFeaturesPtr', `requiredFeaturesPtr + requiredFeaturesCount * ${POINTER_SIZE}`) }}},
+        desc["requiredFeatures"] = Array.from({{{ makeHEAPView('32', 'requiredFeaturesPtr', `requiredFeaturesPtr + requiredFeaturesCount * ${POINTER_SIZE}`) }}},
           (feature) => WebGPU.FeatureName[feature]);
       }
       var requiredLimitsPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredLimits, '*') }}};
