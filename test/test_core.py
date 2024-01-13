@@ -7559,7 +7559,7 @@ void* operator new(size_t size) {
   @no_wasm2js('wasm_bigint')
   def test_embind_i64_binding(self):
     self.set_setting('WASM_BIGINT')
-    self.emcc_args += ['-lembind']
+    self.emcc_args += ['-lembind', '--js-library', test_file('embind/test_i64_binding.js')]
     self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_run_in_out_file_test('embind/test_i64_binding.cpp', assert_identical=True)
 
