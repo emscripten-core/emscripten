@@ -13,27 +13,28 @@ The C++ files are **currently** Dawn-specific, but included in Emscripten for
 better compatibility with Dawn: it has roughly the same API as Dawn's copy, but
 is included here because it is strongly tied to an exact `webgpu.h` revision.
 
-Dawn additionally autogenerates two "snippets" that are used in Emscripten:
-- `library_webgpu_enum_tables.js`, which is pasted into [`library_webgpu.js`](../../../src/library_webgpu.js)
-- `webgpu_struct_info.json`, which is pasted into [`struct_info.json`](../../../src/struct_info.json).
+To update these bindings from Dawn:
+- Copy `webgpu_cpp_chained_struct.h` from Dawn's source
+- Build the `emscripten_bits_gen` target in Dawn (gn or CMake build)
+- Paste `library_webgpu_enum_tables.js` over the appropriate section of [`library_webgpu.js`](../../../src/library_webgpu.js)
+- Paste `webgpu_struct_info.json` over the appropriate section of [`struct_info.json`](../../../src/struct_info.json).
+- Manually update the `globalThis.gpu` compile-time enum tables (AdapterType, BackendType, etc.)
+- Update auto-generated files:
 
-The file `webgpu_cpp_chained_struct.h` is also needed from Dawn's source,
-though it changes infrequently.
-
-Once that's done, you need to update the auto-generated files with the commands below:
-
-```
-./tools/maint/gen_struct_info.py
-./tools/maint/gen_struct_info.py --wasm64
-./tools/maint/gen_sig_info.py
-```
+    ```
+    emcc --clear-cache
+    ./tools/maint/gen_struct_info.py
+    ./tools/maint/gen_struct_info.py --wasm64
+    ./tools/maint/gen_sig_info.py
+    ```
 
 ## Testing
 
-There is a `browser.test_webgpu_basic_rendering` with minimal WebGPU API testing that can be handy to test manually before making a contribution.
+There is a `browser.test_webgpu_basic_rendering` with minimal WebGPU API testing that can be handy to test manually before making a contribution. Use `browser64.test_webgpu_basic_rendering` to test the MEMORY64 build.
 
 ```
 test/runner browser.test_webgpu_basic_rendering
+test/runner browser64.test_webgpu_basic_rendering
 ```
 
 You may need to specify extra browser cmd args to assign the WebGPU supported browser, which is needed if you work on linux where WebGPU is not enabled by default in chrome at present.

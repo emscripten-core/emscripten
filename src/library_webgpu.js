@@ -71,15 +71,16 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
     },
 
     // Must be in sync with webgpu.h.
+    // TODO: Generate this to keep it in sync with webgpu.h
     COPY_STRIDE_UNDEFINED: 0xFFFFFFFF,
     LIMIT_U32_UNDEFINED: 0xFFFFFFFF,
     MIP_LEVEL_COUNT_UNDEFINED: 0xFFFFFFFF,
     ARRAY_LAYER_COUNT_UNDEFINED: 0xFFFFFFFF,
     AdapterType: {
-      Unknown: 3,
+      Unknown: 4,
     },
     BackendType: {
-      WebGPU: 1,
+      WebGPU: 2,
     },
     BufferMapAsyncStatus: {
       Success: 0,
@@ -110,10 +111,14 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       NoError: 0,
       Validation: 1,
       OutOfMemory: 2,
-      Unknown: 3,
+      Internal: 3,
+      Unknown: 4,
+      DeviceLost: 5,
     },
     PresentMode: {
-      Fifo: 2,
+      Fifo: 1,
+      Immediate: 3,
+      Mailbox: 4,
     },
     LoadOp: {
       Undefined: 0,
@@ -134,29 +139,35 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       Success: 0,
       Unavailable: 1,
       Error: 2,
+      Unknown: 3,
     },
     RequestDeviceStatus: {
       Success: 0,
       Error: 1,
+      Unknown: 1,
     },
     SType: {
-      SurfaceDescriptorFromCanvasHTMLSelector: 4,
-      ShaderModuleSPIRVDescriptor: 5,
-      ShaderModuleWGSLDescriptor: 6,
-      PrimitiveDepthClipControl: 7,
-      RenderPassDescriptorMaxDrawCount: 15,
+      SurfaceDescriptorFromCanvasHTMLSelector: 0x4,
+      ShaderModuleSPIRVDescriptor: 0x5,
+      ShaderModuleWGSLDescriptor: 0x6,
+      PrimitiveDepthClipControl: 0x7,
+      RenderPassDescriptorMaxDrawCount: 0xF,
+      TextureBindingViewDimensionDescriptor: 0x11,
     },
     QueueWorkDoneStatus: {
       Success: 0,
       Error: 1,
+      Unknown: 2,
+      DeviceLost: 3,
     },
     TextureFormat: {
       Undefined: 0,
     },
     VertexStepMode: {
-      Vertex: 0,
-      Instance: 1,
-      VertexBufferNotUsed: 2,
+      Undefined: 0,
+      VertexBufferNotUsed: 1,
+      Vertex: 2,
+      Instance: 3,
     },
   };
   null;
@@ -837,6 +848,7 @@ var LibraryWebGPU = {
             {{{ gpu.ErrorType.OutOfMemory }}}, 0, userdata);
         } else {
 #if ASSERTIONS
+          // TODO: Implement GPUInternalError
           assert(gpuError instanceof GPUValidationError);
 #endif
           WebGPU.errorCallback(callback, {{{ gpu.ErrorType.Validation }}}, gpuError.message, userdata);
@@ -874,6 +886,7 @@ var LibraryWebGPU = {
 #endif
         if (ev.error instanceof GPUValidationError) type = Validation;
         else if (ev.error instanceof GPUOutOfMemoryError) type = OutOfMemory;
+        // TODO: Implement GPUInternalError
 
         WebGPU.errorCallback(callback, type, ev.error.message, userdata);
       });
