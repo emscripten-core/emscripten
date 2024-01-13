@@ -1610,7 +1610,7 @@ var LibraryWebGPU = {
         return undefined;
       }
 
-      var depthSlice = {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.depthSlice) }}};
+      var depthSlice = {{{ makeGetValue('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.depthSlice, 'i32') }}};
       {{{ gpu.convertSentinelToUndefined('depthSlice') }}}
 
       var loadOpInt = {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachment.loadOp) }}};
