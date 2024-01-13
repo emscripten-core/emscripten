@@ -216,7 +216,10 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
   wasmMemory = wasmExports['memory'];
 #if ASSERTIONS
   assert(wasmMemory);
-  assert(wasmMemory.buffer.byteLength === {{{ INITIAL_MEMORY }}});
+  // This assertion doesn't hold when emscripten is run in --post-link
+  // or INITIAL_HEAP-based mode.
+  // TODO-InitHeap: Read INITIAL_MEMORY out of the wasm file to enable this.
+  //assert(wasmMemory.buffer.byteLength === {{{ INITIAL_MEMORY }}});
 #endif
   updateMemoryViews();
 #endif
