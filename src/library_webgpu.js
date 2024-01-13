@@ -40,9 +40,7 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
     },
 
     makeGetBool: function(struct, offset) {
-      // In an actual build, bool seems to be i8. But on the off-chance it's i32, on little-endian
-      // this will still work as long as the value of 'true' isn't zero in the lowest byte.
-      return `(${makeGetValue(struct, offset, 'i8')} !== 0)`;
+      return `!!(${makeGetValue(struct, offset, 'u32')})`;
     },
     makeGetU32: function(struct, offset) {
       return makeGetValue(struct, offset, 'u32');
@@ -358,11 +356,13 @@ var LibraryWebGPU = {
       'pointer_composite_access',
     ],
     AddressMode: [
+      undefined,
+      'clamp-to-edge',
       'repeat',
       'mirror-repeat',
-      'clamp-to-edge',
     ],
     BlendFactor: [
+      undefined,
       'zero',
       'one',
       'src',
@@ -378,6 +378,7 @@ var LibraryWebGPU = {
       'one-minus-constant',
     ],
     BlendOperation: [
+      undefined,
       'add',
       'subtract',
       'reverse-subtract',
@@ -390,20 +391,20 @@ var LibraryWebGPU = {
       'storage',
       'read-only-storage',
     ],
-    BufferMapState: [
-      'unmapped',
-      'pending',
-      'mapped',
-    ],
+    BufferMapState: {
+      1: 'unmapped',
+      2: 'pending',
+      3: 'mapped',
+    },
     CompareFunction: [
       undefined,
       'never',
       'less',
+      'equal',
       'less-equal',
       'greater',
-      'greater-equal',
-      'equal',
       'not-equal',
+      'greater-equal',
       'always',
     ],
     CompilationInfoRequestStatus: [
@@ -412,21 +413,17 @@ var LibraryWebGPU = {
       'device-lost',
       'unknown',
     ],
-    CompilationMessageType: [
-      'error',
-      'warning',
-      'info',
-    ],
     CullMode: [
+      undefined,
       'none',
       'front',
       'back',
     ],
-    ErrorFilter: [
-      'validation',
-      'out-of-memory',
-      'internal',
-    ],
+    ErrorFilter: {
+      1: 'validation',
+      2: 'out-of-memory',
+      3: 'internal',
+    },
     FeatureName: [
       undefined,
       'depth-clip-control',
@@ -439,13 +436,15 @@ var LibraryWebGPU = {
       'shader-f16',
       'rg11b10ufloat-renderable',
       'bgra8unorm-storage',
-      'float32filterable',
+      'float32-filterable',
     ],
     FilterMode: [
+      undefined,
       'nearest',
       'linear',
     ],
     FrontFace: [
+      undefined,
       'ccw',
       'cw',
     ],
@@ -460,6 +459,7 @@ var LibraryWebGPU = {
       'load',
     ],
     MipmapFilterMode: [
+      undefined,
       'nearest',
       'linear',
     ],
@@ -469,16 +469,17 @@ var LibraryWebGPU = {
       'high-performance',
     ],
     PrimitiveTopology: [
+      undefined,
       'point-list',
       'line-list',
       'line-strip',
       'triangle-list',
       'triangle-strip',
     ],
-    QueryType: [
-      'occlusion',
-      'timestamp',
-    ],
+    QueryType: {
+      1: 'occlusion',
+      2: 'timestamp',
+    },
     SamplerBindingType: [
       undefined,
       'filtering',
@@ -486,6 +487,7 @@ var LibraryWebGPU = {
       'comparison',
     ],
     StencilOperation: [
+      undefined,
       'keep',
       'zero',
       'replace',
@@ -507,11 +509,13 @@ var LibraryWebGPU = {
       'discard',
     ],
     TextureAspect: [
+      undefined,
       'all',
       'stencil-only',
       'depth-only',
     ],
     TextureDimension: [
+      undefined,
       '1d',
       '2d',
       '3d',
@@ -542,6 +546,7 @@ var LibraryWebGPU = {
       'rgba8sint',
       'bgra8unorm',
       'bgra8unorm-srgb',
+      'rgb10a2uint',
       'rgb10a2unorm',
       'rg11b10ufloat',
       'rgb9e5ufloat',
@@ -662,12 +667,26 @@ var LibraryWebGPU = {
       'sint32x2',
       'sint32x3',
       'sint32x4',
+      'unorm10-10-10-2',
     ],
     VertexStepMode: [
+      undefined,
+      'vertex-buffer-not-used',
       'vertex',
       'instance',
-      undefined,
     ],
+  },
+
+  // Non-method functions
+
+  wgpuCreateInstance: (descriptor) => 1,
+
+  wgpuGetInstanceFeatures: () => {
+    abort('TODO: wgpuGetInstanceFeatures unimplemented');
+  },
+
+  wgpuGetProcAddress: (device, procName) => {
+    abort('TODO(#11526): wgpuGetProcAddress unimplemented');
   },
 
   // *Reference/*Release
@@ -1178,7 +1197,7 @@ var LibraryWebGPU = {
       var desc = {
         "label": undefined,
         "colorFormats": makeColorFormats(
-          {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPURenderBundleEncoderDescriptor.colorFormatsCount) }}},
+          {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPURenderBundleEncoderDescriptor.colorFormatCount) }}},
           {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderBundleEncoderDescriptor.colorFormats, '*') }}}),
         "depthStencilFormat": WebGPU.TextureFormat[{{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPURenderBundleEncoderDescriptor.depthStencilFormat) }}}],
         "sampleCount": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPURenderBundleEncoderDescriptor.sampleCount) }}},
@@ -1545,6 +1564,10 @@ var LibraryWebGPU = {
         {{{ makeDynCall('vip', 'callback') }}}({{{ gpu.QueueWorkDoneStatus.Error }}}, userdata);
       });
     });
+  },
+
+  wgpuQueueOnSubmittedWorkDoneF: () => {
+    abort('TODO: wgpuQueueOnSubmittedWorkDoneF is experimental and unimplemented');
   },
 
   wgpuQueueWriteBuffer: (queueId, bufferId, bufferOffset, data, size) => {
@@ -1993,6 +2016,10 @@ var LibraryWebGPU = {
     });
   },
 
+  wgpuBufferMapAsyncF: () => {
+    abort('TODO: wgpuBufferMapAsyncF is experimental and unimplemented');
+  },
+
   wgpuBufferGetSize: (bufferId) => {
     var buffer = WebGPU.mgrBuffer.get(bufferId);
     // 64-bit
@@ -2375,7 +2402,6 @@ var LibraryWebGPU = {
 
   // Instance
 
-  wgpuCreateInstance: (descriptor) => 1,
   wgpuInstanceReference: (instance) => {}, // no-op
   wgpuInstanceRelease: (instance) => {}, // no-op
 
@@ -2407,6 +2433,10 @@ var LibraryWebGPU = {
     return WebGPU.mgrSurface.create(context);
   },
 
+  wgpuInstanceEnumerateWGSLLanguageFeatures: () => {
+    abort('TODO: wgpuInstanceEnumerateWGSLLanguageFeatures is unimplemented and will be replaced');
+  },
+
   wgpuInstanceHasWGSLLanguageFeature: (instance, featureEnumValue) => {
     if (!('wgslLanguageFeatures' in navigator["gpu"])) {
       return false;
@@ -2419,6 +2449,10 @@ var LibraryWebGPU = {
 #if ASSERTIONS
     abort('wgpuInstanceProcessEvents is unsupported (use requestAnimationFrame via html5.h instead)');
 #endif
+  },
+
+  wgpuInstanceWaitAny: () => {
+    abort('TODO: wgpuInstanceWaitAny is experimental and unimplemented');
   },
 
   wgpuInstanceRequestAdapter__deps: ['$callUserCallback', '$stringToUTF8OnStack'],
@@ -2469,6 +2503,10 @@ var LibraryWebGPU = {
     });
   },
 
+  wgpuInstanceRequestAdapterF: () => {
+    abort('TODO: wgpuInstanceRequestAdapterF is experimental and unimplemented');
+  },
+
   // WGPUAdapter
 
   wgpuAdapterEnumerateFeatures: (adapterId, featuresOutPtr) => {
@@ -2513,10 +2551,10 @@ var LibraryWebGPU = {
     var desc = {};
     if (descriptor) {
       {{{ gpu.makeCheckDescriptor('descriptor') }}}
-      var requiredFeaturesCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredFeaturesCount) }}};
-      if (requiredFeaturesCount) {
+      var requiredFeatureCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredFeatureCount) }}};
+      if (requiredFeatureCount) {
         var requiredFeaturesPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredFeatures, '*') }}};
-        desc["requiredFeatures"] = Array.from({{{ makeHEAPView(`${POINTER_BITS}`, 'requiredFeaturesPtr', `requiredFeaturesPtr + requiredFeaturesCount * ${POINTER_SIZE}`) }}},
+        desc["requiredFeatures"] = Array.from({{{ makeHEAPView(`${POINTER_BITS}`, 'requiredFeaturesPtr', `requiredFeaturesPtr + requiredFeatureCount * ${POINTER_SIZE}`) }}},
           (feature) => WebGPU.FeatureName[feature]);
       }
       var requiredLimitsPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredLimits, '*') }}};
@@ -2613,6 +2651,12 @@ var LibraryWebGPU = {
     });
   },
 
+  // WGPUAdapterProperties
+
+  wgpuAdapterPropertiesFreeMembers: () => {
+    // wgpuAdapterGetProperties does currently allocate anything
+  },
+
   // WGPUSampler
 
   wgpuSamplerSetLabel: (samplerId, labelPtr) => {
@@ -2670,18 +2714,7 @@ var LibraryWebGPU = {
   },
   wgpuSwapChainPresent: (swapChainId) => {
     // TODO: This could probably be emulated with ASYNCIFY.
-#if ASSERTIONS
     abort('wgpuSwapChainPresent is unsupported (use requestAnimationFrame via html5.h instead)');
-#endif
-  },
-
-  // wgpuGetProcAddress
-
-  wgpuGetProcAddress: (device, procName) => {
-#if ASSERTIONS
-    abort('TODO(#11526): wgpuGetProcAddress unimplemented');
-#endif
-    return 0;
   },
 };
 
