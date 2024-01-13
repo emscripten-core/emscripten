@@ -6567,7 +6567,7 @@ int main() {
   printf("managed another malloc!\n");
 }
 ''' % (pre_fail, post_fail))
-          args = [EMXX, 'main.cpp', '-sEXPORTED_FUNCTIONS=_main,_sbrk'] + opts + aborting_args
+          args = [EMXX, 'main.cpp', '-sEXPORTED_FUNCTIONS=_main,_sbrk', '-sINITIAL_MEMORY=16MB'] + opts + aborting_args
           args += ['-sTEST_MEMORY_GROWTH_FAILS'] # In this test, force memory growing to fail
           if growth:
             args += ['-sALLOW_MEMORY_GROWTH']
@@ -8592,7 +8592,7 @@ int main() {
       result = self.run_js('a.out.js').strip()
       self.assertEqual(result, f'{expected}, errno: 0')
 
-    run([], 256)
+    run(['-sINITIAL_MEMORY=16MB'], 256)
     run(['-sINITIAL_MEMORY=32MB'], 512)
     run(['-sINITIAL_MEMORY=32MB', '-sALLOW_MEMORY_GROWTH'], (2 * 1024 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE)
     run(['-sINITIAL_MEMORY=32MB', '-sALLOW_MEMORY_GROWTH', '-sWASM=0'], (2 * 1024 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE)
