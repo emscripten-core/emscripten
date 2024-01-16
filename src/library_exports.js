@@ -16,7 +16,7 @@ addToLibrary({
       // Record the created function pointer to each function object,
       // so that if the same function pointer is obtained several times,
       // the same address will be returned.
-      if (!exportedFunc.ptr) exportedFunc.ptr = addFunction(exportedFunc);
+      exportedFunc.ptr ||= addFunction(exportedFunc);
       return exportedFunc.ptr;
     }
 #if ASSERTIONS

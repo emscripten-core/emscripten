@@ -148,37 +148,35 @@ var emscriptenCpuProfiler = {
   createSection: function createSection(number, name, drawColor, traceable) {
     while (this.sections.length <= number) this.sections.push(null); // Keep an array structure.
     var sect = this.sections[number];
-    if (!sect) {
-      sect = {
-        count: 0,
-        name,
-        startTick: 0,
-        accumulatedTimeInsideMainLoop: 0,
-        accumulatedTimeOutsideMainLoop: 0,
-        frametimesInsideMainLoop: [],
-        frametimesOutsideMainLoop: [],
-        drawColor,
-        traceable,
-        accumulatedFrameTimeInsideMainLoop: function(startX, numSamples) {
-          var total = 0;
-          numSamples = Math.min(numSamples, this.frametimesInsideMainLoop.length);
-          for (var i = 0; i < numSamples; ++i) {
-            var x = (startX + i) % this.frametimesInsideMainLoop.length;
-            if (this.frametimesInsideMainLoop[x]) total += this.frametimesInsideMainLoop[x];
-          }
-          return total;
-        },
-        accumulatedFrameTimeOutsideMainLoop: function(startX, numSamples) {
-          var total = 0;
-          numSamples = Math.min(numSamples, this.frametimesInsideMainLoop.length);
-          for (var i = 0; i < numSamples; ++i) {
-            var x = (startX + i) % this.frametimesInsideMainLoop.length;
-            if (this.frametimesOutsideMainLoop[x]) total += this.frametimesOutsideMainLoop[x];
-          }
-          return total;
+    sect ||= {
+      count: 0,
+      name,
+      startTick: 0,
+      accumulatedTimeInsideMainLoop: 0,
+      accumulatedTimeOutsideMainLoop: 0,
+      frametimesInsideMainLoop: [],
+      frametimesOutsideMainLoop: [],
+      drawColor,
+      traceable,
+      accumulatedFrameTimeInsideMainLoop: function(startX, numSamples) {
+        var total = 0;
+        numSamples = Math.min(numSamples, this.frametimesInsideMainLoop.length);
+        for (var i = 0; i < numSamples; ++i) {
+          var x = (startX + i) % this.frametimesInsideMainLoop.length;
+          if (this.frametimesInsideMainLoop[x]) total += this.frametimesInsideMainLoop[x];
         }
-      };
-    }
+        return total;
+      },
+      accumulatedFrameTimeOutsideMainLoop: function(startX, numSamples) {
+        var total = 0;
+        numSamples = Math.min(numSamples, this.frametimesInsideMainLoop.length);
+        for (var i = 0; i < numSamples; ++i) {
+          var x = (startX + i) % this.frametimesInsideMainLoop.length;
+          if (this.frametimesOutsideMainLoop[x]) total += this.frametimesOutsideMainLoop[x];
+        }
+        return total;
+      }
+    };
     sect.name = name;
     this.sections[number] = sect;
   },
@@ -368,7 +366,7 @@ var emscriptenCpuProfiler = {
       fpsOverlay.style = 'position: fixed; font-weight: bold; padding: 3px; -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; cursor: pointer;';
       fpsOverlay.onclick = () => {
         var view = document.getElementById('cpuprofiler_canvas');
-        if (view) view.scrollIntoView();
+        view?.scrollIntoView();
       };
       fpsOverlay.oncontextmenu = (e) => e.preventDefault();
       document.body.appendChild(fpsOverlay);
@@ -532,14 +530,14 @@ var emscriptenCpuProfiler = {
   },
 
   detectWebGLContext: function() {
-    if (Module['canvas'] && Module['canvas'].GLctxObject && Module['canvas'].GLctxObject.GLctx) return Module['canvas'].GLctxObject.GLctx;
+    if (Module['canvas']?.GLctxObject?.GLctx) return Module['canvas'].GLctxObject.GLctx;
     else if (typeof GLctx != 'undefined') return GLctx;
     else if (Module.ctx) return Module.ctx;
     return null;
   },
 
   toggleHookWebGL: function(glCtx) {
-    if (!glCtx) glCtx = this.detectWebGLContext();
+    glCtx ||= this.detectWebGLContext();
     if (this.hookedWebGLContexts.includes(glCtx)) this.unhookWebGL(glCtx);
     else this.hookWebGL(glCtx);
   },
@@ -563,7 +561,7 @@ var emscriptenCpuProfiler = {
   },
 
   unhookWebGL: function(glCtx) {
-    if (!glCtx) glCtx = this.detectWebGLContext();
+    glCtx ||= this.detectWebGLContext();
     if (!glCtx.cpuprofilerAlreadyHooked) return;
     glCtx.cpuprofilerAlreadyHooked = false;
     this.hookedWebGLContexts.splice(this.hookedWebGLContexts.indexOf(glCtx), 1);
@@ -601,7 +599,7 @@ var emscriptenCpuProfiler = {
   },
 
   hookWebGL: function(glCtx) {
-    if (!glCtx) glCtx = this.detectWebGLContext();
+    glCtx ||= this.detectWebGLContext();
     if (!glCtx) return;
     if (!((typeof WebGLRenderingContext != 'undefined' && glCtx instanceof WebGLRenderingContext)
      || (typeof WebGL2RenderingContext != 'undefined' && glCtx instanceof WebGL2RenderingContext))) {

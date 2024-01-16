@@ -177,9 +177,7 @@ var LibraryPThread = {
 #endif
 
 #if !MINIMAL_RUNTIME
-    setExitStatus: (status) => {
-      EXITSTATUS = status;
-    },
+    setExitStatus: (status) => EXITSTATUS = status,
 #endif
 
     terminateAllThreads__deps: ['$terminateWorker'],
@@ -643,9 +641,7 @@ var LibraryPThread = {
     }
   },
 #else
-  $registerTLSInit: (tlsInitFunc) => {
-    PThread.tlsInitFunctions.push(tlsInitFunc);
-  },
+  $registerTLSInit: (tlsInitFunc) => PThread.tlsInitFunctions.push(tlsInitFunc),
 #endif
 
   $cancelThread: (pthread_ptr) => {
@@ -706,12 +702,11 @@ var LibraryPThread = {
 
   emscripten_has_threading_support: () => typeof SharedArrayBuffer != 'undefined',
 
-  emscripten_num_logical_cores: () => {
+  emscripten_num_logical_cores: () =>
 #if ENVIRONMENT_MAY_BE_NODE
-    if (ENVIRONMENT_IS_NODE) return require('os').cpus().length;
+    ENVIRONMENT_IS_NODE ? require('os').cpus().length :
 #endif
-    return navigator['hardwareConcurrency'];
-  },
+    navigator['hardwareConcurrency'],
 
   __emscripten_init_main_thread_js: (tb) => {
     // Pass the thread address to the native code where they stored in wasm
@@ -778,8 +773,8 @@ var LibraryPThread = {
       transferredCanvasNames = '{{{ OFFSCREENCANVASES_TO_PTHREAD }}}';
     } else
 #endif
-    if (transferredCanvasNames) transferredCanvasNames = UTF8ToString(transferredCanvasNames).trim();
-    if (transferredCanvasNames) transferredCanvasNames = transferredCanvasNames.split(',');
+    transferredCanvasNames &&= UTF8ToString(transferredCanvasNames).trim();
+    transferredCanvasNames &&= transferredCanvasNames.split(',');
 #if GL_DEBUG
     dbg(`pthread_create: transferredCanvasNames="${transferredCanvasNames}"`);
 #endif

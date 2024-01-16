@@ -297,7 +297,7 @@ var LibraryEmVal = {
     return id;
   },
 
-#if MIN_CHROME_VERSION < 49 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 42 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101
+#if MIN_CHROME_VERSION < 49 || MIN_FIREFOX_VERSION < 42 || MIN_SAFARI_VERSION < 100101
   $reflectConstruct: null,
   $reflectConstruct__postset: `
     if (typeof Reflect !== 'undefined') {
@@ -336,9 +336,7 @@ var LibraryEmVal = {
       }
       var rv = kind === /* CONSTRUCTOR */ 1 ? reflectConstruct(func, argN) : func.apply(obj, argN);
       for (var i = 0; i < argCount; ++i) {
-        if (types[i].deleteObject) {
-          types[i].deleteObject(argN[i]);
-        }
+        types[i].deleteObject?.(argN[i]);
       }
       return emval_returnValue(retType, destructorsRef, rv);
     };

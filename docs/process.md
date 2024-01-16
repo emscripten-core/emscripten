@@ -1,5 +1,8 @@
 # Development Processes
 
+More information can be found in the [Contribution
+section](https://emscripten.org/docs/contributing/contributing.html) of the
+webside.
 
 ## Landing PRs
 
@@ -92,6 +95,11 @@ How:
    [emscripten-releases][releases_repo] repo. When this CL is committed, let the
    resulting SHA be `<LTO-sha>`. An example of this CL is
    https://chromium-review.googlesource.com/c/emscripten-releases/+/3781978.
+   After landing the CL, wait for a couple hours before proceeding because
+   building and archiving for the new commit will take some time. Check
+   https://ci.chromium.org/p/emscripten-releases/g/main/console to see if the
+   commit has passed "Archive Binaries" phase for all three platforms and
+   additionally "Archive Binaries (arm64)" for Mac.
 1. Run [`scripts/create_release.py`][create_release_emsdk] in the emsdk
    repository. When we do both an LTO and a non-LTO release, run:
    ```

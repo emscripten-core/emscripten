@@ -24,6 +24,7 @@ from . import building
 from . import cache
 from . import config
 from . import diagnostics
+from . import emscripten
 from . import feature_matrix
 from . import filelock
 from . import js_manipulation
@@ -41,7 +42,6 @@ from .settings import settings, default_setting, user_settings
 from .minimal_runtime_shell import generate_minimal_runtime_html
 
 import tools.line_endings
-import emscripten
 
 logger = logging.getLogger('link')
 
@@ -241,7 +241,7 @@ def generate_js_sym_info():
   # mode of the js compiler that would generate a list of all possible symbols
   # that could be checked in.
   _, forwarded_data = emscripten.compile_javascript(symbols_only=True)
-  # When running in symbols_only mode compiler.js outputs a flat list of C symbols.
+  # When running in symbols_only mode compiler.mjs outputs a flat list of C symbols.
   return json.loads(forwarded_data)
 
 
@@ -1098,8 +1098,6 @@ def phase_linker_setup(options, state, newargs):
     # Support all old browser versions
     settings.MIN_FIREFOX_VERSION = 0
     settings.MIN_SAFARI_VERSION = 0
-    settings.MIN_IE_VERSION = 0
-    settings.MIN_EDGE_VERSION = 0
     settings.MIN_CHROME_VERSION = 0
     settings.MIN_NODE_VERSION = 0
 
@@ -1126,30 +1124,27 @@ def phase_linker_setup(options, state, newargs):
 
   setup_environment_settings()
 
-  if options.use_closure_compiler != 0 and settings.POLYFILL:
-    # Emscripten requires certain ES6 constructs by default in library code
-    # - https://caniuse.com/let              : EDGE:12 FF:44 CHROME:49 SAFARI:11
-    # - https://caniuse.com/const            : EDGE:12 FF:36 CHROME:49 SAFARI:11
-    # - https://caniuse.com/arrow-functions: : EDGE:12 FF:22 CHROME:45 SAFARI:10
-    # - https://caniuse.com/mdn-javascript_builtins_object_assign:
-    #                                          EDGE:12 FF:34 CHROME:45 SAFARI:9
+  if settings.POLYFILL:
+    # Emscripten requires certain ES6+ constructs by default in library code
+    # - (various ES6 operators available in all browsers listed below)
+    # - https://caniuse.com/mdn-javascript_operators_nullish_coalescing:
+    #                                          FF:72 CHROME:80 SAFARI:13.1 NODE:14
+    # - https://caniuse.com/mdn-javascript_operators_optional_chaining:
+    #                                          FF:74 CHROME:80 SAFARI:13.1 NODE:14
+    # - https://caniuse.com/mdn-javascript_operators_logical_or_assignment:
+    #                                          FF:79 CHROME:85 SAFARI:14 NODE:16
     # Taking the highest requirements gives is our minimum:
-    #                             Max Version: EDGE:12 FF:44 CHROME:49 SAFARI:11
-    settings.TRANSPILE_TO_ES5 = (settings.MIN_EDGE_VERSION < 12 or
-                                 settings.MIN_FIREFOX_VERSION < 44 or
-                                 settings.MIN_CHROME_VERSION < 49 or
-                                 settings.MIN_SAFARI_VERSION < 110000 or
-                                 settings.MIN_IE_VERSION != 0x7FFFFFFF)
+    #                             Max Version: FF:79 CHROME:85 SAFARI:14 NODE:16
+    # TODO: replace this with feature matrix in the future.
+    settings.TRANSPILE = (settings.MIN_FIREFOX_VERSION < 79 or
+                          settings.MIN_CHROME_VERSION < 85 or
+                          settings.MIN_SAFARI_VERSION < 140000 or
+                          settings.MIN_NODE_VERSION < 160000)
 
-    if options.use_closure_compiler is None and settings.TRANSPILE_TO_ES5:
-      diagnostics.warning('transpile', 'enabling transpilation via closure due to browser version settings.  This warning can be suppressed by passing `--closure=1` or `--closure=0` to opt into our explicitly.')
-
-  # https://caniuse.com/class: EDGE:13 FF:45 CHROME:49 SAFARI:9
-  supports_es6_classes = (settings.MIN_EDGE_VERSION >= 13 and
-                          settings.MIN_FIREFOX_VERSION >= 45 and
+  # https://caniuse.com/class: FF:45 CHROME:49 SAFARI:9
+  supports_es6_classes = (settings.MIN_FIREFOX_VERSION >= 45 and
                           settings.MIN_CHROME_VERSION >= 49 and
-                          settings.MIN_SAFARI_VERSION >= 90000 and
-                          settings.MIN_IE_VERSION == 0x7FFFFFFF)
+                          settings.MIN_SAFARI_VERSION >= 90000)
 
   if not settings.DISABLE_EXCEPTION_CATCHING and settings.EXCEPTION_STACK_TRACES and not supports_es6_classes:
     diagnostics.warning('transpile', '-sEXCEPTION_STACK_TRACES requires an engine that support ES6 classes.')
@@ -1182,6 +1177,9 @@ def phase_linker_setup(options, state, newargs):
       exit_with_error('--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem')
     # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
     settings.FORCE_FILESYSTEM = 1
+
+  if settings.FORCE_FILESYSTEM and not settings.FILESYSTEM:
+    exit_with_error('`-sFORCE_FILESYSTEM` cannot be used with `-sFILESYSTEM=0`')
 
   if settings.WASMFS:
     if settings.NODERAWFS:
@@ -1668,17 +1666,8 @@ def phase_linker_setup(options, state, newargs):
     # need to be able to call these explicitly.
     settings.REQUIRED_EXPORTS += ['__funcs_on_exit']
 
-  # Some settings require malloc/free to be exported explictly.
-  # In most cases, the inclustion of native symbols like malloc and free
-  # is taken care of by wasm-ld use its normal symbol resolution process.
-  # However, when JS symbols are exported explictly via
-  # DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and they depend on native symbols
-  # we need to explictly require those exports.
-  if settings.BUILD_AS_WORKER or \
-     settings.ASYNCIFY or \
-     settings.FORCE_FILESYSTEM or \
-     options.memory_profiler or \
-     sanitize:
+  # The worker code in src/postamble.js depends on malloc/free being exported
+  if settings.BUILD_AS_WORKER:
     settings.REQUIRED_EXPORTS += ['malloc', 'free']
 
   if not settings.DISABLE_EXCEPTION_CATCHING:
@@ -1875,6 +1864,9 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
 
   phase_emscript(options, in_wasm, wasm_target, js_syms)
 
+  if settings.EMBIND_AOT:
+    phase_embind_aot(wasm_target, js_syms)
+
   if options.embind_emit_tsd:
     phase_embind_emit_tsd(options, wasm_target, js_syms)
 
@@ -1907,11 +1899,10 @@ def phase_emscript(options, in_wasm, wasm_target, js_syms):
   save_intermediate('original')
 
 
-@ToolchainProfiler.profile_block('embind emit tsd')
-def phase_embind_emit_tsd(options, wasm_target, js_syms):
-  logger.debug('emit tsd')
+def run_embind_gen(wasm_target, js_syms, extra_settings):
   # Save settings so they can be restored after TS generation.
   original_settings = settings.backup()
+  settings.attrs.update(extra_settings)
 
   # Ignore any options or settings that can conflict with running the TS
   # generation output.
@@ -1944,7 +1935,7 @@ def phase_embind_emit_tsd(options, wasm_target, js_syms):
   settings.JS_LIBRARIES = dedup_list(settings.JS_LIBRARIES)
   # Replace embind with the TypeScript generation version.
   embind_index = settings.JS_LIBRARIES.index('embind/embind.js')
-  settings.JS_LIBRARIES[embind_index] = 'embind/embind_ts.js'
+  settings.JS_LIBRARIES[embind_index] = 'embind/embind_gen.js'
   outfile_js = in_temp('tsgen_a.out.js')
   # The Wasm outfile may be modified by emscripten.run, so use a temporary file.
   outfile_wasm = in_temp('tsgen_a.out.wasm')
@@ -1955,9 +1946,26 @@ def phase_embind_emit_tsd(options, wasm_target, js_syms):
     node_args += shared.node_memory64_flags()
   # Run the generated JS file with the proper flags to generate the TypeScript bindings.
   out = shared.run_js_tool(outfile_js, [], node_args, stdout=PIPE)
-  write_file(
-    os.path.join(os.path.dirname(wasm_target), options.embind_emit_tsd), out)
   settings.restore(original_settings)
+  return out
+
+
+@ToolchainProfiler.profile_block('embind emit tsd')
+def phase_embind_emit_tsd(options, wasm_target, js_syms):
+  logger.debug('emit tsd')
+  out = run_embind_gen(wasm_target, js_syms, {'EMBIND_JS': False})
+  out_file = os.path.join(os.path.dirname(wasm_target), options.embind_emit_tsd)
+  write_file(out_file, out)
+
+
+@ToolchainProfiler.profile_block('embind aot js')
+def phase_embind_aot(wasm_target, js_syms):
+  out = run_embind_gen(wasm_target, js_syms, {})
+  if DEBUG:
+    write_file(in_temp('embind_aot.js'), out)
+  src = read_file(final_js)
+  src = do_replace(src, '<<< EMBIND_AOT_OUTPUT >>>', out)
+  write_file(final_js, src)
 
 
 @ToolchainProfiler.profile_block('source transforms')
@@ -2186,14 +2194,15 @@ def phase_binaryen(target, options, wasm_target, memfile):
     with ToolchainProfiler.profile_block('asyncify_lazy_load_code'):
       building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
 
-  if final_js and (options.use_closure_compiler or settings.TRANSPILE_TO_ES5):
+  if final_js:
     if options.use_closure_compiler:
       with ToolchainProfiler.profile_block('closure_compile'):
         final_js = building.closure_compiler(final_js, extra_closure_args=options.closure_args)
-    else:
-      with ToolchainProfiler.profile_block('closure_transpile'):
-        final_js = building.closure_transpile(final_js)
-    save_intermediate_with_wasm('closure', wasm_target)
+      save_intermediate_with_wasm('closure', wasm_target)
+    if settings.TRANSPILE:
+      with ToolchainProfiler.profile_block('transpile'):
+        final_js = building.transpile(final_js)
+      save_intermediate_with_wasm('traspile', wasm_target)
 
   symbols_file = None
   if options.emit_symbol_map:

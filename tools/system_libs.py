@@ -471,7 +471,9 @@ class Library:
     cflags = self.get_cflags()
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
+      relative_source_dir = os.path.relpath(source_dir, build_dir)
       cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
+                 f'-ffile-prefix-map={relative_source_dir}/=',
                  '-fdebug-compilation-dir=/emsdk/emscripten']
     asflags = get_base_cflags(preprocess=False)
     input_files = self.get_files()
@@ -491,7 +493,9 @@ class Library:
     cflags = self.get_cflags()
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
+      relative_source_dir = os.path.relpath(source_dir, build_dir)
       cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
+                 f'-ffile-prefix-map={relative_source_dir}/=',
                  '-fdebug-compilation-dir=/emsdk/emscripten']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
@@ -531,6 +535,7 @@ class Library:
         # Use relative paths to reduce the length of the command line.
         # This allows to avoid switching to a response file as often.
         src = os.path.relpath(src, build_dir)
+        src = utils.normalize_path(src)
         batches.setdefault(tuple(cmd), []).append(src)
       objects.add(o)
 
@@ -1780,7 +1785,7 @@ class libGL(MTLibrary):
   name = 'libGL'
 
   src_dir = 'system/lib/gl'
-  src_files = ['gl.c', 'webgl1.c', 'libprocaddr.c']
+  src_files = ['gl.c', 'webgl1.c', 'libprocaddr.c', 'webgl2.c']
 
   cflags = ['-Oz', '-fno-inline-functions']
 
@@ -1789,10 +1794,7 @@ class libGL(MTLibrary):
     self.is_webgl2 = kwargs.pop('is_webgl2')
     self.is_ofb = kwargs.pop('is_ofb')
     self.is_full_es3 = kwargs.pop('is_full_es3')
-    if self.is_webgl2 or self.is_full_es3:
-      # Don't use append or += here, otherwise we end up adding to
-      # the class member.
-      self.src_files = self.src_files + ['webgl2.c']
+    self.is_enable_get_proc_address = kwargs.pop('is_enable_get_proc_address')
     super().__init__(**kwargs)
 
   def get_base_name(self):
@@ -1805,23 +1807,26 @@ class libGL(MTLibrary):
       name += '-ofb'
     if self.is_full_es3:
       name += '-full_es3'
+    if self.is_enable_get_proc_address:
+      name += '-getprocaddr'
     return name
 
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.is_legacy:
       cflags += ['-DLEGACY_GL_EMULATION=1']
-    if self.is_webgl2:
-      cflags += ['-DMAX_WEBGL_VERSION=2']
+    cflags += [f'-DMAX_WEBGL_VERSION={2 if self.is_webgl2 else 1}']
     if self.is_ofb:
       cflags += ['-D__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__']
     if self.is_full_es3:
       cflags += ['-D__EMSCRIPTEN_FULL_ES3__']
+    if self.is_enable_get_proc_address:
+      cflags += ['-DGL_ENABLE_GET_PROC_ADDRESS=1']
     return cflags
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_legacy', 'is_webgl2', 'is_ofb', 'is_full_es3']
+    return super().vary_on() + ['is_legacy', 'is_webgl2', 'is_ofb', 'is_full_es3', 'is_enable_get_proc_address']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -1830,6 +1835,7 @@ class libGL(MTLibrary):
       is_webgl2=settings.MAX_WEBGL_VERSION >= 2,
       is_ofb=settings.OFFSCREEN_FRAMEBUFFER,
       is_full_es3=settings.FULL_ES3,
+      is_enable_get_proc_address=settings.GL_ENABLE_GET_PROC_ADDRESS,
       **kwargs
     )
 

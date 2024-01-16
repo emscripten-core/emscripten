@@ -143,14 +143,10 @@ function updateMemoryViews() {
 #if SUPPORT_BIG_ENDIAN
   Module['HEAP_DATA_VIEW'] = HEAP_DATA_VIEW = new DataView(b);
 #endif
-#if MEMORY64 && MAXIMUM_MEMORY > FOUR_GB
-#include "runtime_view_proxy.js"
-#else
   Module['HEAP8'] = HEAP8 = new Int8Array(b);
   Module['HEAP16'] = HEAP16 = new Int16Array(b);
   Module['HEAPU8'] = HEAPU8 = new Uint8Array(b);
   Module['HEAPU16'] = HEAPU16 = new Uint16Array(b);
-#endif
   Module['HEAP32'] = HEAP32 = new Int32Array(b);
   Module['HEAPU32'] = HEAPU32 = new Uint32Array(b);
   Module['HEAPF32'] = HEAPF32 = new Float32Array(b);
@@ -366,9 +362,7 @@ function addRunDependency(id) {
   runDependencies++;
 
 #if expectToReceiveOnModule('monitorRunDependencies')
-  if (Module['monitorRunDependencies']) {
-    Module['monitorRunDependencies'](runDependencies);
-  }
+  Module['monitorRunDependencies']?.(runDependencies);
 #endif
 
 #if ASSERTIONS
@@ -406,9 +400,7 @@ function removeRunDependency(id) {
   runDependencies--;
 
 #if expectToReceiveOnModule('monitorRunDependencies')
-  if (Module['monitorRunDependencies']) {
-    Module['monitorRunDependencies'](runDependencies);
-  }
+  Module['monitorRunDependencies']?.(runDependencies);
 #endif
 
 #if ASSERTIONS
@@ -435,9 +427,7 @@ function removeRunDependency(id) {
 /** @param {string|number=} what */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
-  if (Module['onAbort']) {
-    Module['onAbort'](what);
-  }
+  Module['onAbort']?.(what);
 #endif
 
   what = 'Aborted(' + what + ')';
@@ -767,9 +757,7 @@ function instantiateSync(file, info) {
       }
     }
   }
-  if (!module) {
-    module = new WebAssembly.Module(binary);
-  }
+  module ||= new WebAssembly.Module(binary);
   if (ENVIRONMENT_IS_NODE && !hasCached) {
 #if RUNTIME_DEBUG
     dbg('NODE_CODE_CACHING: saving module');

@@ -55,10 +55,10 @@ class interactive(BrowserCore):
     self.btest_exit('browser/test_sdl_togglefullscreen.c', args=['-sUSE_SDL=2'])
 
   def test_sdl_audio(self):
-    shutil.copyfile(test_file('sounds', 'alarmvictory_1.ogg'), self.in_dir('sound.ogg'))
-    shutil.copyfile(test_file('sounds', 'alarmcreatemiltaryfoot_1.wav'), self.in_dir('sound2.wav'))
-    shutil.copyfile(test_file('sounds', 'noise.ogg'), self.in_dir('noise.ogg'))
-    shutil.copyfile(test_file('sounds', 'the_entertainer.ogg'), self.in_dir('the_entertainer.ogg'))
+    shutil.copyfile(test_file('sounds/alarmvictory_1.ogg'), self.in_dir('sound.ogg'))
+    shutil.copyfile(test_file('sounds/alarmcreatemiltaryfoot_1.wav'), self.in_dir('sound2.wav'))
+    shutil.copyfile(test_file('sounds/noise.ogg'), self.in_dir('noise.ogg'))
+    shutil.copyfile(test_file('sounds/the_entertainer.ogg'), self.in_dir('the_entertainer.ogg'))
     create_file('bad.ogg', 'I claim to be audio, but am lying')
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
@@ -78,7 +78,7 @@ class interactive(BrowserCore):
     'wasmfs': (['-sWASMFS'],),
   })
   def test_sdl_audio_mix_channels(self, args):
-    shutil.copyfile(test_file('sounds', 'noise.ogg'), self.in_dir('sound.ogg'))
+    shutil.copyfile(test_file('sounds/noise.ogg'), self.in_dir('sound.ogg'))
 
     self.btest_exit('sdl_audio_mix_channels.c', args=['-O2', '--minify=0', '--preload-file', 'sound.ogg'] + args)
 
@@ -87,14 +87,14 @@ class interactive(BrowserCore):
     'wasmfs': (['-sWASMFS'],),
   })
   def test_sdl_audio_mix(self, args):
-    shutil.copyfile(test_file('sounds', 'pluck.ogg'), self.in_dir('sound.ogg'))
-    shutil.copyfile(test_file('sounds', 'the_entertainer.ogg'), self.in_dir('music.ogg'))
-    shutil.copyfile(test_file('sounds', 'noise.ogg'), self.in_dir('noise.ogg'))
+    shutil.copyfile(test_file('sounds/pluck.ogg'), self.in_dir('sound.ogg'))
+    shutil.copyfile(test_file('sounds/the_entertainer.ogg'), self.in_dir('music.ogg'))
+    shutil.copyfile(test_file('sounds/noise.ogg'), self.in_dir('noise.ogg'))
 
     self.btest_exit('sdl_audio_mix.c', args=['-O2', '--minify=0', '--preload-file', 'sound.ogg', '--preload-file', 'music.ogg', '--preload-file', 'noise.ogg'] + args)
 
   def test_sdl_audio_panning(self):
-    shutil.copyfile(test_file('sounds', 'the_entertainer.wav'), self.in_dir('the_entertainer.wav'))
+    shutil.copyfile(test_file('sounds/the_entertainer.wav'), self.in_dir('the_entertainer.wav'))
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
     self.btest_exit('sdl_audio_panning.c', args=['-O2', '--closure=1', '--minify=0', '--preload-file', 'the_entertainer.wav', '-sEXPORTED_FUNCTIONS=_main,_play'])
@@ -104,7 +104,7 @@ class interactive(BrowserCore):
     self.btest_exit('sdl_audio_beep.cpp', args=['-O2', '--closure=1', '--minify=0', '-sDISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html'])
 
   def test_sdl2_mixer_wav(self):
-    shutil.copyfile(test_file('sounds', 'the_entertainer.wav'), 'sound.wav')
+    shutil.copyfile(test_file('sounds/the_entertainer.wav'), 'sound.wav')
     self.btest_exit('browser/test_sdl2_mixer_wav.c', args=[
       '-O2',
       '-sUSE_SDL=2',
@@ -138,47 +138,47 @@ class interactive(BrowserCore):
     self.btest_exit('browser/test_sdl2_audio_beep.cpp', args=['-O2', '--closure=1', '--minify=0', '-sDISABLE_EXCEPTION_CATCHING=0', '-sUSE_SDL=2'])
 
   def test_openal_playback(self):
-    shutil.copyfile(test_file('sounds', 'audio.wav'), self.in_dir('audio.wav'))
+    shutil.copyfile(test_file('sounds/audio.wav'), self.in_dir('audio.wav'))
 
     for args in [[], ['-pthread', '-sPROXY_TO_PTHREAD']]:
       self.compile_btest(['-O2', test_file('openal_playback.cpp'), '--preload-file', 'audio.wav', '-o', 'page.html'] + args)
       self.run_browser('page.html', '/report_result?1')
 
   def test_openal_buffers(self):
-    self.btest('openal_buffers.c', '0', args=['--preload-file', test_file('sounds', 'the_entertainer.wav') + '@/'],)
+    self.btest('openal_buffers.c', '0', args=['--preload-file', test_file('sounds/the_entertainer.wav') + '@/'],)
 
   def test_openal_buffers_animated_pitch(self):
-    self.btest('openal_buffers.c', '0', args=['-DTEST_ANIMATED_PITCH=1', '--preload-file', test_file('sounds', 'the_entertainer.wav') + '@/'],)
+    self.btest('openal_buffers.c', '0', args=['-DTEST_ANIMATED_PITCH=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/'],)
 
   def test_openal_looped_pitched_playback(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_looped_seek_playback(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_LOOPED_SEEK_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_LOOPED_SEEK_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_animated_looped_pitched_playback(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_PITCHED_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_PITCHED_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_animated_looped_distance_playback(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_DISTANCE_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_DISTANCE_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_animated_looped_doppler_playback(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_DOPPLER_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_DOPPLER_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_animated_looped_panned_playback(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_PANNED_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_PANNED_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_animated_looped_relative_playback(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_RELATIVE_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_RELATIVE_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_al_soft_loop_points(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_AL_SOFT_LOOP_POINTS=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_AL_SOFT_LOOP_POINTS=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_alc_soft_pause_device(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_ALC_SOFT_PAUSE_DEVICE=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ALC_SOFT_PAUSE_DEVICE=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_al_soft_source_spatialize(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_AL_SOFT_SOURCE_SPATIALIZE=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_AL_SOFT_SOURCE_SPATIALIZE=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_capture(self):
     self.btest('openal_capture.c', expected='0')
@@ -191,8 +191,8 @@ class interactive(BrowserCore):
       return self.get_library(os.path.join('third_party', 'freealut'), os.path.join('src', '.libs', 'libalut.a'), configure_args=['--disable-shared'])
 
   def test_freealut(self):
-    src = test_file('third_party', 'freealut', 'examples', 'hello_world.c')
-    inc = test_file('third_party', 'freealut', 'include')
+    src = test_file('third_party/freealut', 'examples', 'hello_world.c')
+    inc = test_file('third_party/freealut', 'include')
     self.compile_btest([src, '-O2', '-o', 'page.html', '-I' + inc] + self.get_freealut_library())
     self.run_browser('page.html', message='You should hear "Hello World!"')
 
@@ -228,7 +228,7 @@ class interactive(BrowserCore):
             '-DTEST_THREAD_PROFILING=1',
             '-sPTHREAD_POOL_SIZE=16',
             '-sINITIAL_MEMORY=64mb',
-            '--shell-file', test_file('pthread', 'test_pthread_mandelbrot_shell.html')]
+            '--shell-file', test_file('pthread/test_pthread_mandelbrot_shell.html')]
     self.btest_exit('pthread/test_pthread_mandelbrot.cpp', args=args)
 
   # Test that event backproxying works.

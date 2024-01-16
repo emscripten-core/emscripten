@@ -589,6 +589,13 @@ var GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN = false;
 // Set this to 0 to force-disable the workaround if you know the issue will not affect you.
 var GL_WORKAROUND_SAFARI_GETCONTEXT_BUG = true;
 
+// If 1, link with support to *glGetProcAddress() functionality.
+// In WebGL, *glGetProcAddress() causes a substantial code size and performance impact, since WebGL
+// does not natively provide such functionality, and it must be emulated. Using *glGetProcAddress()
+// is not recommended. If you still need to use this, e.g. when porting an existing renderer,
+// you can link with -sGL_ENABLE_GET_PROC_ADDRESS=1 to get support for this functionality.
+var GL_ENABLE_GET_PROC_ADDRESS = false;
+
 // Use JavaScript math functions like Math.tan. This saves code size as we can avoid shipping
 // compiled musl code. However, it can be significantly slower as it calls out to JS. It
 // also may give different results as JS math is specced somewhat differently than libc, and
@@ -1685,6 +1692,13 @@ var TEXTDECODER = 1;
 // [link]
 var EMBIND_STD_STRING_IS_UTF8 = true;
 
+// Embind specific: If enabled, generate Embind's JavaScript invoker functions
+// at compile time and include them in the JS output file. When used with
+// DYNAMIC_EXECUTION=0 this allows exported bindings to be just as fast as
+// DYNAMIC_EXECUTION=1 mode, but without the need for eval(). If there are many
+// bindings the JS output size may be larger though.
+var EMBIND_AOT = false;
+
 // If set to 1, enables support for transferring canvases to pthreads and
 // creating WebGL contexts in them, as well as explicit swap control for GL
 // contexts. This needs browser support for the OffscreenCanvas specification.
@@ -1783,28 +1797,6 @@ var MIN_FIREFOX_VERSION = 79;
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // [link]
 var MIN_SAFARI_VERSION = 140100;
-
-// Specifies the oldest version of Internet Explorer to target. E.g. pass -s
-// MIN_IE_VERSION = 11 to drop support for IE 10 and older.
-// Internet Explorer is at end of life and does not support WebAssembly.
-// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// [link]
-var MIN_IE_VERSION = 0x7FFFFFFF;
-
-// Specifies the oldest version of Edge (EdgeHTML, the non-Chromium based
-// flavor) to target. E.g. pass -sMIN_EDGE_VERSION=40 to drop support for
-// EdgeHTML 39 and older.
-// EdgeHTML 44.17763 was released on November 13, 2018
-// EdgeHTML was completely in April 2021 and replaced by the current
-// Chromium-based Edge.
-// Since version 79, Edge version numbers have mirrored chromium version
-// numbers, so it no longer makes sense specify MIN_EDGE_VERSION independenly.
-// If Chromium and Edge ever start to diverage this setting may be revived with
-// more modern post-chromium default value.
-// See https://en.wikipedia.org/wiki/Microsoft_Edge#New_Edge_release_history
-// MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// [link]
-var MIN_EDGE_VERSION = 0x7FFFFFFF;
 
 // Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 // drop support for Chrome 57 and older.
@@ -2133,8 +2125,8 @@ var LEGACY_SETTINGS = [
   ['BINARYEN_MEM_MAX', 'MAXIMUM_MEMORY'],
   ['BINARYEN_PASSES', [''], 'Use BINARYEN_EXTRA_PASSES to add additional passes'],
   ['SWAPPABLE_ASM_MODULE', [0], 'Fully swappable asm modules are no longer supported'],
-  ['ASM_JS', [1], 'asm.js output is not supported any more'],
-  ['FINALIZE_ASM_JS', [0, 1], 'asm.js output is not supported any more'],
+  ['ASM_JS', [1], 'asm.js output is not supported anymore'],
+  ['FINALIZE_ASM_JS', [0, 1], 'asm.js output is not supported anymore'],
   ['ASYNCIFY_WHITELIST', 'ASYNCIFY_ONLY'],
   ['ASYNCIFY_BLACKLIST', 'ASYNCIFY_REMOVE'],
   ['EXCEPTION_CATCHING_WHITELIST', 'EXCEPTION_CATCHING_ALLOWED'],
@@ -2165,4 +2157,6 @@ var LEGACY_SETTINGS = [
   ['USES_DYNAMIC_ALLOC', [1], 'No longer supported. Use -sMALLOC=none'],
   ['REVERSE_DEPS', ['auto', 'all', 'none'], 'No longer needed'],
   ['RUNTIME_LOGGING', 'RUNTIME_DEBUG'],
+  ['MIN_EDGE_VERSION', [0x7FFFFFFF], 'No longer supported'],
+  ['MIN_IE_VERSION', [0x7FFFFFFF], 'No longer supported'],
 ];

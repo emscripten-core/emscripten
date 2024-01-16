@@ -43,67 +43,64 @@ addToLibrary({
 #endif
       var importPattern = {{{ new RegExp(`^(${ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS.map(x => x.split('.')[1]).join('|').replace(/\*/g, '.*')})$`) }}};
 
-      for (var x in imports) {
-        (function(x) {
-          var original = imports[x];
-          var sig = original.sig;
-          if (typeof original == 'function') {
-            var isAsyncifyImport = original.isAsync || importPattern.test(x);
+      for (let [x, original] of Object.entries(imports)) {
+        let sig = original.sig;
+        if (typeof original == 'function') {
+          let isAsyncifyImport = original.isAsync || importPattern.test(x);
 #if ASYNCIFY == 2
-            // Wrap async imports with a suspending WebAssembly function.
-            if (isAsyncifyImport) {
+          // Wrap async imports with a suspending WebAssembly function.
+          if (isAsyncifyImport) {
 #if ASSERTIONS
-              assert(sig, `Missing __sig for ${x}`);
+            assert(sig, `Missing __sig for ${x}`);
 #endif
-              var type = sigToWasmTypes(sig);
+            let type = sigToWasmTypes(sig);
 #if ASYNCIFY_DEBUG
-              dbg('asyncify: suspendOnReturnedPromise for', x, original);
+            dbg('asyncify: suspendOnReturnedPromise for', x, original);
 #endif
-              // Add space for the suspender promise that will be used in the
-              // Wasm wrapper function.
-              type.parameters.unshift('externref');
-              imports[x] = original = new WebAssembly.Function(
-                type,
-                original,
-                { suspending: 'first' }
-              );
-            }
+            // Add space for the suspender promise that will be used in the
+            // Wasm wrapper function.
+            type.parameters.unshift('externref');
+            imports[x] = original = new WebAssembly.Function(
+              type,
+              original,
+              { suspending: 'first' }
+            );
+          }
 #endif
 #if ASSERTIONS && ASYNCIFY != 2 // We cannot apply assertions with stack switching, as the imports must not be modified from suspender.suspendOnReturnedPromise TODO find a way
-            imports[x] = function() {
-              var originalAsyncifyState = Asyncify.state;
-              try {
-                return original.apply(null, arguments);
-              } finally {
-                // Only asyncify-declared imports are allowed to change the
-                // state.
-                // Changing the state from normal to disabled is allowed (in any
-                // function) as that is what shutdown does (and we don't have an
-                // explicit list of shutdown imports).
-                var changedToDisabled =
-                      originalAsyncifyState === Asyncify.State.Normal &&
-                      Asyncify.state        === Asyncify.State.Disabled;
-                // invoke_* functions are allowed to change the state if we do
-                // not ignore indirect calls.
-                var ignoredInvoke = x.startsWith('invoke_') &&
-                                    {{{ !ASYNCIFY_IGNORE_INDIRECT }}};
-                if (Asyncify.state !== originalAsyncifyState &&
-                    !isAsyncifyImport &&
-                    !changedToDisabled &&
-                    !ignoredInvoke) {
-                  throw new Error(`import ${x} was not in ASYNCIFY_IMPORTS, but changed the state`);
-                }
+          imports[x] = function() {
+            var originalAsyncifyState = Asyncify.state;
+            try {
+              return original.apply(null, arguments);
+            } finally {
+              // Only asyncify-declared imports are allowed to change the
+              // state.
+              // Changing the state from normal to disabled is allowed (in any
+              // function) as that is what shutdown does (and we don't have an
+              // explicit list of shutdown imports).
+              var changedToDisabled =
+                    originalAsyncifyState === Asyncify.State.Normal &&
+                    Asyncify.state        === Asyncify.State.Disabled;
+              // invoke_* functions are allowed to change the state if we do
+              // not ignore indirect calls.
+              var ignoredInvoke = x.startsWith('invoke_') &&
+                                  {{{ !ASYNCIFY_IGNORE_INDIRECT }}};
+              if (Asyncify.state !== originalAsyncifyState &&
+                  !isAsyncifyImport &&
+                  !changedToDisabled &&
+                  !ignoredInvoke) {
+                throw new Error(`import ${x} was not in ASYNCIFY_IMPORTS, but changed the state`);
               }
-            };
+            }
+          };
 #if MAIN_MODULE
-            // The dynamic library loader needs to be able to read .sig
-            // properties, so that it knows function signatures when it adds
-            // them to the table.
-            imports[x].sig = sig;
+          // The dynamic library loader needs to be able to read .sig
+          // properties, so that it knows function signatures when it adds
+          // them to the table.
+          imports[x].sig = sig;
 #endif // MAIN_MODULE
 #endif // ASSERTIONS
-          }
-        })(x);
+        }
       }
     },
 #if ASYNCIFY == 1 && MEMORY64
@@ -123,57 +120,54 @@ addToLibrary({
       Asyncify.asyncExports = new Set();
 #endif
       var ret = {};
-      for (var x in exports) {
-        (function(x) {
-          var original = exports[x];
-          if (typeof original == 'function') {
+      for (let [x, original] of Object.entries(exports)) {
+        if (typeof original == 'function') {
 #if ASYNCIFY == 2
-            // Wrap all exports with a promising WebAssembly function.
-            var isAsyncifyExport = exportPattern.test(x);
-            if (isAsyncifyExport) {
-              Asyncify.asyncExports.add(original);
-              original = Asyncify.makeAsyncFunction(original);
-            }
+          // Wrap all exports with a promising WebAssembly function.
+          let isAsyncifyExport = exportPattern.test(x);
+          if (isAsyncifyExport) {
+            Asyncify.asyncExports.add(original);
+            original = Asyncify.makeAsyncFunction(original);
+          }
 #endif
-            ret[x] = function() {
+          ret[x] = function() {
 #if ASYNCIFY_DEBUG >= 2
-              dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length} try ${x}`);
+            dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length} try ${x}`);
 #endif
 #if ASYNCIFY == 1
-              Asyncify.exportCallStack.push(x);
-              try {
+            Asyncify.exportCallStack.push(x);
+            try {
 #endif
 #if ASYNCIFY == 1 && MEMORY64
-                // When re-winding, the arguments to a function are ignored.  For i32 arguments we
-                // can just call the function with no args at all since and the engine will produce zeros
-                // for all arguments.  However, for i64 arguments we get `undefined cannot be converted to
-                // BigInt`.
-                return original.apply(null, Asyncify.saveOrRestoreRewindArguments(x, arguments));
+              // When re-winding, the arguments to a function are ignored.  For i32 arguments we
+              // can just call the function with no args at all since and the engine will produce zeros
+              // for all arguments.  However, for i64 arguments we get `undefined cannot be converted to
+              // BigInt`.
+              return original.apply(null, Asyncify.saveOrRestoreRewindArguments(x, arguments));
 #else
-                return original.apply(null, arguments);
+              return original.apply(null, arguments);
 #endif
 #if ASYNCIFY == 1
-              } finally {
-                if (!ABORT) {
-                  var y = Asyncify.exportCallStack.pop();
+            } finally {
+              if (!ABORT) {
+                var y = Asyncify.exportCallStack.pop();
 #if ASSERTIONS
-                  assert(y === x);
+                assert(y === x);
 #endif
 #if ASYNCIFY_DEBUG >= 2
-                  dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} finally ${x}`);
+                dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} finally ${x}`);
 #endif
-                  Asyncify.maybeStopUnwind();
-                }
+                Asyncify.maybeStopUnwind();
               }
+            }
 #endif
-            };
+          };
 #if MAIN_MODULE
-            ret[x].orig = original;
+          ret[x].orig = original;
 #endif
-          } else {
-            ret[x] = original;
-          }
-        })(x);
+        } else {
+          ret[x] = original;
+        }
       }
       return ret;
     },
@@ -441,7 +435,7 @@ addToLibrary({
     // WebAssembly.Functions.
     asyncExports: null,
     isAsyncExport(func) {
-      return Asyncify.asyncExports && Asyncify.asyncExports.has(func);
+      return Asyncify.asyncExports?.has(func);
     },
     handleAsync: async (startAsync) => {
       {{{ runtimeKeepalivePush(); }}}

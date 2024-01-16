@@ -1,10 +1,8 @@
 #!/usr/bin/env node
 
-'use strict';
-
-const acorn = require('acorn');
-const terser = require('../third_party/terser/terser');
-const fs = require('fs');
+import * as acorn from 'acorn';
+import * as terser from '../third_party/terser/terser.js';
+import * as fs from 'fs';
 
 // Utilities
 
@@ -23,6 +21,15 @@ function read(x) {
 function assert(condition, text) {
   if (!condition) {
     throw new Error(text);
+  }
+}
+
+function assertAt(condition, node, message = '') {
+  if (!condition) {
+    const loc = acorn.getLineInfo(input, node.start);
+    throw new Error(
+      `${infile}:${loc.line}: ${message} (use EMCC_DEBUG_SAVE=1 to preserve temporary inputs)`,
+    );
   }
 }
 
@@ -190,7 +197,7 @@ function restoreForVars(node) {
   let restored = 0;
   function fix(init) {
     if (init && init.type === 'EmptyStatement') {
-      assert(init.oldDeclarations);
+      assertAt(init.oldDeclarations, init);
       init.type = 'VariableDeclaration';
       init.declarations = init.oldDeclarations;
       restored++;
@@ -417,25 +424,22 @@ function runJSDCE(ast, aggressive) {
 
     recursiveWalk(ast, {
       VariableDeclarator(node, c) {
-        const id = node.id;
-        if (id.type === 'ObjectPattern') {
-          id.properties.forEach((node) => {
-            const value = node.value;
-            assert(value.type === 'Identifier');
-            const name = value.name;
+        function traverse(id) {
+          if (id.type === 'ObjectPattern') {
+            for (const prop of id.properties) {
+              traverse(prop.value);
+            }
+          } else if (id.type === 'ArrayPattern') {
+            for (const elem of id.elements) {
+              if (elem) traverse(elem);
+            }
+          } else {
+            assertAt(id.type === 'Identifier', id, `expected Indentifier but found ${id.type}`);
+            const name = id.name;
             ensureData(scopes[scopes.length - 1], name).def = 1;
-          });
-        } else if (id.type === 'ArrayPattern') {
-          id.elements.forEach((node) => {
-            assert(node.type === 'Identifier');
-            const name = node.name;
-            ensureData(scopes[scopes.length - 1], name).def = 1;
-          });
-        } else {
-          assert(id.type === 'Identifier');
-          const name = id.name;
-          ensureData(scopes[scopes.length - 1], name).def = 1;
+          }
         }
+        traverse(node.id);
         if (node.init) c(node.init);
       },
       ObjectExpression(node, c) {
@@ -726,7 +730,7 @@ function emitDCEGraph(ast) {
           // use the left hand identifier.
           value = value.left;
         }
-        assert(value.type === 'Identifier');
+        assertAt(value.type === 'Identifier', value);
         imports.push(value.name); // the name doesn't matter, only the value which is that actual thing we are importing
       });
       foundWasmImportsAssign = true;
@@ -786,7 +790,7 @@ function emitDCEGraph(ast) {
               //  var x = Module['x'] = 1234;
               // this form occurs when global addresses are exported from the
               // module.  It doesn't constitute a usage.
-              assert(typeof value.right.value === 'number');
+              assertAt(typeof value.right.value === 'number', value.right);
               emptyOut(node);
             }
           }
@@ -987,7 +991,10 @@ function emitDCEGraph(ast) {
   print(JSON.stringify(graph, null, ' '));
 }
 
-// Apply graph removals from running wasm-metadce
+// Apply graph removals from running wasm-metadce. This only removes imports and
+// exports from JS side, effectively disentangling the wasm and JS sides that
+// way (and we leave further DCE on the JS and wasm sides to their respective
+// optimizers, closure compiler and binaryen).
 function applyDCEGraphRemovals(ast) {
   const unused = new Set(extraInfo.unused);
 
@@ -1720,7 +1727,7 @@ function minifyLocals(ast) {
         // locals are just numbers, not functions; functions are all declared
         // in the outer scope. If a local is called, that is a bug.
         if (node.callee.type === 'Identifier') {
-          assert(!isLocalName(node.callee.name), 'cannot call a local');
+          assertAt(!isLocalName(node.callee.name), node.callee, 'cannot call a local');
         }
       },
     });

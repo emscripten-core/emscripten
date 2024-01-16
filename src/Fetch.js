@@ -84,7 +84,7 @@ function fetchDeleteCachedData(db, fetch, onsuccess, onerror) {
 
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
   var path = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.destinationPath }}} >> 2];
-  if (!path) path = HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.url }}} >> 2];
+  path ||= HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.url }}} >> 2];
   var pathStr = UTF8ToString(path);
 
   try {
@@ -133,7 +133,7 @@ function fetchLoadCachedData(db, fetch, onsuccess, onerror) {
 
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
   var path = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.destinationPath }}} >> 2];
-  if (!path) path = HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.url }}} >> 2];
+  path ||= HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.url }}} >> 2];
   var pathStr = UTF8ToString(path);
 
   try {
@@ -198,7 +198,7 @@ function fetchCacheData(/** @type {IDBDatabase} */ db, fetch, data, onsuccess, o
 
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
   var destinationPath = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.destinationPath }}} >> 2];
-  if (!destinationPath) destinationPath = HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.url }}} >> 2];
+  destinationPath ||= HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.url }}} >> 2];
   var destinationPathStr = UTF8ToString(destinationPath);
 
   try {
@@ -248,7 +248,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
   var requestMethod = UTF8ToString(fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.requestMethod }}});
-  if (!requestMethod) requestMethod = 'GET';
+  requestMethod ||= 'GET';
   var timeoutMsecs = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.timeoutMSecs, 'u32') }}};
   var userName = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.userName, '*') }}};
   var password = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.password, '*') }}};
@@ -354,12 +354,12 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 #if FETCH_DEBUG
       dbg(`fetch: xhr of URL "${xhr.url_}" / responseURL "${xhr.responseURL}" succeeded with status ${xhr.status}`);
 #endif
-      if (onsuccess) onsuccess(fetch, xhr, e);
+      onsuccess?.(fetch, xhr, e);
     } else {
 #if FETCH_DEBUG
       dbg(`fetch: xhr of URL "${xhr.url_}" / responseURL "${xhr.responseURL}" failed with status ${xhr.status}`);
 #endif
-      if (onerror) onerror(fetch, xhr, e);
+      onerror?.(fetch, xhr, e);
     }
   };
   xhr.onerror = (e) => {
@@ -371,7 +371,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     dbg(`fetch: xhr of URL "${xhr.url_}" / responseURL "${xhr.responseURL}" finished with error, readyState ${xhr.readyState} and status ${xhr.status}`);
 #endif
     saveResponseAndStatus();
-    if (onerror) onerror(fetch, xhr, e);
+    onerror?.(fetch, xhr, e);
   };
   xhr.ontimeout = (e) => {
     // check if xhr was aborted by user and don't try to call back
@@ -381,7 +381,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 #if FETCH_DEBUG
     dbg(`fetch: xhr of URL "${xhr.url_}" / responseURL "${xhr.responseURL}" timed out, readyState ${xhr.readyState} and status ${xhr.status}`);
 #endif
-    if (onerror) onerror(fetch, xhr, e);
+    onerror?.(fetch, xhr, e);
   };
   xhr.onprogress = (e) => {
     // check if xhr was aborted by user and don't try to call back
@@ -410,7 +410,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     if (xhr.readyState >= 3 && xhr.status === 0 && e.loaded > 0) xhr.status = 200;
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
-    if (onprogress) onprogress(fetch, xhr, e);
+    onprogress?.(fetch, xhr, e);
     if (ptr) {
       _free(ptr);
     }
@@ -425,7 +425,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     if (xhr.readyState >= 2) {
       HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
     }
-    if (onreadystatechange) onreadystatechange(fetch, xhr, e);
+    onreadystatechange?.(fetch, xhr, e);
   };
 #if FETCH_DEBUG
   dbg(`fetch: xhr.send(data=${data})`);
@@ -436,7 +436,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 #if FETCH_DEBUG
     dbg(`fetch: xhr failed with exception: ${e}`);
 #endif
-    if (onerror) onerror(fetch, xhr, e);
+    onerror?.(fetch, xhr, e);
   }
 }
 
@@ -468,14 +468,14 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     {{{ runtimeKeepalivePop() }}}
     doCallback(() => {
       if (onsuccess) {{{ makeDynCall('vp', 'onsuccess') }}}(fetch);
-      else if (successcb) successcb(fetch);
+      else successcb?.(fetch);
     });
   };
 
   var reportProgress = (fetch, xhr, e) => {
     doCallback(() => {
       if (onprogress) {{{ makeDynCall('vp', 'onprogress') }}}(fetch);
-      else if (progresscb) progresscb(fetch);
+      else progresscb?.(fetch);
     });
   };
 
@@ -486,7 +486,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     {{{ runtimeKeepalivePop() }}}
     doCallback(() => {
       if (onerror) {{{ makeDynCall('vp', 'onerror') }}}(fetch);
-      else if (errorcb) errorcb(fetch);
+      else errorcb?.(fetch);
     });
   };
 
@@ -496,7 +496,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
 #endif
     doCallback(() => {
       if (onreadystatechange) {{{ makeDynCall('vp', 'onreadystatechange') }}}(fetch);
-      else if (readystatechangecb) readystatechangecb(fetch);
+      else readystatechangecb?.(fetch);
     });
   };
 
@@ -519,7 +519,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
       {{{ runtimeKeepalivePop() }}}
       doCallback(() => {
         if (onsuccess) {{{ makeDynCall('vp', 'onsuccess') }}}(fetch);
-        else if (successcb) successcb(fetch);
+        else successcb?.(fetch);
       });
     };
     var storeError = (fetch, xhr, e) => {
@@ -529,7 +529,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
       {{{ runtimeKeepalivePop() }}}
       doCallback(() => {
         if (onsuccess) {{{ makeDynCall('vp', 'onsuccess') }}}(fetch);
-        else if (successcb) successcb(fetch);
+        else successcb?.(fetch);
       });
     };
     fetchCacheData(Fetch.dbInstance, fetch, xhr.response, storeSuccess, storeError);

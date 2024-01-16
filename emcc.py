@@ -44,7 +44,6 @@ from tools.shared import DYNAMICLIB_ENDINGS, STATICLIB_ENDINGS
 from tools.response_file import substitute_response_files
 from tools import config
 from tools import cache
-from tools import link
 from tools.settings import default_setting, user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
 from tools.utils import read_file, removeprefix
 
@@ -535,6 +534,13 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
 ''')
     return 0
 
+  ## Process argument and setup the compiler
+  state = EmccState(args)
+  options, newargs = phase_parse_arguments(state)
+
+  if not shared.SKIP_SUBPROCS:
+    shared.check_sanity()
+
   if '--version' in args:
     print(version_string())
     print('''\
@@ -566,13 +572,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       parts = [x for x in parts if x not in ['-c', '-o', '-v', '-emit-llvm'] and input_file not in x and temp_target not in x]
       print(shared.shlex_join(parts[1:]))
     return 0
-
-  ## Process argument and setup the compiler
-  state = EmccState(args)
-  options, newargs = phase_parse_arguments(state)
-
-  if not shared.SKIP_SUBPROCS:
-    shared.check_sanity()
 
   if 'EMMAKEN_NO_SDK' in os.environ:
     exit_with_error('EMMAKEN_NO_SDK is no longer supported.  The standard -nostdlib and -nostdinc flags should be used instead')
@@ -619,28 +618,27 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       print(libname)
     return 0
 
-  if not input_files and not state.link_flags:
-    exit_with_error('no input files')
-
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
 
   if state.mode == Mode.POST_LINK_ONLY:
     if len(input_files) != 1:
       exit_with_error('--post-link requires a single input file')
+    # Delay import of link.py to avoid processing this file when only compiling
+    from tools import link
     link.run_post_link(input_files[0][1], options, state, newargs)
     return 0
 
   ## Compile source code to object files
   linker_inputs = phase_compile_inputs(options, state, newargs, input_files)
 
-  if state.mode != Mode.COMPILE_AND_LINK:
+  if state.mode == Mode.COMPILE_AND_LINK:
+    # Delay import of link.py to avoid processing this file when only compiling
+    from tools import link
+    return link.run(linker_inputs, options, state, newargs)
+  else:
     logger.debug('stopping after compile phase')
-    for flag in state.link_flags:
-      diagnostics.warning('unused-command-line-argument', "argument unused during compilation: '%s'" % flag[1])
     return 0
-
-  return link.run(linker_inputs, options, state, newargs)
 
 
 def normalize_boolean_setting(name, value):
@@ -667,9 +665,9 @@ def phase_parse_arguments(state):
   newargs = diagnostics.capture_warnings(newargs)
 
   for i in range(len(newargs)):
-    if newargs[i] in ('-l', '-L', '-I'):
-      # Scan for individual -l/-L/-I arguments and concatenate the next arg on
-      # if there is no suffix
+    if newargs[i] in ('-l', '-L', '-I', '-z'):
+      # Scan for flags that can be written as either one or two arguments
+      # and normalize them to the single argument form.
       newargs[i] += newargs[i + 1]
       newargs[i + 1] = ''
 
@@ -758,30 +756,16 @@ def phase_setup(options, state, newargs):
         else:
           message = arg + ': Unknown format, not a static library!'
         exit_with_error(message)
-      if file_suffix in DYNAMICLIB_ENDINGS and not building.is_bitcode(arg) and not building.is_wasm(arg):
-        # For shared libraries that are neither bitcode nor wasm, assuming its local native
-        # library and attempt to find a library by the same name in our own library path.
-        # TODO(sbc): Do we really need this feature?  See test_other.py:test_local_link
-        libname = removeprefix(get_library_basename(arg), 'lib')
-        flag = '-l' + libname
-        diagnostics.warning('map-unrecognized-libraries', f'unrecognized file type: `{arg}`.  Mapping to `{flag}` and hoping for the best')
-        state.add_link_flag(i, flag)
-      else:
-        input_files.append((i, arg))
+      input_files.append((i, arg))
     elif arg.startswith('-L'):
       state.add_link_flag(i, arg)
-      newargs[i] = ''
     elif arg.startswith('-l'):
       state.add_link_flag(i, arg)
-      newargs[i] = ''
     elif arg == '-z':
       state.add_link_flag(i, newargs[i])
       state.add_link_flag(i + 1, newargs[i + 1])
-      newargs[i] = ''
-      newargs[i + 1] = ''
     elif arg.startswith('-z'):
       state.add_link_flag(i, newargs[i])
-      newargs[i] = ''
     elif arg.startswith('-Wl,'):
       # Multiple comma separated link flags can be specified. Create fake
       # fractional indices for these: -Wl,a,b,c,d at index 4 becomes:
@@ -789,16 +773,10 @@ def phase_setup(options, state, newargs):
       link_flags_to_add = arg.split(',')[1:]
       for flag_index, flag in enumerate(link_flags_to_add):
         state.add_link_flag(i + float(flag_index) / len(link_flags_to_add), flag)
-      newargs[i] = ''
     elif arg == '-Xlinker':
       state.add_link_flag(i + 1, newargs[i + 1])
-      newargs[i] = ''
-      newargs[i + 1] = ''
     elif arg == '-s':
-      # -s and some other compiler flags are normally passed onto the linker
-      # TODO(sbc): Pass this and other flags through when using lld
-      # link_flags.append((i, arg))
-      newargs[i] = ''
+      state.add_link_flag(i, newargs[i])
     elif arg == '-':
       input_files.append((i, arg))
       newargs[i] = ''
@@ -935,6 +913,11 @@ def phase_setup(options, state, newargs):
     else:
       settings.SUPPORT_LONGJMP = 'emscripten'
 
+  # SDL2 requires eglGetProcAddress() to work.
+  # NOTE: if SDL2 is updated to not rely on eglGetProcAddress(), this can be removed
+  if settings.USE_SDL == 2 or settings.USE_SDL_MIXER == 2 or settings.USE_SDL_GFX == 2:
+    default_setting('GL_ENABLE_GET_PROC_ADDRESS', 1)
+
   return (newargs, input_files)
 
 
@@ -951,13 +934,19 @@ def get_clang_output_extension(state):
     return '.o'
 
 
+def exec_subprocess_and_exit(cmd):
+  if utils.WINDOWS:
+    shared.check_call(cmd)
+    sys.exit(0)
+  else:
+    shared.print_compiler_stage(cmd)
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os.execv(cmd[0], cmd)
+
+
 @ToolchainProfiler.profile_block('compile inputs')
 def phase_compile_inputs(options, state, newargs, input_files):
-  def is_link_flag(flag):
-    if flag in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs'):
-      return True
-    return flag.startswith(('-l', '-L', '-Wl,'))
-
   if shared.run_via_emxx:
     compiler = [shared.CLANG_CXX]
   else:
@@ -967,7 +956,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     logger.debug('using compiler wrapper: %s', config.COMPILER_WRAPPER)
     compiler.insert(0, config.COMPILER_WRAPPER)
 
-  compile_args = [a for a in newargs if a and not is_link_flag(a)]
+  compile_args = newargs
   system_libs.ensure_sysroot()
 
   def get_language_mode(args):
@@ -1004,8 +993,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     # output the dependency rule. Warning: clang and gcc behave differently
     # with -MF! (clang seems to not recognize it)
     logger.debug(('just preprocessor ' if state.has_dash_E else 'just dependencies: ') + ' '.join(cmd))
-    shared.check_call(cmd)
-    return []
+    exec_subprocess_and_exit(cmd)
 
   # Precompiled headers support
   if state.mode == Mode.PCH:
@@ -1017,8 +1005,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     if options.output_file:
       cmd += ['-o', options.output_file]
     logger.debug(f"running (for precompiled headers): {cmd[0]} {' '.join(cmd[1:])}")
-    shared.check_call(cmd)
-    return []
+    exec_subprocess_and_exit(cmd)
 
   if state.mode == Mode.COMPILE_ONLY:
     inputs = [i[1] for i in input_files]
@@ -1030,18 +1017,30 @@ def phase_compile_inputs(options, state, newargs, input_files):
       cmd += ['-o', options.output_file]
       if get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
         diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
-    shared.check_call(cmd)
-    if not options.output_file:
-      # Rename object files to match --default-obj-ext
+    ext = get_clang_output_extension(state)
+    if not options.output_file and options.default_object_extension != ext:
+      # If we are using a non-standard output file extention we cannot use
+      # exec_subprocess_and_exit here since we need to rename the files
+      # after clang runs (since clang does not support --default-obj-ext)
       # TODO: Remove '--default-obj-ext' to reduce this complexity
-      ext = get_clang_output_extension(state)
-      if options.default_object_extension != ext:
-        for i in inputs:
-          output = unsuffixed_basename(i) + ext
-          new_output = unsuffixed_basename(i) + options.default_object_extension
-          shutil.move(output, new_output)
-    return []
+      shared.check_call(cmd)
+      for i in inputs:
+        output = unsuffixed_basename(i) + ext
+        new_output = unsuffixed_basename(i) + options.default_object_extension
+        shutil.move(output, new_output)
+      sys.exit(0)
+    else:
+      exec_subprocess_and_exit(cmd)
 
+  # In COMPILE_AND_LINK we need to compile source files too, but we also need to
+  # filter out the link flags
+
+  def is_link_flag(flag):
+    if flag in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
+      return True
+    return flag.startswith(('-l', '-L', '-Wl,', '-z'))
+
+  compile_args = [a for a in compile_args if a and not is_link_flag(a)]
   linker_inputs = []
   seen_names = {}
 

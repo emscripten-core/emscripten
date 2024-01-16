@@ -112,7 +112,7 @@ commands:
     description: "install canary version of node"
     steps:
       - install-node-version:
-         node_version: "21.0.0-v8-canary202309143a48826a08"
+         node_version: "22.0.0-v8-canary20231108ff311d5a39"
          canary: true
   install-v8:
     description: "install v8 using jsvu"
@@ -651,6 +651,7 @@ jobs:
       - upload-test-results
   test-wasm64_4gb:
     environment:
+      LANG: "C.UTF-8"
       # Only run 2 tests at a time to avoid OOM (since each tests used >4gb)
       EMCC_CORES: "2"
     # We don't use `bionic` here since its too old to run recent node versions:
@@ -721,6 +722,7 @@ jobs:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
     executor: linux-python
     environment:
+      LANG: "C.UTF-8"
       EMTEST_SKIP_V8: "1"
     steps:
       - checkout
@@ -731,7 +733,7 @@ jobs:
       - install-emsdk
       - install-node-canary
       - run-tests:
-          title: "selected subset"
+          title: "node (canary)"
           test_targets: "
             other.test_deterministic
             other.test_gen_struct_info
@@ -747,10 +749,11 @@ jobs:
       - install-node-version:
           node_version: "10.19.0"
       - run-tests:
-          title: "selected subset"
+          title: "node (oldest / 10.19.0)"
           test_targets: "
             other.test_gen_struct_info
             other.test_native_call_before_init
+            other.test_js_optimizer_verbose
             other.test_node_unhandled_rejection
             other.test_full_js_library*
             core2.test_hello_world"
@@ -761,11 +764,12 @@ jobs:
       - run-tests:
           # Run tests that on older versions of node would require flags, but
           # those flags should not be injected on newer versions.
-          title: "selected subset"
+          title: "node (latest)"
           test_targets: "-v
             other.test_gen_struct_info
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
+            other.test_js_optimizer_verbose
             other.test_min_node_version
             other.test_node_emscripten_num_logical_cores
             core2.test_pthread_create
@@ -802,6 +806,8 @@ jobs:
           test_targets: "
             browser64
             skip:browser64.test_4gb_fail
+            browser64_4gb.test_async_*
+            browser64_4gb.test_audio_worklet*
             browser64_4gb.test_emscripten_log
             "
   test-browser-firefox:
@@ -837,6 +843,7 @@ jobs:
       EMTEST_SKIP_SIMD: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_BROWSER: "0"
     steps:
       - checkout
       - run:

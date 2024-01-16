@@ -228,7 +228,7 @@ var LibraryExceptions = {
   $findMatchingCatch: (args) => {
     var thrown =
 #if EXCEPTION_STACK_TRACES
-      exceptionLast && exceptionLast.excPtr;
+      exceptionLast?.excPtr;
 #else
       exceptionLast;
 #endif

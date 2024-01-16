@@ -28,9 +28,7 @@ addToLibrary({
           // are just their corresponding parts within their given path,
           // rather than incremental aggregates which include their parent's
           // directories.
-          if (!createdParents[curr]) {
-            createdParents[curr] = WORKERFS.createNode(parent, parts[i], WORKERFS.DIR_MODE, 0);
-          }
+          createdParents[curr] ||= WORKERFS.createNode(parent, parts[i], WORKERFS.DIR_MODE, 0);
           parent = createdParents[curr];
         }
         return parent;
@@ -116,10 +114,7 @@ addToLibrary({
       },
       readdir(node) {
         var entries = ['.', '..'];
-        for (var key in node.contents) {
-          if (!node.contents.hasOwnProperty(key)) {
-            continue;
-          }
+        for (var key of Object.keys(node.contents)) {
           entries.push(key);
         }
         return entries;

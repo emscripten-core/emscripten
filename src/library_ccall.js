@@ -86,7 +86,7 @@ addToLibrary({
       return convertReturnValue(ret);
     }
 #if ASYNCIFY
-  var asyncMode = opts && opts.async;
+  var asyncMode = opts?.async;
 #endif
 
 #if ASYNCIFY == 1

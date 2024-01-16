@@ -1533,6 +1533,14 @@ def parse_args():
                       help='Launches the page in a browser of an Android '
                            'device connected to an USB on the local system. (via adb)')
 
+  parser.add_argument('--android_tunnel', action='store_true',
+                      help='Expose the port directly to the Android device '
+                           'and connect to it as localhost, establishing '
+                           'cross origin isolation. Implies --android. A '
+                           'reverse socket connection is created by adb '
+                           'reverse, and remains after emrun terminates (it '
+                           'can be removed by adb reverse --remove).')
+
   parser.add_argument('--system_info', action='store_true',
                       help='Prints information about the current system at startup.')
 
@@ -1566,6 +1574,9 @@ def run():
   global browser_process, browser_exe, processname_killed_atexit, emrun_options, emrun_not_enabled_nag_printed
 
   options = emrun_options = parse_args()
+
+  if options.android_tunnel:
+    options.android = True
 
   if options.android:
     global ADB
@@ -1636,7 +1647,12 @@ def run():
   if not file_to_serve_is_url:
     if len(options.cmdlineparams):
       url += '?' + '&'.join(options.cmdlineparams)
-    hostname = socket.gethostbyname(socket.gethostname()) if options.android else options.hostname
+    if options.android_tunnel:
+      hostname = 'localhost'
+    elif options.android:
+      hostname = socket.gethostbyname(socket.gethostname())
+    else:
+      hostname = options.hostname
     # create url for browser after opening the server so we have the final port number in case we are binding to port 0
     url = 'http://' + hostname + ':' + str(options.port) + '/' + url
 
@@ -1670,6 +1686,9 @@ def run():
       # 3. Type 'adb pull <packagename>.apk' to copy the apk of that application to PC.
       # 4. Type 'aapt d xmltree <packagename>.apk AndroidManifest.xml > manifest.txt' to extract the manifest from the package.
       # 5. Locate the name of the main activity for the browser in manifest.txt and add an entry to above list in form 'appname/mainactivityname'
+
+      if options.android_tunnel:
+        subprocess.check_call([ADB, 'reverse', 'tcp:' + str(options.port), 'tcp:' + str(options.port)])
 
       url = url.replace('&', '\\&')
       browser = [ADB, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-n', browser_app, '-d', url]

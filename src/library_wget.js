@@ -232,9 +232,7 @@ var LibraryWget = {
   emscripten_async_wget2_abort__proxy: 'sync',
   emscripten_async_wget2_abort: (handle) => {
     var http = wget.wgetRequests[handle];
-    if (http) {
-      http.abort();
-    }
+    http?.abort();
   },
 };
 

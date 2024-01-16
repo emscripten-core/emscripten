@@ -95,7 +95,7 @@ var LibraryBrowser = {
           }
         }
         callUserCallback(func);
-        if (Module['postMainLoop']) Module['postMainLoop']();
+        Module['postMainLoop']?.();
       }
     },
     isFullscreen: false,
@@ -140,11 +140,11 @@ var LibraryBrowser = {
           ctx.drawImage(img, 0, 0);
           preloadedImages[name] = canvas;
           URL.revokeObjectURL(url);
-          if (onload) onload(byteArray);
+          onload?.(byteArray);
         };
         img.onerror = (event) => {
           err(`Image ${url} could not be decoded`);
-          if (onerror) onerror();
+          onerror?.();
         };
         img.src = url;
       };
@@ -160,13 +160,13 @@ var LibraryBrowser = {
           if (done) return;
           done = true;
           preloadedAudios[name] = audio;
-          if (onload) onload(byteArray);
+          onload?.(byteArray);
         }
         function fail() {
           if (done) return;
           done = true;
           preloadedAudios[name] = new Audio(); // empty shim
-          if (onerror) onerror();
+          onerror?.();
         }
         var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
         var url = URL.createObjectURL(b); // XXX we never revoke this!
@@ -344,8 +344,8 @@ var LibraryBrowser = {
             Browser.updateCanvasDimensions(canvas);
           }
         }
-        if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullscreen);
-        if (Module['onFullscreen']) Module['onFullscreen'](Browser.isFullscreen);
+        Module['onFullScreen']?.(Browser.isFullscreen);
+        Module['onFullscreen']?.(Browser.isFullscreen);
       }
 
       if (!Browser.fullscreenHandlersInstalled) {
@@ -459,10 +459,8 @@ var LibraryBrowser = {
     },
 
     getUserMedia(func) {
-      if (!window.getUserMedia) {
-        window.getUserMedia = navigator['getUserMedia'] ||
+      window.getUserMedia ||= navigator['getUserMedia'] ||
                               navigator['mozGetUserMedia'];
-      }
       window.getUserMedia(func);
     },
 
@@ -533,6 +531,46 @@ var LibraryBrowser = {
     touches: {},
     lastTouches: {},
 
+    // Return the mouse coordinates relative to the top, left of the canvas, corrected for scroll offset.
+    calculateMouseCoords(pageX, pageY) {
+      // Calculate the movement based on the changes
+      // in the coordinates.
+      var rect = Module["canvas"].getBoundingClientRect();
+      var cw = Module["canvas"].width;
+      var ch = Module["canvas"].height;
+
+      // Neither .scrollX or .pageXOffset are defined in a spec, but
+      // we prefer .scrollX because it is currently in a spec draft.
+      // (see: http://www.w3.org/TR/2013/WD-cssom-view-20131217/)
+      var scrollX = ((typeof window.scrollX != 'undefined') ? window.scrollX : window.pageXOffset);
+      var scrollY = ((typeof window.scrollY != 'undefined') ? window.scrollY : window.pageYOffset);
+#if ASSERTIONS
+      // If this assert lands, it's likely because the browser doesn't support scrollX or pageXOffset
+      // and we have no viable fallback.
+      assert((typeof scrollX != 'undefined') && (typeof scrollY != 'undefined'), 'Unable to retrieve scroll position, mouse positions likely broken.');
+#endif
+      var adjustedX = pageX - (scrollX + rect.left);
+      var adjustedY = pageY - (scrollY + rect.top);
+
+      // the canvas might be CSS-scaled compared to its backbuffer;
+      // SDL-using content will want mouse coordinates in terms
+      // of backbuffer units.
+      adjustedX = adjustedX * (cw / rect.width);
+      adjustedY = adjustedY * (ch / rect.height);
+
+      return { x: adjustedX, y: adjustedY };
+    },
+
+    // Directly set the Browser state with new mouse coordinates calculated using calculateMouseCoords.
+    setMouseCoords(pageX, pageY) {
+      const {x, y} = Browser.calculateMouseCoords(pageX, pageY);
+      Browser.mouseMovementX = x - Browser.mouseX;
+      Browser.mouseMovementY = y - Browser.mouseY;
+      Browser.mouseX = x;
+      Browser.mouseY = y;
+    },
+
+    // Unpack a "mouse" event, handling SDL touch paths and pointerlock compatibility stuff.
     calculateMouseEvent(event) { // event should be mousemove, mousedown or mouseup
       if (Browser.pointerLock) {
         // When the pointer is locked, calculate the coordinates
@@ -557,62 +595,27 @@ var LibraryBrowser = {
           Browser.mouseY += Browser.mouseMovementY;
         }
       } else {
-        // Otherwise, calculate the movement based on the changes
-        // in the coordinates.
-        var rect = Module["canvas"].getBoundingClientRect();
-        var cw = Module["canvas"].width;
-        var ch = Module["canvas"].height;
-
-        // Neither .scrollX or .pageXOffset are defined in a spec, but
-        // we prefer .scrollX because it is currently in a spec draft.
-        // (see: http://www.w3.org/TR/2013/WD-cssom-view-20131217/)
-        var scrollX = ((typeof window.scrollX != 'undefined') ? window.scrollX : window.pageXOffset);
-        var scrollY = ((typeof window.scrollY != 'undefined') ? window.scrollY : window.pageYOffset);
-#if ASSERTIONS
-        // If this assert lands, it's likely because the browser doesn't support scrollX or pageXOffset
-        // and we have no viable fallback.
-        assert((typeof scrollX != 'undefined') && (typeof scrollY != 'undefined'), 'Unable to retrieve scroll position, mouse positions likely broken.');
-#endif
-
         if (event.type === 'touchstart' || event.type === 'touchend' || event.type === 'touchmove') {
           var touch = event.touch;
           if (touch === undefined) {
             return; // the "touch" property is only defined in SDL
 
           }
-          var adjustedX = touch.pageX - (scrollX + rect.left);
-          var adjustedY = touch.pageY - (scrollY + rect.top);
-
-          adjustedX = adjustedX * (cw / rect.width);
-          adjustedY = adjustedY * (ch / rect.height);
-
-          var coords = { x: adjustedX, y: adjustedY };
+          var coords = Browser.calculateMouseCoords(touch.pageX, touch.pageY);
 
           if (event.type === 'touchstart') {
             Browser.lastTouches[touch.identifier] = coords;
             Browser.touches[touch.identifier] = coords;
           } else if (event.type === 'touchend' || event.type === 'touchmove') {
             var last = Browser.touches[touch.identifier];
-            if (!last) last = coords;
+            last ||= coords;
             Browser.lastTouches[touch.identifier] = last;
             Browser.touches[touch.identifier] = coords;
           }
           return;
         }
 
-        var x = event.pageX - (scrollX + rect.left);
-        var y = event.pageY - (scrollY + rect.top);
-
-        // the canvas might be CSS-scaled compared to its backbuffer;
-        // SDL-using content will want mouse coordinates in terms
-        // of backbuffer units.
-        x = x * (cw / rect.width);
-        y = y * (ch / rect.height);
-
-        Browser.mouseMovementX = x - Browser.mouseX;
-        Browser.mouseMovementY = y - Browser.mouseY;
-        Browser.mouseX = x;
-        Browser.mouseY = y;
+        Browser.setMouseCoords(event.pageX, event.pageY);
       }
     },
 
@@ -727,14 +730,15 @@ var LibraryBrowser = {
     return 0;
   },
 
+  $Browser_asyncPrepareDataCounter: 0,
+
   emscripten_run_preload_plugins_data__proxy: 'sync',
-  emscripten_run_preload_plugins_data__deps: ['$stringToNewUTF8'],
+  emscripten_run_preload_plugins_data__deps: ['$stringToNewUTF8', '$Browser_asyncPrepareDataCounter'],
   emscripten_run_preload_plugins_data: (data, size, suffix, arg, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
 
     var _suffix = UTF8ToString(suffix);
-    if (!Browser.asyncPrepareDataCounter) Browser.asyncPrepareDataCounter = 0;
-    var name = 'prepare_data_' + (Browser.asyncPrepareDataCounter++) + '.' + _suffix;
+    var name = 'prepare_data_' + (Browser_asyncPrepareDataCounter++) + '.' + _suffix;
     var cname = stringToNewUTF8(name);
     FS.createPreloadedFile(
       '/',
@@ -790,7 +794,7 @@ var LibraryBrowser = {
 
     var loadError = () => {
       {{{ runtimeKeepalivePop() }}}
-      if (onerror) onerror();
+      onerror?.();
     };
 
 #if ENVIRONMENT_MAY_BE_NODE && DYNAMIC_EXECUTION
@@ -1024,7 +1028,7 @@ var LibraryBrowser = {
       // to queue the newest produced audio samples.
       // TODO: Consider adding pre- and post- rAF callbacks so that GL.newRenderingFrameStarted() and SDL.audio.queueNewAudioData()
       //       do not need to be hardcoded into this function, but can be more generic.
-      if (typeof SDL == 'object' && SDL.audio && SDL.audio.queueNewAudioData) SDL.audio.queueNewAudioData();
+      if (typeof SDL == 'object') SDL.audio?.queueNewAudioData?.();
 
       Browser.mainLoop.scheduler();
     }

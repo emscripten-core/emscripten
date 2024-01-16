@@ -654,10 +654,10 @@ Why do I get a stack size error when optimizing: ``RangeError: Maximum call stac
 
 You may need to increase the stack size for :term:`node.js`.
 
-On Linux and Mac macOS, you can just do ``NODE_JS = ['node',
-'--stack_size=8192']`` in the :ref:`compiler-configuration-file`. On Windows,
-you will also need ``--max-stack-size=8192``, and also run ``editbin
-/stack:33554432 node.exe``.
+On Linux and Mac macOS, you can just do ``NODE_JS = ['/path/to/node',
+'--stack_size=8192']`` in the :ref:`compiler-configuration-file`. On Windows
+(for node versions older than v19), you will also need
+``--max-stack-size=8192``, and also run ``editbin /stack:33554432 node.exe``.
 
 
 How do I pass int64_t and uint64_t values from js into Wasm functions?

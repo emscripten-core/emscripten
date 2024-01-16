@@ -20,10 +20,10 @@ int main() {
     FS.mount(NODEFS, { root: '.' }, 'working');
 #endif
     FS.chdir('working');
-    FS.writeFile('forbidden', ""); FS.chmod('forbidden', 0000);
-    FS.writeFile('readable',  ""); FS.chmod('readable',  0444);
-    FS.writeFile('writeable', ""); FS.chmod('writeable', 0222);
-    FS.writeFile('allaccess', ""); FS.chmod('allaccess', 0777);
+    FS.writeFile('forbidden', ""); FS.chmod('forbidden', 0o000);
+    FS.writeFile('readable',  ""); FS.chmod('readable',  0o444);
+    FS.writeFile('writeable', ""); FS.chmod('writeable', 0o222);
+    FS.writeFile('allaccess', ""); FS.chmod('allaccess', 0o777);
     FS.writeFile('fchmodtest', "");
   );
 

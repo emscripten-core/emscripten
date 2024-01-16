@@ -25,6 +25,7 @@ if (ENVIRONMENT_IS_NODE) {
   parentPort.on('message', (data) => onmessage({ data: data }));
 
   var fs = require('fs');
+  var vm = require('vm');
 
   Object.assign(global, {
     self: global,
@@ -34,7 +35,7 @@ if (ENVIRONMENT_IS_NODE) {
       href: __filename
     },
     Worker: nodeWorkerThreads.Worker,
-    importScripts: (f) => (0, eval)(fs.readFileSync(f, 'utf8') + '//# sourceURL=' + f),
+    importScripts: (f) => vm.runInThisContext(fs.readFileSync(f, 'utf8'), {filename: f}),
     postMessage: (msg) => parentPort.postMessage(msg),
     performance: global.performance || { now: Date.now },
   });
@@ -271,11 +272,9 @@ function handleMessage(e) {
   } catch(ex) {
 #if ASSERTIONS
     err(`worker.js onmessage() captured an uncaught exception: ${ex}`);
-    if (ex && ex.stack) err(ex.stack);
+    if (ex?.stack) err(ex.stack);
 #endif
-    if (Module['__emscripten_thread_crashed']) {
-      Module['__emscripten_thread_crashed']();
-    }
+    Module['__emscripten_thread_crashed']?.();
     throw ex;
   }
 };

@@ -218,9 +218,7 @@ var LibraryDylink = {
       }
 #endif
 
-      if (!GOT[symName]) {
-        GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
-      }
+      GOT[symName] ||= new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
       if (replace || GOT[symName].value == 0) {
 #if DYLINK_DEBUG == 2
         dbg(`updateGOT: before: ${symName} : ${GOT[symName].value}`);
@@ -286,10 +284,10 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     dbg('reportUndefinedSymbols');
 #endif
-    for (var symName in GOT) {
-      if (GOT[symName].value == 0) {
+    for (var [symName, entry] of Object.entries(GOT)) {
+      if (entry.value == 0) {
         var value = resolveGlobalSymbol(symName, true).sym;
-        if (!value && !GOT[symName].required) {
+        if (!value && !entry.required) {
           // Ignore undefined symbols that are imported as weak.
 #if DYLINK_DEBUG
           dbg(`ignoring undefined weak symbol: ${symName}`);
@@ -304,15 +302,15 @@ var LibraryDylink = {
 #endif
         if (typeof value == 'function') {
           /** @suppress {checkTypes} */
-          GOT[symName].value = {{{ to64('addFunction(value, value.sig)') }}};
+          entry.value = {{{ to64('addFunction(value, value.sig)') }}};
 #if DYLINK_DEBUG == 2
-          dbg(`assigning table entry for : ${symName} -> ${GOT[symName].value}`);
+          dbg(`assigning table entry for : ${symName} -> ${entry.value}`);
 #endif
         } else if (typeof value == 'number') {
-          GOT[symName].value = {{{ to64('value') }}};
+          entry.value = {{{ to64('value') }}};
 #if MEMORY64
         } else if (typeof value == 'bigint') {
-          GOT[symName].value = value;
+          entry.value = value;
 #endif
         } else {
           throw new Error(`bad export type for '${symName}': ${typeof value}`);
@@ -529,13 +527,10 @@ var LibraryDylink = {
   $mergeLibSymbols__deps: ['$isSymbolDefined'],
   $mergeLibSymbols: (exports, libName) => {
     // add symbols into global namespace TODO: weak linking etc.
-    for (var sym in exports) {
-      if (!exports.hasOwnProperty(sym)) {
-        continue;
-      }
+    for (var [sym, exp] of Object.entries(exports)) {
 #if ASSERTIONS == 2
       if (isSymbolDefined(sym)) {
-        var curr = wasmImports[sym], next = exports[sym];
+        var curr = wasmImports[sym], next = exp;
         // don't warn on functions - might be odr, linkonce_odr, etc.
         if (!(typeof curr == 'function' && typeof next == 'function')) {
           err(`warning: symbol '${sym}' from '${libName}' already exists (duplicate symbol? or weak linking, which isn't supported yet?)`); // + [curr, ' vs ', next]);
@@ -552,11 +547,11 @@ var LibraryDylink = {
       const setImport = (target) => {
 #if ASYNCIFY
         if (target in asyncifyStubs) {
-          asyncifyStubs[target] = exports[sym]
+          asyncifyStubs[target] = exp;
         }
 #endif
         if (!isSymbolDefined(target)) {
-          wasmImports[target] = exports[sym];
+          wasmImports[target] = exp;
         }
       }
       setImport(sym);
@@ -575,7 +570,7 @@ var LibraryDylink = {
 #endif
 
       if (sym.startsWith('dynCall_') && !Module.hasOwnProperty(sym)) {
-        Module[sym] = exports[sym];
+        Module[sym] = exp;
       }
     }
   },
@@ -713,7 +708,7 @@ var LibraryDylink = {
           if (!(prop in stubs)) {
             var resolved;
             stubs[prop] = function() {
-              if (!resolved) resolved = resolveSymbol(prop);
+              resolved ||= resolveSymbol(prop);
               return resolved.apply(null, arguments);
             };
           }
@@ -898,9 +893,7 @@ var LibraryDylink = {
       dbg(`setDylinkStackLimits for '${name}'`);
 #endif
       var lib = LDSO.loadedLibsByName[name];
-      if (lib.exports['__set_stack_limits']) {
-        lib.exports['__set_stack_limits']({{{ to64("stackTop") }}}, {{{ to64("stackMax") }}});
-      }
+      lib.exports['__set_stack_limits']?.({{{ to64("stackTop") }}}, {{{ to64("stackMax") }}});
     }
   },
 #endif

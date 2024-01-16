@@ -107,14 +107,14 @@ function getNativeFieldSize(type) {
   return Math.max(getNativeTypeSize(type), POINTER_SIZE);
 }
 
-global.Runtime = {
+globalThis.Runtime = {
   getNativeTypeSize,
   getNativeFieldSize,
   POINTER_SIZE,
   QUANTUM_SIZE: POINTER_SIZE,
 };
 
-global.ATMAINS = [];
+globalThis.ATMAINS = [];
 
 function addAtMain(code) {
   warn('use of legacy parseTools function: addAtMain');

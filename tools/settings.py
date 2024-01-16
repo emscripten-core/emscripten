@@ -81,6 +81,9 @@ COMPILE_TIME_SETTINGS = {
     'OPT_LEVEL',
     'DEBUG_LEVEL',
 
+    # Affects ports
+    'GL_ENABLE_GET_PROC_ADDRESS', # NOTE: if SDL2 is updated to not rely on eglGetProcAddress(), this can be removed
+
     # This is legacy setting that we happen to handle very early on
     'RUNTIME_LINKED_LIBS',
 }.union(PORTS_SETTINGS)
@@ -204,7 +207,7 @@ class SettingsManager:
         exit_with_error('legacy setting used in strict mode: %s', name)
       fixed_values, error_message = self.legacy_settings[name]
       if fixed_values and value not in fixed_values:
-        exit_with_error('Invalid command line option -s ' + name + '=' + str(value) + ': ' + error_message)
+        exit_with_error(f'invalid command line setting `-s{name}={value}`: {error_message}')
       diagnostics.warning('legacy-settings', 'use of legacy setting: %s (%s)', name, error_message)
 
     if name in self.alt_names:

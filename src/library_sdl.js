@@ -30,6 +30,8 @@ var LibrarySDL = {
     '$SDL_unicode', '$SDL_ttfContext', '$SDL_audio',
     // For makeCEvent().
     '$intArrayFromString',
+    // Many SDL functions depend on malloc/free
+    'malloc', 'free',
   ],
   $SDL: {
     defaults: {
@@ -1342,7 +1344,7 @@ var LibrarySDL = {
     return SDL.version;
   },
 
-  SDL_Init__deps: ['$zeroMemory', 'malloc', 'free', 'memcpy'],
+  SDL_Init__deps: ['$zeroMemory', 'memcpy'],
   SDL_Init__proxy: 'sync',
   SDL_Init__docs: '/** @param{number} initFlags */',
   SDL_Init: (initFlags) => {
@@ -1504,7 +1506,7 @@ var LibrarySDL = {
       }
     }
     var audio = /** @type {HTMLMediaElement} */ (SDL.music.audio);
-    if (audio) audio.pause();
+    audio?.pause();
     SDL.music.audio = undefined;
   },
 
@@ -1726,7 +1728,7 @@ var LibrarySDL = {
     if (title) {
       _emscripten_set_window_title(title);
     }
-    icon = icon && UTF8ToString(icon);
+    icon &&= UTF8ToString(icon);
   },
 
   // TODO
@@ -1747,9 +1749,7 @@ var LibrarySDL = {
   SDL_GetKeyName__proxy: 'sync',
   SDL_GetKeyName__deps: ['$stringToNewUTF8'],
   SDL_GetKeyName: (key) => {
-    if (!SDL.keyName) {
-      SDL.keyName = stringToNewUTF8('unknown key');
-    }
+    SDL.keyName ||= stringToNewUTF8('unknown key');
     return SDL.keyName;
   },
 
@@ -1800,15 +1800,12 @@ var LibrarySDL = {
   SDL_GetError__proxy: 'sync',
   SDL_GetError__deps: ['$stringToNewUTF8'],
   SDL_GetError: () => {
-    if (!SDL.errorMessage) {
-      SDL.errorMessage = stringToNewUTF8("unknown SDL-emscripten error");
-    }
+    SDL.errorMessage ||= stringToNewUTF8("unknown SDL-emscripten error");
     return SDL.errorMessage;
   },
 
   SDL_SetError: (fmt, varargs) => {},
 
-  SDL_CreateRGBSurface__deps: ['malloc', 'free'],
   SDL_CreateRGBSurface__proxy: 'sync',
   SDL_CreateRGBSurface: (flags, width, height, depth, rmask, gmask, bmask, amask) => SDL.makeSurface(width, height, flags, false, 'CreateRGBSurface', rmask, gmask, bmask, amask),
 
@@ -1986,7 +1983,6 @@ var LibrarySDL = {
   SDL_PollEvent: (ptr) => SDL.pollEvent(ptr),
 
   SDL_PushEvent__proxy: 'sync',
-  SDL_PushEvent__deps: ['malloc'],
   SDL_PushEvent: (ptr) => {
     var copy = _malloc({{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
     _memcpy(copy, ptr, {{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
@@ -2031,7 +2027,6 @@ var LibrarySDL = {
   // An Emscripten-specific extension to SDL: Some browser APIs require that they are called from within an event handler function.
   // Allow recording a callback that will be called for each received event.
   emscripten_SDL_SetEventHandler__proxy: 'sync',
-  emscripten_SDL_SetEventHandler__deps: ['malloc'],
   emscripten_SDL_SetEventHandler: (handler, userdata) => {
     SDL.eventHandler = handler;
     SDL.eventHandlerContext = userdata;
@@ -2303,7 +2298,7 @@ var LibrarySDL = {
 
   // SDL_Audio
 
-  SDL_OpenAudio__deps: ['$autoResumeAudioContext', '$safeSetTimeout', 'malloc'],
+  SDL_OpenAudio__deps: ['$autoResumeAudioContext', '$safeSetTimeout'],
   SDL_OpenAudio__proxy: 'sync',
   SDL_OpenAudio: (desired, obtained) => {
     try {
@@ -2398,7 +2393,7 @@ var LibrarySDL = {
 
 #if ASYNCIFY
       var sleepCallback = () => {
-        if (SDL.audio && SDL.audio.queueNewAudioData) SDL.audio.queueNewAudioData();
+        SDL.audio?.queueNewAudioData?.();
       };
       Asyncify.sleepCallbacks.push(sleepCallback);
       SDL.audio.callbackRemover = () => {
@@ -2937,13 +2932,13 @@ var LibrarySDL = {
   Mix_PauseMusic__proxy: 'sync',
   Mix_PauseMusic: () => {
     var audio = /** @type {HTMLMediaElement} */ (SDL.music.audio);
-    if (audio) audio.pause();
+    audio?.pause();
   },
 
   Mix_ResumeMusic__proxy: 'sync',
   Mix_ResumeMusic: () => {
     var audio = SDL.music.audio;
-    if (audio) audio.play();
+    audio?.play();
   },
 
   Mix_HaltMusic__proxy: 'sync',
@@ -2982,7 +2977,7 @@ var LibrarySDL = {
       return count;
     }
     var info = SDL.channels[channel];
-    if (info && info.audio && !info.audio.paused) {
+    if (info?.audio && !info.audio.paused) {
       return 1;
     }
     return 0;
@@ -2998,7 +2993,7 @@ var LibrarySDL = {
     }
     /** @type {{ audio: HTMLMediaElement }} */
     var info = SDL.channels[channel];
-    if (info && info.audio) {
+    if (info?.audio) {
       info.audio.pause();
     } else {
       //err(`Mix_Pause: no sound found for channel: ${channel}`);
@@ -3016,14 +3011,14 @@ var LibrarySDL = {
       return pausedCount;
     }
     var info = SDL.channels[channel];
-    if (info && info.audio && info.audio.paused) {
+    if (info?.audio?.paused) {
       return 1;
     }
     return 0;
   },
 
   Mix_PausedMusic__proxy: 'sync',
-  Mix_PausedMusic: () => (SDL.music.audio && SDL.music.audio.paused) ? 1 : 0,
+  Mix_PausedMusic: () => SDL.music.audio?.paused ? 1 : 0,
 
   // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_33.html#SEC33
   Mix_Resume__proxy: 'sync',
@@ -3035,7 +3030,7 @@ var LibrarySDL = {
       return;
     }
     var info = SDL.channels[channel];
-    if (info && info.audio) info.audio.play();
+    if (info?.audio) info.audio.play();
   },
 
   // SDL TTF
@@ -3294,7 +3289,7 @@ var LibrarySDL = {
 
   SDL_GL_SwapBuffers__proxy: 'sync',
   SDL_GL_SwapBuffers: () => {
-    if (Browser.doSwapBuffers) Browser.doSwapBuffers(); // in workers, this is used to send out a buffered frame
+    Browser.doSwapBuffers?.(); // in workers, this is used to send out a buffered frame
   },
 
   // SDL 2

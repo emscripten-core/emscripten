@@ -7,24 +7,30 @@
 
 // LLVM => JavaScript compiler, main entry point
 
-const fs = require('fs');
-global.vm = require('vm');
-global.assert = require('assert');
-global.nodePath = require('path');
+import * as fs from 'fs';
+import * as path from 'path';
+import * as vm from 'vm';
+import * as url from 'url';
+import assert from 'assert';
 
-global.print = (x) => {
+globalThis.vm = vm;
+globalThis.assert = assert;
+globalThis.nodePath = path;
+
+globalThis.print = (x) => {
   process.stdout.write(x + '\n');
 };
 
-global.printErr = (x) => {
+globalThis.printErr = (x) => {
   process.stderr.write(x + '\n');
 };
 
 function find(filename) {
   assert(filename);
-  const prefixes = [__dirname, process.cwd()];
+  const dirname = url.fileURLToPath(new URL('.', import.meta.url));
+  const prefixes = [dirname, process.cwd()];
   for (let i = 0; i < prefixes.length; ++i) {
-    const combined = nodePath.join(prefixes[i], filename);
+    const combined = path.join(prefixes[i], filename);
     if (fs.existsSync(combined)) {
       return combined;
     }
@@ -32,7 +38,7 @@ function find(filename) {
   return filename;
 }
 
-global.read = (filename) => {
+globalThis.read = (filename) => {
   assert(filename);
   const absolute = find(filename);
   return fs.readFileSync(absolute).toString();
@@ -62,7 +68,7 @@ assert(settingsFile);
 const settings = JSON.parse(read(settingsFile));
 Object.assign(global, settings);
 
-global.symbolsOnly = symbolsOnlyArg != -1;
+globalThis.symbolsOnly = symbolsOnlyArg != -1;
 
 // In case compiler.js is run directly (as in gen_sig_info)
 // ALL_INCOMING_MODULE_JS_API might not be populated yet.
@@ -81,7 +87,7 @@ if (symbolsOnly) {
 }
 
 // Side modules are pure wasm and have no JS
-assert(!SIDE_MODULE || (ASYNCIFY && global.symbolsOnly), 'JS compiler should only run on side modules if asyncify is used.');
+assert(!SIDE_MODULE || (ASYNCIFY && globalThis.symbolsOnly), 'JS compiler should only run on side modules if asyncify is used.');
 
 // Load compiler code
 
@@ -96,7 +102,7 @@ if (!STRICT) {
 // Main
 // ===============================
 
-B = new Benchmarker();
+const B = new Benchmarker();
 
 try {
   runJSify();

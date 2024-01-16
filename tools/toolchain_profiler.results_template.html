@@ -217,7 +217,7 @@ function findInterestingBits(cmdLine) {
         ret.concat([out]);
     }
     return ret;
-  } else if (startsWith(basename, 'compiler.js')) {
+  } else if (startsWith(basename, 'compiler.mjs')) {
     var posParams = findPositionalParams(cmdLine, []);
     var interestingParams = [];
     for(var i = 1; i < posParams.length; ++i) {

@@ -139,17 +139,24 @@ module({
             var e = assert.throws(cm.BindingError, function() {
                 cm.Derived.prototype.setMember.call(undefined, "foo");
             });
-            assert.equal('Cannot pass "[object global]" as a Derived*', e.message);
+            assert.matches(/Cannot pass "(undefined|\[object global\])" as a Derived\*/, e.message);
 
             var e = assert.throws(cm.BindingError, function() {
                 cm.Derived.prototype.setMember.call(true, "foo");
             });
             assert.equal('Cannot pass "true" as a Derived*', e.message);
 
-            var e = assert.throws(cm.BindingError, function() {
-                cm.Derived.prototype.setMember.call(null, "foo");
-            });
-            assert.equal('Cannot pass "[object global]" as a Derived*', e.message);
+            if (cm.getCompilerSetting('STRICT_JS') && !cm.getCompilerSetting('DYNAMIC_EXECUTION')) {
+              var e = assert.throws(TypeError, function() {
+                  cm.Derived.prototype.setMember.call(null, "foo");
+              });
+              assert.equal('Cannot convert "foo" to int', e.message)
+            } else {
+              var e = assert.throws(cm.BindingError, function() {
+                  cm.Derived.prototype.setMember.call(null, "foo");
+              });
+              assert.equal('Cannot pass "[object global]" as a Derived*', e.message)
+            }
 
             var e = assert.throws(cm.BindingError, function() {
                 cm.Derived.prototype.setMember.call(42, "foo");
@@ -164,7 +171,7 @@ module({
             var e = assert.throws(cm.BindingError, function() {
                 cm.Derived.prototype.setMember.call({}, "foo");
             });
-            assert.equal('Cannot pass "[object Object]" as a Derived*', e.message);
+            assert.matches(/Cannot pass "(undefined|\[object Object\])" as a Derived\*/, e.message);
         });
 
         test("setting and getting property on unrelated class throws error", function() {
@@ -384,7 +391,7 @@ module({
     });
 
     BaseFixture.extend("string", function() {
-        var stdStringIsUTF8 = (cm.getCompilerSetting('EMBIND_STD_STRING_IS_UTF8') === true);
+        var stdStringIsUTF8 = cm.getCompilerSetting('EMBIND_STD_STRING_IS_UTF8');
 
         test("non-ascii strings", function() {
 
