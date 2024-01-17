@@ -3102,7 +3102,7 @@ int f() {
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_test_embind(self):
-    self.run_process([EMCC, test_file('embind/embind_test.cpp'),
+    self.run_process([EMXX, test_file('embind/embind_test.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen_test_embind.d.ts',
                       # This test explicitly creates std::string from unsigned char pointers
                       # which is deprecated in upstream LLVM.
@@ -3118,7 +3118,7 @@ int f() {
     self.assertExists('embind_tsgen_val.d.ts')
 
   def test_embind_tsgen_bigint(self):
-    args = [EMCC, test_file('other/embind_tsgen_bigint.cpp'), '-lembind', '--embind-emit-tsd', 'embind_tsgen_bigint.d.ts']
+    args = [EMXX, test_file('other/embind_tsgen_bigint.cpp'), '-lembind', '--embind-emit-tsd', 'embind_tsgen_bigint.d.ts']
     # Check that TypeScript generation fails when code contains bigints but their support is not enabled
     stderr = self.expect_fail(args)
     self.assertContained("Missing primitive type to TS type for 'int64_t", stderr)
@@ -3128,14 +3128,14 @@ int f() {
 
   def test_embind_tsgen_memory64(self):
     # Check that when memory64 is enabled longs & unsigned longs are mapped to bigint in the generated TS bindings
-    self.run_process([EMCC, test_file('other/embind_tsgen_memory64.cpp'),
+    self.run_process([EMXX, test_file('other/embind_tsgen_memory64.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen_memory64.d.ts', '-sMEMORY64', '-Wno-experimental'] +
                      self.get_emcc_args())
     self.assertFileContents(test_file('other/embind_tsgen_memory64.d.ts'), read_file('embind_tsgen_memory64.d.ts'))
 
   def test_embind_tsgen_exceptions(self):
     # Check that when Wasm exceptions and assertions are enabled bindings still generate.
-    self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
+    self.run_process([EMXX, test_file('other/embind_tsgen.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts', '-fwasm-exceptions', '-sASSERTIONS'])
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
