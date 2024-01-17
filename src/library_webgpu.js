@@ -70,6 +70,7 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       return this.makeCheck(descriptor) + this.makeCheck(makeGetValue(descriptor, OffsetOfNextInChainMember, '*') + ' === 0');
     },
 
+    // Compile-time table for enum integer values used with templating.
     // Must be in sync with webgpu.h.
     // TODO: Generate this to keep it in sync with webgpu.h
     COPY_STRIDE_UNDEFINED: 0xFFFFFFFF,
@@ -358,6 +359,7 @@ var LibraryWebGPU = {
       'bgra8unorm': 0x17,
     },
 
+    // Map from enum number to enum string.
     // This section is auto-generated. See system/include/webgpu/README.md for details.
     WGSLFeatureName: [
       undefined,

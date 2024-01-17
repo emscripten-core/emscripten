@@ -14,12 +14,20 @@ better compatibility with Dawn: it has roughly the same API as Dawn's copy, but
 is included here because it is strongly tied to an exact `webgpu.h` revision.
 
 To update these bindings from Dawn:
-- Copy `webgpu_cpp_chained_struct.h` from Dawn's source
-- Build the `emscripten_bits_gen` target in Dawn (gn or CMake build)
-- Paste `library_webgpu_enum_tables.js` over the appropriate section of [`library_webgpu.js`](../../../src/library_webgpu.js)
-- Paste `webgpu_struct_info.json` over the appropriate section of [`struct_info.json`](../../../src/struct_info.json).
-- Manually update the `globalThis.gpu` compile-time enum tables (AdapterType, BackendType, etc.)
-- Update auto-generated files:
+1. Copy [`webgpu_enum_class_bitmasks.h`](https://source.chromium.org/chromium/chromium/src/+/main:third_party/dawn/include/webgpu/webgpu_enum_class_bitmasks.h) from Dawn's source
+1. Build Dawn's `emscripten_bits_gen` target (in a gn or CMake build of Dawn, or a build of Chromium) - or, use the Chromium Code Search copy of the generated files if no changes are needed
+1. Copy the generated [`emscripten-bits/system`](https://source.chromium.org/chromium/chromium/src/+/main:out/Debug/gen/third_party/dawn/emscripten-bits/system/) files into Emscripten's `system` directory
+    - `system/include/webgpu/webgpu.h`
+    - `system/include/webgpu/webgpu_cpp.h`
+    - `system/include/webgpu/webgpu_cpp_chained_struct.h`
+    - `system/lib/webgpu/webgpu_cpp.cpp`
+1. Paste the contents of [`library_webgpu_enum_tables.js`](https://source.chromium.org/chromium/chromium/src/+/main:out/Debug/gen/third_party/dawn/emscripten-bits/library_webgpu_enum_tables.js) over the "Map from enum number to enum string" section of [`library_webgpu.js`](../../../src/library_webgpu.js)
+1. Paste [`webgpu_struct_info.json`](https://source.chromium.org/chromium/chromium/src/+/main:out/Debug/gen/third_party/dawn/emscripten-bits/webgpu_struct_info.json) over the "WebGPU" section of [`struct_info.json`](../../../src/struct_info.json).
+1. **Manually update the `globalThis.gpu` compile-time enum tables (AdapterType, BackendType, etc.)**:
+    - Inspect the `webgpu.h` diff for changes to the integer values of any enums used here. (It's not necessary to add new enum values to these tables until they're needed for something.)
+1. **Manually update the "Map from enum string back to enum number" tables.**
+    - Inspect the `webgpu.h` diff for changes to these enums. (These tables need to be complete so that we can handle any enum string the browser gives us.)
+1. Update Emscripten's auto-generated files:
 
     ```
     emcc --clear-cache
