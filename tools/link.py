@@ -1279,7 +1279,13 @@ def phase_linker_setup(options, state, newargs):
     if sym in settings.EXPORTED_RUNTIME_METHODS:
       settings.REQUIRED_EXPORTS.append(sym)
 
-  settings.REQUIRED_EXPORTS += ['stackSave', 'stackRestore', 'stackAlloc']
+  if settings.MAIN_READS_PARAMS and not settings.STANDALONE_WASM:
+    # callMain depends on stackAlloc
+    settings.REQUIRED_EXPORTS += ['stackAlloc']
+
+  if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
+    # make_invoke depends on stackSave and stackRestore
+    settings.REQUIRED_EXPORTS += ['stackSave', 'stackRestore']
 
   if settings.RELOCATABLE:
     # TODO(https://reviews.llvm.org/D128515): Make this mandatory once

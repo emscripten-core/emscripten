@@ -594,6 +594,7 @@ addToLibrary({
 #endif
 
   $withStackSave__internal: true,
+  $withStackSave__deps: ['stackSave', 'stackRestore'],
   $withStackSave: (f) => {
     var stack = stackSave();
     var ret = f();

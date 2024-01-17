@@ -76,7 +76,10 @@ addToLibrary({
 
   $makePromiseCallback__deps: ['$getPromise',
                                '$POINTER_SIZE',
-                               'emscripten_promise_destroy'],
+                               'emscripten_promise_destroy',
+                               'stackAlloc',
+                               'stackRestore',
+                               'stackSave'],
   $makePromiseCallback: (callback, userData) => {
     return (value) => {
 #if RUNTIME_DEBUG

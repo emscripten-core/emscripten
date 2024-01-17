@@ -9,5 +9,3 @@ dynCall_viijii
 main
 memory
 stackAlloc
-stackRestore
-stackSave

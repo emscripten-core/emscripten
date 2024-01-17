@@ -538,7 +538,7 @@ addToLibrary({
     });
   },
 
-  $Fibers__deps: ['$Asyncify', 'emscripten_stack_set_limits'],
+  $Fibers__deps: ['$Asyncify', 'emscripten_stack_set_limits', 'stackRestore'],
   $Fibers: {
     nextFiber: 0,
     trampolineRunning: false,
@@ -598,7 +598,7 @@ addToLibrary({
     },
   },
 
-  emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
+  emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers", 'stackSave'],
   emscripten_fiber_swap__async: true,
   emscripten_fiber_swap: (oldFiber, newFiber) => {
     if (ABORT) return;
