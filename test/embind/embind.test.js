@@ -1204,6 +1204,81 @@ module({
        });
     });
 
+    BaseFixture.extend("optional", function() {
+        if (!("embind_test_return_optional_int" in cm)) {
+            return;
+        }
+        test("std::optional works with returning int", function() {
+            var optional = cm.embind_test_return_optional_int(true);
+            assert.equal(42, optional);
+
+            optional = cm.embind_test_return_optional_int(false);
+            assert.equal(undefined, optional);
+        });
+
+        test("std::optional works with returning float", function() {
+            var optional = cm.embind_test_return_optional_float(true);
+            assert.equal(Math.fround(4.2), optional);
+
+            optional = cm.embind_test_return_optional_float(false);
+            assert.equal(undefined, optional);
+        });
+
+        test("std::optional works with returning SmallClass", function() {
+            var optional = cm.embind_test_return_optional_small_class(true);
+            assert.equal(7, optional.member);
+            optional.delete();
+
+            optional = cm.embind_test_return_optional_small_class(false);
+            assert.equal(undefined, optional);
+        });
+
+        test("std::optional works with returning string", function() {
+            var optional = cm.embind_test_return_optional_string(true);
+            assert.equal("hello", optional);
+
+            optional = cm.embind_test_return_optional_string(false);
+            assert.equal(undefined, optional);
+        });
+
+        test("std::optional works int arg", function() {
+            var value = cm.embind_test_optional_int_arg(42);
+            assert.equal(42, value);
+
+            value = cm.embind_test_optional_int_arg(undefined);
+            assert.equal(-1, value);
+        });
+
+        test("std::optional works float arg", function() {
+            var value = cm.embind_test_optional_float_arg(4.2);
+            assert.equal(Math.fround(4.2), value);
+
+            value = cm.embind_test_optional_float_arg(undefined);
+            assert.equal(Math.fround(-1.1), value);
+        });
+
+        test("std::optional works string arg", function() {
+            var value = cm.embind_test_optional_string_arg("hello");
+            assert.equal("hello", value);
+
+            value = cm.embind_test_optional_string_arg("");
+            assert.equal("", value);
+
+            value = cm.embind_test_optional_string_arg(undefined);
+            assert.equal("no value", value);
+        });
+
+        test("std::optional works SmallClass arg", function() {
+            var small = new cm.SmallClass();
+            var value = cm.embind_test_optional_small_class_arg(small);
+            assert.equal(7, value);
+            small.delete();
+
+            value = cm.embind_test_optional_small_class_arg(undefined);
+            assert.equal(-1, value);
+        });
+    });
+
     BaseFixture.extend("functors", function() {
         test("can get and call function ptrs", function() {
             var ptr = cm.emval_test_get_function_ptr();

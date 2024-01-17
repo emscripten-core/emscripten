@@ -691,6 +691,11 @@ var LibraryEmbind = {
     __embind_register_emval(rawType, name);
   },
 
+  _embind_register_optional__deps: ['_embind_register_emval'],
+  _embind_register_optional: (rawOptionalType, rawType) => {
+    __embind_register_emval(rawOptionalType, "");
+  },
+
   _embind_register_memory_view__deps: ['$readLatin1String', '$registerType'],
   _embind_register_memory_view: (rawType, dataTypeIndex, name) => {
     var typeMapping = [

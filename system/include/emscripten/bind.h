@@ -18,6 +18,9 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#if __cplusplus >= 201703L
+#include <optional>
+#endif
 
 #include <emscripten/em_macros.h>
 #include <emscripten/val.h>
@@ -248,6 +251,10 @@ void _embind_register_constant(
     const char* name,
     TYPEID constantType,
     double value);
+
+void _embind_register_optional(
+    TYPEID optionalType,
+    TYPEID type);
 
 void _embind_register_user_type(
     TYPEID type,
@@ -1917,6 +1924,13 @@ class_<std::vector<T>> register_vector(const char* name) {
         ;
 }
 
+#if __cplusplus >= 201703L
+template<typename T>
+void register_optional() {
+    internal::_embind_register_optional(internal::TypeID<std::optional<T>>::get(), internal::TypeID<T>::get());
+}
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 // MAPS
 ////////////////////////////////////////////////////////////////////////////////
@@ -1972,6 +1986,36 @@ class_<std::map<K, V>> register_map(const char* name) {
         .function("keys", internal::MapAccess<MapType>::keys)
         ;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// std::optional
+////////////////////////////////////////////////////////////////////////////////
+
+#if __cplusplus >= 201703L
+namespace internal {
+template <typename T>
+struct BindingType<std::optional<T>> {
+    using ValBinding = BindingType<val>;
+    using WireType = ValBinding::WireType;
+
+    static WireType toWireType(std::optional<T> value) {
+        if (value) {
+            return ValBinding::toWireType(val(*value));
+        }
+        return ValBinding::toWireType(val::undefined());
+    }
+
+
+    static std::optional<T> fromWireType(WireType value) {
+        val optional = val::take_ownership(value);
+        if (optional.isUndefined()) {
+            return {};
+        }
+        return optional.as<T>();
+    }
+};
+} // end namespace internal
+#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////

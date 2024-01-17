@@ -10,6 +10,10 @@
 #include <emscripten/heap.h>
 #include <emscripten/em_asm.h>
 
+#if __cplusplus >= 201703L
+#include <optional>
+#endif
+
 using namespace emscripten;
 
 val emval_test_mallinfo() {
@@ -1298,6 +1302,59 @@ void test_string_with_vec(const std::string& p1, std::vector<std::string>& v1) {
     printf("%s\n", p1.c_str());
 }
 
+#if __cplusplus >= 201703L
+std::optional<int> embind_test_return_optional_int(bool create) {
+    if (create) {
+        return 42;
+    }
+    return {};
+}
+std::optional<float> embind_test_return_optional_float(bool create) {
+    if (create) {
+        return 4.2;
+    }
+    return {};
+}
+std::optional<std::string> embind_test_return_optional_string(bool create) {
+    if (create) {
+        return "hello";
+    }
+    return {};
+}
+std::optional<SmallClass> embind_test_return_optional_small_class(bool create) {
+    if (create) {
+        return SmallClass();
+    }
+    return {};
+}
+
+int embind_test_optional_int_arg(std::optional<int> arg) {
+    if (arg) {
+        return *arg;
+    }
+    return -1;
+}
+float embind_test_optional_float_arg(std::optional<float> arg) {
+    if (arg) {
+        return *arg;
+    }
+    return -1.1;
+}
+std::string embind_test_optional_string_arg(std::optional<std::string> arg) {
+    if (arg) {
+        return *arg;
+    }
+    return "no value";
+}
+
+int embind_test_optional_small_class_arg(std::optional<SmallClass> arg) {
+    if (arg) {
+        return arg->member;
+    }
+    return -1;
+}
+#endif
+
 val embind_test_getglobal() {
     return val::global();
 }
@@ -2296,6 +2353,21 @@ EMSCRIPTEN_BINDINGS(tests) {
         ;
 
     function("test_string_with_vec", &test_string_with_vec);
+
+#if __cplusplus >= 201703L
+    register_optional<int>();
+    register_optional<float>();
+    register_optional<SmallClass>();
+    register_optional<std::string>();
+    function("embind_test_return_optional_int", &embind_test_return_optional_int);
+    function("embind_test_return_optional_float", &embind_test_return_optional_float);
+    function("embind_test_return_optional_small_class", &embind_test_return_optional_small_class);
+    function("embind_test_return_optional_string", &embind_test_return_optional_string);
+    function("embind_test_optional_int_arg", &embind_test_optional_int_arg);
+    function("embind_test_optional_float_arg", &embind_test_optional_float_arg);
+    function("embind_test_optional_string_arg", &embind_test_optional_string_arg);
+    function("embind_test_optional_small_class_arg", &embind_test_optional_small_class_arg);
+#endif
 
     register_map<std::string, int>("StringIntMap");
     function("embind_test_get_string_int_map", embind_test_get_string_int_map);
