@@ -919,10 +919,6 @@ jobs:
       - install-emsdk
       # TODO: We can't currently do pip install here since numpy and other packages
       # are currently missing arm64 macos binaries.
-      # TODO: Remove this once emsdk has an arm64 version of node
-      - run:
-          name: Install Rosetta
-          command: /usr/sbin/softwareupdate --install-rosetta --agree-to-license
       - run-tests:
           title: "crossplatform tests"
           test_targets: "--crossplatform-only"
