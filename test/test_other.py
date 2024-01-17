@@ -12893,8 +12893,9 @@ void foo() {}
     self.run_process([EMCC, test_file('hello_world.c'), '--closure=1'])
     with env_modify({'EM_CLOSURE_COMPILER': sys.executable}):
       err = self.expect_fail([EMCC, test_file('hello_world.c'), '--closure=1'])
-    self.assertContained('emcc: error: unrecognized closure compiler --version output', err)
+    self.assertContained('closure compiler', err)
     self.assertContained(sys.executable, err)
+    self.assertContained('not execute properly!', err)
 
   def test_node_unhandled_rejection(self):
     create_file('pre.js', '''
