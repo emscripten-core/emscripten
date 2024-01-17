@@ -14,7 +14,7 @@ better compatibility with Dawn: it has roughly the same API as Dawn's copy, but
 is included here because it is strongly tied to an exact `webgpu.h` revision.
 
 To update these bindings from Dawn:
-1. Copy [`webgpu_enum_class_bitmasks.h`](https://source.chromium.org/chromium/chromium/src/+/main:third_party/dawn/include/webgpu/webgpu_enum_class_bitmasks.h) from Dawn's source
+1. Copy [`webgpu_enum_class_bitmasks.h`](https://source.chromium.org/chromium/chromium/src/+/main:third_party/dawn/include/webgpu/webgpu_enum_class_bitmasks.h) from Dawn's source to `system/include/webgpu/webgpu_enum_class_bitmasks.h`
 1. Build Dawn's `emscripten_bits_gen` target (in a gn or CMake build of Dawn, or a build of Chromium) - or, use the Chromium Code Search copy of the generated files if no changes are needed
 1. Copy the generated [`emscripten-bits/system`](https://source.chromium.org/chromium/chromium/src/+/main:out/Debug/gen/third_party/dawn/emscripten-bits/system/) files into Emscripten's `system` directory
     - `system/include/webgpu/webgpu.h`
