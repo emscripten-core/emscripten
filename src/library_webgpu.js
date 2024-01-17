@@ -1582,10 +1582,6 @@ var LibraryWebGPU = {
     });
   },
 
-  wgpuQueueOnSubmittedWorkDoneF: () => {
-    abort('TODO: wgpuQueueOnSubmittedWorkDoneF is experimental and unimplemented');
-  },
-
   wgpuQueueWriteBuffer: (queueId, bufferId, bufferOffset, data, size) => {
     var queue = WebGPU.mgrQueue.get(queueId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
@@ -2032,10 +2028,6 @@ var LibraryWebGPU = {
     });
   },
 
-  wgpuBufferMapAsyncF: () => {
-    abort('TODO: wgpuBufferMapAsyncF is experimental and unimplemented');
-  },
-
   wgpuBufferGetSize: (bufferId) => {
     var buffer = WebGPU.mgrBuffer.get(bufferId);
     // 64-bit
@@ -2467,10 +2459,6 @@ var LibraryWebGPU = {
 #endif
   },
 
-  wgpuInstanceWaitAny: () => {
-    abort('TODO: wgpuInstanceWaitAny is experimental and unimplemented');
-  },
-
   wgpuInstanceRequestAdapter__deps: ['$callUserCallback', '$stringToUTF8OnStack'],
   wgpuInstanceRequestAdapter: (instanceId, options, callback, userdata) => {
     {{{ gpu.makeCheck('instanceId === 1, "WGPUInstance must be created by wgpuCreateInstance"') }}}
@@ -2517,10 +2505,6 @@ var LibraryWebGPU = {
         });
       });
     });
-  },
-
-  wgpuInstanceRequestAdapterF: () => {
-    abort('TODO: wgpuInstanceRequestAdapterF is experimental and unimplemented');
   },
 
   // WGPUAdapter

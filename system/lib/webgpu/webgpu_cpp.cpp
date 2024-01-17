@@ -1935,12 +1935,6 @@ template <typename T>
     void Buffer::MapAsync(MapMode mode, size_t offset, size_t size, BufferMapCallback callback, void * userdata) const {
         wgpuBufferMapAsync(Get(), static_cast<WGPUMapMode>(mode), offset, size, callback, userdata);
     }
-    Future Buffer::MapAsyncF(MapMode mode, size_t offset, size_t size, BufferMapCallbackInfo callbackInfo) const {
-        auto result = wgpuBufferMapAsyncF(Get(), static_cast<WGPUMapMode>(mode), offset, size, *reinterpret_cast<WGPUBufferMapCallbackInfo const*>(&callbackInfo));
-        return Future {
-            result.id
-        };
-    }
     void Buffer::SetLabel(char const * label) const {
         wgpuBufferSetLabel(Get(), reinterpret_cast<char const * >(label));
     }
@@ -2235,16 +2229,6 @@ template <typename T>
     void Instance::RequestAdapter(RequestAdapterOptions const * options, RequestAdapterCallback callback, void * userdata) const {
         wgpuInstanceRequestAdapter(Get(), reinterpret_cast<WGPURequestAdapterOptions const * >(options), callback, userdata);
     }
-    Future Instance::RequestAdapterF(RequestAdapterOptions const * options, RequestAdapterCallbackInfo callbackInfo) const {
-        auto result = wgpuInstanceRequestAdapterF(Get(), reinterpret_cast<WGPURequestAdapterOptions const * >(options), *reinterpret_cast<WGPURequestAdapterCallbackInfo const*>(&callbackInfo));
-        return Future {
-            result.id
-        };
-    }
-    WaitStatus Instance::WaitAny(size_t futureCount, FutureWaitInfo * futures, uint64_t timeoutNS) const {
-        auto result = wgpuInstanceWaitAny(Get(), futureCount, reinterpret_cast<WGPUFutureWaitInfo * >(futures), timeoutNS);
-        return static_cast<WaitStatus>(result);
-    }
     void Instance::WGPUReference(WGPUInstance handle) {
         if (handle != nullptr) {
             wgpuInstanceReference(handle);
@@ -2312,12 +2296,6 @@ template <typename T>
 
     void Queue::OnSubmittedWorkDone(uint64_t signalValue, QueueWorkDoneCallback callback, void * userdata) const {
         wgpuQueueOnSubmittedWorkDone(Get(), signalValue, callback, userdata);
-    }
-    Future Queue::OnSubmittedWorkDoneF(QueueWorkDoneCallbackInfo callbackInfo) const {
-        auto result = wgpuQueueOnSubmittedWorkDoneF(Get(), *reinterpret_cast<WGPUQueueWorkDoneCallbackInfo const*>(&callbackInfo));
-        return Future {
-            result.id
-        };
     }
     void Queue::SetLabel(char const * label) const {
         wgpuQueueSetLabel(Get(), reinterpret_cast<char const * >(label));

@@ -798,7 +798,6 @@ namespace wgpu {
         uint64_t GetSize() const;
         BufferUsage GetUsage() const;
         void MapAsync(MapMode mode, size_t offset, size_t size, BufferMapCallback callback, void * userdata) const;
-        Future MapAsyncF(MapMode mode, size_t offset, size_t size, BufferMapCallbackInfo callbackInfo) const;
         void SetLabel(char const * label) const;
         void Unmap() const;
 
@@ -929,8 +928,6 @@ namespace wgpu {
         Bool HasWGSLLanguageFeature(WGSLFeatureName feature) const;
         void ProcessEvents() const;
         void RequestAdapter(RequestAdapterOptions const * options, RequestAdapterCallback callback, void * userdata) const;
-        Future RequestAdapterF(RequestAdapterOptions const * options, RequestAdapterCallbackInfo callbackInfo) const;
-        WaitStatus WaitAny(size_t futureCount, FutureWaitInfo * futures, uint64_t timeoutNS) const;
 
       private:
         friend ObjectBase<Instance, WGPUInstance>;
@@ -973,7 +970,6 @@ namespace wgpu {
         using ObjectBase::operator=;
 
         void OnSubmittedWorkDone(uint64_t signalValue, QueueWorkDoneCallback callback, void * userdata) const;
-        Future OnSubmittedWorkDoneF(QueueWorkDoneCallbackInfo callbackInfo) const;
         void SetLabel(char const * label) const;
         void Submit(size_t commandCount, CommandBuffer const * commands) const;
         void WriteBuffer(Buffer const& buffer, uint64_t bufferOffset, void const * data, size_t size) const;
