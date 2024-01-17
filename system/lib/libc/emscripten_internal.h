@@ -148,6 +148,8 @@ void llvm_eh_typeid_for(void* exn);
 
 uint32_t _emscripten_lookup_name(const char *name);
 
+int _emscripten_system(const char *command);
+
 #ifdef __cplusplus
 }
 #endif

@@ -274,6 +274,7 @@ var USE_CLOSURE_COMPILER = false;
 // printed out to console. If set to 'error', Closure warnings are treated like
 // errors, similar to -Werror compiler flag.
 // [link]
+// [deprecated]
 var CLOSURE_WARNINGS = 'quiet';
 
 // Ignore closure warnings and errors (like on duplicate definitions)
@@ -922,6 +923,7 @@ var ASYNCIFY_EXPORTS = [];
 var EXPORTED_RUNTIME_METHODS = [];
 
 // Deprecated, use EXPORTED_RUNTIME_METHODS instead.
+// [deprecated]
 var EXTRA_EXPORTED_RUNTIME_METHODS = [];
 
 // A list of incoming values on the Module object in JS that we care about. If
@@ -1839,13 +1841,10 @@ var MIN_CHROME_VERSION = 85;
 // Minimum supported value is 101900, which was released 2020-02-05.
 var MIN_NODE_VERSION = 160000;
 
-// Tracks whether we are building with errno support enabled. Set to 0
-// to disable compiling errno support in altogether. This saves a little
-// bit of generated code size in applications that do not care about
-// POSIX errno variable. Setting this to 0 also requires using --closure
-// for effective code size optimizations to take place.
+// Whether we support setting errno from JS library code.
 // In MINIMAL_RUNTIME builds, this option defaults to 0.
 // [link]
+// [deprecated]
 var SUPPORT_ERRNO = true;
 
 // If true, uses minimal sized runtime without POSIX features, Module,

@@ -1267,6 +1267,7 @@ class libc(MuslInternalLibrary,
           'sigtimedwait.c',
           'wasi-helpers.c',
           'sbrk.c',
+          'system.c',
         ])
 
     if settings.RELOCATABLE:
@@ -1666,7 +1667,6 @@ class libmalloc(MTLibrary):
     if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'mimalloc', 'none'):
       raise Exception('malloc must be one of "emmalloc[-debug|-memvalidate][-verbose]", "dlmalloc" or "none", see settings.js')
 
-    self.use_errno = kwargs.pop('use_errno')
     self.is_tracing = kwargs.pop('is_tracing')
     self.memvalidate = kwargs.pop('memvalidate')
     self.verbose = kwargs.pop('verbose')
@@ -1691,8 +1691,6 @@ class libmalloc(MTLibrary):
       cflags += ['-UNDEBUG', '-DDLMALLOC_DEBUG']
     else:
       cflags += ['-DNDEBUG']
-    if not self.use_errno:
-      cflags += ['-DMALLOC_FAILURE_ACTION=', '-DEMSCRIPTEN_NO_ERRNO']
     if self.is_tracing:
       cflags += ['--tracing']
     return cflags
@@ -1704,9 +1702,6 @@ class libmalloc(MTLibrary):
     name = super().get_base_name()
     if self.is_debug and not self.memvalidate and not self.verbose:
       name += '-debug'
-    if not self.use_errno:
-      # emmalloc doesn't actually use errno, but it's easier to build it again
-      name += '-noerrno'
     if self.is_tracing:
       name += '-tracing'
     return name
@@ -1716,14 +1711,13 @@ class libmalloc(MTLibrary):
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'memvalidate', 'verbose']
+    return super().vary_on() + ['is_debug', 'is_tracing', 'memvalidate', 'verbose']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
       malloc=settings.MALLOC,
       is_debug=settings.ASSERTIONS >= 2,
-      use_errno=settings.SUPPORT_ERRNO,
       is_tracing=settings.EMSCRIPTEN_TRACING,
       memvalidate='memvalidate' in settings.MALLOC,
       verbose='verbose' in settings.MALLOC,

@@ -71,9 +71,6 @@ if (EMSCRIPTEN)
 	# Optimization flag to optimize aggressively for size. (other options -Os, -O3, -O2, -O1, -O0)
 	append_linker_flags("-Oz")
 
-	# Reduce code size: We do not need libc errno field support in our build output.
-	append_linker_flags("-sSUPPORT_ERRNO=0")
-
 	# Reduce code size: We do not need native POSIX filesystem emulation support (Emscripten FS/MEMFS)
 	append_linker_flags("-sFILESYSTEM=0")
 endif()

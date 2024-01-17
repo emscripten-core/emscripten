@@ -328,8 +328,7 @@ addToLibrary({
     updateMemoryViews();
   },
 
-  system__deps: ['$setErrNo'],
-  system: (command) => {
+  _emscripten_system: (command) => {
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
       if (!command) return 1; // shell is available
@@ -368,8 +367,7 @@ addToLibrary({
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/system.html
     // Can't call external programs.
     if (!command) return 0; // no shell available
-    setErrNo({{{ cDefs.ENOSYS }}});
-    return -1;
+    return -{{{ cDefs.ENOSYS }}};
   },
 
   // ==========================================================================
@@ -1522,20 +1520,6 @@ addToLibrary({
     {{{ cDefs.EOWNERDEAD }}}: 'Previous owner died',
     {{{ cDefs.ESTRPIPE }}}: 'Streams pipe error',
   },
-#if SUPPORT_ERRNO
-  $setErrNo__deps: ['__errno_location'],
-  $setErrNo: (value) => {
-    {{{makeSetValue("___errno_location()", 0, 'value', 'i32') }}};
-    return value;
-  },
-#else
-  $setErrNo: (value) => {
-#if ASSERTIONS
-    err('failed to set errno from JS');
-#endif
-    return 0;
-  },
-#endif
 
 #if PROXY_POSIX_SOCKETS == 0
   // ==========================================================================
@@ -2138,11 +2122,10 @@ addToLibrary({
   // nonblocking
   // ==========================================================================
 #if SOCKET_WEBRTC
-  $Sockets__deps: ['$setErrNo',
+  $Sockets__deps: [
     () => 'var SocketIO = ' + read('../third_party/socket.io.js') + ';\n',
-    () => 'var Peer = ' + read('../third_party/wrtcp.js') + ';\n'],
-#else
-  $Sockets__deps: ['$setErrNo'],
+    () => 'var Peer = ' + read('../third_party/wrtcp.js') + ';\n'
+  ],
 #endif
   $Sockets: {
     BUFFER_SIZE: 10*1024, // initial size

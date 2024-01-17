@@ -50,6 +50,7 @@ all_tags = {
   'compile+link': 'Applicable during both linking and compilation',
   'compile': 'Only applicable during compilation',
   'experimental': 'This is an experimental setting',
+  'deprecated': 'This setting is deprecated',
 }
 
 output_file = path_from_root('site/source/docs/tools_reference/settings_reference.rst')
