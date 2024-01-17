@@ -48,6 +48,7 @@
  *    we only declare the emalloc_* ones but not the standard ones.
  */
 
+#include <errno.h>
 #include <stdalign.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -1197,9 +1198,9 @@ int emmalloc_posix_memalign(void **memptr, size_t alignment, size_t size)
 {
   assert(memptr);
   if (alignment % sizeof(void *) != 0)
-    return 22/* EINVAL*/;
+    return EINVAL;
   *memptr = emmalloc_memalign(alignment, size);
-  return *memptr ?  0 : 12/*ENOMEM*/;
+  return *memptr ?  0 : ENOMEM;
 }
 EMMALLOC_ALIAS(posix_memalign, emmalloc_posix_memalign);
 
