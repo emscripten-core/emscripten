@@ -165,6 +165,8 @@ EMSCRIPTEN_BINDINGS(Test) {
 
   register_vector<int>("IntVec");
 
+  register_map<int, int>("MapIntInt");
+
   class_<Foo>("Foo").function("process", &Foo::process);
 
   function("global_fn", &global_fn);
