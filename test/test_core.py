@@ -9231,13 +9231,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('core/pthread/emscripten_atomics.c')
 
-  @no_asan('incompatibility with atomics')
   @node_pthreads
   def test_emscripten_atomics(self):
     self.emcc_args.append('-pthread')
     self.do_run_in_out_file_test('core/pthread/emscripten_atomics.c')
 
-  @no_asan('incompatibility with atomics')
   @node_pthreads
   def test_emscripten_futexes(self):
     self.emcc_args.append('-pthread')
