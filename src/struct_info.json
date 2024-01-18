@@ -1227,6 +1227,12 @@
                 "size",
                 "mappedAtCreation"
             ],
+            "WGPUBufferMapCallbackInfo": [
+                "nextInChain",
+                "mode",
+                "callback",
+                "userdata"
+            ],
             "WGPUColor": [
                 "r",
                 "g",
@@ -1268,8 +1274,13 @@
                 "height",
                 "depthOrArrayLayers"
             ],
-            "WGPUInstanceDescriptor": [
-                "nextInChain"
+            "WGPUFuture": [
+                "id"
+            ],
+            "WGPUInstanceFeatures": [
+                "nextInChain",
+                "timedWaitAnyEnable",
+                "timedWaitAnyMaxCount"
             ],
             "WGPULimits": [
                 "maxTextureDimension1D",
@@ -1343,6 +1354,12 @@
                 "nextInChain",
                 "label"
             ],
+            "WGPUQueueWorkDoneCallbackInfo": [
+                "nextInChain",
+                "mode",
+                "callback",
+                "userdata"
+            ],
             "WGPURenderBundleDescriptor": [
                 "nextInChain",
                 "label"
@@ -1350,7 +1367,7 @@
             "WGPURenderBundleEncoderDescriptor": [
                 "nextInChain",
                 "label",
-                "colorFormatsCount",
+                "colorFormatCount",
                 "colorFormats",
                 "depthStencilFormat",
                 "sampleCount",
@@ -1376,6 +1393,12 @@
                 "querySet",
                 "beginningOfPassWriteIndex",
                 "endOfPassWriteIndex"
+            ],
+            "WGPURequestAdapterCallbackInfo": [
+                "nextInChain",
+                "mode",
+                "callback",
+                "userdata"
             ],
             "WGPURequestAdapterOptions": [
                 "nextInChain",
@@ -1403,10 +1426,6 @@
                 "compare",
                 "maxAnisotropy"
             ],
-            "WGPUShaderModuleDescriptor": [
-                "nextInChain",
-                "label"
-            ],
             "WGPUShaderModuleSPIRVDescriptor": [
                 "chain",
                 "codeSize",
@@ -1415,6 +1434,10 @@
             "WGPUShaderModuleWGSLDescriptor": [
                 "chain",
                 "code"
+            ],
+            "WGPUShaderModuleDescriptor": [
+                "nextInChain",
+                "label"
             ],
             "WGPUStencilFaceState": [
                 "compare",
@@ -1450,6 +1473,10 @@
                 "sampleType",
                 "viewDimension",
                 "multisampled"
+            ],
+            "WGPUTextureBindingViewDimensionDescriptor": [
+                "chain",
+                "textureBindingViewDimension"
             ],
             "WGPUTextureDataLayout": [
                 "nextInChain",
@@ -1516,6 +1543,10 @@
                 "depthBiasSlopeScale",
                 "depthBiasClamp"
             ],
+            "WGPUFutureWaitInfo": [
+                "future",
+                "completed"
+            ],
             "WGPUImageCopyBuffer": [
                 "nextInChain",
                 "layout",
@@ -1527,6 +1558,10 @@
                 "mipLevel",
                 "origin",
                 "aspect"
+            ],
+            "WGPUInstanceDescriptor": [
+                "nextInChain",
+                "features"
             ],
             "WGPUProgrammableStageDescriptor": [
                 "nextInChain",
@@ -1591,7 +1626,7 @@
             "WGPUDeviceDescriptor": [
                 "nextInChain",
                 "label",
-                "requiredFeaturesCount",
+                "requiredFeatureCount",
                 "requiredFeatures",
                 "requiredLimits",
                 "defaultQueue",
