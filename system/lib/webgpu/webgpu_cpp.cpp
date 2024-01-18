@@ -2241,10 +2241,6 @@ template <typename T>
         auto result = wgpuInstanceCreateSurface(Get(), reinterpret_cast<WGPUSurfaceDescriptor const * >(descriptor));
         return Surface::Acquire(result);
     }
-    size_t Instance::EnumerateWGSLLanguageFeatures(WGSLFeatureName * features) const {
-        auto result = wgpuInstanceEnumerateWGSLLanguageFeatures(Get(), reinterpret_cast<WGPUWGSLFeatureName * >(features));
-        return result;
-    }
     Bool Instance::HasWGSLLanguageFeature(WGSLFeatureName feature) const {
         auto result = wgpuInstanceHasWGSLLanguageFeature(Get(), static_cast<WGPUWGSLFeatureName>(feature));
         return result;

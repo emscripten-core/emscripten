@@ -951,7 +951,6 @@ namespace wgpu {
         using ObjectBase::operator=;
 
         Surface CreateSurface(SurfaceDescriptor const * descriptor) const;
-        size_t EnumerateWGSLLanguageFeatures(WGSLFeatureName * features) const;
         Bool HasWGSLLanguageFeature(WGSLFeatureName feature) const;
         void ProcessEvents() const;
         void RequestAdapter(RequestAdapterOptions const * options, RequestAdapterCallback callback, void * userdata) const;

@@ -2437,10 +2437,6 @@ var LibraryWebGPU = {
     return WebGPU.mgrSurface.create(context);
   },
 
-  wgpuInstanceEnumerateWGSLLanguageFeatures: () => {
-    abort('TODO: wgpuInstanceEnumerateWGSLLanguageFeatures is unimplemented and will be replaced');
-  },
-
   wgpuInstanceHasWGSLLanguageFeature: (instance, featureEnumValue) => {
     if (!('wgslLanguageFeatures' in navigator["gpu"])) {
       return false;

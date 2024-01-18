@@ -1642,7 +1642,6 @@ sigs = {
   wgpuGetInstanceFeatures__sig: 'ip',
   wgpuGetProcAddress__sig: 'ppp',
   wgpuInstanceCreateSurface__sig: 'ppp',
-  wgpuInstanceEnumerateWGSLLanguageFeatures__sig: 'ppp',
   wgpuInstanceHasWGSLLanguageFeature__sig: 'ipi',
   wgpuInstanceProcessEvents__sig: 'vp',
   wgpuInstanceReference__sig: 'vp',
