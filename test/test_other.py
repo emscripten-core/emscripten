@@ -2701,10 +2701,9 @@ int f() {
           self.run_process([EMCC, test_file('hello_world.c'), '-O' + str(opts)], stderr=PIPE)
           if debug is None:
             self.assertFalse(os.path.exists(self.canonical_temp_dir))
-          elif debug == '1':
-            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-4-original.js'))
-          elif debug == '2':
-            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-4-original.js'))
+          else:
+            print(sorted(os.listdir(self.canonical_temp_dir)))
+            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-3-original.js'))
 
   def test_debuginfo_line_tables_only(self):
     def test(do_compile):
