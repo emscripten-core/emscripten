@@ -15,11 +15,11 @@ var emscriptenThreadProfiler = {
   initialize() {
     this.threadProfilerDiv = document.getElementById('threadprofiler');
     if (!this.threadProfilerDiv) {
-      var div = document.createElement("div");
-      div.id = 'threadprofiler';
-      document.body.appendChild(div);
+      this.threadProfilerDiv = document.createElement('div');
+      this.threadProfilerDiv.id = 'threadprofiler';
+      document.body.appendChild(this.threadProfilerDiv);
     }
-    div.style.cssText = 'margin: 20px; border: solid 1px black;';
+    this.threadProfilerDiv.style.cssText = 'margin: 20px; border: solid 1px black;';
     var i = setInterval(function() { emscriptenThreadProfiler.updateUi() }, this.uiUpdateIntervalMsecs);
     addOnExit(() => clearInterval(i));
   },
