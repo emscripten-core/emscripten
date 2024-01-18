@@ -56,8 +56,7 @@ WasmFS::WasmFS() : rootDirectory(initRootDirectory()), cwd(rootDirectory) {
 // (Note that this means we can't find leaks inside WasmFS code itself, but that
 // seems fundamentally impossible for the above reasons, unless we made LSan log
 // its findings in a way that does not depend on normal file I/O.)
-__attribute__((weak)) extern "C" void __lsan_do_leak_check(void) {
-}
+__attribute__((weak)) extern "C" void __lsan_do_leak_check(void) {}
 
 extern "C" void wasmfs_flush(void) {
   // Flush musl libc streams.
@@ -161,7 +160,7 @@ void WasmFS::preloadFiles() {
     std::shared_ptr<Directory> parentDir;
     if (parsed.getError() ||
         !(parentDir = parsed.getFile()->dynCast<Directory>())) {
-      emscripten_console_error(
+      emscripten_err(
         "Fatal error during directory creation in file preloading.");
       abort();
     }
@@ -188,7 +187,7 @@ void WasmFS::preloadFiles() {
 
     auto parsed = path::parseParent(fileName);
     if (parsed.getError()) {
-      emscripten_console_error("Fatal error during file preloading");
+      emscripten_err("Fatal error during file preloading");
       abort();
     }
     auto& [parent, childName] = parsed.getParentChild();

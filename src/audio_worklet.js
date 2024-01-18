@@ -49,9 +49,9 @@ function createWasmAudioWorkletProcessor(audioParams) {
         didProduceAudio, paramArray;
 
       // Calculate how much stack space is needed.
-      for(i of inputList) stackMemoryNeeded += i.length * 512;
-      for(i of outputList) stackMemoryNeeded += i.length * 512;
-      for(i in parameters) stackMemoryNeeded += parameters[i].byteLength + 8, ++numParams;
+      for (i of inputList) stackMemoryNeeded += i.length * 512;
+      for (i of outputList) stackMemoryNeeded += i.length * 512;
+      for (i in parameters) stackMemoryNeeded += parameters[i].byteLength + 8, ++numParams;
 
       // Allocate the necessary stack space.
       inputsPtr = stackAlloc(stackMemoryNeeded);
@@ -59,12 +59,12 @@ function createWasmAudioWorkletProcessor(audioParams) {
       // Copy input audio descriptor structs and data to Wasm
       k = inputsPtr >> 2;
       dataPtr = inputsPtr + numInputs * 8;
-      for(i of inputList) {
+      for (i of inputList) {
         // Write the AudioSampleFrame struct instance
         HEAPU32[k++] = i.length;
         HEAPU32[k++] = dataPtr;
         // Marshal the input audio sample data for each audio channel of this input
-        for(j of i) {
+        for (j of i) {
           HEAPF32.set(j, dataPtr>>2);
           dataPtr += 512;
         }
@@ -74,7 +74,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       outputsPtr = dataPtr;
       k = outputsPtr >> 2;
       outputDataPtr = (dataPtr += numOutputs * 8) >> 2;
-      for(i of outputList) {
+      for (i of outputList) {
         // Write the AudioSampleFrame struct instance
         HEAPU32[k++] = i.length;
         HEAPU32[k++] = dataPtr;
@@ -86,7 +86,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       paramsPtr = dataPtr;
       k = paramsPtr >> 2;
       dataPtr += numParams * 8;
-      for(i = 0; paramArray = parameters[i++];) {
+      for (i = 0; paramArray = parameters[i++];) {
         // Write the AudioParamFrame struct instance
         HEAPU32[k++] = paramArray.length;
         HEAPU32[k++] = dataPtr;
@@ -100,9 +100,9 @@ function createWasmAudioWorkletProcessor(audioParams) {
         // Read back the produced audio data to all outputs and their channels.
         // (A garbage-free function TypedArray.copy(dstTypedArray, dstOffset, srcTypedArray, srcOffset, count) would sure be handy..
         //  but web does not have one, so manually copy all bytes in)
-        for(i of outputList) {
-          for(j of i) {
-            for(k = 0; k < 128; ++k) {
+        for (i of outputList) {
+          for (j of i) {
+            for (k = 0; k < 128; ++k) {
               j[k] = HEAPF32[outputDataPtr++];
             }
           }

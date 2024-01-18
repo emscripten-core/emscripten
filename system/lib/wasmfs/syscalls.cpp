@@ -26,7 +26,6 @@
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
-#include <time.h>
 
 #include "backend.h"
 #include "file.h"
@@ -346,6 +345,18 @@ backend_t wasmfs_get_backend_by_path(const char* path) {
   return parsed.getFile()->getBackend();
 }
 
+static timespec ms_to_timespec(double ms) {
+  long long seconds = ms / 1000;
+  timespec ts;
+  ts.tv_sec = seconds; // seconds
+  ts.tv_nsec = (ms - (seconds * 1000)) * 1000 * 1000; // nanoseconds
+  return ts;
+}
+
+static double timespec_to_ms(timespec ts) {
+  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec) / (1000 * 1000);
+}
+
 int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
@@ -386,9 +397,9 @@ int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   buffer->st_blocks = (buffer->st_size + 511) / 512;
   // Specifies the preferred blocksize for efficient disk I/O.
   buffer->st_blksize = 4096;
-  buffer->st_atim = lockedFile.getATime();
-  buffer->st_mtim = lockedFile.getMTime();
-  buffer->st_ctim = lockedFile.getCTime();
+  buffer->st_atim = ms_to_timespec(lockedFile.getATime());
+  buffer->st_mtim = ms_to_timespec(lockedFile.getMTime());
+  buffer->st_ctim = ms_to_timespec(lockedFile.getCTime());
   return __WASI_ERRNO_SUCCESS;
 }
 
@@ -475,7 +486,8 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
           //      report a generic error.
           return -EIO;
         }
-        [[maybe_unused]] bool mounted = lockedParent.mountChild(std::string(childName), created);
+        [[maybe_unused]] bool mounted =
+          lockedParent.mountChild(std::string(childName), created);
         assert(mounted);
       }
       // TODO: Check that the insert actually succeeds.
@@ -861,6 +873,39 @@ int __syscall_rmdir(intptr_t path) {
   return __syscall_unlinkat(AT_FDCWD, path, AT_REMOVEDIR);
 }
 
+// wasmfs_unmount is similar to __syscall_unlinkat, but assumes AT_REMOVEDIR is
+// true and will only unlink mountpoints (Empty and nonempty).
+int wasmfs_unmount(intptr_t path) {
+  auto parsed = path::parseParent((char*)path, AT_FDCWD);
+  if (auto err = parsed.getError()) {
+    return err;
+  }
+  auto& [parent, childNameView] = parsed.getParentChild();
+  std::string childName(childNameView);
+  auto lockedParent = parent->locked();
+  auto file = lockedParent.getChild(childName);
+  if (!file) {
+    return -ENOENT;
+  }
+  // Disallow removing the root directory, even if it is empty.
+  if (file == wasmFS.getRootDirectory()) {
+    return -EBUSY;
+  }
+
+  if (auto dir = file->dynCast<Directory>()) {
+    if (parent->getBackend() == dir->getBackend()) {
+      // The child is not a valid mountpoint.
+      return -EINVAL;
+    }
+  } else {
+    // A normal file or symlink.
+    return -ENOTDIR;
+  }
+
+  // Input is valid, perform the unlink.
+  return lockedParent.removeChild(childName);
+}
+
 int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {
   dirent* result = (dirent*)dirp;
 
@@ -1059,7 +1104,10 @@ int __syscall_symlink(intptr_t target, intptr_t linkpath) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_readlinkat(int dirfd, intptr_t path, intptr_t buf, size_t bufsize) {
+int __syscall_readlinkat(int dirfd,
+                         intptr_t path,
+                         intptr_t buf,
+                         size_t bufsize) {
   // TODO: Handle empty paths.
   auto parsed = path::parseFile((char*)path, dirfd, path::NoFollowLinks);
   if (auto err = parsed.getError()) {
@@ -1098,16 +1146,13 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
 
   // TODO: Handle tv_nsec being UTIME_NOW or UTIME_OMIT.
   // TODO: Check for write access to the file (see man page for specifics).
-  struct timespec aTime, mTime;
-  
+  double aTime, mTime;
+
   if (times == NULL) {
-    struct timespec ts;
-    clock_gettime(CLOCK_REALTIME, &ts);
-    aTime = ts;
-    mTime = ts;
+    aTime = mTime = emscripten_date_now();
   } else {
-    aTime = times[0];
-    mTime = times[1];
+    aTime = timespec_to_ms(times[0]);
+    mTime = timespec_to_ms(times[1]);
   }
 
   auto locked = parsed.getFile()->locked();
@@ -1334,12 +1379,13 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
     if (openFile) {
       mask = 0;
       auto flags = openFile->locked().getFlags();
+      auto accessMode = flags & O_ACCMODE;
       auto readBit = pollfd->events & POLLOUT;
-      if (readBit && (flags == O_WRONLY || flags == O_RDWR)) {
+      if (readBit && (accessMode == O_WRONLY || accessMode == O_RDWR)) {
         mask |= readBit;
       }
       auto writeBit = pollfd->events & POLLIN;
-      if (writeBit && (flags == O_RDONLY || flags == O_RDWR)) {
+      if (writeBit && (accessMode == O_RDONLY || accessMode == O_RDWR)) {
         // If there is data in the file, then there is also the ability to read.
         // TODO: Does this need to consider the position as well? That is, if
         // the position is at the end, we can't read from the current position
@@ -1479,16 +1525,6 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
       // Always error for now, until we implement byte-range locks.
       return -EACCES;
     }
-    case F_GETOWN_EX:
-    case F_SETOWN:
-      // These are for sockets. We don't have them fully implemented yet.
-      return -EINVAL;
-    case F_GETOWN:
-      // Work around what seems to be a musl bug, where they do not set errno
-      // in the caller. This has been an issue since the JS filesystem and had
-      // the same workaround there.
-      errno = EINVAL;
-      return -1;
     default: {
       // TODO: support any remaining cmds
       return -EINVAL;
@@ -1496,7 +1532,8 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
   }
 }
 
-static int doStatFS(std::shared_ptr<File>& file, size_t size, struct statfs* buf) {
+static int
+doStatFS(std::shared_ptr<File>& file, size_t size, struct statfs* buf) {
   if (size != sizeof(struct statfs)) {
     // We only know how to write to a standard statfs, not even a truncated one.
     return -EINVAL;
@@ -1728,7 +1765,11 @@ int __syscall_fadvise64(int fd, off_t offset, off_t length, int advice) {
   return 0;
 }
 
-int __syscall__newselect(int nfds, intptr_t readfds_, intptr_t writefds_, intptr_t exceptfds_, intptr_t timeout_) {
+int __syscall__newselect(int nfds,
+                         intptr_t readfds_,
+                         intptr_t writefds_,
+                         intptr_t exceptfds_,
+                         intptr_t timeout_) {
   // TODO: Implement this syscall. For now, we return an error code,
   //       specifically ENOMEM which is valid per the docs:
   //          ENOMEM Unable to allocate memory for internal tables

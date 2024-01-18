@@ -13,9 +13,9 @@ int main(int argc, char **argv) {
   char *pc, *pc2;
   assert(argc == 1);
   pc = (char *)alloca(4+argc);
-  assert(((long)pc) % 4 == 0);
+  assert(((uintptr_t)pc) % 4 == 0);
   pc2 = (char *)alloca(4+argc);
-  assert(((long)pc2) % 4 == 0);
-  printf("z:%d*%p*%p*\n", (long)pc > 0, pc, pc2);
+  assert(((uintptr_t)pc2) % 4 == 0);
+  printf("z:%p*%p*\n", pc, pc2);
   return 0;
 }

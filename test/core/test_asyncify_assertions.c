@@ -2,7 +2,7 @@
 #include <emscripten.h>
 
 EM_JS(void, suspend, (), {
-  return Asyncify.handleSleep(function(wakeUp) {
+  Asyncify.handleSleep((wakeUp) => {
     Module.resume = wakeUp;
     setTimeout(function() {
       Module._resume_from_inside_c();

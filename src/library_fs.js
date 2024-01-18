@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $FS__deps: ['$randomFill', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
     '$FS_createPreloadedFile',
     '$FS_modeStringToFlags',
@@ -33,7 +33,7 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS && !MINIMAL_RUNTIME
     '$demangleAll',
 #endif
-    ],
+  ],
   $FS__postset: function() {
     // TODO: do we need noFSInit?
     addAtInit(`
@@ -121,7 +121,7 @@ FS.staticInit();` +
     //
     // paths
     //
-    lookupPath: (path, opts = {}) => {
+    lookupPath(path, opts = {}) {
       path = PATH_FS.resolve(path);
 
       if (!path) return { path: '', node: null };
@@ -180,7 +180,7 @@ FS.staticInit();` +
 
       return { path: current_path, node: current };
     },
-    getPath: (node) => {
+    getPath(node) {
       var path;
       while (true) {
         if (FS.isRoot(node)) {
@@ -196,7 +196,7 @@ FS.staticInit();` +
     //
     // nodes
     //
-    hashName: (parentid, name) => {
+    hashName(parentid, name) {
       var hash = 0;
 
 #if CASE_INSENSITIVE_FS
@@ -208,12 +208,12 @@ FS.staticInit();` +
       }
       return ((parentid + hash) >>> 0) % FS.nameTable.length;
     },
-    hashAddNode: (node) => {
+    hashAddNode(node) {
       var hash = FS.hashName(node.parent.id, node.name);
       node.name_next = FS.nameTable[hash];
       FS.nameTable[hash] = node;
     },
-    hashRemoveNode: (node) => {
+    hashRemoveNode(node) {
       var hash = FS.hashName(node.parent.id, node.name);
       if (FS.nameTable[hash] === node) {
         FS.nameTable[hash] = node.name_next;
@@ -228,7 +228,7 @@ FS.staticInit();` +
         }
       }
     },
-    lookupNode: (parent, name) => {
+    lookupNode(parent, name) {
       var errCode = FS.mayLookup(parent);
       if (errCode) {
         throw new FS.ErrnoError(errCode, parent);
@@ -249,7 +249,7 @@ FS.staticInit();` +
       // if we failed to find it in the cache, call into the VFS
       return FS.lookup(parent, name);
     },
-    createNode: (parent, name, mode, rdev) => {
+    createNode(parent, name, mode, rdev) {
 #if ASSERTIONS
       assert(typeof parent == 'object')
 #endif
@@ -259,34 +259,34 @@ FS.staticInit();` +
 
       return node;
     },
-    destroyNode: (node) => {
+    destroyNode(node) {
       FS.hashRemoveNode(node);
     },
-    isRoot: (node) => {
+    isRoot(node) {
       return node === node.parent;
     },
-    isMountpoint: (node) => {
+    isMountpoint(node) {
       return !!node.mounted;
     },
-    isFile: (mode) => {
+    isFile(mode) {
       return (mode & {{{ cDefs.S_IFMT }}}) === {{{ cDefs.S_IFREG }}};
     },
-    isDir: (mode) => {
+    isDir(mode) {
       return (mode & {{{ cDefs.S_IFMT }}}) === {{{ cDefs.S_IFDIR }}};
     },
-    isLink: (mode) => {
+    isLink(mode) {
       return (mode & {{{ cDefs.S_IFMT }}}) === {{{ cDefs.S_IFLNK }}};
     },
-    isChrdev: (mode) => {
+    isChrdev(mode) {
       return (mode & {{{ cDefs.S_IFMT }}}) === {{{ cDefs.S_IFCHR }}};
     },
-    isBlkdev: (mode) => {
+    isBlkdev(mode) {
       return (mode & {{{ cDefs.S_IFMT }}}) === {{{ cDefs.S_IFBLK }}};
     },
-    isFIFO: (mode) => {
+    isFIFO(mode) {
       return (mode & {{{ cDefs.S_IFMT }}}) === {{{ cDefs.S_IFIFO }}};
     },
-    isSocket: (mode) => {
+    isSocket(mode) {
       return (mode & {{{ cDefs.S_IFSOCK }}}) === {{{ cDefs.S_IFSOCK }}};
     },
 
@@ -294,14 +294,14 @@ FS.staticInit();` +
     // permissions
     //
     // convert O_* bitmask to a string for nodePermissions
-    flagsToPermissionString: (flag) => {
+    flagsToPermissionString(flag) {
       var perms = ['r', 'w', 'rw'][flag & 3];
       if ((flag & {{{ cDefs.O_TRUNC }}})) {
         perms += 'w';
       }
       return perms;
     },
-    nodePermissions: (node, perms) => {
+    nodePermissions(node, perms) {
       if (FS.ignorePermissions) {
         return 0;
       }
@@ -315,13 +315,13 @@ FS.staticInit();` +
       }
       return 0;
     },
-    mayLookup: (dir) => {
+    mayLookup(dir) {
       var errCode = FS.nodePermissions(dir, 'x');
       if (errCode) return errCode;
       if (!dir.node_ops.lookup) return {{{ cDefs.EACCES }}};
       return 0;
     },
-    mayCreate: (dir, name) => {
+    mayCreate(dir, name) {
       try {
         var node = FS.lookupNode(dir, name);
         return {{{ cDefs.EEXIST }}};
@@ -329,7 +329,7 @@ FS.staticInit();` +
       }
       return FS.nodePermissions(dir, 'wx');
     },
-    mayDelete: (dir, name, isdir) => {
+    mayDelete(dir, name, isdir) {
       var node;
       try {
         node = FS.lookupNode(dir, name);
@@ -354,7 +354,7 @@ FS.staticInit();` +
       }
       return 0;
     },
-    mayOpen: (node, flags) => {
+    mayOpen(node, flags) {
       if (!node) {
         return {{{ cDefs.ENOENT }}};
       }
@@ -373,7 +373,7 @@ FS.staticInit();` +
     // streams
     //
     MAX_OPEN_FDS: 4096,
-    nextfd: () => {
+    nextfd() {
       for (var fd = 0; fd <= FS.MAX_OPEN_FDS; fd++) {
         if (!FS.streams[fd]) {
           return fd;
@@ -381,7 +381,7 @@ FS.staticInit();` +
       }
       throw new FS.ErrnoError({{{ cDefs.EMFILE }}});
     },
-    getStreamChecked: (fd) => {
+    getStreamChecked(fd) {
       var stream = FS.getStream(fd);
       if (!stream) {
         throw new FS.ErrnoError({{{ cDefs.EBADF }}});
@@ -392,7 +392,7 @@ FS.staticInit();` +
     // TODO parameterize this function such that a stream
     // object isn't directly passed in. not possible until
     // SOCKFS is completed.
-    createStream: (stream, fd = -1) => {
+    createStream(stream, fd = -1) {
       if (!FS.FSStream) {
         FS.FSStream = /** @constructor */ function() {
           this.shared = { };
@@ -440,7 +440,7 @@ FS.staticInit();` +
       FS.streams[fd] = stream;
       return stream;
     },
-    closeStream: (fd) => {
+    closeStream(fd) {
       FS.streams[fd] = null;
     },
 
@@ -454,23 +454,21 @@ FS.staticInit();` +
     // however, once opened, the stream's operations are overridden with
     // the operations of the device its underlying node maps back to.
     chrdev_stream_ops: {
-      open: (stream) => {
+      open(stream) {
         var device = FS.getDevice(stream.node.rdev);
         // override node's stream ops with the device's
         stream.stream_ops = device.stream_ops;
         // forward the open call
-        if (stream.stream_ops.open) {
-          stream.stream_ops.open(stream);
-        }
+        stream.stream_ops.open?.(stream);
       },
-      llseek: () => {
+      llseek() {
         throw new FS.ErrnoError({{{ cDefs.ESPIPE }}});
       }
     },
     major: (dev) => ((dev) >> 8),
     minor: (dev) => ((dev) & 0xff),
     makedev: (ma, mi) => ((ma) << 8 | (mi)),
-    registerDevice: (dev, ops) => {
+    registerDevice(dev, ops) {
       FS.devices[dev] = { stream_ops: ops };
     },
     getDevice: (dev) => FS.devices[dev],
@@ -478,7 +476,7 @@ FS.staticInit();` +
     //
     // core
     //
-    getMounts: (mount) => {
+    getMounts(mount) {
       var mounts = [];
       var check = [mount];
 
@@ -492,7 +490,7 @@ FS.staticInit();` +
 
       return mounts;
     },
-    syncfs: (populate, callback) => {
+    syncfs(populate, callback) {
       if (typeof populate == 'function') {
         callback = populate;
         populate = false;
@@ -536,7 +534,7 @@ FS.staticInit();` +
         mount.type.syncfs(mount, populate, done);
       });
     },
-    mount: (type, opts, mountpoint) => {
+    mount(type, opts, mountpoint) {
 #if ASSERTIONS
       if (typeof type == 'string') {
         // The filesystem was not included, and instead we have an error
@@ -591,7 +589,7 @@ FS.staticInit();` +
 
       return mountRoot;
     },
-    unmount: (mountpoint) => {
+    unmount(mountpoint) {
       var lookup = FS.lookupPath(mountpoint, { follow_mount: false });
 
       if (!FS.isMountpoint(lookup.node)) {
@@ -627,11 +625,11 @@ FS.staticInit();` +
 #endif
       node.mount.mounts.splice(idx, 1);
     },
-    lookup: (parent, name) => {
+    lookup(parent, name) {
       return parent.node_ops.lookup(parent, name);
     },
     // generic function for all node creation
-    mknod: (path, mode, dev) => {
+    mknod(path, mode, dev) {
       var lookup = FS.lookupPath(path, { parent: true });
       var parent = lookup.node;
       var name = PATH.basename(path);
@@ -648,13 +646,13 @@ FS.staticInit();` +
       return parent.node_ops.mknod(parent, name, mode, dev);
     },
     // helpers to create specific types of nodes
-    create: (path, mode) => {
+    create(path, mode) {
       mode = mode !== undefined ? mode : 438 /* 0666 */;
       mode &= {{{ cDefs.S_IALLUGO }}};
       mode |= {{{ cDefs.S_IFREG }}};
       return FS.mknod(path, mode, 0);
     },
-    mkdir: (path, mode) => {
+    mkdir(path, mode) {
       mode = mode !== undefined ? mode : 511 /* 0777 */;
       mode &= {{{ cDefs.S_IRWXUGO }}} | {{{ cDefs.S_ISVTX }}};
       mode |= {{{ cDefs.S_IFDIR }}};
@@ -666,7 +664,7 @@ FS.staticInit();` +
       return FS.mknod(path, mode, 0);
     },
     // Creates a whole directory tree chain if it doesn't yet exist
-    mkdirTree: (path, mode) => {
+    mkdirTree(path, mode) {
       var dirs = path.split('/');
       var d = '';
       for (var i = 0; i < dirs.length; ++i) {
@@ -679,7 +677,7 @@ FS.staticInit();` +
         }
       }
     },
-    mkdev: (path, mode, dev) => {
+    mkdev(path, mode, dev) {
       if (typeof dev == 'undefined') {
         dev = mode;
         mode = 438 /* 0666 */;
@@ -687,7 +685,7 @@ FS.staticInit();` +
       mode |= {{{ cDefs.S_IFCHR }}};
       return FS.mknod(path, mode, dev);
     },
-    symlink: (oldpath, newpath) => {
+    symlink(oldpath, newpath) {
       if (!PATH_FS.resolve(oldpath)) {
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       }
@@ -711,7 +709,7 @@ FS.staticInit();` +
 #endif
       return parent.node_ops.symlink(parent, newname, oldpath);
     },
-    rename: (old_path, new_path) => {
+    rename(old_path, new_path) {
       var old_dirname = PATH.dirname(old_path);
       var new_dirname = PATH.dirname(new_path);
       var old_name = PATH.basename(old_path);
@@ -803,7 +801,7 @@ FS.staticInit();` +
       }
 #endif
     },
-    rmdir: (path) => {
+    rmdir(path) {
       var lookup = FS.lookupPath(path, { parent: true });
       var parent = lookup.node;
       var name = PATH.basename(path);
@@ -831,7 +829,7 @@ FS.staticInit();` +
       }
 #endif
     },
-    readdir: (path) => {
+    readdir(path) {
       var lookup = FS.lookupPath(path, { follow: true });
       var node = lookup.node;
       if (!node.node_ops.readdir) {
@@ -839,7 +837,7 @@ FS.staticInit();` +
       }
       return node.node_ops.readdir(node);
     },
-    unlink: (path) => {
+    unlink(path) {
       var lookup = FS.lookupPath(path, { parent: true });
       var parent = lookup.node;
       if (!parent) {
@@ -873,7 +871,7 @@ FS.staticInit();` +
       }
 #endif
     },
-    readlink: (path) => {
+    readlink(path) {
       var lookup = FS.lookupPath(path);
       var link = lookup.node;
       if (!link) {
@@ -884,7 +882,7 @@ FS.staticInit();` +
       }
       return PATH_FS.resolve(FS.getPath(link.parent), link.node_ops.readlink(link));
     },
-    stat: (path, dontFollow) => {
+    stat(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
       var node = lookup.node;
       if (!node) {
@@ -895,10 +893,10 @@ FS.staticInit();` +
       }
       return node.node_ops.getattr(node);
     },
-    lstat: (path) => {
+    lstat(path) {
       return FS.stat(path, true);
     },
-    chmod: (path, mode, dontFollow) => {
+    chmod(path, mode, dontFollow) {
       var node;
       if (typeof path == 'string') {
         var lookup = FS.lookupPath(path, { follow: !dontFollow });
@@ -914,14 +912,14 @@ FS.staticInit();` +
         timestamp: Date.now()
       });
     },
-    lchmod: (path, mode) => {
+    lchmod(path, mode) {
       FS.chmod(path, mode, true);
     },
-    fchmod: (fd, mode) => {
+    fchmod(fd, mode) {
       var stream = FS.getStreamChecked(fd);
       FS.chmod(stream.node, mode);
     },
-    chown: (path, uid, gid, dontFollow) => {
+    chown(path, uid, gid, dontFollow) {
       var node;
       if (typeof path == 'string') {
         var lookup = FS.lookupPath(path, { follow: !dontFollow });
@@ -937,14 +935,14 @@ FS.staticInit();` +
         // we ignore the uid / gid for now
       });
     },
-    lchown: (path, uid, gid) => {
+    lchown(path, uid, gid) {
       FS.chown(path, uid, gid, true);
     },
-    fchown: (fd, uid, gid) => {
+    fchown(fd, uid, gid) {
       var stream = FS.getStreamChecked(fd);
       FS.chown(stream.node, uid, gid);
     },
-    truncate: (path, len) => {
+    truncate(path, len) {
       if (len < 0) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
@@ -973,21 +971,21 @@ FS.staticInit();` +
         timestamp: Date.now()
       });
     },
-    ftruncate: (fd, len) => {
+    ftruncate(fd, len) {
       var stream = FS.getStreamChecked(fd);
       if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
       FS.truncate(stream.node, len);
     },
-    utime: (path, atime, mtime) => {
+    utime(path, atime, mtime) {
       var lookup = FS.lookupPath(path, { follow: true });
       var node = lookup.node;
       node.node_ops.setattr(node, {
         timestamp: Math.max(atime, mtime)
       });
     },
-    open: (path, flags, mode) => {
+    open(path, flags, mode) {
       if (path === "") {
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       }
@@ -1088,7 +1086,7 @@ FS.staticInit();` +
 #endif
       return stream;
     },
-    close: (stream) => {
+    close(stream) {
       if (FS.isClosed(stream)) {
         throw new FS.ErrnoError({{{ cDefs.EBADF }}});
       }
@@ -1109,10 +1107,10 @@ FS.staticInit();` +
       }
 #endif
     },
-    isClosed: (stream) => {
+    isClosed(stream) {
       return stream.fd === null;
     },
-    llseek: (stream, offset, whence) => {
+    llseek(stream, offset, whence) {
       if (FS.isClosed(stream)) {
         throw new FS.ErrnoError({{{ cDefs.EBADF }}});
       }
@@ -1131,7 +1129,7 @@ FS.staticInit();` +
 #endif
       return stream.position;
     },
-    read: (stream, buffer, offset, length, position) => {
+    read(stream, buffer, offset, length, position) {
 #if ASSERTIONS
       assert(offset >= 0);
 #endif
@@ -1165,7 +1163,7 @@ FS.staticInit();` +
 #endif
       return bytesRead;
     },
-    write: (stream, buffer, offset, length, position, canOwn) => {
+    write(stream, buffer, offset, length, position, canOwn) {
 #if ASSERTIONS
       assert(offset >= 0);
 #endif
@@ -1203,7 +1201,7 @@ FS.staticInit();` +
 #endif
       return bytesWritten;
     },
-    allocate: (stream, offset, length) => {
+    allocate(stream, offset, length) {
       if (FS.isClosed(stream)) {
         throw new FS.ErrnoError({{{ cDefs.EBADF }}});
       }
@@ -1221,7 +1219,7 @@ FS.staticInit();` +
       }
       stream.stream_ops.allocate(stream, offset, length);
     },
-    mmap: (stream, length, position, prot, flags) => {
+    mmap(stream, length, position, prot, flags) {
       // User requests writing to file (prot & PROT_WRITE != 0).
       // Checking if we have permissions to write to the file unless
       // MAP_PRIVATE flag is set. According to POSIX spec it is possible
@@ -1241,7 +1239,7 @@ FS.staticInit();` +
       }
       return stream.stream_ops.mmap(stream, length, position, prot, flags);
     },
-    msync: (stream, buffer, offset, length, mmapFlags) => {
+    msync(stream, buffer, offset, length, mmapFlags) {
 #if ASSERTIONS
       assert(offset >= 0);
 #endif
@@ -1251,13 +1249,13 @@ FS.staticInit();` +
       return stream.stream_ops.msync(stream, buffer, offset, length, mmapFlags);
     },
     munmap: (stream) => 0,
-    ioctl: (stream, cmd, arg) => {
+    ioctl(stream, cmd, arg) {
       if (!stream.stream_ops.ioctl) {
         throw new FS.ErrnoError({{{ cDefs.ENOTTY }}});
       }
       return stream.stream_ops.ioctl(stream, cmd, arg);
     },
-    readFile: (path, opts = {}) => {
+    readFile(path, opts = {}) {
       opts.flags = opts.flags || {{{ cDefs.O_RDONLY }}};
       opts.encoding = opts.encoding || 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
@@ -1277,7 +1275,7 @@ FS.staticInit();` +
       FS.close(stream);
       return ret;
     },
-    writeFile: (path, data, opts = {}) => {
+    writeFile(path, data, opts = {}) {
       opts.flags = opts.flags || {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}};
       var stream = FS.open(path, opts.flags, opts.mode);
       if (typeof data == 'string') {
@@ -1296,7 +1294,7 @@ FS.staticInit();` +
     // module-level FS code
     //
     cwd: () => FS.currentPath,
-    chdir: (path) => {
+    chdir(path) {
       var lookup = FS.lookupPath(path, { follow: true });
       if (lookup.node === null) {
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
@@ -1310,12 +1308,12 @@ FS.staticInit();` +
       }
       FS.currentPath = lookup.path;
     },
-    createDefaultDirectories: () => {
+    createDefaultDirectories() {
       FS.mkdir('/tmp');
       FS.mkdir('/home');
       FS.mkdir('/home/web_user');
     },
-    createDefaultDevices: () => {
+    createDefaultDevices() {
       // create /dev
       FS.mkdir('/dev');
       // setup /dev/null
@@ -1347,17 +1345,17 @@ FS.staticInit();` +
       FS.mkdir('/dev/shm');
       FS.mkdir('/dev/shm/tmp');
     },
-    createSpecialDirectories: () => {
+    createSpecialDirectories() {
       // create /proc/self/fd which allows /proc/self/fd/6 => readlink gives the
       // name of the stream for fd 6 (see test_unistd_ttyname)
       FS.mkdir('/proc');
       var proc_self = FS.mkdir('/proc/self');
       FS.mkdir('/proc/self/fd');
       FS.mount({
-        mount: () => {
+        mount() {
           var node = FS.createNode(proc_self, 'fd', {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */, {{{ cDefs.S_IXUGO }}});
           node.node_ops = {
-            lookup: (parent, name) => {
+            lookup(parent, name) {
               var fd = +name;
               var stream = FS.getStreamChecked(fd);
               var ret = {
@@ -1373,7 +1371,7 @@ FS.staticInit();` +
         }
       }, {}, '/proc/self/fd');
     },
-    createStandardStreams: () => {
+    createStandardStreams() {
       // TODO deprecate the old functionality of a single
       // input / output callback and that utilizes FS.createDevice
       // and instead require a unique set of stream ops
@@ -1408,7 +1406,7 @@ FS.staticInit();` +
       assert(stderr.fd === 2, `invalid handle for stderr (${stderr.fd})`);
 #endif
     },
-    ensureErrnoError: () => {
+    ensureErrnoError() {
       if (FS.ErrnoError) return;
       FS.ErrnoError = /** @this{Object} */ function ErrnoError(errno, node) {
         // We set the `name` property to be able to identify `FS.ErrnoError`
@@ -1455,7 +1453,7 @@ FS.staticInit();` +
         FS.genericErrors[code].stack = '<generic error, no stack>';
       });
     },
-    staticInit: () => {
+    staticInit() {
       FS.ensureErrnoError();
 
       FS.nameTable = new Array(4096);
@@ -1482,7 +1480,7 @@ FS.staticInit();` +
 #endif
       };
     },
-    init: (input, output, error) => {
+    init(input, output, error) {
 #if ASSERTIONS
       assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
 #endif
@@ -1497,7 +1495,7 @@ FS.staticInit();` +
 
       FS.createStandardStreams();
     },
-    quit: () => {
+    quit() {
       FS.init.initialized = false;
       // force-flush all streams, so we get musl std streams printed out
 #if hasExportedSymbol('fflush')
@@ -1516,14 +1514,14 @@ FS.staticInit();` +
     //
     // old v1 compatibility functions
     //
-    findObject: (path, dontResolveLastLink) => {
+    findObject(path, dontResolveLastLink) {
       var ret = FS.analyzePath(path, dontResolveLastLink);
       if (!ret.exists) {
         return null;
       }
       return ret.object;
     },
-    analyzePath: (path, dontResolveLastLink) => {
+    analyzePath(path, dontResolveLastLink) {
       // operate from within the context of the symlink's target
       try {
         var lookup = FS.lookupPath(path, { follow: !dontResolveLastLink });
@@ -1551,7 +1549,7 @@ FS.staticInit();` +
       };
       return ret;
     },
-    createPath: (parent, path, canRead, canWrite) => {
+    createPath(parent, path, canRead, canWrite) {
       parent = typeof parent == 'string' ? parent : FS.getPath(parent);
       var parts = path.split('/').reverse();
       while (parts.length) {
@@ -1567,12 +1565,12 @@ FS.staticInit();` +
       }
       return current;
     },
-    createFile: (parent, name, properties, canRead, canWrite) => {
+    createFile(parent, name, properties, canRead, canWrite) {
       var path = PATH.join2(typeof parent == 'string' ? parent : FS.getPath(parent), name);
       var mode = FS_getMode(canRead, canWrite);
       return FS.create(path, mode);
     },
-    createDataFile: (parent, name, data, canRead, canWrite, canOwn) => {
+    createDataFile(parent, name, data, canRead, canWrite, canOwn) {
       var path = name;
       if (parent) {
         parent = typeof parent == 'string' ? parent : FS.getPath(parent);
@@ -1593,9 +1591,8 @@ FS.staticInit();` +
         FS.close(stream);
         FS.chmod(node, mode);
       }
-      return node;
     },
-    createDevice: (parent, name, input, output) => {
+    createDevice(parent, name, input, output) {
       var path = PATH.join2(typeof parent == 'string' ? parent : FS.getPath(parent), name);
       var mode = FS_getMode(!!input, !!output);
       if (!FS.createDevice.major) FS.createDevice.major = 64;
@@ -1603,16 +1600,16 @@ FS.staticInit();` +
       // Create a fake device that a set of stream ops to emulate
       // the old behavior.
       FS.registerDevice(dev, {
-        open: (stream) => {
+        open(stream) {
           stream.seekable = false;
         },
-        close: (stream) => {
+        close(stream) {
           // flush any pending line data
-          if (output && output.buffer && output.buffer.length) {
+          if (output?.buffer?.length) {
             output({{{ charCode('\n') }}});
           }
         },
-        read: (stream, buffer, offset, length, pos /* ignored */) => {
+        read(stream, buffer, offset, length, pos /* ignored */) {
           var bytesRead = 0;
           for (var i = 0; i < length; i++) {
             var result;
@@ -1633,7 +1630,7 @@ FS.staticInit();` +
           }
           return bytesRead;
         },
-        write: (stream, buffer, offset, length, pos) => {
+        write(stream, buffer, offset, length, pos) {
           for (var i = 0; i < length; i++) {
             try {
               output(buffer[offset+i]);
@@ -1651,7 +1648,7 @@ FS.staticInit();` +
     },
     // Makes sure a file's contents are loaded. Returns whether the file has
     // been loaded successfully. No-op for files that have been loaded already.
-    forceLoadFile: (obj) => {
+    forceLoadFile(obj) {
       if (obj.isDevice || obj.isFolder || obj.link || obj.contents) return true;
       if (typeof XMLHttpRequest != 'undefined') {
         throw new Error("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
@@ -1672,7 +1669,7 @@ FS.staticInit();` +
     // Creates a file record for lazy-loading from a URL. XXX This requires a synchronous
     // XHR, which is not possible in browsers except in a web worker! Use preloading,
     // either --preload-file in emcc or FS.createPreloadedFile
-    createLazyFile: (parent, name, url, canRead, canWrite) => {
+    createLazyFile(parent, name, url, canRead, canWrite) {
       // Lazy chunked Uint8Array (implements get and length from Uint8Array). Actual getting is abstracted away for eventual reuse.
       /** @constructor */
       function LazyUint8Array() {
@@ -1849,24 +1846,40 @@ FS.staticInit();` +
 
     // Removed v1 functions
 #if ASSERTIONS
-    absolutePath: () => {
+    absolutePath() {
       abort('FS.absolutePath has been removed; use PATH_FS.resolve instead');
     },
-    createFolder: () => {
+    createFolder() {
       abort('FS.createFolder has been removed; use FS.mkdir instead');
     },
-    createLink: () => {
+    createLink() {
       abort('FS.createLink has been removed; use FS.symlink instead');
     },
-    joinPath: () => {
+    joinPath() {
       abort('FS.joinPath has been removed; use PATH.join instead');
     },
-    mmapAlloc: () => {
+    mmapAlloc() {
       abort('FS.mmapAlloc has been replaced by the top level function mmapAlloc');
     },
-    standardizePath: () => {
+    standardizePath() {
       abort('FS.standardizePath has been removed; use PATH.normalize instead');
     },
 #endif
   },
+
+  $FS_createDataFile__deps: ['$FS'],
+  $FS_createDataFile: (parent, name, fileData, canRead, canWrite, canOwn) => {
+    FS.createDataFile(parent, name, fileData, canRead, canWrite, canOwn);
+  },
+
+  $FS_unlink__deps: ['$FS'],
+  $FS_unlink: (path) => FS.unlink(path),
+
+  $FS_mkdirTree__docs: `
+  /**
+   * @param {number=} mode Optionally, the mode to create in. Uses mkdir's
+   *                       default if not set.
+   */`,
+  $FS_mkdirTree__deps: ['$FS'],
+  $FS_mkdirTree: (path, mode) => FS.mkdirTree(path, mode),
 });

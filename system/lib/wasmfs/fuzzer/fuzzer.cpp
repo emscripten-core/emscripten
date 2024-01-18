@@ -8,6 +8,7 @@
 // Current Status: Work in Progress. See
 // https://github.com/emscripten-core/emscripten/issues/15041.
 
+#include "parameters.h"
 #include "random.h"
 #include "support/command-line.h"
 #include "workload.h"
@@ -19,7 +20,6 @@
 #include <stdlib.h>
 #include <string>
 #include <unistd.h>
-#include "parameters.h"
 
 // Used to define the size of the bytes to seed the Random object.
 #define NUM_RAND_BYTES 4096
@@ -72,9 +72,7 @@ int main(int argc, const char* argv[]) {
               "-v",
               "Run with verbose logging",
               Options::Arguments::Zero,
-              [&](Options*, const std::string& arg) {
-                VERBOSE = true;
-              });
+              [&](Options*, const std::string& arg) { VERBOSE = true; });
 
   options.parse(argc, argv);
 

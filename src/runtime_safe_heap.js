@@ -15,7 +15,7 @@ function getSafeHeapType(bytes, isFloat) {
     case 2: return 'i16';
     case 4: return isFloat ? 'float' : 'i32';
     case 8: return isFloat ? 'double' : 'i64';
-    default: assert(0, `getSafeHeapType() invalid bytes=${bytes}`);
+    default: abort(`getSafeHeapType() invalid bytes=${bytes}`);
   }
 }
 
@@ -29,7 +29,7 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
   dest >>>= 0;
 #endif
 #if SAFE_HEAP_LOG
-  out('SAFE_HEAP store: ' + [dest, value, bytes, isFloat, SAFE_HEAP_COUNTER++]);
+  dbg('SAFE_HEAP store: ' + [dest, value, bytes, isFloat, SAFE_HEAP_COUNTER++]);
 #endif
   if (dest <= 0) abort(`segmentation fault storing ${bytes} bytes to address ${dest}`);
 #if SAFE_HEAP == 1
@@ -44,8 +44,8 @@ function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
 #endif
     var brk = _sbrk(0);
     if (dest + bytes > brk) abort(`segmentation fault, exceeded the top of the available dynamic heap when storing ${bytes} bytes to address ${dest}. DYNAMICTOP=${brk}`);
-    assert(brk >= _emscripten_stack_get_base(), `brk >= _emscripten_stack_get_base() (brk=${brk}, _emscripten_stack_get_base()=${_emscripten_stack_get_base()})`); // sbrk-managed memory must be above the stack
-    assert(brk <= wasmMemory.buffer.byteLength, `brk <= wasmMemory.buffer.byteLength (brk=${brk}, wasmMemory.buffer.byteLength=${wasmMemory.buffer.byteLength})`);
+    if (brk < _emscripten_stack_get_base()) abort(`brk >= _emscripten_stack_get_base() (brk=${brk}, _emscripten_stack_get_base()=${_emscripten_stack_get_base()})`); // sbrk-managed memory must be above the stack
+    if (brk > wasmMemory.buffer.byteLength) abort(`brk <= wasmMemory.buffer.byteLength (brk=${brk}, wasmMemory.buffer.byteLength=${wasmMemory.buffer.byteLength})`);
   }
   setValue_safe(dest, value, getSafeHeapType(bytes, isFloat));
   return value;
@@ -72,14 +72,14 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
 #endif
     var brk = _sbrk(0);
     if (dest + bytes > brk) abort(`segmentation fault, exceeded the top of the available dynamic heap when loading ${bytes} bytes from address ${dest}. DYNAMICTOP=${brk}`);
-    assert(brk >= _emscripten_stack_get_base(), `brk >= _emscripten_stack_get_base() (brk=${brk}, _emscripten_stack_get_base()=${_emscripten_stack_get_base()})`); // sbrk-managed memory must be above the stack
-    assert(brk <= wasmMemory.buffer.byteLength, `brk <= wasmMemory.buffer.byteLength (brk=${brk}, wasmMemory.buffer.byteLength=${wasmMemory.buffer.byteLength})`);
+    if (brk < _emscripten_stack_get_base()) abort(`brk >= _emscripten_stack_get_base() (brk=${brk}, _emscripten_stack_get_base()=${_emscripten_stack_get_base()})`); // sbrk-managed memory must be above the stack
+    if (brk > wasmMemory.buffer.byteLength) abort(`brk <= wasmMemory.buffer.byteLength (brk=${brk}, wasmMemory.buffer.byteLength=${wasmMemory.buffer.byteLength})`);
   }
   var type = getSafeHeapType(bytes, isFloat);
   var ret = getValue_safe(dest, type);
   if (unsigned) ret = unSign(ret, parseInt(type.substr(1), 10));
 #if SAFE_HEAP_LOG
-  out('SAFE_HEAP load: ' + [dest, ret, bytes, isFloat, unsigned, SAFE_HEAP_COUNTER++]);
+  dbg('SAFE_HEAP load: ' + [dest, ret, bytes, isFloat, unsigned, SAFE_HEAP_COUNTER++]);
 #endif
   return ret;
 }

@@ -8,7 +8,7 @@
  * Tests live in test/other/test_parseTools.js.
  */
 
-global.FOUR_GB = 4 * 1024 * 1024 * 1024;
+globalThis.FOUR_GB = 4 * 1024 * 1024 * 1024;
 const FLOAT_TYPES = new Set(['float', 'double']);
 
 // Does simple 'macro' substitution, using Django-like syntax,
@@ -23,7 +23,7 @@ function processMacros(text) {
       const ret = eval(str);
       return ret !== null ? ret.toString() : '';
     } catch (ex) {
-      ex.stack = 'In the following macro:\n\n' + str + '\n\n' + ex.stack;
+      ex.stack = `In the following macro:\n\n${str}\n\n${ex.stack}`;
       throw ex;
     }
   });
@@ -175,13 +175,14 @@ function needsQuoting(ident) {
   return true;
 }
 
-global.POINTER_SIZE = MEMORY64 ? 8 : 4;
-global.STACK_ALIGN = 16;
+globalThis.POINTER_SIZE = MEMORY64 ? 8 : 4;
+globalThis.STACK_ALIGN = 16;
 const POINTER_BITS = POINTER_SIZE * 8;
-const POINTER_TYPE = 'u' + POINTER_BITS;
+const POINTER_TYPE = `u${POINTER_BITS}`;
 const POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
 const POINTER_SHIFT = MEMORY64 ? '3' : '2';
 const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
+const LONG_TYPE = `i${POINTER_BITS}`;
 
 const SIZE_TYPE = POINTER_TYPE;
 
@@ -190,7 +191,7 @@ const SIZE_TYPE = POINTER_TYPE;
 // used in practice, while POINTER_TYPE is the more refined internal
 // type (that is unsigned, where as core wasm does not have unsigned
 // types).
-const POINTER_WASM_TYPE = 'i' + POINTER_BITS;
+const POINTER_WASM_TYPE = `i${POINTER_BITS}`;
 
 function isPointerType(type) {
   return type[type.length - 1] == '*';
@@ -201,10 +202,10 @@ function isPointerType(type) {
 // value will be replaced with tempVar.
 function makeInlineCalculation(expression, value, tempVar) {
   if (!isNiceIdent(value)) {
-    expression = tempVar + '=' + value + ',' + expression;
+    expression = `${tempVar} = ${value},${expression}`;
     value = tempVar;
   }
-  return '(' + expression.replace(/VALUE/g, value) + ')';
+  return `(${expression.replace(/VALUE/g, value)})`;
 }
 
 // XXX Make all i64 parts signed
@@ -264,7 +265,7 @@ function indentify(text, indent) {
       indent += ' ';
     }
   }
-  return text.replace(/\n/g, '\n' + indent);
+  return text.replace(/\n/g, `\n${indent}`);
 }
 
 // Correction tools
@@ -283,7 +284,7 @@ function getNativeTypeSize(type) {
       }
       if (type[0] === 'i') {
         const bits = Number(type.substr(1));
-        assert(bits % 8 === 0, 'getNativeTypeSize invalid bits ' + bits + ', type ' + type);
+        assert(bits % 8 === 0, `getNativeTypeSize invalid bits ${bits}, ${type} type`);
         return bits / 8;
       }
       return 0;
@@ -295,7 +296,9 @@ function getHeapOffset(offset, type) {
   const sz = getNativeTypeSize(type);
   const shifts = Math.log(sz) / Math.LN2;
   if (MEMORY64 == 1) {
-    return `((${offset})/2**${shifts})`;
+    return `((${offset})/${2 ** shifts})`;
+  } else if (CAN_ADDRESS_2GB) {
+    return `((${offset})>>>${shifts})`;
   } else {
     return `((${offset})>>${shifts})`;
   }
@@ -320,7 +323,7 @@ function asmEnsureFloat(value, type) {
     // may need a .0 (if it can't fit in an int)
     if (value == 0) return 'Math.fround(0)';
     value = ensureDot(value);
-    return 'Math.fround(' + value + ')';
+    return `Math.fround(${value})`;
   }
   if (FLOAT_TYPES.has(type)) {
     return ensureDot(value);
@@ -338,15 +341,15 @@ function asmCoercion(value, type) {
       return asmEnsureFloat(value, type);
     }
     if (type === 'float') {
-      return 'Math.fround(' + value + ')';
+      return `Math.fround(${value})`;
     }
-    return '(+(' + value + '))';
+    return `(+(${value}))`;
   }
-  return '((' + value + ')|0)';
+  return `((${value})|0)`;
 }
 
 function asmFloatToInt(x) {
-  return '(~~(' + x + '))';
+  return `(~~(${x}))`;
 }
 
 // See makeSetValue
@@ -357,7 +360,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
     // TODO(sbc): make this into an error at some point.
     printErr('makeGetValue: Please use u8/u16/u32/u64 unsigned types in favor of additional argument');
     if (unsigned && type.startsWith('i')) {
-      type = 'u' + type.slice(1);
+      type = `u${type.slice(1)}`;
     }
   } else if (type.startsWith('u')) {
     // Set `unsigned` based on the type name.
@@ -366,11 +369,11 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
 
   const offset = calcFastOffset(ptr, pos);
   if (type === 'i53' || type === 'u53') {
-    return 'readI53From' + (unsigned ? 'U' : 'I') + '64(' + offset + ')';
+    return `readI53From${unsigned ? 'U' : 'I'}64(${offset})`;
   }
 
   const slab = getHeapForType(type);
-  let ret = slab + '[' + getHeapOffset(offset, type) + ']';
+  let ret = `${slab}[${getHeapOffset(offset, type)}]`;
   if (MEMORY64 && isPointerType(type)) {
     ret = `Number(${ret})`;
   }
@@ -393,7 +396,7 @@ function makeSetValue(ptr, pos, value, type) {
   if (ASSERTIONS == 2 && (type.startsWith('i') || type.startsWith('u'))) {
     const width = getBitWidth(type);
     const assertion = `checkInt${width}(${value})`;
-    rtn += ';' + assertion
+    rtn += `;${assertion}`
   }
   return rtn;
 }
@@ -417,12 +420,13 @@ function makeSetValueImpl(ptr, pos, value, type) {
   if (slab == 'HEAPU64' || slab == 'HEAP64') {
     value = `BigInt(${value})`;
   }
-  return slab + '[' + getHeapOffset(offset, type) + '] = ' + value;
+  return `${slab}[${getHeapOffset(offset, type)}] = ${value}`;
 }
 
 function makeHEAPView(which, start, end) {
   const size = parseInt(which.replace('U', '').replace('F', '')) / 8;
-  const mod = size == 1 ? '' : ('>>' + Math.log2(size));
+  const shift = Math.log2(size);
+  const mod = size == 1 ? '' : (CAN_ADDRESS_2GB || MEMORY64) ? ('>>>' + shift) : ('>>' + shift);
   return `HEAP${which}.subarray((${start})${mod}, (${end})${mod})`;
 }
 
@@ -514,7 +518,7 @@ function getHeapForType(type) {
     case 'i64':    // fallthrough
     case 'u64':    error('use i53/u53, or avoid i64/u64 without WASM_BIGINT');
   }
-  assert(false, 'bad heap type: ' + type);
+  assert(false, `bad heap type: ${type}`);
 }
 
 function makeReturn64(value) {
@@ -545,17 +549,6 @@ function storeException(varName, excPtr) {
 
 function charCode(char) {
   return char.charCodeAt(0);
-}
-
-function ensureValidFFIType(type) {
-  return type === 'float' ? 'double' : type; // ffi does not tolerate float XXX
-}
-
-// FFI return values must arrive as doubles, and we can force them to floats afterwards
-function asmFFICoercion(value, type) {
-  value = asmCoercion(value, ensureValidFFIType(type));
-  if (type === 'float') value = asmCoercion(value, 'float');
-  return value;
 }
 
 function makeDynCall(sig, funcPtr) {
@@ -637,10 +630,6 @@ Please update to new syntax.`);
   return `getWasmTableEntry(${funcPtr})`;
 }
 
-function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr
-  return heap + ',' + ptr;
-}
-
 function makeEval(code) {
   if (DYNAMIC_EXECUTION == 0) {
     // Treat eval as error.
@@ -656,13 +645,13 @@ function makeEval(code) {
   return ret;
 }
 
-global.ATINITS = [];
+globalThis.ATINITS = [];
 
 function addAtInit(code) {
   ATINITS.push(code);
 }
 
-global.ATEXITS = [];
+globalThis.ATEXITS = [];
 
 function addAtExit(code) {
   if (EXIT_RUNTIME) {
@@ -701,6 +690,7 @@ function modifyJSFunction(text, func) {
   let async_;
   let args;
   let rest;
+  let oneliner = false;
   let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   if (match) {
     async_ = match[1] || '';
@@ -713,6 +703,8 @@ function modifyJSFunction(text, func) {
       async_ = match[3] || '';
       args = match[4];
       rest = text.substr(match[0].length);
+      rest = rest.trim();
+      oneliner = rest[0] != '{';
     } else {
       // Match a function without a name (we could probably use a single regex
       // for both, but it would be more complex).
@@ -724,9 +716,8 @@ function modifyJSFunction(text, func) {
     }
   }
   let body = rest;
-  const bodyStart = rest.indexOf('{');
-  let oneliner = bodyStart < 0;
   if (!oneliner) {
+    const bodyStart = rest.indexOf('{');
     const bodyEnd = rest.lastIndexOf('}');
     assert(bodyEnd > 0);
     body = rest.substring(bodyStart + 1, bodyEnd);
@@ -736,27 +727,47 @@ function modifyJSFunction(text, func) {
 
 function runIfMainThread(text) {
   if (WASM_WORKERS && PTHREADS) {
-    return 'if (!ENVIRONMENT_IS_WASM_WORKER && !ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';
+    return `if (!ENVIRONMENT_IS_WASM_WORKER && !ENVIRONMENT_IS_PTHREAD) { ${text} }`;
   } else if (WASM_WORKERS) {
-    return 'if (!ENVIRONMENT_IS_WASM_WORKER) { ' + text + ' }';
+    return `if (!ENVIRONMENT_IS_WASM_WORKER) { ${text} }`;
   } else if (PTHREADS) {
-    return 'if (!ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';
+    return `if (!ENVIRONMENT_IS_PTHREAD) { ${text} }`;
   } else {
     return text;
   }
 }
 
-// Legacy name for runIfMainThread.
-// TODO(remove).
-const runOnMainThread = runIfMainThread;
+function runIfWorkerThread(text) {
+  if (WASM_WORKERS && PTHREADS) {
+    return `if (ENVIRONMENT_IS_WASM_WORKER || ENVIRONMENT_IS_PTHREAD) { ${text} }`;
+  } else if (WASM_WORKERS) {
+    return `if (ENVIRONMENT_IS_WASM_WORKER) { ${text} }`;
+  } else if (PTHREADS) {
+    return `if (ENVIRONMENT_IS_PTHREAD) { ${text} }`;
+  } else {
+    return '';
+  }
+}
 
 function expectToReceiveOnModule(name) {
   return INCOMING_MODULE_JS_API.has(name);
 }
 
+// Return true if the user requested that a library symbol be included
+// either via DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS.
+function isSymbolNeeded(symName) {
+  if (DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.includes(symName)) {
+    return true;
+  }
+  if (symName.startsWith('$') && symName.slice(1) in EXPORTED_RUNTIME_METHODS) {
+    return true;
+  }
+  return false;
+}
+
 function makeRemovedModuleAPIAssert(moduleName, localName) {
   if (!ASSERTIONS) return '';
-  if (!localName) localName = moduleName;
+  localName ||= moduleName;
   return `legacyModuleProp('${moduleName}', '${localName}');`;
 }
 
@@ -768,7 +779,7 @@ function checkReceiving(name) {
 
 // Make code to receive a value on the incoming Module object.
 function makeModuleReceive(localName, moduleName) {
-  if (!moduleName) moduleName = localName;
+  moduleName ||= localName;
   checkReceiving(moduleName);
   let ret = '';
   if (expectToReceiveOnModule(moduleName)) {
@@ -790,19 +801,19 @@ function makeModuleReceiveExpr(name, defaultValue) {
 }
 
 function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert) {
-  if (!moduleName) moduleName = localName;
+  moduleName ||= localName;
   checkReceiving(moduleName);
-  let ret = 'var ' + localName;
+  let ret = `var ${localName}`;
   if (!expectToReceiveOnModule(moduleName)) {
     if (defaultValue) {
-      ret += ' = ' + defaultValue;
+      ret += ` = ${defaultValue}`;
     }
     ret += ';';
   } else {
     if (defaultValue) {
       ret += ` = Module['${moduleName}'] || ${defaultValue};`;
     } else {
-      ret += ';' + makeModuleReceive(localName, moduleName);
+      ret += `; ${makeModuleReceive(localName, moduleName)}`;
       return ret;
     }
   }
@@ -815,7 +826,7 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert)
 function makeRemovedFSAssert(fsName) {
   assert(ASSERTIONS);
   const lower = fsName.toLowerCase();
-  if (JS_LIBRARIES.includes('library_' + lower + '.js')) return '';
+  if (JS_LIBRARIES.includes(`library_${lower}.js`)) return '';
   return `var ${fsName} = '${fsName} is no longer included by default; build with -l${lower}.js';`;
 }
 
@@ -851,7 +862,7 @@ function _asmjsDemangle(symbol) {
     return symbol;
   }
   // Strip leading "_"
-  assert(symbol.startsWith('_'), 'expected mangled symbol: ' + symbol);
+  assert(symbol.startsWith('_'), `expected mangled symbol: ${symbol}`);
   return symbol.substr(1);
 }
 
@@ -1008,7 +1019,7 @@ function getEntryFunction() {
   if (MAIN_MODULE) {
     return `resolveGlobalSymbol('${entryFunction}').sym;`
   }
-  return '_' + entryFunction;
+  return `_${entryFunction}`;
 }
 
 function preJS() {
@@ -1032,4 +1043,8 @@ function getPerformanceNow() {
   } else {
     return 'performance.now';
   }
+}
+
+function implicitSelf() {
+  return ENVIRONMENT.includes('node') ? 'self.' : '';
 }

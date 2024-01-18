@@ -303,7 +303,7 @@ def analyze_javascript_file_contents(filename, file_contents, total_source_set_s
         end_brace = file_contents.find(';', var_pos)
         minified_name = var_match.group(1)
 
-      # Special case ignore the 'var asm = (function(global, env, buffer) { 'use asm'; ... }; ' variable that contains all the asm.js code.
+      # Special case ignore the 'var wasmExports = (function(global, env, buffer) { 'use asm'; ... }; ' variable that contains all the asm.js code.
       # Ignoring this variable lets all the asm.js code be trated as functions in this parser, instead of assigning them to the asm variable.
       if file_contents[start_brace] == '(' and ("'use asm'" in file_contents[var_pos:end_brace] or '"use asm"' in file_contents[var_pos:end_brace] or "'almost asm'" in file_contents[var_pos:end_brace] or '"almost asm"' in file_contents[var_pos:end_brace]):
         continue

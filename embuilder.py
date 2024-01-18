@@ -46,7 +46,6 @@ MINIMAL_TASKS = [
     'libc++-noexcept',
     'libal',
     'libdlmalloc',
-    'libdlmalloc-noerrno',
     'libdlmalloc-tracing',
     'libdlmalloc-debug',
     'libembind',
@@ -56,7 +55,10 @@ MINIMAL_TASKS = [
     'libemmalloc-memvalidate',
     'libemmalloc-verbose',
     'libemmalloc-memvalidate-verbose',
+    'libmimalloc',
+    'libmimalloc-mt',
     'libGL',
+    'libGL-getprocaddr',
     'libhtml5',
     'libsockets',
     'libstubs',
@@ -64,10 +66,12 @@ MINIMAL_TASKS = [
     'libstandalonewasm-nocatch',
     'crt1',
     'crt1_proxy_main',
+    'crtbegin',
     'libunwind-except',
     'libnoexit',
     'sqlite3',
     'sqlite3-mt',
+    'libwebgpu_cpp',
 ]
 
 # Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
@@ -86,18 +90,17 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libc++-mt-noexcept',
     'libdlmalloc-mt',
     'libGL-emu',
-    'libGL-emu-webgl2',
-    'libGL-mt',
+    'libGL-emu-webgl2-getprocaddr',
+    'libGL-mt-getprocaddr',
     'libGL-mt-emu',
-    'libGL-mt-emu-webgl2',
-    'libGL-mt-emu-webgl2-ofb',
+    'libGL-mt-emu-webgl2-getprocaddr',
+    'libGL-mt-emu-webgl2-ofb-getprocaddr',
     'libsockets_proxy',
     'libsockets-mt',
     'crtbegin',
     'libsanitizer_common_rt',
     'libubsan_rt',
     'libwasm_workers_stub-debug',
-    'libwebgpu_cpp',
     'libfetch',
     'libfetch-mt',
     'libwasmfs',
@@ -197,7 +200,7 @@ def main():
     settings.LTO = args.lto
 
   if args.verbose:
-    shared.PRINT_STAGES = True
+    shared.PRINT_SUBPROCS = True
 
   if args.pic:
     settings.RELOCATABLE = 1

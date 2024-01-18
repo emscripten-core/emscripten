@@ -8,16 +8,20 @@
 #error "this file should never be included unless POLYFILL is set"
 #endif
 
-#if !ENVIRONMENT_MAY_BE_NODE
-#error "this polyfill should only be included when targetting node"
+#if !ENVIRONMENT_MAY_BE_SHELL && !ENVIRONMENT_MAY_BE_NODE
+#error "this polyfill should only be included when targetting node or shell"
 #endif
 
-if (typeof ENVIRONMENT_IS_NODE != 'undefined' && ENVIRONMENT_IS_NODE && !global.atob) {
+if (typeof atob == 'undefined') {
+  if (typeof global != 'undefined' && typeof globalThis == 'undefined') {
+    globalThis = global;
+  }
+
   /**
    * Decodes a base64 string.
    * @param {string} input The string to decode.
    */
-  global.atob = function(input) {
+  globalThis.atob = function(input) {
     var keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
 
     var output = '';

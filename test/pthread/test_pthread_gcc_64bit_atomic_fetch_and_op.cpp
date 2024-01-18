@@ -110,7 +110,7 @@ int main()
 				for(int i = 0; i < NUM_THREADS; ++i)
 				{
 					threadArg[i] = DUP(1 << i);
-					pthread_create(&thread[i], NULL, thread_fetch_and_or, (void*)&threadArg[i]);
+					pthread_create(&thread[i], NULL, thread_fetch_and_or, &threadArg[i]);
 				}
 				for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
 				assert(fetch_and_or_data == HILO(65536 + (1<<(NUM_THREADS+1))-1, (1<<(NUM_THREADS+1))-1));
@@ -129,7 +129,7 @@ int main()
 				fetch_and_and_data = HILO(65536 + (1<<(NUM_THREADS+1))-1, (1<<(NUM_THREADS+1))-1);
 				for(int i = 0; i < NUM_THREADS; ++i)
 				{
-					threadArg[i] = DUP(~(1UL<<i));
+					threadArg[i] = DUP(~(1u<<i));
 					pthread_create(&thread[i], NULL, thread_fetch_and_and, (void*)&threadArg[i]);
 				}
 				for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
@@ -149,7 +149,7 @@ int main()
 				fetch_and_xor_data = HILO(32768 + (1<<NUM_THREADS), 1<<NUM_THREADS);
 				for(int i = 0; i < NUM_THREADS; ++i)
 				{
-					threadArg[i] = DUP(~(1UL<<i));
+					threadArg[i] = DUP(~(1u<<i));
 					pthread_create(&thread[i], NULL, thread_fetch_and_xor, (void*)&threadArg[i]);
 				}
 				for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);

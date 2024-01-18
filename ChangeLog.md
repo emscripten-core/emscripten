@@ -18,8 +18,211 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.44 (in development)
+3.1.52 (in development)
 -----------------------
+- The core stack manipulation functions (`stackSave`, `stackRestore`,
+  `stackAlloc`) are no longer exported by default.  Users of these function
+  now need to depend on them explictly (either via `__deps` attributes or via
+  `-sEXPORTED_FUNCTIONS`). (#21075)
+- Building with `pthreads+EXPORT_ES6` will now emit the worker file as
+  `NAME.worker.mjs` rather than `.js`. This is a necessary breaking change to
+  resolve other `pthreads+EXPORT_ES6` issues in Node.js (because Node.js is
+  affected by the suffix in some cases). (#21041)
+- Include paths added by ports (e.g. `-sUSE_SDL=2`) now use `-isystem` rather
+  then `-I`.  This means that files in user-specified include directories will
+  now take precedence over port includes. (#21014)
+- Certain settings that only apply when generating JavaScript output will now
+  trigger a warning if used when generating only Wasm.
+- Fix bug where `main` was mistakenly included in debug builds but not in
+  release builds. (#20971)
+- Remove JAVA from the list of `.emscripten` config file settings.  In the
+  past we used this to run the java version of closure compiler.  If there are
+  folks who prefer to use the java version of closure compiler for some reason
+  it should be possible by adding `--platform=java` to `--closure-args` or
+  `EMCC_CLOSURE_ARGS` but emscripten will no longer do this automatically.
+  (#20919)
+- The WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG setting was
+  removed.  This was a workaround from 2018 (#7459) that should no longer be
+  needed. (#20925)
+- The `--default-obj-ext` command line flag was removed. (#20917)
+- emcc will now treat `.bc` files as source files.  These means that will get
+  compiled by clang before being passed to the linker.  This matches the
+  behaviour of clang. (#20922)
+- Emscripten now only supports browsers going back to certain versions. The
+  current set of minimum versions are: Chrome 32, Firefox 34, Safari 9.
+  Attempting to targets version older this using, for example
+  `MIN_CHROME_VERSION` will now result in build-time error.  All of these
+  browser versions are at least 8 years old now so the hope is that nobody
+  is intending to target them today.  (#20924)
+- C++ objects passed into embind's val via constructors, methods, and call
+  function will not be automatically destroyed after the function call. This
+  makes the behavior consistent for invocations. 
+- The `SUPPORT_ERRNO` setting is now deprecated as it only controlled setting
+  errno from JS library functions and emscripten no longer requires this.
+  (#21074)
+
+3.1.51 - 12/13/23
+-----------------
+- Support for explicitly targeting the legacy Interet Explorer or EdgeHTML
+  (edge version prior to the chromium-based edge) browsers via
+  `-sMIN_EDGE_VERSION/-sMIN_IE_VERSION` was removed. (#20881)
+- Emscripten is now more strict about handling unsupported shared library
+  inputs.  For example, under the old behaviour if a system shared library
+  such as `/usr/lib/libz.so` was passed to emscripten it would silently re-write
+  this to `-lz`, which would then search this a libz in its own sysroot.  Now
+  this file is passed though the linker like any other input file and you will
+  see an `unknown file type` error from the linker (just like you would with the
+  native clang or gcc toolchains). (#20886)
+- Support for explicitly targeting the legacy EdgeHTML browser (edge version
+  prior to the chromium-based edge) via `-sMIN_EDGE_VERSION` was removed.
+  Using `-sLEGACY_VM_SUPPORT` should still work if anyone still wanted to target
+  this or any other legacy browser.
+- Breaking change: Using the `*glGetProcAddress()` family of functions now
+  requires passing a linker flag -sGL_ENABLE_GET_PROC_ADDRESS. This prevents
+  ports of native GL renderers from later accidentally attempting to activate
+  "dormant" features if web browser implementations gain new WebGL extensions in
+  the future, which `*glGetProcAddress()` is not able to support. (#20802)
+- Added Hi DPI support to GLFW. When enabled, GLFW automatically accounts for
+  the `devicePixelRatio` browser property and changes the size of the canvas
+  accordingly (including dynamically if the canvas is moved from a 4K screen to
+  a 2K screen and vice-versa). `glfwGetFramebufferSize` now properly returns the
+  canvas size in pixels, while `glfwGetWindowSize` returns the canvas size is
+  screen size. By default, this feature is disabled. You can enable it before
+  creating a window by calling `glfwWindowHint(GLFW_SCALE_TO_MONITOR,
+  GLFW_TRUE)`. You can also dynamically change it after the window has been
+  created by calling `glfwSetWindowAttrib(window, GLFW_SCALE_TO_MONITOR,
+  GLFW_TRUE)`. (#20584)
+- Transpilation to support older environments/browsers is now performed by babel
+  rather than closure compiler.  This means that folks targeting older browsers
+  (e.g. `-sLEGACY_VM_SUPPORT`) do not need to ensure their code is closure
+  compliant. (#20879)
+
+3.1.50 - 11/29/23
+-----------------
+- Add a port of mimalloc, a fast and scalable multithreaded allocator. To use
+  it, build with `-sMALLOC=mimalloc`. (#20651)
+- When compiling, Emscripten will now invoke `clang` or `clang++` depending only
+  on whether `emcc` or `em++` was run.  Previously it would determine which to
+  run based on individual file extensions.  One side effect of this is that you
+  may now see a clang warning when building `.c` source files using `em++`:
+  `warning: treating 'c' input as 'c++' when in C++ mode`.  This also means that
+  the `DEFAULT_TO_CXX` setting now only applies when linking and not when
+  compiling. (#20712)
+- JavaScript library code can now use the full range of ES6 features and we rely
+  on closure compiler to transpile for ES5 when targetting older browsers.
+  For those that would rather perform transpilation seperately outside of
+  emscripten you can use the `-sPOLYFILL=0` setting. (#20700)
+- libcxx, libcxxabi, libunwind, and compiler-rt were updated to LLVM 17.0.4.
+  (#20705, #20707, and #20708)
+- Remove `BENCHMARK` setting. That has not been used by the benchmark suite for
+  some time now (at least not by default), and is much less useful these days
+  given lazy compilation in VMs (which makes it impossible to truly benchmark
+  execution separately from compilation, which `BENCHMARK` hoped to do).
+- Update GLFW handling of touch events to avoid sending duplicate mousedown and
+  and mouseup events. Maps touchmove to mousemove events for a single primary
+  touch. (#20805)
+
+3.1.49 - 11/14/23
+-----------------
+- Many MEMORY64 fixes for browser and graphics APIs (#20678)
+- The `glfwSetWindowSize` function no longer switches to fullscreen when the
+  width/height provided as parameters match the screen size. This behavior
+  now matches the behavior of SDL and glut. In order to switch to fullscreen,
+  the client code should invoke `Module.requestFullscreen(...)` from a user 
+  triggered event otherwise the browser raises an error. (#20600)
+
+3.1.48 - 11/05/23
+-----------------
+- The JS `assert` function is no longer available in release builds when
+  `-sSTRICT` is used.  This should only affect users with custom JS library code
+  which doesn't use `#if ASSERTIONS` guards around their `assert` calls.  This
+  behaviour matches that of `MINIMAL_RUNTIME`. (#20592)
+- The minimum version of node required run the compiler was updated from
+  10.19 to 16.20.  This does not effect the node requirements of the generated
+  JavaScript code. (#20551)
+- A new top-level `bootstrap` script was added.  This script is for emscripten
+  developers and helps take a care of post-checkout tasks such as `npm install`.
+  If this script needs to be run (e.g. becuase package.json was changed, emcc
+  will exit with an error. (#19736)
+- If exceptions are disabled, using `new` together with `std::nothrow` no
+  longer aborts if the allocation fails. Instead `nullptr` is returned now.
+  This does not change the behavior of regular usage of `new`.
+- Default `MIN_CHROME_VERSION` was increased from 75 to 85 and default
+  `MIN_FIREFOX_VERSION` was increased from 68 to 79 to allow Emscripten
+  to use some ES2021 features for smaller JavaScript code size. (#20549)
+- Emscripten now generates PowerShell wrappers for its CLIs. This allows to
+  sidestep some of the issues with legacy cmd.exe, but developers must
+  explicitly opt-in to running PowerShell scripts in system settings or
+  via the `Set-ExecutionPolicy` command. (#20416)
+- `emscripten::val` now supports C++20 `co_await` operator for JavaScript
+  `Promise`s. (#20420)
+
+3.1.47 - 10/09/23
+-----------------
+- The boost-headers port was updated to v1.83.0.
+- The `noExitRuntime` global is now a JS library symbol that will only be
+  included as needed.  User of `noExitRuntime` will now need to declare a
+  dependency on it.  It will get implicitly included if `noExitRuntime` is part
+  of `INCOMING_MODULE_JS_API.` (which it is by default), or it can be added to
+  either `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` or `noExitRuntime`. (#20336)
+- The egl, html5, sdl and webgpu libraries now support basic functionality with
+  `-sMEMORY64`. (#20276)
+- Value types in `emscripten/html5.h` that correspond the WebIDL `long` type are
+  now represented as `int` rather than `long` types so that they are 32-bit wide
+  on both wasm32 and wasm64.  (#20290)
+- `EM_JS` and `EM_ASM` that are present in side module now have their syntax
+  validated at build time. (#20258)
+- `MAIN_THREAD_EM_ASM_PTR` macro added for code that returns a pointer.  This
+  mirrors the existing `EM_ASM_PTR`. (#20261)
+- Emscripten now implements default POSIX signal handlers. These can
+  terminate or abort the program in response to `raise` cals. (#20257)
+- `emscripten::val` now prevents accidental access to the underlying JavaScript
+  value from threads other than its owner. This already didn't work correctly
+  in majority of cases, but now it will throw a clear assertion failure. (#20344)
+- `emscripten::val` can now be iterated over with a C++ range-based for loop.
+  (#20364)
+
+3.1.46 - 09/15/23
+-----------------
+- The `wasmTable` global is now a JS library function that will only be included
+  as needed.  Code that references `wasmTable` will no need to declare a
+  dependency on it.  It can also be explictly included using
+  `-sEXPORTED_RUNTIME_METHODS=wasmTable`.
+- libunwind updated to LLVM 16.0.6. (#20088)
+- The `--minify=0` commnad line flag will now preserve comments as well as
+  whitespace.  This means the resulting output can then be run though closure
+  compiler or some other tool that gives comments semantic meaning. (#20121)
+- `-sSTRICT` now implies `-sINCOMING_MODULE_API=[]` which is generally good
+  for code size.  If you `-sSTRICT` you now need to be explicit about the
+  incoming module APIs you are supplying.  Users who supply symbols on the
+  incoming module but forget to include them in `-sINCOMING_MODULE_API`
+  will see an error in debug builds so this change will not generate any
+  silent failures.
+- JS library decorators such as `__deps` and `__async` are now type checked so
+  that errors are not silently ignored.
+- The `USE_GLFW` settings now defaults to 0 rather than 2.  This matches other
+  other settings such as `USE_SDL` that default to 0 these days and also matches
+  the existing behaviour for `MINIMAL_RUNTIME` and `STRICT` mode.
+  If you use GLFW you now need to explictly opt into it using `-sUSE_GLFW` or
+  `-lglfw`. (#19939)
+- A new settings `TABLE_BASE` was introduced that can be used to place static
+  function addresses (table slots) at a certain offset.  This defaults to 1
+  which is the previously fixed value. (#20149)
+- Clang's error detection of unused variables `-Wunused-variable` improved,
+  which may require changes in user code (see #20169).
+
+3.1.45 - 08/23/23
+-----------------
+- The function used to add symbols the JS library has been renamed from
+  `mergeInto`, to the more specific `addToLibrary`.  This new function does not
+  require the passing of `LibraryManager.library` as a first argument.  The old
+  `mergeInto` continues to exist for backwards compat.
+- The `--log_html` option was removed from `emrun`.  This option was already not
+  working with python3.8 or above so we hope is safe to say that nobody was
+  relying on it.
+
+3.1.44 - 07/25/23
+-----------------
 - musl libc updated from v1.2.3 to v1.2.4. (#19812)
 - The `EM_LOG_FUNC_PARAMS` flag to `emscripten_log`/`emscripten_get_callstack`
   has been deprecated and no longer has any effect.  It was based on a
@@ -32,6 +235,8 @@ See docs/process.md for more on how version tagging works.
   wasm module) has been removed.  Internally, this is now accessed via the
   `wasmExports` global. If necessary, it is possible to export `wasmExports`
   on the Module object using `-sEXPORTED_RUNTIME_METHODS=wasmExports`. (#19816)
+- Embind now supports generating TypeScript definition files using the
+  `--embind-emit-tsd <filename>` option.
 
 3.1.43 - 07/10/23
 -----------------
@@ -39,6 +244,7 @@ See docs/process.md for more on how version tagging works.
   with the new `__i53abi` decorator.  When this is set to true, i64 values are
   automatically converted to JS numbers (i53) at the JS boundary.  Parameters
   outside of the i53 will show up as NaN in the JS code (#19711)
+- EM_JS functions are now supported in side modules (#19705)
 
 3.1.42 - 06/22/23
 -----------------
@@ -284,6 +490,7 @@ See docs/process.md for more on how version tagging works.
   occupy linear memory at all.  The default for `DEFAULT_PTHREAD_STACK_SIZE` was
   also reduced from 2MB to 64KB to match.
 - Improved error messages for writing custom JS libraries. (#18266)
+- EM_ASM code is now supported in side modules (#18228)
 
 3.1.26 - 11/17/22
 -----------------
@@ -325,7 +532,7 @@ See docs/process.md for more on how version tagging works.
   helps wasm builds since wasm traps on such type mismatches in indirect calls.
   We recommend that users enable it to prevent such errors (which can be hard to
   debug otherwise). The older (less strict) behavior is also still possible with
-  `-Wcast-function-type -Wno-cast-funtion-type-strict` (or
+  `-Wcast-function-type -Wno-cast-function-type-strict` (or
   `-Wno-error=cast-function-type-strict` if you want the warnings to be visible
   but not errors). See https://reviews.llvm.org/D134831
 - libcxx and libcxxabi updated to LLVM 15. (#18113)

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$mmapAlloc', '$FS_modeStringToFlags'],
   $NODERAWFS__postset: `
     if (ENVIRONMENT_IS_NODE) {
@@ -148,7 +148,7 @@ mergeInto(LibraryManager.library, {
       }
       var seeking = typeof position != 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
-      var bytesRead = fs.readSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
+      var bytesRead = fs.readSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), { position: position });
       // update position marker when non-seeking
       if (!seeking) stream.position += bytesRead;
       return bytesRead;
@@ -164,7 +164,7 @@ mergeInto(LibraryManager.library, {
       }
       var seeking = typeof position != 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
-      var bytesWritten = fs.writeSync(stream.nfd, Buffer.from(buffer.buffer), offset, length, position);
+      var bytesWritten = fs.writeSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), { position: position });
       // update position marker when non-seeking
       if (!seeking) stream.position += bytesWritten;
       return bytesWritten;

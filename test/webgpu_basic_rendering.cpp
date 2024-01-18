@@ -8,6 +8,7 @@
 #include <webgpu/webgpu_cpp.h>
 
 #undef NDEBUG
+#include <array>
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
@@ -26,8 +27,16 @@ void GetDevice(void (*callback)(wgpu::Device)) {
         }
         if (status == WGPURequestAdapterStatus_Unavailable) {
             printf("WebGPU unavailable; exiting cleanly\n");
-            // exit(0) (rather than emscripten_force_exit(0)) ensures there is no dangling keepalive.
+            // exit(0) (rather than emscripten_force_exit(0)) ensures there is
+            // no dangling keepalive.
+#if _REENTRANT
+            // FIXME: In multi-threaded builds this callback runs on the main
+            // which seems to be causing the runtime to stay alive here and
+            // results in the 99 being returned.
+            emscripten_force_exit(0);
+#else
             exit(0);
+#endif
         }
         assert(status == WGPURequestAdapterStatus_Success);
 
@@ -80,6 +89,11 @@ void init() {
         wgpu::ShaderModuleDescriptor descriptor{};
         descriptor.nextInChain = &wgslDesc;
         shaderModule = device.CreateShaderModule(&descriptor);
+        shaderModule.GetCompilationInfo([](WGPUCompilationInfoRequestStatus status, const WGPUCompilationInfo* info, void*) {
+            assert(status == WGPUCompilationInfoRequestStatus_Success);
+            assert(info->messageCount == 0);
+            std::printf("Shader compile succeeded\n");
+        }, nullptr);
     }
 
     {
@@ -102,7 +116,6 @@ void init() {
 
         wgpu::FragmentState fragmentState{};
         fragmentState.module = shaderModule;
-        fragmentState.entryPoint = "main_f";
         fragmentState.targetCount = 1;
         fragmentState.targets = &colorTargetState;
 
@@ -113,7 +126,6 @@ void init() {
         wgpu::RenderPipelineDescriptor descriptor{};
         descriptor.layout = device.CreatePipelineLayout(&pl);
         descriptor.vertex.module = shaderModule;
-        descriptor.vertex.entryPoint = "main_v";
         descriptor.fragment = &fragmentState;
         descriptor.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
         descriptor.depthStencil = &depthStencilState;
@@ -298,6 +310,13 @@ void doRenderTest() {
         descriptor.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc;
         descriptor.size = {1, 1, 1};
         descriptor.format = wgpu::TextureFormat::BGRA8Unorm;
+
+        // Test for viewFormats binding
+        std::array<wgpu::TextureFormat, 2> viewFormats =
+            { wgpu::TextureFormat::BGRA8Unorm, wgpu::TextureFormat::BGRA8Unorm };
+        descriptor.viewFormatCount = viewFormats.size();
+        descriptor.viewFormats = viewFormats.data();
+
         readbackTexture = device.CreateTexture(&descriptor);
     }
     wgpu::Texture depthTexture;
@@ -410,6 +429,7 @@ int main() {
     // emscripten_set_main_loop, and that should keep it alive until
     // emscripten_cancel_main_loop.
     //
-    // This code is returned when the runtime exits unless something else sets it, like exit(0).
+    // This code is returned when the runtime exits unless something else sets
+    // it, like exit(0).
     return 99;
 }

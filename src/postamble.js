@@ -6,10 +6,6 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
-#if SUPPORT_BASE64_EMBEDDING || FORCE_FILESYSTEM
-#include "base64Utils.js"
-#endif
-
 #if HEADLESS
 if (!ENVIRONMENT_IS_WEB) {
 #include "headlessCanvas.js"
@@ -74,21 +70,18 @@ function callMain() {
 
   var argc = args.length;
   var argv = stackAlloc((argc + 1) * {{{ POINTER_SIZE }}});
-  var argv_ptr = argv >> {{{ POINTER_SHIFT }}};
+  var argv_ptr = argv;
   args.forEach((arg) => {
-    {{{ POINTER_HEAP }}}[argv_ptr++] = {{{ to64('stringToUTF8OnStack(arg)') }}};
+    {{{ makeSetValue('argv_ptr', 0, 'stringToUTF8OnStack(arg)', '*') }}};
+    argv_ptr += {{{ POINTER_SIZE }}};
   });
-  {{{ POINTER_HEAP }}}[argv_ptr] = {{{ to64('0') }}};
+  {{{ makeSetValue('argv_ptr', 0, 0, '*') }}};
 #else
   var argc = 0;
   var argv = 0;
 #endif // MAIN_READS_PARAMS
 
   try {
-#if BENCHMARK
-    var start = Date.now();
-#endif
-
 #if ABORT_ON_WASM_EXCEPTIONS
     // See abortWrapperDepth in preamble.js!
     abortWrapperDepth += 1;
@@ -102,10 +95,6 @@ function callMain() {
 #else
     var ret = entryFunction(argc, {{{ to64('argv') }}});
 #endif // STANDALONE_WASM
-
-#if BENCHMARK
-    Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
-#endif
 
 #if ASYNCIFY == 2 && !PROXY_TO_PTHREAD
     // The current spec of JSPI returns a promise only if the function suspends
@@ -306,7 +295,7 @@ function checkUnflushedContent() {
       var stream = info.object;
       var rdev = stream.rdev;
       var tty = TTY.ttys[rdev];
-      if (tty && tty.output && tty.output.length) {
+      if (tty?.output?.length) {
         has = true;
       }
     });

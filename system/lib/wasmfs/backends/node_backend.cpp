@@ -5,9 +5,9 @@
 
 #include <memory>
 
-#include "node_backend.h"
 #include "backend.h"
 #include "file.h"
+#include "node_backend.h"
 #include "support.h"
 #include "wasmfs.h"
 

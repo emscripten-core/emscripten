@@ -8,4 +8,6 @@
     output.push(text);
   };
   Module['LSAN_OPTIONS'] = 'exitcode=0';
+  // We manually report our result from the printErr hook above.
+  Module['REPORT_EXIT'] = false;
 })();

@@ -106,8 +106,6 @@ def get(ports, settings, shared):
       '-I' + source_path_regal,
       '-I' + source_path_lookup3,
       '-I' + source_path_boost,
-      '-Wall',
-      '-Werror',
       '-Wno-deprecated-register',
       '-Wno-unused-parameter'
     ]
@@ -125,10 +123,6 @@ def clear(ports, settings, shared):
 
 def linker_setup(ports, settings):
   settings.FULL_ES2 = 1
-
-
-def process_args(ports):
-  return []
 
 
 def show():

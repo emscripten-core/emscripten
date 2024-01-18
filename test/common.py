@@ -13,6 +13,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 import contextlib
 import difflib
 import hashlib
+import itertools
 import logging
 import multiprocessing
 import os
@@ -27,12 +28,13 @@ import tempfile
 import time
 import webbrowser
 import unittest
+import queue
 
 import clang_native
 import jsrun
 from tools.shared import EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import get_canonical_temp_dir, path_from_root
-from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_file, write_binary, exit_with_error
+from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
 from tools import shared, line_endings, building, config, utils
 
 logger = logging.getLogger('common')
@@ -54,6 +56,8 @@ EMTEST_SAVE_DIR = None
 # to force testing on all js engines, good to find js engine bugs
 EMTEST_ALL_ENGINES = None
 EMTEST_SKIP_SLOW = None
+EMTEST_SKIP_FLAKY = None
+EMTEST_RETRY_FLAKY = None
 EMTEST_LACKS_NATIVE_CLANG = None
 EMTEST_VERBOSE = None
 EMTEST_REBASELINE = None
@@ -73,6 +77,7 @@ if 'EM_BUILD_VERBOSE' in os.environ:
 NON_ZERO = -1
 
 TEST_ROOT = path_from_root('test')
+LAST_TEST = path_from_root('out/last_test.txt')
 
 WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
 
@@ -82,6 +87,8 @@ EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
 WASM_DIS = Path(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-objdump')))
 PYTHON = sys.executable
+if not config.NODE_JS_TEST:
+  config.NODE_JS_TEST = config.NODE_JS
 
 
 def test_file(*path_components):
@@ -142,6 +149,31 @@ def is_slow_test(func):
   return decorated
 
 
+def flaky(note=''):
+  assert not callable(note)
+
+  if EMTEST_SKIP_FLAKY:
+    return unittest.skip(note)
+
+  if not EMTEST_RETRY_FLAKY:
+    return lambda f: f
+
+  def decorated(f):
+    @wraps(f)
+    def modified(*args, **kwargs):
+      for i in range(EMTEST_RETRY_FLAKY):
+        try:
+          return f(*args, **kwargs)
+        except AssertionError as exc:
+          preserved_exc = exc
+          logging.info(f'Retrying flaky test (attempt {i}/{EMTEST_RETRY_FLAKY} failed): {exc}')
+      raise AssertionError('Flaky test has failed too many times') from preserved_exc
+
+    return modified
+
+  return decorated
+
+
 def disabled(note=''):
   assert not callable(note)
   return unittest.skip(note)
@@ -159,6 +191,45 @@ def no_windows(note=''):
   if WINDOWS:
     return unittest.skip(note)
   return lambda f: f
+
+
+def no_wasm64(note=''):
+  assert not callable(note)
+
+  def decorated(f):
+    return skip_if(f, 'is_wasm64', note)
+  return decorated
+
+
+def no_2gb(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      # 2200mb is the value used by the core_2gb test mode
+      if self.get_setting('INITIAL_MEMORY') == '2200mb':
+        self.skipTest(note)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
+def no_4gb(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      if self.get_setting('INITIAL_MEMORY') == '4200mb':
+        self.skipTest(note)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
 
 
 def only_windows(note=''):
@@ -269,6 +340,7 @@ def with_env_modify(updates):
   assert not callable(updates)
 
   def decorated(f):
+    @wraps(f)
     def modified(self, *args, **kwargs):
       with env_modify(updates):
         return f(self, *args, **kwargs)
@@ -301,7 +373,8 @@ def also_with_wasm_bigint(f):
       if self.get_setting('WASM_BIGINT') is not None:
         self.skipTest('redundant in bigint test config')
       self.set_setting('WASM_BIGINT')
-      self.node_args += shared.node_bigint_flags()
+      nodejs = self.require_node()
+      self.node_args += shared.node_bigint_flags(nodejs)
       f(self)
     else:
       f(self)
@@ -331,8 +404,12 @@ def also_with_wasm64(f):
 def can_do_standalone(self, impure=False):
   # Pure standalone engines don't support MEMORY64 yet.  Even with MEMORY64=2 (lowered)
   # the WASI APIs that take pointer values don't have 64-bit variants yet.
-  if self.get_setting('MEMORY64') and not impure:
-    return False
+  if not impure:
+    if self.get_setting('MEMORY64'):
+      return False
+    # This is way to detect the core_2gb test mode in test_core.py
+    if self.get_setting('INITIAL_MEMORY') == '2200mb':
+      return False
   return self.is_wasm() and \
       self.get_setting('STACK_OVERFLOW_CHECK', 0) < 2 and \
       not self.get_setting('MINIMAL_RUNTIME') and \
@@ -351,6 +428,8 @@ def also_with_standalone_wasm(impure=False):
         if not can_do_standalone(self, impure):
           self.skipTest('Test configuration is not compatible with STANDALONE_WASM')
         self.set_setting('STANDALONE_WASM')
+        if not impure:
+          self.set_setting('PURE_WASI')
         # we will not legalize the JS ffi interface, so we must use BigInt
         # support in order for JS to have a chance to run this without trapping
         # when it sees an i64 on the ffi.
@@ -359,7 +438,8 @@ def also_with_standalone_wasm(impure=False):
         # if we are impure, disallow all wasm engines
         if impure:
           self.wasm_engines = []
-        self.node_args += shared.node_bigint_flags()
+        nodejs = self.require_node()
+        self.node_args += shared.node_bigint_flags(nodejs)
         func(self)
 
     metafunc._parameterize = {'': (False,),
@@ -487,7 +567,14 @@ def parameterized(parameters):
       # runs test_something(4, 5, 6)
   """
   def decorator(func):
-    func._parameterize = parameters
+    prev = getattr(func, '_parameterize', None)
+    if prev:
+      # If we're parameterizing 2nd time, construct a cartesian product for various combinations.
+      func._parameterize = {
+        '_'.join(filter(None, [k1, k2])): v1 + v2 for (k1, v1), (k2, v2) in itertools.product(prev.items(), parameters.items())
+      }
+    else:
+      func._parameterize = parameters
     return func
   return decorator
 
@@ -557,6 +644,15 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def is_wasm(self):
     return self.get_setting('WASM') != 0
 
+  def is_wasm2js(self):
+    return not self.is_wasm()
+
+  def is_browser_test(self):
+    return False
+
+  def is_wasm64(self):
+    return self.get_setting('MEMORY64')
+
   def check_dylink(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
       self.skipTest('no dynamic linking with memory growth (without wasm)')
@@ -574,19 +670,27 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.require_engine(config.V8_ENGINE)
     self.emcc_args.append('-sENVIRONMENT=shell')
 
+  def get_nodejs(self):
+    if config.NODE_JS_TEST not in self.js_engines:
+      return None
+    return config.NODE_JS_TEST
+
   def require_node(self):
-    if not config.NODE_JS or config.NODE_JS not in config.JS_ENGINES:
+    nodejs = self.get_nodejs()
+    if not nodejs:
       if 'EMTEST_SKIP_NODE' in os.environ:
         self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
       else:
         self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
-    self.require_engine(config.NODE_JS)
+    self.require_engine(nodejs)
+    return nodejs
 
   def require_node_canary(self):
-    if config.NODE_JS or config.NODE_JS in config.JS_ENGINES:
-      version = shared.check_node_version()
+    nodejs = self.get_nodejs()
+    if nodejs:
+      version = shared.get_node_version(nodejs)
       if version >= (20, 0, 0):
-        self.require_engine(config.NODE_JS)
+        self.require_engine(nodejs)
         return
 
     if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
@@ -603,10 +707,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.wasm_engines = []
 
   def require_wasm64(self):
-    if config.NODE_JS and config.NODE_JS in self.js_engines:
-      version = shared.check_node_version()
+    nodejs = self.get_nodejs()
+    if nodejs:
+      version = shared.get_node_version(nodejs)
       if version >= (16, 0, 0):
-        self.js_engines = [config.NODE_JS]
+        self.js_engines = [nodejs]
         self.node_args += shared.node_memory64_flags()
         return
 
@@ -622,10 +727,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def require_simd(self):
-    if config.NODE_JS and config.NODE_JS in self.js_engines:
-      version = shared.check_node_version()
+    nodejs = self.get_nodejs()
+    if nodejs:
+      version = shared.get_node_version(nodejs)
       if version >= (16, 0, 0):
-        self.js_engines = [config.NODE_JS]
+        self.js_engines = [nodejs]
         return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
@@ -639,10 +745,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
 
   def require_wasm_eh(self):
-    if config.NODE_JS and config.NODE_JS in self.js_engines:
-      version = shared.check_node_version()
+    nodejs = self.get_nodejs()
+    if nodejs:
+      version = shared.get_node_version(nodejs)
       if version >= (17, 0, 0):
-        self.js_engines = [config.NODE_JS]
+        self.js_engines = [nodejs]
         return
 
     if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
@@ -663,13 +770,19 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if not self.is_wasm():
       self.skipTest('JSPI is not currently supported for WASM2JS')
 
+    if self.is_browser_test():
+      if 'EMTEST_SKIP_JSPI' in os.environ:
+        self.skipTest('skipping JSPI (EMTEST_SKIP_JSPI is set)')
+      return
+
     exp_args = ['--experimental-wasm-stack-switching', '--experimental-wasm-type-reflection']
-    if config.NODE_JS and config.NODE_JS in self.js_engines:
-      version = shared.check_node_version()
+    nodejs = self.get_nodejs()
+    if nodejs:
+      version = shared.get_node_version(nodejs)
       # Support for JSPI came earlier than 19, but 19 is what currently works
       # with emscripten's implementation.
       if version >= (19, 0, 0):
-        self.js_engines = [config.NODE_JS]
+        self.js_engines = [nodejs]
         self.node_args += exp_args
         return
 
@@ -689,8 +802,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.emcc_args += ['-Wno-pthreads-mem-growth', '-pthread']
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
-    self.js_engines = [config.NODE_JS]
-    self.node_args += shared.node_pthread_flags()
+    nodejs = self.get_nodejs()
+    self.js_engines = [nodejs]
+    self.node_args += shared.node_pthread_flags(nodejs)
 
   def uses_memory_init_file(self):
     if self.get_setting('SIDE_MODULE') or (self.is_wasm() and not self.get_setting('WASM2JS')):
@@ -716,14 +830,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def setUp(self):
     super().setUp()
+    self.js_engines = config.JS_ENGINES.copy()
     self.settings_mods = {}
     self.emcc_args = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
     self.ldflags = []
     # Increate stack trace limit to maximise usefulness of test failure reports
     self.node_args = ['--stack-trace-limit=50']
 
-    node_version = shared.check_node_version()
-    if node_version:
+    nodejs = self.get_nodejs()
+    if nodejs:
+      node_version = shared.get_node_version(nodejs)
       if node_version < (11, 0, 0):
         self.node_args.append('--unhandled-rejections=strict')
         self.node_args.append('--experimental-wasm-se')
@@ -745,16 +861,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       )
       if node_version < emcc_min_node_version:
         self.emcc_args += building.get_emcc_node_flags(node_version)
+        self.emcc_args.append('-Wno-transpile')
 
     self.v8_args = ['--wasm-staging']
     self.env = {}
     self.temp_files_before_run = []
     self.uses_es6 = False
-    self.js_engines = config.JS_ENGINES.copy()
     self.required_engine = None
     self.wasm_engines = config.WASM_ENGINES.copy()
     self.use_all_engines = EMTEST_ALL_ENGINES
-    if self.js_engines[0] != config.NODE_JS:
+    if self.js_engines[0] != config.NODE_JS_TEST:
       # If our primary JS engine is something other than node then enable
       # shell support.
       default_envs = 'web,webview,worker,node'
@@ -767,33 +883,31 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         for filename in filenames:
           self.temp_files_before_run.append(os.path.normpath(os.path.join(root, filename)))
 
-    if EMTEST_SAVE_DIR:
+    if self.runningInParallel():
+      self.working_dir = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
+    else:
       self.working_dir = path_from_root('out/test')
       if os.path.exists(self.working_dir):
         if EMTEST_SAVE_DIR == 2:
           print('Not clearing existing test directory')
         else:
-          print('Clearing existing test directory')
+          logger.debug('Clearing existing test directory: %s', self.working_dir)
           # Even when --save-dir is used we still try to start with an empty directory as many tests
           # expect this.  --no-clean can be used to keep the old contents for the new test
           # run. This can be useful when iterating on a given test with extra files you want to keep
           # around in the output directory.
           force_delete_contents(self.working_dir)
       else:
-        print('Creating new test output directory')
+        logger.debug('Creating new test output directory: %s', self.working_dir)
         ensure_dir(self.working_dir)
-    else:
-      self.working_dir = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
+      utils.write_file(LAST_TEST, self.id() + '\n')
     os.chdir(self.working_dir)
 
-    if not EMTEST_SAVE_DIR:
-      self.has_prev_ll = False
-      for temp_file in os.listdir(shared.TEMP_DIR):
-        if temp_file.endswith('.ll'):
-          self.has_prev_ll = True
+  def runningInParallel(self):
+    return getattr(self, 'is_parallel', False)
 
   def tearDown(self):
-    if not EMTEST_SAVE_DIR:
+    if self.runningInParallel() and not EMTEST_SAVE_DIR:
       # rmtree() fails on Windows if the current working directory is inside the tree.
       os.chdir(os.path.dirname(self.get_dir()))
       force_delete_dir(self.get_dir())
@@ -830,7 +944,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def set_setting(self, key, value=1):
     if value is None:
       self.clear_setting(key)
-    if type(value) == bool:
+    if type(value) is bool:
       value = int(value)
     self.settings_mods[key] = value
 
@@ -845,7 +959,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     for key, value in self.settings_mods.items():
       if value == 1:
         ret.append(f'-s{key}')
-      elif type(value) == list:
+      elif type(value) is list:
         ret.append(f'-s{key}={",".join(value)}')
       else:
         ret.append(f'-s{key}={value}')
@@ -898,11 +1012,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # use --quiet once its available
     # See: https://github.com/dollarshaveclub/es-check/pull/126/
     es_check_env = os.environ.copy()
-    es_check_env['PATH'] = os.path.dirname(config.NODE_JS[0]) + os.pathsep + es_check_env['PATH']
+    es_check_env['PATH'] = os.path.dirname(config.NODE_JS_TEST[0]) + os.pathsep + es_check_env['PATH']
     inputfile = os.path.abspath(filename)
     # For some reason es-check requires unix paths, even on windows
     if WINDOWS:
-      inputfile = inputfile.replace('\\', '/')
+      inputfile = utils.normalize_path(inputfile)
     try:
       # es-check prints the details of the errors to stdout, but it also prints
       # stuff in the case there are no errors:
@@ -916,6 +1030,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   # Build JavaScript code from source code
   def build(self, filename, libraries=None, includes=None, force_c=False, js_outfile=True, emcc_args=None, output_basename=None):
+    if not os.path.exists(filename):
+      filename = test_file(filename)
     suffix = '.js' if js_outfile else '.wasm'
     compiler = [compiler_for(filename, force_c)]
     if compiler[0] == EMCC:
@@ -1052,7 +1168,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     timeout_error = None
     if not engine:
       engine = self.js_engines[0]
-    if engine == config.NODE_JS:
+    if engine == config.NODE_JS_TEST:
       engine = engine + self.node_args
     if engine == config.V8_ENGINE:
       engine = engine + self.v8_args
@@ -1114,8 +1230,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   # Tests that the given two paths are identical, modulo path delimiters. E.g. "C:/foo" is equal to "C:\foo".
   def assertPathsIdentical(self, path1, path2):
-    path1 = path1.replace('\\', '/')
-    path2 = path2.replace('\\', '/')
+    path1 = utils.normalize_path(path1)
+    path2 = utils.normalize_path(path2)
     return self.assertIdentical(path1, path2)
 
   # Tests that the given two multiline text content are identical, modulo line
@@ -1169,11 +1285,20 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.assertTextDataIdentical(expected_content, contents, message,
                                  filename, filename + '.new')
 
-  def assertContained(self, values, string, additional_info=''):
-    if type(values) not in [list, tuple]:
-      values = [values]
+  def assertContained(self, values, string, additional_info='', regex=False):
     if callable(string):
       string = string()
+
+    if regex:
+      if type(values) is str:
+        self.assertTrue(re.search(values, string), 'Expected regex "%s" to match on:\n%s' % (values, string))
+      else:
+        match_any = any(re.search(o, string) for o in values)
+        self.assertTrue(match_any, 'Expected at least one of "%s" to match on:\n%s' % (values, string))
+      return
+
+    if type(values) not in [list, tuple]:
+      values = [values]
 
     if not any(v in string for v in values):
       diff = difflib.unified_diff(values[0].split('\n'), string.split('\n'), fromfile='expected', tofile='actual')
@@ -1366,7 +1491,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.clear_setting('SIDE_MODULE')
 
     # XXX in wasm each lib load currently takes 5MB; default INITIAL_MEMORY=16MB is thus not enough
-    self.set_setting('INITIAL_MEMORY', '32mb')
+    if not self.has_changed_setting('INITIAL_MEMORY'):
+      self.set_setting('INITIAL_MEMORY', '32mb')
 
     so = '.wasm' if self.is_wasm() else '.js'
 
@@ -1438,18 +1564,15 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
         filename = 'src.c'
       else:
         filename = 'src.cpp'
-      write_file(filename, src)
+      create_file(filename, src)
     return self._build_and_run(filename, expected_output, **kwargs)
 
   def do_runf(self, filename, expected_output=None, **kwargs):
     return self._build_and_run(filename, expected_output, **kwargs)
 
-  ## Just like `do_run` but with filename of expected output
-  def do_run_from_file(self, filename, expected_output_filename, **kwargs):
-    return self._build_and_run(filename, read_file(expected_output_filename), **kwargs)
-
-  def do_run_in_out_file_test(self, *path, **kwargs):
-    srcfile = test_file(*path)
+  def do_run_in_out_file_test(self, srcfile, **kwargs):
+    if not os.path.exists(srcfile):
+      srcfile = test_file(srcfile)
     out_suffix = kwargs.pop('out_suffix', '')
     outfile = shared.unsuffixed(srcfile) + out_suffix + '.out'
     if EMTEST_REBASELINE:
@@ -1458,7 +1581,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       expected = read_file(outfile)
     output = self._build_and_run(srcfile, expected, **kwargs)
     if EMTEST_REBASELINE:
-      write_file(outfile, output)
+      utils.write_file(outfile, output)
     return output
 
   ## Does a complete test - builds, runs, checks output, etc.
@@ -1507,19 +1630,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
             self.assertIdentical(expected_output, js_output)
           elif assert_all or len(expected_output) == 1:
             for o in expected_output:
-              if regex:
-                self.assertTrue(re.search(o, js_output), 'Expected regex "%s" to match on:\n%s' % (o, js_output))
-              else:
-                self.assertContained(o, js_output)
+              self.assertContained(o, js_output, regex=regex)
           else:
-            if regex:
-              match_any = any(re.search(o, js_output) for o in expected_output)
-              self.assertTrue(match_any, 'Expected at least one of "%s" to match on:\n%s' % (expected_output, js_output))
-            else:
-              self.assertContained(expected_output, js_output)
+            self.assertContained(expected_output, js_output, regex=regex)
             if assert_returncode == 0 and check_for_error:
               self.assertNotContained('ERROR', js_output)
-        except Exception:
+        except self.failureException:
           print('(test did not pass in JS engine: %s)' % engine)
           raise
     return js_output
@@ -1639,7 +1755,7 @@ def harness_server_func(in_queue, out_queue, port):
         ensure_dir('dump_out')
         filename = os.path.join('dump_out', query['file'][0])
         contentLength = int(self.headers['Content-Length'])
-        write_binary(filename, self.rfile.read(contentLength))
+        create_file(filename, self.rfile.read(contentLength), binary=True)
         self.send_response(200)
         self.end_headers()
 
@@ -1756,29 +1872,30 @@ class BrowserCore(RunnerCore):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
 
-  @staticmethod
-  def browser_open(url):
-    if not EMTEST_BROWSER:
-      logger.info('Using default system browser')
-      webbrowser.open_new(url)
-      return
+  @classmethod
+  def browser_restart(cls):
+    # Kill existing browser
+    logger.info('Restarting browser process')
+    cls.browser_proc.terminate()
+    # If the browser doesn't shut down gracefully (in response to SIGTERM)
+    # after 2 seconds kill it with force (SIGKILL).
+    try:
+      cls.browser_proc.wait(2)
+    except subprocess.TimeoutExpired:
+      logger.info('Browser did not respond to `terminate`.  Using `kill`')
+      cls.browser_proc.kill()
+      cls.browser_proc.wait()
+    cls.browser_open(cls.harness_url)
 
+  @classmethod
+  def browser_open(cls, url):
+    global EMTEST_BROWSER
+    if not EMTEST_BROWSER:
+      logger.info('No EMTEST_BROWSER set. Defaulting to `google-chrome`')
+      EMTEST_BROWSER = 'google-chrome'
     browser_args = shlex.split(EMTEST_BROWSER)
-    # If the given browser is a scalar, treat it like one of the possible types
-    # from https://docs.python.org/2/library/webbrowser.html
-    if len(browser_args) == 1:
-      try:
-        # This throws if the type of browser isn't available
-        webbrowser.get(browser_args[0]).open_new(url)
-        logger.info('Using Emscripten browser: %s', browser_args[0])
-        return
-      except webbrowser.Error:
-        # Ignore the exception and fallback to the custom command logic
-        pass
-    # Else assume the given browser is a specific program with additional
-    # parameters and delegate to that
-    logger.info('Using Emscripten browser: %s', str(browser_args))
-    subprocess.Popen(browser_args + [url])
+    logger.info('Launching browser: %s', str(browser_args))
+    cls.browser_proc = subprocess.Popen(browser_args + [url])
 
   @classmethod
   def setUpClass(cls):
@@ -1793,7 +1910,8 @@ class BrowserCore(RunnerCore):
     cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.port))
     cls.harness_server.start()
     print('[Browser harness server on process %d]' % cls.harness_server.pid)
-    cls.browser_open('http://localhost:%s/run_harness' % cls.port)
+    cls.harness_url = 'http://localhost:%s/run_harness' % cls.port
+    cls.browser_open(cls.harness_url)
 
   @classmethod
   def tearDownClass(cls):
@@ -1806,6 +1924,9 @@ class BrowserCore(RunnerCore):
       # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
       # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
       time.sleep(0.1)
+
+  def is_browser_test(self):
+    return True
 
   def assert_out_queue_empty(self, who):
     if not self.harness_out_queue.empty():
@@ -1822,7 +1943,7 @@ class BrowserCore(RunnerCore):
     if not has_browser():
       return
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
-      self.skipTest('too many unresponsive tests, skipping browser launch - check your setup!')
+      self.skipTest('too many unresponsive tests, skipping remaining tests')
     self.assert_out_queue_empty('previous test')
     if DEBUG:
       print('[browser launch:', html_file, ']')
@@ -1833,24 +1954,21 @@ class BrowserCore(RunnerCore):
           'http://localhost:%s/%s' % (self.port, html_file),
           self.get_dir()
         ))
-        received_output = False
-        output = '[no http server activity]'
-        start = time.time()
         if timeout is None:
           timeout = self.browser_timeout
-        while time.time() - start < timeout:
-          if not self.harness_out_queue.empty():
-            output = self.harness_out_queue.get()
-            received_output = True
-            break
-          time.sleep(0.1)
-        if not received_output:
+        try:
+          output = self.harness_out_queue.get(block=True, timeout=timeout)
+        except queue.Empty:
           BrowserCore.unresponsive_tests += 1
           print('[unresponsive tests: %d]' % BrowserCore.unresponsive_tests)
+          self.browser_restart()
+          # Rather than fail the test here, let fail on the `assertContained` so
+          # that the test can be retried via `extra_tries`
+          output = '[no http server activity]'
         if output is None:
           # the browser harness reported an error already, and sent a None to tell
           # us to also fail the test
-          raise Exception('failing test due to browser harness error')
+          self.fail('browser harness error')
         if output.startswith('/report_result?skipped:'):
           self.skipTest(unquote(output[len('/report_result?skipped:'):]).strip())
         else:
@@ -1858,7 +1976,7 @@ class BrowserCore(RunnerCore):
           output = unquote(output)
           try:
             self.assertContained(expected, output)
-          except Exception as e:
+          except self.failureException as e:
             if extra_tries > 0:
               print('[test error (see below), automatically retrying]')
               print(e)
@@ -1884,7 +2002,7 @@ class BrowserCore(RunnerCore):
     basename = os.path.basename(expected)
     shutil.copyfile(expected, self.in_dir(basename))
     reporting = read_file(test_file('browser_reporting.js'))
-    write_file('reftest.js', '''
+    create_file('reftest.js', '''
       function doReftest() {
         if (doReftest.done) return;
         doReftest.done = true;
@@ -2034,7 +2152,10 @@ class BrowserCore(RunnerCore):
     original_args = args
     args = args.copy()
     if not os.path.exists(filename):
-      filename = test_file(filename)
+      fullname = test_file('browser', filename)
+      if not os.path.exists(fullname):
+        fullname = test_file(filename)
+      filename = fullname
     if reference:
       self.reference = reference
       expected = [str(i) for i in range(0, reference_slack + 1)]
@@ -2055,15 +2176,16 @@ class BrowserCore(RunnerCore):
     if not isinstance(expected, list):
       expected = [expected]
     if EMTEST_BROWSER == 'node':
-      self.require_node()
-      self.node_args += shared.node_pthread_flags()
+      nodejs = self.require_node()
+      self.node_args += shared.node_pthread_flags(nodejs)
       output = self.run_js('test.js')
       self.assertContained('RESULT: ' + expected[0], output)
     else:
       self.run_browser(outfile + url_suffix, expected=['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
 
-    # Tests can opt into being run under asmjs as well
-    if 'WASM=0' not in original_args and (also_wasm2js or self.also_wasm2js):
+    # Tests can opt into being run under wasmj2s as well
+    # Ignore this under MEMORY64 where wasm2js is not yet supported.
+    if 'WASM=0' not in original_args and (also_wasm2js or self.also_wasm2js) and not self.is_wasm64():
       print('WASM=0')
       self.btest(filename, expected, reference, reference_slack, manual_reference, post_build,
                  original_args + ['-sWASM=0'], also_proxied=False, timeout=timeout)

@@ -97,9 +97,9 @@ EM_ASYNC_JS(void, test, (), {
     setTimeout(Module.unsuspend);
     await Module.suspend();
 
-    console.log('done');
+    out('done');
   } catch (e) {
-    console.log('Failed: ' + e.stack);
+    out('Failed: ' + e.stack);
   }
 });
 

@@ -5,15 +5,15 @@ var wasmImports = {
  save2: 2
 };
 
-var expD1 = Module["expD1"] = asm["expD1"];
+var expD1 = Module["expD1"] = wasmExports["expD1"];
 
-var expD2 = Module["expD2"] = asm["expD2"];
+var expD2 = Module["expD2"] = wasmExports["expD2"];
 
-var expD3 = Module["expD3"] = asm["expD3"];
+var expD3 = Module["expD3"] = wasmExports["expD3"];
 
 var expD4;
 
-var expD5 = asm["expD5"];
+var expD5 = wasmExports["expD5"];
 
 var expD6;
 
@@ -33,10 +33,10 @@ expD1;
 
 Module["expD2"];
 
-asm["expD3"];
+wasmExports["expD3"];
 
 expI1;
 
 Module["expI2"];
 
-asm["expI3"];
+wasmExports["expI3"];

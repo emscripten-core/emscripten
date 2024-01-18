@@ -36,9 +36,5 @@ def process_dependencies(settings):
   settings.USE_OGG = 1
 
 
-def process_args(ports):
-  return []
-
-
 def show():
   return 'vorbis (-sUSE_VORBIS; zlib license)'

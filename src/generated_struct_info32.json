@@ -37,6 +37,8 @@
         "AL_STOPPED": 4116,
         "AL_TRUE": 1,
         "AL_VELOCITY": 4102,
+        "ATOMICS_WAIT_NOT_EQUAL": 1,
+        "ATOMICS_WAIT_TIMED_OUT": 2,
         "AT_EMPTY_PATH": 4096,
         "AT_FDCWD": -100,
         "AT_NO_AUTOMOUNT": 2048,
@@ -200,20 +202,12 @@
         "EMULTIHOP": 36,
         "EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD": 2,
         "EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD": 1,
-        "EM_FUNC_SIG_I": 536870912,
-        "EM_FUNC_SIG_II": 570425344,
-        "EM_FUNC_SIG_III": 603979776,
-        "EM_FUNC_SIG_IIII": 637534208,
         "EM_FUNC_SIG_PARAM_B": 4,
         "EM_FUNC_SIG_PARAM_D": 3,
         "EM_FUNC_SIG_PARAM_F": 2,
         "EM_FUNC_SIG_PARAM_F2I": 5,
         "EM_FUNC_SIG_PARAM_I": 0,
-        "EM_FUNC_SIG_PARAM_I64": 1,
-        "EM_FUNC_SIG_V": 0,
-        "EM_FUNC_SIG_VI": 33554432,
-        "EM_FUNC_SIG_VII": 67108864,
-        "EM_FUNC_SIG_VIII": 100663296,
+        "EM_FUNC_SIG_PARAM_J": 1,
         "EM_HTML5_LONG_STRING_LEN_BYTES": 128,
         "EM_HTML5_MEDIUM_STRING_LEN_BYTES": 64,
         "EM_HTML5_SHORT_STRING_LEN_BYTES": 32,
@@ -229,8 +223,6 @@
         "EM_PROMISE_MATCH": 1,
         "EM_PROMISE_MATCH_RELEASE": 2,
         "EM_PROMISE_REJECT": 3,
-        "EM_PROXIED_RESIZE_OFFSCREENCANVAS": 654311424,
-        "EM_QUEUED_JS_CALL_MAX_ARGS": 20,
         "EM_TIMING_RAF": 1,
         "EM_TIMING_SETIMMEDIATE": 2,
         "EM_TIMING_SETTIMEOUT": 0,
@@ -301,13 +293,13 @@
         "F_DUPFD": 0,
         "F_GETFD": 1,
         "F_GETFL": 3,
-        "F_GETLK": 5,
+        "F_GETLK": 12,
         "F_GETOWN": 9,
         "F_GETOWN_EX": 16,
         "F_SETFD": 2,
         "F_SETFL": 4,
-        "F_SETLK": 6,
-        "F_SETLKW": 7,
+        "F_SETLK": 13,
+        "F_SETLKW": 14,
         "F_SETOWN": 8,
         "F_UNLCK": 2,
         "File::DataFileKind": 1,
@@ -850,6 +842,13 @@
             "size": 16,
             "usage": 8
         },
+        "WGPUBufferMapCallbackInfo": {
+            "__size__": 16,
+            "callback": 8,
+            "mode": 4,
+            "nextInChain": 0,
+            "userdata": 12
+        },
         "WGPUChainedStruct": {
             "__size__": 8,
             "next": 0,
@@ -899,16 +898,15 @@
             "utf16Offset": 56
         },
         "WGPUComputePassDescriptor": {
-            "__size__": 16,
+            "__size__": 12,
             "label": 4,
             "nextInChain": 0,
-            "timestampWriteCount": 8,
-            "timestampWrites": 12
+            "timestampWrites": 8
         },
-        "WGPUComputePassTimestampWrite": {
+        "WGPUComputePassTimestampWrites": {
             "__size__": 12,
-            "location": 8,
-            "queryIndex": 4,
+            "beginningOfPassWriteIndex": 4,
+            "endOfPassWriteIndex": 8,
             "querySet": 0
         },
         "WGPUComputePipelineDescriptor": {
@@ -945,8 +943,8 @@
             "deviceLostUserdata": 32,
             "label": 4,
             "nextInChain": 0,
+            "requiredFeatureCount": 8,
             "requiredFeatures": 12,
-            "requiredFeaturesCount": 8,
             "requiredLimits": 16
         },
         "WGPUExtent3D": {
@@ -965,6 +963,15 @@
             "targetCount": 20,
             "targets": 24
         },
+        "WGPUFuture": {
+            "__size__": 8,
+            "id": 0
+        },
+        "WGPUFutureWaitInfo": {
+            "__size__": 16,
+            "completed": 8,
+            "future": 0
+        },
         "WGPUImageCopyBuffer": {
             "__size__": 40,
             "buffer": 32,
@@ -980,8 +987,15 @@
             "texture": 4
         },
         "WGPUInstanceDescriptor": {
-            "__size__": 4,
+            "__size__": 16,
+            "features": 4,
             "nextInChain": 0
+        },
+        "WGPUInstanceFeatures": {
+            "__size__": 12,
+            "nextInChain": 0,
+            "timedWaitAnyEnable": 4,
+            "timedWaitAnyMaxCount": 8
         },
         "WGPULimits": {
             "__size__": 144,
@@ -1060,12 +1074,10 @@
             "nextInChain": 0
         },
         "WGPUQuerySetDescriptor": {
-            "__size__": 24,
+            "__size__": 16,
             "count": 12,
             "label": 4,
             "nextInChain": 0,
-            "pipelineStatistics": 16,
-            "pipelineStatisticsCount": 20,
             "type": 8
         },
         "WGPUQueueDescriptor": {
@@ -1073,29 +1085,37 @@
             "label": 4,
             "nextInChain": 0
         },
+        "WGPUQueueWorkDoneCallbackInfo": {
+            "__size__": 16,
+            "callback": 8,
+            "mode": 4,
+            "nextInChain": 0,
+            "userdata": 12
+        },
         "WGPURenderBundleDescriptor": {
             "__size__": 8,
             "label": 4,
             "nextInChain": 0
         },
         "WGPURenderBundleEncoderDescriptor": {
-            "__size__": 28,
+            "__size__": 32,
+            "colorFormatCount": 8,
             "colorFormats": 12,
-            "colorFormatsCount": 8,
             "depthReadOnly": 24,
             "depthStencilFormat": 16,
             "label": 4,
             "nextInChain": 0,
             "sampleCount": 20,
-            "stencilReadOnly": 25
+            "stencilReadOnly": 28
         },
         "WGPURenderPassColorAttachment": {
             "__size__": 56,
             "clearValue": 24,
-            "loadOp": 12,
+            "depthSlice": 8,
+            "loadOp": 16,
             "nextInChain": 0,
-            "resolveTarget": 8,
-            "storeOp": 16,
+            "resolveTarget": 12,
+            "storeOp": 20,
             "view": 4
         },
         "WGPURenderPassDepthStencilAttachment": {
@@ -1111,25 +1131,24 @@
             "view": 0
         },
         "WGPURenderPassDescriptor": {
-            "__size__": 32,
+            "__size__": 28,
             "colorAttachmentCount": 8,
             "colorAttachments": 12,
             "depthStencilAttachment": 16,
             "label": 4,
             "nextInChain": 0,
             "occlusionQuerySet": 20,
-            "timestampWriteCount": 24,
-            "timestampWrites": 28
+            "timestampWrites": 24
         },
         "WGPURenderPassDescriptorMaxDrawCount": {
             "__size__": 16,
             "chain": 0,
             "maxDrawCount": 8
         },
-        "WGPURenderPassTimestampWrite": {
+        "WGPURenderPassTimestampWrites": {
             "__size__": 12,
-            "location": 8,
-            "queryIndex": 4,
+            "beginningOfPassWriteIndex": 4,
+            "endOfPassWriteIndex": 8,
             "querySet": 0
         },
         "WGPURenderPipelineDescriptor": {
@@ -1143,10 +1162,17 @@
             "primitive": 40,
             "vertex": 12
         },
+        "WGPURequestAdapterCallbackInfo": {
+            "__size__": 16,
+            "callback": 8,
+            "mode": 4,
+            "nextInChain": 0,
+            "userdata": 12
+        },
         "WGPURequestAdapterOptions": {
-            "__size__": 20,
+            "__size__": 24,
             "backendType": 12,
-            "compatibilityMode": 17,
+            "compatibilityMode": 20,
             "compatibleSurface": 4,
             "forceFallbackAdapter": 16,
             "nextInChain": 0,
@@ -1238,6 +1264,11 @@
             "nextInChain": 0,
             "sampleType": 4,
             "viewDimension": 8
+        },
+        "WGPUTextureBindingViewDimensionDescriptor": {
+            "__size__": 12,
+            "chain": 0,
+            "textureBindingViewDimension": 8
         },
         "WGPUTextureDataLayout": {
             "__size__": 24,

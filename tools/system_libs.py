@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import re
+from time import time
 from .toolchain_profiler import ToolchainProfiler
 
 import itertools
@@ -27,6 +29,8 @@ LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
                 'listen.c', 'accept.c', 'getsockname.c', 'getpeername.c', 'send.c',
                 'recv.c', 'sendto.c', 'recvfrom.c', 'sendmsg.c', 'recvmsg.c',
                 'getsockopt.c', 'setsockopt.c', 'freeaddrinfo.c',
+                'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
+                'gethostbyname_r.c', 'gethostbyname2.c', 'gethostbyname2_r.c',
                 'in6addr_any.c', 'in6addr_loopback.c', 'accept4.c']
 
 # Experimental: Setting EMCC_USE_NINJA will cause system libraries to get built with ninja rather
@@ -49,14 +53,16 @@ def glob_in_path(path, glob_pattern, excludes=()):
   return sorted(f for f in files if os.path.basename(f) not in excludes)
 
 
-def get_base_cflags(force_object_files=False):
+def get_base_cflags(force_object_files=False, preprocess=True):
   # Always build system libraries with debug information.  Non-debug builds
   # will ignore this at link time because we link with `-strip-debug`.
-  flags = ['-g', '-sSTRICT']
+  flags = ['-g', '-sSTRICT', '-Werror']
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
   if settings.RELOCATABLE:
     flags += ['-sRELOCATABLE']
+    if preprocess:
+      flags += ['-DEMSCRIPTEN_DYNAMIC_LINKING']
   if settings.MEMORY64:
     flags += ['-Wno-experimental', '-sMEMORY64=' + str(settings.MEMORY64)]
   return flags
@@ -79,13 +85,14 @@ def clean_env():
   return safe_env
 
 
-def run_build_commands(commands):
+def run_build_commands(commands, num_inputs, build_dir=None):
   # Before running a set of build commands make sure the common sysroot
   # headers are installed.  This prevents each sub-process from attempting
   # to setup the sysroot itself.
   ensure_sysroot()
-  shared.run_multiple_processes(commands, env=clean_env())
-  logger.info('compiled %d inputs' % len(commands))
+  start_time = time()
+  shared.run_multiple_processes(commands, env=clean_env(), cwd=build_dir)
+  logger.info(f'compiled {num_inputs} inputs in {time() - start_time:.2f}s')
 
 
 def objectfile_sort_key(filename):
@@ -136,9 +143,8 @@ def get_top_level_ninja_file():
 
 
 def run_ninja(build_dir):
-  diagnostics.warning('experimental', 'ninja support is experimental')
   cmd = ['ninja', '-C', build_dir, f'-j{shared.get_num_cores()}']
-  if shared.PRINT_STAGES:
+  if shared.PRINT_SUBPROCS:
     cmd.append('-v')
   shared.check_call(cmd, env=clean_env())
 
@@ -150,13 +156,17 @@ def ensure_target_in_ninja_file(ninja_file, target):
     f.write(target + '\n')
 
 
+def escape_ninja_path(path):
+  """Escape a path to be used in a ninja file."""
+  # Replace Windows backslashes with forward slashes.
+  path = path.replace('\\', '/')
+  # Escape special Ninja chars.
+  return re.sub(r'([ :$])', r'$\1', path)
+
+
 def create_ninja_file(input_files, filename, libname, cflags, asflags=None, customize_build_flags=None):
   if asflags is None:
     asflags = []
-  # TODO(sbc) There is an llvm bug that causes a crash when `-g` is used with
-  # assembly files that define wasm globals.
-  asflags = [arg for arg in asflags if arg != '-g']
-  cflags_asm = [arg for arg in cflags if arg != '-g']
 
   def join(flags):
     return ' '.join(flags)
@@ -168,7 +178,6 @@ ninja_required_version = 1.5
 
 ASFLAGS = {join(asflags)}
 CFLAGS = {join(cflags)}
-CFLAGS_ASM = {join(cflags_asm)}
 EMCC = {shared.EMCC}
 EMXX = {shared.EMXX}
 EMAR = {shared.EMAR}
@@ -189,7 +198,7 @@ rule asm
 
 rule asm_cpp
   depfile = $out.d
-  command = $EMCC -MD -MF $out.d $CFLAGS_ASM -c $in -o $out
+  command = $EMCC -MD -MF $out.d $CFLAGS -c $in -o $out
   description = ASM $out
 
 rule direct_cc
@@ -198,7 +207,10 @@ rule direct_cc
   description = CC $out
 
 rule archive
-  command = $EMAR cr $out $in
+  # Workaround command line too long issue (https://github.com/ninja-build/ninja/pull/217) by using a response file.
+  rspfile = $out.rsp
+  rspfile_content = $in
+  command = $EMAR cr $out @$rspfile
   description = AR $out
 
 '''
@@ -208,8 +220,9 @@ rule archive
   case_insensitive = is_case_insensitive(os.path.dirname(filename))
   if suffix == '.o':
     assert len(input_files) == 1
-    depfile = shared.unsuffixed_basename(input_files[0]) + '.d'
-    out += f'build {libname}: direct_cc {input_files[0]}\n'
+    input_file = escape_ninja_path(input_files[0])
+    depfile = shared.unsuffixed_basename(input_file) + '.d'
+    out += f'build {escape_ninja_path(libname)}: direct_cc {input_file}\n'
     out += f'  with_depfile = {depfile}\n'
   else:
     objects = []
@@ -217,28 +230,30 @@ rule archive
       # Resolve duplicates by appending unique.
       # This is needed on case insensitve filesystem to handle,
       # for example, _exit.o and _Exit.o.
-      o = os.path.join(build_dir, shared.unsuffixed_basename(src) + '.o')
-      object_uuid = 0
+      object_basename = shared.unsuffixed_basename(src)
       if case_insensitive:
-        o = o.lower()
+        object_basename = object_basename.lower()
+      o = os.path.join(build_dir, object_basename + '.o')
+      object_uuid = 0
       # Find a unique basename
       while o in objects:
         object_uuid += 1
-        o = f'{o}__{object_uuid}.o'
+        o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
       objects.append(o)
       ext = shared.suffix(src)
       if ext == '.s':
-        out += f'build {o}: asm {src}\n'
+        cmd = 'asm'
         flags = asflags
       elif ext == '.S':
-        out += f'build {o}: asm_cpp {src}\n'
-        flags = cflags_asm
+        cmd = 'asm_cpp'
+        flags = cflags
       elif ext == '.c':
-        out += f'build {o}: cc {src}\n'
+        cmd = 'cc'
         flags = cflags
       else:
-        out += f'build {o}: cxx {src}\n'
+        cmd = 'cxx'
         flags = cflags
+      out += f'build {escape_ninja_path(o)}: {cmd} {escape_ninja_path(src)}\n'
       if customize_build_flags:
         custom_flags = customize_build_flags(flags, src)
         if custom_flags != flags:
@@ -246,11 +261,11 @@ rule archive
       out += '\n'
 
     objects = sorted(objects, key=objectfile_sort_key)
-    objects = ' '.join(objects)
-    out += f'build {libname}: archive {objects}\n'
+    objects = ' '.join(escape_ninja_path(o) for o in objects)
+    out += f'build {escape_ninja_path(libname)}: archive {objects}\n'
 
   utils.write_file(filename, out)
-  ensure_target_in_ninja_file(get_top_level_ninja_file(), f'subninja {filename}')
+  ensure_target_in_ninja_file(get_top_level_ninja_file(), f'subninja {escape_ninja_path(filename)}')
 
 
 def is_case_insensitive(path):
@@ -339,7 +354,7 @@ class Library:
   # extra code size. The -fno-unroll-loops flags was added here when loop
   # unrolling landed upstream in LLVM to avoid changing behavior but was not
   # specifically evaluated.
-  cflags = ['-O2', '-Wall', '-Werror', '-fno-unroll-loops']
+  cflags = ['-O2', '-Wall', '-fno-unroll-loops']
 
   # A list of directories to put in the include path when building.
   # This is a list of tuples of path components.
@@ -458,9 +473,11 @@ class Library:
     cflags = self.get_cflags()
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
+      relative_source_dir = os.path.relpath(source_dir, build_dir)
       cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
+                 f'-ffile-prefix-map={relative_source_dir}/=',
                  '-fdebug-compilation-dir=/emsdk/emscripten']
-    asflags = get_base_cflags()
+    asflags = get_base_cflags(preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
     create_ninja_file(input_files, ninja_file, libname, cflags, asflags=asflags, customize_build_flags=self.customize_build_cmd)
@@ -472,48 +489,75 @@ class Library:
     By default, this builds all the source files returned by `self.get_files()`,
     with the `cflags` returned by `self.get_cflags()`.
     """
+    batch_inputs = int(os.environ.get('EMCC_BATCH_BUILD', '1'))
+    batches = {}
     commands = []
-    objects = []
+    objects = set()
     cflags = self.get_cflags()
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
+      if batch_inputs:
+        relative_source_dir = os.path.relpath(source_dir, build_dir)
+        cflags += [f'-ffile-prefix-map={relative_source_dir}/=']
       cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
                  '-fdebug-compilation-dir=/emsdk/emscripten']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
-      object_basename = shared.unsuffixed_basename(src)
-      # Resolve duplicates by appending unique.
-      # This is needed on case insensitve filesystem to handle,
-      # for example, _exit.o and _Exit.o.
-      if case_insensitive:
-        object_basename = object_basename.lower()
-      o = os.path.join(build_dir, object_basename + '.o')
-      object_uuid = 0
-      # Find a unique basename
-      while o in objects:
-        object_uuid += 1
-        o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
       ext = shared.suffix(src)
       if ext in ('.s', '.S', '.c'):
-        cmd = [shared.EMCC]
+        cmd = shared.EMCC
       else:
-        cmd = [shared.EMXX]
-
+        cmd = shared.EMXX
+      cmd = [cmd, '-c']
       if ext == '.s':
         # .s files are processed directly by the assembler.  In this case we can't pass
         # pre-processor flags such as `-I` and `-D` but we still want core flags such as
         # `-sMEMORY64`.
-        cmd += get_base_cflags()
+        cmd += get_base_cflags(preprocess=False)
       else:
         cmd += cflags
-      if ext in ('.s', '.S'):
-        # TODO(sbc) There is an llvm bug that causes a crash when `-g` is used with
-        # assembly files that define wasm globals.
-        cmd = [arg for arg in cmd if arg != '-g']
       cmd = self.customize_build_cmd(cmd, src)
-      commands.append(cmd + ['-c', src, '-o', o])
-      objects.append(o)
-    run_build_commands(commands)
+
+      object_basename = shared.unsuffixed_basename(src)
+      if case_insensitive:
+        object_basename = object_basename.lower()
+      o = os.path.join(build_dir, object_basename + '.o')
+      if o in objects:
+        # If we have seen a file with the same name before, we are on a case-insensitive
+        # filesystem and need a separate command to compile this file with a
+        # custom unique output object filename, as batch compile doesn't allow
+        # such customization.
+        #
+        # This is needed to handle, for example, _exit.o and _Exit.o.
+        object_uuid = 0
+        # Find a unique basename
+        while o in objects:
+          object_uuid += 1
+          o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
+        commands.append(cmd + [src, '-o', o])
+      elif batch_inputs:
+        # Use relative paths to reduce the length of the command line.
+        # This allows to avoid switching to a response file as often.
+        src = os.path.relpath(src, build_dir)
+        src = utils.normalize_path(src)
+        batches.setdefault(tuple(cmd), []).append(src)
+      else:
+        commands.append(cmd + [src, '-o', o])
+      objects.add(o)
+
+    if batch_inputs:
+      # Choose a chunk size that is large enough to avoid too many subprocesses
+      # but not too large to avoid task starvation.
+      # For now the heuristic is to split inputs by 2x number of cores.
+      chunk_size = max(1, len(objects) // (2 * shared.get_num_cores()))
+      # Convert batches to commands.
+      for cmd, srcs in batches.items():
+        cmd = list(cmd)
+        for i in range(0, len(srcs), chunk_size):
+          chunk_srcs = srcs[i:i + chunk_size]
+          commands.append(building.get_command_with_possible_response_file(cmd + chunk_srcs))
+
+    run_build_commands(commands, num_inputs=len(objects), build_dir=build_dir)
     return objects
 
   def customize_build_cmd(self, cmd, _filename):
@@ -834,6 +878,7 @@ class MuslInternalLibrary(Library):
   includes = [
     'system/lib/libc/musl/src/internal',
     'system/lib/libc/musl/src/include',
+    'system/lib/libc/musl/include',
     'system/lib/libc',
     'system/lib/pthread',
   ]
@@ -882,7 +927,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
   src_dir = 'system/lib/compiler-rt/lib/builtins'
   includes = ['system/lib/libc']
   # gcc_personality_v0.c depends on libunwind, which don't include by default.
-  src_files = glob_in_path(src_dir, '*.c', excludes=['gcc_personality_v0.c', 'truncdfbf2.c', 'truncsfbf2.c'])
+  src_files = glob_in_path(src_dir, '*.c', excludes=['gcc_personality_v0.c', 'truncdfbf2.c', 'truncsfbf2.c', 'crtbegin.c', 'crtend.c'])
   src_files += files_in_path(
       path='system/lib/compiler-rt',
       filenames=[
@@ -897,9 +942,6 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
 
 class libnoexit(Library):
   name = 'libnoexit'
-  # __cxa_atexit calls can be generated during LTO the implemenation cannot
-  # itself be LTO.  See `get_libcall_files` below for more details.
-  force_object_files = True
   src_dir = 'system/lib/libc'
   src_files = ['atexit_dummy.c']
 
@@ -969,7 +1011,8 @@ class libc(MuslInternalLibrary,
       '__math_oflow.c', '__math_oflowf.c',
       '__math_uflow.c', '__math_uflowf.c',
       '__math_invalid.c', '__math_invalidf.c', '__math_invalidl.c',
-      'pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c'
+      'pow.c', 'pow_data.c', 'log.c', 'log_data.c', 'log2.c', 'log2_data.c',
+      'scalbnf.c',
     ]
     math_files = files_in_path(path='system/lib/libc/musl/src/math', filenames=math_files)
 
@@ -1023,12 +1066,12 @@ class libc(MuslInternalLibrary,
     ignore += [
         'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
         'res_query.c', 'res_querydomain.c',
-        'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
-        'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
+        'proto.c',
         'syscall.c', 'popen.c', 'pclose.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
         'getentropy.c',
         'getauxval.c',
+        'lookup_name.c',
         # 'process' exclusion
         'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
         '_Fork.c',
@@ -1058,6 +1101,7 @@ class libc(MuslInternalLibrary,
           'library_pthread.c',
           'em_task_queue.c',
           'proxying.c',
+          'proxying_legacy.c',
           'thread_mailbox.c',
           'pthread_create.c',
           'pthread_kill.c',
@@ -1171,7 +1215,7 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/exit',
-        filenames=['_Exit.c', 'atexit.c'])
+        filenames=['_Exit.c', 'atexit.c', 'at_quick_exit.c', 'quick_exit.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/ldso',
@@ -1189,6 +1233,7 @@ class libc(MuslInternalLibrary,
           'sigaddset.c',
           'sigdelset.c',
           'sigemptyset.c',
+          'sigisemptyset.c',
           'sigfillset.c',
           'sigismember.c',
           'siginterrupt.c',
@@ -1215,12 +1260,14 @@ class libc(MuslInternalLibrary,
           'mktime.c',
           'tzset.c',
           'kill.c',
+          'lookup_name.c',
           'pthread_sigmask.c',
           'raise.c',
           'sigaction.c',
           'sigtimedwait.c',
           'wasi-helpers.c',
           'sbrk.c',
+          'system.c',
         ])
 
     if settings.RELOCATABLE:
@@ -1228,7 +1275,7 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
         path='system/lib/pthread',
-        filenames=['emscripten_atomic.c', 'thread_profiler.c'])
+        filenames=['thread_profiler.c'])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
 
@@ -1314,7 +1361,7 @@ class libbulkmemory(MuslInternalLibrary, AsanInstrumentedLibrary):
   name = 'libbulkmemory'
   src_dir = 'system/lib/libc'
   src_files = ['emscripten_memcpy.c', 'emscripten_memset.c',
-               'emscripten_memcpy_big.S', 'emscripten_memset_big.S']
+               'emscripten_memcpy_bulkmem.S', 'emscripten_memset_bulkmem.S']
   cflags = ['-mbulk-memory']
 
   def can_use(self):
@@ -1379,6 +1426,11 @@ class libwasm_workers(MTLibrary):
     return files_in_path(
         path='system/lib/wasm_worker',
         filenames=['library_wasm_worker.c' if self.is_ww or self.is_mt else 'library_wasm_worker_stub.c'])
+
+  def can_use(self):
+    # see src/library_wasm_worker.js
+    return super().can_use() and not settings.SINGLE_FILE \
+      and not settings.RELOCATABLE and not settings.PROXY_TO_WORKER
 
 
 class libsockets(MuslInternalLibrary, MTLibrary):
@@ -1563,7 +1615,8 @@ class libcxx(NoExceptLibrary, MTLibrary):
     'locale_win32.cpp',
     'thread_win32.cpp',
     'support.cpp',
-    'int128_builtins.cpp'
+    'int128_builtins.cpp',
+    'libdispatch.cpp',
   ]
 
 
@@ -1574,7 +1627,7 @@ class libunwind(NoExceptLibrary, MTLibrary):
   # See https://bugs.llvm.org/show_bug.cgi?id=44353
   force_object_files = True
 
-  cflags = ['-Oz', '-fno-inline-functions', '-D_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS']
+  cflags = ['-Oz', '-fno-inline-functions', '-D_LIBUNWIND_HIDE_SYMBOLS']
   src_dir = 'system/lib/libunwind/src'
   # Without this we can't build libunwind since it will pickup the unwind.h
   # that is part of llvm (which is not compatible for some reason).
@@ -1611,10 +1664,9 @@ class libmalloc(MTLibrary):
 
   def __init__(self, **kwargs):
     self.malloc = kwargs.pop('malloc')
-    if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'none'):
+    if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'mimalloc', 'none'):
       raise Exception('malloc must be one of "emmalloc[-debug|-memvalidate][-verbose]", "dlmalloc" or "none", see settings.js')
 
-    self.use_errno = kwargs.pop('use_errno')
     self.is_tracing = kwargs.pop('is_tracing')
     self.memvalidate = kwargs.pop('memvalidate')
     self.verbose = kwargs.pop('verbose')
@@ -1639,8 +1691,6 @@ class libmalloc(MTLibrary):
       cflags += ['-UNDEBUG', '-DDLMALLOC_DEBUG']
     else:
       cflags += ['-DNDEBUG']
-    if not self.use_errno:
-      cflags += ['-DMALLOC_FAILURE_ACTION=', '-DEMSCRIPTEN_NO_ERRNO']
     if self.is_tracing:
       cflags += ['--tracing']
     return cflags
@@ -1652,26 +1702,22 @@ class libmalloc(MTLibrary):
     name = super().get_base_name()
     if self.is_debug and not self.memvalidate and not self.verbose:
       name += '-debug'
-    if not self.use_errno:
-      # emmalloc doesn't actually use errno, but it's easier to build it again
-      name += '-noerrno'
     if self.is_tracing:
       name += '-tracing'
     return name
 
   def can_use(self):
-    return super().can_use() and settings.MALLOC != 'none'
+    return super().can_use() and settings.MALLOC != 'none' and settings.MALLOC != 'mimalloc'
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'memvalidate', 'verbose']
+    return super().vary_on() + ['is_debug', 'is_tracing', 'memvalidate', 'verbose']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
       malloc=settings.MALLOC,
       is_debug=settings.ASSERTIONS >= 2,
-      use_errno=settings.SUPPORT_ERRNO,
       is_tracing=settings.EMSCRIPTEN_TRACING,
       memvalidate='memvalidate' in settings.MALLOC,
       verbose='verbose' in settings.MALLOC,
@@ -1688,6 +1734,48 @@ class libmalloc(MTLibrary):
             [dict(malloc='emmalloc-verbose', **combo) for combo in combos if combo['verbose'] and not combo['memvalidate']])
 
 
+class libmimalloc(MTLibrary):
+  name = 'libmimalloc'
+
+  cflags = [
+    '-fno-builtin',
+    '-Wno-deprecated-pragma',
+    # build emmalloc as only a system allocator, without exporting itself onto
+    # malloc/free in the global scope
+    '-DEMMALLOC_NO_STD_EXPORTS',
+    # build mimalloc with an override of malloc/free
+    '-DMI_MALLOC_OVERRIDE',
+    # TODO: add build modes that include debug checks 1,2,3
+    '-DMI_DEBUG=0',
+  ]
+
+  # malloc/free/calloc are runtime functions and can be generated during LTO
+  # Therefor they cannot themselves be part of LTO.
+  force_object_files = True
+
+  includes = ['system/lib/mimalloc/include']
+
+  # Build all of mimalloc, and also emmalloc which is used as the system
+  # allocator underneath it.
+  src_dir = 'system/lib/'
+  src_files = glob_in_path(
+    path='system/lib/mimalloc/src',
+    glob_pattern='*.c',
+    # mimalloc includes some files at the source level, so exclude them here.
+    excludes=['alloc-override.c', 'page-queue.c', 'static.c']
+  )
+  src_files += files_in_path(
+    path='system/lib/mimalloc/src/prim',
+    filenames=['prim.c']
+  )
+  src_files += files_in_path(
+    path='system/lib/',
+    filenames=['emmalloc.c'])
+
+  def can_use(self):
+    return super().can_use() and settings.MALLOC == 'mimalloc'
+
+
 class libal(Library):
   name = 'libal'
 
@@ -1700,7 +1788,7 @@ class libGL(MTLibrary):
   name = 'libGL'
 
   src_dir = 'system/lib/gl'
-  src_files = ['gl.c', 'webgl1.c', 'libprocaddr.c']
+  src_files = ['gl.c', 'webgl1.c', 'libprocaddr.c', 'webgl2.c']
 
   cflags = ['-Oz', '-fno-inline-functions']
 
@@ -1709,10 +1797,7 @@ class libGL(MTLibrary):
     self.is_webgl2 = kwargs.pop('is_webgl2')
     self.is_ofb = kwargs.pop('is_ofb')
     self.is_full_es3 = kwargs.pop('is_full_es3')
-    if self.is_webgl2 or self.is_full_es3:
-      # Don't use append or += here, otherwise we end up adding to
-      # the class member.
-      self.src_files = self.src_files + ['webgl2.c']
+    self.is_enable_get_proc_address = kwargs.pop('is_enable_get_proc_address')
     super().__init__(**kwargs)
 
   def get_base_name(self):
@@ -1725,23 +1810,26 @@ class libGL(MTLibrary):
       name += '-ofb'
     if self.is_full_es3:
       name += '-full_es3'
+    if self.is_enable_get_proc_address:
+      name += '-getprocaddr'
     return name
 
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.is_legacy:
       cflags += ['-DLEGACY_GL_EMULATION=1']
-    if self.is_webgl2:
-      cflags += ['-DMAX_WEBGL_VERSION=2']
+    cflags += [f'-DMAX_WEBGL_VERSION={2 if self.is_webgl2 else 1}']
     if self.is_ofb:
       cflags += ['-D__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__']
     if self.is_full_es3:
       cflags += ['-D__EMSCRIPTEN_FULL_ES3__']
+    if self.is_enable_get_proc_address:
+      cflags += ['-DGL_ENABLE_GET_PROC_ADDRESS=1']
     return cflags
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_legacy', 'is_webgl2', 'is_ofb', 'is_full_es3']
+    return super().vary_on() + ['is_legacy', 'is_webgl2', 'is_ofb', 'is_full_es3', 'is_enable_get_proc_address']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -1750,6 +1838,7 @@ class libGL(MTLibrary):
       is_webgl2=settings.MAX_WEBGL_VERSION >= 2,
       is_ofb=settings.OFFSCREEN_FRAMEBUFFER,
       is_full_es3=settings.FULL_ES3,
+      is_enable_get_proc_address=settings.GL_ENABLE_GET_PROC_ADDRESS,
       **kwargs
     )
 
@@ -1772,6 +1861,7 @@ class libembind(Library):
 
   def get_cflags(self):
     cflags = super().get_cflags()
+    cflags.append('-std=c++20')
     if not self.with_rtti:
       cflags += ['-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     return cflags
@@ -1901,6 +1991,7 @@ class libwasmfs_noderawfs(Library):
 class libhtml5(Library):
   name = 'libhtml5'
 
+  includes = ['system/lib/libc']
   cflags = ['-Oz', '-fno-inline-functions']
   src_dir = 'system/lib/html5'
   src_glob = '*.c'
@@ -2000,6 +2091,7 @@ class libstandalonewasm(MuslInternalLibrary):
 
   def __init__(self, **kwargs):
     self.is_mem_grow = kwargs.pop('is_mem_grow')
+    self.is_pure = kwargs.pop('is_pure')
     self.nocatch = kwargs.pop('nocatch')
     super().__init__(**kwargs)
 
@@ -2009,6 +2101,8 @@ class libstandalonewasm(MuslInternalLibrary):
       name += '-nocatch'
     if self.is_mem_grow:
       name += '-memgrow'
+    if self.is_pure:
+      name += '-pure'
     return name
 
   def get_cflags(self):
@@ -2016,18 +2110,21 @@ class libstandalonewasm(MuslInternalLibrary):
     cflags += ['-DNDEBUG', '-DEMSCRIPTEN_STANDALONE_WASM']
     if self.is_mem_grow:
       cflags += ['-DEMSCRIPTEN_MEMORY_GROWTH']
+    if self.is_pure:
+      cflags += ['-DEMSCRIPTEN_PURE_WASI']
     if self.nocatch:
       cflags.append('-DEMSCRIPTEN_NOCATCH')
     return cflags
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_mem_grow', 'nocatch']
+    return super().vary_on() + ['is_mem_grow', 'is_pure', 'nocatch']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
       is_mem_grow=settings.ALLOW_MEMORY_GROWTH,
+      is_pure=settings.PURE_WASI,
       nocatch=settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS,
       **kwargs
     )
@@ -2199,7 +2296,9 @@ def get_libs_to_link(args, forced, only_forced):
     if not settings.EXIT_RUNTIME:
       add_library('libnoexit')
     add_library('libc')
-    if settings.MALLOC != 'none':
+    if settings.MALLOC == 'mimalloc':
+      add_library('libmimalloc')
+    elif settings.MALLOC != 'none':
       add_library('libmalloc')
   add_library('libcompiler_rt')
   if settings.LINK_AS_CXX:

@@ -33,6 +33,20 @@ The JavaScript-based file system was originally written before pthreads were sup
 
 `Github Tracking Issue <https://github.com/emscripten-core/emscripten/issues/15041>`_
 
+Differences you may notice with the original JS filesystem include:
+
+- The original JS FS includes a lot of JS code by default, while WasmFS does
+  not. As a result, if you write JS of your own, say ``FS.mkdir()``, then the
+  JS FS would already have added that API support, and things would just work.
+  With WasmFS you must opt-in to including the full JS API, to avoid bloating
+  all builds. To do so, use ``-sFORCE_FILESYSTEM`` which forces the full
+  filesystem API to be supported from JS.
+
+- WasmFS requires malloc internally, so you cannot build with
+  ``-sWASMFS -sMALLOC=none``. If you want the smallest possible malloc, use
+  ``-sMALLOC=emmalloc``. (Note that the optimizer may be able to remove WasmFS
+  and malloc, if your code does not actually use files in a non-trivial way.)
+
 Including File System Support
 =============================
 

@@ -146,6 +146,7 @@ For example:
        .constructor<int, std::string>()
        .function("incrementX", &MyClass::incrementX)
        .property("x", &MyClass::getX, &MyClass::setX)
+       .property("x_readonly", &MyClass::getX)
        .class_function("getStringFromInstance", &MyClass::getStringFromInstance)
        ;
    }
@@ -908,13 +909,17 @@ Out of the box, *embind* provides converters for many standard C++ types:
 +---------------------+--------------------------------------------------------------------+
 | ``unsigned int``    | Number                                                             |
 +---------------------+--------------------------------------------------------------------+
-| ``long``            | Number                                                             |
+| ``long``            | Number, or BigInt*                                                 |
 +---------------------+--------------------------------------------------------------------+
-| ``unsigned long``   | Number                                                             |
+| ``unsigned long``   | Number, or BigInt*                                                 |
 +---------------------+--------------------------------------------------------------------+
 | ``float``           | Number                                                             |
 +---------------------+--------------------------------------------------------------------+
 | ``double``          | Number                                                             |
++---------------------+--------------------------------------------------------------------+
+| ``int64_t``         | BigInt**                                                           |
++---------------------+--------------------------------------------------------------------+
+| ``uint64_t``        | BigInt**                                                           |
 +---------------------+--------------------------------------------------------------------+
 | ``std::string``     | ArrayBuffer, Uint8Array, Uint8ClampedArray, Int8Array, or String   |
 +---------------------+--------------------------------------------------------------------+
@@ -923,15 +928,20 @@ Out of the box, *embind* provides converters for many standard C++ types:
 | ``emscripten::val`` | anything                                                           |
 +---------------------+--------------------------------------------------------------------+
 
+\*BigInt when MEMORY64 is used, Number otherwise.
+
+\*\*Requires BigInt support to be enabled with the `-sWASM_BIGINT` flag.
+
 For convenience, *embind* provides factory functions to register
-``std::vector<T>`` (:cpp:func:`register_vector`) and ``std::map<K, V>``
-(:cpp:func:`register_map`) types:
+``std::vector<T>`` (:cpp:func:`register_vector`), ``std::map<K, V>``
+(:cpp:func:`register_map`), and ``std::optional<T>`` (:cpp:func:`register_optional`) types:
 
 .. code:: cpp
 
     EMSCRIPTEN_BINDINGS(stl_wrappers) {
         register_vector<int>("VectorInt");
         register_map<int,int>("MapIntInt");
+        register_optional<std::string>("Optional);
     }
 
 A full example is shown below:
@@ -941,6 +951,7 @@ A full example is shown below:
     #include <emscripten/bind.h>
     #include <string>
     #include <vector>
+    #include <optional>
 
     using namespace emscripten;
 
@@ -955,13 +966,20 @@ A full example is shown below:
       return m;
     }
 
+    std::optional<std::string> returnOptionalData() {
+      return "hello";
+    }
+
     EMSCRIPTEN_BINDINGS(module) {
       function("returnVectorData", &returnVectorData);
       function("returnMapData", &returnMapData);
+      function("returnOptionalData", &returnOptionalData);
 
-      // register bindings for std::vector<int> and std::map<int, std::string>.
+      // register bindings for std::vector<int>, std::map<int, std::string>, and
+      // std::optional<std::string>.
       register_vector<int>("vector<int>");
       register_map<int, std::string>("map<int, string>");
+      register_optional<std::string>();
     }
 
 
@@ -1008,9 +1026,18 @@ The following JavaScript can be used to interact with the above C++.
     // reset the value at the given index position
     retMap.set(10, "OtherValue");
 
+    // Optional values will return undefined if there is no value.
+    var optional = Module['returnOptionalData']();
+    if (optional !== undefined) {
+        console.log(optional);
+    }
+
 
 TypeScript Definitions
 ======================
+
+Generating
+----------
 
 Embind supports generating TypeScript definition files from :cpp:func:`EMSCRIPTEN_BINDINGS`
 blocks. To generate **.d.ts** files invoke *emcc* with the
@@ -1023,6 +1050,29 @@ that is then run in *node* to generate the definition files.
 Not all of embind's features are currently supported, but many of the commonly used
 ones are.  Examples of input and output can be seen in `embind_tsgen.cpp`_ and
 `embind_tsgen.d.ts`_.
+
+Custom ``val`` Definitions
+--------------------------
+
+:cpp:class:`emscripten::val` types are mapped to TypeScript's `any` type by default,
+which does not provide much useful information for API's that consume or
+produce `val` types. To give better type information, custom `val` types can be
+registered using :cpp:func:`EMSCRIPTEN_DECLARE_VAL_TYPE` in combination with
+:cpp:class:`emscripten::register_type`. An example below:
+
+.. code:: cpp
+
+    EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
+
+    int function_with_callback_param(CallbackType ct) {
+        ct(val("hello"));
+        return 0;
+    }
+
+    EMSCRIPTEN_BINDINGS(custom_val) {
+        function("function_with_callback_param", &function_with_callback_param);
+        register_type<CallbackType>("(message: string) => void");
+    }
 
 Embind Debugging
 ======================

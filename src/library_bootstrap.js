@@ -12,7 +12,7 @@ assert(false, "library_bootstrap.js only designed for use with BOOTSTRAPPING_STR
 #endif
 
 assert(Object.keys(LibraryManager.library).length === 0);
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $callRuntimeCallbacks: () => {},
 
   $ExitStatus__docs: '/** @constructor */',

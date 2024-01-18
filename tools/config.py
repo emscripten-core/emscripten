@@ -20,6 +20,7 @@ logger = logging.getLogger('config')
 # See parse_config_file below.
 EMSCRIPTEN_ROOT = __rootpath__
 NODE_JS = None
+NODE_JS_TEST = None
 BINARYEN_ROOT = None
 SPIDERMONKEY_ENGINE = None
 V8_ENGINE: Optional[List[str]] = None
@@ -27,7 +28,6 @@ LLVM_ROOT = None
 LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
-JAVA = None
 JS_ENGINES: List[List[str]] = []
 WASMER = None
 WASMTIME = None
@@ -61,7 +61,7 @@ def root_is_writable():
 
 def normalize_config_settings():
   global CACHE, PORTS, LLVM_ADD_VERSION, CLANG_ADD_VERSION, CLOSURE_COMPILER
-  global NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
+  global NODE_JS, NODE_JS_TEST, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
 
   # EM_CONFIG stuff
   if not JS_ENGINES:
@@ -74,6 +74,7 @@ def normalize_config_settings():
       new_spidermonkey += ['-w']
     SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
   NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
+  NODE_JS_TEST = fix_js_engine(NODE_JS_TEST, listify(NODE_JS_TEST))
   V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
   JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
   WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
@@ -116,10 +117,11 @@ def parse_config_file():
   try:
     exec(config_text, config)
   except Exception as e:
-    exit_with_error('Error in evaluating config file (%s): %s, text: %s', EM_CONFIG, str(e), config_text)
+    exit_with_error('error in evaluating config file (%s): %s, text: %s', EM_CONFIG, str(e), config_text)
 
   CONFIG_KEYS = (
     'NODE_JS',
+    'NODE_JS_TEST',
     'BINARYEN_ROOT',
     'SPIDERMONKEY_ENGINE',
     'V8_ENGINE',
@@ -127,7 +129,6 @@ def parse_config_file():
     'LLVM_ADD_VERSION',
     'CLANG_ADD_VERSION',
     'CLOSURE_COMPILER',
-    'JAVA',
     'JS_ENGINES',
     'WASMER',
     'WASMTIME',
@@ -287,7 +288,7 @@ def init():
 
   # We used to support inline EM_CONFIG.
   if '\n' in EM_CONFIG:
-    exit_with_error('Inline EM_CONFIG data no longer supported.  Please use a config file.')
+    exit_with_error('inline EM_CONFIG data no longer supported.  Please use a config file.')
 
   EM_CONFIG = os.path.expanduser(EM_CONFIG)
 

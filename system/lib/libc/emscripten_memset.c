@@ -20,16 +20,8 @@ void *__memset(void *str, int c, size_t n) {
 
 #elif defined(__wasm_bulk_memory__)
 
-#define memset __musl_memset
-#include "musl/src/string/memset.c"
-#undef memset
-
 void *__memset(void *str, int c, size_t n) {
-  if (n >= 512) {
-    emscripten_memset_big(str, c, n);
-    return str;
-  }
-  return __musl_memset(str, c, n);
+  return emscripten_memset_bulkmem(str, c, n);
 }
 
 #else

@@ -48,7 +48,7 @@ function run() {
 }
 #endif
 
-function initRuntime(asm) {
+function initRuntime(wasmExports) {
 #if ASSERTIONS || SAFE_HEAP || USE_ASAN
   runtimeInitialized = true;
 #endif
@@ -77,11 +77,11 @@ function initRuntime(asm) {
 #endif
 
 #if PTHREADS
-  PThread.tlsInitFunctions.push(asm['_emscripten_tls_init']);
+  PThread.tlsInitFunctions.push(wasmExports['_emscripten_tls_init']);
 #endif
 
 #if hasExportedSymbol('__wasm_call_ctors')
-  asm['__wasm_call_ctors']();
+  wasmExports['__wasm_call_ctors']();
 #endif
 
   <<< ATINITS >>>
@@ -101,7 +101,7 @@ var imports = {
 // In non-fastcomp non-asm.js builds, grab wasm exports to outer scope
 // for emscripten_get_exported_function() to be able to access them.
 #if LibraryManager.has('library_exports.js')
-var asm;
+var wasmExports;
 #endif
 
 #if PTHREADS
@@ -140,9 +140,9 @@ if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.w
 WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif
 
-#if !LibraryManager.has('library_exports.js') && !EMBIND
-  // If not using the emscripten_get_exported_function() API or embind, keep the
-  // `asm` exports variable in local scope to this instantiate function to save
+#if !LibraryManager.has('library_exports.js')
+  // If not using the emscripten_get_exported_function() API, keep the
+  // `wasmExports` variable in local scope to this instantiate function to save
   // code size.  (otherwise access it without to export it to outer scope)
   var
 #endif
@@ -163,16 +163,16 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
   // that case, 'output' is a WebAssembly.Instance.
   // In main thread, Module['wasm'] is either a typed array or a fetch stream.
   // In that case, 'output.instance' is the WebAssembly.Instance.
-  asm = (output.instance || output).exports;
+  wasmExports = (output.instance || output).exports;
 #else
-  asm = output.exports;
+  wasmExports = output.exports;
 #endif
 #else
-  asm = output.instance.exports;
+  wasmExports = output.instance.exports;
 #endif
 
 #if MEMORY64 || CAN_ADDRESS_2GB
-  asm = applySignatureConversions(asm);
+  wasmExports = applySignatureConversions(wasmExports);
 #endif
 
 #if USE_OFFSET_CONVERTER
@@ -183,13 +183,15 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif
 
 #if !DECLARE_ASM_MODULE_EXPORTS
-  exportAsmFunctions(asm);
+  exportWasmSymbols(wasmExports);
 #else
   <<< WASM_MODULE_EXPORTS >>>
 #endif
-  wasmTable = asm['__indirect_function_table'];
+#if '$wasmTable' in addedLibraryItems
+  wasmTable = wasmExports['__indirect_function_table'];
 #if ASSERTIONS
   assert(wasmTable);
+#endif
 #endif
 
 #if AUDIO_WORKLET
@@ -211,7 +213,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif
 
 #if !IMPORTED_MEMORY
-  wasmMemory = asm['memory'];
+  wasmMemory = wasmExports['memory'];
 #if ASSERTIONS
   assert(wasmMemory);
   assert(wasmMemory.buffer.byteLength === {{{ INITIAL_MEMORY }}});
@@ -226,7 +228,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
   HEAPU8.set(new Uint8Array(Module['mem']), {{{ GLOBAL_BASE }}});
 #endif
 
-  initRuntime(asm);
+  initRuntime(wasmExports);
 #if PTHREADS
   // Export Wasm module for pthread creation to access.
   wasmModule = output.module || Module['wasm'];

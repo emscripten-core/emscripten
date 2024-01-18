@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <emscripten.h>
 #include <emscripten/threading.h>
+#include <emscripten/console.h>
 #include <assert.h>
 
 #define NUM_THREADS 8
@@ -39,7 +40,7 @@ void *ThreadMain(void *arg)
 	assert(globalDouble == 5.0);
 	assert(globalU64 == 5);
 	struct Test *t = (struct Test*)arg;
-	EM_ASM(out('Thread ' + $0 + ' for test ' + $1 + ': starting computation.'), t->threadId, t->op);
+	emscripten_outf("Thread %d for test %d: starting computation", t->threadId, t->op);
 
 	for(int i = 0; i < 99999; ++i)
 		for(int j = 0; j < N; ++j)
@@ -80,7 +81,7 @@ void *ThreadMain(void *arg)
 				break;
 			}
 		}
-	EM_ASM(out('Thread ' + $0 + ' for test ' + $1 + ': finished, exit()ing.'), t->threadId, t->op);
+	emscripten_outf("Thread %d for test %d: finished, exit()ing", t->threadId, t->op);
 	pthread_exit(0);
 }
 
@@ -93,7 +94,7 @@ void RunTest(int test)
 	pthread_attr_init(&attr);
 	pthread_attr_setstacksize(&attr, 4*1024);
 
-	printf("Main thread has thread ID %ld\n", pthread_self());
+	emscripten_outf("Main thread has thread ID %ld\n", pthread_self());
 	assert(pthread_self() != 0);
 
 	switch(test)
@@ -103,7 +104,7 @@ void RunTest(int test)
 		default: memset(sharedData, 0, sizeof(sharedData)); break;
 	}
 
-	EM_ASM(out('Main: Starting test ' + $0), test);
+	emscripten_outf("Main: Starting test %d", test);
 
 	for(int i = 0; i < NUM_THREADS; ++i)
 	{
@@ -124,7 +125,7 @@ void RunTest(int test)
 	}
 
 	int val = sharedData[0];
-	EM_ASM(out('Main: Test ' + $0 + ' finished. Result: ' + $1), test, val);
+	emscripten_outf("Main: Test %d finished. Result: %d", test, val);
 	if (test != 6)
 	{
 		for(int i = 1; i < N; ++i)
@@ -152,10 +153,10 @@ int main()
 	for(int i = 0; i < N; ++i)
 		totalRead += sharedData[i];
 	if (totalRead == totalWritten)
-		printf("totalRead: %llu, totalWritten: %llu\n", totalRead, totalWritten);
+		emscripten_outf("totalRead: %llu, totalWritten: %llu\n", totalRead, totalWritten);
 	else
-		printf("64-bit CAS test failed! totalRead != totalWritten (%llu != %llu)\n", totalRead, totalWritten);
+		emscripten_outf("64-bit CAS test failed! totalRead != totalWritten (%llu != %llu)\n", totalRead, totalWritten);
 	assert(totalRead == totalWritten);
-	EM_ASM(out('Main: Test successfully finished.'));
+	emscripten_outf("Main: Test successfully finished");
 	return 0;
 }

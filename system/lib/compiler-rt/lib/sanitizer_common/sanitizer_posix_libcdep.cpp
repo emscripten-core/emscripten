@@ -83,6 +83,7 @@ bool DontDumpShadowMemory(uptr addr, uptr length) {
 #endif  // MADV_DONTDUMP
 }
 
+#if !SANITIZER_EMSCRIPTEN
 static rlim_t getlim(int res) {
   rlimit rlim;
   CHECK_EQ(0, getrlimit(res, &rlim));
@@ -127,6 +128,7 @@ void SetAddressSpaceUnlimited() {
   setlim(RLIMIT_AS, RLIM_INFINITY);
   CHECK(AddressSpaceIsUnlimited());
 }
+#endif
 
 void Abort() {
 #if !SANITIZER_GO
@@ -393,7 +395,7 @@ SANITIZER_WEAK_ATTRIBUTE int
 real_pthread_attr_getstack(void *attr, void **addr, size_t *size);
 } // extern "C"
 
-int my_pthread_attr_getstack(void *attr, void **addr, uptr *size) {
+int internal_pthread_attr_getstack(void *attr, void **addr, uptr *size) {
 #if !SANITIZER_GO && !SANITIZER_APPLE
   if (&real_pthread_attr_getstack)
     return real_pthread_attr_getstack((pthread_attr_t *)attr, addr,
@@ -407,7 +409,7 @@ void AdjustStackSize(void *attr_) {
   pthread_attr_t *attr = (pthread_attr_t *)attr_;
   uptr stackaddr = 0;
   uptr stacksize = 0;
-  my_pthread_attr_getstack(attr, (void**)&stackaddr, &stacksize);
+  internal_pthread_attr_getstack(attr, (void **)&stackaddr, &stacksize);
   // GLibC will return (0 - stacksize) as the stack address in the case when
   // stacksize is set, but stackaddr is not.
   bool stack_set = (stackaddr != 0) && (stackaddr + stacksize != 0);

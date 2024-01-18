@@ -16,4 +16,4 @@ TestLibrary = {
   },
 }
 
-mergeInto(LibraryManager.library, TestLibrary);
+addToLibrary(TestLibrary);

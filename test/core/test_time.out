@@ -27,6 +27,7 @@ mktime updates parameter to be in range: 1
 mktime parameter is equivalent to localtime return: 1
 mktime guesses DST (winter): 1
 mktime guesses DST (summer): 1
+tbig: -1
 old year still: 102
 new year: 70
 time: 1

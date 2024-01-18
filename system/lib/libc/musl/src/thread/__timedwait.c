@@ -69,13 +69,18 @@ int __timedwait_cp(volatile int *addr, int val,
 	// which may be either done by the user of __timedwait() function.
 	if (is_runtime_thread ||
 	    pthread_self()->canceldisable != PTHREAD_CANCEL_DISABLE ||
-	    pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS) {
+	    pthread_self()->cancelasync) {
 		double sleepUntilTime = emscripten_get_now() + msecsToSleep;
 		do {
 			if (pthread_self()->cancel) {
-				// Emscripten-specific return value: The wait was canceled by user calling
-				// pthread_cancel() for this thread, and the caller needs to cooperatively
-				// cancel execution.
+				// The thread was canceled by pthread_cancel().
+				// In the case of cancelasync or PTHREAD_CANCEL_ENABLE we can just call
+				// __pthread_testcancel(), which won't return at all.
+				__pthread_testcancel();
+				// If __pthread_testcancel does return here it means that canceldisable
+				// must be set to PTHREAD_CANCEL_MASKED.  This appear to mean "return
+				// ECANCELLED to the caller".  See pthread_cond_timedwait.c for the only
+				// use of this that I could find.
 				return ECANCELED;
 			}
 			msecsToSleep = sleepUntilTime - emscripten_get_now();

@@ -55,8 +55,16 @@ if errorlevel 9009 (
 	echo.to the full path of the 'sphinx-build' executable. Alternatively you
 	echo.may add the Sphinx directory to PATH.
 	echo.
-	echo.If you don't have Sphinx installed, grab it from
-	echo.http://sphinx-doc.org/
+	echo.If you don't have Sphinx installed, run
+	echo.
+	echo.     pip install -U --user sphinx==2.4.4
+	echo.     pip install -U --user jinja2==3.0.1
+	echo.
+	echo.to install it, or grab it manually from http://sphinx-doc.org/
+	echo.N.b. the second command to downgrade jinja2 is needed due to
+	echo.a Jinja2 bug. See
+	echo.https://github.com/sphinx-doc/sphinx/issues/10291
+	echo.https://github.com/emscripten-core/emscripten/issues/20390
 	exit /b 1
 )
 

@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
-  $SOCKFS__postset: function() {
+addToLibrary({
+  $SOCKFS__postset: () => {
     addAtInit('SOCKFS.root = FS.mount(SOCKFS, {}, null);');
   },
   $SOCKFS__deps: ['$FS'],
@@ -728,7 +728,7 @@ mergeInto(LibraryManager.library, {
    * will deregister the callback registered for that Event.
    */
   $_setNetworkCallback__deps: ['$withStackSave', '$stringToUTF8OnStack'],
-  $_setNetworkCallback: function(event, userData, callback) {
+  $_setNetworkCallback: (event, userData, callback) => {
     function _callback(data) {
       try {
         if (event === 'error') {
@@ -753,27 +753,27 @@ mergeInto(LibraryManager.library, {
     Module['websocket']['on'](event, callback ? _callback : null);
   },
   emscripten_set_socket_error_callback__deps: ['$_setNetworkCallback'],
-  emscripten_set_socket_error_callback: function(userData, callback) {
+  emscripten_set_socket_error_callback: (userData, callback) => {
     _setNetworkCallback('error', userData, callback);
   },
   emscripten_set_socket_open_callback__deps: ['$_setNetworkCallback'],
-  emscripten_set_socket_open_callback: function(userData, callback) {
+  emscripten_set_socket_open_callback: (userData, callback) => {
     _setNetworkCallback('open', userData, callback);
   },
   emscripten_set_socket_listen_callback__deps: ['$_setNetworkCallback'],
-  emscripten_set_socket_listen_callback: function(userData, callback) {
+  emscripten_set_socket_listen_callback: (userData, callback) => {
     _setNetworkCallback('listen', userData, callback);
   },
   emscripten_set_socket_connection_callback__deps: ['$_setNetworkCallback'],
-  emscripten_set_socket_connection_callback: function(userData, callback) {
+  emscripten_set_socket_connection_callback: (userData, callback) => {
     _setNetworkCallback('connection', userData, callback);
   },
   emscripten_set_socket_message_callback__deps: ['$_setNetworkCallback'],
-  emscripten_set_socket_message_callback: function(userData, callback) {
+  emscripten_set_socket_message_callback: (userData, callback) => {
     _setNetworkCallback('message', userData, callback);
   },
   emscripten_set_socket_close_callback__deps: ['$_setNetworkCallback'],
-  emscripten_set_socket_close_callback: function(userData, callback) {
+  emscripten_set_socket_close_callback: (userData, callback) => {
     _setNetworkCallback('close', userData, callback);
   }
 });

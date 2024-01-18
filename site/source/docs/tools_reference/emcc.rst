@@ -83,13 +83,13 @@ Options that are modified or new in *emcc* are listed below:
 
 ``-Os``
   [compile+link]
-  Like ``-O3``, but focuses more on code size (and may make tradeoffs with speed). This can affect both wasm and JavaScript.
+  Like ``-O3``, but focuses more on code size (and may make tradeoffs with speed). This can affect both Wasm and JavaScript.
 
 .. _emcc-Oz:
 
 ``-Oz``
   [compile+link]
-  Like ``-Os``, but reduces code size even further, and may take longer to run. This can affect both wasm and JavaScript.
+  Like ``-Os``, but reduces code size even further, and may take longer to run. This can affect both Wasm and JavaScript.
 
   .. note:: For more tips on optimizing your code, see :ref:`Optimizing-Code`.
 
@@ -149,16 +149,24 @@ Options that are modified or new in *emcc* are listed below:
     adds DWARF debug information to the object files.
   - When linking, this is equivalent to :ref:`-g3 <emcc-g3>`.
 
+.. _emcc-gseparate-dwarf:
+
 ``-gseparate-dwarf[=FILENAME]``
   [same as -g3 if passed at compile time, otherwise applies at link]
   Preserve debug information, but in a separate file on the side. This is the
   same as ``-g``, but the main file will contain no debug info. Instead, debug
   info will be present in a file on the side, in ``FILENAME`` if provided,
-  otherwise the same as the wasm file but with suffix ``.debug.wasm``. While
+  otherwise the same as the Wasm file but with suffix ``.debug.wasm``. While
   the main file contains no debug info, it does contain a URL to where the
   debug file is, so that devtools can find it. You can use
   ``-sSEPARATE_DWARF_URL=URL`` to customize that location (this is useful if
   you want to host it on a different server, for example).
+
+.. _emcc-gsplit-dwarf:
+
+``-gsplit-dwarf``
+  Enable debug fission, which creates split DWARF object files alongside the
+  wasm object files. This option must be used together with ``-c``.
 
 .. _emcc-gsource-map:
 
@@ -170,7 +178,7 @@ Options that are modified or new in *emcc* are listed below:
   ``sourceMappingURL`` section. The resulting URL will have format:
   ``<base-url>`` + ``<wasm-file-name>`` + ``.map``. ``<base-url>`` defaults
   to being empty (which means the source map is served from the same directory
-  as the wasm file). It can be changed using :ref:`--source-map-base <emcc-source-map-base>`.
+  as the Wasm file). It can be changed using :ref:`--source-map-base <emcc-source-map-base>`.
 
 .. _emcc-gN:
 
@@ -224,7 +232,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--emit-symbol-map``
   [link]
-  Save a map file between function indexes in the wasm and function names. By
+  Save a map file between function indexes in the Wasm and function names. By
   storing the names on a file on the side, you can avoid shipping the names, and
   can still reconstruct meaningful stack traces by translating the indexes back
   to the names.
@@ -251,7 +259,6 @@ Options that are modified or new in *emcc* are listed below:
 
     - Consider using ``-sMODULARIZE`` when using closure, as it minifies globals to names that might conflict with others in the global scope. ``MODULARIZE`` puts all the output into a function (see ``src/settings.js``).
     - Closure will minify the name of `Module` itself, by default! Using ``MODULARIZE`` will solve that as well. Another solution is to make sure a global variable called `Module` already exists before the closure-compiled code runs, because then it will reuse that variable.
-    - If closure compiler hits an out-of-memory, try adjusting ``JAVA_HEAP_SIZE`` in the environment (for example, to 4096m for 4GB).
     - Closure is only run if JavaScript opts are being done (``-O2`` or above).
 
 ``--closure-args=<args>``
@@ -386,7 +393,8 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--embind-emit-tsd <path>``
   [link]
-  Generate a TypeScript definition file from the exported embind bindings. The program will be instrumented and run in node in order to to generate the file. Note: the program will need to be rebuilt without this flag to be executed normally.
+  Generate a TypeScript definition file from the exported embind bindings. The
+  program will be instrumented and run in node in order to to generate the file.
 
 ``--ignore-dynamic-linking``
   [link]
@@ -470,7 +478,7 @@ Options that are modified or new in *emcc* are listed below:
   [link]
   Specifies whether to emit a separate memory initialization file.
 
-      .. note:: Note that this is only relevant when *not* emitting wasm, as wasm embeds the memory init data in the wasm binary.
+      .. note:: Note that this is only relevant when *not* emitting Wasm, as Wasm embeds the memory init data in the Wasm binary.
 
   Possible values are:
 
@@ -519,14 +527,6 @@ Options that are modified or new in *emcc* are listed below:
   directory itself, and then in the user's home directory (``~/.emscripten``).
   This can be overridden using the ``EM_CONFIG`` environment variable.
 
-``--default-obj-ext <.ext>``
-  [compile]
-  Specifies the output suffix to use when compiling with ``-c`` in the absence
-  of ``-o``.  For example, when compiling multiple sources files with ``emcc -c
-  *.c`` the compiler will normally output files with the ``.o`` extension, but
-  ``--default-obj-ext .obj`` can be used to instead generate files with the
-  `.obj` extension.
-
 ``--valid-abspath <path>``
   [compile+link]
   Note an allowed absolute path, which we should not warn about (absolute
@@ -542,7 +542,7 @@ Options that are modified or new in *emcc* are listed below:
     - <name> **.js** : JavaScript (+ separate **<name>.wasm** file if emitting WebAssembly). (default)
     - <name> **.mjs** : ES6 JavaScript module (+ separate **<name>.wasm** file if emitting WebAssembly).
     - <name> **.html** : HTML + separate JavaScript file (**<name>.js**; + separate **<name>.wasm** file if emitting WebAssembly).
-    - <name> **.wasm** : WebAssembly without JavaScript support code ("standalone wasm"; this enables ``STANDALONE_WASM``).
+    - <name> **.wasm** : WebAssembly without JavaScript support code ("standalone Wasm"; this enables ``STANDALONE_WASM``).
 
   These rules only apply when linking.  When compiling to object code (See `-c`
   below) the name of the output file is irrelevant.

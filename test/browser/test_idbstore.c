@@ -20,51 +20,37 @@
 long expected;
 int result;
 
-void doExit(void* userData) {
-  emscripten_force_exit(0);
-}
-
-void ok(void* arg)
-{
+void ok(void* arg) {
   assert(expected == (long)arg);
-  emscripten_set_timeout(doExit, 0, 0);
 }
 
-void onerror(void* arg)
-{
+void onerror(void* arg) {
   assert(expected == (long)arg);
   assert(false);
 }
 
-void onload(void* arg, void* ptr, int num)
-{
+void onload(void* arg, void* ptr, int num) {
   assert(expected == (long)arg);
   printf("loaded %s\n", (char*)ptr);
   assert(num == strlen(SECRET)+1);
   assert(strcmp(ptr, SECRET) == 0);
-  emscripten_set_timeout(doExit, 0, 0);
 }
 
-void onbadload(void* arg, void* ptr, int num)
-{
+void onbadload(void* arg, void* ptr, int num) {
   printf("load failed, surprising\n");
   assert(false);
 }
 
-void oncheck(void* arg, int exists)
-{
+void oncheck(void* arg, int exists) {
   assert(expected == (long)arg);
   printf("exists? %d\n", exists);
   assert(exists);
-  emscripten_set_timeout(doExit, 0, 0);
 }
 
-void onchecknope(void* arg, int exists)
-{
+void onchecknope(void* arg, int exists) {
   assert(expected == (long)arg);
   printf("exists (hopefully not)? %d\n", exists);
   assert(!exists);
-  emscripten_set_timeout(doExit, 0, 0);
 }
 
 int main() {
@@ -91,11 +77,12 @@ int main() {
 #elif STAGE == 5
   expected = 77;
   emscripten_idb_async_exists(DB, "the_secret", (void*)expected, onchecknope, onerror);
+#elif STAGE == 6
+  expected = 88;
+  printf("clearing\n");
+  emscripten_idb_async_clear(DB, (void*)expected, ok, onerror);
 #else
   assert(0);
 #endif
-
-  emscripten_exit_with_live_runtime();
-  __builtin_trap();
 }
 

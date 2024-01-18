@@ -3,7 +3,6 @@ __cxa_decrement_exception_refcount
 __cxa_free_exception
 __cxa_increment_exception_refcount
 __cxa_is_pointer_type
-__errno_location
 __indirect_function_table
 __wasm_call_ctors
 dynCall_iiiiiijj

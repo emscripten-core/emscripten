@@ -1,17 +1,15 @@
 {{{
   // Helper functions for code generation
-  global.html5_gpu = {
-    makeImportExport: function(snake_case, CamelCase) {
+  globalThis.html5_gpu = {
+    makeImportExport: (snake_case, CamelCase) => {
       return `
 LibraryHTML5WebGPU.emscripten_webgpu_import_${snake_case}__deps = ['$WebGPU', '$JsValStore'];
-LibraryHTML5WebGPU.emscripten_webgpu_import_${snake_case} = function(handle) {
-  return WebGPU.mgr${CamelCase}.create(JsValStore.get(handle));
-};
+LibraryHTML5WebGPU.emscripten_webgpu_import_${snake_case} = (handle) =>
+  WebGPU.mgr${CamelCase}.create(JsValStore.get(handle));
 
 LibraryHTML5WebGPU.emscripten_webgpu_export_${snake_case}__deps = ['$WebGPU', '$JsValStore'];
-LibraryHTML5WebGPU.emscripten_webgpu_export_${snake_case} = function(handle) {
-  return JsValStore.add(WebGPU.mgr${CamelCase}.get(handle));
-};`
+LibraryHTML5WebGPU.emscripten_webgpu_export_${snake_case} = (handle) =>
+  JsValStore.add(WebGPU.mgr${CamelCase}.get(handle));`
     },
   };
   null;
@@ -48,12 +46,10 @@ var LibraryHTML5WebGPU = {
   },
 
   emscripten_webgpu_release_js_handle__deps: ['$JsValStore'],
-  emscripten_webgpu_release_js_handle: function (id) {
-    JsValStore.remove(id);
-  },
+  emscripten_webgpu_release_js_handle: (id) => JsValStore.remove(id),
 
   emscripten_webgpu_get_device__deps: ['$WebGPU'],
-  emscripten_webgpu_get_device: function() {
+  emscripten_webgpu_get_device: () => {
 #if ASSERTIONS
     assert(Module['preinitializedWebGPUDevice']);
 #endif
@@ -94,4 +90,10 @@ var LibraryHTML5WebGPU = {
 {{{ html5_gpu.makeImportExport('render_bundle_encoder', 'RenderBundleEncoder') }}}
 {{{ html5_gpu.makeImportExport('render_bundle', 'RenderBundle') }}}
 
-mergeInto(LibraryManager.library, LibraryHTML5WebGPU);
+for (const key of Object.keys(LibraryHTML5WebGPU)) {
+  if (typeof LibraryHTML5WebGPU[key] === 'function' && !(key + '__proxy' in LibraryHTML5WebGPU)) {
+    LibraryHTML5WebGPU[key + '__proxy'] = 'sync';
+  }
+}
+
+addToLibrary(LibraryHTML5WebGPU);

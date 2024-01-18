@@ -950,21 +950,19 @@
     {
         "file": "emscripten/threading.h",
         "defines": [
-            "EM_PROXIED_RESIZE_OFFSCREENCANVAS",
-            "EM_FUNC_SIG_V",
-            "EM_FUNC_SIG_VI",
-            "EM_FUNC_SIG_VII",
-            "EM_FUNC_SIG_VIII",
-            "EM_FUNC_SIG_I",
-            "EM_FUNC_SIG_II",
-            "EM_FUNC_SIG_III",
-            "EM_FUNC_SIG_IIII",
             "EM_FUNC_SIG_PARAM_I",
-            "EM_FUNC_SIG_PARAM_I64",
+            "EM_FUNC_SIG_PARAM_J",
             "EM_FUNC_SIG_PARAM_F",
             "EM_FUNC_SIG_PARAM_D",
             "EM_FUNC_SIG_PARAM_B",
             "EM_FUNC_SIG_PARAM_F2I"
+        ]
+    },
+    {
+        "file": "emscripten/wasm_worker.h",
+        "defines": [
+            "ATOMICS_WAIT_NOT_EQUAL",
+            "ATOMICS_WAIT_TIMED_OUT"
         ]
     },
     {
@@ -1229,6 +1227,12 @@
                 "size",
                 "mappedAtCreation"
             ],
+            "WGPUBufferMapCallbackInfo": [
+                "nextInChain",
+                "mode",
+                "callback",
+                "userdata"
+            ],
             "WGPUColor": [
                 "r",
                 "g",
@@ -1255,10 +1259,10 @@
                 "utf16Offset",
                 "utf16Length"
             ],
-            "WGPUComputePassTimestampWrite": [
+            "WGPUComputePassTimestampWrites": [
                 "querySet",
-                "queryIndex",
-                "location"
+                "beginningOfPassWriteIndex",
+                "endOfPassWriteIndex"
             ],
             "WGPUConstantEntry": [
                 "nextInChain",
@@ -1270,8 +1274,13 @@
                 "height",
                 "depthOrArrayLayers"
             ],
-            "WGPUInstanceDescriptor": [
-                "nextInChain"
+            "WGPUFuture": [
+                "id"
+            ],
+            "WGPUInstanceFeatures": [
+                "nextInChain",
+                "timedWaitAnyEnable",
+                "timedWaitAnyMaxCount"
             ],
             "WGPULimits": [
                 "maxTextureDimension1D",
@@ -1339,13 +1348,17 @@
                 "nextInChain",
                 "label",
                 "type",
-                "count",
-                "pipelineStatistics",
-                "pipelineStatisticsCount"
+                "count"
             ],
             "WGPUQueueDescriptor": [
                 "nextInChain",
                 "label"
+            ],
+            "WGPUQueueWorkDoneCallbackInfo": [
+                "nextInChain",
+                "mode",
+                "callback",
+                "userdata"
             ],
             "WGPURenderBundleDescriptor": [
                 "nextInChain",
@@ -1354,7 +1367,7 @@
             "WGPURenderBundleEncoderDescriptor": [
                 "nextInChain",
                 "label",
-                "colorFormatsCount",
+                "colorFormatCount",
                 "colorFormats",
                 "depthStencilFormat",
                 "sampleCount",
@@ -1376,10 +1389,16 @@
                 "chain",
                 "maxDrawCount"
             ],
-            "WGPURenderPassTimestampWrite": [
+            "WGPURenderPassTimestampWrites": [
                 "querySet",
-                "queryIndex",
-                "location"
+                "beginningOfPassWriteIndex",
+                "endOfPassWriteIndex"
+            ],
+            "WGPURequestAdapterCallbackInfo": [
+                "nextInChain",
+                "mode",
+                "callback",
+                "userdata"
             ],
             "WGPURequestAdapterOptions": [
                 "nextInChain",
@@ -1407,10 +1426,6 @@
                 "compare",
                 "maxAnisotropy"
             ],
-            "WGPUShaderModuleDescriptor": [
-                "nextInChain",
-                "label"
-            ],
             "WGPUShaderModuleSPIRVDescriptor": [
                 "chain",
                 "codeSize",
@@ -1419,6 +1434,10 @@
             "WGPUShaderModuleWGSLDescriptor": [
                 "chain",
                 "code"
+            ],
+            "WGPUShaderModuleDescriptor": [
+                "nextInChain",
+                "label"
             ],
             "WGPUStencilFaceState": [
                 "compare",
@@ -1454,6 +1473,10 @@
                 "sampleType",
                 "viewDimension",
                 "multisampled"
+            ],
+            "WGPUTextureBindingViewDimensionDescriptor": [
+                "chain",
+                "textureBindingViewDimension"
             ],
             "WGPUTextureDataLayout": [
                 "nextInChain",
@@ -1505,7 +1528,6 @@
             "WGPUComputePassDescriptor": [
                 "nextInChain",
                 "label",
-                "timestampWriteCount",
                 "timestampWrites"
             ],
             "WGPUDepthStencilState": [
@@ -1521,6 +1543,10 @@
                 "depthBiasSlopeScale",
                 "depthBiasClamp"
             ],
+            "WGPUFutureWaitInfo": [
+                "future",
+                "completed"
+            ],
             "WGPUImageCopyBuffer": [
                 "nextInChain",
                 "layout",
@@ -1533,6 +1559,10 @@
                 "origin",
                 "aspect"
             ],
+            "WGPUInstanceDescriptor": [
+                "nextInChain",
+                "features"
+            ],
             "WGPUProgrammableStageDescriptor": [
                 "nextInChain",
                 "module",
@@ -1543,6 +1573,7 @@
             "WGPURenderPassColorAttachment": [
                 "nextInChain",
                 "view",
+                "depthSlice",
                 "resolveTarget",
                 "loadOp",
                 "storeOp",
@@ -1595,7 +1626,7 @@
             "WGPUDeviceDescriptor": [
                 "nextInChain",
                 "label",
-                "requiredFeaturesCount",
+                "requiredFeatureCount",
                 "requiredFeatures",
                 "requiredLimits",
                 "defaultQueue",
@@ -1609,7 +1640,6 @@
                 "colorAttachments",
                 "depthStencilAttachment",
                 "occlusionQuerySet",
-                "timestampWriteCount",
                 "timestampWrites"
             ],
             "WGPUVertexState": [

@@ -9,14 +9,10 @@ var LibraryEmbindShared = {
   $BindingError: undefined,
 
   $throwInternalError__deps: ['$InternalError'],
-  $throwInternalError: function(message) {
-    throw new InternalError(message);
-  },
+  $throwInternalError: (message) => { throw new InternalError(message); },
 
   $throwBindingError__deps: ['$BindingError'],
-  $throwBindingError: function(message) {
-    throw new BindingError(message);
-  },
+  $throwBindingError: (message) => { throw new BindingError(message); },
 
   // typeID -> { toWireType: ..., fromWireType: ... }
   $registeredTypes:  {},
@@ -62,7 +58,7 @@ var LibraryEmbindShared = {
   $whenDependentTypesAreResolved__deps: [
     '$awaitingDependencies', '$registeredTypes',
     '$typeDependencies', '$throwInternalError'],
-  $whenDependentTypesAreResolved: function(myTypes, dependentTypes, getTypeConverters) {
+  $whenDependentTypesAreResolved: (myTypes, dependentTypes, getTypeConverters) => {
     myTypes.forEach(function(type) {
         typeDependencies[type] = dependentTypes;
     });
@@ -105,7 +101,7 @@ var LibraryEmbindShared = {
   $embind_charCodes__deps: ['$embind_init_charCodes'],
   $embind_charCodes__postset: "embind_init_charCodes()",
   $embind_charCodes: undefined,
-  $embind_init_charCodes: function() {
+  $embind_init_charCodes: () => {
     var codes = new Array(256);
     for (var i = 0; i < 256; ++i) {
         codes[i] = String.fromCharCode(i);
@@ -113,7 +109,7 @@ var LibraryEmbindShared = {
     embind_charCodes = codes;
   },
   $readLatin1String__deps: ['$embind_charCodes'],
-  $readLatin1String: function(ptr) {
+  $readLatin1String: (ptr) => {
     var ret = "";
     var c = ptr;
     while (HEAPU8[c]) {
@@ -122,14 +118,39 @@ var LibraryEmbindShared = {
     return ret;
   },
   $getTypeName__deps: ['$readLatin1String', '__getTypeName', 'free'],
-  $getTypeName: function(type) {
+  $getTypeName: (type) => {
     var ptr = ___getTypeName(type);
     var rv = readLatin1String(ptr);
     _free(ptr);
     return rv;
   },
-
-  $heap32VectorToArray: function(count, firstElement) {
+  $getFunctionName__deps: [],
+  $getFunctionName: (signature) => {
+    signature = signature.trim();
+    const argsIndex = signature.indexOf("(");
+    if (argsIndex !== -1) {
+#if ASSERTIONS
+      assert(signature[signature.length - 1] == ")", "Parentheses for argument names should match.");
+#endif
+      return signature.substr(0, argsIndex);
+    } else {
+      return signature;
+    }
+  },
+  $getFunctionArgsName__deps: [],
+  $getFunctionArgsName: (signature) => {
+    signature = signature.trim();
+    const argsIndex = signature.indexOf("(") + 1;
+    if (argsIndex !== 0) {
+#if ASSERTIONS
+      assert(signature[signature.length - 1] == ")", "Parentheses for argument names should match.");
+#endif
+      return signature.substr(argsIndex, signature.length - argsIndex - 1).replaceAll(" ", "").split(",").filter(n => n.length);
+    } else {
+      return [];
+    }
+  },
+  $heap32VectorToArray: (count, firstElement) => {
     var array = [];
     for (var i = 0; i < count; i++) {
         // TODO(https://github.com/emscripten-core/emscripten/issues/17310):
@@ -141,13 +162,117 @@ var LibraryEmbindShared = {
 
   $requireRegisteredType__deps: [
     '$registeredTypes', '$getTypeName', '$throwBindingError'],
-  $requireRegisteredType: function(rawType, humanName) {
+  $requireRegisteredType: (rawType, humanName) => {
     var impl = registeredTypes[rawType];
     if (undefined === impl) {
         throwBindingError(humanName + " has unknown type " + getTypeName(rawType));
     }
     return impl;
+  },
+
+  $usesDestructorStack(argTypes) {
+    for (var i = 1; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here.
+      if (argTypes[i] !== null && argTypes[i].destructorFunction === undefined) { // The type does not define a destructor function - must use dynamic stack
+        return true;
+      }
+    }
+    return false;
+  },
+
+  $createJsInvoker__deps: ['$usesDestructorStack'],
+  $createJsInvoker(humanName, argTypes, isClassMethodFunc, returns, isAsync) {
+    var needsDestructorStack = usesDestructorStack(argTypes);
+    var argCount = argTypes.length;
+    var argsList = "";
+    var argsListWired = "";
+    for (var i = 0; i < argCount - 2; ++i) {
+      argsList += (i!==0?", ":"")+"arg"+i;
+      argsListWired += (i!==0?", ":"")+"arg"+i+"Wired";
+    }
+
+    var invokerFnBody = `
+      return function (${argsList}) {
+      if (arguments.length !== ${argCount - 2}) {
+        throwBindingError('function ${humanName} called with ' + arguments.length + ' arguments, expected ${argCount - 2}');
+      }`;
+
+#if EMSCRIPTEN_TRACING
+    invokerFnBody += `Module.emscripten_trace_enter_context('embind::${humanName}');\n`;
+#endif
+
+    if (needsDestructorStack) {
+      invokerFnBody += "var destructors = [];\n";
+    }
+
+    var dtorStack = needsDestructorStack ? "destructors" : "null";
+    var args1 = ["throwBindingError", "invoker", "fn", "runDestructors", "retType", "classParam"];
+
+#if EMSCRIPTEN_TRACING
+    args1.push("Module");
+#endif
+
+    if (isClassMethodFunc) {
+      invokerFnBody += "var thisWired = classParam['toWireType']("+dtorStack+", this);\n";
+    }
+
+    for (var i = 0; i < argCount - 2; ++i) {
+      invokerFnBody += "var arg"+i+"Wired = argType"+i+"['toWireType']("+dtorStack+", arg"+i+"); // "+argTypes[i+2].name+"\n";
+      args1.push("argType"+i);
+    }
+
+    if (isClassMethodFunc) {
+      argsListWired = "thisWired" + (argsListWired.length > 0 ? ", " : "") + argsListWired;
+    }
+
+    invokerFnBody +=
+        (returns || isAsync ? "var rv = ":"") + "invoker(fn"+(argsListWired.length>0?", ":"")+argsListWired+");\n";
+
+#if ASYNCIFY == 1
+    args1.push("Asyncify");
+#endif
+#if ASYNCIFY
+    invokerFnBody += "function onDone(" + (returns ? "rv" : "") + ") {\n";
+#endif
+
+    if (needsDestructorStack) {
+      invokerFnBody += "runDestructors(destructors);\n";
+    } else {
+      for (var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
+        var paramName = (i === 1 ? "thisWired" : ("arg"+(i - 2)+"Wired"));
+        if (argTypes[i].destructorFunction !== null) {
+          invokerFnBody += paramName+"_dtor("+paramName+"); // "+argTypes[i].name+"\n";
+          args1.push(paramName+"_dtor");
+        }
+      }
+    }
+
+    if (returns) {
+      invokerFnBody += "var ret = retType['fromWireType'](rv);\n" +
+#if EMSCRIPTEN_TRACING
+                       "Module.emscripten_trace_exit_context();\n" +
+#endif
+                       "return ret;\n";
+    } else {
+#if EMSCRIPTEN_TRACING
+      invokerFnBody += "Module.emscripten_trace_exit_context();\n";
+#endif
+    }
+
+#if ASYNCIFY == 1
+    invokerFnBody += "}\n";
+    invokerFnBody += "return Asyncify.currData ? Asyncify.whenDone().then(onDone) : onDone(" + (returns ? "rv" : "") +");\n"
+#elif ASYNCIFY == 2
+    invokerFnBody += "}\n";
+    invokerFnBody += "return " + (isAsync ? "rv.then(onDone)" : "onDone(" + (returns ? "rv" : "") + ")") + ";";
+#endif
+
+    invokerFnBody += "}\n";
+
+#if ASSERTIONS
+    invokerFnBody = `if (arguments.length !== ${args1.length}){ throw new Error("${humanName} Expected ${args1.length} closure arguments " + arguments.length + " given."); }\n${invokerFnBody}`;
+#endif
+    return [args1, invokerFnBody];
   }
 };
 
-mergeInto(LibraryManager.library, LibraryEmbindShared);
+addToLibrary(LibraryEmbindShared);

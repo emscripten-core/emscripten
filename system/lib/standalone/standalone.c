@@ -142,11 +142,6 @@ weak int getentropy(void* buffer, size_t length) {
 
 // Emscripten additions
 
-// Should never be called in standalone mode
-weak void emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) {
-  __builtin_unreachable();
-}
-
 size_t emscripten_get_heap_max() {
   // In standalone mode we don't have any wasm instructions to access the max
   // memory size so the best we can do (without calling an import) is return
@@ -155,12 +150,12 @@ size_t emscripten_get_heap_max() {
 }
 
 int emscripten_resize_heap(size_t size) {
-#ifdef EMSCRIPTEN_MEMORY_GROWTH
+#if defined(EMSCRIPTEN_MEMORY_GROWTH) && !defined(EMSCRIPTEN_PURE_WASI)
   size_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
   assert(old_size < size);
   ssize_t diff = (size - old_size + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE;
   size_t result = __builtin_wasm_memory_grow(0, diff);
-  // Its seems v8 has a bug in memory.grow that causes it to return 
+  // Its seems v8 has a bug in memory.grow that causes it to return
   // (uint32_t)-1 even with memory64:
   // https://bugs.chromium.org/p/v8/issues/detail?id=13948
   if (result != (uint32_t)-1 && result != (size_t)-1) {
@@ -172,13 +167,21 @@ int emscripten_resize_heap(size_t size) {
   return 0;
 }
 
-weak double emscripten_get_now(void) {
+// Call clock_gettime with a particular clock and return the result in ms.
+static double clock_gettime_ms(clockid_t clock) {
   struct timespec ts;
-  if (clock_gettime(CLOCK_MONOTONIC, &ts)) {
+  if (clock_gettime(clock, &ts)) {
     return 0;
   }
-  // emscripten_get_now returns time in milliseconds (as a double)
   return (double)ts.tv_sec * 1000 + (double)ts.tv_nsec / 1000000;
+}
+
+weak double emscripten_get_now(void) {
+  return clock_gettime_ms(CLOCK_MONOTONIC);
+}
+
+weak double emscripten_date_now(void) {
+  return clock_gettime_ms(CLOCK_REALTIME);
 }
 
 // C++ ABI
@@ -330,3 +333,5 @@ weak char* _emscripten_sanitizer_get_option(const char* name) {
 weak char* emscripten_get_module_name(char* buf, size_t length) {
   return strncpy(buf, "<unknown>", length);
 }
+
+weak void _emscripten_runtime_keepalive_clear() {}

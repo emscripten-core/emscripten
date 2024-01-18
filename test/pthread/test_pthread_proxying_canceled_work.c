@@ -39,7 +39,7 @@ void set_flag(void* flag) {
   // because this code needs to run after the thread runtime has exited.
 
   // clang-format off
-  EM_ASM({setTimeout(() => Atomics.store(HEAP32, $0 >> 2, 1))}, flag);
+  EM_ASM({setTimeout(() => Atomics.store(HEAP32, $0 / 4, 1))}, flag);
   // clang-format on
 }
 

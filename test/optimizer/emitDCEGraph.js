@@ -45,12 +45,12 @@ var wasmImports = {
 };
 
 // exports gotten directly
-var expD1 = Module['expD1'] = asm['expD1'];
-var expD2 = Module['expD2'] = asm['expD2'];
-var expD3 = Module['expD3'] = asm['expD3'];
-var expD4 = Module['expD4'] = asm['expD4'];
+var expD1 = Module['expD1'] = wasmExports['expD1'];
+var expD2 = Module['expD2'] = wasmExports['expD2'];
+var expD3 = Module['expD3'] = wasmExports['expD3'];
+var expD4 = Module['expD4'] = wasmExports['expD4'];
 // Same as above but not export on the Module
-var expD5 = asm['expD5'];
+var expD5 = wasmExports['expD5'];
 
 // exports gotten indirectly (async compilation
 var expI1 = Module['expI1'] = () => (expI1 = Module['expI1'] = wasmExports['expI1'])();
@@ -61,10 +61,15 @@ var expI4 = Module['expI4'] = () => (expI4 = Module['expI4'] = wasmExports['expI
 // Same as above but not export on the Module.
 var expI5 = () => (expI5 = wasmExports['expI5'])();
 
+function applySignatureConversions() {
+  // Wrapping functions should not constitute a usage
+  wasmExports['expI5'] = foo(wasmExports['expI5']);
+}
+
 // add uses for some of them
 expD1;
 Module['expD2'];
-asm['expD3'];
+wasmExports['expD3'];
 
 expI1;
 Module['expI2'];

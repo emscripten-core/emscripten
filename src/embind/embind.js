@@ -3,7 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-/*global LibraryManager, mergeInto*/
+/*global addToLibrary*/
 
 /*global Module, asm*/
 /*global _malloc, _free, _memcpy*/
@@ -13,15 +13,15 @@
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 // -- jshint doesn't understand library syntax, so we need to specifically tell it about the symbols we define
-/*global typeDependencies, flushPendingDeletes, getTypeName, getBasestPointer, throwBindingError, UnboundTypeError, embindRepr, registeredInstances, registeredTypes, getShiftFromSize*/
+/*global typeDependencies, flushPendingDeletes, getTypeName, getBasestPointer, throwBindingError, UnboundTypeError, embindRepr, registeredInstances, registeredTypes*/
 /*global ensureOverloadTable, embind__requireFunction, awaitingDependencies, makeLegalFunctionName, embind_charCodes:true, registerType, createNamedFunction, RegisteredPointer, throwInternalError*/
 /*global simpleReadValueFromPointer, floatReadValueFromPointer, integerReadValueFromPointer, enumReadValueFromPointer, replacePublicSymbol, craftInvokerFunction, tupleRegistrations*/
 /*global finalizationRegistry, attachFinalizer, detachFinalizer, releaseClassHandle, runDestructor*/
 /*global ClassHandle, makeClassHandle, structRegistrations, whenDependentTypesAreResolved, BindingError, deletionQueue, delayFunction:true, upcastPointer*/
-/*global exposePublicSymbol, heap32VectorToArray, newFunc, RegisteredPointer_getPointee, RegisteredPointer_destructor, RegisteredPointer_deleteObject, char_0, char_9*/
+/*global exposePublicSymbol, heap32VectorToArray, newFunc, char_0, char_9*/
 /*global getInheritedInstanceCount, getLiveInheritedInstances, setDelayFunction, InternalError, runDestructors*/
 /*global requireRegisteredType, unregisterInheritedInstance, registerInheritedInstance, PureVirtualError, throwUnboundTypeError*/
-/*global assert, validateThis, downcastPointer, registeredPointers, RegisteredClass, getInheritedInstance, ClassHandle_isAliasOf, ClassHandle_clone, ClassHandle_isDeleted, ClassHandle_deleteLater*/
+/*global assert, validateThis, downcastPointer, registeredPointers, RegisteredClass, getInheritedInstance */
 /*global throwInstanceAlreadyDeleted, shallowCopyInternalPointer*/
 /*global RegisteredPointer_fromWireType, constNoSmartPtrRawPointerToWireType, nonConstNoSmartPtrRawPointerToWireType, genericPointerToWireType*/
 
@@ -34,12 +34,34 @@ var LibraryEmbind = {
   $PureVirtualError__postset: "PureVirtualError = Module['PureVirtualError'] = extendError(Error, 'PureVirtualError');",
   $PureVirtualError__deps: ['$extendError'],
   $PureVirtualError: undefined,
+  $GenericWireTypeSize: {{{ 2 * POINTER_SIZE }}},
+#if EMBIND_AOT
+  $InvokerFunctions: '<<< EMBIND_AOT_OUTPUT >>>',
+#endif
+  // If register_type is used, emval will be registered multiple times for
+  // different type id's, but only a single type object is needed on the JS side
+  // for all of them. Store the type for reuse.
+  $EmValType__deps: ['_emval_decref', '$Emval', '$simpleReadValueFromPointer', '$GenericWireTypeSize'],
+  $EmValType: `{
+    name: 'emscripten::val',
+    'fromWireType': (handle) => {
+      var rv = Emval.toValue(handle);
+      __emval_decref(handle);
+      return rv;
+    },
+    'toWireType': (destructors, value) => Emval.toHandle(value),
+    'argPackAdvance': GenericWireTypeSize,
+    'readValueFromPointer': simpleReadValueFromPointer,
+    destructorFunction: null, // This type does not need a destructor
 
+    // TODO: do we need a deleteObject here?  write a test where
+    // emval is passed into JS via an interface
+  }`,
   $init_embind__deps: [
     '$getInheritedInstanceCount', '$getLiveInheritedInstances',
     '$flushPendingDeletes', '$setDelayFunction'],
   $init_embind__postset: 'init_embind();',
-  $init_embind: function() {
+  $init_embind: () => {
     Module['getInheritedInstanceCount'] = getInheritedInstanceCount;
     Module['getLiveInheritedInstances'] = getLiveInheritedInstances;
     Module['flushPendingDeletes'] = flushPendingDeletes;
@@ -47,7 +69,7 @@ var LibraryEmbind = {
   },
 
   $throwUnboundTypeError__deps: ['$registeredTypes', '$typeDependencies', '$UnboundTypeError', '$getTypeName'],
-  $throwUnboundTypeError: function(message, types) {
+  $throwUnboundTypeError: (message, types) => {
     var unboundTypes = [];
     var seen = {};
     function visit(type) {
@@ -72,7 +94,7 @@ var LibraryEmbind = {
   // Creates a function overload resolution table to the given method 'methodName' in the given prototype,
   // if the overload table doesn't yet exist.
   $ensureOverloadTable__deps: ['$throwBindingError'],
-  $ensureOverloadTable: function(proto, methodName, humanName) {
+  $ensureOverloadTable: (proto, methodName, humanName) => {
     if (undefined === proto[methodName].overloadTable) {
       var prevFunc = proto[methodName];
       // Inject an overload resolver function that routes to the appropriate overload based on the number of arguments.
@@ -101,7 +123,7 @@ var LibraryEmbind = {
    actually registered, since it carries a slight performance penalty. */
   $exposePublicSymbol__deps: ['$ensureOverloadTable', '$throwBindingError'],
   $exposePublicSymbol__docs: '/** @param {number=} numArguments */',
-  $exposePublicSymbol: function(name, value, numArguments) {
+  $exposePublicSymbol: (name, value, numArguments) => {
     if (Module.hasOwnProperty(name)) {
       if (undefined === numArguments || (undefined !== Module[name].overloadTable && undefined !== Module[name].overloadTable[numArguments])) {
         throwBindingError(`Cannot register public name '${name}' twice`);
@@ -126,7 +148,7 @@ var LibraryEmbind = {
 
   $replacePublicSymbol__deps: ['$throwInternalError'],
   $replacePublicSymbol__docs: '/** @param {number=} numArguments */',
-  $replacePublicSymbol: function(name, value, numArguments) {
+  $replacePublicSymbol: (name, value, numArguments) => {
     if (!Module.hasOwnProperty(name)) {
       throwInternalError('Replacing nonexistant public symbol');
     }
@@ -142,7 +164,7 @@ var LibraryEmbind = {
 
   // from https://github.com/imvu/imvujs/blob/master/src/error.js
   $extendError__deps: ['$createNamedFunction'],
-  $extendError: function(baseErrorType, errorName) {
+  $extendError: (baseErrorType, errorName) => {
     var errorClass = createNamedFunction(errorName, function(message) {
       this.name = errorName;
       this.message = message;
@@ -166,20 +188,23 @@ var LibraryEmbind = {
     return errorClass;
   },
 
+  $createNamedFunction: (name, body) => Object.defineProperty(body, 'name', {
+    value: name
+  }),
+  // All browsers that support WebAssembly also support configurable function name,
+  // but we might be building for very old browsers via WASM2JS.
+#if MIN_CHROME_VERSION < 43 || MIN_SAFARI_VERSION < 100101 || MIN_FIREFOX_VERSION < 38
+  // In that case, check if configurable function name is supported at init time
+  // and, if not, replace with a fallback that returns function as-is as those browsers
+  // don't support other methods either.
+  $createNamedFunction__postset: `
+    if (!Object.getOwnPropertyDescriptor(Function.prototype, 'name').configurable) {
+      createNamedFunction = (name, body) => body;
+    }
+  `,
+#endif
 
-  $createNamedFunction__deps: ['$makeLegalFunctionName'],
-  $createNamedFunction: function(name, body) {
-    name = makeLegalFunctionName(name);
-    // Use an abject with a computed property name to create a new function with
-    // a name specified at runtime, but without using `new Function` or `eval`.
-    return {
-      [name]: function() {
-        return body.apply(this, arguments);
-      }
-    }[name];
-  },
-
-  $embindRepr: function(v) {
+  $embindRepr: (v) => {
     if (v === null) {
         return 'null';
     }
@@ -196,7 +221,7 @@ var LibraryEmbind = {
   $registeredInstances: {},
 
   $getBasestPointer__deps: ['$throwBindingError'],
-  $getBasestPointer: function(class_, ptr) {
+  $getBasestPointer: (class_, ptr) => {
     if (ptr === undefined) {
         throwBindingError('ptr should not be undefined');
     }
@@ -208,7 +233,7 @@ var LibraryEmbind = {
   },
 
   $registerInheritedInstance__deps: ['$registeredInstances', '$getBasestPointer', '$throwBindingError'],
-  $registerInheritedInstance: function(class_, ptr, instance) {
+  $registerInheritedInstance: (class_, ptr, instance) => {
     ptr = getBasestPointer(class_, ptr);
     if (registeredInstances.hasOwnProperty(ptr)) {
         throwBindingError(`Tried to register registered instance: ${ptr}`);
@@ -218,7 +243,7 @@ var LibraryEmbind = {
   },
 
   $unregisterInheritedInstance__deps: ['$registeredInstances', '$getBasestPointer', '$throwBindingError'],
-  $unregisterInheritedInstance: function(class_, ptr) {
+  $unregisterInheritedInstance: (class_, ptr) => {
     ptr = getBasestPointer(class_, ptr);
     if (registeredInstances.hasOwnProperty(ptr)) {
         delete registeredInstances[ptr];
@@ -228,18 +253,16 @@ var LibraryEmbind = {
   },
 
   $getInheritedInstance__deps: ['$registeredInstances', '$getBasestPointer'],
-  $getInheritedInstance: function(class_, ptr) {
+  $getInheritedInstance: (class_, ptr) => {
     ptr = getBasestPointer(class_, ptr);
     return registeredInstances[ptr];
   },
 
   $getInheritedInstanceCount__deps: ['$registeredInstances'],
-  $getInheritedInstanceCount: function() {
-    return Object.keys(registeredInstances).length;
-  },
+  $getInheritedInstanceCount: () => Object.keys(registeredInstances).length,
 
   $getLiveInheritedInstances__deps: ['$registeredInstances'],
-  $getLiveInheritedInstances: function() {
+  $getLiveInheritedInstances: () => {
     var rv = [];
     for (var k in registeredInstances) {
       if (registeredInstances.hasOwnProperty(k)) {
@@ -262,27 +285,21 @@ var LibraryEmbind = {
   },
 
   _embind_register_void__deps: ['$readLatin1String', '$registerType'],
-  _embind_register_void: function(rawType, name) {
+  _embind_register_void: (rawType, name) => {
     name = readLatin1String(name);
     registerType(rawType, {
-        isVoid: true, // void return values can be optimized out sometimes
-        name,
-        'argPackAdvance': 0,
-        'fromWireType': function() {
-            return undefined;
-        },
-        'toWireType': function(destructors, o) {
-            // TODO: assert if anything else is given?
-            return undefined;
-        },
+      isVoid: true, // void return values can be optimized out sometimes
+      name,
+      'argPackAdvance': 0,
+      'fromWireType': () => undefined,
+      // TODO: assert if anything else is given?
+      'toWireType': (destructors, o) => undefined,
     });
   },
 
-  _embind_register_bool__deps: [
-    '$getShiftFromSize', '$readLatin1String', '$registerType'],
-  _embind_register_bool: function(rawType, name, size, trueValue, falseValue) {
-    var shift = getShiftFromSize(size);
-
+  _embind_register_bool__docs: '/** @suppress {globalThis} */',
+  _embind_register_bool__deps: ['$readLatin1String', '$registerType', '$GenericWireTypeSize'],
+  _embind_register_bool: (rawType, name, trueValue, falseValue) => {
     name = readLatin1String(name);
     registerType(rawType, {
         name,
@@ -294,114 +311,87 @@ var LibraryEmbind = {
         'toWireType': function(destructors, o) {
             return o ? trueValue : falseValue;
         },
-        'argPackAdvance': 8,
+        'argPackAdvance': GenericWireTypeSize,
         'readValueFromPointer': function(pointer) {
-            // TODO: if heap is fixed (like in asm.js) this could be executed outside
-            var heap;
-            if (size === 1) {
-                heap = HEAP8;
-            } else if (size === 2) {
-                heap = HEAP16;
-            } else if (size === 4) {
-                heap = HEAP32;
-            } else {
-                throw new TypeError("Unknown boolean type size: " + name);
-            }
-            return this['fromWireType'](heap[pointer >> shift]);
+            return this['fromWireType'](HEAPU8[pointer]);
         },
         destructorFunction: null, // This type does not need a destructor
     });
   },
 
-  $getShiftFromSize__deps: [],
-  $getShiftFromSize: function(size) {
-    switch (size) {
-        case 1: return 0;
-        case 2: return 1;
-        case 4: return 2;
-        case 8: return 3;
-        default:
-            throw new TypeError(`Unknown type size: ${size}`);
-    }
-  },
-
   $integerReadValueFromPointer__deps: [],
-  $integerReadValueFromPointer: function(name, shift, signed) {
+  $integerReadValueFromPointer: (name, width, signed) => {
     // integers are quite common, so generate very specialized functions
-    switch (shift) {
-        case 0: return signed ?
-            function readS8FromPointer(pointer) { return HEAP8[pointer]; } :
-            function readU8FromPointer(pointer) { return HEAPU8[pointer]; };
+    switch (width) {
         case 1: return signed ?
-            function readS16FromPointer(pointer) { return HEAP16[pointer >> 1]; } :
-            function readU16FromPointer(pointer) { return HEAPU16[pointer >> 1]; };
+            (pointer) => {{{ makeGetValue('pointer', 0, 'i8') }}} :
+            (pointer) => {{{ makeGetValue('pointer', 0, 'u8') }}};
         case 2: return signed ?
-            function readS32FromPointer(pointer) { return HEAP32[pointer >> 2]; } :
-            function readU32FromPointer(pointer) { return HEAPU32[pointer >> 2]; };
+            (pointer) => {{{ makeGetValue('pointer', 0, 'i16') }}} :
+            (pointer) => {{{ makeGetValue('pointer', 0, 'u16') }}}
+        case 4: return signed ?
+            (pointer) => {{{ makeGetValue('pointer', 0, 'i32') }}} :
+            (pointer) => {{{ makeGetValue('pointer', 0, 'u32') }}}
 #if WASM_BIGINT
-        case 3: return signed ?
-            function readS64FromPointer(pointer) { return HEAP64[pointer >> 3]; } :
-            function readU64FromPointer(pointer) { return HEAPU64[pointer >> 3]; };
+        case 8: return signed ?
+            (pointer) => {{{ makeGetValue('pointer', 0, 'i64') }}} :
+            (pointer) => {{{ makeGetValue('pointer', 0, 'u64') }}}
 #endif
         default:
-            throw new TypeError("Unknown integer type: " + name);
+            throw new TypeError(`invalid integer width (${width}): ${name}`);
     }
   },
 
   $enumReadValueFromPointer__deps: [],
-  $enumReadValueFromPointer: function(name, shift, signed) {
-    switch (shift) {
-        case 0: return function(pointer) {
-            var heap = signed ? HEAP8 : HEAPU8;
-            return this['fromWireType'](heap[pointer]);
-        };
-        case 1: return function(pointer) {
-            var heap = signed ? HEAP16 : HEAPU16;
-            return this['fromWireType'](heap[pointer >> 1]);
-        };
-        case 2: return function(pointer) {
-            var heap = signed ? HEAP32 : HEAPU32;
-            return this['fromWireType'](heap[pointer >> 2]);
-        };
+  $enumReadValueFromPointer: (name, width, signed) => {
+    switch (width) {
+        case 1: return signed ?
+            function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'i8') }}}) } :
+            function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'u8') }}}) };
+        case 2: return signed ?
+            function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'i16') }}}) } :
+            function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'u16') }}}) };
+        case 4: return signed ?
+            function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'i32') }}}) } :
+            function(pointer) { return this['fromWireType']({{{ makeGetValue('pointer', 0, 'u32') }}}) };
         default:
-            throw new TypeError("Unknown integer type: " + name);
+            throw new TypeError(`invalid integer width (${width}): ${name}`);
     }
   },
 
   $floatReadValueFromPointer__deps: [],
-  $floatReadValueFromPointer: function(name, shift) {
-    switch (shift) {
-        case 2: return function(pointer) {
-            return this['fromWireType'](HEAPF32[pointer >> 2]);
+  $floatReadValueFromPointer: (name, width) => {
+    switch (width) {
+        case 4: return function(pointer) {
+            return this['fromWireType']({{{ makeGetValue('pointer', 0, 'float') }}});
         };
-        case 3: return function(pointer) {
-            return this['fromWireType'](HEAPF64[pointer >> 3]);
+        case 8: return function(pointer) {
+            return this['fromWireType']({{{ makeGetValue('pointer', 0, 'double') }}});
         };
         default:
-            throw new TypeError("Unknown float type: " + name);
+            throw new TypeError(`invalid float width (${width}): ${name}`);
     }
   },
 
+  _embind_register_integer__docs: '/** @suppress {globalThis} */',
   // When converting a number from JS to C++ side, the valid range of the number is
   // [minRange, maxRange], inclusive.
   _embind_register_integer__deps: [
-    '$embindRepr', '$getShiftFromSize', '$integerReadValueFromPointer',
+    '$embindRepr', '$integerReadValueFromPointer',
     '$readLatin1String', '$registerType'],
-  _embind_register_integer: function(primitiveType, name, size, minRange, maxRange) {
+  _embind_register_integer: (primitiveType, name, size, minRange, maxRange) => {
     name = readLatin1String(name);
     // LLVM doesn't have signed and unsigned 32-bit types, so u32 literals come
     // out as 'i32 -1'. Always treat those as max u32.
     if (maxRange === -1) {
-        maxRange = 4294967295;
+      maxRange = 4294967295;
     }
-
-    var shift = getShiftFromSize(size);
 
     var fromWireType = (value) => value;
 
     if (minRange === 0) {
-        var bitshift = 32 - 8*size;
-        fromWireType = (value) => (value << bitshift) >>> bitshift;
+      var bitshift = 32 - 8*size;
+      fromWireType = (value) => (value << bitshift) >>> bitshift;
     }
 
     var isUnsignedType = (name.includes('unsigned'));
@@ -433,19 +423,18 @@ var LibraryEmbind = {
       name,
       'fromWireType': fromWireType,
       'toWireType': toWireType,
-      'argPackAdvance': 8,
-      'readValueFromPointer': integerReadValueFromPointer(name, shift, minRange !== 0),
+      'argPackAdvance': GenericWireTypeSize,
+      'readValueFromPointer': integerReadValueFromPointer(name, size, minRange !== 0),
       destructorFunction: null, // This type does not need a destructor
     });
   },
 
 #if WASM_BIGINT
+  _embind_register_bigint__docs: '/** @suppress {globalThis} */',
   _embind_register_bigint__deps: [
     '$embindRepr', '$readLatin1String', '$registerType', '$integerReadValueFromPointer'],
-  _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {
+  _embind_register_bigint: (primitiveType, name, size, minRange, maxRange) => {
     name = readLatin1String(name);
-
-    var shift = getShiftFromSize(size);
 
     var isUnsignedType = (name.indexOf('u') != -1);
 
@@ -456,40 +445,40 @@ var LibraryEmbind = {
 
     registerType(primitiveType, {
       name,
-      'fromWireType': function (value) {
-        return value;
-      },
-      'toWireType': function (destructors, value) {
+      'fromWireType': (value) => value,
+      'toWireType': function(destructors, value) {
         if (typeof value != "bigint" && typeof value != "number") {
           throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${this.name}`);
         }
+        if (typeof value == "number") {
+          value = BigInt(value);
+        }
+#if ASSERTIONS
         if (value < minRange || value > maxRange) {
           throw new TypeError(`Passing a number "${embindRepr(value)}" from JS side to C/C++ side to an argument of type "${name}", which is outside the valid range [${minRange}, ${maxRange}]!`);
         }
+#endif
         return value;
       },
-      'argPackAdvance': 8,
-      'readValueFromPointer': integerReadValueFromPointer(name, shift, !isUnsignedType),
+      'argPackAdvance': GenericWireTypeSize,
+      'readValueFromPointer': integerReadValueFromPointer(name, size, !isUnsignedType),
       destructorFunction: null, // This type does not need a destructor
     });
   },
 #else
   _embind_register_bigint__deps: [],
-  _embind_register_bigint: function(primitiveType, name, size, minRange, maxRange) {},
+  _embind_register_bigint: (primitiveType, name, size, minRange, maxRange) => {},
 #endif
 
   _embind_register_float__deps: [
-    '$embindRepr', '$floatReadValueFromPointer', '$getShiftFromSize',
+    '$embindRepr', '$floatReadValueFromPointer',
     '$readLatin1String', '$registerType'],
-  _embind_register_float: function(rawType, name, size) {
-    var shift = getShiftFromSize(size);
+  _embind_register_float: (rawType, name, size) => {
     name = readLatin1String(name);
     registerType(rawType, {
       name,
-      'fromWireType': function(value) {
-         return value;
-      },
-      'toWireType': function(destructors, value) {
+      'fromWireType': (value) => value,
+      'toWireType': (destructors, value) => {
 #if ASSERTIONS
         if (typeof value != "number" && typeof value != "boolean") {
           throw new TypeError(`Cannot convert ${embindRepr(value)} to ${this.name}`);
@@ -499,22 +488,28 @@ var LibraryEmbind = {
         // https://www.w3.org/TR/wasm-js-api-1/#towebassemblyvalue
         return value;
       },
-      'argPackAdvance': 8,
-      'readValueFromPointer': floatReadValueFromPointer(name, shift),
+      'argPackAdvance': GenericWireTypeSize,
+      'readValueFromPointer': floatReadValueFromPointer(name, size),
       destructorFunction: null, // This type does not need a destructor
     });
   },
 
+  $simpleReadValueFromPointer__docs: '/** @suppress {globalThis} */',
   // For types whose wire types are 32-bit pointers.
   $simpleReadValueFromPointer: function(pointer) {
     return this['fromWireType']({{{ makeGetValue('pointer', '0', 'i32') }}});
   },
 
+  $readPointer__docs: '/** @suppress {globalThis} */',
+  $readPointer: function(pointer) {
+    return this['fromWireType']({{{ makeGetValue('pointer', '0', '*') }}});
+  },
+
   _embind_register_std_string__deps: [
     '$readLatin1String', '$registerType',
-    '$simpleReadValueFromPointer', '$throwBindingError',
+    '$readPointer', '$throwBindingError',
     '$stringToUTF8', '$lengthBytesUTF8', 'malloc', 'free'],
-  _embind_register_std_string: function(rawType, name) {
+  _embind_register_std_string: (rawType, name) => {
     name = readLatin1String(name);
     var stdStringIsUTF8
 #if EMBIND_STD_STRING_IS_UTF8
@@ -526,7 +521,9 @@ var LibraryEmbind = {
 
     registerType(rawType, {
       name,
-      'fromWireType': function(value) {
+      // For some method names we use string keys here since they are part of
+      // the public/external API and/or used by the runtime-generated code.
+      'fromWireType'(value) {
         var length = {{{ makeGetValue('value', '0', SIZE_TYPE) }}};
         var payload = value + {{{ POINTER_SIZE }}};
 
@@ -560,7 +557,7 @@ var LibraryEmbind = {
 
         return str;
       },
-      'toWireType': function(destructors, value) {
+      'toWireType'(destructors, value) {
         if (value instanceof ArrayBuffer) {
           value = new Uint8Array(value);
         }
@@ -577,7 +574,7 @@ var LibraryEmbind = {
           length = value.length;
         }
 
-        // assumes 4-byte alignment
+        // assumes POINTER_SIZE alignment
         var base = _malloc({{{ POINTER_SIZE }}} + length + 1);
         var ptr = base + {{{ POINTER_SIZE }}};
         {{{ makeSetValue('base', '0', 'length', SIZE_TYPE) }}};
@@ -605,18 +602,20 @@ var LibraryEmbind = {
         }
         return base;
       },
-      'argPackAdvance': 8,
-      'readValueFromPointer': simpleReadValueFromPointer,
-      destructorFunction: function(ptr) { _free(ptr); },
+      'argPackAdvance': GenericWireTypeSize,
+      'readValueFromPointer': readPointer,
+      destructorFunction(ptr) {
+        _free(ptr);
+      },
     });
   },
 
   _embind_register_std_wstring__deps: [
-    '$readLatin1String', '$registerType', '$simpleReadValueFromPointer',
+    '$readLatin1String', '$registerType', '$readPointer',
     '$UTF16ToString', '$stringToUTF16', '$lengthBytesUTF16',
     '$UTF32ToString', '$stringToUTF32', '$lengthBytesUTF32',
     ],
-  _embind_register_std_wstring: function(rawType, charSize, name) {
+  _embind_register_std_wstring: (rawType, charSize, name) => {
     name = readLatin1String(name);
     var decodeString, encodeString, getHeap, lengthBytesUTF, shift;
     if (charSize === 2) {
@@ -634,16 +633,16 @@ var LibraryEmbind = {
     }
     registerType(rawType, {
       name,
-      'fromWireType': function(value) {
+      'fromWireType': (value) => {
         // Code mostly taken from _embind_register_std_string fromWireType
-        var length = HEAPU32[value >> 2];
+        var length = {{{ makeGetValue('value', 0, '*') }}};
         var HEAP = getHeap();
         var str;
 
-        var decodeStartPtr = value + 4;
+        var decodeStartPtr = value + {{{ POINTER_SIZE }}};
         // Looping here to support possible embedded '0' bytes
         for (var i = 0; i <= length; ++i) {
-          var currentBytePtr = value + 4 + i * charSize;
+          var currentBytePtr = value + {{{ POINTER_SIZE }}} + i * charSize;
           if (i == length || HEAP[currentBytePtr >> shift] == 0) {
             var maxReadBytes = currentBytePtr - decodeStartPtr;
             var stringSegment = decodeString(decodeStartPtr, maxReadBytes);
@@ -661,55 +660,47 @@ var LibraryEmbind = {
 
         return str;
       },
-      'toWireType': function(destructors, value) {
+      'toWireType': (destructors, value) => {
         if (!(typeof value == 'string')) {
           throwBindingError(`Cannot pass non-string to C++ string type ${name}`);
         }
 
-        // assumes 4-byte alignment
+        // assumes POINTER_SIZE alignment
         var length = lengthBytesUTF(value);
-        var ptr = _malloc(4 + length + charSize);
-        HEAPU32[ptr >> 2] = length >> shift;
+        var ptr = _malloc({{{ POINTER_SIZE }}} + length + charSize);
+        {{{ makeSetValue('ptr', '0', 'length >> shift', SIZE_TYPE) }}};
 
-        encodeString(value, ptr + 4, length + charSize);
+        encodeString(value, ptr + {{{ POINTER_SIZE }}}, length + charSize);
 
         if (destructors !== null) {
           destructors.push(_free, ptr);
         }
         return ptr;
       },
-      'argPackAdvance': 8,
+      'argPackAdvance': GenericWireTypeSize,
       'readValueFromPointer': simpleReadValueFromPointer,
-      destructorFunction: function(ptr) { _free(ptr); },
+      destructorFunction(ptr) {
+        _free(ptr);
+      }
     });
   },
 
   _embind_register_emval__deps: [
-    '_emval_decref', '$Emval',
-    '$readLatin1String', '$registerType', '$simpleReadValueFromPointer'],
-  _embind_register_emval: function(rawType, name) {
-    name = readLatin1String(name);
-    registerType(rawType, {
-      name,
-      'fromWireType': function(handle) {
-        var rv = Emval.toValue(handle);
-        __emval_decref(handle);
-        return rv;
-      },
-      'toWireType': function(destructors, value) {
-        return Emval.toHandle(value);
-      },
-      'argPackAdvance': 8,
-      'readValueFromPointer': simpleReadValueFromPointer,
-      destructorFunction: null, // This type does not need a destructor
+    '$registerType',  '$EmValType'],
+  _embind_register_emval: (rawType) => registerType(rawType, EmValType),
 
-      // TODO: do we need a deleteObject here?  write a test where
-      // emval is passed into JS via an interface
-    });
+  _embind_register_user_type__deps: ['_embind_register_emval'],
+  _embind_register_user_type: (rawType, name) => {
+    __embind_register_emval(rawType);
+  },
+
+  _embind_register_optional__deps: ['_embind_register_emval'],
+  _embind_register_optional: (rawOptionalType, rawType) => {
+    __embind_register_emval(rawOptionalType);
   },
 
   _embind_register_memory_view__deps: ['$readLatin1String', '$registerType'],
-  _embind_register_memory_view: function(rawType, dataTypeIndex, name) {
+  _embind_register_memory_view: (rawType, dataTypeIndex, name) => {
     var typeMapping = [
       Int8Array,
       Uint8Array,
@@ -728,25 +719,23 @@ var LibraryEmbind = {
     var TA = typeMapping[dataTypeIndex];
 
     function decodeMemoryView(handle) {
-      handle = handle >> 2;
-      var heap = HEAPU32;
-      var size = heap[handle]; // in elements
-      var data = heap[handle + 1]; // byte offset into emscripten heap
-      return new TA(heap.buffer, data, size);
+      var size = {{{ makeGetValue('handle', 0, '*') }}};
+      var data = {{{ makeGetValue('handle', POINTER_SIZE, '*') }}};
+      return new TA(HEAP8.buffer, data, size);
     }
 
     name = readLatin1String(name);
     registerType(rawType, {
       name,
       'fromWireType': decodeMemoryView,
-      'argPackAdvance': 8,
+      'argPackAdvance': GenericWireTypeSize,
       'readValueFromPointer': decodeMemoryView,
     }, {
       ignoreDuplicateRegistrations: true,
     });
   },
 
-  $runDestructors: function(destructors) {
+  $runDestructors: (destructors) => {
     while (destructors.length) {
       var ptr = destructors.pop();
       var del = destructors.pop();
@@ -783,9 +772,15 @@ var LibraryEmbind = {
   // (hand-written JS code) -> (autogenerated JS invoker) -> (template-generated C++ invoker) -> (target C++ function)
   // craftInvokerFunction generates the JS invoker function for each function exposed to JS through embind.
   $craftInvokerFunction__deps: [
-    '$makeLegalFunctionName', '$runDestructors', '$throwBindingError',
+    '$createNamedFunction', '$runDestructors', '$throwBindingError', '$usesDestructorStack',
 #if DYNAMIC_EXECUTION
     '$newFunc',
+#if !EMBIND_AOT
+    '$createJsInvoker',
+#endif
+#endif
+#if EMBIND_AOT
+    '$InvokerFunctions',
 #endif
 #if ASYNCIFY
     '$Asyncify',
@@ -822,26 +817,26 @@ var LibraryEmbind = {
 
     // Determine if we need to use a dynamic stack to store the destructors for the function parameters.
     // TODO: Remove this completely once all function invokers are being dynamically generated.
-    var needsDestructorStack = false;
-
-    for (var i = 1; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here.
-      if (argTypes[i] !== null && argTypes[i].destructorFunction === undefined) { // The type does not define a destructor function - must use dynamic stack
-        needsDestructorStack = true;
-        break;
-      }
-    }
+    var needsDestructorStack = usesDestructorStack(argTypes);
 
     var returns = (argTypes[0].name !== "void");
 
-#if DYNAMIC_EXECUTION == 0
+#if DYNAMIC_EXECUTION == 0 && !EMBIND_AOT
     var expectedArgCount = argCount - 2;
     var argsWired = new Array(expectedArgCount);
     var invokerFuncArgs = [];
     var destructors = [];
-    return function() {
+    var invokerFn = function() {
       if (arguments.length !== expectedArgCount) {
-        throwBindingError(`function ${humanName} called with ${arguments.length} arguments, expected ${expectedArgCount} args!`);
+        throwBindingError(`function ${humanName} called with ${arguments.length} arguments, expected ${expectedArgCount}`);
       }
+#if EMBIND_DEBUG
+      if (Object.values(arguments).length > 0){
+          dbg('${humanName}(' + Object.values(arguments).join(',') + ')');
+      } else {
+          dbg('${humanName}()');
+      }
+#endif
 #if EMSCRIPTEN_TRACING
       Module.emscripten_trace_enter_context(`embind::${humanName}`);
 #endif
@@ -894,108 +889,35 @@ var LibraryEmbind = {
       return onDone(rv);
     };
 #else
-    var argsList = "";
-    var argsListWired = "";
-    for (var i = 0; i < argCount - 2; ++i) {
-      argsList += (i!==0?", ":"")+"arg"+i;
-      argsListWired += (i!==0?", ":"")+"arg"+i+"Wired";
-    }
-
-    var invokerFnBody = `
-      return function ${makeLegalFunctionName(humanName)}(${argsList}) {
-      if (arguments.length !== ${argCount - 2}) {
-        throwBindingError('function ${humanName} called with ${arguments.length} arguments, expected ${argCount - 2} args!');
-      }`;
-
-#if EMBIND_DEBUG
-    invokerFnBody += `if (Object.values(arguments).length > 0){
-        dbg('${humanName}(' + Object.values(arguments).join(',') + ')');
-    } else {
-        dbg('${humanName}()');
-    }\n`;
-#endif
-      
+  // Builld the arguments that will be passed into the closure around the invoker
+  // function.
+  var closureArgs = [throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
 #if EMSCRIPTEN_TRACING
-    invokerFnBody += `Module.emscripten_trace_enter_context('embind::${humanName}');\n`;
+  closureArgs.push(Module);
 #endif
-
-    if (needsDestructorStack) {
-      invokerFnBody += "var destructors = [];\n";
-    }
-
-    var dtorStack = needsDestructorStack ? "destructors" : "null";
-    var args1 = ["throwBindingError", "invoker", "fn", "runDestructors", "retType", "classParam"];
-    var args2 = [throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
-
-#if EMSCRIPTEN_TRACING
-    args1.push("Module");
-    args2.push(Module);
-#endif
-
-    if (isClassMethodFunc) {
-      invokerFnBody += "var thisWired = classParam.toWireType("+dtorStack+", this);\n";
-    }
-
-    for (var i = 0; i < argCount - 2; ++i) {
-      invokerFnBody += "var arg"+i+"Wired = argType"+i+".toWireType("+dtorStack+", arg"+i+"); // "+argTypes[i+2].name+"\n";
-      args1.push("argType"+i);
-      args2.push(argTypes[i+2]);
-    }
-
-    if (isClassMethodFunc) {
-      argsListWired = "thisWired" + (argsListWired.length > 0 ? ", " : "") + argsListWired;
-    }
-
-    invokerFnBody +=
-        (returns || isAsync ? "var rv = ":"") + "invoker(fn"+(argsListWired.length>0?", ":"")+argsListWired+");\n";
-
+  for (var i = 0; i < argCount - 2; ++i) {
+    closureArgs.push(argTypes[i+2]);
+  }
 #if ASYNCIFY == 1
-    args1.push("Asyncify");
-    args2.push(Asyncify);
+  closureArgs.push(Asyncify);
 #endif
-#if ASYNCIFY
-    invokerFnBody += "function onDone(" + (returns ? "rv" : "") + ") {\n";
-#endif
-
-    if (needsDestructorStack) {
-      invokerFnBody += "runDestructors(destructors);\n";
-    } else {
-      for (var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
-        var paramName = (i === 1 ? "thisWired" : ("arg"+(i - 2)+"Wired"));
-        if (argTypes[i].destructorFunction !== null) {
-          invokerFnBody += paramName+"_dtor("+paramName+"); // "+argTypes[i].name+"\n";
-          args1.push(paramName+"_dtor");
-          args2.push(argTypes[i].destructorFunction);
-        }
+  if (!needsDestructorStack) {
+    for (var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
+      if (argTypes[i].destructorFunction !== null) {
+        closureArgs.push(argTypes[i].destructorFunction);
       }
     }
+  }
 
-    if (returns) {
-      invokerFnBody += "var ret = retType.fromWireType(rv);\n" +
-#if EMSCRIPTEN_TRACING
-                       "Module.emscripten_trace_exit_context();\n" +
+#if EMBIND_AOT
+  var invokerFn = InvokerFunctions[cppTargetFunc].apply(null, closureArgs);
+#else
+  let [args, invokerFnBody] = createJsInvoker(humanName, argTypes, isClassMethodFunc, returns, isAsync);
+  args.push(invokerFnBody);
+  var invokerFn = newFunc(Function, args).apply(null, closureArgs);
 #endif
-                       "return ret;\n";
-    } else {
-#if EMSCRIPTEN_TRACING
-      invokerFnBody += "Module.emscripten_trace_exit_context();\n";
 #endif
-    }
-
-#if ASYNCIFY == 1
-    invokerFnBody += "}\n";
-    invokerFnBody += "return Asyncify.currData ? Asyncify.whenDone().then(onDone) : onDone(" + (returns ? "rv" : "") +");\n"
-#elif ASYNCIFY == 2
-    invokerFnBody += "}\n";
-    invokerFnBody += "return " + (isAsync ? "rv.then(onDone)" : "onDone(" + (returns ? "rv" : "") + ")") + ";";
-#endif
-
-    invokerFnBody += "}\n";
-
-    args1.push(invokerFnBody);
-
-    return newFunc(Function, args1).apply(null, args2);
-#endif
+    return createNamedFunction(humanName, invokerFn);
   },
 
   $embind__requireFunction__deps: ['$readLatin1String', '$throwBindingError'
@@ -1003,7 +925,7 @@ var LibraryEmbind = {
     , '$getDynCaller'
 #endif
   ],
-  $embind__requireFunction: function(signature, rawFunction) {
+  $embind__requireFunction: (signature, rawFunction) => {
     signature = readLatin1String(signature);
 
     function makeDynCaller() {
@@ -1033,10 +955,11 @@ var LibraryEmbind = {
   _embind_register_function__deps: [
     '$craftInvokerFunction', '$exposePublicSymbol', '$heap32VectorToArray',
     '$readLatin1String', '$replacePublicSymbol', '$embind__requireFunction',
-    '$throwUnboundTypeError', '$whenDependentTypesAreResolved'],
-  _embind_register_function: function(name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync) {
+    '$throwUnboundTypeError', '$whenDependentTypesAreResolved', '$getFunctionName'],
+  _embind_register_function: (name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync) => {
     var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = readLatin1String(name);
+    name = getFunctionName(name);
 
     rawInvoker = embind__requireFunction(signature, rawInvoker);
 
@@ -1053,14 +976,14 @@ var LibraryEmbind = {
 
   _embind_register_value_array__deps: [
     '$tupleRegistrations', '$readLatin1String', '$embind__requireFunction'],
-  _embind_register_value_array: function(
+  _embind_register_value_array: (
     rawType,
     name,
     constructorSignature,
     rawConstructor,
     destructorSignature,
     rawDestructor
-  ) {
+  ) => {
     tupleRegistrations[rawType] = {
       name: readLatin1String(name),
       rawConstructor: embind__requireFunction(constructorSignature, rawConstructor),
@@ -1071,7 +994,7 @@ var LibraryEmbind = {
 
   _embind_register_value_array_element__deps: [
     '$tupleRegistrations', '$embind__requireFunction'],
-  _embind_register_value_array_element: function(
+  _embind_register_value_array_element: (
     rawTupleType,
     getterReturnType,
     getterSignature,
@@ -1081,7 +1004,7 @@ var LibraryEmbind = {
     setterSignature,
     setter,
     setterContext
-  ) {
+  ) => {
     tupleRegistrations[rawTupleType].elements.push({
       getterReturnType,
       getter: embind__requireFunction(getterSignature, getter),
@@ -1095,13 +1018,13 @@ var LibraryEmbind = {
   _embind_finalize_value_array__deps: [
     '$tupleRegistrations', '$runDestructors',
     '$simpleReadValueFromPointer', '$whenDependentTypesAreResolved'],
-  _embind_finalize_value_array: function(rawTupleType) {
+  _embind_finalize_value_array: (rawTupleType) => {
     var reg = tupleRegistrations[rawTupleType];
     delete tupleRegistrations[rawTupleType];
     var elements = reg.elements;
     var elementsLength = elements.length;
-    var elementTypes = elements.map(function(elt) { return elt.getterReturnType; }).
-                concat(elements.map(function(elt) { return elt.setterArgumentType; }));
+    var elementTypes = elements.map((elt) => elt.getterReturnType).
+                concat(elements.map((elt) => elt.setterArgumentType));
 
     var rawConstructor = reg.rawConstructor;
     var rawDestructor = reg.rawDestructor;
@@ -1114,9 +1037,7 @@ var LibraryEmbind = {
         var setterArgumentType = elementTypes[i + elementsLength];
         var setter = elt.setter;
         var setterContext = elt.setterContext;
-        elt.read = (ptr) => {
-          return getterReturnType['fromWireType'](getter(getterContext, ptr));
-        };
+        elt.read = (ptr) => getterReturnType['fromWireType'](getter(getterContext, ptr));
         elt.write = (ptr, o) => {
           var destructors = [];
           setter(setterContext, ptr, setterArgumentType['toWireType'](destructors, o));
@@ -1126,7 +1047,7 @@ var LibraryEmbind = {
 
       return [{
         name: reg.name,
-        'fromWireType': function(ptr) {
+        'fromWireType': (ptr) => {
           var rv = new Array(elementsLength);
           for (var i = 0; i < elementsLength; ++i) {
             rv[i] = elements[i].read(ptr);
@@ -1134,7 +1055,7 @@ var LibraryEmbind = {
           rawDestructor(ptr);
           return rv;
         },
-        'toWireType': function(destructors, o) {
+        'toWireType': (destructors, o) => {
           if (elementsLength !== o.length) {
             throw new TypeError(`Incorrect number of tuple elements for ${reg.name}: expected=${elementsLength}, actual=${o.length}`);
           }
@@ -1147,7 +1068,7 @@ var LibraryEmbind = {
           }
           return ptr;
         },
-        'argPackAdvance': 8,
+        'argPackAdvance': GenericWireTypeSize,
         'readValueFromPointer': simpleReadValueFromPointer,
         destructorFunction: rawDestructor,
       }];
@@ -1156,14 +1077,14 @@ var LibraryEmbind = {
 
   _embind_register_value_object__deps: [
     '$structRegistrations', '$readLatin1String', '$embind__requireFunction'],
-  _embind_register_value_object: function(
+  _embind_register_value_object: (
     rawType,
     name,
     constructorSignature,
     rawConstructor,
     destructorSignature,
     rawDestructor
-  ) {
+  ) => {
     structRegistrations[rawType] = {
       name: readLatin1String(name),
       rawConstructor: embind__requireFunction(constructorSignature, rawConstructor),
@@ -1174,7 +1095,7 @@ var LibraryEmbind = {
 
   _embind_register_value_object_field__deps: [
     '$structRegistrations', '$readLatin1String', '$embind__requireFunction'],
-  _embind_register_value_object_field: function(
+  _embind_register_value_object_field: (
     structType,
     fieldName,
     getterReturnType,
@@ -1185,7 +1106,7 @@ var LibraryEmbind = {
     setterSignature,
     setter,
     setterContext
-  ) {
+  ) => {
     structRegistrations[structType].fields.push({
       fieldName: readLatin1String(fieldName),
       getterReturnType,
@@ -1200,7 +1121,7 @@ var LibraryEmbind = {
   _embind_finalize_value_object__deps: [
     '$structRegistrations', '$runDestructors',
     '$simpleReadValueFromPointer', '$whenDependentTypesAreResolved'],
-  _embind_finalize_value_object: function(structType) {
+  _embind_finalize_value_object: (structType) => {
     var reg = structRegistrations[structType];
     delete structRegistrations[structType];
 
@@ -1220,10 +1141,7 @@ var LibraryEmbind = {
         var setter = field.setter;
         var setterContext = field.setterContext;
         fields[fieldName] = {
-          read: (ptr) => {
-            return getterReturnType['fromWireType'](
-                getter(getterContext, ptr));
-          },
+          read: (ptr) => getterReturnType['fromWireType'](getter(getterContext, ptr)),
           write: (ptr, o) => {
             var destructors = [];
             setter(setterContext, ptr, setterArgumentType['toWireType'](destructors, o));
@@ -1234,7 +1152,7 @@ var LibraryEmbind = {
 
       return [{
         name: reg.name,
-        'fromWireType': function(ptr) {
+        'fromWireType': (ptr) => {
           var rv = {};
           for (var i in fields) {
             rv[i] = fields[i].read(ptr);
@@ -1242,7 +1160,7 @@ var LibraryEmbind = {
           rawDestructor(ptr);
           return rv;
         },
-        'toWireType': function(destructors, o) {
+        'toWireType': (destructors, o) => {
           // todo: Here we have an opportunity for -O3 level "unsafe" optimizations:
           // assume all fields are present without checking.
           for (var fieldName in fields) {
@@ -1259,13 +1177,14 @@ var LibraryEmbind = {
           }
           return ptr;
         },
-        'argPackAdvance': 8,
+        'argPackAdvance': GenericWireTypeSize,
         'readValueFromPointer': simpleReadValueFromPointer,
         destructorFunction: rawDestructor,
       }];
     });
   },
 
+  $genericPointerToWireType__docs: '/** @suppress {globalThis} */',
   $genericPointerToWireType__deps: ['$throwBindingError', '$upcastPointer'],
   $genericPointerToWireType: function(destructors, handle) {
     var ptr;
@@ -1285,7 +1204,7 @@ var LibraryEmbind = {
       }
     }
 
-    if (!handle.$$) {
+    if (!handle || !handle.$$) {
       throwBindingError(`Cannot pass "${embindRepr(handle)}" as a ${this.name}`);
     }
     if (!handle.$$.ptr) {
@@ -1326,9 +1245,7 @@ var LibraryEmbind = {
             var clonedHandle = handle['clone']();
             ptr = this.rawShare(
               ptr,
-              Emval.toHandle(function() {
-                clonedHandle['delete']();
-              })
+              Emval.toHandle(() => clonedHandle['delete']())
             );
             if (destructors !== null) {
               destructors.push(this.rawDestructor, ptr);
@@ -1343,6 +1260,7 @@ var LibraryEmbind = {
     return ptr;
   },
 
+  $constNoSmartPtrRawPointerToWireType__docs: '/** @suppress {globalThis} */',
   // If we know a pointer type is not going to have SmartPtr logic in it, we can
   // special-case optimize it a bit (compare to genericPointerToWireType)
   $constNoSmartPtrRawPointerToWireType__deps: ['$throwBindingError', '$upcastPointer'],
@@ -1365,6 +1283,7 @@ var LibraryEmbind = {
     return ptr;
   },
 
+  $nonConstNoSmartPtrRawPointerToWireType__docs: '/** @suppress {globalThis} */',
   // An optimized version for non-const method accesses - there we must additionally restrict that
   // the pointer is not a const-pointer.
   $nonConstNoSmartPtrRawPointerToWireType__deps: ['$throwBindingError', '$upcastPointer'],
@@ -1391,16 +1310,26 @@ var LibraryEmbind = {
   },
 
   $init_RegisteredPointer__deps: [
-    '$simpleReadValueFromPointer',
-    '$RegisteredPointer_getPointee', '$RegisteredPointer_destructor',
-    '$RegisteredPointer_deleteObject', '$RegisteredPointer_fromWireType'],
-  $init_RegisteredPointer: function() {
-    RegisteredPointer.prototype.getPointee = RegisteredPointer_getPointee;
-    RegisteredPointer.prototype.destructor = RegisteredPointer_destructor;
-    RegisteredPointer.prototype['argPackAdvance'] = 8;
-    RegisteredPointer.prototype['readValueFromPointer'] = simpleReadValueFromPointer;
-    RegisteredPointer.prototype['deleteObject'] = RegisteredPointer_deleteObject;
-    RegisteredPointer.prototype['fromWireType'] = RegisteredPointer_fromWireType;
+    '$RegisteredPointer',
+    '$readPointer',
+    '$RegisteredPointer_fromWireType',
+    '$GenericWireTypeSize',
+  ],
+  $init_RegisteredPointer: () => {
+    Object.assign(RegisteredPointer.prototype, {
+      getPointee(ptr) {
+        if (this.rawGetPointee) {
+          ptr = this.rawGetPointee(ptr);
+        }
+        return ptr;
+      },
+      destructor(ptr) {
+        this.rawDestructor?.(ptr);
+      },
+      'argPackAdvance': GenericWireTypeSize,
+      'readValueFromPointer': readPointer,
+      'fromWireType': RegisteredPointer_fromWireType,
+    });
   },
 
   $RegisteredPointer__docs: `/** @constructor
@@ -1461,25 +1390,7 @@ var LibraryEmbind = {
     }
   },
 
-  $RegisteredPointer_getPointee: function(ptr) {
-    if (this.rawGetPointee) {
-      ptr = this.rawGetPointee(ptr);
-    }
-    return ptr;
-  },
-
-  $RegisteredPointer_destructor: function(ptr) {
-    if (this.rawDestructor) {
-      this.rawDestructor(ptr);
-    }
-  },
-
-  $RegisteredPointer_deleteObject: function(handle) {
-    if (handle !== null) {
-      handle['delete']();
-    }
-  },
-
+  $RegisteredPointer_fromWireType__docs: '/** @suppress {globalThis} */',
   $RegisteredPointer_fromWireType__deps: [
     '$downcastPointer', '$registeredPointers',
     '$getInheritedInstance', '$makeClassHandle',
@@ -1569,7 +1480,7 @@ var LibraryEmbind = {
     }
   },
 
-  $runDestructor: function($$) {
+  $runDestructor: ($$) => {
     if ($$.smartPtr) {
       $$.smartPtrType.rawDestructor($$.smartPtr);
     } else {
@@ -1578,7 +1489,7 @@ var LibraryEmbind = {
   },
 
   $releaseClassHandle__deps: ['$runDestructor'],
-  $releaseClassHandle: function($$) {
+  $releaseClassHandle: ($$) => {
     $$.count.value -= 1;
     var toDelete = 0 === $$.count.value;
     if (toDelete) {
@@ -1589,11 +1500,11 @@ var LibraryEmbind = {
   $finalizationRegistry: false,
 
   $detachFinalizer_deps: ['$finalizationRegistry'],
-  $detachFinalizer: function(handle) {},
+  $detachFinalizer: (handle) => {},
 
   $attachFinalizer__deps: ['$finalizationRegistry', '$detachFinalizer',
                            '$releaseClassHandle', '$RegisteredPointer_fromWireType'],
-  $attachFinalizer: function(handle) {
+  $attachFinalizer: (handle) => {
     if ('undefined' === typeof FinalizationRegistry) {
       attachFinalizer = (handle) => handle;
       return handle;
@@ -1637,7 +1548,7 @@ var LibraryEmbind = {
   },
 
   $makeClassHandle__deps: ['$throwInternalError', '$attachFinalizer'],
-  $makeClassHandle: function(prototype, record) {
+  $makeClassHandle: (prototype, record) => {
     if (!record.ptrType || !record.ptr) {
       throwInternalError('makeClassHandle requires ptr and ptrType');
     }
@@ -1649,129 +1560,129 @@ var LibraryEmbind = {
     record.count = { value: 1 };
     return attachFinalizer(Object.create(prototype, {
       $$: {
-          value: record,
+        value: record,
+        writable: true,
       },
     }));
   },
 
   $init_ClassHandle__deps: [
-    '$ClassHandle_isAliasOf', '$ClassHandle_clone', '$ClassHandle_delete',
-    '$ClassHandle_isDeleted', '$ClassHandle_deleteLater'],
-  $init_ClassHandle: function() {
-    ClassHandle.prototype['isAliasOf'] = ClassHandle_isAliasOf;
-    ClassHandle.prototype['clone'] = ClassHandle_clone;
-    ClassHandle.prototype['delete'] = ClassHandle_delete;
-    ClassHandle.prototype['isDeleted'] = ClassHandle_isDeleted;
-    ClassHandle.prototype['deleteLater'] = ClassHandle_deleteLater;
+    '$ClassHandle',
+    '$shallowCopyInternalPointer',
+    '$throwInstanceAlreadyDeleted',
+    '$attachFinalizer',
+    '$releaseClassHandle',
+    '$throwBindingError',
+    '$detachFinalizer',
+  ],
+  $init_ClassHandle: () => {
+    Object.assign(ClassHandle.prototype, {
+      "isAliasOf"(other) {
+        if (!(this instanceof ClassHandle)) {
+          return false;
+        }
+        if (!(other instanceof ClassHandle)) {
+          return false;
+        }
+
+        var leftClass = this.$$.ptrType.registeredClass;
+        var left = this.$$.ptr;
+        other.$$ = /** @type {Object} */ (other.$$);
+        var rightClass = other.$$.ptrType.registeredClass;
+        var right = other.$$.ptr;
+
+        while (leftClass.baseClass) {
+          left = leftClass.upcast(left);
+          leftClass = leftClass.baseClass;
+        }
+
+        while (rightClass.baseClass) {
+          right = rightClass.upcast(right);
+          rightClass = rightClass.baseClass;
+        }
+
+        return leftClass === rightClass && left === right;
+      },
+
+      "clone"() {
+        if (!this.$$.ptr) {
+          throwInstanceAlreadyDeleted(this);
+        }
+
+        if (this.$$.preservePointerOnDelete) {
+          this.$$.count.value += 1;
+          return this;
+        } else {
+          var clone = attachFinalizer(Object.create(Object.getPrototypeOf(this), {
+            $$: {
+              value: shallowCopyInternalPointer(this.$$),
+            }
+          }));
+
+          clone.$$.count.value += 1;
+          clone.$$.deleteScheduled = false;
+          return clone;
+        }
+      },
+
+      "delete"() {
+        if (!this.$$.ptr) {
+          throwInstanceAlreadyDeleted(this);
+        }
+
+        if (this.$$.deleteScheduled && !this.$$.preservePointerOnDelete) {
+          throwBindingError('Object already scheduled for deletion');
+        }
+
+        detachFinalizer(this);
+        releaseClassHandle(this.$$);
+
+        if (!this.$$.preservePointerOnDelete) {
+          this.$$.smartPtr = undefined;
+          this.$$.ptr = undefined;
+        }
+      },
+
+      "isDeleted"() {
+        return !this.$$.ptr;
+      },
+
+      "deleteLater"() {
+        if (!this.$$.ptr) {
+          throwInstanceAlreadyDeleted(this);
+        }
+        if (this.$$.deleteScheduled && !this.$$.preservePointerOnDelete) {
+          throwBindingError('Object already scheduled for deletion');
+        }
+        deletionQueue.push(this);
+        if (deletionQueue.length === 1 && delayFunction) {
+          delayFunction(flushPendingDeletes);
+        }
+        this.$$.deleteScheduled = true;
+        return this;
+      },
+    });
   },
 
+  $ClassHandle__docs: '/** @constructor */',
   $ClassHandle__deps: ['$init_ClassHandle'],
   $ClassHandle__postset: 'init_ClassHandle()',
   // root of all pointer and smart pointer handles in embind
   $ClassHandle: function() {
   },
 
-  $ClassHandle_isAliasOf: function(other) {
-    if (!(this instanceof ClassHandle)) {
-      return false;
-    }
-    if (!(other instanceof ClassHandle)) {
-      return false;
-    }
-
-    var leftClass = this.$$.ptrType.registeredClass;
-    var left = this.$$.ptr;
-    var rightClass = other.$$.ptrType.registeredClass;
-    var right = other.$$.ptr;
-
-    while (leftClass.baseClass) {
-      left = leftClass.upcast(left);
-      leftClass = leftClass.baseClass;
-    }
-
-    while (rightClass.baseClass) {
-      right = rightClass.upcast(right);
-      rightClass = rightClass.baseClass;
-    }
-
-    return leftClass === rightClass && left === right;
-  },
-
   $throwInstanceAlreadyDeleted__deps: ['$throwBindingError'],
-  $throwInstanceAlreadyDeleted: function(obj) {
+  $throwInstanceAlreadyDeleted: (obj) => {
     function getInstanceTypeName(handle) {
       return handle.$$.ptrType.registeredClass.name;
     }
     throwBindingError(getInstanceTypeName(obj) + ' instance already deleted');
   },
 
-  $ClassHandle_clone__deps: ['$shallowCopyInternalPointer', '$throwInstanceAlreadyDeleted', '$attachFinalizer'],
-  $ClassHandle_clone: function() {
-    if (!this.$$.ptr) {
-      throwInstanceAlreadyDeleted(this);
-    }
-
-    if (this.$$.preservePointerOnDelete) {
-      this.$$.count.value += 1;
-      return this;
-    } else {
-      var clone = attachFinalizer(Object.create(Object.getPrototypeOf(this), {
-        $$: {
-          value: shallowCopyInternalPointer(this.$$),
-        }
-      }));
-
-      clone.$$.count.value += 1;
-      clone.$$.deleteScheduled = false;
-      return clone;
-    }
-  },
-
-  $ClassHandle_delete__deps: ['$releaseClassHandle', '$throwBindingError',
-                              '$detachFinalizer', '$throwInstanceAlreadyDeleted'],
-  $ClassHandle_delete: function() {
-    if (!this.$$.ptr) {
-      throwInstanceAlreadyDeleted(this);
-    }
-
-    if (this.$$.deleteScheduled && !this.$$.preservePointerOnDelete) {
-      throwBindingError('Object already scheduled for deletion');
-    }
-
-    detachFinalizer(this);
-    releaseClassHandle(this.$$);
-
-    if (!this.$$.preservePointerOnDelete) {
-      this.$$.smartPtr = undefined;
-      this.$$.ptr = undefined;
-    }
-  },
-
   $deletionQueue: [],
 
-  $ClassHandle_isDeleted: function() {
-    return !this.$$.ptr;
-  },
-
-  $ClassHandle_deleteLater__deps: [
-    '$delayFunction', '$deletionQueue', '$flushPendingDeletes'],
-  $ClassHandle_deleteLater: function() {
-    if (!this.$$.ptr) {
-      throwInstanceAlreadyDeleted(this);
-    }
-    if (this.$$.deleteScheduled && !this.$$.preservePointerOnDelete) {
-      throwBindingError('Object already scheduled for deletion');
-    }
-    deletionQueue.push(this);
-    if (deletionQueue.length === 1 && delayFunction) {
-      delayFunction(flushPendingDeletes);
-    }
-    this.$$.deleteScheduled = true;
-    return this;
-  },
-
   $flushPendingDeletes__deps: ['$deletionQueue'],
-  $flushPendingDeletes: function() {
+  $flushPendingDeletes: () => {
     while (deletionQueue.length) {
       var obj = deletionQueue.pop();
       obj.$$.deleteScheduled = false;
@@ -1782,7 +1693,7 @@ var LibraryEmbind = {
   $delayFunction: undefined,
 
   $setDelayFunction__deps: ['$delayFunction', '$deletionQueue', '$flushPendingDeletes'],
-  $setDelayFunction: function(fn) {
+  $setDelayFunction: (fn) => {
     delayFunction = fn;
     if (deletionQueue.length && delayFunction) {
       delayFunction(flushPendingDeletes);
@@ -1809,7 +1720,7 @@ var LibraryEmbind = {
     this.pureVirtualFunctions = [];
   },
 
-  $shallowCopyInternalPointer: function(o) {
+  $shallowCopyInternalPointer: (o) => {
     return {
       count: o.count,
       deleteScheduled: o.deleteScheduled,
@@ -1828,27 +1739,23 @@ var LibraryEmbind = {
     '$RegisteredClass', '$RegisteredPointer', '$replacePublicSymbol',
     '$embind__requireFunction', '$throwUnboundTypeError',
     '$whenDependentTypesAreResolved'],
-  _embind_register_class: function(rawType,
-                                   rawPointerType,
-                                   rawConstPointerType,
-                                   baseClassRawType,
-                                   getActualTypeSignature,
-                                   getActualType,
-                                   upcastSignature,
-                                   upcast,
-                                   downcastSignature,
-                                   downcast,
-                                   name,
-                                   destructorSignature,
-                                   rawDestructor) {
+  _embind_register_class: (rawType,
+                           rawPointerType,
+                           rawConstPointerType,
+                           baseClassRawType,
+                           getActualTypeSignature,
+                           getActualType,
+                           upcastSignature,
+                           upcast,
+                           downcastSignature,
+                           downcast,
+                           name,
+                           destructorSignature,
+                           rawDestructor) => {
     name = readLatin1String(name);
     getActualType = embind__requireFunction(getActualTypeSignature, getActualType);
-    if (upcast) {
-      upcast = embind__requireFunction(upcastSignature, upcast);
-    }
-    if (downcast) {
-      downcast = embind__requireFunction(downcastSignature, downcast);
-    }
+    upcast &&= embind__requireFunction(upcastSignature, upcast);
+    downcast &&= embind__requireFunction(downcastSignature, downcast);
     rawDestructor = embind__requireFunction(destructorSignature, rawDestructor);
     var legalFunctionName = makeLegalFunctionName(name);
 
@@ -1872,7 +1779,7 @@ var LibraryEmbind = {
           basePrototype = ClassHandle.prototype;
         }
 
-        var constructor = createNamedFunction(legalFunctionName, function() {
+        var constructor = createNamedFunction(name, function() {
           if (Object.getPrototypeOf(this) !== instancePrototype) {
             throw new BindingError("Use 'new' to construct " + name);
           }
@@ -1903,9 +1810,7 @@ var LibraryEmbind = {
 
         if (registeredClass.baseClass) {
           // Keep track of class hierarchy. Used to allow sub-classes to inherit class functions.
-          if (registeredClass.baseClass.__derivedClasses === undefined) {
-            registeredClass.baseClass.__derivedClasses = [];
-          }
+          registeredClass.baseClass.__derivedClasses ??= [];
 
           registeredClass.baseClass.__derivedClasses.push(registeredClass);
         }
@@ -1944,14 +1849,14 @@ var LibraryEmbind = {
     '$heap32VectorToArray', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$whenDependentTypesAreResolved', '$registeredTypes',
     '$craftInvokerFunction'],
-  _embind_register_class_constructor: function(
+  _embind_register_class_constructor: (
     rawClassType,
     argCount,
     rawArgTypesAddr,
     invokerSignature,
     invoker,
     rawConstructor
-  ) {
+  ) => {
 #if ASSERTIONS
     assert(argCount > 0);
 #endif
@@ -1974,7 +1879,7 @@ var LibraryEmbind = {
         throwUnboundTypeError(`Cannot construct ${classType.name} due to unbound types`, rawArgTypes);
       };
 
-      whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
+      whenDependentTypesAreResolved([], rawArgTypes, (argTypes) => {
         // Insert empty slot for context type (argTypes[1]).
         argTypes.splice(1, 0, null);
         classType.registeredClass.constructor_body[argCount - 1] = craftInvokerFunction(humanName, argTypes, null, invoker, rawConstructor);
@@ -1984,7 +1889,7 @@ var LibraryEmbind = {
     });
   },
 
-  $downcastPointer: function(ptr, ptrClass, desiredClass) {
+  $downcastPointer: (ptr, ptrClass, desiredClass) => {
     if (ptrClass === desiredClass) {
       return ptr;
     }
@@ -2000,7 +1905,7 @@ var LibraryEmbind = {
   },
 
   $upcastPointer__deps: ['$throwBindingError'],
-  $upcastPointer: function(ptr, ptrClass, desiredClass) {
+  $upcastPointer: (ptr, ptrClass, desiredClass) => {
     while (ptrClass !== desiredClass) {
       if (!ptrClass.upcast) {
         throwBindingError(`Expected null or instance of ${desiredClass.name}, got an instance of ${ptrClass.name}`);
@@ -2012,7 +1917,7 @@ var LibraryEmbind = {
   },
 
   $validateThis__deps: ['$throwBindingError', '$upcastPointer'],
-  $validateThis: function(this_, classType, humanName) {
+  $validateThis: (this_, classType, humanName) => {
     if (!(this_ instanceof Object)) {
       throwBindingError(`${humanName} with invalid "this": ${this_}`);
     }
@@ -2032,18 +1937,19 @@ var LibraryEmbind = {
   _embind_register_class_function__deps: [
     '$craftInvokerFunction', '$heap32VectorToArray', '$readLatin1String',
     '$embind__requireFunction', '$throwUnboundTypeError',
-    '$whenDependentTypesAreResolved'],
-  _embind_register_class_function: function(rawClassType,
-                                            methodName,
-                                            argCount,
-                                            rawArgTypesAddr, // [ReturnType, ThisType, Args...]
-                                            invokerSignature,
-                                            rawInvoker,
-                                            context,
-                                            isPureVirtual,
-                                            isAsync) {
+    '$whenDependentTypesAreResolved', '$getFunctionName'],
+  _embind_register_class_function: (rawClassType,
+                                    methodName,
+                                    argCount,
+                                    rawArgTypesAddr, // [ReturnType, ThisType, Args...]
+                                    invokerSignature,
+                                    rawInvoker,
+                                    context,
+                                    isPureVirtual,
+                                    isAsync) => {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
+    methodName = getFunctionName(methodName);
     rawInvoker = embind__requireFunction(invokerSignature, rawInvoker);
 
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
@@ -2100,16 +2006,16 @@ var LibraryEmbind = {
     '$readLatin1String', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$throwUnboundTypeError',
     '$whenDependentTypesAreResolved', '$validateThis'],
-  _embind_register_class_property: function(classType,
-                                            fieldName,
-                                            getterReturnType,
-                                            getterSignature,
-                                            getter,
-                                            getterContext,
-                                            setterArgumentType,
-                                            setterSignature,
-                                            setter,
-                                            setterContext) {
+  _embind_register_class_property: (classType,
+                                    fieldName,
+                                    getterReturnType,
+                                    getterSignature,
+                                    getter,
+                                    getterContext,
+                                    setterArgumentType,
+                                    setterSignature,
+                                    setter,
+                                    setterContext) => {
     fieldName = readLatin1String(fieldName);
     getter = embind__requireFunction(getterSignature, getter);
 
@@ -2124,13 +2030,9 @@ var LibraryEmbind = {
         configurable: true
       };
       if (setter) {
-        desc.set = () => {
-          throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [getterReturnType, setterArgumentType]);
-        };
+        desc.set = () => throwUnboundTypeError(`Cannot access ${humanName} due to unbound types`, [getterReturnType, setterArgumentType]);
       } else {
-        desc.set = (v) => {
-          throwBindingError(humanName + ' is a read-only property');
-        };
+        desc.set = (v) => throwBindingError(humanName + ' is a read-only property');
       }
 
       Object.defineProperty(classType.registeredClass.instancePrototype, fieldName, desc);
@@ -2170,17 +2072,18 @@ var LibraryEmbind = {
   _embind_register_class_class_function__deps: [
     '$craftInvokerFunction', '$ensureOverloadTable', '$heap32VectorToArray',
     '$readLatin1String', '$embind__requireFunction', '$throwUnboundTypeError',
-    '$whenDependentTypesAreResolved'],
-  _embind_register_class_class_function: function(rawClassType,
-                                                  methodName,
-                                                  argCount,
-                                                  rawArgTypesAddr,
-                                                  invokerSignature,
-                                                  rawInvoker,
-                                                  fn,
-                                                  isAsync) {
+    '$whenDependentTypesAreResolved', '$getFunctionName'],
+  _embind_register_class_class_function: (rawClassType,
+                                          methodName,
+                                          argCount,
+                                          rawArgTypesAddr,
+                                          invokerSignature,
+                                          rawInvoker,
+                                          fn,
+                                          isAsync) => {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
+    methodName = getFunctionName(methodName);
     rawInvoker = embind__requireFunction(invokerSignature, rawInvoker);
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
       classType = classType[0];
@@ -2238,14 +2141,14 @@ var LibraryEmbind = {
     '$readLatin1String', '$embind__requireFunction', '$runDestructors',
     '$throwBindingError', '$throwUnboundTypeError',
     '$whenDependentTypesAreResolved', '$validateThis'],
-  _embind_register_class_class_property: function(rawClassType,
-                                                  fieldName,
-                                                  rawFieldType,
-                                                  rawFieldPtr,
-                                                  getterSignature,
-                                                  getter,
-                                                  setterSignature,
-                                                  setter) {
+  _embind_register_class_class_property: (rawClassType,
+                                          fieldName,
+                                          rawFieldType,
+                                          rawFieldPtr,
+                                          getterSignature,
+                                          getter,
+                                          setterSignature,
+                                          setter) => {
     fieldName = readLatin1String(fieldName);
     getter = embind__requireFunction(getterSignature, getter);
 
@@ -2303,7 +2206,7 @@ var LibraryEmbind = {
     '$registerInheritedInstance',
     '$requireRegisteredType', '$throwBindingError',
     '$unregisterInheritedInstance', '$detachFinalizer', '$attachFinalizer'],
-  _embind_create_inheriting_constructor: function(constructorName, wrapperType, properties) {
+  _embind_create_inheriting_constructor: (constructorName, wrapperType, properties) => {
     constructorName = readLatin1String(constructorName);
     wrapperType = requireRegisteredType(wrapperType, 'wrapper');
     properties = Emval.toValue(properties);
@@ -2317,13 +2220,13 @@ var LibraryEmbind = {
     var baseConstructor = registeredClass.baseClass.constructor;
     var ctor = createNamedFunction(constructorName, function() {
       registeredClass.baseClass.pureVirtualFunctions.forEach(function(name) {
-          if (this[name] === baseClassPrototype[name]) {
-              throw new PureVirtualError(`Pure virtual function ${name} must be implemented in JavaScript`);
-          }
+        if (this[name] === baseClassPrototype[name]) {
+          throw new PureVirtualError(`Pure virtual function ${name} must be implemented in JavaScript`);
+        }
       }.bind(this));
 
       Object.defineProperty(this, '__parent', {
-          value: wrapperPrototype
+        value: wrapperPrototype
       });
       this["__construct"].apply(this, arraySlice.call(arguments));
     });
@@ -2359,16 +2262,14 @@ var LibraryEmbind = {
     };
 
     ctor.prototype = Object.create(wrapperPrototype);
-    for (var p in properties) {
-      ctor.prototype[p] = properties[p];
-    }
+    Object.assign(ctor.prototype, properties);
     return Emval.toHandle(ctor);
   },
 
   $char_0: '0'.charCodeAt(0),
   $char_9: '9'.charCodeAt(0),
   $makeLegalFunctionName__deps: ['$char_0', '$char_9'],
-  $makeLegalFunctionName: function(name) {
+  $makeLegalFunctionName: (name) => {
     if (undefined === name) {
       return '_unknown';
     }
@@ -2381,18 +2282,18 @@ var LibraryEmbind = {
   },
 
   _embind_register_smart_ptr__deps: ['$RegisteredPointer', '$embind__requireFunction', '$whenDependentTypesAreResolved'],
-  _embind_register_smart_ptr: function(rawType,
-                                       rawPointeeType,
-                                       name,
-                                       sharingPolicy,
-                                       getPointeeSignature,
-                                       rawGetPointee,
-                                       constructorSignature,
-                                       rawConstructor,
-                                       shareSignature,
-                                       rawShare,
-                                       destructorSignature,
-                                       rawDestructor) {
+  _embind_register_smart_ptr: (rawType,
+                               rawPointeeType,
+                               name,
+                               sharingPolicy,
+                               getPointeeSignature,
+                               rawGetPointee,
+                               constructorSignature,
+                               rawConstructor,
+                               shareSignature,
+                               rawShare,
+                               destructorSignature,
+                               rawDestructor) => {
     name = readLatin1String(name);
     rawGetPointee = embind__requireFunction(getPointeeSignature, rawGetPointee);
     rawConstructor = embind__requireFunction(constructorSignature, rawConstructor);
@@ -2418,10 +2319,10 @@ var LibraryEmbind = {
     });
   },
 
-  _embind_register_enum__deps: ['$exposePublicSymbol', '$getShiftFromSize', '$enumReadValueFromPointer',
+  _embind_register_enum__docs: '/** @suppress {globalThis} */',
+  _embind_register_enum__deps: ['$exposePublicSymbol', '$enumReadValueFromPointer',
     '$readLatin1String', '$registerType'],
-  _embind_register_enum: function(rawType, name, size, isSigned) {
-    var shift = getShiftFromSize(size);
+  _embind_register_enum: (rawType, name, size, isSigned) => {
     name = readLatin1String(name);
 
     function ctor() {}
@@ -2433,18 +2334,16 @@ var LibraryEmbind = {
       'fromWireType': function(c) {
         return this.constructor.values[c];
       },
-      'toWireType': function(destructors, c) {
-        return c.value;
-      },
-      'argPackAdvance': 8,
-      'readValueFromPointer': enumReadValueFromPointer(name, shift, isSigned),
+      'toWireType': (destructors, c) => c.value,
+      'argPackAdvance': GenericWireTypeSize,
+      'readValueFromPointer': enumReadValueFromPointer(name, size, isSigned),
       destructorFunction: null,
     });
     exposePublicSymbol(name, ctor);
   },
 
   _embind_register_enum_value__deps: ['$createNamedFunction', '$readLatin1String', '$requireRegisteredType'],
-  _embind_register_enum_value: function(rawEnumType, name, enumValue) {
+  _embind_register_enum_value: (rawEnumType, name, enumValue) => {
     var enumType = requireRegisteredType(rawEnumType, 'enum');
     name = readLatin1String(name);
 
@@ -2459,7 +2358,7 @@ var LibraryEmbind = {
   },
 
   _embind_register_constant__deps: ['$readLatin1String', '$whenDependentTypesAreResolved'],
-  _embind_register_constant: function(name, type, value) {
+  _embind_register_constant: (name, type, value) => {
     name = readLatin1String(name);
     whenDependentTypesAreResolved([], [type], function(type) {
       type = type[0];
@@ -2469,4 +2368,4 @@ var LibraryEmbind = {
   },
 };
 
-mergeInto(LibraryManager.library, LibraryEmbind);
+addToLibrary(LibraryEmbind);

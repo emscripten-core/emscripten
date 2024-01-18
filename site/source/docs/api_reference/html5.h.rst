@@ -1926,7 +1926,7 @@ Defines
 
 .. c:type:: EMSCRIPTEN_WEBGL_CONTEXT_HANDLE
 
-  Represents a handle to an Emscripten WebGL context object. The value 0 denotes an invalid/no context (this is a typedef to an ``int``).
+  Represents a handle to an Emscripten WebGL context object. The value 0 denotes an invalid/no context (this is a typedef to an ``intptr_t``).
 
 
 Struct

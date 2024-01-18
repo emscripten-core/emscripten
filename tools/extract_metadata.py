@@ -95,7 +95,7 @@ def parse_function_for_memory_inits(module, func_index, offset_map):
     elif opcode in (OpCode.BLOCK,):
       module.read_type()
     elif opcode in (OpCode.I32_CONST, OpCode.I64_CONST):
-      const_values.append(module.read_uleb())
+      const_values.append(module.read_sleb())
     elif opcode in (OpCode.GLOBAL_SET, OpCode.BR, OpCode.GLOBAL_GET, OpCode.LOCAL_SET, OpCode.LOCAL_GET, OpCode.LOCAL_TEE):
       module.read_uleb()
     elif opcode == OpCode.CALL:
@@ -105,7 +105,7 @@ def parse_function_for_memory_inits(module, func_index, offset_map):
       if opcode == MemoryOpCode.MEMORY_INIT:
         segment_idx = module.read_uleb()
         segment = segments[segment_idx]
-        offset = const_values[-3]
+        offset = to_unsigned(const_values[-3])
         offset_map[segment] = offset
         memory = module.read_uleb()
         assert memory == 0
@@ -149,12 +149,19 @@ def get_passive_segment_offsets(module):
   return offset_map
 
 
+def to_unsigned(val):
+  if val < 0:
+    return val & ((2 ** 32) - 1)
+  else:
+    return val
+
+
 def find_segment_with_address(module, address):
   segments = module.get_segments()
   active = [s for s in segments if s.init]
 
   for seg in active:
-    offset = get_const_expr_value(seg.init)
+    offset = to_unsigned(get_const_expr_value(seg.init))
     if offset is None:
       continue
     if address >= offset and address < offset + seg.size:
@@ -194,8 +201,8 @@ def get_section_strings(module, export_map, section_name):
   end = export_map[stop_name]
   start_global = module.get_global(start.index)
   end_global = module.get_global(end.index)
-  start_addr = get_global_value(start_global)
-  end_addr = get_global_value(end_global)
+  start_addr = to_unsigned(get_global_value(start_global))
+  end_addr = to_unsigned(get_global_value(end_global))
 
   seg = find_segment_with_address(module, start_addr)
   if not seg:
@@ -313,7 +320,7 @@ def extract_metadata(filename):
       if e.kind == webassembly.ExternType.GLOBAL and e.name.startswith('__em_js__'):
         name = utils.removeprefix(e.name, '__em_js__')
         globl = module.get_global(e.index)
-        string_address = get_global_value(globl)
+        string_address = to_unsigned(get_global_value(globl))
         em_js_funcs[name] = get_string_at(module, string_address)
 
     for i in imports:

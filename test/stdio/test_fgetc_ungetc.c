@@ -58,6 +58,7 @@ void test() {
   int r = fread(buffer, sizeof(char), sizeof(buffer), file);
   assert(r == 3);
   buffer[3] = 0;
+  printf("buffer: %s\n", buffer);
   assert(!strcmp(buffer, "bcd"));
 
   // rewind and fseek should reset anything that's been

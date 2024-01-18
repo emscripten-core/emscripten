@@ -9,11 +9,15 @@
 // Convert analyzed data to javascript. Everything has already been calculated
 // before this stage, which just does the final conversion to JavaScript.
 
-global.addedLibraryItems = {};
+globalThis.addedLibraryItems = {};
 
-// Some JS-implemented library functions are proxied to be called on the main browser thread, if the Emscripten runtime is executing in a Web Worker.
-// Each such proxied function is identified via an ordinal number (this is not the same namespace as function pointers in general).
-global.proxiedFunctionTable = ['null'/* Reserve index 0 for an undefined function*/];
+globalThis.extraLibraryFuncs = [];
+
+// Some JS-implemented library functions are proxied to be called on the main
+// browser thread, if the Emscripten runtime is executing in a Web Worker.
+// Each such proxied function is identified via an ordinal number (this is not
+// the same namespace as function pointers in general).
+globalThis.proxiedFunctionTable = [];
 
 // Mangles the given C/JS side function name to assembly level function name (adds an underscore)
 function mangleCSymbolName(f) {
@@ -102,6 +106,7 @@ function runJSify() {
   LibraryManager.load();
 
   const symbolsNeeded = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
+  symbolsNeeded.push(...extraLibraryFuncs);
   for (const sym of EXPORTED_RUNTIME_METHODS) {
     if ('$' + sym in LibraryManager.library) {
       symbolsNeeded.push('$' + sym);
@@ -132,21 +137,22 @@ function runJSify() {
       const newArgs = [];
       let innerArgs = [];
       let argConvertions = '';
-      for (let i = 1; i < sig.length; i++) {
-        const name = argNames[i - 1];
-        if (!name) {
-          error(`handleI64Signatures: missing name for argument ${i} in ${symbol}`);
-          return snippet;
-        }
-        if (WASM_BIGINT) {
-          if (sig[i] == 'p' || (sig[i] == 'j' && i53abi)) {
-            argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
-          }
+      if (sig.length > argNames.length + 1) {
+        error(`handleI64Signatures: signature too long for ${symbol}`);
+        return snippet;
+      }
+      for (let i = 0; i < argNames.length; i++) {
+        const name = argNames[i];
+        // If sig is shorter than argNames list then argType will be undefined
+        // here, which will result in the default case below.
+        const argType = sig[i + 1];
+        if (WASM_BIGINT && ((MEMORY64 && argType == 'p') || (i53abi && argType == 'j'))) {
+          argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
         } else {
-          if (sig[i] == 'j' && i53abi) {
+          if (argType == 'j' && i53abi) {
             argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
             newArgs.push(defineI64Param(name));
-          } else if (sig[i] == 'p' && CAN_ADDRESS_2GB) {
+          } else if (argType == 'p' && CAN_ADDRESS_2GB) {
             argConvertions += `  ${name} >>>= 0;\n`;
             newArgs.push(name);
           } else {
@@ -160,7 +166,7 @@ function runJSify() {
         args = newArgs.join(',');
       }
 
-      if ((sig[0] == 'j' && i53abi) || (sig[0] == 'p' && WASM_BIGINT)) {
+      if ((sig[0] == 'j' && i53abi) || (sig[0] == 'p' && MEMORY64)) {
         // For functions that where we need to mutate the return value, we
         // also need to wrap the body in an inner function.
         if (oneliner) {
@@ -201,6 +207,12 @@ ${argConvertions}
     // uniform.
     snippet = snippet.toString().replace(/\r\n/gm, '\n');
 
+    // Is this a shorthand `foo() {}` method syntax?
+    // If so, prepend a function keyword so that it's valid syntax when extracted.
+    if (snippet.startsWith(symbol)) {
+      snippet = 'function ' + snippet;
+    }
+
     if (isStub) {
       return snippet;
     }
@@ -225,20 +237,28 @@ function(${args}) {
       i53ConversionDeps.forEach((d) => deps.push(d))
     }
 
-    if (SHARED_MEMORY) {
-      const proxyingMode = LibraryManager.library[symbol + '__proxy'];
-      if (proxyingMode) {
-        if (proxyingMode !== 'sync' && proxyingMode !== 'async') {
-          throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
-        }
+    const proxyingMode = LibraryManager.library[symbol + '__proxy'];
+    if (proxyingMode) {
+      if (proxyingMode !== 'sync' && proxyingMode !== 'async' && proxyingMode !== 'none') {
+        throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
+      }
+      if (SHARED_MEMORY) {
         const sync = proxyingMode === 'sync';
         if (PTHREADS) {
-          snippet = modifyJSFunction(snippet, (args, body) => `
+          snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
+            if (oneliner) {
+              body = `return ${body}`;
+            }
+            const rtnType = sig && sig.length ? sig[0] : null;
+            const proxyFunc = (MEMORY64 && rtnType == 'p') ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
+            deps.push('$' + proxyFunc);
+            return `
 function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
-  return proxyToMainThread(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
+  return ${proxyFunc}(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
 ${body}
-}\n`);
+}\n`
+          });
         } else if (WASM_WORKERS && ASSERTIONS) {
           // In ASSERTIONS builds add runtime checks that proxied functions are not attempted to be called in Wasm Workers
           // (since there is no automatic proxying architecture available)
@@ -297,16 +317,22 @@ function(${args}) {
     }
 
     function addFromLibrary(symbol, dependent, force = false) {
-      // dependencies can be JS functions, which we just run
-      if (typeof symbol == 'function') {
-        return symbol();
-      }
-
       // don't process any special identifiers. These are looked up when
       // processing the base name of the identifier.
       if (isDecorator(symbol)) {
         return;
       }
+
+      // if the function was implemented in compiled code, there is no need to
+      // include the js version
+      if (WASM_EXPORTS.has(symbol) && !force) {
+        return;
+      }
+
+      if (symbol in addedLibraryItems) {
+        return;
+      }
+      addedLibraryItems[symbol] = true;
 
       if (!(symbol + '__deps' in LibraryManager.library)) {
         LibraryManager.library[symbol + '__deps'] = [];
@@ -347,17 +373,6 @@ function(${args}) {
         return;
       }
 
-      // if the function was implemented in compiled code, there is no need to
-      // include the js version
-      if (WASM_EXPORTS.has(symbol) && !force) {
-        return;
-      }
-
-      if (symbol in addedLibraryItems) {
-        return;
-      }
-      addedLibraryItems[symbol] = true;
-
       // This gets set to true in the case of dynamic linking for symbols that
       // are undefined in the main module.  In this case we create a stub that
       // will resolve the correct symbol at runtime, or assert if its missing.
@@ -391,11 +406,12 @@ function(${args}) {
         }
         if (!RELOCATABLE) {
           // emit a stub that will fail at runtime
-          LibraryManager.library[symbol] = new Function(`err('missing function: ${symbol}'); abort(-1);`);
+          LibraryManager.library[symbol] = new Function(`abort('missing function: ${symbol}');`);
           // We have already warned/errored about this function, so for the purposes of Closure use, mute all type checks
           // regarding this function, marking ot a variadic function that can take in anything and return anything.
           // (not useful to warn/error multiple times)
           LibraryManager.library[symbol + '__docs'] = '/** @type {function(...*):?} */';
+          isStub = true;
         } else {
           // Create a stub for this symbol which can later be replaced by the
           // dynamic linker.  If this stub is called before the symbol is
@@ -422,11 +438,9 @@ function(${args}) {
       const original = LibraryManager.library[symbol];
       let snippet = original;
 
+      // Check for dependencies on `__internal` symbols from user libraries.
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
       deps.forEach((dep) => {
-        if (typeof snippet == 'string' && !(dep in LibraryManager.library)) {
-          warn(`missing library dependency ${dep}, make sure you are compiling with the right options (see #if in src/library*.js)`);
-        }
         if (isUserSymbol && LibraryManager.library[dep + '__internal']) {
           warn(`user library symbol '${symbol}' depends on internal symbol '${dep}'`);
         }
@@ -475,6 +489,16 @@ function(${args}) {
       const deps_list = deps.join("','");
       const identDependents = symbol + `__deps: ['${deps_list}']`;
       function addDependency(dep) {
+        // dependencies can be JS functions, which we just run
+        if (typeof dep == 'function') {
+          return dep();
+        }
+        // $noExitRuntime is special since there are conditional usages of it
+        // in library.js and library_pthread.js.  These happen before deps are
+        // processed so depending on it via `__deps` doesn't work.
+        if (dep === '$noExitRuntime') {
+          error('noExitRuntime cannot be referenced via __deps mechansim.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS')
+        }
         return addFromLibrary(dep, `${symbol}, referenced by ${dependent}`, dep === aliasTarget);
       }
       let contentText;
@@ -492,6 +516,8 @@ function(${args}) {
         if (contentText.match(/^\s*([^}]*)\s*=>/s)) {
           // Handle arrow functions
           contentText = `var ${mangled} = ` + contentText + ';';
+        } else if (contentText.startsWith('class ')) {
+          contentText = contentText.replace(/^class /, `class ${mangled} `);
         } else {
           // Handle regular (non-arrow) functions
           contentText = contentText.replace(/function(?:\s+([^(]+))?\s*\(/, `function ${mangled}(`);
@@ -503,6 +529,8 @@ function(${args}) {
         //   'var foo;[code here verbatim];'
         contentText = 'var ' + mangled + snippet;
         if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}') contentText += ';';
+      } else if (typeof snippet == 'undefined') {
+        contentText = `var ${mangled};`;
       } else {
         // In JS libraries
         //   foo: '=[value]'
@@ -600,8 +628,15 @@ function(${args}) {
     }
 
     if (PTHREADS) {
-      print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.');
-      print('\nvar proxiedFunctionTable = [' + proxiedFunctionTable.join() + '];\n');
+      print(`
+// proxiedFunctionTable specifies the list of functions that can be called
+// either synchronously or asynchronously from other threads in postMessage()d
+// or internally queued events. This way a pthread in a Worker can synchronously
+// access e.g. the DOM on the main thread.
+var proxiedFunctionTable = [
+  ${proxiedFunctionTable.join(',\n  ')}
+];
+`);
     }
 
     if (abortExecution) {
@@ -638,7 +673,8 @@ function(${args}) {
   if (symbolsOnly) {
     print(JSON.stringify({
       deps: symbolDeps,
-      asyncFuncs
+      asyncFuncs,
+      extraLibraryFuncs,
     }));
   } else {
     finalCombiner();

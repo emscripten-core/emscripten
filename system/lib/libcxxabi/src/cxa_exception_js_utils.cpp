@@ -1,3 +1,5 @@
+#ifdef __EMSCRIPTEN__
+
 #include "cxxabi.h"
 
 #include "cxa_exception.h"
@@ -103,3 +105,5 @@ char* __get_exception_terminate_message(void* thrown_object) {
 } // extern "C"
 
 } // namespace __cxxabiv1
+
+#endif // __EMSCRIPTEN__

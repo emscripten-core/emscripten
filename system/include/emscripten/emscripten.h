@@ -95,6 +95,7 @@ void emscripten_idb_async_store(const char *db_name __attribute__((nonnull)), co
 void emscripten_idb_async_delete(const char *db_name __attribute__((nonnull)), const char *file_id __attribute__((nonnull)), void* arg, em_arg_callback_func ondelete, em_arg_callback_func onerror);
 typedef void (*em_idb_exists_func)(void*, int);
 void emscripten_idb_async_exists(const char *db_name __attribute__((nonnull)), const char *file_id __attribute__((nonnull)), void* arg, em_idb_exists_func oncheck, em_arg_callback_func onerror);
+void emscripten_idb_async_clear(const char *db_name __attribute__((nonnull)), void* arg, em_arg_callback_func onclear, em_arg_callback_func onerror);
 
 // IDB "sync"
 
@@ -102,6 +103,7 @@ void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffe
 void emscripten_idb_store(const char *db_name, const char *file_id, void* buffer, int num, int *perror);
 void emscripten_idb_delete(const char *db_name, const char *file_id, int *perror);
 void emscripten_idb_exists(const char *db_name, const char *file_id, int* pexists, int *perror);
+void emscripten_idb_clear(const char *db_name, int *perror);
 
 void emscripten_idb_load_blob(const char *db_name, const char *file_id, int* pblob, int *perror);
 void emscripten_idb_store_blob(const char *db_name, const char *file_id, void* buffer, int num, int *perror);

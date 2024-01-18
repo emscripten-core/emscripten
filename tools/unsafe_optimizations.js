@@ -223,7 +223,7 @@ function optPassMergeVarInitializationAssignments(ast) {
 }
 
 function runOnJsText(js, pretty = false) {
-  const ast = acorn.parse(js, {ecmaVersion: 2020});
+  const ast = acorn.parse(js, {ecmaVersion: 2021});
 
   optPassSimplifyModuleInitialization(ast);
   optPassRemoveRedundantOperatorNews(ast);
@@ -270,7 +270,7 @@ function runTests() {
   // optPassSimplifyModularizeFunction:
   test(
     'var Module = function(Module) {Module = Module || {};var f = Module;}',
-    'var Module=function(f){};'
+    'var Module=function(f){};',
   );
 
   // optPassSimplifyModuleInitialization:
@@ -283,7 +283,7 @@ function runTests() {
   test("new function(a) {new TextDecoder(a);}('utf8');", '');
   test(
     'WebAssembly.instantiate(c.wasm,{}).then((a) => {new Int8Array(b);});',
-    'WebAssembly.instantiate(c.wasm,{}).then(a=>{});'
+    'WebAssembly.instantiate(c.wasm,{}).then(a=>{});',
   );
   test('let x=new Uint16Array(a);', 'let x=new Uint16Array(a);');
 
@@ -299,7 +299,7 @@ function runTests() {
   // Interaction between multiple passes:
   test(
     'var d, f; f = new Uint8Array(16); var h = f.buffer; d = new Uint8Array(h);',
-    'var f=new Uint8Array(16),h=f.buffer,d=new Uint8Array(h);'
+    'var f=new Uint8Array(16),h=f.buffer,d=new Uint8Array(h);',
   );
 
   // Older versions of terser would produce sub-optimal output for this.

@@ -18,9 +18,9 @@ function genArgSequence(n) {
 }
 
 // List of symbols that were added from the library.
-global.librarySymbols = [];
+globalThis.librarySymbols = [];
 
-global.LibraryManager = {
+globalThis.LibraryManager = {
   library: {},
   structs: {},
   loaded: false,
@@ -151,6 +151,10 @@ global.LibraryManager = {
 
     if (LZ4) {
       libraries.push('library_lz4.js');
+    }
+
+    if (SHARED_MEMORY) {
+      libraries.push('library_atomic.js');
     }
 
     if (MAX_WEBGL_VERSION >= 2) {
@@ -371,18 +375,15 @@ function exportRuntime() {
     'removeRunDependency',
     'FS_createFolder',
     'FS_createPath',
-    'FS_createDataFile',
     'FS_createLazyFile',
     'FS_createLink',
     'FS_createDevice',
-    'FS_unlink',
+    'FS_readFile',
     'out',
     'err',
     'callMain',
     'abort',
-    'keepRuntimeAlive',
     'wasmMemory',
-    'wasmTable',
     'wasmExports',
   ];
 
@@ -454,6 +455,9 @@ function exportRuntime() {
   for (const ident of Object.keys(LibraryManager.library)) {
     if (isJsOnlySymbol(ident) && !isDecorator(ident) && !isInternalSymbol(ident)) {
       const jsname = ident.substr(1);
+      // Note that this assertion may be hit when a function is moved into the
+      // JS library. In that case the function should be removed from the list
+      // of runtime elements above.
       assert(!runtimeElementsSet.has(jsname), 'runtimeElements contains library symbol: ' + ident);
       runtimeElements.push(jsname);
     }

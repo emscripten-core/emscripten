@@ -65,7 +65,7 @@ function EventListener() {
   this.listeners = {};
 
   this.addEventListener = function addEventListener(event, func) {
-    if (!this.listeners[event]) this.listeners[event] = [];
+    this.listeners[event] ||= [];
     this.listeners[event].push(func);
   };
 
@@ -113,7 +113,7 @@ window.close = () => {
 };
 
 window.alert = (text) => {
-  err('alert forever: ' + text);
+  err(`alert forever: ${text}`);
   while (1) {};
 };
 
@@ -200,21 +200,19 @@ document.createElement = (what) => {
         }
       };
       canvas.boundingClientRect = {};
-      canvas.getBoundingClientRect = () => {
-        return {
-          width: canvas.boundingClientRect.width,
-          height: canvas.boundingClientRect.height,
-          top: canvas.boundingClientRect.top,
-          left: canvas.boundingClientRect.left,
-          bottom: canvas.boundingClientRect.bottom,
-          right: canvas.boundingClientRect.right
-        };
-      };
+      canvas.getBoundingClientRect = () => ({
+        width: canvas.boundingClientRect.width,
+        height: canvas.boundingClientRect.height,
+        top: canvas.boundingClientRect.top,
+        left: canvas.boundingClientRect.left,
+        bottom: canvas.boundingClientRect.bottom,
+        right: canvas.boundingClientRect.right
+      });
       canvas.style = new PropertyBag();
       canvas.exitPointerLock = () => {};
 
-      canvas.width_ = canvas.width_ || 0;
-      canvas.height_ = canvas.height_ || 0;
+      canvas.width_ ||= 0;
+      canvas.height_ ||= 0;
       Object.defineProperty(canvas, 'width', {
         set: (value) => {
           canvas.width_ = value;
@@ -222,9 +220,7 @@ document.createElement = (what) => {
             postMessage({ target: 'canvas', op: 'resize', width: canvas.width_, height: canvas.height_ });
           }
         },
-        get: () => {
-          return canvas.width_;
-        }
+        get: () => canvas.width_
       });
       Object.defineProperty(canvas, 'height', {
         set: (value) => {
@@ -233,9 +229,7 @@ document.createElement = (what) => {
             postMessage({ target: 'canvas', op: 'resize', width: canvas.width_, height: canvas.height_ });
           }
         },
-        get: () => {
-          return canvas.height_;
-        }
+        get: () => canvas.height_
       });
 
       var style = {
@@ -350,7 +344,7 @@ var clientFrameId = 0;
 
 var postMainLoop = Module['postMainLoop'];
 Module['postMainLoop'] = () => {
-  if (postMainLoop) postMainLoop();
+  postMainLoop?.();
   // frame complete, send a frame id
   postMessage({ target: 'tick', id: frameId++ });
   commandBuffer = [];
@@ -378,7 +372,7 @@ var messageResenderTimeout = null;
 var calledMain = false;
 
 // Set calledMain to true during postRun which happens onces main returns
-if (!Module['postRun']) Module['postRun'] = [];
+Module['postRun'] ||= [];
 if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
 Module['postRun'].push(() => { calledMain = true; });
 
@@ -386,7 +380,7 @@ function messageResender() {
   if (calledMain) {
     assert(messageBuffer && messageBuffer.length > 0);
     messageResenderTimeout = null;
-    messageBuffer.forEach((message) => onmessage(message));
+    messageBuffer.forEach(onmessage);
     messageBuffer = null;
   } else {
     messageResenderTimeout = setTimeout(messageResender, 100);

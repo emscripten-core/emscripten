@@ -18,6 +18,16 @@ var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions 
 if (ENVIRONMENT_IS_NODE) {
   // Create as web-worker-like an environment as we can.
 
+  // See the parallel code in shell.js, but here we don't need the condition on
+  // multi-environment builds, as we do not have the need to interact with the
+  // modularization logic as shell.js must (see link.py:node_es6_imports and
+  // how that is used in link.py).
+#if EXPORT_ES6
+  const { createRequire } = await import('module');
+  /** @suppress{duplicate} */
+  var require = createRequire(import.meta.url);
+#endif
+
   var nodeWorkerThreads = require('worker_threads');
 
   var parentPort = nodeWorkerThreads.parentPort;
@@ -25,16 +35,23 @@ if (ENVIRONMENT_IS_NODE) {
   parentPort.on('message', (data) => onmessage({ data: data }));
 
   var fs = require('fs');
+  var vm = require('vm');
 
   Object.assign(global, {
     self: global,
     require,
     Module,
     location: {
+      // __filename is undefined in ES6 modules, and import.meta.url only in ES6
+      // modules.
+#if EXPORT_ES6
+      href: typeof __filename !== 'undefined' ? __filename : import.meta.url
+#else
       href: __filename
+#endif
     },
     Worker: nodeWorkerThreads.Worker,
-    importScripts: (f) => (0, eval)(fs.readFileSync(f, 'utf8') + '//# sourceURL=' + f),
+    importScripts: (f) => vm.runInThisContext(fs.readFileSync(f, 'utf8'), {filename: f}),
     postMessage: (msg) => parentPort.postMessage(msg),
     performance: global.performance || { now: Date.now },
   });
@@ -99,7 +116,7 @@ Module['instantiateWasm'] = (info, receiveInstance) => {
 // Turn unhandled rejected promises into errors so that the main thread will be
 // notified about them.
 self.onunhandledrejection = (e) => {
-  throw e.reason ?? e;
+  throw e.reason || e;
 };
 
 function handleMessage(e) {
@@ -212,7 +229,7 @@ function handleMessage(e) {
 #endif // MODULARIZE && EXPORT_ES6
     } else if (e.data.cmd === 'run') {
       // Pass the thread address to wasm to store it for fast access.
-      Module['__emscripten_thread_init'](e.data.pthread_ptr, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0, /*canBlock=*/1);
+      Module['__emscripten_thread_init'](e.data.pthread_ptr, /*is_main=*/0, /*is_runtime=*/0, /*can_block=*/1);
 
       // Await mailbox notifications with `Atomics.waitAsync` so we can start
       // using the fast `Atomics.notify` notification path.
@@ -265,17 +282,15 @@ function handleMessage(e) {
       // The received message looks like something that should be handled by this message
       // handler, (since there is a e.data.cmd field present), but is not one of the
       // recognized commands:
-      err('worker.js received unknown command ' + e.data.cmd);
+      err(`worker.js received unknown command ${e.data.cmd}`);
       err(e.data);
     }
   } catch(ex) {
 #if ASSERTIONS
-    err('worker.js onmessage() captured an uncaught exception: ' + ex);
-    if (ex && ex.stack) err(ex.stack);
+    err(`worker.js onmessage() captured an uncaught exception: ${ex}`);
+    if (ex?.stack) err(ex.stack);
 #endif
-    if (Module['__emscripten_thread_crashed']) {
-      Module['__emscripten_thread_crashed']();
-    }
+    Module['__emscripten_thread_crashed']?.();
     throw ex;
   }
 };

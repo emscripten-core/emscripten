@@ -178,6 +178,19 @@ def remove_dead_entries(entries):
     block_start = cur_entry
 
 
+def extract_comp_dir_map(text):
+  map_stmt_list_to_comp_dir = {}
+  chunks = re.split(r"0x[0-9a-f]*: DW_TAG_compile_unit", text)
+  for chunk in chunks[1:]:
+    stmt_list_match = re.search(r"DW_AT_stmt_list\s+\((0x[0-9a-f]*)\)", chunk)
+    if stmt_list_match is not None:
+      stmt_list = stmt_list_match.group(1)
+      comp_dir_match = re.search(r"DW_AT_comp_dir\s+\(\"([^\"]+)\"\)", chunk)
+      comp_dir = comp_dir_match.group(1) if comp_dir_match is not None else ''
+      map_stmt_list_to_comp_dir[stmt_list] = comp_dir
+  return map_stmt_list_to_comp_dir
+
+
 def read_dwarf_entries(wasm, options):
   if options.dwarfdump_output:
     output = Path(options.dwarfdump_output).read_bytes()
@@ -198,14 +211,9 @@ def read_dwarf_entries(wasm, options):
 
   entries = []
   debug_line_chunks = re.split(r"debug_line\[(0x[0-9a-f]*)\]", output.decode('utf-8'))
-  maybe_debug_info_content = debug_line_chunks[0]
-  for i in range(1, len(debug_line_chunks), 2):
-    stmt_list = debug_line_chunks[i]
-    comp_dir_match = re.search(r"DW_AT_stmt_list\s+\(" + stmt_list + r"\)\s+" +
-                               r"DW_AT_comp_dir\s+\(\"([^\"]+)", maybe_debug_info_content)
-    comp_dir = comp_dir_match.group(1) if comp_dir_match is not None else ""
-
-    line_chunk = debug_line_chunks[i + 1]
+  map_stmt_list_to_comp_dir = extract_comp_dir_map(debug_line_chunks[0])
+  for stmt_list, line_chunk in zip(debug_line_chunks[1::2], debug_line_chunks[2::2]):
+    comp_dir = map_stmt_list_to_comp_dir.get(stmt_list, '')
 
     # include_directories[  1] = "/Users/yury/Work/junk/sqlite-playground/src"
     # file_names[  1]:
@@ -224,12 +232,12 @@ def read_dwarf_entries(wasm, options):
 
     include_directories = {'0': comp_dir}
     for dir in re.finditer(r"include_directories\[\s*(\d+)\] = \"([^\"]*)", line_chunk):
-      include_directories[dir.group(1)] = dir.group(2)
+      include_directories[dir.group(1)] = os.path.join(comp_dir, dir.group(2))
 
     files = {}
     for file in re.finditer(r"file_names\[\s*(\d+)\]:\s+name: \"([^\"]*)\"\s+dir_index: (\d+)", line_chunk):
       dir = include_directories[file.group(3)]
-      file_path = (dir + '/' if file.group(2)[0] != '/' else '') + file.group(2)
+      file_path = os.path.join(dir, file.group(2))
       files[file.group(1)] = file_path
 
     for line in re.finditer(r"\n0x([0-9a-f]+)\s+(\d+)\s+(\d+)\s+(\d+)(.*?end_sequence)?", line_chunk):
@@ -249,10 +257,6 @@ def read_dwarf_entries(wasm, options):
 
   # return entries sorted by the address field
   return sorted(entries, key=lambda entry: entry['address'])
-
-
-def normalize_path(path):
-  return path.replace('\\', '/').replace('//', '/')
 
 
 def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, base_path):
@@ -275,7 +279,7 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
       column = 1
     address = entry['address'] + code_section_offset
     file_name = entry['file']
-    file_name = normalize_path(file_name)
+    file_name = utils.normalize_path(file_name)
     # if prefixes were provided, we use that; otherwise, we emit a relative
     # path
     if prefixes.provided():
@@ -285,7 +289,7 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
         file_name = os.path.relpath(file_name, base_path)
       except ValueError:
         file_name = os.path.abspath(file_name)
-      file_name = normalize_path(file_name)
+      file_name = utils.normalize_path(file_name)
       source_name = file_name
     if source_name not in sources_map:
       source_id = len(sources)

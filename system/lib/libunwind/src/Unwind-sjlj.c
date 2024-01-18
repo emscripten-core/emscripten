@@ -1,4 +1,4 @@
-//===--------------------------- Unwind-sjlj.c ----------------------------===//
+//===----------------------------------------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -32,11 +32,23 @@ struct _Unwind_FunctionContext {
   // next function in stack of handlers
   struct _Unwind_FunctionContext *prev;
 
+#if defined(__ve__)
+  // VE requires to store 64 bit pointers in the buffer for SjLj exception.
+  // We expand the size of values defined here.  This size must be matched
+  // to the size returned by TargetMachine::getSjLjDataSize().
+
+  // set by calling function before registering to be the landing pad
+  uint64_t                        resumeLocation;
+
+  // set by personality handler to be parameters passed to landing pad function
+  uint64_t                        resumeParameters[4];
+#else
   // set by calling function before registering to be the landing pad
   uint32_t                        resumeLocation;
 
   // set by personality handler to be parameters passed to landing pad function
   uint32_t                        resumeParameters[4];
+#endif
 
   // set by calling function before registering
   _Unwind_Personality_Fn personality;          // arm offset=24
@@ -345,7 +357,7 @@ _Unwind_SjLj_RaiseException(struct _Unwind_Exception *exception_object) {
 /// may force a jump to a landing pad in that function, the landing
 /// pad code may then call _Unwind_Resume() to continue with the
 /// unwinding.  Note: the call to _Unwind_Resume() is from compiler
-/// geneated user code.  All other _Unwind_* routines are called
+/// generated user code.  All other _Unwind_* routines are called
 /// by the C++ runtime __cxa_* routines.
 ///
 /// Re-throwing an exception is implemented by having the code call
@@ -382,7 +394,7 @@ _Unwind_SjLj_Resume_or_Rethrow(struct _Unwind_Exception *exception_object) {
     // std::terminate()
   }
 
-  // Call through to _Unwind_Resume() which distiguishes between forced and
+  // Call through to _Unwind_Resume() which distinguishes between forced and
   // regular exceptions.
   _Unwind_SjLj_Resume(exception_object);
   _LIBUNWIND_ABORT("__Unwind_SjLj_Resume_or_Rethrow() called "

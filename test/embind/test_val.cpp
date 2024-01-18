@@ -73,6 +73,11 @@ int main() {
   ensure_js("a[1] == 1");
   ensure_js("a[2] == 3");
   ensure_js_not("a[2] == 2");
+  vector<int> vec2_from_iter;
+  for (val&& v : val::global("a")) {
+    vec2_from_iter.push_back(v.as<int>());
+  }
+  ensure(vec2 == vec2_from_iter);
 
   test("template<typename Iter> val array(Iter begin, Iter end)");
   val::global().set("a", val::array(vec1.begin(), vec1.end()));
@@ -224,6 +229,17 @@ int main() {
   ensure(val::global("b").isArray());
   ensure_not(val::global("c").isArray());
   ensure_not(val::global("d").isArray());
+
+  test("val& operator=(val&& v)");
+  val source(val::object());
+  val target(val::object());
+  source.set("val", 1);
+  target = std::move(source);
+  ensure(target["val"].as<int>() == 1);
+  // move and assign to itself
+  target.set("val", 2);
+  target = std::move(target);
+  ensure(target["val"].as<int>() == 2);
 
   test("bool equals(const val& v)");
   EM_ASM(

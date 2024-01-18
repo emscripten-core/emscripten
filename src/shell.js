@@ -44,7 +44,7 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #endif // USE_CLOSURE_COMPILER
 
 #if POLYFILL
-#if ((MAYBE_WASM2JS && WASM != 2) || MODULARIZE) && (MIN_CHROME_VERSION < 33 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 29 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 80000)
+#if ((MAYBE_WASM2JS && WASM != 2) || MODULARIZE) && (MIN_CHROME_VERSION < 33 || MIN_FIREFOX_VERSION < 29 || MIN_SAFARI_VERSION < 80000)
 // Include a Promise polyfill for legacy browsers. This is needed either for
 // wasm2js, where we polyfill the wasm API which needs Promises, or when using
 // modularize which creates a Promise for when the module is ready.
@@ -52,7 +52,7 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #include "polyfill/promise.js"
 #endif
 
-#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 90000
+#if MIN_CHROME_VERSION < 45 || MIN_FIREFOX_VERSION < 34 || MIN_SAFARI_VERSION < 90000
 // See https://caniuse.com/mdn-javascript_builtins_object_assign
 #include "polyfill/objassign.js"
 #endif
@@ -172,8 +172,7 @@ function locateFile(path) {
 // Hooks that are implemented differently in different runtime environments.
 var read_,
     readAsync,
-    readBinary,
-    setWindowTitle;
+    readBinary;
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
@@ -263,17 +262,8 @@ if (ENVIRONMENT_IS_NODE) {
     throw toThrow;
   };
 
-  Module['inspect'] = () => '[Emscripten Module object]';
-
 #if PTHREADS || WASM_WORKERS
-  let nodeWorkerThreads;
-  try {
-    nodeWorkerThreads = require('worker_threads');
-  } catch (e) {
-    console.error('The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?');
-    throw e;
-  }
-  global.Worker = nodeWorkerThreads.Worker;
+  global.Worker = require('worker_threads').Worker;
 #endif
 
 #if WASM == 2
@@ -407,8 +397,6 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   {
 #include "web_or_worker_shell_read.js"
   }
-
-  setWindowTitle = (title) => document.title = title;
 } else
 #endif // ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 #if AUDIO_WORKLET && ASSERTIONS
@@ -475,7 +463,7 @@ assert(typeof Module['filePackagePrefixURL'] == 'undefined', 'Module.filePackage
 assert(typeof Module['read'] == 'undefined', 'Module.read option was removed (modify read_ in JS)');
 assert(typeof Module['readAsync'] == 'undefined', 'Module.readAsync option was removed (modify readAsync in JS)');
 assert(typeof Module['readBinary'] == 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
-assert(typeof Module['setWindowTitle'] == 'undefined', 'Module.setWindowTitle option was removed (modify setWindowTitle in JS)');
+assert(typeof Module['setWindowTitle'] == 'undefined', 'Module.setWindowTitle option was removed (modify emscripten_set_window_title in JS)');
 assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has been renamed Module.INITIAL_MEMORY');
 {{{ makeRemovedModuleAPIAssert('asm', 'wasmExports', false) }}}
 {{{ makeRemovedModuleAPIAssert('read', 'read_') }}}
@@ -485,6 +473,11 @@ assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has be
 {{{ makeRemovedFSAssert('IDBFS') }}}
 {{{ makeRemovedFSAssert('PROXYFS') }}}
 {{{ makeRemovedFSAssert('WORKERFS') }}}
+{{{ makeRemovedFSAssert('FETCHFS') }}}
+{{{ makeRemovedFSAssert('ICASEFS') }}}
+{{{ makeRemovedFSAssert('JSFILEFS') }}}
+{{{ makeRemovedFSAssert('OPFS') }}}
+
 #if !NODERAWFS
 {{{ makeRemovedFSAssert('NODEFS') }}}
 #endif

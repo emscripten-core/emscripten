@@ -1,4 +1,6 @@
 #include <emscripten.h>
+#include <emscripten/console.h>
+#include <emscripten/eventloop.h>
 #include <emscripten/wasm_worker.h>
 #include <assert.h>
 
@@ -42,14 +44,14 @@ int should_throw(void(*func)())
 {
   int threw = EM_ASM_INT({
     try {
-      dynCall('v', $0);
+      dynCall('v', Number($0));
     } catch(e) {
       console.error('Threw an exception like expected: ' + e);
       return 1;
     }
     console.error('Function was expected to throw, but did not!');
     return 0;
-  }, (int)func);
+  }, func);
   return threw;
 }
 

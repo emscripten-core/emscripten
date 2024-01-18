@@ -12,7 +12,7 @@ var WasiLibrary = {
     this.message = `Program terminated with exit(${status})`;
     this.status = status;
   },
-  proc_exit__deps: ['$ExitStatus'],
+  proc_exit__deps: ['$ExitStatus', '$keepRuntimeAlive'],
 #endif
 
   proc_exit__nothrow: true,
@@ -29,7 +29,7 @@ var WasiLibrary = {
       PThread.terminateAllThreads();
 #endif
 #if expectToReceiveOnModule('onExit')
-      if (Module['onExit']) Module['onExit'](code);
+      Module['onExit']?.(code);
 #endif
       ABORT = true;
     }
@@ -38,9 +38,7 @@ var WasiLibrary = {
   },
 
   sched_yield__nothrow: true,
-  sched_yield: () => {
-    return 0;
-  },
+  sched_yield: () => 0,
 
   random_get__deps: ['getentropy'],
   random_get: (buf, buf_len) => {
@@ -93,9 +91,7 @@ var WasiLibrary = {
     var strings = getEnvStrings();
     {{{ makeSetValue('penviron_count', 0, 'strings.length', SIZE_TYPE) }}};
     var bufSize = 0;
-    strings.forEach(function(string) {
-      bufSize += string.length + 1;
-    });
+    strings.forEach((string) => bufSize += string.length + 1);
     {{{ makeSetValue('penviron_buf_size', 0, 'bufSize', SIZE_TYPE) }}};
     return 0;
   },
@@ -104,7 +100,7 @@ var WasiLibrary = {
   environ_get__nothrow: true,
   environ_get: (__environ, environ_buf) => {
     var bufSize = 0;
-    getEnvStrings().forEach(function(string, i) {
+    getEnvStrings().forEach((string, i) => {
       var ptr = environ_buf + bufSize;
       {{{ makeSetValue('__environ', `i*${POINTER_SIZE}`, 'ptr', POINTER_TYPE) }}};
       stringToAscii(string, ptr);
@@ -121,9 +117,7 @@ var WasiLibrary = {
 #if MAIN_READS_PARAMS
     {{{ makeSetValue('pargc', 0, 'mainArgs.length', SIZE_TYPE) }}};
     var bufSize = 0;
-    mainArgs.forEach(function(arg) {
-      bufSize += arg.length + 1;
-    });
+    mainArgs.forEach((arg) => bufSize += arg.length + 1);
     {{{ makeSetValue('pargv_buf_size', 0, 'bufSize', SIZE_TYPE) }}};
 #else
     {{{ makeSetValue('pargc', 0, '0', SIZE_TYPE) }}};
@@ -136,7 +130,7 @@ var WasiLibrary = {
   args_get: (argv, argv_buf) => {
 #if MAIN_READS_PARAMS
     var bufSize = 0;
-    mainArgs.forEach(function(arg, i) {
+    mainArgs.forEach((arg, i) => {
       var ptr = argv_buf + bufSize;
       {{{ makeSetValue('argv', `i*${POINTER_SIZE}`, 'ptr', POINTER_TYPE) }}};
       stringToAscii(arg, ptr);
@@ -209,7 +203,7 @@ var WasiLibrary = {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
       var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
       iov += {{{ C_STRUCTS.iovec.__size__ }}};
-      var curr = FS.read(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
+      var curr = FS.read(stream, HEAP8, ptr, len, offset);
       if (curr < 0) return -1;
       ret += curr;
       if (curr < len) break; // nothing more to read
@@ -226,7 +220,7 @@ var WasiLibrary = {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
       var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
       iov += {{{ C_STRUCTS.iovec.__size__ }}};
-      var curr = FS.write(stream, {{{ heapAndOffset('HEAP8', 'ptr') }}}, len, offset);
+      var curr = FS.write(stream, HEAP8, ptr, len, offset);
       if (curr < 0) return -1;
       ret += curr;
       if (typeof offset !== 'undefined') {
@@ -268,9 +262,7 @@ var WasiLibrary = {
     if (printCharBuffers[2].length) printChar(2, {{{ charCode("\n") }}});
   },
   fd_write__deps: ['$flush_NO_FILESYSTEM', '$printChar'],
-  fd_write__postset: () => {
-    addAtExit('flush_NO_FILESYSTEM()');
-  },
+  fd_write__postset: () => addAtExit('flush_NO_FILESYSTEM()'),
 #else
   fd_write__deps: ['$printChar'],
 #endif
@@ -543,23 +535,23 @@ var WasiLibrary = {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
 #if ASYNCIFY
-    return Asyncify.handleSleep(function(wakeUp) {
+    return Asyncify.handleSleep((wakeUp) => {
       var mount = stream.node.mount;
       if (!mount.type.syncfs) {
         // We write directly to the file system, so there's nothing to do here.
         wakeUp(0);
         return;
       }
-      mount.type.syncfs(mount, false, function(err) {
+      mount.type.syncfs(mount, false, (err) => {
         if (err) {
-          wakeUp(function() { return {{{ cDefs.EIO }}} });
+          wakeUp({{{ cDefs.EIO }}});
           return;
         }
         wakeUp(0);
       });
     });
 #else
-    if (stream.stream_ops && stream.stream_ops.fsync) {
+    if (stream.stream_ops?.fsync) {
       return stream.stream_ops.fsync(stream);
     }
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
@@ -570,10 +562,11 @@ var WasiLibrary = {
     return {{{ cDefs.ENOSYS }}};
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
+  fd_sync__async: true,
 };
 
 for (var x in WasiLibrary) {
   wrapSyscallFunction(x, WasiLibrary, true);
 }
 
-mergeInto(LibraryManager.library, WasiLibrary);
+addToLibrary(WasiLibrary);

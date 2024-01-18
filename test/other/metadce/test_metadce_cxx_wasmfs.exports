@@ -1,5 +1,4 @@
 __cxa_is_pointer_type
-__errno_location
 __indirect_function_table
 __wasm_call_ctors
 dynCall_iiiiiijj
@@ -10,9 +9,7 @@ dynCall_iij
 dynCall_ji
 dynCall_jiji
 dynCall_viijii
-free
 main
-malloc
 memory
 stackAlloc
 stackRestore

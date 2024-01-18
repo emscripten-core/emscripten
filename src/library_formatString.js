@@ -4,14 +4,12 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
-  $reallyNegative: function(x) {
-    return x < 0 || (x === 0 && (1/x) === -Infinity);
-  },
+addToLibrary({
+  $reallyNegative: (x) => x < 0 || (x === 0 && (1/x) === -Infinity),
 
   // Converts a value we have as signed, into an unsigned value. For
   // example, -1 in int32 would be a very large number as unsigned.
-  $unSign: function(value, bits) {
+  $unSign: (value, bits) => {
     if (value >= 0) {
       return value;
     }
@@ -21,7 +19,7 @@ mergeInto(LibraryManager.library, {
                       : Math.pow(2, bits)         + value;
   },
 
-  $strLen: function(ptr) {
+  $strLen: (ptr) => {
     var end = ptr;
     while (HEAPU8[end]) ++end;
     return end - ptr;
@@ -29,7 +27,7 @@ mergeInto(LibraryManager.library, {
 
   // Converts a value we have as unsigned, into a signed value. For
   // example, 200 in a uint8 would be a negative number.
-  $reSign: function(value, bits) {
+  $reSign: (value, bits) => {
     if (value <= 0) {
       return value;
     }
@@ -54,7 +52,7 @@ mergeInto(LibraryManager.library, {
   $formatString__deps: ['$reallyNegative', '$convertI32PairToI53', '$convertU32PairToI53',
                         '$reSign', '$unSign', '$strLen', '$intArrayFromString'
   ],
-  $formatString: function(format, varargs) {
+  $formatString: (format, varargs) => {
 #if ASSERTIONS
     assert((varargs & 3) === 0);
 #endif

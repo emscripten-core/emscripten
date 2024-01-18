@@ -25,6 +25,17 @@ def path_from_root(*pathelems):
   return str(Path(__rootpath__, *pathelems))
 
 
+def normalize_path(path):
+  """Normalize path separators to UNIX-style forward slashes.
+
+  This can be useful when converting paths to URLs or JS strings,
+  or when trying to generate consistent output file contents
+  across all platforms.  In most cases UNIX-style separators work
+  fine on windows.
+  """
+  return path.replace('\\', '/').replace('//', '/')
+
+
 def safe_ensure_dirs(dirname):
   os.makedirs(dirname, exist_ok=True)
 

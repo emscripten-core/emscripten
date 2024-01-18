@@ -107,17 +107,31 @@ function getNativeFieldSize(type) {
   return Math.max(getNativeTypeSize(type), POINTER_SIZE);
 }
 
-global.Runtime = {
+globalThis.Runtime = {
   getNativeTypeSize,
   getNativeFieldSize,
   POINTER_SIZE,
   QUANTUM_SIZE: POINTER_SIZE,
 };
 
-global.ATMAINS = [];
+globalThis.ATMAINS = [];
 
 function addAtMain(code) {
   warn('use of legacy parseTools function: addAtMain');
   assert(HAS_MAIN, 'addAtMain called but program has no main function');
   ATMAINS.push(code);
 }
+
+function ensureValidFFIType(type) {
+  return type === 'float' ? 'double' : type; // ffi does not tolerate float XXX
+}
+
+// FFI return values must arrive as doubles, and we can force them to floats afterwards
+function asmFFICoercion(value, type) {
+  value = asmCoercion(value, ensureValidFFIType(type));
+  if (type === 'float') value = asmCoercion(value, 'float');
+  return value;
+}
+
+// Legacy name for runIfMainThread.
+const runOnMainThread = runIfMainThread;

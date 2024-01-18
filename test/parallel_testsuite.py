@@ -46,6 +46,10 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     super().__init__()
     self.max_cores = max_cores
 
+  def addTest(self, test):
+    super().addTest(test)
+    test.is_parallel = True
+
   def run(self, result):
     # The 'spawn' method is used on windows and it can be useful to set this on
     # all platforms when debugging multiprocessing issues.  Without this we

@@ -4,30 +4,25 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if POLYFILL &&  ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 160000
+#if POLYFILL && (ENVIRONMENT_MAY_BE_SHELL || (ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 160000))
 #include "polyfill/atob.js"
 #endif
 
-// Converts a string of base64 into a byte array.
-// Throws error on invalid input.
+// Converts a string of base64 into a byte array (Uint8Array).
 function intArrayFromBase64(s) {
 #if ENVIRONMENT_MAY_BE_NODE
   if (typeof ENVIRONMENT_IS_NODE != 'undefined' && ENVIRONMENT_IS_NODE) {
     var buf = Buffer.from(s, 'base64');
-    return new Uint8Array(buf['buffer'], buf['byteOffset'], buf['byteLength']);
+    return new Uint8Array(buf.buffer, buf.byteOffset, buf.length);
   }
 #endif
 
-  try {
-    var decoded = atob(s);
-    var bytes = new Uint8Array(decoded.length);
-    for (var i = 0 ; i < decoded.length ; ++i) {
-      bytes[i] = decoded.charCodeAt(i);
-    }
-    return bytes;
-  } catch (_) {
-    throw new Error('Converting base64 string to bytes failed.');
+  var decoded = atob(s);
+  var bytes = new Uint8Array(decoded.length);
+  for (var i = 0 ; i < decoded.length ; ++i) {
+    bytes[i] = decoded.charCodeAt(i);
   }
+  return bytes;
 }
 
 // If filename is a base64 data URI, parses and returns data (Buffer on node,

@@ -7,35 +7,35 @@
 
 #include <assert.h>
 #include <pthread.h>
-#include <emscripten.h>
+#include <emscripten/console.h>
 
 int globalData = 1;
 
 void *thread_main(void *arg)
 {
-  EM_ASM(out('hello from pthread 1: ' + $0), globalData);
+  emscripten_outf("hello from pthread 1: %d", globalData);
   assert(globalData == 10);
 
   globalData = 20;
-  EM_ASM(out('hello from pthread 2: ' + $0), globalData);
+  emscripten_outf("hello from pthread 2: %d", globalData);
   assert(globalData == 20);
   return 0;
 }
 
 int main()
 {
-  EM_ASM(out('hello from main 1: ' + $0), globalData);
+  emscripten_outf("hello from main 1: %d", globalData);
   assert(globalData == 1);
 
   globalData = 10;
-  EM_ASM(out('hello from main 2: ' + $0), globalData);
+  emscripten_outf("hello from main 2: %d", globalData);
   assert(globalData == 10);
 
   pthread_t thread;
   pthread_create(&thread, NULL, thread_main, NULL);
   pthread_join(thread, 0);
 
-  EM_ASM(out('hello from main 3: ' + $0), globalData);
+  emscripten_outf("hello from main 3: %d", globalData);
   assert(globalData == 20);
   return 0;
 }

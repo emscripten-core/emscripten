@@ -20,7 +20,7 @@
  */
 
 var LibraryGLEW = {
-  $GLEW__deps: ['glGetString', '$stringToNewUTF8', '$UTF8ToString'],
+  $GLEW__deps: ['glGetString', '$stringToNewUTF8', '$UTF8ToString', '$webglGetExtensions'],
   $GLEW: {
     isLinaroFork: 1,
     extensions: null,
@@ -46,7 +46,7 @@ var LibraryGLEW = {
       4:null, // GLEW_VERSION_MICRO
     },
 
-    errorStringConstantFromCode: function(error) {
+    errorStringConstantFromCode(error) {
       if (GLEW.isLinaroFork) {
         switch (error) {
           case 4:return "OpenGL ES lib expected, found OpenGL lib"; // GLEW_ERROR_NOT_GLES_VERSION
@@ -66,7 +66,7 @@ var LibraryGLEW = {
       }
     },
 
-    errorString: function(error) {
+    errorString(error) {
       if (!GLEW.error[error]) {
         var string = GLEW.errorStringConstantFromCode(error);
         if (!string) {
@@ -78,7 +78,7 @@ var LibraryGLEW = {
       return GLEW.error[error];
     },
 
-    versionStringConstantFromCode: function(name) {
+    versionStringConstantFromCode(name) {
       switch (name) {
         case 1:return "1.10.0"; // GLEW_VERSION
         case 2:return "1"; // GLEW_VERSION_MAJOR
@@ -88,7 +88,7 @@ var LibraryGLEW = {
       }
     },
 
-    versionString: function(name) {
+    versionString(name) {
       if (!GLEW.version[name]) {
         var string = GLEW.versionStringConstantFromCode(name);
         if (!string)
@@ -98,10 +98,8 @@ var LibraryGLEW = {
       return GLEW.version[name];
     },
 
-    extensionIsSupported: function(name) {
-      if (!GLEW.extensions) {
-        GLEW.extensions = UTF8ToString(_glGetString(0x1F03)).split(' ');
-      }
+    extensionIsSupported(name) {
+      GLEW.extensions ||= webglGetExtensions();
 
       if (GLEW.extensions.includes(name))
         return 1;
@@ -112,9 +110,9 @@ var LibraryGLEW = {
     },
   },
 
-  glewInit: function() { return 0; },
+  glewInit: () => 0,
 
-  glewIsSupported: function(name) {
+  glewIsSupported: (name) => {
     var exts = UTF8ToString(name).split(' ');
     for (var i = 0; i < exts.length; ++i) {
       if (!GLEW.extensionIsSupported(exts[i]))
@@ -123,19 +121,13 @@ var LibraryGLEW = {
     return 1;
   },
 
-  glewGetExtension: function(name) {
-    return GLEW.extensionIsSupported(UTF8ToString(name));
-  },
+  glewGetExtension: (name) => GLEW.extensionIsSupported(UTF8ToString(name)),
 
-  glewGetErrorString: function(error) {
-    return GLEW.errorString(error);
-  },
+  glewGetErrorString: (error) => GLEW.errorString(error),
 
-  glewGetString: function(name) {
-    return GLEW.versionString(name);
-  },
+  glewGetString: (name) => GLEW.versionString(name),
 
 };
 
 autoAddDeps(LibraryGLEW, '$GLEW');
-mergeInto(LibraryManager.library, LibraryGLEW);
+addToLibrary(LibraryGLEW);

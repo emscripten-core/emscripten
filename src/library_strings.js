@@ -6,7 +6,7 @@
 
 #include "arrayUtils.js"
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
 #if TEXTDECODER == 2
   $UTF8Decoder: "new TextDecoder('utf8')",
 #elif TEXTDECODER == 1
@@ -116,7 +116,7 @@ mergeInto(LibraryManager.library, {
 #endif
   $UTF8ToString: (ptr, maxBytesToRead) => {
 #if ASSERTIONS
-    assert(typeof ptr == 'number');
+    assert(typeof ptr == 'number', `UTF8ToString expects a number (got ${typeof ptr})`);
 #endif
 #if CAN_ADDRESS_2GB
     ptr >>>= 0;
@@ -158,7 +158,7 @@ mergeInto(LibraryManager.library, {
     outIdx >>>= 0;
 #endif
 #if ASSERTIONS
-    assert(typeof str === 'string');
+    assert(typeof str === 'string', `stringToUTF8Array expects a string (got ${typeof str})`);
 #endif
     // Parameter maxBytesToWrite is not optional. Negative values, 0, null,
     // undefined and false each don't write out any bytes.
@@ -222,7 +222,7 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     assert(typeof maxBytesToWrite == 'number', 'stringToUTF8(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
 #endif
-    return stringToUTF8Array(str, {{{ heapAndOffset('HEAPU8', 'outPtr') }}}, maxBytesToWrite);
+    return stringToUTF8Array(str, HEAPU8, outPtr, maxBytesToWrite);
   },
 
   /**
@@ -364,9 +364,7 @@ mergeInto(LibraryManager.library, {
     assert(typeof maxBytesToWrite == 'number', 'stringToUTF16(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
 #endif
     // Backwards compatibility: if max bytes is not specified, assume unsafe unbounded write is allowed.
-    if (maxBytesToWrite === undefined) {
-      maxBytesToWrite = 0x7FFFFFFF;
-    }
+    maxBytesToWrite ??= 0x7FFFFFFF;
     if (maxBytesToWrite < 2) return 0;
     maxBytesToWrite -= 2; // Null terminator.
     var startPtr = outPtr;
@@ -439,9 +437,7 @@ mergeInto(LibraryManager.library, {
     assert(typeof maxBytesToWrite == 'number', 'stringToUTF32(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
 #endif
     // Backwards compatibility: if max bytes is not specified, assume unsafe unbounded write is allowed.
-    if (maxBytesToWrite === undefined) {
-      maxBytesToWrite = 0x7FFFFFFF;
-    }
+    maxBytesToWrite ??= 0x7FFFFFFF;
     if (maxBytesToWrite < 4) return 0;
     var startPtr = outPtr;
     var endPtr = startPtr + maxBytesToWrite - 4;

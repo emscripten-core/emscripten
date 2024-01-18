@@ -78,7 +78,7 @@ POSIX sockets proxying builds on top of the Emscripten WebSockets library, and
 requires multithreading and proxying the application ``main()`` to a pthread.
 
 For an example of how the POSIX Sockets proxy server works in an Emscripten
-client program, see the file ``test/websocket/tcp_echo_client.cpp``.
+client program, see the file ``test/websocket/tcp_echo_client.c``.
 
 XmlHttpRequests and Fetch API
 =============================

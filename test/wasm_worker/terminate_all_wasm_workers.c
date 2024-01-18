@@ -1,4 +1,6 @@
 #include <emscripten.h>
+#include <emscripten/eventloop.h>
+#include <emscripten/console.h>
 #include <emscripten/wasm_worker.h>
 #include <assert.h>
 
@@ -10,7 +12,7 @@ static volatile int worker_started = 0;
 void this_function_should_not_be_called(void *userData)
 {
   worker_started = -1;
-  emscripten_console_error("this_function_should_not_be_called");
+  emscripten_err("this_function_should_not_be_called");
 #ifdef REPORT_RESULT
   REPORT_RESULT(1/*fail*/);
 #endif
@@ -20,7 +22,7 @@ void test_passed(void *userData)
 {
   if (worker_started == 2)
   {
-    emscripten_console_error("test_passed");
+    emscripten_err("test_passed");
 #ifdef REPORT_RESULT
     REPORT_RESULT(0/*ok*/);
 #endif
@@ -30,7 +32,7 @@ void test_passed(void *userData)
 void worker_main()
 {
   ++worker_started;
-  emscripten_console_error("Hello from wasm worker!");
+  emscripten_err("Hello from wasm worker!");
   // Schedule a function to be called, that should never happen, since the Worker
   // dies before that.
   emscripten_set_timeout(this_function_should_not_be_called, 2000, 0);
@@ -50,7 +52,7 @@ int should_throw(void(*func)(emscripten_wasm_worker_t worker), emscripten_wasm_w
     }
     console.error('Function was expected to throw, but did not!');
     return 0;
-  }, (int)func, worker);
+  }, func, worker);
   return threw;
 }
 

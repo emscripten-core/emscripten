@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 
 #include <pthread.h>
-#include <emscripten/em_asm.h>
+#include <emscripten/console.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,14 +13,14 @@ volatile int result = 0;
 
 static void *thread2_start(void *arg)
 {
-  EM_ASM(out('thread2_start!'));
+  emscripten_out("thread2_start!");
   ++result;
   return NULL;
 }
 
 static void *thread1_start(void *arg)
 {
-  EM_ASM(out('thread1_start!'));
+  emscripten_out("thread1_start!");
   pthread_t thr;
   int rtn = pthread_create(&thr, NULL, thread2_start, NULL);
 #ifdef SMALL_POOL

@@ -4,13 +4,13 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $WORKERFS__deps: ['$FS'],
   $WORKERFS: {
     DIR_MODE: {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */,
     FILE_MODE: {{{ cDefs.S_IFREG }}} | 511 /* 0777 */,
     reader: null,
-    mount (mount) {
+    mount(mount) {
       assert(ENVIRONMENT_IS_WORKER);
       if (!WORKERFS.reader) WORKERFS.reader = new FileReaderSync();
       var root = WORKERFS.createNode(null, '/', WORKERFS.DIR_MODE, 0);
@@ -28,9 +28,7 @@ mergeInto(LibraryManager.library, {
           // are just their corresponding parts within their given path,
           // rather than incremental aggregates which include their parent's
           // directories.
-          if (!createdParents[curr]) {
-            createdParents[curr] = WORKERFS.createNode(parent, parts[i], WORKERFS.DIR_MODE, 0);
-          }
+          createdParents[curr] ||= WORKERFS.createNode(parent, parts[i], WORKERFS.DIR_MODE, 0);
           parent = createdParents[curr];
         }
         return parent;
@@ -54,7 +52,7 @@ mergeInto(LibraryManager.library, {
       });
       return root;
     },
-    createNode (parent, name, mode, dev, contents, mtime) {
+    createNode(parent, name, mode, dev, contents, mtime) {
       var node = FS.createNode(parent, name, mode);
       node.mode = mode;
       node.node_ops = WORKERFS.node_ops;
@@ -116,10 +114,7 @@ mergeInto(LibraryManager.library, {
       },
       readdir(node) {
         var entries = ['.', '..'];
-        for (var key in node.contents) {
-          if (!node.contents.hasOwnProperty(key)) {
-            continue;
-          }
+        for (var key of Object.keys(node.contents)) {
           entries.push(key);
         }
         return entries;
@@ -156,3 +151,7 @@ mergeInto(LibraryManager.library, {
     },
   },
 });
+
+if (WASMFS) {
+  error("using -lworkerfs is not currently supported in WasmFS.");
+}

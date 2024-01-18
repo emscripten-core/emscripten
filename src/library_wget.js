@@ -9,16 +9,22 @@ var LibraryWget = {
     wgetRequests: {},
     nextWgetRequestHandle: 0,
 
-    getNextWgetRequestHandle: function() {
+    getNextWgetRequestHandle() {
       var handle = wget.nextWgetRequestHandle;
       wget.nextWgetRequestHandle++;
       return handle;
     },
   },
 
-  emscripten_async_wget__deps: ['$PATH_FS', '$wget', '$callUserCallback', '$Browser', '$withStackSave', '$stringToUTF8OnStack'],
+  emscripten_async_wget__deps: [
+    '$PATH_FS', '$wget', '$callUserCallback', '$Browser',
+    '$withStackSave', '$stringToUTF8OnStack',
+    '$FS_mkdirTree',
+    '$FS_createPreloadedFile',
+    '$FS_unlink',
+  ],
   emscripten_async_wget__proxy: 'sync',
-  emscripten_async_wget: function(url, file, onload, onerror) {
+  emscripten_async_wget: (url, file, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
 
     var _url = UTF8ToString(url);
@@ -27,54 +33,50 @@ var LibraryWget = {
     function doCallback(callback) {
       if (callback) {
         {{{ runtimeKeepalivePop() }}}
-        callUserCallback(function() {
-          withStackSave(function() {
-            {{{ makeDynCall('vi', 'callback') }}}(stringToUTF8OnStack(_file));
+        callUserCallback(() => {
+          withStackSave(() => {
+            {{{ makeDynCall('vp', 'callback') }}}(stringToUTF8OnStack(_file));
           });
         });
       }
     }
     var destinationDirectory = PATH.dirname(_file);
-    FS.createPreloadedFile(
+    FS_createPreloadedFile(
       destinationDirectory,
       PATH.basename(_file),
       _url, true, true,
-      function() {
-        doCallback(onload);
-      },
-      function() {
-        doCallback(onerror);
-      },
+      () => doCallback(onload),
+      () => doCallback(onerror),
       false, // dontCreateFile
       false, // canOwn
-      function() { // preFinish
+      () => { // preFinish
         // if a file exists there, we overwrite it
         try {
-          FS.unlink(_file);
+          FS_unlink(_file);
         } catch (e) {}
         // if the destination directory does not yet exist, create it
-        FS.mkdirTree(destinationDirectory);
+        FS_mkdirTree(destinationDirectory);
       }
     );
   },
 
   emscripten_async_wget_data__deps: ['$asyncLoad', 'malloc', 'free', '$callUserCallback'],
   emscripten_async_wget_data__proxy: 'sync',
-  emscripten_async_wget_data: function(url, arg, onload, onerror) {
+  emscripten_async_wget_data: (url, userdata, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
-    asyncLoad(UTF8ToString(url), function(byteArray) {
+    asyncLoad(UTF8ToString(url), (byteArray) => {
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function() {
+      callUserCallback(() => {
         var buffer = _malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
-        {{{ makeDynCall('viii', 'onload') }}}(arg, buffer, byteArray.length);
+        {{{ makeDynCall('vppi', 'onload') }}}(userdata, buffer, byteArray.length);
         _free(buffer);
       });
-    }, function() {
+    }, () => {
       if (onerror) {
         {{{ runtimeKeepalivePop() }}}
-        callUserCallback(function() {
-          {{{ makeDynCall('vi', 'onerror') }}}(arg);
+        callUserCallback(() => {
+          {{{ makeDynCall('vp', 'onerror') }}}(userdata);
         });
       }
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
@@ -82,7 +84,7 @@ var LibraryWget = {
 
   emscripten_async_wget2__deps: ['$PATH_FS', '$wget', '$withStackSave', '$stringToUTF8OnStack'],
   emscripten_async_wget2__proxy: 'sync',
-  emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
+  emscripten_async_wget2: (url, file, request, param, userdata, onload, onerror, onprogress) => {
     {{{ runtimeKeepalivePush() }}}
 
     var _url = UTF8ToString(url);
@@ -101,7 +103,7 @@ var LibraryWget = {
     var destinationDirectory = PATH.dirname(_file);
 
     // LOAD
-    http.onload = function http_onload(e) {
+    http.onload = (e) => {
       {{{ runtimeKeepalivePop() }}}
       if (http.status >= 200 && http.status < 300) {
         // if a file exists there, we overwrite it
@@ -113,34 +115,34 @@ var LibraryWget = {
 
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(/** @type{ArrayBuffer}*/(http.response)), true, true, false);
         if (onload) {
-          withStackSave(function() {
-            {{{ makeDynCall('viii', 'onload') }}}(handle, arg, stringToUTF8OnStack(_file));
+          withStackSave(() => {
+            {{{ makeDynCall('vipp', 'onload') }}}(handle, userdata, stringToUTF8OnStack(_file));
           });
         }
       } else {
-        if (onerror) {{{ makeDynCall('viii', 'onerror') }}}(handle, arg, http.status);
+        if (onerror) {{{ makeDynCall('vipi', 'onerror') }}}(handle, userdata, http.status);
       }
 
       delete wget.wgetRequests[handle];
     };
 
     // ERROR
-    http.onerror = function http_onerror(e) {
+    http.onerror = (e) => {
       {{{ runtimeKeepalivePop() }}}
-      if (onerror) {{{ makeDynCall('viii', 'onerror') }}}(handle, arg, http.status);
+      if (onerror) {{{ makeDynCall('vipi', 'onerror') }}}(handle, userdata, http.status);
       delete wget.wgetRequests[handle];
     };
 
     // PROGRESS
-    http.onprogress = function http_onprogress(e) {
+    http.onprogress = (e) => {
       if (e.lengthComputable || (e.lengthComputable === undefined && e.total != 0)) {
         var percentComplete = (e.loaded / e.total)*100;
-        if (onprogress) {{{ makeDynCall('viii', 'onprogress') }}}(handle, arg, percentComplete);
+        if (onprogress) {{{ makeDynCall('vipi', 'onprogress') }}}(handle, userdata, percentComplete);
       }
     };
 
     // ABORT
-    http.onabort = function http_onabort(e) {
+    http.onabort = (e) => {
       {{{ runtimeKeepalivePop() }}}
       delete wget.wgetRequests[handle];
     };
@@ -160,7 +162,7 @@ var LibraryWget = {
 
   emscripten_async_wget2_data__deps: ['$wget', 'malloc', 'free'],
   emscripten_async_wget2_data__proxy: 'sync',
-  emscripten_async_wget2_data: function(url, request, param, arg, free, onload, onerror, onprogress) {
+  emscripten_async_wget2_data: (url, request, param, userdata, free, onload, onerror, onprogress) => {
     var _url = UTF8ToString(url);
     var _request = UTF8ToString(request);
     var _param = UTF8ToString(param);
@@ -178,18 +180,18 @@ var LibraryWget = {
           if (http.statusText) {
             statusText = stringToUTF8OnStack(http.statusText);
           }
-          {{{ makeDynCall('viiii', 'onerror') }}}(handle, arg, http.status, statusText);
+          {{{ makeDynCall('vipip', 'onerror') }}}(handle, userdata, http.status, statusText);
         });
       }
     }
 
     // LOAD
-    http.onload = function http_onload(e) {
+    http.onload = (e) => {
       if (http.status >= 200 && http.status < 300 || (http.status === 0 && _url.substr(0,4).toLowerCase() != "http")) {
         var byteArray = new Uint8Array(/** @type{ArrayBuffer} */(http.response));
         var buffer = _malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
-        if (onload) {{{ makeDynCall('viiii', 'onload') }}}(handle, arg, buffer, byteArray.length);
+        if (onload) {{{ makeDynCall('vippi', 'onload') }}}(handle, userdata, buffer, byteArray.length);
         if (free) _free(buffer);
       } else {
         onerrorjs();
@@ -198,18 +200,18 @@ var LibraryWget = {
     };
 
     // ERROR
-    http.onerror = function http_onerror(e) {
+    http.onerror = (e) => {
       onerrorjs();
       delete wget.wgetRequests[handle];
     };
 
     // PROGRESS
-    http.onprogress = function http_onprogress(e) {
-      if (onprogress) {{{ makeDynCall('viiii', 'onprogress') }}}(handle, arg, e.loaded, e.lengthComputable || e.lengthComputable === undefined ? e.total : 0);
+    http.onprogress = (e) => {
+      if (onprogress) {{{ makeDynCall('viiii', 'onprogress') }}}(handle, userdata, e.loaded, e.lengthComputable || e.lengthComputable === undefined ? e.total : 0);
     };
 
     // ABORT
-    http.onabort = function http_onabort(e) {
+    http.onabort = (e) => {
       delete wget.wgetRequests[handle];
     };
 
@@ -228,12 +230,10 @@ var LibraryWget = {
 
   emscripten_async_wget2_abort__deps: ['$wget'],
   emscripten_async_wget2_abort__proxy: 'sync',
-  emscripten_async_wget2_abort: function(handle) {
+  emscripten_async_wget2_abort: (handle) => {
     var http = wget.wgetRequests[handle];
-    if (http) {
-      http.abort();
-    }
+    http?.abort();
   },
 };
 
-mergeInto(LibraryManager.library, LibraryWget);
+addToLibrary(LibraryWget);

@@ -20,7 +20,7 @@
 // object. For convenience, the short name appears here. Note that if you add a
 // new function with an '_', it will not be found.
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $ptrToString: (ptr) => {
 #if ASSERTIONS
     assert(typeof ptr === 'number');
@@ -48,8 +48,8 @@ mergeInto(LibraryManager.library, {
 #if SAFE_HEAP
   // Trivial wrappers around runtime functions that make these symbols available
   // to native code.
-  segfault: () => segfault(),
-  alignfault: () => alignfault(),
+  segfault: '=segfault',
+  alignfault: '=alignfault',
 #endif
 
   // ==========================================================================
@@ -58,7 +58,15 @@ mergeInto(LibraryManager.library, {
 
 #if !MINIMAL_RUNTIME
   $exitJS__docs: '/** @param {boolean|number=} implicit */',
-  $exitJS__deps: ['proc_exit'],
+  $exitJS__deps: [
+    'proc_exit',
+#if ASSERTIONS || EXIT_RUNTIME
+    '$keepRuntimeAlive',
+#endif
+#if PTHREADS_DEBUG
+    '$runtimeKeepaliveCounter',
+#endif
+  ],
   $exitJS: (status, implicit) => {
     EXITSTATUS = status;
 
@@ -73,7 +81,7 @@ mergeInto(LibraryManager.library, {
       assert(!implicit);
 #endif
 #if PTHREADS_DEBUG
-      dbg(`Pthread ${ptrToString(_pthread_self())} called exit(), posting exitOnMainThread.`);
+      dbg(`Pthread ${ptrToString(_pthread_self())} called exit(${status}), posting exitOnMainThread.`);
 #endif
       // When running in a pthread we propagate the exit back to the main thread
       // where it can decide if the whole process should be shut down or not.
@@ -83,7 +91,7 @@ mergeInto(LibraryManager.library, {
       throw 'unwind';
     }
 #if PTHREADS_DEBUG
-    err(`main thread called exit: keepRuntimeAlive=${keepRuntimeAlive()} (counter=${runtimeKeepaliveCounter})`);
+    err(`main thread called exit(${status}): keepRuntimeAlive=${keepRuntimeAlive()} (counter=${runtimeKeepaliveCounter})`);
 #endif // PTHREADS_DEBUG
 #endif // PTHREADS
 
@@ -159,9 +167,9 @@ mergeInto(LibraryManager.library, {
   // it. Returns 1 on success, 0 on error.
   $growMemory: (size) => {
     var b = wasmMemory.buffer;
-    var pages = (size - b.byteLength + 65535) >>> 16;
+    var pages = (size - b.byteLength + {{{ WASM_PAGE_SIZE - 1 }}}) / {{{ WASM_PAGE_SIZE }}};
 #if RUNTIME_DEBUG
-    dbg(`emscripten_resize_heap: ${size} (+${size - b.byteLength} bytes / ${pages} pages)`);
+    dbg(`growMemory: ${size} (+${size - b.byteLength} bytes / ${pages} pages)`);
 #endif
 #if MEMORYPROFILER
     var oldHeapSize = b.byteLength;
@@ -249,7 +257,7 @@ mergeInto(LibraryManager.library, {
     var maxHeapSize = getHeapMax();
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
-      err(`Cannot enlarge memory, asked to go up to ${requestedSize} bytes, but the limit is ${maxHeapSize} bytes!`);
+      err(`Cannot enlarge memory, requested ${requestedSize} bytes, but the limit is ${maxHeapSize} bytes!`);
 #endif
 #if ABORTING_MALLOC
       abortOnCannotGrowMemory(requestedSize);
@@ -283,7 +291,7 @@ mergeInto(LibraryManager.library, {
       var replacement = growMemory(newSize);
 #if ASSERTIONS == 2
       var t1 = _emscripten_get_now();
-      out(`Heap resize call from ${oldSize} to ${newSize} took ${(t1 - t0)} msecs. Success: ${!!replacement}`);
+      dbg(`Heap resize call from ${oldSize} to ${newSize} took ${(t1 - t0)} msecs. Success: ${!!replacement}`);
 #endif
       if (replacement) {
 #if ASSERTIONS && WASM2JS
@@ -320,8 +328,7 @@ mergeInto(LibraryManager.library, {
     updateMemoryViews();
   },
 
-  system__deps: ['$setErrNo'],
-  system: (command) => {
+  _emscripten_system: (command) => {
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
       if (!command) return 1; // shell is available
@@ -360,8 +367,7 @@ mergeInto(LibraryManager.library, {
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/system.html
     // Can't call external programs.
     if (!command) return 0; // no shell available
-    setErrNo({{{ cDefs.ENOSYS }}});
-    return -1;
+    return -{{{ cDefs.ENOSYS }}};
   },
 
   // ==========================================================================
@@ -384,20 +390,9 @@ mergeInto(LibraryManager.library, {
   // the initial values of the environment accessible by getenv.
   $ENV: {},
 
-  getloadavg: (loadavg, nelem) => {
-    // int getloadavg(double loadavg[], int nelem);
-    // http://linux.die.net/man/3/getloadavg
-    var limit = Math.min(nelem, 3);
-    var doubleSize = {{{ getNativeTypeSize('double') }}};
-    for (var i = 0; i < limit; i++) {
-      {{{ makeSetValue('loadavg', 'i * doubleSize', '0.1', 'double') }}};
-    }
-    return limit;
-  },
-
   // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm
-  // variant, so we should never emit emscripten_memcpy_big() in the build.
-  // In STANDALONE_WASM we avoid the emscripten_memcpy_big dependency so keep
+  // variant, so we should never emit emscripten_memcpy_js() in the build.
+  // In STANDALONE_WASM we avoid the emscripten_memcpy_js dependency so keep
   // the wasm file standalone.
   // In BULK_MEMORY mode we include native versions of these functions based
   // on memory.fill and memory.copy.
@@ -405,7 +400,7 @@ mergeInto(LibraryManager.library, {
   // so we cannot override parts of it, and therefore cannot use libc_optz.
 #if (SHRINK_LEVEL < 2 || LINKABLE || process.env.EMCC_FORCE_STDLIBS) && !STANDALONE_WASM && !BULK_MEMORY
 
-#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101
+#if MIN_CHROME_VERSION < 45 || MIN_FIREFOX_VERSION < 34 || MIN_SAFARI_VERSION < 100101
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/copyWithin lists browsers that support TypedArray.prototype.copyWithin, but it
   // has outdated information for Safari, saying it would not support it.
   // https://github.com/WebKit/webkit/commit/24a800eea4d82d6d595cdfec69d0f68e733b5c52#diff-c484911d8df319ba75fce0d8e7296333R1 suggests support was added on Aug 28, 2015.
@@ -418,11 +413,11 @@ mergeInto(LibraryManager.library, {
   //   AppleWebKit/605.1.15 Safari/604.1 Version/13.0.4 iPhone OS 13_3 on iPhone 6s with iOS 13.3
   //   AppleWebKit/605.1.15 Version/13.0.3 Intel Mac OS X 10_15_1 on Safari 13.0.3 (15608.3.10.1.4) on macOS Catalina 10.15.1
   // Hence the support status of .copyWithin() for Safari version range [10.0.0, 10.1.0] is unknown.
-  emscripten_memcpy_big: `= Uint8Array.prototype.copyWithin
+  emscripten_memcpy_js: `= Uint8Array.prototype.copyWithin
     ? (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num)
     : (dest, src, num) => HEAPU8.set(HEAPU8.subarray(src, src+num), dest)`,
 #else
-  emscripten_memcpy_big: (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num),
+  emscripten_memcpy_js: (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num),
 #endif
 
 #endif
@@ -480,7 +475,12 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getMonth()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getYear()', 'i32') }}};
 
-    return date.getTime() / 1000;
+    var timeMs = date.getTime();
+    if (isNaN(timeMs)) {
+      return -1;
+    }
+    // Return time in microseconds
+    return timeMs / 1000;
   },
 
   _gmtime_js__i53abi: true,
@@ -531,7 +531,7 @@ mergeInto(LibraryManager.library, {
 
     var yday = ydayFromDate(date)|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '-(date.getTimezoneOffset() * 60)', 'i32') }}};
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '-(date.getTimezoneOffset() * 60)', LONG_TYPE) }}};
 
     // Attention: DST is in December in South, and some regions don't have DST at all.
     var start = new Date(date.getFullYear(), 0, 1);
@@ -592,6 +592,7 @@ mergeInto(LibraryManager.library, {
 #endif
 
   $withStackSave__internal: true,
+  $withStackSave__deps: ['stackSave', 'stackRestore'],
   $withStackSave: (f) => {
     var stack = stackSave();
     var ret = f();
@@ -646,9 +647,7 @@ mergeInto(LibraryManager.library, {
   $MONTH_DAYS_REGULAR_CUMULATIVE: [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334],
   $MONTH_DAYS_LEAP_CUMULATIVE: [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335],
 
-  $isLeapYear: (year) => {
-      return year%4 === 0 && (year%100 !== 0 || year%400 === 0);
-  },
+  $isLeapYear: (year) => year%4 === 0 && (year%100 !== 0 || year%400 === 0),
 
   $ydayFromDate__deps: ['$isLeapYear', '$MONTH_DAYS_LEAP_CUMULATIVE', '$MONTH_DAYS_REGULAR_CUMULATIVE'],
   $ydayFromDate: (date) => {
@@ -704,7 +703,7 @@ mergeInto(LibraryManager.library, {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
 
-    var tm_zone = {{{ makeGetValue('tm', C_STRUCTS.tm.tm_zone, 'i32') }}};
+    var tm_zone = {{{ makeGetValue('tm', C_STRUCTS.tm.tm_zone, '*') }}};
 
     var date = {
       tm_sec: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_sec, 'i32') }}},
@@ -716,9 +715,10 @@ mergeInto(LibraryManager.library, {
       tm_wday: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_wday, 'i32') }}},
       tm_yday: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_yday, 'i32') }}},
       tm_isdst: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_isdst, 'i32') }}},
-      tm_gmtoff: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_gmtoff, 'i32') }}},
+      tm_gmtoff: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_gmtoff, LONG_TYPE) }}},
       tm_zone: tm_zone ? UTF8ToString(tm_zone) : ''
     };
+    {{{ from64('date.tm_gmtoff') }}}
 
     var pattern = UTF8ToString(format);
 
@@ -849,7 +849,7 @@ mergeInto(LibraryManager.library, {
 
         return getWeekBasedYear(date).toString().substring(2);
       },
-      '%G': (date) => getWeekBasedYear(date),
+      '%G': getWeekBasedYear,
       '%H': (date) => leadingNulls(date.tm_hour, 2),
       '%I': (date) => {
         var twelveHour = date.tm_hour;
@@ -970,64 +970,64 @@ mergeInto(LibraryManager.library, {
 
     // reduce number of matchers
     var EQUIVALENT_MATCHERS = {
-      '%A':  '%a',
-      '%B':  '%b',
-      '%c':  '%a %b %d %H:%M:%S %Y',
-      '%D':  '%m\\/%d\\/%y',
-      '%e':  '%d',
-      '%F':  '%Y-%m-%d',
-      '%h':  '%b',
-      '%R':  '%H\\:%M',
-      '%r':  '%I\\:%M\\:%S\\s%p',
-      '%T':  '%H\\:%M\\:%S',
-      '%x':  '%m\\/%d\\/(?:%y|%Y)',
-      '%X':  '%H\\:%M\\:%S'
+      'A':  '%a',
+      'B':  '%b',
+      'c':  '%a %b %d %H:%M:%S %Y',
+      'D':  '%m\\/%d\\/%y',
+      'e':  '%d',
+      'F':  '%Y-%m-%d',
+      'h':  '%b',
+      'R':  '%H\\:%M',
+      'r':  '%I\\:%M\\:%S\\s%p',
+      'T':  '%H\\:%M\\:%S',
+      'x':  '%m\\/%d\\/(?:%y|%Y)',
+      'X':  '%H\\:%M\\:%S'
     };
-    for (var matcher in EQUIVALENT_MATCHERS) {
-      pattern = pattern.replace(matcher, EQUIVALENT_MATCHERS[matcher]);
-    }
-
     // TODO: take care of locale
 
     var DATE_PATTERNS = {
-      /* weeday name */     '%a': '(?:Sun(?:day)?)|(?:Mon(?:day)?)|(?:Tue(?:sday)?)|(?:Wed(?:nesday)?)|(?:Thu(?:rsday)?)|(?:Fri(?:day)?)|(?:Sat(?:urday)?)',
-      /* month name */      '%b': '(?:Jan(?:uary)?)|(?:Feb(?:ruary)?)|(?:Mar(?:ch)?)|(?:Apr(?:il)?)|May|(?:Jun(?:e)?)|(?:Jul(?:y)?)|(?:Aug(?:ust)?)|(?:Sep(?:tember)?)|(?:Oct(?:ober)?)|(?:Nov(?:ember)?)|(?:Dec(?:ember)?)',
-      /* century */         '%C': '\\d\\d',
-      /* day of month */    '%d': '0[1-9]|[1-9](?!\\d)|1\\d|2\\d|30|31',
-      /* hour (24hr) */     '%H': '\\d(?!\\d)|[0,1]\\d|20|21|22|23',
-      /* hour (12hr) */     '%I': '\\d(?!\\d)|0\\d|10|11|12',
-      /* day of year */     '%j': '00[1-9]|0?[1-9](?!\\d)|0?[1-9]\\d(?!\\d)|[1,2]\\d\\d|3[0-6]\\d',
-      /* month */           '%m': '0[1-9]|[1-9](?!\\d)|10|11|12',
-      /* minutes */         '%M': '0\\d|\\d(?!\\d)|[1-5]\\d',
-      /* whitespace */      '%n': '\\s',
-      /* AM/PM */           '%p': 'AM|am|PM|pm|A\\.M\\.|a\\.m\\.|P\\.M\\.|p\\.m\\.',
-      /* seconds */         '%S': '0\\d|\\d(?!\\d)|[1-5]\\d|60',
-      /* week number */     '%U': '0\\d|\\d(?!\\d)|[1-4]\\d|50|51|52|53',
-      /* week number */     '%W': '0\\d|\\d(?!\\d)|[1-4]\\d|50|51|52|53',
-      /* weekday number */  '%w': '[0-6]',
-      /* 2-digit year */    '%y': '\\d\\d',
-      /* 4-digit year */    '%Y': '\\d\\d\\d\\d',
-      /* % */               '%%': '%',
-      /* whitespace */      '%t': '\\s',
+      /* weekday name */    'a': '(?:Sun(?:day)?)|(?:Mon(?:day)?)|(?:Tue(?:sday)?)|(?:Wed(?:nesday)?)|(?:Thu(?:rsday)?)|(?:Fri(?:day)?)|(?:Sat(?:urday)?)',
+      /* month name */      'b': '(?:Jan(?:uary)?)|(?:Feb(?:ruary)?)|(?:Mar(?:ch)?)|(?:Apr(?:il)?)|May|(?:Jun(?:e)?)|(?:Jul(?:y)?)|(?:Aug(?:ust)?)|(?:Sep(?:tember)?)|(?:Oct(?:ober)?)|(?:Nov(?:ember)?)|(?:Dec(?:ember)?)',
+      /* century */         'C': '\\d\\d',
+      /* day of month */    'd': '0[1-9]|[1-9](?!\\d)|1\\d|2\\d|30|31',
+      /* hour (24hr) */     'H': '\\d(?!\\d)|[0,1]\\d|20|21|22|23',
+      /* hour (12hr) */     'I': '\\d(?!\\d)|0\\d|10|11|12',
+      /* day of year */     'j': '00[1-9]|0?[1-9](?!\\d)|0?[1-9]\\d(?!\\d)|[1,2]\\d\\d|3[0-6]\\d',
+      /* month */           'm': '0[1-9]|[1-9](?!\\d)|10|11|12',
+      /* minutes */         'M': '0\\d|\\d(?!\\d)|[1-5]\\d',
+      /* whitespace */      'n': ' ',
+      /* AM/PM */           'p': 'AM|am|PM|pm|A\\.M\\.|a\\.m\\.|P\\.M\\.|p\\.m\\.',
+      /* seconds */         'S': '0\\d|\\d(?!\\d)|[1-5]\\d|60',
+      /* week number */     'U': '0\\d|\\d(?!\\d)|[1-4]\\d|50|51|52|53',
+      /* week number */     'W': '0\\d|\\d(?!\\d)|[1-4]\\d|50|51|52|53',
+      /* weekday number */  'w': '[0-6]',
+      /* 2-digit year */    'y': '\\d\\d',
+      /* 4-digit year */    'Y': '\\d\\d\\d\\d',
+      /* whitespace */      't': ' ',
+      /* time zone */       'z': 'Z|(?:[\\+\\-]\\d\\d:?(?:\\d\\d)?)'
     };
 
     var MONTH_NUMBERS = {JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11};
     var DAY_NUMBERS_SUN_FIRST = {SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6};
     var DAY_NUMBERS_MON_FIRST = {MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6};
 
-    for (var datePattern in DATE_PATTERNS) {
-      pattern = pattern.replace(datePattern, '('+datePattern+DATE_PATTERNS[datePattern]+')');
-    }
-
-    // take care of capturing groups
     var capture = [];
-    for (var i=pattern.indexOf('%'); i>=0; i=pattern.indexOf('%')) {
-      capture.push(pattern[i+1]);
-      pattern = pattern.replace(new RegExp('\\%'+pattern[i+1], 'g'), '');
-    }
+    var pattern_out = pattern
+      .replace(/%(.)/g, (m, c) => EQUIVALENT_MATCHERS[c] || m)
+      .replace(/%(.)/g, (_, c) => {
+        let pat = DATE_PATTERNS[c];
+        if (pat){
+          capture.push(c);
+          return `(${pat})`;
+        } else {
+          return c;
+        }
+      })
+      .replace( // any number of space or tab characters match zero or more spaces
+        /\s+/g,'\\s*'
+      );
 
-    var matches = new RegExp('^'+pattern, "i").exec(UTF8ToString(buf))
-    // out(UTF8ToString(buf)+ ' is matched by '+((new RegExp('^'+pattern)).source)+' into: '+JSON.stringify(matches));
+    var matches = new RegExp('^'+pattern_out, "i").exec(UTF8ToString(buf))
 
     function initDate() {
       function fixup(value, min, max) {
@@ -1039,7 +1039,8 @@ mergeInto(LibraryManager.library, {
         day: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_mday, 'i32') }}}, 1, 31),
         hour: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_hour, 'i32') }}}, 0, 23),
         min: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_min, 'i32') }}}, 0, 59),
-        sec: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_sec, 'i32') }}}, 0, 59)
+        sec: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_sec, 'i32') }}}, 0, 59),
+        gmtoff: 0
       };
     };
 
@@ -1166,6 +1167,20 @@ mergeInto(LibraryManager.library, {
         }
       }
 
+      // time zone
+      if ((value = getMatch('z'))) {
+        // GMT offset as either 'Z' or +-HH:MM or +-HH or +-HHMM
+        if (value.toLowerCase() === 'z'){
+          date.gmtoff = 0;
+        } else {          
+          var match = value.match(/^((?:\-|\+)\d\d):?(\d\d)?/);
+          date.gmtoff = match[1] * 3600;
+          if (match[2]) {
+            date.gmtoff += date.gmtoff >0 ? match[2] * 60 : -match[2] * 60
+          }
+        }
+      }
+
       /*
       tm_sec  int seconds after the minute  0-61*
       tm_min  int minutes after the hour  0-59
@@ -1176,6 +1191,7 @@ mergeInto(LibraryManager.library, {
       tm_wday int days since Sunday 0-6
       tm_yday int days since January 1  0-365
       tm_isdst  int Daylight Saving Time flag
+      tm_gmtoff long offset from GMT (seconds)
       */
 
       var fullDate = new Date(date.year, date.month, date.day, date.hour, date.min, date.sec, 0);
@@ -1188,7 +1204,8 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_wday, 'fullDate.getDay()', 'i32') }}};
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_yday, 'arraySum(isLeapYear(fullDate.getFullYear()) ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, fullDate.getMonth()-1)+fullDate.getDate()-1', 'i32') }}};
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}};
-
+      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_gmtoff, 'date.gmtoff', LONG_TYPE) }}};
+ 
       // we need to convert the matched sequence into an integer array to take care of UTF-8 characters > 0x7F
       // TODO: not sure that intArrayFromString handles all unicode characters correctly
       return buf+intArrayFromString(matches[0]).length-1;
@@ -1255,7 +1272,9 @@ mergeInto(LibraryManager.library, {
   // errno.h
   // ==========================================================================
 
-  $ERRNO_CODES__postset: `ERRNO_CODES = {
+  // We use a string literal here to avoid the string quotes on the object
+  // keys being removed when processed by jsifier.
+  $ERRNO_CODES: `{
     'EPERM': {{{ cDefs.EPERM }}},
     'ENOENT': {{{ cDefs.ENOENT }}},
     'ESRCH': {{{ cDefs.ESRCH }}},
@@ -1377,8 +1396,7 @@ mergeInto(LibraryManager.library, {
     'ENOTRECOVERABLE': {{{ cDefs.ENOTRECOVERABLE }}},
     'EOWNERDEAD': {{{ cDefs.EOWNERDEAD }}},
     'ESTRPIPE': {{{ cDefs.ESTRPIPE }}},
-  };`,
-  $ERRNO_CODES: {},
+  }`,
   $ERRNO_MESSAGES: {
     0: 'Success',
     {{{ cDefs.EPERM }}}: 'Not super-user',
@@ -1502,20 +1520,6 @@ mergeInto(LibraryManager.library, {
     {{{ cDefs.EOWNERDEAD }}}: 'Previous owner died',
     {{{ cDefs.ESTRPIPE }}}: 'Streams pipe error',
   },
-#if SUPPORT_ERRNO
-  $setErrNo__deps: ['__errno_location'],
-  $setErrNo: (value) => {
-    {{{makeSetValue("___errno_location()", 0, 'value', 'i32') }}};
-    return value;
-  },
-#else
-  $setErrNo: (value) => {
-#if ASSERTIONS
-    err('failed to set errno from JS');
-#endif
-    return 0;
-  },
-#endif
 
 #if PROXY_POSIX_SOCKETS == 0
   // ==========================================================================
@@ -1766,7 +1770,7 @@ mergeInto(LibraryManager.library, {
       names: {}
     },
 
-    lookup_name: (name) => {
+    lookup_name(name) {
       // If the name is already a valid ipv4 / ipv6 address, don't generate a fake one.
       var res = inetPton4(name);
       if (res !== null) {
@@ -1795,7 +1799,7 @@ mergeInto(LibraryManager.library, {
       return addr;
     },
 
-    lookup_addr: (addr) => {
+    lookup_addr(addr) {
       if (DNS.address_map.names[addr]) {
         return DNS.address_map.names[addr];
       }
@@ -1804,59 +1808,11 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  // note: lots of leaking here!
-  gethostbyaddr__deps: ['$DNS', '$getHostByName', '$inetNtop4', '$setErrNo'],
-  gethostbyaddr__proxy: 'sync',
-  gethostbyaddr: (addr, addrlen, type) => {
-    if (type !== {{{ cDefs.AF_INET }}}) {
-      setErrNo({{{ cDefs.EAFNOSUPPORT }}});
-      // TODO: set h_errno
-      return null;
-    }
-    addr = {{{ makeGetValue('addr', '0', 'i32') }}}; // addr is in_addr
-    var host = inetNtop4(addr);
-    var lookup = DNS.lookup_addr(host);
-    if (lookup) {
-      host = lookup;
-    }
-    return getHostByName(host);
-  },
-
-  gethostbyname__deps: ['$getHostByName'],
-  gethostbyname__proxy: 'sync',
-  gethostbyname: (name) => {
-    return getHostByName(UTF8ToString(name));
-  },
-
-  $getHostByName__deps: ['malloc', '$stringToNewUTF8', '$DNS', '$inetPton4'],
-  $getHostByName: (name) => {
-    // generate hostent
-    var ret = _malloc({{{ C_STRUCTS.hostent.__size__ }}}); // XXX possibly leaked, as are others here
-    var nameBuf = stringToNewUTF8(name);
-    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_name, 'nameBuf', POINTER_TYPE) }}};
-    var aliasesBuf = _malloc(4);
-    {{{ makeSetValue('aliasesBuf', '0', '0', POINTER_TYPE) }}};
-    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_aliases, 'aliasesBuf', 'i8**') }}};
-    var afinet = {{{ cDefs.AF_INET }}};
-    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_addrtype, 'afinet', 'i32') }}};
-    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_length, '4', 'i32') }}};
-    var addrListBuf = _malloc(12);
-    {{{ makeSetValue('addrListBuf', '0', 'addrListBuf+8', POINTER_TYPE) }}};
-    {{{ makeSetValue('addrListBuf', '4', '0', POINTER_TYPE) }}};
-    {{{ makeSetValue('addrListBuf', '8', 'inetPton4(DNS.lookup_name(name))', 'i32') }}};
-    {{{ makeSetValue('ret', C_STRUCTS.hostent.h_addr_list, 'addrListBuf', 'i8**') }}};
-    return ret;
-  },
-
-  gethostbyname_r__deps: ['gethostbyname', 'memcpy', 'free'],
-  gethostbyname_r__proxy: 'sync',
-  gethostbyname_r: (name, ret, buf, buflen, out, err) => {
-    var data = _gethostbyname(name);
-    _memcpy(ret, data, {{{ C_STRUCTS.hostent.__size__ }}});
-    _free(data);
-    {{{ makeSetValue('err', '0', '0', 'i32') }}};
-    {{{ makeSetValue('out', '0', 'ret', '*') }}};
-    return 0;
+  _emscripten_lookup_name__deps: ['$UTF8ToString', '$DNS', '$inetPton4'],
+  _emscripten_lookup_name: (name) => {
+    // uint32_t _emscripten_lookup_name(const char *name);
+    var nameString = UTF8ToString(name);
+    return inetPton4(DNS.lookup_name(nameString));
   },
 
   getaddrinfo__deps: ['$Sockets', '$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr', 'malloc', 'htonl'],
@@ -2166,11 +2122,10 @@ mergeInto(LibraryManager.library, {
   // nonblocking
   // ==========================================================================
 #if SOCKET_WEBRTC
-  $Sockets__deps: ['$setErrNo',
+  $Sockets__deps: [
     () => 'var SocketIO = ' + read('../third_party/socket.io.js') + ';\n',
-    () => 'var Peer = ' + read('../third_party/wrtcp.js') + ';\n'],
-#else
-  $Sockets__deps: ['$setErrNo'],
+    () => 'var Peer = ' + read('../third_party/wrtcp.js') + ';\n'
+  ],
 #endif
   $Sockets: {
     BUFFER_SIZE: 10*1024, // initial size
@@ -2340,7 +2295,7 @@ mergeInto(LibraryManager.library, {
     // respective time origins.
     _emscripten_get_now = () => performance.timeOrigin + {{{ getPerformanceNow() }}}();
 #else
-#if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 || AUDIO_WORKLET // https://caniuse.com/#feat=high-resolution-time
+#if MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 || AUDIO_WORKLET // https://caniuse.com/#feat=high-resolution-time
     // AudioWorkletGlobalScope does not have performance.now()
     // (https://github.com/WebAudio/web-audio-api/issues/2527), so if building
     // with
@@ -2369,7 +2324,7 @@ mergeInto(LibraryManager.library, {
       return 1; // nanoseconds
     }
 #endif
-#if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
+#if MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
     if (typeof performance == 'object' && performance && typeof performance['now'] == 'function') {
       return 1000; // microseconds (1/1000 of a millisecond)
     }
@@ -2383,7 +2338,7 @@ mergeInto(LibraryManager.library, {
   // Represents whether emscripten_get_now is guaranteed monotonic; the Date.now
   // implementation is not :(
   $nowIsMonotonic__internal: true,
-#if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
+#if MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
   $nowIsMonotonic: `
      ((typeof performance == 'object' && performance && typeof performance['now'] == 'function')
 #if ENVIRONMENT_MAY_BE_NODE
@@ -2391,8 +2346,8 @@ mergeInto(LibraryManager.library, {
 #endif
     );`,
 #else
-  // Modern environment where performance.now() is supported: (rely on minifier to return true unconditionally from this function)
-  $nowIsMonotonic: 'true;',
+  // Modern environment where performance.now() is supported
+  $nowIsMonotonic: 1,
 #endif
 
   _emscripten_get_now_is_monotonic__internal: true,
@@ -2400,7 +2355,7 @@ mergeInto(LibraryManager.library, {
   _emscripten_get_now_is_monotonic: () => nowIsMonotonic,
 
   $warnOnce: (text) => {
-    if (!warnOnce.shown) warnOnce.shown = {};
+    warnOnce.shown ||= {};
     if (!warnOnce.shown[text]) {
       warnOnce.shown[text] = 1;
 #if ENVIRONMENT_MAY_BE_NODE
@@ -2480,7 +2435,7 @@ mergeInto(LibraryManager.library, {
 
       if (flags & {{{ cDefs.EM_LOG_C_STACK }}}) {
         var orig = emscripten_source_map.originalPositionFor({line: lineno, column: column});
-        haveSourceMap = (orig && orig.source);
+        haveSourceMap = orig?.source;
         if (haveSourceMap) {
           if (flags & {{{ cDefs.EM_LOG_NO_PATHS }}}) {
             orig.source = orig.source.substring(orig.source.replace(/\\/g, "/").lastIndexOf('/')+1);
@@ -2736,6 +2691,7 @@ mergeInto(LibraryManager.library, {
   emscripten_pc_get_function: (pc) => {
 #if !USE_OFFSET_CONVERTER
     abort('Cannot use emscripten_pc_get_function without -sUSE_OFFSET_CONVERTER');
+    return 0;
 #else
     var name;
     if (pc & 0x80000000) {
@@ -2879,40 +2835,34 @@ mergeInto(LibraryManager.library, {
     var ch;
     // Most arguments are i32s, so shift the buffer pointer so it is a plain
     // index into HEAP32.
-    buf >>= 2;
     while (ch = HEAPU8[sigPtr++]) {
 #if ASSERTIONS
       var chr = String.fromCharCode(ch);
-      var validChars = ['d', 'f', 'i'];
+      var validChars = ['d', 'f', 'i', 'p'];
 #if WASM_BIGINT
       // In WASM_BIGINT mode we support passing i64 values as bigint.
       validChars.push('j');
 #endif
-#if MEMORY64
-      // In MEMORY64 mode we also support passing i64 pointer types which
-      // get automatically converted to int53/Double.
-      validChars.push('p');
-#endif
       assert(validChars.includes(chr), `Invalid character ${ch}("${chr}") in readEmAsmArgs! Use only [${validChars}], and do not specify "v" for void return argument.`);
 #endif
-      // Floats are always passed as doubles, and doubles and int64s take up 8
-      // bytes (two 32-bit slots) in memory, align reads to these:
-      buf += (ch != 105/*i*/) & buf;
-#if MEMORY64
-      // Special case for pointers under wasm64 which we read as int53 Numbers.
-      if (ch == 112/*p*/) {
-        readEmAsmArgsArray.push(readI53FromI64(buf++ << 2));
-      } else
+      // Floats are always passed as doubles, so all types except for 'i'
+      // are 8 bytes and require alignment.
+      var wide = (ch != {{{ charCode('i') }}});
+#if !MEMORY64
+      wide &= (ch != {{{ charCode('p') }}});
 #endif
+      buf += wide && (buf % 8) ? 4 : 0;
       readEmAsmArgsArray.push(
-        ch == 105/*i*/ ? HEAP32[buf] :
+        // Special case for pointers under wasm64 or CAN_ADDRESS_2GB mode.
+        ch == {{{ charCode('p') }}} ? {{{ makeGetValue('buf', 0, '*') }}} :
 #if WASM_BIGINT
-       (ch == 106/*j*/ ? HEAP64 : HEAPF64)[buf++ >> 1]
-#else
-       HEAPF64[buf++ >> 1]
+        ch == {{{ charCode('j') }}} ? {{{ makeGetValue('buf', 0, 'i64') }}} :
 #endif
+        ch == {{{ charCode('i') }}} ?
+          {{{ makeGetValue('buf', 0, 'i32') }}} :
+          {{{ makeGetValue('buf', 0, 'double') }}}
       );
-      ++buf;
+      buf += wide ? 8 : 4;
     }
     return readEmAsmArgsArray;
   },
@@ -2922,7 +2872,7 @@ mergeInto(LibraryManager.library, {
   $runEmAsmFunction: (code, sigPtr, argbuf) => {
     var args = readEmAsmArgs(sigPtr, argbuf);
 #if ASSERTIONS
-    if (!ASM_CONSTS.hasOwnProperty(code)) abort(`No EM_ASM constant found at address ${code}`);
+    assert(ASM_CONSTS.hasOwnProperty(code), `No EM_ASM constant found at address ${code}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
 #endif
     return ASM_CONSTS[code].apply(null, args);
   },
@@ -2965,12 +2915,17 @@ mergeInto(LibraryManager.library, {
     }
 #endif
 #if ASSERTIONS
-    if (!ASM_CONSTS.hasOwnProperty(code)) abort(`No EM_ASM constant found at address ${code}`);
+    assert(ASM_CONSTS.hasOwnProperty(code), `No EM_ASM constant found at address ${code}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
 #endif
     return ASM_CONSTS[code].apply(null, args);
   },
   emscripten_asm_const_int_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
   emscripten_asm_const_int_sync_on_main_thread: (code, sigPtr, argbuf) => {
+    return runMainThreadEmAsm(code, sigPtr, argbuf, 1);
+  },
+
+  emscripten_asm_const_ptr_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
+  emscripten_asm_const_ptr_sync_on_main_thread: (code, sigPtr, argbuf) => {
     return runMainThreadEmAsm(code, sigPtr, argbuf, 1);
   },
 
@@ -2982,8 +2937,8 @@ mergeInto(LibraryManager.library, {
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
-  $exportAsmFunctions__deps: ['$asmjsMangle'],
-  $exportAsmFunctions: (asm) => {
+  $exportWasmSymbols__deps: ['$asmjsMangle'],
+  $exportWasmSymbols: (wasmExports) => {
 #if ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_WEB
     var global_object = (typeof process != "undefined" ? global : this);
 #elif ENVIRONMENT_MAY_BE_NODE
@@ -2992,12 +2947,12 @@ mergeInto(LibraryManager.library, {
     var global_object = this;
 #endif
 
-    for (var __exportedFunc in asm) {
+    for (var __exportedFunc in wasmExports) {
       var jsname = asmjsMangle(__exportedFunc);
 #if MINIMAL_RUNTIME
-      global_object[jsname] = asm[__exportedFunc];
+      global_object[jsname] = wasmExports[__exportedFunc];
 #else
-      global_object[jsname] = Module[jsname] = asm[__exportedFunc];
+      global_object[jsname] = Module[jsname] = wasmExports[__exportedFunc];
 #endif
     }
 
@@ -3014,7 +2969,7 @@ mergeInto(LibraryManager.library, {
   // Converts a JS string to an integer base-10, with signaling error
   // handling (throws a JS exception on error). E.g. jstoi_s("123abc")
   // throws an exception.
-  $jstoi_s: (str) => Number(str),
+  $jstoi_s: 'Number',
 
 #if LINK_AS_CXX
   // libunwind
@@ -3029,9 +2984,9 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  _Unwind_GetIPInfo: () => abort('Unwind_GetIPInfo'),
+  _Unwind_GetIPInfo: (context, ipBefore) => abort('Unwind_GetIPInfo'),
 
-  _Unwind_FindEnclosingFunction: () => 0, // we cannot succeed
+  _Unwind_FindEnclosingFunction: (ip) => 0, // we cannot succeed
 
   _Unwind_RaiseException__deps: ['__cxa_throw'],
   _Unwind_RaiseException: (ex) => {
@@ -3072,7 +3027,7 @@ mergeInto(LibraryManager.library, {
   },
 
   $listenOnce: (object, event, func) => {
-#if MIN_CHROME_VERSION < 55 || MIN_EDGE_VERSION < 18 || MIN_FIREFOX_VERSION < 50 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED // https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
+#if MIN_CHROME_VERSION < 55 || MIN_FIREFOX_VERSION < 50 // https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
     object.addEventListener(event, function handler() {
       func();
       object.removeEventListener(event, handler);
@@ -3111,6 +3066,9 @@ mergeInto(LibraryManager.library, {
   $dynCallLegacy__deps: ['$createDyncallWrapper'],
 #endif
   $dynCallLegacy: (sig, ptr, args) => {
+#if MEMORY64
+    sig = sig.replace(/p/g, 'j')
+#endif
 #if ASSERTIONS
 #if MINIMAL_RUNTIME
     assert(typeof dynCalls != 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall linker flag to include it!');
@@ -3118,7 +3076,7 @@ mergeInto(LibraryManager.library, {
 #else
     assert(('dynCall_' + sig) in Module, `bad function pointer type - dynCall function not found for sig '${sig}'`);
 #endif
-    if (args && args.length) {
+    if (args?.length) {
 #if WASM_BIGINT
       // j (64-bit integer) is fine, and is implemented as a BigInt. Without
       // legalization, the number of parameters should match (j is not expanded
@@ -3165,8 +3123,16 @@ mergeInto(LibraryManager.library, {
 
   $dynCall__docs: '/** @param {Object=} args */',
   $dynCall: (sig, ptr, args) => {
+#if MEMORY64
+    // With MEMORY64 we have an additional step to convert `p` arguments to
+    // bigint. This is the runtime equivalent of the wrappers we create for wasm
+    // exports in `emscripten.py:create_wasm64_wrappers`.
+    for (var i = 1; i < sig.length; ++i) {
+      if (sig[i] == 'p') args[i-1] = BigInt(args[i-1]);
+    }
+#endif
 #if DYNCALLS
-    return dynCallLegacy(sig, ptr, args);
+    var rtn = dynCallLegacy(sig, ptr, args);
 #else
 #if !WASM_BIGINT
     // Without WASM_BIGINT support we cannot directly call function with i64 as
@@ -3179,21 +3145,12 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
     assert(getWasmTableEntry(ptr), `missing table entry in dynCall: ${ptr}`);
 #endif
-#if MEMORY64
-    // With MEMORY64 we have an additional step to convert `p` arguments to
-    // bigint. This is the runtime equivalent of the wrappers we create for wasm
-    // exports in `emscripten.py:create_wasm64_wrappers`.
-    for (var i = 1; i < sig.length; ++i) {
-      if (sig[i] == 'p') args[i-1] = BigInt(args[i-1]);
-    }
-#endif
     var rtn = getWasmTableEntry(ptr).apply(null, args);
+#endif
 #if MEMORY64
     return sig[0] == 'p' ? Number(rtn) : rtn;
 #else
     return rtn;
-#endif
-
 #endif
   },
 
@@ -3213,7 +3170,7 @@ mergeInto(LibraryManager.library, {
   $wasmTableMirror: [],
 
   $setWasmTableEntry__internal: true,
-  $setWasmTableEntry__deps: ['$wasmTableMirror'],
+  $setWasmTableEntry__deps: ['$wasmTableMirror', '$wasmTable'],
   $setWasmTableEntry: (idx, func) => {
     wasmTable.set(idx, func);
     // With ABORT_ON_WASM_EXCEPTIONS wasmTable.get is overriden to return wrapped
@@ -3223,7 +3180,7 @@ mergeInto(LibraryManager.library, {
   },
 
   $getWasmTableEntry__internal: true,
-  $getWasmTableEntry__deps: ['$wasmTableMirror'],
+  $getWasmTableEntry__deps: ['$wasmTableMirror', '$wasmTable'],
   $getWasmTableEntry: (funcPtr) => {
 #if MEMORY64
     // Function pointers are 64-bit, but wasmTable.get() requires a Number.
@@ -3248,8 +3205,10 @@ mergeInto(LibraryManager.library, {
 
 #else
 
+  $setWasmTableEntry__deps: ['$wasmTable'],
   $setWasmTableEntry: (idx, func) => wasmTable.set(idx, func),
 
+  $getWasmTableEntry__deps: ['$wasmTable'],
   $getWasmTableEntry: (funcPtr) => {
 #if MEMORY64
     // Function pointers are 64-bit, but wasmTable.get() requires a Number.
@@ -3268,9 +3227,22 @@ mergeInto(LibraryManager.library, {
     throw 'unwind';
   },
 
-  emscripten_force_exit__deps: ['exit',
+  _emscripten_runtime_keepalive_clear__proxy: 'sync',
+  _emscripten_runtime_keepalive_clear: () => {
+#if isSymbolNeeded('$noExitRuntime')
+    noExitRuntime = false;
+#endif
+#if !MINIMAL_RUNTIME
+    runtimeKeepaliveCounter = 0;
+#endif
+  },
+
+  emscripten_force_exit__deps: ['exit', '_emscripten_runtime_keepalive_clear',
 #if !EXIT_RUNTIME && ASSERTIONS
     '$warnOnce',
+#endif
+#if !MINIMAL_RUNTIME
+    '$runtimeKeepaliveCounter',
 #endif
   ],
   emscripten_force_exit__proxy: 'sync',
@@ -3281,10 +3253,7 @@ mergeInto(LibraryManager.library, {
 #if !EXIT_RUNTIME && ASSERTIONS
     warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
 #endif
-#if !MINIMAL_RUNTIME
-    noExitRuntime = false;
-    runtimeKeepaliveCounter = 0;
-#endif
+    __emscripten_runtime_keepalive_clear();
     _exit(status);
   },
 
@@ -3377,7 +3346,18 @@ mergeInto(LibraryManager.library, {
 #endif
   },
 
+  $runtimeKeepaliveCounter__internal: true,
+  $runtimeKeepaliveCounter: 0,
+
+  $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
+#if isSymbolNeeded('$noExitRuntime')
+  $keepRuntimeAlive: () => noExitRuntime || runtimeKeepaliveCounter > 0,
+#else
+  $keepRuntimeAlive: () => runtimeKeepaliveCounter > 0,
+#endif
+
   // Callable in pthread without __proxy needed.
+  $runtimeKeepalivePush__deps: ['$runtimeKeepaliveCounter'],
   $runtimeKeepalivePush__sig: 'v',
   $runtimeKeepalivePush: () => {
     runtimeKeepaliveCounter += 1;
@@ -3386,6 +3366,7 @@ mergeInto(LibraryManager.library, {
 #endif
   },
 
+  $runtimeKeepalivePop__deps: ['$runtimeKeepaliveCounter'],
   $runtimeKeepalivePop__sig: 'v',
   $runtimeKeepalivePop: () => {
 #if ASSERTIONS
@@ -3399,9 +3380,7 @@ mergeInto(LibraryManager.library, {
 
   emscripten_runtime_keepalive_push: '$runtimeKeepalivePush',
   emscripten_runtime_keepalive_pop: '$runtimeKeepalivePop',
-  // keepRuntimeAlive is a runtime function rather than a library function,
-  // so we can't use an alias like we do for the two functions above.
-  emscripten_runtime_keepalive_check: () => keepRuntimeAlive(),
+  emscripten_runtime_keepalive_check: '$keepRuntimeAlive',
 
   // Used to call user callbacks from the embedder / event loop.  For example
   // setTimeout or any other kind of event handler that calls into user case
@@ -3430,9 +3409,12 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  $maybeExit__deps: ['exit', '$handleException',
+  $maybeExit__deps: ['exit', '$handleException', '$keepRuntimeAlive',
 #if PTHREADS
     '_emscripten_thread_exit',
+#endif
+#if RUNTIME_DEBUG
+    '$runtimeKeepaliveCounter',
 #endif
   ],
   $maybeExit: () => {
@@ -3467,16 +3449,6 @@ mergeInto(LibraryManager.library, {
   },
 #endif // MINIMAL_RUNTIME
 
-  $safeSetTimeout__deps: ['$callUserCallback'],
-  $safeSetTimeout__docs: '/** @param {number=} timeout */',
-  $safeSetTimeout: (func, timeout) => {
-    {{{ runtimeKeepalivePush() }}}
-    return setTimeout(() => {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(func);
-    }, timeout);
-  },
-
   $asmjsMangle: (x) => {
     var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
     if (x == '__main_argc_argv') {
@@ -3489,7 +3461,9 @@ mergeInto(LibraryManager.library, {
   $asyncLoad: (url, onload, onerror, noRunDep) => {
     var dep = !noRunDep ? getUniqueRunDependency(`al ${url}`) : '';
     readAsync(url, (arrayBuffer) => {
+#if ASSERTIONS
       assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
+#endif
       onload(new Uint8Array(arrayBuffer));
       if (dep) removeRunDependency(dep);
     }, (event) => {
@@ -3532,12 +3506,12 @@ mergeInto(LibraryManager.library, {
   // tell the memory segments where to place themselves
   __memory_base: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': false}, {{{ to64(GLOBAL_BASE) }}})",
   // the wasm backend reserves slot 0 for the NULL function pointer
-  __table_base: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': false}, {{{ to64(1) }}})",
+  __table_base: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': false}, {{{ to64(TABLE_BASE) }}})",
 #if MEMORY64 == 2
   __memory_base32: "new WebAssembly.Global({'value': 'i32', 'mutable': false}, {{{ GLOBAL_BASE }}})",
 #endif
 #if MEMORY64
-  __table_base32: 1,
+  __table_base32: {{{ TABLE_BASE }}},
 #endif
   // To support such allocations during startup, track them on __heap_base and
   // then when the main module is loaded it reads that value and uses it to
@@ -3586,45 +3560,57 @@ mergeInto(LibraryManager.library, {
 #endif
   },
 
-  $handleAllocatorInit: function() {
-    Object.assign(HandleAllocator.prototype, /** @lends {HandleAllocator.prototype} */ {
-      get(id) {
-  #if ASSERTIONS
-        assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);
-  #endif
-        return this.allocated[id];
-      },
-      has(id) {
-        return this.allocated[id] !== undefined;
-      },
-      allocate(handle) {
-        var id = this.freelist.pop() || this.allocated.length;
-        this.allocated[id] = handle;
-        return id;
-      },
-      free(id) {
-  #if ASSERTIONS
-        assert(this.allocated[id] !== undefined);
-  #endif
-        // Set the slot to `undefined` rather than using `delete` here since
-        // apparently arrays with holes in them can be less efficient.
-        this.allocated[id] = undefined;
-        this.freelist.push(id);
-      }
-    });
-  },
-
-  $HandleAllocator__postset: 'handleAllocatorInit()',
-  $HandleAllocator__deps: ['$handleAllocatorInit'],
-  $HandleAllocator__docs: '/** @constructor */',
-  $HandleAllocator: function() {
-    // Reserve slot 0 so that 0 is always an invalid handle
-    this.allocated = [undefined];
-    this.freelist = [];
+  $HandleAllocator: class {
+    constructor() {
+      // TODO(sbc): Use class fields once we allow/enable es2022 in
+      // JavaScript input to acorn and closure.
+      // Reserve slot 0 so that 0 is always an invalid handle
+      this.allocated = [undefined];
+      this.freelist = [];
+    }
+    get(id) {
+#if ASSERTIONS
+      assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);
+#endif
+      return this.allocated[id];
+    };
+    has(id) {
+      return this.allocated[id] !== undefined;
+    };
+    allocate(handle) {
+      var id = this.freelist.pop() || this.allocated.length;
+      this.allocated[id] = handle;
+      return id;
+    };
+    free(id) {
+#if ASSERTIONS
+      assert(this.allocated[id] !== undefined);
+#endif
+      // Set the slot to `undefined` rather than using `delete` here since
+      // apparently arrays with holes in them can be less efficient.
+      this.allocated[id] = undefined;
+      this.freelist.push(id);
+    };
   },
 
   $getNativeTypeSize__deps: ['$POINTER_SIZE'],
   $getNativeTypeSize: {{{ getNativeTypeSize }}},
+
+#if RELOCATABLE
+  // In RELOCATABLE mode we create the table in JS.
+  $wasmTable: `=new WebAssembly.Table({
+  'initial': {{{ INITIAL_TABLE }}},
+#if !ALLOW_TABLE_GROWTH
+  'maximum': {{{ INITIAL_TABLE }}},
+#endif
+  'element': 'anyfunc'
+});
+`,
+#else
+  $wasmTable: undefined,
+#endif
+
+  $noExitRuntime: "{{{ makeModuleReceiveExpr('noExitRuntime', !EXIT_RUNTIME) }}}",
 
   // We used to define these globals unconditionally in support code.
   // Instead, we now define them here so folks can pull it in explicitly, on
@@ -3649,7 +3635,7 @@ function autoAddDeps(object, name) {
 #if LEGACY_RUNTIME
 // Library functions that were previously included as runtime functions are
 // automatically included when `LEGACY_RUNTIME` is set.
-DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(
+extraLibraryFuncs.push(
   '$addFunction',
   '$removeFunction',
   '$allocate',

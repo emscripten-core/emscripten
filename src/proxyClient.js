@@ -18,14 +18,7 @@
 #if ENVIRONMENT_MAY_BE_NODE
 var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string';
 if (ENVIRONMENT_IS_NODE) {
-  let nodeWorkerThreads;
-  try {
-    nodeWorkerThreads = require('worker_threads');
-  } catch (e) {
-    console.error('The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?');
-    throw e;
-  }
-  global.Worker = nodeWorkerThreads.Worker;
+  global.Worker = require('worker_threads').Worker;
   var Module = Module || {}
 } else
 #endif
@@ -34,7 +27,7 @@ if (typeof Module == 'undefined') {
   Module = {
     canvas: {
       addEventListener: () => {},
-      getBoundingClientRect: () => { return { bottom: 0, height: 0, left: 0, right: 0, top: 0, width: 0 }; },
+      getBoundingClientRect: () => ({ bottom: 0, height: 0, left: 0, right: 0, top: 0, width: 0 }),
     },
   };
 }
@@ -134,9 +127,7 @@ var SUPPORT_BASE64_EMBEDDING;
 // Worker
 
 var filename;
-if (!filename) {
-  filename = '<<< filename >>>';
-}
+filename ||= '<<< filename >>>';
 
 var workerURL = filename;
 if (SUPPORT_BASE64_EMBEDDING) {
@@ -174,7 +165,7 @@ worker.onmessage = (event) => {
   //dump('\nclient got ' + JSON.stringify(event.data).substr(0, 150) + '\n');
   if (!workerResponded) {
     workerResponded = true;
-    if (Module.setStatus) Module.setStatus('');
+    Module.setStatus?.('');
     if (SUPPORT_BASE64_EMBEDDING && workerURL !== filename) URL.revokeObjectURL(workerURL);
   }
 
@@ -205,7 +196,7 @@ worker.onmessage = (event) => {
         case 'resize': {
           Module.canvas.width = data.width;
           Module.canvas.height = data.height;
-          if (Module.ctx && Module.ctx.getImageData) Module.canvasData = Module.ctx.getImageData(0, 0, data.width, data.height);
+          if (Module.ctx?.getImageData) Module.canvasData = Module.ctx.getImageData(0, 0, data.width, data.height);
           worker.postMessage({ target: 'canvas', boundingClientRect: cloneObject(Module.canvas.getBoundingClientRect()) });
           break;
         }

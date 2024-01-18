@@ -113,6 +113,7 @@ enum ProcessorSubtypes {
   ZHAOXIN_FAM7H_LUJIAZUI,
   AMDFAM19H_ZNVER4,
   INTEL_COREI7_GRANITERAPIDS,
+  INTEL_COREI7_GRANITERAPIDS_D,
   CPU_SUBTYPE_MAX
 };
 
@@ -474,11 +475,17 @@ getIntelProcessorTypeAndSubtype(unsigned Family, unsigned Model,
       break;
 
     // Granite Rapids:
-    case 0xae:
     case 0xad:
       CPU = "graniterapids";
       *Type = INTEL_COREI7;
       *Subtype = INTEL_COREI7_GRANITERAPIDS;
+      break;
+
+    // Granite Rapids D:
+    case 0xae:
+      CPU = "graniterapids-d";
+      *Type = INTEL_COREI7;
+      *Subtype = INTEL_COREI7_GRANITERAPIDS_D;
       break;
 
     case 0x1c: // Most 45 nm Intel Atom processors
@@ -646,7 +653,7 @@ getAMDProcessorTypeAndSubtype(unsigned Family, unsigned Model,
 
 static void getAvailableFeatures(unsigned ECX, unsigned EDX, unsigned MaxLeaf,
                                  unsigned *Features) {
-  unsigned EAX, EBX;
+  unsigned EAX = 0, EBX = 0;
 
 #define setFeature(F)                                                          \
   Features[F / 32] |= 1U << (F % 32)
@@ -744,8 +751,11 @@ static void getAvailableFeatures(unsigned ECX, unsigned EDX, unsigned MaxLeaf,
   if (HasLeaf7 && ((EDX >> 8) & 1) && HasAVX512Save)
     setFeature(FEATURE_AVX512VP2INTERSECT);
 
+  // EAX from subleaf 0 is the maximum subleaf supported. Some CPUs don't
+  // return all 0s for invalid subleaves so check the limit.
   bool HasLeaf7Subleaf1 =
-      MaxLeaf >= 0x7 && !getX86CpuIDAndInfoEx(0x7, 0x1, &EAX, &EBX, &ECX, &EDX);
+      HasLeaf7 && EAX >= 1 &&
+      !getX86CpuIDAndInfoEx(0x7, 0x1, &EAX, &EBX, &ECX, &EDX);
   if (HasLeaf7Subleaf1 && ((EAX >> 5) & 1) && HasAVX512Save)
     setFeature(FEATURE_AVX512BF16);
 
@@ -839,6 +849,39 @@ int CONSTRUCTOR_ATTRIBUTE __cpu_indicator_init(void) {
 }
 #elif defined(__aarch64__)
 
+// LSE support detection for out-of-line atomics
+// using HWCAP and Auxiliary vector
+_Bool __aarch64_have_lse_atomics
+    __attribute__((visibility("hidden"), nocommon));
+
+#if defined(__has_include)
+#if __has_include(<sys/auxv.h>)
+#include <sys/auxv.h>
+
+#if __has_include(<sys/ifunc.h>)
+#include <sys/ifunc.h>
+#else
+typedef struct __ifunc_arg_t {
+  unsigned long _size;
+  unsigned long _hwcap;
+  unsigned long _hwcap2;
+} __ifunc_arg_t;
+#endif // __has_include(<sys/ifunc.h>)
+
+#if __has_include(<asm/hwcap.h>)
+#include <asm/hwcap.h>
+
+#if defined(__ANDROID__)
+#include <string.h>
+#include <sys/system_properties.h>
+#elif defined(__Fuchsia__)
+#include <zircon/features.h>
+#include <zircon/syscalls.h>
+#endif
+
+#ifndef _IFUNC_ARG_HWCAP
+#define _IFUNC_ARG_HWCAP (1ULL << 62)
+#endif
 #ifndef AT_HWCAP
 #define AT_HWCAP 16
 #endif
@@ -1009,25 +1052,6 @@ int CONSTRUCTOR_ATTRIBUTE __cpu_indicator_init(void) {
 #define HWCAP2_SVE_EBF16 (1UL << 33)
 #endif
 
-// LSE support detection for out-of-line atomics
-// using HWCAP and Auxiliary vector
-_Bool __aarch64_have_lse_atomics
-    __attribute__((visibility("hidden"), nocommon));
-
-#if defined(__has_include)
-#if __has_include(<sys/auxv.h>)
-#include <sys/auxv.h>
-#if __has_include(<asm/hwcap.h>)
-#include <asm/hwcap.h>
-
-#if defined(__ANDROID__)
-#include <string.h>
-#include <sys/system_properties.h>
-#elif defined(__Fuchsia__)
-#include <zircon/features.h>
-#include <zircon/syscalls.h>
-#endif
-
 // Detect Exynos 9810 CPU
 #define IF_EXYNOS9810                                                          \
   char arch[PROP_VALUE_MAX];                                                   \
@@ -1140,11 +1164,16 @@ struct {
   // As features grows new fields could be added
 } __aarch64_cpu_features __attribute__((visibility("hidden"), nocommon));
 
-void init_cpu_features_resolver(unsigned long hwcap, unsigned long hwcap2) {
+void init_cpu_features_resolver(unsigned long hwcap, const __ifunc_arg_t *arg) {
 #define setCPUFeature(F) __aarch64_cpu_features.features |= 1ULL << F
 #define getCPUFeature(id, ftr) __asm__("mrs %0, " #id : "=r"(ftr))
 #define extractBits(val, start, number)                                        \
   (val & ((1ULL << number) - 1ULL) << start) >> start
+  if (__aarch64_cpu_features.features)
+    return;
+  unsigned long hwcap2 = 0;
+  if (hwcap & _IFUNC_ARG_HWCAP)
+    hwcap2 = arg->_hwcap2;
   if (hwcap & HWCAP_CRC32)
     setCPUFeature(FEAT_CRC);
   if (hwcap & HWCAP_PMULL)
@@ -1320,6 +1349,7 @@ void init_cpu_features_resolver(unsigned long hwcap, unsigned long hwcap2) {
     if (hwcap & HWCAP_SHA3)
       setCPUFeature(FEAT_SHA3);
   }
+  setCPUFeature(FEAT_MAX);
 }
 
 void CONSTRUCTOR_ATTRIBUTE init_cpu_features(void) {
@@ -1328,7 +1358,6 @@ void CONSTRUCTOR_ATTRIBUTE init_cpu_features(void) {
   // CPU features already initialized.
   if (__aarch64_cpu_features.features)
     return;
-  setCPUFeature(FEAT_MAX);
 #if defined(__FreeBSD__)
   int res = 0;
   res = elf_aux_info(AT_HWCAP, &hwcap, sizeof hwcap);
@@ -1344,7 +1373,11 @@ void CONSTRUCTOR_ATTRIBUTE init_cpu_features(void) {
   hwcap = getauxval(AT_HWCAP);
   hwcap2 = getauxval(AT_HWCAP2);
 #endif // defined(__FreeBSD__)
-  init_cpu_features_resolver(hwcap, hwcap2);
+  __ifunc_arg_t arg;
+  arg._size = sizeof(__ifunc_arg_t);
+  arg._hwcap = hwcap;
+  arg._hwcap2 = hwcap2;
+  init_cpu_features_resolver(hwcap | _IFUNC_ARG_HWCAP, &arg);
 #undef extractBits
 #undef getCPUFeature
 #undef setCPUFeature

@@ -66,9 +66,9 @@ var imports = {
 };
 var _main, _unused;
 WebAssembly.instantiate(Module["wasm"], imports).then(((output) => {
- var asm = output.instance.exports;
- _main = asm["b"];
- _unused = asm["c"];
+ var wasmExports = output.instance.exports;
+ _main = wasmExports["b"];
+ _unused = wasmExports["c"];
  initRuntime();
  ready();
 }));

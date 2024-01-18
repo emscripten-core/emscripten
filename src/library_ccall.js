@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
-  $getCFunc: function(ident) {
+  $getCFunc: (ident) => {
     var func = Module['_' + ident]; // closure exported function
 #if ASSERTIONS
     assert(func, 'Cannot call unknown function ' + ident + ', make sure it is exported');
@@ -15,7 +15,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // C calling interface.
-  $ccall__deps: ['$getCFunc', '$writeArrayToMemory', '$stringToUTF8OnStack'],
+  $ccall__deps: ['$getCFunc', '$writeArrayToMemory', '$stringToUTF8OnStack', 'stackSave', 'stackRestore', 'stackAlloc'],
   $ccall__docs: `
   /**
    * @param {string|null=} returnType
@@ -23,7 +23,7 @@ mergeInto(LibraryManager.library, {
    * @param {Arguments|Array=} args
    * @param {Object=} opts
    */`,
-  $ccall: function(ident, returnType, argTypes, args, opts) {
+  $ccall: (ident, returnType, argTypes, args, opts) => {
     // For fast lookup of conversion functions
     var toC = {
 #if MEMORY64
@@ -86,7 +86,7 @@ mergeInto(LibraryManager.library, {
       return convertReturnValue(ret);
     }
 #if ASYNCIFY
-  var asyncMode = opts && opts.async;
+  var asyncMode = opts?.async;
 #endif
 
 #if ASYNCIFY == 1
@@ -133,7 +133,7 @@ mergeInto(LibraryManager.library, {
    * @param {Object=} opts
    */`,
   $cwrap__deps: ['$getCFunc', '$ccall'],
-  $cwrap: function(ident, returnType, argTypes, opts) {
+  $cwrap: (ident, returnType, argTypes, opts) => {
 #if !ASSERTIONS
     // When the function takes numbers and returns a number, we can just return
     // the original function

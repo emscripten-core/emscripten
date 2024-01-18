@@ -1,5 +1,4 @@
 env.__cxa_throw
-env._emscripten_get_now_is_monotonic
 env._wasmfs_copy_preloaded_file_data
 env._wasmfs_get_num_preloaded_dirs
 env._wasmfs_get_num_preloaded_files
@@ -10,10 +9,9 @@ env._wasmfs_get_preloaded_parent_path
 env._wasmfs_get_preloaded_path_name
 env._wasmfs_stdin_get_char
 env.abort
-env.emscripten_console_error
 env.emscripten_date_now
 env.emscripten_err
-env.emscripten_memcpy_big
+env.emscripten_memcpy_js
 env.emscripten_out
 env.emscripten_resize_heap
 env.getentropy
