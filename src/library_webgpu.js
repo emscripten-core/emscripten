@@ -694,13 +694,9 @@ var LibraryWebGPU = {
 
   wgpuCreateInstance: (descriptor) => 1,
 
-  wgpuGetInstanceFeatures: () => {
-    abort('TODO: wgpuGetInstanceFeatures unimplemented');
-  },
+  wgpuGetInstanceFeatures: () => abort('TODO: wgpuGetInstanceFeatures unimplemented'),
 
-  wgpuGetProcAddress: (device, procName) => {
-    abort('TODO(#11526): wgpuGetProcAddress unimplemented');
-  },
+  wgpuGetProcAddress: (device, procName) => abort('TODO(#11526): wgpuGetProcAddress unimplemented'),
 
   // *Reference/*Release
 
