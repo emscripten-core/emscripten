@@ -694,7 +694,7 @@ var LibraryWebGPU = {
 
   wgpuCreateInstance: (descriptor) => 1,
 
-  wgpuGetInstanceFeatures: () => abort('TODO: wgpuGetInstanceFeatures unimplemented'),
+  wgpuGetInstanceFeatures: (featuresPtr) => abort('TODO: wgpuGetInstanceFeatures unimplemented'),
 
   wgpuGetProcAddress: (device, procName) => abort('TODO(#11526): wgpuGetProcAddress unimplemented'),
 
@@ -2645,7 +2645,7 @@ var LibraryWebGPU = {
 
   // WGPUAdapterProperties
 
-  wgpuAdapterPropertiesFreeMembers: () => {
+  wgpuAdapterPropertiesFreeMembers: (value) => {
     // wgpuAdapterGetProperties does currently allocate anything
   },
 
