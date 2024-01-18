@@ -16,10 +16,10 @@ var emscriptenThreadProfiler = {
     this.threadProfilerDiv = document.getElementById('threadprofiler');
     if (!this.threadProfilerDiv) {
       var div = document.createElement("div");
-      div.innerHTML = "<div id='threadprofiler' style='margin: 20px; border: solid 1px black;'></div>";
+      div.id = 'threadprofiler';
       document.body.appendChild(div);
-      this.threadProfilerDiv = document.getElementById('threadprofiler');
     }
+    div.style.cssText = 'margin: 20px; border: solid 1px black;';
     var i = setInterval(function() { emscriptenThreadProfiler.updateUi() }, this.uiUpdateIntervalMsecs);
     addOnExit(() => clearInterval(i));
   },

@@ -297,7 +297,11 @@ var emscriptenCpuProfiler = {
     // you can manually create this beforehand.
     var cpuprofiler = document.getElementById('cpuprofiler');
     if (!cpuprofiler) {
-      var css = '.colorbox { border: solid 1px black; margin-left: 10px; margin-right: 3px; display: inline-block; width: 20px; height: 10px; }  .hastooltip:hover .tooltip { display: block; } .tooltip { display: none; background: #FFFFFF; margin-left: 28px; padding: 5px; position: absolute; z-index: 1000; width:200px; } .hastooltip { margin:0px; }';
+      cpuprofiler = document.createElement("div");
+      cpuprofiler.id = 'cpuprofiler';
+      document.body.appendChild(div);
+    }
+    var css = '.colorbox { border: solid 1px black; margin-left: 10px; margin-right: 3px; display: inline-block; width: 20px; height: 10px; }  .hastooltip:hover .tooltip { display: block; } .tooltip { display: none; background: #FFFFFF; margin-left: 28px; padding: 5px; position: absolute; z-index: 1000; width:200px; } .hastooltip { margin:0px; }';
       var style = document.createElement('style');
       style.type = 'text/css';
       style.appendChild(document.createTextNode(css));
@@ -306,6 +310,7 @@ var emscriptenCpuProfiler = {
       var div = document.getElementById('cpuprofiler_container'); // Users can provide a container element where to place this if desired.
       if (!div) {
         div = document.createElement("div");
+        div.id = 'cpuprofiler_container';
         document.body.appendChild(div);
 
         // It is common to set 'overflow: hidden;' on canvas pages that do WebGL. When CpuProfiler is being used, there will be a long block of text on the page, so force-enable scrolling.
@@ -345,13 +350,11 @@ var emscriptenCpuProfiler = {
       helpText += "<p>For bugs and suggestions, visit <a href='https://github.com/emscripten-core/emscripten/issues'>Emscripten bug tracker</a>.";
       helpText += "</div>";
 
-      div.innerHTML = "<div style='color: black; border: 2px solid black; padding: 2px; margin-bottom: 10px; margin-left: 5px; margin-right: 5px; margin-top: 5px; background-color: #F0F0FF;'><span style='margin-left: 10px;'><b>Cpu Profiler</b><sup style='cursor: pointer;' onclick='emscriptenCpuProfiler.toggleHelpTextVisible();'>[?]</sup></span> <button style='display:inline; border: solid 1px #ADADAD; margin: 2px; background-color: #E1E1E1;' onclick='noExitRuntime=false;Module.exit();'>Halt</button><button id='toggle_webgl_profile' style='display:inline; border: solid 1px #ADADAD; margin: 2px;  background-color: #E1E1E1;' onclick='emscriptenCpuProfiler.toggleHookWebGL()'>Profile WebGL</button><button id='toggle_webgl_trace' style='display:inline; border: solid 1px #ADADAD; margin: 2px;  background-color: #E1E1E1;' onclick='emscriptenCpuProfiler.toggleTraceWebGL()'>Trace Calls</button> slower than <input id='trace_limit' oninput='emscriptenCpuProfiler.disableTraceWebGL();' style='width:40px;' value='100'></input> msecs. <span id='fpsResult' style='margin-left: 5px;'></span><canvas style='border: 1px solid black; margin-left:auto; margin-right:auto; display: block;' id='cpuprofiler_canvas' width='800px' height='200'></canvas><div id='cpuprofiler'></div>" + helpText;
+      div.innerHTML = "<div style='color: black; border: 2px solid black; padding: 2px; margin-bottom: 10px; margin-left: 5px; margin-right: 5px; margin-top: 5px; background-color: #F0F0FF;'><span style='margin-left: 10px;'><b>Cpu Profiler</b><sup style='cursor: pointer;' onclick='emscriptenCpuProfiler.toggleHelpTextVisible();'>[?]</sup></span> <button style='display:inline; border: solid 1px #ADADAD; margin: 2px; background-color: #E1E1E1;' onclick='noExitRuntime=false;Module.exit();'>Halt</button><button id='toggle_webgl_profile' style='display:inline; border: solid 1px #ADADAD; margin: 2px;  background-color: #E1E1E1;' onclick='emscriptenCpuProfiler.toggleHookWebGL()'>Profile WebGL</button><button id='toggle_webgl_trace' style='display:inline; border: solid 1px #ADADAD; margin: 2px;  background-color: #E1E1E1;' onclick='emscriptenCpuProfiler.toggleTraceWebGL()'>Trace Calls</button> slower than <input id='trace_limit' oninput='emscriptenCpuProfiler.disableTraceWebGL();' style='width:40px;' value='100'></input> msecs. <span id='fpsResult' style='margin-left: 5px;'></span><canvas style='border: 1px solid black; margin-left:auto; margin-right:auto; display: block;' id='cpuprofiler_canvas' width='800px' height='200'></canvas>" + helpText;
       document.getElementById('trace_limit').onkeydown = (e) => { if (e.which == 13 || e.keycode == 13) emscriptenCpuProfiler.enableTraceWebGL(); else emscriptenCpuProfiler.disableTraceWebGL(); };
-      cpuprofiler = document.getElementById('cpuprofiler');
 
       if (location.search.includes('expandhelp')) this.toggleHelpTextVisible();
-    }
-    
+
     this.canvas = document.getElementById('cpuprofiler_canvas');
     this.canvas.width = document.documentElement.clientWidth - 32;
     this.drawContext = this.canvas.getContext('2d');
@@ -360,7 +363,13 @@ var emscriptenCpuProfiler = {
 
     if (webglCanvas) {
       // Create lite FPS overlay element
-      var fpsOverlay = document.createElement('div');
+      // Create the UI display if it doesn't yet exist. If you want to customize the location/style of the cpuprofiler UI,
+      var fpsOverlay = document.getElementById('fpsOverlay');
+      if (!fpsOverlay) {
+        fpsOverlay = document.createElement('div');
+        fpsOverlay.id = 'fpsOverlay';
+        document.body.appendChild(fpsOverlay);
+      }
       fpsOverlay.classList.add("hastooltip");
       fpsOverlay.innerHTML = '<div id="fpsOverlay1" style="font-size: 1.5em; color: lightgreen; text-shadow: 3px 3px black;"></div><div id="fpsOverlay2" style="font-size: 1em; color: lightgrey; text-shadow: 3px 3px black;"></div> <span class="tooltip">FPS (CPU usage %)<br>Min/Avg/Max frame times (msecs)</span>';
       fpsOverlay.style = 'position: fixed; font-weight: bold; padding: 3px; -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; cursor: pointer;';
@@ -369,7 +378,6 @@ var emscriptenCpuProfiler = {
         view?.scrollIntoView();
       };
       fpsOverlay.oncontextmenu = (e) => e.preventDefault();
-      document.body.appendChild(fpsOverlay);
       this.fpsOverlay1 = document.getElementById('fpsOverlay1');
       this.fpsOverlay2 = document.getElementById('fpsOverlay2');
       function positionOverlay() {
