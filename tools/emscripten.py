@@ -547,8 +547,6 @@ def finalize_wasm(infile, outfile, js_syms):
                    sections=sections)
 
   metadata = get_metadata(outfile, outfile, modify_wasm, args)
-  if modify_wasm:
-    building.save_intermediate(outfile, 'post_finalize.wasm')
 
   if settings.GENERATE_SOURCE_MAP:
     building.save_intermediate(outfile + '.map', 'post_finalize.map')
