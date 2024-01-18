@@ -38,7 +38,25 @@ var LibraryEmbind = {
 #if EMBIND_AOT
   $InvokerFunctions: '<<< EMBIND_AOT_OUTPUT >>>',
 #endif
+  // If register_type is used, emval will be registered multiple times for
+  // different type id's, but only a single type object is needed on the JS side
+  // for all of them. Store the type for reuse.
+  $EmValType__deps: ['_emval_decref', '$Emval', '$simpleReadValueFromPointer', '$GenericWireTypeSize'],
+  $EmValType: `{
+    name: 'emscripten::val',
+    'fromWireType': (handle) => {
+      var rv = Emval.toValue(handle);
+      __emval_decref(handle);
+      return rv;
+    },
+    'toWireType': (destructors, value) => Emval.toHandle(value),
+    'argPackAdvance': GenericWireTypeSize,
+    'readValueFromPointer': simpleReadValueFromPointer,
+    destructorFunction: null, // This type does not need a destructor
 
+    // TODO: do we need a deleteObject here?  write a test where
+    // emval is passed into JS via an interface
+  }`,
   $init_embind__deps: [
     '$getInheritedInstanceCount', '$getLiveInheritedInstances',
     '$flushPendingDeletes', '$setDelayFunction'],
@@ -668,32 +686,17 @@ var LibraryEmbind = {
   },
 
   _embind_register_emval__deps: [
-    '_emval_decref', '$Emval',
-    '$readLatin1String', '$registerType', '$simpleReadValueFromPointer'],
-  _embind_register_emval: (rawType, name) => {
-    name = readLatin1String(name);
-    registerType(rawType, {
-      name,
-      'fromWireType': (handle) => {
-        var rv = Emval.toValue(handle);
-        __emval_decref(handle);
-        return rv;
-      },
-      'toWireType': (destructors, value) => Emval.toHandle(value),
-      'argPackAdvance': GenericWireTypeSize,
-      'readValueFromPointer': simpleReadValueFromPointer,
-      destructorFunction: null, // This type does not need a destructor
-    });
-  },
+    '$registerType',  '$EmValType'],
+  _embind_register_emval: (rawType) => registerType(rawType, EmValType),
 
   _embind_register_user_type__deps: ['_embind_register_emval'],
   _embind_register_user_type: (rawType, name) => {
-    __embind_register_emval(rawType, name);
+    __embind_register_emval(rawType);
   },
 
   _embind_register_optional__deps: ['_embind_register_emval'],
   _embind_register_optional: (rawOptionalType, rawType) => {
-    __embind_register_emval(rawOptionalType, "");
+    __embind_register_emval(rawOptionalType);
   },
 
   _embind_register_memory_view__deps: ['$readLatin1String', '$registerType'],
