@@ -9102,7 +9102,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # works with pthreads (even though we did not specify 'node,worker')
     self.set_setting('ENVIRONMENT', 'node')
     self.set_setting('STRICT_JS')
-    self.do_run_in_out_file_test('core/pthread/create.cpp')
+    self.do_run_in_out_file_test('core/pthread/create.c')
 
   @node_pthreads
   @parameterized({
@@ -9149,7 +9149,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['-DALLOW_SYNC']
-    self.do_run_in_out_file_test('core/pthread/create.cpp')
+    self.do_run_in_out_file_test('core/pthread/create.c')
 
   @node_pthreads
   def test_pthread_create_proxy(self):
@@ -9157,7 +9157,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['-DALLOW_SYNC']
-    self.do_run_in_out_file_test('core/pthread/create.cpp')
+    self.do_run_in_out_file_test('core/pthread/create.c')
 
   @node_pthreads
   def test_pthread_create_embind_stack_check(self):
@@ -9165,7 +9165,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['-lembind']
-    self.do_run_in_out_file_test('core/pthread/create.cpp')
+    self.do_run_in_out_file_test('core/pthread/create.c', emcc_args=['-sDEFAULT_TO_CXX'])
 
   @node_pthreads
   def test_pthread_exceptions(self):
