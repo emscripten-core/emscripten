@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.52 (in development)
+3.1.53 (in development)
 -----------------------
+
+3.1.52 - 01/19/24
+-----------------
 - The core stack manipulation functions (`stackSave`, `stackRestore`,
   `stackAlloc`) are no longer exported by default.  Users of these function
   now need to depend on them explictly (either via `__deps` attributes or via
