@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  win: circleci/windows@1.0.0
+  win: circleci/windows@5.0
 
 executors:
   linux-node:
@@ -831,7 +831,7 @@ jobs:
   test-windows:
     working_directory: "~/path with spaces"
     executor:
-      name: win/vs2019
+      name: win/server-2019
       shell: bash.exe -eo pipefail
     environment:
       PYTHONUNBUFFERED: "1"
@@ -851,7 +851,7 @@ jobs:
       - run:
           name: Install packages
           command: |
-            choco install cmake.portable ninja pkgconfiglite
+            choco install -y cmake.portable ninja pkgconfiglite
       - run:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/Python27amd64/\"" >> $BASH_ENV
