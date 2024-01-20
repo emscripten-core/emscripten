@@ -147,7 +147,7 @@
 #define DOM_VK_WIN_OEM_FJ_ROYA     0x96
 #define DOM_VK_CIRCUMFLEX          0xA0
 #define DOM_VK_EXCLAMATION         0xA1
-#define DOM_VK_DOUBLE_QUOTE        0xA3
+#define DOM_VK_DOUBLE_QUOTE        0xA2
 #define DOM_VK_HASH                0xA3
 #define DOM_VK_DOLLAR              0xA4
 #define DOM_VK_PERCENT             0xA5
