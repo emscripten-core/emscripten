@@ -1285,7 +1285,7 @@ f.close()
     create_file('foobar.c', 'int main(){ return 0; }')
     os.symlink('foobar.c', 'foobar.xxx')
     err = self.expect_fail([EMCC, 'foobar.xxx', '-o', 'foobar.js'])
-    self.assertContained('unknown file type: foobar.xxx', err)
+    self.assertContained(['unknown file type: foobar.xxx', "archive member 'native.o' is neither Wasm object file nor LLVM bitcode"], err)
 
   def test_multiply_defined_libsymbols(self):
     create_file('libA.c', 'int mult() { return 1; }')
@@ -1466,7 +1466,7 @@ int f() {
                      clang_native.get_clang_native_args())
     self.run_process([EMAR, 'crs', 'libfoo.a', 'native.o'])
     stderr = self.expect_fail([EMCC, 'main.c', 'libfoo.a'])
-    self.assertContained('unknown file type', stderr)
+    self.assertContained(['unknown file type', "libfoo.a: archive member 'native.o' is neither Wasm object file nor LLVM bitcode"], stderr)
 
   def test_export_all(self):
     lib = r'''
@@ -9133,12 +9133,8 @@ end
     self.run_process([EMCC, '-c', test_file('hello_world.c')])
     # The `S` flag means don't add an archive index
     self.run_process([EMAR, 'crS', 'libfoo.a', 'foo.o'])
-    # The llvm backend (link GNU ld and lld) doesn't support linking archives with no index.
-    # However we have logic that will automatically add indexes (unless running with
-    # NO_AUTO_ARCHIVE_INDEXES).
-    stderr = self.expect_fail([EMCC, '-sNO_AUTO_ARCHIVE_INDEXES', 'libfoo.a', 'hello_world.o'])
-    self.assertContained('libfoo.a: archive has no index; run ranlib to add one', stderr)
-    # The default behavior is to add archive indexes automatically.
+    # wasm-ld supports archive files without an index (unlike GNU ld) as of
+    # https://github.com/llvm/llvm-project/pull/78821
     self.run_process([EMCC, 'libfoo.a', 'hello_world.o'])
 
   def test_archive_non_objects(self):
