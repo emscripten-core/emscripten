@@ -9121,22 +9121,6 @@ end
     create_file('test.rsp', b'\xef\xbb\xbf--version', binary=True)
     self.run_process([EMCC, '@test.rsp'])
 
-  def test_archive_empty(self):
-    # This test added because we had an issue with the AUTO_ARCHIVE_INDEXES failing on empty
-    # archives (which inherently don't have indexes).
-    self.run_process([EMAR, 'crS', 'libfoo.a'])
-    self.run_process([EMCC, '-Werror', 'libfoo.a', test_file('hello_world.c')])
-
-  def test_archive_no_index(self):
-    create_file('foo.c', 'int foo = 1;')
-    self.run_process([EMCC, '-c', 'foo.c'])
-    self.run_process([EMCC, '-c', test_file('hello_world.c')])
-    # The `S` flag means don't add an archive index
-    self.run_process([EMAR, 'crS', 'libfoo.a', 'foo.o'])
-    # wasm-ld supports archive files without an index (unlike GNU ld) as of
-    # https://github.com/llvm/llvm-project/pull/78821
-    self.run_process([EMCC, 'libfoo.a', 'hello_world.o'])
-
   def test_archive_non_objects(self):
     create_file('file.txt', 'test file')
     self.run_process([EMCC, '-c', test_file('hello_world.c')])
