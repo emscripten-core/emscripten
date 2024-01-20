@@ -1283,7 +1283,6 @@ var LibraryWebGPU = {
 
     function makeBlendState(bsPtr) {
       if (!bsPtr) return undefined;
-      {{{ gpu.makeCheckDescriptor('bsPtr') }}}
       return {
         "alpha": makeBlendComponent(bsPtr + {{{ C_STRUCTS.WGPUBlendState.alpha }}}),
         "color": makeBlendComponent(bsPtr + {{{ C_STRUCTS.WGPUBlendState.color }}}),
