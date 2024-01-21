@@ -14421,3 +14421,7 @@ addToLibrary({
     # "window.crypto.getRandomValues"
     self.assertContained(").randomBytes", js_out)
     self.assertContained("window.crypto.getRandomValues", js_out)
+
+  def test_wasm64_no_asan(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMEMORY64', '-fsanitize=address'])
+    self.assertContained('error: MEMORY64 does not yet work with ASAN', err)
