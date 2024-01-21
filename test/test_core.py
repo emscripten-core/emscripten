@@ -6098,7 +6098,7 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test('test_unary_literal.cpp')
 
   @crossplatform
-  # Explictly set LANG here since new versions of node expose
+  # Explicitly set LANG here since new versions of node expose
   # `navigator.languages` which emscripten will honor and we
   # want the test output to be consistent.
   @with_env_modify({'LANG': 'en_US.UTF-8'})
@@ -6106,7 +6106,7 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test('test_env.c', regex=True)
 
   @crossplatform
-  # Explictly set LANG here since new versions of node expose
+  # Explicitly set LANG here since new versions of node expose
   # `navigator.languages` which emscripten will honor and we
   # want the test output to be consistent.
   @with_env_modify({'LANG': 'en_US.UTF-8'})

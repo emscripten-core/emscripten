@@ -322,7 +322,7 @@ def env_modify(updates):
   # on the mock library is probably not worth the benefit.
   old_env = os.environ.copy()
   print("env_modify: " + str(updates))
-  # Seting a value to None means clear the environment variable
+  # Setting a value to None means clear the environment variable
   clears = [key for key, value in updates.items() if value is None]
   updates = {key: value for key, value in updates.items() if value is not None}
   os.environ.update(updates)
@@ -1652,7 +1652,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       '-Wno-pointer-bool-conversion',
       '-Wno-shift-negative-value',
       '-Wno-gnu-offsetof-extensions',
-      # And becuase gnu-offsetof-extensions is a new warning:
+      # And because gnu-offsetof-extensions is a new warning:
       '-Wno-unknown-warning-option',
     ]
     return self.get_library(os.path.join('third_party', 'freetype'),
@@ -1861,7 +1861,7 @@ class Reporting(Enum):
   NONE = 0
   # Include the JS helpers for reporting results
   JS_ONLY = 1
-  # Include C/C++ reporting code (REPORT_RESULT mactros) as well as JS helpers
+  # Include C/C++ reporting code (REPORT_RESULT macros) as well as JS helpers
   FULL = 2
 
 

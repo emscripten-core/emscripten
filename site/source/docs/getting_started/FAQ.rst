@@ -586,7 +586,7 @@ with
 Why do I get a ``NameError`` or ``a problem occurred in evaluating content after a "-s"`` when I use a ``-s`` option?
 =====================================================================================================================
 
-This can occur if you have non-trival strings in ``-s`` argument and are having
+This can occur if you have non-trivial strings in ``-s`` argument and are having
 trouble getting the shell quoting / escaping correct.
 
 Using the simpler list form (without quotes, spaces or square brackets) can
@@ -603,7 +603,7 @@ It is also possible to use a **response file**, that is,
   emcc a.c -sEXPORTED_RUNTIME_METHODS=@extra.txt
 
 with ``extra.txt`` being a plain text file that contains ``foo`` and ``bar`` on
-seperate lines.
+separate lines.
 
 How do I specify ``-s`` options in a CMake project?
 ===================================================
