@@ -2958,6 +2958,9 @@ def run(linker_inputs, options, state, newargs):
   # We have now passed the compile phase, allow reading/writing of all settings.
   settings.limit_settings(None)
 
+  if not linker_inputs and not state.link_flags:
+    exit_with_error('no input files')
+
   if options.output_file and options.output_file.startswith('-'):
     exit_with_error(f'invalid output filename: `{options.output_file}`')
 
