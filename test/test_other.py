@@ -7388,7 +7388,7 @@ int main(int argc, char** argv) {
 
   def test_js_lib_native_deps_extra(self):
     # Similar to above but the JS symbol is not used by the native code.
-    # Instead is it explictly injected using `extraLibraryFuncs`.
+    # Instead is it explicitly injected using `extraLibraryFuncs`.
     create_file('lib.js', r'''
 addToLibrary({
   jsfunc__deps: ['raise'],
@@ -14222,7 +14222,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_no_minify(self):
     # Test that comments are preserved with `--minify=0` is used, even in `-Oz` builds.
     # This allows the output of emscripten to be run through the closure compiler as
-    # as a seperate build step.
+    # as a separate build step.
     create_file('pre.js', '''
     /**
      * This comment should be preserved

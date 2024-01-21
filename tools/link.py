@@ -914,10 +914,10 @@ def phase_linker_setup(options, state, newargs):
 
   if 'GLOBAL_BASE' not in user_settings and not settings.SHRINK_LEVEL and not settings.OPT_LEVEL:
     # When optimizing for size it helps to put static data first before
-    # the stack (sincs this makes instructions for accessing this data
+    # the stack (since this makes instructions for accessing this data
     # use a smaller LEB encoding).
     # However, for debugability is better to have the stack come first
-    # (becuase stack overflows will trap rather than corrupting data).
+    # (because stack overflows will trap rather than corrupting data).
     settings.STACK_FIRST = True
 
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
@@ -2327,9 +2327,9 @@ def modularize():
      shared.target_environment_may_be('web'):
     async_emit = 'async '
 
-  # Return the incoming `moduleArg`.  This is is equeivielt to the `Module` var within the
-  # generated code but its not run through closure minifiection so we can reference it in
-  # the the return statement.
+  # Return the incoming `moduleArg`.  This is is equivalent to the `Module` var within the
+  # generated code but its not run through closure minification so we can reference it in
+  # the return statement.
   return_value = 'moduleArg'
   if settings.WASM_ASYNC_COMPILATION:
     return_value += '.ready'

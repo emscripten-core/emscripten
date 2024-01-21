@@ -10,7 +10,7 @@ exclude =
  ./system/lib/, # system libraries
  ./cache/, # download/built content
  .git
-# The ports plugins have a lot of unused imports becuase
+# The ports plugins have a lot of unused imports because
 # they need to implement the specific plugin APIs
 per-file-ignores =
   ./tools/ports/*.py: U100

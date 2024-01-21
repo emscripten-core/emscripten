@@ -575,7 +575,7 @@ class Library:
       if not generate_only:
         run_ninja(build_dir)
     else:
-      # Use a seperate build directory to the ninja flavor so that building without
+      # Use a separate build directory to the ninja flavor so that building without
       # EMCC_USE_NINJA doesn't clobber the ninja build tree
       build_dir += '-tmp'
       utils.safe_ensure_dirs(build_dir)
