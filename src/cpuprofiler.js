@@ -299,7 +299,7 @@ var emscriptenCpuProfiler = {
     if (!cpuprofiler) {
       cpuprofiler = document.createElement("div");
       cpuprofiler.id = 'cpuprofiler';
-      document.body.appendChild(div);
+      document.body.appendChild(cpuprofiler);
     }
     var css = '.colorbox { border: solid 1px black; margin-left: 10px; margin-right: 3px; display: inline-block; width: 20px; height: 10px; }  .hastooltip:hover .tooltip { display: block; } .tooltip { display: none; background: #FFFFFF; margin-left: 28px; padding: 5px; position: absolute; z-index: 1000; width:200px; } .hastooltip { margin:0px; }';
       var style = document.createElement('style');
