@@ -11,3 +11,4 @@ emscripten_stack_init
 fflush
 main
 memory
+strerror

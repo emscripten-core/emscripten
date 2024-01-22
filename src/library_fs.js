@@ -28,7 +28,7 @@ addToLibrary({
     '$PROXYFS',
 #endif
 #if ASSERTIONS
-    '$ERRNO_MESSAGES', '$ERRNO_CODES',
+    '$strError', '$ERRNO_CODES',
 #endif
   ],
   $FS__postset: function() {
@@ -80,7 +80,7 @@ FS.staticInit();` +
       // we'll use the reliable test `err.name == "ErrnoError"` instead
       constructor(errno) {
 #if ASSERTIONS
-        super(ERRNO_MESSAGES[errno]);
+        super(runtimeInitialized ? strError(errno) : '');
 #endif
         // TODO(sbc): Use the inline member declaration syntax once we
         // support it in acorn and closure.

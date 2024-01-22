@@ -1070,9 +1070,10 @@ class libc(MuslInternalLibrary,
       path='system/lib/libc/musl/src/string',
       filenames=['strlen.c'])
 
+    # Transitively required by many system call imports
     errno_files = files_in_path(
       path='system/lib/libc/musl/src/errno',
-      filenames=['__errno_location.c'])
+      filenames=['__errno_location.c', 'strerror.c'])
 
     return math_files + exit_files + other_files + iprintf_files + errno_files
 
