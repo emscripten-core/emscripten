@@ -88,7 +88,12 @@ function getTransitiveDeps(symbol) {
       let directDeps = LibraryManager.library[sym + '__deps'] || [];
       directDeps = directDeps.filter((d) => typeof d === 'string');
       if (directDeps.length) {
-        directDeps.forEach(transitiveDeps.add, transitiveDeps);
+        for (const d of directDeps) {
+          if (VERBOSE && !transitiveDeps.has(d)) {
+            printErr(`adding dependency ${symbol} -> ${d}`);
+          }
+          transitiveDeps.add(d);
+        }
         toVisit.push(...directDeps);
       }
       seen.add(sym);

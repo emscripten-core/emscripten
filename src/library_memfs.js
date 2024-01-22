@@ -173,7 +173,15 @@ addToLibrary({
         }
       },
       lookup(parent, name) {
-        throw FS.genericErrors[{{{ cDefs.ENOENT }}}];
+        // This error may happen quite a bit, to avoid overhead we reuse it
+        // (and suffer a lack of stack info)
+        if (!MEMFS.genericError && runtimeInitialized) {
+          MEMFS.genericError = new FS.ErrnoError({{{ cDefs.ENOENT }}});
+#if ASSERTIONS
+          MEMFS.genericError.stack = '<generic error, no stack>';
+#endif
+        }
+        throw MEMFS.genericError;
       },
       mknod(parent, name, mode, dev) {
         return MEMFS.createNode(parent, name, mode, dev);
