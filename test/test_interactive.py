@@ -141,7 +141,7 @@ class interactive(BrowserCore):
     shutil.copyfile(test_file('sounds/audio.wav'), self.in_dir('audio.wav'))
 
     for args in [[], ['-pthread', '-sPROXY_TO_PTHREAD']]:
-      self.compile_btest(['-O2', test_file('openal_playback.cpp'), '--preload-file', 'audio.wav', '-o', 'page.html'] + args)
+      self.compile_btest('openal_playback.cpp', ['-O2', '--preload-file', 'audio.wav', '-o', 'page.html'] + args)
       self.run_browser('page.html', '/report_result?1')
 
   def test_openal_buffers(self):
@@ -191,9 +191,9 @@ class interactive(BrowserCore):
       return self.get_library(os.path.join('third_party', 'freealut'), os.path.join('src', '.libs', 'libalut.a'), configure_args=['--disable-shared'])
 
   def test_freealut(self):
-    src = test_file('third_party/freealut', 'examples', 'hello_world.c')
-    inc = test_file('third_party/freealut', 'include')
-    self.compile_btest([src, '-O2', '-o', 'page.html', '-I' + inc] + self.get_freealut_library())
+    src = test_file('third_party/freealut/examples/hello_world.c')
+    inc = test_file('third_party/freealut/include')
+    self.compile_btest(src, ['-O2', '-o', 'page.html', '-I' + inc] + self.get_freealut_library())
     self.run_browser('page.html', message='You should hear "Hello World!"')
 
   def test_glfw_cursor_disabled(self):
