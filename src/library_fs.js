@@ -231,7 +231,7 @@ FS.staticInit();` +
     lookupNode(parent, name) {
       var errCode = FS.mayLookup(parent);
       if (errCode) {
-        throw new FS.ErrnoError(errCode, parent);
+        throw new FS.ErrnoError(errCode);
       }
       var hash = FS.hashName(parent.id, name);
 #if CASE_INSENSITIVE_FS
@@ -316,6 +316,7 @@ FS.staticInit();` +
       return 0;
     },
     mayLookup(dir) {
+      if (!FS.isDir(dir.mode)) return {{{ cDefs.ENOTDIR }}};
       var errCode = FS.nodePermissions(dir, 'x');
       if (errCode) return errCode;
       if (!dir.node_ops.lookup) return {{{ cDefs.EACCES }}};
@@ -1408,7 +1409,7 @@ FS.staticInit();` +
     },
     ensureErrnoError() {
       if (FS.ErrnoError) return;
-      FS.ErrnoError = /** @this{Object} */ function ErrnoError(errno, node) {
+      FS.ErrnoError = /** @this{Object} */ function ErrnoError(errno) {
         // We set the `name` property to be able to identify `FS.ErrnoError`
         // - the `name` is a standard ECMA-262 property of error objects. Kind of good to have it anyway.
         // - when using PROXYFS, an error can come from an underlying FS
@@ -1416,7 +1417,6 @@ FS.staticInit();` +
         // the test `err instanceof FS.ErrnoError` won't detect an error coming from another filesystem, causing bugs.
         // we'll use the reliable test `err.name == "ErrnoError"` instead
         this.name = 'ErrnoError';
-        this.node = node;
         this.setErrno = /** @this{Object} */ function(errno) {
           this.errno = errno;
 #if ASSERTIONS
