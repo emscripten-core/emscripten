@@ -257,15 +257,15 @@ FS.init();
     statBufToObject(statBuf) {
       // i53/u53 are enough for times and ino in practice.
       return {
-          dev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, "u32") }}},
-          mode: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mode, "u32") }}},
-          nlink: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_nlink, "u32") }}},
+          dev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, "i32") }}},
+          mode: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mode, "i32") }}},
+          nlink: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_nlink, SIZE_TYPE) }}},
           uid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_uid, "u32") }}},
           gid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_gid, "u32") }}},
-          rdev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_rdev, "u32") }}},
+          rdev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_rdev, "i32") }}},
           size: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_size, "i53") }}},
-          blksize: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blksize, "u32") }}},
-          blocks: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blocks, "u32") }}},
+          blksize: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blksize, "i32") }}},
+          blocks: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blocks, "i32") }}},
           atime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_atim.tv_sec, "i53") }}},
           mtime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mtim.tv_sec, "i53") }}},
           ctime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ctim.tv_sec, "i53") }}},

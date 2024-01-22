@@ -52,10 +52,10 @@ var SyscallsLibrary = {
         throw e;
       }
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'u32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_nlink, 'stat.nlink', SIZE_TYPE) }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_uid, 'stat.uid', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_gid, 'stat.gid', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_uid, 'stat.uid', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_gid, 'stat.gid', 'u32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_rdev, 'stat.rdev', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i32') }}};
@@ -819,16 +819,16 @@ var SyscallsLibrary = {
 #endif
     // NOTE: None of the constants here are true. We're just returning safe and
     //       sane values.
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bsize, '4096', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_frsize, '4096', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bsize, '4096', 'u32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_frsize, '4096', 'u32') }}};
     {{{ makeSetValue('buf', C_STRUCTS.statfs.f_blocks, '1000000', 'i32') }}};
     {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bfree, '500000', 'i32') }}};
     {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bavail, '500000', 'i32') }}};
     {{{ makeSetValue('buf', C_STRUCTS.statfs.f_files, 'FS.nextInode', 'i32') }}};
     {{{ makeSetValue('buf', C_STRUCTS.statfs.f_ffree, '1000000', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_fsid, '42', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_flags, '2', 'i32') }}};  // ST_NOSUID
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_namelen, '255', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_fsid, '42', 'u32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_flags, '2', 'u32') }}};  // ST_NOSUID
+    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_namelen, '255', 'u32') }}};
     return 0;
   },
   __syscall_fstatfs64__deps: ['__syscall_statfs64'],

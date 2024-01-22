@@ -124,7 +124,7 @@ int _wasmfs_write_file(char* pathname, char* data, size_t data_size) {
   return data_size;
 }
 
-int _wasmfs_mkdir(char* path, int mode) {
+int _wasmfs_mkdir(char* path, mode_t mode) {
   return __syscall_mkdirat(AT_FDCWD, (intptr_t)path, mode);
 }
 

@@ -587,7 +587,7 @@ int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
   return doOpen(path::parseParent((char*)path, dirfd), flags, mode);
 }
 
-int __syscall_mknodat(int dirfd, intptr_t path, int mode, int dev) {
+int __syscall_mknodat(int dirfd, intptr_t path, mode_t mode, dev_t dev) {
   assert(dev == 0); // TODO: support special devices
   if (mode & S_IFDIR) {
     return -EINVAL;
@@ -603,7 +603,7 @@ int __syscall_mknodat(int dirfd, intptr_t path, int mode, int dev) {
 }
 
 static int
-doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
+doMkdir(path::ParsedParent parsed, mode_t mode, backend_t backend = NullBackend) {
   if (auto err = parsed.getError()) {
     return err;
   }
@@ -660,14 +660,14 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
 
 // This function is exposed to users and allows users to specify a particular
 // backend that a directory should be created within.
-int wasmfs_create_directory(char* path, int mode, backend_t backend) {
+int wasmfs_create_directory(char* path, mode_t mode, backend_t backend) {
   static_assert(std::is_same_v<decltype(doMkdir(0, 0, 0)), int>,
                 "unexpected conversion from result of doMkdir to int");
   return doMkdir(path::parseParent(path), mode, backend);
 }
 
 // TODO: Test this.
-int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
+int __syscall_mkdirat(int dirfd, intptr_t path, mode_t mode) {
   return doMkdir(path::parseParent((char*)path, dirfd), mode);
 }
 
@@ -1163,7 +1163,7 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
+int __syscall_fchmodat(int dirfd, intptr_t path, mode_t mode, ...) {
   int flags = 0;
   va_list v1;
   va_start(v1, mode);
@@ -1185,11 +1185,11 @@ int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
   return 0;
 }
 
-int __syscall_chmod(intptr_t path, int mode) {
+int __syscall_chmod(intptr_t path, mode_t mode) {
   return __syscall_fchmodat(AT_FDCWD, path, mode, 0);
 }
 
-int __syscall_fchmod(int fd, int mode) {
+int __syscall_fchmod(int fd, mode_t mode) {
   auto openFile = wasmFS.getFileTable().locked().getEntry(fd);
   if (!openFile) {
     return -EBADF;
@@ -1201,7 +1201,7 @@ int __syscall_fchmod(int fd, int mode) {
 }
 
 int __syscall_fchownat(
-  int dirfd, intptr_t path, int owner, int group, int flags) {
+  int dirfd, intptr_t path, uid_t owner, gid_t group, int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_SYMLINK_NOFOLLOW)) {
     // TODO: Test this case.
@@ -1217,7 +1217,7 @@ int __syscall_fchownat(
   return 0;
 }
 
-int __syscall_fchown32(int fd, int owner, int group) {
+int __syscall_fchown32(int fd, uid_t owner, gid_t group) {
   return __syscall_fchownat(fd, (intptr_t) "", owner, group, AT_EMPTY_PATH);
 }
 

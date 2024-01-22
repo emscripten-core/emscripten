@@ -1,13 +1,20 @@
 #include <sys/socket.h>
+#ifndef __EMSCRIPTEN__ // XXX Emscripten revert musl commit 51fd67fcbfa598e2fe1885b517451b84c0bfe3b7
 #include <sys/time.h>
 #include <errno.h>
+#endif
 #include "syscall.h"
 
+#ifndef __EMSCRIPTEN__ // XXX Emscripten revert musl commit 51fd67fcbfa598e2fe1885b517451b84c0bfe3b7
 #define IS32BIT(x) !((x)+0x80000000ULL>>32)
 #define CLAMP(x) (int)(IS32BIT(x) ? (x) : 0x7fffffffU+((0ULL+(x))>>63))
+#endif
 
 int setsockopt(int fd, int level, int optname, const void *optval, socklen_t optlen)
 {
+#ifdef __EMSCRIPTEN__ // XXX Emscripten revert musl commit 51fd67fcbfa598e2fe1885b517451b84c0bfe3b7
+	return socketcall(setsockopt, fd, level, optname, optval, optlen, 0);
+#else
 	const struct timeval *tv;
 	time_t s;
 	suseconds_t us;
@@ -43,4 +50,5 @@ int setsockopt(int fd, int level, int optname, const void *optval, socklen_t opt
 		}
 	}
 	return __syscall_ret(r);
+#endif
 }

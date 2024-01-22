@@ -6128,6 +6128,15 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test('test_getloadavg.c')
 
   def test_nl_types(self):
+    shutil.copyfile(test_file('core/hello.cat'), 'hello.cat')
+    self.add_pre_run('''
+      ENV.LANG = "nl_NL";
+      // Uncomment to let it access /usr/share/locale/nl_NL/LC_MESSAGES/hello.cat
+      //ENV.NLSPATH = "/usr/share/locale/%L/LC_MESSAGES/%N";
+      ENV.NLSPATH = "./%N";
+    ''')
+    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_mmap', '_malloc',  '_free', '_getenv'])
+    self.set_setting('NODERAWFS')
     self.do_core_test('test_nl_types.c')
 
   def test_799(self):

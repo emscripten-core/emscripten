@@ -24,10 +24,10 @@
 #include <emscripten/console.h>
 #include <emscripten/version.h>
 
-static int g_pid = 42;
-static int g_pgid = 42;
-static int g_ppid = 1;
-static int g_sid = 42;
+static pid_t g_pid = 42;
+static pid_t g_pgid = 42;
+static pid_t g_ppid = 1;
+static pid_t g_sid = 42;
 static mode_t g_umask = S_IRWXU | S_IRWXG | S_IRWXO;
 
 #ifdef NDEBUG
@@ -68,7 +68,7 @@ weak int __syscall_uname(intptr_t buf) {
   return 0;
 }
 
-weak int __syscall_setpgid(int pid, int pgid) {
+weak int __syscall_setpgid(pid_t pid, pid_t pgid) {
   if (pid && pid != g_pid) {
     return -ESRCH;
   }
@@ -82,25 +82,25 @@ weak int __syscall_sync() {
   return 0;
 }
 
-weak int __syscall_getsid(int pid) {
+weak pid_t __syscall_getsid(pid_t pid) {
   if (pid && pid != g_pid) {
     return -ESRCH;
   }
   return g_sid;
 }
 
-weak int __syscall_getpgid(int pid) {
+weak pid_t __syscall_getpgid(pid_t pid) {
   if (pid && pid != g_pid) {
     return -ESRCH;
   }
   return g_pgid;
 }
 
-weak int __syscall_getpid() {
+weak pid_t __syscall_getpid() {
   return g_pid;
 }
 
-weak int __syscall_getppid() {
+weak pid_t __syscall_getppid() {
   return g_ppid;
 }
 
@@ -108,20 +108,20 @@ weak int __syscall_linkat(int olddirfd, intptr_t oldpath, int newdirfd, intptr_t
   return -EMLINK; // no hardlinks for us
 }
 
-weak int __syscall_getgroups32(int size, intptr_t list) {
-  if (size < 1) {
+weak int __syscall_getgroups32(int count, intptr_t list) {
+  if (count < 1) {
     return -EINVAL;
   }
   ((gid_t*)list)[0] = 0;
   return 1;
 }
 
-weak int __syscall_setsid() {
+weak pid_t __syscall_setsid() {
   return 0; // no-op
 }
 
-weak int __syscall_umask(int mask) {
-  int old = g_umask;
+weak mode_t __syscall_umask(mode_t mask) {
+  mode_t old = g_umask;
   g_umask = mask;
   return old;
 }
@@ -141,11 +141,11 @@ weak int __syscall_getrusage(int who, intptr_t usage) {
   return 0;
 }
 
-weak int __syscall_getpriority(int which, int who) {
+weak int __syscall_getpriority(int which, id_t who) {
   return 0;
 }
 
-weak int __syscall_setpriority(int which, int who, int prio) {
+weak int __syscall_setpriority(int which, id_t who, int prio) {
   return -EPERM;
 }
 
@@ -153,19 +153,19 @@ weak int __syscall_setdomainname(intptr_t name, size_t size) {
   return -EPERM;
 }
 
-weak int __syscall_getuid32(void) {
+weak uid_t __syscall_getuid32(void) {
   return 0;
 }
 
-weak int __syscall_getgid32(void) {
+weak gid_t __syscall_getgid32(void) {
   return 0;
 }
 
-weak int __syscall_geteuid32(void) {
+weak uid_t __syscall_geteuid32(void) {
   return 0;
 }
 
-weak int __syscall_getegid32(void) {
+weak gid_t __syscall_getegid32(void) {
   return 0;
 }
 
@@ -225,7 +225,7 @@ weak int __syscall_munlockall() {
   return 0;
 }
 
-weak int __syscall_prlimit64(int pid, int resource, intptr_t new_limit, intptr_t old_limit) {
+weak int __syscall_prlimit64(pid_t pid, int resource, intptr_t new_limit, intptr_t old_limit) {
   REPORT(prlimit64);
   struct rlimit *old = (struct rlimit *)old_limit;
   if (old) { // just report no limits
@@ -256,4 +256,4 @@ UNIMPLEMENTED(recvmmsg, (int sockfd, intptr_t msgvec, size_t vlen, int flags, ..
 UNIMPLEMENTED(sendmmsg, (int sockfd, intptr_t msgvec, size_t vlen, int flags, ...))
 UNIMPLEMENTED(shutdown, (int sockfd, int how, int dummy, int dummy2, int dummy3, int dummy4))
 UNIMPLEMENTED(socketpair, (int domain, int type, int protocol, intptr_t fds, int dummy, int dummy2))
-UNIMPLEMENTED(wait4,(int pid, intptr_t wstatus, int options, int rusage))
+UNIMPLEMENTED(wait4,(pid_t pid, intptr_t wstatus, int options, int rusage))

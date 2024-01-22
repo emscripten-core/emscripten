@@ -21,17 +21,11 @@ int main() {
   pthread_t self = pthread_self();
 
   /*
-   * Attempts to join the current thread will either generate
-   * EDEADLK or EINVAL depending on whether has already been
-   * detached
+   * Attempts to join the current thread will generate EDEADLK.
    */
   int ret = pthread_join(self, NULL);
   printf("pthread_join -> %s\n", strerror(ret));
-  if (is_detached) {
-    assert(ret == EINVAL);
-  } else {
-    assert(ret == EDEADLK);
-  }
+  assert(ret == EDEADLK);
 
   /*
    * Attempts to detach the main thread will either succeed
@@ -44,10 +38,6 @@ int main() {
   } else {
     assert(ret == 0);
   }
-
-  ret = pthread_join(self, NULL);
-  printf("pthread_join -> %s\n", strerror(ret));
-  assert(ret == EINVAL);
 
   puts("passed");
 
