@@ -717,7 +717,7 @@ If manually bisecting:
             window.onerror = (error) => {
               window.disableErrorReporting = true;
               window.onerror = null;
-              var result = error.indexOf("test.data") >= 0 ? 1 : 0;
+              var result = error.includes("test.data") ? 1 : 0;
               var xhr = new XMLHttpRequest();
               xhr.open('GET', 'http://localhost:8888/report_result?' + result, true);
               xhr.send();
@@ -2469,7 +2469,7 @@ void *getBindBuffer() {
         xhr.send(null);
 
         console.warn = (x) => {
-          if (x.indexOf('a problem seems to have happened with Module.memoryInitializerRequest') >= 0) {
+          if (x.includes('a problem seems to have happened with Module.memoryInitializerRequest')) {
             maybeReportResultToServer('got_error');
           }
           console.log('WARNING: ' + x);
@@ -2511,7 +2511,7 @@ void *getBindBuffer() {
         ok = true; // should fail and not reach here, runtime is not ready yet so ccall will abort
       } catch(e) {
         out('expected fail 1: ' + e.toString());
-        assert(e.toString().indexOf('Assertion failed') >= 0); // assertion, not something else
+        assert(e.toString().includes('Assertion failed')); // assertion, not something else
         ABORT = false; // hackish
       }
       assert(ok === expected_ok);
@@ -2522,7 +2522,7 @@ void *getBindBuffer() {
         ok = true; // should fail and not reach here, runtime is not ready yet so cwrap call will abort
       } catch(e) {
         out('expected fail 2: ' + e.toString());
-        assert(e.toString().indexOf('Assertion failed') >= 0); // assertion, not something else
+        assert(e.toString().includes('Assertion failed')); // assertion, not something else
         ABORT = false; // hackish
       }
       assert(ok === expected_ok);
@@ -2533,7 +2533,7 @@ void *getBindBuffer() {
         ok = true; // should fail and not reach here, runtime is not ready yet so any code execution
       } catch(e) {
         out('expected fail 3:' + e.toString());
-        assert(e.toString().indexOf('Assertion failed') >= 0); // assertion, not something else
+        assert(e.toString().includes('Assertion failed')); // assertion, not something else
         ABORT = false; // hackish
       }
       assert(ok === expected_ok);
@@ -5108,7 +5108,7 @@ Module["preRun"] = () => {
       <script>
         var Module = {
           locateFile: function (path) {
-            if (path.indexOf('data:') === 0) {
+            if (path.startsWith('data:')) {
               throw new Error('Unexpected data URI.');
             }
 
