@@ -35,7 +35,7 @@ from . import utils
 from . import webassembly
 from .utils import read_file, read_binary, write_file, delete_file
 from .utils import removeprefix, exit_with_error
-from .shared import in_temp, safe_copy, do_replace, run_process, OFormat
+from .shared import in_temp, safe_copy, do_replace, OFormat
 from .shared import DEBUG, WINDOWS, DYNAMICLIB_ENDINGS, STATICLIB_ENDINGS
 from .shared import unsuffixed, unsuffixed_basename, get_file_suffix
 from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS
@@ -199,38 +199,6 @@ def embed_memfile(options):
            (not settings.MAIN_MODULE and
             not settings.SIDE_MODULE and
             not settings.GENERATE_SOURCE_MAP)))
-
-
-def is_ar_file_with_missing_index(archive_file):
-  # We parse the archive header outselves because llvm-nm --print-armap is slower and less
-  # reliable.
-  # See: https://github.com/emscripten-core/emscripten/issues/10195
-  archive_header = b'!<arch>\n'
-  file_header_size = 60
-
-  with open(archive_file, 'rb') as f:
-    header = f.read(len(archive_header))
-    if header != archive_header:
-      # This is not even an ar file
-      return False
-    file_header = f.read(file_header_size)
-    if len(file_header) != file_header_size:
-      # We don't have any file entires at all so we don't consider the index missing
-      return False
-
-  name = file_header[:16].strip()
-  # If '/' is the name of the first file we have an index
-  return name != b'/'
-
-
-def ensure_archive_index(archive_file):
-  # Fastcomp linking works without archive indexes.
-  if not settings.AUTO_ARCHIVE_INDEXES:
-    return
-  if is_ar_file_with_missing_index(archive_file):
-    diagnostics.warning('emcc', '%s: archive is missing an index; Use emar when creating libraries to ensure an index is created', archive_file)
-    diagnostics.warning('emcc', '%s: adding index', archive_file)
-    run_process([shared.LLVM_RANLIB, archive_file])
 
 
 def generate_js_sym_info():
@@ -903,7 +871,6 @@ def phase_linker_setup(options, state, newargs):
     default_setting('DEFAULT_TO_CXX', 0)
     default_setting('AUTO_JS_LIBRARIES', 0)
     default_setting('AUTO_NATIVE_LIBRARIES', 0)
-    default_setting('AUTO_ARCHIVE_INDEXES', 0)
     default_setting('IGNORE_MISSING_MAIN', 0)
     default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
     if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
@@ -2695,10 +2662,6 @@ def process_libraries(state, linker_inputs):
   settings.JS_LIBRARIES.sort(key=lambda lib: lib[0])
   settings.JS_LIBRARIES = [lib[1] for lib in settings.JS_LIBRARIES]
   state.link_flags = new_flags
-
-  for _, f in linker_inputs:
-    if building.is_ar(f):
-      ensure_archive_index(f)
 
 
 class ScriptSource:
