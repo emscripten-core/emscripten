@@ -3454,7 +3454,7 @@ addToLibrary({
     if (x == '__main_argc_argv') {
       x = 'main';
     }
-    return x.indexOf('dynCall_') == 0 || unmangledSymbols.includes(x) ? x : '_' + x;
+    return x.startsWith('dynCall_') || unmangledSymbols.includes(x) ? x : '_' + x;
   },
 
   $asyncLoad__docs: '/** @param {boolean=} noRunDep */',
