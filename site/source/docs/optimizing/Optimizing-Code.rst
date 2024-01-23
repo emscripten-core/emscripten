@@ -4,7 +4,17 @@
 Optimizing Code
 ===============
 
-Generally you should first compile and run your code without optimizations (the default). Once you are sure that the code runs correctly, you can use the techniques in this article to make it load and run faster.
+Generally you should first compile and run your code without optimizations,
+which is the default when you just run ``emcc`` without specifying an
+optimization level. Such unoptimized builds contain some checks and assertions
+that can be very helpful in making sure that your code runs correctly. Once it
+does, it is highly recommended to optimize the builds that you ship, for
+several reasons: First, optimized builds are much smaller and faster, so they
+load quickly and run more smoothly, and second, **un**-optimized builds contain
+debug information such as the names of things and code comments in JavaScript
+(which may contain things you do not want to ship to your users).
+
+The rest of this page explains how to optimize your code.
 
 How to optimize code
 ====================
