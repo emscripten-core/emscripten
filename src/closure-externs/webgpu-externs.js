@@ -1,4 +1,8 @@
-// Generated using https://github.com/kainino0x/webidl-to-closure-externs
+/*
+ * WebGPU globals
+ * Generated using https://github.com/kainino0x/webidl-to-closure-externs
+ * against the spec's WebIDL: https://gpuweb.github.io/gpuweb/webgpu.idl
+ */
 
 /** @type {?GPU} */
 Navigator.prototype.gpu;
