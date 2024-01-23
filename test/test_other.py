@@ -12087,8 +12087,8 @@ int main () {
       }
     ''')
     self.do_runf('unincluded_malloc.c', (
-      "malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS",
-      "free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS"))
+      'malloc() called but not included in the build - add `_malloc` to EXPORTED_FUNCTIONS',
+      'free() called but not included in the build - add `_free` to EXPORTED_FUNCTIONS'), assert_all=True)
 
   def test_getrusage(self):
     self.do_runf('other/test_getrusage.c')

@@ -803,7 +803,7 @@ def make_export_wrappers(function_exports):
       args = ', '.join(args)
       wrapper += f"({args}) => ({mangled} = {exported}wasmExports['{name}'])({args});"
     else:
-      wrapper += 'wasmExports["%s"]' % name
+      wrapper += f"wasmExports['{name}']"
 
     wrappers.append(wrapper)
   return wrappers

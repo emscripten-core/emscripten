@@ -37,7 +37,7 @@ addToLibrary({
   $FS__postset: function() {
     // TODO: do we need noFSInit?
     addAtInit(`
-if (!Module["noFSInit"] && !FS.init.initialized)
+if (!Module['noFSInit'] && !FS.init.initialized)
   FS.init();
 FS.ignorePermissions = false;
 `)
