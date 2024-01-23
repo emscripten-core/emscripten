@@ -3001,6 +3001,10 @@ Module["preRun"] = () => {
     self.btest_exit('test_glfw3_hi_dpi_aware.c', args=['-sUSE_GLFW=3', '-lGL'])
 
   @requires_graphics_hardware
+  def test_glfw3_port(self):
+      self.btest_exit('test_glfw3_port.c', args=['-sUSE_GLFW_PORT=3', '-lGL'])
+
+  @requires_graphics_hardware
   @no_wasm64('SDL2 + wasm64')
   @parameterized({
     '': ([],),

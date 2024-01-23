@@ -1340,6 +1340,12 @@ var EMSCRIPTEN_TRACING = false;
 // [link]
 var USE_GLFW = 0;
 
+// Specify the version of the GLFW port to use. The port is located at
+// https://github.com/pongasoft/emscripten-glfw (includes demo, documentation
+// and usage). Valid option is 3 at the moment.
+// [link]
+var USE_GLFW_PORT = 0;
+
 // Whether to use compile code to WebAssembly. Set this to 0 to compile to JS
 // instead of wasm.
 //
