@@ -2970,9 +2970,10 @@ int f() {
     'wasm64': ['-sMEMORY64', '-Wno-experimental'],
   })
   @parameterized({
+    # With no arguments we are effectively testing c++17 since it is the default.
     '': [],
-    # Ensure embind compiles under C++17 where "noexcept" became part of the function signature.
-    'cxx17': ['-std=c++17'],
+    # Ensure embind compiles under C++11 which is the miniumum supported version.
+    'cxx11': ['-std=c++11'],
     'o1': ['-O1'],
     'o2': ['-O2'],
     'o2_mem_growth': ['-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')],
@@ -12086,8 +12087,8 @@ int main () {
       }
     ''')
     self.do_runf('unincluded_malloc.c', (
-      "malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS",
-      "free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS"))
+      'malloc() called but not included in the build - add `_malloc` to EXPORTED_FUNCTIONS',
+      'free() called but not included in the build - add `_free` to EXPORTED_FUNCTIONS'), assert_all=True)
 
   def test_getrusage(self):
     self.do_runf('other/test_getrusage.c')
