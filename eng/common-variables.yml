@@ -23,18 +23,13 @@ variables:
       value: True
     - name: _SignType
       value: real
-    # DotNet-Blob-Feed provides: dotnetfeed-storage-access-key-1
     # Publish-Build-Assets provides: MaestroAccessToken, BotAccount-dotnet-maestro-bot-PAT
     # DotNet-HelixApi-Access provides: HelixApiAccessToken
-    - group: DotNet-Blob-Feed
     - group: Publish-Build-Assets
     - group: DotNet-VSTS-Bot
     - group: DotNet-HelixApi-Access
     - name: _InternalBuildArgs
       value: /p:DotNetSignType=$(_SignType) /p:TeamName=$(_TeamName)
-        /p:DotNetPublishBlobFeedKey=$(dotnetfeed-storage-access-key-1)
-        /p:DotNetPublishBlobFeedUrl=https://dotnetfeed.blob.core.windows.net/dotnet-core/index.json
-        /p:DotNetPublishToBlobFeed=true
         /p:DotNetPublishUsingPipelines=true
         /p:DotNetArtifactsCategory=$(_DotNetArtifactsCategory)
         /p:OfficialBuildId=$(BUILD.BUILDNUMBER)
