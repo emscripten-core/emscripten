@@ -42,15 +42,7 @@ var SyscallsLibrary = {
     },
 
     doStat(func, path, buf) {
-      try {
-        var stat = func(path);
-      } catch (e) {
-        if (e && e.node && PATH.normalize(path) !== PATH.normalize(FS.getPath(e.node))) {
-          // an error occurred while trying to look up the path; we should just report ENOTDIR
-          return -{{{ cDefs.ENOTDIR }}};
-        }
-        throw e;
-      }
+      var stat = func(path);
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_nlink, 'stat.nlink', SIZE_TYPE) }}};

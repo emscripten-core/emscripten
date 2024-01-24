@@ -6122,77 +6122,7 @@ This locale is not the C locale.
     test(['-sEXPORTED_RUNTIME_METHODS=[]', '-sEXPORTED_RUNTIME_METHODS=addRunDependency'], "Module['addRunDependency", "Module['waka")
 
   def test_stat_fail_alongtheway(self):
-    create_file('src.c', r'''
-#include <errno.h>
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <string.h>
-
-#define CHECK(expression) \
-  if(!(expression)) {                            \
-    error = errno;                               \
-    printf("FAIL: %s\n", #expression); fail = 1; \
-  } else {                                       \
-    error = errno;                               \
-    printf("pass: %s\n", #expression);           \
-  }                                              \
-
-int main() {
-  int error;
-  int fail = 0;
-  CHECK(mkdir("path", 0777) == 0);
-  CHECK(close(open("path/file", O_CREAT | O_WRONLY, 0644)) == 0);
-  {
-    struct stat st;
-    CHECK(stat("path", &st) == 0);
-    CHECK(st.st_mode = 0777);
-  }
-  {
-    struct stat st;
-    CHECK(stat("path/nosuchfile", &st) == -1);
-    printf("info: errno=%d %s\n", error, strerror(error));
-    CHECK(error == ENOENT);
-  }
-  {
-    struct stat st;
-    CHECK(stat("path/file", &st) == 0);
-    CHECK(st.st_mode = 0666);
-  }
-  {
-    struct stat st;
-    CHECK(stat("path/file/impossible", &st) == -1);
-    printf("info: errno=%d %s\n", error, strerror(error));
-    CHECK(error == ENOTDIR);
-  }
-  {
-    struct stat st;
-    CHECK(lstat("path/file/impossible", &st) == -1);
-    printf("info: errno=%d %s\n", error, strerror(error));
-    CHECK(error == ENOTDIR);
-  }
-  return fail;
-}
-''')
-    self.do_runf('src.c', r'''pass: mkdir("path", 0777) == 0
-pass: close(open("path/file", O_CREAT | O_WRONLY, 0644)) == 0
-pass: stat("path", &st) == 0
-pass: st.st_mode = 0777
-pass: stat("path/nosuchfile", &st) == -1
-info: errno=44 No such file or directory
-pass: error == ENOENT
-pass: stat("path/file", &st) == 0
-pass: st.st_mode = 0666
-pass: stat("path/file/impossible", &st) == -1
-info: errno=54 Not a directory
-pass: error == ENOTDIR
-pass: lstat("path/file/impossible", &st) == -1
-info: errno=54 Not a directory
-pass: error == ENOTDIR
-''')
+    self.do_other_test('test_stat_fail_alongtheway.c')
 
   def test_link_with_a_static(self):
     create_file('x.c', r'''

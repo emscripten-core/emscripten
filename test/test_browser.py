@@ -4796,7 +4796,7 @@ Module["preRun"] = () => {
     self.btest_exit('webgl2_simple_enable_extensions.c', args=cmd)
 
   @parameterized({
-    '': ([],),
+    'default': ([],),
     'closure': (['-sASSERTIONS', '--closure=1'],),
     'main_module': (['-sMAIN_MODULE=1'],),
   })
