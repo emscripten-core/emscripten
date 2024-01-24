@@ -98,7 +98,7 @@ var LibraryEmVal = {
 
   _emval_decref__deps: ['$emval_freelist', '$emval_handles', '$emval_handles_reserved'],
   _emval_decref: (handle) => {
-    if (handle >= emval_handles_reserved && 0 === --emval_handles[handle * 2 + 1]).refcount) {
+    if (handle >= emval_handles_reserved && 0 === --emval_handles[handle * 2 + 1]) {
   #if ASSERTIONS
       assert(emval_handles[handle * 2] !== undefined);
   #endif
