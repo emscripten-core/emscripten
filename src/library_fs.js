@@ -115,6 +115,36 @@ FS.staticInit();` +
     filesystems: null,
     syncFSRequests: 0, // we warn if there are multiple in flight at once
 
+#if ASSERTIONS
+    ErrnoError: class extends Error {
+#else
+    ErrnoError: class {
+#endif
+      // We set the `name` property to be able to identify `FS.ErrnoError`
+      // - the `name` is a standard ECMA-262 property of error objects. Kind of good to have it anyway.
+      // - when using PROXYFS, an error can come from an underlying FS
+      // as different FS objects have their own FS.ErrnoError each,
+      // the test `err instanceof FS.ErrnoError` won't detect an error coming from another filesystem, causing bugs.
+      // we'll use the reliable test `err.name == "ErrnoError"` instead
+      constructor(errno) {
+#if ASSERTIONS
+        super(ERRNO_MESSAGES[errno]);
+#endif
+        // TODO(sbc): Use the inline member delclaration syntax once we
+        // support it in acorn and closure.
+        this.name = 'ErrnoError';
+        this.errno = errno;
+#if ASSERTIONS
+        for (var key in ERRNO_CODES) {
+          if (ERRNO_CODES[key] === errno) {
+            this.code = key;
+            break;
+          }
+        }
+#endif
+      }
+    },
+
     //
     // paths
     //
@@ -1404,53 +1434,12 @@ FS.staticInit();` +
       assert(stderr.fd === 2, `invalid handle for stderr (${stderr.fd})`);
 #endif
     },
-    ensureErrnoError() {
-      if (FS.ErrnoError) return;
-      FS.ErrnoError = /** @this{Object} */ function ErrnoError(errno) {
-        // We set the `name` property to be able to identify `FS.ErrnoError`
-        // - the `name` is a standard ECMA-262 property of error objects. Kind of good to have it anyway.
-        // - when using PROXYFS, an error can come from an underlying FS
-        // as different FS objects have their own FS.ErrnoError each,
-        // the test `err instanceof FS.ErrnoError` won't detect an error coming from another filesystem, causing bugs.
-        // we'll use the reliable test `err.name == "ErrnoError"` instead
-        this.name = 'ErrnoError';
-        this.setErrno = /** @this{Object} */ function(errno) {
-          this.errno = errno;
-#if ASSERTIONS
-          for (var key in ERRNO_CODES) {
-            if (ERRNO_CODES[key] === errno) {
-              this.code = key;
-              break;
-            }
-          }
-#endif
-        };
-        this.setErrno(errno);
-#if ASSERTIONS
-        this.message = ERRNO_MESSAGES[errno];
-#else
-        this.message = 'FS error';
-#endif
-
-#if ASSERTIONS && !MINIMAL_RUNTIME
-        // Try to get a maximally helpful stack trace. On Node.js, getting Error.stack
-        // now ensures it shows what we want.
-        if (this.stack) {
-          // Define the stack property for Node.js 4, which otherwise errors on the next line.
-          Object.defineProperty(this, "stack", { value: (new Error).stack, writable: true });
-        }
-#endif // ASSERTIONS
-      };
-      FS.ErrnoError.prototype = new Error();
-      FS.ErrnoError.prototype.constructor = FS.ErrnoError;
+    staticInit() {
       // Some errors may happen quite a bit, to avoid overhead we reuse them (and suffer a lack of stack info)
       [{{{ cDefs.ENOENT }}}].forEach((code) => {
         FS.genericErrors[code] = new FS.ErrnoError(code);
         FS.genericErrors[code].stack = '<generic error, no stack>';
       });
-    },
-    staticInit() {
-      FS.ensureErrnoError();
 
       FS.nameTable = new Array(4096);
 
@@ -1481,8 +1470,6 @@ FS.staticInit();` +
       assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
 #endif
       FS.init.initialized = true;
-
-      FS.ensureErrnoError();
 
       // Allow Module.stdin etc. to provide defaults, if none explicitly passed to us here
       Module['stdin'] = input || Module['stdin'];
