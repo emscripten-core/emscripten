@@ -337,8 +337,7 @@ var EMULATE_FUNCTION_POINTER_CASTS = false;
 // [link]
 var EXCEPTION_DEBUG = false;
 
-// If 1, build in libcxxabi's full c++ demangling code, to allow stackTrace()
-// to emit fully proper demangled c++ names
+// If 1, export `demangle` and `stackTrace` helper function.
 // [link]
 var DEMANGLE_SUPPORT = false;
 

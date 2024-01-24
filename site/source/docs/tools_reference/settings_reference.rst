@@ -409,8 +409,7 @@ Print out exceptions in emscriptened code.
 DEMANGLE_SUPPORT
 ================
 
-If 1, build in libcxxabi's full c++ demangling code, to allow stackTrace()
-to emit fully proper demangled c++ names
+If 1, export `demangle` and `stackTrace` helper function.
 
 .. _library_debug:
 

@@ -30,9 +30,6 @@ addToLibrary({
 #if ASSERTIONS
     '$ERRNO_MESSAGES', '$ERRNO_CODES',
 #endif
-#if ASSERTIONS && !MINIMAL_RUNTIME
-    '$demangleAll',
-#endif
   ],
   $FS__postset: function() {
     // TODO: do we need noFSInit?
@@ -1441,7 +1438,6 @@ FS.staticInit();` +
         if (this.stack) {
           // Define the stack property for Node.js 4, which otherwise errors on the next line.
           Object.defineProperty(this, "stack", { value: (new Error).stack, writable: true });
-          this.stack = demangleAll(this.stack);
         }
 #endif // ASSERTIONS
       };
