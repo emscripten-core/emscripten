@@ -1433,11 +1433,10 @@ FS.staticInit();` +
 #endif
 
 #if ASSERTIONS && !MINIMAL_RUNTIME
-        // Try to get a maximally helpful stack trace. On Node.js, getting Error.stack
-        // now ensures it shows what we want.
+        // Try to get a maximally helpful stack trace.
         if (this.stack) {
-          // Define the stack property for Node.js 4, which otherwise errors on the next line.
-          Object.defineProperty(this, "stack", { value: (new Error).stack, writable: true });
+          // TODO(sbc): We can remove this if ErrnoError extends the Error class
+          this.stack = (new Error).stack;
         }
 #endif // ASSERTIONS
       };
