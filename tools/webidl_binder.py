@@ -32,17 +32,24 @@ CHECKS = os.environ.get('IDL_CHECKS', 'DEFAULT')
 # DEBUG=1 will print debug info in render_function
 DEBUG = os.environ.get('IDL_VERBOSE') == '1'
 
-if DEBUG:
-  print(f'Debug print ON, CHECKS=${CHECKS}')
+
+def dbg(*args):
+  if DEBUG:
+    print(*args, file=sys.stderr)
+
+
+dbg(f'Debug print ON, CHECKS=${CHECKS}')
 
 # We need to avoid some closure errors on the constructors we define here.
 CONSTRUCTOR_CLOSURE_SUPPRESSIONS = '/** @suppress {undefinedVars, duplicate} @this{Object} */'
 
 
 class Dummy:
-  def __init__(self, init):
-    for k, v in init.items():
-      self.__dict__[k] = v
+  def __init__(self, type):
+    self.type = type
+
+  def __repr__(self):
+    return f'<Dummy type:{self.type}>'
 
   def getExtendedAttribute(self, _name):
     return None
@@ -392,13 +399,12 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
   all_args = sigs.get(max_args)
 
   if DEBUG:
-    print('renderfunc', class_name, func_name, list(sigs.keys()), return_type, constructor)
-    for i in range(max_args):
-      a = all_args[i]
+    dbg('renderfunc', class_name, func_name, list(sigs.keys()), return_type, constructor)
+    for i, a in enumerate(all_args):
       if isinstance(a, WebIDL.IDLArgument):
-        print(' ', a.identifier.name, a.identifier, a.type, a.optional)
+        dbg('  ', a.identifier.name, a.identifier, a.type, a.optional)
       else:
-        print('  arg%d' % i)
+        dbg('  arg%d (%s)' % (i, a))
 
   # JS
 
@@ -726,9 +732,9 @@ for name in names:
     attr = m.identifier.name
 
     if m.type.isArray():
-      get_sigs = {1: [Dummy({'type': WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.long]})]}
-      set_sigs = {2: [Dummy({'type': WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.long]}),
-                      Dummy({'type': m.type})]}
+      get_sigs = {1: [Dummy(type=WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.long])]}
+      set_sigs = {2: [Dummy(type=WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.long]),
+                      Dummy(type=m.type.inner)]}
       get_call_content = take_addr_if_nonpointer(m) + 'self->' + attr + '[arg0]'
       set_call_content = 'self->' + attr + '[arg0] = ' + deref_if_nonpointer(m) + 'arg1'
       if m.getExtendedAttribute('BoundsChecked'):
@@ -740,7 +746,7 @@ for name in names:
         set_call_content = "(%s, %s)" % (bounds_check, set_call_content)
     else:
       get_sigs = {0: []}
-      set_sigs = {1: [Dummy({'type': m.type})]}
+      set_sigs = {1: [Dummy(type=m.type)]}
       get_call_content = take_addr_if_nonpointer(m) + 'self->' + attr
       set_call_content = 'self->' + attr + ' = ' + deref_if_nonpointer(m) + 'arg0'
 
