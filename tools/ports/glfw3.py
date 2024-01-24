@@ -29,7 +29,7 @@ def get(ports, settings, shared):
 
     # It would be great if the user could configure the build of the port, but I am
     # not sure if it is possible, so removing warnings
-    flags = [ '-DEMSCRIPTEN_GLFW3_DISABLE_WARNING' ]
+    flags = ['-DEMSCRIPTEN_GLFW3_DISABLE_WARNING']
 
     ports.build_port(source_path, final, 'glfw3', includes=source_include_paths, flags=flags)
 
