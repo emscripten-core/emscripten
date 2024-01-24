@@ -1701,6 +1701,15 @@ Specify the GLFW version that is being linked against.  Only relevant, if you
 are linking against the GLFW library.  Valid options are 2 for GLFW2 and 3
 for GLFW3.
 
+.. _use_glfw_port:
+
+USE_GLFW_PORT
+=============
+
+Specify the version of the GLFW port to use. The port is located at
+https://github.com/pongasoft/emscripten-glfw (includes demo, documentation
+and usage). Valid option is 3 at the moment (GLFW 3.3.8+).
+
 .. _wasm:
 
 WASM

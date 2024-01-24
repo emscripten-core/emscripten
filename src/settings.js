@@ -1342,7 +1342,7 @@ var USE_GLFW = 0;
 
 // Specify the version of the GLFW port to use. The port is located at
 // https://github.com/pongasoft/emscripten-glfw (includes demo, documentation
-// and usage). Valid option is 3 at the moment.
+// and usage). Valid option is 3 at the moment (GLFW 3.3.8+).
 // [link]
 var USE_GLFW_PORT = 0;
 
