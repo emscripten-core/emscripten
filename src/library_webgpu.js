@@ -2069,7 +2069,7 @@ var LibraryWebGPU = {
 
   wgpuTextureGetDimension: (textureId) => {
     var texture = WebGPU.mgrTexture.get(textureId);
-    return texture.dimension;
+    return WebGPU.TextureDimension.indexOf(texture.dimension);
   },
 
   wgpuTextureGetFormat: (textureId) => {
