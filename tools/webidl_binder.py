@@ -8,6 +8,7 @@
 https://emscripten.org/docs/porting/connecting_cpp_and_javascript/WebIDL-Binder.html
 """
 
+import argparse
 import os
 import sys
 from typing import List
@@ -55,8 +56,15 @@ class Dummy:
     return None
 
 
-input_file = sys.argv[1]
-output_base = sys.argv[2]
+parser = argparse.ArgumentParser()
+parser.add_argument('--wasm64', action='store_true', default=False,
+                    help='Build for wasm64')
+parser.add_argument('infile')
+parser.add_argument('outfile')
+options = parser.parse_args()
+
+input_file = options.infile
+output_base = options.outfile
 cpp_output = output_base + '.cpp'
 js_output = output_base + '.js'
 
@@ -89,7 +97,7 @@ pre_c = ['''
 #include <emscripten.h>
 #include <stdlib.h>
 
-EM_JS_DEPS(webidl_binder, "$intArrayFromString,$UTF8ToString");
+EM_JS_DEPS(webidl_binder, "$intArrayFromString,$UTF8ToString,$alignMemory");
 ''']
 
 mid_c = ['''
@@ -214,7 +222,7 @@ var ensureCache = {
     assert(ensureCache.buffer);
     var bytes = view.BYTES_PER_ELEMENT;
     var len = array.length * bytes;
-    len = (len + 7) & -8; // keep things aligned to 8 byte boundaries
+    len = alignMemory(len, 8); // keep things aligned to 8 byte boundaries
     var ret;
     if (ensureCache.pos + len >= ensureCache.size) {
       // we failed to allocate in the buffer, ensureCache time around :(
@@ -230,13 +238,7 @@ var ensureCache = {
     return ret;
   },
   copy(array, view, offset) {
-    offset >>>= 0;
-    var bytes = view.BYTES_PER_ELEMENT;
-    switch (bytes) {
-      case 2: offset >>>= 1; break;
-      case 4: offset >>>= 2; break;
-      case 8: offset >>>= 3; break;
-    }
+    offset /= view.BYTES_PER_ELEMENT;
     for (var i = 0; i < array.length; i++) {
       view[offset + i] = array[i];
     }
@@ -415,6 +417,11 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
   call_postfix = ''
   if return_type != 'Void' and not constructor:
     call_prefix = 'return '
+
+  ptr_rtn = constructor or return_type in interfaces or return_type == 'String'
+  if options.wasm64 and ptr_rtn:
+    call_postfix += ')'
+
   if not constructor:
     if return_type in interfaces:
       call_prefix += 'wrapPointer('
@@ -426,16 +433,26 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
       call_prefix += '!!('
       call_postfix += ')'
 
+  if options.wasm64 and ptr_rtn:
+    call_prefix += 'Number('
+
   args = [(all_args[i].identifier.name if isinstance(all_args[i], WebIDL.IDLArgument) else ('arg%d' % i)) for i in range(max_args)]
   if not constructor and not is_static:
     body = '  var self = this.ptr;\n'
-    pre_arg = ['self']
+    if options.wasm64:
+      pre_arg = ['BigInt(self)']
+    else:
+      pre_arg = ['self']
   else:
     body = ''
     pre_arg = []
 
   if any(arg.type.isString() or arg.type.isArray() for arg in all_args):
     body += '  ensureCache.prepare();\n'
+
+  def is_ptr_arg(i):
+    t = all_args[i].type
+    return (t.isArray() or t.isAny() or t.isString() or t.isObject() or t.isInterface())
 
   for i, (js_arg, arg) in enumerate(zip(args, all_args)):
     if i >= min_args:
@@ -500,9 +517,11 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
 
     if do_default:
       if not (arg.type.isArray() and not array_attribute):
-        body += "  if ({0} && typeof {0} === 'object') {0} = {0}.ptr;\n".format(js_arg)
+        body += f"  if ({js_arg} && typeof {js_arg} === 'object') {js_arg} = {js_arg}.ptr;\n"
         if arg.type.isString():
           body += "  else {0} = ensureString({0});\n".format(js_arg)
+        if options.wasm64 and is_ptr_arg(i):
+          body += f'  if ({args[i]} === null) {args[i]} = 0;\n'
       else:
         # an array can be received here
         arg_type = arg.type.name
@@ -517,18 +536,45 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
         elif arg_type == 'Double':
           body += "  if (typeof {0} == 'object') {{ {0} = ensureFloat64({0}); }}\n".format(js_arg)
 
+  call_args = pre_arg
+
+  for i, arg in enumerate(args):
+    if options.wasm64 and is_ptr_arg(i):
+      arg = f'BigInt({arg})'
+    call_args.append(arg)
+
   c_names = {}
+
+  def make_call_args(i):
+    if pre_arg:
+      i += 1
+    return ', '.join(call_args[:i])
+
   for i in range(min_args, max_args):
-    c_names[i] = 'emscripten_bind_%s_%d' % (bindings_name, i)
-    body += '  if (%s === undefined) { %s%s(%s)%s%s }\n' % (args[i], call_prefix, '_' + c_names[i], ', '.join(pre_arg + args[:i]), call_postfix, '' if 'return ' in call_prefix else '; ' + (cache or ' ') + 'return')
-  c_names[max_args] = 'emscripten_bind_%s_%d' % (bindings_name, max_args)
-  body += '  %s%s(%s)%s;\n' % (call_prefix, '_' + c_names[max_args], ', '.join(pre_arg + args), call_postfix)
+    c_names[i] = f'emscripten_bind_{bindings_name}_{i}'
+    if 'return ' in call_prefix:
+      after_call = ''
+    else:
+      after_call = '; ' + cache + 'return'
+    args_for_call = make_call_args(i)
+    body += '  if (%s === undefined) { %s_%s(%s)%s%s }\n' % (args[i], call_prefix, c_names[i],
+                                                             args_for_call,
+                                                             call_postfix, after_call)
+  dbg(call_prefix)
+  c_names[max_args] = f'emscripten_bind_{bindings_name}_{max_args}'
+  args_for_call = make_call_args(len(args))
+  body += '  %s_%s(%s)%s;\n' % (call_prefix, c_names[max_args], args_for_call, call_postfix)
   if cache:
-    body += '  ' + cache + '\n'
+    body += f'  {cache}\n'
+
+  if constructor:
+    declare_name = ' ' + func_name
+  else:
+    declare_name = ''
   mid_js.append(r'''function%s(%s) {
 %s
 };
-''' % ((' ' + func_name) if constructor else '', ', '.join(args), body[:-1]))
+''' % (declare_name, ', '.join(args), body[:-1]))
 
   # C
 
@@ -538,7 +584,8 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
       continue
     sig = list(map(full_typename, raw))
     if array_attribute:
-      sig = [x.replace('[]', '') for x in sig] # for arrays, ignore that this is an array - our get/set methods operate on the elements
+      # for arrays, ignore that this is an array - our get/set methods operate on the elements
+      sig = [x.replace('[]', '') for x in sig]
 
     c_arg_types = list(map(type_to_c, sig))
     c_class_name = type_to_c(class_name, non_pointing=True)

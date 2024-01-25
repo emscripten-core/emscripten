@@ -7627,7 +7627,6 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind', '-fno-rtti', '-frtti']
     self.do_run(src, '418\ndotest returned: 42\n')
 
-  @no_wasm64('webidl not compatible with MEMORY64 yet')
   @parameterized({
     '': ('DEFAULT', False),
     'all': ('ALL', False),
@@ -7646,8 +7645,12 @@ void* operator new(size_t size) {
       self.set_setting('WASM_ASYNC_COMPILATION', 0)
 
     # Force IDL checks mode
+    if self.is_wasm64():
+      args = ['--wasm64']
+    else:
+      args = []
     with env_modify({'IDL_CHECKS': mode}):
-      self.run_process([WEBIDL_BINDER, test_file('webidl/test.idl'), 'glue'])
+      self.run_process([WEBIDL_BINDER, test_file('webidl/test.idl'), 'glue'] + args)
     self.assertExists('glue.cpp')
     self.assertExists('glue.js')
 
@@ -7667,11 +7670,13 @@ void* operator new(size_t size) {
 
     # Export things on "TheModule". This matches the typical use pattern of the bound library
     # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
-    self.emcc_args += ['-Wall', '--post-js=glue.js', '--extern-post-js=extern-post.js']
+    self.emcc_args += ['--post-js=glue.js', '--extern-post-js=extern-post.js']
     if mode == 'ALL':
       self.emcc_args += ['-sASSERTIONS']
     if allow_memory_growth:
       self.set_setting('ALLOW_MEMORY_GROWTH')
+      if self.get_setting('INITIAL_MEMORY') == '4200mb':
+        self.set_setting('MAXIMUM_MEMORY', '4300mb')
 
     self.do_run_in_out_file_test(test_file('webidl/test.cpp'), out_suffix='_' + mode, includes=['.'])
 
