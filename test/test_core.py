@@ -7637,6 +7637,7 @@ void* operator new(size_t size) {
   def test_webidl(self, mode, allow_memory_growth):
     self.uses_es6 = True
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
+    self.set_setting('STRICT')
     if self.maybe_closure():
       # avoid closure minified names competing with our test code in the global name space
       self.set_setting('MODULARIZE')
@@ -7670,7 +7671,7 @@ void* operator new(size_t size) {
 
     # Export things on "TheModule". This matches the typical use pattern of the bound library
     # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
-    self.emcc_args += ['--post-js=glue.js', '--extern-post-js=extern-post.js']
+    self.emcc_args += ['--no-entry', '--post-js=glue.js', '--extern-post-js=extern-post.js']
     if mode == 'ALL':
       self.emcc_args += ['-sASSERTIONS']
     if allow_memory_growth:
