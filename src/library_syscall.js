@@ -157,11 +157,6 @@ var SyscallsLibrary = {
   },
 
   _munmap_js__i53abi: true,
-  _munmap_js__deps: ['$SYSCALLS',
-#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-    '$FS',
-#endif
-  ],
   _munmap_js: (addr, len, prot, flags, fd, offset) => {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
