@@ -109,8 +109,6 @@ void GetAllocatorCacheRange(uptr *begin, uptr *end) {
 }
 #endif
 
-u32 GetCurrentThread() { return __asan::GetCurrentThread()->tid(); }
-
 } // namespace __lsan
 
 #endif // SANITIZER_EMSCRIPTEN

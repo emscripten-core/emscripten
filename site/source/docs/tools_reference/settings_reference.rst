@@ -409,8 +409,7 @@ Print out exceptions in emscriptened code.
 DEMANGLE_SUPPORT
 ================
 
-If 1, build in libcxxabi's full c++ demangling code, to allow stackTrace()
-to emit fully proper demangled c++ names
+If 1, export `demangle` and `stackTrace` helper function.
 
 .. _library_debug:
 
@@ -1467,7 +1466,6 @@ Changes enabled by this:
   - IGNORE_MISSING_MAIN is disabled.
   - AUTO_JS_LIBRARIES is disabled.
   - AUTO_NATIVE_LIBRARIES is disabled.
-  - AUTO_ARCHIVE_INDEXES is disabled.
   - DEFAULT_TO_CXX is disabled.
   - USE_GLFW is set to 0 rather than 2 by default.
   - ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
@@ -1484,16 +1482,6 @@ Allow program to link with or without ``main`` symbol.
 If this is disabled then one must provide a ``main`` symbol or explicitly
 opt out by passing ``--no-entry`` or an EXPORTED_FUNCTIONS list that doesn't
 include ``_main``.
-
-.. _auto_archive_indexes:
-
-AUTO_ARCHIVE_INDEXES
-====================
-
-Automatically attempt to add archive indexes at link time to archives that
-don't already have them.  This can happen when GNU ar or GNU ranlib is used
-rather than ``llvm-ar`` or ``emar`` since the former don't understand the wasm
-object format.
 
 .. _strict_js:
 

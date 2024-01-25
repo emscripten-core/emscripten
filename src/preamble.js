@@ -95,13 +95,13 @@ function assert(condition, text) {
 // builds with assertions.
 #if !hasExportedSymbol('malloc')
 function _malloc() {
-  abort("malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS");
+  abort('malloc() called but not included in the build - add `_malloc` to EXPORTED_FUNCTIONS');
 }
 #endif // malloc
 #if !hasExportedSymbol('free')
 function _free() {
   // Show a helpful error since we used to include free by default in the past.
-  abort("free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS");
+  abort('free() called but not included in the build - add `_free` to EXPORTED_FUNCTIONS');
 }
 #endif // free
 #endif // ASSERTIONS
@@ -641,9 +641,9 @@ function getBinarySync(file) {
     return readBinary(file);
   }
 #if WASM_ASYNC_COMPILATION
-  throw "both async and sync fetching of the wasm failed";
+  throw 'both async and sync fetching of the wasm failed';
 #else
-  throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
+  throw 'sync fetching of the wasm failed: you can preload it to Module["wasmBinary"] manually, or emcc.py will do that for you when generating HTML (but not JS)';
 #endif
 }
 
@@ -666,7 +666,7 @@ function getBinaryPromise(binaryFile) {
     ) {
       return fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}}).then((response) => {
         if (!response['ok']) {
-          throw "failed to load wasm binary file at '" + binaryFile + "'";
+          throw `failed to load wasm binary file at '${binaryFile}'`;
         }
         return response['arrayBuffer']();
       }).catch(() => getBinarySync(binaryFile));
@@ -982,7 +982,7 @@ function createWasm() {
     wasmMemory = wasmExports['memory'];
     {{{ receivedSymbol('wasmMemory') }}}
 #if ASSERTIONS
-    assert(wasmMemory, "memory not found in wasm exports");
+    assert(wasmMemory, 'memory not found in wasm exports');
     // This assertion doesn't hold when emscripten is run in --post-link
     // mode.
     // TODO(sbc): Read INITIAL_MEMORY out of the wasm file in post-link mode.
@@ -998,7 +998,7 @@ function createWasm() {
     wasmTable = wasmExports['__indirect_function_table'];
     {{{ receivedSymbol('wasmTable') }}}
 #if ASSERTIONS && !PURE_WASI
-    assert(wasmTable, "table not found in wasm exports");
+    assert(wasmTable, 'table not found in wasm exports');
 #endif
 
 #if AUDIO_WORKLET

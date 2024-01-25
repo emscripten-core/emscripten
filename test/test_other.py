@@ -2971,9 +2971,10 @@ int f() {
     'wasm64': ['-sMEMORY64', '-Wno-experimental'],
   })
   @parameterized({
+    # With no arguments we are effectively testing c++17 since it is the default.
     '': [],
-    # Ensure embind compiles under C++17 where "noexcept" became part of the function signature.
-    'cxx17': ['-std=c++17'],
+    # Ensure embind compiles under C++11 which is the miniumum supported version.
+    'cxx11': ['-std=c++11'],
     'o1': ['-O1'],
     'o2': ['-O2'],
     'o2_mem_growth': ['-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')],
@@ -6122,77 +6123,7 @@ This locale is not the C locale.
     test(['-sEXPORTED_RUNTIME_METHODS=[]', '-sEXPORTED_RUNTIME_METHODS=addRunDependency'], "Module['addRunDependency", "Module['waka")
 
   def test_stat_fail_alongtheway(self):
-    create_file('src.c', r'''
-#include <errno.h>
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <string.h>
-
-#define CHECK(expression) \
-  if(!(expression)) {                            \
-    error = errno;                               \
-    printf("FAIL: %s\n", #expression); fail = 1; \
-  } else {                                       \
-    error = errno;                               \
-    printf("pass: %s\n", #expression);           \
-  }                                              \
-
-int main() {
-  int error;
-  int fail = 0;
-  CHECK(mkdir("path", 0777) == 0);
-  CHECK(close(open("path/file", O_CREAT | O_WRONLY, 0644)) == 0);
-  {
-    struct stat st;
-    CHECK(stat("path", &st) == 0);
-    CHECK(st.st_mode = 0777);
-  }
-  {
-    struct stat st;
-    CHECK(stat("path/nosuchfile", &st) == -1);
-    printf("info: errno=%d %s\n", error, strerror(error));
-    CHECK(error == ENOENT);
-  }
-  {
-    struct stat st;
-    CHECK(stat("path/file", &st) == 0);
-    CHECK(st.st_mode = 0666);
-  }
-  {
-    struct stat st;
-    CHECK(stat("path/file/impossible", &st) == -1);
-    printf("info: errno=%d %s\n", error, strerror(error));
-    CHECK(error == ENOTDIR);
-  }
-  {
-    struct stat st;
-    CHECK(lstat("path/file/impossible", &st) == -1);
-    printf("info: errno=%d %s\n", error, strerror(error));
-    CHECK(error == ENOTDIR);
-  }
-  return fail;
-}
-''')
-    self.do_runf('src.c', r'''pass: mkdir("path", 0777) == 0
-pass: close(open("path/file", O_CREAT | O_WRONLY, 0644)) == 0
-pass: stat("path", &st) == 0
-pass: st.st_mode = 0777
-pass: stat("path/nosuchfile", &st) == -1
-info: errno=44 No such file or directory
-pass: error == ENOENT
-pass: stat("path/file", &st) == 0
-pass: st.st_mode = 0666
-pass: stat("path/file/impossible", &st) == -1
-info: errno=54 Not a directory
-pass: error == ENOTDIR
-pass: lstat("path/file/impossible", &st) == -1
-info: errno=54 Not a directory
-pass: error == ENOTDIR
-''')
+    self.do_other_test('test_stat_fail_alongtheway.c')
 
   def test_link_with_a_static(self):
     create_file('x.c', r'''
@@ -7389,7 +7320,7 @@ int main(int argc, char** argv) {
 
   def test_js_lib_native_deps_extra(self):
     # Similar to above but the JS symbol is not used by the native code.
-    # Instead is it explictly injected using `extraLibraryFuncs`.
+    # Instead is it explicitly injected using `extraLibraryFuncs`.
     create_file('lib.js', r'''
 addToLibrary({
   jsfunc__deps: ['raise'],
@@ -9121,22 +9052,6 @@ end
     # https://docs.python.org/3/library/codecs.html#encodings-and-unicode
     create_file('test.rsp', b'\xef\xbb\xbf--version', binary=True)
     self.run_process([EMCC, '@test.rsp'])
-
-  def test_archive_empty(self):
-    # This test added because we had an issue with the AUTO_ARCHIVE_INDEXES failing on empty
-    # archives (which inherently don't have indexes).
-    self.run_process([EMAR, 'crS', 'libfoo.a'])
-    self.run_process([EMCC, '-Werror', 'libfoo.a', test_file('hello_world.c')])
-
-  def test_archive_no_index(self):
-    create_file('foo.c', 'int foo = 1;')
-    self.run_process([EMCC, '-c', 'foo.c'])
-    self.run_process([EMCC, '-c', test_file('hello_world.c')])
-    # The `S` flag means don't add an archive index
-    self.run_process([EMAR, 'crS', 'libfoo.a', 'foo.o'])
-    # wasm-ld supports archive files without an index (unlike GNU ld) as of
-    # https://github.com/llvm/llvm-project/pull/78821
-    self.run_process([EMCC, 'libfoo.a', 'hello_world.o'])
 
   def test_archive_non_objects(self):
     create_file('file.txt', 'test file')
@@ -12103,8 +12018,8 @@ int main () {
       }
     ''')
     self.do_runf('unincluded_malloc.c', (
-      "malloc() called but not included in the build - add '_malloc' to EXPORTED_FUNCTIONS",
-      "free() called but not included in the build - add '_free' to EXPORTED_FUNCTIONS"))
+      'malloc() called but not included in the build - add `_malloc` to EXPORTED_FUNCTIONS',
+      'free() called but not included in the build - add `_free` to EXPORTED_FUNCTIONS'), assert_all=True)
 
   def test_getrusage(self):
     self.do_runf('other/test_getrusage.c')
@@ -14223,7 +14138,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_no_minify(self):
     # Test that comments are preserved with `--minify=0` is used, even in `-Oz` builds.
     # This allows the output of emscripten to be run through the closure compiler as
-    # as a seperate build step.
+    # as a separate build step.
     create_file('pre.js', '''
     /**
      * This comment should be preserved
@@ -14432,6 +14347,9 @@ addToLibrary({
   def test_no_input_files(self):
     err = self.expect_fail([EMCC, '-c'])
     self.assertContained('clang: error: no input files', err)
+
+    err = self.expect_fail([EMCC])
+    self.assertContained('emcc: error: no input files', err)
 
   def test_embind_negative_enum_values(self):
     # Test if negative enum values are printed correctly and not overflown to

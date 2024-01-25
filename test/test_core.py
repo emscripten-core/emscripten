@@ -1368,6 +1368,8 @@ int main(int argc, char **argv) {
 
   @with_both_eh_sjlj
   def test_exceptions_primary(self):
+    if '-fsanitize=leak' in self.emcc_args and '-fwasm-exceptions' in self.emcc_args:
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/21124')
     self.do_core_test('test_exceptions_primary.cpp')
 
   @with_both_eh_sjlj
@@ -1384,6 +1386,8 @@ int main(int argc, char **argv) {
 
   @with_both_eh_sjlj
   def test_exceptions_multiple_inherit_rethrow(self):
+    if '-fsanitize=leak' in self.emcc_args and '-fwasm-exceptions' in self.emcc_args:
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/21124')
     self.do_core_test('test_exceptions_multiple_inherit_rethrow.cpp')
 
   @with_both_eh_sjlj
@@ -4929,8 +4933,8 @@ res64 - external 64\n''', header='''\
     create_file('third.c', 'int sidef() { return 36; }')
     create_file('fourth.c', 'int sideg() { return 17; }')
 
-    self.run_process([EMCC, '-fPIC', '-c', 'third.c', '-o', 'third.o'] + self.get_emcc_args(ldflags=False))
-    self.run_process([EMCC, '-fPIC', '-c', 'fourth.c', '-o', 'fourth.o'] + self.get_emcc_args(ldflags=False))
+    self.run_process([EMCC, '-fPIC', '-c', 'third.c', '-o', 'third.o'] + self.get_emcc_args(compile_only=True))
+    self.run_process([EMCC, '-fPIC', '-c', 'fourth.c', '-o', 'fourth.o'] + self.get_emcc_args(compile_only=True))
     self.run_process([EMAR, 'rc', 'libfourth.a', 'fourth.o'])
 
     self.dylink_test(main=r'''
@@ -6098,7 +6102,7 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test('test_unary_literal.cpp')
 
   @crossplatform
-  # Explictly set LANG here since new versions of node expose
+  # Explicitly set LANG here since new versions of node expose
   # `navigator.languages` which emscripten will honor and we
   # want the test output to be consistent.
   @with_env_modify({'LANG': 'en_US.UTF-8'})
@@ -6106,7 +6110,7 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test('test_env.c', regex=True)
 
   @crossplatform
-  # Explictly set LANG here since new versions of node expose
+  # Explicitly set LANG here since new versions of node expose
   # `navigator.languages` which emscripten will honor and we
   # want the test output to be consistent.
   @with_env_modify({'LANG': 'en_US.UTF-8'})
@@ -6638,8 +6642,8 @@ void* operator new(size_t size) {
   def test_lua(self):
     self.emcc_args.remove('-Werror')
     env_init = {
-      'SYSCFLAGS': ' '.join(self.get_emcc_args(ldflags=False)),
-      'SYSLDFLAGS': ' '.join(self.get_emcc_args(ldflags=True))
+      'SYSCFLAGS': ' '.join(self.get_emcc_args(compile_only=True)),
+      'SYSLDFLAGS': ' '.join(self.get_emcc_args())
     }
     libs = self.get_library('third_party/lua',
                             [Path('src/lua.o'), Path('src/liblua.a')],
@@ -7119,7 +7123,7 @@ void* operator new(size_t size) {
 
   def test_linker_response_file(self):
     objfile = 'response_file.o'
-    self.run_process([EMCC, '-c', test_file('hello_world.cpp'), '-o', objfile] + self.get_emcc_args(ldflags=False))
+    self.run_process([EMCC, '-c', test_file('hello_world.cpp'), '-o', objfile] + self.get_emcc_args(compile_only=True))
     # This should expand into -Wl,--start-group <objfile> -Wl,--end-group
     response_data = '--start-group ' + objfile + ' --end-group'
     create_file('rsp_file', response_data.replace('\\', '\\\\'))
@@ -7623,7 +7627,6 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind', '-fno-rtti', '-frtti']
     self.do_run(src, '418\ndotest returned: 42\n')
 
-  @no_wasm64('webidl not compatible with MEMORY64 yet')
   @parameterized({
     '': ('DEFAULT', False),
     'all': ('ALL', False),
@@ -7642,8 +7645,12 @@ void* operator new(size_t size) {
       self.set_setting('WASM_ASYNC_COMPILATION', 0)
 
     # Force IDL checks mode
+    if self.is_wasm64():
+      args = ['--wasm64']
+    else:
+      args = []
     with env_modify({'IDL_CHECKS': mode}):
-      self.run_process([WEBIDL_BINDER, test_file('webidl/test.idl'), 'glue'])
+      self.run_process([WEBIDL_BINDER, test_file('webidl/test.idl'), 'glue'] + args)
     self.assertExists('glue.cpp')
     self.assertExists('glue.js')
 
@@ -7663,11 +7670,13 @@ void* operator new(size_t size) {
 
     # Export things on "TheModule". This matches the typical use pattern of the bound library
     # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
-    self.emcc_args += ['-Wall', '--post-js=glue.js', '--extern-post-js=extern-post.js']
+    self.emcc_args += ['--post-js=glue.js', '--extern-post-js=extern-post.js']
     if mode == 'ALL':
       self.emcc_args += ['-sASSERTIONS']
     if allow_memory_growth:
       self.set_setting('ALLOW_MEMORY_GROWTH')
+      if self.get_setting('INITIAL_MEMORY') == '4200mb':
+        self.set_setting('MAXIMUM_MEMORY', '4300mb')
 
     self.do_run_in_out_file_test(test_file('webidl/test.cpp'), out_suffix='_' + mode, includes=['.'])
 
@@ -9562,7 +9571,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @requires_v8
   @no_wasm2js('wasm2js does not support reference types')
   def test_externref(self):
-    self.run_process([EMCC, '-c', test_file('core/test_externref.s'), '-o', 'asm.o'] + self.get_emcc_args(ldflags=False))
+    self.run_process([EMCC, '-c', test_file('core/test_externref.s'), '-o', 'asm.o'] + self.get_emcc_args(compile_only=True))
     self.emcc_args += ['--js-library', test_file('core/test_externref.js')]
     self.emcc_args += ['-mreference-types']
     self.do_core_test('test_externref.c', libraries=['asm.o'])
@@ -9591,7 +9600,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('js_library_i64_params.c')
 
   def test_main_reads_args(self):
-    self.run_process([EMCC, '-c', test_file('core/test_main_reads_args_real.c'), '-o', 'real.o'] + self.get_emcc_args(ldflags=False))
+    self.run_process([EMCC, '-c', test_file('core/test_main_reads_args_real.c'), '-o', 'real.o'] + self.get_emcc_args(compile_only=True))
     self.do_core_test('test_main_reads_args.c', emcc_args=['real.o', '-sEXIT_RUNTIME'], regex=True)
 
   @requires_node

@@ -2187,9 +2187,9 @@ addToLibrary({
 #endif // ENVIRONMENT_MAY_BE_NODE
     // we couldn't find a proper implementation, as Math.random() is not suitable for /dev/random, see emscripten-core/emscripten/pull/7096
 #if ASSERTIONS
-    abort("no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: (array) => { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };");
+    abort('no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: (array) => { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };');
 #else
-    abort("initRandomDevice");
+    abort('initRandomDevice');
 #endif
   },
 
@@ -3198,7 +3198,7 @@ addToLibrary({
 #endif
     }
 #if ASSERTIONS && ASYNCIFY != 2 // With JSPI the function stored in the table will be a wrapper.
-    assert(wasmTable.get(funcPtr) == func, "JavaScript-side Wasm function table mirror is out of date!");
+    assert(wasmTable.get(funcPtr) == func, 'JavaScript-side Wasm function table mirror is out of date!');
 #endif
     return func;
   },
@@ -3454,7 +3454,7 @@ addToLibrary({
     if (x == '__main_argc_argv') {
       x = 'main';
     }
-    return x.indexOf('dynCall_') == 0 || unmangledSymbols.includes(x) ? x : '_' + x;
+    return x.startsWith('dynCall_') || unmangledSymbols.includes(x) ? x : '_' + x;
   },
 
   $asyncLoad__docs: '/** @param {boolean=} noRunDep */',

@@ -337,8 +337,7 @@ var EMULATE_FUNCTION_POINTER_CASTS = false;
 // [link]
 var EXCEPTION_DEBUG = false;
 
-// If 1, build in libcxxabi's full c++ demangling code, to allow stackTrace()
-// to emit fully proper demangled c++ names
+// If 1, export `demangle` and `stackTrace` helper function.
 // [link]
 var DEMANGLE_SUPPORT = false;
 
@@ -1153,7 +1152,6 @@ var LINKABLE = false;
 //   - IGNORE_MISSING_MAIN is disabled.
 //   - AUTO_JS_LIBRARIES is disabled.
 //   - AUTO_NATIVE_LIBRARIES is disabled.
-//   - AUTO_ARCHIVE_INDEXES is disabled.
 //   - DEFAULT_TO_CXX is disabled.
 //   - USE_GLFW is set to 0 rather than 2 by default.
 //   - ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
@@ -1167,13 +1165,6 @@ var STRICT = false;
 // include ``_main``.
 // [link]
 var IGNORE_MISSING_MAIN = true;
-
-// Automatically attempt to add archive indexes at link time to archives that
-// don't already have them.  This can happen when GNU ar or GNU ranlib is used
-// rather than ``llvm-ar`` or ``emar`` since the former don't understand the wasm
-// object format.
-// [link]
-var AUTO_ARCHIVE_INDEXES = true;
 
 // Add ``"use strict;"`` to generated JS
 // [link]
@@ -2188,4 +2179,5 @@ var LEGACY_SETTINGS = [
   ['MIN_EDGE_VERSION', [0x7FFFFFFF], 'No longer supported'],
   ['MIN_IE_VERSION', [0x7FFFFFFF], 'No longer supported'],
   ['WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG', [0], 'No longer supported'],
+  ['AUTO_ARCHIVE_INDEXES', [0, 1], 'No longer needed'],
 ];

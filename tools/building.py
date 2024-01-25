@@ -1139,7 +1139,7 @@ def map_to_js_libs(library_name):
     'SDL': ['library_sdl.js'],
     'uuid': ['library_uuid.js'],
     'websocket': ['library_websocket.js'],
-    # These 4 libraries are seperate under glibc but are all rolled into
+    # These 4 libraries are separate under glibc but are all rolled into
     # libc with musl.  For compatibility with glibc we just ignore them
     # completely.
     'dl': [],

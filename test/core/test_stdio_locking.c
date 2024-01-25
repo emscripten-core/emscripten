@@ -2,7 +2,7 @@
  * Regression test for stdio locking.  If file locking is not enabled the
  * threads will race to write the file output buffer and we will see lines
  * that are longer or shorter then 100 characters.  When locking is
- * working/enabled each 100 charactor line will be printed seperately.
+ * working/enabled each 100 character line will be printed separately.
  *
  * See:
  *   musl/src/stdio/__lockfile.c

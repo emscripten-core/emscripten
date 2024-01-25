@@ -369,7 +369,6 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
   Module['HEAP'] = HEAP;
   Module['IHEAP'] = IHEAP;
   function demangle(func)
-  function demangleAll(text)
   function parseJSFunc(jsfunc)
   function callRuntimeCallbacks(callbacks)
   function preRun()
