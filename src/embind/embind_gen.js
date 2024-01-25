@@ -7,6 +7,8 @@
 var LibraryEmbind = {
 
   $moduleDefinitions: [],
+  // Function signatures that have already been generated for JS generation.
+  $emittedFunctions: 'new Set()',
 
   $PrimitiveType: class {
     constructor(typeId, name, destructorType) {
@@ -40,7 +42,7 @@ var LibraryEmbind = {
       this.destructorType = 'none'; // Same as emval.
     }
   },
-  $FunctionDefinition__deps: ['$createJsInvoker'],
+  $FunctionDefinition__deps: ['$createJsInvoker', '$createJsInvokerSignature', '$emittedFunctions'],
   $FunctionDefinition: class {
     constructor(name, returnType, argumentTypes, functionIndex, thisType = null, isAsync = false) {
       this.name = name;
@@ -105,10 +107,15 @@ var LibraryEmbind = {
       for (const argType of this.argumentTypes) {
         argTypes.push(this.convertToEmbindType(argType.type));
       }
-      let [args, body] = createJsInvoker(this.name, argTypes, !!this.thisType, this.returnType.name !== 'void', this.isAsync);
+      const signature = createJsInvokerSignature(argTypes, !!this.thisType, this.returnType.name !== 'void', this.isAsync)
+      if (emittedFunctions.has(signature)) {
+        return;
+      }
+      emittedFunctions.add(signature);
+      let [args, body] = createJsInvoker(argTypes, !!this.thisType, this.returnType.name !== 'void', this.isAsync);
       out.push(
         // The ${""} is hack to workaround the preprocessor replacing "function".
-        `'${this.functionIndex}': f${""}unction(${args.join(',')}) {\n${body}},`
+        `'${signature}': f${""}unction(${args.join(',')}) {\n${body}},`
       );
     }
   },
