@@ -407,7 +407,8 @@ class other(RunnerCore):
   @parameterized({
     '': ([],),
     # load a worker before startup to check ES6 modules there as well
-    'pthreads': (['-pthread', '-sPTHREAD_POOL_SIZE=1'],),
+    # pass -O2 to ensure the worker JS file is minified with Acorn
+    'pthreads': (['-O2', '-pthread', '-sPTHREAD_POOL_SIZE=1'],),
   })
   def test_export_es6(self, args, package_json):
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6',
