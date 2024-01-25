@@ -13,6 +13,7 @@ emscripten_root = os.path.dirname(os.path.dirname(script_dir))
 default_llvm_dir = os.path.join(os.path.dirname(emscripten_root), 'llvm-project')
 local_root = os.path.join(script_dir, 'libcxx')
 local_src = os.path.join(local_root, 'src')
+local_modules = os.path.join(local_root, 'modules')
 local_inc = os.path.join(local_root, 'include')
 
 preserve_files = ('readme.txt', 'symbols')
@@ -46,15 +47,19 @@ def main():
     llvm_dir = default_llvm_dir
   libcxx_dir = os.path.join(llvm_dir, 'libcxx')
   upstream_src = os.path.join(libcxx_dir, 'src')
+  upstream_modules = os.path.join(libcxx_dir, 'modules')
   upstream_inc = os.path.join(libcxx_dir, 'include')
   assert os.path.exists(upstream_inc)
+  assert os.path.exists(upstream_modules)
   assert os.path.exists(upstream_src)
 
   # Remove old version
   clean_dir(local_src)
+  clean_dir(local_modules)
   clean_dir(local_inc)
 
   copy_tree(upstream_src, local_src)
+  copy_tree(upstream_modules, local_modules)
   copy_tree(upstream_inc, local_inc)
 
   shutil.copy2(os.path.join(libcxx_dir, 'CREDITS.TXT'), local_root)

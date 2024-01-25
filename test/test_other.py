@@ -12610,6 +12610,10 @@ kill -9 $$
   def test_std_cmp(self):
     self.do_runf('other/test_std_cmp.cpp', '', emcc_args=['-std=c++20'])
 
+  def test_cxx_modules(self):
+    # -fbuiltin-module-map is equivilent to -fmodule-map-file=<resource dir>/include/module.modulemap
+    self.do_runf('other/test_cxx_modules.cpp', '', emcc_args=['-std=c++23', '-fmodules', '-fbuiltin-module-map'])
+
   def test_link_only_setting_warning(self):
     err = self.run_process([EMCC, '-sALLOW_MEMORY_GROWTH', '-c', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained("warning: linker setting ignored during compilation: 'ALLOW_MEMORY_GROWTH' [-Wunused-command-line-argument]", err)
