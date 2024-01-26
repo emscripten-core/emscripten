@@ -127,6 +127,8 @@ u64 MonotonicNanoTime() {
   return (u64)ts.tv_sec * (1000ULL * 1000 * 1000) + ts.tv_nsec;
 }
 
+void GetMemoryProfile(fill_profile_f cb, uptr *stats) {}
+
 } // namespace __sanitizer
 
 #endif
