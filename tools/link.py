@@ -1308,9 +1308,17 @@ def phase_linker_setup(options, state, newargs):
       exit_with_error('-sPROXY_TO_PTHREAD requires -pthread to work!')
     settings.JS_LIBRARIES.append((0, 'library_pthread_stub.js'))
 
+  def require_bigint(reason):
+    if user_settings['WASM_BIGINT'] == '0':
+      exit_with_error(f'WASM_BIGINT cannot be disabled due to {reason}')
+    settings.WASM_BIGINT = 1
+
   if settings.MEMORY64:
     # Any "pointers" passed to JS will now be i64's, in both modes.
-    settings.WASM_BIGINT = 1
+    require_bigint('MEMORY64')
+
+  if settings.RELOCATABLE:
+    require_bigint('dynamic linking')
 
   if settings.WASM_WORKERS:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$_wasmWorkerInitializeRuntime']

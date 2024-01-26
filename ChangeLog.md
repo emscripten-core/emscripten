@@ -21,6 +21,9 @@ See docs/process.md for more on how version tagging works.
 3.1.53 (in development)
 -----------------------
 - The llvm version that emscripten uses was updated to 19.0.0 trunk. (#21165)
+- When using dynamic linking (e.g. `MAIN_MODULE` or `SIDE_MODULE`) emscripten
+  will now enable `WASM_BIGINT` by default.  This means targetting older
+  browers with dyanmic linking is no longer possible.
 
 3.1.52 - 01/19/24
 -----------------

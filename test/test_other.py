@@ -14415,3 +14415,14 @@ addToLibrary({
     # "window.crypto.getRandomValues"
     self.assertContained(").randomBytes", js_out)
     self.assertContained("window.crypto.getRandomValues", js_out)
+
+  def test_bigint_required(self):
+    # Certain settings require WASM_BIGINT and make disabling it impossible
+    err = self.expect_fail([EMCC, '-sMEMORY64', '-sWASM_BIGINT=0', test_file('hello_world.c')])
+    self.assertContained('emcc: error: WASM_BIGINT cannot be disabled due to MEMORY64', err);
+
+    err = self.expect_fail([EMCC, '-sSIDE_MODULE', '-sWASM_BIGINT=0', test_file('hello_world.c')])
+    self.assertContained('emcc: error: WASM_BIGINT cannot be disabled due to dynamic linking', err);
+
+    err = self.expect_fail([EMCC, '-sMAIN_MODULE', '-sWASM_BIGINT=0', test_file('hello_world.c')])
+    self.assertContained('emcc: error: WASM_BIGINT cannot be disabled due to dynamic linking', err);
