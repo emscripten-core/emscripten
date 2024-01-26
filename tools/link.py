@@ -2942,6 +2942,8 @@ def run(linker_inputs, options, state, newargs):
     logger.debug('stopping after linking to object file')
     return 0
 
+  phase_calculate_system_libraries(state, linker_arguments, newargs)
+
   js_syms = {}
   if (not settings.SIDE_MODULE or settings.ASYNCIFY) and not shared.SKIP_SUBPROCS:
     js_info = get_js_sym_info()
@@ -2963,8 +2965,6 @@ def run(linker_inputs, options, state, newargs):
     if settings.ASYNCIFY:
       settings.ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS = settings.ASYNCIFY_IMPORTS[:]
       settings.ASYNCIFY_IMPORTS += ['*.' + x for x in js_info['asyncFuncs']]
-
-  phase_calculate_system_libraries(state, linker_arguments, newargs)
 
   phase_link(linker_arguments, wasm_target, js_syms)
 

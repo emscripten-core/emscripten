@@ -29,38 +29,53 @@ ports_dir = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger('ports')
 
 
-def read_ports():
+def load_port(port):
   expected_attrs = ['get', 'clear', 'show', 'needed']
+  ports.append(port)
+  ports_by_name[port.name] = port
+  for a in expected_attrs:
+    assert hasattr(port, a), 'port %s is missing %s' % (port, a)
+  if not hasattr(port, 'process_dependencies'):
+    port.process_dependencies = lambda x: 0
+  if not hasattr(port, 'linker_setup'):
+    port.linker_setup = lambda x, y: 0
+  if not hasattr(port, 'deps'):
+    port.deps = []
+  if not hasattr(port, 'process_args'):
+    port.process_args = lambda x: []
+  if not hasattr(port, 'variants'):
+    # port variants (default: no variants)
+    port.variants = {}
+
+  for variant, extra_settings in port.variants.items():
+    if variant in port_variants:
+      utils.exit_with_error('duplicate port variant: %s' % variant)
+    port_variants[variant] = (port.name, extra_settings)
+
+
+def read_ports():
   for filename in os.listdir(ports_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
     filename = os.path.splitext(filename)[0]
     port = __import__(filename, globals(), level=1)
-    ports.append(port)
     port.name = filename
-    ports_by_name[port.name] = port
-    for a in expected_attrs:
-      assert hasattr(port, a), 'port %s is missing %s' % (port, a)
-    if not hasattr(port, 'process_dependencies'):
-      port.process_dependencies = lambda x: 0
-    if not hasattr(port, 'linker_setup'):
-      port.linker_setup = lambda x, y: 0
-    if not hasattr(port, 'deps'):
-      port.deps = []
-    if not hasattr(port, 'process_args'):
-      port.process_args = lambda x: []
-    if not hasattr(port, 'variants'):
-      # port variants (default: no variants)
-      port.variants = {}
+    load_port(port)
 
-    for variant, extra_settings in port.variants.items():
-      if variant in port_variants:
-        utils.exit_with_error('duplicate port variant: %s' % variant)
-      port_variants[variant] = (port.name, extra_settings)
+  contrib_dir = os.path.join(ports_dir, 'contrib')
+  for filename in os.listdir(contrib_dir):
+    if not filename.endswith('.py') or filename == '__init__.py':
+      continue
+    filename = os.path.splitext(filename)[0]
+    port = __import__('contrib.' + filename, globals(), level=1, fromlist=[None])
+    port.name = filename
+    port.needed = lambda settings, name = port.name: name in settings.USE_PORT_CONTRIB
+    load_port(port)
 
-  for dep in port.deps:
-    if dep not in ports_by_name:
-      utils.exit_with_error('unknown dependency in port: %s' % dep)
+  for port in ports:
+    for dep in port.deps:
+      if dep not in ports_by_name:
+        utils.exit_with_error('unknown dependency in port: %s' % dep)
 
 
 def get_all_files_under(dirname):
