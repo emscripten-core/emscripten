@@ -4555,7 +4555,6 @@ Module["preRun"] = () => {
   def test_utf16_textdecoder(self):
     self.btest_exit('benchmark/benchmark_utf16.cpp', 0, args=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=[UTF16ToString,stringToUTF16,lengthBytesUTF16]'])
 
-  @no_wasm64()
   @parameterized({
     '': ([],),
     'closure': (['--closure=1'],),
