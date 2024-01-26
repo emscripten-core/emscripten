@@ -9,10 +9,9 @@
 #include <cmath>
 #include <iostream>
 #include <vector>
-extern "C" {
 #include <GL/gl.h>
 #include <GL/glut.h>
-}
+
 static const char vertex_shader[] =
         "#ifdef GL_ES\n"
         "precision lowp float;\n"
@@ -44,6 +43,7 @@ static const char fragment_shader[] =
         "}\n"
         "if ( dst > 0.5) discard;\n"
         "}";
+
 struct NodeInfo { //structure that we want to transmit to our shaders
     float x;
     float y;
@@ -55,8 +55,9 @@ GLuint nodeSamplerLocation; //shader sampler address
 GLuint indicesAttributeLocation; //shader attribute address
 GLuint indicesVBO; //Vertex Buffer Object Id;
 const int nbNodes = 512;
-NodeInfo * data = new NodeInfo[nbNodes]; //our data that will be transmitted using float texture.
+NodeInfo data[nbNodes]; //our data that will be transmitted using float texture.
 double alpha = 0; //use to make a simple funny effect;
+
 static void updateFloatTexture() {
     int count = 0;
     for (float x=0; x < nbNodes; ++x ) {
@@ -79,7 +80,9 @@ static void updateFloatTexture() {
     glBindTexture(GL_TEXTURE_2D, 0);
     alpha -= 0.001;
 }
+
 static void glut_draw_callback(void) {
+    printf("glut_draw_callback\n");
     glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
@@ -96,6 +99,7 @@ static void glut_draw_callback(void) {
     glDrawArrays(GL_POINTS, 0, nbNodes);
     glutSwapBuffers();
 }
+
 GLuint createShader(const char source[], int type) {
     GLint status;
     char msg[512];
@@ -110,6 +114,7 @@ GLuint createShader(const char source[], int type) {
     assert(status == GL_TRUE);
     return shader;
 }
+
 static void gl_init(void) {
     GLuint program = glCreateProgram();
     glAttachShader(program, createShader(vertex_shader  , GL_VERTEX_SHADER));
@@ -145,6 +150,7 @@ static void gl_init(void) {
     glEnable(GL_POINT_SPRITE);
 #endif
 }
+
 int main(int argc, char *argv[]) {
     glutInit(&argc, argv);
     glutInitWindowSize(640, 480);
@@ -153,6 +159,7 @@ int main(int argc, char *argv[]) {
     /* Set up glut callback functions */
     glutDisplayFunc(glut_draw_callback      );
     gl_init();
+    printf("done setup\n");
     glutMainLoop();
     return 0;
 }

@@ -817,6 +817,7 @@ jobs:
             browser64_4gb.test_audio_worklet*
             browser64_4gb.test_emscripten_log
             browser64_4gb.test_clientside_vertex_arrays_es3
+            browser64_4gb.test_emscripten_animate_canvas_element_size*
             "
   test-browser-firefox:
     executor: bionic
