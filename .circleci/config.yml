@@ -653,7 +653,7 @@ jobs:
             other.test_memory64_proxies
             other.test_failing_growth_wasm64"
       - upload-test-results
-  test-wasm64_4gb:
+  test-wasm64-4gb:
     environment:
       LANG: "C.UTF-8"
       # Only run 2 tests at a time to avoid OOM (since each tests used >4gb)
@@ -805,11 +805,14 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser64"
-          # skip test_4gb_fail as it OOMs on the current bot
-          # Run a few tests in browser64_4gb mode too.
+          test_targets: "browser64"
+  test-browser-chrome-wasm64-4gb:
+    executor: bionic
+    steps:
+      - run-tests-chrome:
+          title: "browser64_4gb"
           test_targets: "
-            browser64
-            skip:browser64.test_4gb_fail
+            browser64_4gb.test_TextDecoder*
             browser64_4gb.test_async_*
             browser64_4gb.test_audio_worklet*
             browser64_4gb.test_emscripten_log
@@ -953,7 +956,7 @@ workflows:
       - test-wasm64:
           requires:
             - build-linux
-      - test-wasm64_4gb:
+      - test-wasm64-4gb:
           requires:
             - build-linux
       - test-wasm64l:
@@ -969,6 +972,9 @@ workflows:
           requires:
             - build-linux
       - test-browser-chrome-wasm64:
+          requires:
+            - build-linux
+      - test-browser-chrome-wasm64-4gb:
           requires:
             - build-linux
       - test-browser-firefox:
