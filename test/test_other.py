@@ -3130,6 +3130,12 @@ int f() {
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts', '-fwasm-exceptions', '-sASSERTIONS'])
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
+  def test_embind_jsgen_method_pointer_stability(self):
+    self.emcc_args += ['-lembind', '-sEMBIND_AOT']
+    # Test that when method pointers are allocated at different addresses that
+    # AOT JS generation still works correctly.
+    self.do_runf('other/embind_jsgen_method_pointer_stability.cpp', 'done')
+
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, config.LLVM_ROOT)
