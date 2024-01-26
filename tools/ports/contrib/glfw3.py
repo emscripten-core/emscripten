@@ -66,5 +66,13 @@ def process_args(ports):
   return ['-isystem', ports.get_include_dir('glfw3')]
 
 
-def show():
-  return 'GLFW3 (USE_PORT_CONTRIB=glfw3; Apache 2.0 license)'
+def project_url():
+  return 'https://github.com/pongasoft/emscripten-glfw'
+
+
+def project_description():
+  return 'This project is an emscripten port of glfw written in C++ for the web/webassembly platform #wasm'
+
+
+def project_license():
+  return 'Apache 2.0 license'

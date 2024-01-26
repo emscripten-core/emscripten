@@ -36,8 +36,16 @@ def process_args(ports):
   return ['-isystem', ports.get_include_dir('contrib_example')]
 
 
-def show():
-  return 'Example (USE_PORT_CONTRIB=contrib_example)'
+def project_url():
+  return 'https://github.com/emscripten-core/emscripten'
+
+
+def project_description():
+  return 'Port Contrib Example'
+
+
+def project_license():
+  return 'MIT license'
 
 
 example_h = 'int contrib_example();'

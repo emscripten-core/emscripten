@@ -26,6 +26,7 @@ root_dir = os.path.dirname(os.path.dirname(script_dir))
 sys.path.append(root_dir)
 
 from tools.utils import path_from_root, read_file, safe_ensure_dirs
+from tools.ports import ports
 
 header = '''\
 .. _settings-reference:
@@ -67,6 +68,17 @@ def write_setting(f, setting_name, comment, tags):
       if all_tags[t]:
         f.write('\n.. note:: ' + all_tags[t] + '\n')
 
+def write_contrib_ports(f):
+  f.write('\nAvailable contrib ports:')
+  for port in ports:
+    if port.is_contrib:
+      setting_name = f'\nUSE_CONTRIB_PORT={port.name}'
+      f.write(f'\n{setting_name}\n')
+      f.write('-' * len(setting_name) + '\n\n')
+      f.write(port.project_description())
+      f.write(f'\n\n`More information <{port.project_url()}>`_')
+      f.write(f'\nLicense: {port.project_license()}')
+  f.write('\n')
 
 def write_file(f):
   f.write(header)
@@ -95,6 +107,8 @@ def write_file(f):
       setting_name = line.split()[1]
       comment = '\n'.join(current_comment).strip()
       write_setting(f, setting_name, comment, current_tags)
+      if setting_name == 'USE_CONTRIB_PORT':
+        write_contrib_ports(f)
       current_comment = []
       current_tags = []
 

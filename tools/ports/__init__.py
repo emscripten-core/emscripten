@@ -29,8 +29,7 @@ ports_dir = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger('ports')
 
 
-def load_port(port):
-  expected_attrs = ['get', 'clear', 'show', 'needed']
+def load_port(port, expected_attrs):
   ports.append(port)
   ports_by_name[port.name] = port
   for a in expected_attrs:
@@ -54,23 +53,28 @@ def load_port(port):
 
 
 def read_ports():
+  expected_attrs = ['get', 'clear', 'show', 'needed']
   for filename in os.listdir(ports_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
     filename = os.path.splitext(filename)[0]
     port = __import__(filename, globals(), level=1)
+    port.is_contrib = False
     port.name = filename
-    load_port(port)
+    load_port(port, expected_attrs)
 
+  expected_attrs = ['get', 'clear', 'show', 'needed', 'project_url', 'project_description', 'project_license']
   contrib_dir = os.path.join(ports_dir, 'contrib')
   for filename in os.listdir(contrib_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
     filename = os.path.splitext(filename)[0]
     port = __import__('contrib.' + filename, globals(), level=1, fromlist=[None])
+    port.is_contrib = True
     port.name = filename
-    port.needed = lambda settings, name = port.name: name in settings.USE_PORT_CONTRIB
-    load_port(port)
+    port.needed = lambda settings, name = port.name: name in settings.USE_CONTRIB_PORT
+    port.show = lambda name = port.name, license = port.project_license(): f'{name} (USE_CONTRIB_PORT={name}, {license})'
+    load_port(port, expected_attrs)
 
   for port in ports:
     for dep in port.deps:
@@ -437,7 +441,12 @@ def add_cflags(args, settings): # noqa: U100
 def show_ports():
   print('Available ports:')
   for port in ports:
-    print('   ', port.show())
+    if not port.is_contrib:
+      print('   ', port.show())
+  print('Available Contrib ports:')
+  for port in ports:
+    if port.is_contrib:
+      print('   ', port.show())
 
 
 read_ports()
