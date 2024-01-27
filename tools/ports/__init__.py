@@ -73,7 +73,7 @@ def read_ports():
     port.is_contrib = True
     port.name = filename
     port.needed = lambda settings, name = port.name: name in settings.USE_CONTRIB_PORT
-    port.show = lambda name = port.name, license = port.project_license(): f'{name} (USE_CONTRIB_PORT={name}, {license})'
+    port.show = lambda name = port.name, license = port.project_license(): f'{name} (-sUSE_CONTRIB_PORT={name}; {license})'
     load_port(port, expected_attrs)
 
   for port in ports:
