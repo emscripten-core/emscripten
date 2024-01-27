@@ -20,7 +20,8 @@ var LibraryHtml5WebGL = {
     return len;
   },
 
-  $emscripten_webgl_power_preferences: "['default', 'low-power', 'high-performance']",
+  $webglPowerPreferences__internal: true,
+  $webglPowerPreferences: ['default', 'low-power', 'high-performance'],
 
 #if PTHREADS && OFFSCREEN_FRAMEBUFFER
   // In offscreen framebuffer mode, we implement a proxied version of the
@@ -49,7 +50,7 @@ var LibraryHtml5WebGL = {
 #if PTHREADS && OFFSCREEN_FRAMEBUFFER
   'emscripten_webgl_create_context_proxied',
 #endif
-  '$JSEvents', '$emscripten_webgl_power_preferences', '$findEventTarget', '$findCanvasEventTarget'],
+  '$JSEvents', '$webglPowerPreferences', '$findEventTarget', '$findCanvasEventTarget'],
   // This function performs proxying manually, depending on the style of context that is to be created.
   emscripten_webgl_do_create_context: (target, attributes) => {
 #if ASSERTIONS
@@ -64,7 +65,7 @@ var LibraryHtml5WebGL = {
       'antialias': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.antialias }}}>>2)],
       'premultipliedAlpha': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha }}}>>2)],
       'preserveDrawingBuffer': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer }}}>>2)],
-      'powerPreference': emscripten_webgl_power_preferences[powerPreference],
+      'powerPreference': webglPowerPreferences[powerPreference],
       'failIfMajorPerformanceCaveat': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat }}}>>2)],
       // The following are not predefined WebGL context attributes in the WebGL specification, so the property names can be minified by Closure.
       majorVersion: HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)],
@@ -251,7 +252,7 @@ var LibraryHtml5WebGL = {
   },
 
   emscripten_webgl_get_context_attributes__proxy: 'sync_on_webgl_context_handle_thread',
-  emscripten_webgl_get_context_attributes__deps: ['$emscripten_webgl_power_preferences'],
+  emscripten_webgl_get_context_attributes__deps: ['$webglPowerPreferences'],
   emscripten_webgl_get_context_attributes: (c, a) => {
     if (!a) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
     c = GL.contexts[c];
@@ -266,7 +267,7 @@ var LibraryHtml5WebGL = {
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.antialias, 't.antialias', 'i32') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha, 't.premultipliedAlpha', 'i32') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, 't.preserveDrawingBuffer', 'i32') }}};
-    var power = t['powerPreference'] && emscripten_webgl_power_preferences.indexOf(t['powerPreference']);
+    var power = t['powerPreference'] && webglPowerPreferences.indexOf(t['powerPreference']);
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.powerPreference, 'power', 'i32') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat, 't.failIfMajorPerformanceCaveat', 'i32') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion, 'c.version', 'i32') }}};
