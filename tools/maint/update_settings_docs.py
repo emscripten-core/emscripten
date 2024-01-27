@@ -57,11 +57,11 @@ all_tags = {
 output_file = path_from_root('site/source/docs/tools_reference/settings_reference.rst')
 
 
-def write_setting(f, setting_name, comment, tags):
+def write_setting(f, setting_name, comment, tags, level='='):
   # Convert markdown backticks to rst double backticks
   f.write('\n.. _' + setting_name.lower() + ':\n')
   f.write('\n' + setting_name + '\n')
-  f.write('=' * len(setting_name) + '\n\n')
+  f.write(level * len(setting_name) + '\n\n')
   f.write(comment + '\n')
   for tag in tags:
     for t in tag.split():
@@ -69,15 +69,16 @@ def write_setting(f, setting_name, comment, tags):
         f.write('\n.. note:: ' + all_tags[t] + '\n')
 
 def write_contrib_ports(f):
-  f.write('\nAvailable contrib ports:')
+  f.write('\n.. note:: Contrib ports are contributed by the wider community and ' +
+          'supported on a "best effort" basis. Since they are not run as part ' +
+          'of emscripten CI they are not always guaranteed to build or function.')
+  f.write('\n\nAvailable contrib ports:\n')
   for port in ports:
     if port.is_contrib:
-      setting_name = f'\nUSE_CONTRIB_PORT={port.name}'
-      f.write(f'\n{setting_name}\n')
-      f.write('-' * len(setting_name) + '\n\n')
-      f.write(port.project_description())
-      f.write(f'\n\n`More information <{port.project_url()}>`_')
-      f.write(f'\nLicense: {port.project_license()}')
+      comment = port.project_description()
+      comment += f'\n\n`Project information <{port.project_url()}>`_'
+      comment += f'\nLicense: {port.project_license()}'
+      write_setting(f, f'USE_CONTRIB_PORT={port.name}', comment, [], '-')
   f.write('\n')
 
 def write_file(f):

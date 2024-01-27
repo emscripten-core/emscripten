@@ -47,6 +47,9 @@ def get(ports, settings, shared):
     # if settings.EMSCRIPTEN_GLFW3_DISABLE_MULTI_WINDOW_SUPPORT:
     #   flags += ['-DEMSCRIPTEN_GLFW3_DISABLE_MULTI_WINDOW_SUPPORT']
 
+    # need to add a way to provide custom variants to ports => in the meantime disabling warnings
+    flags += ['-DEMSCRIPTEN_GLFW3_DISABLE_WARNING']
+
     ports.build_port(source_path, final, 'glfw3', includes=source_include_paths, flags=flags)
 
   return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
@@ -71,7 +74,7 @@ def project_url():
 
 
 def project_description():
-  return 'This project is an emscripten port of glfw written in C++ for the web/webassembly platform #wasm'
+  return 'This project is an emscripten port of glfw written in C++ for the web/webassembly platform'
 
 
 def project_license():
