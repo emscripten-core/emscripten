@@ -136,7 +136,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   emscripten_webgl_enable_WEBGL_multi_draw: (ctx) => webgl_enable_WEBGL_multi_draw(GL.contexts[ctx].GLctx),
 
   $getEmscriptenSupportedExtensions__internal: true,
-  $getEmscriptenSupportedExtensions: function(ctx) {
+  $getEmscriptenSupportedExtensions: (ctx) => {
     // Restrict the list of advertised extensions to those that we actually
     // support.
     var supportedExtensions = [
@@ -287,7 +287,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     // glGetError() to fetch it. As per GLES2 spec, only the first error is
     // remembered, and subsequent errors are discarded until the user has
     // cleared the stored error by a call to glGetError().
-    recordError: function recordError(errorCode) {
+    recordError: (errorCode) => {
 #if GL_TRACK_ERRORS
       if (!GL.lastError) {
         GL.lastError = errorCode;
@@ -377,7 +377,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       }
     },
 
-    getTempVertexBuffer: function getTempVertexBuffer(sizeBytes) {
+    getTempVertexBuffer: (sizeBytes) => {
       var idx = GL.log2ceilLookup(sizeBytes);
       var ringbuffer = GL.currentContext.tempVertexBuffers1[idx];
       var nextFreeBufferIndex = GL.currentContext.tempVertexBufferCounters1[idx];
@@ -394,7 +394,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       return ringbuffer[nextFreeBufferIndex];
     },
 
-    getTempIndexBuffer: function getTempIndexBuffer(sizeBytes) {
+    getTempIndexBuffer: (sizeBytes) => {
       var idx = GL.log2ceilLookup(sizeBytes);
       var ibo = GL.currentContext.tempIndexBuffers[idx];
       if (ibo) {
@@ -412,7 +412,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     // doublebuffered temp VB memory pointers, so that every second frame
     // utilizes different set of temp buffers. The aim is to keep the set of
     // buffers being rendered, and the set of buffers being updated disjoint.
-    newRenderingFrameStarted: function newRenderingFrameStarted() {
+    newRenderingFrameStarted: () => {
       if (!GL.currentContext) {
         return;
       }
@@ -457,13 +457,13 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 
 #if GL_FFP_ONLY
     enabledClientAttribIndices: [],
-    enableVertexAttribArray: function enableVertexAttribArray(index) {
+    enableVertexAttribArray: (index) => {
       if (!GL.enabledClientAttribIndices[index]) {
         GL.enabledClientAttribIndices[index] = true;
         GLctx.enableVertexAttribArray(index);
       }
     },
-    disableVertexAttribArray: function disableVertexAttribArray(index) {
+    disableVertexAttribArray: (index) => {
       if (GL.enabledClientAttribIndices[index]) {
         GL.enabledClientAttribIndices[index] = false;
         GLctx.disableVertexAttribArray(index);
@@ -472,7 +472,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
 
 #if FULL_ES2
-    calcBufLength: function calcBufLength(size, type, stride, count) {
+    calcBufLength: (size, type, stride, count) => {
       if (stride > 0) {
         return count * stride;  // XXXvlad this is not exactly correct I don't think
       }
@@ -482,7 +482,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 
     usedTempBuffers: [],
 
-    preDrawHandleClientVertexAttribBindings: function preDrawHandleClientVertexAttribBindings(count) {
+    preDrawHandleClientVertexAttribBindings: (count) => {
       GL.resetBufferBinding = false;
 
       // TODO: initial pass to detect ranges we need to upload, might not need
@@ -506,7 +506,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       }
     },
 
-    postDrawHandleClientVertexAttribBindings: function postDrawHandleClientVertexAttribBindings() {
+    postDrawHandleClientVertexAttribBindings: () => {
       if (GL.resetBufferBinding) {
         GLctx.bindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, GL.buffers[GLctx.currentArrayBufferBinding]);
       }
@@ -3680,7 +3680,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   , '$emulGlGenVertexArrays'
 #endif
   ],
-  glGenVertexArrays: function (n, arrays) {
+  glGenVertexArrays: (n, arrays) => {
 #if LEGACY_GL_EMULATION
     emulGlGenVertexArrays(n, arrays);
 #else
@@ -4211,13 +4211,13 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   'SDL_GL_GetProcAddress',
   'eglGetProcAddress',
   'glfwGetProcAddress'
-].forEach(function(name) {
-  LibraryGL[name] = function(name) { abort(); return 0; };
+].forEach((name) => {
+  LibraryGL[name] = (name) => { abort(); return 0; };
   // Due to the two pass nature of compiling .js files,
   // in INCLUDE_FULL_LIBRARY mode, we must include the above
   // stub functions, but not their __deps message handlers.
 #if !INCLUDE_FULL_LIBRARY
-  LibraryGL[name + '__deps'] = [function() {
+  LibraryGL[name + '__deps'] = [() => {
     error(`linker: Undefined symbol: ${name}(). Please pass -sGL_ENABLE_GET_PROC_ADDRESS at link time to link in ${name}().`);
   }];
 #endif
@@ -4242,15 +4242,12 @@ function createGLPassthroughFunctions(lib, funcs) {
     const num = data[0];
     const names = data[1];
     const args = range(num).map((i) => 'x' + i ).join(', ');
-    const plainStub = `(function(${args}) { GLctx.NAME(${args}) })`;
-    const returnStub = `(function(${args}) { return GLctx.NAME(${args}) })`;
+    const stub = `(${args}) => GLctx.NAME(${args})`;
     const sigEnd = range(num).map(() => 'i').join('');
     names.split(' ').forEach((name) => {
-      let stub = plainStub;
       let sig;
       if (name.endsWith('*')) {
         name = name.slice(0, -1);
-        stub = returnStub;
         sig = 'i' + sigEnd;
       } else {
         sig = 'v' + sigEnd;
