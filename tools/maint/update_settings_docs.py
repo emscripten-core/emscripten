@@ -68,6 +68,7 @@ def write_setting(f, setting_name, comment, tags, level='='):
       if all_tags[t]:
         f.write('\n.. note:: ' + all_tags[t] + '\n')
 
+
 def write_contrib_ports(f):
   f.write('\n.. note:: Contrib ports are contributed by the wider community and ' +
           'supported on a "best effort" basis. Since they are not run as part ' +
@@ -80,6 +81,7 @@ def write_contrib_ports(f):
       comment += f'\nLicense: {port.project_license()}'
       write_setting(f, f'USE_CONTRIB_PORT={port.name}', comment, [], '-')
   f.write('\n')
+
 
 def write_file(f):
   f.write(header)
