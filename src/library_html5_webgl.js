@@ -20,31 +20,6 @@ var LibraryHtml5WebGL = {
     return len;
   },
 
-  // Execute in calling thread without proxying needed.
-  emscripten_webgl_init_context_attributes: (attributes) => {
-#if ASSERTIONS
-    assert(attributes);
-#endif
-    var a = attributes >> 2;
-    for (var i = 0; i < ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.__size__ }}}>>2); ++i) {
-      HEAP32[a+i] = 0;
-    }
-
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.alpha }}}>>2)] =
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.depth }}}>>2)] =
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.antialias }}}>>2)] =
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha }}}>>2)] =
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)] =
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault }}}>>2)] = 1;
-
-#if PTHREADS
-    // Default context initialization state (user can override):
-    // - if main thread is creating the context, default to the context not being shared between threads - enabling sharing has performance overhead, because it forces the context to be OffscreenCanvas or OffscreenFramebuffer.
-    // - if a web worker is creating the context, default to using OffscreenCanvas if available, or proxying via Offscreen Framebuffer if not
-    if (ENVIRONMENT_IS_WORKER) {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread, 1/*EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK*/, 'i32') }}};
-#endif
-  },
-
   $emscripten_webgl_power_preferences: "['default', 'low-power', 'high-performance']",
 
 #if PTHREADS && OFFSCREEN_FRAMEBUFFER

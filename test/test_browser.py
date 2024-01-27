@@ -4690,9 +4690,9 @@ Module["preRun"] = () => {
     'threads': (['-pthread', '-sPROXY_TO_PTHREAD'],)
   })
   @parameterized({
-    'v1': ([],),
-    'v2': (['-sFULL_ES2'],),
-    'v3': (['-sFULL_ES3'],),
+    '': ([],),
+    'es2': (['-sFULL_ES2'],),
+    'es3': (['-sFULL_ES3'],),
   })
   def test_webgl_offscreen_framebuffer(self, version, threads):
     # Tests all the different possible versions of libgl

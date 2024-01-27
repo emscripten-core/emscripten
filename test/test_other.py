@@ -10545,7 +10545,7 @@ int main () {
     hello_webgl_sources = [test_file('minimal_webgl/main.c'),
                            test_file('minimal_webgl/webgl.c'),
                            '--js-library', test_file('minimal_webgl/library_js.js'),
-                           '-lwebgl.js',
+                           '-lGL',
                            '-sMODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-sMAX_WEBGL_VERSION=2']
     hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web,worker']
