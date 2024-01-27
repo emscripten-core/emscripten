@@ -1546,21 +1546,7 @@ def phase_linker_setup(options, state, newargs):
     if not settings.UBSAN_RUNTIME:
       settings.UBSAN_RUNTIME = 2
 
-    # helper functions for JS to call into C to do memory operations. these
-    # let us sanitize memory access from the JS side, by calling into C where
-    # it has been instrumented.
-    ASAN_C_HELPERS = [
-      '_asan_c_load_1', '_asan_c_load_1u',
-      '_asan_c_load_2', '_asan_c_load_2u',
-      '_asan_c_load_4', '_asan_c_load_4u',
-      '_asan_c_load_f', '_asan_c_load_d',
-      '_asan_c_store_1', '_asan_c_store_1u',
-      '_asan_c_store_2', '_asan_c_store_2u',
-      '_asan_c_store_4', '_asan_c_store_4u',
-      '_asan_c_store_f', '_asan_c_store_d',
-    ]
-
-    settings.REQUIRED_EXPORTS += ASAN_C_HELPERS
+    settings.REQUIRED_EXPORTS += emscripten.ASAN_C_HELPERS
 
     if settings.ASYNCIFY and not settings.ASYNCIFY_ONLY:
       # we do not want asyncify to instrument these helpers - they just access
@@ -1572,7 +1558,7 @@ def phase_linker_setup(options, state, newargs):
       # do anything (as the user's list won't contain these functions), and if
       # we did add them, the pass would assert on incompatible lists, hence the
       # condition in the above if.
-      settings.ASYNCIFY_REMOVE += ASAN_C_HELPERS
+      settings.ASYNCIFY_REMOVE += emscripten.ASAN_C_HELPERS
 
     if settings.ASAN_SHADOW_SIZE != -1:
       diagnostics.warning('emcc', 'ASAN_SHADOW_SIZE is ignored and will be removed in a future release')
@@ -1619,6 +1605,9 @@ def phase_linker_setup(options, state, newargs):
       # Since the shadow memory starts at 0, the act of accessing the shadow memory is detected
       # by SAFE_HEAP as a null pointer dereference.
       exit_with_error('ASan does not work with SAFE_HEAP')
+
+    if settings.MEMORY64:
+      exit_with_error('MEMORY64 does not yet work with ASAN')
 
   if settings.USE_ASAN or settings.SAFE_HEAP:
     # ASan and SAFE_HEAP check address 0 themselves

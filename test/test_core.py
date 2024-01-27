@@ -6659,7 +6659,6 @@ void* operator new(size_t size) {
 
   @no_asan('issues with freetype itself')
   @needs_make('configure script')
-  @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_freetype(self):
     if self.get_setting('WASMFS'):
@@ -6772,7 +6771,7 @@ void* operator new(size_t size) {
   @no_ubsan('local count too large')
   @no_lsan('output differs')
   @needs_make('depends on freetype')
-  @no_wasm64('MEMORY64 does not yet support SJLJ')
+  @no_4gb('runs out of memory')
   @is_slow_test
   def test_poppler(self):
     # See https://github.com/emscripten-core/emscripten/issues/20757

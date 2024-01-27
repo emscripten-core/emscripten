@@ -781,6 +781,7 @@ var LibraryEmbind = {
 #endif
 #if EMBIND_AOT
     '$InvokerFunctions',
+    '$createJsInvokerSignature',
 #endif
 #if ASYNCIFY
     '$Asyncify',
@@ -884,7 +885,7 @@ var LibraryEmbind = {
 #else
   // Builld the arguments that will be passed into the closure around the invoker
   // function.
-  var closureArgs = [throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
+  var closureArgs = [humanName, throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
 #if EMSCRIPTEN_TRACING
   closureArgs.push(Module);
 #endif
@@ -903,9 +904,10 @@ var LibraryEmbind = {
   }
 
 #if EMBIND_AOT
-  var invokerFn = InvokerFunctions[cppTargetFunc].apply(null, closureArgs);
+  var signature = createJsInvokerSignature(argTypes, isClassMethodFunc, returns, isAsync);
+  var invokerFn = InvokerFunctions[signature].apply(null, closureArgs);
 #else
-  let [args, invokerFnBody] = createJsInvoker(humanName, argTypes, isClassMethodFunc, returns, isAsync);
+  let [args, invokerFnBody] = createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync);
   args.push(invokerFnBody);
   var invokerFn = newFunc(Function, args).apply(null, closureArgs);
 #endif

@@ -3130,6 +3130,12 @@ int f() {
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts', '-fwasm-exceptions', '-sASSERTIONS'])
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
+  def test_embind_jsgen_method_pointer_stability(self):
+    self.emcc_args += ['-lembind', '-sEMBIND_AOT']
+    # Test that when method pointers are allocated at different addresses that
+    # AOT JS generation still works correctly.
+    self.do_runf('other/embind_jsgen_method_pointer_stability.cpp', 'done')
+
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, config.LLVM_ROOT)
@@ -14415,3 +14421,7 @@ addToLibrary({
     # "window.crypto.getRandomValues"
     self.assertContained(").randomBytes", js_out)
     self.assertContained("window.crypto.getRandomValues", js_out)
+
+  def test_wasm64_no_asan(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMEMORY64', '-fsanitize=address'])
+    self.assertContained('error: MEMORY64 does not yet work with ASAN', err)
