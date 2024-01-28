@@ -38,7 +38,25 @@ var LibraryEmbind = {
 #if EMBIND_AOT
   $InvokerFunctions: '<<< EMBIND_AOT_OUTPUT >>>',
 #endif
+  // If register_type is used, emval will be registered multiple times for
+  // different type id's, but only a single type object is needed on the JS side
+  // for all of them. Store the type for reuse.
+  $EmValType__deps: ['_emval_decref', '$Emval', '$simpleReadValueFromPointer', '$GenericWireTypeSize'],
+  $EmValType: `{
+    name: 'emscripten::val',
+    'fromWireType': (handle) => {
+      var rv = Emval.toValue(handle);
+      __emval_decref(handle);
+      return rv;
+    },
+    'toWireType': (destructors, value) => Emval.toHandle(value),
+    'argPackAdvance': GenericWireTypeSize,
+    'readValueFromPointer': simpleReadValueFromPointer,
+    destructorFunction: null, // This type does not need a destructor
 
+    // TODO: do we need a deleteObject here?  write a test where
+    // emval is passed into JS via an interface
+  }`,
   $init_embind__deps: [
     '$getInheritedInstanceCount', '$getLiveInheritedInstances',
     '$flushPendingDeletes', '$setDelayFunction'],
@@ -432,9 +450,14 @@ var LibraryEmbind = {
         if (typeof value != "bigint" && typeof value != "number") {
           throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${this.name}`);
         }
+        if (typeof value == "number") {
+          value = BigInt(value);
+        }
+#if ASSERTIONS
         if (value < minRange || value > maxRange) {
           throw new TypeError(`Passing a number "${embindRepr(value)}" from JS side to C/C++ side to an argument of type "${name}", which is outside the valid range [${minRange}, ${maxRange}]!`);
         }
+#endif
         return value;
       },
       'argPackAdvance': GenericWireTypeSize,
@@ -551,7 +574,7 @@ var LibraryEmbind = {
           length = value.length;
         }
 
-        // assumes 4-byte alignment
+        // assumes POINTER_SIZE alignment
         var base = _malloc({{{ POINTER_SIZE }}} + length + 1);
         var ptr = base + {{{ POINTER_SIZE }}};
         {{{ makeSetValue('base', '0', 'length', SIZE_TYPE) }}};
@@ -616,10 +639,10 @@ var LibraryEmbind = {
         var HEAP = getHeap();
         var str;
 
-        var decodeStartPtr = value + 4;
+        var decodeStartPtr = value + {{{ POINTER_SIZE }}};
         // Looping here to support possible embedded '0' bytes
         for (var i = 0; i <= length; ++i) {
-          var currentBytePtr = value + 4 + i * charSize;
+          var currentBytePtr = value + {{{ POINTER_SIZE }}} + i * charSize;
           if (i == length || HEAP[currentBytePtr >> shift] == 0) {
             var maxReadBytes = currentBytePtr - decodeStartPtr;
             var stringSegment = decodeString(decodeStartPtr, maxReadBytes);
@@ -642,12 +665,12 @@ var LibraryEmbind = {
           throwBindingError(`Cannot pass non-string to C++ string type ${name}`);
         }
 
-        // assumes 4-byte alignment
+        // assumes POINTER_SIZE alignment
         var length = lengthBytesUTF(value);
-        var ptr = _malloc(4 + length + charSize);
-        HEAPU32[ptr >> 2] = length >> shift;
+        var ptr = _malloc({{{ POINTER_SIZE }}} + length + charSize);
+        {{{ makeSetValue('ptr', '0', 'length >> shift', SIZE_TYPE) }}};
 
-        encodeString(value, ptr + 4, length + charSize);
+        encodeString(value, ptr + {{{ POINTER_SIZE }}}, length + charSize);
 
         if (destructors !== null) {
           destructors.push(_free, ptr);
@@ -663,27 +686,17 @@ var LibraryEmbind = {
   },
 
   _embind_register_emval__deps: [
-    '_emval_decref', '$Emval',
-    '$readLatin1String', '$registerType', '$simpleReadValueFromPointer'],
-  _embind_register_emval: (rawType, name) => {
-    name = readLatin1String(name);
-    registerType(rawType, {
-      name,
-      'fromWireType': (handle) => {
-        var rv = Emval.toValue(handle);
-        __emval_decref(handle);
-        return rv;
-      },
-      'toWireType': (destructors, value) => Emval.toHandle(value),
-      'argPackAdvance': GenericWireTypeSize,
-      'readValueFromPointer': simpleReadValueFromPointer,
-      destructorFunction: null, // This type does not need a destructor
-    });
-  },
+    '$registerType',  '$EmValType'],
+  _embind_register_emval: (rawType) => registerType(rawType, EmValType),
 
   _embind_register_user_type__deps: ['_embind_register_emval'],
   _embind_register_user_type: (rawType, name) => {
-    __embind_register_emval(rawType, name);
+    __embind_register_emval(rawType);
+  },
+
+  _embind_register_optional__deps: ['_embind_register_emval'],
+  _embind_register_optional: (rawOptionalType, rawType) => {
+    __embind_register_emval(rawOptionalType);
   },
 
   _embind_register_memory_view__deps: ['$readLatin1String', '$registerType'],
@@ -768,6 +781,7 @@ var LibraryEmbind = {
 #endif
 #if EMBIND_AOT
     '$InvokerFunctions',
+    '$createJsInvokerSignature',
 #endif
 #if ASYNCIFY
     '$Asyncify',
@@ -871,7 +885,7 @@ var LibraryEmbind = {
 #else
   // Builld the arguments that will be passed into the closure around the invoker
   // function.
-  var closureArgs = [throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
+  var closureArgs = [humanName, throwBindingError, cppInvokerFunc, cppTargetFunc, runDestructors, argTypes[0], argTypes[1]];
 #if EMSCRIPTEN_TRACING
   closureArgs.push(Module);
 #endif
@@ -890,9 +904,10 @@ var LibraryEmbind = {
   }
 
 #if EMBIND_AOT
-  var invokerFn = InvokerFunctions[cppTargetFunc].apply(null, closureArgs);
+  var signature = createJsInvokerSignature(argTypes, isClassMethodFunc, returns, isAsync);
+  var invokerFn = InvokerFunctions[signature].apply(null, closureArgs);
 #else
-  let [args, invokerFnBody] = createJsInvoker(humanName, argTypes, isClassMethodFunc, returns, isAsync);
+  let [args, invokerFnBody] = createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync);
   args.push(invokerFnBody);
   var invokerFn = newFunc(Function, args).apply(null, closureArgs);
 #endif

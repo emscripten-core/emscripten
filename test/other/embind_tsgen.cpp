@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <memory>
 #include <string>
+#include <optional>
 #include <emscripten/bind.h>
 
 using namespace emscripten;
@@ -97,6 +98,10 @@ std::wstring wstring_test(std::wstring arg) {
   return L"hi";
 }
 
+std::optional<int> optional_test(std::optional<Foo> arg) {
+  return {};
+}
+
 class BaseClass {
  public:
   virtual ~BaseClass() = default;
@@ -163,6 +168,10 @@ EMSCRIPTEN_BINDINGS(Test) {
   class_<Foo>("Foo").function("process", &Foo::process);
 
   function("global_fn", &global_fn);
+
+  register_optional<int>();
+  register_optional<Foo>();
+  function("optional_test", &optional_test);
 
   function("string_test", &string_test);
   function("wstring_test", &wstring_test);

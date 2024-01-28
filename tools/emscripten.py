@@ -37,6 +37,20 @@ import leb128
 
 logger = logging.getLogger('emscripten')
 
+# helper functions for JS to call into C to do memory operations. these
+# let us sanitize memory access from the JS side, by calling into C where
+# it has been instrumented.
+ASAN_C_HELPERS = [
+  '_asan_c_load_1', '_asan_c_load_1u',
+  '_asan_c_load_2', '_asan_c_load_2u',
+  '_asan_c_load_4', '_asan_c_load_4u',
+  '_asan_c_load_f', '_asan_c_load_d',
+  '_asan_c_store_1', '_asan_c_store_1u',
+  '_asan_c_store_2', '_asan_c_store_2u',
+  '_asan_c_store_4', '_asan_c_store_4u',
+  '_asan_c_store_f', '_asan_c_store_d',
+]
+
 
 def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
   # Declare all exports out to global JS scope so that JS library functions can access them in a
@@ -547,8 +561,6 @@ def finalize_wasm(infile, outfile, js_syms):
                    sections=sections)
 
   metadata = get_metadata(outfile, outfile, modify_wasm, args)
-  if modify_wasm:
-    building.save_intermediate(outfile, 'post_finalize.wasm')
 
   if settings.GENERATE_SOURCE_MAP:
     building.save_intermediate(outfile + '.map', 'post_finalize.map')
@@ -762,7 +774,9 @@ def create_sending(metadata, library_symbols):
   return '{\n  ' + ',\n  '.join(f'{prefix}{k}: {v}' for k, v in sorted_items) + '\n}'
 
 
-def make_export_wrappers(function_exports, delay_assignment):
+def make_export_wrappers(function_exports):
+  assert not settings.MINIMAL_RUNTIME
+
   wrappers = []
 
   # The emscripten stack functions are called very early (by writeStackCookie) before
@@ -796,14 +810,14 @@ def make_export_wrappers(function_exports, delay_assignment):
       # With assertions enabled we create a wrapper that are calls get routed through, for
       # the lifetime of the program.
       wrapper += "createExportWrapper('%s');" % name
-    elif delay_assignment:
-      # With assertions disabled the wrapper will replace the global var and Module var on
+    elif settings.WASM_ASYNC_COMPILATION:
+      # With WASM_ASYNC_COMPILATION wrapper will replace the global var and Module var on
       # first use.
       args = [f'a{i}' for i in range(nargs)]
       args = ', '.join(args)
       wrapper += f"({args}) => ({mangled} = {exported}wasmExports['{name}'])({args});"
     else:
-      wrapper += 'wasmExports["%s"]' % name
+      wrapper += f"wasmExports['{name}']"
 
     wrappers.append(wrapper)
   return wrappers
@@ -817,32 +831,26 @@ def create_receiving(function_exports):
 
   receiving = []
 
-  # with WASM_ASYNC_COMPILATION that asm object may not exist at this point in time
-  # so we need to support delayed assignment.
-  delay_assignment = settings.WASM_ASYNC_COMPILATION and not settings.MINIMAL_RUNTIME
-  if not delay_assignment:
-    if settings.MINIMAL_RUNTIME:
-      # In Wasm exports are assigned inside a function to variables
-      # existing in top level JS scope, i.e.
-      # var _main;
-      # WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
-      #   var wasmExports = output.instance.exports;
-      #   _main = wasmExports["_main"];
-      generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
-      exports_that_are_not_initializers = [x for x in function_exports if x != building.WASM_CALL_CTORS]
+  if settings.MINIMAL_RUNTIME:
+    # In Wasm exports are assigned inside a function to variables
+    # existing in top level JS scope, i.e.
+    # var _main;
+    # WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
+    #   var wasmExports = output.instance.exports;
+    #   _main = wasmExports["_main"];
+    generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
+    exports_that_are_not_initializers = [x for x in function_exports if x != building.WASM_CALL_CTORS]
 
-      for s in exports_that_are_not_initializers:
-        mangled = asmjs_mangle(s)
-        dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if generate_dyncall_assignment and mangled.startswith('dynCall_') else ''
-        should_export = settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS)
-        export_assignment = ''
-        if settings.MODULARIZE and should_export:
-          export_assignment = f"Module['{mangled}'] = "
-        receiving += [f'{export_assignment}{dynCallAssignment}{mangled} = wasmExports["{s}"]']
-    else:
-      receiving += make_export_wrappers(function_exports, delay_assignment)
+    for s in exports_that_are_not_initializers:
+      mangled = asmjs_mangle(s)
+      dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if generate_dyncall_assignment and mangled.startswith('dynCall_') else ''
+      should_export = settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS)
+      export_assignment = ''
+      if settings.MODULARIZE and should_export:
+        export_assignment = f"Module['{mangled}'] = "
+      receiving += [f'{export_assignment}{dynCallAssignment}{mangled} = wasmExports["{s}"]']
   else:
-    receiving += make_export_wrappers(function_exports, delay_assignment)
+    receiving += make_export_wrappers(function_exports)
 
   if settings.MINIMAL_RUNTIME:
     return '\n  '.join(receiving) + '\n'
@@ -899,12 +907,14 @@ def create_pointer_conversion_wrappers(metadata):
     'stackAlloc': 'pp',
     'emscripten_builtin_malloc': 'pp',
     'malloc': 'pp',
+    'webidl_malloc': 'pp',
     'memalign': 'ppp',
     'memcmp': '_ppp',
     'memcpy': 'pppp',
     '__getTypeName': 'pp',
     'setThrew': '_p',
     'free': '_p',
+    'webidl_free': '_p',
     'stackRestore': '_p',
     '__cxa_is_pointer_type': '_p',
     'stackSave': 'p',
@@ -958,6 +968,9 @@ def create_pointer_conversion_wrappers(metadata):
   for function in settings.SIGNATURE_CONVERSIONS:
     sym, sig = function.split(':')
     mapping[sym] = sig
+
+  for f in ASAN_C_HELPERS:
+    mapping[f] = '_p'
 
   wrappers = '''
 // Argument name here must shadow the `wasmExports` global so

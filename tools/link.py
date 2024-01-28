@@ -35,7 +35,7 @@ from . import utils
 from . import webassembly
 from .utils import read_file, read_binary, write_file, delete_file
 from .utils import removeprefix, exit_with_error
-from .shared import in_temp, safe_copy, do_replace, run_process, OFormat
+from .shared import in_temp, safe_copy, do_replace, OFormat
 from .shared import DEBUG, WINDOWS, DYNAMICLIB_ENDINGS, STATICLIB_ENDINGS
 from .shared import unsuffixed, unsuffixed_basename, get_file_suffix
 from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS
@@ -199,38 +199,6 @@ def embed_memfile(options):
            (not settings.MAIN_MODULE and
             not settings.SIDE_MODULE and
             not settings.GENERATE_SOURCE_MAP)))
-
-
-def is_ar_file_with_missing_index(archive_file):
-  # We parse the archive header outselves because llvm-nm --print-armap is slower and less
-  # reliable.
-  # See: https://github.com/emscripten-core/emscripten/issues/10195
-  archive_header = b'!<arch>\n'
-  file_header_size = 60
-
-  with open(archive_file, 'rb') as f:
-    header = f.read(len(archive_header))
-    if header != archive_header:
-      # This is not even an ar file
-      return False
-    file_header = f.read(file_header_size)
-    if len(file_header) != file_header_size:
-      # We don't have any file entires at all so we don't consider the index missing
-      return False
-
-  name = file_header[:16].strip()
-  # If '/' is the name of the first file we have an index
-  return name != b'/'
-
-
-def ensure_archive_index(archive_file):
-  # Fastcomp linking works without archive indexes.
-  if not settings.AUTO_ARCHIVE_INDEXES:
-    return
-  if is_ar_file_with_missing_index(archive_file):
-    diagnostics.warning('emcc', '%s: archive is missing an index; Use emar when creating libraries to ensure an index is created', archive_file)
-    diagnostics.warning('emcc', '%s: adding index', archive_file)
-    run_process([shared.LLVM_RANLIB, archive_file])
 
 
 def generate_js_sym_info():
@@ -791,6 +759,9 @@ def phase_linker_setup(options, state, newargs):
 
   final_suffix = get_file_suffix(target)
 
+  if 'SUPPORT_ERRNO' in user_settings:
+    diagnostics.warning('deprecated', 'SUPPORT_ERRNO is deprecated since emscripten no longer uses the setErrNo library function')
+
   if settings.EXTRA_EXPORTED_RUNTIME_METHODS:
     diagnostics.warning('deprecated', 'EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead')
     settings.EXPORTED_RUNTIME_METHODS += settings.EXTRA_EXPORTED_RUNTIME_METHODS
@@ -941,7 +912,6 @@ def phase_linker_setup(options, state, newargs):
   # It is unlikely that developers targeting "native web" APIs with MINIMAL_RUNTIME need
   # errno support by default.
   if settings.MINIMAL_RUNTIME:
-    default_setting('SUPPORT_ERRNO', 0)
     # Require explicit -lfoo.js flags to link with JS libraries.
     default_setting('AUTO_JS_LIBRARIES', 0)
     # When using MINIMAL_RUNTIME, symbols should only be exported if requested.
@@ -963,7 +933,6 @@ def phase_linker_setup(options, state, newargs):
     default_setting('DEFAULT_TO_CXX', 0)
     default_setting('AUTO_JS_LIBRARIES', 0)
     default_setting('AUTO_NATIVE_LIBRARIES', 0)
-    default_setting('AUTO_ARCHIVE_INDEXES', 0)
     default_setting('IGNORE_MISSING_MAIN', 0)
     default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
     if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
@@ -974,10 +943,10 @@ def phase_linker_setup(options, state, newargs):
 
   if 'GLOBAL_BASE' not in user_settings and not settings.SHRINK_LEVEL and not settings.OPT_LEVEL:
     # When optimizing for size it helps to put static data first before
-    # the stack (sincs this makes instructions for accessing this data
+    # the stack (since this makes instructions for accessing this data
     # use a smaller LEB encoding).
     # However, for debugability is better to have the stack come first
-    # (becuase stack overflows will trap rather than corrupting data).
+    # (because stack overflows will trap rather than corrupting data).
     settings.STACK_FIRST = True
 
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
@@ -1341,7 +1310,13 @@ def phase_linker_setup(options, state, newargs):
     if sym in settings.EXPORTED_RUNTIME_METHODS:
       settings.REQUIRED_EXPORTS.append(sym)
 
-  settings.REQUIRED_EXPORTS += ['stackSave', 'stackRestore', 'stackAlloc']
+  if settings.MAIN_READS_PARAMS and not settings.STANDALONE_WASM:
+    # callMain depends on stackAlloc
+    settings.REQUIRED_EXPORTS += ['stackAlloc']
+
+  if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
+    # make_invoke depends on stackSave and stackRestore
+    settings.REQUIRED_EXPORTS += ['stackSave', 'stackRestore']
 
   if settings.RELOCATABLE:
     # TODO(https://reviews.llvm.org/D128515): Make this mandatory once
@@ -1622,21 +1597,7 @@ def phase_linker_setup(options, state, newargs):
     if not settings.UBSAN_RUNTIME:
       settings.UBSAN_RUNTIME = 2
 
-    # helper functions for JS to call into C to do memory operations. these
-    # let us sanitize memory access from the JS side, by calling into C where
-    # it has been instrumented.
-    ASAN_C_HELPERS = [
-      '_asan_c_load_1', '_asan_c_load_1u',
-      '_asan_c_load_2', '_asan_c_load_2u',
-      '_asan_c_load_4', '_asan_c_load_4u',
-      '_asan_c_load_f', '_asan_c_load_d',
-      '_asan_c_store_1', '_asan_c_store_1u',
-      '_asan_c_store_2', '_asan_c_store_2u',
-      '_asan_c_store_4', '_asan_c_store_4u',
-      '_asan_c_store_f', '_asan_c_store_d',
-    ]
-
-    settings.REQUIRED_EXPORTS += ASAN_C_HELPERS
+    settings.REQUIRED_EXPORTS += emscripten.ASAN_C_HELPERS
 
     if settings.ASYNCIFY and not settings.ASYNCIFY_ONLY:
       # we do not want asyncify to instrument these helpers - they just access
@@ -1648,7 +1609,7 @@ def phase_linker_setup(options, state, newargs):
       # do anything (as the user's list won't contain these functions), and if
       # we did add them, the pass would assert on incompatible lists, hence the
       # condition in the above if.
-      settings.ASYNCIFY_REMOVE += ASAN_C_HELPERS
+      settings.ASYNCIFY_REMOVE += emscripten.ASAN_C_HELPERS
 
     if settings.ASAN_SHADOW_SIZE != -1:
       diagnostics.warning('emcc', 'ASAN_SHADOW_SIZE is ignored and will be removed in a future release')
@@ -1698,6 +1659,9 @@ def phase_linker_setup(options, state, newargs):
       # Since the shadow memory starts at 0, the act of accessing the shadow memory is detected
       # by SAFE_HEAP as a null pointer dereference.
       exit_with_error('ASan does not work with SAFE_HEAP')
+
+    if settings.MEMORY64:
+      exit_with_error('MEMORY64 does not yet work with ASAN')
 
   if settings.USE_ASAN or settings.SAFE_HEAP:
     # ASan and SAFE_HEAP check address 0 themselves
@@ -1849,9 +1813,9 @@ def phase_linker_setup(options, state, newargs):
     # What you need to do is different depending on the kind of EH you use
     # (https://github.com/emscripten-core/emscripten/issues/17115).
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getExceptionMessage', '$incrementExceptionRefcount', '$decrementExceptionRefcount']
-    settings.EXPORTED_FUNCTIONS += ['getExceptionMessage', '___get_exception_message', '_free']
+    settings.EXPORTED_FUNCTIONS += ['getExceptionMessage', '$incrementExceptionRefcount', '$decrementExceptionRefcount']
     if settings.WASM_EXCEPTIONS:
-      settings.EXPORTED_FUNCTIONS += ['___cpp_exception', '___cxa_increment_exception_refcount', '___cxa_decrement_exception_refcount', '___thrown_object_from_unwind_exception']
+      settings.REQUIRED_EXPORTS += ['__cpp_exception']
 
   if settings.SIDE_MODULE:
     # For side modules, we ignore all REQUIRED_EXPORTS that might have been added above.
@@ -2373,9 +2337,9 @@ def modularize():
      shared.target_environment_may_be('web'):
     async_emit = 'async '
 
-  # Return the incoming `moduleArg`.  This is is equeivielt to the `Module` var within the
-  # generated code but its not run through closure minifiection so we can reference it in
-  # the the return statement.
+  # Return the incoming `moduleArg`.  This is is equivalent to the `Module` var within the
+  # generated code but its not run through closure minification so we can reference it in
+  # the return statement.
   return_value = 'moduleArg'
   if settings.WASM_ASYNC_COMPILATION:
     return_value += '.ready'
@@ -2742,10 +2706,6 @@ def process_libraries(state, linker_inputs):
   settings.JS_LIBRARIES = [lib[1] for lib in settings.JS_LIBRARIES]
   state.link_flags = new_flags
 
-  for _, f in linker_inputs:
-    if building.is_ar(f):
-      ensure_archive_index(f)
-
 
 class ScriptSource:
   def __init__(self):
@@ -3003,6 +2963,9 @@ def run_post_link(wasm_input, options, state, newargs):
 def run(linker_inputs, options, state, newargs):
   # We have now passed the compile phase, allow reading/writing of all settings.
   settings.limit_settings(None)
+
+  if not linker_inputs and not state.link_flags:
+    exit_with_error('no input files')
 
   if options.output_file and options.output_file.startswith('-'):
     exit_with_error(f'invalid output filename: `{options.output_file}`')

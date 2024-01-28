@@ -72,7 +72,7 @@ var LibraryDylink = {
   // generation time.
 #if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
   $createInvokeFunction__internal: true,
-  $createInvokeFunction__deps: ['$dynCall', 'setThrew'],
+  $createInvokeFunction__deps: ['$dynCall', 'setThrew', 'stackSave', 'stackRestore'],
   $createInvokeFunction: (sig) => {
     return function() {
       var sp = stackSave();

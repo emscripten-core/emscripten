@@ -328,8 +328,7 @@ addToLibrary({
     updateMemoryViews();
   },
 
-  system__deps: ['$setErrNo'],
-  system: (command) => {
+  _emscripten_system: (command) => {
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
       if (!command) return 1; // shell is available
@@ -368,8 +367,7 @@ addToLibrary({
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/system.html
     // Can't call external programs.
     if (!command) return 0; // no shell available
-    setErrNo({{{ cDefs.ENOSYS }}});
-    return -1;
+    return -{{{ cDefs.ENOSYS }}};
   },
 
   // ==========================================================================
@@ -437,7 +435,7 @@ addToLibrary({
   // ==========================================================================
 
   _mktime_js__i53abi: true,
-  _mktime_js__deps: ['$ydayFromDate', '$setErrNo'],
+  _mktime_js__deps: ['$ydayFromDate'],
   _mktime_js: (tmPtr) => {
     var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
@@ -479,7 +477,6 @@ addToLibrary({
 
     var timeMs = date.getTime();
     if (isNaN(timeMs)) {
-      setErrNo({{{ cDefs.EOVERFLOW }}});
       return -1;
     }
     // Return time in microseconds
@@ -595,6 +592,7 @@ addToLibrary({
 #endif
 
   $withStackSave__internal: true,
+  $withStackSave__deps: ['stackSave', 'stackRestore'],
   $withStackSave: (f) => {
     var stack = stackSave();
     var ret = f();
@@ -1522,20 +1520,6 @@ addToLibrary({
     {{{ cDefs.EOWNERDEAD }}}: 'Previous owner died',
     {{{ cDefs.ESTRPIPE }}}: 'Streams pipe error',
   },
-#if SUPPORT_ERRNO
-  $setErrNo__deps: ['__errno_location'],
-  $setErrNo: (value) => {
-    {{{makeSetValue("___errno_location()", 0, 'value', 'i32') }}};
-    return value;
-  },
-#else
-  $setErrNo: (value) => {
-#if ASSERTIONS
-    err('failed to set errno from JS');
-#endif
-    return 0;
-  },
-#endif
 
 #if PROXY_POSIX_SOCKETS == 0
   // ==========================================================================
@@ -2138,11 +2122,10 @@ addToLibrary({
   // nonblocking
   // ==========================================================================
 #if SOCKET_WEBRTC
-  $Sockets__deps: ['$setErrNo',
+  $Sockets__deps: [
     () => 'var SocketIO = ' + read('../third_party/socket.io.js') + ';\n',
-    () => 'var Peer = ' + read('../third_party/wrtcp.js') + ';\n'],
-#else
-  $Sockets__deps: ['$setErrNo'],
+    () => 'var Peer = ' + read('../third_party/wrtcp.js') + ';\n'
+  ],
 #endif
   $Sockets: {
     BUFFER_SIZE: 10*1024, // initial size
@@ -2204,9 +2187,9 @@ addToLibrary({
 #endif // ENVIRONMENT_MAY_BE_NODE
     // we couldn't find a proper implementation, as Math.random() is not suitable for /dev/random, see emscripten-core/emscripten/pull/7096
 #if ASSERTIONS
-    abort("no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: (array) => { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };");
+    abort('no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: (array) => { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };');
 #else
-    abort("initRandomDevice");
+    abort('initRandomDevice');
 #endif
   },
 
@@ -3215,7 +3198,7 @@ addToLibrary({
 #endif
     }
 #if ASSERTIONS && ASYNCIFY != 2 // With JSPI the function stored in the table will be a wrapper.
-    assert(wasmTable.get(funcPtr) == func, "JavaScript-side Wasm function table mirror is out of date!");
+    assert(wasmTable.get(funcPtr) == func, 'JavaScript-side Wasm function table mirror is out of date!');
 #endif
     return func;
   },
@@ -3471,7 +3454,7 @@ addToLibrary({
     if (x == '__main_argc_argv') {
       x = 'main';
     }
-    return x.indexOf('dynCall_') == 0 || unmangledSymbols.includes(x) ? x : '_' + x;
+    return x.startsWith('dynCall_') || unmangledSymbols.includes(x) ? x : '_' + x;
   },
 
   $asyncLoad__docs: '/** @param {boolean=} noRunDep */',
@@ -3774,7 +3757,8 @@ function wrapSyscallFunction(x, library, isWasi) {
   }
 
   library[x] = eval('(' + t + ')');
-  if (!WASMFS) {
+  // Automatically add dependency on `$SYSCALLS`
+  if (!WASMFS && t.includes('SYSCALLS')) {
     library[x + '__deps'].push('$SYSCALLS');
   }
 #if PTHREADS

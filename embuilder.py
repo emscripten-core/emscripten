@@ -46,7 +46,6 @@ MINIMAL_TASKS = [
     'libc++-noexcept',
     'libal',
     'libdlmalloc',
-    'libdlmalloc-noerrno',
     'libdlmalloc-tracing',
     'libdlmalloc-debug',
     'libembind',
@@ -72,6 +71,7 @@ MINIMAL_TASKS = [
     'libnoexit',
     'sqlite3',
     'sqlite3-mt',
+    'libwebgpu',
     'libwebgpu_cpp',
 ]
 

@@ -454,18 +454,24 @@ def get_closure_compiler():
   return cmd
 
 
-def check_closure_compiler(cmd, args, env):
+def check_closure_compiler(cmd, args, env, allowed_to_fail):
   cmd = cmd + args + ['--version']
   try:
     output = run_process(cmd, stdout=PIPE, env=env).stdout
   except Exception as e:
+    if allowed_to_fail:
+      return False
     if isinstance(e, subprocess.CalledProcessError):
       sys.stderr.write(e.stdout)
     sys.stderr.write(str(e) + '\n')
     exit_with_error('closure compiler (%s) did not execute properly!' % shared.shlex_join(cmd))
 
   if 'Version:' not in output:
+    if allowed_to_fail:
+      return False
     exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (shared.shlex_join(cmd), output))
+
+  return True
 
 
 # Remove this once we require python3.7 and can use std.isascii.
@@ -482,7 +488,15 @@ def isascii(s):
 def get_closure_compiler_and_env(user_args):
   env = shared.env_with_node_in_path()
   closure_cmd = get_closure_compiler()
-  check_closure_compiler(closure_cmd, user_args, env)
+
+  native_closure_compiler_works = check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=True)
+  if not native_closure_compiler_works and not any(a.startswith('--platform') for a in user_args):
+    # Run with Java Closure compiler as a fallback if the native version does not work.
+    # This can happen, for example, on arm64 macOS machines that do not have Rosetta installed.
+    logger.warn('falling back to java version of closure compiler')
+    user_args.append('--platform=java')
+    check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=False)
+
   return closure_cmd, env
 
 
@@ -1125,7 +1139,7 @@ def map_to_js_libs(library_name):
     'SDL': ['library_sdl.js'],
     'uuid': ['library_uuid.js'],
     'websocket': ['library_websocket.js'],
-    # These 4 libraries are seperate under glibc but are all rolled into
+    # These 4 libraries are separate under glibc but are all rolled into
     # libc with musl.  For compatibility with glibc we just ignore them
     # completely.
     'dl': [],

@@ -20,6 +20,7 @@ addToLibrary({
           }
         }
       };
+      /** @suppress {partialAlias} */
       var VFS = Object.assign({}, FS);
       for (var _key in NODERAWFS) {
         FS[_key] = _wrapNodeError(NODERAWFS[_key]);

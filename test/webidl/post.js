@@ -186,13 +186,13 @@ console.log('int_array[0] == ' + arrayClass.get_int_array(0));
 console.log('int_array[7] == ' + arrayClass.get_int_array(7));
 
 try {
-  arrayClass.set_int_array(-1, struct);
+  arrayClass.set_int_array(-1, 42);
 } catch (e) {
   console.log('idx -1: ' + e);
 }
 
 try {
-  arrayClass.set_int_array(8, struct);
+  arrayClass.set_int_array(8, 42);
 } catch (e) {
   console.log('idx 8: ' + e);
 }
@@ -270,7 +270,7 @@ if (isMemoryGrowthAllowed) {
     intArray = intArray.concat(intArray);
     storeArray.setArray(intArray);
   }
-  
+
   // Make sure the array was copied to the newly allocated HEAP
   var numCopiedEntries = 0;
   for (var i = 0; i < intArray.length; i++) {

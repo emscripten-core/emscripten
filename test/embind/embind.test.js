@@ -856,10 +856,17 @@ module({
                 assert.throws(TypeError, function() { cm.int_to_string(2147483648); });
                 assert.throws(TypeError, function() { cm.unsigned_int_to_string(-1); });
                 assert.throws(TypeError, function() { cm.unsigned_int_to_string(4294967296); });
-                assert.throws(TypeError, function() { cm.long_to_string(-2147483649); });
-                assert.throws(TypeError, function() { cm.long_to_string(2147483648); });
-                assert.throws(TypeError, function() { cm.unsigned_long_to_string(-1); });
-                assert.throws(TypeError, function() { cm.unsigned_long_to_string(4294967296); });
+                if (cm.getCompilerSetting('MEMORY64')) {
+                    assert.throws(TypeError, function() { cm.long_to_string(-18446744073709551616n); });
+                    assert.throws(TypeError, function() { cm.long_to_string(18446744073709551616n); });
+                    assert.throws(TypeError, function() { cm.unsigned_long_to_string(-1n); });
+                    assert.throws(TypeError, function() { cm.unsigned_long_to_string(18446744073709551616n); });
+                } else {
+                    assert.throws(TypeError, function() { cm.long_to_string(-2147483649); });
+                    assert.throws(TypeError, function() { cm.long_to_string(2147483648); });
+                    assert.throws(TypeError, function() { cm.unsigned_long_to_string(-1); });
+                    assert.throws(TypeError, function() { cm.unsigned_long_to_string(4294967296); });
+                }
             } else {
                 // test that an out of range value doesn't throw without assertions.
                 assert.equal("-129", cm.char_to_string(-129));
@@ -1195,6 +1202,81 @@ module({
 
            map.delete();
        });
+    });
+
+    BaseFixture.extend("optional", function() {
+        if (!("embind_test_return_optional_int" in cm)) {
+            return;
+        }
+        test("std::optional works with returning int", function() {
+            var optional = cm.embind_test_return_optional_int(true);
+            assert.equal(42, optional);
+
+            optional = cm.embind_test_return_optional_int(false);
+            assert.equal(undefined, optional);
+        });
+
+        test("std::optional works with returning float", function() {
+            var optional = cm.embind_test_return_optional_float(true);
+            assert.equal(Math.fround(4.2), optional);
+
+            optional = cm.embind_test_return_optional_float(false);
+            assert.equal(undefined, optional);
+        });
+
+        test("std::optional works with returning SmallClass", function() {
+            var optional = cm.embind_test_return_optional_small_class(true);
+            assert.equal(7, optional.member);
+            optional.delete();
+
+            optional = cm.embind_test_return_optional_small_class(false);
+            assert.equal(undefined, optional);
+        });
+
+        test("std::optional works with returning string", function() {
+            var optional = cm.embind_test_return_optional_string(true);
+            assert.equal("hello", optional);
+
+            optional = cm.embind_test_return_optional_string(false);
+            assert.equal(undefined, optional);
+        });
+
+        test("std::optional works int arg", function() {
+            var value = cm.embind_test_optional_int_arg(42);
+            assert.equal(42, value);
+
+            value = cm.embind_test_optional_int_arg(undefined);
+            assert.equal(-1, value);
+        });
+
+        test("std::optional works float arg", function() {
+            var value = cm.embind_test_optional_float_arg(4.2);
+            assert.equal(Math.fround(4.2), value);
+
+            value = cm.embind_test_optional_float_arg(undefined);
+            assert.equal(Math.fround(-1.1), value);
+        });
+
+        test("std::optional works string arg", function() {
+            var value = cm.embind_test_optional_string_arg("hello");
+            assert.equal("hello", value);
+
+            value = cm.embind_test_optional_string_arg("");
+            assert.equal("", value);
+
+            value = cm.embind_test_optional_string_arg(undefined);
+            assert.equal("no value", value);
+        });
+
+        test("std::optional works SmallClass arg", function() {
+            var small = new cm.SmallClass();
+            var value = cm.embind_test_optional_small_class_arg(small);
+            assert.equal(7, value);
+            small.delete();
+
+            value = cm.embind_test_optional_small_class_arg(undefined);
+            assert.equal(-1, value);
+        });
     });
 
     BaseFixture.extend("functors", function() {
@@ -2730,7 +2812,11 @@ module({
             assert.equal(127,   cm.val_as_char(127));
             assert.equal(32767, cm.val_as_short(32767));
             assert.equal(65536, cm.val_as_int(65536));
-            assert.equal(65536, cm.val_as_long(65536));
+            if (cm.getCompilerSetting('MEMORY64')) {
+                assert.equal(65536n, cm.val_as_long(65536));
+            } else {
+                assert.equal(65536, cm.val_as_long(65536));
+            }
             assert.equal(10.5,  cm.val_as_float(10.5));
             assert.equal(10.5,  cm.val_as_double(10.5));
 

@@ -42,15 +42,7 @@ var SyscallsLibrary = {
     },
 
     doStat(func, path, buf) {
-      try {
-        var stat = func(path);
-      } catch (e) {
-        if (e && e.node && PATH.normalize(path) !== PATH.normalize(FS.getPath(e.node))) {
-          // an error occurred while trying to look up the path; we should just report ENOTDIR
-          return -{{{ cDefs.ENOTDIR }}};
-        }
-        throw e;
-      }
+      var stat = func(path);
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_nlink, 'stat.nlink', SIZE_TYPE) }}};
@@ -143,7 +135,7 @@ var SyscallsLibrary = {
     '$FS',
     // The dependency of FS on `mmapAlloc` and `mmapAlloc` on
     // `emscripten_builtin_memalign` are not encoding as hard dependencies,
-    // so we need to explictly depend on them here to ensure a working
+    // so we need to explicitly depend on them here to ensure a working
     // `FS.mmap`.
     // `emscripten_builtin_memalign`).
     '$mmapAlloc',
@@ -165,11 +157,6 @@ var SyscallsLibrary = {
   },
 
   _munmap_js__i53abi: true,
-  _munmap_js__deps: ['$SYSCALLS',
-#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-    '$FS',
-#endif
-  ],
   _munmap_js: (addr, len, prot, flags, fd, offset) => {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};

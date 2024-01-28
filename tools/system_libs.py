@@ -575,7 +575,7 @@ class Library:
       if not generate_only:
         run_ninja(build_dir)
     else:
-      # Use a seperate build directory to the ninja flavor so that building without
+      # Use a separate build directory to the ninja flavor so that building without
       # EMCC_USE_NINJA doesn't clobber the ninja build tree
       build_dir += '-tmp'
       utils.safe_ensure_dirs(build_dir)
@@ -1267,6 +1267,7 @@ class libc(MuslInternalLibrary,
           'sigtimedwait.c',
           'wasi-helpers.c',
           'sbrk.c',
+          'system.c',
         ])
 
     if settings.RELOCATABLE:
@@ -1666,7 +1667,6 @@ class libmalloc(MTLibrary):
     if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'mimalloc', 'none'):
       raise Exception('malloc must be one of "emmalloc[-debug|-memvalidate][-verbose]", "dlmalloc" or "none", see settings.js')
 
-    self.use_errno = kwargs.pop('use_errno')
     self.is_tracing = kwargs.pop('is_tracing')
     self.memvalidate = kwargs.pop('memvalidate')
     self.verbose = kwargs.pop('verbose')
@@ -1691,8 +1691,6 @@ class libmalloc(MTLibrary):
       cflags += ['-UNDEBUG', '-DDLMALLOC_DEBUG']
     else:
       cflags += ['-DNDEBUG']
-    if not self.use_errno:
-      cflags += ['-DMALLOC_FAILURE_ACTION=', '-DEMSCRIPTEN_NO_ERRNO']
     if self.is_tracing:
       cflags += ['--tracing']
     return cflags
@@ -1704,9 +1702,6 @@ class libmalloc(MTLibrary):
     name = super().get_base_name()
     if self.is_debug and not self.memvalidate and not self.verbose:
       name += '-debug'
-    if not self.use_errno:
-      # emmalloc doesn't actually use errno, but it's easier to build it again
-      name += '-noerrno'
     if self.is_tracing:
       name += '-tracing'
     return name
@@ -1716,14 +1711,13 @@ class libmalloc(MTLibrary):
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'memvalidate', 'verbose']
+    return super().vary_on() + ['is_debug', 'is_tracing', 'memvalidate', 'verbose']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
       malloc=settings.MALLOC,
       is_debug=settings.ASSERTIONS >= 2,
-      use_errno=settings.SUPPORT_ERRNO,
       is_tracing=settings.EMSCRIPTEN_TRACING,
       memvalidate='memvalidate' in settings.MALLOC,
       verbose='verbose' in settings.MALLOC,
@@ -1847,6 +1841,13 @@ class libGL(MTLibrary):
       is_enable_get_proc_address=settings.GL_ENABLE_GET_PROC_ADDRESS,
       **kwargs
     )
+
+
+class libwebgpu(MTLibrary):
+  name = 'libwebgpu'
+
+  src_dir = 'system/lib/webgpu'
+  src_files = ['webgpu.cpp']
 
 
 class libwebgpu_cpp(MTLibrary):
@@ -2320,7 +2321,9 @@ def get_libs_to_link(args, forced, only_forced):
     add_library('libsockets')
 
   if settings.USE_WEBGPU:
-    add_library('libwebgpu_cpp')
+    add_library('libwebgpu')
+    if settings.LINK_AS_CXX:
+      add_library('libwebgpu_cpp')
 
   if settings.WASM_WORKERS:
     add_library('libwasm_workers')

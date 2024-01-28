@@ -42,17 +42,6 @@ var LibraryStackTrace = {
 #endif // DEMANGLE_SUPPORT
   },
 
-  $demangleAll__deps: ['$demangle'],
-  $demangleAll: (text) => {
-    var regex =
-      /\b_Z[\w\d_]+/g;
-    return text.replace(regex,
-      function(x) {
-        var y = demangle(x);
-        return x === y ? x : (y + ' [' + x + ']');
-      });
-  },
-
   $jsStackTrace: function() {
     var error = new Error();
     if (!error.stack) {
@@ -70,11 +59,11 @@ var LibraryStackTrace = {
     return error.stack.toString();
   },
 
-  $stackTrace__deps: ['$jsStackTrace', '$demangleAll'],
+  $stackTrace__deps: ['$jsStackTrace'],
   $stackTrace: function() {
     var js = jsStackTrace();
     if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();
-    return demangleAll(js);
+    return js;
   }
 }
 

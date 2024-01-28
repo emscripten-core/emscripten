@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  win: circleci/windows@1.0.0
+  win: circleci/windows@5.0
 
 executors:
   linux-node:
@@ -340,7 +340,10 @@ commands:
       - run:
           name: download firefox
           command: |
-            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
+            # TODO(https://github.com/emscripten-core/emscripten/issues/21163):
+            # Switch back to nightly once the ff issue with threading is
+            # resolves
+            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-devedition-latest-ssl&os=linux64&lang=en-US"
             tar -C ~ -xf ~/ff.tar.bz2
       - run:
           name: configure firefox
@@ -650,7 +653,7 @@ jobs:
             other.test_memory64_proxies
             other.test_failing_growth_wasm64"
       - upload-test-results
-  test-wasm64_4gb:
+  test-wasm64-4gb:
     environment:
       LANG: "C.UTF-8"
       # Only run 2 tests at a time to avoid OOM (since each tests used >4gb)
@@ -802,14 +805,18 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser64"
-          # skip test_4gb_fail as it OOMs on the current bot
-          # Run a few tests in browser64_4gb mode too.
+          test_targets: "browser64"
+  test-browser-chrome-wasm64-4gb:
+    executor: bionic
+    steps:
+      - run-tests-chrome:
+          title: "browser64_4gb"
           test_targets: "
-            browser64
-            skip:browser64.test_4gb_fail
+            browser64_4gb.test_TextDecoder*
             browser64_4gb.test_async_*
             browser64_4gb.test_audio_worklet*
             browser64_4gb.test_emscripten_log
+            browser64_4gb.test_clientside_vertex_arrays_es3
             "
   test-browser-firefox:
     executor: bionic
@@ -831,7 +838,7 @@ jobs:
   test-windows:
     working_directory: "~/path with spaces"
     executor:
-      name: win/vs2019
+      name: win/server-2019
       shell: bash.exe -eo pipefail
     environment:
       PYTHONUNBUFFERED: "1"
@@ -851,7 +858,7 @@ jobs:
       - run:
           name: Install packages
           command: |
-            choco install cmake.portable ninja pkgconfiglite
+            choco install -y cmake.portable ninja pkgconfiglite
       - run:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/Python27amd64/\"" >> $BASH_ENV
@@ -919,10 +926,6 @@ jobs:
       - install-emsdk
       # TODO: We can't currently do pip install here since numpy and other packages
       # are currently missing arm64 macos binaries.
-      # TODO: Remove this once emsdk has an arm64 version of node
-      - run:
-          name: Install Rosetta
-          command: /usr/sbin/softwareupdate --install-rosetta --agree-to-license
       - run-tests:
           title: "crossplatform tests"
           test_targets: "--crossplatform-only"
@@ -954,7 +957,7 @@ workflows:
       - test-wasm64:
           requires:
             - build-linux
-      - test-wasm64_4gb:
+      - test-wasm64-4gb:
           requires:
             - build-linux
       - test-wasm64l:
@@ -970,6 +973,9 @@ workflows:
           requires:
             - build-linux
       - test-browser-chrome-wasm64:
+          requires:
+            - build-linux
+      - test-browser-chrome-wasm64-4gb:
           requires:
             - build-linux
       - test-browser-firefox:
