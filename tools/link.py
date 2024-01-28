@@ -1445,8 +1445,7 @@ def phase_linker_setup(options, state, newargs):
      (options.shell_path == DEFAULT_SHELL_HTML or options.shell_path == utils.path_from_root('src/shell_minimal.html')):
     exit_with_error(f'Due to collision in variable name "Module", the shell file "{options.shell_path}" is not compatible with build options "-sMODULARIZE -sEXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
-  # TODO(sbc): Remove WASM2JS here once the size regression it would introduce has been fixed.
-  if settings.SHARED_MEMORY or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE or settings.WASM2JS:
+  if settings.SHARED_MEMORY or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE:
     settings.IMPORTED_MEMORY = 1
 
   if settings.WASM_BIGINT:
