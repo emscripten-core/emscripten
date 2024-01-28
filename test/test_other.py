@@ -8096,7 +8096,7 @@ int main() {
         (['-sINITIAL_HEAP=10MB', '-sINITIAL_MEMORY=10MB'], -1), # Not enough space for stack
         (['-sINITIAL_HEAP=5MB', '-sMAXIMUM_MEMORY=5MB'], -1), # Not enough space for stack
       ]:
-      cmd = [EMCC, test_file('hello_world.c'), "-v"] + args
+      cmd = [EMCC, test_file('hello_world.c'), '-v'] + args
       print(' '.join(cmd))
 
       if expected_initial_heap < 0:
