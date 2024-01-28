@@ -16,6 +16,8 @@ from tools import system_libs
 from tools import utils
 from tools.settings import settings
 
+from tools.toolchain_profiler import ToolchainProfiler
+
 ports = []
 
 ports_by_name = {}
@@ -29,6 +31,7 @@ ports_dir = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger('ports')
 
 
+@ToolchainProfiler.profile()
 def read_ports():
   expected_attrs = ['get', 'clear', 'show', 'needed']
   for filename in os.listdir(ports_dir):
