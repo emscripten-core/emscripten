@@ -156,8 +156,8 @@ If you want new to return 0 on failure, use it with std::nothrow.
 INITIAL_HEAP
 ============
 
-The initial amount of heap memory to use. This value is appended to the
-other memory required by the output module, such as static data or stack.
+The initial amount of heap memory available to the program.  This is the
+memory region available for dynamic allocations via `sbrk`, `malloc` and `new`.
 
 .. _initial_memory:
 

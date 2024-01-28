@@ -154,8 +154,8 @@ var MALLOC = "dlmalloc";
 // [link]
 var ABORTING_MALLOC = true;
 
-// The initial amount of heap memory to use. This value is appended to the
-// other memory required by the output module, such as static data or stack.
+// The initial amount of heap memory available to the program.  This is the
+// memory region available for dynamic allocations via `sbrk`, `malloc` and `new`.
 //
 // [link]
 var INITIAL_HEAP = 16777216;
