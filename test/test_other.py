@@ -8592,7 +8592,7 @@ int main() {
       result = self.run_js('a.out.js').strip()
       self.assertEqual(result, f'{expected}, errno: 0')
 
-    run(['-sINITIAL_MEMORY=16MB'], 256)
+    run([], 258)
     run(['-sINITIAL_MEMORY=32MB'], 512)
     run(['-sINITIAL_MEMORY=32MB', '-sALLOW_MEMORY_GROWTH'], (2 * 1024 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE)
     run(['-sINITIAL_MEMORY=32MB', '-sALLOW_MEMORY_GROWTH', '-sWASM=0'], (2 * 1024 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE)
