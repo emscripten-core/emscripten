@@ -53,6 +53,10 @@ See docs/process.md for more on how version tagging works.
 - C++ objects passed into embind's val via constructors, methods, and call
   function will not be automatically destroyed after the function call. This
   makes the behavior consistent for invocations. 
+- `INITIAL_HEAP` setting is introduced to control the amount of initial
+  memory available for dynamic allocation without capping it. If you are
+  using `INITIAL_MEMORY`, consider switching to `INITIAL_HEAP`. Note that
+  it is currently not supported in all configurations (#21071).
 
 3.1.51 - 12/13/23
 -----------------
