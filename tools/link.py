@@ -609,12 +609,11 @@ def setup_pthreads(target):
 def set_initial_memory():
   # INITIAL_HEAP cannot be used when the memory object is created in JS.
   if settings.IMPORTED_MEMORY:
-    if 'INITIAL_HEAP' not in user_settings:
-      # The default for imported memory is to fall back to INITIAL_MEMORY.
-      settings.INITIAL_HEAP = -1
-    else:
+    if 'INITIAL_HEAP' in user_settings:
       # Some of these could (and should) be implemented.
       exit_with_error('INITIAL_HEAP is currently not compatible with IMPORTED_MEMORY, SHARED_MEMORY, RELOCATABLE, ASYNCIFY_LAZY_LOAD_CODE, WASM2JS')
+    # The default for imported memory is to fall back to INITIAL_MEMORY.
+    settings.INITIAL_HEAP = -1
 
   # For backwards compatibility, we will only use INITIAL_HEAP by default when the user
   # specified neither INITIAL_MEMORY nor MAXIMUM_MEMORY. Both place an upper bounds on
@@ -1689,10 +1688,10 @@ def phase_linker_setup(options, state, newargs):
 
     # Adjust INITIAL_MEMORY (if needed) to account for the shifted global base.
     if settings.INITIAL_MEMORY != -1:
-      if not settings.ALLOW_MEMORY_GROWTH:
-        settings.INITIAL_MEMORY = total_mem
-      else:
+      if settings.ALLOW_MEMORY_GROWTH:
         settings.INITIAL_MEMORY += align_to_wasm_page_boundary(shadow_size)
+      else:
+        settings.INITIAL_MEMORY = total_mem
 
     if settings.SAFE_HEAP:
       # SAFE_HEAP instruments ASan's shadow memory accesses.
