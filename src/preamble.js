@@ -986,7 +986,6 @@ function createWasm() {
 #endif
     updateMemoryViews();
 #endif
-#endif
 #if !MEM_INIT_IN_WASM
     runMemoryInitializer();
 #endif
