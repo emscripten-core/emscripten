@@ -15,10 +15,6 @@ variants = {
 }
 
 
-def needed(settings):
-  return settings.USE_SDL_IMAGE == 2
-
-
 def get_lib_name(settings):
   settings.SDL2_IMAGE_FORMATS.sort()
   formats = '-'.join(settings.SDL2_IMAGE_FORMATS)
@@ -63,13 +59,12 @@ def clear(ports, settings, shared):
 
 
 def process_dependencies(settings):
-  settings.USE_SDL = 2
+  dynamic_dependencies = []
   if 'png' in settings.SDL2_IMAGE_FORMATS:
-    deps.append('libpng')
-    settings.USE_LIBPNG = 1
+    dynamic_dependencies.append('libpng')
   if 'jpg' in settings.SDL2_IMAGE_FORMATS:
-    deps.append('libjpeg')
-    settings.USE_LIBJPEG = 1
+    dynamic_dependencies.append('libjpeg')
+  return dynamic_dependencies
 
 
 def show():

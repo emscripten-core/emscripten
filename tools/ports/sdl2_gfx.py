@@ -11,10 +11,6 @@ HASH = 'f39f1f50a039a1667fe92b87d28548d32adcf0eb8526008656de5315039aa21f29d23070
 deps = ['sdl2']
 
 
-def needed(settings):
-  return settings.USE_SDL_GFX == 2
-
-
 def get(ports, settings, shared):
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_gfx'
@@ -30,10 +26,6 @@ def get(ports, settings, shared):
 
 def clear(ports, settings, shared):
   shared.cache.erase_lib('libSDL2_gfx.a')
-
-
-def process_dependencies(settings):
-  settings.USE_SDL = 2
 
 
 def show():

@@ -79,7 +79,7 @@ def write_contrib_ports(f):
       comment = port.project_description()
       comment += f'\n\n`Project information <{port.project_url()}>`_'
       comment += f'\nLicense: {port.project_license()}'
-      write_setting(f, f'USE_CONTRIB_PORT={port.name}', comment, [], '-')
+      write_setting(f, f'USE_PORT={port.name}', comment, [], '-')
   f.write('\n')
 
 
@@ -110,7 +110,7 @@ def write_file(f):
       setting_name = line.split()[1]
       comment = '\n'.join(current_comment).strip()
       write_setting(f, setting_name, comment, current_tags)
-      if setting_name == 'USE_CONTRIB_PORT':
+      if setting_name == 'USE_PORT':
         write_contrib_ports(f)
       current_comment = []
       current_tags = []

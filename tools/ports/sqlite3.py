@@ -11,11 +11,7 @@ VERSION = (3, 39, 0)
 VERSION_YEAR = 2022
 HASH = 'cbaf4adb3e404d9aa403b34f133c5beca5f641ae1e23f84dbb021da1fb9efdc7c56b5922eb533ae5cb6d26410ac60cb3f026085591bc83ebc1c225aed0cf37ca'
 
-variants = {'sqlite3-mt': {'PTHREADS': 1}}
-
-
-def needed(settings):
-  return settings.USE_SQLITE3
+variants = {'mt': {'PTHREADS': 1}}
 
 
 def get_lib_name(settings):

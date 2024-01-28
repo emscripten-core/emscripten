@@ -13,10 +13,6 @@ HASH = 'd7b22660036c684f09754fcbbc7562984f02aa955eef2b76555270c63a717e6672c4fe69
 deps = ['libpng', 'zlib']
 
 
-def needed(settings):
-  return settings.USE_COCOS2D == 3
-
-
 def get(ports, settings, shared):
   ports.fetch_project('cocos2d', f'https://github.com/emscripten-ports/Cocos2d/archive/{TAG}.zip', sha512hash=HASH)
 
@@ -59,11 +55,6 @@ def get(ports, settings, shared):
 
 def clear(ports, settings, shared):
   shared.cache.erase_lib('libcocos2d.a')
-
-
-def process_dependencies(settings):
-  settings.USE_LIBPNG = 1
-  settings.USE_ZLIB = 1
 
 
 def process_args(ports):

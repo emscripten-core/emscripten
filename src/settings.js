@@ -1340,10 +1340,10 @@ var EMSCRIPTEN_TRACING = false;
 var USE_GLFW = 0;
 
 // Specify which contrib ports to use. If there is only one contrib port to use,
-// it can be specified this way -sUSE_CONTRIB_PORT=port. If multiple contrib
-// ports are need, you specify it that way: -sUSE_CONTRIB_PORT=[port1,port2].
+// it can be specified this way -sUSE_PORT=port. If multiple contrib
+// ports are need, you specify it that way: -sUSE_PORT=[port1,port2].
 // [link]
-var USE_CONTRIB_PORT = [];
+var USE_PORT = [];
 
 // Whether to use compile code to WebAssembly. Set this to 0 to compile to JS
 // instead of wasm.

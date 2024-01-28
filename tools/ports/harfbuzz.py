@@ -9,7 +9,7 @@ VERSION = '3.2.0'
 HASH = 'c9d88068d8017046842f444f02f31dbae109026ede943aaf265db5508de8b4b2be84203950f274a237f515bf7cbd361629d2032c6e8ee8f50354b430bba3a8ca'
 
 deps = ['freetype']
-variants = {'harfbuzz-mt': {'PTHREADS': 1}}
+variants = {'mt': {'PTHREADS': 1}}
 
 srcs = '''
 hb-aat-layout.cc
@@ -68,10 +68,6 @@ hb-gdi.cc
 hb-directwrite.cc
 hb-coretext.cc
 '''.split()
-
-
-def needed(settings):
-  return settings.USE_HARFBUZZ
 
 
 def get_lib_name(settings):
@@ -141,10 +137,6 @@ def get(ports, settings, shared):
 
 def clear(ports, settings, shared):
   shared.cache.erase_lib(get_lib_name(settings))
-
-
-def process_dependencies(settings):
-  settings.USE_FREETYPE = 1
 
 
 def process_args(ports):

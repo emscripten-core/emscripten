@@ -29,13 +29,30 @@ ports_dir = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger('ports')
 
 
-def load_port(port, expected_attrs):
+def load_port_by_name(name):
+  if name.startswith('contrib.'):
+    expected_attrs = ['get', 'clear', 'show', 'project_url', 'project_description', 'project_license']
+    try:
+      port = __import__(name, globals(), level=1, fromlist=[None])
+      port.is_contrib = True
+      port.show = lambda: f'{port.name} (-sUSE_PORT={port.name}; {port.project_license()})'
+    except ModuleNotFoundError:
+      utils.exit_with_error(f'Invalid contrib port name: {name}')
+  else:
+    expected_attrs = ['get', 'clear', 'show']
+    try:
+      port = __import__(name, globals(), level=1)
+      port.is_contrib = False
+    except ModuleNotFoundError:
+      utils.exit_with_error(f'Invalid port name: {name}')
+
+  port.name = name
   ports.append(port)
-  ports_by_name[port.name] = port
+  ports_by_name[name] = port
   for a in expected_attrs:
     assert hasattr(port, a), 'port %s is missing %s' % (port, a)
   if not hasattr(port, 'process_dependencies'):
-    port.process_dependencies = lambda x: 0
+    port.process_dependencies = lambda x: []
   if not hasattr(port, 'linker_setup'):
     port.linker_setup = lambda x, y: 0
   if not hasattr(port, 'deps'):
@@ -47,39 +64,28 @@ def load_port(port, expected_attrs):
     port.variants = {}
 
   for variant, extra_settings in port.variants.items():
-    if variant in port_variants:
-      utils.exit_with_error('duplicate port variant: %s' % variant)
-    port_variants[variant] = (port.name, extra_settings)
+    port_variants[f'{name}-{variant}'] = (name, extra_settings)
+
+  return port
+
+
+def get_port_by_name(name):
+  return ports_by_name[name] if name in ports_by_name else load_port_by_name(name)
 
 
 def read_ports():
-  expected_attrs = ['get', 'clear', 'show', 'needed']
   for filename in os.listdir(ports_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
     filename = os.path.splitext(filename)[0]
-    port = __import__(filename, globals(), level=1)
-    port.is_contrib = False
-    port.name = filename
-    load_port(port, expected_attrs)
+    get_port_by_name(filename)
 
-  expected_attrs = ['get', 'clear', 'show', 'needed', 'project_url', 'project_description', 'project_license']
   contrib_dir = os.path.join(ports_dir, 'contrib')
   for filename in os.listdir(contrib_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
     filename = os.path.splitext(filename)[0]
-    port = __import__('contrib.' + filename, globals(), level=1, fromlist=[None])
-    port.is_contrib = True
-    port.name = filename
-    port.needed = lambda settings, name = port.name: name in settings.USE_CONTRIB_PORT
-    port.show = lambda name = port.name, license = port.project_license(): f'{name} (-sUSE_CONTRIB_PORT={name}; {license})'
-    load_port(port, expected_attrs)
-
-  for port in ports:
-    for dep in port.deps:
-      if dep not in ports_by_name:
-        utils.exit_with_error('unknown dependency in port: %s' % dep)
+    get_port_by_name('contrib.' + filename)
 
 
 def get_all_files_under(dirname):
@@ -365,10 +371,11 @@ def dependency_order(port_list):
 
 
 def resolve_dependencies(port_set, settings):
-  def add_deps(node):
-    node.process_dependencies(settings)
-    for d in node.deps:
-      dep = ports_by_name[d]
+  def add_deps(p):
+    all_dependencies = set(p.deps)
+    all_dependencies.union(p.process_dependencies(settings))
+    for d in all_dependencies:
+      dep = get_port_by_name(d)
       if dep not in port_set:
         port_set.add(dep)
         add_deps(dep)
@@ -377,9 +384,64 @@ def resolve_dependencies(port_set, settings):
     add_deps(port)
 
 
+def get_legacy_ports(settings):
+  legacy_ports = set()
+  if settings.USE_BOOST_HEADERS == 1:
+    legacy_ports.add('boost_headers')
+  if settings.USE_BULLET == 1:
+    legacy_ports.add('bullet')
+  if settings.USE_BZIP2:
+    legacy_ports.add('bzip2')
+  if settings.USE_COCOS2D == 3:
+    legacy_ports.add('cocos2d')
+  if settings.USE_FREETYPE:
+    legacy_ports.add('freetype')
+  if settings.USE_GIFLIB:
+    legacy_ports.add('giflib')
+  if settings.USE_HARFBUZZ:
+    legacy_ports.add('harfbuzz')
+  if settings.USE_ICU:
+    legacy_ports.add('icu')
+  if settings.USE_LIBJPEG:
+    legacy_ports.add('libjpeg')
+  if settings.USE_MODPLUG:
+    legacy_ports.add('libmodplug')
+  if settings.USE_LIBPNG:
+    legacy_ports.add('libpng')
+  if settings.USE_MPG123:
+    legacy_ports.add('mpg123')
+  if settings.USE_OGG:
+    legacy_ports.add('ogg')
+  if settings.USE_REGAL:
+    legacy_ports.add('regal')
+  if settings.USE_SDL == 2:
+    legacy_ports.add('sdl2')
+  if settings.USE_SDL_GFX == 2:
+    legacy_ports.add('sdl2_gfx')
+  if settings.USE_SDL_IMAGE == 2:
+    legacy_ports.add('sdl2_image')
+  if settings.USE_SDL_MIXER == 2:
+    legacy_ports.add('sdl2_mixer')
+  if settings.USE_SDL_NET == 2:
+    legacy_ports.add('sdl2_net')
+  if settings.USE_SDL_TTF == 2:
+    legacy_ports.add('sdl2_ttf')
+  if settings.USE_SQLITE3:
+    legacy_ports.add('sqlite3')
+  if settings.USE_VORBIS:
+    legacy_ports.add('vorbis')
+  if settings.USE_ZLIB:
+    legacy_ports.add('zlib')
+  return legacy_ports
+
+
 def get_needed_ports(settings):
   # Start with directly needed ports, and transitively add dependencies
-  needed = set(p for p in ports if p.needed(settings))
+  needed_port_names = get_legacy_ports(settings)
+  needed_port_names = needed_port_names.union(settings.USE_PORT)
+  needed = set()
+  for n in needed_port_names:
+    needed.add(get_port_by_name(n))
   resolve_dependencies(needed, settings)
   return needed
 
@@ -409,10 +471,9 @@ def get_libs(settings):
   needed = get_needed_ports(settings)
 
   for port in dependency_order(needed):
-    if port.needed(settings):
-      port.linker_setup(Ports, settings)
-      # port.get returns a list of libraries to link
-      ret += port.get(Ports, settings, shared)
+    port.linker_setup(Ports, settings)
+    # port.get returns a list of libraries to link
+    ret += port.get(Ports, settings, shared)
 
   ret.reverse()
   return ret
@@ -439,6 +500,7 @@ def add_cflags(args, settings): # noqa: U100
 
 
 def show_ports():
+  read_ports()
   print('Available ports:')
   for port in ports:
     if not port.is_contrib:
@@ -447,6 +509,3 @@ def show_ports():
   for port in ports:
     if port.is_contrib:
       print('   ', port.show())
-
-
-read_ports()

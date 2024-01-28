@@ -110,6 +110,8 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'giflib',
 ]
 
+ports.read_ports()
+
 PORTS = sorted(list(ports.ports_by_name.keys()) + list(ports.port_variants.keys()))
 
 temp_files = shared.get_temp_files()

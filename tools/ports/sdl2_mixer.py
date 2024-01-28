@@ -15,10 +15,6 @@ variants = {
 }
 
 
-def needed(settings):
-  return settings.USE_SDL_MIXER == 2
-
-
 def get_lib_name(settings):
   settings.SDL2_MIXER_FORMATS.sort()
   formats = '-'.join(settings.SDL2_MIXER_FORMATS)
@@ -102,16 +98,14 @@ def clear(ports, settings, shared):
 
 
 def process_dependencies(settings):
-  settings.USE_SDL = 2
+  dynamic_dependencies = []
   if "ogg" in settings.SDL2_MIXER_FORMATS:
-    deps.append('vorbis')
-    settings.USE_VORBIS = 1
+    dynamic_dependencies.append('vorbis')
   if "mp3" in settings.SDL2_MIXER_FORMATS:
-    deps.append('mpg123')
-    settings.USE_MPG123 = 1
+    dynamic_dependencies.append('mpg123')
   if "mod" in settings.SDL2_MIXER_FORMATS:
-    deps.append('libmodplug')
-    settings.USE_MODPLUG = 1
+    dynamic_dependencies.append('libmodplug')
+  return dynamic_dependencies
 
 
 def show():

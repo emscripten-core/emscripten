@@ -11,10 +11,6 @@ HASH = '8a625d29bef2ab7cbfe2143136a303c0fdb066ecd802d6c725de1b73ad8b056908cb524f
 deps = ['freetype', 'sdl2', 'harfbuzz']
 
 
-def needed(settings):
-  return settings.USE_SDL_TTF == 2
-
-
 def get(ports, settings, shared):
   ports.fetch_project('sdl2_ttf', f'https://github.com/libsdl-org/SDL_ttf/archive/{TAG}.zip', sha512hash=HASH)
 
@@ -29,12 +25,6 @@ def get(ports, settings, shared):
 
 def clear(ports, settings, shared):
   shared.cache.erase_lib('libSDL2_ttf.a')
-
-
-def process_dependencies(settings):
-  settings.USE_SDL = 2
-  settings.USE_FREETYPE = 1
-  settings.USE_HARFBUZZ = 1
 
 
 def process_args(ports):

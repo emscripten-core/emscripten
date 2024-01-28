@@ -3000,7 +3000,7 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   def test_contrib_ports(self):
-    self.btest_exit('test_contrib_ports.c', args=['-sUSE_CONTRIB_PORT=[contrib_example,glfw3]', '-lGL'])
+    self.btest_exit('test_contrib_ports.c', args=['-sUSE_PORT=[contrib.example,contrib.glfw3]', '-lGL'])
 
   @requires_graphics_hardware
   @no_wasm64('SDL2 + wasm64')

@@ -11,10 +11,6 @@ HASH = '99bee75beb662f8520bbb18ad6dbf8590d30eb3a7360899f0ac4764ca72fe8013da37c9d
 deps = ['ogg']
 
 
-def needed(settings):
-  return settings.USE_VORBIS
-
-
 def get(ports, settings, shared):
   ports.fetch_project('vorbis', f'https://github.com/emscripten-ports/vorbis/archive/{TAG}.zip', sha512hash=HASH)
 
@@ -30,10 +26,6 @@ def get(ports, settings, shared):
 
 def clear(ports, settings, shared):
   shared.cache.erase_lib('libvorbis.a')
-
-
-def process_dependencies(settings):
-  settings.USE_OGG = 1
 
 
 def show():

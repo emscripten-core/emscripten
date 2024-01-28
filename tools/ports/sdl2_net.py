@@ -11,10 +11,6 @@ HASH = '317b22ad9b6b2f7b40fac7b7c426da2fa2da1803bbe58d480631f1e5b190d730763f2768
 deps = ['sdl2']
 
 
-def needed(settings):
-  return settings.USE_SDL_NET == 2
-
-
 def get(ports, settings, shared):
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_net'
@@ -31,10 +27,6 @@ def get(ports, settings, shared):
 
 def clear(ports, settings, shared):
   shared.cache.erase_lib('libSDL2_net.a')
-
-
-def process_dependencies(settings):
-  settings.USE_SDL = 2
 
 
 def show():
