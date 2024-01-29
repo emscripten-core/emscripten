@@ -16,6 +16,8 @@ from tools import system_libs
 from tools import utils
 from tools.settings import settings
 
+from tools.toolchain_profiler import ToolchainProfiler
+
 ports = []
 
 ports_by_name = {}
@@ -82,6 +84,7 @@ def get_port_by_name(name):
   return ports_by_name[name] if name in ports_by_name else load_port_by_name(name)
 
 
+@ToolchainProfiler.profile()
 def read_ports():
   for filename in os.listdir(ports_dir):
     if not filename.endswith('.py') or filename == '__init__.py':

@@ -425,7 +425,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     getSource: (shader, count, string, length) => {
       var source = '';
       for (var i = 0; i < count; ++i) {
-        var len = length ? {{{ makeGetValue('length', 'i*' * POINTER_SIZE, '*') }}} : undefined;
+        var len = length ? {{{ makeGetValue('length', 'i*' + POINTER_SIZE, '*') }}} : undefined;
         source += UTF8ToString({{{ makeGetValue('string', 'i*' + POINTER_SIZE, '*') }}}, len);
       }
 #if LEGACY_GL_EMULATION

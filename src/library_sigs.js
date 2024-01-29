@@ -884,7 +884,6 @@ sigs = {
   emscripten_webgl_get_vertex_attrib_d__sig: 'dii',
   emscripten_webgl_get_vertex_attrib_o__sig: 'iii',
   emscripten_webgl_get_vertex_attrib_v__sig: 'iiipii',
-  emscripten_webgl_init_context_attributes__sig: 'vp',
   emscripten_webgl_make_context_current__sig: 'ip',
   emscripten_webgpu_export_bind_group__sig: 'ip',
   emscripten_webgpu_export_bind_group_layout__sig: 'ip',
