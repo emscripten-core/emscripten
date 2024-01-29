@@ -16,27 +16,14 @@ var LibraryFetch = {
   _emscripten_fetch_get_response_headers: fetchGetResponseHeaders,
   _emscripten_fetch_free: fetchFree,
 
-#if FETCH_SUPPORT_INDEXEDDB
-  $fetchDeleteCachedData: fetchDeleteCachedData,
-  $fetchLoadCachedData: fetchLoadCachedData,
-  $fetchCacheData: fetchCacheData,
-#endif
-  $fetchXHR: fetchXHR,
-
   emscripten_start_fetch: startFetch,
   emscripten_start_fetch__deps: [
     'malloc',
     'free',
     '$Fetch',
-    '$fetchXHR',
     '$callUserCallback',
     '$writeI53ToI64',
-    '$stringToUTF8',
-#if FETCH_SUPPORT_INDEXEDDB
-    '$fetchCacheData',
-    '$fetchLoadCachedData',
-    '$fetchDeleteCachedData',
-#endif
+    '$stringToUTF8'
   ]
 };
 
