@@ -17,6 +17,28 @@
 
 #include "webgl_internal.h"
 
+void emscripten_webgl_init_context_attributes(EmscriptenWebGLContextAttributes *attributes) {
+  memset(attributes, 0, sizeof(*attributes));
+
+  attributes->alpha = 1;
+  attributes->depth = 1;
+  attributes->antialias = 1;
+  attributes->premultipliedAlpha = 1;
+  attributes->majorVersion = 1;
+  attributes->enableExtensionsByDefault = 1;
+
+  // Default context initialization state (user can override):
+  // - if main thread is creating the context, default to the context not being
+  //   shared between threads - enabling sharing has performance overhead,
+  //   because it forces the context to be OffscreenCanvas or
+  //   OffscreenFramebuffer.
+  // - if a web worker is creating the context, default to using OffscreenCanvas
+  //   if available, or proxying via Offscreen Framebuffer if not
+  if (!emscripten_is_main_runtime_thread()) {
+    attributes->proxyContextToMainThread = EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK;
+  }
+}
+
 #if defined(__EMSCRIPTEN_PTHREADS__) && defined(__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__)
 
 static pthread_key_t currentActiveWebGLContext;
