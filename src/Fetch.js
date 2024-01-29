@@ -67,7 +67,7 @@ function startFetch(fetchHandle) {
     headers.append("Content-Type", overriddenMimeTypeStr);
   }
 
-  if(userName && password) {
+  if (userName && password) {
     var userNameStr = userName ? UTF8ToString(userName) : undefined;
     var passwordStr = password ? UTF8ToString(password) : undefined;
 
@@ -86,9 +86,10 @@ function startFetch(fetchHandle) {
   var onprogress = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.onprogress }}} >> 2];
   var onreadystatechange = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.onreadystatechange }}} >> 2];
 
-  var fetchData = {};
-  fetchData.controller = controller;
-  fetchData.offset = 0;
+  var fetchData = {
+    controller,
+    offset: 0
+  };
   var id = Fetch.requestHandles.allocate(fetchData);
   {{{ makeSetValue('fetchHandle', C_STRUCTS.emscripten_fetch_t.id, 'id', 'u32') }}};
 
@@ -114,9 +115,8 @@ function startFetch(fetchHandle) {
         stringToUTF8(response.statusText, fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
       }
       fetchData.headers = "";
-      response.headers.forEach(function(value, name) {
-        if(fetchData.headers.length > 0)
-        {
+      response.headers.forEach((value, name) => {
+        if (fetchData.headers.length > 0) {
           fetchData.headers += "\r\n";
         }
         fetchData.headers += name;
@@ -129,7 +129,7 @@ function startFetch(fetchHandle) {
 
       if (onreadystatechange) {{{ makeDynCall('vp', 'onreadystatechange') }}}(fetchHandle);
 
-      if(fetchAttrStreamData) {
+      if (fetchAttrStreamData) {
         const reader = response.body.getReader();
         reader.read().then(function pump({ done, value }) {
           // check if the request was aborted by user and don't try to call back
@@ -153,10 +153,10 @@ function startFetch(fetchHandle) {
           // Received a streamed chunk
 
           // Make sure we can't timeout now that we are receiving responses
-          if(timeoutId != -1) clearTimeout(timeoutId);
+          if (timeoutId != -1) clearTimeout(timeoutId);
 
           const newReadyState = 3; // XMLHttpRequest LOADING, kept for compatibility
-          if(HEAPU16[fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] != newReadyState) {
+          if (HEAPU16[fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] != newReadyState) {
             HEAPU16[fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = newReadyState;
             if (onreadystatechange) {{{ makeDynCall('vp', 'onreadystatechange') }}}(fetchHandle);
           }
@@ -185,7 +185,7 @@ function startFetch(fetchHandle) {
         });
       } else { // Not streamed path
         // Make sure we can't timeout now that we are receiving responses
-        if(timeoutId != -1) clearTimeout(timeoutId);
+        if (timeoutId != -1) clearTimeout(timeoutId);
 
         response.blob().then(function(responseBlob) {
           
