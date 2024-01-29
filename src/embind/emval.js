@@ -91,7 +91,7 @@ var LibraryEmVal = {
 
   _emval_incref__deps: ['$emval_handles', '$emval_handles_reserved'],
   _emval_incref: (handle) => {
-    if (handle >= emval_handles_Reserved) {
+    if (handle >= emval_handles_reserved) {
       emval_handles[handle * 2 + 1] += 1;
     }
   },
