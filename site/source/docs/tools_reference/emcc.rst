@@ -487,24 +487,6 @@ Options that are modified or new in *emcc* are listed below:
   [general]
   Shows the list of available projects in the Emscripten Ports repos. After this operation is complete, this process will exit.
 
-.. _emcc-memory-init-file:
-
-``--memory-init-file 0|1``
-  [link]
-  Specifies whether to emit a separate memory initialization file.
-
-      .. note:: Note that this is only relevant when *not* emitting Wasm, as Wasm embeds the memory init data in the Wasm binary.
-
-  Possible values are:
-
-    - ``0``: Do not emit a separate memory initialization file. Instead keep the static initialization inside the generated JavaScript as text. This is the default setting if compiling with -O0 or -O1 link-time optimization flags.
-    - ``1``: Emit a separate memory initialization file in binary format. This is more efficient than storing it as text inside JavaScript, but does mean you have another file to publish. The binary file will also be loaded asynchronously, which means ``main()`` will not be called until the file is downloaded and applied; you cannot call any C functions until it arrives. This is the default setting when compiling with -O2 or higher.
-
-      .. note:: The :ref:`safest way <faq-when-safe-to-call-compiled-functions>` to ensure that it is safe to call C functions (the initialisation file has loaded) is to call a notifier function from ``main()``.
-
-      .. note:: If you assign a network request to ``Module.memoryInitializerRequest`` (before the script runs), then it will use that request instead of automatically starting a download for you. This is beneficial in that you can, in your HTML, fire off a request for the memory init file before the script actually arrives. For this to work, the network request should be an XMLHttpRequest with responseType set to ``'arraybuffer'``. (You can also put any other object here, all it must provide is a ``.response`` property containing an ArrayBuffer.)
-
-
 ``-Wwarn-absolute-paths``
   [compile+link]
   Enables warnings about the use of absolute paths in ``-I`` and ``-L`` command line directives. This is used to warn against unintentional use of absolute paths, which is sometimes dangerous when referring to nonportable local system headers.
@@ -561,8 +543,6 @@ Options that are modified or new in *emcc* are listed below:
 
   These rules only apply when linking.  When compiling to object code (See `-c`
   below) the name of the output file is irrelevant.
-
-  .. note:: If ``--memory-init-file`` is used, a **.mem** file will be created in addition to the generated **.js** and/or **.html** file.
 
 .. _emcc-c:
 

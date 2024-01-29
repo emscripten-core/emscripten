@@ -81,7 +81,7 @@ LINK_ONLY_FLAGS = {
     '--bind', '--closure', '--cpuprofiler', '--embed-file',
     '--emit-symbol-map', '--emrun', '--exclude-file', '--extern-post-js',
     '--extern-pre-js', '--ignore-dynamic-linking', '--js-library',
-    '--js-transform', '--memory-init-file', '--oformat', '--output_eol',
+    '--js-transform', '--oformat', '--output_eol',
     '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
     '--proxy-to-worker', '--shell-file', '--source-map-base',
     '--threadprofiler', '--use-preload-plugins'
@@ -145,7 +145,6 @@ class EmccOptions:
     self.emrun = False
     self.cpu_profiler = False
     self.memory_profiler = False
-    self.memory_init_file = None
     self.use_preload_cache = False
     self.use_preload_plugins = False
     self.valid_abspaths = []
@@ -1316,7 +1315,7 @@ def parse_args(newargs):
       ports.show_ports()
       should_exit = True
     elif check_arg('--memory-init-file'):
-      options.memory_init_file = int(consume_arg())
+      exit_with_error('--memory-init-file is no longer supported')
     elif check_flag('--proxy-to-worker'):
       settings_changes.append('PROXY_TO_WORKER=1')
     elif check_arg('--valid-abspath'):

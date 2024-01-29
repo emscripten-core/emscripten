@@ -717,31 +717,25 @@ f.close()
     self.assertContained('disabling source maps because a js transform is being done', err)
     self.assertIn('transformed!', read_file('a.out.js'))
 
-  def test_js_mem_file(self):
-    for opts in [0, 1, 2, 3]:
-      print('mem init in', opts)
+  @parameterized({
+    '': [[]],
+    'O1': [['-O1']],
+    'O2': [['-O2']],
+    'O3': [['-O3']],
+  })
+  def test_emcc_asm_v_wasm(self, opts):
+    for mode in ([], ['-sWASM=0']):
       self.clear()
-      self.run_process([EMCC, test_file('hello_world.c'), '-sWASM=0', '-O' + str(opts)])
-      if opts >= 2:
-        self.assertExists('a.out.js.mem')
-      else:
-        self.assertNotExists('a.out.js.mem')
-
-  def test_emcc_asm_v_wasm(self):
-    for opts in ([], ['-O1'], ['-O2'], ['-O3']):
-      print('opts', opts)
-      for mode in ([], ['-sWASM=0']):
-        self.clear()
-        wasm = '=0' not in str(mode)
-        print('  mode', mode, 'wasm?', wasm)
-        self.run_process([EMCC, test_file('hello_world.c'), '-sENVIRONMENT=node,shell'] + opts + mode)
-        self.assertExists('a.out.js')
-        if wasm:
-          self.assertExists('a.out.wasm')
-        for engine in config.JS_ENGINES:
-          print('    engine', engine)
-          out = self.run_js('a.out.js', engine=engine)
-          self.assertContained('hello, world!', out)
+      wasm = '=0' not in str(mode)
+      print('  mode', mode, 'wasm?', wasm)
+      self.run_process([EMCC, test_file('hello_world.c'), '-sENVIRONMENT=node,shell'] + opts + mode)
+      self.assertExists('a.out.js')
+      if wasm:
+        self.assertExists('a.out.wasm')
+      for engine in config.JS_ENGINES:
+        print('    engine', engine)
+        out = self.run_js('a.out.js', engine=engine)
+        self.assertContained('hello, world!', out)
 
   @crossplatform
   def test_emcc_cflags(self):
@@ -9102,26 +9096,19 @@ int main() {
   })
   def test_single_file(self, wasm2js):
     for (single_file_enabled,
-         meminit1_enabled,
          debug_enabled,
-         closure_enabled) in itertools.product([True, False], repeat=4):
+         closure_enabled) in itertools.product([True, False], repeat=3):
       # skip unhelpful option combinations
-      if meminit1_enabled and not wasm2js:
-        continue
       if closure_enabled and debug_enabled:
         continue
 
       expect_wasm = not wasm2js
-      expect_meminit = meminit1_enabled and wasm2js
 
       cmd = [EMCC, test_file('hello_world.c')]
 
       if single_file_enabled:
-        expect_meminit = False
         expect_wasm = False
         cmd += ['-sSINGLE_FILE']
-      if meminit1_enabled:
-        cmd += ['--memory-init-file', '1']
       if debug_enabled:
         cmd += ['-g']
       if closure_enabled:
@@ -9135,7 +9122,6 @@ int main() {
         print(' '.join(cmd))
         self.run_process(cmd)
         print(os.listdir('.'))
-        assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
         assert expect_wasm == os.path.exists('a.out.wasm')
         assert not os.path.exists('a.out.wat')
         self.assertContained('hello, world!', self.run_js('a.out.js'))
@@ -10697,7 +10683,7 @@ int main () {
                                '-DNDEBUG',
                                '-ffast-math']
 
-    wasm2js = ['-sWASM=0', '--memory-init-file', '1']
+    wasm2js = ['-sWASM=0']
 
     math_sources = [test_file('code_size/math.c')]
     hello_world_sources = [test_file('small_hello_world.c'),
@@ -10738,7 +10724,6 @@ int main () {
     args = smallest_code_size_args[:]
 
     if js:
-      outputs += ['a.mem']
       args += wasm2js
       test_name += '_wasm2js'
     else:
@@ -14130,8 +14115,8 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     run(['-pthread'], expect_bulk_mem=True)
 
   def test_memory_init_file_unsupported(self):
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '--memory-init-file=1'])
-    self.assertContained('error: --memory-init-file is only supported with -sWASM=0 [-Wunsupported] [-Werror]', err)
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--memory-init-file=1'])
+    self.assertContained('error: --memory-init-file is no longer supported', err)
 
   @node_pthreads
   def test_node_pthreads_err_out(self):

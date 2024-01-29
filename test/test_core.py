@@ -5398,9 +5398,6 @@ Module = {
     self.do_runf('files.cpp', ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n'),
                  output_nicerizer=clean)
 
-    if self.uses_memory_init_file():
-      self.assertExists('files.js.mem')
-
   def test_files_m(self):
     # Test for Module.stdin etc.
     # needs to flush stdio streams
@@ -8398,14 +8395,7 @@ Module.onRuntimeInitialized = () => {
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
     self.set_setting('WASM', 0)
     self.do_core_test('test_hello_world.c')
-    # a mem init file is emitted just like with JS
-    expect_memory_init_file = self.uses_memory_init_file()
-    if expect_memory_init_file:
-      self.assertExists('test_hello_world.js.mem')
-      mem = read_binary('test_hello_world.js.mem')
-      self.assertTrue(mem[-1] != b'\0')
-    else:
-      self.assertNotExists('test_hello_world.js.mem')
+    self.assertNotExists('test_hello_world.js.mem')
 
   @no_sanitize('no wasm2js support yet in sanitizers')
   @requires_wasm2js
