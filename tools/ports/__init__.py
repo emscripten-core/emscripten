@@ -393,60 +393,60 @@ def resolve_dependencies(port_set, settings):
     add_deps(port)
 
 
-def get_legacy_ports(settings):
-  legacy_ports = set()
+def get_builtin_ports(settings):
+  builtins = set()
   if settings.USE_BOOST_HEADERS == 1:
-    legacy_ports.add('boost_headers')
+    builtins.add('boost_headers')
   if settings.USE_BULLET == 1:
-    legacy_ports.add('bullet')
+    builtins.add('bullet')
   if settings.USE_BZIP2:
-    legacy_ports.add('bzip2')
+    builtins.add('bzip2')
   if settings.USE_COCOS2D == 3:
-    legacy_ports.add('cocos2d')
+    builtins.add('cocos2d')
   if settings.USE_FREETYPE:
-    legacy_ports.add('freetype')
+    builtins.add('freetype')
   if settings.USE_GIFLIB:
-    legacy_ports.add('giflib')
+    builtins.add('giflib')
   if settings.USE_HARFBUZZ:
-    legacy_ports.add('harfbuzz')
+    builtins.add('harfbuzz')
   if settings.USE_ICU:
-    legacy_ports.add('icu')
+    builtins.add('icu')
   if settings.USE_LIBJPEG:
-    legacy_ports.add('libjpeg')
+    builtins.add('libjpeg')
   if settings.USE_MODPLUG:
-    legacy_ports.add('libmodplug')
+    builtins.add('libmodplug')
   if settings.USE_LIBPNG:
-    legacy_ports.add('libpng')
+    builtins.add('libpng')
   if settings.USE_MPG123:
-    legacy_ports.add('mpg123')
+    builtins.add('mpg123')
   if settings.USE_OGG:
-    legacy_ports.add('ogg')
+    builtins.add('ogg')
   if settings.USE_REGAL:
-    legacy_ports.add('regal')
+    builtins.add('regal')
   if settings.USE_SDL == 2:
-    legacy_ports.add('sdl2')
+    builtins.add('sdl2')
   if settings.USE_SDL_GFX == 2:
-    legacy_ports.add('sdl2_gfx')
+    builtins.add('sdl2_gfx')
   if settings.USE_SDL_IMAGE == 2:
-    legacy_ports.add('sdl2_image')
+    builtins.add('sdl2_image')
   if settings.USE_SDL_MIXER == 2:
-    legacy_ports.add('sdl2_mixer')
+    builtins.add('sdl2_mixer')
   if settings.USE_SDL_NET == 2:
-    legacy_ports.add('sdl2_net')
+    builtins.add('sdl2_net')
   if settings.USE_SDL_TTF == 2:
-    legacy_ports.add('sdl2_ttf')
+    builtins.add('sdl2_ttf')
   if settings.USE_SQLITE3:
-    legacy_ports.add('sqlite3')
+    builtins.add('sqlite3')
   if settings.USE_VORBIS:
-    legacy_ports.add('vorbis')
+    builtins.add('vorbis')
   if settings.USE_ZLIB:
-    legacy_ports.add('zlib')
-  return legacy_ports
+    builtins.add('zlib')
+  return builtins
 
 
 def get_needed_ports(settings):
   # Start with directly needed ports, and transitively add dependencies
-  needed_port_names = get_legacy_ports(settings)
+  needed_port_names = get_builtin_ports(settings)
   needed_port_names = needed_port_names.union(settings.PORTS)
   needed = set()
   for n in needed_port_names:
