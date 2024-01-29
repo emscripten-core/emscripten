@@ -67,10 +67,9 @@ def load_port_by_name(name):
   if not hasattr(port, 'options'):
     # port options (default: no options)
     port.options = {}
+    port.available_options = lambda: {}
   else:
-    option_prefix = f'{name}:'
-    for option in port.options:
-      assert option.startswith(option_prefix), f'port {name} option {option} is missing required prefix {option_prefix}'
+    port.available_options = lambda: {port.name + ':' + option: desc for option, desc in port.options.items()}
 
   for variant, extra_settings in port.variants.items():
     if variant in port_variants:
@@ -396,60 +395,60 @@ def resolve_dependencies(port_set, settings):
     add_deps(port)
 
 
-def get_builtin_ports(settings):
-  builtins = set()
+def get_official_ports(settings):
+  official_ports = set()
   if settings.USE_BOOST_HEADERS == 1:
-    builtins.add('boost_headers')
+    official_ports.add('boost_headers')
   if settings.USE_BULLET == 1:
-    builtins.add('bullet')
+    official_ports.add('bullet')
   if settings.USE_BZIP2:
-    builtins.add('bzip2')
+    official_ports.add('bzip2')
   if settings.USE_COCOS2D == 3:
-    builtins.add('cocos2d')
+    official_ports.add('cocos2d')
   if settings.USE_FREETYPE:
-    builtins.add('freetype')
+    official_ports.add('freetype')
   if settings.USE_GIFLIB:
-    builtins.add('giflib')
+    official_ports.add('giflib')
   if settings.USE_HARFBUZZ:
-    builtins.add('harfbuzz')
+    official_ports.add('harfbuzz')
   if settings.USE_ICU:
-    builtins.add('icu')
+    official_ports.add('icu')
   if settings.USE_LIBJPEG:
-    builtins.add('libjpeg')
+    official_ports.add('libjpeg')
   if settings.USE_MODPLUG:
-    builtins.add('libmodplug')
+    official_ports.add('libmodplug')
   if settings.USE_LIBPNG:
-    builtins.add('libpng')
+    official_ports.add('libpng')
   if settings.USE_MPG123:
-    builtins.add('mpg123')
+    official_ports.add('mpg123')
   if settings.USE_OGG:
-    builtins.add('ogg')
+    official_ports.add('ogg')
   if settings.USE_REGAL:
-    builtins.add('regal')
+    official_ports.add('regal')
   if settings.USE_SDL == 2:
-    builtins.add('sdl2')
+    official_ports.add('sdl2')
   if settings.USE_SDL_GFX == 2:
-    builtins.add('sdl2_gfx')
+    official_ports.add('sdl2_gfx')
   if settings.USE_SDL_IMAGE == 2:
-    builtins.add('sdl2_image')
+    official_ports.add('sdl2_image')
   if settings.USE_SDL_MIXER == 2:
-    builtins.add('sdl2_mixer')
+    official_ports.add('sdl2_mixer')
   if settings.USE_SDL_NET == 2:
-    builtins.add('sdl2_net')
+    official_ports.add('sdl2_net')
   if settings.USE_SDL_TTF == 2:
-    builtins.add('sdl2_ttf')
+    official_ports.add('sdl2_ttf')
   if settings.USE_SQLITE3:
-    builtins.add('sqlite3')
+    official_ports.add('sqlite3')
   if settings.USE_VORBIS:
-    builtins.add('vorbis')
+    official_ports.add('vorbis')
   if settings.USE_ZLIB:
-    builtins.add('zlib')
-  return builtins
+    official_ports.add('zlib')
+  return official_ports
 
 
 def get_needed_ports(settings):
   # Start with directly needed ports, and transitively add dependencies
-  needed_port_names = get_builtin_ports(settings)
+  needed_port_names = get_official_ports(settings)
   needed_port_names = needed_port_names.union(settings.PORTS)
   needed = set(get_port_by_name(n) for n in needed_port_names)
   resolve_dependencies(needed, settings)
@@ -461,10 +460,10 @@ def check_port_options(settings):
     parts = option.split(':')
     if len(parts) != 2:
       utils.exit_with_error(f'Invalid port option: {option}. Syntax is <port>:<option>.')
-    name = parts[0]
+    name, port_option = parts
     port = get_port_by_name(name)
-    if option not in port.options:
-      utils.exit_with_error(f'Invalid port option: {option} for port {name}. Available options: {port.options}')
+    if port_option not in port.options:
+      utils.exit_with_error(f'Invalid port option: {option} for port {name}. Available options: {port.available_options()}')
 
 
 def build_port(port_name, settings):
@@ -522,7 +521,7 @@ def add_cflags(args, settings): # noqa: U100
 
 def show_ports():
   read_ports()
-  print('Available ports:')
+  print('Available Official ports:')
   for port in ports:
     if not port.is_contrib:
       print('   ', port.show())

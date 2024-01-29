@@ -32,4 +32,4 @@ def process_args(ports):
 
 
 def show():
-  return 'SDL2_ttf (-sUSE_SDL_TTF=2; zlib license)'
+  return 'SDL2_ttf (-sUSE_SDL_TTF=2 or -sPORTS=sdl2_ttf; zlib license)'

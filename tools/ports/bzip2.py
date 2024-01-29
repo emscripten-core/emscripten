@@ -31,4 +31,4 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'bzip2 (USE_BZIP2=1; BSD license)'
+  return 'bzip2 (-sUSE_BZIP2=1 or -sPORTS=bzip2; BSD license)'

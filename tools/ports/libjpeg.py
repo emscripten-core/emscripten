@@ -34,7 +34,7 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'libjpeg (USE_LIBJPEG=1; BSD license)'
+  return 'libjpeg (-sUSE_LIBJPEG=1 or -sPORTS=libjpeg; BSD license)'
 
 
 jconfig_h = '''/* jconfig.h.  Generated from jconfig.cfg by configure.  */

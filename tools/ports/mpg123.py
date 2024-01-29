@@ -77,7 +77,7 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'mpg123 (USE_MPG123=1; zlib license)'
+  return 'mpg123 (-sUSE_MPG123=1 or -sPORTS=mpg123; zlib license)'
 
 
 config_h = r'''/* src/config.h.  Generated from config.h.in by configure.  */

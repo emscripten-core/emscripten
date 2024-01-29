@@ -15,6 +15,31 @@ of information (provided as functions in the port file):
   is about
 * `project_license`: the license used by the project/port
 
+A port may have options which can be used to control building/linking 
+the port (for example, adding `-DXXX` to the build of the port).
+
+In order to add an option, simply define the map `options` with the 
+format:
+
+```python
+options = {
+  'option1': 'Description of what option1 does',
+  # ... more options
+}
+```
+
+The port can then reference this option via the `settings.PORT_OPTIONS`
+array. Note that the port name is added automatically in order to avoid
+conflicts between ports:
+
+```python
+# <port> is port.name (ex: contrib.glfw3) 
+if '<port>:option1' in settings.PORT_OPTIONS:
+  # option1 has been set
+```
+
+The end user can set this option via `-sPORT_OPTIONS=<port>:option1`.
+
 After adding (resp. modifying) a contrib port, you must run the 
 `./tools/maint/update_settings_docs.py` command to add (resp. update) 
 the new port to the documentation.

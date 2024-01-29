@@ -50,7 +50,7 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'libpng (-sUSE_LIBPNG; zlib license)'
+  return 'libpng (-sUSE_LIBPNG or -sPORTS=libpng; zlib license)'
 
 
 pnglibconf_h = r'''/* pnglibconf.h - library build configuration */

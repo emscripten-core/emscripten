@@ -29,4 +29,4 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'vorbis (-sUSE_VORBIS; zlib license)'
+  return 'vorbis (-sUSE_VORBIS or -sPORTS=vorbis; zlib license)'

@@ -30,4 +30,4 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'SDL2_net (zlib license)'
+  return 'SDL2_net (-sUSE_SDL_NET=2 or -sPORTS=sdl2_net; zlib license)'

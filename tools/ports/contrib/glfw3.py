@@ -8,11 +8,12 @@ import os
 TAG = '1.0.4'
 HASH = 'c3c96718e5d2b37df434a46c4a93ddfd9a768330d33f0d6ce2d08c139752894c2421cdd0fefb800fe41fafc2bbe58c8f22b8aa2849dc4fc6dde686037215cfad'
 
+# available via settings.PORT_OPTIONS with prefix 'contrib.glfw3:'
 options = {
-  'contrib.glfw3:DISABLE_WARNING': 'Disable all warnings',
-  'contrib.glfw3:DISABLE_JOYSTICK': 'Disable support for joystick (due to polling, it can help to disable joystick ' +
+  'DISABLE_WARNING': 'Disable all warnings',
+  'DISABLE_JOYSTICK': 'Disable support for joystick (due to polling, it can help to disable joystick ' +
                                     'support if not needed)',
-  'contrib.glfw3:DISABLE_MULTI_WINDOW_SUPPORT': 'Disable support for multiple windows if not needed',
+  'DISABLE_MULTI_WINDOW_SUPPORT': 'Disable support for multiple windows if not needed',
 }
 
 
