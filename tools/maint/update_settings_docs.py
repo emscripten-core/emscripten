@@ -77,6 +77,10 @@ def write_contrib_ports(f):
   for port in ports.ports:
     if port.is_contrib:
       comment = port.project_description()
+      if port.options:
+        comment += '\n\nAvailable options:'
+        for name, description in port.options.items():
+          comment += f'\n- {name} : {description}'
       comment += f'\n\n`Project information <{port.project_url()}>`_'
       comment += f'\nLicense: {port.project_license()}'
       write_setting(f, f'PORTS={port.name}', comment, [], '-')

@@ -1730,6 +1730,11 @@ PORTS=contrib.glfw3
 
 This project is an emscripten port of glfw written in C++ for the web/webassembly platform
 
+Available options:
+- contrib.glfw3:DISABLE_WARNING : Disable all warnings
+- contrib.glfw3:DISABLE_JOYSTICK : Disable support for joystick (due to polling, it can help to disable joystick support if not needed)
+- contrib.glfw3:DISABLE_MULTI_WINDOW_SUPPORT : Disable support for multiple windows if not needed
+
 `Project information <https://github.com/pongasoft/emscripten-glfw>`_
 License: Apache 2.0 license
 
