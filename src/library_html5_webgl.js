@@ -82,19 +82,28 @@ var LibraryHtml5WebGL = {
 #endif
 
 #if PTHREADS && OFFSCREEN_FRAMEBUFFER
-    // Create a WebGL context that is proxied to main thread if canvas was not found on worker, or if explicitly requested to do so.
+    // Create a WebGL context that is proxied to main thread if canvas was not
+    // found on worker, or if explicitly requested to do so.
     if (ENVIRONMENT_IS_PTHREAD) {
       if (contextAttributes.proxyContextToMainThread === {{{ cDefs.EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS }}} ||
          (!canvas && contextAttributes.proxyContextToMainThread === {{{ cDefs.EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK }}})) {
-        // When WebGL context is being proxied via the main thread, we must render using an offscreen FBO render target to avoid WebGL's
-        // "implicit swap when callback exits" behavior. TODO: If OffscreenCanvas is supported, explicitSwapControl=true and still proxying,
-        // then this can be avoided, since OffscreenCanvas enables explicit swap control.
+        // When WebGL context is being proxied via the main thread, we must
+        // render using an offscreen FBO render target to avoid WebGL's
+        // "implicit swap when callback exits" behavior. TODO: If
+        // OffscreenCanvas is supported, explicitSwapControl=true and still
+        // proxying, then this can be avoided, since OffscreenCanvas enables
+        // explicit swap control.
 #if GL_DEBUG
-        if (contextAttributes.proxyContextToMainThread === {{{ cDefs.EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS }}}) dbg('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS enabled, proxying WebGL rendering from pthread to main thread.');
-        if (!canvas && contextAttributes.proxyContextToMainThread === {{{ cDefs.EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK }}}) dbg(`Specified canvas target "${targetStr}" is not an OffscreenCanvas in the current pthread, but EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK is set. Proxying WebGL rendering from pthread to main thread.`);
-        dbg('Performance warning: forcing renderViaOffscreenBackBuffer=true and preserveDrawingBuffer=true since proxying WebGL rendering.');
+        if (contextAttributes.proxyContextToMainThread === {{{ cDefs.EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS }}}) {
+          dbg('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS enabled, proxying WebGL rendering from pthread to main thread.');
+        }
+        if (!canvas && contextAttributes.proxyContextToMainThread === {{{ cDefs.EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK }}}) {
+          dbg(`Specified canvas target "${targetStr}" is not an OffscreenCanvas in the current pthread, but EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK is set. Proxying WebGL rendering from pthread to main thread.`);
+          dbg('Performance warning: forcing renderViaOffscreenBackBuffer=true and preserveDrawingBuffer=true since proxying WebGL rendering.');
+        }
 #endif
-        // We will be proxying - if OffscreenCanvas is supported, we can proxy a bit more efficiently by avoiding having to create an Offscreen FBO.
+        // We will be proxying - if OffscreenCanvas is supported, we can proxy a
+        // bit more efficiently by avoiding having to create an Offscreen FBO.
         if (typeof OffscreenCanvas == 'undefined') {
           {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, '1', 'i32') }}};
           {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, '1', 'i32') }}};
