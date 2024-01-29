@@ -26,7 +26,7 @@ root_dir = os.path.dirname(os.path.dirname(script_dir))
 sys.path.append(root_dir)
 
 from tools.utils import path_from_root, read_file, safe_ensure_dirs
-from tools.ports import ports
+from tools import ports
 
 header = '''\
 .. _settings-reference:
@@ -74,12 +74,12 @@ def write_contrib_ports(f):
           'supported on a "best effort" basis. Since they are not run as part ' +
           'of emscripten CI they are not always guaranteed to build or function.')
   f.write('\n\nAvailable contrib ports:\n')
-  for port in ports:
+  for port in ports.ports:
     if port.is_contrib:
       comment = port.project_description()
       comment += f'\n\n`Project information <{port.project_url()}>`_'
       comment += f'\nLicense: {port.project_license()}'
-      write_setting(f, f'USE_PORT={port.name}', comment, [], '-')
+      write_setting(f, f'PORTS={port.name}', comment, [], '-')
   f.write('\n')
 
 
@@ -110,13 +110,14 @@ def write_file(f):
       setting_name = line.split()[1]
       comment = '\n'.join(current_comment).strip()
       write_setting(f, setting_name, comment, current_tags)
-      if setting_name == 'USE_PORT':
+      if setting_name == 'PORTS':
         write_contrib_ports(f)
       current_comment = []
       current_tags = []
 
 
 def main(args):
+  ports.read_ports()
   if '--check' in args:
     safe_ensure_dirs(path_from_root('out'))
     tmp_output = path_from_root('out/settings_reference.rst')

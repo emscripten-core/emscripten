@@ -35,7 +35,7 @@ def load_port_by_name(name):
     try:
       port = __import__(name, globals(), level=1, fromlist=[None])
       port.is_contrib = True
-      port.show = lambda: f'{port.name} (-sUSE_PORT={port.name}; {port.project_license()})'
+      port.show = lambda: f'{port.name} (-sPORTS={port.name}; {port.project_license()})'
     except ModuleNotFoundError:
       utils.exit_with_error(f'Invalid contrib port name: {name}')
   else:
@@ -62,9 +62,18 @@ def load_port_by_name(name):
   if not hasattr(port, 'variants'):
     # port variants (default: no variants)
     port.variants = {}
+  if not hasattr(port, 'options'):
+    # port options (default: no options)
+    port.options = {}
+  else:
+    option_prefix = f'{name}:'
+    for option in port.options:
+      assert option.startswith(option_prefix), f'port {name} option {option} is missing required prefix {option_prefix}'
 
   for variant, extra_settings in port.variants.items():
-    port_variants[f'{name}-{variant}'] = (name, extra_settings)
+    if variant in port_variants:
+      utils.exit_with_error('duplicate port variant: %s' % variant)
+    port_variants[variant] = (port.name, extra_settings)
 
   return port
 
@@ -438,12 +447,23 @@ def get_legacy_ports(settings):
 def get_needed_ports(settings):
   # Start with directly needed ports, and transitively add dependencies
   needed_port_names = get_legacy_ports(settings)
-  needed_port_names = needed_port_names.union(settings.USE_PORT)
+  needed_port_names = needed_port_names.union(settings.PORTS)
   needed = set()
   for n in needed_port_names:
     needed.add(get_port_by_name(n))
   resolve_dependencies(needed, settings)
   return needed
+
+
+def check_port_options(settings):
+  for option in settings.PORT_OPTIONS:
+    parts = option.split(':')
+    if len(parts) != 2:
+      utils.exit_with_error(f'Invalid port option: {option}. Syntax is <port>:<option>.')
+    name = parts[0]
+    port = get_port_by_name(name)
+    if option not in port.options:
+      utils.exit_with_error(f'Invalid port option: {option} for port {name}. Available options: {port.options}')
 
 
 def build_port(port_name, settings):

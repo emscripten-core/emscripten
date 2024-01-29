@@ -8,21 +8,20 @@ import os
 TAG = '1.0.4'
 HASH = 'c3c96718e5d2b37df434a46c4a93ddfd9a768330d33f0d6ce2d08c139752894c2421cdd0fefb800fe41fafc2bbe58c8f22b8aa2849dc4fc6dde686037215cfad'
 
-
-# variants = {'glfw3-custom': {
-#     'EMSCRIPTEN_GLFW3_DISABLE_WARNING': 0,
-#     'EMSCRIPTEN_GLFW3_DISABLE_JOYSTICK': 0,
-#     'EMSCRIPTEN_GLFW3_DISABLE_MULTI_WINDOW_SUPPORT': 0 }
-# }
+options = {
+  'contrib.glfw3:DISABLE_WARNING': 'Disable all warnings',
+  'contrib.glfw3:DISABLE_JOYSTICK': 'Disable support for joystick (due to polling, it can help to disable joystick ' +
+                                    'support if not needed)',
+  'contrib.glfw3:DISABLE_MULTI_WINDOW_SUPPORT': 'Disable support for multiple windows if not needed',
+}
 
 
 def get_lib_name(settings):
-  return 'libglfw3.a'
-  # return ('libglfw3' +
-  #         ('-nw' if settings.EMSCRIPTEN_GLFW3_DISABLE_WARNING else '') +
-  #         ('-nj' if settings.EMSCRIPTEN_GLFW3_DISABLE_JOYSTICK else '') +
-  #         ('-sw' if settings.EMSCRIPTEN_GLFW3_DISABLE_MULTI_WINDOW_SUPPORT else '') +
-  #         '.a')
+  return ('libglfw3' +
+          ('-nw' if 'contrib.glfw3:DISABLE_WARNING' in settings.PORT_OPTIONS else '') +
+          ('-nj' if 'contrib.glfw3:DISABLE_JOYSTICK' in settings.PORT_OPTIONS else '') +
+          ('-sw' if 'contrib.glfw3:DISABLE_MULTI_WINDOW_SUPPORT' in settings.PORT_OPTIONS else '') +
+          '.a')
 
 
 def get(ports, settings, shared):
@@ -38,17 +37,14 @@ def get(ports, settings, shared):
 
     flags = []
 
-    # if settings.EMSCRIPTEN_GLFW3_DISABLE_WARNING:
-    #   flags += ['-DEMSCRIPTEN_GLFW3_DISABLE_WARNING']
-    #
-    # if settings.EMSCRIPTEN_GLFW3_DISABLE_JOYSTICK:
-    #   flags += ['-DEMSCRIPTEN_GLFW3_DISABLE_JOYSTICK']
-    #
-    # if settings.EMSCRIPTEN_GLFW3_DISABLE_MULTI_WINDOW_SUPPORT:
-    #   flags += ['-DEMSCRIPTEN_GLFW3_DISABLE_MULTI_WINDOW_SUPPORT']
+    if 'contrib.glfw3:DISABLE_WARNING' in settings.PORT_OPTIONS:
+      flags += ['-DEMSCRIPTEN_GLFW3_DISABLE_WARNING']
 
-    # need to add a way to provide custom variants to ports => in the meantime disabling warnings
-    flags += ['-DEMSCRIPTEN_GLFW3_DISABLE_WARNING']
+    if 'contrib.glfw3:DISABLE_JOYSTICK' in settings.PORT_OPTIONS:
+      flags += ['-DEMSCRIPTEN_GLFW3_DISABLE_JOYSTICK']
+
+    if 'contrib.glfw3:DISABLE_MULTI_WINDOW_SUPPORT' in settings.PORT_OPTIONS:
+      flags += ['-DEMSCRIPTEN_GLFW3_DISABLE_MULTI_WINDOW_SUPPORT']
 
     ports.build_port(source_path, final, 'glfw3', includes=source_include_paths, flags=flags)
 

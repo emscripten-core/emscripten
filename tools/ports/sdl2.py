@@ -9,7 +9,7 @@ TAG = 'release-2.24.2'
 HASH = 'b178bdc8f7c40271e09a72f639649d1d61953dda4dc12b77437259667b63b961fd3b2c67b0de6fdc5f9f9c80c49bfafd164e4c13715bc1056e550acc8bad5a3c'
 SUBDIR = 'SDL-' + TAG
 
-variants = {'mt': {'PTHREADS': 1}}
+variants = {'sdl2-mt': {'PTHREADS': 1}}
 
 
 def get_lib_name(settings):

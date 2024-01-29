@@ -9,7 +9,7 @@ VERSION = '3.2.0'
 HASH = 'c9d88068d8017046842f444f02f31dbae109026ede943aaf265db5508de8b4b2be84203950f274a237f515bf7cbd361629d2032c6e8ee8f50354b430bba3a8ca'
 
 deps = ['freetype']
-variants = {'mt': {'PTHREADS': 1}}
+variants = {'harfbuzz-mt': {'PTHREADS': 1}}
 
 srcs = '''
 hb-aat-layout.cc

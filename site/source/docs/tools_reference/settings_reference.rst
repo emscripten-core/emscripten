@@ -1700,39 +1700,50 @@ Specify the GLFW version that is being linked against.  Only relevant, if you
 are linking against the GLFW library.  Valid options are 2 for GLFW2 and 3
 for GLFW3.
 
-.. _use_contrib_port:
+.. _ports:
 
-USE_CONTRIB_PORT
-================
+PORTS
+=====
 
-Specify which contrib ports to use. If there is only one contrib port to use,
-it can be specified this way -sUSE_CONTRIB_PORT=port. If multiple contrib
-ports are need, you specify it that way: -sUSE_CONTRIB_PORT=[port1,port2].
+Specify which ports to use. If there is only one port to use, it can be
+specified this way -sPORTS=port. If multiple ports are need, you
+specify it that way: -sPORTS=[port1,port2].
 
 .. note:: Contrib ports are contributed by the wider community and supported on a "best effort" basis. Since they are not run as part of emscripten CI they are not always guaranteed to build or function.
 
 Available contrib ports:
 
-.. _use_contrib_port=contrib_example:
+.. _ports=contrib.example:
 
-USE_CONTRIB_PORT=contrib_example
---------------------------------
+PORTS=contrib.example
+---------------------
 
 Port Contrib Example
 
 `Project information <https://github.com/emscripten-core/emscripten>`_
 License: MIT license
 
-.. _use_contrib_port=glfw3:
+.. _ports=contrib.glfw3:
 
-USE_CONTRIB_PORT=glfw3
-----------------------
+PORTS=contrib.glfw3
+-------------------
 
 This project is an emscripten port of glfw written in C++ for the web/webassembly platform
 
 `Project information <https://github.com/pongasoft/emscripten-glfw>`_
 License: Apache 2.0 license
 
+
+.. _port_options:
+
+PORT_OPTIONS
+============
+
+Specify which options to use when building ports. The syntax is the following:
+-sPORT_OPTIONS=port:option or -sPORT_OPTIONS=[port1:option1,port2:option2]
+when multiple port/options need to be provided.
+
+.. note:: Applicable during both linking and compilation
 
 .. _wasm:
 
