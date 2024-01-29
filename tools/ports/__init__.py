@@ -448,9 +448,7 @@ def get_needed_ports(settings):
   # Start with directly needed ports, and transitively add dependencies
   needed_port_names = get_builtin_ports(settings)
   needed_port_names = needed_port_names.union(settings.PORTS)
-  needed = set()
-  for n in needed_port_names:
-    needed.add(get_port_by_name(n))
+  needed = set(get_port_by_name(n) for n in needed_port_names)
   resolve_dependencies(needed, settings)
   return needed
 
