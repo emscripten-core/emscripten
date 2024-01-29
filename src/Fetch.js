@@ -173,13 +173,14 @@ function startFetch(fetchHandle) {
           HEAPU32[fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] = ptr;
           writeI53ToI64(fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, ptrLen);
           writeI53ToI64(fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, fetchData.offset);
+          fetchData.offset += ptrLen;
+          writeI53ToI64(fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, fetchData.offset);
+
           if (onprogress) {{{ makeDynCall('vp', 'onprogress') }}}(fetchHandle);
           if (ptr) {
             _free(ptr);
             HEAPU32[fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] = 0;
           }
-
-          fetchData.offset += ptrLen;
 
           return reader.read().then(pump);
         });
@@ -187,30 +188,29 @@ function startFetch(fetchHandle) {
         // Make sure we can't timeout now that we are receiving responses
         if (timeoutId != -1) clearTimeout(timeoutId);
 
-        response.blob().then(function(responseBlob) {
+        response.arrayBuffer().then((responseBuffer) => {
+          writeI53ToI64(fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, responseBuffer.byteLength);
           
           // Store response data
-          if (responseBlob && fetchAttrLoadToMemory && HEAPU32[fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] === 0) {
-            responseBlob.arrayBuffer().then(function(responseBuffer) {
-              HEAPU16[fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = 4; // XMLHttpRequest DONE, kept for compatibility
-              if (onreadystatechange) {{{ makeDynCall('vp', 'onreadystatechange') }}}(fetchHandle);
+          if (responseBuffer && fetchAttrLoadToMemory && HEAPU32[fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] === 0) {
+            HEAPU16[fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = 4; // XMLHttpRequest DONE, kept for compatibility
+            if (onreadystatechange) {{{ makeDynCall('vp', 'onreadystatechange') }}}(fetchHandle);
 
-              var ptrLen = responseBuffer.byteLength;
+            var ptrLen = responseBuffer.byteLength;
 
-              // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
-              // freed when emscripten_fetch_close() is called.
-              var ptr = _malloc(ptrLen);
-              HEAPU8.set(new Uint8Array(responseBuffer), ptr);
+            // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
+            // freed when emscripten_fetch_close() is called.
+            var ptr = _malloc(ptrLen);
+            HEAPU8.set(new Uint8Array(responseBuffer), ptr);
 
-              HEAPU32[fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] = ptr;
-              writeI53ToI64(fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, ptrLen);
-              writeI53ToI64(fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, 0);
-              writeI53ToI64(fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, ptrLen);
+            HEAPU32[fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] = ptr;
+            writeI53ToI64(fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, ptrLen);
+            writeI53ToI64(fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, 0);
+            writeI53ToI64(fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, ptrLen);
 
-              {{{ runtimeKeepalivePop() }}}
-              Fetch.requestHandles.free(id);
-              if (onsuccess) {{{ makeDynCall('vp', 'onsuccess') }}}(fetchHandle);
-            });
+            {{{ runtimeKeepalivePop() }}}
+            Fetch.requestHandles.free(id);
+            if (onsuccess) {{{ makeDynCall('vp', 'onsuccess') }}}(fetchHandle);
           }
           else {
             HEAPU16[fetchHandle + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = 4; // XMLHttpRequest DONE, kept for compatibility
