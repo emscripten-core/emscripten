@@ -48,7 +48,7 @@ var LibraryEmVal = {
 
   $count_emval_handles__deps: ['$emval_freelist', '$emval_handles'],
   $count_emval_handles: () => {
-    return emval_handles.length / 2 - {{{ EMVAL_RESERVED_HANDLES }}}- emval_freelist.length;
+    return emval_handles.length / 2 - {{{ EMVAL_RESERVED_HANDLES }}} - emval_freelist.length;
   },
 
   _emval_register_symbol__deps: ['$emval_symbols', '$readLatin1String'],
