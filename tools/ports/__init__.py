@@ -32,15 +32,18 @@ logger = logging.getLogger('ports')
 
 
 def load_port(name):
-  expected_attrs = ['get', 'clear', 'show', 'needed']
+  expected_attrs = ['get', 'clear', 'show']
   port = __import__(name, globals(), level=1)
   ports.append(port)
   port.name = name
   ports_by_name[port.name] = port
   for a in expected_attrs:
     assert hasattr(port, a), 'port %s is missing %s' % (port, a)
-  needed = port.needed
-  port.needed = lambda s: needed(s) or name in s.PORTS
+  if not hasattr(port, 'needed'):
+    port.needed = lambda s: name in s.PORTS
+  else:
+    needed = port.needed
+    port.needed = lambda s: needed(s) or name in s.PORTS
   if not hasattr(port, 'process_dependencies'):
     port.process_dependencies = lambda x: 0
   if not hasattr(port, 'linker_setup'):
@@ -366,6 +369,12 @@ def resolve_dependencies(port_set, settings):
 
   for port in port_set.copy():
     add_deps(port)
+
+
+def check_ports_settings(settings):
+  for name in settings.PORTS:
+    if name not in ports_by_name:
+      utils.exit_with_error(f'Invalid port name: {name}')
 
 
 def get_needed_ports(settings):

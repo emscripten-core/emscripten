@@ -2250,20 +2250,25 @@ int f() {
 
   def test_sdl2_mixer_wav(self):
     self.emcc(test_file('browser/test_sdl2_mixer_wav.c'), ['-sUSE_SDL_MIXER=2'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_mixer_wav.c'), ['-sPORTS=sdl2_mixer'], output_filename='a.out.js')
 
   def test_sdl2_linkable(self):
     # Ensure that SDL2 can be built with LINKABLE.  This implies there are no undefined
     # symbols in the library (because LINKABLE includes the entire library).
     self.emcc(test_file('browser/test_sdl2_misc.c'), ['-sLINKABLE', '-sUSE_SDL=2'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-sLINKABLE', '-sPORTS=sdl2'], output_filename='a.out.js')
 
   def test_sdl2_gfx_linkable(self):
     # Same as above but for sdl2_gfx library
     self.emcc(test_file('browser/test_sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sLINKABLE', '-sUSE_SDL_GFX=2'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sLINKABLE', '-sPORTS=sdl2_gfx'], output_filename='a.out.js')
 
   def test_libpng(self):
     shutil.copyfile(test_file('third_party/libpng/pngtest.png'), 'pngtest.png')
     self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
                  emcc_args=['--embed-file', 'pngtest.png', '-sUSE_LIBPNG'])
+    self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
+                 emcc_args=['--embed-file', 'pngtest.png', '-sPORTS=libpng'])
 
   @node_pthreads
   def test_libpng_with_pthreads(self):
@@ -2284,23 +2289,34 @@ int f() {
                  'GIF file terminated normally',
                  emcc_args=['--embed-file', 'treescap.gif', '-sUSE_GIFLIB', '-sMAIN_MODULE'],
                  args=['treescap.gif'])
+    self.do_runf('third_party/giflib/giftext.c',
+                 'GIF file terminated normally',
+                 emcc_args=['--embed-file', 'treescap.gif', '-sPORTS=giflib'],
+                 args=['treescap.gif'])
 
   def test_libjpeg(self):
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
     self.do_runf('jpeg_test.c', 'Image is 600 by 450 with 3 components',
                  emcc_args=['--embed-file', 'screenshot.jpg', '-sUSE_LIBJPEG'],
                  args=['screenshot.jpg'])
+    self.do_runf('jpeg_test.c', 'Image is 600 by 450 with 3 components',
+                 emcc_args=['--embed-file', 'screenshot.jpg', '-sPORTS=libjpeg'],
+                 args=['screenshot.jpg'])
 
   def test_bullet(self):
     self.do_runf('bullet_hello_world.cpp', 'BULLET RUNNING', emcc_args=['-sUSE_BULLET'])
+    self.do_runf('bullet_hello_world.cpp', 'BULLET RUNNING', emcc_args=['-sPORTS=bullet'])
 
   def test_vorbis(self):
     # This will also test if ogg compiles, because vorbis depends on ogg
     self.do_runf('vorbis_test.c', 'ALL OK', emcc_args=['-sUSE_VORBIS'])
+    self.do_runf('vorbis_test.c', 'ALL OK', emcc_args=['-sPORTS=vorbis'])
 
   def test_bzip2(self):
     self.do_runf('bzip2_test.c', 'usage: unzcrash filename',
                  emcc_args=['-sUSE_BZIP2', '-Wno-pointer-sign'])
+    self.do_runf('bzip2_test.c', 'usage: unzcrash filename',
+                 emcc_args=['-sPORTS=bzip2', '-Wno-pointer-sign'])
 
   @with_both_sjlj
   def test_freetype(self):
@@ -2328,6 +2344,8 @@ int f() {
     # build test program with the font file embed in it
     self.do_runf('freetype_test.c', expectedOutput,
                  emcc_args=['-sUSE_FREETYPE', '--embed-file', 'LiberationSansBold.ttf'])
+    self.do_runf('freetype_test.c', expectedOutput,
+                 emcc_args=['-sPORTS=freetype', '--embed-file', 'LiberationSansBold.ttf'])
 
   def test_freetype_with_pthreads(self):
     # Verify that freetype supports compilation requiring pthreads
@@ -2340,6 +2358,7 @@ int f() {
   def test_sdl2_ttf(self):
     # This is a compile-only to test to verify that sdl2-ttf (and freetype and harfbuzz) are buildable.
     self.emcc(test_file('browser/test_sdl2_ttf.c'), args=['-sUSE_SDL=2', '-sUSE_SDL_TTF=2'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_ttf.c'), args=['-sPORTS=sdl2_ttf'], output_filename='a.out.js')
 
   def test_link_memcpy(self):
     # memcpy can show up *after* optimizations, so after our opportunity to link in libc, so it must be special-cased
@@ -11411,6 +11430,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
 
   def test_boost_graph(self):
     self.do_runf('test_boost_graph.cpp', emcc_args=['-std=c++14', '-sUSE_BOOST_HEADERS'])
+    self.do_runf('test_boost_graph.cpp', emcc_args=['-std=c++14', '-sPORTS=boost_headers'])
 
   def test_setjmp_em_asm(self):
     create_file('src.c', '''

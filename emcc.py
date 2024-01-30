@@ -287,6 +287,8 @@ def apply_user_settings():
     if key == 'WASM_OBJECT_FILES':
       settings.LTO = 0 if value else 'full'
 
+    ports.check_ports_settings(settings)
+
 
 def cxx_to_c_compiler(cxx):
   # Convert C++ compiler name into C compiler name
