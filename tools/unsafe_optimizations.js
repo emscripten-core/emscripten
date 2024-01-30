@@ -68,27 +68,6 @@ function optPassSimplifyModularizeFunction(ast) {
   });
 }
 
-// Closure integration of the Module object generates an awkward "var b; b || (b = Module);" code.
-// 'b || (b = Module)' -> 'b = Module'.
-function optPassSimplifyModuleInitialization(ast) {
-  visitNodes(ast, ['BlockStatement', 'Program'], (node) => {
-    for (const n of node.body) {
-      if (
-        n.type == 'ExpressionStatement' &&
-        n.expression.type == 'LogicalExpression' &&
-        n.expression.operator == '||' &&
-        n.expression.left.name === n.expression.right.left?.name &&
-        n.expression.right.right.name == 'Module'
-      ) {
-        // Clear out the logical operator.
-        n.expression = n.expression.right;
-        // There is only one Module assignment, so can finish the pass here.
-        return false;
-      }
-    }
-  });
-}
-
 // Finds redundant operator new statements that are not assigned anywhere.
 // (we aren't interested in side effects of the calls if no assignment)
 function optPassRemoveRedundantOperatorNews(ast) {
@@ -225,7 +204,6 @@ function optPassMergeVarInitializationAssignments(ast) {
 function runOnJsText(js, pretty = false) {
   const ast = acorn.parse(js, {ecmaVersion: 2021});
 
-  optPassSimplifyModuleInitialization(ast);
   optPassRemoveRedundantOperatorNews(ast);
 
   let progress = true;
@@ -272,10 +250,6 @@ function runTests() {
     'var Module = function(Module) {Module = Module || {};var f = Module;}',
     'var Module=function(f){};',
   );
-
-  // optPassSimplifyModuleInitialization:
-  test('b || (b = Module);', 'b=Module;');
-  test('function foo(){b || (b = Module);}', 'function foo(){b=Module}');
 
   // optPassRemoveRedundantOperatorNews:
   test('new Uint16Array(a);', '');

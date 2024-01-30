@@ -278,7 +278,7 @@ class interactive(BrowserCore):
 
   # Tests a second AudioWorklet example: sine wave tone generator.
   def test_audio_worklet_tone_generator(self):
-    self.btest('webaudio/tone_generator.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
+    self.btest('webaudio/audio_worklet_tone_generator.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
 
   # Tests that AUDIO_WORKLET+MINIMAL_RUNTIME+MODULARIZE combination works together.
   def test_audio_worklet_modularize(self):
