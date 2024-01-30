@@ -2585,7 +2585,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   }
 '''
     # add required helper functions such as tryParseAsDataURI
-    for filename in ('arrayUtils.js', 'base64Utils.js', 'URIUtils.js'):
+    for filename in ('arrayUtils.js', 'base64Decode.js', 'URIUtils.js'):
       content = shared.read_and_preprocess(utils.path_from_root('src', filename))
       script.inline = content + script.inline
 
