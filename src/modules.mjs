@@ -102,6 +102,10 @@ export const LibraryManager = {
       libraries.push('libmemoryprofiler.js');
     }
 
+    if (SUPPORT_BASE64_EMBEDDING) {
+      libraries.push('libbase64.js');
+    }
+
     if (AUTODEBUG) {
       libraries.push('libautodebug.js');
     }
