@@ -19,6 +19,7 @@
 // Number of handles reserved for non-use (0) or common values w/o refcount.
 {{{ 
   globalThis.EMVAL_RESERVED_HANDLES = 5;
+  globalThis.EMVAL_LAST_RESERVED_HANDLE = globalThis.EMVAL_RESERVED_HANDLES - 1;
   null;
 }}}
 var LibraryEmVal = {
@@ -95,15 +96,16 @@ var LibraryEmVal = {
 
   _emval_incref__deps: ['$emval_handles'],
   _emval_incref: (handle) => {
-    emval_handles[handle * 2 + 1] += 1;
+    if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}}) {
+      emval_handles[handle * 2 + 1] += 1;
+    }
   },
 
   _emval_decref__deps: ['$emval_freelist', '$emval_handles'],
   _emval_decref: (handle) => {
-    if (0 === --emval_handles[handle * 2 + 1]) {
+    if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}} && 0 === --emval_handles[handle * 2 + 1]) {
   #if ASSERTIONS
-      assert(handle >= {{{ EMVAL_RESERVED_HANDLES }}});
-      assert(emval_handles[handle * 2] !== undefined);
+      assert(emval_handles[handle * 2] !== undefined, `Decref for unallocated handle.`);
   #endif
       emval_handles[handle * 2] = undefined;
       emval_freelist.push(handle);
