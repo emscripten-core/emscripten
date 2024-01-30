@@ -23,16 +23,15 @@ extern "C" {
 
 // If passed, the intermediate streamed bytes will be passed in to the
 // onprogress() handler. If not specified, the onprogress() handler will still
-// be called, but without data bytes.  Note: Firefox only as it depends on
-// 'moz-chunked-arraybuffer'.
+// be called, but without data bytes.
 #define EMSCRIPTEN_FETCH_STREAM_DATA 2
 
-// If passed, the final download will be stored in IndexedDB. If not specified,
+// If passed, the final download will be stored in browser cache. If not specified,
 // the file will only reside in browser memory.
 #define EMSCRIPTEN_FETCH_PERSIST_FILE 4
 
-// Looks up if the file already exists in IndexedDB, and if so, it is returned
-// without redownload. If a partial transfer exists in IndexedDB, the download
+// Looks up if the file already exists in browser cache, and if so, it is returned
+// without redownload. If a partial transfer exists in browser cache, the download
 // will resume from where it left off and run to completion.
 // EMSCRIPTEN_FETCH_APPEND, EMSCRIPTEN_FETCH_REPLACE and
 // EMSCRIPTEN_FETCH_NO_DOWNLOAD are mutually exclusive.  If none of these three
@@ -40,16 +39,16 @@ extern "C" {
 // EMSCRIPTEN_FETCH_APPEND had been passed.
 #define EMSCRIPTEN_FETCH_APPEND 8
 
-// If the file already exists in IndexedDB, the old file will be deleted and a
+// If the file already exists in browser cache, the old file will be deleted and a
 // new download is started.
 // EMSCRIPTEN_FETCH_APPEND, EMSCRIPTEN_FETCH_REPLACE and
 // EMSCRIPTEN_FETCH_NO_DOWNLOAD are mutually exclusive.  If you would like to
-// perform an XHR that neither reads or writes to IndexedDB, pass this flag
+// perform an XHR that neither reads or writes to browser cache, pass this flag
 // EMSCRIPTEN_FETCH_REPLACE, and do not pass the flag
 // EMSCRIPTEN_FETCH_PERSIST_FILE.
 #define EMSCRIPTEN_FETCH_REPLACE 16
 
-// If specified, the file will only be looked up in IndexedDB, but if it does
+// If specified, the file will only be looked up in browser cache, but if it does
 // not exist, it is not attempted to be downloaded over the network but an error
 // is raised.
 // EMSCRIPTEN_FETCH_APPEND, EMSCRIPTEN_FETCH_REPLACE and
@@ -64,6 +63,16 @@ extern "C" {
 // If specified, it will be possible to call emscripten_fetch_wait() on the
 // fetch to test or wait for its completion.
 #define EMSCRIPTEN_FETCH_WAITABLE 128
+
+// If specified, the request will be considered a high priority fetch request relative to other requests of the same type.
+// EMSCRIPTEN_FETCH_HIGH_PRIORITY and EMSCRIPTEN_FETCH_LOW_PRIORITY are mutually exclusive.
+// If neither is provided, the request priority will be "default"
+#define EMSCRIPTEN_FETCH_HIGH_PRIORITY 256
+
+// If specified, the request will be considered a low priority fetch request relative to other requests of the same type.
+// EMSCRIPTEN_FETCH_HIGH_PRIORITY and EMSCRIPTEN_FETCH_LOW_PRIORITY are mutually exclusive.
+// If neither is provided, the request priority will be "default"
+#define EMSCRIPTEN_FETCH_LOW_PRIORITY 512
 
 struct emscripten_fetch_t;
 
