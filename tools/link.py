@@ -879,14 +879,6 @@ def phase_linker_setup(options, state, newargs):
     else:
       default_setting('INCOMING_MODULE_JS_API', [])
 
-  if 'GLOBAL_BASE' not in user_settings and not settings.SHRINK_LEVEL and not settings.OPT_LEVEL:
-    # When optimizing for size it helps to put static data first before
-    # the stack (since this makes instructions for accessing this data
-    # use a smaller LEB encoding).
-    # However, for debugability is better to have the stack come first
-    # (because stack overflows will trap rather than corrupting data).
-    settings.STACK_FIRST = True
-
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
   # in -Oz builds, since custom decoder for UTF-8 takes up space.
   # In pthreads enabled builds, TEXTDECODER==2 may not work, see
@@ -1592,7 +1584,6 @@ def phase_linker_setup(options, state, newargs):
     # We start our global data after the shadow memory.
     # We don't need to worry about alignment here.  wasm-ld will take care of that.
     settings.GLOBAL_BASE = shadow_size
-    settings.STACK_FIRST = False
 
     if not settings.ALLOW_MEMORY_GROWTH:
       settings.INITIAL_MEMORY = total_mem
@@ -1614,6 +1605,21 @@ def phase_linker_setup(options, state, newargs):
 
   if sanitize and settings.GENERATE_SOURCE_MAP:
     settings.LOAD_SOURCE_MAP = 1
+
+  if 'GLOBAL_BASE' not in user_settings and not settings.SHRINK_LEVEL and not settings.OPT_LEVEL and not settings.USE_ASAN:
+    # When optimizing for size it helps to put static data first before
+    # the stack (since this makes instructions for accessing this data
+    # use a smaller LEB encoding).
+    # However, for debugability is better to have the stack come first
+    # (because stack overflows will trap rather than corrupting data).
+    settings.STACK_FIRST = True
+
+  if '--stack-first' in [x for _, x in state.link_flags]:
+    settings.STACK_FIRST = True
+    if settings.USE_ASAN:
+      exit_with_error('--stack-first is not compatible with asan')
+    if 'GLOBAL_BASE' in user_settings:
+      exit_with_error('--stack-first is not compatible with -sGLOBAL_BASE')
 
   set_max_memory()
 
