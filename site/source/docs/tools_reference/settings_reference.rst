@@ -1700,6 +1700,15 @@ Specify the GLFW version that is being linked against.  Only relevant, if you
 are linking against the GLFW library.  Valid options are 2 for GLFW2 and 3
 for GLFW3.
 
+.. _ports:
+
+PORTS
+=====
+
+Specify which ports to use. If there is only one port to use, it can be
+specified this way -sPORTS=port. If multiple ports are need, you
+specify it that way: -sPORTS=[port1,port2].
+
 .. _wasm:
 
 WASM
@@ -1849,6 +1858,7 @@ Specify the SDL version that is being linked against.
 2 is a port of the SDL C code on emscripten-ports
 When AUTO_JS_LIBRARIES is set to 0 this defaults to 0 and SDL
 is not linked in.
+Alternate syntax for using the port: -sPORTS=sdl2
 
 .. note:: Applicable during both linking and compilation
 
@@ -1894,6 +1904,7 @@ USE_ICU
 =======
 
 1 = use icu from emscripten-ports
+Alternate syntax: -sPORTS=icu
 
 .. note:: Applicable during both linking and compilation
 
@@ -1903,6 +1914,7 @@ USE_ZLIB
 ========
 
 1 = use zlib from emscripten-ports
+Alternate syntax: -sPORTS=zlib
 
 .. note:: Applicable during both linking and compilation
 
@@ -1912,6 +1924,7 @@ USE_BZIP2
 =========
 
 1 = use bzip2 from emscripten-ports
+Alternate syntax: -sPORTS=bzip2
 
 .. note:: Applicable during both linking and compilation
 
@@ -1921,6 +1934,7 @@ USE_GIFLIB
 ==========
 
 1 = use giflib from emscripten-ports
+Alternate syntax: -sPORTS=giflib
 
 .. note:: Applicable during both linking and compilation
 
@@ -1930,6 +1944,7 @@ USE_LIBJPEG
 ===========
 
 1 = use libjpeg from emscripten-ports
+Alternate syntax: -sPORTS=libjpeg
 
 .. note:: Applicable during both linking and compilation
 
@@ -1939,6 +1954,7 @@ USE_LIBPNG
 ==========
 
 1 = use libpng from emscripten-ports
+Alternate syntax: -sPORTS=libpng
 
 .. note:: Applicable during both linking and compilation
 
@@ -1948,6 +1964,7 @@ USE_REGAL
 =========
 
 1 = use Regal from emscripten-ports
+Alternate syntax: -sPORTS=regal
 
 .. note:: Applicable during both linking and compilation
 
@@ -1957,6 +1974,7 @@ USE_BOOST_HEADERS
 =================
 
 1 = use Boost headers from emscripten-ports
+Alternate syntax: -sPORTS=boost_headers
 
 .. note:: Applicable during both linking and compilation
 
@@ -1966,6 +1984,7 @@ USE_BULLET
 ==========
 
 1 = use bullet from emscripten-ports
+Alternate syntax: -sPORTS=bullet
 
 .. note:: Applicable during both linking and compilation
 
@@ -1975,6 +1994,7 @@ USE_VORBIS
 ==========
 
 1 = use vorbis from emscripten-ports
+Alternate syntax: -sPORTS=vorbis
 
 .. note:: Applicable during both linking and compilation
 
@@ -1984,6 +2004,7 @@ USE_OGG
 =======
 
 1 = use ogg from emscripten-ports
+Alternate syntax: -sPORTS=ogg
 
 .. note:: Applicable during both linking and compilation
 
@@ -1993,6 +2014,7 @@ USE_MPG123
 ==========
 
 1 = use mpg123 from emscripten-ports
+Alternate syntax: -sPORTS=mpg123
 
 .. note:: Applicable during both linking and compilation
 
@@ -2002,6 +2024,7 @@ USE_FREETYPE
 ============
 
 1 = use freetype from emscripten-ports
+Alternate syntax: -sPORTS=freetype
 
 .. note:: Applicable during both linking and compilation
 
@@ -2021,6 +2044,7 @@ USE_HARFBUZZ
 ============
 
 1 = use harfbuzz from harfbuzz upstream
+Alternate syntax: -sPORTS=harfbuzz
 
 .. note:: Applicable during both linking and compilation
 
@@ -2030,6 +2054,7 @@ USE_COCOS2D
 ===========
 
 3 = use cocos2d v3 from emscripten-ports
+Alternate syntax: -sPORTS=cocos2d
 
 .. note:: Applicable during both linking and compilation
 
@@ -2039,6 +2064,7 @@ USE_MODPLUG
 ===========
 
 1 = use libmodplug from emscripten-ports
+Alternate syntax: -sPORTS=libmodplug
 
 .. note:: Applicable during both linking and compilation
 
@@ -2063,6 +2089,7 @@ USE_SQLITE3
 ===========
 
 1 = use sqlite3 from emscripten-ports
+Alternate syntax: -sPORTS=sqlite3
 
 .. note:: Applicable during both linking and compilation
 

@@ -116,7 +116,7 @@ def process_args(ports):
 
 
 def show():
-  return 'freetype (USE_FREETYPE=1; freetype license)'
+  return 'freetype (-sUSE_FREETYPE=1 or -sPORTS=freetype; freetype license)'
 
 
 ftconf_h = r'''/***************************************************************************/

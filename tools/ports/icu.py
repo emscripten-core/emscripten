@@ -100,4 +100,4 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'icu (USE_ICU=1; Unicode License)'
+  return 'icu (-sUSE_ICU=1 or -sPORTS=icu; Unicode License)'

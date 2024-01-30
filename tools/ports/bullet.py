@@ -56,4 +56,4 @@ def process_args(ports):
 
 
 def show():
-  return 'bullet (USE_BULLET=1; zlib license)'
+  return 'bullet (-sUSE_BULLET=1 or -sPORTS=bullet; zlib license)'

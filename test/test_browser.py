@@ -3335,6 +3335,8 @@ Module["preRun"] = () => {
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('test_sdl2_fog_simple.c', reference='screenshot-fog-simple.png',
                args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
+    self.btest('test_sdl2_fog_simple.c', reference='screenshot-fog-simple.png',
+               args=['-sPORTS=[sdl2,sdl2_image]', '-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
@@ -3389,6 +3391,8 @@ Module["preRun"] = () => {
     shutil.copy2(test_file('freetype/LiberationSansBold.ttf'), self.get_dir())
     self.btest('test_sdl2_ttf.c', reference='browser/test_sdl2_ttf.png',
                args=['-O2', '-sUSE_SDL=2', '-sUSE_SDL_TTF=2', '--embed-file', 'LiberationSansBold.ttf'])
+    self.btest('test_sdl2_ttf.c', reference='browser/test_sdl2_ttf.png',
+               args=['-O2', '-sPORTS=[sdl2,sdl2_ttf]', '--embed-file', 'LiberationSansBold.ttf'])
 
   @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware

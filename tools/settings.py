@@ -52,6 +52,7 @@ PORTS_SETTINGS = {
     'SDL2_MIXER_FORMATS',
     'SDL2_IMAGE_FORMATS',
     'USE_SQLITE3',
+    'PORTS'
 }
 
 # Subset of settings that apply only when generating JS

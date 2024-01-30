@@ -78,4 +78,4 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'sqlite (USE_SQLITE3=1); public domain)'
+  return 'sqlite (-sUSE_SQLITE3=1 or -sPORTS=sqlite3); public domain)'

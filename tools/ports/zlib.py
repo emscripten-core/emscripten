@@ -34,7 +34,7 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'zlib (USE_ZLIB=1; zlib license)'
+  return 'zlib (-sUSE_ZLIB=1 or -sPORTS=zlib; zlib license)'
 
 
 zconf_h = r'''/* zconf.h -- configuration of the zlib compression library
