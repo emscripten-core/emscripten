@@ -37,9 +37,11 @@ let LibraryWebAudio = {
   // Wasm handle ID.
   $emscriptenGetAudioObject: (objectHandle) => EmAudio[objectHandle],
 
-  // emscripten_create_audio_context() does not itself use emscriptenGetAudioObject() function, but mark it as a
-  // dependency, because the user will not be able to utilize the node unless they call emscriptenGetAudioObject()
-  // on it on JS side to connect it to the graph, so this avoids the user needing to manually do it on the command line.
+  // emscripten_create_audio_context() does not itself use
+  // emscriptenGetAudioObject() function, but mark it as a dependency, because
+  // the user will not be able to utilize the node unless they call
+  // emscriptenGetAudioObject() on it on JS side to connect it to the graph, so
+  // this avoids the user needing to manually do it on the command line.
   emscripten_create_audio_context__deps: ['$emscriptenRegisterAudioObject', '$emscriptenGetAudioObject'],
   emscripten_create_audio_context: (options) => {
     let ctx = window.AudioContext || window.webkitAudioContext;
@@ -58,7 +60,7 @@ let LibraryWebAudio = {
     console.dir(opts);
 #endif
 
-  	return ctx && emscriptenRegisterAudioObject(new ctx(opts));
+    return ctx && emscriptenRegisterAudioObject(new ctx(opts));
   },
 
   emscripten_resume_audio_context_async: (contextHandle, callback, userData) => {
@@ -166,14 +168,18 @@ let LibraryWebAudio = {
       return audioWorkletCreationFailed();
     }
 
-    // TODO: In MINIMAL_RUNTIME builds, read this file off of a preloaded Blob, and/or embed from a string like with WASM_WORKERS==2 mode.
+    // TODO: In MINIMAL_RUNTIME builds, read this file off of a preloaded Blob,
+    // and/or embed from a string like with WASM_WORKERS==2 mode.
     audioWorklet.addModule('{{{ TARGET_BASENAME }}}.aw.js').then(() => {
 #if WEBAUDIO_DEBUG
       console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule('audioworklet.js') completed`);
 #endif
       audioWorklet.bootstrapMessage = new AudioWorkletNode(audioContext, 'message', {
         processorOptions: {
-          '$ww': _wasmWorkersID++, // Assign the loaded AudioWorkletGlobalScope a Wasm Worker ID so that it can utilized its own TLS slots, and it is recognized to not be the main browser thread.
+          // Assign the loaded AudioWorkletGlobalScope a Wasm Worker ID so that
+          // it can utilized its own TLS slots, and it is recognized to not be
+          // the main browser thread.
+          '$ww': _wasmWorkersID++,
 #if MINIMAL_RUNTIME
           'wasm': Module['wasm'],
           'mem': wasmMemory,
@@ -187,8 +193,11 @@ let LibraryWebAudio = {
       });
       audioWorklet.bootstrapMessage.port.onmessage = _EmAudioDispatchProcessorCallback;
 
-      // AudioWorklets do not have a importScripts() function like Web Workers do (and AudioWorkletGlobalScope does not allow dynamic import() either),
-      // but instead, the main thread must load all JS code into the worklet scope. Send the application main JS script to the audio worklet.
+      // AudioWorklets do not have a importScripts() function like Web Workers
+      // do (and AudioWorkletGlobalScope does not allow dynamic import()
+      // either), but instead, the main thread must load all JS code into the
+      // worklet scope. Send the application main JS script to the audio
+      // worklet.
       return audioWorklet.addModule(
 #if MINIMAL_RUNTIME
         Module['js']
@@ -205,7 +214,10 @@ let LibraryWebAudio = {
   },
 
   $_EmAudioDispatchProcessorCallback: (e) => {
-    let data = e.data, wasmCall = data['_wsc']; // '_wsc' is short for 'wasm call', trying to use an identifier name that will never conflict with user code
+    let data = e.data;
+    // '_wsc' is short for 'wasm call', trying to use an identifier name that
+    // will never conflict with user code
+    let wasmCall = data['_wsc'];
     wasmCall && getWasmTableEntry(wasmCall)(...data['x']);
   },
 
@@ -237,7 +249,10 @@ let LibraryWebAudio = {
 #endif
 
     EmAudio[contextHandle].audioWorklet.bootstrapMessage.port.postMessage({
-      _wpn: UTF8ToString(HEAPU32[options]), // '_wpn' == 'Worklet Processor Name', use a deliberately mangled name so that this field won't accidentally be mixed with user submitted messages.
+      // '_wpn' == 'Worklet Processor Name', use a deliberately mangled name so
+      // that this field won't accidentally be mixed with user submitted
+      // messages.
+      _wpn: UTF8ToString(HEAPU32[options]),
       audioParams,
       contextHandle,
       callback,

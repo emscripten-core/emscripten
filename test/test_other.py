@@ -13742,7 +13742,7 @@ foo/version.txt
       self.assertContained('done', self.run_js('test_itimer_standalone.wasm', engine))
 
   @node_pthreads
-  @no_mac("Our Mac CI currently has too much contention to run this reliably")
+  @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
   def test_itimer_proxy_to_pthread(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
