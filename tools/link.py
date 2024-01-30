@@ -575,24 +575,28 @@ def setup_pthreads(target):
 
 
 def set_initial_memory():
+  user_specified_initial_heap = 'INITIAL_HEAP' in user_settings
+
   # INITIAL_HEAP cannot be used when the memory object is created in JS.
   if settings.IMPORTED_MEMORY:
-    if 'INITIAL_HEAP' in user_settings:
+    if user_specified_initial_heap:
       # Some of these could (and should) be implemented.
-      exit_with_error('INITIAL_HEAP is currently not compatible with IMPORTED_MEMORY, SHARED_MEMORY, RELOCATABLE, ASYNCIFY_LAZY_LOAD_CODE, WASM2JS')
+      exit_with_error('INITIAL_HEAP is currently not compatible with IMPORTED_MEMORY, SHARED_MEMORY, RELOCATABLE, ASYNCIFY_LAZY_LOAD_CODE')
     # The default for imported memory is to fall back to INITIAL_MEMORY.
     settings.INITIAL_HEAP = -1
 
-  # For backwards compatibility, we will only use INITIAL_HEAP by default when the user
-  # specified neither INITIAL_MEMORY nor MAXIMUM_MEMORY. Both place an upper bounds on
-  # the overall initial linear memory (stack + static data + heap), and we do not know
-  # the size of static data at this stage. Setting any non-zero initial heap value in
-  # this scenario would risk pushing users over the limit they have set.
-  if 'INITIAL_HEAP' not in user_settings:
+  if not user_specified_initial_heap:
+    # For backwards compatibility, we will only use INITIAL_HEAP by default when the user
+    # specified neither INITIAL_MEMORY nor MAXIMUM_MEMORY. Both place an upper bounds on
+    # the overall initial linear memory (stack + static data + heap), and we do not know
+    # the size of static data at this stage. Setting any non-zero initial heap value in
+    # this scenario would risk pushing users over the limit they have set.
     user_specified_initial = settings.INITIAL_MEMORY != -1
-    # TODO-Review: is there a better way to check for aliased settings?
     user_specified_maximum = 'MAXIMUM_MEMORY' in user_settings or 'WASM_MEM_MAX' in user_settings or 'BINARYEN_MEM_MAX' in user_settings
-    if user_specified_initial or user_specified_maximum:
+    # INITIAL_HEAP does not allow us to cap maximum memory to initial memory without memory
+    # growth, which forces minimal WASM2JS builds to include "grow". Avoid regressing them.
+    wasm2js_without_mem_growth = settings.WASM2JS and not settings.ALLOW_MEMORY_GROWTH
+    if user_specified_initial or user_specified_maximum or wasm2js_without_mem_growth:
       settings.INITIAL_HEAP = -1
 
   # Apply the default if we are going with INITIAL_MEMORY.
