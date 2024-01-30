@@ -1297,7 +1297,7 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
 
 def save_intermediate(src, dst):
   if DEBUG:
-    dst = 'emcc-%d-%s' % (save_intermediate.counter, dst)
+    dst = 'emcc-%02d-%s' % (save_intermediate.counter, dst)
     save_intermediate.counter += 1
     dst = os.path.join(shared.CANONICAL_TEMP_DIR, dst)
     logger.debug('saving debug copy %s' % dst)
