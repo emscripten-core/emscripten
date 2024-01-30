@@ -159,8 +159,10 @@ INITIAL_HEAP
 The initial amount of heap memory available to the program.  This is the
 memory region available for dynamic allocations via `sbrk`, `malloc` and `new`.
 
-Unlike INITIAL_MEMORY, this setting does not place a hard cap on the total
-amount of memory available at startup, and so should be preferred.
+Unlike INITIAL_MEMORY, this setting allows the static and dynamic regions of
+your programs memory to independently grow. In most cases we recommend using
+this setting rather than `INITIAL_MEMORY`. However, this setting does not work
+for imported memories (e.g. when dynamic linking is used).
 
 .. _initial_memory:
 
