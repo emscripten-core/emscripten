@@ -3664,7 +3664,7 @@ Module["preRun"] = () => {
       create_file('dummy_file', 'dummy')
       # compile the code with the modularize feature and the preload-file option enabled
       # no wasm, since this tests customizing total memory at runtime
-      self.compile_btest('test.c', ['-sWASM=0', '-sMODULARIZE', '-sEXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + opts, reporting=Reporting.JS_ONLY)
+      self.compile_btest('test.c', ['-sWASM=0', '-sIMPORTED_MEMORY', '-sMODULARIZE', '-sEXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + opts, reporting=Reporting.JS_ONLY)
       create_file('a.html', '''
         <script src="a.out.js"></script>
         <script>
@@ -4690,9 +4690,9 @@ Module["preRun"] = () => {
     'threads': (['-pthread', '-sPROXY_TO_PTHREAD'],)
   })
   @parameterized({
-    'v1': ([],),
-    'v2': (['-sFULL_ES2'],),
-    'v3': (['-sFULL_ES3'],),
+    '': ([],),
+    'es2': (['-sFULL_ES2'],),
+    'es3': (['-sFULL_ES3'],),
   })
   def test_webgl_offscreen_framebuffer(self, version, threads):
     # Tests all the different possible versions of libgl
@@ -4817,7 +4817,7 @@ Module["preRun"] = () => {
   # Preallocating the buffer in this was is asm.js only (wasm needs a Memory).
   @requires_wasm2js
   def test_preallocated_heap(self):
-    self.btest_exit('test_preallocated_heap.cpp', args=['-sWASM=0', '-sINITIAL_MEMORY=16MB', '-sABORTING_MALLOC=0', '--shell-file', test_file('test_preallocated_heap_shell.html')])
+    self.btest_exit('test_preallocated_heap.cpp', args=['-sWASM=0', '-sIMPORTED_MEMORY', '-sINITIAL_MEMORY=16MB', '-sABORTING_MALLOC=0', '--shell-file', test_file('test_preallocated_heap_shell.html')])
 
   # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to IndexedDB.
   @also_with_wasm2js

@@ -10572,7 +10572,7 @@ int main () {
     hello_webgl_sources = [test_file('minimal_webgl/main.c'),
                            test_file('minimal_webgl/webgl.c'),
                            '--js-library', test_file('minimal_webgl/library_js.js'),
-                           '-lwebgl.js',
+                           '-lGL',
                            '-sMODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-sMAX_WEBGL_VERSION=2']
     hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web,worker']
@@ -13749,7 +13749,7 @@ foo/version.txt
       self.assertContained('done', self.run_js('test_itimer_standalone.wasm', engine))
 
   @node_pthreads
-  @no_mac("Our Mac CI currently has too much contention to run this reliably")
+  @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
   def test_itimer_proxy_to_pthread(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')

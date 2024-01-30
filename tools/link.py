@@ -1436,8 +1436,7 @@ def phase_linker_setup(options, state, newargs):
       'removeRunDependency',
     ]
 
-  # TODO(sbc): Remove WASM2JS here once the size regression it would introduce has been fixed.
-  if settings.SHARED_MEMORY or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE or settings.WASM2JS:
+  if settings.SHARED_MEMORY or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE:
     settings.IMPORTED_MEMORY = 1
 
   set_initial_memory()
@@ -2028,6 +2027,7 @@ def fix_es6_import_statements(js_file):
   write_file(js_file, src
              .replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
              .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import'))
+  save_intermediate('es6-module')
 
 
 def create_worker_file(input_file, target_dir, output_file):
@@ -2073,13 +2073,17 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   # steps that occurred after Closure.
   if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and settings.DEBUG_LEVEL == 0:
     shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.js'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
+    save_intermediate('unsafe-optimizations')
     # Finally, rerun Closure compile with simple optimizations. It will be able
     # to further minify the code. (n.b. it would not be safe to run in advanced
     # mode)
     final_js = building.closure_compiler(final_js, advanced=False, extra_closure_args=options.closure_args)
+    # Run unsafe_optimizations.js once more.  This allows the cleanup of newly
+    # unused things that closure compiler leaves behing (e.g `new Float64Array(x)`).
+    shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.js'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
+    save_intermediate('unsafe-optimizations2')
 
   fix_es6_import_statements(final_js)
-  save_intermediate('es6-module')
 
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:

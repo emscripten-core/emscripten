@@ -1,14 +1,16 @@
-// This file is the main bootstrap script for Wasm Audio Worklets loaded in an Emscripten application.
-// Build with -sAUDIO_WORKLET=1 linker flag to enable targeting Audio Worklets.
+// This file is the main bootstrap script for Wasm Audio Worklets loaded in an
+// Emscripten application.  Build with -sAUDIO_WORKLET=1 linker flag to enable
+// targeting Audio Worklets.
 
-// AudioWorkletGlobalScope does not have a onmessage/postMessage() functionality at the global scope, which
-// means that after creating an AudioWorkletGlobalScope and loading this script into it, we cannot
+// AudioWorkletGlobalScope does not have a onmessage/postMessage() functionality
+// at the global scope, which means that after creating an
+// AudioWorkletGlobalScope and loading this script into it, we cannot
 // postMessage() information into it like one would do with Web Workers.
 
-// Instead, we must create an AudioWorkletProcessor class, then instantiate a Web Audio graph node from it
-// on the main thread. Using its message port and the node constructor's
-// "processorOptions" field, we can share the necessary bootstrap information from the main thread to
-// the AudioWorkletGlobalScope.
+// Instead, we must create an AudioWorkletProcessor class, then instantiate a
+// Web Audio graph node from it on the main thread. Using its message port and
+// the node constructor's "processorOptions" field, we can share the necessary
+// bootstrap information from the main thread to the AudioWorkletGlobalScope.
 
 function createWasmAudioWorkletProcessor(audioParams) {
   class WasmAudioWorkletProcessor extends AudioWorkletProcessor {
@@ -98,8 +100,9 @@ function createWasmAudioWorkletProcessor(audioParams) {
       // Call out to Wasm callback to perform audio processing
       if (didProduceAudio = this.callbackFunction(numInputs, inputsPtr, numOutputs, outputsPtr, numParams, paramsPtr, this.userData)) {
         // Read back the produced audio data to all outputs and their channels.
-        // (A garbage-free function TypedArray.copy(dstTypedArray, dstOffset, srcTypedArray, srcOffset, count) would sure be handy..
-        //  but web does not have one, so manually copy all bytes in)
+        // (A garbage-free function TypedArray.copy(dstTypedArray, dstOffset,
+        // srcTypedArray, srcOffset, count) would sure be handy..  but web does
+        // not have one, so manually copy all bytes in)
         for (i of outputList) {
           for (j of i) {
             for (k = 0; k < 128; ++k) {
@@ -111,24 +114,28 @@ function createWasmAudioWorkletProcessor(audioParams) {
 
       stackRestore(oldStackPtr);
 
-      // Return 'true' to tell the browser to continue running this processor. (Returning 1 or any other truthy value won't work in Chrome)
+      // Return 'true' to tell the browser to continue running this processor.
+      // (Returning 1 or any other truthy value won't work in Chrome)
       return !!didProduceAudio;
     }
   }
   return WasmAudioWorkletProcessor;
 }
 
-// Specify a worklet processor that will be used to receive messages to this AudioWorkletGlobalScope.
-// We never connect this initial AudioWorkletProcessor to the audio graph to do any audio processing.
+// Specify a worklet processor that will be used to receive messages to this
+// AudioWorkletGlobalScope.  We never connect this initial AudioWorkletProcessor
+// to the audio graph to do any audio processing.
 class BootstrapMessages extends AudioWorkletProcessor {
   constructor(arg) {
     super();
-    // Initialize the global Emscripten Module object that contains e.g. the Wasm Module and Memory objects.
-    // After this we are ready to load in the main application JS script, which the main thread will addModule()
+    // Initialize the global Emscripten Module object that contains e.g. the
+    // Wasm Module and Memory objects.  After this we are ready to load in the
+    // main application JS script, which the main thread will addModule()
     // to this scope.
     globalThis.Module = arg['processorOptions'];
 #if !MINIMAL_RUNTIME
-    // Default runtime relies on an injected instantiateWasm() function to initialize the Wasm Module.
+    // Default runtime relies on an injected instantiateWasm() function to
+    // initialize the Wasm Module.
     globalThis.Module['instantiateWasm'] = (info, receiveInstance) => {
       var instance = new WebAssembly.Instance(Module['wasm'], info);
       receiveInstance(instance, Module['wasm']);
@@ -139,18 +146,25 @@ class BootstrapMessages extends AudioWorkletProcessor {
     console.log('AudioWorklet global scope looks like this:');
     console.dir(globalThis);
 #endif
-    // Listen to messages from the main thread. These messages will ask this scope to create the real
-    // AudioWorkletProcessors that call out to Wasm to do audio processing.
+    // Listen to messages from the main thread. These messages will ask this
+    // scope to create the real AudioWorkletProcessors that call out to Wasm to
+    // do audio processing.
     let p = globalThis['messagePort'] = this.port;
     p.onmessage = (msg) => {
       let d = msg.data;
-      if (d['_wpn']) { // '_wpn' is short for 'Worklet Processor Node', using an identifier that will never conflict with user messages
+      if (d['_wpn']) {
+        // '_wpn' is short for 'Worklet Processor Node', using an identifier
+        // that will never conflict with user messages
 #if MODULARIZE
-        // Instantiate the MODULARIZEd Module function, which is stored for us under the special global
-        // name AudioWorkletModule in MODULARIZE+AUDIO_WORKLET builds.
+        // Instantiate the MODULARIZEd Module function, which is stored for us
+        // under the special global name AudioWorkletModule in
+        // MODULARIZE+AUDIO_WORKLET builds.
         if (globalThis.AudioWorkletModule) {
-          AudioWorkletModule(Module); // This populates the Module object with all the Wasm properties
-          delete globalThis.AudioWorkletModule; // We have now instantiated the Module function, can discard it from global scope
+          // This populates the Module object with all the Wasm properties
+          AudioWorkletModule(Module);
+          // We have now instantiated the Module function, can discard it from
+          // global scope
+          delete globalThis.AudioWorkletModule;
         }
 #endif
         // Register a real AudioWorkletProcessor that will actually do audio processing.
@@ -158,22 +172,29 @@ class BootstrapMessages extends AudioWorkletProcessor {
 #if WEBAUDIO_DEBUG
         console.log(`Registered a new WasmAudioWorkletProcessor "${d['_wpn']}" with AudioParams: ${d['audioParams']}`);
 #endif
-        // Post a Wasm Call message back telling that we have now registered the AudioWorkletProcessor class,
-        // and should trigger the user onSuccess callback of the emscripten_create_wasm_audio_worklet_processor_async() call.
+        // Post a Wasm Call message back telling that we have now registered the
+        // AudioWorkletProcessor class, and should trigger the user onSuccess
+        // callback of the
+        // emscripten_create_wasm_audio_worklet_processor_async() call.
         p.postMessage({'_wsc': d['callback'], 'x': [d['contextHandle'], 1/*EM_TRUE*/, d['userData']] }); // "WaSm Call"
-      } else if (d['_wsc']) { // '_wsc' is short for 'wasm call', using an identifier that will never conflict with user messages
+      } else if (d['_wsc']) {
+        // '_wsc' is short for 'wasm call', using an identifier that will never
+        // conflict with user messages
         Module['wasmTable'].get(d['_wsc'])(...d['x']);
       };
     }
   }
 
-  // No-op, not doing audio processing in this processor. It is just for receiving bootstrap messages.
-  // However browsers require it to still be present. It should never be called because we never add a
-  // node to the graph with this processor, although it does look like Chrome does still call this function.
+  // No-op, not doing audio processing in this processor. It is just for
+  // receiving bootstrap messages.  However browsers require it to still be
+  // present. It should never be called because we never add a node to the graph
+  // with this processor, although it does look like Chrome does still call this
+  // function.
   process() {
-    // keep this function a no-op. Chrome redundantly wants to call this even though this processor is never added to the graph.
+    // keep this function a no-op. Chrome redundantly wants to call this even
+    // though this processor is never added to the graph.
   }
 };
 
 // Register the dummy processor that will just receive messages.
-registerProcessor("message", BootstrapMessages);
+registerProcessor('message', BootstrapMessages);

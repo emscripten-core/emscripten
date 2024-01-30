@@ -162,18 +162,25 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if MAX_WEBGL_VERSION >= 2
       // WebGL 2 extensions
       'EXT_color_buffer_float',
+      'EXT_conservative_depth',
       'EXT_disjoint_timer_query_webgl2',
       'EXT_texture_norm16',
+      'NV_shader_noperspective_interpolation',
       'WEBGL_clip_cull_distance',
 #endif
       // WebGL 1 and WebGL 2 extensions
       'EXT_color_buffer_half_float',
+      'EXT_depth_clamp',
       'EXT_float_blend',
       'EXT_texture_compression_bptc',
       'EXT_texture_compression_rgtc',
       'EXT_texture_filter_anisotropic',
       'KHR_parallel_shader_compile',
       'OES_texture_float_linear',
+      'WEBGL_blend_func_extended',
+      'WEBGL_compressed_texture_astc',
+      'WEBGL_compressed_texture_etc',
+      'WEBGL_compressed_texture_etc1',
       'WEBGL_compressed_texture_s3tc',
       'WEBGL_compressed_texture_s3tc_srgb',
       'WEBGL_debug_renderer_info',
@@ -425,7 +432,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     getSource: (shader, count, string, length) => {
       var source = '';
       for (var i = 0; i < count; ++i) {
-        var len = length ? {{{ makeGetValue('length', 'i*' * POINTER_SIZE, '*') }}} : undefined;
+        var len = length ? {{{ makeGetValue('length', 'i*' + POINTER_SIZE, '*') }}} : undefined;
         source += UTF8ToString({{{ makeGetValue('string', 'i*' + POINTER_SIZE, '*') }}}, len);
       }
 #if LEGACY_GL_EMULATION

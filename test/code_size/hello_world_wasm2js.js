@@ -1,59 +1,64 @@
-var b = Module, g = new function(a) {
-    this.buffer = new ArrayBuffer(65536 * a.initial);
-}({
-    initial: 256,
-    maximum: 256
-}), k = g.buffer, d = new Uint8Array(k), l = new TextDecoder("utf8"), m;
+var c = Module, g, h, k = new TextDecoder("utf8"), l;
 
-function c(a) {
-    this.exports = function(h) {
-        function n(f) {
-            f.set = function(e, p) {
-                this[e] = p;
+function d(b) {
+    this.exports = function(f) {
+        function m(e) {
+            e.set = function(a, n) {
+                this[a] = n;
             };
-            f.get = function(e) {
-                return this[e];
+            e.get = function(a) {
+                return this[a];
             };
-            return f;
+            return e;
         }
-        return function(f) {
-            var e = f.a.a;
+        return function(e) {
+            var a = new ArrayBuffer(16777216), n = e.a.a;
+            e = m([]);
             return {
-                b: function() {},
-                c: function(p, q) {
-                    e(1024);
+                b: Object.create(Object.prototype, {
+                    grow: {},
+                    buffer: {
+                        get: function() {
+                            return a;
+                        }
+                    }
+                }),
+                c: function() {},
+                d: function(p, q) {
+                    n(1024);
                     return 0;
                 },
-                d: n([])
+                e: e
             };
-        }(h);
-    }(a);
+        }(f);
+    }(b);
 }
 
-(function(a, h) {
+(function(b, f) {
     return {
-        then: function(n) {
-            n({
-                instance: new c(h)
+        then: function(m) {
+            m({
+                instance: new d(f)
             });
         }
     };
-})(b.wasm, {
+})(c.wasm, {
     a: {
-        a: a => {
-            var h = console, n = h.log;
-            if (a) {
-                for (var f = a + void 0, e = a; !(e >= f) && d[e]; ) ++e;
-                a = l.decode(d.subarray(a, e));
-            } else a = "";
-            n.call(h, a);
-        },
-        memory: g
+        a: b => {
+            var f = console, m = f.log;
+            if (b) {
+                for (var e = b + void 0, a = b; !(a >= e) && g[a]; ) ++a;
+                b = k.decode(g.subarray(b, a));
+            } else b = "";
+            m.call(f, b);
+        }
     }
-}).then((a => {
-    a = a.instance.exports;
-    m = a.c;
-    d.set(new Uint8Array(b.mem), 1024);
-    a.b();
-    m();
+}).then((b => {
+    b = b.instance.exports;
+    l = b.d;
+    h = b.b;
+    g = new Uint8Array(h.buffer);
+    g.set(new Uint8Array(c.mem), 1024);
+    b.c();
+    l();
 }));
