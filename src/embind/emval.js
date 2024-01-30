@@ -12,39 +12,42 @@
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 // -- jshint doesn't understand library syntax, so we need to mark the symbols exposed here
-/*global getStringOrSymbol, emval_freelist, emval_handles, emval_handles_reserved, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_decref*/
+/*global getStringOrSymbol, emval_freelist, emval_handles, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_decref*/
 /*global emval_addMethodCaller, emval_methodCallers, addToLibrary, global, emval_lookupTypes, makeLegalFunctionName*/
 /*global emval_get_global*/
 
+// Number of handles reserved for non-use (0) or common values w/o refcount.
+{{{ 
+  globalThis.EMVAL_RESERVED_HANDLES = 5;
+  null;
+}}}
 var LibraryEmVal = {
   // Stack of handles available for reuse.
   $emval_freelist: [],
   // Array of alternating pairs (value, refcount).
   $emval_handles: [],
-  // Number of handles reserved for non-use (0) or common values w/o refcount.
-  $emval_handles_reserved: 5,
   $emval_symbols: {}, // address -> string
 
-  $init_emval__deps: ['$count_emval_handles', '$emval_handles', '$emval_handles_reserved'],
+  $init_emval__deps: ['$count_emval_handles', '$emval_handles'],
   $init_emval__postset: 'init_emval();',
   $init_emval: () => {
     // reserve 0 and some special values. These never get de-allocated.
     emval_handles.push(
-      0, 0,
-      undefined, 0,
-      null, 0,
-      true, 0,
-      false, 0,
+      0, 1,
+      undefined, 1,
+      null, 1,
+      true, 1,
+      false, 1,
     );
   #if ASSERTIONS
-    assert(emval_handles.length / 2 === emval_handles_reserved);
+    assert(emval_handles.length / 2 === {{{ EMVAL_RESERVED_HANDLES }}});
   #endif
     Module['count_emval_handles'] = count_emval_handles;
   },
 
-  $count_emval_handles__deps: ['$emval_freelist', '$emval_handles', '$emval_handles_reserved'],
+  $count_emval_handles__deps: ['$emval_freelist', '$emval_handles'],
   $count_emval_handles: () => {
-    return emval_handles.length / 2 - emval_handles_reserved - emval_freelist.length;
+    return emval_handles.length / 2 - {{{ EMVAL_RESERVED_HANDLES }}}- emval_freelist.length;
   },
 
   _emval_register_symbol__deps: ['$emval_symbols', '$readLatin1String'],
@@ -68,6 +71,7 @@ var LibraryEmVal = {
           throwBindingError('Cannot use deleted val. handle = ' + handle);
       }
   #if ASSERTIONS
+      // handle 1 is supposed to be `undefined`.
       assert(handle === 1 || emval_handles[handle * 2] !== undefined, `invalid handle: ${handle}`);
   #endif
       return emval_handles[handle * 2];
@@ -89,17 +93,16 @@ var LibraryEmVal = {
     }
   },
 
-  _emval_incref__deps: ['$emval_handles', '$emval_handles_reserved'],
+  _emval_incref__deps: ['$emval_handles'],
   _emval_incref: (handle) => {
-    if (handle >= emval_handles_reserved) {
-      emval_handles[handle * 2 + 1] += 1;
-    }
+    emval_handles[handle * 2 + 1] += 1;
   },
 
-  _emval_decref__deps: ['$emval_freelist', '$emval_handles', '$emval_handles_reserved'],
+  _emval_decref__deps: ['$emval_freelist', '$emval_handles'],
   _emval_decref: (handle) => {
-    if (handle >= emval_handles_reserved && 0 === --emval_handles[handle * 2 + 1]) {
+    if (0 === --emval_handles[handle * 2 + 1]) {
   #if ASSERTIONS
+      assert(handle >= {{{ EMVAL_RESERVED_HANDLES }}});
       assert(emval_handles[handle * 2] !== undefined);
   #endif
       emval_handles[handle * 2] = undefined;
