@@ -126,14 +126,14 @@ int main()
   printf("Created context with handle %u\n", (unsigned int)ctx);
   if (!ctx)
   {
-    EM_ASM({
-      if (typeof OffscreenCanvas === 'undefined') {
+    if (!emscripten_supports_offscreencanvas()) {
+      EM_ASM({
         xhr = new XMLHttpRequest();
         xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20OffscreenCanvas%20is%20not%20supported!');
         xhr.send();
         setTimeout(function() { window.close() }, 2000);
-      }
-    });
+      });
+    }
     return 0;
   }
   emscripten_webgl_make_context_current(ctx);
