@@ -811,19 +811,7 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser_2gb"
-          test_targets: "
-            browser_2gb.test_gles2_uniform_arrays
-            browser_2gb.test_fetch_to_memory
-            browser_2gb.test_emscripten_animate_canvas_element_size_manual_css
-            browser_2gb.test_fulles2_sdlproc
-            browser_2gb.test_cubegeom*
-            browser_2gb.test_html5_webgl_create_context*
-            browser_2gb.test_main_thread_async_em_asm
-            browser_2gb.test_webgl2_*
-            browser_2gb.test_webgl_*
-            browser_2gb.test_sdl_image
-            browser_2gb.test_wasm_worker*
-            "
+          test_targets: "browser_2gb"
   test-browser-chrome-wasm64-4gb:
     executor: bionic
     steps:
