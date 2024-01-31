@@ -467,10 +467,10 @@ Options that are modified or new in *emcc* are listed below:
    directory is usually within the cache directory.
 
 "--use-port=<port>"
-   [link] Use the specified port. If you need to use more than one
-   port you can use this argument multiple times. For example: "--use-
-   port=sdl2 --use-port=bzip2". To get the list of available ports,
-   use "--show-ports".
+   [compile+link] Use the specified port. If you need to use more than
+   one port you can use this argument multiple times. For example: "--
+   use-port=sdl2 --use-port=bzip2". To get the list of available
+   ports, use "--show-ports".
 
 "--clear-ports"
    [general] Manually clears the local copies of ports from the
