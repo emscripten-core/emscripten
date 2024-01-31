@@ -1563,7 +1563,7 @@ keydown(100);keyup(100); // trigger the end
   def test_sdl_ogl_regal(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('test_sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sUSE_REGAL', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'])
+               args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sUSE_REGAL', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL', '-lc++', '-lc++abi'])
 
   @requires_graphics_hardware
   def test_sdl_ogl_defaultmatrixmode(self):
@@ -2114,13 +2114,13 @@ keydown(100);keyup(100); // trigger the end
   @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_cubegeom_regal(self):
-    self.btest('third_party/cubegeom/cubegeom.c', reference='third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-sUSE_REGAL', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest('third_party/cubegeom/cubegeom.c', reference='third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-sUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'], also_proxied=True)
 
   @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_threads
   @requires_graphics_hardware
   def test_cubegeom_regal_mt(self):
-    self.btest('third_party/cubegeom/cubegeom.c', reference='third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-pthread', '-sUSE_REGAL', '-lGL', '-lSDL'], also_proxied=False)
+    self.btest('third_party/cubegeom/cubegeom.c', reference='third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-pthread', '-sUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'], also_proxied=False)
 
   @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
