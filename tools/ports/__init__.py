@@ -22,6 +22,8 @@ ports = []
 
 ports_by_name = {}
 
+ports_needed = set()
+
 # Variant builds that we want to support for certain ports
 # {variant_name: (port_name, extra_settings)}
 port_variants = {}
@@ -40,10 +42,10 @@ def load_port(name):
   for a in expected_attrs:
     assert hasattr(port, a), 'port %s is missing %s' % (port, a)
   if not hasattr(port, 'needed'):
-    port.needed = lambda s: name in s.PORTS
+    port.needed = lambda s: name in ports_needed
   else:
     needed = port.needed
-    port.needed = lambda s: needed(s) or name in s.PORTS
+    port.needed = lambda s: needed(s) or name in ports_needed
   if not hasattr(port, 'process_dependencies'):
     port.process_dependencies = lambda x: 0
   if not hasattr(port, 'linker_setup'):
@@ -373,8 +375,9 @@ def resolve_dependencies(port_set, settings):
 
 def handle_use_port_arg(settings, name):
   if name not in ports_by_name:
-    utils.exit_with_error(f'Invalid port name: {name} used with --user-port')
-  settings.PORTS.append(name)
+    utils.exit_with_error(f'Invalid port name: {name} used with --use-port')
+  ports_needed.add(name)
+  print(f'ports_needed={ports_needed}')
 
 
 def get_needed_ports(settings):

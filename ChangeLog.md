@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.54 (in development)
 -----------------------
+- Added `--use-port` option to `emcc`. You can use `--show-ports` to get the
+  list of available ports that can be used with this new option.
+ 
 
 3.1.53 - 01/29/24
 -----------------

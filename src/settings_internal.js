@@ -273,7 +273,3 @@ var BULK_MEMORY = false;
 var MINIFY_WHITESPACE = true;
 
 var ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS = [];
-
-// Specify which ports to use. This is set via the --use-port command line
-// option
-var PORTS = [];

@@ -460,7 +460,7 @@ Options that are modified or new in *emcc* are listed below:
 ``--use-port=<port>``
   [link]
   Use the specified port. If you need to use more than one port you can use this
-  argument multiple times. For example: ``--user-port=sdl2 --user-port=bzip2``.
+  argument multiple times. For example: ``--use-port=sdl2 --use-port=bzip2``.
   To get the list of available ports, use ``--show-ports``.
 
 .. _emcc-clear-ports:
