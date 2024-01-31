@@ -97,6 +97,22 @@ function getTransitiveDeps(symbol) {
   return Array.from(transitiveDeps);
 }
 
+function shouldPreprocess(fileName) {
+  return read(fileName).trim().startsWith('#preprocess\n');
+}
+
+function preJS() {
+  let result = '';
+  for (const fileName of PRE_JS_FILES) {
+    if (shouldPreprocess(fileName)) {
+      result += processMacros(preprocess(fileName));
+    } else {
+      result += read(fileName);
+    }
+  }
+  return result;
+}
+
 function runJSify() {
   const libraryItems = [];
   const symbolDeps = {};
@@ -583,15 +599,13 @@ function(${args}) {
     libraryItems.push(JS);
   }
 
-  function includeFile(fileName) {
+  function includeFile(fileName, needsPreprocess = true) {
     print(`// include: ${fileName}`);
-    print(processMacros(preprocess(fileName)));
-    print(`// end include: ${fileName}`);
-  }
-
-  function includeFileRaw(fileName) {
-    print(`// include: ${fileName}`);
-    print(read(fileName));
+    if (needsPreprocess) {
+      print(processMacros(preprocess(fileName)));
+    } else {
+      print(read(fileName));
+    }
     print(`// end include: ${fileName}`);
   }
 
@@ -653,7 +667,7 @@ var proxiedFunctionTable = [
     includeFile(postFile);
 
     for (const fileName of POST_JS_FILES) {
-      includeFileRaw(fileName);
+      includeFile(fileName, shouldPreprocess(fileName));
     }
 
     print('//FORWARDED_DATA:' + JSON.stringify({

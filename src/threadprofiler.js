@@ -1,3 +1,5 @@
+#preprocess
+
 /**
  * @license
  * Copyright 2015 The Emscripten Authors
@@ -41,7 +43,6 @@ var emscriptenThreadProfiler = {
     }
     for (var i = 0; i < threads.length; ++i) {
       var threadPtr = threads[i];
-      var profilerBlock = Atomics.load(HEAPU32, (threadPtr + 8 /* {{{ C_STRUCTS.pthread.profilerBlock }}}*/) >> 2);
       var threadName = PThread.getThreadName(threadPtr);
       if (threadName) {
         threadName = `"${threadName}" (${ptrToString(threadPtr)})`;
@@ -69,7 +70,10 @@ var emscriptenThreadProfiler = {
 
     for (var i = 0; i < threads.length; ++i) {
       var threadPtr = threads[i];
-      var profilerBlock = Atomics.load(HEAPU32, (threadPtr + 8 /* {{{ C_STRUCTS.pthread.profilerBlock }}}*/) >> 2);
+      var profilerBlock = Atomics.load({{{ getHeapForType('*') }}}, {{{ getHeapOffset('threadPtr + ' + C_STRUCTS.pthread.profilerBlock, '*') }}});
+#if MEMORY64
+      profilerBlock = Number(profilerBlock);
+#endif
       var threadName = PThread.getThreadName(threadPtr);
       if (threadName) {
         threadName = `"${threadName}" (${ptrToString(threadPtr)})`;
@@ -81,11 +85,11 @@ var emscriptenThreadProfiler = {
 
       var threadTimesInStatus = [];
       var totalTime = 0;
-      var offset = profilerBlock + 16/*C_STRUCTS.thread_profiler_block.timeSpentInStatus*/;
-      for (var j = 0; j < 7/*EM_THREAD_STATUS_NUMFIELDS*/; ++j, offset += 8) {
-        threadTimesInStatus.push(Number(getValue(offset, 'double')));
+      var offset = profilerBlock + {{{ C_STRUCTS.thread_profiler_block.timeSpentInStatus }}};
+      for (var j = 0; j < {{{ cDefs.EM_THREAD_STATUS_NUMFIELDS }}}; ++j, offset += 8) {
+        threadTimesInStatus.push({{{ makeGetValue('offset', 0, 'double') }}});
         totalTime += threadTimesInStatus[j];
-        setValue(offset, 0, 'double');
+        {{{ makeSetValue('offset', 0, 0, 'double') }}};
       }
       var recent = '';
       if (threadTimesInStatus[1] > 0) recent += (threadTimesInStatus[1] / totalTime * 100.0).toFixed(1) + '% running. ';

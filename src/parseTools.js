@@ -137,6 +137,8 @@ function preprocess(filename) {
           if (showCurrentLine()) {
             error(`${filename}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
           }
+        } else if (first === '#preprocess') {
+          // Do nothing
         } else {
           error(`${filename}:${i + 1}: Unknown preprocessor directive ${first}`);
         }
@@ -1020,14 +1022,6 @@ function getEntryFunction() {
     return `resolveGlobalSymbol('${entryFunction}').sym;`
   }
   return `_${entryFunction}`;
-}
-
-function preJS() {
-  let result = '';
-  for (const fileName of PRE_JS_FILES) {
-    result += read(fileName);
-  }
-  return result;
 }
 
 function formattedMinNodeVersion() {
