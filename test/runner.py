@@ -98,6 +98,7 @@ misc_test_modes = [
   'bigint',
   'browser64',
   'browser64_4gb',
+  'browser_2gb',
 ]
 
 
