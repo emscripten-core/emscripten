@@ -115,4 +115,4 @@ def process_dependencies(settings):
 
 
 def show():
-  return 'SDL2_mixer (-sUSE_SDL_MIXER=2 or -sPORTS=sdl2_mixer; zlib license)'
+  return 'sdl2_mixer (-sUSE_SDL_MIXER=2 or --use-port=sdl2_mixer; zlib license)'

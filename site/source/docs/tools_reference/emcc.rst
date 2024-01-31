@@ -455,6 +455,14 @@ Options that are modified or new in *emcc* are listed below:
   By default this will also clear any download ports since the ports directory
   is usually within the cache directory.
 
+.. _emcc-use-port:
+
+``--use-port=<port>``
+  [link]
+  Use the specified port. If you need to use more than one port you can use this
+  argument multiple times. For example: ``--user-port=sdl2 --user-port=bzip2``.
+  To get the list of available ports, use ``--show-ports``.
+
 .. _emcc-clear-ports:
 
 ``--clear-ports``

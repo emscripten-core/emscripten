@@ -30,7 +30,7 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'ogg (-sUSE_OGG=1 or -sPORTS=ogg; zlib license)'
+  return 'ogg (-sUSE_OGG=1 or --use-port=ogg; zlib license)'
 
 
 config_types_h = '''\

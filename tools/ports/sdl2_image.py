@@ -73,4 +73,4 @@ def process_dependencies(settings):
 
 
 def show():
-  return 'SDL2_image (-sUSE_SDL_IMAGE=2 or -sPORTS=sdl2_image; zlib license)'
+  return 'sdl2_image (-sUSE_SDL_IMAGE=2 or --use-port=sdl2_image; zlib license)'

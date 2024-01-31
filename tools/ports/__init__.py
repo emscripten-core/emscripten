@@ -371,10 +371,10 @@ def resolve_dependencies(port_set, settings):
     add_deps(port)
 
 
-def check_ports_settings(settings):
-  for name in settings.PORTS:
-    if name not in ports_by_name:
-      utils.exit_with_error(f'Invalid port name: {name}')
+def handle_use_port_arg(settings, name):
+  if name not in ports_by_name:
+    utils.exit_with_error(f'Invalid port name: {name} used with --user-port')
+  settings.PORTS.append(name)
 
 
 def get_needed_ports(settings):
@@ -440,7 +440,7 @@ def add_cflags(args, settings): # noqa: U100
 
 def show_ports():
   print('Available ports:')
-  for port in ports:
+  for port in sorted(ports, key=lambda p: p.name):
     print('   ', port.show())
 
 

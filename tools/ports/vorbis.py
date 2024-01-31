@@ -37,4 +37,4 @@ def process_dependencies(settings):
 
 
 def show():
-  return 'vorbis (-sUSE_VORBIS or -sPORTS=vorbis; zlib license)'
+  return 'vorbis (-sUSE_VORBIS or --use-port=vorbis; zlib license)'

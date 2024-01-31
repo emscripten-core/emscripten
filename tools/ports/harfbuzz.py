@@ -152,4 +152,4 @@ def process_args(ports):
 
 
 def show():
-  return 'harfbuzz (-sUSE_HARFBUZZ=1 or -sPORTS=harfbuzz; MIT license)'
+  return 'harfbuzz (-sUSE_HARFBUZZ=1 or --use-port=harfbuzz; MIT license)'

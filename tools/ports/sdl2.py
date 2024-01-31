@@ -91,4 +91,4 @@ def process_args(ports):
 
 
 def show():
-  return 'SDL2 (-sUSE_SDL=2 or -sPORTS=sdl2; zlib license)'
+  return 'sdl2 (-sUSE_SDL=2 or --use-port=sdl2; zlib license)'
