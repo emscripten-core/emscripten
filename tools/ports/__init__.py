@@ -377,7 +377,6 @@ def handle_use_port_arg(settings, name):
   if name not in ports_by_name:
     utils.exit_with_error(f'Invalid port name: {name} used with --use-port')
   ports_needed.add(name)
-  print(f'ports_needed={ports_needed}')
 
 
 def get_needed_ports(settings):
