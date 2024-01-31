@@ -1197,6 +1197,15 @@ f.close()
     self.run_process([EMCC, 'main.c', '-Wl,-L.', '-Wl,-lfoo'])
     self.run_process([EMCC, 'main.c', '-Wl,@linkflags.txt'])
 
+  def test_wl_stackfirst(self):
+    cmd = [EMCC, test_file('hello_world.c'), '-Wl,--stack-first']
+    self.run_process(cmd + ['-O0'])
+    self.run_process(cmd + ['-O2'])
+    err = self.expect_fail(cmd + ['-fsanitize=address'])
+    self.assertContained('error: --stack-first is not compatible with asan', err)
+    err = self.expect_fail(cmd + ['-sGLOBAL_BASE=1024'])
+    self.assertContained('error: --stack-first is not compatible with -sGLOBAL_BASE', err)
+
   def test_l_link(self):
     # Linking with -lLIBNAME and -L/DIRNAME should work, also should work with spaces
     create_file('main.c', '''
@@ -2723,7 +2732,7 @@ int f() {
             self.assertFalse(os.path.exists(self.canonical_temp_dir))
           else:
             print(sorted(os.listdir(self.canonical_temp_dir)))
-            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-3-original.js'))
+            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-03-original.js'))
 
   def test_debuginfo_line_tables_only(self):
     def test(do_compile):

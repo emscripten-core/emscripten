@@ -4823,13 +4823,13 @@ Module["preRun"] = () => {
   @also_with_wasm2js
   def test_fetch_to_memory(self):
     # Test error reporting in the negative case when the file URL doesn't exist. (http 404)
-    self.btest_exit('fetch/to_memory.cpp',
+    self.btest_exit('fetch/test_fetch_to_memory.cpp',
                     args=['-sFETCH_DEBUG', '-sFETCH', '-DFILE_DOES_NOT_EXIST'])
 
     # Test the positive case when the file URL exists. (http 200)
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     for arg in [[], ['-sFETCH_SUPPORT_INDEXEDDB=0']]:
-      self.btest_exit('fetch/to_memory.cpp',
+      self.btest_exit('fetch/test_fetch_to_memory.cpp',
                       args=['-sFETCH_DEBUG', '-sFETCH'] + arg)
 
   @parameterized({
@@ -4840,22 +4840,20 @@ Module["preRun"] = () => {
   @requires_threads
   def test_fetch_from_thread(self, args):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/from_thread.cpp',
+    self.btest_exit('fetch/test_fetch_from_thread.cpp',
                     args=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sFETCH_DEBUG', '-sFETCH', '-DFILE_DOES_NOT_EXIST'],
                     also_wasm2js=True)
 
   @also_with_wasm2js
   def test_fetch_to_indexdb(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/to_indexeddb.cpp',
-                    args=['-sFETCH_DEBUG', '-sFETCH'])
+    self.btest_exit('fetch/test_fetch_to_indexeddb.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
 
   # Tests emscripten_fetch() usage to persist an XHR into IndexedDB and subsequently load up from there.
   @also_with_wasm2js
   def test_fetch_cached_xhr(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/cached_xhr.cpp',
-                    args=['-sFETCH_DEBUG', '-sFETCH'])
+    self.btest_exit('fetch/test_fetch_cached_xhr.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
 
   # Tests that response headers get set on emscripten_fetch_t values.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
@@ -4863,7 +4861,7 @@ Module["preRun"] = () => {
   @requires_threads
   def test_fetch_response_headers(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/response_headers.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/test_fetch_response_headers.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Test emscripten_fetch() usage to stream a XHR in to memory without storing the full file in memory
   @also_with_wasm2js
@@ -4877,15 +4875,16 @@ Module["preRun"] = () => {
     with open('largefile.txt', 'w') as f:
       for _ in range(1024):
         f.write(s)
-    self.btest_exit('fetch/stream_file.cpp',
+    self.btest_exit('fetch/test_fetch_stream_file.cpp',
                     args=['-sFETCH_DEBUG', '-sFETCH', '-sINITIAL_MEMORY=536870912'])
 
   def test_fetch_headers_received(self):
-    self.btest_exit('fetch/headers_received.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
+    create_file('myfile.dat', 'hello world\n')
+    self.btest_exit('fetch/test_fetch_headers_received.c', args=['-sFETCH_DEBUG', '-sFETCH'])
 
   def test_fetch_xhr_abort(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/xhr_abort.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
+    self.btest_exit('fetch/test_fetch_xhr_abort.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
 
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
   # thread proxied to a Worker with -sPROXY_TO_PTHREAD option.
@@ -4894,7 +4893,7 @@ Module["preRun"] = () => {
   @requires_threads
   def test_fetch_sync_xhr(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/sync_xhr.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/test_fetch_sync_xhr.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Tests emscripten_fetch() usage when user passes none of the main 3 flags (append/replace/no_download).
   # In that case, in append is implicitly understood.
@@ -4917,7 +4916,7 @@ Module["preRun"] = () => {
   @requires_threads
   def test_fetch_sync_xhr_in_proxy_to_worker(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/sync_xhr.cpp',
+    self.btest_exit('fetch/test_fetch_sync_xhr.cpp',
                     args=['-sFETCH_DEBUG', '-sFETCH', '--proxy-to-worker'])
 
   # Tests waiting on EMSCRIPTEN_FETCH_WAITABLE request from a worker thread
@@ -4925,18 +4924,18 @@ Module["preRun"] = () => {
   @requires_threads
   def test_fetch_sync_fetch_in_main_thread(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/sync_fetch_in_main_thread.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-pthread', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/test_fetch_sync_in_main_thread.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   @requires_threads
   @disabled('https://github.com/emscripten-core/emscripten/issues/16746')
   def test_fetch_idb_store(self):
-    self.btest_exit('fetch/idb_store.cpp', args=['-pthread', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/test_fetch_idb_store.cpp', args=['-pthread', '-sFETCH', '-sPROXY_TO_PTHREAD'])
 
   @requires_threads
   @disabled('https://github.com/emscripten-core/emscripten/issues/16746')
   def test_fetch_idb_delete(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/idb_delete.cpp', args=['-pthread', '-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/test_fetch_idb_delete.cpp', args=['-pthread', '-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
 
   def test_fetch_post(self):
     self.btest_exit('fetch/test_fetch_post.c', args=['-sFETCH'])
