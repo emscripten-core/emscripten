@@ -57,7 +57,7 @@ var LibraryHtml5WebGL = {
 #if ASSERTIONS
     assert(attributes);
 #endif
-    var a = attributes >> 2;
+    var a = {{{ getHeapOffset('attributes', 'i32') }}};
     var powerPreference = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.powerPreference }}}>>2)];
     var contextAttributes = {
       'alpha': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.alpha }}}>>2)],
@@ -184,7 +184,7 @@ var LibraryHtml5WebGL = {
   },
 #if PTHREADS && OFFSCREEN_FRAMEBUFFER
   // Runs on the calling thread, proxies if needed.
-  emscripten_webgl_make_context_current_calling_thread__sig: 'ii',
+  emscripten_webgl_make_context_current_calling_thread__sig: 'ip',
   emscripten_webgl_make_context_current_calling_thread: (contextHandle) => {
     var success = GL.makeContextCurrent(contextHandle);
     if (success) GL.currentContextIsProxied = false; // If succeeded above, we will have a local GL context from this thread (worker or main).
