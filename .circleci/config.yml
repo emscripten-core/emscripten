@@ -798,8 +798,13 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser"
-          # skip test_4gb_fail as it OOMs on the current bot
-          test_targets: "browser skip:browser.test_4gb_fail"
+          # Skip test_4gb_fail as it OOMs on the current bot
+          # Include an representative selection of browser_2gb
+          test_targets: "
+            browser_2gb.test_gles2_uniform_arrays
+            browser_2gb.test_fetch_to_memory
+            browser skip:browser.test_4gb_fail
+            "
   test-browser-chrome-wasm64:
     executor: bionic
     steps:
