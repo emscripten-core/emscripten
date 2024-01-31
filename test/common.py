@@ -839,6 +839,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.js_engines = config.JS_ENGINES.copy()
     self.settings_mods = {}
     self.emcc_args = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
+    # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
+    # For historical reasons emcc compiles and links as C++ by default.
+    # However we want to run our tests in a more strict manner.  We can
+    # remove this if the issue above is ever fixed.
+    self.set_setting('NO_DEFAULT_TO_CXX')
     self.ldflags = []
     # Increate stack trace limit to maximise usefulness of test failure reports
     self.node_args = ['--stack-trace-limit=50']
@@ -1042,12 +1047,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       filename = test_file(filename)
     suffix = '.js' if js_outfile else '.wasm'
     compiler = [compiler_for(filename, force_c)]
-    if compiler[0] == EMCC:
-      # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
-      # For historical reasons emcc compiles and links as C++ by default.
-      # However we want to run our tests in a more strict manner.  We can
-      # remove this if the issue above is ever fixed.
-      compiler.append('-sNO_DEFAULT_TO_CXX')
 
     if force_c:
       assert shared.suffix(filename) != '.c', 'force_c is not needed for source files ending in .c'
