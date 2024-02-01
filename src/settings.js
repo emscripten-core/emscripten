@@ -1455,6 +1455,7 @@ var LEGALIZE_JS_FFI = true;
 // 2 is a port of the SDL C code on emscripten-ports
 // When AUTO_JS_LIBRARIES is set to 0 this defaults to 0 and SDL
 // is not linked in.
+// Alternate syntax for using the port: --use-port=sdl2
 // [compile+link]
 var USE_SDL = 0;
 
@@ -1475,54 +1476,67 @@ var USE_SDL_TTF = 1;
 var USE_SDL_NET = 1;
 
 // 1 = use icu from emscripten-ports
+// Alternate syntax: --use-port=icu
 // [compile+link]
 var USE_ICU = false;
 
 // 1 = use zlib from emscripten-ports
+// Alternate syntax: --use-port=zlib
 // [compile+link]
 var USE_ZLIB = false;
 
 // 1 = use bzip2 from emscripten-ports
+// Alternate syntax: --use-port=bzip2
 // [compile+link]
 var USE_BZIP2 = false;
 
 // 1 = use giflib from emscripten-ports
+// Alternate syntax: --use-port=giflib
 // [compile+link]
 var USE_GIFLIB = false;
 
 // 1 = use libjpeg from emscripten-ports
+// Alternate syntax: --use-port=libjpeg
 // [compile+link]
 var USE_LIBJPEG = false;
 
 // 1 = use libpng from emscripten-ports
+// Alternate syntax: --use-port=libpng
 // [compile+link]
 var USE_LIBPNG = false;
 
 // 1 = use Regal from emscripten-ports
+// Alternate syntax: --use-port=regal
 // [compile+link]
 var USE_REGAL = false;
 
 // 1 = use Boost headers from emscripten-ports
+// Alternate syntax: --use-port=boost_headers
 // [compile+link]
 var USE_BOOST_HEADERS = false;
 
 // 1 = use bullet from emscripten-ports
+// Alternate syntax: --use-port=bullet
 // [compile+link]
 var USE_BULLET = false;
 
 // 1 = use vorbis from emscripten-ports
+// Alternate syntax: --use-port=vorbis
 // [compile+link]
 var USE_VORBIS = false;
 
 // 1 = use ogg from emscripten-ports
+// Alternate syntax: --use-port=ogg
 // [compile+link]
 var USE_OGG = false;
 
 // 1 = use mpg123 from emscripten-ports
+// Alternate syntax: --use-port=mpg123
 // [compile+link]
 var USE_MPG123 = false;
 
 // 1 = use freetype from emscripten-ports
+// Alternate syntax: --use-port=freetype
 // [compile+link]
 var USE_FREETYPE = false;
 
@@ -1532,14 +1546,17 @@ var USE_FREETYPE = false;
 var USE_SDL_MIXER = 1;
 
 // 1 = use harfbuzz from harfbuzz upstream
+// Alternate syntax: --use-port=harfbuzz
 // [compile+link]
 var USE_HARFBUZZ = false;
 
 // 3 = use cocos2d v3 from emscripten-ports
+// Alternate syntax: --use-port=cocos2d
 // [compile+link]
 var USE_COCOS2D = 0;
 
 // 1 = use libmodplug from emscripten-ports
+// Alternate syntax: --use-port=libmodplug
 // [compile+link]
 var USE_MODPLUG = false;
 
@@ -1553,6 +1570,7 @@ var SDL2_IMAGE_FORMATS = [];
 var SDL2_MIXER_FORMATS = ["ogg"];
 
 // 1 = use sqlite3 from emscripten-ports
+// Alternate syntax: --use-port=sqlite3
 // [compile+link]
 var USE_SQLITE3 = false;
 

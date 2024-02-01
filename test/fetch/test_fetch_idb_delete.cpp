@@ -17,6 +17,7 @@ int main()
   strcpy(attr.requestMethod, "GET");
   attr.attributes = EMSCRIPTEN_FETCH_REPLACE | EMSCRIPTEN_FETCH_SYNCHRONOUS | EMSCRIPTEN_FETCH_PERSIST_FILE;
   emscripten_fetch_t *fetch = emscripten_fetch(&attr, "gears.png");
+  printf("fetch->status: %d\n", fetch->status);
   assert(fetch->status == 200 && "Initial XHR GET of gears.png should have succeeded");
   emscripten_fetch_close(fetch);
 

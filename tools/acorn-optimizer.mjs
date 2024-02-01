@@ -2029,6 +2029,7 @@ try {
     preserveParens: closureFriendly,
     onComment: closureFriendly ? sourceComments : undefined,
     sourceType: exportES6 ? 'module' : 'script',
+    allowAwaitOutsideFunction: true,
   });
 } catch (err) {
   err.message += (() => {

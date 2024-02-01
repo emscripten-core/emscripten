@@ -37,6 +37,20 @@ import leb128
 
 logger = logging.getLogger('emscripten')
 
+# helper functions for JS to call into C to do memory operations. these
+# let us sanitize memory access from the JS side, by calling into C where
+# it has been instrumented.
+ASAN_C_HELPERS = [
+  '_asan_c_load_1', '_asan_c_load_1u',
+  '_asan_c_load_2', '_asan_c_load_2u',
+  '_asan_c_load_4', '_asan_c_load_4u',
+  '_asan_c_load_f', '_asan_c_load_d',
+  '_asan_c_store_1', '_asan_c_store_1u',
+  '_asan_c_store_2', '_asan_c_store_2u',
+  '_asan_c_store_4', '_asan_c_store_4u',
+  '_asan_c_store_f', '_asan_c_store_d',
+]
+
 
 def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
   # Declare all exports out to global JS scope so that JS library functions can access them in a
@@ -954,6 +968,9 @@ def create_pointer_conversion_wrappers(metadata):
   for function in settings.SIGNATURE_CONVERSIONS:
     sym, sig = function.split(':')
     mapping[sym] = sig
+
+  for f in ASAN_C_HELPERS:
+    mapping[f] = '_p'
 
   wrappers = '''
 // Argument name here must shadow the `wasmExports` global so

@@ -23,7 +23,7 @@ from urllib.request import urlopen
 
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
-from common import read_file, also_with_minimal_runtime, EMRUN, no_wasm64, no_4gb
+from common import read_file, also_with_minimal_runtime, EMRUN, no_wasm64, no_2gb, no_4gb
 from tools import shared
 from tools import ports
 from tools import utils
@@ -116,14 +116,14 @@ def no_wasmfs(note):
 def also_with_wasm2js(f):
   assert callable(f)
 
-  def metafunc(self, with_wasm2js):
+  def metafunc(self, with_wasm2js, *args, **kwargs):
     assert self.get_setting('WASM') is None
     if with_wasm2js:
       self.require_wasm2js()
       self.set_setting('WASM', 0)
-      f(self)
+      f(self, *args, **kwargs)
     else:
-      f(self)
+      f(self, *args, **kwargs)
 
   metafunc._parameterize = {'': (False,),
                             'wasm2js': (True,)}
@@ -1563,7 +1563,7 @@ keydown(100);keyup(100); // trigger the end
   def test_sdl_ogl_regal(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('test_sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sUSE_REGAL', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'])
+               args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sUSE_REGAL', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL', '-lc++', '-lc++abi'])
 
   @requires_graphics_hardware
   def test_sdl_ogl_defaultmatrixmode(self):
@@ -2114,13 +2114,13 @@ keydown(100);keyup(100); // trigger the end
   @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_cubegeom_regal(self):
-    self.btest('third_party/cubegeom/cubegeom.c', reference='third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-sUSE_REGAL', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest('third_party/cubegeom/cubegeom.c', reference='third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-sUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'], also_proxied=True)
 
   @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_threads
   @requires_graphics_hardware
   def test_cubegeom_regal_mt(self):
-    self.btest('third_party/cubegeom/cubegeom.c', reference='third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-pthread', '-sUSE_REGAL', '-lGL', '-lSDL'], also_proxied=False)
+    self.btest('third_party/cubegeom/cubegeom.c', reference='third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-pthread', '-sUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'], also_proxied=False)
 
   @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
@@ -3664,7 +3664,7 @@ Module["preRun"] = () => {
       create_file('dummy_file', 'dummy')
       # compile the code with the modularize feature and the preload-file option enabled
       # no wasm, since this tests customizing total memory at runtime
-      self.compile_btest('test.c', ['-sWASM=0', '-sMODULARIZE', '-sEXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + opts, reporting=Reporting.JS_ONLY)
+      self.compile_btest('test.c', ['-sWASM=0', '-sIMPORTED_MEMORY', '-sMODULARIZE', '-sEXPORT_NAME="Foo"', '--preload-file', 'dummy_file'] + opts, reporting=Reporting.JS_ONLY)
       create_file('a.html', '''
         <script src="a.out.js"></script>
         <script>
@@ -4555,7 +4555,6 @@ Module["preRun"] = () => {
   def test_utf16_textdecoder(self):
     self.btest_exit('benchmark/benchmark_utf16.cpp', 0, args=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=[UTF16ToString,stringToUTF16,lengthBytesUTF16]'])
 
-  @no_wasm64()
   @parameterized({
     '': ([],),
     'closure': (['--closure=1'],),
@@ -4691,9 +4690,9 @@ Module["preRun"] = () => {
     'threads': (['-pthread', '-sPROXY_TO_PTHREAD'],)
   })
   @parameterized({
-    'v1': ([],),
-    'v2': (['-sFULL_ES2'],),
-    'v3': (['-sFULL_ES3'],),
+    '': ([],),
+    'es2': (['-sFULL_ES2'],),
+    'es3': (['-sFULL_ES3'],),
   })
   def test_webgl_offscreen_framebuffer(self, version, threads):
     # Tests all the different possible versions of libgl
@@ -4818,19 +4817,19 @@ Module["preRun"] = () => {
   # Preallocating the buffer in this was is asm.js only (wasm needs a Memory).
   @requires_wasm2js
   def test_preallocated_heap(self):
-    self.btest_exit('test_preallocated_heap.cpp', args=['-sWASM=0', '-sINITIAL_MEMORY=16MB', '-sABORTING_MALLOC=0', '--shell-file', test_file('test_preallocated_heap_shell.html')])
+    self.btest_exit('test_preallocated_heap.cpp', args=['-sWASM=0', '-sIMPORTED_MEMORY', '-sINITIAL_MEMORY=16MB', '-sABORTING_MALLOC=0', '--shell-file', test_file('test_preallocated_heap_shell.html')])
 
   # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to IndexedDB.
   @also_with_wasm2js
   def test_fetch_to_memory(self):
     # Test error reporting in the negative case when the file URL doesn't exist. (http 404)
-    self.btest_exit('fetch/to_memory.cpp',
+    self.btest_exit('fetch/test_fetch_to_memory.cpp',
                     args=['-sFETCH_DEBUG', '-sFETCH', '-DFILE_DOES_NOT_EXIST'])
 
     # Test the positive case when the file URL exists. (http 200)
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     for arg in [[], ['-sFETCH_SUPPORT_INDEXEDDB=0']]:
-      self.btest_exit('fetch/to_memory.cpp',
+      self.btest_exit('fetch/test_fetch_to_memory.cpp',
                       args=['-sFETCH_DEBUG', '-sFETCH'] + arg)
 
   @parameterized({
@@ -4839,24 +4838,22 @@ Module["preRun"] = () => {
   })
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @requires_threads
+  @also_with_wasm2js
   def test_fetch_from_thread(self, args):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/from_thread.cpp',
-                    args=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sFETCH_DEBUG', '-sFETCH', '-DFILE_DOES_NOT_EXIST'],
-                    also_wasm2js=True)
+    self.btest_exit('fetch/test_fetch_from_thread.cpp',
+                    args=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sFETCH_DEBUG', '-sFETCH', '-DFILE_DOES_NOT_EXIST'])
 
   @also_with_wasm2js
   def test_fetch_to_indexdb(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/to_indexeddb.cpp',
-                    args=['-sFETCH_DEBUG', '-sFETCH'])
+    self.btest_exit('fetch/test_fetch_to_indexeddb.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
 
   # Tests emscripten_fetch() usage to persist an XHR into IndexedDB and subsequently load up from there.
   @also_with_wasm2js
   def test_fetch_cached_xhr(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/cached_xhr.cpp',
-                    args=['-sFETCH_DEBUG', '-sFETCH'])
+    self.btest_exit('fetch/test_fetch_cached_xhr.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
 
   # Tests that response headers get set on emscripten_fetch_t values.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
@@ -4864,7 +4861,7 @@ Module["preRun"] = () => {
   @requires_threads
   def test_fetch_response_headers(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/response_headers.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/test_fetch_response_headers.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Test emscripten_fetch() usage to stream a XHR in to memory without storing the full file in memory
   @also_with_wasm2js
@@ -4878,15 +4875,16 @@ Module["preRun"] = () => {
     with open('largefile.txt', 'w') as f:
       for _ in range(1024):
         f.write(s)
-    self.btest_exit('fetch/stream_file.cpp',
+    self.btest_exit('fetch/test_fetch_stream_file.cpp',
                     args=['-sFETCH_DEBUG', '-sFETCH', '-sINITIAL_MEMORY=536870912'])
 
   def test_fetch_headers_received(self):
-    self.btest_exit('fetch/headers_received.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
+    create_file('myfile.dat', 'hello world\n')
+    self.btest_exit('fetch/test_fetch_headers_received.c', args=['-sFETCH_DEBUG', '-sFETCH'])
 
   def test_fetch_xhr_abort(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/xhr_abort.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
+    self.btest_exit('fetch/test_fetch_xhr_abort.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
 
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
   # thread proxied to a Worker with -sPROXY_TO_PTHREAD option.
@@ -4895,7 +4893,7 @@ Module["preRun"] = () => {
   @requires_threads
   def test_fetch_sync_xhr(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/sync_xhr.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/test_fetch_sync_xhr.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Tests emscripten_fetch() usage when user passes none of the main 3 flags (append/replace/no_download).
   # In that case, in append is implicitly understood.
@@ -4918,7 +4916,7 @@ Module["preRun"] = () => {
   @requires_threads
   def test_fetch_sync_xhr_in_proxy_to_worker(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/sync_xhr.cpp',
+    self.btest_exit('fetch/test_fetch_sync_xhr.cpp',
                     args=['-sFETCH_DEBUG', '-sFETCH', '--proxy-to-worker'])
 
   # Tests waiting on EMSCRIPTEN_FETCH_WAITABLE request from a worker thread
@@ -4926,18 +4924,18 @@ Module["preRun"] = () => {
   @requires_threads
   def test_fetch_sync_fetch_in_main_thread(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/sync_fetch_in_main_thread.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-pthread', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/test_fetch_sync_in_main_thread.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   @requires_threads
   @disabled('https://github.com/emscripten-core/emscripten/issues/16746')
   def test_fetch_idb_store(self):
-    self.btest_exit('fetch/idb_store.cpp', args=['-pthread', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/test_fetch_idb_store.cpp', args=['-pthread', '-sFETCH', '-sPROXY_TO_PTHREAD'])
 
   @requires_threads
   @disabled('https://github.com/emscripten-core/emscripten/issues/16746')
   def test_fetch_idb_delete(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/idb_delete.cpp', args=['-pthread', '-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/test_fetch_idb_delete.cpp', args=['-pthread', '-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
 
   def test_fetch_post(self):
     self.btest_exit('fetch/test_fetch_post.c', args=['-sFETCH'])
@@ -4989,10 +4987,14 @@ Module["preRun"] = () => {
     'manual_css': (['-sPROXY_TO_PTHREAD', '-pthread', '-sOFFSCREEN_FRAMEBUFFER', '-DTEST_EXPLICIT_CONTEXT_SWAP=1', '-DTEST_MANUALLY_SET_ELEMENT_CSS_SIZE=1'], False),
   })
   def test_emscripten_animate_canvas_element_size(self, args, main_loop):
-    cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '-sGL_DEBUG', '--threadprofiler', '-sASSERTIONS'] + args
+    cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '-sGL_DEBUG', '-sASSERTIONS'] + args
+    if not self.is_2gb() and not self.is_4gb():
+      # Thread profiler does not yet work with large pointers.
+      # https://github.com/emscripten-core/emscripten/issues/21229
+      cmd.append('--threadprofiler')
     if main_loop:
       cmd.append('-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1')
-    self.btest_exit('canvas_animate_resize.cpp', args=cmd)
+    self.btest_exit('canvas_animate_resize.c', args=cmd)
 
   # Tests the absolute minimum pthread-enabled application.
   @parameterized({
@@ -5574,6 +5576,7 @@ Module["preRun"] = () => {
     self.btest('wasm_worker/proxied_function.c', expected='0', args=['--js-library', test_file('wasm_worker/proxied_function.js'), '-sWASM_WORKERS', '-sASSERTIONS=0'])
 
   @no_firefox('no 4GB support yet')
+  @no_2gb('uses MAXIMUM_MEMORY')
   @no_4gb('uses MAXIMUM_MEMORY')
   def test_4gb(self):
     # TODO Convert to an actual browser test when it reaches stable.
@@ -5670,6 +5673,7 @@ Module["preRun"] = () => {
     self.btest('emmalloc_memgrowth.cpp', expected='0', args=['-sMALLOC=emmalloc', '-sALLOW_MEMORY_GROWTH=1', '-sABORTING_MALLOC=0', '-sASSERTIONS=2', '-sMINIMAL_RUNTIME=1', '-sMAXIMUM_MEMORY=4GB'])
 
   @no_firefox('no 4GB support yet')
+  @no_2gb('uses MAXIMUM_MEMORY')
   @no_4gb('uses MAXIMUM_MEMORY')
   def test_2gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
@@ -5684,6 +5688,7 @@ Module["preRun"] = () => {
     self.do_run_in_out_file_test('browser/test_2GB_fail.cpp')
 
   @no_firefox('no 4GB support yet')
+  @no_2gb('uses MAXIMUM_MEMORY')
   @no_4gb('uses MAXIMUM_MEMORY')
   def test_4gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
@@ -5919,3 +5924,10 @@ class browser64_4gb(browser):
     self.set_setting('GLOBAL_BASE', '4gb')
     self.emcc_args.append('-Wno-experimental')
     self.require_wasm64()
+
+
+class browser_2gb(browser):
+  def setUp(self):
+    super().setUp()
+    self.set_setting('INITIAL_MEMORY', '2200mb')
+    self.set_setting('GLOBAL_BASE', '2gb')

@@ -126,4 +126,4 @@ def linker_setup(ports, settings):
 
 
 def show():
-  return 'regal (USE_REGAL=1; Regal license)'
+  return 'regal (-sUSE_REGAL=1 or --use-port=regal; Regal license)'

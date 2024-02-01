@@ -879,14 +879,6 @@ def phase_linker_setup(options, state, newargs):
     else:
       default_setting('INCOMING_MODULE_JS_API', [])
 
-  if 'GLOBAL_BASE' not in user_settings and not settings.SHRINK_LEVEL and not settings.OPT_LEVEL:
-    # When optimizing for size it helps to put static data first before
-    # the stack (since this makes instructions for accessing this data
-    # use a smaller LEB encoding).
-    # However, for debugability is better to have the stack come first
-    # (because stack overflows will trap rather than corrupting data).
-    settings.STACK_FIRST = True
-
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
   # in -Oz builds, since custom decoder for UTF-8 takes up space.
   # In pthreads enabled builds, TEXTDECODER==2 may not work, see
@@ -1445,8 +1437,7 @@ def phase_linker_setup(options, state, newargs):
      (options.shell_path == DEFAULT_SHELL_HTML or options.shell_path == utils.path_from_root('src/shell_minimal.html')):
     exit_with_error(f'Due to collision in variable name "Module", the shell file "{options.shell_path}" is not compatible with build options "-sMODULARIZE -sEXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
-  # TODO(sbc): Remove WASM2JS here once the size regression it would introduce has been fixed.
-  if settings.SHARED_MEMORY or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE or settings.WASM2JS:
+  if settings.SHARED_MEMORY or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE:
     settings.IMPORTED_MEMORY = 1
 
   if settings.WASM_BIGINT:
@@ -1546,21 +1537,7 @@ def phase_linker_setup(options, state, newargs):
     if not settings.UBSAN_RUNTIME:
       settings.UBSAN_RUNTIME = 2
 
-    # helper functions for JS to call into C to do memory operations. these
-    # let us sanitize memory access from the JS side, by calling into C where
-    # it has been instrumented.
-    ASAN_C_HELPERS = [
-      '_asan_c_load_1', '_asan_c_load_1u',
-      '_asan_c_load_2', '_asan_c_load_2u',
-      '_asan_c_load_4', '_asan_c_load_4u',
-      '_asan_c_load_f', '_asan_c_load_d',
-      '_asan_c_store_1', '_asan_c_store_1u',
-      '_asan_c_store_2', '_asan_c_store_2u',
-      '_asan_c_store_4', '_asan_c_store_4u',
-      '_asan_c_store_f', '_asan_c_store_d',
-    ]
-
-    settings.REQUIRED_EXPORTS += ASAN_C_HELPERS
+    settings.REQUIRED_EXPORTS += emscripten.ASAN_C_HELPERS
 
     if settings.ASYNCIFY and not settings.ASYNCIFY_ONLY:
       # we do not want asyncify to instrument these helpers - they just access
@@ -1572,7 +1549,7 @@ def phase_linker_setup(options, state, newargs):
       # do anything (as the user's list won't contain these functions), and if
       # we did add them, the pass would assert on incompatible lists, hence the
       # condition in the above if.
-      settings.ASYNCIFY_REMOVE += ASAN_C_HELPERS
+      settings.ASYNCIFY_REMOVE += emscripten.ASAN_C_HELPERS
 
     if settings.ASAN_SHADOW_SIZE != -1:
       diagnostics.warning('emcc', 'ASAN_SHADOW_SIZE is ignored and will be removed in a future release')
@@ -1607,7 +1584,6 @@ def phase_linker_setup(options, state, newargs):
     # We start our global data after the shadow memory.
     # We don't need to worry about alignment here.  wasm-ld will take care of that.
     settings.GLOBAL_BASE = shadow_size
-    settings.STACK_FIRST = False
 
     if not settings.ALLOW_MEMORY_GROWTH:
       settings.INITIAL_MEMORY = total_mem
@@ -1620,12 +1596,30 @@ def phase_linker_setup(options, state, newargs):
       # by SAFE_HEAP as a null pointer dereference.
       exit_with_error('ASan does not work with SAFE_HEAP')
 
+    if settings.MEMORY64:
+      exit_with_error('MEMORY64 does not yet work with ASAN')
+
   if settings.USE_ASAN or settings.SAFE_HEAP:
     # ASan and SAFE_HEAP check address 0 themselves
     settings.CHECK_NULL_WRITES = 0
 
   if sanitize and settings.GENERATE_SOURCE_MAP:
     settings.LOAD_SOURCE_MAP = 1
+
+  if 'GLOBAL_BASE' not in user_settings and not settings.SHRINK_LEVEL and not settings.OPT_LEVEL and not settings.USE_ASAN:
+    # When optimizing for size it helps to put static data first before
+    # the stack (since this makes instructions for accessing this data
+    # use a smaller LEB encoding).
+    # However, for debugability is better to have the stack come first
+    # (because stack overflows will trap rather than corrupting data).
+    settings.STACK_FIRST = True
+
+  if '--stack-first' in [x for _, x in state.link_flags]:
+    settings.STACK_FIRST = True
+    if settings.USE_ASAN:
+      exit_with_error('--stack-first is not compatible with asan')
+    if 'GLOBAL_BASE' in user_settings:
+      exit_with_error('--stack-first is not compatible with -sGLOBAL_BASE')
 
   set_max_memory()
 
@@ -1985,6 +1979,7 @@ def fix_es6_import_statements(js_file):
   write_file(js_file, src
              .replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
              .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import'))
+  save_intermediate('es6-module')
 
 
 def create_worker_file(input_file, target_dir, output_file):
@@ -2030,13 +2025,17 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   # steps that occurred after Closure.
   if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and settings.DEBUG_LEVEL == 0:
     shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.js'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
+    save_intermediate('unsafe-optimizations')
     # Finally, rerun Closure compile with simple optimizations. It will be able
     # to further minify the code. (n.b. it would not be safe to run in advanced
     # mode)
     final_js = building.closure_compiler(final_js, advanced=False, extra_closure_args=options.closure_args)
+    # Run unsafe_optimizations.js once more.  This allows the cleanup of newly
+    # unused things that closure compiler leaves behing (e.g `new Float64Array(x)`).
+    shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.js'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
+    save_intermediate('unsafe-optimizations2')
 
   fix_es6_import_statements(final_js)
-  save_intermediate('es6-module')
 
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:

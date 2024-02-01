@@ -275,7 +275,7 @@ def apply_user_settings():
       try:
         value = parse_value(value, expected_type)
       except Exception as e:
-        exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s=%s": %s', key, value, str(e))
+        exit_with_error(f'error parsing "-s" setting "{key}={value}": {e}')
 
     setattr(settings, user_key, value)
 
@@ -1405,6 +1405,8 @@ def parse_args(newargs):
       options.target = consume_arg()
       if options.target not in ('wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'):
         exit_with_error(f'unsupported target: {options.target} (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten)')
+    elif check_arg('--use-port'):
+      ports.handle_use_port_arg(settings, consume_arg())
     elif arg == '-mllvm':
       # Ignore the next argument rather than trying to parse it.  This is needed
       # because llvm args could, for example, start with `-o` and we don't want
@@ -1506,9 +1508,19 @@ def parse_value(text, expected_type):
     # if json parsing fails, we fall back to our own parser, which can handle a few
     # simpler syntaxes
     try:
-      return json.loads(text)
+      parsed = json.loads(text)
     except ValueError:
       return parse_string_list(text)
+
+    # if we succeeded in parsing as json, check some properties of it before returning
+    if type(parsed) not in (str, list):
+      raise ValueError(f'settings must be strings or lists (not ${type(parsed)})')
+    if type(parsed) is list:
+      for elem in parsed:
+        if type(elem) is not str:
+          raise ValueError(f'list members in settings must be strings (not ${type(elem)})')
+
+    return parsed
 
   if expected_type == float:
     try:

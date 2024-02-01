@@ -407,7 +407,8 @@ class other(RunnerCore):
   @parameterized({
     '': ([],),
     # load a worker before startup to check ES6 modules there as well
-    'pthreads': (['-pthread', '-sPTHREAD_POOL_SIZE=1'],),
+    # pass -O2 to ensure the worker JS file is minified with Acorn
+    'pthreads': (['-O2', '-pthread', '-sPTHREAD_POOL_SIZE=1'],),
   })
   def test_export_es6(self, args, package_json):
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6',
@@ -1195,6 +1196,15 @@ f.close()
     self.run_process([EMCC, 'main.c', '-L.', '-lfoo'])
     self.run_process([EMCC, 'main.c', '-Wl,-L.', '-Wl,-lfoo'])
     self.run_process([EMCC, 'main.c', '-Wl,@linkflags.txt'])
+
+  def test_wl_stackfirst(self):
+    cmd = [EMCC, test_file('hello_world.c'), '-Wl,--stack-first']
+    self.run_process(cmd + ['-O0'])
+    self.run_process(cmd + ['-O2'])
+    err = self.expect_fail(cmd + ['-fsanitize=address'])
+    self.assertContained('error: --stack-first is not compatible with asan', err)
+    err = self.expect_fail(cmd + ['-sGLOBAL_BASE=1024'])
+    self.assertContained('error: --stack-first is not compatible with -sGLOBAL_BASE', err)
 
   def test_l_link(self):
     # Linking with -lLIBNAME and -L/DIRNAME should work, also should work with spaces
@@ -2249,20 +2259,25 @@ int f() {
 
   def test_sdl2_mixer_wav(self):
     self.emcc(test_file('browser/test_sdl2_mixer_wav.c'), ['-sUSE_SDL_MIXER=2'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_mixer_wav.c'), ['--use-port=sdl2_mixer'], output_filename='a.out.js')
 
   def test_sdl2_linkable(self):
     # Ensure that SDL2 can be built with LINKABLE.  This implies there are no undefined
     # symbols in the library (because LINKABLE includes the entire library).
     self.emcc(test_file('browser/test_sdl2_misc.c'), ['-sLINKABLE', '-sUSE_SDL=2'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-sLINKABLE', '--use-port=sdl2'], output_filename='a.out.js')
 
   def test_sdl2_gfx_linkable(self):
     # Same as above but for sdl2_gfx library
     self.emcc(test_file('browser/test_sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sLINKABLE', '-sUSE_SDL_GFX=2'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sLINKABLE', '--use-port=sdl2_gfx'], output_filename='a.out.js')
 
   def test_libpng(self):
     shutil.copyfile(test_file('third_party/libpng/pngtest.png'), 'pngtest.png')
     self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
                  emcc_args=['--embed-file', 'pngtest.png', '-sUSE_LIBPNG'])
+    self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
+                 emcc_args=['--embed-file', 'pngtest.png', '--use-port=libpng'])
 
   @node_pthreads
   def test_libpng_with_pthreads(self):
@@ -2283,23 +2298,34 @@ int f() {
                  'GIF file terminated normally',
                  emcc_args=['--embed-file', 'treescap.gif', '-sUSE_GIFLIB', '-sMAIN_MODULE'],
                  args=['treescap.gif'])
+    self.do_runf('third_party/giflib/giftext.c',
+                 'GIF file terminated normally',
+                 emcc_args=['--embed-file', 'treescap.gif', '--use-port=giflib'],
+                 args=['treescap.gif'])
 
   def test_libjpeg(self):
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
     self.do_runf('jpeg_test.c', 'Image is 600 by 450 with 3 components',
                  emcc_args=['--embed-file', 'screenshot.jpg', '-sUSE_LIBJPEG'],
                  args=['screenshot.jpg'])
+    self.do_runf('jpeg_test.c', 'Image is 600 by 450 with 3 components',
+                 emcc_args=['--embed-file', 'screenshot.jpg', '--use-port=libjpeg'],
+                 args=['screenshot.jpg'])
 
   def test_bullet(self):
     self.do_runf('bullet_hello_world.cpp', 'BULLET RUNNING', emcc_args=['-sUSE_BULLET'])
+    self.do_runf('bullet_hello_world.cpp', 'BULLET RUNNING', emcc_args=['--use-port=bullet'])
 
   def test_vorbis(self):
     # This will also test if ogg compiles, because vorbis depends on ogg
     self.do_runf('vorbis_test.c', 'ALL OK', emcc_args=['-sUSE_VORBIS'])
+    self.do_runf('vorbis_test.c', 'ALL OK', emcc_args=['--use-port=vorbis'])
 
   def test_bzip2(self):
     self.do_runf('bzip2_test.c', 'usage: unzcrash filename',
                  emcc_args=['-sUSE_BZIP2', '-Wno-pointer-sign'])
+    self.do_runf('bzip2_test.c', 'usage: unzcrash filename',
+                 emcc_args=['--use-port=bzip2', '-Wno-pointer-sign'])
 
   @with_both_sjlj
   def test_freetype(self):
@@ -2327,6 +2353,8 @@ int f() {
     # build test program with the font file embed in it
     self.do_runf('freetype_test.c', expectedOutput,
                  emcc_args=['-sUSE_FREETYPE', '--embed-file', 'LiberationSansBold.ttf'])
+    self.do_runf('freetype_test.c', expectedOutput,
+                 emcc_args=['--use-port=freetype', '--embed-file', 'LiberationSansBold.ttf'])
 
   def test_freetype_with_pthreads(self):
     # Verify that freetype supports compilation requiring pthreads
@@ -2339,6 +2367,7 @@ int f() {
   def test_sdl2_ttf(self):
     # This is a compile-only to test to verify that sdl2-ttf (and freetype and harfbuzz) are buildable.
     self.emcc(test_file('browser/test_sdl2_ttf.c'), args=['-sUSE_SDL=2', '-sUSE_SDL_TTF=2'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_ttf.c'), args=['--use-port=sdl2', '--use-port=sdl2_ttf'], output_filename='a.out.js')
 
   def test_link_memcpy(self):
     # memcpy can show up *after* optimizations, so after our opportunity to link in libc, so it must be special-cased
@@ -2703,7 +2732,7 @@ int f() {
             self.assertFalse(os.path.exists(self.canonical_temp_dir))
           else:
             print(sorted(os.listdir(self.canonical_temp_dir)))
-            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-3-original.js'))
+            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-03-original.js'))
 
   def test_debuginfo_line_tables_only(self):
     def test(do_compile):
@@ -3092,7 +3121,7 @@ int f() {
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_test_embind(self):
-    self.run_process([EMCC, test_file('embind/embind_test.cpp'),
+    self.run_process([EMXX, test_file('embind/embind_test.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen_test_embind.d.ts',
                       # This test explicitly creates std::string from unsigned char pointers
                       # which is deprecated in upstream LLVM.
@@ -3108,7 +3137,7 @@ int f() {
     self.assertExists('embind_tsgen_val.d.ts')
 
   def test_embind_tsgen_bigint(self):
-    args = [EMCC, test_file('other/embind_tsgen_bigint.cpp'), '-lembind', '--embind-emit-tsd', 'embind_tsgen_bigint.d.ts']
+    args = [EMXX, test_file('other/embind_tsgen_bigint.cpp'), '-lembind', '--embind-emit-tsd', 'embind_tsgen_bigint.d.ts']
     # Check that TypeScript generation fails when code contains bigints but their support is not enabled
     stderr = self.expect_fail(args)
     self.assertContained("Missing primitive type to TS type for 'int64_t", stderr)
@@ -3118,16 +3147,22 @@ int f() {
 
   def test_embind_tsgen_memory64(self):
     # Check that when memory64 is enabled longs & unsigned longs are mapped to bigint in the generated TS bindings
-    self.run_process([EMCC, test_file('other/embind_tsgen_memory64.cpp'),
+    self.run_process([EMXX, test_file('other/embind_tsgen_memory64.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen_memory64.d.ts', '-sMEMORY64', '-Wno-experimental'] +
                      self.get_emcc_args())
     self.assertFileContents(test_file('other/embind_tsgen_memory64.d.ts'), read_file('embind_tsgen_memory64.d.ts'))
 
   def test_embind_tsgen_exceptions(self):
     # Check that when Wasm exceptions and assertions are enabled bindings still generate.
-    self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
+    self.run_process([EMXX, test_file('other/embind_tsgen.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts', '-fwasm-exceptions', '-sASSERTIONS'])
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
+
+  def test_embind_jsgen_method_pointer_stability(self):
+    self.emcc_args += ['-lembind', '-sEMBIND_AOT']
+    # Test that when method pointers are allocated at different addresses that
+    # AOT JS generation still works correctly.
+    self.do_runf('other/embind_jsgen_method_pointer_stability.cpp', 'done')
 
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
@@ -7644,7 +7679,7 @@ high = 1234
 
   def test_dash_s_valid_list(self):
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), "-sTEST_KEY=[Value1, \"Value2\"]"])
-    self.assertNotContained('a problem occurred in evaluating the content after a "-s", specifically', err)
+    self.assertNotContained('error parsing "-s" setting', err)
 
   def test_dash_s_wrong_type(self):
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-sEXIT_RUNTIME=[foo,bar]'])
@@ -7675,6 +7710,15 @@ high = 1234
     self.run_process([EMCC, test_file('hello_world.c'), '-nostdlib', '-sERROR_ON_UNDEFINED_SYMBOLS=0'])
     # Ensure that 0x0 is parsed as a zero and not as the string '0x0'.
     self.run_process([EMCC, test_file('hello_world.c'), '-nostdlib', '-sERROR_ON_UNDEFINED_SYMBOLS=0x0'])
+
+  def test_dash_s_bad_json_types(self):
+    # Dict rather than string/list
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS={"a":1}'])
+    self.assertContained("settings must be strings or lists (not $<class 'dict'>", err)
+
+    # List element is not a string
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=[{"a":1}]'])
+    self.assertContained("list members in settings must be strings (not $<class 'dict'>)", err)
 
   def test_zeroinit(self):
     create_file('src.c', r'''
@@ -10538,7 +10582,7 @@ int main () {
     hello_webgl_sources = [test_file('minimal_webgl/main.c'),
                            test_file('minimal_webgl/webgl.c'),
                            '--js-library', test_file('minimal_webgl/library_js.js'),
-                           '-lwebgl.js',
+                           '-lGL',
                            '-sMODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-sMAX_WEBGL_VERSION=2']
     hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web,worker']
@@ -11404,6 +11448,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
 
   def test_boost_graph(self):
     self.do_runf('test_boost_graph.cpp', emcc_args=['-std=c++14', '-sUSE_BOOST_HEADERS'])
+    self.do_runf('test_boost_graph.cpp', emcc_args=['-std=c++14', '--use-port=boost_headers'])
 
   def test_setjmp_em_asm(self):
     create_file('src.c', '''
@@ -13715,7 +13760,7 @@ foo/version.txt
       self.assertContained('done', self.run_js('test_itimer_standalone.wasm', engine))
 
   @node_pthreads
-  @no_mac("Our Mac CI currently has too much contention to run this reliably")
+  @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
   def test_itimer_proxy_to_pthread(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
@@ -14414,3 +14459,7 @@ addToLibrary({
     # "window.crypto.getRandomValues"
     self.assertContained(").randomBytes", js_out)
     self.assertContained("window.crypto.getRandomValues", js_out)
+
+  def test_wasm64_no_asan(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMEMORY64', '-fsanitize=address'])
+    self.assertContained('error: MEMORY64 does not yet work with ASAN', err)

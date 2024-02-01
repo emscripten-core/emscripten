@@ -215,17 +215,19 @@ For example, consider the case where a project "project" uses a library "libstuf
 Emscripten Ports
 ================
 
-Emscripten Ports is a collection of useful libraries, ported to Emscripten. They reside `on GitHub <https://github.com/emscripten-ports>`_, and have integration support in *emcc*. When you request that a port be used, emcc will fetch it from the remote server, set it up and build it locally, then link it with your project, add necessary include to your build commands, etc. For example, SDL2 is in ports, and you can request that it be used with ``-sUSE_SDL=2``. For example,
+Emscripten Ports is a collection of useful libraries, ported to Emscripten. They reside `on GitHub <https://github.com/emscripten-ports>`_, and have integration support in *emcc*. When you request that a port be used, emcc will fetch it from the remote server, set it up and build it locally, then link it with your project, add necessary include to your build commands, etc. For example, SDL2 is in ports, and you can request that it be used with ``--use-port=sdl2``. For example,
 
 .. code-block:: bash
 
-  emcc test/sdl2glshader.c -sUSE_SDL=2 -sLEGACY_GL_EMULATION -o sdl2.html
+  emcc test/browser/test_sdl2_glshader.c --use-port=sdl2 -sLEGACY_GL_EMULATION -o sdl2.html
 
 You should see some notifications about SDL2 being used, and built if it wasn't previously. You can then view ``sdl2.html`` in your browser.
 
-.. note:: *SDL_image* has also been added to ports, use it with ``-sUSE_SDL_IMAGE=2``. To see a list of all available ports, run ``emcc --show-ports``. For SDL2_image to be useful, you generally need to specify the image formats you are planning on using with e.g. ``-sSDL2_IMAGE_FORMATS='["bmp","png","xpm"]'`` (note: jpg support is not available yet as of Jun 22 2018 - libjpg needs to be added to emscripten-ports). This will also ensure that ``IMG_Init`` works properly when you specify those formats. Alternatively, you can use ``emcc --use-preload-plugins`` and ``--preload-file`` your images, so the browser codecs decode them (see :ref:`preloading-files`). A code path in the SDL2_image port will load through :c:func:`emscripten_get_preloaded_image_data`, but then your calls to ``IMG_Init`` with those image formats will fail (as while the images will work through preloading, IMG_Init reports no support for those formats, as it doesn't have support compiled in - in other words, IMG_Init does not report support for formats that only work through preloading).```
+To see a list of all available ports, run ``emcc --show-ports``.
 
-.. note:: *SDL_net* has also been added to ports, use it with ``-sUSE_SDL_NET=2``. To see a list of all available ports, run ``emcc --show-ports``.
+.. note:: *SDL_image* has also been added to ports, use it with ``--use-port=sdl2_image``. For ``sdl2_image`` to be useful, you generally need to specify the image formats you are planning on using with e.g. ``-sSDL2_IMAGE_FORMATS='["bmp","png","xpm","jpg"]'``. This will also ensure that ``IMG_Init`` works properly when you specify those formats. Alternatively, you can use ``emcc --use-preload-plugins`` and ``--preload-file`` your images, so the browser codecs decode them (see :ref:`preloading-files`). A code path in the ``sdl2_image`` port will load through :c:func:`emscripten_get_preloaded_image_data`, but then your calls to ``IMG_Init`` with those image formats will fail (as while the images will work through preloading, IMG_Init reports no support for those formats, as it doesn't have support compiled in - in other words, IMG_Init does not report support for formats that only work through preloading).```
+
+.. note:: *SDL_net* has also been added to ports, use it with ``--use-port=sdl2_net``.
 
 .. note:: Emscripten also has support for older SDL1, which is built-in. If you do not specify SDL2 as in the command above, then SDL1 is linked in and the SDL1 include paths are used. SDL1 has support for *sdl-config*, which is present in `system/bin <https://github.com/emscripten-core/emscripten/blob/main/system/bin/sdl-config>`_. Using the native *sdl-config* may result in compilation or missing-symbol errors. You will need to modify the build system to look for files in **emscripten/system** or **emscripten/system/bin** in order to use the Emscripten *sdl-config*.
 
@@ -235,6 +237,9 @@ You should see some notifications about SDL2 being used, and built if it wasn't 
     functions are included in the build, add exports, and so forth. In general,
     it's better to use the ports version as it is what is tested and known to
     work.
+
+.. note:: Since emscripten 3.1.54, ``--use-port`` is the preferred syntax to use a port in your project. The legacy syntax (for example ``-sUSE_SDL2``, ``-sUSE_SDL_IMAGE=2``) remains available.
+
 
 Adding more ports
 -----------------

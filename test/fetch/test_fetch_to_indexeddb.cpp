@@ -9,8 +9,7 @@
 #include <assert.h>
 #include <emscripten/fetch.h>
 
-int main()
-{
+int main() {
   emscripten_fetch_attr_t attr;
   emscripten_fetch_attr_init(&attr);
   strcpy(attr.requestMethod, "GET");
@@ -45,6 +44,8 @@ int main()
 
   emscripten_fetch_t *fetch = emscripten_fetch(&attr, "gears.png");
   assert(fetch != 0);
-  memset(&attr, 0, sizeof(attr)); // emscripten_fetch() must be able to operate without referencing to this structure after the call.
+  // emscripten_fetch() must be able to operate without referencing to this
+  // structure after the call.
+  memset(&attr, 0, sizeof(attr));
   return 99;
 }

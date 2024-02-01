@@ -34,4 +34,4 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'giflib (USE_GIFLIB=1; MIT license)'
+  return 'giflib (-sUSE_GIFLIB=1 or --use-port=giflib; MIT license)'

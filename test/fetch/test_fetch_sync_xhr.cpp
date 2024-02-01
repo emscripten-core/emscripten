@@ -12,10 +12,9 @@
 
 int result = -1;
 
-int main()
-{
-  // If an exception is thrown from the user callback, it bubbles up to self.onerror but is otherwise completely
-  // swallowed by xhr.send.
+int main() {
+  // If an exception is thrown from the user callback, it bubbles up to
+  // self.onerror but is otherwise completely swallowed by xhr.send.
   EM_ASM({self.onerror = function() {
            out('Got error');
            HEAP32[$0 >> 2] = 2;

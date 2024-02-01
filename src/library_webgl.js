@@ -82,7 +82,12 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     return HEAPU16;
   },
 
-  $heapAccessShiftForWebGLHeap: (heap) => 31 - Math.clz32(heap.BYTES_PER_ELEMENT),
+  $toTypedArrayIndex: (pointer, heap) =>
+#if MEMORY64
+    pointer / heap.BYTES_PER_ELEMENT,
+#else
+    pointer >>> (31 - Math.clz32(heap.BYTES_PER_ELEMENT)),
+#endif
 
 #if MIN_WEBGL_VERSION == 1
   $webgl_enable_ANGLE_instanced_arrays: (ctx) => {
@@ -136,7 +141,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   emscripten_webgl_enable_WEBGL_multi_draw: (ctx) => webgl_enable_WEBGL_multi_draw(GL.contexts[ctx].GLctx),
 
   $getEmscriptenSupportedExtensions__internal: true,
-  $getEmscriptenSupportedExtensions: function(ctx) {
+  $getEmscriptenSupportedExtensions: (ctx) => {
     // Restrict the list of advertised extensions to those that we actually
     // support.
     var supportedExtensions = [
@@ -162,18 +167,25 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if MAX_WEBGL_VERSION >= 2
       // WebGL 2 extensions
       'EXT_color_buffer_float',
+      'EXT_conservative_depth',
       'EXT_disjoint_timer_query_webgl2',
       'EXT_texture_norm16',
+      'NV_shader_noperspective_interpolation',
       'WEBGL_clip_cull_distance',
 #endif
       // WebGL 1 and WebGL 2 extensions
       'EXT_color_buffer_half_float',
+      'EXT_depth_clamp',
       'EXT_float_blend',
       'EXT_texture_compression_bptc',
       'EXT_texture_compression_rgtc',
       'EXT_texture_filter_anisotropic',
       'KHR_parallel_shader_compile',
       'OES_texture_float_linear',
+      'WEBGL_blend_func_extended',
+      'WEBGL_compressed_texture_astc',
+      'WEBGL_compressed_texture_etc',
+      'WEBGL_compressed_texture_etc1',
       'WEBGL_compressed_texture_s3tc',
       'WEBGL_compressed_texture_s3tc_srgb',
       'WEBGL_debug_renderer_info',
@@ -280,7 +292,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     // glGetError() to fetch it. As per GLES2 spec, only the first error is
     // remembered, and subsequent errors are discarded until the user has
     // cleared the stored error by a call to glGetError().
-    recordError: function recordError(errorCode) {
+    recordError: (errorCode) => {
 #if GL_TRACK_ERRORS
       if (!GL.lastError) {
         GL.lastError = errorCode;
@@ -370,7 +382,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       }
     },
 
-    getTempVertexBuffer: function getTempVertexBuffer(sizeBytes) {
+    getTempVertexBuffer: (sizeBytes) => {
       var idx = GL.log2ceilLookup(sizeBytes);
       var ringbuffer = GL.currentContext.tempVertexBuffers1[idx];
       var nextFreeBufferIndex = GL.currentContext.tempVertexBufferCounters1[idx];
@@ -387,7 +399,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       return ringbuffer[nextFreeBufferIndex];
     },
 
-    getTempIndexBuffer: function getTempIndexBuffer(sizeBytes) {
+    getTempIndexBuffer: (sizeBytes) => {
       var idx = GL.log2ceilLookup(sizeBytes);
       var ibo = GL.currentContext.tempIndexBuffers[idx];
       if (ibo) {
@@ -405,7 +417,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     // doublebuffered temp VB memory pointers, so that every second frame
     // utilizes different set of temp buffers. The aim is to keep the set of
     // buffers being rendered, and the set of buffers being updated disjoint.
-    newRenderingFrameStarted: function newRenderingFrameStarted() {
+    newRenderingFrameStarted: () => {
       if (!GL.currentContext) {
         return;
       }
@@ -425,8 +437,8 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     getSource: (shader, count, string, length) => {
       var source = '';
       for (var i = 0; i < count; ++i) {
-        var len = length ? {{{ makeGetValue('length', 'i*4', 'i32') }}} : -1;
-        source += UTF8ToString({{{ makeGetValue('string', 'i*4', 'i32') }}}, len < 0 ? undefined : len);
+        var len = length ? {{{ makeGetValue('length', 'i*' + POINTER_SIZE, '*') }}} : undefined;
+        source += UTF8ToString({{{ makeGetValue('string', 'i*' + POINTER_SIZE, '*') }}}, len);
       }
 #if LEGACY_GL_EMULATION
       // Let's see if we need to enable the standard derivatives extension
@@ -450,13 +462,13 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 
 #if GL_FFP_ONLY
     enabledClientAttribIndices: [],
-    enableVertexAttribArray: function enableVertexAttribArray(index) {
+    enableVertexAttribArray: (index) => {
       if (!GL.enabledClientAttribIndices[index]) {
         GL.enabledClientAttribIndices[index] = true;
         GLctx.enableVertexAttribArray(index);
       }
     },
-    disableVertexAttribArray: function disableVertexAttribArray(index) {
+    disableVertexAttribArray: (index) => {
       if (GL.enabledClientAttribIndices[index]) {
         GL.enabledClientAttribIndices[index] = false;
         GLctx.disableVertexAttribArray(index);
@@ -465,7 +477,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
 
 #if FULL_ES2
-    calcBufLength: function calcBufLength(size, type, stride, count) {
+    calcBufLength: (size, type, stride, count) => {
       if (stride > 0) {
         return count * stride;  // XXXvlad this is not exactly correct I don't think
       }
@@ -475,7 +487,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 
     usedTempBuffers: [],
 
-    preDrawHandleClientVertexAttribBindings: function preDrawHandleClientVertexAttribBindings(count) {
+    preDrawHandleClientVertexAttribBindings: (count) => {
       GL.resetBufferBinding = false;
 
       // TODO: initial pass to detect ranges we need to upload, might not need
@@ -499,7 +511,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       }
     },
 
-    postDrawHandleClientVertexAttribBindings: function postDrawHandleClientVertexAttribBindings() {
+    postDrawHandleClientVertexAttribBindings: () => {
       if (GL.resetBufferBinding) {
         GLctx.bindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, GL.buffers[GLctx.currentArrayBufferBinding]);
       }
@@ -1588,22 +1600,20 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     return colorChannels[format - 0x1902]||1;
   },
 
-  $emscriptenWebGLGetTexPixelData__deps: ['$computeUnpackAlignedImageSize', '$colorChannelsInGlTextureFormat', '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'],
+  $emscriptenWebGLGetTexPixelData__deps: ['$computeUnpackAlignedImageSize', '$colorChannelsInGlTextureFormat', '$heapObjectForWebGLType', '$toTypedArrayIndex'],
   $emscriptenWebGLGetTexPixelData: (type, format, width, height, pixels, internalFormat) => {
     var heap = heapObjectForWebGLType(type);
-    var shift = heapAccessShiftForWebGLHeap(heap);
-    var byteSize = 1<<shift;
-    var sizePerPixel = colorChannelsInGlTextureFormat(format) * byteSize;
+    var sizePerPixel = colorChannelsInGlTextureFormat(format) * heap.BYTES_PER_ELEMENT;
     var bytes = computeUnpackAlignedImageSize(width, height, sizePerPixel, GL.unpackAlignment);
 #if GL_ASSERTIONS
-    assert((pixels >> shift) << shift == pixels, 'Pointer to texture data passed to texture get function must be aligned to the byte size of the pixel type!');
+    assert(pixels % heap.BYTES_PER_ELEMENT == 0, 'Pointer to texture data passed to texture get function must be aligned to the byte size of the pixel type!');
 #endif
-    return heap.subarray(pixels >> shift, pixels + bytes >> shift);
+    return heap.subarray(toTypedArrayIndex(pixels, heap), toTypedArrayIndex(pixels + bytes, heap));
   },
 
   glTexImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
 #if MAX_WEBGL_VERSION >= 2
-                       , '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'
+                       , '$heapObjectForWebGLType', '$toTypedArrayIndex'
 #endif
   ],
   glTexImage2D: (target, level, internalFormat, width, height, border, format, type, pixels) => {
@@ -1634,7 +1644,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
       } else if (pixels) {
         var heap = heapObjectForWebGLType(type);
-        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
+        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, heap, toTypedArrayIndex(pixels, heap));
       } else {
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, null);
       }
@@ -1646,7 +1656,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 
   glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
 #if MAX_WEBGL_VERSION >= 2
-                          , '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'
+                          , '$heapObjectForWebGLType', '$toTypedArrayIndex'
 #endif
   ],
   glTexSubImage2D: (target, level, xoffset, yoffset, width, height, format, type, pixels) => {
@@ -1667,7 +1677,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
       } else if (pixels) {
         var heap = heapObjectForWebGLType(type);
-        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
+        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, heap, toTypedArrayIndex(pixels, heap));
       } else {
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, null);
       }
@@ -1681,7 +1691,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 
   glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData'
 #if MAX_WEBGL_VERSION >= 2
-                       , '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'
+                       , '$heapObjectForWebGLType', '$toTypedArrayIndex'
 #endif
   ],
   glReadPixels: (x, y, width, height, format, type, pixels) => {
@@ -1693,7 +1703,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
         GLctx.readPixels(x, y, width, height, format, type, pixels);
       } else {
         var heap = heapObjectForWebGLType(type);
-        GLctx.readPixels(x, y, width, height, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
+        GLctx.readPixels(x, y, width, height, format, type, heap, toTypedArrayIndex(pixels, heap));
       }
       return;
     }
@@ -2772,7 +2782,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       var view = miniTempWebGLFloatBuffers[4*count-1];
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
-      value >>= 2;
+      value = {{{ getHeapOffset('value', 'float') }}};
       for (var i = 0; i < 4 * count; i += 4) {
         var dst = value + i;
         view[i] = heap[dst];
@@ -3673,7 +3683,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   , '$emulGlGenVertexArrays'
 #endif
   ],
-  glGenVertexArrays: function (n, arrays) {
+  glGenVertexArrays: (n, arrays) => {
 #if LEGACY_GL_EMULATION
     emulGlGenVertexArrays(n, arrays);
 #else
@@ -4204,13 +4214,13 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   'SDL_GL_GetProcAddress',
   'eglGetProcAddress',
   'glfwGetProcAddress'
-].forEach(function(name) {
-  LibraryGL[name] = function(name) { abort(); return 0; };
+].forEach((name) => {
+  LibraryGL[name] = (name) => { abort(); return 0; };
   // Due to the two pass nature of compiling .js files,
   // in INCLUDE_FULL_LIBRARY mode, we must include the above
   // stub functions, but not their __deps message handlers.
 #if !INCLUDE_FULL_LIBRARY
-  LibraryGL[name + '__deps'] = [function() {
+  LibraryGL[name + '__deps'] = [() => {
     error(`linker: Undefined symbol: ${name}(). Please pass -sGL_ENABLE_GET_PROC_ADDRESS at link time to link in ${name}().`);
   }];
 #endif
@@ -4235,15 +4245,12 @@ function createGLPassthroughFunctions(lib, funcs) {
     const num = data[0];
     const names = data[1];
     const args = range(num).map((i) => 'x' + i ).join(', ');
-    const plainStub = `(function(${args}) { GLctx.NAME(${args}) })`;
-    const returnStub = `(function(${args}) { return GLctx.NAME(${args}) })`;
+    const stub = `(${args}) => GLctx.NAME(${args})`;
     const sigEnd = range(num).map(() => 'i').join('');
     names.split(' ').forEach((name) => {
-      let stub = plainStub;
       let sig;
       if (name.endsWith('*')) {
         name = name.slice(0, -1);
-        stub = returnStub;
         sig = 'i' + sigEnd;
       } else {
         sig = 'v' + sigEnd;

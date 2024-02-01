@@ -38,4 +38,4 @@ def process_dependencies(settings):
 
 
 def show():
-  return 'SDL2_net (zlib license)'
+  return 'sdl2_net (-sUSE_SDL_NET=2 or --use-port=sdl2_net; zlib license)'

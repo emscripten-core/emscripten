@@ -869,9 +869,9 @@ base align: 0, 0, 0, 0'''])
   @no_2gb('output is sensitive to absolute data layout')
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
-  def test_emmalloc_trim(self, *args):
+  def test_emmalloc_trim(self):
     self.set_setting('MALLOC', 'emmalloc')
-    self.emcc_args += ['-sINITIAL_MEMORY=128MB', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=2147418112'] + list(args)
+    self.emcc_args += ['-sINITIAL_MEMORY=128MB', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=2147418112']
 
     self.do_core_test('test_emmalloc_trim.cpp')
 
@@ -6659,7 +6659,6 @@ void* operator new(size_t size) {
 
   @no_asan('issues with freetype itself')
   @needs_make('configure script')
-  @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_freetype(self):
     if self.get_setting('WASMFS'):
@@ -6772,7 +6771,7 @@ void* operator new(size_t size) {
   @no_ubsan('local count too large')
   @no_lsan('output differs')
   @needs_make('depends on freetype')
-  @no_wasm64('MEMORY64 does not yet support SJLJ')
+  @no_4gb('runs out of memory')
   @is_slow_test
   def test_poppler(self):
     # See https://github.com/emscripten-core/emscripten/issues/20757
