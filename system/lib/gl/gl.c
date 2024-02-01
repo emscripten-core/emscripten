@@ -146,14 +146,22 @@ GLAPI void GLAPIENTRY emscripten_glColor3ub( GLubyte red, GLubyte green, GLubyte
 GLAPI void GLAPIENTRY emscripten_glColor3ui( GLuint red, GLuint green, GLuint blue );
 GLAPI void GLAPIENTRY emscripten_glColor3us( GLushort red, GLushort green, GLushort blue );
 
-GLAPI void GLAPIENTRY emscripten_glColor4b( GLbyte red, GLbyte green, GLbyte blue, GLbyte alpha );
-GLAPI void GLAPIENTRY emscripten_glColor4d( GLdouble red, GLdouble green, GLdouble blue, GLdouble alpha );
-GLAPI void GLAPIENTRY emscripten_glColor4f( GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha );
-GLAPI void GLAPIENTRY emscripten_glColor4i( GLint red, GLint green, GLint blue, GLint alpha );
-GLAPI void GLAPIENTRY emscripten_glColor4s( GLshort red, GLshort green, GLshort blue, GLshort alpha );
-GLAPI void GLAPIENTRY emscripten_glColor4ub( GLubyte red, GLubyte green, GLubyte blue, GLubyte alpha );
-GLAPI void GLAPIENTRY emscripten_glColor4ui( GLuint red, GLuint green, GLuint blue, GLuint alpha );
-GLAPI void GLAPIENTRY emscripten_glColor4us( GLushort red, GLushort green, GLushort blue, GLushort alpha );
+GLAPI void GLAPIENTRY emscripten_glColor4b( GLbyte red, GLbyte green,
+                                   GLbyte blue, GLbyte alpha );
+GLAPI void GLAPIENTRY emscripten_glColor4d( GLdouble red, GLdouble green,
+                                   GLdouble blue, GLdouble alpha );
+GLAPI void GLAPIENTRY emscripten_glColor4f( GLfloat red, GLfloat green,
+                                   GLfloat blue, GLfloat alpha );
+GLAPI void GLAPIENTRY emscripten_glColor4i( GLint red, GLint green,
+                                   GLint blue, GLint alpha );
+GLAPI void GLAPIENTRY emscripten_glColor4s( GLshort red, GLshort green,
+                                   GLshort blue, GLshort alpha );
+GLAPI void GLAPIENTRY emscripten_glColor4ub( GLubyte red, GLubyte green,
+                                    GLubyte blue, GLubyte alpha );
+GLAPI void GLAPIENTRY emscripten_glColor4ui( GLuint red, GLuint green,
+                                    GLuint blue, GLuint alpha );
+GLAPI void GLAPIENTRY emscripten_glColor4us( GLushort red, GLushort green,
+                                    GLushort blue, GLushort alpha );
 
 
 GLAPI void GLAPIENTRY emscripten_glColor3bv( const GLbyte *v );
@@ -219,13 +227,17 @@ GLAPI void GLAPIENTRY emscripten_glTexCoord4sv( const GLshort *v );
  * Vertex Arrays  (1.1)
  */
 
-GLAPI void GLAPIENTRY emscripten_glVertexPointer( GLint size, GLenum type, GLsizei stride, const GLvoid *ptr );
+GLAPI void GLAPIENTRY emscripten_glVertexPointer( GLint size, GLenum type,
+                                       GLsizei stride, const GLvoid *ptr );
 
-GLAPI void GLAPIENTRY emscripten_glNormalPointer( GLenum type, GLsizei stride, const GLvoid *ptr );
+GLAPI void GLAPIENTRY emscripten_glNormalPointer( GLenum type, GLsizei stride,
+                                       const GLvoid *ptr );
 
-GLAPI void GLAPIENTRY emscripten_glColorPointer( GLint size, GLenum type, GLsizei stride, const GLvoid *ptr );
+GLAPI void GLAPIENTRY emscripten_glColorPointer( GLint size, GLenum type,
+                                      GLsizei stride, const GLvoid *ptr );
 
-GLAPI void GLAPIENTRY emscripten_glTexCoordPointer( GLint size, GLenum type, GLsizei stride, const GLvoid *ptr );
+GLAPI void GLAPIENTRY emscripten_glTexCoordPointer( GLint size, GLenum type,
+                                         GLsizei stride, const GLvoid *ptr );
 
 GLAPI void GLAPIENTRY emscripten_glGetPointerv( GLenum pname, GLvoid **params );
 
@@ -237,8 +249,10 @@ GLAPI void GLAPIENTRY emscripten_glShadeModel( GLenum mode );
 
 GLAPI void GLAPIENTRY emscripten_glLightf( GLenum light, GLenum pname, GLfloat param );
 GLAPI void GLAPIENTRY emscripten_glLighti( GLenum light, GLenum pname, GLint param );
-GLAPI void GLAPIENTRY emscripten_glLightfv( GLenum light, GLenum pname, const GLfloat *params );
-GLAPI void GLAPIENTRY emscripten_glLightiv( GLenum light, GLenum pname, const GLint *params );
+GLAPI void GLAPIENTRY emscripten_glLightfv( GLenum light, GLenum pname,
+                                 const GLfloat *params );
+GLAPI void GLAPIENTRY emscripten_glLightiv( GLenum light, GLenum pname,
+                                 const GLint *params );
 
 GLAPI void GLAPIENTRY emscripten_glLightModelf( GLenum pname, GLfloat param );
 GLAPI void GLAPIENTRY emscripten_glLightModeli( GLenum pname, GLint param );
@@ -267,11 +281,17 @@ GLAPI void GLAPIENTRY emscripten_glGetTexEnvfv( GLenum target, GLenum pname, GLf
 GLAPI void GLAPIENTRY emscripten_glGetTexEnviv( GLenum target, GLenum pname, GLint *params );
 
 
-GLAPI void GLAPIENTRY emscripten_glGetTexLevelParameterfv( GLenum target, GLint level, GLenum pname, GLfloat *params );
-GLAPI void GLAPIENTRY emscripten_glGetTexLevelParameteriv( GLenum target, GLint level, GLenum pname, GLint *params );
+GLAPI void GLAPIENTRY emscripten_glGetTexLevelParameterfv( GLenum target, GLint level,
+                                                GLenum pname, GLfloat *params );
+GLAPI void GLAPIENTRY emscripten_glGetTexLevelParameteriv( GLenum target, GLint level,
+                                                GLenum pname, GLint *params );
 
 
-GLAPI void GLAPIENTRY emscripten_glTexImage1D( GLenum target, GLint level, GLint internalFormat, GLsizei width, GLint border, GLenum format, GLenum type, const GLvoid *pixels );
+GLAPI void GLAPIENTRY emscripten_glTexImage1D( GLenum target, GLint level,
+                                    GLint internalFormat,
+                                    GLsizei width, GLint border,
+                                    GLenum format, GLenum type,
+                                    const GLvoid *pixels );
 
 /* 1.1 functions */
 
