@@ -5,15 +5,20 @@
  * found in the LICENSE file.
  */
 
+#if GL_ENABLE_GET_PROC_ADDRESS
+
 // GL proc address retrieval
 
 #include <string.h>
 #include <stdlib.h>
 #include <emscripten.h>
+#include <emscripten/html5_webgl.h>
 
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
 #include <GL/glext.h>
+
+#ifdef LEGACY_GL_EMULATION
 
 #include <webgl/webgl1_ext.h>
 
@@ -1569,15 +1574,6 @@ GLAPI void APIENTRY emscripten_glGetObjectParameteriv (GLhandleARB obj, GLenum p
 GLAPI void APIENTRY emscripten_glGetInfoLog (GLhandleARB obj, GLsizei maxLength, GLsizei *length, GLcharARB *infoLog);
 GLAPI void APIENTRY emscripten_glBindProgram (GLenum target, GLuint program);
 
-#if GL_ENABLE_GET_PROC_ADDRESS
-
-extern void *emscripten_webgl1_get_proc_address(const char *name);
-extern void *_webgl1_match_ext_proc_address_without_suffix(const char *name);
-extern void *emscripten_webgl2_get_proc_address(const char *name);
-extern void *_webgl2_match_ext_proc_address_without_suffix(const char *name);
-
-#ifdef LEGACY_GL_EMULATION
-
 #define RETURN_GL_EMU_FN(functionName) if (!strcmp(name, #functionName)) return emscripten_##functionName;
 
 void* emscripten_legacy_gl_emulation_GetProcAddress(const char *name) {
@@ -1794,6 +1790,9 @@ for line in open('a').readlines():
   return 0;
 }
 #endif
+
+void *_webgl1_match_ext_proc_address_without_suffix(const char *name);
+void *_webgl2_match_ext_proc_address_without_suffix(const char *name);
 
 // "Sloppy" desktop OpenGL/mobile GLES emulating
 // behavior: different functionality is available under
