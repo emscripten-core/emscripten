@@ -1405,6 +1405,8 @@ def parse_args(newargs):
       options.target = consume_arg()
       if options.target not in ('wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'):
         exit_with_error(f'unsupported target: {options.target} (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten)')
+    elif check_arg('--use-port'):
+      ports.handle_use_port_arg(settings, consume_arg())
     elif arg == '-mllvm':
       # Ignore the next argument rather than trying to parse it.  This is needed
       # because llvm args could, for example, start with `-o` and we don't want

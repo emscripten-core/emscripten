@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 3.1.54 (in development)
 -----------------------
+- Added `--use-port` option to `emcc`.  This option allows ports to be enabled 
+  by name and is designed to replace all existing `-sUSE_XXX` settings for 
+  ports. You can use `--show-ports` to get the list of available ports that 
+  can be used with this new option. (#21214)
+ 
 
 3.1.53 - 01/29/24
 -----------------

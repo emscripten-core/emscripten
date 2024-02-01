@@ -58,7 +58,7 @@ def process_dependencies(settings):
 
 
 def show():
-  return 'libpng (-sUSE_LIBPNG; zlib license)'
+  return 'libpng (-sUSE_LIBPNG or --use-port=libpng; zlib license)'
 
 
 pnglibconf_h = r'''/* pnglibconf.h - library build configuration */
