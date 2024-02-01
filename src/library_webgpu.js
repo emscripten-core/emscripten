@@ -1256,7 +1256,11 @@ var LibraryWebGPU = {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
     function makePrimitiveState(rsPtr) {
       if (!rsPtr) return undefined;
-      {{{ gpu.makeCheckDescriptor('rsPtr') }}}
+      {{{ gpu.makeCheck('rsPtr') }}}
+
+      var nextInChainPtr = {{{ makeGetValue('rsPtr', C_STRUCTS.WGPUPrimitiveState.nextInChain, '*') }}};
+      var sType = {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUChainedStruct.sType) }}};
+      
       return {
         "topology": WebGPU.PrimitiveTopology[
           {{{ gpu.makeGetU32('rsPtr', C_STRUCTS.WGPUPrimitiveState.topology) }}}],
@@ -1264,8 +1268,9 @@ var LibraryWebGPU = {
           {{{ gpu.makeGetU32('rsPtr', C_STRUCTS.WGPUPrimitiveState.stripIndexFormat) }}}],
         "frontFace": WebGPU.FrontFace[
           {{{ gpu.makeGetU32('rsPtr', C_STRUCTS.WGPUPrimitiveState.frontFace) }}}],
-        "cullMode": WebGPU.CullMode[
-          {{{ gpu.makeGetU32('rsPtr', C_STRUCTS.WGPUPrimitiveState.cullMode) }}}],
+          "cullMode": WebGPU.CullMode[
+            {{{ gpu.makeGetU32('rsPtr', C_STRUCTS.WGPUPrimitiveState.cullMode) }}}],
+          "unclippedDepth": sType === {{{ gpu.SType.PrimitiveDepthClipControl }}} && {{{ gpu.makeGetBool('nextInChainPtr', C_STRUCTS.WGPUPrimitiveDepthClipControl.unclippedDepth) }}},
       };
     }
 
