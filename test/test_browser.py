@@ -2086,7 +2086,10 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_relocatable(self):
-    self.btest('third_party/cubegeom/cubegeom_pre.c', reference='third_party/cubegeom/cubegeom_pre.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sRELOCATABLE'])
+    # RELOCATABLE needs to be set via `set_setting` so that it will also apply when
+    # building `browser_reporting.c`
+    self.set_setting('RELOCATABLE')
+    self.btest('third_party/cubegeom/cubegeom_pre.c', reference='third_party/cubegeom/cubegeom_pre.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
