@@ -529,9 +529,9 @@ fi
     # listing ports
     out = self.do([EMCC, '--show-ports'])
     self.assertContained('Available ports:', out)
-    self.assertContained('SDL2', out)
-    self.assertContained('SDL2_image', out)
-    self.assertContained('SDL2_net', out)
+    self.assertContained('sdl2', out)
+    self.assertContained('sdl2_image', out)
+    self.assertContained('sdl2_net', out)
 
     # using ports
     RETRIEVING_MESSAGE = 'retrieving port'
