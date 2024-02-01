@@ -7679,7 +7679,7 @@ high = 1234
 
   def test_dash_s_valid_list(self):
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), "-sTEST_KEY=[Value1, \"Value2\"]"])
-    self.assertNotContained('a problem occurred in evaluating the content after a "-s", specifically', err)
+    self.assertNotContained('error parsing "-s" setting', err)
 
   def test_dash_s_wrong_type(self):
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-sEXIT_RUNTIME=[foo,bar]'])
@@ -7710,6 +7710,15 @@ high = 1234
     self.run_process([EMCC, test_file('hello_world.c'), '-nostdlib', '-sERROR_ON_UNDEFINED_SYMBOLS=0'])
     # Ensure that 0x0 is parsed as a zero and not as the string '0x0'.
     self.run_process([EMCC, test_file('hello_world.c'), '-nostdlib', '-sERROR_ON_UNDEFINED_SYMBOLS=0x0'])
+
+  def test_dash_s_bad_json_types(self):
+    # Dict rather than string/list
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS={"a":1}'])
+    self.assertContained("settings must be strings or lists (not $<class 'dict'>", err)
+
+    # List element is not a string
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=[{"a":1}]'])
+    self.assertContained("list members in settings must be strings (not $<class 'dict'>)", err)
 
   def test_zeroinit(self):
     create_file('src.c', r'''

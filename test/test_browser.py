@@ -23,7 +23,7 @@ from urllib.request import urlopen
 
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
-from common import read_file, also_with_minimal_runtime, EMRUN, no_wasm64, no_4gb
+from common import read_file, also_with_minimal_runtime, EMRUN, no_wasm64, no_2gb, no_4gb
 from tools import shared
 from tools import ports
 from tools import utils
@@ -4987,10 +4987,14 @@ Module["preRun"] = () => {
     'manual_css': (['-sPROXY_TO_PTHREAD', '-pthread', '-sOFFSCREEN_FRAMEBUFFER', '-DTEST_EXPLICIT_CONTEXT_SWAP=1', '-DTEST_MANUALLY_SET_ELEMENT_CSS_SIZE=1'], False),
   })
   def test_emscripten_animate_canvas_element_size(self, args, main_loop):
-    cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '-sGL_DEBUG', '--threadprofiler', '-sASSERTIONS'] + args
+    cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '-sGL_DEBUG', '-sASSERTIONS'] + args
+    if not self.is_2gb() and not self.is_4gb():
+      # Thread profiler does not yet work with large pointers.
+      # https://github.com/emscripten-core/emscripten/issues/21229
+      cmd.append('--threadprofiler')
     if main_loop:
       cmd.append('-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1')
-    self.btest_exit('canvas_animate_resize.cpp', args=cmd)
+    self.btest_exit('canvas_animate_resize.c', args=cmd)
 
   # Tests the absolute minimum pthread-enabled application.
   @parameterized({
@@ -5572,6 +5576,7 @@ Module["preRun"] = () => {
     self.btest('wasm_worker/proxied_function.c', expected='0', args=['--js-library', test_file('wasm_worker/proxied_function.js'), '-sWASM_WORKERS', '-sASSERTIONS=0'])
 
   @no_firefox('no 4GB support yet')
+  @no_2gb('uses MAXIMUM_MEMORY')
   @no_4gb('uses MAXIMUM_MEMORY')
   def test_4gb(self):
     # TODO Convert to an actual browser test when it reaches stable.
@@ -5668,6 +5673,7 @@ Module["preRun"] = () => {
     self.btest('emmalloc_memgrowth.cpp', expected='0', args=['-sMALLOC=emmalloc', '-sALLOW_MEMORY_GROWTH=1', '-sABORTING_MALLOC=0', '-sASSERTIONS=2', '-sMINIMAL_RUNTIME=1', '-sMAXIMUM_MEMORY=4GB'])
 
   @no_firefox('no 4GB support yet')
+  @no_2gb('uses MAXIMUM_MEMORY')
   @no_4gb('uses MAXIMUM_MEMORY')
   def test_2gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
@@ -5682,6 +5688,7 @@ Module["preRun"] = () => {
     self.do_run_in_out_file_test('browser/test_2GB_fail.cpp')
 
   @no_firefox('no 4GB support yet')
+  @no_2gb('uses MAXIMUM_MEMORY')
   @no_4gb('uses MAXIMUM_MEMORY')
   def test_4gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
@@ -5917,3 +5924,10 @@ class browser64_4gb(browser):
     self.set_setting('GLOBAL_BASE', '4gb')
     self.emcc_args.append('-Wno-experimental')
     self.require_wasm64()
+
+
+class browser_2gb(browser):
+  def setUp(self):
+    super().setUp()
+    self.set_setting('INITIAL_MEMORY', '2200mb')
+    self.set_setting('GLOBAL_BASE', '2gb')

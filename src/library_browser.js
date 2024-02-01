@@ -71,13 +71,14 @@ var LibraryBrowser = {
         Browser.mainLoop.scheduler();
       },
       updateStatus() {
+#if expectToReceiveOnModule('setStatus')
         if (Module['setStatus']) {
           var message = Module['statusMessage'] || 'Please wait...';
           var remaining = Browser.mainLoop.remainingBlockers;
           var expected = Browser.mainLoop.expectedBlockers;
           if (remaining) {
             if (remaining < expected) {
-              Module['setStatus'](message + ' (' + (expected - remaining) + '/' + expected + ')');
+              Module['setStatus'](`{message} ({expected - remaining}/{expected})`);
             } else {
               Module['setStatus'](message);
             }
@@ -85,17 +86,22 @@ var LibraryBrowser = {
             Module['setStatus']('');
           }
         }
+#endif
       },
       runIter(func) {
         if (ABORT) return;
+#if expectToReceiveOnModule('preMainLoop')
         if (Module['preMainLoop']) {
           var preRet = Module['preMainLoop']();
           if (preRet === false) {
             return; // |return false| skips a frame
           }
         }
+#endif
         callUserCallback(func);
+#if expectToReceiveOnModule('postMainLoop')
         Module['postMainLoop']?.();
+#endif
       }
     },
     isFullscreen: false,
