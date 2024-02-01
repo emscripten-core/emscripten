@@ -227,7 +227,7 @@ def no_4gb(note):
 
     @wraps(f)
     def decorated(self, *args, **kwargs):
-      if self.get_setting('INITIAL_MEMORY') == '4200mb':
+      if self.is_4gb():
         self.skipTest(note)
       f(self, *args, **kwargs)
     return decorated
@@ -658,6 +658,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   def is_wasm64(self):
     return self.get_setting('MEMORY64')
+
+  def is_4gb(self):
+    return self.get_setting('INITIAL_MEMORY') == '4200mb'
+
+  def is_2gb(self):
+    return self.get_setting('INITIAL_MEMORY') == '2200mb'
 
   def check_dylink(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():

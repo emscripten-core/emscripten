@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
@@ -33,8 +34,7 @@ int program;
 int frameNumber = 0;
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx;
 
-void tick()
-{
+void tick() {
   double sizeScale = 21.0 + 20.0 * sin(emscripten_get_now()*0.001);
   double w = 18.0*sizeScale;
   double h = 11.0*sizeScale;
@@ -73,8 +73,7 @@ void tick()
 #endif
 
   ++frameNumber;
-  if (frameNumber >= NUM_FRAMES_TO_RENDER)
-  {
+  if (frameNumber >= NUM_FRAMES_TO_RENDER) {
 #if TEST_EMSCRIPTEN_SET_MAIN_LOOP
     emscripten_cancel_main_loop();
 #endif
@@ -85,8 +84,8 @@ void tick()
   }
 }
 
-void init()
-{
+void init() {
+  printf("init\n");
   glGenBuffers(1, &vb);
   glBindBuffer(GL_ARRAY_BUFFER, vb);
   float vertices[] = { -1, -1, -1,  1, 1, -1, 1,  1 };
@@ -123,9 +122,8 @@ int main()
   attr.explicitSwapControl = EM_TRUE;
 #endif
   ctx = emscripten_webgl_create_context("#canvas", &attr);
-  printf("Created context with handle %u\n", (unsigned int)ctx);
-  if (!ctx)
-  {
+  printf("Created context with handle %#lx\n", ctx);
+  if (!ctx) {
     if (!emscripten_supports_offscreencanvas()) {
       EM_ASM({
         xhr = new XMLHttpRequest();
@@ -144,8 +142,7 @@ int main()
 #if TEST_EMSCRIPTEN_SET_MAIN_LOOP
   emscripten_set_main_loop(tick, 0, 0);
 #else
-  for(int i = 0; i < NUM_FRAMES_TO_RENDER; ++i)
-  {
+  for (int i = 0; i < NUM_FRAMES_TO_RENDER; ++i) {
     tick();
     emscripten_current_thread_process_queued_calls();
     usleep(16*1000);

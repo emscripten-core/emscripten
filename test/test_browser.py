@@ -4987,10 +4987,14 @@ Module["preRun"] = () => {
     'manual_css': (['-sPROXY_TO_PTHREAD', '-pthread', '-sOFFSCREEN_FRAMEBUFFER', '-DTEST_EXPLICIT_CONTEXT_SWAP=1', '-DTEST_MANUALLY_SET_ELEMENT_CSS_SIZE=1'], False),
   })
   def test_emscripten_animate_canvas_element_size(self, args, main_loop):
-    cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '-sGL_DEBUG', '--threadprofiler', '-sASSERTIONS'] + args
+    cmd = ['-lGL', '-O3', '-g2', '--shell-file', test_file('canvas_animate_resize_shell.html'), '-sGL_DEBUG', '-sASSERTIONS'] + args
+    if not self.is_2gb() and not self.is_4gb():
+      # Thread profiler does not yet work with large pointers.
+      # https://github.com/emscripten-core/emscripten/issues/21229
+      cmd.append('--threadprofiler')
     if main_loop:
       cmd.append('-DTEST_EMSCRIPTEN_SET_MAIN_LOOP=1')
-    self.btest_exit('canvas_animate_resize.cpp', args=cmd)
+    self.btest_exit('canvas_animate_resize.c', args=cmd)
 
   # Tests the absolute minimum pthread-enabled application.
   @parameterized({
