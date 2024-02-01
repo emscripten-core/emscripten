@@ -15,7 +15,7 @@
 // -- jshint doesn't understand library syntax, so we need to specifically tell it about the symbols we define
 /*global typeDependencies, flushPendingDeletes, getTypeName, getBasestPointer, throwBindingError, UnboundTypeError, embindRepr, registeredInstances, registeredTypes*/
 /*global ensureOverloadTable, embind__requireFunction, awaitingDependencies, makeLegalFunctionName, embind_charCodes:true, registerType, createNamedFunction, RegisteredPointer, throwInternalError*/
-/*global simpleReadValueFromPointer, floatReadValueFromPointer, integerReadValueFromPointer, enumReadValueFromPointer, replacePublicSymbol, craftInvokerFunction, tupleRegistrations*/
+/*global floatReadValueFromPointer, integerReadValueFromPointer, enumReadValueFromPointer, replacePublicSymbol, craftInvokerFunction, tupleRegistrations*/
 /*global finalizationRegistry, attachFinalizer, detachFinalizer, releaseClassHandle, runDestructor*/
 /*global ClassHandle, makeClassHandle, structRegistrations, whenDependentTypesAreResolved, BindingError, deletionQueue, delayFunction:true, upcastPointer*/
 /*global exposePublicSymbol, heap32VectorToArray, newFunc, char_0, char_9*/
@@ -41,7 +41,7 @@ var LibraryEmbind = {
   // If register_type is used, emval will be registered multiple times for
   // different type id's, but only a single type object is needed on the JS side
   // for all of them. Store the type for reuse.
-  $EmValType__deps: ['_emval_decref', '$Emval', '$simpleReadValueFromPointer', '$GenericWireTypeSize'],
+  $EmValType__deps: ['_emval_decref', '$Emval', '$readPointer', '$GenericWireTypeSize'],
   $EmValType: `{
     name: 'emscripten::val',
     'fromWireType': (handle) => {
@@ -51,7 +51,7 @@ var LibraryEmbind = {
     },
     'toWireType': (destructors, value) => Emval.toHandle(value),
     'argPackAdvance': GenericWireTypeSize,
-    'readValueFromPointer': simpleReadValueFromPointer,
+    'readValueFromPointer': readPointer,
     destructorFunction: null, // This type does not need a destructor
 
     // TODO: do we need a deleteObject here?  write a test where
@@ -494,12 +494,6 @@ var LibraryEmbind = {
     });
   },
 
-  $simpleReadValueFromPointer__docs: '/** @suppress {globalThis} */',
-  // For types whose wire types are 32-bit pointers.
-  $simpleReadValueFromPointer: function(pointer) {
-    return this['fromWireType']({{{ makeGetValue('pointer', '0', 'i32') }}});
-  },
-
   $readPointer__docs: '/** @suppress {globalThis} */',
   $readPointer: function(pointer) {
     return this['fromWireType']({{{ makeGetValue('pointer', '0', '*') }}});
@@ -617,33 +611,30 @@ var LibraryEmbind = {
     ],
   _embind_register_std_wstring: (rawType, charSize, name) => {
     name = readLatin1String(name);
-    var decodeString, encodeString, getHeap, lengthBytesUTF, shift;
+    var decodeString, encodeString, readCharAt, lengthBytesUTF;
     if (charSize === 2) {
       decodeString = UTF16ToString;
       encodeString = stringToUTF16;
       lengthBytesUTF = lengthBytesUTF16;
-      getHeap = () => HEAPU16;
-      shift = 1;
+      readCharAt = (pointer) => {{{ makeGetValue('pointer', 0, 'u16') }}};
     } else if (charSize === 4) {
       decodeString = UTF32ToString;
       encodeString = stringToUTF32;
       lengthBytesUTF = lengthBytesUTF32;
-      getHeap = () => HEAPU32;
-      shift = 2;
+      readCharAt = (pointer) => {{{ makeGetValue('pointer', 0, 'u32') }}};
     }
     registerType(rawType, {
       name,
       'fromWireType': (value) => {
         // Code mostly taken from _embind_register_std_string fromWireType
         var length = {{{ makeGetValue('value', 0, '*') }}};
-        var HEAP = getHeap();
         var str;
 
         var decodeStartPtr = value + {{{ POINTER_SIZE }}};
         // Looping here to support possible embedded '0' bytes
         for (var i = 0; i <= length; ++i) {
           var currentBytePtr = value + {{{ POINTER_SIZE }}} + i * charSize;
-          if (i == length || HEAP[currentBytePtr >> shift] == 0) {
+          if (i == length || readCharAt(currentBytePtr) == 0) {
             var maxReadBytes = currentBytePtr - decodeStartPtr;
             var stringSegment = decodeString(decodeStartPtr, maxReadBytes);
             if (str === undefined) {
@@ -668,7 +659,7 @@ var LibraryEmbind = {
         // assumes POINTER_SIZE alignment
         var length = lengthBytesUTF(value);
         var ptr = _malloc({{{ POINTER_SIZE }}} + length + charSize);
-        {{{ makeSetValue('ptr', '0', 'length >> shift', SIZE_TYPE) }}};
+        {{{ makeSetValue('ptr', '0', 'length / charSize', SIZE_TYPE) }}};
 
         encodeString(value, ptr + {{{ POINTER_SIZE }}}, length + charSize);
 
@@ -678,7 +669,7 @@ var LibraryEmbind = {
         return ptr;
       },
       'argPackAdvance': GenericWireTypeSize,
-      'readValueFromPointer': simpleReadValueFromPointer,
+      'readValueFromPointer': readPointer,
       destructorFunction(ptr) {
         _free(ptr);
       }
@@ -1012,7 +1003,7 @@ var LibraryEmbind = {
 
   _embind_finalize_value_array__deps: [
     '$tupleRegistrations', '$runDestructors',
-    '$simpleReadValueFromPointer', '$whenDependentTypesAreResolved'],
+    '$readPointer', '$whenDependentTypesAreResolved'],
   _embind_finalize_value_array: (rawTupleType) => {
     var reg = tupleRegistrations[rawTupleType];
     delete tupleRegistrations[rawTupleType];
@@ -1064,7 +1055,7 @@ var LibraryEmbind = {
           return ptr;
         },
         'argPackAdvance': GenericWireTypeSize,
-        'readValueFromPointer': simpleReadValueFromPointer,
+        'readValueFromPointer': readPointer,
         destructorFunction: rawDestructor,
       }];
     });
@@ -1115,7 +1106,7 @@ var LibraryEmbind = {
 
   _embind_finalize_value_object__deps: [
     '$structRegistrations', '$runDestructors',
-    '$simpleReadValueFromPointer', '$whenDependentTypesAreResolved'],
+    '$readPointer', '$whenDependentTypesAreResolved'],
   _embind_finalize_value_object: (structType) => {
     var reg = structRegistrations[structType];
     delete structRegistrations[structType];
@@ -1173,7 +1164,7 @@ var LibraryEmbind = {
           return ptr;
         },
         'argPackAdvance': GenericWireTypeSize,
-        'readValueFromPointer': simpleReadValueFromPointer,
+        'readValueFromPointer': readPointer,
         destructorFunction: rawDestructor,
       }];
     });
