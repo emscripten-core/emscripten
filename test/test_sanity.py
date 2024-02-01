@@ -3,6 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import glob
 import os
 import platform
 import shutil
@@ -729,15 +730,23 @@ fi
     # Unless --force is specified
     self.assertContained('Building targets: zlib', self.do([EMBUILDER, 'build', 'zlib', 'MINIMAL', '--force']))
 
-  def test_embuilder_wasm_backend(self):
+  def test_embuilder(self):
     restore_and_set_up()
-    # the --lto flag makes us build wasm-bc
+    # the --lto flag makes us build LTO libraries
     self.clear_cache()
     self.run_process([EMBUILDER, 'build', 'libemmalloc'])
     self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten'))
     self.clear_cache()
     self.run_process([EMBUILDER, 'build', 'libemmalloc', '--lto'])
     self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lto'))
+
+  def test_embuilder_wildcards(self):
+    restore_and_set_up()
+    glob_match = os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libwebgpu*.a')
+    self.run_process([EMBUILDER, 'clear', 'libwebgpu*'])
+    self.assertFalse(glob.glob(glob_match))
+    self.run_process([EMBUILDER, 'build', 'libwebgpu*'])
+    self.assertGreater(len(glob.glob(glob_match)), 3)
 
   def test_binaryen_version(self):
     restore_and_set_up()
