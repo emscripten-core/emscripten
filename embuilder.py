@@ -125,7 +125,8 @@ def get_help():
   return '''
 Available targets:
 
-  build / clear %s
+  build / clear
+        %s
 
 Issuing 'embuilder build ALL' causes each task to be built.
 ''' % '\n        '.join(all_tasks)

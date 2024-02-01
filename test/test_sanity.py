@@ -526,9 +526,12 @@ fi
   def test_emcc_ports(self):
     restore_and_set_up()
 
+    # validating that ports are valid
+    ports.validate_ports()
+
     # listing ports
     out = self.do([EMCC, '--show-ports'])
-    self.assertContained('Available ports:', out)
+    self.assertContained('Available official ports:', out)
     self.assertContained('sdl2', out)
     self.assertContained('sdl2_image', out)
     self.assertContained('sdl2_net', out)

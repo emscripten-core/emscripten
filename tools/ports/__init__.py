@@ -34,13 +34,11 @@ logger = logging.getLogger('ports')
 
 
 def load_port(name):
-  expected_attrs = ['get', 'clear', 'show']
-  port = __import__(name, globals(), level=1)
+  port = __import__(name, globals(), level=1, fromlist=[None])
   ports.append(port)
+  port.is_contrib = name.startswith('contrib.')
   port.name = name
   ports_by_name[port.name] = port
-  for a in expected_attrs:
-    assert hasattr(port, a), 'port %s is missing %s' % (port, a)
   if not hasattr(port, 'needed'):
     port.needed = lambda s: name in ports_needed
   else:
@@ -57,11 +55,30 @@ def load_port(name):
   if not hasattr(port, 'variants'):
     # port variants (default: no variants)
     port.variants = {}
+  if not hasattr(port, 'show') and port.is_contrib:
+    port.show = lambda: f'{port.name} (--use-port={port.name}; {port.project_license()})'
 
   for variant, extra_settings in port.variants.items():
     if variant in port_variants:
       utils.exit_with_error('duplicate port variant: %s' % variant)
     port_variants[variant] = (port.name, extra_settings)
+
+
+def validate_port(port):
+  expected_attrs = ['get', 'clear', 'show']
+  if port.is_contrib:
+    expected_attrs += ['project_url', 'project_description', 'project_license']
+  for a in expected_attrs:
+    assert hasattr(port, a), 'port %s is missing %s' % (port, a)
+
+
+# Called from test_sanity
+def validate_ports():
+  for port in ports:
+    validate_port(port)
+    for dep in port.deps:
+      if dep not in ports_by_name:
+        utils.exit_with_error('unknown dependency in port: %s' % dep)
 
 
 @ToolchainProfiler.profile()
@@ -72,10 +89,12 @@ def read_ports():
     filename = os.path.splitext(filename)[0]
     load_port(filename)
 
-  for port in ports:
-    for dep in port.deps:
-      if dep not in ports_by_name:
-        utils.exit_with_error('unknown dependency in port: %s' % dep)
+  contrib_dir = os.path.join(ports_dir, 'contrib')
+  for filename in os.listdir(contrib_dir):
+    if not filename.endswith('.py') or filename == '__init__.py':
+      continue
+    filename = os.path.splitext(filename)[0]
+    load_port('contrib.' + filename)
 
 
 def get_all_files_under(dirname):
@@ -441,9 +460,15 @@ def add_cflags(args, settings): # noqa: U100
 
 
 def show_ports():
-  print('Available ports:')
-  for port in sorted(ports, key=lambda p: p.name):
-    print('   ', port.show())
+  sorted_ports = sorted(ports, key=lambda p: p.name)
+  print('Available official ports:')
+  for port in sorted_ports:
+    if not port.is_contrib:
+      print('   ', port.show())
+  print('Available contrib ports:')
+  for port in sorted_ports:
+    if port.is_contrib:
+      print('   ', port.show())
 
 
 read_ports()
