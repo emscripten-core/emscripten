@@ -116,14 +116,14 @@ def no_wasmfs(note):
 def also_with_wasm2js(f):
   assert callable(f)
 
-  def metafunc(self, with_wasm2js):
+  def metafunc(self, with_wasm2js, *args, **kwargs):
     assert self.get_setting('WASM') is None
     if with_wasm2js:
       self.require_wasm2js()
       self.set_setting('WASM', 0)
-      f(self)
+      f(self, *args, **kwargs)
     else:
-      f(self)
+      f(self, *args, **kwargs)
 
   metafunc._parameterize = {'': (False,),
                             'wasm2js': (True,)}
@@ -4838,11 +4838,11 @@ Module["preRun"] = () => {
   })
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @requires_threads
+  @also_with_wasm2js
   def test_fetch_from_thread(self, args):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/test_fetch_from_thread.cpp',
-                    args=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sFETCH_DEBUG', '-sFETCH', '-DFILE_DOES_NOT_EXIST'],
-                    also_wasm2js=True)
+                    args=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sFETCH_DEBUG', '-sFETCH', '-DFILE_DOES_NOT_EXIST'])
 
   @also_with_wasm2js
   def test_fetch_to_indexdb(self):
