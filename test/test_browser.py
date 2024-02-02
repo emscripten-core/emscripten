@@ -865,20 +865,18 @@ If manually bisecting:
     assert os.path.exists('reftest.js')
     html = read_file('test.html')
     html = html.replace('</body>', '''
+<script src="reftest.js"/>
 <script>
-function assert(x, y) { if (!x) throw 'assertion failed ' + y }
-%s
-
 var windowClose = window.close;
 window.close = () => {
   // wait for rafs to arrive and the screen to update before reftesting
-  setTimeout(function() {
+  setTimeout(() => {
     doReftest();
     setTimeout(windowClose, 5000);
   }, 1000);
 };
 </script>
-</body>''' % read_file('reftest.js'))
+</body>''')
     create_file('test.html', html)
 
   def test_sdl_canvas_proxy(self):
@@ -3362,10 +3360,10 @@ Module["preRun"] = () => {
   def test_sdl2_gl_frames_swap(self):
     def post_build():
       self.post_manual_reftest()
-      html = read_file('test.html')
-      html2 = html.replace('''Module['postRun'] = doReftest;''', '') # we don't want the very first frame
-      assert html != html2
-      create_file('test.html', html2)
+      reftest = read_file('reftest.js')
+      reftest2 = reftest.replace("Module['postRun'] = doReftest;", '') # we don't want the very first frame
+      assert reftest != reftest2
+      create_file('reftest.js', reftest2)
     self.btest('test_sdl2_gl_frames_swap.c', reference='browser/test_sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-sGL_TESTING', '-sUSE_SDL=2'], manual_reference=True, post_build=post_build)
 
   @no_wasm64('SDL2 + wasm64')
