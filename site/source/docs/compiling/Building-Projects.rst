@@ -241,15 +241,18 @@ To see a list of all available ports, run ``emcc --show-ports``.
 .. note:: Since emscripten 3.1.54, ``--use-port`` is the preferred syntax to use a port in your project. The legacy syntax (for example ``-sUSE_SDL2``, ``-sUSE_SDL_IMAGE=2``) remains available.
 
 
+Contrib ports
+-------------
+
+Contrib ports are contributed by the wider community and supported on a "best effort" basis. Since they are not run as part of emscripten CI they are not always guaranteed to build or function. See :ref:`Contrib Ports <contrib_ports>` for more information.
+
 Adding more ports
 -----------------
 
-Adding more ports is fairly easy. Basically, the steps are
+With the introduction of contrib ports, adding a new port is fairly easy. Basically, the steps are:
 
  * Make sure the port is open source and has a suitable license.
- * Add it to emscripten-ports on github. The ports maintainers can create the repo and add the relevant developers to a team for that repo, so they have write access.
- * Add a script to handle it under ``tools/ports/`` (see existing code for examples) and use it in ``tools/ports/__init__.py``.
- * Add testing in the test suite.
+ * Read the ``README.md`` file under ``tools/ports/contrib`` which contains more information.
 
 
 Build system issues

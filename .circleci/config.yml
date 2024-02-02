@@ -418,6 +418,7 @@ jobs:
       - checkout
       - pip-install
       - run: tools/maint/update_settings_docs.py --check
+      - run: tools/maint/update_contrib_ports_docs.py --check
       - run: make -C site text
       - run: tools/maint/check_emcc_help_text.py
       - run: make -C site html

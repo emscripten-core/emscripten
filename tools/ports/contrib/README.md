@@ -16,5 +16,5 @@ of information (provided as functions in the port file):
 * `project_license`: the license used by the project/port
 
 After adding (resp. modifying) a contrib port, you must run the 
-`./tools/maint/update_settings_docs.py` command to add (resp. update) 
+`./tools/maint/update_contrib_port_docs.py` command to add (resp. update) 
 the new port to the documentation.
