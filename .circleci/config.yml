@@ -818,6 +818,9 @@ jobs:
             browser_2gb.test_fetch_to_memory
             browser_2gb.test_emscripten_animate_canvas_element_size_manual_css
             browser_2gb.test_fulles2_sdlproc
+            browser_2gb.test_cubegeom
+            browser_2gb.test_cubegeom_normal
+            browser_2gb.test_cubegeom_normal_dap
             "
   test-browser-chrome-wasm64-4gb:
     executor: bionic

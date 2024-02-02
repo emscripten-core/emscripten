@@ -3542,8 +3542,10 @@ var LibraryGLEmulation = {
     GLImmediate.mode = mode;
     if (!GLctx.currentArrayBufferBinding) {
       GLImmediate.firstVertex = end ? start : HEAP8.length; // if we don't know the start, set an invalid value and we will calculate it later from the indices
-      GLImmediate.lastVertex = end ? end+1 : 0;
-      GLImmediate.vertexData = HEAPF32.subarray(GLImmediate.vertexPointer >> 2, end ? (GLImmediate.vertexPointer + (end+1)*GLImmediate.stride) >> 2 : undefined); // XXX assuming float
+      GLImmediate.lastVertex = end ? end + 1 : 0;
+      start = GLImmediate.vertexPointer;
+      end = end ? GLImmediate.vertexPointer + (end+1)*GLImmediate.stride : undefined;
+      GLImmediate.vertexData = HEAPF32.subarray({{{ getHeapOffset('start', 'float') }}}, end ? {{{ getHeapOffset('end', 'float') }}} : undefined);
     }
     GLImmediate.flush(count, 0, indices);
     GLImmediate.mode = -1;
