@@ -320,7 +320,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   function saveResponseAndStatus() {
     var ptr = 0;
     var ptrLen = 0;
-    if (xhr.response && fetchAttrLoadToMemory && HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] === 0) {
+    if (xhr.response && fetchAttrLoadToMemory && {{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, '*') }}} === 0) {
       ptrLen = xhr.response.byteLength;
     }
     if (ptrLen > 0) {
