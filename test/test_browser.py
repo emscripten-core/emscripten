@@ -5092,14 +5092,9 @@ Module["preRun"] = () => {
     '': ([],),
     'O3': (['-O3'],)
   })
-  @parameterized({
-    '': ([],),
-    'wasm2js': (['-sWASM=0'],)
-  })
-  def test_minimal_runtime_single_file_html(self, args, opts):
-    if '-sWASM=0' in args:
-      self.require_wasm2js()
-    self.btest('single_file_static_initializer.cpp', '19', args=opts + args + ['-sMINIMAL_RUNTIME', '-sSINGLE_FILE'])
+  @also_with_wasm2js
+  def test_minimal_runtime_single_file_html(self, opts):
+    self.btest('single_file_static_initializer.cpp', '19', args=opts + ['-sMINIMAL_RUNTIME', '-sSINGLE_FILE'])
     self.assertExists('test.html')
     self.assertNotExists('test.js')
     self.assertNotExists('test.wasm')
@@ -5113,15 +5108,9 @@ Module["preRun"] = () => {
     self.btest_exit('minimal_hello.c', args=['-sSINGLE_FILE', '-sENVIRONMENT=web', '-O2', '--closure=1'])
 
   # Tests that SINGLE_FILE works as intended with locateFile
-  @parameterized({
-    '': ([],),
-    'wasm2js': (['-sWASM=0'],)
-  })
-  def test_single_file_locate_file(self, args):
-    if args:
-      self.require_wasm2js()
-
-    self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '-sSINGLE_FILE'] + args)
+  @also_with_wasm2js
+  def test_single_file_locate_file(self):
+    self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '-sSINGLE_FILE'])
 
     create_file('test.html', '''
       <script>
