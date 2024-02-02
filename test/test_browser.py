@@ -116,14 +116,14 @@ def no_wasmfs(note):
 def also_with_wasm2js(f):
   assert callable(f)
 
-  def metafunc(self, with_wasm2js):
+  def metafunc(self, with_wasm2js, *args, **kwargs):
     assert self.get_setting('WASM') is None
     if with_wasm2js:
       self.require_wasm2js()
       self.set_setting('WASM', 0)
-      f(self)
+      f(self, *args, **kwargs)
     else:
-      f(self)
+      f(self, *args, **kwargs)
 
   metafunc._parameterize = {'': (False,),
                             'wasm2js': (True,)}
@@ -1375,12 +1375,15 @@ keydown(100);keyup(100); // trigger the end
   def test_fflush(self):
     self.btest('test_fflush.cpp', '0', args=['-sEXIT_RUNTIME', '--shell-file', test_file('test_fflush.html')], reporting=Reporting.NONE)
 
-  def test_fs_idbfs_sync(self):
+  @parameterized({
+    '': ([],),
+    'extra': (['-DEXTRA_WORK'],),
+  })
+  def test_fs_idbfs_sync(self, extra):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
-    for extra in [[], ['-DEXTRA_WORK']]:
-      secret = str(time.time())
-      self.btest('fs/test_idbfs_sync.c', '1', args=['-lidbfs.js', '-DFIRST', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-lidbfs.js'])
-      self.btest('fs/test_idbfs_sync.c', '1', args=['-lidbfs.js', f'-DSECRET="{secret }"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-lidbfs.js'] + extra)
+    secret = str(time.time())
+    self.btest('fs/test_idbfs_sync.c', '1', args=['-lidbfs.js', '-DFIRST', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-lidbfs.js'])
+    self.btest('fs/test_idbfs_sync.c', '1', args=['-lidbfs.js', f'-DSECRET="{secret }"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-lidbfs.js'] + extra)
 
   def test_fs_idbfs_sync_force_exit(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
@@ -1800,16 +1803,19 @@ keydown(100);keyup(100); // trigger the end
     self.btest('hello_world_gles.c', expected='0', args=args)
 
   @requires_graphics_hardware
-  def test_glgears_animation(self):
-    for filename in ['hello_world_gles.c', 'hello_world_gles_full.c', 'hello_world_gles_full_944.c']:
-      print(filename)
-      args = ['-o', 'something.html',
-              '-DHAVE_BUILTIN_SINCOS', '-sGL_TESTING', '-lGL', '-lglut',
-              '--shell-file', test_file('hello_world_gles_shell.html')]
-      if 'full' in filename:
-        args += ['-sFULL_ES2']
-      self.compile_btest(filename, args)
-      self.run_browser('something.html', '/report_gl_result?true')
+  @parameterized({
+    '': ('hello_world_gles.c',),
+    'full': ('hello_world_gles_full.c',),
+    'full_944': ('hello_world_gles_full_944.c',),
+  })
+  def test_glgears_animation(self, filename):
+    args = ['-o', 'something.html',
+            '-DHAVE_BUILTIN_SINCOS', '-sGL_TESTING', '-lGL', '-lglut',
+            '--shell-file', test_file('hello_world_gles_shell.html')]
+    if 'full' in filename:
+      args += ['-sFULL_ES2']
+    self.compile_btest(filename, args)
+    self.run_browser('something.html', '/report_gl_result?true')
 
   @requires_graphics_hardware
   def test_fulles2_sdlproc(self):
@@ -2712,27 +2718,37 @@ Module["preRun"] = () => {
     self.btest_exit('test_html5_core.c', args=opts)
 
   @requires_threads
-  def test_html5_gamepad(self):
-    for opts in [[], ['-O2', '-g1', '--closure=1'], ['-pthread', '-sPROXY_TO_PTHREAD']]:
-      print(opts)
-      self.btest_exit('test_gamepad.c', args=[] + opts)
+  @parameterized({
+    '': ([],),
+    'closure': (['-O2', '-g1', '--closure=1'],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_html5_gamepad(self, args):
+    self.btest_exit('test_gamepad.c', args=args)
 
   def test_html5_unknown_event_target(self):
     self.btest_exit('test_html5_unknown_event_target.cpp')
 
   @requires_graphics_hardware
-  def test_html5_webgl_create_context_no_antialias(self):
-    for opts in [[], ['-O2', '-g1', '--closure=1'], ['-sFULL_ES2']]:
-      print(opts)
-      self.btest_exit('webgl_create_context.cpp', args=opts + ['-DNO_ANTIALIAS', '-lGL'])
+  @parameterized({
+    '': ([],),
+    'closure': (['-O2', '-g1', '--closure=1'],),
+    'full_es2': (['-sFULL_ES2'],),
+  })
+  def test_html5_webgl_create_context_no_antialias(self, args):
+    self.btest_exit('webgl_create_context.cpp', args=args + ['-DNO_ANTIALIAS', '-lGL'])
 
   # This test supersedes the one above, but it's skipped in the CI because anti-aliasing is not well supported by the Mesa software renderer.
   @requires_threads
   @requires_graphics_hardware
-  def test_html5_webgl_create_context(self):
-    for opts in [[], ['-O2', '-g1', '--closure=1'], ['-sFULL_ES2'], ['-pthread']]:
-      print(opts)
-      self.btest_exit('webgl_create_context.cpp', args=opts + ['-lGL'])
+  @parameterized({
+    '': ([],),
+    'closure': (['-O2', '-g1', '--closure=1'],),
+    'full_es2': (['-sFULL_ES2'],),
+    'pthread': (['-pthread'],),
+  })
+  def test_html5_webgl_create_context(self, args):
+    self.btest_exit('webgl_create_context.cpp', args=args + ['-lGL'])
 
   @requires_graphics_hardware
   # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
@@ -4095,9 +4111,12 @@ Module["preRun"] = () => {
 
   # Tests the pthread mutex api.
   @requires_threads
-  def test_pthread_mutex(self):
-    for arg in [[], ['-DSPINLOCK_TEST']]:
-      self.btest_exit('pthread/test_pthread_mutex.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + arg)
+  @parameterized({
+    '': ([],),
+    'spinlock': (['-DSPINLOCK_TEST'],),
+  })
+  def test_pthread_mutex(self, args):
+    self.btest_exit('pthread/test_pthread_mutex.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args)
 
   @requires_threads
   def test_pthread_attr_getstack(self):
@@ -4838,11 +4857,11 @@ Module["preRun"] = () => {
   })
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @requires_threads
+  @also_with_wasm2js
   def test_fetch_from_thread(self, args):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/test_fetch_from_thread.cpp',
-                    args=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sFETCH_DEBUG', '-sFETCH', '-DFILE_DOES_NOT_EXIST'],
-                    also_wasm2js=True)
+                    args=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sFETCH_DEBUG', '-sFETCH', '-DFILE_DOES_NOT_EXIST'])
 
   @also_with_wasm2js
   def test_fetch_to_indexdb(self):
@@ -5071,35 +5090,27 @@ Module["preRun"] = () => {
   # Tests that SINGLE_FILE works as intended in generated HTML with MINIMAL_RUNTIME
   @parameterized({
     '': ([],),
-    'wasm2js': (['-sWASM=0'],)
+    'O3': (['-O3'],)
   })
-  def test_minimal_runtime_single_file_html(self, args):
-    if args:
-      self.require_wasm2js()
-    for opts in [[], ['-O3']]:
-      self.btest('single_file_static_initializer.cpp', '19', args=opts + args + ['-sMINIMAL_RUNTIME', '-sSINGLE_FILE'])
-      self.assertExists('test.html')
-      self.assertNotExists('test.js')
-      self.assertNotExists('test.wasm')
-      self.assertNotExists('test.asm.js')
-      self.assertNotExists('test.mem')
-      self.assertNotExists('test.js')
-      self.assertNotExists('test.worker.js')
+  @also_with_wasm2js
+  def test_minimal_runtime_single_file_html(self, opts):
+    self.btest('single_file_static_initializer.cpp', '19', args=opts + ['-sMINIMAL_RUNTIME', '-sSINGLE_FILE'])
+    self.assertExists('test.html')
+    self.assertNotExists('test.js')
+    self.assertNotExists('test.wasm')
+    self.assertNotExists('test.asm.js')
+    self.assertNotExists('test.mem')
+    self.assertNotExists('test.js')
+    self.assertNotExists('test.worker.js')
 
   # Tests that SINGLE_FILE works when built with ENVIRONMENT=web and Closure enabled (#7933)
   def test_single_file_in_web_environment_with_closure(self):
     self.btest_exit('minimal_hello.c', args=['-sSINGLE_FILE', '-sENVIRONMENT=web', '-O2', '--closure=1'])
 
   # Tests that SINGLE_FILE works as intended with locateFile
-  @parameterized({
-    '': ([],),
-    'wasm2js': (['-sWASM=0'],)
-  })
-  def test_single_file_locate_file(self, args):
-    if args:
-      self.require_wasm2js()
-
-    self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '-sSINGLE_FILE'] + args)
+  @also_with_wasm2js
+  def test_single_file_locate_file(self):
+    self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '-sSINGLE_FILE'])
 
     create_file('test.html', '''
       <script>
@@ -5318,16 +5329,18 @@ Module["preRun"] = () => {
   # Tests that the different code paths in src/shell_minimal_runtime.html all work ok.
   @parameterized({
     '': ([],),
+    'modularize': (['-sMODULARIZE'],),
+  })
+  @parameterized({
+    '': ([],),
     'wasm2js': (['-sWASM=0', '--memory-init-file', '0'],),
     'wasm2js_mem_init_file': (['-sWASM=0', '--memory-init-file', '1'],),
   })
-  def test_minimal_runtime_loader_shell(self, wasm_args):
+  def test_minimal_runtime_loader_shell(self, wasm_args, modularize):
     args = ['-sMINIMAL_RUNTIME=2']
     if wasm_args:
       self.require_wasm2js()
-    for modularize in [[], ['-sMODULARIZE']]:
-      print(str(modularize))
-      self.btest_exit('minimal_hello.c', args=args + wasm_args + modularize)
+    self.btest_exit('minimal_hello.c', args=args + wasm_args + modularize)
 
   # Tests that -sMINIMAL_RUNTIME works well in different build modes
   @parameterized({

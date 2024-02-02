@@ -818,6 +818,7 @@ jobs:
             browser_2gb.test_gles2_uniform_arrays
             browser_2gb.test_fetch_to_memory
             browser_2gb.test_emscripten_animate_canvas_element_size_manual_css
+            browser_2gb.test_fulles2_sdlproc
             "
   test-browser-chrome-wasm64-4gb:
     executor: bionic
@@ -832,6 +833,7 @@ jobs:
             browser64_4gb.test_clientside_vertex_arrays_es3
             browser64_4gb.test_fetch*
             browser64_4gb.test_emscripten_animate_canvas_element_size_manual_css
+            browser64_4gb.test_fulles2_sdlproc
             "
   test-browser-firefox:
     executor: bionic
