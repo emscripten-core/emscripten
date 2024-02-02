@@ -7663,19 +7663,22 @@ high = 1234
     # Unclosed quote
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-s', "TEST_KEY='MISSING_QUOTE"])
     self.assertNotContained('AssertionError', err) # Do not mention that it is an assertion error
-    self.assertContained('unclosed opened quoted string. expected final character to be "\'"', err)
+    self.assertContained('error: error parsing "-s" setting', err)
+    self.assertContained('unclosed quoted string. expected final character to be "\'"', err)
 
   def test_dash_s_single_quote(self):
     # Only one quote
     err = self.expect_fail([EMCC, test_file('hello_world.c'), "-sTEST_KEY='"])
     self.assertNotContained('AssertionError', err) # Do not mention that it is an assertion error
-    self.assertContained('unclosed opened quoted string.', err)
+    self.assertContained('error: error parsing "-s" setting', err)
+    self.assertContained('unclosed quoted string.', err)
 
   def test_dash_s_unclosed_list(self):
     # Unclosed list
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), "-sTEST_KEY=[Value1, Value2"])
     self.assertNotContained('AssertionError', err) # Do not mention that it is an assertion error
-    self.assertContained('unclosed opened string list. expected final character to be "]"', err)
+    self.assertContained('error: error parsing "-s" setting', err)
+    self.assertContained('unterminated string list. expected final character to be "]"', err)
 
   def test_dash_s_valid_list(self):
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), "-sTEST_KEY=[Value1, \"Value2\"]"])
