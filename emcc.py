@@ -1457,7 +1457,8 @@ def parse_value(text, expected_type):
     first = text[0]
     if first == "'" or first == '"':
       text = text.rstrip()
-      assert text[-1] == text[0] and len(text) > 1, 'unclosed opened quoted string. expected final character to be "%s" and length to be greater than 1 in "%s"' % (text[0], text)
+      if text[-1] != text[0] or len(text) < 2:
+         raise ValueError(f'unclosed quoted string. expected final character to be "{text[0]}" and length to be greater than 1 in "{text[0]}"')
       return text[1:-1]
     return text
 
@@ -1469,7 +1470,7 @@ def parse_value(text, expected_type):
     while True:
       current = values[index].lstrip() # Cannot safely rstrip for cases like: "HERE-> ,"
       if not len(current):
-        exit_with_error('string array should not contain an empty value')
+        raise ValueError('empty value in string list')
       first = current[0]
       if not (first == "'" or first == '"'):
         result.append(current.rstrip())
@@ -1477,7 +1478,7 @@ def parse_value(text, expected_type):
         start = index
         while True: # Continue until closing quote found
           if index >= len(values):
-            exit_with_error("unclosed quoted string. expected final character to be '%s' in '%s'" % (first, values[start]))
+            raise ValueError(f"unclosed quoted string. expected final character to be '{first}' in '{values[start]}'")
           new = values[index].rstrip()
           if new and new[-1] == first:
             if start == index:
@@ -1498,7 +1499,7 @@ def parse_value(text, expected_type):
     text = text.rstrip()
     if text and text[0] == '[':
       if text[-1] != ']':
-        exit_with_error('unclosed opened string list. expected final character to be "]" in "%s"' % (text))
+        raise ValueError('unterminated string list. expected final character to be "]"')
       text = text[1:-1]
     if text.strip() == "":
       return []
