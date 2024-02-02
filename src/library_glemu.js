@@ -144,10 +144,11 @@ var LibraryGLEmulation = {
     },
 
     init() {
-      // Do not activate immediate/emulation code (e.g. replace glDrawElements) when in FULL_ES2 mode.
-      // We do not need full emulation, we instead emulate client-side arrays etc. in FULL_ES2 code in
-      // a straightforward manner, and avoid not having a bound buffer be ambiguous between es2 emulation
-      // code and legacy gl emulation code.
+      // Do not activate immediate/emulation code (e.g. replace glDrawElements)
+      // when in FULL_ES2 mode.  We do not need full emulation, we instead
+      // emulate client-side arrays etc. in FULL_ES2 code in a straightforward
+      // manner, and avoid not having a bound buffer be ambiguous between es2
+      // emulation code and legacy gl emulation code.
 #if FULL_ES2
       return;
 #endif
@@ -2898,13 +2899,14 @@ var LibraryGLEmulation = {
     //   count: number of elements we will draw
     //   beginEnd: whether we are drawing the results of a begin/end block
     prepareClientAttributes(count, beginEnd) {
-      // If no client attributes were modified since we were last called, do nothing. Note that this
-      // does not work for glBegin/End, where we generate renderer components dynamically and then
-      // disable them ourselves, but it does help with glDrawElements/Arrays.
+      // If no client attributes were modified since we were last called, do
+      // nothing. Note that this does not work for glBegin/End, where we
+      // generate renderer components dynamically and then disable them
+      // ourselves, but it does help with glDrawElements/Arrays.
       if (!GLImmediate.modifiedClientAttributes) {
 #if GL_ASSERTIONS
         if ((GLImmediate.stride & 3) != 0) {
-          warnOnce('Warning: Rendering from client side vertex arrays where stride (' + GLImmediate.stride + ') is not a multiple of four! This is not currently supported!');
+          warnOnce(`Warning: Rendering from client side vertex arrays where stride (${GLImmediate.stride}) is not a multiple of four! This is not currently supported!`);
         }
 #endif
         GLImmediate.vertexCounter = (GLImmediate.stride * count) / 4; // XXX assuming float
@@ -2912,21 +2914,32 @@ var LibraryGLEmulation = {
       }
       GLImmediate.modifiedClientAttributes = false;
 
-      // The role of prepareClientAttributes is to examine the set of client-side vertex attribute buffers
-      // that user code has submitted, and to prepare them to be uploaded to a VBO in GPU memory
-      // (since WebGL does not support client-side rendering, i.e. rendering from vertex data in CPU memory)
-      // User can submit vertex data generally in three different configurations:
-      // 1. Fully planar: all attributes are in their own separate tightly-packed arrays in CPU memory.
-      // 2. Fully interleaved: all attributes share a single array where data is interleaved something like (pos,uv,normal), (pos,uv,normal), ...
-      // 3. Complex hybrid: Multiple separate arrays that either are sparsely strided, and/or partially interleave vertex attributes.
+      // The role of prepareClientAttributes is to examine the set of
+      // client-side vertex attribute buffers that user code has submitted, and
+      // to prepare them to be uploaded to a VBO in GPU memory (since WebGL does
+      // not support client-side rendering, i.e. rendering from vertex data in
+      // CPU memory). User can submit vertex data generally in three different
+      // configurations:
+      // 1. Fully planar: all attributes are in their own separate
+      //                  tightly-packed arrays in CPU memory.
+      // 2. Fully interleaved: all attributes share a single array where data is
+      //                       interleaved something like (pos,uv,normal),
+      //                       (pos,uv,normal), ...
+      // 3. Complex hybrid: Multiple separate arrays that either are sparsely
+      //                    strided, and/or partially interleaves vertex
+      //                    attributes.
 
-      // For simplicity, we support the case (2) as the fast case. For (1) and (3), we do a memory copy of the
-      // vertex data here to prepare a relayouted buffer that is of the structure in case (2). The reason
-      // for this is that it allows the emulation code to get away with using just one VBO buffer for rendering,
-      // and not have to maintain multiple ones. Therefore cases (1) and (3) will be very slow, and case (2) is fast.
+      // For simplicity, we support the case (2) as the fast case. For (1) and
+      // (3), we do a memory copy of the vertex data here to prepare a
+      // relayouted buffer that is of the structure in case (2). The reason
+      // for this is that it allows the emulation code to get away with using
+      // just one VBO buffer for rendering, and not have to maintain multiple
+      // ones. Therefore cases (1) and (3) will be very slow, and case (2) is
+      // fast.
 
-      // Detect which case we are in by using a quick heuristic by examining the strides of the buffers. If all the buffers have identical
-      // stride, we assume we have case (2), otherwise we have something more complex.
+      // Detect which case we are in by using a quick heuristic by examining the
+      // strides of the buffers. If all the buffers have identical stride, we
+      // assume we have case (2), otherwise we have something more complex.
       var clientStartPointer = 0x7FFFFFFF;
       var bytes = 0; // Total number of bytes taken up by a single vertex.
       var minStride = 0x7FFFFFFF;
@@ -2946,9 +2959,11 @@ var LibraryGLEmulation = {
       }
 
       if ((minStride != maxStride || maxStride < bytes) && !beginEnd) {
-        // We are in cases (1) or (3): slow path, shuffle the data around into a single interleaved vertex buffer.
-        // The immediate-mode glBegin()/glEnd() vertex submission gets automatically generated in appropriate layout,
-        // so never need to come down this path if that was used.
+        // We are in cases (1) or (3): slow path, shuffle the data around into a
+        // single interleaved vertex buffer.
+        // The immediate-mode glBegin()/glEnd() vertex submission gets
+        // automatically generated in appropriate layout, so never need to come
+        // down this path if that was used.
 #if GL_ASSERTIONS
         warnOnce('Rendering from planar client-side vertex arrays. This is a very slow emulation path! Use interleaved vertex arrays for best performance.');
 #endif
@@ -3002,7 +3017,7 @@ var LibraryGLEmulation = {
       if (!beginEnd) {
 #if GL_ASSERTIONS
         if ((GLImmediate.stride & 3) != 0) {
-          warnOnce('Warning: Rendering from client side vertex arrays where stride (' + GLImmediate.stride + ') is not a multiple of four! This is not currently supported!');
+          warnOnce(`Warning: Rendering from client side vertex arrays where stride (${GLImmediate.stride}) is not a multiple of four! This is not currently supported!`);
         }
 #endif
         GLImmediate.vertexCounter = (GLImmediate.stride * count) / 4; // XXX assuming float
@@ -3053,13 +3068,14 @@ var LibraryGLEmulation = {
         }
       } else if (GLImmediate.mode > 6) { // above GL_TRIANGLE_FAN are the non-GL ES modes
         if (GLImmediate.mode != 7) throw 'unsupported immediate mode ' + GLImmediate.mode; // GL_QUADS
-        // GLImmediate.firstVertex is the first vertex we want. Quad indexes are in the pattern
-        // 0 1 2, 0 2 3, 4 5 6, 4 6 7, so we need to look at index firstVertex * 1.5 to see it.
-        // Then since indexes are 2 bytes each, that means 3
+        // GLImmediate.firstVertex is the first vertex we want. Quad indexes are
+        // in the pattern 0 1 2, 0 2 3, 4 5 6, 4 6 7, so we need to look at
+        // index firstVertex * 1.5 to see it.  Then since indexes are 2 bytes
+        // each, that means 3
 #if ASSERTIONS
         assert(GLImmediate.firstVertex % 4 == 0);
 #endif
-        ptr = GLImmediate.firstVertex*3;
+        ptr = GLImmediate.firstVertex * 3;
         var numQuads = numVertexes / 4;
         numIndexes = numQuads * 6; // 0 1 2, 0 2 3 pattern
 #if ASSERTIONS
@@ -3173,19 +3189,19 @@ var LibraryGLEmulation = {
   },
 
   glVertex2fv__deps: ['glVertex2f'],
-  glVertex2fv: (p) => {
-    _glVertex2f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}});
-  },
+  glVertex2fv: (p) => _glVertex2f({{{ makeGetValue('p', '0', 'float') }}},
+                                  {{{ makeGetValue('p', '4', 'float') }}}),
 
   glVertex3fv__deps: ['glVertex3f'],
-  glVertex3fv: (p) => {
-    _glVertex3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}});
-  },
+  glVertex3fv: (p) => _glVertex3f({{{ makeGetValue('p', '0', 'float') }}},
+                                  {{{ makeGetValue('p', '4', 'float') }}},
+                                  {{{ makeGetValue('p', '8', 'float') }}}),
 
   glVertex4fv__deps: ['glVertex4f'],
-  glVertex4fv: (p) => {
-    _glVertex4f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}}, {{{ makeGetValue('p', '12', 'float') }}});
-  },
+  glVertex4fv: (p) => _glVertex4f({{{ makeGetValue('p', '0', 'float') }}},
+                                  {{{ makeGetValue('p', '4', 'float') }}},
+                                  {{{ makeGetValue('p', '8', 'float') }}},
+                                  {{{ makeGetValue('p', '12', 'float') }}}),
 
   glVertex2i: 'glVertex2f',
 
@@ -3204,9 +3220,8 @@ var LibraryGLEmulation = {
   glTexCoord2f: 'glTexCoord2i',
 
   glTexCoord2fv__deps: ['glTexCoord2i'],
-  glTexCoord2fv: (v) => {
-    _glTexCoord2i({{{ makeGetValue('v', '0', 'float') }}}, {{{ makeGetValue('v', '4', 'float') }}});
-  },
+  glTexCoord2fv: (v) =>
+    _glTexCoord2i({{{ makeGetValue('v', '0', 'float') }}}, {{{ makeGetValue('v', '4', 'float') }}}),
 
   glTexCoord4f: () => { throw 'glTexCoord4f: TODO' },
 
@@ -3239,60 +3254,59 @@ var LibraryGLEmulation = {
   glColor4d: 'glColor4f',
 
   glColor4ub__deps: ['glColor4f'],
-  glColor4ub: (r, g, b, a) => {
-    _glColor4f((r&255)/255, (g&255)/255, (b&255)/255, (a&255)/255);
-  },
+  glColor4ub: (r, g, b, a) => _glColor4f((r&255)/255, (g&255)/255, (b&255)/255, (a&255)/255),
+
   glColor4us__deps: ['glColor4f'],
-  glColor4us: (r, g, b, a) => {
-    _glColor4f((r&65535)/65535, (g&65535)/65535, (b&65535)/65535, (a&65535)/65535);
-  },
+  glColor4us: (r, g, b, a) => _glColor4f((r&65535)/65535, (g&65535)/65535, (b&65535)/65535, (a&65535)/65535),
+
   glColor4ui__deps: ['glColor4f'],
-  glColor4ui: (r, g, b, a) => {
-    _glColor4f((r>>>0)/4294967295, (g>>>0)/4294967295, (b>>>0)/4294967295, (a>>>0)/4294967295);
-  },
+  glColor4ui: (r, g, b, a) => _glColor4f((r>>>0)/4294967295, (g>>>0)/4294967295, (b>>>0)/4294967295, (a>>>0)/4294967295),
+
   glColor3f__deps: ['glColor4f'],
-  glColor3f: (r, g, b) => {
-    _glColor4f(r, g, b, 1);
-  },
+  glColor3f: (r, g, b) => _glColor4f(r, g, b, 1),
+
   glColor3d: 'glColor3f',
+
   glColor3ub__deps: ['glColor4ub'],
-  glColor3ub: (r, g, b) => {
-    _glColor4ub(r, g, b, 255);
-  },
+  glColor3ub: (r, g, b) => _glColor4ub(r, g, b, 255),
+
   glColor3us__deps: ['glColor4us'],
-  glColor3us: (r, g, b) => {
-    _glColor4us(r, g, b, 65535);
-  },
+  glColor3us: (r, g, b) => _glColor4us(r, g, b, 65535),
+
   glColor3ui__deps: ['glColor4ui'],
-  glColor3ui: (r, g, b) => {
-    _glColor4ui(r, g, b, 4294967295);
-  },
+  glColor3ui: (r, g, b) => _glColor4ui(r, g, b, 4294967295),
 
   glColor3ubv__deps: ['glColor3ub'],
-  glColor3ubv: (p) => {
-    _glColor3ub({{{ makeGetValue('p', '0', 'i8') }}}, {{{ makeGetValue('p', '1', 'i8') }}}, {{{ makeGetValue('p', '2', 'i8') }}});
-  },
+  glColor3ubv: (p) => _glColor3ub({{{ makeGetValue('p', '0', 'i8') }}},
+                                  {{{ makeGetValue('p', '1', 'i8') }}},
+                                  {{{ makeGetValue('p', '2', 'i8') }}}),
+
   glColor3usv__deps: ['glColor3us'],
-  glColor3usv: (p) => {
-    _glColor3us({{{ makeGetValue('p', '0', 'i16') }}}, {{{ makeGetValue('p', '2', 'i16') }}}, {{{ makeGetValue('p', '4', 'i16') }}});
-  },
+  glColor3usv: (p) => _glColor3us({{{ makeGetValue('p', '0', 'i16') }}},
+                                  {{{ makeGetValue('p', '2', 'i16') }}},
+                                  {{{ makeGetValue('p', '4', 'i16') }}}),
+
   glColor3uiv__deps: ['glColor3ui'],
-  glColor3uiv: (p) => {
-    _glColor3ui({{{ makeGetValue('p', '0', 'i32') }}}, {{{ makeGetValue('p', '4', 'i32') }}}, {{{ makeGetValue('p', '8', 'i32') }}});
-  },
+  glColor3uiv: (p) => _glColor3ui({{{ makeGetValue('p', '0', 'i32') }}},
+                                  {{{ makeGetValue('p', '4', 'i32') }}},
+                                  {{{ makeGetValue('p', '8', 'i32') }}}),
+
   glColor3fv__deps: ['glColor3f'],
-  glColor3fv: (p) => {
-    _glColor3f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}});
-  },
+  glColor3fv: (p) => _glColor3f({{{ makeGetValue('p', '0', 'float') }}},
+                                {{{ makeGetValue('p', '4', 'float') }}},
+                                {{{ makeGetValue('p', '8', 'float') }}}),
+
   glColor4fv__deps: ['glColor4f'],
-  glColor4fv: (p) => {
-    _glColor4f({{{ makeGetValue('p', '0', 'float') }}}, {{{ makeGetValue('p', '4', 'float') }}}, {{{ makeGetValue('p', '8', 'float') }}}, {{{ makeGetValue('p', '12', 'float') }}});
-  },
+  glColor4fv: (p) => _glColor4f({{{ makeGetValue('p', '0', 'float') }}},
+                                {{{ makeGetValue('p', '4', 'float') }}},
+                                {{{ makeGetValue('p', '8', 'float') }}},
+                                {{{ makeGetValue('p', '12', 'float') }}}),
 
   glColor4ubv__deps: ['glColor4ub'],
-  glColor4ubv: (p) => {
-    _glColor4ub({{{ makeGetValue('p', '0', 'i8') }}}, {{{ makeGetValue('p', '1', 'i8') }}}, {{{ makeGetValue('p', '2', 'i8') }}}, {{{ makeGetValue('p', '3', 'i8') }}});
-  },
+  glColor4ubv: (p) => _glColor4ub({{{ makeGetValue('p', '0', 'i8') }}},
+                                  {{{ makeGetValue('p', '1', 'i8') }}},
+                                  {{{ makeGetValue('p', '2', 'i8') }}},
+                                  {{{ makeGetValue('p', '3', 'i8') }}}),
 
   glFogf: (pname, param) => { // partial support, TODO
     switch (pname) {
@@ -3493,9 +3507,9 @@ var LibraryGLEmulation = {
     GLImmediate.clientActiveTexture = texture - 0x84C0; // GL_TEXTURE0
   },
 
-  // Replace some functions with immediate-mode aware versions. If there are no client
-  // attributes enabled, and we use webgl-friendly modes (no GL_QUADS), then no need
-  // for emulation
+  // Replace some functions with immediate-mode aware versions. If there are no
+  // client attributes enabled, and we use webgl-friendly modes (no GL_QUADS),
+  // then no need for emulation
   glDrawArrays: (mode, first, count) => {
     if (GLImmediate.totalEnabledClientAttributes == 0 && mode <= 6) {
       GLctx.drawArrays(mode, first, count);
@@ -3512,7 +3526,8 @@ var LibraryGLEmulation = {
     GLImmediate.mode = -1;
   },
 
-  glDrawElements: (mode, count, type, indices, start, end) => { // start, end are given if we come from glDrawRangeElements
+  // start, end are given if we come from glDrawRangeElements
+  glDrawElements: (mode, count, type, indices, start, end) => {
     if (GLImmediate.totalEnabledClientAttributes == 0 && mode <= 6 && GLctx.currentElementArrayBufferBinding) {
       GLctx.drawElements(mode, count, type, indices);
       return;
@@ -3534,7 +3549,8 @@ var LibraryGLEmulation = {
     GLImmediate.mode = -1;
   },
 
-  // Vertex array object (VAO) support. TODO: when the WebGL extension is popular, use that and remove this code and GL.vaos
+  // Vertex array object (VAO) support. TODO: when the WebGL extension is
+  // popular, use that and remove this code and GL.vaos
   $emulGlGenVertexArrays__deps: ['$GLEmulation'],
   $emulGlGenVertexArrays: (n, vaos) => {
     for (var i = 0; i < n; i++) {
@@ -3606,7 +3622,7 @@ var LibraryGLEmulation = {
       GLImmediate.useTextureMatrix = true;
       GLImmediate.currentMatrix = 2/*t*/ + GLImmediate.TexEnvJIT.getActiveTexture();
     } else {
-      throw "Wrong mode " + mode + " passed to glMatrixMode";
+      throw `Wrong mode ${mode} passed to glMatrixMode`;
     }
   },
 
@@ -3833,9 +3849,9 @@ var LibraryGLEmulation = {
 
   glTexGeni: (coord, pname, param) => { throw 'glTexGeni: TODO' },
   glTexGenfv: (coord, pname, param) => { throw 'glTexGenfv: TODO' },
-  glTexEnvi: (target, pname, params) => { warnOnce('glTexEnvi: TODO') },
-  glTexEnvf: (target, pname, params) => { warnOnce('glTexEnvf: TODO') },
-  glTexEnvfv: (target, pname, params) => { warnOnce('glTexEnvfv: TODO') },
+  glTexEnvi: (target, pname, params) => warnOnce('glTexEnvi: TODO'),
+  glTexEnvf: (target, pname, params) => warnOnce('glTexEnvf: TODO'),
+  glTexEnvfv: (target, pname, params) => warnOnce('glTexEnvfv: TODO'),
 
   glGetTexEnviv: (target, pname, param) => { throw 'GL emulation not initialized!'; },
   glGetTexEnvfv: (target, pname, param) => { throw 'GL emulation not initialized!'; },
