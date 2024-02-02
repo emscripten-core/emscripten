@@ -28,8 +28,16 @@ export interface IntVec {
   push_back(_0: number): void;
   resize(_0: number, _1: number): void;
   size(): number;
+  get(_0: number): number | undefined;
   set(_0: number, _1: number): boolean;
-  get(_0: number): any;
+  delete(): void;
+}
+
+export interface MapIntInt {
+  keys(): IntVec;
+  get(_0: number): number | undefined;
+  set(_0: number, _1: number): void;
+  size(): number;
   delete(): void;
 }
 
@@ -79,6 +87,7 @@ export interface MainModule {
   EmptyEnum: {};
   enum_returning_fn(): Bar;
   IntVec: {new(): IntVec};
+  MapIntInt: {new(): MapIntInt};
   Foo: {};
   ClassWithConstructor: {new(_0: number, _1: ValArr): ClassWithConstructor};
   ClassWithTwoConstructors: {new(): ClassWithTwoConstructors; new(_0: number): ClassWithTwoConstructors};
@@ -87,8 +96,8 @@ export interface MainModule {
   DerivedClass: {};
   a_bool: boolean;
   an_int: number;
-  global_fn(_0: number, _1: number): number;
   optional_test(_0: Foo | undefined): number | undefined;
+  global_fn(_0: number, _1: number): number;
   smart_ptr_function(_0: ClassWithSmartPtrConstructor): number;
   smart_ptr_function_with_params(foo: ClassWithSmartPtrConstructor): number;
   function_with_callback_param(_0: (message: string) => void): number;

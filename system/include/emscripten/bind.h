@@ -1875,6 +1875,21 @@ public:
     }
 };
 
+#if __cplusplus >= 201703L
+template<typename T>
+void register_optional() {
+    // Optional types are automatically registered for some internal types so
+    // only run the register method once so we don't conflict with a user's
+    // bindings if they also register the optional type.
+    thread_local bool hasRun;
+    if (hasRun) {
+        return;
+    }
+    hasRun = true;
+    internal::_embind_register_optional(internal::TypeID<std::optional<T>>::get(), internal::TypeID<T>::get());
+}
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 // VECTORS
 ////////////////////////////////////////////////////////////////////////////////
@@ -1883,6 +1898,20 @@ namespace internal {
 
 template<typename VectorType>
 struct VectorAccess {
+// This nearly duplicated code is used for generating more specific TypeScript
+// types when using more modern C++ versions.
+#if __cplusplus >= 201703L
+    static std::optional<typename VectorType::value_type> get(
+        const VectorType& v,
+        typename VectorType::size_type index
+    ) {
+        if (index < v.size()) {
+            return v[index];
+        } else {
+            return {};
+        }
+    }
+#else
     static val get(
         const VectorType& v,
         typename VectorType::size_type index
@@ -1893,6 +1922,7 @@ struct VectorAccess {
             return val::undefined();
         }
     }
+#endif
 
     static bool set(
         VectorType& v,
@@ -1909,6 +1939,9 @@ struct VectorAccess {
 template<typename T>
 class_<std::vector<T>> register_vector(const char* name) {
     typedef std::vector<T> VecType;
+#if __cplusplus >= 201703L
+    register_optional<T>();
+#endif
 
     void (VecType::*push_back)(const T&) = &VecType::push_back;
     void (VecType::*resize)(const size_t, const T&) = &VecType::resize;
@@ -1923,13 +1956,6 @@ class_<std::vector<T>> register_vector(const char* name) {
         ;
 }
 
-#if __cplusplus >= 201703L
-template<typename T>
-void register_optional() {
-    internal::_embind_register_optional(internal::TypeID<std::optional<T>>::get(), internal::TypeID<T>::get());
-}
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 // MAPS
 ////////////////////////////////////////////////////////////////////////////////
@@ -1938,6 +1964,21 @@ namespace internal {
 
 template<typename MapType>
 struct MapAccess {
+// This nearly duplicated code is used for generating more specific TypeScript
+// types when using more modern C++ versions.
+#if __cplusplus >= 201703L
+    static std::optional<typename MapType::mapped_type> get(
+        const MapType& m,
+        const typename MapType::key_type& k
+    ) {
+        auto i = m.find(k);
+        if (i == m.end()) {
+            return {};
+        } else {
+            return i->second;
+        }
+    }
+#else
     static val get(
         const MapType& m,
         const typename MapType::key_type& k
@@ -1949,6 +1990,7 @@ struct MapAccess {
             return val(i->second);
         }
     }
+#endif
 
     static void set(
         MapType& m,
@@ -1975,6 +2017,9 @@ struct MapAccess {
 template<typename K, typename V>
 class_<std::map<K, V>> register_map(const char* name) {
     typedef std::map<K,V> MapType;
+#if __cplusplus >= 201703L
+    register_optional<V>();
+#endif
 
     size_t (MapType::*size)() const = &MapType::size;
     return class_<MapType>(name)
