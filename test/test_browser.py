@@ -5908,6 +5908,16 @@ class browser64_4gb(browser):
     self.require_wasm64()
 
 
+class browser64_2gb(browser):
+  def setUp(self):
+    super().setUp()
+    self.set_setting('MEMORY64')
+    self.set_setting('INITIAL_MEMORY', '2200gb')
+    self.set_setting('GLOBAL_BASE', '2gb')
+    self.emcc_args.append('-Wno-experimental')
+    self.require_wasm64()
+
+
 class browser_2gb(browser):
   def setUp(self):
     super().setUp()
