@@ -4279,6 +4279,10 @@ function recordGLProcAddressGet(lib) {
   Object.keys(lib).forEach((x) => {
     if (x.startsWith('gl') && !isDecorator(x)) {
       lib['emscripten_' + x] = x;
+      var sig = LibraryManager.library[x + '__sig'];
+      if (sig) {
+        lib['emscripten_' + x + '__sig'] = sig;
+      }
     }
   });
 }

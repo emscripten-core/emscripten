@@ -4,6 +4,18 @@
  * SPDX-License-Identifier: MIT
  */
 
+{{{
+  globalThis.fromPtr = (arg) => {
+    if (CAN_ADDRESS_2GB) {
+      return `${arg} >>>= 0`;
+    } else if (MEMORY64) {
+      return `${arg} = Number(${arg})`;
+    }
+    return '';
+  }
+  null;
+}}}
+
 var LibraryGLEmulation = {
   // GL emulation: provides misc. functionality not present in OpenGL ES 2.0 or WebGL
   $GLEmulation__deps: ['$GLImmediateSetup', 'glEnable', 'glDisable',
@@ -309,6 +321,7 @@ var LibraryGLEmulation = {
       _glGetBooleanv = _emscripten_glGetBooleanv = (pname, p) => {
         var attrib = GLEmulation.getAttributeFromCapability(pname);
         if (attrib !== null) {
+          {{{ fromPtr('p') }}}
           var result = GLImmediate.enabledClientAttributes[attrib];
           {{{ makeSetValue('p', '0', 'result === true ? 1 : 0', 'i8') }}};
           return;
@@ -318,6 +331,7 @@ var LibraryGLEmulation = {
 
       var glGetIntegerv = _glGetIntegerv;
       _glGetIntegerv = _emscripten_glGetIntegerv = (pname, params) => {
+        {{{ fromPtr('params') }}}
         switch (pname) {
           case 0x84E2: pname = GLctx.MAX_TEXTURE_IMAGE_UNITS /* fake it */; break; // GL_MAX_TEXTURE_UNITS
           case 0x8B4A: { // GL_MAX_VERTEX_UNIFORM_COMPONENTS_ARB
@@ -439,6 +453,8 @@ var LibraryGLEmulation = {
 
       var glShaderSource = _glShaderSource;
       _glShaderSource = _emscripten_glShaderSource = (shader, count, string, length) => {
+        {{{ fromPtr('string') }}}
+        {{{ fromPtr('length') }}}
         var source = GL.getSource(shader, count, string, length);
 #if GL_DEBUG
         dbg("glShaderSource: Input: \n" + source);
@@ -647,14 +663,15 @@ var LibraryGLEmulation = {
 
       var glGetFloatv = _glGetFloatv;
       _glGetFloatv = _emscripten_glGetFloatv = (pname, params) => {
+        {{{ fromPtr('params') }}}
         if (pname == 0xBA6) { // GL_MODELVIEW_MATRIX
-          HEAPF32.set(GLImmediate.matrix[0/*m*/], params >> 2);
+          HEAPF32.set(GLImmediate.matrix[0/*m*/], {{{ getHeapOffset('params', 'float') }}});
         } else if (pname == 0xBA7) { // GL_PROJECTION_MATRIX
-          HEAPF32.set(GLImmediate.matrix[1/*p*/], params >> 2);
+          HEAPF32.set(GLImmediate.matrix[1/*p*/], {{{ getHeapOffset('params', 'float') }}});
         } else if (pname == 0xBA8) { // GL_TEXTURE_MATRIX
-          HEAPF32.set(GLImmediate.matrix[2/*t*/ + GLImmediate.clientActiveTexture], params >> 2);
+          HEAPF32.set(GLImmediate.matrix[2/*t*/ + GLImmediate.clientActiveTexture], {{{ getHeapOffset('params', 'float') }}});
         } else if (pname == 0xB66) { // GL_FOG_COLOR
-          HEAPF32.set(GLEmulation.fogColor, params >> 2);
+          HEAPF32.set(GLEmulation.fogColor, {{{ getHeapOffset('params', 'float') }}});
         } else if (pname == 0xB63) { // GL_FOG_START
           {{{ makeSetValue('params', '0', 'GLEmulation.fogStart', 'float') }}};
         } else if (pname == 0xB64) { // GL_FOG_END
@@ -2783,6 +2800,7 @@ var LibraryGLEmulation = {
       var glTexEnvi = (typeof _glTexEnvi != 'undefined') ? _glTexEnvi : () => {};
       /** @suppress {checkTypes} */
       _glTexEnvi = _emscripten_glTexEnvi = (target, pname, param) => {
+        {{{ fromPtr('param') }}}
         GLImmediate.TexEnvJIT.hook_texEnvi(target, pname, param);
         // Don't call old func, since we are the implementor.
         //glTexEnvi(target, pname, param);
@@ -2791,16 +2809,19 @@ var LibraryGLEmulation = {
       var glTexEnvfv = (typeof _glTexEnvfv != 'undefined') ? _glTexEnvfv : () => {};
       /** @suppress {checkTypes} */
       _glTexEnvfv = _emscripten_glTexEnvfv = (target, pname, param) => {
+        {{{ fromPtr('param') }}}
         GLImmediate.TexEnvJIT.hook_texEnvfv(target, pname, param);
         // Don't call old func, since we are the implementor.
         //glTexEnvfv(target, pname, param);
       };
 
       _glGetTexEnviv = (target, pname, param) => {
+        {{{ fromPtr('param') }}}
         GLImmediate.TexEnvJIT.hook_getTexEnviv(target, pname, param);
       };
 
       _glGetTexEnvfv = (target, pname, param) => {
+        {{{ fromPtr('param') }}}
         GLImmediate.TexEnvJIT.hook_getTexEnvfv(target, pname, param);
       };
 
