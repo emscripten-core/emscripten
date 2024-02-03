@@ -821,6 +821,7 @@ jobs:
             browser_2gb.test_cubegeom
             browser_2gb.test_cubegeom_normal
             browser_2gb.test_cubegeom_normal_dap
+            browser_2gb.test_cubegeom_normal_dap_far
             "
   test-browser-chrome-wasm64-4gb:
     executor: bionic

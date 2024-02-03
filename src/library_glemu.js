@@ -2940,9 +2940,9 @@ var LibraryGLEmulation = {
       // Detect which case we are in by using a quick heuristic by examining the
       // strides of the buffers. If all the buffers have identical stride, we
       // assume we have case (2), otherwise we have something more complex.
-      var clientStartPointer = 0x7FFFFFFF;
+      var clientStartPointer = {{{ POINTER_MAX }}};
       var bytes = 0; // Total number of bytes taken up by a single vertex.
-      var minStride = 0x7FFFFFFF;
+      var minStride = {{{ POINTER_MAX }}};
       var maxStride = 0;
       var attributes = GLImmediate.liveClientAttributes;
       attributes.length = 0;
@@ -3544,8 +3544,14 @@ var LibraryGLEmulation = {
       GLImmediate.firstVertex = end ? start : HEAP8.length; // if we don't know the start, set an invalid value and we will calculate it later from the indices
       GLImmediate.lastVertex = end ? end + 1 : 0;
       start = GLImmediate.vertexPointer;
-      end = end ? GLImmediate.vertexPointer + (end+1)*GLImmediate.stride : undefined;
-      GLImmediate.vertexData = HEAPF32.subarray({{{ getHeapOffset('start', 'float') }}}, end ? {{{ getHeapOffset('end', 'float') }}} : undefined);
+      // TODO(sbc): Combine these two subarray calls back into a single one if
+      // we ever fix https://github.com/emscripten-core/emscripten/issues/21250.
+      if (end) {
+        end = GLImmediate.vertexPointer + (end +1 ) * GLImmediate.stride;
+        GLImmediate.vertexData = HEAPF32.subarray({{{ getHeapOffset('start', 'float') }}}, {{{ getHeapOffset('end', 'float') }}});
+      } else {
+        GLImmediate.vertexData = HEAPF32.subarray({{{ getHeapOffset('start', 'float') }}});
+      }
     }
     GLImmediate.flush(count, 0, indices);
     GLImmediate.mode = -1;

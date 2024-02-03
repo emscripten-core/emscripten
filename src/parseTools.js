@@ -178,6 +178,7 @@ function needsQuoting(ident) {
 }
 
 globalThis.POINTER_SIZE = MEMORY64 ? 8 : 4;
+globalThis.POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
 globalThis.STACK_ALIGN = 16;
 const POINTER_BITS = POINTER_SIZE * 8;
 const POINTER_TYPE = `u${POINTER_BITS}`;
