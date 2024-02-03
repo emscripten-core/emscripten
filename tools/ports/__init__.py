@@ -55,8 +55,8 @@ def load_port(name):
   if not hasattr(port, 'variants'):
     # port variants (default: no variants)
     port.variants = {}
-  if not hasattr(port, 'show') and port.is_contrib:
-    port.show = lambda: f'{port.name} (--use-port={port.name}; {port.project_license()})'
+  if not hasattr(port, 'show'):
+    port.show = lambda: f'{port.name} (--use-port={port.name}; {port.license()})'
 
   for variant, extra_settings in port.variants.items():
     if variant in port_variants:
@@ -67,7 +67,7 @@ def load_port(name):
 def validate_port(port):
   expected_attrs = ['get', 'clear', 'show']
   if port.is_contrib:
-    expected_attrs += ['project_url', 'project_description', 'project_license']
+    expected_attrs += ['url', 'description', 'license']
   for a in expected_attrs:
     assert hasattr(port, a), 'port %s is missing %s' % (port, a)
 

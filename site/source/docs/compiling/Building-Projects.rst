@@ -249,7 +249,7 @@ Contrib ports are contributed by the wider community and supported on a "best ef
 Adding more ports
 -----------------
 
-With the introduction of contrib ports, adding a new port is fairly easy. Basically, the steps are:
+The simplest way to add a new port is to put it under the ``contrib`` directory. Basically, the steps are:
 
  * Make sure the port is open source and has a suitable license.
  * Read the ``README.md`` file under ``tools/ports/contrib`` which contains more information.

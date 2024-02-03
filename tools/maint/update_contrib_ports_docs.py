@@ -47,9 +47,9 @@ def write_contrib_port(f, port):
   f.write('\n.. _' + heading.lower() + ':\n')
   f.write('\n' + heading + '\n')
   f.write('=' * len(heading) + '\n\n')
-  f.write(port.project_description())
-  f.write(f'\n\n`Project information <{port.project_url()}>`_')
-  f.write(f'\n\nLicense: {port.project_license()}')
+  f.write(port.description())
+  f.write(f'\n\n`Project information <{port.url()}>`_')
+  f.write(f'\n\nLicense: {port.license()}')
 
 
 def write_contrib_ports(f):

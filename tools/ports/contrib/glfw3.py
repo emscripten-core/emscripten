@@ -49,13 +49,13 @@ def process_args(ports):
   return ['-isystem', ports.get_include_dir(name)]
 
 
-def project_url():
+def url():
   return 'https://github.com/pongasoft/emscripten-glfw'
 
 
-def project_description():
+def description():
   return 'This project is an emscripten port of glfw written in C++ for the web/webassembly platform'
 
 
-def project_license():
+def license():
   return 'Apache 2.0 license'
