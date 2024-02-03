@@ -11,7 +11,7 @@ var SyscallsLibrary = {
                    '$FS',
 #endif
 #if SYSCALL_DEBUG
-                   '$ERRNO_MESSAGES'
+                   '$strError',
 #endif
   ],
   $SYSCALLS: {

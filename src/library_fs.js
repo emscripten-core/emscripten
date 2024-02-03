@@ -28,7 +28,7 @@ addToLibrary({
     '$PROXYFS',
 #endif
 #if ASSERTIONS
-    '$ERRNO_MESSAGES', '$ERRNO_CODES',
+    '$strError', '$ERRNO_CODES',
 #endif
   ],
   $FS__postset: function() {
@@ -111,7 +111,6 @@ FS.staticInit();` +
     trackingDelegate: {},
 #endif
     ErrnoError: null, // set during init
-    genericErrors: {},
     filesystems: null,
     syncFSRequests: 0, // we warn if there are multiple in flight at once
 
@@ -128,7 +127,7 @@ FS.staticInit();` +
       // we'll use the reliable test `err.name == "ErrnoError"` instead
       constructor(errno) {
 #if ASSERTIONS
-        super(ERRNO_MESSAGES[errno]);
+        super(strError(errno));
 #endif
         // TODO(sbc): Use the inline member delclaration syntax once we
         // support it in acorn and closure.
@@ -1435,12 +1434,6 @@ FS.staticInit();` +
 #endif
     },
     staticInit() {
-      // Some errors may happen quite a bit, to avoid overhead we reuse them (and suffer a lack of stack info)
-      [{{{ cDefs.ENOENT }}}].forEach((code) => {
-        FS.genericErrors[code] = new FS.ErrnoError(code);
-        FS.genericErrors[code].stack = '<generic error, no stack>';
-      });
-
       FS.nameTable = new Array(4096);
 
       FS.mount(MEMFS, {}, '/');
