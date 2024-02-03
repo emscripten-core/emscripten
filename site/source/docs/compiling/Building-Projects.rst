@@ -244,7 +244,10 @@ To see a list of all available ports, run ``emcc --show-ports``.
 Contrib ports
 -------------
 
-Contrib ports are contributed by the wider community and supported on a "best effort" basis. Since they are not run as part of emscripten CI they are not always guaranteed to build or function. See :ref:`Contrib Ports <contrib_ports>` for more information.
+Contrib ports are contributed by the wider community and supported on a
+"best effort" basis. Since they are not run as part of emscripten CI they are
+not always guaranteed to build or function.
+See :ref:`Contrib Ports <contrib_ports>` for more information.
 
 Adding more ports
 -----------------
