@@ -608,14 +608,14 @@ function instrumentWasmTableWithAbort() {
 #endif
 
 var wasmBinaryFile;
-#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE
+#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && !AUDIO_WORKLET
 if (Module['locateFile']) {
 #endif
   wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
   if (!isDataURI(wasmBinaryFile)) {
     wasmBinaryFile = locateFile(wasmBinaryFile);
   }
-#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE // in single-file mode, repeating WASM_BINARY_FILE would emit the contents again
+#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && !AUDIO_WORKLET // In single-file mode, repeating WASM_BINARY_FILE would emit the contents again. For an Audio Worklet, we cannot use `new URL()`.
 } else {
 #if ENVIRONMENT_MAY_BE_SHELL
   if (ENVIRONMENT_IS_SHELL)
@@ -999,13 +999,6 @@ function createWasm() {
     {{{ receivedSymbol('wasmTable') }}}
 #if ASSERTIONS && !PURE_WASI
     assert(wasmTable, 'table not found in wasm exports');
-#endif
-
-#if AUDIO_WORKLET
-    // If we are in the audio worklet environment, we can only access the Module object
-    // and not the global scope of the main JS script. Therefore we need to export
-    // all functions that the audio worklet scope needs onto the Module object.
-    Module['wasmTable'] = wasmTable;
 #endif
 #endif
 
