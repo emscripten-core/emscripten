@@ -14466,3 +14466,21 @@ addToLibrary({
   def test_wasm64_no_asan(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMEMORY64', '-fsanitize=address'])
     self.assertContained('error: MEMORY64 does not yet work with ASAN', err)
+
+  def test_js_preprocess_pre_post(self):
+    create_file('pre.js', '''
+    #preprocess
+    #if ASSERTIONS
+    console.log('assertions enabled')
+    #else
+    console.log('assertions disabled')
+    #endif
+    ''')
+    create_file('post.js', '''
+    #preprocess
+    console.log({{{ POINTER_SIZE }}});
+    ''')
+    self.emcc_args += ['--pre-js', 'pre.js', '--post-js', 'post.js']
+    self.do_runf(test_file('hello_world.c'), 'assertions enabled\n4', emcc_args=['-sASSERTIONS=1'])
+    self.do_runf(test_file('hello_world.c'), 'assertions disabled\n4', emcc_args=['-sASSERTIONS=0'])
+    self.assertNotContained('#preprocess', read_file('hello_world.js'))
