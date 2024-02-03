@@ -12,6 +12,7 @@ This section contains topics about building projects and running the output.
 - :ref:`Travis` explains how to build and test projects on Travis CI.
 - :ref:`Deploying-Pages` covers topics related to hosting Emscripten compiled web pages on a CDN.
 - :ref:`GitLab` explains how to build and test projects on GitLab.
+- :ref:`Contrib-Ports` contains information about contrib ports.
 
 
 .. toctree::
@@ -24,3 +25,4 @@ This section contains topics about building projects and running the output.
    Travis
    Deploying-Pages
    GitLab
+   Contrib-Ports
