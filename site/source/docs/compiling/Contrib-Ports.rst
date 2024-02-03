@@ -1,4 +1,4 @@
-.. _contrib_ports:
+.. _Contrib-Ports:
 
 ========================
 Emscripten Contrib Ports
