@@ -7668,19 +7668,22 @@ high = 1234
     # Unclosed quote
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-s', "TEST_KEY='MISSING_QUOTE"])
     self.assertNotContained('AssertionError', err) # Do not mention that it is an assertion error
-    self.assertContained('unclosed opened quoted string. expected final character to be "\'"', err)
+    self.assertContained('error: error parsing "-s" setting', err)
+    self.assertContained('unclosed quoted string. expected final character to be "\'"', err)
 
   def test_dash_s_single_quote(self):
     # Only one quote
     err = self.expect_fail([EMCC, test_file('hello_world.c'), "-sTEST_KEY='"])
     self.assertNotContained('AssertionError', err) # Do not mention that it is an assertion error
-    self.assertContained('unclosed opened quoted string.', err)
+    self.assertContained('error: error parsing "-s" setting', err)
+    self.assertContained('unclosed quoted string.', err)
 
   def test_dash_s_unclosed_list(self):
     # Unclosed list
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), "-sTEST_KEY=[Value1, Value2"])
     self.assertNotContained('AssertionError', err) # Do not mention that it is an assertion error
-    self.assertContained('unclosed opened string list. expected final character to be "]"', err)
+    self.assertContained('error: error parsing "-s" setting', err)
+    self.assertContained('unterminated string list. expected final character to be "]"', err)
 
   def test_dash_s_valid_list(self):
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), "-sTEST_KEY=[Value1, \"Value2\"]"])
@@ -14468,3 +14471,21 @@ addToLibrary({
   def test_wasm64_no_asan(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMEMORY64', '-fsanitize=address'])
     self.assertContained('error: MEMORY64 does not yet work with ASAN', err)
+
+  def test_js_preprocess_pre_post(self):
+    create_file('pre.js', '''
+    #preprocess
+    #if ASSERTIONS
+    console.log('assertions enabled')
+    #else
+    console.log('assertions disabled')
+    #endif
+    ''')
+    create_file('post.js', '''
+    #preprocess
+    console.log({{{ POINTER_SIZE }}});
+    ''')
+    self.emcc_args += ['--pre-js', 'pre.js', '--post-js', 'post.js']
+    self.do_runf(test_file('hello_world.c'), 'assertions enabled\n4', emcc_args=['-sASSERTIONS=1'])
+    self.do_runf(test_file('hello_world.c'), 'assertions disabled\n4', emcc_args=['-sASSERTIONS=0'])
+    self.assertNotContained('#preprocess', read_file('hello_world.js'))

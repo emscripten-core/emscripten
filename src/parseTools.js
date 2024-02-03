@@ -137,6 +137,8 @@ function preprocess(filename) {
           if (showCurrentLine()) {
             error(`${filename}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
           }
+        } else if (first === '#preprocess') {
+          // Do nothing
         } else {
           error(`${filename}:${i + 1}: Unknown preprocessor directive ${first}`);
         }
@@ -176,6 +178,7 @@ function needsQuoting(ident) {
 }
 
 globalThis.POINTER_SIZE = MEMORY64 ? 8 : 4;
+globalThis.POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
 globalThis.STACK_ALIGN = 16;
 const POINTER_BITS = POINTER_SIZE * 8;
 const POINTER_TYPE = `u${POINTER_BITS}`;
@@ -1020,14 +1023,6 @@ function getEntryFunction() {
     return `resolveGlobalSymbol('${entryFunction}').sym;`
   }
   return `_${entryFunction}`;
-}
-
-function preJS() {
-  let result = '';
-  for (const fileName of PRE_JS_FILES) {
-    result += read(fileName);
-  }
-  return result;
 }
 
 function formattedMinNodeVersion() {

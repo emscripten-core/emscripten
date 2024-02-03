@@ -2023,27 +2023,23 @@ keydown(100);keyup(100); // trigger the end
     self.btest_exit('gl_textures.cpp', args=['-lGL', '-g', '-sSTACK_SIZE=1MB'] + args)
 
   @requires_graphics_hardware
-  @no_wasm64('TODO: wasm64 + LEGACY_GL_EMULATION')
   def test_gl_ps(self):
     # pointers and a shader
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('gl_ps.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1)
 
   @requires_graphics_hardware
-  @no_wasm64('TODO: wasm64 + LEGACY_GL_EMULATION')
   def test_gl_ps_packed(self):
     # packed data that needs to be strided
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('gl_ps_packed.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1)
 
   @requires_graphics_hardware
-  @no_wasm64('TODO: wasm64 + LEGACY_GL_EMULATION')
   def test_gl_ps_strides(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('gl_ps_strides.c', reference='gl_ps_strides.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'])
 
   @requires_graphics_hardware
-  @no_wasm64('TODO: wasm64 + LEGACY_GL_EMULATION')
   def test_gl_ps_worker(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.btest('gl_ps_worker.c', reference='gl_ps.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1, also_proxied=True)
@@ -2076,37 +2072,34 @@ keydown(100);keyup(100); // trigger the end
   def test_matrix_identity(self):
     self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840', '1588195328', '2411982848'], args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre(self):
     self.btest('third_party/cubegeom/cubegeom_pre.c', reference='third_party/cubegeom/cubegeom_pre.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_regal(self):
-    self.btest('third_party/cubegeom/cubegeom_pre.c', reference='third_party/cubegeom/cubegeom_pre.png', args=['-sUSE_REGAL', '-DUSE_REGAL', '-lGL', '-lSDL'])
+    self.btest('third_party/cubegeom/cubegeom_pre.c', reference='third_party/cubegeom/cubegeom_pre.png', args=['-sUSE_REGAL', '-DUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_relocatable(self):
-    self.btest('third_party/cubegeom/cubegeom_pre.c', reference='third_party/cubegeom/cubegeom_pre.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sRELOCATABLE'])
+    # RELOCATABLE needs to be set via `set_setting` so that it will also apply when
+    # building `browser_reporting.c`
+    self.set_setting('RELOCATABLE')
+    self.btest('third_party/cubegeom/cubegeom_pre.c', reference='third_party/cubegeom/cubegeom_pre.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre2(self):
     self.btest('third_party/cubegeom/cubegeom_pre2.c', reference='third_party/cubegeom/cubegeom_pre2.png', args=['-sGL_DEBUG', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL']) # some coverage for GL_DEBUG not breaking the build
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre3(self):
     self.btest('third_party/cubegeom/cubegeom_pre3.c', reference='third_party/cubegeom/cubegeom_pre2.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @parameterized({
     '': ([],),
     'tracing': (['-sTRACE_WEBGL_CALLS'],),
@@ -2117,18 +2110,15 @@ keydown(100);keyup(100); // trigger the end
     # proxied)
     self.btest('third_party/cubegeom/cubegeom.c', reference='third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'] + args, also_proxied=not args)
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_cubegeom_regal(self):
     self.btest('third_party/cubegeom/cubegeom.c', reference='third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-sUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'], also_proxied=True)
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_threads
   @requires_graphics_hardware
   def test_cubegeom_regal_mt(self):
     self.btest('third_party/cubegeom/cubegeom.c', reference='third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-pthread', '-sUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'], also_proxied=False)
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   @parameterized({
     '': ([],),
@@ -2151,108 +2141,88 @@ void *getBindBuffer() {
 ''')
     self.btest('third_party/cubegeom/cubegeom_proc.c', reference='third_party/cubegeom/cubegeom.png', args=opts + ['side.c', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @also_with_wasmfs
   @requires_graphics_hardware
   def test_cubegeom_glew(self):
     self.btest('third_party/cubegeom/cubegeom_glew.c', reference='third_party/cubegeom/cubegeom.png', args=['-O2', '--closure=1', '-sLEGACY_GL_EMULATION', '-lGL', '-lGLEW', '-lSDL'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_cubegeom_color(self):
     self.btest('third_party/cubegeom/cubegeom_color.c', reference='third_party/cubegeom/cubegeom_color.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_cubegeom_normal(self):
     self.btest('third_party/cubegeom/cubegeom_normal.c', reference='third_party/cubegeom/cubegeom_normal.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], also_proxied=True)
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_cubegeom_normal_dap(self): # draw is given a direct pointer to clientside memory, no element array buffer
     self.btest('third_party/cubegeom/cubegeom_normal_dap.c', reference='third_party/cubegeom/cubegeom_normal.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], also_proxied=True)
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_cubegeom_normal_dap_far(self): # indices do nto start from 0
     self.btest('third_party/cubegeom/cubegeom_normal_dap_far.c', reference='third_party/cubegeom/cubegeom_normal.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_cubegeom_normal_dap_far_range(self): # glDrawRangeElements
     self.btest('third_party/cubegeom/cubegeom_normal_dap_far_range.c', reference='third_party/cubegeom/cubegeom_normal.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_cubegeom_normal_dap_far_glda(self): # use glDrawArrays
     self.btest('third_party/cubegeom/cubegeom_normal_dap_far_glda.c', reference='third_party/cubegeom/cubegeom_normal_dap_far_glda.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   @no_firefox('fails on CI but works locally')
   def test_cubegeom_normal_dap_far_glda_quad(self): # with quad
     self.btest('third_party/cubegeom/cubegeom_normal_dap_far_glda_quad.c', reference='third_party/cubegeom/cubegeom_normal_dap_far_glda_quad.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_cubegeom_mt(self):
     self.btest('third_party/cubegeom/cubegeom_mt.c', reference='third_party/cubegeom/cubegeom_mt.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL']) # multitexture
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_cubegeom_color2(self):
     self.btest('third_party/cubegeom/cubegeom_color2.c', reference='third_party/cubegeom/cubegeom_color2.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], also_proxied=True)
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_cubegeom_texturematrix(self):
     self.btest('third_party/cubegeom/cubegeom_texturematrix.c', reference='third_party/cubegeom/cubegeom_texturematrix.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_cubegeom_fog(self):
     self.btest('third_party/cubegeom/cubegeom_fog.c', reference='third_party/cubegeom/cubegeom_fog.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_vao(self):
     self.btest('third_party/cubegeom/cubegeom_pre_vao.c', reference='third_party/cubegeom/cubegeom_pre_vao.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_vao_regal(self):
-    self.btest('third_party/cubegeom/cubegeom_pre_vao.c', reference='third_party/cubegeom/cubegeom_pre_vao.png', args=['-sUSE_REGAL', '-DUSE_REGAL', '-lGL', '-lSDL'])
+    self.btest('third_party/cubegeom/cubegeom_pre_vao.c', reference='third_party/cubegeom/cubegeom_pre_vao.png', args=['-sUSE_REGAL', '-DUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre2_vao(self):
     self.btest('third_party/cubegeom/cubegeom_pre2_vao.c', reference='third_party/cubegeom/cubegeom_pre_vao.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_cubegeom_pre2_vao2(self):
     self.btest('third_party/cubegeom/cubegeom_pre2_vao2.c', reference='third_party/cubegeom/cubegeom_pre2_vao2.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_vao_es(self):
     self.btest('third_party/cubegeom/cubegeom_pre_vao_es.c', reference='third_party/cubegeom/cubegeom_pre_vao.png', args=['-sFULL_ES2', '-lGL', '-lSDL'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_cubegeom_u4fv_2(self):
     self.btest('third_party/cubegeom/cubegeom_u4fv_2.c', reference='third_party/cubegeom/cubegeom_u4fv_2.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_cube_explosion(self):
     self.btest('cube_explosion.c', reference='cube_explosion.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], also_proxied=True)
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_glgettexenv(self):
     self.btest('glgettexenv.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], expected='1')
@@ -2337,7 +2307,6 @@ void *getBindBuffer() {
     shutil.copyfile(test_file('browser/water.dds'), 'water.dds')
     self.btest('test_anisotropic.c', reference='browser/test_anisotropic.png', reference_slack=2, args=['--preload-file', 'water.dds', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-Wno-incompatible-pointer-types'])
 
-  @no_wasm64('wasm64 + LEGACY_GL_EMULATION')
   @requires_graphics_hardware
   def test_tex_nonbyte(self):
     self.btest('tex_nonbyte.c', reference='tex_nonbyte.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
@@ -5935,6 +5904,16 @@ class browser64_4gb(browser):
     self.set_setting('MEMORY64')
     self.set_setting('INITIAL_MEMORY', '4200mb')
     self.set_setting('GLOBAL_BASE', '4gb')
+    self.emcc_args.append('-Wno-experimental')
+    self.require_wasm64()
+
+
+class browser64_2gb(browser):
+  def setUp(self):
+    super().setUp()
+    self.set_setting('MEMORY64')
+    self.set_setting('INITIAL_MEMORY', '2200gb')
+    self.set_setting('GLOBAL_BASE', '2gb')
     self.emcc_args.append('-Wno-experimental')
     self.require_wasm64()
 
