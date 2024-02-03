@@ -9,12 +9,11 @@ If you want to add a contrib port, please use another contrib port as
 an example. In particular, each contrib port must provide 3 extra piece
 of information (provided as functions in the port file):
 
-* `project_url`: the url where the user can find more information about 
+* `url`: the url where the user can find more information about 
   the project/port
-* `project_description`: a (short) description of what the project/port 
+* `description`: a (short) description of what the project/port 
   is about
-* `project_license`: the license used by the project/port
+* `license`: the license used by the project/port
 
-After adding (resp. modifying) a contrib port, you must run the 
-`./tools/maint/update_contrib_port_docs.py` command to add (resp. update) 
-the new port to the documentation.
+After adding a contrib port, you should consider modifying the documentation 
+under `site/source/docs/compiling/Contrib-Ports.rst`.
