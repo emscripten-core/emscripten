@@ -8,6 +8,11 @@ import os
 TAG = '1.0.4'
 HASH = 'c3c96718e5d2b37df434a46c4a93ddfd9a768330d33f0d6ce2d08c139752894c2421cdd0fefb800fe41fafc2bbe58c8f22b8aa2849dc4fc6dde686037215cfad'
 
+# contrib port information (required)
+URL = 'https://github.com/pongasoft/emscripten-glfw'
+DESCRIPTION = 'This project is an emscripten port of glfw written in C++ for the web/webassembly platform'
+LICENSE = 'Apache 2.0 license'
+
 # name is set when the port is read
 name = ''
 
@@ -48,14 +53,3 @@ def linker_setup(ports, settings):
 def process_args(ports):
   return ['-isystem', ports.get_include_dir(name)]
 
-
-def url():
-  return 'https://github.com/pongasoft/emscripten-glfw'
-
-
-def description():
-  return 'This project is an emscripten port of glfw written in C++ for the web/webassembly platform'
-
-
-def license():
-  return 'Apache 2.0 license'

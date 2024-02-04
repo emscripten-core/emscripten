@@ -56,7 +56,7 @@ def load_port(name):
     # port variants (default: no variants)
     port.variants = {}
   if not hasattr(port, 'show'):
-    port.show = lambda: f'{port.name} (--use-port={port.name}; {port.license()})'
+    port.show = lambda: f'{port.name} (--use-port={port.name}; {port.LICENSE})'
 
   for variant, extra_settings in port.variants.items():
     if variant in port_variants:
@@ -67,7 +67,7 @@ def load_port(name):
 def validate_port(port):
   expected_attrs = ['get', 'clear', 'show']
   if port.is_contrib:
-    expected_attrs += ['url', 'description', 'license']
+    expected_attrs += ['URL', 'DESCRIPTION', 'LICENSE']
   for a in expected_attrs:
     assert hasattr(port, a), 'port %s is missing %s' % (port, a)
 
