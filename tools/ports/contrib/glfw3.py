@@ -52,4 +52,3 @@ def linker_setup(ports, settings):
 
 def process_args(ports):
   return ['-isystem', ports.get_include_dir(name)]
-
