@@ -1,367 +1,624 @@
-// Copyright 2010 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2010 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
-//"use strict";
+// "use strict";
 
 // Convert analyzed data to javascript. Everything has already been calculated
 // before this stage, which just does the final conversion to JavaScript.
 
-// Handy sets
+globalThis.addedLibraryItems = {};
 
-var STRUCT_LIST = set('struct', 'list');
+globalThis.extraLibraryFuncs = [];
 
-var addedLibraryItems = {};
-var asmLibraryFunctions = [];
+// Some JS-implemented library functions are proxied to be called on the main
+// browser thread, if the Emscripten runtime is executing in a Web Worker.
+// Each such proxied function is identified via an ordinal number (this is not
+// the same namespace as function pointers in general).
+globalThis.proxiedFunctionTable = [];
 
-var allExternPrimitives = ['Math_floor', 'Math_abs', 'Math_sqrt', 'Math_pow', 'Math_cos', 'Math_sin', 'Math_tan', 'Math_acos', 'Math_asin', 'Math_atan', 'Math_atan2', 'Math_exp', 'Math_log', 'Math_ceil', 'Math_imul', 'Math_min', 'Math_max', 'Math_clz32', 'Math_fround',
-                           'Int8Array', 'Uint8Array', 'Int16Array', 'Uint16Array', 'Int32Array', 'Uint32Array', 'Float32Array', 'Float64Array'];
-// Specifies the set of referenced built-in primitives such as Math.max etc.
-var usedExternPrimitives = {};
+// Mangles the given C/JS side function name to assembly level function name (adds an underscore)
+function mangleCSymbolName(f) {
+  if (f === '__main_argc_argv') {
+    f = 'main';
+  }
+  return f[0] == '$' ? f.substr(1) : '_' + f;
+}
 
-var SETJMP_LABEL = -1;
+// Splits out items that pass filter. Returns also the original sans the filtered
+function splitter(array, filter) {
+  const splitOut = array.filter(filter);
+  const leftIn = array.filter((x) => !filter(x));
+  return { leftIn, splitOut };
+}
 
-var INDENTATION = ' ';
+function escapeJSONKey(x) {
+  if (/^[\d\w_]+$/.exec(x) || x[0] === '"' || x[0] === "'") return x;
+  assert(!x.includes("'"), 'cannot have internal single quotes in keys: ' + x);
+  return "'" + x + "'";
+}
 
-var functionStubSigs = {};
-
-// Some JS-implemented library functions are proxied to be called on the main browser thread, if the Emscripten runtime is executing in a Web Worker.
-// Each such proxied function is identified via an ordinal number (this is not the same namespace as function pointers in general).
-var proxiedFunctionTable = ["null" /* Reserve index 0 for an undefined function*/];
-
-// proxiedFunctionInvokers contains bodies of the functions that will perform the proxying. These
-// are generated in a map to keep track which ones have already been emitted, to avoid outputting duplicates.
-// map: pair(sig, syncOrAsync) -> function body
-var proxiedFunctionInvokers = {};
-
-// We include asm2wasm imports if the trap mode is 'js' (to call out to JS to do some math stuff).
-// However, we always need some of them (like the frem import because % is in asm.js but not in wasm).
-// But we can avoid emitting all the others in many cases.
-var NEED_ALL_ASM2WASM_IMPORTS = BINARYEN_TRAP_MODE == 'js';
-
-// used internally. set when there is a main() function.
-// also set when in a linkable module, as the main() function might
-// arrive from a dynamically-linked library, and not necessarily
-// the current compilation unit.
-var HAS_MAIN = ('_main' in IMPLEMENTED_FUNCTIONS) || MAIN_MODULE || SIDE_MODULE;
-
-// JSifier
-function JSify(data, functionsOnly) {
-  var mainPass = !functionsOnly;
-
-  var itemsDict = { type: [], GlobalVariableStub: [], functionStub: [], function: [], GlobalVariable: [], GlobalVariablePostSet: [] };
-
-  if (mainPass) {
-    var shellFile = SHELL_FILE ? SHELL_FILE : (SIDE_MODULE ? 'shell_sharedlib.js' : (MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js'));
-
-    // We will start to print out the data, but must do so carefully - we are
-    // dealing with potentially *huge* strings. Convenient replacements and
-    // manipulations may create in-memory copies, and we may OOM.
-    //
-    // Final shape that will be created:
-    //    shell
-    //      (body)
-    //        preamble
-    //          runtime
-    //        generated code
-    //        postamble
-    //          global_vars
-    //
-    // First, we print out everything until the generated code. Then the
-    // functions will print themselves out as they are parsed. Finally, we
-    // will call finalCombiner in the main pass, to print out everything
-    // else. This lets us not hold any strings in memory, we simply print
-    // things out as they are ready.
-
-    var shellParts = read(shellFile).split('{{BODY}}');
-    print(processMacros(preprocess(shellParts[0], shellFile)));
-    var pre;
-    if (SIDE_MODULE) {
-      pre = processMacros(preprocess(read('preamble_sharedlib.js'), 'preamble_sharedlib.js'));
-    } else if (MINIMAL_RUNTIME) {
-      pre = processMacros(preprocess(read('preamble_minimal.js'), 'preamble_minimal.js'));
+// JSON.stringify will completely omit function objects.  This function is
+// similar but preserves functions.
+function stringifyWithFunctions(obj) {
+  if (typeof obj == 'function') return obj.toString();
+  if (obj === null || typeof obj != 'object') return JSON.stringify(obj);
+  if (Array.isArray(obj)) {
+    return '[' + obj.map(stringifyWithFunctions).join(',') + ']';
+  }
+  var rtn = '{\n';
+  for (const [key, value] of Object.entries(obj)) {
+    var str = stringifyWithFunctions(value);
+    // Handle JS method syntax where the function property starts with its own
+    // name. e.g.  foo(a) {},
+    if (typeof value === 'function' && str.startsWith(key)) {
+      rtn += str + ',\n'
     } else {
-      pre = processMacros(preprocess(read('support.js'), 'support.js')) +
-            processMacros(preprocess(read('preamble.js'), 'preamble.js'));
+      rtn += escapeJSONKey(key) + ':' + str + ',\n';
     }
-    print(pre);
+  }
+  return rtn + '}';
+}
+
+function isDefined(symName) {
+  if (WASM_EXPORTS.has(symName) || SIDE_MODULE_EXPORTS.has(symName)) {
+    return true;
+  }
+  if (symName == '__main_argc_argv' && SIDE_MODULE_EXPORTS.has('main')) {
+    return true;
+  }
+  // 'invoke_' symbols are created at runtime in libary_dylink.py so can
+  // always be considered as defined.
+  if (RELOCATABLE && symName.startsWith('invoke_')) {
+    return true;
+  }
+  return false;
+}
+
+function getTransitiveDeps(symbol) {
+  // TODO(sbc): Use some kind of cache to avoid quadratic behaviour here.
+  const transitiveDeps = new Set();
+  const seen = new Set();
+  const toVisit = [symbol];
+  while (toVisit.length) {
+    const sym = toVisit.pop();
+    if (!seen.has(sym)) {
+      let directDeps = LibraryManager.library[sym + '__deps'] || [];
+      directDeps = directDeps.filter((d) => typeof d === 'string');
+      if (directDeps.length) {
+        directDeps.forEach(transitiveDeps.add, transitiveDeps);
+        toVisit.push(...directDeps);
+      }
+      seen.add(sym);
+    }
+  }
+  return Array.from(transitiveDeps);
+}
+
+function shouldPreprocess(fileName) {
+  return read(fileName).trim().startsWith('#preprocess\n');
+}
+
+function preJS() {
+  let result = '';
+  for (const fileName of PRE_JS_FILES) {
+    if (shouldPreprocess(fileName)) {
+      result += processMacros(preprocess(fileName));
+    } else {
+      result += read(fileName);
+    }
+  }
+  return result;
+}
+
+function runJSify() {
+  const libraryItems = [];
+  const symbolDeps = {};
+  const asyncFuncs = [];
+  let postSets = [];
+
+  LibraryManager.load();
+
+  const symbolsNeeded = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
+  symbolsNeeded.push(...extraLibraryFuncs);
+  for (const sym of EXPORTED_RUNTIME_METHODS) {
+    if ('$' + sym in LibraryManager.library) {
+      symbolsNeeded.push('$' + sym);
+    }
+  }
+  if (INCLUDE_FULL_LIBRARY) {
+    for (const key of Object.keys(LibraryManager.library)) {
+      if (!isDecorator(key)) {
+        symbolsNeeded.push(key);
+      }
+    }
   }
 
-  if (mainPass) {
-    // Add additional necessary items for the main pass. We can now do this since types are parsed (types can be used through
-    // generateStructInfo in library.js)
-
-    LibraryManager.load();
-
-    var libFuncsToInclude;
-    if (INCLUDE_FULL_LIBRARY) {
-      assert(!SIDE_MODULE, 'Cannot have both INCLUDE_FULL_LIBRARY and SIDE_MODULE set.')
-      libFuncsToInclude = (MAIN_MODULE || SIDE_MODULE) ? DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.slice(0) : [];
-      for (var key in LibraryManager.library) {
-        if (!key.match(/__(deps|postset|inline|asm|sig)$/)) {
-          libFuncsToInclude.push(key);
+  function handleI64Signatures(symbol, snippet, sig, i53abi) {
+    // Handle i64 paramaters and return values.
+    //
+    // When WASM_BIGINT is enabled these arrive as BigInt values which we
+    // convert to int53 JS numbers.  If necessary, we also convert the return
+    // value back into a BigInt.
+    //
+    // When WASM_BIGINT is not enabled we receive i64 values as a pair of i32
+    // numbers which is coverted to single int53 number.  In necessary, we also
+    // split the return value into a pair of i32 numbers.
+    return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
+      let argLines = args.split('\n');
+      argLines = argLines.map((line) => line.split('//')[0]);
+      const argNames = argLines.join(' ').split(',').map((name) => name.trim());
+      const newArgs = [];
+      let innerArgs = [];
+      let argConvertions = '';
+      if (sig.length > argNames.length + 1) {
+        error(`handleI64Signatures: signature too long for ${symbol}`);
+        return snippet;
+      }
+      for (let i = 0; i < argNames.length; i++) {
+        const name = argNames[i];
+        // If sig is shorter than argNames list then argType will be undefined
+        // here, which will result in the default case below.
+        const argType = sig[i + 1];
+        if (WASM_BIGINT && ((MEMORY64 && argType == 'p') || (i53abi && argType == 'j'))) {
+          argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
+        } else {
+          if (argType == 'j' && i53abi) {
+            argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
+            newArgs.push(defineI64Param(name));
+          } else if (argType == 'p' && CAN_ADDRESS_2GB) {
+            argConvertions += `  ${name} >>>= 0;\n`;
+            newArgs.push(name);
+          } else {
+            newArgs.push(name);
+          }
         }
       }
-    } else {
-      libFuncsToInclude = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
-    }
-    libFuncsToInclude.forEach(function(ident) {
-      var finalName = '_' + ident;
-      if (ident[0] === '$') {
-        finalName = ident.substr(1);
+
+      var origArgs = args;
+      if (!WASM_BIGINT) {
+        args = newArgs.join(',');
       }
-      data.functionStubs.push({
-        intertype: 'functionStub',
-        finalName: finalName,
-        ident: '_' + ident
-      });
+
+      if ((sig[0] == 'j' && i53abi) || (sig[0] == 'p' && MEMORY64)) {
+        // For functions that where we need to mutate the return value, we
+        // also need to wrap the body in an inner function.
+        if (oneliner) {
+          if (argConvertions) {
+            return `${async_}(${args}) => {
+${argConvertions}
+  return ${makeReturn64(body)};
+}`
+          }
+          return `${async_}(${args}) => ${makeReturn64(body)};`
+        }
+        return `\
+${async_}function(${args}) {
+${argConvertions}
+  var ret = (() => { ${body} })();
+  return ${makeReturn64('ret')};
+}`;
+      }
+
+      // Otherwise no inner function is needed and we covert the arguments
+      // before executing the function body.
+      if (oneliner) {
+        body = `return ${body}`;
+      }
+      return `\
+${async_}function(${args}) {
+${argConvertions}
+  ${body};
+}`;
     });
   }
 
-  function processLibraryFunction(snippet, ident, finalName) {
-    // It is possible that when printing the function as a string on Windows, the js interpreter we are in returns the string with Windows
-    // line endings \r\n. This is undesirable, since line endings are managed in the form \n in the output for binary file writes, so
-    // make sure the endings are uniform.
-    snippet = snippet.toString().replace(/\r\n/gm,"\n");
-    assert(snippet.indexOf('XXX missing C define') == -1,
-           'Trying to include a library function with missing C defines: ' + finalName + ' | ' + snippet);
+  function processLibraryFunction(snippet, symbol, mangled, deps, isStub) {
+    // It is possible that when printing the function as a string on Windows,
+    // the js interpreter we are in returns the string with Windows line endings
+    // \r\n. This is undesirable, since line endings are managed in the form \n
+    // in the output for binary file writes, so make sure the endings are
+    // uniform.
+    snippet = snippet.toString().replace(/\r\n/gm, '\n');
 
-    // name the function; overwrite if it's already named
-    snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function ' + finalName + '(');
-    if (LIBRARY_DEBUG && !LibraryManager.library[ident + '__asm']) {
-      snippet = snippet.replace('{', '{ var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]"); ');
-      snippet = snippet.substr(0, snippet.length-1) + '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}';
+    // Is this a shorthand `foo() {}` method syntax?
+    // If so, prepend a function keyword so that it's valid syntax when extracted.
+    if (snippet.startsWith(symbol)) {
+      snippet = 'function ' + snippet;
     }
+
+    if (isStub) {
+      return snippet;
+    }
+
+    // apply LIBRARY_DEBUG if relevant
+    if (LIBRARY_DEBUG && !isJsOnlySymbol(symbol)) {
+      snippet = modifyJSFunction(snippet, (args, body, async) => `\
+function(${args}) {
+  var ret = (function() { if (runtimeDebug) err("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
+  ${body}
+  }).apply(this, arguments);
+  if (runtimeDebug && typeof ret != "undefined") err("  [     return:" + prettyPrint(ret));
+  return ret;
+}`);
+    }
+
+    const sig = LibraryManager.library[symbol + '__sig'];
+    const i53abi = LibraryManager.library[symbol + '__i53abi'];
+    if (sig &&
+        ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')))) {
+      snippet = handleI64Signatures(symbol, snippet, sig, i53abi);
+      i53ConversionDeps.forEach((d) => deps.push(d))
+    }
+
+    const proxyingMode = LibraryManager.library[symbol + '__proxy'];
+    if (proxyingMode) {
+      if (proxyingMode !== 'sync' && proxyingMode !== 'async' && proxyingMode !== 'none') {
+        throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
+      }
+      if (SHARED_MEMORY) {
+        const sync = proxyingMode === 'sync';
+        if (PTHREADS) {
+          snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
+            if (oneliner) {
+              body = `return ${body}`;
+            }
+            const rtnType = sig && sig.length ? sig[0] : null;
+            const proxyFunc = (MEMORY64 && rtnType == 'p') ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
+            deps.push('$' + proxyFunc);
+            return `
+function(${args}) {
+if (ENVIRONMENT_IS_PTHREAD)
+  return ${proxyFunc}(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
+${body}
+}\n`
+          });
+        } else if (WASM_WORKERS && ASSERTIONS) {
+          // In ASSERTIONS builds add runtime checks that proxied functions are not attempted to be called in Wasm Workers
+          // (since there is no automatic proxying architecture available)
+          snippet = modifyJSFunction(snippet, (args, body) => `
+function(${args}) {
+  assert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function '${mangled}' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");
+  ${body}
+}\n`);
+        }
+        proxiedFunctionTable.push(mangled);
+      }
+    }
+
     return snippet;
   }
 
-  // functionStub
-  function functionStubHandler(item) {
-    // special logic
-    if (item.ident.startsWith('___cxa_find_matching_catch_')) {
-      var num = +item.ident.split('_').slice(-1)[0];
-      LibraryManager.library[item.ident.substr(1)] = function() {
-        return ___cxa_find_matching_catch.apply(null, arguments);
-      };
+  function addImplicitDeps(snippet, deps) {
+    // There are some common dependencies that we inject automatically by
+    // conservatively scanning the input functions for their usage.
+    // Specifically, these are dependencies that are very common and would be
+    // burdensome to add manually to all functions.
+    // The first four are deps that are automatically/conditionally added
+    // by the {{{ makeDynCall }}}, and {{{ runtimeKeepalivePush/Pop }}} macros.
+    const autoDeps = [
+      'getDynCaller',
+      'getWasmTableEntry',
+      'runtimeKeepalivePush',
+      'runtimeKeepalivePop',
+      'UTF8ToString',
+    ];
+    for (const dep of autoDeps) {
+      if (snippet.includes(dep + '(')) {
+        deps.push('$' + dep);
+      }
+    }
+  }
+
+  function symbolHandler(symbol) {
+    // In LLVM, exceptions generate a set of functions of form
+    // __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.  where
+    // the number specifies the number of arguments. In Emscripten, route all
+    // these to a single function 'findMatchingCatch' that takes an array
+    // of argument.
+    if (!WASM_EXCEPTIONS && symbol.startsWith('__cxa_find_matching_catch_')) {
+      if (DISABLE_EXCEPTION_THROWING) {
+        error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
+        return;
+      }
+      if (!(symbol in LibraryManager.library)) {
+        // Create a new __cxa_find_matching_catch variant on demand.
+        const num = +symbol.split('_').slice(-1)[0];
+        addCxaCatch(num);
+      }
+      // Continue, with the code below emitting the proper JavaScript based on
+      // what we just added to the library.
     }
 
-    // note the signature
-    if (item.returnType && item.params) {
-      functionStubSigs[item.ident] = Functions.getSignature(item.returnType.text, item.params.map(function(arg) { return arg.type }), false);
-    }
-
-    function addFromLibrary(ident) {
-      if (ident in addedLibraryItems) return '';
-      addedLibraryItems[ident] = true;
-
-      // dependencies can be JS functions, which we just run
-      if (typeof ident == 'function') return ident();
-
-      // don't process any special identifiers. These are looked up when processing the base name of the identifier.
-      if (ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline') || ident.endsWith('__deps') || ident.endsWith('__postset')) {
-        return '';
+    function addFromLibrary(symbol, dependent, force = false) {
+      // don't process any special identifiers. These are looked up when
+      // processing the base name of the identifier.
+      if (isDecorator(symbol)) {
+        return;
       }
 
-      // $ident's are special, we do not prefix them with a '_'.
-      if (ident[0] === '$') {
-        var finalName = ident.substr(1);
-      } else {
-        var finalName = '_' + ident;
+      // if the function was implemented in compiled code, there is no need to
+      // include the js version
+      if (WASM_EXPORTS.has(symbol) && !force) {
+        return;
       }
 
-      // if the function was implemented in compiled code, we just need to export it so we can reach it from JS
-      if (finalName in IMPLEMENTED_FUNCTIONS) {
-        EXPORTED_FUNCTIONS[finalName] = 1;
-        // stop here: we don't need to add anything from our js libraries, not even deps, compiled code is on it
-        return '';
+      if (symbol in addedLibraryItems) {
+        return;
+      }
+      addedLibraryItems[symbol] = true;
+
+      if (!(symbol + '__deps' in LibraryManager.library)) {
+        LibraryManager.library[symbol + '__deps'] = [];
       }
 
-      // Don't replace implemented functions with library ones (which can happen when we add dependencies).
-      // Note: We don't return the dependencies here. Be careful not to end up where this matters
-      if (finalName in Functions.implementedFunctions) return '';
+      deps = LibraryManager.library[symbol + '__deps'];
+      let sig = LibraryManager.library[symbol + '__sig'];
+      if (!WASM_BIGINT && sig && sig[0] == 'j') {
+        // Without WASM_BIGINT functions that return i64 depend on setTempRet0
+        // to return the upper 32-bits of the result.
+        // See makeReturn64 in parseTools.py.
+        deps.push('setTempRet0');
+      }
 
-      var noExport = false;
+      let isAsyncFunction = false;
+      if (ASYNCIFY) {
+        const original = LibraryManager.library[symbol];
+        if (typeof original == 'function' ) {
+          isAsyncFunction = LibraryManager.library[symbol + '__async'] ||
+                            original.constructor.name == 'AsyncFunction'
+        }
+        if (isAsyncFunction) {
+          asyncFuncs.push(symbol);
+        }
+      }
 
-      if (allExternPrimitives.indexOf(ident) != -1) {
-        usedExternPrimitives[ident] = 1;
-      } else if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
-        if (!(finalName in IMPLEMENTED_FUNCTIONS)) {
-          if (VERBOSE || ident.substr(0, 11) !== 'emscripten_') { // avoid warning on emscripten_* functions which are for internal usage anyhow
-            if (!LINKABLE) {
-              if (ERROR_ON_UNDEFINED_SYMBOLS) {
-                error('undefined symbol: ' + ident);
-                warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`')
-              } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
-                warn('undefined symbol: ' + ident);
-              }
-            }
+      if (symbolsOnly) {
+        if (LibraryManager.library.hasOwnProperty(symbol)) {
+          var value = LibraryManager.library[symbol];
+          var resolvedSymbol = symbol;
+          // Resolve aliases before looking up deps
+          if (typeof value == 'string' && value[0] != '=' && LibraryManager.library.hasOwnProperty(value)) {
+            resolvedSymbol = value;
+          }
+          var transtiveDeps = getTransitiveDeps(resolvedSymbol);
+          symbolDeps[symbol] = transtiveDeps.filter((d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library));
+        }
+        return;
+      }
+
+      // This gets set to true in the case of dynamic linking for symbols that
+      // are undefined in the main module.  In this case we create a stub that
+      // will resolve the correct symbol at runtime, or assert if its missing.
+      let isStub = false;
+
+      const mangled = mangleCSymbolName(symbol);
+
+      if (!LibraryManager.library.hasOwnProperty(symbol)) {
+        const isWeakImport = WEAK_IMPORTS.has(symbol);
+        if (!isDefined(symbol) && !isWeakImport) {
+          if (PROXY_TO_PTHREAD && !MAIN_MODULE && symbol == '__main_argc_argv') {
+            error('PROXY_TO_PTHREAD proxies main() for you, but no main exists');
+            return;
+          }
+          let undefinedSym = symbol;
+          if (symbol === '__main_argc_argv') {
+            undefinedSym = 'main/__main_argc_argv';
+          }
+          let msg = 'undefined symbol: ' + undefinedSym;
+          if (dependent) msg += ` (referenced by ${dependent})`;
+          if (ERROR_ON_UNDEFINED_SYMBOLS) {
+            error(msg);
+            warnOnce('To disable errors for undefined symbols use `-sERROR_ON_UNDEFINED_SYMBOLS=0`');
+            warnOnce(mangled + ' may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library');
+          } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
+            warn(msg);
+          }
+          if (symbol === '__main_argc_argv' && STANDALONE_WASM) {
+            warn('To build in STANDALONE_WASM mode without a main(), use emcc --no-entry');
           }
         }
-        if (!(MAIN_MODULE || SIDE_MODULE)) {
+        if (!RELOCATABLE) {
           // emit a stub that will fail at runtime
-          LibraryManager.library[shortident] = new Function("err('missing function: " + shortident + "'); abort(-1);");
+          LibraryManager.library[symbol] = new Function(`abort('missing function: ${symbol}');`);
+          // We have already warned/errored about this function, so for the purposes of Closure use, mute all type checks
+          // regarding this function, marking ot a variadic function that can take in anything and return anything.
+          // (not useful to warn/error multiple times)
+          LibraryManager.library[symbol + '__docs'] = '/** @type {function(...*):?} */';
+          isStub = true;
         } else {
-          var target = (MAIN_MODULE ? '' : 'parent') + "Module['_" + shortident + "']";
-          var assertion = '';
-          if (ASSERTIONS) assertion = 'if (!' + target + ') abort("external function \'' + shortident + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");';
-          LibraryManager.library[shortident] = new Function(assertion + "return " + target + ".apply(null, arguments);");
-          if (SIDE_MODULE) {
-            // no dependencies, just emit the thunk
-            Functions.libraryFunctions[finalName] = 1;
-            return processLibraryFunction(LibraryManager.library[shortident], ident, finalName);
+          // Create a stub for this symbol which can later be replaced by the
+          // dynamic linker.  If this stub is called before the symbol is
+          // resolved assert in debug builds or trap in release builds.
+          if (ASYNCIFY) {
+            // See the definition of asyncifyStubs in preamble.js for why this
+            // is needed.
+            target = `asyncifyStubs['${symbol}']`;
+          } else {
+            target = `wasmImports['${symbol}']`;
           }
-          noExport = true;
+          let assertion = '';
+          if (ASSERTIONS) {
+            assertion += `if (!${target} || ${target}.stub) abort("external symbol '${symbol}' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n`;
+          }
+          const functionBody = assertion + `return ${target}.apply(null, arguments);`;
+          LibraryManager.library[symbol] = new Function(functionBody);
+          isStub = true;
         }
       }
 
-      var original = LibraryManager.library[ident];
-      var snippet = original;
-      var redirectedIdent = null;
-      var deps = LibraryManager.library[ident + '__deps'] || [];
-      deps.forEach(function(dep) {
-        if (typeof snippet === 'string' && !(dep in LibraryManager.library)) warn('missing library dependency ' + dep + ', make sure you are compiling with the right options (see #ifdefs in src/library*.js)');
+      librarySymbols.push(mangled);
+
+      const original = LibraryManager.library[symbol];
+      let snippet = original;
+
+      // Check for dependencies on `__internal` symbols from user libraries.
+      const isUserSymbol = LibraryManager.library[symbol + '__user'];
+      deps.forEach((dep) => {
+        if (isUserSymbol && LibraryManager.library[dep + '__internal']) {
+          warn(`user library symbol '${symbol}' depends on internal symbol '${dep}'`);
+        }
       });
-      var isFunction = false;
 
-      if (typeof snippet === 'string') {
-        var target = LibraryManager.library[snippet];
-        if (target) {
-          // Redirection for aliases. We include the parent, and at runtime make ourselves equal to it.
-          // This avoid having duplicate functions with identical content.
-          redirectedIdent = snippet;
-          deps.push(snippet);
-          snippet = '_' + snippet;
+      let isFunction = false;
+      let aliasTarget;
+
+      if (typeof snippet == 'string') {
+        if (snippet[0] != '=') {
+          if (LibraryManager.library[snippet]) {
+            // Redirection for aliases. We include the parent, and at runtime
+            // make ourselves equal to it.  This avoid having duplicate
+            // functions with identical content.
+            aliasTarget = snippet;
+            snippet = mangleCSymbolName(aliasTarget);
+            deps.push(aliasTarget);
+          }
         }
-        // In asm, we need to know about library functions. If there is a target, though, then no
-        // need to consider this a library function - we will call directly to it anyhow
-        if (!redirectedIdent && (typeof target == 'function' || /Math_\w+/.exec(snippet))) {
-          Functions.libraryFunctions[finalName] = 1;
-        }
-      } else if (typeof snippet === 'object') {
+      } else if (typeof snippet == 'object') {
         snippet = stringifyWithFunctions(snippet);
-      } else if (typeof snippet === 'function') {
+        addImplicitDeps(snippet, deps);
+      } else if (typeof snippet == 'function') {
         isFunction = true;
-        snippet = processLibraryFunction(snippet, ident, finalName);
-        Functions.libraryFunctions[finalName] = 1;
+        snippet = processLibraryFunction(snippet, symbol, mangled, deps, isStub);
+        addImplicitDeps(snippet, deps);
       }
 
-      var postsetId = ident + '__postset';
-      var postset = LibraryManager.library[postsetId];
+      const postsetId = symbol + '__postset';
+      let postset = LibraryManager.library[postsetId];
       if (postset) {
         // A postset is either code to run right now, or some text we should emit.
         // If it's code, it may return some text to emit as well.
-        if (typeof postset === 'function') {
+        if (typeof postset == 'function') {
           postset = postset();
         }
-        if (postset && !addedLibraryItems[postsetId] && !SIDE_MODULE) {
+        if (postset && !addedLibraryItems[postsetId]) {
           addedLibraryItems[postsetId] = true;
-          itemsDict.GlobalVariablePostSet.push({
-            intertype: 'GlobalVariablePostSet',
-            JS: postset + ';'
-          });
+          postSets.push(postset + ';');
         }
       }
 
-      if (redirectedIdent) {
-        deps = deps.concat(LibraryManager.library[redirectedIdent + '__deps'] || []);
+      if (VERBOSE) {
+        printErr(`adding ${symbol} (referenced by ${dependent})`)
       }
-      // In asm, dependencies implemented in C might be needed by JS library functions.
-      // We don't know yet if they are implemented in C or not. To be safe, export such
-      // special cases.
-      [LIBRARY_DEPS_TO_AUTOEXPORT].forEach(function(special) {
-        deps.forEach(function(dep) {
-          if (dep == special && !EXPORTED_FUNCTIONS[dep]) {
-            EXPORTED_FUNCTIONS[dep] = 1;
-          }
-        });
-      });
-      if (VERBOSE) printErr('adding ' + finalName + ' and deps ' + deps + ' : ' + (snippet + '').substr(0, 40));
-      var depsText = (deps ? '\n' + deps.map(addFromLibrary).filter(function(x) { return x != '' }).join('\n') : '');
-      var contentText;
+      const deps_list = deps.join("','");
+      const identDependents = symbol + `__deps: ['${deps_list}']`;
+      function addDependency(dep) {
+        // dependencies can be JS functions, which we just run
+        if (typeof dep == 'function') {
+          return dep();
+        }
+        // $noExitRuntime is special since there are conditional usages of it
+        // in library.js and library_pthread.js.  These happen before deps are
+        // processed so depending on it via `__deps` doesn't work.
+        if (dep === '$noExitRuntime') {
+          error('noExitRuntime cannot be referenced via __deps mechansim.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS')
+        }
+        return addFromLibrary(dep, `${symbol}, referenced by ${dependent}`, dep === aliasTarget);
+      }
+      let contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
-        var proxyingMode = LibraryManager.library[ident + '__proxy'];
-        if (USE_PTHREADS && proxyingMode) {
-          if (proxyingMode !== 'sync' && proxyingMode !== 'async') {
-            throw 'Invalid proxyingMode ' + ident + '__proxy: \'' + proxyingMode + '\' specified!';
-          }
-          var sync = proxyingMode === 'sync';
-          assert(typeof original === 'function');
-          var hasArgs = original.length > 0;
-          if (hasArgs) {
-            // If the function takes parameters, forward those to the proxied function call
-            var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1($2) {\nif (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + ', $2);');
-          } else {
-            // No parameters to the function
-            var processedSnippet = snippet.replace(/function\s+(.*)?\s*\((.*?)\)\s*{/, 'function $1() {\nif (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + ');');
-          }
-          if (processedSnippet == snippet) throw 'Failed to regex parse function to add pthread proxying preamble to it! Function: ' + snippet;
-          contentText = processedSnippet;
-          proxiedFunctionTable.push(finalName);
+        if ((USE_ASAN || USE_LSAN || UBSAN_RUNTIME) && LibraryManager.library[symbol + '__noleakcheck']) {
+          contentText = modifyJSFunction(snippet, (args, body) => `(${args}) => withBuiltinMalloc(() => {${body}})`);
+          deps.push('$withBuiltinMalloc');
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
         }
-      } else if (typeof snippet === 'string' && snippet.indexOf(';') == 0) {
-        contentText = 'var ' + finalName + snippet;
-        if (snippet[snippet.length-1] != ';' && snippet[snippet.length-1] != '}') contentText += ';';
+        // Give the function the correct (mangled) name. Overwrite it if it's
+        // already named.  This must happen after the last call to
+        // modifyJSFunction which could have changed or removed the name.
+        if (contentText.match(/^\s*([^}]*)\s*=>/s)) {
+          // Handle arrow functions
+          contentText = `var ${mangled} = ` + contentText + ';';
+        } else if (contentText.startsWith('class ')) {
+          contentText = contentText.replace(/^class /, `class ${mangled} `);
+        } else {
+          // Handle regular (non-arrow) functions
+          contentText = contentText.replace(/function(?:\s+([^(]+))?\s*\(/, `function ${mangled}(`);
+        }
+      } else if (typeof snippet == 'string' && snippet.startsWith(';')) {
+        // In JS libraries
+        //   foo: ';[code here verbatim]'
+        //  emits
+        //   'var foo;[code here verbatim];'
+        contentText = 'var ' + mangled + snippet;
+        if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}') contentText += ';';
+      } else if (typeof snippet == 'undefined') {
+        contentText = `var ${mangled};`;
       } else {
-        contentText = 'var ' + finalName + '=' + snippet + ';';
-      }
-      var sig = LibraryManager.library[ident + '__sig'];
-      if (isFunction && sig && LibraryManager.library[ident + '__asm']) {
-        // asm library function, add it as generated code alongside the generated code
-        Functions.implementedFunctions[finalName] = sig;
-        asmLibraryFunctions.push(contentText);
-        contentText = ' ';
-        Functions.libraryFunctions[finalName] = 2;
-        noExport = true; // if it needs to be exported, that will happen in emscripten.py
+        // In JS libraries
+        //   foo: '=[value]'
+        //  emits
+        //   'var foo = [value];'
+        if (typeof snippet == 'string' && snippet[0] == '=') {
+          snippet = snippet.substr(1);
+        }
+        contentText = `var ${mangled} = ${snippet};`;
       }
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
-      if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) {
-        contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
+      if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
+        contentText += `\nModule['${mangled}'] = ${mangled};`;
       }
-      if (!LibraryManager.library[ident + '__asm']) {
-        // If we are not an asm library func, and we have a dep that is, then we need to call
-        // into the asm module to reach that dep. so it must be exported from the asm module.
-        // We set EXPORTED_FUNCTIONS here to tell emscripten.py to do that.
-        deps.forEach(function(dep) {
-          if (LibraryManager.library[dep + '__asm']) {
-            EXPORTED_FUNCTIONS['_' + dep] = 0;
-          }
-        });
+      // Relocatable code needs signatures to create proper wrappers. Stack
+      // switching needs signatures so we can create a proper
+      // WebAssembly.Function with the signature for the Promise API.
+      // TODO: For asyncify we could only add the signatures we actually need,
+      //       of async imports/exports.
+      if (sig && (RELOCATABLE || ASYNCIFY == 2)) {
+        if (!WASM_BIGINT) {
+          sig = sig[0].replace('j', 'i') + sig.slice(1).replace(/j/g, 'ii');
+        }
+        contentText += `\n${mangled}.sig = '${sig}';`;
       }
-      return depsText + contentText;
+      if (ASYNCIFY && isAsyncFunction) {
+        contentText += `\n${mangled}.isAsync = true;`;
+      }
+      if (isStub) {
+        contentText += `\n${mangled}.stub = true;`;
+        if (ASYNCIFY) {
+          contentText += `\nasyncifyStubs['${symbol}'] = undefined;`;
+        }
+      }
+
+      let commentText = '';
+      if (force) {
+        commentText += '/** @suppress {duplicate } */\n'
+      }
+      if (LibraryManager.library[symbol + '__docs']) {
+        commentText += LibraryManager.library[symbol + '__docs'] + '\n';
+      }
+
+      const depsText = (deps ? deps.map(addDependency).filter((x) => x != '').join('\n') + '\n' : '');
+      return depsText + commentText + contentText;
     }
 
-    itemsDict.functionStub.push(item);
-    var shortident = item.ident.substr(1);
-    // If this is not linkable, anything not in the library is definitely missing
-    if (item.ident in DEAD_FUNCTIONS) {
-      if (LibraryManager.library[shortident + '__asm']) {
-        warn('cannot kill asm library function ' + item.ident);
-      } else {
-        LibraryManager.library[shortident] = new Function("err('dead function: " + shortident + "'); abort(-1);");
-        delete LibraryManager.library[shortident + '__inline'];
-        delete LibraryManager.library[shortident + '__deps'];
-      }
-    }
-    item.JS = addFromLibrary(shortident);
+    const JS = addFromLibrary(symbol, 'root reference (e.g. compiled C/C++ code)');
+    libraryItems.push(JS);
   }
 
-  // Final combiner
+  function includeFile(fileName, needsPreprocess = true) {
+    print(`// include: ${fileName}`);
+    if (needsPreprocess) {
+      print(processMacros(preprocess(fileName)));
+    } else {
+      print(read(fileName));
+    }
+    print(`// end include: ${fileName}`);
+  }
 
   function finalCombiner() {
-    var splitPostSets = splitter(itemsDict.GlobalVariablePostSet, function(x) { return x.ident && x.dependencies });
-    itemsDict.GlobalVariablePostSet = splitPostSets.leftIn;
-    var orderedPostSets = splitPostSets.splitOut;
+    const splitPostSets = splitter(postSets, (x) => x.symbol && x.dependencies);
+    postSets = splitPostSets.leftIn;
+    const orderedPostSets = splitPostSets.splitOut;
 
-    var limit = orderedPostSets.length * orderedPostSets.length;
-    for (var i = 0; i < orderedPostSets.length; i++) {
-      for (var j = i+1; j < orderedPostSets.length; j++) {
-        if (orderedPostSets[j].ident in orderedPostSets[i].dependencies) {
-          var temp = orderedPostSets[i];
+    let limit = orderedPostSets.length * orderedPostSets.length;
+    for (let i = 0; i < orderedPostSets.length; i++) {
+      for (let j = i + 1; j < orderedPostSets.length; j++) {
+        if (orderedPostSets[j].symbol in orderedPostSets[i].dependencies) {
+          const temp = orderedPostSets[i];
           orderedPostSets[i] = orderedPostSets[j];
           orderedPostSets[j] = temp;
           i--;
@@ -372,184 +629,72 @@ function JSify(data, functionsOnly) {
       }
     }
 
-    itemsDict.GlobalVariablePostSet = itemsDict.GlobalVariablePostSet.concat(orderedPostSets);
+    postSets = postSets.concat(orderedPostSets);
 
-    //
+    const shellFile = MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js';
+    includeFile(shellFile);
 
-    if (!mainPass) {
-      if (!Variables.generatedGlobalBase) {
-        Variables.generatedGlobalBase = true;
-        // Globals are done, here is the rest of static memory
-        if (SIDE_MODULE) {
-          print('gb = alignMemory(getMemory({{{ STATIC_BUMP }}} + ' + MAX_GLOBAL_ALIGN + '), ' + MAX_GLOBAL_ALIGN + ' || 1);\n');
-          // The static area consists of explicitly initialized data, followed by zero-initialized data.
-          // The latter may need zeroing out if the MAIN_MODULE has already used this memory area before
-          // dlopen'ing the SIDE_MODULE.  Since we don't know the size of the explicitly initialized data
-          // here, we just zero the whole thing, which is suboptimal, but should at least resolve bugs
-          // from uninitialized memory.
-          print('for (var i = gb; i < gb + {{{ STATIC_BUMP }}}; ++i) HEAP8[i] = 0;\n');
-        }
-        // emit "metadata" in a comment. FIXME make this nicer
-        print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
-      }
-      var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
-      print(generated.map(function(item) { return item.JS; }).join('\n'));
+    const preFile = MINIMAL_RUNTIME ? 'preamble_minimal.js' : 'preamble.js';
+    includeFile(preFile);
 
-      if (memoryInitialization.length > 0) {
-        // apply postsets directly into the big memory initialization
-        itemsDict.GlobalVariablePostSet = itemsDict.GlobalVariablePostSet.filter(function(item) {
-          var m;
-          if (m = /^HEAP([\dFU]+)\[([()>\d]+)\] *= *([()|\d{}\w_' ]+);?$/.exec(item.JS)) {
-            var type = getTypeFromHeap(m[1]);
-            var bytes = Runtime.getNativeTypeSize(type);
-            var target = eval(m[2]) << log2(bytes);
-            var value = m[3];
-            try {
-              value = eval(value);
-            } catch(e) {
-              // possibly function table {{{ FT_* }}} etc.
-              if (value.indexOf('{{ ') < 0) return true;
-            }
-            writeInt8s(memoryInitialization, target - Runtime.GLOBAL_BASE, value, type);
-            return false;
-          }
-          return true;
-        });
-        // write out the singleton big memory initialization value
-        if (USE_PTHREADS) {
-          print('if (!ENVIRONMENT_IS_PTHREAD) {') // Pthreads should not initialize memory again, since it's shared with the main thread.
-        }
-        print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'GLOBAL_BASE' + (SIDE_MODULE ? '+H_BASE' : ''), true));
-        if (USE_PTHREADS) {
-          print('}')
-        }
-      } else {
-        print('/* no memory initializer */'); // test purposes
-      }
-
-      if (!SIDE_MODULE) {
-        if (USE_PTHREADS) {
-          print('var tempDoublePtr;');
-          print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = ' + makeStaticAlloc(12) + ';');
-        } else {
-          print('var tempDoublePtr = ' + makeStaticAlloc(8) + '');
-        }
-        if (ASSERTIONS) print('assert(tempDoublePtr % 8 == 0);');
-        print('\nfunction copyTempFloat(ptr) { // functions, because inlining this code increases code size too much');
-        print('  HEAP8[tempDoublePtr] = HEAP8[ptr];');
-        print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];');
-        print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];');
-        print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];');
-        print('}\n');
-        print('function copyTempDouble(ptr) {');
-        print('  HEAP8[tempDoublePtr] = HEAP8[ptr];');
-        print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];');
-        print('  HEAP8[tempDoublePtr+2] = HEAP8[ptr+2];');
-        print('  HEAP8[tempDoublePtr+3] = HEAP8[ptr+3];');
-        print('  HEAP8[tempDoublePtr+4] = HEAP8[ptr+4];');
-        print('  HEAP8[tempDoublePtr+5] = HEAP8[ptr+5];');
-        print('  HEAP8[tempDoublePtr+6] = HEAP8[ptr+6];');
-        print('  HEAP8[tempDoublePtr+7] = HEAP8[ptr+7];');
-        print('}\n');
-      }
-      print('// {{PRE_LIBRARY}}\n'); // safe to put stuff here that statically allocates
-
-      return;
+    for (const item of libraryItems.concat(postSets)) {
+      print(indentify(item || '', 2));
     }
 
-    // Print out global variables and postsets TODO: batching
-    var legalizedI64sDefault = legalizedI64s;
-    legalizedI64s = false;
-
-    var globalsData = {functionStubs: []}
-    JSify(globalsData, true);
-    globalsData = null;
-
-    var generated = itemsDict.functionStub.concat(itemsDict.GlobalVariablePostSet);
-    generated.forEach(function(item) { print(indentify(item.JS || '', 2)); });
-
-    legalizedI64s = legalizedI64sDefault;
-
-    if (!SIDE_MODULE) {
-      if (USE_PTHREADS) {
-        print('\n // proxiedFunctionTable specifies the list of functions that can be called either synchronously or asynchronously from other threads in postMessage()d or internally queued events. This way a pthread in a Worker can synchronously access e.g. the DOM on the main thread.')
-        print('\nvar proxiedFunctionTable = [' + proxiedFunctionTable.join() + '];\n');
-      }
+    if (PTHREADS) {
+      print(`
+// proxiedFunctionTable specifies the list of functions that can be called
+// either synchronously or asynchronously from other threads in postMessage()d
+// or internally queued events. This way a pthread in a Worker can synchronously
+// access e.g. the DOM on the main thread.
+var proxiedFunctionTable = [
+  ${proxiedFunctionTable.join(',\n  ')}
+];
+`);
     }
 
-    if (!MINIMAL_RUNTIME) {
-      print('var ASSERTIONS = ' + !!ASSERTIONS + ';\n');
-
-      print(preprocess(read('arrayUtils.js')));
+    if (abortExecution) {
+      throw Error('Aborting compilation due to previous errors');
     }
 
-    if (SUPPORT_BASE64_EMBEDDING) {
-      print(preprocess(read('base64Utils.js')));
-    }
-
-    var usedExternPrimitiveNames = Object.keys(usedExternPrimitives);
-    if (usedExternPrimitiveNames.length > 0) {
-      print('// ASM_LIBRARY EXTERN PRIMITIVES: ' + usedExternPrimitiveNames.join(',') + '\n');
-    }
-
-    if (asmLibraryFunctions.length > 0) {
-      print('// ASM_LIBRARY FUNCTIONS');
-      function fix(f) { // fix indenting to not confuse js optimizer
-        f = f.substr(f.indexOf('f')); // remove initial spaces before 'function'
-        f = f.substr(0, f.lastIndexOf('\n')+1); // remove spaces and last }  XXX assumes function has multiple lines
-        return f + '}'; // add unindented } to match function
-      }
-      print(asmLibraryFunctions.map(fix).join('\n'));
-    }
-
-    if (abortExecution) throw Error('Aborting compilation due to previous errors');
-
-    // This is the main 'post' pass. Print out the generated code that we have here, together with the
-    // rest of the output that we started to print out earlier (see comment on the
+    // This is the main 'post' pass. Print out the generated code
+    // that we have here, together with the rest of the output
+    // that we started to print out earlier (see comment on the
     // "Final shape that will be created").
     print('// EMSCRIPTEN_END_FUNCS\n');
 
-    if (HEADLESS) {
-      print('if (!ENVIRONMENT_IS_WEB) {');
-      print(read('headlessCanvas.js'));
-      print('\n');
-      print(read('headless.js').replace("'%s'", "'http://emscripten.org'").replace("'?%s'", "''").replace("'?%s'", "'/'").replace('%s,', 'null,').replace('%d', '0'));
-      print('}');
-    }
-    if (PROXY_TO_WORKER) {
-      print('if (ENVIRONMENT_IS_WORKER) {\n');
-      print(read('webGLWorker.js'));
-      print(processMacros(preprocess(read('proxyWorker.js'), 'proxyWorker.js')));
-      print('}');
-    }
-    if (DETERMINISTIC) {
-      print(read('deterministic.js'));
+    const postFile = MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js';
+    includeFile(postFile);
+
+    for (const fileName of POST_JS_FILES) {
+      includeFile(fileName, shouldPreprocess(fileName));
     }
 
-    var postFile = SIDE_MODULE ? 'postamble_sharedlib.js' : (MINIMAL_RUNTIME ? 'postamble_minimal.js' : 'postamble.js');
-    var postParts = processMacros(preprocess(read(postFile), postFile)).split('{{GLOBAL_VARS}}');
-    print(postParts[0]);
-
-    print(postParts[1]);
-
-    var shellParts = read(shellFile).split('{{BODY}}');
-    print(processMacros(preprocess(shellParts[1], shellFile)));
-    // Print out some useful metadata
-    if (RUNNING_JS_OPTS) {
-      var generatedFunctions = JSON.stringify(keys(Functions.implementedFunctions));
-      if (RUNNING_JS_OPTS) {
-        print('// EMSCRIPTEN_GENERATED_FUNCTIONS: ' + generatedFunctions + '\n');
-      }
-    }
-
-    PassManager.serialize();
+    print('//FORWARDED_DATA:' + JSON.stringify({
+      librarySymbols,
+      warnings,
+      asyncFuncs,
+      ATINITS: ATINITS.join('\n'),
+      ATMAINS: STRICT ? '' : ATMAINS.join('\n'),
+      ATEXITS: ATEXITS.join('\n'),
+    }));
   }
 
-  // Data
-
-  if (mainPass) {
-    data.functionStubs.forEach(functionStubHandler);
+  for (const sym of symbolsNeeded) {
+    symbolHandler(sym);
   }
 
-  finalCombiner();
+  if (symbolsOnly) {
+    print(JSON.stringify({
+      deps: symbolDeps,
+      asyncFuncs,
+      extraLibraryFuncs,
+    }));
+  } else {
+    finalCombiner();
+  }
+
+  if (abortExecution) {
+    throw Error('Aborting compilation due to previous errors');
+  }
 }

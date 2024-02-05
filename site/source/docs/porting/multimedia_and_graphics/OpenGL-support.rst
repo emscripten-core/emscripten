@@ -23,9 +23,11 @@ By default, Emscripten targets the WebGL-friendly subset of OpenGL ES 2.0. This 
 
 To program against the WebGL subset of OpenGL ES, one uses the GL ES 2.0 header files and the GL ES 2.0 API, while adhering to the limitations specified in Chapter 6 of the WebGL specification.
 
-This mode is used by default because it best matches the WebGL features brovided by browsers.
+This mode is used by default because it best matches the WebGL features provided by browsers.
 
-To target WebGL 2, pass the linker flag ``-s USE_WEBGL2=1``. Specifying this flag enables (and defaults to, unless otherwise specified at context creation time) the creation of WebGL 2 contexts at runtime, but it is still possible to create WebGL 1 contexts, so applications can choose whether to require WebGL 2 or whether to support a fallback to WebGL 1.
+To target WebGL 2, pass the linker flag ``-sMAX_WEBGL_VERSION=2``. Specifying this flag enables (and defaults to, unless otherwise specified at context creation time) the creation of WebGL 2 contexts at runtime, but it is still possible to create WebGL 1 contexts, so applications can choose whether to require WebGL 2 or whether to support a fallback to WebGL 1.
+
+To only target WebGL 2 and drop support for WebGL 1 altogether to save code size, pass the linker flags ``-sMIN_WEBGL_VERSION=2`` and ``-sMAX_WEBGL_VERSION=2``.
 
 .. _opengl-support-opengl-es2-0-emulation:
 
@@ -40,9 +42,9 @@ This allows you to use functions `glDrawArrays <https://www.opengl.org/sdk/docs/
 
 .. note:: This build mode has a limitation that the largest index in client-side index buffer must be smaller than the total number of indices in that buffer. See `issue #4214 <https://github.com/emscripten-core/emscripten/issues/4214>`_ for more details.
 
-To enable *OpenGL ES 2.0 emulation*, specify the :ref:`emcc <emcc-s-option-value>` option ``-s FULL_ES2=1`` when linking the final executable (.js/.html) of the project.
+To enable *OpenGL ES 2.0 emulation*, specify the :ref:`emcc <emcc-s-option-value>` option ``-sFULL_ES2`` when linking the final executable (.js/.html) of the project.
 
-To enable *OpenGL ES 3.0 emulation*, specify the :ref:`emcc <emcc-s-option-value>` option ``-s FULL_ES3=1`` when linking the final executable (.js/.html) of the project. This adds emulation for mapping memory blocks to client side memory. The flags ``-s FULL_ES2=1`` and ``-s FULL_ES3=1`` are orthogonal, so either one or both can be specified to emulate different features.
+To enable *OpenGL ES 3.0 emulation*, specify the :ref:`emcc <emcc-s-option-value>` option ``-sFULL_ES3`` when linking the final executable (.js/.html) of the project. This adds emulation for mapping memory blocks to client side memory. The flags ``-sFULL_ES2`` and ``-sFULL_ES3`` are orthogonal, so either one or both can be specified to emulate different features.
 
 .. _opengl-support-legacy_and_mobile:
 
@@ -53,21 +55,22 @@ This OpenGL mode enables support for a number of legacy desktop OpenGL 1.x featu
 
 While the emulation is by no means complete, it has been sufficient to port the Sauerbraten 3D game (`BananaBread <https://github.com/kripken/BananaBread>`_ project) and some other real-world codebases using Emscripten.
 
-To enable this mode, specify the :ref:`emcc <emcc-s-option-value>` option ``-s LEGACY_GL_EMULATION=1`` when linking the final executable (.js/.html) of the project.
+To enable this mode, specify the :ref:`emcc <emcc-s-option-value>` option ``-sLEGACY_GL_EMULATION`` when linking the final executable (.js/.html) of the project.
 
 Optimization settings
 ----------------------
 
-In this mode (``-s LEGACY_GL_EMULATION=1``), there are a few extra flags that can be used to tune the performance of the GL emulation layer:
+In this mode (``-sLEGACY_GL_EMULATION``), there are a few extra flags that can be used to tune the performance of the GL emulation layer:
 
-- ``-s GL_UNSAFE_OPTS=1`` attempts to skip redundant GL work and cleanup. This optimization is unsafe, so is not enabled by default.
-- ``-s GL_FFP_ONLY=1`` tells the GL emulation layer that your code will not use the programmable pipeline/shaders at all. This allows the GL emulation code to perform extra optimizations when it knows that it is safe to do so.
+- ``-sGL_UNSAFE_OPTS`` attempts to skip redundant GL work and cleanup. This optimization is unsafe, so is not enabled by default.
+- ``-sGL_FFP_ONLY`` tells the GL emulation layer that your code will not use the programmable pipeline/shaders at all. This allows the GL emulation code to perform extra optimizations when it knows that it is safe to do so.
 - Add the ``Module.GL_MAX_TEXTURE_IMAGE_UNITS`` integer to your shell **.html** file to signal the maximum number of texture units used by the code. This ensures that the GL emulation layer does not waste clock cycles iterating over unused texture units when examining which Fixed Function Pipeline (FFP) emulation shader to run.
 
-What if my codebase depends on an desktop OpenGL feature that is currently unsupported?
----------------------------------------------------------------------------------------
+What if my codebase depends on a desktop OpenGL feature that is currently unsupported?
+--------------------------------------------------------------------------------------
 
 You can consider building the codebase against the `Regal <https://github.com/p3/regal>`_ Desktop OpenGL emulation library, which aims to support Desktop OpenGL features on top of OpenGL ES 2.0. This may work better or worse than Emscripten's GL emulation depending on the project.
+Another option is to use `gl4es <https://github.com/ptitSeb/gl4es>`_ wich aims at fast OpenGL to GLES conversion for games. It targets OpenGL 2.1 profile on top of OpenGL ES 2.0 and has been used to port a few games with Emscripten already.
 
 OpenGL ES extensions
 ====================
@@ -81,9 +84,9 @@ When migrating from WebGL 1 to WebGL 2, take note that some WebGL 1 extensions a
 Test code/examples
 ==================
 
-The files in `tests/glbook <https://github.com/emscripten-core/emscripten/tree/master/tests/glbook>`_ provide a number of simple examples that use only the :ref:`opengl-support-webgl-subset`.
+The files in `test/third_party/glbook <https://github.com/emscripten-core/emscripten/tree/main/test/third_party/glbook>`_ provide a number of simple examples that use only the :ref:`opengl-support-webgl-subset`.
 
-The other modes are covered in various tests, including several in `tests/test_browser.py <https://github.com/emscripten-core/emscripten/blob/master/tests/test_browser.py>`_. The best way to locate the tests is to search the source code for the appropriate compiler flags: ``FULL_ES2``, ``LEGACY_GL_EMULATION`` etc.
+The other modes are covered in various tests, including several in `test/test_browser.py <https://github.com/emscripten-core/emscripten/blob/main/test/test_browser.py>`_. The best way to locate the tests is to search the source code for the appropriate compiler flags: ``FULL_ES2``, ``LEGACY_GL_EMULATION`` etc.
 
 Bug Reports
 ===========

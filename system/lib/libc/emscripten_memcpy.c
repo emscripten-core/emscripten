@@ -4,13 +4,30 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <emscripten/emscripten.h>
+#include "libc.h"
+#include "emscripten_internal.h"
 
-// An external JS implementation that is efficient for very large copies, using
-// HEAPU8.set()
-extern void *emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n);
+// Use the simple/naive version of memcpy when building with asan
+#if defined(EMSCRIPTEN_OPTIMIZE_FOR_OZ) || __has_feature(address_sanitizer)
 
-void *memcpy(void *restrict dest, const void *restrict src, size_t n)
-{
+static void *__memcpy(void *dest, const void *src, size_t n) {
+  unsigned char *d = (unsigned char *)dest;
+  const unsigned char *s = (const unsigned char *)src;
+#pragma clang loop unroll(disable)
+  while(n--) *d++ = *s++;
+  return dest;
+}
+
+#elif defined(__wasm_bulk_memory__)
+
+static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
+  return emscripten_memcpy_bulkmem(dest, src, n);
+}
+
+#else
+
+static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
   unsigned char *d = dest;
   const unsigned char *s = src;
 
@@ -18,10 +35,12 @@ void *memcpy(void *restrict dest, const void *restrict src, size_t n)
   unsigned char *block_aligned_d_end;
   unsigned char *d_end;
 
-  if (n >= 8192) {
-    emscripten_memcpy_big(dest, src, n);
+#if !defined(EMSCRIPTEN_STANDALONE_WASM)
+  if (n >= 512) {
+    emscripten_memcpy_js(dest, src, n);
     return dest;
   }
+#endif
 
   d_end = d + n;
   if ((((uintptr_t)d) & 3) == (((uintptr_t)s) & 3)) {
@@ -79,8 +98,9 @@ void *memcpy(void *restrict dest, const void *restrict src, size_t n)
     *d++ = *s++;
   }
   return dest;
-
-
-  for (; n; n--) *d++ = *s++;
-  return dest;
 }
+
+#endif
+
+weak_alias(__memcpy, emscripten_builtin_memcpy);
+weak_alias(__memcpy, memcpy);

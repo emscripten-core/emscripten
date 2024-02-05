@@ -1,0 +1,18 @@
+*1,2,3,5,5,6*
+*stdin==0:0*
+*%*
+*5*
+*66.0*
+*10*
+*0*
+*-10*
+*18*
+*10*
+*0*
+*4294967286*
+*10*
+*0*
+*18446744073709551606*
+*malloc(0) does not fail horribly (spec allows 0 or non-zero)*
+tolower_l: a
+*cleaned*

@@ -36,7 +36,7 @@ Code that compiles but might run slowly
 The following types of code will compile, but may not run as fast as expected:
 
 -  In asm.js (but not WebAssembly), 64-bit ``int`` variables. Mathematical operations (+, -, \*, /) are slow because they are emulated (bitwise operations are reasonably fast). JavaScript does not have a native 64-bit ``int`` type so this is unavoidable.
--  C++ Exceptions. In JavaScript such code generally makes the JavaScript engine turn off various optimizations. For that reason exceptions are turned off by default in ``-O1`` and above. To re-enable them, run *emcc* with ``-s DISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/1.29.12/src/settings.js#L298>`_).
+-  C++ Exceptions. In JavaScript such code generally makes the JavaScript engine turn off various optimizations. For that reason exceptions are turned off by default in ``-O1`` and above. To re-enable them, run *emcc* with ``-sDISABLE_EXCEPTION_CATCHING=0`` (see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/1.29.12/src/settings.js#L298>`_).
 - ``setjmp`` also prevents :term:`relooping` around it, forcing us to emulate control flow using a less efficient approach.
 
 

@@ -18,13 +18,10 @@ General
     `Minification <http://en.wikipedia.org/wiki/Minification_(programming)>`_ in JavaScript is the process of removing all unnecessary characters from source code without changing its functionality. At higher optimisation levels Emscripten uses the :term:`Closure Compiler` to minify Emscripten code.
 
   Relooping
-    Recreate high-level loop and ``if`` structures from the low-level labels and branches that appear in LLVM assembly (definition taken from `this paper <https://github.com/emscripten-core/emscripten/blob/master/docs/paper.pdf?raw=true>`_).
+    Recreate high-level loop and ``if`` structures from the low-level labels and branches that appear in LLVM assembly (definition taken from `this paper <https://github.com/emscripten-core/emscripten/blob/main/docs/paper.pdf?raw=true>`_).
 
   SDL
     `Simple DirectMedia Layer <https://www.libsdl.org/>`_ (SDL) is a cross-platform development library designed to provide low level access to audio, keyboard, mouse, joystick, and graphics hardware via OpenGL and Direct3D.
-
-  Typed Arrays Mode 2
-    *Typed Arrays Mode 2* is the name of the approach used for the current :ref:`emscripten-memory-model`. This is the only memory model supported by the (current) :ref:`Fastcomp <LLVM-Backend>` compiler and is the default memory model for the :ref:`old compiler <original-compiler-core>`.
 
     The original compiler supported a number of other memory models and compilation modes (see `Code Generation Modes <https://github.com/emscripten-core/emscripten/wiki/Code-Generation-Modes>`_) but *Typed Arrays Mode 2* proved to have, among other benefits, the greatest support for arbitrary code.
 
@@ -32,7 +29,7 @@ General
   Load-store consistency
     Load-Store Consistency (LSC), is the requirement that after a value with a specific type is written to a memory location, loads from that memory location will be of the same type. So if a variable contains a 32-bit floating point number, then both loads and stores to that variable will be of 32-bit floating point values, and not 16-bit unsigned integers or anything else.
 
-    .. note:: This definition is taken from `Emscripten: An LLVM-to-JavaScript Compiler <https://github.com/emscripten-core/emscripten/blob/master/docs/paper.pdf?raw=true>`_ (section 2.1.1). There is additional detail in that paper.
+    .. note:: This definition is taken from `Emscripten: An LLVM-to-JavaScript Compiler <https://github.com/emscripten-core/emscripten/blob/main/docs/paper.pdf?raw=true>`_ (section 2.1.1). There is additional detail in that paper.
 
 
 Emscripten tools and dependencies
@@ -57,10 +54,13 @@ Emscripten tools and dependencies
     `LLVM <http://en.wikipedia.org/wiki/LLVM>`_ is a compiler infrastructure designed to allow optimization of programs written in arbitrary programming languages.
 
   Fastcomp
-    :ref:`Fastcomp <LLVM-Backend>` is Emscripten's current compiler core.
+    Fastcomp was Emscripten's second compiler core, after the JS compiler and before the new LLVM Wasm backend.
+
+  Binaryen
+    `Binaryen <https://github.com/WebAssembly/binaryen/>`_ is a WebAssembly compiler toolkit, which Emscripten uses to modify and optimize Wasm.
 
   node.js
-    **Node.js** is a cross-platform runtime environment for server-side and networking applications written in JavaScript. Essentially it allows you to run JavaScript applications outside of a browser context.
+    `Node.js <https://nodejs.org/en/>`_ is a cross-platform runtime environment for server-side and networking applications written in JavaScript. Essentially it allows you to run JavaScript applications outside of a browser context.
 
   Python
     Python is a scripting language used to write many of Emscripten's tools. The required version is listed in the :ref:`toolchain requirements <central-list-of-emscripten-tools-and-dependencies>`.
@@ -88,15 +88,6 @@ Emscripten tools and dependencies
   LLVM Interpreter
     The `LLVM interpreter (LLI) <http://llvm.org/releases/3.0/docs/CommandGuide/html/lli.html>`_ executes programs from :term:`LLVM` bitcode. This tool is not maintained and has odd errors and crashes.
 
-    Emscripten provides an alternative tool, the :term:`LLVM Nativizer`.
-
-  LLVM Nativizer
-    The LLVM Nativizer (`tools/nativize_llvm.py <https://github.com/emscripten-core/emscripten/blob/master/tools/nativize_llvm.py>`_) compiles LLVM bitcode to a native executable. This links to the host libraries, so comparisons of output with Emscripten builds will not necessarily be identical.
-
-    It performs a similar role to the :term:`LLVM Interpreter`.
-
-    .. note:: Sometimes the output of the this tool will crash or fail. This tool is intended for developers fixing bugs in Emscripten.
-
 
 SDK Terms
 =========
@@ -117,7 +108,11 @@ The following terms are used when referring to the SDK and :ref:`emsdk`:
     There are a number of different Emscripten SDK packages. These can be downloaded from :ref:`here <sdk-download-and-install>`.
 
   Active Tool/SDK
-    The :term:`emsdk` can store multiple versions of :term:`tools <Tool>` and :term:`SDKs <SDK>`. The active tools/SDK is the set of tools that are used by default on the *Emscripten Command Prompt*. This compiler configuration is stored in a user-specific persistent file (**~/.emscripten**) and can be changed using *emsdk*.
+    The :term:`emsdk` can store multiple versions of :term:`tools <Tool>` and
+    :term:`SDKs <SDK>`. The active tools/SDK is the set of tools that are used
+    by default on the *Emscripten Command Prompt*. This compiler configuration
+    is stored in an emsdk-specific config file (**.emscripten**) and can be
+    changed using *emsdk*.
 
   emsdk root directory
     The :term:`emsdk` can manage any number of :term:`tools <Tool>` and :term:`SDKs <SDK>`, and these are stored in :term:`subdirectories <SDK root directory>` of the *emsdk root directory*. The **emsdk root** is the directory specified when you first installed an SDK.

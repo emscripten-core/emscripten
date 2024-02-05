@@ -1,63 +1,67 @@
 #include <unistd.h>
 #include <fcntl.h>
-#include <errno.h>
 #include <sys/wait.h>
 #include "syscall.h"
 #include "pthread_impl.h"
 
+#ifndef __EMSCRIPTEN__
 struct ctx {
 	int fd;
 	const char *filename;
 	int amode;
-};
-
-static const int errors[] = {
-	0, -EACCES, -ELOOP, -ENAMETOOLONG, -ENOENT, -ENOTDIR,
-	-EROFS, -EBADF, -EINVAL, -ETXTBSY,
-	-EFAULT, -EIO, -ENOMEM,
-	-EBUSY
+	int p;
 };
 
 static int checker(void *p)
 {
 	struct ctx *c = p;
 	int ret;
-	int i;
 	if (__syscall(SYS_setregid, __syscall(SYS_getegid), -1)
 	    || __syscall(SYS_setreuid, __syscall(SYS_geteuid), -1))
 		__syscall(SYS_exit, 1);
 	ret = __syscall(SYS_faccessat, c->fd, c->filename, c->amode, 0);
-	for (i=0; i < sizeof errors/sizeof *errors - 1 && ret!=errors[i]; i++);
-	return i;
+	__syscall(SYS_write, c->p, &ret, sizeof ret);
+	return 0;
 }
+#endif
 
 int faccessat(int fd, const char *filename, int amode, int flag)
 {
-	if (!flag || (flag==AT_EACCESS && getuid()==geteuid() && getgid()==getegid()))
-		return syscall(SYS_faccessat, fd, filename, amode, flag);
+#ifdef __EMSCRIPTEN__
+	return syscall(SYS_faccessat, fd, filename, amode, flag);
+#else
+	if (flag) {
+		int ret = __syscall(SYS_faccessat2, fd, filename, amode, flag);
+		if (ret != -ENOSYS) return __syscall_ret(ret);
+	}
 
-	if (flag != AT_EACCESS)
+	if (flag & ~AT_EACCESS)
 		return __syscall_ret(-EINVAL);
+
+	if (!flag || (getuid()==geteuid() && getgid()==getegid()))
+		return syscall(SYS_faccessat, fd, filename, amode);
 
 	char stack[1024];
 	sigset_t set;
 	pid_t pid;
-	int ret = -EBUSY;
-	struct ctx c = { .fd = fd, .filename = filename, .amode = amode };
+	int status;
+	int ret, p[2];
+
+	if (pipe2(p, O_CLOEXEC)) return __syscall_ret(-EBUSY);
+	struct ctx c = { .fd = fd, .filename = filename, .amode = amode, .p = p[1] };
 
 	__block_all_sigs(&set);
 	
 	pid = __clone(checker, stack+sizeof stack, 0, &c);
-	if (pid > 0) {
-		int status;
-		do {
-			__syscall(SYS_wait4, pid, &status, __WCLONE, 0);
-		} while (!WIFEXITED(status) && !WIFSIGNALED(status));
-		if (WIFEXITED(status))
-			ret = errors[WEXITSTATUS(status)];
-	}
+	__syscall(SYS_close, p[1]);
+
+	if (pid<0 || __syscall(SYS_read, p[0], &ret, sizeof ret) != sizeof(ret))
+		ret = -EBUSY;
+	__syscall(SYS_close, p[0]);
+	__syscall(SYS_wait4, pid, &status, __WCLONE, 0);
 
 	__restore_sigs(&set);
 
 	return __syscall_ret(ret);
+#endif
 }

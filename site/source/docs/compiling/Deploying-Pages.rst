@@ -9,13 +9,11 @@ Emscripten compiled output can either be run directly in a JS shell from command
 Build Files and Custom Shell
 ============================
 
-Emscripten build output consists of two essential parts: 1) the low level compiled code module and 2) the JavaScript runtime to interact with it. If targeting WebAssembly which is done with linker flags ``-s WASM=1 -o out.html``, the compiled code is stored in a file ``out.wasm`` and the runtime lives in a file ``out.js``. When targeting asm.js there exists an additional binary file ``out.mem`` that contains the static memory section of the compiled code. This part is embedded in the ``out.wasm`` file when targeting WebAssembly.
-
-By default when targeting asm.js, the compiled code and the runtime are fused in the same ``out.js`` file. For moderately large asm.js projects, it is recommended to use the ``--separate-asm`` flag to separate the compiled code to its own ``out.asm.js`` file, which enables browsers to optimize memory usage for the compiled asm.js code.
+Emscripten build output consists of two essential parts: 1) the low level compiled code module and 2) the JavaScript runtime to interact with it.  For example, when building with ``-o out.html``, the compiled code is stored in a file ``out.wasm`` and the runtime lives in a file ``out.js``. When targeting asm.js there exists an additional binary file ``out.mem`` that contains the static memory section of the compiled code. This part is embedded in the ``out.wasm`` file when targeting WebAssembly.
 
 Additional build output files can also exist, depending on which features are used. If the Emscripten file packager is used, a binary ``out.data`` package is generated, along with an associated ``out.data.js`` loader file. Also Emscripten pthreads and Fetch APIs have their own associated Web Worker related script ``.js`` output files.
 
-Developers can choose to output either to JavaScript or HTML. If outputting JavaScript (``emcc -o out.js``), the developer is expected to manually create the ``out.html`` main page in which the code is run in browsers. When targeting HTML with ``emcc -o out.html`` (the recommended build mode), Emscripten will generate the HTML shell file automatically. This shell file can be customized by using the ``emcc -o out.html --shell-file path/to/custom_shell.html`` linker directive. Copy the `default minimal HTML shell file <https://github.com/emscripten-core/emscripten/blob/master/src/shell_minimal.html>`_ from Emscripten repository to your project tree to get a good starting template for a customized shell file.
+Developers can choose to output either to JavaScript or HTML. If outputting JavaScript (``emcc -o out.js``), the developer is expected to manually create the ``out.html`` main page in which the code is run in browsers. When targeting HTML with ``emcc -o out.html`` (the recommended build mode), Emscripten will generate the HTML shell file automatically. This shell file can be customized by using the ``emcc -o out.html --shell-file path/to/custom_shell.html`` linker directive. Copy the `default minimal HTML shell file <https://github.com/emscripten-core/emscripten/blob/main/src/shell_minimal.html>`_ from Emscripten repository to your project tree to get a good starting template for a customized shell file.
 
 The following sections offer tips for improving the site experience.
 
@@ -25,8 +23,6 @@ Optimizing Download Sizes
 The biggest slowdown to speedy page loading is most often the need to download large amounts of asset data for the project, especially if the page is heavy on WebGL textures or geometry. Compiled code generally takes up more space than handwritten JavaScript, but machine code compresses efficiently. Therefore when hosting asm.js and WebAssembly, it is critical to ensure that all content is transferred using gzip compression, which all browsers and CDNs nowadays support built-in. Gzip compressing ``.wasm`` files give on average 60-75% size reductions compared to uncompressed ones, so it practically never makes sense to serve uncompressed files.
 
 - To serve gzip-compressed assets on a CDN, use a gzip compression tool and precompress asset files offline before uploading to the CDN. Some web servers support compressing files on the fly, but for static asset content, that should be avoided since it can be costly for the server CPU to keep recompressing the files. Adjust the configuration of the web server to host the precompressed files with the HTTP response header ``Content-Encoding: gzip``. This instructs web browsers that the downloaded content should be transparently uncompressed before handing the data off to the page itself.
-
-- WebAssembly has now shipped in `Firefox 52 and Chrome 57 <http://caniuse.com/#feat=wasm>`_. Emscripten also supports targeting WebAssembly, by using the ``-s WASM=1`` linker flag. WebAssembly is an evolution of asm.js, and if your project already successfully compiles to asm.js, it is likely to already work with WebAssembly as well. Compressed WebAssembly output files can be around 20% smaller than compressed asm.js files, but for builds with debugging and profiling information, the difference can even be up to 50%, so the benefit is large.
 
 - Make sure that gzip compression does not confuse the MIME types that the assets are served with. All JavaScript files (precompressed or not) should be best served with the HTTP response header ``Content-Type: application/javascript``, and all asset files (``.data``, ``.mem``) should be served with the header ``Content-Type: application/octet-stream``. WebAssembly ``.wasm`` files should be served with ``Content-Type: application/wasm``.
 
@@ -60,7 +56,7 @@ While the first run experience of visiting a page can take some time to finish a
 
 - All browsers have an implementation defined limit (20MB or 50MB) for assets, and files larger than that will bypass the browser's built-in web caches altogether. Therefore it is recommended that large ``.data`` files are manually cached to IndexedDB by the main page. The Emscripten linker option ``--use-preload-cache`` can be used to have Emscripten implement this, although it can be desirable to manually manage this on the html page in a custom manner, since that allows taking control of which database the assets are cached to, and what kind of scheme will be used to evict data from it.
 
-- Compilation results of asm.js modules are cached automatically by the browser, and there is little control over this. WebAssembly on the other hand supports explicit caching of compiled ``WebAssembly.Module`` objects to IndexedDB. This feature should be always leveraged, since it allows skipping the whole compilation process on the second page visit.
+- While ``.wasm`` files are automatically cached like any resource, they still must be compiled in the browser before they can be instantiated. Fortunately, Chromium-based browsers support automatic caching of compiled WebAssembly modules (read this `v8.dev blog post <https://v8.dev/blog/wasm-code-caching>`_). Previously, manual caching of compiled Webassembly modules via IndexedDB was recommended; however, this is now largely unsupported (details in this `WebAssembly spec ticket <https://github.com/WebAssembly/spec/issues/821>`_).
 
 - If the compiled C/C++ code itself performs any computation e.g. in ``main()`` that could be skipped on the second load, use either IndexedDB or the localStorage APIs to cache the results of this computation across page runs. IndexedDB is suitable for storing large files, but it works asynchronously. The localStorage API on the other hand is fully synchronous, but its usage is restricted to storing small cookie style data fields only.
 
@@ -118,7 +114,7 @@ This way the page will be future compatible once support for the particular feat
 
     2. Exceptions caused by Emscripten runtime calling the ``abort()`` function. These correspond to a fatal error that execution of the compiled code cannot recover from. For example, this can occur when calling an invalid function pointer.
 
-    3. Traps caused by compiled WebAssembly code. These correspond to fatal errors coming from the WebAssembly VM. This can occur for example when performing an integer division by zero, or when converting a large floating point number to an integer when the float is out of range of the numbers representable by that integer type. See the linker flag ``-s BINARYEN_TRAP_MODE`` for more details.
+    3. Traps caused by compiled WebAssembly code. These correspond to fatal errors coming from the WebAssembly VM. This can occur for example when performing an integer division by zero, or when converting a large floating point number to an integer when the float is out of range of the numbers representable by that integer type.
 
 - Implement a final "catch all" error handler on the page by implementing a ``window.onerror`` script. This will be called as a last resort if no other source handled an exception that was raised on the page. See `window.onerror <https://developer.mozilla.org/en-US/docs/Web/API/GlobalEventHandlers/onerror#window.onerror>`_ documentaton on MDN.
 
@@ -153,7 +149,7 @@ When planning a testing matrix before pushing a site live, the following items c
 
 - Likewise, verify that the page layout does not break when resizing the browser window, or when visiting the site having already initially sized the browser window to very small or large size, or to a disproportionate aspect ratio.
 
-- Especially if targeting mobile, be aware of the `<meta viewport> tag <https://developer.mozilla.org/en-US/docs/Mozilla/Mobile/Viewport_meta_tag>`_ for how to develop a site layout that works well on mobile.
+- Especially if targeting mobile, be aware of the `<meta viewport> tag <https://developer.mozilla.org/en-US/docs/Web/HTML/Viewport_meta_tag>`_ for how to develop a site layout that works well on mobile.
 
 - If the page uses WebGL, test out different GPUs on target platforms. In particular, verify the site behavior when simulating the lack of any needed WebGL extensions, and compressed texture format support.
 
@@ -161,4 +157,4 @@ When planning a testing matrix before pushing a site live, the following items c
 
 - Simulate lack of any special APIs that the page might need, e.g. Gamepad, Acceleration or Touch Events, and make sure that appropriate error flow is handled in those cases as well.
 
-If you have good tips or suggestsions to share, please help improve this guide by posting feedback to the `Emscripten bug tracker <https://github.com/emscripten-core/emscripten/issues>`_ or the `emscripten-discuss <https://groups.google.com/forum/#!forum/emscripten-discuss>`_ mailing list.
+If you have good tips or suggestions to share, please help improve this guide by posting feedback to the `Emscripten bug tracker <https://github.com/emscripten-core/emscripten/issues>`_ or the `emscripten-discuss <https://groups.google.com/forum/#!forum/emscripten-discuss>`_ mailing list.

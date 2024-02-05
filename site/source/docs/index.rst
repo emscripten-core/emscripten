@@ -30,8 +30,11 @@ This comprehensive documentation set contains everything you need to know to use
 **Reference:**
 
 - :ref:`api-reference-index` is a reference for the Emscripten toolchain.
+- :ref:`settings-reference` is a reference of all the Emscripten compiler serttings.
 - :ref:`tools-reference` is a reference for the Emscripten integration APIs.
-- :ref:`CyberDWARF` shows how to use the CyberDWARF debugging system
+- :ref:`Sanitizers` shows how to debug with sanitizers.
+- :ref:`Module-Splitting` is a guide to splitting modules and deferring the
+  loading of code to improve startup time.
 
 The full hierarchy of articles, opened to the second level, is shown below.
 
@@ -44,10 +47,11 @@ The full hierarchy of articles, opened to the second level, is shown below.
   optimizing/Optimizing-Code
   optimizing/Optimizing-WebGL
   optimizing/Profiling-Toolchain
+  optimizing/Module-Splitting
   compiling/index
   building_from_source/index
   contributing/index
   api_reference/index
   tools_reference/index
-  debugging/CyberDWARF
+  debugging/Sanitizers
   site/index

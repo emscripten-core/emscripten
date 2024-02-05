@@ -1,0 +1,3 @@
+Initializing sandboxed unsafe libraries
+Calling twice on 21 returns 42
+Calling thrice on 10 returns 30

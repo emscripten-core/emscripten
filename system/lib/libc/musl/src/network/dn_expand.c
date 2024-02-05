@@ -1,5 +1,4 @@
 #include <resolv.h>
-#include "libc.h"
 
 int __dn_expand(const unsigned char *base, const unsigned char *end, const unsigned char *src, char *dest, int space)
 {

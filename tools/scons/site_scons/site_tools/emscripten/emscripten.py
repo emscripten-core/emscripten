@@ -20,17 +20,15 @@ def generate(env, emscripten_path=None, **kw):
   # environment variabls from the parent calling process,
   # so manually route all environment variables referenced
   # by Emscripten to the child.
-  for var in ['EM_CACHE', 'EMCC_DEBUG', 'EMSCRIPTEN_NATIVE_OPTIMIZER', 'EMTEST_BROWSER',
-              'EMMAKEN_JUST_CONFIGURE', 'EMCC_CFLAGS', 'EMCC_LEAVE_INPUTS_RAW', 'EMCC_TEMP_DIR',
-              'EMCC_AUTODEBUG', 'EMMAKEN_JUST_CONFIGURE_RECURSE', 'EMCONFIGURE_JS', 'CONFIGURE_CC',
-              'EMMAKEN_COMPILER', 'EMMAKEN_CFLAGS', 'EMCC_JSOPT_BLACKLIST',
+  for var in ['EM_CACHE', 'EMCC_DEBUG', 'EM_CONFIG',
+              'EMMAKEN_JUST_CONFIGURE', 'EMCC_CFLAGS', 'EMCC_TEMP_DIR',
+              'EMCC_AUTODEBUG', 'EM_COMPILER_WRAPPER',
               'MOZ_DISABLE_AUTO_SAFE_MODE', 'EMCC_STDERR_FILE',
-              'EMSCRIPTEN_SUPPRESS_USAGE_WARNING', 'EM_SAVE_DIR', 'NODE_PATH', 'EMCC_JSOPT_MIN_CHUNK_SIZE',
-              'EMCC_JSOPT_MAX_CHUNK_SIZE', 'EMCC_SAVE_OPT_TEMP', 'EMCC_CORES', 'EMCC_NO_OPT_SORT',
-              'EMCC_BUILD_DIR', 'EM_POPEN_WORKAROUND', 'EMCC_DEBUG_SAVE', 'EMCC_SKIP_SANITY_CHECK',
-              'EMMAKEN_NO_SDK', 'EM_PKG_CONFIG_PATH', 'EMCC_CLOSURE_ARGS', 'JAVA_HEAP_SIZE',
-              'EMCC_FORCE_STDLIBS', 'EMCC_ONLY_FORCED_STDLIBS', 'EM_PORTS', 'IDL_CHECKS', 'IDL_VERBOSE',
-              'EMTEST_SAVE_DIR']:
+              'EMSCRIPTEN_SUPPRESS_USAGE_WARNING', 'NODE_PATH', 'EMCC_JSOPT_MIN_CHUNK_SIZE',
+              'EMCC_JSOPT_MAX_CHUNK_SIZE', 'EMCC_CORES', 'EMCC_NO_OPT_SORT',
+              'EMCC_BUILD_DIR', 'EMCC_DEBUG_SAVE', 'EMCC_SKIP_SANITY_CHECK',
+              'EM_PKG_CONFIG_PATH', 'EMCC_CLOSURE_ARGS',
+              'EMCC_FORCE_STDLIBS', 'EMCC_ONLY_FORCED_STDLIBS', 'EM_PORTS', 'IDL_CHECKS', 'IDL_VERBOSE']:
     if os.environ.get(var):
       env['ENV'][var] = os.environ.get(var)
   try:
@@ -40,7 +38,9 @@ def generate(env, emscripten_path=None, **kw):
 
   env.Replace(CC=os.path.join(emscPath, "emcc"))
   env.Replace(CXX=os.path.join(emscPath, "em++"))
-  env.Replace(LINK=os.path.join(emscPath, "emcc"))
+  # LINK uses smark_link by default which will choose
+  # either emcc or em++ depending on if there are any C++ sources
+  # in the program, so no need to change that.
   # SHLINK and LDMODULE should use LINK so no
   # need to change them here
 

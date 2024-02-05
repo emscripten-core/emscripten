@@ -1,4 +1,0 @@
-prejs executed
-lib_function
-lib_function2
-postjs executed

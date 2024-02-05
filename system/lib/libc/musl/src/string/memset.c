@@ -11,12 +11,16 @@ void *memset(void *dest, int c, size_t n)
 	 * offsets are well-defined and in the dest region. */
 
 	if (!n) return dest;
-	s[0] = s[n-1] = c;
+	s[0] = c;
+	s[n-1] = c;
 	if (n <= 2) return dest;
-	s[1] = s[n-2] = c;
-	s[2] = s[n-3] = c;
+	s[1] = c;
+	s[2] = c;
+	s[n-2] = c;
+	s[n-3] = c;
 	if (n <= 6) return dest;
-	s[3] = s[n-4] = c;
+	s[3] = c;
+	s[n-4] = c;
 	if (n <= 8) return dest;
 
 	/* Advance pointer to align it at a 4-byte boundary,

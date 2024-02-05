@@ -2,18 +2,15 @@
 #include <limits.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <ctype.h>
+#include <resolv.h>
 #include "lookup.h"
 #include "stdio_impl.h"
-
-int __dns_parse(const unsigned char *, int, int (*)(void *, int, const void *, int, const void *), void *);
-int __dn_expand(const unsigned char *, const unsigned char *, const unsigned char *, char *, int);
-int __res_mkquery(int, const char *, int, int, const unsigned char *, int, const unsigned char*, unsigned char *, int);
-int __res_send(const unsigned char *, int, unsigned char *, int);
 
 #define PTR_MAX (64 + sizeof ".in-addr.arpa")
 #define RR_PTR 12
@@ -61,6 +58,7 @@ static void reverse_hosts(char *buf, const unsigned char *a, unsigned scopeid, i
 		if ((p=strchr(line, '#'))) *p++='\n', *p=0;
 
 		for (p=line; *p && !isspace(*p); p++);
+		if (!*p) continue;
 		*p++ = 0;
 		if (__lookup_ipliteral(&iplit, line, AF_UNSPEC)<=0)
 			continue;
@@ -111,10 +109,10 @@ static void reverse_services(char *buf, int port, int dgram)
 	__fclose_ca(f);
 }
 
-static int dns_parse_callback(void *c, int rr, const void *data, int len, const void *packet)
+static int dns_parse_callback(void *c, int rr, const void *data, int len, const void *packet, int plen)
 {
 	if (rr != RR_PTR) return 0;
-	if (__dn_expand(packet, (const unsigned char *)packet + 512,
+	if (__dn_expand(packet, (const unsigned char *)packet + plen,
 	    data, c, 256) <= 0)
 		*(char *)c = 0;
 	return 0;
@@ -161,6 +159,7 @@ int getnameinfo(const struct sockaddr *restrict sa, socklen_t sl,
 			unsigned char query[18+PTR_MAX], reply[512];
 			int qlen = __res_mkquery(0, ptr, 1, RR_PTR,
 				0, 0, 0, query, sizeof query);
+			query[3] = 0; /* don't need AD flag */
 			int rlen = __res_send(query, qlen, reply, sizeof reply);
 			buf[0] = 0;
 			if (rlen > 0)

@@ -1,9 +1,4 @@
 #include "version.h"
+#include "libc.h"
 
-static const char version[] = VERSION;
-
-__attribute__((__visibility__("hidden")))
-const char *__libc_get_version()
-{
-	return version;
-}
+const char __libc_version[] = VERSION;

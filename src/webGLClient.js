@@ -1,7 +1,8 @@
-// Copyright 2014 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2014 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 // WebGLWorker client code
 
@@ -200,7 +201,7 @@ function WebGLClient() {
     12: { name: 'attachShader', func: func2L0L1 },
     13: { name: 'bindAttribLocation', func: func3L0 },
     14: { name: 'linkProgram', func: func1L0 },
-    15: { name: 'getProgramParameter', func: function() { assert(ctx.getProgramParameter(objects[buffer[i++]], buffer[i++]), 'we cannot handle errors, we are async proxied WebGL'); } },
+    15: { name: 'getProgramParameter', func: () => assert(ctx.getProgramParameter(objects[buffer[i++]], buffer[i++]), 'we cannot handle errors, we are async proxied WebGL') },
     16: { name: 'getUniformLocation', func: funcC2L0 },
     17: { name: 'useProgram', func: func1L0 },
     18: { name: 'uniform1i', func: uniform1i },
@@ -220,7 +221,7 @@ function WebGLClient() {
     32: { name: 'disableVertexAttribArray', func: disableVertexAttribArray },
     33: { name: 'drawArrays', func: drawArrays },
     34: { name: 'drawElements', func: drawElements },
-    35: { name: 'getError', func: function() { assert(ctx.getError() === ctx.NO_ERROR, 'we cannot handle errors, we are async proxied WebGL') } },
+    35: { name: 'getError', func: () => assert(ctx.getError() === ctx.NO_ERROR, 'we cannot handle errors, we are async proxied WebGL') },
     36: { name: 'createTexture', func: funcC0 },
     37: { name: 'deleteTexture', func: funcD0 },
     38: { name: 'bindTexture', func: func2L1_ },
@@ -228,7 +229,7 @@ function WebGLClient() {
     40: { name: 'texImage2D', func: func9 },
     41: { name: 'compressedTexImage2D', func: func7 },
     42: { name: 'activeTexture', func: activeTexture },
-    43: { name: 'getShaderParameter', func: function() { assert(ctx.getShaderParameter(objects[buffer[i++]], buffer[i++]), 'we cannot handle errors, we are async proxied WebGL'); } },
+    43: { name: 'getShaderParameter', func: () => assert(ctx.getShaderParameter(objects[buffer[i++]], buffer[i++]), 'we cannot handle errors, we are async proxied WebGL') },
     44: { name: 'clearDepth', func: func1 },
     45: { name: 'depthFunc', func: func1 },
     46: { name: 'frontFace', func: func1 },
@@ -261,7 +262,7 @@ function WebGLClient() {
     73: { name: 'blendFuncSeparate', func: func4 },
     74: { name: 'uniform2fv', func: uniform2fv },
     75: { name: 'texParameterf', func: func3 },
-    76: { name: 'isContextLost', func: function() { assert(!ctx.isContextLost(), 'context lost which we cannot handle, we are async proxied WebGL') } },
+    76: { name: 'isContextLost', func: () => assert(!ctx.isContextLost(), 'context lost which we cannot handle, we are async proxied WebGL') },
     77: { name: 'blendEquationSeparate', func: func2 },
     78: { name: 'stencilFuncSeparate', func: func4 },
     79: { name: 'stencilOpSeparate', func: func4 },
@@ -301,9 +302,9 @@ function WebGLClient() {
     commandBuffers.length = 0;
   }
 
-  this.onmessage = function(msg) {
+  this.onmessage = (msg) => {
     //dump('client GL got ' + JSON.stringify(msg) + '\n');
-    switch(msg.op) {
+    switch (msg.op) {
       case 'render': {
         if (commandBuffers.length === 0) {
           // requestion a new frame, we will clear the buffers after rendering them
@@ -317,7 +318,7 @@ function WebGLClient() {
   };
 }
 
-WebGLClient.prefetch = function() {
+WebGLClient.prefetch = () => {
   // Create a fake temporary GL context
   var canvas = document.createElement('canvas');
   var ctx = canvas.getContext('webgl-experimental') || canvas.getContext('webgl');
@@ -325,7 +326,7 @@ WebGLClient.prefetch = function() {
     // If we have no webGL support, we still notify that prefetching is done, as the app blocks on that
     worker.postMessage({ target: 'gl', op: 'setPrefetched', preMain: true });
     return;
-  } 
+  }
 
   // Fetch the parameters and proxy them
   var parameters = {};
@@ -356,6 +357,6 @@ WebGLClient.prefetch = function() {
     });
   });
 
-  worker.postMessage({ target: 'gl', op: 'setPrefetched', parameters: parameters, extensions: ctx.getSupportedExtensions(), precisions: precisions, preMain: true });
+  worker.postMessage({ target: 'gl', op: 'setPrefetched', parameters, extensions: ctx.getSupportedExtensions(), precisions, preMain: true });
 };
 

@@ -1,15 +1,16 @@
-// Copyright 2015 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2015 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $WORKERFS__deps: ['$FS'],
   $WORKERFS: {
-    DIR_MODE: {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */,
-    FILE_MODE: {{{ cDefine('S_IFREG') }}} | 511 /* 0777 */,
+    DIR_MODE: {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */,
+    FILE_MODE: {{{ cDefs.S_IFREG }}} | 511 /* 0777 */,
     reader: null,
-    mount: function (mount) {
+    mount(mount) {
       assert(ENVIRONMENT_IS_WORKER);
       if (!WORKERFS.reader) WORKERFS.reader = new FileReaderSync();
       var root = WORKERFS.createNode(null, '/', WORKERFS.DIR_MODE, 0);
@@ -27,9 +28,7 @@ mergeInto(LibraryManager.library, {
           // are just their corresponding parts within their given path,
           // rather than incremental aggregates which include their parent's
           // directories.
-          if (!createdParents[curr]) {
-            createdParents[curr] = WORKERFS.createNode(parent, parts[i], WORKERFS.DIR_MODE, 0);
-          }
+          createdParents[curr] ||= WORKERFS.createNode(parent, parts[i], WORKERFS.DIR_MODE, 0);
           parent = createdParents[curr];
         }
         return parent;
@@ -53,7 +52,7 @@ mergeInto(LibraryManager.library, {
       });
       return root;
     },
-    createNode: function (parent, name, mode, dev, contents, mtime) {
+    createNode(parent, name, mode, dev, contents, mtime) {
       var node = FS.createNode(parent, name, mode);
       node.mode = mode;
       node.node_ops = WORKERFS.node_ops;
@@ -73,15 +72,15 @@ mergeInto(LibraryManager.library, {
       return node;
     },
     node_ops: {
-      getattr: function(node) {
+      getattr(node) {
         return {
           dev: 1,
-          ino: undefined,
+          ino: node.id,
           mode: node.mode,
           nlink: 1,
           uid: 0,
           gid: 0,
-          rdev: undefined,
+          rdev: 0,
           size: node.size,
           atime: new Date(node.timestamp),
           mtime: new Date(node.timestamp),
@@ -90,7 +89,7 @@ mergeInto(LibraryManager.library, {
           blocks: Math.ceil(node.size / 4096),
         };
       },
-      setattr: function(node, attr) {
+      setattr(node, attr) {
         if (attr.mode !== undefined) {
           node.mode = attr.mode;
         }
@@ -98,63 +97,61 @@ mergeInto(LibraryManager.library, {
           node.timestamp = attr.timestamp;
         }
       },
-      lookup: function(parent, name) {
-        throw new FS.ErrnoError(ERRNO_CODES.ENOENT);
+      lookup(parent, name) {
+        throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       },
-      mknod: function (parent, name, mode, dev) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+      mknod(parent, name, mode, dev) {
+        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       },
-      rename: function (oldNode, newDir, newName) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+      rename(oldNode, newDir, newName) {
+        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       },
-      unlink: function(parent, name) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+      unlink(parent, name) {
+        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       },
-      rmdir: function(parent, name) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+      rmdir(parent, name) {
+        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       },
-      readdir: function(node) {
+      readdir(node) {
         var entries = ['.', '..'];
-        for (var key in node.contents) {
-          if (!node.contents.hasOwnProperty(key)) {
-            continue;
-          }
+        for (var key of Object.keys(node.contents)) {
           entries.push(key);
         }
         return entries;
       },
-      symlink: function(parent, newName, oldPath) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
-      },
-      readlink: function(node) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+      symlink(parent, newName, oldPath) {
+        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       },
     },
     stream_ops: {
-      read: function (stream, buffer, offset, length, position) {
+      read(stream, buffer, offset, length, position) {
         if (position >= stream.node.size) return 0;
         var chunk = stream.node.contents.slice(position, position + length);
         var ab = WORKERFS.reader.readAsArrayBuffer(chunk);
         buffer.set(new Uint8Array(ab), offset);
         return chunk.size;
       },
-      write: function (stream, buffer, offset, length, position) {
-        throw new FS.ErrnoError(ERRNO_CODES.EIO);
+      write(stream, buffer, offset, length, position) {
+        throw new FS.ErrnoError({{{ cDefs.EIO }}});
       },
-      llseek: function (stream, offset, whence) {
+      llseek(stream, offset, whence) {
         var position = offset;
-        if (whence === 1) {  // SEEK_CUR.
+        if (whence === {{{ cDefs.SEEK_CUR }}}) {
           position += stream.position;
-        } else if (whence === 2) {  // SEEK_END.
+        } else if (whence === {{{ cDefs.SEEK_END }}}) {
           if (FS.isFile(stream.node.mode)) {
             position += stream.node.size;
           }
         }
         if (position < 0) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
         }
         return position;
       },
     },
   },
 });
+
+if (WASMFS) {
+  error("using -lworkerfs is not currently supported in WasmFS.");
+}

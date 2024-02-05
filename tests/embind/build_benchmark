@@ -1,2 +1,0 @@
-#!/bin/bash
-../../emcc --minify 0 --bind --post-js embind.benchmark.js -O2 --shell-file shell.html -o embind_benchmark.html embind_benchmark.cpp

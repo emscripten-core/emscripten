@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# coding=utf-8
+#!/usr/bin/env python3
 # Copyright 2017 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -31,8 +30,8 @@
 
 # Use #include <emscripten/dom_pk_codes.h> in your code to access these IDs.
 
-from __future__ import print_function
-import sys, random
+import sys
+import random
 
 input_strings = [
   (0x0, 'Unidentified',          'DOM_PK_UNKNOWN'),
@@ -120,21 +119,21 @@ input_strings = [
   (0x52, 'Numpad0',              'DOM_PK_NUMPAD_0'),
   (0x53, 'NumpadDecimal',        'DOM_PK_NUMPAD_DECIMAL'),
   (0x54, 'PrintScreen',          'DOM_PK_PRINT_SCREEN'),
-# 0x0055 'Unidentified', ''
+  # 0x0055 'Unidentified', ''
   (0x56, 'IntlBackslash',        'DOM_PK_INTL_BACKSLASH'),
   (0x57, 'F11',                  'DOM_PK_F11'),
   (0x58, 'F12',                  'DOM_PK_F12'),
   (0x59, 'NumpadEqual',          'DOM_PK_NUMPAD_EQUAL'),
-# 0x005A 'Unidentified', ''
-# 0x005B 'Unidentified', ''
-# 0x005C 'Unidentified', ''
-# 0x005D 'Unidentified', ''
-# 0x005E 'Unidentified', ''
-# 0x005F 'Unidentified', ''
-# 0x0060 'Unidentified', ''
-# 0x0061 'Unidentified', ''
-# 0x0062 'Unidentified', ''
-# 0x0063 'Unidentified', ''
+  # 0x005A 'Unidentified', ''
+  # 0x005B 'Unidentified', ''
+  # 0x005C 'Unidentified', ''
+  # 0x005D 'Unidentified', ''
+  # 0x005E 'Unidentified', ''
+  # 0x005F 'Unidentified', ''
+  # 0x0060 'Unidentified', ''
+  # 0x0061 'Unidentified', ''
+  # 0x0062 'Unidentified', ''
+  # 0x0063 'Unidentified', ''
   (0x64, 'F13',                  'DOM_PK_F13'),
   (0x65, 'F14',                  'DOM_PK_F14'),
   (0x66, 'F15',                  'DOM_PK_F15'),
@@ -146,23 +145,23 @@ input_strings = [
   (0x6C, 'F21',                  'DOM_PK_F21'),
   (0x6D, 'F22',                  'DOM_PK_F22'),
   (0x6E, 'F23',                  'DOM_PK_F23'),
-# 0x006F 'Unidentified', ''
+  # 0x006F 'Unidentified', ''
   (0x70, 'KanaMode',             'DOM_PK_KANA_MODE'),
   (0x71, 'Lang2',                'DOM_PK_LANG_2'),
   (0x72, 'Lang1',                'DOM_PK_LANG_1'),
   (0x73, 'IntlRo',               'DOM_PK_INTL_RO'),
-# 0x0074 'Unidentified', ''
-# 0x0075 'Unidentified', ''
+  # 0x0074 'Unidentified', ''
+  # 0x0075 'Unidentified', ''
   (0x76, 'F24',                  'DOM_PK_F24'),
-# 0x0077 'Unidentified', ''
-# 0x0078 'Unidentified', ''
+  # 0x0077 'Unidentified', ''
+  # 0x0078 'Unidentified', ''
   (0x79, 'Convert',              'DOM_PK_CONVERT'),
-# 0x007A 'Unidentified', ''
+  # 0x007A 'Unidentified', ''
   (0x7B, 'NonConvert',           'DOM_PK_NON_CONVERT'),
-# 0x007C 'Unidentified', ''
+  # 0x007C 'Unidentified', ''
   (0x7D, 'IntlYen',              'DOM_PK_INTL_YEN'),
   (0x7E, 'NumpadComma',          'DOM_PK_NUMPAD_COMMA'),
-# 0x007F 'Unidentified', ''
+  # 0x007F 'Unidentified', ''
   (0xE00A, 'Paste',              'DOM_PK_PASTE'),
   (0xE010, 'MediaTrackPrevious', 'DOM_PK_MEDIA_TRACK_PREVIOUS'),
   (0xE017, 'Cut',                'DOM_PK_CUT'),
@@ -182,11 +181,11 @@ input_strings = [
   (0xE030, 'VolumeUp',           'DOM_PK_AUDIO_VOLUME_UP', 'duplicate'),
   (0xE032, 'BrowserHome',        'DOM_PK_BROWSER_HOME'),
   (0xE035, 'NumpadDivide',       'DOM_PK_NUMPAD_DIVIDE'),
-#  (0xE037, 'PrintScreen',        'DOM_PK_PRINT_SCREEN'),
+  #  (0xE037, 'PrintScreen',        'DOM_PK_PRINT_SCREEN'),
   (0xE038, 'AltRight',           'DOM_PK_ALT_RIGHT'),
   (0xE03B, 'Help',               'DOM_PK_HELP'),
   (0xE045, 'NumLock',            'DOM_PK_NUM_LOCK'),
-#  (0xE046, 'Pause', 'DOM_PK_'), # Says Ctrl+Pause
+  #  (0xE046, 'Pause', 'DOM_PK_'), # Says Ctrl+Pause
   (0xE047, 'Home',               'DOM_PK_HOME'),
   (0xE048, 'ArrowUp',            'DOM_PK_ARROW_UP'),
   (0xE049, 'PageUp',             'DOM_PK_PAGE_UP'),
@@ -213,15 +212,17 @@ input_strings = [
   (0xE06C, 'LaunchMail',         'DOM_PK_LAUNCH_MAIL'),
   (0xE06D, 'LaunchMediaPlayer',  'DOM_PK_LAUNCH_MEDIA_PLAYER'),
   (0xE06D, 'MediaSelect',        'DOM_PK_MEDIA_SELECT', 'duplicate')
-#  (0xE0F1, 'Lang2', 'DOM_PK_'), Hanja key
-#  (0xE0F2, 'Lang2', 'DOM_PK_'), Han/Yeong
+  #  (0xE0F1, 'Lang2', 'DOM_PK_'), Hanja key
+  #  (0xE0F2, 'Lang2', 'DOM_PK_'), Han/Yeong
 ]
+
 
 def hash(s, k1, k2):
   h = 0
   for c in s:
     h = int(int(int(h ^ k1) << k2) ^ ord(c)) & 0xFFFFFFFF
   return h
+
 
 def hash_all(k1, k2):
   hashes = {}
@@ -237,30 +238,43 @@ def hash_all(k1, k2):
       str_to_hash[s[1]] = h
   return (hashes, str_to_hash)
 
+
 # Find an approprite hash function that is collision free within the set of all input strings
 # Try hash function format h_i = ((h_(i-1) ^ k_1) << k_2) ^ s_i, where h_i is the hash function
 # value at step i, k_1 and k_2 are the constants we are searching, and s_i is the i'th input
 # character
 perfect_hash_table = None
-while perfect_hash_table == None:
+
+# Last used perfect hash constants.  Stored here so that this script will
+# produce the same output it did when the current output was generated.
+k1 = 0x7E057D79
+k2 = 3
+perfect_hash_table = hash_all(k1, k2)
+
+while not perfect_hash_table:
   # The search space is super-narrow, but since there are so few items to hash, practically
   # almost any choice gives a collision free hash.
   k1 = int(random.randint(0, 0x7FFFFFFF))
   k2 = int(random.uniform(1, 8))
   perfect_hash_table = hash_all(k1, k2)
+
 hash_to_str, str_to_hash = perfect_hash_table
 
 print('Found collision-free hash function!', file=sys.stderr)
 print('h_i = ((h_(i-1) ^ %s) << %s) ^ s_i' % (hex(k1), hex(k2)), file=sys.stderr)
 
+
 def pad_to_length(s, length):
   return s + max(0, length - len(s)) * ' '
+
 
 def longest_dom_pk_code_length():
   return max(map(len, [x[2] for x in input_strings]))
 
+
 def longest_key_code_length():
   return max(map(len, [x[1] for x in input_strings]))
+
 
 h_file = open('system/include/emscripten/dom_pk_codes.h', 'w')
 c_file = open('system/lib/html5/dom_pk_codes.c', 'w')
@@ -301,7 +315,7 @@ in Emscripten root directory to regenerate this file. */
 ''')
 
 for s in input_strings:
-  h_file.write('#define ' + pad_to_length(s[2], longest_dom_pk_code_length()) + ' 0x%04X /* "%s */' % (s[0], pad_to_length(s[1] + '"', longest_key_code_length()+1)) + '\n')
+  h_file.write('#define ' + pad_to_length(s[2], longest_dom_pk_code_length()) + ' 0x%04X /* "%s */' % (s[0], pad_to_length(s[1] + '"', longest_key_code_length() + 1)) + '\n')
 
 h_file.write('''
 #ifdef __cplusplus
@@ -335,7 +349,7 @@ DOM_PK_CODE_TYPE emscripten_compute_dom_pk_code(const char *keyCodeString)
 ''' % (k1, k2))
 
 for s in input_strings:
-  c_file.write('    case 0x%08XU /* %s */: return %s /* 0x%04X */' % (str_to_hash[s[1]], pad_to_length(s[1], longest_key_code_length()), pad_to_length(s[2] + ';', longest_dom_pk_code_length()+1), s[0]) + '\n')
+  c_file.write('    case 0x%08XU /* %s */: return %s /* 0x%04X */' % (str_to_hash[s[1]], pad_to_length(s[1], longest_key_code_length()), pad_to_length(s[2] + ';', longest_dom_pk_code_length() + 1), s[0]) + '\n')
 
 c_file.write('''    default: return DOM_PK_UNKNOWN;
   }
@@ -349,7 +363,7 @@ const char *emscripten_dom_pk_code_to_string(DOM_PK_CODE_TYPE code)
 
 for s in input_strings:
   if len(s) == 3:
-    c_file.write('    case %s return "%s";' % (pad_to_length(s[2] + ':', longest_dom_pk_code_length()+1), s[2]) + '\n')
+    c_file.write('    case %s return "%s";' % (pad_to_length(s[2] + ':', longest_dom_pk_code_length() + 1), s[2]) + '\n')
 
 c_file.write('''    default: return "Unknown DOM_PK code";
   }

@@ -2,6 +2,12 @@
 #include <string.h>
 #include <mntent.h>
 #include <errno.h>
+#include <limits.h>
+
+static char *internal_buf;
+static size_t internal_bufsize;
+
+#define SENTINEL (char *)&internal_buf
 
 FILE *setmntent(const char *name, const char *mode)
 {
@@ -16,23 +22,33 @@ int endmntent(FILE *f)
 
 struct mntent *getmntent_r(FILE *f, struct mntent *mnt, char *linebuf, int buflen)
 {
-	int cnt, n[8];
+	int n[8], use_internal = (linebuf == SENTINEL);
+	size_t len, i;
 
 	mnt->mnt_freq = 0;
 	mnt->mnt_passno = 0;
 
 	do {
-		fgets(linebuf, buflen, f);
+		if (use_internal) {
+			getline(&internal_buf, &internal_bufsize, f);
+			linebuf = internal_buf;
+		} else {
+			fgets(linebuf, buflen, f);
+		}
 		if (feof(f) || ferror(f)) return 0;
 		if (!strchr(linebuf, '\n')) {
 			fscanf(f, "%*[^\n]%*[\n]");
 			errno = ERANGE;
 			return 0;
 		}
-		cnt = sscanf(linebuf, " %n%*s%n %n%*s%n %n%*s%n %n%*s%n %d %d",
+
+		len = strlen(linebuf);
+		if (len > INT_MAX) continue;
+		for (i = 0; i < sizeof n / sizeof *n; i++) n[i] = len;
+		sscanf(linebuf, " %n%*s%n %n%*s%n %n%*s%n %n%*s%n %d %d",
 			n, n+1, n+2, n+3, n+4, n+5, n+6, n+7,
 			&mnt->mnt_freq, &mnt->mnt_passno);
-	} while (cnt < 2 || linebuf[n[0]] == '#');
+	} while (linebuf[n[0]] == '#' || n[1]==len);
 
 	linebuf[n[1]] = 0;
 	linebuf[n[3]] = 0;
@@ -49,9 +65,8 @@ struct mntent *getmntent_r(FILE *f, struct mntent *mnt, char *linebuf, int bufle
 
 struct mntent *getmntent(FILE *f)
 {
-	static char linebuf[256];
 	static struct mntent mnt;
-	return getmntent_r(f, &mnt, linebuf, sizeof linebuf);
+	return getmntent_r(f, &mnt, SENTINEL, 0);
 }
 
 int addmntent(FILE *f, const struct mntent *mnt)

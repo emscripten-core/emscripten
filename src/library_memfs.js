@@ -1,69 +1,68 @@
-// Copyright 2013 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2013 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
-mergeInto(LibraryManager.library, {
-  $MEMFS__deps: ['$FS'],
+addToLibrary({
+  $MEMFS__deps: ['$FS', '$mmapAlloc'],
   $MEMFS: {
     ops_table: null,
-    mount: function(mount) {
-      return MEMFS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */, 0);
+    mount(mount) {
+      return MEMFS.createNode(null, '/', {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */, 0);
     },
-    createNode: function(parent, name, mode, dev) {
+    createNode(parent, name, mode, dev) {
       if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
         // no supported
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       }
-      if (!MEMFS.ops_table) {
-        MEMFS.ops_table = {
-          dir: {
-            node: {
-              getattr: MEMFS.node_ops.getattr,
-              setattr: MEMFS.node_ops.setattr,
-              lookup: MEMFS.node_ops.lookup,
-              mknod: MEMFS.node_ops.mknod,
-              rename: MEMFS.node_ops.rename,
-              unlink: MEMFS.node_ops.unlink,
-              rmdir: MEMFS.node_ops.rmdir,
-              readdir: MEMFS.node_ops.readdir,
-              symlink: MEMFS.node_ops.symlink
-            },
-            stream: {
-              llseek: MEMFS.stream_ops.llseek
-            }
+      MEMFS.ops_table ||= {
+        dir: {
+          node: {
+            getattr: MEMFS.node_ops.getattr,
+            setattr: MEMFS.node_ops.setattr,
+            lookup: MEMFS.node_ops.lookup,
+            mknod: MEMFS.node_ops.mknod,
+            rename: MEMFS.node_ops.rename,
+            unlink: MEMFS.node_ops.unlink,
+            rmdir: MEMFS.node_ops.rmdir,
+            readdir: MEMFS.node_ops.readdir,
+            symlink: MEMFS.node_ops.symlink
           },
-          file: {
-            node: {
-              getattr: MEMFS.node_ops.getattr,
-              setattr: MEMFS.node_ops.setattr
-            },
-            stream: {
-              llseek: MEMFS.stream_ops.llseek,
-              read: MEMFS.stream_ops.read,
-              write: MEMFS.stream_ops.write,
-              allocate: MEMFS.stream_ops.allocate,
-              mmap: MEMFS.stream_ops.mmap,
-              msync: MEMFS.stream_ops.msync
-            }
-          },
-          link: {
-            node: {
-              getattr: MEMFS.node_ops.getattr,
-              setattr: MEMFS.node_ops.setattr,
-              readlink: MEMFS.node_ops.readlink
-            },
-            stream: {}
-          },
-          chrdev: {
-            node: {
-              getattr: MEMFS.node_ops.getattr,
-              setattr: MEMFS.node_ops.setattr
-            },
-            stream: FS.chrdev_stream_ops
+          stream: {
+            llseek: MEMFS.stream_ops.llseek
           }
-        };
-      }
+        },
+        file: {
+          node: {
+            getattr: MEMFS.node_ops.getattr,
+            setattr: MEMFS.node_ops.setattr
+          },
+          stream: {
+            llseek: MEMFS.stream_ops.llseek,
+            read: MEMFS.stream_ops.read,
+            write: MEMFS.stream_ops.write,
+            allocate: MEMFS.stream_ops.allocate,
+            mmap: MEMFS.stream_ops.mmap,
+            msync: MEMFS.stream_ops.msync
+          }
+        },
+        link: {
+          node: {
+            getattr: MEMFS.node_ops.getattr,
+            setattr: MEMFS.node_ops.setattr,
+            readlink: MEMFS.node_ops.readlink
+          },
+          stream: {}
+        },
+        chrdev: {
+          node: {
+            getattr: MEMFS.node_ops.getattr,
+            setattr: MEMFS.node_ops.setattr
+          },
+          stream: FS.chrdev_stream_ops
+        }
+      };
       var node = FS.createNode(parent, name, mode, dev);
       if (FS.isDir(node.mode)) {
         node.node_ops = MEMFS.ops_table.dir.node;
@@ -88,23 +87,14 @@ mergeInto(LibraryManager.library, {
       // add the new node to the parent
       if (parent) {
         parent.contents[name] = node;
+        parent.timestamp = node.timestamp;
       }
       return node;
     },
 
-    // Given a file node, returns its file data converted to a regular JS array. You should treat this as read-only.
-    getFileDataAsRegularArray: function(node) {
-      if (node.contents && node.contents.subarray) {
-        var arr = [];
-        for (var i = 0; i < node.usedBytes; ++i) arr.push(node.contents[i]);
-        return arr; // Returns a copy of the original data.
-      }
-      return node.contents; // No-op, the file contents are already in a JS array. Return as-is.
-    },
-
     // Given a file node, returns its file data converted to a typed array.
-    getFileDataAsTypedArray: function(node) {
-      if (!node.contents) return new Uint8Array;
+    getFileDataAsTypedArray(node) {
+      if (!node.contents) return new Uint8Array(0);
       if (node.contents.subarray) return node.contents.subarray(0, node.usedBytes); // Make sure to not return excess unused bytes.
       return new Uint8Array(node.contents);
     },
@@ -112,47 +102,38 @@ mergeInto(LibraryManager.library, {
     // Allocates a new backing store for the given node so that it can fit at least newSize amount of bytes.
     // May allocate more, to provide automatic geometric increase and amortized linear performance appending writes.
     // Never shrinks the storage.
-    expandFileStorage: function(node, newCapacity) {
+    expandFileStorage(node, newCapacity) {
       var prevCapacity = node.contents ? node.contents.length : 0;
       if (prevCapacity >= newCapacity) return; // No need to expand, the storage was already large enough.
       // Don't expand strictly to the given requested limit if it's only a very small increase, but instead geometrically grow capacity.
       // For small filesizes (<1MB), perform size*2 geometric increase, but for large sizes, do a much more conservative size*1.125 increase to
       // avoid overshooting the allocation cap by a very large margin.
       var CAPACITY_DOUBLING_MAX = 1024 * 1024;
-      newCapacity = Math.max(newCapacity, (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2.0 : 1.125)) | 0);
+      newCapacity = Math.max(newCapacity, (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2.0 : 1.125)) >>> 0);
       if (prevCapacity != 0) newCapacity = Math.max(newCapacity, 256); // At minimum allocate 256b for each file when expanding.
       var oldContents = node.contents;
       node.contents = new Uint8Array(newCapacity); // Allocate new storage.
       if (node.usedBytes > 0) node.contents.set(oldContents.subarray(0, node.usedBytes), 0); // Copy old data over to the new storage.
-      return;
     },
 
     // Performs an exact resize of the backing file storage to the given size, if the size is not exactly this, the storage is fully reallocated.
-    resizeFileStorage: function(node, newSize) {
+    resizeFileStorage(node, newSize) {
       if (node.usedBytes == newSize) return;
       if (newSize == 0) {
         node.contents = null; // Fully decommit when requesting a resize to zero.
         node.usedBytes = 0;
-        return;
-      }
-      if (!node.contents || node.contents.subarray) { // Resize a typed array if that is being used as the backing store.
+      } else {
         var oldContents = node.contents;
-        node.contents = new Uint8Array(new ArrayBuffer(newSize)); // Allocate new storage.
+        node.contents = new Uint8Array(newSize); // Allocate new storage.
         if (oldContents) {
           node.contents.set(oldContents.subarray(0, Math.min(newSize, node.usedBytes))); // Copy old data over to the new storage.
         }
         node.usedBytes = newSize;
-        return;
       }
-      // Backing with a JS array.
-      if (!node.contents) node.contents = [];
-      if (node.contents.length > newSize) node.contents.length = newSize;
-      else while (node.contents.length < newSize) node.contents.push(0);
-      node.usedBytes = newSize;
     },
 
     node_ops: {
-      getattr: function(node) {
+      getattr(node) {
         var attr = {};
         // device numbers reuse inode numbers.
         attr.dev = FS.isChrdev(node.mode) ? node.id : 1;
@@ -180,7 +161,7 @@ mergeInto(LibraryManager.library, {
         attr.blocks = Math.ceil(attr.size / attr.blksize);
         return attr;
       },
-      setattr: function(node, attr) {
+      setattr(node, attr) {
         if (attr.mode !== undefined) {
           node.mode = attr.mode;
         }
@@ -191,13 +172,13 @@ mergeInto(LibraryManager.library, {
           MEMFS.resizeFileStorage(node, attr.size);
         }
       },
-      lookup: function(parent, name) {
-        throw FS.genericErrors[ERRNO_CODES.ENOENT];
+      lookup(parent, name) {
+        throw FS.genericErrors[{{{ cDefs.ENOENT }}}];
       },
-      mknod: function(parent, name, mode, dev) {
+      mknod(parent, name, mode, dev) {
         return MEMFS.createNode(parent, name, mode, dev);
       },
-      rename: function(old_node, new_dir, new_name) {
+      rename(old_node, new_dir, new_name) {
         // if we're overwriting a directory at new_name, make sure it's empty.
         if (FS.isDir(old_node.mode)) {
           var new_node;
@@ -207,50 +188,51 @@ mergeInto(LibraryManager.library, {
           }
           if (new_node) {
             for (var i in new_node.contents) {
-              throw new FS.ErrnoError(ERRNO_CODES.ENOTEMPTY);
+              throw new FS.ErrnoError({{{ cDefs.ENOTEMPTY }}});
             }
           }
         }
         // do the internal rewiring
         delete old_node.parent.contents[old_node.name];
+        old_node.parent.timestamp = Date.now()
         old_node.name = new_name;
         new_dir.contents[new_name] = old_node;
+        new_dir.timestamp = old_node.parent.timestamp;
         old_node.parent = new_dir;
       },
-      unlink: function(parent, name) {
+      unlink(parent, name) {
         delete parent.contents[name];
+        parent.timestamp = Date.now();
       },
-      rmdir: function(parent, name) {
+      rmdir(parent, name) {
         var node = FS.lookupNode(parent, name);
         for (var i in node.contents) {
-          throw new FS.ErrnoError(ERRNO_CODES.ENOTEMPTY);
+          throw new FS.ErrnoError({{{ cDefs.ENOTEMPTY }}});
         }
         delete parent.contents[name];
+        parent.timestamp = Date.now();
       },
-      readdir: function(node) {
-        var entries = ['.', '..']
-        for (var key in node.contents) {
-          if (!node.contents.hasOwnProperty(key)) {
-            continue;
-          }
+      readdir(node) {
+        var entries = ['.', '..'];
+        for (var key of Object.keys(node.contents)) {
           entries.push(key);
         }
         return entries;
       },
-      symlink: function(parent, newname, oldpath) {
-        var node = MEMFS.createNode(parent, newname, 511 /* 0777 */ | {{{ cDefine('S_IFLNK') }}}, 0);
+      symlink(parent, newname, oldpath) {
+        var node = MEMFS.createNode(parent, newname, 511 /* 0777 */ | {{{ cDefs.S_IFLNK }}}, 0);
         node.link = oldpath;
         return node;
       },
-      readlink: function(node) {
+      readlink(node) {
         if (!FS.isLink(node.mode)) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
         }
         return node.link;
       },
     },
     stream_ops: {
-      read: function(stream, buffer, offset, length, position) {
+      read(stream, buffer, offset, length, position) {
         var contents = stream.node.contents;
         if (position >= stream.node.usedBytes) return 0;
         var size = Math.min(stream.node.usedBytes - position, length);
@@ -271,21 +253,19 @@ mergeInto(LibraryManager.library, {
       //         canOwn=true will not take ownership of the portion outside the bytes addressed by the view. This means that
       //         with canOwn=true, creating a copy of the bytes is avoided, but the caller shouldn't touch the passed in range
       //         of bytes anymore since their contents now represent file data inside the filesystem.
-      write: function(stream, buffer, offset, length, position, canOwn) {
-#if ALLOW_MEMORY_GROWTH
-        // If memory can grow, we don't want to hold on to references of
-        // the memory Buffer, as they may get invalidated. That means
-        // we need to do a copy here.
+      write(stream, buffer, offset, length, position, canOwn) {
 #if ASSERTIONS
-        // FIXME: this is inefficient as the file packager may have
-        //        copied the data into memory already - we may want to
-        //        integrate more there and let the file packager loading
-        //        code be able to query if memory growth is on or off.
-        if (canOwn) {
-          warnOnce('file packager has copied file data into memory, but in memory growth we are forced to copy it again (see --no-heap-copy)');
+        // The data buffer should be a typed array view
+        assert(!(buffer instanceof ArrayBuffer));
+#endif
+#if ALLOW_MEMORY_GROWTH
+        // If the buffer is located in main memory (HEAP), and if
+        // memory can grow, we can't hold on to references of the
+        // memory buffer, as they may get invalidated. That means we
+        // need to do copy its contents.
+        if (buffer.buffer === HEAP8.buffer) {
+          canOwn = false;
         }
-#endif // ASSERTIONS
-        canOwn = false;
 #endif // ALLOW_MEMORY_GROWTH
 
         if (!length) return 0;
@@ -301,7 +281,7 @@ mergeInto(LibraryManager.library, {
             node.usedBytes = length;
             return length;
           } else if (node.usedBytes === 0 && position === 0) { // If this is a simple first write to an empty file, do a fast set since we don't need to care about old data.
-            node.contents = new Uint8Array(buffer.subarray(offset, offset + length));
+            node.contents = buffer.slice(offset, offset + length);
             node.usedBytes = length;
             return length;
           } else if (position + length <= node.usedBytes) { // Writing to an already allocated and used subrange of the file?
@@ -312,51 +292,52 @@ mergeInto(LibraryManager.library, {
 
         // Appending to an existing file and we need to reallocate, or source data did not come as a typed array.
         MEMFS.expandFileStorage(node, position+length);
-        if (node.contents.subarray && buffer.subarray) node.contents.set(buffer.subarray(offset, offset + length), position); // Use typed array write if available.
-        else {
+        if (node.contents.subarray && buffer.subarray) {
+          // Use typed array write which is available.
+          node.contents.set(buffer.subarray(offset, offset + length), position);
+        } else {
           for (var i = 0; i < length; i++) {
            node.contents[position + i] = buffer[offset + i]; // Or fall back to manual write if not.
           }
         }
-        node.usedBytes = Math.max(node.usedBytes, position+length);
+        node.usedBytes = Math.max(node.usedBytes, position + length);
         return length;
       },
 
-      llseek: function(stream, offset, whence) {
+      llseek(stream, offset, whence) {
         var position = offset;
-        if (whence === 1) {  // SEEK_CUR.
+        if (whence === {{{ cDefs.SEEK_CUR }}}) {
           position += stream.position;
-        } else if (whence === 2) {  // SEEK_END.
+        } else if (whence === {{{ cDefs.SEEK_END }}}) {
           if (FS.isFile(stream.node.mode)) {
             position += stream.node.usedBytes;
           }
         }
         if (position < 0) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
         }
         return position;
       },
-      allocate: function(stream, offset, length) {
+      allocate(stream, offset, length) {
         MEMFS.expandFileStorage(stream.node, offset + length);
         stream.node.usedBytes = Math.max(stream.node.usedBytes, offset + length);
       },
-      mmap: function(stream, buffer, offset, length, position, prot, flags) {
+      mmap(stream, length, position, prot, flags) {
         if (!FS.isFile(stream.node.mode)) {
-          throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
+          throw new FS.ErrnoError({{{ cDefs.ENODEV }}});
         }
         var ptr;
         var allocated;
         var contents = stream.node.contents;
         // Only make a new copy when MAP_PRIVATE is specified.
-        if ( !(flags & {{{ cDefine('MAP_PRIVATE') }}}) &&
-              (contents.buffer === buffer || contents.buffer === buffer.buffer) ) {
-          // We can't emulate MAP_SHARED when the file is not backed by the buffer
-          // we're mapping to (e.g. the HEAP buffer).
+        if (!(flags & {{{ cDefs.MAP_PRIVATE }}}) && contents.buffer === HEAP8.buffer) {
+          // We can't emulate MAP_SHARED when the file is not backed by the
+          // buffer we're mapping to (e.g. the HEAP buffer).
           allocated = false;
           ptr = contents.byteOffset;
         } else {
           // Try to avoid unnecessary slices.
-          if (position > 0 || position + length < stream.node.usedBytes) {
+          if (position > 0 || position + length < contents.length) {
             if (contents.subarray) {
               contents = contents.subarray(position, position + length);
             } else {
@@ -364,24 +345,16 @@ mergeInto(LibraryManager.library, {
             }
           }
           allocated = true;
-          ptr = _malloc(length);
+          ptr = mmapAlloc(length);
           if (!ptr) {
-            throw new FS.ErrnoError(ERRNO_CODES.ENOMEM);
+            throw new FS.ErrnoError({{{ cDefs.ENOMEM }}});
           }
-          buffer.set(contents, ptr);
+          HEAP8.set(contents, ptr);
         }
-        return { ptr: ptr, allocated: allocated };
+        return { ptr, allocated };
       },
-      msync: function(stream, buffer, offset, length, mmapFlags) {
-        if (!FS.isFile(stream.node.mode)) {
-          throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
-        }
-        if (mmapFlags & {{{ cDefine('MAP_PRIVATE') }}}) {
-          // MAP_PRIVATE calls need not to be synced back to underlying fs
-          return 0;
-        }
-
-        var bytesWritten = MEMFS.stream_ops.write(stream, buffer, 0, length, offset, false);
+      msync(stream, buffer, offset, length, mmapFlags) {
+        MEMFS.stream_ops.write(stream, buffer, 0, length, offset, false);
         // should we check if bytesWritten and length are the same?
         return 0;
       }

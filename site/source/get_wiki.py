@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright 2014 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -21,6 +21,7 @@ import shutil
 import stat
 import sys
 import time
+from pathlib import Path
 
 import api_items
 
@@ -47,17 +48,17 @@ def CleanWiki():
 
     def errorhandler(func, path, exc_info):
         # where  func is os.listdir, os.remove, or os.rmdir; path is the argument to that function that caused it to fail; and  exc_info is a tuple returned by  sys.exc_info()
-        print func
-        print path
-        print exc_info
+        print(func)
+        print(path)
+        print(exc_info)
         os.chmod(path, stat.S_IWRITE)
         os.remove(path)
 
     try:
         shutil.rmtree(output_dir, ignore_errors=False, onerror=errorhandler)
-        print 'Old wiki clone removed'
-    except:
-        print 'No directory to clean found'
+        print('Old wiki clone removed')
+    except IOError:
+        print('No directory to clean found')
 
 
 def CloneWiki():
@@ -70,13 +71,13 @@ def CloneWiki():
     # Create directory for output and temporary files
     try:
         os.makedirs(output_dir)
-        print 'Created directory'
-    except:
+        print('Created directory')
+    except OSError:
         pass
 
     # Clone
     git_clone_command = 'git clone %s %s' % (wiki_repo, wiki_checkout)
-    print git_clone_command
+    print(git_clone_command)
     os.system(git_clone_command)
 
 
@@ -90,20 +91,20 @@ def ConvertFilesToRst():
             continue
 
         inputfilename = wiki_checkout + file
-        markdown = open(inputfilename).read()
+        markdown = Path(inputfilename).read_text()
         if 'This article has moved from the wiki to the new site' in markdown:
             continue
         if 'This page has been migrated to the main site' in markdown:
             continue
 
-        print file
+        print(file)
         # get name of file
         filenamestripped = os.path.splitext(file)[0]
         indexfiletext += '\n    %s' % filenamestripped
         outputfilename = output_dir + filenamestripped + '.rst'
 
         command = 'pandoc -f markdown -t rst -o "%s" "%s"' % (outputfilename, inputfilename)
-        print command
+        print(command)
         if os.system(command):
             sys.exit(1)
         title = filenamestripped.replace('-', ' ')
@@ -114,7 +115,7 @@ def ConvertFilesToRst():
         length = len(title)
         # print length
         headerbar = ''
-        for number in range(length):
+        for _ in range(length):
             headerbar += '='
         page_reference = filenamestripped
         page_reference_link_text = '.. _%s:\n\n' % page_reference
@@ -208,14 +209,14 @@ def main():
     parser.add_option("-c", "--clonewiki", action="store_true", default=False, dest="clonewiki", help="Clean and clone the latest wiki")
     options, args = parser.parse_args()
 
-    print 'Clone wiki: %s' % options.clonewiki
+    print('Clone wiki: %s' % options.clonewiki)
     if options.clonewiki:
         CloneWiki()
         # input = raw_input('CHECK ALL files were cloned! (look for "error: unable to create file" )\n')
 
     ConvertFilesToRst()
     FixupConvertedRstFiles()
-    print 'See LOG for details: %s ' % logfilename
+    print('See LOG for details: %s ' % logfilename)
 
 
 if __name__ == '__main__':

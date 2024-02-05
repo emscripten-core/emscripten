@@ -1,7 +1,5 @@
 #include <dlfcn.h>
-
-__attribute__((__visibility__("hidden")))
-int __dl_invalid_handle(void *);
+#include "dynlink.h"
 
 int dlclose(void *p)
 {

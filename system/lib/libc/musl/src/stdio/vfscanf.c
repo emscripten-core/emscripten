@@ -57,7 +57,7 @@ int vfscanf(FILE *restrict f, const char *restrict fmt, va_list ap)
 {
 	int width;
 	int size;
-	int alloc;
+	int alloc = 0;
 	int base;
 	const unsigned char *p;
 	int c, t;
@@ -76,6 +76,9 @@ int vfscanf(FILE *restrict f, const char *restrict fmt, va_list ap)
 
 	FLOCK(f);
 
+	if (!f->rpos) __toread(f);
+	if (!f->rpos) goto input_fail;
+
 	for (p=(const unsigned char *)fmt; *p; p++) {
 
 		alloc = 0;
@@ -89,15 +92,19 @@ int vfscanf(FILE *restrict f, const char *restrict fmt, va_list ap)
 			continue;
 		}
 		if (*p != '%' || p[1] == '%') {
-			p += *p=='%';
 			shlim(f, 0);
-			c = shgetc(f);
+			if (*p == '%') {
+				p++;
+				while (isspace((c=shgetc(f))));
+			} else {
+				c = shgetc(f);
+			}
 			if (c!=*p) {
 				shunget(f);
 				if (c<0) goto input_fail;
 				goto match_fail;
 			}
-			pos++;
+			pos += shcnt(f);
 			continue;
 		}
 

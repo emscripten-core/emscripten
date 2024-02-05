@@ -1,23 +1,32 @@
-//===-------------------------- cxa_vector.cpp ---------------------------===//
+//===----------------------------------------------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
 //
-//  
 //  This file implements the "Array Construction and Destruction APIs"
-//  http://www.codesourcery.com/public/cxx-abi/abi.html#array-ctor
-//  
+//  https://itanium-cxx-abi.github.io/cxx-abi/abi.html#array-ctor
+//
 //===----------------------------------------------------------------------===//
 
 #include "cxxabi.h"
+#include "__cxxabi_config.h"
 
 #include <exception>        // for std::terminate
+#include <new>              // for std::bad_array_new_length
+
+#include "abort_message.h"
+
+#ifndef __has_builtin
+#define __has_builtin(x) 0
+#endif
 
 namespace __cxxabiv1 {
 
-#pragma mark --Helper routines and classes --
+//
+// Helper routines and classes
+//
 
 namespace {
     inline static size_t __get_element_count ( void *p ) {
@@ -42,27 +51,27 @@ namespace {
     class st_heap_block2 {
     public:
         typedef void (*dealloc_f)(void *);
-        
-        st_heap_block2 ( dealloc_f dealloc, void *ptr ) 
+
+        st_heap_block2 ( dealloc_f dealloc, void *ptr )
             : dealloc_ ( dealloc ), ptr_ ( ptr ), enabled_ ( true ) {}
         ~st_heap_block2 () { if ( enabled_ ) dealloc_ ( ptr_ ) ; }
         void release () { enabled_ = false; }
-    
+
     private:
         dealloc_f dealloc_;
         void *ptr_;
         bool enabled_;
     };
-    
+
     class st_heap_block3 {
     public:
         typedef void (*dealloc_f)(void *, size_t);
-        
-        st_heap_block3 ( dealloc_f dealloc, void *ptr, size_t size ) 
+
+        st_heap_block3 ( dealloc_f dealloc, void *ptr, size_t size )
             : dealloc_ ( dealloc ), ptr_ ( ptr ), size_ ( size ), enabled_ ( true ) {}
         ~st_heap_block3 () { if ( enabled_ ) dealloc_ ( ptr_, size_ ) ; }
         void release () { enabled_ = false; }
-    
+
     private:
         dealloc_f dealloc_;
         void *ptr_;
@@ -73,17 +82,17 @@ namespace {
     class st_cxa_cleanup {
     public:
         typedef void (*destruct_f)(void *);
-        
+
         st_cxa_cleanup ( void *ptr, size_t &idx, size_t element_size, destruct_f destructor )
-            : ptr_ ( ptr ), idx_ ( idx ), element_size_ ( element_size ), 
+            : ptr_ ( ptr ), idx_ ( idx ), element_size_ ( element_size ),
                 destructor_ ( destructor ), enabled_ ( true ) {}
         ~st_cxa_cleanup () {
-            if ( enabled_ ) 
+            if ( enabled_ )
                 __cxa_vec_cleanup ( ptr_, idx_, element_size_, destructor_ );
             }
-        
+
         void release () { enabled_ = false; }
-    
+
     private:
         void *ptr_;
         size_t &idx_;
@@ -91,7 +100,7 @@ namespace {
         destruct_f destructor_;
         bool enabled_;
     };
-    
+
     class st_terminate {
     public:
         st_terminate ( bool enabled = true ) : enabled_ ( enabled ) {}
@@ -102,22 +111,68 @@ namespace {
     };
 }
 
-#pragma mark --Externally visible routines--
+//
+// Externally visible routines
+//
+
+namespace {
+_LIBCXXABI_NORETURN
+void throw_bad_array_new_length() {
+#ifndef _LIBCXXABI_NO_EXCEPTIONS
+  throw std::bad_array_new_length();
+#else
+  abort_message("__cxa_vec_new failed to allocate memory");
+#endif
+}
+
+bool mul_overflow(size_t x, size_t y, size_t *res) {
+#if (defined(_LIBCXXABI_COMPILER_CLANG) && __has_builtin(__builtin_mul_overflow)) \
+    || defined(_LIBCXXABI_COMPILER_GCC)
+    return __builtin_mul_overflow(x, y, res);
+#else
+    *res = x * y;
+    return x && ((*res / x) != y);
+#endif
+}
+
+bool add_overflow(size_t x, size_t y, size_t *res) {
+#if (defined(_LIBCXXABI_COMPILER_CLANG) && __has_builtin(__builtin_add_overflow)) \
+    || defined(_LIBCXXABI_COMPILER_GCC)
+  return __builtin_add_overflow(x, y, res);
+#else
+  *res = x + y;
+  return *res < y;
+#endif
+}
+
+size_t calculate_allocation_size_or_throw(size_t element_count,
+                                          size_t element_size,
+                                          size_t padding_size) {
+  size_t element_heap_size;
+  if (mul_overflow(element_count, element_size, &element_heap_size))
+    throw_bad_array_new_length();
+
+  size_t allocation_size;
+  if (add_overflow(element_heap_size, padding_size, &allocation_size))
+    throw_bad_array_new_length();
+
+  return allocation_size;
+}
+
+} // namespace
 
 extern "C" {
 
 // Equivalent to
-// 
+//
 //   __cxa_vec_new2(element_count, element_size, padding_size, constructor,
 //                  destructor, &::operator new[], &::operator delete[])
-void* __cxa_vec_new(
-    size_t element_count, size_t element_size, size_t padding_size, 
-        void (*constructor)(void*), void (*destructor)(void*) ) {
-
-    return __cxa_vec_new2 ( element_count, element_size, padding_size, 
+_LIBCXXABI_FUNC_VIS void *
+__cxa_vec_new(size_t element_count, size_t element_size, size_t padding_size,
+              void (*constructor)(void *), void (*destructor)(void *)) {
+    return __cxa_vec_new2 ( element_count, element_size, padding_size,
         constructor, destructor, &::operator new [], &::operator delete [] );
 }
-
 
 
 // Given the number and size of elements for an array and the non-negative
@@ -125,73 +180,73 @@ void* __cxa_vec_new(
 // the array preceded by the specified padding, initialize the cookie if
 // the padding is non-zero, and call the given constructor on each element.
 // Return the address of the array proper, after the padding.
-// 
+//
 // If alloc throws an exception, rethrow the exception. If alloc returns
 // NULL, return NULL. If the constructor throws an exception, call
 // destructor for any already constructed elements, and rethrow the
 // exception. If the destructor throws an exception, call std::terminate.
-// 
+//
 // The constructor may be NULL, in which case it must not be called. If the
 // padding_size is zero, the destructor may be NULL; in that case it must
 // not be called.
-// 
+//
 // Neither alloc nor dealloc may be NULL.
-void* __cxa_vec_new2(
-    size_t element_count, size_t element_size, size_t padding_size,
-        void  (*constructor)(void*), void  (*destructor)(void*),
-        void* (*alloc)(size_t), void  (*dealloc)(void*) ) {
+_LIBCXXABI_FUNC_VIS void *
+__cxa_vec_new2(size_t element_count, size_t element_size, size_t padding_size,
+               void (*constructor)(void *), void (*destructor)(void *),
+               void *(*alloc)(size_t), void (*dealloc)(void *)) {
+  const size_t heap_size = calculate_allocation_size_or_throw(
+      element_count, element_size, padding_size);
+  char* const heap_block = static_cast<char*>(alloc(heap_size));
+  char* vec_base = heap_block;
 
-    const size_t heap_size = element_count * element_size + padding_size;
-    char * const heap_block = static_cast<char *> ( alloc ( heap_size ));
-    char *vec_base = heap_block;
-    
-    if ( NULL != vec_base ) {
-        st_heap_block2 heap ( dealloc, heap_block );
+  if (NULL != vec_base) {
+    st_heap_block2 heap(dealloc, heap_block);
 
     //  put the padding before the array elements
         if ( 0 != padding_size ) {
             vec_base += padding_size;
             __set_element_count ( vec_base, element_count );
         }
-            
+
     //  Construct the elements
         __cxa_vec_ctor ( vec_base, element_count, element_size, constructor, destructor );
         heap.release ();    // We're good!
     }
-    
+
     return vec_base;
 }
 
 
 // Same as __cxa_vec_new2 except that the deallocation function takes both
 // the object address and its size.
-void* __cxa_vec_new3(
-    size_t element_count, size_t element_size, size_t padding_size,
-        void  (*constructor)(void*), void  (*destructor)(void*),
-        void* (*alloc)(size_t), void  (*dealloc)(void*, size_t) ) {
+_LIBCXXABI_FUNC_VIS void *
+__cxa_vec_new3(size_t element_count, size_t element_size, size_t padding_size,
+               void (*constructor)(void *), void (*destructor)(void *),
+               void *(*alloc)(size_t), void (*dealloc)(void *, size_t)) {
+  const size_t heap_size = calculate_allocation_size_or_throw(
+      element_count, element_size, padding_size);
+  char* const heap_block = static_cast<char*>(alloc(heap_size));
+  char* vec_base = heap_block;
 
-    const size_t heap_size = element_count * element_size + padding_size;
-    char * const heap_block = static_cast<char *> ( alloc ( heap_size ));
-    char *vec_base = heap_block;
-    
-    if ( NULL != vec_base ) {
-        st_heap_block3 heap ( dealloc, heap_block, heap_size );
+  if (NULL != vec_base) {
+    st_heap_block3 heap(dealloc, heap_block, heap_size);
 
     //  put the padding before the array elements
         if ( 0 != padding_size ) {
             vec_base += padding_size;
             __set_element_count ( vec_base, element_count );
         }
-            
+
     //  Construct the elements
         __cxa_vec_ctor ( vec_base, element_count, element_size, constructor, destructor );
         heap.release ();    // We're good!
     }
-    
+
     return vec_base;
 }
- 
- 
+
+
 // Given the (data) addresses of a destination and a source array, an
 // element count and an element size, call the given copy constructor to
 // copy each element from the source array to the destination array. The
@@ -202,17 +257,18 @@ void* __cxa_vec_new3(
 // pointers may be NULL. If either is NULL, no action is taken when it
 // would have been called.
 
-void __cxa_vec_cctor( void*  dest_array, void*  src_array, 
-    size_t element_count, size_t element_size, 
-        void  (*constructor) (void*, void*), void  (*destructor)(void*) ) {
-
+_LIBCXXABI_FUNC_VIS void __cxa_vec_cctor(void *dest_array, void *src_array,
+                                         size_t element_count,
+                                         size_t element_size,
+                                         void (*constructor)(void *, void *),
+                                         void (*destructor)(void *)) {
     if ( NULL != constructor ) {
         size_t idx = 0;
         char *src_ptr  = static_cast<char *>(src_array);
         char *dest_ptr = static_cast<char *>(dest_array);
-        st_cxa_cleanup cleanup ( dest_array, idx, element_size, destructor );        
+        st_cxa_cleanup cleanup ( dest_array, idx, element_size, destructor );
 
-        for ( idx = 0; idx < element_count; 
+        for ( idx = 0; idx < element_count;
                     ++idx, src_ptr += element_size, dest_ptr += element_size )
             constructor ( dest_ptr, src_ptr );
         cleanup.release ();     // We're good!
@@ -227,15 +283,14 @@ void __cxa_vec_cctor( void*  dest_array, void*  src_array,
 // exception. If the destructor throws an exception, call terminate(). The
 // constructor and/or destructor pointers may be NULL. If either is NULL,
 // no action is taken when it would have been called.
-void __cxa_vec_ctor(
-    void*  array_address, size_t element_count, size_t element_size, 
-       void (*constructor)(void*), void (*destructor)(void*) ) {
-
+_LIBCXXABI_FUNC_VIS void
+__cxa_vec_ctor(void *array_address, size_t element_count, size_t element_size,
+               void (*constructor)(void *), void (*destructor)(void *)) {
     if ( NULL != constructor ) {
         size_t idx;
         char *ptr = static_cast <char *> ( array_address );
-        st_cxa_cleanup cleanup ( array_address, idx, element_size, destructor );        
-        
+        st_cxa_cleanup cleanup ( array_address, idx, element_size, destructor );
+
     //  Construct the elements
         for ( idx = 0; idx < element_count; ++idx, ptr += element_size )
             constructor ( ptr );
@@ -249,14 +304,14 @@ void __cxa_vec_ctor(
 // elements if possible. If the destructor throws a second exception, call
 // terminate(). The destructor pointer may be NULL, in which case this
 // routine does nothing.
-void __cxa_vec_dtor(
-    void*  array_address, size_t element_count, size_t element_size, 
-       void (*destructor)(void*) ) {
-    
+_LIBCXXABI_FUNC_VIS void __cxa_vec_dtor(void *array_address,
+                                        size_t element_count,
+                                        size_t element_size,
+                                        void (*destructor)(void *)) {
     if ( NULL != destructor ) {
         char *ptr = static_cast <char *> (array_address);
         size_t idx = element_count;
-        st_cxa_cleanup cleanup ( array_address, idx, element_size, destructor );        
+        st_cxa_cleanup cleanup ( array_address, idx, element_size, destructor );
         {
             st_terminate exception_guard (__cxa_uncaught_exception ());
             ptr +=  element_count * element_size;   // one past the last element
@@ -275,14 +330,15 @@ void __cxa_vec_dtor(
 // size of its elements, call the given destructor on each element. If the
 // destructor throws an exception, call terminate(). The destructor pointer
 // may be NULL, in which case this routine does nothing.
-void __cxa_vec_cleanup( void* array_address, size_t element_count,
-        size_t element_size, void  (*destructor)(void*) ) {
-
+_LIBCXXABI_FUNC_VIS void __cxa_vec_cleanup(void *array_address,
+                                           size_t element_count,
+                                           size_t element_size,
+                                           void (*destructor)(void *)) {
     if ( NULL != destructor ) {
         char *ptr = static_cast <char *> (array_address);
         size_t idx = element_count;
         st_terminate exception_guard;
-        
+
         ptr += element_count * element_size;    // one past the last element
         while ( idx-- > 0 ) {
             ptr -= element_size;
@@ -303,7 +359,7 @@ void __cxa_vec_cleanup( void* array_address, size_t element_count,
 // throws a second exception, call terminate(). If padding_size is 0, the
 // destructor pointer must be NULL. If the destructor pointer is NULL, no
 // destructor call is to be made.
-// 
+//
 // The intent of this function is to permit an implementation to call this
 // function when confronted with an expression of the form delete[] p in
 // the source code, provided that the default deallocation function can be
@@ -312,29 +368,28 @@ void __cxa_vec_cleanup( void* array_address, size_t element_count,
 // function be called even if the destructor throws an exception derives
 // from the resolution to DR 353 to the C++ standard, which was adopted in
 // April, 2003.
-void __cxa_vec_delete( void* array_address,
-        size_t element_size, size_t padding_size, void  (*destructor)(void*) ) {
-
+_LIBCXXABI_FUNC_VIS void __cxa_vec_delete(void *array_address,
+                                          size_t element_size,
+                                          size_t padding_size,
+                                          void (*destructor)(void *)) {
     __cxa_vec_delete2 ( array_address, element_size, padding_size,
                destructor, &::operator delete [] );
 }
-
 
 // Same as __cxa_vec_delete, except that the given function is used for
 // deallocation instead of the default delete function. If dealloc throws
 // an exception, the result is undefined. The dealloc pointer may not be
 // NULL.
-void __cxa_vec_delete2( void* array_address,
-        size_t element_size, size_t padding_size, 
-        void  (*destructor)(void*), void  (*dealloc)(void*) ) {
-
+_LIBCXXABI_FUNC_VIS void
+__cxa_vec_delete2(void *array_address, size_t element_size, size_t padding_size,
+                  void (*destructor)(void *), void (*dealloc)(void *)) {
     if ( NULL != array_address ) {
         char *vec_base   = static_cast <char *> (array_address);
         char *heap_block = vec_base - padding_size;
         st_heap_block2 heap ( dealloc, heap_block );
-        
+
         if ( 0 != padding_size && NULL != destructor ) // call the destructors
-            __cxa_vec_dtor ( array_address, __get_element_count ( vec_base ), 
+            __cxa_vec_dtor ( array_address, __get_element_count ( vec_base ),
                                     element_size, destructor );
     }
 }
@@ -345,10 +400,9 @@ void __cxa_vec_delete2( void* array_address,
 // function takes both the object address and its size. If dealloc throws
 // an exception, the result is undefined. The dealloc pointer may not be
 // NULL.
-void __cxa_vec_delete3( void* array_address, 
-        size_t element_size, size_t padding_size, 
-        void  (*destructor)(void*), void  (*dealloc) (void*, size_t)) {
-
+_LIBCXXABI_FUNC_VIS void
+__cxa_vec_delete3(void *array_address, size_t element_size, size_t padding_size,
+                  void (*destructor)(void *), void (*dealloc)(void *, size_t)) {
     if ( NULL != array_address ) {
         char *vec_base   = static_cast <char *> (array_address);
         char *heap_block = vec_base - padding_size;

@@ -1,51 +1,70 @@
-// Copyright 2013 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2013 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
-mergeInto(LibraryManager.library, {
-  $NODEFS__deps: ['$FS', '$PATH'],
-  $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { var fs = require("fs"); var NODEJS_PATH = require("path"); NODEFS.staticInit(); }',
+addToLibrary({
+#if WASMFS
+  $NODEFS__deps: ['$stringToUTF8OnStack', 'wasmfs_create_node_backend'],
+  $NODEFS: {
+    createBackend(opts) {
+      return _wasmfs_create_node_backend(stringToUTF8OnStack(opts.root));
+    }
+  }
+#else
+  $NODEFS__deps: ['$FS', '$PATH', '$ERRNO_CODES', '$mmapAlloc'],
+  $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { NODEFS.staticInit(); }',
   $NODEFS: {
     isWindows: false,
-    staticInit: function() {
+    staticInit() {
       NODEFS.isWindows = !!process.platform.match(/^win/);
-      var flags = process["binding"]("constants");
+      var flags = process.binding("constants");
       // Node.js 4 compatibility: it has no namespaces for constants
       if (flags["fs"]) {
         flags = flags["fs"];
       }
       NODEFS.flagsForNodeMap = {
-        "{{{ cDefine('O_APPEND') }}}": flags["O_APPEND"],
-        "{{{ cDefine('O_CREAT') }}}": flags["O_CREAT"],
-        "{{{ cDefine('O_EXCL') }}}": flags["O_EXCL"],
-        "{{{ cDefine('O_RDONLY') }}}": flags["O_RDONLY"],
-        "{{{ cDefine('O_RDWR') }}}": flags["O_RDWR"],
-        "{{{ cDefine('O_DSYNC') }}}": flags["O_SYNC"],
-        "{{{ cDefine('O_TRUNC') }}}": flags["O_TRUNC"],
-        "{{{ cDefine('O_WRONLY') }}}": flags["O_WRONLY"]
+        "{{{ cDefs.O_APPEND }}}": flags["O_APPEND"],
+        "{{{ cDefs.O_CREAT }}}": flags["O_CREAT"],
+        "{{{ cDefs.O_EXCL }}}": flags["O_EXCL"],
+        "{{{ cDefs.O_NOCTTY }}}": flags["O_NOCTTY"],
+        "{{{ cDefs.O_RDONLY }}}": flags["O_RDONLY"],
+        "{{{ cDefs.O_RDWR }}}": flags["O_RDWR"],
+        "{{{ cDefs.O_DSYNC }}}": flags["O_SYNC"],
+        "{{{ cDefs.O_TRUNC }}}": flags["O_TRUNC"],
+        "{{{ cDefs.O_WRONLY }}}": flags["O_WRONLY"],
+        "{{{ cDefs.O_NOFOLLOW }}}": flags["O_NOFOLLOW"],
       };
+#if ASSERTIONS
+      // The 0 define must match on both sides, as otherwise we would not
+      // know to add it.
+      assert(NODEFS.flagsForNodeMap["0"] === 0);
+#endif
     },
-    bufferFrom: function (arrayBuffer) {
-      // Node.js < 4.5 compatibility: Buffer.from does not support ArrayBuffer
-      // Buffer.from before 4.5 was just a method inherited from Uint8Array
-      // Buffer.alloc has been added with Buffer.from together, so check it instead
-      return Buffer.alloc ? Buffer.from(arrayBuffer) : new Buffer(arrayBuffer);
+    convertNodeCode(e) {
+      var code = e.code;
+#if ASSERTIONS
+      assert(code in ERRNO_CODES, `unexpected node error code: ${code} (${e})`);
+#endif
+      return ERRNO_CODES[code];
     },
-    mount: function (mount) {
+    mount(mount) {
+#if ASSERTIONS
       assert(ENVIRONMENT_IS_NODE);
+#endif
       return NODEFS.createNode(null, '/', NODEFS.getMode(mount.opts.root), 0);
     },
-    createNode: function (parent, name, mode, dev) {
+    createNode(parent, name, mode, dev) {
       if (!FS.isDir(mode) && !FS.isFile(mode) && !FS.isLink(mode)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
       var node = FS.createNode(parent, name, mode);
       node.node_ops = NODEFS.node_ops;
       node.stream_ops = NODEFS.stream_ops;
       return node;
     },
-    getMode: function (path) {
+    getMode(path) {
       var stat;
       try {
         stat = fs.lstatSync(path);
@@ -56,11 +75,11 @@ mergeInto(LibraryManager.library, {
         }
       } catch (e) {
         if (!e.code) throw e;
-        throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+        throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
       }
       return stat.mode;
     },
-    realPath: function (node) {
+    realPath(node) {
       var parts = [];
       while (node.parent !== node) {
         parts.push(node.name);
@@ -72,11 +91,12 @@ mergeInto(LibraryManager.library, {
     },
     // This maps the integer permission modes from http://linux.die.net/man/3/open
     // to node.js-specific file open permission strings at http://nodejs.org/api/fs.html#fs_fs_open_path_flags_mode_callback
-    flagsForNode: function(flags) {
-      flags &= ~0x200000 /*O_PATH*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
-      flags &= ~0x800 /*O_NONBLOCK*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
-      flags &= ~0x8000 /*O_LARGEFILE*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
-      flags &= ~0x80000 /*O_CLOEXEC*/; // Some applications may pass it; it makes no sense for a single process.
+    flagsForNode(flags) {
+      flags &= ~{{{ cDefs.O_PATH }}}; // Ignore this flag from musl, otherwise node.js fails to open the file.
+      flags &= ~{{{ cDefs.O_NONBLOCK }}}; // Ignore this flag from musl, otherwise node.js fails to open the file.
+      flags &= ~{{{ cDefs.O_LARGEFILE }}}; // Ignore this flag from musl, otherwise node.js fails to open the file.
+      flags &= ~{{{ cDefs.O_CLOEXEC }}}; // Some applications may pass it; it makes no sense for a single process.
+      flags &= ~{{{ cDefs.O_DIRECTORY }}}; // Node.js doesn't need this passed in, it errors.
       var newFlags = 0;
       for (var k in NODEFS.flagsForNodeMap) {
         if (flags & k) {
@@ -84,22 +104,20 @@ mergeInto(LibraryManager.library, {
           flags ^= k;
         }
       }
-
-      if (!flags) {
-        return newFlags;
-      } else {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+      if (flags) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
+      return newFlags;
     },
     node_ops: {
-      getattr: function(node) {
+      getattr(node) {
         var path = NODEFS.realPath(node);
         var stat;
         try {
           stat = fs.lstatSync(path);
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
         // node.js v0.10.20 doesn't report blksize and blocks on Windows. Fake them with default blksize of 4096.
         // See http://support.microsoft.com/kb/140365
@@ -125,7 +143,7 @@ mergeInto(LibraryManager.library, {
           blocks: stat.blocks
         };
       },
-      setattr: function(node, attr) {
+      setattr(node, attr) {
         var path = NODEFS.realPath(node);
         try {
           if (attr.mode !== undefined) {
@@ -142,15 +160,15 @@ mergeInto(LibraryManager.library, {
           }
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
-      lookup: function (parent, name) {
+      lookup(parent, name) {
         var path = PATH.join2(NODEFS.realPath(parent), name);
         var mode = NODEFS.getMode(path);
         return NODEFS.createNode(parent, name, mode);
       },
-      mknod: function (parent, name, mode, dev) {
+      mknod(parent, name, mode, dev) {
         var node = NODEFS.createNode(parent, name, mode, dev);
         // create the backing node for this in the fs root as well
         var path = NODEFS.realPath(node);
@@ -162,70 +180,74 @@ mergeInto(LibraryManager.library, {
           }
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
         return node;
       },
-      rename: function (oldNode, newDir, newName) {
+      rename(oldNode, newDir, newName) {
         var oldPath = NODEFS.realPath(oldNode);
         var newPath = PATH.join2(NODEFS.realPath(newDir), newName);
         try {
           fs.renameSync(oldPath, newPath);
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
+        oldNode.name = newName;
       },
-      unlink: function(parent, name) {
+      unlink(parent, name) {
         var path = PATH.join2(NODEFS.realPath(parent), name);
         try {
           fs.unlinkSync(path);
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
-      rmdir: function(parent, name) {
+      rmdir(parent, name) {
         var path = PATH.join2(NODEFS.realPath(parent), name);
         try {
           fs.rmdirSync(path);
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
-      readdir: function(node) {
+      readdir(node) {
         var path = NODEFS.realPath(node);
         try {
           return fs.readdirSync(path);
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
-      symlink: function(parent, newName, oldPath) {
+      symlink(parent, newName, oldPath) {
         var newPath = PATH.join2(NODEFS.realPath(parent), newName);
         try {
           fs.symlinkSync(oldPath, newPath);
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
-      readlink: function(node) {
+      readlink(node) {
         var path = NODEFS.realPath(node);
         try {
           path = fs.readlinkSync(path);
-          path = NODEJS_PATH.relative(NODEJS_PATH.resolve(node.mount.opts.root), path);
+          path = nodePath.relative(nodePath.resolve(node.mount.opts.root), path);
           return path;
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          // node under windows can return code 'UNKNOWN' here:
+          // https://github.com/emscripten-core/emscripten/issues/15468
+          if (e.code === 'UNKNOWN') throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
     },
     stream_ops: {
-      open: function (stream) {
+      open(stream) {
         var path = NODEFS.realPath(stream.node);
         try {
           if (FS.isFile(stream.node.mode)) {
@@ -233,56 +255,72 @@ mergeInto(LibraryManager.library, {
           }
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
-      close: function (stream) {
+      close(stream) {
         try {
           if (FS.isFile(stream.node.mode) && stream.nfd) {
             fs.closeSync(stream.nfd);
           }
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
-      read: function (stream, buffer, offset, length, position) {
+      read(stream, buffer, offset, length, position) {
         // Node.js < 6 compatibility: node errors on 0 length reads
         if (length === 0) return 0;
         try {
-          return fs.readSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
+          return fs.readSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), { position: position });
         } catch (e) {
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
-      write: function (stream, buffer, offset, length, position) {
+      write(stream, buffer, offset, length, position) {
         try {
-          return fs.writeSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
+          return fs.writeSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), { position: position });
         } catch (e) {
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
-      llseek: function (stream, offset, whence) {
+      llseek(stream, offset, whence) {
         var position = offset;
-        if (whence === 1) {  // SEEK_CUR.
+        if (whence === {{{ cDefs.SEEK_CUR }}}) {
           position += stream.position;
-        } else if (whence === 2) {  // SEEK_END.
+        } else if (whence === {{{ cDefs.SEEK_END }}}) {
           if (FS.isFile(stream.node.mode)) {
             try {
               var stat = fs.fstatSync(stream.nfd);
               position += stat.size;
             } catch (e) {
-              throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+              throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
             }
           }
         }
 
         if (position < 0) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
         }
 
         return position;
+      },
+      mmap(stream, length, position, prot, flags) {
+        if (!FS.isFile(stream.node.mode)) {
+          throw new FS.ErrnoError({{{ cDefs.ENODEV }}});
+        }
+
+        var ptr = mmapAlloc(length);
+
+        NODEFS.stream_ops.read(stream, HEAP8, ptr, length, position);
+        return { ptr, allocated: true };
+      },
+      msync(stream, buffer, offset, length, mmapFlags) {
+        NODEFS.stream_ops.write(stream, buffer, 0, length, offset, false);
+        // should we check if bytesWritten and length are the same?
+        return 0;
       }
     }
   }
+#endif
 });

@@ -1,7 +1,6 @@
 #include <locale.h>
 #include <langinfo.h>
 #include "locale_impl.h"
-#include "libc.h"
 
 static const char c_time[] =
 	"Sun\0" "Mon\0" "Tue\0" "Wed\0" "Thu\0" "Fri\0" "Sat\0"
@@ -33,7 +32,11 @@ char *__nl_langinfo_l(nl_item item, locale_t loc)
 	int idx = item & 65535;
 	const char *str;
 
-	if (item == CODESET) return MB_CUR_MAX==1 ? "ASCII" : "UTF-8";
+	if (item == CODESET) return loc->cat[LC_CTYPE] ? "UTF-8" : "ASCII";
+
+	/* _NL_LOCALE_NAME extension */
+	if (idx == 65535 && cat < LC_ALL)
+		return loc->cat[cat] ? (char *)loc->cat[cat]->name : "C";
 	
 	switch (cat) {
 	case LC_NUMERIC:

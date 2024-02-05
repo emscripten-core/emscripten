@@ -4,15 +4,15 @@
 preamble.js
 ===========
 
-The JavaScript APIs in `preamble.js <https://github.com/emscripten-core/emscripten/blob/master/src/preamble.js>`_ provide programmatic access for interacting with the compiled C code, including: calling compiled C functions, accessing memory, converting pointers to JavaScript ``Strings`` and ``Strings`` to pointers (with different encodings/formats), and other convenience functions.
+The JavaScript APIs in `preamble.js <https://github.com/emscripten-core/emscripten/blob/main/src/preamble.js>`_ provide programmatic access for interacting with the compiled C code, including: calling compiled C functions, accessing memory, converting pointers to JavaScript ``Strings`` and ``Strings`` to pointers (with different encodings/formats), and other convenience functions.
 
 We call this "``preamble.js``" because Emscripten's output JS, at a high level, contains the preamble (from ``src/preamble.js``), then the compiled code, then the postamble. (In slightly more detail, the preamble contains utility functions and setup, while the postamble connects things and handles running the application.)
 
 The preamble code is included in the output JS, which is then optimized all together by the compiler, together with any ``--pre-js`` and ``--post-js`` files you added and code from any JavaScript libraries (``--js-library``). That means that you can call methods from the preamble directly, and the compiler will see that you need them, and not remove them as being unused.
 
-If you want to call preamble methods from somewhere the compiler can't see, like another script tag on the HTML, you need to **export** them. To do so, add them to ``EXTRA_EXPORTED_RUNTIME_METHODS`` (for example, ``-s 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'`` will export ``call`` and ``cwrap``). Once exported, you can access them on the ``Module`` object (as ``Module.ccall``, for example).
+If you want to call preamble methods from somewhere the compiler can't see, like another script tag on the HTML, you need to **export** them. To do so, add them to ``EXPORTED_RUNTIME_METHODS`` (for example, ``-sEXPORTED_RUNTIME_METHODS=ccall,cwrap`` will export ``ccall`` and ``cwrap``). Once exported, you can access them on the ``Module`` object (as ``Module.ccall``, for example).
 
-.. note:: If you try to use ``Module.ccall`` or another runtime method without exporting it, you will get an error. In a build with ``-s ASSERTIONS=1``, the compiler emits code to show you a useful error message, which will explain that you need to export it. In general, if you see something odd, it's useful to build with assertions.
+.. note:: If you try to use ``Module.ccall`` or another runtime method without exporting it, you will get an error. In a build with ``-sASSERTIONS``, the compiler emits code to show you a useful error message, which will explain that you need to export it. In general, if you see something odd, it's useful to build with assertions.
 
 
 .. contents:: Table of Contents
@@ -51,7 +51,7 @@ Calling compiled C functions from JavaScript
 
       .. code-block:: none
 
-        -s EXPORTED_FUNCTIONS="['_main', '_myfunc']"
+        -sEXPORTED_FUNCTIONS=_main,_myfunc"
 
       (Note that we also export ``main`` - if we didn't, the compiler would assume we don't need it.) Exported functions can then be called as normal:
 
@@ -70,7 +70,7 @@ Calling compiled C functions from JavaScript
   :returns: The result of the function call as a native JavaScript value (as in ``returnType``) or, if the ``async`` option is set, a JavaScript Promise of the result.
   :opts: An optional options object. It can contain the following properties:
 
-      - ``async``: If ``true``, implies that the ccall will perform an async operation. This assumes you are using the Emterpreter-Async option for your code.
+      - ``async``: If ``true``, implies that the ccall will perform an async operation. This assumes you are build with asyncify support.
 
   .. note:: Async calls currently don't support promise error handling.
 
@@ -99,12 +99,12 @@ Calling compiled C functions from JavaScript
 
   .. note::
     - ``cwrap`` uses the C stack for temporary values. If you pass a string then it is only "alive" until the call is complete. If the code being called saves the pointer to be used later, it may point to invalid data. If you need a string to live forever, you can create it, for example, using ``_malloc`` and :js:func:`stringToUTF8`. However, you must later delete it manually!
-    - LLVM optimizations can inline and remove functions, after which you will not be able to "wrap" them. Similarly, function names minified by the *Closure Compiler* are inaccessible. In either case, the solution is to add the functions to the ``EXPORTED_FUNCTIONS`` list when you invoke *emcc* :
+    - To wrap a function it must be exported by adding it to the ``EXPORTED_FUNCTIONS`` list when you invoke *emcc*. If a function is not exported, optimizations may remove it, and ``cwrap`` will not be able to find it at runtime. (In builds with ``ASSERTIONS`` enabled, ``cwrap`` will show an error in such a situation; in release builds without assertions, trying to wrap a non-existent function will error, either by returning `undefined` or by returning a function that will error when actually called, depending on how ``cwrap`` optimizes.)
     - ``cwrap`` does not actually call compiled code (only calling the wrapper it returns does that). That means that it is safe to call ``cwrap`` early, before the runtime is fully initialized (but calling the returned wrapped function must wait for the runtime, of course, like calling compiled code in general).
 
       .. code-block:: none
 
-        -s EXPORTED_FUNCTIONS="['_main', '_myfunc']"
+        -sEXPORTED_FUNCTIONS=_main,_myfunc
 
       Exported functions can be called as normal:
 
@@ -164,7 +164,7 @@ Conversion functions — strings, pointers and arrays
   Given a pointer ``ptr`` to a null-terminated UTF8-encoded string in the Emscripten HEAP, returns a copy of that string as a JavaScript ``String`` object.
 
   :param ptr: A pointer to a null-terminated UTF8-encoded string in the Emscripten HEAP.
-  :param maxBytesToRead: An optional length that specifies the maximum number of bytes to read. You can omit this parameter to scan the string until the first \0 byte. If maxBytesToRead is passed, and the string at [ptr, ptr+maxBytesToReadr[ contains a null byte in the middle, then the string will cut short at that byte index (i.e. maxBytesToRead will not produce a string of exact length [ptr, ptr+maxBytesToRead[) N.B. mixing frequent uses of UTF8ToString() with and without maxBytesToRead may throw JS JIT optimizations off, so it is worth to consider consistently using one style or the other.
+  :param maxBytesToRead: An optional length that specifies the maximum number of bytes to read. You can omit this parameter to scan the string until the first \0 byte. If maxBytesToRead is passed, and the string at ``[ptr, ptr+maxBytesToReadr)`` contains a null byte in the middle, then the string will cut short at that byte index (i.e. maxBytesToRead will not produce a string of exact length ``[ptr, ptr+maxBytesToRead)``) N.B. mixing frequent uses of ``UTF8ToString()`` with and without maxBytesToRead may throw JS JIT optimizations off, so it is worth to consider consistently using one style or the other.
   :returns: A JavaScript ``String`` object
 
 
@@ -219,7 +219,7 @@ Conversion functions — strings, pointers and arrays
   :param str: A JavaScript ``String`` object.
   :type str: String
   :param outPtr: Pointer to data copied from ``str``, encoded in encoded in UTF32LE format and null-terminated.
-  :param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred, as long as `maxBytesToWrite >= 4`` so that there is space for the null terminator.
+  :param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred, as long as ``maxBytesToWrite >= 4`` so that there is space for the null terminator.
 
 
 
@@ -252,32 +252,6 @@ Conversion functions — strings, pointers and arrays
   :returns: A ``String``, containing the content of ``array``.
 
 
-
-.. js:function:: writeStringToMemory(string, buffer, dontAddNull)
-
-  Writes a JavaScript string to a specified address in the heap.
-
-  .. warning:: This function is deprecated, you should call the function ``stringToUTF8`` instead, which provides a secure bounded version of the same functionality instead.
-
-  .. code-block:: javascript
-
-    // Allocate space for string and extra '0' at the end
-    var buffer = Module._malloc(myString.length+1);
-
-    // Write the string to memory
-    Module.writeStringToMemory(myString, buffer);
-
-    // We can now send buffer into a C function, it is just a normal char* pointer
-
-  :param string: The string to write into memory.
-  :type string: String
-  :param buffer: The address (number) where ``string`` is to be written.
-  :type buffer: Number
-  :param dontAddNull: If ``true``, the new array is not zero-terminated.
-  :type dontAddNull: bool
-
-
-
 .. js:function:: writeArrayToMemory(array, buffer)
 
   Writes an array to a specified address in the heap. Note that memory should to be allocated for the array before it is written.
@@ -288,29 +262,8 @@ Conversion functions — strings, pointers and arrays
 
 
 
-.. js:function:: writeAsciiToMemory(str, buffer, dontAddNull)
-
-  Writes an ASCII string to a specified address in the heap. Note that memory should to be allocated for the string before it is written.
-
-  The string is assumed to only have characters in the ASCII character set. If ASSERTIONS are enabled and this is not the case, it will fail.
-
-  .. code-block:: javascript
-
-    // Allocate space for string
-    var buffer = Module._malloc(myString.length);
-
-    // Write the string to memory
-    Module.writeStringToMemory(myString, buffer);
-
-  :param string: The string to write into memory.
-  :param buffer: The address where ``string`` is to be written.
-  :param dontAddNull: If ``true``, the new string is not zero-terminated.
-  :type dontAddNull: bool
-
-
-
 Run dependencies
-=====================================
+================
 
 Note that generally run dependencies are managed by the file packager and other parts of the system. It is rare for developers to use this API directly.
 
@@ -338,7 +291,7 @@ Note that generally run dependencies are managed by the file packager and other 
 
 
 Stack trace
-=====================
+===========
 
 .. js:function:: stackTrace()
 
@@ -404,7 +357,7 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
 .. COMMENT (not rendered) : The following methods are explicitly not part of the public API and not documented. Note that in some case referred to by function name, other cases by Module assignment.
 
   function allocate(slab, types, allocator, ptr) — Internal and use is discouraged. Documentation can remain in source code but not here.
-    associated contants ALLOC_NORMAL, ALLOC_STACK, ALLOC_DYNAMIC, ALLOC_NONE
+    associated constants ALLOC_NORMAL, ALLOC_STACK
 
   function addOnPreRun
   function addOnInit
@@ -413,13 +366,9 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
   function addOnPostRun
   Module['ALLOC_NORMAL'] = ALLOC_NORMAL;
   Module['ALLOC_STACK'] = ALLOC_STACK;
-  Module['ALLOC_DYNAMIC'] = ALLOC_DYNAMIC;
-  Module['ALLOC_NONE'] = ALLOC_NONE;
   Module['HEAP'] = HEAP;
   Module['IHEAP'] = IHEAP;
-  function alignUp(x, multiple)
   function demangle(func)
-  function demangleAll(text)
   function parseJSFunc(jsfunc)
   function callRuntimeCallbacks(callbacks)
   function preRun()
@@ -440,7 +389,6 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
   function SAFE_HEAP_LOAD(dest, bytes, isFloat, unsigned)
   function SAFE_FT_MASK(value, mask)
   function CHECK_OVERFLOW(value, bits, ignore, sig)
-  Module['PGOMonitor'] = PGOMonitor; — a bit confusing
   Module["preloadedImages"]
   Module["preloadedAudios"]
 

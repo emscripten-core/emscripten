@@ -1,0 +1,1 @@
+Aborted(Assertion failed: Waking up (starting to rewind) must be done from JS, without compiled code on the stack.)

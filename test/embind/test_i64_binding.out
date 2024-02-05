@@ -1,0 +1,12 @@
+start
+test:
+vector<int64_t>
+test:
+vector<int64_t> Cannot convert bigint that is too big
+test:
+vector<uint64_t>
+test:
+vector<uint64_t> Cannot convert bigint that is too big
+test:
+vector<uint64_t> Cannot convert bigint that is negative
+end

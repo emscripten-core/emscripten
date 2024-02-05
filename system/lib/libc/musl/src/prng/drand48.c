@@ -1,8 +1,6 @@
 #include <stdlib.h>
 #include <inttypes.h>
-
-uint64_t __rand48_step(unsigned short *xi, unsigned short *lc);
-extern unsigned short __seed48[7];
+#include "rand48.h"
 
 double erand48(unsigned short s[3])
 {

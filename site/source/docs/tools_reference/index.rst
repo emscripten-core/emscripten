@@ -23,4 +23,4 @@ This section provides reference for the main tools in the :ref:`Emscripten toolc
    emsdk
    emcc
    emcmdprompt
-
+   settings_reference

@@ -1,0 +1,62 @@
+F_OK(readable): 0
+errno: 0
+R_OK(readable): 0
+errno: 0
+X_OK(readable): -1
+errno: 2
+W_OK(readable): -1
+errno: 2
+
+F_OK(writeable): 0
+errno: 0
+R_OK(writeable): -1
+errno: 2
+X_OK(writeable): -1
+errno: 2
+W_OK(writeable): 0
+errno: 0
+
+F_OK(allaccess): 0
+errno: 0
+R_OK(allaccess): 0
+errno: 0
+X_OK(allaccess): 0
+errno: 0
+W_OK(allaccess): 0
+errno: 0
+
+F_OK(forbidden): 0
+errno: 0
+R_OK(forbidden): -1
+errno: 2
+X_OK(forbidden): -1
+errno: 2
+W_OK(forbidden): -1
+errno: 2
+
+F_OK(nonexistent): -1
+errno: 44
+R_OK(nonexistent): -1
+errno: 44
+X_OK(nonexistent): -1
+errno: 44
+W_OK(nonexistent): -1
+errno: 44
+
+F_OK(): -1
+errno: 44
+R_OK(): -1
+errno: 44
+X_OK(): -1
+errno: 44
+W_OK(): -1
+errno: 44
+
+F_OK(filetorename): -1
+errno: 44
+F_OK(renamedfile): 0
+errno: 0
+F_OK(filetorename): -1
+errno: 44
+F_OK(renamedfile): 0
+errno: 0

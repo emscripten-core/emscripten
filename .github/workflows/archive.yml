@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  create:
+    tags:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
+    - name: make dist
+      run: |
+        make dist
+        version=`cat emscripten-version.txt | sed s/\"//g`
+        echo "VERSION=$version" >> $GITHUB_ENV
+    - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+      with:
+        name: emscripten-${{ env.VERSION }}
+        path: emscripten-${{ env.VERSION }}.tar.bz2

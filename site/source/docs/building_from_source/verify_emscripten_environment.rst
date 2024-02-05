@@ -13,27 +13,27 @@ Testing the environment
 Sanity tests
 ------------
 
-The first step in verifying the environment is to run Emscripten with the version command (``-v``). The command prints out information about the toolchain and runs some basic sanity tests to check that the required tools are available.
+The first step in verifying the environment is to run Emscripten with ``--check``. The option prints out information about the toolchain and runs some basic sanity tests to check that the required tools are available.
 
 Open a terminal in the directory in which you installed Emscripten (on Windows open the :ref:`Emscripten Command Prompt <emcmdprompt>`). Then call the :ref:`Emscripten Compiler Frontend (emcc) <emccdoc>` as shown::
 
-  ./emcc -v
+  ./emcc --check
 
-.. note:: On Windows, invoke the tool with **emsdk** instead of **./emsdk**.
+.. note:: On Windows, invoke the tool with **emcc** instead of **./emcc**.
 
-For example, the following output reports an installation where Java is missing::
-  :emphasize-lines: 6
+For example, the following output reports that the correct version of clang
+could not be found:
 
-  emcc (Emscripten GCC-like replacement + linker emulating GNU ld ) 1.21.0
-  clang version 3.3
-  Target: x86_64-pc-win32
-  Thread model: posix
-  INFO     root: (Emscripten: Running sanity checks)
-  WARNING  root: java does not seem to exist, required for closure compiler. -O2 and above will fail. You need to define JAVA in ~/.emscripten
+.. code-block:: none
+  :emphasize-lines: 3
 
-At this point you need to :ref:`Install and activate <fixing-missing-components-emcc>` any missing components. When everything is set up properly, ``./emcc -v`` should give no warnings, and if you just enter ``./emcc`` (without any input files), it should only give the following warning: ::
+  emcc (Emscripten GCC-like replacement + linker emulating GNU ld) 1.21.0
+  shared:INFO: (Emscripten: Running sanity checks)
+  emcc: warning: LLVM version for clang executable "/usr/bin/clang" appears incorrect (seeing "16.0", expected "18") [-Wversion-check]
 
-  WARNING  root: no input files
+At this point you need to :ref:`Install and activate <fixing-missing-components-emcc>` any missing components. When everything is set up properly, ``emcc ---check`` should give no warnings, and if you just enter ``emcc`` (without any input files), it will give an error ::
+
+  emcc: error: no input files
 
 
 Build a basic example
@@ -44,7 +44,7 @@ The next test is to actually build some code! On the command prompt navigate to 
 ::
 
   cd emscripten/<version of emscripten you installed>
-  ./emcc tests/hello_world.cpp
+  ./emcc test/hello_world.cpp
 
 This command should complete without warnings and you should find the newly-compiled JavaScript file (**a.out.js**) in the current directory.
 
@@ -62,7 +62,7 @@ Emscripten has a comprehensive test suite which may be used to further validate 
 Troubleshooting
 ===============
 
-First run ``./emcc -v`` and examine the output to find missing components. You can also try ``./emcc --clear-cache`` to empty the :ref:`compiler's internal cache <emcc-clear-cache>` and reset it to a known good state.
+First run ``./emcc --check`` and examine the output to find missing components. You can also try ``./emcc --clear-cache`` to empty the :ref:`compiler's internal cache <emcc-clear-cache>` and reset it to a known good state.
 
 
 .. _fixing-missing-components-emcc:
@@ -91,6 +91,6 @@ Other common problems to check for are:
 
    - Errors in the paths in :ref:`.emscripten <compiler-configuration-file>`. These are less likely if you update the file using :ref:`emsdk <emsdk>`.
    - Using older versions of Node or JavaScript engines. Use the default versions for the SDK as listed with :ref:`emsdk list <emsdk>`.
-   - Using older versions of LLVM. The correct versions come with the SDK, but if you're building the environment from source see :ref:`LLVM-Backend` for the proper repos for LLVM and Clang.
+   - Using older versions of LLVM. The correct versions come with the SDK, but if you're building the environment from source you should make sure to use the proper version of LLVM (which you can find using the `emscripten-releases DEPS file and history <https://github.com/emscripten-core/emscripten/blob/main/docs/process.md#release-processes>`_; other versions might work, especially close-by ones, but are not tested by us and so not guaranteed to work).
 
 If none of the above is helpful, then please :ref:`contact us <contact>` for help.

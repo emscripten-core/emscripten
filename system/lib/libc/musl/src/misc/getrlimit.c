@@ -1,18 +1,18 @@
 #include <sys/resource.h>
 #include <errno.h>
 #include "syscall.h"
-#include "libc.h"
 
 #define FIX(x) do{ if ((x)>=SYSCALL_RLIM_INFINITY) (x)=RLIM_INFINITY; }while(0)
 
 int getrlimit(int resource, struct rlimit *rlim)
 {
-	unsigned long k_rlim[2];
 	int ret = syscall(SYS_prlimit64, 0, resource, 0, rlim);
 	if (!ret) {
 		FIX(rlim->rlim_cur);
 		FIX(rlim->rlim_max);
 	}
+#ifdef SYS_getrlimit
+	unsigned long k_rlim[2];
 	if (!ret || errno != ENOSYS)
 		return ret;
 	if (syscall(SYS_getrlimit, resource, k_rlim) < 0)
@@ -22,6 +22,7 @@ int getrlimit(int resource, struct rlimit *rlim)
 	FIX(rlim->rlim_cur);
 	FIX(rlim->rlim_max);
 	return 0;
+#else
+	return ret;
+#endif
 }
-
-LFS64(getrlimit);

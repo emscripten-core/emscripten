@@ -1,6 +1,5 @@
 #include <string.h>
 #include <resolv.h>
-#include "libc.h"
 
 /* RFC 1035 message compression */
 
@@ -55,7 +54,7 @@ static int match(int *offset, const unsigned char *base, const unsigned char *dn
 	}
 }
 
-int __dn_comp(const char *src, unsigned char *dst, int space, unsigned char **dnptrs, unsigned char **lastdnptr)
+int dn_comp(const char *src, unsigned char *dst, int space, unsigned char **dnptrs, unsigned char **lastdnptr)
 {
 	int i, j, n, m=0, offset, bestlen=0, bestoff;
 	unsigned char lens[127];
@@ -106,5 +105,3 @@ int __dn_comp(const char *src, unsigned char *dst, int space, unsigned char **dn
 	}
 	return i;
 }
-
-weak_alias(__dn_comp, dn_comp);

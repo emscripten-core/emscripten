@@ -4,8 +4,6 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-char *__randname(char *);
-
 char *mktemp(char *template)
 {
 	size_t l = strlen(template);

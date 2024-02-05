@@ -1,6 +1,5 @@
 #include <threads.h>
-
-int __pthread_once(once_flag *, void (*)(void));
+#include <pthread.h>
 
 void call_once(once_flag *flag, void (*func)(void))
 {

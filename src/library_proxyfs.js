@@ -1,15 +1,16 @@
-// Copyright 2016 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2016 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
-mergeInto(LibraryManager.library, {
-  $PROXYFS__deps: ['$FS', '$PATH'],
+addToLibrary({
+  $PROXYFS__deps: ['$FS', '$PATH', '$ERRNO_CODES'],
   $PROXYFS: {
-    mount: function (mount) {
+    mount(mount) {
       return PROXYFS.createNode(null, '/', mount.opts.fs.lstat(mount.opts.root).mode, 0);
     },
-    createNode: function (parent, name, mode, dev) {
+    createNode(parent, name, mode, dev) {
       if (!FS.isDir(mode) && !FS.isFile(mode) && !FS.isLink(mode)) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
@@ -18,7 +19,7 @@ mergeInto(LibraryManager.library, {
       node.stream_ops = PROXYFS.stream_ops;
       return node;
     },
-    realPath: function (node) {
+    realPath(node) {
       var parts = [];
       while (node.parent !== node) {
         parts.push(node.name);
@@ -29,7 +30,7 @@ mergeInto(LibraryManager.library, {
       return PATH.join.apply(null, parts);
     },
     node_ops: {
-      getattr: function(node) {
+      getattr(node) {
         var path = PROXYFS.realPath(node);
         var stat;
         try {
@@ -54,7 +55,7 @@ mergeInto(LibraryManager.library, {
           blocks: stat.blocks
         };
       },
-      setattr: function(node, attr) {
+      setattr(node, attr) {
         var path = PROXYFS.realPath(node);
         try {
           if (attr.mode !== undefined) {
@@ -74,7 +75,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
       },
-      lookup: function (parent, name) {
+      lookup(parent, name) {
         try {
           var path = PATH.join2(PROXYFS.realPath(parent), name);
           var mode = parent.mount.opts.fs.lstat(path).mode;
@@ -85,7 +86,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
       },
-      mknod: function (parent, name, mode, dev) {
+      mknod(parent, name, mode, dev) {
         var node = PROXYFS.createNode(parent, name, mode, dev);
         // create the backing node for this in the fs root as well
         var path = PROXYFS.realPath(node);
@@ -101,17 +102,19 @@ mergeInto(LibraryManager.library, {
         }
         return node;
       },
-      rename: function (oldNode, newDir, newName) {
+      rename(oldNode, newDir, newName) {
         var oldPath = PROXYFS.realPath(oldNode);
         var newPath = PATH.join2(PROXYFS.realPath(newDir), newName);
         try {
           oldNode.mount.opts.fs.rename(oldPath, newPath);
+          oldNode.name = newName;
+          oldNode.parent = newDir;
         } catch(e) {
           if (!e.code) throw e;
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
       },
-      unlink: function(parent, name) {
+      unlink(parent, name) {
         var path = PATH.join2(PROXYFS.realPath(parent), name);
         try {
           parent.mount.opts.fs.unlink(path);
@@ -120,7 +123,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
       },
-      rmdir: function(parent, name) {
+      rmdir(parent, name) {
         var path = PATH.join2(PROXYFS.realPath(parent), name);
         try {
           parent.mount.opts.fs.rmdir(path);
@@ -129,7 +132,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
       },
-      readdir: function(node) {
+      readdir(node) {
         var path = PROXYFS.realPath(node);
         try {
           return node.mount.opts.fs.readdir(path);
@@ -138,7 +141,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
       },
-      symlink: function(parent, newName, oldPath) {
+      symlink(parent, newName, oldPath) {
         var newPath = PATH.join2(PROXYFS.realPath(parent), newName);
         try {
           parent.mount.opts.fs.symlink(oldPath, newPath);
@@ -147,7 +150,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
       },
-      readlink: function(node) {
+      readlink(node) {
         var path = PROXYFS.realPath(node);
         try {
           return node.mount.opts.fs.readlink(path);
@@ -158,7 +161,7 @@ mergeInto(LibraryManager.library, {
       },
     },
     stream_ops: {
-      open: function (stream) {
+      open(stream) {
         var path = PROXYFS.realPath(stream.node);
         try {
           stream.nfd = stream.node.mount.opts.fs.open(path,stream.flags);
@@ -167,7 +170,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
       },
-      close: function (stream) {
+      close(stream) {
         try {
           stream.node.mount.opts.fs.close(stream.nfd);
         } catch(e) {
@@ -175,7 +178,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
       },
-      read: function (stream, buffer, offset, length, position) {
+      read(stream, buffer, offset, length, position) {
         try {
           return stream.node.mount.opts.fs.read(stream.nfd, buffer, offset, length, position);
         } catch(e) {
@@ -183,7 +186,7 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
       },
-      write: function (stream, buffer, offset, length, position) {
+      write(stream, buffer, offset, length, position) {
         try {
           return stream.node.mount.opts.fs.write(stream.nfd, buffer, offset, length, position);
         } catch(e) {
@@ -191,14 +194,14 @@ mergeInto(LibraryManager.library, {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
       },
-      llseek: function (stream, offset, whence) {
+      llseek(stream, offset, whence) {
         var position = offset;
-        if (whence === 1) {  // SEEK_CUR.
+        if (whence === {{{ cDefs.SEEK_CUR }}}) {
           position += stream.position;
-        } else if (whence === 2) {  // SEEK_END.
+        } else if (whence === {{{ cDefs.SEEK_END }}}) {
           if (FS.isFile(stream.node.mode)) {
             try {
-              var stat = stream.node.mount.opts.fs.fstat(stream.nfd);
+              var stat = stream.node.node_ops.getattr(stream.node);
               position += stat.size;
             } catch (e) {
               throw new FS.ErrnoError(ERRNO_CODES[e.code]);
@@ -215,3 +218,7 @@ mergeInto(LibraryManager.library, {
     }
   }
 });
+
+if (WASMFS) {
+  error("using -lproxyfs is not currently supported in WasmFS.");
+}

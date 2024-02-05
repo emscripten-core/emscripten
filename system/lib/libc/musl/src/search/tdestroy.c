@@ -1,12 +1,7 @@
 #define _GNU_SOURCE
 #include <stdlib.h>
 #include <search.h>
-
-struct node {
-	void *key;
-	struct node *left;
-	struct node *right;
-};
+#include "tsearch.h"
 
 void tdestroy(void *root, void (*freekey)(void *))
 {
@@ -14,8 +9,8 @@ void tdestroy(void *root, void (*freekey)(void *))
 
 	if (r == 0)
 		return;
-	tdestroy(r->left, freekey);
-	tdestroy(r->right, freekey);
-	if (freekey) freekey(r->key);
+	tdestroy(r->a[0], freekey);
+	tdestroy(r->a[1], freekey);
+	if (freekey) freekey((void *)r->key);
 	free(r);
 }

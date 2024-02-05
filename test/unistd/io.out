@@ -1,0 +1,28 @@
+read from folder: -1
+errno: 8
+write to folder: -1
+errno: 8
+
+read from broken device: -1
+errno: 29
+write to broken device: -1
+errno: 29
+
+read from device: 4
+data: ABCD
+errno: 0
+TO DEVICE: 119
+TO DEVICE: 114
+TO DEVICE: 105
+TO DEVICE: 116
+TO DEVICE: 101
+TO DEVICE: 109
+TO DEVICE: 101
+TO DEVICE: 0
+write to device: 8
+errno: 0
+
+open read-only device from createDevice for read, errno: 0
+open read-only device from createDevice for write, errno: 2
+open write-only device from createDevice for read, errno: 2
+open write-only device from createDevice for write, errno: 0

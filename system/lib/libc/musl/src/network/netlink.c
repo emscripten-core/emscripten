@@ -47,6 +47,10 @@ int __rtnetlink_enumerate(int link_af, int addr_af, int (*cb)(void *ctx, struct 
 	if (fd < 0) return -1;
 	r = __netlink_enumerate(fd, 1, RTM_GETLINK, link_af, cb, ctx);
 	if (!r) r = __netlink_enumerate(fd, 2, RTM_GETADDR, addr_af, cb, ctx);
+#ifdef __EMSCRIPTEN__
+	__wasi_fd_close(fd);
+#else
 	__syscall(SYS_close,fd);
+#endif
 	return r;
 }

@@ -1,5 +1,4 @@
 #include <ctype.h>
-#include "libc.h"
 
 int toupper(int c)
 {

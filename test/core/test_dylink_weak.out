@@ -1,0 +1,2 @@
+main foo() -> 42
+side foo() -> 42

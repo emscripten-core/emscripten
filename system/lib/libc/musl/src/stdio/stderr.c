@@ -1,7 +1,9 @@
 #include "stdio_impl.h"
 
+#undef stderr
+
 static unsigned char buf[UNGET];
-static FILE f = {
+hidden FILE __stderr_FILE = {
 	.buf = buf+UNGET,
 	.buf_size = 0,
 	.fd = 2,
@@ -12,5 +14,5 @@ static FILE f = {
 	.close = __stdio_close,
 	.lock = -1,
 };
-FILE *const stderr = &f;
-FILE *volatile __stderr_used = &f;
+FILE *const stderr = &__stderr_FILE;
+FILE *volatile __stderr_used = &__stderr_FILE;

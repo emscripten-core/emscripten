@@ -1,13 +1,16 @@
 #include "stdio_impl.h"
+#include <errno.h>
 
 int fileno(FILE *f)
 {
-	/* f->fd never changes, but the lock must be obtained and released
-	 * anyway since this function cannot return while another thread
-	 * holds the lock. */
 	FLOCK(f);
+	int fd = f->fd;
 	FUNLOCK(f);
-	return f->fd;
+	if (fd < 0) {
+		errno = EBADF;
+		return -1;
+	}
+	return fd;
 }
 
 weak_alias(fileno, fileno_unlocked);

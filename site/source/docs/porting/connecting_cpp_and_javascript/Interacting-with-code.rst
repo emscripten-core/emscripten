@@ -60,19 +60,22 @@ function and returns a JavaScript function you can call normally.
 :js:func:`cwrap` is therefore more useful if you plan to call a compiled
 function a number of times.
 
-Consider the **tests/hello_function.cpp** file shown below. The
+Consider the **test/hello_function.cpp** file shown below. The
 ``int_sqrt()`` function to be compiled is wrapped in ``extern "C"``
 to prevent C++ name mangling.
 
-.. include:: ../../../../../tests/hello_function.cpp
+.. include:: ../../../../../test/hello_function.cpp
    :literal:
 
 To compile this code run the following command in the Emscripten
 home directory::
 
-    ./emcc tests/hello_function.cpp -o function.html -s EXPORTED_FUNCTIONS='["_int_sqrt"]' -s EXTRA_EXPORTED_RUNTIME_METHODS='["ccall", "cwrap"]'
+    emcc test/hello_function.cpp -o function.html -sEXPORTED_FUNCTIONS=_int_sqrt -sEXPORTED_RUNTIME_METHODS=ccall,cwrap
 
-``EXPORTED_FUNCTIONS`` tells the compiler what we want to be accessible from the compiled code (everything else might be removed if it is not used), and ``EXTRA_EXPORTED_RUNTIME_METHODS`` tells the compiler that we want to use the runtime functions ``ccall`` and ``cwrap`` (otherwise, it will remove them if it does not see they are used).
+``EXPORTED_FUNCTIONS`` tells the compiler what we want to be accessible from the
+compiled code (everything else might be removed if it is not used), and
+``EXPORTED_RUNTIME_METHODS`` tells the compiler that we want to use the runtime
+functions ``ccall`` and ``cwrap`` (otherwise, it will not include them).
 
 .. note::
 
@@ -128,7 +131,7 @@ parameters to pass to the function:
      from JavaScript:
 
      - Exporting is done at compile time. For example:
-       ``-s EXPORTED_FUNCTIONS='["_main","_other_function"]'`` exports
+       ``-sEXPORTED_FUNCTIONS=_main,_other_function`` exports
        ``main()`` and ``other_function()``.
      - Note that you need ``_`` at the
        beginning of the function names in the ``EXPORTED_FUNCTIONS`` list.
@@ -155,8 +158,8 @@ parameters to pass to the function:
      didn't see, like another script tag on the HTML or in the JS console like
      we did in this tutorial, then because of optimizations
      and minification you should export ccall from the runtime, using
-     ``EXTRA_EXPORTED_RUNTIME_METHODS``, for example using
-     ``-s 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'``,
+     ``EXPORTED_RUNTIME_METHODS``, for example using
+     ``-sEXPORTED_RUNTIME_METHODS=ccall,cwrap``,
      and call it on ``Module`` (which contains
      everything exported, in a safe way that is not influenced by minification
      or optimizations).
@@ -187,18 +190,28 @@ Compile the library with emcc:
 
 .. code:: bash
 
-    emcc api_example.c -o api_example.js
+    emcc api_example.c -o api_example.js -sMODULARIZE -sEXPORTED_RUNTIME_METHODS=ccall
 
 Require the library and call its procedures from node:
 
 .. code:: javascript
 
-    var em_module = require('./api_example.js');
+    var factory = require('./api_example.js');
 
-    em_module._sayHi(); // direct calling works
-    em_module.ccall("sayHi"); // using ccall etc. also work
-    console.log(em_module._daysInWeek()); // values can be returned, etc.
+    factory().then((instance) => {
+      instance._sayHi(); // direct calling works
+      instance.ccall("sayHi"); // using ccall etc. also work
+      console.log(instance._daysInWeek()); // values can be returned, etc.
+    });
 
+The ``MODULARIZE`` option makes ``emcc`` emit code in a modular format that is
+easy to import and use with ``require()``: ``require()`` of the module returns
+a factory function that can instantiate the compiled code, returning a
+``Promise`` to tell us when it is ready, and giving us the instance of the
+module as a parameter.
+
+(Note that we use ``ccall`` here, so we need to add it to the exported runtime
+methods, as before.)
 
 .. _interacting-with-code-direct-function-calls:
 
@@ -217,21 +230,21 @@ function, but with a leading ``_``.
 .. note:: If you use :js:func:`ccall` or :js:func:`cwrap`, you do not need
    to prefix function calls with ``_`` -- just use the C name.
 
-The types of the parameters you pass to functions need to make sense.
-Integers and floating point values can be passed as is. Pointers are
-simply integers in the generated code.
 
-Strings in JavaScript must be converted to pointers for compiled
-code -- the relevant function is :js:func:`Pointer_stringify`, which
-given a pointer returns a JavaScript string. Converting a JavaScript
-string ``someString`` to a pointer can be accomplished using ``ptr = ``
-allocate(intArrayFromString(someString), 'i8', ALLOC_NORMAL) <allocate>``.
+The parameters you pass to and receive from functions need to be primitive values:
 
-.. note:: The conversion to a pointer allocates memory, which needs to be
-   freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side)
+  - Integer and floating point numbers can be passed as-is.
+  - Pointers can be passed as-is also, as they are simply integers in the generated code.
+  - JavaScript string ``someString`` can be converted to a ``char *`` using ``ptr = stringToNewUTF8(someString)``.
 
-There are other convenience functions for converting strings and encodings
-in :ref:`preamble-js`.
+    .. note:: The conversion to a pointer allocates memory, which needs to be
+      freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side) -
+  - ``char *`` received from C/C++ can be converted to a JavaScript string using :js:func:`UTF8ToString`.
+
+    There are other convenience functions for converting strings and encodings
+    in :ref:`preamble-js`.
+  - Other values can be passed via :cpp:class:`emscripten::val`. Check out examples
+    on :ref:`as_handle and take_ownership methods <val_as_handle>`.
 
 .. _interacting-with-code-call-javascript-from-native:
 
@@ -297,17 +310,17 @@ an alert, followed by an exception. (Note, however, that under the hood
 Emscripten still does a function call even in this case, which has some
 amount of overhead.)
 
-You can also send values from C into JavaScript inside :c:macro:`EM_ASM_`
-(note the extra "_" at the end), for example::
+You can also send values from C into JavaScript inside :c:macro:`EM_ASM`,
+for example::
 
-   EM_ASM_({
+   EM_ASM({
      console.log('I received: ' + $0);
    }, 100);
 
 This will show ``I received: 100``.
 
-You can also receive values back, for example the following will print out ``I received: 100``
-and then ``101``::
+You can also receive values back, for example the following will print out ``I
+received: 100`` and then ``101``::
 
    int x = EM_ASM_INT({
      console.log('I received: ' + $0);
@@ -319,9 +332,12 @@ See the :c:macro:`emscripten.h docs <EM_ASM_>` for more details.
 
 .. note::
 
-   - You need to specify if the return value is an ``int`` or a ``double``
-     using the appropriate macro :c:macro:`EM_ASM_INT` or
-     :c:macro:`EM_ASM_DOUBLE`.
+   - You need to specify if the return value is an ``int``, ``double``
+     or pointer type using the appropriate macro :c:macro:`EM_ASM_INT`,
+     :c:macro:`EM_ASM_DOUBLE` or :c:macro:`EM_ASM_PTR`.
+     (:c:macro:`EM_ASM_PTR` is the same as :c:macro:`EM_ASM_INT` unless
+     ``MEMORY64`` is used, so is mostly needed in code that wants to be
+     compatible with ``MEMORY64``).
    - The input values appear as ``$0``, ``$1``, etc.
    - ``return`` is used to provide the value sent from JavaScript back to C.
    - See how ``{`` and ``}`` are used here to enclose the code. This is
@@ -331,6 +347,11 @@ See the :c:macro:`emscripten.h docs <EM_ASM_>` for more details.
      single quotes('). Double quotes(") will cause a syntax error that
      is not detected by the compiler and is only shown when looking at
      a JavaScript console while running the offending code.
+   - clang-format may clobber Javascript constructions, such as ``=>``
+     turning to ``= >``. To avoid this, add to your ``.clang-format``:
+     ``WhitespaceSensitiveMacros: ['EM_ASM', 'EM_JS', 'EM_ASM_INT', 'EM_ASM_DOUBLE', 'EM_ASM_PTR', 'MAIN_THREAD_EM_ASM', 'MAIN_THREAD_EM_ASM_INT', 'MAIN_THREAD_EM_ASM_DOUBLE', 'MAIN_THREAD_EM_ASM_DOUBLE', 'MAIN_THREAD_ASYNC_EM_ASM']``.
+     Or, turn `clang-format off`_ by writing ``// clang-format off``
+     before the ``EM_ASM`` section and ``// clang-format on`` after it.
 
 
 .. _implement-c-in-javascript:
@@ -352,7 +373,7 @@ By default, the implementation is added to **library.js** (and this is
 where you'll find parts of Emscripten's *libc*). You can put
 the JavaScript implementation in your own library file and add it using
 the :ref:`emcc option <emcc-js-library>` ``--js-library``. See
-`test_js_libraries`_ in **tests/test_other.py** for a complete working
+`test_js_libraries`_ in **test/test_other.py** for a complete working
 example, including the syntax you should use inside the JavaScript library
 file.
 
@@ -391,15 +412,15 @@ If you add it to your own file, you should write something like
 
 .. code-block:: javascript
 
-   mergeInto(LibraryManager.library, {
+   addToLibrary({
      my_js: function() {
        alert('hi');
      },
    });
 
-``mergeInto`` just copies the properties on the second parameter onto the
-first, so this add ``my_js`` onto ``LibraryManager.library``, the global
-object where all JavaScript library code should be.
+``addToLibrary`` copies the properties of the input object into
+``LibraryManager.library`` (the global object where all JavaScript library code
+lives). In this case its adds a function called ``my_js`` onto this object.
 
 JavaScript limits in library files
 ----------------------------------
@@ -417,7 +438,7 @@ that you can't use a closure directly, for example, as ``toString``
 isn't compatible with that - just like when using a string to create
 a Web Worker, where you also can't pass a closure. (Note that this
 limitation is just for the values for the keys of the object
-passes to ``mergeInto`` in the JS library, that is, the toplevel
+passes to ``addToLibrary`` in the JS library, that is, the toplevel
 key-value pairs are special. Interior code inside a function can
 have arbitrary JS, of course).
 
@@ -432,7 +453,7 @@ initialization.
 
 .. code-block:: javascript
 
-   mergeInto(LibraryManager.library, {
+   addToLibrary({
 
      // Solution for bind or referencing other functions directly
      good_02__postset: '_good_02();',
@@ -490,7 +511,7 @@ various methods to the functions we actually want.
 
 .. code-block:: javascript
 
-  mergeInto(LibraryManager.library, {
+  addToLibrary({
     $method_support: {},
     $method_support__postset: [
       '(function() {                                  ',
@@ -533,31 +554,29 @@ a function,
 
 .. code-block:: javascript
 
-  mergeInto(LibraryManager.library, {
+  addToLibrary({
     $method_support__postset: 'method_support();',
-    $method_support: {
-      init: function() {
-        var SomeLib = function() {
-          this.callCount = 0;
-        };
+    $method_support: function() {
+      var SomeLib = function() {
+        this.callCount = 0;
+      };
 
-        SomeLib.prototype.getCallCount = function() {
-          return this.callCount;
-        };
+      SomeLib.prototype.getCallCount = function() {
+        return this.callCount;
+      };
 
-        SomeLib.prototype.process = function() {
-          ++this.callCount;
-        };
+      SomeLib.prototype.process = function() {
+        ++this.callCount;
+      };
 
-        SomeLib.prototype.reset = function() {
-          this.callCount = 0;
-        };
+      SomeLib.prototype.reset = function() {
+        this.callCount = 0;
+      };
 
-        var inst = new SomeLib();
-        _method_01 = inst.getCallCount.bind(inst);
-        _method_02 = inst.process.bind(inst);
-        _method_03 = inst.reset.bind(inst);
-      }
+      var inst = new SomeLib();
+      _method_01 = inst.getCallCount.bind(inst);
+      _method_02 = inst.process.bind(inst);
+      _method_03 = inst.reset.bind(inst);
     },
     method_01: function() {},
     method_01__deps: ['$method_support'],
@@ -574,7 +593,7 @@ See the `library_*.js`_ files for other examples.
 
    - JavaScript libraries can declare dependencies (``__deps``), however
      those are only for other JavaScript libraries. See examples in
-     `/src <https://github.com/emscripten-core/emscripten/tree/master/src>`_
+     `/src <https://github.com/emscripten-core/emscripten/tree/main/src>`_
      with the name format **library_*.js**
    - You can add dependencies for all your methods using
      ``autoAddDeps(myLibrary, name)`` where myLibrary is the object with
@@ -582,10 +601,7 @@ See the `library_*.js`_ files for other examples.
      This is useful when all the implemented methods use a JavaScript
      singleton containing helper methods. See ``library_webgl.js`` for
      an example.
-   - If a JavaScript library depends on a compiled C library (like most
-     of *libc*), you must edit `src/deps_info.json`_. Search for
-     "deps_info" in `tools/system_libs.py`_.
-   - The keys passed into `mergeInto` generate functions that are prefixed
+   - The keys passed into `addToLibrary` generate functions that are prefixed
      by ``_``. In other words ``my_func: function() {},`` becomes
      ``function _my_func() {}``, as all C methods in emscripten have a ``_`` prefix. Keys starting with ``$`` have the ``$``
      stripped and no underscore added.
@@ -601,16 +617,12 @@ function pointer. Passing that integer to C code then lets it call that value as
 a function pointer, and the JavaScript function you sent to ``addFunction`` will
 be called.
 
-See `test_add_function in tests/test_core.py`_ for an example.
+See `test_add_function in test/test_core.py`_ for an example.
 
-When using ``addFunction``, there is a backing array where these functions are
-stored. This array must be explicitly sized, which can be done via a
-compile-time setting, ``RESERVED_FUNCTION_POINTERS``. For example, to reserve
-space for 20 functions to be added::
+You should build with ``-sALLOW_TABLE_GROWTH`` to allow new functions to be
+added to the table. Otherwise by default the table has a fixed size.
 
-    emcc ... -s RESERVED_FUNCTION_POINTERS=20 ...
-
-.. note:: When using ``addFunction`` on LLVM wasm backend, you need to provide
+.. note:: When using ``addFunction`` on LLVM Wasm backend, you need to provide
    an additional second argument, a Wasm function signature string. Each
    character within a signature string represents a type. The first character
    represents the return type of a function, and remaining characters are for
@@ -624,7 +636,7 @@ space for 20 functions to be added::
 
    For example, if you add a function that takes an integer and does not return
    anything, you can do ``addFunction(your_function, 'vi');``. See
-   `tests/interop/test_add_function_post.js <https://github.com/emscripten-core/emscripten/blob/incoming/tests/interop/test_add_function_post.js>`_ for an example.
+   `test/interop/test_add_function_post.js <https://github.com/emscripten-core/emscripten/blob/main/test/interop/test_add_function_post.js>`_ for an example.
 
 
 .. _interacting-with-code-access-memory:
@@ -639,7 +651,7 @@ LLVM IR type, one of ``i8``, ``i16``, ``i32``, ``i64``, ``float``,
 ``double`` or a pointer type like ``i8*`` (or just ``*``).
 
 There are examples of these functions being used in the tests — see
-`tests/core/test_utf.in`_ and `tests/test_core.py`_.
+`test/core/test_utf.in`_ and `test/test_core.py`_.
 
 .. note:: This is a lower-level operation than :js:func:`ccall` and
    :js:func:`cwrap` — we *do* need to care what specific type (e.g.
@@ -666,6 +678,47 @@ Here ``my_function`` is a C function that receives a single integer parameter
 (or a pointer, they are both just 32-bit integers for us) and returns an
 integer. This could be something like ``int my_function(char *buf)``.
 
+The converse case of exporting allocated memory into JavaScript can be
+tricky when Wasm-based memory is allowed to **grow**, by compiling with
+``-sALLOW_MEMORY_GROWTH``. Increasing the size of memory changes
+to a new buffer and existing array views essentially become invalid,
+so you cannot simply do this:
+
+.. code-block:: javascript
+
+   function func() {
+     let someView = HEAPU8.subarray(x, y);
+     compute(someView);
+
+     // This may grow memory, which would invalidate all views.
+     maybeGrow();
+
+     // If we grew, this use of an invalidated view will fail. Failure in this
+     // case will return undefined, the same as reading out of bounds from a
+     // typed array. If the operation were someView.subarray(), however, then it
+     // would throw an error.
+     return someView[z];
+   }
+
+Emscripten will refresh the canonical views like ``HEAPU8`` for you, which you
+can use to refresh your own views:
+
+.. code-block:: javascript
+
+   function func() {
+     let someView = HEAPU8.subarray(x, y);
+     compute(someView);
+
+     // This may grow memory, which would invalidate all views.
+     maybeGrow();
+
+     // Create a new, fresh view after the possible growth.
+     someView = HEAPU8.subarray(x, y);
+     return someView[z];
+   }
+
+Another option to avoid such problems is to copy the data, when that makes
+sense.
 
 .. _interacting-with-code-execution-behaviour:
 
@@ -702,7 +755,16 @@ For example, to set an environment variable ``MY_FILE_ROOT`` to be
 
 .. code:: javascript
 
-    Module.preRun.push(function() {ENV.MY_FILE_ROOT = "/usr/lib/test"})
+    Module.preRun = () => {ENV.MY_FILE_ROOT = "/usr/lib/test"};
+
+Note that Emscripten will set default values for some environment variables
+(e.g. LANG) after you have configured ``ENV``, if you have not set your own
+values. If you want such variables to remain unset, you can explicitly set
+their value to `undefined`. For example:
+
+.. code:: javascript
+
+    Module.preRun = () => {ENV.LANG = undefined};
 
 .. _interacting-with-code-binding-cpp:
 
@@ -738,13 +800,26 @@ for defining the binding:
    of one tool over the other will usually be based on which is the most
    natural fit for the project and its build system.
 
-.. _library.js: https://github.com/emscripten-core/emscripten/blob/master/src/library.js
+.. _interacting-with-code-emnapi:
+
+Binding C/C++ and JavaScript - Node-API
+===============================================================
+
+`Emnapi`_ is an unofficial `Node-API`_ implementation which can be used
+on Emscripten. If you would like to port existing Node-API addon to WebAssembly
+or compile the same binding code to both Node.js native addon and WebAssembly,
+you can give it a try. See `Emnapi documentation`_ for more details.
+
+.. _library.js: https://github.com/emscripten-core/emscripten/blob/main/src/library.js
 .. _test_js_libraries: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L5043
-.. _src/deps_info.json: https://github.com/emscripten-core/emscripten/blob/master/src/deps_info.json
-.. _tools/system_libs.py: https://github.com/emscripten-core/emscripten/blob/master/tools/system_libs.py
-.. _library_\*.js: https://github.com/emscripten-core/emscripten/tree/master/src
-.. _test_add_function in tests/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L6237
-.. _tests/core/test_utf.in: https://github.com/emscripten-core/emscripten/blob/master/tests/core/test_utf.in
-.. _tests/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L4597
+.. _tools/system_libs.py: https://github.com/emscripten-core/emscripten/blob/main/tools/system_libs.py
+.. _library_\*.js: https://github.com/emscripten-core/emscripten/tree/main/src
+.. _test_add_function in test/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L6237
+.. _test/core/test_utf.in: https://github.com/emscripten-core/emscripten/blob/main/test/core/test_utf.in
+.. _test/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L4597
 .. _Box2D: https://github.com/kripken/box2d.js/#box2djs
 .. _Bullet: https://github.com/kripken/ammo.js/#ammojs
+.. _clang-format off: https://clang.llvm.org/docs/ClangFormatStyleOptions.html#disabling-formatting-on-a-piece-of-code
+.. _Emnapi: https://github.com/toyobayashi/emnapi
+.. _Node-API: https://nodejs.org/dist/latest/docs/api/n-api.html
+.. _Emnapi documentation: https://emnapi-docs.vercel.app/guide/getting-started.html

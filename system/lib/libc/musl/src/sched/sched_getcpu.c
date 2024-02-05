@@ -6,8 +6,6 @@
 
 #ifdef VDSO_GETCPU_SYM
 
-void *__vdsosym(const char *, const char *);
-
 static void *volatile vdso_func;
 
 typedef long (*getcpu_f)(unsigned *, unsigned *, void *);

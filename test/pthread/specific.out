@@ -1,0 +1,10 @@
+pthread_key_create = 0
+pthread_setspecific = 0
+pthread_getspecific = 123
+valid pthread_setspecific for value NULL = 0
+pthread_getspecific = 0
+pthread_getspecific after key recreate = 0
+pthread_key_delete = 0
+pthread_key_delete repeated = 28
+pthread_setspecific for value NULL = 28
+pthread_key_delete just after created = 0

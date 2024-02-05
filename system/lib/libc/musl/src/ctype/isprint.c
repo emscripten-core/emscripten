@@ -1,5 +1,4 @@
 #include <ctype.h>
-#include "libc.h"
 #undef isprint
 
 int isprint(int c)

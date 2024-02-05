@@ -1,0 +1,62 @@
+fwprintf told us 7
+file size is 7
+str starts with 0x74
+str continues with 0x65
+str continues with 0x73
+format    starts with 0x74
+fmt    continues with 0x65
+fmt    continues with 0x73
+vswprintf told us 36
+vswoutput st-rts with 0x74
+vsw    continues with 0x65
+vsw    continues with 0x73
+test string has 36 wide characters.
+format    starts with 0x74
+fmt    continues with 0x65
+fmt    continues with 0x73
+vswprintf told us 36
+vswoutput st-rts with 0x74
+vsw    continues with 0x65
+vsw    continues with 0x73
+test string has 36 wide characters.
+format    starts with 0x74
+fmt    continues with 0x65
+fmt    continues with 0x73
+vswprintf told us 36
+vswoutput st-rts with 0x74
+vsw    continues with 0x65
+vsw    continues with 0x73
+test string has 36 wide characters.
+PrintBigWide wrote 426 wchars:
+test string has 425 wide characters.
+Internally the variadic print functions use a 256 char buffer, so this is a string that's longer than 256 chars, so in case this breaks we have a test case. As discovered in #9305 vswprintf had been broken for some time, but was never picked up as the test strings were all shorter then 256 chars. So hopefully this long rambly string will help guard against that bug being re-introduced.
+Characters: a A 
+Decimals: 1977 650000
+Preceding with blanks:       1977 
+Preceding with zeros: 0000001977 
+Some different radixes: 100 64 144 0x64 0144 
+floats: 3.14 +3e+00 3.141600E+00 
+Width trick:    10 
+A wide string 
+swprintf told us 20
+pre 84
+pre 104
+pre 101
+pre 32
+pre 104
+pre 97
+pre 108
+pre 102
+pre 32
+pre 111
+post 84
+post 104
+post 101
+post 32
+post 104
+post 97
+post 108
+post 102
+post 32
+post 111
+The half of 80 is 40, and the half of that is 20.

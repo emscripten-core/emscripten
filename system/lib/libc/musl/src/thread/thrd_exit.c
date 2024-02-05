@@ -1,7 +1,6 @@
-#include "pthread_impl.h"
 #include <threads.h>
-
-_Noreturn void __pthread_exit(void *);
+#include <pthread.h>
+#include <stdint.h>
 
 _Noreturn void thrd_exit(int result)
 {

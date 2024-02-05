@@ -1,7 +1,7 @@
 #include <dirent.h>
 #include <unistd.h>
 #include "__dirent.h"
-#include "libc.h"
+#include "lock.h"
 
 void rewinddir(DIR *dir)
 {

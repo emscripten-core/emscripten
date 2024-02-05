@@ -21,177 +21,89 @@
  */
 
 #include "em_asm.h"
+#include "em_macros.h"
+#include "em_types.h"
 #include "em_js.h"
+#include "promise.h"
+#include "wget.h"
+#include "version.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#if !__EMSCRIPTEN__
-#include <SDL/SDL.h> /* for SDL_Delay in async_call */
-#endif
+void emscripten_run_script(const char *script __attribute__((nonnull)));
+int emscripten_run_script_int(const char *script __attribute__((nonnull)));
+char *emscripten_run_script_string(const char *script __attribute__((nonnull)));
+void emscripten_async_run_script(const char *script __attribute__((nonnull)), int millis);
+void emscripten_async_load_script(const char *script __attribute__((nonnull)), em_callback_func onload, em_callback_func onerror);
 
-#if __EMSCRIPTEN__
-// This version of emscripten has <emscripten/vr.h> and associated support
-#define EMSCRIPTEN_HAS_VR_SUPPORT 1
-#endif
-
-/* Typedefs */
-
-typedef short __attribute__((aligned(1))) emscripten_align1_short;
-
-typedef long long __attribute__((aligned(4))) emscripten_align4_int64;
-typedef long long __attribute__((aligned(2))) emscripten_align2_int64;
-typedef long long __attribute__((aligned(1))) emscripten_align1_int64;
-
-typedef int __attribute__((aligned(2))) emscripten_align2_int;
-typedef int __attribute__((aligned(1))) emscripten_align1_int;
-
-typedef float __attribute__((aligned(2))) emscripten_align2_float;
-typedef float __attribute__((aligned(1))) emscripten_align1_float;
-
-typedef double __attribute__((aligned(4))) emscripten_align4_double;
-typedef double __attribute__((aligned(2))) emscripten_align2_double;
-typedef double __attribute__((aligned(1))) emscripten_align1_double;
-
-typedef void (*em_callback_func)(void);
-typedef void (*em_arg_callback_func)(void*);
-typedef void (*em_str_callback_func)(const char *);
-
-#define EMSCRIPTEN_KEEPALIVE __attribute__((used))
-
-extern void emscripten_run_script(const char *script);
-extern int emscripten_run_script_int(const char *script);
-extern char *emscripten_run_script_string(const char *script);
-extern void emscripten_async_run_script(const char *script, int millis);
-extern void emscripten_async_load_script(const char *script, em_callback_func onload, em_callback_func onerror);
-
-#if __EMSCRIPTEN__
-extern void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop);
+void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop);
 
 #define EM_TIMING_SETTIMEOUT 0
 #define EM_TIMING_RAF 1
 #define EM_TIMING_SETIMMEDIATE 2
 
-extern int emscripten_set_main_loop_timing(int mode, int value);
-extern void emscripten_get_main_loop_timing(int *mode, int *value);
-extern void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, int simulate_infinite_loop);
-extern void emscripten_pause_main_loop(void);
-extern void emscripten_resume_main_loop(void);
-extern void emscripten_cancel_main_loop(void);
-#else
-#define emscripten_set_main_loop(func, fps, simulateInfiniteLoop) \
-  while (1) { func(); usleep(1000000/fps); }
-#define emscripten_cancel_main_loop() exit(1);
-#endif
-
+int emscripten_set_main_loop_timing(int mode, int value);
+void emscripten_get_main_loop_timing(int *mode, int *value); // Pass a null pointer to skip receiving that particular value
+void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, int simulate_infinite_loop);
+void emscripten_pause_main_loop(void);
+void emscripten_resume_main_loop(void);
+void emscripten_cancel_main_loop(void);
 
 typedef void (*em_socket_callback)(int fd, void *userData);
 typedef void (*em_socket_error_callback)(int fd, int err, const char* msg, void *userData);
 
-extern void emscripten_set_socket_error_callback(void *userData, em_socket_error_callback callback);
-extern void emscripten_set_socket_open_callback(void *userData, em_socket_callback callback);
-extern void emscripten_set_socket_listen_callback(void *userData, em_socket_callback callback);
-extern void emscripten_set_socket_connection_callback(void *userData, em_socket_callback callback);
-extern void emscripten_set_socket_message_callback(void *userData, em_socket_callback callback);
-extern void emscripten_set_socket_close_callback(void *userData, em_socket_callback callback);
+void emscripten_set_socket_error_callback(void *userData, em_socket_error_callback callback);
+void emscripten_set_socket_open_callback(void *userData, em_socket_callback callback);
+void emscripten_set_socket_listen_callback(void *userData, em_socket_callback callback);
+void emscripten_set_socket_connection_callback(void *userData, em_socket_callback callback);
+void emscripten_set_socket_message_callback(void *userData, em_socket_callback callback);
+void emscripten_set_socket_close_callback(void *userData, em_socket_callback callback);
 
-
-#if __EMSCRIPTEN__
-extern void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
-extern void _emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
-#else
-inline void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name) {
-  func(arg);
-}
-inline void _emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name) {
-  func(arg);
-}
-#endif
+void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
+void _emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
 #define emscripten_push_main_loop_blocker(func, arg) \
   _emscripten_push_main_loop_blocker(func, arg, #func)
 #define emscripten_push_uncounted_main_loop_blocker(func, arg) \
   _emscripten_push_uncounted_main_loop_blocker(func, arg, #func)
 
-#if __EMSCRIPTEN__
-extern void emscripten_set_main_loop_expected_blockers(int num);
-#else
-inline void emscripten_set_main_loop_expected_blockers(int num) {}
-#endif
+void emscripten_set_main_loop_expected_blockers(int num);
 
+void emscripten_async_call(em_arg_callback_func func, void *arg, int millis);
 
-#if __EMSCRIPTEN__
-extern void emscripten_async_call(em_arg_callback_func func, void *arg, int millis);
-#else
-inline void emscripten_async_call(em_arg_callback_func func, void *arg, int millis) {
-  if (millis) SDL_Delay(millis);
-  func(arg);
-}
-#endif
-
-
-extern void emscripten_exit_with_live_runtime(void);
-extern void emscripten_force_exit(int status);
+void emscripten_exit_with_live_runtime(void) __attribute__((__noreturn__));
+void emscripten_force_exit(int status) __attribute__((__noreturn__));
 
 double emscripten_get_device_pixel_ratio(void);
 
+char *emscripten_get_window_title(void);
+void emscripten_set_window_title(const char *);
+void emscripten_get_screen_size(int *width __attribute__((nonnull)), int *height __attribute__((nonnull)));
 void emscripten_hide_mouse(void);
 void emscripten_set_canvas_size(int width, int height) __attribute__((deprecated("This variant does not allow specifying the target canvas", "Use emscripten_set_canvas_element_size() instead")));
-void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen) __attribute__((deprecated("This variant does not allow specifying the target canvas", "Use emscripten_get_canvas_element_size() and emscripten_get_fullscreen_status() instead")));
+void emscripten_get_canvas_size(int *width __attribute__((nonnull)), int *height __attribute__((nonnull)), int *isFullscreen __attribute__((nonnull))) __attribute__((deprecated("This variant does not allow specifying the target canvas", "Use emscripten_get_canvas_element_size() and emscripten_get_fullscreen_status() instead")));
 
-#if __EMSCRIPTEN__
 double emscripten_get_now(void);
-#else
-#include <time.h>
-static inline double emscripten_get_now(void) {
-  return (1000*clock())/(double)CLOCKS_PER_SEC;
-}
-#endif
-
 float emscripten_random(void);
-
-// wget
-
-void emscripten_async_wget(const char* url, const char* file, em_str_callback_func onload, em_str_callback_func onerror);
-
-typedef void (*em_async_wget_onload_func)(void*, void*, int);
-void emscripten_async_wget_data(const char* url, void *arg, em_async_wget_onload_func onload, em_arg_callback_func onerror);
-
-typedef void (*em_async_wget2_onload_func)(unsigned, void*, const char*);
-typedef void (*em_async_wget2_onstatus_func)(unsigned, void*, int);
-
-int emscripten_async_wget2(const char* url, const char* file,  const char* requesttype, const char* param, void *arg, em_async_wget2_onload_func onload, em_async_wget2_onstatus_func onerror, em_async_wget2_onstatus_func onprogress);
-
-typedef void (*em_async_wget2_data_onload_func)(unsigned, void*, void*, unsigned);
-typedef void (*em_async_wget2_data_onerror_func)(unsigned, void*, int, const char*);
-typedef void (*em_async_wget2_data_onprogress_func)(unsigned, void*, int, int);
-
-int emscripten_async_wget2_data(const char* url, const char* requesttype, const char* param, void *arg, int free, em_async_wget2_data_onload_func onload, em_async_wget2_data_onerror_func onerror, em_async_wget2_data_onprogress_func onprogress);
-
-void emscripten_async_wget2_abort(int handle);
-
-// wget "sync" (ASYNCIFY)
-
-void emscripten_wget(const char* url, const char* file);
-
-// wget data "sync" (EMTERPRETIFY_ASYNC)
-
-void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror);
 
 // IDB
 
-void emscripten_idb_async_load(const char *db_name, const char *file_id, void* arg, em_async_wget_onload_func onload, em_arg_callback_func onerror);
-void emscripten_idb_async_store(const char *db_name, const char *file_id, void* ptr, int num, void* arg, em_arg_callback_func onstore, em_arg_callback_func onerror);
-void emscripten_idb_async_delete(const char *db_name, const char *file_id, void* arg, em_arg_callback_func ondelete, em_arg_callback_func onerror);
+typedef void (*em_idb_onload_func)(void*, void*, int);
+void emscripten_idb_async_load(const char *db_name __attribute__((nonnull)), const char *file_id __attribute__((nonnull)), void* arg, em_idb_onload_func onload, em_arg_callback_func onerror);
+void emscripten_idb_async_store(const char *db_name __attribute__((nonnull)), const char *file_id __attribute__((nonnull)), void* ptr, int num, void* arg, em_arg_callback_func onstore, em_arg_callback_func onerror);
+void emscripten_idb_async_delete(const char *db_name __attribute__((nonnull)), const char *file_id __attribute__((nonnull)), void* arg, em_arg_callback_func ondelete, em_arg_callback_func onerror);
 typedef void (*em_idb_exists_func)(void*, int);
-void emscripten_idb_async_exists(const char *db_name, const char *file_id, void* arg, em_idb_exists_func oncheck, em_arg_callback_func onerror);
+void emscripten_idb_async_exists(const char *db_name __attribute__((nonnull)), const char *file_id __attribute__((nonnull)), void* arg, em_idb_exists_func oncheck, em_arg_callback_func onerror);
+void emscripten_idb_async_clear(const char *db_name __attribute__((nonnull)), void* arg, em_arg_callback_func onclear, em_arg_callback_func onerror);
 
-// IDB "sync" (EMTERPRETIFY_ASYNC)
+// IDB "sync"
 
 void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffer, int* pnum, int *perror);
 void emscripten_idb_store(const char *db_name, const char *file_id, void* buffer, int num, int *perror);
 void emscripten_idb_delete(const char *db_name, const char *file_id, int *perror);
 void emscripten_idb_exists(const char *db_name, const char *file_id, int* pexists, int *perror);
+void emscripten_idb_clear(const char *db_name, int *perror);
 
 void emscripten_idb_load_blob(const char *db_name, const char *file_id, int* pblob, int *perror);
 void emscripten_idb_store_blob(const char *db_name, const char *file_id, void* buffer, int num, int *perror);
@@ -204,6 +116,8 @@ int emscripten_run_preload_plugins(const char* file, em_str_callback_func onload
 
 typedef void (*em_run_preload_plugins_data_onload_func)(void*, const char*);
 void emscripten_run_preload_plugins_data(char* data, int size, const char *suffix, void *arg, em_run_preload_plugins_data_onload_func onload, em_arg_callback_func onerror);
+
+void emscripten_lazy_load_code(void);
 
 // show an error on some renamed methods
 #define emscripten_async_prepare(...) _Pragma("GCC error(\"emscripten_async_prepare has been replaced by emscripten_run_preload_plugins\")")
@@ -225,7 +139,8 @@ int emscripten_get_worker_queue_size(worker_handle worker);
 
 // misc.
 
-int emscripten_get_compiler_setting(const char *name);
+long emscripten_get_compiler_setting(const char *name);
+int emscripten_has_asyncify(void);
 
 void emscripten_debugger(void);
 
@@ -241,31 +156,42 @@ char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);
 #define EM_LOG_ERROR     4
 #define EM_LOG_C_STACK   8
 #define EM_LOG_JS_STACK 16
-#define EM_LOG_DEMANGLE 32
+#define EM_LOG_DEMANGLE 32  // deprecated
+#pragma clang deprecated(EM_LOG_DEMANGLE)
 #define EM_LOG_NO_PATHS 64
-#define EM_LOG_FUNC_PARAMS 128
+#define EM_LOG_FUNC_PARAMS 128  // deprecated
+#pragma clang deprecated(EM_LOG_FUNC_PARAMS)
+#define EM_LOG_DEBUG    256
+#define EM_LOG_INFO     512
 
-void emscripten_log(int flags, ...);
+void emscripten_log(int flags, const char* format, ...);
 
 int emscripten_get_callstack(int flags, char *out, int maxbytes);
 
 int emscripten_print_double(double x, char *to, signed max);
 
+typedef void (*em_scan_func)(void*, void*);
+void emscripten_scan_registers(em_scan_func func);
+void emscripten_scan_stack(em_scan_func func);
+
+// Asynchronous version of dlopen.  Since WebAssembly module loading in general
+// is asynchronous the normal dlopen function can't be used in all situations.
+typedef void (*em_dlopen_callback)(void* handle, void* user_data);
+void emscripten_dlopen(const char *filename, int flags, void* user_data, em_dlopen_callback onsuccess, em_arg_callback_func onerror);
+
+// Promisified version of emscripten_dlopen
+// The returned promise will resolve once the dso has been loaded.  Its up to
+// the caller to call emscripten_promise_destroy on this promise.
+em_promise_t emscripten_dlopen_promise(const char *filename, int flags);
+
+void emscripten_throw_number(double number);
+void emscripten_throw_string(const char *utf8String);
+
 /* ===================================== */
 /* Internal APIs. Be careful with these. */
 /* ===================================== */
 
-#if __EMSCRIPTEN__
 void emscripten_sleep(unsigned int ms);
-void emscripten_sleep_with_yield(unsigned int ms);
-#else
-#define emscripten_sleep SDL_Delay
-#endif
-
-typedef void * emscripten_coroutine;
-emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void *arg, int stack_size);
-int emscripten_coroutine_next(emscripten_coroutine);
-void emscripten_yield(void);
 
 #ifdef __cplusplus
 }

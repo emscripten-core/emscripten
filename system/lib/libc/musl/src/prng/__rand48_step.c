@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "rand48.h"
 
 uint64_t __rand48_step(unsigned short *xi, unsigned short *lc)
 {

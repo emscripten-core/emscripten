@@ -1,0 +1,7 @@
+[run]
+source = .
+omit = ./test/*
+       ./third_party/*
+       ./tools/emcoverage.py
+       test.py
+

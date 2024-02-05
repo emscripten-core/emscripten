@@ -1,12 +1,12 @@
 #include <ftw.h>
 #include <dirent.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
 #include <limits.h>
 #include <pthread.h>
-#include "libc.h"
 
 struct history
 {
@@ -27,8 +27,11 @@ static int do_nftw(char *path, int (*fn)(const char *, const struct stat *, int,
 	struct history new;
 	int type;
 	int r;
+	int dfd;
+	int err;
 	struct FTW lev;
-	char *name;
+
+	st.st_dev = st.st_ino = 0;
 
 	if ((flags & FTW_PHYS) ? lstat(path, &st) : stat(path, &st) < 0) {
 		if (!(flags & FTW_PHYS) && errno==ENOENT && !lstat(path, &st))
@@ -36,8 +39,7 @@ static int do_nftw(char *path, int (*fn)(const char *, const struct stat *, int,
 		else if (errno != EACCES) return -1;
 		else type = FTW_NS;
 	} else if (S_ISDIR(st.st_mode)) {
-		if (access(path, R_OK) < 0) type = FTW_DNR;
-		else if (flags & FTW_DEPTH) type = FTW_DP;
+		if (flags & FTW_DEPTH) type = FTW_DP;
 		else type = FTW_D;
 	} else if (S_ISLNK(st.st_mode)) {
 		if (flags & FTW_PHYS) type = FTW_SL;
@@ -46,17 +48,31 @@ static int do_nftw(char *path, int (*fn)(const char *, const struct stat *, int,
 		type = FTW_F;
 	}
 
-	if ((flags & FTW_MOUNT) && h && st.st_dev != h->dev)
+	if ((flags & FTW_MOUNT) && h && type != FTW_NS && st.st_dev != h->dev)
 		return 0;
 	
 	new.chain = h;
 	new.dev = st.st_dev;
 	new.ino = st.st_ino;
 	new.level = h ? h->level+1 : 0;
-	new.base = l+1;
+	new.base = j+1;
 	
 	lev.level = new.level;
-	lev.base = h ? h->base : (name=strrchr(path, '/')) ? name-path : 0;
+	if (h) {
+		lev.base = h->base;
+	} else {
+		size_t k;
+		for (k=j; k && path[k]=='/'; k--);
+		for (; k && path[k-1]!='/'; k--);
+		lev.base = k;
+	}
+
+	if (type == FTW_D || type == FTW_DP) {
+		dfd = open(path, O_RDONLY);
+		err = errno;
+		if (dfd < 0 && err == EACCES) type = FTW_DNR;
+		if (!fd_limit) close(dfd);
+	}
 
 	if (!(flags & FTW_DEPTH) && (r=fn(path, &st, type, &lev)))
 		return r;
@@ -66,7 +82,11 @@ static int do_nftw(char *path, int (*fn)(const char *, const struct stat *, int,
 			return 0;
 
 	if ((type == FTW_D || type == FTW_DP) && fd_limit) {
-		DIR *d = opendir(path);
+		if (dfd < 0) {
+			errno = err;
+			return -1;
+		}
+		DIR *d = fdopendir(dfd);
 		if (d) {
 			struct dirent *de;
 			while ((de = readdir(d))) {
@@ -87,7 +107,8 @@ static int do_nftw(char *path, int (*fn)(const char *, const struct stat *, int,
 				}
 			}
 			closedir(d);
-		} else if (errno != EACCES) {
+		} else {
+			close(dfd);
 			return -1;
 		}
 	}
@@ -119,5 +140,3 @@ int nftw(const char *path, int (*fn)(const char *, const struct stat *, int, str
 	pthread_setcancelstate(cs, 0);
 	return r;
 }
-
-LFS64(nftw);

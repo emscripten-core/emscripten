@@ -4,8 +4,16 @@
 #include <sys/resource.h>
 #include <signal.h>
 #include <sys/sysinfo.h>
+#ifndef __EMSCRIPTEN__
+#include <sys/auxv.h>
+#endif
 #include "syscall.h"
 #include "libc.h"
+
+#ifdef __EMSCRIPTEN__
+#include "emscripten/heap.h"
+#include "emscripten/threading.h"
+#endif
 
 #define JT(x) (-256|(x))
 #define VER JT(1)
@@ -18,6 +26,9 @@
 #define JT_PHYS_PAGES JT(8)
 #define JT_AVPHYS_PAGES JT(9)
 #define JT_ZERO JT(10)
+#define JT_DELAYTIMER_MAX JT(11)
+#define JT_MINSIGSTKSZ JT(12)
+#define JT_SIGSTKSZ JT(13)
 
 #define RLIM(x) (-32768|(RLIMIT_ ## x))
 
@@ -25,10 +36,10 @@ long sysconf(int name)
 {
 	static const short values[] = {
 		[_SC_ARG_MAX] = JT_ARG_MAX,
-		[_SC_CHILD_MAX] = RLIM(NPROC),
+		[_SC_CHILD_MAX] = 1024, // XXX EMSCRIPTEN replace RLIM(NPROC),
 		[_SC_CLK_TCK] = 100,
 		[_SC_NGROUPS_MAX] = 32,
-		[_SC_OPEN_MAX] = RLIM(NOFILE),
+		[_SC_OPEN_MAX] = 1024, // XXX EMSCRIPTEN replace RLIM(NOFILE),
 		[_SC_STREAM_MAX] = -1,
 		[_SC_TZNAME_MAX] = TZNAME_MAX,
 		[_SC_JOB_CONTROL] = 1,
@@ -88,7 +99,7 @@ long sysconf(int name)
 		[_SC_THREAD_THREADS_MAX] = -1,
 		[_SC_THREAD_ATTR_STACKADDR] = VER,
 		[_SC_THREAD_ATTR_STACKSIZE] = VER,
-		[_SC_THREAD_PRIORITY_SCHEDULING] = VER,
+		[_SC_THREAD_PRIORITY_SCHEDULING] = -1, // XXX EMSCRIPTEN replace VER,
 		[_SC_THREAD_PRIO_INHERIT] = -1,
 		[_SC_THREAD_PRIO_PROTECT] = -1,
 		[_SC_THREAD_PROCESS_SHARED] = VER,
@@ -153,8 +164,8 @@ long sysconf(int name)
 		[_SC_IPV6] = VER,
 		[_SC_RAW_SOCKETS] = VER,
 		[_SC_V7_ILP32_OFF32] = -1,
-		[_SC_V7_ILP32_OFFBIG] = sizeof(long)==4 ? 1 : JT_ZERO,
-		[_SC_V7_LP64_OFF64] = sizeof(long)==8 ? 1 : JT_ZERO,
+		[_SC_V7_ILP32_OFFBIG] = sizeof(long)==4 ? 1 : -1,
+		[_SC_V7_LP64_OFF64] = sizeof(long)==8 ? 1 : -1,
 		[_SC_V7_LPBIG_OFFBIG] = -1,
 		[_SC_SS_REPL_MAX] = -1,
 		[_SC_TRACE_EVENT_NAME_MAX] = -1,
@@ -164,6 +175,9 @@ long sysconf(int name)
 		[_SC_XOPEN_STREAMS] = JT_ZERO,
 		[_SC_THREAD_ROBUST_PRIO_INHERIT] = -1,
 		[_SC_THREAD_ROBUST_PRIO_PROTECT] = -1,
+
+		[_SC_MINSIGSTKSZ] = JT_MINSIGSTKSZ,
+		[_SC_SIGSTKSZ] = JT_SIGSTKSZ,
 	};
 
 	if (name >= sizeof(values)/sizeof(values[0]) || !values[name]) {
@@ -174,6 +188,8 @@ long sysconf(int name)
 	} else if (values[name] < -256) {
 		struct rlimit lim;
 		getrlimit(values[name]&16383, &lim);
+		if (lim.rlim_cur == RLIM_INFINITY)
+			return -1;
 		return lim.rlim_cur > LONG_MAX ? LONG_MAX : lim.rlim_cur;
 	}
 
@@ -188,18 +204,26 @@ long sysconf(int name)
 		return PAGE_SIZE;
 	case JT_SEM_VALUE_MAX & 255:
 		return SEM_VALUE_MAX;
+	case JT_DELAYTIMER_MAX & 255:
+		return DELAYTIMER_MAX;
 	case JT_NPROCESSORS_CONF & 255:
 	case JT_NPROCESSORS_ONLN & 255: ;
+#ifdef __EMSCRIPTEN__
+		return emscripten_num_logical_cores();
+#else
 		unsigned char set[128] = {1};
 		int i, cnt;
 		__syscall(SYS_sched_getaffinity, 0, sizeof set, set);
 		for (i=cnt=0; i<sizeof set; i++)
 			for (; set[i]; set[i]&=set[i]-1, cnt++);
 		return cnt;
+#endif
 	case JT_PHYS_PAGES & 255:
 	case JT_AVPHYS_PAGES & 255: ;
+#ifdef __EMSCRIPTEN__
+		return emscripten_get_heap_max() / PAGE_SIZE;
+#else
 		unsigned long long mem;
-		int __lsysinfo(struct sysinfo *);
 		struct sysinfo si;
 		__lsysinfo(&si);
 		if (!si.mem_unit) si.mem_unit = 1;
@@ -208,6 +232,14 @@ long sysconf(int name)
 		mem *= si.mem_unit;
 		mem /= PAGE_SIZE;
 		return (mem > LONG_MAX) ? LONG_MAX : mem;
+	case JT_MINSIGSTKSZ & 255:
+	case JT_SIGSTKSZ & 255: ;
+		long val = __getauxval(AT_MINSIGSTKSZ);
+		if (val < MINSIGSTKSZ) val = MINSIGSTKSZ;
+		if (values[name] == JT_SIGSTKSZ)
+			val += SIGSTKSZ - MINSIGSTKSZ;
+		return val;
+#endif
 	case JT_ZERO & 255:
 		return 0;
 	}

@@ -38,7 +38,9 @@
  */
 float fmaf(float x, float y, float z)
 {
+#ifndef __EMSCRIPTEN__
 	#pragma STDC FENV_ACCESS ON
+#endif
 	double xy, result;
 	union {double f; uint64_t i;} u;
 	int e;
@@ -50,7 +52,7 @@ float fmaf(float x, float y, float z)
 	/* Common case: The double precision result is fine. */
 	if ((u.i & 0x1fffffff) != 0x10000000 || /* not a halfway case */
 		e == 0x7ff ||                   /* NaN */
-		result - xy == z ||                 /* exact */
+		(result - xy == z && result - z == xy) || /* exact */
 		fegetround() != FE_TONEAREST)       /* not round-to-nearest */
 	{
 		/*
@@ -77,17 +79,16 @@ float fmaf(float x, float y, float z)
 	 * If result is inexact, and exactly halfway between two float values,
 	 * we need to adjust the low-order bit in the direction of the error.
 	 */
-#ifdef FE_TOWARDZERO
-	fesetround(FE_TOWARDZERO);
-#endif
-	volatile double vxy = xy;  /* XXX work around gcc CSE bug */
-	double adjusted_result = vxy + z;
-	fesetround(FE_TONEAREST);
-	if (result == adjusted_result) {
-		u.f = adjusted_result;
+	double err;
+	int neg = u.i >> 63;
+	if (neg == (z > xy))
+		err = xy - result + z;
+	else
+		err = z - result + xy;
+	if (neg == (err < 0))
 		u.i++;
-		adjusted_result = u.f;
-	}
-	z = adjusted_result;
+	else
+		u.i--;
+	z = u.f;
 	return z;
 }

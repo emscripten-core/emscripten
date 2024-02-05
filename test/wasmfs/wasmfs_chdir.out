@@ -1,0 +1,14 @@
+Current working dir: /
+Current working dir: /working
+Current working dir: /
+Current working dir: /working/test
+Errno: No such file or directory
+Current working dir is still: /working/test
+Errno: No error information
+Current working dir is now: /working
+Errno: No such file or directory
+Current working dir is still: /working
+Current working dir: /dev
+Errno: Not a directory
+Current working dir is still: /dev
+Errno: Invalid argument

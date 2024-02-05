@@ -1,9 +1,10 @@
+/**
+ * @license
+ * Copyright 2014 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 /*
- * Copyright 2014 The Emscripten Authors.  All rights reserved.
- * Emscripten is available under two separate licenses, the MIT license and the
- * University of Illinois/NCSA Open Source License.  Both these licenses can be
- * found in the LICENSE file.
- *
  * EMSCRIPTEN GLEW 1.10.0 emulation
  *
  * What it does:
@@ -19,7 +20,7 @@
  */
 
 var LibraryGLEW = {
-  $GLEW__deps: ['glGetString'],
+  $GLEW__deps: ['glGetString', '$stringToNewUTF8', '$UTF8ToString', '$webglGetExtensions'],
   $GLEW: {
     isLinaroFork: 1,
     extensions: null,
@@ -45,7 +46,7 @@ var LibraryGLEW = {
       4:null, // GLEW_VERSION_MICRO
     },
 
-    errorStringConstantFromCode: function(error) {
+    errorStringConstantFromCode(error) {
       if (GLEW.isLinaroFork) {
         switch (error) {
           case 4:return "OpenGL ES lib expected, found OpenGL lib"; // GLEW_ERROR_NOT_GLES_VERSION
@@ -65,19 +66,19 @@ var LibraryGLEW = {
       }
     },
 
-    errorString: function(error) {
+    errorString(error) {
       if (!GLEW.error[error]) {
         var string = GLEW.errorStringConstantFromCode(error);
         if (!string) {
           string = "Unknown error";
           error = 8; // prevent array from growing more than this
         }
-        GLEW.error[error] = allocate(intArrayFromString(string), 'i8', ALLOC_NORMAL);
+        GLEW.error[error] = stringToNewUTF8(string);
       }
       return GLEW.error[error];
     },
 
-    versionStringConstantFromCode: function(name) {
+    versionStringConstantFromCode(name) {
       switch (name) {
         case 1:return "1.10.0"; // GLEW_VERSION
         case 2:return "1"; // GLEW_VERSION_MAJOR
@@ -87,54 +88,46 @@ var LibraryGLEW = {
       }
     },
 
-    versionString: function(name) {
+    versionString(name) {
       if (!GLEW.version[name]) {
         var string = GLEW.versionStringConstantFromCode(name);
         if (!string)
           return 0;
-        GLEW.version[name] = allocate(intArrayFromString(string), 'i8', ALLOC_NORMAL);
+        GLEW.version[name] = stringToNewUTF8(string);
       }
       return GLEW.version[name];
     },
 
-    extensionIsSupported: function(name) {
-      if (!GLEW.extensions) {
-        GLEW.extensions = UTF8ToString(_glGetString(0x1F03)).split(' ');
-      }
+    extensionIsSupported(name) {
+      GLEW.extensions ||= webglGetExtensions();
 
-      if (GLEW.extensions.indexOf(name) != -1)
+      if (GLEW.extensions.includes(name))
         return 1;
 
       // extensions from GLEmulations do not come unprefixed
       // so, try with prefix
-      return (GLEW.extensions.indexOf("GL_" + name) != -1);
+      return (GLEW.extensions.includes("GL_" + name));
     },
   },
 
-  glewInit: function() { return 0; },
+  glewInit: () => 0,
 
-  glewIsSupported: function(name) {
+  glewIsSupported: (name) => {
     var exts = UTF8ToString(name).split(' ');
-    for (var i in exts) {
+    for (var i = 0; i < exts.length; ++i) {
       if (!GLEW.extensionIsSupported(exts[i]))
         return 0;
     }
     return 1;
   },
 
-  glewGetExtension: function(name) {
-    return GLEW.extensionIsSupported(UTF8ToString(name));
-  },
+  glewGetExtension: (name) => GLEW.extensionIsSupported(UTF8ToString(name)),
 
-  glewGetErrorString: function(error) {
-    return GLEW.errorString(error);
-  },
+  glewGetErrorString: (error) => GLEW.errorString(error),
 
-  glewGetString: function(name) {
-    return GLEW.versionString(name);
-  },
+  glewGetString: (name) => GLEW.versionString(name),
 
 };
 
 autoAddDeps(LibraryGLEW, '$GLEW');
-mergeInto(LibraryManager.library, LibraryGLEW);
+addToLibrary(LibraryGLEW);

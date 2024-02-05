@@ -1,11 +1,9 @@
 #define _BSD_SOURCE
+#include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
-#include "libc.h"
-
-char *__randname(char *);
 
 int __mkostemps(char *template, int len, int flags)
 {
@@ -28,4 +26,3 @@ int __mkostemps(char *template, int len, int flags)
 }
 
 weak_alias(__mkostemps, mkostemps);
-weak_alias(__mkostemps, mkostemps64);

@@ -1,5 +1,4 @@
 #include <wctype.h>
-#include "libc.h"
 
 static const unsigned char table[] = {
 #include "punct.h"

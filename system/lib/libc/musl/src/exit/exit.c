@@ -12,8 +12,7 @@ weak_alias(dummy, __funcs_on_exit);
 weak_alias(dummy, __stdio_exit);
 weak_alias(dummy, _fini);
 
-__attribute__((__weak__, __visibility__("hidden")))
-extern void (*const __fini_array_start)(void), (*const __fini_array_end)(void);
+extern weak hidden void (*const __fini_array_start)(void), (*const __fini_array_end)(void);
 
 static void libc_exit_fini(void)
 {

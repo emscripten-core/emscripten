@@ -4,12 +4,17 @@
 # You can set these variables from the command line.
 SPHINXOPTS    = -W
 SPHINXBUILD   = sphinx-build
+SPHINXVERSION = 2.4.4
 PAPER         =
 BUILDDIR      = build
 
 # User-friendly check for sphinx-build
 ifeq ($(shell which $(SPHINXBUILD) >/dev/null 2>&1; echo $$?), 1)
-$(error The '$(SPHINXBUILD)' command was not found. Make sure you have Sphinx installed, then set the SPHINXBUILD environment variable to point to the full path of the '$(SPHINXBUILD)' executable. Alternatively you can add the directory with the executable to your PATH. If you don't have Sphinx installed, grab it from http://sphinx-doc.org/)
+$(error The '$(SPHINXBUILD)' command was not found. Make sure you have Sphinx version 2.4.4 installed, then set the SPHINXBUILD environment variable to point to the full path of the '$(SPHINXBUILD)' executable. Alternatively you can add the directory with the executable to your PATH. If you don't have Sphinx installed, grab it from http://sphinx-doc.org/)
+endif
+
+ifneq ($(shell $(SPHINXBUILD) --version), $(SPHINXBUILD) $(SPHINXVERSION))
+$(error This project requires $(SPHINXBUILD) $(SPHINXVERSION), but you have $(shell $(SPHINXBUILD) --version). Please install the correct version: http://sphinx-doc.org/)
 endif
 
 # Internal variables.
@@ -45,9 +50,16 @@ help:
 	@echo "  pseudoxml  to make pseudoxml-XML files for display purposes"
 	@echo "  linkcheck  to check all external links for integrity"
 	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
+	@echo ""
+	@echo "  install    install to emscripte-site directory (set \$$(EMSCRIPTEN_SITE))"
 
 clean:
 	rm -rf $(BUILDDIR)/*
+
+install: html
+	@ if [ -z "$(EMSCRIPTEN_SITE)" ]; then echo "Please set EMSCRIPTEN_SITE"; exit 1; fi
+	rm -rf $(EMSCRIPTEN_SITE)/docs $(EMSCRIPTEN_SITE)/_images $(EMSCRIPTEN_SITE)/_source $(EMSCRIPTEN_SITE)/_start
+	cp -R $(BUILDDIR)/html/* $(EMSCRIPTEN_SITE)
 
 html:
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html

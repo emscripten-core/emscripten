@@ -3,8 +3,6 @@
 #include <errno.h>
 #include "syscall.h"
 
-void __procfdname(char *, unsigned);
-
 int fchmodat(int fd, const char *path, mode_t mode, int flag)
 {
 	if (!flag) return syscall(SYS_fchmodat, fd, path, mode, flag);
@@ -16,8 +14,8 @@ int fchmodat(int fd, const char *path, mode_t mode, int flag)
 	int ret, fd2;
 	char proc[15+3*sizeof(int)];
 
-	if ((ret = __syscall(SYS_fstatat, fd, path, &st, flag)))
-		return __syscall_ret(ret);
+	if (fstatat(fd, path, &st, flag))
+		return -1;
 	if (S_ISLNK(st.st_mode))
 		return __syscall_ret(-EOPNOTSUPP);
 
@@ -28,12 +26,16 @@ int fchmodat(int fd, const char *path, mode_t mode, int flag)
 	}
 
 	__procfdname(proc, fd2);
-	ret = __syscall(SYS_fstatat, AT_FDCWD, proc, &st, 0);
+	ret = stat(proc, &st);
 	if (!ret) {
-		if (S_ISLNK(st.st_mode)) ret = -EOPNOTSUPP;
-		else ret = __syscall(SYS_fchmodat, AT_FDCWD, proc, mode);
+		if (S_ISLNK(st.st_mode)) ret = __syscall_ret(-EOPNOTSUPP);
+		else ret = syscall(SYS_fchmodat, AT_FDCWD, proc, mode);
 	}
 
+#ifdef __EMSCRIPTEN__
+	__wasi_fd_close(fd2);
+#else
 	__syscall(SYS_close, fd2);
-	return __syscall_ret(ret);
+#endif
+	return ret;
 }

@@ -1,6 +1,5 @@
 #include <strings.h>
 #include <ctype.h>
-#include "libc.h"
 
 int strncasecmp(const char *_l, const char *_r, size_t n)
 {

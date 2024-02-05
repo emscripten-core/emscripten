@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright 2015 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -45,7 +45,7 @@ def parseFiles():
         api_item = api_item.split('(')[0]
         try:
             api_item = api_item.split(' ')[1]
-        except:
+        except IndexError:
             pass
 
         # print lang
@@ -63,7 +63,7 @@ def parseFiles():
     for file in os.listdir(api_reference_directory):
         if file.endswith(".rst"):
             filepath = api_reference_directory + file
-            print file
+            print(file)
             # open file
             with open(filepath, 'r') as infile:
                 for line in infile:

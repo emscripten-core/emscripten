@@ -1,0 +1,1 @@
+someExtern.var = 42;

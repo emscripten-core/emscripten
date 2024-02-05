@@ -1,12 +1,21 @@
 #include "stdio_impl.h"
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stddef.h>
 #include <inttypes.h>
+#include "libc.h"
 
 struct cookie {
 	size_t pos, len, size;
 	unsigned char *buf;
 	int mode;
+};
+
+struct mem_FILE {
+	FILE f;
+	struct cookie c;
+	unsigned char buf[UNGET+BUFSIZ], buf2[];
 };
 
 static off_t mseek(FILE *f, off_t off, int whence)
@@ -72,43 +81,47 @@ static int mclose(FILE *m)
 
 FILE *fmemopen(void *restrict buf, size_t size, const char *restrict mode)
 {
-	FILE *f;
-	struct cookie *c;
+	struct mem_FILE *f;
 	int plus = !!strchr(mode, '+');
 	
-	if (!size || !strchr("rwa", *mode)) {
+	if (!strchr("rwa", *mode)) {
 		errno = EINVAL;
 		return 0;
 	}
 
-	if (!buf && size > SIZE_MAX-sizeof(FILE)-BUFSIZ-UNGET) {
+	if (!buf && size > PTRDIFF_MAX) {
 		errno = ENOMEM;
 		return 0;
 	}
 
-	f = calloc(sizeof *f + sizeof *c + UNGET + BUFSIZ + (buf?0:size), 1);
+	f = malloc(sizeof *f + (buf?0:size));
 	if (!f) return 0;
-	f->cookie = c = (void *)(f+1);
-	f->fd = -1;
-	f->lbf = EOF;
-	f->buf = (unsigned char *)(c+1) + UNGET;
-	f->buf_size = BUFSIZ;
-	if (!buf) buf = f->buf + BUFSIZ;
+	memset(f, 0, offsetof(struct mem_FILE, buf));
+	f->f.cookie = &f->c;
+	f->f.fd = -1;
+	f->f.lbf = EOF;
+	f->f.buf = f->buf + UNGET;
+	f->f.buf_size = sizeof f->buf - UNGET;
+	if (!buf) {
+		buf = f->buf2;
+		memset(buf, 0, size);
+	}
 
-	c->buf = buf;
-	c->size = size;
-	c->mode = *mode;
+	f->c.buf = buf;
+	f->c.size = size;
+	f->c.mode = *mode;
 	
-	if (!plus) f->flags = (*mode == 'r') ? F_NOWR : F_NORD;
-	if (*mode == 'r') c->len = size;
-	else if (*mode == 'a') c->len = c->pos = strnlen(buf, size);
+	if (!plus) f->f.flags = (*mode == 'r') ? F_NOWR : F_NORD;
+	if (*mode == 'r') f->c.len = size;
+	else if (*mode == 'a') f->c.len = f->c.pos = strnlen(buf, size);
+	else if (plus) *f->c.buf = 0;
 
-	f->read = mread;
-	f->write = mwrite;
-	f->seek = mseek;
-	f->close = mclose;
+	f->f.read = mread;
+	f->f.write = mwrite;
+	f->f.seek = mseek;
+	f->f.close = mclose;
 
-	if (!libc.threaded) f->lock = -1;
+	if (!libc.threaded) f->f.lock = -1;
 
-	return __ofl_add(f);
+	return __ofl_add(&f->f);
 }

@@ -3,159 +3,189 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
-from .toolchain_profiler import ToolchainProfiler
-import os
-import shutil
+"""Permanent cache for system libraries and ports.
+"""
+
+import contextlib
 import logging
-from . import tempfiles, filelock
+import os
+from pathlib import Path
 
-logger = logging.getLogger('emscripten')
+from . import filelock, config, utils
+from .settings import settings
+
+logger = logging.getLogger('cache')
 
 
-# Permanent cache for dlmalloc and stdlibc++
-class Cache(object):
-  # If EM_EXCLUSIVE_CACHE_ACCESS is true, this process is allowed to have direct access to
-  # the Emscripten cache without having to obtain an interprocess lock for it. Generally this
-  # is false, and this is used in the case that Emscripten process recursively calls to itself
-  # when building the cache, in which case the parent Emscripten process has already locked
-  # the cache. Essentially the env. var EM_EXCLUSIVE_CACHE_ACCESS signals from parent to
-  # child process that the child can reuse the lock that the parent already has acquired.
-  EM_EXCLUSIVE_CACHE_ACCESS = int(os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS') or 0)
+acquired_count = 0
+cachedir = None
+cachelock = None
+cachelock_name = None
 
-  def __init__(self, dirname=None, debug=False, use_subdir=True):
-    # figure out the root directory for all caching
-    if dirname is None:
-      dirname = os.environ.get('EM_CACHE')
-      if dirname:
-        dirname = os.path.normpath(dirname)
-    if not dirname:
-      dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
-    self.root_dirname = dirname
 
-    def try_remove_ending(thestring, ending):
-      if thestring.endswith(ending):
-        return thestring[:-len(ending)]
-      return thestring
+def acquire_cache_lock(reason):
+  global acquired_count
+  if config.FROZEN_CACHE:
+    # Raise an exception here rather than exit_with_error since in practice this
+    # should never happen
+    raise Exception('Attempt to lock the cache but FROZEN_CACHE is set')
 
-    self.filelock_name = try_remove_ending(try_remove_ending(dirname, '/'), '\\') + '.lock'
-    self.filelock = filelock.FileLock(self.filelock_name)
-
-    # if relevant, use a subdir of the cache
-    if use_subdir:
-      if not shared.Settings.WASM_BACKEND:
-        dirname = os.path.join(dirname, 'asmjs')
-      elif shared.Settings.WASM_OBJECT_FILES:
-        dirname = os.path.join(dirname, 'wasm_o')
-      else:
-        dirname = os.path.join(dirname, 'wasm_bc')
-    self.dirname = dirname
-    self.debug = 'EM_CACHE_DEBUG' in os.environ
-    self.acquired_count = 0
-
-  def acquire_cache_lock(self):
-    if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 0:
-      logger.debug('Cache: PID %s acquiring multiprocess file lock to Emscripten cache at %s' % (str(os.getpid()), self.dirname))
-      try:
-        self.filelock.acquire(60)
-      except filelock.Timeout:
-        # The multiprocess cache locking can be disabled altogether by setting EM_EXCLUSIVE_CACHE_ACCESS=1 environment
-        # variable before building. (in that case, use "embuilder.py build ALL" to prepopulate the cache)
-        logger.warning('Accessing the Emscripten cache at "' + self.dirname + '" is taking a long time, another process should be writing to it. If there are none and you suspect this process has deadlocked, try deleting the lock file "' + self.filelock_name + '" and try again. If this occurs deterministically, consider filing a bug.')
-        self.filelock.acquire()
-
-      self.prev_EM_EXCLUSIVE_CACHE_ACCESS = os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS')
-      os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = '1'
-      logger.debug('Cache: done')
-    self.acquired_count += 1
-
-  def release_cache_lock(self):
-    self.acquired_count -= 1
-    assert self.acquired_count >= 0, "Called release more times than acquire"
-    if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 0:
-      if self.prev_EM_EXCLUSIVE_CACHE_ACCESS:
-        os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = self.prev_EM_EXCLUSIVE_CACHE_ACCESS
-      else:
-        del os.environ['EM_EXCLUSIVE_CACHE_ACCESS']
-      self.filelock.release()
-      logger.debug('Cache: PID %s released multiprocess file lock to Emscripten cache at %s' % (str(os.getpid()), self.dirname))
-
-  def ensure(self):
-    self.acquire_cache_lock()
+  if acquired_count == 0:
+    logger.debug(f'PID {os.getpid()} acquiring multiprocess file lock to Emscripten cache at {cachedir}')
+    assert 'EM_CACHE_IS_LOCKED' not in os.environ, f'attempt to lock the cache while a parent process is holding the lock ({reason})'
     try:
-      shared.safe_ensure_dirs(self.dirname)
-    finally:
-      self.release_cache_lock()
+      cachelock.acquire(60)
+    except filelock.Timeout:
+      logger.warning(f'Accessing the Emscripten cache at "{cachedir}" (for "{reason}") is taking a long time, another process should be writing to it. If there are none and you suspect this process has deadlocked, try deleting the lock file "{cachelock_name}" and try again. If this occurs deterministically, consider filing a bug.')
+      cachelock.acquire()
 
-  def erase(self):
-    tempfiles.try_delete(self.root_dirname)
-    self.filelock = None
-    tempfiles.try_delete(self.filelock_name)
-    self.filelock = filelock.FileLock(self.filelock_name)
+    os.environ['EM_CACHE_IS_LOCKED'] = '1'
+    logger.debug('done')
+  acquired_count += 1
 
-  def get_path(self, shortname):
-    return os.path.join(self.dirname, shortname)
 
-  # Request a cached file. If it isn't in the cache, it will be created with
-  # the given creator function
-  def get(self, shortname, creator, extension='.bc', what=None, force=False):
-    if not shortname.endswith(extension):
-      shortname += extension
-    cachename = os.path.abspath(os.path.join(self.dirname, shortname))
+def release_cache_lock():
+  global acquired_count
+  acquired_count -= 1
+  assert acquired_count >= 0, "Called release more times than acquire"
+  if acquired_count == 0:
+    assert os.environ['EM_CACHE_IS_LOCKED'] == '1'
+    del os.environ['EM_CACHE_IS_LOCKED']
+    cachelock.release()
+    logger.debug(f'PID {os.getpid()} released multiprocess file lock to Emscripten cache at {cachedir}')
 
-    self.acquire_cache_lock()
-    try:
-      if os.path.exists(cachename) and not force:
-        return cachename
-      # it doesn't exist yet, create it
-      if shared.FROZEN_CACHE:
-        # it's ok to build small .txt marker files like "vanilla"
-        if not shortname.endswith('.txt'):
-          raise Exception('FROZEN_CACHE disallows building system libs: %s' % shortname)
-      if what is None:
-        if shortname.endswith(('.bc', '.so', '.a')):
-          what = 'system library'
-        else:
-          what = 'system asset'
-      message = 'generating ' + what + ': ' + shortname + '... (this will be cached in "' + cachename + '" for subsequent builds)'
-      logger.info(message)
-      self.ensure()
-      temp = creator()
-      if os.path.normcase(temp) != os.path.normcase(cachename):
-        shutil.copyfile(temp, cachename)
+
+@contextlib.contextmanager
+def lock(reason):
+  """A context manager that performs actions in the given directory."""
+  acquire_cache_lock(reason)
+  try:
+    yield
+  finally:
+    release_cache_lock()
+
+
+def ensure():
+  ensure_setup()
+  utils.safe_ensure_dirs(cachedir)
+
+
+def erase():
+  ensure_setup()
+  with lock('erase'):
+    # Delete everything except the lockfile itself
+    utils.delete_contents(cachedir, exclude=[os.path.basename(cachelock_name)])
+
+
+def get_path(name):
+  ensure_setup()
+  return Path(cachedir, name)
+
+
+def get_sysroot(absolute):
+  ensure_setup()
+  if absolute:
+    return os.path.join(cachedir, 'sysroot')
+  return 'sysroot'
+
+
+def get_include_dir(*parts):
+  return str(get_sysroot_dir('include', *parts))
+
+
+def get_sysroot_dir(*parts):
+  return str(Path(get_sysroot(absolute=True), *parts))
+
+
+def get_lib_dir(absolute):
+  ensure_setup()
+  path = Path(get_sysroot(absolute=absolute), 'lib')
+  if settings.MEMORY64:
+    path = Path(path, 'wasm64-emscripten')
+  else:
+    path = Path(path, 'wasm32-emscripten')
+  # if relevant, use a subdir of the cache
+  subdir = []
+  if settings.LTO:
+    if settings.LTO == 'thin':
+      subdir.append('thinlto')
+    else:
+      subdir.append('lto')
+  if settings.RELOCATABLE:
+    subdir.append('pic')
+  if subdir:
+    path = Path(path, '-'.join(subdir))
+  return path
+
+
+def get_lib_name(name, absolute=False):
+  return str(get_lib_dir(absolute=absolute).joinpath(name))
+
+
+def erase_lib(name):
+  erase_file(get_lib_name(name))
+
+
+def erase_file(shortname):
+  with lock('erase: ' + shortname):
+    name = Path(cachedir, shortname)
+    if name.exists():
+      logger.info(f'deleting cached file: {name}')
+      utils.delete_file(name)
+
+
+def get_lib(libname, *args, **kwargs):
+  name = get_lib_name(libname)
+  return get(name, *args, **kwargs)
+
+
+# Request a cached file. If it isn't in the cache, it will be created with
+# the given creator function
+def get(shortname, creator, what=None, force=False, quiet=False, deferred=False):
+  ensure_setup()
+  cachename = Path(cachedir, shortname)
+  # Check for existence before taking the lock in case we can avoid the
+  # lock completely.
+  if cachename.exists() and not force:
+    return str(cachename)
+
+  if config.FROZEN_CACHE:
+    # Raise an exception here rather than exit_with_error since in practice this
+    # should never happen
+    raise Exception(f'FROZEN_CACHE is set, but cache file is missing: "{shortname}" (in cache root path "{cachedir}")')
+
+  with lock(shortname):
+    if cachename.exists() and not force:
+      return str(cachename)
+    if what is None:
+      if shortname.endswith(('.bc', '.so', '.a')):
+        what = 'system library'
+      else:
+        what = 'system asset'
+    message = f'generating {what}: {shortname}... (this will be cached in "{cachename}" for subsequent builds)'
+    logger.info(message)
+    utils.safe_ensure_dirs(cachename.parent)
+    creator(str(cachename))
+    if not deferred:
+      assert cachename.exists()
+    if not quiet:
       logger.info(' - ok')
-    finally:
-      self.release_cache_lock()
 
-    return cachename
+  return str(cachename)
 
 
-# Given a set of functions of form (ident, text), and a preferred chunk size,
-# generates a set of chunks for parallel processing and caching.
-def chunkify(funcs, chunk_size, DEBUG=False):
-  with ToolchainProfiler.profile_block('chunkify'):
-    chunks = []
-    # initialize reasonably, the rest of the funcs we need to split out
-    curr = []
-    total_size = 0
-    for i in range(len(funcs)):
-      func = funcs[i]
-      curr_size = len(func[1])
-      if total_size + curr_size < chunk_size:
-        curr.append(func)
-        total_size += curr_size
-      else:
-        chunks.append(curr)
-        curr = [func]
-        total_size = curr_size
-    if curr:
-      chunks.append(curr)
-      curr = None
-    return [''.join(func[1] for func in chunk) for chunk in chunks] # remove function names
+def setup():
+  global cachedir, cachelock, cachelock_name
+  # figure out the root directory for all caching
+  cachedir = Path(config.CACHE).resolve()
+
+  # since the lock itself lives inside the cache directory we need to ensure it
+  # exists.
+  ensure()
+  cachelock_name = Path(cachedir, 'cache.lock')
+  cachelock = filelock.FileLock(cachelock_name)
 
 
-try:
-  from . import shared
-except ImportError:
-  # Python 2 circular import compatibility
-  import shared
+def ensure_setup():
+  if not cachedir:
+    setup()

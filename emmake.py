@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # Copyright 2016 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -21,9 +21,11 @@ that configure tests pass. emmake uses Emscripten to
 generate JavaScript.
 """
 
-from __future__ import print_function
+import shutil
 import sys
+from tools import building
 from tools import shared
+from tools import utils
 from subprocess import CalledProcessError
 
 
@@ -31,22 +33,36 @@ from subprocess import CalledProcessError
 # Main run() function
 #
 def run():
-  if len(sys.argv) < 2 or sys.argv[1] != 'make':
-    print('''
-  emmake is a helper for make, setting various environment
-  variables so that emcc etc. are used. Typical usage:
+  if len(sys.argv) < 2 or sys.argv[1] in ('--version', '--help'):
+    print('''\
+emmake is a helper for make, setting various environment
+variables so that emcc etc. are used. Typical usage:
 
-    emmake make [FLAGS]
+  emmake make [FLAGS]
 
-  (but you can run any command instead of make)
+(but you can run any command instead of make)''', file=sys.stderr)
+    return 1
 
-  ''', file=sys.stderr)
+  args = sys.argv[1:]
+  env = building.get_building_env()
 
+  # On Windows prefer building with mingw32-make instead of make, if it exists.
+  if utils.WINDOWS:
+    if args[0] == 'make':
+      mingw32_make = shutil.which('mingw32-make')
+      if mingw32_make:
+        args[0] = mingw32_make
+
+  # On Windows, run the execution through shell to get PATH expansion and
+  # executable extension lookup, e.g. 'sdl2-config' will match with
+  # 'sdl2-config.bat' in PATH.
+  print('make: ' + ' '.join(args), file=sys.stderr)
   try:
-    shared.Building.make(sys.argv[1:])
+    shared.check_call(args, shell=utils.WINDOWS, env=env)
+    return 0
   except CalledProcessError as e:
-    sys.exit(e.returncode)
+    return e.returncode
 
 
 if __name__ == '__main__':
-  run()
+  sys.exit(run())

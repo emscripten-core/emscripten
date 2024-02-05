@@ -1,0 +1,2 @@
+errno   : 5
+strerror: Address family not supported by protocol

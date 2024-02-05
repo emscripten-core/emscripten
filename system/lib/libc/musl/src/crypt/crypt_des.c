@@ -56,9 +56,7 @@
 #include <stdint.h>
 #include <string.h>
 
-struct expanded_key {
-	uint32_t l[16], r[16];
-};
+#include "crypt_des.h"
 
 #define _PASSWORD_EFMT1 '_'
 

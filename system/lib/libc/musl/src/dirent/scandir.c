@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <errno.h>
 #include <stddef.h>
-#include "libc.h"
 
 int scandir(const char *path, struct dirent ***res,
 	int (*sel)(const struct dirent *),
@@ -44,5 +43,3 @@ int scandir(const char *path, struct dirent ***res,
 	*res = names;
 	return cnt;
 }
-
-LFS64(scandir);

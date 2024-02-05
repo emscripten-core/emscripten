@@ -1,12 +1,19 @@
 #include "stdio_impl.h"
+#include <errno.h>
 
 int __fseeko_unlocked(FILE *f, off_t off, int whence)
 {
+	/* Fail immediately for invalid whence argument. */
+	if (whence != SEEK_CUR && whence != SEEK_SET && whence != SEEK_END) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	/* Adjust relative offset for unread data in buffer, if any. */
-	if (whence == SEEK_CUR) off -= f->rend - f->rpos;
+	if (whence == SEEK_CUR && f->rend) off -= f->rend - f->rpos;
 
 	/* Flush write buffer, and report error on failure. */
-	if (f->wpos > f->wbase) {
+	if (f->wpos != f->wbase) {
 		f->write(f, 0, 0);
 		if (!f->wpos) return -1;
 	}
@@ -39,5 +46,3 @@ int fseek(FILE *f, long off, int whence)
 }
 
 weak_alias(__fseeko, fseeko);
-
-LFS64(fseeko);

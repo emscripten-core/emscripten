@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # Copyright 2017 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -42,7 +42,7 @@ Usage:
    example, if your application is a game that starts receiving
    events when in fullscreen, add something like
 
-    if (typeof Recorder != 'undefined') Recorder.start();
+    if (typeof Recorder !== 'undefined') Recorder.start();
 
    in the button that launches fullscreen. start() will start
    either recording when in record mode, or replaying when
@@ -113,6 +113,7 @@ import os
 import re
 import sys
 import shutil
+from pathlib import Path
 
 assert len(sys.argv) >= 4, 'Usage: reproduceriter.py IN_DIR OUT_DIR FIRST_JS [WINDOW_LOCATION]'
 
@@ -142,26 +143,28 @@ shutil.copytree(in_dir, out_dir)
 
 print('add customizations...')
 
-for parent, dirs, files in os.walk(out_dir):
+for parent, _, files in os.walk(out_dir):
   for filename in files:
     if filename.endswith('.js'):
       fullname = os.path.join(parent, filename)
       print('   ', fullname)
-      js = open(fullname).read()
+      with open(fullname) as fh:
+        js = fh.read()
       js = re.sub(r'document\.on(\w+) ?= ?([\w.$]+)', lambda m: 'Recorder.onEvent("' + m.group(1) + '", ' + m.group(2) + ')', js)
       js = re.sub(r'''([\w.'"\[\]]+)\.addEventListener\(([\w,. $]+)\)''', lambda m: 'Recorder.addListener(' + m.group(1) + ', ' + m.group(2) + ')', js)
-      open(fullname, 'w').write(js)
+      Path(fullname).write_text(js)
 
 # Add our boilerplate
 
 print('add boilerplate...')
 
-open(os.path.join(out_dir, first_js), 'w').write(
-  (open(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src', 'headless.js')).read() % (
-    window_location, window_location.split('?')[-1], on_idle or 'null', dirs_to_drop
-  ) if shell else '') +
-  open(os.path.join(os.path.dirname(__file__), 'reproduceriter.js')).read() +
-  open(os.path.join(in_dir, first_js)).read() + ('\nwindow.runEventLoop();\n' if shell else '')
-)
+with open(os.path.join(out_dir, first_js), 'w') as fh1:
+  fh1.write(
+    (Path(os.path.dirname(os.path.dirname(__file__)), 'src', 'headless.js').read_text() % (
+      window_location, window_location.split('?')[-1], on_idle or 'null', dirs_to_drop
+    ) if shell else '') +
+    Path(os.path.dirname(__file__), 'reproduceriter.js').read_text() +
+    Path(in_dir, first_js).read_text() + ('\nwindow.runEventLoop();\n' if shell else '')
+  )
 
 print('done!')

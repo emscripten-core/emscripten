@@ -1,0 +1,4 @@
+Name: GLFW
+Description: A multi-platform library for OpenGL, window and input
+Version: 3.2.1
+Libs: -sUSE_GLFW=3

@@ -1,16 +1,61 @@
-// Copyright 2015 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2015 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
+  $reallyNegative: (x) => x < 0 || (x === 0 && (1/x) === -Infinity),
+
+  // Converts a value we have as signed, into an unsigned value. For
+  // example, -1 in int32 would be a very large number as unsigned.
+  $unSign: (value, bits) => {
+    if (value >= 0) {
+      return value;
+    }
+    // Need some trickery, since if bits == 32, we are right at the limit of the
+    // bits JS uses in bitshifts
+    return bits <= 32 ? 2*Math.abs(1 << (bits-1)) + value
+                      : Math.pow(2, bits)         + value;
+  },
+
+  $strLen: (ptr) => {
+    var end = ptr;
+    while (HEAPU8[end]) ++end;
+    return end - ptr;
+  },
+
+  // Converts a value we have as unsigned, into a signed value. For
+  // example, 200 in a uint8 would be a negative number.
+  $reSign: (value, bits) => {
+    if (value <= 0) {
+      return value;
+    }
+    var half = bits <= 32 ? Math.abs(1 << (bits-1)) // abs is needed if bits == 32
+                          : Math.pow(2, bits-1);
+    // for huge values, we can hit the precision limit and always get true here.
+    // so don't do that but, in general there is no perfect solution here. With
+    // 64-bit ints, we get rounding and errors
+    // TODO: In i64 mode 1, resign the two parts separately and safely
+    if (value >= half && (bits <= 32 || value > half)) {
+      // Cannot bitshift half, as it may be at the limit of the bits JS uses in
+      // bitshifts
+      value = -2*half + value;
+    }
+    return value;
+  },
+
   // Performs printf-style formatting.
   //   format: A pointer to the format string.
   //   varargs: A pointer to the start of the arguments list.
   // Returns the resulting string string as a character array.
-  _formatString__deps: ['strlen', '_reallyNegative'],
-  _formatString: function(format, varargs) {
+  $formatString__deps: ['$reallyNegative', '$convertI32PairToI53', '$convertU32PairToI53',
+                        '$reSign', '$unSign', '$strLen', '$intArrayFromString'
+  ],
+  $formatString: (format, varargs) => {
+#if ASSERTIONS
     assert((varargs & 3) === 0);
+#endif
     var textIndex = format;
     var argIndex = varargs;
     // This must be called before reading a double or i64 vararg. It will bump the pointer properly.
@@ -19,11 +64,15 @@ mergeInto(LibraryManager.library, {
       if (type === 'double' || type === 'i64') {
         // move so the load is aligned
         if (ptr & 7) {
+#if ASSERTIONS
           assert((ptr & 7) === 4);
+#endif
           ptr += 4;
         }
       } else {
+#if ASSERTIONS
         assert((ptr & 3) === 0);
+#endif
       }
       return ptr;
     }
@@ -33,16 +82,18 @@ mergeInto(LibraryManager.library, {
       var ret;
       argIndex = prepVararg(argIndex, type);
       if (type === 'double') {
-        ret = {{{ makeGetValue('argIndex', 0, 'double', undefined, undefined, true) }}};
+        ret = {{{ makeGetValue('argIndex', 0, 'double') }}};
         argIndex += 8;
       } else if (type == 'i64') {
-        ret = [{{{ makeGetValue('argIndex', 0, 'i32', undefined, undefined, true, 4) }}},
-               {{{ makeGetValue('argIndex', 4, 'i32', undefined, undefined, true, 4) }}}];
+        ret = [{{{ makeGetValue('argIndex', 0, 'i32') }}},
+               {{{ makeGetValue('argIndex', 4, 'i32') }}}];
         argIndex += 8;
       } else {
+#if ASSERTIONS
         assert((argIndex & 3) === 0);
+#endif
         type = 'i32'; // varargs are always i32, i64, or double
-        ret = {{{ makeGetValue('argIndex', 0, 'i32', undefined, undefined, true) }}};
+        ret = {{{ makeGetValue('argIndex', 0, 'i32') }}};
         argIndex += 4;
       }
       return ret;
@@ -50,7 +101,7 @@ mergeInto(LibraryManager.library, {
 
     var ret = [];
     var curr, next, currArg;
-    while(1) {
+    while (1) {
       var startTextIndex = textIndex;
       curr = {{{ makeGetValue(0, 'textIndex', 'i8') }}};
       if (curr === 0) break;
@@ -115,7 +166,7 @@ mergeInto(LibraryManager.library, {
             precision = getNextArg('i32');
             textIndex++;
           } else {
-            while(1) {
+            while (1) {
               var precisionChr = {{{ makeGetValue(0, 'textIndex+1', 'i8') }}};
               if (precisionChr < {{{ charCode('0') }}} ||
                   precisionChr > {{{ charCode('9') }}}) break;
@@ -177,7 +228,7 @@ mergeInto(LibraryManager.library, {
             var argText;
             // Flatten i64-1 [low, high] into a (slightly rounded) double
             if (argSize == 8) {
-              currArg = makeBigInt(currArg[0], currArg[1], next == {{{ charCode('u') }}});
+              currArg = next == {{{ charCode('u') }}} ? convertU32PairToI53(currArg[0], currArg[1]) : convertI32PairToI53(currArg[0], currArg[1]);
             }
             // Truncate to requested size.
             if (argSize <= 4) {
@@ -188,9 +239,9 @@ mergeInto(LibraryManager.library, {
             var currAbsArg = Math.abs(currArg);
             var prefix = '';
             if (next == {{{ charCode('d') }}} || next == {{{ charCode('i') }}}) {
-              argText = reSign(currArg, 8 * argSize, 1).toString(10);
+              argText = reSign(currArg, 8 * argSize).toString(10);
             } else if (next == {{{ charCode('u') }}}) {
-              argText = unSign(currArg, 8 * argSize, 1).toString(10);
+              argText = unSign(currArg, 8 * argSize).toString(10);
               currArg = Math.abs(currArg);
             } else if (next == {{{ charCode('o') }}}) {
               argText = (flagAlternative ? '0' : '') + currAbsArg.toString(8);
@@ -300,7 +351,7 @@ mergeInto(LibraryManager.library, {
                 }
               } else if (next == {{{ charCode('f') }}} || next == {{{ charCode('F') }}}) {
                 argText = currArg.toFixed(effectivePrecision);
-                if (currArg === 0 && __reallyNegative(currArg)) {
+                if (currArg === 0 && reallyNegative(currArg)) {
                   argText = '-' + argText;
                 }
               }
@@ -308,7 +359,7 @@ mergeInto(LibraryManager.library, {
               var parts = argText.split('e');
               if (isGeneral && !flagAlternative) {
                 // Discard trailing zeros and periods.
-                while (parts[0].length > 1 && parts[0].indexOf('.') != -1 &&
+                while (parts[0].length > 1 && parts[0].includes('.') &&
                        (parts[0].slice(-1) == '0' || parts[0].slice(-1) == '.')) {
                   parts[0] = parts[0].slice(0, -1);
                 }
@@ -358,7 +409,7 @@ mergeInto(LibraryManager.library, {
           case 's': {
             // String.
             var arg = getNextArg('i8*');
-            var argLength = arg ? _strlen(arg) : '(null)'.length;
+            var argLength = arg ? strLen(arg) : '(null)'.length;
             if (precisionSet) argLength = Math.min(argLength, precision);
             if (!flagLeftAlign) {
               while (argLength < width--) {
@@ -367,7 +418,7 @@ mergeInto(LibraryManager.library, {
             }
             if (arg) {
               for (var i = 0; i < argLength; i++) {
-                ret.push({{{ makeGetValue('arg++', 0, 'i8', null, true) }}});
+                ret.push({{{ makeGetValue('arg++', 0, 'u8') }}});
               }
             } else {
               ret = ret.concat(intArrayFromString('(null)'.substr(0, argLength), true));
@@ -415,27 +466,6 @@ mergeInto(LibraryManager.library, {
       }
     }
     return ret;
-  },
-
-  // printf/puts implementations for when musl is not pulled in - very partial. useful for tests, and when bootstrapping structInfo
-  printf__deps: ['_formatString'],
-  printf: function(format, varargs) {
-    // int printf(const char *restrict format, ...);
-    // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
-    // extra effort to support printf, even without a filesystem. very partial, very hackish
-    var result = __formatString(format, varargs);
-    var string = intArrayToString(result);
-    if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
-    out(string);
-    return result.length;
-  },
-  puts: function(s) {
-    // extra effort to support puts, even without a filesystem. very partial, very hackish
-    var result = UTF8ToString(s);
-    var string = result.substr(0);
-    if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
-    out(string);
-    return result.length;
   },
 });
 

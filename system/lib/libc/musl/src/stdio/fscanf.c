@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdarg.h>
-#include "libc.h"
 
 int fscanf(FILE *restrict f, const char *restrict fmt, ...)
 {

@@ -1,0 +1,19 @@
+int* 0
+float 1.5
+double 2.5
+char 10
+signed char -10
+unsigned char 10
+short -20
+signed short -20
+unsigned short 20
+int -30
+signed int -30
+unsigned int 30
+long -40
+signed long -40
+unsigned long 40
+bit field 3
+bool 1
+wchar_t 50
+enum SomeEnum 60

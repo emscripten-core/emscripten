@@ -1,46 +1,30 @@
-// Copyright 2013 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
-
-if (typeof console === 'undefined') {
-  // we can't call Module.printErr because that might be circular
-  var console = {
-    log: function(x) {
-      if (typeof dump === 'function') dump('log: ' + x + '\n');
-    },
-    debug: function(x) {
-      if (typeof dump === 'function') dump('debug: ' + x + '\n');
-    },
-    info: function(x) {
-      if (typeof dump === 'function') dump('info: ' + x + '\n');
-    },
-    warn: function(x) {
-      if (typeof dump === 'function') dump('warn: ' + x + '\n');
-    },
-    error: function(x) {
-      if (typeof dump === 'function') dump('error: ' + x + '\n');
-    },
-  };
-}
+/**
+ * @license
+ * Copyright 2013 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 /*
-function proxify(object, nick) {
-  return new Proxy(object, {
-    get: function(target, name) {
-      var ret = target[name];
-      if (ret === undefined) console.log('PROXY ' + [nick, target, name, ret, typeof ret]);
-      return ret;
-    }
-  });
-}
-*/
+ * Implements the server/worker side of proxyClient.js.
+ * This code gets included in the main emscripten output
+ * when PROXY_TO_WORKER is used. The resulting code then
+ * needs to be run in a worker and receive events from
+ * proxyClient.js running on the main thread.
+ */
+
+#if !PROXY_TO_WORKER
+#error "proxyClient.js should only be included in PROXY_TO_WORKER mode"
+#endif
+
+#if ENVIRONMENT_MAY_BE_NODE
+if (!ENVIRONMENT_IS_NODE) {
+#endif
 
 function FPSTracker(text) {
   var last = 0;
   var mean = 0;
   var counter = 0;
-  this.tick = function() {
+  this.tick = () => {
     var now = Date.now();
     if (last > 0) {
       var diff = now - last;
@@ -63,15 +47,15 @@ var KeyboardEvent = {
 };
 
 function PropertyBag() {
-  this.addProperty = function(){};
-  this.removeProperty = function(){};
-  this.setProperty = function(){};
+  this.addProperty = () => {};
+  this.removeProperty = () => {};
+  this.setProperty = () => {};
 };
 
 var IndexedObjects = {
   nextId: 1,
   cache: {},
-  add: function(object) {
+  add(object) {
     object.id = this.nextId++;
     this.cache[object.id] = object;
   }
@@ -81,7 +65,7 @@ function EventListener() {
   this.listeners = {};
 
   this.addEventListener = function addEventListener(event, func) {
-    if (!this.listeners[event]) this.listeners[event] = [];
+    this.listeners[event] ||= [];
     this.listeners[event].push(func);
   };
 
@@ -93,15 +77,13 @@ function EventListener() {
     list.splice(me, 1);
   };
 
-  this.fireEvent = function fireEvent(event) {
-    event.preventDefault = function(){};
+  this.fireEvent = function(event) {
+    event.preventDefault = () => {};
 
     if (event.type in this.listeners) {
-      this.listeners[event.type].forEach(function(listener) {
-        listener(event);
-      });
+      this.listeners[event.type].forEach((listener) => listener(event));
     }
-  };
+  }
 }
 
 function Image() {
@@ -109,18 +91,16 @@ function Image() {
   EventListener.call(this);
   var src = '';
   Object.defineProperty(this, 'src', {
-    set: function(value) {
+    set: (value) => {
       src = value;
       assert(this.id);
-      postMessage({ target: 'Image', method: 'src', src: src, id: this.id });
+      postMessage({ target: 'Image', method: 'src', src, id: this.id });
     },
-    get: function() {
-      return src;
-    }
+    get: () => src
   });
 }
-Image.prototype.onload = function(){};
-Image.prototype.onerror = function(){};
+Image.prototype.onload = () => {};
+Image.prototype.onerror = () => {};
 
 var HTMLImageElement = Image;
 
@@ -128,13 +108,13 @@ var window = this;
 var windowExtra = new EventListener();
 for (var x in windowExtra) window[x] = windowExtra[x];
 
-window.close = function window_close() {
+window.close = () => {
   postMessage({ target: 'window', method: 'close' });
 };
 
-window.alert = function(text) {
-  err('alert forever: ' + text);
-  while (1){};
+window.alert = (text) => {
+  err(`alert forever: ${text}`);
+  while (1) {};
 };
 
 window.scrollX = window.scrollY = 0; // TODO: proxy these
@@ -163,11 +143,11 @@ var webGLWorker = new WebGLWorker();
 
 var document = new EventListener();
 
-document.createElement = function document_createElement(what) {
-  switch(what) {
+document.createElement = (what) => {
+  switch (what) {
     case 'canvas': {
       var canvas = new EventListener();
-      canvas.ensureData = function canvas_ensureData() {
+      canvas.ensureData = () => {
         if (!canvas.data || canvas.data.width !== canvas.width || canvas.data.height !== canvas.height) {
           canvas.data = {
             width: canvas.width,
@@ -179,13 +159,13 @@ document.createElement = function document_createElement(what) {
           }
         }
       };
-      canvas.getContext = function canvas_getContext(type, attributes) {
+      canvas.getContext = (type, attributes) => {
         if (canvas === Module['canvas']) {
-          postMessage({ target: 'canvas', op: 'getContext', type: type, attributes: attributes });
+          postMessage({ target: 'canvas', op: 'getContext', type, attributes });
         }
         if (type === '2d') {
           return {
-            getImageData: function(x, y, w, h) {
+            getImageData: (x, y, w, h) => {
               assert(x == 0 && y == 0 && w == canvas.width && h == canvas.height);
               canvas.ensureData();
               return {
@@ -194,7 +174,7 @@ document.createElement = function document_createElement(what) {
                 data: new Uint8Array(canvas.data.data) // TODO: can we avoid this copy?
               };
             },
-            putImageData: function(image, x, y) {
+            putImageData: (image, x, y) => {
               canvas.ensureData();
               assert(x == 0 && y == 0 && image.width == canvas.width && image.height == canvas.height);
               canvas.data.data.set(image.data); // TODO: can we avoid this copy?
@@ -202,7 +182,7 @@ document.createElement = function document_createElement(what) {
                 postMessage({ target: 'canvas', op: 'render', image: canvas.data });
               }
             },
-            drawImage: function(image, x, y, w, h, ox, oy, ow, oh) {
+            drawImage: (image, x, y, w, h, ox, oy, ow, oh) => {
               assert (!x && !y && !ox && !oy);
               assert(w === ow && h === oh);
               assert(canvas.width === w || w === undefined);
@@ -220,52 +200,46 @@ document.createElement = function document_createElement(what) {
         }
       };
       canvas.boundingClientRect = {};
-      canvas.getBoundingClientRect = function canvas_getBoundingClientRect() {
-        return {
-          width: canvas.boundingClientRect.width,
-          height: canvas.boundingClientRect.height,
-          top: canvas.boundingClientRect.top,
-          left: canvas.boundingClientRect.left,
-          bottom: canvas.boundingClientRect.bottom,
-          right: canvas.boundingClientRect.right
-        };
-      };
+      canvas.getBoundingClientRect = () => ({
+        width: canvas.boundingClientRect.width,
+        height: canvas.boundingClientRect.height,
+        top: canvas.boundingClientRect.top,
+        left: canvas.boundingClientRect.left,
+        bottom: canvas.boundingClientRect.bottom,
+        right: canvas.boundingClientRect.right
+      });
       canvas.style = new PropertyBag();
-      canvas.exitPointerLock = function(){};
+      canvas.exitPointerLock = () => {};
 
-      canvas.width_ = canvas.width_ || 0;
-      canvas.height_ = canvas.height_ || 0;
+      canvas.width_ ||= 0;
+      canvas.height_ ||= 0;
       Object.defineProperty(canvas, 'width', {
-        set: function(value) {
+        set: (value) => {
           canvas.width_ = value;
           if (canvas === Module['canvas']) {
             postMessage({ target: 'canvas', op: 'resize', width: canvas.width_, height: canvas.height_ });
           }
         },
-        get: function() {
-          return canvas.width_;
-        }
+        get: () => canvas.width_
       });
       Object.defineProperty(canvas, 'height', {
-        set: function(value) {
+        set: (value) => {
           canvas.height_ = value;
           if (canvas === Module['canvas']) {
             postMessage({ target: 'canvas', op: 'resize', width: canvas.width_, height: canvas.height_ });
           }
         },
-        get: function() {
-          return canvas.height_;
-        }
+        get: () => canvas.height_
       });
 
       var style = {
         parentCanvas: canvas,
-        removeProperty: function(){},
-        setProperty:  function(){},
+        removeProperty: () => {},
+        setProperty:  () => {},
       };
 
       Object.defineProperty(style, 'cursor', {
-        set: function(value) {
+        set: (value) => {
           if (!style.cursor_ || style.cursor_ !== value) {
             style.cursor_ = value;
             if (style.parentCanvas === Module['canvas']) {
@@ -273,31 +247,37 @@ document.createElement = function document_createElement(what) {
             }
           }
         },
-        get: function() {
-          return style.cursor_;
-        }
+        get: () => style.cursor,
       });
 
       canvas.style = style;
-
       return canvas;
     }
-    default: throw 'document.createElement ' + what;
+    default: {
+      throw 'document.createElement ' + what;
+    }
   }
 };
 
-document.getElementById = function(id) {
+document.getElementById = (id) => {
   if (id === 'canvas' || id === 'application-canvas') {
     return Module.canvas;
   }
   throw 'document.getElementById failed on ' + id;
 };
 
+document.querySelector = (id) => {
+  if (id === '#canvas' || id === '#application-canvas' || id === 'canvas' || id === 'application-canvas') {
+    return Module.canvas;
+  }
+  throw 'document.querySelector failed on ' + id;
+};
+
 document.documentElement = {};
 
 document.styleSheets = [{
   cssRules: [], // TODO: forward to client
-  insertRule: function(rule, i) {
+  insertRule(rule, i) {
     this.cssRules.splice(i, 0, rule);
   }
 }];
@@ -309,32 +289,30 @@ function Audio() {
 }
 Audio.prototype = new EventListener();
 Object.defineProperty(Audio.prototype, 'src', {
-  set: function(value) {
+  set(value) {
     if (value[0] === 'd') return; // ignore data urls
     this.onerror();
   },
 });
 
-Audio.prototype.play = function(){};
-Audio.prototype.pause = function(){};
+Audio.prototype.play = () => {};
+Audio.prototype.pause = () => {};
 
-Audio.prototype.cloneNode = function() {
-  return new Audio;
-}
+Audio.prototype.cloneNode = () => new Audio;
 
 function AudioContext() {
   warnOnce('faking WebAudio elements, no actual sound will play');
-  function makeNode() {
+  var makeNode = () => {
     return {
-      connect: function(){},
-      disconnect: function(){},
+      connect: () => {},
+      disconnect: () => {},
     }
-  }
-  this.listener = {
-    setPosition: function() {},
-    setOrientation: function() {},
   };
-  this.decodeAudioData = function() {}; // ignore callbacks
+  this.listener = {
+    setPosition: () => {},
+    setOrientation: () => {},
+  };
+  this.decodeAudioData = () => {}; // ignore callbacks
   this.createBuffer = makeNode;
   this.createBufferSource = makeNode;
   this.createGain = makeNode;
@@ -348,13 +326,13 @@ var screen = {
 
 Module.canvas = document.createElement('canvas');
 
-Module.setStatus = function(){};
+Module.setStatus = () => {};
 
-out = function Module_print(x) {
+out = (x) => {
   //dump('OUT: ' + x + '\n');
   postMessage({ target: 'stdout', content: x });
 };
-err = function Module_printErr(x) {
+err = (x) => {
   //dump('ERR: ' + x + '\n');
   postMessage({ target: 'stderr', content: x });
 };
@@ -365,8 +343,8 @@ var frameId = 0;
 var clientFrameId = 0;
 
 var postMainLoop = Module['postMainLoop'];
-Module['postMainLoop'] = function() {
-  if (postMainLoop) postMainLoop();
+Module['postMainLoop'] = () => {
+  postMainLoop?.();
   // frame complete, send a frame id
   postMessage({ target: 'tick', id: frameId++ });
   commandBuffer = [];
@@ -374,12 +352,16 @@ Module['postMainLoop'] = function() {
 
 // Wait to start running until we receive some info from the client
 
-#if USE_PTHREADS
+#if PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
   addRunDependency('gl-prefetch');
   addRunDependency('worker-init');
-#if USE_PTHREADS
+#if PTHREADS
+}
+#endif
+
+#if ENVIRONMENT_MAY_BE_NODE
 }
 #endif
 
@@ -387,14 +369,18 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 
 var messageBuffer = null;
 var messageResenderTimeout = null;
+var calledMain = false;
+
+// Set calledMain to true during postRun which happens onces main returns
+Module['postRun'] ||= [];
+if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
+Module['postRun'].push(() => { calledMain = true; });
 
 function messageResender() {
   if (calledMain) {
     assert(messageBuffer && messageBuffer.length > 0);
     messageResenderTimeout = null;
-    messageBuffer.forEach(function(message) {
-      onmessage(message);
-    });
+    messageBuffer.forEach(onmessage);
     messageBuffer = null;
   } else {
     messageResenderTimeout = setTimeout(messageResender, 100);
@@ -469,8 +455,11 @@ function onMessageFromMainEmscriptenThread(message) {
       screen.width = Module.canvas.width_ = message.data.width;
       screen.height = Module.canvas.height_ = message.data.height;
       Module.canvas.boundingClientRect = message.data.boundingClientRect;
+#if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE)
+#endif
       document.URL = message.data.URL;
-#if USE_PTHREADS
+#if PTHREADS
       currentScriptUrl = message.data.currentScriptUrl;
 #endif
       window.fireEvent({ type: 'load' });
@@ -493,13 +482,19 @@ function onMessageFromMainEmscriptenThread(message) {
   }
 };
 
-#if USE_PTHREADS
+#if PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
   onmessage = onMessageFromMainEmscriptenThread;
-#if USE_PTHREADS
+#if PTHREADS
 }
 #endif
+
+// proxyWorker.js has defined 'document' and 'window' objects above, so need to
+// initialize them for library_html5.js explicitly here.
+if (typeof specialHTMLTargets != 'undefined') {
+  specialHTMLTargets = [0, document, window];
+}
 
 function postCustomMessage(data) {
   postMessage({ target: 'custom', userData: data });

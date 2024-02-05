@@ -1,0 +1,10 @@
+printf 1
+out    1
+err    1
+printf 2
+out    2
+err    2
+printf 3
+out    3
+err    3
+done

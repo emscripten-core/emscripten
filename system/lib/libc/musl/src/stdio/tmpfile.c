@@ -1,10 +1,9 @@
 #include <stdio.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include "stdio_impl.h"
 
 #define MAXTRIES 100
-
-char *__randname(char *);
 
 FILE *tmpfile(void)
 {
@@ -22,11 +21,13 @@ FILE *tmpfile(void)
 			__syscall(SYS_unlinkat, AT_FDCWD, s, 0);
 #endif
 			f = __fdopen(fd, "w+");
+#ifdef __EMSCRIPTEN__
+			if (!f) __wasi_fd_close(fd);
+#else
 			if (!f) __syscall(SYS_close, fd);
+#endif
 			return f;
 		}
 	}
 	return 0;
 }
-
-LFS64(tmpfile);

@@ -1,6 +1,5 @@
 #include <wctype.h>
 #include <string.h>
-#include "libc.h"
 
 #define WCTYPE_ALNUM  1
 #define WCTYPE_ALPHA  2

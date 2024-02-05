@@ -1,0 +1,1 @@
+Aborted('FS_createDataFile' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ). Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you)

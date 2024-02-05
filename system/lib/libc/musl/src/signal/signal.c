@@ -1,8 +1,5 @@
 #include <signal.h>
 #include "syscall.h"
-#include "libc.h"
-
-int __sigaction(int, const struct sigaction *, struct sigaction *);
 
 void (*signal(int sig, void (*func)(int)))(int)
 {

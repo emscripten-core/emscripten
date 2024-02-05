@@ -4,7 +4,7 @@
 html5.h
 =======
 
-The C++ APIs in `html5.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/emscripten/html5.h>`_ define the Emscripten low-level glue bindings to interact with HTML5 events from native code.
+The C++ APIs in `html5.h <https://github.com/emscripten-core/emscripten/blob/main/system/include/emscripten/html5.h>`_ define the Emscripten low-level glue bindings to interact with HTML5 events from native code.
 
 .. tip:: The C++ APIs map closely to their :ref:`equivalent HTML5 JavaScript APIs <specifications-html5-api>`. The HTML5 specifications listed below provide additional detailed reference "over and above" the information provided in this document.
 
@@ -62,12 +62,23 @@ The typical format of registration functions is as follows (some methods may omi
 
 The ``target`` parameter is the ID of the HTML element to which the callback registration is to be applied. This field has the following special meanings:
 
-  - ``0`` or ``NULL``: A default element is chosen automatically based on the event type, which should be reasonable most of the time.
-  - ``#window``: The event listener is applied to the JavaScript ``window`` object.
-  - ``#document``: The event listener is applied to the JavaScript ``document`` object.
-  - ``#screen``: The event listener is applied to the JavaScript ``window.screen`` object.
-  - ``#canvas``: The event listener is applied to the Emscripten default WebGL canvas element.
-  - Any other string **without a leading hash "#"** sign: The event listener is applied to the element on the page with the given ID.
+  - ``EMSCRIPTEN_EVENT_TARGET_WINDOW``: The event listener is applied to the JavaScript ``window`` object.
+  - ``EMSCRIPTEN_EVENT_TARGET_DOCUMENT``: The event listener is applied to the JavaScript ``document`` object.
+  - ``EMSCRIPTEN_EVENT_TARGET_SCREEN``: The event listener is applied to the JavaScript ``window.screen`` object.
+  - ``0`` or ``NULL``: If building with the option ``-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR`` (default), ``NULL`` denotes an invalid element. If building with legacy option ``-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0`` (not recommended), a default element is chosen automatically based on the event type.
+  - ``#canvas``: If building with legacy option ``-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0`` (not recommended), the event listener is applied to the Emscripten default WebGL canvas element. If building with the option ``-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR`` (default), ``#canvas`` is interpreted as a CSS query selector: "the first element with CSS ID 'canvas'".
+  - Any other string: A CSS selector lookup is performed to the DOM with the passed string, and the event listener is applied to the first element that matches the query.
+
+If the above are insufficient for you, you can add custom mappings in JavaScript
+using something like
+
+  .. code-block:: cpp
+
+    specialHTMLTargets["!canvas"] = Module.canvas;
+
+That will let ``!canvas`` map to the canvas held in Module.canvas. (You can write
+that JavaScript in an ``EM_JS`` or ``EM_ASM`` block that happens before you
+call the registration function, for example.)
 
 .. _userdata-parameter-html5-api:
 
@@ -120,9 +131,9 @@ Test/Example code
 
 The HTML5 test code demonstrates how to use this API:
 
-  - `test_html5.c <https://github.com/emscripten-core/emscripten/blob/master/tests/test_html5.c>`_
-  - `test_html5_fullscreen.c <https://github.com/emscripten-core/emscripten/blob/master/tests/test_html5_fullscreen.c>`_
-  - `test_html5_mouse.c <https://github.com/emscripten-core/emscripten/blob/master/tests/test_html5_mouse.c>`_
+  - `test_html5_core.c <https://github.com/emscripten-core/emscripten/blob/main/test/test_html5_core.c>`_
+  - `test_html5_fullscreen.c <https://github.com/emscripten-core/emscripten/blob/main/test/test_html5_fullscreen.c>`_
+  - `test_html5_mouse.c <https://github.com/emscripten-core/emscripten/blob/main/test/test_html5_mouse.c>`_
 
 
 General types
@@ -231,6 +242,10 @@ Struct
 
   Note that since the `DOM Level 3 Events spec <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#keys>`_ is very recent at the time of writing (2014-03), uniform support for the different fields in the spec is still in flux. Be sure to check the results in multiple browsers. See the `unmerged pull request #2222 <https://github.com/emscripten-core/emscripten/pull/2222>`_ for an example of how to interpret the legacy key events.
 
+
+  .. c:member:: double timestamp
+
+    Absolute wallclock time when the data was recorded (milliseconds).
 
   .. c:member:: EM_UTF8 key
 
@@ -360,9 +375,9 @@ Struct
   The event structure passed in `mouse events <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#interface-MouseEvent>`_: `click <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-click>`_, `mousedown <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mousedown>`_, `mouseup <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseup>`_, `dblclick <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-dblclick>`_, `mousemove <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mousemove>`_, `mouseenter <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseenter>`_ and `mouseleave <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseleave>`_.
 
 
-  .. c:member:: double timestamp;
+  .. c:member:: double timestamp
 
-    A timestamp of when this data was generated by the browser. This is an absolute wallclock time in milliseconds.
+    Absolute wallclock time when the data was recorded (milliseconds).
 
   .. c:member:: long screenX
     long screenY
@@ -633,7 +648,7 @@ Functions
 
   .. note::
 
-    - For the ``resize`` callback, pass in target = 0 to get ``resize`` events from the ``Window`` object.
+    - For the ``resize`` callback, pass in target = ``EMSCRIPTEN_EVENT_TARGET_WINDOW`` to get ``resize`` events from the ``Window`` object.
     - The DOM3 Events specification only requires that the ``Window`` object sends resize events. It is valid to register a ``resize`` callback on other DOM elements, but the browser is not required to fire ``resize`` events for these.
 
   :param target: |target-parameter-doc|
@@ -740,10 +755,6 @@ Struct
   The event structure passed in the `deviceorientation <http://dev.w3.org/geo/api/spec-source-orientation.html#deviceorientation>`_ event.
 
 
-  .. c:member:: double timestamp
-
-    Absolute wallclock time when the event occurred (in milliseconds).
-
   .. c:member:: double alpha
     double beta
     double gamma
@@ -831,11 +842,6 @@ Struct
 
   The event structure passed in the `devicemotion <http://w3c.github.io/deviceorientation/spec-source-orientation.html#devicemotion>`_ event.
 
-  .. c:member:: double timestamp
-
-    Absolute wallclock time when the event occurred (milliseconds).
-
-
   .. c:member:: double accelerationX
     double accelerationY
     double accelerationZ
@@ -856,6 +862,11 @@ Struct
 
     The rotational delta of the device.
 
+  .. c:member:: int supportedFields
+
+    A bitfield that is a combination of EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_* fields that specifies the different fields of this structure
+    that the current browser supports. If for example the EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION bit is not present in this field,
+    then the accelerationX/Y/Z fields of this structure should be assumed to not be valid.
 
 Callback functions
 ------------------
@@ -1530,6 +1541,10 @@ Struct
 
   Specifies the data of a single `touchevent <http://www.w3.org/TR/touch-events/#touchevent-interface>`_.
 
+  .. c:member:: double timestamp
+
+    Absolute wallclock time when the data was recorded (milliseconds).
+
   .. c:member:: int numTouches
 
     The number of valid elements in the touches array.
@@ -1647,13 +1662,13 @@ Struct
 
     An ID for the brand or style of the connected gamepad device. Typically, this will include the USB vendor and a product ID.
 
-    Maximum size 64 ``char`` (i.e. ``EM_UTF8 id[128]``).
+    Maximum size 64 ``char`` (i.e. ``EM_UTF8 id[64]``).
 
   .. c:member:: EM_UTF8 mapping
 
     A string that identifies the layout or control mapping of this device.
 
-    Maximum size 128 ``char`` (i.e. ``EM_UTF8 mapping[128]``).
+    Maximum size 64 ``char`` (i.e. ``EM_UTF8 mapping[64]``).
 
 
 
@@ -1911,7 +1926,7 @@ Defines
 
 .. c:type:: EMSCRIPTEN_WEBGL_CONTEXT_HANDLE
 
-  Represents a handle to an Emscripten WebGL context object. The value 0 denotes an invalid/no context (this is a typedef to an ``int``).
+  Represents a handle to an Emscripten WebGL context object. The value 0 denotes an invalid/no context (this is a typedef to an ``intptr_t``).
 
 
 Struct
@@ -1976,25 +1991,25 @@ Struct
 
     By default, when ``explicitSwapControl`` is in its default state ``false``, rendered WebGL content is implicitly presented (displayed to the user) on the canvas when the event handler that renders with WebGL returns back to the browser event loop. If ``explicitSwapControl`` is set to ``true``, rendered content will not be displayed on screen automatically when event handler function finishes, but the control of swapping is given to the user to manage, via the ``emscripten_webgl_commit_frame()`` function.
 
-    In order to be able to set ``explicitSwapControl==true``, support for it must explicitly be enabled either 1) via adding the ``-s OFFSCREEN_FRAMEBUFFER=1`` Emscripten linker flag, and enabling ``renderViaOffscreenBackBuffer==1``, or 2) via adding the the linker flag ``-s OFFSCREENCANVAS_SUPPORT=1``, and running in a browser that supports OffscreenCanvas.
+    In order to be able to set ``explicitSwapControl==true``, support for it must explicitly be enabled either 1) via adding the ``-sOFFSCREEN_FRAMEBUFFER`` Emscripten linker flag, and enabling ``renderViaOffscreenBackBuffer==1``, or 2) via adding the linker flag ``-sOFFSCREENCANVAS_SUPPORT``, and running in a browser that supports OffscreenCanvas.
 
 
   .. c:member:: EM_BOOL renderViaOffscreenBackBuffer
 
     If ``true``, an extra intermediate backbuffer (offscreen render target) is allocated to the created WebGL context, and rendering occurs to this backbuffer instead of directly onto the WebGL "default backbuffer". This is required to be enabled if 1) ``explicitSwapControl==true`` and the browser does not support OffscreenCanvas, 2) when performing WebGL rendering in a worker thread and the browser does not support OffscreenCanvas, and 3) when performing WebGL context accesses from multiple threads simultaneously (independent of whether OffscreenCanvas is supported or not).
 
-    Because supporting offscreen framebuffer adds some amount of extra code to the compiled output, support for it must explicitly be enabled via the ``-s OFFSCREEN_FRAMEBUFFER=1`` Emscripten linker flag. When building simultaneously with both ``-s OFFSCREEN_FRAMEBUFFER=1`` and ``-s OFFSCREENCANVAS_SUPPORT=1`` linker flags enabled, offscreen backbuffer can be used as a polyfill-like compatibility fallback to enable rendering WebGL from a pthread when the browser does not support the OffscreenCanvas API.
+    Because supporting offscreen framebuffer adds some amount of extra code to the compiled output, support for it must explicitly be enabled via the ``-sOFFSCREEN_FRAMEBUFFER`` Emscripten linker flag. When building simultaneously with both ``-sOFFSCREEN_FRAMEBUFFER`` and ``-sOFFSCREENCANVAS_SUPPORT`` linker flags enabled, offscreen backbuffer can be used as a polyfill-like compatibility fallback to enable rendering WebGL from a pthread when the browser does not support the OffscreenCanvas API.
 
 
   .. c:member:: EM_BOOL proxyContextToMainThread
 
-    This member specifies the threading model that will be used for the created WebGL context, when the WebGL context is created in a pthread. Three values are possible: ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW``, ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK`` or ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS``. If ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW`` is specified, the WebGLRenderingContext object will be created inside the pthread that is calling the ``emscripten_webgl_create_context()`` function as an OffscreenCanvas-based rendering context. This is only possible if 1) current browser supports OffscreenCanvas specification, 2) code was compiled with ``-s OFFSCREENCANVAS_SUPPORT=1`` linker flag enabled, 3) the Canvas object that the context is being created on was transferred over to the calling pthread with function ``emscripten_pthread_attr_settransferredcanvases()`` when the pthread was originally created, and 4) no OffscreenCanvas-based context already exists from the given Canvas at the same time.
+    This member specifies the threading model that will be used for the created WebGL context, when the WebGL context is created in a pthread. Three values are possible: ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW``, ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK`` or ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS``. If ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW`` is specified, the WebGLRenderingContext object will be created inside the pthread that is calling the ``emscripten_webgl_create_context()`` function as an OffscreenCanvas-based rendering context. This is only possible if 1) current browser supports OffscreenCanvas specification, 2) code was compiled with ``-sOFFSCREENCANVAS_SUPPORT`` linker flag enabled, 3) the Canvas object that the context is being created on was transferred over to the calling pthread with function ``emscripten_pthread_attr_settransferredcanvases()`` when the pthread was originally created, and 4) no OffscreenCanvas-based context already exists from the given Canvas at the same time.
 
     If a WebGL rendering context is created as an OffscreenCanvas-based context, it will have the limitation that only the pthread that created the context can enable access to it (via ``emscripten_webgl_make_context_current()`` function). Other threads will not be able to activate rendering to the context, i.e. OffscreenCanvas-based contexts are essentially "pinned" to the pthread that created them.
 
-    If the current browser does not support OffscreenCanvas, you can specify the ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS`` WebGL context creation flag. If this flag is passed, and code was compiled with ``-s OFFSCREEN_FRAMEBUFFER=1`` enabled, the WebGL context will be created as a "proxied context". In this context mode, the WebGLRenderingContext object will actually be created on the main browser thread, and all WebGL API calls will be proxied as asynchronous messages from the pthread into the main thread. This will have a performance and latency impact in comparison to OffscreenCanvas contexts, however unlike OffscreenCanvas-based contexts, proxied contexts can be shared across any number of pthreads: you can use the ``emscripten_webgl_make_context_current()`` function in any pthread to activate and deactivate access to the WebGL context: for example, you could have one WebGL loading thread, and another WebGL rendering thread that coordinate shared access to the WebGL rendering context by cooperatively acquiring and releasing access to the WebGL rendering context via the ``emscripten_webgl_make_context_current()`` function. Proxied contexts do not require any special support from the browser, so any WebGL capable browser can create a proxied WebGL context.
+    If the current browser does not support OffscreenCanvas, you can specify the ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS`` WebGL context creation flag. If this flag is passed, and code was compiled with ``-sOFFSCREEN_FRAMEBUFFER`` enabled, the WebGL context will be created as a "proxied context". In this context mode, the WebGLRenderingContext object will actually be created on the main browser thread, and all WebGL API calls will be proxied as asynchronous messages from the pthread into the main thread. This will have a performance and latency impact in comparison to OffscreenCanvas contexts, however unlike OffscreenCanvas-based contexts, proxied contexts can be shared across any number of pthreads: you can use the ``emscripten_webgl_make_context_current()`` function in any pthread to activate and deactivate access to the WebGL context: for example, you could have one WebGL loading thread, and another WebGL rendering thread that coordinate shared access to the WebGL rendering context by cooperatively acquiring and releasing access to the WebGL rendering context via the ``emscripten_webgl_make_context_current()`` function. Proxied contexts do not require any special support from the browser, so any WebGL capable browser can create a proxied WebGL context.
 
-    The ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS`` WebGL context creation flag will always create a proxied context, even if the browser did support OffscreenCanvas. If you would like to prefer to create a higher performance OffscreenCanvas context whenever suppported by the browser, but only fall back to a proxied WebGL context to keep compatibility with browsers that do not yet have OffscreenCanvas support, you can specify the ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK`` context creation flag. In order to use this flag, code should be compiled with both ``-s OFFSCREEN_FRAMEBUFFER=1`` and ``-s OFFSCREENCANVAS_SUPPORT=1`` linker flags.
+    The ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS`` WebGL context creation flag will always create a proxied context, even if the browser did support OffscreenCanvas. If you would like to prefer to create a higher performance OffscreenCanvas context whenever suppported by the browser, but only fall back to a proxied WebGL context to keep compatibility with browsers that do not yet have OffscreenCanvas support, you can specify the ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK`` context creation flag. In order to use this flag, code should be compiled with both ``-sOFFSCREEN_FRAMEBUFFER`` and ``-sOFFSCREENCANVAS_SUPPORT`` linker flags.
 
     Default value of ``proxyContextToMainThread`` after calling ``emscripten_webgl_init_context_attributes()`` is ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW``, if the WebGL context is being created on the main thread. This means that by default WebGL contexts created on the main thread are not shareable between multiple threads (to avoid accidental performance loss from enabling proxying when/if it is not needed). To create a context that can be shared between multiple pthreads, set the ``proxyContextToMainThread`` flag ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS``.
 
@@ -2067,7 +2082,7 @@ Functions
     - A successful call to this function will not immediately make that rendering context active. Call :c:func:`emscripten_webgl_make_context_current` after creating a context to activate it.
     - This function will try to initialize the context version that was *exactly* requested. It will not e.g. initialize a newer backwards-compatible version or similar.
 
-  :param target: The DOM canvas element in which to initialize the WebGL context. If 0 is passed, the element specified by ``Module.canvas`` will be used.
+  :param target: The DOM canvas element in which to initialize the WebGL context.
   :type target: const char*
   :param attributes: The attributes of the requested context version.
   :type attributes: const EmscriptenWebGLContextAttributes*
@@ -2157,7 +2172,7 @@ Functions
   :param target: Specifies a selector for the canvas to resize.
   :param width: A pointer to memory location where the width of the canvas element is received. This pointer may not be null.
   :param height: A pointer to memory location where the height of the canvas element is received. This pointer may not be null.
-  :returns: EMSCRIPTEN_RESULT_SUCCESS if resizing succeeded, and one of the EMSCRIPTEN_RESULT_* error values on failure.
+  :returns: EMSCRIPTEN_RESULT_SUCCESS if width and height retrieval succeeded, and one of the EMSCRIPTEN_RESULT_* error values on failure.
 
 
 CSS
@@ -2171,7 +2186,7 @@ Functions
 
   Resizes the CSS width and height of the element specified by ``target`` on the Emscripten web page.
 
-  :param target: Element to resize. If 0 is passed, the element specified by ``Module.canvas`` will be used.
+  :param target: Element to resize.
   :type target: const char*
   :param double width: New width of the element.
   :param double height: New height of the element.
@@ -2183,7 +2198,7 @@ Functions
 
   Gets the current CSS width and height of the element specified by ``target``.
 
-  :param target: Element to get size of. If 0 is passed, the element specified by ``Module.canvas`` will be used.
+  :param target: Element to get size of.
   :type target: const char*
   :param double* width: Width of the element.
   :param double* height: Height of the element.
@@ -2217,34 +2232,34 @@ Animation and Timing
 ====================
 
 The API provided here are low-level functions that directly call the relevant Web APIs and nothing more. They don't integrate with the emscripten runtime, such as checking if the program has halted and cancelling a callback if so. For that purpose,
-see the function ``emscripten_set_main_loop()``.
+see the function :c:func:`emscripten_set_main_loop()`.
 
 Functions
 ---------
 
 .. c:function:: long emscripten_set_timeout(void (*cb)(void *userData), double msecs, void *userData)
 
-  Performs a setTimeout() callback call on the given function on the calling thread.
+  Performs a ``setTimeout()`` callback call on the given function on the calling thread.
 
   :param cb: The callback function to call.
   :param msecs: Millisecond delay until the callback should fire.
   :param userData: Specifies a pointer sized field of custom data that will be passed in to the callback function.
-  :returns: An ID to the setTimeout() call that can be passed to emscripten_clear_timeout() to cancel the pending timeout timer.
+  :returns: An ID to the ``setTimeout()`` call that can be passed to :c:func:`emscripten_clear_timeout()` to cancel the pending timeout timer.
 
 
 .. c:function:: void emscripten_clear_timeout(long setTimeoutId)
 
-  Cancels a pending setTimeout() call on the calling thread. This function must be called on the same
-  thread as the emscripten_set_timeout() call that registered the callback.
+  Cancels a pending ``setTimeout()`` call on the calling thread. This function must be called on the same
+  thread as the :c:func:`emscripten_set_timeout()` call that registered the callback.
 
-  :param setTimeoutId: An ID returned by function emscripten_set_timeout().
+  :param setTimeoutId: An ID returned by function :c:func:`emscripten_set_timeout()`.
 
 
 .. c:function:: void emscripten_set_timeout_loop(EM_BOOL (*cb)(double time, void *userData), double intervalMsecs, void *userData)
 
-  Initializes a setTimeout() loop on the given function on the calling thread. The specified callback
-  function 'cb' needs to keep returning EM_TRUE as long as the animation loop should continue to run.
-  When the function returns false, the setTimeout() loop will stop.
+  Initializes a ``setTimeout()`` loop on the given function on the calling thread. The specified callback
+  function 'cb' needs to keep returning ``EM_TRUE`` as long as the animation loop should continue to run.
+  When the function returns false, the ``setTimeout()`` loop will stop.
   Note: The loop will start immediately with a 0 msecs delay - the passed in intervalMsecs time specifies
   the interval that the consecutive callback calls should fire at.
 
@@ -2255,61 +2270,62 @@ Functions
 
 .. c:function:: long emscripten_request_animation_frame(EM_BOOL (*cb)(double time, void *userData), void *userData)
 
-  Performs a single requestAnimationFrame() callback call on the given function on the calling thread.
+  Performs a single ``requestAnimationFrame()`` callback call on the given function on the calling thread.
 
   :param cb: The callback function to call. This function will receive the current high precision timer value
-    (value of performance.now()) at the time of the call.
+    (value of ``performance.now()``) at the time of the call.
   :param userData: Specifies a pointer sized field of custom data that will be passed in to the callback function.
-  :returns: An ID to the requestAnimationFrame() call that can be passed to emscripten_cancel_animation_frame() to
-    cancel the pending requestAnimationFrame timer.
+  :returns: An ID to the ``requestAnimationFrame()`` call that can be passed to
+    :c:func:`emscripten_cancel_animation_frame()` to
+    cancel the pending ``requestAnimationFrame`` timer.
 
 
 .. c:function:: void emscripten_cancel_animation_frame(long requestAnimationFrameId)
 
-  Cancels a registered requestAnimationFrame() callback on the calling thread before it is run. This
-  function must be called on the same thread as the emscripten_request_animation_frame() call that
+  Cancels a registered ``requestAnimationFrame()`` callback on the calling thread before it is run. This
+  function must be called on the same thread as the :c:func:`emscripten_request_animation_frame()` call that
   registered the callback.
 
-  :param requestAnimationFrameId: An ID returned by function emscripten_request_animation_frame().
+  :param requestAnimationFrameId: An ID returned by function :c:func:`emscripten_request_animation_frame()`.
 
 
 .. c:function:: void emscripten_request_animation_frame_loop(EM_BOOL (*cb)(double time, void *userData), void *userData)
 
-  Initializes a requestAnimationFrame() loop on the given function on the calling thread. The specified
-  callback function 'cb' needs to keep returning EM_TRUE as long as the animation loop should continue
+  Initializes a ``requestAnimationFrame()`` loop on the given function on the calling thread. The specified
+  callback function 'cb' needs to keep returning ``EM_TRUE`` as long as the animation loop should continue
   to run. When the function returns false, the animation frame loop will stop.
 
   :param cb: The callback function to call. This function will receive the current high precision timer value
-    (value of performance.now()) at the time of the call.
+    (value of ``performance.now()``) at the time of the call.
   :param userData: Specifies a pointer sized field of custom data that will be passed in to the callback function.
 
 
 .. c:function:: long emscripten_set_immediate(void (*cb)(void *userData), void *userData)
 
-  Performs a setImmediate() callback call on the given function on the calling thread. Returns an ID
-  to the setImmediate() call that can be passed to emscripten_clear_immediate() function to cancel
-  a pending setImmediate() invocation.
-  TODO: Currently the polyfill of setImmediate() only works in the main browser thread, but not in pthreads.
+  Performs a ``setImmediate()`` callback call on the given function on the calling thread. Returns an ID
+  to the ``setImmediate()`` call that can be passed to :c:func:`emscripten_clear_immediate()` function to cancel
+  a pending ``setImmediate()`` invocation.
+  TODO: Currently the polyfill of ``setImmediate()`` only works in the main browser thread, but not in pthreads.
 
   :param cb: The callback function to call.
   :param userData: Specifies a pointer sized field of custom data that will be passed in to the callback function.
-  :returns: An ID to the setImmediate() call that can be passed to emscripten_clear_immediate() to cancel the pending callback.
+  :returns: An ID to the ``setImmediate()`` call that can be passed to :c:func:`emscripten_clear_immediate()` to cancel the pending callback.
 
 
 .. c:function:: void emscripten_clear_immediate(long setImmediateId)
 
-  Cancels a pending setImmediate() call on the calling thread. This function must be called on the same
-  thread as the emscripten_set_immediate() call that registered the callback.
+  Cancels a pending ``setImmediate()`` call on the calling thread. This function must be called on the same
+  thread as the :c:func:`emscripten_set_immediate()` call that registered the callback.
 
-  :param setImmediateId: An ID returned by function emscripten_set_immediate().
+  :param setImmediateId: An ID returned by function :c:func:`emscripten_set_immediate()`.
 
 
 .. c:function:: void emscripten_set_immediate_loop(EM_BOOL (*cb)(void *userData), void *userData)
 
-  Initializes a setImmediate() loop on the given function on the calling thread. The specified callback
-  function 'cb' needs to keep returning EM_TRUE as long as the loop should continue to run.
-  When the function returns false, the setImmediate() loop will stop.
-  TODO: Currently the polyfill of setImmediate() only works in the main browser thread, but not in pthreads.
+  Initializes a ``setImmediate()`` loop on the given function on the calling thread. The specified callback
+  function 'cb' needs to keep returning ``EM_TRUE`` as long as the loop should continue to run.
+  When the function returns false, the ``setImmediate()`` loop will stop.
+  TODO: Currently the polyfill of ``setImmediate()`` only works in the main browser thread, but not in pthreads.
 
   :param cb: The callback function to call.
   :param userData: Specifies a pointer sized field of custom data that will be passed in to the callback function.
@@ -2317,10 +2333,10 @@ Functions
 
 .. c:function:: long emscripten_set_interval(void (*cb)(void *userData), double intervalMsecs, void *userData)
 
-  Initializes a setInterval() loop on the given function on the calling thread. Returns an ID to the
-  initialized loop. Call emscripten_clear_interval() with this ID to terminate the loop.
+  Initializes a ``setInterval()`` loop on the given function on the calling thread. Returns an ID to the
+  initialized loop. Call :c:func:`emscripten_clear_interval()` with this ID to terminate the loop.
   Note that this function will cause the given callback to be called repeatedly. Do not call
-  emscripten_set_interval() again on the same callback function from inside the callback, as that would
+  ``emscripten_set_interval()`` again on the same callback function from inside the callback, as that would
   register multiple loops to run simultaneously.
 
   :param cb: The callback function to call.
@@ -2332,22 +2348,22 @@ Functions
 
 .. c:function:: void emscripten_clear_interval(long setIntervalId)
 
-  Cancels a currently executing setInterval() loop on the calling thread. This function must be called on
-  the same thread as the emscripten_set_interval() call that registered the callback.
+  Cancels a currently executing ``setInterval()`` loop on the calling thread. This function must be called on
+  the same thread as the :c:func:`emscripten_set_interval()` call that registered the callback.
 
-  :param setIntervalId: An ID returned by function emscripten_set_interval().
+  :param setIntervalId: An ID returned by function :c:func:`emscripten_set_interval()`.
 
 
 .. c:function:: double emscripten_date_now(void)
 
-  Calls JavaScript Date.now() function in the current thread.
+  Calls JavaScript ``Date.now()`` function in the current thread.
 
   :returns: The number of msecs elapsed since the UNIX epoch. (00:00:00 Thursday, 1 January 1970)
 
 
 .. c:function:: double emscripten_performance_now(void)
 
-  Calls JavaScript performance.now() function in the current thread. Note that the returned value of
+  Calls JavaScript ``performance.now()`` function in the current thread. Note that the returned value of
   this function is based on different time offset depending on which thread this function is called in.
   That is, do not compare absolute time values returned by performance.now() across threads. (comparing
   relative timing values is ok). On the main thread this function returns the number of milliseconds elapsed
@@ -2357,33 +2373,6 @@ Functions
   counting time from 0 at the time when a pthread starts)
 
   :returns: A high precision wallclock time value in msecs.
-
-
-Console
-=======
-
-Functions
----------
-
-.. c:function:: void emscripten_console_log(const char *utf8String)
-
-  Prints a string using console.log().
-
-  :param utf8String: A string encoded as UTF-8.
-
-
-.. c:function:: void emscripten_console_warn(const char *utf8String)
-
-  Prints a string using console.warn().
-
-  :param utf8String: A string encoded as UTF-8.
-
-
-.. c:function:: void emscripten_console_error(const char *utf8String)
-
-  Prints a string using console.error().
-
-  :param utf8String: A string encoded as UTF-8.
 
 
 Throw
@@ -2400,3 +2389,14 @@ Functions
 .. c:function:: void emscripten_throw_string(const char *utf8String)
 
   Invokes JavaScript throw statement and throws a string.
+
+.. c:function:: void emscripten_unwind_to_js_event_loop(void)
+
+  Throws a JavaScript exception that unwinds the stack and yields execution back to the browser
+  event loop. This function does not return execution back to calling code.
+
+  This function can be useful when porting code that would enter an infinite loop. Instead of
+  actually running an infinite loop, which is not allowed on the Web, we can set up the body of
+  the loop to execute asynchronously (using :c:func:`emscripten_set_main_loop` or something else), and call
+  this function to halt execution, which is important as we do not want execution to continue
+  normally.

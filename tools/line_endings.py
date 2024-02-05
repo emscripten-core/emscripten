@@ -1,10 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright 2014 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from __future__ import print_function
 import os
 import sys
 
@@ -47,7 +46,7 @@ def check_line_endings(filename, expect_only=None, print_errors=True, print_info
     if print_errors:
       print("File '" + filename + "' contains BAD line endings of form \\r\\r\\n!", file=sys.stderr)
       bad_line = data[index - 50:index + 50].replace(b'\r', b'\\r').replace(b'\n', b'\\n')
-      print("Content around the location: '" + bad_line + "'", file=sys.stderr)
+      print("Content around the location: '" + bad_line.decode('utf-8') + "'", file=sys.stderr)
     return 1 # Bad line endings in file, return a non-zero process exit code.
 
   has_dos_line_endings = False

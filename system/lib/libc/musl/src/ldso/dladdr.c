@@ -1,6 +1,5 @@
 #define _GNU_SOURCE
 #include <dlfcn.h>
-#include "libc.h"
 
 static int stub_dladdr(const void *addr, Dl_info *info)
 {

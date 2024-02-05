@@ -1,8 +1,6 @@
 #include <time.h>
 #include <limits.h>
 
-int __clock_gettime(clockid_t, struct timespec *);
-
 clock_t clock()
 {
 	struct timespec ts;

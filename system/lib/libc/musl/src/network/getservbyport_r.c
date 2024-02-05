@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>
 
 int getservbyport_r(int port, const char *prots,
 	struct servent *se, char *buf, size_t buflen, struct servent **res)
@@ -20,11 +21,12 @@ int getservbyport_r(int port, const char *prots,
 		if (r) r = getservbyport_r(port, "udp", se, buf, buflen, res);
 		return r;
 	}
+	*res = 0;
 
 	/* Align buffer */
 	i = (uintptr_t)buf & sizeof(char *)-1;
 	if (!i) i = sizeof(char *);
-	if (buflen < 3*sizeof(char *)-i)
+	if (buflen <= 3*sizeof(char *)-i)
 		return ERANGE;
 	buf += sizeof(char *)-i;
 	buflen -= sizeof(char *)-i;
@@ -44,11 +46,16 @@ int getservbyport_r(int port, const char *prots,
 	case EAI_MEMORY:
 	case EAI_SYSTEM:
 		return ENOMEM;
+	case EAI_OVERFLOW:
+		return ERANGE;
 	default:
 		return ENOENT;
 	case 0:
 		break;
 	}
+
+	/* A numeric port string is not a service record. */
+	if (strtol(buf, 0, 10)==ntohs(port)) return ENOENT;
 
 	*res = se;
 	return 0;

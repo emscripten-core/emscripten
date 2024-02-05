@@ -1,0 +1,38 @@
+valid allocs: 1
+emmalloc_validate_memory_regions: 0
+emmalloc_dynamic_heap_size      : 106971424
+emmalloc_free_dynamic_memory    : 4210892
+numFreeMemoryRegions: 3
+Free memory regions of size [1,2[ bytes: 0 regions
+Free memory regions of size [2,4[ bytes: 0 regions
+Free memory regions of size [4,8[ bytes: 0 regions
+Free memory regions of size [8,16[ bytes: 0 regions
+Free memory regions of size [16,32[ bytes: 0 regions
+Free memory regions of size [32,64[ bytes: 0 regions
+Free memory regions of size [64,128[ bytes: 0 regions
+Free memory regions of size [128,256[ bytes: 1 regions
+Free memory regions of size [256,512[ bytes: 0 regions
+Free memory regions of size [512,1024[ bytes: 0 regions
+Free memory regions of size [1024,2048[ bytes: 0 regions
+Free memory regions of size [2048,4096[ bytes: 0 regions
+Free memory regions of size [4096,8192[ bytes: 0 regions
+Free memory regions of size [8192,16384[ bytes: 0 regions
+Free memory regions of size [16384,32768[ bytes: 1 regions
+Free memory regions of size [32768,65536[ bytes: 0 regions
+Free memory regions of size [65536,131072[ bytes: 0 regions
+Free memory regions of size [131072,262144[ bytes: 0 regions
+Free memory regions of size [262144,524288[ bytes: 0 regions
+Free memory regions of size [524288,1048576[ bytes: 0 regions
+Free memory regions of size [1048576,2097152[ bytes: 0 regions
+Free memory regions of size [2097152,4194304[ bytes: 0 regions
+Free memory regions of size [4194304,8388608[ bytes: 1 regions
+Free memory regions of size [8388608,16777216[ bytes: 0 regions
+Free memory regions of size [16777216,33554432[ bytes: 0 regions
+Free memory regions of size [33554432,67108864[ bytes: 0 regions
+Free memory regions of size [67108864,134217728[ bytes: 0 regions
+Free memory regions of size [134217728,268435456[ bytes: 0 regions
+Free memory regions of size [268435456,536870912[ bytes: 0 regions
+Free memory regions of size [536870912,1073741824[ bytes: 0 regions
+Free memory regions of size [1073741824,2147483648[ bytes: 0 regions
+Free memory regions of size [2147483648,4294967296[ bytes: 0 regions
+emmalloc_unclaimed_heap_memory  : 27176960

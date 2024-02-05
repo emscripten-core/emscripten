@@ -1,5 +1,4 @@
 #include <ctype.h>
-#include "libc.h"
 #undef isgraph
 
 int isgraph(int c)

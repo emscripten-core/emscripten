@@ -1,0 +1,5 @@
+yolo/in.txt content=mmap ftw!
+yolo/out.txt content=written mmap
+yolo/outreadonly.txt content=readonly mmap
+yolo/private.txt content=
+yolo/sharedoffset.txt content=written shared mmap with offset 131072

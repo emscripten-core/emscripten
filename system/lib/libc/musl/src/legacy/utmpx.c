@@ -1,7 +1,7 @@
+#define _GNU_SOURCE
 #include <utmpx.h>
 #include <stddef.h>
 #include <errno.h>
-#include "libc.h"
 
 void endutxent(void)
 {
@@ -35,7 +35,7 @@ void updwtmpx(const char *f, const struct utmpx *u)
 {
 }
 
-int __utmpxname(const char *f)
+static int __utmpxname(const char *f)
 {
 	errno = ENOTSUP;
 	return -1;

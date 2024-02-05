@@ -1,8 +1,6 @@
 #include "stdio_impl.h"
 #include "pthread_impl.h"
 
-void __unlist_locked_file(FILE *);
-
 void funlockfile(FILE *f)
 {
 	if (f->lockcount == 1) {

@@ -1,0 +1,3 @@
+$__wasm_call_ctors
+$foo
+$sbrk

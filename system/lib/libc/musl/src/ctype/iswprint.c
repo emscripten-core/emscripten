@@ -1,5 +1,4 @@
 #include <wctype.h>
-#include "libc.h"
 
 /* Consider all legal codepoints as printable except for:
  * - C0 and C1 control characters

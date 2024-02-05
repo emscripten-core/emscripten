@@ -1,7 +1,8 @@
-// Copyright 2014 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2014 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 // WebGLWorker worker code
 
@@ -483,7 +484,7 @@ function WebGLWorker() {
     enabledState: {} // Stores whether various GL state via glEnable/glDisable/glIsEnabled/getParameter are enabled.
   };
   var stateDisabledByDefault = [this.BLEND, this.CULL_FACE, this.DEPTH_TEST, this.DITHER, this.POLYGON_OFFSET_FILL, this.SAMPLE_ALPHA_TO_COVERAGE, this.SAMPLE_COVERAGE, this.SCISSOR_TEST, this.STENCIL_TEST];
-  for(var i in stateDisabledByDefault) {
+  for (var i in stateDisabledByDefault) {
     bindings.enabledState[stateDisabledByDefault[i]] = false; // It will be important to distinguish between false and undefined (undefined meaning the state cap enum is unknown/unsupported).
   }
 
@@ -497,7 +498,7 @@ function WebGLWorker() {
 
   this.onmessage = function(msg) {
     //dump('worker GL got ' + JSON.stringify(msg) + '\n');
-    switch(msg.op) {
+    switch (msg.op) {
       case 'setPrefetched': {
         WebGLWorker.prototype.prefetchedParameters = msg.parameters;
         WebGLWorker.prototype.prefetchedExtensions = msg.extensions;
@@ -652,7 +653,7 @@ function WebGLWorker() {
   this.createShader = function(type) {
     var id = nextId++;
     commandBuffer.push(6, type, id);
-    return { id: id, what: 'shader', type: type };
+    return { id, what: 'shader', type };
   };
   this.deleteShader = function(shader) {
     if (!shader) return;
@@ -682,7 +683,7 @@ function WebGLWorker() {
     commandBuffer.push(12, program.id, shader.id);
   };
   this.bindAttribLocation = function(program, index, name) {
-    program.nextAttributes[name] = { what: 'attribute', name: name, size: -1, location: index, type: '?' }; // fill in size, type later
+    program.nextAttributes[name] = { what: 'attribute', name, size: -1, location: index, type: '?' }; // fill in size, type later
     program.nextAttributeVec[index] = name;
     commandBuffer.push(13, program.id, index, name);
   };
@@ -736,8 +737,8 @@ function WebGLWorker() {
             fullname = name + '[0]';
           }
           if (!obj[name]) {
-            obj[name] = { what: type, name: fullname, size: size, location: -1, type: getTypeId(m[1]) };
-            if (vec) vec.push(name);
+            obj[name] = { what: type, name: fullname, size, location: -1, type: getTypeId(m[1]) };
+            vec?.push(name);
           }
         });
       });
@@ -806,7 +807,7 @@ function WebGLWorker() {
     if (!(name in program.uniforms)) return null;
     var id = nextId++;
     commandBuffer.push(16, program.id, fullname, id);
-    return { what: 'location', uniform: program.uniforms[name], id: id, index: index };
+    return { what: 'location', uniform: program.uniforms[name], id, index };
   };
   this.getProgramInfoLog = function(shader) {
     return ''; // optimistic assumption of success; no proxying
@@ -866,7 +867,7 @@ function WebGLWorker() {
   };
   function duplicate(something) {
     // clone data properly: handles numbers, null, typed arrays, js arrays and array buffers
-    if (!something || typeof something === 'number') return something;
+    if (!something || typeof something == 'number') return something;
     if (something.slice) return something.slice(0); // ArrayBuffer or js array
     return new something.constructor(something); // typed array
   }

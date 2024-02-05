@@ -1,0 +1,61 @@
+checking: 0
+js:got:       0
+called_from_js with: 0
+js:returning: 0
+got:      0
+expected: 0
+checking: 1
+js:got:       1
+called_from_js with: 1
+js:returning: 0
+got:      0
+expected: 0
+checking: -1
+js:got:       -1
+called_from_js with: -1
+js:returning: 0
+got:      0
+expected: 0
+checking: 42
+js:got:       42
+called_from_js with: 42
+js:returning: 21
+got:      21
+expected: 21
+checking: -42
+js:got:       -42
+called_from_js with: -42
+js:returning: -21
+got:      -21
+expected: -21
+checking: 4503599627370496
+js:got:       4503599627370496
+called_from_js with: 4503599627370496
+js:returning: 2251799813685248
+got:      2251799813685248
+expected: 2251799813685248
+checking: -4503599627370496
+js:got:       -4503599627370496
+called_from_js with: -4503599627370496
+js:returning: -2251799813685248
+got:      -2251799813685248
+expected: -2251799813685248
+checking: 9007199254740992
+js:got:       9007199254740992
+called_from_js with: 9007199254740992
+js:returning: 4503599627370496
+got:      4503599627370496
+expected: 4503599627370496
+checking: -9007199254740992
+js:got:       -9007199254740992
+called_from_js with: -9007199254740992
+js:returning: -4503599627370496
+got:      -4503599627370496
+expected: -4503599627370496
+checking: 9007199254740993
+overflow
+got:      42
+checking: -9007199254740993
+overflow
+got:      42
+done

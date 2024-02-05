@@ -1,0 +1,6 @@
+ENVIRONMENT_IS_WORKER: 1
+main: ENVIRONMENT_IS_WORKER: 0
+main_thread_callback called
+main: ENVIRONMENT_IS_WORKER: 0
+main_thread_callback called
+main done

@@ -1,5 +1,6 @@
 #include <sys/stat.h>
-#include "libc.h"
+
+#if !_REDIR_TIME64
 
 int __fxstat(int ver, int fd, struct stat *buf)
 {
@@ -21,10 +22,7 @@ int __xstat(int ver, const char *path, struct stat *buf)
 	return stat(path, buf);
 }
 
-LFS64(__fxstat);
-LFS64(__fxstatat);
-LFS64(__lxstat);
-LFS64(__xstat);
+#endif
 
 int __xmknod(int ver, const char *path, mode_t mode, dev_t *dev)
 {

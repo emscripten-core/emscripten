@@ -1,16 +1,21 @@
-// Copyright 2013 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2013 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $IDBFS__deps: ['$FS', '$MEMFS', '$PATH'],
+  $IDBFS__postset: () => {
+    addAtExit('IDBFS.quit();');
+    return '';
+  },
   $IDBFS: {
     dbs: {},
-    indexedDB: function() {
-      if (typeof indexedDB !== 'undefined') return indexedDB;
+    indexedDB: () => {
+      if (typeof indexedDB != 'undefined') return indexedDB;
       var ret = null;
-      if (typeof window === 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+      if (typeof window == 'object') ret = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
       assert(ret, 'IDBFS used, but indexedDB not supported');
       return ret;
     },
@@ -20,11 +25,11 @@ mergeInto(LibraryManager.library, {
       // reuse all of the core MEMFS functionality
       return MEMFS.mount.apply(null, arguments);
     },
-    syncfs: function(mount, populate, callback) {
-      IDBFS.getLocalSet(mount, function(err, local) {
+    syncfs: (mount, populate, callback) => {
+      IDBFS.getLocalSet(mount, (err, local) => {
         if (err) return callback(err);
 
-        IDBFS.getRemoteSet(mount, function(err, remote) {
+        IDBFS.getRemoteSet(mount, (err, remote) => {
           if (err) return callback(err);
 
           var src = populate ? remote : local;
@@ -34,7 +39,11 @@ mergeInto(LibraryManager.library, {
         });
       });
     },
-    getDB: function(name, callback) {
+    quit: () => {
+      Object.values(IDBFS.dbs).forEach((value) => value.close());
+      IDBFS.dbs = {};
+    },
+    getDB: (name, callback) => {
       // check the cache first
       var db = IDBFS.dbs[name];
       if (db) {
@@ -50,8 +59,8 @@ mergeInto(LibraryManager.library, {
       if (!req) {
         return callback("Unable to connect to IndexedDB");
       }
-      req.onupgradeneeded = function(e) {
-        var db = e.target.result;
+      req.onupgradeneeded = (e) => {
+        var db = /** @type {IDBDatabase} */ (e.target.result);
         var transaction = e.target.transaction;
 
         var fileStore;
@@ -66,28 +75,26 @@ mergeInto(LibraryManager.library, {
           fileStore.createIndex('timestamp', 'timestamp', { unique: false });
         }
       };
-      req.onsuccess = function() {
-        db = req.result;
+      req.onsuccess = () => {
+        db = /** @type {IDBDatabase} */ (req.result);
 
         // add to the cache
         IDBFS.dbs[name] = db;
         callback(null, db);
       };
-      req.onerror = function(e) {
-        callback(this.error);
+      req.onerror = (e) => {
+        callback(e.target.error);
         e.preventDefault();
       };
     },
-    getLocalSet: function(mount, callback) {
+    getLocalSet: (mount, callback) => {
       var entries = {};
 
       function isRealDir(p) {
         return p !== '.' && p !== '..';
       };
       function toAbsolute(root) {
-        return function(p) {
-          return PATH.join2(root, p);
-        }
+        return (p) => PATH.join2(root, p);
       };
 
       var check = FS.readdir(mount.mountpoint).filter(isRealDir).map(toAbsolute(mount.mountpoint));
@@ -106,35 +113,35 @@ mergeInto(LibraryManager.library, {
           check.push.apply(check, FS.readdir(path).filter(isRealDir).map(toAbsolute(path)));
         }
 
-        entries[path] = { timestamp: stat.mtime };
+        entries[path] = { 'timestamp': stat.mtime };
       }
 
       return callback(null, { type: 'local', entries: entries });
     },
-    getRemoteSet: function(mount, callback) {
+    getRemoteSet: (mount, callback) => {
       var entries = {};
 
-      IDBFS.getDB(mount.mountpoint, function(err, db) {
+      IDBFS.getDB(mount.mountpoint, (err, db) => {
         if (err) return callback(err);
 
         try {
           var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readonly');
-          transaction.onerror = function(e) {
-            callback(this.error);
+          transaction.onerror = (e) => {
+            callback(e.target.error);
             e.preventDefault();
           };
 
           var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
           var index = store.index('timestamp');
 
-          index.openKeyCursor().onsuccess = function(event) {
+          index.openKeyCursor().onsuccess = (event) => {
             var cursor = event.target.result;
 
             if (!cursor) {
-              return callback(null, { type: 'remote', db: db, entries: entries });
+              return callback(null, { type: 'remote', db, entries });
             }
 
-            entries[cursor.primaryKey] = { timestamp: cursor.key };
+            entries[cursor.primaryKey] = { 'timestamp': cursor.key };
 
             cursor.continue();
           };
@@ -143,7 +150,7 @@ mergeInto(LibraryManager.library, {
         }
       });
     },
-    loadLocalEntry: function(path, callback) {
+    loadLocalEntry: (path, callback) => {
       var stat, node;
 
       try {
@@ -155,37 +162,36 @@ mergeInto(LibraryManager.library, {
       }
 
       if (FS.isDir(stat.mode)) {
-        return callback(null, { timestamp: stat.mtime, mode: stat.mode });
+        return callback(null, { 'timestamp': stat.mtime, 'mode': stat.mode });
       } else if (FS.isFile(stat.mode)) {
         // Performance consideration: storing a normal JavaScript array to a IndexedDB is much slower than storing a typed array.
         // Therefore always convert the file contents to a typed array first before writing the data to IndexedDB.
         node.contents = MEMFS.getFileDataAsTypedArray(node);
-        return callback(null, { timestamp: stat.mtime, mode: stat.mode, contents: node.contents });
+        return callback(null, { 'timestamp': stat.mtime, 'mode': stat.mode, 'contents': node.contents });
       } else {
         return callback(new Error('node type not supported'));
       }
     },
-    storeLocalEntry: function(path, entry, callback) {
+    storeLocalEntry: (path, entry, callback) => {
       try {
-        if (FS.isDir(entry.mode)) {
-          FS.mkdir(path, entry.mode);
-        } else if (FS.isFile(entry.mode)) {
-          FS.writeFile(path, entry.contents, { canOwn: true });
+        if (FS.isDir(entry['mode'])) {
+          FS.mkdirTree(path, entry['mode']);
+        } else if (FS.isFile(entry['mode'])) {
+          FS.writeFile(path, entry['contents'], { canOwn: true });
         } else {
           return callback(new Error('node type not supported'));
         }
 
-        FS.chmod(path, entry.mode);
-        FS.utime(path, entry.timestamp, entry.timestamp);
+        FS.chmod(path, entry['mode']);
+        FS.utime(path, entry['timestamp'], entry['timestamp']);
       } catch (e) {
         return callback(e);
       }
 
       callback(null);
     },
-    removeLocalEntry: function(path, callback) {
+    removeLocalEntry: (path, callback) => {
       try {
-        var lookup = FS.lookupPath(path);
         var stat = FS.stat(path);
 
         if (FS.isDir(stat.mode)) {
@@ -199,38 +205,43 @@ mergeInto(LibraryManager.library, {
 
       callback(null);
     },
-    loadRemoteEntry: function(store, path, callback) {
+    loadRemoteEntry: (store, path, callback) => {
       var req = store.get(path);
-      req.onsuccess = function(event) { callback(null, event.target.result); };
-      req.onerror = function(e) {
-        callback(this.error);
+      req.onsuccess = (event) => callback(null, event.target.result);
+      req.onerror = (e) => {
+        callback(e.target.error);
         e.preventDefault();
       };
     },
-    storeRemoteEntry: function(store, path, entry, callback) {
-      var req = store.put(entry, path);
-      req.onsuccess = function() { callback(null); };
-      req.onerror = function(e) {
-        callback(this.error);
+    storeRemoteEntry: (store, path, entry, callback) => {
+      try {
+        var req = store.put(entry, path);
+      } catch (e) {
+        callback(e);
+        return;
+      }
+      req.onsuccess = (event) => callback();
+      req.onerror = (e) => {
+        callback(e.target.error);
         e.preventDefault();
       };
     },
-    removeRemoteEntry: function(store, path, callback) {
+    removeRemoteEntry: (store, path, callback) => {
       var req = store.delete(path);
-      req.onsuccess = function() { callback(null); };
-      req.onerror = function(e) {
-        callback(this.error);
+      req.onsuccess = (event) => callback();
+      req.onerror = (e) => {
+        callback(e.target.error);
         e.preventDefault();
       };
     },
-    reconcile: function(src, dst, callback) {
+    reconcile: (src, dst, callback) => {
       var total = 0;
 
       var create = [];
       Object.keys(src.entries).forEach(function (key) {
         var e = src.entries[key];
         var e2 = dst.entries[key];
-        if (!e2 || e.timestamp > e2.timestamp) {
+        if (!e2 || e['timestamp'].getTime() != e2['timestamp'].getTime()) {
           create.push(key);
           total++;
         }
@@ -238,9 +249,7 @@ mergeInto(LibraryManager.library, {
 
       var remove = [];
       Object.keys(dst.entries).forEach(function (key) {
-        var e = dst.entries[key];
-        var e2 = src.entries[key];
-        if (!e2) {
+        if (!src.entries[key]) {
           remove.push(key);
           total++;
         }
@@ -251,39 +260,38 @@ mergeInto(LibraryManager.library, {
       }
 
       var errored = false;
-      var completed = 0;
       var db = src.type === 'remote' ? src.db : dst.db;
       var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readwrite');
       var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
 
       function done(err) {
-        if (err) {
-          if (!done.errored) {
-            done.errored = true;
-            return callback(err);
-          }
-          return;
-        }
-        if (++completed >= total) {
-          return callback(null);
+        if (err && !errored) {
+          errored = true;
+          return callback(err);
         }
       };
 
-      transaction.onerror = function(e) {
+      transaction.onerror = (e) => {
         done(this.error);
         e.preventDefault();
       };
 
+      transaction.oncomplete = (e) => {
+        if (!errored) {
+          callback(null);
+        }
+      };
+
       // sort paths in ascending order so directory entries are created
       // before the files inside them
-      create.sort().forEach(function (path) {
+      create.sort().forEach((path) => {
         if (dst.type === 'local') {
-          IDBFS.loadRemoteEntry(store, path, function (err, entry) {
+          IDBFS.loadRemoteEntry(store, path, (err, entry) => {
             if (err) return done(err);
             IDBFS.storeLocalEntry(path, entry, done);
           });
         } else {
-          IDBFS.loadLocalEntry(path, function (err, entry) {
+          IDBFS.loadLocalEntry(path, (err, entry) => {
             if (err) return done(err);
             IDBFS.storeRemoteEntry(store, path, entry, done);
           });
@@ -292,7 +300,7 @@ mergeInto(LibraryManager.library, {
 
       // sort paths in descending order so files are deleted before their
       // parent directories
-      remove.sort().reverse().forEach(function(path) {
+      remove.sort().reverse().forEach((path) => {
         if (dst.type === 'local') {
           IDBFS.removeLocalEntry(path, done);
         } else {
@@ -302,3 +310,7 @@ mergeInto(LibraryManager.library, {
     }
   }
 });
+
+if (WASMFS) {
+  error("using -lidbfs is not currently supported in WasmFS.");
+}

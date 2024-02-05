@@ -4,29 +4,56 @@
 Building Emscripten from Source
 ===============================
 
-Building from source allows you to access the very latest features and bug fixes, and is essential for developers who are :ref:`Contributing` to Emscripten.
+Building Emscripten yourself is an alternative to getting binaries using the
+emsdk.
 
-There are two approaches to building from source:
+Emscripten itself is written in Python and JavaScript so it does not need to be
+compiled.  However, after checkout you will need to perform various steps
+before it can be used (e.g. ``npm install``).  The ``bootstrap`` script in the
+top level of the repository takes care of running these steps and ``emcc`` will
+error out if it detects that ``bootstrap`` needs to be run.
 
-- Manually setting up the sources and dependencies.
-- Using the SDK package manager to set up the environment and get the sources.
+In addition to the main emscripten repository you will also need to checkout
+and build LLVM and Binaryen (as detailed below).  After compiling these, you
+will need to edit your ``.emscripten`` file to point to their corresponding
+locations.
 
-The manual approach gives you a better understanding of the toolchain and all the build steps. The SDK method is easier because it automates and tests much of the setup process. It also enables a workflow where you can easily switch between source builds and SDK environments.
+Use the ``main`` branches of each of these repositories, or check the `Packaging
+<https://github.com/emscripten-core/emscripten/blob/main/docs/packaging.md>`_
+instructions to identify precise commits used in a specific release.
 
-.. note:: You can't use both approaches at the same time because the SDK overwrites manual changes made to the user's :ref:`compiler configuration file <configuring-emscripten-settings>`.
 
-The instructions for building Emscripten using both methods are given below, followed by guidance on how to update the configuration file and validate your environment once it is complete:
+Building LLVM
+-------------
+
+Build LLVM from the `git repo <https://github.com/llvm/llvm-project>`_.
+Include clang and wasm-ld (using something like ``-DLLVM_ENABLE_PROJECTS='lld;clang'``) and the Wasm backend (which is included by default; just don't disable it), following `that project's instructions <http://llvm.org/docs/CMake.html>`_.
+For example, something like this can work:
+
+  ::
+
+      mkdir build
+      cd build/
+      cmake ../llvm -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS='lld;clang' -DLLVM_TARGETS_TO_BUILD="host;WebAssembly" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF  # -DLLVM_ENABLE_ASSERTIONS=ON
+      cmake --build .
+
+Then set the environment variable ``EM_LLVM_ROOT`` to ``<llvm_src>/build/bin`` (no need to install).
+
+If you need to match the emsdk releases of LLVM, `review the emscripten-release
+build and test scripts <https://chromium.googlesource.com/emscripten-releases/+/refs/heads/main#build-and-test-scripts-in>`_.
+Specifically `src/build.py <https://chromium.googlesource.com/emscripten-releases/+/refs/heads/main/src/build.py>`_.
+
+Please refer to the upstream docs for more detail.
+
+Building Binaryen
+-----------------
+
+See the `Binaryen build instructions <https://github.com/WebAssembly/binaryen#building>`_.
 
 .. toctree::
    :maxdepth: 1
 
    toolchain_what_is_needed
-   building_emscripten_from_source_using_the_sdk
-   building_emscripten_from_source_on_linux
-   building_emscripten_from_source_on_windows
-   building_emscripten_from_source_on_mac_os_x
-   LLVM-Backend
-   building_fastcomp_manually_from_source
    configuring_emscripten_settings
    verify_emscripten_environment
 

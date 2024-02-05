@@ -141,43 +141,43 @@ zlib.createUnzip = function(options) {};
 
 
 /**
- * @param {string|buffer.Buffer} buf
+ * @param {string|nodeBuffer.Buffer} buf
  * @param {function(...)} callback
  */
 zlib.deflate = function(buf, callback) {};
 
 /**
- * @param {string|buffer.Buffer} buf
+ * @param {string|nodeBuffer.Buffer} buf
  * @param {function(...)} callback
  */
 zlib.deflateRaw = function(buf, callback) {};
 
 /**
- * @param {string|buffer.Buffer} buf
+ * @param {string|nodeBuffer.Buffer} buf
  * @param {function(...)} callback
  */
 zlib.gzip = function(buf, callback) {};
 
 /**
- * @param {string|buffer.Buffer} buf
+ * @param {string|nodeBuffer.Buffer} buf
  * @param {function(...)} callback
  */
 zlib.gunzip = function(buf, callback) {};
 
 /**
- * @param {string|buffer.Buffer} buf
+ * @param {string|nodeBuffer.Buffer} buf
  * @param {function(...)} callback
  */
 zlib.inflate = function(buf, callback) {};
 
 /**
- * @param {string|buffer.Buffer} buf
+ * @param {string|nodeBuffer.Buffer} buf
  * @param {function(...)} callback
  */
 zlib.inflateRaw = function(buf, callback) {};
 
 /**
- * @param {string|buffer.Buffer} buf
+ * @param {string|nodeBuffer.Buffer} buf
  * @param {function(...)} callback
  */
 zlib.unzip = function(buf, callback) {};

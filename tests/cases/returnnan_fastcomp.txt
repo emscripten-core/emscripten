@@ -1,3 +1,0 @@
-hello, world nan!
-hello, world 0.000000!
-hello, world 0.000000!

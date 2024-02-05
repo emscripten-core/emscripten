@@ -1,0 +1,197 @@
+/
+  isRoot: true
+  exists: true
+  error: 0
+  path: /
+  name: /
+  object.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
+  parentExists: true
+  parentPath: /
+  parentObject.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
+
+.
+  isRoot: false
+  exists: true
+  error: 0
+  path: /abc
+  name: abc
+  object.contents: ["123","456","deviceA","localLink","rootLink","relativeLink"]
+  parentExists: true
+  parentPath: /
+  parentObject.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
+
+..
+  isRoot: true
+  exists: true
+  error: 0
+  path: /
+  name: /
+  object.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
+  parentExists: true
+  parentPath: /
+  parentObject.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
+
+../..
+  isRoot: true
+  exists: true
+  error: 0
+  path: /
+  name: /
+  object.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
+  parentExists: true
+  parentPath: /
+  parentObject.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
+
+/abc
+  isRoot: false
+  exists: true
+  error: 0
+  path: /abc
+  name: abc
+  object.contents: ["123","456","deviceA","localLink","rootLink","relativeLink"]
+  parentExists: true
+  parentPath: /
+  parentObject.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
+
+/abc/123
+  isRoot: false
+  exists: true
+  error: 0
+  path: /abc/123
+  name: 123
+  object.contents: []
+  parentExists: true
+  parentPath: /abc
+  parentObject.contents: ["123","456","deviceA","localLink","rootLink","relativeLink"]
+
+/abc/noexist
+  isRoot: false
+  exists: false
+  error: 44
+  path: null
+  name: noexist
+  object.contents: null
+  parentExists: true
+  parentPath: /abc
+  parentObject.contents: ["123","456","deviceA","localLink","rootLink","relativeLink"]
+
+/abc/deviceA
+  isRoot: false
+  exists: true
+  error: 0
+  path: /abc/deviceA
+  name: deviceA
+  object.contents: []
+  parentExists: true
+  parentPath: /abc
+  parentObject.contents: ["123","456","deviceA","localLink","rootLink","relativeLink"]
+
+/abc/localLink
+  isRoot: false
+  exists: true
+  error: 0
+  path: /abc/123
+  name: 123
+  object.contents: []
+  parentExists: true
+  parentPath: /abc
+  parentObject.contents: ["123","456","deviceA","localLink","rootLink","relativeLink"]
+
+/abc/rootLink
+  isRoot: true
+  exists: true
+  error: 0
+  path: /
+  name: /
+  object.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
+  parentExists: true
+  parentPath: /
+  parentObject.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
+
+/abc/relativeLink
+  isRoot: false
+  exists: true
+  error: 0
+  path: /def
+  name: def
+  object.contents: ["789","deviceB"]
+  parentExists: true
+  parentPath: /
+  parentObject.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
+
+/abc/relativeLink/deviceB
+  isRoot: false
+  exists: true
+  error: 0
+  path: /def/deviceB
+  name: deviceB
+  object.contents: []
+  parentExists: true
+  parentPath: /def
+  parentObject.contents: ["789","deviceB"]
+
+/abc/rootLink/noexist
+  isRoot: false
+  exists: false
+  error: 44
+  path: null
+  name: noexist
+  object.contents: null
+  parentExists: true
+  parentPath: /
+  parentObject.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
+
+/abc/rootLink/abc/noexist
+  isRoot: false
+  exists: false
+  error: 44
+  path: null
+  name: noexist
+  object.contents: null
+  parentExists: true
+  parentPath: /abc
+  parentObject.contents: ["123","456","deviceA","localLink","rootLink","relativeLink"]
+
+/forbidden
+  isRoot: false
+  exists: true
+  error: 0
+  path: /forbidden
+  name: forbidden
+  object.contents: ["test"]
+  parentExists: true
+  parentPath: /
+  parentObject.contents: ["tmp","home","dev","proc","forbidden","abc","def"]
+
+/forbidden/test
+  isRoot: false
+  exists: false
+  error: 2
+  path: null
+  name: test
+  object.contents: null
+  parentExists: true
+  parentPath: /forbidden
+  parentObject.contents: ["test"]
+
+/forbidden/noexist
+  isRoot: false
+  exists: false
+  error: 2
+  path: null
+  name: noexist
+  object.contents: null
+  parentExists: true
+  parentPath: /forbidden
+  parentObject.contents: ["test"]
+
+/noexist1/noexist2
+  isRoot: false
+  exists: false
+  error: 44
+  path: null
+  name: null
+  object.contents: null
+  parentExists: false
+  parentPath: null
+  parentObject.contents: null

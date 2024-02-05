@@ -1,0 +1,8 @@
+Success
+
+Length: 8
+FS.unlink: 0
+Fatal error in FS.readFile
+Aborted(native code called abort())
+Fatal error in FS.readFile
+Aborted(native code called abort())

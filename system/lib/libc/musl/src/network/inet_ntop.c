@@ -36,7 +36,7 @@ const char *inet_ntop(int af, const void *restrict a0, char *restrict s, socklen
 			j = strspn(buf+i, ":0");
 			if (j>max) best=i, max=j;
 		}
-		if (max>2) {
+		if (max>3) {
 			buf[best] = buf[best+1] = ':';
 			memmove(buf+best+2, buf+best+max, i-best-max+1);
 		}

@@ -1,5 +1,10 @@
-The following authors have all licensed their contributions to Emscripten
-under the licensing terms detailed in LICENSE.
+Contributors to Emscripten may optionally add themselves to this list of
+authors if they choose to do so. This is optional because the git history is
+good enough for that purpose, and in fact most projects do not maintain such a
+manual list.
+
+While the file is not necessary, to preserve the history of the project we are
+not removing it.
 
 (Authors keep copyright of their contributions, of course; they just grant
 a license to everyone to use it as detailed in LICENSE.)
@@ -88,7 +93,7 @@ a license to everyone to use it as detailed in LICENSE.)
 * Joseph Gentle <me@josephg.com>
 * Douglas T. Crosher <dtc-moz@scieneer.com> (copyright owned by Mozilla Foundation)
 * Douglas T. Crosher <info@jsstats.com> (copyright owned by Scieneer Pty Ltd.)
-* Soeren Balko <soeren.balko@gmail.com>
+* Soeren Balko <soeren.balko@gmail.com> (copyright owned by Clipchamp Pty Ltd.)
 * Ryan Kelly (ryan@rfk.id.au)
 * Michael Lelli <toadking@toadking.com>
 * Yu Kobayashi <yukoba@accelart.jp>
@@ -321,7 +326,7 @@ a license to everyone to use it as detailed in LICENSE.)
 * Sergey Tsatsulin <tsatsulin@gmail.com>
 * varkor <github@varkor.com>
 * Stuart Knightley <website@stuartk.com>
-* Amadeus Guo<gliheng@foxmail.com>
+* Amadeus Guo <gliheng@foxmail.com>
 * Nathan Froyd <froydnj@gmail.com> (copyright owned by Mozilla Foundation)
 * Daniel Wirtz <dcode@dcode.io>
 * Kibeom Kim <kk1674@nyu.edu>
@@ -387,3 +392,208 @@ a license to everyone to use it as detailed in LICENSE.)
 * Alessandro Pignotti <alessandro@leaningtech.com>
 * Zheng Tao Lee <zhengtao.lee@autodesk.com> (copyright owned by Autodesk, Inc.)
 * Martina Kraus <kraus.martina.m@googlemail.com>
+* Jacob Adelgren <jake@eevo.com>
+* Ingvar Stepanyan <me@rreverser.com>
+* Ben Trapani <ben.trapani1995@gmail.com> (copyright owned by Microsoft, Inc.)
+* Tim Lander <tim57282＠hotmail.com>
+* Jacob Greenfield <jacob@jacobgreenfield.me>
+* Joseph Kogut <joseph.kogut@gmail.com>
+* Yi Zhang <milizhang@gmail.com>
+* Marc Abramowitz <msabramo@gmail.com>
+* Daniel Ruf <daniel@daniel-ruf.de>
+* Timothy Trindle <titrindl@microsoft.com> (copyright owned by Microsoft, Inc.)
+* Matthew Andres Moreno <m.more500@gmail.com>
+* Eric Mandel <eric@cfa.harvard.edu>
+* Anthony Catel <paraboul@gmail.com>
+* Simon Cooper <simon.d.cooper@hotmail.co.uk>
+* Amir Rasouli <arasouli91@gmail.com>
+* Nico Weber <thakis@chromium.org>
+* Bas Doorn <code@keyn.app> (copyright owned by Keyn B.V.)
+* Adam Bujalski <a.bujalski@samsung.com> (copyright owned by Samsung Electronics)
+* Guanzhong Chen <gzchen@google.com> (copyright owned by Google, Inc.)
+* Denis Serebro <densilver3000@gmail.com>
+* Lucas Ramage <ramage.lucas@protonmail.com>
+* Andy Wingo <wingo@igalia.com> (copyright owned by Igalia)
+* Philipp Gloor <philipp.gloor@pdf-tools.com> (copyright owned by PDF Tools AG)
+* Jasmine Minter <jasmine@minteronline.com> (copyright owned by Clipchamp Pty Ltd.)
+* Ferris Kwaijtaal <ferrispc@hotmail.com>
+* Konstantin Podsvirov <konstantin@podsvirov.pro>
+* Eduardo Bart <edub4rt@gmail.com>
+* Zoltan Varga <vargaz@gmail.com> (copyright owned by Microsoft, Inc.)
+* Fernando Serboncini <fserb@google.com>
+* Christian Clauss <cclauss@me.com> (copyright owned by IBM)
+* Henry Kleynhans <hkleynhans@bloomberg.net> (copyright owned by Bloomberg L.P.)
+* FUJI Goro <g.psy.va@gmail.com>
+* Egor Suvorov <esuvorov@think-cell.com> (copyright owned by think-cell Software GmbH)
+* James Kuszmaul <jabukuszmaul@gmail.com>
+* Wei Mingzhi <whistler_wmz@users.sourceforge.net>
+* Sergey karchevsky <sergey.ext@gmail.com>
+* Ajay Patel <patel.ajay285@gmail.com>
+* Adrien Devresse <adev@adev.name>
+* Petr Penzin <petr.penzin@intel.com> (copyright owned by Intel Corporation)
+* Tayeb Al Karim <tay@google.com> (copyright owned by Google, Inc.)
+* Andrei Alexeyev <akari@taisei-project.org>
+* Cesar Guirao Robles <cesar@no2.es>
+* Ricky Claven <ricksterhd123@gmail.com>
+* Mehdi Sabwat <mehdisabwat@gmail.com>
+* MinganMuon <mingan-muon@outlook.com>
+* Jonathan Feinberg <feinberg@google.com>
+* Osman Turan <osman@osmanturan.com>
+* Jaikanth J <jaikanthjay46@gmail.com>
+* Gernot Lassnig <gernot.lassnig@gmail.com>
+* Christian Boos <cboos@bct-technology.com>
+* Erik Scholz <greenNO@SPAMg-s.xyz>
+* Michael de Lang <kingoipo@gmail.com>
+* Gergely Nagy <ngg@tresorit.com>
+* Jan Habermann <jan@habermann.io>
+* John Granström <granstrom.john@gmail.com>
+* Clemens Backes <clemensb@google.com> (copyright owned by Google, Inc.)
+* Tibor Klajnscek <tiborkl@numfum.com>
+* Benjamin Golinvaux <benjamin@golinvaux.com>
+* Peter Salomonsen <pjsalomonsen@gmail.com>
+* Niklas Fiekas <niklas.fiekas@backscattering.de>
+* Martín Lucas Golini <spartanj@gmail.com>
+* Bumsik Kim <k.bumsik@gmail.com>
+* Corentin Wallez <cwallez@chromium.org> (copyright owned by Google, Inc.)
+* Austin Eng <enga@chromium.org> (copyright owned by Google, Inc.)
+* Hugo Amiard <hugo.amiard@laposte.net>
+* Diego Casorran <dcasorran@gmail.com>
+* sssooonnnggg <sssooonnnggg111@gmail.com>
+* Guillaume Racicot <gufideg@gmail.com>
+* SK Min <oranke@gmail.com>
+* Fabio Alessandrelli <fabio.alessandrelli@gmail.com>
+* Kirill Gavrilov <kirill@sview.ru>
+* Karl Semich <0xloem@gmail.com>
+* Louis DeScioli <descioli@google.com> (copyright owned by Google, LLC)
+* Kleis Auke Wolthuizen <info@kleisauke.nl>
+* Michael Potthoff <michael@potthoff.eu>
+* Abigail Bunyan <abigail@bold.claims> (copyright owned by Microsoft Corporation)
+* David García Paredes <davidgparedes@gmail.com>
+* Dan Field <dfield@gmail.com> (copyright owned by Google, Inc.)
+* Mike Swierczek <mike@swierczek.io>
+* Vasily <just.one.man@yandex.ru>
+* Jānis Rūcis <parasti@gmail.com>
+* rssqian <rssqian@gmail.com>
+* Shachar Langbeheim <nihohit@gmail.com>
+* Laurin Agostini <thevolut@gmail.com>
+* David Carlier <devnexen@gmail.com>
+* Paul Du <du.paul136@gmail.com> (copyright owned by ARSKAN)
+* Piotr Doan <doanpiotr@gmail.com>
+* Stuart Schechter <stuart.schechter@gmail.com>
+* Brett Paterson <brett@fmod.com>
+* Robert Aboukhalil <robert.aboukhalil@gmail.com>
+* Jonathan Poelen <jonathan.poelen@gmail.com>
+* Ashley Hauck <github@khyperia.com>
+* Junyue Cao <junyuecao@gmail.com>
+* Elías Serrano <feserr3@gmail.com>
+* Philip Pfaffe <pfaffe@google.com> (copyright owned by Google, LLC)
+* Troy Tae <tjy970721@gmail.com>
+* Sky Wang <sky-wang@qq.com>
+* popomen <nz_nuaa@163.com>
+* Artyom Lebedev <vagran.ast@gmail.com>
+* Sebastián Gurin (cancerberoSgx) <sebastigurin@gmail.com>
+* Benedikt Meurer <bmeurer@google.com> (copyright owned by Google, LLC)
+* Jiulong Wang <jiulongw@gmail.com>
+* pudinha <rogi@skylittlesystem.org>
+* Nicholas Phillips <nwp2@illinois.edu>
+* Colin Guyon <colin.guyon@insimo.fr> (copyright owned by InSimo, SAS)
+* Mathias Westerdahl <mwesterdahl76@gmail.com>
+* Philip Rideout <prideout@google.com> (copyright owned by Google, LLC)
+* Shrek Shao (shrekshao@google.com) (copyright owned by Google, LLC)
+* Arran Ireland <ion92@protonmail.com>
+* Jia Yuan Lo <jylo06g@gmail.com>
+* Philip Lassen <philiplassen@gmail.com>
+* Antoine du Hamel <duhamelantoine1995@gmail.com>
+* Alexander Köplinger <alex.koeplinger@outlook.com> (copyright owned by Microsoft, Inc.)
+* Kenneth Pouncey <kepounce@microsoft.com> (copyright owned by Microsoft, Inc.)
+* Mitchell Hwang <mihw@microsoft.com> (copyright owned by Microsoft, Inc.)
+* Sean Maher <seanptmaher@gmail.com> (copyright owned by Google, LLC)
+* Paul Peny <pmpp.pub@gmail.com>
+* Prashanth Nethi <prashant@adobe.com>
+* Max Weisel <max@maxweisel.com>
+* Georg Rottensteiner <georg@georg-rottensteiner.de>
+* Tristan Griffin <tristan.griffin@hcl.com> (Copyright owned by HCL)
+* Julien Jorge <julien.jorge@gmx.fr>
+* Benjamin Lee <bnllee@ucdavis.edu>
+* Attila Oláh <atl@google.com> (copyright owned by Google, LLC)
+* Marat Dukhan <maratek@google.com> (copyright owned by Google, LLC)
+* Raphael Siegel <siegel.raphael@gmail.com>
+* Stephan Reiter <reste@google.com> (copyright owned by Google, LLC)
+* kamenokonyokonyoko <kamenokonokotan@gmail.com>
+* Lectem <lectem@gmail.com>
+* Henrik Algestam <henrik@algestam.se>
+* Rocco Musolino <roccomusolino92@gmail.com>
+* Pawel Czarnecki <pawel@8thwall.com> (copyright owned by 8th Wall, Inc.)
+* Dhairya Bahl < dhairyabahl5@gmail.com >
+* Sam Gao <gaoshan274@gmail.com>
+* Sebastian Mayr <me@sam.st>
+* Vladimir Gamalyan <vladimir.gamalyan@gmail.com>
+* Jean-Sébastien Nadeau <mundusnine@gmail.com> (copyright owned by Foundry Interactive Inc.)
+* Wouter van Oortmerssen <wvo@google.com> (copyright owned by Google, LLC)
+* Alexey Sokolov <sokolov@google.com> (copyright owned by Google, LLC)
+* Lukas Rieger <rieger@progress-psd.com>
+* Ivan Romanovski <ivan.romanovski@gmail.com>
+* Max Brunsfeld <maxbrunsfeld@gmail.com>
+* Basil Fierz <basil.fierz@hotmail.com>
+* Rod Hyde <rod@badlydrawngames.com>
+* Aleksey Kliger <aleksey@lambdageek.org> (copyright owned by Microsoft, Inc.)
+* Nicolas Ollinger <nopid@free.fr>
+* Michael R. Crusoe <crusoe@debian.org>
+* Dexter Chua <dec41@srcf.net>
+* Thomas Ballinger <thomasballinger@gmail.com>
+* Mehdi Sadeghi <mehdi@mehdix.org>
+* Amin Yahyaabadi <aminyahyaabadi74@gmail.com>
+* Adam Leskis <leskis@gmail.com>
+* Raffaele Pertile <raffarti@zoho.com>
+* Patric Stout <github@truebrain.nl>
+* Jinoh Kang <jinoh.kang.kr@gmail.com>
+* Jorge Prendes <jorge.prendes@gmail.com>
+* Alexey Shamrin <shamrin@gmail.com>
+* Wirtos <wirtos.new@gmail.com>
+* Ben den Hollander <bdenhollander@dynascape.com> (copyright owned by DynaScape Software Inc.)
+* Akul Penugonda <akulvp@gmail.com>
+* Jan Wolff <contact@jancc.de>
+* Pawel Czarnecki <pawel@8thwall.com> (copyright owned by 8th Wall, Inc.)
+* Camil Staps <info@camilstaps.nl>
+* Michael Kircher <michael.kircher.github@gmail.com>
+* Sharad Saxena <sharad.saxena@autodesk.com> (copyright owned by Autodesk, Inc.)
+* Vasili Skurydzin <vasili.skurydzin@ibm.com>
+* Jakub Nowakowski <jn925+emcc@o2.pl>
+* Michael Taylor <mitaylor@adobe.com>
+* Andrew Brown <andrew.brown@intel.com> (copyright owned by Intel Corporation)
+* Benjamin Puzycki <bpuzycki@umich.edu>
+* Marco Buono <marcobuono@invisionapp.com> (copyright owned by InVisionApp, Inc.)
+* Philip Gossweiler <philip.gossweiler@outlook.com>
+* Rafael Brune <mail@rbrune.de>
+* Aleksi Sapon <aleksi.sapon@faro.com> (copyright owned by FARO Technologies, Inc.)
+* Radek Doulik <radek.doulik@gmail.com> (copyright owned by Microsoft, Inc.)
+* Érico Porto <ericoporto2008@gmail.com>
+* Albert Vaca Cintora <albertvaka@gmail.com>
+* Zhi An Ng <zhin@google.com> (copyright owned by Google, Inc.)
+* Ian Jackson <ijackson@chiark.greenend.org.uk>
+* Brian Gontowski <brian@gontowski.com>
+* Bobbie Chen <bobbie.chen75@gmail.com>
+* Nicholas Hollander <nhollander98@gmail.com>
+* Camillo Lugaresi <camillol@google.com> (copyright owned by Google LLC)
+* Chris Craig <emscripten@goldwave.com>
+* Le Yao <le.yao@intel.com> (copyright owned by Intel Corporation)
+* José Cadete <crudelios@gmail.com>
+* Cynthia K. Rey <cynthia@cynthia.dev>
+* Andrew Shaitorov <andrew.shaitorov@gmail.com>
+* on-keyday <rokenboo47803@gmail.com>
+* Matthew Balch <matt5sean3@gmail.com>
+* James Price <jrprice@google.com> (copyright owned by Google, Inc.)
+* Nathan Rugg <nmrugg@gmail.com> (copyright owned by Chess.com, LLC)
+* Alexander O'Mara <me@alexomara.com>
+* Kamaron Peterson <kamaron.peterson@gmail.com>
+* Márton Marczell <mmarczell.graphisoft@gmail.com> (copyright owned by GRAPHISOFT SE)
+* Alexander Vestin <alex.vestin@gmail.com>
+* Xiaobing Yang <yangxiaobing@jwzg.com>
+* Alexandra Cherdantseva <neluhus.vagus@gmail.com>
+* Michael Schmuki <michael@schmuki.io>
+* Skye Gibney <skyejgibney@gmail.com>
+* Piotr Wierciński <laminowany@gmail.com>
+* 郑苏波 (Super Zheng) <superzheng@tencent.com>
+* James Hu <jameshu2022@gmail.com>
+* Jerry Zhuang <jerry.zhuang@jwzg.com>
+* Taisei Kon <kinsei0916@gmail.com>

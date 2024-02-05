@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 /* This version of struct mallinfo must match the one in
-   system/lib/dlmallo.c.  */
+   system/lib/dlmalloc.c.  */
 
 struct mallinfo {
   int arena;    /* total space allocated from system */

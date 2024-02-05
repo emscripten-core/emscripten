@@ -29,7 +29,7 @@ unsigned long long __intscan(FILE *f, unsigned base, int pok, unsigned long long
 	int c, neg=0;
 	unsigned x;
 	unsigned long long y;
-	if (base > 36) {
+	if (base > 36 || base == 1) {
 		errno = EINVAL;
 		return 0;
 	}

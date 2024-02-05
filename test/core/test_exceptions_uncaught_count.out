@@ -1,0 +1,3 @@
+in inner catch: 0
+in destructor: 1
+in outer catch: 0

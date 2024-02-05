@@ -1,12 +1,6 @@
-/*
- * Copyright 2017 The Emscripten Authors.  All rights reserved.
- * Emscripten is available under two separate licenses, the MIT license and the
- * University of Illinois/NCSA Open Source License.  Both these licenses can be
- * found in the LICENSE file.
- */
-
 #include <stddef.h>
 #include "dynlink.h"
+#include "libc.h"
 
 #ifndef START
 #define START "_dlstart"
@@ -18,14 +12,13 @@
 
 #ifndef GETFUNCSYM
 #define GETFUNCSYM(fp, sym, got) do { \
-	__attribute__((__visibility__("hidden"))) void sym(); \
+	hidden void sym(); \
 	static void (*static_func_ptr)() = sym; \
 	__asm__ __volatile__ ( "" : "+m"(static_func_ptr) : : "memory"); \
 	*(fp) = static_func_ptr; } while(0)
 #endif
 
-__attribute__((__visibility__("hidden")))
-void _dlstart_c(size_t *sp, size_t *dynv)
+hidden void _dlstart_c(size_t *sp, size_t *dynv)
 {
 	size_t i, aux[AUX_CNT], dyn[DYN_CNT];
 	size_t *rel, rel_size, base;
@@ -146,6 +139,21 @@ void _dlstart_c(size_t *sp, size_t *dynv)
 		if (!IS_RELATIVE(rel[1], 0)) continue;
 		size_t *rel_addr = (void *)(base + rel[0]);
 		*rel_addr = base + rel[2];
+	}
+
+	rel = (void *)(base+dyn[DT_RELR]);
+	rel_size = dyn[DT_RELRSZ];
+	size_t *relr_addr = 0;
+	for (; rel_size; rel++, rel_size-=sizeof(size_t)) {
+		if ((rel[0]&1) == 0) {
+			relr_addr = (void *)(base + rel[0]);
+			*relr_addr++ += base;
+		} else {
+			for (size_t i=0, bitmap=rel[0]; bitmap>>=1; i++)
+				if (bitmap&1)
+					relr_addr[i] += base;
+			relr_addr += 8*sizeof(size_t)-1;
+		}
 	}
 #endif
 

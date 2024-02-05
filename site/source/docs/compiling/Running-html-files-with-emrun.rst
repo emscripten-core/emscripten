@@ -72,7 +72,10 @@ To launch using a browser's filename use:
 
   --browser /path/to/browser/executable page.html
 
-If you just want to launch a web server you can pass the ``--no_browser`` command line flag. In this case *emrun* will run the server without spawning the browser (this is similar to using Python's `SimpleHTTPServer <http://www.pythonforbeginners.com/modules-in-python/how-to-use-simplehttpserver/>`_).
+If you just want to launch a web server you can pass the ``--no_browser``
+command line flag. In this case *emrun* will run the server without spawning the
+browser (this is similar to using a
+:ref:`local webserver <faq-local-webserver>`).
 
 
 Security implications
@@ -110,7 +113,6 @@ The following command line flags affect logging output:
 - ``--lot_stderr <filename>``: Write all ``stderr`` messages from the application to the named file (instead of printing to terminal).
 - ``--system_info``: Print detailed information about the current system before launching. This is useful during automated runs when you want to capture hardware information to logs.
 - ``--browser_info``: Print information about which browser is about to be launched.
-- ``--log_html``: Reformat application output as HTML markup.
 - ``--no_emrun_detect``: Hide the warning message that is launched if a target **.html** file is detected to not have been built with ``--emrun``.
 
 

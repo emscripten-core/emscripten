@@ -20,18 +20,19 @@ What you'll need
 Emscripten tools and dependencies
 ---------------------------------
 
-A complete Emscripten environment requires the following tools. First test to see if they are already installed using the :ref:`instructions below <toolchain-test-which-dependencies-are-installed>`. Then install any missing tools using the instructions in the appropriate platform-specific build topic (:ref:`building-emscripten-on-linux`, :ref:`building-emscripten-on-windows-from-source`, :ref:`building-emscripten-on-macos-from-source`):
+In general a complete Emscripten environment requires the following tools. First test to see if they are already installed using the :ref:`instructions below <toolchain-test-which-dependencies-are-installed>`.
 
-  - :term:`Node.js` (0.8 or above; 0.10.17 or above to run websocket-using servers in node):
-  - :term:`Python` 2.7.12 or above (Python 3.* may also work, work is ongoing)
-  - :term:`Java` (1.6.0_31 or later).  Java is optional. It is required to use the :term:`Closure Compiler` (in order to minify your code).
+  - :term:`Node.js` (0.8 or above; 0.10.17 or above to run websocket-using servers in node)
+  - :term:`Python` (3.6 or above)
+  - :term:`Java` (1.6.0_31 or later). Java is optional. It can be used to run the java version of term:`Closure Compiler`.
   - :term:`Git` client. Git is required if building tools from source.
-  - :term:`Fastcomp` (Emscripten's fork of LLVM and Clang)
+  - :term:`LLVM` (LLVM, including clang and wasm-ld)
+  - :term:`Binaryen` (Binaryen, including wasm-opt, wasm-emscripten-finalize, etc.)
   - The `Emscripten code <https://github.com/emscripten-core/emscripten>`_, from GitHub
 
 .. note: 64-bit versions of all needed dependencies are preferred, and may be required if you are building large projects.
 
-.. note:: The `Spidermonkey shell <https://developer.mozilla.org/en-US/docs/Mozilla/Projects/SpiderMonkey/Introduction_to_the_JavaScript_shell>`_ is also required if you want to run **100%** of the tests in the test suite. Most developers will not need this, and should instead use *node.js*.
+.. note:: The `d8 shell <https://v8.dev/docs/d8>`_ is also required if you want to run **100%** of the tests in the test suite (in particular, tests for extremely new features that are only present in d8 so far). Most developers will not need this, and should instead use *node.js*.
 
 .. _compiler-toolchain:
 

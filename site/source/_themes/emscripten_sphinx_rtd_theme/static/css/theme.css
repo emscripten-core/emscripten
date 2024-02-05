@@ -510,3 +510,4 @@ and (max-width : 480px) {
  } 
 }
 
+.cellborder { border: solid 1px black; }

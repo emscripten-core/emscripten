@@ -1,0 +1,9 @@
+posix_fadvise: 0
+errno: 0
+
+posix_fallocate: 0
+errno: 0
+
+posix_fallocate2: 0
+errno: 0
+st_size: 10

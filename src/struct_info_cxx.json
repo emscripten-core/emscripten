@@ -1,0 +1,27 @@
+[
+    {
+        "file": "cxa_exception.h",
+        "structs": {
+            "__cxxabiv1::__cxa_exception": [
+              "exceptionDestructor",
+              "referenceCount",
+              "exceptionType",
+              "caught",
+              "rethrown",
+              "adjustedPtr"
+            ]
+        }
+    },
+    // ===========================================
+    // WasmFS
+    // ===========================================
+    {
+        "file": "file.h",
+        "defines": [
+            "wasmfs::File::UnknownKind",
+            "wasmfs::File::DataFileKind",
+            "wasmfs::File::DirectoryKind",
+            "wasmfs::File::SymlinkKind"
+        ]
+    }
+]

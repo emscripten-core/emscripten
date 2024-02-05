@@ -1,5 +1,4 @@
 #include <math.h>
-#include "libc.h"
 
 float remainderf(float x, float y)
 {

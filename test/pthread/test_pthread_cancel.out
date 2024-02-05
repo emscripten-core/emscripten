@@ -1,0 +1,4 @@
+Canceling thread..
+Thread started!
+Called clean-up handler with arg 42
+After canceling, shared variable = 1

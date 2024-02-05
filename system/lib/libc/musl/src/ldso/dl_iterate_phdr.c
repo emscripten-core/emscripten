@@ -1,8 +1,11 @@
 #include <elf.h>
 #include <link.h>
+#include "pthread_impl.h"
 #include "libc.h"
 
 #define AUX_CNT 38
+
+extern weak hidden const size_t _DYNAMIC[];
 
 static int static_dl_iterate_phdr(int(*callback)(struct dl_phdr_info *info, size_t size, void *data), void *data)
 {
@@ -11,7 +14,7 @@ static int static_dl_iterate_phdr(int(*callback)(struct dl_phdr_info *info, size
 	size_t base = 0;
 	size_t n;
 	struct dl_phdr_info info;
-	size_t i, aux[AUX_CNT];
+	size_t i, aux[AUX_CNT] = {0};
 
 	for (i=0; libc.auxv[i]; i+=2)
 		if (libc.auxv[i]<AUX_CNT) aux[libc.auxv[i]] = libc.auxv[i+1];
@@ -20,6 +23,8 @@ static int static_dl_iterate_phdr(int(*callback)(struct dl_phdr_info *info, size
 		phdr = (void *)p;
 		if (phdr->p_type == PT_PHDR)
 			base = aux[AT_PHDR] - phdr->p_vaddr;
+		if (phdr->p_type == PT_DYNAMIC && _DYNAMIC)
+			base = (size_t)_DYNAMIC - phdr->p_vaddr;
 		if (phdr->p_type == PT_TLS)
 			tls_phdr = phdr;
 	}
@@ -31,7 +36,7 @@ static int static_dl_iterate_phdr(int(*callback)(struct dl_phdr_info *info, size
 	info.dlpi_subs  = 0;
 	if (tls_phdr) {
 		info.dlpi_tls_modid = 1;
-		info.dlpi_tls_data = (void *)(base + tls_phdr->p_vaddr);
+		info.dlpi_tls_data = __tls_get_addr((tls_mod_off_t[]){1,0});
 	} else {
 		info.dlpi_tls_modid = 0;
 		info.dlpi_tls_data = 0;

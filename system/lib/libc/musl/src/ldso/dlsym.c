@@ -1,6 +1,5 @@
 #include <dlfcn.h>
-
-void *__dlsym(void *restrict, const char *restrict, void *restrict);
+#include "dynlink.h"
 
 void *dlsym(void *restrict p, const char *restrict s)
 {

@@ -1,17 +1,23 @@
-These files are from compiler-rt,
+llvm's compiler-rt
+------------------
 
-Last Changed Rev: 266813
-Last Changed Date: Tue Apr 19 13:29:59 2016
+These files are from the llvm-project based on release 17.0.4.
 
-===========================================================================
+We maintain a local fork of llvm-project that contains any emscripten
+specific patches:
 
- No changes from upstream (but not all files are included).
+  https://github.com/emscripten-core/llvm-project
 
-===========================================================================
+The current patch is based on the emscripten-libs-17 branch.
 
-Compile with something like
+Update Instructions
+-------------------
 
-./emcc system/lib/compiler-rt/lib/builtins/*.c -Isystem/lib/compiler-rt/lib/builtins -o rt.bc
-./emcc -O2 -s ASM_JS=1 -g rt.bc -s LINKABLE=1
-manually replace Math_imul with Math.imul
+Run `system/lib/update_compiler_rt.py path/to/llvm-project`
 
+Modifications
+-------------
+
+For a list of changes from upstream see the compiler-rt files that are part of:
+
+https://github.com/llvm/llvm-project/compare/llvmorg-17.0.4...emscripten-core:emscripten-libs-17

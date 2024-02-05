@@ -1,3 +1,5 @@
+#include "syscall.h"
+
 void __procfdname(char *buf, unsigned fd)
 {
 	unsigned i, j;

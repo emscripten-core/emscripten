@@ -1,0 +1,695 @@
+Testing positive losslessIntegers:
+0 (0x0):
+  convertI32PairToI53: 0x0
+  convertU32PairToI53: 0x0
+  writeI53ToI64: 0x0
+  readI53FromI64: 0x0
+  readI53FromU64: 0x0
+
+1 (0x1):
+  convertI32PairToI53: 0x1
+  convertU32PairToI53: 0x1
+  writeI53ToI64: 0x1
+  readI53FromI64: 0x1
+  readI53FromU64: 0x1
+
+2 (0x2):
+  convertI32PairToI53: 0x2
+  convertU32PairToI53: 0x2
+  writeI53ToI64: 0x2
+  readI53FromI64: 0x2
+  readI53FromU64: 0x2
+
+3 (0x3):
+  convertI32PairToI53: 0x3
+  convertU32PairToI53: 0x3
+  writeI53ToI64: 0x3
+  readI53FromI64: 0x3
+  readI53FromU64: 0x3
+
+16777215 (0xffffff):
+  convertI32PairToI53: 0xffffff
+  convertU32PairToI53: 0xffffff
+  writeI53ToI64: 0xffffff
+  readI53FromI64: 0xffffff
+  readI53FromU64: 0xffffff
+
+16777216 (0x1000000):
+  convertI32PairToI53: 0x1000000
+  convertU32PairToI53: 0x1000000
+  writeI53ToI64: 0x1000000
+  readI53FromI64: 0x1000000
+  readI53FromU64: 0x1000000
+
+16777217 (0x1000001):
+  convertI32PairToI53: 0x1000001
+  convertU32PairToI53: 0x1000001
+  writeI53ToI64: 0x1000001
+  readI53FromI64: 0x1000001
+  readI53FromU64: 0x1000001
+
+16909060 (0x1020304):
+  convertI32PairToI53: 0x1020304
+  convertU32PairToI53: 0x1020304
+  writeI53ToI64: 0x1020304
+  readI53FromI64: 0x1020304
+  readI53FromU64: 0x1020304
+
+2147483647 (0x7fffffff):
+  convertI32PairToI53: 0x7fffffff
+  convertU32PairToI53: 0x7fffffff
+  writeI53ToI64: 0x7fffffff
+  readI53FromI64: 0x7fffffff
+  readI53FromU64: 0x7fffffff
+
+2147483648 (0x80000000):
+  convertI32PairToI53: 0x80000000
+  convertU32PairToI53: 0x80000000
+  writeI53ToI64: 0x80000000
+  readI53FromI64: 0x80000000
+  readI53FromU64: 0x80000000
+
+2415919104 (0x90000000):
+  convertI32PairToI53: 0x90000000
+  convertU32PairToI53: 0x90000000
+  writeI53ToI64: 0x90000000
+  readI53FromI64: 0x90000000
+  readI53FromU64: 0x90000000
+
+4294967295 (0xffffffff):
+  convertI32PairToI53: 0xffffffff
+  convertU32PairToI53: 0xffffffff
+  writeI53ToI64: 0xffffffff
+  readI53FromI64: 0xffffffff
+  readI53FromU64: 0xffffffff
+
+4294967296 (0x100000000):
+  convertI32PairToI53: 0x100000000
+  convertU32PairToI53: 0x100000000
+  writeI53ToI64: 0x100000000
+  readI53FromI64: 0x100000000
+  readI53FromU64: 0x100000000
+
+4294967297 (0x100000001):
+  convertI32PairToI53: 0x100000001
+  convertU32PairToI53: 0x100000001
+  writeI53ToI64: 0x100000001
+  readI53FromI64: 0x100000001
+  readI53FromU64: 0x100000001
+
+6442450943 (0x17fffffff):
+  convertI32PairToI53: 0x17fffffff
+  convertU32PairToI53: 0x17fffffff
+  writeI53ToI64: 0x17fffffff
+  readI53FromI64: 0x17fffffff
+  readI53FromU64: 0x17fffffff
+
+6442450944 (0x180000000):
+  convertI32PairToI53: 0x180000000
+  convertU32PairToI53: 0x180000000
+  writeI53ToI64: 0x180000000
+  readI53FromI64: 0x180000000
+  readI53FromU64: 0x180000000
+
+68719476735 (0xfffffffff):
+  convertI32PairToI53: 0xfffffffff
+  convertU32PairToI53: 0xfffffffff
+  writeI53ToI64: 0xfffffffff
+  readI53FromI64: 0xfffffffff
+  readI53FromU64: 0xfffffffff
+
+4538990157889536 (0x10203000000000):
+  convertI32PairToI53: 0x10203000000000
+  convertU32PairToI53: 0x10203000000000
+  writeI53ToI64: 0x10203000000000
+  readI53FromI64: 0x10203000000000
+  readI53FromU64: 0x10203000000000
+
+9007194959773696 (0x1fffff00000000):
+  convertI32PairToI53: 0x1fffff00000000
+  convertU32PairToI53: 0x1fffff00000000
+  writeI53ToI64: 0x1fffff00000000
+  readI53FromI64: 0x1fffff00000000
+  readI53FromU64: 0x1fffff00000000
+
+9007194959773697 (0x1fffff00000001):
+  convertI32PairToI53: 0x1fffff00000001
+  convertU32PairToI53: 0x1fffff00000001
+  writeI53ToI64: 0x1fffff00000001
+  readI53FromI64: 0x1fffff00000001
+  readI53FromU64: 0x1fffff00000001
+
+9007199254740990 (0x1ffffffffffffe):
+  convertI32PairToI53: 0x1ffffffffffffe
+  convertU32PairToI53: 0x1ffffffffffffe
+  writeI53ToI64: 0x1ffffffffffffe
+  readI53FromI64: 0x1ffffffffffffe
+  readI53FromU64: 0x1ffffffffffffe
+
+9007199254740991 (0x1fffffffffffff):
+  convertI32PairToI53: 0x1fffffffffffff
+  convertU32PairToI53: 0x1fffffffffffff
+  writeI53ToI64: 0x1fffffffffffff
+  readI53FromI64: 0x1fffffffffffff
+  readI53FromU64: 0x1fffffffffffff
+
+9007199254740992 (0x20000000000000):
+  convertI32PairToI53: 0x20000000000000
+  convertU32PairToI53: 0x20000000000000
+  writeI53ToI64: 0x20000000000000
+  readI53FromI64: 0x20000000000000
+  readI53FromU64: 0x20000000000000
+
+Testing negative losslessIntegers:
+0 (0x0):
+  convertI32PairToI53: 0x0
+  writeI53ToI64: 0x0
+  readI53FromI64: 0x0
+
+-1 (0xffffffffffffffff):
+  convertI32PairToI53: 0xffffffffffffffff
+  writeI53ToI64: 0xffffffffffffffff
+  readI53FromI64: 0xffffffffffffffff
+
+-2 (0xfffffffffffffffe):
+  convertI32PairToI53: 0xfffffffffffffffe
+  writeI53ToI64: 0xfffffffffffffffe
+  readI53FromI64: 0xfffffffffffffffe
+
+-3 (0xfffffffffffffffd):
+  convertI32PairToI53: 0xfffffffffffffffd
+  writeI53ToI64: 0xfffffffffffffffd
+  readI53FromI64: 0xfffffffffffffffd
+
+-16777215 (0xffffffffff000001):
+  convertI32PairToI53: 0xffffffffff000001
+  writeI53ToI64: 0xffffffffff000001
+  readI53FromI64: 0xffffffffff000001
+
+-16777216 (0xffffffffff000000):
+  convertI32PairToI53: 0xffffffffff000000
+  writeI53ToI64: 0xffffffffff000000
+  readI53FromI64: 0xffffffffff000000
+
+-16777217 (0xfffffffffeffffff):
+  convertI32PairToI53: 0xfffffffffeffffff
+  writeI53ToI64: 0xfffffffffeffffff
+  readI53FromI64: 0xfffffffffeffffff
+
+-16909060 (0xfffffffffefdfcfc):
+  convertI32PairToI53: 0xfffffffffefdfcfc
+  writeI53ToI64: 0xfffffffffefdfcfc
+  readI53FromI64: 0xfffffffffefdfcfc
+
+-2147483647 (0xffffffff80000001):
+  convertI32PairToI53: 0xffffffff80000001
+  writeI53ToI64: 0xffffffff80000001
+  readI53FromI64: 0xffffffff80000001
+
+-2147483648 (0xffffffff80000000):
+  convertI32PairToI53: 0xffffffff80000000
+  writeI53ToI64: 0xffffffff80000000
+  readI53FromI64: 0xffffffff80000000
+
+-2415919104 (0xffffffff70000000):
+  convertI32PairToI53: 0xffffffff70000000
+  writeI53ToI64: 0xffffffff70000000
+  readI53FromI64: 0xffffffff70000000
+
+-4294967295 (0xffffffff00000001):
+  convertI32PairToI53: 0xffffffff00000001
+  writeI53ToI64: 0xffffffff00000001
+  readI53FromI64: 0xffffffff00000001
+
+-4294967296 (0xffffffff00000000):
+  convertI32PairToI53: 0xffffffff00000000
+  writeI53ToI64: 0xffffffff00000000
+  readI53FromI64: 0xffffffff00000000
+
+-4294967297 (0xfffffffeffffffff):
+  convertI32PairToI53: 0xfffffffeffffffff
+  writeI53ToI64: 0xfffffffeffffffff
+  readI53FromI64: 0xfffffffeffffffff
+
+-6442450943 (0xfffffffe80000001):
+  convertI32PairToI53: 0xfffffffe80000001
+  writeI53ToI64: 0xfffffffe80000001
+  readI53FromI64: 0xfffffffe80000001
+
+-6442450944 (0xfffffffe80000000):
+  convertI32PairToI53: 0xfffffffe80000000
+  writeI53ToI64: 0xfffffffe80000000
+  readI53FromI64: 0xfffffffe80000000
+
+-68719476735 (0xfffffff000000001):
+  convertI32PairToI53: 0xfffffff000000001
+  writeI53ToI64: 0xfffffff000000001
+  readI53FromI64: 0xfffffff000000001
+
+-4538990157889536 (0xffefdfd000000000):
+  convertI32PairToI53: 0xffefdfd000000000
+  writeI53ToI64: 0xffefdfd000000000
+  readI53FromI64: 0xffefdfd000000000
+
+-9007194959773696 (0xffe0000100000000):
+  convertI32PairToI53: 0xffe0000100000000
+  writeI53ToI64: 0xffe0000100000000
+  readI53FromI64: 0xffe0000100000000
+
+-9007194959773697 (0xffe00000ffffffff):
+  convertI32PairToI53: 0xffe00000ffffffff
+  writeI53ToI64: 0xffe00000ffffffff
+  readI53FromI64: 0xffe00000ffffffff
+
+-9007199254740990 (0xffe0000000000002):
+  convertI32PairToI53: 0xffe0000000000002
+  writeI53ToI64: 0xffe0000000000002
+  readI53FromI64: 0xffe0000000000002
+
+-9007199254740991 (0xffe0000000000001):
+  convertI32PairToI53: 0xffe0000000000001
+  writeI53ToI64: 0xffe0000000000001
+  readI53FromI64: 0xffe0000000000001
+
+-9007199254740992 (0xffe0000000000000):
+  convertI32PairToI53: 0xffe0000000000000
+  writeI53ToI64: 0xffe0000000000000
+  readI53FromI64: 0xffe0000000000000
+
+Testing preciseUnsignedIntegers:
+9007199254740994 (0x20000000000002):
+  convertU32PairToI53: 0x20000000000002: error difference: 0
+  readI53FromU64: 0x20000000000002: error difference: 0
+
+9223372036854775808 (0x8000000000000000):
+  convertU32PairToI53: 0x8000000000000000: error difference: 0
+  readI53FromU64: 0x8000000000000000: error difference: 0
+
+10684768937290248 (0x25f5bda103aa08):
+  convertU32PairToI53: 0x25f5bda103aa08: error difference: 0
+  readI53FromU64: 0x25f5bda103aa08: error difference: 0
+
+17794735985140884 (0x3f3837d5442494):
+  convertU32PairToI53: 0x3f3837d5442494: error difference: 0
+  readI53FromU64: 0x3f3837d5442494: error difference: 0
+
+24124026775257760 (0x55b4acae7dc2a0):
+  convertU32PairToI53: 0x55b4acae7dc2a0: error difference: 0
+  readI53FromU64: 0x55b4acae7dc2a0: error difference: 0
+
+32297031363930280 (0x72bdfa99bf28a8):
+  convertU32PairToI53: 0x72bdfa99bf28a8: error difference: 0
+  readI53FromU64: 0x72bdfa99bf28a8: error difference: 0
+
+46167792506543936 (0xa4055cd86a9f40):
+  convertU32PairToI53: 0xa4055cd86a9f40: error difference: 0
+  readI53FromU64: 0xa4055cd86a9f40: error difference: 0
+
+82665451100278032 (0x125afca30078d10):
+  convertU32PairToI53: 0x125afca30078d10: error difference: 0
+  readI53FromU64: 0x125afca30078d10: error difference: 0
+
+82908143057184192 (0x1268c844fe925c0):
+  convertU32PairToI53: 0x1268c844fe925c0: error difference: 0
+  readI53FromU64: 0x1268c844fe925c0: error difference: 0
+
+83912190268867232 (0x12a1db1454d02a0):
+  convertU32PairToI53: 0x12a1db1454d02a0: error difference: 0
+  readI53FromU64: 0x12a1db1454d02a0: error difference: 0
+
+89664494320124096 (0x13e8d61ecea80c0):
+  convertU32PairToI53: 0x13e8d61ecea80c0: error difference: 0
+  readI53FromU64: 0x13e8d61ecea80c0: error difference: 0
+
+110368417731171280 (0x1881b7dbd49d3d0):
+  convertU32PairToI53: 0x1881b7dbd49d3d0: error difference: 0
+  readI53FromU64: 0x1881b7dbd49d3d0: error difference: 0
+
+1145953455528558336 (0xfe73e98a5e93f00):
+  convertU32PairToI53: 0xfe73e98a5e93f00: error difference: 0
+  readI53FromU64: 0xfe73e98a5e93f00: error difference: 0
+
+3045800721111138304 (0x2a44db9e56754000):
+  convertU32PairToI53: 0x2a44db9e56754000: error difference: 0
+  readI53FromU64: 0x2a44db9e56754000: error difference: 0
+
+9223372036854774784 (0x7ffffffffffffc00):
+  convertU32PairToI53: 0x7ffffffffffffc00: error difference: 0
+  readI53FromU64: 0x7ffffffffffffc00: error difference: 0
+
+Testing preciseNegativeIntegers:
+18437736874454810622 (0xffdffffffffffffe):
+  convertI32PairToI53: 0xffdffffffffffffe: error difference: 0
+  readI53FromI64: 0xffdffffffffffffe: error difference: 0
+
+18434126399458488750 (0xffd32c4ac85fb1ae):
+  convertI32PairToI53: 0xffd32c4ac85fb1ae: error difference: 0
+  readI53FromI64: 0xffd32c4ac85fb1ae: error difference: 0
+
+18391095828185052072 (0xff3a4c372d2373a8):
+  convertI32PairToI53: 0xff3a4c372d2373a8: error difference: 0
+  readI53FromI64: 0xff3a4c372d2373a8: error difference: 0
+
+18380743904527980752 (0xff15853220d118d0):
+  convertI32PairToI53: 0xff15853220d118d0: error difference: 0
+  readI53FromI64: 0xff15853220d118d0: error difference: 0
+
+18326647209076187856 (0xfe555489b4e3e2d0):
+  convertI32PairToI53: 0xfe555489b4e3e2d0: error difference: 0
+  readI53FromI64: 0xfe555489b4e3e2d0: error difference: 0
+
+18085712373416748928 (0xfafd5b94d7646780):
+  convertI32PairToI53: 0xfafd5b94d7646780: error difference: 0
+  readI53FromI64: 0xfafd5b94d7646780: error difference: 0
+
+17886049442542099008 (0xf838033421cb9a40):
+  convertI32PairToI53: 0xf838033421cb9a40: error difference: 0
+  readI53FromI64: 0xf838033421cb9a40: error difference: 0
+
+15208882576484475392 (0xd310ce1f89fc2200):
+  convertI32PairToI53: 0xd310ce1f89fc2200: error difference: 0
+  readI53FromI64: 0xd310ce1f89fc2200: error difference: 0
+
+14585696572476365824 (0xca6acdc11c161c00):
+  convertI32PairToI53: 0xca6acdc11c161c00: error difference: 0
+  readI53FromI64: 0xca6acdc11c161c00: error difference: 0
+
+12637514918618572800 (0xaf6178dcaff5a800):
+  convertI32PairToI53: 0xaf6178dcaff5a800: error difference: 0
+  readI53FromI64: 0xaf6178dcaff5a800: error difference: 0
+
+11168418362109174784 (0x9afe3153d877a400):
+  convertI32PairToI53: 0x9afe3153d877a400: error difference: 0
+  readI53FromI64: 0x9afe3153d877a400: error difference: 0
+
+10050685792794455040 (0x8b7b357a4c942c00):
+  convertI32PairToI53: 0x8b7b357a4c942c00: error difference: 0
+  readI53FromI64: 0x8b7b357a4c942c00: error difference: 0
+
+Testing impreciseUnsignedIntegers:
+9007199254740992.000000:
+  writeI53ToI64: 0x20000000000000 (9007199254740992): error difference: 0
+
+127505432520080112.000000:
+  writeI53ToI64: 0x1c4fd83ec4abaf0 (127505432520080112): error difference: 0
+
+479805370944382912.000000:
+  writeI53ToI64: 0x6a89c715876e7c0 (479805370944382912): error difference: 0
+
+741614427870654976.000000:
+  writeI53ToI64: 0xa4abe649588f200 (741614427870654976): error difference: 0
+
+907487167196864000.000000:
+  writeI53ToI64: 0xc980ac53efe9e00 (907487167196864000): error difference: 0
+
+1756673437269809664.000000:
+  writeI53ToI64: 0x1860f52f16d4da00 (1756673437269809664): error difference: 0
+
+1840835048382646016.000000:
+  writeI53ToI64: 0x198bf5b92cefc700 (1840835048382646016): error difference: 0
+
+3027162577017479168.000000:
+  writeI53ToI64: 0x2a02a453407ba000 (3027162577017479168): error difference: 0
+
+3941293303591155712.000000:
+  writeI53ToI64: 0x36b24960b42d3800 (3941293303591155712): error difference: 0
+
+8081542314388258816.000000:
+  writeI53ToI64: 0x702767eac6668000 (8081542314388258816): error difference: 0
+
+9282203167801978880.000000:
+  writeI53ToI64: 0x80d1029a15d7b000 (9282203167801978880): error difference: 0
+
+10475456315232524288.000000:
+  writeI53ToI64: 0x91604c04718e9800 (10475456315232524288): error difference: 0
+
+13022657433747214336.000000:
+  writeI53ToI64: 0xb4b9c5f0621a5000 (13022657433747214336): error difference: 0
+
+13922937903263354880.000000:
+  writeI53ToI64: 0xc138364191d59000 (13922937903263354880): error difference: 0
+
+14390141892295297024.000000:
+  writeI53ToI64: 0xc7b40dcf0dba8800 (14390141892295297024): error difference: 0
+
+17480690114667919360.000000:
+  writeI53ToI64: 0xf297e30ae976b800 (17480690114667919360): error difference: 0
+
+18080264189222844416.000000:
+  writeI53ToI64: 0xfaea007c9bd7f800 (18080264189222844416): error difference: 0
+
+18138424922444333056.000000:
+  writeI53ToI64: 0xfbb8a15d8f630000 (18138424922444333056): error difference: 0
+
+18446744073709551616.000000:
+  writeI53ToI64: 0x0 (0): error difference: -1.84467e+19
+
+Testing impreciseNegativeIntegers:
+-9007199254740992.000000:
+  writeI53ToI64: 0xffe0000000000000 (-9007199254740992): error difference: 0
+
+-133996157760400112.000000:
+  writeI53ToI64: 0xfe23f334576c9510 (-133996157760400112): error difference: 0
+
+-228467469520603520.000000:
+  writeI53ToI64: 0xfcd4520c047df680 (-228467469520603520): error difference: 0
+
+-273666790607730240.000000:
+  writeI53ToI64: 0xfc33bd80ff0149c0 (-273666790607730240): error difference: 0
+
+-1191557145388856832.000000:
+  writeI53ToI64: 0xef76bd16e384ca00 (-1191557145388856832): error difference: 0
+
+-1298332612384647168.000000:
+  writeI53ToI64: 0xedfb655e2e821800 (-1298332612384647168): error difference: 0
+
+-1989398812941491456.000000:
+  writeI53ToI64: 0xe4643c51e609e300 (-1989398812941491456): error difference: 0
+
+-3377237107138057728.000000:
+  writeI53ToI64: 0xd121a4be92c4aa00 (-3377237107138057728): error difference: 0
+
+-5387531583823159296.000000:
+  writeI53ToI64: 0xb53ba491a205e000 (-5387531583823159296): error difference: 0
+
+-7668821978737496064.000000:
+  writeI53ToI64: 0x9592df0a9fa4b000 (-7668821978737496064): error difference: 0
+
+-8059210294467506176.000000:
+  writeI53ToI64: 0x9027eeefcc17d000 (-8059210294467506176): error difference: 0
+
+-8639913759366443008.000000:
+  writeI53ToI64: 0x8818dc364af41000 (-8639913759366443008): error difference: 0
+
+Testing otherDoubles:
+0.000000:
+  writeI53ToI64: 0x0 (0): error difference: -4.94066e-324
+  writeI53ToI64Clamped: 0x0 (0): error difference: -4.94066e-324
+  writeI53ToI64Signaling: 0x0 (0): error difference: -4.94066e-324
+  writeI53ToU64Clamped: 0x0 (0): error difference: -4.94066e-324
+  writeI53ToU64Signaling: 0x0 (0): error difference: -4.94066e-324
+
+-0.000000:
+  writeI53ToI64: 0x0 (0): error difference: 4.94066e-324
+  writeI53ToI64Clamped: 0x0 (0): error difference: 4.94066e-324
+  writeI53ToI64Signaling: 0x0 (0): error difference: 4.94066e-324
+  writeI53ToU64Clamped: 0x0 (0): error difference: 4.94066e-324
+  writeI53ToU64Signaling: (RangeError)
+
+0.000000:
+  writeI53ToI64: 0x0 (0): error difference: -2.22507e-308
+  writeI53ToI64Clamped: 0x0 (0): error difference: -2.22507e-308
+  writeI53ToI64Signaling: 0x0 (0): error difference: -2.22507e-308
+  writeI53ToU64Clamped: 0x0 (0): error difference: -2.22507e-308
+  writeI53ToU64Signaling: 0x0 (0): error difference: -2.22507e-308
+
+-0.000000:
+  writeI53ToI64: 0x0 (0): error difference: 2.22507e-308
+  writeI53ToI64Clamped: 0x0 (0): error difference: 2.22507e-308
+  writeI53ToI64Signaling: 0x0 (0): error difference: 2.22507e-308
+  writeI53ToU64Clamped: 0x0 (0): error difference: 2.22507e-308
+  writeI53ToU64Signaling: (RangeError)
+
+0.000000:
+  writeI53ToI64: 0x0 (0): error difference: -2.22045e-16
+  writeI53ToI64Clamped: 0x0 (0): error difference: -2.22045e-16
+  writeI53ToI64Signaling: 0x0 (0): error difference: -2.22045e-16
+  writeI53ToU64Clamped: 0x0 (0): error difference: -2.22045e-16
+  writeI53ToU64Signaling: 0x0 (0): error difference: -2.22045e-16
+
+-0.000000:
+  writeI53ToI64: 0x0 (0): error difference: 2.22045e-16
+  writeI53ToI64Clamped: 0x0 (0): error difference: 2.22045e-16
+  writeI53ToI64Signaling: 0x0 (0): error difference: 2.22045e-16
+  writeI53ToU64Clamped: 0x0 (0): error difference: 2.22045e-16
+  writeI53ToU64Signaling: (RangeError)
+
+0.100000:
+  writeI53ToI64: 0x0 (0): error difference: -0.1
+  writeI53ToI64Clamped: 0x0 (0): error difference: -0.1
+  writeI53ToI64Signaling: 0x0 (0): error difference: -0.1
+  writeI53ToU64Clamped: 0x0 (0): error difference: -0.1
+  writeI53ToU64Signaling: 0x0 (0): error difference: -0.1
+
+-0.100000:
+  writeI53ToI64: 0x0 (0): error difference: 0.1
+  writeI53ToI64Clamped: 0x0 (0): error difference: 0.1
+  writeI53ToI64Signaling: 0x0 (0): error difference: 0.1
+  writeI53ToU64Clamped: 0x0 (0): error difference: 0.1
+  writeI53ToU64Signaling: (RangeError)
+
+0.250000:
+  writeI53ToI64: 0x0 (0): error difference: -0.25
+  writeI53ToI64Clamped: 0x0 (0): error difference: -0.25
+  writeI53ToI64Signaling: 0x0 (0): error difference: -0.25
+  writeI53ToU64Clamped: 0x0 (0): error difference: -0.25
+  writeI53ToU64Signaling: 0x0 (0): error difference: -0.25
+
+-0.250000:
+  writeI53ToI64: 0x0 (0): error difference: 0.25
+  writeI53ToI64Clamped: 0x0 (0): error difference: 0.25
+  writeI53ToI64Signaling: 0x0 (0): error difference: 0.25
+  writeI53ToU64Clamped: 0x0 (0): error difference: 0.25
+  writeI53ToU64Signaling: (RangeError)
+
+0.500000:
+  writeI53ToI64: 0x0 (0): error difference: -0.5
+  writeI53ToI64Clamped: 0x0 (0): error difference: -0.5
+  writeI53ToI64Signaling: 0x0 (0): error difference: -0.5
+  writeI53ToU64Clamped: 0x0 (0): error difference: -0.5
+  writeI53ToU64Signaling: 0x0 (0): error difference: -0.5
+
+-0.500000:
+  writeI53ToI64: 0x0 (0): error difference: 0.5
+  writeI53ToI64Clamped: 0x0 (0): error difference: 0.5
+  writeI53ToI64Signaling: 0x0 (0): error difference: 0.5
+  writeI53ToU64Clamped: 0x0 (0): error difference: 0.5
+  writeI53ToU64Signaling: (RangeError)
+
+0.750000:
+  writeI53ToI64: 0x0 (0): error difference: -0.75
+  writeI53ToI64Clamped: 0x0 (0): error difference: -0.75
+  writeI53ToI64Signaling: 0x0 (0): error difference: -0.75
+  writeI53ToU64Clamped: 0x0 (0): error difference: -0.75
+  writeI53ToU64Signaling: 0x0 (0): error difference: -0.75
+
+-0.750000:
+  writeI53ToI64: 0x0 (0): error difference: 0.75
+  writeI53ToI64Clamped: 0x0 (0): error difference: 0.75
+  writeI53ToI64Signaling: 0x0 (0): error difference: 0.75
+  writeI53ToU64Clamped: 0x0 (0): error difference: 0.75
+  writeI53ToU64Signaling: (RangeError)
+
+1.912607:
+  writeI53ToI64: 0x1 (1): error difference: -0.912607
+  writeI53ToI64Clamped: 0x1 (1): error difference: -0.912607
+  writeI53ToI64Signaling: 0x1 (1): error difference: -0.912607
+  writeI53ToU64Clamped: 0x1 (1): error difference: -0.912607
+  writeI53ToU64Signaling: 0x1 (1): error difference: -0.912607
+
+-1.912607:
+  writeI53ToI64: 0xffffffffffffffff (-1): error difference: 0.912607
+  writeI53ToI64Clamped: 0xffffffffffffffff (-1): error difference: 0.912607
+  writeI53ToI64Signaling: 0xffffffffffffffff (-1): error difference: 0.912607
+  writeI53ToU64Clamped: 0x0 (0): error difference: 1.91261
+  writeI53ToU64Signaling: (RangeError)
+
+2.746370:
+  writeI53ToI64: 0x2 (2): error difference: -0.74637
+  writeI53ToI64Clamped: 0x2 (2): error difference: -0.74637
+  writeI53ToI64Signaling: 0x2 (2): error difference: -0.74637
+  writeI53ToU64Clamped: 0x2 (2): error difference: -0.74637
+  writeI53ToU64Signaling: 0x2 (2): error difference: -0.74637
+
+-2.746370:
+  writeI53ToI64: 0xfffffffffffffffe (-2): error difference: 0.74637
+  writeI53ToI64Clamped: 0xfffffffffffffffe (-2): error difference: 0.74637
+  writeI53ToI64Signaling: 0xfffffffffffffffe (-2): error difference: 0.74637
+  writeI53ToU64Clamped: 0x0 (0): error difference: 2.74637
+  writeI53ToU64Signaling: (RangeError)
+
+150655528000.361053:
+  writeI53ToI64: 0x2313c4ec40 (150655528000): error difference: -0.361053
+  writeI53ToI64Clamped: 0x2313c4ec40 (150655528000): error difference: -0.361053
+  writeI53ToI64Signaling: 0x2313c4ec40 (150655528000): error difference: -0.361053
+  writeI53ToU64Clamped: 0x2313c4ec40 (150655528000): error difference: -0.361053
+  writeI53ToU64Signaling: 0x2313c4ec40 (150655528000): error difference: -0.361053
+
+-150655528000.361053:
+  writeI53ToI64: 0xffffffdcec3b13c0 (-150655528000): error difference: 0.361053
+  writeI53ToI64Clamped: 0xffffffdcec3b13c0 (-150655528000): error difference: 0.361053
+  writeI53ToI64Signaling: 0xffffffdcec3b13c0 (-150655528000): error difference: 0.361053
+  writeI53ToU64Clamped: 0x0 (0): error difference: 1.50656e+11
+  writeI53ToU64Signaling: (RangeError)
+
+679247267523850.500000:
+  writeI53ToI64: 0x269c594186d0a (679247267523850): error difference: -0.5
+  writeI53ToI64Clamped: 0x269c594186d0a (679247267523850): error difference: -0.5
+  writeI53ToI64Signaling: 0x269c594186d0a (679247267523850): error difference: -0.5
+  writeI53ToU64Clamped: 0x269c594186d0a (679247267523850): error difference: -0.5
+  writeI53ToU64Signaling: 0x269c594186d0a (679247267523850): error difference: -0.5
+
+-679247267523850.500000:
+  writeI53ToI64: 0xfffd963a6be792f6 (-679247267523850): error difference: 0.5
+  writeI53ToI64Clamped: 0xfffd963a6be792f6 (-679247267523850): error difference: 0.5
+  writeI53ToI64Signaling: 0xfffd963a6be792f6 (-679247267523850): error difference: 0.5
+  writeI53ToU64Clamped: 0x0 (0): error difference: 6.79247e+14
+  writeI53ToU64Signaling: (RangeError)
+
+967873430891084.250000:
+  writeI53ToI64: 0x3704698092a4c (967873430891084): error difference: -0.25
+  writeI53ToI64Clamped: 0x3704698092a4c (967873430891084): error difference: -0.25
+  writeI53ToI64Signaling: 0x3704698092a4c (967873430891084): error difference: -0.25
+  writeI53ToU64Clamped: 0x3704698092a4c (967873430891084): error difference: -0.25
+  writeI53ToU64Signaling: 0x3704698092a4c (967873430891084): error difference: -0.25
+
+-967873430891084.250000:
+  writeI53ToI64: 0xfffc8fb967f6d5b4 (-967873430891084): error difference: 0.25
+  writeI53ToI64Clamped: 0xfffc8fb967f6d5b4 (-967873430891084): error difference: 0.25
+  writeI53ToI64Signaling: 0xfffc8fb967f6d5b4 (-967873430891084): error difference: 0.25
+  writeI53ToU64Clamped: 0x0 (0): error difference: 9.67873e+14
+  writeI53ToU64Signaling: (RangeError)
+
+1913278962515964.500000:
+  writeI53ToI64: 0x6cc1df8eabffc (1913278962515964): error difference: -0.5
+  writeI53ToI64Clamped: 0x6cc1df8eabffc (1913278962515964): error difference: -0.5
+  writeI53ToI64Signaling: 0x6cc1df8eabffc (1913278962515964): error difference: -0.5
+  writeI53ToU64Clamped: 0x6cc1df8eabffc (1913278962515964): error difference: -0.5
+  writeI53ToU64Signaling: 0x6cc1df8eabffc (1913278962515964): error difference: -0.5
+
+-1913278962515964.500000:
+  writeI53ToI64: 0xfff933e207154004 (-1913278962515964): error difference: 0.5
+  writeI53ToI64Clamped: 0xfff933e207154004 (-1913278962515964): error difference: 0.5
+  writeI53ToI64Signaling: 0xfff933e207154004 (-1913278962515964): error difference: 0.5
+  writeI53ToU64Clamped: 0x0 (0): error difference: 1.91328e+15
+  writeI53ToU64Signaling: (RangeError)
+
+179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.000000:
+  writeI53ToI64: 0x0 (0): error difference: -1.79769e+308
+  writeI53ToI64Clamped: 0x7fffffffffffffff (9223372036854775807): error difference: -1.79769e+308
+  writeI53ToI64Signaling: (RangeError)
+  writeI53ToU64Clamped: 0xffffffffffffffff (-1): error difference: -1.79769e+308
+  writeI53ToU64Signaling: (RangeError)
+
+-179769313486231570814527423731704356798070567525844996598917476803157260780028538760589558632766878171540458953514382464234321326889464182768467546703537516986049910576551282076245490090389328944075868508455133942304583236903222948165808559332123348274797826204144723168738177180919299881250404026184124858368.000000:
+  writeI53ToI64: 0x0 (0): error difference: 1.79769e+308
+  writeI53ToI64Clamped: 0x8000000000000000 (-9223372036854775808): error difference: 1.79769e+308
+  writeI53ToI64Signaling: (RangeError)
+  writeI53ToU64Clamped: 0x0 (0): error difference: 1.79769e+308
+  writeI53ToU64Signaling: (RangeError)
+
+inf:
+  writeI53ToI64: 0x0 (0): error difference: -inf
+  writeI53ToI64Clamped: 0x7fffffffffffffff (9223372036854775807): error difference: -inf
+  writeI53ToI64Signaling: (RangeError)
+  writeI53ToU64Clamped: 0xffffffffffffffff (-1): error difference: -inf
+  writeI53ToU64Signaling: (RangeError)
+
+-inf:
+  writeI53ToI64: 0x0 (0): error difference: inf
+  writeI53ToI64Clamped: 0x8000000000000000 (-9223372036854775808): error difference: inf
+  writeI53ToI64Signaling: (RangeError)
+  writeI53ToU64Clamped: 0x0 (0): error difference: inf
+  writeI53ToU64Signaling: (RangeError)
+
+All done!

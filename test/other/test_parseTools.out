@@ -1,0 +1,65 @@
+MAX_SAFE_INTEGER: 9007199254740992
+MIN_SAFE_INTEGER: -9007199254740992
+printI64: 0xffff5544edcba988
+
+test_makeGetValue:
+i53: -aabb12345678
+u53: ffff5544edcba800
+i32: -12345678
+u32: edcba988
+u32 legacy: edcba988
+i16: -5678
+u16: a988
+u16 legacy: a988
+i8: -78
+u8: 88
+u8 legacy: 88
+ptr: edcba988
+ptr: edcba988
+
+test_makeSetValue:
+printI64: 0x12345678ab
+printI64: 0x2233445566780000
+printI64: 0xddccbbaa99880000
+printI64: 0x12345678ab
+printI64: 0xffffffffffffffff
+printI64: 0xff
+printI64: 0x345678ab
+
+test_receiveI64ParamAsI53:
+arg1: 42
+arg2: -42
+rtn = 0
+
+test_receiveI64ParamAsI53:
+arg1: 9007199254740992
+arg2: -9007199254740992
+rtn = 0
+
+test_receiveI64ParamAsI53:
+rtn = -1
+
+test_receiveI64ParamAsI53:
+rtn = -1
+
+test_receiveI64ParamAsDouble:
+arg1: 42
+arg2: -42
+rtn = 0
+
+test_receiveI64ParamAsDouble:
+arg1: 9007199254740992
+arg2: -9007199254740992
+rtn = 0
+
+test_receiveI64ParamAsDouble:
+arg1: 9007199254740992
+arg2: 0
+rtn = 0
+
+test_receiveI64ParamAsDouble:
+arg1: -9007199254740992
+arg2: 0
+rtn = 0
+
+done

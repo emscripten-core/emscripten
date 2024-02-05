@@ -6,8 +6,62 @@
  */
 
 #pragma once
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
-#ifndef __asmjs__
+// You can use these functions by passing format string to arg_sigs.
+// Note that `code` requires you to provide a const C string known at compile
+// time, otherwise the "unable to find data for ASM/EM_JS const" error will be
+// thrown.
+// https://github.com/WebAssembly/binaryen/blob/51c8f2469f8fd05197b7694c65041b1567f2c6b5/src/wasm/wasm-emscripten.cpp#L183
+
+// C++ needs the nothrow attribute so -O0 doesn't lower these calls as invokes.
+__attribute__((nothrow))
+int emscripten_asm_const_int(const char* code, const char* arg_sigs, ...);
+__attribute__((nothrow))
+void* emscripten_asm_const_ptr(const char* code, const char* arg_sigs, ...);
+__attribute__((nothrow))
+double emscripten_asm_const_double(const char* code, const char* arg_sigs, ...);
+
+__attribute__((nothrow))
+int emscripten_asm_const_int_sync_on_main_thread(
+  const char* code, const char* arg_sigs, ...);
+__attribute__((nothrow))
+void* emscripten_asm_const_ptr_sync_on_main_thread(
+  const char* code, const char* arg_sigs, ...);
+__attribute__((nothrow))
+double emscripten_asm_const_double_sync_on_main_thread(
+  const char* code, const char* arg_sigs, ...);
+
+__attribute__((nothrow))
+void emscripten_asm_const_async_on_main_thread(
+  const char* code, const char* arg_sigs, ...);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
+
+// EM_ASM does not work strict C mode.
+#if !defined(__cplusplus) && defined(__STRICT_ANSI__)
+
+#define EM_ASM_ERROR _Pragma("GCC error(\"EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead\")")
+#define EM_ASM(...) EM_ASM_ERROR
+#define EM_ASM_INT(...) EM_ASM_ERROR
+#define EM_ASM_PTR(...) EM_ASM_ERROR
+#define EM_ASM_DOUBLE(...) EM_ASM_ERROR
+#define MAIN_THREAD_EM_ASM(...) EM_ASM_ERROR
+#define MAIN_THREAD_EM_ASM_INT(...) EM_ASM_ERROR
+#define MAIN_THREAD_EM_ASM_PTR(...) EM_ASM_ERROR
+#define MAIN_THREAD_EM_ASM_DOUBLE(...) EM_ASM_ERROR
+#define MAIN_THREAD_ASYNC_EM_ASM(...) EM_ASM_ERROR
+#define EM_ASM_(...) EM_ASM_ERROR
+#define EM_ASM_ARGS(...) EM_ASM_ERROR
+#define EM_ASM_INT_V(...) EM_ASM_ERROR
+#define EM_ASM_DOUBLE_V(...) EM_ASM_ERROR
+
+#else
+
 // In wasm backend, we need to call the emscripten_asm_const_* functions with
 // the C vararg calling convention, because we will call it with a variety of
 // arguments, but need to generate a coherent import for the wasm module before
@@ -20,13 +74,27 @@
 
 // We can use the generic selection C11 feature (that clang supports pre-C11
 // as an extension) to emulate function overloading in C.
-// All pointer types should go through the default case.
+// All other types, including *all* pointer types go through the default case
+#ifdef __wasm64__
+#define LONG_CODE 'j'
+#else
+#define LONG_CODE 'i'
+#endif
 #define _EM_ASM_SIG_CHAR(x) _Generic((x), \
     float: 'f', \
     double: 'd', \
-    int: 'i', \
-    unsigned: 'i', \
-    default: 'i')
+    char: 'i', \
+    unsigned char: 'i', \
+    unsigned short: 'i', \
+    unsigned int: 'i', \
+    unsigned long: LONG_CODE, \
+    unsigned long long: 'j', \
+    signed char: 'i', \
+    signed short: 'i', \
+    signed int: 'i', \
+    signed long: LONG_CODE, \
+    signed long long: 'j', \
+    default: 'p')
 
 // This indirection is needed to allow us to concatenate computed results, e.g.
 //   #define BAR(N) _EM_ASM_CONCATENATE(FOO_, N)
@@ -72,145 +140,149 @@
 #else // __cplusplus
 
 // C++ needs to support vararg template parameter packs, e.g. like in
-// tests/core/test_em_asm_parameter_pack.cpp. Because of that, a macro-only
+// test/core/test_em_asm_parameter_pack.cpp. Because of that, a macro-only
 // approach doesn't work (a macro applied to a parameter pack would expand
-// incorrectly). So we can use a template function instead to build a
-// std::string, and convert that to a C string.
-// String builder class is so the _sig functions can be mutually recursive.
-class __em_asm_sig_builder {
-private:
-  static char sig_char(float) {
-    return 'd';
-  }
-  static char sig_char(double) {
-    return 'd';
-  }
-  static char sig_char(int) {
-    return 'i';
-  }
-  static char sig_char(unsigned) {
-    return 'i';
-  }
-  static char sig_char(long) {
-    return 'i';
-  }
-  static char sig_char(unsigned long) {
-    return 'i';
-  }
-  template <typename T>
-  static char sig_char(T *arg) {
-    return 'i';
-  }
+// incorrectly). So we can use a template class instead to build a temporary
+// buffer of characters.
 
-  template <typename ...Args>
-  struct inner {
-    char buffer[sizeof...(Args)+1];
-  };
-public:
-  template <typename ...Args>
-  static const inner<Args...> __em_asm_sig(Args ...args) {
-    inner<Args...> temp;
-    char buf[sizeof...(Args)+1] = { sig_char(args)..., 0 };
-    for (int i = 0; i < sizeof...(Args)+1; ++i) {
-        temp.buffer[i] = buf[i];
-    }
-    return temp;
-  }
+// As emscripten is require to build successfully with -std=c++03, we cannot
+// use std::tuple or std::integral_constant. Using C++11 features is only a
+// warning in modern Clang, which are ignored in system headers.
+template<typename, typename = void> struct __em_asm_sig {};
+template<> struct __em_asm_sig<float> { static const char value = 'd'; };
+template<> struct __em_asm_sig<double> { static const char value = 'd'; };
+template<> struct __em_asm_sig<char> { static const char value = 'i'; };
+template<> struct __em_asm_sig<signed char> { static const char value = 'i'; };
+template<> struct __em_asm_sig<unsigned char> { static const char value = 'i'; };
+template<> struct __em_asm_sig<short> { static const char value = 'i'; };
+template<> struct __em_asm_sig<unsigned short> { static const char value = 'i'; };
+template<> struct __em_asm_sig<int> { static const char value = 'i'; };
+template<> struct __em_asm_sig<unsigned int> { static const char value = 'i'; };
+#if __wasm64__
+template<> struct __em_asm_sig<long> { static const char value = 'j'; };
+template<> struct __em_asm_sig<unsigned long> { static const char value = 'j'; };
+#else
+template<> struct __em_asm_sig<long> { static const char value = 'i'; };
+template<> struct __em_asm_sig<unsigned long> { static const char value = 'i'; };
+#endif
+template<> struct __em_asm_sig<bool> { static const char value = 'i'; };
+template<> struct __em_asm_sig<wchar_t> { static const char value = 'i'; };
+template<> struct __em_asm_sig<long long> { static const char value = 'j'; };
+template<> struct __em_asm_sig<unsigned long long> { static const char value = 'j'; };
+template<typename T> struct __em_asm_sig<T*> { static const char value = 'p'; };
+
+// Explicit support for enums, they're passed as int via variadic arguments.
+template<bool> struct __em_asm_if { };
+template<> struct __em_asm_if<true> { typedef void type; };
+template<typename T> struct __em_asm_sig<T, typename __em_asm_if<__is_enum(T)>::type> {
+    static const char value = 'i';
 };
 
+// Instead of std::tuple
+template<typename... Args>
+struct __em_asm_type_tuple {};
+
+// Instead of std::make_tuple
+template<typename... Args>
+__em_asm_type_tuple<Args...> __em_asm_make_type_tuple(Args... args) {
+    return {};
+}
+
+template<typename>
+struct __em_asm_sig_builder {};
+
+template<typename... Args>
+struct __em_asm_sig_builder<__em_asm_type_tuple<Args...> > {
+  static const char buffer[sizeof...(Args) + 1];
+};
+
+template<typename... Args>
+const char __em_asm_sig_builder<__em_asm_type_tuple<Args...> >::buffer[] = { __em_asm_sig<Args>::value..., 0 };
+
+// We move to type level with decltype(make_tuple(...)) to avoid double
+// evaluation of arguments. Use __typeof__ instead of decltype, though,
+// because the header should be able to compile with clang's -std=c++03.
 #define _EM_ASM_PREP_ARGS(...) \
-    , __em_asm_sig_builder::__em_asm_sig(__VA_ARGS__).buffer, ##__VA_ARGS__
-
-extern "C" {
+    , __em_asm_sig_builder<__typeof__(__em_asm_make_type_tuple(__VA_ARGS__))>::buffer, ##__VA_ARGS__
 #endif // __cplusplus
 
-// C++ needs the nothrow attribute so -O0 doesn't lower these calls as invokes.
-__attribute__((nothrow))
-int emscripten_asm_const_int(const char* code, const char* arg_sigs, ...);
-__attribute__((nothrow))
-double emscripten_asm_const_double(const char* code, const char* arg_sigs, ...);
+// Note: If the code block in the EM_ASM() family of functions below contains a
+// comma, then wrap the whole code block inside parentheses (). See
+// test/core/test_em_asm_2.cpp for example code snippets.
 
-__attribute__((nothrow))
-int emscripten_asm_const_int_sync_on_main_thread(
-  const char* code, const char* arg_sigs, ...);
-__attribute__((nothrow))
-double emscripten_asm_const_double_sync_on_main_thread(
-  const char* code, const char* arg_sigs, ...);
+#define CODE_EXPR(code) (__extension__({           \
+    __attribute__((section("em_asm"), aligned(1))) \
+    static const char x[] = code;                  \
+    x;                                             \
+  }))
 
-__attribute__((nothrow))
-void emscripten_asm_const_async_on_main_thread(
-  const char* code, const char* arg_sigs, ...);
+// Runs the given JavaScript code on the calling thread (synchronously), and
+// returns no value back.
+#define EM_ASM(code, ...) ((void)emscripten_asm_const_int(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__)))
 
-#ifdef __cplusplus
-}
-#endif // __cplusplus
+// Runs the given JavaScript code on the calling thread (synchronously), and
+// returns an i32 back.
+#define EM_ASM_INT(code, ...) emscripten_asm_const_int(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
 
-#else // __asmjs__
+// Runs the given JavaScript code on the calling thread (synchronously), and
+// returns an pointer back.
+// On wasm32 this is the same as emscripten_asm_const_int but on wasm64 it
+// returns an i64.
+#define EM_ASM_PTR(code, ...) emscripten_asm_const_ptr(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
 
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
+// Runs the given JavaScript code on the calling thread (synchronously), and
+// returns a double back.
+#define EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
 
-#define _EM_ASM_PREP_ARGS(...) , ##__VA_ARGS__
+// Runs the given JavaScript code synchronously on the main browser thread, and
+// returns no value back.
+// Call this function for example to access DOM elements in a pthread when
+// building with -pthread.
+// Avoid calling this function in performance sensitive code, because this will
+// effectively sleep the calling thread until the main browser thread is able to
+// service the proxied function call. If you have multiple MAIN_THREAD_EM_ASM()
+// code blocks to call in succession, it will likely be much faster to coalesce
+// all the calls to a single MAIN_THREAD_EM_ASM() block. If you do not need
+// synchronization nor a return value back, consider using the function
+// MAIN_THREAD_ASYNC_EM_ASM() instead, which will not block.
+// In single-threaded builds (including proxy-to-worker), MAIN_THREAD_EM_ASM*()
+// functions are direct aliases to the corresponding EM_ASM*() family of
+// functions.
+#define MAIN_THREAD_EM_ASM(code, ...) ((void)emscripten_asm_const_int_sync_on_main_thread(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__)))
 
-int emscripten_asm_const_int(const char* code, ...);
-double emscripten_asm_const_double(const char* code, ...);
-
-int emscripten_asm_const_int_sync_on_main_thread(const char* code, ...);
-double emscripten_asm_const_double_sync_on_main_thread(const char* code, ...);
-
-void emscripten_asm_const_async_on_main_thread(const char* code, ...);
-
-#ifdef __cplusplus
-}
-#endif // __cplusplus
-
-#endif // __asmjs__
-
-
-// Note: If the code block in the EM_ASM() family of functions below contains a comma,
-// then wrap the whole code block inside parentheses (). See tests/core/test_em_asm_2.cpp
-// for example code snippets.
-
-// Runs the given JavaScript code on the calling thread (synchronously), and returns no value back.
-#define EM_ASM(code, ...) ((void)emscripten_asm_const_int(#code _EM_ASM_PREP_ARGS(__VA_ARGS__)))
-
-// Runs the given JavaScript code on the calling thread (synchronously), and returns an integer back.
-#define EM_ASM_INT(code, ...) emscripten_asm_const_int(#code _EM_ASM_PREP_ARGS(__VA_ARGS__))
-
-// Runs the given JavaScript code on the calling thread (synchronously), and returns a double back.
-#define EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double(#code _EM_ASM_PREP_ARGS(__VA_ARGS__))
-
-// Runs the given JavaScript code synchronously on the main browser thread, and returns no value back.
-// Call this function for example to access DOM elements in a pthread when building with -s USE_PTHREADS=1.
-// Avoid calling this function in performance sensitive code, because this will effectively sleep the
-// calling thread until the main browser thread is able to service the proxied function call. If you have
-// multiple MAIN_THREAD_EM_ASM() code blocks to call in succession, it will likely be much faster to
-// coalesce all the calls to a single MAIN_THREAD_EM_ASM() block. If you do not need synchronization nor
-// a return value back, consider using the function MAIN_THREAD_ASYNC_EM_ASM() instead, which will not block.
-// In single-threaded builds (including Emterpreter builds and proxy-to-worker), MAIN_THREAD_EM_ASM*()
-// functions are direct aliases to the corresponding EM_ASM*() family of functions.
-#define MAIN_THREAD_EM_ASM(code, ...) ((void)emscripten_asm_const_int_sync_on_main_thread(#code _EM_ASM_PREP_ARGS(__VA_ARGS__)))
-
-// Runs the given JavaScript code synchronously on the main browser thread, and returns an integer back.
+// Runs the given JavaScript code synchronously on the main browser thread, and
+// returns an integer back.
 // The same considerations apply as with MAIN_THREAD_EM_ASM().
-#define MAIN_THREAD_EM_ASM_INT(code, ...) emscripten_asm_const_int_sync_on_main_thread(#code _EM_ASM_PREP_ARGS(__VA_ARGS__))
+#define MAIN_THREAD_EM_ASM_INT(code, ...) emscripten_asm_const_int_sync_on_main_thread(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
 
-// Runs the given JavaScript code synchronously on the main browser thread, and returns a double back.
+// Runs the given JavaScript code synchronously on the main browser thread, and
+// returns an pointer back.
 // The same considerations apply as with MAIN_THREAD_EM_ASM().
-#define MAIN_THREAD_EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double_sync_on_main_thread(#code _EM_ASM_PREP_ARGS(__VA_ARGS__))
+// On wasm32 this is the same as emscripten_asm_const_int but on wasm64 it
+// returns an i64.
+#define MAIN_THREAD_EM_ASM_PTR(code, ...) emscripten_asm_const_ptr_sync_on_main_thread(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
 
-// Asynchronously dispatches the given JavaScript code to be run on the main browser thread.
-// If the calling thread is the main browser thread, then the specified JavaScript code is executed
-// synchronously. Otherwise an event will be queued on the main browser thread to execute the call
-// later (think postMessage()), and this call will immediately return without waiting. Be sure to
-// guard any accesses to shared memory on the heap inside the JavaScript code with appropriate locking.
-#define MAIN_THREAD_ASYNC_EM_ASM(code, ...) ((void)emscripten_asm_const_async_on_main_thread(#code _EM_ASM_PREP_ARGS(__VA_ARGS__)))
+// Runs the given JavaScript code synchronously on the main browser thread, and
+// returns a double back.
+// The same considerations apply as with MAIN_THREAD_EM_ASM().
+#define MAIN_THREAD_EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double_sync_on_main_thread(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
+
+// Asynchronously dispatches the given JavaScript code to be run on the main
+// browser thread.
+// If the calling thread is the main browser thread, then the specified
+// JavaScript code is executed synchronously. Otherwise an event will be queued
+// on the main browser thread to execute the call later (think postMessage()),
+// and this call will immediately return without waiting. Be sure to guard any
+// accesses to shared memory on the heap inside the JavaScript code with
+// appropriate locking.
+#define MAIN_THREAD_ASYNC_EM_ASM(code, ...) ((void)emscripten_asm_const_async_on_main_thread(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__)))
 
 // Old forms for compatibility, no need to use these.
 // Replace EM_ASM_, EM_ASM_ARGS and EM_ASM_INT_V with EM_ASM_INT,
 // and EM_ASM_DOUBLE_V with EM_ASM_DOUBLE.
-#define EM_ASM_(code, ...) emscripten_asm_const_int(#code _EM_ASM_PREP_ARGS(__VA_ARGS__))
-#define EM_ASM_ARGS(code, ...) emscripten_asm_const_int(#code _EM_ASM_PREP_ARGS(__VA_ARGS__))
-#define EM_ASM_INT_V(code) EM_ASM_INT(#code)
-#define EM_ASM_DOUBLE_V(code) EM_ASM_DOUBLE(#code)
+#define EM_ASM_(code, ...) emscripten_asm_const_int(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
+#define EM_ASM_ARGS(code, ...) emscripten_asm_const_int(CODE_EXPR(#code) _EM_ASM_PREP_ARGS(__VA_ARGS__))
+#define EM_ASM_INT_V(code) EM_ASM_INT(code)
+#define EM_ASM_DOUBLE_V(code) EM_ASM_DOUBLE(code)
+
+#endif // !defined(__cplusplus) && defined(__STRICT_ANSI__)

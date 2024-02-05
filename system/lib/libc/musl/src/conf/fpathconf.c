@@ -24,7 +24,7 @@ long fpathconf(int fd, int name)
 		[_PC_REC_MIN_XFER_SIZE] = 4096,
 		[_PC_REC_XFER_ALIGN] = 4096,
 		[_PC_ALLOC_SIZE_MIN] = 4096,
-		[_PC_SYMLINK_MAX] = SYMLINK_MAX,
+		[_PC_SYMLINK_MAX] = 255,  // XXX EMSCRIPTEN replace -1
 		[_PC_2_SYMLINKS] = 1
 	};
 	if (name >= sizeof(values)/sizeof(values[0])) {

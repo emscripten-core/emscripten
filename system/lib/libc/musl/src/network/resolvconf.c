@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>
 #include <netinet/in.h>
 
 int __get_resolv_conf(struct resolvconf *conf, char *search, size_t search_sz)
@@ -45,8 +46,8 @@ int __get_resolv_conf(struct resolvconf *conf, char *search, size_t search_sz)
 				if (z != p) conf->ndots = x > 15 ? 15 : x;
 			}
 			p = strstr(line, "attempts:");
-			if (p && isdigit(p[6])) {
-				p += 6;
+			if (p && isdigit(p[9])) {
+				p += 9;
 				unsigned long x = strtoul(p, &z, 10);
 				if (z != p) conf->attempts = x > 10 ? 10 : x;
 			}

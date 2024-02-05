@@ -55,29 +55,38 @@ and ABI combinations:
     * Little-endian default; big-endian variants also supported
 
 * MIPS
-    * ABI is o32
+    * ABI is o32, fp32/fpxx (except on r6 which is fp64)
     * Big-endian default; little-endian variants also supported
     * Default ABI variant uses FPU registers; alternate soft-float ABI
       that does not use FPU registers or instructions is available
     * MIPS2 or later, or kernel emulation of ll/sc (standard in Linux)
       is required
+    * MIPS32r6, an incompatible ISA, is supported as a variant "mipsr6"
 
 * MIPS64
-    * ABI is n64 (LP64)
+    * ABI is n64 (LP64) or n32 (ILP32)
     * Big-endian default; little-endian variants also supported
     * Default ABI variant uses FPU registers; alternate soft-float ABI
       that does not use FPU registers or instructions is available
 
 * PowerPC
-    * Only 32-bit is supported
     * Compiler toolchain must provide 64-bit long double, not IBM
       double-double or IEEE quad
     * For dynamic linking, compiler toolchain must be configured for
       "secure PLT" variant
 
+* PowerPC64
+    * Both little and big endian variants are supported
+    * Compiler toolchain must provide 64-bit long double, not IBM
+      double-double or IEEE quad
+    * Compiler toolchain must use the new (ELFv2) ABI regardless of
+      whether it is for little or big endian
+
+* S390X (64-bit S390)
+
 * SuperH (SH)
     * Standard ELF ABI or FDPIC ABI (shared-text without MMU)
-    * Little-endian by default; big-engian variant also supported
+    * Little-endian by default; big-endian variant also supported
     * Full FPU ABI or soft-float ABI is supported, but the
       single-precision-only FPU ABI is not
 
@@ -87,6 +96,11 @@ and ABI combinations:
     * Requires support for lwx/swx instructions
 
 * OpenRISC 1000 (or1k)
+
+* RISC-V 64
+    * Little endian
+    * Hard, soft, and hard-single/soft-double floating point ABIs
+    * Standard ELF; no shared-text NOMMU support
 
 
 

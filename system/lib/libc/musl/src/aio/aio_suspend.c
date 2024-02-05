@@ -2,16 +2,14 @@
 #include <errno.h>
 #include <time.h>
 #include "atomic.h"
-#include "libc.h"
 #include "pthread_impl.h"
-
-extern volatile int __aio_fut;
+#include "aio_impl.h"
 
 int aio_suspend(const struct aiocb *const cbs[], int cnt, const struct timespec *ts)
 {
 	int i, tid = 0, ret, expect = 0;
 	struct timespec at;
-	volatile int dummy_fut, *pfut;
+	volatile int dummy_fut = 0, *pfut;
 	int nzcnt = 0;
 	const struct aiocb *cb = 0;
 
@@ -75,5 +73,3 @@ int aio_suspend(const struct aiocb *const cbs[], int cnt, const struct timespec 
 		}
 	}
 }
-
-LFS64(aio_suspend);

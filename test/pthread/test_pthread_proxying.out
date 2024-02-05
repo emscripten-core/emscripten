@@ -1,0 +1,33 @@
+Testing async proxying
+running widget 1 on main
+running widget 2 on looper
+running widget 3 on returner
+Testing sync proxying
+running widget 4 on looper
+running widget 5 on returner
+Testing sync_with_ctx proxying
+running widget 6 on looper
+running widget 7 on returner
+Testing callback proxying
+running widget 8 on main
+running widget 9 on looper
+running widget 10 on returner
+Testing callback_with_ctx proxying
+running widget 11 on main
+running widget 12 on looper
+running widget 13 on returner
+Testing promise proxying
+running widget 14 on worker
+running widget 15 on looper
+running widget 16 on returner
+Testing promise_with_ctx proxying
+running widget 17 on worker
+running widget 18 on looper
+running widget 19 on returner
+Testing tasks queue growth
+Testing proxying queue growth
+work
+work
+work
+work
+done

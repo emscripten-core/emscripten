@@ -7,13 +7,13 @@ void *bsearch(const void *key, const void *base, size_t nel, size_t width, int (
 	while (nel > 0) {
 		try = (char *)base + width*(nel/2);
 		sign = cmp(key, try);
-		if (!sign) return try;
-		else if (nel == 1) break;
-		else if (sign < 0)
+		if (sign < 0) {
 			nel /= 2;
-		else {
-			base = try;
-			nel -= nel/2;
+		} else if (sign > 0) {
+			base = (char *)try + width;
+			nel -= nel/2+1;
+		} else {
+			return try;
 		}
 	}
 	return NULL;

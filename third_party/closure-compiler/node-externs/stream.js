@@ -80,13 +80,13 @@ stream.WritableStream.prototype.drain = function() {};
 stream.WritableStream.prototype.writable;
 
 /**
- * @param {string|buffer.Buffer} buffer
+ * @param {string|nodeBuffer.Buffer} buffer
  * @param {string=} encoding
  */
 stream.WritableStream.prototype.write = function(buffer, encoding) {};
 
 /**
- * @param {string|buffer.Buffer=} buffer
+ * @param {string|nodeBuffer.Buffer=} buffer
  * @param {string=} encoding
  * @param {function(*=)=} cb
  */
@@ -117,13 +117,13 @@ stream.Readable.prototype.readable;
 
 /**
  * @protected
- * @param {string|buffer.Buffer|null} chunk
+ * @param {string|nodeBuffer.Buffer|null} chunk
  * @return {boolean}
  */
 stream.Readable.prototype.push = function(chunk) {};
 
 /**
- * @param {string|buffer.Buffer|null} chunk
+ * @param {string|nodeBuffer.Buffer|null} chunk
  * @return {boolean}
  */
 stream.Readable.prototype.unshift = function(chunk) {};
@@ -135,7 +135,7 @@ stream.Readable.prototype.setEncoding = function(enc) {};
 
 /**
  * @param {number=} n
- * @return {buffer.Buffer|string|null}
+ * @return {nodeBuffer.Buffer|string|null}
  */
 stream.Readable.prototype.read = function(n) {};
 
@@ -179,7 +179,7 @@ stream.Writable = function(options) {};
 stream.Writable.prototype.writable;
 
 /**
- * @param {string|buffer.Buffer} chunk
+ * @param {string|nodeBuffer.Buffer} chunk
  * @param {string=} encoding
  * @param {function(*=)=} cb
  * @return {boolean}
@@ -188,14 +188,14 @@ stream.Writable.prototype.write = function(chunk, encoding, cb) {};
 
 /**
  * @protected
- * @param {string|buffer.Buffer} chunk
+ * @param {string|nodeBuffer.Buffer} chunk
  * @param {string} encoding
  * @param {function(*=)} cb
  */
 stream.Writable.prototype._write = function(chunk, encoding, cb) {};
 
 /**
- * @param {string|buffer.Buffer=} chunk
+ * @param {string|nodeBuffer.Buffer=} chunk
  * @param {string=} encoding
  * @param {function(*=)=} cb
  */
@@ -224,7 +224,7 @@ stream.Transform = function(options) {};
 
 /**
  * @protected
- * @param {string|buffer.Buffer} chunk
+ * @param {string|nodeBuffer.Buffer} chunk
  * @param {string} encoding
  * @param {function(*=)} cb
  */

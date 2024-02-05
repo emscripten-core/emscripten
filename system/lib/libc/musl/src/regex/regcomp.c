@@ -401,8 +401,8 @@ typedef struct {
 	tre_ast_node_t *n;
 	/* Position in the regexp pattern after a parse function returns. */
 	const char *s;
-	/* The first character of the regexp. */
-	const char *re;
+	/* The first character of the last subexpression parsed. */
+	const char *start;
 	/* Current submatch ID. */
 	int submatch_id;
 	/* Current position (number of literal). */
@@ -636,6 +636,20 @@ static reg_errcode_t parse_bracket(tre_parse_ctx_t *ctx, const char *s)
 		goto parse_bracket_done;
 
 	if (neg.negate) {
+		/*
+		 * With REG_NEWLINE, POSIX requires that newlines are not matched by
+		 * any form of a non-matching list.
+		 */
+		if (ctx->cflags & REG_NEWLINE) {
+			lit = tre_new_lit(&ls);
+			if (!lit) {
+				err = REG_ESPACE;
+				goto parse_bracket_done;
+			}
+			lit->code_min = '\n';
+			lit->code_max = '\n';
+			lit->position = -1;
+		}
 		/* Sort the array if we need to negate it. */
 		qsort(ls.a, ls.len, sizeof *ls.a, tre_compare_lit);
 		/* extra lit for the last negated range */
@@ -876,14 +890,14 @@ static reg_errcode_t parse_atom(tre_parse_ctx_t *ctx, const char *s)
 		break;
 	case '^':
 		/* '^' has a special meaning everywhere in EREs, and at beginning of BRE. */
-		if (!ere && s != ctx->re)
+		if (!ere && s != ctx->start)
 			goto parse_literal;
 		node = tre_ast_new_literal(ctx->mem, ASSERTION, ASSERT_AT_BOL, -1);
 		s++;
 		break;
 	case '$':
-		/* '$' is special everywhere in EREs, and in the end of the string in BREs. */
-		if (!ere && s[1])
+		/* '$' is special everywhere in EREs, and at the end of a BRE subexpression. */
+		if (!ere && s[1] && (s[1]!='\\'|| (s[2]!=')' && s[2]!='|')))
 			goto parse_literal;
 		node = tre_ast_new_literal(ctx->mem, ASSERTION, ASSERT_AT_EOL, -1);
 		s++;
@@ -944,7 +958,7 @@ static reg_errcode_t tre_parse(tre_parse_ctx_t *ctx)
 {
 	tre_ast_node_t *nbranch=0, *nunion=0;
 	int ere = ctx->cflags & REG_EXTENDED;
-	const char *s = ctx->re;
+	const char *s = ctx->start;
 	int subid = 0;
 	int depth = 0;
 	reg_errcode_t err;
@@ -962,6 +976,7 @@ static reg_errcode_t tre_parse(tre_parse_ctx_t *ctx)
 				s++;
 			depth++;
 			nbranch = nunion = 0;
+			ctx->start = s;
 			continue;
 		}
 		if ((!ere && *s == '\\' && s[1] == ')') ||
@@ -994,8 +1009,8 @@ static reg_errcode_t tre_parse(tre_parse_ctx_t *ctx)
 			if (*s=='\\')
 				s++;
 
-			/* handle ^* at the start of a complete BRE. */
-			if (!ere && s==ctx->re+1 && s[-1]=='^')
+			/* handle ^* at the start of a BRE. */
+			if (!ere && s==ctx->start+1 && s[-1]=='^')
 				break;
 
 			/* extension: multiple consecutive *+?{,} is unspecified,
@@ -1038,8 +1053,10 @@ static reg_errcode_t tre_parse(tre_parse_ctx_t *ctx)
 
 			if (c == '\\' && s[1] == '|') {
 				s+=2;
+				ctx->start = s;
 			} else if (c == '|') {
 				s++;
+				ctx->start = s;
 			} else {
 				if (c == '\\') {
 					if (!depth) return REG_EPAREN;
@@ -2705,7 +2722,7 @@ regcomp(regex_t *restrict preg, const char *restrict regex, int cflags)
   memset(&parse_ctx, 0, sizeof(parse_ctx));
   parse_ctx.mem = mem;
   parse_ctx.stack = stack;
-  parse_ctx.re = regex;
+  parse_ctx.start = regex;
   parse_ctx.cflags = cflags;
   parse_ctx.max_backref = -1;
   errcode = tre_parse(&parse_ctx);

@@ -1,3 +1,11 @@
+#define __LITTLE_ENDIAN 1234
+#define __BIG_ENDIAN 4321
+#define __USE_TIME_BITS64 1
+
+#define __BYTE_ORDER __LITTLE_ENDIAN
+
+#define __LONG_MAX  __LONG_MAX__
+
 #define _Addr __PTRDIFF_TYPE__
 #define _Int64 __INT64_TYPE__
 #define _Reg __PTRDIFF_TYPE__
@@ -35,14 +43,14 @@ typedef __WCHAR_TYPE__ wchar_t;
 
 #else
 #if defined(__NEED_wchar_t) && !defined(__DEFINED_wchar_t)
-typedef long wchar_t;
+typedef int wchar_t;
 #define __DEFINED_wchar_t
 #endif
 
 #endif
 #endif
 #if defined(__NEED_wint_t) && !defined(__DEFINED_wint_t)
-typedef unsigned wint_t;
+typedef __WINT_TYPE__ wint_t;
 #define __DEFINED_wint_t
 #endif
 
@@ -72,41 +80,54 @@ typedef long double double_t;
 #endif
 
 #if defined(__NEED_time_t) && !defined(__DEFINED_time_t)
-typedef long time_t;
+typedef _Int64 time_t;
 #define __DEFINED_time_t
 #endif
 
 #if defined(__NEED_suseconds_t) && !defined(__DEFINED_suseconds_t)
-typedef long suseconds_t;
+typedef int suseconds_t; /* XXX EMSCRIPTEN: ensure it's always 32-bits even in wasm64 */
 #define __DEFINED_suseconds_t
 #endif
 
 
 #if defined(__NEED_pthread_attr_t) && !defined(__DEFINED_pthread_attr_t)
+typedef struct {
+    union {
+        int __i[10];
+        volatile int __vi[10];
+        unsigned long __s[10];
+    } __u;
 #ifdef __EMSCRIPTEN__
-// For canvas transfer implementation in Emscripten, use an extra 11th control field
-// to pass a pointer to a string denoting the WebGL canvases to transfer.
-typedef struct { union { int __i[11]; volatile int __vi[11]; unsigned __s[11]; } __u; } pthread_attr_t;
-#else
-typedef struct { union { int __i[10]; volatile int __vi[10]; unsigned __s[10]; } __u; } pthread_attr_t;
+    // For canvas transfer implementation in Emscripten, use an extra control field
+    // to pass a pointer to a string denoting the WebGL canvases to transfer.
+    const char *_a_transferredcanvases;
 #endif
+} pthread_attr_t;
 #define __DEFINED_pthread_attr_t
 #endif
 
 #if defined(__NEED_pthread_mutex_t) && !defined(__DEFINED_pthread_mutex_t)
-typedef struct { union { int __i[7]; volatile int __vi[7]; volatile void *__p[7]; } __u; } pthread_mutex_t;
-typedef pthread_mutex_t mtx_t;
+typedef struct { union { int __i[6]; volatile int __vi[6]; volatile void *__p[6]; } __u; } pthread_mutex_t;
 #define __DEFINED_pthread_mutex_t
+#endif
+
+#if defined(__NEED_mtx_t) && !defined(__DEFINED_mtx_t)
+typedef struct { union { int __i[6]; volatile int __vi[6]; volatile void *__p[6]; } __u; } mtx_t;
+#define __DEFINED_mtx_t
 #endif
 
 #if defined(__NEED_pthread_cond_t) && !defined(__DEFINED_pthread_cond_t)
 typedef struct { union { int __i[12]; volatile int __vi[12]; void *__p[12]; } __u; } pthread_cond_t;
-typedef pthread_cond_t cnd_t;
 #define __DEFINED_pthread_cond_t
 #endif
 
+#if defined(__NEED_cnd_t) && !defined(__DEFINED_cnd_t)
+typedef struct { union { int __i[12]; volatile int __vi[12]; void *__p[12]; } __u; } cnd_t;
+#define __DEFINED_cnd_t
+#endif
+
 #if defined(__NEED_pthread_rwlock_t) && !defined(__DEFINED_pthread_rwlock_t)
-typedef struct { union { int __i[8]; volatile int __vi[8]; void *__p[8]; } __u; } pthread_rwlock_t;
+typedef struct { union { int __i[sizeof(long)==8?14:8]; volatile int __vi[sizeof(long)==8?14:8]; void *__p[sizeof(long)==8?7:8]; } __u; } pthread_rwlock_t;
 #define __DEFINED_pthread_rwlock_t
 #endif
 
@@ -219,12 +240,12 @@ typedef unsigned _Reg nlink_t;
 #endif
 
 #if defined(__NEED_off_t) && !defined(__DEFINED_off_t)
-typedef int off_t;
+typedef _Int64 off_t;
 #define __DEFINED_off_t
 #endif
 
 #if defined(__NEED_ino_t) && !defined(__DEFINED_ino_t)
-typedef unsigned int ino_t;
+typedef unsigned _Int64 ino_t;
 #define __DEFINED_ino_t
 #endif
 
@@ -234,7 +255,7 @@ typedef unsigned int dev_t;
 #endif
 
 #if defined(__NEED_blksize_t) && !defined(__DEFINED_blksize_t)
-typedef long blksize_t;
+typedef int blksize_t; /* XXX EMSCRIPTEN: ensure it's always 32-bits even in wasm64 */
 #define __DEFINED_blksize_t
 #endif
 
@@ -259,7 +280,7 @@ typedef unsigned wint_t;
 #endif
 
 #if defined(__NEED_wctype_t) && !defined(__DEFINED_wctype_t)
-typedef unsigned long wctype_t;
+typedef unsigned int wctype_t; /* XXX EMSCRIPTEN: ensure it's always 32-bits even in wasm64 */
 #define __DEFINED_wctype_t
 #endif
 
@@ -275,8 +296,13 @@ typedef int clockid_t;
 #endif
 
 #if defined(__NEED_clock_t) && !defined(__DEFINED_clock_t)
-typedef long clock_t;
+typedef int clock_t;  /* XXX EMSCRIPTEN: ensure it's always 32-bits even in wasm64 */
 #define __DEFINED_clock_t
+#endif
+
+#if defined(__NEED_max_align_t) && !defined(__DEFINED_max_align_t)
+typedef struct { long long __ll; long double __ld; } max_align_t;
+#define __DEFINED_max_align_t
 #endif
 
 #if defined(__NEED_struct_timeval) && !defined(__DEFINED_struct_timeval)
@@ -397,6 +423,12 @@ typedef struct __sigset_t { unsigned long __bits[128/sizeof(long)]; } sigset_t;
 #if defined(__NEED_struct_iovec) && !defined(__DEFINED_struct_iovec)
 struct iovec { void *iov_base; size_t iov_len; };
 #define __DEFINED_struct_iovec
+#endif
+
+
+#if defined(__NEED_struct_winsize) && !defined(__DEFINED_struct_winsize)
+struct winsize { unsigned short ws_row, ws_col, ws_xpixel, ws_ypixel; };
+#define __DEFINED_struct_winsize
 #endif
 
 

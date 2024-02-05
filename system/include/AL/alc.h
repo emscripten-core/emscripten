@@ -61,7 +61,7 @@ extern ALCboolean alcCloseDevice(ALCdevice *device);
 extern ALCboolean alcIsExtensionPresent(ALCdevice *device, const ALCchar *extname);
 extern ALCboolean alcMakeContextCurrent(ALCcontext *context);
 extern ALCcontext *alcCreateContext(ALCdevice *device, const ALCint *attrlist);
-extern ALCcontext *alcGetCurrentContext();
+extern ALCcontext *alcGetCurrentContext(void);
 extern ALCdevice *alcCaptureOpenDevice(const ALCchar *devicename, ALCuint frequency, ALCenum format, ALCsizei buffersize);
 extern ALCdevice *alcGetContextsDevice(ALCcontext *context);
 extern ALCdevice *alcOpenDevice(const ALCchar *devicename);

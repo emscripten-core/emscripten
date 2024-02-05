@@ -3,39 +3,38 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import os, shutil, logging
+import os
 
 TAG = '2b147ffef10ec541d3eace326eafe11a54e635f8'
+HASH = 'f39f1f50a039a1667fe92b87d28548d32adcf0eb8526008656de5315039aa21f29d230707caa47f80f6b3a412a577698cd4bbfb9458bb92ac47e6ba993b8efe6'
+
+deps = ['sdl2']
+
+
+def needed(settings):
+  return settings.USE_SDL_GFX == 2
+
 
 def get(ports, settings, shared):
-  if settings.USE_SDL_GFX == 2:
-    sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
-    assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_gfx'
-    ports.fetch_project('sdl2-gfx', 'https://github.com/svn2github/sdl2_gfx/archive/' + TAG + '.zip', 'sdl2_gfx-' + TAG)
-    def create():
-      logging.info('building port: sdl2-gfx')
+  sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
+  assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_gfx'
+  ports.fetch_project('sdl2_gfx', f'https://github.com/svn2github/sdl2_gfx/archive/{TAG}.zip', sha512hash=HASH)
 
-      source_path = os.path.join(ports.get_dir(), 'sdl2-gfx', 'sdl2_gfx-' + TAG)
-      dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2-gfx')
+  def create(final):
+    source_path = os.path.join(ports.get_dir(), 'sdl2_gfx', 'sdl2_gfx-' + TAG)
+    ports.build_port(source_path, final, 'sdl2_gfx', exclude_dirs=['test'], flags=['-sUSE_SDL=2'])
+    ports.install_headers(source_path, target='SDL2')
 
-      shutil.rmtree(dest_path, ignore_errors=True)
-      shutil.copytree(source_path, dest_path)
+  return [shared.cache.get_lib('libSDL2_gfx.a', create)]
 
-      for header in ['SDL2_framerate.h', 'SDL2_gfxPrimitives_font.h', 'SDL2_gfxPrimitives.h', 'SDL2_imageFilter.h', 'SDL2_rotozoom.h']:
-        shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2-gfx', 'sdl2_gfx-' + TAG, header), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL2', header))
 
-      final = os.path.join(dest_path, 'libsdl2_gfx.bc')
-      ports.build_port(dest_path, final, [dest_path], exclude_dirs=['test'])
-      return final
-    return [shared.Cache.get('sdl2-gfx', create)]
-  else:
-    return []
+def clear(ports, settings, shared):
+  shared.cache.erase_lib('libSDL2_gfx.a')
 
-def process_args(ports, args, settings, shared):
-  if settings.USE_SDL_GFX == 2:
-    get(ports, settings, shared)
-  return args
+
+def process_dependencies(settings):
+  settings.USE_SDL = 2
+
 
 def show():
-  return 'SDL2_gfx (zlib license)'
-
+  return 'sdl2_gfx (-sUSE_SDL_GFX=2 or --use-port=sdl2_gfx; zlib license)'

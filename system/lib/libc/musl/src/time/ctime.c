@@ -2,5 +2,7 @@
 
 char *ctime(const time_t *t)
 {
-	return asctime(localtime(t));
+	struct tm *tm = localtime(t);
+	if (!tm) return 0;
+	return asctime(tm);
 }
