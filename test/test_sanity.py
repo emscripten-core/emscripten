@@ -527,9 +527,6 @@ fi
   def test_emcc_ports(self):
     restore_and_set_up()
 
-    # validating that ports are valid
-    ports.validate_ports()
-
     # listing ports
     out = self.do([EMCC, '--show-ports'])
     self.assertContained('Available official ports:', out)

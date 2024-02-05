@@ -47,5 +47,8 @@ def linker_setup(ports, settings):
   settings.JS_LIBRARIES += [source_js_path]
 
 
+# Using contrib.glfw3 to avoid installing headers into top level include path
+# so that we don't conflict with the builtin GLFW headers that emscripten
+# includes
 def process_args(ports):
   return ['-isystem', ports.get_include_dir('contrib.glfw3')]
