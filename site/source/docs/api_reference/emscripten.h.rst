@@ -482,8 +482,9 @@ Functions
 
 .. c:function:: void emscripten_exit_with_live_runtime(void)
 
-  Exits the program immediately, but leaves the runtime alive so that you can continue to run code later (so global destructors etc., are not run). Note that the runtime is kept alive automatically when you do an asynchronous operation like :c:func:`emscripten_async_call`, so you don't need to call this function for those cases.
+  Stops the current thread of execution, but leaves the runtime alive so that you can continue to run code later (so global destructors etc., are not run). Note that the runtime is kept alive automatically when you do an asynchronous operation like :c:func:`emscripten_async_call`, so you don't need to call this function for those cases.
 
+  In a multithreaded application, this just exits the current thread (and allows running code later in the Web Worker in which it runs).
 
 .. c:function:: void emscripten_force_exit(int status)
 
