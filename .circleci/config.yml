@@ -798,14 +798,31 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser"
-          # skip test_4gb_fail as it OOMs on the current bot
-          test_targets: "browser skip:browser.test_4gb_fail"
+          # Skip test_4gb_fail as it OOMs on the current bot
+          test_targets: "
+            browser skip:browser.test_4gb_fail
+            "
   test-browser-chrome-wasm64:
     executor: bionic
     steps:
       - run-tests-chrome:
           title: "browser64"
           test_targets: "browser64"
+  test-browser-chrome-2gb:
+    executor: bionic
+    steps:
+      - run-tests-chrome:
+          title: "browser_2gb"
+          test_targets: "
+            browser_2gb.test_gles2_uniform_arrays
+            browser_2gb.test_fetch_to_memory
+            browser_2gb.test_emscripten_animate_canvas_element_size_manual_css
+            browser_2gb.test_fulles2_sdlproc
+            browser_2gb.test_cubegeom
+            browser_2gb.test_cubegeom_normal
+            browser_2gb.test_cubegeom_normal_dap
+            browser_2gb.test_cubegeom_normal_dap_far
+            "
   test-browser-chrome-wasm64-4gb:
     executor: bionic
     steps:
@@ -817,6 +834,9 @@ jobs:
             browser64_4gb.test_audio_worklet*
             browser64_4gb.test_emscripten_log
             browser64_4gb.test_clientside_vertex_arrays_es3
+            browser64_4gb.test_fetch*
+            browser64_4gb.test_emscripten_animate_canvas_element_size_manual_css
+            browser64_4gb.test_fulles2_sdlproc
             "
   test-browser-firefox:
     executor: bionic
@@ -970,6 +990,9 @@ workflows:
           requires:
             - build-linux
       - test-browser-chrome:
+          requires:
+            - build-linux
+      - test-browser-chrome-2gb:
           requires:
             - build-linux
       - test-browser-chrome-wasm64:

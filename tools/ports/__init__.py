@@ -22,6 +22,8 @@ ports = []
 
 ports_by_name = {}
 
+ports_needed = set()
+
 # Variant builds that we want to support for certain ports
 # {variant_name: (port_name, extra_settings)}
 port_variants = {}
@@ -31,39 +33,49 @@ ports_dir = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger('ports')
 
 
+def load_port(name):
+  expected_attrs = ['get', 'clear', 'show']
+  port = __import__(name, globals(), level=1)
+  ports.append(port)
+  port.name = name
+  ports_by_name[port.name] = port
+  for a in expected_attrs:
+    assert hasattr(port, a), 'port %s is missing %s' % (port, a)
+  if not hasattr(port, 'needed'):
+    port.needed = lambda s: name in ports_needed
+  else:
+    needed = port.needed
+    port.needed = lambda s: needed(s) or name in ports_needed
+  if not hasattr(port, 'process_dependencies'):
+    port.process_dependencies = lambda x: 0
+  if not hasattr(port, 'linker_setup'):
+    port.linker_setup = lambda x, y: 0
+  if not hasattr(port, 'deps'):
+    port.deps = []
+  if not hasattr(port, 'process_args'):
+    port.process_args = lambda x: []
+  if not hasattr(port, 'variants'):
+    # port variants (default: no variants)
+    port.variants = {}
+
+  for variant, extra_settings in port.variants.items():
+    if variant in port_variants:
+      utils.exit_with_error('duplicate port variant: %s' % variant)
+    port_variants[variant] = (port.name, extra_settings)
+
+
 @ToolchainProfiler.profile()
 def read_ports():
-  expected_attrs = ['get', 'clear', 'show', 'needed']
   for filename in os.listdir(ports_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
     filename = os.path.splitext(filename)[0]
-    port = __import__(filename, globals(), level=1)
-    ports.append(port)
-    port.name = filename
-    ports_by_name[port.name] = port
-    for a in expected_attrs:
-      assert hasattr(port, a), 'port %s is missing %s' % (port, a)
-    if not hasattr(port, 'process_dependencies'):
-      port.process_dependencies = lambda x: 0
-    if not hasattr(port, 'linker_setup'):
-      port.linker_setup = lambda x, y: 0
-    if not hasattr(port, 'deps'):
-      port.deps = []
-    if not hasattr(port, 'process_args'):
-      port.process_args = lambda x: []
-    if not hasattr(port, 'variants'):
-      # port variants (default: no variants)
-      port.variants = {}
+    load_port(filename)
 
-    for variant, extra_settings in port.variants.items():
-      if variant in port_variants:
-        utils.exit_with_error('duplicate port variant: %s' % variant)
-      port_variants[variant] = (port.name, extra_settings)
-
-  for dep in port.deps:
-    if dep not in ports_by_name:
-      utils.exit_with_error('unknown dependency in port: %s' % dep)
+  for port in ports:
+    for dep in port.deps:
+      if dep not in ports_by_name:
+        utils.exit_with_error('unknown dependency in port: %s' % dep)
 
 
 def get_all_files_under(dirname):
@@ -361,6 +373,12 @@ def resolve_dependencies(port_set, settings):
     add_deps(port)
 
 
+def handle_use_port_arg(settings, name):
+  if name not in ports_by_name:
+    utils.exit_with_error(f'Invalid port name: {name} used with --use-port')
+  ports_needed.add(name)
+
+
 def get_needed_ports(settings):
   # Start with directly needed ports, and transitively add dependencies
   needed = set(p for p in ports if p.needed(settings))
@@ -424,7 +442,7 @@ def add_cflags(args, settings): # noqa: U100
 
 def show_ports():
   print('Available ports:')
-  for port in ports:
+  for port in sorted(ports, key=lambda p: p.name):
     print('   ', port.show())
 
 

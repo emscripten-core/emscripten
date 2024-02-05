@@ -74,7 +74,7 @@ def process_args(ports):
 
 
 def show():
-  return 'cocos2d'
+  return 'cocos2d (-sUSE_COCOS2D=3 or --use-port=cocos2d)'
 
 
 def make_source_list(cocos2d_root, cocos2dx_root):

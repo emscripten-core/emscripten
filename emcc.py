@@ -275,7 +275,7 @@ def apply_user_settings():
       try:
         value = parse_value(value, expected_type)
       except Exception as e:
-        exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s=%s": %s', key, value, str(e))
+        exit_with_error(f'error parsing "-s" setting "{key}={value}": {e}')
 
     setattr(settings, user_key, value)
 
@@ -1405,6 +1405,8 @@ def parse_args(newargs):
       options.target = consume_arg()
       if options.target not in ('wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'):
         exit_with_error(f'unsupported target: {options.target} (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten)')
+    elif check_arg('--use-port'):
+      ports.handle_use_port_arg(settings, consume_arg())
     elif arg == '-mllvm':
       # Ignore the next argument rather than trying to parse it.  This is needed
       # because llvm args could, for example, start with `-o` and we don't want
@@ -1455,7 +1457,8 @@ def parse_value(text, expected_type):
     first = text[0]
     if first == "'" or first == '"':
       text = text.rstrip()
-      assert text[-1] == text[0] and len(text) > 1, 'unclosed opened quoted string. expected final character to be "%s" and length to be greater than 1 in "%s"' % (text[0], text)
+      if text[-1] != text[0] or len(text) < 2:
+         raise ValueError(f'unclosed quoted string. expected final character to be "{text[0]}" and length to be greater than 1 in "{text[0]}"')
       return text[1:-1]
     return text
 
@@ -1467,7 +1470,7 @@ def parse_value(text, expected_type):
     while True:
       current = values[index].lstrip() # Cannot safely rstrip for cases like: "HERE-> ,"
       if not len(current):
-        exit_with_error('string array should not contain an empty value')
+        raise ValueError('empty value in string list')
       first = current[0]
       if not (first == "'" or first == '"'):
         result.append(current.rstrip())
@@ -1475,7 +1478,7 @@ def parse_value(text, expected_type):
         start = index
         while True: # Continue until closing quote found
           if index >= len(values):
-            exit_with_error("unclosed quoted string. expected final character to be '%s' in '%s'" % (first, values[start]))
+            raise ValueError(f"unclosed quoted string. expected final character to be '{first}' in '{values[start]}'")
           new = values[index].rstrip()
           if new and new[-1] == first:
             if start == index:
@@ -1496,7 +1499,7 @@ def parse_value(text, expected_type):
     text = text.rstrip()
     if text and text[0] == '[':
       if text[-1] != ']':
-        exit_with_error('unclosed opened string list. expected final character to be "]" in "%s"' % (text))
+        raise ValueError('unterminated string list. expected final character to be "]"')
       text = text[1:-1]
     if text.strip() == "":
       return []
@@ -1506,9 +1509,19 @@ def parse_value(text, expected_type):
     # if json parsing fails, we fall back to our own parser, which can handle a few
     # simpler syntaxes
     try:
-      return json.loads(text)
+      parsed = json.loads(text)
     except ValueError:
       return parse_string_list(text)
+
+    # if we succeeded in parsing as json, check some properties of it before returning
+    if type(parsed) not in (str, list):
+      raise ValueError(f'settings must be strings or lists (not ${type(parsed)})')
+    if type(parsed) is list:
+      for elem in parsed:
+        if type(elem) is not str:
+          raise ValueError(f'list members in settings must be strings (not ${type(elem)})')
+
+    return parsed
 
   if expected_type == float:
     try:

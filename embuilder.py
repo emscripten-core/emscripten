@@ -13,6 +13,7 @@ running multiple build commands in parallel, confusion can occur).
 """
 
 import argparse
+import fnmatch
 import logging
 import sys
 import time
@@ -120,7 +121,7 @@ legacy_prefixes = {
 
 
 def get_help():
-  all_tasks = get_system_tasks()[1] + PORTS
+  all_tasks = get_all_tasks()
   all_tasks.sort()
   return '''
 Available targets:
@@ -161,6 +162,10 @@ def get_system_tasks():
   system_libraries = system_libs.Library.get_all_variations()
   system_tasks = list(system_libraries.keys())
   return system_libraries, system_tasks
+
+
+def get_all_tasks():
+  return get_system_tasks()[1] + PORTS
 
 
 def main():
@@ -239,7 +244,10 @@ def main():
   for name, targets in task_targets.items():
     if targets is None:
       # Use target name as task
-      tasks.append(name)
+      if '*' in name:
+        tasks.extend(fnmatch.filter(get_all_tasks(), name))
+      else:
+        tasks.append(name)
     else:
       # There are some ports that we don't want to build as part
       # of ALL since the are not well tested or widely used:

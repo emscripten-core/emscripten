@@ -227,7 +227,7 @@ def no_4gb(note):
 
     @wraps(f)
     def decorated(self, *args, **kwargs):
-      if self.get_setting('INITIAL_MEMORY') == '4200mb':
+      if self.is_4gb():
         self.skipTest(note)
       f(self, *args, **kwargs)
     return decorated
@@ -354,11 +354,11 @@ def with_env_modify(updates):
 def also_with_minimal_runtime(f):
   assert callable(f)
 
-  def metafunc(self, with_minimal_runtime):
+  def metafunc(self, with_minimal_runtime, *args, **kwargs):
     assert self.get_setting('MINIMAL_RUNTIME') is None
     if with_minimal_runtime:
       self.set_setting('MINIMAL_RUNTIME', 1)
-    f(self)
+    f(self, *args, **kwargs)
 
   metafunc._parameterize = {'': (False,),
                             'minimal_runtime': (True,)}
@@ -659,6 +659,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def is_wasm64(self):
     return self.get_setting('MEMORY64')
 
+  def is_4gb(self):
+    return self.get_setting('INITIAL_MEMORY') == '4200mb'
+
+  def is_2gb(self):
+    return self.get_setting('INITIAL_MEMORY') == '2200mb'
+
   def check_dylink(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
       self.skipTest('no dynamic linking with memory growth (without wasm)')
@@ -839,6 +845,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.js_engines = config.JS_ENGINES.copy()
     self.settings_mods = {}
     self.emcc_args = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
+    # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
+    # For historical reasons emcc compiles and links as C++ by default.
+    # However we want to run our tests in a more strict manner.  We can
+    # remove this if the issue above is ever fixed.
+    self.set_setting('NO_DEFAULT_TO_CXX')
     self.ldflags = []
     # Increate stack trace limit to maximise usefulness of test failure reports
     self.node_args = ['--stack-trace-limit=50']
@@ -1042,12 +1053,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       filename = test_file(filename)
     suffix = '.js' if js_outfile else '.wasm'
     compiler = [compiler_for(filename, force_c)]
-    if compiler[0] == EMCC:
-      # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
-      # For historical reasons emcc compiles and links as C++ by default.
-      # However we want to run our tests in a more strict manner.  We can
-      # remove this if the issue above is ever fixed.
-      compiler.append('-sNO_DEFAULT_TO_CXX')
 
     if force_c:
       assert shared.suffix(filename) != '.c', 'force_c is not needed for source files ending in .c'
@@ -1907,7 +1912,6 @@ class BrowserCore(RunnerCore):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
-    cls.also_wasm2js = int(os.getenv('EMTEST_BROWSER_ALSO_WASM2JS', '0')) == 1
     cls.port = int(os.getenv('EMTEST_BROWSER_PORT', '8888'))
     if not has_browser() or EMTEST_BROWSER == 'node':
       return
@@ -2151,7 +2155,7 @@ class BrowserCore(RunnerCore):
   def btest(self, filename, expected=None, reference=None,
             reference_slack=0, manual_reference=None, post_build=None,
             args=None, also_proxied=False,
-            url_suffix='', timeout=None, also_wasm2js=False,
+            url_suffix='', timeout=None,
             manually_trigger_reftest=False, extra_tries=1,
             reporting=Reporting.FULL,
             output_basename='test'):
@@ -2191,13 +2195,6 @@ class BrowserCore(RunnerCore):
       self.assertContained('RESULT: ' + expected[0], output)
     else:
       self.run_browser(outfile + url_suffix, expected=['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
-
-    # Tests can opt into being run under wasmj2s as well
-    # Ignore this under MEMORY64 where wasm2js is not yet supported.
-    if 'WASM=0' not in original_args and (also_wasm2js or self.also_wasm2js) and not self.is_wasm64():
-      print('WASM=0')
-      self.btest(filename, expected, reference, reference_slack, manual_reference, post_build,
-                 original_args + ['-sWASM=0'], also_proxied=False, timeout=timeout)
 
     if also_proxied:
       print('proxied...')

@@ -82,7 +82,12 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     return HEAPU16;
   },
 
-  $heapAccessShiftForWebGLHeap: (heap) => 31 - Math.clz32(heap.BYTES_PER_ELEMENT),
+  $toTypedArrayIndex: (pointer, heap) =>
+#if MEMORY64
+    pointer / heap.BYTES_PER_ELEMENT,
+#else
+    pointer >>> (31 - Math.clz32(heap.BYTES_PER_ELEMENT)),
+#endif
 
 #if MIN_WEBGL_VERSION == 1
   $webgl_enable_ANGLE_instanced_arrays: (ctx) => {
@@ -1595,22 +1600,20 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     return colorChannels[format - 0x1902]||1;
   },
 
-  $emscriptenWebGLGetTexPixelData__deps: ['$computeUnpackAlignedImageSize', '$colorChannelsInGlTextureFormat', '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'],
+  $emscriptenWebGLGetTexPixelData__deps: ['$computeUnpackAlignedImageSize', '$colorChannelsInGlTextureFormat', '$heapObjectForWebGLType', '$toTypedArrayIndex'],
   $emscriptenWebGLGetTexPixelData: (type, format, width, height, pixels, internalFormat) => {
     var heap = heapObjectForWebGLType(type);
-    var shift = heapAccessShiftForWebGLHeap(heap);
-    var byteSize = 1<<shift;
-    var sizePerPixel = colorChannelsInGlTextureFormat(format) * byteSize;
+    var sizePerPixel = colorChannelsInGlTextureFormat(format) * heap.BYTES_PER_ELEMENT;
     var bytes = computeUnpackAlignedImageSize(width, height, sizePerPixel, GL.unpackAlignment);
 #if GL_ASSERTIONS
-    assert((pixels >> shift) << shift == pixels, 'Pointer to texture data passed to texture get function must be aligned to the byte size of the pixel type!');
+    assert(pixels % heap.BYTES_PER_ELEMENT == 0, 'Pointer to texture data passed to texture get function must be aligned to the byte size of the pixel type!');
 #endif
-    return heap.subarray(pixels >> shift, pixels + bytes >> shift);
+    return heap.subarray(toTypedArrayIndex(pixels, heap), toTypedArrayIndex(pixels + bytes, heap));
   },
 
   glTexImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
 #if MAX_WEBGL_VERSION >= 2
-                       , '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'
+                       , '$heapObjectForWebGLType', '$toTypedArrayIndex'
 #endif
   ],
   glTexImage2D: (target, level, internalFormat, width, height, border, format, type, pixels) => {
@@ -1641,7 +1644,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
       } else if (pixels) {
         var heap = heapObjectForWebGLType(type);
-        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
+        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, heap, toTypedArrayIndex(pixels, heap));
       } else {
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, null);
       }
@@ -1653,7 +1656,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 
   glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
 #if MAX_WEBGL_VERSION >= 2
-                          , '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'
+                          , '$heapObjectForWebGLType', '$toTypedArrayIndex'
 #endif
   ],
   glTexSubImage2D: (target, level, xoffset, yoffset, width, height, format, type, pixels) => {
@@ -1674,7 +1677,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
       } else if (pixels) {
         var heap = heapObjectForWebGLType(type);
-        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
+        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, heap, toTypedArrayIndex(pixels, heap));
       } else {
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, null);
       }
@@ -1688,7 +1691,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 
   glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData'
 #if MAX_WEBGL_VERSION >= 2
-                       , '$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'
+                       , '$heapObjectForWebGLType', '$toTypedArrayIndex'
 #endif
   ],
   glReadPixels: (x, y, width, height, format, type, pixels) => {
@@ -1700,7 +1703,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
         GLctx.readPixels(x, y, width, height, format, type, pixels);
       } else {
         var heap = heapObjectForWebGLType(type);
-        GLctx.readPixels(x, y, width, height, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
+        GLctx.readPixels(x, y, width, height, format, type, heap, toTypedArrayIndex(pixels, heap));
       }
       return;
     }
@@ -2779,7 +2782,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       var view = miniTempWebGLFloatBuffers[4*count-1];
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
-      value >>= 2;
+      value = {{{ getHeapOffset('value', 'float') }}};
       for (var i = 0; i < 4 * count; i += 4) {
         var dst = value + i;
         view[i] = heap[dst];
@@ -4276,6 +4279,10 @@ function recordGLProcAddressGet(lib) {
   Object.keys(lib).forEach((x) => {
     if (x.startsWith('gl') && !isDecorator(x)) {
       lib['emscripten_' + x] = x;
+      var sig = LibraryManager.library[x + '__sig'];
+      if (sig) {
+        lib['emscripten_' + x + '__sig'] = sig;
+      }
     }
   });
 }

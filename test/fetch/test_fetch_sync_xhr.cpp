@@ -12,12 +12,11 @@
 
 int result = -1;
 
-int main()
-{
-  // If an exception is thrown from the user callback, it bubbles up to self.onerror but is otherwise completely
-  // swallowed by xhr.send.
-  EM_ASM({self.onerror = function() {
-           out('Got error');
+int main() {
+  // If an exception is thrown from the user callback, it bubbles up to
+  // self.onerror but is otherwise completely swallowed by xhr.send.
+  EM_ASM({self.onerror = (e) => {
+           out('Got error', e);
            HEAP32[$0 >> 2] = 2;
          };}, &result);
   emscripten_fetch_attr_t attr;
