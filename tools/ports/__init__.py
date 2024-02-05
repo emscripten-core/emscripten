@@ -97,6 +97,7 @@ def read_ports():
 
   validate_ports()
 
+
 def get_all_files_under(dirname):
   for path, _, files in os.walk(dirname):
     for name in files:
