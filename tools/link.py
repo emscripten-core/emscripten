@@ -2829,13 +2829,8 @@ def move_file(src, dst):
 
 
 # Returns the subresource location for run-time access
-def get_subresource_location(path, data_uri=None):
-  if data_uri is None:
-    data_uri = settings.SINGLE_FILE
-  if data_uri:
-    # if the path does not exist, then there is no data to encode
-    if not os.path.exists(path):
-      return ''
+def get_subresource_location(path):
+  if settings.SINGLE_FILE:
     data = base64.b64encode(utils.read_binary(path))
     return 'data:application/octet-stream;base64,' + data.decode('ascii')
   else:
