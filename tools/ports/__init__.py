@@ -96,6 +96,7 @@ def read_ports():
     filename = os.path.splitext(filename)[0]
     load_port('contrib.' + filename)
 
+  validate_ports()
 
 def get_all_files_under(dirname):
   for path, _, files in os.walk(dirname):

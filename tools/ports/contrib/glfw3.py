@@ -13,20 +13,20 @@ URL = 'https://github.com/pongasoft/emscripten-glfw'
 DESCRIPTION = 'This project is an emscripten port of glfw written in C++ for the web/webassembly platform'
 LICENSE = 'Apache 2.0 license'
 
-# name is set when the port is read
-name = ''
+# unique key to not conflict with other ports
+key = 'contrib.glfw3'
 
 
 def get_lib_name(settings):
-  return f'lib_{name}.a'
+  return f'lib_{key}.a'
 
 
 def get(ports, settings, shared):
   # get the port
-  ports.fetch_project(name, f'https://github.com/pongasoft/emscripten-glfw/releases/download/v{TAG}/emscripten-glfw3-{TAG}.zip', sha512hash=HASH)
+  ports.fetch_project(key, f'https://github.com/pongasoft/emscripten-glfw/releases/download/v{TAG}/emscripten-glfw3-{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    root_path = os.path.join(ports.get_dir(), name)
+    root_path = os.path.join(ports.get_dir(), key)
     source_path = os.path.join(root_path, 'src', 'cpp')
     source_include_paths = [os.path.join(root_path, 'external', 'GLFW'), os.path.join(root_path, 'include', 'GLFW')]
     for source_include_path in source_include_paths:
@@ -35,7 +35,7 @@ def get(ports, settings, shared):
     # this should be an option but better to disable for now...
     flags = ['-DEMSCRIPTEN_GLFW3_DISABLE_WARNING']
 
-    ports.build_port(source_path, final, name, includes=source_include_paths, flags=flags)
+    ports.build_port(source_path, final, key, includes=source_include_paths, flags=flags)
 
   return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
 
@@ -45,10 +45,10 @@ def clear(ports, settings, shared):
 
 
 def linker_setup(ports, settings):
-  root_path = os.path.join(ports.get_dir(), name)
+  root_path = os.path.join(ports.get_dir(), key)
   source_js_path = os.path.join(root_path, 'src', 'js', 'lib_emscripten_glfw3.js')
   settings.JS_LIBRARIES += [source_js_path]
 
 
 def process_args(ports):
-  return ['-isystem', ports.get_include_dir(name)]
+  return ['-isystem', ports.get_include_dir(key)]
