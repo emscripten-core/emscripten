@@ -4469,7 +4469,16 @@ Module["preRun"] = () => {
     # should happen when there is a mem init file (-O2+)
     self.btest('in_flight_memfile_request.c', expected=expected)
 
-  def test_async_compile(self):
+  @parameterized({
+    '': ([], 1),
+    'O1': (['-O1'], 1),
+    'O2': (['-O2'], 1),
+    'O3': (['-O3'], 1),
+    # force it on
+    'force': (['-sWASM_ASYNC_COMPILATION'], 1),
+    'off': (['-sWASM_ASYNC_COMPILATION=0'], 0),
+  })
+  def test_async_compile(self, opts, returncode):
     # notice when we use async compilation
     script = '''
     <script>
@@ -4478,11 +4487,13 @@ Module["preRun"] = () => {
       var real_wasm_instantiateStreaming = WebAssembly.instantiateStreaming;
       if (typeof real_wasm_instantiateStreaming === 'function') {
         WebAssembly.instantiateStreaming = (a, b) => {
+          console.log('instantiateStreaming called');
           Module.sawAsyncCompilation = true;
           return real_wasm_instantiateStreaming(a, b);
         };
       } else {
         WebAssembly.instantiate = (a, b) => {
+          console.log('instantiate called');
           Module.sawAsyncCompilation = true;
           return real_wasm_instantiate(a, b);
         };
@@ -4497,21 +4508,9 @@ Module["preRun"] = () => {
 '''
     shell_with_script('shell.html', 'shell.html', script)
     common_args = ['--shell-file', 'shell.html']
-    for opts, returncode in [
-      ([], 1),
-      (['-O1'], 1),
-      (['-O2'], 1),
-      (['-O3'], 1),
-      # force it on
-      (['-sWASM_ASYNC_COMPILATION'], 1),
-      # force it off. note that we use -O3 here to make the binary small enough
-      # for chrome to allow compiling it synchronously
-      (['-O3', '-sWASM_ASYNC_COMPILATION=0'], 0),
-    ]:
-      print(opts, returncode)
-      self.btest_exit('test_async_compile.c', assert_returncode=returncode, args=common_args + opts)
+    self.btest_exit('test_async_compile.c', assert_returncode=returncode, args=common_args + opts)
     # Ensure that compilation still works and is async without instantiateStreaming available
-    no_streaming = ' <script> WebAssembly.instantiateStreaming = undefined;</script>'
+    no_streaming = '<script>WebAssembly.instantiateStreaming = undefined;</script>'
     shell_with_script('shell.html', 'shell.html', no_streaming + script)
     self.btest_exit('test_async_compile.c', assert_returncode=1, args=common_args)
 
