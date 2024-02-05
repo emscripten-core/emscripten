@@ -72,7 +72,6 @@ def validate_port(port):
     assert hasattr(port, a), 'port %s is missing %s' % (port, a)
 
 
-# Called from test_sanity
 def validate_ports():
   for port in ports:
     validate_port(port)
