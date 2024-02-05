@@ -529,7 +529,7 @@ fi
 
     # listing ports
     out = self.do([EMCC, '--show-ports'])
-    self.assertContained('Available ports:', out)
+    self.assertContained('Available official ports:', out)
     self.assertContained('sdl2', out)
     self.assertContained('sdl2_image', out)
     self.assertContained('sdl2_net', out)
