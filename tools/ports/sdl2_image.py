@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-import re
 from typing import Dict, Set
 
 TAG = 'release-2.6.0'
@@ -17,7 +16,7 @@ variants = {
 }
 
 OPTIONS = {
-  'formats': 'A comma separated list of formats (ex: png,jpg)'
+  'formats': 'A comma separated list of formats (ex: --use-port=sdl2_image?formats=png,jpg)'
 }
 
 # user options (from --use-port)
@@ -92,7 +91,7 @@ def process_dependencies(settings):
 def handle_options(options):
   # options has been parsed from a query string
   for fmts in options['formats']:
-    opts['formats'].update({format.lower() for format in re.findall(r'\b\w+\b', fmts)})
+    opts['formats'].update({format.lower().strip() for format in fmts.split(',')})
 
 
 def show():

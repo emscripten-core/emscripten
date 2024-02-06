@@ -398,7 +398,9 @@ def resolve_dependencies(port_set, settings):
 
 def handle_use_port_arg(settings, arg):
   args = arg.split('?', 1)
-  name, options = args[0], args[1] if len(args) == 2 else None
+  name, options = args[0], None
+  if len(args) == 2:
+    options = args[1]
   if name not in ports_by_name:
     utils.exit_with_error(f'Invalid port name: {name} used with --use-port')
   ports_needed.add(name)
