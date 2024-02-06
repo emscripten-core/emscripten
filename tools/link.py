@@ -2427,6 +2427,12 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     document.body.appendChild(script);
   }
 '''
+    # add required helper functions such as tryParseAsDataURI
+    for filename in ('arrayUtils.js', 'base64Utils.js', 'URIUtils.js'):
+      content = shared.read_and_preprocess(utils.path_from_root('src', filename))
+      script.inline = content + script.inline
+
+    script.inline = 'var ASSERTIONS = %s;\n%s' % (settings.ASSERTIONS, script.inline)
   else:
     # Normal code generation path
     script.src = base_js_target
@@ -2446,29 +2452,20 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
 ''' % get_subresource_location(memfile)) + script.inline
 
     if not settings.WASM_ASYNC_COMPILATION:
-      # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
+      # We need to load the wasm file before anything else, since it
+      # has be synchronously ready.
       script.un_src()
       script.inline = '''
-          var wasmURL = '%s';
-          var wasmXHR = new XMLHttpRequest();
-          wasmXHR.open('GET', wasmURL, true);
-          wasmXHR.responseType = 'arraybuffer';
-          wasmXHR.onload = function() {
-            if (wasmXHR.status === 200 || wasmXHR.status === 0) {
-              Module.wasmBinary = wasmXHR.response;
-            } else {
-              var wasmURLBytes = tryParseAsDataURI(wasmURL);
-              if (wasmURLBytes) {
-                Module.wasmBinary = wasmURLBytes.buffer;
-              }
-            }
-%s
-          };
-          wasmXHR.send(null);
+          fetch('%s').then((result) => result.arrayBuffer())
+                     .then((buf) => {
+                             Module.wasmBinary = buf;
+                             %s;
+                           });
 ''' % (get_subresource_location(wasm_target), script.inline)
 
     if settings.WASM == 2:
-      # If target browser does not support WebAssembly, we need to load the .wasm.js file before the main .js file.
+      # If target browser does not support WebAssembly, we need to load
+      # the .wasm.js file before the main .js file.
       script.un_src()
       script.inline = '''
           function loadMainJs() {
@@ -2486,14 +2483,6 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
             loadMainJs();
           }
 ''' % (script.inline, get_subresource_location(wasm_target) + '.js')
-
-  # when script.inline isn't empty, add required helper functions such as tryParseAsDataURI
-  if script.inline:
-    for filename in ('arrayUtils.js', 'base64Utils.js', 'URIUtils.js'):
-      content = shared.read_and_preprocess(utils.path_from_root('src', filename))
-      script.inline = content + script.inline
-
-    script.inline = 'var ASSERTIONS = %s;\n%s' % (settings.ASSERTIONS, script.inline)
 
   # inline script for SINGLE_FILE output
   if settings.SINGLE_FILE:
