@@ -369,7 +369,7 @@ var LibraryEmVal = {
       "};\n";
 
     params.push(functionBody);
-    var invokerFunction = newFunc(Function, params).apply(null, args);
+    var invokerFunction = newFunc(Function, params)(...args);
 #endif
     var functionName = `methodCaller<(${types.map(t => t.name).join(', ')}) => ${retType.name}>`;
     return emval_addMethodCaller(createNamedFunction(functionName, invokerFunction));

@@ -6707,13 +6707,13 @@ int main(int argc, char** argv) {
     # main module tests
 
     # dce in main, and it fails since puts is not exported
-    test('dce', main_args=['-sMAIN_MODULE=2'], library_args=[], expected=('cannot', 'undefined'), assert_returncode=NON_ZERO)
+    test('dce', main_args=['-sMAIN_MODULE=2'], library_args=[], expected=('is not a function', 'cannot', 'undefined'), assert_returncode=NON_ZERO)
 
     # with exporting, it works
     dce = test('dce', main_args=['-sMAIN_MODULE=2', '-sEXPORTED_FUNCTIONS=_main,_puts'], library_args=[])
 
     # printf is not used in main, and we dce, so we failz
-    dce_fail = test('dce_fail', main_args=['-sMAIN_MODULE=2'], library_args=['-DUSE_PRINTF'], expected=('cannot', 'undefined'), assert_returncode=NON_ZERO)
+    dce_fail = test('dce_fail', main_args=['-sMAIN_MODULE=2'], library_args=['-DUSE_PRINTF'], expected=('is not a function', 'cannot', 'undefined'), assert_returncode=NON_ZERO)
 
     # exporting printf in main keeps it alive for the library
     test('dce_save', main_args=['-sMAIN_MODULE=2', '-sEXPORTED_FUNCTIONS=_main,_printf,_puts'], library_args=['-DUSE_PRINTF'])
@@ -13135,7 +13135,7 @@ Module.postRun = () => {{
     # - logical assignment
     create_file('es6_library.js', '''\
     addToLibrary({
-      foo: function(arg="hello") {
+      foo: function(arg="hello", ...args) {
         // Object.assign + let
         let obj = Object.assign({}, {prop:1});
         err('prop: ' + obj.prop);
@@ -13178,6 +13178,8 @@ Module.postRun = () => {{
         obj4 ??= 0;
         obj4 ||= 1;
         obj4 &&= 2;
+
+        console.log(...args);
       }
     });
     ''')
@@ -13197,7 +13199,7 @@ myMethod: 43
     def check_for_es6(filename, expect):
       js = read_file(filename)
       if expect:
-        self.assertContained('foo(arg="hello")', js)
+        self.assertContained('foo(arg="hello"', js)
         self.assertContained(['() => 2', '()=>2'], js)
         self.assertContained('const ', js)
         self.assertContained('?.[', js)
@@ -13205,6 +13207,7 @@ myMethod: 43
         self.assertContained('??=', js)
         self.assertContained('||=', js)
         self.assertContained('&&=', js)
+        self.assertContained('...', js)
       else:
         self.verify_es5(filename)
         self.assertNotContained('foo(arg=', js)
@@ -13215,6 +13218,7 @@ myMethod: 43
         self.assertNotContained('?.', js)
         self.assertNotContained('||=', js)
         self.assertNotContained('&&=', js)
+        self.assertNotContained('...args', js)
 
     # Check that under normal circumstances none of these features get
     # removed / transpiled.

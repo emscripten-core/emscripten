@@ -9,9 +9,9 @@ addToLibrary({
   $NODERAWFS__postset: `
     if (ENVIRONMENT_IS_NODE) {
       var _wrapNodeError = function(func) {
-        return function() {
+        return function(...args) {
           try {
-            return func.apply(this, arguments)
+            return func(...args)
           } catch (e) {
             if (e.code) {
               throw new FS.ErrnoError(ERRNO_CODES[e.code]);
@@ -52,7 +52,7 @@ addToLibrary({
     },
     // generic function for all node creation
     cwd() { return process.cwd(); },
-    chdir() { process.chdir.apply(void 0, arguments); },
+    chdir(...args) { process.chdir(...args); },
     mknod(path, mode) {
       if (FS.isDir(path)) {
         fs.mkdirSync(path, mode);
@@ -60,26 +60,26 @@ addToLibrary({
         fs.writeFileSync(path, '', { mode: mode });
       }
     },
-    mkdir() { fs.mkdirSync.apply(void 0, arguments); },
-    symlink() { fs.symlinkSync.apply(void 0, arguments); },
-    rename() { fs.renameSync.apply(void 0, arguments); },
-    rmdir() { fs.rmdirSync.apply(void 0, arguments); },
-    readdir() { return ['.', '..'].concat(fs.readdirSync.apply(void 0, arguments)); },
-    unlink() { fs.unlinkSync.apply(void 0, arguments); },
-    readlink() { return fs.readlinkSync.apply(void 0, arguments); },
-    stat() { return fs.statSync.apply(void 0, arguments); },
-    lstat() { return fs.lstatSync.apply(void 0, arguments); },
-    chmod() { fs.chmodSync.apply(void 0, arguments); },
+    mkdir(...args) { fs.mkdirSync(...args); },
+    symlink(...args) { fs.symlinkSync(...args); },
+    rename(...args) { fs.renameSync(...args); },
+    rmdir(...args) { fs.rmdirSync(...args); },
+    readdir(...args) { return ['.', '..'].concat(fs.readdirSync(...args)); },
+    unlink(...args) { fs.unlinkSync(...args); },
+    readlink(...args) { return fs.readlinkSync(...args); },
+    stat(...args) { return fs.statSync(...args); },
+    lstat(...args) { return fs.lstatSync(...args); },
+    chmod(...args) { fs.chmodSync(...args); },
     fchmod(fd, mode) {
       var stream = FS.getStreamChecked(fd);
       fs.fchmodSync(stream.nfd, mode);
     },
-    chown() { fs.chownSync.apply(void 0, arguments); },
+    chown(...args) { fs.chownSync(...args); },
     fchown(fd, owner, group) {
       var stream = FS.getStreamChecked(fd);
       fs.fchownSync(stream.nfd, owner, group);
     },
-    truncate() { fs.truncateSync.apply(void 0, arguments); },
+    truncate(...args) { fs.truncateSync(...args); },
     ftruncate(fd, len) {
       // See https://github.com/nodejs/node/issues/35632
       if (len < 0) {

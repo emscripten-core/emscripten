@@ -3580,7 +3580,7 @@ var LibraryGLEmulation = {
         _glEnableVertexAttribArray(vaa);
       }
       for (var vaa in info.vertexAttribPointers) {
-        _glVertexAttribPointer.apply(null, info.vertexAttribPointers[vaa]);
+        _glVertexAttribPointer(...info.vertexAttribPointers[vaa]);
       }
       for (var attrib in info.enabledClientStates) {
         _glEnableClientState(attrib|0);
