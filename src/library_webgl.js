@@ -2911,14 +2911,14 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniformMatrix4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*16);
+    count && GLctx.uniformMatrix4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*16);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
     // those always when possible.
     if ({{{ isCurrentContextWebGL2() }}}) {
-      count && GLctx.uniformMatrix4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*16);
+      count && GLctx.uniformMatrix4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*16);
       return;
     }
 #endif
@@ -2929,7 +2929,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       var view = miniTempWebGLFloatBuffers[16*count-1];
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
-      value >>= 2;
+      value = {{{ getHeapOffset('value', 'float') }}};
       for (var i = 0; i < 16 * count; i += 16) {
         var dst = value + i;
         view[i] = heap[dst];
