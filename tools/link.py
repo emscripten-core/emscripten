@@ -203,7 +203,7 @@ def embed_memfile(options):
 
 def generate_js_sym_info():
   # Runs the js compiler to generate a list of all symbols available in the JS
-  # libraries.  This must be done separately for each linker invokation since the
+  # libraries.  This must be done separately for each linker invocation since the
   # list of symbols depends on what settings are used.
   # TODO(sbc): Find a way to optimize this.  Potentially we could add a super-set
   # mode of the js compiler that would generate a list of all possible symbols
@@ -348,7 +348,7 @@ def get_binaryen_passes(memfile):
   # sign-ext is enabled by default by llvm.  If the target browser settings don't support
   # this we lower it away here using a binaryen pass.
   if not feature_matrix.caniuse(feature_matrix.Feature.SIGN_EXT):
-    logger.debug('lowering sign-ext feature due to incompatiable target browser engines')
+    logger.debug('lowering sign-ext feature due to incompatible target browser engines')
     passes += ['--signext-lowering']
   if optimizing:
     passes += ['--post-emscripten']
@@ -487,7 +487,7 @@ def get_worker_js_suffix():
 
 def setup_pthreads(target):
   if settings.RELOCATABLE:
-    # phtreads + dyanmic linking has certain limitations
+    # pthreads + dynamic linking has certain limitations
     if settings.SIDE_MODULE:
       diagnostics.warning('experimental', '-sSIDE_MODULE + pthreads is experimental')
     elif settings.MAIN_MODULE:
@@ -596,7 +596,7 @@ def set_max_memory():
 def check_browser_versions():
   # Map of setting all VM version settings to the minimum version
   # we support.
-  min_version_setttings = {
+  min_version_settings = {
     'MIN_FIREFOX_VERSION': feature_matrix.OLDEST_SUPPORTED_FIREFOX,
     'MIN_CHROME_VERSION': feature_matrix.OLDEST_SUPPORTED_CHROME,
     'MIN_SAFARI_VERSION': feature_matrix.OLDEST_SUPPORTED_SAFARI,
@@ -605,10 +605,10 @@ def check_browser_versions():
 
   if settings.LEGACY_VM_SUPPORT:
     # Default all browser versions to zero
-    for key in min_version_setttings.keys():
+    for key in min_version_settings.keys():
       default_setting(key, 0)
 
-  for key, oldest in min_version_setttings.items():
+  for key, oldest in min_version_settings.items():
     if settings[key] != 0 and settings[key] < oldest:
       exit_with_error(f'{key} older than {oldest} is not supported')
 
@@ -922,7 +922,7 @@ def phase_linker_setup(options, state, newargs):
     if settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
       exit_with_error('invalid option -sCLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % settings.CLOSURE_WARNINGS)
 
-    diagnostics.warning('deprecated', 'CLOSURE_WARNINGS is deprecated, use -Wclosure/-Wno-closure instread')
+    diagnostics.warning('deprecated', 'CLOSURE_WARNINGS is deprecated, use -Wclosure/-Wno-closure instead')
     closure_warnings = diagnostics.manager.warnings['closure']
     if settings.CLOSURE_WARNINGS == 'error':
       closure_warnings['error'] = True
@@ -2031,7 +2031,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     # mode)
     final_js = building.closure_compiler(final_js, advanced=False, extra_closure_args=options.closure_args)
     # Run unsafe_optimizations.js once more.  This allows the cleanup of newly
-    # unused things that closure compiler leaves behing (e.g `new Float64Array(x)`).
+    # unused things that closure compiler leaves behind (e.g `new Float64Array(x)`).
     shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.js'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
     save_intermediate('unsafe-optimizations2')
 
@@ -2755,7 +2755,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
     exports = webassembly.get_exports(dylib)
     exports = set(e.name for e in exports)
     # EM_JS function are exports with a special prefix.  We need to strip
-    # this prefix to get the actaul symbol name.  For the main module, this
+    # this prefix to get the actual symbol name.  For the main module, this
     # is handled by extract_metadata.py.
     exports = [removeprefix(e, '__em_js__') for e in exports]
     settings.SIDE_MODULE_EXPORTS.extend(sorted(exports))
@@ -2873,7 +2873,7 @@ def package_files(options, target):
     js_manipulation.add_files_pre_js(settings.PRE_JS_FILES, file_code)
   else:
     # Otherwise, we are embedding files, which does not require --pre-js code,
-    # and instead relies on a static constrcutor to populate the filesystem.
+    # and instead relies on a static constructor to populate the filesystem.
     shared.check_call(cmd)
 
   return rtn

@@ -132,7 +132,7 @@ def side_module_external_deps(external_symbols):
 
 
 def create_stub_object(external_symbols):
-  """Create a stub object, based on the JS libary symbols and their
+  """Create a stub object, based on the JS library symbols and their
   dependencies, that we can pass to wasm-ld.
   """
   stubfile = shared.get_temp_files().get('libemscripten_js_symbols.so').name
