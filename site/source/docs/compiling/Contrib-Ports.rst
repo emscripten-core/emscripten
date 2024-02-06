@@ -25,7 +25,7 @@ web/webassembly platform.
   These can be activated with the :ref:`settings <use_glfw>` ``-sUSE_GLFW=2``
   and ``-sUSE_GLFW=3``. This non-official contribution, written in C++,
   provides a more extensive and up-to-date implementation of the GLFW 3 API
-  than the in-built port. It is enabled with the option
+  than the built-in port. It is enabled with the option
   ``--use-port=contrib.glfw3``.
 
 `Project information <https://github.com/pongasoft/emscripten-glfw>`_
