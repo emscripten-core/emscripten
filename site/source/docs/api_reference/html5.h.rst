@@ -2086,7 +2086,7 @@ Functions
   :type target: const char*
   :param attributes: The attributes of the requested context version.
   :type attributes: const EmscriptenWebGLContextAttributes*
-  :returns: On success, a strictly positive value that represents a handle to the created context. On failure, a negative number that can be cast to an |EMSCRIPTEN_RESULT| field to get the reason why the context creation failed.
+  :returns: On success, a non-zero value that represents a handle to the created context. On failure, 0.
   :rtype: |EMSCRIPTEN_WEBGL_CONTEXT_HANDLE|
 
 
