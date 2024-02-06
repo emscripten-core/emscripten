@@ -4,7 +4,11 @@
 # found in the LICENSE file.
 
 import os
-from urllib.parse import parse_qs
+from tools import utils
+from typing import Dict
+
+TAG = '1.0.4'
+HASH = 'c3c96718e5d2b37df434a46c4a93ddfd9a768330d33f0d6ce2d08c139752894c2421cdd0fefb800fe41fafc2bbe58c8f22b8aa2849dc4fc6dde686037215cfad'
 
 # contrib port information (required)
 URL = 'https://github.com/pongasoft/emscripten-glfw'
@@ -12,17 +16,13 @@ DESCRIPTION = 'This project is an emscripten port of GLFW written in C++ for the
 LICENSE = 'Apache 2.0 license'
 
 OPTIONS = {
-  'tag': 'The git tag to use a different release',
-  'hash': 'The sha512 of the release associated to the tag (can be omitted)',
   'disableWarning': 'Boolean to disable warnings emitted by the library',
   'disableJoystick': 'Boolean to disable support for joystick entirely',
   'disableMultiWindow': 'Boolean to disable multi window support which makes the code smaller and faster'
 }
 
 # user options (from --use-port)
-opts = {
-  'tag': '1.0.4',
-  'hash': 'c3c96718e5d2b37df434a46c4a93ddfd9a768330d33f0d6ce2d08c139752894c2421cdd0fefb800fe41fafc2bbe58c8f22b8aa2849dc4fc6dde686037215cfad',
+opts: Dict[str, bool] = {
   'disableWarning': False,
   'disableJoystick': False,
   'disableMultiWindow': False
@@ -30,7 +30,7 @@ opts = {
 
 
 def get_lib_name(settings):
-  return (f'lib_contrib.glfw3_{opts["tag"]}' +
+  return (f'lib_contrib.glfw3' +
           ('-nw' if opts['disableWarning'] else '') +
           ('-nj' if opts['disableJoystick'] else '') +
           ('-sw' if opts['disableMultiWindow'] else '') +
@@ -40,8 +40,8 @@ def get_lib_name(settings):
 def get(ports, settings, shared):
   # get the port
   ports.fetch_project('contrib.glfw3',
-                      f'https://github.com/pongasoft/emscripten-glfw/releases/download/v{opts["tag"]}/emscripten-glfw3-{opts["tag"]}.zip',
-                      sha512hash=opts['hash'])
+                      f'https://github.com/pongasoft/emscripten-glfw/releases/download/v{TAG}/emscripten-glfw3-{TAG}.zip',
+                      sha512hash=HASH)
 
   def create(final):
     root_path = os.path.join(ports.get_dir(), 'contrib.glfw3')
@@ -84,24 +84,9 @@ def process_args(ports):
 
 
 def handle_options(options):
-  try:
-    oqs = parse_qs(options, strict_parsing=True)
-  except ValueError as error:
-    return f'{options} is not valid: {error}. Available options are {OPTIONS}.'
-
-  if not set(oqs.keys()).issubset(OPTIONS.keys()):
-    return f'{options} is not valid. Available options are {OPTIONS}.'
-
-  for option, values in oqs.items():
+  for option, values in options.items():
     value = values[-1]  # ignore multiple definitions (last one wins)
-    if isinstance(opts[option], bool):
-      if value.lower() in {'true', 'false'}:
-        opts[option] = value.lower() == 'true'
-      else:
-        return f'{option} is expecting a boolean, got {value}'
+    if value.lower() in {'true', 'false'}:
+      opts[option] = value.lower() == 'true'
     else:
-      opts[option] = value
-
-  # in the event that only 'tag' is provided, clear 'hash'
-  if 'tag' in oqs and 'hash' not in oqs:
-    opts['hash'] = None
+      utils.exit_with_error(f'{option} is expecting a boolean, got {value}')

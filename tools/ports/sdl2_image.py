@@ -5,6 +5,7 @@
 
 import os
 import re
+from typing import Dict, Set
 
 TAG = 'release-2.6.0'
 HASH = '2175d11a90211871f2289c8d57b31fe830e4b46af7361925c2c30cd521c1c677d2ee244feb682b6d3909cf085129255934751848fc81b480ea410952d990ffe0'
@@ -15,8 +16,12 @@ variants = {
   'sdl2_image_png': {'SDL2_IMAGE_FORMATS': ["png"]},
 }
 
+OPTIONS = {
+  'formats': 'A comma separated list of formats (ex: png,jpg)'
+}
+
 # user options (from --use-port)
-opts = {
+opts: Dict[str, Set] = {
   'formats': set()
 }
 
@@ -85,12 +90,9 @@ def process_dependencies(settings):
 
 
 def handle_options(options):
-  if options.startswith('formats='):
-    options = options.split('=', 1)[1]
-    opts['formats'] = {format.lower() for format in re.findall(r'\b\w+\b', options)}
-  else:
-    return f'{options} is not supported (syntax is --use-port=sdl2_image?formats=[x,y,z])'
-  return None
+  # options has been parsed from a query string
+  for fmts in options['formats']:
+    opts['formats'].update({format.lower() for format in re.findall(r'\b\w+\b', fmts)})
 
 
 def show():

@@ -15,6 +15,7 @@ from tools import shared
 from tools import system_libs
 from tools import utils
 from tools.settings import settings
+from urllib.parse import parse_qs
 
 from tools.toolchain_profiler import ToolchainProfiler
 
@@ -68,6 +69,8 @@ def validate_port(port):
   expected_attrs = ['get', 'clear', 'show']
   if port.is_contrib:
     expected_attrs += ['URL', 'DESCRIPTION', 'LICENSE']
+  if hasattr(port, 'handle_options'):
+    expected_attrs += ['OPTIONS']
   for a in expected_attrs:
     assert hasattr(port, a), 'port %s is missing %s' % (port, a)
 
@@ -404,9 +407,13 @@ def handle_use_port_arg(settings, arg):
     if not hasattr(port, 'handle_options'):
       utils.exit_with_error(f'Invalid options for port {name}: No options available')
     else:
-      error = port.handle_options(options)
-      if error is not None:
-        utils.exit_with_error(f'Invalid options for port {name}: {error}')
+      try:
+        options_qs = parse_qs(options, strict_parsing=True)
+      except ValueError as error:
+        utils.exit_with_error(f'{options} is not valid: {error}. Available options are {port.OPTIONS}.')
+      if not set(options_qs.keys()).issubset(port.OPTIONS.keys()):
+        utils.exit_with_error(f'{options} is not valid. Available options are {port.OPTIONS}.')
+      port.handle_options(options_qs)
 
 
 def get_needed_ports(settings):
