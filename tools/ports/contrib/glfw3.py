@@ -30,7 +30,7 @@ opts: Dict[str, bool] = {
 
 
 def get_lib_name(settings):
-  return (f'lib_contrib.glfw3' +
+  return ('lib_contrib.glfw3' +
           ('-nw' if opts['disableWarning'] else '') +
           ('-nj' if opts['disableJoystick'] else '') +
           ('-sw' if opts['disableMultiWindow'] else '') +
