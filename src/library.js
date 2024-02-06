@@ -2911,7 +2911,7 @@ addToLibrary({
       // code paths as similar as possible on both sides.)
       // -1 - code is the encoding of a proxied EM_ASM, as a negative number
       // (positive numbers are non-EM_ASM calls).
-      return proxyToMainThread.apply(null, [-1 - code, sync].concat(args));
+      return proxyToMainThread(-1 - code, sync, ...args);
     }
 #endif
 #if ASSERTIONS

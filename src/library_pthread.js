@@ -957,21 +957,17 @@ var LibraryPThread = {
 #if MEMORY64
   // Calls proxyToMainThread but returns a bigint rather than a number
   $proxyToMainThreadPtr__deps: ['$proxyToMainThread'],
-  $proxyToMainThreadPtr: function() {
-    return BigInt(proxyToMainThread.apply(null, arguments));
-  },
+  $proxyToMainThreadPtr: (...args) => BigInt(proxyToMainThread(...args)),
 #endif
 
   $proxyToMainThread__deps: ['$withStackSave', '_emscripten_run_on_main_thread_js'].concat(i53ConversionDeps),
-  $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...(number|boolean))} */',
-  $proxyToMainThread: function(index, sync) {
+  $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
+  $proxyToMainThread: (index, sync, ...callArgs) => {
     // Additional arguments are passed after those two, which are the actual
     // function arguments.
     // The serialization buffer contains the number of call params, and then
     // all the args here.
     // We also pass 'sync' to C separately, since C needs to look at it.
-    var numCallArgs = arguments.length - 2;
-    var outerArgs = arguments;
     // Allocate a buffer, which will be copied by the C code.
     return withStackSave(() => {
       // First passed parameter specifies the number of arguments to the function.
@@ -980,11 +976,11 @@ var LibraryPThread = {
       // type info here). To do that, add a "prefix" before each value that
       // indicates if it is a BigInt, which effectively doubles the number of
       // values we serialize for proxying. TODO: pack this?
-      var serializedNumCallArgs = numCallArgs {{{ WASM_BIGINT ? "* 2" : "" }}};
+      var serializedNumCallArgs = callArgs.length {{{ WASM_BIGINT ? "* 2" : "" }}};
       var args = stackAlloc(serializedNumCallArgs * 8);
       var b = {{{ getHeapOffset('args', 'i64') }}};
-      for (var i = 0; i < numCallArgs; i++) {
-        var arg = outerArgs[2 + i];
+      for (var i = 0; i < callArgs.length; i++) {
+        var arg = callArgs[i];
 #if WASM_BIGINT
         if (typeof arg == 'bigint') {
           // The prefix is non-zero to indicate a bigint.
