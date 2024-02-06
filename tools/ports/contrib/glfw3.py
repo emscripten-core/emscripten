@@ -10,7 +10,7 @@ HASH = 'c3c96718e5d2b37df434a46c4a93ddfd9a768330d33f0d6ce2d08c139752894c2421cdd0
 
 # contrib port information (required)
 URL = 'https://github.com/pongasoft/emscripten-glfw'
-DESCRIPTION = 'This project is an emscripten port of glfw written in C++ for the web/webassembly platform'
+DESCRIPTION = 'This project is an emscripten port of GLFW written in C++ for the web/webassembly platform'
 LICENSE = 'Apache 2.0 license'
 
 

@@ -17,7 +17,16 @@ available in emscripten. In order to use a contrib port you use the
 contrib.glfw3
 =============
 
-This project is an emscripten port of glfw written in C++ for the web/webassembly platform
+This project is an emscripten port of GLFW written in C++ for the
+web/webassembly platform.
+
+.. note::
+  emscripten includes support for both GLFW 2 and 3 written in Javascript.
+  These can be activated with the :ref:`settings <use_glfw>` ``-sUSE_GLFW=2``
+  and ``-sUSE_GLFW=3``. This non-official contribution, written in C++,
+  provides a more extensive and up-to-date implementation of the GLFW 3 API
+  than the built-in port. It is enabled with the option
+  ``--use-port=contrib.glfw3``.
 
 `Project information <https://github.com/pongasoft/emscripten-glfw>`_
 
