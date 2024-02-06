@@ -80,11 +80,11 @@ var LibraryPThread = {
 
       // Prefix all err()/dbg() messages with the calling thread ID.
       var origDbg = dbg;
-      dbg = (message) => origDbg(pthreadLogPrefix() + message);
+      dbg = (...args) => origDbg(pthreadLogPrefix() + args.join(' '));
 #if PTHREADS_DEBUG
       // With PTHREADS_DEBUG also prefix all err() messages.
       var origErr = err;
-      err = (message) => origErr(pthreadLogPrefix() + message);
+      err = (...args) => origErr(pthreadLogPrefix() + args.join(' '));
 #endif
     },
 #endif
