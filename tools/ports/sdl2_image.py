@@ -3,7 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import os, re
+import os
+import re
 
 TAG = 'release-2.6.0'
 HASH = '2175d11a90211871f2289c8d57b31fe830e4b46af7361925c2c30cd521c1c677d2ee244feb682b6d3909cf085129255934751848fc81b480ea410952d990ffe0'
@@ -18,6 +19,7 @@ variants = {
 opts = {
   'formats': set()
 }
+
 
 def needed(settings):
   return settings.USE_SDL_IMAGE == 2

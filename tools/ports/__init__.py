@@ -403,8 +403,10 @@ def handle_use_port_arg(settings, arg):
     port = ports_by_name[name]
     if not hasattr(port, 'handle_options'):
       utils.exit_with_error(f'Invalid options for port {name}: No options available')
-    elif (error := port.handle_options(options)) is not None:
-      utils.exit_with_error(f'Invalid options for port {name}: {error}')
+    else:
+      error = port.handle_options(options)
+      if error is not None:
+        utils.exit_with_error(f'Invalid options for port {name}: {error}')
 
 
 def get_needed_ports(settings):

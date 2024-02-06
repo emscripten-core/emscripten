@@ -103,5 +103,5 @@ def handle_options(options):
       opts[option] = value
 
   # in the event that only 'tag' is provided, clear 'hash'
-  if 'tag' in oqs and not 'hash' in oqs:
+  if 'tag' in oqs and 'hash' not in oqs:
     opts['hash'] = None
