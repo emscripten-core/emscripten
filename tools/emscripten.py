@@ -329,10 +329,10 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
     metadata.imports += ['__memory_base32']
 
   if settings.ASYNCIFY == 1:
-    metadata.function_exports['asyncify_start_unwind'] = 1
-    metadata.function_exports['asyncify_stop_unwind'] = 0
-    metadata.function_exports['asyncify_start_rewind'] = 1
-    metadata.function_exports['asyncify_stop_rewind'] = 0
+    metadata.function_exports['asyncify_start_unwind'] = webassembly.FuncType([webassembly.Type.I32], [])
+    metadata.function_exports['asyncify_stop_unwind'] = webassembly.FuncType([], [])
+    metadata.function_exports['asyncify_start_rewind'] = webassembly.FuncType([webassembly.Type.I32], [])
+    metadata.function_exports['asyncify_stop_rewind'] = webassembly.FuncType([], [])
 
   # If the binary has already been finalized the settings have already been
   # updated and we can skip updating them.
@@ -460,6 +460,8 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
 
     out.write(post)
     module = None
+
+    return metadata
 
 
 @ToolchainProfiler.profile()
@@ -604,6 +606,34 @@ def finalize_wasm(infile, outfile, js_syms):
   return metadata
 
 
+def create_tsd(metadata, embind_tsd):
+  function_exports = metadata.function_exports
+  out = '// TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.\n'
+  out += 'interface WasmModule {\n'
+  for name, types in function_exports.items():
+    mangled = asmjs_mangle(name)
+    should_export = settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS
+    if not should_export:
+      continue
+    arguments = []
+    for index, type in enumerate(types.params):
+      arguments.append(f"_{index}: {type_to_ts_type(type)}")
+    out += f'  {mangled}({", ".join(arguments)}): '
+    assert len(types.returns) <= 1, 'One return type only supported'
+    if types.returns:
+      out += f'{type_to_ts_type(types.returns[0])}'
+    else:
+      out += 'void'
+    out += ';\n'
+  out += '}\n'
+  out += f'\n{embind_tsd}'
+  export_interfaces = 'WasmModule'
+  if embind_tsd:
+    export_interfaces += ' & EmbindModule'
+  out += f'export type MainModule = {export_interfaces};\n'
+  return out
+
+
 def create_asm_consts(metadata):
   asm_consts = {}
   for addr, const in metadata.asmConsts.items():
@@ -640,6 +670,17 @@ def type_to_sig(type):
     webassembly.Type.F64: 'd',
     webassembly.Type.EXTERNREF: 'e',
     webassembly.Type.VOID: 'v'
+  }[type]
+
+
+def type_to_ts_type(type):
+  return {
+    webassembly.Type.I32: 'number',
+    webassembly.Type.I64: 'BigInt',
+    webassembly.Type.F32: 'number',
+    webassembly.Type.F64: 'number',
+    webassembly.Type.EXTERNREF: 'any',
+    webassembly.Type.VOID: 'void'
   }[type]
 
 
@@ -794,7 +835,8 @@ def make_export_wrappers(function_exports):
       return False
     return True
 
-  for name, nargs in function_exports.items():
+  for name, types in function_exports.items():
+    nargs = len(types.params)
     mangled = asmjs_mangle(name)
     wrapper = 'var %s = ' % mangled
 

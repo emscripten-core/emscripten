@@ -1,6 +1,5 @@
 // TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
 interface WasmModule {
-  _main(_0: number, _1: number): number;
 }
 
 export interface Test {

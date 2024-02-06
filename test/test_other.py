@@ -3083,14 +3083,14 @@ int f() {
                   '-lembind', # Test duplicated link option.
                   ]
     self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
-    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
+    self.assertFileContents(test_file('other/embind_tsgen_ignore_1.d.ts'), read_file('embind_tsgen.d.ts'))
     # Test these args separately since they conflict with arguments in the first test.
     extra_args = ['-sMODULARIZE',
                   '--embed-file', 'fail.js',
                   '-sMINIMAL_RUNTIME=2',
                   '-sEXPORT_ES6=1']
     self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
-    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
+    self.assertFileContents(test_file('other/embind_tsgen_ignore_2.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_test_embind(self):
     self.run_process([EMCC, test_file('embind/embind_test.cpp'),
@@ -3135,6 +3135,12 @@ int f() {
     # Test that when method pointers are allocated at different addresses that
     # AOT JS generation still works correctly.
     self.do_runf('other/embind_jsgen_method_pointer_stability.cpp', 'done')
+
+  def test_emit_tsd(self):
+    self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
+                      '--emit-tsd', 'test_emit_tsd.d.ts', '-Wno-experimental'] +
+                     self.get_emcc_args())
+    self.assertFileContents(test_file('other/test_emit_tsd.d.ts'), read_file('test_emit_tsd.d.ts'))
 
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
