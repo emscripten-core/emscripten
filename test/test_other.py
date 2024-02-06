@@ -2372,7 +2372,7 @@ int f() {
   def test_contrib_ports(self):
     # Verify that contrib ports can be used (using the only contrib port available ATM, but can be replaced
     # with a different contrib port when there is another one
-    self.emcc(test_file('other/test_contrib_ports.cpp'), ['--use-port=contrib.glfw3?disableWarning=true'])
+    self.emcc(test_file('other/test_contrib_ports.cpp'), ['--use-port=contrib.glfw3?disableWarning=true'], output_filename='a.out.js')
 
   def test_link_memcpy(self):
     # memcpy can show up *after* optimizations, so after our opportunity to link in libc, so it must be special-cased
