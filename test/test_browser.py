@@ -3025,7 +3025,7 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl2_image.c', 600, args=[
       '--preload-file', 'screenshot.jpg',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpg"', '-DBITSPERPIXEL=24', '-DNO_PRELOADED',
-      '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=["jpg"]'
+      '--use-port=sdl2', '--use-port=sdl2_image?formats=["jpg"]'
     ])
 
   @no_wasm64('SDL2 + wasm64')

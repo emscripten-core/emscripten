@@ -393,10 +393,18 @@ def resolve_dependencies(port_set, settings):
     add_deps(port)
 
 
-def handle_use_port_arg(settings, name):
+def handle_use_port_arg(settings, arg):
+  args = arg.split('?', 1)
+  name, options = args[0], args[1] if len(args) == 2 else None
   if name not in ports_by_name:
     utils.exit_with_error(f'Invalid port name: {name} used with --use-port')
   ports_needed.add(name)
+  if options:
+    port = ports_by_name[name]
+    if not hasattr(port, 'handle_options'):
+      utils.exit_with_error(f'Invalid options for port {name}: No options available')
+    elif (error := port.handle_options(options)) is not None:
+      utils.exit_with_error(f'Invalid options for port {name}: {error}')
 
 
 def get_needed_ports(settings):
