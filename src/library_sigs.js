@@ -1715,6 +1715,7 @@ sigs = {
   wgpuSurfaceGetPreferredFormat__sig: 'ipp',
   wgpuSurfaceReference__sig: 'vp',
   wgpuSurfaceRelease__sig: 'vp',
+  wgpuSwapChainGetCurrentTexture__sig: 'pp',
   wgpuSwapChainGetCurrentTextureView__sig: 'pp',
   wgpuSwapChainPresent__sig: 'vp',
   wgpuSwapChainReference__sig: 'vp',

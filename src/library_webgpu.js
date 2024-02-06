@@ -2710,6 +2710,10 @@ var LibraryWebGPU = {
     return WebGPU.mgrSwapChain.create(context);
   },
 
+  wgpuSwapChainGetCurrentTexture: (swapChainId) => {
+    var context = WebGPU.mgrSwapChain.get(swapChainId);
+    return WebGPU.mgrTexture.create(context["getCurrentTexture"]());
+  },
   wgpuSwapChainGetCurrentTextureView: (swapChainId) => {
     var context = WebGPU.mgrSwapChain.get(swapChainId);
     return WebGPU.mgrTextureView.create(context["getCurrentTexture"]()["createView"]());
