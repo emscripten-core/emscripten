@@ -63,12 +63,12 @@ def uses_canonical_tmp(func):
   test to satisfy the leak detector.
   """
   @wraps(func)
-  def decorated(self):
+  def decorated(self, *args, **kwargs):
     # Before running the test completely remove the canonical_tmp
     if os.path.exists(self.canonical_temp_dir):
       shutil.rmtree(self.canonical_temp_dir)
     try:
-      func(self)
+      func(self, *args, **kwargs)
     finally:
       # Make sure the test isn't lying about the fact that it uses
       # canonical_tmp
@@ -8193,6 +8193,25 @@ int main() {
     print('sizes:', sizes)
     # sizes must be different, as the flag has an impact
     self.assertEqual(len(set(sizes)), 2)
+
+  @uses_canonical_tmp
+  @parameterized({
+    # In a simple -O0 build we do not set --low-memory-unused (as the stack is
+    # first, which is nice for debugging but bad for code size (larger globals)
+    # and bad for the low-memory-unused trick.
+    '': ([], False),
+    # When we optimize, we do.
+    'O2': (['-O2'], True),
+    # But a low global base prevents it.
+    'O2_GB_512': (['-O2', '-sGLOBAL_BASE=512'], False),
+    # A large-enough global base allows it.
+    'O2_GB_512': (['-O2', '-sGLOBAL_BASE=1024'], True),
+  })
+  def test_binaryen_low_memory_unused(self, args, low_memory_unused):
+    with env_modify({'EMCC_DEBUG': '1'}):
+      cmd = [EMCC, test_file('hello_world.c')] + args
+      err = self.run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
+      self.assertContainedIf('--low-memory-unused ', err, low_memory_unused)
 
   def test_binaryen_passes_extra(self):
     def build(args):

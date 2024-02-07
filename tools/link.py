@@ -360,6 +360,9 @@ def get_binaryen_passes(memfile):
   # hardcoded value in the binaryen pass)
   if optimizing and settings.GLOBAL_BASE >= 1024:
     passes += ['--low-memory-unused']
+    # we cannot do this if the stack is first, but we only put it first if not
+    # optimizing
+    assert not settings.STACK_FIRST
   if settings.AUTODEBUG:
     # adding '--flatten' here may make these even more effective
     passes += ['--instrument-locals']
