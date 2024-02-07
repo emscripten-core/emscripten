@@ -340,10 +340,7 @@ commands:
       - run:
           name: download firefox
           command: |
-            # TODO(https://github.com/emscripten-core/emscripten/issues/21163):
-            # Switch back to nightly once the ff issue with threading is
-            # resolves
-            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-devedition-latest-ssl&os=linux64&lang=en-US"
+            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
             tar -C ~ -xf ~/ff.tar.bz2
       - run:
           name: configure firefox
