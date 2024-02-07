@@ -5,7 +5,6 @@
 # found in the LICENSE file.
 
 import argparse
-import json
 import multiprocessing
 import os
 import random
@@ -1712,7 +1711,7 @@ keydown(100);keyup(100); // trigger the end
       <body>
         Chunked XHR Web Worker Test
         <script>
-          var worker = new Worker(""" + json.dumps(worker_filename) + r""");
+          var worker = new Worker("%s");
           var buffer = [];
           worker.onmessage = (event) => {
             if (event.data.channel === "stdout") {
@@ -1738,7 +1737,7 @@ keydown(100);keyup(100); // trigger the end
         </script>
       </body>
       </html>
-    """ % self.port)
+    """ % (worker_filename, self.port))
 
     create_file('worker_prejs.js', r"""
       Module.arguments = ["/bigfile"];
@@ -3020,12 +3019,12 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl2_image.c', 512, args=[
       '--preload-file', 'screenshot.png',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.png"', '-DNO_PRELOADED',
-      '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=["png"]'
+      '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=png'
     ])
     self.btest_exit('test_sdl2_image.c', 600, args=[
       '--preload-file', 'screenshot.jpg',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpg"', '-DBITSPERPIXEL=24', '-DNO_PRELOADED',
-      '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=["jpg"]'
+      '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=jpg'
     ])
 
   @no_wasm64('SDL2 + wasm64')
@@ -3423,11 +3422,11 @@ Module["preRun"] = () => {
     shutil.copyfile(test_file('sounds', music_name), music_name)
     self.btest_exit('test_sdl2_mixer_music.c', args=[
       '--preload-file', music_name,
-      '-DSOUND_PATH=' + json.dumps(music_name),
+      '-DSOUND_PATH="%s"' % music_name,
       '-DFLAGS=' + flags,
       '-sUSE_SDL=2',
       '-sUSE_SDL_MIXER=2',
-      '-sSDL2_MIXER_FORMATS=' + json.dumps(formats),
+      '-sSDL2_MIXER_FORMATS=' + ','.join(formats),
       '-sINITIAL_MEMORY=33554432'
     ])
 
@@ -3510,7 +3509,7 @@ Module["preRun"] = () => {
   # ASYNCIFY_IMPORTS.
   # To make the test more precise we also use ASYNCIFY_IGNORE_INDIRECT here.
   @parameterized({
-    'normal': (['-sASYNCIFY_IMPORTS=[sync_tunnel, sync_tunnel_bool]'],), # noqa
+    'normal': (['-sASYNCIFY_IMPORTS=sync_tunnel,sync_tunnel_bool'],), # noqa
     'pattern_imports': (['-sASYNCIFY_IMPORTS=[sync_tun*]'],), # noqa
     'response': (['-sASYNCIFY_IMPORTS=@filey.txt'],), # noqa
     'nothing': (['-DBAD'],), # noqa
@@ -3523,7 +3522,7 @@ Module["preRun"] = () => {
     self.btest('async_returnvalue.cpp', '0', args=['-sASYNCIFY', '-sASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser/async_returnvalue.js')] + args + ['-sASSERTIONS'])
 
   def test_async_bad_list(self):
-    self.btest('async_bad_list.cpp', '0', args=['-sASYNCIFY', '-sASYNCIFY_ONLY=[waka]', '--profiling'])
+    self.btest('async_bad_list.cpp', '0', args=['-sASYNCIFY', '-sASYNCIFY_ONLY=waka', '--profiling'])
 
   # Tests that when building with -sMINIMAL_RUNTIME, the build can use -sMODULARIZE as well.
   def test_minimal_runtime_modularize(self):
@@ -4538,7 +4537,7 @@ Module["preRun"] = () => {
 
   @also_with_threads
   def test_utf16_textdecoder(self):
-    self.btest_exit('benchmark/benchmark_utf16.cpp', 0, args=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=[UTF16ToString,stringToUTF16,lengthBytesUTF16]'])
+    self.btest_exit('benchmark/benchmark_utf16.cpp', 0, args=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=UTF16ToString,stringToUTF16,lengthBytesUTF16'])
 
   @parameterized({
     '': ([],),

@@ -9554,7 +9554,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += [
       '-lembind',
       '-sASYNCIFY',
-      '-sASYNCIFY_IMPORTS=["sleep_and_return"]',
+      '-sASYNCIFY_IMPORTS=sleep_and_return',
       '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$ASSERTIONS',
       '--post-js', test_file('core/embind_lib_with_asyncify.test.js'),
     ]
