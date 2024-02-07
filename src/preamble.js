@@ -800,13 +800,13 @@ function instantiateArrayBuffer(binaryFile, imports, receiver) {
     savedBinary = binary;
 #endif
     return WebAssembly.instantiate(binary, imports);
-  }).then((instance) => {
 #if USE_OFFSET_CONVERTER
+  }).then((instance) => {
     // wasmOffsetConverter needs to be assigned before calling the receiver
     // (receiveInstantiationResult).  See comments below in instantiateAsync.
     wasmOffsetConverter = new WasmOffsetConverter(savedBinary, instance.module);
-#endif
     return instance;
+#endif
   }).then(receiver, (reason) => {
     err(`failed to asynchronously prepare wasm: ${reason}`);
 
