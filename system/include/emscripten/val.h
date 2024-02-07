@@ -46,10 +46,10 @@ extern "C" {
 void _emval_register_symbol(const char*);
 
 enum {
-  _EMVAL_UNDEFINED = 1,
-  _EMVAL_NULL = 2,
-  _EMVAL_TRUE = 3,
-  _EMVAL_FALSE = 4
+  _EMVAL_UNDEFINED = 2,
+  _EMVAL_NULL = 4,
+  _EMVAL_TRUE = 6,
+  _EMVAL_FALSE = 8
 };
 
 typedef struct _EM_DESTRUCTORS* EM_DESTRUCTORS;

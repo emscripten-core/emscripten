@@ -18,7 +18,7 @@
 
 // Number of handles reserved for non-use (0) or common values w/o refcount.
 {{{ 
-  globalThis.EMVAL_RESERVED_HANDLES = 5;
+  globalThis.EMVAL_RESERVED_HANDLES = 10;
   globalThis.EMVAL_LAST_RESERVED_HANDLE = globalThis.EMVAL_RESERVED_HANDLES - 1;
   null;
 }}}
@@ -41,14 +41,14 @@ var LibraryEmVal = {
       false, 1,
     );
   #if ASSERTIONS
-    assert(emval_handles.length / 2 === {{{ EMVAL_RESERVED_HANDLES }}});
+    assert(emval_handles.length === {{{ EMVAL_RESERVED_HANDLES }}});
   #endif
     Module['count_emval_handles'] = count_emval_handles;
   },
 
   $count_emval_handles__deps: ['$emval_freelist', '$emval_handles'],
   $count_emval_handles: () => {
-    return emval_handles.length / 2 - {{{ EMVAL_RESERVED_HANDLES }}} - emval_freelist.length;
+    return (emval_handles.length - {{{ EMVAL_RESERVED_HANDLES }}}) / 2 - emval_freelist.length;
   },
 
   _emval_register_symbol__deps: ['$emval_symbols', '$readLatin1String'],
@@ -72,22 +72,22 @@ var LibraryEmVal = {
           throwBindingError('Cannot use deleted val. handle = ' + handle);
       }
   #if ASSERTIONS
-      // handle 1 is supposed to be `undefined`.
-      assert(handle === 1 || emval_handles[handle * 2] !== undefined, `invalid handle: ${handle}`);
+      // handle 2 is supposed to be `undefined`.
+      assert(handle === 2 || emval_handles[handle] !== undefined, `invalid handle: ${handle}`);
   #endif
-      return emval_handles[handle * 2];
+      return emval_handles[handle];
     },
 
     toHandle: (value) => {
       switch (value) {
-        case undefined: return 1;
-        case null: return 2;
-        case true: return 3;
-        case false: return 4;
+        case undefined: return 2;
+        case null: return 4;
+        case true: return 6;
+        case false: return 8;
         default:{
-          const handle = emval_freelist.pop() || emval_handles.length / 2;
-          emval_handles[handle * 2] = value;
-          emval_handles[handle * 2 + 1] = 1;
+          const handle = emval_freelist.pop() || emval_handles.length;
+          emval_handles[handle] = value;
+          emval_handles[handle + 1] = 1;
           return handle;
         }
       }
@@ -97,17 +97,17 @@ var LibraryEmVal = {
   _emval_incref__deps: ['$emval_handles'],
   _emval_incref: (handle) => {
     if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}}) {
-      emval_handles[handle * 2 + 1] += 1;
+      emval_handles[handle + 1] += 1;
     }
   },
 
   _emval_decref__deps: ['$emval_freelist', '$emval_handles'],
   _emval_decref: (handle) => {
-    if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}} && 0 === --emval_handles[handle * 2 + 1]) {
+    if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}} && 0 === --emval_handles[handle + 1]) {
   #if ASSERTIONS
-      assert(emval_handles[handle * 2] !== undefined, `Decref for unallocated handle.`);
+      assert(emval_handles[handle] !== undefined, `Decref for unallocated handle.`);
   #endif
-      emval_handles[handle * 2] = undefined;
+      emval_handles[handle] = undefined;
       emval_freelist.push(handle);
     }
   },
