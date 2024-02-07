@@ -1276,7 +1276,10 @@ var DETERMINISTIC = false;
 var MODULARIZE = false;
 
 // Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
-// be enabled for ES6 exports.
+// be enabled for ES6 exports and is implicitly enabled if not already set.
+//
+// This is implicitly enabled if the output suffix is set to 'mjs'.
+//
 // [link]
 var EXPORT_ES6 = false;
 

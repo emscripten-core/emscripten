@@ -1619,7 +1619,9 @@ EXPORT_ES6
 ==========
 
 Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
-be enabled for ES6 exports.
+be enabled for ES6 exports and is implicitly enabled if not already set.
+
+This is implicitly enabled if the output suffix is set to 'mjs'.
 
 .. _use_es6_import_meta:
 
