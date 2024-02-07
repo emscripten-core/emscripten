@@ -1080,6 +1080,15 @@ function implicitSelf() {
   return ENVIRONMENT.includes('node') ? 'self.' : '';
 }
 
+function ENVIRONMENT_IS_MAIN_THREAD() {
+  var envs = [];
+  if (PTHREADS) envs.push('ENVIRONMENT_IS_PTHREAD');
+  if (WASM_WORKERS) envs.push('ENVIRONMENT_IS_WASM_WORKER');
+  if (AUDIO_WORKLET) envs.push('ENVIRONMENT_IS_AUDIO_WORKLET');
+  if (envs.length == 0) return 'true';
+  return '(!(' + envs.join('||') + '))';
+}
+
 addToCompileTimeContext({
   ATEXITS,
   ATINITS,
@@ -1097,6 +1106,7 @@ addToCompileTimeContext({
   STACK_ALIGN,
   TARGET_NOT_SUPPORTED,
   WASM_PAGE_SIZE,
+  ENVIRONMENT_IS_MAIN_THREAD,
   addAtExit,
   addAtInit,
   addReadyPromiseAssertions,
