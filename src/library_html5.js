@@ -140,7 +140,7 @@ var LibraryHTML5 = {
         var call = JSEvents.deferredCalls[i];
         JSEvents.deferredCalls.splice(i, 1);
         --i;
-        call.targetFunction.apply(null, call.argsList);
+        call.targetFunction(...call.argsList);
       }
     },
 #endif
