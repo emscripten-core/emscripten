@@ -8194,7 +8194,6 @@ int main() {
     # sizes must be different, as the flag has an impact
     self.assertEqual(len(set(sizes)), 2)
 
-  @uses_canonical_tmp
   @parameterized({
     # In a simple -O0 build we do not set --low-memory-unused (as the stack is
     # first, which is nice for debugging but bad for code size (larger globals)
@@ -8205,13 +8204,12 @@ int main() {
     # But a low global base prevents it.
     'O2_GB_512': (['-O2', '-sGLOBAL_BASE=512'], False),
     # A large-enough global base allows it.
-    'O2_GB_512': (['-O2', '-sGLOBAL_BASE=1024'], True),
+    'O2_GB_1024': (['-O2', '-sGLOBAL_BASE=1024'], True),
   })
   def test_binaryen_low_memory_unused(self, args, low_memory_unused):
-    with env_modify({'EMCC_DEBUG': '1'}):
-      cmd = [EMCC, test_file('hello_world.c')] + args
-      err = self.run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
-      self.assertContainedIf('--low-memory-unused ', err, low_memory_unused)
+    cmd = [EMCC, test_file('hello_world.c'), '-v'] + args
+    err = self.run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
+    self.assertContainedIf('--low-memory-unused ', err, low_memory_unused)
 
   def test_binaryen_passes_extra(self):
     def build(args):
