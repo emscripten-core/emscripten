@@ -20,6 +20,12 @@ See docs/process.md for more on how version tagging works.
 
 3.1.54 (in development)
 -----------------------
+- The type of `EMSCRIPTEN_WEBGL_CONTEXT_HANDLE` was changed to unsigned and
+  the only valid error returned from `emscripten_webgl_create_context` is
+  now zero.  This allows `EMSCRIPTEN_WEBGL_CONTEXT_HANDLE` to hold a pointer
+  to memory even in 2GB+ mode.  Since `emscripten_webgl_create_context` never
+  returns anything except zero for its errors today this change should not
+  require any action. (#21268)
 - Added `--use-port` option to `emcc`.  This option allows ports to be enabled
   by name and is designed to replace all existing `-sUSE_XXX` settings for
   ports. You can use `--show-ports` to get the list of available ports that
