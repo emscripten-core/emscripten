@@ -2874,7 +2874,7 @@ addToLibrary({
 #if ASSERTIONS
     assert(ASM_CONSTS.hasOwnProperty(code), `No EM_ASM constant found at address ${code}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
 #endif
-    return ASM_CONSTS[code].apply(null, args);
+    return ASM_CONSTS[code](...args);
   },
 
   emscripten_asm_const_int__deps: ['$runEmAsmFunction'],
@@ -2917,7 +2917,7 @@ addToLibrary({
 #if ASSERTIONS
     assert(ASM_CONSTS.hasOwnProperty(code), `No EM_ASM constant found at address ${code}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
 #endif
-    return ASM_CONSTS[code].apply(null, args);
+    return ASM_CONSTS[code](...args);
   },
   emscripten_asm_const_int_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
   emscripten_asm_const_int_sync_on_main_thread: (code, sigPtr, argbuf) => {
@@ -3100,7 +3100,7 @@ addToLibrary({
 #endif
     var f = Module['dynCall_' + sig];
 #endif
-    return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
+    return f(ptr, ...args);
   },
   $dynCall__deps: ['$dynCallLegacy', '$getWasmTableEntry'],
 #endif
@@ -3113,16 +3113,10 @@ addToLibrary({
 #if ASSERTIONS && !DYNCALLS
     assert(sig.includes('j') || sig.includes('p'), 'getDynCaller should only be called with i64 sigs')
 #endif
-    var argCache = [];
-    return function() {
-      argCache.length = 0;
-      Object.assign(argCache, arguments);
-      return dynCall(sig, ptr, argCache);
-    };
+    return (...args) => dynCall(sig, ptr, args);
   },
 
-  $dynCall__docs: '/** @param {Object=} args */',
-  $dynCall: (sig, ptr, args) => {
+  $dynCall: (sig, ptr, args = []) => {
 #if MEMORY64
     // With MEMORY64 we have an additional step to convert `p` arguments to
     // bigint. This is the runtime equivalent of the wrappers we create for wasm
@@ -3145,7 +3139,7 @@ addToLibrary({
 #if ASSERTIONS
     assert(getWasmTableEntry(ptr), `missing table entry in dynCall: ${ptr}`);
 #endif
-    var rtn = getWasmTableEntry(ptr).apply(null, args);
+    var rtn = getWasmTableEntry(ptr)(...args);
 #endif
 #if MEMORY64
     return sig[0] == 'p' ? Number(rtn) : rtn;

@@ -622,9 +622,9 @@ Please update to new syntax.`);
 
     const dyncall = `dynCall_${sig}`;
     if (sig.length > 1) {
-      return `((${args}) => ${dyncall}.apply(null, [${funcPtr}, ${callArgs}]))`;
+      return `((${args}) => ${dyncall}(${funcPtr}, ${callArgs}))`;
     }
-    return `(() => ${dyncall}.call(null, ${funcPtr}))`;
+    return `(() => ${dyncall}(${funcPtr}))`;
   }
 
   if (needArgConversion) {

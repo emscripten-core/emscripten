@@ -117,7 +117,7 @@ addToLibrary({
     ];
     // Write the overall length of the type section followed by the body
     uleb128Encode(typeSectionBody.length, bytes);
-    bytes.push.apply(bytes, typeSectionBody);
+    bytes.push(...typeSectionBody);
 
     // The rest of the module is static
     bytes.push(

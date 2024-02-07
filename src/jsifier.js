@@ -98,7 +98,8 @@ function getTransitiveDeps(symbol) {
 }
 
 function shouldPreprocess(fileName) {
-  return read(fileName).trim().startsWith('#preprocess\n');
+  var content = read(fileName).trim()
+  return content.startsWith('#preprocess\n') || content.startsWith('#preprocess\r\n');
 }
 
 function preJS() {
@@ -237,9 +238,9 @@ ${argConvertions}
     if (LIBRARY_DEBUG && !isJsOnlySymbol(symbol)) {
       snippet = modifyJSFunction(snippet, (args, body, async) => `\
 function(${args}) {
-  var ret = (function() { if (runtimeDebug) err("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
+  var ret = (() => { if (runtimeDebug) err("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
   ${body}
-  }).apply(this, arguments);
+  })();
   if (runtimeDebug && typeof ret != "undefined") err("  [     return:" + prettyPrint(ret));
   return ret;
 }`);
@@ -443,8 +444,8 @@ function(${args}) {
           if (ASSERTIONS) {
             assertion += `if (!${target} || ${target}.stub) abort("external symbol '${symbol}' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n`;
           }
-          const functionBody = assertion + `return ${target}.apply(null, arguments);`;
-          LibraryManager.library[symbol] = new Function(functionBody);
+          const functionBody = assertion + `return ${target}(...args);`;
+          LibraryManager.library[symbol] = new Function('...args', functionBody);
           isStub = true;
         }
       }

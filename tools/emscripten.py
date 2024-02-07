@@ -161,7 +161,7 @@ def update_settings_glue(wasm_file, metadata):
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exitJS', '$handleException']
 
   # When using dynamic linking the main function might be in a side module.
-  # To be safe assume they do take input parametes.
+  # To be safe assume they do take input parameters.
   settings.MAIN_READS_PARAMS = metadata.mainReadsParams or bool(settings.MAIN_MODULE)
   if settings.MAIN_READS_PARAMS and not settings.STANDALONE_WASM:
     # callMain depends on this library function
@@ -241,7 +241,7 @@ def report_missing_exports(js_symbols):
     for symbol in sorted(missing):
       diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
 
-  # Special hanlding for the `_main` symbol
+  # Special handling for the `_main` symbol
 
   if settings.STANDALONE_WASM:
     # standalone mode doesn't use main, and it always reports missing entry point at link time.
@@ -369,7 +369,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
     # them through node.  Without this step, syntax errors are not surfaced
     # until runtime.
     # We use subprocess directly here rather than shared.check_call since
-    # check_call doesn't support the `intput` argument.
+    # check_call doesn't support the `input` argument.
     if asm_consts:
       validate = '\n'.join([f'var tmp = {f};' for _, f in asm_consts])
       proc = subprocess.run(config.NODE_JS + ['--check', '-'], input=validate.encode('utf-8'))
@@ -824,7 +824,7 @@ def make_export_wrappers(function_exports):
 
 
 def create_receiving(function_exports):
-  # When not declaring asm exports this section is empty and we instead programatically export
+  # When not declaring asm exports this section is empty and we instead programmatically export
   # symbols on the global object by calling exportWasmSymbols after initialization
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
