@@ -73,7 +73,7 @@ var LibraryEmVal = {
       }
   #if ASSERTIONS
       // handle 2 is supposed to be `undefined`.
-      assert(handle === 2 || emval_handles[handle] !== undefined, `invalid handle: ${handle}`);
+      assert(handle === 2 || emval_handles[handle] !== undefined && handle % 2 === 0, `invalid handle: ${handle}`);
   #endif
       return emval_handles[handle];
     },
