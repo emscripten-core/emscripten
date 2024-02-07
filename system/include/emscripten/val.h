@@ -392,7 +392,7 @@ public:
   }
 
   ~val() {
-    if (uses_ref_count()) {
+    if (handle) {
       internal::_emval_decref(as_handle());
       handle = 0;
     }
