@@ -3912,7 +3912,7 @@ Module["preRun"] = () => {
   # Test 64-bit atomics.
   @requires_threads
   def test_pthread_64bit_atomics(self):
-    self.btest_exit('pthread/test_pthread_64bit_atomics.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_64bit_atomics.c', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test 64-bit C++11 atomics.
   @parameterized({
@@ -4091,7 +4091,7 @@ Module["preRun"] = () => {
   # Test that memory allocation is thread-safe.
   @requires_threads
   def test_pthread_malloc(self):
-    self.btest_exit('pthread/test_pthread_malloc.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_malloc.c', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Stress test pthreads allocating memory that will call to sbrk(), and main thread has to free up the data.
   @requires_threads
@@ -4106,7 +4106,7 @@ Module["preRun"] = () => {
   # Test the pthread_once() function.
   @requires_threads
   def test_pthread_once(self):
-    self.btest_exit('pthread/test_pthread_once.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_once.c', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test against a certain thread exit time handling bug by spawning tons of threads.
   @requires_threads
@@ -4116,9 +4116,12 @@ Module["preRun"] = () => {
   # It is common for code to flip volatile global vars for thread control. This is a bit lax, but nevertheless, test whether that
   # kind of scheme will work with Emscripten as well.
   @requires_threads
-  def test_pthread_volatile(self):
-    for arg in [[], ['-DUSE_C_VOLATILE']]:
-      self.btest_exit('pthread/test_pthread_volatile.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + arg)
+  @parameterized({
+    '': (['-DUSE_C_VOLATILE'],),
+    'atomic': ([],),
+  })
+  def test_pthread_volatile(self, args):
+    self.btest_exit('pthread/test_pthread_volatile.c', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args)
 
   # Test thread-specific data (TLS).
   @requires_threads
@@ -4249,12 +4252,12 @@ Module["preRun"] = () => {
   @disabled('https://github.com/emscripten-core/emscripten/issues/18210')
   @requires_threads
   def test_pthread_run_on_main_thread(self):
-    self.btest_exit('pthread/test_pthread_run_on_main_thread.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
+    self.btest_exit('pthread/test_pthread_run_on_main_thread.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
   # Test how a lot of back-to-back called proxying operations behave.
   @requires_threads
   def test_pthread_run_on_main_thread_flood(self):
-    self.btest_exit('pthread/test_pthread_run_on_main_thread_flood.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
+    self.btest_exit('pthread/test_pthread_run_on_main_thread_flood.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
   # Test that it is possible to asynchronously call a JavaScript function on the
   # main thread.
