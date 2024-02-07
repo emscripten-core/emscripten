@@ -397,7 +397,7 @@ def resolve_dependencies(port_set, settings):
 
 
 def handle_use_port_arg(settings, arg):
-  args = arg.split('@', 1)
+  args = arg.split(':', 1)
   name, options = args[0], None
   if len(args) == 2:
     options = args[1]

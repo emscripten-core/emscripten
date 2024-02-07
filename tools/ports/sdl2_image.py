@@ -16,7 +16,7 @@ variants = {
 }
 
 OPTIONS = {
-  'formats': 'A comma separated list of formats (ex: --use-port=sdl2_image@formats=png,jpg)'
+  'formats': 'A comma separated list of formats (ex: --use-port=sdl2_image:formats=png,jpg)'
 }
 
 # user options (from --use-port)
