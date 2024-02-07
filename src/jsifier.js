@@ -98,7 +98,8 @@ function getTransitiveDeps(symbol) {
 }
 
 function shouldPreprocess(fileName) {
-  return read(fileName).trim().startsWith('#preprocess\n');
+  var content = read(fileName).trim()
+  return content.startsWith('#preprocess\n') || content.startsWith('#preprocess\r\n');
 }
 
 function preJS() {
