@@ -357,12 +357,10 @@ def get_binaryen_passes(memfile):
   if optimizing:
     passes += [building.opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL)]
   # when optimizing, use the fact that low memory is never used (1024 is a
-  # hardcoded value in the binaryen pass)
-  if optimizing and settings.GLOBAL_BASE >= 1024:
+  # hardcoded value in the binaryen pass). we also cannot do it when the stack
+  # is first, as then the stack is in the low memory that should be unused.
+  if optimizing and settings.GLOBAL_BASE >= 1024 and not settings.STACK_FIRST:
     passes += ['--low-memory-unused']
-    # we cannot do this if the stack is first, but we only put it first if not
-    # optimizing
-    assert not settings.STACK_FIRST
   if settings.AUTODEBUG:
     # adding '--flatten' here may make these even more effective
     passes += ['--instrument-locals']

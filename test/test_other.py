@@ -1206,6 +1206,25 @@ f.close()
     err = self.expect_fail(cmd + ['-sGLOBAL_BASE=1024'])
     self.assertContained('error: --stack-first is not compatible with -sGLOBAL_BASE', err)
 
+  @parameterized({
+    # In a simple -O0 build we do not set --low-memory-unused (as the stack is
+    # first, which is nice for debugging but bad for code size (larger globals)
+    # and bad for the low-memory-unused trick.
+    '': ([], False),
+    # When we optimize, we do.
+    'O2': (['-O2'], True),
+    # But a low global base prevents it.
+    'O2_GB_512': (['-O2', '-sGLOBAL_BASE=512'], False),
+    # A large-enough global base allows it.
+    'O2_GB_1024': (['-O2', '-sGLOBAL_BASE=1024'], True),
+    # Forcing the stack to be first in the linker prevents it.
+    'linker_flag': (['-O2', '-Wl,--stack-first'], False),
+  })
+  def test_binaryen_low_memory_unused(self, args, low_memory_unused):
+    cmd = [EMCC, test_file('hello_world.c'), '-v'] + args
+    err = self.run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
+    self.assertContainedIf('--low-memory-unused ', err, low_memory_unused)
+
   def test_l_link(self):
     # Linking with -lLIBNAME and -L/DIRNAME should work, also should work with spaces
     create_file('main.c', '''
@@ -8193,23 +8212,6 @@ int main() {
     print('sizes:', sizes)
     # sizes must be different, as the flag has an impact
     self.assertEqual(len(set(sizes)), 2)
-
-  @parameterized({
-    # In a simple -O0 build we do not set --low-memory-unused (as the stack is
-    # first, which is nice for debugging but bad for code size (larger globals)
-    # and bad for the low-memory-unused trick.
-    '': ([], False),
-    # When we optimize, we do.
-    'O2': (['-O2'], True),
-    # But a low global base prevents it.
-    'O2_GB_512': (['-O2', '-sGLOBAL_BASE=512'], False),
-    # A large-enough global base allows it.
-    'O2_GB_1024': (['-O2', '-sGLOBAL_BASE=1024'], True),
-  })
-  def test_binaryen_low_memory_unused(self, args, low_memory_unused):
-    cmd = [EMCC, test_file('hello_world.c'), '-v'] + args
-    err = self.run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
-    self.assertContainedIf('--low-memory-unused ', err, low_memory_unused)
 
   def test_binaryen_passes_extra(self):
     def build(args):
