@@ -2896,7 +2896,7 @@ addToLibrary({
     '$proxyToMainThread'
 #endif
   ],
-  $runMainThreadEmAsm: (code, sigPtr, argbuf, sync) => {
+  $runMainThreadEmAsm: (emAsmAddr, sigPtr, argbuf, sync) => {
     var args = readEmAsmArgs(sigPtr, argbuf);
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
@@ -2909,29 +2909,23 @@ addToLibrary({
       // of using __proxy. (And dor simplicity, do the same in the sync
       // case as well, even though it's not strictly necessary, to keep the two
       // code paths as similar as possible on both sides.)
-      // -1 - code is the encoding of a proxied EM_ASM, as a negative number
-      // (positive numbers are non-EM_ASM calls).
-      return proxyToMainThread(-1 - code, sync, ...args);
+      return proxyToMainThread(0, emAsmAddr, sync, ...args);
     }
 #endif
 #if ASSERTIONS
-    assert(ASM_CONSTS.hasOwnProperty(code), `No EM_ASM constant found at address ${code}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
+    assert(ASM_CONSTS.hasOwnProperty(emAsmAddr), `No EM_ASM constant found at address ${emAsmAddr}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
 #endif
-    return ASM_CONSTS[code](...args);
+    return ASM_CONSTS[emAsmAddr](...args);
   },
   emscripten_asm_const_int_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
-  emscripten_asm_const_int_sync_on_main_thread: (code, sigPtr, argbuf) => {
-    return runMainThreadEmAsm(code, sigPtr, argbuf, 1);
-  },
+  emscripten_asm_const_int_sync_on_main_thread: (emAsmAddr, sigPtr, argbuf) => runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 1),
 
   emscripten_asm_const_ptr_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
-  emscripten_asm_const_ptr_sync_on_main_thread: (code, sigPtr, argbuf) => {
-    return runMainThreadEmAsm(code, sigPtr, argbuf, 1);
-  },
+  emscripten_asm_const_ptr_sync_on_main_thread: (emAsmAddr, sigPtr, argbuf) => runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 1),
 
   emscripten_asm_const_double_sync_on_main_thread: 'emscripten_asm_const_int_sync_on_main_thread',
   emscripten_asm_const_async_on_main_thread__deps: ['$runMainThreadEmAsm'],
-  emscripten_asm_const_async_on_main_thread: (code, sigPtr, argbuf) => runMainThreadEmAsm(code, sigPtr, argbuf, 0),
+  emscripten_asm_const_async_on_main_thread: (emAsmAddr, sigPtr, argbuf) => runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 0),
 #endif
 
 #if !DECLARE_ASM_MODULE_EXPORTS

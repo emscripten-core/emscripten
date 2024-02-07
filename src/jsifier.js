@@ -272,7 +272,7 @@ function(${args}) {
             return `
 function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
-  return ${proxyFunc}(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
+  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${+sync}${args ? ', ' : ''}${args});
 ${body}
 }\n`
           });

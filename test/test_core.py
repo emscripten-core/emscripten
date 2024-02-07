@@ -1892,15 +1892,19 @@ int main(int argc, char **argv) {
   # test_em_asm_2, just search-replaces EM_ASM to MAIN_THREAD_EM_ASM on the test
   # file. That way if new test cases are added to test_em_asm_2.cpp for EM_ASM,
   # they will also get tested in MAIN_THREAD_EM_ASM form.
-  def test_main_thread_em_asm(self):
+  @parameterized({
+    '': ([],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+  })
+  def test_main_thread_em_asm(self, args):
     src = read_file(test_file('core/test_em_asm_2.cpp'))
     create_file('test.cpp', src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
 
     expected_result = read_file(test_file('core/test_em_asm_2.out'))
     create_file('test.out', expected_result.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
 
-    self.do_run_in_out_file_test('test.cpp')
-    self.do_run_in_out_file_test('test.cpp', force_c=True)
+    self.do_run_in_out_file_test('test.cpp', emcc_args=args)
+    self.do_run_in_out_file_test('test.cpp', emcc_args=args, force_c=True)
 
   @needs_dylink
   @parameterized({

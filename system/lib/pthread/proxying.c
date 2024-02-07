@@ -585,6 +585,7 @@ em_promise_t emscripten_proxy_promise(em_proxying_queue* q,
 
 typedef struct proxied_js_func_t {
   int funcIndex;
+  void* emAsmAddr;
   pthread_t callingThread;
   int numArgs;
   double* argBuffer;
@@ -595,19 +596,21 @@ typedef struct proxied_js_func_t {
 static void run_js_func(void* arg) {
   proxied_js_func_t* f = (proxied_js_func_t*)arg;
   f->result = _emscripten_receive_on_main_thread_js(
-    f->funcIndex, f->callingThread, f->numArgs, f->argBuffer);
+    f->funcIndex, f->emAsmAddr, f->callingThread, f->numArgs, f->argBuffer);
   if (f->owned) {
     free(f->argBuffer);
     free(f);
   }
 }
 
-double _emscripten_run_on_main_thread_js(int index,
+double _emscripten_run_on_main_thread_js(int func_index,
+                                         void* em_asm_addr,
                                          int num_args,
                                          double* buffer,
                                          int sync) {
   proxied_js_func_t f = {
-    .funcIndex = index,
+    .funcIndex = func_index,
+    .emAsmAddr = em_asm_addr,
     .callingThread = pthread_self(),
     .numArgs = num_args,
     .argBuffer = buffer,
