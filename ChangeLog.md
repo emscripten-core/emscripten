@@ -217,7 +217,7 @@ See docs/process.md for more on how version tagging works.
   dependency on it.  It can also be explicitly included using
   `-sEXPORTED_RUNTIME_METHODS=wasmTable`.
 - libunwind updated to LLVM 16.0.6. (#20088)
-- The `--minify=0` commnad line flag will now preserve comments as well as
+- The `--minify=0` command line flag will now preserve comments as well as
   whitespace.  This means the resulting output can then be run though closure
   compiler or some other tool that gives comments semantic meaning. (#20121)
 - `-sSTRICT` now implies `-sINCOMING_MODULE_API=[]` which is generally good
@@ -882,7 +882,7 @@ See docs/process.md for more on how version tagging works.
 3.1.2 - 01/20/2022
 ------------------
 - A new setting, `POLYFILL`, was added which is on by default but can be disabled
-  (via `-sNO_POLYFILL`) to prevent emscripten from outputing needed polyfills.
+  (via `-sNO_POLYFILL`) to prevent emscripten from outputting needed polyfills.
   For default browser targets, no polyfills are needed so this option only has
   meaning when targeting older browsers.
 - `EVAL_CTORS` has been rewritten and improved. The main differences from before
@@ -1194,7 +1194,7 @@ See docs/process.md for more on how version tagging works.
 - When building with `-s MAIN_MODULE` emscripten will now error on undefined
   symbol by default.  This matches the behvious of clang/gcc/msvc.  This
   requires that your side modules be present on the command line.  If you do not
-  specify your side modules on the command line (either direcly or via
+  specify your side modules on the command line (either directly or via
   `RUNTIME_LINKED_LIBS`) you may need to add `-s WARN_ON_UNDEFINED_SYMBOLS=0` to
   avoid errors about symbol that are missing at link time (but present in your
   side modules provided at runtime).  We hope that this case is not common and
@@ -1299,7 +1299,7 @@ See docs/process.md for more on how version tagging works.
 
 2.0.15: 03/05/2021
 ------------------
-- Calls to `newlocale` (and `new std::locale` in C++) with arbirary names will
+- Calls to `newlocale` (and `new std::locale` in C++) with arbitrary names will
   now succeed.  This is the behaviour of musl libc which emscripten had
   previously inadvertently disabled.
 - System libraries are now compiled with debug info (`-g`).  This doesn't
@@ -1316,7 +1316,7 @@ See docs/process.md for more on how version tagging works.
 2.0.14: 02/14/2021
 ------------------
 - Add new setting: `REVERSE_DEPS`. This can be used to control how emscripten
-  decides which reverse dependecies to include.  See `settings.js` for more
+  decides which reverse dependencies to include.  See `settings.js` for more
   information.  The default setting ('auto') is the traditional way emscripten
   has worked in the past so there should be no change unless this options is
   actually used.  This option partially replaces the `EMCC_ONLY_FORCED_STDLIBS`
@@ -1472,7 +1472,7 @@ See docs/process.md for more on how version tagging works.
 - Add new `COMPILER_WRAPPER` settings (with corresponding `EM_COMPILER_WRAPPER`
   environment variable.  This replaces the existing `EMMAKEN_COMPILER`
   environment variable which is deprecated, but still works for the time being.
-  The main differences is that `EM_COMPILER_WRAPPER` only wrapps the configured
+  The main differences is that `EM_COMPILER_WRAPPER` only wraps the configured
   version of clang rather than replacing it.
 - ASAN_SHADOW_SIZE is deprecated. When using AddressSanitizer, the correct
   amount of shadow memory will now be calculated automatically.
@@ -1484,7 +1484,7 @@ See docs/process.md for more on how version tagging works.
 - Fix a rare pthreads main thread deadlock (that worsened in 2.0.2, but existed
   before). (#12318)
 - The WebAssembly table is now created and exported by the generated wasm
-  module rather then constructed by the JS glue code.  This is an implemention
+  module rather then constructed by the JS glue code.  This is an implementation
   detail that should not affect most users, but reduces code size. (#12296)
 - Add `getentropy` in `sys/random.h`, and use that from libc++'s
   `random_device`. This is more efficient, see #12240.
@@ -1632,7 +1632,7 @@ See docs/process.md for more on how version tagging works.
   `EM_FOO` this should be enough.
 - Running emscripten under python2 is now deprecated.  It will show up as a
   warning (which can be disabled with `-Wno-deprecated`).  Please update to
-  python3 as we hope to remove support completely in the next releaase.
+  python3 as we hope to remove support completely in the next release.
 
 1.39.20: 07/20/2020
 -------------------
@@ -2824,7 +2824,7 @@ v1.36.10: 9/24/2016
  - Improved support for --proxy-to-worker build mode.
  - Improved GLES3 support for glGet() features that WebGL2 does not have. (#4514)
  - Added support for implementation defined glReadPixels() format.
- - Improved WebGL 2 support with closure compilter. (#4554)
+ - Improved WebGL 2 support with closure compiler. (#4554)
  - Implemented support for nanosleep() when building in pthreads mode (#4578)
  - Added support for  llvm_ceil_f64 and llvm_floor_f64 intrinsics.
  - Full list of changes:
@@ -2858,7 +2858,7 @@ v1.36.8: 8/20/2016
    options for wasm.
  - Added new emprofile.py script which can be used to profile toolchain wide
    performance. (#4491)
- - Added new linker flag --output-eol, which specifices what kind of line
+ - Added new linker flag --output-eol, which specifies what kind of line
    endings to generate to the output files. (#4492)
  - Fixed a Windows bug where aborting execution with Ctrl-C might hang
    Emscripten to an infinite loop instead. (#4494)
@@ -3749,7 +3749,7 @@ v1.30.2: 4/1/2015
 
 v1.30.1: 3/24/2015
 ------------------
- - Upgraded LLVM+Clang from vrsion 3.5 to version 3.6.
+ - Upgraded LLVM+Clang from version 3.5 to version 3.6.
  - Full list of changes:
     - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.30.0...1.30.1
     - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.30.0...1.30.1
@@ -4494,7 +4494,7 @@ v1.21.4: 7/17/2014
    runtime.
  - Have runtime mkdir() function call normalize the path to be created before
    creation.
- - Fixed an issue with omitting the third paramter in cwrap() call (#2511).
+ - Fixed an issue with omitting the third parameter in cwrap() call (#2511).
  - Fixed an issue where mouse event handling would throw an exception if the
    page did not contain a canvas object.
  - Fixed a GL initialization problem when user has extended Array with custom
@@ -4520,7 +4520,7 @@ v1.21.3: 7/10/2014
  - Added implementations for SDL function SDL_AudioQuit and SDL_VideoQuit.
  - Fix an issue with the optimizeShifts optimization enabled in previous version.
  - Fixed the -s RELOOPER command line parameter to work.
- - Fixed a bug where building the system libc migt result in a compiler deadlock
+ - Fixed a bug where building the system libc might result in a compiler deadlock
    on Windows.
  - Removed emcc from trying to link in .dll files as static libraries on
    Windows.
@@ -5298,7 +5298,7 @@ v1.7.0: 10/23/2013
  - Several compiler stability fixes.
  - Adds a JavaScript implementation of cxa_demangle function for demangling call
    stack traces at runtime for easier debugging.
- - GL context MSAA antialising is now DISABLED by default, to make the GL
+ - GL context MSAA antialiasing is now DISABLED by default, to make the GL
    behavior consistent with desktop usage.
  - Added support to SDL, GLUT and GLFW libraries to specify MSAA on/off at startup.
  - Implemented glColor4ubv in GL emulation mode.
