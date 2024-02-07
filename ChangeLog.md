@@ -20,6 +20,12 @@ See docs/process.md for more on how version tagging works.
 
 3.1.54 (in development)
 -----------------------
+- The type of `EMSCRIPTEN_WEBGL_CONTEXT_HANDLE` was changed to unsigned and
+  the only valid error returned from `emscripten_webgl_create_context` is
+  now zero.  This allows `EMSCRIPTEN_WEBGL_CONTEXT_HANDLE` to hold a pointer
+  to memory even in 2GB+ mode.  Since `emscripten_webgl_create_context` never
+  returns anything except zero for its errors today this change should not
+  require any action. (#21268)
 - Added `--use-port` option to `emcc`.  This option allows ports to be enabled
   by name and is designed to replace all existing `-sUSE_XXX` settings for
   ports. You can use `--show-ports` to get the list of available ports that
@@ -30,6 +36,11 @@ See docs/process.md for more on how version tagging works.
   the top of the JS file.  This is useful as it allows things like `{{{
   POINTER_SIZE }}}` and `{{{ makeGetValue(..) }}}` to be used in pre/post JS
   files, just like they can be in JS library files. (#21227)
+- Added concept of contrib ports which are ports contributed by the wider 
+  community and supported on a "best effort" basis. A first contrib port is 
+  available via `--use-port=contrib.glfw3`: an emscripten port of glfw written 
+  in C++ with many features like support for multiple windows. (#21244)
+
 
 3.1.53 - 01/29/24
 -----------------

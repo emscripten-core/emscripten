@@ -5,7 +5,6 @@
 # found in the LICENSE file.
 
 import argparse
-import json
 import multiprocessing
 import os
 import random
@@ -865,20 +864,18 @@ If manually bisecting:
     assert os.path.exists('reftest.js')
     html = read_file('test.html')
     html = html.replace('</body>', '''
+<script src="reftest.js"/>
 <script>
-function assert(x, y) { if (!x) throw 'assertion failed ' + y }
-%s
-
 var windowClose = window.close;
 window.close = () => {
   // wait for rafs to arrive and the screen to update before reftesting
-  setTimeout(function() {
+  setTimeout(() => {
     doReftest();
     setTimeout(windowClose, 5000);
   }, 1000);
 };
 </script>
-</body>''' % read_file('reftest.js'))
+</body>''')
     create_file('test.html', html)
 
   def test_sdl_canvas_proxy(self):
@@ -1714,7 +1711,7 @@ keydown(100);keyup(100); // trigger the end
       <body>
         Chunked XHR Web Worker Test
         <script>
-          var worker = new Worker(""" + json.dumps(worker_filename) + r""");
+          var worker = new Worker("%s");
           var buffer = [];
           worker.onmessage = (event) => {
             if (event.data.channel === "stdout") {
@@ -1740,7 +1737,7 @@ keydown(100);keyup(100); // trigger the end
         </script>
       </body>
       </html>
-    """ % self.port)
+    """ % (worker_filename, self.port))
 
     create_file('worker_prejs.js', r"""
       Module.arguments = ["/bigfile"];
@@ -3022,12 +3019,12 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl2_image.c', 512, args=[
       '--preload-file', 'screenshot.png',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.png"', '-DNO_PRELOADED',
-      '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=["png"]'
+      '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=png'
     ])
     self.btest_exit('test_sdl2_image.c', 600, args=[
       '--preload-file', 'screenshot.jpg',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpg"', '-DBITSPERPIXEL=24', '-DNO_PRELOADED',
-      '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=["jpg"]'
+      '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=jpg'
     ])
 
   @no_wasm64('SDL2 + wasm64')
@@ -3362,10 +3359,10 @@ Module["preRun"] = () => {
   def test_sdl2_gl_frames_swap(self):
     def post_build():
       self.post_manual_reftest()
-      html = read_file('test.html')
-      html2 = html.replace('''Module['postRun'] = doReftest;''', '') # we don't want the very first frame
-      assert html != html2
-      create_file('test.html', html2)
+      reftest = read_file('reftest.js')
+      reftest2 = reftest.replace("Module['postRun'] = doReftest;", '') # we don't want the very first frame
+      assert reftest != reftest2
+      create_file('reftest.js', reftest2)
     self.btest('test_sdl2_gl_frames_swap.c', reference='browser/test_sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-sGL_TESTING', '-sUSE_SDL=2'], manual_reference=True, post_build=post_build)
 
   @no_wasm64('SDL2 + wasm64')
@@ -3425,11 +3422,11 @@ Module["preRun"] = () => {
     shutil.copyfile(test_file('sounds', music_name), music_name)
     self.btest_exit('test_sdl2_mixer_music.c', args=[
       '--preload-file', music_name,
-      '-DSOUND_PATH=' + json.dumps(music_name),
+      '-DSOUND_PATH="%s"' % music_name,
       '-DFLAGS=' + flags,
       '-sUSE_SDL=2',
       '-sUSE_SDL_MIXER=2',
-      '-sSDL2_MIXER_FORMATS=' + json.dumps(formats),
+      '-sSDL2_MIXER_FORMATS=' + ','.join(formats),
       '-sINITIAL_MEMORY=33554432'
     ])
 
@@ -3512,7 +3509,7 @@ Module["preRun"] = () => {
   # ASYNCIFY_IMPORTS.
   # To make the test more precise we also use ASYNCIFY_IGNORE_INDIRECT here.
   @parameterized({
-    'normal': (['-sASYNCIFY_IMPORTS=[sync_tunnel, sync_tunnel_bool]'],), # noqa
+    'normal': (['-sASYNCIFY_IMPORTS=sync_tunnel,sync_tunnel_bool'],), # noqa
     'pattern_imports': (['-sASYNCIFY_IMPORTS=[sync_tun*]'],), # noqa
     'response': (['-sASYNCIFY_IMPORTS=@filey.txt'],), # noqa
     'nothing': (['-DBAD'],), # noqa
@@ -3525,7 +3522,7 @@ Module["preRun"] = () => {
     self.btest('async_returnvalue.cpp', '0', args=['-sASYNCIFY', '-sASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser/async_returnvalue.js')] + args + ['-sASSERTIONS'])
 
   def test_async_bad_list(self):
-    self.btest('async_bad_list.cpp', '0', args=['-sASYNCIFY', '-sASYNCIFY_ONLY=[waka]', '--profiling'])
+    self.btest('async_bad_list.cpp', '0', args=['-sASYNCIFY', '-sASYNCIFY_ONLY=waka', '--profiling'])
 
   # Tests that when building with -sMINIMAL_RUNTIME, the build can use -sMODULARIZE as well.
   def test_minimal_runtime_modularize(self):
@@ -4469,7 +4466,16 @@ Module["preRun"] = () => {
     # should happen when there is a mem init file (-O2+)
     self.btest('in_flight_memfile_request.c', expected=expected)
 
-  def test_async_compile(self):
+  @parameterized({
+    '': ([], 1),
+    'O1': (['-O1'], 1),
+    'O2': (['-O2'], 1),
+    'O3': (['-O3'], 1),
+    # force it on
+    'force': (['-sWASM_ASYNC_COMPILATION'], 1),
+    'off': (['-sWASM_ASYNC_COMPILATION=0'], 0),
+  })
+  def test_async_compile(self, opts, returncode):
     # notice when we use async compilation
     script = '''
     <script>
@@ -4478,11 +4484,13 @@ Module["preRun"] = () => {
       var real_wasm_instantiateStreaming = WebAssembly.instantiateStreaming;
       if (typeof real_wasm_instantiateStreaming === 'function') {
         WebAssembly.instantiateStreaming = (a, b) => {
+          console.log('instantiateStreaming called');
           Module.sawAsyncCompilation = true;
           return real_wasm_instantiateStreaming(a, b);
         };
       } else {
         WebAssembly.instantiate = (a, b) => {
+          console.log('instantiate called');
           Module.sawAsyncCompilation = true;
           return real_wasm_instantiate(a, b);
         };
@@ -4497,21 +4505,9 @@ Module["preRun"] = () => {
 '''
     shell_with_script('shell.html', 'shell.html', script)
     common_args = ['--shell-file', 'shell.html']
-    for opts, returncode in [
-      ([], 1),
-      (['-O1'], 1),
-      (['-O2'], 1),
-      (['-O3'], 1),
-      # force it on
-      (['-sWASM_ASYNC_COMPILATION'], 1),
-      # force it off. note that we use -O3 here to make the binary small enough
-      # for chrome to allow compiling it synchronously
-      (['-O3', '-sWASM_ASYNC_COMPILATION=0'], 0),
-    ]:
-      print(opts, returncode)
-      self.btest_exit('test_async_compile.c', assert_returncode=returncode, args=common_args + opts)
+    self.btest_exit('test_async_compile.c', assert_returncode=returncode, args=common_args + opts)
     # Ensure that compilation still works and is async without instantiateStreaming available
-    no_streaming = ' <script> WebAssembly.instantiateStreaming = undefined;</script>'
+    no_streaming = '<script>WebAssembly.instantiateStreaming = undefined;</script>'
     shell_with_script('shell.html', 'shell.html', no_streaming + script)
     self.btest_exit('test_async_compile.c', assert_returncode=1, args=common_args)
 
@@ -4541,7 +4537,7 @@ Module["preRun"] = () => {
 
   @also_with_threads
   def test_utf16_textdecoder(self):
-    self.btest_exit('benchmark/benchmark_utf16.cpp', 0, args=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=[UTF16ToString,stringToUTF16,lengthBytesUTF16]'])
+    self.btest_exit('benchmark/benchmark_utf16.cpp', 0, args=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=UTF16ToString,stringToUTF16,lengthBytesUTF16'])
 
   @parameterized({
     '': ([],),

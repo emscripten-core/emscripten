@@ -340,10 +340,7 @@ commands:
       - run:
           name: download firefox
           command: |
-            # TODO(https://github.com/emscripten-core/emscripten/issues/21163):
-            # Switch back to nightly once the ff issue with threading is
-            # resolves
-            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-devedition-latest-ssl&os=linux64&lang=en-US"
+            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
             tar -C ~ -xf ~/ff.tar.bz2
       - run:
           name: configure firefox
@@ -818,10 +815,8 @@ jobs:
             browser_2gb.test_fetch_to_memory
             browser_2gb.test_emscripten_animate_canvas_element_size_manual_css
             browser_2gb.test_fulles2_sdlproc
-            browser_2gb.test_cubegeom
-            browser_2gb.test_cubegeom_normal
-            browser_2gb.test_cubegeom_normal_dap
-            browser_2gb.test_cubegeom_normal_dap_far
+            browser_2gb.test_cubegeom*
+            browser_2gb.test_html5_webgl_create_context*
             "
   test-browser-chrome-wasm64-4gb:
     executor: bionic
@@ -837,6 +832,7 @@ jobs:
             browser64_4gb.test_fetch*
             browser64_4gb.test_emscripten_animate_canvas_element_size_manual_css
             browser64_4gb.test_fulles2_sdlproc
+            browser64_4gb.test_html5_webgl_create_context*
             "
   test-browser-firefox:
     executor: bionic

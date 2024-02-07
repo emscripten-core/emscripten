@@ -1137,6 +1137,7 @@ namespace wgpu {
         using ObjectBase::ObjectBase;
         using ObjectBase::operator=;
 
+        Texture GetCurrentTexture() const;
         TextureView GetCurrentTextureView() const;
         void Present() const;
 
