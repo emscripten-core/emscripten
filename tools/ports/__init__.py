@@ -397,7 +397,7 @@ def resolve_dependencies(port_set, settings):
 
 
 def handle_use_port_arg(settings, arg):
-  args = arg.split('?', 1)
+  args = arg.split('@', 1)
   name, options = args[0], None
   if len(args) == 2:
     options = args[1]
@@ -410,7 +410,7 @@ def handle_use_port_arg(settings, arg):
       utils.exit_with_error(f'Invalid options for port {name}: No options available')
     else:
       try:
-        options_qs = parse_qs(options, strict_parsing=True)
+        options_qs = parse_qs(options, strict_parsing=True, separator=':')
       except ValueError as error:
         utils.exit_with_error(f'{options} is not valid: {error}. Available options are {port.OPTIONS}.')
       if not set(options_qs.keys()).issubset(port.OPTIONS.keys()):
