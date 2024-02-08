@@ -68,10 +68,10 @@ addToLibrary({
           }
 #endif
 #if ASSERTIONS && ASYNCIFY != 2 // We cannot apply assertions with stack switching, as the imports must not be modified from suspender.suspendOnReturnedPromise TODO find a way
-          imports[x] = function() {
+          imports[x] = (...args) => {
             var originalAsyncifyState = Asyncify.state;
             try {
-              return original.apply(null, arguments);
+              return original(...args);
             } finally {
               // Only asyncify-declared imports are allowed to change the
               // state.
@@ -130,7 +130,7 @@ addToLibrary({
             original = Asyncify.makeAsyncFunction(original);
           }
 #endif
-          ret[x] = function() {
+          ret[x] = (...args) => {
 #if ASYNCIFY_DEBUG >= 2
             dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length} try ${x}`);
 #endif
@@ -143,9 +143,9 @@ addToLibrary({
               // can just call the function with no args at all since and the engine will produce zeros
               // for all arguments.  However, for i64 arguments we get `undefined cannot be converted to
               // BigInt`.
-              return original.apply(null, Asyncify.saveOrRestoreRewindArguments(x, arguments));
+              return original(...Asyncify.saveOrRestoreRewindArguments(x, args));
 #else
-              return original.apply(null, arguments);
+              return original(...args);
 #endif
 #if ASYNCIFY == 1
             } finally {

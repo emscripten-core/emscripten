@@ -1040,7 +1040,7 @@ var LibraryPThread = {
     assert(func.length == numCallArgs, 'Call args mismatch in _emscripten_receive_on_main_thread_js');
 #endif
     PThread.currentProxiedOperationCallerThread = callingThread;
-    var rtn = func.apply(null, proxiedJSCallArgs);
+    var rtn = func(...proxiedJSCallArgs);
     PThread.currentProxiedOperationCallerThread = 0;
 #if MEMORY64
     // In memory64 mode some proxied functions return bigint/pointer but

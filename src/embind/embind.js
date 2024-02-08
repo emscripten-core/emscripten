@@ -98,12 +98,12 @@ var LibraryEmbind = {
     if (undefined === proto[methodName].overloadTable) {
       var prevFunc = proto[methodName];
       // Inject an overload resolver function that routes to the appropriate overload based on the number of arguments.
-      proto[methodName] = function() {
+      proto[methodName] = function(...args) {
         // TODO This check can be removed in -O3 level "unsafe" optimizations.
-        if (!proto[methodName].overloadTable.hasOwnProperty(arguments.length)) {
-            throwBindingError(`Function '${humanName}' called with an invalid number of arguments (${arguments.length}) - expects one of (${proto[methodName].overloadTable})!`);
+        if (!proto[methodName].overloadTable.hasOwnProperty(args.length)) {
+            throwBindingError(`Function '${humanName}' called with an invalid number of arguments (${args.length}) - expects one of (${proto[methodName].overloadTable})!`);
         }
-        return proto[methodName].overloadTable[arguments.length].apply(this, arguments);
+        return proto[methodName].overloadTable[args.length].apply(this, args);
       };
       // Move the previous function into the overload table.
       proto[methodName].overloadTable = [];
@@ -818,9 +818,9 @@ var LibraryEmbind = {
     var argsWired = new Array(expectedArgCount);
     var invokerFuncArgs = [];
     var destructors = [];
-    var invokerFn = function() {
-      if (arguments.length !== expectedArgCount) {
-        throwBindingError(`function ${humanName} called with ${arguments.length} arguments, expected ${expectedArgCount}`);
+    var invokerFn = function(...args) {
+      if (args.length !== expectedArgCount) {
+        throwBindingError(`function ${humanName} called with ${args.length} arguments, expected ${expectedArgCount}`);
       }
 #if EMSCRIPTEN_TRACING
       Module.emscripten_trace_enter_context(`embind::${humanName}`);
@@ -834,11 +834,11 @@ var LibraryEmbind = {
         invokerFuncArgs[1] = thisWired;
       }
       for (var i = 0; i < expectedArgCount; ++i) {
-        argsWired[i] = argTypes[i + 2]['toWireType'](destructors, arguments[i]);
+        argsWired[i] = argTypes[i + 2]['toWireType'](destructors, args[i]);
         invokerFuncArgs.push(argsWired[i]);
       }
 
-      var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
+      var rv = cppInvokerFunc(...invokerFuncArgs);
 
       function onDone(rv) {
         if (needsDestructorStack) {
@@ -896,11 +896,11 @@ var LibraryEmbind = {
 
 #if EMBIND_AOT
   var signature = createJsInvokerSignature(argTypes, isClassMethodFunc, returns, isAsync);
-  var invokerFn = InvokerFunctions[signature].apply(null, closureArgs);
+  var invokerFn = InvokerFunctions[signature](...closureArgs);
 #else
   let [args, invokerFnBody] = createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync);
   args.push(invokerFnBody);
-  var invokerFn = newFunc(Function, args).apply(null, closureArgs);
+  var invokerFn = newFunc(Function, args)(...closureArgs);
 #endif
 #endif
     return createNamedFunction(humanName, invokerFn);
@@ -1765,18 +1765,18 @@ var LibraryEmbind = {
           basePrototype = ClassHandle.prototype;
         }
 
-        var constructor = createNamedFunction(name, function() {
+        var constructor = createNamedFunction(name, function(...args) {
           if (Object.getPrototypeOf(this) !== instancePrototype) {
             throw new BindingError("Use 'new' to construct " + name);
           }
           if (undefined === registeredClass.constructor_body) {
             throw new BindingError(name + " has no accessible constructor");
           }
-          var body = registeredClass.constructor_body[arguments.length];
+          var body = registeredClass.constructor_body[args.length];
           if (undefined === body) {
-            throw new BindingError(`Tried to invoke ctor of ${name} with invalid number of parameters (${arguments.length}) - expected (${Object.keys(registeredClass.constructor_body).toString()}) parameters instead!`);
+            throw new BindingError(`Tried to invoke ctor of ${name} with invalid number of parameters (${args.length}) - expected (${Object.keys(registeredClass.constructor_body).toString()}) parameters instead!`);
           }
-          return body.apply(this, arguments);
+          return body.apply(this, args);
         });
 
         var instancePrototype = Object.create(basePrototype, {
@@ -2197,14 +2197,12 @@ var LibraryEmbind = {
     wrapperType = requireRegisteredType(wrapperType, 'wrapper');
     properties = Emval.toValue(properties);
 
-    var arraySlice = [].slice;
-
     var registeredClass = wrapperType.registeredClass;
     var wrapperPrototype = registeredClass.instancePrototype;
     var baseClass = registeredClass.baseClass;
     var baseClassPrototype = baseClass.instancePrototype;
     var baseConstructor = registeredClass.baseClass.constructor;
-    var ctor = createNamedFunction(constructorName, function() {
+    var ctor = createNamedFunction(constructorName, function(...args) {
       registeredClass.baseClass.pureVirtualFunctions.forEach(function(name) {
         if (this[name] === baseClassPrototype[name]) {
           throw new PureVirtualError(`Pure virtual function ${name} must be implemented in JavaScript`);
@@ -2214,19 +2212,17 @@ var LibraryEmbind = {
       Object.defineProperty(this, '__parent', {
         value: wrapperPrototype
       });
-      this["__construct"].apply(this, arraySlice.call(arguments));
+      this["__construct"](...args);
     });
 
     // It's a little nasty that we're modifying the wrapper prototype here.
 
-    wrapperPrototype["__construct"] = function __construct() {
+    wrapperPrototype["__construct"] = function __construct(...args) {
       if (this === wrapperPrototype) {
         throwBindingError("Pass correct 'this' to __construct");
       }
 
-      var inner = baseConstructor["implement"].apply(
-        undefined,
-        [this].concat(arraySlice.call(arguments)));
+      var inner = baseConstructor["implement"](this, ...args);
       detachFinalizer(inner);
       var $$ = inner.$$;
       inner["notifyOnDestruction"]();

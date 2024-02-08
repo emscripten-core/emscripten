@@ -513,7 +513,7 @@ FS.staticInit();` +
 
         mounts.push(m);
 
-        check.push.apply(check, m.mounts);
+        check.push(...m.mounts);
       }
 
       return mounts;
@@ -1784,9 +1784,9 @@ FS.staticInit();` +
       var keys = Object.keys(node.stream_ops);
       keys.forEach((key) => {
         var fn = node.stream_ops[key];
-        stream_ops[key] = function forceLoadLazyFile() {
+        stream_ops[key] = (...args) => {
           FS.forceLoadFile(node);
-          return fn.apply(null, arguments);
+          return fn(...args);
         };
       });
       function writeChunks(stream, buffer, offset, length, position) {

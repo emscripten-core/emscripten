@@ -72,10 +72,7 @@ addToLibrary({
       if (lastSlash === -1) return path;
       return path.substr(lastSlash+1);
     },
-    join: function() {
-      var paths = Array.prototype.slice.call(arguments);
-      return PATH.normalize(paths.join('/'));
-    },
+    join: (...paths) => PATH.normalize(paths.join('/')),
     join2: (l, r) => PATH.normalize(l + '/' + r),
   },
   // The FS-using parts are split out into a separate object, so simple path
@@ -90,11 +87,11 @@ addToLibrary({
 #endif
   ],
   $PATH_FS: {
-    resolve: function() {
+    resolve: (...args) => {
       var resolvedPath = '',
         resolvedAbsolute = false;
-      for (var i = arguments.length - 1; i >= -1 && !resolvedAbsolute; i--) {
-        var path = (i >= 0) ? arguments[i] : FS.cwd();
+      for (var i = args.length - 1; i >= -1 && !resolvedAbsolute; i--) {
+        var path = (i >= 0) ? args[i] : FS.cwd();
         // Skip empty and invalid entries
         if (typeof path != 'string') {
           throw new TypeError('Arguments to path.resolve must be strings');
