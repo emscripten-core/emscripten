@@ -1653,7 +1653,7 @@ sigs = {
   wgpuQuerySetReference__sig: 'vp',
   wgpuQuerySetRelease__sig: 'vp',
   wgpuQuerySetSetLabel__sig: 'vpp',
-  wgpuQueueOnSubmittedWorkDone__sig: 'vpjpp',
+  wgpuQueueOnSubmittedWorkDone__sig: 'vppp',
   wgpuQueueReference__sig: 'vp',
   wgpuQueueRelease__sig: 'vp',
   wgpuQueueSetLabel__sig: 'vpp',
