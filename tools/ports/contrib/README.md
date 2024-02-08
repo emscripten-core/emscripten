@@ -24,7 +24,7 @@ additional components:
 1. A handler function defined this way:
 ```python
 def handle_options(options):
-  # options is of type Dict[str, List[str]] (result of calling urllib.parse.parse_qs)
+  # options is of type Dict[str, str]
   # in case of error, use utils.exit_with_error('error message')
 ```
 2. A dictionary called `OPTIONS` (type `Dict[str, str]`) where each key is the 
@@ -35,14 +35,6 @@ check that they are valid option names for this port (using `OPTIONS`). It then
 calls the handler function with these (valid) options. If you detect an error
 with a value, you should use `tools.utils.exit_with_error` to report the 
 failure.
-
-Options are interpreted as a query string, but with a distinction: the `:` 
-character is used as the separator instead of the more commonly used `&` (so
-that it doesn't interfere when used in a shell environment).
-This process automatically manages escape sequences and repeated options:
-
-Example: `--use-port=contrib.foo:bar=1:bar=2%263` => calls 
-`tools.ports.contrib.foo.handle_options({'bar': ['1', '2&3']})`
 
 > ### Note
 > If the options influence the way the library produced by the port is built, 

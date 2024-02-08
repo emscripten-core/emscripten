@@ -14513,3 +14513,21 @@ addToLibrary({
     self.do_runf(test_file('hello_world.c'), 'assertions enabled\n4', emcc_args=['-sASSERTIONS=1'])
     self.do_runf(test_file('hello_world.c'), 'assertions disabled\n4', emcc_args=['-sASSERTIONS=0'])
     self.assertNotContained('#preprocess', read_file('hello_world.js'))
+
+  @with_both_compilers
+  def test_use_port_errors(self, compiler):
+    stderr = self.expect_fail([compiler, test_file('hello_world.c'), '--use-port=invalid', '-o', 'out.js'])
+    self.assertFalse(os.path.exists('out.js'))
+    self.assertContained(['Error with --use-port=invalid | invalid port name: invalid'], stderr)
+    stderr = self.expect_fail([compiler, test_file('hello_world.c'), '--use-port=sdl2:opt1=v1', '-o', 'out.js'])
+    self.assertFalse(os.path.exists('out.js'))
+    self.assertContained(['Error with --use-port=sdl2:opt1=v1 | no options available for port sdl2'], stderr)
+    stderr = self.expect_fail([compiler, test_file('hello_world.c'), '--use-port=sdl2_image:format=jpg', '-o', 'out.js'])
+    self.assertFalse(os.path.exists('out.js'))
+    self.assertContained(['Error with --use-port=sdl2_image:format=jpg | format is not supported'], stderr)
+    stderr = self.expect_fail([compiler, test_file('hello_world.c'), '--use-port=sdl2_image:formats', '-o', 'out.js'])
+    self.assertFalse(os.path.exists('out.js'))
+    self.assertContained(['Error with --use-port=sdl2_image:formats | formats is missing a value'], stderr)
+    stderr = self.expect_fail([compiler, test_file('hello_world.c'), '--use-port=sdl2_image:formats=jpg:formats=png', '-o', 'out.js'])
+    self.assertFalse(os.path.exists('out.js'))
+    self.assertContained(['Error with --use-port=sdl2_image:formats=jpg:formats=png | duplicate option formats'], stderr)

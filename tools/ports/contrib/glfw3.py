@@ -84,8 +84,7 @@ def process_args(ports):
 
 
 def handle_options(options):
-  for option, values in options.items():
-    value = values[-1]  # ignore multiple definitions (last one wins)
+  for option, value in options.items():
     if value.lower() in {'true', 'false'}:
       opts[option] = value.lower() == 'true'
     else:

@@ -89,9 +89,7 @@ def process_dependencies(settings):
 
 
 def handle_options(options):
-  # options has been parsed from a query string
-  for fmts in options['formats']:
-    opts['formats'].update({format.lower().strip() for format in fmts.split(',')})
+  opts['formats'].update({format.lower().strip() for format in options['formats'].split(',')})
 
 
 def show():

@@ -15,7 +15,6 @@ from tools import shared
 from tools import system_libs
 from tools import utils
 from tools.settings import settings
-from urllib.parse import parse_qs
 
 from tools.toolchain_profiler import ToolchainProfiler
 
@@ -396,26 +395,34 @@ def resolve_dependencies(port_set, settings):
     add_deps(port)
 
 
+def handle_use_port_error(arg, message):
+  utils.exit_with_error(f'Error with --use-port={arg} | {message}')
+
+
 def handle_use_port_arg(settings, arg):
   args = arg.split(':', 1)
   name, options = args[0], None
   if len(args) == 2:
     options = args[1]
   if name not in ports_by_name:
-    utils.exit_with_error(f'Invalid port name: {name} used with --use-port')
+    handle_use_port_error(arg, f'invalid port name: {name}')
   ports_needed.add(name)
   if options:
     port = ports_by_name[name]
     if not hasattr(port, 'handle_options'):
-      utils.exit_with_error(f'Invalid options for port {name}: No options available')
+      handle_use_port_error(arg, f'no options available for port {name}')
     else:
-      try:
-        options_qs = parse_qs(options, strict_parsing=True, separator=':')
-      except ValueError as error:
-        utils.exit_with_error(f'{options} is not valid: {error}. Available options are {port.OPTIONS}.')
-      if not set(options_qs.keys()).issubset(port.OPTIONS.keys()):
-        utils.exit_with_error(f'{options} is not valid. Available options are {port.OPTIONS}.')
-      port.handle_options(options_qs)
+      options_dict = {}
+      for name_value in options.split(':'):
+        nv = name_value.split('=', 1)
+        if len(nv) != 2:
+          handle_use_port_error(arg, f'{name_value} is missing a value')
+        if nv[0] not in port.OPTIONS:
+          handle_use_port_error(arg, f'{nv[0]} is not supported; available options are {port.OPTIONS}')
+        if nv[0] in options_dict:
+          handle_use_port_error(arg, f'duplicate option {nv[0]}')
+        options_dict[nv[0]] = nv[1]
+      port.handle_options(options_dict)
 
 
 def get_needed_ports(settings):
