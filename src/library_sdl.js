@@ -1606,7 +1606,7 @@ var LibrarySDL = {
       var data = surfData.image.data;
       var buffer = surfData.buffer;
       assert(buffer % 4 == 0, 'Invalid buffer offset: ' + buffer);
-      var src = buffer >> 2;
+      var src = {{{ getHeapOffset('buffer', 'i32') }}};
       var dst = 0;
       var isScreen = surf == SDL.screen;
       var num;

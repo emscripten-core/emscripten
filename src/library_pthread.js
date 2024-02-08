@@ -962,8 +962,12 @@ var LibraryPThread = {
 
   $proxyToMainThread__deps: ['$withStackSave', '_emscripten_run_on_main_thread_js'].concat(i53ConversionDeps),
   $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
-  $proxyToMainThread: (index, sync, ...callArgs) => {
-    // Additional arguments are passed after those two, which are the actual
+  $proxyToMainThread: (funcIndex, emAsmAddr, sync, ...callArgs) => {
+    // EM_ASM proxying is done by passing a pointer to the address of the EM_ASM
+    // contant as `emAsmAddr`.  JS library proxying is done by passing an index
+    // into `proxiedJSCallArgs` as `funcIndex`. If `emAsmAddr` is non-zero then
+    // `funcIndex` will be ignored.
+    // Additional arguments are passed after the first three are the actual
     // function arguments.
     // The serialization buffer contains the number of call params, and then
     // all the args here.
@@ -995,7 +999,7 @@ var LibraryPThread = {
         HEAPF64[b + i] = arg;
 #endif
       }
-      return __emscripten_run_on_main_thread_js(index, serializedNumCallArgs, args, sync);
+      return __emscripten_run_on_main_thread_js(funcIndex, emAsmAddr, serializedNumCallArgs, args, sync);
     });
   },
 
@@ -1005,7 +1009,7 @@ var LibraryPThread = {
   _emscripten_receive_on_main_thread_js__deps: [
     '$proxyToMainThread',
     '$proxiedJSCallArgs'],
-  _emscripten_receive_on_main_thread_js: (index, callingThread, numCallArgs, args) => {
+  _emscripten_receive_on_main_thread_js: (funcIndex, emAsmAddr, callingThread, numCallArgs, args) => {
     // Sometimes we need to backproxy events to the calling thread (e.g.
     // HTML5 DOM events handlers such as
     // emscripten_set_mousemove_callback()), so keep track in a globally
@@ -1028,15 +1032,17 @@ var LibraryPThread = {
       proxiedJSCallArgs[i] = HEAPF64[b + i];
 #endif
     }
-    // Proxied JS library funcs are encoded as positive values, and
-    // EM_ASMs as negative values (see include_asm_consts)
+    // Proxied JS library funcs use funcIndex and EM_ASM functions use emAsmAddr
 #if HAVE_EM_ASM
-    var isEmAsmConst = index < 0;
-    var func = !isEmAsmConst ? proxiedFunctionTable[index] : ASM_CONSTS[-index - 1];
+    var func = emAsmAddr ? ASM_CONSTS[emAsmAddr] : proxiedFunctionTable[funcIndex];
 #else
-    var func = proxiedFunctionTable[index];
+#if ASSERTIONS
+    assert(!emAsmAddr);
+#endif
+    var func = proxiedFunctionTable[funcIndex];
 #endif
 #if ASSERTIONS
+    assert(!(funcIndex && emAsmAddr));
     assert(func.length == numCallArgs, 'Call args mismatch in _emscripten_receive_on_main_thread_js');
 #endif
     PThread.currentProxiedOperationCallerThread = callingThread;
