@@ -18,8 +18,8 @@
 
 // Number of handles reserved for non-use (0) or common values w/o refcount.
 {{{ 
-  globalThis.EMVAL_RESERVED_HANDLES = 10;
-  globalThis.EMVAL_LAST_RESERVED_HANDLE = globalThis.EMVAL_RESERVED_HANDLES - 1;
+  globalThis.EMVAL_RESERVED_HANDLES = 5;
+  globalThis.EMVAL_LAST_RESERVED_HANDLE = globalThis.EMVAL_RESERVED_HANDLES * 2 - 1;
   null;
 }}}
 var LibraryEmVal = {
@@ -41,14 +41,14 @@ var LibraryEmVal = {
       false, 1,
     );
   #if ASSERTIONS
-    assert(emval_handles.length === {{{ EMVAL_RESERVED_HANDLES }}});
+    assert(emval_handles.length === {{{ EMVAL_RESERVED_HANDLES }}} * 2);
   #endif
     Module['count_emval_handles'] = count_emval_handles;
   },
 
   $count_emval_handles__deps: ['$emval_freelist', '$emval_handles'],
   $count_emval_handles: () => {
-    return (emval_handles.length - {{{ EMVAL_RESERVED_HANDLES }}}) / 2 - emval_freelist.length;
+    return emval_handles.length / 2 - {{{ EMVAL_RESERVED_HANDLES }}} - emval_freelist.length;
   },
 
   _emval_register_symbol__deps: ['$emval_symbols', '$readLatin1String'],
