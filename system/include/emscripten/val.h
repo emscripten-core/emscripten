@@ -46,10 +46,11 @@ extern "C" {
 void _emval_register_symbol(const char*);
 
 enum {
-  _EMVAL_UNDEFINED = 2,
-  _EMVAL_NULL = 4,
-  _EMVAL_TRUE = 6,
-  _EMVAL_FALSE = 8
+  _EMVAL_UNDEFINED = 1,
+  _EMVAL_NULL = 2,
+  _EMVAL_TRUE = 3,
+  _EMVAL_FALSE = 4,
+  _EMVAL_NUM_RESERVED_HANDLES = 5,
 };
 
 typedef struct _EM_DESTRUCTORS* EM_DESTRUCTORS;
@@ -57,8 +58,8 @@ typedef struct _EM_METHOD_CALLER* EM_METHOD_CALLER;
 typedef double EM_GENERIC_WIRE_TYPE;
 typedef const void* EM_VAR_ARGS;
 
-void _emval_incref(EM_VAL value);
-void _emval_decref(EM_VAL value);
+EM_VAL _emval_clone(EM_VAL value);
+void _emval_free(EM_VAL value);
 
 void _emval_run_destructors(EM_DESTRUCTORS handle);
 
@@ -376,21 +377,39 @@ public:
       : val(internal::_emval_new_cstring(v))
   {}
 
-  // Note: unlike other constructors, this doesn't use as_handle() because
-  // it just moves a value and doesn't need to go via incref/decref.
-  // This means it's safe to move values across threads - an error will
-  // only arise if you access or free it from the wrong thread later.
+  // Move constructor takes over the other item's place in the list for this handle.
   val(val&& v) : handle(v.handle), thread(v.thread) {
     v.handle = 0;
+    if (v.next == &v) {
+      next = prev = this;
+    } else {
+      next = v.next;
+      prev = v.prev;
+      next->prev = prev->next = this;
+    }
   }
 
-  val(const val& v) : val(v.as_handle()) {
-    internal::_emval_incref(handle);
+  // Copy constructor inserts this new entry into the list for this handle.
+  val(const val& v) : handle(v.handle),
+      next(v.next),
+      prev(const_cast<val*>(&v)) ,
+      thread (v.thread) {
+    const_cast<val&>(v).next = this;
+    next->prev = this;
   }
 
   ~val() {
     if (handle) {
-      internal::_emval_decref(as_handle());
+      if (this == next) {
+        // The was the only entry in the list, free the value.
+        if (handle >= reinterpret_cast<EM_VAL>(internal::_EMVAL_NUM_RESERVED_HANDLES)) {
+          internal::_emval_free(as_handle());
+        }
+      } else {
+        // More references exist, remove this entry from the list.
+        next->prev = prev;
+        prev->next = next;
+      }
       handle = 0;
     }
   }
@@ -625,9 +644,9 @@ public:
 #endif
 
 private:
-  // takes ownership, assumes handle already incref'd and lives on the same thread
+  // takes ownership, assumes handle lives on the same thread with no other C++ references
   explicit val(EM_VAL handle)
-      : handle(handle), thread(pthread_self())
+      : handle(handle), next(this), prev(this), thread(pthread_self())
   {}
 
   template<typename WrapperType>
@@ -657,8 +676,11 @@ private:
     return v;
   }
 
-  pthread_t thread;
   EM_VAL handle;
+  // Circular doubly-linked list of all references to this handle.
+  val* next;
+  val* prev;
+  pthread_t thread;
 
   friend struct internal::BindingType<val>;
 };
@@ -787,9 +809,8 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
                                               !std::is_const<T>::value>::type> {
   typedef EM_VAL WireType;
   static WireType toWireType(const val& v) {
-    EM_VAL handle = v.as_handle();
-    _emval_incref(handle);
-    return handle;
+    // Allocate a new handle that the JS fromWireType will free.
+    return _emval_clone(v.as_handle());
   }
   static T fromWireType(WireType v) {
     return T(val::take_ownership(v));

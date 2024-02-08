@@ -12,43 +12,37 @@
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 // -- jshint doesn't understand library syntax, so we need to mark the symbols exposed here
-/*global getStringOrSymbol, emval_freelist, emval_handles, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_decref*/
+/*global getStringOrSymbol, emval_handles, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_free*/
 /*global emval_addMethodCaller, emval_methodCallers, addToLibrary, global, emval_lookupTypes, makeLegalFunctionName*/
 /*global emval_get_global*/
 
-// Number of handles reserved for non-use (0) or common values w/o refcount.
+// Number of handles reserved for non-use (0) or common values never freed.
 {{{ 
   globalThis.EMVAL_RESERVED_HANDLES = 5;
   globalThis.EMVAL_LAST_RESERVED_HANDLE = globalThis.EMVAL_RESERVED_HANDLES * 2 - 1;
   null;
 }}}
 var LibraryEmVal = {
-  // Stack of handles available for reuse.
-  $emval_freelist: [],
-  // Array of alternating pairs (value, refcount).
-  $emval_handles: [],
+  $emval_handles__deps: ['$HandleAllocator'],
+  $emval_handles: "new HandleAllocator();",
   $emval_symbols: {}, // address -> string
 
   $init_emval__deps: ['$count_emval_handles', '$emval_handles'],
   $init_emval__postset: 'init_emval();',
   $init_emval: () => {
-    // reserve 0 and some special values. These never get de-allocated.
-    emval_handles.push(
-      0, 1,
-      undefined, 1,
-      null, 1,
-      true, 1,
-      false, 1,
-    );
+    // reserve some special values. These never get de-allocated.
+    // The HandleAllocator takes care of reserving zero.
+    emval_handles.allocated.push(undefined, null, true, false);
   #if ASSERTIONS
-    assert(emval_handles.length === {{{ EMVAL_RESERVED_HANDLES }}} * 2);
+    assert(emval_handles.allocated.length === {{{ EMVAL_RESERVED_HANDLES }}});
   #endif
     Module['count_emval_handles'] = count_emval_handles;
   },
 
-  $count_emval_handles__deps: ['$emval_freelist', '$emval_handles'],
+  $count_emval_handles__deps: ['$emval_handles'],
   $count_emval_handles: () => {
-    return emval_handles.length / 2 - {{{ EMVAL_RESERVED_HANDLES }}} - emval_freelist.length;
+    return emval_handles.allocated.length - {{{ EMVAL_RESERVED_HANDLES }}}
+        - emval_handles.freelist.length;
   },
 
   _emval_register_symbol__deps: ['$emval_symbols', '$readLatin1String'],
@@ -65,58 +59,45 @@ var LibraryEmVal = {
     return symbol;
   },
 
-  $Emval__deps: ['$emval_freelist', '$emval_handles', '$throwBindingError', '$init_emval'],
+  $Emval__deps: ['$emval_handles', '$throwBindingError', '$init_emval'],
   $Emval: {
     toValue: (handle) => {
       if (!handle) {
           throwBindingError('Cannot use deleted val. handle = ' + handle);
       }
-  #if ASSERTIONS
-      // handle 2 is supposed to be `undefined`.
-      assert(handle === 2 || emval_handles[handle] !== undefined && handle % 2 === 0, `invalid handle: ${handle}`);
-  #endif
-      return emval_handles[handle];
+      return emval_handles.get(handle);
     },
 
     toHandle: (value) => {
       switch (value) {
-        case undefined: return 2;
-        case null: return 4;
-        case true: return 6;
-        case false: return 8;
+        case undefined: return 1;
+        case null: return 2;
+        case true: return 3;
+        case false: return 4;
         default:{
-          const handle = emval_freelist.pop() || emval_handles.length;
-          emval_handles[handle] = value;
-          emval_handles[handle + 1] = 1;
-          return handle;
+          return emval_handles.allocate(value);
         }
       }
     }
   },
 
-  _emval_incref__deps: ['$emval_handles'],
-  _emval_incref: (handle) => {
+  _emval_clone__deps: ['$emval_handles'],
+  _emval_clone: (handle) => {
+    return Emval.toHandle(emval_handles.get(handle));
+  },
+
+  _emval_free__deps: ['$emval_handles'],
+  _emval_free: (handle) => {
     if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}}) {
-      emval_handles[handle + 1] += 1;
+      emval_handles.free(handle);
     }
   },
 
-  _emval_decref__deps: ['$emval_freelist', '$emval_handles'],
-  _emval_decref: (handle) => {
-    if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}} && 0 === --emval_handles[handle + 1]) {
-  #if ASSERTIONS
-      assert(emval_handles[handle] !== undefined, `Decref for unallocated handle.`);
-  #endif
-      emval_handles[handle] = undefined;
-      emval_freelist.push(handle);
-    }
-  },
-
-  _emval_run_destructors__deps: ['_emval_decref', '$Emval', '$runDestructors'],
+  _emval_run_destructors__deps: ['_emval_free', '$Emval', '$runDestructors'],
   _emval_run_destructors: (handle) => {
     var destructors = Emval.toValue(handle);
     runDestructors(destructors);
-    __emval_decref(handle);
+    __emval_free(handle);
   },
 
   _emval_new_array__deps: ['$Emval'],
