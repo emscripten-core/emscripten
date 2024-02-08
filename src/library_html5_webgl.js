@@ -425,26 +425,26 @@ var LibraryHtml5WebGL = {
 
   emscripten_webgl_get_program_parameter_d__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_program_parameter_d: (program, param) =>
-    GLctx.getProgramParameter(GL.programs[program], param),
+    GLctx.getProgramParameter(GL.programs.get(program), param),
 
   emscripten_webgl_get_program_info_log_utf8__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_program_info_log_utf8__deps: ['$stringToNewUTF8'],
   emscripten_webgl_get_program_info_log_utf8: (program) =>
-    stringToNewUTF8(GLctx.getProgramInfoLog(GL.programs[program])),
+    stringToNewUTF8(GLctx.getProgramInfoLog(GL.programs.get(program))),
 
   emscripten_webgl_get_shader_parameter_d__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_shader_parameter_d: (shader, param) =>
-    GLctx.getShaderParameter(GL.shaders[shader], param),
+    GLctx.getShaderParameter(GL.shaders.get(shader), param),
 
   emscripten_webgl_get_shader_info_log_utf8__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_shader_info_log_utf8__deps: ['$stringToNewUTF8'],
   emscripten_webgl_get_shader_info_log_utf8: (shader) =>
-    stringToNewUTF8(GLctx.getShaderInfoLog(GL.shaders[shader])),
+    stringToNewUTF8(GLctx.getShaderInfoLog(GL.shaders.get(shader))),
 
   emscripten_webgl_get_shader_source_utf8__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_shader_source_utf8__deps: ['$stringToNewUTF8'],
   emscripten_webgl_get_shader_source_utf8: (shader) =>
-    stringToNewUTF8(GLctx.getShaderSource(GL.shaders[shader])),
+    stringToNewUTF8(GLctx.getShaderSource(GL.shaders.get(shader))),
 
   emscripten_webgl_get_vertex_attrib_d__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_vertex_attrib_d: (index, param) =>
@@ -462,14 +462,13 @@ var LibraryHtml5WebGL = {
     writeGLArray(GLctx.getVertexAttrib(index, param), dst, dstLength, dstType),
 
   emscripten_webgl_get_uniform_d__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_uniform_d__deps: ['$webglGetUniformLocation'],
   emscripten_webgl_get_uniform_d: (program, location) =>
-    GLctx.getUniform(GL.programs[program], webglGetUniformLocation(location)),
+    GLctx.getUniform(GL.programs.get(program), webglGetUniformLocation(location)),
 
   emscripten_webgl_get_uniform_v__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_uniform_v__deps: ['$writeGLArray', '$webglGetUniformLocation'],
   emscripten_webgl_get_uniform_v: (program, location, dst, dstLength, dstType) =>
-    writeGLArray(GLctx.getUniform(GL.programs[program], webglGetUniformLocation(location)), dst, dstLength, dstType),
+    writeGLArray(GLctx.getUniform(GL.programs.get(program), webglGetUniformLocation(location)), dst, dstLength, dstType),
 
   emscripten_webgl_get_parameter_v__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_parameter_v__deps: ['$writeGLArray'],

@@ -564,15 +564,15 @@ var LibraryGLEmulation = {
         GL.shaderSources[shader] = source;
         dbg("glShaderSource: Output: \n" + source);
 #endif
-        GLctx.shaderSource(GL.shaders[shader], source);
+        GLctx.shaderSource(GL.shaders.get(shader), source);
       };
 
       var glCompileShader = _glCompileShader;
       _glCompileShader = _emscripten_glCompileShader = (shader) => {
-        GLctx.compileShader(GL.shaders[shader]);
+        GLctx.compileShader(GL.shaders.get(shader));
 #if GL_DEBUG
-        if (!GLctx.getShaderParameter(GL.shaders[shader], GLctx.COMPILE_STATUS)) {
-          dbg(`Failed to compile shader: ${GLctx.getShaderInfoLog(GL.shaders[shader])}`);
+        if (!GLctx.getShaderParameter(GL.shaders.get(shader), GLctx.COMPILE_STATUS)) {
+          dbg(`Failed to compile shader: ${GLctx.getShaderInfoLog(GL.shaders.get(shader))}`);
           dbg(`Info: ${JSON.stringify(GL.shaderInfos[shader])}`);
           dbg(`Original source: ${GL.shaderOriginalSources[shader]}`);
           dbg(`Source: ${GL.shaderSources[shader]}`);
@@ -642,7 +642,7 @@ var LibraryGLEmulation = {
       var glLinkProgram = _glLinkProgram;
       _glLinkProgram = _emscripten_glLinkProgram = (program) => {
         if (!(program in zeroUsedPrograms)) {
-          GLctx.bindAttribLocation(GL.programs[program], 0, 'a_position');
+          GLctx.bindAttribLocation(GL.programs.get(program), 0, 'a_position');
         }
         glLinkProgram(program);
       };
@@ -747,9 +747,9 @@ var LibraryGLEmulation = {
 
   glDeleteObject__deps: ['glDeleteProgram', 'glDeleteShader'],
   glDeleteObject: (id) => {
-    if (GL.programs[id]) {
+    if (GL.programs.has(id)) {
       _glDeleteProgram(id);
-    } else if (GL.shaders[id]) {
+    } else if (GL.shaders.has(id)) {
       _glDeleteShader(id);
     } else {
       err(`WARNING: deleteObject received invalid id: ${id}`);
@@ -759,22 +759,22 @@ var LibraryGLEmulation = {
 
   glGetObjectParameteriv__deps: ['glGetProgramiv', 'glGetShaderiv'],
   glGetObjectParameteriv: (id, type, result) => {
-    if (GL.programs[id]) {
+    if (GL.programs.has(id)) {
       if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
-        var log = GLctx.getProgramInfoLog(GL.programs[id]);
+        var log = GLctx.getProgramInfoLog(GL.programs.get(id));
         if (log === null) log = '(unknown error)';
         {{{ makeSetValue('result', '0', 'log.length', 'i32') }}};
         return;
       }
       _glGetProgramiv(id, type, result);
-    } else if (GL.shaders[id]) {
+    } else if (GL.shaders.has(id)) {
       if (type == 0x8B84) { // GL_OBJECT_INFO_LOG_LENGTH_ARB
-        var log = GLctx.getShaderInfoLog(GL.shaders[id]);
+        var log = GLctx.getShaderInfoLog(GL.shaders.get(id));
         if (log === null) log = '(unknown error)';
         {{{ makeSetValue('result', '0', 'log.length', 'i32') }}};
         return;
       } else if (type == 0x8B88) { // GL_OBJECT_SHADER_SOURCE_LENGTH_ARB
-        var source = GLctx.getShaderSource(GL.shaders[id]);
+        var source = GLctx.getShaderSource(GL.shaders.get(id));
         if (source === null) return; // If an error occurs, nothing will be written to result
         {{{ makeSetValue('result', '0', 'source.length', 'i32') }}};
         return;
@@ -788,9 +788,9 @@ var LibraryGLEmulation = {
 
   glGetInfoLog__deps: ['glGetProgramInfoLog', 'glGetShaderInfoLog'],
   glGetInfoLog: (id, maxLength, length, infoLog) => {
-    if (GL.programs[id]) {
+    if (GL.programs.has(id)) {
       _glGetProgramInfoLog(id, maxLength, length, infoLog);
-    } else if (GL.shaders[id]) {
+    } else if (GL.shaders.has(id)) {
       _glGetShaderInfoLog(id, maxLength, length, infoLog);
     } else {
       err(`WARNING: glGetInfoLog received invalid id: ${id}`);
@@ -2158,13 +2158,13 @@ var LibraryGLEmulation = {
 
           if (useCurrProgram) {
             if (GL.shaderInfos[GL.programShaders[GL.currProgram][0]].type == GLctx.VERTEX_SHADER) {
-              this.vertexShader = GL.shaders[GL.programShaders[GL.currProgram][0]];
-              this.fragmentShader = GL.shaders[GL.programShaders[GL.currProgram][1]];
+              this.vertexShader = GL.shaders.get(GL.programShaders[GL.currProgram][0]);
+              this.fragmentShader = GL.shaders.get(GL.programShaders[GL.currProgram][1]);
             } else {
-              this.vertexShader = GL.shaders[GL.programShaders[GL.currProgram][1]];
-              this.fragmentShader = GL.shaders[GL.programShaders[GL.currProgram][0]];
+              this.vertexShader = GL.shaders.get(GL.programShaders[GL.currProgram][1]);
+              this.fragmentShader = GL.shaders.get(GL.programShaders[GL.currProgram][0]);
             }
-            this.program = GL.programs[GL.currProgram];
+            this.program = GL.programs.get(GL.currProgram);
             this.usedTexUnitList = [];
           } else {
             // IMPORTANT NOTE: If you parameterize the shader source based on any runtime values
@@ -3533,30 +3533,25 @@ var LibraryGLEmulation = {
   $emulGlGenVertexArrays__deps: ['$GLEmulation'],
   $emulGlGenVertexArrays: (n, vaos) => {
     for (var i = 0; i < n; i++) {
-      var id = GL.getNewId(GLEmulation.vaos);
-      GLEmulation.vaos[id] = {
-        id,
+      var vao = {
         arrayBuffer: 0,
         elementArrayBuffer: 0,
         enabledVertexAttribArrays: {},
         vertexAttribPointers: {},
         enabledClientStates: {},
       };
-      {{{ makeSetValue('vaos', 'i*4', 'id', 'i32') }}};
+      vao.id = GLEmulation.vaos.allocate(vao);
+      {{{ makeSetValue('vaos', 'i*4', 'vao.id', 'i32') }}};
     }
   },
   $emulGlDeleteVertexArrays: (n, vaos) => {
     for (var i = 0; i < n; i++) {
       var id = {{{ makeGetValue('vaos', 'i*4', 'i32') }}};
-      GLEmulation.vaos[id] = null;
+      GLEmulation.vaos.free(id);
       if (GLEmulation.currentVao && GLEmulation.currentVao.id == id) GLEmulation.currentVao = null;
     }
   },
-  $emulGlIsVertexArray: (array) => {
-    var vao = GLEmulation.vaos[array];
-    if (!vao) return 0;
-    return 1;
-  },
+  $emulGlIsVertexArray: (array) => GLEmulation.vaos.has(array),
   $emulGlBindVertexArray__deps: ['glBindBuffer', 'glEnableVertexAttribArray', 'glVertexAttribPointer', 'glEnableClientState'],
   $emulGlBindVertexArray: (vao) => {
     // undo vao-related things, wipe the slate clean, both for vao of 0 or an actual vao
@@ -3573,7 +3568,7 @@ var LibraryGLEmulation = {
     GLImmediate.modifiedClientAttributes = true;
     if (vao) {
       // replay vao
-      var info = GLEmulation.vaos[vao];
+      var info = GLEmulation.vaos.get(vao);
       _glBindBuffer(GLctx.ARRAY_BUFFER, info.arrayBuffer); // XXX overwrite current binding?
       _glBindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, info.elementArrayBuffer);
       for (var vaa in info.enabledVertexAttribArrays) {
