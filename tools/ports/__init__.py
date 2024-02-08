@@ -68,6 +68,8 @@ def validate_port(port):
   expected_attrs = ['get', 'clear', 'show']
   if port.is_contrib:
     expected_attrs += ['URL', 'DESCRIPTION', 'LICENSE']
+  if hasattr(port, 'handle_options'):
+    expected_attrs += ['OPTIONS']
   for a in expected_attrs:
     assert hasattr(port, a), 'port %s is missing %s' % (port, a)
 
@@ -393,10 +395,34 @@ def resolve_dependencies(port_set, settings):
     add_deps(port)
 
 
-def handle_use_port_arg(settings, name):
+def handle_use_port_error(arg, message):
+  utils.exit_with_error(f'Error with --use-port={arg} | {message}')
+
+
+def handle_use_port_arg(settings, arg):
+  args = arg.split(':', 1)
+  name, options = args[0], None
+  if len(args) == 2:
+    options = args[1]
   if name not in ports_by_name:
-    utils.exit_with_error(f'Invalid port name: {name} used with --use-port')
+    handle_use_port_error(arg, f'invalid port name: {name}')
   ports_needed.add(name)
+  if options:
+    port = ports_by_name[name]
+    if not hasattr(port, 'handle_options'):
+      handle_use_port_error(arg, f'no options available for port {name}')
+    else:
+      options_dict = {}
+      for name_value in options.split(':'):
+        nv = name_value.split('=', 1)
+        if len(nv) != 2:
+          handle_use_port_error(arg, f'{name_value} is missing a value')
+        if nv[0] not in port.OPTIONS:
+          handle_use_port_error(arg, f'{nv[0]} is not supported; available options are {port.OPTIONS}')
+        if nv[0] in options_dict:
+          handle_use_port_error(arg, f'duplicate option {nv[0]}')
+        options_dict[nv[0]] = nv[1]
+      port.handle_options(options_dict)
 
 
 def get_needed_ports(settings):
