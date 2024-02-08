@@ -995,7 +995,7 @@ namespace wgpu {
         using ObjectBase::ObjectBase;
         using ObjectBase::operator=;
 
-        void OnSubmittedWorkDone(uint64_t signalValue, QueueWorkDoneCallback callback, void * userdata) const;
+        void OnSubmittedWorkDone(QueueWorkDoneCallback callback, void * userdata) const;
         void SetLabel(char const * label) const;
         void Submit(size_t commandCount, CommandBuffer const * commands) const;
         void WriteBuffer(Buffer const& buffer, uint64_t bufferOffset, void const * data, size_t size) const;
