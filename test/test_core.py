@@ -2639,6 +2639,10 @@ The current type of b is: 9
     self.set_setting('PROXY_TO_PTHREAD')
     self.do_run_in_out_file_test('atomic/test_wait_async.c')
 
+  @node_pthreads
+  def test_pthread_run_on_main_thread(self):
+    self.do_run_in_out_file_test('pthread/test_pthread_run_on_main_thread.c')
+
   def test_tcgetattr(self):
     self.do_runf('termios/test_tcgetattr.c', 'success')
 

@@ -4249,7 +4249,6 @@ Module["preRun"] = () => {
 
   # Test that the proxying operations of user code from pthreads to main thread
   # work
-  @disabled('https://github.com/emscripten-core/emscripten/issues/18210')
   @requires_threads
   def test_pthread_run_on_main_thread(self):
     self.btest_exit('pthread/test_pthread_run_on_main_thread.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
