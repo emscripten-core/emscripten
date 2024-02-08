@@ -82,9 +82,7 @@ var LibraryEmVal = {
   },
 
   _emval_clone__deps: ['$emval_handles'],
-  _emval_clone: (handle) => {
-    return Emval.toHandle(emval_handles.get(handle));
-  },
+  _emval_clone: (handle) => Emval.toHandle(emval_handles.get(handle)),
 
   _emval_free__deps: ['$emval_handles'],
   _emval_free: (handle) => {
