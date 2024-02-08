@@ -12,20 +12,16 @@
 #define NUM_THREADS 8
 #define N 6
 
-static void *thread_start(void *arg)
-{
+static void *thread_start(void *arg) {
   long n = (long)arg;
   long *mem[N] = {};
-  for(long i = 0; i < N; ++i)
-  {
+  for (long i = 0; i < N; ++i) {
     mem[i] = (long*)malloc(4);
     *mem[i] = n+i;
   }
-  for(long i = 0; i < N; ++i)
-  {
+  for (long i = 0; i < N; ++i) {
     long k = *mem[i];
-    if (k != n+i)
-    {
+    if (k != n+i) {
       emscripten_errf("Memory corrupted! mem[i]: %ld, i: %ld, n: %ld", k, i, n);
       pthread_exit((void*)1);
     }
@@ -37,13 +33,13 @@ static void *thread_start(void *arg)
   pthread_exit(0);
 }
 
-int main()
-{
+int main() {
   pthread_t thr[NUM_THREADS];
-  for(intptr_t i = 0; i < NUM_THREADS; ++i)
+  for (intptr_t i = 0; i < NUM_THREADS; ++i) {
     pthread_create(&thr[i], NULL, thread_start, (void*)(i*N));
+  }
   int result = 0;
-  for(int i = 0; i < NUM_THREADS; ++i) {
+  for (int i = 0; i < NUM_THREADS; ++i) {
     int res = 0;
     pthread_join(thr[i], (void**)&res);
     result += res;
