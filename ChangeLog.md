@@ -18,9 +18,56 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.51 (in development)
+3.1.53 (in development)
 -----------------------
-- Support for explicitly targeting the legacy Interet Explorer or EdgeHTML
+- The llvm version that emscripten uses was updated to 19.0.0 trunk. (#21165)
+
+3.1.52 - 01/19/24
+-----------------
+- The core stack manipulation functions (`stackSave`, `stackRestore`,
+  `stackAlloc`) are no longer exported by default.  Users of these function
+  now need to depend on them explicitly (either via `__deps` attributes or via
+  `-sEXPORTED_FUNCTIONS`). (#21075)
+- Building with `pthreads+EXPORT_ES6` will now emit the worker file as
+  `NAME.worker.mjs` rather than `.js`. This is a necessary breaking change to
+  resolve other `pthreads+EXPORT_ES6` issues in Node.js (because Node.js is
+  affected by the suffix in some cases). (#21041)
+- Include paths added by ports (e.g. `-sUSE_SDL=2`) now use `-isystem` rather
+  then `-I`.  This means that files in user-specified include directories will
+  now take precedence over port includes. (#21014)
+- Certain settings that only apply when generating JavaScript output will now
+  trigger a warning if used when generating only Wasm.
+- Fix bug where `main` was mistakenly included in debug builds but not in
+  release builds. (#20971)
+- Remove JAVA from the list of `.emscripten` config file settings.  In the
+  past we used this to run the java version of closure compiler.  If there are
+  folks who prefer to use the java version of closure compiler for some reason
+  it should be possible by adding `--platform=java` to `--closure-args` or
+  `EMCC_CLOSURE_ARGS` but emscripten will no longer do this automatically.
+  (#20919)
+- The WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG setting was
+  removed.  This was a workaround from 2018 (#7459) that should no longer be
+  needed. (#20925)
+- The `--default-obj-ext` command line flag was removed. (#20917)
+- emcc will now treat `.bc` files as source files.  These means that will get
+  compiled by clang before being passed to the linker.  This matches the
+  behaviour of clang. (#20922)
+- Emscripten now only supports browsers going back to certain versions. The
+  current set of minimum versions are: Chrome 32, Firefox 34, Safari 9.
+  Attempting to targets version older this using, for example
+  `MIN_CHROME_VERSION` will now result in build-time error.  All of these
+  browser versions are at least 8 years old now so the hope is that nobody
+  is intending to target them today.  (#20924)
+- C++ objects passed into embind's val via constructors, methods, and call
+  function will not be automatically destroyed after the function call. This
+  makes the behavior consistent for invocations. 
+- The `SUPPORT_ERRNO` setting is now deprecated as it only controlled setting
+  errno from JS library functions and emscripten no longer requires this.
+  (#21074)
+
+3.1.51 - 12/13/23
+-----------------
+- Support for explicitly targeting the legacy Internet Explorer or EdgeHTML
   (edge version prior to the chromium-based edge) browsers via
   `-sMIN_EDGE_VERSION/-sMIN_IE_VERSION` was removed. (#20881)
 - Emscripten is now more strict about handling unsupported shared library
@@ -66,8 +113,8 @@ See docs/process.md for more on how version tagging works.
   the `DEFAULT_TO_CXX` setting now only applies when linking and not when
   compiling. (#20712)
 - JavaScript library code can now use the full range of ES6 features and we rely
-  on closure compiler to transpile for ES5 when targetting older browsers.
-  For those that would rather perform transpilation seperately outside of
+  on closure compiler to transpile for ES5 when targeting older browsers.
+  For those that would rather perform transpilation separately outside of
   emscripten you can use the `-sPOLYFILL=0` setting. (#20700)
 - libcxx, libcxxabi, libunwind, and compiler-rt were updated to LLVM 17.0.4.
   (#20705, #20707, and #20708)
@@ -99,7 +146,7 @@ See docs/process.md for more on how version tagging works.
   JavaScript code. (#20551)
 - A new top-level `bootstrap` script was added.  This script is for emscripten
   developers and helps take a care of post-checkout tasks such as `npm install`.
-  If this script needs to be run (e.g. becuase package.json was changed, emcc
+  If this script needs to be run (e.g. because package.json was changed, emcc
   will exit with an error. (#19736)
 - If exceptions are disabled, using `new` together with `std::nothrow` no
   longer aborts if the allocation fails. Instead `nullptr` is returned now.
@@ -143,7 +190,7 @@ See docs/process.md for more on how version tagging works.
 -----------------
 - The `wasmTable` global is now a JS library function that will only be included
   as needed.  Code that references `wasmTable` will no need to declare a
-  dependency on it.  It can also be explictly included using
+  dependency on it.  It can also be explicitly included using
   `-sEXPORTED_RUNTIME_METHODS=wasmTable`.
 - libunwind updated to LLVM 16.0.6. (#20088)
 - The `--minify=0` commnad line flag will now preserve comments as well as
@@ -160,7 +207,7 @@ See docs/process.md for more on how version tagging works.
 - The `USE_GLFW` settings now defaults to 0 rather than 2.  This matches other
   other settings such as `USE_SDL` that default to 0 these days and also matches
   the existing behaviour for `MINIMAL_RUNTIME` and `STRICT` mode.
-  If you use GLFW you now need to explictly opt into it using `-sUSE_GLFW` or
+  If you use GLFW you now need to explicitly opt into it using `-sUSE_GLFW` or
   `-lglfw`. (#19939)
 - A new settings `TABLE_BASE` was introduced that can be used to place static
   function addresses (table slots) at a certain offset.  This defaults to 1
@@ -210,7 +257,7 @@ See docs/process.md for more on how version tagging works.
   `-sMIN_NODE_VERSION=101900` which will apply the previous minimum version of
   10.19.0. (#19192).
 - The log message that emcc will sometime print (for example when auto-building
-  system libraries) can now be completely supressed by running with
+  system libraries) can now be completely suppressed by running with
   `EMCC_LOGGING=0`.
 - Runtime dynamic linking symbols such as dlopen and dlsym will no longer cause
   a linker error when building without `-sMAIN_MODULE`.  Instead stub functions
@@ -287,13 +334,13 @@ See docs/process.md for more on how version tagging works.
    - stringToUTF8
    - lengthBytesUTF8
   If you use any of these functions in your JS code you will now need to include
-  them explictly in one of the following ways:
+  them explicitly in one of the following ways:
    - Add them to a `__deps` entry in your JS library file (with leading $)
    - Add them to `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` (with leading $)
    - Add them to `EXPORTED_FUNCTIONS` (without leading $)
    - Set `-sLEGACY_RUNTIME` to include all of them at once.
 - `FS.loadFilesFromDB` and `FS.saveFilesToDB` were removed.  We think it's
-  unlikly there were any users of these functions since there is now a separate
+  unlikely there were any users of these functions since there is now a separate
   IDBFS filesystem for folks that want persistence. (#19049)
 - `allocateUTF8` and `allocateUTF8OnStack` library function moved to
   `library_legacy.js`.  Prefer the more accurately named `stringToNewUTF8` and
@@ -314,7 +361,7 @@ See docs/process.md for more on how version tagging works.
 - Fix for using `EM_JS` functions defined in other object files.  This was a bug
   that was introduced when `LLD_REPORT_UNDEFINED` was enabled by default back in
   3.1.28. (#18928)
-- The prefered way to enable pthread is now to just the the standard `-pthread`
+- The preferred way to enable pthreads is now to just use the standard `-pthread`
   flag.  The `-sUSE_PTHREADS` setting still works but is marked as legacy and
   will generate a warning in `-sSTRICT` mode.
 - When targeting node, and using `-sMODULARIZE`, we no longer internally catch

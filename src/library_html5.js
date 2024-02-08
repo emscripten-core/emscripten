@@ -12,9 +12,10 @@ var LibraryHTML5 = {
   ],
   $JSEvents: {
 
-/* We do not depend on the exact initial values of falsey member fields - these fields can be populated on-demand
-   to save code size.
+/* We do not depend on the exact initial values of falsey member fields - these
+   fields can be populated on-demand to save code size.
    (but still documented here to keep track of what is supposed to be present)
+
     // pointers to structs malloc()ed to Emscripten HEAP for JS->C interop.
     keyEvent: 0,
     mouseEvent: 0,
@@ -28,42 +29,41 @@ var LibraryHTML5 = {
     visibilityChangeEvent: 0,
     touchEvent: 0,
 
-    // When we transition from fullscreen to windowed mode, we remember here the element that was just in fullscreen mode
-    // so that we can report information about that element in the event message.
+    // When we transition from fullscreen to windowed mode, we remember here the
+    // element that was just in fullscreen mode so that we can report
+    // information about that element in the event message.
     previousFullscreenElement: null,
 
 #if MIN_SAFARI_VERSION <= 80000 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
-    // Remember the current mouse coordinates in case we need to emulate movementXY generation for browsers that don't support it.
+    // Remember the current mouse coordinates in case we need to emulate
+    // movementXY generation for browsers that don't support it.
     // Some browsers (e.g. Safari 6.0.5) only give movementXY when Pointerlock is active.
     previousScreenX: null,
     previousScreenY: null,
 #endif
 
-    // When the C runtime exits via exit(), we unregister all event handlers added by this library to be nice and clean.
+    // When the C runtime exits via exit(), we unregister all event handlers
+    // added by this library to be nice and clean.
     // Track in this field whether we have yet registered that __ATEXIT__ handler.
     removeEventListenersRegistered: false,
 
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
-    // If we are in an event handler, specifies the event handler object from the eventHandlers array that is currently running.
+    // If we are in an event handler, specifies the event handler object from
+    // the eventHandlers array that is currently running.
     currentEventHandler: null,
 #endif
 */
 
-    // If positive, we are currently executing in a JS event handler.
-    // (this particular property must be initialized to zero, as we ++/-- it)
-    inEventHandler: 0,
-
     removeAllEventListeners() {
-      for (var i = JSEvents.eventHandlers.length-1; i >= 0; --i) {
-        JSEvents._removeHandler(i);
+      while (JSEvents.eventHandlers.length) {
+        JSEvents._removeHandler(JSEvents.eventHandlers.length - 1);
       }
-      JSEvents.eventHandlers = [];
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
       JSEvents.deferredCalls = [];
 #endif
     },
 
-#if !MINIMAL_RUNTIME || EXIT_RUNTIME // In minimal runtime, there is no concept of the page running vs being closed, and hence __ATEXIT__ is not present
+#if EXIT_RUNTIME
     registerRemoveEventListeners() {
       if (!JSEvents.removeEventListenersRegistered) {
         __ATEXIT__.push(JSEvents.removeAllEventListeners);
@@ -73,6 +73,10 @@ var LibraryHTML5 = {
 #endif
 
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
+    // If positive, we are currently executing in a JS event handler.
+    // (this particular property must be initialized to zero, as we ++/-- it)
+    inEventHandler: 0,
+
     deferredCalls: [],
 
     // Queues the given function call to occur the next time we enter an event handler.
@@ -170,29 +174,30 @@ var LibraryHTML5 = {
 #endif
         return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
       }
-      var jsEventHandler = function jsEventHandler(event) {
-#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
-        // Increment nesting count for the event handler.
-        ++JSEvents.inEventHandler;
-        JSEvents.currentEventHandler = eventHandler;
-        // Process any old deferred calls the user has placed.
-        JSEvents.runDeferredCalls();
-#endif
-        // Process the actual event, calls back to user C code handler.
-        eventHandler.handlerFunc(event);
-#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
-        // Process any new deferred calls that were placed right now from this event handler.
-        JSEvents.runDeferredCalls();
-        // Out of event handler - restore nesting count.
-        --JSEvents.inEventHandler;
-#endif
-      };
-
       if (eventHandler.callbackfunc) {
-        eventHandler.eventListenerFunc = jsEventHandler;
-        eventHandler.target.addEventListener(eventHandler.eventTypeString, jsEventHandler, eventHandler.useCapture);
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
+        eventHandler.eventListenerFunc = function(event) {
+          // Increment nesting count for the event handler.
+          ++JSEvents.inEventHandler;
+          JSEvents.currentEventHandler = eventHandler;
+          // Process any old deferred calls the user has placed.
+          JSEvents.runDeferredCalls();
+          // Process the actual event, calls back to user C code handler.
+          eventHandler.handlerFunc(event);
+          // Process any new deferred calls that were placed right now from this event handler.
+          JSEvents.runDeferredCalls();
+          // Out of event handler - restore nesting count.
+          --JSEvents.inEventHandler;
+        };
+#else
+        eventHandler.eventListenerFunc = eventHandler.handlerFunc;
+#endif
+
+        eventHandler.target.addEventListener(eventHandler.eventTypeString,
+                                             eventHandler.eventListenerFunc,
+                                             eventHandler.useCapture);
         JSEvents.eventHandlers.push(eventHandler);
-#if !MINIMAL_RUNTIME // In minimal runtime, there is no concept of the page running vs being closed, and hence __ATEXIT__ is not present
+#if EXIT_RUNTIME
         JSEvents.registerRemoveEventListeners();
 #endif
       } else {
@@ -364,8 +369,7 @@ var LibraryHTML5 = {
 #endif
   },
 #else
-  $findCanvasEventTarget__deps: ['$findEventTarget'],
-  $findCanvasEventTarget: (target) => findEventTarget(target),
+  $findCanvasEventTarget: '$findEventTarget',
 #endif
 
 #else
@@ -679,7 +683,7 @@ var LibraryHTML5 = {
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     target = findEventTarget(target);
 #else
-    if (eventTypeString == "scroll" && !target) {
+    if (eventTypeId == {{{ cDefs.EMSCRIPTEN_EVENT_SCROLL }}} && !target) {
       target = document; // By default read scroll events on document rather than window.
     } else {
       target = findEventTarget(target);
@@ -779,27 +783,23 @@ var LibraryHTML5 = {
 
   emscripten_set_blur_callback_on_thread__proxy: 'sync',
   emscripten_set_blur_callback_on_thread__deps: ['$registerFocusEventCallback'],
-  emscripten_set_blur_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
-    return registerFocusEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_BLUR }}}, "blur", targetThread);
-  },
+  emscripten_set_blur_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) =>
+    registerFocusEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_BLUR }}}, "blur", targetThread),
 
   emscripten_set_focus_callback_on_thread__proxy: 'sync',
   emscripten_set_focus_callback_on_thread__deps: ['$registerFocusEventCallback'],
-  emscripten_set_focus_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
-    return registerFocusEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_FOCUS }}}, "focus", targetThread);
-  },
+  emscripten_set_focus_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) =>
+    registerFocusEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_FOCUS }}}, "focus", targetThread),
 
   emscripten_set_focusin_callback_on_thread__proxy: 'sync',
   emscripten_set_focusin_callback_on_thread__deps: ['$registerFocusEventCallback'],
-  emscripten_set_focusin_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
-    return registerFocusEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_FOCUSIN }}}, "focusin", targetThread);
-  },
+  emscripten_set_focusin_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) =>
+    registerFocusEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_FOCUSIN }}}, "focusin", targetThread),
 
   emscripten_set_focusout_callback_on_thread__proxy: 'sync',
   emscripten_set_focusout_callback_on_thread__deps: ['$registerFocusEventCallback'],
-  emscripten_set_focusout_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
-    return registerFocusEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_FOCUSOUT }}}, "focusout", targetThread);
-  },
+  emscripten_set_focusout_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) =>
+    registerFocusEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_FOCUSOUT }}}, "focusout", targetThread),
 
   $fillDeviceOrientationEventData__deps: ['$JSEvents'],
   $fillDeviceOrientationEventData: (eventStruct, e, target) => {
@@ -969,7 +969,7 @@ var LibraryHTML5 = {
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, orientationChangeEvent, userData)) e.preventDefault();
     };
 
-    if (eventTypeString == "orientationchange" && screen.mozOrientation !== undefined) {
+    if (eventTypeId == {{{ cDefs.EMSCRIPTEN_EVENT_ORIENTATIONCHANGE }}} && screen.mozOrientation !== undefined) {
       eventTypeString = "mozorientationchange";
     }
 
@@ -2066,39 +2066,34 @@ var LibraryHTML5 = {
     return JSEvents.registerOrRemoveHandler(eventHandler);
   },
 
-  $disableGamepadApiIfItThrows__docs: '/** @suppress {checkTypes} */',
-  $disableGamepadApiIfItThrows: () => {
-    try {
-      navigator.getGamepads();
-    } catch(e) {
-#if ASSERTIONS
-      err(`navigator.getGamepads() exists, but failed to execute with exception ${e}. Disabling Gamepad access.`);
-#endif
-      navigator.getGamepads = null; // Disable getGamepads() so that other functions will not attempt to use it.
-      return 1;
-    }
-  },
-
   emscripten_set_gamepadconnected_callback_on_thread__proxy: 'sync',
-  emscripten_set_gamepadconnected_callback_on_thread__deps: ['$registerGamepadEventCallback', '$disableGamepadApiIfItThrows'],
+  emscripten_set_gamepadconnected_callback_on_thread__deps: ['$registerGamepadEventCallback', 'emscripten_sample_gamepad_data'],
   emscripten_set_gamepadconnected_callback_on_thread: (userData, useCapture, callbackfunc, targetThread) => {
-    if (!navigator.getGamepads || disableGamepadApiIfItThrows()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    if (_emscripten_sample_gamepad_data()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     return registerGamepadEventCallback({{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}}, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_GAMEPADCONNECTED }}}, "gamepadconnected", targetThread);
   },
 
   emscripten_set_gamepaddisconnected_callback_on_thread__proxy: 'sync',
-  emscripten_set_gamepaddisconnected_callback_on_thread__deps: ['$registerGamepadEventCallback', '$disableGamepadApiIfItThrows'],
+  emscripten_set_gamepaddisconnected_callback_on_thread__deps: ['$registerGamepadEventCallback', 'emscripten_sample_gamepad_data'],
   emscripten_set_gamepaddisconnected_callback_on_thread: (userData, useCapture, callbackfunc, targetThread) => {
-    if (!navigator.getGamepads || disableGamepadApiIfItThrows()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    if (_emscripten_sample_gamepad_data()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     return registerGamepadEventCallback({{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}}, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_GAMEPADDISCONNECTED }}}, "gamepaddisconnected", targetThread);
   },
 
+  emscripten_sample_gamepad_data__docs: '/** @suppress {checkTypes} */', // We assign null to navigator.getGamepads, which Closure would like to complain about.
   emscripten_sample_gamepad_data__proxy: 'sync',
-  emscripten_sample_gamepad_data__deps: ['$JSEvents', '$disableGamepadApiIfItThrows'],
+  emscripten_sample_gamepad_data__deps: ['$JSEvents'],
   emscripten_sample_gamepad_data: () => {
-    if (!navigator.getGamepads || disableGamepadApiIfItThrows()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
-    return (JSEvents.lastGamepadState = navigator.getGamepads())
-      ? {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}} : {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    try {
+      if (navigator.getGamepads) return (JSEvents.lastGamepadState = navigator.getGamepads())
+        ? {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}} : {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    } catch(e) {
+#if ASSERTIONS
+      err(`navigator.getGamepads() exists, but failed to execute with exception ${e}. Disabling Gamepad access.`);
+#endif
+      navigator.getGamepads = null; // Disable getGamepads() so that it won't be attempted to be used again.
+    }
+    return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
   },
 
   emscripten_get_num_gamepads__proxy: 'sync',

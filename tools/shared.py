@@ -59,7 +59,7 @@ SKIP_SUBPROCS = False
 # This version currently matches the node version that we ship with emsdk
 # which means that we can say for sure that this version is well supported.
 MINIMUM_NODE_VERSION = (16, 20, 0)
-EXPECTED_LLVM_VERSION = 18
+EXPECTED_LLVM_VERSION = 19
 
 # These get set by setup_temp_dirs
 TEMP_DIR = None
@@ -91,6 +91,7 @@ diagnostics.add_warning('em-js-i64')
 diagnostics.add_warning('js-compiler')
 diagnostics.add_warning('compatibility')
 diagnostics.add_warning('unsupported')
+diagnostics.add_warning('unused-main')
 # Closure warning are not (yet) enabled by default
 diagnostics.add_warning('closure', enabled=False)
 
@@ -218,7 +219,7 @@ def run_multiple_processes(commands,
       idx = get_finished_process()
       finished_process = processes.pop(idx)
       if finished_process.returncode != 0:
-        exit_with_error('Subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
+        exit_with_error('subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
       num_completed += 1
 
   if route_stdout_to_temp_files_suffix:
@@ -238,6 +239,17 @@ def check_call(cmd, *args, **kw):
     exit_with_error("'%s' failed (%s)", shlex_join(cmd), returncode_to_str(e.returncode))
   except OSError as e:
     exit_with_error("'%s' failed: %s", shlex_join(cmd), str(e))
+
+
+def exec_process(cmd):
+  print_compiler_stage(cmd)
+  if utils.WINDOWS:
+    rtn = run_process(cmd, stdin=sys.stdin, check=False).returncode
+    sys.exit(rtn)
+  else:
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os.execv(cmd[0], cmd)
 
 
 def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: mutable default args
@@ -385,6 +397,10 @@ def node_memory64_flags():
   return ['--experimental-wasm-memory64']
 
 
+def node_exception_flags():
+  return ['--experimental-wasm-eh']
+
+
 def node_pthread_flags(nodejs):
   node_version = get_node_version(nodejs)
   # bulk memory and wasm threads were enabled by default in node v16.
@@ -400,7 +416,7 @@ def check_node():
   try:
     run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
   except Exception as e:
-    exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
+    exit_with_error('the configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
 
 
 def set_version_globals():
@@ -437,7 +453,7 @@ def perform_sanity_checks():
   with ToolchainProfiler.profile_block('sanity LLVM'):
     for cmd in [CLANG_CC, LLVM_AR]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
-        exit_with_error('Cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
+        exit_with_error('cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
 
 
 @ToolchainProfiler.profile()
@@ -504,8 +520,8 @@ def check_sanity(force=False):
 
     if os.path.exists(sanity_file):
       sanity_data = utils.read_file(sanity_file)
-      logger.info('old sanity: %s' % sanity_data)
-      logger.info('new sanity: %s' % expected)
+      logger.info('old sanity: %s', sanity_data.strip())
+      logger.info('new sanity: %s', expected.strip())
       logger.info('(Emscripten: config changed, clearing cache)')
       cache.erase()
     else:

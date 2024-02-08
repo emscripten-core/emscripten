@@ -191,19 +191,19 @@ def lld_flags_for_executable(external_symbols):
   c_exports = [e for e in settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
   # Strip the leading underscores
   c_exports = [demangle_c_symbol_name(e) for e in c_exports]
-  c_exports += settings.EXPORT_IF_DEFINED
   # Filter out symbols external/JS symbols
   c_exports = [e for e in c_exports if e not in external_symbols]
+  c_exports += settings.REQUIRED_EXPORTS
   if settings.MAIN_MODULE:
     c_exports += side_module_external_deps(external_symbols)
   for export in c_exports:
-    cmd.append('--export-if-defined=' + export)
-
-  for export in settings.REQUIRED_EXPORTS:
     if settings.ERROR_ON_UNDEFINED_SYMBOLS:
       cmd.append('--export=' + export)
     else:
       cmd.append('--export-if-defined=' + export)
+
+  for e in settings.EXPORT_IF_DEFINED:
+    cmd.append('--export-if-defined=' + e)
 
   if settings.RELOCATABLE:
     cmd.append('--experimental-pic')
@@ -491,21 +491,11 @@ def get_closure_compiler_and_env(user_args):
 
   native_closure_compiler_works = check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=True)
   if not native_closure_compiler_works and not any(a.startswith('--platform') for a in user_args):
-    # Run with Java Closure compiler as a fallback if the native version does not work
+    # Run with Java Closure compiler as a fallback if the native version does not work.
+    # This can happen, for example, on arm64 macOS machines that do not have Rosetta installed.
+    logger.warn('falling back to java version of closure compiler')
     user_args.append('--platform=java')
     check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=False)
-
-  if config.JAVA and '--platform=java' in user_args:
-    # Closure compiler expects JAVA_HOME to be set *and* java.exe to be in the PATH in order
-    # to enable use the java backend.  Without this it will only try the native and JavaScript
-    # versions of the compiler.
-    java_bin = os.path.dirname(config.JAVA)
-    if java_bin:
-      def add_to_path(dirname):
-        env['PATH'] = env['PATH'] + os.pathsep + dirname
-      add_to_path(java_bin)
-      java_home = os.path.dirname(java_bin)
-      env.setdefault('JAVA_HOME', java_home)
 
   return closure_cmd, env
 
@@ -539,6 +529,7 @@ def transpile(filename):
   config_json = json.dumps(config, indent=2)
   outfile = shared.get_temp_files().get('babel.js').name
   config_file = shared.get_temp_files().get('babel_config.json').name
+  logger.debug(config_json)
   utils.write_file(config_file, config_json)
   cmd = shared.get_npm_cmd('babel') + [filename, '-o', outfile, '--presets', '@babel/preset-env', '--config-file', config_file]
   check_call(cmd, cwd=path_from_root())
@@ -1148,7 +1139,7 @@ def map_to_js_libs(library_name):
     'SDL': ['library_sdl.js'],
     'uuid': ['library_uuid.js'],
     'websocket': ['library_websocket.js'],
-    # These 4 libraries are seperate under glibc but are all rolled into
+    # These 4 libraries are separate under glibc but are all rolled into
     # libc with musl.  For compatibility with glibc we just ignore them
     # completely.
     'dl': [],

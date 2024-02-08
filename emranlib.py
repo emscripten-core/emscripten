@@ -13,11 +13,4 @@ llvm-ranlib internally.
 import sys
 from tools import shared
 
-
-def run():
-  newargs = [shared.LLVM_RANLIB] + sys.argv[1:]
-  return shared.run_process(newargs, stdin=sys.stdin, check=False).returncode
-
-
-if __name__ == '__main__':
-  sys.exit(run())
+shared.exec_process([shared.LLVM_RANLIB] + sys.argv[1:])

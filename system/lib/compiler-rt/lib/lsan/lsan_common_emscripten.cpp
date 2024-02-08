@@ -112,8 +112,6 @@ void LockStuffAndStopTheWorld(StopTheWorldCallback callback,
   UnlockThreads();
 }
 
-u32 GetCurrentThreadId();
-
 // This is based on ProcessThreads in lsan_common.cc.
 // We changed this to be a callback that gets called per thread by
 // ThreadRegistry::RunCallbackForEachThreadLocked.
@@ -142,7 +140,7 @@ static void ProcessThreadsCallback(ThreadContextBase *tctx, void *arg) {
 
     // We can't get the SP for other threads to narrow down the range, but we
     // we can for the current thread.
-    if (tctx->tid == GetCurrentThreadId()) {
+    if (tctx->os_id == GetTid()) {
       uptr sp = (uptr) __builtin_frame_address(0);
       if (sp < stack_begin || sp >= stack_end) {
         // SP is outside the recorded stack range (e.g. the thread is running a

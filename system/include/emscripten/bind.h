@@ -18,6 +18,9 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#if __cplusplus >= 201703L
+#include <optional>
+#endif
 
 #include <emscripten/em_macros.h>
 #include <emscripten/val.h>
@@ -88,8 +91,7 @@ void _embind_register_std_wstring(
     const char* name);
 
 void _embind_register_emval(
-    TYPEID emvalType,
-    const char* name);
+    TYPEID emvalType);
 
 void _embind_register_memory_view(
     TYPEID memoryViewType,
@@ -248,6 +250,10 @@ void _embind_register_constant(
     const char* name,
     TYPEID constantType,
     double value);
+
+void _embind_register_optional(
+    TYPEID optionalType,
+    TYPEID type);
 
 void _embind_register_user_type(
     TYPEID type,
@@ -519,6 +525,12 @@ struct SignatureCode<size_t> {
         return 'p';
     }
 };
+template<>
+struct SignatureCode<long> {
+    static constexpr char get() {
+        return 'j';
+    }
+};
 #endif
 
 template<typename... Args>
@@ -532,6 +544,7 @@ template<> struct SignatureTranslator<void> { using type = void; };
 template<> struct SignatureTranslator<float> { using type = float; };
 template<> struct SignatureTranslator<double> { using type = double; };
 #ifdef __wasm64__
+template<> struct SignatureTranslator<long> { using type = long; };
 template<> struct SignatureTranslator<size_t> { using type = size_t; };
 template<typename PtrType>
 struct SignatureTranslator<PtrType*> { using type = void*; };
@@ -1910,6 +1923,13 @@ class_<std::vector<T>> register_vector(const char* name) {
         ;
 }
 
+#if __cplusplus >= 201703L
+template<typename T>
+void register_optional() {
+    internal::_embind_register_optional(internal::TypeID<std::optional<T>>::get(), internal::TypeID<T>::get());
+}
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 // MAPS
 ////////////////////////////////////////////////////////////////////////////////
@@ -1965,6 +1985,36 @@ class_<std::map<K, V>> register_map(const char* name) {
         .function("keys", internal::MapAccess<MapType>::keys)
         ;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// std::optional
+////////////////////////////////////////////////////////////////////////////////
+
+#if __cplusplus >= 201703L
+namespace internal {
+template <typename T>
+struct BindingType<std::optional<T>> {
+    using ValBinding = BindingType<val>;
+    using WireType = ValBinding::WireType;
+
+    static WireType toWireType(std::optional<T> value) {
+        if (value) {
+            return ValBinding::toWireType(val(*value));
+        }
+        return ValBinding::toWireType(val::undefined());
+    }
+
+
+    static std::optional<T> fromWireType(WireType value) {
+        val optional = val::take_ownership(value);
+        if (optional.isUndefined()) {
+            return {};
+        }
+        return optional.as<T>();
+    }
+};
+} // end namespace internal
+#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////

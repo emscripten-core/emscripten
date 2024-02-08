@@ -5,7 +5,7 @@
  */
 
 var LibraryWebGL2 = {
-  glGetStringi__deps: ['$stringToNewUTF8'],
+  glGetStringi__deps: ['$webglGetExtensions', '$stringToNewUTF8'],
   glGetStringi: (name, index) => {
     if (GL.currentContext.version < 2) {
       GL.recordError(0x502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
@@ -24,7 +24,7 @@ var LibraryWebGL2 = {
     }
     switch (name) {
       case 0x1F03 /* GL_EXTENSIONS */:
-        var exts = GL.getExtensions().map((e) => stringToNewUTF8(e));
+        var exts = webglGetExtensions().map(stringToNewUTF8);
         stringiCache = GL.stringiCache[name] = exts;
         if (index < 0 || index >= stringiCache.length) {
           GL.recordError(0x501/*GL_INVALID_VALUE*/);

@@ -259,7 +259,6 @@ Options that are modified or new in *emcc* are listed below:
 
     - Consider using ``-sMODULARIZE`` when using closure, as it minifies globals to names that might conflict with others in the global scope. ``MODULARIZE`` puts all the output into a function (see ``src/settings.js``).
     - Closure will minify the name of `Module` itself, by default! Using ``MODULARIZE`` will solve that as well. Another solution is to make sure a global variable called `Module` already exists before the closure-compiled code runs, because then it will reuse that variable.
-    - If closure compiler hits an out-of-memory, try adjusting ``JAVA_HEAP_SIZE`` in the environment (for example, to 4096m for 4GB).
     - Closure is only run if JavaScript opts are being done (``-O2`` or above).
 
 ``--closure-args=<args>``
@@ -527,14 +526,6 @@ Options that are modified or new in *emcc* are listed below:
   specified emscripten will search for ``.emscripten`` first in the emscripten
   directory itself, and then in the user's home directory (``~/.emscripten``).
   This can be overridden using the ``EM_CONFIG`` environment variable.
-
-``--default-obj-ext <.ext>``
-  [compile]
-  Specifies the output suffix to use when compiling with ``-c`` in the absence
-  of ``-o``.  For example, when compiling multiple sources files with ``emcc -c
-  *.c`` the compiler will normally output files with the ``.o`` extension, but
-  ``--default-obj-ext .obj`` can be used to instead generate files with the
-  `.obj` extension.
 
 ``--valid-abspath <path>``
   [compile+link]

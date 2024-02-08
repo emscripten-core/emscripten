@@ -10,5 +10,4 @@
 import sys
 from tools import shared
 
-cmd = [shared.LLVM_STRIP] + sys.argv[1:]
-sys.exit(shared.run_process(cmd, stdin=sys.stdin, check=False).returncode)
+shared.exec_process([shared.LLVM_STRIP] + sys.argv[1:])

@@ -54,6 +54,27 @@ PORTS_SETTINGS = {
     'USE_SQLITE3',
 }
 
+# Subset of settings that apply only when generating JS
+JS_ONLY_SETTINGS = {
+    'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE',
+    'INCLUDE_FULL_LIBRARY',
+    'PROXY_TO_WORKER',
+    'PROXY_TO_WORKER_FILENAME',
+    'BUILD_AS_WORKER',
+    'STRICT_JS',
+    'SMALL_XHR_CHUNKS',
+    'HEADLESS',
+    'MODULARIZE',
+    'EXPORT_ES6',
+    'USE_ES6_IMPORT_META',
+    'EXPORT_NAME',
+    'DYNAMIC_EXECUTION',
+    'PTHREAD_POOL_SIZE',
+    'PTHREAD_POOL_SIZE_STRICT',
+    'PTHREAD_POOL_DELAY_LOAD',
+    'DEFAULT_PTHREAD_STACK_SIZE',
+}
+
 # Subset of settings that apply at compile time.
 # (Keep in sync with [compile] comments in settings.js)
 COMPILE_TIME_SETTINGS = {

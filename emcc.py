@@ -27,7 +27,6 @@ import logging
 import os
 import re
 import shlex
-import shutil
 import sys
 import time
 import tarfile
@@ -66,7 +65,7 @@ OBJCXX_ENDINGS = ['.mm', '.mii']
 SPECIAL_ENDINGLESS_FILENAMES = [os.devnull]
 C_ENDINGS += SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
 
-SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + ['.ll', '.S']
+SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + ['.bc', '.ll', '.S']
 ASSEMBLY_ENDINGS = ['.s']
 HEADER_ENDINGS = ['.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH']
 
@@ -78,7 +77,6 @@ EXTRA_INCOMING_JS_API = [
 
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
-COMPILE_ONLY_FLAGS = {'--default-obj-ext'}
 LINK_ONLY_FLAGS = {
     '--bind', '--closure', '--cpuprofiler', '--embed-file',
     '--emit-symbol-map', '--emrun', '--exclude-file', '--extern-post-js',
@@ -149,7 +147,6 @@ class EmccOptions:
     self.memory_init_file = None
     self.use_preload_cache = False
     self.use_preload_plugins = False
-    self.default_object_extension = '.o'
     self.valid_abspaths = []
     # Specifies the line ending format to use for all generated text files.
     # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
@@ -434,7 +431,7 @@ def get_cflags(user_args, is_cxx):
 
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     if '-msimd128' not in user_args and '-mrelaxed-simd' not in user_args:
-      exit_with_error('Passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128 (or -mrelaxed-simd)!')
+      exit_with_error('passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128 (or -mrelaxed-simd)!')
     cflags += ['-D__SSE__=1']
 
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):
@@ -568,6 +565,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         print(proc.stderr)
         exit_with_error('error getting cflags')
       lines = [x for x in proc.stderr.splitlines() if clang in x and input_file in x]
+      if not lines:
+        exit_with_error(f'unable to parse output of `{cmd}`:\n{proc.stderr}')
       parts = shlex.split(lines[0].replace('\\', '\\\\'))
       parts = [x for x in parts if x not in ['-c', '-o', '-v', '-emit-llvm'] and input_file not in x and temp_target not in x]
       print(shared.shlex_join(parts[1:]))
@@ -811,23 +810,6 @@ def phase_setup(options, state, newargs):
         diagnostics.warning(
             'unused-command-line-argument',
             "linker flag ignored during compilation: '%s'" % arg)
-    if state.has_dash_c:
-      if '-emit-llvm' in newargs:
-        options.default_object_extension = '.bc'
-    elif state.has_dash_S:
-      if '-emit-llvm' in newargs:
-        options.default_object_extension = '.ll'
-      else:
-        options.default_object_extension = '.s'
-    elif '-M' in newargs or '-MM' in newargs:
-      options.default_object_extension = '.mout' # not bitcode, not js; but just dependency rule of the input file
-
-  else:
-    for arg in state.orig_args:
-      if any(arg.startswith(f) for f in COMPILE_ONLY_FLAGS):
-        diagnostics.warning(
-            'unused-command-line-argument',
-            "compiler flag ignored during linking: '%s'" % arg)
 
   if settings.MAIN_MODULE or settings.SIDE_MODULE:
     settings.RELOCATABLE = 1
@@ -870,7 +852,7 @@ def phase_setup(options, state, newargs):
     # -fwasm-exceptions takes care of enabling them, so users aren't supposed to
     # pass them explicitly, regardless of their values
     if 'DISABLE_EXCEPTION_CATCHING' in user_settings or 'DISABLE_EXCEPTION_THROWING' in user_settings:
-      diagnostics.warning('emcc', 'You no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions')
+      diagnostics.warning('emcc', 'you no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions')
     settings.DISABLE_EXCEPTION_CATCHING = 1
     settings.DISABLE_EXCEPTION_THROWING = 1
 
@@ -934,17 +916,6 @@ def get_clang_output_extension(state):
     return '.o'
 
 
-def exec_subprocess_and_exit(cmd):
-  if utils.WINDOWS:
-    shared.check_call(cmd)
-    sys.exit(0)
-  else:
-    shared.print_compiler_stage(cmd)
-    sys.stdout.flush()
-    sys.stderr.flush()
-    os.execv(cmd[0], cmd)
-
-
 @ToolchainProfiler.profile_block('compile inputs')
 def phase_compile_inputs(options, state, newargs, input_files):
   if shared.run_via_emxx:
@@ -993,7 +964,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     # output the dependency rule. Warning: clang and gcc behave differently
     # with -MF! (clang seems to not recognize it)
     logger.debug(('just preprocessor ' if state.has_dash_E else 'just dependencies: ') + ' '.join(cmd))
-    exec_subprocess_and_exit(cmd)
+    shared.exec_process(cmd)
 
   # Precompiled headers support
   if state.mode == Mode.PCH:
@@ -1005,7 +976,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     if options.output_file:
       cmd += ['-o', options.output_file]
     logger.debug(f"running (for precompiled headers): {cmd[0]} {' '.join(cmd[1:])}")
-    exec_subprocess_and_exit(cmd)
+    shared.exec_process(cmd)
 
   if state.mode == Mode.COMPILE_ONLY:
     inputs = [i[1] for i in input_files]
@@ -1017,20 +988,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
       cmd += ['-o', options.output_file]
       if get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
         diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
-    ext = get_clang_output_extension(state)
-    if not options.output_file and options.default_object_extension != ext:
-      # If we are using a non-standard output file extention we cannot use
-      # exec_subprocess_and_exit here since we need to rename the files
-      # after clang runs (since clang does not support --default-obj-ext)
-      # TODO: Remove '--default-obj-ext' to reduce this complexity
-      shared.check_call(cmd)
-      for i in inputs:
-        output = unsuffixed_basename(i) + ext
-        new_output = unsuffixed_basename(i) + options.default_object_extension
-        shutil.move(output, new_output)
-      sys.exit(0)
-    else:
-      exec_subprocess_and_exit(cmd)
+    shared.exec_process(cmd)
 
   # In COMPILE_AND_LINK we need to compile source files too, but we also need to
   # filter out the link flags
@@ -1050,7 +1008,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     return unsuffixed(name) + '_' + seen_names[name] + shared.suffix(name)
 
   def get_object_filename(input_file):
-    return in_temp(unsuffixed(uniquename(input_file)) + options.default_object_extension)
+    return in_temp(shared.replace_suffix(uniquename(input_file), '.o'))
 
   def compile_source_file(i, input_file):
     logger.debug(f'compiling source file: {input_file}')
@@ -1395,9 +1353,7 @@ def parse_args(newargs):
     elif arg == '-fignore-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
     elif check_arg('--default-obj-ext'):
-      options.default_object_extension = consume_arg()
-      if not options.default_object_extension.startswith('.'):
-        options.default_object_extension = '.' + options.default_object_extension
+      exit_with_error('--default-obj-ext is no longer supported by emcc')
     elif arg.startswith('-fsanitize=cfi'):
       exit_with_error('emscripten does not currently support -fsanitize=cfi')
     elif check_arg('--output_eol'):

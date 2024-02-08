@@ -16,6 +16,8 @@ from tools import system_libs
 from tools import utils
 from tools.settings import settings
 
+from tools.toolchain_profiler import ToolchainProfiler
+
 ports = []
 
 ports_by_name = {}
@@ -29,8 +31,9 @@ ports_dir = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger('ports')
 
 
+@ToolchainProfiler.profile()
 def read_ports():
-  expected_attrs = ['get', 'clear', 'process_args', 'show', 'needed']
+  expected_attrs = ['get', 'clear', 'show', 'needed']
   for filename in os.listdir(ports_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
@@ -47,6 +50,8 @@ def read_ports():
       port.linker_setup = lambda x, y: 0
     if not hasattr(port, 'deps'):
       port.deps = []
+    if not hasattr(port, 'process_args'):
+      port.process_args = lambda x: []
     if not hasattr(port, 'variants'):
       # port variants (default: no variants)
       port.variants = {}

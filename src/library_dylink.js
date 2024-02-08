@@ -72,7 +72,7 @@ var LibraryDylink = {
   // generation time.
 #if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
   $createInvokeFunction__internal: true,
-  $createInvokeFunction__deps: ['$dynCall', 'setThrew'],
+  $createInvokeFunction__deps: ['$dynCall', 'setThrew', 'stackSave', 'stackRestore'],
   $createInvokeFunction: (sig) => {
     return function() {
       var sp = stackSave();
@@ -1006,7 +1006,7 @@ var LibraryDylink = {
       var libFile = locateFile(libName);
       if (flags.loadAsync) {
         return new Promise(function(resolve, reject) {
-          asyncLoad(libFile, (data) => resolve(data), reject);
+          asyncLoad(libFile, resolve, reject);
         });
       }
 

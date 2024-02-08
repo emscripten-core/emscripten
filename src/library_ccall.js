@@ -15,7 +15,7 @@ addToLibrary({
   },
 
   // C calling interface.
-  $ccall__deps: ['$getCFunc', '$writeArrayToMemory', '$stringToUTF8OnStack'],
+  $ccall__deps: ['$getCFunc', '$writeArrayToMemory', '$stringToUTF8OnStack', 'stackSave', 'stackRestore', 'stackAlloc'],
   $ccall__docs: `
   /**
    * @param {string|null=} returnType

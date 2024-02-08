@@ -20,7 +20,7 @@
  */
 
 var LibraryGLEW = {
-  $GLEW__deps: ['glGetString', '$stringToNewUTF8', '$UTF8ToString'],
+  $GLEW__deps: ['glGetString', '$stringToNewUTF8', '$UTF8ToString', '$webglGetExtensions'],
   $GLEW: {
     isLinaroFork: 1,
     extensions: null,
@@ -99,7 +99,7 @@ var LibraryGLEW = {
     },
 
     extensionIsSupported(name) {
-      GLEW.extensions ||= GL.getExtensions();
+      GLEW.extensions ||= webglGetExtensions();
 
       if (GLEW.extensions.includes(name))
         return 1;

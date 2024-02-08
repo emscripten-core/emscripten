@@ -19,7 +19,6 @@ WebAssembly is emitted by default, without the need for any special flags.
 
       emcc [..args..] -sWASM=0
 
-.. note:: Emscripten's WebAssembly support depends on `Binaryen <https://github.com/WebAssembly/binaryen>`_, which is provided by the emsdk (if you don't use the emsdk, you need to build it and set it up in your ``.emscripten`` file).
 .. note:: Deciding to compile to Wasm or JS can be done at the linking stage: it doesn't affect the object files.
 
 Backends
@@ -93,12 +92,14 @@ When using ``emcc`` to build to WebAssembly, you will see a ``.wasm`` file conta
 
 You may also see additional files generated, like a ``.data`` file if you are preloading files into the virtual filesystem. All that is exactly the same as when building to asm.js. One difference you may notice is the lack of a ``.mem file``, which for asm.js contains the static memory initialization data, which in WebAssembly we can pack more efficiently into the WebAssembly binary itself.
 
-Testing native WebAssembly in browsers
-======================================
+WebAssembly support in browsers
+===============================
 
-WebAssembly support is enabled by default as of Firefox 52, Chrome 57, Safari 11 and Opera 44. On Edge 15 you can enable it via "Experimental JavaScript Features" flag.
+WebAssembly is supported by all major browsers going back to Firefox 52, Chrome
+57, Safari 11 and Opera 44.
 
-For further info on WebAssembly features supported in various browsers, see the `WebAssembly Roadmap <https://webassembly.org/roadmap/>`_
+For further info on WebAssembly features supported in various browsers, see the
+`WebAssembly Roadmap <https://webassembly.org/roadmap/>`_
 
 ``.wasm`` files and compilation
 ===============================

@@ -33,10 +33,6 @@ def clear(ports, settings, shared):
   shared.cache.erase_lib('libz.a')
 
 
-def process_args(ports):
-  return []
-
-
 def show():
   return 'zlib (USE_ZLIB=1; zlib license)'
 

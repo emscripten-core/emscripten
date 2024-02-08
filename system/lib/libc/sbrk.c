@@ -12,9 +12,7 @@
 #define __NEED_max_align_t
 #endif
 
-#ifndef EMSCRIPTEN_NO_ERRNO
 #include <errno.h>
-#endif
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -30,12 +28,6 @@ void emscripten_memprof_sbrk_grow(intptr_t old, intptr_t new);
 #endif
 
 #include <emscripten/heap.h>
-
-#ifndef EMSCRIPTEN_NO_ERRNO
-#define SET_ERRNO() { errno = ENOMEM; }
-#else
-#define SET_ERRNO()
-#endif
 
 extern size_t __heap_base;
 
@@ -79,7 +71,7 @@ void *sbrk(intptr_t increment_) {
     // increase the WebAssembly Memory size, and abort if that fails.
     if ((increment > 0 && new_brk <= old_brk)
      || (new_brk > emscripten_get_heap_size() && !emscripten_resize_heap(new_brk))) {
-      SET_ERRNO();
+      errno = ENOMEM;
       return (void*)-1;
     }
 #ifdef __EMSCRIPTEN_SHARED_MEMORY__

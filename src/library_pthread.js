@@ -1063,6 +1063,7 @@ var LibraryPThread = {
   },
 
   $establishStackSpace__internal: true,
+  $establishStackSpace__deps: ['stackRestore'],
   $establishStackSpace: () => {
     var pthread_ptr = _pthread_self();
     var stackHigh = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack, '*') }}};
@@ -1289,7 +1290,7 @@ var LibraryPThread = {
   _emscripten_notify_mailbox_postmessage__deps: ['$checkMailbox'],
   _emscripten_notify_mailbox_postmessage: (targetThreadId, currThreadId, mainThreadId) => {
     if (targetThreadId == currThreadId) {
-      setTimeout(() => checkMailbox());
+      setTimeout(checkMailbox);
     } else if (ENVIRONMENT_IS_PTHREAD) {
       postMessage({'targetThread' : targetThreadId, 'cmd' : 'checkMailbox'});
     } else {

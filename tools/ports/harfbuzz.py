@@ -148,7 +148,7 @@ def process_dependencies(settings):
 
 
 def process_args(ports):
-  return ['-I' + ports.get_include_dir('harfbuzz')]
+  return ['-isystem', ports.get_include_dir('harfbuzz')]
 
 
 def show():

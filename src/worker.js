@@ -18,6 +18,16 @@ var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions 
 if (ENVIRONMENT_IS_NODE) {
   // Create as web-worker-like an environment as we can.
 
+  // See the parallel code in shell.js, but here we don't need the condition on
+  // multi-environment builds, as we do not have the need to interact with the
+  // modularization logic as shell.js must (see link.py:node_es6_imports and
+  // how that is used in link.py).
+#if EXPORT_ES6
+  const { createRequire } = await import('module');
+  /** @suppress{duplicate} */
+  var require = createRequire(import.meta.url);
+#endif
+
   var nodeWorkerThreads = require('worker_threads');
 
   var parentPort = nodeWorkerThreads.parentPort;
@@ -32,7 +42,13 @@ if (ENVIRONMENT_IS_NODE) {
     require,
     Module,
     location: {
+      // __filename is undefined in ES6 modules, and import.meta.url only in ES6
+      // modules.
+#if EXPORT_ES6
+      href: typeof __filename !== 'undefined' ? __filename : import.meta.url
+#else
       href: __filename
+#endif
     },
     Worker: nodeWorkerThreads.Worker,
     importScripts: (f) => vm.runInThisContext(fs.readFileSync(f, 'utf8'), {filename: f}),

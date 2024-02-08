@@ -29,6 +29,8 @@ LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
                 'listen.c', 'accept.c', 'getsockname.c', 'getpeername.c', 'send.c',
                 'recv.c', 'sendto.c', 'recvfrom.c', 'sendmsg.c', 'recvmsg.c',
                 'getsockopt.c', 'setsockopt.c', 'freeaddrinfo.c',
+                'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
+                'gethostbyname_r.c', 'gethostbyname2.c', 'gethostbyname2_r.c',
                 'in6addr_any.c', 'in6addr_loopback.c', 'accept4.c']
 
 # Experimental: Setting EMCC_USE_NINJA will cause system libraries to get built with ninja rather
@@ -487,15 +489,17 @@ class Library:
     By default, this builds all the source files returned by `self.get_files()`,
     with the `cflags` returned by `self.get_cflags()`.
     """
+    batch_inputs = int(os.environ.get('EMCC_BATCH_BUILD', '1'))
     batches = {}
     commands = []
     objects = set()
     cflags = self.get_cflags()
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
-      relative_source_dir = os.path.relpath(source_dir, build_dir)
+      if batch_inputs:
+        relative_source_dir = os.path.relpath(source_dir, build_dir)
+        cflags += [f'-ffile-prefix-map={relative_source_dir}/=']
       cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
-                 f'-ffile-prefix-map={relative_source_dir}/=',
                  '-fdebug-compilation-dir=/emsdk/emscripten']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
@@ -531,24 +535,27 @@ class Library:
           object_uuid += 1
           o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
         commands.append(cmd + [src, '-o', o])
-      else:
+      elif batch_inputs:
         # Use relative paths to reduce the length of the command line.
         # This allows to avoid switching to a response file as often.
         src = os.path.relpath(src, build_dir)
         src = utils.normalize_path(src)
         batches.setdefault(tuple(cmd), []).append(src)
+      else:
+        commands.append(cmd + [src, '-o', o])
       objects.add(o)
 
-    # Choose a chunk size that is large enough to avoid too many subprocesses
-    # but not too large to avoid task starvation.
-    # For now the heuristic is to split inputs by 2x number of cores.
-    chunk_size = max(1, len(objects) // (2 * shared.get_num_cores()))
-    # Convert batches to commands.
-    for cmd, srcs in batches.items():
-      cmd = list(cmd)
-      for i in range(0, len(srcs), chunk_size):
-        chunk_srcs = srcs[i:i + chunk_size]
-        commands.append(building.get_command_with_possible_response_file(cmd + chunk_srcs))
+    if batch_inputs:
+      # Choose a chunk size that is large enough to avoid too many subprocesses
+      # but not too large to avoid task starvation.
+      # For now the heuristic is to split inputs by 2x number of cores.
+      chunk_size = max(1, len(objects) // (2 * shared.get_num_cores()))
+      # Convert batches to commands.
+      for cmd, srcs in batches.items():
+        cmd = list(cmd)
+        for i in range(0, len(srcs), chunk_size):
+          chunk_srcs = srcs[i:i + chunk_size]
+          commands.append(building.get_command_with_possible_response_file(cmd + chunk_srcs))
 
     run_build_commands(commands, num_inputs=len(objects), build_dir=build_dir)
     return objects
@@ -568,7 +575,7 @@ class Library:
       if not generate_only:
         run_ninja(build_dir)
     else:
-      # Use a seperate build directory to the ninja flavor so that building without
+      # Use a separate build directory to the ninja flavor so that building without
       # EMCC_USE_NINJA doesn't clobber the ninja build tree
       build_dir += '-tmp'
       utils.safe_ensure_dirs(build_dir)
@@ -871,6 +878,7 @@ class MuslInternalLibrary(Library):
   includes = [
     'system/lib/libc/musl/src/internal',
     'system/lib/libc/musl/src/include',
+    'system/lib/libc/musl/include',
     'system/lib/libc',
     'system/lib/pthread',
   ]
@@ -1058,12 +1066,12 @@ class libc(MuslInternalLibrary,
     ignore += [
         'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
         'res_query.c', 'res_querydomain.c',
-        'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
-        'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
+        'proto.c',
         'syscall.c', 'popen.c', 'pclose.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
         'getentropy.c',
         'getauxval.c',
+        'lookup_name.c',
         # 'process' exclusion
         'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
         '_Fork.c',
@@ -1252,12 +1260,14 @@ class libc(MuslInternalLibrary,
           'mktime.c',
           'tzset.c',
           'kill.c',
+          'lookup_name.c',
           'pthread_sigmask.c',
           'raise.c',
           'sigaction.c',
           'sigtimedwait.c',
           'wasi-helpers.c',
           'sbrk.c',
+          'system.c',
         ])
 
     if settings.RELOCATABLE:
@@ -1657,7 +1667,6 @@ class libmalloc(MTLibrary):
     if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'mimalloc', 'none'):
       raise Exception('malloc must be one of "emmalloc[-debug|-memvalidate][-verbose]", "dlmalloc" or "none", see settings.js')
 
-    self.use_errno = kwargs.pop('use_errno')
     self.is_tracing = kwargs.pop('is_tracing')
     self.memvalidate = kwargs.pop('memvalidate')
     self.verbose = kwargs.pop('verbose')
@@ -1682,8 +1691,6 @@ class libmalloc(MTLibrary):
       cflags += ['-UNDEBUG', '-DDLMALLOC_DEBUG']
     else:
       cflags += ['-DNDEBUG']
-    if not self.use_errno:
-      cflags += ['-DMALLOC_FAILURE_ACTION=', '-DEMSCRIPTEN_NO_ERRNO']
     if self.is_tracing:
       cflags += ['--tracing']
     return cflags
@@ -1695,9 +1702,6 @@ class libmalloc(MTLibrary):
     name = super().get_base_name()
     if self.is_debug and not self.memvalidate and not self.verbose:
       name += '-debug'
-    if not self.use_errno:
-      # emmalloc doesn't actually use errno, but it's easier to build it again
-      name += '-noerrno'
     if self.is_tracing:
       name += '-tracing'
     return name
@@ -1707,14 +1711,13 @@ class libmalloc(MTLibrary):
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'memvalidate', 'verbose']
+    return super().vary_on() + ['is_debug', 'is_tracing', 'memvalidate', 'verbose']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
       malloc=settings.MALLOC,
       is_debug=settings.ASSERTIONS >= 2,
-      use_errno=settings.SUPPORT_ERRNO,
       is_tracing=settings.EMSCRIPTEN_TRACING,
       memvalidate='memvalidate' in settings.MALLOC,
       verbose='verbose' in settings.MALLOC,
@@ -1838,6 +1841,13 @@ class libGL(MTLibrary):
       is_enable_get_proc_address=settings.GL_ENABLE_GET_PROC_ADDRESS,
       **kwargs
     )
+
+
+class libwebgpu(MTLibrary):
+  name = 'libwebgpu'
+
+  src_dir = 'system/lib/webgpu'
+  src_files = ['webgpu.cpp']
 
 
 class libwebgpu_cpp(MTLibrary):
@@ -2311,7 +2321,9 @@ def get_libs_to_link(args, forced, only_forced):
     add_library('libsockets')
 
   if settings.USE_WEBGPU:
-    add_library('libwebgpu_cpp')
+    add_library('libwebgpu')
+    if settings.LINK_AS_CXX:
+      add_library('libwebgpu_cpp')
 
   if settings.WASM_WORKERS:
     add_library('libwasm_workers')

@@ -135,6 +135,56 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   emscripten_webgl_enable_WEBGL_multi_draw__deps: ['$webgl_enable_WEBGL_multi_draw'],
   emscripten_webgl_enable_WEBGL_multi_draw: (ctx) => webgl_enable_WEBGL_multi_draw(GL.contexts[ctx].GLctx),
 
+  $getEmscriptenSupportedExtensions__internal: true,
+  $getEmscriptenSupportedExtensions: function(ctx) {
+    // Restrict the list of advertised extensions to those that we actually
+    // support.
+    var supportedExtensions = [
+#if MIN_WEBGL_VERSION == 1
+      // WebGL 1 extensions
+      'ANGLE_instanced_arrays',
+      'EXT_blend_minmax',
+      'EXT_disjoint_timer_query',
+      'EXT_frag_depth',
+      'EXT_shader_texture_lod',
+      'EXT_sRGB',
+      'OES_element_index_uint',
+      'OES_fbo_render_mipmap',
+      'OES_standard_derivatives',
+      'OES_texture_float',
+      'OES_texture_half_float',
+      'OES_texture_half_float_linear',
+      'OES_vertex_array_object',
+      'WEBGL_color_buffer_float',
+      'WEBGL_depth_texture',
+      'WEBGL_draw_buffers',
+#endif
+#if MAX_WEBGL_VERSION >= 2
+      // WebGL 2 extensions
+      'EXT_color_buffer_float',
+      'EXT_disjoint_timer_query_webgl2',
+      'EXT_texture_norm16',
+      'WEBGL_clip_cull_distance',
+#endif
+      // WebGL 1 and WebGL 2 extensions
+      'EXT_color_buffer_half_float',
+      'EXT_float_blend',
+      'EXT_texture_compression_bptc',
+      'EXT_texture_compression_rgtc',
+      'EXT_texture_filter_anisotropic',
+      'KHR_parallel_shader_compile',
+      'OES_texture_float_linear',
+      'WEBGL_compressed_texture_s3tc',
+      'WEBGL_compressed_texture_s3tc_srgb',
+      'WEBGL_debug_renderer_info',
+      'WEBGL_debug_shaders',
+      'WEBGL_lose_context',
+      'WEBGL_multi_draw',
+    ];
+    // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+    return (ctx.getSupportedExtensions() || []).filter(ext => supportedExtensions.includes(ext));
+  },
+
   $GL__postset: 'var GLctx;',
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
   // If GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS is enabled, GL.initExtensions() will call to initialize these.
@@ -153,8 +203,9 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     '$webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance',
 #endif
     '$webgl_enable_WEBGL_multi_draw',
+    '$getEmscriptenSupportedExtensions',
   ],
-#endif
+#endif // GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
   $GL: {
 #if GL_DEBUG
     debug: true,
@@ -374,8 +425,8 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     getSource: (shader, count, string, length) => {
       var source = '';
       for (var i = 0; i < count; ++i) {
-        var len = length ? {{{ makeGetValue('length', 'i*4', 'i32') }}} : -1;
-        source += UTF8ToString({{{ makeGetValue('string', 'i*4', 'i32') }}}, len < 0 ? undefined : len);
+        var len = length ? {{{ makeGetValue('length', 'i*' + POINTER_SIZE, '*') }}} : undefined;
+        source += UTF8ToString({{{ makeGetValue('string', 'i*' + POINTER_SIZE, '*') }}}, len);
       }
 #if LEGACY_GL_EMULATION
       // Let's see if we need to enable the standard derivatives extension
@@ -738,59 +789,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       }
       disableHalfFloatExtensionIfBroken(ctx);
 #endif
-
-      // If end user enables *glGetProcAddress() functionality, then we must filter out
-      // all future WebGL extensions from being passed to the user, and only restrict to advertising
-      // extensions that the *glGetProcAddress() function knows to handle.
-#if GL_ENABLE_GET_PROC_ADDRESS
-      var _allSupportedExtensions = ctx.getSupportedExtensions;
-      var supportedExtensionsForGetProcAddress = [
-#if MIN_WEBGL_VERSION == 1
-        // WebGL 1 extensions
-        'ANGLE_instanced_arrays',
-        'EXT_blend_minmax',
-        'EXT_disjoint_timer_query',
-        'EXT_frag_depth',
-        'EXT_shader_texture_lod',
-        'EXT_sRGB',
-        'OES_element_index_uint',
-        'OES_fbo_render_mipmap',
-        'OES_standard_derivatives',
-        'OES_texture_float',
-        'OES_texture_half_float',
-        'OES_texture_half_float_linear',
-        'OES_vertex_array_object',
-        'WEBGL_color_buffer_float',
-        'WEBGL_depth_texture',
-        'WEBGL_draw_buffers',
-#endif
-#if MAX_WEBGL_VERSION >= 2
-        // WebGL 2 extensions
-        'EXT_color_buffer_float',
-        'EXT_disjoint_timer_query_webgl2',
-        'EXT_texture_norm16',
-        'WEBGL_clip_cull_distance',
-#endif
-        // WebGL 1 and WebGL 2 extensions
-        'EXT_color_buffer_half_float',
-        'EXT_float_blend',
-        'EXT_texture_compression_bptc',
-        'EXT_texture_compression_rgtc',
-        'EXT_texture_filter_anisotropic',
-        'KHR_parallel_shader_compile',
-        'OES_texture_float_linear',
-        'WEBGL_compressed_texture_s3tc',
-        'WEBGL_compressed_texture_s3tc_srgb',
-        'WEBGL_debug_renderer_info',
-        'WEBGL_debug_shaders',
-        'WEBGL_lose_context',
-        'WEBGL_multi_draw',
-      ];
-      ctx.getSupportedExtensions = function() {
-        return (_allSupportedExtensions.apply(this) || []).filter(ext => supportedExtensionsForGetProcAddress.includes(ext));
-      }
-#endif
-
       return handle;
     },
 
@@ -1065,41 +1063,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
         GLctx: ctx
       };
 
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      context.cannotHandleOffsetsInUniformArrayViews = (function(g) {
-        function b(c, t) {
-          var s = g.createShader(t);
-          g.shaderSource(s, c);
-          g.compileShader(s);
-          return s;
-        }
-        try {
-          // Note: we do not delete this program so it stays part of the context
-          // we created, but that is ok - it does not do anything and we want to
-          // keep this detection size minimal.
-          var p = g.createProgram();
-          g.attachShader(p, b("attribute vec4 p;void main(){gl_Position=p;}", 0x8B31 /*GL_VERTEX_SHADER*/));
-          g.attachShader(p, b("precision lowp float;uniform vec4 u;void main(){gl_FragColor=u;}", 0x8B30 /*GL_FRAGMENT_SHADER*/));
-          g.linkProgram(p);
-          var h = new Float32Array(8);
-          h[4] = 1;
-          g.useProgram(p);
-          var l = g.getUniformLocation(p, "u");
-          // Uploading a 4-vector GL uniform from last four elements of array
-          // [0,0,0,0,1,0,0,0], i.e. uploading vec4=(1,0,0,0) at offset=4.
-          g.uniform4fv(l, h.subarray(4, 8));
-          // in proper WebGL we expect to read back the vector we just uploaded:
-          // (1,0,0,0). On buggy browser would instead have uploaded offset=0 of
-          // above array, i.e. vec4=(0,0,0,0)
-          return !g.getUniform(p, l)[0];i
-        } catch(e) {
-          // If we get an exception, we assume we got some other error, and do
-          // not trigger this workaround.
-          return false;
-        }
-      })();
-#endif
-
       // Store the created context object so that we can access the context
       // given a canvas without having to pass the parameters again.
       if (ctx.canvas) ctx.canvas.GLctxObject = context;
@@ -1240,10 +1203,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 
       webgl_enable_WEBGL_multi_draw(GLctx);
 
-      // .getSupportedExtensions() can return null if context is lost, so coerce
-      // to empty array.
-      var exts = GLctx.getSupportedExtensions() || [];
-      exts.forEach((ext) => {
+      getEmscriptenSupportedExtensions(GLctx).forEach((ext) => {
         // WEBGL_lose_context, WEBGL_debug_renderer_info and WEBGL_debug_shaders
         // are not enabled by default.
         if (!ext.includes('lose_context') && !ext.includes('debug')) {
@@ -1254,14 +1214,16 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     },
 #endif
 
-    getExtensions() {
-      // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
-      var exts = GLctx.getSupportedExtensions() || [];
+  },
+
+  $webglGetExtensions__internal: true,
+  $webglGetExtensions__deps: ['$getEmscriptenSupportedExtensions'],
+  $webglGetExtensions() {
+    var exts = getEmscriptenSupportedExtensions(GLctx);
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-      exts = exts.concat(exts.map((e) => "GL_" + e));
+    exts = exts.concat(exts.map((e) => "GL_" + e));
 #endif
-      return exts;
-    },
+    return exts;
   },
 
   glPixelStorei: (pname, param) => {
@@ -1271,13 +1233,13 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     GLctx.pixelStorei(pname, param);
   },
 
-  glGetString__deps: ['$stringToNewUTF8'],
+  glGetString__deps: ['$stringToNewUTF8', '$webglGetExtensions'],
   glGetString: (name_) => {
     var ret = GL.stringCache[name_];
     if (!ret) {
       switch (name_) {
         case 0x1F03 /* GL_EXTENSIONS */:
-          ret = stringToNewUTF8(GL.getExtensions().join(' '));
+          ret = stringToNewUTF8(webglGetExtensions().join(' '));
           break;
         case 0x1F00 /* GL_VENDOR */:
         case 0x1F01 /* GL_RENDERER */:
@@ -1339,7 +1301,11 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     return ret;
   },
 
-  $emscriptenWebGLGet__deps: ['$writeI53ToI64'],
+  $emscriptenWebGLGet__deps: ['$writeI53ToI64',
+#if MAX_WEBGL_VERSION >= 2
+    '$webglGetExtensions', // For GL_NUM_EXTENSIONS
+#endif
+  ],
   $emscriptenWebGLGet: (name_, p, type) => {
     // Guard against user passing a null pointer.
     // Note that GLES2 spec does not say anything about how passing a null
@@ -1402,15 +1368,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
           return;
         }
 #endif
-        // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
-        var exts = GLctx.getSupportedExtensions() || [];
-#if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-        // each extension is duplicated, first in unprefixed WebGL form, and
-        // then a second time with "GL_" prefix.
-        ret = 2 * exts.length;
-#else
-        ret = exts.length;
-#endif
+        ret = webglGetExtensions().length;
         break;
       case 0x821B: // GL_MAJOR_VERSION
       case 0x821C: // GL_MINOR_VERSION
@@ -2515,9 +2473,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Int32Array(view);
-#endif
     }
     GLctx.uniform1iv(webglGetUniformLocation(location), view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -2560,9 +2515,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('32', 'value', 'value+count*8') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Int32Array(view);
-#endif
     }
     GLctx.uniform2iv(webglGetUniformLocation(location), view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -2606,9 +2558,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('32', 'value', 'value+count*12') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Int32Array(view);
-#endif
     }
     GLctx.uniform3iv(webglGetUniformLocation(location), view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -2655,9 +2604,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('32', 'value', 'value+count*16') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Int32Array(view);
-#endif
     }
     GLctx.uniform4iv(webglGetUniformLocation(location), view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -2699,9 +2645,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
-#endif
     }
     GLctx.uniform1fv(webglGetUniformLocation(location), view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -2746,9 +2689,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*8') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
-#endif
     }
     GLctx.uniform2fv(webglGetUniformLocation(location), view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -2794,9 +2734,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*12') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
-#endif
     }
     GLctx.uniform3fv(webglGetUniformLocation(location), view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -2847,9 +2784,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
-#endif
     }
     GLctx.uniform4fv(webglGetUniformLocation(location), view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -2896,9 +2830,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
-#endif
     }
     GLctx.uniformMatrix2fv(webglGetUniformLocation(location), !!transpose, view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -2950,9 +2881,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*36') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
-#endif
     }
     GLctx.uniformMatrix3fv(webglGetUniformLocation(location), !!transpose, view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -3015,9 +2943,6 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
     {
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*64') }}};
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Float32Array(view);
-#endif
     }
     GLctx.uniformMatrix4fv(webglGetUniformLocation(location), !!transpose, view);
 #endif // MIN_WEBGL_VERSION >= 2
@@ -4078,7 +4003,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   glMultiDrawElements: 'glMultiDrawElementsWEBGL',
   glMultiDrawElementsANGLE: 'glMultiDrawElementsWEBGL',
 #if MEMORY64
-  glMultiDrawElementsWEBGL__deps: ['$convertOffsets'],
+  glMultiDrawElementsWEBGL__deps: ['$convertOffsets', 'stackSave', 'stackRestore'],
 #endif
   glMultiDrawElementsWEBGL: (mode, counts, type, offsets, drawcount) => {
 #if MEMORY64
@@ -4101,7 +4026,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   glMultiDrawElementsInstancedWEBGL__sig: 'vipippi',
   glMultiDrawElementsInstancedANGLE: 'glMultiDrawElementsInstancedWEBGL',
 #if MEMORY64
-  glMultiDrawElementsInstancedWEBGL__deps: ['$convertOffsets'],
+  glMultiDrawElementsInstancedWEBGL__deps: ['$convertOffsets', 'stackSave', 'stackRestore'],
 #endif
   glMultiDrawElementsInstancedWEBGL: (mode, counts, type, offsets, instanceCounts, drawcount) => {
 #if MEMORY64

@@ -28,7 +28,6 @@ LLVM_ROOT = None
 LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
-JAVA = None
 JS_ENGINES: List[List[str]] = []
 WASMER = None
 WASMTIME = None
@@ -118,7 +117,7 @@ def parse_config_file():
   try:
     exec(config_text, config)
   except Exception as e:
-    exit_with_error('Error in evaluating config file (%s): %s, text: %s', EM_CONFIG, str(e), config_text)
+    exit_with_error('error in evaluating config file (%s): %s, text: %s', EM_CONFIG, str(e), config_text)
 
   CONFIG_KEYS = (
     'NODE_JS',
@@ -130,7 +129,6 @@ def parse_config_file():
     'LLVM_ADD_VERSION',
     'CLANG_ADD_VERSION',
     'CLOSURE_COMPILER',
-    'JAVA',
     'JS_ENGINES',
     'WASMER',
     'WASMTIME',
@@ -290,7 +288,7 @@ def init():
 
   # We used to support inline EM_CONFIG.
   if '\n' in EM_CONFIG:
-    exit_with_error('Inline EM_CONFIG data no longer supported.  Please use a config file.')
+    exit_with_error('inline EM_CONFIG data no longer supported.  Please use a config file.')
 
   EM_CONFIG = os.path.expanduser(EM_CONFIG)
 

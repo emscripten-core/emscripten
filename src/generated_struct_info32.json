@@ -293,13 +293,13 @@
         "F_DUPFD": 0,
         "F_GETFD": 1,
         "F_GETFL": 3,
-        "F_GETLK": 5,
+        "F_GETLK": 12,
         "F_GETOWN": 9,
         "F_GETOWN_EX": 16,
         "F_SETFD": 2,
         "F_SETFL": 4,
-        "F_SETLK": 6,
-        "F_SETLKW": 7,
+        "F_SETLK": 13,
+        "F_SETLKW": 14,
         "F_SETOWN": 8,
         "F_UNLCK": 2,
         "File::DataFileKind": 1,
@@ -842,6 +842,13 @@
             "size": 16,
             "usage": 8
         },
+        "WGPUBufferMapCallbackInfo": {
+            "__size__": 16,
+            "callback": 8,
+            "mode": 4,
+            "nextInChain": 0,
+            "userdata": 12
+        },
         "WGPUChainedStruct": {
             "__size__": 8,
             "next": 0,
@@ -936,8 +943,8 @@
             "deviceLostUserdata": 32,
             "label": 4,
             "nextInChain": 0,
+            "requiredFeatureCount": 8,
             "requiredFeatures": 12,
-            "requiredFeaturesCount": 8,
             "requiredLimits": 16
         },
         "WGPUExtent3D": {
@@ -956,6 +963,15 @@
             "targetCount": 20,
             "targets": 24
         },
+        "WGPUFuture": {
+            "__size__": 8,
+            "id": 0
+        },
+        "WGPUFutureWaitInfo": {
+            "__size__": 16,
+            "completed": 8,
+            "future": 0
+        },
         "WGPUImageCopyBuffer": {
             "__size__": 40,
             "buffer": 32,
@@ -971,8 +987,15 @@
             "texture": 4
         },
         "WGPUInstanceDescriptor": {
-            "__size__": 4,
+            "__size__": 16,
+            "features": 4,
             "nextInChain": 0
+        },
+        "WGPUInstanceFeatures": {
+            "__size__": 12,
+            "nextInChain": 0,
+            "timedWaitAnyEnable": 4,
+            "timedWaitAnyMaxCount": 8
         },
         "WGPULimits": {
             "__size__": 144,
@@ -1062,29 +1085,37 @@
             "label": 4,
             "nextInChain": 0
         },
+        "WGPUQueueWorkDoneCallbackInfo": {
+            "__size__": 16,
+            "callback": 8,
+            "mode": 4,
+            "nextInChain": 0,
+            "userdata": 12
+        },
         "WGPURenderBundleDescriptor": {
             "__size__": 8,
             "label": 4,
             "nextInChain": 0
         },
         "WGPURenderBundleEncoderDescriptor": {
-            "__size__": 28,
+            "__size__": 32,
+            "colorFormatCount": 8,
             "colorFormats": 12,
-            "colorFormatsCount": 8,
             "depthReadOnly": 24,
             "depthStencilFormat": 16,
             "label": 4,
             "nextInChain": 0,
             "sampleCount": 20,
-            "stencilReadOnly": 25
+            "stencilReadOnly": 28
         },
         "WGPURenderPassColorAttachment": {
             "__size__": 56,
             "clearValue": 24,
-            "loadOp": 12,
+            "depthSlice": 8,
+            "loadOp": 16,
             "nextInChain": 0,
-            "resolveTarget": 8,
-            "storeOp": 16,
+            "resolveTarget": 12,
+            "storeOp": 20,
             "view": 4
         },
         "WGPURenderPassDepthStencilAttachment": {
@@ -1131,10 +1162,17 @@
             "primitive": 40,
             "vertex": 12
         },
+        "WGPURequestAdapterCallbackInfo": {
+            "__size__": 16,
+            "callback": 8,
+            "mode": 4,
+            "nextInChain": 0,
+            "userdata": 12
+        },
         "WGPURequestAdapterOptions": {
-            "__size__": 20,
+            "__size__": 24,
             "backendType": 12,
-            "compatibilityMode": 17,
+            "compatibilityMode": 20,
             "compatibleSurface": 4,
             "forceFallbackAdapter": 16,
             "nextInChain": 0,
@@ -1226,6 +1264,11 @@
             "nextInChain": 0,
             "sampleType": 4,
             "viewDimension": 8
+        },
+        "WGPUTextureBindingViewDimensionDescriptor": {
+            "__size__": 12,
+            "chain": 0,
+            "textureBindingViewDimension": 8
         },
         "WGPUTextureDataLayout": {
             "__size__": 24,

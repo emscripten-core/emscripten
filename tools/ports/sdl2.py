@@ -87,7 +87,7 @@ def linker_setup(ports, settings):
 
 
 def process_args(ports):
-  return ['-I' + ports.get_include_dir('SDL2')]
+  return ['-isystem', ports.get_include_dir('SDL2')]
 
 
 def show():

@@ -20,55 +20,55 @@ var LibraryExceptions = {
   // reference counter) is not protected from that. Also protection is not enough, separate state
   // should be allocated. libcxxabi has concept of dependent exception which is used for that
   // purpose, it references the primary exception.
-  //
-  // excPtr - Thrown object pointer to wrap. Metadata pointer is calculated from it.
-  $ExceptionInfo__docs: '/** @constructor */',
   $ExceptionInfo__deps: [
     '__cxa_is_pointer_type',
 #if EXCEPTION_DEBUG
     '$ptrToString'
 #endif
   ],
-  $ExceptionInfo: function(excPtr) {
-    this.excPtr = excPtr;
-    this.ptr = excPtr - {{{ C_STRUCTS.__cxa_exception.__size__ }}};
+  $ExceptionInfo: class {
+    // excPtr - Thrown object pointer to wrap. Metadata pointer is calculated from it.
+    constructor(excPtr) {
+      this.excPtr = excPtr;
+      this.ptr = excPtr - {{{ C_STRUCTS.__cxa_exception.__size__ }}};
+    }
 
-    this.set_type = function(type) {
+    set_type(type) {
       {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.exceptionType, 'type', '*') }}};
-    };
+    }
 
-    this.get_type = function() {
+    get_type() {
       return {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.exceptionType, '*') }}};
-    };
+    }
 
-    this.set_destructor = function(destructor) {
+    set_destructor(destructor) {
       {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.exceptionDestructor, 'destructor', '*') }}};
-    };
+    }
 
-    this.get_destructor = function() {
+    get_destructor() {
       return {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.exceptionDestructor, '*') }}};
-    };
+    }
 
-    this.set_caught = function(caught) {
+    set_caught(caught) {
       caught = caught ? 1 : 0;
       {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.caught, 'caught', 'i8') }}};
-    };
+    }
 
-    this.get_caught = function() {
+    get_caught() {
       return {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.caught, 'i8') }}} != 0;
-    };
+    }
 
-    this.set_rethrown = function(rethrown) {
+    set_rethrown(rethrown) {
       rethrown = rethrown ? 1 : 0;
       {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.rethrown, 'rethrown', 'i8') }}};
-    };
+    }
 
-    this.get_rethrown = function() {
+    get_rethrown() {
       return {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.rethrown, 'i8') }}} != 0;
-    };
+    }
 
     // Initialize native structure fields. Should be called once after allocated.
-    this.init = function(type, destructor) {
+    init(type, destructor) {
 #if EXCEPTION_DEBUG
       dbg('ExceptionInfo init: ' + [type, destructor]);
 #endif
@@ -77,19 +77,19 @@ var LibraryExceptions = {
       this.set_destructor(destructor);
     }
 
-    this.set_adjusted_ptr = function(adjustedPtr) {
+    set_adjusted_ptr(adjustedPtr) {
       {{{ makeSetValue('this.ptr', C_STRUCTS.__cxa_exception.adjustedPtr, 'adjustedPtr', '*') }}};
-    };
+    }
 
-    this.get_adjusted_ptr = function() {
+    get_adjusted_ptr() {
       return {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.adjustedPtr, '*') }}};
-    };
+    }
 
     // Get pointer which is expected to be received by catch clause in C++ code. It may be adjusted
     // when the pointer is casted to some of the exception object base classes (e.g. when virtual
     // inheritance is used). When a pointer is thrown this method should return the thrown pointer
     // itself.
-    this.get_exception_ptr = function() {
+    get_exception_ptr() {
       // Work around a fastcomp bug, this code is still included for some reason in a build without
       // exceptions support.
       var isPointer = ___cxa_is_pointer_type(this.get_type());
@@ -99,7 +99,7 @@ var LibraryExceptions = {
       var adjusted = this.get_adjusted_ptr();
       if (adjusted !== 0) return adjusted;
       return this.excPtr;
-    };
+    }
   },
 
   // Here, we throw an exception after recording a couple of values that we need to remember
@@ -287,7 +287,7 @@ var LibraryExceptions = {
 
 #endif
 #if WASM_EXCEPTIONS || !DISABLE_EXCEPTION_CATCHING
-  $getExceptionMessageCommon__deps: ['__get_exception_message', 'free', '$withStackSave'],
+  $getExceptionMessageCommon__deps: ['__get_exception_message', 'free', '$withStackSave', 'stackAlloc'],
   $getExceptionMessageCommon: (ptr) => withStackSave(() => {
     var type_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
     var message_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
@@ -327,20 +327,6 @@ var LibraryExceptions = {
   __throw_exception_with_stack_trace: (ex) => {
     var e = new WebAssembly.Exception(getCppExceptionTag(), [ex], {traceStack: true});
     e.message = getExceptionMessage(e);
-    // The generated stack trace will be in the form of:
-    //
-    // Error
-    //     at ___throw_exception_with_stack_trace(test.js:1139:13)
-    //     at __cxa_throw (wasm://wasm/009a7c9a:wasm-function[1551]:0x24367)
-    //     ...
-    //
-    // Remove this JS function name, which is in the second line, from the stack
-    // trace. Note that .stack does not yet exist in all browsers (see #18828).
-    if (e.stack) {
-      var arr = e.stack.split('\n');
-      arr.splice(1,1);
-      e.stack = arr.join('\n');
-    }
     throw e;
   },
 #endif

@@ -8,6 +8,7 @@
 #include <webgpu/webgpu_cpp.h>
 
 #undef NDEBUG
+#include <array>
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
@@ -309,6 +310,13 @@ void doRenderTest() {
         descriptor.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc;
         descriptor.size = {1, 1, 1};
         descriptor.format = wgpu::TextureFormat::BGRA8Unorm;
+
+        // Test for viewFormats binding
+        std::array<wgpu::TextureFormat, 2> viewFormats =
+            { wgpu::TextureFormat::BGRA8Unorm, wgpu::TextureFormat::BGRA8Unorm };
+        descriptor.viewFormatCount = viewFormats.size();
+        descriptor.viewFormats = viewFormats.data();
+
         readbackTexture = device.CreateTexture(&descriptor);
     }
     wgpu::Texture depthTexture;

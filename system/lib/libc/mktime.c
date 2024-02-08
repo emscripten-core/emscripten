@@ -4,6 +4,7 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  */
+#include <errno.h>
 #include <time.h>
 
 #include "emscripten_internal.h"
@@ -15,7 +16,11 @@ weak time_t timegm(struct tm *tm) {
 
 weak time_t mktime(struct tm *tm) {
   tzset();
-  return _mktime_js(tm);
+  time_t t = _mktime_js(tm);
+  if (t == -1) {
+    errno = EOVERFLOW;
+  }
+  return t;
 }
 
 weak struct tm *__localtime_r(const time_t *restrict t, struct tm *restrict tm) {

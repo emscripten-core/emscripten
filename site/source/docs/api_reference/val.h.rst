@@ -260,7 +260,7 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
 
     :returns: The fulfilled value.
 
-      .. note:: This method requires :ref:`Asyncify` to be enabled.
+      .. note:: This method requires :ref:`ASYNCIFY` to be enabled.
 
   .. cpp:function:: val operator co_await() const
 
