@@ -309,6 +309,34 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       return ret;
     },
 
+    // The code path for creating textures, buffers, framebuffers and other
+    // objects the same (and not in fast path), so we merge the functions
+    // together.
+    // 'createFunction' refers to the WebGL context function name to do the actual
+    // creation, 'objectTable' points to the GL object table where to populate the
+    // created objects, and 'functionName' carries the name of the caller for
+    // debug information.
+    genObject: (n, buffers, createFunction, objectTable
+#if GL_ASSERTIONS
+      , functionName
+#endif
+      ) => {
+      for (var i = 0; i < n; i++) {
+        var buffer = GLctx[createFunction]();
+        var id = buffer && GL.getNewId(objectTable);
+        if (buffer) {
+          buffer.name = id;
+          objectTable[id] = buffer;
+        } else {
+          GL.recordError(0x502 /* GL_INVALID_OPERATION */);
+#if GL_ASSERTIONS
+          err(`GL_INVALID_OPERATION in ${functionName}: GLctx.${createFunction} returned null - most likely GL context is lost!`);
+#endif
+        }
+        {{{ makeSetValue('buffers', 'i*4', 'id', 'i32') }}};
+      }
+    },
+
 #if FULL_ES2 || LEGACY_GL_EMULATION
     // When user GL code wants to render from client-side memory, we need to
     // upload the vertex data to a temp VBO for rendering. Maintain a set of
@@ -1770,46 +1798,16 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     return GLctx.isTexture(texture);
   },
 
-  // The code path for creating textures, buffers, framebuffers and other
-  // objects is so identical to each other (and not in fast path), that merge
-  // the functions together to only have one generated copy of this.
-  // 'createFunction' refers to the WebGL context function name to do the actual
-  // creation, 'objectTable' points to the GL object table where to populate the
-  // created objects, and 'functionName' carries the name of the caller for
-  // debug information.
-  $__glGenObject: (n, buffers, createFunction, objectTable
-#if GL_ASSERTIONS
-    , functionName
-#endif
-    ) => {
-    for (var i = 0; i < n; i++) {
-      var buffer = GLctx[createFunction]();
-      var id = buffer && GL.getNewId(objectTable);
-      if (buffer) {
-        buffer.name = id;
-        objectTable[id] = buffer;
-      } else {
-        GL.recordError(0x502 /* GL_INVALID_OPERATION */);
-#if GL_ASSERTIONS
-        err(`GL_INVALID_OPERATION in ${functionName}: GLctx.${createFunction} returned null - most likely GL context is lost!`);
-#endif
-      }
-      {{{ makeSetValue('buffers', 'i*4', 'id', 'i32') }}};
-    }
-  },
-
-  glGenBuffers__deps: ['$__glGenObject'],
   glGenBuffers: (n, buffers) => {
-    __glGenObject(n, buffers, 'createBuffer', GL.buffers
+    GL.genObject(n, buffers, 'createBuffer', GL.buffers
 #if GL_ASSERTIONS
     , 'glGenBuffers'
 #endif
       );
   },
 
-  glGenTextures__deps: ['$__glGenObject'],
   glGenTextures: (n, textures) => {
-    __glGenObject(n, textures, 'createTexture', GL.textures
+    GL.genObject(n, textures, 'createTexture', GL.textures
 #if GL_ASSERTIONS
     , 'glGenTextures'
 #endif
@@ -2055,9 +2053,8 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     return GLctx.isBuffer(b);
   },
 
-  glGenRenderbuffers__deps: ['$__glGenObject'],
   glGenRenderbuffers: (n, renderbuffers) => {
-    __glGenObject(n, renderbuffers, 'createRenderbuffer', GL.renderbuffers
+    GL.genObject(n, renderbuffers, 'createRenderbuffer', GL.renderbuffers
 #if GL_ASSERTIONS
     , 'glGenRenderbuffers'
 #endif
@@ -3627,9 +3624,8 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 
   },
 
-  glGenFramebuffers__deps: ['$__glGenObject'],
   glGenFramebuffers: (n, ids) => {
-    __glGenObject(n, ids, 'createFramebuffer', GL.framebuffers
+    GL.genObject(n, ids, 'createFramebuffer', GL.framebuffers
 #if GL_ASSERTIONS
     , 'glGenFramebuffers'
 #endif
@@ -3678,11 +3674,9 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     return GLctx.isFramebuffer(fb);
   },
 
-  glGenVertexArrays__deps: ['$__glGenObject'
 #if LEGACY_GL_EMULATION
-  , '$emulGlGenVertexArrays'
+  glGenVertexArrays__deps: ['$emulGlGenVertexArrays'],
 #endif
-  ],
   glGenVertexArrays: (n, arrays) => {
 #if LEGACY_GL_EMULATION
     emulGlGenVertexArrays(n, arrays);
@@ -3690,7 +3684,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_ASSERTIONS
     assert(GLctx.createVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
-    __glGenObject(n, arrays, 'createVertexArray', GL.vaos
+    GL.genObject(n, arrays, 'createVertexArray', GL.vaos
 #if GL_ASSERTIONS
     , 'glGenVertexArrays'
 #endif
