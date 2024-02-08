@@ -1524,7 +1524,7 @@ keydown(100);keyup(100); // trigger the end
 
   def test_idbstore_sync_worker(self):
     secret = str(time.time())
-    self.btest('test_idbstore_sync_worker.c', expected='0', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '--proxy-to-worker', '-sINITIAL_MEMORY=80MB', '-sASYNCIFY'])
+    self.btest('test_idbstore_sync_worker.c', expected='0', args=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '--proxy-to-worker', '-sASYNCIFY'])
 
   def test_force_exit(self):
     self.btest_exit('force_exit.c', assert_returncode=10)
@@ -2273,10 +2273,10 @@ void *getBindBuffer() {
     self.btest('test_sdl_canvas_palette_2.c', reference='browser/test_sdl_canvas_palette_b.png', args=['--pre-js', 'pre.js', '--pre-js', 'args-b.js', '-lSDL', '-lGL'])
 
   def test_sdl_ttf_render_text_solid(self):
-    self.btest('test_sdl_ttf_render_text_solid.c', reference='browser/test_sdl_ttf_render_text_solid.png', args=['-O2', '-sINITIAL_MEMORY=16MB', '-lSDL', '-lGL'])
+    self.btest('test_sdl_ttf_render_text_solid.c', reference='browser/test_sdl_ttf_render_text_solid.png', args=['-O2', '-lSDL', '-lGL'])
 
   def test_sdl_alloctext(self):
-    self.btest_exit('test_sdl_alloctext.c', args=['-sINITIAL_MEMORY=16MB', '-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_alloctext.c', args=['-lSDL', '-lGL'])
 
   def test_sdl_surface_refcount(self):
     self.btest_exit('test_sdl_surface_refcount.c', args=['-lSDL'])
@@ -3240,7 +3240,7 @@ Module["preRun"] = () => {
 
   @no_wasm64('SDL2 + wasm64')
   def test_sdl2_swsurface(self):
-    self.btest_exit('test_sdl2_swsurface.c', args=['-sUSE_SDL=2', '-sINITIAL_MEMORY=64MB'])
+    self.btest_exit('test_sdl2_swsurface.c', args=['-sUSE_SDL=2'])
 
   @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
@@ -3406,7 +3406,7 @@ Module["preRun"] = () => {
   @requires_sound_hardware
   def test_sdl2_mixer_wav(self, flags):
     shutil.copyfile(test_file('sounds/the_entertainer.wav'), 'sound.wav')
-    self.btest_exit('test_sdl2_mixer_wav.c', args=['--preload-file', 'sound.wav', '-sINITIAL_MEMORY=33554432'] + flags)
+    self.btest_exit('test_sdl2_mixer_wav.c', args=['--preload-file', 'sound.wav'] + flags)
 
   @no_wasm64('SDL2 + wasm64')
   @parameterized({
@@ -3427,7 +3427,6 @@ Module["preRun"] = () => {
       '-sUSE_SDL=2',
       '-sUSE_SDL_MIXER=2',
       '-sSDL2_MIXER_FORMATS=' + ','.join(formats),
-      '-sINITIAL_MEMORY=33554432'
     ])
 
   @requires_graphics_hardware
@@ -3907,7 +3906,7 @@ Module["preRun"] = () => {
   })
   @requires_threads
   def test_pthread_atomics(self, args):
-    self.btest_exit('pthread/test_pthread_atomics.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '-g1'] + args)
+    self.btest_exit('pthread/test_pthread_atomics.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '-g1'] + args)
 
   # Test 64-bit atomics.
   @requires_threads
@@ -3963,7 +3962,7 @@ Module["preRun"] = () => {
       for debug in [[], ['-g']]:
         args = opt + debug
         print(args)
-        self.btest_exit('pthread/test_pthread_gcc_atomic_fetch_and_op.cpp', args=args + ['-sINITIAL_MEMORY=64MB', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+        self.btest_exit('pthread/test_pthread_gcc_atomic_fetch_and_op.cpp', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
   @also_with_wasm2js
@@ -3972,14 +3971,14 @@ Module["preRun"] = () => {
     if not self.is_wasm():
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4358')
     self.emcc_args += ['-Wno-sync-fetch-and-nand-semantics-changed']
-    self.btest_exit('pthread/test_pthread_gcc_64bit_atomic_fetch_and_op.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_gcc_64bit_atomic_fetch_and_op.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test the old GCC atomic __sync_op_and_fetch builtin operations.
   @also_with_wasm2js
   @requires_threads
   def test_pthread_gcc_atomic_op_and_fetch(self):
     self.emcc_args += ['-Wno-sync-fetch-and-nand-semantics-changed']
-    self.btest_exit('pthread/test_pthread_gcc_atomic_op_and_fetch.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_gcc_atomic_op_and_fetch.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
   @also_with_wasm2js
@@ -3988,20 +3987,20 @@ Module["preRun"] = () => {
     if not self.is_wasm():
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4358')
     self.emcc_args += ['-Wno-sync-fetch-and-nand-semantics-changed', '--profiling-funcs']
-    self.btest_exit('pthread/test_pthread_gcc_64bit_atomic_op_and_fetch.cpp', args=['-sINITIAL_MEMORY=64MB', '-pthread', '-O2', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_gcc_64bit_atomic_op_and_fetch.cpp', args=['-pthread', '-O2', '-sPTHREAD_POOL_SIZE=8'])
 
   # Tests the rest of the remaining GCC atomics after the two above tests.
   @also_with_wasm2js
   @requires_threads
   def test_pthread_gcc_atomics(self):
-    self.btest_exit('pthread/test_pthread_gcc_atomics.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_gcc_atomics.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
   @also_with_wasm2js
   @requires_threads
   def test_pthread_gcc_spinlock(self):
     for arg in [[], ['-DUSE_EMSCRIPTEN_INTRINSICS']]:
-      self.btest_exit('pthread/test_pthread_gcc_spinlock.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + arg)
+      self.btest_exit('pthread/test_pthread_gcc_spinlock.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + arg)
 
   # Test that basic thread creation works.
   @requires_threads
@@ -4009,7 +4008,7 @@ Module["preRun"] = () => {
     def test(args):
       print(args)
       self.btest_exit('pthread/test_pthread_create.cpp',
-                      args=['-sINITIAL_MEMORY=64MB', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args,
+                      args=['-pthread', '-sPTHREAD_POOL_SIZE=8'] + args,
                       extra_tries=0) # this should be 100% deterministic
     print() # new line
     test([])
@@ -4082,7 +4081,7 @@ Module["preRun"] = () => {
     'spinlock': (['-DSPINLOCK_TEST'],),
   })
   def test_pthread_mutex(self, args):
-    self.btest_exit('pthread/test_pthread_mutex.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args)
+    self.btest_exit('pthread/test_pthread_mutex.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args)
 
   @requires_threads
   def test_pthread_attr_getstack(self):
@@ -4091,27 +4090,27 @@ Module["preRun"] = () => {
   # Test that memory allocation is thread-safe.
   @requires_threads
   def test_pthread_malloc(self):
-    self.btest_exit('pthread/test_pthread_malloc.c', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_malloc.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Stress test pthreads allocating memory that will call to sbrk(), and main thread has to free up the data.
   @requires_threads
   def test_pthread_malloc_free(self):
-    self.btest_exit('pthread/test_pthread_malloc_free.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '-sINITIAL_MEMORY=256MB'])
+    self.btest_exit('pthread/test_pthread_malloc_free.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test that the pthread_barrier API works ok.
   @requires_threads
   def test_pthread_barrier(self):
-    self.btest_exit('pthread/test_pthread_barrier.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_barrier.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test the pthread_once() function.
   @requires_threads
   def test_pthread_once(self):
-    self.btest_exit('pthread/test_pthread_once.c', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_once.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test against a certain thread exit time handling bug by spawning tons of threads.
   @requires_threads
   def test_pthread_spawns(self):
-    self.btest_exit('pthread/test_pthread_spawns.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '--closure=1', '-sENVIRONMENT=web,worker'])
+    self.btest_exit('pthread/test_pthread_spawns.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '--closure=1', '-sENVIRONMENT=web,worker'])
 
   # It is common for code to flip volatile global vars for thread control. This is a bit lax, but nevertheless, test whether that
   # kind of scheme will work with Emscripten as well.
@@ -4121,17 +4120,17 @@ Module["preRun"] = () => {
     'atomic': ([],),
   })
   def test_pthread_volatile(self, args):
-    self.btest_exit('pthread/test_pthread_volatile.c', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args)
+    self.btest_exit('pthread/test_pthread_volatile.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args)
 
   # Test thread-specific data (TLS).
   @requires_threads
   def test_pthread_thread_local_storage(self):
-    self.btest_exit('pthread/test_pthread_thread_local_storage.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '-sASSERTIONS'])
+    self.btest_exit('pthread/test_pthread_thread_local_storage.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '-sASSERTIONS'])
 
   # Test the pthread condition variable creation and waiting.
   @requires_threads
   def test_pthread_condition_variable(self):
-    self.btest_exit('pthread/test_pthread_condition_variable.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_condition_variable.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test that pthreads are able to do printf.
   @parameterized({
@@ -4140,12 +4139,12 @@ Module["preRun"] = () => {
   })
   @requires_threads
   def test_pthread_printf(self, debug):
-     self.btest_exit('pthread/test_pthread_printf.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE', '-sLIBRARY_DEBUG=%d' % debug])
+     self.btest_exit('pthread/test_pthread_printf.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE', '-sLIBRARY_DEBUG=%d' % debug])
 
   # Test that pthreads are able to do cout. Failed due to https://bugzilla.mozilla.org/show_bug.cgi?id=1154858.
   @requires_threads
   def test_pthread_iostream(self):
-    self.btest_exit('pthread/test_pthread_iostream.cpp', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
+    self.btest_exit('pthread/test_pthread_iostream.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
   @requires_threads
   def test_pthread_unistd_io_bigint(self):
@@ -4155,7 +4154,7 @@ Module["preRun"] = () => {
   @also_with_wasm2js
   @requires_threads
   def test_pthread_setspecific_mainthread(self):
-    self.btest_exit('pthread/test_pthread_setspecific_mainthread.c', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread'])
+    self.btest_exit('pthread/test_pthread_setspecific_mainthread.c', args=['-O3', '-pthread'])
 
   # Test that pthreads have access to filesystem.
   @requires_threads
@@ -4319,7 +4318,7 @@ Module["preRun"] = () => {
   @also_with_wasm2js
   @requires_threads
   def test_pthread_wake_all(self):
-    self.btest_exit('pthread/test_futex_wake_all.cpp', args=['-O3', '-pthread', '-sINITIAL_MEMORY=64MB'])
+    self.btest_exit('pthread/test_futex_wake_all.cpp', args=['-O3', '-pthread'])
 
   # Test that stack base and max correctly bound the stack on pthreads.
   @requires_threads
@@ -4351,7 +4350,7 @@ Module["preRun"] = () => {
   @requires_threads
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/15978')
   def test_pthread_lsan(self, name, args):
-    self.btest(Path('pthread', name + '.cpp'), expected='1', args=['-fsanitize=leak', '-sINITIAL_MEMORY=256MB', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
+    self.btest(Path('pthread', name + '.cpp'), expected='1', args=['-fsanitize=leak', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
   @no_wasm64('TODO: ASAN in memory64')
   @parameterized({
@@ -4361,12 +4360,12 @@ Module["preRun"] = () => {
   })
   @requires_threads
   def test_pthread_asan(self, name, args):
-    self.btest(Path('pthread', name + '.cpp'), expected='1', args=['-fsanitize=address', '-sINITIAL_MEMORY=256MB', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
+    self.btest(Path('pthread', name + '.cpp'), expected='1', args=['-fsanitize=address', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
   @no_wasm64('TODO: ASAN in memory64')
   @requires_threads
   def test_pthread_asan_use_after_free(self):
-    self.btest('pthread/test_pthread_asan_use_after_free.cpp', expected='1', args=['-fsanitize=address', '-sINITIAL_MEMORY=256MB', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread/test_pthread_asan_use_after_free.js')])
+    self.btest('pthread/test_pthread_asan_use_after_free.cpp', expected='1', args=['-fsanitize=address', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread/test_pthread_asan_use_after_free.js')])
 
   @no_wasm64('TODO: ASAN in memory64')
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/20006')
@@ -4377,7 +4376,7 @@ Module["preRun"] = () => {
     # of proxy-to-pthread, and also the allocation happens on the pthread
     # (which tests that it can use the offset converter to get the stack
     # trace there)
-    self.btest('pthread/test_pthread_asan_use_after_free_2.cpp', expected='1', args=['-fsanitize=address', '-sINITIAL_MEMORY=256MB', '-pthread', '-sPTHREAD_POOL_SIZE=1', '--pre-js', test_file('pthread/test_pthread_asan_use_after_free_2.js')])
+    self.btest('pthread/test_pthread_asan_use_after_free_2.cpp', expected='1', args=['-fsanitize=address', '-pthread', '-sPTHREAD_POOL_SIZE=1', '--pre-js', test_file('pthread/test_pthread_asan_use_after_free_2.js')])
 
   @requires_threads
   def test_pthread_exit_process(self):
@@ -4516,7 +4515,7 @@ Module["preRun"] = () => {
   # Test that implementing Module.instantiateWasm() callback works.
   @parameterized({
     '': ([],),
-    'asan': (['-fsanitize=address', '-sINITIAL_MEMORY=128MB'],)
+    'asan': (['-fsanitize=address'],)
   })
   def test_manual_wasm_instantiate(self, args):
     if self.is_wasm64() and args:
@@ -4861,8 +4860,7 @@ Module["preRun"] = () => {
     with open('largefile.txt', 'w') as f:
       for _ in range(1024):
         f.write(s)
-    self.btest_exit('fetch/test_fetch_stream_file.cpp',
-                    args=['-sFETCH_DEBUG', '-sFETCH', '-sINITIAL_MEMORY=536870912'])
+    self.btest_exit('fetch/test_fetch_stream_file.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
 
   def test_fetch_headers_received(self):
     create_file('myfile.dat', 'hello world\n')
@@ -5111,7 +5109,7 @@ Module["preRun"] = () => {
   @requires_threads
   def test_pthreads_started_in_worker(self):
     self.set_setting('EXIT_RUNTIME')
-    self.compile_btest('pthread/test_pthread_atomics.cpp', ['-o', 'test.js', '-sINITIAL_MEMORY=64MB', '-pthread', '-sPTHREAD_POOL_SIZE=8'], reporting=Reporting.JS_ONLY)
+    self.compile_btest('pthread/test_pthread_atomics.cpp', ['-o', 'test.js', '-pthread', '-sPTHREAD_POOL_SIZE=8'], reporting=Reporting.JS_ONLY)
     create_file('test.html', '''
       <script>
         new Worker('test.js');
@@ -5606,7 +5604,7 @@ Module["preRun"] = () => {
     # will require bumping this
     'main_thread': (['-sPTHREAD_POOL_SIZE=5'],),
     # using proxy_to_pthread also works, of course
-    'proxy_to_pthread': (['-sPROXY_TO_PTHREAD', '-sINITIAL_MEMORY=32MB', '-DPROXYING'],),
+    'proxy_to_pthread': (['-sPROXY_TO_PTHREAD', '-DPROXYING'],),
     # using BigInt support affects the ABI, and should not break things. (this
     # could be tested on either thread; do the main thread for simplicity)
     'bigint': (['-sPTHREAD_POOL_SIZE=5', '-sWASM_BIGINT'],),
@@ -5621,7 +5619,7 @@ Module["preRun"] = () => {
     create_file('subdir/backendfile', 'file 1')
     create_file('subdir/backendfile2', 'file 2')
     self.btest_exit('wasmfs/wasmfs_fetch.c',
-                    args=['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD', '-sINITIAL_MEMORY=32MB',
+                    args=['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD',
                           '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
 
   @no_firefox('no OPFS support yet')
