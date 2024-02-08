@@ -37,9 +37,11 @@ See docs/process.md for more on how version tagging works.
   POINTER_SIZE }}}` and `{{{ makeGetValue(..) }}}` to be used in pre/post JS
   files, just like they can be in JS library files. (#21227)
 - Added concept of contrib ports which are ports contributed by the wider 
-  community and supported on a "best effort" basis. A first contrib port is 
+  community and supported on a "best effort" basis. See 
+  `tools/ports/contrib/README.md` for details.A first contrib port is 
   available via `--use-port=contrib.glfw3`: an emscripten port of glfw written 
-  in C++ with many features like support for multiple windows. (#21244)
+  in C++ with many features like support for multiple windows. (#21244 and 
+  #21276)
 
 
 3.1.53 - 01/29/24
