@@ -357,8 +357,9 @@ def get_binaryen_passes(memfile):
   if optimizing:
     passes += [building.opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL)]
   # when optimizing, use the fact that low memory is never used (1024 is a
-  # hardcoded value in the binaryen pass)
-  if optimizing and settings.GLOBAL_BASE >= 1024:
+  # hardcoded value in the binaryen pass). we also cannot do it when the stack
+  # is first, as then the stack is in the low memory that should be unused.
+  if optimizing and settings.GLOBAL_BASE >= 1024 and not settings.STACK_FIRST:
     passes += ['--low-memory-unused']
   if settings.AUTODEBUG:
     # adding '--flatten' here may make these even more effective
@@ -1339,9 +1340,12 @@ def phase_linker_setup(options, state, newargs):
       settings.AUDIO_WORKLET_FILE = unsuffixed(os.path.basename(target)) + '.aw.js'
     settings.JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_webaudio.js')))
     if not settings.MINIMAL_RUNTIME:
+      # If we are in the audio worklet environment, we can only access the Module object
+      # and not the global scope of the main JS script. Therefore we need to export
+      # all symbols that the audio worklet scope needs onto the Module object.
       # MINIMAL_RUNTIME exports these manually, since this export mechanism is placed
       # in global scope that is not suitable for MINIMAL_RUNTIME loader.
-      settings.EXPORTED_RUNTIME_METHODS += ['stackSave', 'stackAlloc', 'stackRestore']
+      settings.EXPORTED_RUNTIME_METHODS += ['stackSave', 'stackAlloc', 'stackRestore', 'wasmTable']
 
   if settings.FORCE_FILESYSTEM and not settings.MINIMAL_RUNTIME:
     # when the filesystem is forced, we export by default methods that filesystem usage
@@ -2349,13 +2353,15 @@ var %(EXPORT_NAME)s = (() => {
       'script_url_node': script_url_node,
       'src': src,
     }
-    # Given the async nature of how the Module function and Module object
-    # come into existence in AudioWorkletGlobalScope, store the Module
-    # function under a different variable name so that AudioWorkletGlobalScope
-    # will be able to reference it without aliasing/conflicting with the
-    # Module variable name.
-    if settings.AUDIO_WORKLET and settings.MODULARIZE:
-      src += f'globalThis.AudioWorkletModule = {settings.EXPORT_NAME};'
+
+  # Given the async nature of how the Module function and Module object
+  # come into existence in AudioWorkletGlobalScope, store the Module
+  # function under a different variable name so that AudioWorkletGlobalScope
+  # will be able to reference it without aliasing/conflicting with the
+  # Module variable name. This should happen even in MINIMAL_RUNTIME builds
+  # for MODULARIZE and EXPORT_ES6 to work correctly.
+  if settings.AUDIO_WORKLET and settings.MODULARIZE:
+    src += f'globalThis.AudioWorkletModule = {settings.EXPORT_NAME};'
 
   # Export using a UMD style export, or ES6 exports if selected
   if settings.EXPORT_ES6:
