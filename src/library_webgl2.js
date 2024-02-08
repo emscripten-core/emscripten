@@ -172,9 +172,8 @@ var LibraryWebGL2 = {
   },
 
   // Queries
-  glGenQueries__deps: ['$__glGenObject'],
   glGenQueries: (n, ids) => {
-    __glGenObject(n, ids, 'createQuery', GL.queries
+    GL.genObject(n, ids, 'createQuery', GL.queries
 #if GL_ASSERTIONS
     , 'glGenQueries'
 #endif
@@ -246,9 +245,8 @@ var LibraryWebGL2 = {
   },
 
   // Sampler objects
-  glGenSamplers__deps: ['$__glGenObject'],
   glGenSamplers: (n, samplers) => {
-    __glGenObject(n, samplers, 'createSampler', GL.samplers
+    GL.genObject(n, samplers, 'createSampler', GL.samplers
 #if GL_ASSERTIONS
     , 'glGenSamplers'
 #endif
@@ -340,9 +338,8 @@ var LibraryWebGL2 = {
   },
 
   // Transform Feedback
-  glGenTransformFeedbacks__deps: ['$__glGenObject'],
   glGenTransformFeedbacks: (n, ids) => {
-    __glGenObject(n, ids, 'createTransformFeedback', GL.transformFeedbacks
+    GL.genObject(n, ids, 'createTransformFeedback', GL.transformFeedbacks
 #if GL_ASSERTIONS
     , 'glGenTransformFeedbacks'
 #endif
