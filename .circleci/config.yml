@@ -819,6 +819,8 @@ jobs:
             browser_2gb.test_cubegeom*
             browser_2gb.test_html5_webgl_create_context*
             browser_2gb.test_main_thread_async_em_asm
+            browser_2gb.test_webgl2_*
+            browser_2gb.test_webgl_*
             "
   test-browser-chrome-wasm64-4gb:
     executor: bionic

@@ -2802,9 +2802,12 @@ Module["preRun"] = () => {
     self.btest_exit('webgl2_ubos.cpp', args=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
   @requires_graphics_hardware
-  def test_webgl2_garbage_free_entrypoints(self):
-    self.btest_exit('webgl2_garbage_free_entrypoints.cpp', args=['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1'])
-    self.btest_exit('webgl2_garbage_free_entrypoints.cpp')
+  @parameterized({
+    '': ([],),
+    'webgl2': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1'],),
+  })
+  def test_webgl2_garbage_free_entrypoints(self, args):
+    self.btest_exit('webgl2_garbage_free_entrypoints.cpp', args=args)
 
   @requires_graphics_hardware
   def test_webgl2_backwards_compatibility_emulation(self):
@@ -4622,6 +4625,8 @@ Module["preRun"] = () => {
   # For testing WebGL draft extensions like this, if using chrome as the browser,
   # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
   @requires_graphics_hardware
+  @no_2gb('multiDrawElementsInstancedWEBGL: size exceeds the supported range')
+  @no_4gb('multiDrawElementsInstancedWEBGL: size exceeds the supported range')
   @parameterized({
     'arrays': (['-DMULTI_DRAW_ARRAYS'],),
     'arrays_instanced': (['-DMULTI_DRAW_ARRAYS_INSTANCED'],),
