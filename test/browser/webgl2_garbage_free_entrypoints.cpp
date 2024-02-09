@@ -56,11 +56,14 @@ int main(int argc, char *argv[])
   assert(glGetError() == GL_NO_ERROR && "Shader program link failed");
 
   int color_loc = glGetUniformLocation(program, "color");
+  assert(glGetError() == GL_NO_ERROR);
   assert(color_loc != -1);
 
   glUseProgram(program);
+  assert(glGetError() == GL_NO_ERROR);
   float col[3] = { 0.2f, 0.2f, 0.2f };
   glUniform3fv(color_loc, 1, col);
+  assert(glGetError() == GL_NO_ERROR);
 
   int loc2 = glGetUniformLocation(program, "colors[2]");
   int loc = glGetUniformLocation(program, "colors");
@@ -75,7 +78,10 @@ int main(int argc, char *argv[])
 
   float colors[4*3] = { 1,0,0, 0,0.5,0, 0,0,0.2, 1,1,1 };
 
-  glUniform3fv(loc+1, 3, colors+3); // Pass the actual colors (testing a nonzero location offset), but do a mistake by setting one index too many. Spec says this should be gracefully handled, and that excess elements are ignored.
+  // Pass the actual colors (testing a nonzero location offset), but do a
+  // mistake by setting one index too many. Spec says this should be gracefully
+  // handled, and that excess elements are ignored.
+  glUniform3fv(loc+1, 3, colors+3);
   assert(glGetError() == GL_NO_ERROR);
   glUniform3fv(loc, 1, colors); // Set the first index as well.
   assert(glGetError() == GL_NO_ERROR);
