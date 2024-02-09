@@ -752,7 +752,7 @@ def generate_js(data_target, data_files, metadata):
 
     package_name = data_target
     remote_package_size = os.path.getsize(package_name)
-    remote_package_name = os.path.basename(package_name)
+    remote_package_name = os.path.relpath(package_name)
     ret += '''
       var PACKAGE_PATH = '';
       if (typeof window === 'object') {
