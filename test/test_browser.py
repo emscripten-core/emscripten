@@ -4625,8 +4625,8 @@ Module["preRun"] = () => {
   # For testing WebGL draft extensions like this, if using chrome as the browser,
   # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
   @requires_graphics_hardware
-  @no_2gb('multiDrawElementsInstancedWEBGL: size exceeds the supported range')
-  @no_4gb('multiDrawElementsInstancedWEBGL: size exceeds the supported range')
+  @no_2gb('https://crbug.com/324562920')
+  @no_4gb('https://crbug.com/324562920')
   @parameterized({
     'arrays': (['-DMULTI_DRAW_ARRAYS'],),
     'arrays_instanced': (['-DMULTI_DRAW_ARRAYS_INSTANCED'],),
