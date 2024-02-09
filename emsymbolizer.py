@@ -102,14 +102,10 @@ class WasmSourceMap(object):
     self.offsets = []
 
   def parse(self, filename):
-    try:
-      with open(filename) as f:
-        source_map_json = json.loads(f.read())
-        if shared.DEBUG:
-          print(source_map_json)
-    except Exception as e:
-      print('Could not open File/URL in sourceMappingURL')
-      raise e
+    with open(filename) as f:
+      source_map_json = json.loads(f.read())
+      if shared.DEBUG:
+        print(source_map_json)
 
     self.version = source_map_json['version']
     self.sources = source_map_json['sources']
