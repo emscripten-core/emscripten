@@ -4017,10 +4017,10 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     GLctx.multiDrawWebgl['multiDrawElementsWEBGL'](
       mode,
       HEAP32,
-      {{{ getHeapOffset('counts', 'float') }}},
+      {{{ getHeapOffset('counts', 'i32') }}},
       type,
       HEAP32,
-      {{{ getHeapOffset('offsets', 'float') }}},
+      {{{ getHeapOffset('offsets', 'i32') }}},
       drawcount);
 #if MEMORY64
     stackRestore(stack);
