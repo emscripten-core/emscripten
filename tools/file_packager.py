@@ -1053,7 +1053,7 @@ def generate_js(data_target, data_files, metadata):
                           processPackageData(packageData);
                         });
                     }
-                  , preloadFallback);
+                  , handleError);
                 }
               }
             , preloadFallback);
