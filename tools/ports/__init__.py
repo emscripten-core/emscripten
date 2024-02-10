@@ -8,6 +8,8 @@ import hashlib
 import os
 import shutil
 import glob
+import importlib.util
+import sys
 from typing import Set
 from tools import cache
 from tools import config
@@ -33,8 +35,20 @@ ports_dir = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger('ports')
 
 
-def load_port(name):
-  port = __import__(name, globals(), level=1, fromlist=[None])
+def load_port_module(name, file_path):
+  module_name = f'tools.ports.{name}'
+  spec = importlib.util.spec_from_file_location(module_name, file_path)
+  module = importlib.util.module_from_spec(spec)
+  sys.modules[module_name] = module
+  spec.loader.exec_module(module)
+  return module
+
+
+def load_port(name, port_file_path = None):
+  if port_file_path is None:
+    port = __import__(name, globals(), level=1, fromlist=[None])
+  else:
+    port = load_port_module(name, port_file_path)
   ports.append(port)
   port.is_contrib = name.startswith('contrib.')
   port.name = name
@@ -63,6 +77,7 @@ def load_port(name):
       utils.exit_with_error('duplicate port variant: %s' % variant)
     port_variants[variant] = (port.name, extra_settings)
 
+  return port
 
 def validate_port(port):
   expected_attrs = ['get', 'clear', 'show']
@@ -402,6 +417,12 @@ def handle_use_port_error(arg, message):
 def handle_use_port_arg(settings, arg):
   args = arg.split(':', 1)
   name, options = args[0], None
+  # todo handle windows "C:" syntax :(
+  if '@' in name:
+    name, port_path = name.split('@', 1)
+    if not os.path.isfile(port_path):
+      handle_use_port_error(arg, f'not a valid port path: {port_path}')
+    validate_port(load_port(name, port_path))
   if len(args) == 2:
     options = args[1]
   if name not in ports_by_name:
