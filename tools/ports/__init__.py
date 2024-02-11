@@ -77,7 +77,6 @@ def load_port(name, port_file_path = None):
       utils.exit_with_error('duplicate port variant: %s' % variant)
     port_variants[variant] = (port.name, extra_settings)
 
-  return port
 
 def validate_port(port):
   expected_attrs = ['get', 'clear', 'show']
@@ -113,6 +112,13 @@ def read_ports():
     load_port('contrib.' + filename)
 
   validate_ports()
+
+
+def read_external_port(port_file_path):
+  name = os.path.splitext(os.path.basename(port_file_path))[0]
+  load_port(name, port_file_path)
+  validate_port(ports_by_name[name])
+  return name
 
 
 def get_all_files_under(dirname):
@@ -401,6 +407,8 @@ def resolve_dependencies(port_set, settings):
   def add_deps(node):
     node.process_dependencies(settings)
     for d in node.deps:
+      if d not in ports_by_name:
+        utils.exit_with_error(f'Unknown dependency {d} for port {node.name}')
       dep = ports_by_name[d]
       if dep not in port_set:
         port_set.add(dep)
@@ -415,17 +423,21 @@ def handle_use_port_error(arg, message):
 
 
 def handle_use_port_arg(settings, arg):
-  args = arg.split(':', 1)
-  name, options = args[0], None
-  # todo handle windows "C:" syntax :(
-  if '@' in name:
-    name, port_path = name.split('@', 1)
-    if not os.path.isfile(port_path):
-      handle_use_port_error(arg, f'not a valid port path: {port_path}')
-    validate_port(load_port(name, port_path))
+  if arg.find(':\\') == 1:  # detect windows path C:\path\port.py
+    drive, rest = arg[:2], arg[2:]  # drive=C:, rest=\path\port.py
+    args = rest.split(':', 1)
+    name, options = drive + args[0], None
+  else:
+    args = arg.split(':', 1)
+    name, options = args[0], None
   if len(args) == 2:
     options = args[1]
-  if name not in ports_by_name:
+  if name.endswith('.py'):
+    port_file_path = name
+    if not os.path.isfile(port_file_path):
+      handle_use_port_error(arg, f'not a valid port path: {port_file_path}')
+    name = read_external_port(port_file_path)
+  elif name not in ports_by_name:
     handle_use_port_error(arg, f'invalid port name: {name}')
   ports_needed.add(name)
   if options:

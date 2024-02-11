@@ -13,25 +13,27 @@ LICENSE = 'MIT license'
 OPTIONS = {
   'value1': 'Value for define TEST_VALUE_1',
   'value2': 'Value for define TEST_VALUE_2',
+  'dependency': 'A dependency'
 }
 
 # user options (from --use-port)
 opts: Dict[str, Optional[str]] = {
   'value1': None,
   'value2': None,
+  'dependency': None
 }
 
 EXAMPLE_H = 'int external_port_test_fn(int);'
 EXAMPLE_C = 'int external_port_test_fn(int value) { return value; }'
 
-
+deps = []
 
 def get_lib_name(settings):
-  return f'lib_{name}.a'
+  return f'lib_external_port_test.a'
 
 
 def get(ports, settings, shared):
-  source_path = os.path.join(ports.get_dir(), name)
+  source_path = os.path.join(ports.get_dir(), 'external_port_test')
   os.makedirs(source_path, exist_ok=True)
 
   def create(final):
@@ -39,7 +41,7 @@ def get(ports, settings, shared):
     ports.write_file(os.path.join(source_path, 'external_port_test.c'), EXAMPLE_C)
     ports.install_headers(source_path)
     print(f'about to build {source_path}')
-    ports.build_port(source_path, final, name)
+    ports.build_port(source_path, final, 'external_port_test')
 
   return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
 
@@ -49,12 +51,19 @@ def clear(ports, settings, shared):
 
 
 def process_args(ports):
-  args = ['-isystem', ports.get_include_dir(name)]
+  args = ['-isystem', ports.get_include_dir('external_port_test')]
   if opts['value1']:
     args.append(f'-DTEST_VALUE_1={opts["value1"]}')
   if opts['value2']:
     args.append(f'-DTEST_VALUE_2={opts["value2"]}')
+  if opts['dependency']:
+    args.append(f'-DTEST_DEPENDENCY_{opts["dependency"].upper()}')
   return args
+
+
+def process_dependencies(settings):
+  if opts['dependency']:
+    deps.append(opts['dependency'])
 
 
 def handle_options(options):

@@ -2397,17 +2397,25 @@ int f() {
   def test_external_ports(self):
     external_port_path = test_file("other/external_port_test.py")
     # testing no option
-    self.emcc(test_file('other/test_external_ports.c'), [f'--use-port=external.port_test@{external_port_path}'], output_filename='a0.out.js')
+    self.emcc(test_file('other/test_external_ports.c'), [f'--use-port={external_port_path}'], output_filename='a0.out.js')
     output = self.run_js('a0.out.js')
     self.assertContained('value1=0&value2=0\n', output)
     # testing 1 option
-    self.emcc(test_file('other/test_external_ports.c'), [f'--use-port=external.port_test@{external_port_path}:value1=12'], output_filename='a1.out.js')
+    self.emcc(test_file('other/test_external_ports.c'), [f'--use-port={external_port_path}:value1=12'], output_filename='a1.out.js')
     output = self.run_js('a1.out.js')
     self.assertContained('value1=12&value2=0\n', output)
-    self.emcc(test_file('other/test_external_ports.c'), [f'--use-port=external.port_test@{external_port_path}:value1=12:value2=36'], output_filename='a2.out.js')
+    self.emcc(test_file('other/test_external_ports.c'), [f'--use-port={external_port_path}:value1=12:value2=36'], output_filename='a2.out.js')
     # testing 2 options
     output = self.run_js('a2.out.js')
     self.assertContained('value1=12&value2=36\n', output)
+    # testing dependency
+    self.emcc(test_file('other/test_external_ports.c'), [f'--use-port={external_port_path}:dependency=sdl2'], output_filename='a3.out.js')
+    output = self.run_js('a3.out.js')
+    self.assertContained('sdl2=2\n', output)
+    # testing invalid dependency
+    stderr = self.expect_fail([EMCC, test_file('other/test_external_ports.c'), f'--use-port={external_port_path}:dependency=invalid', '-o', 'a4.out.js'])
+    self.assertFalse(os.path.exists('a4.out.js'))
+    self.assertContained('Unknown dependency invalid for port external_port_test', stderr)
 
   def test_link_memcpy(self):
     # memcpy can show up *after* optimizations, so after our opportunity to link in libc, so it must be special-cased
