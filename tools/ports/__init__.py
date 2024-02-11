@@ -35,20 +35,7 @@ ports_dir = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger('ports')
 
 
-def load_port_module(name, file_path):
-  module_name = f'tools.ports.{name}'
-  spec = importlib.util.spec_from_file_location(module_name, file_path)
-  module = importlib.util.module_from_spec(spec)
-  sys.modules[module_name] = module
-  spec.loader.exec_module(module)
-  return module
-
-
-def load_port(name, port_file_path = None):
-  if port_file_path is None:
-    port = __import__(name, globals(), level=1, fromlist=[None])
-  else:
-    port = load_port_module(name, port_file_path)
+def init_port(name, port):
   ports.append(port)
   port.is_contrib = name.startswith('contrib.')
   port.name = name
@@ -78,6 +65,22 @@ def load_port(name, port_file_path = None):
     port_variants[variant] = (port.name, extra_settings)
 
 
+def load_port_by_name(name):
+  port = __import__(name, globals(), level=1, fromlist=[None])
+  init_port(name, port)
+
+
+def load_port_by_path(path):
+  name = os.path.splitext(os.path.basename(path))[0]
+  module_name = f'tools.ports.{name}'
+  spec = importlib.util.spec_from_file_location(module_name, path)
+  port = importlib.util.module_from_spec(spec)
+  sys.modules[module_name] = port
+  spec.loader.exec_module(port)
+  init_port(name, port)
+  return port
+
+
 def validate_port(port):
   expected_attrs = ['get', 'clear', 'show']
   if port.is_contrib:
@@ -102,23 +105,16 @@ def read_ports():
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
     filename = os.path.splitext(filename)[0]
-    load_port(filename)
+    load_port_by_name(filename)
 
   contrib_dir = os.path.join(ports_dir, 'contrib')
   for filename in os.listdir(contrib_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
     filename = os.path.splitext(filename)[0]
-    load_port('contrib.' + filename)
+    load_port_by_name('contrib.' + filename)
 
   validate_ports()
-
-
-def read_external_port(port_file_path):
-  name = os.path.splitext(os.path.basename(port_file_path))[0]
-  load_port(name, port_file_path)
-  validate_port(ports_by_name[name])
-  return name
 
 
 def get_all_files_under(dirname):
@@ -436,7 +432,9 @@ def handle_use_port_arg(settings, arg):
     port_file_path = name
     if not os.path.isfile(port_file_path):
       handle_use_port_error(arg, f'not a valid port path: {port_file_path}')
-    name = read_external_port(port_file_path)
+    port = load_port_by_path(port_file_path)
+    validate_port(port)
+    name = port.name
   elif name not in ports_by_name:
     handle_use_port_error(arg, f'invalid port name: {name}')
   ports_needed.add(name)
