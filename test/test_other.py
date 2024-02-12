@@ -2394,7 +2394,10 @@ int f() {
     # with a different contrib port when there is another one
     self.emcc(test_file('other/test_contrib_ports.cpp'), ['--use-port=contrib.glfw3'])
 
+  @crossplatform
   def test_external_ports(self):
+    if config.FROZEN_CACHE:
+      self.skipTest("test doesn't work with frozen cache")
     external_port_path = test_file("other/external_port_test.py")
     # testing no option
     self.emcc(test_file('other/test_external_ports.c'), [f'--use-port={external_port_path}'], output_filename='a0.out.js')
