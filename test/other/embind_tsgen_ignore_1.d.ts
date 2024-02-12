@@ -1,6 +1,13 @@
 // TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
 interface WasmModule {
+  _pthread_self(): number;
   _main(_0: number, _1: number): number;
+  __emscripten_tls_init(): number;
+  __emscripten_proxy_main(_0: number, _1: number): number;
+  __embind_initialize_bindings(): void;
+  __emscripten_thread_init(_0: number, _1: number, _2: number, _3: number, _4: number, _5: number): void;
+  __emscripten_thread_crashed(): void;
+  __emscripten_thread_exit(_0: number): void;
 }
 
 export interface Test {
@@ -33,16 +40,8 @@ export interface IntVec {
   push_back(_0: number): void;
   resize(_0: number, _1: number): void;
   size(): number;
-  get(_0: number): number | undefined;
   set(_0: number, _1: number): boolean;
-  delete(): void;
-}
-
-export interface MapIntInt {
-  keys(): IntVec;
-  get(_0: number): number | undefined;
-  set(_0: number, _1: number): void;
-  size(): number;
+  get(_0: number): any;
   delete(): void;
 }
 
@@ -92,7 +91,6 @@ interface EmbindModule {
   EmptyEnum: {};
   enum_returning_fn(): Bar;
   IntVec: {new(): IntVec};
-  MapIntInt: {new(): MapIntInt};
   Foo: {};
   ClassWithConstructor: {new(_0: number, _1: ValArr): ClassWithConstructor};
   ClassWithTwoConstructors: {new(): ClassWithTwoConstructors; new(_0: number): ClassWithTwoConstructors};
@@ -101,8 +99,8 @@ interface EmbindModule {
   DerivedClass: {};
   a_bool: boolean;
   an_int: number;
-  optional_test(_0: Foo | undefined): number | undefined;
   global_fn(_0: number, _1: number): number;
+  optional_test(_0: Foo | undefined): number | undefined;
   smart_ptr_function(_0: ClassWithSmartPtrConstructor): number;
   smart_ptr_function_with_params(foo: ClassWithSmartPtrConstructor): number;
   function_with_callback_param(_0: (message: string) => void): number;

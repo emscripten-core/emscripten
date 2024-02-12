@@ -258,7 +258,7 @@ def get_function_exports(module):
   rtn = {}
   for e in module.get_exports():
     if e.kind == webassembly.ExternType.FUNC:
-      rtn[e.name] = len(module.get_function_type(e.index).params)
+      rtn[e.name] = module.get_function_type(e.index)
   return rtn
 
 
