@@ -359,6 +359,7 @@ See docs/process.md for more on how version tagging works.
    - stringToUTF8Array
    - stringToUTF8
    - lengthBytesUTF8
+  
   If you use any of these functions in your JS code you will now need to include
   them explicitly in one of the following ways:
    - Add them to a `__deps` entry in your JS library file (with leading $)
