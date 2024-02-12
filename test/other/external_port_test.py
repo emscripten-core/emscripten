@@ -28,8 +28,9 @@ EXAMPLE_C = 'int external_port_test_fn(int value) { return value; }'
 
 deps = []
 
+
 def get_lib_name(settings):
-  return f'lib_external_port_test.a'
+  return 'lib_external_port_test.a'
 
 
 def get(ports, settings, shared):
@@ -68,5 +69,3 @@ def process_dependencies(settings):
 
 def handle_options(options):
   opts.update(options)
-
-
