@@ -3405,7 +3405,7 @@ Module["preRun"] = () => {
 
   @no_wasm64('SDL2 + wasm64')
   @parameterized({
-    'dash_s': (['-sUSE_SDL=2', '-sUSE_SDL_MIXER=2'],),
+    '': (['-sUSE_SDL=2', '-sUSE_SDL_MIXER=2'],),
     'dash_l': (['-lSDL2', '-lSDL2_mixer'],),
   })
   @requires_sound_hardware
