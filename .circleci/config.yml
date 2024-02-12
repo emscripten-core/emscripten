@@ -822,6 +822,7 @@ jobs:
             browser_2gb.test_webgl2_*
             browser_2gb.test_webgl_*
             browser_2gb.test_sdl_image
+            browser_2gb.test_wasm_worker*
             "
   test-browser-chrome-wasm64-4gb:
     executor: bionic
@@ -839,6 +840,7 @@ jobs:
             browser64_4gb.test_fulles2_sdlproc
             browser64_4gb.test_html5_webgl_create_context*
             browser64_4gb.test_sdl_image
+            browser64_4gb.test_wasm_worker*
             "
   test-browser-firefox:
     executor: bionic

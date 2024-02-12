@@ -236,6 +236,8 @@ class browser(BrowserCore):
   def require_wasm2js(self):
     if self.is_wasm64():
       self.skipTest('wasm2js is not compatible with MEMORY64')
+    if self.is_2gb() or self.is_4gb():
+      self.skipTest('wasm2js does not support over 2gb of memory')
 
   def require_jspi(self):
     if not is_chrome():
