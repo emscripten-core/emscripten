@@ -429,7 +429,16 @@ function makeSetValueImpl(ptr, pos, value, type) {
 function makeHEAPView(which, start, end) {
   const size = parseInt(which.replace('U', '').replace('F', '')) / 8;
   const shift = Math.log2(size);
-  const mod = size == 1 ? '' : (CAN_ADDRESS_2GB || MEMORY64) ? ('>>>' + shift) : ('>>' + shift);
+  let mod = '';
+  if (size != 1) {
+    if (MEMORY64) {
+      mod = '/' + size;
+    } else if (CAN_ADDRESS_2GB) {
+      mod = '>>>' + shift;
+    } else {
+      mod = '>>' + shift;
+    }
+  }
   return `HEAP${which}.subarray((${start})${mod}, (${end})${mod})`;
 }
 

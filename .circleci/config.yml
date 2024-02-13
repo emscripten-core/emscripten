@@ -829,6 +829,8 @@ jobs:
             browser64_4gb.test_html5_webgl_create_context*
             browser64_4gb.test_sdl_image
             browser64_4gb.test_wasm_worker*
+            browser64_4gb.test_cube_explosion
+            browser64_4gb.test_cubegeom_*
             "
   test-browser-firefox:
     executor: bionic

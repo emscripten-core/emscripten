@@ -239,7 +239,7 @@ var LibraryDylink = {
       }
 #if DYLINK_DEBUG
       else if (GOT[symName].value != value) {
-        dbg(`udateGOT: EXISTING SYMBOL: ${symName} : ${GOT[symName].value} (${value})`);
+        dbg(`updateGOT: EXISTING SYMBOL: ${symName} : ${GOT[symName].value} (${value})`);
       }
 #endif
     }
