@@ -365,7 +365,7 @@ var LibraryEmbind = {
         def.print(this.typeToJsName.bind(this), out);
       }
       // Print module definitions
-      out.push('export interface MainModule {\n');
+      out.push('interface EmbindModule {\n');
       for (const def of this.definitions) {
         if (!def.printModuleEntry) {
           continue;

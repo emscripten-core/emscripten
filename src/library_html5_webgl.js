@@ -14,8 +14,10 @@ var LibraryHtml5WebGL = {
     var len = arr.length;
     var writeLength = dstLength < len ? dstLength : len;
     var heap = heapType ? HEAPF32 : HEAP32;
+    // Works because HEAPF32 and HEAP32 have the same bytes-per-element
+    dst = {{{ getHeapOffset('dst', 'float') }}};
     for (var i = 0; i < writeLength; ++i) {
-      heap[(dst >> 2) + i] = arr[i];
+      heap[dst + i] = arr[i];
     }
     return len;
   },
