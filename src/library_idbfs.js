@@ -280,6 +280,12 @@ addToLibrary({
         }
       };
 
+      // transaction may abort if (for example) there is a QuotaExceededError
+      transaction.onabort = (e) => {
+        done(e.target.error); // DOMException
+        e.preventDefault();
+      };
+
       // sort paths in ascending order so directory entries are created
       // before the files inside them
       create.sort().forEach((path) => {
