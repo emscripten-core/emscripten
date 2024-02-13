@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
   glDrawArrays(GL_TRIANGLES, 0, 6);
 
   unsigned char pixel[4];
-  glReadPixels(1,1,1,1,GL_RGBA,GL_UNSIGNED_BYTE, pixel);
+  glReadPixels(1, 1, 1, 1, GL_RGBA,GL_UNSIGNED_BYTE, pixel);
   printf("%d,%d,%d,%d\n", pixel[0], pixel[1], pixel[2], pixel[3]);
   assert(pixel[0] == 255);
   assert(pixel[1] == 178);
