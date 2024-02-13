@@ -3143,6 +3143,10 @@ int f() {
                   '-sEXPORT_ES6=1']
     self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
     self.assertFileContents(test_file('other/embind_tsgen_ignore_2.d.ts'), read_file('embind_tsgen.d.ts'))
+    # Also test this separately since it conflicts with other settings.
+    extra_args = ['-sWASM=0']
+    self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
+    self.assertFileContents(test_file('other/embind_tsgen_ignore_3.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_test_embind(self):
     self.run_process([EMXX, test_file('embind/embind_test.cpp'),
