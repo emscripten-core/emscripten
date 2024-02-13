@@ -12,7 +12,7 @@ def get_lib_name(settings):
 
 def get(ports, settings, shared):
   # for simplicity in testing, the source is in the same folder as the port and not fetched as a tarball
-  source_dir = os.path.dirname(os.path.abspath(__file__))
+  source_dir = os.path.dirname(__file__)
 
   def create(final):
     ports.install_headers(source_dir)
