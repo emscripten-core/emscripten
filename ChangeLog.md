@@ -42,6 +42,8 @@ See docs/process.md for more on how version tagging works.
   available via `--use-port=contrib.glfw3`: an emscripten port of glfw written 
   in C++ with many features like support for multiple windows. (#21244 and 
   #21276)
+- Added concept of external ports which live outside emscripten and are
+  loaded on demand using the syntax `--use-port=/path/to/my_port.py` (#21316)
 
 
 3.1.53 - 01/29/24

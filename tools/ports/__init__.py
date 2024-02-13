@@ -61,7 +61,7 @@ def init_port(name, port):
 
   for variant, extra_settings in port.variants.items():
     if variant in port_variants:
-      utils.exit_with_error('duplicate port variant: %s' % variant)
+      utils.exit_with_error('duplicate port variant: `%s`' % variant)
     port_variants[variant] = (port.name, extra_settings)
 
   validate_port(port)
@@ -75,7 +75,7 @@ def load_port_by_name(name):
 def load_port_by_path(path):
   name = os.path.splitext(os.path.basename(path))[0]
   if name in ports_by_name:
-    utils.exit_with_error(f'port path [{path}] is invalid: duplicate port name {name}')
+    utils.exit_with_error(f'port path [`{path}`] is invalid: duplicate port name `{name}`')
   module_name = f'tools.ports.{name}'
   spec = importlib.util.spec_from_file_location(module_name, path)
   port = importlib.util.module_from_spec(spec)
@@ -398,7 +398,7 @@ def resolve_dependencies(port_set, settings):
     node.process_dependencies(settings)
     for d in node.deps:
       if d not in ports_by_name:
-        utils.exit_with_error(f'Unknown dependency {d} for port {node.name}')
+        utils.exit_with_error(f'Unknown dependency `{d}` for port `{node.name}`')
       dep = ports_by_name[d]
       if dep not in port_set:
         port_set.add(dep)
@@ -409,7 +409,7 @@ def resolve_dependencies(port_set, settings):
 
 
 def handle_use_port_error(arg, message):
-  utils.exit_with_error(f'Error with --use-port={arg} | {message}')
+  utils.exit_with_error(f'Error with `--use-port={arg}` | {message}')
 
 
 def handle_use_port_arg(settings, arg):
@@ -425,22 +425,22 @@ def handle_use_port_arg(settings, arg):
       handle_use_port_error(arg, f'not a valid port path: {port_file_path}')
     name = load_port_by_path(port_file_path)
   elif name not in ports_by_name:
-    handle_use_port_error(arg, f'invalid port name: {name}')
+    handle_use_port_error(arg, f'invalid port name: `{name}`')
   ports_needed.add(name)
   if options:
     port = ports_by_name[name]
     if not hasattr(port, 'handle_options'):
-      handle_use_port_error(arg, f'no options available for port {name}')
+      handle_use_port_error(arg, f'no options available for port `{name}`')
     else:
       options_dict = {}
       for name_value in options.split(':'):
         nv = name_value.split('=', 1)
         if len(nv) != 2:
-          handle_use_port_error(arg, f'{name_value} is missing a value')
+          handle_use_port_error(arg, f'`{name_value}` is missing a value')
         if nv[0] not in port.OPTIONS:
-          handle_use_port_error(arg, f'{nv[0]} is not supported; available options are {port.OPTIONS}')
+          handle_use_port_error(arg, f'`{nv[0]}` is not supported; available options are {port.OPTIONS}')
         if nv[0] in options_dict:
-          handle_use_port_error(arg, f'duplicate option {nv[0]}')
+          handle_use_port_error(arg, f'duplicate option `{nv[0]}`')
         options_dict[nv[0]] = nv[1]
       port.handle_options(options_dict)
 

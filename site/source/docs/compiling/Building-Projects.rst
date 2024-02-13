@@ -278,6 +278,15 @@ The simplest way to add a new port is to put it under the ``contrib`` directory.
  * Make sure the port is open source and has a suitable license.
  * Read the ``README.md`` file under ``tools/ports/contrib`` which contains more information.
 
+External ports
+--------------
+
+Emscripten also supports external ports (ports that are not part of the
+distribution). In order to use such a port, you simply provide its path:
+``--use-port=/path/to/my_port.py``
+
+.. note:: Be aware that if you are working on the code of a port, the port API
+  used by emscripten is not 100% stable and could change between versions.
 
 Build system issues
 ===================
