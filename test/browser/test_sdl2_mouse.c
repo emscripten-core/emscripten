@@ -25,10 +25,12 @@ void one() {
         printf("motion : %d,%d  %d,%d\n", m->x, m->y, m->xrel, m->yrel);
 
         if (mouse_motions == 0) {
+          // Starting with SDL 2.26.0 initial xrel and yrel values are zero
+          // See: https://github.com/libsdl-org/SDL/commit/0e61c106
 #ifdef TEST_SDL_MOUSE_OFFSETS
-          assert(eq(m->x, 5) && eq(m->y, 15) && eq(m->xrel, 5) && eq(m->yrel, 15));
+          assert(eq(m->x, 5) && eq(m->y, 15) && eq(m->xrel, 0) && eq(m->yrel, 0));
 #else
-          assert(eq(m->x, 10) && eq(m->y, 20) && eq(m->xrel, 10) && eq(m->yrel, 20));
+          assert(eq(m->x, 10) && eq(m->y, 20) && eq(m->xrel, 0) && eq(m->yrel, 0));
 #endif
         } else if (mouse_motions == 1) {
 #ifdef TEST_SDL_MOUSE_OFFSETS

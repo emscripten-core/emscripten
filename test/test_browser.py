@@ -3054,19 +3054,19 @@ Module["preRun"] = () => {
   @no_wasm64('SDL2 + wasm64')
   def test_sdl2_key(self):
     create_file('pre.js', '''
-      function keydown(c) {
-        var event = new KeyboardEvent("keydown", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+      function keydown(keyCode, code) {
+        var event = new KeyboardEvent("keydown", { keyCode, code, charCode: keyCode, 'view': window, 'bubbles': true, 'cancelable': true });
         var prevented = !document.dispatchEvent(event);
 
         //send keypress if not prevented
         if (!prevented) {
-          var event = new KeyboardEvent("keypress", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+          var event = new KeyboardEvent("keypress", { keyCode, code, charCode: keyCode, 'view': window, 'bubbles': true, 'cancelable': true });
           document.dispatchEvent(event);
         }
       }
 
-      function keyup(c) {
-        var event = new KeyboardEvent("keyup", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+      function keyup(keyCode, code) {
+        var event = new KeyboardEvent("keyup", { keyCode, code, charCode: keyCode, 'view': window, 'bubbles': true, 'cancelable': true });
         document.dispatchEvent(event);
       }
     ''')
@@ -3281,8 +3281,8 @@ Module["preRun"] = () => {
   def test_sdl2_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
     create_file('pre.js', '''
-      function keydown(c) {
-        var event = new KeyboardEvent("keydown", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+      function keydown(keyCode, code) {
+        var event = new KeyboardEvent("keydown", { keyCode, code, charCode: keyCode, 'view': window, 'bubbles': true, 'cancelable': true });
         document.dispatchEvent(event);
       }
     ''')
