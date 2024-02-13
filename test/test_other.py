@@ -2395,10 +2395,18 @@ int f() {
     self.emcc(test_file('other/test_contrib_ports.cpp'), ['--use-port=contrib.glfw3'])
 
   @crossplatform
+  def test_external_ports_simple(self):
+    if config.FROZEN_CACHE:
+      self.skipTest("test doesn't work with frozen cache")
+    simple_port_path = test_file("other/ports/simple.py")
+    self.emcc(test_file('other/test_external_ports_simple.c'), [f'--use-port={simple_port_path}'], output_filename='a.out.js')
+    self.run_js('a.out.js')
+
+  @crossplatform
   def test_external_ports(self):
     if config.FROZEN_CACHE:
       self.skipTest("test doesn't work with frozen cache")
-    external_port_path = test_file("other/external_port_test.py")
+    external_port_path = test_file("other/ports/external.py")
     # testing no option
     self.emcc(test_file('other/test_external_ports.c'), [f'--use-port={external_port_path}'], output_filename='a0.out.js')
     output = self.run_js('a0.out.js')
@@ -2418,7 +2426,7 @@ int f() {
     # testing invalid dependency
     stderr = self.expect_fail([EMCC, test_file('other/test_external_ports.c'), f'--use-port={external_port_path}:dependency=invalid', '-o', 'a4.out.js'])
     self.assertFalse(os.path.exists('a4.out.js'))
-    self.assertContained('Unknown dependency invalid for port external_port_test', stderr)
+    self.assertContained('Unknown dependency invalid for port external', stderr)
 
   def test_link_memcpy(self):
     # memcpy can show up *after* optimizations, so after our opportunity to link in libc, so it must be special-cased

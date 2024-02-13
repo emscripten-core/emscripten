@@ -64,6 +64,8 @@ def init_port(name, port):
       utils.exit_with_error('duplicate port variant: %s' % variant)
     port_variants[variant] = (port.name, extra_settings)
 
+  validate_port(port)
+
 
 def load_port_by_name(name):
   port = __import__(name, globals(), level=1, fromlist=[None])
@@ -72,13 +74,15 @@ def load_port_by_name(name):
 
 def load_port_by_path(path):
   name = os.path.splitext(os.path.basename(path))[0]
+  if name in ports_by_name:
+    utils.exit_with_error(f'port path [{path}] is invalid: duplicate port name {name}')
   module_name = f'tools.ports.{name}'
   spec = importlib.util.spec_from_file_location(module_name, path)
   port = importlib.util.module_from_spec(spec)
   sys.modules[module_name] = port
   spec.loader.exec_module(port)
   init_port(name, port)
-  return port
+  return name
 
 
 def validate_port(port):
@@ -89,14 +93,6 @@ def validate_port(port):
     expected_attrs += ['OPTIONS']
   for a in expected_attrs:
     assert hasattr(port, a), 'port %s is missing %s' % (port, a)
-
-
-def validate_ports():
-  for port in ports:
-    validate_port(port)
-    for dep in port.deps:
-      if dep not in ports_by_name:
-        utils.exit_with_error('unknown dependency in port: %s' % dep)
 
 
 @ToolchainProfiler.profile()
@@ -113,8 +109,6 @@ def read_ports():
       continue
     filename = os.path.splitext(filename)[0]
     load_port_by_name('contrib.' + filename)
-
-  validate_ports()
 
 
 def get_all_files_under(dirname):
@@ -419,22 +413,17 @@ def handle_use_port_error(arg, message):
 
 
 def handle_use_port_arg(settings, arg):
-  if arg.find(':\\') == 1:  # detect windows path C:\path\port.py
-    drive, rest = arg[:2], arg[2:]  # drive=C:, rest=\path\port.py
-    args = rest.split(':', 1)
-    name, options = drive + args[0], None
+  # Ignore ':' in first or second char of string since we could be dealing with a windows drive separator
+  pos = arg.find(':', 2)
+  if pos != -1:
+    name, options = arg[:pos], arg[pos + 1:]
   else:
-    args = arg.split(':', 1)
-    name, options = args[0], None
-  if len(args) == 2:
-    options = args[1]
+    name, options = arg, None
   if name.endswith('.py'):
     port_file_path = name
     if not os.path.isfile(port_file_path):
       handle_use_port_error(arg, f'not a valid port path: {port_file_path}')
-    port = load_port_by_path(port_file_path)
-    validate_port(port)
-    name = port.name
+    name = load_port_by_path(port_file_path)
   elif name not in ports_by_name:
     handle_use_port_error(arg, f'invalid port name: {name}')
   ports_needed.add(name)

@@ -5,7 +5,7 @@
  * found in the LICENSE file.
  */
 
-#include <external_port_test.h>
+#include <my_port.h>
 #include <assert.h>
 #include <stdio.h>
 
@@ -22,7 +22,7 @@
 #endif
 
 int main() {
-  assert(external_port_test_fn(99) == 99); // check that we can call a function from external_port_test.h
+  assert(my_port_fn(99) == 99); // check that we can call a function from my_port.h
   printf("value1=%d&value2=%d\n", TEST_VALUE_1, TEST_VALUE_2);
 #ifdef TEST_DEPENDENCY_SDL2
   SDL_version version;
