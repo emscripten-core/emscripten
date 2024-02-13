@@ -269,8 +269,9 @@ addToLibrary({
         }
       };
 
-      transaction.onerror = (e) => {
-        done(this.error);
+      // transaction may abort if (for example) there is a QuotaExceededError
+      transaction.onerror = transaction.onabort = (e) => {
+        done(e.target.error);
         e.preventDefault();
       };
 
@@ -278,12 +279,6 @@ addToLibrary({
         if (!errored) {
           callback(null);
         }
-      };
-
-      // transaction may abort if (for example) there is a QuotaExceededError
-      transaction.onabort = (e) => {
-        done(e.target.error); // DOMException
-        e.preventDefault();
       };
 
       // sort paths in ascending order so directory entries are created
