@@ -236,6 +236,8 @@ class browser(BrowserCore):
   def require_wasm2js(self):
     if self.is_wasm64():
       self.skipTest('wasm2js is not compatible with MEMORY64')
+    if self.is_2gb() or self.is_4gb():
+      self.skipTest('wasm2js does not support over 2gb of memory')
 
   def require_jspi(self):
     if not is_chrome():
@@ -2802,9 +2804,12 @@ Module["preRun"] = () => {
     self.btest_exit('webgl2_ubos.cpp', args=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
   @requires_graphics_hardware
-  def test_webgl2_garbage_free_entrypoints(self):
-    self.btest_exit('webgl2_garbage_free_entrypoints.cpp', args=['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1'])
-    self.btest_exit('webgl2_garbage_free_entrypoints.cpp')
+  @parameterized({
+    '': ([],),
+    'webgl2': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1'],),
+  })
+  def test_webgl2_garbage_free_entrypoints(self, args):
+    self.btest_exit('webgl2_garbage_free_entrypoints.cpp', args=args)
 
   @requires_graphics_hardware
   def test_webgl2_backwards_compatibility_emulation(self):
@@ -3880,17 +3885,17 @@ Module["preRun"] = () => {
   @requires_threads
   def test_pthread_c11_threads(self):
     self.btest_exit('pthread/test_pthread_c11_threads.c',
-                    args=['-gsource-map', '-std=gnu11', '-pthread', '-sPROXY_TO_PTHREAD', '-sTOTAL_MEMORY=64mb'])
+                    args=['-gsource-map', '-std=gnu11', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   @requires_threads
   def test_pthread_pool_size_strict(self):
     # Check that it doesn't fail with sufficient number of threads in the pool.
     self.btest_exit('pthread/test_pthread_c11_threads.c',
-                    args=['-g2', '-std=gnu11', '-pthread', '-sPTHREAD_POOL_SIZE=4', '-sPTHREAD_POOL_SIZE_STRICT=2', '-sTOTAL_MEMORY=64mb'])
+                    args=['-g2', '-std=gnu11', '-pthread', '-sPTHREAD_POOL_SIZE=4', '-sPTHREAD_POOL_SIZE_STRICT=2'])
     # Check that it fails instead of deadlocking on insufficient number of threads in the pool.
     self.btest('pthread/test_pthread_c11_threads.c',
                expected='abort:Assertion failed: thrd_create(&t4, thread_main, NULL) == thrd_success',
-               args=['-g2', '-std=gnu11', '-pthread', '-sPTHREAD_POOL_SIZE=3', '-sPTHREAD_POOL_SIZE_STRICT=2', '-sTOTAL_MEMORY=64mb'])
+               args=['-g2', '-std=gnu11', '-pthread', '-sPTHREAD_POOL_SIZE=3', '-sPTHREAD_POOL_SIZE_STRICT=2'])
 
   @requires_threads
   def test_pthread_in_pthread_pool_size_strict(self):
@@ -3911,7 +3916,7 @@ Module["preRun"] = () => {
   # Test 64-bit atomics.
   @requires_threads
   def test_pthread_64bit_atomics(self):
-    self.btest_exit('pthread/test_pthread_64bit_atomics.c', args=['-sINITIAL_MEMORY=64MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_64bit_atomics.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test 64-bit C++11 atomics.
   @parameterized({
@@ -4622,6 +4627,8 @@ Module["preRun"] = () => {
   # For testing WebGL draft extensions like this, if using chrome as the browser,
   # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
   @requires_graphics_hardware
+  @no_2gb('https://crbug.com/324562920')
+  @no_4gb('https://crbug.com/324562920')
   @parameterized({
     'arrays': (['-DMULTI_DRAW_ARRAYS'],),
     'arrays_instanced': (['-DMULTI_DRAW_ARRAYS_INSTANCED'],),

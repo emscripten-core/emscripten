@@ -309,6 +309,34 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       return ret;
     },
 
+    // The code path for creating textures, buffers, framebuffers and other
+    // objects the same (and not in fast path), so we merge the functions
+    // together.
+    // 'createFunction' refers to the WebGL context function name to do the actual
+    // creation, 'objectTable' points to the GL object table where to populate the
+    // created objects, and 'functionName' carries the name of the caller for
+    // debug information.
+    genObject: (n, buffers, createFunction, objectTable
+#if GL_ASSERTIONS
+      , functionName
+#endif
+      ) => {
+      for (var i = 0; i < n; i++) {
+        var buffer = GLctx[createFunction]();
+        var id = buffer && GL.getNewId(objectTable);
+        if (buffer) {
+          buffer.name = id;
+          objectTable[id] = buffer;
+        } else {
+          GL.recordError(0x502 /* GL_INVALID_OPERATION */);
+#if GL_ASSERTIONS
+          err(`GL_INVALID_OPERATION in ${functionName}: GLctx.${createFunction} returned null - most likely GL context is lost!`);
+#endif
+        }
+        {{{ makeSetValue('buffers', 'i*4', 'id', 'i32') }}};
+      }
+    },
+
 #if FULL_ES2 || LEGACY_GL_EMULATION
     // When user GL code wants to render from client-side memory, we need to
     // upload the vertex data to a temp VBO for rendering. Maintain a set of
@@ -1770,46 +1798,16 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     return GLctx.isTexture(texture);
   },
 
-  // The code path for creating textures, buffers, framebuffers and other
-  // objects is so identical to each other (and not in fast path), that merge
-  // the functions together to only have one generated copy of this.
-  // 'createFunction' refers to the WebGL context function name to do the actual
-  // creation, 'objectTable' points to the GL object table where to populate the
-  // created objects, and 'functionName' carries the name of the caller for
-  // debug information.
-  $__glGenObject: (n, buffers, createFunction, objectTable
-#if GL_ASSERTIONS
-    , functionName
-#endif
-    ) => {
-    for (var i = 0; i < n; i++) {
-      var buffer = GLctx[createFunction]();
-      var id = buffer && GL.getNewId(objectTable);
-      if (buffer) {
-        buffer.name = id;
-        objectTable[id] = buffer;
-      } else {
-        GL.recordError(0x502 /* GL_INVALID_OPERATION */);
-#if GL_ASSERTIONS
-        err(`GL_INVALID_OPERATION in ${functionName}: GLctx.${createFunction} returned null - most likely GL context is lost!`);
-#endif
-      }
-      {{{ makeSetValue('buffers', 'i*4', 'id', 'i32') }}};
-    }
-  },
-
-  glGenBuffers__deps: ['$__glGenObject'],
   glGenBuffers: (n, buffers) => {
-    __glGenObject(n, buffers, 'createBuffer', GL.buffers
+    GL.genObject(n, buffers, 'createBuffer', GL.buffers
 #if GL_ASSERTIONS
     , 'glGenBuffers'
 #endif
       );
   },
 
-  glGenTextures__deps: ['$__glGenObject'],
   glGenTextures: (n, textures) => {
-    __glGenObject(n, textures, 'createTexture', GL.textures
+    GL.genObject(n, textures, 'createTexture', GL.textures
 #if GL_ASSERTIONS
     , 'glGenTextures'
 #endif
@@ -2055,9 +2053,8 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     return GLctx.isBuffer(b);
   },
 
-  glGenRenderbuffers__deps: ['$__glGenObject'],
   glGenRenderbuffers: (n, renderbuffers) => {
-    __glGenObject(n, renderbuffers, 'createRenderbuffer', GL.renderbuffers
+    GL.genObject(n, renderbuffers, 'createRenderbuffer', GL.renderbuffers
 #if GL_ASSERTIONS
     , 'glGenRenderbuffers'
 #endif
@@ -2462,12 +2459,12 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniform1iv(webglGetUniformLocation(location), HEAP32, value>>2, count);
+    count && GLctx.uniform1iv(webglGetUniformLocation(location), HEAP32, {{{ getHeapOffset('value', 'i32') }}}, count);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      count && GLctx.uniform1iv(webglGetUniformLocation(location), HEAP32, value>>2, count);
+      count && GLctx.uniform1iv(webglGetUniformLocation(location), HEAP32, {{{ getHeapOffset('value', 'i32') }}}, count);
       return;
     }
 #endif
@@ -2503,12 +2500,12 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniform2iv(webglGetUniformLocation(location), HEAP32, value>>2, count*2);
+    count && GLctx.uniform2iv(webglGetUniformLocation(location), HEAP32, {{{ getHeapOffset('value', 'i32') }}}, count*2);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      count && GLctx.uniform2iv(webglGetUniformLocation(location), HEAP32, value>>2, count*2);
+      count && GLctx.uniform2iv(webglGetUniformLocation(location), HEAP32, {{{ getHeapOffset('value', 'i32') }}}, count*2);
       return;
     }
 #endif
@@ -2545,12 +2542,12 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniform3iv(webglGetUniformLocation(location), HEAP32, value>>2, count*3);
+    count && GLctx.uniform3iv(webglGetUniformLocation(location), HEAP32, {{{ getHeapOffset('value', 'i32') }}}, count*3);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      count && GLctx.uniform3iv(webglGetUniformLocation(location), HEAP32, value>>2, count*3);
+      count && GLctx.uniform3iv(webglGetUniformLocation(location), HEAP32, {{{ getHeapOffset('value', 'i32') }}}, count*3);
       return;
     }
 #endif
@@ -2588,14 +2585,14 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniform4iv(webglGetUniformLocation(location), HEAP32, value>>2, count*4);
+    count && GLctx.uniform4iv(webglGetUniformLocation(location), HEAP32, {{{ getHeapOffset('value', 'i32') }}}, count*4);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
     // those always when possible.
     if ({{{ isCurrentContextWebGL2() }}}) {
-      count && GLctx.uniform4iv(webglGetUniformLocation(location), HEAP32, value>>2, count*4);
+      count && GLctx.uniform4iv(webglGetUniformLocation(location), HEAP32, {{{ getHeapOffset('value', 'i32') }}}, count*4);
       return;
     }
 #endif
@@ -2634,12 +2631,12 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniform1fv(webglGetUniformLocation(location), HEAPF32, value>>2, count);
+    count && GLctx.uniform1fv(webglGetUniformLocation(location), HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      count && GLctx.uniform1fv(webglGetUniformLocation(location), HEAPF32, value>>2, count);
+      count && GLctx.uniform1fv(webglGetUniformLocation(location), HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count);
       return;
     }
 #endif
@@ -2675,14 +2672,14 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniform2fv(webglGetUniformLocation(location), HEAPF32, value>>2, count*2);
+    count && GLctx.uniform2fv(webglGetUniformLocation(location), HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*2);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
     // those always when possible.
     if ({{{ isCurrentContextWebGL2() }}}) {
-      count && GLctx.uniform2fv(webglGetUniformLocation(location), HEAPF32, value>>2, count*2);
+      count && GLctx.uniform2fv(webglGetUniformLocation(location), HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*2);
       return;
     }
 #endif
@@ -2712,21 +2709,21 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   glUniform3fv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform3fv', 'location');
-    assert((value & 3) == 0, 'Pointer to float data passed to glUniform3fv must be aligned to four bytes!' + value);
+    assert((value % 4) == 0, 'Pointer to float data passed to glUniform3fv must be aligned to four bytes!' + value);
 #endif
 
 #if MIN_WEBGL_VERSION >= 2
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniform3fv(webglGetUniformLocation(location), HEAPF32, value>>2, count*3);
+    count && GLctx.uniform3fv(webglGetUniformLocation(location), HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*3);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
     // those always when possible.
     if ({{{ isCurrentContextWebGL2() }}}) {
-      count && GLctx.uniform3fv(webglGetUniformLocation(location), HEAPF32, value>>2, count*3);
+      count && GLctx.uniform3fv(webglGetUniformLocation(location), HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*3);
       return;
     }
 #endif
@@ -2764,14 +2761,14 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniform4fv(webglGetUniformLocation(location), HEAPF32, value>>2, count*4);
+    count && GLctx.uniform4fv(webglGetUniformLocation(location), HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*4);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
     // those always when possible.
     if ({{{ isCurrentContextWebGL2() }}}) {
-      count && GLctx.uniform4fv(webglGetUniformLocation(location), HEAPF32, value>>2, count*4);
+      count && GLctx.uniform4fv(webglGetUniformLocation(location), HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*4);
       return;
     }
 #endif
@@ -2814,14 +2811,14 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniformMatrix2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*4);
+    count && GLctx.uniformMatrix2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*4);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
     // those always when possible.
     if ({{{ isCurrentContextWebGL2() }}}) {
-      count && GLctx.uniformMatrix2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*4);
+      count && GLctx.uniformMatrix2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*4);
       return;
     }
 #endif
@@ -2860,14 +2857,14 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
-    count && GLctx.uniformMatrix3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*9);
+    count && GLctx.uniformMatrix3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*9);
 #else
 
 #if MAX_WEBGL_VERSION >= 2
     // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
     // those always when possible.
     if ({{{ isCurrentContextWebGL2() }}}) {
-      count && GLctx.uniformMatrix3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*9);
+      count && GLctx.uniformMatrix3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*9);
       return;
     }
 #endif
@@ -3627,9 +3624,8 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 
   },
 
-  glGenFramebuffers__deps: ['$__glGenObject'],
   glGenFramebuffers: (n, ids) => {
-    __glGenObject(n, ids, 'createFramebuffer', GL.framebuffers
+    GL.genObject(n, ids, 'createFramebuffer', GL.framebuffers
 #if GL_ASSERTIONS
     , 'glGenFramebuffers'
 #endif
@@ -3678,11 +3674,9 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     return GLctx.isFramebuffer(fb);
   },
 
-  glGenVertexArrays__deps: ['$__glGenObject'
 #if LEGACY_GL_EMULATION
-  , '$emulGlGenVertexArrays'
+  glGenVertexArrays__deps: ['$emulGlGenVertexArrays'],
 #endif
-  ],
   glGenVertexArrays: (n, arrays) => {
 #if LEGACY_GL_EMULATION
     emulGlGenVertexArrays(n, arrays);
@@ -3690,7 +3684,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_ASSERTIONS
     assert(GLctx.createVertexArray, 'Must have WebGL2 or OES_vertex_array_object to use vao');
 #endif
-    __glGenObject(n, arrays, 'createVertexArray', GL.vaos
+    GL.genObject(n, arrays, 'createVertexArray', GL.vaos
 #if GL_ASSERTIONS
     , 'glGenVertexArrays'
 #endif
@@ -3972,9 +3966,9 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     GLctx.multiDrawWebgl['multiDrawArraysWEBGL'](
       mode,
       HEAP32,
-      firsts >> 2,
+      {{{ getHeapOffset('firsts', 'i32') }}},
       HEAP32,
-      counts >> 2,
+      {{{ getHeapOffset('counts', 'i32') }}},
       drawcount);
   },
 
@@ -3984,11 +3978,11 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     GLctx.multiDrawWebgl['multiDrawArraysInstancedWEBGL'](
       mode,
       HEAP32,
-      firsts >> 2,
+      {{{ getHeapOffset('firsts', 'i32') }}},
       HEAP32,
-      counts >> 2,
+      {{{ getHeapOffset('counts', 'i32') }}},
       HEAP32,
-      instanceCounts >> 2,
+      {{{ getHeapOffset('instanceCounts', 'i32') }}},
       drawcount);
   },
 
@@ -4023,10 +4017,10 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     GLctx.multiDrawWebgl['multiDrawElementsWEBGL'](
       mode,
       HEAP32,
-      counts >> 2,
+      {{{ getHeapOffset('counts', 'i32') }}},
       type,
       HEAP32,
-      offsets >> 2,
+      {{{ getHeapOffset('offsets', 'i32') }}},
       drawcount);
 #if MEMORY64
     stackRestore(stack);
@@ -4046,12 +4040,12 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     GLctx.multiDrawWebgl['multiDrawElementsInstancedWEBGL'](
       mode,
       HEAP32,
-      counts >> 2,
+      {{{ getHeapOffset('counts', 'i32') }}},
       type,
       HEAP32,
-      offsets >> 2,
+      {{{ getHeapOffset('offsets', 'i32') }}},
       HEAP32,
-      instanceCounts >> 2,
+      {{{ getHeapOffset('instanceCounts', 'i32') }}},
       drawcount);
 #if MEMORY64
     stackRestore(stack);

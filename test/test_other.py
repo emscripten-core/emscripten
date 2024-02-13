@@ -3135,14 +3135,14 @@ int f() {
                   '-lembind', # Test duplicated link option.
                   ]
     self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
-    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
+    self.assertFileContents(test_file('other/embind_tsgen_ignore_1.d.ts'), read_file('embind_tsgen.d.ts'))
     # Test these args separately since they conflict with arguments in the first test.
     extra_args = ['-sMODULARIZE',
                   '--embed-file', 'fail.js',
                   '-sMINIMAL_RUNTIME=2',
                   '-sEXPORT_ES6=1']
     self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
-    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
+    self.assertFileContents(test_file('other/embind_tsgen_ignore_2.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_test_embind(self):
     self.run_process([EMXX, test_file('embind/embind_test.cpp'),
@@ -3187,6 +3187,12 @@ int f() {
     # Test that when method pointers are allocated at different addresses that
     # AOT JS generation still works correctly.
     self.do_runf('other/embind_jsgen_method_pointer_stability.cpp', 'done')
+
+  def test_emit_tsd(self):
+    self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
+                      '--emit-tsd', 'test_emit_tsd.d.ts', '-Wno-experimental'] +
+                     self.get_emcc_args())
+    self.assertFileContents(test_file('other/test_emit_tsd.d.ts'), read_file('test_emit_tsd.d.ts'))
 
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
@@ -3270,18 +3276,18 @@ int f() {
             self.fail('output contains more then one empty line in row')
 
     # relative path must be within/below the current dir
-    stderr = self.expect_fail([FILE_PACKAGER, 'test.data', '--preload', '../data1.txt'])
+    stderr = self.expect_fail([FILE_PACKAGER, 'test.data', '--quiet', '--preload', '../data1.txt'])
     self.assertContained('which is not contained within the current directory', stderr)
 
     # relative path that ends up under us is cool
-    proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', '../subdir/data2.txt'], stderr=PIPE, stdout=PIPE)
-    self.assertNotContained('which is not contained within the current directory', proc.stderr)
+    proc = self.run_process([FILE_PACKAGER, 'test.data', '--quiet', '--preload', '../subdir/data2.txt'], stderr=PIPE, stdout=PIPE)
+    self.assertEqual(proc.stderr, '')
     check(proc.stdout)
 
     # direct path leads to the same code being generated - relative path does not make us do anything different
-    proc2 = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data2.txt'], stderr=PIPE, stdout=PIPE)
+    proc2 = self.run_process([FILE_PACKAGER, 'test.data', '--quiet', '--preload', 'data2.txt'], stderr=PIPE, stdout=PIPE)
     check(proc2.stdout)
-    self.assertNotContained('below the current directory', proc2.stderr)
+    self.assertEqual(proc2.stderr, '')
 
     def clean(txt):
       lines = txt.splitlines()
@@ -3293,7 +3299,7 @@ int f() {
     # verify '--separate-metadata' option produces separate metadata file
     os.chdir('..')
 
-    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata', '--use-preload-cache'])
+    self.run_process([FILE_PACKAGER, 'test.data', '--quiet', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata', '--use-preload-cache'])
     self.assertExists('immutable.js.metadata')
     # verify js output JS file is not touched when the metadata is separated
     orig_timestamp = os.path.getmtime('immutable.js')
@@ -3301,7 +3307,7 @@ int f() {
     # ensure some time passes before running the packager again so that if it does touch the
     # js file it will end up with the different timestamp.
     time.sleep(1.0)
-    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata', '--use-preload-cache'])
+    self.run_process([FILE_PACKAGER, 'test.data', '--quiet', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata', '--use-preload-cache'])
     # assert both file content and timestamp are the same as reference copy
     self.assertTextDataIdentical(orig_content, read_file('immutable.js'))
     self.assertEqual(orig_timestamp, os.path.getmtime('immutable.js'))
