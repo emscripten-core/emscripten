@@ -147,6 +147,9 @@ Options that are modified or new in *emcc* are listed below:
 
      * The specified file path must be absolute, not relative.
 
+     * The file may contain comments where the first character of the
+       line is "'#'".
+
    Note:
 
      Options can be specified as a single argument with or without a

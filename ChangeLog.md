@@ -44,6 +44,8 @@ See docs/process.md for more on how version tagging works.
   #21276)
 - Added concept of external ports which live outside emscripten and are
   loaded on demand using the syntax `--use-port=/path/to/my_port.py` (#21316)
+- Allow comments in response files. Any line starting with `#` is now ignored.
+  This is useful when listing exported symbols. (#21330)
 
 
 3.1.53 - 01/29/24
