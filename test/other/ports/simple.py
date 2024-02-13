@@ -23,8 +23,3 @@ def get(ports, settings, shared):
 
 def clear(ports, settings, shared):
   shared.cache.erase_lib(get_lib_name(settings))
-
-
-def process_args(ports):
-  args = ['-isystem', ports.get_include_dir('simple')]
-  return args
