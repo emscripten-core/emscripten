@@ -83,6 +83,7 @@ def get(ports, settings, shared):
       exclude_files=[
         'playmus.c',
         'playwave.c',
+        'main.c',
       ],
       exclude_dirs=[
         'native_midi',
