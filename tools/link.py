@@ -1904,6 +1904,8 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   # Disable proxying and thread pooling so a worker is not automatically created.
   settings.PROXY_TO_PTHREAD = False
   settings.PTHREAD_POOL_SIZE = 0
+  # Assume wasm support at binding generation time
+  settings.WASM2JS = 0
   # Disable minify since the binaryen pass has not been run yet to change the
   # import names.
   settings.MINIFY_WASM_IMPORTED_MODULES = False

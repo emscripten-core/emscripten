@@ -224,10 +224,10 @@ See docs/process.md for more on how version tagging works.
 - The `--minify=0` command line flag will now preserve comments as well as
   whitespace.  This means the resulting output can then be run though closure
   compiler or some other tool that gives comments semantic meaning. (#20121)
-- `-sSTRICT` now implies `-sINCOMING_MODULE_API=[]` which is generally good
+- `-sSTRICT` now implies `-sINCOMING_MODULE_JS_API=[]` which is generally good
   for code size.  If you `-sSTRICT` you now need to be explicit about the
   incoming module APIs you are supplying.  Users who supply symbols on the
-  incoming module but forget to include them in `-sINCOMING_MODULE_API`
+  incoming module but forget to include them in `-sINCOMING_MODULE_JS_API`
   will see an error in debug builds so this change will not generate any
   silent failures.
 - JS library decorators such as `__deps` and `__async` are now type checked so
@@ -361,6 +361,7 @@ See docs/process.md for more on how version tagging works.
    - stringToUTF8Array
    - stringToUTF8
    - lengthBytesUTF8
+  
   If you use any of these functions in your JS code you will now need to include
   them explicitly in one of the following ways:
    - Add them to a `__deps` entry in your JS library file (with leading $)
