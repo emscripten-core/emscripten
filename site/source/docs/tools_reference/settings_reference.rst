@@ -409,7 +409,9 @@ Print out exceptions in emscriptened code.
 DEMANGLE_SUPPORT
 ================
 
-If 1, export `demangle` and `stackTrace` helper function.
+If 1, export `demangle` and `stackTrace` JS library functions.
+
+.. note:: This setting is deprecated
 
 .. _library_debug:
 

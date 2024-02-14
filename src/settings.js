@@ -337,8 +337,9 @@ var EMULATE_FUNCTION_POINTER_CASTS = false;
 // [link]
 var EXCEPTION_DEBUG = false;
 
-// If 1, export `demangle` and `stackTrace` helper function.
+// If 1, export `demangle` and `stackTrace` JS library functions.
 // [link]
+// [deprecated]
 var DEMANGLE_SUPPORT = false;
 
 // Print out when we enter a library call (library*.js). You can also unset
