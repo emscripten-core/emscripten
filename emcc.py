@@ -1450,7 +1450,7 @@ def parse_symbol_list_file(contents):
   kind of quoting or escaping.
   """
   values = contents.splitlines()
-  return [v.strip() for v in values]
+  return [v.strip() for v in values if not v.startswith('#')]
 
 
 def parse_value(text, expected_type):

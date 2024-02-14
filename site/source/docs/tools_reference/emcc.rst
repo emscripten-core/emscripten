@@ -134,6 +134,8 @@ Options that are modified or new in *emcc* are listed below:
 
     - In this case the file should contain a list of symbols, one per line.  For legacy use cases JSON-formatted files are also supported: e.g. ``["_func1", "func2"]``.
     - The specified file path must be absolute, not relative.
+    - The file may contain comments where the first character of the line is ``'#'``.
+
 
   .. note:: Options can be specified as a single argument with or without a space
             between the ``-s`` and option name.  e.g. ``-sFOO`` or ``-s FOO``.
