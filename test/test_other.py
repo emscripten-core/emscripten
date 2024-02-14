@@ -2416,7 +2416,7 @@ int f() {
     # testing invalid dependency
     stderr = self.expect_fail([EMCC, test_file('other/test_external_ports.c'), f'--use-port={external_port_path}:dependency=invalid', '-o', 'a4.out.js'])
     self.assertFalse(os.path.exists('a4.out.js'))
-    self.assertContained('Unknown dependency `invalid` for port `external`', stderr)
+    self.assertContained('unknown dependency `invalid` for port `external`', stderr)
 
   def test_link_memcpy(self):
     # memcpy can show up *after* optimizations, so after our opportunity to link in libc, so it must be special-cased
@@ -14557,16 +14557,16 @@ addToLibrary({
   def test_use_port_errors(self, compiler):
     stderr = self.expect_fail([compiler, test_file('hello_world.c'), '--use-port=invalid', '-o', 'out.js'])
     self.assertFalse(os.path.exists('out.js'))
-    self.assertContained('Error with `--use-port=invalid` | invalid port name: `invalid`', stderr)
+    self.assertContained('error with `--use-port=invalid` | invalid port name: `invalid`', stderr)
     stderr = self.expect_fail([compiler, test_file('hello_world.c'), '--use-port=sdl2:opt1=v1', '-o', 'out.js'])
     self.assertFalse(os.path.exists('out.js'))
-    self.assertContained('Error with `--use-port=sdl2:opt1=v1` | no options available for port `sdl2`', stderr)
+    self.assertContained('error with `--use-port=sdl2:opt1=v1` | no options available for port `sdl2`', stderr)
     stderr = self.expect_fail([compiler, test_file('hello_world.c'), '--use-port=sdl2_image:format=jpg', '-o', 'out.js'])
     self.assertFalse(os.path.exists('out.js'))
-    self.assertContained('Error with `--use-port=sdl2_image:format=jpg` | `format` is not supported', stderr)
+    self.assertContained('error with `--use-port=sdl2_image:format=jpg` | `format` is not supported', stderr)
     stderr = self.expect_fail([compiler, test_file('hello_world.c'), '--use-port=sdl2_image:formats', '-o', 'out.js'])
     self.assertFalse(os.path.exists('out.js'))
-    self.assertContained('Error with `--use-port=sdl2_image:formats` | `formats` is missing a value', stderr)
+    self.assertContained('error with `--use-port=sdl2_image:formats` | `formats` is missing a value', stderr)
     stderr = self.expect_fail([compiler, test_file('hello_world.c'), '--use-port=sdl2_image:formats=jpg:formats=png', '-o', 'out.js'])
     self.assertFalse(os.path.exists('out.js'))
-    self.assertContained('Error with `--use-port=sdl2_image:formats=jpg:formats=png` | duplicate option `formats`', stderr)
+    self.assertContained('error with `--use-port=sdl2_image:formats=jpg:formats=png` | duplicate option `formats`', stderr)

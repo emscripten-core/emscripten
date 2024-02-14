@@ -171,7 +171,7 @@ def get_all_tasks():
 
 
 def handle_port_error(target, message):
-  utils.exit_with_error(f'Error building port `{target}` | {message}')
+  utils.exit_with_error(f'error building port `{target}` | {message}')
 
 
 def main():

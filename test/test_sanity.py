@@ -752,7 +752,7 @@ fi
     restore_and_set_up()
     self.run_process([EMBUILDER, 'build', 'sdl2_image:formats=png,jpg', '--force'])
     self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libSDL2_image_jpg-png.a'))
-    self.assertContained('Error building port `sdl2_image:formats=invalid` | invalid is not a supported format', self.do([EMBUILDER, 'build', 'sdl2_image:formats=invalid', '--force']))
+    self.assertContained('error building port `sdl2_image:formats=invalid` | invalid is not a supported format', self.do([EMBUILDER, 'build', 'sdl2_image:formats=invalid', '--force']))
 
   def test_embuilder_external_ports(self):
     restore_and_set_up()

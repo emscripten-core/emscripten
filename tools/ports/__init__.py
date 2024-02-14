@@ -398,7 +398,7 @@ def resolve_dependencies(port_set, settings):
     node.process_dependencies(settings)
     for d in node.deps:
       if d not in ports_by_name:
-        utils.exit_with_error(f'Unknown dependency `{d}` for port `{node.name}`')
+        utils.exit_with_error(f'unknown dependency `{d}` for port `{node.name}`')
       dep = ports_by_name[d]
       if dep not in port_set:
         port_set.add(dep)
@@ -409,7 +409,7 @@ def resolve_dependencies(port_set, settings):
 
 
 def handle_use_port_error(arg, message):
-  utils.exit_with_error(f'Error with `--use-port={arg}` | {message}')
+  utils.exit_with_error(f'error with `--use-port={arg}` | {message}')
 
 
 def handle_use_port_arg(settings, arg, error_handler=None):
