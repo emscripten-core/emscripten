@@ -8514,7 +8514,7 @@ int main() {
       setting_name = 'EXTRA_EXPORTED_RUNTIME_METHODS'
     err = self.run_process([EMCC, test_file('hello_world.c'), '-Os', '-s%s=%s' % (setting_name, ','.join(exports))], stderr=PIPE).stderr
     if use_legacy_name:
-      self.assertContained('warning: EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead [-Wdeprecated]', err)
+      self.assertContained('warning: EXTRA_EXPORTED_RUNTIME_METHODS is deprecated (please use EXPORTED_RUNTIME_METHODS instead). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
     js = read_file('a.out.js')
     for export in exports:
       self.assertContained(f'Module["{export}"]', js)
