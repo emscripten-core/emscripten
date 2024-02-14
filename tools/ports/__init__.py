@@ -408,9 +408,14 @@ def resolve_dependencies(port_set, settings):
     add_deps(port)
 
 
-def handle_use_port_arg(settings, arg, error_handler = None):
+def handle_use_port_error(arg, message):
+  utils.exit_with_error(f'Error with `--use-port={arg}` | {message}')
+
+
+def handle_use_port_arg(settings, arg, error_handler=None):
   if not error_handler:
-    error_handler = lambda message: utils.exit_with_error(f'Error with `--use-port={arg}` | {message}')
+    def error_handler(message):
+      handle_use_port_error(arg, message)
   # Ignore ':' in first or second char of string since we could be dealing with a windows drive separator
   pos = arg.find(':', 2)
   if pos != -1:
