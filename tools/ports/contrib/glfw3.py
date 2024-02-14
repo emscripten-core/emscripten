@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-from tools import utils
 from typing import Dict
 
 TAG = '1.0.4'
