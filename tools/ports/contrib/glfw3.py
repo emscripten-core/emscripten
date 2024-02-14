@@ -83,9 +83,9 @@ def process_args(ports):
   return ['-isystem', ports.get_include_dir('contrib.glfw3')]
 
 
-def handle_options(options):
+def handle_options(options, error_handler):
   for option, value in options.items():
     if value.lower() in {'true', 'false'}:
       opts[option] = value.lower() == 'true'
     else:
-      utils.exit_with_error(f'{option} is expecting a boolean, got {value}')
+      error_handler(f'{option} is expecting a boolean, got {value}')

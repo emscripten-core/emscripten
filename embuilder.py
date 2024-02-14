@@ -169,6 +169,10 @@ def get_all_tasks():
   return get_system_tasks()[1] + PORTS
 
 
+def handle_port_error(arg, message):
+  raise Exception(f'Build target invalid `{arg}` | {message}')
+
+
 def main():
   all_build_start_time = time.time()
 
@@ -289,6 +293,16 @@ def main():
         clear_port(what)
       if do_build:
         build_port(what)
+    elif ':' in what or what.endswith('.py'):
+      try:
+        name = ports.handle_use_port_arg(settings, what, lambda message: handle_port_error(what, message))
+      except Exception as e:
+        logger.error(str(e))
+        return 1
+      if do_clear:
+        clear_port(name)
+      if do_build:
+        build_port(name)
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

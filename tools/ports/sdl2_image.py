@@ -88,7 +88,7 @@ def process_dependencies(settings):
     settings.USE_LIBJPEG = 1
 
 
-def handle_options(options):
+def handle_options(options, error_handler):
   opts['formats'].update({format.lower().strip() for format in options['formats'].split(',')})
 
 

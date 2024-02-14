@@ -23,7 +23,10 @@ deps = []
 
 
 def get_lib_name(settings):
-  return 'lib_external.a'
+  if opts['dependency']:
+    return f'lib_external-{opts["dependency"]}.a'
+  else:
+    return 'lib_external.a'
 
 
 def get(ports, settings, shared):
@@ -58,5 +61,5 @@ def process_dependencies(settings):
     deps.append(opts['dependency'])
 
 
-def handle_options(options):
+def handle_options(options, error_handler):
   opts.update(options)

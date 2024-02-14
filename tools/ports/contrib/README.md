@@ -23,9 +23,9 @@ additional components:
 
 1. A handler function defined this way:
 ```python
-def handle_options(options):
+def handle_options(options, error_handler):
   # options is of type Dict[str, str]
-  # in case of error, use utils.exit_with_error('error message')
+  # in case of error, use error_handler('error message')
 ```
 2. A dictionary called `OPTIONS` (type `Dict[str, str]`) where each key is the 
    name of the option and the value is a short description of what it does 
