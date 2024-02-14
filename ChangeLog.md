@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.54 (in development)
 -----------------------
+- The `DEMANGLE_SUPPORT` setting and the associated `demangle` function are
+  now deprecated since Wasm stack traces always contain demangled symbols these
+  days. (#21346)
 - The type of `EMSCRIPTEN_WEBGL_CONTEXT_HANDLE` was changed to unsigned and
   the only valid error returned from `emscripten_webgl_create_context` is
   now zero.  This allows `EMSCRIPTEN_WEBGL_CONTEXT_HANDLE` to hold a pointer

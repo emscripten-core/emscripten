@@ -3466,10 +3466,13 @@ int f() {
     self.assertContained("src.c:1:13: error: expected '}'", err)
     self.assertNotExists('a.out.js')
 
+  # `demangle` is a legacy JS function on longer used by emscripten
+  # TODO(sbc): Remove `demangle` and this test.
   def test_demangle(self):
     create_file('src.cpp', '''
       #include <stdio.h>
       #include <emscripten.h>
+
       void two(char c) {
         EM_ASM(out(stackTrace()));
       }
@@ -3547,10 +3550,10 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
 
     self.do_runf('src.cpp', 'Waka::f::a23412341234::point()')
 
-  # Test that malloc() -> OOM -> abort() -> stackTrace() -> jsStackTrace() -> demangleAll() -> demangle() -> malloc()
-  # cycle will not produce an infinite loop.
+  # Test that malloc() -> OOM -> abort() -> stackTrace() -> jsStackTrace()
+  # cycle will not cycle back to malloc to produce an infinite loop.
   def test_demangle_malloc_infinite_loop_crash(self):
-    self.run_process([EMXX, test_file('malloc_demangle_infinite_loop.cpp'), '-g', '-sABORTING_MALLOC', '-sDEMANGLE_SUPPORT'])
+    self.run_process([EMXX, test_file('malloc_demangle_infinite_loop.cpp'), '-g', '-sABORTING_MALLOC'])
     output = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     if output.count('Cannot enlarge memory arrays') > 5:
       print(output)
@@ -8423,7 +8426,7 @@ int main() {
     'except':   (['-O2', '-fexceptions'],    [], ['waka']), # noqa
     # exceptions does not pull in demangling by default, which increases code size
     'mangle':   (['-O2', '-fexceptions',
-                  '-sDEMANGLE_SUPPORT'], [], ['waka']), # noqa
+                  '-sDEMANGLE_SUPPORT', '-Wno-deprecated'], [], ['waka']), # noqa
     # Wasm EH's code size increase is smaller than that of Emscripten EH
     'except_wasm':   (['-O2', '-fwasm-exceptions'], [], ['waka']), # noqa
     # eval_ctors 1 can partially optimize, but runs into getenv() for locale

@@ -701,6 +701,9 @@ def phase_linker_setup(options, state, newargs):
   if 'SUPPORT_ERRNO' in user_settings:
     diagnostics.warning('deprecated', 'SUPPORT_ERRNO is deprecated since emscripten no longer uses the setErrNo library function')
 
+  if 'DEMANGLE_SUPPORT' in user_settings:
+    diagnostics.warning('deprecated', 'DEMANGLE_SUPPORT is deprecated since mangled names no longer appear in stack traces')
+
   if settings.EXTRA_EXPORTED_RUNTIME_METHODS:
     diagnostics.warning('deprecated', 'EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead')
     settings.EXPORTED_RUNTIME_METHODS += settings.EXTRA_EXPORTED_RUNTIME_METHODS
