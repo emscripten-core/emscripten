@@ -50,7 +50,7 @@ Functions
 
   Prints the string using the `dbg()` JS function, which by will write to the
   console (or stdout).  Just like the `dbg()` JS function this symbol is
-  only avilable in debug builds (i.e. when linking with `-sASSERTIONS` or
+  only available in debug builds (i.e. when linking with `-sASSERTIONS` or
   equivelently `-O0`).
 
   :param utf8String: A string encoded as UTF-8.

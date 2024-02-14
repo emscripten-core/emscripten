@@ -84,7 +84,7 @@ def exportItems():
             # Write out each API item to add
             infile.write("    mapped_wiki_inline_code['%s'] = '%s'\n" % (key, value))
 
-        # write the return fucntion
+        # write the return function
         infile.write("    return mapped_wiki_inline_code\n")
 
 

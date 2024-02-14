@@ -98,7 +98,7 @@ Options that are modified or new in *emcc* are listed below:
 
    Note:
 
-     If no value is specifed it will default to "1".
+     If no value is specified it will default to "1".
 
    Note:
 

@@ -99,7 +99,7 @@ Options that are modified or new in *emcc* are listed below:
   [different OPTIONs affect at different stages, most at link time]
   Emscripten build options. For the available options, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_.
 
-  .. note:: If no value is specifed it will default to ``1``.
+  .. note:: If no value is specified it will default to ``1``.
 
   .. note:: It is possible, with boolean options, to use the ``NO_`` prefix to reverse their meaning. For example, ``-sEXIT_RUNTIME=0`` is the same as ``-sNO_EXIT_RUNTIME=1`` and vice versa.  This is not recommended in most cases.
 
