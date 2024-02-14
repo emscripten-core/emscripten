@@ -1046,7 +1046,7 @@ keydown(100);keyup(100); // trigger the end
 
   def test_sdl_mouse(self):
     create_file('pre.js', '''
-      function simulateMouseEvent(x, y, button) {
+      globalThis.simulateMouseEvent = (x, y, button) => {
         var event = document.createEvent("MouseEvents");
         if (button >= 0) {
           var event1 = document.createEvent("MouseEvents");
@@ -1070,14 +1070,13 @@ keydown(100);keyup(100); // trigger the end
           Module['canvas'].dispatchEvent(event1);
         }
       }
-      window['simulateMouseEvent'] = simulateMouseEvent;
     ''')
 
     self.btest_exit('test_sdl_mouse.c', args=['-O2', '--minify=0', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
 
   def test_sdl_mouse_offsets(self):
     create_file('pre.js', '''
-      function simulateMouseEvent(x, y, button) {
+      globalThis.simulateMouseEvent = (x, y, button) => {
         var event = document.createEvent("MouseEvents");
         if (button >= 0) {
           var event1 = document.createEvent("MouseEvents");
@@ -1101,7 +1100,6 @@ keydown(100);keyup(100); // trigger the end
           Module['canvas'].dispatchEvent(event1);
         }
       }
-      window['simulateMouseEvent'] = simulateMouseEvent;
     ''')
     create_file('page.html', '''
       <html>
@@ -3041,14 +3039,6 @@ Module["preRun"] = () => {
   @no_wasm64('SDL2 + wasm64')
   def test_sdl2_key(self):
     create_file('pre.js', '''
-      Module.postRun = () => {
-        function doOne() {
-          Module._one();
-          setTimeout(doOne, 1000/60);
-        }
-        setTimeout(doOne, 1000/60);
-      }
-
       function keydown(c) {
         var event = new KeyboardEvent("keydown", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
         var prevented = !document.dispatchEvent(event);
@@ -3066,7 +3056,7 @@ Module["preRun"] = () => {
       }
     ''')
 
-    self.btest_exit('test_sdl2_key.c', 37182145, args=['-sUSE_SDL=2', '--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one'])
+    self.btest_exit('test_sdl2_key.c', 37182145, args=['-sUSE_SDL=2', '--pre-js', 'pre.js'])
 
   @no_wasm64('SDL2 + wasm64')
   def test_sdl2_text(self):
@@ -3091,7 +3081,7 @@ Module["preRun"] = () => {
   @requires_graphics_hardware
   def test_sdl2_mouse(self):
     create_file('pre.js', '''
-      function simulateMouseEvent(x, y, button) {
+      globalThis.simulateMouseEvent = (x, y, button) => {
         var event = document.createEvent("MouseEvents");
         if (button >= 0) {
           var event1 = document.createEvent("MouseEvents");
@@ -3115,16 +3105,15 @@ Module["preRun"] = () => {
           Module['canvas'].dispatchEvent(event1);
         }
       }
-      window['simulateMouseEvent'] = simulateMouseEvent;
     ''')
 
-    self.btest_exit('test_sdl2_mouse.c', args=['-O2', '--minify=0', '-o', 'page.html', '--pre-js', 'pre.js', '-sUSE_SDL=2'])
+    self.btest_exit('test_sdl2_mouse.c', args=['-O2', '--minify=0', '--pre-js', 'pre.js', '-sUSE_SDL=2'])
 
   @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_mouse_offsets(self):
     create_file('pre.js', '''
-      function simulateMouseEvent(x, y, button) {
+      globalThis.simulateMouseEvent = (x, y, button) => {
         var event = document.createEvent("MouseEvents");
         if (button >= 0) {
           var event1 = document.createEvent("MouseEvents");
@@ -3148,7 +3137,6 @@ Module["preRun"] = () => {
           Module['canvas'].dispatchEvent(event1);
         }
       }
-      window['simulateMouseEvent'] = simulateMouseEvent;
     ''')
     create_file('page.html', '''
       <html>
