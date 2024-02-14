@@ -398,7 +398,7 @@ def resolve_dependencies(port_set, settings):
     node.process_dependencies(settings)
     for d in node.deps:
       if d not in ports_by_name:
-        utils.exit_with_error(f'Unknown dependency `{d}` for port `{node.name}`')
+        utils.exit_with_error(f'unknown dependency `{d}` for port `{node.name}`')
       dep = ports_by_name[d]
       if dep not in port_set:
         port_set.add(dep)
@@ -409,10 +409,13 @@ def resolve_dependencies(port_set, settings):
 
 
 def handle_use_port_error(arg, message):
-  utils.exit_with_error(f'Error with `--use-port={arg}` | {message}')
+  utils.exit_with_error(f'error with `--use-port={arg}` | {message}')
 
 
-def handle_use_port_arg(settings, arg):
+def handle_use_port_arg(settings, arg, error_handler=None):
+  if not error_handler:
+    def error_handler(message):
+      handle_use_port_error(arg, message)
   # Ignore ':' in first or second char of string since we could be dealing with a windows drive separator
   pos = arg.find(':', 2)
   if pos != -1:
@@ -422,27 +425,28 @@ def handle_use_port_arg(settings, arg):
   if name.endswith('.py'):
     port_file_path = name
     if not os.path.isfile(port_file_path):
-      handle_use_port_error(arg, f'not a valid port path: {port_file_path}')
+      error_handler(f'not a valid port path: {port_file_path}')
     name = load_port_by_path(port_file_path)
   elif name not in ports_by_name:
-    handle_use_port_error(arg, f'invalid port name: `{name}`')
+    error_handler(f'invalid port name: `{name}`')
   ports_needed.add(name)
   if options:
     port = ports_by_name[name]
     if not hasattr(port, 'handle_options'):
-      handle_use_port_error(arg, f'no options available for port `{name}`')
+      error_handler(f'no options available for port `{name}`')
     else:
       options_dict = {}
       for name_value in options.split(':'):
         nv = name_value.split('=', 1)
         if len(nv) != 2:
-          handle_use_port_error(arg, f'`{name_value}` is missing a value')
+          error_handler(f'`{name_value}` is missing a value')
         if nv[0] not in port.OPTIONS:
-          handle_use_port_error(arg, f'`{nv[0]}` is not supported; available options are {port.OPTIONS}')
+          error_handler(f'`{nv[0]}` is not supported; available options are {port.OPTIONS}')
         if nv[0] in options_dict:
-          handle_use_port_error(arg, f'duplicate option `{nv[0]}`')
+          error_handler(f'duplicate option `{nv[0]}`')
         options_dict[nv[0]] = nv[1]
-      port.handle_options(options_dict)
+      port.handle_options(options_dict, error_handler)
+  return name
 
 
 def get_needed_ports(settings):
