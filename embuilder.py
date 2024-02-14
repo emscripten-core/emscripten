@@ -23,6 +23,7 @@ from tools import cache
 from tools import shared
 from tools import system_libs
 from tools import ports
+from tools import utils
 from tools.settings import settings
 from tools.system_libs import USE_NINJA
 
@@ -169,8 +170,8 @@ def get_all_tasks():
   return get_system_tasks()[1] + PORTS
 
 
-def handle_port_error(message):
-  raise Exception(message)
+def handle_port_error(target, message):
+  utils.exit_with_error(f'Build target invalid `{target}` | {message}')
 
 
 def main():
@@ -294,11 +295,7 @@ def main():
       if do_build:
         build_port(what)
     elif ':' in what or what.endswith('.py'):
-      try:
-        name = ports.handle_use_port_arg(settings, what, lambda message: handle_port_error(message))
-      except Exception as e:
-        logger.error(f'Build target invalid `{what}` | {e}')
-        return 1
+      name = ports.handle_use_port_arg(settings, what, lambda message: handle_port_error(what, message))
       if do_clear:
         clear_port(name)
       if do_build:

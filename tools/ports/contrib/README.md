@@ -26,6 +26,7 @@ additional components:
 def handle_options(options, error_handler):
   # options is of type Dict[str, str]
   # in case of error, use error_handler('error message')
+  # note that error_handler is guaranteed to never return
 ```
 2. A dictionary called `OPTIONS` (type `Dict[str, str]`) where each key is the 
    name of the option and the value is a short description of what it does 
@@ -33,7 +34,7 @@ def handle_options(options, error_handler):
 When emscripten detects that options have been provided, it parses them and
 check that they are valid option names for this port (using `OPTIONS`). It then
 calls the handler function with these (valid) options. If you detect an error
-with a value, you should use `tools.utils.exit_with_error` to report the 
+with a value, you should use the error handler provided to report the 
 failure.
 
 > ### Note

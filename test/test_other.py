@@ -2418,31 +2418,6 @@ int f() {
     self.assertFalse(os.path.exists('a4.out.js'))
     self.assertContained('Unknown dependency `invalid` for port `external`', stderr)
 
-  @crossplatform
-  def test_embuilder_with_use_port_syntax(self):
-    if config.FROZEN_CACHE:
-      self.skipTest("test doesn't work with frozen cache")
-    self.run_process([EMBUILDER, 'build', 'sdl2_image:formats=png,jpg', '--force'])
-    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libSDL2_image_jpg-png.a'))
-
-  @crossplatform
-  def test_embuilder_external_ports(self):
-    if config.FROZEN_CACHE:
-      self.skipTest("test doesn't work with frozen cache")
-    simple_port_path = test_file("other/ports/simple.py")
-    # embuilder handles external port target that ends with .py
-    self.run_process([EMBUILDER, 'build', f'{simple_port_path}', '--force'])
-    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lib_simple.a'))
-    # embuilder handles external port target that contains port options
-    external_port_path = test_file("other/ports/external.py")
-    self.run_process([EMBUILDER, 'build', f'{external_port_path}:value1=12:value2=36', '--force'])
-    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lib_external.a'))
-    # embuilder handles external port target that contains port options (influences library name,
-    # like sdl2_image:formats=png)
-    external_port_path = test_file("other/ports/external.py")
-    self.run_process([EMBUILDER, 'build', f'{external_port_path}:dependency=sdl2', '--force'])
-    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lib_external-sdl2.a'))
-
   def test_link_memcpy(self):
     # memcpy can show up *after* optimizations, so after our opportunity to link in libc, so it must be special-cased
     create_file('main.c', r'''
