@@ -9,7 +9,7 @@ configuration file (.emscripten) <compiler-configuration-file>`. These settings
 include paths to the tools (LLVM, Clang, Binaryen, etc.) and the compiler's
 temporary directory for intermediate build files.
 
-This confuration file is optional.  By default, emscripten will search
+This configuration file is optional.  By default, emscripten will search
 for the tools it needs in the ``PATH``.
 
 This article explains how to create and update the file when you are building

@@ -7714,6 +7714,10 @@ high = 1234
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=@response_file.txt'])
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=@response_file.json'])
 
+  def test_dash_s_response_file_list_with_comments(self):
+    create_file('response_file.txt', '_main\n#_nope_ish_nope\n_malloc\n')
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=@response_file.txt'])
+
   def test_dash_s_response_file_misssing(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=@foo'])
     self.assertContained('error: foo: file not found parsing argument: EXPORTED_FUNCTIONS=@foo', err)

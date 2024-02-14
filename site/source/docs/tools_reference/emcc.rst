@@ -99,7 +99,7 @@ Options that are modified or new in *emcc* are listed below:
   [different OPTIONs affect at different stages, most at link time]
   Emscripten build options. For the available options, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_.
 
-  .. note:: If no value is specifed it will default to ``1``.
+  .. note:: If no value is specified it will default to ``1``.
 
   .. note:: It is possible, with boolean options, to use the ``NO_`` prefix to reverse their meaning. For example, ``-sEXIT_RUNTIME=0`` is the same as ``-sNO_EXIT_RUNTIME=1`` and vice versa.  This is not recommended in most cases.
 
@@ -134,6 +134,8 @@ Options that are modified or new in *emcc* are listed below:
 
     - In this case the file should contain a list of symbols, one per line.  For legacy use cases JSON-formatted files are also supported: e.g. ``["_func1", "func2"]``.
     - The specified file path must be absolute, not relative.
+    - The file may contain comments where the first character of the line is ``'#'``.
+
 
   .. note:: Options can be specified as a single argument with or without a space
             between the ``-s`` and option name.  e.g. ``-sFOO`` or ``-s FOO``.
