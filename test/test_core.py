@@ -1897,6 +1897,8 @@ int main(int argc, char **argv) {
     'pthread': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_main_thread_em_asm(self, args):
+    if args:
+      self.setup_node_pthreads()
     src = read_file(test_file('core/test_em_asm_2.cpp'))
     create_file('test.cpp', src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
 
