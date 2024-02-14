@@ -1731,7 +1731,8 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
         GLctx.readPixels(x, y, width, height, format, type, pixels);
       } else {
         var heap = heapObjectForWebGLType(type);
-        GLctx.readPixels(x, y, width, height, format, type, heap, toTypedArrayIndex(pixels, heap));
+        var target = toTypedArrayIndex(pixels, heap);
+        GLctx.readPixels(x, y, width, height, format, type, heap, target);
       }
       return;
     }
@@ -3310,7 +3311,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
   },
 
-  glGetShaderiv : (shader, pname, p) => {
+  glGetShaderiv: (shader, pname, p) => {
     if (!p) {
       // GLES2 specification does not specify how to behave if p is a null
       // pointer. Since calling this function does not make sense if p == null,

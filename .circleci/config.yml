@@ -814,24 +814,12 @@ jobs:
           test_targets: "browser_2gb"
   test-browser-chrome-wasm64-4gb:
     executor: bionic
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-chrome:
           title: "browser64_4gb"
-          test_targets: "
-            browser64_4gb.test_TextDecoder*
-            browser64_4gb.test_async_*
-            browser64_4gb.test_audio_worklet*
-            browser64_4gb.test_emscripten_log
-            browser64_4gb.test_clientside_vertex_arrays_es3
-            browser64_4gb.test_fetch*
-            browser64_4gb.test_emscripten_animate_canvas_element_size_manual_css
-            browser64_4gb.test_fulles2_sdlproc
-            browser64_4gb.test_html5_webgl_create_context*
-            browser64_4gb.test_sdl_image
-            browser64_4gb.test_wasm_worker*
-            browser64_4gb.test_cube_explosion
-            browser64_4gb.test_cubegeom_*
-            "
+          test_targets: "browser64_4gb"
   test-browser-firefox:
     executor: bionic
     steps:

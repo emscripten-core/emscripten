@@ -1341,6 +1341,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest_exit('webgl_parallel_shader_compile.cpp')
 
   @requires_graphics_hardware
+  @no_4gb('readPixels fails: https://crbug.com/324992397')
   def test_webgl_explicit_uniform_location(self):
     self.btest_exit('webgl_explicit_uniform_location.c', args=['-sGL_EXPLICIT_UNIFORM_LOCATION', '-sMIN_WEBGL_VERSION=2'])
 
@@ -1349,6 +1350,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest_exit('webgl_sampler_layout_binding.c', args=['-sGL_EXPLICIT_UNIFORM_BINDING'])
 
   @requires_graphics_hardware
+  @no_4gb('readPixels fails: https://crbug.com/324992397')
   def test_webgl2_ubo_layout_binding(self):
     self.btest_exit('webgl2_ubo_layout_binding.c', args=['-sGL_EXPLICIT_UNIFORM_BINDING', '-sMIN_WEBGL_VERSION=2'])
 
@@ -1550,6 +1552,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest_exit('test_sdl_gl_read.c', args=['-lSDL', '-lGL'])
 
   @requires_graphics_hardware
+  @no_4gb('readPixels fails: https://crbug.com/324992397')
   def test_sdl_gl_mapbuffers(self):
     self.btest_exit('test_sdl_gl_mapbuffers.c', args=['-sFULL_ES3', '-lSDL', '-lGL'])
 
@@ -1685,6 +1688,9 @@ keydown(100);keyup(100); // trigger the end
       self.run_browser('main.html', '/report_result?hello from worker, and :' + ('data for w' if file_data else '') + ':')
 
     # code should run standalone too
+    # To great memories >4gb we need the canary version of node
+    if self.is_4gb():
+      self.require_node_canary()
     self.assertContained('you should not see this text when in a worker!', self.run_js('worker.js'))
 
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/19608')
@@ -2520,7 +2526,7 @@ void *getBindBuffer() {
           var xhr = new XMLHttpRequest();
           out('done timeout noted = ' + Module.noted);
           assert(Module.noted);
-          xhr.open('GET', 'http://localhost:%s/report_result?' + HEAP32[Module.noted>>2]);
+          xhr.open('GET', 'http://localhost:%s/report_result?' + HEAP32[Module.noted/4]);
           xhr.send();
           setTimeout(function() { window.close() }, 1000);
         }, 0);
@@ -2766,6 +2772,7 @@ Module["preRun"] = () => {
 
   # Tests the WebGL 2 glGetBufferSubData() functionality.
   @requires_graphics_hardware
+  @no_4gb('getBufferSubData fails: https://crbug.com/325090165')
   def test_webgl2_get_buffer_sub_data(self):
     self.btest_exit('webgl2_get_buffer_sub_data.cpp', args=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
@@ -2811,6 +2818,8 @@ Module["preRun"] = () => {
     'webgl2': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1'],),
   })
   def test_webgl2_garbage_free_entrypoints(self, args):
+    if args and self.is_4gb():
+      self.skipTest('readPixels fails: https://crbug.com/324992397')
     self.btest_exit('webgl2_garbage_free_entrypoints.cpp', args=args)
 
   @requires_graphics_hardware
@@ -2838,30 +2847,36 @@ Module["preRun"] = () => {
     self.btest_exit('webgl2_draw_packed_triangle.c', args=['-lGL', '-sMAX_WEBGL_VERSION=2', '-sGL_ASSERTIONS'])
 
   @requires_graphics_hardware
+  @no_4gb('compressedTexSubImage2D fails: https://crbug.com/324562920')
   def test_webgl2_pbo(self):
     self.btest_exit('webgl2_pbo.cpp', args=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
   @no_firefox('fails on CI likely due to GPU drivers there')
   @requires_graphics_hardware
+  @no_4gb('fails to render')
   def test_webgl2_sokol_mipmap(self):
     self.btest('third_party/sokol/mipmap-emsc.c', args=['-sMAX_WEBGL_VERSION=2', '-lGL', '-O1'],
                reference='third_party/sokol/mipmap-emsc.png', reference_slack=2)
 
   @no_firefox('fails on CI likely due to GPU drivers there')
+  @no_4gb('fails to render')
   @requires_graphics_hardware
   def test_webgl2_sokol_mrt(self):
     self.btest('third_party/sokol/mrt-emcc.c', args=['-sMAX_WEBGL_VERSION=2', '-lGL'],
                reference='third_party/sokol/mrt-emcc.png')
 
   @requires_graphics_hardware
+  @no_4gb('fails to render')
   def test_webgl2_sokol_arraytex(self):
     self.btest('third_party/sokol/arraytex-emsc.c', args=['-sMAX_WEBGL_VERSION=2', '-lGL'],
                reference='third_party/sokol/arraytex-emsc.png')
 
-  def test_sdl_touch(self):
-    for opts in [[], ['-O2', '-g1', '--closure=1']]:
-      print(opts)
-      self.btest_exit('test_sdl_touch.c', args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'])
+  @parameterized({
+    '': ([],),
+    'closure': (['-O2', '-g1', '--closure=1'],),
+  })
+  def test_sdl_touch(self, opts):
+    self.btest_exit('test_sdl_touch.c', args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'])
 
   def test_html5_mouse(self):
     for opts in [[], ['-O2', '-g1', '--closure=1']]:
@@ -4688,9 +4703,9 @@ Module["preRun"] = () => {
                          '-DWEBGL_CONTEXT_VERSION=2'])
 
   @requires_graphics_hardware
+  @no_4gb('fails to render')
   def test_webgl_sample_query(self):
-    cmd = ['-sMAX_WEBGL_VERSION=2', '-lGL']
-    self.btest_exit('webgl_sample_query.cpp', args=cmd)
+    self.btest_exit('webgl_sample_query.cpp', args=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
   @requires_graphics_hardware
   @parameterized({
@@ -4746,6 +4761,7 @@ Module["preRun"] = () => {
 
   # Tests that using an array of structs in GL uniforms works.
   @requires_graphics_hardware
+  @no_4gb('fails to render')
   def test_webgl_array_of_structs_uniform(self):
     self.btest('webgl_array_of_structs_uniform.c', args=['-lGL', '-sMAX_WEBGL_VERSION=2'], reference='browser/webgl_array_of_structs_uniform.png')
 
