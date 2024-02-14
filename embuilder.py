@@ -169,8 +169,8 @@ def get_all_tasks():
   return get_system_tasks()[1] + PORTS
 
 
-def handle_port_error(arg, message):
-  raise Exception(f'Build target invalid `{arg}` | {message}')
+def handle_port_error(message):
+  raise Exception(message)
 
 
 def main():
@@ -295,9 +295,9 @@ def main():
         build_port(what)
     elif ':' in what or what.endswith('.py'):
       try:
-        name = ports.handle_use_port_arg(settings, what, lambda message: handle_port_error(what, message))
+        name = ports.handle_use_port_arg(settings, what, lambda message: handle_port_error(message))
       except Exception as e:
-        logger.error(str(e))
+        logger.error(f'Build target invalid `{what}` | {e}')
         return 1
       if do_clear:
         clear_port(name)
