@@ -9,7 +9,6 @@ import os
 import shutil
 import glob
 import importlib.util
-import sys
 from typing import Set
 from tools import cache
 from tools import config
