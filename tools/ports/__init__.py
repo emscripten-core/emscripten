@@ -69,13 +69,12 @@ def init_port(name, port):
 
 def load_port(path, name=None):
   if not name:
-    name = os.path.splitext(os.path.basename(path))[0]
+    name = shared.unsuffixed_basename(path)
   if name in ports_by_name:
     utils.exit_with_error(f'port path [`{path}`] is invalid: duplicate port name `{name}`')
   module_name = f'tools.ports.{name}'
   spec = importlib.util.spec_from_file_location(module_name, path)
   port = importlib.util.module_from_spec(spec)
-  sys.modules[module_name] = port
   spec.loader.exec_module(port)
   init_port(name, port)
   return name
@@ -102,7 +101,7 @@ def read_ports():
   for filename in os.listdir(contrib_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
-    name = 'contrib.' + os.path.splitext(filename)[0]
+    name = 'contrib.' + shared.unsuffixed(filename)
     load_port(os.path.join(contrib_dir, filename), name)
 
 
