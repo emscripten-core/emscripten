@@ -875,7 +875,7 @@ var LibraryPThread = {
     // owns the OffscreenCanvas.
     for (var canvas of Object.values(offscreenCanvases)) {
       // pthread ptr to the thread that owns this canvas.
-      {{{ makeSetValue('canvas.canvasSharedPtr', 8, 'pthread_ptr', 'i32') }}};
+      {{{ makeSetValue('canvas.canvasSharedPtr', 8, 'pthread_ptr', '*') }}};
     }
 #endif
 

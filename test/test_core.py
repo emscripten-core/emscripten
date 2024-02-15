@@ -1897,6 +1897,8 @@ int main(int argc, char **argv) {
     'pthread': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_main_thread_em_asm(self, args):
+    if args:
+      self.setup_node_pthreads()
     src = read_file(test_file('core/test_em_asm_2.cpp'))
     create_file('test.cpp', src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
 
@@ -7211,7 +7213,6 @@ void* operator new(size_t size) {
   })
   def test_demangle_stacks(self, extra_args):
     self.emcc_args += extra_args
-    self.set_setting('DEMANGLE_SUPPORT')
     self.set_setting('ASSERTIONS')
     # disable aggressive inlining in binaryen
     self.set_setting('BINARYEN_EXTRA_PASSES', '--one-caller-inline-max-function-size=1')
@@ -7232,7 +7233,6 @@ void* operator new(size_t size) {
     self.set_setting('BINARYEN_EXTRA_PASSES', '--one-caller-inline-max-function-size=1')
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$stackTrace')
 
-    self.set_setting('DEMANGLE_SUPPORT')
     self.set_setting('ENVIRONMENT', 'node,shell')
     if '-O' not in str(self.emcc_args) or '-O0' in self.emcc_args or '-O1' in self.emcc_args or '-g' in self.emcc_args:
       self.skipTest("without opts, we don't emit a symbol map")
@@ -7941,7 +7941,6 @@ void* operator new(size_t size) {
   @no_wasm2js('symbol names look different wasm2js backtraces')
   @also_with_wasm_bigint
   def test_emscripten_log(self):
-    self.set_setting('DEMANGLE_SUPPORT')
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')
     self.emcc_args += ['-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']

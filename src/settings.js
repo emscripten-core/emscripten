@@ -337,8 +337,9 @@ var EMULATE_FUNCTION_POINTER_CASTS = false;
 // [link]
 var EXCEPTION_DEBUG = false;
 
-// If 1, export `demangle` and `stackTrace` helper function.
+// If 1, export `demangle` and `stackTrace` JS library functions.
 // [link]
+// [deprecated]
 var DEMANGLE_SUPPORT = false;
 
 // Print out when we enter a library call (library*.js). You can also unset
@@ -1387,7 +1388,7 @@ var WASM = 1;
 // means we don't need to legalize for JS (but this requires a new enough JS
 // VM).
 //
-// Standlone builds require a ``main`` entry point by default.  If you want to
+// Standalone builds require a ``main`` entry point by default.  If you want to
 // build a library (also known as a reactor) instead you can pass ``--no-entry``.
 // [link]
 var STANDALONE_WASM = false;
@@ -1809,7 +1810,7 @@ var SINGLE_FILE = false;
 var AUTO_JS_LIBRARIES = true;
 
 // Like AUTO_JS_LIBRARIES but for the native libraries such as libgl, libal
-// and libhtml5.   If this is disabled it is necessary to explcitly add
+// and libhtml5.   If this is disabled it is necessary to explicitly add
 // e.g. -lhtml5 and also to first build the library using ``embuilder``.
 // [link]
 var AUTO_NATIVE_LIBRARIES = true;
@@ -2003,7 +2004,7 @@ var SEPARATE_DWARF_URL = '';
 // changes to the wasm after link. This can be useful in testing, for example.
 // Some example of features that require post-link wasm changes are:
 // - Lowering i64 to i32 pairs at the JS boundary (See WASM_BIGINT)
-// - Lowering sign-extnesion operation when targeting older browsers.
+// - Lowering sign-extension operation when targeting older browsers.
 var ERROR_ON_WASM_CHANGES_AFTER_LINK = false;
 
 // Abort on unhandled excptions that occur when calling exported WebAssembly
@@ -2025,7 +2026,7 @@ var ABORT_ON_WASM_EXCEPTIONS = false;
 
 // Build binaries that use as many WASI APIs as possible, and include additional
 // JS support libraries for those APIs.  This allows emscripten to produce binaries
-// are more WASI compilant and also allows it to process and execute WASI
+// are more WASI compliant and also allows it to process and execute WASI
 // binaries built with other SDKs (e.g.  wasi-sdk).
 // This setting is experimental and subject to change or removal.
 // Implies STANDALONE_WASM.

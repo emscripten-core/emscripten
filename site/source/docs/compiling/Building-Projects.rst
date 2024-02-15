@@ -89,10 +89,10 @@ which files are produced under which conditions:
 
 - ``emcc ... -o output.html`` builds a ``output.html`` file as an output, as well as an accompanying ``output.js`` launcher file, and a ``output.wasm`` WebAssembly file.
 - ``emcc ... -o output.js`` omits generating a HTML launcher file (expecting you to provide it yourself if you plan to run in browser), and produces two files, ``output.js`` and ``output.wasm``. (that can be run in e.g. node.js shell)
-- ``emcc ... -o output.wasm`` omits generating either JavaScript or HTML launcher file, and produces a single Wasm file built in standalone mode as if the ``-sSTANDALONE_WASM`` settting had been used. The resulting file expects to be run with the `WASI ABI <https://github.com/WebAssembly/WASI/blob/4712d490fd7662f689af6faa5d718e042f014931/legacy/application-abi.md>`_ - in particular, as soon as you initialize the module you must manually invoke either the ``_start`` export or (in the case of ``--no-entry``) the ``_initialize`` export before doing anything else with it.
+- ``emcc ... -o output.wasm`` omits generating either JavaScript or HTML launcher file, and produces a single Wasm file built in standalone mode as if the ``-sSTANDALONE_WASM`` setting had been used. The resulting file expects to be run with the `WASI ABI <https://github.com/WebAssembly/WASI/blob/4712d490fd7662f689af6faa5d718e042f014931/legacy/application-abi.md>`_ - in particular, as soon as you initialize the module you must manually invoke either the ``_start`` export or (in the case of ``--no-entry``) the ``_initialize`` export before doing anything else with it.
 - ``emcc ... -o output.{html,js} -sWASM=0`` causes the compiler to target JavaScript, and therefore a ``.wasm`` file is not produced.
 - ``emcc ... -o output.{html,js} --emit-symbol-map`` produces a file ``output.{html,js}.symbols`` if WebAssembly is being targeted (``-sWASM=0`` not specified), or if JavaScript is being targeted and ``-Os``, ``-Oz`` or ``-O2`` or higher is specified, but debug level setting is ``-g1`` or lower (i.e. if symbols minification did occur).
-- ``emcc ... -o output.{html,js} -sWASM=0 --memory-init-file 1`` causes the generation of ``output.{html,js}.mem`` memory initializer file. Pasing ``-O2``, ``-Os`` or ``-Oz`` also implies ``--memory-init-file 1``.
+- ``emcc ... -o output.{html,js} -sWASM=0 --memory-init-file 1`` causes the generation of ``output.{html,js}.mem`` memory initializer file. Passing ``-O2``, ``-Os`` or ``-Oz`` also implies ``--memory-init-file 1``.
 - ``emcc ... -o output.{html,js} -gsource-map`` generates a source map file ``output.wasm.map``. If targeting JavaScript with ``-sWASM=0``, the filename is ``output.{html,js}.map``.
 - ``emcc ... -o output.{html,js} --preload-file xxx`` directive generates a preloaded MEMFS filesystem file ``output.data``.
 - ``emcc ... -o output.{html,js} -sWASM={0,1} -sSINGLE_FILE`` merges JavaScript and WebAssembly code in the single output file ``output.{html,js}`` (in base64) to produce only one file for deployment. (If paired with ``--preload-file``, the preloaded ``.data`` file still exists as a separate file)
@@ -278,6 +278,15 @@ The simplest way to add a new port is to put it under the ``contrib`` directory.
  * Make sure the port is open source and has a suitable license.
  * Read the ``README.md`` file under ``tools/ports/contrib`` which contains more information.
 
+External ports
+--------------
+
+Emscripten also supports external ports (ports that are not part of the
+distribution). In order to use such a port, you simply provide its path:
+``--use-port=/path/to/my_port.py``
+
+.. note:: Be aware that if you are working on the code of a port, the port API
+  used by emscripten is not 100% stable and could change between versions.
 
 Build system issues
 ===================

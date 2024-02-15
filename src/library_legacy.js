@@ -90,4 +90,34 @@ addToLibrary({
     return 0;
   },
 #endif
+
+#if LINK_AS_CXX
+  $demangle__deps: ['$withStackSave', '__cxa_demangle', 'free', '$stringToUTF8OnStack'],
+  $demangle: (func) => {
+    // If demangle has failed before, stop demangling any further function names
+    // This avoids an infinite recursion with malloc()->abort()->stackTrace()->demangle()->malloc()->...
+    demangle.recursionGuard = (demangle.recursionGuard|0)+1;
+    if (demangle.recursionGuard > 1) return func;
+    return withStackSave(() => {
+      try {
+        var s = func;
+        if (s.startsWith('__Z'))
+          s = s.substr(1);
+        var buf = stringToUTF8OnStack(s);
+        var status = stackAlloc(4);
+        var ret = ___cxa_demangle(buf, 0, 0, status);
+        if ({{{ makeGetValue('status', '0', 'i32') }}} === 0 && ret) {
+          return UTF8ToString(ret);
+        }
+        // otherwise, libcxxabi failed
+      } catch(e) {
+      } finally {
+        _free(ret);
+        if (demangle.recursionGuard < 2) --demangle.recursionGuard;
+      }
+      // failure when using libcxxabi, don't demangle
+      return func;
+    });
+  },
+#endif
 });

@@ -297,14 +297,17 @@ function getNativeTypeSize(type) {
 
 function getHeapOffset(offset, type) {
   const sz = getNativeTypeSize(type);
-  const shifts = Math.log(sz) / Math.LN2;
-  if (MEMORY64 == 1) {
-    return `((${offset})/${2 ** shifts})`;
-  } else if (CAN_ADDRESS_2GB) {
-    return `((${offset})>>>${shifts})`;
-  } else {
-    return `((${offset})>>${shifts})`;
+  if (sz == 1) {
+    return offset;
   }
+  if (MEMORY64 == 1) {
+    return `((${offset})/${sz})`;
+  }
+  const shifts = Math.log(sz) / Math.LN2;
+  if (CAN_ADDRESS_2GB) {
+    return `((${offset})>>>${shifts})`;
+  }
+  return `((${offset})>>${shifts})`;
 }
 
 function ensureDot(value) {
@@ -427,10 +430,24 @@ function makeSetValueImpl(ptr, pos, value, type) {
 }
 
 function makeHEAPView(which, start, end) {
-  const size = parseInt(which.replace('U', '').replace('F', '')) / 8;
-  const shift = Math.log2(size);
-  const mod = size == 1 ? '' : (CAN_ADDRESS_2GB || MEMORY64) ? ('>>>' + shift) : ('>>' + shift);
-  return `HEAP${which}.subarray((${start})${mod}, (${end})${mod})`;
+  // The makeHEAPView, for legacy reasons, takes a heap "suffix"
+  // rather than the heap "type" that used by other APIs here.
+  const type = {
+    '8': 'i8',
+    'U8': 'u8',
+    '16': 'i16',
+    'U16': 'u16',
+    '32': 'i32',
+    'U32': 'u32',
+    '64': 'i64',
+    'U64': 'u64',
+    'F32': 'float',
+    'F64': 'double',
+  }[which];
+  const heap = getHeapForType(type);
+  start = getHeapOffset(start, type);
+  end = getHeapOffset(end, type);
+  return `${heap}.subarray((${start}), ${end})`;
 }
 
 // Given two values and an operation, returns the result of that operation.

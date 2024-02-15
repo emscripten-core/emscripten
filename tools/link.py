@@ -38,7 +38,7 @@ from .utils import removeprefix, exit_with_error
 from .shared import in_temp, safe_copy, do_replace, OFormat
 from .shared import DEBUG, WINDOWS, DYNAMICLIB_ENDINGS, STATICLIB_ENDINGS
 from .shared import unsuffixed, unsuffixed_basename, get_file_suffix
-from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS
+from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS, DEPRECATED_SETTINGS
 from .minimal_runtime_shell import generate_minimal_runtime_html
 
 import tools.line_endings
@@ -698,11 +698,11 @@ def phase_linker_setup(options, state, newargs):
 
   final_suffix = get_file_suffix(target)
 
-  if 'SUPPORT_ERRNO' in user_settings:
-    diagnostics.warning('deprecated', 'SUPPORT_ERRNO is deprecated since emscripten no longer uses the setErrNo library function')
+  for s, reason in DEPRECATED_SETTINGS.items():
+    if s in user_settings:
+      diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
 
   if settings.EXTRA_EXPORTED_RUNTIME_METHODS:
-    diagnostics.warning('deprecated', 'EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead')
     settings.EXPORTED_RUNTIME_METHODS += settings.EXTRA_EXPORTED_RUNTIME_METHODS
 
   # If no output format was specified we try to deduce the format based on
@@ -1842,13 +1842,13 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
 
   settings.TARGET_JS_NAME = os.path.basename(state.js_target)
 
-  phase_emscript(options, in_wasm, wasm_target, js_syms)
+  metadata = phase_emscript(options, in_wasm, wasm_target, js_syms)
 
   if settings.EMBIND_AOT:
     phase_embind_aot(wasm_target, js_syms)
 
-  if options.embind_emit_tsd:
-    phase_embind_emit_tsd(options, wasm_target, js_syms)
+  if options.embind_emit_tsd or options.emit_tsd:
+    phase_emit_tsd(options, wasm_target, js_syms, metadata)
 
   if options.js_transform:
     phase_source_transforms(options)
@@ -1875,8 +1875,9 @@ def phase_emscript(options, in_wasm, wasm_target, js_syms):
   if shared.SKIP_SUBPROCS:
     return
 
-  emscripten.emscript(in_wasm, wasm_target, final_js, js_syms)
+  metadata = emscripten.emscript(in_wasm, wasm_target, final_js, js_syms)
   save_intermediate('original')
+  return metadata
 
 
 def run_embind_gen(wasm_target, js_syms, extra_settings):
@@ -1903,6 +1904,8 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   # Disable proxying and thread pooling so a worker is not automatically created.
   settings.PROXY_TO_PTHREAD = False
   settings.PTHREAD_POOL_SIZE = 0
+  # Assume wasm support at binding generation time
+  settings.WASM2JS = 0
   # Disable minify since the binaryen pass has not been run yet to change the
   # import names.
   settings.MINIFY_WASM_IMPORTED_MODULES = False
@@ -1930,12 +1933,21 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   return out
 
 
-@ToolchainProfiler.profile_block('embind emit tsd')
-def phase_embind_emit_tsd(options, wasm_target, js_syms):
+@ToolchainProfiler.profile_block('emit tsd')
+def phase_emit_tsd(options, wasm_target, js_syms, metadata):
   logger.debug('emit tsd')
-  out = run_embind_gen(wasm_target, js_syms, {'EMBIND_JS': False})
-  out_file = os.path.join(os.path.dirname(wasm_target), options.embind_emit_tsd)
-  write_file(out_file, out)
+  filename = ''
+  # Support using either option for now, but prefer emit_tsd if specified.
+  if options.emit_tsd:
+    filename = options.emit_tsd
+  else:
+    filename = options.embind_emit_tsd
+  embind_tsd = ''
+  if settings.EMBIND:
+    embind_tsd = run_embind_gen(wasm_target, js_syms, {'EMBIND_JS': False})
+  all_tsd = emscripten.create_tsd(metadata, embind_tsd)
+  out_file = os.path.join(os.path.dirname(wasm_target), filename)
+  write_file(out_file, all_tsd)
 
 
 @ToolchainProfiler.profile_block('embind aot js')

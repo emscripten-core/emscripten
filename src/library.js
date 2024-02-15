@@ -374,6 +374,7 @@ addToLibrary({
   // stdlib.h
   // ==========================================================================
 
+#if !STANDALONE_WASM
   // TODO: There are currently two abort() functions that get imported to asm
   // module scope: the built-in runtime function abort(), and this library
   // function _abort(). Remove one of these, importing two functions for the
@@ -385,6 +386,7 @@ addToLibrary({
     abort('');
 #endif
   },
+#endif
 
   // This object can be modified by the user during startup, which affects
   // the initial values of the environment accessible by getenv.
@@ -426,9 +428,11 @@ addToLibrary({
   // assert.h
   // ==========================================================================
 
+#if !STANDALONE_WASM
   __assert_fail: (condition, filename, line, func) => {
     abort(`Assertion failed: ${UTF8ToString(condition)}, at: ` + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
+#endif
 
   // ==========================================================================
   // time.h

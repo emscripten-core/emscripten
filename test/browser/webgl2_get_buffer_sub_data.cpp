@@ -21,10 +21,19 @@ int main()
   glBindBuffer(GL_ARRAY_BUFFER, buffer);
   glBufferData(GL_ARRAY_BUFFER, sizeof(data), data, GL_STATIC_DRAW);
 
-  uint8_t data2[8] = {};
+  uint8_t data2[8] = { 1, 1, 1, 1, 1, 1, 1, 1 };
 
   // Test full buffer read
   glGetBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(data), data2);
+  printf("read data: %x %x %x %x %x %x %x %x\n",
+         data2[0],
+         data2[1],
+         data2[2],
+         data2[3],
+         data2[4],
+         data2[5],
+         data2[6],
+         data2[7]);
   assert(!memcmp(data, data2, sizeof(data)));
 
   // Test partial buffer read

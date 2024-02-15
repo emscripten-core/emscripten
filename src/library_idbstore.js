@@ -103,7 +103,7 @@ var LibraryIDBStore = {
       }
       var buffer = _malloc(byteArray.length); // must be freed by the caller!
       HEAPU8.set(byteArray, buffer);
-      {{{ makeSetValue('pbuffer', 0, 'buffer', 'i32') }}};
+      {{{ makeSetValue('pbuffer', 0, 'buffer', '*') }}};
       {{{ makeSetValue('pnum',    0, 'byteArray.length', 'i32') }}};
       {{{ makeSetValue('perror',  0, '0', 'i32') }}};
       wakeUp();

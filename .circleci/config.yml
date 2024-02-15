@@ -522,6 +522,7 @@ jobs:
             asan.test_wasm_worker_hello
             asan.test_externref_emjs_dynlink
             asan.test_asyncify_longjmp
+            asan.test_pthread_run_on_main_thread
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
             lsan.test_pthread_create
@@ -810,31 +811,15 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser_2gb"
-          test_targets: "
-            browser_2gb.test_gles2_uniform_arrays
-            browser_2gb.test_fetch_to_memory
-            browser_2gb.test_emscripten_animate_canvas_element_size_manual_css
-            browser_2gb.test_fulles2_sdlproc
-            browser_2gb.test_cubegeom*
-            browser_2gb.test_html5_webgl_create_context*
-            browser_2gb.test_main_thread_async_em_asm
-            "
+          test_targets: "browser_2gb"
   test-browser-chrome-wasm64-4gb:
     executor: bionic
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-chrome:
           title: "browser64_4gb"
-          test_targets: "
-            browser64_4gb.test_TextDecoder*
-            browser64_4gb.test_async_*
-            browser64_4gb.test_audio_worklet*
-            browser64_4gb.test_emscripten_log
-            browser64_4gb.test_clientside_vertex_arrays_es3
-            browser64_4gb.test_fetch*
-            browser64_4gb.test_emscripten_animate_canvas_element_size_manual_css
-            browser64_4gb.test_fulles2_sdlproc
-            browser64_4gb.test_html5_webgl_create_context*
-            "
+          test_targets: "browser64_4gb"
   test-browser-firefox:
     executor: bionic
     steps:

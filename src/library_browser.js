@@ -1291,37 +1291,37 @@ var LibraryBrowser = {
     return info.awaited;
   },
 
-  emscripten_get_preloaded_image_data__deps: ['$PATH_FS', 'malloc'],
+  emscripten_get_preloaded_image_data__deps: ['$getPreloadedImageData', '$UTF8ToString'],
   emscripten_get_preloaded_image_data__proxy: 'sync',
-  emscripten_get_preloaded_image_data: (path, w, h) => {
-    if ((path | 0) === path) path = UTF8ToString(path);
+  emscripten_get_preloaded_image_data: (path, w, h) => getPreloadedImageData(UTF8ToString(path), w, h),
 
+  $getPreloadedImageData__internal: true,
+  $getPreloadedImageData__data: ['$PATH_FS', 'malloc'],
+  $getPreloadedImageData: (path, w, h) => {
     path = PATH_FS.resolve(path);
 
     var canvas = /** @type {HTMLCanvasElement} */(preloadedImages[path]);
-    if (canvas) {
-      var ctx = canvas.getContext("2d");
-      var image = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      var buf = _malloc(canvas.width * canvas.height * 4);
+    if (!canvas) return 0;
 
-      HEAPU8.set(image.data, buf);
+    var ctx = canvas.getContext("2d");
+    var image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    var buf = _malloc(canvas.width * canvas.height * 4);
 
-      {{{ makeSetValue('w', '0', 'canvas.width', 'i32') }}};
-      {{{ makeSetValue('h', '0', 'canvas.height', 'i32') }}};
-      return buf;
-    }
+    HEAPU8.set(image.data, buf);
 
-    return 0;
+    {{{ makeSetValue('w', '0', 'canvas.width', 'i32') }}};
+    {{{ makeSetValue('h', '0', 'canvas.height', 'i32') }}};
+    return buf;
   },
 
 #if !WASMFS // WasmFS implements this in wasm
-  emscripten_get_preloaded_image_data_from_FILE__deps: ['emscripten_get_preloaded_image_data', 'fileno'],
+  emscripten_get_preloaded_image_data_from_FILE__deps: ['$getPreloadedImageData', 'fileno'],
   emscripten_get_preloaded_image_data_from_FILE__proxy: 'sync',
   emscripten_get_preloaded_image_data_from_FILE: (file, w, h) => {
     var fd = _fileno(file);
     var stream = FS.getStream(fd);
     if (stream) {
-      return _emscripten_get_preloaded_image_data(stream.path, w, h);
+      return getPreloadedImageData(stream.path, w, h);
     }
 
     return 0;

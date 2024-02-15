@@ -8,35 +8,35 @@
 #include <assert.h>
 #include <math.h>
 
-int v_called = 0;
+_Atomic int v_called = 0;
 void v() {
   assert(emscripten_is_main_runtime_thread());
   emscripten_outf("Hello!");
   v_called = 1;
 }
 
-int vi_called = 0;
+_Atomic int vi_called = 0;
 void vi(int param0) {
   assert(emscripten_is_main_runtime_thread());
   emscripten_outf("Hello %d!", param0);
   vi_called = 1;
 }
 
-int vii_called = 0;
+_Atomic int vii_called = 0;
 void vii(int param0, int param1) {
   assert(emscripten_is_main_runtime_thread());
   emscripten_outf("Hello %d %d!", param0, param1);
   vii_called = 1;
 }
 
-int viii_called = 0;
+_Atomic int viii_called = 0;
 void viii(int param0, int param1, int param2) {
   assert(emscripten_is_main_runtime_thread());
   emscripten_outf("Hello %d %d %d!", param0, param1, param2);
   viii_called = 1;
 }
 
-int i_called = 0;
+_Atomic int i_called = 0;
 int i() {
   assert(emscripten_is_main_runtime_thread());
   emscripten_outf("Hello i!");
@@ -44,7 +44,7 @@ int i() {
   return 84;
 }
 
-int ii_called = 0;
+_Atomic int ii_called = 0;
 int ii(int param0) {
   assert(emscripten_is_main_runtime_thread());
   emscripten_outf("Hello ii %d!", param0);
@@ -52,7 +52,7 @@ int ii(int param0) {
   return 85;
 }
 
-int iii_called = 0;
+_Atomic int iii_called = 0;
 int iii(int param0, int param1) {
   assert(emscripten_is_main_runtime_thread());
   emscripten_outf("Hello iii %d %d!", param0, param1);
@@ -60,7 +60,7 @@ int iii(int param0, int param1) {
   return 86;
 }
 
-int iiii_called = 0;
+_Atomic int iiii_called = 0;
 int iiii(int param0, int param1, int param2) {
   assert(emscripten_is_main_runtime_thread());
   emscripten_outf("Hello iiii %d %d %d!", param0, param1, param2);
@@ -68,20 +68,27 @@ int iiii(int param0, int param1, int param2) {
   return 87;
 }
 
+void reset_state() {
+  v_called = vi_called = vii_called = viii_called = 0;
+  i_called = ii_called = iii_called = iiii_called = 0;
+}
+
 void test_sync() {
+  reset_state();
   emscripten_outf("Testing sync proxied runs:");
   int ret;
-  v_called = 0; emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_V, v); assert(v_called == 1);
-  vi_called = 0; emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VI, vi, 42); assert(vi_called == 1);
-  vii_called = 0; emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VII, vii, 42, 43); assert(vii_called == 1);
-  viii_called = 0; emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VIII, viii, 42, 43, 44); assert(viii_called == 1);
-  i_called = 0; ret = emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_I, i); assert(i_called == 1); assert(ret == 84);
-  ii_called = 0; ret = emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_II, ii, 42); assert(ii_called == 1); assert(ret == 85);
-  iii_called = 0; ret = emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_III, iii, 42, 43); assert(iii_called == 1); assert(ret == 86);
-  iiii_called = 0; ret = emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_IIII, iiii, 42, 43, 44); assert(iiii_called == 1); assert(ret == 87);
+  emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_V, v); assert(v_called == 1);
+  emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VI, vi, 42); assert(vi_called == 1);
+  emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VII, vii, 42, 43); assert(vii_called == 1);
+  emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_VIII, viii, 42, 43, 44); assert(viii_called == 1);
+  ret = emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_I, i); assert(i_called == 1); assert(ret == 84);
+  ret = emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_II, ii, 42); assert(ii_called == 1); assert(ret == 85);
+  ret = emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_III, iii, 42, 43); assert(iii_called == 1); assert(ret == 86);
+  ret = emscripten_sync_run_in_main_runtime_thread(EM_FUNC_SIG_IIII, iiii, 42, 43, 44); assert(iiii_called == 1); assert(ret == 87);
 }
 
 void test_async() {
+  reset_state();
   emscripten_outf("Testing async proxied runs:");
   emscripten_async_run_in_main_runtime_thread(EM_FUNC_SIG_V, v);
   emscripten_async_run_in_main_runtime_thread(EM_FUNC_SIG_VI, vi, 42);
@@ -91,6 +98,12 @@ void test_async() {
   emscripten_async_run_in_main_runtime_thread(EM_FUNC_SIG_II, ii, 42);
   emscripten_async_run_in_main_runtime_thread(EM_FUNC_SIG_III, iii, 42, 43);
   emscripten_async_run_in_main_runtime_thread(EM_FUNC_SIG_IIII, iiii, 42, 43, 44);
+
+  // Busy loop until all the async jobs are done
+  while (!(v_called && vi_called && vii_called && viii_called &&
+           i_called && ii_called && iii_called && iiii_called)) {
+    sched_yield();
+  }
 }
 
 void test_async_waitable() {

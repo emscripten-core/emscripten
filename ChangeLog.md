@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.54 (in development)
 -----------------------
+- The `DEMANGLE_SUPPORT` setting and the associated `demangle` function are
+  now deprecated since Wasm stack traces always contain demangled symbols these
+  days. (#21346)
 - The type of `EMSCRIPTEN_WEBGL_CONTEXT_HANDLE` was changed to unsigned and
   the only valid error returned from `emscripten_webgl_create_context` is
   now zero.  This allows `EMSCRIPTEN_WEBGL_CONTEXT_HANDLE` to hold a pointer
@@ -42,6 +45,10 @@ See docs/process.md for more on how version tagging works.
   available via `--use-port=contrib.glfw3`: an emscripten port of glfw written 
   in C++ with many features like support for multiple windows. (#21244 and 
   #21276)
+- Added concept of external ports which live outside emscripten and are
+  loaded on demand using the syntax `--use-port=/path/to/my_port.py` (#21316)
+- Allow comments in response files. Any line starting with `#` is now ignored.
+  This is useful when listing exported symbols. (#21330)
 
 
 3.1.53 - 01/29/24
@@ -222,10 +229,10 @@ See docs/process.md for more on how version tagging works.
 - The `--minify=0` command line flag will now preserve comments as well as
   whitespace.  This means the resulting output can then be run though closure
   compiler or some other tool that gives comments semantic meaning. (#20121)
-- `-sSTRICT` now implies `-sINCOMING_MODULE_API=[]` which is generally good
+- `-sSTRICT` now implies `-sINCOMING_MODULE_JS_API=[]` which is generally good
   for code size.  If you `-sSTRICT` you now need to be explicit about the
   incoming module APIs you are supplying.  Users who supply symbols on the
-  incoming module but forget to include them in `-sINCOMING_MODULE_API`
+  incoming module but forget to include them in `-sINCOMING_MODULE_JS_API`
   will see an error in debug builds so this change will not generate any
   silent failures.
 - JS library decorators such as `__deps` and `__async` are now type checked so
@@ -359,6 +366,7 @@ See docs/process.md for more on how version tagging works.
    - stringToUTF8Array
    - stringToUTF8
    - lengthBytesUTF8
+  
   If you use any of these functions in your JS code you will now need to include
   them explicitly in one of the following ways:
    - Add them to a `__deps` entry in your JS library file (with leading $)

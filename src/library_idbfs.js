@@ -269,8 +269,9 @@ addToLibrary({
         }
       };
 
-      transaction.onerror = (e) => {
-        done(this.error);
+      // transaction may abort if (for example) there is a QuotaExceededError
+      transaction.onerror = transaction.onabort = (e) => {
+        done(e.target.error);
         e.preventDefault();
       };
 
