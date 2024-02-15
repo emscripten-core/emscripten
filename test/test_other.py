@@ -8132,29 +8132,29 @@ int main() {
     self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-sALLOW_MEMORY_GROWTH', '-sWASM_ASYNC_COMPILATION=0', '-sIMPORTED_MEMORY'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
-  def test_initial_heap(self):
-    for args, expected_initial_heap in [
-        ([], 16 * 1024 * 1024),         # Default behavior: 16MB initial heap
-        (['-sINITIAL_MEMORY=40MB'], 0), # Backwards compatibility: no initial heap (we can't tell if it'll fit)
-        (['-sMAXIMUM_MEMORY=40MB'], 0), # Backwards compatibility: no initial heap (we can't tell if it'll fit)
-        (['-sINITIAL_HEAP=64KB'], 64 * 1024), # Explicitly set initial heap is passed
-        (['-sINITIAL_HEAP=128KB', '-sINITIAL_MEMORY=20MB', '-sMAXIMUM_MEMORY=40MB'], 128 * 1024),
-        (['-sINITIAL_HEAP=10MB', '-sINITIAL_MEMORY=10MB'], -1), # Not enough space for stack
-        (['-sINITIAL_HEAP=5MB', '-sMAXIMUM_MEMORY=5MB'], -1), # Not enough space for stack
-      ]:
-      cmd = [EMCC, test_file('hello_world.c'), '-v'] + args
-      print(' '.join(cmd))
+  @parameterized({
+    '': ([], 16 * 1024 * 1024), # Default behavior: 16MB initial heap
+    'with_initial_memory': (['-sINITIAL_MEMORY=40MB'], 0), # Backwards compatibility: no initial heap (we can't tell if it'll fit)
+    'with_maximum_memory': (['-sMAXIMUM_MEMORY=40MB'], 0), # Backwards compatibility: no initial heap (we can't tell if it'll fit)
+    'with_initial_heap': (['-sINITIAL_HEAP=64KB'], 64 * 1024), # Explicitly set initial heap is passed
+    'with_all': (['-sINITIAL_HEAP=128KB', '-sINITIAL_MEMORY=20MB', '-sMAXIMUM_MEMORY=40MB'], 128 * 1024),
+    'limited_by_initial_memory': (['-sINITIAL_HEAP=10MB', '-sINITIAL_MEMORY=10MB'], -1), # Not enough space for stack
+    'limited_by_maximum_memory': (['-sINITIAL_HEAP=5MB', '-sMAXIMUM_MEMORY=5MB'], -1), # Not enough space for stack
+  })
+  def test_initial_heap(self, args, expected_initial_heap):
+    cmd = [EMCC, test_file('hello_world.c'), '-v'] + args
+    print(' '.join(cmd))
 
-      if expected_initial_heap < 0:
-        out = self.expect_fail(cmd)
-        self.assertContained('wasm-ld: error:', out)
-        continue
+    if expected_initial_heap < 0:
+      out = self.expect_fail(cmd)
+      self.assertContained('wasm-ld: error:', out)
+      return
 
-      out = self.run_process(cmd, stderr=PIPE)
-      if expected_initial_heap != 0:
-        self.assertContained('--initial-heap=' + str(expected_initial_heap), out.stderr)
-      else:
-        self.assertNotContained('--initial-heap=', out.stderr)
+    out = self.run_process(cmd, stderr=PIPE)
+    if expected_initial_heap != 0:
+      self.assertContained('--initial-heap=' + str(expected_initial_heap), out.stderr)
+    else:
+      self.assertNotContained('--initial-heap=', out.stderr)
 
   def test_memory_size(self):
     for args, expect_initial, expect_max in [
