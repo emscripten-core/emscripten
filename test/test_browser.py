@@ -923,14 +923,14 @@ window.close = () => {
     create_file('pre.js', '''
       function keydown(c) {
        %s
-        var event = new KeyboardEvent("keydown", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+        var event = new KeyboardEvent('keydown', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
         document.dispatchEvent(event);
        %s
       }
 
       function keyup(c) {
        %s
-        var event = new KeyboardEvent("keyup", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+        var event = new KeyboardEvent('keyup', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
         document.dispatchEvent(event);
        %s
       }
@@ -953,12 +953,12 @@ window.close = () => {
       html = html.replace('</body>', '''
 <script>
 function keydown(c) {
-  var event = new KeyboardEvent("keydown", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+  var event = new KeyboardEvent('keydown', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
   document.dispatchEvent(event);
 }
 
 function keyup(c) {
-  var event = new KeyboardEvent("keyup", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+  var event = new KeyboardEvent('keyup', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
   document.dispatchEvent(event);
 }
 
@@ -985,17 +985,17 @@ keydown(100);keyup(100); // trigger the end
       html = html.replace('</body>', '''
 <script>
 function keydown(c) {
-  var event = new KeyboardEvent("keydown", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+  var event = new KeyboardEvent('keydown', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
   return document.dispatchEvent(event);
 }
 
 function keypress(c) {
-  var event = new KeyboardEvent("keypress", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+  var event = new KeyboardEvent('keypress', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
   return document.dispatchEvent(event);
 }
 
 function keyup(c) {
-  var event = new KeyboardEvent("keyup", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+  var event = new KeyboardEvent('keyup', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
   return document.dispatchEvent(event);
 }
 
@@ -1037,7 +1037,7 @@ keydown(100);keyup(100); // trigger the end
       }
 
       function simulateKeyEvent(c) {
-        var event = new KeyboardEvent("keypress", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+        var event = new KeyboardEvent('keypress', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
         document.body.dispatchEvent(event);
       }
     ''')
@@ -1535,7 +1535,7 @@ keydown(100);keyup(100); // trigger the end
     # key events should be detected using SDL_PumpEvents
     create_file('pre.js', '''
       function keydown(c) {
-        var event = new KeyboardEvent("keydown", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+        var event = new KeyboardEvent('keydown', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
         document.dispatchEvent(event);
       }
     ''')
@@ -3055,18 +3055,18 @@ Module["preRun"] = () => {
   def test_sdl2_key(self):
     create_file('pre.js', '''
       function keydown(keyCode, code) {
-        var event = new KeyboardEvent("keydown", { keyCode, code, charCode: keyCode, 'view': window, 'bubbles': true, 'cancelable': true });
+        var event = new KeyboardEvent('keydown', { keyCode, code, charCode: keyCode, view: window, bubbles: true, cancelable: true });
         var prevented = !document.dispatchEvent(event);
 
         //send keypress if not prevented
         if (!prevented) {
-          var event = new KeyboardEvent("keypress", { keyCode, code, charCode: keyCode, 'view': window, 'bubbles': true, 'cancelable': true });
+          var event = new KeyboardEvent('keypress', { keyCode, code, charCode: keyCode, view: window, bubbles: true, cancelable: true });
           document.dispatchEvent(event);
         }
       }
 
       function keyup(keyCode, code) {
-        var event = new KeyboardEvent("keyup", { keyCode, code, charCode: keyCode, 'view': window, 'bubbles': true, 'cancelable': true });
+        var event = new KeyboardEvent('keyup', { keyCode, code, charCode: keyCode, view: window, bubbles: true, cancelable: true });
         document.dispatchEvent(event);
       }
     ''')
@@ -3085,7 +3085,7 @@ Module["preRun"] = () => {
       }
 
       function simulateKeyEvent(c) {
-        var event = new KeyboardEvent("keypress", { 'keyCode': c, 'charCode': c, 'view': window, 'bubbles': true, 'cancelable': true });
+        var event = new KeyboardEvent('keypress', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
         document.body.dispatchEvent(event);
       }
     ''')
@@ -3282,7 +3282,7 @@ Module["preRun"] = () => {
     # key events should be detected using SDL_PumpEvents
     create_file('pre.js', '''
       function keydown(keyCode, code) {
-        var event = new KeyboardEvent("keydown", { keyCode, code, charCode: keyCode, 'view': window, 'bubbles': true, 'cancelable': true });
+        var event = new KeyboardEvent('keydown', { keyCode, code, charCode: keyCode, view: window, bubbles: true, cancelable: true });
         document.dispatchEvent(event);
       }
     ''')
