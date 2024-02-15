@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-addToLibrary({
+legacyFuncs = {
   $ALLOC_NORMAL: 0,  // Tries to use _malloc()
   $ALLOC_STACK: 1,  // Lives for the duration of the current function call
 
@@ -120,4 +120,18 @@ addToLibrary({
     });
   },
 #endif
-});
+};
+
+if (WARN_DEPRECATED && !INCLUDE_FULL_LIBRARY) {
+  for (const name of Object.keys(legacyFuncs)) {
+    if (!isDecorator(name)) {
+      depsKey = `${name}__deps`;
+      legacyFuncs[depsKey] = legacyFuncs[depsKey] || [];
+      legacyFuncs[depsKey].push(() => {
+        warn(`JS library symbol '${name}' is deprecated. Please open a bug if you have a continuing need for this symbol [-Wdeprecated]`);
+      });
+    }
+  }
+}
+
+addToLibrary(legacyFuncs);

@@ -3670,11 +3670,11 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
   def test_exported_runtime_methods_from_js_library(self):
     create_file('pre.js', '''
       Module.onRuntimeInitialized = () => {
-        Module.setErrNo(88);
+        out(Module.ptrToString(88));
         out('done');
       };
     ''')
-    self.do_runf('hello_world.c', 'done', emcc_args=['--pre-js=pre.js', '-sEXPORTED_RUNTIME_METHODS=setErrNo'])
+    self.do_runf('hello_world.c', 'done', emcc_args=['--pre-js=pre.js', '-sEXPORTED_RUNTIME_METHODS=ptrToString'])
 
   @crossplatform
   def test_fs_stream_proto(self):
@@ -13376,6 +13376,7 @@ int main() {
 
     # By default `LEGACY_RUNTIME` is disabled and `allocate` is not available.
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ALLOC_NORMAL'])
+    self.emcc_args += ['-Wno-deprecated']
     self.do_runf('other/test_legacy_runtime.c',
                  '`allocate` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line',
                  assert_returncode=NON_ZERO)
