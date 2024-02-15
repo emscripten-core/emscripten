@@ -67,7 +67,7 @@ def init_port(name, port):
   validate_port(port)
 
 
-def load_port(path, name = None):
+def load_port(path, name=None):
   if not name:
     name = os.path.splitext(os.path.basename(path))[0]
   if name in ports_by_name:
