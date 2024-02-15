@@ -8138,14 +8138,13 @@ int main() {
     'with_maximum_memory': (['-sMAXIMUM_MEMORY=40MB'], 0), # Backwards compatibility: no initial heap (we can't tell if it'll fit)
     'with_initial_heap': (['-sINITIAL_HEAP=64KB'], 64 * 1024), # Explicitly set initial heap is passed
     'with_all': (['-sINITIAL_HEAP=128KB', '-sINITIAL_MEMORY=20MB', '-sMAXIMUM_MEMORY=40MB'], 128 * 1024),
-    'limited_by_initial_memory': (['-sINITIAL_HEAP=10MB', '-sINITIAL_MEMORY=10MB'], -1), # Not enough space for stack
-    'limited_by_maximum_memory': (['-sINITIAL_HEAP=5MB', '-sMAXIMUM_MEMORY=5MB'], -1), # Not enough space for stack
+    'limited_by_initial_memory': (['-sINITIAL_HEAP=10MB', '-sINITIAL_MEMORY=10MB'], None), # Not enough space for stack
+    'limited_by_maximum_memory': (['-sINITIAL_HEAP=5MB', '-sMAXIMUM_MEMORY=5MB'], None), # Not enough space for stack
   })
   def test_initial_heap(self, args, expected_initial_heap):
     cmd = [EMCC, test_file('hello_world.c'), '-v'] + args
-    print(' '.join(cmd))
 
-    if expected_initial_heap < 0:
+    if expected_initial_heap is None:
       out = self.expect_fail(cmd)
       self.assertContained('wasm-ld: error:', out)
       return
