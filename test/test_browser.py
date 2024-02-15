@@ -5817,6 +5817,7 @@ Module["preRun"] = () => {
     if '-sMEMORY64' in args and is_firefox():
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/19161')
     self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args)
+    self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sSTRICT'] + args)
 
   # Tests that posting functions between the main thread and the audioworklet thread works
   @parameterized({

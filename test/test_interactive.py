@@ -270,7 +270,6 @@ class interactive(BrowserCore):
   def test_audio_worklet(self):
     self.btest('webaudio/audioworklet.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '--preload-file', test_file('hello_world.c') + '@/'])
     self.btest('webaudio/audioworklet.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
-    self.btest('webaudio/audioworklet.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sSTRICT'])
 
   # Tests AudioWorklet with emscripten_futex_wake().
   @also_with_minimal_runtime
