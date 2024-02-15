@@ -143,8 +143,6 @@ addToLibrary({
       return getCFunc(ident);
     }
 #endif
-    return function() {
-      return ccall(ident, returnType, argTypes, arguments, opts);
-    }
+    return (...args) => ccall(ident, returnType, argTypes, args, opts);
   },
 });
