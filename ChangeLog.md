@@ -47,6 +47,9 @@ See docs/process.md for more on how version tagging works.
   #21276)
 - Added concept of external ports which live outside emscripten and are
   loaded on demand using the syntax `--use-port=/path/to/my_port.py` (#21316)
+- `embuilder` can now build ports with options as well as external ports using
+  the same syntax introduced with `--use-port`
+  (ex: `embuilder sdl2_image:formats=png,jpg`) (#21345) 
 - Allow comments in response files. Any line starting with `#` is now ignored.
   This is useful when listing exported symbols. (#21330)
 
