@@ -98,7 +98,7 @@ Options that are modified or new in *emcc* are listed below:
 
    Note:
 
-     If no value is specifed it will default to "1".
+     If no value is specified it will default to "1".
 
    Note:
 
@@ -146,6 +146,9 @@ Options that are modified or new in *emcc* are listed below:
        supported: e.g. "["_func1", "func2"]".
 
      * The specified file path must be absolute, not relative.
+
+     * The file may contain comments where the first character of the
+       line is "'#'".
 
    Note:
 
@@ -465,6 +468,12 @@ Options that are modified or new in *emcc* are listed below:
 
    By default this will also clear any download ports since the ports
    directory is usually within the cache directory.
+
+"--use-port=<port>"
+   [compile+link] Use the specified port. If you need to use more than
+   one port you can use this argument multiple times. For example: "--
+   use-port=sdl2 --use-port=bzip2". To get the list of available
+   ports, use "--show-ports".
 
 "--clear-ports"
    [general] Manually clears the local copies of ports from the

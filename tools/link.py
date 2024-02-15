@@ -38,7 +38,7 @@ from .utils import removeprefix, exit_with_error
 from .shared import in_temp, safe_copy, do_replace, OFormat
 from .shared import DEBUG, WINDOWS, DYNAMICLIB_ENDINGS, STATICLIB_ENDINGS
 from .shared import unsuffixed, unsuffixed_basename, get_file_suffix
-from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS
+from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS, DEPRECATED_SETTINGS
 from .minimal_runtime_shell import generate_minimal_runtime_html
 
 import tools.line_endings
@@ -203,7 +203,7 @@ def embed_memfile(options):
 
 def generate_js_sym_info():
   # Runs the js compiler to generate a list of all symbols available in the JS
-  # libraries.  This must be done separately for each linker invokation since the
+  # libraries.  This must be done separately for each linker invocation since the
   # list of symbols depends on what settings are used.
   # TODO(sbc): Find a way to optimize this.  Potentially we could add a super-set
   # mode of the js compiler that would generate a list of all possible symbols
@@ -348,7 +348,7 @@ def get_binaryen_passes(memfile):
   # sign-ext is enabled by default by llvm.  If the target browser settings don't support
   # this we lower it away here using a binaryen pass.
   if not feature_matrix.caniuse(feature_matrix.Feature.SIGN_EXT):
-    logger.debug('lowering sign-ext feature due to incompatiable target browser engines')
+    logger.debug('lowering sign-ext feature due to incompatible target browser engines')
     passes += ['--signext-lowering']
   if optimizing:
     passes += ['--post-emscripten']
@@ -357,8 +357,9 @@ def get_binaryen_passes(memfile):
   if optimizing:
     passes += [building.opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL)]
   # when optimizing, use the fact that low memory is never used (1024 is a
-  # hardcoded value in the binaryen pass)
-  if optimizing and settings.GLOBAL_BASE >= 1024:
+  # hardcoded value in the binaryen pass). we also cannot do it when the stack
+  # is first, as then the stack is in the low memory that should be unused.
+  if optimizing and settings.GLOBAL_BASE >= 1024 and not settings.STACK_FIRST:
     passes += ['--low-memory-unused']
   if settings.AUTODEBUG:
     # adding '--flatten' here may make these even more effective
@@ -487,7 +488,7 @@ def get_worker_js_suffix():
 
 def setup_pthreads(target):
   if settings.RELOCATABLE:
-    # phtreads + dyanmic linking has certain limitations
+    # pthreads + dynamic linking has certain limitations
     if settings.SIDE_MODULE:
       diagnostics.warning('experimental', '-sSIDE_MODULE + pthreads is experimental')
     elif settings.MAIN_MODULE:
@@ -663,7 +664,7 @@ def inc_initial_memory(delta):
 def check_browser_versions():
   # Map of setting all VM version settings to the minimum version
   # we support.
-  min_version_setttings = {
+  min_version_settings = {
     'MIN_FIREFOX_VERSION': feature_matrix.OLDEST_SUPPORTED_FIREFOX,
     'MIN_CHROME_VERSION': feature_matrix.OLDEST_SUPPORTED_CHROME,
     'MIN_SAFARI_VERSION': feature_matrix.OLDEST_SUPPORTED_SAFARI,
@@ -672,10 +673,10 @@ def check_browser_versions():
 
   if settings.LEGACY_VM_SUPPORT:
     # Default all browser versions to zero
-    for key in min_version_setttings.keys():
+    for key in min_version_settings.keys():
       default_setting(key, 0)
 
-  for key, oldest in min_version_setttings.items():
+  for key, oldest in min_version_settings.items():
     if settings[key] != 0 and settings[key] < oldest:
       exit_with_error(f'{key} older than {oldest} is not supported')
 
@@ -764,11 +765,11 @@ def phase_linker_setup(options, state, newargs):
 
   final_suffix = get_file_suffix(target)
 
-  if 'SUPPORT_ERRNO' in user_settings:
-    diagnostics.warning('deprecated', 'SUPPORT_ERRNO is deprecated since emscripten no longer uses the setErrNo library function')
+  for s, reason in DEPRECATED_SETTINGS.items():
+    if s in user_settings:
+      diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
 
   if settings.EXTRA_EXPORTED_RUNTIME_METHODS:
-    diagnostics.warning('deprecated', 'EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead')
     settings.EXPORTED_RUNTIME_METHODS += settings.EXTRA_EXPORTED_RUNTIME_METHODS
 
   # If no output format was specified we try to deduce the format based on
@@ -946,14 +947,6 @@ def phase_linker_setup(options, state, newargs):
     else:
       default_setting('INCOMING_MODULE_JS_API', [])
 
-  if 'GLOBAL_BASE' not in user_settings and not settings.SHRINK_LEVEL and not settings.OPT_LEVEL:
-    # When optimizing for size it helps to put static data first before
-    # the stack (since this makes instructions for accessing this data
-    # use a smaller LEB encoding).
-    # However, for debugability is better to have the stack come first
-    # (because stack overflows will trap rather than corrupting data).
-    settings.STACK_FIRST = True
-
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
   # in -Oz builds, since custom decoder for UTF-8 takes up space.
   # In pthreads enabled builds, TEXTDECODER==2 may not work, see
@@ -997,7 +990,7 @@ def phase_linker_setup(options, state, newargs):
     if settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
       exit_with_error('invalid option -sCLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % settings.CLOSURE_WARNINGS)
 
-    diagnostics.warning('deprecated', 'CLOSURE_WARNINGS is deprecated, use -Wclosure/-Wno-closure instread')
+    diagnostics.warning('deprecated', 'CLOSURE_WARNINGS is deprecated, use -Wclosure/-Wno-closure instead')
     closure_warnings = diagnostics.manager.warnings['closure']
     if settings.CLOSURE_WARNINGS == 'error':
       closure_warnings['error'] = True
@@ -1414,9 +1407,12 @@ def phase_linker_setup(options, state, newargs):
       settings.AUDIO_WORKLET_FILE = unsuffixed(os.path.basename(target)) + '.aw.js'
     settings.JS_LIBRARIES.append((0, shared.path_from_root('src', 'library_webaudio.js')))
     if not settings.MINIMAL_RUNTIME:
+      # If we are in the audio worklet environment, we can only access the Module object
+      # and not the global scope of the main JS script. Therefore we need to export
+      # all symbols that the audio worklet scope needs onto the Module object.
       # MINIMAL_RUNTIME exports these manually, since this export mechanism is placed
       # in global scope that is not suitable for MINIMAL_RUNTIME loader.
-      settings.EXPORTED_RUNTIME_METHODS += ['stackSave', 'stackAlloc', 'stackRestore']
+      settings.EXPORTED_RUNTIME_METHODS += ['stackSave', 'stackAlloc', 'stackRestore', 'wasmTable']
 
   if settings.FORCE_FILESYSTEM and not settings.MINIMAL_RUNTIME:
     # when the filesystem is forced, we export by default methods that filesystem usage
@@ -1649,7 +1645,6 @@ def phase_linker_setup(options, state, newargs):
     # We start our global data after the shadow memory.
     # We don't need to worry about alignment here.  wasm-ld will take care of that.
     settings.GLOBAL_BASE = shadow_size
-    settings.STACK_FIRST = False
 
     # Adjust INITIAL_MEMORY (if needed) to account for the shifted global base.
     if settings.INITIAL_MEMORY != -1:
@@ -1673,6 +1668,21 @@ def phase_linker_setup(options, state, newargs):
 
   if sanitize and settings.GENERATE_SOURCE_MAP:
     settings.LOAD_SOURCE_MAP = 1
+
+  if 'GLOBAL_BASE' not in user_settings and not settings.SHRINK_LEVEL and not settings.OPT_LEVEL and not settings.USE_ASAN:
+    # When optimizing for size it helps to put static data first before
+    # the stack (since this makes instructions for accessing this data
+    # use a smaller LEB encoding).
+    # However, for debugability is better to have the stack come first
+    # (because stack overflows will trap rather than corrupting data).
+    settings.STACK_FIRST = True
+
+  if '--stack-first' in [x for _, x in state.link_flags]:
+    settings.STACK_FIRST = True
+    if settings.USE_ASAN:
+      exit_with_error('--stack-first is not compatible with asan')
+    if 'GLOBAL_BASE' in user_settings:
+      exit_with_error('--stack-first is not compatible with -sGLOBAL_BASE')
 
   set_max_memory()
 
@@ -1891,13 +1901,13 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
 
   settings.TARGET_JS_NAME = os.path.basename(state.js_target)
 
-  phase_emscript(options, in_wasm, wasm_target, js_syms)
+  metadata = phase_emscript(options, in_wasm, wasm_target, js_syms)
 
   if settings.EMBIND_AOT:
     phase_embind_aot(wasm_target, js_syms)
 
-  if options.embind_emit_tsd:
-    phase_embind_emit_tsd(options, wasm_target, js_syms)
+  if options.embind_emit_tsd or options.emit_tsd:
+    phase_emit_tsd(options, wasm_target, js_syms, metadata)
 
   if options.js_transform:
     phase_source_transforms(options)
@@ -1924,8 +1934,9 @@ def phase_emscript(options, in_wasm, wasm_target, js_syms):
   if shared.SKIP_SUBPROCS:
     return
 
-  emscripten.emscript(in_wasm, wasm_target, final_js, js_syms)
+  metadata = emscripten.emscript(in_wasm, wasm_target, final_js, js_syms)
   save_intermediate('original')
+  return metadata
 
 
 def run_embind_gen(wasm_target, js_syms, extra_settings):
@@ -1952,6 +1963,8 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   # Disable proxying and thread pooling so a worker is not automatically created.
   settings.PROXY_TO_PTHREAD = False
   settings.PTHREAD_POOL_SIZE = 0
+  # Assume wasm support at binding generation time
+  settings.WASM2JS = 0
   # Disable minify since the binaryen pass has not been run yet to change the
   # import names.
   settings.MINIFY_WASM_IMPORTED_MODULES = False
@@ -1979,12 +1992,21 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   return out
 
 
-@ToolchainProfiler.profile_block('embind emit tsd')
-def phase_embind_emit_tsd(options, wasm_target, js_syms):
+@ToolchainProfiler.profile_block('emit tsd')
+def phase_emit_tsd(options, wasm_target, js_syms, metadata):
   logger.debug('emit tsd')
-  out = run_embind_gen(wasm_target, js_syms, {'EMBIND_JS': False})
-  out_file = os.path.join(os.path.dirname(wasm_target), options.embind_emit_tsd)
-  write_file(out_file, out)
+  filename = ''
+  # Support using either option for now, but prefer emit_tsd if specified.
+  if options.emit_tsd:
+    filename = options.emit_tsd
+  else:
+    filename = options.embind_emit_tsd
+  embind_tsd = ''
+  if settings.EMBIND:
+    embind_tsd = run_embind_gen(wasm_target, js_syms, {'EMBIND_JS': False})
+  all_tsd = emscripten.create_tsd(metadata, embind_tsd)
+  out_file = os.path.join(os.path.dirname(wasm_target), filename)
+  write_file(out_file, all_tsd)
 
 
 @ToolchainProfiler.profile_block('embind aot js')
@@ -2084,7 +2106,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
     # mode)
     final_js = building.closure_compiler(final_js, advanced=False, extra_closure_args=options.closure_args)
     # Run unsafe_optimizations.js once more.  This allows the cleanup of newly
-    # unused things that closure compiler leaves behing (e.g `new Float64Array(x)`).
+    # unused things that closure compiler leaves behind (e.g `new Float64Array(x)`).
     shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.js'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
     save_intermediate('unsafe-optimizations2')
 
@@ -2402,13 +2424,15 @@ var %(EXPORT_NAME)s = (() => {
       'script_url_node': script_url_node,
       'src': src,
     }
-    # Given the async nature of how the Module function and Module object
-    # come into existence in AudioWorkletGlobalScope, store the Module
-    # function under a different variable name so that AudioWorkletGlobalScope
-    # will be able to reference it without aliasing/conflicting with the
-    # Module variable name.
-    if settings.AUDIO_WORKLET and settings.MODULARIZE:
-      src += f'globalThis.AudioWorkletModule = {settings.EXPORT_NAME};'
+
+  # Given the async nature of how the Module function and Module object
+  # come into existence in AudioWorkletGlobalScope, store the Module
+  # function under a different variable name so that AudioWorkletGlobalScope
+  # will be able to reference it without aliasing/conflicting with the
+  # Module variable name. This should happen even in MINIMAL_RUNTIME builds
+  # for MODULARIZE and EXPORT_ES6 to work correctly.
+  if settings.AUDIO_WORKLET and settings.MODULARIZE:
+    src += f'globalThis.AudioWorkletModule = {settings.EXPORT_NAME};'
 
   # Export using a UMD style export, or ES6 exports if selected
   if settings.EXPORT_ES6:
@@ -2480,6 +2504,12 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     document.body.appendChild(script);
   }
 '''
+    # add required helper functions such as tryParseAsDataURI
+    for filename in ('arrayUtils.js', 'base64Utils.js', 'URIUtils.js'):
+      content = shared.read_and_preprocess(utils.path_from_root('src', filename))
+      script.inline = content + script.inline
+
+    script.inline = 'var ASSERTIONS = %s;\n%s' % (settings.ASSERTIONS, script.inline)
   else:
     # Normal code generation path
     script.src = base_js_target
@@ -2499,29 +2529,20 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
 ''' % get_subresource_location(memfile)) + script.inline
 
     if not settings.WASM_ASYNC_COMPILATION:
-      # We need to load the wasm file before anything else, it has to be synchronously ready TODO: optimize
+      # We need to load the wasm file before anything else, since it
+      # has be synchronously ready.
       script.un_src()
       script.inline = '''
-          var wasmURL = '%s';
-          var wasmXHR = new XMLHttpRequest();
-          wasmXHR.open('GET', wasmURL, true);
-          wasmXHR.responseType = 'arraybuffer';
-          wasmXHR.onload = function() {
-            if (wasmXHR.status === 200 || wasmXHR.status === 0) {
-              Module.wasmBinary = wasmXHR.response;
-            } else {
-              var wasmURLBytes = tryParseAsDataURI(wasmURL);
-              if (wasmURLBytes) {
-                Module.wasmBinary = wasmURLBytes.buffer;
-              }
-            }
-%s
-          };
-          wasmXHR.send(null);
+          fetch('%s').then((result) => result.arrayBuffer())
+                     .then((buf) => {
+                             Module.wasmBinary = buf;
+                             %s;
+                           });
 ''' % (get_subresource_location(wasm_target), script.inline)
 
     if settings.WASM == 2:
-      # If target browser does not support WebAssembly, we need to load the .wasm.js file before the main .js file.
+      # If target browser does not support WebAssembly, we need to load
+      # the .wasm.js file before the main .js file.
       script.un_src()
       script.inline = '''
           function loadMainJs() {
@@ -2539,14 +2560,6 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
             loadMainJs();
           }
 ''' % (script.inline, get_subresource_location(wasm_target) + '.js')
-
-  # when script.inline isn't empty, add required helper functions such as tryParseAsDataURI
-  if script.inline:
-    for filename in ('arrayUtils.js', 'base64Utils.js', 'URIUtils.js'):
-      content = shared.read_and_preprocess(utils.path_from_root('src', filename))
-      script.inline = content + script.inline
-
-    script.inline = 'var ASSERTIONS = %s;\n%s' % (settings.ASSERTIONS, script.inline)
 
   # inline script for SINGLE_FILE output
   if settings.SINGLE_FILE:
@@ -2808,7 +2821,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
     exports = webassembly.get_exports(dylib)
     exports = set(e.name for e in exports)
     # EM_JS function are exports with a special prefix.  We need to strip
-    # this prefix to get the actaul symbol name.  For the main module, this
+    # this prefix to get the actual symbol name.  For the main module, this
     # is handled by extract_metadata.py.
     exports = [removeprefix(e, '__em_js__') for e in exports]
     settings.SIDE_MODULE_EXPORTS.extend(sorted(exports))
@@ -2882,13 +2895,8 @@ def move_file(src, dst):
 
 
 # Returns the subresource location for run-time access
-def get_subresource_location(path, data_uri=None):
-  if data_uri is None:
-    data_uri = settings.SINGLE_FILE
-  if data_uri:
-    # if the path does not exist, then there is no data to encode
-    if not os.path.exists(path):
-      return ''
+def get_subresource_location(path):
+  if settings.SINGLE_FILE:
     data = base64.b64encode(utils.read_binary(path))
     return 'data:application/octet-stream;base64,' + data.decode('ascii')
   else:
@@ -2931,7 +2939,7 @@ def package_files(options, target):
     js_manipulation.add_files_pre_js(settings.PRE_JS_FILES, file_code)
   else:
     # Otherwise, we are embedding files, which does not require --pre-js code,
-    # and instead relies on a static constrcutor to populate the filesystem.
+    # and instead relies on a static constructor to populate the filesystem.
     shared.check_call(cmd)
 
   return rtn
@@ -2994,6 +3002,8 @@ def run(linker_inputs, options, state, newargs):
     logger.debug('stopping after linking to object file')
     return 0
 
+  phase_calculate_system_libraries(state, linker_arguments, newargs)
+
   js_syms = {}
   if (not settings.SIDE_MODULE or settings.ASYNCIFY) and not shared.SKIP_SUBPROCS:
     js_info = get_js_sym_info()
@@ -3015,8 +3025,6 @@ def run(linker_inputs, options, state, newargs):
     if settings.ASYNCIFY:
       settings.ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS = settings.ASYNCIFY_IMPORTS[:]
       settings.ASYNCIFY_IMPORTS += ['*.' + x for x in js_info['asyncFuncs']]
-
-  phase_calculate_system_libraries(state, linker_arguments, newargs)
 
   phase_link(linker_arguments, wasm_target, js_syms)
 

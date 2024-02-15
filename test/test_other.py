@@ -63,12 +63,12 @@ def uses_canonical_tmp(func):
   test to satisfy the leak detector.
   """
   @wraps(func)
-  def decorated(self):
+  def decorated(self, *args, **kwargs):
     # Before running the test completely remove the canonical_tmp
     if os.path.exists(self.canonical_temp_dir):
       shutil.rmtree(self.canonical_temp_dir)
     try:
-      func(self)
+      func(self, *args, **kwargs)
     finally:
       # Make sure the test isn't lying about the fact that it uses
       # canonical_tmp
@@ -1197,6 +1197,34 @@ f.close()
     self.run_process([EMCC, 'main.c', '-Wl,-L.', '-Wl,-lfoo'])
     self.run_process([EMCC, 'main.c', '-Wl,@linkflags.txt'])
 
+  def test_wl_stackfirst(self):
+    cmd = [EMCC, test_file('hello_world.c'), '-Wl,--stack-first']
+    self.run_process(cmd + ['-O0'])
+    self.run_process(cmd + ['-O2'])
+    err = self.expect_fail(cmd + ['-fsanitize=address'])
+    self.assertContained('error: --stack-first is not compatible with asan', err)
+    err = self.expect_fail(cmd + ['-sGLOBAL_BASE=1024'])
+    self.assertContained('error: --stack-first is not compatible with -sGLOBAL_BASE', err)
+
+  @parameterized({
+    # In a simple -O0 build we do not set --low-memory-unused (as the stack is
+    # first, which is nice for debugging but bad for code size (larger globals)
+    # and bad for the low-memory-unused trick.
+    '': ([], False),
+    # When we optimize, we do.
+    'O2': (['-O2'], True),
+    # But a low global base prevents it.
+    'O2_GB_512': (['-O2', '-sGLOBAL_BASE=512'], False),
+    # A large-enough global base allows it.
+    'O2_GB_1024': (['-O2', '-sGLOBAL_BASE=1024'], True),
+    # Forcing the stack to be first in the linker prevents it.
+    'linker_flag': (['-O2', '-Wl,--stack-first'], False),
+  })
+  def test_binaryen_low_memory_unused(self, args, low_memory_unused):
+    cmd = [EMCC, test_file('hello_world.c'), '-v'] + args
+    err = self.run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
+    self.assertContainedIf('--low-memory-unused ', err, low_memory_unused)
+
   def test_l_link(self):
     # Linking with -lLIBNAME and -L/DIRNAME should work, also should work with spaces
     create_file('main.c', '''
@@ -2250,20 +2278,25 @@ int f() {
 
   def test_sdl2_mixer_wav(self):
     self.emcc(test_file('browser/test_sdl2_mixer_wav.c'), ['-sUSE_SDL_MIXER=2'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_mixer_wav.c'), ['--use-port=sdl2_mixer'], output_filename='a.out.js')
 
   def test_sdl2_linkable(self):
     # Ensure that SDL2 can be built with LINKABLE.  This implies there are no undefined
     # symbols in the library (because LINKABLE includes the entire library).
     self.emcc(test_file('browser/test_sdl2_misc.c'), ['-sLINKABLE', '-sUSE_SDL=2'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-sLINKABLE', '--use-port=sdl2'], output_filename='a.out.js')
 
   def test_sdl2_gfx_linkable(self):
     # Same as above but for sdl2_gfx library
     self.emcc(test_file('browser/test_sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sLINKABLE', '-sUSE_SDL_GFX=2'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sLINKABLE', '--use-port=sdl2_gfx'], output_filename='a.out.js')
 
   def test_libpng(self):
     shutil.copyfile(test_file('third_party/libpng/pngtest.png'), 'pngtest.png')
     self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
                  emcc_args=['--embed-file', 'pngtest.png', '-sUSE_LIBPNG'])
+    self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
+                 emcc_args=['--embed-file', 'pngtest.png', '--use-port=libpng'])
 
   @node_pthreads
   def test_libpng_with_pthreads(self):
@@ -2284,23 +2317,34 @@ int f() {
                  'GIF file terminated normally',
                  emcc_args=['--embed-file', 'treescap.gif', '-sUSE_GIFLIB', '-sMAIN_MODULE'],
                  args=['treescap.gif'])
+    self.do_runf('third_party/giflib/giftext.c',
+                 'GIF file terminated normally',
+                 emcc_args=['--embed-file', 'treescap.gif', '--use-port=giflib'],
+                 args=['treescap.gif'])
 
   def test_libjpeg(self):
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
     self.do_runf('jpeg_test.c', 'Image is 600 by 450 with 3 components',
                  emcc_args=['--embed-file', 'screenshot.jpg', '-sUSE_LIBJPEG'],
                  args=['screenshot.jpg'])
+    self.do_runf('jpeg_test.c', 'Image is 600 by 450 with 3 components',
+                 emcc_args=['--embed-file', 'screenshot.jpg', '--use-port=libjpeg'],
+                 args=['screenshot.jpg'])
 
   def test_bullet(self):
     self.do_runf('bullet_hello_world.cpp', 'BULLET RUNNING', emcc_args=['-sUSE_BULLET'])
+    self.do_runf('bullet_hello_world.cpp', 'BULLET RUNNING', emcc_args=['--use-port=bullet'])
 
   def test_vorbis(self):
     # This will also test if ogg compiles, because vorbis depends on ogg
     self.do_runf('vorbis_test.c', 'ALL OK', emcc_args=['-sUSE_VORBIS'])
+    self.do_runf('vorbis_test.c', 'ALL OK', emcc_args=['--use-port=vorbis'])
 
   def test_bzip2(self):
     self.do_runf('bzip2_test.c', 'usage: unzcrash filename',
                  emcc_args=['-sUSE_BZIP2', '-Wno-pointer-sign'])
+    self.do_runf('bzip2_test.c', 'usage: unzcrash filename',
+                 emcc_args=['--use-port=bzip2', '-Wno-pointer-sign'])
 
   @with_both_sjlj
   def test_freetype(self):
@@ -2328,6 +2372,8 @@ int f() {
     # build test program with the font file embed in it
     self.do_runf('freetype_test.c', expectedOutput,
                  emcc_args=['-sUSE_FREETYPE', '--embed-file', 'LiberationSansBold.ttf'])
+    self.do_runf('freetype_test.c', expectedOutput,
+                 emcc_args=['--use-port=freetype', '--embed-file', 'LiberationSansBold.ttf'])
 
   def test_freetype_with_pthreads(self):
     # Verify that freetype supports compilation requiring pthreads
@@ -2340,6 +2386,37 @@ int f() {
   def test_sdl2_ttf(self):
     # This is a compile-only to test to verify that sdl2-ttf (and freetype and harfbuzz) are buildable.
     self.emcc(test_file('browser/test_sdl2_ttf.c'), args=['-sUSE_SDL=2', '-sUSE_SDL_TTF=2'], output_filename='a.out.js')
+    self.emcc(test_file('browser/test_sdl2_ttf.c'), args=['--use-port=sdl2', '--use-port=sdl2_ttf'], output_filename='a.out.js')
+
+  def test_contrib_ports(self):
+    # Verify that contrib ports can be used (using the only contrib port available ATM, but can be replaced
+    # with a different contrib port when there is another one
+    self.emcc(test_file('other/test_contrib_ports.cpp'), ['--use-port=contrib.glfw3'])
+
+  @crossplatform
+  def test_external_ports_simple(self):
+    if config.FROZEN_CACHE:
+      self.skipTest("test doesn't work with frozen cache")
+    simple_port_path = test_file("other/ports/simple.py")
+    self.do_runf('other/test_external_ports_simple.c', emcc_args=[f'--use-port={simple_port_path}'])
+
+  @crossplatform
+  def test_external_ports(self):
+    if config.FROZEN_CACHE:
+      self.skipTest("test doesn't work with frozen cache")
+    external_port_path = test_file("other/ports/external.py")
+    # testing no option
+    self.do_runf('other/test_external_ports.c', 'value1=0&value2=0\n', emcc_args=[f'--use-port={external_port_path}'])
+    # testing 1 option
+    self.do_runf('other/test_external_ports.c', 'value1=12&value2=0\n', emcc_args=[f'--use-port={external_port_path}:value1=12'])
+    # testing 2 options
+    self.do_runf('other/test_external_ports.c', 'value1=12&value2=36\n', emcc_args=[f'--use-port={external_port_path}:value1=12:value2=36'])
+    # testing dependency
+    self.do_runf('other/test_external_ports.c', 'sdl2=2\n', emcc_args=[f'--use-port={external_port_path}:dependency=sdl2'])
+    # testing invalid dependency
+    stderr = self.expect_fail([EMCC, test_file('other/test_external_ports.c'), f'--use-port={external_port_path}:dependency=invalid', '-o', 'a4.out.js'])
+    self.assertFalse(os.path.exists('a4.out.js'))
+    self.assertContained('unknown dependency `invalid` for port `external`', stderr)
 
   def test_link_memcpy(self):
     # memcpy can show up *after* optimizations, so after our opportunity to link in libc, so it must be special-cased
@@ -2704,7 +2781,7 @@ int f() {
             self.assertFalse(os.path.exists(self.canonical_temp_dir))
           else:
             print(sorted(os.listdir(self.canonical_temp_dir)))
-            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-3-original.js'))
+            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-03-original.js'))
 
   def test_debuginfo_line_tables_only(self):
     def test(do_compile):
@@ -3083,17 +3160,21 @@ int f() {
                   '-lembind', # Test duplicated link option.
                   ]
     self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
-    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
+    self.assertFileContents(test_file('other/embind_tsgen_ignore_1.d.ts'), read_file('embind_tsgen.d.ts'))
     # Test these args separately since they conflict with arguments in the first test.
     extra_args = ['-sMODULARIZE',
                   '--embed-file', 'fail.js',
                   '-sMINIMAL_RUNTIME=2',
                   '-sEXPORT_ES6=1']
     self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
-    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
+    self.assertFileContents(test_file('other/embind_tsgen_ignore_2.d.ts'), read_file('embind_tsgen.d.ts'))
+    # Also test this separately since it conflicts with other settings.
+    extra_args = ['-sWASM=0']
+    self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
+    self.assertFileContents(test_file('other/embind_tsgen_ignore_3.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_test_embind(self):
-    self.run_process([EMCC, test_file('embind/embind_test.cpp'),
+    self.run_process([EMXX, test_file('embind/embind_test.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen_test_embind.d.ts',
                       # This test explicitly creates std::string from unsigned char pointers
                       # which is deprecated in upstream LLVM.
@@ -3109,7 +3190,7 @@ int f() {
     self.assertExists('embind_tsgen_val.d.ts')
 
   def test_embind_tsgen_bigint(self):
-    args = [EMCC, test_file('other/embind_tsgen_bigint.cpp'), '-lembind', '--embind-emit-tsd', 'embind_tsgen_bigint.d.ts']
+    args = [EMXX, test_file('other/embind_tsgen_bigint.cpp'), '-lembind', '--embind-emit-tsd', 'embind_tsgen_bigint.d.ts']
     # Check that TypeScript generation fails when code contains bigints but their support is not enabled
     stderr = self.expect_fail(args)
     self.assertContained("Missing primitive type to TS type for 'int64_t", stderr)
@@ -3119,14 +3200,14 @@ int f() {
 
   def test_embind_tsgen_memory64(self):
     # Check that when memory64 is enabled longs & unsigned longs are mapped to bigint in the generated TS bindings
-    self.run_process([EMCC, test_file('other/embind_tsgen_memory64.cpp'),
+    self.run_process([EMXX, test_file('other/embind_tsgen_memory64.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen_memory64.d.ts', '-sMEMORY64', '-Wno-experimental'] +
                      self.get_emcc_args())
     self.assertFileContents(test_file('other/embind_tsgen_memory64.d.ts'), read_file('embind_tsgen_memory64.d.ts'))
 
   def test_embind_tsgen_exceptions(self):
     # Check that when Wasm exceptions and assertions are enabled bindings still generate.
-    self.run_process([EMCC, test_file('other/embind_tsgen.cpp'),
+    self.run_process([EMXX, test_file('other/embind_tsgen.cpp'),
                       '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts', '-fwasm-exceptions', '-sASSERTIONS'])
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
@@ -3135,6 +3216,12 @@ int f() {
     # Test that when method pointers are allocated at different addresses that
     # AOT JS generation still works correctly.
     self.do_runf('other/embind_jsgen_method_pointer_stability.cpp', 'done')
+
+  def test_emit_tsd(self):
+    self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
+                      '--emit-tsd', 'test_emit_tsd.d.ts', '-Wno-experimental'] +
+                     self.get_emcc_args())
+    self.assertFileContents(test_file('other/test_emit_tsd.d.ts'), read_file('test_emit_tsd.d.ts'))
 
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
@@ -3218,18 +3305,18 @@ int f() {
             self.fail('output contains more then one empty line in row')
 
     # relative path must be within/below the current dir
-    stderr = self.expect_fail([FILE_PACKAGER, 'test.data', '--preload', '../data1.txt'])
+    stderr = self.expect_fail([FILE_PACKAGER, 'test.data', '--quiet', '--preload', '../data1.txt'])
     self.assertContained('which is not contained within the current directory', stderr)
 
     # relative path that ends up under us is cool
-    proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', '../subdir/data2.txt'], stderr=PIPE, stdout=PIPE)
-    self.assertNotContained('which is not contained within the current directory', proc.stderr)
+    proc = self.run_process([FILE_PACKAGER, 'test.data', '--quiet', '--preload', '../subdir/data2.txt'], stderr=PIPE, stdout=PIPE)
+    self.assertEqual(proc.stderr, '')
     check(proc.stdout)
 
     # direct path leads to the same code being generated - relative path does not make us do anything different
-    proc2 = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data2.txt'], stderr=PIPE, stdout=PIPE)
+    proc2 = self.run_process([FILE_PACKAGER, 'test.data', '--quiet', '--preload', 'data2.txt'], stderr=PIPE, stdout=PIPE)
     check(proc2.stdout)
-    self.assertNotContained('below the current directory', proc2.stderr)
+    self.assertEqual(proc2.stderr, '')
 
     def clean(txt):
       lines = txt.splitlines()
@@ -3241,7 +3328,7 @@ int f() {
     # verify '--separate-metadata' option produces separate metadata file
     os.chdir('..')
 
-    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata', '--use-preload-cache'])
+    self.run_process([FILE_PACKAGER, 'test.data', '--quiet', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata', '--use-preload-cache'])
     self.assertExists('immutable.js.metadata')
     # verify js output JS file is not touched when the metadata is separated
     orig_timestamp = os.path.getmtime('immutable.js')
@@ -3249,7 +3336,7 @@ int f() {
     # ensure some time passes before running the packager again so that if it does touch the
     # js file it will end up with the different timestamp.
     time.sleep(1.0)
-    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata', '--use-preload-cache'])
+    self.run_process([FILE_PACKAGER, 'test.data', '--quiet', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata', '--use-preload-cache'])
     # assert both file content and timestamp are the same as reference copy
     self.assertTextDataIdentical(orig_content, read_file('immutable.js'))
     self.assertEqual(orig_timestamp, os.path.getmtime('immutable.js'))
@@ -3379,10 +3466,13 @@ int f() {
     self.assertContained("src.c:1:13: error: expected '}'", err)
     self.assertNotExists('a.out.js')
 
+  # `demangle` is a legacy JS function on longer used by emscripten
+  # TODO(sbc): Remove `demangle` and this test.
   def test_demangle(self):
     create_file('src.cpp', '''
       #include <stdio.h>
       #include <emscripten.h>
+
       void two(char c) {
         EM_ASM(out(stackTrace()));
       }
@@ -3460,10 +3550,10 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
 
     self.do_runf('src.cpp', 'Waka::f::a23412341234::point()')
 
-  # Test that malloc() -> OOM -> abort() -> stackTrace() -> jsStackTrace() -> demangleAll() -> demangle() -> malloc()
-  # cycle will not produce an infinite loop.
+  # Test that malloc() -> OOM -> abort() -> stackTrace() -> jsStackTrace()
+  # cycle will not cycle back to malloc to produce an infinite loop.
   def test_demangle_malloc_infinite_loop_crash(self):
-    self.run_process([EMXX, test_file('malloc_demangle_infinite_loop.cpp'), '-g', '-sABORTING_MALLOC', '-sDEMANGLE_SUPPORT'])
+    self.run_process([EMXX, test_file('malloc_demangle_infinite_loop.cpp'), '-g', '-sABORTING_MALLOC'])
     output = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     if output.count('Cannot enlarge memory arrays') > 5:
       print(output)
@@ -6674,13 +6764,13 @@ int main(int argc, char** argv) {
     # main module tests
 
     # dce in main, and it fails since puts is not exported
-    test('dce', main_args=['-sMAIN_MODULE=2'], library_args=[], expected=('cannot', 'undefined'), assert_returncode=NON_ZERO)
+    test('dce', main_args=['-sMAIN_MODULE=2'], library_args=[], expected=('is not a function', 'cannot', 'undefined'), assert_returncode=NON_ZERO)
 
     # with exporting, it works
     dce = test('dce', main_args=['-sMAIN_MODULE=2', '-sEXPORTED_FUNCTIONS=_main,_puts'], library_args=[])
 
     # printf is not used in main, and we dce, so we failz
-    dce_fail = test('dce_fail', main_args=['-sMAIN_MODULE=2'], library_args=['-DUSE_PRINTF'], expected=('cannot', 'undefined'), assert_returncode=NON_ZERO)
+    dce_fail = test('dce_fail', main_args=['-sMAIN_MODULE=2'], library_args=['-DUSE_PRINTF'], expected=('is not a function', 'cannot', 'undefined'), assert_returncode=NON_ZERO)
 
     # exporting printf in main keeps it alive for the library
     test('dce_save', main_args=['-sMAIN_MODULE=2', '-sEXPORTED_FUNCTIONS=_main,_printf,_puts'], library_args=['-DUSE_PRINTF'])
@@ -7627,6 +7717,10 @@ high = 1234
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=@response_file.txt'])
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=@response_file.json'])
 
+  def test_dash_s_response_file_list_with_comments(self):
+    create_file('response_file.txt', '_main\n#_nope_ish_nope\n_malloc\n')
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=@response_file.txt'])
+
   def test_dash_s_response_file_misssing(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=@foo'])
     self.assertContained('error: foo: file not found parsing argument: EXPORTED_FUNCTIONS=@foo', err)
@@ -7635,23 +7729,26 @@ high = 1234
     # Unclosed quote
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-s', "TEST_KEY='MISSING_QUOTE"])
     self.assertNotContained('AssertionError', err) # Do not mention that it is an assertion error
-    self.assertContained('unclosed opened quoted string. expected final character to be "\'"', err)
+    self.assertContained('error: error parsing "-s" setting', err)
+    self.assertContained('unclosed quoted string. expected final character to be "\'"', err)
 
   def test_dash_s_single_quote(self):
     # Only one quote
     err = self.expect_fail([EMCC, test_file('hello_world.c'), "-sTEST_KEY='"])
     self.assertNotContained('AssertionError', err) # Do not mention that it is an assertion error
-    self.assertContained('unclosed opened quoted string.', err)
+    self.assertContained('error: error parsing "-s" setting', err)
+    self.assertContained('unclosed quoted string.', err)
 
   def test_dash_s_unclosed_list(self):
     # Unclosed list
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), "-sTEST_KEY=[Value1, Value2"])
     self.assertNotContained('AssertionError', err) # Do not mention that it is an assertion error
-    self.assertContained('unclosed opened string list. expected final character to be "]"', err)
+    self.assertContained('error: error parsing "-s" setting', err)
+    self.assertContained('unterminated string list. expected final character to be "]"', err)
 
   def test_dash_s_valid_list(self):
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), "-sTEST_KEY=[Value1, \"Value2\"]"])
-    self.assertNotContained('a problem occurred in evaluating the content after a "-s", specifically', err)
+    self.assertNotContained('error parsing "-s" setting', err)
 
   def test_dash_s_wrong_type(self):
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-sEXIT_RUNTIME=[foo,bar]'])
@@ -7682,6 +7779,15 @@ high = 1234
     self.run_process([EMCC, test_file('hello_world.c'), '-nostdlib', '-sERROR_ON_UNDEFINED_SYMBOLS=0'])
     # Ensure that 0x0 is parsed as a zero and not as the string '0x0'.
     self.run_process([EMCC, test_file('hello_world.c'), '-nostdlib', '-sERROR_ON_UNDEFINED_SYMBOLS=0x0'])
+
+  def test_dash_s_bad_json_types(self):
+    # Dict rather than string/list
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS={"a":1}'])
+    self.assertContained("settings must be strings or lists (not $<class 'dict'>", err)
+
+    # List element is not a string
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=[{"a":1}]'])
+    self.assertContained("list members in settings must be strings (not $<class 'dict'>)", err)
 
   def test_zeroinit(self):
     create_file('src.c', r'''
@@ -8347,7 +8453,7 @@ int main() {
     'except':   (['-O2', '-fexceptions'],    [], ['waka']), # noqa
     # exceptions does not pull in demangling by default, which increases code size
     'mangle':   (['-O2', '-fexceptions',
-                  '-sDEMANGLE_SUPPORT'], [], ['waka']), # noqa
+                  '-sDEMANGLE_SUPPORT', '-Wno-deprecated'], [], ['waka']), # noqa
     # Wasm EH's code size increase is smaller than that of Emscripten EH
     'except_wasm':   (['-O2', '-fwasm-exceptions'], [], ['waka']), # noqa
     # eval_ctors 1 can partially optimize, but runs into getenv() for locale
@@ -8435,7 +8541,7 @@ int main() {
       setting_name = 'EXTRA_EXPORTED_RUNTIME_METHODS'
     err = self.run_process([EMCC, test_file('hello_world.c'), '-Os', '-s%s=%s' % (setting_name, ','.join(exports))], stderr=PIPE).stderr
     if use_legacy_name:
-      self.assertContained('warning: EXTRA_EXPORTED_RUNTIME_METHODS is deprecated, please use EXPORTED_RUNTIME_METHODS instead [-Wdeprecated]', err)
+      self.assertContained('warning: EXTRA_EXPORTED_RUNTIME_METHODS is deprecated (please use EXPORTED_RUNTIME_METHODS instead). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
     js = read_file('a.out.js')
     for export in exports:
       self.assertContained(f'Module["{export}"]', js)
@@ -9660,7 +9766,7 @@ int main() {
   def test_emsymbolizer(self):
     def check_dwarf_loc_info(address, funcs, locs):
       out = self.run_process(
-          [emsymbolizer, '-tcode', '-s', 'dwarf', 'test_dwarf.wasm', address],
+          [emsymbolizer, '-s', 'dwarf', 'test_dwarf.wasm', address],
           stdout=PIPE).stdout
       for func in funcs:
         self.assertIn(func, out)
@@ -9669,7 +9775,7 @@ int main() {
 
     def check_source_map_loc_info(address, loc):
       out = self.run_process(
-          [emsymbolizer, '-tcode', '-s', 'sourcemap', 'test_dwarf.wasm',
+          [emsymbolizer, '-s', 'sourcemap', 'test_dwarf.wasm',
            address],
           stdout=PIPE).stdout
       self.assertIn(loc, out)
@@ -9682,7 +9788,7 @@ int main() {
     #        ...
     #        6: 41 00         i32.const       0
     #        ...
-    # The addresses here are the offsets to start of the code section. Returns
+    # The addresses here are the offsets to the start of the file. Returns
     # the address string in hexadecimal.
     def get_addr(text):
       out = self.run_process([common.LLVM_OBJDUMP, '-d', 'test_dwarf.wasm'],
@@ -11438,6 +11544,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
 
   def test_boost_graph(self):
     self.do_runf('test_boost_graph.cpp', emcc_args=['-std=c++14', '-sUSE_BOOST_HEADERS'])
+    self.do_runf('test_boost_graph.cpp', emcc_args=['-std=c++14', '--use-port=boost_headers'])
 
   def test_setjmp_em_asm(self):
     create_file('src.c', '''
@@ -12300,7 +12407,7 @@ exec "$@"
       self.emcc_args += ['--pre-js', test_file('other/test_load_split_module.pre.js')]
     if jspi:
       self.require_jspi()
-      self.emcc_args += ['-g', '-sASYNCIFY_EXPORTS=[\'say_hello\']']
+      self.emcc_args += ['-g', '-sASYNCIFY_EXPORTS=say_hello']
     self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free']
     output = self.do_other_test('test_split_module.c')
     if jspi:
@@ -13116,7 +13223,7 @@ Module.postRun = () => {{
     # - logical assignment
     create_file('es6_library.js', '''\
     addToLibrary({
-      foo: function(arg="hello") {
+      foo: function(arg="hello", ...args) {
         // Object.assign + let
         let obj = Object.assign({}, {prop:1});
         err('prop: ' + obj.prop);
@@ -13159,6 +13266,8 @@ Module.postRun = () => {{
         obj4 ??= 0;
         obj4 ||= 1;
         obj4 &&= 2;
+
+        console.log(...args);
       }
     });
     ''')
@@ -13178,7 +13287,7 @@ myMethod: 43
     def check_for_es6(filename, expect):
       js = read_file(filename)
       if expect:
-        self.assertContained('foo(arg="hello")', js)
+        self.assertContained('foo(arg="hello"', js)
         self.assertContained(['() => 2', '()=>2'], js)
         self.assertContained('const ', js)
         self.assertContained('?.[', js)
@@ -13186,6 +13295,7 @@ myMethod: 43
         self.assertContained('??=', js)
         self.assertContained('||=', js)
         self.assertContained('&&=', js)
+        self.assertContained('...', js)
       else:
         self.verify_es5(filename)
         self.assertNotContained('foo(arg=', js)
@@ -13196,6 +13306,7 @@ myMethod: 43
         self.assertNotContained('?.', js)
         self.assertNotContained('||=', js)
         self.assertNotContained('&&=', js)
+        self.assertNotContained('...args', js)
 
     # Check that under normal circumstances none of these features get
     # removed / transpiled.
@@ -14452,3 +14563,40 @@ addToLibrary({
   def test_wasm64_no_asan(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMEMORY64', '-fsanitize=address'])
     self.assertContained('error: MEMORY64 does not yet work with ASAN', err)
+
+  @crossplatform
+  def test_js_preprocess_pre_post(self):
+    create_file('pre.js', '''
+    #preprocess
+    #if ASSERTIONS
+    console.log('assertions enabled')
+    #else
+    console.log('assertions disabled')
+    #endif
+    ''')
+    create_file('post.js', '''
+    #preprocess
+    console.log({{{ POINTER_SIZE }}});
+    ''')
+    self.emcc_args += ['--pre-js', 'pre.js', '--post-js', 'post.js']
+    self.do_runf(test_file('hello_world.c'), 'assertions enabled\n4', emcc_args=['-sASSERTIONS=1'])
+    self.do_runf(test_file('hello_world.c'), 'assertions disabled\n4', emcc_args=['-sASSERTIONS=0'])
+    self.assertNotContained('#preprocess', read_file('hello_world.js'))
+
+  @with_both_compilers
+  def test_use_port_errors(self, compiler):
+    stderr = self.expect_fail([compiler, test_file('hello_world.c'), '--use-port=invalid', '-o', 'out.js'])
+    self.assertFalse(os.path.exists('out.js'))
+    self.assertContained('error with `--use-port=invalid` | invalid port name: `invalid`', stderr)
+    stderr = self.expect_fail([compiler, test_file('hello_world.c'), '--use-port=sdl2:opt1=v1', '-o', 'out.js'])
+    self.assertFalse(os.path.exists('out.js'))
+    self.assertContained('error with `--use-port=sdl2:opt1=v1` | no options available for port `sdl2`', stderr)
+    stderr = self.expect_fail([compiler, test_file('hello_world.c'), '--use-port=sdl2_image:format=jpg', '-o', 'out.js'])
+    self.assertFalse(os.path.exists('out.js'))
+    self.assertContained('error with `--use-port=sdl2_image:format=jpg` | `format` is not supported', stderr)
+    stderr = self.expect_fail([compiler, test_file('hello_world.c'), '--use-port=sdl2_image:formats', '-o', 'out.js'])
+    self.assertFalse(os.path.exists('out.js'))
+    self.assertContained('error with `--use-port=sdl2_image:formats` | `formats` is missing a value', stderr)
+    stderr = self.expect_fail([compiler, test_file('hello_world.c'), '--use-port=sdl2_image:formats=jpg:formats=png', '-o', 'out.js'])
+    self.assertFalse(os.path.exists('out.js'))
+    self.assertContained('error with `--use-port=sdl2_image:formats=jpg:formats=png` | duplicate option `formats`', stderr)

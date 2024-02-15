@@ -231,7 +231,7 @@ def get_main_reads_params(module, export_map):
 
   main_func = module.get_function(main.index)
   if is_orig_main_wrapper(module, main_func):
-    # If main is simple wrapper function then we know that __orginial_main
+    # If main is simple wrapper function then we know that __original_main
     # doesn't read arguments.
     return False
 
@@ -258,7 +258,7 @@ def get_function_exports(module):
   rtn = {}
   for e in module.get_exports():
     if e.kind == webassembly.ExternType.FUNC:
-      rtn[e.name] = len(module.get_function_type(e.index).params)
+      rtn[e.name] = module.get_function_type(e.index)
   return rtn
 
 

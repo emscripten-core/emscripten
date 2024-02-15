@@ -513,14 +513,14 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 
 #if ASSERTIONS
 function createExportWrapper(name) {
-  return function() {
+  return (...args) => {
     assert(runtimeInitialized, `native function \`${name}\` called before runtime initialization`);
 #if EXIT_RUNTIME
     assert(!runtimeExited, `native function \`${name}\` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)`);
 #endif
     var f = wasmExports[name];
     assert(f, `exported native function \`${name}\` not found`);
-    return f.apply(null, arguments);
+    return f(...args);
   };
 }
 #endif
@@ -537,7 +537,7 @@ var abortWrapperDepth = 0;
 
 // Creates a wrapper in a closure so that each wrapper gets it's own copy of 'original'
 function makeAbortWrapper(original) {
-  return function() {
+  return (...args) => {
     // Don't allow this function to be called if we're aborted!
     if (ABORT) {
       throw "program has already aborted!";
@@ -545,7 +545,7 @@ function makeAbortWrapper(original) {
 
     abortWrapperDepth += 1;
     try {
-      return original.apply(null, arguments);
+      return original(...args);
     } catch (e) {
       if (
         ABORT // rethrow exception if abort() was called in the original function call above
@@ -608,14 +608,14 @@ function instrumentWasmTableWithAbort() {
 #endif
 
 var wasmBinaryFile;
-#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE
+#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && !AUDIO_WORKLET
 if (Module['locateFile']) {
 #endif
   wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
   if (!isDataURI(wasmBinaryFile)) {
     wasmBinaryFile = locateFile(wasmBinaryFile);
   }
-#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE // in single-file mode, repeating WASM_BINARY_FILE would emit the contents again
+#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && !AUDIO_WORKLET // In single-file mode, repeating WASM_BINARY_FILE would emit the contents again. For an Audio Worklet, we cannot use `new URL()`.
 } else {
 #if ENVIRONMENT_MAY_BE_SHELL
   if (ENVIRONMENT_IS_SHELL)
@@ -700,7 +700,7 @@ var wasmOffsetConverter;
 {{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync',  true) }}}
 var splitModuleProxyHandler = {
   get(target, prop, receiver) {
-    return function() {
+    return (...args) => {
 #if ASYNCIFY == 2
       throw new Error('Placeholder function "' + prop + '" should not be called when using JSPI.');
 #else
@@ -714,9 +714,9 @@ var splitModuleProxyHandler = {
       // When the table is dynamically laid out, the placeholder functions names
       // are offsets from the table base. In the main module, the table base is
       // always 1.
-      return wasmTable.get(1 + parseInt(prop)).apply(null, arguments);
+      return wasmTable.get(1 + parseInt(prop))(...args);
 #else
-      return wasmTable.get(prop).apply(null, arguments);
+      return wasmTable.get(prop)(...args);
 #endif
 #endif
     }
@@ -800,13 +800,13 @@ function instantiateArrayBuffer(binaryFile, imports, receiver) {
     savedBinary = binary;
 #endif
     return WebAssembly.instantiate(binary, imports);
-  }).then((instance) => {
 #if USE_OFFSET_CONVERTER
+  }).then((instance) => {
     // wasmOffsetConverter needs to be assigned before calling the receiver
     // (receiveInstantiationResult).  See comments below in instantiateAsync.
     wasmOffsetConverter = new WasmOffsetConverter(savedBinary, instance.module);
-#endif
     return instance;
+#endif
   }).then(receiver, (reason) => {
     err(`failed to asynchronously prepare wasm: ${reason}`);
 
@@ -995,13 +995,6 @@ function createWasm() {
     {{{ receivedSymbol('wasmTable') }}}
 #if ASSERTIONS && !PURE_WASI
     assert(wasmTable, 'table not found in wasm exports');
-#endif
-
-#if AUDIO_WORKLET
-    // If we are in the audio worklet environment, we can only access the Module object
-    // and not the global scope of the main JS script. Therefore we need to export
-    // all functions that the audio worklet scope needs onto the Module object.
-    Module['wasmTable'] = wasmTable;
 #endif
 #endif
 

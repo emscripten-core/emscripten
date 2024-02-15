@@ -1606,7 +1606,7 @@ var LibrarySDL = {
       var data = surfData.image.data;
       var buffer = surfData.buffer;
       assert(buffer % 4 == 0, 'Invalid buffer offset: ' + buffer);
-      var src = buffer >> 2;
+      var src = {{{ getHeapOffset('buffer', 'i32') }}};
       var dst = 0;
       var isScreen = surf == SDL.screen;
       var num;
@@ -2163,7 +2163,7 @@ var LibrarySDL = {
         var x = stackAlloc({{{ getNativeTypeSize('i32') }}});
         var y = stackAlloc({{{ getNativeTypeSize('i32') }}});
         var comp = stackAlloc({{{ getNativeTypeSize('i32') }}});
-        var data = Module['_' + func].apply(null, params.concat([x, y, comp, 0]));
+        var data = Module['_' + func](...params, x, y, comp, 0);
         if (!data) return null;
         addCleanup(() => Module['_stbi_image_free'](data));
         return {

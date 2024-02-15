@@ -83,6 +83,7 @@ def get(ports, settings, shared):
       exclude_files=[
         'playmus.c',
         'playwave.c',
+        'main.c',
       ],
       exclude_dirs=[
         'native_midi',
@@ -115,4 +116,4 @@ def process_dependencies(settings):
 
 
 def show():
-  return 'SDL2_mixer (USE_SDL_MIXER=2; zlib license)'
+  return 'sdl2_mixer (-sUSE_SDL_MIXER=2 or --use-port=sdl2_mixer; zlib license)'

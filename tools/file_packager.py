@@ -57,6 +57,8 @@ Usage:
 
   --no-node Whether to support Node.js. By default we do, which emits some extra code.
 
+  --quiet Suppress reminder about using `FORCE_FILESYSTEM`
+
 Notes:
 
   * The file packager generates unix-style file paths. So if you are on windows and a file is accessed at
@@ -110,6 +112,7 @@ class Options:
     self.obj_output = None
     self.depfile = None
     self.from_emcc = False
+    self.quiet = False
     self.force = True
     # If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally
     # cache VFS XHR so that subsequent page loads can read the data from the
@@ -411,9 +414,11 @@ def main():
       if '=' in arg:
         options.export_name = arg.split('=', 1)[1]
       leading = ''
-    elif arg.startswith('--from-emcc'):
+    elif arg == '--from-emcc':
       options.from_emcc = True
       leading = ''
+    elif arg == '--quiet':
+      options.quiet = True
     elif arg.startswith('--plugin'):
       plugin = utils.read_file(arg.split('=', 1)[1])
       eval(plugin) # should append itself to plugins
@@ -454,7 +459,7 @@ def main():
           'and a specified --js-output')
       return 1
 
-  if not options.from_emcc:
+  if not options.from_emcc and not options.quiet:
     err('Remember to build the main file with `-sFORCE_FILESYSTEM` '
         'so that it includes support for loading this file package')
 

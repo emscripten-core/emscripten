@@ -110,7 +110,7 @@ property. For example:
     console.log(e.stack);
   }
 
-Stack traces within Wasm code are not supported in :ref:`JavaScipt-based
+Stack traces within Wasm code are not supported in :ref:`JavaScript-based
 exceptions <javascript-based-exception-support>`.
 
 

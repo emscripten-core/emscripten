@@ -1256,7 +1256,15 @@ var LibraryWebGPU = {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
     function makePrimitiveState(rsPtr) {
       if (!rsPtr) return undefined;
-      {{{ gpu.makeCheckDescriptor('rsPtr') }}}
+      {{{ gpu.makeCheck('rsPtr') }}}
+
+      // TODO: This small hack assumes that there's only one type that can be in the chain of
+      // WGPUPrimitiveState. The correct thing would be to traverse the chain, but unclippedDepth
+      // is going to move into the core object soon, so we'll just do this for now. See:
+      // https://github.com/webgpu-native/webgpu-headers/issues/212#issuecomment-1682801259
+      var nextInChainPtr = {{{ makeGetValue('rsPtr', C_STRUCTS.WGPUPrimitiveState.nextInChain, '*') }}};
+      var sType = nextInChainPtr ? {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUChainedStruct.sType) }}} : 0;
+      
       return {
         "topology": WebGPU.PrimitiveTopology[
           {{{ gpu.makeGetU32('rsPtr', C_STRUCTS.WGPUPrimitiveState.topology) }}}],
@@ -1266,6 +1274,7 @@ var LibraryWebGPU = {
           {{{ gpu.makeGetU32('rsPtr', C_STRUCTS.WGPUPrimitiveState.frontFace) }}}],
         "cullMode": WebGPU.CullMode[
           {{{ gpu.makeGetU32('rsPtr', C_STRUCTS.WGPUPrimitiveState.cullMode) }}}],
+        "unclippedDepth": sType === {{{ gpu.SType.PrimitiveDepthClipControl }}} && {{{ gpu.makeGetBool('nextInChainPtr', C_STRUCTS.WGPUPrimitiveDepthClipControl.unclippedDepth) }}},
       };
     }
 
@@ -1561,11 +1570,8 @@ var LibraryWebGPU = {
   },
 
   wgpuQueueOnSubmittedWorkDone__deps: ['$callUserCallback'],
-  wgpuQueueOnSubmittedWorkDone: (queueId, signalValue, callback, userdata) => {
+  wgpuQueueOnSubmittedWorkDone: (queueId, callback, userdata) => {
     var queue = WebGPU.mgrQueue.get(queueId);
-#if ASSERTIONS
-    assert(signalValue == 0, 'signalValue not supported, must be 0');
-#endif
 
     {{{ runtimeKeepalivePush() }}}
     queue["onSubmittedWorkDone"]().then(() => {
@@ -2701,6 +2707,10 @@ var LibraryWebGPU = {
     return WebGPU.mgrSwapChain.create(context);
   },
 
+  wgpuSwapChainGetCurrentTexture: (swapChainId) => {
+    var context = WebGPU.mgrSwapChain.get(swapChainId);
+    return WebGPU.mgrTexture.create(context["getCurrentTexture"]());
+  },
   wgpuSwapChainGetCurrentTextureView: (swapChainId) => {
     var context = WebGPU.mgrSwapChain.get(swapChainId);
     return WebGPU.mgrTextureView.create(context["getCurrentTexture"]()["createView"]());

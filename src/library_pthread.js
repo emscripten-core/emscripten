@@ -80,11 +80,11 @@ var LibraryPThread = {
 
       // Prefix all err()/dbg() messages with the calling thread ID.
       var origDbg = dbg;
-      dbg = (message) => origDbg(pthreadLogPrefix() + message);
+      dbg = (...args) => origDbg(pthreadLogPrefix() + args.join(' '));
 #if PTHREADS_DEBUG
       // With PTHREADS_DEBUG also prefix all err() messages.
       var origErr = err;
-      err = (message) => origErr(pthreadLogPrefix() + message);
+      err = (...args) => origErr(pthreadLogPrefix() + args.join(' '));
 #endif
     },
 #endif
@@ -875,7 +875,7 @@ var LibraryPThread = {
     // owns the OffscreenCanvas.
     for (var canvas of Object.values(offscreenCanvases)) {
       // pthread ptr to the thread that owns this canvas.
-      {{{ makeSetValue('canvas.canvasSharedPtr', 8, 'pthread_ptr', 'i32') }}};
+      {{{ makeSetValue('canvas.canvasSharedPtr', 8, 'pthread_ptr', '*') }}};
     }
 #endif
 
@@ -957,21 +957,21 @@ var LibraryPThread = {
 #if MEMORY64
   // Calls proxyToMainThread but returns a bigint rather than a number
   $proxyToMainThreadPtr__deps: ['$proxyToMainThread'],
-  $proxyToMainThreadPtr: function() {
-    return BigInt(proxyToMainThread.apply(null, arguments));
-  },
+  $proxyToMainThreadPtr: (...args) => BigInt(proxyToMainThread(...args)),
 #endif
 
   $proxyToMainThread__deps: ['$withStackSave', '_emscripten_run_on_main_thread_js'].concat(i53ConversionDeps),
-  $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...(number|boolean))} */',
-  $proxyToMainThread: function(index, sync) {
-    // Additional arguments are passed after those two, which are the actual
+  $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
+  $proxyToMainThread: (funcIndex, emAsmAddr, sync, ...callArgs) => {
+    // EM_ASM proxying is done by passing a pointer to the address of the EM_ASM
+    // contant as `emAsmAddr`.  JS library proxying is done by passing an index
+    // into `proxiedJSCallArgs` as `funcIndex`. If `emAsmAddr` is non-zero then
+    // `funcIndex` will be ignored.
+    // Additional arguments are passed after the first three are the actual
     // function arguments.
     // The serialization buffer contains the number of call params, and then
     // all the args here.
     // We also pass 'sync' to C separately, since C needs to look at it.
-    var numCallArgs = arguments.length - 2;
-    var outerArgs = arguments;
     // Allocate a buffer, which will be copied by the C code.
     return withStackSave(() => {
       // First passed parameter specifies the number of arguments to the function.
@@ -980,11 +980,11 @@ var LibraryPThread = {
       // type info here). To do that, add a "prefix" before each value that
       // indicates if it is a BigInt, which effectively doubles the number of
       // values we serialize for proxying. TODO: pack this?
-      var serializedNumCallArgs = numCallArgs {{{ WASM_BIGINT ? "* 2" : "" }}};
+      var serializedNumCallArgs = callArgs.length {{{ WASM_BIGINT ? "* 2" : "" }}};
       var args = stackAlloc(serializedNumCallArgs * 8);
       var b = {{{ getHeapOffset('args', 'i64') }}};
-      for (var i = 0; i < numCallArgs; i++) {
-        var arg = outerArgs[2 + i];
+      for (var i = 0; i < callArgs.length; i++) {
+        var arg = callArgs[i];
 #if WASM_BIGINT
         if (typeof arg == 'bigint') {
           // The prefix is non-zero to indicate a bigint.
@@ -999,7 +999,7 @@ var LibraryPThread = {
         HEAPF64[b + i] = arg;
 #endif
       }
-      return __emscripten_run_on_main_thread_js(index, serializedNumCallArgs, args, sync);
+      return __emscripten_run_on_main_thread_js(funcIndex, emAsmAddr, serializedNumCallArgs, args, sync);
     });
   },
 
@@ -1009,7 +1009,7 @@ var LibraryPThread = {
   _emscripten_receive_on_main_thread_js__deps: [
     '$proxyToMainThread',
     '$proxiedJSCallArgs'],
-  _emscripten_receive_on_main_thread_js: (index, callingThread, numCallArgs, args) => {
+  _emscripten_receive_on_main_thread_js: (funcIndex, emAsmAddr, callingThread, numCallArgs, args) => {
     // Sometimes we need to backproxy events to the calling thread (e.g.
     // HTML5 DOM events handlers such as
     // emscripten_set_mousemove_callback()), so keep track in a globally
@@ -1032,19 +1032,21 @@ var LibraryPThread = {
       proxiedJSCallArgs[i] = HEAPF64[b + i];
 #endif
     }
-    // Proxied JS library funcs are encoded as positive values, and
-    // EM_ASMs as negative values (see include_asm_consts)
+    // Proxied JS library funcs use funcIndex and EM_ASM functions use emAsmAddr
 #if HAVE_EM_ASM
-    var isEmAsmConst = index < 0;
-    var func = !isEmAsmConst ? proxiedFunctionTable[index] : ASM_CONSTS[-index - 1];
+    var func = emAsmAddr ? ASM_CONSTS[emAsmAddr] : proxiedFunctionTable[funcIndex];
 #else
-    var func = proxiedFunctionTable[index];
+#if ASSERTIONS
+    assert(!emAsmAddr);
+#endif
+    var func = proxiedFunctionTable[funcIndex];
 #endif
 #if ASSERTIONS
+    assert(!(funcIndex && emAsmAddr));
     assert(func.length == numCallArgs, 'Call args mismatch in _emscripten_receive_on_main_thread_js');
 #endif
     PThread.currentProxiedOperationCallerThread = callingThread;
-    var rtn = func.apply(null, proxiedJSCallArgs);
+    var rtn = func(...proxiedJSCallArgs);
     PThread.currentProxiedOperationCallerThread = 0;
 #if MEMORY64
     // In memory64 mode some proxied functions return bigint/pointer but

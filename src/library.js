@@ -374,6 +374,7 @@ addToLibrary({
   // stdlib.h
   // ==========================================================================
 
+#if !STANDALONE_WASM
   // TODO: There are currently two abort() functions that get imported to asm
   // module scope: the built-in runtime function abort(), and this library
   // function _abort(). Remove one of these, importing two functions for the
@@ -385,6 +386,7 @@ addToLibrary({
     abort('');
 #endif
   },
+#endif
 
   // This object can be modified by the user during startup, which affects
   // the initial values of the environment accessible by getenv.
@@ -426,9 +428,11 @@ addToLibrary({
   // assert.h
   // ==========================================================================
 
+#if !STANDALONE_WASM
   __assert_fail: (condition, filename, line, func) => {
     abort(`Assertion failed: ${UTF8ToString(condition)}, at: ` + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
+#endif
 
   // ==========================================================================
   // time.h
@@ -2874,7 +2878,7 @@ addToLibrary({
 #if ASSERTIONS
     assert(ASM_CONSTS.hasOwnProperty(code), `No EM_ASM constant found at address ${code}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
 #endif
-    return ASM_CONSTS[code].apply(null, args);
+    return ASM_CONSTS[code](...args);
   },
 
   emscripten_asm_const_int__deps: ['$runEmAsmFunction'],
@@ -2896,7 +2900,7 @@ addToLibrary({
     '$proxyToMainThread'
 #endif
   ],
-  $runMainThreadEmAsm: (code, sigPtr, argbuf, sync) => {
+  $runMainThreadEmAsm: (emAsmAddr, sigPtr, argbuf, sync) => {
     var args = readEmAsmArgs(sigPtr, argbuf);
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
@@ -2909,29 +2913,23 @@ addToLibrary({
       // of using __proxy. (And dor simplicity, do the same in the sync
       // case as well, even though it's not strictly necessary, to keep the two
       // code paths as similar as possible on both sides.)
-      // -1 - code is the encoding of a proxied EM_ASM, as a negative number
-      // (positive numbers are non-EM_ASM calls).
-      return proxyToMainThread.apply(null, [-1 - code, sync].concat(args));
+      return proxyToMainThread(0, emAsmAddr, sync, ...args);
     }
 #endif
 #if ASSERTIONS
-    assert(ASM_CONSTS.hasOwnProperty(code), `No EM_ASM constant found at address ${code}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
+    assert(ASM_CONSTS.hasOwnProperty(emAsmAddr), `No EM_ASM constant found at address ${emAsmAddr}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
 #endif
-    return ASM_CONSTS[code].apply(null, args);
+    return ASM_CONSTS[emAsmAddr](...args);
   },
   emscripten_asm_const_int_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
-  emscripten_asm_const_int_sync_on_main_thread: (code, sigPtr, argbuf) => {
-    return runMainThreadEmAsm(code, sigPtr, argbuf, 1);
-  },
+  emscripten_asm_const_int_sync_on_main_thread: (emAsmAddr, sigPtr, argbuf) => runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 1),
 
   emscripten_asm_const_ptr_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
-  emscripten_asm_const_ptr_sync_on_main_thread: (code, sigPtr, argbuf) => {
-    return runMainThreadEmAsm(code, sigPtr, argbuf, 1);
-  },
+  emscripten_asm_const_ptr_sync_on_main_thread: (emAsmAddr, sigPtr, argbuf) => runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 1),
 
   emscripten_asm_const_double_sync_on_main_thread: 'emscripten_asm_const_int_sync_on_main_thread',
   emscripten_asm_const_async_on_main_thread__deps: ['$runMainThreadEmAsm'],
-  emscripten_asm_const_async_on_main_thread: (code, sigPtr, argbuf) => runMainThreadEmAsm(code, sigPtr, argbuf, 0),
+  emscripten_asm_const_async_on_main_thread: (emAsmAddr, sigPtr, argbuf) => runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 0),
 #endif
 
 #if !DECLARE_ASM_MODULE_EXPORTS
@@ -3100,7 +3098,7 @@ addToLibrary({
 #endif
     var f = Module['dynCall_' + sig];
 #endif
-    return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
+    return f(ptr, ...args);
   },
   $dynCall__deps: ['$dynCallLegacy', '$getWasmTableEntry'],
 #endif
@@ -3113,16 +3111,10 @@ addToLibrary({
 #if ASSERTIONS && !DYNCALLS
     assert(sig.includes('j') || sig.includes('p'), 'getDynCaller should only be called with i64 sigs')
 #endif
-    var argCache = [];
-    return function() {
-      argCache.length = 0;
-      Object.assign(argCache, arguments);
-      return dynCall(sig, ptr, argCache);
-    };
+    return (...args) => dynCall(sig, ptr, args);
   },
 
-  $dynCall__docs: '/** @param {Object=} args */',
-  $dynCall: (sig, ptr, args) => {
+  $dynCall: (sig, ptr, args = []) => {
 #if MEMORY64
     // With MEMORY64 we have an additional step to convert `p` arguments to
     // bigint. This is the runtime equivalent of the wrappers we create for wasm
@@ -3145,7 +3137,7 @@ addToLibrary({
 #if ASSERTIONS
     assert(getWasmTableEntry(ptr), `missing table entry in dynCall: ${ptr}`);
 #endif
-    var rtn = getWasmTableEntry(ptr).apply(null, args);
+    var rtn = getWasmTableEntry(ptr)(...args);
 #endif
 #if MEMORY64
     return sig[0] == 'p' ? Number(rtn) : rtn;

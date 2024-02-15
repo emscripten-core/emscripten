@@ -21,10 +21,8 @@ addToLibrary({
     },
     DB_VERSION: 21,
     DB_STORE_NAME: 'FILE_DATA',
-    mount: function(mount) {
-      // reuse all of the core MEMFS functionality
-      return MEMFS.mount.apply(null, arguments);
-    },
+    // reuse all of the core MEMFS functionality
+    mount: (...args) => MEMFS.mount(...args),
     syncfs: (mount, populate, callback) => {
       IDBFS.getLocalSet(mount, (err, local) => {
         if (err) return callback(err);
@@ -110,7 +108,7 @@ addToLibrary({
         }
 
         if (FS.isDir(stat.mode)) {
-          check.push.apply(check, FS.readdir(path).filter(isRealDir).map(toAbsolute(path)));
+          check.push(...FS.readdir(path).filter(isRealDir).map(toAbsolute(path)));
         }
 
         entries[path] = { 'timestamp': stat.mtime };
@@ -271,8 +269,9 @@ addToLibrary({
         }
       };
 
-      transaction.onerror = (e) => {
-        done(this.error);
+      // transaction may abort if (for example) there is a QuotaExceededError
+      transaction.onerror = transaction.onabort = (e) => {
+        done(e.target.error);
         e.preventDefault();
       };
 

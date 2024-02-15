@@ -140,7 +140,7 @@ var LibraryHTML5 = {
         var call = JSEvents.deferredCalls[i];
         JSEvents.deferredCalls.splice(i, 1);
         --i;
-        call.targetFunction.apply(null, call.argsList);
+        call.targetFunction(...call.argsList);
       }
     },
 #endif
@@ -2273,7 +2273,7 @@ var LibraryHTML5 = {
       }
 #if OFFSCREENCANVAS_SUPPORT
     } else if (canvas.canvasSharedPtr) {
-      var targetThread = {{{ makeGetValue('canvas.canvasSharedPtr', 8, 'i32') }}};
+      var targetThread = {{{ makeGetValue('canvas.canvasSharedPtr', 8, '*') }}};
       setOffscreenCanvasSizeOnTargetThread(targetThread, target, width, height);
       return {{{ cDefs.EMSCRIPTEN_RESULT_DEFERRED }}}; // This will have to be done asynchronously
 #endif

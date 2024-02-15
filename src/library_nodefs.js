@@ -87,7 +87,7 @@ addToLibrary({
       }
       parts.push(node.mount.opts.root);
       parts.reverse();
-      return PATH.join.apply(null, parts);
+      return PATH.join(...parts);
     },
     // This maps the integer permission modes from http://linux.die.net/man/3/open
     // to node.js-specific file open permission strings at http://nodejs.org/api/fs.html#fs_fs_open_path_flags_mode_callback

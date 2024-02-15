@@ -13,6 +13,7 @@ running multiple build commands in parallel, confusion can occur).
 """
 
 import argparse
+import fnmatch
 import logging
 import sys
 import time
@@ -22,6 +23,7 @@ from tools import cache
 from tools import shared
 from tools import system_libs
 from tools import ports
+from tools import utils
 from tools.settings import settings
 from tools.system_libs import USE_NINJA
 
@@ -120,12 +122,13 @@ legacy_prefixes = {
 
 
 def get_help():
-  all_tasks = get_system_tasks()[1] + PORTS
+  all_tasks = get_all_tasks()
   all_tasks.sort()
   return '''
 Available targets:
 
-  build / clear %s
+  build / clear
+        %s
 
 Issuing 'embuilder build ALL' causes each task to be built.
 ''' % '\n        '.join(all_tasks)
@@ -161,6 +164,14 @@ def get_system_tasks():
   system_libraries = system_libs.Library.get_all_variations()
   system_tasks = list(system_libraries.keys())
   return system_libraries, system_tasks
+
+
+def get_all_tasks():
+  return get_system_tasks()[1] + PORTS
+
+
+def handle_port_error(target, message):
+  utils.exit_with_error(f'error building port `{target}` | {message}')
 
 
 def main():
@@ -239,7 +250,10 @@ def main():
   for name, targets in task_targets.items():
     if targets is None:
       # Use target name as task
-      tasks.append(name)
+      if '*' in name:
+        tasks.extend(fnmatch.filter(get_all_tasks(), name))
+      else:
+        tasks.append(name)
     else:
       # There are some ports that we don't want to build as part
       # of ALL since the are not well tested or widely used:
@@ -280,6 +294,12 @@ def main():
         clear_port(what)
       if do_build:
         build_port(what)
+    elif ':' in what or what.endswith('.py'):
+      name = ports.handle_use_port_arg(settings, what, lambda message: handle_port_error(what, message))
+      if do_clear:
+        clear_port(name)
+      if do_build:
+        build_port(name)
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

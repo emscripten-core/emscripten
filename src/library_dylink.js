@@ -239,7 +239,7 @@ var LibraryDylink = {
       }
 #if DYLINK_DEBUG
       else if (GOT[symName].value != value) {
-        dbg(`udateGOT: EXISTING SYMBOL: ${symName} : ${GOT[symName].value} (${value})`);
+        dbg(`updateGOT: EXISTING SYMBOL: ${symName} : ${GOT[symName].value} (${value})`);
       }
 #endif
     }
@@ -707,9 +707,9 @@ var LibraryDylink = {
           // when first called.
           if (!(prop in stubs)) {
             var resolved;
-            stubs[prop] = function() {
+            stubs[prop] = (...args) => {
               resolved ||= resolveSymbol(prop);
-              return resolved.apply(null, arguments);
+              return resolved(...args);
             };
           }
           return stubs[prop];

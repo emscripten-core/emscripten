@@ -5,8 +5,8 @@
 
 import os
 
-TAG = 'release-2.24.2'
-HASH = 'b178bdc8f7c40271e09a72f639649d1d61953dda4dc12b77437259667b63b961fd3b2c67b0de6fdc5f9f9c80c49bfafd164e4c13715bc1056e550acc8bad5a3c'
+TAG = 'release-2.26.0'
+HASH = '2e53af5aa3d3ca7e2b8653f999379bf424b2190aad32a7997350fc058624818cca3a780907af74c8f72305ca18a83a2aa15839e1dbc94107128125a7df9cd7fd'
 SUBDIR = 'SDL-' + TAG
 
 variants = {'sdl2-mt': {'PTHREADS': 1}}
@@ -91,4 +91,4 @@ def process_args(ports):
 
 
 def show():
-  return 'SDL2 (USE_SDL=2; zlib license)'
+  return 'sdl2 (-sUSE_SDL=2 or --use-port=sdl2; zlib license)'

@@ -89,10 +89,10 @@ which files are produced under which conditions:
 
 - ``emcc ... -o output.html`` builds a ``output.html`` file as an output, as well as an accompanying ``output.js`` launcher file, and a ``output.wasm`` WebAssembly file.
 - ``emcc ... -o output.js`` omits generating a HTML launcher file (expecting you to provide it yourself if you plan to run in browser), and produces two files, ``output.js`` and ``output.wasm``. (that can be run in e.g. node.js shell)
-- ``emcc ... -o output.wasm`` omits generating either JavaScript or HTML launcher file, and produces a single Wasm file built in standalone mode as if the ``-sSTANDALONE_WASM`` settting had been used. The resulting file expects to be run with the `WASI ABI <https://github.com/WebAssembly/WASI/blob/4712d490fd7662f689af6faa5d718e042f014931/legacy/application-abi.md>`_ - in particular, as soon as you initialize the module you must manually invoke either the ``_start`` export or (in the case of ``--no-entry``) the ``_initialize`` export before doing anything else with it.
+- ``emcc ... -o output.wasm`` omits generating either JavaScript or HTML launcher file, and produces a single Wasm file built in standalone mode as if the ``-sSTANDALONE_WASM`` setting had been used. The resulting file expects to be run with the `WASI ABI <https://github.com/WebAssembly/WASI/blob/4712d490fd7662f689af6faa5d718e042f014931/legacy/application-abi.md>`_ - in particular, as soon as you initialize the module you must manually invoke either the ``_start`` export or (in the case of ``--no-entry``) the ``_initialize`` export before doing anything else with it.
 - ``emcc ... -o output.{html,js} -sWASM=0`` causes the compiler to target JavaScript, and therefore a ``.wasm`` file is not produced.
 - ``emcc ... -o output.{html,js} --emit-symbol-map`` produces a file ``output.{html,js}.symbols`` if WebAssembly is being targeted (``-sWASM=0`` not specified), or if JavaScript is being targeted and ``-Os``, ``-Oz`` or ``-O2`` or higher is specified, but debug level setting is ``-g1`` or lower (i.e. if symbols minification did occur).
-- ``emcc ... -o output.{html,js} -sWASM=0 --memory-init-file 1`` causes the generation of ``output.{html,js}.mem`` memory initializer file. Pasing ``-O2``, ``-Os`` or ``-Oz`` also implies ``--memory-init-file 1``.
+- ``emcc ... -o output.{html,js} -sWASM=0 --memory-init-file 1`` causes the generation of ``output.{html,js}.mem`` memory initializer file. Passing ``-O2``, ``-Os`` or ``-Oz`` also implies ``--memory-init-file 1``.
 - ``emcc ... -o output.{html,js} -gsource-map`` generates a source map file ``output.wasm.map``. If targeting JavaScript with ``-sWASM=0``, the filename is ``output.{html,js}.map``.
 - ``emcc ... -o output.{html,js} --preload-file xxx`` directive generates a preloaded MEMFS filesystem file ``output.data``.
 - ``emcc ... -o output.{html,js} -sWASM={0,1} -sSINGLE_FILE`` merges JavaScript and WebAssembly code in the single output file ``output.{html,js}`` (in base64) to produce only one file for deployment. (If paired with ``--preload-file``, the preloaded ``.data`` file still exists as a separate file)
@@ -215,19 +215,40 @@ For example, consider the case where a project "project" uses a library "libstuf
 Emscripten Ports
 ================
 
-Emscripten Ports is a collection of useful libraries, ported to Emscripten. They reside `on GitHub <https://github.com/emscripten-ports>`_, and have integration support in *emcc*. When you request that a port be used, emcc will fetch it from the remote server, set it up and build it locally, then link it with your project, add necessary include to your build commands, etc. For example, SDL2 is in ports, and you can request that it be used with ``-sUSE_SDL=2``. For example,
+Emscripten Ports is a collection of useful libraries, ported to Emscripten. They reside `on GitHub <https://github.com/emscripten-ports>`_, and have integration support in *emcc*. When you request that a port be used, emcc will fetch it from the remote server, set it up and build it locally, then link it with your project, add necessary include to your build commands, etc. For example, SDL2 is in ports, and you can request that it be used with ``--use-port=sdl2``. For example,
 
 .. code-block:: bash
 
-  emcc test/sdl2glshader.c -sUSE_SDL=2 -sLEGACY_GL_EMULATION -o sdl2.html
+  emcc test/browser/test_sdl2_glshader.c --use-port=sdl2 -sLEGACY_GL_EMULATION -o sdl2.html
 
 You should see some notifications about SDL2 being used, and built if it wasn't previously. You can then view ``sdl2.html`` in your browser.
 
-.. note:: *SDL_image* has also been added to ports, use it with ``-sUSE_SDL_IMAGE=2``. To see a list of all available ports, run ``emcc --show-ports``. For SDL2_image to be useful, you generally need to specify the image formats you are planning on using with e.g. ``-sSDL2_IMAGE_FORMATS='["bmp","png","xpm"]'`` (note: jpg support is not available yet as of Jun 22 2018 - libjpg needs to be added to emscripten-ports). This will also ensure that ``IMG_Init`` works properly when you specify those formats. Alternatively, you can use ``emcc --use-preload-plugins`` and ``--preload-file`` your images, so the browser codecs decode them (see :ref:`preloading-files`). A code path in the SDL2_image port will load through :c:func:`emscripten_get_preloaded_image_data`, but then your calls to ``IMG_Init`` with those image formats will fail (as while the images will work through preloading, IMG_Init reports no support for those formats, as it doesn't have support compiled in - in other words, IMG_Init does not report support for formats that only work through preloading).```
+To see a list of all available ports, run ``emcc --show-ports``.
 
-.. note:: *SDL_net* has also been added to ports, use it with ``-sUSE_SDL_NET=2``. To see a list of all available ports, run ``emcc --show-ports``.
+.. note:: *SDL_image* has also been added to ports, use it with
+  ``--use-port=sdl2_image``. For ``sdl2_image`` to be useful, you generally
+  need to specify the image formats you are planning on using with e.g.
+  ``--use-port=sdl2_image:formats=bmp,png,xpm,jpg``. This will also ensure that
+  ``IMG_Init`` works properly when you specify those formats. Alternatively,
+  you can use ``emcc --use-preload-plugins`` and ``--preload-file`` your
+  images, so the browser codecs decode them (see :ref:`preloading-files`).
+  A code path in the ``sdl2_image`` port will load through
+  :c:func:`emscripten_get_preloaded_image_data`, but then your calls to
+  ``IMG_Init`` with those image formats will fail (as while the images will
+  work through preloading, IMG_Init reports no support for those formats, as
+  it doesn't have support compiled in - in other words, ``IMG_Init`` does not
+  report support for formats that only work through preloading).
 
-.. note:: Emscripten also has support for older SDL1, which is built-in. If you do not specify SDL2 as in the command above, then SDL1 is linked in and the SDL1 include paths are used. SDL1 has support for *sdl-config*, which is present in `system/bin <https://github.com/emscripten-core/emscripten/blob/main/system/bin/sdl-config>`_. Using the native *sdl-config* may result in compilation or missing-symbol errors. You will need to modify the build system to look for files in **emscripten/system** or **emscripten/system/bin** in order to use the Emscripten *sdl-config*.
+.. note:: *SDL_net* has also been added to ports, use it with ``--use-port=sdl2_net``.
+
+.. note:: Emscripten also has support for older SDL1, which is built-in.
+  If you do not specify SDL2 as in the command above, then SDL1 is linked in
+  and the SDL1 include paths are used. SDL1 has support for *sdl-config*,
+  which is present in `system/bin <https://github.com/emscripten-core/emscripten/blob/main/system/bin/sdl-config>`_.
+  Using the native *sdl-config* may result in compilation or missing-symbol errors.
+  You will need to modify the build system to look for files in
+  **emscripten/system** or **emscripten/system/bin** in order to use the
+  Emscripten *sdl-config*.
 
 .. note:: You can also build a library from ports in a manual way if you prefer
     that, but then you will need to also apply the python logic that ports does.
@@ -236,16 +257,36 @@ You should see some notifications about SDL2 being used, and built if it wasn't 
     it's better to use the ports version as it is what is tested and known to
     work.
 
+.. note:: Since emscripten 3.1.54, ``--use-port`` is the preferred syntax to
+  use a port in your project. The legacy syntax (for example ``-sUSE_SDL2``,
+  ``-sUSE_SDL_IMAGE=2``) remains available.
+
+
+Contrib ports
+-------------
+
+Contrib ports are contributed by the wider community and supported on a
+"best effort" basis. Since they are not run as part of emscripten CI they are
+not always guaranteed to build or function.
+See :ref:`Contrib Ports <Contrib-Ports>` for more information.
+
 Adding more ports
 -----------------
 
-Adding more ports is fairly easy. Basically, the steps are
+The simplest way to add a new port is to put it under the ``contrib`` directory. Basically, the steps are:
 
  * Make sure the port is open source and has a suitable license.
- * Add it to emscripten-ports on github. The ports maintainers can create the repo and add the relevant developers to a team for that repo, so they have write access.
- * Add a script to handle it under ``tools/ports/`` (see existing code for examples) and use it in ``tools/ports/__init__.py``.
- * Add testing in the test suite.
+ * Read the ``README.md`` file under ``tools/ports/contrib`` which contains more information.
 
+External ports
+--------------
+
+Emscripten also supports external ports (ports that are not part of the
+distribution). In order to use such a port, you simply provide its path:
+``--use-port=/path/to/my_port.py``
+
+.. note:: Be aware that if you are working on the code of a port, the port API
+  used by emscripten is not 100% stable and could change between versions.
 
 Build system issues
 ===================

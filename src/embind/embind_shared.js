@@ -153,9 +153,9 @@ var LibraryEmbindShared = {
   $heap32VectorToArray: (count, firstElement) => {
     var array = [];
     for (var i = 0; i < count; i++) {
-        // TODO(https://github.com/emscripten-core/emscripten/issues/17310):
-        // Find a way to hoist the `>> 2` or `>> 3` out of this loop.
-        array.push({{{ makeGetValue('firstElement', `i * ${POINTER_SIZE}`, '*') }}});
+      // TODO(https://github.com/emscripten-core/emscripten/issues/17310):
+      // Find a way to hoist the `>> 2` or `>> 3` out of this loop.
+      array.push({{{ makeGetValue('firstElement', `i * ${POINTER_SIZE}`, '*') }}});
     }
     return array;
   },
@@ -165,14 +165,16 @@ var LibraryEmbindShared = {
   $requireRegisteredType: (rawType, humanName) => {
     var impl = registeredTypes[rawType];
     if (undefined === impl) {
-        throwBindingError(humanName + " has unknown type " + getTypeName(rawType));
+      throwBindingError(`${humanName} has unknown type ${getTypeName(rawType)}`);
     }
     return impl;
   },
 
   $usesDestructorStack(argTypes) {
-    for (var i = 1; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here.
-      if (argTypes[i] !== null && argTypes[i].destructorFunction === undefined) { // The type does not define a destructor function - must use dynamic stack
+    // Skip return value at index 0 - it's not deleted here.
+    for (var i = 1; i < argTypes.length; ++i) {
+      // The type does not define a destructor function - must use dynamic stack
+      if (argTypes[i] !== null && argTypes[i].destructorFunction === undefined) {
         return true;
       }
     }
@@ -252,11 +254,12 @@ var LibraryEmbindShared = {
     invokerFnBody +=
         (returns || isAsync ? "var rv = ":"") + "invoker(fn"+(argsListWired.length>0?", ":"")+argsListWired+");\n";
 
+    var returnVal = returns ? "rv" : "";
 #if ASYNCIFY == 1
     args1.push("Asyncify");
 #endif
 #if ASYNCIFY
-    invokerFnBody += "function onDone(" + (returns ? "rv" : "") + ") {\n";
+    invokerFnBody += `function onDone(${returnVal}) {\n`;
 #endif
 
     if (needsDestructorStack) {
@@ -265,8 +268,8 @@ var LibraryEmbindShared = {
       for (var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
         var paramName = (i === 1 ? "thisWired" : ("arg"+(i - 2)+"Wired"));
         if (argTypes[i].destructorFunction !== null) {
-          invokerFnBody += paramName+"_dtor("+paramName+");\n";
-          args1.push(paramName+"_dtor");
+          invokerFnBody += `${paramName}_dtor(${paramName});\n`;
+          args1.push(`${paramName}_dtor`);
         }
       }
     }
@@ -285,10 +288,10 @@ var LibraryEmbindShared = {
 
 #if ASYNCIFY == 1
     invokerFnBody += "}\n";
-    invokerFnBody += "return Asyncify.currData ? Asyncify.whenDone().then(onDone) : onDone(" + (returns ? "rv" : "") +");\n"
+    invokerFnBody += `return Asyncify.currData ? Asyncify.whenDone().then(onDone) : onDone(${returnVal});\n`
 #elif ASYNCIFY == 2
     invokerFnBody += "}\n";
-    invokerFnBody += "return " + (isAsync ? "rv.then(onDone)" : "onDone(" + (returns ? "rv" : "") + ")") + ";";
+    invokerFnBody += "return " + (isAsync ? "rv.then(onDone)" : `onDone(${returnVal})`) + ";";
 #endif
 
     invokerFnBody += "}\n";

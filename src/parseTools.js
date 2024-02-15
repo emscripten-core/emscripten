@@ -137,6 +137,8 @@ function preprocess(filename) {
           if (showCurrentLine()) {
             error(`${filename}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
           }
+        } else if (first === '#preprocess') {
+          // Do nothing
         } else {
           error(`${filename}:${i + 1}: Unknown preprocessor directive ${first}`);
         }
@@ -176,6 +178,7 @@ function needsQuoting(ident) {
 }
 
 globalThis.POINTER_SIZE = MEMORY64 ? 8 : 4;
+globalThis.POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
 globalThis.STACK_ALIGN = 16;
 const POINTER_BITS = POINTER_SIZE * 8;
 const POINTER_TYPE = `u${POINTER_BITS}`;
@@ -294,14 +297,17 @@ function getNativeTypeSize(type) {
 
 function getHeapOffset(offset, type) {
   const sz = getNativeTypeSize(type);
-  const shifts = Math.log(sz) / Math.LN2;
-  if (MEMORY64 == 1) {
-    return `((${offset})/${2 ** shifts})`;
-  } else if (CAN_ADDRESS_2GB) {
-    return `((${offset})>>>${shifts})`;
-  } else {
-    return `((${offset})>>${shifts})`;
+  if (sz == 1) {
+    return offset;
   }
+  if (MEMORY64 == 1) {
+    return `((${offset})/${sz})`;
+  }
+  const shifts = Math.log(sz) / Math.LN2;
+  if (CAN_ADDRESS_2GB) {
+    return `((${offset})>>>${shifts})`;
+  }
+  return `((${offset})>>${shifts})`;
 }
 
 function ensureDot(value) {
@@ -424,10 +430,24 @@ function makeSetValueImpl(ptr, pos, value, type) {
 }
 
 function makeHEAPView(which, start, end) {
-  const size = parseInt(which.replace('U', '').replace('F', '')) / 8;
-  const shift = Math.log2(size);
-  const mod = size == 1 ? '' : (CAN_ADDRESS_2GB || MEMORY64) ? ('>>>' + shift) : ('>>' + shift);
-  return `HEAP${which}.subarray((${start})${mod}, (${end})${mod})`;
+  // The makeHEAPView, for legacy reasons, takes a heap "suffix"
+  // rather than the heap "type" that used by other APIs here.
+  const type = {
+    '8': 'i8',
+    'U8': 'u8',
+    '16': 'i16',
+    'U16': 'u16',
+    '32': 'i32',
+    'U32': 'u32',
+    '64': 'i64',
+    'U64': 'u64',
+    'F32': 'float',
+    'F64': 'double',
+  }[which];
+  const heap = getHeapForType(type);
+  start = getHeapOffset(start, type);
+  end = getHeapOffset(end, type);
+  return `${heap}.subarray((${start}), ${end})`;
 }
 
 // Given two values and an operation, returns the result of that operation.
@@ -619,9 +639,9 @@ Please update to new syntax.`);
 
     const dyncall = `dynCall_${sig}`;
     if (sig.length > 1) {
-      return `((${args}) => ${dyncall}.apply(null, [${funcPtr}, ${callArgs}]))`;
+      return `((${args}) => ${dyncall}(${funcPtr}, ${callArgs}))`;
     }
-    return `(() => ${dyncall}.call(null, ${funcPtr}))`;
+    return `(() => ${dyncall}(${funcPtr}))`;
   }
 
   if (needArgConversion) {
@@ -1020,14 +1040,6 @@ function getEntryFunction() {
     return `resolveGlobalSymbol('${entryFunction}').sym;`
   }
   return `_${entryFunction}`;
-}
-
-function preJS() {
-  let result = '';
-  for (const fileName of PRE_JS_FILES) {
-    result += read(fileName);
-  }
-  return result;
 }
 
 function formattedMinNodeVersion() {

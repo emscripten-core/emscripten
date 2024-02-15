@@ -8,6 +8,8 @@ import hashlib
 import os
 import shutil
 import glob
+import importlib.util
+import sys
 from typing import Set
 from tools import cache
 from tools import config
@@ -22,6 +24,8 @@ ports = []
 
 ports_by_name = {}
 
+ports_needed = set()
+
 # Variant builds that we want to support for certain ports
 # {variant_name: (port_name, extra_settings)}
 port_variants = {}
@@ -31,39 +35,80 @@ ports_dir = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger('ports')
 
 
+def init_port(name, port):
+  ports.append(port)
+  port.is_contrib = name.startswith('contrib.')
+  port.name = name
+  ports_by_name[port.name] = port
+  if not hasattr(port, 'needed'):
+    port.needed = lambda s: name in ports_needed
+  else:
+    needed = port.needed
+    port.needed = lambda s: needed(s) or name in ports_needed
+  if not hasattr(port, 'process_dependencies'):
+    port.process_dependencies = lambda x: 0
+  if not hasattr(port, 'linker_setup'):
+    port.linker_setup = lambda x, y: 0
+  if not hasattr(port, 'deps'):
+    port.deps = []
+  if not hasattr(port, 'process_args'):
+    port.process_args = lambda x: []
+  if not hasattr(port, 'variants'):
+    # port variants (default: no variants)
+    port.variants = {}
+  if not hasattr(port, 'show'):
+    port.show = lambda: f'{port.name} (--use-port={port.name}; {port.LICENSE})'
+
+  for variant, extra_settings in port.variants.items():
+    if variant in port_variants:
+      utils.exit_with_error('duplicate port variant: `%s`' % variant)
+    port_variants[variant] = (port.name, extra_settings)
+
+  validate_port(port)
+
+
+def load_port_by_name(name):
+  port = __import__(name, globals(), level=1, fromlist=[None])
+  init_port(name, port)
+
+
+def load_port_by_path(path):
+  name = os.path.splitext(os.path.basename(path))[0]
+  if name in ports_by_name:
+    utils.exit_with_error(f'port path [`{path}`] is invalid: duplicate port name `{name}`')
+  module_name = f'tools.ports.{name}'
+  spec = importlib.util.spec_from_file_location(module_name, path)
+  port = importlib.util.module_from_spec(spec)
+  sys.modules[module_name] = port
+  spec.loader.exec_module(port)
+  init_port(name, port)
+  return name
+
+
+def validate_port(port):
+  expected_attrs = ['get', 'clear', 'show']
+  if port.is_contrib:
+    expected_attrs += ['URL', 'DESCRIPTION', 'LICENSE']
+  if hasattr(port, 'handle_options'):
+    expected_attrs += ['OPTIONS']
+  for a in expected_attrs:
+    assert hasattr(port, a), 'port %s is missing %s' % (port, a)
+
+
 @ToolchainProfiler.profile()
 def read_ports():
-  expected_attrs = ['get', 'clear', 'show', 'needed']
   for filename in os.listdir(ports_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
     filename = os.path.splitext(filename)[0]
-    port = __import__(filename, globals(), level=1)
-    ports.append(port)
-    port.name = filename
-    ports_by_name[port.name] = port
-    for a in expected_attrs:
-      assert hasattr(port, a), 'port %s is missing %s' % (port, a)
-    if not hasattr(port, 'process_dependencies'):
-      port.process_dependencies = lambda x: 0
-    if not hasattr(port, 'linker_setup'):
-      port.linker_setup = lambda x, y: 0
-    if not hasattr(port, 'deps'):
-      port.deps = []
-    if not hasattr(port, 'process_args'):
-      port.process_args = lambda x: []
-    if not hasattr(port, 'variants'):
-      # port variants (default: no variants)
-      port.variants = {}
+    load_port_by_name(filename)
 
-    for variant, extra_settings in port.variants.items():
-      if variant in port_variants:
-        utils.exit_with_error('duplicate port variant: %s' % variant)
-      port_variants[variant] = (port.name, extra_settings)
-
-  for dep in port.deps:
-    if dep not in ports_by_name:
-      utils.exit_with_error('unknown dependency in port: %s' % dep)
+  contrib_dir = os.path.join(ports_dir, 'contrib')
+  for filename in os.listdir(contrib_dir):
+    if not filename.endswith('.py') or filename == '__init__.py':
+      continue
+    filename = os.path.splitext(filename)[0]
+    load_port_by_name('contrib.' + filename)
 
 
 def get_all_files_under(dirname):
@@ -352,6 +397,8 @@ def resolve_dependencies(port_set, settings):
   def add_deps(node):
     node.process_dependencies(settings)
     for d in node.deps:
+      if d not in ports_by_name:
+        utils.exit_with_error(f'unknown dependency `{d}` for port `{node.name}`')
       dep = ports_by_name[d]
       if dep not in port_set:
         port_set.add(dep)
@@ -359,6 +406,47 @@ def resolve_dependencies(port_set, settings):
 
   for port in port_set.copy():
     add_deps(port)
+
+
+def handle_use_port_error(arg, message):
+  utils.exit_with_error(f'error with `--use-port={arg}` | {message}')
+
+
+def handle_use_port_arg(settings, arg, error_handler=None):
+  if not error_handler:
+    def error_handler(message):
+      handle_use_port_error(arg, message)
+  # Ignore ':' in first or second char of string since we could be dealing with a windows drive separator
+  pos = arg.find(':', 2)
+  if pos != -1:
+    name, options = arg[:pos], arg[pos + 1:]
+  else:
+    name, options = arg, None
+  if name.endswith('.py'):
+    port_file_path = name
+    if not os.path.isfile(port_file_path):
+      error_handler(f'not a valid port path: {port_file_path}')
+    name = load_port_by_path(port_file_path)
+  elif name not in ports_by_name:
+    error_handler(f'invalid port name: `{name}`')
+  ports_needed.add(name)
+  if options:
+    port = ports_by_name[name]
+    if not hasattr(port, 'handle_options'):
+      error_handler(f'no options available for port `{name}`')
+    else:
+      options_dict = {}
+      for name_value in options.split(':'):
+        nv = name_value.split('=', 1)
+        if len(nv) != 2:
+          error_handler(f'`{name_value}` is missing a value')
+        if nv[0] not in port.OPTIONS:
+          error_handler(f'`{nv[0]}` is not supported; available options are {port.OPTIONS}')
+        if nv[0] in options_dict:
+          error_handler(f'duplicate option `{nv[0]}`')
+        options_dict[nv[0]] = nv[1]
+      port.handle_options(options_dict, error_handler)
+  return name
 
 
 def get_needed_ports(settings):
@@ -423,9 +511,15 @@ def add_cflags(args, settings): # noqa: U100
 
 
 def show_ports():
-  print('Available ports:')
-  for port in ports:
-    print('   ', port.show())
+  sorted_ports = sorted(ports, key=lambda p: p.name)
+  print('Available official ports:')
+  for port in sorted_ports:
+    if not port.is_contrib:
+      print('   ', port.show())
+  print('Available contrib ports:')
+  for port in sorted_ports:
+    if port.is_contrib:
+      print('   ', port.show())
 
 
 read_ports()

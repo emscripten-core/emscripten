@@ -20,18 +20,15 @@ _Atomic
 #endif
 int sharedVar = 0;
 
-static void *thread_start(void *arg) // thread: just flip the shared flag and quit.
-{
+static void *thread_start(void *arg) { // thread: just flip the shared flag and quit.
   sharedVar = 1;
   pthread_exit(0);
 }
 
-int main()
-{
+int main() {
   pthread_t thr;
   int rc = pthread_create(&thr, NULL, thread_start, (void*)0);
-  if (rc != 0)
-  {
+  if (rc != 0) {
     return 1;
   }
 

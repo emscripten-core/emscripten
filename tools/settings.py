@@ -110,6 +110,16 @@ COMPILE_TIME_SETTINGS = {
     'RUNTIME_LINKED_LIBS',
 }.union(PORTS_SETTINGS)
 
+# Unlike `LEGACY_SETTINGS`, deprecated settings can still be used
+# both on the command line and in the emscripten codebase.
+#
+# At some point in the future, once folks have stopped using these
+# settings we can move them to `LEGACY_SETTINGS`.
+DEPRECATED_SETTINGS = {
+    'SUPPORT_ERRNO': 'emscripten no longer uses the setErrNo library function',
+    'EXTRA_EXPORTED_RUNTIME_METHODS': 'please use EXPORTED_RUNTIME_METHODS instead',
+    'DEMANGLE_SUPPORT': 'mangled names no longer appear in stack traces',
+}
 
 # Settings that don't need to be externalized when serializing to json because they
 # are not used by the JS compiler.

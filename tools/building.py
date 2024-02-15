@@ -132,7 +132,7 @@ def side_module_external_deps(external_symbols):
 
 
 def create_stub_object(external_symbols):
-  """Create a stub object, based on the JS libary symbols and their
+  """Create a stub object, based on the JS library symbols and their
   dependencies, that we can pass to wasm-ld.
   """
   stubfile = shared.get_temp_files().get('libemscripten_js_symbols.so').name
@@ -1297,7 +1297,7 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
 
 def save_intermediate(src, dst):
   if DEBUG:
-    dst = 'emcc-%d-%s' % (save_intermediate.counter, dst)
+    dst = 'emcc-%02d-%s' % (save_intermediate.counter, dst)
     save_intermediate.counter += 1
     dst = os.path.join(shared.CANONICAL_TEMP_DIR, dst)
     logger.debug('saving debug copy %s' % dst)

@@ -580,7 +580,7 @@ var emscriptenCpuProfiler = {
     var realf = 'real_' + f;
     glCtx[realf] = glCtx[f];
     var numArgs = this.webGLFunctionLength(f); // On Firefox & Chrome, could do "glCtx[realf].length", but that doesn't work on Edge, which always reports 0.
-    // Accessing 'arguments' is super slow, so to avoid overhead, statically reason the number of arguments.
+    // Accessing 'arguments'/'...' is super slow, so to avoid overhead, statically reason the number of arguments.
     switch (numArgs) {
       case 0: glCtx[f] = () => { this.enterSection(section); var ret = glCtx[realf](); this.endSection(section); return ret; }; break;
       case 1: glCtx[f] = (a1) => { this.enterSection(section); var ret =  glCtx[realf](a1); this.endSection(section); return ret; }; break;

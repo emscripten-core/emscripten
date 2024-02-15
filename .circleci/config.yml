@@ -340,10 +340,7 @@ commands:
       - run:
           name: download firefox
           command: |
-            # TODO(https://github.com/emscripten-core/emscripten/issues/21163):
-            # Switch back to nightly once the ff issue with threading is
-            # resolves
-            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-devedition-latest-ssl&os=linux64&lang=en-US"
+            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
             tar -C ~ -xf ~/ff.tar.bz2
       - run:
           name: configure firefox
@@ -525,6 +522,7 @@ jobs:
             asan.test_wasm_worker_hello
             asan.test_externref_emjs_dynlink
             asan.test_asyncify_longjmp
+            asan.test_pthread_run_on_main_thread
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
             lsan.test_pthread_create
@@ -798,26 +796,30 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser"
-          # skip test_4gb_fail as it OOMs on the current bot
-          test_targets: "browser skip:browser.test_4gb_fail"
+          # Skip test_4gb_fail as it OOMs on the current bot
+          test_targets: "
+            browser skip:browser.test_4gb_fail
+            "
   test-browser-chrome-wasm64:
     executor: bionic
     steps:
       - run-tests-chrome:
           title: "browser64"
           test_targets: "browser64"
-  test-browser-chrome-wasm64-4gb:
+  test-browser-chrome-2gb:
     executor: bionic
     steps:
       - run-tests-chrome:
+          title: "browser_2gb"
+          test_targets: "browser_2gb"
+  test-browser-chrome-wasm64-4gb:
+    executor: bionic
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
+    steps:
+      - run-tests-chrome:
           title: "browser64_4gb"
-          test_targets: "
-            browser64_4gb.test_TextDecoder*
-            browser64_4gb.test_async_*
-            browser64_4gb.test_audio_worklet*
-            browser64_4gb.test_emscripten_log
-            browser64_4gb.test_clientside_vertex_arrays_es3
-            "
+          test_targets: "browser64_4gb"
   test-browser-firefox:
     executor: bionic
     steps:
@@ -970,6 +972,9 @@ workflows:
           requires:
             - build-linux
       - test-browser-chrome:
+          requires:
+            - build-linux
+      - test-browser-chrome-2gb:
           requires:
             - build-linux
       - test-browser-chrome-wasm64:

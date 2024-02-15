@@ -255,7 +255,7 @@ There are situations in which multiple long-lived portions of the
 JavaScript codebase need to hold on to the same C++ object for different
 amounts of time.
 
-To accomodate that use case, Emscripten provides a `reference counting`_
+To accommodate that use case, Emscripten provides a `reference counting`_
 mechanism in which multiple handles can be produced for the same underlying
 C++ object. Only when all handles have been deleted does the object get
 destroyed.
