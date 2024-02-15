@@ -7113,6 +7113,7 @@ void* operator new(size_t size) {
 
     # Adding the symbol to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE should allow direct usage, but
     # Module usage should continue to fail.
+    self.emcc_args += ['-Wno-deprecated']
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ALLOC_STACK'])
     test(not_exported, assert_returncode=NON_ZERO)
     test('1', args=['-DDIRECT'])
