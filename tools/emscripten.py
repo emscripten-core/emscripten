@@ -851,7 +851,7 @@ def make_export_wrappers(function_exports):
     if settings.ASSERTIONS and install_wrapper(name):
       # With assertions enabled we create a wrapper that are calls get routed through, for
       # the lifetime of the program.
-      wrapper += "createExportWrapper('%s');" % name
+      wrapper += f"createExportWrapper('{name}', {nargs});"
     elif settings.WASM_ASYNC_COMPILATION:
       # With WASM_ASYNC_COMPILATION wrapper will replace the global var and Module var on
       # first use.
