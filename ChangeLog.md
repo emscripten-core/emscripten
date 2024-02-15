@@ -49,7 +49,10 @@ See docs/process.md for more on how version tagging works.
   loaded on demand using the syntax `--use-port=/path/to/my_port.py` (#21316)
 - Allow comments in response files. Any line starting with `#` is now ignored.
   This is useful when listing exported symbols. (#21330)
-
+- `INITIAL_HEAP` setting is introduced to control the amount of initial
+  memory available for dynamic allocation without capping it. If you are
+  using `INITIAL_MEMORY`, consider switching to `INITIAL_HEAP`. Note that
+  it is currently not supported in all configurations (#21071).
 
 3.1.53 - 01/29/24
 -----------------
@@ -94,10 +97,6 @@ See docs/process.md for more on how version tagging works.
 - C++ objects passed into embind's val via constructors, methods, and call
   function will not be automatically destroyed after the function call. This
   makes the behavior consistent for invocations. 
-- `INITIAL_HEAP` setting is introduced to control the amount of initial
-  memory available for dynamic allocation without capping it. If you are
-  using `INITIAL_MEMORY`, consider switching to `INITIAL_HEAP`. Note that
-  it is currently not supported in all configurations (#21071).
 - The `SUPPORT_ERRNO` setting is now deprecated as it only controlled setting
   errno from JS library functions and emscripten no longer requires this.
   (#21074)
