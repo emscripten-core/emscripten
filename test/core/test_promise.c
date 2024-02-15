@@ -503,7 +503,7 @@ static em_promise_result_t finish(void** result, void* data, void* value) {
 
   // We should not have leaked any handles.
   EM_ASM({
-    promiseMap.allocated.forEach((p) => assert(typeof p === "undefined", "non-destroyed handle"));
+    assert(promiseMap.count() === 0, "non-destroyed handle");
   });
 
   // Cannot exit directly in a promise callback, since it would end up rejecting

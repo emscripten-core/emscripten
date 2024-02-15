@@ -3548,26 +3548,23 @@ addToLibrary({
 #endif
   },
 
-  // Sentinel for invalid handles; it's intentionally a distinct object so that
-  // we can distinguish it from `undefined` as an actual stored value.
-  $invalidHandleSentinel: {},
-  $HandleAllocator__deps: ['$invalidHandleSentinel'],
   $HandleAllocator: class {
     constructor() {
       // TODO(sbc): Use class fields once we allow/enable es2022 in
       // JavaScript input to acorn and closure.
+      // Use this allocator object as a placeholder for invalid entries.
       // Reserve slot 0 so that 0 is always an invalid handle
-      this.allocated = [invalidHandleSentinel];
+      this.allocated = [this];
       this.freelist = [];
     }
     get(id) {
 #if ASSERTIONS
-      assert(this.allocated[id] !== invalidHandleSentinel, `invalid handle: ${id}`);
+      assert(this.allocated[id] !== this, `invalid handle: ${id}`);
 #endif
       return this.allocated[id];
     };
     has(id) {
-      return this.allocated[id] !== invalidHandleSentinel;
+      return this.allocated[id] !== this;
     };
     allocate(handle) {
       var id = this.freelist.pop() || this.allocated.length;
@@ -3576,11 +3573,15 @@ addToLibrary({
     };
     free(id) {
 #if ASSERTIONS
-      assert(this.allocated[id] !== invalidHandleSentinel);
+      assert(this.allocated[id] !== this);
 #endif
-      this.allocated[id] = invalidHandleSentinel;
+      this.allocated[id] = this;
       this.freelist.push(id);
     };
+    count() {
+      // Handle zero is reserved and always allocated.
+      return this.allocated.length - this.freelist.length - 1;
+    }
   },
 
   $getNativeTypeSize__deps: ['$POINTER_SIZE'],
