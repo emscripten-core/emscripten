@@ -536,7 +536,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
         elif arg_type == 'Double':
           body += "  if (typeof {0} == 'object') {{ {0} = ensureFloat64({0}); }}\n".format(js_arg)
 
-  call_args = pre_arg
+  call_args = pre_arg.copy()
 
   for i, arg in enumerate(args):
     if options.wasm64 and is_ptr_arg(i):
