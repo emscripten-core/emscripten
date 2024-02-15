@@ -5816,7 +5816,7 @@ Module["preRun"] = () => {
   def test_audio_worklet(self, args):
     if '-sMEMORY64' in args and is_firefox():
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/19161')
-    self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args)
+    self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sSTRICT'] + args)
 
   # Tests that posting functions between the main thread and the audioworklet thread works
   @parameterized({
@@ -5824,14 +5824,14 @@ Module["preRun"] = () => {
     'closure': (['--closure', '1', '-Oz'],),
   })
   def test_audio_worklet_post_function(self, args):
-    self.btest('webaudio/audioworklet_post_function.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args, expected='1')
+    self.btest('webaudio/audioworklet_post_function.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sSTRICT'] + args, expected='1')
 
   @parameterized({
     '': ([],),
     'closure': (['--closure', '1', '-Oz'],),
   })
   def test_audio_worklet_modularize(self, args):
-    self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')] + args)
+    self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sSTRICT', '-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')] + args)
 
   def test_error_reporting(self):
     # Test catching/reporting Error objects
