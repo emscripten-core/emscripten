@@ -664,6 +664,9 @@ def phase_parse_arguments(state):
   # warnings are properly printed during arg parse.
   newargs = diagnostics.capture_warnings(newargs)
 
+  if not diagnostics.is_enabled('deprecated'):
+    settings.WARN_DEPRECATED = 0
+
   for i in range(len(newargs)):
     if newargs[i] in ('-l', '-L', '-I', '-z'):
       # Scan for flags that can be written as either one or two arguments
