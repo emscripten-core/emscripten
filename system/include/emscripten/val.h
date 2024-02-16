@@ -797,7 +797,7 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
   typedef EM_VAL WireType;
   static WireType toWireType(const val& v) {
     EM_VAL handle = v.as_handle();
-    if (uses_refcount()) {
+    if (v.uses_refcount()) {
       _emval_incref(handle);
     }
     return handle;
