@@ -710,7 +710,7 @@ var LibraryHTML5 = {
       var uiEvent = JSEvents.uiEvent;
 #endif
       // e.detail is seen as undefined
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.detail, '((typeof e.detail !== "undefined") ? e.detail : 0), 'i32') }}};
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.detail, '(typeof e.detail !== "undefined") ? e.detail : 0', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientWidth, 'b.clientWidth', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientHeight, 'b.clientHeight', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerWidth, 'innerWidth', 'i32') }}};
