@@ -405,6 +405,13 @@ public:
     return handle;
   }
 
+  // Takes ownership of the handle away from, and invalidates, this instance.
+  EM_VAL take_handle() {
+    EM_VAL taken = as_handle();
+    handle = 0;
+    return taken;
+  }
+
   val& operator=(val&& v) & {
     val tmp(std::move(v));
     this->~val();
@@ -795,6 +802,15 @@ template<typename T>
 struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
                                               !std::is_const<T>::value>::type> {
   typedef EM_VAL WireType;
+
+  // Marshall to JS with move semantics when we can invalidate the temporary val
+  // object.
+  static WireType toWireType(val&& v) {
+    return v.take_handle();
+  }
+
+  // Marshal to JS with copy semantics when we cannot transfer the val objects
+  // reference count.
   static WireType toWireType(const val& v) {
     EM_VAL handle = v.as_handle();
     if (v.uses_refcount()) {
