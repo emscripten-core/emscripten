@@ -11,8 +11,18 @@
  * The closure_compiler() method in tools/shared.py refers to this file when calling closure.
  */
 
-// Special placeholder for `import.meta`.
+// Special placeholder for `import.meta` and `await import`.
 var EMSCRIPTEN$IMPORT$META;
+var EMSCRIPTEN$AWAIT$IMPORT;
+
+// Don't minify createRequire
+var createRequire;
+
+// Don't minify startWorker which we use to start workers once the runtime is ready.
+/**
+ * @param {Object} Module
+ */
+var startWorker = function(Module) {};
 
 // Closure externs used by library_sockfs.js
 
@@ -74,18 +84,6 @@ var WebAssembly = {};
  * @param {*=} value
  */
 WebAssembly.Global = function(globalDescriptor, value) {};
-/**
- * @constructor
- * @param {Object} type
- */
-WebAssembly.Tag = function(type) {};
-/**
- * @constructor
- * @param {!WebAssembly.Tag} tag
- * @param {Array<Object>} payload
- * @param {Object=} options
- */
-WebAssembly.Exception = function(tag, payload, options) {};
 /**
  * @param {!WebAssembly.Tag} tag
  * @param {number} index
@@ -161,10 +159,6 @@ var wakaUnknownAfter;
  * @suppress {undefinedVars}
  */
 var wakaUnknownBefore;
-/**
- * @suppress {undefinedVars}
- */
-var MozBlobBuilder;
 
 // Module loaders externs, for AMD etc.
 
@@ -202,13 +196,6 @@ var removeEventListener = function (type, listener) {};
  */
 var close;
 
-// Fetch.js/Fetch Worker
-
-/**
- * @suppress {undefinedVars}
- */
-var ENVIRONMENT_IS_FETCH_WORKER;
-
 // Due to the way MODULARIZE works, Closure is run on generated code that does not define _scriptDir,
 // but only after MODULARIZE has finished, _scriptDir is injected to the generated code.
 // Therefore it cannot be minified.
@@ -242,14 +229,6 @@ var outerHeight;
 var event;
 var devicePixelRatio;
 
-// TODO: Use Closure's multifile support and/or migrate worker.js onmessage handler to inside the MODULARIZEd block
-// to be able to remove all the variables below:
-
-// Variables that are present in both output runtime .js file/JS lib files, and worker.js, so cannot be minified because
-// the names need to match:
-/** @suppress {duplicate} */
-var noExitRuntime;
-
 /*
  * AudioWorkletGlobalScope globals
  */
@@ -259,46 +238,25 @@ var currentTime;
 var sampleRate;
 
 /*
- * WebGPU globals
- */
-var GPUBufferUsage;
-var GPUColorWrite;
-var GPUMapMode;
-var GPUShaderStage;
-var GPUTextureUsage;
-var GPU;
-var GPUAdapter;
-var GPUBindGroup;
-var GPUBindGroupLayout;
-var GPUBuffer;
-var GPUCanvasContext;
-var GPUCommandBuffer;
-var GPUCommandEncoder;
-var GPUCompilationInfo;
-var GPUCompilationMessage;
-var GPUComputePassEncoder;
-var GPUComputePipeline;
-var GPUDevice;
-var GPUDeviceLostInfo;
-var GPUExternalTexture;
-var GPUOutOfMemoryError;
-var GPUPipelineLayout;
-var GPUQuerySet;
-var GPUQueue;
-var GPURenderBundle;
-var GPURenderBundleEncoder;
-var GPURenderPassEncoder;
-var GPURenderPipeline;
-var GPUSampler;
-var GPUShaderModule;
-var GPUSupportedFeatures;
-var GPUSupportedLimits;
-var GPUTexture;
-var GPUTextureView;
-var GPUUncapturedErrorEvent;
-var GPUValidationError;
-
-/*
  * Avoid closure minifying anything to "id". See #13965
  */
 var id;
+
+var moduleArg;
+
+/**
+ * This was removed from upstream closure compiler in
+ * https://github.com/google/closure-compiler/commit/f83322c1b.
+ * Perhaps we should remove it do?
+ *
+ * @param {MediaStreamConstraints} constraints A MediaStreamConstraints object.
+ * @param {function(!MediaStream)} successCallback
+ *     A NavigatorUserMediaSuccessCallback function.
+ * @param {function(!NavigatorUserMediaError)=} errorCallback A
+ *     NavigatorUserMediaErrorCallback function.
+ * @see http://dev.w3.org/2011/webrtc/editor/getusermedia.html
+ * @see https://www.w3.org/TR/mediacapture-streams/
+ * @return {undefined}
+ */
+Navigator.prototype.webkitGetUserMedia = function(
+    constraints, successCallback, errorCallback) {};

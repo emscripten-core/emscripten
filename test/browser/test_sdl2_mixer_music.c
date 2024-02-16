@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
-	frequency = EM_ASM_INT_V({
+	frequency = EM_ASM_INT({
 		var context;
 		try {
 		  context = new AudioContext();

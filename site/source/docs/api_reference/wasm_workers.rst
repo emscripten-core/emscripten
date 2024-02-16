@@ -1,4 +1,4 @@
-.. _wasm_workers:
+.. _wasm workers section:
 
 ================
 Wasm Workers API
@@ -18,12 +18,12 @@ Quick Example
 
   void run_in_worker()
   {
-    printf("Hello from wasm worker!\n");
+    printf("Hello from Wasm Worker!\n");
   }
 
   int main()
   {
-    emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(/*stack size: */1024);
+    emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(/*stackSize: */1024);
     emscripten_wasm_worker_post_function_v(worker, run_in_worker);
   }
 
@@ -33,8 +33,11 @@ which shares the same WebAssembly.Module and WebAssembly.Memory object. Then a
 ``postMessage()`` is passed to the Worker to ask it to execute the function
 ``run_in_worker()`` to print a string.
 
-To explicitly control the memory allocation placement when creating a worker, use the
-function ``emscripten_create_wasm_worker()``.
+To explicitly control the memory allocation placement when creating a worker,
+use the ``emscripten_create_wasm_worker()`` function. This function takes a
+region of memory that must be large enough to hold both the stack and the TLS
+data for the worker.  You can use ``__builtin_wasm_tls_size()`` to find out at
+runtime how much space is required for the program's TLS data.
 
 Introduction
 ============
@@ -185,9 +188,9 @@ In order to enable flexible synchronous execution of code on other threads, and 
 APIs for example for MEMFS filesystem and Offscreen Framebuffer (WebGL emulated from a Worker) features,
 main browser thread and each pthread have a system-backed "proxy message queue" to receive messages.
 
-This enables user code to call API functions ``emscripten_sync_run_in_main_thread*()``,
-``emscripten_sync_run_in_main_runtime_thread()``, ``emscripten_async_run_in_main_runtime_thread()``,
-``emscripten_dispatch_to_thread()``, etc. from ``emscripten/threading.h`` to perform proxied calls.
+This enables user code to call API functions, ``emscripten_sync_run_in_main_runtime_thread()``,
+``emscripten_async_run_in_main_runtime_thread()``, ``emscripten_dispatch_to_thread()``, etc. from
+``emscripten/threading.h`` to perform proxied calls.
 
 Wasm Workers do not provide this functionality. If needed, such messaging should be implemented manually
 by users via regular multithreaded synchronized programming techniques (mutexes, futexes, semaphores, etc.)
@@ -284,7 +287,7 @@ table.
 
     <tr><td class='cellborder'>Futex API</td>
     <td class='cellborder'><pre>emscripten_futex_wait</pre><pre>emscripten_futex_wake</pre> in emscripten/threading.h</td>
-    <td class='cellborder'><pre>emscripten_wasm_wait_i32</pre><pre>emscripten_wasm_wait_i64</pre><pre>emscripten_wasm_notify</pre> in emscripten/wasm_workers.h</td></tr>
+    <td class='cellborder'><pre>emscripten_atomic_wait_u32</pre><pre>emscripten_atomic_wait_u64</pre><pre>emscripten_atomic_notify</pre> in emscripten/atomic.h</td></tr>
 
     <tr><td class='cellborder'>Asynchronous futex wait</td>
     <td class='cellborder'>N/A</td>

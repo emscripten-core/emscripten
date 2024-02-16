@@ -83,13 +83,13 @@ Options that are modified or new in *emcc* are listed below:
 
 ``-Os``
   [compile+link]
-  Like ``-O3``, but focuses more on code size (and may make tradeoffs with speed). This can affect both wasm and JavaScript.
+  Like ``-O3``, but focuses more on code size (and may make tradeoffs with speed). This can affect both Wasm and JavaScript.
 
 .. _emcc-Oz:
 
 ``-Oz``
   [compile+link]
-  Like ``-Os``, but reduces code size even further, and may take longer to run. This can affect both wasm and JavaScript.
+  Like ``-Os``, but reduces code size even further, and may take longer to run. This can affect both Wasm and JavaScript.
 
   .. note:: For more tips on optimizing your code, see :ref:`Optimizing-Code`.
 
@@ -99,7 +99,7 @@ Options that are modified or new in *emcc* are listed below:
   [different OPTIONs affect at different stages, most at link time]
   Emscripten build options. For the available options, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_.
 
-  .. note:: If no value is specifed it will default to ``1``.
+  .. note:: If no value is specified it will default to ``1``.
 
   .. note:: It is possible, with boolean options, to use the ``NO_`` prefix to reverse their meaning. For example, ``-sEXIT_RUNTIME=0`` is the same as ``-sNO_EXIT_RUNTIME=1`` and vice versa.  This is not recommended in most cases.
 
@@ -134,9 +134,12 @@ Options that are modified or new in *emcc* are listed below:
 
     - In this case the file should contain a list of symbols, one per line.  For legacy use cases JSON-formatted files are also supported: e.g. ``["_func1", "func2"]``.
     - The specified file path must be absolute, not relative.
+    - The file may contain comments where the first character of the line is ``'#'``.
+
 
   .. note:: Options can be specified as a single argument with or without a space
             between the ``-s`` and option name.  e.g. ``-sFOO`` or ``-s FOO``.
+            It's `highly recommended <https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-specify-s-options-in-a-cmake-project>`_ you use the notation without space.
 
 .. _emcc-g:
 
@@ -148,22 +151,36 @@ Options that are modified or new in *emcc* are listed below:
     adds DWARF debug information to the object files.
   - When linking, this is equivalent to :ref:`-g3 <emcc-g3>`.
 
+.. _emcc-gseparate-dwarf:
+
 ``-gseparate-dwarf[=FILENAME]``
   [same as -g3 if passed at compile time, otherwise applies at link]
   Preserve debug information, but in a separate file on the side. This is the
   same as ``-g``, but the main file will contain no debug info. Instead, debug
   info will be present in a file on the side, in ``FILENAME`` if provided,
-  otherwise the same as the wasm file but with suffix ``.debug.wasm``. While
+  otherwise the same as the Wasm file but with suffix ``.debug.wasm``. While
   the main file contains no debug info, it does contain a URL to where the
   debug file is, so that devtools can find it. You can use
   ``-sSEPARATE_DWARF_URL=URL`` to customize that location (this is useful if
   you want to host it on a different server, for example).
 
+.. _emcc-gsplit-dwarf:
+
+``-gsplit-dwarf``
+  Enable debug fission, which creates split DWARF object files alongside the
+  wasm object files. This option must be used together with ``-c``.
+
 .. _emcc-gsource-map:
 
 ``-gsource-map``
-  When linking, generate a source map using LLVM debug information (which must
+  [link]
+  Generate a source map using LLVM debug information (which must
   be present in object files, i.e., they should have been compiled with ``-g``).
+  When this option is provided, the **.wasm** file is updated to have a
+  ``sourceMappingURL`` section. The resulting URL will have format:
+  ``<base-url>`` + ``<wasm-file-name>`` + ``.map``. ``<base-url>`` defaults
+  to being empty (which means the source map is served from the same directory
+  as the Wasm file). It can be changed using :ref:`--source-map-base <emcc-source-map-base>`.
 
 .. _emcc-gN:
 
@@ -197,6 +214,8 @@ Options that are modified or new in *emcc* are listed below:
   [same as -g2 if passed at compile time, otherwise applies at link]
   Use reasonable defaults when emitting JavaScript to make the build readable but still useful for profiling. This sets ``-g2`` (preserve whitespace and function names) and may also enable optimizations that affect performance and otherwise might not be performed in ``-g2``.
 
+.. _emcc-profiling-funcs:
+
 ``--profiling-funcs``
   [link]
   Preserve function names in profiling, but otherwise minify whitespace and names as we normally do in optimized builds. This is useful if you want to look at profiler results based on function names, but do *not* intend to read the emitted code.
@@ -215,7 +234,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--emit-symbol-map``
   [link]
-  Save a map file between function indexes in the wasm and function names. By
+  Save a map file between function indexes in the Wasm and function names. By
   storing the names on a file on the side, you can avoid shipping the names, and
   can still reconstruct meaningful stack traces by translating the indexes back
   to the names.
@@ -242,7 +261,6 @@ Options that are modified or new in *emcc* are listed below:
 
     - Consider using ``-sMODULARIZE`` when using closure, as it minifies globals to names that might conflict with others in the global scope. ``MODULARIZE`` puts all the output into a function (see ``src/settings.js``).
     - Closure will minify the name of `Module` itself, by default! Using ``MODULARIZE`` will solve that as well. Another solution is to make sure a global variable called `Module` already exists before the closure-compiled code runs, because then it will reuse that variable.
-    - If closure compiler hits an out-of-memory, try adjusting ``JAVA_HEAP_SIZE`` in the environment (for example, to 4096m for 4GB).
     - Closure is only run if JavaScript opts are being done (``-O2`` or above).
 
 ``--closure-args=<args>``
@@ -286,28 +304,44 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--embed-file <file>``
   [link]
-  Specify a file (with path) to embed inside the generated JavaScript. The path is relative to the current directory at compile time. If a directory is passed here, its entire contents will be embedded.
+  Specify a file (with path) to embed inside the generated WebAssembly module.
+  The path is relative to the current directory at compile time. If a directory
+  is passed here, its entire contents will be embedded.
 
-  For example, if the command includes ``--embed-file dir/file.dat``, then ``dir/file.dat`` must exist relative to the directory where you run *emcc*.
+  For example, if the command includes ``--embed-file dir/file.dat``, then
+  ``dir/file.dat`` must exist relative to the directory where you run *emcc*.
 
-  .. note:: Embedding files is much less efficient than :ref:`preloading <emcc-preload-file>` them. You should only use it for small files, in small numbers. Instead use ``--preload-file``, which emits efficient binary data.
+  .. note:: Embedding files is generally more efficient than :ref:`preloading
+     <emcc-preload-file>` as it avoids copying the file data at runtime.
 
-  For more information about the ``--embed-file`` options, see :ref:`packaging-files`.
+  For more information about the ``--embed-file`` options, see
+  :ref:`packaging-files`.
 
 .. _emcc-preload-file:
 
 ``--preload-file <name>``
   [link]
-  Specify a file to preload before running the compiled code asynchronously. The path is relative to the current directory at compile time. If a directory is passed here, its entire contents will be embedded.
+  Specify a file to preload before running the compiled code asynchronously. The
+  path is relative to the current directory at compile time. If a directory is
+  passed here, its entire contents will be embedded.
 
-  Preloaded files are stored in **filename.data**, where **filename.html** is the main file you are compiling to. To run your code, you will need both the **.html** and the **.data**.
+  Preloaded files are stored in **filename.data**, where **filename.html** is
+  the main file you are compiling to. To run your code, you will need both the
+  **.html** and the **.data**.
 
-  .. note:: This option is similar to :ref:`--embed-file <emcc-embed-file>`, except that it is only relevant when generating HTML (it uses asynchronous binary :term:`XHRs <XHR>`), or JavaScript that will be used in a web page.
+  .. note:: This option is similar to :ref:`--embed-file <emcc-embed-file>`,
+     except that it is only relevant when generating HTML (it uses asynchronous
+     binary :term:`XHRs <XHR>`), or JavaScript that will be used in a web page.
 
-  *emcc* runs `tools/file_packager <https://github.com/emscripten-core/emscripten/blob/main/tools/file_packager.py>`_ to do the actual packaging of embedded and preloaded files. You can run the file packager yourself if you want (see :ref:`packaging-files-file-packager`). You should then put the output of the file packager in an emcc ``--pre-js``, so that it executes before your main compiled code.
+  *emcc* runs `tools/file_packager
+  <https://github.com/emscripten-core/emscripten/blob/main/tools/file_packager.py>`_
+  to do the actual packaging of embedded and preloaded files. You can run the
+  file packager yourself if you want (see :ref:`packaging-files-file-packager`).
+  You should then put the output of the file packager in an emcc ``--pre-js``,
+  so that it executes before your main compiled code.
 
-  For more information about the ``--preload-file`` options, see :ref:`packaging-files`.
-
+  For more information about the ``--preload-file`` options, see
+  :ref:`packaging-files`.
 
 .. _emcc-exclude-file:
 
@@ -334,7 +368,8 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--source-map-base <base-url>``
   [link]
-  The URL for the location where WebAssembly source maps will be published. When this option is provided, the **.wasm** file is updated to have a ``sourceMappingURL`` section. The resulting URL will have format: ``<base-url>`` + ``<wasm-file-name>`` + ``.map``.
+  The base URL for the location where WebAssembly source maps will be published. Must be used
+  with :ref:`-gsource-map <emcc-gsource-map>`.
 
 .. _emcc-minify:
 
@@ -355,6 +390,13 @@ Options that are modified or new in *emcc* are listed below:
 ``--bind``
   [link]
   Links against embind library.  Deprecated: Use ``-lembind`` instead.
+
+.. _emcc-embind-emit-tsd:
+
+``--embind-emit-tsd <path>``
+  [link]
+  Generate a TypeScript definition file from the exported embind bindings. The
+  program will be instrumented and run in node in order to to generate the file.
 
 ``--ignore-dynamic-linking``
   [link]
@@ -415,6 +457,14 @@ Options that are modified or new in *emcc* are listed below:
   By default this will also clear any download ports since the ports directory
   is usually within the cache directory.
 
+.. _emcc-use-port:
+
+``--use-port=<port>``
+  [compile+link]
+  Use the specified port. If you need to use more than one port you can use this
+  argument multiple times. For example: ``--use-port=sdl2 --use-port=bzip2``.
+  To get the list of available ports, use ``--show-ports``.
+
 .. _emcc-clear-ports:
 
 ``--clear-ports``
@@ -438,7 +488,7 @@ Options that are modified or new in *emcc* are listed below:
   [link]
   Specifies whether to emit a separate memory initialization file.
 
-      .. note:: Note that this is only relevant when *not* emitting wasm, as wasm embeds the memory init data in the wasm binary.
+      .. note:: Note that this is only relevant when *not* emitting Wasm, as Wasm embeds the memory init data in the Wasm binary.
 
   Possible values are:
 
@@ -476,7 +526,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--threadprofiler``
   [link]
-  Embeds a thread activity profiler onto the generated page. Use this to profile the application usage of pthreads when targeting multithreaded builds (-sUSE_PTHREADS=1/2).
+  Embeds a thread activity profiler onto the generated page. Use this to profile the application usage of pthreads when targeting multithreaded builds (-pthread).
 
 .. _emcc-config:
 
@@ -486,14 +536,6 @@ Options that are modified or new in *emcc* are listed below:
   specified emscripten will search for ``.emscripten`` first in the emscripten
   directory itself, and then in the user's home directory (``~/.emscripten``).
   This can be overridden using the ``EM_CONFIG`` environment variable.
-
-``--default-obj-ext <.ext>``
-  [compile]
-  Specifies the output suffix to use when compiling with ``-c`` in the absence
-  of ``-o``.  For example, when compiling multiple sources files with ``emcc -c
-  *.c`` the compiler will normally output files with the ``.o`` extension, but
-  ``--default-obj-ext .obj`` can be used to instead generate files with the
-  `.obj` extension.
 
 ``--valid-abspath <path>``
   [compile+link]
@@ -510,7 +552,7 @@ Options that are modified or new in *emcc* are listed below:
     - <name> **.js** : JavaScript (+ separate **<name>.wasm** file if emitting WebAssembly). (default)
     - <name> **.mjs** : ES6 JavaScript module (+ separate **<name>.wasm** file if emitting WebAssembly).
     - <name> **.html** : HTML + separate JavaScript file (**<name>.js**; + separate **<name>.wasm** file if emitting WebAssembly).
-    - <name> **.wasm** : WebAssembly without JavaScript support code ("standalone wasm"; this enables ``STANDALONE_WASM``).
+    - <name> **.wasm** : WebAssembly without JavaScript support code ("standalone Wasm"; this enables ``STANDALONE_WASM``).
 
   These rules only apply when linking.  When compiling to object code (See `-c`
   below) the name of the output file is irrelevant.

@@ -13,7 +13,6 @@
 #include "emscripten.h"
 
 int get_memory_size() {
-
   return EM_ASM_INT({ return HEAP8.length });
 }
 
@@ -46,7 +45,7 @@ int main() {
       break;
     }
 
-    if(get_memory_size() > totalMemory && !printedOnce) {
+    if (get_memory_size() > totalMemory && !printedOnce) {
       printf("memory growth started at %d %d %d\n", i, get_memory_size(), get_memory_size() / MB);
       printedOnce = 1;
     }
@@ -56,4 +55,3 @@ int main() {
 
   printf("grew memory ok.\n");
 }
-

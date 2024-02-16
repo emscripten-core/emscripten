@@ -9,10 +9,10 @@ if (typeof process != 'undefined') {
       var status = message.substring(offset + 5);
       offset = status.indexOf(')')
       status = status.substr(0, offset)
-      process['exitCode'] = status;
+      process.exitCode = status;
     } else {
       console.log(e)
-      process['exitCode'] = 1;
+      process.exitCode = 1;
     }
   }
 

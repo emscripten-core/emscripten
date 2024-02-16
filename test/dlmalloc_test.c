@@ -11,8 +11,7 @@
 #include <emscripten/console.h>
 #include <stdlib.h>
 
-int main(int ac, char **av)
-{
+int main(int ac, char **av) {
   int NUM = ac > 1 ? atoi(av[1]) : 0;
   int REPS = ac > 2 ? atoi(av[2]) : 0;
   int c1 = 0, c2 = 0;

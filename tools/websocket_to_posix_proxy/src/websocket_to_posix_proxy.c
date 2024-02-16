@@ -61,11 +61,11 @@ typedef struct SocketCallHeader {
   int function;
 } SocketCallHeader;
 
-static char buf_temp_str[2048] = {};
-
+#ifdef POSIX_SOCKET_DEBUG
 // not thread-safe, but only used for debug prints, so expected not to cause
 // trouble
 static char *BufferToString(const void *buf, size_t len) {
+  static char buf_temp_str[2048] = {};
   uint8_t *b = (uint8_t *)buf;
   if (!b) {
     sprintf(buf_temp_str, "(null ptr) (%d bytes)", (int)len);
@@ -78,6 +78,7 @@ static char *BufferToString(const void *buf, size_t len) {
   sprintf(buf_temp_str + len*3, " (%d bytes)", (int)len);
   return buf_temp_str;
 }
+#endif
 
 // thread-safe, re-entrant
 void WebSocketMessageUnmaskPayload(uint8_t* payload,

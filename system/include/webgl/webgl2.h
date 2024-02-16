@@ -111,7 +111,7 @@ WEBGL_APICALL void GL_APIENTRY emscripten_glGetInternalformativ (GLenum target, 
 WEBGL_APICALL void GL_APIENTRY emscripten_glGetBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, void *data);
 
 // WebGL 2 functions that do not exist in GLES3.0:
-WEBGL_APICALL void GL_APIENTRY glGetBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, void *data);
+WEBGL_APICALL void GL_APIENTRY glGetBufferSubData(GLenum target, GLintptr offset, GLsizeiptr size, void *data __attribute__((nonnull)));
 
 // Extensions:
 WEBGL_APICALL void GL_APIENTRY emscripten_glVertexAttribDivisorNV(GLuint index, GLuint divisor);

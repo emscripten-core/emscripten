@@ -7,7 +7,8 @@
 # The implementation is based on the standard FindOpenAL.cmake provided with CMake,
 # but customized for targeting Emscripten only.
 
-if (NOT OPENAL_FOUND)
+if (NOT OpenAL_FOUND OR NOT OPENAL_FOUND)
+	SET(OpenAL_FOUND TRUE)
 	SET(OPENAL_FOUND TRUE)
 
 	# For Emscripten-compiled apps in the test suite (test_alut), this is expected...

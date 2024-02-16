@@ -9,7 +9,7 @@
 #include <stdio.h>
 
 EM_JS(void, calltest, (), {
-  var foo = new Module.Foo();
+  var foo = new Module["Foo"]();
   console.log("foo.test() returned: " + foo.test());
   foo.delete();
 });

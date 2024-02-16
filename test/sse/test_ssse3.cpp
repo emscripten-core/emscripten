@@ -19,26 +19,25 @@ int numInterestingInts = sizeof(interesting_ints_)/sizeof(interesting_ints_[0]);
 double *interesting_doubles = get_interesting_doubles();
 int numInterestingDoubles = sizeof(interesting_doubles_)/sizeof(interesting_doubles_[0]);
 
-int main()
-{
-	assert(numInterestingFloats % 4 == 0);
-	assert(numInterestingInts % 4 == 0);
-	assert(numInterestingDoubles % 4 == 0);	
+int main() {
+  assert(numInterestingFloats % 4 == 0);
+  assert(numInterestingInts % 4 == 0);
+  assert(numInterestingDoubles % 4 == 0);
 
-	Ret_M128i(__m128i, _mm_abs_epi8);
-	Ret_M128i(__m128i, _mm_abs_epi16);
-	Ret_M128i(__m128i, _mm_abs_epi32);
-	Ret_M128i_M128i_Tint(__m128i, _mm_alignr_epi8);
-	M128i_M128i_M128i(_mm_hadd_epi16);
-	M128i_M128i_M128i(_mm_hadd_epi32);
-	M128i_M128i_M128i(_mm_hadds_epi16);
-	M128i_M128i_M128i(_mm_hsub_epi16);
-	M128i_M128i_M128i(_mm_hsub_epi32);
-	M128i_M128i_M128i(_mm_hsubs_epi16);
-	M128i_M128i_M128i(_mm_maddubs_epi16);
-	M128i_M128i_M128i(_mm_mulhrs_epi16);
-	M128i_M128i_M128i(_mm_shuffle_epi8);
-	M128i_M128i_M128i(_mm_sign_epi16);
-	M128i_M128i_M128i(_mm_sign_epi32);
-	M128i_M128i_M128i(_mm_sign_epi8);
+  Ret_M128i(__m128i, _mm_abs_epi8);
+  Ret_M128i(__m128i, _mm_abs_epi16);
+  Ret_M128i(__m128i, _mm_abs_epi32);
+  Ret_M128i_M128i_Tint(__m128i, _mm_alignr_epi8);
+  M128i_M128i_M128i(_mm_hadd_epi16);
+  M128i_M128i_M128i(_mm_hadd_epi32);
+  M128i_M128i_M128i(_mm_hadds_epi16);
+  M128i_M128i_M128i(_mm_hsub_epi16);
+  M128i_M128i_M128i(_mm_hsub_epi32);
+  M128i_M128i_M128i(_mm_hsubs_epi16);
+  M128i_M128i_M128i(_mm_maddubs_epi16);
+  M128i_M128i_M128i(_mm_mulhrs_epi16);
+  M128i_M128i_M128i(_mm_shuffle_epi8);
+  M128i_M128i_M128i(_mm_sign_epi16);
+  M128i_M128i_M128i(_mm_sign_epi32);
+  M128i_M128i_M128i(_mm_sign_epi8);
 }

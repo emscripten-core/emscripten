@@ -12,12 +12,18 @@
 void *mainRuntimeThreadId = 0;
 void *registeringThreadId = 0;
 
-EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData)
-{
+EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
   static int once;
 
   void *threadId = pthread_self();
-  if (!once) printf("pthread_self()=%p, registeringThreadId=%p, mainRuntimeThreadId=%p, emscripten_main_browser_thread_id()=%p\n", threadId, registeringThreadId, mainRuntimeThreadId, emscripten_main_browser_thread_id());
+  if (!once) {
+    printf("pthread_self()=%p, registeringThreadId=%p, mainRuntimeThreadId=%p, "
+           "emscripten_main_runtime_thread_id()=%p\n",
+           threadId,
+           registeringThreadId,
+           mainRuntimeThreadId,
+           emscripten_main_runtime_thread_id());
+  }
   printf("eventType: %d, mouseEvent: %p, userData: %p, screen: (%ld,%ld), client: (%ld,%ld),%s%s%s%s button: %hu, buttons: %hu, movement: (%ld,%ld), canvas: (%ld,%ld)\n",
     eventType, e, userData,
     e->screenX, e->screenY, e->clientX, e->clientY,
@@ -28,7 +34,9 @@ EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userD
   assert(e);
   assert(eventType == EMSCRIPTEN_EVENT_MOUSEMOVE);
 
-  if (once) return 0;
+  if (once) {
+    return 0;
+  }
   once = 1;
 
 #ifdef REPORT_RESULT
@@ -37,8 +45,7 @@ EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userD
   return 0;
 }
 
-void *threadMain(void *arg)
-{
+void *threadMain(void *arg) {
   registeringThreadId = pthread_self();
 
   EMSCRIPTEN_RESULT ret = emscripten_set_mousemove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, (void*)0x42, 1, mouse_callback);
@@ -47,8 +54,7 @@ void *threadMain(void *arg)
   printf("Please move the mouse cursor.\n");
 
 #ifdef TEST_SYNC_BLOCKING_LOOP
-  for(;;)
-  {
+  for (;;) {
     usleep(1000);
     emscripten_current_thread_process_queued_calls();
   }
@@ -58,8 +64,7 @@ void *threadMain(void *arg)
   return 0;
 }
 
-int main()
-{
+int main() {
   mainRuntimeThreadId = pthread_self();
 
   pthread_t thread;

@@ -134,13 +134,7 @@ select_overload and select_const
 
 
 Functions
-=============
-
-.. cpp:function:: void* __getDynamicPointerType(void* p)
-
-
-   :param void* p
-
+=========
 
 .. cpp:function:: void function()
 
@@ -460,7 +454,7 @@ Classes
 
       .. cpp:type:: type
 
-         This is a typdef to the parent struct typename parameter ``InputType``.
+         This is a typedef to the parent struct typename parameter ``InputType``.
 
 
 .. cpp:type:: constructor
@@ -746,7 +740,7 @@ Classes
          template<typename FieldType>
          EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, FieldType *field) const
 
-      :param const char* fieldNam
+      :param const char* fieldName
       :param FieldType ClassType\:\:\*field
 
       :returns: |class_-function-returns|

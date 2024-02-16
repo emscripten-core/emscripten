@@ -6,7 +6,7 @@
 import re
 
 from .settings import settings
-from . import utils
+from . import utils, shared
 
 emscripten_license = '''\
 /**
@@ -25,28 +25,37 @@ emscripten_license = '''\
 #   Copyright 2017 The Emscripten Authors
 #   SPDX-License-Identifier: MIT
 #  */
-emscripten_license_regex = r'\/\*\*?(\s*\*?\s*@license)?(\s*\*?\s*Copyright \d+ The Emscripten Authors\s*\*?\s*SPDX-License-Identifier: MIT)+\s*\*\/'
+emscripten_license_regex = r'\/\*\*?(\s*\*?\s*@license)?(\s*\*?\s*Copyright \d+ The Emscripten Authors\s*\*?\s*SPDX-License-Identifier: MIT)+\s*\*\/\s*'
 
 
-def add_files_pre_js(user_pre_js, files_pre_js):
+def add_files_pre_js(pre_js_list, files_pre_js):
   # the normal thing is to just combine the pre-js content
+  filename = shared.get_temp_files().get('.js').name
+  utils.write_file(filename, files_pre_js)
+  pre_js_list.insert(0, filename)
   if not settings.ASSERTIONS:
-    return files_pre_js + user_pre_js
+    return
 
   # if a user pre-js tramples the file code's changes to Module.preRun
   # that could be confusing. show a clear error at runtime if assertions are
   # enabled
-  return files_pre_js + '''
+  pre = shared.get_temp_files().get('.js').name
+  post = shared.get_temp_files().get('.js').name
+  utils.write_file(pre, '''
     // All the pre-js content up to here must remain later on, we need to run
     // it.
-    if (Module['ENVIRONMENT_IS_PTHREAD']) Module['preRun'] = [];
+    if (Module['ENVIRONMENT_IS_PTHREAD'] || Module['$ww']) Module['preRun'] = [];
     var necessaryPreJSTasks = Module['preRun'].slice();
-  ''' + user_pre_js + '''
+  ''')
+  utils.write_file(post, '''
     if (!Module['preRun']) throw 'Module.preRun should exist because file support used it; did a pre-js delete it?';
     necessaryPreJSTasks.forEach(function(task) {
       if (Module['preRun'].indexOf(task) < 0) throw 'All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?';
     });
-  '''
+  ''')
+
+  pre_js_list.insert(1, pre)
+  pre_js_list.append(post)
 
 
 def handle_license(js_target):
@@ -99,6 +108,9 @@ def isidentifier(name):
 
 def make_dynCall(sig, args):
   # wasm2c and asyncify are not yet compatible with direct wasm table calls
+  if settings.MEMORY64:
+    args = list(args)
+    args[0] = f'Number({args[0]})'
   if settings.DYNCALLS or not is_legal_sig(sig):
     args = ','.join(args)
     if not settings.MAIN_MODULE and not settings.SIDE_MODULE:
@@ -108,11 +120,8 @@ def make_dynCall(sig, args):
     else:
       return 'Module["dynCall_%s"](%s)' % (sig, args)
   else:
-    func_ptr = args[0]
-    if settings.MEMORY64:
-      func_ptr = f'Number({func_ptr})'
     call_args = ",".join(args[1:])
-    return f'getWasmTableEntry({func_ptr})({call_args})'
+    return f'getWasmTableEntry({args[0]})({call_args})'
 
 
 def make_invoke(sig):
@@ -124,11 +133,17 @@ def make_invoke(sig):
   # wasm won't implicitly convert undefined to 0 in this case.
   exceptional_ret = '\n    return 0n;' if legal_sig[0] == 'j' else ''
   body = '%s%s;' % (ret, make_dynCall(sig, args))
-  # Exceptions thrown from C++ exception will be integer numbers.
-  # longjmp will throw the number Infinity.
-  # Create a try-catch guard that rethrows the exception if anything else
-  # than a Number was thrown. To do that quickly and in a code size conserving
-  # manner, use the compact test "e !== e+0" to check if e was not a Number.
+  # Create a try-catch guard that rethrows the Emscripten EH exception.
+  if settings.EXCEPTION_STACK_TRACES:
+    # Exceptions thrown from C++ and longjmps will be an instance of
+    # EmscriptenEH.
+    maybe_rethrow = 'if (!(e instanceof EmscriptenEH)) throw e;'
+  else:
+    # Exceptions thrown from C++ will be a pointer (number) and longjmp will
+    # throw the number Infinity. Use the compact and fast "e !== e+0" test to
+    # check if e was not a Number.
+    maybe_rethrow = 'if (e !== e+0) throw e;'
+
   ret = '''\
 function invoke_%s(%s) {
   var sp = stackSave();
@@ -136,10 +151,10 @@ function invoke_%s(%s) {
     %s
   } catch(e) {
     stackRestore(sp);
-    if (e !== e+0) throw e;
+    %s
     _setThrew(1, 0);%s
   }
-}''' % (sig, ','.join(args), body, exceptional_ret)
+}''' % (sig, ','.join(args), body, maybe_rethrow, exceptional_ret)
 
   return ret
 
@@ -163,9 +178,15 @@ def make_wasm64_wrapper(sig):
   if sig[0] == 'p':
     result = f'Number({result})'
 
-  return f'''
-  function wasm64Wrapper_{sig}(f) {{
-    return function({args_in}) {{
-      return {result};
-    }};
-  }}'''
+  # We can't use an arrow function for the inner wrapper here since there
+  # are certain places we need to avoid strict mode still.
+  # e.g. emscripten_get_callstack (getCallstack) which uses the `arguments`
+  # global.
+  return f'  var makeWrapper_{sig} = (f) => function ({args_in}) {{ return {result} }};\n'
+
+
+def make_unsign_pointer_wrapper(sig):
+  assert sig[0] == 'p'
+  n_args = len(sig) - 1
+  args = ','.join('a%d' % i for i in range(n_args))
+  return f'  var makeWrapper_{sig} = (f) => ({args}) => f({args}) >>> 0;\n'

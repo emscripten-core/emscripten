@@ -1,4 +1,4 @@
-mergeInto(LibraryManager.library, {
+addToLibrary({
   floaty: function(x, y, z) {
     return -x + y;
   },

@@ -3,12 +3,19 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-// This file defines the Ignore Case Backend of the new file system.
-// It is a virtual backend that normalizes all file paths to lower case.
+// A virtual backend that adapts any underlying backend to be
+// case-insensitive. IgnoreCaseDirectory intercepts all directory operations,
+// normalizes paths to be lower case, then forwards the operations with the new
+// paths to the underlying backend. It stores the original, non-normalized names
+// internally so they can be returned later, giving the appearance of a
+// case-insensitive but case-preserving file system.
+//
+// See the comment in virtual.h for an explanation of why DataFiles and Symlinks
+// must have no-op wrappers.
 
 #include "backend.h"
 #include "file.h"
-#include "memory_backend.h"
+#include "virtual.h"
 #include "wasmfs.h"
 
 namespace {
@@ -20,105 +27,178 @@ std::string normalize(const std::string& name) {
   }
   return result;
 }
-} // namespace
+
+} // anonymous namespace
 
 namespace wasmfs {
 
-// Problem: Child entries are stored both in IgnoreCaseDirectory and in baseDirectory.
-//
-// Original name case preservation could be possible if MemoryDirectory::entries
-// were accesible. Then, we would store the original case there but search
-// ignoring case.
-//
-class IgnoreCaseDirectory : public MemoryDirectory {
-  using BaseClass = MemoryDirectory;
-  std::shared_ptr<Directory> baseDirectory;
+class IgnoreCaseDirectory : public VirtualDirectory {
+
+  struct ChildInfo {
+    std::string originalName;
+    std::shared_ptr<File> child;
+  };
+
+  // Map normalized names to virtual files and their non-normalized names.
+  std::map<std::string, ChildInfo> children;
 
 public:
-  IgnoreCaseDirectory(std::shared_ptr<Directory> base, backend_t proxyBackend)
-    : BaseClass(base->locked().getMode(), proxyBackend), baseDirectory(base) {}
+  IgnoreCaseDirectory(std::shared_ptr<Directory> real, backend_t backend)
+    : VirtualDirectory(real, backend) {}
 
-  std::shared_ptr<File> getChild(const std::string& name) override {
-    return BaseClass::getChild(normalize(name));
-  }
-
+  std::shared_ptr<File> getChild(const std::string& name) override;
   std::shared_ptr<DataFile> insertDataFile(const std::string& name,
-                                           mode_t mode) override {
-    auto name2 = normalize(name);
-    auto baseDirLocked = baseDirectory->locked();
-    auto child = baseDirLocked.insertDataFile(name2, mode);
-    if (child) {
-      insertChild(name2, child);
-      // Directory::Hanlde needs a parent
-      child->locked().setParent(cast<Directory>());
-    }
-    return child;
-  }
-
+                                           mode_t mode) override;
   std::shared_ptr<Directory> insertDirectory(const std::string& name,
-                                             mode_t mode) override {
-    auto name2 = normalize(name);
-    auto baseDirLocked = baseDirectory->locked();
-    if (!baseDirLocked.getParent())
-      baseDirLocked.setParent(parent.lock()); // Directory::Hanlde needs a parent
-    auto baseChild = baseDirLocked.insertDirectory(name2, mode);
-    auto child = std::make_shared<IgnoreCaseDirectory>(baseChild, getBackend());
-    insertChild(name2, child);
-    return child;
-  }
-
+                                             mode_t mode) override;
   std::shared_ptr<Symlink> insertSymlink(const std::string& name,
-                                         const std::string& target) override {
-    auto name2 = normalize(name);
-    auto child = baseDirectory->locked().insertSymlink(name2, target);
-    if (child) {
-      insertChild(name2, child);
-      // Directory::Hanlde needs a parent
-      child->locked().setParent(cast<Directory>());
-    }
-    return child;
-  }
-
-  int insertMove(const std::string& name, std::shared_ptr<File> file) override {
-    auto newName = normalize(name);
-    // Remove entry with the new name (if any) from this directory.
-    if (auto err = removeChild(newName))
-      return err;
-    auto oldParent = file->locked().getParent()->locked();
-    auto oldName = normalize(oldParent.getName(file));
-    // Move in underlying directory.
-    if (auto err = baseDirectory->locked().insertMove(newName, file))
-      return err;
-    // Ensure old file was removed.
-    if (auto err = oldParent.removeChild(oldName))
-      return err;
-    // Cache file with the new name in this directory.
-    insertChild(newName, file);
-    file->locked().setParent(cast<Directory>());
-    return 0;
-  }
-
-  int removeChild(const std::string& name) override {
-    auto name2 = normalize(name);
-    if (auto err = BaseClass::removeChild(name2))
-      return err;
-    return baseDirectory->locked().removeChild(name2);
-  }
-
-  ssize_t getNumEntries() override { return baseDirectory->locked().getNumEntries(); }
-
-  // TODO: preserve original name, denormalize, and use it here
-  Directory::MaybeEntries getEntries() override {
-    return baseDirectory->locked().getEntries();
-  }
-
-  // TODO: preserve original name, denormalize, and use it here
-  std::string getName(std::shared_ptr<File> file) override {
-    return BaseClass::getName(file);
-  }
-
+                                         const std::string& target) override;
+  int insertMove(const std::string& name, std::shared_ptr<File> file) override;
+  int removeChild(const std::string& name) override;
+  ssize_t getNumEntries() override { return real->locked().getNumEntries(); }
+  Directory::MaybeEntries getEntries() override;
+  std::string getName(std::shared_ptr<File> file) override;
   bool maintainsFileIdentity() override { return true; }
 };
+
+// Wrap a real file in an IgnoreCase virtual file of the same kind.
+std::shared_ptr<DataFile> virtualize(std::shared_ptr<DataFile> data,
+                                     backend_t backend) {
+  return std::make_shared<VirtualDataFile>(data, backend);
+}
+
+std::shared_ptr<Directory> virtualize(std::shared_ptr<Directory> dir,
+                                      backend_t backend) {
+  return std::make_shared<IgnoreCaseDirectory>(dir, backend);
+}
+
+std::shared_ptr<Symlink> virtualize(std::shared_ptr<Symlink> link,
+                                    backend_t backend) {
+  return std::make_shared<VirtualSymlink>(link, backend);
+}
+
+std::shared_ptr<File> virtualize(std::shared_ptr<File> file,
+                                 backend_t backend) {
+  if (auto data = file->dynCast<DataFile>()) {
+    return virtualize(data, backend);
+  } else if (auto dir = file->dynCast<Directory>()) {
+    return virtualize(dir, backend);
+  } else if (auto link = file->dynCast<Symlink>()) {
+    return virtualize(link, backend);
+  }
+  WASMFS_UNREACHABLE("unexpected file kind");
+}
+
+std::shared_ptr<File> IgnoreCaseDirectory::getChild(const std::string& name) {
+  auto normalized = normalize(name);
+  if (auto it = children.find(normalized); it != children.end()) {
+    return it->second.child;
+  }
+  auto child = real->locked().getChild(normalized);
+  if (!child) {
+    return nullptr;
+  }
+  child = virtualize(child, getBackend());
+  children[normalized] = {name, child};
+  return child;
+}
+
+std::shared_ptr<DataFile>
+IgnoreCaseDirectory::insertDataFile(const std::string& name, mode_t mode) {
+  auto normalized = normalize(name);
+  auto file = real->locked().insertDataFile(normalized, mode);
+  if (!file) {
+    return nullptr;
+  }
+  file = virtualize(file, getBackend());
+  children[normalized] = {name, file};
+  return file;
+}
+
+std::shared_ptr<Directory>
+IgnoreCaseDirectory::insertDirectory(const std::string& name, mode_t mode) {
+  auto normalized = normalize(name);
+  auto dir = real->locked().insertDirectory(normalized, mode);
+  if (!dir) {
+    return nullptr;
+  }
+  dir = virtualize(dir, getBackend());
+  children[normalized] = {name, dir};
+  return dir;
+}
+
+std::shared_ptr<Symlink>
+IgnoreCaseDirectory::insertSymlink(const std::string& name,
+                                   const std::string& target) {
+  auto normalized = normalize(name);
+  auto link = real->locked().insertSymlink(normalized, target);
+  if (!link) {
+    return nullptr;
+  }
+  link = virtualize(link, getBackend());
+  children[normalized] = {name, link};
+  return link;
+}
+
+int IgnoreCaseDirectory::insertMove(const std::string& name,
+                                    std::shared_ptr<File> file) {
+  auto normalized = normalize(name);
+  if (auto err = real->locked().insertMove(normalized, devirtualize(file))) {
+    return err;
+  }
+  auto oldParent =
+    std::static_pointer_cast<IgnoreCaseDirectory>(file->locked().getParent());
+  auto& oldChildren = oldParent->children;
+  // Delete the entry in the old parent.
+  for (auto it = oldChildren.begin(); it != oldChildren.end(); ++it) {
+    if (it->second.child == file) {
+      oldChildren.erase(it);
+      break;
+    }
+  }
+  // Unlink the overwritten entry if it exists.
+  auto [it, inserted] = children.insert({normalized, {name, file}});
+  if (!inserted) {
+    it->second.child->locked().setParent(nullptr);
+    it->second = {name, file};
+  }
+
+  return 0;
+}
+
+int IgnoreCaseDirectory::removeChild(const std::string& name) {
+  auto normalized = normalize(name);
+  if (auto err = real->locked().removeChild(normalized)) {
+    return err;
+  }
+  auto it = children.find(normalized);
+  assert(it != children.end());
+  it->second.child->locked().setParent(nullptr);
+  children.erase(it);
+  return 0;
+}
+
+Directory::MaybeEntries IgnoreCaseDirectory::getEntries() {
+  auto entries = real->locked().getEntries();
+  if (entries.getError()) {
+    return entries;
+  }
+  for (auto& entry : *entries) {
+    if (auto it = children.find(entry.name); it != children.end()) {
+      entry.name = it->second.originalName;
+    }
+  }
+  return entries;
+}
+
+std::string IgnoreCaseDirectory::getName(std::shared_ptr<File> file) {
+  for (auto& [_, info] : children) {
+    if (info.child == file) {
+      return info.originalName;
+    }
+  }
+  return "";
+}
 
 class IgnoreCaseBackend : public Backend {
   backend_t backend;
@@ -129,16 +209,21 @@ public:
   }
 
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
-    return backend->createFile(mode);
+    return virtualize(backend->createFile(mode), this);
   }
 
   std::shared_ptr<Directory> createDirectory(mode_t mode) override {
-    return std::make_shared<IgnoreCaseDirectory>(backend->createDirectory(mode),
-                                                 this);
+    auto real = backend->createDirectory(mode);
+    // Inserts into the real backing directory won't work if it doesn't appear
+    // to be linked, so give it a parent.
+    // TODO: Break this reference cycle in a destructor somewhere.
+    real->locked().setParent(real);
+    auto ret = virtualize(real, this);
+    return ret;
   }
 
   std::shared_ptr<Symlink> createSymlink(std::string target) override {
-    return backend->createSymlink(normalize(target));
+    return virtualize(backend->createSymlink(target), this);
   }
 };
 
@@ -148,12 +233,13 @@ backend_t createIgnoreCaseBackend(std::function<backend_t()> createBackend) {
 }
 
 extern "C" {
-// C API for creating ignore case backend.
-backend_t wasmfs_create_icase_backend(backend_constructor_t create_backend,
-                                      void* arg) {
-  return createIgnoreCaseBackend(
-    [create_backend, arg]() { return create_backend(arg); });
+
+// C API FOR creating an ignore case backend by supplying a pointer to another
+// backend.
+backend_t wasmfs_create_icase_backend(backend_t backend) {
+  return createIgnoreCaseBackend([backend]() { return backend; });
 }
-}
+
+} // extern "C"
 
 } // namespace wasmfs

@@ -95,7 +95,6 @@ hidden long __syscall_ret(unsigned long),
 #define __socketcall(nm,a,b,c,d,e,f) __syscall(SYS_##nm, a, b, c, d, e, f)
 #define __socketcall_cp(nm,a,b,c,d,e,f) __syscall_cp(SYS_##nm, a, b, c, d, e, f)
 #else
-static inline long __alt_socketcall(int sys, int sock, int cp, long a, long b, long c, long d, long e, long f)
 {
 	long r;
 	if (cp) r = __syscall_cp(sys, a, b, c, d, e, f);
@@ -108,9 +107,9 @@ static inline long __alt_socketcall(int sys, int sock, int cp, long a, long b, l
 	return r;
 }
 #define __socketcall(nm, a, b, c, d, e, f) __alt_socketcall(SYS_##nm, __SC_##nm, 0, \
-	(long)(a), (long)(b), (long)(c), (long)(d), (long)(e), (long)(f))
+	__scc(a), __scc(b), __scc(c), __scc(d), __scc(e), __scc(f))
 #define __socketcall_cp(nm, a, b, c, d, e, f) __alt_socketcall(SYS_##nm, __SC_##nm, 1, \
-	(long)(a), (long)(b), (long)(c), (long)(d), (long)(e), (long)(f))
+	__scc(a), __scc(b), __scc(c), __scc(d), __scc(e), __scc(f))
 #endif
 
 /* fixup legacy 16-bit junk */
@@ -237,43 +236,43 @@ static inline long __alt_socketcall(int sys, int sock, int cp, long a, long b, l
 #define SYS_sendfile SYS_sendfile64
 #endif
 
-#ifndef SYS_timer_settime
+#ifdef SYS_timer_settime32
 #define SYS_timer_settime SYS_timer_settime32
 #endif
 
-#ifndef SYS_timer_gettime
+#ifdef SYS_timer_gettime32
 #define SYS_timer_gettime SYS_timer_gettime32
 #endif
 
-#ifndef SYS_timerfd_settime
+#ifdef SYS_timerfd_settime32
 #define SYS_timerfd_settime SYS_timerfd_settime32
 #endif
 
-#ifndef SYS_timerfd_gettime
+#ifdef SYS_timerfd_gettime32
 #define SYS_timerfd_gettime SYS_timerfd_gettime32
 #endif
 
-#ifndef SYS_clock_settime
+#ifdef SYS_clock_settime32
 #define SYS_clock_settime SYS_clock_settime32
 #endif
 
-#ifndef SYS_clock_gettime
+#ifdef SYS_clock_gettime32
 #define SYS_clock_gettime SYS_clock_gettime32
 #endif
 
-#ifndef SYS_clock_getres
+#ifdef SYS_clock_getres_time32
 #define SYS_clock_getres SYS_clock_getres_time32
 #endif
 
-#ifndef SYS_clock_nanosleep
+#ifdef SYS_clock_nanosleep_time32
 #define SYS_clock_nanosleep SYS_clock_nanosleep_time32
 #endif
 
-#ifndef SYS_gettimeofday
+#ifdef SYS_gettimeofday_time32
 #define SYS_gettimeofday SYS_gettimeofday_time32
 #endif
 
-#ifndef SYS_settimeofday
+#ifdef SYS_settimeofday_time32
 #define SYS_settimeofday SYS_settimeofday_time32
 #endif
 

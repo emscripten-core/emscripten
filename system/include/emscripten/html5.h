@@ -24,10 +24,8 @@ extern "C" {
 /*
  * This file defines Emscripten low-level glue bindings for interfacing with HTML5 APIs
  *
- * Documentation for the public APIs defined in this file must be updated in: 
+ * Documentation for the public APIs defined in this file must be updated in:
  *    site/source/docs/api_reference/html5.h.rst
- * A prebuilt local version of the documentation is available at: 
- *    site/build/text/docs/api_reference/html5.h.txt
  * You can also build docs locally as HTML or other formats in site/
  * An online HTML version (which may be of a different version of Emscripten)
  *    is up at http://kripken.github.io/emscripten-site/docs/api_reference/html5.h.html
@@ -72,19 +70,6 @@ extern "C" {
 #define EMSCRIPTEN_EVENT_CANVASRESIZED         37
 #define EMSCRIPTEN_EVENT_POINTERLOCKERROR      38
 
-#define EMSCRIPTEN_RESULT int
-
-#define EMSCRIPTEN_RESULT_SUCCESS              0
-#define EMSCRIPTEN_RESULT_DEFERRED             1
-#define EMSCRIPTEN_RESULT_NOT_SUPPORTED       -1
-#define EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED -2
-#define EMSCRIPTEN_RESULT_INVALID_TARGET      -3
-#define EMSCRIPTEN_RESULT_UNKNOWN_TARGET      -4
-#define EMSCRIPTEN_RESULT_INVALID_PARAM       -5
-#define EMSCRIPTEN_RESULT_FAILED              -6
-#define EMSCRIPTEN_RESULT_NO_DATA             -7
-#define EMSCRIPTEN_RESULT_TIMED_OUT           -8
-
 #define EMSCRIPTEN_EVENT_TARGET_INVALID        0
 #define EMSCRIPTEN_EVENT_TARGET_DOCUMENT       ((const char*)1)
 #define EMSCRIPTEN_EVENT_TARGET_WINDOW         ((const char*)2)
@@ -102,15 +87,15 @@ extern "C" {
 
 typedef struct EmscriptenKeyboardEvent {
   double timestamp;
-  unsigned long location;
+  unsigned int location;
   EM_BOOL ctrlKey;
   EM_BOOL shiftKey;
   EM_BOOL altKey;
   EM_BOOL metaKey;
   EM_BOOL repeat;
-  unsigned long charCode;
-  unsigned long keyCode;
-  unsigned long which;
+  unsigned int charCode;
+  unsigned int keyCode;
+  unsigned int which;
   EM_UTF8 key[EM_HTML5_SHORT_STRING_LEN_BYTES];
   EM_UTF8 code[EM_HTML5_SHORT_STRING_LEN_BYTES];
   EM_UTF8 charValue[EM_HTML5_SHORT_STRING_LEN_BYTES];
@@ -118,46 +103,46 @@ typedef struct EmscriptenKeyboardEvent {
 } EmscriptenKeyboardEvent;
 
 
-typedef EM_BOOL (*em_key_callback_func)(int eventType, const EmscriptenKeyboardEvent *keyEvent, void *userData);
-EMSCRIPTEN_RESULT emscripten_set_keypress_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_key_callback_func callback, pthread_t targetThread);
-EMSCRIPTEN_RESULT emscripten_set_keydown_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_key_callback_func callback, pthread_t targetThread);
-EMSCRIPTEN_RESULT emscripten_set_keyup_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_key_callback_func callback, pthread_t targetThread);
+typedef EM_BOOL (*em_key_callback_func)(int eventType, const EmscriptenKeyboardEvent *keyEvent __attribute__((nonnull)), void *userData);
+EMSCRIPTEN_RESULT emscripten_set_keypress_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_key_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_keydown_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_key_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_keyup_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_key_callback_func callback, pthread_t targetThread);
 
 typedef struct EmscriptenMouseEvent {
   double timestamp;
-  long screenX;
-  long screenY;
-  long clientX;
-  long clientY;
+  int screenX;
+  int screenY;
+  int clientX;
+  int clientY;
   EM_BOOL ctrlKey;
   EM_BOOL shiftKey;
   EM_BOOL altKey;
   EM_BOOL metaKey;
   unsigned short button;
   unsigned short buttons;
-  long movementX;
-  long movementY;
-  long targetX;
-  long targetY;
+  int movementX;
+  int movementY;
+  int targetX;
+  int targetY;
   // canvasX and canvasY are deprecated - there no longer exists a Module['canvas'] object, so canvasX/Y are no longer reported (register a listener on canvas directly to get canvas coordinates, or translate manually)
-  long canvasX;
-  long canvasY;
-  long padding;
+  int canvasX;
+  int canvasY;
+  int padding;
 } EmscriptenMouseEvent;
 
 
-typedef EM_BOOL (*em_mouse_callback_func)(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData);
-EMSCRIPTEN_RESULT emscripten_set_click_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback, pthread_t targetThread);
-EMSCRIPTEN_RESULT emscripten_set_mousedown_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback, pthread_t targetThread);
-EMSCRIPTEN_RESULT emscripten_set_mouseup_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback, pthread_t targetThread);
-EMSCRIPTEN_RESULT emscripten_set_dblclick_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback, pthread_t targetThread);
-EMSCRIPTEN_RESULT emscripten_set_mousemove_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback, pthread_t targetThread);
-EMSCRIPTEN_RESULT emscripten_set_mouseenter_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback, pthread_t targetThread);
-EMSCRIPTEN_RESULT emscripten_set_mouseleave_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback, pthread_t targetThread);
-EMSCRIPTEN_RESULT emscripten_set_mouseover_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback, pthread_t targetThread);
-EMSCRIPTEN_RESULT emscripten_set_mouseout_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_mouse_callback_func callback, pthread_t targetThread);
+typedef EM_BOOL (*em_mouse_callback_func)(int eventType, const EmscriptenMouseEvent *mouseEvent __attribute__((nonnull)), void *userData);
+EMSCRIPTEN_RESULT emscripten_set_click_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_mouse_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_mousedown_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_mouse_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_mouseup_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_mouse_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_dblclick_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_mouse_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_mousemove_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_mouse_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_mouseenter_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_mouse_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_mouseleave_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_mouse_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_mouseover_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_mouse_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_mouseout_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_mouse_callback_func callback, pthread_t targetThread);
 
-EMSCRIPTEN_RESULT emscripten_get_mouse_status(EmscriptenMouseEvent *mouseState);
+EMSCRIPTEN_RESULT emscripten_get_mouse_status(EmscriptenMouseEvent *mouseState __attribute__((nonnull)));
 
 #define DOM_DELTA_PIXEL 0x00
 #define DOM_DELTA_LINE  0x01
@@ -168,15 +153,15 @@ typedef struct EmscriptenWheelEvent {
   double deltaX;
   double deltaY;
   double deltaZ;
-  unsigned long deltaMode;
+  unsigned int deltaMode;
 } EmscriptenWheelEvent;
 
 
-typedef EM_BOOL (*em_wheel_callback_func)(int eventType, const EmscriptenWheelEvent *wheelEvent, void *userData);
-EMSCRIPTEN_RESULT emscripten_set_wheel_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_wheel_callback_func callback, pthread_t targetThread);
+typedef EM_BOOL (*em_wheel_callback_func)(int eventType, const EmscriptenWheelEvent *wheelEvent __attribute__((nonnull)), void *userData);
+EMSCRIPTEN_RESULT emscripten_set_wheel_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_wheel_callback_func callback, pthread_t targetThread);
 
 typedef struct EmscriptenUiEvent {
-  long detail;
+  int detail;
   int documentBodyClientWidth;
   int documentBodyClientHeight;
   int windowInnerWidth;
@@ -188,20 +173,20 @@ typedef struct EmscriptenUiEvent {
 } EmscriptenUiEvent;
 
 
-typedef EM_BOOL (*em_ui_callback_func)(int eventType, const EmscriptenUiEvent *uiEvent, void *userData);
-EMSCRIPTEN_RESULT emscripten_set_resize_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_ui_callback_func callback, pthread_t targetThread);
-EMSCRIPTEN_RESULT emscripten_set_scroll_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_ui_callback_func callback, pthread_t targetThread);
+typedef EM_BOOL (*em_ui_callback_func)(int eventType, const EmscriptenUiEvent *uiEvent __attribute__((nonnull)), void *userData);
+EMSCRIPTEN_RESULT emscripten_set_resize_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_ui_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_scroll_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_ui_callback_func callback, pthread_t targetThread);
 
 typedef struct EmscriptenFocusEvent {
   EM_UTF8 nodeName[EM_HTML5_LONG_STRING_LEN_BYTES];
   EM_UTF8 id[EM_HTML5_LONG_STRING_LEN_BYTES];
 } EmscriptenFocusEvent;
 
-typedef EM_BOOL (*em_focus_callback_func)(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData);
-EMSCRIPTEN_RESULT emscripten_set_blur_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_focus_callback_func callback, pthread_t targetThread);
-EMSCRIPTEN_RESULT emscripten_set_focus_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_focus_callback_func callback, pthread_t targetThread);
-EMSCRIPTEN_RESULT emscripten_set_focusin_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_focus_callback_func callback, pthread_t targetThread);
-EMSCRIPTEN_RESULT emscripten_set_focusout_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_focus_callback_func callback, pthread_t targetThread);
+typedef EM_BOOL (*em_focus_callback_func)(int eventType, const EmscriptenFocusEvent *focusEvent __attribute__((nonnull)), void *userData);
+EMSCRIPTEN_RESULT emscripten_set_blur_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_focus_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_focus_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_focus_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_focusin_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_focus_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_focusout_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_focus_callback_func callback, pthread_t targetThread);
 
 typedef struct EmscriptenDeviceOrientationEvent {
   double alpha;
@@ -211,10 +196,10 @@ typedef struct EmscriptenDeviceOrientationEvent {
 } EmscriptenDeviceOrientationEvent;
 
 
-typedef EM_BOOL (*em_deviceorientation_callback_func)(int eventType, const EmscriptenDeviceOrientationEvent *deviceOrientationEvent, void *userData);
+typedef EM_BOOL (*em_deviceorientation_callback_func)(int eventType, const EmscriptenDeviceOrientationEvent *deviceOrientationEvent __attribute__((nonnull)), void *userData);
 EMSCRIPTEN_RESULT emscripten_set_deviceorientation_callback_on_thread(void *userData, EM_BOOL useCapture, em_deviceorientation_callback_func callback, pthread_t targetThread);
 
-EMSCRIPTEN_RESULT emscripten_get_deviceorientation_status(EmscriptenDeviceOrientationEvent *orientationState);
+EMSCRIPTEN_RESULT emscripten_get_deviceorientation_status(EmscriptenDeviceOrientationEvent *orientationState __attribute__((nonnull)));
 
 #define EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION                   0x01
 #define EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION_INCLUDING_GRAVITY 0x02
@@ -234,10 +219,10 @@ typedef struct EmscriptenDeviceMotionEvent {
 } EmscriptenDeviceMotionEvent;
 
 
-typedef EM_BOOL (*em_devicemotion_callback_func)(int eventType, const EmscriptenDeviceMotionEvent *deviceMotionEvent, void *userData);
+typedef EM_BOOL (*em_devicemotion_callback_func)(int eventType, const EmscriptenDeviceMotionEvent *deviceMotionEvent __attribute__((nonnull)), void *userData);
 EMSCRIPTEN_RESULT emscripten_set_devicemotion_callback_on_thread(void *userData, EM_BOOL useCapture, em_devicemotion_callback_func callback, pthread_t targetThread);
 
-EMSCRIPTEN_RESULT emscripten_get_devicemotion_status(EmscriptenDeviceMotionEvent *motionState);
+EMSCRIPTEN_RESULT emscripten_get_devicemotion_status(EmscriptenDeviceMotionEvent *motionState __attribute__((nonnull)));
 
 #define EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY    1
 #define EMSCRIPTEN_ORIENTATION_PORTRAIT_SECONDARY  2
@@ -250,10 +235,10 @@ typedef struct EmscriptenOrientationChangeEvent {
 } EmscriptenOrientationChangeEvent;
 
 
-typedef EM_BOOL (*em_orientationchange_callback_func)(int eventType, const EmscriptenOrientationChangeEvent *orientationChangeEvent, void *userData);
+typedef EM_BOOL (*em_orientationchange_callback_func)(int eventType, const EmscriptenOrientationChangeEvent *orientationChangeEvent __attribute__((nonnull)), void *userData);
 EMSCRIPTEN_RESULT emscripten_set_orientationchange_callback_on_thread(void *userData, EM_BOOL useCapture, em_orientationchange_callback_func callback, pthread_t targetThread);
 
-EMSCRIPTEN_RESULT emscripten_get_orientation_status(EmscriptenOrientationChangeEvent *orientationStatus);
+EMSCRIPTEN_RESULT emscripten_get_orientation_status(EmscriptenOrientationChangeEvent *orientationStatus __attribute__((nonnull)));
 EMSCRIPTEN_RESULT emscripten_lock_orientation(int allowedOrientations);
 EMSCRIPTEN_RESULT emscripten_unlock_orientation(void);
 
@@ -269,10 +254,10 @@ typedef struct EmscriptenFullscreenChangeEvent {
 } EmscriptenFullscreenChangeEvent;
 
 
-typedef EM_BOOL (*em_fullscreenchange_callback_func)(int eventType, const EmscriptenFullscreenChangeEvent *fullscreenChangeEvent, void *userData);
+typedef EM_BOOL (*em_fullscreenchange_callback_func)(int eventType, const EmscriptenFullscreenChangeEvent *fullscreenChangeEvent __attribute__((nonnull)), void *userData);
 EMSCRIPTEN_RESULT emscripten_set_fullscreenchange_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_fullscreenchange_callback_func callback, pthread_t targetThread);
 
-EMSCRIPTEN_RESULT emscripten_get_fullscreen_status(EmscriptenFullscreenChangeEvent *fullscreenStatus);
+EMSCRIPTEN_RESULT emscripten_get_fullscreen_status(EmscriptenFullscreenChangeEvent *fullscreenStatus __attribute__((nonnull)));
 
 #define EMSCRIPTEN_FULLSCREEN_SCALE int
 #define EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT 0
@@ -301,12 +286,12 @@ typedef struct EmscriptenFullscreenStrategy {
   pthread_t canvasResizedCallbackTargetThread;
 } EmscriptenFullscreenStrategy;
 
-EMSCRIPTEN_RESULT emscripten_request_fullscreen(const char *target, EM_BOOL deferUntilInEventHandler);
-EMSCRIPTEN_RESULT emscripten_request_fullscreen_strategy(const char *target, EM_BOOL deferUntilInEventHandler, const EmscriptenFullscreenStrategy *fullscreenStrategy);
+EMSCRIPTEN_RESULT emscripten_request_fullscreen(const char *target __attribute__((nonnull)), EM_BOOL deferUntilInEventHandler);
+EMSCRIPTEN_RESULT emscripten_request_fullscreen_strategy(const char *target __attribute__((nonnull)), EM_BOOL deferUntilInEventHandler, const EmscriptenFullscreenStrategy *fullscreenStrategy __attribute__((nonnull)));
 
 EMSCRIPTEN_RESULT emscripten_exit_fullscreen(void);
 
-EMSCRIPTEN_RESULT emscripten_enter_soft_fullscreen(const char *target, const EmscriptenFullscreenStrategy *fullscreenStrategy);
+EMSCRIPTEN_RESULT emscripten_enter_soft_fullscreen(const char *target __attribute__((nonnull)), const EmscriptenFullscreenStrategy *fullscreenStrategy __attribute__((nonnull)));
 
 EMSCRIPTEN_RESULT emscripten_exit_soft_fullscreen(void);
 
@@ -317,15 +302,15 @@ typedef struct EmscriptenPointerlockChangeEvent {
 } EmscriptenPointerlockChangeEvent;
 
 
-typedef EM_BOOL (*em_pointerlockchange_callback_func)(int eventType, const EmscriptenPointerlockChangeEvent *pointerlockChangeEvent, void *userData);
-EMSCRIPTEN_RESULT emscripten_set_pointerlockchange_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_pointerlockchange_callback_func callback, pthread_t targetThread);
+typedef EM_BOOL (*em_pointerlockchange_callback_func)(int eventType, const EmscriptenPointerlockChangeEvent *pointerlockChangeEvent __attribute__((nonnull)), void *userData);
+EMSCRIPTEN_RESULT emscripten_set_pointerlockchange_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_pointerlockchange_callback_func callback, pthread_t targetThread);
 
 typedef EM_BOOL (*em_pointerlockerror_callback_func)(int eventType, const void *reserved, void *userData);
-EMSCRIPTEN_RESULT emscripten_set_pointerlockerror_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_pointerlockerror_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_pointerlockerror_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_pointerlockerror_callback_func callback, pthread_t targetThread);
 
-EMSCRIPTEN_RESULT emscripten_get_pointerlock_status(EmscriptenPointerlockChangeEvent *pointerlockStatus);
+EMSCRIPTEN_RESULT emscripten_get_pointerlock_status(EmscriptenPointerlockChangeEvent *pointerlockStatus __attribute__((nonnull)));
 
-EMSCRIPTEN_RESULT emscripten_request_pointerlock(const char *target, EM_BOOL deferUntilInEventHandler);
+EMSCRIPTEN_RESULT emscripten_request_pointerlock(const char *target __attribute__((nonnull)), EM_BOOL deferUntilInEventHandler);
 
 EMSCRIPTEN_RESULT emscripten_exit_pointerlock(void);
 
@@ -339,28 +324,28 @@ typedef struct EmscriptenVisibilityChangeEvent {
   int visibilityState;
 } EmscriptenVisibilityChangeEvent;
 
-typedef EM_BOOL (*em_visibilitychange_callback_func)(int eventType, const EmscriptenVisibilityChangeEvent *visibilityChangeEvent, void *userData);
+typedef EM_BOOL (*em_visibilitychange_callback_func)(int eventType, const EmscriptenVisibilityChangeEvent *visibilityChangeEvent __attribute__((nonnull)), void *userData);
 EMSCRIPTEN_RESULT emscripten_set_visibilitychange_callback_on_thread(void *userData, EM_BOOL useCapture, em_visibilitychange_callback_func callback, pthread_t targetThread);
 
-EMSCRIPTEN_RESULT emscripten_get_visibility_status(EmscriptenVisibilityChangeEvent *visibilityStatus);
+EMSCRIPTEN_RESULT emscripten_get_visibility_status(EmscriptenVisibilityChangeEvent *visibilityStatus __attribute__((nonnull)));
 
 
 typedef struct EmscriptenTouchPoint
 {
-  long identifier;
-  long screenX;
-  long screenY;
-  long clientX;
-  long clientY;
-  long pageX;
-  long pageY;
+  int identifier;
+  int screenX;
+  int screenY;
+  int clientX;
+  int clientY;
+  int pageX;
+  int pageY;
   EM_BOOL isChanged;
   EM_BOOL onTarget;
-  long targetX;
-  long targetY;
+  int targetX;
+  int targetY;
   // canvasX and canvasY are deprecated - there no longer exists a Module['canvas'] object, so canvasX/Y are no longer reported (register a listener on canvas directly to get canvas coordinates, or translate manually)
-  long canvasX;
-  long canvasY;
+  int canvasX;
+  int canvasY;
 } EmscriptenTouchPoint;
 
 typedef struct EmscriptenTouchEvent {
@@ -374,11 +359,11 @@ typedef struct EmscriptenTouchEvent {
 } EmscriptenTouchEvent;
 
 
-typedef EM_BOOL (*em_touch_callback_func)(int eventType, const EmscriptenTouchEvent *touchEvent, void *userData);
-EMSCRIPTEN_RESULT emscripten_set_touchstart_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_touch_callback_func callback, pthread_t targetThread);
-EMSCRIPTEN_RESULT emscripten_set_touchend_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_touch_callback_func callback, pthread_t targetThread);
-EMSCRIPTEN_RESULT emscripten_set_touchmove_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_touch_callback_func callback, pthread_t targetThread);
-EMSCRIPTEN_RESULT emscripten_set_touchcancel_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_touch_callback_func callback, pthread_t targetThread);
+typedef EM_BOOL (*em_touch_callback_func)(int eventType, const EmscriptenTouchEvent *touchEvent __attribute__((nonnull)), void *userData);
+EMSCRIPTEN_RESULT emscripten_set_touchstart_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_touch_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_touchend_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_touch_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_touchmove_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_touch_callback_func callback, pthread_t targetThread);
+EMSCRIPTEN_RESULT emscripten_set_touchcancel_callback_on_thread(const char *target __attribute__((nonnull)), void *userData, EM_BOOL useCapture, em_touch_callback_func callback, pthread_t targetThread);
 
 
 typedef struct EmscriptenGamepadEvent {
@@ -389,19 +374,19 @@ typedef struct EmscriptenGamepadEvent {
   double analogButton[64];
   EM_BOOL digitalButton[64];
   EM_BOOL connected;
-  long index;
+  int index;
   EM_UTF8 id[EM_HTML5_MEDIUM_STRING_LEN_BYTES];
   EM_UTF8 mapping[EM_HTML5_MEDIUM_STRING_LEN_BYTES];
 } EmscriptenGamepadEvent;
 
 
-typedef EM_BOOL (*em_gamepad_callback_func)(int eventType, const EmscriptenGamepadEvent *gamepadEvent, void *userData);
+typedef EM_BOOL (*em_gamepad_callback_func)(int eventType, const EmscriptenGamepadEvent *gamepadEvent __attribute__((nonnull)), void *userData);
 EMSCRIPTEN_RESULT emscripten_set_gamepadconnected_callback_on_thread(void *userData, EM_BOOL useCapture, em_gamepad_callback_func callback, pthread_t targetThread);
 EMSCRIPTEN_RESULT emscripten_set_gamepaddisconnected_callback_on_thread(void *userData, EM_BOOL useCapture, em_gamepad_callback_func callback, pthread_t targetThread);
 
 EMSCRIPTEN_RESULT emscripten_sample_gamepad_data(void);
 int emscripten_get_num_gamepads(void);
-EMSCRIPTEN_RESULT emscripten_get_gamepad_status(int index, EmscriptenGamepadEvent *gamepadState);
+EMSCRIPTEN_RESULT emscripten_get_gamepad_status(int index, EmscriptenGamepadEvent *gamepadState __attribute__((nonnull)));
 
 typedef struct EmscriptenBatteryEvent {
   double chargingTime;
@@ -410,32 +395,35 @@ typedef struct EmscriptenBatteryEvent {
   EM_BOOL charging;
 } EmscriptenBatteryEvent;
 
-typedef EM_BOOL (*em_battery_callback_func)(int eventType, const EmscriptenBatteryEvent *batteryEvent, void *userData);
+typedef EM_BOOL (*em_battery_callback_func)(int eventType, const EmscriptenBatteryEvent *batteryEvent __attribute__((nonnull)), void *userData);
 EMSCRIPTEN_RESULT emscripten_set_batterychargingchange_callback_on_thread(void *userData, em_battery_callback_func callback, pthread_t targetThread);
 EMSCRIPTEN_RESULT emscripten_set_batterylevelchange_callback_on_thread(void *userData, em_battery_callback_func callback, pthread_t targetThread);
 
-EMSCRIPTEN_RESULT emscripten_get_battery_status(EmscriptenBatteryEvent *batteryState);
+EMSCRIPTEN_RESULT emscripten_get_battery_status(EmscriptenBatteryEvent *batteryState __attribute__((nonnull)));
 
 
 EMSCRIPTEN_RESULT emscripten_vibrate(int msecs);
-EMSCRIPTEN_RESULT emscripten_vibrate_pattern(int *msecsArray, int numEntries);
+EMSCRIPTEN_RESULT emscripten_vibrate_pattern(int *msecsArray __attribute__((nonnull)), int numEntries);
 
 typedef const char *(*em_beforeunload_callback)(int eventType, const void *reserved, void *userData);
 EMSCRIPTEN_RESULT emscripten_set_beforeunload_callback_on_thread(void *userData, em_beforeunload_callback callback, pthread_t targetThread);
 
 // Sets the canvas.width & canvas.height properties.
-EMSCRIPTEN_RESULT emscripten_set_canvas_element_size(const char *target, int width, int height);
+EMSCRIPTEN_RESULT emscripten_set_canvas_element_size(const char *target __attribute__((nonnull)), int width, int height);
 
 // Returns the canvas.width & canvas.height properties.
-EMSCRIPTEN_RESULT emscripten_get_canvas_element_size(const char *target, int *width, int *height);
+EMSCRIPTEN_RESULT emscripten_get_canvas_element_size(const char *target __attribute__((nonnull)), int *width, int *height);
 
-EMSCRIPTEN_RESULT emscripten_set_element_css_size(const char *target, double width, double height);
-EMSCRIPTEN_RESULT emscripten_get_element_css_size(const char *target, double *width, double *height);
+EMSCRIPTEN_RESULT emscripten_set_element_css_size(const char *target __attribute__((nonnull)), double width, double height);
+EMSCRIPTEN_RESULT emscripten_get_element_css_size(const char *target __attribute__((nonnull)), double *width, double *height);
 
 void emscripten_html5_remove_all_event_listeners(void);
 
-#define EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD ((pthread_t)0x1)
+#define EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD ((pthread_t)0x1)
 #define EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD ((pthread_t)0x2)
+
+// Legacy name for EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD
+#define EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD
 
 #define emscripten_set_keypress_callback(target, userData, useCapture, callback)              emscripten_set_keypress_callback_on_thread(             (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_keydown_callback(target, userData, useCapture, callback)               emscripten_set_keydown_callback_on_thread(              (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
@@ -471,10 +459,10 @@ void emscripten_html5_remove_all_event_listeners(void);
 #define emscripten_set_gamepaddisconnected_callback(userData, useCapture, callback)           emscripten_set_gamepaddisconnected_callback_on_thread(            (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_batterychargingchange_callback(userData, callback)                     emscripten_set_batterychargingchange_callback_on_thread(          (userData),               (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_batterylevelchange_callback(userData, callback)                        emscripten_set_batterylevelchange_callback_on_thread(             (userData),               (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
-#define emscripten_set_beforeunload_callback(userData, callback)                              emscripten_set_beforeunload_callback_on_thread(                   (userData),               (callback), EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD)
+#define emscripten_set_beforeunload_callback(userData, callback)                              emscripten_set_beforeunload_callback_on_thread(                   (userData),               (callback), EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD)
 
-long emscripten_request_animation_frame(EM_BOOL (*cb)(double time, void *userData), void *userData);
-void emscripten_cancel_animation_frame(long requestAnimationFrameId);
+int emscripten_request_animation_frame(EM_BOOL (*cb)(double time, void *userData), void *userData);
+void emscripten_cancel_animation_frame(int requestAnimationFrameId);
 void emscripten_request_animation_frame_loop(EM_BOOL (*cb)(double time, void *userData), void *userData);
 
 double emscripten_date_now(void);

@@ -98,8 +98,7 @@ void shaders() {
   }
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     SDL_Surface *screen;
 
     // Slightly different SDL initialization

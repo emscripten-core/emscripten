@@ -189,7 +189,7 @@
         Module['downloadedData'] = data;
         var jsDownload = download('manual_download_data.js').then(function(data) {
           console.log('downloaded js file');
-          Module['mainScriptUrlOrBlob'] = new Blob([data]);
+          Module['mainScriptUrlOrBlob'] = new Blob([data], { type: 'application/javascript' });
           addScriptToDom(data);
         });
       });

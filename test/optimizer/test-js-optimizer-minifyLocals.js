@@ -37,5 +37,4 @@ function labels() {
   L1: while (1) {
   }
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS
 // EXTRA_INFO: { "globals": { "main": "a", "constructor": "b", "foo": "c", "bar": "d", "labels": "l" } }

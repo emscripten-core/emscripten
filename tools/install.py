@@ -19,12 +19,14 @@ import sys
 
 EXCLUDES = [os.path.normpath(x) for x in '''
 test/third_party
+tools/maint
 site
 node_modules
 Makefile
 .git
 cache
 cache.lock
+bootstrap.py
 '''.split()]
 
 EXCLUDE_PATTERNS = '''
@@ -82,7 +84,6 @@ def copy_emscripten(target):
 
 
 def main():
-
   parser = argparse.ArgumentParser(description=__doc__)
   parser.add_argument('-v', '--verbose', action='store_true', help='verbose',
                       default=int(os.environ.get('EMCC_DEBUG', '0')))
@@ -95,7 +96,10 @@ def main():
   logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
   os.makedirs(target)
   copy_emscripten(target)
-  add_revision_file(target)
+  if os.path.isdir('.git'):
+    # Add revision flag only if the source directory is a Git repository
+    # and not a source archive
+    add_revision_file(target)
   return 0
 
 

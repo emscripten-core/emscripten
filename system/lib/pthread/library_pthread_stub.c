@@ -46,8 +46,14 @@ void emscripten_current_thread_process_queued_calls() {
   // nop
 }
 
-void _emscripten_yield() {
-  // nop
+static void dummy(double now)
+{
+}
+
+weak_alias(dummy, _emscripten_check_timers);
+
+void _emscripten_yield(double now) {
+  _emscripten_check_timers(now);
 }
 
 int pthread_mutex_init(
@@ -216,6 +222,7 @@ _Noreturn void __pthread_exit(void* status) {
    exit(0);
 }
 
+weak_alias(__pthread_exit, emscripten_builtin_pthread_exit);
 weak_alias(__pthread_exit, pthread_exit);
 
 int __pthread_detach(pthread_t t) {
@@ -273,15 +280,7 @@ int pthread_condattr_setpshared(pthread_condattr_t *attr, int shared) {
   return 0;
 }
 
-int pthread_attr_init(pthread_attr_t *attr) {
-  return 0;
-}
-
 int pthread_getattr_np(pthread_t thread, pthread_attr_t *attr) {
-  return 0;
-}
-
-int pthread_attr_destroy(pthread_attr_t *attr) {
   return 0;
 }
 
@@ -361,18 +360,6 @@ int pthread_spin_unlock(pthread_spinlock_t *lock) {
   return 0;
 }
 
-int pthread_attr_setdetachstate(pthread_attr_t* attr, int detachstate) {
-  return 0;
-}
-
-int pthread_attr_setschedparam(pthread_attr_t* attr, const struct sched_param* param) {
-  return 0;
-}
-
-int pthread_attr_setstacksize(pthread_attr_t *attr, size_t stacksize) {
-  return 0;
-}
-
 int sem_init(sem_t *sem, int pshared, unsigned int value) {
   return 0;
 }
@@ -399,11 +386,17 @@ void __lock(void* ptr) {}
 
 void __unlock(void* ptr) {}
 
+void __acquire_ptc() {}
+
+void __release_ptc() {}
+
 // When pthreads is not enabled, we can't use the Atomics futex api to do
 // proper sleeps, so simulate a busy spin wait loop instead.
 void emscripten_thread_sleep(double msecs) {
   double start = emscripten_get_now();
-  while (emscripten_get_now() - start < msecs) {
-    // Do nothing.
-  }
+  double now = start;
+  do {
+    _emscripten_yield(now);
+    now = emscripten_get_now();
+  } while (now - start < msecs);
 }

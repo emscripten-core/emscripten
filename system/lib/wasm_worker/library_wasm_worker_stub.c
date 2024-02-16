@@ -8,11 +8,11 @@
 #error __EMSCRIPTEN_WASM_WORKERS__ should not be defined when building this file!
 #endif
 
-emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize) {
+emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackPlusTLSAddress, size_t stackPlusTLSSize) {
   return 0;
 }
 
-emscripten_wasm_worker_t emscripten_malloc_wasm_worker(uint32_t stackSize) {
+emscripten_wasm_worker_t emscripten_malloc_wasm_worker(size_t stackSize) {
   return 0;
 }
 
@@ -72,7 +72,7 @@ void emscripten_condvar_init(emscripten_condvar_t *condvar) {
 void emscripten_condvar_waitinf(emscripten_condvar_t *condvar, emscripten_lock_t *lock) {
 }
 
-int emscripten_condvar_wait(emscripten_condvar_t *condvar, emscripten_lock_t *lock, int64_t maxWaitNanoseconds) {
+EM_BOOL emscripten_condvar_wait(emscripten_condvar_t *condvar, emscripten_lock_t *lock, int64_t maxWaitNanoseconds) {
   return EM_TRUE;
 }
 

@@ -3,18 +3,18 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
 import os
 
 TAG = 'release-68-2'
 VERSION = '68_2'
 HASH = '12c3db5966c234c94e7918fb8acc8bd0838edc36a620f3faa788e7ff27b06f1aa431eb117401026e3963622b9323212f444b735d5c9dd3d0b82d772a4834b993'
 
-variants = {'icu-mt': {'USE_PTHREADS': 1}}
+variants = {'icu-mt': {'PTHREADS': 1}}
 
 libname_libicu_common = 'libicu_common'
 libname_libicu_stubdata = 'libicu_stubdata'
 libname_libicu_i18n = 'libicu_i18n'
+libname_libicu_io = 'libicu_io'
 
 
 def needed(settings):
@@ -22,7 +22,7 @@ def needed(settings):
 
 
 def get_lib_name(base_name, settings):
-  return base_name + ('-mt' if settings.USE_PTHREADS else '') + '.a'
+  return base_name + ('-mt' if settings.PTHREADS else '') + '.a'
 
 
 def get(ports, settings, shared):
@@ -35,8 +35,6 @@ def get(ports, settings, shared):
     icu_source_path = os.path.join(source_path, 'source')
 
   def build_lib(lib_output, lib_src, other_includes, build_flags):
-    logging.debug('building port: icu- ' + lib_output)
-
     additional_build_flags = [
         # TODO: investigate why this is needed and remove
         '-Wno-macro-redefined',
@@ -53,7 +51,7 @@ def get(ports, settings, shared):
         # CXXFLAGS
         '-std=c++11'
     ]
-    if settings.USE_PTHREADS:
+    if settings.PTHREADS:
       additional_build_flags.append('-pthread')
 
     ports.build_port(lib_src, lib_output, 'icu', includes=other_includes, flags=build_flags + additional_build_flags)
@@ -78,10 +76,19 @@ def get(ports, settings, shared):
     other_includes = [os.path.join(icu_source_path, 'common')]
     build_lib(lib_output, lib_src, other_includes, ['-DU_I18N_IMPLEMENTATION=1'])
 
+  # creator for libicu_io
+  def create_libicu_io(lib_output):
+    prepare_build()
+    lib_src = os.path.join(icu_source_path, 'io')
+    ports.install_headers(os.path.join(lib_src, 'unicode'), target='unicode')
+    other_includes = [os.path.join(icu_source_path, 'common'), os.path.join(icu_source_path, 'i18n')]
+    build_lib(lib_output, lib_src, other_includes, ['-DU_IO_IMPLEMENTATION=1'])
+
   return [
       shared.cache.get_lib(get_lib_name(libname_libicu_common, settings), create_libicu_common), # this also prepares the build
       shared.cache.get_lib(get_lib_name(libname_libicu_stubdata, settings), create_libicu_stubdata),
-      shared.cache.get_lib(get_lib_name(libname_libicu_i18n, settings), create_libicu_i18n)
+      shared.cache.get_lib(get_lib_name(libname_libicu_i18n, settings), create_libicu_i18n),
+      shared.cache.get_lib(get_lib_name(libname_libicu_io, settings), create_libicu_io)
   ]
 
 
@@ -89,11 +96,8 @@ def clear(ports, settings, shared):
   shared.cache.erase_lib(get_lib_name(libname_libicu_common, settings))
   shared.cache.erase_lib(get_lib_name(libname_libicu_stubdata, settings))
   shared.cache.erase_lib(get_lib_name(libname_libicu_i18n, settings))
-
-
-def process_args(ports):
-  return []
+  shared.cache.erase_lib(get_lib_name(libname_libicu_io, settings))
 
 
 def show():
-  return 'icu (USE_ICU=1; Unicode License)'
+  return 'icu (-sUSE_ICU=1 or --use-port=icu; Unicode License)'

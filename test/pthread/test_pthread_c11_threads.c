@@ -18,7 +18,7 @@ void do_once(void) {
 }
 
 // Because this thread is detached it can still be running
-// when the main thread exits.  And becasue of an emscripten
+// when the main thread exits.  And because of an emscripten
 // bug (https://github.com/emscripten-core/emscripten/issues/15186).
 // this means we can't write to stdout after the main thread
 // exits.  This means we can't use `thread_main` below because

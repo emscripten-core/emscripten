@@ -11,6 +11,11 @@
 #include <thread>
 
 #include <emscripten/proxying.h>
+#include <emscripten/threading.h>
+
+extern "C" {
+void _wasmfs_thread_utils_heartbeat(em_proxying_queue* ctx);
+}
 
 namespace emscripten {
 
@@ -21,10 +26,22 @@ class ProxyWorker {
   ProxyingQueue queue;
   std::thread thread;
 
+  // Used to notify the calling thread once the worker has been started.
+  bool started = false;
+  std::mutex mutex;
+  std::condition_variable cond;
+
 public:
   // Spawn the worker thread.
   ProxyWorker()
     : queue(), thread([&]() {
+        // Notify the caller that we have started.
+        {
+          std::unique_lock<std::mutex> lock(mutex);
+          started = true;
+        }
+        cond.notify_all();
+
         // Sometimes the main thread is spinning, waiting on a WasmFS lock held
         // by a thread trying to proxy work to this dedicated worker. In that
         // case, the proxying message won't be relayed by the main thread and
@@ -33,24 +50,36 @@ public:
         // progress even if the main thread is blocked.
         //
         // TODO: Remove this once we can postMessage directly between workers
-        // without involving the main thread.
+        // without involving the main thread or once all browsers ship
+        // Atomics.waitAsync.
         //
         // Note that this requires adding _emscripten_proxy_execute_queue to
         // EXPORTED_FUNCTIONS.
-        EM_ASM({
-          var intervalID =
-            setInterval(() => {
-              if (ABORT) {
-                clearInterval(intervalID);
-              } else {
-                _emscripten_proxy_execute_queue($0);
-              }
-            }, 50);
-          }, queue.queue);
+        _wasmfs_thread_utils_heartbeat(queue.queue);
 
         // Sit in the event loop performing work as it comes in.
         emscripten_exit_with_live_runtime();
-      }) {}
+      }) {
+
+    // Make sure the thread has actually started before returning. This allows
+    // subsequent code to assume the thread has already been spawned and not
+    // worry about potential deadlocks where it holds a lock while proxying an
+    // operation and meanwhile the main thread is blocked trying to acqure the
+    // same lock so is never able to spawn the worker thread.
+    //
+    // Unfortunately, this solution would cause the main thread to deadlock on
+    // itself, so for now assert that we are not on the main thread. In the
+    // future, we could provide an asynchronous version of this utility that
+    // calls a user callback once the worker has been started. This asynchronous
+    // version would be safe to use on the main thread.
+    assert(
+      !emscripten_is_main_browser_thread() &&
+      "cannot safely spawn dedicated workers from the main browser thread");
+    {
+      std::unique_lock<std::mutex> lock(mutex);
+      cond.wait(lock, [&]() { return started; });
+    }
+  }
 
   // Kill the worker thread.
   ~ProxyWorker() {

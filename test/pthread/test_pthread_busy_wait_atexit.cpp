@@ -14,7 +14,7 @@ void exit_handler() {
 void* thread_main(void*) {
   // Avoid using printf here since stdio is proxied back to the
   // main thread which is busy looping
-  _emscripten_out("in thread");
+  emscripten_out("in thread");
   atexit(exit_handler);
   done = true;
   return NULL;

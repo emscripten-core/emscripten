@@ -4,67 +4,65 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $MEMFS__deps: ['$FS', '$mmapAlloc'],
   $MEMFS: {
     ops_table: null,
-    mount: function(mount) {
-      return MEMFS.createNode(null, '/', {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */, 0);
+    mount(mount) {
+      return MEMFS.createNode(null, '/', {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */, 0);
     },
-    createNode: function(parent, name, mode, dev) {
+    createNode(parent, name, mode, dev) {
       if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
         // no supported
-        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
+        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       }
-      if (!MEMFS.ops_table) {
-        MEMFS.ops_table = {
-          dir: {
-            node: {
-              getattr: MEMFS.node_ops.getattr,
-              setattr: MEMFS.node_ops.setattr,
-              lookup: MEMFS.node_ops.lookup,
-              mknod: MEMFS.node_ops.mknod,
-              rename: MEMFS.node_ops.rename,
-              unlink: MEMFS.node_ops.unlink,
-              rmdir: MEMFS.node_ops.rmdir,
-              readdir: MEMFS.node_ops.readdir,
-              symlink: MEMFS.node_ops.symlink
-            },
-            stream: {
-              llseek: MEMFS.stream_ops.llseek
-            }
+      MEMFS.ops_table ||= {
+        dir: {
+          node: {
+            getattr: MEMFS.node_ops.getattr,
+            setattr: MEMFS.node_ops.setattr,
+            lookup: MEMFS.node_ops.lookup,
+            mknod: MEMFS.node_ops.mknod,
+            rename: MEMFS.node_ops.rename,
+            unlink: MEMFS.node_ops.unlink,
+            rmdir: MEMFS.node_ops.rmdir,
+            readdir: MEMFS.node_ops.readdir,
+            symlink: MEMFS.node_ops.symlink
           },
-          file: {
-            node: {
-              getattr: MEMFS.node_ops.getattr,
-              setattr: MEMFS.node_ops.setattr
-            },
-            stream: {
-              llseek: MEMFS.stream_ops.llseek,
-              read: MEMFS.stream_ops.read,
-              write: MEMFS.stream_ops.write,
-              allocate: MEMFS.stream_ops.allocate,
-              mmap: MEMFS.stream_ops.mmap,
-              msync: MEMFS.stream_ops.msync
-            }
-          },
-          link: {
-            node: {
-              getattr: MEMFS.node_ops.getattr,
-              setattr: MEMFS.node_ops.setattr,
-              readlink: MEMFS.node_ops.readlink
-            },
-            stream: {}
-          },
-          chrdev: {
-            node: {
-              getattr: MEMFS.node_ops.getattr,
-              setattr: MEMFS.node_ops.setattr
-            },
-            stream: FS.chrdev_stream_ops
+          stream: {
+            llseek: MEMFS.stream_ops.llseek
           }
-        };
-      }
+        },
+        file: {
+          node: {
+            getattr: MEMFS.node_ops.getattr,
+            setattr: MEMFS.node_ops.setattr
+          },
+          stream: {
+            llseek: MEMFS.stream_ops.llseek,
+            read: MEMFS.stream_ops.read,
+            write: MEMFS.stream_ops.write,
+            allocate: MEMFS.stream_ops.allocate,
+            mmap: MEMFS.stream_ops.mmap,
+            msync: MEMFS.stream_ops.msync
+          }
+        },
+        link: {
+          node: {
+            getattr: MEMFS.node_ops.getattr,
+            setattr: MEMFS.node_ops.setattr,
+            readlink: MEMFS.node_ops.readlink
+          },
+          stream: {}
+        },
+        chrdev: {
+          node: {
+            getattr: MEMFS.node_ops.getattr,
+            setattr: MEMFS.node_ops.setattr
+          },
+          stream: FS.chrdev_stream_ops
+        }
+      };
       var node = FS.createNode(parent, name, mode, dev);
       if (FS.isDir(node.mode)) {
         node.node_ops = MEMFS.ops_table.dir.node;
@@ -95,7 +93,7 @@ mergeInto(LibraryManager.library, {
     },
 
     // Given a file node, returns its file data converted to a typed array.
-    getFileDataAsTypedArray: function(node) {
+    getFileDataAsTypedArray(node) {
       if (!node.contents) return new Uint8Array(0);
       if (node.contents.subarray) return node.contents.subarray(0, node.usedBytes); // Make sure to not return excess unused bytes.
       return new Uint8Array(node.contents);
@@ -104,10 +102,7 @@ mergeInto(LibraryManager.library, {
     // Allocates a new backing store for the given node so that it can fit at least newSize amount of bytes.
     // May allocate more, to provide automatic geometric increase and amortized linear performance appending writes.
     // Never shrinks the storage.
-    expandFileStorage: function(node, newCapacity) {
-#if CAN_ADDRESS_2GB
-      newCapacity >>>= 0;
-#endif
+    expandFileStorage(node, newCapacity) {
       var prevCapacity = node.contents ? node.contents.length : 0;
       if (prevCapacity >= newCapacity) return; // No need to expand, the storage was already large enough.
       // Don't expand strictly to the given requested limit if it's only a very small increase, but instead geometrically grow capacity.
@@ -122,10 +117,7 @@ mergeInto(LibraryManager.library, {
     },
 
     // Performs an exact resize of the backing file storage to the given size, if the size is not exactly this, the storage is fully reallocated.
-    resizeFileStorage: function(node, newSize) {
-#if CAN_ADDRESS_2GB
-      newSize >>>= 0;
-#endif
+    resizeFileStorage(node, newSize) {
       if (node.usedBytes == newSize) return;
       if (newSize == 0) {
         node.contents = null; // Fully decommit when requesting a resize to zero.
@@ -141,7 +133,7 @@ mergeInto(LibraryManager.library, {
     },
 
     node_ops: {
-      getattr: function(node) {
+      getattr(node) {
         var attr = {};
         // device numbers reuse inode numbers.
         attr.dev = FS.isChrdev(node.mode) ? node.id : 1;
@@ -169,7 +161,7 @@ mergeInto(LibraryManager.library, {
         attr.blocks = Math.ceil(attr.size / attr.blksize);
         return attr;
       },
-      setattr: function(node, attr) {
+      setattr(node, attr) {
         if (attr.mode !== undefined) {
           node.mode = attr.mode;
         }
@@ -180,13 +172,13 @@ mergeInto(LibraryManager.library, {
           MEMFS.resizeFileStorage(node, attr.size);
         }
       },
-      lookup: function(parent, name) {
-        throw FS.genericErrors[{{{ cDefine('ENOENT') }}}];
+      lookup(parent, name) {
+        throw FS.genericErrors[{{{ cDefs.ENOENT }}}];
       },
-      mknod: function(parent, name, mode, dev) {
+      mknod(parent, name, mode, dev) {
         return MEMFS.createNode(parent, name, mode, dev);
       },
-      rename: function(old_node, new_dir, new_name) {
+      rename(old_node, new_dir, new_name) {
         // if we're overwriting a directory at new_name, make sure it's empty.
         if (FS.isDir(old_node.mode)) {
           var new_node;
@@ -196,7 +188,7 @@ mergeInto(LibraryManager.library, {
           }
           if (new_node) {
             for (var i in new_node.contents) {
-              throw new FS.ErrnoError({{{ cDefine('ENOTEMPTY') }}});
+              throw new FS.ErrnoError({{{ cDefs.ENOTEMPTY }}});
             }
           }
         }
@@ -208,42 +200,39 @@ mergeInto(LibraryManager.library, {
         new_dir.timestamp = old_node.parent.timestamp;
         old_node.parent = new_dir;
       },
-      unlink: function(parent, name) {
+      unlink(parent, name) {
         delete parent.contents[name];
         parent.timestamp = Date.now();
       },
-      rmdir: function(parent, name) {
+      rmdir(parent, name) {
         var node = FS.lookupNode(parent, name);
         for (var i in node.contents) {
-          throw new FS.ErrnoError({{{ cDefine('ENOTEMPTY') }}});
+          throw new FS.ErrnoError({{{ cDefs.ENOTEMPTY }}});
         }
         delete parent.contents[name];
         parent.timestamp = Date.now();
       },
-      readdir: function(node) {
+      readdir(node) {
         var entries = ['.', '..'];
-        for (var key in node.contents) {
-          if (!node.contents.hasOwnProperty(key)) {
-            continue;
-          }
+        for (var key of Object.keys(node.contents)) {
           entries.push(key);
         }
         return entries;
       },
-      symlink: function(parent, newname, oldpath) {
-        var node = MEMFS.createNode(parent, newname, 511 /* 0777 */ | {{{ cDefine('S_IFLNK') }}}, 0);
+      symlink(parent, newname, oldpath) {
+        var node = MEMFS.createNode(parent, newname, 511 /* 0777 */ | {{{ cDefs.S_IFLNK }}}, 0);
         node.link = oldpath;
         return node;
       },
-      readlink: function(node) {
+      readlink(node) {
         if (!FS.isLink(node.mode)) {
-          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
+          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
         }
         return node.link;
       },
     },
     stream_ops: {
-      read: function(stream, buffer, offset, length, position) {
+      read(stream, buffer, offset, length, position) {
         var contents = stream.node.contents;
         if (position >= stream.node.usedBytes) return 0;
         var size = Math.min(stream.node.usedBytes - position, length);
@@ -264,7 +253,7 @@ mergeInto(LibraryManager.library, {
       //         canOwn=true will not take ownership of the portion outside the bytes addressed by the view. This means that
       //         with canOwn=true, creating a copy of the bytes is avoided, but the caller shouldn't touch the passed in range
       //         of bytes anymore since their contents now represent file data inside the filesystem.
-      write: function(stream, buffer, offset, length, position, canOwn) {
+      write(stream, buffer, offset, length, position, canOwn) {
 #if ASSERTIONS
         // The data buffer should be a typed array view
         assert(!(buffer instanceof ArrayBuffer));
@@ -315,35 +304,35 @@ mergeInto(LibraryManager.library, {
         return length;
       },
 
-      llseek: function(stream, offset, whence) {
+      llseek(stream, offset, whence) {
         var position = offset;
-        if (whence === {{{ cDefine('SEEK_CUR') }}}) {
+        if (whence === {{{ cDefs.SEEK_CUR }}}) {
           position += stream.position;
-        } else if (whence === {{{ cDefine('SEEK_END') }}}) {
+        } else if (whence === {{{ cDefs.SEEK_END }}}) {
           if (FS.isFile(stream.node.mode)) {
             position += stream.node.usedBytes;
           }
         }
         if (position < 0) {
-          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
+          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
         }
         return position;
       },
-      allocate: function(stream, offset, length) {
+      allocate(stream, offset, length) {
         MEMFS.expandFileStorage(stream.node, offset + length);
         stream.node.usedBytes = Math.max(stream.node.usedBytes, offset + length);
       },
-      mmap: function(stream, length, position, prot, flags) {
+      mmap(stream, length, position, prot, flags) {
         if (!FS.isFile(stream.node.mode)) {
-          throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
+          throw new FS.ErrnoError({{{ cDefs.ENODEV }}});
         }
         var ptr;
         var allocated;
         var contents = stream.node.contents;
         // Only make a new copy when MAP_PRIVATE is specified.
-        if (!(flags & {{{ cDefine('MAP_PRIVATE') }}}) && contents.buffer === buffer) {
-          // We can't emulate MAP_SHARED when the file is not backed by the buffer
-          // we're mapping to (e.g. the HEAP buffer).
+        if (!(flags & {{{ cDefs.MAP_PRIVATE }}}) && contents.buffer === HEAP8.buffer) {
+          // We can't emulate MAP_SHARED when the file is not backed by the
+          // buffer we're mapping to (e.g. the HEAP buffer).
           allocated = false;
           ptr = contents.byteOffset;
         } else {
@@ -358,16 +347,13 @@ mergeInto(LibraryManager.library, {
           allocated = true;
           ptr = mmapAlloc(length);
           if (!ptr) {
-            throw new FS.ErrnoError({{{ cDefine('ENOMEM') }}});
+            throw new FS.ErrnoError({{{ cDefs.ENOMEM }}});
           }
-#if CAN_ADDRESS_2GB
-          ptr >>>= 0;
-#endif
           HEAP8.set(contents, ptr);
         }
-        return { ptr: ptr, allocated: allocated };
+        return { ptr, allocated };
       },
-      msync: function(stream, buffer, offset, length, mmapFlags) {
+      msync(stream, buffer, offset, length, mmapFlags) {
         MEMFS.stream_ops.write(stream, buffer, 0, length, offset, false);
         // should we check if bytesWritten and length are the same?
         return 0;

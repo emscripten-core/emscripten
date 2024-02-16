@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <SDL.h>
 #include <SDL_ttf.h>
-#include <hb.h>
 
 SDL_Window *window;
 SDL_Renderer *renderer;
@@ -21,8 +20,8 @@ void render()
     static SDL_Rect upperRect = {0, 0, 640, 240};
     static SDL_Rect lowerRect = {0, 240, 640, 240};
 
-    TTF_SetDirection(HB_DIRECTION_RTL);
-    TTF_SetScript(HB_SCRIPT_ARABIC);
+    TTF_SetFontDirection(font, TTF_DIRECTION_RTL);
+    TTF_SetFontScriptName(font, "Arab");
 
     SDL_Surface *helloSurface = TTF_RenderUTF8_Shaded(font, "سلام", colorA, colorB);
     SDL_Surface *worldSurface = TTF_RenderUTF8_Shaded(font, "جهان", colorB, colorA);

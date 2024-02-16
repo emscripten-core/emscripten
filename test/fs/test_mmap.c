@@ -180,11 +180,12 @@ void test_mmap_shared_with_offset() {
     assert(fd >= 0);
     size_t offset = sysconf(_SC_PAGE_SIZE) * 2;
 
-    char buffer[offset + 33];
-    memset(buffer, 0, offset + 33);
-    fread(buffer, 1, offset + 32, fd);
+    char buffer[33];
+    memset(buffer, 0, 33);
+    fseek(fd, offset, SEEK_SET);
+    fread(buffer, 1, 32, fd);
     // expect text written from mmap operation to appear at offset in the file
-    printf("yolo/sharedoffset.txt content=%s %zu\n", buffer + offset, offset);
+    printf("yolo/sharedoffset.txt content=%s %zu\n", buffer, offset);
     fclose(fd);
   }
 }
@@ -234,7 +235,7 @@ void test_mmap_overallocate() {
     assert(write(fd, "a", 1) != -1);
   }
 
-  EM_ASM_({
+  EM_ASM({
     const stream = FS.streams.find(stream => stream.path.indexOf('yolo/overallocatedfile.txt') >= 0);
     assert(stream.node.usedBytes === Number($0),
       'Used bytes on the over-allocated file (' + stream.node.usedBytes + ') ' +

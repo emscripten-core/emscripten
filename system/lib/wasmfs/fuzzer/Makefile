@@ -2,7 +2,7 @@ EMCC = ../../../../emcc
 SOURCES = fuzzer.cpp random.cpp workload.cpp support/command-line.cpp
 
 # Build with WasmFS enabled and pthreads.
-EMFLAGS = -sWASMFS -sPROXY_TO_PTHREAD -sUSE_PTHREADS -sALLOW_MEMORY_GROWTH -Werror -Wno-pthreads-mem-growth -I. --profiling-funcs 
+EMFLAGS = -sWASMFS -sPROXY_TO_PTHREAD -pthread sALLOW_MEMORY_GROWTH -Werror -Wno-pthreads-mem-growth -I. --profiling-funcs 
 CFLAGS = -std=c++17
 
 .PHONY: build

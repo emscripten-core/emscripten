@@ -5,15 +5,13 @@
 double previousRafTime = 0;
 int funcExecuted = 0;
 
-void testDone(void *userData)
-{
+void testDone(void *userData) {
 	assert((long)userData == 2);
 	assert(funcExecuted == 10);
 	exit(0);
 }
 
-EM_BOOL tick(double time, void *userData)
-{
+EM_BOOL tick(double time, void *userData) {
 	assert(time > previousRafTime);
 	previousRafTime = time;
 	assert((long)userData == 1);
@@ -25,7 +23,6 @@ EM_BOOL tick(double time, void *userData)
 	return funcExecuted < 10;
 }
 
-int main()
-{
+int main() {
 	emscripten_request_animation_frame_loop(tick, (void*)1);
 }

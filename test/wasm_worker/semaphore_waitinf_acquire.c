@@ -6,10 +6,6 @@
 
 // Tests emscripten_semaphore_init(), emscripten_semaphore_waitinf_acquire() and emscripten_semaphore_release()
 
-EM_JS(void, console_log, (char* str), {
-  console.log(UTF8ToString(str));
-});
-
 emscripten_semaphore_t threadsWaiting = (emscripten_semaphore_t)12345315; // initialize with garbage
 emscripten_semaphore_t threadsRunning = EMSCRIPTEN_SEMAPHORE_T_STATIC_INITIALIZER(0); // initialize with static initializer
 emscripten_semaphore_t threadsCompleted = EMSCRIPTEN_SEMAPHORE_T_STATIC_INITIALIZER(0);
@@ -18,56 +14,56 @@ int threadCounter = 0;
 
 void worker_main()
 {
-  console_log("worker_main");
+  emscripten_console_log("worker_main");
 
   // Increment semaphore to mark that this thread is waiting for a signal from control thread to start.
   emscripten_semaphore_release(&threadsWaiting, 1);
 
   // Acquire thread run semaphore once main thread has given this thread a go signal.
-  console_log("worker_main: waiting for thread run signal");
+  emscripten_console_log("worker_main: waiting for thread run signal");
   emscripten_semaphore_waitinf_acquire(&threadsRunning, 1);
 
   // Do heavy computation:
-  console_log("worker_main: incrementing work");
+  emscripten_console_log("worker_main: incrementing work");
   emscripten_atomic_add_u32((void*)&threadCounter, 1);
 
   // Increment semaphore to signal that this thread has finished.
-  console_log("worker_main: thread completed");
+  emscripten_console_log("worker_main: thread completed");
   emscripten_semaphore_release(&threadsCompleted, 1);
 }
 
 void control_thread()
 {
   // Wait until we have three threads available to start running.
-  console_log("control_thread: waiting for three threads to complete loading");
+  emscripten_console_log("control_thread: waiting for three threads to complete loading");
   emscripten_semaphore_waitinf_acquire(&threadsWaiting, 3);
 
   // Set the three waiting threads to run simultaneously.
   assert(threadCounter == 0);
-  console_log("control_thread: release three threads to run");
+  emscripten_console_log("control_thread: release three threads to run");
   emscripten_semaphore_release(&threadsRunning, 3);
 
   // Wait until we have 3 threads completed their run.
-  console_log("control_thread: waiting for three threads to complete");
+  emscripten_console_log("control_thread: waiting for three threads to complete");
   emscripten_semaphore_waitinf_acquire(&threadsCompleted, 3);
   assert(threadCounter == 3);
 
   // Wait until we have next 3 threads available to start running.
-  console_log("control_thread: waiting for next three threads to be ready");
+  emscripten_console_log("control_thread: waiting for next three threads to be ready");
   emscripten_semaphore_waitinf_acquire(&threadsWaiting, 3);
 
   // Set the three waiting threads to run simultaneously.
   assert(threadCounter == 3);
-  console_log("control_thread: setting next three threads go");
+  emscripten_console_log("control_thread: setting next three threads go");
   emscripten_semaphore_release(&threadsRunning, 3);
 
   // Wait until we have the final 3 threads completed their run.
-  console_log("control_thread: waiting for the last three threads to finish");
+  emscripten_console_log("control_thread: waiting for the last three threads to finish");
   emscripten_semaphore_waitinf_acquire(&threadsCompleted, 3);
-  console_log("control_thread: threads finished");
+  emscripten_console_log("control_thread: threads finished");
   assert(threadCounter == 6);
 
-  console_log("control_thread: test finished");
+  emscripten_console_log("control_thread: test finished");
 #ifdef REPORT_RESULT
   REPORT_RESULT(0);
 #endif

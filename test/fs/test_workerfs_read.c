@@ -72,5 +72,12 @@ int main() {
 
   assert(blobFileExists);
   assert(fileTxtExists);
+
+  // attemping to read a worker node as a link should result in EINVAL
+  buf[0] = '\0';
+  assert(readlink("/work/blob.txt", buf, sizeof(buf)) == -1);
+  assert(buf[0] == '\0');
+  assert(errno == EINVAL);
+
   return 0;
 }

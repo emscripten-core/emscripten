@@ -60,16 +60,6 @@ wss._socket.remotePort;
 /**
  * @suppress {duplicate}
  */
-var process;
-
-/**
- * @suppress {duplicate}
- */
-var assert;
-
-/**
- * @suppress {duplicate}
- */
 var fs;
 
 /**
@@ -111,3 +101,6 @@ Buffer.prototype.slice = function(start, end) {};
  * @nosideeffects
  */
 Buffer.prototype.toString = function(encoding, start, end) {};
+
+Worker.prototype.ref = function() {};
+Worker.prototype.unref = function() {};

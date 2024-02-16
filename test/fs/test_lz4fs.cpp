@@ -7,6 +7,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <unistd.h>
+#include <errno.h>
 
 #include <emscripten.h>
 
@@ -113,6 +115,15 @@ extern "C" void EMSCRIPTEN_KEEPALIVE finish() {
   fclose(f1);
   fclose(f2);
   fclose(f3);
+
+  // attemping to read a lz4 node as a link should be invalid
+  buffer[0] = '\0';
+  assert(readlink("file1.txt", buffer, sizeof(buffer)) == -1);
+  assert(buffer[0] == '\0');
+  assert(errno == EINVAL);
+  assert(readlink("subdir/file2.txt", buffer, sizeof(buffer)) == -1);
+  assert(buffer[0] == '\0');
+  assert(errno == EINVAL);
 
   // all done
   int result;

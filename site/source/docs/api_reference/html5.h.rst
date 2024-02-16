@@ -67,7 +67,7 @@ The ``target`` parameter is the ID of the HTML element to which the callback reg
   - ``EMSCRIPTEN_EVENT_TARGET_SCREEN``: The event listener is applied to the JavaScript ``window.screen`` object.
   - ``0`` or ``NULL``: If building with the option ``-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR`` (default), ``NULL`` denotes an invalid element. If building with legacy option ``-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0`` (not recommended), a default element is chosen automatically based on the event type.
   - ``#canvas``: If building with legacy option ``-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0`` (not recommended), the event listener is applied to the Emscripten default WebGL canvas element. If building with the option ``-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR`` (default), ``#canvas`` is interpreted as a CSS query selector: "the first element with CSS ID 'canvas'".
-  - Any other string: A CSS selector lookup is performed to the DOM with the passed string, and the the event listener is applied to the first element that matches the query.
+  - Any other string: A CSS selector lookup is performed to the DOM with the passed string, and the event listener is applied to the first element that matches the query.
 
 If the above are insufficient for you, you can add custom mappings in JavaScript
 using something like
@@ -1662,13 +1662,13 @@ Struct
 
     An ID for the brand or style of the connected gamepad device. Typically, this will include the USB vendor and a product ID.
 
-    Maximum size 64 ``char`` (i.e. ``EM_UTF8 id[128]``).
+    Maximum size 64 ``char`` (i.e. ``EM_UTF8 id[64]``).
 
   .. c:member:: EM_UTF8 mapping
 
     A string that identifies the layout or control mapping of this device.
 
-    Maximum size 128 ``char`` (i.e. ``EM_UTF8 mapping[128]``).
+    Maximum size 64 ``char`` (i.e. ``EM_UTF8 mapping[64]``).
 
 
 
@@ -1926,7 +1926,7 @@ Defines
 
 .. c:type:: EMSCRIPTEN_WEBGL_CONTEXT_HANDLE
 
-  Represents a handle to an Emscripten WebGL context object. The value 0 denotes an invalid/no context (this is a typedef to an ``int``).
+  Represents a handle to an Emscripten WebGL context object. The value 0 denotes an invalid/no context (this is a typedef to an ``intptr_t``).
 
 
 Struct
@@ -2009,7 +2009,7 @@ Struct
 
     If the current browser does not support OffscreenCanvas, you can specify the ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS`` WebGL context creation flag. If this flag is passed, and code was compiled with ``-sOFFSCREEN_FRAMEBUFFER`` enabled, the WebGL context will be created as a "proxied context". In this context mode, the WebGLRenderingContext object will actually be created on the main browser thread, and all WebGL API calls will be proxied as asynchronous messages from the pthread into the main thread. This will have a performance and latency impact in comparison to OffscreenCanvas contexts, however unlike OffscreenCanvas-based contexts, proxied contexts can be shared across any number of pthreads: you can use the ``emscripten_webgl_make_context_current()`` function in any pthread to activate and deactivate access to the WebGL context: for example, you could have one WebGL loading thread, and another WebGL rendering thread that coordinate shared access to the WebGL rendering context by cooperatively acquiring and releasing access to the WebGL rendering context via the ``emscripten_webgl_make_context_current()`` function. Proxied contexts do not require any special support from the browser, so any WebGL capable browser can create a proxied WebGL context.
 
-    The ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS`` WebGL context creation flag will always create a proxied context, even if the browser did support OffscreenCanvas. If you would like to prefer to create a higher performance OffscreenCanvas context whenever suppported by the browser, but only fall back to a proxied WebGL context to keep compatibility with browsers that do not yet have OffscreenCanvas support, you can specify the ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK`` context creation flag. In order to use this flag, code should be compiled with both ``-sOFFSCREEN_FRAMEBUFFER`` and ``-sOFFSCREENCANVAS_SUPPORT`` linker flags.
+    The ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS`` WebGL context creation flag will always create a proxied context, even if the browser did support OffscreenCanvas. If you would like to prefer to create a higher performance OffscreenCanvas context whenever supported by the browser, but only fall back to a proxied WebGL context to keep compatibility with browsers that do not yet have OffscreenCanvas support, you can specify the ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK`` context creation flag. In order to use this flag, code should be compiled with both ``-sOFFSCREEN_FRAMEBUFFER`` and ``-sOFFSCREENCANVAS_SUPPORT`` linker flags.
 
     Default value of ``proxyContextToMainThread`` after calling ``emscripten_webgl_init_context_attributes()`` is ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW``, if the WebGL context is being created on the main thread. This means that by default WebGL contexts created on the main thread are not shareable between multiple threads (to avoid accidental performance loss from enabling proxying when/if it is not needed). To create a context that can be shared between multiple pthreads, set the ``proxyContextToMainThread`` flag ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS``.
 
@@ -2086,7 +2086,7 @@ Functions
   :type target: const char*
   :param attributes: The attributes of the requested context version.
   :type attributes: const EmscriptenWebGLContextAttributes*
-  :returns: On success, a strictly positive value that represents a handle to the created context. On failure, a negative number that can be cast to an |EMSCRIPTEN_RESULT| field to get the reason why the context creation failed.
+  :returns: On success, a non-zero value that represents a handle to the created context. On failure, 0.
   :rtype: |EMSCRIPTEN_WEBGL_CONTEXT_HANDLE|
 
 
@@ -2373,33 +2373,6 @@ Functions
   counting time from 0 at the time when a pthread starts)
 
   :returns: A high precision wallclock time value in msecs.
-
-
-Console
-=======
-
-Functions
----------
-
-.. c:function:: void emscripten_console_log(const char *utf8String)
-
-  Prints a string using ``console.log()``.
-
-  :param utf8String: A string encoded as UTF-8.
-
-
-.. c:function:: void emscripten_console_warn(const char *utf8String)
-
-  Prints a string using ``console.warn()``.
-
-  :param utf8String: A string encoded as UTF-8.
-
-
-.. c:function:: void emscripten_console_error(const char *utf8String)
-
-  Prints a string using ``console.error()``.
-
-  :param utf8String: A string encoded as UTF-8.
 
 
 Throw

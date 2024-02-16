@@ -33,12 +33,8 @@ def clear(ports, settings, shared):
   shared.cache.erase_lib('libz.a')
 
 
-def process_args(ports):
-  return []
-
-
 def show():
-  return 'zlib (USE_ZLIB=1; zlib license)'
+  return 'zlib (-sUSE_ZLIB=1 or --use-port=zlib; zlib license)'
 
 
 zconf_h = r'''/* zconf.h -- configuration of the zlib compression library

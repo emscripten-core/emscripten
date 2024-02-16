@@ -22,12 +22,12 @@ function visitNodes(root, types, func) {
   for (const member in root) {
     if (Array.isArray(root[member])) {
       for (const elem of root[member]) {
-        if (elem.type) {
+        if (elem?.type) {
           const continueTraversal = visitNodes(elem, types, func);
           if (continueTraversal === false) return false;
         }
       }
-    } else if (root[member] && root[member].type) {
+    } else if (root[member]?.type) {
       const continueTraversal = visitNodes(root[member], types, func);
       if (continueTraversal === false) return false;
     }
@@ -45,11 +45,18 @@ function optPassSimplifyModularizeFunction(ast) {
     if (node.params.length == 1 && node.params[0].name == 'Module') {
       const body = node.body.body;
       // Nuke 'Module = Module || {};'
-      if (body[0].type == 'ExpressionStatement' && body[0].expression.type == 'AssignmentExpression' && body[0].expression.left.name == 'Module') {
+      if (
+        body[0].type == 'ExpressionStatement' &&
+        body[0].expression.type == 'AssignmentExpression' &&
+        body[0].expression.left.name == 'Module'
+      ) {
         body.splice(0, 1);
       }
       // Replace 'function(Module) {var f = Module;' -> 'function(f) {'
-      if (body[0].type == 'VariableDeclaration' && body[0].declarations[0]?.init?.name == 'Module') {
+      if (
+        body[0].type == 'VariableDeclaration' &&
+        body[0].declarations[0]?.init?.name == 'Module'
+      ) {
         node.params[0].name = body[0].declarations[0].id.name;
         body[0].declarations.splice(0, 1);
         if (body[0].declarations.length == 0) {
@@ -57,22 +64,6 @@ function optPassSimplifyModularizeFunction(ast) {
         }
       }
       return false;
-    }
-  });
-}
-
-// Closure integration of the Module object generates an awkward "var b; b || (b = Module);" code.
-// 'b || (b = Module)' -> 'b = Module'.
-function optPassSimplifyModuleInitialization(ast) {
-  visitNodes(ast, ['BlockStatement', 'Program'], (node) => {
-    for (const n of node.body) {
-      if (n.type == 'ExpressionStatement' && n.expression.type == 'LogicalExpression' && n.expression.operator == '||' &&
-        n.expression.left.name === n.expression.right.left?.name && n.expression.right.right.name == 'Module') {
-        // Clear out the logical operator.
-        n.expression = n.expression.right;
-        // There is only one Module assignment, so can finish the pass here.
-        return false;
-      }
     }
   });
 }
@@ -169,7 +160,11 @@ function optPassMergeVarInitializationAssignments(ast) {
     const name = nodeArray[i].expression.left.name;
     for (let j = i - 1; j >= 0; --j) {
       const n = nodeArray[j];
-      if (n.type == 'ExpressionStatement' && n.expression.type == 'AssignmentExpression' && n.expression.left.name == name) {
+      if (
+        n.type == 'ExpressionStatement' &&
+        n.expression.type == 'AssignmentExpression' &&
+        n.expression.left.name == name
+      ) {
         return [null, null];
       }
       if (n.type == 'VariableDeclaration') {
@@ -207,9 +202,8 @@ function optPassMergeVarInitializationAssignments(ast) {
 }
 
 function runOnJsText(js, pretty = false) {
-  const ast = acorn.parse(js, {ecmaVersion: 6});
+  const ast = acorn.parse(js, {ecmaVersion: 2021});
 
-  optPassSimplifyModuleInitialization(ast);
   optPassRemoveRedundantOperatorNews(ast);
 
   let progress = true;
@@ -222,7 +216,11 @@ function runOnJsText(js, pretty = false) {
   optPassSimplifyModularizeFunction(ast);
 
   const terserAst = terser.AST_Node.from_mozilla_ast(ast);
-  const output = terserAst.print_to_string({beautify: pretty, indent_level: pretty ? 1 : 0});
+  const output = terserAst.print_to_string({
+    wrap_func_args: false,
+    beautify: pretty,
+    indent_level: pretty ? 1 : 0,
+  });
 
   return output;
 }
@@ -239,7 +237,7 @@ let numTestFailures = 0;
 function test(input, expected) {
   const observed = runOnJsText(input);
   if (observed != expected) {
-    console.error(`Input: ${input}\nobserved: ${observed}\nexpected: ${expected}\n`);
+    console.error(`ERROR: Input: ${input}\nobserved: ${observed}\nexpected: ${expected}\n`);
     ++numTestFailures;
   } else {
     console.log(`OK: ${input} -> ${expected}`);
@@ -248,17 +246,19 @@ function test(input, expected) {
 
 function runTests() {
   // optPassSimplifyModularizeFunction:
-  test('var Module = function(Module) {Module = Module || {};var f = Module;}', 'var Module=function(f){};');
-
-  // optPassSimplifyModuleInitialization:
-  test('b || (b = Module);', 'b=Module;');
-  test('function foo(){b || (b = Module);}', 'function foo(){b=Module}');
+  test(
+    'var Module = function(Module) {Module = Module || {};var f = Module;}',
+    'var Module=function(f){};',
+  );
 
   // optPassRemoveRedundantOperatorNews:
   test('new Uint16Array(a);', '');
   test('new Uint16Array(a),new Uint16Array(a);', ';');
   test("new function(a) {new TextDecoder(a);}('utf8');", '');
-  test('WebAssembly.instantiate(c.wasm,{}).then(function(a){new Int8Array(b);});', 'WebAssembly.instantiate(c.wasm,{}).then(function(a){});');
+  test(
+    'WebAssembly.instantiate(c.wasm,{}).then((a) => {new Int8Array(b);});',
+    'WebAssembly.instantiate(c.wasm,{}).then(a=>{});',
+  );
   test('let x=new Uint16Array(a);', 'let x=new Uint16Array(a);');
 
   // optPassMergeVarDeclarations:
@@ -271,16 +271,25 @@ function runTests() {
   test('var a = 1, b; ++a; var c;', 'var a=1,b,c;++a;');
 
   // Interaction between multiple passes:
-  test('var d, f; f = new Uint8Array(16); var h = f.buffer; d = new Uint8Array(h);', 'var f=new Uint8Array(16),h=f.buffer,d=new Uint8Array(h);');
+  test(
+    'var d, f; f = new Uint8Array(16); var h = f.buffer; d = new Uint8Array(h);',
+    'var f=new Uint8Array(16),h=f.buffer,d=new Uint8Array(h);',
+  );
 
   // Older versions of terser would produce sub-optimal output for this.
   // We keep this test around to prevent regression.
   test('var i=new Image;i.onload=()=>{}', 'var i=new Image;i.onload=()=>{};');
 
+  // Test that arrays containing nulls don't cause issues
+  test('[,];', '[,];');
+
+  // Test optional chaining operator
+  test('console?.log("");', 'console?.log("");');
+
   process.exit(numTestFailures);
 }
 
-const args = process['argv'].slice(2);
+const args = process.argv.slice(2);
 
 function readBool(arg) {
   let ret = false;

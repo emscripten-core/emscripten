@@ -146,8 +146,9 @@ void test() {
   close(fd);
 
   // lstat a link - with AT_FDCWD and AT_SYMLINK_NOFOLLOW.
+  // Also test that AT_NO_AUTOMOUNT is ignored.
   memset(&s, 0, sizeof(s));
-  err = fstatat(AT_FDCWD, "folder/file-link", &s, AT_SYMLINK_NOFOLLOW);
+  err = fstatat(AT_FDCWD, "folder/file-link", &s, AT_SYMLINK_NOFOLLOW|AT_NO_AUTOMOUNT);
   assert(!err);
   assert(s.st_dev);
   assert(s.st_ino);

@@ -17,6 +17,8 @@
 #include <emscripten/threading.h>
 #include <emscripten/console.h>
 
+#include "emscripten_internal.h"
+
 // From https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/readyState
 #define STATE_UNSENT           0 // Client has been created. open() not called yet.
 #define STATE_OPENED           1 // open() has been called.
@@ -30,12 +32,6 @@
 // enable internal debugging. #define FETCH_DEBUG
 
 static void fetch_free(emscripten_fetch_t* fetch);
-
-// APIs defined in JS
-void emscripten_start_fetch(emscripten_fetch_t* fetch);
-size_t _emscripten_fetch_get_response_headers_length(int32_t fetchID);
-size_t _emscripten_fetch_get_response_headers(int32_t fetchID, char *dst, size_t dstSizeBytes);
-void _emscripten_fetch_free(unsigned int);
 
 typedef struct emscripten_fetch_queue {
   emscripten_fetch_t** queuedOperations;
@@ -61,7 +57,7 @@ void emscripten_proxy_fetch(emscripten_fetch_t* fetch) {
   //	TODO handle case when queue->numQueuedItems >= queue->queueSize
   queue->queuedOperations[queue->numQueuedItems++] = fetch;
 #ifdef FETCH_DEBUG
-  emscripten_console_logf("Queued fetch to fetch-worker to process. There are "
+  emscripten_dbgf("Queued fetch to fetch-worker to process. There are "
                           "now %d operations in the queue.", queue->numQueuedItems);
 #endif
   // TODO: mutex unlock
@@ -71,12 +67,10 @@ void emscripten_fetch_attr_init(emscripten_fetch_attr_t* fetch_attr) {
   memset(fetch_attr, 0, sizeof(emscripten_fetch_attr_t));
 }
 
-static int globalFetchIdCounter = 1;
 emscripten_fetch_t* emscripten_fetch(emscripten_fetch_attr_t* fetch_attr, const char* url) {
-  if (!fetch_attr)
-    return 0;
-  if (!url)
-    return 0;
+  if (!fetch_attr || !url) {
+    return NULL;
+  }
 
   const bool synchronous = (fetch_attr->attributes & EMSCRIPTEN_FETCH_SYNCHRONOUS) != 0;
   const bool readFromIndexedDB =
@@ -87,16 +81,15 @@ emscripten_fetch_t* emscripten_fetch(emscripten_fetch_attr_t* fetch_attr, const 
   const bool performXhr = (fetch_attr->attributes & EMSCRIPTEN_FETCH_NO_DOWNLOAD) == 0;
   if (emscripten_is_main_browser_thread() && synchronous && (performXhr || readFromIndexedDB || writeToIndexedDB)) {
 #ifdef FETCH_DEBUG
-    emscripten_console_errorf("emscripten_fetch('%s') failed! Synchronous blocking XHRs and IndexedDB operations are not supported on the main browser thread. Try dropping the EMSCRIPTEN_FETCH_SYNCHRONOUS flag, or run with the linker flag --proxy-to-worker to decouple main C runtime thread from the main browser thread.", url);
+    emscripten_errf("emscripten_fetch('%s') failed! Synchronous blocking XHRs and IndexedDB operations are not supported on the main browser thread. Try dropping the EMSCRIPTEN_FETCH_SYNCHRONOUS flag, or run with the linker flag --proxy-to-worker to decouple main C runtime thread from the main browser thread.", url);
 #endif
-    return 0;
+    return NULL;
   }
 
-  emscripten_fetch_t* fetch = (emscripten_fetch_t*)malloc(sizeof(emscripten_fetch_t));
-  if (!fetch)
-    return 0;
-  memset(fetch, 0, sizeof(emscripten_fetch_t));
-  fetch->id = globalFetchIdCounter++; // TODO: make this thread-safe!
+  emscripten_fetch_t* fetch = (emscripten_fetch_t*)calloc(1, sizeof(emscripten_fetch_t));
+  if (!fetch) {
+    return NULL;
+  }
   fetch->userData = fetch_attr->userData;
   fetch->__attributes.timeoutMSecs = fetch_attr->timeoutMSecs;
   fetch->__attributes.attributes = fetch_attr->attributes;
@@ -121,6 +114,8 @@ emscripten_fetch_t* emscripten_fetch(emscripten_fetch_attr_t* fetch_attr, const 
   STRDUP_OR_ABORT(fetch->__attributes.userName, fetch_attr->userName);
   STRDUP_OR_ABORT(fetch->__attributes.password, fetch_attr->password);
   STRDUP_OR_ABORT(fetch->__attributes.overriddenMimeType, fetch_attr->overriddenMimeType);
+#undef STRDUP_OR_ABORT
+
   if (fetch_attr->requestHeaders) {
     size_t headersCount = 0;
     while (fetch_attr->requestHeaders[headersCount])
@@ -128,54 +123,26 @@ emscripten_fetch_t* emscripten_fetch(emscripten_fetch_attr_t* fetch_attr, const 
     const char** headers = (const char**)malloc((headersCount + 1) * sizeof(const char*));
     if (!headers) {
       fetch_free(fetch);
-      return 0;
+      return NULL;
     }
     memset((void*)headers, 0, (headersCount + 1) * sizeof(const char*));
 
     for (size_t i = 0; i < headersCount; ++i) {
       headers[i] = strdup(fetch_attr->requestHeaders[i]);
-      if (!headers[i])
-
-      {
+      if (!headers[i]) {
         for (size_t j = 0; j < i; ++j) {
           free((void*)headers[j]);
         }
         free((void*)headers);
         fetch_free(fetch);
-        return 0;
+        return NULL;
       }
     }
     headers[headersCount] = 0;
     fetch->__attributes.requestHeaders = headers;
   }
 
-#undef STRDUP_OR_ABORT
-
-// In asm.js we can use a fetch worker, which is created from the main asm.js
-// code. That lets us do sync operations by blocking on the worker etc.
-// In the wasm backend we don't have a fetch worker implemented yet, however,
-// we can still do basic synchronous fetches in the same places: if we can
-// block on another thread then we aren't the main thread, and if we aren't
-// the main thread then synchronous xhrs are legitimate.
-#if __EMSCRIPTEN_PTHREADS__ && !defined(__wasm__)
-  const bool waitable = (fetch_attr->attributes & EMSCRIPTEN_FETCH_WAITABLE) != 0;
-  // Depending on the type of fetch, we can either perform it in the same Worker/thread than the
-  // caller, or we might need to run it in a separate Worker. There is a dedicated fetch worker that
-  // is available for the fetch, but in some scenarios it might be desirable to run in the same
-  // Worker as the caller, so deduce here whether to run the fetch in this thread, or if we need to
-  // use the fetch-worker instead.
-  if (waitable // Waitable fetches can be synchronously waited on, so must always be proxied
-      || (synchronous &&
-           (readFromIndexedDB || writeToIndexedDB))) // Synchronous IndexedDB access needs proxying
-  {
-    fetch->__proxyState = 1; // sent to proxy worker.
-    emscripten_proxy_fetch(fetch);
-
-    if (synchronous)
-      emscripten_fetch_wait(fetch, INFINITY);
-  } else
-#endif
-    emscripten_start_fetch(fetch);
+  emscripten_start_fetch(fetch);
   return fetch;
 }
 
@@ -189,7 +156,7 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t* fetch, double timeou
   if (proxyState != 1)
     return EMSCRIPTEN_RESULT_INVALID_PARAM; // the fetch should be ongoing?
 #ifdef FETCH_DEBUG
-  emscripten_console_log("fetch: emscripten_fetch_wait..");
+  emscripten_dbg("fetch: emscripten_fetch_wait..");
 #endif
   if (timeoutMsecs <= 0)
     return EMSCRIPTEN_RESULT_TIMED_OUT;
@@ -200,12 +167,12 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t* fetch, double timeou
         return EMSCRIPTEN_RESULT_TIMED_OUT;
       proxyState = fetch->__proxyState;
     } else {
-      emscripten_console_error("fetch: emscripten_fetch_wait failed: main thread cannot block to wait for long periods of time! Migrate the application to run in a worker to perform synchronous file IO, or switch to using asynchronous IO.");
+      emscripten_err("fetch: emscripten_fetch_wait failed: main thread cannot block to wait for long periods of time! Migrate the application to run in a worker to perform synchronous file IO, or switch to using asynchronous IO.");
       return EMSCRIPTEN_RESULT_FAILED;
     }
   }
 #ifdef FETCH_DEBUG
-  emscripten_console_log("fetch: emscripten_fetch_wait done..");
+  emscripten_dbg("fetch: emscripten_fetch_wait done..");
 #endif
 
   if (proxyState == 2)
@@ -219,7 +186,7 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t* fetch, double timeou
     return EMSCRIPTEN_RESULT_TIMED_OUT /*Main thread testing completion with sleep=0msecs*/;
   else {
 #ifdef FETCH_DEBUG
-    emscripten_console_error("fetch: emscripten_fetch_wait() cannot stop to wait when building without pthreads!");
+    emscripten_err("fetch: emscripten_fetch_wait() cannot stop to wait when building without pthreads!");
 #endif
     return EMSCRIPTEN_RESULT_FAILED /*Main thread cannot block to wait*/;
   }

@@ -77,7 +77,7 @@ int __pthread_cond_timedwait(pthread_cond_t *restrict c, pthread_mutex_t *restri
 
 #ifdef __EMSCRIPTEN__
 	// TODO: Optimize this away in MINIMAL_RUNTIME.
-	if (pthread_self() == emscripten_main_browser_thread_id()) {
+	if (emscripten_is_main_browser_thread()) {
 		emscripten_check_blocking_allowed();
 	}
 #endif

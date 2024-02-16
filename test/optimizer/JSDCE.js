@@ -19,6 +19,10 @@ function g(a) {
   return a+1;
 }
 Module['g'] = g;
+const sx = {a:1};
+const sar = [1,2,3];
+Module['spread'] = { b:2, ...sx };
+Module['spread2'] = [ ...sar, 4, 5, 6 ];
 
 // used
 function h(a) {

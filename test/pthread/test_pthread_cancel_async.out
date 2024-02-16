@@ -1,0 +1,6 @@
+Starting thread..
+Thread started!
+Canceling thread..
+Called clean-up handler with arg 42
+Joining thread..
+done

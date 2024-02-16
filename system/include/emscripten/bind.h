@@ -18,7 +18,11 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#if __cplusplus >= 201703L
+#include <optional>
+#endif
 
+#include <emscripten/em_macros.h>
 #include <emscripten/val.h>
 #include <emscripten/wire.h>
 
@@ -36,7 +40,7 @@ enum class sharing_policy {
 
 namespace internal {
 
-typedef long GenericEnumValue;
+typedef int GenericEnumValue;
 
 typedef void* GenericFunction;
 typedef void (*VoidFunctionPtr)(void);
@@ -55,7 +59,6 @@ void _embind_register_void(
 void _embind_register_bool(
     TYPEID boolType,
     const char* name,
-    size_t size,
     bool trueValue,
     bool falseValue);
 
@@ -88,8 +91,7 @@ void _embind_register_std_wstring(
     const char* name);
 
 void _embind_register_emval(
-    TYPEID emvalType,
-    const char* name);
+    TYPEID emvalType);
 
 void _embind_register_memory_view(
     TYPEID memoryViewType,
@@ -102,7 +104,8 @@ void _embind_register_function(
     const TYPEID argTypes[],
     const char* signature,
     GenericFunction invoker,
-    GenericFunction function);
+    GenericFunction function,
+    bool isAsync);
 
 void _embind_register_value_array(
     TYPEID tupleType,
@@ -178,7 +181,8 @@ void _embind_register_class_function(
     const char* invokerSignature,
     GenericFunction invoker,
     void* context,
-    unsigned isPureVirtual);
+    unsigned isPureVirtual,
+    bool isAsync);
 
 void _embind_register_class_property(
     TYPEID classType,
@@ -199,7 +203,8 @@ void _embind_register_class_class_function(
     const TYPEID argTypes[],
     const char* invokerSignature,
     GenericFunction invoker,
-    GenericFunction method);
+    GenericFunction method,
+    bool isAsync);
 
 void _embind_register_class_class_property(
     TYPEID classType,
@@ -245,6 +250,14 @@ void _embind_register_constant(
     const char* name,
     TYPEID constantType,
     double value);
+
+void _embind_register_optional(
+    TYPEID optionalType,
+    TYPEID type);
+
+void _embind_register_user_type(
+    TYPEID type,
+    const char* typeName);
 
 // Register an InitFunc in the global linked list of init functions.
 void _embind_register_bindings(struct InitFunc* f);
@@ -310,6 +323,35 @@ struct allow_raw_pointers {
 template<typename Slot>
 struct allow_raw_pointer : public allow_raw_pointers {
 };
+
+struct async {
+    template<typename InputType, int Index>
+    struct Transform {
+        typedef InputType type;
+    };
+};
+
+namespace internal {
+
+template<typename... Policies>
+struct isAsync;
+
+template<typename... Rest>
+struct isAsync<async, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename T, typename... Rest>
+struct isAsync<T, Rest...> {
+    static constexpr bool value = isAsync<Rest...>::value;
+};
+
+template<>
+struct isAsync<> {
+    static constexpr bool value = false;
+};
+
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // select_overload and select_const
@@ -385,6 +427,25 @@ struct Invoker<void, Args...> {
         );
     }
 };
+
+namespace async {
+
+template<typename F, F f> struct Wrapper;
+template<typename ReturnType, typename... Args, ReturnType(*f)(Args...)>
+struct Wrapper<ReturnType(*)(Args...), f> {
+    EMSCRIPTEN_KEEPALIVE static ReturnType invoke(Args... args) {
+        return f(args...);
+    }
+};
+
+} // end namespace async
+
+template<typename T, typename... Policies>
+using maybe_wrap_async = typename std::conditional<
+        isAsync<Policies...>::value,
+        async::Wrapper<decltype(&T::invoke), &T::invoke>,
+        T
+        >::type;
 
 template<typename FunctorType, typename ReturnType, typename... Args>
 struct FunctorInvoker {
@@ -464,6 +525,12 @@ struct SignatureCode<size_t> {
         return 'p';
     }
 };
+template<>
+struct SignatureCode<long> {
+    static constexpr char get() {
+        return 'j';
+    }
+};
 #endif
 
 template<typename... Args>
@@ -477,6 +544,7 @@ template<> struct SignatureTranslator<void> { using type = void; };
 template<> struct SignatureTranslator<float> { using type = float; };
 template<> struct SignatureTranslator<double> { using type = double; };
 #ifdef __wasm64__
+template<> struct SignatureTranslator<long> { using type = long; };
 template<> struct SignatureTranslator<size_t> { using type = size_t; };
 template<typename PtrType>
 struct SignatureTranslator<PtrType*> { using type = void*; };
@@ -502,20 +570,20 @@ EMSCRIPTEN_ALWAYS_INLINE const char* getSignature(Return (*)(Args...)) {
 // FUNCTIONS
 ////////////////////////////////////////////////////////////////////////////////
 
-extern "C" void* __getDynamicPointerType(void* p);
-
 template<typename ReturnType, typename... Args, typename... Policies>
 void function(const char* name, ReturnType (*fn)(Args...), Policies...) {
     using namespace internal;
     typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-    auto invoker = &Invoker<ReturnType, Args...>::invoke;
+    using OriginalInvoker = Invoker<ReturnType, Args...>;
+    auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
     _embind_register_function(
         name,
         args.getCount(),
         args.getTypes(),
-        getSignature(invoker),
-        reinterpret_cast<GenericFunction>(invoker),
-        reinterpret_cast<GenericFunction>(fn));
+        getSignature(invoke),
+        reinterpret_cast<GenericFunction>(invoke),
+        reinterpret_cast<GenericFunction>(fn),
+        isAsync<Policies...>::value);
 }
 
 namespace internal {
@@ -1366,7 +1434,8 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {
     template <typename CT, typename... Policies>
     static void invoke(const char* methodName,
                        ReturnType (ClassType::*memberFunction)(Args...)) {
-        auto invoker = &MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>::invoke;
+        using OriginalInvoker = MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>;
+        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<ClassType>, Args...> args;
         _embind_register_class_function(
@@ -1374,10 +1443,11 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {
             methodName,
             args.getCount(),
             args.getTypes(),
-            getSignature(invoker),
-            reinterpret_cast<GenericFunction>(invoker),
+            getSignature(invoke),
+            reinterpret_cast<GenericFunction>(invoke),
             getContext(memberFunction),
-            isPureVirtual<Policies...>::value);
+            isPureVirtual<Policies...>::value,
+            isAsync<Policies...>::value);
     }
 };
 
@@ -1393,7 +1463,8 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
     template <typename CT, typename... Policies>
     static void invoke(const char* methodName,
                        ReturnType (ClassType::*memberFunction)(Args...) const)  {
-        auto invoker = &MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>::invoke;
+        using OriginalInvoker = MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>;
+        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<const ClassType>, Args...> args;
         _embind_register_class_function(
@@ -1401,10 +1472,11 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
             methodName,
             args.getCount(),
             args.getTypes(),
-            getSignature(invoker),
-            reinterpret_cast<GenericFunction>(invoker),
+            getSignature(invoke),
+            reinterpret_cast<GenericFunction>(invoke),
             getContext(memberFunction),
-            isPureVirtual<Policies...>::value);
+            isPureVirtual<Policies...>::value,
+            isAsync<Policies...>::value);
     }
 };
 
@@ -1421,7 +1493,8 @@ struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
     static void invoke(const char* methodName,
                        ReturnType (*function)(ThisType, Args...)) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
-        auto invoke = &FunctionInvoker<decltype(function), ReturnType, ThisType, Args...>::invoke;
+        using OriginalInvoker = FunctionInvoker<decltype(function), ReturnType, ThisType, Args...>;
+        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
             methodName,
@@ -1430,7 +1503,8 @@ struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
             getSignature(invoke),
             reinterpret_cast<GenericFunction>(invoke),
             getContext(function),
-            false);
+            false,
+            isAsync<Policies...>::value);
     }
 };
 
@@ -1447,7 +1521,8 @@ struct RegisterClassMethod<std::function<ReturnType (ThisType, Args...)>> {
     static void invoke(const char* methodName,
                        std::function<ReturnType (ThisType, Args...)> function) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
-        auto invoke = &FunctorInvoker<decltype(function), ReturnType, ThisType, Args...>::invoke;
+        using OriginalInvoker = FunctorInvoker<decltype(function), ReturnType, ThisType, Args...>;
+        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
             methodName,
@@ -1456,7 +1531,8 @@ struct RegisterClassMethod<std::function<ReturnType (ThisType, Args...)>> {
             getSignature(invoke),
             reinterpret_cast<GenericFunction>(invoke),
             getContext(function),
-            false);
+            false,
+            isAsync<Policies...>::value);
     }
 };
 
@@ -1467,7 +1543,8 @@ struct RegisterClassMethod<ReturnType (ThisType, Args...)> {
     static void invoke(const char* methodName,
                        Callable& callable) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
-        auto invoke = &FunctorInvoker<decltype(callable), ReturnType, ThisType, Args...>::invoke;
+        using OriginalInvoker = FunctorInvoker<decltype(callable), ReturnType, ThisType, Args...>;
+        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
             methodName,
@@ -1476,7 +1553,8 @@ struct RegisterClassMethod<ReturnType (ThisType, Args...)> {
             getSignature(invoke),
             reinterpret_cast<GenericFunction>(invoke),
             getContext(callable),
-            false);
+            false,
+            isAsync<Policies...>::value);
     }
 };
 
@@ -1747,7 +1825,8 @@ public:
         using namespace internal;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-        auto invoke = &internal::Invoker<ReturnType, Args...>::invoke;
+        using OriginalInvoker = internal::Invoker<ReturnType, Args...>;
+        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
         _embind_register_class_class_function(
             TypeID<ClassType>::get(),
             methodName,
@@ -1755,7 +1834,8 @@ public:
             args.getTypes(),
             getSignature(invoke),
             reinterpret_cast<GenericFunction>(invoke),
-            reinterpret_cast<GenericFunction>(classMethod));
+            reinterpret_cast<GenericFunction>(classMethod),
+            isAsync<Policies...>::value);
         return *this;
     }
 
@@ -1795,6 +1875,21 @@ public:
     }
 };
 
+#if __cplusplus >= 201703L
+template<typename T>
+void register_optional() {
+    // Optional types are automatically registered for some internal types so
+    // only run the register method once so we don't conflict with a user's
+    // bindings if they also register the optional type.
+    thread_local bool hasRun;
+    if (hasRun) {
+        return;
+    }
+    hasRun = true;
+    internal::_embind_register_optional(internal::TypeID<std::optional<T>>::get(), internal::TypeID<T>::get());
+}
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 // VECTORS
 ////////////////////////////////////////////////////////////////////////////////
@@ -1803,6 +1898,20 @@ namespace internal {
 
 template<typename VectorType>
 struct VectorAccess {
+// This nearly duplicated code is used for generating more specific TypeScript
+// types when using more modern C++ versions.
+#if __cplusplus >= 201703L
+    static std::optional<typename VectorType::value_type> get(
+        const VectorType& v,
+        typename VectorType::size_type index
+    ) {
+        if (index < v.size()) {
+            return v[index];
+        } else {
+            return {};
+        }
+    }
+#else
     static val get(
         const VectorType& v,
         typename VectorType::size_type index
@@ -1813,6 +1922,7 @@ struct VectorAccess {
             return val::undefined();
         }
     }
+#endif
 
     static bool set(
         VectorType& v,
@@ -1829,6 +1939,9 @@ struct VectorAccess {
 template<typename T>
 class_<std::vector<T>> register_vector(const char* name) {
     typedef std::vector<T> VecType;
+#if __cplusplus >= 201703L
+    register_optional<T>();
+#endif
 
     void (VecType::*push_back)(const T&) = &VecType::push_back;
     void (VecType::*resize)(const size_t, const T&) = &VecType::resize;
@@ -1851,6 +1964,21 @@ namespace internal {
 
 template<typename MapType>
 struct MapAccess {
+// This nearly duplicated code is used for generating more specific TypeScript
+// types when using more modern C++ versions.
+#if __cplusplus >= 201703L
+    static std::optional<typename MapType::mapped_type> get(
+        const MapType& m,
+        const typename MapType::key_type& k
+    ) {
+        auto i = m.find(k);
+        if (i == m.end()) {
+            return {};
+        } else {
+            return i->second;
+        }
+    }
+#else
     static val get(
         const MapType& m,
         const typename MapType::key_type& k
@@ -1862,6 +1990,7 @@ struct MapAccess {
             return val(i->second);
         }
     }
+#endif
 
     static void set(
         MapType& m,
@@ -1888,6 +2017,9 @@ struct MapAccess {
 template<typename K, typename V>
 class_<std::map<K, V>> register_map(const char* name) {
     typedef std::map<K,V> MapType;
+#if __cplusplus >= 201703L
+    register_optional<V>();
+#endif
 
     size_t (MapType::*size)() const = &MapType::size;
     return class_<MapType>(name)
@@ -1898,6 +2030,36 @@ class_<std::map<K, V>> register_map(const char* name) {
         .function("keys", internal::MapAccess<MapType>::keys)
         ;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// std::optional
+////////////////////////////////////////////////////////////////////////////////
+
+#if __cplusplus >= 201703L
+namespace internal {
+template <typename T>
+struct BindingType<std::optional<T>> {
+    using ValBinding = BindingType<val>;
+    using WireType = ValBinding::WireType;
+
+    static WireType toWireType(std::optional<T> value) {
+        if (value) {
+            return ValBinding::toWireType(val(*value));
+        }
+        return ValBinding::toWireType(val::undefined());
+    }
+
+
+    static std::optional<T> fromWireType(WireType value) {
+        val optional = val::take_ownership(value);
+        if (optional.isUndefined()) {
+            return {};
+        }
+        return optional.as<T>();
+    }
+};
+} // end namespace internal
+#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1956,6 +2118,12 @@ void constant(const char* name, const ConstantType& v) {
         name,
         TypeID<const ConstantType&>::get(),
         static_cast<double>(asGenericValue(BT::toWireType(v))));
+}
+
+template <typename T>
+inline void register_type(const char* name) {
+  using namespace internal;
+  _embind_register_user_type(TypeID<T>::get(), name);
 }
 
 // EMSCRIPTEN_BINDINGS creates a static struct to initialize the binding which

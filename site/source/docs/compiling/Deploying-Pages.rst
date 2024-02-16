@@ -41,7 +41,7 @@ In addition to downloading the page, other parts of the startup sequence can som
 
 - It is recommended to migrate to WebAssembly to speed up compiled code startup times in browsers. WebAssembly modules are much faster to parse and compile compared to asm.js. Additionally, compiled ``WebAssembly.Module`` objects can be manually persisted to IndexedDB, which avoids the compilation step altogether on the second run. (see next section)
 
-- Occassionally it can be easy to misattribute slow startup to asm.js/WebAssembly compilation, when the actual cause of slowness can in fact be in executing the ``main()`` function entry point of the application itself. This is because these two actions are run closely back to back to each other. It is worthwhile to be precise to profile these two actions separately, check out the ``function callMain()`` in ``src/preamble.js`` which kicks off the execution of application ``main()`` code. If executing ``main()`` takes too long time, consider splitting it out to separate operations that are driven by multiple ``setTimeout()`` calls or by the ``emscripten_set_main_loop()`` event loop.
+- Occasionally it can be easy to misattribute slow startup to asm.js/WebAssembly compilation, when the actual cause of slowness can in fact be in executing the ``main()`` function entry point of the application itself. This is because these two actions are run closely back to back to each other. It is worthwhile to be precise to profile these two actions separately, check out the ``function callMain()`` in ``src/preamble.js`` which kicks off the execution of application ``main()`` code. If executing ``main()`` takes too long time, consider splitting it out to separate operations that are driven by multiple ``setTimeout()`` calls or by the ``emscripten_set_main_loop()`` event loop.
 
 - To speed up network transfers, experience shows that the under regular network conditions, the fastest approach is to aggressively start all network downloads simultaneously in parallel (assuming there are only a handful of them), as opposed to e.g. downloading a single input file at a time before starting the next one. Therefore to maximize network transfer speed, try to write the main HTML page of the application to start all needed network downloads in parallel instead of queueing them up for sequential transfer.
 
@@ -56,7 +56,7 @@ While the first run experience of visiting a page can take some time to finish a
 
 - All browsers have an implementation defined limit (20MB or 50MB) for assets, and files larger than that will bypass the browser's built-in web caches altogether. Therefore it is recommended that large ``.data`` files are manually cached to IndexedDB by the main page. The Emscripten linker option ``--use-preload-cache`` can be used to have Emscripten implement this, although it can be desirable to manually manage this on the html page in a custom manner, since that allows taking control of which database the assets are cached to, and what kind of scheme will be used to evict data from it.
 
-- Compilation results of asm.js modules are cached automatically by the browser, and there is little control over this. WebAssembly on the other hand supports explicit caching of compiled ``WebAssembly.Module`` objects to IndexedDB. This feature should be always leveraged, since it allows skipping the whole compilation process on the second page visit.
+- While ``.wasm`` files are automatically cached like any resource, they still must be compiled in the browser before they can be instantiated. Fortunately, Chromium-based browsers support automatic caching of compiled WebAssembly modules (read this `v8.dev blog post <https://v8.dev/blog/wasm-code-caching>`_). Previously, manual caching of compiled Webassembly modules via IndexedDB was recommended; however, this is now largely unsupported (details in this `WebAssembly spec ticket <https://github.com/WebAssembly/spec/issues/821>`_).
 
 - If the compiled C/C++ code itself performs any computation e.g. in ``main()`` that could be skipped on the second load, use either IndexedDB or the localStorage APIs to cache the results of this computation across page runs. IndexedDB is suitable for storing large files, but it works asynchronously. The localStorage API on the other hand is fully synchronous, but its usage is restricted to storing small cookie style data fields only.
 
@@ -116,7 +116,7 @@ This way the page will be future compatible once support for the particular feat
 
     3. Traps caused by compiled WebAssembly code. These correspond to fatal errors coming from the WebAssembly VM. This can occur for example when performing an integer division by zero, or when converting a large floating point number to an integer when the float is out of range of the numbers representable by that integer type.
 
-- Implement a final "catch all" error handler on the page by implementing a ``window.onerror`` script. This will be called as a last resort if no other source handled an exception that was raised on the page. See `window.onerror <https://developer.mozilla.org/en-US/docs/Web/API/GlobalEventHandlers/onerror#window.onerror>`_ documentaton on MDN.
+- Implement a final "catch all" error handler on the page by implementing a ``window.onerror`` script. This will be called as a last resort if no other source handled an exception that was raised on the page. See `window.onerror <https://developer.mozilla.org/en-US/docs/Web/API/GlobalEventHandlers/onerror#window.onerror>`_ documentation on MDN.
 
 - Do not let the html page "freeze" and bury the error message in the web page console, because most users will not know how to find it there. Strive to provide meaningful error reports to the user on the main html page, preferably with hints on how to act. If updating a browser version or GPU drivers, or freeing up some space on disk might have a chance to help the page to run, let the user know what they could try out. If the error in question is completely unexpected, consider providing a link or an email address where to report the issue to.
 
@@ -149,7 +149,7 @@ When planning a testing matrix before pushing a site live, the following items c
 
 - Likewise, verify that the page layout does not break when resizing the browser window, or when visiting the site having already initially sized the browser window to very small or large size, or to a disproportionate aspect ratio.
 
-- Especially if targeting mobile, be aware of the `<meta viewport> tag <https://developer.mozilla.org/en-US/docs/Mozilla/Mobile/Viewport_meta_tag>`_ for how to develop a site layout that works well on mobile.
+- Especially if targeting mobile, be aware of the `<meta viewport> tag <https://developer.mozilla.org/en-US/docs/Web/HTML/Viewport_meta_tag>`_ for how to develop a site layout that works well on mobile.
 
 - If the page uses WebGL, test out different GPUs on target platforms. In particular, verify the site behavior when simulating the lack of any needed WebGL extensions, and compressed texture format support.
 

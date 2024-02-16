@@ -3,7 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Runs the pthreads test from the upstream posixtest suite in:
+"""Runs conformance test from the upstream posixtest suite in:
    ./test/third_party/posixtestsuite
 See
    https://github.com/emscripten-core/posixtestsuite
@@ -28,20 +28,29 @@ class posixtest(RunnerCore):
 
 
 def filter_tests(all_tests):
-  pthread_tests = [t for t in all_tests if t.startswith('pthread_')]
-  return pthread_tests
+  prefixes = [
+    'pthread_',
+    'strftime',
+    'asctime',
+    'gmtime'
+  ]
+
+  def enable_test(t):
+    return any(t.startswith(p) for p in prefixes)
+
+  return [t for t in all_tests if enable_test(t)]
 
 
-def get_pthread_tests():
-  # For now, we don't require the submodule to exist.  In this case we just report
-  # no tests
-  pthread_test_root = os.path.join(testsuite_root, 'conformance', 'interfaces')
-  if not os.path.exists(pthread_test_root):
+def get_tests():
+  # For now, we don't require the submodule to exist.  In this case we
+  # just report no tests
+  test_root = os.path.join(testsuite_root, 'conformance', 'interfaces')
+  if not os.path.exists(test_root):
     print('posixtestsuite not found (run git submodule update --init?)')
     return []
-  pthread_tests = filter_tests(os.listdir(pthread_test_root))
-  pthread_tests = [os.path.join(pthread_test_root, t) for t in pthread_tests]
-  return pthread_tests
+  tests = filter_tests(os.listdir(test_root))
+  tests = [os.path.join(test_root, t) for t in tests]
+  return tests
 
 
 # Mark certain tests as unsupported
@@ -157,7 +166,8 @@ def make_test(name, testfile, browser):
             '-Werror',
             '-Wno-format-security',
             '-Wno-int-conversion',
-            '-sUSE_PTHREADS',
+            '-Wno-format',
+            '-pthread',
             '-sEXIT_RUNTIME',
             '-sTOTAL_MEMORY=256mb',
             '-sPTHREAD_POOL_SIZE=40']
@@ -172,7 +182,7 @@ def make_test(name, testfile, browser):
   return f
 
 
-for testdir in get_pthread_tests():
+for testdir in get_tests():
   basename = os.path.basename(testdir)
   for test_file in glob.glob(os.path.join(testdir, '*.c')):
     if not os.path.basename(test_file)[0].isdigit():

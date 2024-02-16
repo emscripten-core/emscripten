@@ -216,7 +216,7 @@ EMSCRIPTEN_WEBSOCKET_T emscripten_init_websocket_to_posix_socket_bridge(const ch
   emscripten_websocket_init_create_attributes(&attr);
   attr.url = bridgeUrl;
   bridgeSocket = emscripten_websocket_new(&attr);
-  emscripten_websocket_set_onmessage_callback_on_thread(bridgeSocket, 0, bridge_socket_on_message, EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD);
+  emscripten_websocket_set_onmessage_callback_on_thread(bridgeSocket, 0, bridge_socket_on_message, EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD);
 
   pthread_mutex_unlock(&bridgeLock);
   return bridgeSocket;

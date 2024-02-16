@@ -12,7 +12,6 @@
 # If there is a name section or symbol table, llvm-nm can show the symbol name.
 
 import argparse
-from collections import namedtuple
 import json
 import os
 import re
@@ -89,8 +88,12 @@ def get_sourceMappingURL_section(module):
 
 
 class WasmSourceMap(object):
-  # This implementation is derived from emscripten's sourcemap-support.js
-  Location = namedtuple('Location', ['source', 'line', 'column'])
+  class Location(object):
+    def __init__(self, source=None, line=0, column=0, func=None):
+      self.source = source
+      self.line = line
+      self.column = column
+      self.func = func
 
   def __init__(self):
     self.version = None
@@ -230,8 +233,8 @@ def main(args):
 
 def get_args():
   parser = argparse.ArgumentParser()
-  parser.add_argument('-s', '--source', help='Force debug info source type',
-                      default=())
+  parser.add_argument('-s', '--source', choices=['dwarf', 'sourcemap'],
+                      help='Force debug info source type', default=())
   parser.add_argument('-f', '--file', action='store',
                       help='Force debug info source file')
   parser.add_argument('-t', '--addrtype', choices=['code', 'file'],
@@ -243,7 +246,7 @@ def get_args():
   parser.add_argument('address', help='Address to lookup')
   args = parser.parse_args()
   if args.verbose:
-    shared.PRINT_STAGES = 1
+    shared.PRINT_SUBPROCS = 1
     shared.DEBUG = True
   return args
 

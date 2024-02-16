@@ -64,8 +64,7 @@ struct Canonicalized {
 template<typename T>
 struct LightTypeID {
     static constexpr TYPEID get() {
-        typedef typename Canonicalized<T>::type C;
-        if(has_unbound_type_names) {
+        if (has_unbound_type_names) {
 #if __has_feature(cxx_rtti)
             return &typeid(T);
 #else
@@ -76,14 +75,14 @@ struct LightTypeID {
 #endif
         }
 
+        typedef typename Canonicalized<T>::type C;
         return CanonicalizedID<C>::get();
     }
 };
 
 template<typename T>
 constexpr TYPEID getLightTypeID(const T& value) {
-    typedef typename Canonicalized<T>::type C;
-    if(has_unbound_type_names) {
+    if (has_unbound_type_names) {
 #if __has_feature(cxx_rtti)
         return &typeid(value);
 #else

@@ -13,7 +13,7 @@
 #include <__concepts/destructible.h>
 #include <__config>
 #include <__iterator/incrementable_traits.h>
-#include <__iterator/readable_traits.h>
+#include <__iterator/iterator_traits.h>
 #include <__memory/concepts.h>
 #include <__memory/construct_at.h>
 #include <__ranges/access.h>
@@ -22,14 +22,18 @@
 #include <__utility/declval.h>
 #include <__utility/forward.h>
 #include <__utility/move.h>
+#include <new>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
 #endif
 
+_LIBCPP_PUSH_MACROS
+#include <__undef_macros>
+
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-#if _LIBCPP_STD_VER > 17 && !defined(_LIBCPP_HAS_NO_INCOMPLETE_RANGES)
+#if _LIBCPP_STD_VER >= 20
 namespace ranges {
 
 // construct_at
@@ -38,7 +42,7 @@ namespace __construct_at {
 
 struct __fn {
   template<class _Tp, class... _Args, class = decltype(
-    ::new (declval<void*>()) _Tp(declval<_Args>()...)
+    ::new (std::declval<void*>()) _Tp(std::declval<_Args>()...)
   )>
   _LIBCPP_HIDE_FROM_ABI
   constexpr _Tp* operator()(_Tp* __location, _Args&& ...__args) const {
@@ -117,8 +121,10 @@ inline namespace __cpo {
 
 } // namespace ranges
 
-#endif // _LIBCPP_STD_VER > 17 && !defined(_LIBCPP_HAS_NO_INCOMPLETE_RANGES)
+#endif // _LIBCPP_STD_VER >= 20
 
 _LIBCPP_END_NAMESPACE_STD
+
+_LIBCPP_POP_MACROS
 
 #endif // _LIBCPP___MEMORY_RANGES_CONSTRUCT_AT_H

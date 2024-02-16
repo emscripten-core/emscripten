@@ -13,70 +13,15 @@
 #include <threads.h>
 #include "libc.h"
 
+#include "emscripten_internal.h"
+
 // Replaces musl's __tz.c
 
-__attribute__((__weak__)) long  timezone = 0;
-__attribute__((__weak__)) int   daylight = 0;
-__attribute__((__weak__)) char *tzname[2] = { 0, 0 };
+weak long  timezone = 0;
+weak int   daylight = 0;
+weak char *tzname[2] = { 0, 0 };
 
-void _tzset_js(long* timezone, int* daylight, char** tzname);
-// Declare these functions `int` rather than time_t to avoid int64 at the wasm
-// boundary (avoids 64-bit complexity at the boundary when WASM_BIGINT is
-// missing).
-// TODO(sbc): Covert back to `time_t` before 2038 ...
-int _timegm_js(struct tm *tm);
-int _mktime_js(struct tm *tm);
-void _localtime_js(const time_t *restrict t, struct tm *restrict tm);
-void _gmtime_js(const time_t *restrict t, struct tm *restrict tm);
-double emscripten_get_now_res();
-
-__attribute__((__weak__))
-void tzset() {
-  static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-  static _Atomic bool done_init = false;
-  if (!done_init) {
-    pthread_mutex_lock(&lock);
-    if (!done_init) {
-      _tzset_js(&timezone, &daylight, tzname);
-      done_init = true;
-    }
-    pthread_mutex_unlock(&lock);
-  }
-}
-
-__attribute__((__weak__))
-time_t timegm(struct tm *tm) {
-  tzset();
-  return _timegm_js(tm);
-}
-
-__attribute__((__weak__))
-time_t mktime(struct tm *tm) {
-  tzset();
-  return _mktime_js(tm);
-}
-
-__attribute__((__weak__))
-struct tm *__localtime_r(const time_t *restrict t, struct tm *restrict tm) {
-  tzset();
-  _localtime_js(t, tm);
-  // __localtime_js sets everything but the tmzone pointer
-  tm->__tm_zone = tm->tm_isdst ? tzname[1] :tzname[0];
-  return tm;
-}
-
-__attribute__((__weak__))
-struct tm *__gmtime_r(const time_t *restrict t, struct tm *restrict tm) {
-  tzset();
-  _gmtime_js(t, tm);
-  tm->tm_isdst = 0;
-  tm->__tm_gmtoff = 0;
-  tm->__tm_zone = "GMT";
-  return tm;
-}
-
-__attribute__((__weak__))
-clock_t __clock() {
+weak clock_t __clock() {
   static thread_local double start = 0;
   if (!start) {
     start = emscripten_date_now();
@@ -84,8 +29,7 @@ clock_t __clock() {
   return (emscripten_date_now() - start) * (CLOCKS_PER_SEC / 1000);
 }
 
-__attribute__((__weak__))
-time_t __time(time_t *t) {
+weak time_t __time(time_t *t) {
   double ret = emscripten_date_now() / 1000;
   if (t) {
     *t = ret;
@@ -93,12 +37,10 @@ time_t __time(time_t *t) {
   return ret;
 }
 
-extern bool _emscripten_get_now_is_monotonic();
 static thread_local bool checked_monotonic = false;
 static thread_local bool is_monotonic = 0;
 
-__attribute__((__weak__))
-int __clock_gettime(clockid_t clk, struct timespec *ts) {
+weak int __clock_gettime(clockid_t clk, struct timespec *ts) {
   if (!checked_monotonic) {
     is_monotonic = _emscripten_get_now_is_monotonic();
     checked_monotonic = true;
@@ -120,8 +62,7 @@ int __clock_gettime(clockid_t clk, struct timespec *ts) {
   return 0;
 }
 
-__attribute__((__weak__))
-int __clock_getres(clockid_t clk, struct timespec *ts) {
+weak int __clock_getres(clockid_t clk, struct timespec *ts) {
   if (!checked_monotonic) {
     is_monotonic = _emscripten_get_now_is_monotonic();
     checked_monotonic = true;
@@ -141,8 +82,7 @@ int __clock_getres(clockid_t clk, struct timespec *ts) {
   return 0;
 }
 
-__attribute__((__weak__))
-int __gettimeofday(struct timeval *restrict tv, void *restrict tz) {
+weak int __gettimeofday(struct timeval *restrict tv, void *restrict tz) {
   double now_ms = emscripten_date_now();
   long long now_s = now_ms / 1000;
   tv->tv_sec = now_s; // seconds
@@ -150,14 +90,11 @@ int __gettimeofday(struct timeval *restrict tv, void *restrict tz) {
   return 0;
 }
 
-__attribute__((__weak__))
-int dysize(int year) {
+weak int dysize(int year) {
   int leap = ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)));
   return leap ? 366 : 365;
 }
 
-weak_alias(__gmtime_r, gmtime_r);
-weak_alias(__localtime_r, localtime_r);
 weak_alias(__time, time);
 weak_alias(__clock, clock);
 weak_alias(__clock_gettime, clock_gettime);

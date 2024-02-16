@@ -18,6 +18,7 @@
 // depends on _FILE_OFFSET_BITS setting.
 // To get this "true" dirent definition, we undefine _FILE_OFFSET_BITS below.
 #undef _FILE_OFFSET_BITS
+#undef _TIME_BITS
 #endif
 
 // Must go after undef _FILE_OFFSET_BITS.
@@ -94,7 +95,7 @@
 # include <utime.h>
 # include <sys/ptrace.h>
 #    if defined(__mips64) || defined(__aarch64__) || defined(__arm__) || \
-        defined(__hexagon__) || SANITIZER_RISCV64
+        defined(__hexagon__) || defined(__loongarch__) ||SANITIZER_RISCV64
 #      include <asm/ptrace.h>
 #      ifdef __arm__
 typedef struct user_fpregs elf_fpregset_t;
@@ -176,10 +177,6 @@ typedef struct user_fpregs elf_fpregset_t;
 #  include "sanitizer_platform_interceptors.h"
 #  include "sanitizer_platform_limits_posix.h"
 
-#if SANITIZER_INTERCEPT_CRYPT_R
-#include <crypt.h>
-#endif
-
 namespace __sanitizer {
   unsigned struct_utsname_sz = sizeof(struct utsname);
   unsigned struct_stat_sz = sizeof(struct stat);
@@ -247,7 +244,23 @@ namespace __sanitizer {
   unsigned struct_sysinfo_sz = sizeof(struct sysinfo);
   unsigned __user_cap_header_struct_sz =
       sizeof(struct __user_cap_header_struct);
-  unsigned __user_cap_data_struct_sz = sizeof(struct __user_cap_data_struct);
+  unsigned __user_cap_data_struct_sz(void *hdrp) {
+    int u32s = 0;
+    if (hdrp) {
+      switch (((struct __user_cap_header_struct *)hdrp)->version) {
+      case _LINUX_CAPABILITY_VERSION_1:
+        u32s = _LINUX_CAPABILITY_U32S_1;
+        break;
+      case _LINUX_CAPABILITY_VERSION_2:
+        u32s = _LINUX_CAPABILITY_U32S_2;
+        break;
+      case _LINUX_CAPABILITY_VERSION_3:
+        u32s = _LINUX_CAPABILITY_U32S_3;
+        break;
+      }
+    }
+    return sizeof(struct __user_cap_data_struct) * u32s;
+  }
   unsigned struct_new_utsname_sz = sizeof(struct new_utsname);
   unsigned struct_old_utsname_sz = sizeof(struct old_utsname);
   unsigned struct_oldold_utsname_sz = sizeof(struct oldold_utsname);
@@ -260,7 +273,7 @@ namespace __sanitizer {
   unsigned struct_itimerspec_sz = sizeof(struct itimerspec);
 #endif // SANITIZER_LINUX
 
-#if SANITIZER_LINUX && !SANITIZER_ANDROID
+#if SANITIZER_GLIBC
   // Use pre-computed size of struct ustat to avoid <sys/ustat.h> which
   // has been removed from glibc 2.28.
 #if defined(__aarch64__) || defined(__s390x__) || defined(__mips64) ||     \
@@ -281,11 +294,7 @@ namespace __sanitizer {
   unsigned struct_ustat_sz = SIZEOF_STRUCT_USTAT;
   unsigned struct_rlimit64_sz = sizeof(struct rlimit64);
   unsigned struct_statvfs64_sz = sizeof(struct statvfs64);
-#endif // SANITIZER_LINUX && !SANITIZER_ANDROID
-
-#if SANITIZER_INTERCEPT_CRYPT_R
-  unsigned struct_crypt_data_sz = sizeof(struct crypt_data);
-#endif
+#endif // SANITIZER_GLIBC
 
 #if SANITIZER_LINUX && !SANITIZER_ANDROID
   unsigned struct_timex_sz = sizeof(struct timex);
@@ -352,7 +361,7 @@ unsigned struct_ElfW_Phdr_sz = sizeof(Elf_Phdr);
 #if SANITIZER_LINUX && !SANITIZER_ANDROID &&                               \
     (defined(__i386) || defined(__x86_64) || defined(__mips64) ||          \
      defined(__powerpc64__) || defined(__aarch64__) || defined(__arm__) || \
-     defined(__s390__) || SANITIZER_RISCV64)
+     defined(__s390__) || defined(__loongarch__)|| SANITIZER_RISCV64)
 #if defined(__mips64) || defined(__powerpc64__) || defined(__arm__)
   unsigned struct_user_regs_struct_sz = sizeof(struct pt_regs);
   unsigned struct_user_fpregs_struct_sz = sizeof(elf_fpregset_t);
@@ -362,21 +371,24 @@ unsigned struct_ElfW_Phdr_sz = sizeof(Elf_Phdr);
 #elif defined(__aarch64__)
   unsigned struct_user_regs_struct_sz = sizeof(struct user_pt_regs);
   unsigned struct_user_fpregs_struct_sz = sizeof(struct user_fpsimd_state);
+#elif defined(__loongarch__)
+  unsigned struct_user_regs_struct_sz = sizeof(struct user_pt_regs);
+  unsigned struct_user_fpregs_struct_sz = sizeof(struct user_fp_state);
 #elif defined(__s390__)
   unsigned struct_user_regs_struct_sz = sizeof(struct _user_regs_struct);
   unsigned struct_user_fpregs_struct_sz = sizeof(struct _user_fpregs_struct);
 #else
   unsigned struct_user_regs_struct_sz = sizeof(struct user_regs_struct);
   unsigned struct_user_fpregs_struct_sz = sizeof(struct user_fpregs_struct);
-#endif // __mips64 || __powerpc64__ || __aarch64__
+#endif // __mips64 || __powerpc64__ || __aarch64__ || __loongarch__
 #if defined(__x86_64) || defined(__mips64) || defined(__powerpc64__) || \
     defined(__aarch64__) || defined(__arm__) || defined(__s390__) ||    \
-    SANITIZER_RISCV64
+    defined(__loongarch__) || SANITIZER_RISCV64
   unsigned struct_user_fpxregs_struct_sz = 0;
 #else
   unsigned struct_user_fpxregs_struct_sz = sizeof(struct user_fpxregs_struct);
 #endif // __x86_64 || __mips64 || __powerpc64__ || __aarch64__ || __arm__
-// || __s390__
+// || __s390__ || __loongarch__
 #ifdef __arm__
   unsigned struct_user_vfpregs_struct_sz = ARM_VFPREGS_SIZE;
 #else
@@ -1098,7 +1110,7 @@ CHECK_SIZE_AND_OFFSET(dirent, d_off);
 CHECK_SIZE_AND_OFFSET(dirent, d_reclen);
 #endif // !SANITIZER_EMSCRIPTEN
 
-#if SANITIZER_LINUX && !SANITIZER_ANDROID
+#if SANITIZER_GLIBC
 COMPILER_CHECK(sizeof(__sanitizer_dirent64) <= sizeof(dirent64));
 CHECK_SIZE_AND_OFFSET(dirent64, d_ino);
 CHECK_SIZE_AND_OFFSET(dirent64, d_off);
@@ -1132,6 +1144,15 @@ CHECK_STRUCT_SIZE_AND_OFFSET(sigaction, sa_flags);
 CHECK_STRUCT_SIZE_AND_OFFSET(sigaction, sa_restorer);
 #endif
 #endif // !SANITIZER_EMSCRIPTEN
+
+#if SANITIZER_HAS_SIGINFO
+COMPILER_CHECK(alignof(siginfo_t) == alignof(__sanitizer_siginfo));
+using __sanitizer_siginfo_t = __sanitizer_siginfo;
+CHECK_TYPE_SIZE(siginfo_t);
+CHECK_SIZE_AND_OFFSET(siginfo_t, si_signo);
+CHECK_SIZE_AND_OFFSET(siginfo_t, si_errno);
+CHECK_SIZE_AND_OFFSET(siginfo_t, si_code);
+#endif
 
 #if SANITIZER_LINUX
 CHECK_TYPE_SIZE(__sysctl_args);

@@ -14,10 +14,13 @@
 // A task is an arbitrary function combined with some arbitrary state.
 typedef struct task {
   void (*func)(void*);
+  void (*cancel)(void*);
   void* arg;
 } task;
 
-// A task queue holding tasks to be processed by a particular thread.
+// A task queue holding tasks to be processed by a particular thread. The only
+// "public" field is `notification`. All other fields should be considered
+// private implementation details.
 typedef struct em_task_queue {
   // Flag encoding the state of postMessage notifications for this task queue.
   // Accessed directly from JS, so must be the first member.
@@ -30,8 +33,7 @@ typedef struct em_task_queue {
   // Recursion guard. Only accessed on the target thread, so there's no need to
   // hold the lock when accessing it. TODO: We disallow recursive processing
   // because that's what the old proxying API does, so it is safer to start with
-  // the same behavior. Experiment with relaxing this restriction once the old
-  // API uses these queues as well.
+  // the same behavior. Experiment with relaxing this restriction.
   int processing;
   // Ring buffer of tasks of size `capacity`. New tasks are enqueued at
   // `tail` and dequeued at `head`.
@@ -39,23 +41,21 @@ typedef struct em_task_queue {
   int capacity;
   int head;
   int tail;
+  // Doubly linked list pointers for the zombie list. See em_task_queue.c for
+  // details.
+  struct em_task_queue* zombie_prev;
+  struct em_task_queue* zombie_next;
 } em_task_queue;
-
-// Send a postMessage notification containing the em_task_queue pointer to the
-// target thread so it will execute the queue when it returns to the event loop.
-// Also pass in the current thread and main thread ids to minimize calls back
-// into Wasm.
-extern int _emscripten_notify_task_queue(pthread_t target_thread,
-                                         pthread_t curr_thread,
-                                         pthread_t main_thread,
-                                         em_task_queue* queue);
 
 em_task_queue* em_task_queue_create(pthread_t thread);
 
 void em_task_queue_destroy(em_task_queue* queue);
 
-// Execute tasks until an empty queue is observed.
+// Execute tasks until an empty queue is observed. Internally locks the queue.
 void em_task_queue_execute(em_task_queue* queue);
+
+// Cancel all tasks in the queue. Internally locks the queue.
+void em_task_queue_cancel(em_task_queue* queue);
 
 // Not thread safe.
 static inline int em_task_queue_is_empty(em_task_queue* queue) {
@@ -72,3 +72,8 @@ int em_task_queue_enqueue(em_task_queue* queue, task t);
 
 // Not thread safe. Assumes the queue is not empty.
 task em_task_queue_dequeue(em_task_queue* queue);
+
+// Atomically enqueue the task and schedule the queue to be executed next time
+// its owning thread returns to its event loop. Returns 1 on success and 0
+// otherwise. Internally locks the queue.
+int em_task_queue_send(em_task_queue* queue, task t);

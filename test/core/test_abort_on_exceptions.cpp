@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <emscripten.h>
 #include <emscripten/bind.h>
+#include <emscripten/eventloop.h>
 
 EM_JS(void, throwException, (void), {
   throw new Error("crash");
@@ -27,5 +28,6 @@ EMSCRIPTEN_BINDINGS(test_abort_on_exception) {
 }
 
 int main() {
+  emscripten_runtime_keepalive_push();
   return 0;
 }

@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $IDBFS__deps: ['$FS', '$MEMFS', '$PATH'],
-  $IDBFS__postset: function() {
+  $IDBFS__postset: () => {
     addAtExit('IDBFS.quit();');
     return '';
   },
@@ -21,10 +21,8 @@ mergeInto(LibraryManager.library, {
     },
     DB_VERSION: 21,
     DB_STORE_NAME: 'FILE_DATA',
-    mount: function(mount) {
-      // reuse all of the core MEMFS functionality
-      return MEMFS.mount.apply(null, arguments);
-    },
+    // reuse all of the core MEMFS functionality
+    mount: (...args) => MEMFS.mount(...args),
     syncfs: (mount, populate, callback) => {
       IDBFS.getLocalSet(mount, (err, local) => {
         if (err) return callback(err);
@@ -83,7 +81,7 @@ mergeInto(LibraryManager.library, {
         callback(null, db);
       };
       req.onerror = (e) => {
-        callback(this.error);
+        callback(e.target.error);
         e.preventDefault();
       };
     },
@@ -94,9 +92,7 @@ mergeInto(LibraryManager.library, {
         return p !== '.' && p !== '..';
       };
       function toAbsolute(root) {
-        return (p) => {
-          return PATH.join2(root, p);
-        }
+        return (p) => PATH.join2(root, p);
       };
 
       var check = FS.readdir(mount.mountpoint).filter(isRealDir).map(toAbsolute(mount.mountpoint));
@@ -112,7 +108,7 @@ mergeInto(LibraryManager.library, {
         }
 
         if (FS.isDir(stat.mode)) {
-          check.push.apply(check, FS.readdir(path).filter(isRealDir).map(toAbsolute(path)));
+          check.push(...FS.readdir(path).filter(isRealDir).map(toAbsolute(path)));
         }
 
         entries[path] = { 'timestamp': stat.mtime };
@@ -129,7 +125,7 @@ mergeInto(LibraryManager.library, {
         try {
           var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readonly');
           transaction.onerror = (e) => {
-            callback(this.error);
+            callback(e.target.error);
             e.preventDefault();
           };
 
@@ -140,7 +136,7 @@ mergeInto(LibraryManager.library, {
             var cursor = event.target.result;
 
             if (!cursor) {
-              return callback(null, { type: 'remote', db: db, entries: entries });
+              return callback(null, { type: 'remote', db, entries });
             }
 
             entries[cursor.primaryKey] = { 'timestamp': cursor.key };
@@ -209,9 +205,9 @@ mergeInto(LibraryManager.library, {
     },
     loadRemoteEntry: (store, path, callback) => {
       var req = store.get(path);
-      req.onsuccess = (event) => { callback(null, event.target.result); };
+      req.onsuccess = (event) => callback(null, event.target.result);
       req.onerror = (e) => {
-        callback(this.error);
+        callback(e.target.error);
         e.preventDefault();
       };
     },
@@ -222,17 +218,17 @@ mergeInto(LibraryManager.library, {
         callback(e);
         return;
       }
-      req.onsuccess = () => { callback(null); };
+      req.onsuccess = (event) => callback();
       req.onerror = (e) => {
-        callback(this.error);
+        callback(e.target.error);
         e.preventDefault();
       };
     },
     removeRemoteEntry: (store, path, callback) => {
       var req = store.delete(path);
-      req.onsuccess = () => { callback(null); };
+      req.onsuccess = (event) => callback();
       req.onerror = (e) => {
-        callback(this.error);
+        callback(e.target.error);
         e.preventDefault();
       };
     },
@@ -273,8 +269,9 @@ mergeInto(LibraryManager.library, {
         }
       };
 
-      transaction.onerror = (e) => {
-        done(this.error);
+      // transaction may abort if (for example) there is a QuotaExceededError
+      transaction.onerror = transaction.onabort = (e) => {
+        done(e.target.error);
         e.preventDefault();
       };
 
@@ -312,3 +309,7 @@ mergeInto(LibraryManager.library, {
     }
   }
 });
+
+if (WASMFS) {
+  error("using -lidbfs is not currently supported in WasmFS.");
+}

@@ -235,7 +235,7 @@ The parameters you pass to and receive from functions need to be primitive value
 
   - Integer and floating point numbers can be passed as-is.
   - Pointers can be passed as-is also, as they are simply integers in the generated code.
-  - JavaScript string ``someString`` can be converted to a ``char *`` using ``ptr = allocateUTF8(someString)``.
+  - JavaScript string ``someString`` can be converted to a ``char *`` using ``ptr = stringToNewUTF8(someString)``.
 
     .. note:: The conversion to a pointer allocates memory, which needs to be
       freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side) -
@@ -347,6 +347,11 @@ See the :c:macro:`emscripten.h docs <EM_ASM_>` for more details.
      single quotes('). Double quotes(") will cause a syntax error that
      is not detected by the compiler and is only shown when looking at
      a JavaScript console while running the offending code.
+   - clang-format may clobber Javascript constructions, such as ``=>``
+     turning to ``= >``. To avoid this, add to your ``.clang-format``:
+     ``WhitespaceSensitiveMacros: ['EM_ASM', 'EM_JS', 'EM_ASM_INT', 'EM_ASM_DOUBLE', 'EM_ASM_PTR', 'MAIN_THREAD_EM_ASM', 'MAIN_THREAD_EM_ASM_INT', 'MAIN_THREAD_EM_ASM_DOUBLE', 'MAIN_THREAD_EM_ASM_DOUBLE', 'MAIN_THREAD_ASYNC_EM_ASM']``.
+     Or, turn `clang-format off`_ by writing ``// clang-format off``
+     before the ``EM_ASM`` section and ``// clang-format on`` after it.
 
 
 .. _implement-c-in-javascript:
@@ -407,15 +412,15 @@ If you add it to your own file, you should write something like
 
 .. code-block:: javascript
 
-   mergeInto(LibraryManager.library, {
+   addToLibrary({
      my_js: function() {
        alert('hi');
      },
    });
 
-``mergeInto`` just copies the properties on the second parameter onto the
-first, so this add ``my_js`` onto ``LibraryManager.library``, the global
-object where all JavaScript library code should be.
+``addToLibrary`` copies the properties of the input object into
+``LibraryManager.library`` (the global object where all JavaScript library code
+lives). In this case its adds a function called ``my_js`` onto this object.
 
 JavaScript limits in library files
 ----------------------------------
@@ -433,7 +438,7 @@ that you can't use a closure directly, for example, as ``toString``
 isn't compatible with that - just like when using a string to create
 a Web Worker, where you also can't pass a closure. (Note that this
 limitation is just for the values for the keys of the object
-passes to ``mergeInto`` in the JS library, that is, the toplevel
+passes to ``addToLibrary`` in the JS library, that is, the toplevel
 key-value pairs are special. Interior code inside a function can
 have arbitrary JS, of course).
 
@@ -448,7 +453,7 @@ initialization.
 
 .. code-block:: javascript
 
-   mergeInto(LibraryManager.library, {
+   addToLibrary({
 
      // Solution for bind or referencing other functions directly
      good_02__postset: '_good_02();',
@@ -506,7 +511,7 @@ various methods to the functions we actually want.
 
 .. code-block:: javascript
 
-  mergeInto(LibraryManager.library, {
+  addToLibrary({
     $method_support: {},
     $method_support__postset: [
       '(function() {                                  ',
@@ -549,7 +554,7 @@ a function,
 
 .. code-block:: javascript
 
-  mergeInto(LibraryManager.library, {
+  addToLibrary({
     $method_support__postset: 'method_support();',
     $method_support: function() {
       var SomeLib = function() {
@@ -596,10 +601,7 @@ See the `library_*.js`_ files for other examples.
      This is useful when all the implemented methods use a JavaScript
      singleton containing helper methods. See ``library_webgl.js`` for
      an example.
-   - If a JavaScript library depends on a compiled C library (like most
-     of *libc*), you must edit `src/deps_info.json`_. Search for
-     "deps_info" in `tools/system_libs.py`_.
-   - The keys passed into `mergeInto` generate functions that are prefixed
+   - The keys passed into `addToLibrary` generate functions that are prefixed
      by ``_``. In other words ``my_func: function() {},`` becomes
      ``function _my_func() {}``, as all C methods in emscripten have a ``_`` prefix. Keys starting with ``$`` have the ``$``
      stripped and no underscore added.
@@ -620,7 +622,7 @@ See `test_add_function in test/test_core.py`_ for an example.
 You should build with ``-sALLOW_TABLE_GROWTH`` to allow new functions to be
 added to the table. Otherwise by default the table has a fixed size.
 
-.. note:: When using ``addFunction`` on LLVM wasm backend, you need to provide
+.. note:: When using ``addFunction`` on LLVM Wasm backend, you need to provide
    an additional second argument, a Wasm function signature string. Each
    character within a signature string represents a type. The first character
    represents the return type of a function, and remaining characters are for
@@ -677,7 +679,7 @@ Here ``my_function`` is a C function that receives a single integer parameter
 integer. This could be something like ``int my_function(char *buf)``.
 
 The converse case of exporting allocated memory into JavaScript can be
-tricky when wasm-based memory is allowed to **grow**, by compiling with
+tricky when Wasm-based memory is allowed to **grow**, by compiling with
 ``-sALLOW_MEMORY_GROWTH``. Increasing the size of memory changes
 to a new buffer and existing array views essentially become invalid,
 so you cannot simply do this:
@@ -753,7 +755,7 @@ For example, to set an environment variable ``MY_FILE_ROOT`` to be
 
 .. code:: javascript
 
-    Module.preRun.push(function() {ENV.MY_FILE_ROOT = "/usr/lib/test"})
+    Module.preRun = () => {ENV.MY_FILE_ROOT = "/usr/lib/test"};
 
 Note that Emscripten will set default values for some environment variables
 (e.g. LANG) after you have configured ``ENV``, if you have not set your own
@@ -762,7 +764,7 @@ their value to `undefined`. For example:
 
 .. code:: javascript
 
-    Module.preRun.push(function() {ENV.LANG = undefined})
+    Module.preRun = () => {ENV.LANG = undefined};
 
 .. _interacting-with-code-binding-cpp:
 
@@ -798,9 +800,18 @@ for defining the binding:
    of one tool over the other will usually be based on which is the most
    natural fit for the project and its build system.
 
+.. _interacting-with-code-emnapi:
+
+Binding C/C++ and JavaScript - Node-API
+===============================================================
+
+`Emnapi`_ is an unofficial `Node-API`_ implementation which can be used
+on Emscripten. If you would like to port existing Node-API addon to WebAssembly
+or compile the same binding code to both Node.js native addon and WebAssembly,
+you can give it a try. See `Emnapi documentation`_ for more details.
+
 .. _library.js: https://github.com/emscripten-core/emscripten/blob/main/src/library.js
 .. _test_js_libraries: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L5043
-.. _src/deps_info.json: https://github.com/emscripten-core/emscripten/blob/main/src/deps_info.json
 .. _tools/system_libs.py: https://github.com/emscripten-core/emscripten/blob/main/tools/system_libs.py
 .. _library_\*.js: https://github.com/emscripten-core/emscripten/tree/main/src
 .. _test_add_function in test/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L6237
@@ -808,3 +819,7 @@ for defining the binding:
 .. _test/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L4597
 .. _Box2D: https://github.com/kripken/box2d.js/#box2djs
 .. _Bullet: https://github.com/kripken/ammo.js/#ammojs
+.. _clang-format off: https://clang.llvm.org/docs/ClangFormatStyleOptions.html#disabling-formatting-on-a-piece-of-code
+.. _Emnapi: https://github.com/toyobayashi/emnapi
+.. _Node-API: https://nodejs.org/dist/latest/docs/api/n-api.html
+.. _Emnapi documentation: https://emnapi-docs.vercel.app/guide/getting-started.html

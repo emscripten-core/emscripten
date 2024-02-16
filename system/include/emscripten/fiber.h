@@ -32,24 +32,24 @@ typedef struct emscripten_fiber_s {
 } emscripten_fiber_t;
 
 void emscripten_fiber_init(
-  emscripten_fiber_t *fiber,
+  emscripten_fiber_t *fiber __attribute__((nonnull)),
   em_arg_callback_func entry_func,
   void *entry_func_arg,
-  void *c_stack,
+  void *c_stack __attribute__((nonnull)),
   size_t c_stack_size,
-  void *asyncify_stack,
+  void *asyncify_stack __attribute__((nonnull)),
   size_t asyncify_stack_size
 );
 
 void emscripten_fiber_init_from_current_context(
-  emscripten_fiber_t *fiber,
-  void *asyncify_stack,
+  emscripten_fiber_t *fiber __attribute__((nonnull)),
+  void *asyncify_stack __attribute__((nonnull)),
   size_t asyncify_stack_size
 );
 
 void emscripten_fiber_swap(
-  emscripten_fiber_t *old_fiber,
-  emscripten_fiber_t *new_fiber
+  emscripten_fiber_t *old_fiber __attribute__((nonnull)),
+  emscripten_fiber_t *new_fiber __attribute__((nonnull))
 );
 
 #ifdef __cplusplus

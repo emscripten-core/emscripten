@@ -24,6 +24,7 @@
 #include "em_macros.h"
 #include "em_types.h"
 #include "em_js.h"
+#include "promise.h"
 #include "wget.h"
 #include "version.h"
 
@@ -31,11 +32,11 @@
 extern "C" {
 #endif
 
-void emscripten_run_script(const char *script);
-int emscripten_run_script_int(const char *script);
-char *emscripten_run_script_string(const char *script);
-void emscripten_async_run_script(const char *script, int millis);
-void emscripten_async_load_script(const char *script, em_callback_func onload, em_callback_func onerror);
+void emscripten_run_script(const char *script __attribute__((nonnull)));
+int emscripten_run_script_int(const char *script __attribute__((nonnull)));
+char *emscripten_run_script_string(const char *script __attribute__((nonnull)));
+void emscripten_async_run_script(const char *script __attribute__((nonnull)), int millis);
+void emscripten_async_load_script(const char *script __attribute__((nonnull)), em_callback_func onload, em_callback_func onerror);
 
 void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop);
 
@@ -44,7 +45,7 @@ void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infin
 #define EM_TIMING_SETIMMEDIATE 2
 
 int emscripten_set_main_loop_timing(int mode, int value);
-void emscripten_get_main_loop_timing(int *mode, int *value);
+void emscripten_get_main_loop_timing(int *mode, int *value); // Pass a null pointer to skip receiving that particular value
 void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, int simulate_infinite_loop);
 void emscripten_pause_main_loop(void);
 void emscripten_resume_main_loop(void);
@@ -76,12 +77,12 @@ void emscripten_force_exit(int status) __attribute__((__noreturn__));
 
 double emscripten_get_device_pixel_ratio(void);
 
-char *emscripten_get_window_title();
+char *emscripten_get_window_title(void);
 void emscripten_set_window_title(const char *);
-void emscripten_get_screen_size(int *width, int *height);
+void emscripten_get_screen_size(int *width __attribute__((nonnull)), int *height __attribute__((nonnull)));
 void emscripten_hide_mouse(void);
 void emscripten_set_canvas_size(int width, int height) __attribute__((deprecated("This variant does not allow specifying the target canvas", "Use emscripten_set_canvas_element_size() instead")));
-void emscripten_get_canvas_size(int *width, int *height, int *isFullscreen) __attribute__((deprecated("This variant does not allow specifying the target canvas", "Use emscripten_get_canvas_element_size() and emscripten_get_fullscreen_status() instead")));
+void emscripten_get_canvas_size(int *width __attribute__((nonnull)), int *height __attribute__((nonnull)), int *isFullscreen __attribute__((nonnull))) __attribute__((deprecated("This variant does not allow specifying the target canvas", "Use emscripten_get_canvas_element_size() and emscripten_get_fullscreen_status() instead")));
 
 double emscripten_get_now(void);
 float emscripten_random(void);
@@ -89,11 +90,12 @@ float emscripten_random(void);
 // IDB
 
 typedef void (*em_idb_onload_func)(void*, void*, int);
-void emscripten_idb_async_load(const char *db_name, const char *file_id, void* arg, em_idb_onload_func onload, em_arg_callback_func onerror);
-void emscripten_idb_async_store(const char *db_name, const char *file_id, void* ptr, int num, void* arg, em_arg_callback_func onstore, em_arg_callback_func onerror);
-void emscripten_idb_async_delete(const char *db_name, const char *file_id, void* arg, em_arg_callback_func ondelete, em_arg_callback_func onerror);
+void emscripten_idb_async_load(const char *db_name __attribute__((nonnull)), const char *file_id __attribute__((nonnull)), void* arg, em_idb_onload_func onload, em_arg_callback_func onerror);
+void emscripten_idb_async_store(const char *db_name __attribute__((nonnull)), const char *file_id __attribute__((nonnull)), void* ptr, int num, void* arg, em_arg_callback_func onstore, em_arg_callback_func onerror);
+void emscripten_idb_async_delete(const char *db_name __attribute__((nonnull)), const char *file_id __attribute__((nonnull)), void* arg, em_arg_callback_func ondelete, em_arg_callback_func onerror);
 typedef void (*em_idb_exists_func)(void*, int);
-void emscripten_idb_async_exists(const char *db_name, const char *file_id, void* arg, em_idb_exists_func oncheck, em_arg_callback_func onerror);
+void emscripten_idb_async_exists(const char *db_name __attribute__((nonnull)), const char *file_id __attribute__((nonnull)), void* arg, em_idb_exists_func oncheck, em_arg_callback_func onerror);
+void emscripten_idb_async_clear(const char *db_name __attribute__((nonnull)), void* arg, em_arg_callback_func onclear, em_arg_callback_func onerror);
 
 // IDB "sync"
 
@@ -101,6 +103,7 @@ void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffe
 void emscripten_idb_store(const char *db_name, const char *file_id, void* buffer, int num, int *perror);
 void emscripten_idb_delete(const char *db_name, const char *file_id, int *perror);
 void emscripten_idb_exists(const char *db_name, const char *file_id, int* pexists, int *perror);
+void emscripten_idb_clear(const char *db_name, int *perror);
 
 void emscripten_idb_load_blob(const char *db_name, const char *file_id, int* pblob, int *perror);
 void emscripten_idb_store_blob(const char *db_name, const char *file_id, void* buffer, int num, int *perror);
@@ -154,8 +157,10 @@ char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);
 #define EM_LOG_C_STACK   8
 #define EM_LOG_JS_STACK 16
 #define EM_LOG_DEMANGLE 32  // deprecated
+#pragma clang deprecated(EM_LOG_DEMANGLE)
 #define EM_LOG_NO_PATHS 64
-#define EM_LOG_FUNC_PARAMS 128
+#define EM_LOG_FUNC_PARAMS 128  // deprecated
+#pragma clang deprecated(EM_LOG_FUNC_PARAMS)
 #define EM_LOG_DEBUG    256
 #define EM_LOG_INFO     512
 
@@ -173,6 +178,11 @@ void emscripten_scan_stack(em_scan_func func);
 // is asynchronous the normal dlopen function can't be used in all situations.
 typedef void (*em_dlopen_callback)(void* handle, void* user_data);
 void emscripten_dlopen(const char *filename, int flags, void* user_data, em_dlopen_callback onsuccess, em_arg_callback_func onerror);
+
+// Promisified version of emscripten_dlopen
+// The returned promise will resolve once the dso has been loaded.  Its up to
+// the caller to call emscripten_promise_destroy on this promise.
+em_promise_t emscripten_dlopen_promise(const char *filename, int flags);
 
 void emscripten_throw_number(double number);
 void emscripten_throw_string(const char *utf8String);

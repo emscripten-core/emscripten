@@ -16,12 +16,16 @@
 
 .globaltype __stack_pointer, PTR
 
+.section .globals,"",@
+
 # TODO(sbc): It would be nice if these we initialized directly
 # using PTR.const rather than using the `emscripten_stack_init`
 .globaltype __stack_end, PTR
 __stack_end:
 .globaltype __stack_base, PTR
 __stack_base:
+
+.section .text,"",@
 
 emscripten_stack_get_base:
   .functype emscripten_stack_get_base () -> (PTR)
@@ -89,9 +93,6 @@ emscripten_wasm_worker_initialize:
   local.get 0
   .globaltype __tls_size, PTR, immutable
   global.get __tls_size
-#ifdef __wasm64__
-  i64.extend_i32_u
-#endif
   PTR.add
   PTR.const 0xf
   PTR.add

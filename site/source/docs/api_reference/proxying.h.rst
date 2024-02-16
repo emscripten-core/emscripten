@@ -82,15 +82,36 @@ Functions
 
   Enqueue ``func`` to be called with argument ``arg`` on the given queue and
   thread then wait for ``func`` to be executed synchronously before returning.
-  Returns 1 if the ``func`` was successfully completed and 0 otherwise.
+  Returns 1 if the ``func`` was successfully completed and 0 otherwise,
+  including if the target thread is canceled or exits before the work is
+  completed.
 
 .. c:function:: int emscripten_proxy_sync_with_ctx(em_proxying_queue* q, pthread_t target_thread, void (*func)(em_proxying_ctx*, void*), void* arg)
 
   The same as ``emscripten_proxy_sync`` except that instead of waiting for the
   proxied function to return, it waits for the proxied task to be explicitly
-  marked finished with ``emscripten_proxying_finish``. ``func`` need not call
-  ``emscripten_proxying_finish`` itself; it could instead store the context
-  pointer and call ``emscripten_proxying_finish`` at an arbitrary later time.
+  marked finished with ``emscripten_proxy_finish``. ``func`` need not call
+  ``emscripten_proxy_finish`` itself; it could instead store the context pointer
+  and call ``emscripten_proxy_finish`` at an arbitrary later time.
+
+.. c:function:: int emscripten_proxy_callback(em_proxying_queue* q, pthread_t target_thread, void (*func)(void*), void (*callback)(void*), void (*cancel)(void*), void* arg)
+
+  Enqueue ``func`` on the given queue and thread. Once (and if) it finishes
+  executing, it will asynchronously proxy ``callback`` back to the current
+  thread on the same queue, or if the target thread dies before the work can be
+  completed, ``cancel`` will be proxied back instead. All three function will
+  receive the same argument, ``arg``. Returns 1 if ``func`` was successfully
+  enqueued and the target thread notified or 0 otherwise.
+
+.. c:function:: int emscripten_proxy_callback_with_ctx(em_proxying_queue* q, pthread_t target_thread, void (*func)(em_proxying_ctx*, void*), void (*callback)(void*), void (*cancel)(void*), void* arg)
+
+  Enqueue ``func`` on the given queue and thread. Once (and if) it finishes the
+  task by calling ``emscripten_proxy_finish`` on the given ``em_proxying_ctx``,
+  it will asynchronously proxy ``callback`` back to the current thread on the
+  same queue, or if the target thread dies before the work can be completed,
+  ``cancel`` will be proxied back instead. All three function will receive the
+  same argument, ``arg``. Returns 1 if ``func`` was successfully enqueued and
+  the target thread notified or 0 otherwise.
 
 C++ API
 -------
@@ -130,9 +151,22 @@ defined within namespace ``emscripten``.
 
   .. cpp:member:: bool proxySyncWithCtx(const pthread_t target, const std::function<void(ProxyingCtx)>& func)
 
-    Calls ``emscripten_proxy_sync_with_ctx`` to execute ``func``, returning ``true``
-    if the function was successfully marked done with
-    ``emscripten_proxying_finish`` or ``ProxyingCtx::finish`` and ``false`` otherwise.
+    Calls ``emscripten_proxy_sync_with_ctx`` to execute ``func``, returning
+    ``true`` if the function was successfully marked done with
+    ``emscripten_proxy_finish`` or ``ProxyingCtx::finish`` and ``false``
+    otherwise.
+
+  .. cpp:member:: bool proxyCallback(pthread_t target, std::function<void()>&& func, std::function<void()>&& callback, std::function<void()>&& cancel)
+
+    Calls ``emscripten_proxy_callback`` to execute ``func`` and schedule either
+    ``callback`` or ``cancel``, returning ``true`` if the function was
+    successfully enqueued and ``false`` otherwise.
+
+  .. cpp:member:: bool proxyCallbackWithCtx(pthread_t target, std::function<void(ProxyingCtx)>&& func, std::function<void()>&& callback, std::function<void()>&& cancel)
+
+    Calls ``emscripten_proxy_callback_with_ctx`` to execute ``func`` and
+    schedule either ``callback`` or ``cancel``, returning ``true`` if the
+    function was successfully enqueued and ``false`` otherwise.
 
 .. _proxying.h: https://github.com/emscripten-core/emscripten/blob/main/system/include/emscripten/proxying.h
 .. _test_pthread_proxying.c: https://github.com/emscripten-core/emscripten/blob/main/test/pthread/test_pthread_proxying.c

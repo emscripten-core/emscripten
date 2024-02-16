@@ -3,61 +3,81 @@
 #include <emscripten/threading.h>
 #include <emscripten/heap.h>
 #include <emscripten/stack.h>
+#include <emscripten/console.h>
 #include <malloc.h>
+#include <sys/param.h> // For MAX()
+
+#include "emscripten_internal.h"
 
 #ifndef __EMSCRIPTEN_WASM_WORKERS__
 #error __EMSCRIPTEN_WASM_WORKERS__ should be defined when building this file!
 #endif
 
+#define ROUND_UP(x, ALIGNMENT) (((x)+ALIGNMENT-1)&-ALIGNMENT)
+#define SBRK_ALIGN (__alignof__(max_align_t))
+#define STACK_ALIGN __BIGGEST_ALIGNMENT__
+
 // Options:
 // #define STACK_OVERFLOW_CHECK 0/1/2 : set to the current stack overflow check mode
-
-// Internal implementation function in JavaScript side that emscripten_create_wasm_worker() calls to
-// to perform the wasm worker creation.
-emscripten_wasm_worker_t _emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize);
 
 void __wasm_init_tls(void *memory);
 
 __attribute__((constructor(48)))
 static void emscripten_wasm_worker_main_thread_initialize() {
 	uintptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
-	assert((*sbrk_ptr & 15) == 0);
-	assert(__builtin_wasm_tls_align() <= 16);
+	assert((*sbrk_ptr % STACK_ALIGN) == 0);
+	if (__builtin_wasm_tls_align() > STACK_ALIGN) {
+		*sbrk_ptr = ROUND_UP(*sbrk_ptr, __builtin_wasm_tls_align());
+	}
 	__wasm_init_tls((void*)*sbrk_ptr);
-	*sbrk_ptr += (__builtin_wasm_tls_size() + 15) & -16;
+	*sbrk_ptr += ROUND_UP(__builtin_wasm_tls_size(), SBRK_ALIGN);
 }
 
-emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize)
+emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackPlusTLSAddress, size_t stackPlusTLSSize)
 {
-	assert(stackLowestAddress != 0);
-	assert((uintptr_t)stackLowestAddress % 16 == 0);
-	assert(stackSize > 0);
-	assert(stackSize % 16 == 0);
+	assert(stackPlusTLSAddress != 0);
+	assert((uintptr_t)stackPlusTLSAddress % STACK_ALIGN == 0);
+	assert(stackPlusTLSSize > 0);
+	assert(stackPlusTLSSize % STACK_ALIGN == 0);
 
 	// Guard against a programming oopsie: The target Worker's stack cannot be part of the calling
 	// thread's stack.
-	assert(emscripten_stack_get_base() <= (uintptr_t)stackLowestAddress || emscripten_stack_get_end() >= (uintptr_t)stackLowestAddress + stackSize
+	assert(emscripten_stack_get_base() <= (uintptr_t)stackPlusTLSAddress || emscripten_stack_get_end() >= (uintptr_t)stackPlusTLSAddress + stackPlusTLSSize
 		&& "When creating a Wasm Worker, its stack should be located either in global data or on the heap, not on the calling thread's own stack!");
 
-	// The Worker's TLS area will be spliced off from the stack region.
-    // We expect TLS area to need to be at most 16 bytes aligned
-	assert(__builtin_wasm_tls_align() == 0 || 16 % __builtin_wasm_tls_align() == 0);
-
-	uint32_t tlsSize = (__builtin_wasm_tls_size() + 15) & -16;
-	assert(stackSize > tlsSize);
-
-	return _emscripten_create_wasm_worker(stackLowestAddress, stackSize);
+#ifndef NDEBUG
+	// The Worker's TLS area will be spliced off from the stack region, so the
+	// stack needs to be at least as large as the TLS region.
+	uint32_t tlsSize = ROUND_UP(__builtin_wasm_tls_size(), __builtin_wasm_tls_align());
+	assert(stackPlusTLSSize > tlsSize);
+#endif
+	// The TLS region lives at the start of the stack region (the lowest address
+	// of the stack).  Since the TLS data alignment may be larger than stack
+	// alignment, we may need to round up the lowest stack address to meet this
+	// requirment.
+	if (__builtin_wasm_tls_align() > STACK_ALIGN) {
+		uintptr_t tlsBase = (uintptr_t)stackPlusTLSAddress;
+		tlsBase = ROUND_UP(tlsBase, __builtin_wasm_tls_align());
+		size_t padding = tlsBase - (uintptr_t)stackPlusTLSAddress;
+		stackPlusTLSAddress = (void*)tlsBase;
+		stackPlusTLSSize -= padding;
+	}
+	return _emscripten_create_wasm_worker(stackPlusTLSAddress, stackPlusTLSSize);
 }
 
-emscripten_wasm_worker_t emscripten_malloc_wasm_worker(uint32_t stackSize)
+emscripten_wasm_worker_t emscripten_malloc_wasm_worker(size_t stackSize)
 {
-	return emscripten_create_wasm_worker(memalign(16, stackSize), stackSize);
+	// Add the TLS size to the provided stackSize so that the allocation
+	// will always be large enough to hold the worker TLS data.
+	stackSize += ROUND_UP(__builtin_wasm_tls_size(), STACK_ALIGN);
+	void* stackPlusTLSAddress = emscripten_builtin_memalign(MAX(__builtin_wasm_tls_align(), STACK_ALIGN), stackSize);
+	return emscripten_create_wasm_worker(stackPlusTLSAddress, stackSize);
 }
 
 void emscripten_wasm_worker_sleep(int64_t nsecs)
 {
 	int32_t addr = 0;
-	emscripten_wasm_wait_i32(&addr, 0, nsecs);
+	emscripten_atomic_wait_u32(&addr, 0, nsecs);
 }
 
 void emscripten_lock_init(emscripten_lock_t *lock)
@@ -72,7 +92,7 @@ EM_BOOL emscripten_lock_wait_acquire(emscripten_lock_t *lock, int64_t maxWaitNan
 	int64_t waitEnd = (int64_t)(emscripten_performance_now() * 1e6) + maxWaitNanoseconds;
 	while(maxWaitNanoseconds > 0)
 	{
-		emscripten_wasm_wait_i32((int32_t*)lock, val, maxWaitNanoseconds);
+		emscripten_atomic_wait_u32((int32_t*)lock, val, maxWaitNanoseconds);
 		val = emscripten_atomic_cas_u32((void*)lock, 0, 1);
 		if (!val) return EM_TRUE;
 		maxWaitNanoseconds = waitEnd - (int64_t)(emscripten_performance_now() * 1e6);
@@ -87,7 +107,7 @@ void emscripten_lock_waitinf_acquire(emscripten_lock_t *lock)
 	{
 		val = emscripten_atomic_cas_u32((void*)lock, 0, 1);
 		if (val)
-			emscripten_wasm_wait_i32((int32_t*)lock, val, ATOMICS_WAIT_DURATION_INFINITE);
+			emscripten_atomic_wait_u32((int32_t*)lock, val, ATOMICS_WAIT_DURATION_INFINITE);
 	} while(val);
 }
 
@@ -125,7 +145,7 @@ EM_BOOL emscripten_lock_try_acquire(emscripten_lock_t *lock)
 void emscripten_lock_release(emscripten_lock_t *lock)
 {
 	emscripten_atomic_store_u32((void*)lock, 0);
-	emscripten_wasm_notify((int32_t*)lock, 1);
+	emscripten_atomic_notify((int32_t*)lock, 1);
 }
 
 void emscripten_semaphore_init(emscripten_semaphore_t *sem, int num)
@@ -153,7 +173,7 @@ int emscripten_semaphore_wait_acquire(emscripten_semaphore_t *sem, int num, int6
 		while(val < num)
 		{
 			// TODO: Shave off maxWaitNanoseconds
-			ATOMICS_WAIT_RESULT_T waitResult = emscripten_wasm_wait_i32((int32_t*)sem, val, maxWaitNanoseconds);
+			ATOMICS_WAIT_RESULT_T waitResult = emscripten_atomic_wait_u32((int32_t*)sem, val, maxWaitNanoseconds);
 			if (waitResult == ATOMICS_WAIT_TIMED_OUT) return -1;
 			val = emscripten_atomic_load_u32((void*)sem);
 		}
@@ -170,7 +190,7 @@ int emscripten_semaphore_waitinf_acquire(emscripten_semaphore_t *sem, int num)
 	{
 		while(val < num)
 		{
-			emscripten_wasm_wait_i32((int32_t*)sem, val, ATOMICS_WAIT_DURATION_INFINITE);
+			emscripten_atomic_wait_u32((int32_t*)sem, val, ATOMICS_WAIT_DURATION_INFINITE);
 			val = emscripten_atomic_load_u32((void*)sem);
 		}
 		int ret = (int)emscripten_atomic_cas_u32((void*)sem, val, val - num);
@@ -182,7 +202,7 @@ int emscripten_semaphore_waitinf_acquire(emscripten_semaphore_t *sem, int num)
 uint32_t emscripten_semaphore_release(emscripten_semaphore_t *sem, int num)
 {
 	uint32_t ret = emscripten_atomic_add_u32((void*)sem, num);
-	emscripten_wasm_notify((int*)sem, num);
+	emscripten_atomic_notify((int*)sem, num);
 	return ret;
 }
 
@@ -195,15 +215,15 @@ void emscripten_condvar_waitinf(emscripten_condvar_t *condvar, emscripten_lock_t
 {
 	int val = emscripten_atomic_load_u32((void*)condvar);
 	emscripten_lock_release(lock);
-	emscripten_wasm_wait_i32((int32_t*)condvar, val, ATOMICS_WAIT_DURATION_INFINITE);
+	emscripten_atomic_wait_u32((int32_t*)condvar, val, ATOMICS_WAIT_DURATION_INFINITE);
 	emscripten_lock_waitinf_acquire(lock);
 }
 
-int emscripten_condvar_wait(emscripten_condvar_t *condvar, emscripten_lock_t *lock, int64_t maxWaitNanoseconds)
+EM_BOOL emscripten_condvar_wait(emscripten_condvar_t *condvar, emscripten_lock_t *lock, int64_t maxWaitNanoseconds)
 {
 	int val = emscripten_atomic_load_u32((void*)condvar);
 	emscripten_lock_release(lock);
-	int waitValue = emscripten_wasm_wait_i32((int32_t*)condvar, val, maxWaitNanoseconds);
+	int waitValue = emscripten_atomic_wait_u32((int32_t*)condvar, val, maxWaitNanoseconds);
 	if (waitValue == ATOMICS_WAIT_TIMED_OUT)
 		return EM_FALSE;
 
@@ -224,5 +244,5 @@ ATOMICS_WAIT_TOKEN_T emscripten_condvar_wait_async(emscripten_condvar_t *condvar
 void emscripten_condvar_signal(emscripten_condvar_t *condvar, int64_t numWaitersToSignal)
 {
 	emscripten_atomic_add_u32((void*)condvar, 1);
-	emscripten_wasm_notify((int*)condvar, numWaitersToSignal);
+	emscripten_atomic_notify((int*)condvar, numWaitersToSignal);
 }

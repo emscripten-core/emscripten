@@ -28,13 +28,15 @@ the output:
 .. code-block:: text
 
   throw...
-  exception thrown: 5246024 - Exception catching is disabled, this exception cannot be caught. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.
+  Aborted(Assertion failed: Exception thrown, but exception catching is not enabled. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.)
 
 If you want to opt-in, you have two following options.
 
 
-JavaScript-based Exception Support
-==================================
+.. _javascript-based-exception-support:
+
+Emscripten (JavaScript-based) Exception Support
+===============================================
 
 First, you can enable exceptions via Emscripten's JavaScript-based support. To
 enable it, pass ``-fexceptions`` at both compile time and link time.
@@ -51,6 +53,8 @@ JavaScript engines with WebAssembly support. You can reduce the overhead by
 specifying a list of allowed functions in which exceptions are enabled, see the
 ``EXCEPTION_CATCHING_ALLOWED`` setting.
 
+
+.. _webassembly-exception-handling-based-support:
 
 WebAssembly Exception Handling-based Support
 ============================================
@@ -76,7 +80,87 @@ be supported in all WebAssembly engines yet
 <https://webassembly.org/roadmap/>`_.
 
 
-Using exceptions and setjmp-longjmp together
-############################################
+Debugging Exceptions
+====================
+
+Stack Traces
+------------
+
+For :ref:`native Wasm exceptions
+<webassembly-exception-handling-based-support>`, when :ref:`ASSERTIONS
+<debugging-ASSERTIONS>` is enabled, uncaught exceptions will print stack traces
+for debugging. :ref:`ASSERTIONS <debugging-ASSERTIONS>` is enabled by default
+in :ref:`-O0 <emcc-O0>` and disabled in optimized builds (:ref:`-O1 <emcc-O1>`
+and above). You can enable it by passing ``-sASSERTIONS`` to the ``emcc``
+command line in optimized builds as well. To display Wasm function names in
+stack traces, you also need :ref:`--profiling-funcs <emcc-profiling-funcs>`
+(or :ref:`-g <emcc-g>` or :ref:`-gsource-map<emcc-gsource-map>`).
+
+In JavaScript, you can also examine the stack traces using
+`WebAssembly.Exception.prototype.stack
+<https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/stack>`_
+property. For example:
+
+.. code-block:: javascript
+
+  try {
+    ... // some code that calls WebAssembly
+  } catch (e) {
+    // Do something with e.stack
+    console.log(e.stack);
+  }
+
+Stack traces within Wasm code are not supported in :ref:`JavaScript-based
+exceptions <javascript-based-exception-support>`.
+
+
+.. _handling-c-exceptions-from-javascript:
+
+Handling C++ Exceptions from JavaScript
+---------------------------------------
+
+You can also catch and examine the type and the message of C++ exceptions from
+JavaScript, in case they inherit from ``std::exception`` and thus have ``what``
+method.
+
+``getExceptionMessage`` returns a list of two strings: ``[type, message]``. the
+``message`` is the result of calling ``what`` method in case the exception is a
+subclass of ``std::exception``. Otherwise it will be just an empty string.
+
+.. code-block:: javascript
+
+  try {
+    ... // some code that calls WebAssembly
+  } catch (e) {
+    console.log(getExceptionMessage(e).toString());
+  } finally {
+    ...
+  }
+
+In case the thrown value is an integer 3, this will print ``int,``, because the
+message part is empty. If the thrown value is an instance of ``MyException``
+that is a subclass of ``std::exception`` and its ``what`` message is ``My
+exception thrown``, this code will print ``MyException,My exception thrown``.
+
+To use this function, you need to pass ``-sEXPORT_EXCEPTION_HANDLING_HELPERS``
+to the options. You need to enable either of Emscripten EH or Wasm EH to use
+this option.
+
+.. note:: If you catch a Wasm exception and do not rethrow it, you need to free
+   the storage associated with the exception in JS using
+   ``decrementExceptionRefcount`` method because the exception
+   catching code in Wasm does not have a chance to free it. But currently due to
+   an implementation issue that Wasm EH and Emscripten (JS-based) EH, you need
+   to call incrementExceptionRefcount additionally in case of Emscripten EH. See
+   https://github.com/emscripten-core/emscripten/issues/17115 for details and a
+   code example.
+
+.. todo:: Fix the above-mentinoed `inconsistency
+   <https://github.com/emscripten-core/emscripten/issues/17115>`_ between Wasm
+   EH and Emscripten EH, on the reference counting.
+
+
+Using Exceptions and setjmp-longjmp Together
+============================================
 
 See :ref:`using-exceptions-and-setjmp-longjmp-together`.

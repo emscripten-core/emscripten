@@ -13,6 +13,8 @@ char stringBuffer[1024];
 
 #define TEST_STRING "something long so that it hits the TextDecoder path"
 
+EM_JS_DEPS(deps, "$stringToUTF8");
+
 static void *thread1_start(void *arg) {
   EM_ASM({
    var mystr = UTF8ToString($0);

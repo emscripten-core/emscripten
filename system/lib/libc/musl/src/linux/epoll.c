@@ -5,6 +5,7 @@
 
 int epoll_create(int size)
 {
+	if (size<=0) return __syscall_ret(-EINVAL);
 	return epoll_create1(0);
 }
 
@@ -24,9 +25,9 @@ int epoll_ctl(int fd, int op, int fd2, struct epoll_event *ev)
 
 int epoll_pwait(int fd, struct epoll_event *ev, int cnt, int to, const sigset_t *sigs)
 {
-	int r = __syscall(SYS_epoll_pwait, fd, ev, cnt, to, sigs, _NSIG/8);
+	int r = __syscall_cp(SYS_epoll_pwait, fd, ev, cnt, to, sigs, _NSIG/8);
 #ifdef SYS_epoll_wait
-	if (r==-ENOSYS && !sigs) r = __syscall(SYS_epoll_wait, fd, ev, cnt, to);
+	if (r==-ENOSYS && !sigs) r = __syscall_cp(SYS_epoll_wait, fd, ev, cnt, to);
 #endif
 	return __syscall_ret(r);
 }

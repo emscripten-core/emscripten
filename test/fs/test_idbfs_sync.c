@@ -15,8 +15,7 @@
 
 int result = 1;
 
-void success()
-{
+void success() {
   REPORT_RESULT(result);
 #ifdef FORCE_EXIT
   emscripten_force_exit(0);
@@ -24,10 +23,9 @@ void success()
 }
 
 void test() {
-
   int fd;
   struct stat st;
-  
+
 #if FIRST
 
   // for each file, we first make sure it doesn't currently exist
@@ -49,22 +47,20 @@ void test() {
   fd = open("/working1/waka.txt", O_RDWR | O_CREAT, 0666);
   if (fd == -1)
     result = -5000 - errno;
-  else
-  {
+  else {
     if (write(fd,"az",2) != 2)
       result = -6000 - errno;
     if (close(fd) != 0)
       result = -7000 - errno;
   }
-  
+
   // a file whose contents are random-ish string set by the test_browser.py file
   if ((stat("/working1/moar.txt", &st) != -1) || (errno != ENOENT))
     result = -8000 - errno;
   fd = open("/working1/moar.txt", O_RDWR | O_CREAT, 0666);
   if (fd == -1)
     result = -9000 - errno;
-  else
-  {
+  else {
     if (write(fd, SECRET, strlen(SECRET)) != strlen(SECRET))
       result = -10000 - errno;
     if (close(fd) != 0)
@@ -92,8 +88,7 @@ void test() {
   fd = open("/working1/waka.txt", O_RDONLY);
   if (fd == -1)
     result = -17000 - errno;
-  else
-  {
+  else {
     char bf[4];
     int bytes_read = read(fd,&bf[0],sizeof(bf));
     if (bytes_read != 2)
@@ -105,19 +100,17 @@ void test() {
     if (unlink("/working1/waka.txt") != 0)
       result = -21000 - errno;
   }
-  
+
   // does the random-ish file exist and does it contain SECRET?
   fd = open("/working1/moar.txt", O_RDONLY);
-  if (fd == -1)
+  if (fd == -1) {
     result = -22000 - errno;
-  else
-  {
+  } else {
     char bf[256];
     int bytes_read = read(fd,&bf[0],sizeof(bf));
-    if (bytes_read != strlen(SECRET))
+    if (bytes_read != strlen(SECRET)) {
       result = -23000;
-    else
-    {
+    } else {
       bf[strlen(SECRET)] = 0;
       if (strcmp(bf,SECRET) != 0)
         result = -24000;
@@ -129,14 +122,13 @@ void test() {
   }
 
   // does the directory exist?
-  if (stat("/working1/dir", &st) != 0)
+  if (stat("/working1/dir", &st) != 0) {
     result = -27000 - errno;
-  else
-  {
+  } else {
     if (!S_ISDIR(st.st_mode))
       result = -28000;
-	if (rmdir("/working1/dir") != 0)
-		result = -29000 - errno;
+    if (rmdir("/working1/dir") != 0)
+      result = -29000 - errno;
   }
 
 #endif
@@ -164,20 +156,18 @@ void test() {
       ccall('success', 'v');
     });
   );
-
 }
 
 int main() {
-
   EM_ASM(
     FS.mkdir('/working1');
     FS.mount(IDBFS, {}, '/working1');
 
 #if !FIRST
-	// syncfs(true, f) should not break on already-existing directories:
-	FS.mkdir('/working1/dir');
+    // syncfs(true, f) should not break on already-existing directories:
+    FS.mkdir('/working1/dir');
 #endif
-    
+
     // sync from persisted state into memory and then
     // run the 'test' function
     FS.syncfs(true, function (err) {
@@ -187,6 +177,5 @@ int main() {
   );
 
   emscripten_exit_with_live_runtime();
-
   return 0;
 }

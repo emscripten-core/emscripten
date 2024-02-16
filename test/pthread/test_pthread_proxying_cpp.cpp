@@ -56,7 +56,10 @@ void test_proxy_async() {
   // Proxy to looper.
   {
     queue.proxyAsync(looper.native_handle(), [&]() {
-      i = 2;
+      {
+        std::unique_lock<std::mutex> lock(mutex);
+        i = 2;
+      }
       executor = std::this_thread::get_id();
       cond.notify_one();
     });
@@ -68,7 +71,10 @@ void test_proxy_async() {
   // Proxy to returner.
   {
     queue.proxyAsync(returner.native_handle(), [&]() {
-      i = 3;
+      {
+        std::unique_lock<std::mutex> lock(mutex);
+        i = 3;
+      }
       executor = std::this_thread::get_id();
       cond.notify_one();
     });
@@ -106,7 +112,7 @@ void test_proxy_sync() {
 }
 
 void test_proxy_sync_with_ctx(void) {
-  std::cout << "Testing sync proxying\n";
+  std::cout << "Testing sync_with_ctx proxying\n";
 
   int i = 0;
   std::thread::id executor;
@@ -135,6 +141,128 @@ void test_proxy_sync_with_ctx(void) {
   }
 }
 
+void test_proxy_callback(void) {
+  std::cout << "Testing callback proxying\n";
+
+  int i = 0;
+  thread_local int j = 0;
+  std::thread::id executor;
+
+  // Proxy to ourselves.
+  queue.proxyCallback(
+    pthread_self(),
+    [&]() {
+      i = 1;
+      executor = std::this_thread::get_id();
+    },
+    [&]() { j = 1; },
+    {});
+  assert(i == 0);
+  queue.execute();
+  assert(i == 1);
+  assert(executor == std::this_thread::get_id());
+  assert(j == 1);
+
+  // Proxy to looper.
+  {
+    queue.proxyCallback(
+      looper.native_handle(),
+      [&]() {
+        i = 2;
+        executor = std::this_thread::get_id();
+      },
+      [&]() { j = 2; },
+      {});
+    // TODO: Add a way to wait for work before executing it.
+    while (j != 2) {
+      queue.execute();
+    }
+    assert(i == 2);
+    assert(executor == looper.get_id());
+  }
+
+  // Proxy to returner.
+  {
+    queue.proxyCallback(
+      returner.native_handle(),
+      [&]() {
+        i = 3;
+        executor = std::this_thread::get_id();
+      },
+      [&]() { j = 3; },
+      {});
+    // TODO: Add a way to wait for work before executing it.
+    while (j != 3) {
+      queue.execute();
+    }
+    assert(i == 3);
+    assert(executor == returner.get_id());
+  }
+}
+
+void test_proxy_callback_with_ctx(void) {
+  std::cout << "Testing callback_with_ctx proxying\n";
+
+  int i = 0;
+  thread_local int j = 0;
+  std::thread::id executor;
+
+  // Proxy to ourselves.
+  queue.proxyCallbackWithCtx(
+    pthread_self(),
+    [&](auto ctx) {
+      i = 1;
+      executor = std::this_thread::get_id();
+      ctx.finish();
+    },
+    [&]() { j = 1; },
+    {});
+  assert(i == 0);
+  queue.execute();
+  assert(i == 1);
+  assert(executor == std::this_thread::get_id());
+  assert(j == 1);
+
+  // Proxy to looper.
+  {
+    queue.proxyCallbackWithCtx(
+      looper.native_handle(),
+      [&](auto ctx) {
+        i = 2;
+        executor = std::this_thread::get_id();
+        ctx.finish();
+      },
+      [&]() { j = 2; },
+      {});
+    // TODO: Add a way to wait for work before executing it.
+    while (j != 2) {
+      queue.execute();
+    }
+    assert(i == 2);
+    assert(executor == looper.get_id());
+  }
+
+  // Proxy to returner.
+  {
+    queue.proxyCallbackWithCtx(
+      returner.native_handle(),
+      [&](auto ctx) {
+        i = 3;
+        executor = std::this_thread::get_id();
+        auto finish = (void (*)(void*))emscripten_proxy_finish;
+        emscripten_async_call(finish, ctx.ctx, 0);
+      },
+      [&]() { j = 3; },
+      {});
+    // TODO: Add a way to wait for work before executing it.
+    while (j != 3) {
+      queue.execute();
+    }
+    assert(i == 3);
+    assert(executor == returner.get_id());
+  }
+}
+
 int main(int argc, char* argv[]) {
   looper = std::thread(looper_main);
   returner = std::thread(returner_main);
@@ -142,6 +270,8 @@ int main(int argc, char* argv[]) {
   test_proxy_async();
   test_proxy_sync();
   test_proxy_sync_with_ctx();
+  test_proxy_callback();
+  test_proxy_callback_with_ctx();
 
   should_quit = true;
   looper.join();

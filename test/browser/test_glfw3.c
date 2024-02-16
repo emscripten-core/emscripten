@@ -14,10 +14,12 @@ static void errorcb(int error, const char *msg) { (void)error; (void)msg; }
 static void monitcb(GLFWmonitor *monitor, int event) { assert(monitor != NULL); (void)event; }
 static void wposicb(GLFWwindow *window, int x, int y) { assert(window != NULL); (void)x; (void)y; }
 static void wsizecb(GLFWwindow *window, int w, int h) { assert(window != NULL); (void)w; (void)h; }
+static void wscalcb(GLFWwindow *window, float xscale, float yscale) { assert(window != NULL); (void)xscale; (void)yscale; }
 static void wcloscb(GLFWwindow *window) { assert(window != NULL); }
 static void wrfrscb(GLFWwindow *window) { assert(window != NULL); }
 static void wfocucb(GLFWwindow *window, int focused) { assert(window != NULL); (void)focused; }
 static void wiconcb(GLFWwindow *window, int iconified) { assert(window != NULL); (void)iconified; }
+static void wmaxicb(GLFWwindow *window, int maximized) { assert(window != NULL); (void)maximized;}
 static void wfsizcb(GLFWwindow *window, int w, int h) { assert(window != NULL); (void)w; (void)h; }
 static void wkeypcb(GLFWwindow *window, int key, int scancode, int action, int mods) {
     assert(window != NULL); (void)key; (void)scancode; (void)action; (void)mods;
@@ -68,6 +70,7 @@ int main()
 
     {
         int count, x, y, w, h;
+        float xs, ys;
         GLFWmonitor **monitors = glfwGetMonitors(&count);
         assert(count == 1);
         for (int i = 0; i < count; ++i) {
@@ -77,6 +80,8 @@ int main()
         assert(glfwGetPrimaryMonitor() != NULL);
         glfwGetMonitorPos(monitors[0], &x, &y);
         glfwGetMonitorPhysicalSize(monitors[0], &w, &h);
+        glfwGetMonitorWorkarea(monitors[0], &x, &y, &w, &h);
+        glfwGetMonitorContentScale(monitors[0], &xs, &ys);
         assert(glfwGetMonitorName(monitors[0]) != NULL);
         TEST_GLFW_SET_I(MonitorCallback, monitcb)
 
@@ -90,18 +95,21 @@ int main()
 
     {
         int x, y, w, h;
+        float xscale, yscale;
         glfwDefaultWindowHints();
         glfwWindowHint(GLFW_CLIENT_API, CLIENT_API);
-
+        glfwWindowHintString(GLFW_X11_CLASS_NAME, "Will be Ignored :)");
         window = glfwCreateWindow(640, 480, "glfw3.c", NULL, NULL);
         assert(window != NULL);
 
         TEST_GLFW_SET_II(WindowPosCallback, window, wposicb)
         TEST_GLFW_SET_II(WindowSizeCallback, window, wsizecb)
+        TEST_GLFW_SET_II(WindowContentScaleCallback, window, wscalcb)
         TEST_GLFW_SET_II(WindowCloseCallback, window, wcloscb)
         TEST_GLFW_SET_II(WindowRefreshCallback, window, wrfrscb)
         TEST_GLFW_SET_II(WindowFocusCallback, window, wfocucb)
         TEST_GLFW_SET_II(WindowIconifyCallback, window, wiconcb)
+        TEST_GLFW_SET_II(WindowMaximizeCallback, window, wmaxicb)
         TEST_GLFW_SET_II(FramebufferSizeCallback, window, wfsizcb)
         TEST_GLFW_SET_II(KeyCallback, window, wkeypcb)
         TEST_GLFW_SET_II(CharCallback, window, wcharcb)
@@ -134,6 +142,12 @@ int main()
         glfwGetFramebufferSize(window, &w, &h);
         assert(exited == 0);
 
+        float opacity = glfwGetWindowOpacity(window); // always returns 1.0 for now
+        glfwSetWindowOpacity(window, opacity); // ignored.
+        // how to check if x/yscale are correct? use emscripten_device_pixel_ratio from html5 header?
+        glfwGetWindowContentScale(window, &xscale, &yscale);
+        assert(opacity == 1.0);
+        assert(exited == 0);
         // XXX: not implemented
         // glfwIconifyWindow(window);
         // glfwRestoreWindow(window);
@@ -152,7 +166,8 @@ int main()
         assert(window != NULL);
 
         assert(glfwGetWindowAttrib(window, GLFW_CLIENT_API) == CLIENT_API);
-
+        glfwSetWindowAttrib(window, GLFW_TRANSPARENT_FRAMEBUFFER, GLFW_TRUE);
+        assert(glfwGetWindowAttrib(window, GLFW_TRANSPARENT_FRAMEBUFFER) == GLFW_TRUE);
         assert(glfwGetWindowUserPointer(window) == NULL);
         glfwSetWindowUserPointer(window, userptr);
         assert(glfwGetWindowUserPointer(window) == userptr);
@@ -177,6 +192,7 @@ int main()
         // XXX: not implemented
         // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 
+        assert(glfwRawMouseMotionSupported() == 0); // constant false
         glfwGetKey(window, GLFW_KEY_A);
         glfwGetMouseButton(window, 0);
         glfwGetCursorPos(window, &x, &y);

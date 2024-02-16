@@ -12,8 +12,7 @@
 #include <GLES2/gl2.h>
 #include <math.h>
 
-void report_result(int result)
-{
+void report_result(int result) {
   if (result == 0) {
     printf("Test successful!\n");
   } else {
@@ -81,8 +80,7 @@ EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *user
 
 int callCount = 0;
 
-EM_BOOL fullscreenchange_callback(int eventType, const EmscriptenFullscreenChangeEvent *e, void *userData)
-{
+EM_BOOL fullscreenchange_callback(int eventType, const EmscriptenFullscreenChangeEvent *e, void *userData) {
   printf("%s, isFullscreen: %d, fullscreenEnabled: %d, fs element nodeName: \"%s\", fs element id: \"%s\". New size: %dx%d pixels. Screen size: %dx%d pixels.\n",
     emscripten_event_type_to_string(eventType), e->isFullscreen, e->fullscreenEnabled, e->nodeName, e->id, e->elementWidth, e->elementHeight, e->screenWidth, e->screenHeight);
 
@@ -101,15 +99,13 @@ EM_BOOL fullscreenchange_callback(int eventType, const EmscriptenFullscreenChang
   return 0;
 }
 
-EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData)
-{
+EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
   return 0;
 }
 
 GLuint program;
 
-void draw()
-{
+void draw() {
   int w, h;
   emscripten_get_canvas_element_size("#canvas", &w, &h);
   float t = emscripten_get_now() / 1000.0f;
@@ -122,8 +118,7 @@ void draw()
   glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
-EM_BOOL on_canvassize_changed(int eventType, const void *reserved, void *userData)
-{
+EM_BOOL on_canvassize_changed(int eventType, const void *reserved, void *userData) {
   int w, h;
   emscripten_get_canvas_element_size("#canvas", &w, &h);
   double cssW, cssH;
@@ -132,8 +127,7 @@ EM_BOOL on_canvassize_changed(int eventType, const void *reserved, void *userDat
   return 0;
 }
 
-void requestFullscreen(int scaleMode, int canvasResolutionScaleMode, int filteringMode)
-{
+void requestFullscreen(int scaleMode, int canvasResolutionScaleMode, int filteringMode) {
   EmscriptenFullscreenStrategy s;
   memset(&s, 0, sizeof(s));
   s.scaleMode = scaleMode;
@@ -144,8 +138,7 @@ void requestFullscreen(int scaleMode, int canvasResolutionScaleMode, int filteri
   TEST_RESULT(requestFullscreen);
 }
 
-void enterSoftFullscreen(int scaleMode, int canvasResolutionScaleMode, int filteringMode)
-{
+void enterSoftFullscreen(int scaleMode, int canvasResolutionScaleMode, int filteringMode) {
   EmscriptenFullscreenStrategy s;
   memset(&s, 0, sizeof(s));
   s.scaleMode = scaleMode;
@@ -156,10 +149,8 @@ void enterSoftFullscreen(int scaleMode, int canvasResolutionScaleMode, int filte
   TEST_RESULT(enterSoftFullscreen);
 }
 
-int on_button_click(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData)
-{
-  switch((long)userData)
-  {
+int on_button_click(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData) {
+  switch((long)userData) {
     case 0: requestFullscreen(EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT, EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE, EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT); break;
     case 1: requestFullscreen(EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH, EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF, EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT); break;
     case 2: requestFullscreen(EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH, EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF, EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT); break;
@@ -184,8 +175,7 @@ int on_button_click(int eventType, const EmscriptenMouseEvent *mouseEvent, void 
   return 1;
 }
 
-int main()
-{
+int main() {
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
   attr.alpha = attr.depth = attr.stencil = attr.antialias = attr.preserveDrawingBuffer = attr.failIfMajorPerformanceCaveat = 0;

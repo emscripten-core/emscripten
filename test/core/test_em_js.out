@@ -25,4 +25,6 @@ no args returning double
     return_str returned: hello from js
     return_utf8_str returned: こんにちは
     _prefixed: 1
+no args returning int
+    transitive: 12
 END

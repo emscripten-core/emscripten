@@ -13,6 +13,9 @@ high level it consists of:
 - :ref:`html5-h`:
   Low level glue bindings for interfacing with HTML5 APIs from native code.
 
+- :ref:`console-h`:
+  Functions to writing to the console and stdout/stderr.
+
 - :ref:`preamble-js`:
   APIs for working with compiled code from JavaScript.
 
@@ -22,8 +25,11 @@ high level it consists of:
 - :ref:`Fetch-API`:
   API for managing accesses to network XHR and IndexedDB.
 
-- :ref:`wasm_workers`:
+- :ref:`wasm workers section`:
   Enables writing multithreaded programs using a web-like API.
+
+- :ref:`wasm_audio_worklets`:
+  Allows programs to implement audio processing nodes that run in a dedicated real-time audio processing thread context.
 
 - :ref:`Module`:
   Global JavaScript object that can be used to control code execution and access
@@ -45,6 +51,9 @@ high level it consists of:
 - :ref:`proxying-h`:
   API for synchronously or asynchronously proxying work to a target pthread.
 
+- :ref:`stack-h`:
+  Inspecting the WebAssembly data stack.
+
 - :ref:`api-reference-advanced-apis`:
   APIs for advanced users/core developers.
 
@@ -54,6 +63,7 @@ high level it consists of:
 
    emscripten.h
    html5.h
+   console.h
    preamble.js
    Filesystem-API
    fetch
@@ -63,5 +73,7 @@ high level it consists of:
    trace.h
    fiber.h
    proxying.h
+   stack.h
    wasm_workers
+   wasm_audio_worklets
    advanced-apis

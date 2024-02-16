@@ -8,6 +8,8 @@ import hashlib
 import os
 import shutil
 import glob
+import importlib.util
+import sys
 from typing import Set
 from tools import cache
 from tools import config
@@ -16,9 +18,13 @@ from tools import system_libs
 from tools import utils
 from tools.settings import settings
 
+from tools.toolchain_profiler import ToolchainProfiler
+
 ports = []
 
 ports_by_name = {}
+
+ports_needed = set()
 
 # Variant builds that we want to support for certain ports
 # {variant_name: (port_name, extra_settings)}
@@ -29,36 +35,80 @@ ports_dir = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger('ports')
 
 
+def init_port(name, port):
+  ports.append(port)
+  port.is_contrib = name.startswith('contrib.')
+  port.name = name
+  ports_by_name[port.name] = port
+  if not hasattr(port, 'needed'):
+    port.needed = lambda s: name in ports_needed
+  else:
+    needed = port.needed
+    port.needed = lambda s: needed(s) or name in ports_needed
+  if not hasattr(port, 'process_dependencies'):
+    port.process_dependencies = lambda x: 0
+  if not hasattr(port, 'linker_setup'):
+    port.linker_setup = lambda x, y: 0
+  if not hasattr(port, 'deps'):
+    port.deps = []
+  if not hasattr(port, 'process_args'):
+    port.process_args = lambda x: []
+  if not hasattr(port, 'variants'):
+    # port variants (default: no variants)
+    port.variants = {}
+  if not hasattr(port, 'show'):
+    port.show = lambda: f'{port.name} (--use-port={port.name}; {port.LICENSE})'
+
+  for variant, extra_settings in port.variants.items():
+    if variant in port_variants:
+      utils.exit_with_error('duplicate port variant: `%s`' % variant)
+    port_variants[variant] = (port.name, extra_settings)
+
+  validate_port(port)
+
+
+def load_port_by_name(name):
+  port = __import__(name, globals(), level=1, fromlist=[None])
+  init_port(name, port)
+
+
+def load_port_by_path(path):
+  name = os.path.splitext(os.path.basename(path))[0]
+  if name in ports_by_name:
+    utils.exit_with_error(f'port path [`{path}`] is invalid: duplicate port name `{name}`')
+  module_name = f'tools.ports.{name}'
+  spec = importlib.util.spec_from_file_location(module_name, path)
+  port = importlib.util.module_from_spec(spec)
+  sys.modules[module_name] = port
+  spec.loader.exec_module(port)
+  init_port(name, port)
+  return name
+
+
+def validate_port(port):
+  expected_attrs = ['get', 'clear', 'show']
+  if port.is_contrib:
+    expected_attrs += ['URL', 'DESCRIPTION', 'LICENSE']
+  if hasattr(port, 'handle_options'):
+    expected_attrs += ['OPTIONS']
+  for a in expected_attrs:
+    assert hasattr(port, a), 'port %s is missing %s' % (port, a)
+
+
+@ToolchainProfiler.profile()
 def read_ports():
-  expected_attrs = ['get', 'clear', 'process_args', 'show', 'needed']
   for filename in os.listdir(ports_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
     filename = os.path.splitext(filename)[0]
-    port = __import__(filename, globals(), level=1)
-    ports.append(port)
-    port.name = filename
-    ports_by_name[port.name] = port
-    for a in expected_attrs:
-      assert hasattr(port, a), 'port %s is missing %s' % (port, a)
-    if not hasattr(port, 'process_dependencies'):
-      port.process_dependencies = lambda x: 0
-    if not hasattr(port, 'linker_setup'):
-      port.linker_setup = lambda x, y: 0
-    if not hasattr(port, 'deps'):
-      port.deps = []
-    if not hasattr(port, 'variants'):
-      # port variants (default: no variants)
-      port.variants = {}
+    load_port_by_name(filename)
 
-    for variant, extra_settings in port.variants.items():
-      if variant in port_variants:
-        utils.exit_with_error('duplicate port variant: %s' % variant)
-      port_variants[variant] = (port.name, extra_settings)
-
-  for dep in port.deps:
-    if dep not in ports_by_name:
-      utils.exit_with_error('unknown dependency in port: %s' % dep)
+  contrib_dir = os.path.join(ports_dir, 'contrib')
+  for filename in os.listdir(contrib_dir):
+    if not filename.endswith('.py') or filename == '__init__.py':
+      continue
+    filename = os.path.splitext(filename)[0]
+    load_port_by_name('contrib.' + filename)
 
 
 def get_all_files_under(dirname):
@@ -77,6 +127,22 @@ def dir_is_newer(dir_a, dir_b):
   logger.debug('newest_a: %s %s', *newest_a)
   logger.debug('newest_b: %s %s', *newest_b)
   return newest_a[1] > newest_b[1]
+
+
+def maybe_copy(src, dest):
+  """Just like shutil.copyfile, but will do nothing if the destination already
+  exists and has the same contents as the source.
+
+  In the case where a library is built in multiple different configurations,
+  we want to avoids racing between processes that are reading headers (without
+  holding the cache lock) (e.g. normal compile steps) and a process that is
+  building/installing a new flavor of a given library.  In this case the
+  headers will be "re-installed" but we skip the actual filesystem mods
+  to avoid racing with other processes that might be reading these files.
+  """
+  if os.path.exists(dest) and utils.read_binary(src) == utils.read_binary(dest):
+    return
+  shutil.copyfile(src, dest)
 
 
 class Ports:
@@ -110,7 +176,7 @@ class Ports:
     assert matches, f'no headers found to install in {src_dir}'
     for f in matches:
       logger.debug('installing: ' + os.path.join(dest, os.path.basename(f)))
-      shutil.copyfile(f, os.path.join(dest, os.path.basename(f)))
+      maybe_copy(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
   def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa
@@ -119,21 +185,21 @@ class Ports:
       srcs = [os.path.join(src_dir, s) for s in srcs]
     else:
       srcs = []
-      for root, _, files in os.walk(src_dir, topdown=False):
-        if any((excluded in root) for excluded in exclude_dirs):
-          continue
+      for root, dirs, files in os.walk(src_dir):
+        for ex in exclude_dirs:
+          if ex in dirs:
+            dirs.remove(ex)
         for f in files:
           ext = shared.suffix(f)
           if ext in ('.c', '.cpp') and not any((excluded in f) for excluded in exclude_files):
             srcs.append(os.path.join(root, f))
 
-    cflags = system_libs.get_base_cflags() + ['-Werror', '-O2', '-I' + src_dir] + flags
+    cflags = system_libs.get_base_cflags() + ['-O2', '-I' + src_dir] + flags
     for include in includes:
       cflags.append('-I' + include)
 
     if system_libs.USE_NINJA:
-      if not os.path.exists(build_dir):
-        os.makedirs(build_dir)
+      os.makedirs(build_dir, exist_ok=True)
       ninja_file = os.path.join(build_dir, 'build.ninja')
       system_libs.ensure_sysroot()
       system_libs.create_ninja_file(srcs, ninja_file, output_path, cflags=cflags)
@@ -145,8 +211,7 @@ class Ports:
         relpath = os.path.relpath(src, src_dir)
         obj = os.path.join(build_dir, relpath) + '.o'
         dirname = os.path.dirname(obj)
-        if not os.path.exists(dirname):
-          os.makedirs(dirname)
+        os.makedirs(dirname, exist_ok=True)
         cmd = [shared.EMCC, '-c', src, '-o', obj] + cflags
         if shared.suffix(src) in ('.cc', '.cxx', '.cpp'):
           cmd[0] = shared.EMXX
@@ -154,7 +219,7 @@ class Ports:
         commands.append(cmd)
         objects.append(obj)
 
-      system_libs.run_build_commands(commands)
+      system_libs.run_build_commands(commands, num_inputs=len(srcs))
       system_libs.create_lib(output_path, objects)
 
     return output_path
@@ -332,6 +397,8 @@ def resolve_dependencies(port_set, settings):
   def add_deps(node):
     node.process_dependencies(settings)
     for d in node.deps:
+      if d not in ports_by_name:
+        utils.exit_with_error(f'unknown dependency `{d}` for port `{node.name}`')
       dep = ports_by_name[d]
       if dep not in port_set:
         port_set.add(dep)
@@ -339,6 +406,47 @@ def resolve_dependencies(port_set, settings):
 
   for port in port_set.copy():
     add_deps(port)
+
+
+def handle_use_port_error(arg, message):
+  utils.exit_with_error(f'error with `--use-port={arg}` | {message}')
+
+
+def handle_use_port_arg(settings, arg, error_handler=None):
+  if not error_handler:
+    def error_handler(message):
+      handle_use_port_error(arg, message)
+  # Ignore ':' in first or second char of string since we could be dealing with a windows drive separator
+  pos = arg.find(':', 2)
+  if pos != -1:
+    name, options = arg[:pos], arg[pos + 1:]
+  else:
+    name, options = arg, None
+  if name.endswith('.py'):
+    port_file_path = name
+    if not os.path.isfile(port_file_path):
+      error_handler(f'not a valid port path: {port_file_path}')
+    name = load_port_by_path(port_file_path)
+  elif name not in ports_by_name:
+    error_handler(f'invalid port name: `{name}`')
+  ports_needed.add(name)
+  if options:
+    port = ports_by_name[name]
+    if not hasattr(port, 'handle_options'):
+      error_handler(f'no options available for port `{name}`')
+    else:
+      options_dict = {}
+      for name_value in options.split(':'):
+        nv = name_value.split('=', 1)
+        if len(nv) != 2:
+          error_handler(f'`{name_value}` is missing a value')
+        if nv[0] not in port.OPTIONS:
+          error_handler(f'`{nv[0]}` is not supported; available options are {port.OPTIONS}')
+        if nv[0] in options_dict:
+          error_handler(f'duplicate option `{nv[0]}`')
+        options_dict[nv[0]] = nv[1]
+      port.handle_options(options_dict, error_handler)
+  return name
 
 
 def get_needed_ports(settings):
@@ -375,8 +483,8 @@ def get_libs(settings):
   for port in dependency_order(needed):
     if port.needed(settings):
       port.linker_setup(Ports, settings)
-      # ports return their output files, which will be linked, or a txt file
-      ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
+      # port.get returns a list of libraries to link
+      ret += port.get(Ports, settings, shared)
 
   ret.reverse()
   return ret
@@ -403,9 +511,15 @@ def add_cflags(args, settings): # noqa: U100
 
 
 def show_ports():
-  print('Available ports:')
-  for port in ports:
-    print('   ', port.show())
+  sorted_ports = sorted(ports, key=lambda p: p.name)
+  print('Available official ports:')
+  for port in sorted_ports:
+    if not port.is_contrib:
+      print('   ', port.show())
+  print('Available contrib ports:')
+  for port in sorted_ports:
+    if port.is_contrib:
+      print('   ', port.show())
 
 
 read_ports()

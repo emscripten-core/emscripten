@@ -20,32 +20,32 @@ extern "C" {
 #define EMSCRIPTEN_WEBSOCKET_T int
 
 // Returns the WebSocket.readyState field into readyState. readyState must not be a null pointer.
-EMSCRIPTEN_RESULT emscripten_websocket_get_ready_state(EMSCRIPTEN_WEBSOCKET_T socket, unsigned short *readyState);
+EMSCRIPTEN_RESULT emscripten_websocket_get_ready_state(EMSCRIPTEN_WEBSOCKET_T socket, unsigned short *readyState __attribute__((nonnull)));
 
 // Returns the WebSocket.bufferedAmount field into bufferedAmount. bufferedAmount must not be a null pointer.
-EMSCRIPTEN_RESULT emscripten_websocket_get_buffered_amount(EMSCRIPTEN_WEBSOCKET_T socket, unsigned long long *bufferedAmount);
+EMSCRIPTEN_RESULT emscripten_websocket_get_buffered_amount(EMSCRIPTEN_WEBSOCKET_T socket, size_t *bufferedAmount __attribute__((nonnull)));
 
 // Writes the WebSocket.url field as a UTF-8 string to the memory area pointed by url. The memory area must contain at least urlLength bytes of free space. If this memory area cannot
 // fit the url string, it will be truncated. Call emscripten_websocket_get_url_length() to determine how large memory area will be required to store the url.
 // url must not be a null pointer.
-EMSCRIPTEN_RESULT emscripten_websocket_get_url(EMSCRIPTEN_WEBSOCKET_T socket, char *url, int urlLength);
+EMSCRIPTEN_RESULT emscripten_websocket_get_url(EMSCRIPTEN_WEBSOCKET_T socket, char *url __attribute__((nonnull)), int urlLength);
 // Returns the byte length needed to store WebSocket.url string in Wasm heap. This length can be passed to emscripten_websocket_get_url as it includes the null byte in the count.
 // urlLength must not be a null pointer.
-EMSCRIPTEN_RESULT emscripten_websocket_get_url_length(EMSCRIPTEN_WEBSOCKET_T socket, int *urlLength);
+EMSCRIPTEN_RESULT emscripten_websocket_get_url_length(EMSCRIPTEN_WEBSOCKET_T socket, int *urlLength __attribute__((nonnull)));
 
 // Similar to emscripten_websocket_get_url(), but returns WebSocket.extensions field instead.
-EMSCRIPTEN_RESULT emscripten_websocket_get_extensions(EMSCRIPTEN_WEBSOCKET_T socket, char *extensions, int extensionsLength);
-EMSCRIPTEN_RESULT emscripten_websocket_get_extensions_length(EMSCRIPTEN_WEBSOCKET_T socket, int *extensionsLength);
+EMSCRIPTEN_RESULT emscripten_websocket_get_extensions(EMSCRIPTEN_WEBSOCKET_T socket, char *extensions __attribute__((nonnull)), int extensionsLength);
+EMSCRIPTEN_RESULT emscripten_websocket_get_extensions_length(EMSCRIPTEN_WEBSOCKET_T socket, int *extensionsLength __attribute__((nonnull)));
 
 // Similar to emscripten_websocket_get_url(), but returns WebSocket.protocol field instead.
-EMSCRIPTEN_RESULT emscripten_websocket_get_protocol(EMSCRIPTEN_WEBSOCKET_T socket, char *protocol, int protocolLength);
-EMSCRIPTEN_RESULT emscripten_websocket_get_protocol_length(EMSCRIPTEN_WEBSOCKET_T socket, int *protocolLength);
+EMSCRIPTEN_RESULT emscripten_websocket_get_protocol(EMSCRIPTEN_WEBSOCKET_T socket, char *protocol __attribute__((nonnull)), int protocolLength);
+EMSCRIPTEN_RESULT emscripten_websocket_get_protocol_length(EMSCRIPTEN_WEBSOCKET_T socket, int *protocolLength __attribute__((nonnull)));
 
 typedef struct EmscriptenWebSocketOpenEvent {
   EMSCRIPTEN_WEBSOCKET_T socket;
 } EmscriptenWebSocketOpenEvent;
 
-typedef EM_BOOL (*em_websocket_open_callback_func)(int eventType, const EmscriptenWebSocketOpenEvent *websocketEvent, void *userData);
+typedef EM_BOOL (*em_websocket_open_callback_func)(int eventType, const EmscriptenWebSocketOpenEvent *websocketEvent __attribute__((nonnull)), void *userData);
 EMSCRIPTEN_RESULT emscripten_websocket_set_onopen_callback_on_thread(EMSCRIPTEN_WEBSOCKET_T socket, void *userData, em_websocket_open_callback_func callback, pthread_t targetThread);
 
 typedef struct EmscriptenWebSocketMessageEvent {
@@ -55,14 +55,14 @@ typedef struct EmscriptenWebSocketMessageEvent {
   EM_BOOL isText;
 } EmscriptenWebSocketMessageEvent;
 
-typedef EM_BOOL (*em_websocket_message_callback_func)(int eventType, const EmscriptenWebSocketMessageEvent *websocketEvent, void *userData);
+typedef EM_BOOL (*em_websocket_message_callback_func)(int eventType, const EmscriptenWebSocketMessageEvent *websocketEvent __attribute__((nonnull)), void *userData);
 EMSCRIPTEN_RESULT emscripten_websocket_set_onmessage_callback_on_thread(EMSCRIPTEN_WEBSOCKET_T socket, void *userData, em_websocket_message_callback_func callback, pthread_t targetThread);
 
 typedef struct EmscriptenWebSocketErrorEvent {
   EMSCRIPTEN_WEBSOCKET_T socket;
 } EmscriptenWebSocketErrorEvent;
 
-typedef EM_BOOL (*em_websocket_error_callback_func)(int eventType, const EmscriptenWebSocketErrorEvent *websocketEvent, void *userData);
+typedef EM_BOOL (*em_websocket_error_callback_func)(int eventType, const EmscriptenWebSocketErrorEvent *websocketEvent __attribute__((nonnull)), void *userData);
 EMSCRIPTEN_RESULT emscripten_websocket_set_onerror_callback_on_thread(EMSCRIPTEN_WEBSOCKET_T socket, void *userData, em_websocket_error_callback_func callback, pthread_t targetThread);
 
 typedef struct EmscriptenWebSocketCloseEvent {
@@ -72,7 +72,7 @@ typedef struct EmscriptenWebSocketCloseEvent {
   char reason[512]; // WebSockets spec enforces this can be max 123 characters, so as UTF-8 at most 123*4 bytes < 512.
 } EmscriptenWebSocketCloseEvent;
 
-typedef EM_BOOL (*em_websocket_close_callback_func)(int eventType, const EmscriptenWebSocketCloseEvent *websocketEvent, void *userData);
+typedef EM_BOOL (*em_websocket_close_callback_func)(int eventType, const EmscriptenWebSocketCloseEvent *websocketEvent __attribute__((nonnull)), void *userData);
 EMSCRIPTEN_RESULT emscripten_websocket_set_onclose_callback_on_thread(EMSCRIPTEN_WEBSOCKET_T socket, void *userData, em_websocket_close_callback_func callback, pthread_t targetThread);
 
 #define emscripten_websocket_set_onopen_callback(socket, userData, callback)    emscripten_websocket_set_onopen_callback_on_thread(   (socket), (userData), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
@@ -106,13 +106,13 @@ EM_BOOL emscripten_websocket_is_supported(void);
 // If the return value of this function is > 0, the function has succeeded and the return value represents a handle to the WebSocket object.
 // If the return value of this function is < 0, then the function has failed, and the return value can be interpreted as a EMSCRIPTEN_RESULT code
 // representing the cause of the failure. If the function returns 0, then the call has failed with an unknown reason (build with -sWEBSOCKET_DEBUG for more information)
-EMSCRIPTEN_WEBSOCKET_T emscripten_websocket_new(EmscriptenWebSocketCreateAttributes *createAttributes);
+EMSCRIPTEN_WEBSOCKET_T emscripten_websocket_new(EmscriptenWebSocketCreateAttributes *createAttributes __attribute__((nonnull)));
 
 // Sends the given string of null-delimited UTF8 encoded text data to the connected server.
-EMSCRIPTEN_RESULT emscripten_websocket_send_utf8_text(EMSCRIPTEN_WEBSOCKET_T socket, const char *textData);
+EMSCRIPTEN_RESULT emscripten_websocket_send_utf8_text(EMSCRIPTEN_WEBSOCKET_T socket, const char *textData __attribute__((nonnull)));
 
 // Sends the given block of raw memory data out to the connected server.
-EMSCRIPTEN_RESULT emscripten_websocket_send_binary(EMSCRIPTEN_WEBSOCKET_T socket, void *binaryData, uint32_t dataLength);
+EMSCRIPTEN_RESULT emscripten_websocket_send_binary(EMSCRIPTEN_WEBSOCKET_T socket, void *binaryData __attribute__((nonnull)), uint32_t dataLength);
 
 // Closes the specified WebSocket. N.B.: the meaning of "closing" a WebSocket means "eager read/lazy write"-closing the socket. That is, all still
 // pending untransferred outbound bytes will continue to transfer out, but after calling close on the socket, any pending bytes still in the process
@@ -130,7 +130,7 @@ EMSCRIPTEN_RESULT emscripten_websocket_delete(EMSCRIPTEN_WEBSOCKET_T socket);
 // even after the pthread quits, although be warned that if the target thread that was registered to handle events for a given WebSocket quits, then those
 // events will stop from being delivered altogether.
 void emscripten_websocket_deinitialize(void);
-  
+
 #ifdef __cplusplus
 } // ~extern "C"
 #endif

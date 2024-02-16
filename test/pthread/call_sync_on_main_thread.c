@@ -23,7 +23,7 @@ int main()
 	char name[7] = "body";
 	const char *dst = getDomElementContents(name);
 	memset(name, 0, sizeof(name)); // Try to uncover if there might be a race condition and above line was not synchronously processed, and we could take name string away.
-	int inWorker1 = isThisInWorker(); // Build this application with -sUSE_PTHREADS -sPROXY_TO_PTHREAD for this to return 1, otherwise returns 0.
+	int inWorker1 = isThisInWorker(); // Build this application with -pthread -sPROXY_TO_PTHREAD for this to return 1, otherwise returns 0.
 	int inWorker2 = isThisInWorkerOnMainThread(); // This should always return 0
 	int returnedInt = receivesAndReturnsAnInteger(4);
 	printf("text: \"%s\". inWorker1: %d, inWorker2: %d, returnedInt: %d\n", dst, inWorker1, inWorker2, returnedInt);

@@ -5,8 +5,8 @@
 
 import os
 
-TAG = '38fcb695276ed794f879d5d9c5ef4e5286a5200d' # Latest as of 24 November 2020
-HASH = '4c1ac5d27439d28c6d84593dd15dd80c825d68c6bf1020ab4317f2bce1efe16401b5b3280a181047c8317c38a19bbeeae8d52862e6b2c9776d5809758ee7aaa6'
+TAG = 'release-2.20.2' # Latest as of 21 February 2023
+HASH = '8a625d29bef2ab7cbfe2143136a303c0fdb066ecd802d6c725de1b73ad8b056908cb524fe58f38eaee9f105471d2af50bbcb17911d46506dbcf573db218b3685'
 
 deps = ['freetype', 'sdl2', 'harfbuzz']
 
@@ -42,4 +42,4 @@ def process_args(ports):
 
 
 def show():
-  return 'SDL2_ttf (-sUSE_SDL_TTF=2; zlib license)'
+  return 'sdl2_ttf (-sUSE_SDL_TTF=2 or --use-port=sdl2_ttf; zlib license)'

@@ -8,7 +8,8 @@
             "pthread": [
               "profilerBlock",
               "stack",
-              "stack_size"
+              "stack_size",
+              "waiting_async"
             ],
             "pthread_attr_t#": [
               "_a_transferredcanvases"
@@ -24,6 +25,12 @@
         ]
     },
     {
+        "file": "threading_internal.h",
+        "defines": [
+            "EM_THREAD_STATUS_NUMFIELDS"
+        ]
+    },
+    {
         "file": "dynlink.h",
         "structs": {
             "dso": [
@@ -33,6 +40,8 @@
               "mem_size",
               "table_addr",
               "table_size",
+              "file_data",
+              "file_data_size",
               "name"
             ]
         }

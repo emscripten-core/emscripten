@@ -36,8 +36,7 @@ REDISTRIBUTION OF THIS SOFTWARE.
 #include <string.h>
 #include <assert.h>
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     SDL_Surface *screen;
     if ( SDL_Init(SDL_INIT_VIDEO) != 0 ) {
         printf("Unable to initialize SDL: %s\n", SDL_GetError());
@@ -68,8 +67,9 @@ int main(int argc, char *argv[])
     assert(colora[1] == colorb[1]);
     assert(colora[2] == colorb[2]);
     assert(colora[3] == colorb[3]);
+
     SDL_Quit();
-    
+
 #ifdef REPORT_RESULT
     REPORT_RESULT(1);
 #endif

@@ -43,7 +43,7 @@ pthread_t thread[NUM_THREADS];
 
 void CreateThread(int i)
 {
-  int rc = pthread_create(&thread[i], nullptr, ThreadMain, (void*)i);
+  int rc = pthread_create(&thread[i], nullptr, ThreadMain, (void*)(intptr_t)i);
   assert(rc == 0);
 }
 
@@ -61,7 +61,7 @@ void loop() {
 
 int main() {
   // Create initial threads.
-  for(int i = 0; i < NUM_THREADS; ++i) {
+  for (int i = 0; i < NUM_THREADS; ++i) {
     printf("make\n");
     CreateThread(i);
   }

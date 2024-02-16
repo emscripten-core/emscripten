@@ -9,12 +9,19 @@
 {{{ throw "this file should not be be included when IMPORTED_MEMORY is set"; }}}
 #endif
 
-#if USE_PTHREADS
+{{{ makeModuleReceiveWithVar('INITIAL_MEMORY', undefined, INITIAL_MEMORY) }}}
+
+#if ASSERTIONS
+assert(INITIAL_MEMORY >= {{{STACK_SIZE}}}, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + {{{STACK_SIZE}}} + ')');
+#endif
+  
+// check for full engine support (use string 'subarray' to avoid closure compiler confusion)
+
+#if PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
   wasmMemory = Module['wasmMemory'];
-  buffer = Module['buffer'];
 } else {
-#endif // USE_PTHREADS
+#endif // PTHREADS
 
 #if expectToReceiveOnModule('wasmMemory')
   if (Module['wasmMemory']) {
@@ -30,13 +37,15 @@ if (ENVIRONMENT_IS_PTHREAD) {
       // https://github.com/emscripten-core/emscripten/issues/14130
       // And in the pthreads case we definitely need to emit a maximum. So
       // always emit one.
-      'maximum': {{{ MAXIMUM_MEMORY }}} / {{{ WASM_PAGE_SIZE }}}
+      'maximum': {{{ MAXIMUM_MEMORY }}} / {{{ WASM_PAGE_SIZE }}},
 #else
-      'maximum': INITIAL_MEMORY / {{{ WASM_PAGE_SIZE }}}
+      'maximum': INITIAL_MEMORY / {{{ WASM_PAGE_SIZE }}},
 #endif // ALLOW_MEMORY_GROWTH
 #if SHARED_MEMORY
-      ,
-      'shared': true
+      'shared': true,
+#endif
+#if MEMORY64 == 1
+      'index': 'i64',
 #endif
     });
 #if SHARED_MEMORY
@@ -50,18 +59,15 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
   }
 
-#if USE_PTHREADS
+#if PTHREADS
 }
 #endif
 
-if (wasmMemory) {
-  buffer = wasmMemory.buffer;
-}
+updateMemoryViews();
 
 // If the user provides an incorrect length, just use that length instead rather than providing the user to
 // specifically provide the memory length with Module['INITIAL_MEMORY'].
-INITIAL_MEMORY = buffer.byteLength;
+INITIAL_MEMORY = wasmMemory.buffer.byteLength;
 #if ASSERTIONS
 assert(INITIAL_MEMORY % {{{ WASM_PAGE_SIZE }}} === 0);
 #endif
-updateGlobalBufferAndViews(buffer);

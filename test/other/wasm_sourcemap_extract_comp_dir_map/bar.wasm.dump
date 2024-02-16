@@ -1,0 +1,71 @@
+bar.wasm:	file format WASM
+
+.debug_info contents:
+0x00000000: Compile Unit: length = 0x00000129, format = DWARF32, version = 0x0004, abbr_offset = 0x0000, addr_size = 0x04 (next unit at 0x0000012d)
+
+0x0000000b: DW_TAG_compile_unit
+              DW_AT_stmt_list	(0x00000000)
+              DW_AT_ranges	(0x00000000
+                 [0x00000002, 0x0000000a)
+                 [0x0000000b, 0x00000015)
+                 [0x00000016, 0x00000030)
+                 [0x00000031, 0x00000039))
+              DW_AT_name	("system/lib/compiler-rt/stack_ops.S")
+              DW_AT_comp_dir	("/emsdk/emscripten")
+              DW_AT_producer	("clang version 18.0.0 (https://github.com/llvm/llvm-project 269685545e439ad050b67740533c59f965cae955)")
+              DW_AT_language	(DW_LANG_Mips_Assembler)
+
+.debug_line contents:
+debug_line[0x00000000]
+Line table prologue:
+    total_length: 0x00000091
+          format: DWARF32
+         version: 4
+ prologue_length: 0x00000043
+ min_inst_length: 1
+max_ops_per_inst: 1
+ default_is_stmt: 1
+       line_base: -5
+      line_range: 14
+     opcode_base: 13
+standard_opcode_lengths[DW_LNS_copy] = 0
+standard_opcode_lengths[DW_LNS_advance_pc] = 1
+standard_opcode_lengths[DW_LNS_advance_line] = 1
+standard_opcode_lengths[DW_LNS_set_file] = 1
+standard_opcode_lengths[DW_LNS_set_column] = 1
+standard_opcode_lengths[DW_LNS_negate_stmt] = 0
+standard_opcode_lengths[DW_LNS_set_basic_block] = 0
+standard_opcode_lengths[DW_LNS_const_add_pc] = 0
+standard_opcode_lengths[DW_LNS_fixed_advance_pc] = 1
+standard_opcode_lengths[DW_LNS_set_prologue_end] = 0
+standard_opcode_lengths[DW_LNS_set_epilogue_begin] = 0
+standard_opcode_lengths[DW_LNS_set_isa] = 1
+include_directories[  1] = "system/lib/compiler-rt"
+file_names[  1]:
+           name: "stack_ops.S"
+      dir_index: 1
+       mod_time: 0x00000000
+         length: 0x00000000
+
+Address            Line   Column File   ISA Discriminator OpIndex Flags
+------------------ ------ ------ ------ --- ------------- ------- -------------
+0x0000000000000002     18      0      1   0             0       0  is_stmt
+0x0000000000000009     19      0      1   0             0       0  is_stmt
+0x000000000000000a     19      0      1   0             0       0  is_stmt end_sequence
+0x000000000000000b     23      0      1   0             0       0  is_stmt
+0x000000000000000e     24      0      1   0             0       0  is_stmt
+0x0000000000000014     25      0      1   0             0       0  is_stmt
+0x0000000000000015     25      0      1   0             0       0  is_stmt end_sequence
+0x0000000000000019     30      0      1   0             0       0  is_stmt
+0x000000000000001f     32      0      1   0             0       0  is_stmt
+0x0000000000000021     34      0      1   0             0       0  is_stmt
+0x0000000000000022     36      0      1   0             0       0  is_stmt
+0x0000000000000024     37      0      1   0             0       0  is_stmt
+0x0000000000000025     38      0      1   0             0       0  is_stmt
+0x0000000000000027     39      0      1   0             0       0  is_stmt
+0x000000000000002d     40      0      1   0             0       0  is_stmt
+0x000000000000002f     41      0      1   0             0       0  is_stmt
+0x0000000000000030     41      0      1   0             0       0  is_stmt end_sequence
+0x0000000000000031     45      0      1   0             0       0  is_stmt
+0x0000000000000038     46      0      1   0             0       0  is_stmt
+0x0000000000000039     46      0      1   0             0       0  is_stmt end_sequence

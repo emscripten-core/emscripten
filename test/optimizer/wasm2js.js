@@ -1,5 +1,5 @@
 // EMSCRIPTEN_START_ASM
-function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
+function instantiate(wasmImports, wasmMemory, wasmTable) {
 
 var helpee = 12;
 
@@ -31,7 +31,7 @@ function asmFunc(global, env, buffer) {
  var nan = global.NaN;
  var infinity = global.Infinity;
  var fimport$0 = env.fd_write;
- var fimport$1 = env.emscripten_memcpy_big;
+ var fimport$1 = env.emscripten_memcpy_js;
  var global$0 = 5245632;
  var i64toi32_i32$HIGH_BITS = 0;
  // EMSCRIPTEN_START_FUNCS
@@ -449,11 +449,11 @@ return asmFunc({
     'Infinity': Infinity,
     'Math': Math
   },
-  asmLibraryArg,
+  wasmImports,
   wasmMemory.buffer
 )
 
 }
 // EMSCRIPTEN_END_ASM
-// EMSCRIPTEN_GENERATED_FUNCTIONS
+
 

@@ -21,7 +21,9 @@ int main() {
       callUserCallback(() => {
         out("in user callback: " + counter);
       }, 0);
-      setTimeout(timerCallback, 0);
+      if (!runtimeExited) {
+        setTimeout(timerCallback, 0);
+      }
     }
     setTimeout(timerCallback, 0);
   });

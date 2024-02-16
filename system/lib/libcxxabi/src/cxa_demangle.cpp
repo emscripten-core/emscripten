@@ -10,6 +10,7 @@
 // file does not yet support:
 //   - C++ modules TS
 
+#include "demangle/DemangleConfig.h"
 #include "demangle/ItaniumDemangle.h"
 #include "__cxxabi_config.h"
 #include <cassert>
@@ -19,6 +20,7 @@
 #include <cstring>
 #include <functional>
 #include <numeric>
+#include <string_view>
 #include <utility>
 
 using namespace itanium_demangle;
@@ -77,8 +79,8 @@ struct DumpVisitor {
   }
 
   void printStr(const char *S) { fprintf(stderr, "%s", S); }
-  void print(StringView SV) {
-    fprintf(stderr, "\"%.*s\"", (int)SV.size(), SV.begin());
+  void print(std::string_view SV) {
+    fprintf(stderr, "\"%.*s\"", (int)SV.size(), &*SV.begin());
   }
   void print(const Node *N) {
     if (N)
@@ -386,15 +388,12 @@ __cxa_demangle(const char *MangledName, char *Buf, size_t *N, int *Status) {
 
   int InternalStatus = demangle_success;
   Demangler Parser(MangledName, MangledName + std::strlen(MangledName));
-  OutputBuffer O;
-
   Node *AST = Parser.parse();
 
   if (AST == nullptr)
     InternalStatus = demangle_invalid_mangled_name;
-  else if (!initializeOutputBuffer(Buf, N, O, 1024))
-    InternalStatus = demangle_memory_alloc_failure;
   else {
+    OutputBuffer O(Buf, N);
     assert(Parser.ForwardTemplateRefs.empty());
     AST->print(O);
     O += '\0';

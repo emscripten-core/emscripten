@@ -3,5 +3,5 @@
 
 int main()
 {
-	printf("%d\n", EM_ASM_INT(return buffer instanceof SharedArrayBuffer));
+	printf("%d\n", EM_ASM_INT(return wasmMemory.buffer instanceof SharedArrayBuffer));
 }

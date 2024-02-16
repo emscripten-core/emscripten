@@ -1,3 +1,1 @@
-
-(function() { // Start of self-calling lambda used to avoid polluting global namespace.
-
+(function() { // Start of IIFE used to avoid polluting global namespace.

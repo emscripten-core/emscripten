@@ -6,7 +6,7 @@
 # line parameters:
 # cmake -DCMAKE_TOOLCHAIN_FILE=<EmscriptenRoot>/cmake/Modules/Platform/Emscripten.cmake
 #       -DCMAKE_BUILD_TYPE=<Debug|RelWithDebInfo|Release|MinSizeRel>
-#       -G "Unix Makefiles" (Linux and OSX)
+#       -G "Unix Makefiles" (Linux and macOS)
 #       -G "MinGW Makefiles" (Windows)
 #       <path/to/CMakeLists.txt> # Note, pass in here ONLY the path to the file, not the filename 'CMakeLists.txt' itself.
 
@@ -87,14 +87,15 @@ else()
 endif()
 
 # Specify the compilers to use for C and C++
-set(CMAKE_C_COMPILER "${EMSCRIPTEN_ROOT_PATH}/emcc${EMCC_SUFFIX}" CACHE FILEPATH "Emscripten emcc")
-set(CMAKE_CXX_COMPILER "${EMSCRIPTEN_ROOT_PATH}/em++${EMCC_SUFFIX}" CACHE FILEPATH "Emscripten em++")
-set(CMAKE_AR "${EMSCRIPTEN_ROOT_PATH}/emar${EMCC_SUFFIX}" CACHE FILEPATH "Emscripten ar")
-set(CMAKE_RANLIB "${EMSCRIPTEN_ROOT_PATH}/emranlib${EMCC_SUFFIX}" CACHE FILEPATH "Emscripten ranlib")
-set(CMAKE_C_COMPILER_AR "${CMAKE_AR}" CACHE FILEPATH "Emscripten ar")
-set(CMAKE_CXX_COMPILER_AR "${CMAKE_AR}" CACHE FILEPATH "Emscripten ar")
-set(CMAKE_C_COMPILER_RANLIB "${CMAKE_RANLIB}" CACHE FILEPATH "Emscripten ranlib")
-set(CMAKE_CXX_COMPILER_RANLIB "${CMAKE_RANLIB}" CACHE FILEPATH "Emscripten ranlib")
+set(CMAKE_C_COMPILER "${EMSCRIPTEN_ROOT_PATH}/emcc${EMCC_SUFFIX}")
+set(CMAKE_CXX_COMPILER "${EMSCRIPTEN_ROOT_PATH}/em++${EMCC_SUFFIX}")
+set(CMAKE_NM "${EMSCRIPTEN_ROOT_PATH}/emnm${EMCC_SUFFIX}")
+set(CMAKE_AR "${EMSCRIPTEN_ROOT_PATH}/emar${EMCC_SUFFIX}")
+set(CMAKE_RANLIB "${EMSCRIPTEN_ROOT_PATH}/emranlib${EMCC_SUFFIX}")
+set(CMAKE_C_COMPILER_AR "${CMAKE_AR}")
+set(CMAKE_CXX_COMPILER_AR "${CMAKE_AR}")
+set(CMAKE_C_COMPILER_RANLIB "${CMAKE_RANLIB}")
+set(CMAKE_CXX_COMPILER_RANLIB "${CMAKE_RANLIB}")
 
 # Capture the Emscripten version to EMSCRIPTEN_VERSION variable.
 if (NOT EMSCRIPTEN_VERSION)
@@ -216,10 +217,16 @@ set(EMSCRIPTEN_SYSROOT "${_emcache_output}/sysroot")
 list(APPEND CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_SYSROOT}")
 list(APPEND CMAKE_SYSTEM_PREFIX_PATH /)
 
-if ($ENV{CFLAGS} MATCHES "MEMORY64")
+if (${CMAKE_C_FLAGS} MATCHES "MEMORY64")
   set(CMAKE_LIBRARY_ARCHITECTURE "wasm64-emscripten")
+  set(CMAKE_SIZEOF_VOID_P 8)
+  set(CMAKE_C_SIZEOF_DATA_PTR 8)
+  set(CMAKE_CXX_SIZEOF_DATA_PTR 8)
 else()
   set(CMAKE_LIBRARY_ARCHITECTURE "wasm32-emscripten")
+  set(CMAKE_SIZEOF_VOID_P 4)
+  set(CMAKE_C_SIZEOF_DATA_PTR 4)
+  set(CMAKE_CXX_SIZEOF_DATA_PTR 4)
 endif()
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -289,66 +296,36 @@ set(CMAKE_SIZEOF_INT 4)
 set(CMAKE_SIZEOF_UNSIGNED_LONG 4)
 set(CMAKE_SIZEOF_UNSIGNED_INT 4)
 set(CMAKE_SIZEOF_LONG 4)
-set(CMAKE_SIZEOF_VOID_P 4)
 set(CMAKE_SIZEOF_FLOAT 4)
 set(CMAKE_SIZEOF_DOUBLE 8)
-set(CMAKE_C_SIZEOF_DATA_PTR 4)
-set(CMAKE_CXX_SIZEOF_DATA_PTR 4)
 set(CMAKE_HAVE_LIMITS_H 1)
 set(CMAKE_HAVE_UNISTD_H 1)
 set(CMAKE_HAVE_PTHREAD_H 1)
 set(CMAKE_HAVE_SYS_PRCTL_H 1)
 set(CMAKE_WORDS_BIGENDIAN 0)
+set(CMAKE_C_BYTE_ORDER "LITTLE_ENDIAN")
+set(CMAKE_CXX_BYTE_ORDER "LITTLE_ENDIAN")
 set(CMAKE_DL_LIBS)
 
 function(em_validate_asmjs_after_build target)
   message(WARNING "em_validate_asmjs_after_build no longer exists")
 endfunction()
 
-# A global counter to guarantee unique names for js library files.
-set(link_js_counter 1)
-
 # Internal function: Do not call from user CMakeLists.txt files. Use one of
 # em_link_js_library()/em_link_pre_js()/em_link_post_js() instead.
-function(em_add_tracked_link_flag target flagname)
-
+function(em_add_link_deps target flagname)
   # User can input list of JS files either as a single list, or as variable
   # arguments to this function, so iterate over varargs, and treat each item in
   # varargs as a list itself, to support both syntax forms.
   foreach(jsFileList ${ARGN})
     foreach(jsfile ${jsFileList})
-      # If the user edits the JS file, we want to relink the emscripten
-      # application, but unfortunately it is not possible to make a link step
-      # depend directly on a source file. Instead, we must make a dummy no-op
-      # build target on that source file, and make the project depend on
-      # that target.
-
-      # Sanitate the source .js filename to a good symbol name to use as a dummy
-      # filename.
-      get_filename_component(jsname "${jsfile}" NAME)
-      string(REGEX REPLACE "[/:\\\\.\ ]" "_" dummy_js_target ${jsname})
-      set(dummy_lib_name ${target}_${link_js_counter}_${dummy_js_target})
-      set(dummy_c_name "${CMAKE_BINARY_DIR}/${dummy_js_target}_tracker.c")
-
-      # Create a new static library target that with a single dummy .c file.
-      add_library(${dummy_lib_name} STATIC ${dummy_c_name})
-      # Make the dummy .c file depend on the .js file we are linking, so that if
-      # the .js file is edited, the dummy .c file, and hence the static library
-      # will be rebuild (no-op). This causes the main application to be
-      # relinked, which is what we want.  This approach was recommended by
-      # http://www.cmake.org/pipermail/cmake/2010-May/037206.html
-      add_custom_command(OUTPUT ${dummy_c_name} COMMAND ${CMAKE_COMMAND} -E touch ${dummy_c_name} DEPENDS ${jsfile})
-      target_link_libraries(${target} ${dummy_lib_name})
-
-      # Link the js-library to the target
-      # When a linked library starts with a "-" cmake will just add it to the
-      # linker command line as it is.  The advantage of doing it this way is
-      # that the js-library will also be automatically linked to targets that
-      # depend on this target.
-      get_filename_component(js_file_absolute_path "${jsfile}" ABSOLUTE )
-      target_link_libraries(${target} "${flagname} \"${js_file_absolute_path}\"")
-
-      math(EXPR link_js_counter "${link_js_counter} + 1")
+      get_target_property(linkdeps ${target} LINK_DEPENDS)
+      if(linkdeps STREQUAL "linkdeps-NOTFOUND")
+        set(linkdeps "")
+      endif()
+      get_filename_component(jsfile_abs "${jsfile}" ABSOLUTE )
+      set_target_properties(${target} PROPERTIES LINK_DEPENDS "${linkdeps};${jsfile_abs}")
+      target_link_libraries(${target} "${flagname} \"${jsfile_abs}\"")
     endforeach()
   endforeach()
 endfunction()
@@ -360,51 +337,22 @@ endfunction()
 #    between the linked .js files and the main project, so that editing the .js
 #    file will cause the target project to be relinked.
 function(em_link_js_library target)
-  em_add_tracked_link_flag(${target} "--js-library" ${ARGN})
+  em_add_link_deps(${target} "--js-library" ${ARGN})
 endfunction()
 
 # This function is identical to em_link_js_library(), except the .js files will
 # be added with '--pre-js file.js' command line flag, which is generally used to
 # add some preamble .js code to a generated output file.
 function(em_link_pre_js target)
-  em_add_tracked_link_flag(${target} "--pre-js" ${ARGN})
+  em_add_link_deps(${target} "--pre-js" ${ARGN})
 endfunction()
 
 # This function is identical to em_link_js_library(), except the .js files will
 # be added with '--post-js file.js' command line flag, which is generally used
 # to add some postamble .js code to a generated output file.
 function(em_link_post_js target)
-  em_add_tracked_link_flag(${target} "--post-js" ${ARGN})
+  em_add_link_deps(${target} "--post-js" ${ARGN})
 endfunction()
-
-# Experimental support for targeting generation of Visual Studio project files
-# (vs-tool) of Emscripten projects for Windows.  To use this, pass the
-# combination -G "Visual Studio 10" -DCMAKE_TOOLCHAIN_FILE=Emscripten.cmake
-if ("${CMAKE_GENERATOR}" MATCHES "^Visual Studio.*")
-  # By default, CMake generates VS project files with a
-  # <GenerateManifest>true</GenerateManifest> directive.
-  # This causes VS to attempt to invoke rc.exe during the build, which will fail
-  # since app manifests are meaningless for Emscripten.  To disable this, add
-  # the following linker flag. This flag will not go to emcc, since the Visual
-  # Studio CMake generator will swallow it.
-  set(EMSCRIPTEN_VS_LINKER_FLAGS "/MANIFEST:NO")
-  # CMake is hardcoded to write a ClCompile directive
-  # <ObjectFileName>$(IntDir)</ObjectFileName> in all VS project files it
-  # generates.  This makes VS pass emcc a -o param that points to a directory
-  # instead of a file, which causes emcc autogenerate the output filename.
-  # CMake is hardcoded to assume all object files have the suffix .obj, so
-  # adjust the emcc-autogenerated default suffix name to match.
-  set(EMSCRIPTEN_VS_LINKER_FLAGS "${EMSCRIPTEN_VS_LINKER_FLAGS} --default-obj-ext .obj")
-  # Also hint CMake that it should not hardcode <ObjectFileName> generation.
-  # Requires a custom CMake build for this to work (ignored on others)
-  # See http://www.cmake.org/Bug/view.php?id=14673 and https://github.com/juj/CMake
-  set(CMAKE_VS_NO_DEFAULT_OBJECTFILENAME 1)
-
-  # Apply and cache Emscripten Visual Studio IDE-specific linker flags.
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${EMSCRIPTEN_VS_LINKER_FLAGS}" CACHE STRING "")
-  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${EMSCRIPTEN_VS_LINKER_FLAGS}" CACHE STRING "")
-  set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} ${EMSCRIPTEN_VS_LINKER_FLAGS}" CACHE STRING "")
-endif()
 
 if (NOT DEFINED CMAKE_CROSSCOMPILING_EMULATOR)
   find_program(NODE_JS_EXECUTABLE NAMES nodejs node)

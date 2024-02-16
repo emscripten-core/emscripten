@@ -15,6 +15,7 @@
 
 #include "sanitizer_common/sanitizer_platform.h"
 #include "lsan_common.h"
+#include "lsan_thread.h"
 
 #if CAN_SANITIZE_LEAKS && SANITIZER_EMSCRIPTEN
 #include <emscripten.h>
@@ -32,8 +33,6 @@
   } while (0)
 
 namespace __lsan {
-
-extern "C" uptr emscripten_get_heap_size();
 
 static const char kLinkerName[] = "ld";
 
@@ -106,14 +105,12 @@ void LockStuffAndStopTheWorld(StopTheWorldCallback callback,
                               CheckForLeaksParam *argument) {
   // Currently, on Emscripten this does nothing and just calls the callback.
   // This works fine on a single-threaded environment.
-  LockThreadRegistry();
+  LockThreads();
   LockAllocator();
   StopTheWorld(callback, argument);
   UnlockAllocator();
-  UnlockThreadRegistry();
+  UnlockThreads();
 }
-
-u32 GetCurrentThread();
 
 // This is based on ProcessThreads in lsan_common.cc.
 // We changed this to be a callback that gets called per thread by
@@ -143,7 +140,7 @@ static void ProcessThreadsCallback(ThreadContextBase *tctx, void *arg) {
 
     // We can't get the SP for other threads to narrow down the range, but we
     // we can for the current thread.
-    if (tctx->tid == GetCurrentThread()) {
+    if (tctx->os_id == GetTid()) {
       uptr sp = (uptr) __builtin_frame_address(0);
       if (sp < stack_begin || sp >= stack_end) {
         // SP is outside the recorded stack range (e.g. the thread is running a
@@ -176,8 +173,10 @@ static void ProcessThreadsCallback(ThreadContextBase *tctx, void *arg) {
   }
 }
 
-void ProcessThreads(SuspendedThreadsList const &suspended_threads,
-                    Frontier *frontier) {
+void ProcessThreads(SuspendedThreadsList const& suspended_threads,
+                    Frontier* frontier,
+                    tid_t caller_tid,
+                    uptr caller_sp) {
   GetThreadRegistryLocked()->RunCallbackForEachThreadLocked(
     ProcessThreadsCallback, frontier);
 }

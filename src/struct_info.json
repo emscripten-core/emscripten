@@ -35,7 +35,6 @@
         "structs": {
             "stat": [
                 "st_dev",
-                "__st_ino_truncated",
                 "st_mode",
                 "st_nlink",
                 "st_uid",
@@ -89,10 +88,7 @@
             "F_UNLCK",
             "O_RDWR",
             "S_IRWXO",
-            "F_GETLK64",
-            "F_SETLKW64",
             "F_SETLKW",
-            "F_SETLK64",
             "F_GETLK",
             "S_ISVTX",
             "O_RDONLY",
@@ -103,7 +99,8 @@
             "AT_FDCWD",
             "AT_SYMLINK_NOFOLLOW",
             "AT_REMOVEDIR",
-            "AT_EMPTY_PATH"
+            "AT_EMPTY_PATH",
+            "AT_NO_AUTOMOUNT"
         ],
         "structs": {
             "flock": [
@@ -149,6 +146,10 @@
                 "tm_isdst",
                 "tm_gmtoff",
                 "tm_zone"
+            ],
+            "timeval": [
+                "tv_sec",
+                "tv_usec"
             ],
             "timespec": [
                 "tv_sec",
@@ -261,7 +262,7 @@
             "O_PATH",
             "O_NONBLOCK",
             "O_CLOEXEC",
-            "F_GETOWN", 
+            "F_GETOWN",
             "F_GETOWN_EX",
             "F_SETFD",
             "O_EXCL",
@@ -305,7 +306,8 @@
             "TIOCGPGRP",
             "TIOCSPGRP",
             "TIOCGWINSZ",
-            "TIOCSWINSZ"
+            "TIOCSWINSZ",
+            "TCFLSH"
         ]
     },
     {
@@ -478,6 +480,41 @@
             "RTLD_GLOBAL",
             "RTLD_NODELETE"
         ]
+    },
+    {
+        "file": "termios.h",
+        "defines": [
+            "NCCS",
+            "ICRNL",
+            "IXON",
+            "IMAXBEL",
+            "IUTF8",
+            "OPOST",
+            "ONLCR",
+            "B38400",
+            "CSIZE",
+            "CREAD",
+            "ISIG",
+            "ICANON",
+            "ECHO",
+            "ECHOE",
+            "ECHOK",
+            "ECHOCTL",
+            "ECHOKE",
+            "IEXTEN"
+        ],
+        "structs": {
+            "termios": [
+                "c_iflag",
+                "c_oflag",
+                "c_cflag",
+                "c_lflag",
+                "c_line",
+                "c_cc",
+                "__c_ispeed",
+                "__c_ospeed"
+            ]
+        }
     },
     // ===========================================
     // SDL
@@ -737,7 +774,7 @@
             "EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK",
             "EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS",
 
-            "EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD",
+            "EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD",
             "EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD",
 
             "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION",
@@ -913,22 +950,19 @@
     {
         "file": "emscripten/threading.h",
         "defines": [
-            "EM_PROXIED_RESIZE_OFFSCREENCANVAS",
-            "EM_QUEUED_JS_CALL_MAX_ARGS",
-            "EM_FUNC_SIG_V",
-            "EM_FUNC_SIG_VI",
-            "EM_FUNC_SIG_VII",
-            "EM_FUNC_SIG_VIII",
-            "EM_FUNC_SIG_I",
-            "EM_FUNC_SIG_II",
-            "EM_FUNC_SIG_III",
-            "EM_FUNC_SIG_IIII",
             "EM_FUNC_SIG_PARAM_I",
-            "EM_FUNC_SIG_PARAM_I64",
+            "EM_FUNC_SIG_PARAM_J",
             "EM_FUNC_SIG_PARAM_F",
             "EM_FUNC_SIG_PARAM_D",
             "EM_FUNC_SIG_PARAM_B",
             "EM_FUNC_SIG_PARAM_F2I"
+        ]
+    },
+    {
+        "file": "emscripten/wasm_worker.h",
+        "defines": [
+            "ATOMICS_WAIT_NOT_EQUAL",
+            "ATOMICS_WAIT_TIMED_OUT"
         ]
     },
     {
@@ -939,11 +973,12 @@
             "EM_LOG_ERROR",
             "EM_LOG_C_STACK",
             "EM_LOG_JS_STACK",
-            "EM_LOG_DEMANGLE",
             "EM_LOG_NO_PATHS",
-            "EM_LOG_FUNC_PARAMS",
             "EM_LOG_DEBUG",
-            "EM_LOG_INFO"
+            "EM_LOG_INFO",
+            "EM_TIMING_SETTIMEOUT",
+            "EM_TIMING_RAF",
+            "EM_TIMING_SETIMMEDIATE"
         ]
     },
     {
@@ -954,6 +989,23 @@
                 "fs_flags",
                 "fs_rights_base",
                 "fs_rights_inheriting"
+            ],
+            "__wasi_prestat_t": [
+               "pr_type",
+               "u"
+            ],
+            "__wasi_prestat_dir_t": [
+               "pr_name_len"
+            ],
+            "__wasi_filestat_t": [
+               "dev",
+               "ino",
+               "filetype",
+               "nlink",
+               "size",
+               "atim",
+               "mtim",
+               "ctim"
             ]
         },
         "defines": [
@@ -964,7 +1016,46 @@
             "__WASI_CLOCKID_REALTIME",
             "__WASI_CLOCKID_MONOTONIC",
             "__WASI_CLOCKID_PROCESS_CPUTIME_ID",
-            "__WASI_CLOCKID_THREAD_CPUTIME_ID"
+            "__WASI_CLOCKID_THREAD_CPUTIME_ID",
+            "__WASI_FDFLAGS_APPEND",
+            "__WASI_FDFLAGS_DSYNC",
+            "__WASI_FDFLAGS_NONBLOCK",
+            "__WASI_FDFLAGS_RSYNC",
+            "__WASI_FDFLAGS_SYNC",
+            "__WASI_OFLAGS_CREAT",
+            "__WASI_OFLAGS_DIRECTORY",
+            "__WASI_OFLAGS_EXCL",
+            "__WASI_OFLAGS_TRUNC",
+            "__WASI_RIGHTS_FD_DATASYNC",
+            "__WASI_RIGHTS_FD_READ",
+            "__WASI_RIGHTS_FD_SEEK",
+            "__WASI_RIGHTS_FD_FDSTAT_SET_FLAGS",
+            "__WASI_RIGHTS_FD_SYNC",
+            "__WASI_RIGHTS_FD_TELL",
+            "__WASI_RIGHTS_FD_WRITE",
+            "__WASI_RIGHTS_FD_ADVISE",
+            "__WASI_RIGHTS_FD_ALLOCATE",
+            "__WASI_RIGHTS_PATH_CREATE_DIRECTORY",
+            "__WASI_RIGHTS_PATH_CREATE_FILE",
+            "__WASI_RIGHTS_PATH_LINK_SOURCE",
+            "__WASI_RIGHTS_PATH_LINK_TARGET",
+            "__WASI_RIGHTS_PATH_OPEN",
+            "__WASI_RIGHTS_FD_READDIR",
+            "__WASI_RIGHTS_PATH_READLINK",
+            "__WASI_RIGHTS_PATH_RENAME_SOURCE",
+            "__WASI_RIGHTS_PATH_RENAME_TARGET",
+            "__WASI_RIGHTS_PATH_FILESTAT_GET",
+            "__WASI_RIGHTS_PATH_FILESTAT_SET_SIZE",
+            "__WASI_RIGHTS_PATH_FILESTAT_SET_TIMES",
+            "__WASI_RIGHTS_FD_FILESTAT_GET",
+            "__WASI_RIGHTS_FD_FILESTAT_SET_SIZE",
+            "__WASI_RIGHTS_FD_FILESTAT_SET_TIMES",
+            "__WASI_RIGHTS_PATH_SYMLINK",
+            "__WASI_RIGHTS_PATH_REMOVE_DIRECTORY",
+            "__WASI_RIGHTS_PATH_UNLINK_FILE",
+            "__WASI_RIGHTS_POLL_FD_READWRITE",
+            "__WASI_RIGHTS_SOCK_SHUTDOWN",
+            "__WASI_PREOPENTYPE_DIR"
         ]
     },
     {
@@ -1033,6 +1124,21 @@
         }
     },
     {
+        "file": "emscripten/promise.h",
+        "defines": [
+            "EM_PROMISE_FULFILL",
+            "EM_PROMISE_MATCH",
+            "EM_PROMISE_MATCH_RELEASE",
+            "EM_PROMISE_REJECT"
+        ],
+        "structs": {
+            "em_settled_result_t": [
+                "result",
+                "value"
+            ]
+        }
+    },
+    {
         "file": "AL/al.h",
         "defines": [
           "AL_TRUE",
@@ -1050,7 +1156,12 @@
           "AL_INVALID_ENUM",
           "AL_INVALID_NAME",
           "AL_INVALID_OPERATION",
-          "AL_INVALID_VALUE"
+          "AL_INVALID_VALUE",
+          "AL_PLAYING",
+          "AL_PAUSED",
+          "AL_STOPPED",
+          "AL_INITIAL",
+          "AL_STATIC"
         ]
     },
     {
@@ -1086,7 +1197,8 @@
                 "name",
                 "driverDescription",
                 "adapterType",
-                "backendType"
+                "backendType",
+                "compatibilityMode"
             ],
             "WGPUBindGroupEntry": [
                 "nextInChain",
@@ -1115,6 +1227,12 @@
                 "size",
                 "mappedAtCreation"
             ],
+            "WGPUBufferMapCallbackInfo": [
+                "nextInChain",
+                "mode",
+                "callback",
+                "userdata"
+            ],
             "WGPUColor": [
                 "r",
                 "g",
@@ -1136,12 +1254,15 @@
                 "lineNum",
                 "linePos",
                 "offset",
-                "length"
+                "length",
+                "utf16LinePos",
+                "utf16Offset",
+                "utf16Length"
             ],
-            "WGPUComputePassTimestampWrite": [
+            "WGPUComputePassTimestampWrites": [
                 "querySet",
-                "queryIndex",
-                "location"
+                "beginningOfPassWriteIndex",
+                "endOfPassWriteIndex"
             ],
             "WGPUConstantEntry": [
                 "nextInChain",
@@ -1153,8 +1274,13 @@
                 "height",
                 "depthOrArrayLayers"
             ],
-            "WGPUInstanceDescriptor": [
-                "nextInChain"
+            "WGPUFuture": [
+                "id"
+            ],
+            "WGPUInstanceFeatures": [
+                "nextInChain",
+                "timedWaitAnyEnable",
+                "timedWaitAnyMaxCount"
             ],
             "WGPULimits": [
                 "maxTextureDimension1D",
@@ -1162,6 +1288,8 @@
                 "maxTextureDimension3D",
                 "maxTextureArrayLayers",
                 "maxBindGroups",
+                "maxBindGroupsPlusVertexBuffers",
+                "maxBindingsPerBindGroup",
                 "maxDynamicUniformBuffersPerPipelineLayout",
                 "maxDynamicStorageBuffersPerPipelineLayout",
                 "maxSampledTexturesPerShaderStage",
@@ -1174,11 +1302,13 @@
                 "minUniformBufferOffsetAlignment",
                 "minStorageBufferOffsetAlignment",
                 "maxVertexBuffers",
+                "maxBufferSize",
                 "maxVertexAttributes",
                 "maxVertexBufferArrayStride",
                 "maxInterStageShaderComponents",
                 "maxInterStageShaderVariables",
                 "maxColorAttachments",
+                "maxColorAttachmentBytesPerSample",
                 "maxComputeWorkgroupStorageSize",
                 "maxComputeInvocationsPerWorkgroup",
                 "maxComputeWorkgroupSizeX",
@@ -1218,13 +1348,17 @@
                 "nextInChain",
                 "label",
                 "type",
-                "count",
-                "pipelineStatistics",
-                "pipelineStatisticsCount"
+                "count"
             ],
             "WGPUQueueDescriptor": [
                 "nextInChain",
                 "label"
+            ],
+            "WGPUQueueWorkDoneCallbackInfo": [
+                "nextInChain",
+                "mode",
+                "callback",
+                "userdata"
             ],
             "WGPURenderBundleDescriptor": [
                 "nextInChain",
@@ -1233,7 +1367,7 @@
             "WGPURenderBundleEncoderDescriptor": [
                 "nextInChain",
                 "label",
-                "colorFormatsCount",
+                "colorFormatCount",
                 "colorFormats",
                 "depthStencilFormat",
                 "sampleCount",
@@ -1255,16 +1389,24 @@
                 "chain",
                 "maxDrawCount"
             ],
-            "WGPURenderPassTimestampWrite": [
+            "WGPURenderPassTimestampWrites": [
                 "querySet",
-                "queryIndex",
-                "location"
+                "beginningOfPassWriteIndex",
+                "endOfPassWriteIndex"
+            ],
+            "WGPURequestAdapterCallbackInfo": [
+                "nextInChain",
+                "mode",
+                "callback",
+                "userdata"
             ],
             "WGPURequestAdapterOptions": [
                 "nextInChain",
                 "compatibleSurface",
                 "powerPreference",
-                "forceFallbackAdapter"
+                "backendType",
+                "forceFallbackAdapter",
+                "compatibilityMode"
             ],
             "WGPUSamplerBindingLayout": [
                 "nextInChain",
@@ -1284,10 +1426,6 @@
                 "compare",
                 "maxAnisotropy"
             ],
-            "WGPUShaderModuleDescriptor": [
-                "nextInChain",
-                "label"
-            ],
             "WGPUShaderModuleSPIRVDescriptor": [
                 "chain",
                 "codeSize",
@@ -1295,7 +1433,11 @@
             ],
             "WGPUShaderModuleWGSLDescriptor": [
                 "chain",
-                "source"
+                "code"
+            ],
+            "WGPUShaderModuleDescriptor": [
+                "nextInChain",
+                "label"
             ],
             "WGPUStencilFaceState": [
                 "compare",
@@ -1331,6 +1473,10 @@
                 "sampleType",
                 "viewDimension",
                 "multisampled"
+            ],
+            "WGPUTextureBindingViewDimensionDescriptor": [
+                "chain",
+                "textureBindingViewDimension"
             ],
             "WGPUTextureDataLayout": [
                 "nextInChain",
@@ -1382,7 +1528,6 @@
             "WGPUComputePassDescriptor": [
                 "nextInChain",
                 "label",
-                "timestampWriteCount",
                 "timestampWrites"
             ],
             "WGPUDepthStencilState": [
@@ -1398,6 +1543,10 @@
                 "depthBiasSlopeScale",
                 "depthBiasClamp"
             ],
+            "WGPUFutureWaitInfo": [
+                "future",
+                "completed"
+            ],
             "WGPUImageCopyBuffer": [
                 "nextInChain",
                 "layout",
@@ -1410,6 +1559,10 @@
                 "origin",
                 "aspect"
             ],
+            "WGPUInstanceDescriptor": [
+                "nextInChain",
+                "features"
+            ],
             "WGPUProgrammableStageDescriptor": [
                 "nextInChain",
                 "module",
@@ -1418,7 +1571,9 @@
                 "constants"
             ],
             "WGPURenderPassColorAttachment": [
+                "nextInChain",
                 "view",
+                "depthSlice",
                 "resolveTarget",
                 "loadOp",
                 "storeOp",
@@ -1471,10 +1626,12 @@
             "WGPUDeviceDescriptor": [
                 "nextInChain",
                 "label",
-                "requiredFeaturesCount",
+                "requiredFeatureCount",
                 "requiredFeatures",
                 "requiredLimits",
-                "defaultQueue"
+                "defaultQueue",
+                "deviceLostCallback",
+                "deviceLostUserdata"
             ],
             "WGPURenderPassDescriptor": [
                 "nextInChain",
@@ -1483,7 +1640,6 @@
                 "colorAttachments",
                 "depthStencilAttachment",
                 "occlusionQuerySet",
-                "timestampWriteCount",
                 "timestampWrites"
             ],
             "WGPUVertexState": [

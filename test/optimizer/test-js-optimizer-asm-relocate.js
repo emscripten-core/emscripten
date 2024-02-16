@@ -8,5 +8,4 @@ function a(x, y) {
   leaveMeAlone(F_BASE_vii + x, H_BASE + y);
   leaveMeAlone(F_BASE_vUNKNOWN + x | 0, H_BASE + y | 0);
 }
-// EMSCRIPTEN_GENERATED_FUNCTIONS
 // EXTRA_INFO: { "replacements": { "replaceMe": "fixed" }, "hBase": 33, "fBases": { "vii": 2, "vi": 100, "v": 20 } }

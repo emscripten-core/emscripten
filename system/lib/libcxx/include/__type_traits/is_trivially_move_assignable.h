@@ -13,7 +13,6 @@
 #include <__type_traits/add_lvalue_reference.h>
 #include <__type_traits/add_rvalue_reference.h>
 #include <__type_traits/integral_constant.h>
-#include <__type_traits/is_trivially_assignable.h>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
@@ -21,12 +20,13 @@
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-template <class _Tp> struct _LIBCPP_TEMPLATE_VIS is_trivially_move_assignable
-    : public is_trivially_assignable<typename add_lvalue_reference<_Tp>::type,
-                                     typename add_rvalue_reference<_Tp>::type>
-    {};
+template <class _Tp>
+struct _LIBCPP_TEMPLATE_VIS is_trivially_move_assignable
+    : public integral_constant<
+          bool,
+          __is_trivially_assignable(__add_lvalue_reference_t<_Tp>, __add_rvalue_reference_t<_Tp>)> {};
 
-#if _LIBCPP_STD_VER > 14
+#if _LIBCPP_STD_VER >= 17
 template <class _Tp>
 inline constexpr bool is_trivially_move_assignable_v = is_trivially_move_assignable<_Tp>::value;
 #endif
