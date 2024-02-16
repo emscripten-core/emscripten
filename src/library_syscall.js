@@ -159,13 +159,10 @@ var SyscallsLibrary = {
   _munmap_js__i53abi: true,
   _munmap_js: (addr, len, prot, flags, fd, offset) => {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
     var stream = SYSCALLS.getStreamFromFD(fd);
     if (prot & {{{ cDefs.PROT_WRITE }}}) {
       SYSCALLS.doMsync(addr, stream, len, flags, offset);
     }
-    FS.munmap(stream);
-    // implicitly return 0
 #endif
   },
 

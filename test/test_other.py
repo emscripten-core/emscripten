@@ -11220,9 +11220,9 @@ int main(void) {
   def test_mmap_and_munmap(self):
     emcc_args = []
     for f in ['data_ro.dat', 'data_rw.dat']:
-        create_file(f, 'Test file')
-        emcc_args.extend(['--embed-file', f])
-    self.do_other_test('test_mmap_and_munmap.cpp', emcc_args)
+      create_file(f, 'Test file')
+      emcc_args.extend(['--embed-file', f])
+    self.do_other_test('test_mmap_and_munmap.c', emcc_args)
 
   def test_mmap_and_munmap_anonymous(self):
     self.do_other_test('test_mmap_and_munmap_anonymous.cpp', emcc_args=['-sNO_FILESYSTEM'])
