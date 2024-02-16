@@ -9,7 +9,6 @@ import os
 import shutil
 import glob
 import importlib.util
-import sys
 from typing import Set
 from tools import cache
 from tools import config
@@ -67,19 +66,14 @@ def init_port(name, port):
   validate_port(port)
 
 
-def load_port_by_name(name):
-  port = __import__(name, globals(), level=1, fromlist=[None])
-  init_port(name, port)
-
-
-def load_port_by_path(path):
-  name = os.path.splitext(os.path.basename(path))[0]
+def load_port(path, name=None):
+  if not name:
+    name = shared.unsuffixed_basename(path)
   if name in ports_by_name:
     utils.exit_with_error(f'port path [`{path}`] is invalid: duplicate port name `{name}`')
   module_name = f'tools.ports.{name}'
   spec = importlib.util.spec_from_file_location(module_name, path)
   port = importlib.util.module_from_spec(spec)
-  sys.modules[module_name] = port
   spec.loader.exec_module(port)
   init_port(name, port)
   return name
@@ -100,15 +94,14 @@ def read_ports():
   for filename in os.listdir(ports_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
-    filename = os.path.splitext(filename)[0]
-    load_port_by_name(filename)
+    load_port(os.path.join(ports_dir, filename))
 
   contrib_dir = os.path.join(ports_dir, 'contrib')
   for filename in os.listdir(contrib_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
-    filename = os.path.splitext(filename)[0]
-    load_port_by_name('contrib.' + filename)
+    name = 'contrib.' + shared.unsuffixed(filename)
+    load_port(os.path.join(contrib_dir, filename), name)
 
 
 def get_all_files_under(dirname):
@@ -426,7 +419,7 @@ def handle_use_port_arg(settings, arg, error_handler=None):
     port_file_path = name
     if not os.path.isfile(port_file_path):
       error_handler(f'not a valid port path: {port_file_path}')
-    name = load_port_by_path(port_file_path)
+    name = load_port(port_file_path)
   elif name not in ports_by_name:
     error_handler(f'invalid port name: `{name}`')
   ports_needed.add(name)
