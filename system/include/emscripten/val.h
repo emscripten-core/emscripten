@@ -378,23 +378,21 @@ public:
   {}
 
   // Move constructor takes over the other item's place in the list for this handle.
-  val(val&& v) : handle(v.handle), thread(v.thread) {
-    v.handle = 0;
-    if (v.next == &v) {
-      next = prev = this;
-    } else {
+  val(val&& v) : val(v.handle, v.thread) {
+    if (v.next != &v) {
       next = v.next;
       prev = v.prev;
       next->prev = prev->next = this;
     }
+    v.handle = 0;
+    v.next = v.prev = &v;
   }
 
   // Copy constructor inserts this new entry into the list for this handle.
-  val(const val& v) : handle(v.handle),
-      next(v.next),
-      prev(const_cast<val*>(&v)) ,
-      thread (v.thread) {
-    const_cast<val&>(v).next = this;
+  val(const val& v) : val(v.handle, v.thread) {
+    next = v.next;
+    prev = const_cast<val*>(&v);
+    prev->next = this;
     next->prev = this;
   }
 
@@ -645,9 +643,10 @@ public:
 
 private:
   // takes ownership, assumes handle lives on the same thread with no other C++ references
-  explicit val(EM_VAL handle)
-      : handle(handle), next(this), prev(this), thread(pthread_self())
-  {}
+  explicit val(EM_VAL handle) : val(handle, pthread_self()) {}
+
+  val(EM_VAL handle, pthread_t thread)
+      : handle(handle), next(this), prev(this), thread(pthread_self()) {}
 
   template<typename WrapperType>
   friend val internal::wrapped_extend(const std::string& , const val& );
