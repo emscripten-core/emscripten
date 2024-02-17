@@ -391,7 +391,7 @@ public:
   // Copy constructor inserts this new entry into the list for this handle.
   val(const val& v) : val(v.handle, v.thread) {
     next = v.next;
-    prev = const_cast<val*>(&v);
+    prev = &v;
     prev->next = this;
     next->prev = this;
   }
@@ -676,9 +676,10 @@ private:
   }
 
   EM_VAL handle;
-  // Circular doubly-linked list of all references to this handle.
-  val* next;
-  val* prev;
+  // Circular doubly-linked list of all references to this handle, may
+  // be mutated by copy constructor of new instance inserting itself.
+  const val mutable* next;
+  const val mutable* prev;
   pthread_t thread;
 
   friend struct internal::BindingType<val>;
