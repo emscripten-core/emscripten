@@ -9,7 +9,7 @@
 /*global _malloc, _free, _memcpy*/
 /*global FUNCTION_TABLE, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64*/
 /*global readLatin1String*/
-/*global Emval, emval_handle_array, __emval_decref*/
+/*global Emval, __emval_free*/
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 // -- jshint doesn't understand library syntax, so we need to specifically tell it about the symbols we define
@@ -41,12 +41,12 @@ var LibraryEmbind = {
   // If register_type is used, emval will be registered multiple times for
   // different type id's, but only a single type object is needed on the JS side
   // for all of them. Store the type for reuse.
-  $EmValType__deps: ['_emval_decref', '$Emval', '$readPointer', '$GenericWireTypeSize'],
+  $EmValType__deps: ['_emval_free', '$Emval', '$readPointer', '$GenericWireTypeSize'],
   $EmValType: `{
     name: 'emscripten::val',
     'fromWireType': (handle) => {
       var rv = Emval.toValue(handle);
-      __emval_decref(handle);
+      __emval_free(handle);
       return rv;
     },
     'toWireType': (destructors, value) => Emval.toHandle(value),

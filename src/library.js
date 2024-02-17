@@ -3556,18 +3556,19 @@ addToLibrary({
     constructor() {
       // TODO(sbc): Use class fields once we allow/enable es2022 in
       // JavaScript input to acorn and closure.
+      // Use this allocator object as a placeholder for invalid entries.
       // Reserve slot 0 so that 0 is always an invalid handle
-      this.allocated = [undefined];
+      this.allocated = [this];
       this.freelist = [];
     }
     get(id) {
 #if ASSERTIONS
-      assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);
+      assert(this.allocated[id] !== this, `invalid handle: ${id}`);
 #endif
       return this.allocated[id];
     };
     has(id) {
-      return this.allocated[id] !== undefined;
+      return this.allocated[id] !== this;
     };
     allocate(handle) {
       var id = this.freelist.pop() || this.allocated.length;
@@ -3576,13 +3577,15 @@ addToLibrary({
     };
     free(id) {
 #if ASSERTIONS
-      assert(this.allocated[id] !== undefined);
+      assert(this.allocated[id] !== this);
 #endif
-      // Set the slot to `undefined` rather than using `delete` here since
-      // apparently arrays with holes in them can be less efficient.
-      this.allocated[id] = undefined;
+      this.allocated[id] = this;
       this.freelist.push(id);
     };
+    count() {
+      // Handle zero is reserved and always allocated.
+      return this.allocated.length - this.freelist.length - 1;
+    }
   },
 
   $getNativeTypeSize__deps: ['$POINTER_SIZE'],
