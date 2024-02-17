@@ -9753,6 +9753,12 @@ int main() {
           stdout=PIPE).stdout
       self.assertIn(loc, out)
 
+    def check_func_info(address, func):
+      out = self.run_process(
+        [emsymbolizer, 'test_dwarf.wasm', address], stdout=PIPE).stdout
+      print(out)
+      self.assertIn(func, out)
+
     # Runs llvm-objdump to get the address of the first occurrence of the
     # specified line within the given function. llvm-objdump's output format
     # example is as follows:
@@ -9824,6 +9830,24 @@ int main() {
     check_dwarf_loc_info(out_to_js_call_addr, out_to_js_call_func,
                          out_to_js_call_loc)
     check_dwarf_loc_info(unreachable_addr, unreachable_func, unreachable_loc)
+
+    # 4. Test name section only
+    self.run_process([emstrip, '--strip-debug', 'test_dwarf.wasm'])
+    with webassembly.Module('test_dwarf.wasm') as wasm:
+      self.assertTrue(wasm.has_name_section())
+      self.assertIsNone(wasm.get_custom_section('.debug_info'))
+    check_func_info(out_to_js_call_addr, out_to_js_call_func[0])
+    # The name section will not reflect bar being inlined into main
+    check_func_info(unreachable_addr, '__original_main')
+
+    # 5. Test an object file with a symbol table
+    self.run_process([EMCC, test_file('core/test_dwarf.c'),
+                      '-O1', '-c', '-o', 'test_dwarf.o'])
+    # The code addresses will be different in the object file (section offsets)
+    out_to_js_call_addr_obj = get_addr('call\t0')
+    unreachable_addr_obj = get_addr('unreachable')
+    check_func_info(out_to_js_call_addr_obj, out_to_js_call_func[0])
+    check_func_info(unreachable_addr_obj, '__original_main')
 
   def test_separate_dwarf(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-g'])
