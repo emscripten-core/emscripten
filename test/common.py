@@ -93,6 +93,9 @@ if not config.NODE_JS_TEST:
   config.NODE_JS_TEST = config.NODE_JS
 
 
+requires_network = unittest.skipIf(os.getenv('EMTEST_SKIP_NETWORK_TESTS'), 'This test requires network access')
+
+
 def test_file(*path_components):
   """Construct a path relative to the emscripten "tests" directory."""
   return str(Path(TEST_ROOT, *path_components))
