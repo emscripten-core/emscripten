@@ -2389,7 +2389,6 @@ int f() {
                  emcc_args=['--use-port=freetype', '--embed-file', 'LiberationSansBold.ttf'])
 
   @requires_network
-  @requires_network
   def test_freetype_with_pthreads(self):
     # Verify that freetype supports compilation requiring pthreads
     self.emcc(test_file('freetype_test.c'), ['-pthread', '-sUSE_FREETYPE'], output_filename='a.out.js')
