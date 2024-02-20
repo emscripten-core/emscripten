@@ -5663,7 +5663,7 @@ int main() {
     with env_modify(env):
       if fail:
         err = self.expect_fail(cmd)
-        self.assertContained('undefined symbol: malloc', err)
+        self.assertContained('undefined symbol: emscripten_builtin_memalign', err)
       else:
         err = self.run_process(cmd, stderr=PIPE).stderr
         if 'EMCC_ONLY_FORCED_STDLIBS' in env:

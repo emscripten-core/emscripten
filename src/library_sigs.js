@@ -382,7 +382,7 @@ sigs = {
   _munmap_js__sig: 'ippiiij',
   _setitimer_js__sig: 'iid',
   _timegm_js__sig: 'jp',
-  _tzset_js__sig: 'vppp',
+  _tzset_js__sig: 'vpppp',
   _wasmfs_copy_preloaded_file_data__sig: 'vip',
   _wasmfs_create_fetch_backend_js__sig: 'vp',
   _wasmfs_create_js_file_backend_js__sig: 'vp',

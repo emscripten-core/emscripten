@@ -604,9 +604,9 @@ addToLibrary({
     return ret;
   },
 
-  _tzset_js__deps: ['$stringToNewUTF8'],
+  _tzset_js__deps: ['$stringToUTF8'],
   _tzset_js__internal: true,
-  _tzset_js: (timezone, daylight, tzname) => {
+  _tzset_js: (timezone, daylight, std_name, dst_name) => {
     // TODO: Use (malleable) environment variables instead of system settings.
     var currentYear = new Date().getFullYear();
     var winter = new Date(currentYear, 0, 1);
@@ -614,9 +614,12 @@ addToLibrary({
     var winterOffset = winter.getTimezoneOffset();
     var summerOffset = summer.getTimezoneOffset();
 
-    // Local standard timezone offset. Local standard time is not adjusted for daylight savings.
-    // This code uses the fact that getTimezoneOffset returns a greater value during Standard Time versus Daylight Saving Time (DST).
-    // Thus it determines the expected output during Standard Time, and it compares whether the output of the given date the same (Standard) or less (DST).
+    // Local standard timezone offset. Local standard time is not adjusted for
+    // daylight savings.  This code uses the fact that getTimezoneOffset returns
+    // a greater value during Standard Time versus Daylight Saving Time (DST).
+    // Thus it determines the expected output during Standard Time, and it
+    // compares whether the output of the given date the same (Standard) or less
+    // (DST).
     var stdTimezoneOffset = Math.max(winterOffset, summerOffset);
 
     // timezone is specified as seconds west of UTC ("The external variable
@@ -634,15 +637,13 @@ addToLibrary({
     };
     var winterName = extractZone(winter);
     var summerName = extractZone(summer);
-    var winterNamePtr = stringToNewUTF8(winterName);
-    var summerNamePtr = stringToNewUTF8(summerName);
     if (summerOffset < winterOffset) {
       // Northern hemisphere
-      {{{ makeSetValue('tzname', '0', 'winterNamePtr', POINTER_TYPE) }}};
-      {{{ makeSetValue('tzname', POINTER_SIZE, 'summerNamePtr', POINTER_TYPE) }}};
+      stringToUTF8(winterName, std_name, {{{ cDefs.TZNAME_MAX + 1 }}});
+      stringToUTF8(summerName, dst_name, {{{ cDefs.TZNAME_MAX + 1 }}});
     } else {
-      {{{ makeSetValue('tzname', '0', 'summerNamePtr', POINTER_TYPE) }}};
-      {{{ makeSetValue('tzname', POINTER_SIZE, 'winterNamePtr', POINTER_TYPE) }}};
+      stringToUTF8(winterName, dst_name, {{{ cDefs.TZNAME_MAX + 1 }}});
+      stringToUTF8(summerName, std_name, {{{ cDefs.TZNAME_MAX + 1 }}});
     }
   },
 
