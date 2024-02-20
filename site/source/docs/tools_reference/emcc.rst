@@ -461,9 +461,13 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--use-port=<port>``
   [compile+link]
-  Use the specified port. If you need to use more than one port you can use this
-  argument multiple times. For example: ``--use-port=sdl2 --use-port=bzip2``.
-  To get the list of available ports, use ``--show-ports``.
+  Use the specified port. If you need to use more than one port you can use
+  this option multiple times (ex: ``--use-port=sdl2 --use-port=bzip2``). A port
+  can have options separated by ``:``
+  (ex: ``--use-port=sdl2_image:formats=png,jpg``). To use an  external port,
+  you provide the path to the port directly
+  (ex: ``--use-port=/path/to/my_port.py``). To get the list of available ports,
+  use ``--show-ports``.
 
 .. _emcc-clear-ports:
 

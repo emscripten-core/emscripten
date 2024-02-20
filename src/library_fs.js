@@ -1276,7 +1276,6 @@ FS.staticInit();` +
       }
       return stream.stream_ops.msync(stream, buffer, offset, length, mmapFlags);
     },
-    munmap: (stream) => 0,
     ioctl(stream, cmd, arg) {
       if (!stream.stream_ops.ioctl) {
         throw new FS.ErrnoError({{{ cDefs.ENOTTY }}});
