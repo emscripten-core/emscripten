@@ -9,6 +9,12 @@
 #include "lock.h"
 #include "fork_impl.h"
 
+#ifdef __EMSCRIPTEN__
+#include <stdbool.h>
+#include <pthread.h>
+#include "emscripten_internal.h"
+#endif
+
 #define malloc __libc_malloc
 #define calloc undef
 #define realloc undef
@@ -39,6 +45,7 @@ static size_t old_tz_size = sizeof old_tz_buf;
 static volatile int lock[1];
 volatile int *const __timezone_lockptr = lock;
 
+#ifndef __EMSCRIPTEN__
 static int getint(const char **p)
 {
 	unsigned x;
@@ -122,9 +129,24 @@ static size_t zi_dotprod(const unsigned char *z, const unsigned char *v, size_t 
 	}
 	return y;
 }
+#endif
 
 static void do_tzset()
 {
+#ifdef __EMSCRIPTEN__
+	static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+	static _Atomic bool done_init = false;
+	if (!done_init) {
+		pthread_mutex_lock(&lock);
+		if (!done_init) {
+			_tzset_js(&timezone, &daylight, std_name, dst_name);
+			__tzname[0] = std_name;
+			__tzname[1] = dst_name;
+			done_init = true;
+		}
+		pthread_mutex_unlock(&lock);
+	}
+#else
 	char buf[NAME_MAX+25], *pathname=buf+24;
 	const char *try, *s, *p;
 	const unsigned char *map = 0;
@@ -255,8 +277,10 @@ static void do_tzset()
 
 	if (*s == ',') s++, getrule(&s, r0);
 	if (*s == ',') s++, getrule(&s, r1);
+#endif
 }
 
+#ifndef __EMSCRIPTEN__
 /* Search zoneinfo rules to find the one that applies to the given time,
  * and determine alternate opposite-DST-status rule that may be needed. */
 
@@ -416,6 +440,7 @@ dst:
 	*zonename = __tzname[1];
 	UNLOCK(lock);
 }
+#endif
 
 static void __tzset()
 {
