@@ -9,6 +9,7 @@ import os
 import shutil
 import glob
 import importlib.util
+import sys
 from typing import Set
 from tools import cache
 from tools import config
@@ -405,6 +406,21 @@ def handle_use_port_error(arg, message):
   utils.exit_with_error(f'error with `--use-port={arg}` | {message}')
 
 
+def show_port_help_and_exit(port):
+  print(port.show())
+  if hasattr(port, 'DESCRIPTION'):
+    print(port.DESCRIPTION)
+  if hasattr(port, 'OPTIONS'):
+    print("Options:")
+    for option, desc in port.OPTIONS.items():
+      print(f'* {option}: {desc}')
+  else:
+    print("No options.")
+  if hasattr(port, 'URL'):
+    print(f'More info: {port.URL}')
+  sys.exit(0)
+
+
 def handle_use_port_arg(settings, arg, error_handler=None):
   if not error_handler:
     def error_handler(message):
@@ -425,6 +441,8 @@ def handle_use_port_arg(settings, arg, error_handler=None):
   ports_needed.add(name)
   if options:
     port = ports_by_name[name]
+    if options == 'help':
+      show_port_help_and_exit(port)
     if not hasattr(port, 'handle_options'):
       error_handler(f'no options available for port `{name}`')
     else:
