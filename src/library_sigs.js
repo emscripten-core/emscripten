@@ -1536,8 +1536,6 @@ sigs = {
   rotozoomSurface__sig: 'ppddi',
   sched_yield__sig: 'i',
   setprotoent__sig: 'vi',
-  strftime__sig: 'ppppp',
-  strftime_l__sig: 'pppppp',
   strptime__sig: 'pppp',
   strptime_l__sig: 'ppppp',
   uuid_clear__sig: 'vp',
