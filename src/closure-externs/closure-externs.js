@@ -260,3 +260,12 @@ var moduleArg;
  */
 Navigator.prototype.webkitGetUserMedia = function(
     constraints, successCallback, errorCallback) {};
+
+/**
+ * Global object for custom event target mappings, see:
+ * https://emscripten.org/docs/api_reference/html5.h.html#how-to-use-this-api
+ *
+ * @type {Object}
+ * @suppress {duplicate}
+ */
+var specialHTMLTargets;
