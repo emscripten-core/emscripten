@@ -555,6 +555,17 @@ def force_delete_contents(dirname):
   utils.delete_contents(dirname)
 
 
+def find_browser_test_file(filename):
+  """Looks for files in test/browser and then in test/
+  """
+  if not os.path.exists(filename):
+    fullname = test_file('browser', filename)
+    if not os.path.exists(fullname):
+      fullname = test_file(filename)
+    filename = fullname
+  return filename
+
+
 def parameterized(parameters):
   """
   Mark a test as parameterized.
@@ -2010,11 +2021,12 @@ class BrowserCore(RunnerCore):
 
   # @manually_trigger If set, we do not assume we should run the reftest when main() is done.
   #                   Instead, call doReftest() in JS yourself at the right time.
-  def reftest(self, expected, manually_trigger=False):
+  def make_reftest(self, expected, manually_trigger=False):
     # make sure the pngs used here have no color correction, using e.g.
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
     basename = os.path.basename(expected)
-    shutil.copyfile(expected, self.in_dir(basename))
+    if os.path.abspath(os.path.dirname(expected)) != self.get_dir():
+      shutil.copyfile(expected, self.in_dir(basename))
     reporting = read_file(test_file('browser_reporting.js'))
     create_file('reftest.js', '''
       function doReftest() {
@@ -2141,8 +2153,15 @@ class BrowserCore(RunnerCore):
       filename = test_file(filename)
     self.run_process([compiler_for(filename), filename] + self.get_emcc_args() + args)
 
+  def reftest(self, filename, reference, *args, **kwargs):
+    """Special case of `btest` that uses reference image
+    """
+    assert 'reference' not in kwargs
+    kwargs['reference'] = reference
+    return self.btest(filename, *args, **kwargs)
+
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
-    """Special case of btest that reports its result solely via exiting
+    """Special case of `btest` that reports its result solely via exiting
     with a given result code.
 
     In this case we set EXIT_RUNTIME and we don't need to provide the
@@ -2167,15 +2186,11 @@ class BrowserCore(RunnerCore):
       args = []
     original_args = args
     args = args.copy()
-    if not os.path.exists(filename):
-      fullname = test_file('browser', filename)
-      if not os.path.exists(fullname):
-        fullname = test_file(filename)
-      filename = fullname
+    filename = find_browser_test_file(filename)
     if reference:
-      self.reference = reference
+      reference = find_browser_test_file(reference)
       expected = [str(i) for i in range(0, reference_slack + 1)]
-      self.reftest(test_file(reference), manually_trigger=manually_trigger_reftest)
+      self.make_reftest(reference, manually_trigger=manually_trigger_reftest)
       if not manual_reference:
         args += ['--pre-js', 'reftest.js', '-sGL_TESTING']
     else:
