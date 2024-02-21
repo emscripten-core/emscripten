@@ -81,11 +81,6 @@ def clear(ports, settings, shared):
   shared.cache.erase_lib(get_lib_name(settings))
 
 
-def linker_setup(ports, settings):
-  # TODO(sbc): Move these into native code use EM_JS_DEPS macro.
-  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$autoResumeAudioContext', '$dynCall']
-
-
 def process_args(ports):
   return ['-isystem', ports.get_include_dir('SDL2')]
 
