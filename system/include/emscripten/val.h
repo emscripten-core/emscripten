@@ -284,7 +284,9 @@ private:
 static const char name##_symbol[] = #name;                          \
 static const ::emscripten::internal::symbol_registrar<name##_symbol> name##_registrar
 
-class val {
+class unique_val;
+class val;
+class base_val {
 public:
   // missing operators:
   // * ~ - + ++ --
@@ -296,102 +298,31 @@ public:
   // exposing void, comma, and conditional is unnecessary
   // same with: = += -= *= /= %= <<= >>= >>>= &= ^= |=
 
-  static val array() {
-    return val(internal::_emval_new_array());
-  }
+  static unique_val array();
 
   template<typename Iter>
-  static val array(Iter begin, Iter end) {
-#if __cplusplus >= 202002L
-    if constexpr (std::contiguous_iterator<Iter> &&
-                  internal::typeSupportsMemoryView<
-                    typename std::iterator_traits<Iter>::value_type>()) {
-      val view{ typed_memory_view(std::distance(begin, end), std::to_address(begin)) };
-      return val(internal::_emval_new_array_from_memory_view(view.as_handle()));
-    }
-    // For numeric arrays, following codes are unreachable and the compiler
-    // will do 'dead code elimination'.
-    // Others fallback old way.
-#endif
-    val new_array = array();
-    for (auto it = begin; it != end; ++it) {
-      new_array.call<void>("push", *it);
-    }
-    return new_array;
-  }
+  static unique_val array(Iter begin, Iter end);
 
   template<typename T>
-  static val array(const std::vector<T>& vec) {
-    if constexpr (internal::typeSupportsMemoryView<T>()) {
-        // for numeric types, pass memory view and copy in JS side one-off
-        val view{ typed_memory_view(vec.size(), vec.data()) };
-        return val(internal::_emval_new_array_from_memory_view(view.as_handle()));
-    } else {
-        return array(vec.begin(), vec.end());
-    }
-  }
+  static unique_val array(const std::vector<T>& vec);
 
-  static val object() {
-    return val(internal::_emval_new_object());
-  }
+  static unique_val object();
 
-  static val u8string(const char* s) {
-    return val(internal::_emval_new_u8string(s));
-  }
+  static unique_val u8string(const char* s);
 
-  static val u16string(const char16_t* s) {
-    return val(internal::_emval_new_u16string(s));
-  }
+  static unique_val u16string(const char16_t* s);
 
-  static val undefined() {
-    return val(EM_VAL(internal::_EMVAL_UNDEFINED));
-  }
+  static unique_val undefined();
 
-  static val null() {
-    return val(EM_VAL(internal::_EMVAL_NULL));
-  }
+  static unique_val null();
 
-  static val take_ownership(EM_VAL e) {
-    return val(e);
-  }
+  static unique_val take_ownership(EM_VAL e);
 
-  static val global(const char* name = 0) {
-    return val(internal::_emval_get_global(name));
-  }
+  static unique_val global(const char* name = 0);
 
-  static val module_property(const char* name) {
-    return val(internal::_emval_get_module_property(name));
-  }
+  static unique_val module_property(const char* name);
 
-  template<typename T>
-  explicit val(T&& value) {
-    using namespace internal;
-
-    WireTypePack<T> argv(std::forward<T>(value));
-    new (this) val(_emval_take_value(internal::TypeID<T>::get(), argv));
-  }
-
-  val() : val(EM_VAL(internal::_EMVAL_UNDEFINED)) {}
-
-  explicit val(const char* v)
-      : val(internal::_emval_new_cstring(v))
-  {}
-
-  // Note: unlike other constructors, this doesn't use as_handle() because
-  // it just moves a value and doesn't need to go via incref/decref.
-  // This means it's safe to move values across threads - an error will
-  // only arise if you access or free it from the wrong thread later.
-  val(val&& v) : handle(v.handle), thread(v.thread) {
-    v.handle = 0;
-  }
-
-  val(const val& v) : val(v.as_handle()) {
-    if (uses_ref_count()) {
-      internal::_emval_incref(handle);
-    }
-  }
-
-  ~val() {
+  ~base_val() {
     if (uses_refcount()) {
       internal::_emval_decref(as_handle());
       handle = 0;
@@ -406,26 +337,13 @@ public:
   }
 
   // Takes ownership of the handle away from, and invalidates, this instance.
-  EM_VAL release_ownership() {
+  EM_VAL take_handle() {
     EM_VAL taken = as_handle();
     handle = 0;
     return taken;
   }
 
-  val& operator=(val&& v) & {
-    val tmp(std::move(v));
-    this->~val();
-    new (this) val(std::move(tmp));
-    return *this;
-  }
-
-  val& operator=(const val& v) & {
-    return *this = val(v);
-  }
-
-  bool hasOwnProperty(const char* key) const {
-    return val::global("Object")["prototype"]["hasOwnProperty"].call<bool>("call", *this, val(key));
-  }
+  bool hasOwnProperty(const char* key) const;
 
   bool isNull() const {
     return as_handle() == EM_VAL(internal::_EMVAL_NULL);
@@ -451,39 +369,37 @@ public:
     return internal::_emval_is_string(as_handle());
   }
 
-  bool isArray() const {
-    return instanceof(global("Array"));
-  }
+  bool isArray() const;
 
-  bool equals(const val& v) const {
+  bool equals(const base_val& v) const {
     return internal::_emval_equals(as_handle(), v.as_handle());
   }
 
-  bool operator==(const val& v) const {
+  bool operator==(const base_val& v) const {
     return equals(v);
   }
 
-  bool operator!=(const val& v) const {
+  bool operator!=(const base_val& v) const {
     return !equals(v);
   }
 
-  bool strictlyEquals(const val& v) const {
+  bool strictlyEquals(const base_val& v) const {
     return internal::_emval_strictly_equals(as_handle(), v.as_handle());
   }
 
-  bool operator>(const val& v) const {
+  bool operator>(const base_val& v) const {
     return internal::_emval_greater_than(as_handle(), v.as_handle());
   }
 
-  bool operator>=(const val& v) const {
+  bool operator>=(const base_val& v) const {
     return (*this > v) || (*this == v);
   }
 
-  bool operator<(const val& v) const {
+  bool operator<(const base_val& v) const {
     return internal::_emval_less_than(as_handle(), v.as_handle());
   }
 
-  bool operator<=(const val& v) const {
+  bool operator<=(const base_val& v) const {
     return (*this < v) || (*this == v);
   }
 
@@ -492,9 +408,7 @@ public:
   }
 
   template<typename T>
-  val operator[](const T& key) const {
-    return val(internal::_emval_get_property(as_handle(), val_ref(key).as_handle()));
-  }
+  unique_val operator[](const T& key) const;
 
   template<typename K, typename V>
   void set(const K& key, const V& value) {
@@ -507,18 +421,10 @@ public:
   }
 
   template<typename... Args>
-  val new_(Args&&... args) const {
-    using namespace internal;
-
-    return internalCall<EM_METHOD_CALLER_KIND::CONSTRUCTOR, val>(_emval_call, std::forward<Args>(args)...);
-  }
+  unique_val new_(Args&&... args) const;
 
   template<typename... Args>
-  val operator()(Args&&... args) const {
-    using namespace internal;
-
-    return internalCall<EM_METHOD_CALLER_KIND::FUNCTION, val>(_emval_call, std::forward<Args>(args)...);
-  }
+  unique_val operator()(Args&&... args) const;
 
   template<typename ReturnValue, typename... Args>
   ReturnValue call(const char* name, Args&&... args) const {
@@ -593,23 +499,19 @@ public:
   }
 
 // Prefer calling val::typeOf() over val::typeof(), since this form works in both C++11 and GNU++11 build modes. "typeof" is a reserved word in GNU++11 extensions.
-  val typeOf() const {
-    return val(internal::_emval_typeof(as_handle()));
-  }
+  unique_val typeOf() const;
 
 // If code is not being compiled with GNU extensions enabled, typeof() is a valid identifier, so support that as a member function.
 #if __is_identifier(typeof)
   [[deprecated("Use typeOf() instead.")]]
-  val typeof() const {
-    return typeOf();
-  }
+  unique_val typeof() const;
 #endif
 
-  bool instanceof(const val& v) const {
+  bool instanceof(const base_val& v) const {
     return internal::_emval_instanceof(as_handle(), v.as_handle());
   }
 
-  bool in(const val& v) const {
+  bool in(const base_val& v) const {
     return internal::_emval_in(as_handle(), v.as_handle());
   }
 
@@ -617,9 +519,7 @@ public:
     internal::_emval_throw(as_handle());
   }
 
-  val await() const {
-    return val(internal::_emval_await(as_handle()));
-  }
+  unique_val await() const;
 
   struct iterator;
 
@@ -634,20 +534,29 @@ public:
   class promise_type;
 #endif
 
-private:
+protected:
   // takes ownership, assumes handle already incref'd and lives on the same thread
-  explicit val(EM_VAL handle)
+  explicit base_val(EM_VAL handle)
       : handle(handle), thread(pthread_self())
   {}
 
-  // Whether this value is a uses incref/decref (true) or is a special reserved
-  // value (false).
-  bool uses_ref_count() const {
-    return handle > reinterpret_cast<EM_VAL>(internal::_EMVAL_LAST_RESERVED_HANDLE);
+  base_val(EM_VAL handle, pthread_t thread)
+      : handle(handle), thread(thread)
+  {}
+
+  // Note: unlike other constructors, this doesn't use as_handle() because
+  // it just moves a value and doesn't need to go via incref/decref.
+  // This means it's safe to move values across threads - an error will
+  // only arise if you access or free it from the wrong thread later.
+  explicit base_val(base_val&& v) : handle(v.handle), thread(v.thread) {
+    v.handle = 0;
   }
 
-  template<typename WrapperType>
-  friend val internal::wrapped_extend(const std::string& , const val& );
+  // Whether this value is a uses incref/decref (true) or is a special reserved
+  // value (false).
+  bool uses_refcount() const {
+    return handle > reinterpret_cast<EM_VAL>(internal::_EMVAL_LAST_RESERVED_HANDLE);
+  }
 
   template<internal::EM_METHOD_CALLER_KIND Kind, typename Ret, typename Implementation, typename... Args>
   Ret internalCall(Implementation impl, Args&&... args) const {
@@ -665,8 +574,14 @@ private:
   }
 
   template<typename T>
-  val val_ref(const T& v) const {
-    return val(v);
+  val val_ref(const T& v) const;
+
+  const base_val& val_ref(const base_val& v) const {
+    return v;
+  }
+
+  const unique_val& val_ref(const unique_val& v) const {
+    return v;
   }
 
   const val& val_ref(const val& v) const {
@@ -675,15 +590,221 @@ private:
 
   pthread_t thread;
   EM_VAL handle;
+};
+
+class unique_val : public base_val {
+ public:
+  unique_val() : base_val(EM_VAL(internal::_EMVAL_UNDEFINED)) {}
+
+  // takes ownership, assumes handle already incref'd and lives on the same thread
+  explicit unique_val(EM_VAL handle) : base_val(handle) {}
+
+  explicit unique_val(const char* v)
+      : base_val(internal::_emval_new_cstring(v))
+  {}
+
+  template<typename T>
+  explicit unique_val(T&& value) : unique_val() {
+    using namespace internal;
+
+    WireTypePack<T> argv(std::forward<T>(value));
+    new (this) unique_val(_emval_take_value(internal::TypeID<T>::get(), argv));
+  }
+
+  // unique_val doesn't allow copy, as that would require incref/decref.
+  unique_val(const unique_val& v) = delete;
+  unique_val& operator=(const unique_val& v) = delete;
+
+  unique_val(base_val&& v) : base_val(std::move(v)) {}
+  unique_val(unique_val&& v) : base_val(std::move(v)) {}
+
+  unique_val& operator=(base_val&& v) & {
+    unique_val tmp(std::move(v));
+    this->~unique_val();
+    new (this) unique_val(std::move(tmp));
+    return *this;
+  }
+
+  unique_val& operator=(unique_val&& v) & {
+    unique_val tmp(std::move(v));
+    this->~unique_val();
+    new (this) unique_val(std::move(tmp));
+    return *this;
+  }
+};
+
+class val : public base_val {
+ public: 
+  val() : base_val(EM_VAL(internal::_EMVAL_UNDEFINED)) {}
+
+  // takes ownership, assumes handle already incref'd and lives on the same thread
+  explicit val(EM_VAL handle) : base_val(handle) {}
+
+  explicit val(const char* v)
+      : base_val(internal::_emval_new_cstring(v))
+  {}
+
+  // Note: unlike other constructors, this doesn't use as_handle() because
+  // it just moves a value and doesn't need to go via incref/decref.
+  // This means it's safe to move values across threads - an error will
+  // only arise if you access or free it from the wrong thread later.
+  val(base_val&& v) : base_val(std::move(v)) { }
+
+  val(const val& v) : base_val(v.as_handle()) {
+    if (uses_refcount()) {
+      internal::_emval_incref(handle);
+    }
+  }
+
+  val(const base_val& v) : base_val(v.as_handle()) {
+    if (uses_refcount()) {
+      internal::_emval_incref(handle);
+    }
+  }
+
+  template<typename T>
+  explicit val(T&& value) : val() {
+    using namespace internal;
+
+    WireTypePack<T> argv(std::forward<T>(value));
+    new (this) val(_emval_take_value(internal::TypeID<T>::get(), argv));
+  }
+
+  val& operator=(base_val&& v) & {
+    val tmp(std::move(v));
+    this->~val();
+    new (this) val(std::move(tmp));
+    return *this;
+  }
+
+  val& operator=(const val& v) & {
+    return *this = val(v);
+  }
+
+  template<typename WrapperType>
+  friend val internal::wrapped_extend(const std::string& , const val& );
 
   friend struct internal::BindingType<val>;
 };
 
-struct val::iterator {
+inline unique_val base_val::array() {
+  return unique_val(internal::_emval_new_array());
+}
+
+template<typename Iter>
+inline unique_val base_val::array(Iter begin, Iter end) {
+#if __cplusplus >= 202002L
+  if constexpr (std::contiguous_iterator<Iter> &&
+                internal::typeSupportsMemoryView<
+                  typename std::iterator_traits<Iter>::value_type>()) {
+    unique_val view{ typed_memory_view(std::distance(begin, end), std::to_address(begin)) };
+    return unique_val(internal::_emval_new_array_from_memory_view(view.as_handle()));
+  }
+  // For numeric arrays, following codes are unreachable and the compiler
+  // will do 'dead code elimination'.
+  // Others fallback old way.
+#endif
+  unique_val new_array = array();
+  for (auto it = begin; it != end; ++it) {
+    new_array.call<void>("push", *it);
+  }
+  return std::move(new_array);
+}
+
+template<typename T>
+inline unique_val base_val::array(const std::vector<T>& vec) {
+  if constexpr (internal::typeSupportsMemoryView<T>()) {
+      // for numeric types, pass memory view and copy in JS side one-off
+      unique_val view{ typed_memory_view(vec.size(), vec.data()) };
+      return unique_val(internal::_emval_new_array_from_memory_view(view.as_handle()));
+  } else {
+      return array(vec.begin(), vec.end());
+  }
+}
+
+inline unique_val base_val::object() {
+  return unique_val(internal::_emval_new_object());
+}
+
+inline unique_val base_val::u8string(const char* s) {
+  return unique_val(internal::_emval_new_u8string(s));
+}
+
+inline unique_val base_val::u16string(const char16_t* s) {
+  return unique_val(internal::_emval_new_u16string(s));
+}
+
+inline unique_val base_val::undefined() {
+  return unique_val(EM_VAL(internal::_EMVAL_UNDEFINED));
+}
+
+inline unique_val base_val::null() {
+  return unique_val(EM_VAL(internal::_EMVAL_NULL));
+}
+
+inline unique_val base_val::take_ownership(EM_VAL e) {
+  return unique_val(e);
+}
+
+inline unique_val base_val::global(const char* name) {
+  return unique_val(internal::_emval_get_global(name));
+}
+
+inline unique_val base_val::module_property(const char* name) {
+  return unique_val(internal::_emval_get_module_property(name));
+}
+
+inline bool base_val::hasOwnProperty(const char* key) const {
+  return base_val::global("Object")["prototype"]["hasOwnProperty"].call<bool>("call", val(*this), val(key));
+}
+
+inline bool base_val::isArray() const {
+  return instanceof(global("Array"));
+}
+
+template<typename T>
+inline unique_val base_val::operator[](const T& key) const {
+  return unique_val(internal::_emval_get_property(as_handle(), val_ref(key).as_handle()));
+}
+
+template<typename... Args>
+inline unique_val base_val::new_(Args&&... args) const {
+  using namespace internal;
+
+  return internalCall<EM_METHOD_CALLER_KIND::CONSTRUCTOR, val>(_emval_call, std::forward<Args>(args)...);
+}
+
+template<typename... Args>
+inline unique_val base_val::operator()(Args&&... args) const {
+  using namespace internal;
+
+  return internalCall<EM_METHOD_CALLER_KIND::FUNCTION, val>(_emval_call, std::forward<Args>(args)...);
+}
+
+inline unique_val base_val::typeOf() const {
+  return val(internal::_emval_typeof(as_handle()));
+}
+
+#if __is_identifier(typeof)
+inline unique_val base_val::typeof() const {
+  return typeOf();
+}
+#endif
+
+inline unique_val base_val::await() const {
+  return unique_val(internal::_emval_await(as_handle()));
+}
+
+template<typename T>
+inline val base_val::val_ref(const T& v) const {
+  return val(v);
+}
+
+struct base_val::iterator {
   iterator() = delete;
   // Make sure iterator is only moveable, not copyable as it represents a mutable state.
   iterator(iterator&&) = default;
-  iterator(const val& v) : iter(internal::_emval_iter_begin(v.as_handle())) {
+  iterator(const base_val& v) : iter(internal::_emval_iter_begin(v.as_handle())) {
     this->operator++();
   }
   val&& operator*() { return std::move(cur_value); }
@@ -696,7 +817,7 @@ private:
   val cur_value;
 };
 
-inline val::iterator val::begin() const {
+inline base_val::iterator base_val::begin() const {
   return iterator(*this);
 }
 
@@ -705,12 +826,12 @@ inline val::iterator val::begin() const {
 // to drive the argument of the `co_await` operator (regardless
 // of the type of the parent coroutine).
 // This one is used for Promises represented by the `val` type.
-class val::awaiter {
+class base_val::awaiter {
   // State machine holding awaiter's current state. One of:
   //  - initially created with promise
   //  - waiting with a given coroutine handle
   //  - completed with a result
-  std::variant<val, std::coroutine_handle<val::promise_type>, val> state;
+  std::variant<val, std::coroutine_handle<base_val::promise_type>, val> state;
 
   constexpr static std::size_t STATE_PROMISE = 0;
   constexpr static std::size_t STATE_CORO = 1;
@@ -746,15 +867,15 @@ public:
   val await_resume() { return std::move(std::get<STATE_RESULT>(state)); }
 };
 
-inline val::awaiter val::operator co_await() const {
+inline val::awaiter base_val::operator co_await() const {
   return {*this};
 }
 
 // `promise_type` is a well-known subtype with well-known method names
 // that compiler uses to drive the coroutine itself
 // (`T::promise_type` is used for any coroutine with declared return type `T`).
-class val::promise_type {
-  val promise, resolve, reject_with_current_exception;
+class base_val::promise_type {
+  unique_val promise, resolve, reject_with_current_exception;
 
 public:
   // Create a `new Promise` and store it alongside the `resolve` and `reject`
@@ -762,9 +883,9 @@ public:
   promise_type() {
     EM_VAL resolve_handle;
     EM_VAL reject_handle;
-    promise = val(internal::_emval_coro_make_promise(&resolve_handle, &reject_handle));
-    resolve = val(resolve_handle);
-    reject_with_current_exception = val(reject_handle);
+    promise = unique_val(internal::_emval_coro_make_promise(&resolve_handle, &reject_handle));
+    resolve = unique_val(resolve_handle);
+    reject_with_current_exception = unique_val(reject_handle);
   }
 
   // Return the stored promise as the actual return value of the coroutine.
@@ -806,14 +927,14 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
   // Marshall to JS with move semantics when we can invalidate the temporary val
   // object.
   static WireType toWireType(val&& v) {
-    return v.release_ownership();
+    return v.take_handle();
   }
 
   // Marshal to JS with copy semantics when we cannot transfer the val objects
   // reference count.
   static WireType toWireType(const val& v) {
     EM_VAL handle = v.as_handle();
-    if (v.uses_ref_count()) {
+    if (v.uses_refcount()) {
       _emval_incref(handle);
     }
     return handle;
