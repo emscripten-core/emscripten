@@ -5812,6 +5812,7 @@ Module["preRun"] = () => {
     'minimal_runtime_pthreads_and_closure': (['-sMINIMAL_RUNTIME', '-pthread', '--closure', '1', '-Oz'],),
     'pthreads_es6': (['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sEXPORT_ES6'],),
     'es6': (['-sEXPORT_ES6'],),
+    'strict': (['-sSTRICT'],),
   })
   def test_audio_worklet(self, args):
     if '-sMEMORY64' in args and is_firefox():
