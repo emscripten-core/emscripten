@@ -611,76 +611,43 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 
 #if TRACE_WEBGL_CALLS
     hookWebGLFunction: (f, glCtx) => {
-      var realf = 'real_' + f;
-      glCtx[realf] = glCtx[f];
-      var numArgs = glCtx[realf].length;
-      if (numArgs === undefined) console.warn(`Unexpected WebGL function ${f} when binding TRACE_WEBGL_CALLS`);
+      var orig = glCtx[f];
       var contextHandle = glCtx.canvas.GLctxObject.handle;
-      var threadId = (typeof _pthread_self != 'undefined') ? _pthread_self : () => 1;
-      // Accessing 'arguments' is super slow, so to avoid overhead, statically reason the number of arguments.
-      switch (numArgs) {
-        case 0: glCtx[f] = () => { var ret = glCtx[realf](); err(`[Thread ${threadId()}, GL ctx: ${contextHandle}]: ${f}() -> ${ret}`); return ret; }; break;
-        case 1: glCtx[f] = (a1) => { var ret = glCtx[realf](a1); err(`[Thread ${threadId()}, GL ctx: ${contextHandle}]: ${f}(${a1}) -> ${ret}`); return ret; }; break;
-        case 2: glCtx[f] = (a1, a2) => { var ret = glCtx[realf](a1, a2); err(`[Thread ${threadId()}, GL ctx: ${contextHandle}]: ${f}(${a1}, ${a2}) -> ${ret}`); return ret; }; break;
-        case 3: glCtx[f] = (a1, a2, a3) => { var ret = glCtx[realf](a1, a2, a3); err(`[Thread ${threadId()}, GL ctx: ${contextHandle}]: ${f}(${a1}, ${a2}, ${a3}) -> ${ret}`); return ret; }; break;
-        case 4: glCtx[f] = (a1, a2, a3, a4) => { var ret = glCtx[realf](a1, a2, a3, a4); err(`[Thread ${threadId()}, GL ctx: ${contextHandle}]: ${f}(${a1}, ${a2}, ${a3}, ${a4}) -> ${ret}`); return ret; }; break;
-        case 5: glCtx[f] = (a1, a2, a3, a4, a5) => { var ret = glCtx[realf](a1, a2, a3, a4, a5); err(`[Thread ${threadId()}, GL ctx: ${contextHandle}]: ${f}(${a1}, ${a2}, ${a3}, ${a4}, ${a5}) -> ${ret}`); return ret; }; break;
-        case 6: glCtx[f] = (a1, a2, a3, a4, a5, a6) => { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6); err(`[Thread ${threadId()}, GL ctx: ${contextHandle}]: ${f}(${a1}, ${a2}, ${a3}, ${a4}, ${a5}, ${a6}) -> ${ret}`); return ret; }; break;
-        case 7: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7) => { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6, a7); err(`[Thread ${threadId()}, GL ctx: ${contextHandle}]: ${f}(${a1}, ${a2}, ${a3}, ${a4}, ${a5}, ${a6}, ${a7}) -> ${ret}`); return ret; }; break;
-        case 8: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7, a8) => { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8); err(`[Thread ${threadId()}, GL ctx: ${contextHandle}]: ${f}(${a1}, ${a2}, ${a3}, ${a4}, ${a5}, ${a6}, ${a7}, ${a8}) -> ${ret}`); return ret; }; break;
-        case 9: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7, a8, a9) => { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9); err(`[Thread ${threadId()}, GL ctx: ${contextHandle}]: ${f}(${a1}, ${a2}, ${a3}, ${a4}, ${a5}, ${a6}, ${a7}, ${a8}, ${a9}) -> ${ret}`); return ret; }; break;
-        case 10: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) => { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10); err(`[Thread ${threadId()}, GL ctx: ${contextHandle}]: ${f}(${a1}, ${a2}, ${a3}, ${a4}, ${a5}, ${a6}, ${a7}, ${a8}, ${a9}, ${a10}) -> ${ret}`); return ret; }; break;
-        case 11: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) => { var ret = glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11); err(`[Thread ${threadId()}, GL ctx: ${contextHandle}]: ${f}(${a1}, ${a2}, ${a3}, ${a4}, ${a5}, ${a6}, ${a7}, ${a8}, ${a9}, ${a10}, ${a11}) -> ${ret}`); return ret; }; break;
-        default: console.warn('hookWebGL failed! Unexpected length ' + glCtx[realf].length);
-      }
+      glCtx[f] = function(...args) {
+        var ret = orig.apply(this, args);
+        // Some GL functions take a view of the entire linear memory.  Replace
+        // such arguments with the string 'HEAP' to avoid serializing all of
+        // memory.
+        for (var i in args) {
+          if (ArrayBuffer.isView(args[i]) && args[i].byteLength === HEAPU8.byteLength) {
+            args[i] = 'HEAP';
+          }
+        }
+#if PTHREADS
+        err(`[Thread ${_pthread_self()}, GL ctx: ${contextHandle}]: ${f}(${args}) -> ${ret}`);
+#else
+        err(`[ctx: ${contextHandle}]: ${f}(${args}) -> ${ret}`);
+#endif
+        return ret;
+      };
     },
 
     hookWebGL: function(glCtx) {
       if (!glCtx) glCtx = this.detectWebGLContext();
       if (!glCtx) return;
       if (!((typeof WebGLRenderingContext != 'undefined' && glCtx instanceof WebGLRenderingContext)
-       || (typeof WebGL2RenderingContext != 'undefined' && glCtx instanceof WebGL2RenderingContext))) {
+            || (typeof WebGL2RenderingContext != 'undefined' && glCtx instanceof WebGL2RenderingContext))) {
         return;
       }
 
       if (glCtx.webGlTracerAlreadyHooked) return;
       glCtx.webGlTracerAlreadyHooked = true;
 
-      // Hot GL functions are ones that you'd expect to find during render loops
-      // (render calls, dynamic resource uploads), cold GL functions are load
-      // time functions (shader compilation, texture/mesh creation).
-      // Distinguishing between these two allows pinpointing locations of
-      // troublesome GL usage that might cause performance issues.
       for (var f in glCtx) {
-        if (typeof glCtx[f] != 'function' || f.startsWith('real_')) continue;
-        this.hookWebGLFunction(f, glCtx);
+        if (typeof glCtx[f] == 'function') {
+          this.hookWebGLFunction(f, glCtx);
+        }
       }
-      // The above injection won't work for texImage2D and texSubImage2D, which
-      // have multiple overloads.
-      glCtx['texImage2D'] = (a1, a2, a3, a4, a5, a6, a7, a8, a9) => {
-        var ret = (a7 !== undefined) ? glCtx['real_texImage2D'](a1, a2, a3, a4, a5, a6, a7, a8, a9) : glCtx['real_texImage2D'](a1, a2, a3, a4, a5, a6);
-        return ret;
-      };
-      glCtx['texSubImage2D'] = (a1, a2, a3, a4, a5, a6, a7, a8, a9) => {
-        var ret = (a8 !== undefined) ? glCtx['real_texSubImage2D'](a1, a2, a3, a4, a5, a6, a7, a8, a9) : glCtx['real_texSubImage2D'](a1, a2, a3, a4, a5, a6, a7);
-        return ret;
-      };
-      glCtx['texSubImage3D'] = (a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) => {
-        var ret = (a9 !== undefined) ? glCtx['real_texSubImage3D'](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) : glCtx['real_texSubImage2D'](a1, a2, a3, a4, a5, a6, a7, a8);
-        return ret;
-      };
-      glCtx['bufferData'] = (a1, a2, a3, a4, a5) => {
-          // WebGL1/2 versions have different parameters (not just extra ones)
-          var ret = (a4 !== undefined) ? glCtx['real_bufferData'](a1, a2, a3, a4, a5) : glCtx['real_bufferData'](a1, a2, a3);
-          return ret;
-      };
-      const matrixFuncs = ['uniformMatrix2fv', 'uniformMatrix3fv', 'uniformMatrix4fv'];
-      matrixFuncs.forEach(f => {
-          glCtx[f] = (a1, a2, a3, a4, a5) => {
-              // WebGL2 version has 2 extra optional parameters, ensure we forward them
-              return glCtx['real_' + f](a1, a2, a3, a4, a5);
-          }
-      });
     },
 #endif
     // Returns the context handle to the new context.
