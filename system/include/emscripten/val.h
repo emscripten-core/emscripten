@@ -386,13 +386,13 @@ public:
   }
 
   val(const val& v) : val(v.as_handle()) {
-    if (uses_refcount()) {
+    if (uses_ref_count()) {
       internal::_emval_incref(handle);
     }
   }
 
   ~val() {
-    if (uses_refcount()) {
+    if (uses_ref_count()) {
       internal::_emval_decref(as_handle());
       handle = 0;
     }
@@ -642,7 +642,7 @@ private:
 
   // Whether this value is a uses incref/decref (true) or is a special reserved
   // value (false).
-  bool uses_refcount() const {
+  bool uses_ref_count() const {
     return handle > reinterpret_cast<EM_VAL>(internal::_EMVAL_LAST_RESERVED_HANDLE);
   }
 
@@ -813,7 +813,7 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
   // reference count.
   static WireType toWireType(const val& v) {
     EM_VAL handle = v.as_handle();
-    if (v.uses_refcount()) {
+    if (v.uses_ref_count()) {
       _emval_incref(handle);
     }
     return handle;
