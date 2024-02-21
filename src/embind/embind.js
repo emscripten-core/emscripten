@@ -150,7 +150,7 @@ var LibraryEmbind = {
   $replacePublicSymbol__docs: '/** @param {number=} numArguments */',
   $replacePublicSymbol: (name, value, numArguments) => {
     if (!Module.hasOwnProperty(name)) {
-      throwInternalError('Replacing nonexistant public symbol');
+      throwInternalError('Replacing nonexistent public symbol');
     }
     // If there's an overload table for this symbol, replace the symbol in the overload table instead.
     if (undefined !== Module[name].overloadTable && undefined !== numArguments) {
