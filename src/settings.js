@@ -1841,6 +1841,8 @@ var MIN_SAFARI_VERSION = 140100;
 
 // Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 // drop support for Chrome 57 and older.
+// This setting also applies to modern Chromium-based Edge, which shares version
+// numbers with Chrome.
 // Chrome 85 was released on 2020-08-25.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // Minimum supported value is 32, which was released on 2014-01-04.

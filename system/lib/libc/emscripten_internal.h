@@ -44,7 +44,7 @@ time_t _mktime_js(struct tm* tm);
 void _localtime_js(time_t t, struct tm* __restrict__ tm);
 void _gmtime_js(time_t t, struct tm* __restrict__ tm);
 
-void _tzset_js(long* timezone, int* daylight, char** tzname);
+void _tzset_js(long* timezone, int* daylight, char* std_name, char* dst_name);
 
 const char* emscripten_pc_get_function(uintptr_t pc);
 const char* emscripten_pc_get_file(uintptr_t pc);
