@@ -8796,6 +8796,12 @@ int main() {
       out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
       self.assertContained('no native wasm support detected', out)
 
+  def test_exceptions_c_linker(self):
+    # Test that we don't try to create __cxa_find_matching_catch_xx function automatically
+    # when not linking as C++.
+    stderr = self.expect_fail([EMCC, '-sSTRICT', test_file('other/test_exceptions_c_linker.c')])
+    self.assertContained('error: undefined symbol: __cxa_find_matching_catch_1', stderr)
+
   @parameterized({
     '': (False,),
     'wasm': (True,),

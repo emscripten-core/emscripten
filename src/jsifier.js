@@ -319,7 +319,7 @@ function(${args}) {
     // the number specifies the number of arguments. In Emscripten, route all
     // these to a single function 'findMatchingCatch' that takes an array
     // of argument.
-    if (!WASM_EXCEPTIONS && symbol.startsWith('__cxa_find_matching_catch_')) {
+    if (LINK_AS_CXX && !WASM_EXCEPTIONS && symbol.startsWith('__cxa_find_matching_catch_')) {
       if (DISABLE_EXCEPTION_THROWING) {
         error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
         return;
