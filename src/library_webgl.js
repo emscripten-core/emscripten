@@ -1663,6 +1663,9 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       if (internalFormat == 0x84f9 /*GL_DEPTH_STENCIL*/) {
         internalFormat = 0x88F0 /*GL_DEPTH24_STENCIL8*/;
       }
+      if (internalFormat == 0x1908 /*GL_RGBA*/ && type == 0x1406 /*GL_FLOAT*/) {
+        internalFormat = 0x8814 /*GL_RGBA32F*/;
+      }
     }
 #endif
     if ({{{ isCurrentContextWebGL2() }}}) {
