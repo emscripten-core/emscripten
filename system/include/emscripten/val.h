@@ -406,7 +406,7 @@ public:
   }
 
   // Takes ownership of the handle away from, and invalidates, this instance.
-  EM_VAL release_handle() {
+  EM_VAL release_ownership() {
     EM_VAL taken = as_handle();
     handle = 0;
     return taken;
@@ -806,7 +806,7 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
   // Marshall to JS with move semantics when we can invalidate the temporary val
   // object.
   static WireType toWireType(val&& v) {
-    return v.release_handle();
+    return v.release_ownership();
   }
 
   // Marshal to JS with copy semantics when we cannot transfer the val objects
