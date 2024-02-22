@@ -109,7 +109,7 @@ var WasiLibrary = {
     return 0;
   },
 
-  // In normal (non-standalone) mode arguments are passed direclty
+  // In normal (non-standalone) mode arguments are passed directly
   // to main, and the `mainArgs` global does not exist.
 #if STANDALONE_WASM
   args_sizes_get__nothrow: true,

@@ -253,7 +253,7 @@ var ALL_INCOMING_MODULE_JS_API = [];
 
 // List of all imports that are weak, and therefore allowed to be undefined at
 // runtime.  This is used by the JS compiler to avoid build-time warnings/errors
-// when weak symbols are undefined.  Only applies in the case of dyanmic linking
+// when weak symbols are undefined.  Only applies in the case of dynamic linking
 // (MAIN_MODULE).
 var WEAK_IMPORTS = [];
 

@@ -595,7 +595,7 @@ var LibraryBrowser = {
           Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
           Browser.mouseY = SDL.mouseY + Browser.mouseMovementY;
         } else {
-          // just add the mouse delta to the current absolut mouse position
+          // just add the mouse delta to the current absolute mouse position
           // FIXME: ideally this should be clamped against the canvas size and zero
           Browser.mouseX += Browser.mouseMovementX;
           Browser.mouseY += Browser.mouseMovementY;

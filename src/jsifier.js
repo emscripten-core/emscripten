@@ -69,7 +69,7 @@ function isDefined(symName) {
   if (symName == '__main_argc_argv' && SIDE_MODULE_EXPORTS.has('main')) {
     return true;
   }
-  // 'invoke_' symbols are created at runtime in libary_dylink.py so can
+  // 'invoke_' symbols are created at runtime in library_dylink.py so can
   // always be considered as defined.
   if (RELOCATABLE && symName.startsWith('invoke_')) {
     return true;
@@ -138,14 +138,14 @@ function runJSify() {
   }
 
   function handleI64Signatures(symbol, snippet, sig, i53abi) {
-    // Handle i64 paramaters and return values.
+    // Handle i64 parameters and return values.
     //
     // When WASM_BIGINT is enabled these arrive as BigInt values which we
     // convert to int53 JS numbers.  If necessary, we also convert the return
     // value back into a BigInt.
     //
     // When WASM_BIGINT is not enabled we receive i64 values as a pair of i32
-    // numbers which is coverted to single int53 number.  In necessary, we also
+    // numbers which is converted to single int53 number.  In necessary, we also
     // split the return value into a pair of i32 numbers.
     return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
       let argLines = args.split('\n');
@@ -153,7 +153,7 @@ function runJSify() {
       const argNames = argLines.join(' ').split(',').map((name) => name.trim());
       const newArgs = [];
       let innerArgs = [];
-      let argConvertions = '';
+      let argConversions = '';
       if (sig.length > argNames.length + 1) {
         error(`handleI64Signatures: signature too long for ${symbol}`);
         return snippet;
@@ -164,13 +164,13 @@ function runJSify() {
         // here, which will result in the default case below.
         const argType = sig[i + 1];
         if (WASM_BIGINT && ((MEMORY64 && argType == 'p') || (i53abi && argType == 'j'))) {
-          argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
+          argConversions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
         } else {
           if (argType == 'j' && i53abi) {
-            argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
+            argConversions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
             newArgs.push(defineI64Param(name));
           } else if (argType == 'p' && CAN_ADDRESS_2GB) {
-            argConvertions += `  ${name} >>>= 0;\n`;
+            argConversions += `  ${name} >>>= 0;\n`;
             newArgs.push(name);
           } else {
             newArgs.push(name);
@@ -187,9 +187,9 @@ function runJSify() {
         // For functions that where we need to mutate the return value, we
         // also need to wrap the body in an inner function.
         if (oneliner) {
-          if (argConvertions) {
+          if (argConversions) {
             return `${async_}(${args}) => {
-${argConvertions}
+${argConversions}
   return ${makeReturn64(body)};
 }`
           }
@@ -197,7 +197,7 @@ ${argConvertions}
         }
         return `\
 ${async_}function(${args}) {
-${argConvertions}
+${argConversions}
   var ret = (() => { ${body} })();
   return ${makeReturn64('ret')};
 }`;
@@ -210,7 +210,7 @@ ${argConvertions}
       }
       return `\
 ${async_}function(${args}) {
-${argConvertions}
+${argConversions}
   ${body};
 }`;
     });
@@ -514,7 +514,7 @@ function(${args}) {
         // in library.js and library_pthread.js.  These happen before deps are
         // processed so depending on it via `__deps` doesn't work.
         if (dep === '$noExitRuntime') {
-          error('noExitRuntime cannot be referenced via __deps mechansim.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS')
+          error('noExitRuntime cannot be referenced via __deps mechanism.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS')
         }
         return addFromLibrary(dep, `${symbol}, referenced by ${dependent}`, dep === aliasTarget);
       }

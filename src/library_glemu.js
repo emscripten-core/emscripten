@@ -3002,10 +3002,10 @@ var LibraryGLEmulation = {
       var renderer = GLImmediate.getRenderer();
 
       // Generate index data in a format suitable for GLES 2.0/WebGL
-      var numVertexes = 4 * GLImmediate.vertexCounter / GLImmediate.stride;
-      if (!numVertexes) return;
+      var numVertices = 4 * GLImmediate.vertexCounter / GLImmediate.stride;
+      if (!numVertices) return;
 #if ASSERTIONS
-      assert(numVertexes % 1 == 0, "`numVertexes` must be an integer.");
+      assert(numVertices % 1 == 0, "`numVertices` must be an integer.");
 #endif
       var emulatedElementArrayBuffer = false;
       var numIndexes = 0;
@@ -3047,7 +3047,7 @@ var LibraryGLEmulation = {
         assert(GLImmediate.firstVertex % 4 == 0);
 #endif
         ptr = GLImmediate.firstVertex * 3;
-        var numQuads = numVertexes / 4;
+        var numQuads = numVertices / 4;
         numIndexes = numQuads * 6; // 0 1 2, 0 2 3 pattern
 #if ASSERTIONS
         assert(ptr + (numIndexes << 1) <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (b)');
@@ -3062,7 +3062,7 @@ var LibraryGLEmulation = {
       if (numIndexes) {
         GLctx.drawElements(GLImmediate.mode, numIndexes, GLctx.UNSIGNED_SHORT, ptr);
       } else {
-        GLctx.drawArrays(GLImmediate.mode, startIndex, numVertexes);
+        GLctx.drawArrays(GLImmediate.mode, startIndex, numVertices);
       }
 
       if (emulatedElementArrayBuffer) {
