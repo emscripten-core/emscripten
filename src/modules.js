@@ -302,7 +302,7 @@ function isInternalSymbol(ident) {
   return ident + '__internal' in LibraryManager.library;
 }
 
-function getUnusedLibarySymbols() {
+function getUnusedLibrarySymbols() {
   const librarySymbolSet = new Set(librarySymbols);
   const missingSyms = new Set();
   for (const [ident, value] of Object.entries(LibraryManager.library)) {
@@ -475,7 +475,7 @@ function exportRuntime() {
   const results = exports.filter((name) => name);
 
   if (ASSERTIONS && !EXPORT_ALL) {
-    const unusedLibSymbols = getUnusedLibarySymbols();
+    const unusedLibSymbols = getUnusedLibrarySymbols();
     if (unusedLibSymbols.size) {
       results.push(addMissingLibraryStubs(unusedLibSymbols));
     }

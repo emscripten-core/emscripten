@@ -371,7 +371,7 @@ var messageBuffer = null;
 var messageResenderTimeout = null;
 var calledMain = false;
 
-// Set calledMain to true during postRun which happens onces main returns
+// Set calledMain to true during postRun which happens once main returns
 Module['postRun'] ||= [];
 if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
 Module['postRun'].push(() => { calledMain = true; });

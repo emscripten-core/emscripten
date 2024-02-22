@@ -83,7 +83,7 @@ function assert(condition, text) {
 #else
     // This build was created without ASSERTIONS defined.  `assert()` should not
     // ever be called in this configuration but in case there are callers in
-    // the wild leave this simple abort() implemenation here for now.
+    // the wild leave this simple abort() implementation here for now.
     abort(text);
 #endif
   }
@@ -456,7 +456,7 @@ function abort(what) {
   // allows this in the wasm spec.
 
   // Suppress closure compiler warning here. Closure compiler's builtin extern
-  // defintion for WebAssembly.RuntimeError claims it takes no arguments even
+  // definition for WebAssembly.RuntimeError claims it takes no arguments even
   // though it can.
   // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
 #if WASM_EXCEPTIONS == 1
@@ -819,7 +819,7 @@ function instantiateArrayBuffer(binaryFile, imports, receiver) {
       if (search.indexOf('_rwasm=0') < 0) {
         location.href += (search ? search + '&' : '?') + '_rwasm=0';
         // Return here to avoid calling abort() below.  The application
-        // still has a chance to start sucessfully do we don't want to
+        // still has a chance to start successfully do we don't want to
         // trigger onAbort or onExit handlers.
         return;
       }
@@ -1016,7 +1016,7 @@ function createWasm() {
 
 #if !DECLARE_ASM_MODULE_EXPORTS
     // If we didn't declare the asm exports as top level enties this function
-    // is in charge of programatically exporting them on the global object.
+    // is in charge of programmatically exporting them on the global object.
     exportWasmSymbols(wasmExports);
 #endif
 

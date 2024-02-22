@@ -153,7 +153,7 @@ var LibraryGLUT = {
         case 191: return s ? 63 : 47; // forward slash
         case 219: return s ? 123 : 91; // open bracket
         case 220: return s ? 124 : 47; // back slash
-        case 221: return s ? 125 : 93; // close braket
+        case 221: return s ? 125 : 93; // close bracket
         case 222: return s ? 34 : 39; // single quote
       }
 

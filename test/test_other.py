@@ -14354,7 +14354,7 @@ addToLibrary({
 });
 ''')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=foo'])
-    self.assertContained('error: noExitRuntime cannot be referenced via __deps mechansim', err)
+    self.assertContained('error: noExitRuntime cannot be referenced via __deps mechanism', err)
 
   def test_hello_world_argv(self):
     self.do_runf('hello_world_argv.c', 'hello, world! (1)')

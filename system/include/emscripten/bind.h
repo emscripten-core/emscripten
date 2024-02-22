@@ -262,9 +262,9 @@ void _embind_register_user_type(
 // Register an InitFunc in the global linked list of init functions.
 void _embind_register_bindings(struct InitFunc* f);
 
-// Binding initialization functions registerd by EMSCRIPTEN_BINDINGS macro
+// Binding initialization functions registered by EMSCRIPTEN_BINDINGS macro
 // below.  Stored as linked list of static data object avoiding std containers
-// to avoid static contructor ordering issues.
+// to avoid static constructor ordering issues.
 struct InitFunc {
   InitFunc(void (*init_func)()) : init_func(init_func) {
     // This the function immediately upon constructions, and also register

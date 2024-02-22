@@ -13,7 +13,7 @@ addToLibrary({
 
   // Compare whether or not two 'compact' UUIDs are the same.
   // Returns an integer less than, equal to, or greater than zero if uu1  is found, respectively, to be
-  // lexigraphically  less  than,  equal, or greater than uu2.
+  // lexicographically  less  than,  equal, or greater than uu2.
   uuid_compare__deps: ['memcmp'],
   uuid_compare: (uu1, uu2) => _memcmp(uu1, uu2, 16),
 

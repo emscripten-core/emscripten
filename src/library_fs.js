@@ -130,7 +130,7 @@ FS.staticInit();` +
 #if ASSERTIONS
         super(ERRNO_MESSAGES[errno]);
 #endif
-        // TODO(sbc): Use the inline member delclaration syntax once we
+        // TODO(sbc): Use the inline member declaration syntax once we
         // support it in acorn and closure.
         this.name = 'ErrnoError';
         this.errno = errno;
@@ -745,7 +745,7 @@ FS.staticInit();` +
       // parents must exist
       var lookup, old_dir, new_dir;
 
-      // let the errors from non existant directories percolate up
+      // let the errors from non existent directories percolate up
       lookup = FS.lookupPath(old_path, { parent: true });
       old_dir = lookup.node;
       lookup = FS.lookupPath(new_path, { parent: true });
