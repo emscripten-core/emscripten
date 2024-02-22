@@ -63,7 +63,7 @@ def has_linking_section(module):
   return module.get_custom_section('linking') is not None
 
 
-def symbolize_address_symbolizer(module, address, is_dwarf=False):
+def symbolize_address_symbolizer(module, address, is_dwarf):
   if is_dwarf:
     vma_adjust = get_codesec_offset(module)
   else:

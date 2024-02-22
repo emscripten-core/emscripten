@@ -9844,7 +9844,7 @@ int main() {
     # Address of __builtin_trap() within bar(), inlined into main()
     unreachable_addr = self.get_instr_addr('unreachable', 'test_dwarf.wasm')
     check_func_info('test_dwarf.wasm', out_to_js_call_addr, 'foo')
-    # The name section will not reflect bar being inlined into main
+    # The name section will not show bar, as it's inlined into main
     check_func_info('test_dwarf.wasm', unreachable_addr, '__original_main')
 
   def test_separate_dwarf(self):
