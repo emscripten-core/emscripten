@@ -66,7 +66,6 @@ static void updateFloatTexture() {
         ++count;
     }
     glBindTexture(GL_TEXTURE_2D, nodeTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, nbNodes, 1, 0, GL_RGBA, GL_FLOAT, data);
 #ifdef __EMSCRIPTEN__ // In GLES2 and WebGL1, we must use unsized texture internal formats.
     const GLenum internalFormat = GL_RGBA;
 #else
