@@ -2323,8 +2323,14 @@ void *getBindBuffer() {
     self.btest('float_tex.c', reference='float_tex.png', args=['-lGL', '-lglut'])
 
   @requires_graphics_hardware
-  def test_subdata(self):
-    self.btest('gl_subdata.c', reference='float_tex.png', args=['-lGL', '-lglut'])
+  @parameterized({
+    '': ([],),
+    'es2': (['-sMIN_WEBGL_VERSION=2', '-sFULL_ES2', '-sWEBGL2_BACKWARDS_COMPATIBILITY_EMULATION'],),
+  })
+  def test_subdata(self, args):
+    if self.is_4gb() and args:
+      self.skipTest('texSubImage2D fails: https://crbug.com/325090165')
+    self.btest('gl_subdata.c', reference='float_tex.png', args=['-lGL', '-lglut'] + args)
 
   @requires_graphics_hardware
   def test_perspective(self):
