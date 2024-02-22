@@ -251,6 +251,7 @@ addToLibrary({
         var path = NODEFS.realPath(stream.node);
         try {
           if (FS.isFile(stream.node.mode)) {
+            stream.shared.refcount = 1;
             stream.nfd = fs.openSync(path, NODEFS.flagsForNode(stream.flags));
           }
         } catch (e) {
@@ -260,13 +261,16 @@ addToLibrary({
       },
       close(stream) {
         try {
-          if (FS.isFile(stream.node.mode) && stream.nfd) {
+          if (FS.isFile(stream.node.mode) && stream.nfd && --stream.shared.refcount === 0) {
             fs.closeSync(stream.nfd);
           }
         } catch (e) {
           if (!e.code) throw e;
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
+      },
+      dup(stream) {
+        stream.shared.refcount ++;
       },
       read(stream, buffer, offset, length, position) {
         // Node.js < 6 compatibility: node errors on 0 length reads

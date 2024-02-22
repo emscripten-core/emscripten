@@ -183,7 +183,7 @@ var SyscallsLibrary = {
   },
   __syscall_dup: (fd) => {
     var old = SYSCALLS.getStreamFromFD(fd);
-    return FS.createStream(old).fd;
+    return FS.dupStream(old).fd;
   },
   __syscall_pipe__deps: ['$PIPEFS'],
   __syscall_pipe: (fdPtr) => {
@@ -760,7 +760,7 @@ var SyscallsLibrary = {
           arg++;
         }
         var newStream;
-        newStream = FS.createStream(stream, arg);
+        newStream = FS.dupStream(stream, arg);
         return newStream.fd;
       }
       case {{{ cDefs.F_GETFD }}}:
@@ -1007,7 +1007,7 @@ var SyscallsLibrary = {
     if (old.fd === newfd) return -{{{ cDefs.EINVAL }}};
     var existing = FS.getStream(newfd);
     if (existing) FS.close(existing);
-    return FS.createStream(old, newfd).fd;
+    return FS.dupStream(old, newfd).fd;
   },
 };
 
