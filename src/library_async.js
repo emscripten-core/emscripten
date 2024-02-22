@@ -42,7 +42,7 @@ addToLibrary({
       dbg('asyncify instrumenting imports');
 #endif
 #if ASSERTIONS && ASYNCIFY == 2
-      assert('Suspender' in WebAssembly, 'JSPI not supported by current environment. Perhaps it needs to be enabled via flags?');
+      assert('Suspending' in WebAssembly, 'JSPI not supported by current environment. Perhaps it needs to be enabled via flags?');
 #endif
       var importPattern = {{{ new RegExp(`^(${ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS.map(x => x.split('.')[1]).join('|').replace(/\*/g, '.*')})$`) }}};
 
@@ -52,21 +52,10 @@ addToLibrary({
 #if ASYNCIFY == 2
           // Wrap async imports with a suspending WebAssembly function.
           if (isAsyncifyImport) {
-#if ASSERTIONS
-            assert(original.sig, `Missing __sig for ${x}`);
-#endif
-            let type = sigToWasmTypes(original.sig);
 #if ASYNCIFY_DEBUG
             dbg('asyncify: suspendOnReturnedPromise for', x, original);
 #endif
-            // Add space for the suspender promise that will be used in the
-            // Wasm wrapper function.
-            type.parameters.unshift('externref');
-            imports[x] = original = new WebAssembly.Function(
-              type,
-              original,
-              { suspending: 'first' }
-            );
+            imports[x] = original = new WebAssembly.Suspending(original);
           }
 #endif
 #if ASSERTIONS && ASYNCIFY != 2 // We cannot apply assertions with stack switching, as the imports must not be modified from suspender.suspendOnReturnedPromise TODO find a way
@@ -454,20 +443,7 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
       dbg('asyncify: returnPromiseOnSuspend for', original);
 #endif
-      // TODO: remove `WebAssembly.Function.type` call when the new API is ready on all the testers.
-      var type = original.type ? original.type() : WebAssembly.Function.type(original);
-      var parameters = type.parameters;
-      var results = type.results;
-#if ASSERTIONS
-      assert(results.length !== 0, 'There must be a return result')
-      assert(parameters[0] === 'externref', 'First param must be externref.');
-#endif
-      // Remove the extern ref.
-      parameters.shift();
-      return new WebAssembly.Function(
-        { parameters , results: ['externref'] },
-        original,
-        { promising : 'first' });
+      return WebAssembly.promising(original);
     },
 #endif
   },
