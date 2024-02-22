@@ -9736,17 +9736,19 @@ int main() {
     test('foo.wasm.dump')
     test('bar.wasm.dump')
 
-  # Runs llvm-objdump to get the address of the first occurrence of the
-  # specified line within the given function. llvm-objdump's output format
-  # example is as follows:
-  # ...
-  # 00000004 <foo>:
-  #        ...
-  #        6: 41 00         i32.const       0
-  #        ...
-  # The addresses here are the offsets to the start of the file. Returns
-  # the address string in hexadecimal.
   def get_instr_addr(self, text, filename):
+    '''
+    Runs llvm-objdump to get the address of the first occurrence of the
+    specified line within the given function. llvm-objdump's output format
+    example is as follows:
+    ...
+    00000004 <foo>:
+          ...
+          6: 41 00         i32.const       0
+          ...
+    The addresses here are the offsets to the start of the file. Returns
+    the address string in hexadecimal.
+    '''
     out = self.run_process([common.LLVM_OBJDUMP, '-d', filename],
                             stdout=PIPE).stdout.strip()
     out_lines = out.splitlines()
@@ -9760,7 +9762,7 @@ int main() {
     return '0x' + offset
 
   def test_emsymbolizer_srcloc(self):
-    # Test emsymbolizer use cases that provide src location granularity info
+    'Test emsymbolizer use cases that provide src location granularity info'
     def check_dwarf_loc_info(address, funcs, locs):
       out = self.run_process(
           [emsymbolizer, '-s', 'dwarf', 'test_dwarf.wasm', address],
@@ -9825,7 +9827,7 @@ int main() {
     check_dwarf_loc_info(unreachable_addr, unreachable_func, unreachable_loc)
 
   def test_emsymbolizer_functions(self):
-    # Test emsymbolizer use cases that only provide function-granularity info
+    'Test emsymbolizer use cases that only provide function-granularity info'
     def check_func_info(filename, address, func):
       out = self.run_process(
         [emsymbolizer, filename, address], stdout=PIPE).stdout
