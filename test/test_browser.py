@@ -2320,11 +2320,11 @@ void *getBindBuffer() {
 
   @requires_graphics_hardware
   def test_float_tex(self):
-    self.btest('float_tex.cpp', reference='float_tex.png', args=['-lGL', '-lglut'])
+    self.btest('float_tex.c', reference='float_tex.png', args=['-lGL', '-lglut'])
 
   @requires_graphics_hardware
   def test_subdata(self):
-    self.btest('gl_subdata.cpp', reference='float_tex.png', args=['-lGL', '-lglut'])
+    self.btest('gl_subdata.c', reference='float_tex.png', args=['-lGL', '-lglut'])
 
   @requires_graphics_hardware
   def test_perspective(self):

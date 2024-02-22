@@ -5703,9 +5703,6 @@ Module = {
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_direct_string_constant_usage.cpp')
 
-  def test_std_cout_new(self):
-    self.do_core_test('test_std_cout_new.cpp')
-
   def test_std_function_incomplete_return(self):
     self.do_core_test('test_std_function_incomplete_return.cpp')
 
