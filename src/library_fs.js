@@ -39,55 +39,7 @@ if (!Module['noFSInit'] && !FS.init.initialized)
 FS.ignorePermissions = false;
 `)
     addAtExit('FS.quit();');
-    // We must statically create FS.FSNode here so that it is created in a manner
-    // that is visible to Closure compiler. That lets us use type annotations for
-    // Closure to the "this" pointer in various node creation functions.
     return `
-var FSNode = /** @constructor */ function(parent, name, mode, rdev) {
-  if (!parent) {
-    parent = this;  // root node sets parent to itself
-  }
-  this.parent = parent;
-  this.mount = parent.mount;
-  this.mounted = null;
-  this.id = FS.nextInode++;
-  this.name = name;
-  this.mode = mode;
-  this.node_ops = {};
-  this.stream_ops = {};
-  this.rdev = rdev;
-};
-var readMode = 292/*{{{ cDefs.S_IRUGO }}}*/ | 73/*{{{ cDefs.S_IXUGO }}}*/;
-var writeMode = 146/*{{{ cDefs.S_IWUGO }}}*/;
-Object.defineProperties(FSNode.prototype, {
- read: {
-  get: /** @this{FSNode} */function() {
-   return (this.mode & readMode) === readMode;
-  },
-  set: /** @this{FSNode} */function(val) {
-   val ? this.mode |= readMode : this.mode &= ~readMode;
-  }
- },
- write: {
-  get: /** @this{FSNode} */function() {
-   return (this.mode & writeMode) === writeMode;
-  },
-  set: /** @this{FSNode} */function(val) {
-   val ? this.mode |= writeMode : this.mode &= ~writeMode;
-  }
- },
- isFolder: {
-  get: /** @this{FSNode} */function() {
-   return FS.isDir(this.mode);
-  }
- },
- isDevice: {
-  get: /** @this{FSNode} */function() {
-   return FS.isChrdev(this.mode);
-  }
- }
-});
-FS.FSNode = FSNode;
 FS.createPreloadedFile = FS_createPreloadedFile;
 FS.staticInit();` +
            // Get module methods from settings
@@ -179,6 +131,42 @@ FS.staticInit();` +
       }
       set position(val) {
         this.shared.position = val;
+      }
+    },
+    FSNode: class {
+      constructor(parent, name, mode, rdev) {
+        if (!parent) {
+          parent = this;  // root node sets parent to itself
+        }
+        this.parent = parent;
+        this.mount = parent.mount;
+        this.mounted = null;
+        this.id = FS.nextInode++;
+        this.name = name;
+        this.mode = mode;
+        this.node_ops = {};
+        this.stream_ops = {};
+        this.rdev = rdev;
+        this.readMode = 292/*{{{ cDefs.S_IRUGO }}}*/ | 73/*{{{ cDefs.S_IXUGO }}}*/;
+        this.writeMode = 146/*{{{ cDefs.S_IWUGO }}}*/;
+      }
+      get read() {
+        return (this.mode & this.readMode) === this.readMode;
+      }
+      set read(val) {
+        val ? this.mode |= this.readMode : this.mode &= ~this.readMode;
+      }
+      get write() {
+        return (this.mode & this.writeMode) === this.writeMode;
+      }
+      set write(val) {
+        val ? this.mode |= this.writeMode : this.mode &= ~this.writeMode;
+      }
+      get isFolder() {
+        return FS.isDir(this.mode);
+      }
+      get isDevice() {
+        return FS.isChrdev(this.mode);
       }
     },
 
@@ -1775,7 +1763,7 @@ FS.staticInit();` +
       // Add a function that defers querying the file size until it is asked the first time.
       Object.defineProperties(node, {
         usedBytes: {
-          get: /** @this {FSNode} */ function() { return this.contents.length; }
+          get: function() { return this.contents.length; }
         }
       });
       // override each stream op with one that tries to force load the lazy file first
