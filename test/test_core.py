@@ -6811,7 +6811,6 @@ void* operator new(size_t size) {
                 args=['-scale-to', '512', 'paper.pdf', 'filename'])
 
   @needs_make('make')
-  @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_openjpeg(self):
     def line_splitter(data):
@@ -6853,6 +6852,7 @@ void* operator new(size_t size) {
                            [Path('codec/CMakeFiles/j2k_to_image.dir/index.c.o'),
                             Path('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'),
                             Path('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'),
+                            Path('codec/CMakeFiles/j2k_to_image.dir/__/common/getopt.c.o'),
                             Path('bin/libopenjpeg.a')],
                            configure=['cmake', '.'],
                            # configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
@@ -6890,21 +6890,19 @@ void* operator new(size_t size) {
       assert abs(true_mean - image_mean) < 0.01, [true_mean, image_mean]
       assert diff_mean < 0.01, diff_mean
 
-      return output
-
     self.emcc_args += ['--minify=0'] # to compare the versions
     self.emcc_args += ['--pre-js', 'pre.js']
 
-    self.do_runf('third_party/openjpeg/codec/j2k_to_image.c',
-                 'Successfully generated', # The real test for valid output is in image_compare
-                 args='-i image.j2k -o image.raw'.split(),
-                 emcc_args=['-sUSE_LIBPNG'],
-                 libraries=lib,
-                 includes=[test_file('third_party/openjpeg/libopenjpeg'),
-                           test_file('third_party/openjpeg/codec'),
-                           test_file('third_party/openjpeg/common'),
-                           Path(self.get_build_dir(), 'third_party/openjpeg')],
-                 output_nicerizer=image_compare)
+    output = self.do_runf('third_party/openjpeg/codec/j2k_to_image.c',
+                          'Successfully generated', # The real test for valid output is in image_compare
+                          args='-i image.j2k -o image.raw'.split(),
+                          emcc_args=['-sUSE_LIBPNG'],
+                          libraries=lib,
+                          includes=[test_file('third_party/openjpeg/libopenjpeg'),
+                                    test_file('third_party/openjpeg/codec'),
+                                    test_file('third_party/openjpeg/common'),
+                                    Path(self.get_build_dir(), 'third_party/openjpeg')])
+    image_compare(output)
 
   @also_with_standalone_wasm(impure=True)
   @no_asan('autodebug logging interferes with asan')
