@@ -13852,6 +13852,7 @@ foo/version.txt
     self.do_other_test('test_itimer.c')
 
   @node_pthreads
+  @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
   def test_itimer_pthread(self):
     self.do_other_test('test_itimer.c')
 
