@@ -23,6 +23,7 @@ from urllib.request import urlopen
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
 from common import read_file, also_with_minimal_runtime, EMRUN, no_wasm64, no_2gb, no_4gb
+from common import requires_wasm2js
 from tools import shared
 from tools import ports
 from tools import utils
@@ -185,17 +186,6 @@ def requires_threads(f):
   return decorated
 
 
-def requires_wasm2js(f):
-  assert callable(f)
-
-  @wraps(f)
-  def decorated(self, *args, **kwargs):
-    self.require_wasm2js()
-    return f(self, *args, **kwargs)
-
-  return decorated
-
-
 def also_with_threads(f):
   assert callable(f)
 
@@ -232,12 +222,6 @@ class browser(BrowserCore):
       '-Wno-pointer-sign',
       '-Wno-int-conversion',
     ]
-
-  def require_wasm2js(self):
-    if self.is_wasm64():
-      self.skipTest('wasm2js is not compatible with MEMORY64')
-    if self.is_2gb() or self.is_4gb():
-      self.skipTest('wasm2js does not support over 2gb of memory')
 
   def require_jspi(self):
     if not is_chrome():

@@ -26,7 +26,7 @@ import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
-from common import read_file, read_binary, requires_v8, requires_node, requires_node_canary
+from common import read_file, read_binary, requires_v8, requires_node, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb
 from common import with_both_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
@@ -864,8 +864,8 @@ base align: 0, 0, 0, 0'''])
     self.do_core_test('test_emmalloc_memory_statistics.c', out_suffix=out_suffix)
 
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
-  @no_wasm64('output is sensitive to absolute data layout')
   @no_2gb('output is sensitive to absolute data layout')
+  @no_4gb('output is sensitive to absolute data layout')
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
   def test_emmalloc_trim(self):
@@ -8396,8 +8396,7 @@ Module.onRuntimeInitialized = () => {
 
   # Test basic wasm2js functionality in all core compilation modes.
   @no_sanitize('no wasm2js support yet in sanitizers')
-  @no_wasm64('no wasm2js support yet with wasm64')
-  @no_2gb('no wasm2js support for >2gb address space')
+  @requires_wasm2js
   def test_wasm2js(self):
     if not self.is_wasm():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
@@ -8413,8 +8412,7 @@ Module.onRuntimeInitialized = () => {
       self.assertNotExists('test_hello_world.js.mem')
 
   @no_sanitize('no wasm2js support yet in sanitizers')
-  @no_wasm64('no wasm2js support yet with wasm64')
-  @no_2gb('no wasm2js support for >2gb address space')
+  @requires_wasm2js
   def test_maybe_wasm2js(self):
     if not self.is_wasm():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
@@ -8432,7 +8430,7 @@ Module.onRuntimeInitialized = () => {
     self.assertContained('hello, world!', self.run_js('do_wasm2js.js'))
 
   @no_asan('no wasm2js support yet in asan')
-  @no_wasm64('no wasm2js support yet with wasm64')
+  @requires_wasm2js
   @parameterized({
     '': ([],),
     'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
