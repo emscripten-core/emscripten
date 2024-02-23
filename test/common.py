@@ -306,6 +306,17 @@ def requires_v8(func):
   return decorated
 
 
+def requires_wasm2js(f):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, *args, **kwargs):
+    self.require_wasm2js()
+    return f(self, *args, **kwargs)
+
+  return decorated
+
+
 def node_pthreads(f):
   @wraps(f)
   def decorated(self, *args, **kwargs):
@@ -373,7 +384,7 @@ def also_with_wasm_bigint(f):
 
   def metafunc(self, with_bigint):
     if with_bigint:
-      if not self.is_wasm():
+      if self.is_wasm2js():
         self.skipTest('wasm2js does not support WASM_BIGINT')
       if self.get_setting('WASM_BIGINT') is not None:
         self.skipTest('redundant in bigint test config')
@@ -822,6 +833,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('test requires node >= 19 or d8 (and EMTEST_SKIP_JSPI is set)')
     else:
       self.fail('either d8 or node >= 19 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
+
+  def require_wasm2js(self):
+    if self.is_wasm64():
+      self.skipTest('wasm2js is not compatible with MEMORY64')
+    if self.is_2gb() or self.is_4gb():
+      self.skipTest('wasm2js does not support over 2gb of memory')
 
   def setup_node_pthreads(self):
     self.require_node()
