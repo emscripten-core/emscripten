@@ -471,6 +471,11 @@ FS.staticInit();` +
     closeStream(fd) {
       FS.streams[fd] = null;
     },
+    dupStream(origStream, fd = -1) {
+      var stream = FS.createStream(origStream, fd);
+      stream.stream_ops?.dup?.(stream);
+      return stream;
+    },
 
     //
     // devices

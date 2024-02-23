@@ -5745,6 +5745,14 @@ Module = {
     self.emcc_args += ['-lnodefs.js']
     self.do_runf('fs/test_nodefs_cloexec.c', 'success')
 
+  @also_with_noderawfs
+  @requires_node
+  def test_fs_nodefs_dup(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+    self.emcc_args += ['-lnodefs.js']
+    self.do_runf('fs/test_nodefs_dup.c', 'success')
+
   @requires_node
   def test_fs_nodefs_home(self):
     self.set_setting('FORCE_FILESYSTEM')
