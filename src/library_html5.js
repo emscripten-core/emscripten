@@ -315,6 +315,7 @@ var LibraryHTML5 = {
   // Users can also add more special event targets, basically by just doing something like
   //    specialHTMLTargets["!canvas"] = Module.canvas;
   // (that will let !canvas map to the canvas held in Module.canvas).
+  $specialHTMLTargets__docs: '/** @type {Object} */',
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL || PTHREADS
   $specialHTMLTargets: "[0, typeof document != 'undefined' ? document : 0, typeof window != 'undefined' ? window : 0]",
 #else
