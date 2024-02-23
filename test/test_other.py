@@ -2435,6 +2435,16 @@ int f() {
     stderr = self.expect_fail([EMCC, test_file('other/test_external_ports.c'), f'--use-port={external_port_path}:dependency=invalid', '-o', 'a4.out.js'])
     self.assertFalse(os.path.exists('a4.out.js'))
     self.assertContained('unknown dependency `invalid` for port `external`', stderr)
+    # testing help
+    stdout = self.run_process([EMCC, test_file('other/test_external_ports.c'), f'--use-port={external_port_path}:help'], stdout=PIPE).stdout
+    self.assertContained('''external (--use-port=external; Test License)
+Test Description
+Options:
+* value1: Value for define TEST_VALUE_1
+* value2: Value for define TEST_VALUE_2
+* dependency: A dependency
+More info: https://emscripten.org
+''', stdout)
 
   def test_link_memcpy(self):
     # memcpy can show up *after* optimizations, so after our opportunity to link in libc, so it must be special-cased
