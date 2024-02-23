@@ -385,6 +385,18 @@ function exportRuntime() {
     'abort',
     'wasmMemory',
     'wasmExports',
+    'HEAP',
+    'HEAP_DATA_VIEW',
+    'HEAP8',
+    'HEAP16',
+    'HEAPU8',
+    'HEAPU16',
+    'HEAP32',
+    'HEAPU32',
+    'HEAPF32',
+    'HEAPF64',
+    'HEAP64',
+    'HEAPU64',
   ];
 
   // These are actually native wasm functions these days but we allow exporting

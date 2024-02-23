@@ -1347,6 +1347,14 @@ def phase_linker_setup(options, state, newargs):
       # in global scope that is not suitable for MINIMAL_RUNTIME loader.
       settings.EXPORTED_RUNTIME_METHODS += ['stackSave', 'stackAlloc', 'stackRestore', 'wasmTable']
 
+  if not settings.MINIMAL_RUNTIME and not settings.STRICT:
+    settings.EXPORTED_RUNTIME_METHODS += ['HEAP8', 'HEAPU8',
+                                          'HEAP16', 'HEAPU16',
+                                          'HEAP32', 'HEAPU32',
+                                          'HEAPF32', 'HEAPF64']
+    if settings.MEMORY64:
+      settings.EXPORTED_RUNTIME_METHODS += ['HEAP64', 'HEAPU64']
+
   if settings.FORCE_FILESYSTEM and not settings.MINIMAL_RUNTIME:
     # when the filesystem is forced, we export by default methods that filesystem usage
     # may need, including filesystem usage from standalone file packager output (i.e.
