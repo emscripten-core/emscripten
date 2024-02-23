@@ -8806,6 +8806,12 @@ int main() {
       out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
       self.assertContained('no native wasm support detected', out)
 
+  def test_exceptions_c_linker(self):
+    # Test that we don't try to create __cxa_find_matching_catch_xx function automatically
+    # when not linking as C++.
+    stderr = self.expect_fail([EMCC, '-sSTRICT', test_file('other/test_exceptions_c_linker.c')])
+    self.assertContained('error: undefined symbol: __cxa_find_matching_catch_1', stderr)
+
   @parameterized({
     '': (False,),
     'wasm': (True,),
@@ -11881,9 +11887,14 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     # unless we explicitly disable polyfills
     test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
 
-  def test_webgpu_compiletest(self):
-    for args in [[], ['-sASSERTIONS'], ['-sASSERTIONS', '--closure=1'], ['-sMAIN_MODULE=1']]:
-      self.run_process([EMXX, test_file('webgpu_jsvalstore.cpp'), '-sUSE_WEBGPU', '-sASYNCIFY'] + args)
+  @parameterized({
+    '': ([],),
+    'assertions': (['-sASSERTIONS'],),
+    'closure': (['-sASSERTIONS', '--closure=1'],),
+    'dylink': (['-sMAIN_MODULE'],),
+  })
+  def test_webgpu_compiletest(self, args):
+    self.run_process([EMXX, test_file('webgpu_jsvalstore.cpp'), '-sUSE_WEBGPU', '-sASYNCIFY'] + args)
 
   def test_signature_mismatch(self):
     create_file('a.c', 'void foo(); int main() { foo(); return 0; }')
@@ -14358,7 +14369,7 @@ addToLibrary({
 });
 ''')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=foo'])
-    self.assertContained('error: noExitRuntime cannot be referenced via __deps mechansim', err)
+    self.assertContained('error: noExitRuntime cannot be referenced via __deps mechanism', err)
 
   def test_hello_world_argv(self):
     self.do_runf('hello_world_argv.c', 'hello, world! (1)')

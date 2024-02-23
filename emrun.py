@@ -996,7 +996,7 @@ def win_get_file_properties(fname):
   props = {'FixedFileInfo': None, 'StringFileInfo': None, 'FileVersion': None}
 
   import win32api
-  # backslash as parm returns dictionary of numeric info corresponding to VS_FIXEDFILEINFO struc
+  # backslash as parm returns dictionary of numeric info corresponding to VS_FIXEDFILEINFO struct
   fixedInfo = win32api.GetFileVersionInfo(fname, '\\')
   props['FixedFileInfo'] = fixedInfo
   props['FileVersion'] = "%d.%d.%d.%d" % (fixedInfo['FileVersionMS'] / 65536,
@@ -1005,7 +1005,7 @@ def win_get_file_properties(fname):
                                           fixedInfo['FileVersionLS'] % 65536)
 
   # \VarFileInfo\Translation returns list of available (language, codepage)
-  # pairs that can be used to retreive string info. We are using only the first pair.
+  # pairs that can be used to retrieve string info. We are using only the first pair.
   lang, codepage = win32api.GetFileVersionInfo(fname, '\\VarFileInfo\\Translation')[0]
 
   # any other must be of the form \StringfileInfo\%04X%04X\parm_name, middle
@@ -1731,7 +1731,7 @@ def run():
       elif 'opera' in browser_exe.lower():
         processname_killed_atexit = 'opera'
 
-      # In Windows cmdline, & character delimits multiple commmands, so must
+      # In Windows cmdline, & character delimits multiple commands, so must
       # use ^ to escape them.
       if browser_exe == 'cmd':
         url = url.replace('&', '^&')

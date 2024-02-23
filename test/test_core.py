@@ -10,7 +10,6 @@ import os
 import random
 import re
 import shutil
-import sys
 import time
 import unittest
 from pathlib import Path
@@ -5703,9 +5702,6 @@ Module = {
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_direct_string_constant_usage.cpp')
 
-  def test_std_cout_new(self):
-    self.do_core_test('test_std_cout_new.cpp')
-
   def test_std_function_incomplete_return(self):
     self.do_core_test('test_std_function_incomplete_return.cpp')
 
@@ -5748,6 +5744,14 @@ Module = {
       self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args += ['-lnodefs.js']
     self.do_runf('fs/test_nodefs_cloexec.c', 'success')
+
+  @also_with_noderawfs
+  @requires_node
+  def test_fs_nodefs_dup(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+    self.emcc_args += ['-lnodefs.js']
+    self.do_runf('fs/test_nodefs_dup.c', 'success')
 
   @requires_node
   def test_fs_nodefs_home(self):
@@ -6810,117 +6814,97 @@ void* operator new(size_t size) {
   @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_openjpeg(self):
-    def do_test_openjpeg():
-      def line_splitter(data):
-        out = ''
-        counter = 0
+    def line_splitter(data):
+      out = ''
+      counter = 0
 
-        for ch in data:
-          out += ch
-          if ch == ' ' and counter > 60:
-            out += '\n'
-            counter = 0
-          else:
-            counter += 1
+      for ch in data:
+        out += ch
+        if ch == ' ' and counter > 60:
+          out += '\n'
+          counter = 0
+        else:
+          counter += 1
 
-        return out
+      return out
 
-      # remove -g, so we have one test without it by default
-      self.emcc_args = [x for x in self.emcc_args if x != '-g']
+    # remove -g, so we have one test without it by default
+    self.emcc_args = [x for x in self.emcc_args if x != '-g']
 
-      original_j2k = test_file('openjpeg/syntensity_lobby_s.j2k')
-      image_bytes = list(bytearray(read_binary(original_j2k)))
-      create_file('pre.js', """
-        Module.preRun = () => FS.createDataFile('/', 'image.j2k', %s, true, false, false);
-        Module.postRun = () => {
-          out('Data: ' + JSON.stringify(Array.from(FS.readFile('image.raw'))));
-        };
-        """ % line_splitter(str(image_bytes)))
+    original_j2k = test_file('openjpeg/syntensity_lobby_s.j2k')
+    image_bytes = list(bytearray(read_binary(original_j2k)))
+    create_file('pre.js', """
+      Module.preRun = () => FS.createDataFile('/', 'image.j2k', %s, true, false, false);
+      Module.postRun = () => {
+        out('Data: ' + JSON.stringify(Array.from(FS.readFile('image.raw'))));
+      };
+      """ % line_splitter(str(image_bytes)))
 
-      # ensure libpng is built so that openjpeg's configure step can detect it.
-      # If we don't do this then we don't know what the state of the cache will be
-      # and this test would different non-deterministic results based on, for example,
-      # what other tests had previously run.
-      builder_cmd = [EMBUILDER, 'build', 'libpng']
-      if self.get_setting('MEMORY64'):
-        builder_cmd.append('--wasm64')
-        self.emcc_args.append('-Wno-pointer-to-int-cast')
-      self.run_process(builder_cmd)
-      lib = self.get_library('third_party/openjpeg',
-                             [Path('codec/CMakeFiles/j2k_to_image.dir/index.c.o'),
-                              Path('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'),
-                              Path('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'),
-                              Path('bin/libopenjpeg.a')],
-                             configure=['cmake', '.'],
-                             # configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
-                             make_args=[]) # no -j 2, since parallel builds can fail
+    # ensure libpng is built so that openjpeg's configure step can detect it.
+    # If we don't do this then we don't know what the state of the cache will be
+    # and this test would different non-deterministic results based on, for example,
+    # what other tests had previously run.
+    builder_cmd = [EMBUILDER, 'build', 'libpng']
+    if self.get_setting('MEMORY64'):
+      builder_cmd.append('--wasm64')
+      self.emcc_args.append('-Wno-pointer-to-int-cast')
+    self.run_process(builder_cmd)
+    lib = self.get_library('third_party/openjpeg',
+                           [Path('codec/CMakeFiles/j2k_to_image.dir/index.c.o'),
+                            Path('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'),
+                            Path('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'),
+                            Path('bin/libopenjpeg.a')],
+                           configure=['cmake', '.'],
+                           # configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
+                           make_args=[]) # no -j 2, since parallel builds can fail
 
-      # We use doubles in JS, so we get slightly different values than native code. So we
-      # check our output by comparing the average pixel difference
-      def image_compare(output):
-        # Get the image generated by JS, from the JSON.stringify'd array
-        m = re.search(r'\[[\d, -]*\]', output)
-        self.assertIsNotNone(m, 'Failed to find proper image output in: ' + output)
-        # Evaluate the output as a python array
-        js_data = eval(m.group(0))
+    # We use doubles in JS, so we get slightly different values than native code. So we
+    # check our output by comparing the average pixel difference
+    def image_compare(output):
+      # Get the image generated by JS, from the JSON.stringify'd array
+      m = re.search(r'\[[\d, -]*\]', output)
 
-        js_data = [x if x >= 0 else 256 + x for x in js_data] # Our output may be signed, so unsign it
+      self.assertIsNotNone(m, 'Failed to find proper image output in: ' + output)
+      # Evaluate the output as a python array
+      js_data = eval(m.group(0))
 
-        # Get the correct output
-        true_data = bytearray(read_binary(test_file('openjpeg/syntensity_lobby_s.raw')))
+      js_data = [x if x >= 0 else 256 + x for x in js_data] # Our output may be signed, so unsign it
+      # Get the correct output
+      true_data = bytearray(read_binary(test_file('openjpeg/syntensity_lobby_s.raw')))
 
-        # Compare them
-        self.assertEqual(len(js_data), len(true_data))
-        num = len(js_data)
-        diff_total = js_total = true_total = 0
-        for i in range(num):
-          js_total += js_data[i]
-          true_total += true_data[i]
-          diff_total += abs(js_data[i] - true_data[i])
-        js_mean = js_total / float(num)
-        true_mean = true_total / float(num)
-        diff_mean = diff_total / float(num)
+      # Compare them
+      self.assertEqual(len(js_data), len(true_data))
+      num = len(js_data)
+      diff_total = js_total = true_total = 0
+      for i in range(num):
+        js_total += js_data[i]
+        true_total += true_data[i]
+        diff_total += abs(js_data[i] - true_data[i])
+      js_mean = js_total / float(num)
+      true_mean = true_total / float(num)
+      diff_mean = diff_total / float(num)
 
-        image_mean = 83.265
-        # print '[image stats:', js_mean, image_mean, true_mean, diff_mean, num, ']'
-        assert abs(js_mean - image_mean) < 0.01, [js_mean, image_mean]
-        assert abs(true_mean - image_mean) < 0.01, [true_mean, image_mean]
-        assert diff_mean < 0.01, diff_mean
+      image_mean = 83.265
+      # print '[image stats:', js_mean, image_mean, true_mean, diff_mean, num, ']'
+      assert abs(js_mean - image_mean) < 0.01, [js_mean, image_mean]
+      assert abs(true_mean - image_mean) < 0.01, [true_mean, image_mean]
+      assert diff_mean < 0.01, diff_mean
 
-        return output
+      return output
 
-      self.emcc_args += ['--minify=0'] # to compare the versions
-      self.emcc_args += ['--pre-js', 'pre.js']
+    self.emcc_args += ['--minify=0'] # to compare the versions
+    self.emcc_args += ['--pre-js', 'pre.js']
 
-      def do_test():
-        self.do_runf('third_party/openjpeg/codec/j2k_to_image.c',
-                     'Successfully generated', # The real test for valid output is in image_compare
-                     args='-i image.j2k -o image.raw'.split(),
-                     emcc_args=['-sUSE_LIBPNG'],
-                     libraries=lib,
-                     includes=[test_file('third_party/openjpeg/libopenjpeg'),
-                               test_file('third_party/openjpeg/codec'),
-                               test_file('third_party/openjpeg/common'),
-                               Path(self.get_build_dir(), 'third_party/openjpeg')],
-                     output_nicerizer=image_compare)
-
-      do_test()
-
-      # extra testing
-      if self.get_setting('ALLOW_MEMORY_GROWTH') == 1:
-        print('no memory growth', file=sys.stderr)
-        self.set_setting('ALLOW_MEMORY_GROWTH', 0)
-        do_test()
-
-    if is_sanitizing(self.emcc_args):
-      # In ASan mode we need a large initial memory (or else wasm-ld fails).
-      # The OpenJPEG CMake will build several executables (which we need parts
-      # of in our testing, see above), so we must enable the flag for them all.
-      with env_modify({'EMCC_CFLAGS': '-sINITIAL_MEMORY=300MB'}):
-        self.emcc_args.append('-Wno-unused-command-line-argument')
-        do_test_openjpeg()
-    else:
-      do_test_openjpeg()
+    self.do_runf('third_party/openjpeg/codec/j2k_to_image.c',
+                 'Successfully generated', # The real test for valid output is in image_compare
+                 args='-i image.j2k -o image.raw'.split(),
+                 emcc_args=['-sUSE_LIBPNG'],
+                 libraries=lib,
+                 includes=[test_file('third_party/openjpeg/libopenjpeg'),
+                           test_file('third_party/openjpeg/codec'),
+                           test_file('third_party/openjpeg/common'),
+                           Path(self.get_build_dir(), 'third_party/openjpeg')],
+                 output_nicerizer=image_compare)
 
   @also_with_standalone_wasm(impure=True)
   @no_asan('autodebug logging interferes with asan')

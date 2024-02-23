@@ -20,9 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 3.1.55 (in development)
 -----------------------
+- Update sdl2-mixer port from 2.6.0 to 2.8.0
 
 3.1.54 - 02/15/24
 -----------------
+- SDL2 port updated from v2.24.2 to v2.26.0. (#21337)
 - The `DEMANGLE_SUPPORT` setting and the associated `demangle` function are
   now deprecated since Wasm stack traces always contain demangled symbols these
   days. (#21346)

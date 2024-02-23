@@ -195,7 +195,7 @@ void emscripten_lock_async_acquire(emscripten_lock_t *lock __attribute__((nonnul
 EM_BOOL emscripten_lock_try_acquire(emscripten_lock_t *lock __attribute__((nonnull)));
 
 // Unlocks the specified lock for another thread to access. Note that locks are
-// extermely lightweight, there is no "lock owner" tracking: this function does
+// extremely lightweight, there is no "lock owner" tracking: this function does
 // not actually check whether the calling thread owns the specified lock, but
 // any thread can call this function to release a lock on behalf of whichever
 // thread owns it.  This function can be called on both main thread and in
@@ -232,7 +232,7 @@ int emscripten_semaphore_waitinf_acquire(emscripten_semaphore_t *sem __attribute
 
 // Releases the given number of resources back to the semaphore. Note that the
 // ownership of resources is completely conceptual - there is no actual checking
-// that the calling thread had previously acquired that many resouces, so
+// that the calling thread had previously acquired that many resources, so
 // programs need to keep check of their semaphore usage consistency themselves.
 // Returns how many resources were available in the semaphore before the new
 // resources were released back to the semaphore. (i.e. the index where the

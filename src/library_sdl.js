@@ -436,7 +436,7 @@ var LibrarySDL = {
     // for surface with HWPALETTE flag(8bpp depth)
     copyIndexedColorData: (surfData, rX, rY, rW, rH) => {
       // HWPALETTE works with palette
-      // setted by SDL_SetColors
+      // set by SDL_SetColors
       if (!surfData.colors) {
         return;
       }
@@ -1562,7 +1562,7 @@ var LibrarySDL = {
     if (SDL.defaults.copyOnLock && !SDL.defaults.discardOnLock) {
       // Copy pixel data to somewhere accessible to 'C/C++'
       if (surfData.isFlagSet(0x00200000 /* SDL_HWPALETTE */)) {
-        // If this is neaded then
+        // If this is needed then
         // we should compact the data from 32bpp to 8bpp index.
         // I think best way to implement this is use
         // additional colorMap hash (color->index).

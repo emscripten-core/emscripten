@@ -52,7 +52,7 @@ var LibraryDylink = {
 
   $isSymbolDefined: (symName) => {
     // Ignore 'stub' symbols that are auto-generated as part of the original
-    // `wasmImports` used to instantate the main module.
+    // `wasmImports` used to instantiate the main module.
     var existing = wasmImports[symName];
     if (!existing || existing.stub) {
       return false;
