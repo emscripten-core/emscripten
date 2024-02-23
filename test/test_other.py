@@ -5711,6 +5711,8 @@ int main()
 
   def test_strftime_zZ(self):
     create_file('src.c', r'''
+#include <assert.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -5738,7 +5740,7 @@ int main() {
   if (localtime_r(&now, &tm) == NULL) {
     const int error = errno;
     printf("Failed to get localtime for timestamp=%lld; errno=%d; %s", now, errno, strerror(error));
-    return 1;
+    assert(false);
   }
 
   size_t result = 0;
@@ -5748,7 +5750,7 @@ int main() {
     const int error = errno;
     printf("Failed to format hour for timestamp=%lld; result=%zu; errno=%d; %s\n",
            now, result, error, strerror(error));
-    return 1;
+    assert(false);
   }
   printf("The current hour of the day is: %s\n", hour);
 
@@ -5757,7 +5759,7 @@ int main() {
     const int error = errno;
     printf("Failed to format UTC offset for timestamp=%lld; result=%zu; errno=%d; %s\n",
            now, result, error, strerror(error));
-    return 1;
+    assert(false);
   }
   printf("The current timezone offset is: %s\n", utcOffset);
 
@@ -5767,7 +5769,7 @@ int main() {
     const int error = errno;
     printf("Failed to format timezone for timestamp=%lld; result=%zu; errno=%d; %s\n",
            now, result, error, strerror(error));
-    return 1;
+    assert(false);
   }
   printf("The current timezone is: %s\n", timezone);
 

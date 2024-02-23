@@ -6,6 +6,7 @@ __cxa_rethrow
 __cxa_throw
 __cxa_uncaught_exceptions
 __resumeException
+_tzset_js
 abort
 emscripten_memcpy_js
 emscripten_resize_heap
@@ -37,4 +38,3 @@ invoke_viiii
 invoke_viiiiiii
 invoke_viiiiiiiiii
 invoke_viiiiiiiiiiiiiii
-strftime_l

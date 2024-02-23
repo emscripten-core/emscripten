@@ -15,12 +15,6 @@
 
 #include "emscripten_internal.h"
 
-// Replaces musl's __tz.c
-
-weak long  timezone = 0;
-weak int   daylight = 0;
-weak char *tzname[2] = { 0, 0 };
-
 weak clock_t __clock() {
   static thread_local double start = 0;
   if (!start) {
