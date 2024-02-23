@@ -99,10 +99,13 @@ FS.staticInit();` +
 
     FSStream: class {
       constructor() {
+        // TODO(https://github.com/emscripten-core/emscripten/issues/21414):
+        // Use inline field declarations.
         this.shared = {};
 #if USE_CLOSURE_COMPILER
+        // Closure compiler requires us to declare all properties in the
+        // constructor.
         this.node = null;
-        this.flags = 0;
 #endif
       }
       get object() {
@@ -1652,6 +1655,8 @@ FS.staticInit();` +
           this.lengthKnown = false;
           this.chunks = []; // Loaded chunks. Index is the chunk number
 #if USE_CLOSURE_COMPILER
+          // Closure compiler requires us to declare all properties in the
+          // constructor.
           this.getter = undefined;
           this._length = 0;
           this._chunkSize = 0;
