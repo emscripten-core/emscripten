@@ -9655,7 +9655,7 @@ int main() {
     self.do_runf('src.c', 'hello!', emcc_args=args)
 
   def test_check_sourcemapurl(self):
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('only supported with wasm')
     self.run_process([EMCC, test_file('hello_123.c'), '-gsource-map', '-o', 'a.js', '--source-map-base', 'dir/'])
     output = read_binary('a.wasm')
@@ -9681,7 +9681,7 @@ int main() {
     'profiling': ['--profiling'] # -gsource-map --profiling should still emit a source map; see #8584
   })
   def test_check_sourcemapurl_default(self, *args):
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('only supported with wasm')
 
     self.run_process([EMCC, test_file('hello_123.c'), '-gsource-map', '-o', 'a.js'] + list(args))

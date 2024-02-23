@@ -472,7 +472,7 @@ def with_both_sjlj(f):
 
   def metafunc(self, is_native):
     if is_native:
-      if not self.is_wasm():
+      if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm SjLj')
       self.require_wasm_eh()
       # FIXME Temporarily disabled. Enable this later when the bug is fixed.
@@ -691,9 +691,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return self.get_setting('INITIAL_MEMORY') == '2200mb'
 
   def check_dylink(self):
-    if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
-      self.skipTest('no dynamic linking with memory growth (without wasm)')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('no dynamic linking support in wasm2js yet')
     if '-fsanitize=undefined' in self.emcc_args:
       self.skipTest('no dynamic linking support in UBSan yet')
@@ -804,7 +802,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # warnings-as-errors, so disable that warning
     self.emcc_args += ['-Wno-experimental']
     self.set_setting('ASYNCIFY', 2)
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('JSPI is not currently supported for WASM2JS')
 
     if self.is_browser_test():
@@ -850,14 +848,15 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.node_args += shared.node_pthread_flags(nodejs)
 
   def uses_memory_init_file(self):
-    if self.get_setting('SIDE_MODULE') or (self.is_wasm() and not self.get_setting('WASM2JS')):
+    if self.get_setting('SIDE_MODULE') or self.is_wasm():
       return False
-    elif '--memory-init-file' in self.emcc_args:
+
+    if '--memory-init-file' in self.emcc_args:
       return int(self.emcc_args[self.emcc_args.index('--memory-init-file') + 1])
-    else:
-      # side modules handle memory differently; binaryen puts the memory in the wasm module
-      opt_supports = any(opt in self.emcc_args for opt in ('-O2', '-O3', '-Os', '-Oz'))
-      return opt_supports
+
+    # side modules handle memory differently; binaryen puts the memory in the wasm module
+    opt_supports = any(opt in self.emcc_args for opt in ('-O2', '-O3', '-Os', '-Oz'))
+    return opt_supports
 
   def set_temp_dir(self, temp_dir):
     self.temp_dir = temp_dir

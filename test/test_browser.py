@@ -3989,7 +3989,7 @@ Module["preRun"] = () => {
   @no_4gb('https://github.com/emscripten-core/emscripten/issues/21318')
   @requires_threads
   def test_pthread_gcc_64bit_atomic_fetch_and_op(self):
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4358')
     self.emcc_args += ['-Wno-sync-fetch-and-nand-semantics-changed']
     self.btest_exit('pthread/test_pthread_gcc_64bit_atomic_fetch_and_op.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
@@ -4009,7 +4009,7 @@ Module["preRun"] = () => {
   @no_4gb('https://github.com/emscripten-core/emscripten/issues/21318')
   @requires_threads
   def test_pthread_gcc_64bit_atomic_op_and_fetch(self):
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4358')
     self.emcc_args += ['-Wno-sync-fetch-and-nand-semantics-changed', '--profiling-funcs']
     self.btest_exit('pthread/test_pthread_gcc_64bit_atomic_op_and_fetch.cpp', args=['-pthread', '-O2', '-sPTHREAD_POOL_SIZE=8'])

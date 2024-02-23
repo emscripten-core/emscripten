@@ -46,7 +46,7 @@ def wasm_simd(f):
     self.require_simd()
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4638')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
     if '-O3' in self.emcc_args:
       self.skipTest('SIMD tests are too slow with -O3 in the new LLVM pass manager, https://github.com/emscripten-core/emscripten/issues/13427')
@@ -62,7 +62,7 @@ def wasm_relaxed_simd(f):
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4638')
     # We don't actually run any tests yet, so don't require any engines.
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
     self.emcc_args.append('-mrelaxed-simd')
     f(self)
@@ -71,7 +71,7 @@ def wasm_relaxed_simd(f):
 
 def needs_non_trapping_float_to_int(f):
   def decorated(self):
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
     f(self)
   return decorated
@@ -102,7 +102,7 @@ def with_both_eh_sjlj(f):
   def metafunc(self, is_native):
     if is_native:
       # Wasm EH is currently supported only in wasm backend and V8
-      if not self.is_wasm():
+      if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm EH/SjLj')
       self.require_wasm_eh()
       # FIXME Temporarily disabled. Enable this later when the bug is fixed.
@@ -902,7 +902,7 @@ base align: 0, 0, 0, 0'''])
     # Wasm SjLj with and without Wasm EH support
     self.clear_setting('DISABLE_EXCEPTION_CATCHING')
     self.set_setting('SUPPORT_LONGJMP', 'wasm')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm2js does not support wasm EH/SjLj')
     self.require_wasm_eh()
     # FIXME Temporarily disabled. Enable this later when the bug is fixed.
@@ -1037,7 +1037,7 @@ int main()
       self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
     # Wasm EH with and without Wasm SjLj support
     self.clear_setting('DISABLE_EXCEPTION_CATCHING')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm2js does not support wasm EH/SjLj')
     self.require_wasm_eh()
     # FIXME Temporarily disabled. Enable this later when the bug is fixed.
@@ -2028,7 +2028,7 @@ int main(int argc, char **argv) {
     self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
     win = read_file('test_memorygrowth.js')
 
-    if '-O2' in self.emcc_args and not self.is_wasm():
+    if '-O2' in self.emcc_args and self.is_wasm2js():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
       code_start = '// EMSCRIPTEN_START_FUNCS'
       self.assertContained(code_start, fail)
@@ -2061,7 +2061,7 @@ int main(int argc, char **argv) {
     self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
     win = read_file('test_memorygrowth_2.js')
 
-    if '-O2' in self.emcc_args and not self.is_wasm():
+    if '-O2' in self.emcc_args and self.is_wasm2js():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
       assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
 
@@ -2080,7 +2080,7 @@ int main(int argc, char **argv) {
   def test_memorygrowth_MAXIMUM_MEMORY(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm memory specific test')
 
     # check that memory growth does not exceed the wasm mem max limit
@@ -2092,7 +2092,7 @@ int main(int argc, char **argv) {
   def test_memorygrowth_linear_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm memory specific test')
 
     # check that memory growth does not exceed the wasm mem max limit and is exactly or one step below the wasm mem max
@@ -2105,7 +2105,7 @@ int main(int argc, char **argv) {
   def test_memorygrowth_geometric_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm memory specific test')
 
     self.emcc_args += ['-sALLOW_MEMORY_GROWTH', '-sMEMORY_GROWTH_GEOMETRIC_STEP=8.5', '-sMEMORY_GROWTH_GEOMETRIC_CAP=32MB']
@@ -4030,8 +4030,6 @@ ok
 
   @needs_dylink
   def test_dylink_memory_growth(self):
-    if not self.is_wasm():
-      self.skipTest('wasm only')
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.do_basic_dylink_test()
 
@@ -4884,7 +4882,7 @@ res64 - external 64\n''', header='''\
     ''',
                      expected=['sidef: 10, sideg: 20.\nbsidef: 536.\nonly_in_second_0: 10, 20, 1337\nonly_in_third_1: 36, 49, 500, 1221\nonly_in_third_0: 36, 49, 500\nonly_in_second_1: 10, 20, 1337, 2112\n'],
                      # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
-                     need_reverse=not self.is_wasm())
+                     need_reverse=self.is_wasm2js())
 
     print('check warnings')
     full = self.run_js('src.js')
@@ -4927,7 +4925,7 @@ res64 - external 64\n''', header='''\
     ''',
                      expected=['sidef: 10'],
                      # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
-                     need_reverse=not self.is_wasm())
+                     need_reverse=self.is_wasm2js())
 
   @needs_dylink
   def test_dylink_dso_needed(self):
@@ -5363,7 +5361,7 @@ Pass: 0.000012 0.000012''')
 
   def test_files(self):
     # Use closure here, to test we don't break FS stuff
-    if '-O3' in self.emcc_args and not self.is_wasm():
+    if '-O3' in self.emcc_args and self.is_wasm2js():
       print('closure 2')
       self.emcc_args += ['--closure', '2'] # Use closure 2 here for some additional coverage
       # Sadly --closure=2 is not yet free of closure warnings
@@ -6204,7 +6202,7 @@ PORT: 3979
       shutil.copy2('src.js', 'src.js.previous')
 
       # Same but for the wasm file.
-      if self.is_wasm() and not self.get_setting('WASM2JS'):
+      if self.is_wasm():
         if os.path.exists('src.wasm.previous'):
           self.assertBinaryEqual('src.wasm', 'src.wasm.previous')
         shutil.copy2('src.wasm', 'src.wasm.previous')
@@ -7730,7 +7728,7 @@ void* operator new(size_t size) {
     self.emcc(os.path.abspath('src.cpp'),
               self.get_emcc_args(),
               out_filename)
-    map_referent = out_filename if not self.is_wasm() else wasm_filename
+    map_referent = out_filename if self.is_wasm2js() else wasm_filename
     # after removing the @line and @sourceMappingURL comments, the build
     # result should be identical to the non-source-mapped debug version.
     # this is worth checking because the parser AST swaps strings for token
@@ -7908,7 +7906,7 @@ void* operator new(size_t size) {
     # test that the combination of modularize + closure + pre-js works. in that mode,
     # closure should not minify the Module object in a way that the pre-js cannot use it.
     create_file('post.js', 'var TheModule = Module();\n')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
       self.ldflags.append('-Wno-error=closure')
 
@@ -8396,7 +8394,7 @@ Module.onRuntimeInitialized = () => {
   @no_sanitize('no wasm2js support yet in sanitizers')
   @requires_wasm2js
   def test_wasm2js(self):
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
     self.set_setting('WASM', 0)
     self.do_core_test('test_hello_world.c')
@@ -8412,7 +8410,7 @@ Module.onRuntimeInitialized = () => {
   @no_sanitize('no wasm2js support yet in sanitizers')
   @requires_wasm2js
   def test_maybe_wasm2js(self):
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
     self.set_setting('MAYBE_WASM2JS')
     # see that running as wasm works
@@ -8434,7 +8432,7 @@ Module.onRuntimeInitialized = () => {
     'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
   })
   def test_wasm2js_fallback(self, args):
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
 
     cmd = [EMCC, test_file('small_hello_world.c'), '-sWASM=2'] + args
@@ -8736,7 +8734,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_lsan('-fsanitize-minimal-runtime cannot be used with LSan')
   def test_ubsan_minimal_too_many_errors(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
-    if not self.is_wasm():
+    if self.is_wasm2js():
       if self.is_optimizing():
         self.skipTest('test can only be run without optimizations on asm.js')
       # Need to use `-g` to get proper line numbers in asm.js
@@ -8750,10 +8748,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_lsan('-fsanitize-minimal-runtime cannot be used with LSan')
   def test_ubsan_minimal_errors_same_place(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
-    if not self.is_wasm():
+    if self.is_wasm2js():
       if self.is_optimizing():
-        self.skipTest('test can only be run without optimizations on asm.js')
-      # Need to use `-g` to get proper line numbers in asm.js
+        self.skipTest('test can only be run without optimizations under wasm2js')
+      # Need to use `-g` to get proper line numbers in wasm2js
       self.emcc_args += ['-g']
     self.do_runf('core/test_ubsan_minimal_errors_same_place.c',
                  expected_output='ubsan: add-overflow by 0x[0-9a-z]*\n' * 5,
@@ -8851,7 +8849,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_stack_trace(self, g_flag, expected_output):
     if g_flag == '-gsource-map':
-      if not self.is_wasm():
+      if self.is_wasm2js():
         self.skipTest('wasm2js has no source map support')
       elif self.get_setting('EVAL_CTORS'):
         self.skipTest('EVAL_CTORS does not support source maps')
@@ -8963,7 +8961,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if '-Oz' in self.emcc_args:
       self.skipTest('-Oz breaks source maps')
 
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm2js has no ASan support')
 
     self.emcc_args.append('-fsanitize=address')
