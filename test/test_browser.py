@@ -2325,10 +2325,12 @@ void *getBindBuffer() {
   @requires_graphics_hardware
   @parameterized({
     '': ([],),
+    'tracing': (['-sTRACE_WEBGL_CALLS'],),
     'es2': (['-sMIN_WEBGL_VERSION=2', '-sFULL_ES2', '-sWEBGL2_BACKWARDS_COMPATIBILITY_EMULATION'],),
+    'es2_tracing': (['-sMIN_WEBGL_VERSION=2', '-sFULL_ES2', '-sWEBGL2_BACKWARDS_COMPATIBILITY_EMULATION', '-sTRACE_WEBGL_CALLS'],),
   })
   def test_subdata(self, args):
-    if self.is_4gb() and args:
+    if self.is_4gb() and '-sMIN_WEBGL_VERSION=2' in args:
       self.skipTest('texSubImage2D fails: https://crbug.com/325090165')
     self.btest('gl_subdata.c', reference='float_tex.png', args=['-lGL', '-lglut'] + args)
 
