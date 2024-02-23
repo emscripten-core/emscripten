@@ -270,7 +270,7 @@ addToLibrary({
         }
       },
       dup(stream) {
-        stream.shared.refcount ++;
+        stream.shared.refcount++;
       },
       read(stream, buffer, offset, length, position) {
         // Node.js < 6 compatibility: node errors on 0 length reads

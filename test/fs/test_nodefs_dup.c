@@ -5,9 +5,10 @@
  * found in the LICENSE file.
  */
 
-#include <stdio.h>
-#include <fcntl.h>
+#include <assert.h>
 #include <emscripten.h>
+#include <fcntl.h>
+#include <stdio.h>
 #include <unistd.h>
 
 #ifdef NODERAWFS
@@ -27,13 +28,18 @@ int main(void)
         FS.close(FS.open('/working/test.txt', 'w'));
 #endif
     );
-    int fd1 = open(CWD "test.txt", O_RDONLY);
+    int fd1 = open(CWD "test.txt", O_WRONLY);
     int fd2 = dup(fd1);
     int fd3 = fcntl(fd1, F_DUPFD_CLOEXEC, 0);
 
-    printf("fd1: %d, fd2: %d\n", fd1, fd2);
-    printf("close(fd1): %d\n", close(fd1));
-    printf("close(fd2): %d\n", close(fd2));
-    printf("close(fd3): %d\n", close(fd3));
+    assert(fd1 == 3);
+    assert(fd2 == 4);
+    assert(fd3 == 5);
+    assert(close(fd1) == 0);
+    assert(write(fd2, "abcdef", 6) == 6);
+    assert(close(fd2) == 0);
+    assert(write(fd3, "ghijkl", 6) == 6);
+    assert(close(fd3) == 0);
+    printf("success\n");
     return 0;
 }
