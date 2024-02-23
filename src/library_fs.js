@@ -1640,111 +1640,112 @@ FS.staticInit();` +
     // XHR, which is not possible in browsers except in a web worker! Use preloading,
     // either --preload-file in emcc or FS.createPreloadedFile
     createLazyFile(parent, name, url, canRead, canWrite) {
-      // Lazy chunked Uint8Array (implements get and length from Uint8Array). Actual getting is abstracted away for eventual reuse.
-      /** @constructor */
-      function LazyUint8Array() {
-        this.lengthKnown = false;
-        this.chunks = []; // Loaded chunks. Index is the chunk number
-      }
-      LazyUint8Array.prototype.get = /** @this{Object} */ function LazyUint8Array_get(idx) {
-        if (idx > this.length-1 || idx < 0) {
-          return undefined;
-        }
-        var chunkOffset = idx % this.chunkSize;
-        var chunkNum = (idx / this.chunkSize)|0;
-        return this.getter(chunkNum)[chunkOffset];
-      };
-      LazyUint8Array.prototype.setDataGetter = function LazyUint8Array_setDataGetter(getter) {
-        this.getter = getter;
-      };
-      LazyUint8Array.prototype.cacheLength = function LazyUint8Array_cacheLength() {
-        // Find length
-        var xhr = new XMLHttpRequest();
-        xhr.open('HEAD', url, false);
-        xhr.send(null);
-        if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
-        var datalength = Number(xhr.getResponseHeader("Content-length"));
-        var header;
-        var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
-        var usesGzip = (header = xhr.getResponseHeader("Content-Encoding")) && header === "gzip";
-
-#if SMALL_XHR_CHUNKS
-        var chunkSize = 1024; // Chunk size in bytes
-#else
-        var chunkSize = 1024*1024; // Chunk size in bytes
+      // Lazy chunked Uint8Array (implements get and length from Uint8Array).
+      // Actual getting is abstracted away for eventual reuse.
+      class LazyUint8Array {
+        constructor() {
+          this.lengthKnown = false;
+          this.chunks = []; // Loaded chunks. Index is the chunk number
+#if USE_CLOSURE_COMPILER
+          this.getter = undefined;
+          this._length = 0;
+          this._chunkSize = 0;
 #endif
-
-        if (!hasByteServing) chunkSize = datalength;
-
-        // Function to get a range from the remote URL.
-        var doXHR = (from, to) => {
-          if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
-          if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
-
-          // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', url, false);
-          if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
-
-          // Some hints to the browser that we want binary data.
-          xhr.responseType = 'arraybuffer';
-          if (xhr.overrideMimeType) {
-            xhr.overrideMimeType('text/plain; charset=x-user-defined');
+        }
+        get(idx) {
+          if (idx > this.length-1 || idx < 0) {
+            return undefined;
           }
-
+          var chunkOffset = idx % this.chunkSize;
+          var chunkNum = (idx / this.chunkSize)|0;
+          return this.getter(chunkNum)[chunkOffset];
+        }
+        setDataGetter(getter) {
+          this.getter = getter;
+        }
+        cacheLength() {
+          // Find length
+          var xhr = new XMLHttpRequest();
+          xhr.open('HEAD', url, false);
           xhr.send(null);
           if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
-          if (xhr.response !== undefined) {
-            return new Uint8Array(/** @type{Array<number>} */(xhr.response || []));
-          }
-          return intArrayFromString(xhr.responseText || '', true);
-        };
-        var lazyArray = this;
-        lazyArray.setDataGetter((chunkNum) => {
-          var start = chunkNum * chunkSize;
-          var end = (chunkNum+1) * chunkSize - 1; // including this byte
-          end = Math.min(end, datalength-1); // if datalength-1 is selected, this is the last block
-          if (typeof lazyArray.chunks[chunkNum] == 'undefined') {
-            lazyArray.chunks[chunkNum] = doXHR(start, end);
-          }
-          if (typeof lazyArray.chunks[chunkNum] == 'undefined') throw new Error('doXHR failed!');
-          return lazyArray.chunks[chunkNum];
-        });
+          var datalength = Number(xhr.getResponseHeader("Content-length"));
+          var header;
+          var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
+          var usesGzip = (header = xhr.getResponseHeader("Content-Encoding")) && header === "gzip";
 
-        if (usesGzip || !datalength) {
-          // if the server uses gzip or doesn't supply the length, we have to download the whole file to get the (uncompressed) length
-          chunkSize = datalength = 1; // this will force getter(0)/doXHR do download the whole file
-          datalength = this.getter(0).length;
-          chunkSize = datalength;
-          out("LazyFiles on gzip forces download of the whole file when length is accessed");
+  #if SMALL_XHR_CHUNKS
+          var chunkSize = 1024; // Chunk size in bytes
+  #else
+          var chunkSize = 1024*1024; // Chunk size in bytes
+  #endif
+
+          if (!hasByteServing) chunkSize = datalength;
+
+          // Function to get a range from the remote URL.
+          var doXHR = (from, to) => {
+            if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
+            if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
+
+            // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, false);
+            if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
+
+            // Some hints to the browser that we want binary data.
+            xhr.responseType = 'arraybuffer';
+            if (xhr.overrideMimeType) {
+              xhr.overrideMimeType('text/plain; charset=x-user-defined');
+            }
+
+            xhr.send(null);
+            if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
+            if (xhr.response !== undefined) {
+              return new Uint8Array(/** @type{Array<number>} */(xhr.response || []));
+            }
+            return intArrayFromString(xhr.responseText || '', true);
+          };
+          var lazyArray = this;
+          lazyArray.setDataGetter((chunkNum) => {
+            var start = chunkNum * chunkSize;
+            var end = (chunkNum+1) * chunkSize - 1; // including this byte
+            end = Math.min(end, datalength-1); // if datalength-1 is selected, this is the last block
+            if (typeof lazyArray.chunks[chunkNum] == 'undefined') {
+              lazyArray.chunks[chunkNum] = doXHR(start, end);
+            }
+            if (typeof lazyArray.chunks[chunkNum] == 'undefined') throw new Error('doXHR failed!');
+            return lazyArray.chunks[chunkNum];
+          });
+
+          if (usesGzip || !datalength) {
+            // if the server uses gzip or doesn't supply the length, we have to download the whole file to get the (uncompressed) length
+            chunkSize = datalength = 1; // this will force getter(0)/doXHR do download the whole file
+            datalength = this.getter(0).length;
+            chunkSize = datalength;
+            out("LazyFiles on gzip forces download of the whole file when length is accessed");
+          }
+
+          this._length = datalength;
+          this._chunkSize = chunkSize;
+          this.lengthKnown = true;
         }
+        get length() {
+          if (!this.lengthKnown) {
+            this.cacheLength();
+          }
+          return this._length;
+        }
+        get chunkSize() {
+          if (!this.lengthKnown) {
+            this.cacheLength();
+          }
+          return this._chunkSize;
+        }
+      }
 
-        this._length = datalength;
-        this._chunkSize = chunkSize;
-        this.lengthKnown = true;
-      };
       if (typeof XMLHttpRequest != 'undefined') {
         if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
         var lazyArray = new LazyUint8Array();
-        Object.defineProperties(lazyArray, {
-          length: {
-            get: /** @this{Object} */ function() {
-              if (!this.lengthKnown) {
-                this.cacheLength();
-              }
-              return this._length;
-            }
-          },
-          chunkSize: {
-            get: /** @this{Object} */ function() {
-              if (!this.lengthKnown) {
-                this.cacheLength();
-              }
-              return this._chunkSize;
-            }
-          }
-        });
-
         var properties = { isDevice: false, contents: lazyArray };
       } else {
         var properties = { isDevice: false, url: url };
