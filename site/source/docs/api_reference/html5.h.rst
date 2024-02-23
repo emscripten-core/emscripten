@@ -596,7 +596,7 @@ Struct
 
   .. c:member:: long detail
 
-    Specifies additional detail/information about this event.
+    For resize and scroll events this is always zero.
 
   .. c:member:: int documentBodyClientWidth
     int documentBodyClientHeight
@@ -616,7 +616,7 @@ Struct
   .. c:member:: int scrollTop
     int scrollLeft
 
-    The page scroll position.
+    The page scroll position (rounded down to the nearest pixel).
 
 
 Callback functions
