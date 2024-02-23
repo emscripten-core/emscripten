@@ -11877,9 +11877,14 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     # unless we explicitly disable polyfills
     test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
 
-  def test_webgpu_compiletest(self):
-    for args in [[], ['-sASSERTIONS'], ['-sASSERTIONS', '--closure=1'], ['-sMAIN_MODULE=1']]:
-      self.run_process([EMXX, test_file('webgpu_jsvalstore.cpp'), '-sUSE_WEBGPU', '-sASYNCIFY'] + args)
+  @parameterized({
+    '': ([],),
+    'assertions': (['-sASSERTIONS'],),
+    'closure': (['-sASSERTIONS', '--closure=1'],),
+    'dylink': (['-sMAIN_MODULE'],),
+  })
+  def test_webgpu_compiletest(self, args):
+    self.run_process([EMXX, test_file('webgpu_jsvalstore.cpp'), '-sUSE_WEBGPU', '-sASYNCIFY'] + args)
 
   def test_signature_mismatch(self):
     create_file('a.c', 'void foo(); int main() { foo(); return 0; }')
