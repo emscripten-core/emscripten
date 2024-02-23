@@ -39,55 +39,7 @@ if (!Module['noFSInit'] && !FS.init.initialized)
 FS.ignorePermissions = false;
 `)
     addAtExit('FS.quit();');
-    // We must statically create FS.FSNode here so that it is created in a manner
-    // that is visible to Closure compiler. That lets us use type annotations for
-    // Closure to the "this" pointer in various node creation functions.
     return `
-var FSNode = /** @constructor */ function(parent, name, mode, rdev) {
-  if (!parent) {
-    parent = this;  // root node sets parent to itself
-  }
-  this.parent = parent;
-  this.mount = parent.mount;
-  this.mounted = null;
-  this.id = FS.nextInode++;
-  this.name = name;
-  this.mode = mode;
-  this.node_ops = {};
-  this.stream_ops = {};
-  this.rdev = rdev;
-};
-var readMode = 292/*{{{ cDefs.S_IRUGO }}}*/ | 73/*{{{ cDefs.S_IXUGO }}}*/;
-var writeMode = 146/*{{{ cDefs.S_IWUGO }}}*/;
-Object.defineProperties(FSNode.prototype, {
- read: {
-  get: /** @this{FSNode} */function() {
-   return (this.mode & readMode) === readMode;
-  },
-  set: /** @this{FSNode} */function(val) {
-   val ? this.mode |= readMode : this.mode &= ~readMode;
-  }
- },
- write: {
-  get: /** @this{FSNode} */function() {
-   return (this.mode & writeMode) === writeMode;
-  },
-  set: /** @this{FSNode} */function(val) {
-   val ? this.mode |= writeMode : this.mode &= ~writeMode;
-  }
- },
- isFolder: {
-  get: /** @this{FSNode} */function() {
-   return FS.isDir(this.mode);
-  }
- },
- isDevice: {
-  get: /** @this{FSNode} */function() {
-   return FS.isChrdev(this.mode);
-  }
- }
-});
-FS.FSNode = FSNode;
 FS.createPreloadedFile = FS_createPreloadedFile;
 FS.staticInit();` +
            // Get module methods from settings
@@ -142,6 +94,79 @@ FS.staticInit();` +
           }
         }
 #endif
+      }
+    },
+
+    FSStream: class {
+      constructor() {
+        this.shared = {};
+#if USE_CLOSURE_COMPILER
+        this.node = null;
+        this.flags = 0;
+#endif
+      }
+      get object() {
+        return this.node;
+      }
+      set object(val) {
+        this.node = val;
+      }
+      get isRead() {
+        return (this.flags & {{{ cDefs.O_ACCMODE }}}) !== {{{ cDefs.O_WRONLY }}};
+      }
+      get isWrite() {
+        return (this.flags & {{{ cDefs.O_ACCMODE }}}) !== {{{ cDefs.O_RDONLY }}};
+      }
+      get isAppend() {
+        return (this.flags & {{{ cDefs.O_APPEND }}});
+      }
+      get flags() {
+        return this.shared.flags;
+      }
+      set flags(val) {
+        this.shared.flags = val;
+      }
+      get position() {
+        return this.shared.position;
+      }
+      set position(val) {
+        this.shared.position = val;
+      }
+    },
+    FSNode: class {
+      constructor(parent, name, mode, rdev) {
+        if (!parent) {
+          parent = this;  // root node sets parent to itself
+        }
+        this.parent = parent;
+        this.mount = parent.mount;
+        this.mounted = null;
+        this.id = FS.nextInode++;
+        this.name = name;
+        this.mode = mode;
+        this.node_ops = {};
+        this.stream_ops = {};
+        this.rdev = rdev;
+        this.readMode = 292/*{{{ cDefs.S_IRUGO }}}*/ | 73/*{{{ cDefs.S_IXUGO }}}*/;
+        this.writeMode = 146/*{{{ cDefs.S_IWUGO }}}*/;
+      }
+      get read() {
+        return (this.mode & this.readMode) === this.readMode;
+      }
+      set read(val) {
+        val ? this.mode |= this.readMode : this.mode &= ~this.readMode;
+      }
+      get write() {
+        return (this.mode & this.writeMode) === this.writeMode;
+      }
+      set write(val) {
+        val ? this.mode |= this.writeMode : this.mode &= ~this.writeMode;
+      }
+      get isFolder() {
+        return FS.isDir(this.mode);
+      }
+      get isDevice() {
+        return FS.isChrdev(this.mode);
       }
     },
 
@@ -421,44 +446,7 @@ FS.staticInit();` +
     // object isn't directly passed in. not possible until
     // SOCKFS is completed.
     createStream(stream, fd = -1) {
-      if (!FS.FSStream) {
-        FS.FSStream = /** @constructor */ function() {
-          this.shared = { };
-        };
-        FS.FSStream.prototype = {};
-        Object.defineProperties(FS.FSStream.prototype, {
-          object: {
-            /** @this {FS.FSStream} */
-            get() { return this.node; },
-            /** @this {FS.FSStream} */
-            set(val) { this.node = val; }
-          },
-          isRead: {
-            /** @this {FS.FSStream} */
-            get() { return (this.flags & {{{ cDefs.O_ACCMODE }}}) !== {{{ cDefs.O_WRONLY }}}; }
-          },
-          isWrite: {
-            /** @this {FS.FSStream} */
-            get() { return (this.flags & {{{ cDefs.O_ACCMODE }}}) !== {{{ cDefs.O_RDONLY }}}; }
-          },
-          isAppend: {
-            /** @this {FS.FSStream} */
-            get() { return (this.flags & {{{ cDefs.O_APPEND }}}); }
-          },
-          flags: {
-            /** @this {FS.FSStream} */
-            get() { return this.shared.flags; },
-            /** @this {FS.FSStream} */
-            set(val) { this.shared.flags = val; },
-          },
-          position : {
-            /** @this {FS.FSStream} */
-            get() { return this.shared.position; },
-            /** @this {FS.FSStream} */
-            set(val) { this.shared.position = val; },
-          },
-        });
-      }
+
       // clone it, so we can return an instance of FSStream
       stream = Object.assign(new FS.FSStream(), stream);
       if (fd == -1) {
@@ -1657,111 +1645,112 @@ FS.staticInit();` +
     // XHR, which is not possible in browsers except in a web worker! Use preloading,
     // either --preload-file in emcc or FS.createPreloadedFile
     createLazyFile(parent, name, url, canRead, canWrite) {
-      // Lazy chunked Uint8Array (implements get and length from Uint8Array). Actual getting is abstracted away for eventual reuse.
-      /** @constructor */
-      function LazyUint8Array() {
-        this.lengthKnown = false;
-        this.chunks = []; // Loaded chunks. Index is the chunk number
-      }
-      LazyUint8Array.prototype.get = /** @this{Object} */ function LazyUint8Array_get(idx) {
-        if (idx > this.length-1 || idx < 0) {
-          return undefined;
-        }
-        var chunkOffset = idx % this.chunkSize;
-        var chunkNum = (idx / this.chunkSize)|0;
-        return this.getter(chunkNum)[chunkOffset];
-      };
-      LazyUint8Array.prototype.setDataGetter = function LazyUint8Array_setDataGetter(getter) {
-        this.getter = getter;
-      };
-      LazyUint8Array.prototype.cacheLength = function LazyUint8Array_cacheLength() {
-        // Find length
-        var xhr = new XMLHttpRequest();
-        xhr.open('HEAD', url, false);
-        xhr.send(null);
-        if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
-        var datalength = Number(xhr.getResponseHeader("Content-length"));
-        var header;
-        var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
-        var usesGzip = (header = xhr.getResponseHeader("Content-Encoding")) && header === "gzip";
-
-#if SMALL_XHR_CHUNKS
-        var chunkSize = 1024; // Chunk size in bytes
-#else
-        var chunkSize = 1024*1024; // Chunk size in bytes
+      // Lazy chunked Uint8Array (implements get and length from Uint8Array).
+      // Actual getting is abstracted away for eventual reuse.
+      class LazyUint8Array {
+        constructor() {
+          this.lengthKnown = false;
+          this.chunks = []; // Loaded chunks. Index is the chunk number
+#if USE_CLOSURE_COMPILER
+          this.getter = undefined;
+          this._length = 0;
+          this._chunkSize = 0;
 #endif
-
-        if (!hasByteServing) chunkSize = datalength;
-
-        // Function to get a range from the remote URL.
-        var doXHR = (from, to) => {
-          if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
-          if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
-
-          // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', url, false);
-          if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
-
-          // Some hints to the browser that we want binary data.
-          xhr.responseType = 'arraybuffer';
-          if (xhr.overrideMimeType) {
-            xhr.overrideMimeType('text/plain; charset=x-user-defined');
+        }
+        get(idx) {
+          if (idx > this.length-1 || idx < 0) {
+            return undefined;
           }
-
+          var chunkOffset = idx % this.chunkSize;
+          var chunkNum = (idx / this.chunkSize)|0;
+          return this.getter(chunkNum)[chunkOffset];
+        }
+        setDataGetter(getter) {
+          this.getter = getter;
+        }
+        cacheLength() {
+          // Find length
+          var xhr = new XMLHttpRequest();
+          xhr.open('HEAD', url, false);
           xhr.send(null);
           if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
-          if (xhr.response !== undefined) {
-            return new Uint8Array(/** @type{Array<number>} */(xhr.response || []));
-          }
-          return intArrayFromString(xhr.responseText || '', true);
-        };
-        var lazyArray = this;
-        lazyArray.setDataGetter((chunkNum) => {
-          var start = chunkNum * chunkSize;
-          var end = (chunkNum+1) * chunkSize - 1; // including this byte
-          end = Math.min(end, datalength-1); // if datalength-1 is selected, this is the last block
-          if (typeof lazyArray.chunks[chunkNum] == 'undefined') {
-            lazyArray.chunks[chunkNum] = doXHR(start, end);
-          }
-          if (typeof lazyArray.chunks[chunkNum] == 'undefined') throw new Error('doXHR failed!');
-          return lazyArray.chunks[chunkNum];
-        });
+          var datalength = Number(xhr.getResponseHeader("Content-length"));
+          var header;
+          var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
+          var usesGzip = (header = xhr.getResponseHeader("Content-Encoding")) && header === "gzip";
 
-        if (usesGzip || !datalength) {
-          // if the server uses gzip or doesn't supply the length, we have to download the whole file to get the (uncompressed) length
-          chunkSize = datalength = 1; // this will force getter(0)/doXHR do download the whole file
-          datalength = this.getter(0).length;
-          chunkSize = datalength;
-          out("LazyFiles on gzip forces download of the whole file when length is accessed");
+  #if SMALL_XHR_CHUNKS
+          var chunkSize = 1024; // Chunk size in bytes
+  #else
+          var chunkSize = 1024*1024; // Chunk size in bytes
+  #endif
+
+          if (!hasByteServing) chunkSize = datalength;
+
+          // Function to get a range from the remote URL.
+          var doXHR = (from, to) => {
+            if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
+            if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
+
+            // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, false);
+            if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
+
+            // Some hints to the browser that we want binary data.
+            xhr.responseType = 'arraybuffer';
+            if (xhr.overrideMimeType) {
+              xhr.overrideMimeType('text/plain; charset=x-user-defined');
+            }
+
+            xhr.send(null);
+            if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
+            if (xhr.response !== undefined) {
+              return new Uint8Array(/** @type{Array<number>} */(xhr.response || []));
+            }
+            return intArrayFromString(xhr.responseText || '', true);
+          };
+          var lazyArray = this;
+          lazyArray.setDataGetter((chunkNum) => {
+            var start = chunkNum * chunkSize;
+            var end = (chunkNum+1) * chunkSize - 1; // including this byte
+            end = Math.min(end, datalength-1); // if datalength-1 is selected, this is the last block
+            if (typeof lazyArray.chunks[chunkNum] == 'undefined') {
+              lazyArray.chunks[chunkNum] = doXHR(start, end);
+            }
+            if (typeof lazyArray.chunks[chunkNum] == 'undefined') throw new Error('doXHR failed!');
+            return lazyArray.chunks[chunkNum];
+          });
+
+          if (usesGzip || !datalength) {
+            // if the server uses gzip or doesn't supply the length, we have to download the whole file to get the (uncompressed) length
+            chunkSize = datalength = 1; // this will force getter(0)/doXHR do download the whole file
+            datalength = this.getter(0).length;
+            chunkSize = datalength;
+            out("LazyFiles on gzip forces download of the whole file when length is accessed");
+          }
+
+          this._length = datalength;
+          this._chunkSize = chunkSize;
+          this.lengthKnown = true;
         }
+        get length() {
+          if (!this.lengthKnown) {
+            this.cacheLength();
+          }
+          return this._length;
+        }
+        get chunkSize() {
+          if (!this.lengthKnown) {
+            this.cacheLength();
+          }
+          return this._chunkSize;
+        }
+      }
 
-        this._length = datalength;
-        this._chunkSize = chunkSize;
-        this.lengthKnown = true;
-      };
       if (typeof XMLHttpRequest != 'undefined') {
         if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
         var lazyArray = new LazyUint8Array();
-        Object.defineProperties(lazyArray, {
-          length: {
-            get: /** @this{Object} */ function() {
-              if (!this.lengthKnown) {
-                this.cacheLength();
-              }
-              return this._length;
-            }
-          },
-          chunkSize: {
-            get: /** @this{Object} */ function() {
-              if (!this.lengthKnown) {
-                this.cacheLength();
-              }
-              return this._chunkSize;
-            }
-          }
-        });
-
         var properties = { isDevice: false, contents: lazyArray };
       } else {
         var properties = { isDevice: false, url: url };
@@ -1780,7 +1769,7 @@ FS.staticInit();` +
       // Add a function that defers querying the file size until it is asked the first time.
       Object.defineProperties(node, {
         usedBytes: {
-          get: /** @this {FSNode} */ function() { return this.contents.length; }
+          get: function() { return this.contents.length; }
         }
       });
       // override each stream op with one that tries to force load the lazy file first
