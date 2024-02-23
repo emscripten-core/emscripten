@@ -145,6 +145,43 @@ FS.staticInit();` +
       }
     },
 
+    FSStream: class {
+      constructor() {
+        this.shared = {};
+#if USE_CLOSURE_COMPILER
+        this.node = null;
+        this.flags = 0;
+#endif
+      }
+      get object() {
+        return this.node;
+      }
+      set object(val) {
+        this.node = val;
+      }
+      get isRead() {
+        return (this.flags & {{{ cDefs.O_ACCMODE }}}) !== {{{ cDefs.O_WRONLY }}};
+      }
+      get isWrite() {
+        return (this.flags & {{{ cDefs.O_ACCMODE }}}) !== {{{ cDefs.O_RDONLY }}};
+      }
+      get isAppend() {
+        return (this.flags & {{{ cDefs.O_APPEND }}});
+      }
+      get flags() {
+        return this.shared.flags;
+      }
+      set flags(val) {
+        this.shared.flags = val;
+      }
+      get position() {
+        return this.shared.position;
+      }
+      set position(val) {
+        this.shared.position = val;
+      }
+    },
+
     //
     // paths
     //
@@ -421,44 +458,7 @@ FS.staticInit();` +
     // object isn't directly passed in. not possible until
     // SOCKFS is completed.
     createStream(stream, fd = -1) {
-      if (!FS.FSStream) {
-        FS.FSStream = /** @constructor */ function() {
-          this.shared = { };
-        };
-        FS.FSStream.prototype = {};
-        Object.defineProperties(FS.FSStream.prototype, {
-          object: {
-            /** @this {FS.FSStream} */
-            get() { return this.node; },
-            /** @this {FS.FSStream} */
-            set(val) { this.node = val; }
-          },
-          isRead: {
-            /** @this {FS.FSStream} */
-            get() { return (this.flags & {{{ cDefs.O_ACCMODE }}}) !== {{{ cDefs.O_WRONLY }}}; }
-          },
-          isWrite: {
-            /** @this {FS.FSStream} */
-            get() { return (this.flags & {{{ cDefs.O_ACCMODE }}}) !== {{{ cDefs.O_RDONLY }}}; }
-          },
-          isAppend: {
-            /** @this {FS.FSStream} */
-            get() { return (this.flags & {{{ cDefs.O_APPEND }}}); }
-          },
-          flags: {
-            /** @this {FS.FSStream} */
-            get() { return this.shared.flags; },
-            /** @this {FS.FSStream} */
-            set(val) { this.shared.flags = val; },
-          },
-          position : {
-            /** @this {FS.FSStream} */
-            get() { return this.shared.position; },
-            /** @this {FS.FSStream} */
-            set(val) { this.shared.position = val; },
-          },
-        });
-      }
+
       // clone it, so we can return an instance of FSStream
       stream = Object.assign(new FS.FSStream(), stream);
       if (fd == -1) {
