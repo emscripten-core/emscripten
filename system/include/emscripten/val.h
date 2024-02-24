@@ -529,7 +529,10 @@ public:
 
 #if __cplusplus >= 202002L
   class awaiter;
-  awaiter operator co_await() const;
+  awaiter operator co_await() const&;
+
+  class awaiter;
+  awaiter operator co_await() &&;
 
   class promise_type;
 #endif
@@ -859,8 +862,10 @@ class base_val::awaiter {
   constexpr static std::size_t STATE_RESULT = 2;
 
 public:
+  awaiter(unique_val promise)
+    : state(std::in_place_index<STATE_PROMISE>, std::move(promise)) {}
   awaiter(const val& promise)
-    : state(std::in_place_index<STATE_PROMISE>, promise) {}
+    : state(std::in_place_index<STATE_PROMISE>, val(promise)) {}
 
   // just in case, ensure nobody moves / copies this type around
   awaiter(awaiter&&) = delete;
@@ -888,8 +893,14 @@ public:
   val await_resume() { return std::move(std::get<STATE_RESULT>(state)); }
 };
 
-inline val::awaiter base_val::operator co_await() const {
-  return {*this};
+inline val::awaiter base_val::operator co_await() const& {
+  return {val(*this)};
+}
+
+inline val::awaiter base_val::operator co_await() && {
+  unique_val tmp;
+  tmp.move_assignment(std::move(*this));
+  return {std::move(tmp)};
 }
 
 // `promise_type` is a well-known subtype with well-known method names
@@ -910,7 +921,7 @@ public:
   }
 
   // Return the stored promise as the actual return value of the coroutine.
-  val get_return_object() { return promise; }
+  unique_val get_return_object() { return std::move(promise); }
 
   // For similarity with JS async functions, our coroutines are eagerly evaluated.
   auto initial_suspend() noexcept { return std::suspend_never{}; }

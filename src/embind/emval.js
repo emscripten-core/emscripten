@@ -100,6 +100,7 @@ var LibraryEmVal = {
     if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}}) {
       emval_handles[handle + 1] += 1;
       console.error(`${handle} inc ${emval_handles[handle + 1]}`);
+      console.error((new Error('').stack));
     }
   },
 
