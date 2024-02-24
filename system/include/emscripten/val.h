@@ -337,7 +337,7 @@ public:
   }
 
   // Takes ownership of the handle away from, and invalidates, this instance.
-  EM_VAL take_handle() {
+  EM_VAL release_ownership() {
     EM_VAL taken = as_handle();
     handle = 0;
     return taken;
@@ -552,6 +552,15 @@ protected:
     v.handle = 0;
   }
 
+  void move_assignment(base_val&& v) & {
+    EM_VAL new_handle = v.handle;
+    pthread_t new_thread = v.thread;
+    v.handle = 0;
+    this->release_ownership();
+    handle = new_handle;
+    thread = new_thread;
+  }
+
   // Whether this value is a uses incref/decref (true) or is a special reserved
   // value (false).
   bool uses_refcount() const {
@@ -604,33 +613,21 @@ class unique_val : public base_val {
   {}
 
   template<typename T>
-  explicit unique_val(T&& value) : unique_val() {
-    using namespace internal;
-
-    WireTypePack<T> argv(std::forward<T>(value));
-    new (this) unique_val(_emval_take_value(internal::TypeID<T>::get(), argv));
-  }
+  explicit unique_val(T&& value);
 
   // unique_val doesn't allow copy, as that would require incref/decref.
   unique_val(const unique_val& v) = delete;
   unique_val& operator=(const unique_val& v) = delete;
 
-  unique_val(base_val&& v) : base_val(std::move(v)) {}
+  unique_val(val&& v);
   unique_val(unique_val&& v) : base_val(std::move(v)) {}
 
-  unique_val& operator=(base_val&& v) & {
-    unique_val tmp(std::move(v));
-    this->~unique_val();
-    new (this) unique_val(std::move(tmp));
+  unique_val& operator=(unique_val&& v) & {
+    move_assignment(std::move(v));
     return *this;
   }
 
-  unique_val& operator=(unique_val&& v) & {
-    unique_val tmp(std::move(v));
-    this->~unique_val();
-    new (this) unique_val(std::move(tmp));
-    return *this;
-  }
+  unique_val& operator=(val&& v) &;
 };
 
 class val : public base_val {
@@ -648,7 +645,8 @@ class val : public base_val {
   // it just moves a value and doesn't need to go via incref/decref.
   // This means it's safe to move values across threads - an error will
   // only arise if you access or free it from the wrong thread later.
-  val(base_val&& v) : base_val(std::move(v)) { }
+  val(unique_val&& v) : base_val(std::move(v)) { }
+  val(val&& v) : base_val(std::move(v)) { }
 
   val(const val& v) : base_val(v.as_handle()) {
     if (uses_refcount()) {
@@ -671,14 +669,20 @@ class val : public base_val {
   }
 
   val& operator=(base_val&& v) & {
-    val tmp(std::move(v));
-    this->~val();
-    new (this) val(std::move(tmp));
+    move_assignment(std::move(v));
     return *this;
   }
 
   val& operator=(const val& v) & {
-    return *this = val(v);
+    if (uses_refcount()) {
+      internal::_emval_decref(handle);
+    }
+    handle = v.handle;
+    thread = v.thread;
+    if (uses_refcount()) {
+      internal::_emval_incref(handle);
+    }
+    return *this;
   }
 
   template<typename WrapperType>
@@ -686,6 +690,23 @@ class val : public base_val {
 
   friend struct internal::BindingType<val>;
 };
+
+inline unique_val::unique_val(val&& v) : base_val(0) {
+  move_assignment(std::move(v));
+}
+
+template<typename T>
+inline unique_val::unique_val(T&& value) : unique_val() {
+  using namespace internal;
+
+  WireTypePack<T> argv(std::forward<T>(value));
+  new (this) unique_val(std::move(_emval_take_value(internal::TypeID<T>::get(), argv)));
+}
+
+inline unique_val& unique_val::operator=(val&& v) & {
+  move_assignment(std::move(v));
+  return *this;
+}
 
 inline unique_val base_val::array() {
   return unique_val(internal::_emval_new_array());
@@ -927,7 +948,7 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
   // Marshall to JS with move semantics when we can invalidate the temporary val
   // object.
   static WireType toWireType(val&& v) {
-    return v.take_handle();
+    return v.release_ownership();
   }
 
   // Marshal to JS with copy semantics when we cannot transfer the val objects

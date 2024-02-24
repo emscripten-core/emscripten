@@ -7457,7 +7457,7 @@ void* operator new(size_t size) {
     self.do_run_in_out_file_test('embind/test_unsigned.cpp')
 
   def test_embind_val(self):
-    self.emcc_args += ['-lembind']
+    self.emcc_args += ['-lembind', '-g']
     self.do_run_in_out_file_test('embind/test_val.cpp')
 
   def test_embind_val_read_pointer(self):
