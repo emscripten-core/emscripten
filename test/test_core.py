@@ -7457,7 +7457,7 @@ void* operator new(size_t size) {
     self.do_run_in_out_file_test('embind/test_unsigned.cpp')
 
   def test_embind_val(self):
-    self.emcc_args += ['-lembind', '-g']
+    self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_val.cpp')
 
   def test_embind_val_read_pointer(self):
@@ -7527,7 +7527,7 @@ void* operator new(size_t size) {
     create_file('post.js', r'''Module.onRuntimeInitialized = () => {
       Module.asyncCoro().then(console.log);
     }''')
-    self.emcc_args += ['-std=c++20', '--bind', '--post-js=post.js', '-g']
+    self.emcc_args += ['-std=c++20', '--bind', '--post-js=post.js']
     self.do_runf('embind/test_val_coro.cpp', '34\n')
 
   def test_embind_val_coro_caught(self):
