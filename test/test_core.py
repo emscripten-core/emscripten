@@ -7470,7 +7470,7 @@ void* operator new(size_t size) {
 
   @node_pthreads
   def test_embind_val_cross_thread(self):
-    self.emcc_args += ['--bind']
+    self.emcc_args += ['--bind', '-g']
     create_file('test_embind_val_cross_thread.cpp', r'''
       #include <emscripten.h>
       #include <emscripten/val.h>

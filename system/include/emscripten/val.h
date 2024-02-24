@@ -675,9 +675,9 @@ class val : public base_val {
 
   val& operator=(const val& v) & {
     if (uses_refcount()) {
-      internal::_emval_decref(handle);
+      internal::_emval_decref(as_handle());
     }
-    handle = v.handle;
+    handle = v.as_handle();
     thread = v.thread;
     if (uses_refcount()) {
       internal::_emval_incref(handle);
