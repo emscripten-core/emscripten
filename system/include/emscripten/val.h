@@ -583,7 +583,7 @@ protected:
   }
 
   template<typename T>
-  val val_ref(const T& v) const;
+  unique_val val_ref(const T& v) const;
 
   const base_val& val_ref(const base_val& v) const {
     return v;
@@ -817,8 +817,8 @@ inline unique_val base_val::await() const {
 }
 
 template<typename T>
-inline val base_val::val_ref(const T& v) const {
-  return val(v);
+inline unique_val base_val::val_ref(const T& v) const {
+  return unique_val(v);
 }
 
 struct base_val::iterator {
@@ -852,7 +852,7 @@ class base_val::awaiter {
   //  - initially created with promise
   //  - waiting with a given coroutine handle
   //  - completed with a result
-  std::variant<val, std::coroutine_handle<base_val::promise_type>, val> state;
+  std::variant<unique_val, std::coroutine_handle<base_val::promise_type>, unique_val> state;
 
   constexpr static std::size_t STATE_PROMISE = 0;
   constexpr static std::size_t STATE_CORO = 1;

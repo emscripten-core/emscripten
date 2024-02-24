@@ -7,6 +7,7 @@
 using namespace emscripten;
 
 EM_JS(EM_VAL, promise_sleep_impl, (int ms, int result), {
+  console.error(`promise_sleep_impl ${ms} ${result}`);
   let promise = new Promise(resolve => setTimeout(resolve, ms, result));
   let handle = Emval.toHandle(promise);
   // FIXME. See https://github.com/emscripten-core/emscripten/issues/16975.

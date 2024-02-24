@@ -88,6 +88,7 @@ var LibraryEmVal = {
           const handle = emval_freelist.pop() || emval_handles.length;
           emval_handles[handle] = value;
           emval_handles[handle + 1] = 1;
+          console.error(`${handle} = ${value}`);
           return handle;
         }
       }
@@ -98,16 +99,14 @@ var LibraryEmVal = {
   _emval_incref: (handle) => {
     if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}}) {
       emval_handles[handle + 1] += 1;
+      console.error(`${handle} inc ${emval_handles[handle + 1]}`);
     }
   },
 
   _emval_decref__deps: ['$emval_freelist', '$emval_handles'],
   _emval_decref: (handle) => {
-<<<<<<< HEAD
+    console.error(`${handle} dec ${emval_handles[handle + 1]-1}`);
     if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}} && 0 === --emval_handles[handle + 1]) {
-=======
-    if (handle >= emval_handles_reserved && 0 === --emval_handles[handle * 2 + 1]) {
->>>>>>> d90ee0942 (fix syntax errors)
   #if ASSERTIONS
       assert(emval_handles[handle] !== undefined, `Decref for unallocated handle.`);
   #endif
