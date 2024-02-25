@@ -4,20 +4,46 @@
  * SPDX-License-Identifier: MIT
  */
 
-// "use strict";
-
 // Convert analyzed data to javascript. Everything has already been calculated
 // before this stage, which just does the final conversion to JavaScript.
 
-globalThis.addedLibraryItems = {};
+import {
+  ATEXITS,
+  ATINITS,
+  ATMAINS,
+  defineI64Param,
+  indentify,
+  makeReturn64,
+  modifyJSFunction,
+  preprocess,
+  processMacros,
+  receiveI64ParamAsI53,
+} from './parseTools.mjs';
+import {
+  addToCompileTimeContext,
+  assert,
+  error,
+  errorOccured,
+  isDecorator,
+  isJsOnlySymbol,
+  compileTimeContext,
+  print,
+  printErr,
+  read,
+  warn,
+  warningOccured,
+} from './utility.mjs';
+import {LibraryManager, librarySymbols} from './modules.mjs';
 
-globalThis.extraLibraryFuncs = [];
+const addedLibraryItems = {};
+
+const extraLibraryFuncs = [];
 
 // Some JS-implemented library functions are proxied to be called on the main
 // browser thread, if the Emscripten runtime is executing in a Web Worker.
 // Each such proxied function is identified via an ordinal number (this is not
 // the same namespace as function pointers in general).
-globalThis.proxiedFunctionTable = [];
+const proxiedFunctionTable = [];
 
 // Mangles the given C/JS side function name to assembly level function name (adds an underscore)
 function mangleCSymbolName(f) {
@@ -121,7 +147,7 @@ function preJS() {
   return result;
 }
 
-function runJSify() {
+export function runJSify(symbolsOnly) {
   const libraryItems = [];
   const symbolDeps = {};
   const asyncFuncs = [];
@@ -162,7 +188,6 @@ function runJSify() {
         .split(',')
         .map((name) => name.trim());
       const newArgs = [];
-      let innerArgs = [];
       let argConversions = '';
       if (sig.length > argNames.length + 1) {
         error(`handleI64Signatures: signature too long for ${symbol}`);
@@ -188,7 +213,6 @@ function runJSify() {
         }
       }
 
-      var origArgs = args;
       if (!WASM_BIGINT) {
         args = newArgs.join(',');
       }
@@ -266,7 +290,7 @@ function(${args}) {
       ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')))
     ) {
       snippet = handleI64Signatures(symbol, snippet, sig, i53abi);
-      i53ConversionDeps.forEach((d) => deps.push(d));
+      compileTimeContext.i53ConversionDeps.forEach((d) => deps.push(d));
     }
 
     const proxyingMode = LibraryManager.library[symbol + '__proxy'];
@@ -348,7 +372,7 @@ function(${args}) {
       if (!(symbol in LibraryManager.library)) {
         // Create a new __cxa_find_matching_catch variant on demand.
         const num = +symbol.split('_').slice(-1)[0];
-        addCxaCatch(num);
+        compileTimeContext.addCxaCatch(num);
       }
       // Continue, with the code below emitting the proper JavaScript based on
       // what we just added to the library.
@@ -376,7 +400,7 @@ function(${args}) {
         LibraryManager.library[symbol + '__deps'] = [];
       }
 
-      deps = LibraryManager.library[symbol + '__deps'];
+      const deps = LibraryManager.library[symbol + '__deps'];
       let sig = LibraryManager.library[symbol + '__sig'];
       if (!WASM_BIGINT && sig && sig[0] == 'j') {
         // Without WASM_BIGINT functions that return i64 depend on setTempRet0
@@ -466,12 +490,11 @@ function(${args}) {
           // Create a stub for this symbol which can later be replaced by the
           // dynamic linker.  If this stub is called before the symbol is
           // resolved assert in debug builds or trap in release builds.
+          let target = `wasmImports['${symbol}']`;
           if (ASYNCIFY) {
             // See the definition of asyncifyStubs in preamble.js for why this
             // is needed.
             target = `asyncifyStubs['${symbol}']`;
-          } else {
-            target = `wasmImports['${symbol}']`;
           }
           let assertion = '';
           if (ASSERTIONS) {
@@ -536,8 +559,6 @@ function(${args}) {
       if (VERBOSE) {
         printErr(`adding ${symbol} (referenced by ${dependent})`);
       }
-      const deps_list = deps.join("','");
-      const identDependents = symbol + `__deps: ['${deps_list}']`;
       function addDependency(dep) {
         // dependencies can be JS functions, which we just run
         if (typeof dep == 'function') {
@@ -695,7 +716,7 @@ var proxiedFunctionTable = [
 `);
     }
 
-    if (abortExecution) {
+    if (errorOccured()) {
       throw Error('Aborting compilation due to previous errors');
     }
 
@@ -716,7 +737,7 @@ var proxiedFunctionTable = [
       '//FORWARDED_DATA:' +
         JSON.stringify({
           librarySymbols,
-          warnings,
+          warnings: warningOccured(),
           asyncFuncs,
           ATINITS: ATINITS.join('\n'),
           ATMAINS: STRICT ? '' : ATMAINS.join('\n'),
@@ -741,7 +762,13 @@ var proxiedFunctionTable = [
     finalCombiner();
   }
 
-  if (abortExecution) {
+  if (errorOccured()) {
     throw Error('Aborting compilation due to previous errors');
   }
 }
+
+addToCompileTimeContext({
+  extraLibraryFuncs,
+  addedLibraryItems,
+  preJS,
+});

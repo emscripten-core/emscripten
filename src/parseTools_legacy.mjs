@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: MIT
  */
 
+import {warn, addToCompileTimeContext} from './utility.mjs';
+import {ATMAINS, POINTER_SIZE, runIfMainThread} from './parseTools.mjs';
+
 // Takes a pair of return values, stashes one in tempRet0 and returns the other.
 // Should probably be renamed to `makeReturn64` but keeping this old name in
 // case external JS library code uses this name.
@@ -109,14 +112,11 @@ function getNativeFieldSize(type) {
   return Math.max(getNativeTypeSize(type), POINTER_SIZE);
 }
 
-globalThis.Runtime = {
-  getNativeTypeSize,
+const Runtime = {
   getNativeFieldSize,
   POINTER_SIZE,
   QUANTUM_SIZE: POINTER_SIZE,
 };
-
-globalThis.ATMAINS = [];
 
 function addAtMain(code) {
   warn('use of legacy parseTools function: addAtMain');
@@ -137,3 +137,16 @@ function asmFFICoercion(value, type) {
 
 // Legacy name for runIfMainThread.
 const runOnMainThread = runIfMainThread;
+
+addToCompileTimeContext({
+  ATMAINS,
+  Runtime,
+  addAtMain,
+  asmFFICoercion,
+  makeCopyValues,
+  makeMalloc,
+  makeStructuralReturn,
+  receiveI64ParamAsDouble,
+  receiveI64ParamAsI32s,
+  runOnMainThread,
+});

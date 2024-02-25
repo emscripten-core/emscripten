@@ -4,16 +4,22 @@
  * SPDX-License-Identifier: MIT
  */
 
-// "use strict";
-
 // General JS utilities - things that might be useful in any JS project.
 // Nothing specific to Emscripten appears here.
 
-function safeQuote(x) {
+import * as url from 'url';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as vm from 'vm';
+import assert from 'assert';
+
+export {assert};
+
+export function safeQuote(x) {
   return x.replace(/"/g, '\\"').replace(/'/g, "\\'");
 }
 
-function dump(item) {
+export function dump(item) {
   let funcData;
   try {
     if (typeof item == 'object' && item != null && item.funcData) {
@@ -36,8 +42,19 @@ function dump(item) {
   }
 }
 
-globalThis.warnings = false;
-globalThis.currentFile = null;
+let warnings = false;
+
+export function warningOccured() {
+  return warnings;
+}
+
+let currentFile = null;
+
+export function setCurrentFile(f) {
+  let rtn = currentFile;
+  currentFile = f;
+  return rtn;
+}
 
 function errorPrefix() {
   if (currentFile) {
@@ -47,8 +64,8 @@ function errorPrefix() {
   }
 }
 
-function warn(a, msg) {
-  globalThis.warnings = true;
+export function warn(a, msg) {
+  warnings = true;
   if (!msg) {
     msg = a;
     a = false;
@@ -58,7 +75,7 @@ function warn(a, msg) {
   }
 }
 
-function warnOnce(a, msg) {
+export function warnOnce(a, msg) {
   if (!msg) {
     msg = a;
     a = false;
@@ -71,9 +88,13 @@ function warnOnce(a, msg) {
   }
 }
 
-globalThis.abortExecution = false;
+let abortExecution = false;
 
-function error(msg) {
+export function errorOccured() {
+  return abortExecution;
+}
+
+export function error(msg) {
   abortExecution = true;
   printErr(`error: ${errorPrefix()}${msg}`);
 }
@@ -82,21 +103,7 @@ function range(size) {
   return Array.from(Array(size).keys());
 }
 
-// options is optional input object containing mergeInto params
-// currently, it can contain
-//
-// key: noOverride, value: true
-// if it is set, it prevents symbol redefinition and shows error
-// in case of redefinition
-//
-// key: checkSig, value: true
-// if it is set, __sig is checked for functions and error is reported
-// if <function name>__sig is missing
-function addToLibrary(obj, options = null) {
-  mergeInto(LibraryManager.library, obj, options);
-}
-
-function mergeInto(obj, other, options = null) {
+export function mergeInto(obj, other, options = null) {
   if (options) {
     // check for unintended symbol redefinition
     if (options.noOverride) {
@@ -194,19 +201,19 @@ function mergeInto(obj, other, options = null) {
   return Object.assign(obj, other);
 }
 
-function isNumber(x) {
+export function isNumber(x) {
   // XXX this does not handle 0xabc123 etc. We should likely also do x == parseInt(x) (which handles that), and remove hack |// handle 0x... as well|
   return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/)) || x == 'NaN';
 }
 
 // Symbols that start with '$' are not exported to the wasm module.
 // They are intended to be called exclusively by JS code.
-function isJsOnlySymbol(symbol) {
+export function isJsOnlySymbol(symbol) {
   return symbol[0] == '$';
 }
 
-function isDecorator(ident) {
-  suffixes = [
+export function isDecorator(ident) {
+  const suffixes = [
     '__sig',
     '__proxy',
     '__asm',
@@ -224,11 +231,38 @@ function isDecorator(ident) {
   return suffixes.some((suffix) => ident.endsWith(suffix));
 }
 
-function isPowerOfTwo(x) {
+export function isPowerOfTwo(x) {
   return x > 0 && (x & (x - 1)) == 0;
 }
 
-class Benchmarker {
+export function read(filename) {
+  const absolute = find(filename);
+  return fs.readFileSync(absolute).toString();
+}
+
+export function find(filename) {
+  const dirname = url.fileURLToPath(new URL('.', import.meta.url));
+  const prefixes = [process.cwd(), path.join(dirname, '..', 'src')];
+  for (let i = 0; i < prefixes.length; ++i) {
+    const combined = path.join(prefixes[i], filename);
+    if (fs.existsSync(combined)) {
+      return combined;
+    }
+  }
+  return filename;
+}
+
+// Anything needed by the script that we load below must be added to the
+// global object.  These, for example, are all needed by parseTools.js.
+export function print(x) {
+  process.stdout.write(x + '\n');
+}
+
+export function printErr(x) {
+  process.stderr.write(x + '\n');
+}
+
+export class Benchmarker {
   totals = {};
   ids = [];
   lastTime = 0;
@@ -261,3 +295,51 @@ class Benchmarker {
     }
   }
 }
+
+/**
+ * Context in which JS library code is evaluated.  This is distinct from the
+ * global scope of the compiler itself which avoids exposing all of the compiler
+ * internals to user JS library code.
+ */
+export const compileTimeContext = {
+  process,
+  console,
+};
+
+/**
+ * A symbols to the macro context.
+ * This will makes the symbols available to JS library code at build time.
+ */
+export function addToCompileTimeContext(object) {
+  Object.assign(compileTimeContext, object);
+}
+
+export function applySettings(obj) {
+  // Make settings available both in the current / global context
+  // and also in the macro execution contexted.
+  Object.assign(globalThis, obj);
+  addToCompileTimeContext(obj);
+}
+
+export function loadSettingsFile(f) {
+  var settings = {};
+  vm.runInNewContext(read(f), settings, {filename: find(f)});
+  applySettings(settings);
+}
+
+export function runInMacroContext(code, options) {
+  return vm.runInNewContext(code, compileTimeContext, options);
+}
+
+addToCompileTimeContext({
+  assert,
+  error,
+  isDecorator,
+  isJsOnlySymbol,
+  mergeInto,
+  read,
+  warn,
+  warnOnce,
+  printErr,
+  range,
+});
