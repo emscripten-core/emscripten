@@ -51,7 +51,7 @@ void _mi_prim_mem_init( mi_os_mem_config_t* config) {
   config->page_size = 64*MI_KiB; // WebAssembly has a fixed page size: 64KiB
   config->alloc_granularity = 16;
   config->has_overcommit = false;
-  config->must_free_whole = true;
+  config->has_partial_free = false;
   config->has_virtual_reserve = false;
 }
 
@@ -68,7 +68,7 @@ int _mi_prim_free(void* addr, size_t size) {
 // Allocation
 //---------------------------------------------
 
-extern void* emmalloc_memalign(size_t, size_t);
+extern void* emmalloc_memalign(size_t alignment, size_t size);
 
 // Note: the `try_alignment` is just a hint and the returned pointer is not guaranteed to be aligned.
 int _mi_prim_alloc(size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, void** addr) {
@@ -169,7 +169,7 @@ void _mi_prim_process_info(mi_process_info_t* pinfo)
 #include <emscripten/console.h>
 
 void _mi_prim_out_stderr( const char* msg) {
-  emscripten_err(msg);
+  emscripten_console_error(msg);
 }
 
 
