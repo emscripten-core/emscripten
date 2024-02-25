@@ -52,7 +52,7 @@ global.read = (filename) => {
 };
 
 global.load = (f) => {
-  (0, eval)(read(f) + '//# sourceURL=' + find(f));
+  vm.runInThisContext(read(f), { filename: find(f) });
 };
 
 assert(args.length >= 2);
@@ -65,5 +65,8 @@ load('utility.js');
 load('modules.js');
 load('parseTools.js');
 
-const output = expandMacros ? processMacros(preprocess(inputFile)) : preprocess(inputFile);
+let output = preprocess(inputFile);
+if (expandMacros) {
+  output = processMacros(output, inputFile)
+}
 process.stdout.write(output);

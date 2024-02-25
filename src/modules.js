@@ -233,7 +233,7 @@ globalThis.LibraryManager = {
       }
       currentFile = filename;
       try {
-        processed = processMacros(preprocess(filename));
+        processed = processMacros(preprocess(filename), filename);
         vm.runInThisContext(processed, { filename: filename.replace(/\.\w+$/, '.preprocessed$&') });
       } catch (e) {
         error(`failure to execute js library "${filename}":`);
