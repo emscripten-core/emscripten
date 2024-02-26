@@ -9750,7 +9750,7 @@ int main() {
     the address string in hexadecimal.
     '''
     out = self.run_process([common.LLVM_OBJDUMP, '-d', filename],
-                            stdout=PIPE).stdout.strip()
+                           stdout=PIPE).stdout.strip()
     out_lines = out.splitlines()
     found = False
     for line in out_lines:
