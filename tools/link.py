@@ -880,6 +880,18 @@ def phase_linker_setup(options, state, newargs):
     else:
       default_setting('INCOMING_MODULE_JS_API', [])
 
+  if not settings.MINIMAL_RUNTIME and not settings.STRICT:
+    # Export the HEAP object by default, when not running in STRICT mode
+    settings.EXPORTED_RUNTIME_METHODS.extend([
+      'HEAPF32',
+      'HEAPF64',
+      'HEAP_DATA_VIEW',
+      'HEAP8',  'HEAPU8',
+      'HEAP16', 'HEAPU16',
+      'HEAP32', 'HEAPU32',
+      'HEAP64', 'HEAPU64',
+    ])
+
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
   # in -Oz builds, since custom decoder for UTF-8 takes up space.
   # In pthreads enabled builds, TEXTDECODER==2 may not work, see

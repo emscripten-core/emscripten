@@ -349,6 +349,10 @@ function exportRuntime() {
   // being exported. how we show the message depends on whether it's
   // a function (almost all of them) or a number.
   function maybeExport(name) {
+    // HEAP objects are exported separately in updateMemoryViews
+    if (name.startsWith('HEAP')) {
+      return;
+    }
     // if requested to be exported, export it
     if (EXPORTED_RUNTIME_METHODS_SET.has(name)) {
       let exported = name;
@@ -385,6 +389,13 @@ function exportRuntime() {
     'abort',
     'wasmMemory',
     'wasmExports',
+    'HEAPF32',
+    'HEAPF64',
+    'HEAP_DATA_VIEW',
+    'HEAP8',  'HEAPU8',
+    'HEAP16', 'HEAPU16',
+    'HEAP32', 'HEAPU32',
+    'HEAP64', 'HEAPU64',
   ];
 
   // These are actually native wasm functions these days but we allow exporting

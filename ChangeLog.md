@@ -21,6 +21,10 @@ See docs/process.md for more on how version tagging works.
 3.1.55 (in development)
 -----------------------
 - Update sdl2-mixer port from 2.6.0 to 2.8.0
+- In `STRICT` mode the `HEAPXX` symbols (such as `HEAP8` and `HEAP32`) are now
+  only exported on demand.  This means that they must be added to
+  `EXPORTED_RUNTIME_METHODS` for them to appear on the `Module` object.  For
+  now, this only effects users of `STRICT` mode. (#21439)
 
 3.1.54 - 02/15/24
 -----------------
