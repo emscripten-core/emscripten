@@ -65,17 +65,24 @@ var LibraryEmVal = {
     return symbol;
   },
 
-  $Emval__deps: ['$emval_freelist', '$emval_handles', '$throwBindingError', '$init_emval'],
+  $Emval__deps: ['$emval_freelist', '$emval_handles', '$throwBindingError', '$init_emval', '_emval_decref'],
   $Emval: {
     toValue: (handle) => {
       if (!handle) {
           throwBindingError('Cannot use deleted val. handle = ' + handle);
       }
+      let decref;
+      if (handle % 2 == 1) {
+        handle = handle - 1;
+        decref = __emval_decref;
+      }
   #if ASSERTIONS
       // handle 2 is supposed to be `undefined`.
-      assert(handle === 2 || emval_handles[handle] !== undefined && handle % 2 === 0, `invalid handle: ${handle}`);
+      assert(handle === 2 || emval_handles[handle] !== undefined, `invalid handle: ${handle}`);
   #endif
-      return emval_handles[handle];
+      const value = emval_handles[handle];
+      decref && decref(handle);
+      return value;
     },
 
     toHandle: (value) => {
@@ -203,7 +210,7 @@ var LibraryEmVal = {
     return Emval.toHandle(Module[name]);
   },
 
-  _emval_get_property__deps: ['$Emval'],
+  _emval_get_property__deps: ['$Emval', '_emval_decref'],
   _emval_get_property: (handle, key) => {
     handle = Emval.toValue(handle);
     key = Emval.toValue(key);
