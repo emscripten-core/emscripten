@@ -935,17 +935,27 @@ var LibraryHTML5 = {
 
   $fillOrientationChangeEventData__deps: ['$screenOrientation'],
   $fillOrientationChangeEventData: (eventStruct) => {
-    var orientations  = ["portrait-primary", "portrait-secondary", "landscape-primary", "landscape-secondary"];
-    var orientations2 = ["portrait",         "portrait",           "landscape",         "landscape"];
+    // OrientationType enum
+    var orientationsType1 = ["portrait-primary", "portrait-secondary", "landscape-primary", "landscape-secondary"];
+    // alternative selection from OrientationLockType enum
+    var orientationsType2 = ["portrait",         "portrait",           "landscape",         "landscape"];
 
-    var orientationString = screenOrientation();
-    var orientation = orientations.indexOf(orientationString);
-    if (orientation == -1) {
-      orientation = orientations2.indexOf(orientationString);
+    var orientationIndex = -1;
+    var orientationAngle =  0;
+    var orientation = screenOrientation();
+    if (orientation) {
+      orientationIndex = orientationsType1.indexOf(orientation.type);
+      if (orientationIndex == -1) {
+        orientationIndex = orientationsType2.indexOf(orientation.type);
+      }
+      if (orientationIndex != -1) {
+        orientationIndex = 1 << orientationIndex;
+      }
+      orientationAngle = orientation.angle;
     }
 
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationIndex, '1 << orientation', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationAngle, 'orientation', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationIndex, 'orientationIndex', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationAngle, 'orientationAngle', 'i32') }}};
   },
 
   $registerOrientationChangeEventCallback__deps: ['$JSEvents', '$fillOrientationChangeEventData', '$findEventTarget', 'malloc'],
