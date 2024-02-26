@@ -105,7 +105,7 @@ function shouldPreprocess(fileName) {
 function getIncludeFile(fileName, needsPreprocess) {
   let result = `// include: ${fileName}\n`;
   if (needsPreprocess) {
-    result += processMacros(preprocess(fileName));
+    result += processMacros(preprocess(fileName), fileName);
   } else {
     result += read(fileName);
   }
