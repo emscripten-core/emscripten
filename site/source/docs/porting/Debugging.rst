@@ -161,7 +161,7 @@ Manual print debugging
 
 You can also manually instrument the source code with ``printf()`` statements, then compile and run the code to investigate issues. Note that ``printf()`` is line-buffered, make sure to add ``\n`` to see output in the console.
 
-If you have a good idea of the problem line you can add ``print(new Error().stack)`` to the JavaScript to get a stack trace at that point. Also available is :js:func:`stackTrace`, which emits stack trace with any extra details available (alternatively call :js:func:`jsStackTrace` to get just the stack trace).
+If you have a good idea of the problem line you can add ``print(new Error().stack)`` to the JavaScript to get a stack trace at that point.
 
 Debug printouts can even execute arbitrary JavaScript. For example::
 
