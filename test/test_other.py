@@ -8441,7 +8441,8 @@ int main() {
     'wasmfs': (['-Oz', '-sWASMFS'], [], []), # noqa
   })
   def test_metadce_minimal(self, *args):
-    self.set_setting('INCOMING_MODULE_JS_API', [])
+    self.set_setting('STRICT')
+    self.emcc_args.append('--no-entry')
     self.run_metadce_test('minimal.c', *args)
 
   @node_pthreads
