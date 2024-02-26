@@ -2730,9 +2730,6 @@ for (var value in LibraryWebGPU.$WebGPU.FeatureName) {
 for (const key of Object.keys(LibraryWebGPU)) {
   if (typeof LibraryWebGPU[key] === 'function') {
     LibraryWebGPU[key + '__i53abi'] = true;
-    if (!(key + '__proxy' in LibraryWebGPU)) {
-      LibraryWebGPU[key + '__proxy'] = 'sync';
-    }
   }
 }
 
