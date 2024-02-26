@@ -170,6 +170,18 @@ You will need the specific sphinx version installed, which you can do using
 need to add `~/.local/bin` to your path, if pip installs to there).
 
 
+### Building and viewing the Website locally
+
+To build the site locally for testing purposes you only need a subset of the
+`update_docs.py` command just mentioned above. Specifically:
+
+1. Run the `pip3` command from before and adjust your path (see above).
+2. Go to `site/`.
+3. Run `make html`.
+4. Run a local webserver, like `python3 -m http.server`.
+5. Browse to `http://localhost:8000/build/html/` (or another port as relevant).
+
+
 ## Updating the `emcc.py` help text
 
 `emcc --help` output is generated from the main documentation under `site/`,
