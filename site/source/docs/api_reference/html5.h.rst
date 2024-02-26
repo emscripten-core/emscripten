@@ -419,13 +419,13 @@ Struct
   .. c:member:: long targetX
      long targetY
 
-    These fields give the mouse coordinates mapped relative to the coordinate space of the target DOM element receiving the input events (Emscripten-specific extension).
+    These fields give the mouse coordinates mapped relative to the coordinate space of the target DOM element receiving the input events (Emscripten-specific extension; coordinates are rounded down to whole units).
 
 
   .. c:member:: long canvasX
      long canvasY
 
-    These fields give the mouse coordinates mapped to the Emscripten canvas client area (Emscripten-specific extension).
+    These fields give the mouse coordinates mapped to the Emscripten canvas client area (Emscripten-specific extension; coordinates are rounded down to whole units).
 
 
   .. c:member:: long padding
