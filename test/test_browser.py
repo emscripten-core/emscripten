@@ -5844,22 +5844,22 @@ class emrun(RunnerCore):
   def test_emrun_info(self):
     if not has_browser():
       self.skipTest('need a browser')
-    result = self.run_process([EMRUN, '--system_info', '--browser_info'], stdout=PIPE).stdout
+    result = self.run_process([EMRUN, '--system-info', '--browser_info'], stdout=PIPE).stdout
     assert 'CPU' in result
     assert 'Browser' in result
     assert 'Traceback' not in result
 
-    result = self.run_process([EMRUN, '--list_browsers'], stdout=PIPE).stdout
+    result = self.run_process([EMRUN, '--list-browsers'], stdout=PIPE).stdout
     assert 'Traceback' not in result
 
   def test_no_browser(self):
-    # Test --no_browser mode where we have to take care of launching the browser ourselves
+    # Test --no-browser mode where we have to take care of launching the browser ourselves
     # and then killing emrun when we are done.
     if not has_browser():
       self.skipTest('need a browser')
 
     self.run_process([EMCC, test_file('test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
-    proc = subprocess.Popen([EMRUN, '--no_browser', '.', '--port=3333'], stdout=PIPE)
+    proc = subprocess.Popen([EMRUN, '--no-browser', '.', '--port=3333'], stdout=PIPE)
     try:
       if EMTEST_BROWSER:
         print('Starting browser')
@@ -5891,9 +5891,9 @@ class emrun(RunnerCore):
 
     os.chdir(path_from_root())
     args_base = [EMRUN, '--timeout', '30', '--safe_firefox_profile',
-                 '--kill_exit', '--port', '6939', '--verbose',
-                 '--log_stdout', self.in_dir('stdout.txt'),
-                 '--log_stderr', self.in_dir('stderr.txt')]
+                 '--kill-exit', '--port', '6939', '--verbose',
+                 '--log-stdout', self.in_dir('stdout.txt'),
+                 '--log-stderr', self.in_dir('stderr.txt')]
 
     # Verify that trying to pass argument to the page without the `--` separator will
     # generate an actionable error message
