@@ -26,14 +26,14 @@ class typed_promise: public val {
 public:
   typed_promise(val&& promise): val(std::move(promise)) {}
 
-  auto operator co_await() const {
+  auto operator co_await() && {
     struct typed_awaiter: public val::awaiter {
       T await_resume() {
         return val::awaiter::await_resume().template as<T>();
       }
     };
 
-    return typed_awaiter(*this);
+    return typed_awaiter(std::move(*this));
   }
 };
 
