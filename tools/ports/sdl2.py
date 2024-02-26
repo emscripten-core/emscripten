@@ -5,8 +5,8 @@
 
 import os
 
-TAG = 'release-2.26.0'
-HASH = '2e53af5aa3d3ca7e2b8653f999379bf424b2190aad32a7997350fc058624818cca3a780907af74c8f72305ca18a83a2aa15839e1dbc94107128125a7df9cd7fd'
+TAG = 'release-2.28.4'
+HASH = '8dd593fd7d8660efdeb53b7d1706f5743eb68491a29eb0cf0c028d8f8b8a7945c0dc5bf1117b5e4e871d7622be277c0838d08cc6eabdecb563000dfcc0c94639'
 SUBDIR = 'SDL-' + TAG
 
 variants = {'sdl2-mt': {'PTHREADS': 1}}
@@ -35,7 +35,8 @@ def get(ports, settings, shared):
     SDL_utils.c atomic/SDL_atomic.c atomic/SDL_spinlock.c audio/SDL_audio.c audio/SDL_audiocvt.c
     audio/SDL_audiodev.c audio/SDL_audiotypecvt.c audio/SDL_mixer.c audio/SDL_wave.c cpuinfo/SDL_cpuinfo.c
     dynapi/SDL_dynapi.c events/SDL_clipboardevents.c events/SDL_displayevents.c events/SDL_dropevents.c
-    events/SDL_events.c events/SDL_gesture.c events/SDL_keyboard.c events/SDL_mouse.c events/SDL_quit.c
+    events/SDL_events.c events/SDL_gesture.c events/SDL_keyboard.c events/SDL_keysym_to_scancode.c
+    events/SDL_scancode_tables.c events/SDL_mouse.c events/SDL_quit.c
     events/SDL_touch.c events/SDL_windowevents.c file/SDL_rwops.c haptic/SDL_haptic.c
     joystick/controller_type.c joystick/SDL_gamecontroller.c joystick/SDL_joystick.c
     power/SDL_power.c render/SDL_d3dmath.c render/SDL_render.c
@@ -79,11 +80,6 @@ def get(ports, settings, shared):
 
 def clear(ports, settings, shared):
   shared.cache.erase_lib(get_lib_name(settings))
-
-
-def linker_setup(ports, settings):
-  # TODO(sbc): Move these into native code use EM_JS_DEPS macro.
-  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$autoResumeAudioContext', '$dynCall']
 
 
 def process_args(ports):

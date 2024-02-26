@@ -3555,9 +3555,8 @@ addToLibrary({
 
   $HandleAllocator: class {
     constructor() {
-      // TODO(sbc): Use class fields once we allow/enable es2022 in
-      // JavaScript input to acorn and closure.
-      // Reserve slot 0 so that 0 is always an invalid handle
+      // TODO(https://github.com/emscripten-core/emscripten/issues/21414):
+      // Use inline field declarations.
       this.allocated = [undefined];
       this.freelist = [];
     }
