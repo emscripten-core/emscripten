@@ -942,16 +942,21 @@ var LibraryHTML5 = {
 
     var orientationIndex = -1;
     var orientationAngle =  0;
-    var orientation = screenOrientation();
-    if (orientation) {
-      orientationIndex = orientationsType1.indexOf(orientation.type);
+    var screenOrientObj  = screenOrientation();
+    if (screenOrientObj) {
+      orientationIndex = orientationsType1.indexOf(screenOrientObj.type);
       if (orientationIndex == -1) {
-        orientationIndex = orientationsType2.indexOf(orientation.type);
+        orientationIndex = orientationsType2.indexOf(screenOrientObj.type);
       }
       if (orientationIndex != -1) {
         orientationIndex = 1 << orientationIndex;
       }
-      orientationAngle = orientation.angle;
+      orientationAngle = screenOrientObj.angle;
+    } else {
+      // fallback on the deprecated API (mostly for Safari before 2023)
+      if (window && (window["orientation"] !== undefined)) {
+        orientationAngle = window["orientation"];
+      }
     }
 
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationIndex, 'orientationIndex', 'i32') }}};
