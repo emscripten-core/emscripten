@@ -120,6 +120,13 @@ legacyFuncs = {
     });
   },
 #endif
+
+  $stackTrace__deps: ['$jsStackTrace'],
+  $stackTrace: function() {
+    var js = jsStackTrace();
+    if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();
+    return js;
+  }
 };
 
 if (WARN_DEPRECATED && !INCLUDE_FULL_LIBRARY) {
