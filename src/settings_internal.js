@@ -143,11 +143,6 @@ var AUDIO_WORKLET_FILE = '';
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 
-// When this is false we use an external memory init file
-// See --memory-init-file.  When not using wasm2js this flag is ignored, and
-// this setting will always be true.
-var MEM_INIT_IN_WASM = true;
-
 // If set to 1, src/base64Utils.js will be included in the bundle.
 // This is set internally when needed (SINGLE_FILE)
 var SUPPORT_BASE64_EMBEDDING = false;

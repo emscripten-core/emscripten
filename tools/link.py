@@ -193,14 +193,6 @@ def setup_environment_settings():
     exit_with_error('when building with multithreading enabled and a "-sENVIRONMENT=" directive is specified, it must include "worker" as a target! (Try e.g. -sENVIRONMENT=web,worker)')
 
 
-def embed_memfile(options):
-  return (settings.SINGLE_FILE or
-          (settings.WASM2JS and not options.memory_init_file and
-           (not settings.MAIN_MODULE and
-            not settings.SIDE_MODULE and
-            not settings.GENERATE_SOURCE_MAP)))
-
-
 def generate_js_sym_info():
   # Runs the js compiler to generate a list of all symbols available in the JS
   # libraries.  This must be done separately for each linker invocation since the
@@ -325,13 +317,7 @@ def should_run_binaryen_optimizer():
   return settings.OPT_LEVEL >= 2
 
 
-def remove_trailing_zeros(memfile):
-  mem_data = utils.read_binary(memfile)
-  mem_data = mem_data.rstrip(b'\0')
-  utils.write_binary(memfile, mem_data)
-
-
-def get_binaryen_passes(memfile):
+def get_binaryen_passes():
   passes = []
   optimizing = should_run_binaryen_optimizer()
   # wasm-emscripten-finalize will strip the features section for us
@@ -416,12 +402,6 @@ def get_binaryen_passes(memfile):
 
   if settings.MEMORY64 == 2:
     passes += ['--memory64-lowering']
-
-  if memfile:
-    passes += [
-      f'--separate-data-segments={memfile}',
-      f'--pass-arg=separate-data-segments-global-base@{settings.GLOBAL_BASE}'
-    ]
 
   if settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
     passes += ['--ignore-implicit-traps']
@@ -1477,19 +1457,7 @@ def phase_linker_setup(options, state, newargs):
     exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
 
   if settings.WASM2JS:
-    if options.memory_init_file is None:
-      options.memory_init_file = settings.OPT_LEVEL >= 2
     settings.MAYBE_WASM2JS = 1
-    # when using wasm2js, if the memory segments are in the wasm then they
-    # end up converted by wasm2js into base64 encoded JS. alternatively, we
-    # can use a .mem file like asm.js used to.
-    # generally we follow what the options tell us to do (which is to use
-    # a .mem file in most cases, since it is binary & compact). however, for
-    # shared memory builds we must keep the memory segments in the wasm as
-    # they will be passive segments which the .mem format cannot handle.
-    settings.MEM_INIT_IN_WASM = not options.memory_init_file or settings.SINGLE_FILE or settings.SHARED_MEMORY
-  elif options.memory_init_file:
-    diagnostics.warning('unsupported', '--memory-init-file is only supported with -sWASM=0')
 
   if settings.AUTODEBUG:
     settings.REQUIRED_EXPORTS += ['setTempRet0']
@@ -1854,7 +1822,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
 
   settings.TARGET_JS_NAME = os.path.basename(state.js_target)
 
-  metadata = phase_emscript(options, in_wasm, wasm_target, js_syms)
+  metadata = phase_emscript(in_wasm, wasm_target, js_syms)
 
   if settings.EMBIND_AOT:
     phase_embind_aot(wasm_target, js_syms)
@@ -1865,24 +1833,21 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
   if options.js_transform:
     phase_source_transforms(options)
 
-  if settings.MEM_INIT_IN_WASM:
-    memfile = None
-  else:
-    memfile = shared.replace_or_append_suffix(target, '.mem')
-
-  phase_binaryen(target, options, wasm_target, memfile)
+  phase_binaryen(target, options, wasm_target)
 
   # If we are not emitting any JS then we are all done now
   if options.oformat != OFormat.WASM:
-    phase_final_emitting(options, state, target, wasm_target, memfile)
+    phase_final_emitting(options, state, target, wasm_target)
 
 
 @ToolchainProfiler.profile_block('emscript')
-def phase_emscript(options, in_wasm, wasm_target, js_syms):
+def phase_emscript(in_wasm, wasm_target, js_syms):
   # Emscripten
   logger.debug('emscript')
 
-  settings.SUPPORT_BASE64_EMBEDDING = embed_memfile(options)
+  # No need to support base64 embeddeding in wasm2js mode since
+  # the module is already in JS format.
+  settings.SUPPORT_BASE64_EMBEDDING = settings.SINGLE_FILE and not settings.WASM2JS
 
   if shared.SKIP_SUBPROCS:
     return
@@ -1984,18 +1949,6 @@ def phase_source_transforms(options):
   save_intermediate('transformed')
 
 
-@ToolchainProfiler.profile_block('memory initializer')
-def phase_memory_initializer(memfile):
-  # For the wasm backend, we don't have any memory info in JS. All we need to do
-  # is set the memory initializer url.
-  global final_js
-
-  src = read_file(final_js)
-  src = do_replace(src, '<<< MEM_INITIALIZER >>>', '"%s"' % os.path.basename(memfile))
-  write_file(final_js + '.mem.js', src)
-  final_js += '.mem.js'
-
-
 # Unmangle previously mangled `import.meta` and `await import` references in
 # both main code and libraries.
 # See also: `preprocess` in parseTools.js.
@@ -2025,7 +1978,7 @@ def create_worker_file(input_file, target_dir, output_file):
 
 
 @ToolchainProfiler.profile_block('final emitting')
-def phase_final_emitting(options, state, target, wasm_target, memfile):
+def phase_final_emitting(options, state, target, wasm_target):
   global final_js
 
   if shared.SKIP_SUBPROCS:
@@ -2088,12 +2041,9 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
   # If we were asked to also generate HTML, do that
   if options.oformat == OFormat.HTML:
     generate_html(target, options, js_target, target_basename,
-                  wasm_target, memfile)
+                  wasm_target)
   elif settings.PROXY_TO_WORKER:
     generate_worker_js(target, js_target, target_basename)
-
-  if embed_memfile(options) and memfile:
-    delete_file(memfile)
 
   if settings.SPLIT_MODULE:
     diagnostics.warning('experimental', 'the SPLIT_MODULE setting is experimental and subject to change')
@@ -2107,7 +2057,7 @@ def phase_final_emitting(options, state, target, wasm_target, memfile):
 
 
 @ToolchainProfiler.profile_block('binaryen')
-def phase_binaryen(target, options, wasm_target, memfile):
+def phase_binaryen(target, options, wasm_target):
   global final_js
   logger.debug('using binaryen')
   # whether we need to emit -g (function name debug info) in the final wasm
@@ -2130,7 +2080,7 @@ def phase_binaryen(target, options, wasm_target, memfile):
   # run wasm-opt if we have work for it: either passes, or if we are using
   # source maps (which requires some extra processing to keep the source map
   # but remove DWARF)
-  passes = get_binaryen_passes(memfile)
+  passes = get_binaryen_passes()
   if passes:
     # if asyncify is used, we will use it in the next stage, and so if it is
     # the only reason we need intermediate debug info, we can stop keeping it
@@ -2146,18 +2096,6 @@ def phase_binaryen(target, options, wasm_target, memfile):
                             args=passes,
                             debug=intermediate_debug_info)
       building.save_intermediate(wasm_target, 'byn.wasm')
-
-    if memfile:
-      # we have a separate .mem file. binaryen did not strip any trailing zeros,
-      # because it's an ABI question as to whether it is valid to do so or not.
-      # we can do so here, since we make sure to zero out that memory (even in
-      # the dynamic linking case, our loader zeros it out)
-      remove_trailing_zeros(memfile)
-
-      # MINIMAL_RUNTIME doesn't use `var memoryInitializer` but instead expects Module['mem'] to
-      # be loaded before the module.  See src/postamble_minimal.js.
-      if not settings.MINIMAL_RUNTIME:
-        phase_memory_initializer(memfile)
 
   if settings.EVAL_CTORS:
     with ToolchainProfiler.profile_block('eval_ctors'):
@@ -2424,7 +2362,7 @@ def module_export_name_substitution():
 
 
 def generate_traditional_runtime_html(target, options, js_target, target_basename,
-                                      wasm_target, memfile):
+                                      wasm_target):
   script = ScriptSource()
 
   if settings.EXPORT_NAME != 'Module' and options.shell_path == DEFAULT_SHELL_HTML:
@@ -2468,19 +2406,6 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     script.src = base_js_target
 
   if not settings.SINGLE_FILE:
-    if memfile and not settings.MINIMAL_RUNTIME:
-      # start to load the memory init file in the HTML, in parallel with the JS
-      script.un_src()
-      script.inline = ('''
-          var memoryInitializer = '%s';
-          memoryInitializer = Module['locateFile'] ? Module['locateFile'](memoryInitializer, '') : memoryInitializer;
-          Module['memoryInitializerRequestURL'] = memoryInitializer;
-          var meminitXHR = Module['memoryInitializerRequest'] = new XMLHttpRequest();
-          meminitXHR.open('GET', memoryInitializer, true);
-          meminitXHR.responseType = 'arraybuffer';
-          meminitXHR.send(null);
-''' % get_subresource_location(memfile)) + script.inline
-
     if not settings.WASM_ASYNC_COMPILATION:
       # We need to load the wasm file before anything else, since it
       # has be synchronously ready.
@@ -2577,15 +2502,13 @@ def minify_html(filename):
   logger.debug(f'HTML minification took {elapsed_time:.2f} seconds, and shrunk size of {filename} from {size_before} to {size_after} bytes, delta={delta} ({delta * 100.0 / size_before:+.2f}%)')
 
 
-def generate_html(target, options, js_target, target_basename,
-                  wasm_target, memfile):
+def generate_html(target, options, js_target, target_basename, wasm_target):
   logger.debug('generating HTML')
 
   if settings.MINIMAL_RUNTIME:
     generate_minimal_runtime_html(target, options, js_target, target_basename)
   else:
-    generate_traditional_runtime_html(target, options, js_target, target_basename,
-                                      wasm_target, memfile)
+    generate_traditional_runtime_html(target, options, js_target, target_basename, wasm_target)
 
   if settings.MINIFY_HTML and (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1):
     minify_html(target)

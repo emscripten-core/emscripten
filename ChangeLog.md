@@ -25,6 +25,10 @@ See docs/process.md for more on how version tagging works.
   only exported on demand.  This means that they must be added to
   `EXPORTED_RUNTIME_METHODS` for them to appear on the `Module` object.  For
   now, this only effects users of `STRICT` mode. (#21439)
+- Emscripten no longer supports `--memory-init-file` (i.e. extracting static
+  data into an external .mem file).  This feature was only available under
+  wasm2js (`-sWASM=0`) anyway so this change will only affect users of this
+  setting. (#21217)
 
 3.1.54 - 02/15/24
 -----------------
@@ -61,7 +65,6 @@ See docs/process.md for more on how version tagging works.
   (ex: `embuilder sdl2_image:formats=png,jpg`) (#21345) 
 - Allow comments in response files. Any line starting with `#` is now ignored.
   This is useful when listing exported symbols. (#21330)
-
 
 3.1.53 - 01/29/24
 -----------------

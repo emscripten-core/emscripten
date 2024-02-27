@@ -847,17 +847,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.js_engines = [nodejs]
     self.node_args += shared.node_pthread_flags(nodejs)
 
-  def uses_memory_init_file(self):
-    if self.get_setting('SIDE_MODULE') or self.is_wasm():
-      return False
-
-    if '--memory-init-file' in self.emcc_args:
-      return int(self.emcc_args[self.emcc_args.index('--memory-init-file') + 1])
-
-    # side modules handle memory differently; binaryen puts the memory in the wasm module
-    opt_supports = any(opt in self.emcc_args for opt in ('-O2', '-O3', '-Os', '-Oz'))
-    return opt_supports
-
   def set_temp_dir(self, temp_dir):
     self.temp_dir = temp_dir
     self.canonical_temp_dir = get_canonical_temp_dir(self.temp_dir)
@@ -1103,11 +1092,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
-
-    if js_outfile and self.uses_memory_init_file():
-      src = read_file(output)
-      # side memory init file, or an empty one in the js
-      assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
 
     return output
 
