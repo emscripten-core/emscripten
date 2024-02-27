@@ -226,7 +226,7 @@ def main(args):
       address += get_codesec_offset(module)
 
     if ((has_debug_line_section(module) and not args.source) or
-          'dwarf' in args.source):
+       'dwarf' in args.source):
       symbolize_address_symbolizer(module, address, is_dwarf=True)
     elif ((get_sourceMappingURL_section(module) and not args.source) or
           'sourcemap' in args.source):
