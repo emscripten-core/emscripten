@@ -175,10 +175,10 @@ need to add `~/.local/bin` to your path, if pip installs to there).
 To build the site locally for testing purposes you only need a subset of the
 `update_docs.py` command just mentioned above. Specifically:
 
-1. Run the `pip3` command from before and adjust your path (see above).
+1. Run `pip3` to install python dependencies, as described above.
 2. Run `make -C site html`.
-4. Run a local webserver, like `python3 -m http.server`.
-5. Browse to `http://localhost:8000/build/html/` (or another port as relevant).
+3. Run a local webserver, e.g. `python3 -m http.server 8000 -d site/build/html`.
+4. Browse to `http://localhost:8000/` (adjust port as needed).
 
 
 ## Updating the `emcc.py` help text
