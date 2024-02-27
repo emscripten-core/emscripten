@@ -10,8 +10,9 @@
 
 {{{
   globalThis.isCurrentContextWebGL2 = () => {
+    // This function should only be called inside of `#if MAX_WEBGL_VERSION >= 2` blocks
+    assert(MAX_WEBGL_VERSION >= 2, 'isCurrentContextWebGL2 called without webgl2 support');
     if (MIN_WEBGL_VERSION >= 2) return 'true';
-    if (MAX_WEBGL_VERSION <= 1) return 'false';
     return 'GL.currentContext.version >= 2';
   }
   null;
