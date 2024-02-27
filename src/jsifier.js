@@ -102,14 +102,21 @@ function shouldPreprocess(fileName) {
   return content.startsWith('#preprocess\n') || content.startsWith('#preprocess\r\n');
 }
 
+function getIncludeFile(fileName, needsPreprocess) {
+  let result = `// include: ${fileName}\n`;
+  if (needsPreprocess) {
+    result += processMacros(preprocess(fileName), fileName);
+  } else {
+    result += read(fileName);
+  }
+  result += `// end include: ${fileName}\n`;
+  return result;
+}
+
 function preJS() {
   let result = '';
   for (const fileName of PRE_JS_FILES) {
-    if (shouldPreprocess(fileName)) {
-      result += processMacros(preprocess(fileName));
-    } else {
-      result += read(fileName);
-    }
+    result += getIncludeFile(fileName, shouldPreprocess(fileName));
   }
   return result;
 }
@@ -601,13 +608,7 @@ function(${args}) {
   }
 
   function includeFile(fileName, needsPreprocess = true) {
-    print(`// include: ${fileName}`);
-    if (needsPreprocess) {
-      print(processMacros(preprocess(fileName)));
-    } else {
-      print(read(fileName));
-    }
-    print(`// end include: ${fileName}`);
+    print(getIncludeFile(fileName, needsPreprocess))
   }
 
   function finalCombiner() {

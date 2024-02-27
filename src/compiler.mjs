@@ -45,8 +45,8 @@ globalThis.read = (filename) => {
 };
 
 function load(f) {
-  (0, eval)(read(f) + '//# sourceURL=' + find(f));
-};
+  vm.runInThisContext(read(f), { filename: find(f) });
+}
 
 // Basic utilities
 load('utility.js');
