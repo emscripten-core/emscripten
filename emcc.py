@@ -261,7 +261,7 @@ def apply_user_settings():
     filename = None
     if value and value[0] == '@':
       filename = removeprefix(value, '@')
-      if not os.path.exists(filename):
+      if not os.path.isfile(filename):
         exit_with_error('%s: file not found parsing argument: %s=%s' % (filename, key, value))
       value = read_file(filename).strip()
     else:
@@ -578,7 +578,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   if 'EMMAKEN_COMPILER' in os.environ:
     exit_with_error('`EMMAKEN_COMPILER` is no longer supported.\n' +
-                    'Please use the `LLVM_ROOT` and/or `COMPILER_WRAPPER` config settings instread')
+                    'Please use the `LLVM_ROOT` and/or `COMPILER_WRAPPER` config settings instead')
 
   if 'EMMAKEN_CFLAGS' in os.environ:
     exit_with_error('`EMMAKEN_CFLAGS` is no longer supported, please use `EMCC_CFLAGS` instead')
@@ -612,7 +612,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     libname = print_file_name[-1].split('=')[1]
     system_libpath = cache.get_lib_dir(absolute=True)
     fullpath = os.path.join(system_libpath, libname)
-    if os.path.exists(fullpath):
+    if os.path.isfile(fullpath):
       print(fullpath)
     else:
       print(libname)

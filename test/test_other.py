@@ -37,6 +37,7 @@ from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires
 from common import requires_wasm_eh, crossplatform, with_both_sjlj, also_with_standalone_wasm
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, flaky
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
+from common import requires_network
 from tools import shared, building, utils, response_file, cache
 from tools.utils import read_file, write_file, delete_file, read_binary
 import common
@@ -1001,6 +1002,7 @@ f.close()
       [EMCMAKE, 'cmake', cmake_dir, '-DEMSCRIPTEN_SYSTEM_PROCESSOR=arm'], stdout=PIPE).stdout
     self.assertContained('CMAKE_SYSTEM_PROCESSOR is arm', out)
 
+  @requires_network
   def test_cmake_find_stuff(self):
     # Ensure that zlib exists in the sysroot
     self.run_process([EMCC, test_file('hello_world.c'), '-sUSE_ZLIB'])
@@ -1021,6 +1023,7 @@ f.close()
     self.assertContained('foo: 42\n', self.run_js('build2/Bar.js'))
     self.run_process(['cmake', '--build', 'build2', '--target', 'install'])
 
+  @requires_network
   def test_cmake_find_modules(self):
     self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_modules')])
     self.run_process(['cmake', '--build', '.'])
@@ -2276,6 +2279,7 @@ int f() {
     ''')
     self.do_runf('main.c', '204\n')
 
+  @requires_network
   def test_sdl2_mixer_wav(self):
     self.emcc(test_file('browser/test_sdl2_mixer_wav.c'), ['-sUSE_SDL_MIXER=2'], output_filename='a.out.js')
     self.emcc(test_file('browser/test_sdl2_mixer_wav.c'), ['--use-port=sdl2_mixer'], output_filename='a.out.js')
@@ -2286,11 +2290,13 @@ int f() {
     self.emcc(test_file('browser/test_sdl2_misc.c'), ['-sLINKABLE', '-sUSE_SDL=2'], output_filename='a.out.js')
     self.emcc(test_file('browser/test_sdl2_misc.c'), ['-sLINKABLE', '--use-port=sdl2'], output_filename='a.out.js')
 
+  @requires_network
   def test_sdl2_gfx_linkable(self):
     # Same as above but for sdl2_gfx library
     self.emcc(test_file('browser/test_sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sLINKABLE', '-sUSE_SDL_GFX=2'], output_filename='a.out.js')
     self.emcc(test_file('browser/test_sdl2_misc.c'), ['-Wl,-fatal-warnings', '-sLINKABLE', '--use-port=sdl2_gfx'], output_filename='a.out.js')
 
+  @requires_network
   def test_libpng(self):
     shutil.copyfile(test_file('third_party/libpng/pngtest.png'), 'pngtest.png')
     self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
@@ -2299,11 +2305,13 @@ int f() {
                  emcc_args=['--embed-file', 'pngtest.png', '--use-port=libpng'])
 
   @node_pthreads
+  @requires_network
   def test_libpng_with_pthreads(self):
     shutil.copyfile(test_file('third_party/libpng/pngtest.png'), 'pngtest.png')
     self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
                  emcc_args=['--embed-file', 'pngtest.png', '-sUSE_LIBPNG', '-pthread'])
 
+  @requires_network
   def test_giflib(self):
     # giftext.c contains a sprintf warning
     self.emcc_args += ['-Wno-fortify-source']
@@ -2322,6 +2330,7 @@ int f() {
                  emcc_args=['--embed-file', 'treescap.gif', '--use-port=giflib'],
                  args=['treescap.gif'])
 
+  @requires_network
   def test_libjpeg(self):
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
     self.do_runf('jpeg_test.c', 'Image is 600 by 450 with 3 components',
@@ -2331,15 +2340,18 @@ int f() {
                  emcc_args=['--embed-file', 'screenshot.jpg', '--use-port=libjpeg'],
                  args=['screenshot.jpg'])
 
+  @requires_network
   def test_bullet(self):
     self.do_runf('bullet_hello_world.cpp', 'BULLET RUNNING', emcc_args=['-sUSE_BULLET'])
     self.do_runf('bullet_hello_world.cpp', 'BULLET RUNNING', emcc_args=['--use-port=bullet'])
 
+  @requires_network
   def test_vorbis(self):
     # This will also test if ogg compiles, because vorbis depends on ogg
     self.do_runf('vorbis_test.c', 'ALL OK', emcc_args=['-sUSE_VORBIS'])
     self.do_runf('vorbis_test.c', 'ALL OK', emcc_args=['--use-port=vorbis'])
 
+  @requires_network
   def test_bzip2(self):
     self.do_runf('bzip2_test.c', 'usage: unzcrash filename',
                  emcc_args=['-sUSE_BZIP2', '-Wno-pointer-sign'])
@@ -2347,6 +2359,7 @@ int f() {
                  emcc_args=['--use-port=bzip2', '-Wno-pointer-sign'])
 
   @with_both_sjlj
+  @requires_network
   def test_freetype(self):
     # copy the Liberation Sans Bold truetype file located in the
     # <emscripten_root>/test/freetype to the compilation folder
@@ -2375,19 +2388,23 @@ int f() {
     self.do_runf('freetype_test.c', expectedOutput,
                  emcc_args=['--use-port=freetype', '--embed-file', 'LiberationSansBold.ttf'])
 
+  @requires_network
   def test_freetype_with_pthreads(self):
     # Verify that freetype supports compilation requiring pthreads
     self.emcc(test_file('freetype_test.c'), ['-pthread', '-sUSE_FREETYPE'], output_filename='a.out.js')
 
+  @requires_network
   def test_icu(self):
     self.set_setting('USE_ICU')
     self.do_runf('other/test_icu.cpp')
 
+  @requires_network
   def test_sdl2_ttf(self):
     # This is a compile-only to test to verify that sdl2-ttf (and freetype and harfbuzz) are buildable.
     self.emcc(test_file('browser/test_sdl2_ttf.c'), args=['-sUSE_SDL=2', '-sUSE_SDL_TTF=2'], output_filename='a.out.js')
     self.emcc(test_file('browser/test_sdl2_ttf.c'), args=['--use-port=sdl2', '--use-port=sdl2_ttf'], output_filename='a.out.js')
 
+  @requires_network
   def test_contrib_ports(self):
     # Verify that contrib ports can be used (using the only contrib port available ATM, but can be replaced
     # with a different contrib port when there is another one
@@ -2401,6 +2418,7 @@ int f() {
     self.do_runf('other/test_external_ports_simple.c', emcc_args=[f'--use-port={simple_port_path}'])
 
   @crossplatform
+  @requires_network
   def test_external_ports(self):
     if config.FROZEN_CACHE:
       self.skipTest("test doesn't work with frozen cache")
@@ -2417,6 +2435,16 @@ int f() {
     stderr = self.expect_fail([EMCC, test_file('other/test_external_ports.c'), f'--use-port={external_port_path}:dependency=invalid', '-o', 'a4.out.js'])
     self.assertFalse(os.path.exists('a4.out.js'))
     self.assertContained('unknown dependency `invalid` for port `external`', stderr)
+    # testing help
+    stdout = self.run_process([EMCC, test_file('other/test_external_ports.c'), f'--use-port={external_port_path}:help'], stdout=PIPE).stdout
+    self.assertContained('''external (--use-port=external; Test License)
+Test Description
+Options:
+* value1: Value for define TEST_VALUE_1
+* value2: Value for define TEST_VALUE_2
+* dependency: A dependency
+More info: https://emscripten.org
+''', stdout)
 
   def test_link_memcpy(self):
     # memcpy can show up *after* optimizations, so after our opportunity to link in libc, so it must be special-cased
@@ -5663,7 +5691,7 @@ int main() {
     with env_modify(env):
       if fail:
         err = self.expect_fail(cmd)
-        self.assertContained('undefined symbol: malloc', err)
+        self.assertContained('undefined symbol: emscripten_builtin_memalign', err)
       else:
         err = self.run_process(cmd, stderr=PIPE).stderr
         if 'EMCC_ONLY_FORCED_STDLIBS' in env:
@@ -8413,7 +8441,8 @@ int main() {
     'wasmfs': (['-Oz', '-sWASMFS'], [], []), # noqa
   })
   def test_metadce_minimal(self, *args):
-    self.set_setting('INCOMING_MODULE_JS_API', [])
+    self.set_setting('STRICT')
+    self.emcc_args.append('--no-entry')
     self.run_metadce_test('minimal.c', *args)
 
   @node_pthreads
@@ -8777,6 +8806,12 @@ int main() {
       self.run_process([EMCC, test_file('hello_world.c'), '--pre-js', 'pre.js'] + opts)
       out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
       self.assertContained('no native wasm support detected', out)
+
+  def test_exceptions_c_linker(self):
+    # Test that we don't try to create __cxa_find_matching_catch_xx function automatically
+    # when not linking as C++.
+    stderr = self.expect_fail([EMCC, '-sSTRICT', test_file('other/test_exceptions_c_linker.c')])
+    self.assertContained('error: undefined symbol: __cxa_find_matching_catch_1', stderr)
 
   @parameterized({
     '': (False,),
@@ -9621,7 +9656,7 @@ int main() {
     self.do_runf('src.c', 'hello!', emcc_args=args)
 
   def test_check_sourcemapurl(self):
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('only supported with wasm')
     self.run_process([EMCC, test_file('hello_123.c'), '-gsource-map', '-o', 'a.js', '--source-map-base', 'dir/'])
     output = read_binary('a.wasm')
@@ -9647,7 +9682,7 @@ int main() {
     'profiling': ['--profiling'] # -gsource-map --profiling should still emit a source map; see #8584
   })
   def test_check_sourcemapurl_default(self, *args):
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('only supported with wasm')
 
     self.run_process([EMCC, test_file('hello_123.c'), '-gsource-map', '-o', 'a.js'] + list(args))
@@ -11875,9 +11910,14 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     # unless we explicitly disable polyfills
     test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
 
-  def test_webgpu_compiletest(self):
-    for args in [[], ['-sASSERTIONS'], ['-sASSERTIONS', '--closure=1'], ['-sMAIN_MODULE=1']]:
-      self.run_process([EMXX, test_file('webgpu_jsvalstore.cpp'), '-sUSE_WEBGPU', '-sASYNCIFY'] + args)
+  @parameterized({
+    '': ([],),
+    'assertions': (['-sASSERTIONS'],),
+    'closure': (['-sASSERTIONS', '--closure=1'],),
+    'dylink': (['-sMAIN_MODULE'],),
+  })
+  def test_webgpu_compiletest(self, args):
+    self.run_process([EMXX, test_file('webgpu_jsvalstore.cpp'), '-sUSE_WEBGPU', '-sASYNCIFY'] + args)
 
   def test_signature_mismatch(self):
     create_file('a.c', 'void foo(); int main() { foo(); return 0; }')
@@ -13845,6 +13885,7 @@ foo/version.txt
     self.do_other_test('test_itimer.c')
 
   @node_pthreads
+  @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
   def test_itimer_pthread(self):
     self.do_other_test('test_itimer.c')
 
@@ -14352,7 +14393,7 @@ addToLibrary({
 });
 ''')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=foo'])
-    self.assertContained('error: noExitRuntime cannot be referenced via __deps mechansim', err)
+    self.assertContained('error: noExitRuntime cannot be referenced via __deps mechanism', err)
 
   def test_hello_world_argv(self):
     self.do_runf('hello_world_argv.c', 'hello, world! (1)')

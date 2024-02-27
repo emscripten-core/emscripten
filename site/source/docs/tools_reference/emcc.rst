@@ -466,8 +466,9 @@ Options that are modified or new in *emcc* are listed below:
   can have options separated by ``:``
   (ex: ``--use-port=sdl2_image:formats=png,jpg``). To use an  external port,
   you provide the path to the port directly
-  (ex: ``--use-port=/path/to/my_port.py``). To get the list of available ports,
-  use ``--show-ports``.
+  (ex: ``--use-port=/path/to/my_port.py``). To get more information about a
+  port, use the ``help`` option (ex: ``--use-port=sdl2_image:help``).
+  To get the list of available ports, use ``--show-ports``.
 
 .. _emcc-clear-ports:
 

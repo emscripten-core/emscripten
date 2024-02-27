@@ -419,13 +419,13 @@ Struct
   .. c:member:: long targetX
      long targetY
 
-    These fields give the mouse coordinates mapped relative to the coordinate space of the target DOM element receiving the input events (Emscripten-specific extension).
+    These fields give the mouse coordinates mapped relative to the coordinate space of the target DOM element receiving the input events (Emscripten-specific extension; coordinates are rounded down to the nearest integer).
 
 
   .. c:member:: long canvasX
      long canvasY
 
-    These fields give the mouse coordinates mapped to the Emscripten canvas client area (Emscripten-specific extension).
+    These fields give the mouse coordinates mapped to the Emscripten canvas client area (Emscripten-specific extension; coordinates are rounded down the nearest integer).
 
 
   .. c:member:: long padding
@@ -596,7 +596,7 @@ Struct
 
   .. c:member:: long detail
 
-    Specifies additional detail/information about this event.
+    For resize and scroll events this is always zero.
 
   .. c:member:: int documentBodyClientWidth
     int documentBodyClientHeight
@@ -616,7 +616,7 @@ Struct
   .. c:member:: int scrollTop
     int scrollLeft
 
-    The page scroll position.
+    The page scroll position (rounded down to the nearest pixel).
 
 
 Callback functions

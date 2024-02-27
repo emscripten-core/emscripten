@@ -232,7 +232,7 @@ def main():
   auto_tasks = False
   task_targets = dict.fromkeys(args.targets) # use dict to keep targets order
 
-  # subsitute
+  # substitute
   predefined_tasks = {
     'SYSTEM': system_tasks,
     'USER': PORTS,
