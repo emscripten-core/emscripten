@@ -177,8 +177,9 @@ To build the site locally for testing purposes you only need a subset of the
 
 1. Run `pip3` to install python dependencies, as described above.
 2. Run `make -C site html`.
-3. Run a local webserver, e.g. `python3 -m http.server 8000 -d site/build/html`.
-4. Browse to `http://localhost:8000/` (adjust port as needed).
+3. Run a local webserver on the outout of that command, e.g.,
+   `python3 -m http.server 8000 -d site/build/html`.
+4. Browse to `http://localhost:8000/` (assuming you use port 8000 as above).
 
 
 ## Updating the `emcc.py` help text
