@@ -831,13 +831,13 @@ If manually bisecting:
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
     self.btest_exit('test_sdl_stb_image_cleanup.c', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL', '--memoryprofiler'])
 
-  def test_sdl_canvas(self):
-    self.btest_exit('test_sdl_canvas.c', args=['-sLEGACY_GL_EMULATION', '-lSDL', '-lGL'])
-    # some extra coverage
-    self.clear()
-    self.btest_exit('test_sdl_canvas.c', args=['-sLEGACY_GL_EMULATION', '-O0', '-sSAFE_HEAP', '-lSDL', '-lGL'])
-    self.clear()
-    self.btest_exit('test_sdl_canvas.c', args=['-sLEGACY_GL_EMULATION', '-O2', '-sSAFE_HEAP', '-lSDL', '-lGL'])
+  @parameterized({
+    '': ([],),
+    'safe_heap': (['-sSAFE_HEAP'],),
+    'safe_heap_O2': (['-sSAFE_HEAP', '-O2'],),
+  })
+  def test_sdl_canvas(self, args):
+    self.btest_exit('test_sdl_canvas.c', args=['-sLEGACY_GL_EMULATION', '-lSDL', '-lGL'] + args)
 
   def post_manual_reftest(self):
     assert os.path.exists('reftest.js')
