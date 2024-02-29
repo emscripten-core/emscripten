@@ -7,7 +7,7 @@ import os
 from typing import Dict, Optional
 import pathlib
 
-HASH='57e42242887d337f49bc0a1c5a0b6c327c0da9578b735b0bfd5dfff9cfca1b12d280d31f22894eb746e6d878bdd278ca405bc62579d202898ba60ee7dae71e80'
+HASH = '57e42242887d337f49bc0a1c5a0b6c327c0da9578b735b0bfd5dfff9cfca1b12d280d31f22894eb746e6d878bdd278ca405bc62579d202898ba60ee7dae71e80'
 
 URL = 'https://emscripten.org'
 DESCRIPTION = 'Test Description'
