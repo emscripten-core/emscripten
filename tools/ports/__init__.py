@@ -300,7 +300,7 @@ class Ports:
         import requests
         response = requests.get(url)
         data = response.content
-      except ImportError:
+      except (ImportError, requests.exceptions.InvalidSchema):
         from urllib.request import urlopen
         f = urlopen(url)
         data = f.read()
