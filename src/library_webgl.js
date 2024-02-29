@@ -14,7 +14,7 @@
     assert(MAX_WEBGL_VERSION >= 2, 'isCurrentContextWebGL2 called without webgl2 support');
     if (MIN_WEBGL_VERSION >= 2) return 'true';
     return 'GL.currentContext.version >= 2';
-  }
+  };
   null;
 }}}
 
@@ -1677,14 +1677,11 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       } else if (pixels) {
         var heap = heapObjectForWebGLType(type);
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, heap, toTypedArrayIndex(pixels, heap));
-      } else {
-        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, null);
+        return;
       }
-      return;
     }
 #endif
-    var pixelData = null;
-    if (pixels) pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, 0);
+    var pixelData = pixels ? emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, 0) : null;
     GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixelData);
   },
 
@@ -1855,16 +1852,14 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       } else {
         GLctx.bufferData(target, size, usage);
       }
-    } else {
-#endif
-      // N.b. here first form specifies a heap subarray, second form an integer
-      // size, so the ?: code here is polymorphic. It is advised to avoid
-      // randomly mixing both uses in calling code, to avoid any potential JS
-      // engine JIT issues.
-      GLctx.bufferData(target, data ? HEAPU8.subarray(data, data+size) : size, usage);
-#if MAX_WEBGL_VERSION >= 2
+      return;
     }
 #endif
+    // N.b. here first form specifies a heap subarray, second form an integer
+    // size, so the ?: code here is polymorphic. It is advised to avoid
+    // randomly mixing both uses in calling code, to avoid any potential JS
+    // engine JIT issues.
+    GLctx.bufferData(target, data ? HEAPU8.subarray(data, data+size) : size, usage);
   },
 
   glBufferSubData: (target, offset, size, data) => {
@@ -3813,8 +3808,8 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       buf = GL.getTempIndexBuffer(size);
       GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, buf);
       GLctx.bufferSubData(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/,
-                               0,
-                               HEAPU8.subarray(indices, indices + size));
+                          0,
+                          HEAPU8.subarray(indices, indices + size));
       // the index is now 0
       indices = 0;
     }
@@ -4159,12 +4154,13 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       return 0;
     }
 
-    if (!(mapping.access & 0x10)) /* GL_MAP_FLUSH_EXPLICIT_BIT */
+    if (!(mapping.access & 0x10)) { /* GL_MAP_FLUSH_EXPLICIT_BIT */
       if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
         GLctx.bufferSubData(target, mapping.offset, HEAPU8, mapping.mem, mapping.length);
       } else {
         GLctx.bufferSubData(target, mapping.offset, HEAPU8.subarray(mapping.mem, mapping.mem+mapping.length));
       }
+    }
     _free(mapping.mem);
     mapping.mem = 0;
     return 1;
