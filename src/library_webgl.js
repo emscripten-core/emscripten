@@ -1641,16 +1641,18 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       // those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
-      } else if (pixels) {
-        var heap = heapObjectForWebGLType(type);
-        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, heap, toTypedArrayIndex(pixels, heap));
-      } else {
-        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, null);
+        return;
       }
-      return;
+      if (pixels) {
+        var heap = heapObjectForWebGLType(type);
+        var index = toTypedArrayIndex(pixels, heap);
+        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, heap, index);
+        return;
+      }
     }
 #endif
-    GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels ? emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat) : null);
+    var pixelData = pixels ? emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat) : null;
+    GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixelData);
   },
 
   glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
