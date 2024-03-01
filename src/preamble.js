@@ -966,10 +966,6 @@ function createWasm() {
     {{{ receivedSymbol('wasmMemory') }}}
 #if ASSERTIONS
     assert(wasmMemory, 'memory not found in wasm exports');
-    // This assertion doesn't hold when emscripten is run in --post-link
-    // mode.
-    // TODO(sbc): Read INITIAL_MEMORY out of the wasm file in post-link mode.
-    //assert(wasmMemory.buffer.byteLength === {{{ INITIAL_MEMORY }}});
 #endif
     updateMemoryViews();
 #endif

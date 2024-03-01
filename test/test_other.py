@@ -6560,7 +6560,7 @@ int main() {
   return x == 0; // can't alloc it, but don't fail catastrophically, expect null
 }
     ''')
-    cmd = [EMCC, 'main.c', '-sALLOW_MEMORY_GROWTH']
+    cmd = [EMCC, 'main.c', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=16MB']
     if not wasm:
       cmd += ['-sWASM=0']
     self.run_process(cmd)
@@ -6619,7 +6619,7 @@ int main() {
   printf("managed another malloc!\n");
 }
 ''' % (pre_fail, post_fail))
-          args = [EMXX, 'main.cpp', '-sEXPORTED_FUNCTIONS=_main,_sbrk'] + opts + aborting_args
+          args = [EMXX, 'main.cpp', '-sEXPORTED_FUNCTIONS=_main,_sbrk', '-sINITIAL_MEMORY=16MB'] + opts + aborting_args
           args += ['-sTEST_MEMORY_GROWTH_FAILS'] # In this test, force memory growing to fail
           if growth:
             args += ['-sALLOW_MEMORY_GROWTH']
@@ -8154,6 +8154,29 @@ int main() {
     self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-sALLOW_MEMORY_GROWTH', '-sWASM_ASYNC_COMPILATION=0', '-sIMPORTED_MEMORY'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
+  @parameterized({
+    '': ([], 16 * 1024 * 1024), # Default behavior: 16MB initial heap
+    'explicit': (['-sINITIAL_HEAP=64KB'], 64 * 1024), # Explicitly set initial heap is passed
+    'with_initial_memory': (['-sINITIAL_MEMORY=40MB'], 0), # Backwards compatibility: no initial heap (we can't tell if it'll fit)
+    'with_maximum_memory': (['-sMAXIMUM_MEMORY=40MB', '-sALLOW_MEMORY_GROWTH=1'], 0), # Backwards compatibility: no initial heap (we can't tell if it'll fit)
+    'with_all': (['-sINITIAL_HEAP=128KB', '-sINITIAL_MEMORY=20MB', '-sMAXIMUM_MEMORY=40MB', '-sALLOW_MEMORY_GROWTH=1'], 128 * 1024),
+    'limited_by_initial_memory': (['-sINITIAL_HEAP=10MB', '-sINITIAL_MEMORY=10MB'], None), # Not enough space for stack
+    'limited_by_maximum_memory': (['-sINITIAL_HEAP=5MB', '-sMAXIMUM_MEMORY=5MB', '-sALLOW_MEMORY_GROWTH=1'], None), # Not enough space for stack
+  })
+  def test_initial_heap(self, args, expected_initial_heap):
+    cmd = [EMCC, test_file('hello_world.c'), '-v'] + args
+
+    if expected_initial_heap is None:
+      out = self.expect_fail(cmd)
+      self.assertContained('wasm-ld: error:', out)
+      return
+
+    out = self.run_process(cmd, stderr=PIPE)
+    if expected_initial_heap != 0:
+      self.assertContained(f'--initial-heap={expected_initial_heap}', out.stderr)
+    else:
+      self.assertNotContained('--initial-heap=', out.stderr)
+
   def test_memory_size(self):
     for args, expect_initial, expect_max in [
         ([], 320, 320),
@@ -8183,6 +8206,9 @@ int main() {
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
     # Must be a multiple of 64KB
+    ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-sINITIAL_HEAP=32505857', '-sALLOW_MEMORY_GROWTH']) # 31MB + 1 byte
+    self.assertContained('INITIAL_HEAP must be a multiple of WebAssembly page size (64KiB)', ret)
+
     ret = self.expect_fail([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=33554433']) # 32MB + 1 byte
     self.assertContained('INITIAL_MEMORY must be a multiple of WebAssembly page size (64KiB)', ret)
 
@@ -8634,7 +8660,7 @@ int main() {
       result = self.run_js('a.out.js').strip()
       self.assertEqual(result, f'{expected}, errno: 0')
 
-    run([], 256)
+    run([], 258)
     run(['-sINITIAL_MEMORY=32MB'], 512)
     run(['-sINITIAL_MEMORY=32MB', '-sALLOW_MEMORY_GROWTH'], (2 * 1024 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE)
     run(['-sINITIAL_MEMORY=32MB', '-sALLOW_MEMORY_GROWTH', '-sWASM=0'], (2 * 1024 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE)
