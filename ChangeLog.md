@@ -29,6 +29,10 @@ See docs/process.md for more on how version tagging works.
   data into an external .mem file).  This feature was only available under
   wasm2js (`-sWASM=0`) anyway so this change will only affect users of this
   setting. (#21217)
+- `INITIAL_HEAP` setting is introduced to control the amount of initial
+  memory available for dynamic allocation without capping it. If you are
+  using `INITIAL_MEMORY`, consider switching to `INITIAL_HEAP`. Note that
+  it is currently not supported in all configurations (#21071).
 
 3.1.54 - 02/15/24
 -----------------
@@ -65,10 +69,6 @@ See docs/process.md for more on how version tagging works.
   (ex: `embuilder sdl2_image:formats=png,jpg`) (#21345) 
 - Allow comments in response files. Any line starting with `#` is now ignored.
   This is useful when listing exported symbols. (#21330)
-- `INITIAL_HEAP` setting is introduced to control the amount of initial
-  memory available for dynamic allocation without capping it. If you are
-  using `INITIAL_MEMORY`, consider switching to `INITIAL_HEAP`. Note that
-  it is currently not supported in all configurations (#21071).
 
 3.1.53 - 01/29/24
 -----------------
