@@ -221,7 +221,11 @@ def lld_flags_for_executable(external_symbols):
 
   if not settings.SIDE_MODULE:
     cmd += ['-z', 'stack-size=%s' % settings.STACK_SIZE]
-    cmd += ['--max-memory=%d' % settings.MAXIMUM_MEMORY]
+
+    if settings.ALLOW_MEMORY_GROWTH:
+      cmd += ['--max-memory=%d' % settings.MAXIMUM_MEMORY]
+    else:
+      cmd += ['--no-growable-memory']
 
     if settings.INITIAL_HEAP != -1:
       cmd += ['--initial-heap=%d' % settings.INITIAL_HEAP]

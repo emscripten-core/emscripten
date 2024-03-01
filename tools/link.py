@@ -575,10 +575,7 @@ def set_initial_memory():
     # this scenario would risk pushing users over the limit they have set.
     user_specified_initial = settings.INITIAL_MEMORY != -1
     user_specified_maximum = 'MAXIMUM_MEMORY' in user_settings or 'WASM_MEM_MAX' in user_settings or 'BINARYEN_MEM_MAX' in user_settings
-    # INITIAL_HEAP does not allow us to cap maximum memory to initial memory without memory
-    # growth, which forces minimal WASM2JS builds to include "grow". Avoid regressing them.
-    wasm2js_without_mem_growth = settings.WASM2JS and not settings.ALLOW_MEMORY_GROWTH
-    if user_specified_initial or user_specified_maximum or wasm2js_without_mem_growth:
+    if user_specified_initial or user_specified_maximum:
       settings.INITIAL_HEAP = -1
 
   # Apply the default if we are going with INITIAL_MEMORY.
@@ -606,6 +603,9 @@ def set_initial_memory():
     check_memory_setting('MEMORY_GROWTH_LINEAR_STEP')
 
 
+# Set an upper estimate of what MAXIMUM_MEMORY should be. Take note that this value
+# may not be precise, and is only an upper bound of the exact value calculated later
+# by the linker.
 def set_max_memory():
   # With INITIAL_HEAP, we only know the lower bound on initial memory size.
   initial_memory_known = settings.INITIAL_MEMORY != -1
