@@ -936,9 +936,9 @@ var LibraryHTML5 = {
   $fillOrientationChangeEventData__deps: ['$screenOrientation'],
   $fillOrientationChangeEventData: (eventStruct) => {
     // OrientationType enum
-    var orientationsType1 = ["portrait-primary", "portrait-secondary", "landscape-primary", "landscape-secondary"];
+    var orientationsType1 = ['portrait-primary', 'portrait-secondary', 'landscape-primary', 'landscape-secondary'];
     // alternative selection from OrientationLockType enum
-    var orientationsType2 = ["portrait",         "portrait",           "landscape",         "landscape"];
+    var orientationsType2 = ['portrait',         'portrait',           'landscape',         'landscape'];
 
     var orientationIndex = -1;
     var orientationAngle =  0;
@@ -954,8 +954,8 @@ var LibraryHTML5 = {
       orientationAngle = screenOrientObj.angle;
     } else {
       // fallback on the deprecated API (mostly for Safari before 2023)
-      if (window && (window["orientation"] !== undefined)) {
-        orientationAngle = window["orientation"];
+      if (window && (window['orientation'] !== undefined)) {
+        orientationAngle = window['orientation'];
       }
     }
 
