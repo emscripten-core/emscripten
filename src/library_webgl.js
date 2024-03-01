@@ -14,7 +14,7 @@
     assert(MAX_WEBGL_VERSION >= 2, 'isCurrentContextWebGL2 called without webgl2 support');
     if (MIN_WEBGL_VERSION >= 2) return 'true';
     return 'GL.currentContext.version >= 2';
-  }
+  };
   null;
 }}}
 
@@ -1518,14 +1518,14 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   glCompressedTexImage2D: (target, level, internalFormat, width, height, border, imageSize, data) => {
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) {
-      // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
-      // those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding || !imageSize) {
         GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, imageSize, data);
-      } else {
-        GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, HEAPU8, data, imageSize);
+        return;
       }
+#if WEBGL_USE_GARBAGE_FREE_APIS
+      GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, HEAPU8, data, imageSize);
       return;
+#endif
     }
 #endif
     GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
@@ -1535,14 +1535,14 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   glCompressedTexSubImage2D: (target, level, xoffset, yoffset, width, height, format, imageSize, data) => {
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) {
-      // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
-      // those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding || !imageSize) {
         GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, imageSize, data);
-      } else {
-        GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, HEAPU8, data, imageSize);
+        return;
       }
+#if WEBGL_USE_GARBAGE_FREE_APIS
+      GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, HEAPU8, data, imageSize);
       return;
+#endif
     }
 #endif
     GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
@@ -1637,20 +1637,22 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     }
 #endif
     if ({{{ isCurrentContextWebGL2() }}}) {
-      // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
-      // those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
-      } else if (pixels) {
-        var heap = heapObjectForWebGLType(type);
-        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, heap, toTypedArrayIndex(pixels, heap));
-      } else {
-        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, null);
+        return;
       }
-      return;
+#if WEBGL_USE_GARBAGE_FREE_APIS
+      if (pixels) {
+        var heap = heapObjectForWebGLType(type);
+        var index = toTypedArrayIndex(pixels, heap);
+        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, heap, index);
+        return;
+      }
+#endif
     }
 #endif
-    GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels ? emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat) : null);
+    var pixelData = pixels ? emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat) : null;
+    GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixelData);
   },
 
   glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
@@ -1670,21 +1672,20 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     }
 #endif
     if ({{{ isCurrentContextWebGL2() }}}) {
-      // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
-      // those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
-      } else if (pixels) {
+        return;
+      }
+#if WEBGL_USE_GARBAGE_FREE_APIS
+      if (pixels) {
         var heap = heapObjectForWebGLType(type);
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, heap, toTypedArrayIndex(pixels, heap));
-      } else {
-        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, null);
+        return;
       }
-      return;
+#endif
     }
 #endif
-    var pixelData = null;
-    if (pixels) pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, 0);
+    var pixelData = pixels ? emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, 0) : null;
     GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixelData);
   },
 
@@ -1696,16 +1697,16 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   glReadPixels: (x, y, width, height, format, type, pixels) => {
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) {
-      // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
-      // those always when possible.
       if (GLctx.currentPixelPackBufferBinding) {
         GLctx.readPixels(x, y, width, height, format, type, pixels);
-      } else {
-        var heap = heapObjectForWebGLType(type);
-        var target = toTypedArrayIndex(pixels, heap);
-        GLctx.readPixels(x, y, width, height, format, type, heap, target);
+        return;
       }
+#if WEBGL_USE_GARBAGE_FREE_APIS
+      var heap = heapObjectForWebGLType(type);
+      var target = toTypedArrayIndex(pixels, heap);
+      GLctx.readPixels(x, y, width, height, format, type, heap, target);
       return;
+#endif
     }
 #endif
     var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, format);
@@ -1842,36 +1843,30 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     }
 #endif
 
-#if MAX_WEBGL_VERSION >= 2
+#if WEBGL_USE_GARBAGE_FREE_APIS
     if ({{{ isCurrentContextWebGL2() }}}) {
-      // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
-      // those always when possible.  If size is zero, WebGL would interpret
-      // uploading the whole input arraybuffer (starting from given offset),
-      // which would not make sense in WebAssembly, so avoid uploading if size
-      // is zero. However we must still call bufferData to establish a backing
-      // storage of zero bytes.
+      // If size is zero, WebGL would interpret uploading the whole input
+      // arraybuffer (starting from given offset), which would not make sense in
+      // WebAssembly, so avoid uploading if size is zero. However we must still
+      // call bufferData to establish a backing storage of zero bytes.
       if (data && size) {
         GLctx.bufferData(target, HEAPU8, usage, data, size);
       } else {
         GLctx.bufferData(target, size, usage);
       }
-    } else {
-#endif
-      // N.b. here first form specifies a heap subarray, second form an integer
-      // size, so the ?: code here is polymorphic. It is advised to avoid
-      // randomly mixing both uses in calling code, to avoid any potential JS
-      // engine JIT issues.
-      GLctx.bufferData(target, data ? HEAPU8.subarray(data, data+size) : size, usage);
-#if MAX_WEBGL_VERSION >= 2
+      return;
     }
 #endif
+    // N.b. here first form specifies a heap subarray, second form an integer
+    // size, so the ?: code here is polymorphic. It is advised to avoid
+    // randomly mixing both uses in calling code, to avoid any potential JS
+    // engine JIT issues.
+    GLctx.bufferData(target, data ? HEAPU8.subarray(data, data+size) : size, usage);
   },
 
   glBufferSubData: (target, offset, size, data) => {
-#if MAX_WEBGL_VERSION >= 2
+#if WEBGL_USE_GARBAGE_FREE_APIS
     if ({{{ isCurrentContextWebGL2() }}}) {
-      // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
-      // those always when possible.
       size && GLctx.bufferSubData(target, offset, HEAPU8, data, size);
       return;
     }
@@ -2434,8 +2429,8 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     count && GLctx.uniform1iv(webglGetUniformLocation(location), HEAP32, {{{ getHeapOffset('value', 'i32') }}}, count);
 #else
 
-#if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+#if WEBGL_USE_GARBAGE_FREE_APIS
+    if ({{{ isCurrentContextWebGL2() }}}) {
       count && GLctx.uniform1iv(webglGetUniformLocation(location), HEAP32, {{{ getHeapOffset('value', 'i32') }}}, count);
       return;
     }
@@ -2475,8 +2470,8 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     count && GLctx.uniform2iv(webglGetUniformLocation(location), HEAP32, {{{ getHeapOffset('value', 'i32') }}}, count*2);
 #else
 
-#if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+#if WEBGL_USE_GARBAGE_FREE_APIS
+    if ({{{ isCurrentContextWebGL2() }}}) {
       count && GLctx.uniform2iv(webglGetUniformLocation(location), HEAP32, {{{ getHeapOffset('value', 'i32') }}}, count*2);
       return;
     }
@@ -2517,8 +2512,8 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     count && GLctx.uniform3iv(webglGetUniformLocation(location), HEAP32, {{{ getHeapOffset('value', 'i32') }}}, count*3);
 #else
 
-#if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+#if WEBGL_USE_GARBAGE_FREE_APIS
+    if ({{{ isCurrentContextWebGL2() }}}) {
       count && GLctx.uniform3iv(webglGetUniformLocation(location), HEAP32, {{{ getHeapOffset('value', 'i32') }}}, count*3);
       return;
     }
@@ -2560,9 +2555,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     count && GLctx.uniform4iv(webglGetUniformLocation(location), HEAP32, {{{ getHeapOffset('value', 'i32') }}}, count*4);
 #else
 
-#if MAX_WEBGL_VERSION >= 2
-    // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
-    // those always when possible.
+#if WEBGL_USE_GARBAGE_FREE_APIS
     if ({{{ isCurrentContextWebGL2() }}}) {
       count && GLctx.uniform4iv(webglGetUniformLocation(location), HEAP32, {{{ getHeapOffset('value', 'i32') }}}, count*4);
       return;
@@ -2606,8 +2599,8 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     count && GLctx.uniform1fv(webglGetUniformLocation(location), HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count);
 #else
 
-#if MAX_WEBGL_VERSION >= 2
-    if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+#if WEBGL_USE_GARBAGE_FREE_APIS
+    if ({{{ isCurrentContextWebGL2() }}}) {
       count && GLctx.uniform1fv(webglGetUniformLocation(location), HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count);
       return;
     }
@@ -2647,9 +2640,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     count && GLctx.uniform2fv(webglGetUniformLocation(location), HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*2);
 #else
 
-#if MAX_WEBGL_VERSION >= 2
-    // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
-    // those always when possible.
+#if WEBGL_USE_GARBAGE_FREE_APIS
     if ({{{ isCurrentContextWebGL2() }}}) {
       count && GLctx.uniform2fv(webglGetUniformLocation(location), HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*2);
       return;
@@ -2674,7 +2665,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniform3fv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && !(MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
@@ -2684,16 +2675,14 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     assert((value % 4) == 0, 'Pointer to float data passed to glUniform3fv must be aligned to four bytes!' + value);
 #endif
 
-#if MIN_WEBGL_VERSION >= 2
+#if MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
     count && GLctx.uniform3fv(webglGetUniformLocation(location), HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*3);
 #else
 
-#if MAX_WEBGL_VERSION >= 2
-    // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
-    // those always when possible.
+#if WEBGL_USE_GARBAGE_FREE_APIS
     if ({{{ isCurrentContextWebGL2() }}}) {
       count && GLctx.uniform3fv(webglGetUniformLocation(location), HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*3);
       return;
@@ -2736,9 +2725,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     count && GLctx.uniform4fv(webglGetUniformLocation(location), HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*4);
 #else
 
-#if MAX_WEBGL_VERSION >= 2
-    // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
-    // those always when possible.
+#if WEBGL_USE_GARBAGE_FREE_APIS
     if ({{{ isCurrentContextWebGL2() }}}) {
       count && GLctx.uniform4fv(webglGetUniformLocation(location), HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*4);
       return;
@@ -2786,9 +2773,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     count && GLctx.uniformMatrix2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*4);
 #else
 
-#if MAX_WEBGL_VERSION >= 2
-    // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
-    // those always when possible.
+#if WEBGL_USE_GARBAGE_FREE_APIS
     if ({{{ isCurrentContextWebGL2() }}}) {
       count && GLctx.uniformMatrix2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*4);
       return;
@@ -2832,9 +2817,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     count && GLctx.uniformMatrix3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*9);
 #else
 
-#if MAX_WEBGL_VERSION >= 2
-    // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
-    // those always when possible.
+#if WEBGL_USE_GARBAGE_FREE_APIS
     if ({{{ isCurrentContextWebGL2() }}}) {
       count && GLctx.uniformMatrix3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*9);
       return;
@@ -2866,7 +2849,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniformMatrix4fv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && !(MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
@@ -2876,16 +2859,14 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4fv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION >= 2
+#if MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
     count && GLctx.uniformMatrix4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*16);
 #else
 
-#if MAX_WEBGL_VERSION >= 2
-    // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
-    // those always when possible.
+#if WEBGL_USE_GARBAGE_FREE_APIS
     if ({{{ isCurrentContextWebGL2() }}}) {
       count && GLctx.uniformMatrix4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*16);
       return;
@@ -2924,7 +2905,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*64') }}};
     }
     GLctx.uniformMatrix4fv(webglGetUniformLocation(location), !!transpose, view);
-#endif // MIN_WEBGL_VERSION >= 2
+#endif // MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
   },
 
   glBindBuffer: (target, buffer) => {
@@ -3813,8 +3794,8 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       buf = GL.getTempIndexBuffer(size);
       GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, buf);
       GLctx.bufferSubData(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/,
-                               0,
-                               HEAPU8.subarray(indices, indices + size));
+                          0,
+                          HEAPU8.subarray(indices, indices + size));
       // the index is now 0
       indices = 0;
     }
@@ -4159,12 +4140,14 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       return 0;
     }
 
-    if (!(mapping.access & 0x10)) /* GL_MAP_FLUSH_EXPLICIT_BIT */
-      if ({{{ isCurrentContextWebGL2() }}}) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
+    if (!(mapping.access & 0x10)) { /* GL_MAP_FLUSH_EXPLICIT_BIT */
+#if WEBGL_USE_GARBAGE_FREE_APIS
+      if ({{{ isCurrentContextWebGL2() }}}) {
         GLctx.bufferSubData(target, mapping.offset, HEAPU8, mapping.mem, mapping.length);
-      } else {
-        GLctx.bufferSubData(target, mapping.offset, HEAPU8.subarray(mapping.mem, mapping.mem+mapping.length));
-      }
+      } else
+#endif
+      GLctx.bufferSubData(target, mapping.offset, HEAPU8.subarray(mapping.mem, mapping.mem+mapping.length));
+    }
     _free(mapping.mem);
     mapping.mem = 0;
     return 1;

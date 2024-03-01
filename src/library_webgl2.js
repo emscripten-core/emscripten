@@ -118,7 +118,11 @@ var LibraryWebGL2 = {
       return;
     }
 #endif
+#if WEBGL_USE_GARBAGE_FREE_APIS
     size && GLctx.getBufferSubData(target, offset, HEAPU8, data, size);
+#else
+    size && GLctx.getBufferSubData(target, offset, HEAPU8.subarray(data, data+size));
+#endif
   },
 
   glInvalidateFramebuffer__deps: ['$tempFixedLengthArray'],
@@ -147,13 +151,22 @@ var LibraryWebGL2 = {
     GLctx.invalidateSubFramebuffer(target, list, x, y, width, height);
   },
 
-  glTexImage3D__deps: ['$heapObjectForWebGLType', '$toTypedArrayIndex'],
+  glTexImage3D__deps: ['$heapObjectForWebGLType', '$toTypedArrayIndex',
+#if !WEBGL_USE_GARBAGE_FREE_APIS
+    '$emscriptenWebGLGetTexPixelData',
+#endif
+  ],
   glTexImage3D: (target, level, internalFormat, width, height, depth, border, format, type, pixels) => {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, pixels);
     } else if (pixels) {
       var heap = heapObjectForWebGLType(type);
+#if WEBGL_USE_GARBAGE_FREE_APIS
       GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, heap, toTypedArrayIndex(pixels, heap));
+#else
+      var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height * depth, pixels, internalFormat);
+      GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, pixelData);
+#endif
     } else {
       GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, null);
     }

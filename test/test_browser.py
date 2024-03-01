@@ -1318,7 +1318,6 @@ keydown(100);keyup(100); // trigger the end
     self.btest_exit('webgl_parallel_shader_compile.cpp')
 
   @requires_graphics_hardware
-  @no_4gb('readPixels fails: https://crbug.com/324992397')
   def test_webgl_explicit_uniform_location(self):
     self.btest_exit('webgl_explicit_uniform_location.c', args=['-sGL_EXPLICIT_UNIFORM_LOCATION', '-sMIN_WEBGL_VERSION=2'])
 
@@ -1327,7 +1326,6 @@ keydown(100);keyup(100); // trigger the end
     self.btest_exit('webgl_sampler_layout_binding.c', args=['-sGL_EXPLICIT_UNIFORM_BINDING'])
 
   @requires_graphics_hardware
-  @no_4gb('readPixels fails: https://crbug.com/324992397')
   def test_webgl2_ubo_layout_binding(self):
     self.btest_exit('webgl2_ubo_layout_binding.c', args=['-sGL_EXPLICIT_UNIFORM_BINDING', '-sMIN_WEBGL_VERSION=2'])
 
@@ -1529,7 +1527,6 @@ keydown(100);keyup(100); // trigger the end
     self.btest_exit('test_sdl_gl_read.c', args=['-lSDL', '-lGL'])
 
   @requires_graphics_hardware
-  @no_4gb('readPixels fails: https://crbug.com/324992397')
   def test_sdl_gl_mapbuffers(self):
     self.btest_exit('test_sdl_gl_mapbuffers.c', args=['-sFULL_ES3', '-lSDL', '-lGL'])
 
@@ -2032,12 +2029,10 @@ keydown(100);keyup(100); // trigger the end
     self.reftest('gl_stride.c', 'gl_stride.png', args=['-sGL_UNSAFE_OPTS=0', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
-  @no_4gb('assertion failure')
   def test_gl_vertex_buffer_pre(self):
     self.reftest('gl_vertex_buffer_pre.c', 'gl_vertex_buffer_pre.png', args=['-sGL_UNSAFE_OPTS=0', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
-  @no_4gb('assertion failure')
   def test_gl_vertex_buffer(self):
     self.reftest('gl_vertex_buffer.c', 'gl_vertex_buffer.png', args=['-sGL_UNSAFE_OPTS=0', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], reference_slack=1)
 
@@ -2779,7 +2774,6 @@ Module["preRun"] = () => {
 
   @no_firefox('fails on CI likely due to GPU drivers there')
   @requires_graphics_hardware
-  @no_4gb('fails to render')
   def test_webgl2_sokol_mipmap(self):
     self.reftest('third_party/sokol/mipmap-emsc.c', 'third_party/sokol/mipmap-emsc.png',
                  args=['-sMAX_WEBGL_VERSION=2', '-lGL', '-O1'], reference_slack=2)
@@ -4487,12 +4481,13 @@ Module["preRun"] = () => {
       self.assertLess(abs(size - 4800), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a
-  # pthread by using OffscreenCanvas.  -DTEST_CHAINED_WEBGL_CONTEXT_PASSING:
-  # Tests that it is possible to transfer WebGL canvas in a chain from main
-  # thread -> thread 1 -> thread 2 and then init and render WebGL content there.
-  @no_chrome('see https://crbug.com/961765')
+  # pthread by using OffscreenCanvas.
+  @no_chrome('https://crbug.com/961765')
   @parameterized({
     '': ([],),
+    # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING:
+    # Tests that it is possible to transfer WebGL canvas in a chain from main
+    # thread -> thread 1 -> thread 2 and then init and render WebGL content there.
     'chained': (['-DTEST_CHAINED_WEBGL_CONTEXT_PASSING'],),
   })
   @requires_threads
@@ -4563,7 +4558,6 @@ Module["preRun"] = () => {
                            '-DWEBGL_CONTEXT_VERSION=2'])
 
   @requires_graphics_hardware
-  @no_4gb('fails to render')
   def test_webgl_sample_query(self):
     self.btest_exit('webgl_sample_query.cpp', args=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
@@ -4621,7 +4615,6 @@ Module["preRun"] = () => {
 
   # Tests that using an array of structs in GL uniforms works.
   @requires_graphics_hardware
-  @no_4gb('fails to render')
   def test_webgl_array_of_structs_uniform(self):
     self.reftest('webgl_array_of_structs_uniform.c', 'webgl_array_of_structs_uniform.png', args=['-lGL', '-sMAX_WEBGL_VERSION=2'])
 
@@ -4688,7 +4681,7 @@ Module["preRun"] = () => {
     self.btest_exit('webgl2_simple_enable_extensions.c', args=cmd)
 
   @parameterized({
-    'default': ([],),
+    '': ([],),
     'closure': (['-sASSERTIONS', '--closure=1'],),
     'main_module': (['-sMAIN_MODULE=1'],),
   })
