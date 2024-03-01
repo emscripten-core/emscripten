@@ -1611,6 +1611,17 @@ def phase_linker_setup(options, state, newargs):
   if not settings.MEMORY64 and settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024:
     settings.CAN_ADDRESS_2GB = 1
 
+  if settings.MAX_WEBGL_VERSION >= 2:
+    settings.WEBGL_USE_GARBAGE_FREE_APIS = 1
+    # Some browsers have issues using the WebGL2 garbage-free APIs when the
+    # memory offsets are over 2^31 or 2^32
+    # For firefox see: https://bugzilla.mozilla.org/show_bug.cgi?id=1838218
+    if settings.MIN_FIREFOX_VERSION != feature_matrix.UNSUPPORTED and settings.MAXIMUM_MEMORY > 2 ** 31:
+      settings.WEBGL_USE_GARBAGE_FREE_APIS = 0
+    # For chrome see: https://crbug.com/324992397
+    if settings.MIN_CHROME_VERSION != feature_matrix.UNSUPPORTED and settings.MEMORY64 and settings.MAXIMUM_MEMORY > 2 ** 32:
+      settings.WEBGL_USE_GARBAGE_FREE_APIS = 0
+
   if settings.MINIMAL_RUNTIME:
     if settings.EXIT_RUNTIME:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['proc_exit', '$callRuntimeCallbacks']
