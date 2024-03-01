@@ -18,8 +18,21 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.54 (in development)
+3.1.55 (in development)
 -----------------------
+- Update sdl2-mixer port from 2.6.0 to 2.8.0
+- In `STRICT` mode the `HEAPXX` symbols (such as `HEAP8` and `HEAP32`) are now
+  only exported on demand.  This means that they must be added to
+  `EXPORTED_RUNTIME_METHODS` for them to appear on the `Module` object.  For
+  now, this only effects users of `STRICT` mode. (#21439)
+- Emscripten no longer supports `--memory-init-file` (i.e. extracting static
+  data into an external .mem file).  This feature was only available under
+  wasm2js (`-sWASM=0`) anyway so this change will only affect users of this
+  setting. (#21217)
+
+3.1.54 - 02/15/24
+-----------------
+- SDL2 port updated from v2.24.2 to v2.26.0. (#21337)
 - The `DEMANGLE_SUPPORT` setting and the associated `demangle` function are
   now deprecated since Wasm stack traces always contain demangled symbols these
   days. (#21346)
@@ -47,6 +60,9 @@ See docs/process.md for more on how version tagging works.
   #21276)
 - Added concept of external ports which live outside emscripten and are
   loaded on demand using the syntax `--use-port=/path/to/my_port.py` (#21316)
+- `embuilder` can now build ports with options as well as external ports using
+  the same syntax introduced with `--use-port`
+  (ex: `embuilder sdl2_image:formats=png,jpg`) (#21345) 
 - Allow comments in response files. Any line starting with `#` is now ignored.
   This is useful when listing exported symbols. (#21330)
 - `INITIAL_HEAP` setting is introduced to control the amount of initial

@@ -81,7 +81,7 @@ LINK_ONLY_FLAGS = {
     '--bind', '--closure', '--cpuprofiler', '--embed-file',
     '--emit-symbol-map', '--emrun', '--exclude-file', '--extern-post-js',
     '--extern-pre-js', '--ignore-dynamic-linking', '--js-library',
-    '--js-transform', '--memory-init-file', '--oformat', '--output_eol',
+    '--js-transform', '--oformat', '--output_eol',
     '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
     '--proxy-to-worker', '--shell-file', '--source-map-base',
     '--threadprofiler', '--use-preload-plugins'
@@ -145,7 +145,6 @@ class EmccOptions:
     self.emrun = False
     self.cpu_profiler = False
     self.memory_profiler = False
-    self.memory_init_file = None
     self.use_preload_cache = False
     self.use_preload_plugins = False
     self.valid_abspaths = []
@@ -261,7 +260,7 @@ def apply_user_settings():
     filename = None
     if value and value[0] == '@':
       filename = removeprefix(value, '@')
-      if not os.path.exists(filename):
+      if not os.path.isfile(filename):
         exit_with_error('%s: file not found parsing argument: %s=%s' % (filename, key, value))
       value = read_file(filename).strip()
     else:
@@ -578,7 +577,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   if 'EMMAKEN_COMPILER' in os.environ:
     exit_with_error('`EMMAKEN_COMPILER` is no longer supported.\n' +
-                    'Please use the `LLVM_ROOT` and/or `COMPILER_WRAPPER` config settings instread')
+                    'Please use the `LLVM_ROOT` and/or `COMPILER_WRAPPER` config settings instead')
 
   if 'EMMAKEN_CFLAGS' in os.environ:
     exit_with_error('`EMMAKEN_CFLAGS` is no longer supported, please use `EMCC_CFLAGS` instead')
@@ -612,7 +611,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     libname = print_file_name[-1].split('=')[1]
     system_libpath = cache.get_lib_dir(absolute=True)
     fullpath = os.path.join(system_libpath, libname)
-    if os.path.exists(fullpath):
+    if os.path.isfile(fullpath):
       print(fullpath)
     else:
       print(libname)
@@ -663,6 +662,9 @@ def phase_parse_arguments(state):
   # This needs to run before other cmdline flags have been parsed, so that
   # warnings are properly printed during arg parse.
   newargs = diagnostics.capture_warnings(newargs)
+
+  if not diagnostics.is_enabled('deprecated'):
+    settings.WARN_DEPRECATED = 0
 
   for i in range(len(newargs)):
     if newargs[i] in ('-l', '-L', '-I', '-z'):
@@ -1313,7 +1315,7 @@ def parse_args(newargs):
       ports.show_ports()
       should_exit = True
     elif check_arg('--memory-init-file'):
-      options.memory_init_file = int(consume_arg())
+      exit_with_error('--memory-init-file is no longer supported')
     elif check_flag('--proxy-to-worker'):
       settings_changes.append('PROXY_TO_WORKER=1')
     elif check_arg('--valid-abspath'):

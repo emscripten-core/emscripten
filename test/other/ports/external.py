@@ -6,6 +6,10 @@
 import os
 from typing import Dict, Optional
 
+URL = 'https://emscripten.org'
+DESCRIPTION = 'Test Description'
+LICENSE = 'Test License'
+
 OPTIONS = {
   'value1': 'Value for define TEST_VALUE_1',
   'value2': 'Value for define TEST_VALUE_2',

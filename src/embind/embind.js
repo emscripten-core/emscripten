@@ -150,7 +150,7 @@ var LibraryEmbind = {
   $replacePublicSymbol__docs: '/** @param {number=} numArguments */',
   $replacePublicSymbol: (name, value, numArguments) => {
     if (!Module.hasOwnProperty(name)) {
-      throwInternalError('Replacing nonexistant public symbol');
+      throwInternalError('Replacing nonexistent public symbol');
     }
     // If there's an overload table for this symbol, replace the symbol in the overload table instead.
     if (undefined !== Module[name].overloadTable && undefined !== numArguments) {
@@ -747,7 +747,7 @@ var LibraryEmbind = {
      * though at creation, the 'dummy' has the correct constructor name.  Thus,
      * objects created with IMVU.new would show up in the debugger as 'dummy',
      * which isn't very helpful.  Using IMVU.createNamedFunction addresses the
-     * issue.  Doublely-unfortunately, there's no way to write a test for this
+     * issue.  Doubly-unfortunately, there's no way to write a test for this
      * behavior.  -NRD 2013.02.22
      */
     var dummy = createNamedFunction(constructor.name || 'unknownFunctionName', function(){});

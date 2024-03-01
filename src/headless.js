@@ -240,7 +240,7 @@ var Worker = (workerPath) => {
   workerPath = fixPath(workerPath);
   var workerCode = read(workerPath);
   workerCode = workerCode.replace(/Module/g, 'zzModuleyy' + (Worker.id++)). // prevent collision with the global Module object. Note that this becomes global, so we need unique ids
-                          replace(/\nonmessage = /, '\nvar onmessage = '); // workers commonly do "onmessage = ", we need to varify that to sandbox
+                          replace(/\nonmessage = /, '\nvar onmessage = '); // workers commonly do "onmessage = ", we need to verify that to sandbox
   headlessPrint(`loading worker ${workerPath} : ${workerCode.substring(0, 50)}`);
   eval(workerCode); // will implement onmessage()
 

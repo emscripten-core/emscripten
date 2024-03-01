@@ -67,19 +67,14 @@ def init_port(name, port):
   validate_port(port)
 
 
-def load_port_by_name(name):
-  port = __import__(name, globals(), level=1, fromlist=[None])
-  init_port(name, port)
-
-
-def load_port_by_path(path):
-  name = os.path.splitext(os.path.basename(path))[0]
+def load_port(path, name=None):
+  if not name:
+    name = shared.unsuffixed_basename(path)
   if name in ports_by_name:
     utils.exit_with_error(f'port path [`{path}`] is invalid: duplicate port name `{name}`')
   module_name = f'tools.ports.{name}'
   spec = importlib.util.spec_from_file_location(module_name, path)
   port = importlib.util.module_from_spec(spec)
-  sys.modules[module_name] = port
   spec.loader.exec_module(port)
   init_port(name, port)
   return name
@@ -100,15 +95,14 @@ def read_ports():
   for filename in os.listdir(ports_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
-    filename = os.path.splitext(filename)[0]
-    load_port_by_name(filename)
+    load_port(os.path.join(ports_dir, filename))
 
   contrib_dir = os.path.join(ports_dir, 'contrib')
   for filename in os.listdir(contrib_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
-    filename = os.path.splitext(filename)[0]
-    load_port_by_name('contrib.' + filename)
+    name = 'contrib.' + shared.unsuffixed(filename)
+    load_port(os.path.join(contrib_dir, filename), name)
 
 
 def get_all_files_under(dirname):
@@ -412,6 +406,21 @@ def handle_use_port_error(arg, message):
   utils.exit_with_error(f'error with `--use-port={arg}` | {message}')
 
 
+def show_port_help_and_exit(port):
+  print(port.show())
+  if hasattr(port, 'DESCRIPTION'):
+    print(port.DESCRIPTION)
+  if hasattr(port, 'OPTIONS'):
+    print("Options:")
+    for option, desc in port.OPTIONS.items():
+      print(f'* {option}: {desc}')
+  else:
+    print("No options.")
+  if hasattr(port, 'URL'):
+    print(f'More info: {port.URL}')
+  sys.exit(0)
+
+
 def handle_use_port_arg(settings, arg, error_handler=None):
   if not error_handler:
     def error_handler(message):
@@ -426,12 +435,14 @@ def handle_use_port_arg(settings, arg, error_handler=None):
     port_file_path = name
     if not os.path.isfile(port_file_path):
       error_handler(f'not a valid port path: {port_file_path}')
-    name = load_port_by_path(port_file_path)
+    name = load_port(port_file_path)
   elif name not in ports_by_name:
     error_handler(f'invalid port name: `{name}`')
   ports_needed.add(name)
   if options:
     port = ports_by_name[name]
+    if options == 'help':
+      show_port_help_and_exit(port)
     if not hasattr(port, 'handle_options'):
       error_handler(f'no options available for port `{name}`')
     else:

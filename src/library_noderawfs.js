@@ -193,9 +193,6 @@ addToLibrary({
       // should we check if bytesWritten and length are the same?
       return 0;
     },
-    munmap() {
-      return 0;
-    },
     ioctl() {
       throw new FS.ErrnoError({{{ cDefs.ENOTTY }}});
     }

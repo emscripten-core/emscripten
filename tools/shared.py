@@ -397,8 +397,13 @@ def node_memory64_flags():
   return ['--experimental-wasm-memory64']
 
 
-def node_exception_flags():
-  return ['--experimental-wasm-eh']
+def node_exception_flags(nodejs):
+  node_version = get_node_version(nodejs)
+  # Exception handling was enabled by default in node v17.
+  if node_version and node_version < (17, 0, 0):
+    return ['--experimental-wasm-eh']
+  else:
+    return []
 
 
 def node_pthread_flags(nodejs):

@@ -333,8 +333,16 @@ commands:
       - run:
           name: submodule update
           command: git submodule update --init
-  test-firefox:
+  run-tests-firefox:
     description: "Runs emscripten tests under firefox"
+    parameters:
+      test_targets:
+        description: "Test suites to run"
+        type: string
+      title:
+        description: "Name of given test suite"
+        type: string
+        default: ""
     steps:
       - prepare-for-tests
       - run:
@@ -353,16 +361,7 @@ commands:
             user_pref("dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled", true);
             EOF
       - run:
-          # browser.test_sdl2_mouse and/or SDL2 should be fixed. The case happens
-          # to be failing here, and the root cause might be related with the
-          # initial position of the mouse pointer relative to the canvas.
-          # browser.test_html5_webgl_create_context is skipped because
-          # anti-aliasing is not well supported.
-          # browser.test_webgl_offscreen_canvas_in_pthread and
-          # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
-          # are crashing Firefox (bugzil.la/1281796). The former case is
-          # further blocked by issue #6897.
-          name: run tests
+          name: run tests (<< parameters.title >>)
           environment:
             GALLIUM_DRIVER: softpipe # TODO: use the default llvmpipe when it supports more extensions
             # TODO: Do GL testing when https://bugzil.la/1375585 (lack of WebGL
@@ -382,7 +381,7 @@ commands:
             echo "-----"
             echo "Running browser tests"
             echo "-----"
-            test/runner browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
+            test/runner << parameters.test_targets >>
             # posix and emrun suites are disabled because firefox errors on
             #  "Firefox is already running, but is not responding."
             # TODO: find out a way to shut down and restart firefox
@@ -823,7 +822,18 @@ jobs:
   test-browser-firefox:
     executor: bionic
     steps:
-      - test-firefox
+      - run-tests-firefox:
+          title: "browser"
+          # browser.test_sdl2_mouse and/or SDL2 should be fixed. The case happens
+          # to be failing here, and the root cause might be related with the
+          # initial position of the mouse pointer relative to the canvas.
+          # browser.test_html5_webgl_create_context is skipped because
+          # anti-aliasing is not well supported.
+          # browser.test_webgl_offscreen_canvas_in_pthread and
+          # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
+          # are crashing Firefox (bugzil.la/1281796). The former case is
+          # further blocked by issue #6897.
+          test_targets: "browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget"
   # TODO(sbc): Re-enable once we figure out why the emrun tests are
   # locking up.
   #test-browser-chrome-emrun:

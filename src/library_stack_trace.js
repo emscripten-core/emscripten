@@ -6,20 +6,7 @@
 
 var LibraryStackTrace = {
   $jsStackTrace: function() {
-    var error = new Error();
-    if (!error.stack) {
-      // IE10+ special cases: It does have callstack info, but it is only
-      // populated if an Error object is thrown, so try that as a special-case.
-      try {
-        throw new Error();
-      } catch(e) {
-        error = e;
-      }
-      if (!error.stack) {
-        return '(no stack trace available)';
-      }
-    }
-    return error.stack.toString();
+    return new Error().stack.toString();
   },
 
   $stackTrace__deps: ['$jsStackTrace'],

@@ -159,13 +159,10 @@ var SyscallsLibrary = {
   _munmap_js__i53abi: true,
   _munmap_js: (addr, len, prot, flags, fd, offset) => {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
     var stream = SYSCALLS.getStreamFromFD(fd);
     if (prot & {{{ cDefs.PROT_WRITE }}}) {
       SYSCALLS.doMsync(addr, stream, len, flags, offset);
     }
-    FS.munmap(stream);
-    // implicitly return 0
 #endif
   },
 
@@ -186,7 +183,7 @@ var SyscallsLibrary = {
   },
   __syscall_dup: (fd) => {
     var old = SYSCALLS.getStreamFromFD(fd);
-    return FS.createStream(old).fd;
+    return FS.dupStream(old).fd;
   },
   __syscall_pipe__deps: ['$PIPEFS'],
   __syscall_pipe: (fdPtr) => {
@@ -763,7 +760,7 @@ var SyscallsLibrary = {
           arg++;
         }
         var newStream;
-        newStream = FS.createStream(stream, arg);
+        newStream = FS.dupStream(stream, arg);
         return newStream.fd;
       }
       case {{{ cDefs.F_GETFD }}}:
@@ -1010,7 +1007,7 @@ var SyscallsLibrary = {
     if (old.fd === newfd) return -{{{ cDefs.EINVAL }}};
     var existing = FS.getStream(newfd);
     if (existing) FS.close(existing);
-    return FS.createStream(old, newfd).fd;
+    return FS.dupStream(old, newfd).fd;
   },
 };
 
