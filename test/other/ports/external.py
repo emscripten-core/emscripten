@@ -5,9 +5,6 @@
 
 import os
 from typing import Dict, Optional
-import pathlib
-
-HASH = '57e42242887d337f49bc0a1c5a0b6c327c0da9578b735b0bfd5dfff9cfca1b12d280d31f22894eb746e6d878bdd278ca405bc62579d202898ba60ee7dae71e80'
 
 URL = 'https://emscripten.org'
 DESCRIPTION = 'Test Description'
@@ -37,13 +34,10 @@ def get_lib_name(settings):
 
 
 def get(ports, settings, shared):
-  # the zip file is in the same folder
-  zip_path = os.path.join(os.path.dirname(__file__), 'my_port.zip')
-  zip_uri = pathlib.Path(zip_path).as_uri()
-  ports.fetch_project('external', zip_uri, sha512hash=HASH)
+  # for simplicity in testing, the source is in the same folder as the port and not fetched as a tarball
+  source_dir = os.path.dirname(__file__)
 
   def create(final):
-    source_dir = os.path.join(ports.get_dir(), 'external')
     ports.install_headers(source_dir)
     print(f'about to build {source_dir}')
     ports.build_port(source_dir, final, 'external')
