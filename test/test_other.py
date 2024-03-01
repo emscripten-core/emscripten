@@ -8156,12 +8156,12 @@ int main() {
 
   @parameterized({
     '': ([], 16 * 1024 * 1024), # Default behavior: 16MB initial heap
+    'explicit': (['-sINITIAL_HEAP=64KB'], 64 * 1024), # Explicitly set initial heap is passed
     'with_initial_memory': (['-sINITIAL_MEMORY=40MB'], 0), # Backwards compatibility: no initial heap (we can't tell if it'll fit)
-    'with_maximum_memory': (['-sMAXIMUM_MEMORY=40MB'], 0), # Backwards compatibility: no initial heap (we can't tell if it'll fit)
-    'with_initial_heap': (['-sINITIAL_HEAP=64KB'], 64 * 1024), # Explicitly set initial heap is passed
-    'with_all': (['-sINITIAL_HEAP=128KB', '-sINITIAL_MEMORY=20MB', '-sMAXIMUM_MEMORY=40MB'], 128 * 1024),
+    'with_maximum_memory': (['-sMAXIMUM_MEMORY=40MB', '-sALLOW_MEMORY_GROWTH=1'], 0), # Backwards compatibility: no initial heap (we can't tell if it'll fit)
+    'with_all': (['-sINITIAL_HEAP=128KB', '-sINITIAL_MEMORY=20MB', '-sMAXIMUM_MEMORY=40MB', '-sALLOW_MEMORY_GROWTH=1'], 128 * 1024),
     'limited_by_initial_memory': (['-sINITIAL_HEAP=10MB', '-sINITIAL_MEMORY=10MB'], None), # Not enough space for stack
-    'limited_by_maximum_memory': (['-sINITIAL_HEAP=5MB', '-sMAXIMUM_MEMORY=5MB'], None), # Not enough space for stack
+    'limited_by_maximum_memory': (['-sINITIAL_HEAP=5MB', '-sMAXIMUM_MEMORY=5MB', '-sALLOW_MEMORY_GROWTH=1'], None), # Not enough space for stack
   })
   def test_initial_heap(self, args, expected_initial_heap):
     cmd = [EMCC, test_file('hello_world.c'), '-v'] + args
@@ -8173,7 +8173,7 @@ int main() {
 
     out = self.run_process(cmd, stderr=PIPE)
     if expected_initial_heap != 0:
-      self.assertContained('--initial-heap=' + str(expected_initial_heap), out.stderr)
+      self.assertContained(f'--initial-heap={expected_initial_heap}', out.stderr)
     else:
       self.assertNotContained('--initial-heap=', out.stderr)
 
