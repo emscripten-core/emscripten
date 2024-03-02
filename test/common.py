@@ -868,7 +868,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # For historical reasons emcc compiles and links as C++ by default.
     # However we want to run our tests in a more strict manner.  We can
     # remove this if the issue above is ever fixed.
-    self.set_setting('NO_DEFAULT_TO_CXX')
+    self.set_setting('DEFAULT_TO_CXX', 0)
     self.ldflags = []
     # Increate stack trace limit to maximise usefulness of test failure reports
     self.node_args = ['--stack-trace-limit=50']
