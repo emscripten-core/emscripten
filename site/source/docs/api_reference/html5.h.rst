@@ -927,6 +927,10 @@ Defines
     Emscripten `orientationchange <https://w3c.github.io/screen-orientation/>`_ event.
 
 
+.. c:macro:: EMSCRIPTEN_ORIENTATION_UNSUPPORTED
+
+  The orientation API is not supported and the type is invalid.
+
 .. c:macro:: EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY
 
   Primary portrait mode orientation.
