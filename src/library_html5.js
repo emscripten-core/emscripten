@@ -960,10 +960,12 @@ var LibraryHTML5 = {
         orientationIndex = 1 << orientationIndex;
       }
     } else {
-      // fallback on the deprecated API (mostly for Safari before 2023)
+#if MIN_SAFARI_VERSION < 0x100400
+      // fallback for Safari earlier than 16.4 (March 2023)
       if (window && (window['orientation'] !== undefined)) {
         orientationAngle = window['orientation'];
       }
+#endif
     }
 
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationIndex, 'orientationIndex', 'i32') }}};
