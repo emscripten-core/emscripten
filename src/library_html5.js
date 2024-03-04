@@ -1026,8 +1026,6 @@ var LibraryHTML5 = {
       succeeded = screen.mozLockOrientation(orientations);
     } else if (screen.webkitLockOrientation) {
       succeeded = screen.webkitLockOrientation(orientations);
-    } else if (screen.msLockOrientation) {
-      succeeded = screen.msLockOrientation(orientations);
     } else {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }
@@ -1045,8 +1043,6 @@ var LibraryHTML5 = {
       screen.mozUnlockOrientation();
     } else if (screen.webkitUnlockOrientation) {
       screen.webkitUnlockOrientation();
-    } else if (screen.msUnlockOrientation) {
-      screen.msUnlockOrientation();
     } else {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }
