@@ -940,15 +940,15 @@ var LibraryHTML5 = {
     // alternative selection from OrientationLockType enum
     var orientationsType2 = ['portrait',         'portrait',           'landscape',         'landscape'];
 
-    var orientationIndex = -1;
-    var orientationAngle =  0;
+    var orientationIndex = 0;
+    var orientationAngle = 0;
     var screenOrientObj  = screenOrientation();
     if (typeof screenOrientObj === 'object') {
       orientationIndex = orientationsType1.indexOf(screenOrientObj.type);
       if (orientationIndex < 0) {
         orientationIndex = orientationsType2.indexOf(screenOrientObj.type);
       }
-      if (orientationIndex < 0) {
+      if (orientationIndex >= 0) {
         orientationIndex = 1 << orientationIndex;
       }
       orientationAngle = screenOrientObj.angle;
