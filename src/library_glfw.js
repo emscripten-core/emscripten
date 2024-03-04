@@ -1091,6 +1091,8 @@ var LibraryGLFW = {
       if (i == GLFW.windows.length) {
         if (useWebGL) {
           var contextAttributes = {
+            majorVersion: GLFW.hints[0x00022002],    // GLFW_CONTEXT_VERSION_MAJOR
+            minorVersion: GLFW.hints[0x00022003],    // GLFW_CONTEXT_VERSION_MINOR
             antialias: (GLFW.hints[0x0002100D] > 1), // GLFW_SAMPLES
             depth: (GLFW.hints[0x00021005] > 0),     // GLFW_DEPTH_BITS
             stencil: (GLFW.hints[0x00021006] > 0),   // GLFW_STENCIL_BITS
