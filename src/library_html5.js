@@ -930,7 +930,7 @@ var LibraryHTML5 = {
 
   $screenOrientation: () => {
     if (!screen) return undefined;
-    return screen.orientation || screen.mozOrientation || screen.webkitOrientation;
+    return screen.orientation || screen['mozOrientation'] || screen['webkitOrientation'];
   },
 
   $fillOrientationChangeEventData__deps: ['$screenOrientation'],
