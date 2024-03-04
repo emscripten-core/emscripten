@@ -26,7 +26,7 @@ addToLibrary({
     for (var i = 0; i < count; ++i) {
       args.push({{{ makeGetValue('varargs', `i * ${getNativeTypeSize('double')}`, 'double') }}});
     }
-    return Math.hypot.apply(null, args);
+    return Math.hypot(...args);
   },
   emscripten_math_sin: (x) => Math.sin(x),
   emscripten_math_sinh: (x) => Math.sinh(x),

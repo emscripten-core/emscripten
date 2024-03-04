@@ -23,6 +23,7 @@ from tools import cache
 from tools import shared
 from tools import system_libs
 from tools import ports
+from tools import utils
 from tools.settings import settings
 from tools.system_libs import USE_NINJA
 
@@ -126,7 +127,8 @@ def get_help():
   return '''
 Available targets:
 
-  build / clear %s
+  build / clear
+        %s
 
 Issuing 'embuilder build ALL' causes each task to be built.
 ''' % '\n        '.join(all_tasks)
@@ -166,6 +168,10 @@ def get_system_tasks():
 
 def get_all_tasks():
   return get_system_tasks()[1] + PORTS
+
+
+def handle_port_error(target, message):
+  utils.exit_with_error(f'error building port `{target}` | {message}')
 
 
 def main():
@@ -226,7 +232,7 @@ def main():
   auto_tasks = False
   task_targets = dict.fromkeys(args.targets) # use dict to keep targets order
 
-  # subsitute
+  # substitute
   predefined_tasks = {
     'SYSTEM': system_tasks,
     'USER': PORTS,
@@ -288,6 +294,12 @@ def main():
         clear_port(what)
       if do_build:
         build_port(what)
+    elif ':' in what or what.endswith('.py'):
+      name = ports.handle_use_port_arg(settings, what, lambda message: handle_port_error(what, message))
+      if do_clear:
+        clear_port(name)
+      if do_build:
+        build_port(name)
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

@@ -1075,14 +1075,14 @@ var LibraryGLEmulation = {
             func = "textureCube";
             break;
           default:
-            return abort_sanity("Unknown texType: " + ptrToString(texType));
+            return abort_sanity(`Unknown texType: ${ptrToString(texType)}`);
         }
 
         var texCoordExpr = TEX_COORD_VARYING_PREFIX + texUnitID;
         if (TEX_MATRIX_UNIFORM_PREFIX != null) {
-          texCoordExpr = "(" + TEX_MATRIX_UNIFORM_PREFIX + texUnitID + " * " + texCoordExpr + ")";
+          texCoordExpr = `(${TEX_MATRIX_UNIFORM_PREFIX}${texUnitID} * ${texCoordExpr})`;
         }
-        return func + "(" + TEX_UNIT_UNIFORM_PREFIX + texUnitID + ", " + texCoordExpr + ".xy)";
+        return `${func}(${TEX_UNIT_UNIFORM_PREFIX}${texUnitID}, ${texCoordExpr}.xy)`;
       }
 
       function getTypeFromCombineOp(op) {
@@ -1499,58 +1499,29 @@ var LibraryGLEmulation = {
         var lines = null;
         switch (combiner) {
           case GL_REPLACE: {
-            var line = [
-              outputType + " " + outputVar,
-              " = ",
-                src0Expr,
-              ";",
-            ];
-            lines = [line.join("")];
+            lines = [`${outputType} ${outputVar} = ${src0Expr};`]
             break;
           }
           case GL_MODULATE: {
-            var line = [
-              outputType + " " + outputVar + " = ",
-                src0Expr + " * " + src1Expr,
-              ";",
-            ];
-            lines = [line.join("")];
+            lines = [`${outputType} ${outputVar} = ${src0Expr} * ${src1Expr};`];
             break;
           }
           case GL_ADD: {
-            var line = [
-              outputType + " " + outputVar + " = ",
-                src0Expr + " + " + src1Expr,
-              ";",
-            ];
-            lines = [line.join("")];
+            lines = [`${outputType} ${outputVar} = ${src0Expr} + ${src1Expr};`]
             break;
           }
           case GL_SUBTRACT: {
-            var line = [
-              outputType + " " + outputVar + " = ",
-                src0Expr + " - " + src1Expr,
-              ";",
-            ];
-            lines = [line.join("")];
+            lines = [`${outputType} ${outputVar} = ${src0Expr} - ${src1Expr};`]
             break;
           }
           case GL_INTERPOLATE: {
-            var prefix = TEXENVJIT_NAMESPACE_PREFIX + 'env' + texUnitID + "_";
-            var arg2Var = prefix + "colorSrc2";
-            var arg2Line = getTypeFromCombineOp(this.colorOp[2]) + " " + arg2Var + " = " + src2Expr + ";";
+            var prefix = `${TEXENVJIT_NAMESPACE_PREFIX}env${texUnitID}_`;
+            var arg2Var = `${prefix}colorSrc2`;
+            var arg2Type = getTypeFromCombineOp(this.colorOp[2]);
 
-            var line = [
-              outputType + " " + outputVar,
-              " = ",
-                src0Expr + " * " + arg2Var,
-                " + ",
-                src1Expr + " * (1.0 - " + arg2Var + ")",
-              ";",
-            ];
             lines = [
-              arg2Line,
-              line.join(""),
+              `${arg2Type} ${arg2Var} = ${src2Expr};`,
+              `${outputType} ${outputVar} = ${src0Expr} * ${arg2Var} + ${src1Expr} * (1.0 - ${arg2Var});`,
             ];
             break;
           }
@@ -3031,10 +3002,10 @@ var LibraryGLEmulation = {
       var renderer = GLImmediate.getRenderer();
 
       // Generate index data in a format suitable for GLES 2.0/WebGL
-      var numVertexes = 4 * GLImmediate.vertexCounter / GLImmediate.stride;
-      if (!numVertexes) return;
+      var numVertices = 4 * GLImmediate.vertexCounter / GLImmediate.stride;
+      if (!numVertices) return;
 #if ASSERTIONS
-      assert(numVertexes % 1 == 0, "`numVertexes` must be an integer.");
+      assert(numVertices % 1 == 0, "`numVertices` must be an integer.");
 #endif
       var emulatedElementArrayBuffer = false;
       var numIndexes = 0;
@@ -3076,7 +3047,7 @@ var LibraryGLEmulation = {
         assert(GLImmediate.firstVertex % 4 == 0);
 #endif
         ptr = GLImmediate.firstVertex * 3;
-        var numQuads = numVertexes / 4;
+        var numQuads = numVertices / 4;
         numIndexes = numQuads * 6; // 0 1 2, 0 2 3 pattern
 #if ASSERTIONS
         assert(ptr + (numIndexes << 1) <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (b)');
@@ -3091,7 +3062,7 @@ var LibraryGLEmulation = {
       if (numIndexes) {
         GLctx.drawElements(GLImmediate.mode, numIndexes, GLctx.UNSIGNED_SHORT, ptr);
       } else {
-        GLctx.drawArrays(GLImmediate.mode, startIndex, numVertexes);
+        GLctx.drawArrays(GLImmediate.mode, startIndex, numVertices);
       }
 
       if (emulatedElementArrayBuffer) {
@@ -3609,7 +3580,7 @@ var LibraryGLEmulation = {
         _glEnableVertexAttribArray(vaa);
       }
       for (var vaa in info.vertexAttribPointers) {
-        _glVertexAttribPointer.apply(null, info.vertexAttribPointers[vaa]);
+        _glVertexAttribPointer(...info.vertexAttribPointers[vaa]);
       }
       for (var attrib in info.enabledClientStates) {
         _glEnableClientState(attrib|0);

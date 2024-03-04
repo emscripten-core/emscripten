@@ -161,7 +161,7 @@ def update_settings_glue(wasm_file, metadata):
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exitJS', '$handleException']
 
   # When using dynamic linking the main function might be in a side module.
-  # To be safe assume they do take input parametes.
+  # To be safe assume they do take input parameters.
   settings.MAIN_READS_PARAMS = metadata.mainReadsParams or bool(settings.MAIN_MODULE)
   if settings.MAIN_READS_PARAMS and not settings.STANDALONE_WASM:
     # callMain depends on this library function
@@ -241,7 +241,7 @@ def report_missing_exports(js_symbols):
     for symbol in sorted(missing):
       diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
 
-  # Special hanlding for the `_main` symbol
+  # Special handling for the `_main` symbol
 
   if settings.STANDALONE_WASM:
     # standalone mode doesn't use main, and it always reports missing entry point at link time.
@@ -329,10 +329,10 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
     metadata.imports += ['__memory_base32']
 
   if settings.ASYNCIFY == 1:
-    metadata.function_exports['asyncify_start_unwind'] = 1
-    metadata.function_exports['asyncify_stop_unwind'] = 0
-    metadata.function_exports['asyncify_start_rewind'] = 1
-    metadata.function_exports['asyncify_stop_rewind'] = 0
+    metadata.function_exports['asyncify_start_unwind'] = webassembly.FuncType([webassembly.Type.I32], [])
+    metadata.function_exports['asyncify_stop_unwind'] = webassembly.FuncType([], [])
+    metadata.function_exports['asyncify_start_rewind'] = webassembly.FuncType([webassembly.Type.I32], [])
+    metadata.function_exports['asyncify_stop_rewind'] = webassembly.FuncType([], [])
 
   # If the binary has already been finalized the settings have already been
   # updated and we can skip updating them.
@@ -369,7 +369,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
     # them through node.  Without this step, syntax errors are not surfaced
     # until runtime.
     # We use subprocess directly here rather than shared.check_call since
-    # check_call doesn't support the `intput` argument.
+    # check_call doesn't support the `input` argument.
     if asm_consts:
       validate = '\n'.join([f'var tmp = {f};' for _, f in asm_consts])
       proc = subprocess.run(config.NODE_JS + ['--check', '-'], input=validate.encode('utf-8'))
@@ -460,6 +460,8 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
 
     out.write(post)
     module = None
+
+    return metadata
 
 
 @ToolchainProfiler.profile()
@@ -604,6 +606,34 @@ def finalize_wasm(infile, outfile, js_syms):
   return metadata
 
 
+def create_tsd(metadata, embind_tsd):
+  function_exports = metadata.function_exports
+  out = '// TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.\n'
+  out += 'interface WasmModule {\n'
+  for name, types in function_exports.items():
+    mangled = asmjs_mangle(name)
+    should_export = settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS
+    if not should_export:
+      continue
+    arguments = []
+    for index, type in enumerate(types.params):
+      arguments.append(f"_{index}: {type_to_ts_type(type)}")
+    out += f'  {mangled}({", ".join(arguments)}): '
+    assert len(types.returns) <= 1, 'One return type only supported'
+    if types.returns:
+      out += f'{type_to_ts_type(types.returns[0])}'
+    else:
+      out += 'void'
+    out += ';\n'
+  out += '}\n'
+  out += f'\n{embind_tsd}'
+  export_interfaces = 'WasmModule'
+  if embind_tsd:
+    export_interfaces += ' & EmbindModule'
+  out += f'export type MainModule = {export_interfaces};\n'
+  return out
+
+
 def create_asm_consts(metadata):
   asm_consts = {}
   for addr, const in metadata.asmConsts.items():
@@ -640,6 +670,17 @@ def type_to_sig(type):
     webassembly.Type.F64: 'd',
     webassembly.Type.EXTERNREF: 'e',
     webassembly.Type.VOID: 'v'
+  }[type]
+
+
+def type_to_ts_type(type):
+  return {
+    webassembly.Type.I32: 'number',
+    webassembly.Type.I64: 'BigInt',
+    webassembly.Type.F32: 'number',
+    webassembly.Type.F64: 'number',
+    webassembly.Type.EXTERNREF: 'any',
+    webassembly.Type.VOID: 'void'
   }[type]
 
 
@@ -794,7 +835,8 @@ def make_export_wrappers(function_exports):
       return False
     return True
 
-  for name, nargs in function_exports.items():
+  for name, types in function_exports.items():
+    nargs = len(types.params)
     mangled = asmjs_mangle(name)
     wrapper = 'var %s = ' % mangled
 
@@ -824,7 +866,7 @@ def make_export_wrappers(function_exports):
 
 
 def create_receiving(function_exports):
-  # When not declaring asm exports this section is empty and we instead programatically export
+  # When not declaring asm exports this section is empty and we instead programmatically export
   # symbols on the global object by calling exportWasmSymbols after initialization
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
@@ -940,7 +982,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_wasmfs_identify': '_p',
     '_wasmfs_read_file': 'pp',
     '__dl_seterr': '_pp',
-    '_emscripten_run_on_main_thread_js': '___p_',
+    '_emscripten_run_on_main_thread_js': '__p_p_',
     '_emscripten_proxy_execute_task_queue': '_p',
     '_emscripten_thread_exit': '_p',
     '_emscripten_thread_init': '_p_____',

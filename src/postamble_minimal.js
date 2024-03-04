@@ -197,35 +197,27 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #if AUDIO_WORKLET
   // If we are in the audio worklet environment, we can only access the Module object
   // and not the global scope of the main JS script. Therefore we need to export
-  // all functions that the audio worklet scope needs onto the Module object.
-  Module['wasmTable'] = wasmTable;
+  // all symbols that the audio worklet scope needs onto the Module object.
 #if ASSERTIONS
-  // In ASSERTIONS-enabled builds, the following symbols have gotten read-only getters
-  // saved to the Module. Remove those getters so we can manually export the stack
-  // functions here.
+  // In ASSERTIONS-enabled builds, the needed symbols have gotten read-only getters
+  // saved to the Module. Remove the getters so we can manually export them here.
   delete Module['stackSave'];
   delete Module['stackAlloc'];
   delete Module['stackRestore'];
+  delete Module['wasmTable'];
 #endif
   Module['stackSave'] = stackSave;
   Module['stackAlloc'] = stackAlloc;
   Module['stackRestore'] = stackRestore;
+  Module['wasmTable'] = wasmTable;
 #endif
 
 #if !IMPORTED_MEMORY
   wasmMemory = wasmExports['memory'];
 #if ASSERTIONS
   assert(wasmMemory);
-  assert(wasmMemory.buffer.byteLength === {{{ INITIAL_MEMORY }}});
 #endif
   updateMemoryViews();
-#endif
-
-#if !MEM_INIT_IN_WASM && !SINGLE_FILE
-#if ASSERTIONS
-  if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
-#endif
-  HEAPU8.set(new Uint8Array(Module['mem']), {{{ GLOBAL_BASE }}});
 #endif
 
   initRuntime(wasmExports);

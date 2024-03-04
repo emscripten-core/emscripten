@@ -308,12 +308,11 @@ function `x` called before runtime initialization``, which is a check enabled in
 ``ASSERTIONS`` builds.)
 
 Calling a compiled function before a page has fully loaded can result in an
-error, if the function relies on files that may not be present (for example the
-:ref:`.mem <emcc-memory-init-file>` file and :ref:`preloaded
-<emcc-preload-file>` files are loaded asynchronously, and therefore if you just
-place some JS that calls compiled code in a ``--post-js``, that code will be
-called synchronously at the end of the combined JS file, potentially before the
-asynchronous event happens, which is bad).
+error, if the function relies on files that may not be present (for example
+:ref:`preloaded <emcc-preload-file>` files are loaded asynchronously, and
+therefore if you just place some JS that calls compiled code in a ``--post-js``,
+that code will be called synchronously at the end of the combined JS file,
+potentially before the asynchronous event happens, which is bad).
 
 The easiest way to find out when loading is complete is to add a ``main()``
 function, and within it call a JavaScript function to notify your code that

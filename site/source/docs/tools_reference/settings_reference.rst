@@ -151,6 +151,19 @@ Note that this setting does not affect the behavior of operator new in C++.
 This function will always abort on allocation failure if exceptions are disabled.
 If you want new to return 0 on failure, use it with std::nothrow.
 
+.. _initial_heap:
+
+INITIAL_HEAP
+============
+
+The initial amount of heap memory available to the program.  This is the
+memory region available for dynamic allocations via `sbrk`, `malloc` and `new`.
+
+Unlike INITIAL_MEMORY, this setting allows the static and dynamic regions of
+your programs memory to independently grow. In most cases we recommend using
+this setting rather than `INITIAL_MEMORY`. However, this setting does not work
+for imported memories (e.g. when dynamic linking is used).
+
 .. _initial_memory:
 
 INITIAL_MEMORY
@@ -161,6 +174,9 @@ cause us to expand the heap, which can be costly with typed arrays:
 we need to copy the old heap into a new one in that case.
 If ALLOW_MEMORY_GROWTH is set, this initial amount of memory can increase
 later; if not, then it is the final and total amount of memory.
+
+By default, this value is calculated based on INITIAL_HEAP, STACK_SIZE,
+as well the size of static data in input modules.
 
 (This option was formerly called TOTAL_MEMORY.)
 
@@ -409,7 +425,9 @@ Print out exceptions in emscriptened code.
 DEMANGLE_SUPPORT
 ================
 
-If 1, export `demangle` and `stackTrace` helper function.
+If 1, export `demangle` and `stackTrace` JS library functions.
+
+.. note:: This setting is deprecated
 
 .. _library_debug:
 
@@ -1619,7 +1637,9 @@ EXPORT_ES6
 ==========
 
 Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
-be enabled for ES6 exports.
+be enabled for ES6 exports and is implicitly enabled if not already set.
+
+This is implicitly enabled if the output suffix is set to 'mjs'.
 
 .. _use_es6_import_meta:
 
@@ -1753,7 +1773,7 @@ the WASM_BIGINT option to avoid that problem by using BigInts for i64s which
 means we don't need to legalize for JS (but this requires a new enough JS
 VM).
 
-Standlone builds require a ``main`` entry point by default.  If you want to
+Standalone builds require a ``main`` entry point by default.  If you want to
 build a library (also known as a reactor) instead you can pass ``--no-entry``.
 
 .. _binaryen_ignore_implicit_traps:
@@ -2397,7 +2417,7 @@ AUTO_NATIVE_LIBRARIES
 =====================
 
 Like AUTO_JS_LIBRARIES but for the native libraries such as libgl, libal
-and libhtml5.   If this is disabled it is necessary to explcitly add
+and libhtml5.   If this is disabled it is necessary to explicitly add
 e.g. -lhtml5 and also to first build the library using ``embuilder``.
 
 .. _min_firefox_version:
@@ -2437,6 +2457,8 @@ MIN_CHROME_VERSION
 
 Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 drop support for Chrome 57 and older.
+This setting also applies to modern Chromium-based Edge, which shares version
+numbers with Chrome.
 Chrome 85 was released on 2020-08-25.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 Minimum supported value is 32, which was released on 2014-01-04.
@@ -2655,7 +2677,7 @@ When this flag is turned on, we error at link time if the build requires any
 changes to the wasm after link. This can be useful in testing, for example.
 Some example of features that require post-link wasm changes are:
 - Lowering i64 to i32 pairs at the JS boundary (See WASM_BIGINT)
-- Lowering sign-extnesion operation when targeting older browsers.
+- Lowering sign-extension operation when targeting older browsers.
 
 .. _abort_on_wasm_exceptions:
 
@@ -2684,7 +2706,7 @@ PURE_WASI
 
 Build binaries that use as many WASI APIs as possible, and include additional
 JS support libraries for those APIs.  This allows emscripten to produce binaries
-are more WASI compilant and also allows it to process and execute WASI
+are more WASI compliant and also allows it to process and execute WASI
 binaries built with other SDKs (e.g.  wasi-sdk).
 This setting is experimental and subject to change or removal.
 Implies STANDALONE_WASM.

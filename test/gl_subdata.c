@@ -3,16 +3,15 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <math.h>
+#include <stdio.h>
+#include <string.h>
+
 #define GL_GLEXT_PROTOTYPES
 #define EGL_EGLEXT_PROTOTYPES
-#include <cassert>
-#include <cmath>
-#include <iostream>
-#include <vector>
-extern "C" {
 #include <GL/gl.h>
 #include <GL/glut.h>
-}
+
 static const char vertex_shader[] =
         "#ifdef GL_ES\n"
         "precision lowp float;\n"
@@ -29,6 +28,7 @@ static const char vertex_shader[] =
         "    gl_PointSize = v.z;\n"
         "    color = vec4(0.5 + v.w/2., 0.5 + 0.5 * v.w/2., 0.5, 1);\n"
         "}\n";
+
 static const char fragment_shader[] =
         "#ifdef GL_ES\n"
         "precision lowp float;\n"
@@ -44,26 +44,29 @@ static const char fragment_shader[] =
         "}\n"
         "if ( dst > 0.5) discard;\n"
         "}";
-struct NodeInfo { //structure that we want to transmit to our shaders
+
+typedef struct NodeInfo { //structure that we want to transmit to our shaders
     float x;
     float y;
     float s;
     float c;
-};
+} NodeInfo;
+
 GLuint nodeTexture; //texture id used to bind
 GLuint nodeSamplerLocation; //shader sampler address
 GLuint indicesAttributeLocation; //shader attribute address
 GLuint indicesVBO; //Vertex Buffer Object Id;
-const int nbNodes = 512;
-NodeInfo * data = new NodeInfo[nbNodes]; //our data that will be transmitted using float texture.
+#define NUM_NODES 512
+NodeInfo data[NUM_NODES]; //our data that will be transmitted using float texture.
 double alpha = 0; //use to make a simple funny effect;
+
 static void updateFloatTexture() {
     int count = 0;
-    for (float x=0; x < nbNodes; ++x ) {
-        data[count].x = 0.2*pow(cos(alpha), 3) + (sin(alpha)*3. + 3.5) * x/nbNodes * cos(alpha + x/nbNodes * 16. * M_PI);
-        data[count].y = 0.2*pow(sin(alpha), 3) + (sin(alpha)*3. + 3.5) * x/nbNodes * sin(alpha + x/nbNodes * 16. * M_PI);
-        data[count].s = (16. + 16. * cos(alpha + x/nbNodes * 32. * M_PI)) + 8.;// * fmod(x/nbNodes + alpha, 1.) + 5.;
-        data[count].c = 0.5 + 0.5 * sin(alpha + x/nbNodes * 32. * M_PI);
+    for (float x=0; x < NUM_NODES; ++x ) {
+        data[count].x = 0.2*pow(cos(alpha), 3) + (sin(alpha)*3. + 3.5) * x/NUM_NODES * cos(alpha + x/NUM_NODES * 16. * M_PI);
+        data[count].y = 0.2*pow(sin(alpha), 3) + (sin(alpha)*3. + 3.5) * x/NUM_NODES * sin(alpha + x/NUM_NODES * 16. * M_PI);
+        data[count].s = (16. + 16. * cos(alpha + x/NUM_NODES * 32. * M_PI)) + 8.;// * fmod(x/NUM_NODES + alpha, 1.) + 5.;
+        data[count].c = 0.5 + 0.5 * sin(alpha + x/NUM_NODES * 32. * M_PI);
         ++count;
     }
     glBindTexture(GL_TEXTURE_2D, nodeTexture);
@@ -73,12 +76,13 @@ static void updateFloatTexture() {
     // In desktop GL, we can also use sized internal formats.
     const GLenum internalFormat = GL_RGBA32F;
 #endif
-    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, nbNodes, 1, 0, GL_RGBA, GL_FLOAT, data);
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, NUM_NODES, 1, 0, GL_RGBA, GL_FLOAT, data);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glBindTexture(GL_TEXTURE_2D, 0);
     alpha -= 0.001;
 }
+
 static void glut_draw_callback(void) {
     glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
@@ -93,40 +97,32 @@ static void glut_draw_callback(void) {
     glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, indicesVBO);
     glVertexAttribPointer(0, 1, GL_FLOAT, GL_FALSE, 0, NULL);
-    glDrawArrays(GL_POINTS, 0, nbNodes);
+    glDrawArrays(GL_POINTS, 0, NUM_NODES);
     glutSwapBuffers();
 }
-GLuint createShader(const char source[], int type) {
-    GLint status;
+
+GLuint createShader(const char* source, int type) {
     char msg[512];
     GLuint shader = glCreateShader(type);
-    glShaderSource(shader, 1, (const GLchar**)(&source), NULL);
+    glShaderSource(shader, 1, &source, NULL);
     glCompileShader(shader);
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-    if (status == GL_FALSE) {
-        glGetShaderInfoLog(shader, sizeof msg, NULL, msg);
-        std::cout << "Shader info: \"" << msg << "\"" << std::endl;
-    }
-    assert(status == GL_TRUE);
+    glGetShaderInfoLog(shader, sizeof msg, NULL, msg);
+    printf("Shader info: %s\n", msg);
     return shader;
 }
+
 static void gl_init(void) {
     GLuint program = glCreateProgram();
     glAttachShader(program, createShader(vertex_shader  , GL_VERTEX_SHADER));
     glAttachShader(program, createShader(fragment_shader, GL_FRAGMENT_SHADER));
     glLinkProgram(program);
-    GLint status;
     char msg[512];
-    glGetProgramiv(program, GL_LINK_STATUS, &status);
-    if (status == GL_FALSE) {
-        glGetProgramInfoLog(program, sizeof msg, NULL, msg);
-        std::cout << "info: \"" <<  msg << "\"" << std::endl;
-    }
-    assert(status == GL_TRUE);
+    glGetProgramInfoLog(program, sizeof msg, NULL, msg);
+    printf("info: %s\n", msg);
     glUseProgram(program);
-    std::vector<float> elements(nbNodes);
+    float elements[NUM_NODES];
     int count = 0;
-    for (float x=0; x < nbNodes; ++x ) {
+    for (float x=0; x < NUM_NODES; ++x ) {
         elements[count] = count;
         ++count;
     }
@@ -135,9 +131,14 @@ static void gl_init(void) {
     /* Store the vertices in a vertex buffer object (VBO) */
     glGenBuffers(1, &indicesVBO);
     glBindBuffer(GL_ARRAY_BUFFER, indicesVBO);
-    glBufferData(GL_ARRAY_BUFFER, elements.size() * sizeof(float), &elements[0], GL_STATIC_DRAW);
+    float zeroes[NUM_NODES];
+    memset(zeroes, 0, sizeof(zeroes));
+    glBufferData(GL_ARRAY_BUFFER, NUM_NODES * sizeof(float), zeroes, GL_STATIC_DRAW);
+    for (int x = 0; x < NUM_NODES; x++) {
+      glBufferSubData(GL_ARRAY_BUFFER, x * sizeof(float), sizeof(float), &elements[x]);
+    }
     /* Get the locations of the uniforms so we can access them */
-    nodeSamplerLocation      = glGetUniformLocation(program, "nodeInfo");
+    nodeSamplerLocation = glGetUniformLocation(program, "nodeInfo");
     glBindAttribLocation(program, 0, "indices");
 #ifndef __EMSCRIPTEN__ // GLES2 & WebGL do not have these, only pre 3.0 desktop GL and compatibility mode GL3.0+ GL do.
     //Enable glPoint size in shader, always enable in Open Gl ES 2.
@@ -145,13 +146,14 @@ static void gl_init(void) {
     glEnable(GL_POINT_SPRITE);
 #endif
 }
+
 int main(int argc, char *argv[]) {
     glutInit(&argc, argv);
     glutInitWindowSize(640, 480);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-    glutCreateWindow("Simple FLOAT Texture Test");
+    int w = glutCreateWindow("Simple FLOAT Texture Test");
     /* Set up glut callback functions */
-    glutDisplayFunc(glut_draw_callback      );
+    glutDisplayFunc(glut_draw_callback);
     gl_init();
     glutMainLoop();
     return 0;

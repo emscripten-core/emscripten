@@ -439,7 +439,7 @@ if (ENVIRONMENT_IS_NODE) {
 // Merge back in the overrides
 Object.assign(Module, moduleOverrides);
 // Free the object hierarchy contained in the overrides, this lets the GC
-// reclaim data used e.g. in memoryInitializerRequest, which is a large typed array.
+// reclaim data used.
 moduleOverrides = null;
 #if ASSERTIONS
 checkIncomingModuleAPI();

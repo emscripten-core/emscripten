@@ -1570,11 +1570,8 @@ var LibraryWebGPU = {
   },
 
   wgpuQueueOnSubmittedWorkDone__deps: ['$callUserCallback'],
-  wgpuQueueOnSubmittedWorkDone: (queueId, signalValue, callback, userdata) => {
+  wgpuQueueOnSubmittedWorkDone: (queueId, callback, userdata) => {
     var queue = WebGPU.mgrQueue.get(queueId);
-#if ASSERTIONS
-    assert(signalValue == 0, 'signalValue not supported, must be 0');
-#endif
 
     {{{ runtimeKeepalivePush() }}}
     queue["onSubmittedWorkDone"]().then(() => {
@@ -2713,6 +2710,10 @@ var LibraryWebGPU = {
     return WebGPU.mgrSwapChain.create(context);
   },
 
+  wgpuSwapChainGetCurrentTexture: (swapChainId) => {
+    var context = WebGPU.mgrSwapChain.get(swapChainId);
+    return WebGPU.mgrTexture.create(context["getCurrentTexture"]());
+  },
   wgpuSwapChainGetCurrentTextureView: (swapChainId) => {
     var context = WebGPU.mgrSwapChain.get(swapChainId);
     return WebGPU.mgrTextureView.create(context["getCurrentTexture"]()["createView"]());
@@ -2732,9 +2733,6 @@ for (var value in LibraryWebGPU.$WebGPU.FeatureName) {
 for (const key of Object.keys(LibraryWebGPU)) {
   if (typeof LibraryWebGPU[key] === 'function') {
     LibraryWebGPU[key + '__i53abi'] = true;
-    if (!(key + '__proxy' in LibraryWebGPU)) {
-      LibraryWebGPU[key + '__proxy'] = 'sync';
-    }
   }
 }
 

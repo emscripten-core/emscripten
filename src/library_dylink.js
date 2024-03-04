@@ -52,7 +52,7 @@ var LibraryDylink = {
 
   $isSymbolDefined: (symName) => {
     // Ignore 'stub' symbols that are auto-generated as part of the original
-    // `wasmImports` used to instantate the main module.
+    // `wasmImports` used to instantiate the main module.
     var existing = wasmImports[symName];
     if (!existing || existing.stub) {
       return false;
@@ -239,7 +239,7 @@ var LibraryDylink = {
       }
 #if DYLINK_DEBUG
       else if (GOT[symName].value != value) {
-        dbg(`udateGOT: EXISTING SYMBOL: ${symName} : ${GOT[symName].value} (${value})`);
+        dbg(`updateGOT: EXISTING SYMBOL: ${symName} : ${GOT[symName].value} (${value})`);
       }
 #endif
     }
@@ -707,9 +707,9 @@ var LibraryDylink = {
           // when first called.
           if (!(prop in stubs)) {
             var resolved;
-            stubs[prop] = function() {
+            stubs[prop] = (...args) => {
               resolved ||= resolveSymbol(prop);
-              return resolved.apply(null, arguments);
+              return resolved(...args);
             };
           }
           return stubs[prop];

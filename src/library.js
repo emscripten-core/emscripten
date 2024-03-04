@@ -76,7 +76,7 @@ addToLibrary({
 
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
-      // implict exit can never happen on a pthread
+      // implicit exit can never happen on a pthread
 #if ASSERTIONS
       assert(!implicit);
 #endif
@@ -374,6 +374,7 @@ addToLibrary({
   // stdlib.h
   // ==========================================================================
 
+#if !STANDALONE_WASM
   // TODO: There are currently two abort() functions that get imported to asm
   // module scope: the built-in runtime function abort(), and this library
   // function _abort(). Remove one of these, importing two functions for the
@@ -385,6 +386,7 @@ addToLibrary({
     abort('');
 #endif
   },
+#endif
 
   // This object can be modified by the user during startup, which affects
   // the initial values of the environment accessible by getenv.
@@ -426,9 +428,11 @@ addToLibrary({
   // assert.h
   // ==========================================================================
 
+#if !STANDALONE_WASM
   __assert_fail: (condition, filename, line, func) => {
     abort(`Assertion failed: ${UTF8ToString(condition)}, at: ` + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
+#endif
 
   // ==========================================================================
   // time.h
@@ -600,9 +604,9 @@ addToLibrary({
     return ret;
   },
 
-  _tzset_js__deps: ['$stringToNewUTF8'],
+  _tzset_js__deps: ['$stringToUTF8'],
   _tzset_js__internal: true,
-  _tzset_js: (timezone, daylight, tzname) => {
+  _tzset_js: (timezone, daylight, std_name, dst_name) => {
     // TODO: Use (malleable) environment variables instead of system settings.
     var currentYear = new Date().getFullYear();
     var winter = new Date(currentYear, 0, 1);
@@ -610,9 +614,12 @@ addToLibrary({
     var winterOffset = winter.getTimezoneOffset();
     var summerOffset = summer.getTimezoneOffset();
 
-    // Local standard timezone offset. Local standard time is not adjusted for daylight savings.
-    // This code uses the fact that getTimezoneOffset returns a greater value during Standard Time versus Daylight Saving Time (DST).
-    // Thus it determines the expected output during Standard Time, and it compares whether the output of the given date the same (Standard) or less (DST).
+    // Local standard timezone offset. Local standard time is not adjusted for
+    // daylight savings.  This code uses the fact that getTimezoneOffset returns
+    // a greater value during Standard Time versus Daylight Saving Time (DST).
+    // Thus it determines the expected output during Standard Time, and it
+    // compares whether the output of the given date the same (Standard) or less
+    // (DST).
     var stdTimezoneOffset = Math.max(winterOffset, summerOffset);
 
     // timezone is specified as seconds west of UTC ("The external variable
@@ -630,15 +637,13 @@ addToLibrary({
     };
     var winterName = extractZone(winter);
     var summerName = extractZone(summer);
-    var winterNamePtr = stringToNewUTF8(winterName);
-    var summerNamePtr = stringToNewUTF8(summerName);
     if (summerOffset < winterOffset) {
       // Northern hemisphere
-      {{{ makeSetValue('tzname', '0', 'winterNamePtr', POINTER_TYPE) }}};
-      {{{ makeSetValue('tzname', POINTER_SIZE, 'summerNamePtr', POINTER_TYPE) }}};
+      stringToUTF8(winterName, std_name, {{{ cDefs.TZNAME_MAX + 1 }}});
+      stringToUTF8(summerName, dst_name, {{{ cDefs.TZNAME_MAX + 1 }}});
     } else {
-      {{{ makeSetValue('tzname', '0', 'summerNamePtr', POINTER_TYPE) }}};
-      {{{ makeSetValue('tzname', POINTER_SIZE, 'winterNamePtr', POINTER_TYPE) }}};
+      stringToUTF8(winterName, dst_name, {{{ cDefs.TZNAME_MAX + 1 }}});
+      stringToUTF8(summerName, std_name, {{{ cDefs.TZNAME_MAX + 1 }}});
     }
   },
 
@@ -2581,7 +2586,7 @@ addToLibrary({
     // skip this function and the caller to get caller's return address
 #if MEMORY64
     // MEMORY64 injects and extra wrapper within emscripten_return_address
-    // to handle BigInt convertions.
+    // to handle BigInt conversions.
     var caller = callstack[level + 4];
 #else
     var caller = callstack[level + 3];
@@ -2874,7 +2879,7 @@ addToLibrary({
 #if ASSERTIONS
     assert(ASM_CONSTS.hasOwnProperty(code), `No EM_ASM constant found at address ${code}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
 #endif
-    return ASM_CONSTS[code].apply(null, args);
+    return ASM_CONSTS[code](...args);
   },
 
   emscripten_asm_const_int__deps: ['$runEmAsmFunction'],
@@ -2896,7 +2901,7 @@ addToLibrary({
     '$proxyToMainThread'
 #endif
   ],
-  $runMainThreadEmAsm: (code, sigPtr, argbuf, sync) => {
+  $runMainThreadEmAsm: (emAsmAddr, sigPtr, argbuf, sync) => {
     var args = readEmAsmArgs(sigPtr, argbuf);
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
@@ -2909,29 +2914,23 @@ addToLibrary({
       // of using __proxy. (And dor simplicity, do the same in the sync
       // case as well, even though it's not strictly necessary, to keep the two
       // code paths as similar as possible on both sides.)
-      // -1 - code is the encoding of a proxied EM_ASM, as a negative number
-      // (positive numbers are non-EM_ASM calls).
-      return proxyToMainThread.apply(null, [-1 - code, sync].concat(args));
+      return proxyToMainThread(0, emAsmAddr, sync, ...args);
     }
 #endif
 #if ASSERTIONS
-    assert(ASM_CONSTS.hasOwnProperty(code), `No EM_ASM constant found at address ${code}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
+    assert(ASM_CONSTS.hasOwnProperty(emAsmAddr), `No EM_ASM constant found at address ${emAsmAddr}.  The loaded WebAssembly file is likely out of sync with the generated JavaScript.`);
 #endif
-    return ASM_CONSTS[code].apply(null, args);
+    return ASM_CONSTS[emAsmAddr](...args);
   },
   emscripten_asm_const_int_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
-  emscripten_asm_const_int_sync_on_main_thread: (code, sigPtr, argbuf) => {
-    return runMainThreadEmAsm(code, sigPtr, argbuf, 1);
-  },
+  emscripten_asm_const_int_sync_on_main_thread: (emAsmAddr, sigPtr, argbuf) => runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 1),
 
   emscripten_asm_const_ptr_sync_on_main_thread__deps: ['$runMainThreadEmAsm'],
-  emscripten_asm_const_ptr_sync_on_main_thread: (code, sigPtr, argbuf) => {
-    return runMainThreadEmAsm(code, sigPtr, argbuf, 1);
-  },
+  emscripten_asm_const_ptr_sync_on_main_thread: (emAsmAddr, sigPtr, argbuf) => runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 1),
 
   emscripten_asm_const_double_sync_on_main_thread: 'emscripten_asm_const_int_sync_on_main_thread',
   emscripten_asm_const_async_on_main_thread__deps: ['$runMainThreadEmAsm'],
-  emscripten_asm_const_async_on_main_thread: (code, sigPtr, argbuf) => runMainThreadEmAsm(code, sigPtr, argbuf, 0),
+  emscripten_asm_const_async_on_main_thread: (emAsmAddr, sigPtr, argbuf) => runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 0),
 #endif
 
 #if !DECLARE_ASM_MODULE_EXPORTS
@@ -3100,7 +3099,7 @@ addToLibrary({
 #endif
     var f = Module['dynCall_' + sig];
 #endif
-    return args && args.length ? f.apply(null, [ptr].concat(args)) : f.call(null, ptr);
+    return f(ptr, ...args);
   },
   $dynCall__deps: ['$dynCallLegacy', '$getWasmTableEntry'],
 #endif
@@ -3113,16 +3112,10 @@ addToLibrary({
 #if ASSERTIONS && !DYNCALLS
     assert(sig.includes('j') || sig.includes('p'), 'getDynCaller should only be called with i64 sigs')
 #endif
-    var argCache = [];
-    return function() {
-      argCache.length = 0;
-      Object.assign(argCache, arguments);
-      return dynCall(sig, ptr, argCache);
-    };
+    return (...args) => dynCall(sig, ptr, args);
   },
 
-  $dynCall__docs: '/** @param {Object=} args */',
-  $dynCall: (sig, ptr, args) => {
+  $dynCall: (sig, ptr, args = []) => {
 #if MEMORY64
     // With MEMORY64 we have an additional step to convert `p` arguments to
     // bigint. This is the runtime equivalent of the wrappers we create for wasm
@@ -3136,7 +3129,7 @@ addToLibrary({
 #else
 #if !WASM_BIGINT
     // Without WASM_BIGINT support we cannot directly call function with i64 as
-    // part of thier signature, so we rely the dynCall functions generated by
+    // part of their signature, so we rely on the dynCall functions generated by
     // wasm-emscripten-finalize
     if (sig.includes('j')) {
       return dynCallLegacy(sig, ptr, args);
@@ -3145,7 +3138,7 @@ addToLibrary({
 #if ASSERTIONS
     assert(getWasmTableEntry(ptr), `missing table entry in dynCall: ${ptr}`);
 #endif
-    var rtn = getWasmTableEntry(ptr).apply(null, args);
+    var rtn = getWasmTableEntry(ptr)(...args);
 #endif
 #if MEMORY64
     return sig[0] == 'p' ? Number(rtn) : rtn;
@@ -3173,7 +3166,7 @@ addToLibrary({
   $setWasmTableEntry__deps: ['$wasmTableMirror', '$wasmTable'],
   $setWasmTableEntry: (idx, func) => {
     wasmTable.set(idx, func);
-    // With ABORT_ON_WASM_EXCEPTIONS wasmTable.get is overriden to return wrapped
+    // With ABORT_ON_WASM_EXCEPTIONS wasmTable.get is overridden to return wrapped
     // functions so we need to call it here to retrieve the potential wrapper correctly
     // instead of just storing 'func' directly into wasmTableMirror
     wasmTableMirror[idx] = wasmTable.get(idx);
@@ -3386,7 +3379,7 @@ addToLibrary({
   // setTimeout or any other kind of event handler that calls into user case
   // needs to use this wrapper.
   //
-  // The job of this wrapper is the handle emscripten-specfic exceptions such
+  // The job of this wrapper is the handle emscripten-specific exceptions such
   // as ExitStatus and 'unwind' and prevent these from escaping to the top
   // level.
   $callUserCallback__deps: ['$handleException', '$maybeExit'],
@@ -3562,9 +3555,8 @@ addToLibrary({
 
   $HandleAllocator: class {
     constructor() {
-      // TODO(sbc): Use class fields once we allow/enable es2022 in
-      // JavaScript input to acorn and closure.
-      // Reserve slot 0 so that 0 is always an invalid handle
+      // TODO(https://github.com/emscripten-core/emscripten/issues/21414):
+      // Use inline field declarations.
       this.allocated = [undefined];
       this.freelist = [];
     }

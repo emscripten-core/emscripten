@@ -228,7 +228,7 @@ rule archive
     objects = []
     for src in input_files:
       # Resolve duplicates by appending unique.
-      # This is needed on case insensitve filesystem to handle,
+      # This is needed on case insensitive filesystem to handle,
       # for example, _exit.o and _Exit.o.
       object_basename = shared.unsuffixed_basename(src)
       if case_insensitive:
@@ -1173,7 +1173,7 @@ class libc(MuslInternalLibrary,
 
     ignore = set(ignore)
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
-      # Don't recurse into ingored directories
+      # Don't recurse into ignored directories
       remove = [d for d in dirnames if d in ignore]
       for r in remove:
         dirnames.remove(r)
@@ -1393,7 +1393,7 @@ class libwasm_workers(MTLibrary):
     cflags = super().get_cflags()
     if self.debug:
       cflags += ['-D_DEBUG']
-      # library_wasm_worker.c contains an assert that a nonnull paramater
+      # library_wasm_worker.c contains an assert that a nonnull parameter
       # is no NULL, which llvm now warns is redundant/tautological.
       cflags += ['-Wno-tautological-pointer-compare']
       # Override the `-O2` default.  Building library_wasm_worker.c with
@@ -2399,7 +2399,7 @@ def install_system_headers(stamp):
     # Copy the generic arch files first then
     ('lib', 'libc', 'musl', 'arch', 'generic'): '',
     # Then overlay the emscripten directory on top.
-    # This mimicks how musl itself installs its headers.
+    # This mimics how musl itself installs its headers.
     ('lib', 'libc', 'musl', 'arch', 'emscripten'): '',
     ('lib', 'libc', 'musl', 'include'): '',
     ('lib', 'libcxx', 'include'): os.path.join('c++', 'v1'),

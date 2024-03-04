@@ -69,7 +69,7 @@ function isDefined(symName) {
   if (symName == '__main_argc_argv' && SIDE_MODULE_EXPORTS.has('main')) {
     return true;
   }
-  // 'invoke_' symbols are created at runtime in libary_dylink.py so can
+  // 'invoke_' symbols are created at runtime in library_dylink.py so can
   // always be considered as defined.
   if (RELOCATABLE && symName.startsWith('invoke_')) {
     return true;
@@ -98,17 +98,25 @@ function getTransitiveDeps(symbol) {
 }
 
 function shouldPreprocess(fileName) {
-  return read(fileName).trim().startsWith('#preprocess\n');
+  var content = read(fileName).trim()
+  return content.startsWith('#preprocess\n') || content.startsWith('#preprocess\r\n');
+}
+
+function getIncludeFile(fileName, needsPreprocess) {
+  let result = `// include: ${fileName}\n`;
+  if (needsPreprocess) {
+    result += processMacros(preprocess(fileName), fileName);
+  } else {
+    result += read(fileName);
+  }
+  result += `// end include: ${fileName}\n`;
+  return result;
 }
 
 function preJS() {
   let result = '';
   for (const fileName of PRE_JS_FILES) {
-    if (shouldPreprocess(fileName)) {
-      result += processMacros(preprocess(fileName));
-    } else {
-      result += read(fileName);
-    }
+    result += getIncludeFile(fileName, shouldPreprocess(fileName));
   }
   return result;
 }
@@ -137,14 +145,14 @@ function runJSify() {
   }
 
   function handleI64Signatures(symbol, snippet, sig, i53abi) {
-    // Handle i64 paramaters and return values.
+    // Handle i64 parameters and return values.
     //
     // When WASM_BIGINT is enabled these arrive as BigInt values which we
     // convert to int53 JS numbers.  If necessary, we also convert the return
     // value back into a BigInt.
     //
     // When WASM_BIGINT is not enabled we receive i64 values as a pair of i32
-    // numbers which is coverted to single int53 number.  In necessary, we also
+    // numbers which is converted to single int53 number.  In necessary, we also
     // split the return value into a pair of i32 numbers.
     return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
       let argLines = args.split('\n');
@@ -152,7 +160,7 @@ function runJSify() {
       const argNames = argLines.join(' ').split(',').map((name) => name.trim());
       const newArgs = [];
       let innerArgs = [];
-      let argConvertions = '';
+      let argConversions = '';
       if (sig.length > argNames.length + 1) {
         error(`handleI64Signatures: signature too long for ${symbol}`);
         return snippet;
@@ -163,13 +171,13 @@ function runJSify() {
         // here, which will result in the default case below.
         const argType = sig[i + 1];
         if (WASM_BIGINT && ((MEMORY64 && argType == 'p') || (i53abi && argType == 'j'))) {
-          argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
+          argConversions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
         } else {
           if (argType == 'j' && i53abi) {
-            argConvertions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
+            argConversions += `  ${receiveI64ParamAsI53(name, undefined, false)}\n`;
             newArgs.push(defineI64Param(name));
           } else if (argType == 'p' && CAN_ADDRESS_2GB) {
-            argConvertions += `  ${name} >>>= 0;\n`;
+            argConversions += `  ${name} >>>= 0;\n`;
             newArgs.push(name);
           } else {
             newArgs.push(name);
@@ -186,9 +194,9 @@ function runJSify() {
         // For functions that where we need to mutate the return value, we
         // also need to wrap the body in an inner function.
         if (oneliner) {
-          if (argConvertions) {
+          if (argConversions) {
             return `${async_}(${args}) => {
-${argConvertions}
+${argConversions}
   return ${makeReturn64(body)};
 }`
           }
@@ -196,7 +204,7 @@ ${argConvertions}
         }
         return `\
 ${async_}function(${args}) {
-${argConvertions}
+${argConversions}
   var ret = (() => { ${body} })();
   return ${makeReturn64('ret')};
 }`;
@@ -209,7 +217,7 @@ ${argConvertions}
       }
       return `\
 ${async_}function(${args}) {
-${argConvertions}
+${argConversions}
   ${body};
 }`;
     });
@@ -237,9 +245,9 @@ ${argConvertions}
     if (LIBRARY_DEBUG && !isJsOnlySymbol(symbol)) {
       snippet = modifyJSFunction(snippet, (args, body, async) => `\
 function(${args}) {
-  var ret = (function() { if (runtimeDebug) err("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
+  var ret = (() => { if (runtimeDebug) err("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
   ${body}
-  }).apply(this, arguments);
+  })();
   if (runtimeDebug && typeof ret != "undefined") err("  [     return:" + prettyPrint(ret));
   return ret;
 }`);
@@ -271,7 +279,7 @@ function(${args}) {
             return `
 function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
-  return ${proxyFunc}(${proxiedFunctionTable.length}, ${+sync}${args ? ', ' : ''}${args});
+  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${+sync}${args ? ', ' : ''}${args});
 ${body}
 }\n`
           });
@@ -318,7 +326,7 @@ function(${args}) {
     // the number specifies the number of arguments. In Emscripten, route all
     // these to a single function 'findMatchingCatch' that takes an array
     // of argument.
-    if (!WASM_EXCEPTIONS && symbol.startsWith('__cxa_find_matching_catch_')) {
+    if (LINK_AS_CXX && !WASM_EXCEPTIONS && symbol.startsWith('__cxa_find_matching_catch_')) {
       if (DISABLE_EXCEPTION_THROWING) {
         error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
         return;
@@ -443,8 +451,8 @@ function(${args}) {
           if (ASSERTIONS) {
             assertion += `if (!${target} || ${target}.stub) abort("external symbol '${symbol}' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n`;
           }
-          const functionBody = assertion + `return ${target}.apply(null, arguments);`;
-          LibraryManager.library[symbol] = new Function(functionBody);
+          const functionBody = assertion + `return ${target}(...args);`;
+          LibraryManager.library[symbol] = new Function('...args', functionBody);
           isStub = true;
         }
       }
@@ -513,7 +521,7 @@ function(${args}) {
         // in library.js and library_pthread.js.  These happen before deps are
         // processed so depending on it via `__deps` doesn't work.
         if (dep === '$noExitRuntime') {
-          error('noExitRuntime cannot be referenced via __deps mechansim.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS')
+          error('noExitRuntime cannot be referenced via __deps mechanism.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS')
         }
         return addFromLibrary(dep, `${symbol}, referenced by ${dependent}`, dep === aliasTarget);
       }
@@ -600,13 +608,7 @@ function(${args}) {
   }
 
   function includeFile(fileName, needsPreprocess = true) {
-    print(`// include: ${fileName}`);
-    if (needsPreprocess) {
-      print(processMacros(preprocess(fileName)));
-    } else {
-      print(read(fileName));
-    }
-    print(`// end include: ${fileName}`);
+    print(getIncludeFile(fileName, needsPreprocess))
   }
 
   function finalCombiner() {

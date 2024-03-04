@@ -83,7 +83,7 @@ function assert(condition, text) {
 #else
     // This build was created without ASSERTIONS defined.  `assert()` should not
     // ever be called in this configuration but in case there are callers in
-    // the wild leave this simple abort() implemenation here for now.
+    // the wild leave this simple abort() implementation here for now.
     abort(text);
 #endif
   }
@@ -138,24 +138,7 @@ var HEAP,
 var HEAP_DATA_VIEW;
 #endif
 
-function updateMemoryViews() {
-  var b = wasmMemory.buffer;
-#if SUPPORT_BIG_ENDIAN
-  Module['HEAP_DATA_VIEW'] = HEAP_DATA_VIEW = new DataView(b);
-#endif
-  Module['HEAP8'] = HEAP8 = new Int8Array(b);
-  Module['HEAP16'] = HEAP16 = new Int16Array(b);
-  Module['HEAPU8'] = HEAPU8 = new Uint8Array(b);
-  Module['HEAPU16'] = HEAPU16 = new Uint16Array(b);
-  Module['HEAP32'] = HEAP32 = new Int32Array(b);
-  Module['HEAPU32'] = HEAPU32 = new Uint32Array(b);
-  Module['HEAPF32'] = HEAPF32 = new Float32Array(b);
-  Module['HEAPF64'] = HEAPF64 = new Float64Array(b);
-#if WASM_BIGINT
-  Module['HEAP64'] = HEAP64 = new BigInt64Array(b);
-  Module['HEAPU64'] = HEAPU64 = new BigUint64Array(b);
-#endif
-}
+#include "runtime_shared.js"
 
 #if ASSERTIONS
 assert(!Module['STACK_SIZE'], 'STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time')
@@ -456,7 +439,7 @@ function abort(what) {
   // allows this in the wasm spec.
 
   // Suppress closure compiler warning here. Closure compiler's builtin extern
-  // defintion for WebAssembly.RuntimeError claims it takes no arguments even
+  // definition for WebAssembly.RuntimeError claims it takes no arguments even
   // though it can.
   // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure gets fixed.
 #if WASM_EXCEPTIONS == 1
@@ -513,14 +496,14 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 
 #if ASSERTIONS
 function createExportWrapper(name) {
-  return function() {
+  return (...args) => {
     assert(runtimeInitialized, `native function \`${name}\` called before runtime initialization`);
 #if EXIT_RUNTIME
     assert(!runtimeExited, `native function \`${name}\` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)`);
 #endif
     var f = wasmExports[name];
     assert(f, `exported native function \`${name}\` not found`);
-    return f.apply(null, arguments);
+    return f(...args);
   };
 }
 #endif
@@ -537,7 +520,7 @@ var abortWrapperDepth = 0;
 
 // Creates a wrapper in a closure so that each wrapper gets it's own copy of 'original'
 function makeAbortWrapper(original) {
-  return function() {
+  return (...args) => {
     // Don't allow this function to be called if we're aborted!
     if (ABORT) {
       throw "program has already aborted!";
@@ -545,7 +528,7 @@ function makeAbortWrapper(original) {
 
     abortWrapperDepth += 1;
     try {
-      return original.apply(null, arguments);
+      return original(...args);
     } catch (e) {
       if (
         ABORT // rethrow exception if abort() was called in the original function call above
@@ -608,14 +591,14 @@ function instrumentWasmTableWithAbort() {
 #endif
 
 var wasmBinaryFile;
-#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE
+#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && !AUDIO_WORKLET
 if (Module['locateFile']) {
 #endif
   wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
   if (!isDataURI(wasmBinaryFile)) {
     wasmBinaryFile = locateFile(wasmBinaryFile);
   }
-#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE // in single-file mode, repeating WASM_BINARY_FILE would emit the contents again
+#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && !AUDIO_WORKLET // In single-file mode, repeating WASM_BINARY_FILE would emit the contents again. For an Audio Worklet, we cannot use `new URL()`.
 } else {
 #if ENVIRONMENT_MAY_BE_SHELL
   if (ENVIRONMENT_IS_SHELL)
@@ -700,7 +683,7 @@ var wasmOffsetConverter;
 {{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync',  true) }}}
 var splitModuleProxyHandler = {
   get(target, prop, receiver) {
-    return function() {
+    return (...args) => {
 #if ASYNCIFY == 2
       throw new Error('Placeholder function "' + prop + '" should not be called when using JSPI.');
 #else
@@ -714,9 +697,9 @@ var splitModuleProxyHandler = {
       // When the table is dynamically laid out, the placeholder functions names
       // are offsets from the table base. In the main module, the table base is
       // always 1.
-      return wasmTable.get(1 + parseInt(prop)).apply(null, arguments);
+      return wasmTable.get(1 + parseInt(prop))(...args);
 #else
-      return wasmTable.get(prop).apply(null, arguments);
+      return wasmTable.get(prop)(...args);
 #endif
 #endif
     }
@@ -800,13 +783,13 @@ function instantiateArrayBuffer(binaryFile, imports, receiver) {
     savedBinary = binary;
 #endif
     return WebAssembly.instantiate(binary, imports);
-  }).then((instance) => {
 #if USE_OFFSET_CONVERTER
+  }).then((instance) => {
     // wasmOffsetConverter needs to be assigned before calling the receiver
     // (receiveInstantiationResult).  See comments below in instantiateAsync.
     wasmOffsetConverter = new WasmOffsetConverter(savedBinary, instance.module);
-#endif
     return instance;
+#endif
   }).then(receiver, (reason) => {
     err(`failed to asynchronously prepare wasm: ${reason}`);
 
@@ -819,7 +802,7 @@ function instantiateArrayBuffer(binaryFile, imports, receiver) {
       if (search.indexOf('_rwasm=0') < 0) {
         location.href += (search ? search + '&' : '?') + '_rwasm=0';
         // Return here to avoid calling abort() below.  The application
-        // still has a chance to start sucessfully do we don't want to
+        // still has a chance to start successfully do we don't want to
         // trigger onAbort or onExit handlers.
         return;
       }
@@ -983,15 +966,8 @@ function createWasm() {
     {{{ receivedSymbol('wasmMemory') }}}
 #if ASSERTIONS
     assert(wasmMemory, 'memory not found in wasm exports');
-    // This assertion doesn't hold when emscripten is run in --post-link
-    // mode.
-    // TODO(sbc): Read INITIAL_MEMORY out of the wasm file in post-link mode.
-    //assert(wasmMemory.buffer.byteLength === {{{ INITIAL_MEMORY }}});
 #endif
     updateMemoryViews();
-#endif
-#if !MEM_INIT_IN_WASM
-    runMemoryInitializer();
 #endif
 
 #if '$wasmTable' in addedLibraryItems && !RELOCATABLE
@@ -999,13 +975,6 @@ function createWasm() {
     {{{ receivedSymbol('wasmTable') }}}
 #if ASSERTIONS && !PURE_WASI
     assert(wasmTable, 'table not found in wasm exports');
-#endif
-
-#if AUDIO_WORKLET
-    // If we are in the audio worklet environment, we can only access the Module object
-    // and not the global scope of the main JS script. Therefore we need to export
-    // all functions that the audio worklet scope needs onto the Module object.
-    Module['wasmTable'] = wasmTable;
 #endif
 #endif
 
@@ -1023,7 +992,7 @@ function createWasm() {
 
 #if !DECLARE_ASM_MODULE_EXPORTS
     // If we didn't declare the asm exports as top level enties this function
-    // is in charge of programatically exporting them on the global object.
+    // is in charge of programmatically exporting them on the global object.
     exportWasmSymbols(wasmExports);
 #endif
 
@@ -1146,88 +1115,6 @@ function getCompilerSetting(name) {
   return compilerSettings[name];
 }
 #endif // RETAIN_COMPILER_SETTINGS
-
-#if !MEM_INIT_IN_WASM
-var memoryInitializer = <<< MEM_INITIALIZER >>>;
-
-function runMemoryInitializer() {
-#if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return;
-#endif
-  if (!isDataURI(memoryInitializer)) {
-    memoryInitializer = locateFile(memoryInitializer);
-  }
-  if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
-    var data = readBinary(memoryInitializer);
-    HEAPU8.set(data, {{{ GLOBAL_BASE }}});
-  } else {
-    addRunDependency('memory initializer');
-    var applyMemoryInitializer = (data) => {
-      if (data.byteLength) data = new Uint8Array(data);
-#if ASSERTIONS
-      for (var i = 0; i < data.length; i++) {
-        assert(HEAPU8[{{{ GLOBAL_BASE }}} + i] === 0, "area for memory initializer should not have been touched before it's loaded");
-      }
-#endif
-      HEAPU8.set(data, {{{ GLOBAL_BASE }}});
-      // Delete the typed array that contains the large blob of the memory initializer request response so that
-      // we won't keep unnecessary memory lying around. However, keep the XHR object itself alive so that e.g.
-      // its .status field can still be accessed later.
-      if (Module['memoryInitializerRequest']) delete Module['memoryInitializerRequest'].response;
-      removeRunDependency('memory initializer');
-    };
-    var doBrowserLoad = () => {
-      readAsync(memoryInitializer, applyMemoryInitializer, () => {
-        var e = new Error('could not load memory initializer ' + memoryInitializer);
-#if MODULARIZE
-          readyPromiseReject(e);
-#else
-          throw e;
-#endif
-      });
-    };
-#if SUPPORT_BASE64_EMBEDDING
-    var memoryInitializerBytes = tryParseAsDataURI(memoryInitializer);
-    if (memoryInitializerBytes) {
-      applyMemoryInitializer(memoryInitializerBytes.buffer);
-    } else
-#endif
-    if (Module['memoryInitializerRequest']) {
-      // a network request has already been created, just use that
-      var useRequest = () => {
-        var request = Module['memoryInitializerRequest'];
-        var response = request.response;
-        if (request.status !== 200 && request.status !== 0) {
-#if SUPPORT_BASE64_EMBEDDING
-          var data = tryParseAsDataURI(Module['memoryInitializerRequestURL']);
-          if (data) {
-            response = data.buffer;
-          } else {
-#endif
-            // If you see this warning, the issue may be that you are using locateFile and defining it in JS. That
-            // means that the HTML file doesn't know about it, and when it tries to create the mem init request early, does it to the wrong place.
-            // Look in your browser's devtools network console to see what's going on.
-            console.warn('a problem seems to have happened with Module.memoryInitializerRequest, status: ' + request.status + ', retrying ' + memoryInitializer);
-            doBrowserLoad();
-            return;
-#if SUPPORT_BASE64_EMBEDDING
-          }
-#endif
-        }
-        applyMemoryInitializer(response);
-      };
-      if (Module['memoryInitializerRequest'].response) {
-        setTimeout(useRequest, 0); // it's already here; but, apply it asynchronously
-      } else {
-        Module['memoryInitializerRequest'].addEventListener('load', useRequest); // wait for it
-      }
-    } else {
-      // fetch it from the network ourselves
-      doBrowserLoad();
-    }
-  }
-}
-#endif // MEM_INIT_IN_WASM == 0
 
 #if MAIN_MODULE && ASYNCIFY
 // With MAIN_MODULE + ASYNCIFY the normal method of placing stub functions in

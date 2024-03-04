@@ -98,12 +98,12 @@ var LibraryEmbind = {
     if (undefined === proto[methodName].overloadTable) {
       var prevFunc = proto[methodName];
       // Inject an overload resolver function that routes to the appropriate overload based on the number of arguments.
-      proto[methodName] = function() {
+      proto[methodName] = function(...args) {
         // TODO This check can be removed in -O3 level "unsafe" optimizations.
-        if (!proto[methodName].overloadTable.hasOwnProperty(arguments.length)) {
-            throwBindingError(`Function '${humanName}' called with an invalid number of arguments (${arguments.length}) - expects one of (${proto[methodName].overloadTable})!`);
+        if (!proto[methodName].overloadTable.hasOwnProperty(args.length)) {
+          throwBindingError(`Function '${humanName}' called with an invalid number of arguments (${args.length}) - expects one of (${proto[methodName].overloadTable})!`);
         }
-        return proto[methodName].overloadTable[arguments.length].apply(this, arguments);
+        return proto[methodName].overloadTable[args.length].apply(this, args);
       };
       // Move the previous function into the overload table.
       proto[methodName].overloadTable = [];
@@ -150,7 +150,7 @@ var LibraryEmbind = {
   $replacePublicSymbol__docs: '/** @param {number=} numArguments */',
   $replacePublicSymbol: (name, value, numArguments) => {
     if (!Module.hasOwnProperty(name)) {
-      throwInternalError('Replacing nonexistant public symbol');
+      throwInternalError('Replacing nonexistent public symbol');
     }
     // If there's an overload table for this symbol, replace the symbol in the overload table instead.
     if (undefined !== Module[name].overloadTable && undefined !== numArguments) {
@@ -747,7 +747,7 @@ var LibraryEmbind = {
      * though at creation, the 'dummy' has the correct constructor name.  Thus,
      * objects created with IMVU.new would show up in the debugger as 'dummy',
      * which isn't very helpful.  Using IMVU.createNamedFunction addresses the
-     * issue.  Doublely-unfortunately, there's no way to write a test for this
+     * issue.  Doubly-unfortunately, there's no way to write a test for this
      * behavior.  -NRD 2013.02.22
      */
     var dummy = createNamedFunction(constructor.name || 'unknownFunctionName', function(){});
@@ -818,9 +818,9 @@ var LibraryEmbind = {
     var argsWired = new Array(expectedArgCount);
     var invokerFuncArgs = [];
     var destructors = [];
-    var invokerFn = function() {
-      if (arguments.length !== expectedArgCount) {
-        throwBindingError(`function ${humanName} called with ${arguments.length} arguments, expected ${expectedArgCount}`);
+    var invokerFn = function(...args) {
+      if (args.length !== expectedArgCount) {
+        throwBindingError(`function ${humanName} called with ${args.length} arguments, expected ${expectedArgCount}`);
       }
 #if EMSCRIPTEN_TRACING
       Module.emscripten_trace_enter_context(`embind::${humanName}`);
@@ -834,11 +834,11 @@ var LibraryEmbind = {
         invokerFuncArgs[1] = thisWired;
       }
       for (var i = 0; i < expectedArgCount; ++i) {
-        argsWired[i] = argTypes[i + 2]['toWireType'](destructors, arguments[i]);
+        argsWired[i] = argTypes[i + 2]['toWireType'](destructors, args[i]);
         invokerFuncArgs.push(argsWired[i]);
       }
 
-      var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
+      var rv = cppInvokerFunc(...invokerFuncArgs);
 
       function onDone(rv) {
         if (needsDestructorStack) {
@@ -896,11 +896,11 @@ var LibraryEmbind = {
 
 #if EMBIND_AOT
   var signature = createJsInvokerSignature(argTypes, isClassMethodFunc, returns, isAsync);
-  var invokerFn = InvokerFunctions[signature].apply(null, closureArgs);
+  var invokerFn = InvokerFunctions[signature](...closureArgs);
 #else
   let [args, invokerFnBody] = createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync);
   args.push(invokerFnBody);
-  var invokerFn = newFunc(Function, args).apply(null, closureArgs);
+  var invokerFn = newFunc(Function, args)(...closureArgs);
 #endif
 #endif
     return createNamedFunction(humanName, invokerFn);
@@ -953,7 +953,7 @@ var LibraryEmbind = {
       throwUnboundTypeError(`Cannot call ${name} due to unbound types`, argTypes);
     }, argCount - 1);
 
-    whenDependentTypesAreResolved([], argTypes, function(argTypes) {
+    whenDependentTypesAreResolved([], argTypes, (argTypes) => {
       var invokerArgsArray = [argTypes[0] /* return value */, null /* no class 'this'*/].concat(argTypes.slice(1) /* actual params */);
       replacePublicSymbol(name, craftInvokerFunction(name, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn, isAsync), argCount - 1);
       return [];
@@ -1015,7 +1015,7 @@ var LibraryEmbind = {
     var rawConstructor = reg.rawConstructor;
     var rawDestructor = reg.rawDestructor;
 
-    whenDependentTypesAreResolved([rawTupleType], elementTypes, function(elementTypes) {
+    whenDependentTypesAreResolved([rawTupleType], elementTypes, (elementTypes) => {
       elements.forEach((elt, i) => {
         var getterReturnType = elementTypes[i];
         var getter = elt.getter;
@@ -1753,7 +1753,7 @@ var LibraryEmbind = {
     whenDependentTypesAreResolved(
       [rawType, rawPointerType, rawConstPointerType],
       baseClassRawType ? [baseClassRawType] : [],
-      function(base) {
+      (base) => {
         base = base[0];
 
         var baseClass;
@@ -1765,18 +1765,18 @@ var LibraryEmbind = {
           basePrototype = ClassHandle.prototype;
         }
 
-        var constructor = createNamedFunction(name, function() {
+        var constructor = createNamedFunction(name, function(...args) {
           if (Object.getPrototypeOf(this) !== instancePrototype) {
             throw new BindingError("Use 'new' to construct " + name);
           }
           if (undefined === registeredClass.constructor_body) {
             throw new BindingError(name + " has no accessible constructor");
           }
-          var body = registeredClass.constructor_body[arguments.length];
+          var body = registeredClass.constructor_body[args.length];
           if (undefined === body) {
-            throw new BindingError(`Tried to invoke ctor of ${name} with invalid number of parameters (${arguments.length}) - expected (${Object.keys(registeredClass.constructor_body).toString()}) parameters instead!`);
+            throw new BindingError(`Tried to invoke ctor of ${name} with invalid number of parameters (${args.length}) - expected (${Object.keys(registeredClass.constructor_body).toString()}) parameters instead!`);
           }
-          return body.apply(this, arguments);
+          return body.apply(this, args);
         });
 
         var instancePrototype = Object.create(basePrototype, {
@@ -1851,7 +1851,7 @@ var LibraryEmbind = {
     var args = [rawConstructor];
     var destructors = [];
 
-    whenDependentTypesAreResolved([], [rawClassType], function(classType) {
+    whenDependentTypesAreResolved([], [rawClassType], (classType) => {
       classType = classType[0];
       var humanName = `constructor ${classType.name}`;
 
@@ -1938,7 +1938,7 @@ var LibraryEmbind = {
     methodName = getFunctionName(methodName);
     rawInvoker = embind__requireFunction(invokerSignature, rawInvoker);
 
-    whenDependentTypesAreResolved([], [rawClassType], function(classType) {
+    whenDependentTypesAreResolved([], [rawClassType], (classType) => {
       classType = classType[0];
       var humanName = `${classType.name}.${methodName}`;
 
@@ -1969,11 +1969,13 @@ var LibraryEmbind = {
         proto[methodName].overloadTable[argCount - 2] = unboundTypesHandler;
       }
 
-      whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
+      whenDependentTypesAreResolved([], rawArgTypes, (argTypes) => {
         var memberFunction = craftInvokerFunction(humanName, argTypes, classType, rawInvoker, context, isAsync);
 
-        // Replace the initial unbound-handler-stub function with the appropriate member function, now that all types
-        // are resolved. If multiple overloads are registered for this function, the function goes into an overload table.
+        // Replace the initial unbound-handler-stub function with the
+        // appropriate member function, now that all types are resolved. If
+        // multiple overloads are registered for this function, the function
+        // goes into an overload table.
         if (undefined === proto[methodName].overloadTable) {
           // Set argCount in case an overload is registered later
           memberFunction.argCount = argCount - 2;
@@ -2005,7 +2007,7 @@ var LibraryEmbind = {
     fieldName = readLatin1String(fieldName);
     getter = embind__requireFunction(getterSignature, getter);
 
-    whenDependentTypesAreResolved([], [classType], function(classType) {
+    whenDependentTypesAreResolved([], [classType], (classType) => {
       classType = classType[0];
       var humanName = `${classType.name}.${fieldName}`;
       var desc = {
@@ -2026,7 +2028,7 @@ var LibraryEmbind = {
       whenDependentTypesAreResolved(
         [],
         (setter ? [getterReturnType, setterArgumentType] : [getterReturnType]),
-    function(types) {
+      (types) => {
         var getterReturnType = types[0];
         var desc = {
           get() {
@@ -2071,7 +2073,7 @@ var LibraryEmbind = {
     methodName = readLatin1String(methodName);
     methodName = getFunctionName(methodName);
     rawInvoker = embind__requireFunction(invokerSignature, rawInvoker);
-    whenDependentTypesAreResolved([], [rawClassType], function(classType) {
+    whenDependentTypesAreResolved([], [rawClassType], (classType) => {
       classType = classType[0];
       var humanName = `${classType.name}.${methodName}`;
 
@@ -2095,7 +2097,7 @@ var LibraryEmbind = {
         proto[methodName].overloadTable[argCount-1] = unboundTypesHandler;
       }
 
-      whenDependentTypesAreResolved([], rawArgTypes, function(argTypes) {
+      whenDependentTypesAreResolved([], rawArgTypes, (argTypes) => {
         // Replace the initial unbound-types-handler stub with the proper
         // function. If multiple overloads are registered, the function handlers
         // go into an overload table.
@@ -2138,7 +2140,7 @@ var LibraryEmbind = {
     fieldName = readLatin1String(fieldName);
     getter = embind__requireFunction(getterSignature, getter);
 
-    whenDependentTypesAreResolved([], [rawClassType], function(classType) {
+    whenDependentTypesAreResolved([], [rawClassType], (classType) => {
       classType = classType[0];
       var humanName = `${classType.name}.${fieldName}`;
       var desc = {
@@ -2160,7 +2162,7 @@ var LibraryEmbind = {
 
       Object.defineProperty(classType.registeredClass.constructor, fieldName, desc);
 
-      whenDependentTypesAreResolved([], [rawFieldType], function(fieldType) {
+      whenDependentTypesAreResolved([], [rawFieldType], (fieldType) => {
         fieldType = fieldType[0];
         var desc = {
           get() {
@@ -2197,14 +2199,12 @@ var LibraryEmbind = {
     wrapperType = requireRegisteredType(wrapperType, 'wrapper');
     properties = Emval.toValue(properties);
 
-    var arraySlice = [].slice;
-
     var registeredClass = wrapperType.registeredClass;
     var wrapperPrototype = registeredClass.instancePrototype;
     var baseClass = registeredClass.baseClass;
     var baseClassPrototype = baseClass.instancePrototype;
     var baseConstructor = registeredClass.baseClass.constructor;
-    var ctor = createNamedFunction(constructorName, function() {
+    var ctor = createNamedFunction(constructorName, function(...args) {
       registeredClass.baseClass.pureVirtualFunctions.forEach(function(name) {
         if (this[name] === baseClassPrototype[name]) {
           throw new PureVirtualError(`Pure virtual function ${name} must be implemented in JavaScript`);
@@ -2214,19 +2214,17 @@ var LibraryEmbind = {
       Object.defineProperty(this, '__parent', {
         value: wrapperPrototype
       });
-      this["__construct"].apply(this, arraySlice.call(arguments));
+      this["__construct"](...args);
     });
 
     // It's a little nasty that we're modifying the wrapper prototype here.
 
-    wrapperPrototype["__construct"] = function __construct() {
+    wrapperPrototype["__construct"] = function __construct(...args) {
       if (this === wrapperPrototype) {
         throwBindingError("Pass correct 'this' to __construct");
       }
 
-      var inner = baseConstructor["implement"].apply(
-        undefined,
-        [this].concat(arraySlice.call(arguments)));
+      var inner = baseConstructor["implement"](this, ...args);
       detachFinalizer(inner);
       var $$ = inner.$$;
       inner["notifyOnDestruction"]();
@@ -2286,7 +2284,7 @@ var LibraryEmbind = {
     rawShare = embind__requireFunction(shareSignature, rawShare);
     rawDestructor = embind__requireFunction(destructorSignature, rawDestructor);
 
-    whenDependentTypesAreResolved([rawType], [rawPointeeType], function(pointeeType) {
+    whenDependentTypesAreResolved([rawType], [rawPointeeType], (pointeeType) => {
       pointeeType = pointeeType[0];
 
       var registeredPointer = new RegisteredPointer(name,
@@ -2346,7 +2344,7 @@ var LibraryEmbind = {
   _embind_register_constant__deps: ['$readLatin1String', '$whenDependentTypesAreResolved'],
   _embind_register_constant: (name, type, value) => {
     name = readLatin1String(name);
-    whenDependentTypesAreResolved([], [type], function(type) {
+    whenDependentTypesAreResolved([], [type], (type) => {
       type = type[0];
       Module[name] = type['fromWireType'](value);
       return [];

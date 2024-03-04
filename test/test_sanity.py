@@ -529,7 +529,7 @@ fi
 
     # listing ports
     out = self.do([EMCC, '--show-ports'])
-    self.assertContained('Available ports:', out)
+    self.assertContained('Available official ports:', out)
     self.assertContained('sdl2', out)
     self.assertContained('sdl2_image', out)
     self.assertContained('sdl2_net', out)
@@ -747,6 +747,28 @@ fi
     self.assertFalse(glob.glob(glob_match))
     self.run_process([EMBUILDER, 'build', 'libwebgpu*'])
     self.assertGreater(len(glob.glob(glob_match)), 3)
+
+  def test_embuilder_with_use_port_syntax(self):
+    restore_and_set_up()
+    self.run_process([EMBUILDER, 'build', 'sdl2_image:formats=png,jpg', '--force'])
+    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libSDL2_image_jpg-png.a'))
+    self.assertContained('error building port `sdl2_image:formats=invalid` | invalid is not a supported format', self.do([EMBUILDER, 'build', 'sdl2_image:formats=invalid', '--force']))
+
+  def test_embuilder_external_ports(self):
+    restore_and_set_up()
+    simple_port_path = test_file("other/ports/simple.py")
+    # embuilder handles external port target that ends with .py
+    self.run_process([EMBUILDER, 'build', f'{simple_port_path}', '--force'])
+    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lib_simple.a'))
+    # embuilder handles external port target that contains port options
+    external_port_path = test_file("other/ports/external.py")
+    self.run_process([EMBUILDER, 'build', f'{external_port_path}:value1=12:value2=36', '--force'])
+    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lib_external.a'))
+    # embuilder handles external port target that contains port options (influences library name,
+    # like sdl2_image:formats=png)
+    external_port_path = test_file("other/ports/external.py")
+    self.run_process([EMBUILDER, 'build', f'{external_port_path}:dependency=sdl2', '--force'])
+    self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lib_external-sdl2.a'))
 
   def test_binaryen_version(self):
     restore_and_set_up()

@@ -93,6 +93,9 @@ if not config.NODE_JS_TEST:
   config.NODE_JS_TEST = config.NODE_JS
 
 
+requires_network = unittest.skipIf(os.getenv('EMTEST_SKIP_NETWORK_TESTS'), 'This test requires network access')
+
+
 def test_file(*path_components):
   """Construct a path relative to the emscripten "tests" directory."""
   return str(Path(TEST_ROOT, *path_components))
@@ -303,6 +306,17 @@ def requires_v8(func):
   return decorated
 
 
+def requires_wasm2js(f):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, *args, **kwargs):
+    self.require_wasm2js()
+    return f(self, *args, **kwargs)
+
+  return decorated
+
+
 def node_pthreads(f):
   @wraps(f)
   def decorated(self, *args, **kwargs):
@@ -370,7 +384,7 @@ def also_with_wasm_bigint(f):
 
   def metafunc(self, with_bigint):
     if with_bigint:
-      if not self.is_wasm():
+      if self.is_wasm2js():
         self.skipTest('wasm2js does not support WASM_BIGINT')
       if self.get_setting('WASM_BIGINT') is not None:
         self.skipTest('redundant in bigint test config')
@@ -458,7 +472,7 @@ def with_both_sjlj(f):
 
   def metafunc(self, is_native):
     if is_native:
-      if not self.is_wasm():
+      if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm SjLj')
       self.require_wasm_eh()
       # FIXME Temporarily disabled. Enable this later when the bug is fixed.
@@ -550,6 +564,17 @@ def force_delete_dir(dirname):
 def force_delete_contents(dirname):
   make_dir_writeable(dirname)
   utils.delete_contents(dirname)
+
+
+def find_browser_test_file(filename):
+  """Looks for files in test/browser and then in test/
+  """
+  if not os.path.exists(filename):
+    fullname = test_file('browser', filename)
+    if not os.path.exists(fullname):
+      fullname = test_file(filename)
+    filename = fullname
+  return filename
 
 
 def parameterized(parameters):
@@ -666,9 +691,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return self.get_setting('INITIAL_MEMORY') == '2200mb'
 
   def check_dylink(self):
-    if self.get_setting('ALLOW_MEMORY_GROWTH') == 1 and not self.is_wasm():
-      self.skipTest('no dynamic linking with memory growth (without wasm)')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('no dynamic linking support in wasm2js yet')
     if '-fsanitize=undefined' in self.emcc_args:
       self.skipTest('no dynamic linking support in UBSan yet')
@@ -779,7 +802,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # warnings-as-errors, so disable that warning
     self.emcc_args += ['-Wno-experimental']
     self.set_setting('ASYNCIFY', 2)
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('JSPI is not currently supported for WASM2JS')
 
     if self.is_browser_test():
@@ -809,6 +832,12 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       self.fail('either d8 or node >= 19 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
 
+  def require_wasm2js(self):
+    if self.is_wasm64():
+      self.skipTest('wasm2js is not compatible with MEMORY64')
+    if self.is_2gb() or self.is_4gb():
+      self.skipTest('wasm2js does not support over 2gb of memory')
+
   def setup_node_pthreads(self):
     self.require_node()
     self.emcc_args += ['-Wno-pthreads-mem-growth', '-pthread']
@@ -817,16 +846,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     nodejs = self.get_nodejs()
     self.js_engines = [nodejs]
     self.node_args += shared.node_pthread_flags(nodejs)
-
-  def uses_memory_init_file(self):
-    if self.get_setting('SIDE_MODULE') or (self.is_wasm() and not self.get_setting('WASM2JS')):
-      return False
-    elif '--memory-init-file' in self.emcc_args:
-      return int(self.emcc_args[self.emcc_args.index('--memory-init-file') + 1])
-    else:
-      # side modules handle memory differently; binaryen puts the memory in the wasm module
-      opt_supports = any(opt in self.emcc_args for opt in ('-O2', '-O3', '-Os', '-Oz'))
-      return opt_supports
 
   def set_temp_dir(self, temp_dir):
     self.temp_dir = temp_dir
@@ -1073,11 +1092,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
-
-    if js_outfile and self.uses_memory_init_file():
-      src = read_file(output)
-      # side memory init file, or an empty one in the js
-      assert ('/* memory initializer */' not in src) or ('/* memory initializer */ allocate([]' in src)
 
     return output
 
@@ -2007,11 +2021,12 @@ class BrowserCore(RunnerCore):
 
   # @manually_trigger If set, we do not assume we should run the reftest when main() is done.
   #                   Instead, call doReftest() in JS yourself at the right time.
-  def reftest(self, expected, manually_trigger=False):
+  def make_reftest(self, expected, manually_trigger=False):
     # make sure the pngs used here have no color correction, using e.g.
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
     basename = os.path.basename(expected)
-    shutil.copyfile(expected, self.in_dir(basename))
+    if os.path.abspath(os.path.dirname(expected)) != self.get_dir():
+      shutil.copyfile(expected, self.in_dir(basename))
     reporting = read_file(test_file('browser_reporting.js'))
     create_file('reftest.js', '''
       function doReftest() {
@@ -2138,8 +2153,15 @@ class BrowserCore(RunnerCore):
       filename = test_file(filename)
     self.run_process([compiler_for(filename), filename] + self.get_emcc_args() + args)
 
+  def reftest(self, filename, reference, *args, **kwargs):
+    """Special case of `btest` that uses reference image
+    """
+    assert 'reference' not in kwargs
+    kwargs['reference'] = reference
+    return self.btest(filename, *args, **kwargs)
+
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
-    """Special case of btest that reports its result solely via exiting
+    """Special case of `btest` that reports its result solely via exiting
     with a given result code.
 
     In this case we set EXIT_RUNTIME and we don't need to provide the
@@ -2164,15 +2186,11 @@ class BrowserCore(RunnerCore):
       args = []
     original_args = args
     args = args.copy()
-    if not os.path.exists(filename):
-      fullname = test_file('browser', filename)
-      if not os.path.exists(fullname):
-        fullname = test_file(filename)
-      filename = fullname
+    filename = find_browser_test_file(filename)
     if reference:
-      self.reference = reference
+      reference = find_browser_test_file(reference)
       expected = [str(i) for i in range(0, reference_slack + 1)]
-      self.reftest(test_file(reference), manually_trigger=manually_trigger_reftest)
+      self.make_reftest(reference, manually_trigger=manually_trigger_reftest)
       if not manual_reference:
         args += ['--pre-js', 'reftest.js', '-sGL_TESTING']
     else:

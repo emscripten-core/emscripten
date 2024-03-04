@@ -2316,8 +2316,8 @@ template <typename T>
     static_assert(sizeof(Queue) == sizeof(WGPUQueue), "sizeof mismatch for Queue");
     static_assert(alignof(Queue) == alignof(WGPUQueue), "alignof mismatch for Queue");
 
-    void Queue::OnSubmittedWorkDone(uint64_t signalValue, QueueWorkDoneCallback callback, void * userdata) const {
-        wgpuQueueOnSubmittedWorkDone(Get(), signalValue, callback, userdata);
+    void Queue::OnSubmittedWorkDone(QueueWorkDoneCallback callback, void * userdata) const {
+        wgpuQueueOnSubmittedWorkDone(Get(), callback, userdata);
     }
     void Queue::SetLabel(char const * label) const {
         wgpuQueueSetLabel(Get(), reinterpret_cast<char const * >(label));
@@ -2585,6 +2585,10 @@ template <typename T>
     static_assert(sizeof(SwapChain) == sizeof(WGPUSwapChain), "sizeof mismatch for SwapChain");
     static_assert(alignof(SwapChain) == alignof(WGPUSwapChain), "alignof mismatch for SwapChain");
 
+    Texture SwapChain::GetCurrentTexture() const {
+        auto result = wgpuSwapChainGetCurrentTexture(Get());
+        return Texture::Acquire(result);
+    }
     TextureView SwapChain::GetCurrentTextureView() const {
         auto result = wgpuSwapChainGetCurrentTextureView(Get());
         return TextureView::Acquire(result);

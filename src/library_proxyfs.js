@@ -27,7 +27,7 @@ addToLibrary({
       }
       parts.push(node.mount.opts.root);
       parts.reverse();
-      return PATH.join.apply(null, parts);
+      return PATH.join(...parts);
     },
     node_ops: {
       getattr(node) {
