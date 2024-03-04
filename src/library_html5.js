@@ -930,7 +930,7 @@ var LibraryHTML5 = {
 
   $screenOrientation: () => {
     if (!screen) return undefined;
-    return screen.orientation || screen.mozOrientation || screen.webkitOrientation || screen.msOrientation;
+    return screen.orientation || screen.mozOrientation || screen.webkitOrientation;
   },
 
   $fillOrientationChangeEventData__deps: ['$screenOrientation'],
@@ -943,28 +943,19 @@ var LibraryHTML5 = {
     var orientationIndex = -1;
     var orientationAngle =  0;
     var screenOrientObj  = screenOrientation();
-    if (screenOrientObj) {
-      var orientationType;
-      if (typeof screenOrientObj === 'object') {
-        orientationType  = screenOrientObj.type;
-        orientationAngle = screenOrientObj.angle;
-      } else {
-        // Edge only supports the older string type until 2020 (pre-Chrome)
-        orientationType  = String(screenOrientObj);
+    if (typeof screenOrientObj === 'object') {
+      orientationIndex = orientationsType1.indexOf(screenOrientObj.type);
+      if (orientationIndex < 0) {
+        orientationIndex = orientationsType2.indexOf(screenOrientObj.type);
       }
-      orientationIndex = orientationsType1.indexOf(orientationType);
-      if (orientationIndex == -1) {
-        orientationIndex = orientationsType2.indexOf(orientationType);
-      }
-      if (orientationIndex != -1) {
+      if (orientationIndex < 0) {
         orientationIndex = 1 << orientationIndex;
       }
+      orientationAngle = screenOrientObj.angle;
     } else {
 #if MIN_SAFARI_VERSION < 0x100400
       // fallback for Safari earlier than 16.4 (March 2023)
-      if (window && (window['orientation'] !== undefined)) {
-        orientationAngle = window['orientation'];
-      }
+      orientationAngle = window.orientation;
 #endif
     }
 
