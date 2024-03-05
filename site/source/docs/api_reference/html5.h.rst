@@ -929,7 +929,7 @@ Defines
 
 .. c:macro:: EMSCRIPTEN_ORIENTATION_UNSUPPORTED
 
-  The orientation API is not supported and the type is invalid.
+  The orientation API is not supported.
 
 .. c:macro:: EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY
 
