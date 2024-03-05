@@ -631,6 +631,8 @@ def create_tsd(metadata, embind_tsd):
   if embind_tsd:
     export_interfaces += ' & EmbindModule'
   out += f'export type MainModule = {export_interfaces};\n'
+  if settings.EXPORT_ES6 and settings.MODULARIZE:
+    out += 'export default function MainModuleFactory (options?: unknown): Promise<MainModule>;\n'
   return out
 
 
