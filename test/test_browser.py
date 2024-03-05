@@ -4689,6 +4689,7 @@ Module["preRun"] = () => {
   def test_webgpu_basic_rendering(self, args):
     self.btest_exit('webgpu_basic_rendering.cpp', args=['-sUSE_WEBGPU'] + args)
 
+  # TODO(#19645): Extend this test to proxied WebGPU when it's re-enabled.
   @requires_graphics_hardware
   @requires_threads
   def test_webgpu_basic_rendering_pthreads(self):
@@ -4697,6 +4698,7 @@ Module["preRun"] = () => {
   def test_webgpu_get_device(self):
     self.btest_exit('webgpu_get_device.cpp', args=['-sUSE_WEBGPU', '-sASSERTIONS', '--closure=1'])
 
+  # TODO(#19645): Extend this test to proxied WebGPU when it's re-enabled.
   @requires_threads
   def test_webgpu_get_device_pthreads(self):
     self.btest_exit('webgpu_get_device.cpp', args=['-sUSE_WEBGPU', '-pthread'])
