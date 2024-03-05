@@ -2422,7 +2422,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1iv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION >= 2
+#if MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
@@ -2449,7 +2449,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       var view = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
     }
     GLctx.uniform1iv(webglGetUniformLocation(location), view);
-#endif // MIN_WEBGL_VERSION >= 2
+#endif // MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
   },
 
   glUniform2iv__deps: ['$webglGetUniformLocation'
@@ -2463,7 +2463,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2iv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION >= 2
+#if MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
@@ -2491,7 +2491,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       var view = {{{ makeHEAPView('32', 'value', 'value+count*8') }}};
     }
     GLctx.uniform2iv(webglGetUniformLocation(location), view);
-#endif // MIN_WEBGL_VERSION >= 2
+#endif // MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
   },
 
   glUniform3iv__deps: ['$webglGetUniformLocation'
@@ -2505,7 +2505,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3iv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION >= 2
+#if MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
@@ -2534,7 +2534,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       var view = {{{ makeHEAPView('32', 'value', 'value+count*12') }}};
     }
     GLctx.uniform3iv(webglGetUniformLocation(location), view);
-#endif // MIN_WEBGL_VERSION >= 2
+#endif // MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
   },
 
   glUniform4iv__deps: ['$webglGetUniformLocation'
@@ -2548,7 +2548,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4iv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION >= 2
+#if MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
@@ -2578,7 +2578,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       var view = {{{ makeHEAPView('32', 'value', 'value+count*16') }}};
     }
     GLctx.uniform4iv(webglGetUniformLocation(location), view);
-#endif // MIN_WEBGL_VERSION >= 2
+#endif // MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
   },
 
   glUniform1fv__deps: ['$webglGetUniformLocation'
@@ -2592,7 +2592,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform1fv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION >= 2
+#if MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
@@ -2619,7 +2619,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*4') }}};
     }
     GLctx.uniform1fv(webglGetUniformLocation(location), view);
-#endif // MIN_WEBGL_VERSION >= 2
+#endif // MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
   },
 
   glUniform2fv__deps: ['$webglGetUniformLocation'
@@ -2633,7 +2633,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform2fv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION >= 2
+#if MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
@@ -2661,7 +2661,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*8') }}};
     }
     GLctx.uniform2fv(webglGetUniformLocation(location), view);
-#endif // MIN_WEBGL_VERSION >= 2
+#endif // MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
   },
 
   glUniform3fv__deps: ['$webglGetUniformLocation'
@@ -2704,7 +2704,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*12') }}};
     }
     GLctx.uniform3fv(webglGetUniformLocation(location), view);
-#endif // MIN_WEBGL_VERSION >= 2
+#endif // MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
   },
 
   glUniform4fv__deps: ['$webglGetUniformLocation'
@@ -2718,7 +2718,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform4fv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION >= 2
+#if MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
@@ -2752,7 +2752,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
     }
     GLctx.uniform4fv(webglGetUniformLocation(location), view);
-#endif // MIN_WEBGL_VERSION >= 2
+#endif // MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
   },
 
   glUniformMatrix2fv__deps: ['$webglGetUniformLocation'
@@ -2766,7 +2766,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2fv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION >= 2
+#if MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
@@ -2796,7 +2796,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*16') }}};
     }
     GLctx.uniformMatrix2fv(webglGetUniformLocation(location), !!transpose, view);
-#endif // MIN_WEBGL_VERSION >= 2
+#endif // MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
   },
 
   glUniformMatrix3fv__deps: ['$webglGetUniformLocation'
@@ -2810,7 +2810,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3fv must be aligned to four bytes!');
 #endif
 
-#if MIN_WEBGL_VERSION >= 2
+#if MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
 #if GL_ASSERTIONS
     assert(GL.currentContext.version >= 2);
 #endif
@@ -2845,7 +2845,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       var view = {{{ makeHEAPView('F32', 'value', 'value+count*36') }}};
     }
     GLctx.uniformMatrix3fv(webglGetUniformLocation(location), !!transpose, view);
-#endif // MIN_WEBGL_VERSION >= 2
+#endif // MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS
   },
 
   glUniformMatrix4fv__deps: ['$webglGetUniformLocation'
