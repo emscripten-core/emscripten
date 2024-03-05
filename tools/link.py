@@ -149,8 +149,12 @@ def save_intermediate_with_wasm(name, wasm_binary):
 
 
 def base64_encode(b):
-  b64 = base64.b64encode(b)
-  return b64.decode('ascii')
+  if settings.SINGLE_FILE_BINARY_ENCODE:
+    b64 = binary_encode(b)
+    return b64.decode('utf-8')
+  else:
+    b64 = base64.b64encode(b)
+    return b64.decode('ascii')
 
 
 def align_to_wasm_page_boundary(address):
@@ -2840,11 +2844,49 @@ def move_file(src, dst):
   shutil.move(src, dst)
 
 
+def binary_encode(data):
+  out = bytearray(len(data)*2)
+  i = 0
+  for d in data:
+    d += 1 # Offset all bytes up by +1 to make zero (a very common value) be encoded with only one byte.
+    if d == 0: # Replace null byte with UTF-8 \x100 (dec 256) so it can be reconstructed with a simple "x & 0xFF" operation.
+      out[i] = 196
+      out[i+1] = 128
+      i += 2
+    elif d == ord("'"): # Escape single quote ' character with a backspace since we are writing a string inside single quotes. (' -> 2 bytes)
+      out[i] = ord('\\')
+      out[i+1] = d
+      i += 2 
+    elif d == ord('"'): # Escape double quote " character with a backspace since optimizer may turn the string into being delimited with double quotes. (" -> 2 bytes)
+      out[i] = ord('\\')
+      out[i+1] = d
+      i += 2 
+    elif d == ord('\r'): # Escape carriage return 0x0D as \r -> 2 bytes
+      out[i] = ord('\\')
+      out[i+1] = ord('r')
+      i += 2
+    elif d == ord('\n'): # Escape newline 0x0A as \n -> 2 bytes
+      out[i] = ord('\\')
+      out[i+1] = ord('n')
+      i += 2
+    elif d == ord('\\'): # Escape backslash \ as \\ -> 2 bytes
+      out[i] = ord('\\')
+      out[i+1] = ord('\\')
+      i += 2
+    else: # Otherwise write the original value encoded in UTF-8 (1 or 2 bytes).
+      for b in f'{chr(d)}'.encode('utf-8'):
+        out[i] = b
+        i += 1
+  return out[0:i]
+
 # Returns the subresource location for run-time access
 def get_subresource_location(path):
   if settings.SINGLE_FILE:
-    data = base64.b64encode(utils.read_binary(path))
-    return 'data:application/octet-stream;base64,' + data.decode('ascii')
+    if settings.SINGLE_FILE_BINARY_ENCODE:
+      return binary_encode(utils.read_binary(path))
+    else:
+      data = base64.b64encode(utils.read_binary(path))
+      return 'data:application/octet-stream;base64,' + data.decode('ascii')
   else:
     return os.path.basename(path)
 
