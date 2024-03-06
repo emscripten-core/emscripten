@@ -614,7 +614,7 @@ if (Module['locateFile']) {
 #endif
 
 #if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE
-function binaryDecode(bin) { for(var i=0,l=bin.length,o=new Uint8Array(l);i<l;++i) o[i]=bin.charCodeAt(i)-1; return o; }
+#include "binaryDecode.js"
 wasmBinaryFile = binaryDecode(wasmBinaryFile);
 #endif
 

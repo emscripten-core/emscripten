@@ -130,8 +130,7 @@ var filename;
 filename ||= '<<< filename >>>';
 
 #if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE
-/** @noinline */
-function binaryDecode(bin) { for(var i=0,l=bin.length,o=new Uint8Array(l);i<l;++i) o[i]=bin.charCodeAt(i)-1; return o; }
+#include "binaryDecode.js"
 var workerURL = URL.createObjectURL(new Blob([binaryDecode(filename)], {type: 'application/javascript'}));
 var worker = new Worker(workerURL);
 #else
