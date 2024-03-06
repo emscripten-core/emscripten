@@ -2403,6 +2403,13 @@ child-src directive to allow blob:. If you aren't using Content Security
 Policy, or your CSP header doesn't include either script-src or child-src,
 then you can safely ignore this warning.
 
+.. _single_file_binary_encode:
+
+SINGLE_FILE_BINARY_ENCODE
+=========================
+
+If true, does binary encoding of data instead of base64 encoding.
+
 .. _auto_js_libraries:
 
 AUTO_JS_LIBRARIES
