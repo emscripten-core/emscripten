@@ -2845,35 +2845,20 @@ def move_file(src, dst):
 
 
 def binary_encode(data):
-  out = bytearray(len(data)*2)
+  out = bytearray(len(data)*2) # Size output buffer conservatively
   i = 0
   for d in data:
-    d += 1 # Offset all bytes up by +1 to make zero (a very common value) be encoded with only one byte.
-    if d == ord("'"): # Escape single quote ' character with a backspace since we are writing a string inside single quotes. (' -> 2 bytes)
-      out[i] = ord('\\')
-      out[i+1] = d
-      i += 2
-    elif d == ord('"'): # Escape double quote " character with a backspace since optimizer may turn the string into being delimited with double quotes. (" -> 2 bytes)
-      out[i] = ord('\\')
-      out[i+1] = d
-      i += 2
-    elif d == ord('\r'): # Escape carriage return 0x0D as \r -> 2 bytes
-      out[i] = ord('\\')
-      out[i+1] = ord('r')
-      i += 2
-    elif d == ord('\n'): # Escape newline 0x0A as \n -> 2 bytes
-      out[i] = ord('\\')
-      out[i+1] = ord('n')
-      i += 2
-    elif d == ord('\\'): # Escape backslash \ as \\ -> 2 bytes
-      out[i] = ord('\\')
-      out[i+1] = ord('\\')
-      i += 2
-    else: # Otherwise write the original value encoded in UTF-8 (1 or 2 bytes).
-      for b in f'{chr(d)}'.encode('utf-8'):
-        out[i] = b
-        i += 1
-  return out[0:i]
+    d += 1 # Offset all bytes up by +1 to make zero (a very common value) be encoded with only one byte as 0x01. This is possible since we can encode 255 as 0x100 in UTF-8.
+    if d == ord("'"): buf = [ord('\\'), d] # Escape single quote ' character with a backspace since we are writing a string inside single quotes. (' -> 2 bytes)
+    elif d == ord('"'): buf = [ord('\\'), d] # Escape double quote " character with a backspace since optimizer may turn the string into being delimited with double quotes. (" -> 2 bytes)
+    elif d == ord('\r'): buf = [ord('\\'), ord('r')] # Escape carriage return 0x0D as \r -> 2 bytes
+    elif d == ord('\n'): buf = [ord('\\'), ord('n')] # Escape newline 0x0A as \n -> 2 bytes
+    elif d == ord('\\'): buf = [ord('\\'), ord('\\')] # Escape backslash \ as \\ -> 2 bytes
+    else: buf = f'{chr(d)}'.encode('utf-8') # Otherwise write the original value encoded in UTF-8 (1 or 2 bytes).
+    for b in buf: # Write the bytes to output buffer
+      out[i] = b
+      i += 1
+  return out[0:i] # Crop output buffer to the actual used size
 
 # Returns the subresource location for run-time access
 def get_subresource_location(path):
