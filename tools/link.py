@@ -2849,11 +2849,7 @@ def binary_encode(data):
   i = 0
   for d in data:
     d += 1 # Offset all bytes up by +1 to make zero (a very common value) be encoded with only one byte.
-    if d == 0: # Replace null byte with UTF-8 \x100 (dec 256) so it can be reconstructed with a simple "x & 0xFF" operation.
-      out[i] = 196
-      out[i+1] = 128
-      i += 2
-    elif d == ord("'"): # Escape single quote ' character with a backspace since we are writing a string inside single quotes. (' -> 2 bytes)
+    if d == ord("'"): # Escape single quote ' character with a backspace since we are writing a string inside single quotes. (' -> 2 bytes)
       out[i] = ord('\\')
       out[i+1] = d
       i += 2
