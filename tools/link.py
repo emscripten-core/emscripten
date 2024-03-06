@@ -2860,7 +2860,7 @@ def binary_encode(data):
     elif d == ord('\\'):
       buf = [ord('\\'), ord('\\')] # Escape backslash \ as \\ -> 2 bytes
     else:
-      buf = f'{chr(d)}'.encode('utf-8') # Otherwise write the original value encoded in UTF-8 (1 or 2 bytes).
+      buf = chr(d).encode('utf-8') # Otherwise write the original value encoded in UTF-8 (1 or 2 bytes).
     for b in buf: # Write the bytes to output buffer
       out[i] = b
       i += 1
