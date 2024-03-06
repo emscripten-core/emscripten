@@ -149,12 +149,13 @@ def save_intermediate_with_wasm(name, wasm_binary):
 
 
 def base64_encode(b):
-  if settings.MINIMAL_RUNTIME and settings.SINGLE_FILE_BINARY_ENCODE: # TODO: Should not check for settings.MINIMAL_RUNTIME here, but in the caller
-    b64 = binary_encode(b)
-    return b64.decode('utf-8')
-  else:
-    b64 = base64.b64encode(b)
-    return b64.decode('ascii')
+  b64 = base64.b64encode(b)
+  return b64.decode('ascii')
+
+
+def base64_or_binary_encode(b):
+  b64 = binary_encode(b) if settings.SINGLE_FILE and settings.SINGLE_FILE_BINARY_ENCODE else base64_encode(b)
+  return b64.decode('utf-8')
 
 
 def align_to_wasm_page_boundary(address):
@@ -2299,7 +2300,7 @@ def phase_binaryen(target, options, wasm_target):
     js = read_file(final_js)
 
     if settings.MINIMAL_RUNTIME:
-      js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(read_binary(wasm_target)))
+      js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_or_binary_encode(read_binary(wasm_target)))
     else:
       js = do_replace(js, '<<< WASM_BINARY_FILE >>>', get_subresource_location(wasm_target))
     delete_file(wasm_target)
