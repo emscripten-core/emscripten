@@ -606,6 +606,8 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   args += ['--language_out', 'NO_TRANSPILE']
   # Tell closure never to inject the 'use strict' directive.
   args += ['--emit_use_strict=false']
+  # Always output UTF-8 files, this helps generate UTF-8 code points instead of escaping code points with \uxxxx inside strings. https://github.com/google/closure-compiler/issues/4158
+  args += ['--charset=UTF8']
 
   if settings.IGNORE_CLOSURE_COMPILER_ERRORS:
     args.append('--jscomp_off=*')
@@ -656,7 +658,8 @@ def run_closure_cmd(cmd, filename, env):
   # 7-bit ASCII range. Therefore make sure the command line we pass does not contain any such
   # input files by passing all input filenames relative to the cwd. (user temp directory might
   # be in user's home directory, and user's profile name might contain unicode characters)
-  proc = run_process(cmd, stderr=PIPE, check=False, env=env, cwd=tempfiles.tmpdir)
+  # https://github.com/google/closure-compiler/issues/4159: Closure outputs stdout/stderr in iso-8859-1 on Windows.c
+  proc = run_process(cmd, stderr=PIPE, check=False, env=env, cwd=tempfiles.tmpdir, encoding='iso-8859-1' if WINDOWS else 'utf-8')
 
   # XXX Closure bug: if Closure is invoked with --create_source_map, Closure should create a
   # outfile.map source map file (https://github.com/google/closure-compiler/wiki/Source-Maps)
