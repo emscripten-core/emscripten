@@ -929,7 +929,7 @@ var LibraryHTML5 = {
   },
 
   $screenOrientation: () => {
-    if (!screen) return undefined;
+    if (!window.screen) return undefined;
     return screen.orientation || screen['mozOrientation'] || screen['webkitOrientation'];
   },
 
@@ -999,7 +999,7 @@ var LibraryHTML5 = {
   emscripten_set_orientationchange_callback_on_thread__proxy: 'sync',
   emscripten_set_orientationchange_callback_on_thread__deps: ['$registerOrientationChangeEventCallback'],
   emscripten_set_orientationchange_callback_on_thread: (userData, useCapture, callbackfunc, targetThread) => {
-    if (!screen || !screen.orientation) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    if (!window.screen || !screen.orientation) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     return registerOrientationChangeEventCallback(screen.orientation, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_ORIENTATIONCHANGE }}}, 'change', targetThread);
   },
 
