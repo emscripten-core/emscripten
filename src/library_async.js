@@ -41,6 +41,9 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
       dbg('asyncify instrumenting imports');
 #endif
+#if ASSERTIONS && ASYNCIFY == 2
+      assert('Suspender' in WebAssembly, 'JSPI not support by current environment. Perhaps it needs to be enabled via flags?');
+#endif
       var importPattern = {{{ new RegExp(`^(${ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS.map(x => x.split('.')[1]).join('|').replace(/\*/g, '.*')})$`) }}};
 
       for (let [x, original] of Object.entries(imports)) {
