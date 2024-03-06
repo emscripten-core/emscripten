@@ -3421,10 +3421,12 @@ Module["preRun"] = () => {
         # this test is synchronous, so avoid async startup due to wasm features
         self.compile_btest('browser_test_hello_world.c', ['-sMODULARIZE', '-sSINGLE_FILE'] + args + opts)
         create_file('a.html', '''
+          <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"></head><body>
           <script src="a.out.js"></script>
           <script>
             %s
           </script>
+          </body></html>
         ''' % code)
         self.run_browser('a.html', '/report_result?0')
 

@@ -595,9 +595,12 @@ var wasmBinaryFile;
 if (Module['locateFile']) {
 #endif
   wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
+#if !SINGLE_FILE
   if (!isDataURI(wasmBinaryFile)) {
     wasmBinaryFile = locateFile(wasmBinaryFile);
   }
+#endif
+
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && !AUDIO_WORKLET // In single-file mode, repeating WASM_BINARY_FILE would emit the contents again. For an Audio Worklet, we cannot use `new URL()`.
 } else {
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -612,11 +615,12 @@ if (Module['locateFile']) {
 
 #if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE
 function binaryDecode(bin) { for(var i=0,l=bin.length,o=new Uint8Array(l);i<l;++i) o[i]=bin.charCodeAt(i)-1; return o; }
+wasmBinaryFile = binaryDecode(wasmBinaryFile);
 #endif
 
 function getBinarySync(file) {
 #if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE
-  return binaryDecode(file);
+  return file;
 #else
   if (file == wasmBinaryFile && wasmBinary) {
     return new Uint8Array(wasmBinary);
