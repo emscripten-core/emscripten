@@ -658,7 +658,7 @@ def run_closure_cmd(cmd, filename, env):
   # 7-bit ASCII range. Therefore make sure the command line we pass does not contain any such
   # input files by passing all input filenames relative to the cwd. (user temp directory might
   # be in user's home directory, and user's profile name might contain unicode characters)
-  # https://github.com/google/closure-compiler/issues/4159: Closure outputs stdout/stderr in iso-8859-1 on Windows.c
+  # https://github.com/google/closure-compiler/issues/4159: Closure outputs stdout/stderr in iso-8859-1 on Windows.
   proc = run_process(cmd, stderr=PIPE, check=False, env=env, cwd=tempfiles.tmpdir, encoding='iso-8859-1' if WINDOWS else 'utf-8')
 
   # XXX Closure bug: if Closure is invoked with --create_source_map, Closure should create a
