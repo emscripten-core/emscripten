@@ -149,7 +149,7 @@ def save_intermediate_with_wasm(name, wasm_binary):
 
 
 def base64_encode(b):
-  if settings.SINGLE_FILE_BINARY_ENCODE:
+  if settings.MINIMAL_RUNTIME and settings.SINGLE_FILE_BINARY_ENCODE: # TODO: Should not check for settings.MINIMAL_RUNTIME here, but in the caller
     b64 = binary_encode(b)
     return b64.decode('utf-8')
   else:
@@ -2856,11 +2856,11 @@ def binary_encode(data):
     elif d == ord("'"): # Escape single quote ' character with a backspace since we are writing a string inside single quotes. (' -> 2 bytes)
       out[i] = ord('\\')
       out[i+1] = d
-      i += 2 
+      i += 2
     elif d == ord('"'): # Escape double quote " character with a backspace since optimizer may turn the string into being delimited with double quotes. (" -> 2 bytes)
       out[i] = ord('\\')
       out[i+1] = d
-      i += 2 
+      i += 2
     elif d == ord('\r'): # Escape carriage return 0x0D as \r -> 2 bytes
       out[i] = ord('\\')
       out[i+1] = ord('r')
@@ -2883,7 +2883,7 @@ def binary_encode(data):
 def get_subresource_location(path):
   if settings.SINGLE_FILE:
     if settings.SINGLE_FILE_BINARY_ENCODE:
-      return binary_encode(utils.read_binary(path))
+      return binary_encode(utils.read_binary(path)).decode('utf-8')
     else:
       data = base64.b64encode(utils.read_binary(path))
       return 'data:application/octet-stream;base64,' + data.decode('ascii')
