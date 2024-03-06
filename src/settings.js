@@ -1818,7 +1818,7 @@ var WASMFS = false;
 var SINGLE_FILE = false;
 
 // If true, does binary encoding of data instead of base64 encoding.
-var SINGLE_FILE_BINARY_ENCODE = false;
+var SINGLE_FILE_BINARY_ENCODE = true;
 
 // If set to 1, all JS libraries will be automatically available at link time.
 // This gets set to 0 in STRICT mode (or with MINIMAL_RUNTIME) which mean you
