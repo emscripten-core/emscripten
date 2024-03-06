@@ -4851,7 +4851,7 @@ Module["preRun"] = () => {
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
   def test_single_file_worker_js(self):
     self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '--proxy-to-worker', '-sSINGLE_FILE'])
-    create_file('test.html', '<script src="test.js"></script>')
+    create_file('test.html', '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"></head><body><script src="test.js"></script></body></html>')
     self.run_browser('test.html', '/report_result?0')
     self.assertExists('test.js')
     self.assertNotExists('test.worker.js')

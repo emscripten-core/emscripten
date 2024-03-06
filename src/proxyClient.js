@@ -129,6 +129,12 @@ var SUPPORT_BASE64_EMBEDDING;
 var filename;
 filename ||= '<<< filename >>>';
 
+#if SINGLE_FILE_BINARY_ENCODE
+/** @noinline */
+function binaryDecode(bin) { for(var i=0,l=bin.length,o=new Uint8Array(l);i<l;++i) o[i]=bin.charCodeAt(i)-1; return o; }
+var workerURL = URL.createObjectURL(new Blob([binaryDecode(filename)], {type: 'application/javascript'}));
+var worker = new Worker(workerURL);
+#else
 var workerURL = filename;
 if (SUPPORT_BASE64_EMBEDDING) {
   var fileBytes = tryParseAsDataURI(filename);
@@ -137,6 +143,7 @@ if (SUPPORT_BASE64_EMBEDDING) {
   }
 }
 var worker = new Worker(workerURL);
+#endif
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
@@ -166,7 +173,11 @@ worker.onmessage = (event) => {
   if (!workerResponded) {
     workerResponded = true;
     Module.setStatus?.('');
+#if SINGLE_FILE_BINARY_ENCODE
+    URL.revokeObjectURL(workerURL);
+#else
     if (SUPPORT_BASE64_EMBEDDING && workerURL !== filename) URL.revokeObjectURL(workerURL);
+#endif
   }
 
   var data = event.data;
