@@ -2845,7 +2845,7 @@ def move_file(src, dst):
 
 
 def binary_encode(data):
-  out = bytearray(len(data)*2) # Size output buffer conservatively
+  out = bytearray(len(data) * 2) # Size output buffer conservatively
   i = 0
   for d in data:
     d += 1 # Offset all bytes up by +1 to make zero (a very common value) be encoded with only one byte as 0x01. This is possible since we can encode 255 as 0x100 in UTF-8.
@@ -2859,6 +2859,7 @@ def binary_encode(data):
       out[i] = b
       i += 1
   return out[0:i] # Crop output buffer to the actual used size
+
 
 # Returns the subresource location for run-time access
 def get_subresource_location(path):
