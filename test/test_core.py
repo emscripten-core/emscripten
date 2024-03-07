@@ -9563,6 +9563,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @requires_node
   @no_wasm2js('wasm2js does not support reference types')
   def test_externref_emjs(self, dynlink):
+    if dynlink and is_sanitizing(self.emcc_args):
+      self.skipTest('https://github.com/llvm/llvm-project/pull/83196')
     self.emcc_args += ['-mreference-types']
     self.node_args += shared.node_reference_types_flags(self.get_nodejs())
     if dynlink:
