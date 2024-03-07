@@ -4690,6 +4690,7 @@ Module["preRun"] = () => {
   @parameterized({
     'default': ([],),
     'closure': (['-sASSERTIONS', '--closure=1'],),
+    'closure_advanced': (['-sASSERTIONS', '--closure=1', '-O3'],),
     'main_module': (['-sMAIN_MODULE=1'],),
   })
   @requires_graphics_hardware
