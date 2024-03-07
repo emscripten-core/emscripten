@@ -16,13 +16,13 @@ LibraryHTML5WebGPU.emscripten_webgpu_export_${snake_case} = (handle) =>
 }}}
 
 
-var LibraryHTML5WebGPU = {
+const LibraryHTML5WebGPU = {
   $JsValStore: {
     values: {},
     next_id: 1,
 
     add(js_val) {
-      var id;
+      let id;
       do {
         id = JsValStore.next_id++;
         if (JsValStore.next_id > 2147483647) JsValStore.next_id = 1; // Wraparound signed int32.
@@ -54,8 +54,8 @@ var LibraryHTML5WebGPU = {
     assert(Module['preinitializedWebGPUDevice']);
 #endif
     if (WebGPU.preinitializedDeviceId === undefined) {
-      var device = Module['preinitializedWebGPUDevice'];
-      var deviceWrapper = { queueId: WebGPU.mgrQueue.create(device["queue"]) };
+      const device = Module['preinitializedWebGPUDevice'];
+      const deviceWrapper = { queueId: WebGPU.mgrQueue.create(device["queue"]) };
       WebGPU.preinitializedDeviceId = WebGPU.mgrDevice.create(device, deviceWrapper);
     }
     WebGPU.mgrDevice.reference(WebGPU.preinitializedDeviceId);
