@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.55 (in development)
+3.1.56 (in development)
 -----------------------
+
+3.1.55 - 03/01/24
+-----------------
 - Update sdl2-mixer port from 2.6.0 to 2.8.0
 - In `STRICT` mode the `HEAPXX` symbols (such as `HEAP8` and `HEAP32`) are now
   only exported on demand.  This means that they must be added to
@@ -29,6 +32,10 @@ See docs/process.md for more on how version tagging works.
   data into an external .mem file).  This feature was only available under
   wasm2js (`-sWASM=0`) anyway so this change will only affect users of this
   setting. (#21217)
+- `INITIAL_HEAP` setting is introduced to control the amount of initial
+  memory available for dynamic allocation without capping it. If you are
+  using `INITIAL_MEMORY`, consider switching to `INITIAL_HEAP`. Note that
+  it is currently not supported in all configurations (#21071).
 
 3.1.54 - 02/15/24
 -----------------

@@ -216,7 +216,6 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
   wasmMemory = wasmExports['memory'];
 #if ASSERTIONS
   assert(wasmMemory);
-  assert(wasmMemory.buffer.byteLength === {{{ INITIAL_MEMORY }}});
 #endif
   updateMemoryViews();
 #endif

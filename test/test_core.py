@@ -2108,7 +2108,7 @@ int main(int argc, char **argv) {
     if self.is_wasm2js():
       self.skipTest('wasm memory specific test')
 
-    self.emcc_args += ['-sALLOW_MEMORY_GROWTH', '-sMEMORY_GROWTH_GEOMETRIC_STEP=8.5', '-sMEMORY_GROWTH_GEOMETRIC_CAP=32MB']
+    self.emcc_args += ['-sINITIAL_MEMORY=16MB', '-sALLOW_MEMORY_GROWTH', '-sMEMORY_GROWTH_GEOMETRIC_STEP=8.5', '-sMEMORY_GROWTH_GEOMETRIC_CAP=32MB']
     self.do_core_test('test_memorygrowth_geometric_step.c')
 
   def test_memorygrowth_3_force_fail_reallocBuffer(self):
@@ -6006,6 +6006,7 @@ Module.onRuntimeInitialized = () => {
         assert self.get_setting('INITIAL_MEMORY') == '2200mb'
         expected = (2200 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE
     else:
+      self.set_setting('INITIAL_MEMORY', '16mb')
       expected = 16 * 1024 * 1024 // webassembly.WASM_PAGE_SIZE
     self.do_runf(filename, str(expected) + ', errno: 0')
 

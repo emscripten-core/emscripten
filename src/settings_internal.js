@@ -270,3 +270,9 @@ var MINIFY_WHITESPACE = true;
 var ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS = [];
 
 var WARN_DEPRECATED = true;
+
+// WebGL 2 provides new garbage-free entry points to call to WebGL. Use
+// those always when possible.
+// We currently set this to false for certain browser when large memory sizes
+// (2gb+ or 4gb+) are used
+var WEBGL_USE_GARBAGE_FREE_APIS = false;

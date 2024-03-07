@@ -109,3 +109,4 @@ interface EmbindModule {
   wstring_test(_0: string): string;
 }
 export type MainModule = WasmModule & EmbindModule;
+export default function MainModuleFactory (options?: unknown): Promise<MainModule>;

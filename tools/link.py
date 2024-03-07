@@ -555,23 +555,90 @@ def setup_pthreads(target):
       settings.EXPORTED_RUNTIME_METHODS += ['ExitStatus']
 
 
+def set_initial_memory():
+  user_specified_initial_heap = 'INITIAL_HEAP' in user_settings
+
+  # INITIAL_HEAP cannot be used when the memory object is created in JS: we don't know
+  # the size of static data here and thus the total initial memory size.
+  if settings.IMPORTED_MEMORY:
+    if user_specified_initial_heap:
+      # Some of these could (and should) be implemented.
+      exit_with_error('INITIAL_HEAP is currently not compatible with IMPORTED_MEMORY (which is enabled indirectly via SHARED_MEMORY, RELOCATABLE, ASYNCIFY_LAZY_LOAD_CODE)')
+    # The default for imported memory is to fall back to INITIAL_MEMORY.
+    settings.INITIAL_HEAP = -1
+
+  if not user_specified_initial_heap:
+    # For backwards compatibility, we will only use INITIAL_HEAP by default when the user
+    # specified neither INITIAL_MEMORY nor MAXIMUM_MEMORY. Both place an upper bounds on
+    # the overall initial linear memory (stack + static data + heap), and we do not know
+    # the size of static data at this stage. Setting any non-zero initial heap value in
+    # this scenario would risk pushing users over the limit they have set.
+    user_specified_initial = settings.INITIAL_MEMORY != -1
+    user_specified_maximum = 'MAXIMUM_MEMORY' in user_settings or 'WASM_MEM_MAX' in user_settings or 'BINARYEN_MEM_MAX' in user_settings
+    if user_specified_initial or user_specified_maximum:
+      settings.INITIAL_HEAP = -1
+
+  # Apply the default if we are going with INITIAL_MEMORY.
+  if settings.INITIAL_HEAP == -1 and settings.INITIAL_MEMORY == -1:
+    default_setting('INITIAL_MEMORY', 16 * 1024 * 1024)
+
+  def check_memory_setting(setting):
+    if settings[setting] % webassembly.WASM_PAGE_SIZE != 0:
+      exit_with_error(f'{setting} must be a multiple of WebAssembly page size (64KiB), was {settings[setting]}')
+    if settings[setting] >= 2**53:
+      exit_with_error(f'{setting} must be smaller than 2^53 bytes due to JS Numbers (doubles) being used to hold pointer addresses in JS side')
+
+  # Due to the aforementioned lack of knowledge about the static data size, we delegate
+  # checking the overall consistency of these settings to wasm-ld.
+  if settings.INITIAL_HEAP != -1:
+    check_memory_setting('INITIAL_HEAP')
+
+  if settings.INITIAL_MEMORY != -1:
+    check_memory_setting('INITIAL_MEMORY')
+    if settings.INITIAL_MEMORY < settings.STACK_SIZE:
+      exit_with_error(f'INITIAL_MEMORY must be larger than STACK_SIZE, was {settings.INITIAL_MEMORY} (STACK_SIZE={settings.STACK_SIZE})')
+
+  check_memory_setting('MAXIMUM_MEMORY')
+  if settings.MEMORY_GROWTH_LINEAR_STEP != -1:
+    check_memory_setting('MEMORY_GROWTH_LINEAR_STEP')
+
+
+# Set an upper estimate of what MAXIMUM_MEMORY should be. Take note that this value
+# may not be precise, and is only an upper bound of the exact value calculated later
+# by the linker.
 def set_max_memory():
-  # When memory growth is disallowed set MAXIMUM_MEMORY equal to INITIAL_MEMORY
+  # With INITIAL_HEAP, we only know the lower bound on initial memory size.
+  initial_memory_known = settings.INITIAL_MEMORY != -1
+
   if not settings.ALLOW_MEMORY_GROWTH:
     if 'MAXIMUM_MEMORY' in user_settings:
       diagnostics.warning('unused-command-line-argument', 'MAXIMUM_MEMORY is only meaningful with ALLOW_MEMORY_GROWTH')
-    settings.MAXIMUM_MEMORY = settings.INITIAL_MEMORY
+    # Optimization: lower the default maximum memory to initial memory if possible.
+    if initial_memory_known:
+      settings.MAXIMUM_MEMORY = settings.INITIAL_MEMORY
 
+  # Automaticaly up the default maximum when the user requested a large minimum.
   if 'MAXIMUM_MEMORY' not in user_settings:
-    if settings.ALLOW_MEMORY_GROWTH and settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024:
+    if settings.ALLOW_MEMORY_GROWTH:
+      if any([settings.INITIAL_HEAP != -1 and settings.INITIAL_HEAP >= 2 * 1024 * 1024 * 1024,
+              initial_memory_known and settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024]):
         settings.MAXIMUM_MEMORY = 4 * 1024 * 1024 * 1024
 
     # INITIAL_MEMORY sets a lower bound for MAXIMUM_MEMORY
-    if settings.INITIAL_MEMORY > settings.MAXIMUM_MEMORY:
+    if initial_memory_known and settings.INITIAL_MEMORY > settings.MAXIMUM_MEMORY:
       settings.MAXIMUM_MEMORY = settings.INITIAL_MEMORY
 
-  if settings.MAXIMUM_MEMORY < settings.INITIAL_MEMORY:
+  # A similar check for INITIAL_HEAP would not be precise and so is delegated to wasm-ld.
+  if initial_memory_known and settings.MAXIMUM_MEMORY < settings.INITIAL_MEMORY:
     exit_with_error('MAXIMUM_MEMORY cannot be less than INITIAL_MEMORY')
+
+
+def inc_initial_memory(delta):
+  # Both INITIAL_HEAP and INITIAL_MEMORY can be set at the same time. Increment both.
+  if settings.INITIAL_HEAP != -1:
+    settings.INITIAL_HEAP += delta
+  if settings.INITIAL_MEMORY != -1:
+    settings.INITIAL_MEMORY += delta
 
 
 def check_browser_versions():
@@ -1362,18 +1429,10 @@ def phase_linker_setup(options, state, newargs):
       'removeRunDependency',
     ]
 
-  def check_memory_setting(setting):
-    if settings[setting] % webassembly.WASM_PAGE_SIZE != 0:
-      exit_with_error(f'{setting} must be a multiple of WebAssembly page size (64KiB), was {settings[setting]}')
-    if settings[setting] >= 2**53:
-      exit_with_error(f'{setting} must be smaller than 2^53 bytes due to JS Numbers (doubles) being used to hold pointer addresses in JS side')
+  if settings.SHARED_MEMORY or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE:
+    settings.IMPORTED_MEMORY = 1
 
-  check_memory_setting('INITIAL_MEMORY')
-  check_memory_setting('MAXIMUM_MEMORY')
-  if settings.INITIAL_MEMORY < settings.STACK_SIZE:
-    exit_with_error(f'INITIAL_MEMORY must be larger than STACK_SIZE, was {settings.INITIAL_MEMORY} (STACK_SIZE={settings.STACK_SIZE})')
-  if settings.MEMORY_GROWTH_LINEAR_STEP != -1:
-    check_memory_setting('MEMORY_GROWTH_LINEAR_STEP')
+  set_initial_memory()
 
   if settings.EXPORT_ES6:
     if not settings.MODULARIZE:
@@ -1432,9 +1491,6 @@ def phase_linker_setup(options, state, newargs):
      settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \
      (options.shell_path == DEFAULT_SHELL_HTML or options.shell_path == utils.path_from_root('src/shell_minimal.html')):
     exit_with_error(f'Due to collision in variable name "Module", the shell file "{options.shell_path}" is not compatible with build options "-sMODULARIZE -sEXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
-
-  if settings.SHARED_MEMORY or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE:
-    settings.IMPORTED_MEMORY = 1
 
   if settings.WASM_BIGINT:
     settings.LEGALIZE_JS_FFI = 0
@@ -1496,9 +1552,9 @@ def phase_linker_setup(options, state, newargs):
     # These values are designed be an over-estimate of the actual requirements and
     # are based on experimentation with different tests/programs under asan and
     # lsan.
-    settings.INITIAL_MEMORY += 50 * 1024 * 1024
+    inc_initial_memory(50 * 1024 * 1024)
     if settings.PTHREADS:
-      settings.INITIAL_MEMORY += 50 * 1024 * 1024
+      inc_initial_memory(50 * 1024 * 1024)
 
   if settings.USE_OFFSET_CONVERTER:
     if settings.WASM2JS:
@@ -1541,7 +1597,7 @@ def phase_linker_setup(options, state, newargs):
     if 'GLOBAL_BASE' in user_settings:
       exit_with_error("ASan does not support custom GLOBAL_BASE")
 
-    # Increase the TOTAL_MEMORY and shift GLOBAL_BASE to account for
+    # Increase the INITIAL_MEMORY and shift GLOBAL_BASE to account for
     # the ASan shadow region which starts at address zero.
     # The shadow region is 1/8th the size of the total memory and is
     # itself part of the total memory.
@@ -1549,14 +1605,15 @@ def phase_linker_setup(options, state, newargs):
     # - user_mem : memory usable/visible by the user program.
     # - shadow_size : memory used by asan for shadow memory.
     # - total_mem : the sum of the above. this is the size of the wasm memory (and must be aligned to WASM_PAGE_SIZE)
-    user_mem = settings.INITIAL_MEMORY
-    if settings.ALLOW_MEMORY_GROWTH:
-      user_mem = settings.MAXIMUM_MEMORY
+    user_mem = settings.MAXIMUM_MEMORY
+    if not settings.ALLOW_MEMORY_GROWTH and settings.INITIAL_MEMORY != -1:
+      user_mem = settings.INITIAL_MEMORY
 
     # Given the know value of user memory size we can work backwards
     # to find the total memory and the shadow size based on the fact
     # that the user memory is 7/8ths of the total memory.
     # (i.e. user_mem == total_mem * 7 / 8
+    # TODO-Bug?: this does not look to handle 4GB MAXIMUM_MEMORY correctly.
     total_mem = user_mem * 8 / 7
 
     # But we might need to re-align to wasm page size
@@ -1569,10 +1626,12 @@ def phase_linker_setup(options, state, newargs):
     # We don't need to worry about alignment here.  wasm-ld will take care of that.
     settings.GLOBAL_BASE = shadow_size
 
-    if not settings.ALLOW_MEMORY_GROWTH:
-      settings.INITIAL_MEMORY = total_mem
-    else:
-      settings.INITIAL_MEMORY += align_to_wasm_page_boundary(shadow_size)
+    # Adjust INITIAL_MEMORY (if needed) to account for the shifted global base.
+    if settings.INITIAL_MEMORY != -1:
+      if settings.ALLOW_MEMORY_GROWTH:
+        settings.INITIAL_MEMORY += align_to_wasm_page_boundary(shadow_size)
+      else:
+        settings.INITIAL_MEMORY = total_mem
 
     if settings.SAFE_HEAP:
       # SAFE_HEAP instruments ASan's shadow memory accesses.
@@ -1610,6 +1669,17 @@ def phase_linker_setup(options, state, newargs):
   # check if we can address the 2GB mark and higher.
   if not settings.MEMORY64 and settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024:
     settings.CAN_ADDRESS_2GB = 1
+
+  if settings.MAX_WEBGL_VERSION >= 2:
+    settings.WEBGL_USE_GARBAGE_FREE_APIS = 1
+    # Some browsers have issues using the WebGL2 garbage-free APIs when the
+    # memory offsets are over 2^31 or 2^32
+    # For firefox see: https://bugzilla.mozilla.org/show_bug.cgi?id=1838218
+    if settings.MIN_FIREFOX_VERSION != feature_matrix.UNSUPPORTED and settings.MAXIMUM_MEMORY > 2 ** 31:
+      settings.WEBGL_USE_GARBAGE_FREE_APIS = 0
+    # For chrome see: https://crbug.com/324992397
+    if settings.MIN_CHROME_VERSION != feature_matrix.UNSUPPORTED and settings.MEMORY64 and settings.MAXIMUM_MEMORY > 2 ** 32:
+      settings.WEBGL_USE_GARBAGE_FREE_APIS = 0
 
   if settings.MINIMAL_RUNTIME:
     if settings.EXIT_RUNTIME:

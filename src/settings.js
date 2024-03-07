@@ -154,15 +154,29 @@ var MALLOC = "dlmalloc";
 // [link]
 var ABORTING_MALLOC = true;
 
+// The initial amount of heap memory available to the program.  This is the
+// memory region available for dynamic allocations via `sbrk`, `malloc` and `new`.
+//
+// Unlike INITIAL_MEMORY, this setting allows the static and dynamic regions of
+// your programs memory to independently grow. In most cases we recommend using
+// this setting rather than `INITIAL_MEMORY`. However, this setting does not work
+// for imported memories (e.g. when dynamic linking is used).
+//
+// [link]
+var INITIAL_HEAP = 16777216;
+
 // The initial amount of memory to use. Using more memory than this will
 // cause us to expand the heap, which can be costly with typed arrays:
 // we need to copy the old heap into a new one in that case.
 // If ALLOW_MEMORY_GROWTH is set, this initial amount of memory can increase
 // later; if not, then it is the final and total amount of memory.
 //
+// By default, this value is calculated based on INITIAL_HEAP, STACK_SIZE,
+// as well the size of static data in input modules.
+//
 // (This option was formerly called TOTAL_MEMORY.)
 // [link]
-var INITIAL_MEMORY = 16777216;
+var INITIAL_MEMORY = -1;
 
 // Set the maximum size of memory in the wasm module (in bytes). This is only
 // relevant when ALLOW_MEMORY_GROWTH is set, as without growth, the size of
