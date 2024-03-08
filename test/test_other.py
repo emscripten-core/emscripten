@@ -13550,7 +13550,7 @@ int main() {
     self.do_runf('hello_world.c', emcc_args=['-sEXPORTED_FUNCTIONS=_main,___stdout_used', '-mextended-const', '-sMAIN_MODULE=2'])
     wat = self.get_wasm_text('hello_world.wasm')
     # Test that extended-const expressions are used in the data segments.
-    self.assertContained(r'\(data (\$\S+ )?\(offset (i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat, regex=True)
+    self.assertContained(r'\(data (\$\S+ )?\(offset \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat, regex=True)
     # Test that extended-const expressions are used in at least one global initializer.
     self.assertContained(r'\(global \$\S+ i32 \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat, regex=True)
 
