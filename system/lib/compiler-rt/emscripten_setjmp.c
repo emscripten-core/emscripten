@@ -90,6 +90,14 @@ thread_local struct __WasmLongjmpArgs __wasm_longjmp_args;
 // TODO Consider switching to throwing two values at the same time later.
 void __wasm_longjmp(void *env, int val) {
   __wasm_longjmp_args.env = env;
+  /*
+￼  * C standard:
+￼  *   The longjmp function cannot cause the setjmp macro to return
+￼  *   the value 0; if val is 0, the setjmp macro returns the value 1.
+￼  */
+  if (val == 0) {
+    val = 1;
+  }
   __wasm_longjmp_args.val = val;
   __builtin_wasm_throw(C_LONGJMP, &__wasm_longjmp_args);
 }
