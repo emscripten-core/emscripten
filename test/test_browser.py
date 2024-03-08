@@ -3364,7 +3364,6 @@ Module["preRun"] = () => {
       print(opts)
       self.btest_exit('async_mainloop.cpp', args=['-O' + str(opts), '-sASYNCIFY'])
 
-  @no_wasm64('crash in wasm-opt')
   @requires_sound_hardware
   def test_sdl_audio_beep_sleep(self):
     self.btest_exit('test_sdl_audio_beep_sleep.cpp', args=['-Os', '-sASSERTIONS', '-sDISABLE_EXCEPTION_CATCHING=0', '-profiling', '-sSAFE_HEAP', '-lSDL', '-sASYNCIFY'], timeout=90)
