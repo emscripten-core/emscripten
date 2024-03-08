@@ -2903,7 +2903,6 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   @also_with_wasm2js
-  @no_wasm64('SDL2 + wasm64')
   def test_sdl2_image(self):
     # load an image file, get pixel data. Also O2 coverage for --preload-file
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
@@ -2918,7 +2917,6 @@ Module["preRun"] = () => {
         '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
       ])
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_image_jpeg(self):
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpeg')
@@ -2928,7 +2926,6 @@ Module["preRun"] = () => {
       '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
     ])
 
-  @no_wasm64('SDL2 + wasm64')
   @also_with_wasmfs
   @requires_graphics_hardware
   def test_sdl2_image_formats(self):
@@ -2945,7 +2942,6 @@ Module["preRun"] = () => {
       '--use-port=sdl2', '--use-port=sdl2_image:formats=jpg'
     ])
 
-  @no_wasm64('SDL2 + wasm64')
   def test_sdl2_key(self):
     create_file('pre.js', '''
       function keydown(keyCode, code) {
@@ -2967,7 +2963,6 @@ Module["preRun"] = () => {
 
     self.btest_exit('test_sdl2_key.c', 37182145, args=['-sUSE_SDL=2', '--pre-js', 'pre.js'])
 
-  @no_wasm64('SDL2 + wasm64')
   def test_sdl2_text(self):
     create_file('pre.js', '''
       Module.postRun = () => {
@@ -2986,7 +2981,6 @@ Module["preRun"] = () => {
 
     self.btest_exit('test_sdl2_text.c', args=['--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one', '-sUSE_SDL=2'])
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_mouse(self):
     create_file('pre.js', '''
@@ -3018,7 +3012,6 @@ Module["preRun"] = () => {
 
     self.btest_exit('test_sdl2_mouse.c', args=['-O2', '--minify=0', '--pre-js', 'pre.js', '-sUSE_SDL=2'])
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_mouse_offsets(self):
     create_file('pre.js', '''
@@ -3096,38 +3089,31 @@ Module["preRun"] = () => {
     self.compile_btest('browser/test_sdl2_mouse.c', ['-DTEST_SDL_MOUSE_OFFSETS=1', '-O2', '--minify=0', '-o', 'sdl2_mouse.js', '--pre-js', 'pre.js', '-sUSE_SDL=2', '-sEXIT_RUNTIME'])
     self.run_browser('page.html', '', '/report_result?exit:0')
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_threads
   def test_sdl2_threads(self):
       self.btest_exit('test_sdl2_threads.c', args=['-pthread', '-sUSE_SDL=2', '-sPROXY_TO_PTHREAD'])
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_glshader(self):
     self.reftest('test_sdl2_glshader.c', 'test_sdl_glshader.png', args=['-sUSE_SDL=2', '-O2', '--closure=1', '-g1', '-sLEGACY_GL_EMULATION'])
     self.reftest('test_sdl2_glshader.c', 'test_sdl_glshader.png', args=['-sUSE_SDL=2', '-O2', '-sLEGACY_GL_EMULATION'], also_proxied=True) # XXX closure fails on proxy
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_canvas_blank(self):
     self.reftest('test_sdl2_canvas_blank.c', 'test_sdl_canvas_blank.png', args=['-sUSE_SDL=2'])
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_canvas_palette(self):
     self.reftest('test_sdl2_canvas_palette.c', 'test_sdl_canvas_palette.png', args=['-sUSE_SDL=2'])
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_canvas_twice(self):
     self.reftest('test_sdl2_canvas_twice.c', 'test_sdl_canvas_twice.png', args=['-sUSE_SDL=2'])
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_gfx(self):
     self.reftest('test_sdl2_gfx.cpp', 'test_sdl2_gfx.png', args=['-sUSE_SDL=2', '-sUSE_SDL_GFX=2'], reference_slack=2)
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_canvas_palette_2(self):
     create_file('args-r.js', '''
@@ -3146,32 +3132,26 @@ Module["preRun"] = () => {
     self.reftest('test_sdl2_canvas_palette_2.c', 'test_sdl_canvas_palette_g.png', args=['-sUSE_SDL=2', '--pre-js', 'args-g.js'])
     self.reftest('test_sdl2_canvas_palette_2.c', 'test_sdl_canvas_palette_b.png', args=['-sUSE_SDL=2', '--pre-js', 'args-b.js'])
 
-  @no_wasm64('SDL2 + wasm64')
   def test_sdl2_swsurface(self):
     self.btest_exit('test_sdl2_swsurface.c', args=['-sUSE_SDL=2'])
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_image_prepare(self):
     # load an image file, get pixel data.
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
     self.reftest('test_sdl2_image_prepare.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2'], manually_trigger_reftest=True)
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_image_prepare_data(self):
     # load an image file, get pixel data.
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
     self.reftest('test_sdl2_image_prepare_data.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2'], manually_trigger_reftest=True)
 
-  @no_wasm64('SDL2 + wasm64')
-  @no_2gb('https://github.com/libsdl-org/SDL/issues/9052')
   @requires_graphics_hardware
   def test_sdl2_canvas_proxy(self):
     create_file('data.txt', 'datum')
     self.reftest('test_sdl2_canvas_proxy.c', 'test_sdl2_canvas.png', args=['-sUSE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt', '-sGL_TESTING'], manual_reference=True, post_build=self.post_manual_reftest)
 
-  @no_wasm64('SDL2 + wasm64')
   def test_sdl2_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
     create_file('pre.js', '''
@@ -3182,91 +3162,77 @@ Module["preRun"] = () => {
     ''')
     self.btest_exit('test_sdl2_pumpevents.c', args=['--pre-js', 'pre.js', '-sUSE_SDL=2'])
 
-  @no_wasm64('SDL2 + wasm64')
   def test_sdl2_timer(self):
     self.btest_exit('test_sdl2_timer.c', args=['-sUSE_SDL=2'])
 
-  @no_wasm64('SDL2 + wasm64')
   def test_sdl2_canvas_size(self):
     self.btest_exit('test_sdl2_canvas_size.c', args=['-sUSE_SDL=2'])
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_gl_read(self):
     # SDL, OpenGL, readPixels
     self.btest_exit('test_sdl2_gl_read.c', args=['-sUSE_SDL=2'])
 
-  @no_wasm64('SDL2 + wasm64')
+  @no_4gb('https://github.com/libsdl-org/SDL/issues/9052')
   @no_2gb('https://github.com/libsdl-org/SDL/issues/9052')
   @requires_graphics_hardware
   def test_sdl2_glmatrixmode_texture(self):
     self.reftest('test_sdl2_glmatrixmode_texture.c', 'test_sdl2_glmatrixmode_texture.png',
                  args=['-sLEGACY_GL_EMULATION', '-sUSE_SDL=2'])
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_gldrawelements(self):
     self.reftest('test_sdl2_gldrawelements.c', 'test_sdl2_gldrawelements.png',
                  args=['-sLEGACY_GL_EMULATION', '-sUSE_SDL=2'])
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_glclipplane_gllighting(self):
     self.reftest('test_sdl2_glclipplane_gllighting.c', 'test_sdl2_glclipplane_gllighting.png',
                  args=['-sLEGACY_GL_EMULATION', '-sUSE_SDL=2'])
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_glalphatest(self):
     self.reftest('test_sdl2_glalphatest.c', 'test_sdl2_glalphatest.png',
                  args=['-sLEGACY_GL_EMULATION', '-sUSE_SDL=2'])
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_fog_simple(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.reftest('test_sdl2_fog_simple.c', 'screenshot-fog-simple.png',
                  args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_fog_negative(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.reftest('test_sdl2_fog_negative.c', 'screenshot-fog-negative.png',
                  args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_fog_density(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.reftest('test_sdl2_fog_density.c', 'screenshot-fog-density.png',
                  args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_fog_exp2(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.reftest('test_sdl2_fog_exp2.c', 'screenshot-fog-exp2.png',
                  args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_fog_linear(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.reftest('test_sdl2_fog_linear.c', 'screenshot-fog-linear.png', reference_slack=1,
                  args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
-  @no_wasm64('SDL2 + wasm64')
   def test_sdl2_unwasteful(self):
     self.btest_exit('test_sdl2_unwasteful.cpp', args=['-sUSE_SDL=2', '-O1'])
 
-  @no_wasm64('SDL2 + wasm64')
   @no_2gb('https://github.com/libsdl-org/SDL/issues/9052')
+  @no_4gb('https://github.com/libsdl-org/SDL/issues/9052')
   def test_sdl2_canvas_write(self):
     self.btest_exit('test_sdl2_canvas_write.cpp', args=['-sUSE_SDL=2'])
 
-  @no_wasm64('SDL2 + wasm64')
-  @no_2gb('https://github.com/libsdl-org/SDL/issues/9052')
   @requires_graphics_hardware
   def test_sdl2_gl_frames_swap(self):
     def post_build():
@@ -3277,40 +3243,33 @@ Module["preRun"] = () => {
       create_file('reftest.js', reftest2)
     self.reftest('test_sdl2_gl_frames_swap.c', 'test_sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-sGL_TESTING', '-sUSE_SDL=2'], manual_reference=True, post_build=post_build)
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_ttf(self):
     shutil.copy2(test_file('freetype/LiberationSansBold.ttf'), self.get_dir())
     self.reftest('test_sdl2_ttf.c', 'test_sdl2_ttf.png',
                  args=['-O2', '-sUSE_SDL=2', '-sUSE_SDL_TTF=2', '--embed-file', 'LiberationSansBold.ttf'])
 
-  @no_wasm64('SDL2 + wasm64')
   @requires_graphics_hardware
   def test_sdl2_ttf_rtl(self):
     shutil.copy2(test_file('third_party/notofont/NotoNaskhArabic-Regular.ttf'), self.get_dir())
     self.reftest('test_sdl2_ttf_rtl.c', 'test_sdl2_ttf_rtl.png',
                  args=['-O2', '-sUSE_SDL=2', '-sUSE_SDL_TTF=2', '--embed-file', 'NotoNaskhArabic-Regular.ttf'])
 
-  @no_wasm64('SDL2 + wasm64')
   def test_sdl2_custom_cursor(self):
     shutil.copyfile(test_file('cursor.bmp'), 'cursor.bmp')
     self.btest_exit('test_sdl2_custom_cursor.c', args=['--preload-file', 'cursor.bmp', '-sUSE_SDL=2'])
 
-  @no_wasm64('SDL2 + wasm64')
   def test_sdl2_misc(self):
     self.btest_exit('test_sdl2_misc.c', args=['-sUSE_SDL=2'])
 
-  @no_wasm64('SDL2 + wasm64')
   def test_sdl2_misc_main_module(self):
     self.btest_exit('test_sdl2_misc.c', args=['-sUSE_SDL=2', '-sMAIN_MODULE'])
 
-  @no_wasm64('SDL2 + wasm64')
   def test_sdl2_misc_via_object(self):
     self.emcc(test_file('browser/test_sdl2_misc.c'), ['-c', '-sUSE_SDL=2', '-o', 'test.o'])
     self.compile_btest('test.o', ['-sEXIT_RUNTIME', '-sUSE_SDL=2', '-o', 'test.html'])
     self.run_browser('test.html', '/report_result?exit:0')
 
-  @no_wasm64('SDL2 + wasm64')
   @parameterized({
     '': (['-sUSE_SDL=2', '-sUSE_SDL_MIXER=2'],),
     'dash_l': (['-lSDL2', '-lSDL2_mixer'],),
@@ -3320,7 +3279,6 @@ Module["preRun"] = () => {
     shutil.copyfile(test_file('sounds/the_entertainer.wav'), 'sound.wav')
     self.btest_exit('test_sdl2_mixer_wav.c', args=['--preload-file', 'sound.wav'] + flags)
 
-  @no_wasm64('SDL2 + wasm64')
   @parameterized({
     'wav': ([],         '0',            'the_entertainer.wav'),
     'ogg': (['ogg'],    'MIX_INIT_OGG', 'alarmvictory_1.ogg'),
@@ -4683,6 +4641,7 @@ Module["preRun"] = () => {
   @parameterized({
     '': ([],),
     'closure': (['-sASSERTIONS', '--closure=1'],),
+    'closure_advanced': (['-sASSERTIONS', '--closure=1', '-O3'],),
     'main_module': (['-sMAIN_MODULE=1'],),
   })
   @requires_graphics_hardware
