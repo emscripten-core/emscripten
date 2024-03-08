@@ -154,8 +154,7 @@ def base64_encode(b):
 
 
 def base64_or_binary_encode(b):
-  b64 = binary_encode(b) if settings.SINGLE_FILE and settings.SINGLE_FILE_BINARY_ENCODE else base64_encode(b)
-  return b64.decode('utf-8')
+  return binary_encode(b) if settings.SINGLE_FILE and settings.SINGLE_FILE_BINARY_ENCODE else base64_encode(b)
 
 
 def align_to_wasm_page_boundary(address):
@@ -2865,14 +2864,14 @@ def binary_encode(data):
     for b in buf: # Write the bytes to output buffer
       out[i] = b
       i += 1
-  return out[0:i] # Crop output buffer to the actual used size
+  return out[0:i].decode('utf-8') # Crop output buffer to the actual used size
 
 
 # Returns the subresource location for run-time access
 def get_subresource_location(path):
   if settings.SINGLE_FILE:
     if settings.SINGLE_FILE_BINARY_ENCODE:
-      return binary_encode(utils.read_binary(path)).decode('utf-8')
+      return binary_encode(utils.read_binary(path))
     else:
       data = base64.b64encode(utils.read_binary(path))
       return 'data:application/octet-stream;base64,' + data.decode('ascii')
