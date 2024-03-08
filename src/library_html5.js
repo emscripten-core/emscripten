@@ -929,23 +929,39 @@ var LibraryHTML5 = {
   },
 
   $screenOrientation: () => {
-    if (!screen) return undefined;
-    return screen.orientation || screen.mozOrientation || screen.webkitOrientation || screen.msOrientation;
+    if (!window.screen) return undefined;
+    return screen.orientation || screen['mozOrientation'] || screen['webkitOrientation'];
   },
 
   $fillOrientationChangeEventData__deps: ['$screenOrientation'],
   $fillOrientationChangeEventData: (eventStruct) => {
-    var orientations  = ["portrait-primary", "portrait-secondary", "landscape-primary", "landscape-secondary"];
-    var orientations2 = ["portrait",         "portrait",           "landscape",         "landscape"];
+    // OrientationType enum
+    var orientationsType1 = ['portrait-primary', 'portrait-secondary', 'landscape-primary', 'landscape-secondary'];
+    // alternative selection from OrientationLockType enum
+    var orientationsType2 = ['portrait',         'portrait',           'landscape',         'landscape'];
 
-    var orientationString = screenOrientation();
-    var orientation = orientations.indexOf(orientationString);
-    if (orientation == -1) {
-      orientation = orientations2.indexOf(orientationString);
+    var orientationIndex = 0;
+    var orientationAngle = 0;
+    var screenOrientObj  = screenOrientation();
+    if (typeof screenOrientObj === 'object') {
+      orientationIndex = orientationsType1.indexOf(screenOrientObj.type);
+      if (orientationIndex < 0) {
+        orientationIndex = orientationsType2.indexOf(screenOrientObj.type);
+      }
+      if (orientationIndex >= 0) {
+        orientationIndex = 1 << orientationIndex;
+      }
+      orientationAngle = screenOrientObj.angle;
     }
+#if MIN_SAFARI_VERSION < 0x100400
+    else {
+      // fallback for Safari earlier than 16.4 (March 2023)
+      orientationAngle = window.orientation;
+    }
+#endif
 
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationIndex, '1 << orientation', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationAngle, 'orientation', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationIndex, 'orientationIndex', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationAngle, 'orientationAngle', 'i32') }}};
   },
 
   $registerOrientationChangeEventCallback__deps: ['$JSEvents', '$fillOrientationChangeEventData', '$findEventTarget', 'malloc'],
@@ -971,10 +987,6 @@ var LibraryHTML5 = {
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, orientationChangeEvent, userData)) e.preventDefault();
     };
 
-    if (eventTypeId == {{{ cDefs.EMSCRIPTEN_EVENT_ORIENTATIONCHANGE }}} && screen.mozOrientation !== undefined) {
-      eventTypeString = "mozorientationchange";
-    }
-
     var eventHandler = {
       target,
       eventTypeString,
@@ -988,13 +1000,14 @@ var LibraryHTML5 = {
   emscripten_set_orientationchange_callback_on_thread__proxy: 'sync',
   emscripten_set_orientationchange_callback_on_thread__deps: ['$registerOrientationChangeEventCallback'],
   emscripten_set_orientationchange_callback_on_thread: (userData, useCapture, callbackfunc, targetThread) => {
-    if (!screen || !screen['addEventListener']) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
-    return registerOrientationChangeEventCallback(screen, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_ORIENTATIONCHANGE }}}, "orientationchange", targetThread);
+    if (!window.screen || !screen.orientation) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    return registerOrientationChangeEventCallback(screen.orientation, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_ORIENTATIONCHANGE }}}, 'change', targetThread);
   },
 
   emscripten_get_orientation_status__proxy: 'sync',
   emscripten_get_orientation_status__deps: ['$fillOrientationChangeEventData', '$screenOrientation'],
   emscripten_get_orientation_status: (orientationChangeEvent) => {
+    // screenOrientation() resolving standard, window.orientation being the deprecated mobile-only
     if (!screenOrientation() && typeof orientation == 'undefined') return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     fillOrientationChangeEventData(orientationChangeEvent);
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
@@ -1014,8 +1027,6 @@ var LibraryHTML5 = {
       succeeded = screen.mozLockOrientation(orientations);
     } else if (screen.webkitLockOrientation) {
       succeeded = screen.webkitLockOrientation(orientations);
-    } else if (screen.msLockOrientation) {
-      succeeded = screen.msLockOrientation(orientations);
     } else {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }
@@ -1033,8 +1044,6 @@ var LibraryHTML5 = {
       screen.mozUnlockOrientation();
     } else if (screen.webkitUnlockOrientation) {
       screen.webkitUnlockOrientation();
-    } else if (screen.msUnlockOrientation) {
-      screen.msUnlockOrientation();
     } else {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }
