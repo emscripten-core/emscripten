@@ -490,7 +490,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   @parameterized({
     'c': [EMCC, '.c'],
-    'cxx': [EMXX, '.cpp']})
+    'cxx': [EMXX, '.cpp']
+  })
   def test_emcc_2(self, compiler, suffix):
     # emcc src.cpp -c    and   emcc -c src.cpp -o src.[o|foo|so] ==> should always give an object file
     for args in [[], ['-o', 'src.o'], ['-o', 'src.foo'], ['-o', 'src.so']]:
@@ -513,7 +514,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   @parameterized({
     'c': [EMCC, '.c'],
-    'cxx': [EMXX, '.cpp']})
+    'cxx': [EMXX, '.cpp']
+  })
   def test_emcc_3(self, compiler, suffix):
     # handle singleton archives
     self.run_process([compiler, '-c', test_file('hello_world' + suffix), '-o', 'a.o'])
@@ -538,9 +540,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       delete_file(path)
 
   @is_slow_test
-  @parameterized({
-    'c': [EMCC],
-    'cxx': [EMXX]})
+  @with_both_compilers
   def test_emcc_4(self, compiler):
     # Optimization: emcc src.cpp -o something.js [-Ox]. -O0 is the same as not specifying any optimization setting
     # link_param are used after compiling first
@@ -4687,8 +4687,8 @@ int main() {
       self.run_process([EMXX, test_file('fs_after_main.cpp')])
       self.assertContained('Test passed.', self.run_js('a.out.js'))
 
-  def test_os_oz(self):
-    for opt in ['-O1', '-O2', '-Os', '-Oz', '-O3', '-Og']:
+  def test_opt_levels(self):
+    for opt in ['-O1', '-O2', '-Os', '-Oz', '-O3', '-Og', '-Ofast']:
       print(opt)
       proc = self.run_process([EMCC, '-v', test_file('hello_world.c'), opt], stderr=PIPE)
       self.assertContained(opt, proc.stderr)

@@ -1147,6 +1147,12 @@ def parse_args(newargs):
         requested_level = 1
         settings.SHRINK_LEVEL = 0
         settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 1)
+      elif requested_level == 'fast':
+        # TODO(https://github.com/emscripten-core/emscripten/issues/21497):
+        # If we ever map `-ffast-math` to `wasm-opt --fast-math` then
+        # then we should enable that too here.
+        requested_level = 3
+        settings.SHRINK_LEVEL = 0
       else:
         settings.SHRINK_LEVEL = 0
       settings.OPT_LEVEL = validate_arg_level(requested_level, 3, 'invalid optimization level: ' + arg, clamp=True)
