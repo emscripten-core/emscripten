@@ -892,6 +892,10 @@ base align: 0, 0, 0, 0'''])
   def test_longjmp(self):
     self.do_core_test('test_longjmp.c')
 
+  @with_both_sjlj
+  def test_longjmp_zero(self):
+    self.do_core_test('test_longjmp_zero.c')
+
   def test_longjmp_with_and_without_exceptions(self):
     # Emscripten SjLj with and without Emscripten EH support
     self.set_setting('SUPPORT_LONGJMP', 'emscripten')
