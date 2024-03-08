@@ -176,14 +176,15 @@ def no_swiftshader(f):
 def also_with_threads(f):
   assert callable(f)
 
-  @wraps(f)
-  def decorated(self, *args, **kwargs):
-    f(self, *args, **kwargs)
-    print('(threads)')
-    self.emcc_args += ['-pthread']
+  def metafunc(self, threads, *args, **kwargs):
+    if threads:
+      self.emcc_args += ['-pthread']
     f(self, *args, **kwargs)
 
-  return decorated
+  metafunc._parameterize = {'': (False,),
+                            'threads': (True,)}
+
+  return metafunc
 
 
 def skipExecIf(cond, message):
@@ -1605,25 +1606,20 @@ keydown(100);keyup(100); // trigger the end
   def test_glfw_time(self):
     self.btest_exit('test_glfw_time.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
 
-  def _test_egl_base(self, *args):
-    self.btest_exit('test_egl.c', args=['-O2', '-lEGL', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'] + list(args))
-
+  @parameterized({
+    '': ([],),
+    'proxy_to_pthread': (['-pthread', '-sPROXY_TO_PTHREAD', '-sOFFSCREEN_FRAMEBUFFER'],),
+  })
   @requires_graphics_hardware
-  def test_egl(self):
-    self._test_egl_base()
+  def test_egl(self, args):
+    self.btest_exit('test_egl.c', args=['-O2', '-lEGL', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'] + args)
 
-  @requires_graphics_hardware
-  def test_egl_with_proxy_to_pthread(self):
-    self._test_egl_base('-pthread', '-sPROXY_TO_PTHREAD', '-sOFFSCREEN_FRAMEBUFFER')
-
-  def _test_egl_width_height_base(self, *args):
-    self.btest_exit('test_egl_width_height.c', args=['-O2', '-lEGL', '-lGL'] + list(args))
-
-  def test_egl_width_height(self):
-    self._test_egl_width_height_base()
-
-  def test_egl_width_height_with_proxy_to_pthread(self):
-    self._test_egl_width_height_base('-pthread', '-sPROXY_TO_PTHREAD')
+  @parameterized({
+    '': ([],),
+    'proxy_to_pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_egl_width_height(self, args):
+    self.btest_exit('test_egl_width_height.c', args=['-O2', '-lEGL', '-lGL'] + args)
 
   @requires_graphics_hardware
   def test_egl_createcontext_error(self):
