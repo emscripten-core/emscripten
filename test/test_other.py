@@ -9133,7 +9133,7 @@ int main() {
   def test_single_file(self, wasm2js):
     for (single_file_enabled,
          debug_enabled,
-         closure_enabled) in itertools.product([True, False], repeat=3):
+         closure_enabled) in itertools.product([0, 1, 2], [True, False], [True, False]):
       # skip unhelpful option combinations
       if closure_enabled and debug_enabled:
         continue
@@ -9145,6 +9145,7 @@ int main() {
       if single_file_enabled:
         expect_wasm = False
         cmd += ['-sSINGLE_FILE']
+      cmd += [f'-sSINGLE_FILE_BINARY_ENCODE={int(single_file_enabled == 2)}']
       if debug_enabled:
         cmd += ['-g']
       if closure_enabled:
