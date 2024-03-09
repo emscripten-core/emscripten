@@ -174,28 +174,15 @@ def no_swiftshader(f):
   return decorated
 
 
-def requires_threads(f):
-  assert callable(f)
-
-  @wraps(f)
-  def decorated(self, *args, **kwargs):
-    if os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
-      self.skipTest('EMTEST_LACKS_THREAD_SUPPORT is set')
-    return f(self, *args, **kwargs)
-
-  return decorated
-
-
 def also_with_threads(f):
   assert callable(f)
 
   @wraps(f)
   def decorated(self, *args, **kwargs):
     f(self, *args, **kwargs)
-    if not os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
-      print('(threads)')
-      self.emcc_args += ['-pthread']
-      f(self, *args, **kwargs)
+    print('(threads)')
+    self.emcc_args += ['-pthread']
+    f(self, *args, **kwargs)
 
   return decorated
 
@@ -438,7 +425,6 @@ If manually bisecting:
     '': ([],),
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
-  @requires_threads
   def test_preload_file_with_manual_data_download(self, args):
     create_file('file.txt', '''Hello!''')
 
@@ -1339,7 +1325,6 @@ keydown(100);keyup(100); // trigger the end
     'threads': (['-pthread'],),
     'closure': (['-sENVIRONMENT=web', '-O2', '--closure=1'],),
   })
-  @requires_threads
   def test_emscripten_get_now(self, args):
     self.btest_exit('emscripten_get_now.cpp', args=args)
 
@@ -1614,7 +1599,6 @@ keydown(100);keyup(100); // trigger the end
   def test_egl(self):
     self._test_egl_base()
 
-  @requires_threads
   @requires_graphics_hardware
   def test_egl_with_proxy_to_pthread(self):
     self._test_egl_base('-pthread', '-sPROXY_TO_PTHREAD', '-sOFFSCREEN_FRAMEBUFFER')
@@ -1625,7 +1609,6 @@ keydown(100);keyup(100); // trigger the end
   def test_egl_width_height(self):
     self._test_egl_width_height_base()
 
-  @requires_threads
   def test_egl_width_height_with_proxy_to_pthread(self):
     self._test_egl_width_height_base('-pthread', '-sPROXY_TO_PTHREAD')
 
@@ -1763,7 +1746,6 @@ keydown(100);keyup(100); // trigger the end
                  args=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'] + extra_args)
 
   @requires_graphics_hardware
-  @requires_threads
   def test_glgears_pthreads(self, extra_args=[]):  # noqa
     # test that a program that doesn't use pthreads still works with with pthreads enabled
     # (regression test for https://github.com/emscripten-core/emscripten/pull/8059#issuecomment-488105672)
@@ -1909,7 +1891,6 @@ keydown(100);keyup(100); // trigger the end
     '': ([],),
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
-  @requires_threads
   def test_emscripten_main_loop(self, args):
     self.btest_exit('emscripten_main_loop.cpp', args=args)
 
@@ -1918,7 +1899,6 @@ keydown(100);keyup(100); // trigger the end
     # test pthreads + AUTO_JS_LIBRARIES mode as well
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sAUTO_JS_LIBRARIES=0'],),
   })
-  @requires_threads
   def test_emscripten_main_loop_settimeout(self, args):
     self.btest_exit('emscripten_main_loop_settimeout.cpp', args=args)
 
@@ -1926,11 +1906,9 @@ keydown(100);keyup(100); // trigger the end
     '': ([],),
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'],),
   })
-  @requires_threads
   def test_emscripten_main_loop_and_blocker(self, args):
     self.btest_exit('emscripten_main_loop_and_blocker.cpp', args=args)
 
-  @requires_threads
   def test_emscripten_main_loop_and_blocker_exit(self):
     # Same as above but tests that EXIT_RUNTIME works with emscripten_main_loop.  The
     # app should still stay alive until the loop ends
@@ -1942,7 +1920,6 @@ keydown(100);keyup(100); // trigger the end
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'],),
     'strict': (['-sSTRICT'],),
   })
-  @requires_threads
   def test_emscripten_main_loop_setimmediate(self, args):
     self.btest_exit('emscripten_main_loop_setimmediate.cpp', args=args)
 
@@ -1992,7 +1969,6 @@ keydown(100);keyup(100); // trigger the end
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sOFFSCREEN_FRAMEBUFFER'],),
   })
   @requires_graphics_hardware
-  @requires_threads
   def test_gl_textures(self, args):
     self.btest_exit('gl_textures.cpp', args=['-lGL', '-g', '-sSTACK_SIZE=1MB'] + args)
 
@@ -2090,7 +2066,6 @@ keydown(100);keyup(100); // trigger the end
   def test_cubegeom_regal(self):
     self.reftest('third_party/cubegeom/cubegeom.c', 'third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-sUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'], also_proxied=True)
 
-  @requires_threads
   @requires_graphics_hardware
   def test_cubegeom_regal_mt(self):
     self.reftest('third_party/cubegeom/cubegeom.c', 'third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-pthread', '-sUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'], also_proxied=False)
@@ -2593,7 +2568,6 @@ Module["preRun"] = () => {
     'proxy_to_pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
     'legacy': (['-sMIN_FIREFOX_VERSION=0', '-sMIN_SAFARI_VERSION=0', '-sMIN_CHROME_VERSION=0', '-Wno-transpile'],)
   })
-  @requires_threads
   def test_html5_core(self, opts):
     if self.is_wasm64():
       if '-sMIN_CHROME_VERSION=0' in opts:
@@ -2614,7 +2588,6 @@ Module["preRun"] = () => {
       self.emcc_args.append('--pre-js=pre.js')
     self.btest_exit('test_html5_core.c', args=opts)
 
-  @requires_threads
   @parameterized({
     '': ([],),
     'closure': (['-O2', '-g1', '--closure=1'],),
@@ -2636,7 +2609,6 @@ Module["preRun"] = () => {
     self.btest_exit('webgl_create_context.cpp', args=args + ['-DNO_ANTIALIAS', '-lGL'])
 
   # This test supersedes the one above, but it's skipped in the CI because anti-aliasing is not well supported by the Mesa software renderer.
-  @requires_threads
   @requires_graphics_hardware
   @parameterized({
     '': ([],),
@@ -2698,7 +2670,6 @@ Module["preRun"] = () => {
     self.btest_exit('webgl2_get_buffer_sub_data.cpp', args=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
   @requires_graphics_hardware
-  @requires_threads
   def test_webgl2_pthreads(self):
     # test that a program can be compiled with pthreads and render WebGL2 properly on the main thread
     # (the testcase doesn't even use threads, but is compiled with thread support).
@@ -3089,7 +3060,6 @@ Module["preRun"] = () => {
     self.compile_btest('browser/test_sdl2_mouse.c', ['-DTEST_SDL_MOUSE_OFFSETS=1', '-O2', '--minify=0', '-o', 'sdl2_mouse.js', '--pre-js', 'pre.js', '-sUSE_SDL=2', '-sEXIT_RUNTIME'])
     self.run_browser('page.html', '', '/report_result?exit:0')
 
-  @requires_threads
   def test_sdl2_threads(self):
       self.btest_exit('test_sdl2_threads.c', args=['-pthread', '-sUSE_SDL=2', '-sPROXY_TO_PTHREAD'])
 
@@ -3339,7 +3309,6 @@ Module["preRun"] = () => {
   def test_asyncify_tricky_function_sig(self):
     self.btest('test_asyncify_tricky_function_sig.cpp', '85', args=['-sASYNCIFY_ONLY=[foo(char.const*?.int#),foo2(),main,__original_main]', '-sASYNCIFY'])
 
-  @requires_threads
   def test_async_in_pthread(self):
     self.btest_exit('async.cpp', args=['-sASYNCIFY', '-pthread', '-sPROXY_TO_PTHREAD', '-g'])
 
@@ -3685,7 +3654,6 @@ Module["preRun"] = () => {
     self.emcc('side2.c', ['-sSIDE_MODULE', '-o', 'side2.wasm'])
     self.btest_exit(self.in_dir('main.c'), args=['-sMAIN_MODULE=2', 'side1.wasm', 'side2.wasm'])
 
-  @requires_threads
   def test_dynamic_link_pthread_many(self):
     # Test asynchronously loading two side modules during startup
     # They should always load in the same order
@@ -3747,12 +3715,10 @@ Module["preRun"] = () => {
       </script>
     '''))
 
-  @requires_threads
   def test_pthread_c11_threads(self):
     self.btest_exit('pthread/test_pthread_c11_threads.c',
                     args=['-gsource-map', '-std=gnu11', '-pthread', '-sPROXY_TO_PTHREAD'])
 
-  @requires_threads
   def test_pthread_pool_size_strict(self):
     # Check that it doesn't fail with sufficient number of threads in the pool.
     self.btest_exit('pthread/test_pthread_c11_threads.c',
@@ -3762,7 +3728,6 @@ Module["preRun"] = () => {
                expected='abort:Assertion failed: thrd_create(&t4, thread_main, NULL) == thrd_success',
                args=['-g2', '-std=gnu11', '-pthread', '-sPTHREAD_POOL_SIZE=3', '-sPTHREAD_POOL_SIZE_STRICT=2'])
 
-  @requires_threads
   def test_pthread_in_pthread_pool_size_strict(self):
     # Check that it fails when there's a pthread creating another pthread.
     self.btest_exit('pthread/test_pthread_create_pthread.cpp', args=['-g2', '-pthread', '-sPTHREAD_POOL_SIZE=2', '-sPTHREAD_POOL_SIZE_STRICT=2'])
@@ -3774,12 +3739,10 @@ Module["preRun"] = () => {
     '': ([],),
     'closure': (['--closure=1'],),
   })
-  @requires_threads
   def test_pthread_atomics(self, args):
     self.btest_exit('pthread/test_pthread_atomics.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '-g1'] + args)
 
   # Test 64-bit atomics.
-  @requires_threads
   def test_pthread_64bit_atomics(self):
     self.btest_exit('pthread/test_pthread_64bit_atomics.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
@@ -3788,23 +3751,19 @@ Module["preRun"] = () => {
     '': ([],),
     'O3': (['-O3'],)
   })
-  @requires_threads
   def test_pthread_64bit_cxx11_atomics(self, opt):
     for pthreads in [[], ['-pthread']]:
       self.btest_exit('pthread/test_pthread_64bit_cxx11_atomics.cpp', args=opt + pthreads)
 
   # Test c++ std::thread::hardware_concurrency()
-  @requires_threads
   def test_pthread_hardware_concurrency(self):
     self.btest_exit('pthread/test_pthread_hardware_concurrency.cpp', args=['-O2', '-pthread', '-sPTHREAD_POOL_SIZE="navigator.hardwareConcurrency"'])
 
   # Test that we error if not ALLOW_BLOCKING_ON_MAIN_THREAD
-  @requires_threads
   def test_pthread_main_thread_blocking_wait(self):
     self.btest('pthread/main_thread_wait.cpp', expected='abort:Blocking on the main thread is not allowed by default.', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE', '-sALLOW_BLOCKING_ON_MAIN_THREAD=0'])
 
   # Test that we error or warn depending on ALLOW_BLOCKING_ON_MAIN_THREAD or ASSERTIONS
-  @requires_threads
   def test_pthread_main_thread_blocking_join(self):
     create_file('pre.js', '''
       Module['printErr'] = (x) => {
@@ -3827,7 +3786,6 @@ Module["preRun"] = () => {
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   @no_2gb('https://github.com/emscripten-core/emscripten/issues/21318')
   @no_4gb('https://github.com/emscripten-core/emscripten/issues/21318')
-  @requires_threads
   @parameterized({
     '': (['-g'],),
     'O1': (['-O1', '-g'],),
@@ -3843,7 +3801,6 @@ Module["preRun"] = () => {
   @also_with_wasm2js
   @no_2gb('https://github.com/emscripten-core/emscripten/issues/21318')
   @no_4gb('https://github.com/emscripten-core/emscripten/issues/21318')
-  @requires_threads
   def test_pthread_gcc_64bit_atomic_fetch_and_op(self):
     if self.is_wasm2js():
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4358')
@@ -3854,7 +3811,6 @@ Module["preRun"] = () => {
   @also_with_wasm2js
   @no_2gb('https://github.com/emscripten-core/emscripten/issues/21318')
   @no_4gb('https://github.com/emscripten-core/emscripten/issues/21318')
-  @requires_threads
   def test_pthread_gcc_atomic_op_and_fetch(self):
     self.emcc_args += ['-Wno-sync-fetch-and-nand-semantics-changed']
     self.btest_exit('pthread/test_pthread_gcc_atomic_op_and_fetch.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
@@ -3863,7 +3819,6 @@ Module["preRun"] = () => {
   @also_with_wasm2js
   @no_2gb('https://github.com/emscripten-core/emscripten/issues/21318')
   @no_4gb('https://github.com/emscripten-core/emscripten/issues/21318')
-  @requires_threads
   def test_pthread_gcc_64bit_atomic_op_and_fetch(self):
     if self.is_wasm2js():
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4358')
@@ -3872,19 +3827,16 @@ Module["preRun"] = () => {
 
   # Tests the rest of the remaining GCC atomics after the two above tests.
   @also_with_wasm2js
-  @requires_threads
   def test_pthread_gcc_atomics(self):
     self.btest_exit('pthread/test_pthread_gcc_atomics.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
   @also_with_wasm2js
-  @requires_threads
   def test_pthread_gcc_spinlock(self):
     for arg in [[], ['-DUSE_EMSCRIPTEN_INTRINSICS']]:
       self.btest_exit('pthread/test_pthread_gcc_spinlock.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + arg)
 
   # Test that basic thread creation works.
-  @requires_threads
   def test_pthread_create(self):
     def test(args):
       print(args)
@@ -3899,66 +3851,54 @@ Module["preRun"] = () => {
     # test(['-sMINIMAL_RUNTIME'])
 
   # Test that preallocating worker threads work.
-  @requires_threads
   def test_pthread_preallocates_workers(self):
     self.btest_exit('pthread/test_pthread_preallocates_workers.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=4', '-sPTHREAD_POOL_DELAY_LOAD'])
 
   # Test that allocating a lot of threads doesn't regress. This needs to be checked manually!
-  @requires_threads
   @no_2gb('uses INITIAL_MEMORY')
   @no_4gb('uses INITIAL_MEMORY')
   def test_pthread_large_pthread_allocation(self):
     self.btest_exit('pthread/test_large_pthread_allocation.cpp', args=['-sINITIAL_MEMORY=128MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=50'])
 
   # Tests the -sPROXY_TO_PTHREAD option.
-  @requires_threads
   def test_pthread_proxy_to_pthread(self):
     self.btest_exit('pthread/test_pthread_proxy_to_pthread.c', args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Test that a pthread can spawn another pthread of its own.
-  @requires_threads
   def test_pthread_create_pthread(self):
     for modularize in [[], ['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')]]:
       self.btest_exit('pthread/test_pthread_create_pthread.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=2'] + modularize)
 
   # Test another case of pthreads spawning pthreads, but this time the callers immediately join on the threads they created.
-  @requires_threads
   def test_pthread_nested_spawns(self):
     self.btest_exit('pthread/test_pthread_nested_spawns.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=2'])
 
   # Test that main thread can wait for a pthread to finish via pthread_join().
-  @requires_threads
   def test_pthread_join(self):
     self.btest_exit('pthread/test_pthread_join.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test that threads can rejoin the pool once detached and finished
-  @requires_threads
   def test_std_thread_detach(self):
     self.btest_exit('pthread/test_std_thread_detach.cpp', args=['-pthread'])
 
   # Test pthread_cancel() operation
-  @requires_threads
   def test_pthread_cancel(self):
     self.btest_exit('pthread/test_pthread_cancel.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test that pthread_cancel() cancels pthread_cond_wait() operation
-  @requires_threads
   def test_pthread_cancel_cond_wait(self):
     self.btest_exit('pthread/test_pthread_cancel_cond_wait.cpp', assert_returncode=1, args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test pthread_kill() operation
   @no_chrome('pthread_kill hangs chrome renderer, and keep subsequent tests from passing')
-  @requires_threads
   def test_pthread_kill(self):
     self.btest_exit('pthread/test_pthread_kill.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test that pthread cleanup stack (pthread_cleanup_push/_pop) works.
-  @requires_threads
   def test_pthread_cleanup(self):
     self.btest_exit('pthread/test_pthread_cleanup.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Tests the pthread mutex api.
-  @requires_threads
   @parameterized({
     '': ([],),
     'spinlock': (['-DSPINLOCK_TEST'],),
@@ -3966,38 +3906,31 @@ Module["preRun"] = () => {
   def test_pthread_mutex(self, args):
     self.btest_exit('pthread/test_pthread_mutex.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args)
 
-  @requires_threads
   def test_pthread_attr_getstack(self):
     self.btest_exit('pthread/test_pthread_attr_getstack.c', args=['-pthread', '-sPTHREAD_POOL_SIZE=2'])
 
   # Test that memory allocation is thread-safe.
-  @requires_threads
   def test_pthread_malloc(self):
     self.btest_exit('pthread/test_pthread_malloc.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Stress test pthreads allocating memory that will call to sbrk(), and main thread has to free up the data.
-  @requires_threads
   def test_pthread_malloc_free(self):
     self.btest_exit('pthread/test_pthread_malloc_free.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test that the pthread_barrier API works ok.
-  @requires_threads
   def test_pthread_barrier(self):
     self.btest_exit('pthread/test_pthread_barrier.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test the pthread_once() function.
-  @requires_threads
   def test_pthread_once(self):
     self.btest_exit('pthread/test_pthread_once.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test against a certain thread exit time handling bug by spawning tons of threads.
-  @requires_threads
   def test_pthread_spawns(self):
     self.btest_exit('pthread/test_pthread_spawns.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '--closure=1', '-sENVIRONMENT=web,worker'])
 
   # It is common for code to flip volatile global vars for thread control. This is a bit lax, but nevertheless, test whether that
   # kind of scheme will work with Emscripten as well.
-  @requires_threads
   @parameterized({
     '': (['-DUSE_C_VOLATILE'],),
     'atomic': ([],),
@@ -4006,12 +3939,10 @@ Module["preRun"] = () => {
     self.btest_exit('pthread/test_pthread_volatile.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args)
 
   # Test thread-specific data (TLS).
-  @requires_threads
   def test_pthread_thread_local_storage(self):
     self.btest_exit('pthread/test_pthread_thread_local_storage.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '-sASSERTIONS'])
 
   # Test the pthread condition variable creation and waiting.
-  @requires_threads
   def test_pthread_condition_variable(self):
     self.btest_exit('pthread/test_pthread_condition_variable.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
@@ -4020,27 +3951,22 @@ Module["preRun"] = () => {
     '': (False,),
     'debug': (True,),
   })
-  @requires_threads
   def test_pthread_printf(self, debug):
      self.btest_exit('pthread/test_pthread_printf.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE', '-sLIBRARY_DEBUG=%d' % debug])
 
   # Test that pthreads are able to do cout. Failed due to https://bugzilla.mozilla.org/show_bug.cgi?id=1154858.
-  @requires_threads
   def test_pthread_iostream(self):
     self.btest_exit('pthread/test_pthread_iostream.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
-  @requires_threads
   def test_pthread_unistd_io_bigint(self):
     self.btest_exit('unistd/io.c', args=['-pthread', '-sPROXY_TO_PTHREAD', '-sWASM_BIGINT'])
 
   # Test that the main thread is able to use pthread_set/getspecific.
   @also_with_wasm2js
-  @requires_threads
   def test_pthread_setspecific_mainthread(self):
     self.btest_exit('pthread/test_pthread_setspecific_mainthread.c', args=['-O3', '-pthread'])
 
   # Test that pthreads have access to filesystem.
-  @requires_threads
   def test_pthread_file_io(self):
     self.btest_exit('pthread/test_pthread_file_io.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
@@ -4049,17 +3975,14 @@ Module["preRun"] = () => {
    '': ([],),
    'mt': (['-pthread', '-sPTHREAD_POOL_SIZE=8'],),
   })
-  @requires_threads
   def test_pthread_supported(self, args):
     self.btest_exit('pthread/test_pthread_supported.cpp', args=['-O3'] + args)
 
-  @requires_threads
   def test_pthread_dispatch_after_exit(self):
     self.btest_exit('pthread/test_pthread_dispatch_after_exit.c', args=['-pthread'])
 
   # Test the operation of Module.pthreadMainPrefixURL variable
   @requires_wasm2js
-  @requires_threads
   def test_pthread_custom_pthread_main_url(self):
     self.set_setting('EXIT_RUNTIME')
     ensure_dir('cdn')
@@ -4101,12 +4024,10 @@ Module["preRun"] = () => {
   # Test that if the main thread is performing a futex wait while a pthread
   # needs it to do a proxied operation (before that pthread would wake up the
   # main thread), that it's not a deadlock.
-  @requires_threads
   def test_pthread_proxying_in_futex_wait(self):
     self.btest_exit('pthread/test_pthread_proxying_in_futex_wait.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
   # Test that sbrk() operates properly in multithreaded conditions
-  @requires_threads
   @no_2gb('uses INITIAL_MEMORY')
   @no_4gb('uses INITIAL_MEMORY')
   @parameterized({
@@ -4124,31 +4045,26 @@ Module["preRun"] = () => {
     '': ([],),
     'mt': (['-pthread'],),
   })
-  @requires_threads
   def test_pthread_gauge_available_memory(self, args):
     for opts in [[], ['-O2']]:
       self.btest('gauge_available_memory.cpp', expected='1', args=['-sABORTING_MALLOC=0'] + args + opts)
 
   # Test that the proxying operations of user code from pthreads to main thread
   # work
-  @requires_threads
   def test_pthread_run_on_main_thread(self):
     self.btest_exit('pthread/test_pthread_run_on_main_thread.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
   # Test how a lot of back-to-back called proxying operations behave.
-  @requires_threads
   def test_pthread_run_on_main_thread_flood(self):
     self.btest_exit('pthread/test_pthread_run_on_main_thread_flood.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
   # Test that it is possible to asynchronously call a JavaScript function on the
   # main thread.
-  @requires_threads
   def test_pthread_call_async(self):
     self.btest_exit('pthread/call_async.c', args=['-pthread'])
 
   # Test that it is possible to synchronously call a JavaScript function on the
   # main thread and get a return value back.
-  @requires_threads
   def test_pthread_call_sync_on_main_thread(self):
     self.set_setting('EXPORTED_FUNCTIONS', '_main,_malloc')
     self.btest_exit('pthread/call_sync_on_main_thread.c', args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD', '-DPROXY_TO_PTHREAD=1', '--js-library', test_file('pthread/call_sync_on_main_thread.js')])
@@ -4157,7 +4073,6 @@ Module["preRun"] = () => {
 
   # Test that it is possible to asynchronously call a JavaScript function on the
   # main thread.
-  @requires_threads
   def test_pthread_call_async_on_main_thread(self):
     self.btest('pthread/call_async_on_main_thread.c', expected='7', args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD', '-DPROXY_TO_PTHREAD=1', '--js-library', test_file('pthread/call_async_on_main_thread.js')])
     self.btest('pthread/call_async_on_main_thread.c', expected='7', args=['-O3', '-pthread', '-DPROXY_TO_PTHREAD=0', '--js-library', test_file('pthread/call_async_on_main_thread.js')])
@@ -4165,50 +4080,41 @@ Module["preRun"] = () => {
 
   # Tests that spawning a new thread does not cause a reinitialization of the
   # global data section of the application memory area.
-  @requires_threads
   def test_pthread_global_data_initialization(self):
     for args in [['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')], ['-O3']]:
       self.btest_exit('pthread/test_pthread_global_data_initialization.c', args=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
 
   @requires_wasm2js
-  @requires_threads
   def test_pthread_global_data_initialization_in_sync_compilation_mode(self):
     self.btest_exit('pthread/test_pthread_global_data_initialization.c', args=['-sWASM_ASYNC_COMPILATION=0', '-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
 
   # Test that emscripten_get_now() reports coherent wallclock times across all
   # pthreads, instead of each pthread independently reporting wallclock times
   # since the launch of that pthread.
-  @requires_threads
   def test_pthread_clock_drift(self):
     self.btest_exit('pthread/test_pthread_clock_drift.cpp', args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD'])
 
-  @requires_threads
   def test_pthread_utf8_funcs(self):
     self.btest_exit('pthread/test_pthread_utf8_funcs.cpp', args=['-pthread', '-sPTHREAD_POOL_SIZE'])
 
   # Test the emscripten_futex_wake(addr, INT_MAX); functionality to wake all
   # waiters
   @also_with_wasm2js
-  @requires_threads
   def test_pthread_wake_all(self):
     self.btest_exit('pthread/test_futex_wake_all.cpp', args=['-O3', '-pthread'])
 
   # Test that stack base and max correctly bound the stack on pthreads.
-  @requires_threads
   def test_pthread_stack_bounds(self):
     self.btest_exit('pthread/test_pthread_stack_bounds.cpp', args=['-pthread'])
 
   # Test that real `thread_local` works.
-  @requires_threads
   def test_pthread_tls(self):
     self.btest_exit('pthread/test_pthread_tls.cpp', args=['-sPROXY_TO_PTHREAD', '-pthread'])
 
   # Test that real `thread_local` works in main thread without PROXY_TO_PTHREAD.
-  @requires_threads
   def test_pthread_tls_main(self):
     self.btest_exit('pthread/test_pthread_tls_main.cpp', args=['-pthread'])
 
-  @requires_threads
   def test_pthread_safe_stack(self):
     # Note that as the test runs with PROXY_TO_PTHREAD, we set STACK_SIZE,
     # and not DEFAULT_PTHREAD_STACK_SIZE, as the pthread for main() gets the
@@ -4220,7 +4126,6 @@ Module["preRun"] = () => {
     'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
     'no_leak': ['test_pthread_lsan_no_leak', []],
   })
-  @requires_threads
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/15978')
   def test_pthread_lsan(self, name, args):
     self.btest(Path('pthread', name + '.cpp'), expected='1', args=['-fsanitize=leak', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
@@ -4233,14 +4138,12 @@ Module["preRun"] = () => {
     'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
     'no_leak': ['test_pthread_lsan_no_leak', []],
   })
-  @requires_threads
   def test_pthread_asan(self, name, args):
     self.btest(Path('pthread', name + '.cpp'), expected='1', args=['-fsanitize=address', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
   @no_wasm64('TODO: ASAN in memory64')
   @no_2gb('ASAN + GLOBAL_BASE')
   @no_4gb('ASAN + GLOBAL_BASE')
-  @requires_threads
   def test_pthread_asan_use_after_free(self):
     self.btest('pthread/test_pthread_asan_use_after_free.cpp', expected='1', args=['-fsanitize=address', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread/test_pthread_asan_use_after_free.js')])
 
@@ -4249,7 +4152,6 @@ Module["preRun"] = () => {
   @no_4gb('ASAN + GLOBAL_BASE')
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/20006')
   @also_with_wasmfs
-  @requires_threads
   def test_pthread_asan_use_after_free_2(self):
     # similiar to test_pthread_asan_use_after_free, but using a pool instead
     # of proxy-to-pthread, and also the allocation happens on the pthread
@@ -4257,7 +4159,6 @@ Module["preRun"] = () => {
     # trace there)
     self.btest('pthread/test_pthread_asan_use_after_free_2.cpp', expected='1', args=['-fsanitize=address', '-pthread', '-sPTHREAD_POOL_SIZE=1', '--pre-js', test_file('pthread/test_pthread_asan_use_after_free_2.js')])
 
-  @requires_threads
   def test_pthread_exit_process(self):
     args = ['-pthread',
             '-sPROXY_TO_PTHREAD',
@@ -4268,7 +4169,6 @@ Module["preRun"] = () => {
     args += ['--pre-js', test_file('core/pthread/test_pthread_exit_runtime.pre.js')]
     self.btest('core/pthread/test_pthread_exit_runtime.c', expected='onExit status: 42', args=args)
 
-  @requires_threads
   def test_pthread_trap(self):
     create_file('pre.js', '''
     if (typeof window === 'object' && window) {
@@ -4290,15 +4190,12 @@ Module["preRun"] = () => {
   def test_main_thread_em_asm_signatures(self):
     self.btest_exit('core/test_em_asm_signatures.cpp', assert_returncode=121, args=[])
 
-  @requires_threads
   def test_main_thread_em_asm_signatures_pthreads(self):
     self.btest_exit('core/test_em_asm_signatures.cpp', assert_returncode=121, args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD', '-sASSERTIONS'])
 
-  @requires_threads
   def test_main_thread_async_em_asm(self):
     self.btest_exit('core/test_main_thread_async_em_asm.cpp', args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD', '-sASSERTIONS'])
 
-  @requires_threads
   def test_main_thread_em_asm_blocking(self):
     shutil.copyfile(test_file('browser/test_em_asm_blocking.html'), 'page.html')
 
@@ -4447,7 +4344,6 @@ Module["preRun"] = () => {
     # thread -> thread 1 -> thread 2 and then init and render WebGL content there.
     'chained': (['-DTEST_CHAINED_WEBGL_CONTEXT_PASSING'],),
   })
-  @requires_threads
   @requires_offscreen_canvas
   @requires_graphics_hardware
   def test_webgl_offscreen_canvas_in_pthread(self, args):
@@ -4462,14 +4358,12 @@ Module["preRun"] = () => {
     '': ([],),
     'explicit': (['-DTEST_MAIN_THREAD_EXPLICIT_COMMIT'],),
   })
-  @requires_threads
   @requires_offscreen_canvas
   @requires_graphics_hardware
   @disabled('This test is disabled because current OffscreenCanvas does not allow transfering it after a rendering context has been created for it.')
   def test_webgl_offscreen_canvas_in_mainthread_after_pthread(self, args):
     self.btest('gl_in_mainthread_after_pthread.cpp', expected='0', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
 
-  @requires_threads
   @requires_offscreen_canvas
   @requires_graphics_hardware
   def test_webgl_offscreen_canvas_only_in_pthread(self):
@@ -4589,7 +4483,6 @@ Module["preRun"] = () => {
     '': ([False],),
     'asyncify': ([True],),
   })
-  @requires_threads
   @requires_offscreen_canvas
   @requires_graphics_hardware
   def test_webgl_offscreen_canvas_in_proxied_pthread(self, asyncify):
@@ -4612,7 +4505,6 @@ Module["preRun"] = () => {
     '': ([],),
     'offscreen': (['-sOFFSCREENCANVAS_SUPPORT', '-sOFFSCREEN_FRAMEBUFFER'],),
   })
-  @requires_threads
   @requires_graphics_hardware
   @requires_offscreen_canvas
   def test_webgl_resize_offscreencanvas_from_main_thread(self, args1, args2, args3):
@@ -4649,7 +4541,6 @@ Module["preRun"] = () => {
 
   # TODO(#19645): Extend this test to proxied WebGPU when it's re-enabled.
   @requires_graphics_hardware
-  @requires_threads
   def test_webgpu_basic_rendering_pthreads(self):
     self.btest_exit('webgpu_basic_rendering.cpp', args=['-sUSE_WEBGPU', '-pthread', '-sOFFSCREENCANVAS_SUPPORT'])
 
@@ -4657,7 +4548,6 @@ Module["preRun"] = () => {
     self.btest_exit('webgpu_get_device.cpp', args=['-sUSE_WEBGPU', '-sASSERTIONS', '--closure=1'])
 
   # TODO(#19645): Extend this test to proxied WebGPU when it's re-enabled.
-  @requires_threads
   def test_webgpu_get_device_pthreads(self):
     self.btest_exit('webgpu_get_device.cpp', args=['-sUSE_WEBGPU', '-pthread'])
 
@@ -4687,7 +4577,6 @@ Module["preRun"] = () => {
     'pthread_exit': (['-DDO_PTHREAD_EXIT'],),
   })
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  @requires_threads
   @also_with_wasm2js
   def test_fetch_from_thread(self, args):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
@@ -4708,7 +4597,6 @@ Module["preRun"] = () => {
   # Tests that response headers get set on emscripten_fetch_t values.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @also_with_wasm2js
-  @requires_threads
   def test_fetch_response_headers(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/test_fetch_response_headers.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
@@ -4739,7 +4627,6 @@ Module["preRun"] = () => {
   # thread proxied to a Worker with -sPROXY_TO_PTHREAD option.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @also_with_wasm2js
-  @requires_threads
   def test_fetch_sync_xhr(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/test_fetch_sync_xhr.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
@@ -4747,14 +4634,12 @@ Module["preRun"] = () => {
   # Tests emscripten_fetch() usage when user passes none of the main 3 flags (append/replace/no_download).
   # In that case, in append is implicitly understood.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  @requires_threads
   def test_fetch_implicit_append(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/example_synchronous_fetch.c', args=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Tests synchronous emscripten_fetch() usage from wasm pthread in fastcomp.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  @requires_threads
   def test_fetch_sync_xhr_in_wasm(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/example_synchronous_fetch.c', args=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
@@ -4762,7 +4647,6 @@ Module["preRun"] = () => {
   # Tests that the Fetch API works for synchronous XHRs when used with --proxy-to-worker.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @also_with_wasm2js
-  @requires_threads
   def test_fetch_sync_xhr_in_proxy_to_worker(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/test_fetch_sync_xhr.cpp',
@@ -4770,17 +4654,14 @@ Module["preRun"] = () => {
 
   # Tests waiting on EMSCRIPTEN_FETCH_WAITABLE request from a worker thread
   @unittest.skip("emscripten_fetch_wait relies on an asm.js-based web worker")
-  @requires_threads
   def test_fetch_sync_fetch_in_main_thread(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/test_fetch_sync_in_main_thread.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-pthread', '-sPROXY_TO_PTHREAD'])
 
-  @requires_threads
   @disabled('https://github.com/emscripten-core/emscripten/issues/16746')
   def test_fetch_idb_store(self):
     self.btest_exit('fetch/test_fetch_idb_store.cpp', args=['-pthread', '-sFETCH', '-sPROXY_TO_PTHREAD'])
 
-  @requires_threads
   @disabled('https://github.com/emscripten-core/emscripten/issues/16746')
   def test_fetch_idb_delete(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
@@ -4793,7 +4674,6 @@ Module["preRun"] = () => {
     '': ([],),
     'mt': (['-pthread', '-sPTHREAD_POOL_SIZE=2'],),
   })
-  @requires_threads
   def test_pthread_locale(self, args):
     self.emcc_args.append('-I' + path_from_root('system/lib/libc/musl/src/internal'))
     self.emcc_args.append('-I' + path_from_root('system/lib/pthread'))
@@ -4810,7 +4690,6 @@ Module["preRun"] = () => {
     '': ([],),
     'mt': (['-pthread', '-sPROXY_TO_PTHREAD'],),
   })
-  @requires_threads
   def test_emscripten_get_device_pixel_ratio(self, args):
     self.btest_exit('emscripten_get_device_pixel_ratio.c', args=args)
 
@@ -4819,13 +4698,11 @@ Module["preRun"] = () => {
     '': ([],),
     'mt': (['-pthread', '-sPROXY_TO_PTHREAD'],),
   })
-  @requires_threads
   def test_pthread_run_script(self, args):
     shutil.copyfile(test_file('pthread/foo.js'), 'foo.js')
     self.btest_exit('pthread/test_pthread_run_script.c', args=['-O3'] + args)
 
   # Tests emscripten_set_canvas_element_size() and OffscreenCanvas functionality in different build configurations.
-  @requires_threads
   @requires_graphics_hardware
   @parameterized({
     '': ([], True),
@@ -4855,7 +4732,6 @@ Module["preRun"] = () => {
     '': ([],),
     'O3': (['-O3'],)
   })
-  @requires_threads
   def test_pthread_hello_thread(self, opts, modularize):
     self.btest_exit('pthread/hello_thread.c', args=['-pthread'] + modularize + opts)
 
@@ -4875,7 +4751,6 @@ Module["preRun"] = () => {
     '': ([],),
     'proxy': (['-sPROXY_TO_PTHREAD'],)
   })
-  @requires_threads
   @no_2gb('uses INITIAL_MEMORY')
   @no_4gb('uses INITIAL_MEMORY')
   def test_pthread_growth_mainthread(self, emcc_args):
@@ -4889,7 +4764,6 @@ Module["preRun"] = () => {
     'proxy': (['-sPROXY_TO_PTHREAD'],),
     'minimal': (['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
   })
-  @requires_threads
   @no_2gb('uses INITIAL_MEMORY')
   @no_4gb('uses INITIAL_MEMORY')
   def test_pthread_growth(self, emcc_args):
@@ -4899,12 +4773,10 @@ Module["preRun"] = () => {
   # Tests that time in a pthread is relative to the main thread, so measurements
   # on different threads are still monotonic, as if checking a single central
   # clock.
-  @requires_threads
   def test_pthread_reltime(self):
     self.btest_exit('pthread/test_pthread_reltime.cpp', args=['-pthread', '-sPTHREAD_POOL_SIZE'])
 
   # Tests that it is possible to load the main .js file of the application manually via a Blob URL, and still use pthreads.
-  @requires_threads
   def test_load_js_from_blob_with_pthreads(self):
     # TODO: enable this with wasm, currently pthreads/atomics have limitations
     self.set_setting('EXIT_RUNTIME')
@@ -4973,7 +4845,6 @@ Module["preRun"] = () => {
   # program can run either on the main thread (normal tests) or when we start it in
   # a Worker in this test (in that case, both the main application thread and the worker threads
   # are all inside Web Workers).
-  @requires_threads
   def test_pthreads_started_in_worker(self):
     self.set_setting('EXIT_RUNTIME')
     self.compile_btest('pthread/test_pthread_atomics.cpp', ['-o', 'test.js', '-pthread', '-sPTHREAD_POOL_SIZE=8'], reporting=Reporting.JS_ONLY)
@@ -5002,7 +4873,6 @@ Module["preRun"] = () => {
     self.btest_exit('main.cpp', args=['--shell-file', 'shell.html'])
 
   # Tests the functionality of the emscripten_thread_sleep() function.
-  @requires_threads
   def test_emscripten_thread_sleep(self):
     self.btest_exit('pthread/emscripten_thread_sleep.c', args=['-pthread'])
 
@@ -5083,11 +4953,9 @@ Module["preRun"] = () => {
   def test_request_animation_frame(self):
     self.btest_exit('request_animation_frame.cpp', also_proxied=True)
 
-  @requires_threads
   def test_emscripten_set_timeout(self):
     self.btest_exit('emscripten_set_timeout.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
 
-  @requires_threads
   def test_emscripten_set_timeout_loop(self):
     self.btest_exit('emscripten_set_timeout_loop.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
 
@@ -5097,16 +4965,13 @@ Module["preRun"] = () => {
   def test_emscripten_set_immediate_loop(self):
     self.btest_exit('emscripten_set_immediate_loop.c')
 
-  @requires_threads
   def test_emscripten_set_interval(self):
     self.btest_exit('emscripten_set_interval.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Test emscripten_performance_now() and emscripten_date_now()
-  @requires_threads
   def test_emscripten_performance_now(self):
     self.btest('emscripten_performance_now.c', '0', args=['-pthread', '-sPROXY_TO_PTHREAD'])
 
-  @requires_threads
   def test_embind_with_pthreads(self):
     self.btest_exit('embind/test_pthreads.cpp', args=['-lembind', '-pthread', '-sPTHREAD_POOL_SIZE=2'])
 
@@ -5177,7 +5042,6 @@ Module["preRun"] = () => {
   def test_minimal_runtime_hello_world(self, args):
     self.btest_exit('small_hello_world.c', args=args + ['-sMINIMAL_RUNTIME'])
 
-  @requires_threads
   def test_offset_converter(self, *args):
     self.btest_exit('test_offset_converter.c', assert_returncode=1, args=['-sUSE_OFFSET_CONVERTER', '-gsource-map', '-sPROXY_TO_PTHREAD', '-pthread'])
 
@@ -5479,7 +5343,6 @@ Module["preRun"] = () => {
     # could be tested on either thread; do the main thread for simplicity)
     'bigint': (['-sPTHREAD_POOL_SIZE=5', '-sWASM_BIGINT'],),
   })
-  @requires_threads
   def test_wasmfs_fetch_backend(self, args):
     create_file('data.dat', 'hello, fetch')
     create_file('small.dat', 'hello')
@@ -5499,7 +5362,6 @@ Module["preRun"] = () => {
     'jspi': (['-Wno-experimental', '-sASYNCIFY=2'],),
     'jspi_wasm_bigint': (['-Wno-experimental', '-sASYNCIFY=2', '-sWASM_BIGINT'],),
   })
-  @requires_threads
   def test_wasmfs_opfs(self, args):
     if '-sASYNCIFY=2' in args:
       self.require_jspi()
@@ -5508,7 +5370,6 @@ Module["preRun"] = () => {
     self.btest_exit(test, args=args + ['-DWASMFS_SETUP'])
     self.btest_exit(test, args=args + ['-DWASMFS_RESUME'])
 
-  @requires_threads
   @no_firefox('no OPFS support yet')
   def test_wasmfs_opfs_errors(self):
     test = test_file('wasmfs/wasmfs_opfs_errors.c')
@@ -5572,7 +5433,6 @@ Module["preRun"] = () => {
     'normal': ([],),
     'assertions': (['-sASSERTIONS'],)
   })
-  @requires_threads
   def test_manual_pthread_proxy_hammer(self, args):
     # the specific symptom of the hang that was fixed is that the test hangs
     # at some point, using 0% CPU. often that occured in 0-200 iterations, but
@@ -5597,7 +5457,6 @@ Module["preRun"] = () => {
                # Firefox and Chrome report this slightly differently
                expected=['exception:Uncaught rejected!', 'exception:uncaught exception: rejected!'])
 
-  @requires_threads
   def test_pthread_key_recreation(self):
     self.btest_exit('pthread/test_pthread_key_recreation.cpp', args=['-pthread', '-sPTHREAD_POOL_SIZE=1'])
 
