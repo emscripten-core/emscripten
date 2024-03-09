@@ -2979,7 +2979,6 @@ The current type of b is: 9
     self.do_run(src, '|65830|')
 
   @needs_dylink
-  @disabled('EM_ASM in not yet supported in SIDE_MODULE')
   def test_dlfcn_em_asm(self):
     create_file('liblib.cpp', '''
       #include <emscripten.h>
