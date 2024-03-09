@@ -7811,6 +7811,10 @@ high = 1234
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=[{"a":1}]'])
     self.assertContained("list members in settings must be strings (not $<class 'dict'>)", err)
 
+  def test_dash_s_repeated(self):
+    err = self.expect_fail([EMCC, '-Werror', test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=foo', '-sEXPORTED_FUNCTIONS=bar'])
+    self.assertContained('emcc: error: -sEXPORTED_FUNCTIONS specified multiple times. Ignoring previous value (`foo`) [-Wunused-command-line-argument]', err)
+
   def test_zeroinit(self):
     create_file('src.c', r'''
 #include <stdio.h>
@@ -12017,21 +12021,23 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
 
   @parameterized({
     '': ([],),
-    'minimal': (['-sMINIMAL_RUNTIME', '-sSUPPORT_ERRNO'],),
+    'minimal': (['-sMINIMAL_RUNTIME'],),
   })
   def test_support_errno(self, args):
     self.emcc_args += args + ['-sEXPORTED_FUNCTIONS=_main,___errno_location', '-Wno-deprecated']
 
-    self.do_other_test('test_support_errno.c')
-    size_default = os.path.getsize('test_support_errno.js')
+    self.do_other_test('test_support_errno.c', emcc_args=['-sSUPPORT_ERRNO'])
+    size_enabled = os.path.getsize('test_support_errno.js')
 
     # Run the same test again but with SUPPORT_ERRNO disabled.  This time we don't expect errno
     # to be set after the failing syscall.
-    self.emcc_args += ['-sSUPPORT_ERRNO=0']
-    self.do_other_test('test_support_errno.c', out_suffix='_disabled')
+    self.do_other_test('test_support_errno.c', emcc_args=['-sSUPPORT_ERRNO=0'], out_suffix='_disabled')
 
     # Verify the JS output was smaller
-    self.assertLess(os.path.getsize('test_support_errno.js'), size_default)
+    size_disabled = os.path.getsize('test_support_errno.js')
+    print(size_enabled)
+    print(size_disabled)
+    self.assertLess(size_disabled, size_enabled)
 
   def test_assembly(self):
     self.run_process([EMCC, '-c', test_file('other/test_asm.s'), '-o', 'foo.o'])

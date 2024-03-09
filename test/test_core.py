@@ -9157,8 +9157,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # embind should work with stack overflow checks (see #12356)
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('EXIT_RUNTIME')
+    self.set_setting('DEFAULT_TO_CXX')
     self.emcc_args += ['-lembind']
-    self.do_run_in_out_file_test('core/pthread/create.c', emcc_args=['-sDEFAULT_TO_CXX'])
+    self.do_run_in_out_file_test('core/pthread/create.c')
 
   @node_pthreads
   def test_pthread_exceptions(self):
