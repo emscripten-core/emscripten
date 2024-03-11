@@ -8822,14 +8822,16 @@ int main() {
     self.emcc_args += ['-fwasm-exceptions', '-flto']
     self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
-  def test_wasm_nope(self):
-    for opts in [[], ['-O2']]:
-      print(opts)
-      # check we show a good error message if there is no wasm support
-      create_file('pre.js', 'WebAssembly = undefined;\n')
-      self.run_process([EMCC, test_file('hello_world.c'), '--pre-js', 'pre.js'] + opts)
-      out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-      self.assertContained('no native wasm support detected', out)
+  @parameterized({
+    '': ([],),
+    'O2': (['-O2'],),
+  })
+  def test_missing_wasm(self, args):
+    # Check that in debug builds we show a good error message if there is no wasm support
+    create_file('pre.js', 'WebAssembly = undefined;\n')
+    self.run_process([EMCC, test_file('hello_world.c'), '--pre-js', 'pre.js'] + args)
+    out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
+    self.assertContainedIf('no native wasm support detected', out, not args)
 
   def test_exceptions_c_linker(self):
     # Test that we don't try to create __cxa_find_matching_catch_xx function automatically
