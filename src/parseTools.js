@@ -167,13 +167,6 @@ function isNiceIdent(ident, loose) {
   return /^\(?[$_]+[\w$_\d ]*\)?$/.test(ident);
 }
 
-// Simple variables or numbers, or things already quoted, do not need to be quoted
-function needsQuoting(ident) {
-  if (/^[-+]?[$_]?[\w$_\d]*$/.test(ident)) return false; // number or variable
-  if (ident[0] === '(' && ident[ident.length - 1] === ')' && ident.indexOf('(', 1) < 0) return false; // already fully quoted
-  return true;
-}
-
 globalThis.POINTER_SIZE = MEMORY64 ? 8 : 4;
 globalThis.POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
 globalThis.STACK_ALIGN = 16;
