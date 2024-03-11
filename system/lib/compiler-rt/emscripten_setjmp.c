@@ -5,6 +5,7 @@
 * found in the LICENSE file.
 */
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <setjmp.h>
@@ -102,4 +103,28 @@ void __wasm_longjmp(void *env, int val) {
   __builtin_wasm_throw(C_LONGJMP, &__wasm_longjmp_args);
 }
 
+// jmp_buf should have large enough size and alignment to contain
+// this structure.
+struct jmp_buf_impl {
+  void* func_invocation_id;
+  uint32_t label;
+};
+
+void __wasm_setjmp(void* env, uint32_t label, void* func_invocation_id) {
+  struct jmp_buf_impl* jb = env;
+  assert(label != 0);                 // ABI contract
+  assert(func_invocation_id != NULL); // sanity check
+  jb->func_invocation_id = func_invocation_id;
+  jb->label = label;
+}
+
+uint32_t __wasm_setjmp_test(void* env, void* func_invocation_id) {
+  struct jmp_buf_impl* jb = env;
+  assert(jb->label != 0);             // ABI contract
+  assert(func_invocation_id != NULL); // sanity check
+  if (jb->func_invocation_id == func_invocation_id) {
+    return jb->label;
+  }
+  return 0;
+}
 #endif
