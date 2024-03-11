@@ -21,7 +21,6 @@ import assert from 'assert';
 import * as url from 'url';
 
 const args = process.argv.slice(2);
-const debug = false;
 
 // Anything needed by the script that we load below must be added to the
 // global object.  These, for example, are all needed by parseTools.js.
