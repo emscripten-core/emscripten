@@ -2979,7 +2979,6 @@ The current type of b is: 9
     self.do_run(src, '|65830|')
 
   @needs_dylink
-  @disabled('EM_ASM in not yet supported in SIDE_MODULE')
   def test_dlfcn_em_asm(self):
     create_file('liblib.cpp', '''
       #include <emscripten.h>
@@ -9157,8 +9156,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # embind should work with stack overflow checks (see #12356)
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('EXIT_RUNTIME')
+    self.set_setting('DEFAULT_TO_CXX')
     self.emcc_args += ['-lembind']
-    self.do_run_in_out_file_test('core/pthread/create.c', emcc_args=['-sDEFAULT_TO_CXX'])
+    self.do_run_in_out_file_test('core/pthread/create.c')
 
   @node_pthreads
   def test_pthread_exceptions(self):
@@ -9566,9 +9566,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
   })
   @requires_node
   @no_wasm2js('wasm2js does not support reference types')
+  @no_asan('https://github.com/llvm/llvm-project/pull/83196')
   def test_externref_emjs(self, dynlink):
-    if dynlink and is_sanitizing(self.emcc_args):
-      self.skipTest('https://github.com/llvm/llvm-project/pull/83196')
     self.emcc_args += ['-mreference-types']
     self.node_args += shared.node_reference_types_flags(self.get_nodejs())
     if dynlink:

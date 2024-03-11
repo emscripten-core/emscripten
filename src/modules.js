@@ -8,15 +8,6 @@
 
 // Various namespace-like modules
 
-// Constructs an array ['a0', 'a1', 'a2', ..., 'a(n-1)']
-function genArgSequence(n) {
-  const args = [];
-  for (let i = 0; i < n; ++i) {
-    args.push('a' + i);
-  }
-  return args;
-}
-
 // List of symbols that were added from the library.
 globalThis.librarySymbols = [];
 

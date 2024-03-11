@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.56 (in development)
 -----------------------
+- emscripten will now generate an `unused-command-line-argument` warning if
+  a `-s` setting is specified more than once on the command line with
+  conflicting values.  In this case the first setting is ignored. (#21464)
 
 3.1.55 - 03/01/24
 -----------------
