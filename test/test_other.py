@@ -13547,7 +13547,7 @@ int main() {
 
   # Tests the internal test suite of tools/unsafe_optimizations.js
   def test_unsafe_optimizations(self):
-    self.run_process(config.NODE_JS_TEST + [path_from_root('tools', 'unsafe_optimizations.js'), '--test'])
+    self.run_process(config.NODE_JS_TEST + [path_from_root('tools', 'unsafe_optimizations.mjs'), '--test'])
 
   @requires_v8
   def test_extended_const(self):
