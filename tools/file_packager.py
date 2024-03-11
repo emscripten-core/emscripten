@@ -745,9 +745,8 @@ def generate_js(data_target, data_files, metadata):
       # LZ4FS usage
       temp = data_target + '.orig'
       shutil.move(data_target, temp)
-      meta = shared.run_js_tool(utils.path_from_root('tools/lz4-compress.js'),
-                                [utils.path_from_root('third_party/mini-lz4.js'),
-                                temp, data_target], stdout=PIPE)
+      meta = shared.run_js_tool(utils.path_from_root('tools/lz4-compress.mjs'),
+                                [temp, data_target], stdout=PIPE)
       os.unlink(temp)
       use_data = '''var compressedData = %s;
             compressedData['data'] = byteArray;

@@ -2529,7 +2529,7 @@ void *getBindBuffer() {
     ''')
     self.btest_exit(
       'main.c',
-      args=['-sMAIN_MODULE=2', '--preload-file', '.@/', '-O2', '--use-preload-plugins'] + args)
+      args=['-sMAIN_MODULE=2', '--preload-file', '.@/', '--use-preload-plugins'] + args)
 
   # This does not actually verify anything except that --cpuprofiler and --memoryprofiler compiles.
   # Run interactive.test_cpuprofiler_memoryprofiler for interactive testing.
