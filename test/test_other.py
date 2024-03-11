@@ -512,6 +512,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     err = self.run_process([EMCC, '-c', test_file('hello_world.c'), '-o', 'out.bc'], stderr=PIPE).stderr
     self.assertContained('emcc: warning: .bc output file suffix used without -flto or -emit-llvm', err)
 
+  def test_bc_as_archive(self):
+    self.run_process([EMCC, '-c', test_file('hello_world.c'), '-flto', '-o', 'out.a'])
+    self.run_process([EMCC, 'out.a'])
+
   @parameterized({
     'c': [EMCC, '.c'],
     'cxx': [EMXX, '.cpp']
