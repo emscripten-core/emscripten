@@ -45,7 +45,7 @@ globalThis.read = (filename) => {
 };
 
 function load(f) {
-  vm.runInThisContext(read(f), { filename: find(f) });
+  vm.runInThisContext(read(f), {filename: find(f)});
 }
 
 // Basic utilities
@@ -73,7 +73,7 @@ globalThis.symbolsOnly = symbolsOnlyArg != -1;
 // In case compiler.js is run directly (as in gen_sig_info)
 // ALL_INCOMING_MODULE_JS_API might not be populated yet.
 if (!ALL_INCOMING_MODULE_JS_API.length) {
-  ALL_INCOMING_MODULE_JS_API = INCOMING_MODULE_JS_API
+  ALL_INCOMING_MODULE_JS_API = INCOMING_MODULE_JS_API;
 }
 
 EXPORTED_FUNCTIONS = new Set(EXPORTED_FUNCTIONS);
@@ -87,7 +87,10 @@ if (symbolsOnly) {
 }
 
 // Side modules are pure wasm and have no JS
-assert(!SIDE_MODULE || (ASYNCIFY && globalThis.symbolsOnly), 'JS compiler should only run on side modules if asyncify is used.');
+assert(
+  !SIDE_MODULE || (ASYNCIFY && globalThis.symbolsOnly),
+  'JS compiler should only run on side modules if asyncify is used.',
+);
 
 // Load compiler code
 
@@ -116,7 +119,10 @@ try {
     // Compiler failed on internal compiler error!
     printErr('Internal compiler error in src/compiler.js!');
     printErr('Please create a bug report at https://github.com/emscripten-core/emscripten/issues/');
-    printErr('with a log of the build and the input files used to run. Exception message: "' + (err.stack || err));
+    printErr(
+      'with a log of the build and the input files used to run. Exception message: "' +
+        (err.stack || err),
+    );
   }
 
   // Work around a node.js bug where stdout buffer is not flushed at process exit:
