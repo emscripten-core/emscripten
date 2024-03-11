@@ -10,7 +10,7 @@ let d = 40;
 // z.
 let z = 50;
 
-globalThis.f = function(r) {
+globalThis.f = function([/*empty*/, r]) {
   let { a, b } = r;
   let { z: c } = r;
   let [/*empty*/, i, {foo : p, bar : q}] = r;
