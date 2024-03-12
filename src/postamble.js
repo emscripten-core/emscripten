@@ -129,7 +129,7 @@ function stackCheckInit() {
   // get these values before even running any of the ctors so we call it redundantly
   // here.
 #if ASSERTIONS && PTHREADS
-  // See $establishStackSpace for the equivelent code that runs on a thread
+  // See $establishStackSpace for the equivalent code that runs on a thread
   assert(!ENVIRONMENT_IS_PTHREAD);
 #endif
 #if RELOCATABLE

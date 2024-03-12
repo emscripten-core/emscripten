@@ -39,7 +39,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 115
+EXPECTED_BINARYEN_VERSION = 117
 
 _is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
@@ -220,13 +220,17 @@ def lld_flags_for_executable(external_symbols):
       cmd.append('--growable-table')
 
   if not settings.SIDE_MODULE:
-    # Export these two section start symbols so that we can extract the string
-    # data that they contain.
-    cmd += [
-      '-z', 'stack-size=%s' % settings.STACK_SIZE,
-      '--initial-memory=%d' % settings.INITIAL_MEMORY,
-      '--max-memory=%d' % settings.MAXIMUM_MEMORY,
-    ]
+    cmd += ['-z', 'stack-size=%s' % settings.STACK_SIZE]
+
+    if settings.ALLOW_MEMORY_GROWTH:
+      cmd += ['--max-memory=%d' % settings.MAXIMUM_MEMORY]
+    else:
+      cmd += ['--no-growable-memory']
+
+    if settings.INITIAL_HEAP != -1:
+      cmd += ['--initial-heap=%d' % settings.INITIAL_HEAP]
+    if settings.INITIAL_MEMORY != -1:
+      cmd += ['--initial-memory=%d' % settings.INITIAL_MEMORY]
 
     if settings.STANDALONE_WASM:
       # when settings.EXPECT_MAIN is set we fall back to wasm-ld default of _start

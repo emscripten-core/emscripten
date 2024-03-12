@@ -19,6 +19,9 @@ OPTIONS = {
   'formats': 'A comma separated list of formats (ex: --use-port=sdl2_image:formats=png,jpg)'
 }
 
+SUPPORTED_FORMATS = {'avif', 'bmp', 'gif', 'jpg', 'jxl', 'lbm', 'pcx', 'png',
+                     'pnm', 'qoi', 'svg', 'tga', 'tif', 'webp', 'xcf', 'xpm', 'xv'}
+
 # user options (from --use-port)
 opts: Dict[str, Set] = {
   'formats': set()
@@ -88,8 +91,14 @@ def process_dependencies(settings):
     settings.USE_LIBJPEG = 1
 
 
-def handle_options(options):
-  opts['formats'].update({format.lower().strip() for format in options['formats'].split(',')})
+def handle_options(options, error_handler):
+  formats = options['formats'].split(',')
+  for format in formats:
+    format = format.lower().strip()
+    if format not in SUPPORTED_FORMATS:
+      error_handler(f'{format} is not a supported format')
+    else:
+      opts['formats'].add(format)
 
 
 def show():

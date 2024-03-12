@@ -4,11 +4,10 @@
 # found in the LICENSE file.
 
 import os
-from tools import utils
 from typing import Dict
 
-TAG = '1.0.4'
-HASH = 'c3c96718e5d2b37df434a46c4a93ddfd9a768330d33f0d6ce2d08c139752894c2421cdd0fefb800fe41fafc2bbe58c8f22b8aa2849dc4fc6dde686037215cfad'
+TAG = '1.1.0'
+HASH = 'ca97ef5db558d957f78f2698ca6aef66f17e3253ad6434417793d6283f3cda16cbe18a460d9403b9a939651e0e5349f53a859b7d19a9220b2e168030f74fcb56'
 
 # contrib port information (required)
 URL = 'https://github.com/pongasoft/emscripten-glfw'
@@ -83,9 +82,9 @@ def process_args(ports):
   return ['-isystem', ports.get_include_dir('contrib.glfw3')]
 
 
-def handle_options(options):
+def handle_options(options, error_handler):
   for option, value in options.items():
     if value.lower() in {'true', 'false'}:
       opts[option] = value.lower() == 'true'
     else:
-      utils.exit_with_error(f'{option} is expecting a boolean, got {value}')
+      error_handler(f'{option} is expecting a boolean, got {value}')

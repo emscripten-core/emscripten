@@ -319,6 +319,12 @@
         ]
     },
     {
+        "file": "limits.h",
+        "defines": [
+            "TZNAME_MAX"
+        ]
+    },
+    {
         "file": "bits/errno.h",
         "defines": [
             "ETXTBSY",

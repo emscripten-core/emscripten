@@ -37,7 +37,7 @@ var LibraryPThread = {
                    '$killThread',
                    '$cancelThread', '$cleanupThread', '$zeroMemory',
 #if MAIN_MODULE
-                   '$markAsFinshed',
+                   '$markAsFinished',
 #endif
                    '$spawnThread',
                    '_emscripten_thread_free_data',
@@ -284,8 +284,8 @@ var LibraryPThread = {
         } else if (cmd === 'cleanupThread') {
           cleanupThread(d['thread']);
 #if MAIN_MODULE
-        } else if (cmd === 'markAsFinshed') {
-          markAsFinshed(d['thread']);
+        } else if (cmd === 'markAsFinished') {
+          markAsFinished(d['thread']);
 #endif
         } else if (cmd === 'killThread') {
           killThread(d['thread']);
@@ -875,7 +875,7 @@ var LibraryPThread = {
     // owns the OffscreenCanvas.
     for (var canvas of Object.values(offscreenCanvases)) {
       // pthread ptr to the thread that owns this canvas.
-      {{{ makeSetValue('canvas.canvasSharedPtr', 8, 'pthread_ptr', 'i32') }}};
+      {{{ makeSetValue('canvas.canvasSharedPtr', 8, 'pthread_ptr', '*') }}};
     }
 #endif
 
@@ -964,7 +964,7 @@ var LibraryPThread = {
   $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
   $proxyToMainThread: (funcIndex, emAsmAddr, sync, ...callArgs) => {
     // EM_ASM proxying is done by passing a pointer to the address of the EM_ASM
-    // contant as `emAsmAddr`.  JS library proxying is done by passing an index
+    // content as `emAsmAddr`.  JS library proxying is done by passing an index
     // into `proxiedJSCallArgs` as `funcIndex`. If `emAsmAddr` is non-zero then
     // `funcIndex` will be ignored.
     // Additional arguments are passed after the first three are the actual
@@ -1119,7 +1119,7 @@ var LibraryPThread = {
 
 #if MAIN_MODULE
     // Before we call the thread entry point, make sure any shared libraries
-    // have been loaded on this there.  Otherwise our table migth be not be
+    // have been loaded on this there.  Otherwise our table might be not be
     // in sync and might not contain the function pointer `ptr` at all.
     __emscripten_dlsync_self();
 #endif
@@ -1161,15 +1161,15 @@ var LibraryPThread = {
   _emscripten_thread_exit_joinable: (thread) => {
     // Called when a thread exits and is joinable.  We mark these threads
     // as finished, which means that are in state where are no longer actually
-    // runnning, but remain around waiting to be joined.  In this state they
+    // running, but remain around waiting to be joined.  In this state they
     // cannot run any more proxied work.
-    if (!ENVIRONMENT_IS_PTHREAD) markAsFinshed(thread);
-    else postMessage({ 'cmd': 'markAsFinshed', 'thread': thread });
+    if (!ENVIRONMENT_IS_PTHREAD) markAsFinished(thread);
+    else postMessage({ 'cmd': 'markAsFinished', 'thread': thread });
   },
 
-  $markAsFinshed: (pthread_ptr) => {
+  $markAsFinished: (pthread_ptr) => {
 #if PTHREADS_DEBUG
-    dbg(`markAsFinshed: ${ptrToString(pthread_ptr)}`);
+    dbg(`markAsFinished: ${ptrToString(pthread_ptr)}`);
 #endif
     PThread.finishedThreads.add(pthread_ptr);
     if (pthread_ptr in PThread.outstandingPromises) {
@@ -1203,7 +1203,7 @@ var LibraryPThread = {
 
     // We then create a sequence of promises, one per thread, that resolve once
     // each thread has performed its sync using _emscripten_proxy_dlsync.
-    // Any new threads that are created after this call will automaticaly be
+    // Any new threads that are created after this call will automatically be
     // in sync because we call `__emscripten_dlsync_self` in
     // invokeEntryPoint before the threads entry point is called.
     for (const ptr of Object.keys(PThread.pthreads)) {

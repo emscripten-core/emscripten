@@ -3,11 +3,9 @@
 /** Implements a set of potentially unsafe JavaScript AST optimizations for aggressive code size optimizations.
     Enabled when building with -sMINIMAL_RUNTIME=2 linker flag. */
 
-'use strict';
-
-const acorn = require('acorn');
-const fs = require('fs');
-const terser = require('../third_party/terser/terser');
+import * as fs from 'fs';
+import * as acorn from 'acorn';
+import * as terser from '../third_party/terser/terser.js';
 
 // Starting at the AST node 'root', calls the given callback function 'func' on all children and grandchildren of 'root'
 // that are of any of the type contained in array 'types'.

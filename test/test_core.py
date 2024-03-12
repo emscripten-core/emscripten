@@ -10,7 +10,6 @@ import os
 import random
 import re
 import shutil
-import sys
 import time
 import unittest
 from pathlib import Path
@@ -27,7 +26,7 @@ import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
-from common import read_file, read_binary, requires_v8, requires_node, requires_node_canary
+from common import read_file, read_binary, requires_v8, requires_node, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb
 from common import with_both_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
@@ -47,7 +46,7 @@ def wasm_simd(f):
     self.require_simd()
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4638')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
     if '-O3' in self.emcc_args:
       self.skipTest('SIMD tests are too slow with -O3 in the new LLVM pass manager, https://github.com/emscripten-core/emscripten/issues/13427')
@@ -63,7 +62,7 @@ def wasm_relaxed_simd(f):
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4638')
     # We don't actually run any tests yet, so don't require any engines.
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
     self.emcc_args.append('-mrelaxed-simd')
     f(self)
@@ -72,7 +71,7 @@ def wasm_relaxed_simd(f):
 
 def needs_non_trapping_float_to_int(f):
   def decorated(self):
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
     f(self)
   return decorated
@@ -103,7 +102,7 @@ def with_both_eh_sjlj(f):
   def metafunc(self, is_native):
     if is_native:
       # Wasm EH is currently supported only in wasm backend and V8
-      if not self.is_wasm():
+      if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm EH/SjLj')
       self.require_wasm_eh()
       # FIXME Temporarily disabled. Enable this later when the bug is fixed.
@@ -865,8 +864,8 @@ base align: 0, 0, 0, 0'''])
     self.do_core_test('test_emmalloc_memory_statistics.c', out_suffix=out_suffix)
 
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
-  @no_wasm64('output is sensitive to absolute data layout')
   @no_2gb('output is sensitive to absolute data layout')
+  @no_4gb('output is sensitive to absolute data layout')
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
   def test_emmalloc_trim(self):
@@ -893,6 +892,10 @@ base align: 0, 0, 0, 0'''])
   def test_longjmp(self):
     self.do_core_test('test_longjmp.c')
 
+  @with_both_sjlj
+  def test_longjmp_zero(self):
+    self.do_core_test('test_longjmp_zero.c')
+
   def test_longjmp_with_and_without_exceptions(self):
     # Emscripten SjLj with and without Emscripten EH support
     self.set_setting('SUPPORT_LONGJMP', 'emscripten')
@@ -903,7 +906,7 @@ base align: 0, 0, 0, 0'''])
     # Wasm SjLj with and without Wasm EH support
     self.clear_setting('DISABLE_EXCEPTION_CATCHING')
     self.set_setting('SUPPORT_LONGJMP', 'wasm')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm2js does not support wasm EH/SjLj')
     self.require_wasm_eh()
     # FIXME Temporarily disabled. Enable this later when the bug is fixed.
@@ -1038,7 +1041,7 @@ int main()
       self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
     # Wasm EH with and without Wasm SjLj support
     self.clear_setting('DISABLE_EXCEPTION_CATCHING')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm2js does not support wasm EH/SjLj')
     self.require_wasm_eh()
     # FIXME Temporarily disabled. Enable this later when the bug is fixed.
@@ -1897,6 +1900,8 @@ int main(int argc, char **argv) {
     'pthread': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_main_thread_em_asm(self, args):
+    if args:
+      self.setup_node_pthreads()
     src = read_file(test_file('core/test_em_asm_2.cpp'))
     create_file('test.cpp', src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
 
@@ -2027,7 +2032,7 @@ int main(int argc, char **argv) {
     self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
     win = read_file('test_memorygrowth.js')
 
-    if '-O2' in self.emcc_args and not self.is_wasm():
+    if '-O2' in self.emcc_args and self.is_wasm2js():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
       code_start = '// EMSCRIPTEN_START_FUNCS'
       self.assertContained(code_start, fail)
@@ -2060,7 +2065,7 @@ int main(int argc, char **argv) {
     self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
     win = read_file('test_memorygrowth_2.js')
 
-    if '-O2' in self.emcc_args and not self.is_wasm():
+    if '-O2' in self.emcc_args and self.is_wasm2js():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
       assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
 
@@ -2079,7 +2084,7 @@ int main(int argc, char **argv) {
   def test_memorygrowth_MAXIMUM_MEMORY(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm memory specific test')
 
     # check that memory growth does not exceed the wasm mem max limit
@@ -2091,7 +2096,7 @@ int main(int argc, char **argv) {
   def test_memorygrowth_linear_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm memory specific test')
 
     # check that memory growth does not exceed the wasm mem max limit and is exactly or one step below the wasm mem max
@@ -2104,10 +2109,10 @@ int main(int argc, char **argv) {
   def test_memorygrowth_geometric_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm memory specific test')
 
-    self.emcc_args += ['-sALLOW_MEMORY_GROWTH', '-sMEMORY_GROWTH_GEOMETRIC_STEP=8.5', '-sMEMORY_GROWTH_GEOMETRIC_CAP=32MB']
+    self.emcc_args += ['-sINITIAL_MEMORY=16MB', '-sALLOW_MEMORY_GROWTH', '-sMEMORY_GROWTH_GEOMETRIC_STEP=8.5', '-sMEMORY_GROWTH_GEOMETRIC_CAP=32MB']
     self.do_core_test('test_memorygrowth_geometric_step.c')
 
   def test_memorygrowth_3_force_fail_reallocBuffer(self):
@@ -2974,7 +2979,6 @@ The current type of b is: 9
     self.do_run(src, '|65830|')
 
   @needs_dylink
-  @disabled('EM_ASM in not yet supported in SIDE_MODULE')
   def test_dlfcn_em_asm(self):
     create_file('liblib.cpp', '''
       #include <emscripten.h>
@@ -4029,8 +4033,6 @@ ok
 
   @needs_dylink
   def test_dylink_memory_growth(self):
-    if not self.is_wasm():
-      self.skipTest('wasm only')
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.do_basic_dylink_test()
 
@@ -4883,7 +4885,7 @@ res64 - external 64\n''', header='''\
     ''',
                      expected=['sidef: 10, sideg: 20.\nbsidef: 536.\nonly_in_second_0: 10, 20, 1337\nonly_in_third_1: 36, 49, 500, 1221\nonly_in_third_0: 36, 49, 500\nonly_in_second_1: 10, 20, 1337, 2112\n'],
                      # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
-                     need_reverse=not self.is_wasm())
+                     need_reverse=self.is_wasm2js())
 
     print('check warnings')
     full = self.run_js('src.js')
@@ -4926,7 +4928,7 @@ res64 - external 64\n''', header='''\
     ''',
                      expected=['sidef: 10'],
                      # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
-                     need_reverse=not self.is_wasm())
+                     need_reverse=self.is_wasm2js())
 
   @needs_dylink
   def test_dylink_dso_needed(self):
@@ -5362,7 +5364,7 @@ Pass: 0.000012 0.000012''')
 
   def test_files(self):
     # Use closure here, to test we don't break FS stuff
-    if '-O3' in self.emcc_args and not self.is_wasm():
+    if '-O3' in self.emcc_args and self.is_wasm2js():
       print('closure 2')
       self.emcc_args += ['--closure', '2'] # Use closure 2 here for some additional coverage
       # Sadly --closure=2 is not yet free of closure warnings
@@ -5398,9 +5400,6 @@ Module = {
 
     self.do_runf('files.cpp', ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n'),
                  output_nicerizer=clean)
-
-    if self.uses_memory_init_file():
-      self.assertExists('files.js.mem')
 
   def test_files_m(self):
     # Test for Module.stdin etc.
@@ -5701,9 +5700,6 @@ Module = {
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_direct_string_constant_usage.cpp')
 
-  def test_std_cout_new(self):
-    self.do_core_test('test_std_cout_new.cpp')
-
   def test_std_function_incomplete_return(self):
     self.do_core_test('test_std_function_incomplete_return.cpp')
 
@@ -5746,6 +5742,14 @@ Module = {
       self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args += ['-lnodefs.js']
     self.do_runf('fs/test_nodefs_cloexec.c', 'success')
+
+  @also_with_noderawfs
+  @requires_node
+  def test_fs_nodefs_dup(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+    self.emcc_args += ['-lnodefs.js']
+    self.do_runf('fs/test_nodefs_dup.c', 'success')
 
   @requires_node
   def test_fs_nodefs_home(self):
@@ -6005,6 +6009,7 @@ Module.onRuntimeInitialized = () => {
         assert self.get_setting('INITIAL_MEMORY') == '2200mb'
         expected = (2200 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE
     else:
+      self.set_setting('INITIAL_MEMORY', '16mb')
       expected = 16 * 1024 * 1024 // webassembly.WASM_PAGE_SIZE
     self.do_runf(filename, str(expected) + ', errno: 0')
 
@@ -6198,7 +6203,7 @@ PORT: 3979
       shutil.copy2('src.js', 'src.js.previous')
 
       # Same but for the wasm file.
-      if self.is_wasm() and not self.get_setting('WASM2JS'):
+      if self.is_wasm():
         if os.path.exists('src.wasm.previous'):
           self.assertBinaryEqual('src.wasm', 'src.wasm.previous')
         shutil.copy2('src.wasm', 'src.wasm.previous')
@@ -6805,120 +6810,98 @@ void* operator new(size_t size) {
                 args=['-scale-to', '512', 'paper.pdf', 'filename'])
 
   @needs_make('make')
-  @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_openjpeg(self):
-    def do_test_openjpeg():
-      def line_splitter(data):
-        out = ''
-        counter = 0
+    def line_splitter(data):
+      out = ''
+      counter = 0
 
-        for ch in data:
-          out += ch
-          if ch == ' ' and counter > 60:
-            out += '\n'
-            counter = 0
-          else:
-            counter += 1
+      for ch in data:
+        out += ch
+        if ch == ' ' and counter > 60:
+          out += '\n'
+          counter = 0
+        else:
+          counter += 1
 
-        return out
+      return out
 
-      # remove -g, so we have one test without it by default
-      self.emcc_args = [x for x in self.emcc_args if x != '-g']
+    # remove -g, so we have one test without it by default
+    self.emcc_args = [x for x in self.emcc_args if x != '-g']
 
-      original_j2k = test_file('openjpeg/syntensity_lobby_s.j2k')
-      image_bytes = list(bytearray(read_binary(original_j2k)))
-      create_file('pre.js', """
-        Module.preRun = () => FS.createDataFile('/', 'image.j2k', %s, true, false, false);
-        Module.postRun = () => {
-          out('Data: ' + JSON.stringify(Array.from(FS.readFile('image.raw'))));
-        };
-        """ % line_splitter(str(image_bytes)))
+    original_j2k = test_file('openjpeg/syntensity_lobby_s.j2k')
+    image_bytes = list(bytearray(read_binary(original_j2k)))
+    create_file('pre.js', """
+      Module.preRun = () => FS.createDataFile('/', 'image.j2k', %s, true, false, false);
+      Module.postRun = () => {
+        out('Data: ' + JSON.stringify(Array.from(FS.readFile('image.raw'))));
+      };
+      """ % line_splitter(str(image_bytes)))
 
-      # ensure libpng is built so that openjpeg's configure step can detect it.
-      # If we don't do this then we don't know what the state of the cache will be
-      # and this test would different non-deterministic results based on, for example,
-      # what other tests had previously run.
-      builder_cmd = [EMBUILDER, 'build', 'libpng']
-      if self.get_setting('MEMORY64'):
-        builder_cmd.append('--wasm64')
-        self.emcc_args.append('-Wno-pointer-to-int-cast')
-      self.run_process(builder_cmd)
-      lib = self.get_library('third_party/openjpeg',
-                             [Path('codec/CMakeFiles/j2k_to_image.dir/index.c.o'),
-                              Path('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'),
-                              Path('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'),
-                              Path('bin/libopenjpeg.a')],
-                             configure=['cmake', '.'],
-                             # configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
-                             make_args=[]) # no -j 2, since parallel builds can fail
+    # ensure libpng is built so that openjpeg's configure step can detect it.
+    # If we don't do this then we don't know what the state of the cache will be
+    # and this test would different non-deterministic results based on, for example,
+    # what other tests had previously run.
+    builder_cmd = [EMBUILDER, 'build', 'libpng']
+    if self.get_setting('MEMORY64'):
+      builder_cmd.append('--wasm64')
+      self.emcc_args.append('-Wno-pointer-to-int-cast')
+    self.run_process(builder_cmd)
+    lib = self.get_library('third_party/openjpeg',
+                           [Path('codec/CMakeFiles/j2k_to_image.dir/index.c.o'),
+                            Path('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'),
+                            Path('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'),
+                            Path('codec/CMakeFiles/j2k_to_image.dir/__/common/getopt.c.o'),
+                            Path('bin/libopenjpeg.a')],
+                           configure=['cmake', '.'],
+                           # configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
+                           make_args=[]) # no -j 2, since parallel builds can fail
 
-      # We use doubles in JS, so we get slightly different values than native code. So we
-      # check our output by comparing the average pixel difference
-      def image_compare(output):
-        # Get the image generated by JS, from the JSON.stringify'd array
-        m = re.search(r'\[[\d, -]*\]', output)
-        self.assertIsNotNone(m, 'Failed to find proper image output in: ' + output)
-        # Evaluate the output as a python array
-        js_data = eval(m.group(0))
+    # We use doubles in JS, so we get slightly different values than native code. So we
+    # check our output by comparing the average pixel difference
+    def image_compare(output):
+      # Get the image generated by JS, from the JSON.stringify'd array
+      m = re.search(r'\[[\d, -]*\]', output)
 
-        js_data = [x if x >= 0 else 256 + x for x in js_data] # Our output may be signed, so unsign it
+      self.assertIsNotNone(m, 'Failed to find proper image output in: ' + output)
+      # Evaluate the output as a python array
+      js_data = eval(m.group(0))
 
-        # Get the correct output
-        true_data = bytearray(read_binary(test_file('openjpeg/syntensity_lobby_s.raw')))
+      js_data = [x if x >= 0 else 256 + x for x in js_data] # Our output may be signed, so unsign it
+      # Get the correct output
+      true_data = bytearray(read_binary(test_file('openjpeg/syntensity_lobby_s.raw')))
 
-        # Compare them
-        self.assertEqual(len(js_data), len(true_data))
-        num = len(js_data)
-        diff_total = js_total = true_total = 0
-        for i in range(num):
-          js_total += js_data[i]
-          true_total += true_data[i]
-          diff_total += abs(js_data[i] - true_data[i])
-        js_mean = js_total / float(num)
-        true_mean = true_total / float(num)
-        diff_mean = diff_total / float(num)
+      # Compare them
+      self.assertEqual(len(js_data), len(true_data))
+      num = len(js_data)
+      diff_total = js_total = true_total = 0
+      for i in range(num):
+        js_total += js_data[i]
+        true_total += true_data[i]
+        diff_total += abs(js_data[i] - true_data[i])
+      js_mean = js_total / float(num)
+      true_mean = true_total / float(num)
+      diff_mean = diff_total / float(num)
 
-        image_mean = 83.265
-        # print '[image stats:', js_mean, image_mean, true_mean, diff_mean, num, ']'
-        assert abs(js_mean - image_mean) < 0.01, [js_mean, image_mean]
-        assert abs(true_mean - image_mean) < 0.01, [true_mean, image_mean]
-        assert diff_mean < 0.01, diff_mean
+      image_mean = 83.265
+      # print '[image stats:', js_mean, image_mean, true_mean, diff_mean, num, ']'
+      assert abs(js_mean - image_mean) < 0.01, [js_mean, image_mean]
+      assert abs(true_mean - image_mean) < 0.01, [true_mean, image_mean]
+      assert diff_mean < 0.01, diff_mean
 
-        return output
+    self.emcc_args += ['--minify=0'] # to compare the versions
+    self.emcc_args += ['--pre-js', 'pre.js']
 
-      self.emcc_args += ['--minify=0'] # to compare the versions
-      self.emcc_args += ['--pre-js', 'pre.js']
-
-      def do_test():
-        self.do_runf('third_party/openjpeg/codec/j2k_to_image.c',
-                     'Successfully generated', # The real test for valid output is in image_compare
-                     args='-i image.j2k -o image.raw'.split(),
-                     emcc_args=['-sUSE_LIBPNG'],
-                     libraries=lib,
-                     includes=[test_file('third_party/openjpeg/libopenjpeg'),
-                               test_file('third_party/openjpeg/codec'),
-                               test_file('third_party/openjpeg/common'),
-                               Path(self.get_build_dir(), 'third_party/openjpeg')],
-                     output_nicerizer=image_compare)
-
-      do_test()
-
-      # extra testing
-      if self.get_setting('ALLOW_MEMORY_GROWTH') == 1:
-        print('no memory growth', file=sys.stderr)
-        self.set_setting('ALLOW_MEMORY_GROWTH', 0)
-        do_test()
-
-    if is_sanitizing(self.emcc_args):
-      # In ASan mode we need a large initial memory (or else wasm-ld fails).
-      # The OpenJPEG CMake will build several executables (which we need parts
-      # of in our testing, see above), so we must enable the flag for them all.
-      with env_modify({'EMCC_CFLAGS': '-sINITIAL_MEMORY=300MB'}):
-        self.emcc_args.append('-Wno-unused-command-line-argument')
-        do_test_openjpeg()
-    else:
-      do_test_openjpeg()
+    output = self.do_runf('third_party/openjpeg/codec/j2k_to_image.c',
+                          'Successfully generated', # The real test for valid output is in image_compare
+                          args='-i image.j2k -o image.raw'.split(),
+                          emcc_args=['-sUSE_LIBPNG'],
+                          libraries=lib,
+                          includes=[test_file('third_party/openjpeg/libopenjpeg'),
+                                    test_file('third_party/openjpeg/codec'),
+                                    test_file('third_party/openjpeg/common'),
+                                    Path(self.get_build_dir(), 'third_party/openjpeg')])
+    image_compare(output)
 
   @also_with_standalone_wasm(impure=True)
   @no_asan('autodebug logging interferes with asan')
@@ -7111,6 +7094,7 @@ void* operator new(size_t size) {
 
     # Adding the symbol to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE should allow direct usage, but
     # Module usage should continue to fail.
+    self.emcc_args += ['-Wno-deprecated']
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ALLOC_STACK'])
     test(not_exported, assert_returncode=NON_ZERO)
     test('1', args=['-DDIRECT'])
@@ -7211,7 +7195,6 @@ void* operator new(size_t size) {
   })
   def test_demangle_stacks(self, extra_args):
     self.emcc_args += extra_args
-    self.set_setting('DEMANGLE_SUPPORT')
     self.set_setting('ASSERTIONS')
     # disable aggressive inlining in binaryen
     self.set_setting('BINARYEN_EXTRA_PASSES', '--one-caller-inline-max-function-size=1')
@@ -7232,7 +7215,6 @@ void* operator new(size_t size) {
     self.set_setting('BINARYEN_EXTRA_PASSES', '--one-caller-inline-max-function-size=1')
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$stackTrace')
 
-    self.set_setting('DEMANGLE_SUPPORT')
     self.set_setting('ENVIRONMENT', 'node,shell')
     if '-O' not in str(self.emcc_args) or '-O0' in self.emcc_args or '-O1' in self.emcc_args or '-g' in self.emcc_args:
       self.skipTest("without opts, we don't emit a symbol map")
@@ -7747,7 +7729,7 @@ void* operator new(size_t size) {
     self.emcc(os.path.abspath('src.cpp'),
               self.get_emcc_args(),
               out_filename)
-    map_referent = out_filename if not self.is_wasm() else wasm_filename
+    map_referent = out_filename if self.is_wasm2js() else wasm_filename
     # after removing the @line and @sourceMappingURL comments, the build
     # result should be identical to the non-source-mapped debug version.
     # this is worth checking because the parser AST swaps strings for token
@@ -7925,7 +7907,7 @@ void* operator new(size_t size) {
     # test that the combination of modularize + closure + pre-js works. in that mode,
     # closure should not minify the Module object in a way that the pre-js cannot use it.
     create_file('post.js', 'var TheModule = Module();\n')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
       self.ldflags.append('-Wno-error=closure')
 
@@ -7941,7 +7923,6 @@ void* operator new(size_t size) {
   @no_wasm2js('symbol names look different wasm2js backtraces')
   @also_with_wasm_bigint
   def test_emscripten_log(self):
-    self.set_setting('DEMANGLE_SUPPORT')
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')
     self.emcc_args += ['-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
@@ -8412,27 +8393,18 @@ Module.onRuntimeInitialized = () => {
 
   # Test basic wasm2js functionality in all core compilation modes.
   @no_sanitize('no wasm2js support yet in sanitizers')
-  @no_wasm64('no wasm2js support yet with wasm64')
-  @no_2gb('no wasm2js support for >2gb address space')
+  @requires_wasm2js
   def test_wasm2js(self):
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
     self.set_setting('WASM', 0)
     self.do_core_test('test_hello_world.c')
-    # a mem init file is emitted just like with JS
-    expect_memory_init_file = self.uses_memory_init_file()
-    if expect_memory_init_file:
-      self.assertExists('test_hello_world.js.mem')
-      mem = read_binary('test_hello_world.js.mem')
-      self.assertTrue(mem[-1] != b'\0')
-    else:
-      self.assertNotExists('test_hello_world.js.mem')
+    self.assertNotExists('test_hello_world.js.mem')
 
   @no_sanitize('no wasm2js support yet in sanitizers')
-  @no_wasm64('no wasm2js support yet with wasm64')
-  @no_2gb('no wasm2js support for >2gb address space')
+  @requires_wasm2js
   def test_maybe_wasm2js(self):
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
     self.set_setting('MAYBE_WASM2JS')
     # see that running as wasm works
@@ -8448,13 +8420,13 @@ Module.onRuntimeInitialized = () => {
     self.assertContained('hello, world!', self.run_js('do_wasm2js.js'))
 
   @no_asan('no wasm2js support yet in asan')
-  @no_wasm64('no wasm2js support yet with wasm64')
+  @requires_wasm2js
   @parameterized({
     '': ([],),
     'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
   })
   def test_wasm2js_fallback(self, args):
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
 
     cmd = [EMCC, test_file('small_hello_world.c'), '-sWASM=2'] + args
@@ -8756,7 +8728,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_lsan('-fsanitize-minimal-runtime cannot be used with LSan')
   def test_ubsan_minimal_too_many_errors(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
-    if not self.is_wasm():
+    if self.is_wasm2js():
       if self.is_optimizing():
         self.skipTest('test can only be run without optimizations on asm.js')
       # Need to use `-g` to get proper line numbers in asm.js
@@ -8770,10 +8742,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_lsan('-fsanitize-minimal-runtime cannot be used with LSan')
   def test_ubsan_minimal_errors_same_place(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
-    if not self.is_wasm():
+    if self.is_wasm2js():
       if self.is_optimizing():
-        self.skipTest('test can only be run without optimizations on asm.js')
-      # Need to use `-g` to get proper line numbers in asm.js
+        self.skipTest('test can only be run without optimizations under wasm2js')
+      # Need to use `-g` to get proper line numbers in wasm2js
       self.emcc_args += ['-g']
     self.do_runf('core/test_ubsan_minimal_errors_same_place.c',
                  expected_output='ubsan: add-overflow by 0x[0-9a-z]*\n' * 5,
@@ -8871,7 +8843,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_stack_trace(self, g_flag, expected_output):
     if g_flag == '-gsource-map':
-      if not self.is_wasm():
+      if self.is_wasm2js():
         self.skipTest('wasm2js has no source map support')
       elif self.get_setting('EVAL_CTORS'):
         self.skipTest('EVAL_CTORS does not support source maps')
@@ -8983,7 +8955,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if '-Oz' in self.emcc_args:
       self.skipTest('-Oz breaks source maps')
 
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm2js has no ASan support')
 
     self.emcc_args.append('-fsanitize=address')
@@ -9184,8 +9156,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # embind should work with stack overflow checks (see #12356)
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('EXIT_RUNTIME')
+    self.set_setting('DEFAULT_TO_CXX')
     self.emcc_args += ['-lembind']
-    self.do_run_in_out_file_test('core/pthread/create.c', emcc_args=['-sDEFAULT_TO_CXX'])
+    self.do_run_in_out_file_test('core/pthread/create.c')
 
   @node_pthreads
   def test_pthread_exceptions(self):
@@ -9593,6 +9566,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   })
   @requires_node
   @no_wasm2js('wasm2js does not support reference types')
+  @no_asan('https://github.com/llvm/llvm-project/pull/83196')
   def test_externref_emjs(self, dynlink):
     self.emcc_args += ['-mreference-types']
     self.node_args += shared.node_reference_types_flags(self.get_nodejs())

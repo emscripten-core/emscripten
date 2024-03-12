@@ -18,8 +18,34 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.54 (in development)
+3.1.56 (in development)
 -----------------------
+- emscripten will now generate an `unused-command-line-argument` warning if
+  a `-s` setting is specified more than once on the command line with
+  conflicting values.  In this case the first setting is ignored. (#21464)
+
+3.1.55 - 03/01/24
+-----------------
+- Update sdl2-mixer port from 2.6.0 to 2.8.0
+- In `STRICT` mode the `HEAPXX` symbols (such as `HEAP8` and `HEAP32`) are now
+  only exported on demand.  This means that they must be added to
+  `EXPORTED_RUNTIME_METHODS` for them to appear on the `Module` object.  For
+  now, this only effects users of `STRICT` mode. (#21439)
+- Emscripten no longer supports `--memory-init-file` (i.e. extracting static
+  data into an external .mem file).  This feature was only available under
+  wasm2js (`-sWASM=0`) anyway so this change will only affect users of this
+  setting. (#21217)
+- `INITIAL_HEAP` setting is introduced to control the amount of initial
+  memory available for dynamic allocation without capping it. If you are
+  using `INITIAL_MEMORY`, consider switching to `INITIAL_HEAP`. Note that
+  it is currently not supported in all configurations (#21071).
+
+3.1.54 - 02/15/24
+-----------------
+- SDL2 port updated from v2.24.2 to v2.26.0. (#21337)
+- The `DEMANGLE_SUPPORT` setting and the associated `demangle` function are
+  now deprecated since Wasm stack traces always contain demangled symbols these
+  days. (#21346)
 - The type of `EMSCRIPTEN_WEBGL_CONTEXT_HANDLE` was changed to unsigned and
   the only valid error returned from `emscripten_webgl_create_context` is
   now zero.  This allows `EMSCRIPTEN_WEBGL_CONTEXT_HANDLE` to hold a pointer
@@ -42,7 +68,13 @@ See docs/process.md for more on how version tagging works.
   available via `--use-port=contrib.glfw3`: an emscripten port of glfw written 
   in C++ with many features like support for multiple windows. (#21244 and 
   #21276)
-
+- Added concept of external ports which live outside emscripten and are
+  loaded on demand using the syntax `--use-port=/path/to/my_port.py` (#21316)
+- `embuilder` can now build ports with options as well as external ports using
+  the same syntax introduced with `--use-port`
+  (ex: `embuilder sdl2_image:formats=png,jpg`) (#21345) 
+- Allow comments in response files. Any line starting with `#` is now ignored.
+  This is useful when listing exported symbols. (#21330)
 
 3.1.53 - 01/29/24
 -----------------
@@ -222,10 +254,10 @@ See docs/process.md for more on how version tagging works.
 - The `--minify=0` command line flag will now preserve comments as well as
   whitespace.  This means the resulting output can then be run though closure
   compiler or some other tool that gives comments semantic meaning. (#20121)
-- `-sSTRICT` now implies `-sINCOMING_MODULE_API=[]` which is generally good
+- `-sSTRICT` now implies `-sINCOMING_MODULE_JS_API=[]` which is generally good
   for code size.  If you `-sSTRICT` you now need to be explicit about the
   incoming module APIs you are supplying.  Users who supply symbols on the
-  incoming module but forget to include them in `-sINCOMING_MODULE_API`
+  incoming module but forget to include them in `-sINCOMING_MODULE_JS_API`
   will see an error in debug builds so this change will not generate any
   silent failures.
 - JS library decorators such as `__deps` and `__async` are now type checked so
@@ -359,6 +391,7 @@ See docs/process.md for more on how version tagging works.
    - stringToUTF8Array
    - stringToUTF8
    - lengthBytesUTF8
+  
   If you use any of these functions in your JS code you will now need to include
   them explicitly in one of the following ways:
    - Add them to a `__deps` entry in your JS library file (with leading $)

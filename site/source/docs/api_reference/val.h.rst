@@ -133,7 +133,7 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
 
     .. code:: cpp
 
-      EM_ASYNC_JS(EM_VAL, fetch_json_from_url, (const char *url_ptr), {
+      EM_ASYNC_JS(EM_VAL, fetch_json_from_url, (const char *url), {
         var url = UTF8ToString(url);
         var response = await fetch(url);
         var json = await response.json();

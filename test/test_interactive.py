@@ -43,13 +43,13 @@ class interactive(BrowserCore):
     self.btest_exit('test_sdl_mousewheel.c')
 
   def test_sdl_touch(self):
-    self.btest('sdl_touch.c', args=['-O2', '-g1', '--closure=1'], expected='0')
+    self.btest('test_sdl_touch.c', args=['-O2', '-g1', '--closure=1'], expected='0')
 
   def test_sdl_wm_togglefullscreen(self):
-    self.btest_exit('sdl_wm_togglefullscreen.c')
+    self.btest_exit('test_sdl_wm_togglefullscreen.c')
 
   def test_sdl_fullscreen_samecanvassize(self):
-    self.btest_exit('sdl_fullscreen_samecanvassize.c')
+    self.btest_exit('test_sdl_fullscreen_samecanvassize.c')
 
   def test_sdl2_togglefullscreen(self):
     self.btest_exit('browser/test_sdl_togglefullscreen.c', args=['-sUSE_SDL=2'])
@@ -62,7 +62,7 @@ class interactive(BrowserCore):
     create_file('bad.ogg', 'I claim to be audio, but am lying')
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.btest_exit('sdl_audio.c', args=['--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg'])
+    self.btest_exit('test_sdl_audio.c', args=['--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg'])
 
     # print('SDL2')
     # check sdl2 as well
@@ -80,7 +80,7 @@ class interactive(BrowserCore):
   def test_sdl_audio_mix_channels(self, args):
     shutil.copyfile(test_file('sounds/noise.ogg'), self.in_dir('sound.ogg'))
 
-    self.btest_exit('sdl_audio_mix_channels.c', args=['-O2', '--minify=0', '--preload-file', 'sound.ogg'] + args)
+    self.btest_exit('test_sdl_audio_mix_channels.c', args=['-O2', '--minify=0', '--preload-file', 'sound.ogg'] + args)
 
   @parameterized({
     '': ([],),
@@ -91,17 +91,17 @@ class interactive(BrowserCore):
     shutil.copyfile(test_file('sounds/the_entertainer.ogg'), self.in_dir('music.ogg'))
     shutil.copyfile(test_file('sounds/noise.ogg'), self.in_dir('noise.ogg'))
 
-    self.btest_exit('sdl_audio_mix.c', args=['-O2', '--minify=0', '--preload-file', 'sound.ogg', '--preload-file', 'music.ogg', '--preload-file', 'noise.ogg'] + args)
+    self.btest_exit('test_sdl_audio_mix.c', args=['-O2', '--minify=0', '--preload-file', 'sound.ogg', '--preload-file', 'music.ogg', '--preload-file', 'noise.ogg'] + args)
 
   def test_sdl_audio_panning(self):
     shutil.copyfile(test_file('sounds/the_entertainer.wav'), self.in_dir('the_entertainer.wav'))
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.btest_exit('sdl_audio_panning.c', args=['-O2', '--closure=1', '--minify=0', '--preload-file', 'the_entertainer.wav', '-sEXPORTED_FUNCTIONS=_main,_play'])
+    self.btest_exit('test_sdl_audio_panning.c', args=['-O2', '--closure=1', '--minify=0', '--preload-file', 'the_entertainer.wav', '-sEXPORTED_FUNCTIONS=_main,_play'])
 
   def test_sdl_audio_beeps(self):
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
-    self.btest_exit('sdl_audio_beep.cpp', args=['-O2', '--closure=1', '--minify=0', '-sDISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html'])
+    self.btest_exit('test_sdl_audio_beep.cpp', args=['-O2', '--closure=1', '--minify=0', '-sDISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html'])
 
   def test_sdl2_mixer_wav(self):
     shutil.copyfile(test_file('sounds/the_entertainer.wav'), 'sound.wav')

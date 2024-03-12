@@ -11,7 +11,7 @@ This comprehensive documentation set contains everything you need to know to use
 
 **Getting started:**
 
-- :ref:`introducting-emscripten-index` explains what Emscripten does, why it is needed, its limitations and its licensing. It will help you understand whether Emscripten is the right tool for you.
+- :ref:`introducing-emscripten-index` explains what Emscripten does, why it is needed, its limitations and its licensing. It will help you understand whether Emscripten is the right tool for you.
 - :ref:`getting-started-index` walks you through downloading, installing and using the Emscripten SDK.
 
 **Emscripten Fundamentals:**

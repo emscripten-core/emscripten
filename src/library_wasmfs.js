@@ -238,7 +238,7 @@ FS.init();
       var buf = FS.handleError(__wasmfs_mmap(length, prot, flags, stream.fd, {{{ splitI64('offset') }}}));
       return { ptr: buf, allocated: true };
     },
-    // offset is passed to msync to maintain backwards compatability with the legacy JS API but is not used by WasmFS.
+    // offset is passed to msync to maintain backwards compatibility with the legacy JS API but is not used by WasmFS.
     msync: (stream, bufferPtr, offset, length, mmapFlags) => {
       assert(offset === 0);
       // TODO: assert that stream has the fd corresponding to the mapped buffer (bufferPtr).

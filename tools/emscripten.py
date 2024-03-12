@@ -631,6 +631,8 @@ def create_tsd(metadata, embind_tsd):
   if embind_tsd:
     export_interfaces += ' & EmbindModule'
   out += f'export type MainModule = {export_interfaces};\n'
+  if settings.EXPORT_ES6 and settings.MODULARIZE:
+    out += 'export default function MainModuleFactory (options?: unknown): Promise<MainModule>;\n'
   return out
 
 
@@ -1005,6 +1007,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_emval_coro_resume': '_pp',
     'emscripten_main_runtime_thread_id': 'p',
     '_emscripten_set_offscreencanvas_size_on_thread': '_pp__',
+    'fileno': '_p',
   }
 
   for function in settings.SIGNATURE_CONVERSIONS:

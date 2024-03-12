@@ -25,10 +25,12 @@ void one() {
         printf("motion : %d,%d  %d,%d\n", m->x, m->y, m->xrel, m->yrel);
 
         if (mouse_motions == 0) {
+          // Starting with SDL 2.26.0 initial xrel and yrel values are zero
+          // See: https://github.com/libsdl-org/SDL/commit/0e61c106
 #ifdef TEST_SDL_MOUSE_OFFSETS
-          assert(eq(m->x, 5) && eq(m->y, 15) && eq(m->xrel, 5) && eq(m->yrel, 15));
+          assert(eq(m->x, 5) && eq(m->y, 15) && eq(m->xrel, 0) && eq(m->yrel, 0));
 #else
-          assert(eq(m->x, 10) && eq(m->y, 20) && eq(m->xrel, 10) && eq(m->yrel, 20));
+          assert(eq(m->x, 10) && eq(m->y, 20) && eq(m->xrel, 0) && eq(m->yrel, 0));
 #endif
         } else if (mouse_motions == 1) {
 #ifdef TEST_SDL_MOUSE_OFFSETS
@@ -71,8 +73,6 @@ void one() {
   }
 }
 
-void main_2(void* arg);
-
 int main() {
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Window *window;
@@ -84,17 +84,11 @@ int main() {
   SDL_Rect rect = { 0, 0, 600, 450 };
   SDL_RenderFillRect(renderer, &rect);
 
-  emscripten_async_call(main_2, NULL, 3000); // avoid startup delays and intermittent errors
-
-  return 99;
-}
-
-void main_2(void* arg) {
-  emscripten_run_script("window.simulateMouseEvent(10, 20, -1)"); // move from 0,0 to 10,20
-  emscripten_run_script("window.simulateMouseEvent(10, 20, 0)"); // click
-  emscripten_run_script("window.simulateMouseEvent(10, 20, 0)"); // click some more, but this one should be ignored through PeepEvent
-  emscripten_run_script("window.simulateMouseEvent(30, 70, -1)"); // move some more
-  emscripten_run_script("window.simulateMouseEvent(30, 70, 1)"); // trigger the end
+  emscripten_run_script("simulateMouseEvent(10, 20, -1)"); // move from 0,0 to 10,20
+  emscripten_run_script("simulateMouseEvent(10, 20, 0)"); // click
+  emscripten_run_script("simulateMouseEvent(10, 20, 0)"); // click some more, but this one should be ignored through PeepEvent
+  emscripten_run_script("simulateMouseEvent(30, 70, -1)"); // move some more
+  emscripten_run_script("simulateMouseEvent(30, 70, 1)"); // trigger the end
 
   emscripten_set_main_loop(one, 0, 0);
 }

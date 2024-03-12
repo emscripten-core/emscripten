@@ -9,23 +9,20 @@
  */
 
 globalThis.FOUR_GB = 4 * 1024 * 1024 * 1024;
+globalThis.WASM_PAGE_SIZE = 64 * 1024;
+
 const FLOAT_TYPES = new Set(['float', 'double']);
 
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
 // NOTE: Be careful with that ret check. If ret is |0|, |ret ? ret.toString() : ''| would result in ''!
-function processMacros(text) {
+function processMacros(text, filename) {
   // The `?` here in makes the regex non-greedy so it matches with the closest
   // set of closing braces.
   // `[\s\S]` works like `.` but include newline.
   return text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
-    try {
-      const ret = eval(str);
-      return ret !== null ? ret.toString() : '';
-    } catch (ex) {
-      ex.stack = `In the following macro:\n\n${str}\n\n${ex.stack}`;
-      throw ex;
-    }
+    const ret = vm.runInThisContext(str, { filename: filename });
+    return ret !== null ? ret.toString() : '';
   });
 }
 
@@ -170,31 +167,24 @@ function isNiceIdent(ident, loose) {
   return /^\(?[$_]+[\w$_\d ]*\)?$/.test(ident);
 }
 
-// Simple variables or numbers, or things already quoted, do not need to be quoted
-function needsQuoting(ident) {
-  if (/^[-+]?[$_]?[\w$_\d]*$/.test(ident)) return false; // number or variable
-  if (ident[0] === '(' && ident[ident.length - 1] === ')' && ident.indexOf('(', 1) < 0) return false; // already fully quoted
-  return true;
-}
-
 globalThis.POINTER_SIZE = MEMORY64 ? 8 : 4;
 globalThis.POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
 globalThis.STACK_ALIGN = 16;
-const POINTER_BITS = POINTER_SIZE * 8;
-const POINTER_TYPE = `u${POINTER_BITS}`;
-const POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
-const POINTER_SHIFT = MEMORY64 ? '3' : '2';
-const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
-const LONG_TYPE = `i${POINTER_BITS}`;
+globalThis.POINTER_BITS = POINTER_SIZE * 8;
+globalThis.POINTER_TYPE = `u${POINTER_BITS}`;
+globalThis.POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
+globalThis.POINTER_SHIFT = MEMORY64 ? '3' : '2';
+globalThis.POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
+globalThis.LONG_TYPE = `i${POINTER_BITS}`;
 
-const SIZE_TYPE = POINTER_TYPE;
+globalThis.SIZE_TYPE = POINTER_TYPE;
 
 
 // Similar to POINTER_TYPE, but this is the actual wasm type that is
 // used in practice, while POINTER_TYPE is the more refined internal
 // type (that is unsigned, where as core wasm does not have unsigned
 // types).
-const POINTER_WASM_TYPE = `i${POINTER_BITS}`;
+globalThis.POINTER_WASM_TYPE = `i${POINTER_BITS}`;
 
 function isPointerType(type) {
   return type[type.length - 1] == '*';
@@ -297,14 +287,17 @@ function getNativeTypeSize(type) {
 
 function getHeapOffset(offset, type) {
   const sz = getNativeTypeSize(type);
-  const shifts = Math.log(sz) / Math.LN2;
-  if (MEMORY64 == 1) {
-    return `((${offset})/${2 ** shifts})`;
-  } else if (CAN_ADDRESS_2GB) {
-    return `((${offset})>>>${shifts})`;
-  } else {
-    return `((${offset})>>${shifts})`;
+  if (sz == 1) {
+    return offset;
   }
+  if (MEMORY64 == 1) {
+    return `((${offset})/${sz})`;
+  }
+  const shifts = Math.log(sz) / Math.LN2;
+  if (CAN_ADDRESS_2GB) {
+    return `((${offset})>>>${shifts})`;
+  }
+  return `((${offset})>>${shifts})`;
 }
 
 function ensureDot(value) {
@@ -427,19 +420,24 @@ function makeSetValueImpl(ptr, pos, value, type) {
 }
 
 function makeHEAPView(which, start, end) {
-  const size = parseInt(which.replace('U', '').replace('F', '')) / 8;
-  const shift = Math.log2(size);
-  let mod = '';
-  if (size != 1) {
-    if (MEMORY64) {
-      mod = '/' + size;
-    } else if (CAN_ADDRESS_2GB) {
-      mod = '>>>' + shift;
-    } else {
-      mod = '>>' + shift;
-    }
-  }
-  return `HEAP${which}.subarray((${start})${mod}, (${end})${mod})`;
+  // The makeHEAPView, for legacy reasons, takes a heap "suffix"
+  // rather than the heap "type" that used by other APIs here.
+  const type = {
+    '8': 'i8',
+    'U8': 'u8',
+    '16': 'i16',
+    'U16': 'u16',
+    '32': 'i32',
+    'U32': 'u32',
+    '64': 'i64',
+    'U64': 'u64',
+    'F32': 'float',
+    'F64': 'double',
+  }[which];
+  const heap = getHeapForType(type);
+  start = getHeapOffset(start, type);
+  end = getHeapOffset(end, type);
+  return `${heap}.subarray((${start}), ${end})`;
 }
 
 // Given two values and an operation, returns the result of that operation.
@@ -691,9 +689,6 @@ function makeRetainedCompilerSettings() {
   return ret;
 }
 
-// In wasm, the heap size must be a multiple of 64KiB.
-const WASM_PAGE_SIZE = 65536;
-
 // Receives a function as text, and a function that constructs a modified
 // function, to which we pass the parsed-out arguments, body, and possible
 // "async" prefix of the input function. Returns the output of that function.
@@ -909,14 +904,14 @@ function defineI64Param(name) {
 
 
 function receiveI64ParamAsI53(name, onError, handleErrors = true) {
-  var errorHandler = handleErrors ? `if (isNaN(${name})) return ${onError}` : '';
+  var errorHandler = handleErrors ? `if (isNaN(${name})) { return ${onError}; }` : '';
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
-    return `${name} = bigintToI53Checked(${name});${errorHandler};`;
+    return `${name} = bigintToI53Checked(${name});${errorHandler}`;
   }
   // Convert the high/low pair to a Number, checking for
   // overflow of the I53 range and returning onError in that case.
-  return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high);${errorHandler};`;
+  return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high);${errorHandler}`;
 }
 
 function receiveI64ParamAsI53Unchecked(name) {

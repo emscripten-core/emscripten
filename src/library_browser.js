@@ -138,7 +138,9 @@ var LibraryBrowser = {
 #endif
         var img = new Image();
         img.onload = () => {
+#if ASSERTIONS
           assert(img.complete, `Image ${name} could not be decoded`);
+#endif
           var canvas = /** @type {!HTMLCanvasElement} */ (document.createElement('canvas'));
           canvas.width = img.width;
           canvas.height = img.height;
@@ -302,8 +304,9 @@ var LibraryBrowser = {
       if (!ctx) return null;
 
       if (setInModule) {
+#if ASSERTIONS
         if (!useWebGL) assert(typeof GLctx == 'undefined', 'cannot set in module if GLctx is used, but we are a non-GL context that would replace it');
-
+#endif
         Module.ctx = ctx;
         if (useWebGL) GL.makeContextCurrent(contextHandle);
         Module.useWebGL = useWebGL;
@@ -595,7 +598,7 @@ var LibraryBrowser = {
           Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
           Browser.mouseY = SDL.mouseY + Browser.mouseMovementY;
         } else {
-          // just add the mouse delta to the current absolut mouse position
+          // just add the mouse delta to the current absolute mouse position
           // FIXME: ideally this should be clamped against the canvas size and zero
           Browser.mouseX += Browser.mouseMovementX;
           Browser.mouseY += Browser.mouseMovementY;
@@ -783,8 +786,9 @@ var LibraryBrowser = {
       return onerror ? onerror() : undefined;
     }
 #endif
+#if ASSERTIONS
     assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
-
+#endif
     {{{ runtimeKeepalivePush() }}}
 
     var loadDone = () => {
@@ -911,8 +915,9 @@ var LibraryBrowser = {
    * @param {boolean=} noSetTiming
    */`,
   $setMainLoop: (browserIterationFunc, fps, simulateInfiniteLoop, arg, noSetTiming) => {
+#if ASSERTIONS
     assert(!Browser.mainLoop.func, 'emscripten_set_main_loop: there can only be one main loop function at once: call emscripten_cancel_main_loop to cancel the previous one before setting a new one with different parameters.');
-
+#endif
     Browser.mainLoop.func = browserIterationFunc;
     Browser.mainLoop.arg = arg;
 

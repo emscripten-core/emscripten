@@ -302,7 +302,7 @@ if (ENVIRONMENT_IS_WASM_WORKER) {
       let val = num;
       do {
         let ret = Atomics.compareExchange(HEAP32, {{{ getHeapOffset('sem', 'i32') }}},
-                                          val, /* We expect this many semaphore resoures to be available*/
+                                          val, /* We expect this many semaphore resources to be available*/
                                           val - num /* Acquire 'num' of them */);
         if (ret == val) return dispatch(ret/*index of resource acquired*/, 0/*'ok'*/);
         val = ret;

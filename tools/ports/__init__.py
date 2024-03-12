@@ -8,6 +8,8 @@ import hashlib
 import os
 import shutil
 import glob
+import importlib.util
+import sys
 from typing import Set
 from tools import cache
 from tools import config
@@ -33,8 +35,7 @@ ports_dir = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger('ports')
 
 
-def load_port(name):
-  port = __import__(name, globals(), level=1, fromlist=[None])
+def init_port(name, port):
   ports.append(port)
   port.is_contrib = name.startswith('contrib.')
   port.name = name
@@ -60,8 +61,23 @@ def load_port(name):
 
   for variant, extra_settings in port.variants.items():
     if variant in port_variants:
-      utils.exit_with_error('duplicate port variant: %s' % variant)
+      utils.exit_with_error('duplicate port variant: `%s`' % variant)
     port_variants[variant] = (port.name, extra_settings)
+
+  validate_port(port)
+
+
+def load_port(path, name=None):
+  if not name:
+    name = shared.unsuffixed_basename(path)
+  if name in ports_by_name:
+    utils.exit_with_error(f'port path [`{path}`] is invalid: duplicate port name `{name}`')
+  module_name = f'tools.ports.{name}'
+  spec = importlib.util.spec_from_file_location(module_name, path)
+  port = importlib.util.module_from_spec(spec)
+  spec.loader.exec_module(port)
+  init_port(name, port)
+  return name
 
 
 def validate_port(port):
@@ -74,30 +90,19 @@ def validate_port(port):
     assert hasattr(port, a), 'port %s is missing %s' % (port, a)
 
 
-def validate_ports():
-  for port in ports:
-    validate_port(port)
-    for dep in port.deps:
-      if dep not in ports_by_name:
-        utils.exit_with_error('unknown dependency in port: %s' % dep)
-
-
 @ToolchainProfiler.profile()
 def read_ports():
   for filename in os.listdir(ports_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
-    filename = os.path.splitext(filename)[0]
-    load_port(filename)
+    load_port(os.path.join(ports_dir, filename))
 
   contrib_dir = os.path.join(ports_dir, 'contrib')
   for filename in os.listdir(contrib_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
-    filename = os.path.splitext(filename)[0]
-    load_port('contrib.' + filename)
-
-  validate_ports()
+    name = 'contrib.' + shared.unsuffixed(filename)
+    load_port(os.path.join(contrib_dir, filename), name)
 
 
 def get_all_files_under(dirname):
@@ -295,7 +300,8 @@ class Ports:
         import requests
         response = requests.get(url)
         data = response.content
-      except ImportError:
+      except (ImportError, requests.exceptions.InvalidSchema):
+        # requests does not support 'file://' protocol and raises InvalidSchema
         from urllib.request import urlopen
         f = urlopen(url)
         data = f.read()
@@ -386,6 +392,8 @@ def resolve_dependencies(port_set, settings):
   def add_deps(node):
     node.process_dependencies(settings)
     for d in node.deps:
+      if d not in ports_by_name:
+        utils.exit_with_error(f'unknown dependency `{d}` for port `{node.name}`')
       dep = ports_by_name[d]
       if dep not in port_set:
         port_set.add(dep)
@@ -396,33 +404,61 @@ def resolve_dependencies(port_set, settings):
 
 
 def handle_use_port_error(arg, message):
-  utils.exit_with_error(f'Error with --use-port={arg} | {message}')
+  utils.exit_with_error(f'error with `--use-port={arg}` | {message}')
 
 
-def handle_use_port_arg(settings, arg):
-  args = arg.split(':', 1)
-  name, options = args[0], None
-  if len(args) == 2:
-    options = args[1]
-  if name not in ports_by_name:
-    handle_use_port_error(arg, f'invalid port name: {name}')
+def show_port_help_and_exit(port):
+  print(port.show())
+  if hasattr(port, 'DESCRIPTION'):
+    print(port.DESCRIPTION)
+  if hasattr(port, 'OPTIONS'):
+    print("Options:")
+    for option, desc in port.OPTIONS.items():
+      print(f'* {option}: {desc}')
+  else:
+    print("No options.")
+  if hasattr(port, 'URL'):
+    print(f'More info: {port.URL}')
+  sys.exit(0)
+
+
+def handle_use_port_arg(settings, arg, error_handler=None):
+  if not error_handler:
+    def error_handler(message):
+      handle_use_port_error(arg, message)
+  # Ignore ':' in first or second char of string since we could be dealing with a windows drive separator
+  pos = arg.find(':', 2)
+  if pos != -1:
+    name, options = arg[:pos], arg[pos + 1:]
+  else:
+    name, options = arg, None
+  if name.endswith('.py'):
+    port_file_path = name
+    if not os.path.isfile(port_file_path):
+      error_handler(f'not a valid port path: {port_file_path}')
+    name = load_port(port_file_path)
+  elif name not in ports_by_name:
+    error_handler(f'invalid port name: `{name}`')
   ports_needed.add(name)
   if options:
     port = ports_by_name[name]
+    if options == 'help':
+      show_port_help_and_exit(port)
     if not hasattr(port, 'handle_options'):
-      handle_use_port_error(arg, f'no options available for port {name}')
+      error_handler(f'no options available for port `{name}`')
     else:
       options_dict = {}
       for name_value in options.split(':'):
         nv = name_value.split('=', 1)
         if len(nv) != 2:
-          handle_use_port_error(arg, f'{name_value} is missing a value')
+          error_handler(f'`{name_value}` is missing a value')
         if nv[0] not in port.OPTIONS:
-          handle_use_port_error(arg, f'{nv[0]} is not supported; available options are {port.OPTIONS}')
+          error_handler(f'`{nv[0]}` is not supported; available options are {port.OPTIONS}')
         if nv[0] in options_dict:
-          handle_use_port_error(arg, f'duplicate option {nv[0]}')
+          error_handler(f'duplicate option `{nv[0]}`')
         options_dict[nv[0]] = nv[1]
-      port.handle_options(options_dict)
+      port.handle_options(options_dict, error_handler)
+  return name
 
 
 def get_needed_ports(settings):
