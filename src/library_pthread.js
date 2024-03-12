@@ -447,7 +447,7 @@ var LibraryPThread = {
       // If we're using module output and there's no explicit override, use bundler-friendly pattern.
       if (!Module['locateFile']) {
 #if PTHREADS_DEBUG
-        dbg('Allocating a new web worker from ' + new URL(getPThreadWorkerFile(), import.meta.url));
+        dbg('Allocating a new web worker from ' + new URL(Pthread.getWorkerFileName(), import.meta.url));
 #endif
 #if TRUSTED_TYPES
         // Use Trusted Types compatible wrappers.
@@ -455,19 +455,19 @@ var LibraryPThread = {
           var p = trustedTypes.createPolicy(
             'emscripten#workerPolicy1',
             {
-              createScriptURL: (ignored) => new URL(getPThreadWorkerFile(), import.meta.url);
+              createScriptURL: (ignored) => new URL(Pthread.getWorkerFileName(), import.meta.url);
             }
           );
           worker = new Worker(p.createScriptURL('ignored'), {type: 'module'});
         } else
 #endif
-        worker = new Worker(new URL(getPThreadWorkerFile(), import.meta.url), {type: 'module'});
+        worker = new Worker(new URL(Pthread.getWorkerFileName(), import.meta.url), {type: 'module'});
       } else {
 #endif
       // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
       // via Module.locateFile() function. If not specified, then the default URL 'worker.js' relative
       // to the main html file is loaded.
-      var pthreadMainJs = locateFile(getPThreadWorkerFile());
+      var pthreadMainJs = locateFile(Pthread.getWorkerFileName());
 #endif
 #if PTHREADS_DEBUG
       dbg(`Allocating a new web worker from ${pthreadMainJs}`);
@@ -519,8 +519,8 @@ var LibraryPThread = {
       return PThread.unusedWorkers.pop();
     },
 
-    getPThreadWorkerFile() {
-      return Module['pthreadWorkerFile']? Module['pthreadWorkerFile'] : '{{{ PTHREAD_WORKER_FILE }}}';
+    getWorkerFileName() {
+      return Module['pthreadWorkerFile']? Module['pthreadWorkerFile']: '{{{ PTHREAD_WORKER_FILE }}}';
     }
   },
 
