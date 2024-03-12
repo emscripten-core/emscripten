@@ -28,7 +28,7 @@ from tools import utils
 from tools import webassembly
 from tools import extract_metadata
 from tools.utils import exit_with_error, path_from_root, removeprefix
-from tools.shared import DEBUG, asmjs_mangle
+from tools.shared import DEBUG, asmjs_mangle, in_temp
 from tools.shared import treat_as_user_export
 from tools.settings import settings, user_settings
 
@@ -456,6 +456,8 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
 
     module = create_module(receiving, metadata, forwarded_json['librarySymbols'])
 
+    metadata.library_definitions = forwarded_json['libraryDefinitions']
+
     write_output_file(out, module)
 
     out.write(post)
@@ -606,10 +608,36 @@ def finalize_wasm(infile, outfile, js_syms):
   return metadata
 
 
+def create_tsd_exported_runtime_methods(metadata):
+  # Use the TypeScript compiler to generate defintions for all of the runtime
+  # exports. The JS from the library any JS docs are included in the file used
+  # for generation.
+  js_doc = 'var RuntimeExports = {};'
+  for name in settings.EXPORTED_RUNTIME_METHODS:
+    if name in metadata.library_definitions:
+      definition = metadata.library_definitions[name]
+      js_doc += f'{definition["docs"]}\nRuntimeExports[\'{name}\'] = \n{definition["snippet"]};\n'
+    else:
+      js_doc += f'/** @type {{any}} */RuntimeExports[\'{name}\'];\n'
+  js_doc_file = in_temp('jsdoc.js')
+  tsc_output_file = in_temp('jsdoc.d.ts')
+  utils.write_file(js_doc_file, js_doc)
+  if shutil.which('tsc'):
+    tsc = ['tsc']
+  else:
+    tsc = shared.get_npm_cmd('tsc')
+  cmd = tsc + ['--outFile', tsc_output_file, '--declaration', '--emitDeclarationOnly', '--allowJs', js_doc_file]
+  shared.check_call(cmd, cwd=path_from_root())
+  return utils.read_file(tsc_output_file)
+
+
 def create_tsd(metadata, embind_tsd):
-  function_exports = metadata.function_exports
   out = '// TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.\n'
+  if settings.EXPORTED_RUNTIME_METHODS:
+    out += create_tsd_exported_runtime_methods(metadata)
+  # Manually generate defintions for any Wasm function exports.
   out += 'interface WasmModule {\n'
+  function_exports = metadata.function_exports
   for name, types in function_exports.items():
     mangled = asmjs_mangle(name)
     should_export = settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS
@@ -627,11 +655,15 @@ def create_tsd(metadata, embind_tsd):
     out += ';\n'
   out += '}\n'
   out += f'\n{embind_tsd}'
+  # Combine all the various exports.
   export_interfaces = 'WasmModule'
+  if settings.EXPORTED_RUNTIME_METHODS:
+    export_interfaces += ' & typeof RuntimeExports'
+  # Add in embind defintions.
   if embind_tsd:
     export_interfaces += ' & EmbindModule'
   out += f'export type MainModule = {export_interfaces};\n'
-  if settings.EXPORT_ES6 and settings.MODULARIZE:
+  if settings.MODULARIZE:
     out += 'export default function MainModuleFactory (options?: unknown): Promise<MainModule>;\n'
   return out
 

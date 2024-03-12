@@ -3246,9 +3246,14 @@ More info: https://emscripten.org
 
   def test_emit_tsd(self):
     self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
-                      '--emit-tsd', 'test_emit_tsd.d.ts', '-Wno-experimental'] +
+                      '--emit-tsd', 'test_emit_tsd.d.ts', '-sEXPORT_ES6',
+                      '-sMODULARIZE', '-sEXPORTED_RUNTIME_METHODS=UTF8ArrayToString',
+                      '-Wno-experimental', '-o', 'test_emit_tsd.js'] +
                      self.get_emcc_args())
     self.assertFileContents(test_file('other/test_emit_tsd.d.ts'), read_file('test_emit_tsd.d.ts'))
+    # Test that the output compiles with a TS file that uses the defintions.
+    cmd = shared.get_npm_cmd('tsc') + [test_file('other/test_tsd.ts'), '--noEmit']
+    shared.check_call(cmd)
 
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
