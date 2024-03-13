@@ -296,12 +296,27 @@ class Ports:
     def retrieve():
       # retrieve from remote server
       logger.info(f'retrieving port: {name} from {url}')
+
+      # Attempt to use the `requests` module rather `urllib`.
+      # The main difference here is that `requests` will use the `certifi`
+      # certificate chain whereas `urllib` will use the system openssl
+      # certificate chain, which can be out-of-date on some macOS systems.
+      # TODO(sbc): Perhaps we can remove this at some point when we no
+      # longer support such out-of-date systems.
       try:
         import requests
-        response = requests.get(url)
-        data = response.content
-      except (ImportError, requests.exceptions.InvalidSchema):
-        # requests does not support 'file://' protocol and raises InvalidSchema
+        try:
+          response = requests.get(url)
+          data = response.content
+        except requests.exceptions.InvalidSchema:
+          # requests does not support 'file://' protocol and raises InvalidSchema
+          pass
+      except ImportError:
+        pass
+
+      # If we don't have `requests` or if we got InvalidSchema then fall
+      # back to `urllib`.
+      if not data:
         from urllib.request import urlopen
         f = urlopen(url)
         data = f.read()
