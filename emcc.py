@@ -711,7 +711,6 @@ def phase_setup(options, state, newargs):
   """
 
   if settings.RUNTIME_LINKED_LIBS:
-    diagnostics.warning('deprecated', 'RUNTIME_LINKED_LIBS is deprecated; you can simply list the libraries directly on the commandline now')
     newargs += settings.RUNTIME_LINKED_LIBS
 
   # Find input files
