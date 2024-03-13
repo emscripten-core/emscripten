@@ -4347,7 +4347,7 @@ Module["preRun"] = () => {
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
     if not self.is_wasm64() and not self.is_2gb():
-      self.assertLess(abs(size - 4800), 100)
+      self.assertLess(abs(size - 4675), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a
   # pthread by using OffscreenCanvas.
