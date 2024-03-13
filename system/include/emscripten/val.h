@@ -265,9 +265,9 @@ EMSCRIPTEN_ALWAYS_INLINE void writeGenericWireTypes(GenericWireType*& cursor, Fi
 
 template<typename... Args>
 struct WireTypePack {
-  WireTypePack(Args&&... args) {
+  WireTypePack(const Args&... args) {
     GenericWireType* cursor = elements.data();
-    writeGenericWireTypes(cursor, std::forward<Args>(args)...);
+    writeGenericWireTypes(cursor, args...);
   }
 
   operator EM_VAR_ARGS() const {
