@@ -520,7 +520,7 @@ var LibraryPThread = {
     },
 
     getWorkerFileName() {
-      return Module['pthreadWorkerFile']? Module['pthreadWorkerFile']: '{{{ PTHREAD_WORKER_FILE }}}';
+      return Module['getPThreadWorkerFile']? Module['getPThreadWorkerFile'](): '{{{ PTHREAD_WORKER_FILE }}}';
     }
   },
 
