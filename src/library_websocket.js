@@ -7,7 +7,14 @@
 var LibraryWebSocket = {
   $WS: {
     sockets: [null],
-    socketEvent: null
+    socketEvent: null,
+    getSocketEvent(socketId) {
+      // Singleton event pointer.  Use EmscriptenWebSocketCloseEvent, which is
+      // the largest event struct
+      this.socketEvent ||= _malloc({{{ C_STRUCTS.EmscriptenWebSocketCloseEvent.__size__ }}});
+      {{{ makeSetValue('this.socketEvent', 0, 'socketId', 'u32') }}};
+      return this.socketEvent;
+    },
   },
 
   emscripten_websocket_get_ready_state__deps: ['$WS'],
@@ -136,9 +143,7 @@ var LibraryWebSocket = {
 // TODO:
 //    if (thread == {{{ cDefs.EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD }}} ||
 //      (thread == _pthread_self()) return emscripten_websocket_set_onopen_callback_on_calling_thread(socketId, userData, callbackFunc);
-
-    WS.socketEvent ||= _malloc(1024); // TODO: sizeof(EmscriptenWebSocketCloseEvent), which is the largest event struct
-
+    var eventPtr = WS.getSocketEvent(socketId);
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
@@ -154,8 +159,7 @@ var LibraryWebSocket = {
 #if WEBSOCKET_DEBUG
       dbg(`websocket event "open": socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
-      HEAPU32[WS.socketEvent>>2] = socketId;
-      {{{ makeDynCall('iipp', 'callbackFunc') }}}(0/*TODO*/, WS.socketEvent, userData);
+      {{{ makeDynCall('iipp', 'callbackFunc') }}}(0/*TODO*/, eventPtr, userData);
     }
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
@@ -163,8 +167,7 @@ var LibraryWebSocket = {
   emscripten_websocket_set_onerror_callback_on_thread__deps: ['$WS'],
   emscripten_websocket_set_onerror_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onerror_callback_on_thread: (socketId, userData, callbackFunc, thread) => {
-    WS.socketEvent ||= _malloc(1024); // TODO: sizeof(EmscriptenWebSocketCloseEvent), which is the largest event struct
-
+    var eventPtr = WS.getSocketEvent(socketId);
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
@@ -180,8 +183,7 @@ var LibraryWebSocket = {
 #if WEBSOCKET_DEBUG
       dbg(`websocket event "error": socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
-      HEAPU32[WS.socketEvent>>2] = socketId;
-      {{{ makeDynCall('iipp', 'callbackFunc') }}}(0/*TODO*/, WS.socketEvent, userData);
+      {{{ makeDynCall('iipp', 'callbackFunc') }}}(0/*TODO*/, eventPtr, userData);
     }
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
@@ -189,8 +191,7 @@ var LibraryWebSocket = {
   emscripten_websocket_set_onclose_callback_on_thread__deps: ['$WS', '$stringToUTF8'],
   emscripten_websocket_set_onclose_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onclose_callback_on_thread: (socketId, userData, callbackFunc, thread) => {
-    WS.socketEvent ||= _malloc(1024); // TODO: sizeof(EmscriptenWebSocketCloseEvent), which is the largest event struct
-
+    var eventPtr = WS.getSocketEvent(socketId);
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
@@ -206,11 +207,10 @@ var LibraryWebSocket = {
 #if WEBSOCKET_DEBUG
       dbg(`websocket event "close": socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
-      HEAPU32[WS.socketEvent>>2] = socketId;
-      HEAPU32[(WS.socketEvent+4)>>2] = e.wasClean;
-      HEAPU32[(WS.socketEvent+8)>>2] = e.code;
-      stringToUTF8(e.reason, WS.socketEvent+10, 512);
-      {{{ makeDynCall('iipp', 'callbackFunc') }}}(0/*TODO*/, WS.socketEvent, userData);
+      {{{ makeSetValue('eventPtr', C_STRUCTS.EmscriptenWebSocketCloseEvent.wasClean, 'e.wasClean', 'i32') }}},
+      {{{ makeSetValue('eventPtr', C_STRUCTS.EmscriptenWebSocketCloseEvent.wasClean, 'e.code', 'i16') }}},
+      stringToUTF8(e.reason, eventPtr + {{{ C_STRUCTS.EmscriptenWebSocketCloseEvent.reason }}}, 512);
+      {{{ makeDynCall('iipp', 'callbackFunc') }}}(0/*TODO*/, eventPtr, userData);
     }
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
@@ -218,8 +218,7 @@ var LibraryWebSocket = {
   emscripten_websocket_set_onmessage_callback_on_thread__deps: ['$WS', '$stringToNewUTF8', 'malloc', 'free'],
   emscripten_websocket_set_onmessage_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onmessage_callback_on_thread: (socketId, userData, callbackFunc, thread) => {
-    WS.socketEvent ||= _malloc(1024); // TODO: sizeof(EmscriptenWebSocketCloseEvent), which is the largest event struct
-
+    var eventPtr = WS.getSocketEvent(socketId);
     var socket = WS.sockets[socketId];
     if (!socket) {
 #if WEBSOCKET_DEBUG
@@ -235,15 +234,14 @@ var LibraryWebSocket = {
 #if WEBSOCKET_DEBUG == 2
       dbg(`websocket event "message": socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
-      HEAPU32[WS.socketEvent>>2] = socketId;
-      if (typeof e.data == 'string') {
+      var isText = typeof e.data == 'string';
+      if (isText) {
         var buf = stringToNewUTF8(e.data);
         var len = lengthBytesUTF8(e.data)+1;
 #if WEBSOCKET_DEBUG
         var s = (e.data.length < 256) ? e.data : (e.data.substr(0, 256) + ` (${e.data.length-256} more characters)`);
         dbg(`WebSocket onmessage, received data: "${e.data}", ${e.data.length} chars, ${len} bytes encoded as UTF-8: "${s}"`);
 #endif
-        HEAPU32[(WS.socketEvent+12)>>2] = 1; // text data
       } else {
         var len = e.data.byteLength;
         var buf = _malloc(len);
@@ -258,11 +256,11 @@ var LibraryWebSocket = {
 
         dbg(s);
 #endif
-        HEAPU32[(WS.socketEvent+12)>>2] = 0; // binary data
       }
-      HEAPU32[(WS.socketEvent+4)>>2] = buf;
-      HEAPU32[(WS.socketEvent+8)>>2] = len;
-      {{{ makeDynCall('iipp', 'callbackFunc') }}}(0/*TODO*/, WS.socketEvent, userData);
+      {{{ makeSetValue('eventPtr', C_STRUCTS.EmscriptenWebSocketMessageEvent.data, 'buf', '*') }}},
+      {{{ makeSetValue('eventPtr', C_STRUCTS.EmscriptenWebSocketMessageEvent.numBytes, 'len', 'i32') }}},
+      {{{ makeSetValue('eventPtr', C_STRUCTS.EmscriptenWebSocketMessageEvent.isText, 'isText', 'i32') }}},
+      {{{ makeDynCall('iipp', 'callbackFunc') }}}(0/*TODO*/, eventPtr, userData);
       _free(buf);
     }
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
@@ -284,9 +282,8 @@ var LibraryWebSocket = {
       return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
     }
 
-    var createAttrs = createAttributes>>2;
-    var url = UTF8ToString(HEAP32[createAttrs]);
-    var protocols = HEAP32[createAttrs+1];
+    var url = UTF8ToString({{{ makeGetValue('createAttributes', 0, '*') }}});
+    var protocols = {{{ makeGetValue('createAttributes', C_STRUCTS.EmscriptenWebSocketCreateAttributes.protocols, '*') }}}
     // TODO: Add support for createOnMainThread==false; currently all WebSocket connections are created on the main thread.
     // var createOnMainThread = HEAP32[createAttrs+2];
 
