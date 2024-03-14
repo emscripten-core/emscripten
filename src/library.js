@@ -3561,15 +3561,15 @@ addToLibrary({
       assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);
 #endif
       return this.allocated[id];
-    };
+    }
     has(id) {
       return this.allocated[id] !== undefined;
-    };
+    }
     allocate(handle) {
       var id = this.freelist.pop() || this.allocated.length;
       this.allocated[id] = handle;
       return id;
-    };
+    }
     free(id) {
 #if ASSERTIONS
       assert(this.allocated[id] !== undefined);
@@ -3578,7 +3578,7 @@ addToLibrary({
       // apparently arrays with holes in them can be less efficient.
       this.allocated[id] = undefined;
       this.freelist.push(id);
-    };
+    }
   },
 
   $getNativeTypeSize__deps: ['$POINTER_SIZE'],

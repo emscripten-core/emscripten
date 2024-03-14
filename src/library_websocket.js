@@ -5,9 +5,18 @@
  */
 
 var LibraryWebSocket = {
+  $webSockets__deps: ['$HandleAllocator'],
+  $webSockets: "new HandleAllocator();",
+
+  $WS__deps: ['$webSockets'],
   $WS: {
-    sockets: [null],
     socketEvent: null,
+    getSocket(socketId) {
+      if (!webSockets.has(socketId)) {
+        return 0;
+      }
+      return webSockets.get(socketId);
+    },
     getSocketEvent(socketId) {
       // Singleton event pointer.  Use EmscriptenWebSocketCloseEvent, which is
       // the largest event struct
@@ -20,7 +29,7 @@ var LibraryWebSocket = {
   emscripten_websocket_get_ready_state__deps: ['$WS'],
   emscripten_websocket_get_ready_state__proxy: 'sync',
   emscripten_websocket_get_ready_state: (socketId, readyState) => {
-    var socket = WS.sockets[socketId];
+    var socket = WS.getSocket(socketId);
     if (!socket) {
 #if WEBSOCKET_DEBUG
       dbg(`emscripten_websocket_get_ready_state(): Invalid socket ID ${socketId} specified!`);
@@ -35,7 +44,7 @@ var LibraryWebSocket = {
   emscripten_websocket_get_buffered_amount__deps: ['$WS'],
   emscripten_websocket_get_buffered_amount__proxy: 'sync',
   emscripten_websocket_get_buffered_amount: (socketId, bufferedAmount) => {
-    var socket = WS.sockets[socketId];
+    var socket = WS.getSocket(socketId);
     if (!socket) {
 #if WEBSOCKET_DEBUG
       dbg(`emscripten_websocket_get_buffered_amount(): Invalid socket ID ${socketId} specified!`);
@@ -50,7 +59,7 @@ var LibraryWebSocket = {
   emscripten_websocket_get_extensions__deps: ['$WS', '$stringToUTF8'],
   emscripten_websocket_get_extensions__proxy: 'sync',
   emscripten_websocket_get_extensions: (socketId, extensions, extensionsLength) => {
-    var socket = WS.sockets[socketId];
+    var socket = WS.getSocket(socketId);
     if (!socket) {
 #if WEBSOCKET_DEBUG
       dbg(`emscripten_websocket_get_extensions(): Invalid socket ID ${socketId} specified!`);
@@ -65,7 +74,7 @@ var LibraryWebSocket = {
   emscripten_websocket_get_extensions_length__deps: ['$WS'],
   emscripten_websocket_get_extensions_length__proxy: 'sync',
   emscripten_websocket_get_extensions_length: (socketId, extensionsLength) => {
-    var socket = WS.sockets[socketId];
+    var socket = WS.getSocket(socketId);
     if (!socket) {
 #if WEBSOCKET_DEBUG
       dbg(`emscripten_websocket_get_extensions_length(): Invalid socket ID ${socketId} specified!`);
@@ -80,7 +89,7 @@ var LibraryWebSocket = {
   emscripten_websocket_get_protocol__deps: ['$WS', '$stringToUTF8'],
   emscripten_websocket_get_protocol__proxy: 'sync',
   emscripten_websocket_get_protocol: (socketId, protocol, protocolLength) => {
-    var socket = WS.sockets[socketId];
+    var socket = WS.getSocket(socketId);
     if (!socket) {
 #if WEBSOCKET_DEBUG
       dbg(`emscripten_websocket_get_protocol(): Invalid socket ID ${socketId} specified!`);
@@ -95,7 +104,7 @@ var LibraryWebSocket = {
   emscripten_websocket_get_protocol_length__deps: ['$WS'],
   emscripten_websocket_get_protocol_length__proxy: 'sync',
   emscripten_websocket_get_protocol_length: (socketId, protocolLength) => {
-    var socket = WS.sockets[socketId];
+    var socket = WS.getSocket(socketId);
     if (!socket) {
 #if WEBSOCKET_DEBUG
       dbg(`emscripten_websocket_get_protocol_length(): Invalid socket ID ${socketId} specified!`);
@@ -110,7 +119,7 @@ var LibraryWebSocket = {
   emscripten_websocket_get_url__deps: ['$WS', '$stringToUTF8'],
   emscripten_websocket_get_url__proxy: 'sync',
   emscripten_websocket_get_url: (socketId, url, urlLength) => {
-    var socket = WS.sockets[socketId];
+    var socket = WS.getSocket(socketId);
     if (!socket) {
 #if WEBSOCKET_DEBUG
       dbg(`emscripten_websocket_get_url(): Invalid socket ID ${socketId} specified!`);
@@ -125,7 +134,7 @@ var LibraryWebSocket = {
   emscripten_websocket_get_url_length__deps: ['$WS'],
   emscripten_websocket_get_url_length__proxy: 'sync',
   emscripten_websocket_get_url_length: (socketId, urlLength) => {
-    var socket = WS.sockets[socketId];
+    var socket = WS.getSocket(socketId);
     if (!socket) {
 #if WEBSOCKET_DEBUG
       dbg(`emscripten_websocket_get_url_length(): Invalid socket ID ${socketId} specified!`);
@@ -144,7 +153,7 @@ var LibraryWebSocket = {
 //    if (thread == {{{ cDefs.EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD }}} ||
 //      (thread == _pthread_self()) return emscripten_websocket_set_onopen_callback_on_calling_thread(socketId, userData, callbackFunc);
     var eventPtr = WS.getSocketEvent(socketId);
-    var socket = WS.sockets[socketId];
+    var socket = WS.getSocket(socketId);
     if (!socket) {
 #if WEBSOCKET_DEBUG
       dbg(`emscripten_websocket_set_onopen_callback(): Invalid socket ID ${socketId} specified!`);
@@ -168,7 +177,7 @@ var LibraryWebSocket = {
   emscripten_websocket_set_onerror_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onerror_callback_on_thread: (socketId, userData, callbackFunc, thread) => {
     var eventPtr = WS.getSocketEvent(socketId);
-    var socket = WS.sockets[socketId];
+    var socket = WS.getSocket(socketId);
     if (!socket) {
 #if WEBSOCKET_DEBUG
       dbg(`emscripten_websocket_set_onerror_callback(): Invalid socket ID ${socketId} specified!`);
@@ -192,7 +201,7 @@ var LibraryWebSocket = {
   emscripten_websocket_set_onclose_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onclose_callback_on_thread: (socketId, userData, callbackFunc, thread) => {
     var eventPtr = WS.getSocketEvent(socketId);
-    var socket = WS.sockets[socketId];
+    var socket = WS.getSocket(socketId);
     if (!socket) {
 #if WEBSOCKET_DEBUG
       dbg(`emscripten_websocket_set_onclose_callback(): Invalid socket ID ${socketId} specified!`);
@@ -219,7 +228,7 @@ var LibraryWebSocket = {
   emscripten_websocket_set_onmessage_callback_on_thread__proxy: 'sync',
   emscripten_websocket_set_onmessage_callback_on_thread: (socketId, userData, callbackFunc, thread) => {
     var eventPtr = WS.getSocketEvent(socketId);
-    var socket = WS.sockets[socketId];
+    var socket = WS.getSocket(socketId);
     if (!socket) {
 #if WEBSOCKET_DEBUG
       dbg(`emscripten_websocket_set_onmessage_callback(): Invalid socket ID ${socketId} specified!`);
@@ -291,8 +300,7 @@ var LibraryWebSocket = {
     // We always marshal received WebSocket data back to Wasm, so enable receiving the data as arraybuffers for easy marshalling.
     socket.binaryType = 'arraybuffer';
     // TODO: While strictly not necessary, this ID would be good to be unique across all threads to avoid confusion.
-    var socketId = WS.sockets.length;
-    WS.sockets[socketId] = socket;
+    var socketId = webSockets.allocate(socket);
 
 #if WEBSOCKET_DEBUG
     dbg(`emscripten_websocket_new(url=${url}, protocols=${protocols ? UTF8ToString(protocols).split(',') : 'null'}): created socket ID ${socketId})`);
@@ -303,7 +311,7 @@ var LibraryWebSocket = {
   emscripten_websocket_send_utf8_text__deps: ['$WS'],
   emscripten_websocket_send_utf8_text__proxy: 'sync',
   emscripten_websocket_send_utf8_text: (socketId, textData) => {
-    var socket = WS.sockets[socketId];
+    var socket = WS.getSocket(socketId);
     if (!socket) {
 #if WEBSOCKET_DEBUG
       dbg(`emscripten_websocket_send_utf8_text(): Invalid socket ID ${socketId} specified!`);
@@ -326,7 +334,7 @@ var LibraryWebSocket = {
   emscripten_websocket_send_binary__deps: ['$WS'],
   emscripten_websocket_send_binary__proxy: 'sync',
   emscripten_websocket_send_binary: (socketId, binaryData, dataLength) => {
-    var socket = WS.sockets[socketId];
+    var socket = WS.getSocket(socketId);
     if (!socket) {
 #if WEBSOCKET_DEBUG
       dbg(`emscripten_websocket_send_binary(): Invalid socket ID ${socketId} specified!`);
@@ -357,7 +365,7 @@ var LibraryWebSocket = {
   emscripten_websocket_close__deps: ['$WS'],
   emscripten_websocket_close__proxy: 'sync',
   emscripten_websocket_close: (socketId, code, reason) => {
-    var socket = WS.sockets[socketId];
+    var socket = WS.getSocket(socketId);
     if (!socket) {
 #if WEBSOCKET_DEBUG
       dbg(`emscripten_websocket_close(): Invalid socket ID ${socketId} specified!`);
@@ -383,7 +391,7 @@ var LibraryWebSocket = {
   emscripten_websocket_delete__deps: ['$WS'],
   emscripten_websocket_delete__proxy: 'sync',
   emscripten_websocket_delete: (socketId) => {
-    var socket = WS.sockets[socketId];
+    var socket = WS.getSocket(socketId);
     if (!socket) {
 #if WEBSOCKET_DEBUG
       dbg(`emscripten_websocket_delete(): Invalid socket ID ${socketId} specified!`);
@@ -395,7 +403,7 @@ var LibraryWebSocket = {
     dbg(`emscripten_websocket_delete(socketId=${socketId})`);
 #endif
     socket.onopen = socket.onerror = socket.onclose = socket.onmessage = null;
-    delete WS.sockets[socketId];
+    webSockets.free(socketId);
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
