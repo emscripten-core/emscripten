@@ -3332,11 +3332,7 @@ addToLibrary({
       }
     }
 #endif
-#if MINIMAL_RUNTIME
-    throw e;
-#else
     quit_(1, e);
-#endif
   },
 
   $runtimeKeepaliveCounter__internal: true,
