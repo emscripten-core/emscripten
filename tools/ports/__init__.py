@@ -301,7 +301,7 @@ class Ports:
 
       if utils.MACOS:
         # Use `curl` over `urllib` on macOS to avoid issues with
-        # certicicate verification.
+        # certificate verification.
         # https://stackoverflow.com/questions/40684543/how-to-make-python-use-ca-certificates-from-mac-os-truststore
         # Unlike on Windows or Linux, curl is guaranteed to always be
         # available on macOS.
