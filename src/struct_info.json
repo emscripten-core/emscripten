@@ -1145,6 +1145,24 @@
         }
     },
     {
+        "file": "emscripten/websocket.h",
+        "structs": {
+            "EmscriptenWebSocketCloseEvent": [
+                "wasClean",
+                "code",
+                "reason"
+            ],
+            "EmscriptenWebSocketMessageEvent": [
+                "data",
+                "numBytes",
+                "isText"
+            ],
+            "EmscriptenWebSocketCreateAttributes": [
+                "protocols"
+            ]
+        }
+    },
+    {
         "file": "AL/al.h",
         "defines": [
           "AL_TRUE",
