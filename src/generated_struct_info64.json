@@ -627,6 +627,22 @@
             "renderViaOffscreenBackBuffer": 52,
             "stencil": 8
         },
+        "EmscriptenWebSocketCloseEvent": {
+            "__size__": 524,
+            "code": 8,
+            "reason": 10,
+            "wasClean": 4
+        },
+        "EmscriptenWebSocketCreateAttributes": {
+            "__size__": 24,
+            "protocols": 8
+        },
+        "EmscriptenWebSocketMessageEvent": {
+            "__size__": 24,
+            "data": 8,
+            "isText": 20,
+            "numBytes": 16
+        },
         "EmscriptenWheelEvent": {
             "__size__": 104,
             "deltaMode": 96,
