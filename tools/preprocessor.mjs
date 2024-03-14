@@ -52,7 +52,7 @@ global.read = (filename) => {
 };
 
 global.load = (f) => {
-  vm.runInThisContext(read(f), { filename: find(f) });
+  vm.runInThisContext(read(f), {filename: find(f)});
 };
 
 assert(args.length >= 2);
@@ -67,6 +67,6 @@ load('parseTools.js');
 
 let output = preprocess(inputFile);
 if (expandMacros) {
-  output = processMacros(output, inputFile)
+  output = processMacros(output, inputFile);
 }
 process.stdout.write(output);

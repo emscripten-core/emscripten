@@ -863,12 +863,13 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     super().setUp()
     self.js_engines = config.JS_ENGINES.copy()
     self.settings_mods = {}
+    self.skip_exec = None
     self.emcc_args = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
     # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
     # For historical reasons emcc compiles and links as C++ by default.
     # However we want to run our tests in a more strict manner.  We can
     # remove this if the issue above is ever fixed.
-    self.set_setting('NO_DEFAULT_TO_CXX')
+    self.set_setting('DEFAULT_TO_CXX', 0)
     self.ldflags = []
     # Increate stack trace limit to maximise usefulness of test failure reports
     self.node_args = ['--stack-trace-limit=50']
@@ -1967,6 +1968,8 @@ class BrowserCore(RunnerCore):
   def run_browser(self, html_file, expected=None, message=None, timeout=None, extra_tries=1):
     if not has_browser():
       return
+    if self.skip_exec:
+      self.skipTest('skipping test execution: ' + self.skip_exec)
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
       self.skipTest('too many unresponsive tests, skipping remaining tests')
     self.assert_out_queue_empty('previous test')

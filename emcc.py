@@ -39,7 +39,7 @@ from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, get_file_suffix
 from tools.shared import run_process, exit_with_error, DEBUG
 from tools.shared import in_temp, OFormat
-from tools.shared import DYNAMICLIB_ENDINGS, STATICLIB_ENDINGS
+from tools.shared import DYNAMICLIB_ENDINGS
 from tools.response_file import substitute_response_files
 from tools import config
 from tools import cache
@@ -684,6 +684,9 @@ def phase_parse_arguments(state):
   for s in settings_changes:
     key, value = s.split('=', 1)
     key, value = normalize_boolean_setting(key, value)
+    old_value = user_settings.get(key)
+    if old_value and old_value != value:
+      diagnostics.warning('unused-command-line-argument', f'-s{key} specified multiple times. Ignoring previous value (`{old_value}`)')
     user_settings[key] = value
 
   # STRICT is used when applying settings so it needs to be applied first before
@@ -708,7 +711,6 @@ def phase_setup(options, state, newargs):
   """
 
   if settings.RUNTIME_LINKED_LIBS:
-    diagnostics.warning('deprecated', 'RUNTIME_LINKED_LIBS is deprecated; you can simply list the libraries directly on the commandline now')
     newargs += settings.RUNTIME_LINKED_LIBS
 
   # Find input files
@@ -752,12 +754,6 @@ def phase_setup(options, state, newargs):
       file_suffix = get_file_suffix(arg)
       if file_suffix in HEADER_ENDINGS:
         has_header_inputs = True
-      if file_suffix in STATICLIB_ENDINGS and not building.is_ar(arg):
-        if building.is_bitcode(arg):
-          message = f'{arg}: File has a suffix of a static library {STATICLIB_ENDINGS}, but instead is an LLVM bitcode file! When linking LLVM bitcode files use .bc or .o.'
-        else:
-          message = arg + ': Unknown format, not a static library!'
-        exit_with_error(message)
       input_files.append((i, arg))
     elif arg.startswith('-L'):
       state.add_link_flag(i, arg)
@@ -1147,6 +1143,12 @@ def parse_args(newargs):
         requested_level = 1
         settings.SHRINK_LEVEL = 0
         settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 1)
+      elif requested_level == 'fast':
+        # TODO(https://github.com/emscripten-core/emscripten/issues/21497):
+        # If we ever map `-ffast-math` to `wasm-opt --fast-math` then
+        # then we should enable that too here.
+        requested_level = 3
+        settings.SHRINK_LEVEL = 0
       else:
         settings.SHRINK_LEVEL = 0
       settings.OPT_LEVEL = validate_arg_level(requested_level, 3, 'invalid optimization level: ' + arg, clamp=True)

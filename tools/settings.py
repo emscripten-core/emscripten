@@ -119,6 +119,8 @@ DEPRECATED_SETTINGS = {
     'SUPPORT_ERRNO': 'emscripten no longer uses the setErrNo library function',
     'EXTRA_EXPORTED_RUNTIME_METHODS': 'please use EXPORTED_RUNTIME_METHODS instead',
     'DEMANGLE_SUPPORT': 'mangled names no longer appear in stack traces',
+    'RUNTIME_LINKED_LIBS': 'you can simply list the libraries directly on the commandline now',
+    'CLOSURE_WARNINGS': 'use -Wclosure instead',
 }
 
 # Settings that don't need to be externalized when serializing to json because they

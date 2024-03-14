@@ -388,7 +388,7 @@ function runJSDCE(ast, aggressive) {
         }
         if (param.type === 'ArrayPattern') {
           for (var elem of param.elements) {
-            traverse(elem);
+            if (elem) traverse(elem);
           }
         } else if (param.type === 'ObjectPattern') {
           for (var prop of param.properties) {

@@ -490,7 +490,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   @parameterized({
     'c': [EMCC, '.c'],
-    'cxx': [EMXX, '.cpp']})
+    'cxx': [EMXX, '.cpp']
+  })
   def test_emcc_2(self, compiler, suffix):
     # emcc src.cpp -c    and   emcc -c src.cpp -o src.[o|foo|so] ==> should always give an object file
     for args in [[], ['-o', 'src.o'], ['-o', 'src.foo'], ['-o', 'src.so']]:
@@ -511,9 +512,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     err = self.run_process([EMCC, '-c', test_file('hello_world.c'), '-o', 'out.bc'], stderr=PIPE).stderr
     self.assertContained('emcc: warning: .bc output file suffix used without -flto or -emit-llvm', err)
 
+  def test_bc_as_archive(self):
+    self.run_process([EMCC, '-c', test_file('hello_world.c'), '-flto', '-o', 'out.a'])
+    self.run_process([EMCC, 'out.a'])
+
   @parameterized({
     'c': [EMCC, '.c'],
-    'cxx': [EMXX, '.cpp']})
+    'cxx': [EMXX, '.cpp']
+  })
   def test_emcc_3(self, compiler, suffix):
     # handle singleton archives
     self.run_process([compiler, '-c', test_file('hello_world' + suffix), '-o', 'a.o'])
@@ -538,9 +544,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       delete_file(path)
 
   @is_slow_test
-  @parameterized({
-    'c': [EMCC],
-    'cxx': [EMXX]})
+  @with_both_compilers
   def test_emcc_4(self, compiler):
     # Optimization: emcc src.cpp -o something.js [-Ox]. -O0 is the same as not specifying any optimization setting
     # link_param are used after compiling first
@@ -4687,8 +4691,8 @@ int main() {
       self.run_process([EMXX, test_file('fs_after_main.cpp')])
       self.assertContained('Test passed.', self.run_js('a.out.js'))
 
-  def test_os_oz(self):
-    for opt in ['-O1', '-O2', '-Os', '-Oz', '-O3', '-Og']:
+  def test_opt_levels(self):
+    for opt in ['-O1', '-O2', '-Os', '-Oz', '-O3', '-Og', '-Ofast']:
       print(opt)
       proc = self.run_process([EMCC, '-v', test_file('hello_world.c'), opt], stderr=PIPE)
       self.assertContained(opt, proc.stderr)
@@ -7811,6 +7815,10 @@ high = 1234
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=[{"a":1}]'])
     self.assertContained("list members in settings must be strings (not $<class 'dict'>)", err)
 
+  def test_dash_s_repeated(self):
+    err = self.expect_fail([EMCC, '-Werror', test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=foo', '-sEXPORTED_FUNCTIONS=bar'])
+    self.assertContained('emcc: error: -sEXPORTED_FUNCTIONS specified multiple times. Ignoring previous value (`foo`) [-Wunused-command-line-argument]', err)
+
   def test_zeroinit(self):
     create_file('src.c', r'''
 #include <stdio.h>
@@ -8818,14 +8826,16 @@ int main() {
     self.emcc_args += ['-fwasm-exceptions', '-flto']
     self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
-  def test_wasm_nope(self):
-    for opts in [[], ['-O2']]:
-      print(opts)
-      # check we show a good error message if there is no wasm support
-      create_file('pre.js', 'WebAssembly = undefined;\n')
-      self.run_process([EMCC, test_file('hello_world.c'), '--pre-js', 'pre.js'] + opts)
-      out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-      self.assertContained('no native wasm support detected', out)
+  @parameterized({
+    '': ([],),
+    'O2': (['-O2'],),
+  })
+  def test_missing_wasm(self, args):
+    # Check that in debug builds we show a good error message if there is no wasm support
+    create_file('pre.js', 'WebAssembly = undefined;\n')
+    self.run_process([EMCC, test_file('hello_world.c'), '--pre-js', 'pre.js'] + args)
+    out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
+    self.assertContainedIf('no native wasm support detected', out, not args)
 
   def test_exceptions_c_linker(self):
     # Test that we don't try to create __cxa_find_matching_catch_xx function automatically
@@ -11793,6 +11803,11 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('other/test_pthread_asyncify.c')
 
+  @node_pthreads
+  def test_pthread_reuse(self):
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    self.do_run_in_out_file_test('other/test_pthread_reuse.c')
+
   def test_stdin_preprocess(self):
     create_file('temp.h', '#include <string>')
     outputStdin = self.run_process([EMCC, '-x', 'c++', '-dM', '-E', '-'], input="#include <string>", stdout=PIPE).stdout
@@ -12017,21 +12032,23 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
 
   @parameterized({
     '': ([],),
-    'minimal': (['-sMINIMAL_RUNTIME', '-sSUPPORT_ERRNO'],),
+    'minimal': (['-sMINIMAL_RUNTIME'],),
   })
   def test_support_errno(self, args):
     self.emcc_args += args + ['-sEXPORTED_FUNCTIONS=_main,___errno_location', '-Wno-deprecated']
 
-    self.do_other_test('test_support_errno.c')
-    size_default = os.path.getsize('test_support_errno.js')
+    self.do_other_test('test_support_errno.c', emcc_args=['-sSUPPORT_ERRNO'])
+    size_enabled = os.path.getsize('test_support_errno.js')
 
     # Run the same test again but with SUPPORT_ERRNO disabled.  This time we don't expect errno
     # to be set after the failing syscall.
-    self.emcc_args += ['-sSUPPORT_ERRNO=0']
-    self.do_other_test('test_support_errno.c', out_suffix='_disabled')
+    self.do_other_test('test_support_errno.c', emcc_args=['-sSUPPORT_ERRNO=0'], out_suffix='_disabled')
 
     # Verify the JS output was smaller
-    self.assertLess(os.path.getsize('test_support_errno.js'), size_default)
+    size_disabled = os.path.getsize('test_support_errno.js')
+    print(size_enabled)
+    print(size_disabled)
+    self.assertLess(size_disabled, size_enabled)
 
   def test_assembly(self):
     self.run_process([EMCC, '-c', test_file('other/test_asm.s'), '-o', 'foo.o'])
@@ -13541,7 +13558,7 @@ int main() {
 
   # Tests the internal test suite of tools/unsafe_optimizations.js
   def test_unsafe_optimizations(self):
-    self.run_process(config.NODE_JS_TEST + [path_from_root('tools', 'unsafe_optimizations.js'), '--test'])
+    self.run_process(config.NODE_JS_TEST + [path_from_root('tools', 'unsafe_optimizations.mjs'), '--test'])
 
   @requires_v8
   def test_extended_const(self):
@@ -13550,9 +13567,9 @@ int main() {
     self.do_runf('hello_world.c', emcc_args=['-sEXPORTED_FUNCTIONS=_main,___stdout_used', '-mextended-const', '-sMAIN_MODULE=2'])
     wat = self.get_wasm_text('hello_world.wasm')
     # Test that extended-const expressions are used in the data segments.
-    self.assertTrue(re.search(r'\(data (\$\S+ )?\(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat))
+    self.assertContained(r'\(data (\$\S+ )?\(offset \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat, regex=True)
     # Test that extended-const expressions are used in at least one global initializer.
-    self.assertTrue(re.search(r'\(global \$\S+ i32 \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat))
+    self.assertContained(r'\(global \$\S+ i32 \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat, regex=True)
 
   # Smoketest for MEMORY64 setting.  Most of the testing of MEMORY64 is by way of the wasm64
   # variant of the core test suite.

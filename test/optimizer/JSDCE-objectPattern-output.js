@@ -2,7 +2,7 @@ let d = 40;
 
 let z = 50;
 
-globalThis.f = function(r) {
+globalThis.f = function([, r]) {
  let {a: a, b: b} = r;
  let {z: c} = r;
  let [, i, {foo: p, bar: q}] = r;

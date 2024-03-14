@@ -1406,6 +1406,8 @@ RUNTIME_LINKED_LIBS
 
 Deprecated, list shared libraries directly on the command line instead.
 
+.. note:: This setting is deprecated
+
 .. _build_as_worker:
 
 BUILD_AS_WORKER

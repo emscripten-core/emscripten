@@ -167,13 +167,6 @@ function isNiceIdent(ident, loose) {
   return /^\(?[$_]+[\w$_\d ]*\)?$/.test(ident);
 }
 
-// Simple variables or numbers, or things already quoted, do not need to be quoted
-function needsQuoting(ident) {
-  if (/^[-+]?[$_]?[\w$_\d]*$/.test(ident)) return false; // number or variable
-  if (ident[0] === '(' && ident[ident.length - 1] === ')' && ident.indexOf('(', 1) < 0) return false; // already fully quoted
-  return true;
-}
-
 globalThis.POINTER_SIZE = MEMORY64 ? 8 : 4;
 globalThis.POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
 globalThis.STACK_ALIGN = 16;
@@ -911,14 +904,14 @@ function defineI64Param(name) {
 
 
 function receiveI64ParamAsI53(name, onError, handleErrors = true) {
-  var errorHandler = handleErrors ? `if (isNaN(${name})) return ${onError}` : '';
+  var errorHandler = handleErrors ? `if (isNaN(${name})) { return ${onError}; }` : '';
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
-    return `${name} = bigintToI53Checked(${name});${errorHandler};`;
+    return `${name} = bigintToI53Checked(${name});${errorHandler}`;
   }
   // Convert the high/low pair to a Number, checking for
   // overflow of the I53 range and returning onError in that case.
-  return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high);${errorHandler};`;
+  return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high);${errorHandler}`;
 }
 
 function receiveI64ParamAsI53Unchecked(name) {
