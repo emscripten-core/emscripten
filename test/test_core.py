@@ -894,6 +894,9 @@ base align: 0, 0, 0, 0'''])
 
   @with_both_sjlj
   def test_longjmp_zero(self):
+    if '-fsanitize=undefined' in self.emcc_args and self.get_setting('SUPPORT_LONGJMP') == 'emscripten':
+      # For some reason this tests fails under ubsan, but only with emscripten EH.
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/21533')
     self.do_core_test('test_longjmp_zero.c')
 
   def test_longjmp_with_and_without_exceptions(self):
