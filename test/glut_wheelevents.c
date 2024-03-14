@@ -33,16 +33,16 @@ int main(int argc, char *argv[]) {
           if (!isFirefox) {
           // mouse wheel event for IE9, Chrome, Safari, Opera
           event.initMouseEvent('mousewheel', true, true, window,
-                               0, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
+                               0, mainCanvas.offsetLeft + x, mainCanvas.offsetTop + y, mainCanvas.offsetLeft + x, mainCanvas.offsetTop + y,
                                0, 0, 0, 0, 0, null);
                                event.wheelDelta = delta;
           } else {
             // mouse wheel event for Firefox, the delta sign is inversed for that browser and is stored in the detail property of the mouse event
             event.initMouseEvent('DOMMouseScroll', true, true, window,
-                                 -delta, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
+                                 -delta, mainCanvas.offsetLeft + x, mainCanvas.offsetTop + y, mainCanvas.offsetLeft + x, mainCanvas.offsetTop + y,
                                  0, 0, 0, 0, 0, null);
           }
-          Module['canvas'].dispatchEvent(event);
+          mainCanvas.dispatchEvent(event);
       }
   ));
 

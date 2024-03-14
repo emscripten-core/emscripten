@@ -11,6 +11,7 @@ var LibraryBrowser = {
     '$callUserCallback',
     '$safeSetTimeout',
     '$warnOnce',
+    '$mainCanvas',
     'emscripten_set_main_loop_timing',
 #if FILESYSTEM
     '$preloadPlugins',
@@ -225,12 +226,12 @@ var LibraryBrowser = {
       // Canvas event setup
 
       function pointerLockChange() {
-        Browser.pointerLock = document['pointerLockElement'] === Module['canvas'] ||
-                              document['mozPointerLockElement'] === Module['canvas'] ||
-                              document['webkitPointerLockElement'] === Module['canvas'] ||
-                              document['msPointerLockElement'] === Module['canvas'];
+        Browser.pointerLock = document['pointerLockElement'] === mainCanvas ||
+                              document['mozPointerLockElement'] === mainCanvas ||
+                              document['webkitPointerLockElement'] === mainCanvas ||
+                              document['msPointerLockElement'] === mainCanvas;
       }
-      var canvas = Module['canvas'];
+      var canvas = mainCanvas;
       if (canvas) {
         // forced aspect ratio can be enabled by defining 'forcedAspectRatio' on Module
         // Module['forcedAspectRatio'] = 4 / 3;
@@ -254,8 +255,8 @@ var LibraryBrowser = {
 
         if (Module['elementPointerLock']) {
           canvas.addEventListener("click", (ev) => {
-            if (!Browser.pointerLock && Module['canvas'].requestPointerLock) {
-              Module['canvas'].requestPointerLock();
+            if (!Browser.pointerLock && mainCanvas.requestPointerLock) {
+              mainCanvas.requestPointerLock();
               ev.preventDefault();
             }
           }, false);
@@ -264,7 +265,7 @@ var LibraryBrowser = {
     },
 
     createContext(/** @type {HTMLCanvasElement} */ canvas, useWebGL, setInModule, webGLContextAttributes) {
-      if (useWebGL && Module.ctx && canvas == Module.canvas) return Module.ctx; // no need to recreate GL context if it's already been created for this canvas.
+      if (useWebGL && Module.ctx && canvas == mainCanvas) return Module.ctx; // no need to recreate GL context if it's already been created for this canvas.
 
       var ctx;
       var contextHandle;
@@ -327,7 +328,7 @@ var LibraryBrowser = {
       if (typeof Browser.lockPointer == 'undefined') Browser.lockPointer = true;
       if (typeof Browser.resizeCanvas == 'undefined') Browser.resizeCanvas = false;
 
-      var canvas = Module['canvas'];
+      var canvas = mainCanvas;
       function fullscreenChange() {
         Browser.isFullscreen = false;
         var canvasContainer = canvas.parentNode;
@@ -544,9 +545,9 @@ var LibraryBrowser = {
     calculateMouseCoords(pageX, pageY) {
       // Calculate the movement based on the changes
       // in the coordinates.
-      var rect = Module["canvas"].getBoundingClientRect();
-      var cw = Module["canvas"].width;
-      var ch = Module["canvas"].height;
+      var rect = mainCanvas.getBoundingClientRect();
+      var cw = mainCanvas.width;
+      var ch = mainCanvas.height;
 
       // Neither .scrollX or .pageXOffset are defined in a spec, but
       // we prefer .scrollX because it is currently in a spec draft.
@@ -631,13 +632,11 @@ var LibraryBrowser = {
     resizeListeners: [],
 
     updateResizeListeners() {
-      var canvas = Module['canvas'];
-      Browser.resizeListeners.forEach((listener) => listener(canvas.width, canvas.height));
+      Browser.resizeListeners.forEach((listener) => listener(mainCanvas.width, mainCanvas.height));
     },
 
     setCanvasSize(width, height, noUpdates) {
-      var canvas = Module['canvas'];
-      Browser.updateCanvasDimensions(canvas, width, height);
+      Browser.updateCanvasDimensions(mainCanvas, width, height);
       if (!noUpdates) Browser.updateResizeListeners();
     },
 
@@ -650,7 +649,7 @@ var LibraryBrowser = {
         flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
       }
-      Browser.updateCanvasDimensions(Module['canvas']);
+      Browser.updateCanvasDimensions(mainCanvas);
       Browser.updateResizeListeners();
     },
 
@@ -661,7 +660,7 @@ var LibraryBrowser = {
         flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
         {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}};
       }
-      Browser.updateCanvasDimensions(Module['canvas']);
+      Browser.updateCanvasDimensions(mainCanvas);
       Browser.updateResizeListeners();
     },
 
@@ -1167,9 +1166,8 @@ var LibraryBrowser = {
 
   emscripten_get_canvas_size__proxy: 'sync',
   emscripten_get_canvas_size: (width, height, isFullscreen) => {
-    var canvas = Module['canvas'];
-    {{{ makeSetValue('width', '0', 'canvas.width', 'i32') }}};
-    {{{ makeSetValue('height', '0', 'canvas.height', 'i32') }}};
+    {{{ makeSetValue('width', '0', 'mainCanvas.width', 'i32') }}};
+    {{{ makeSetValue('height', '0', 'mainCanvas.height', 'i32') }}};
     {{{ makeSetValue('isFullscreen', '0', 'Browser.isFullscreen ? 1 : 0', 'i32') }}};
   },
 

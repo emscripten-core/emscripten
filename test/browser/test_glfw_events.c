@@ -184,7 +184,7 @@
 
         emscripten_run_script(MULTILINE(
             Module.injectMouseEvent = function(x, y, event_, button) {
-                var canvas = Module['canvas'];
+                var canvas = mainCanvas;
                 var event = new MouseEvent(event_, {
                     'view': window,
                     'bubbles': true,
@@ -198,7 +198,7 @@
                 canvas.dispatchEvent(event);
 
                 //var event = document.createEvent("MouseEvents");
-                //var canvas = Module['canvas'];
+                //var canvas = mainCanvas;
                 //event.initMouseEvent(event_, true, true, window, 0, canvas.offsetLeft + x, canvas.offsetTop + y, canvas.offsetLeft + x, canvas.offsetTop + y, 0, 0, 0, 0, button, null);
                 //canvas.dispatchEvent(event);
             };

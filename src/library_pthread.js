@@ -240,9 +240,9 @@ var LibraryPThread = {
 #if OFFSCREENCANVAS_SUPPORT
       if (typeof GL != 'undefined') {
         Object.assign(GL.offscreenCanvases, data.offscreenCanvases);
-        if (!Module['canvas'] && data.moduleCanvasId && GL.offscreenCanvases[data.moduleCanvasId]) {
-          Module['canvas'] = GL.offscreenCanvases[data.moduleCanvasId].offscreenCanvas;
-          Module['canvas'].id = data.moduleCanvasId;
+        if (!mainCanvas && data.moduleCanvasId && GL.offscreenCanvases[data.moduleCanvasId]) {
+          mainCanvas = GL.offscreenCanvases[data.moduleCanvasId].offscreenCanvas;
+          mainCanvas.id = data.moduleCanvasId;
         }
       }
 #endif
@@ -743,6 +743,7 @@ var LibraryPThread = {
   __pthread_create_js__noleakcheck: true,
 #endif
   __pthread_create_js__deps: ['$spawnThread', 'pthread_self', '$pthreadCreateProxied',
+    '$mainCanvas',
 #if OFFSCREENCANVAS_SUPPORT
     'malloc',
 #endif
@@ -780,19 +781,19 @@ var LibraryPThread = {
 #endif
 
     var offscreenCanvases = {}; // Dictionary of OffscreenCanvas objects we'll transfer to the created thread to own
-    var moduleCanvasId = Module['canvas'] ? Module['canvas'].id : '';
+    var moduleCanvasId = mainCanvas ? mainCanvas.id : '';
     // Note that transferredCanvasNames might be null (so we cannot do a for-of loop).
     for (var i in transferredCanvasNames) {
       var name = transferredCanvasNames[i].trim();
       var offscreenCanvasInfo;
       try {
         if (name == '#canvas') {
-          if (!Module['canvas']) {
+          if (!mainCanvas) {
             err(`pthread_create: could not find canvas with ID "${name}" to transfer to thread!`);
             error = {{{ cDefs.EINVAL }}};
             break;
           }
-          name = Module['canvas'].id;
+          name = mainCanvas.id;
         }
 #if ASSERTIONS
         assert(typeof GL == 'object', 'OFFSCREENCANVAS_SUPPORT assumes GL is in use (you can force-include it with \'-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$GL\')');
@@ -800,9 +801,9 @@ var LibraryPThread = {
         if (GL.offscreenCanvases[name]) {
           offscreenCanvasInfo = GL.offscreenCanvases[name];
           GL.offscreenCanvases[name] = null; // This thread no longer owns this canvas.
-          if (Module['canvas'] instanceof OffscreenCanvas && name === Module['canvas'].id) Module['canvas'] = null;
+          if (mainCanvas instanceof OffscreenCanvas && name === mainCanvas.id) mainCanvas = null;
         } else if (!ENVIRONMENT_IS_PTHREAD) {
-          var canvas = (Module['canvas'] && Module['canvas'].id === name) ? Module['canvas'] : document.querySelector(name);
+          var canvas = (mainCanvas && mainCanvas.id === name) ? mainCanvas : document.querySelector(name);
           if (!canvas) {
             err(`pthread_create: could not find canvas with ID "${name}" to transfer to thread!`);
             error = {{{ cDefs.EINVAL }}};

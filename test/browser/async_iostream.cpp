@@ -28,7 +28,7 @@ void mainLoop() {
         var event = document.createEvent('Event');
         event.initEvent(type, true, true);
         for(var d in data) event[d] = data[d];
-        Module['canvas'].dispatchEvent(event);
+        mainCanvas.dispatchEvent(event);
       }, Math.random()*100);
     }
     sendEvent('mousedown', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 1 });

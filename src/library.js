@@ -3599,6 +3599,7 @@ addToLibrary({
 #endif
 
   $noExitRuntime: "{{{ makeModuleReceiveExpr('noExitRuntime', !EXIT_RUNTIME) }}}",
+  $mainCanvas: "{{{ makeModuleReceiveExpr('canvas') }}}",
 
   // We used to define these globals unconditionally in support code.
   // Instead, we now define them here so folks can pull it in explicitly, on

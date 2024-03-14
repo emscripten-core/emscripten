@@ -5,7 +5,7 @@
  */
 
 var LibraryGLUT = {
-  $GLUT__deps: ['$Browser', 'glutPostRedisplay'],
+  $GLUT__deps: ['$Browser', '$mainCanvas', 'glutPostRedisplay'],
   $GLUT: {
     initTime: null,
     idleFunc: null,
@@ -52,7 +52,7 @@ var LibraryGLUT = {
       var newY = Browser.mouseY;
       if (newX == lastX && newY == lastY) return;
 
-      if (GLUT.buttons == 0 && event.target == Module["canvas"] && GLUT.passiveMotionFunc) {
+      if (GLUT.buttons == 0 && event.target == mainCanvas && GLUT.passiveMotionFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
         {{{ makeDynCall('vii', 'GLUT.passiveMotionFunc') }}}(lastX, lastY);
@@ -201,7 +201,7 @@ var LibraryGLUT = {
     },
 
     touchHandler: (event) => {
-      if (event.target != Module['canvas']) {
+      if (event.target != mainCanvas) {
         return;
       }
 
@@ -231,7 +231,7 @@ var LibraryGLUT = {
 
       GLUT.buttons |= (1 << event['button']);
 
-      if (event.target == Module["canvas"] && GLUT.mouseFunc) {
+      if (event.target == mainCanvas && GLUT.mouseFunc) {
         try {
           event.target.setCapture();
         } catch (e) {}
@@ -359,7 +359,7 @@ var LibraryGLUT = {
       // Firefox
       window.removeEventListener("DOMMouseScroll", GLUT.onMouseWheel, true);
 
-      Module["canvas"].width = Module["canvas"].height = 1;
+      mainCanvas.width = mainCanvas.height = 1;
     });
   },
 
@@ -380,13 +380,13 @@ var LibraryGLUT = {
       case 101: /* GLUT_WINDOW_Y */
         return 0; /* TODO */
       case 102: /* GLUT_WINDOW_WIDTH */
-        return Module['canvas'].width;
+        return mainCanvas.width;
       case 103: /* GLUT_WINDOW_HEIGHT */
-        return Module['canvas'].height;
+        return mainCanvas.height;
       case 200: /* GLUT_SCREEN_WIDTH */
-        return Module['canvas'].width;
+        return mainCanvas.width;
       case 201: /* GLUT_SCREEN_HEIGHT */
-        return Module['canvas'].height;
+        return mainCanvas.height;
       case 500: /* GLUT_INIT_WINDOW_X */
         return 0; /* TODO */
       case 501: /* GLUT_INIT_WINDOW_Y */
@@ -550,7 +550,7 @@ var LibraryGLUT = {
       default:
         throw "glutSetCursor: Unknown cursor type: " + cursor;
     }
-    Module['canvas'].style.cursor = cursorStyle;
+    mainCanvas.style.cursor = cursorStyle;
   },
 
   glutCreateWindow__proxy: 'sync',
@@ -566,14 +566,14 @@ var LibraryGLUT = {
     // TODO: Make glutCreateWindow explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
     GL.enableOffscreenFramebufferAttributes(contextAttributes);
 #endif
-    Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
+    Module.ctx = Browser.createContext(mainCanvas, true, true, contextAttributes);
     return Module.ctx ? 1 /* a new GLUT window ID for the created context */ : 0 /* failure */;
   },
 
   glutDestroyWindow__proxy: 'sync',
   glutDestroyWindow__deps: ['$Browser'],
   glutDestroyWindow: (name) => {
-    Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
+    Module.ctx = Browser.destroyContext(mainCanvas, true, true);
     return 1;
   },
 
@@ -602,8 +602,8 @@ var LibraryGLUT = {
   glutFullScreen: () => {
     GLUT.windowX = 0; // TODO
     GLUT.windowY = 0; // TODO
-    GLUT.windowWidth  = Module['canvas'].width;
-    GLUT.windowHeight = Module['canvas'].height;
+    GLUT.windowWidth  = mainCanvas.width;
+    GLUT.windowHeight = mainCanvas.height;
     document.addEventListener('fullscreenchange', GLUT.onFullscreenEventChange, true);
     document.addEventListener('mozfullscreenchange', GLUT.onFullscreenEventChange, true);
     document.addEventListener('webkitfullscreenchange', GLUT.onFullscreenEventChange, true);
@@ -632,7 +632,7 @@ var LibraryGLUT = {
   glutMainLoop__proxy: 'sync',
   glutMainLoop__deps: ['$GLUT', 'glutReshapeWindow', 'glutPostRedisplay'],
   glutMainLoop: () => {
-    _glutReshapeWindow(Module['canvas'].width, Module['canvas'].height);
+    _glutReshapeWindow(mainCanvas.width, mainCanvas.height);
     _glutPostRedisplay();
     throw 'unwind';
   },

@@ -17,7 +17,7 @@
 
 var LibrarySDL = {
   $SDL__deps: [
-    '$PATH', '$Browser', 'SDL_GetTicks', 'SDL_LockSurface',
+    '$PATH', '$Browser', '$mainCanvas', 'SDL_GetTicks', 'SDL_LockSurface', 
     // For makeCEvent().
     '$intArrayFromString',
     // Many SDL functions depend on malloc/free
@@ -373,8 +373,8 @@ var LibrarySDL = {
 
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect+C_STRUCTS.SDL_Rect.x, '0', 'i32') }}};
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect+C_STRUCTS.SDL_Rect.y, '0', 'i32') }}};
-      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect+C_STRUCTS.SDL_Rect.w, 'Module["canvas"].width', 'i32') }}};
-      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect+C_STRUCTS.SDL_Rect.h, 'Module["canvas"].height', 'i32') }}};
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect+C_STRUCTS.SDL_Rect.w, 'mainCanvas.width', 'i32') }}};
+      {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.clip_rect+C_STRUCTS.SDL_Rect.h, 'mainCanvas.height', 'i32') }}};
 
       {{{ makeSetValue('surf', C_STRUCTS.SDL_Surface.refcount, '1', 'i32') }}};
 
@@ -391,7 +391,9 @@ var LibrarySDL = {
       // Decide if we want to use WebGL or not
       SDL.GL = SDL.GL || is_SDL_OPENGL;
       var canvas;
-      if (!usePageCanvas) {
+      if (usePageCanvas) {
+        canvas = mainCanvas;
+      } else {
         if (SDL.canvasPool.length > 0) {
           canvas = SDL.canvasPool.pop();
         } else {
@@ -399,8 +401,6 @@ var LibrarySDL = {
         }
         canvas.width = width;
         canvas.height = height;
-      } else {
-        canvas = Module['canvas'];
       }
 
       var webGLContextAttributes = {
@@ -445,8 +445,8 @@ var LibrarySDL = {
         return;
       }
 
-      var fullWidth  = Module['canvas'].width;
-      var fullHeight = Module['canvas'].height;
+      var fullWidth  = mainCanvas.width;
+      var fullHeight = mainCanvas.height;
 
       var startX  = rX || 0;
       var startY  = rY || 0;
@@ -980,8 +980,8 @@ var LibrarySDL = {
         case 'touchstart': case 'touchend': case 'touchmove': {
           var touch = event.touch;
           if (!Browser.touches[touch.identifier]) break;
-          var w = Module['canvas'].width;
-          var h = Module['canvas'].height;
+          var w = mainCanvas.width;
+          var h = mainCanvas.height;
           var x = Browser.touches[touch.identifier].x / w;
           var y = Browser.touches[touch.identifier].y / h;
           var lx = Browser.lastTouches[touch.identifier].x / w;
@@ -1418,8 +1418,8 @@ var LibrarySDL = {
   SDL_GetVideoInfo: () => {
     var ret = _malloc({{{ C_STRUCTS.SDL_VideoInfo.__size__ }}});
     zeroMemory(ret, {{{ C_STRUCTS.SDL_version.__size__ }}});
-    {{{ makeSetValue('ret', C_STRUCTS.SDL_VideoInfo.current_w, 'Module["canvas"].width', 'i32') }}};
-    {{{ makeSetValue('ret', C_STRUCTS.SDL_VideoInfo.current_h, 'Module["canvas"].height', 'i32') }}};
+    {{{ makeSetValue('ret', C_STRUCTS.SDL_VideoInfo.current_w, 'mainCanvas.width', 'i32') }}};
+    {{{ makeSetValue('ret', C_STRUCTS.SDL_VideoInfo.current_h, 'mainCanvas.height', 'i32') }}};
     return ret;
   },
 
@@ -1465,14 +1465,12 @@ var LibrarySDL = {
      'mousedown', 'mouseup', 'mousemove',
      'mousewheel', 'wheel', 'mouseout',
      'DOMMouseScroll',
-    ].forEach((e) => Module['canvas'].addEventListener(e, SDL.receiveEvent, true));
-
-    var canvas = Module['canvas'];
+    ].forEach((e) => mainCanvas.addEventListener(e, SDL.receiveEvent, true));
 
     // (0,0) means 'use fullscreen' in native; in Emscripten, use the current canvas size.
     if (width == 0 && height == 0) {
-      width = canvas.width;
-      height = canvas.height;
+      width = mainCanvas.width;
+      height = mainCanvas.height;
     }
 
     if (!SDL.addedResizeListener) {
@@ -1685,8 +1683,8 @@ var LibrarySDL = {
         }
       }
     } else {
-      var width = Module['canvas'].width;
-      var height = Module['canvas'].height;
+      var width = mainCanvas.width;
+      var height = mainCanvas.height;
       var s = surfData.buffer;
       var data = surfData.image.data;
       var colors = surfData.colors; // TODO: optimize using colors32
@@ -1779,7 +1777,7 @@ var LibrarySDL = {
   SDL_WarpMouse: (x, y) => {
     return; // TODO: implement this in a non-buggy way. Need to keep relative mouse movements correct after calling this
     /*
-    var rect = Module["canvas"].getBoundingClientRect();
+    var rect = mainCanvas.getBoundingClientRect();
     SDL.events.push({
       type: 'mousemove',
       pageX: x + (window.scrollX + rect.left),
@@ -1793,13 +1791,13 @@ var LibrarySDL = {
     switch (toggle) {
       case 0: // SDL_DISABLE
         if (Browser.isFullscreen) { // only try to lock the pointer when in full screen mode
-          Module['canvas'].requestPointerLock();
+          mainCanvas.requestPointerLock();
           return 0;
         }
         // else return SDL_ENABLE to indicate the failure
         return 1;
       case 1: // SDL_ENABLE
-        Module['canvas'].exitPointerLock();
+        mainCanvas.exitPointerLock();
         return 1;
       case -1: // SDL_QUERY
         return !Browser.pointerLock;
@@ -3353,8 +3351,8 @@ var LibrarySDL = {
 
   SDL_GetWindowSize__proxy: 'sync',
   SDL_GetWindowSize: (window, width, height) => {
-    var w = Module['canvas'].width;
-    var h = Module['canvas'].height;
+    var w = mainCanvas.width;
+    var h = mainCanvas.height;
     if (width) {{{ makeSetValue('width', '0', 'w', 'i32') }}};
     if (height) {{{ makeSetValue('height', '0', 'h', 'i32') }}};
   },
@@ -3364,7 +3362,7 @@ var LibrarySDL = {
   SDL_SetWindowFullscreen__proxy: 'sync',
   SDL_SetWindowFullscreen: (window, fullscreen) => {
     if (Browser.isFullscreen) {
-      Module['canvas'].exitFullscreen();
+      mainCanvas.exitFullscreen();
       return 1;
     }
     return 0;

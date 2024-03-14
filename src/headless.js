@@ -287,4 +287,4 @@ if (typeof console == 'undefined') {
 }
 
 // additional setup
-Module['canvas'] ||= document.getElementById('canvas');
+mainCanvas ||= document.getElementById('canvas');

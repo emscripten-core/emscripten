@@ -68,11 +68,11 @@ int main() {
       var event = document.createEvent('Event');
       event.initEvent(type, true, true);
       for(var d in data) event[d] = data[d];
-      Module['canvas'].dispatchEvent(event);
+      mainCanvas.dispatchEvent(event);
     }
     // Pass test coordinates in canvas element coordinate frame.
-    var x = Module['canvas'].getBoundingClientRect().left;
-    var y = Module['canvas'].getBoundingClientRect().top;
+    var x = mainCanvas.getBoundingClientRect().left;
+    var y = mainCanvas.getBoundingClientRect().top;
 
     // Test #5258: browser passing a touch event that does not contain any touches should not throw an exception from within SDL.
     sendEvent('touchstart', { touches: [ ] });

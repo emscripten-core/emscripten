@@ -389,7 +389,7 @@ var LibraryHTML5 = {
       if (target === '#window') return window;
       else if (target === '#document') return document;
       else if (target === '#screen') return screen;
-      else if (target === '#canvas') return Module['canvas'];
+      else if (target === '#canvas') return mainCanvas;
       return (typeof target == 'string') ? document.getElementById(target) : target;
     } catch(e) {
       // In Web Workers, some objects above, such as '#document' do not exist. Gracefully
@@ -403,8 +403,8 @@ var LibraryHTML5 = {
   $findCanvasEventTarget: (target) => {
     if (typeof target == 'number') target = UTF8ToString(target);
     if (!target || target === '#canvas') {
-      if (typeof GL != 'undefined' && GL.offscreenCanvases['canvas']) return GL.offscreenCanvases['canvas']; // TODO: Remove this line, target '#canvas' should refer only to Module['canvas'], not to GL.offscreenCanvases['canvas'] - but need stricter tests to be able to remove this line.
-      return Module['canvas'];
+      if (typeof GL != 'undefined' && GL.offscreenCanvases['canvas']) return GL.offscreenCanvases['canvas']; // TODO: Remove this line, target '#canvas' should refer only to mainCanvas, not to GL.offscreenCanvases['canvas'] - but need stricter tests to be able to remove this line.
+      return mainCanvas;
     }
     if (typeof GL != 'undefined' && GL.offscreenCanvases[target]) return GL.offscreenCanvases[target];
     return findEventTarget(target);
@@ -479,8 +479,8 @@ var LibraryHTML5 = {
       ;
 
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
-    if (Module['canvas']) {
-      var rect = getBoundingClientRect(Module['canvas']);
+    if (mainCanvas) {
+      var rect = getBoundingClientRect(mainCanvas);
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasX / 4 }}}] = e.clientX - (rect.left | 0);
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasY / 4 }}}] = e.clientY - (rect.top  | 0);
     } else { // Canvas is not initialized, return 0.
@@ -1940,7 +1940,7 @@ var LibraryHTML5 = {
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.metaKey / 4}}}] = e.metaKey;
       idx += {{{ C_STRUCTS.EmscriptenTouchEvent.touches / 4 }}}; // Advance to the start of the touch array.
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
-      var canvasRect = Module['canvas'] ? getBoundingClientRect(Module['canvas']) : undefined;
+      var canvasRect = mainCanvas ? getBoundingClientRect(mainCanvas) : undefined;
 #endif
       var targetRect = getBoundingClientRect(target);
       var numTouches = 0;
@@ -2445,7 +2445,7 @@ var LibraryHTML5 = {
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     target = findEventTarget(target);
 #else
-    target = target ? findEventTarget(target) : Module['canvas'];
+    target = target ? findEventTarget(target) : mainCanvas;
 #endif
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
 
@@ -2461,7 +2461,7 @@ var LibraryHTML5 = {
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     target = findEventTarget(target);
 #else
-    target = target ? findEventTarget(target) : Module['canvas'];
+    target = target ? findEventTarget(target) : mainCanvas;
 #endif
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
 

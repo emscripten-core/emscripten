@@ -82,7 +82,7 @@ int main() {
 
   // Make the canvas area stand out from the background.
   emscripten_set_canvas_element_size( "#canvas", 400, 300 );
-  EM_ASM(Module['canvas'].style.backgroundColor = 'black';);
+  EM_ASM(mainCanvas.style.backgroundColor = 'black';);
 
   EMSCRIPTEN_RESULT ret = emscripten_set_click_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, click_callback);
   TEST_RESULT(emscripten_set_click_callback);

@@ -85,6 +85,7 @@ var LibraryGLFW = {
 
   $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
     '$stringToNewUTF8',
+    '$mainCanvas',
     'emscripten_set_window_title',
 #if FILESYSTEM
     '$FS',
@@ -466,7 +467,7 @@ var LibraryGLFW = {
         Browser.calculateMouseEvent(event);
       }
 
-      if (event.target != Module["canvas"] || !GLFW.active.cursorPosFunc) return;
+      if (event.target != mainCanvas || !GLFW.active.cursorPosFunc) return;
 
       if (GLFW.active.cursorPosFunc) {
 #if USE_GLFW == 2
@@ -495,7 +496,7 @@ var LibraryGLFW = {
     onMouseenter: (event) => {
       if (!GLFW.active) return;
 
-      if (event.target != Module["canvas"]) return;
+      if (event.target != mainCanvas) return;
 
 #if USE_GLFW == 3
       if (GLFW.active.cursorEnterFunc) {
@@ -507,7 +508,7 @@ var LibraryGLFW = {
     onMouseleave: (event) => {
       if (!GLFW.active) return;
 
-      if (event.target != Module["canvas"]) return;
+      if (event.target != mainCanvas) return;
 
 #if USE_GLFW == 3
       if (GLFW.active.cursorEnterFunc) {
@@ -519,7 +520,7 @@ var LibraryGLFW = {
     onMouseButtonChanged: (event, status) => {
       if (!GLFW.active) return;
 
-      if (event.target != Module["canvas"]) return;
+      if (event.target != mainCanvas) return;
 
       // Is this from a touch event?
       const isTouchType = event.type === 'touchstart' || event.type === 'touchend' || event.type === 'touchcancel';
@@ -601,7 +602,7 @@ var LibraryGLFW = {
       delta = (delta == 0) ? 0 : (delta > 0 ? Math.max(delta, 1) : Math.min(delta, -1)); // Quantize to integer so that minimum scroll is at least +/- 1.
       GLFW.wheelPos += delta;
 
-      if (!GLFW.active || !GLFW.active.scrollFunc || event.target != Module['canvas']) return;
+      if (!GLFW.active || !GLFW.active.scrollFunc || event.target != mainCanvas) return;
 #if USE_GLFW == 2
       {{{ makeDynCall('vi', 'GLFW.active.scrollFunc') }}}(GLFW.wheelPos);
 #endif
@@ -922,8 +923,8 @@ var LibraryGLFW = {
     },
 
     onClickRequestPointerLock: (e) => {
-      if (!Browser.pointerLock && Module['canvas'].requestPointerLock) {
-        Module['canvas'].requestPointerLock();
+      if (!Browser.pointerLock && mainCanvas.requestPointerLock) {
+        mainCanvas.requestPointerLock();
         e.preventDefault();
       }
     },
@@ -937,8 +938,8 @@ var LibraryGLFW = {
           switch (value) {
             case 0x00034001: { // GLFW_CURSOR_NORMAL
               win.inputModes[mode] = value;
-              Module['canvas'].removeEventListener('click', GLFW.onClickRequestPointerLock, true);
-              Module['canvas'].exitPointerLock();
+              mainCanvas.removeEventListener('click', GLFW.onClickRequestPointerLock, true);
+              mainCanvas.exitPointerLock();
               break;
             }
             case 0x00034002: { // GLFW_CURSOR_HIDDEN
@@ -947,8 +948,8 @@ var LibraryGLFW = {
             }
             case 0x00034003: { // GLFW_CURSOR_DISABLED
               win.inputModes[mode] = value;
-              Module['canvas'].addEventListener('click', GLFW.onClickRequestPointerLock, true);
-              Module['canvas'].requestPointerLock();
+              mainCanvas.addEventListener('click', GLFW.onClickRequestPointerLock, true);
+              mainCanvas.requestPointerLock();
               break;
             }
             default: {
@@ -1100,7 +1101,7 @@ var LibraryGLFW = {
           // TODO: Make GLFW explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
           GL.enableOffscreenFramebufferAttributes(contextAttributes);
 #endif
-          Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
+          Module.ctx = Browser.createContext(mainCanvas, true, true, contextAttributes);
         } else {
           Browser.init();
         }
@@ -1110,7 +1111,7 @@ var LibraryGLFW = {
       if (!Module.ctx && useWebGL) return 0;
 
       // Get non alive id
-      const canvas = Module['canvas'];
+      const canvas = mainCanvas;
       var win = new GLFW_Window(id, canvas.clientWidth, canvas.clientHeight, canvas.width, canvas.height, title, monitor, share);
 
       // Set window to array
@@ -1143,7 +1144,7 @@ var LibraryGLFW = {
       for (var i = 0; i < GLFW.windows.length; i++)
         if (GLFW.windows[i] !== null) return;
 
-      Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
+      Module.ctx = Browser.destroyContext(mainCanvas, true, true);
     },
 
     swapBuffers: (winid) => {
@@ -1156,7 +1157,7 @@ var LibraryGLFW = {
       if (typeof Browser.lockPointer == 'undefined') Browser.lockPointer = true;
       if (typeof Browser.resizeCanvas == 'undefined') Browser.resizeCanvas = false;
 
-      var canvas = Module['canvas'];
+      var canvas = mainCanvas;
       function fullscreenChange() {
         Browser.isFullscreen = false;
         var canvasContainer = canvas.parentNode;
@@ -1261,9 +1262,9 @@ var LibraryGLFW = {
     calculateMouseCoords(pageX, pageY) {
       // Calculate the movement based on the changes
       // in the coordinates.
-      var rect = Module["canvas"].getBoundingClientRect();
-      var cw = Module["canvas"].clientWidth;
-      var ch = Module["canvas"].clientHeight;
+      var rect = mainCanvas.getBoundingClientRect();
+      var cw = mainCanvas.clientWidth;
+      var ch = mainCanvas.clientHeight;
 
       // Neither .scrollX or .pageXOffset are defined in a spec, but
       // we prefer .scrollX because it is currently in a spec draft.
@@ -1308,7 +1309,7 @@ var LibraryGLFW = {
     },
 
     adjustCanvasDimensions() {
-      const canvas = Module['canvas'];
+      const canvas = mainCanvas;
       Browser.updateCanvasDimensions(canvas, canvas.clientWidth, canvas.clientHeight);
       Browser.updateResizeListeners();
     },
@@ -1384,19 +1385,19 @@ var LibraryGLFW = {
     GLFW.devicePixelRatioMQL = window.matchMedia('(resolution: ' + GLFW.getDevicePixelRatio() + 'dppx)');
     GLFW.devicePixelRatioMQL.addEventListener('change', GLFW.onDevicePixelRatioChange);
 
-    Module["canvas"].addEventListener("touchmove", GLFW.onMousemove, true);
-    Module["canvas"].addEventListener("touchstart", GLFW.onMouseButtonDown, true);
-    Module["canvas"].addEventListener("touchcancel", GLFW.onMouseButtonUp, true);
-    Module["canvas"].addEventListener("touchend", GLFW.onMouseButtonUp, true);
-    Module["canvas"].addEventListener("mousemove", GLFW.onMousemove, true);
-    Module["canvas"].addEventListener("mousedown", GLFW.onMouseButtonDown, true);
-    Module["canvas"].addEventListener("mouseup", GLFW.onMouseButtonUp, true);
-    Module["canvas"].addEventListener('wheel', GLFW.onMouseWheel, true);
-    Module["canvas"].addEventListener('mousewheel', GLFW.onMouseWheel, true);
-    Module["canvas"].addEventListener('mouseenter', GLFW.onMouseenter, true);
-    Module["canvas"].addEventListener('mouseleave', GLFW.onMouseleave, true);
-    Module["canvas"].addEventListener('drop', GLFW.onDrop, true);
-    Module["canvas"].addEventListener('dragover', GLFW.onDragover, true);
+    mainCanvas.addEventListener("touchmove", GLFW.onMousemove, true);
+    mainCanvas.addEventListener("touchstart", GLFW.onMouseButtonDown, true);
+    mainCanvas.addEventListener("touchcancel", GLFW.onMouseButtonUp, true);
+    mainCanvas.addEventListener("touchend", GLFW.onMouseButtonUp, true);
+    mainCanvas.addEventListener("mousemove", GLFW.onMousemove, true);
+    mainCanvas.addEventListener("mousedown", GLFW.onMouseButtonDown, true);
+    mainCanvas.addEventListener("mouseup", GLFW.onMouseButtonUp, true);
+    mainCanvas.addEventListener('wheel', GLFW.onMouseWheel, true);
+    mainCanvas.addEventListener('mousewheel', GLFW.onMouseWheel, true);
+    mainCanvas.addEventListener('mouseenter', GLFW.onMouseenter, true);
+    mainCanvas.addEventListener('mouseleave', GLFW.onMouseleave, true);
+    mainCanvas.addEventListener('drop', GLFW.onDrop, true);
+    mainCanvas.addEventListener('dragover', GLFW.onDragover, true);
 
     // Overriding implementation to account for HiDPI
     Browser.requestFullscreen = GLFW.requestFullscreen;
@@ -1405,7 +1406,7 @@ var LibraryGLFW = {
 
     Browser.resizeListeners.push((width, height) => {
       if (GLFW.isHiDPIAware()) {
-        var canvas = Module['canvas'];
+        var canvas = mainCanvas;
         GLFW.onCanvasResize(canvas.clientWidth, canvas.clientHeight, width, height);
       } else {
         GLFW.onCanvasResize(width, height, width, height);
@@ -1422,24 +1423,24 @@ var LibraryGLFW = {
     window.removeEventListener("keypress", GLFW.onKeyPress, true);
     window.removeEventListener("keyup", GLFW.onKeyup, true);
     window.removeEventListener("blur", GLFW.onBlur, true);
-    Module["canvas"].removeEventListener("touchmove", GLFW.onMousemove, true);
-    Module["canvas"].removeEventListener("touchstart", GLFW.onMouseButtonDown, true);
-    Module["canvas"].removeEventListener("touchcancel", GLFW.onMouseButtonUp, true);
-    Module["canvas"].removeEventListener("touchend", GLFW.onMouseButtonUp, true);
-    Module["canvas"].removeEventListener("mousemove", GLFW.onMousemove, true);
-    Module["canvas"].removeEventListener("mousedown", GLFW.onMouseButtonDown, true);
-    Module["canvas"].removeEventListener("mouseup", GLFW.onMouseButtonUp, true);
-    Module["canvas"].removeEventListener('wheel', GLFW.onMouseWheel, true);
-    Module["canvas"].removeEventListener('mousewheel', GLFW.onMouseWheel, true);
-    Module["canvas"].removeEventListener('mouseenter', GLFW.onMouseenter, true);
-    Module["canvas"].removeEventListener('mouseleave', GLFW.onMouseleave, true);
-    Module["canvas"].removeEventListener('drop', GLFW.onDrop, true);
-    Module["canvas"].removeEventListener('dragover', GLFW.onDragover, true);
+    mainCanvas.removeEventListener("touchmove", GLFW.onMousemove, true);
+    mainCanvas.removeEventListener("touchstart", GLFW.onMouseButtonDown, true);
+    mainCanvas.removeEventListener("touchcancel", GLFW.onMouseButtonUp, true);
+    mainCanvas.removeEventListener("touchend", GLFW.onMouseButtonUp, true);
+    mainCanvas.removeEventListener("mousemove", GLFW.onMousemove, true);
+    mainCanvas.removeEventListener("mousedown", GLFW.onMouseButtonDown, true);
+    mainCanvas.removeEventListener("mouseup", GLFW.onMouseButtonUp, true);
+    mainCanvas.removeEventListener('wheel', GLFW.onMouseWheel, true);
+    mainCanvas.removeEventListener('mousewheel', GLFW.onMouseWheel, true);
+    mainCanvas.removeEventListener('mouseenter', GLFW.onMouseenter, true);
+    mainCanvas.removeEventListener('mouseleave', GLFW.onMouseleave, true);
+    mainCanvas.removeEventListener('drop', GLFW.onDrop, true);
+    mainCanvas.removeEventListener('dragover', GLFW.onDragover, true);
 
     if (GLFW.devicePixelRatioMQL)
       GLFW.devicePixelRatioMQL.removeEventListener('change', GLFW.onDevicePixelRatioChange);
 
-    Module["canvas"].width = Module["canvas"].height = 1;
+    mainCanvas.width = mainCanvas.height = 1;
     GLFW.windows = null;
     GLFW.active = null;
   },

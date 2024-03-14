@@ -1029,23 +1029,23 @@ keydown(100);keyup(100); // trigger the end
         if (button >= 0) {
           var event1 = document.createEvent("MouseEvents");
           event1.initMouseEvent('mousedown', true, true, window,
-                     1, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
+                     1, mainCanvas.offsetLeft + x, mainCanvas.offsetTop + y, mainCanvas.offsetLeft + x, mainCanvas.offsetTop + y,
                      0, 0, 0, 0,
                      button, null);
-          Module['canvas'].dispatchEvent(event1);
+          mainCanvas.dispatchEvent(event1);
           var event2 = document.createEvent("MouseEvents");
           event2.initMouseEvent('mouseup', true, true, window,
-                     1, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
+                     1, mainCanvas.offsetLeft + x, mainCanvas.offsetTop + y, mainCanvas.offsetLeft + x, mainCanvas.offsetTop + y,
                      0, 0, 0, 0,
                      button, null);
-          Module['canvas'].dispatchEvent(event2);
+          mainCanvas.dispatchEvent(event2);
         } else {
           var event1 = document.createEvent("MouseEvents");
           event1.initMouseEvent('mousemove', true, true, window,
-                     0, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
+                     0, mainCanvas.offsetLeft + x, mainCanvas.offsetTop + y, mainCanvas.offsetLeft + x, mainCanvas.offsetTop + y,
                      0, 0, 0, 0,
                      0, null);
-          Module['canvas'].dispatchEvent(event1);
+          mainCanvas.dispatchEvent(event1);
         }
       }
     ''')
@@ -1062,20 +1062,20 @@ keydown(100);keyup(100); // trigger the end
                      1, x, y, x, y,
                      0, 0, 0, 0,
                      button, null);
-          Module['canvas'].dispatchEvent(event1);
+          mainCanvas.dispatchEvent(event1);
           var event2 = document.createEvent("MouseEvents");
           event2.initMouseEvent('mouseup', true, true, window,
                      1, x, y, x, y,
                      0, 0, 0, 0,
                      button, null);
-          Module['canvas'].dispatchEvent(event2);
+          mainCanvas.dispatchEvent(event2);
         } else {
           var event1 = document.createEvent("MouseEvents");
           event1.initMouseEvent('mousemove', true, true, window,
                      0, x, y, x, y,
                      0, 0, 0, 0,
                      0, null);
-          Module['canvas'].dispatchEvent(event1);
+          mainCanvas.dispatchEvent(event1);
         }
       }
     ''')
@@ -2975,23 +2975,23 @@ Module["preRun"] = () => {
         if (button >= 0) {
           var event1 = document.createEvent("MouseEvents");
           event1.initMouseEvent('mousedown', true, true, window,
-                     1, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
+                     1, mainCanvas.offsetLeft + x, mainCanvas.offsetTop + y, mainCanvas.offsetLeft + x, mainCanvas.offsetTop + y,
                      0, 0, 0, 0,
                      button, null);
-          Module['canvas'].dispatchEvent(event1);
+          mainCanvas.dispatchEvent(event1);
           var event2 = document.createEvent("MouseEvents");
           event2.initMouseEvent('mouseup', true, true, window,
-                     1, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
+                     1, mainCanvas.offsetLeft + x, mainCanvas.offsetTop + y, mainCanvas.offsetLeft + x, mainCanvas.offsetTop + y,
                      0, 0, 0, 0,
                      button, null);
-          Module['canvas'].dispatchEvent(event2);
+          mainCanvas.dispatchEvent(event2);
         } else {
           var event1 = document.createEvent("MouseEvents");
           event1.initMouseEvent('mousemove', true, true, window,
-                     0, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
+                     0, mainCanvas.offsetLeft + x, mainCanvas.offsetTop + y, mainCanvas.offsetLeft + x, mainCanvas.offsetTop + y,
                      0, 0, 0, 0,
                      0, null);
-          Module['canvas'].dispatchEvent(event1);
+          mainCanvas.dispatchEvent(event1);
         }
       }
     ''')
@@ -3009,20 +3009,20 @@ Module["preRun"] = () => {
                      1, x, y, x, y,
                      0, 0, 0, 0,
                      button, null);
-          Module['canvas'].dispatchEvent(event1);
+          mainCanvas.dispatchEvent(event1);
           var event2 = document.createEvent("MouseEvents");
           event2.initMouseEvent('mouseup', true, true, window,
                      1, x, y, x, y,
                      0, 0, 0, 0,
                      button, null);
-          Module['canvas'].dispatchEvent(event2);
+          mainCanvas.dispatchEvent(event2);
         } else {
           var event1 = document.createEvent("MouseEvents");
           event1.initMouseEvent('mousemove', true, true, window,
                      0, x, y, x, y,
                      0, 0, 0, 0,
                      0, null);
-          Module['canvas'].dispatchEvent(event1);
+          mainCanvas.dispatchEvent(event1);
         }
       }
     ''')

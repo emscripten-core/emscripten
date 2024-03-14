@@ -358,7 +358,7 @@ var LibraryEGL = {
     EGL.contextAttributes.majorVersion = glesContextVersion - 1; // WebGL 1 is GLES 2, WebGL2 is GLES3
     EGL.contextAttributes.minorVersion = 0;
 
-    EGL.context = GL.createContext(Module['canvas'], EGL.contextAttributes);
+    EGL.context = GL.createContext(mainCanvas, EGL.contextAttributes);
 
     if (EGL.context != 0) {
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
@@ -424,10 +424,10 @@ var LibraryEGL = {
       // Existing Android implementation seems to do so at least.
       return 1;
     case 0x3057: // EGL_WIDTH
-      {{{ makeSetValue('value', '0', 'Module["canvas"].width', 'i32') }}};
+      {{{ makeSetValue('value', '0', 'mainCanvas.width', 'i32') }}};
       return 1;
     case 0x3056: // EGL_HEIGHT
-      {{{ makeSetValue('value', '0', 'Module["canvas"].height', 'i32') }}};
+      {{{ makeSetValue('value', '0', 'mainCanvas.height', 'i32') }}};
       return 1;
     case 0x3090: // EGL_HORIZONTAL_RESOLUTION
       {{{ makeSetValue('value', '0', '-1' /* EGL_UNKNOWN */, 'i32') }}};

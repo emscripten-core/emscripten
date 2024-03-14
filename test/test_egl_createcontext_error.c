@@ -12,8 +12,8 @@
 
 int main(int argc, char *argv[]) {
   EM_ASM({
-    Module['canvas'] = document.createElement('canvas');
-    Module['canvas'].getContext = function() {
+    mainCanvas = document.createElement('canvas');
+    mainCanvas.getContext = function() {
       return null;
     };
   });

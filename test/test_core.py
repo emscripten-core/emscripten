@@ -9782,6 +9782,7 @@ asani = make_run('asani', emcc_args=['-fsanitize=address', '--profiling', '--pre
 
 # Experimental modes (not tested by CI)
 minimal0 = make_run('minimal0', emcc_args=['-g'], settings={'MINIMAL_RUNTIME': 1})
+modulare = make_run('modular', emcc_args=[], settings={'MODULARIZE': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa

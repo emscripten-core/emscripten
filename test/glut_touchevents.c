@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
         // Desktop browsers do not have the event types for touch events,
         // so we fake them by creating a plain-vanilla UIEvent and then
         // filling in the fields that we look for with appropriate values.
-        var rect = Module["canvas"].getBoundingClientRect();
+        var rect = mainCanvas.getBoundingClientRect();
         out('rect corner: ' + rect.left + ',' + rect.top);
         out('wanted: ' + wantedX + ',' + wantedY);
         var x = wantedX + rect.left;
@@ -62,17 +62,17 @@ int main(int argc, char *argv[])
             screenY: y,
             pageX: x,
             pageY: y,
-            target: Module['canvas']
+            target: mainCanvas
         };
         var touches = [ touch ];
         touches.item = function(i) { return this[i]; };
 
         var event = document.createEvent('UIEvent');
-        event.target = Module['canvas'];
+        event.target = mainCanvas;
         event.button = 0;
         event.changedTouches = touches;
         event.initUIEvent(eventType, true, true, window, 1);
-        Module['canvas'].dispatchEvent(event);
+        mainCanvas.dispatchEvent(event);
       }
   ));
 

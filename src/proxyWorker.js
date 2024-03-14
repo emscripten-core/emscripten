@@ -154,13 +154,13 @@ document.createElement = (what) => {
             height: canvas.height,
             data: new Uint8Array(canvas.width*canvas.height*4)
           };
-          if (canvas === Module['canvas']) {
+          if (canvas === mainCanvas) {
             postMessage({ target: 'canvas', op: 'resize', width: canvas.width, height: canvas.height });
           }
         }
       };
       canvas.getContext = (type, attributes) => {
-        if (canvas === Module['canvas']) {
+        if (canvas === mainCanvas) {
           postMessage({ target: 'canvas', op: 'getContext', type, attributes });
         }
         if (type === '2d') {
@@ -178,7 +178,7 @@ document.createElement = (what) => {
               canvas.ensureData();
               assert(x == 0 && y == 0 && image.width == canvas.width && image.height == canvas.height);
               canvas.data.data.set(image.data); // TODO: can we avoid this copy?
-              if (canvas === Module['canvas']) {
+              if (canvas === mainCanvas) {
                 postMessage({ target: 'canvas', op: 'render', image: canvas.data });
               }
             },
@@ -190,7 +190,7 @@ document.createElement = (what) => {
               assert(image.width === canvas.width && image.height === canvas.height);
               canvas.ensureData();
               canvas.data.data.set(image.data.data); // TODO: can we avoid this copy?
-              if (canvas === Module['canvas']) {
+              if (canvas === mainCanvas) {
                 postMessage({ target: 'canvas', op: 'render', image: canvas.data });
               }
             }
@@ -216,7 +216,7 @@ document.createElement = (what) => {
       Object.defineProperty(canvas, 'width', {
         set: (value) => {
           canvas.width_ = value;
-          if (canvas === Module['canvas']) {
+          if (canvas === mainCanvas) {
             postMessage({ target: 'canvas', op: 'resize', width: canvas.width_, height: canvas.height_ });
           }
         },
@@ -225,7 +225,7 @@ document.createElement = (what) => {
       Object.defineProperty(canvas, 'height', {
         set: (value) => {
           canvas.height_ = value;
-          if (canvas === Module['canvas']) {
+          if (canvas === mainCanvas) {
             postMessage({ target: 'canvas', op: 'resize', width: canvas.width_, height: canvas.height_ });
           }
         },
@@ -242,7 +242,7 @@ document.createElement = (what) => {
         set: (value) => {
           if (!style.cursor_ || style.cursor_ !== value) {
             style.cursor_ = value;
-            if (style.parentCanvas === Module['canvas']) {
+            if (style.parentCanvas === mainCanvas) {
               postMessage({ target: 'canvas', op: 'setObjectProperty', object: 'style', property: 'cursor', value: style.cursor_ });
             }
           }
@@ -261,14 +261,14 @@ document.createElement = (what) => {
 
 document.getElementById = (id) => {
   if (id === 'canvas' || id === 'application-canvas') {
-    return Module.canvas;
+    return mainCanvas;
   }
   throw 'document.getElementById failed on ' + id;
 };
 
 document.querySelector = (id) => {
   if (id === '#canvas' || id === '#application-canvas' || id === 'canvas' || id === 'application-canvas') {
-    return Module.canvas;
+    return mainCanvas;
   }
   throw 'document.querySelector failed on ' + id;
 };
@@ -324,7 +324,7 @@ var screen = {
   height: 0
 };
 
-Module.canvas = document.createElement('canvas');
+mainCanvas = document.createElement('canvas');
 
 Module.setStatus = () => {};
 
@@ -412,9 +412,9 @@ function onMessageFromMainEmscriptenThread(message) {
     }
     case 'canvas': {
       if (message.data.event) {
-        Module.canvas.fireEvent(message.data.event);
+        mainCanvas.fireEvent(message.data.event);
       } else if (message.data.boundingClientRect) {
-        Module.canvas.boundingClientRect = message.data.boundingClientRect;
+        mainCanvas.boundingClientRect = message.data.boundingClientRect;
       } else throw 'ey?';
       break;
     }
@@ -451,10 +451,10 @@ function onMessageFromMainEmscriptenThread(message) {
       break;
     }
     case 'worker-init': {
-      Module.canvas = document.createElement('canvas');
-      screen.width = Module.canvas.width_ = message.data.width;
-      screen.height = Module.canvas.height_ = message.data.height;
-      Module.canvas.boundingClientRect = message.data.boundingClientRect;
+      mainCanvas = document.createElement('canvas');
+      screen.width = mainCanvas.width_ = message.data.width;
+      screen.height = mainCanvas.height_ = message.data.height;
+      mainCanvas.boundingClientRect = message.data.boundingClientRect;
 #if ENVIRONMENT_MAY_BE_NODE
       if (ENVIRONMENT_IS_NODE)
 #endif

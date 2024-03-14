@@ -377,7 +377,7 @@ var LibraryHtml5WebGL = {
 #endif
 
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
-    if (!target) target = Module['canvas'];
+    if (!target) target = mainCanvas;
 #endif
 
     var webGlEventHandlerFunc = (e = event) => {

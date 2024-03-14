@@ -9,6 +9,6 @@
 
 int main() {
   EM_ASM({
-    Module['canvas'].style['cursor'] = 'pointer';
+    mainCanvas.style['cursor'] = 'pointer';
   });
 }

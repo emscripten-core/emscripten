@@ -694,6 +694,7 @@ def phase_linker_setup(options, state, newargs):
     settings.EXIT_RUNTIME = 1
 
   if options.cpu_profiler:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$mainCanvas')
     options.post_js.append(utils.path_from_root('src/cpuprofiler.js'))
 
   if not settings.RUNTIME_DEBUG:

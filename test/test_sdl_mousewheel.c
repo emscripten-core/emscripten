@@ -77,7 +77,7 @@ int main() {
       var event = document.createEvent('Event');
       event.initEvent(type, true, true);
       for (var d in data) event[d] = data[d];
-      Module['canvas'].dispatchEvent(event);
+      mainCanvas.dispatchEvent(event);
     }
     // Scroll up by a tiny amount.
     sendEvent('wheel', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 0, 'deltaX': 0, 'deltaY': -0.1, 'deltaZ': 0, 'deltaMode': 1 });
