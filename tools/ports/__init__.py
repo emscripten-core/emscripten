@@ -10,14 +10,16 @@ import shutil
 import glob
 import importlib.util
 import sys
+import subprocess
 from typing import Set
+from urllib.request import urlopen
+
 from tools import cache
 from tools import config
 from tools import shared
 from tools import system_libs
 from tools import utils
 from tools.settings import settings
-
 from tools.toolchain_profiler import ToolchainProfiler
 
 ports = []
@@ -297,27 +299,14 @@ class Ports:
       # retrieve from remote server
       logger.info(f'retrieving port: {name} from {url}')
 
-      # Attempt to use the `requests` module rather `urllib`.
-      # The main difference here is that `requests` will use the `certifi`
-      # certificate chain whereas `urllib` will use the system openssl
-      # certificate chain, which can be out-of-date on some macOS systems.
-      # TODO(sbc): Perhaps we can remove this at some point when we no
-      # longer support such out-of-date systems.
-      try:
-        import requests
-        try:
-          response = requests.get(url)
-          data = response.content
-        except requests.exceptions.InvalidSchema:
-          # requests does not support 'file://' protocol and raises InvalidSchema
-          pass
-      except ImportError:
-        pass
-
-      # If we don't have `requests` or if we got InvalidSchema then fall
-      # back to `urllib`.
-      if not data:
-        from urllib.request import urlopen
+      if utils.MACOS:
+        # Use `curl` over `urllib` on macOS to avoid issues with
+        # certificate verification.
+        # https://stackoverflow.com/questions/40684543/how-to-make-python-use-ca-certificates-from-mac-os-truststore
+        # Unlike on Windows or Linux, curl is guaranteed to always be
+        # available on macOS.
+        data = subprocess.check_output(['curl', '-sSL', url])
+      else:
         f = urlopen(url)
         data = f.read()
 
