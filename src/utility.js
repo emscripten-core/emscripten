@@ -78,20 +78,6 @@ function error(msg) {
   printErr(`error: ${errorPrefix()}${msg}`);
 }
 
-function range(size) {
-  return Array.from(Array(size).keys());
-}
-
-function bind(self, func) {
-  return function(...args) {
-    func.apply(self, args);
-  };
-}
-
-function sum(x) {
-  return x.reduce((a, b) => a + b, 0);
-}
-
 // options is optional input object containing mergeInto params
 // currently, it can contain
 //
