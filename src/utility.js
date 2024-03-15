@@ -232,32 +232,34 @@ function isPowerOfTwo(x) {
   return x > 0 && ((x & (x - 1)) == 0);
 }
 
-/** @constructor */
-globalThis.Benchmarker = function() {
-  const totals = {};
-  const ids = [];
-  const lastTime = 0;
-  this.start = function(id) {
+class Benchmarker {
+  totals = {};
+  ids = [];
+  lastTime = 0;
+
+  start(id) {
     const now = Date.now();
-    if (ids.length > 0) {
-      totals[ids[ids.length - 1]] += now - lastTime;
+    if (this.ids.length > 0) {
+      this.totals[this.ids[this.ids.length - 1]] += now - this.lastTime;
     }
-    lastTime = now;
-    ids.push(id);
-    totals[id] ||= 0;
-  };
-  this.stop = function(id) {
+    this.lastTime = now;
+    this.ids.push(id);
+    this.totals[id] ||= 0;
+  }
+
+  stop(id) {
     const now = Date.now();
-    assert(id === ids[ids.length - 1]);
-    totals[id] += now - lastTime;
-    lastTime = now;
-    ids.pop();
-  };
-  this.print = function(text) {
-    const ids = Object.keys(totals);
+    assert(id === this.ids[this.ids.length - 1]);
+    this.totals[id] += now - this.lastTime;
+    this.lastTime = now;
+    this.ids.pop();
+  }
+
+  print(text) {
+    const ids = Object.keys(this.totals);
     if (ids.length > 0) {
-      ids.sort((a, b) => totals[b] - totals[a]);
-      printErr(text + ' times: \n' + ids.map((id) => id + ' : ' + totals[id] + ' ms').join('\n'));
+      ids.sort((a, b) => this.totals[b] - this.totals[a]);
+      printErr(text + ' times: \n' + ids.map((id) => id + ' : ' + this.totals[id] + ' ms').join('\n'));
     }
-  };
+  }
 }
