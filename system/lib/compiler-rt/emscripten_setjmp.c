@@ -109,21 +109,19 @@ uint32_t __wasm_setjmp_test(void* env, void* func_invocation_id) {
 }
 
 #ifdef __USING_WASM_SJLJ__
-void
-__wasm_longjmp(void *env, int val)
-{
-        struct jmp_buf_impl *jb = env;
-        struct __WasmLongjmpArgs *arg = &jb->arg;
-        /*
-         * C standard says:
-         * The longjmp function cannot cause the setjmp macro to return
-         * the value 0; if val is 0, the setjmp macro returns the value 1.
-         */
-        if (val == 0) {
-                val = 1;
-        }
-        arg->env = env;
-        arg->val = val;
-        __builtin_wasm_throw(1, arg); /* 1 == C_LONGJMP */
+void __wasm_longjmp(void* env, int val) {
+  struct jmp_buf_impl* jb = env;
+  struct __WasmLongjmpArgs* arg = &jb->arg;
+  /*
+   * C standard says:
+   * The longjmp function cannot cause the setjmp macro to return
+   * the value 0; if val is 0, the setjmp macro returns the value 1.
+   */
+  if (val == 0) {
+    val = 1;
+  }
+  arg->env = env;
+  arg->val = val;
+  __builtin_wasm_throw(1, arg); /* 1 == C_LONGJMP */
 }
 #endif
