@@ -2991,7 +2991,7 @@ The current type of b is: 9
           EM_ASM( out("Constructing lib object.") );
         }
       };
-      Foo global;
+      Foo side_global;
       ''')
     self.build_dlfcn_lib('liblib.cpp')
 
