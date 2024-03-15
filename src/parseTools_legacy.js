@@ -65,10 +65,6 @@ function stripCorrections(param) {
 
 const UNROLL_LOOP_MAX = 8;
 
-function range(size) {
-  return Array.from(Array(size).keys());
-}
-
 function makeCopyValues(dest, src, num, type, modifier, align, sep = ';') {
   warn('use of legacy parseTools function: makeCopyValues');
   assert(typeof align === 'undefined');
