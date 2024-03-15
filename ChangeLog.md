@@ -21,7 +21,7 @@ See docs/process.md for more on how version tagging works.
 3.1.57 (in development)
 -----------------------
 
-3.1.56 - 03/13/24
+3.1.56 - 03/14/24
 -----------------
 - emscripten will now generate an `unused-command-line-argument` warning if
   a `-s` setting is specified more than once on the command line with
