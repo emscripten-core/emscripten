@@ -78,6 +78,10 @@ function error(msg) {
   printErr(`error: ${errorPrefix()}${msg}`);
 }
 
+function range(size) {
+  return Array.from(Array(size).keys());
+}
+
 // options is optional input object containing mergeInto params
 // currently, it can contain
 //
