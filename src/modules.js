@@ -225,13 +225,15 @@ globalThis.LibraryManager = {
       currentFile = filename;
       try {
         processed = processMacros(preprocess(filename), filename);
-        vm.runInThisContext(processed, { filename: filename.replace(/\.\w+$/, '.preprocessed$&') });
+        vm.runInThisContext(processed, {filename: filename.replace(/\.\w+$/, '.preprocessed$&')});
       } catch (e) {
         error(`failure to execute js library "${filename}":`);
         if (VERBOSE) {
           const orig = read(filename);
           if (processed) {
-            error(`preprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n${processed}\n=============`);
+            error(
+              `preprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n${processed}\n=============`,
+            );
           } else {
             error(`original source:\n=============\n${orig}\n=============`);
           }
@@ -252,7 +254,7 @@ globalThis.LibraryManager = {
 if (!BOOTSTRAPPING_STRUCT_INFO) {
   let structInfoFile = 'generated_struct_info32.json';
   if (MEMORY64) {
-    structInfoFile = 'generated_struct_info64.json'
+    structInfoFile = 'generated_struct_info64.json';
   }
   // Load struct and define information.
   const temp = JSON.parse(read(structInfoFile));
@@ -268,19 +270,23 @@ if (!BOOTSTRAPPING_STRUCT_INFO) {
 C_STRUCTS = new Proxy(C_STRUCTS, {
   get(target, prop, receiver) {
     if (!(prop in target)) {
-      throw new Error(`Missing C struct ${prop}! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py`);
+      throw new Error(
+        `Missing C struct ${prop}! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py`,
+      );
     }
-    return target[prop]
-  }
+    return target[prop];
+  },
 });
 
 cDefs = C_DEFINES = new Proxy(C_DEFINES, {
   get(target, prop, receiver) {
     if (!(prop in target)) {
-      throw new Error(`Missing C define ${prop}! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py`);
+      throw new Error(
+        `Missing C define ${prop}! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py`,
+      );
     }
-    return target[prop]
-  }
+    return target[prop];
+  },
 });
 
 // Legacy function that existed solely to give error message.  These are now
@@ -383,10 +389,14 @@ function exportRuntime() {
     'HEAPF32',
     'HEAPF64',
     'HEAP_DATA_VIEW',
-    'HEAP8',  'HEAPU8',
-    'HEAP16', 'HEAPU16',
-    'HEAP32', 'HEAPU32',
-    'HEAP64', 'HEAPU64',
+    'HEAP8',
+    'HEAPU8',
+    'HEAP16',
+    'HEAPU16',
+    'HEAP32',
+    'HEAPU32',
+    'HEAP64',
+    'HEAPU64',
   ];
 
   // These are actually native wasm functions these days but we allow exporting
@@ -424,11 +434,11 @@ function exportRuntime() {
   }
 
   if (RETAIN_COMPILER_SETTINGS) {
-    runtimeElements.push('getCompilerSetting')
+    runtimeElements.push('getCompilerSetting');
   }
 
   if (RUNTIME_DEBUG) {
-    runtimeElements.push('prettyPrint')
+    runtimeElements.push('prettyPrint');
   }
 
   // dynCall_* methods are not hardcoded here, as they
