@@ -10,6 +10,8 @@
 
 globalThis.FOUR_GB = 4 * 1024 * 1024 * 1024;
 globalThis.WASM_PAGE_SIZE = 64 * 1024;
+// Represents a browser version that is not supported at all.
+globalThis.TARGET_NOT_SUPPORTED = 0x7FFFFFFF;
 
 const FLOAT_TYPES = new Set(['float', 'double']);
 
