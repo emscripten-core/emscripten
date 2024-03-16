@@ -214,7 +214,9 @@ void _mi_prim_thread_init_auto_done(void) {
 }
 
 void _mi_prim_thread_done_auto_done(void) {
-  // nothing to do
+  if (_mi_heap_default_key != (pthread_key_t)(-1)) {  // do not leak the key, see issue #809
+    pthread_key_delete(_mi_heap_default_key);
+  }
 }
 
 void _mi_prim_thread_associate_default_heap(mi_heap_t* heap) {
