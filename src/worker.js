@@ -159,6 +159,12 @@ function handleMessage(e) {
       Module['wasmModule'] = e.data.wasmModule;
 #endif // MINIMAL_RUNTIME
 
+#if WASMFS
+      if (e.data.extWasmMemFS) {
+        Module['extWasmMemFS'] = e.data.extWasmMemFS;
+      }
+#endif
+
 #if MAIN_MODULE
       Module['sharedModules'] = e.data.sharedModules;
 #if RUNTIME_DEBUG

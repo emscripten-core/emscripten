@@ -77,6 +77,14 @@ backend_t wasmfs_create_jsimpl_backend(void);
 
 backend_t wasmfs_create_icase_backend(backend_t backend);
 
+// Note: This is similar to a memory backend but data files are saved in another 
+// growable WebAssembly.Memory instance, which ensures a maximum 4GB seperated 
+// file storage. 
+// 
+// Note: ExtWasmMem is optimized for multi-thread read/write performance. It also
+// has its own faster file read/write JS API, see in library_wasmfs_extwasmmem.js
+backend_t wasmfs_create_extwasmmem_backend(void);
+
 // Similar to fflush(0), but also flushes all internal buffers inside WasmFS.
 // This is necessary because in a Web environment we must buffer at an
 // additional level after libc, since console.log() prints entire lines, that
