@@ -78,6 +78,10 @@ struct __WasmLongjmpArgs {
   void *env;
   int val;
 };
+
+// llvm uses `1` for the __c_longjmp tag.
+// See https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/CodeGen/WasmEHFuncInfo.h
+#define C_LONGJMP 1
 #endif
 
 // jmp_buf should have large enough size and alignment to contain
@@ -109,19 +113,20 @@ uint32_t __wasm_setjmp_test(void* env, void* func_invocation_id) {
 }
 
 #ifdef __USING_WASM_SJLJ__
+// Wasm EH allows us to throw and catch multiple values, but that requires
+// multivalue support in the toolchain, whch is not reliable at the time.
+// TODO Consider switching to throwing two values at the same time later.
 void __wasm_longjmp(void* env, int val) {
   struct jmp_buf_impl* jb = env;
   struct __WasmLongjmpArgs* arg = &jb->arg;
-  /*
-   * C standard says:
-   * The longjmp function cannot cause the setjmp macro to return
-   * the value 0; if val is 0, the setjmp macro returns the value 1.
-   */
+  // C standard says:
+  // The longjmp function cannot cause the setjmp macro to return
+  // the value 0; if val is 0, the setjmp macro returns the value 1.
   if (val == 0) {
     val = 1;
   }
   arg->env = env;
   arg->val = val;
-  __builtin_wasm_throw(1, arg); /* 1 == C_LONGJMP */
+  __builtin_wasm_throw(C_LONGJMP, arg);
 }
 #endif
