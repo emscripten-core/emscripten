@@ -26,7 +26,7 @@ from tools import response_file
 from tools import ports
 
 SANITY_FILE = cache.get_path('sanity.txt')
-commands = [[EMCC], [path_from_root('test/runner'), 'blahblah']]
+commands = [[EMCC], [shared.bat_suffix(path_from_root('test/runner')), 'blahblah']]
 expected_llvm_version = str(shared.EXPECTED_LLVM_VERSION) + '.0.0'
 
 
