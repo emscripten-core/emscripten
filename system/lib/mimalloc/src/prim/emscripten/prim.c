@@ -169,7 +169,7 @@ void _mi_prim_process_info(mi_process_info_t* pinfo)
 #include <emscripten/console.h>
 
 void _mi_prim_out_stderr( const char* msg) {
-  emscripten_console_error(msg);
+  emscripten_err(msg);
 }
 
 
