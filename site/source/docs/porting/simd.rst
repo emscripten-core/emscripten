@@ -250,11 +250,11 @@ In addition to consulting the tables below, you can turn on diagnostics for slow
    * - _mm_div_ss
      - ⚠️ emulated with a shuffle
    * - _mm_min_ps
-     - TODO: pmin once it works
+     - ✅ wasm_f32x4_pmin
    * - _mm_min_ss
      - ⚠️ emulated with a shuffle
    * - _mm_max_ps
-     - TODO: pmax once it works
+     - ✅ wasm_f32x4_pmax
    * - _mm_max_ss
      - ⚠️ emulated with a shuffle
    * - _mm_rcp_ps
@@ -626,7 +626,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_max_epu8
      - ✅ wasm_u8x16_max
    * - _mm_max_pd
-     - TODO: migrate to wasm_f64x2_pmax
+     - ✅ wasm_f64x2_pmax
    * - _mm_max_sd
      - ⚠️ emulated with a shuffle
    * - _mm_mfence
@@ -636,7 +636,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_min_epu8
      - ✅ wasm_u8x16_min
    * - _mm_min_pd
-     - TODO: migrate to wasm_f64x2_pmin
+     - ✅ wasm_f64x2_pmin
    * - _mm_min_sd
      - ⚠️ emulated with a shuffle
    * - _mm_move_epi64
