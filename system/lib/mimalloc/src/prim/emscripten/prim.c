@@ -72,7 +72,7 @@ extern void* emmalloc_memalign(size_t alignment, size_t size);
 
 // Note: the `try_alignment` is just a hint and the returned pointer is not guaranteed to be aligned.
 int _mi_prim_alloc(size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, void** addr) {
-  MI_UNUSED(try_alignment); MI_UNUSED(allow_large); MI_UNUSED(commit);
+  MI_UNUSED(allow_large); MI_UNUSED(commit);
   *is_large = false;
   // TODO: Track the highest address ever seen; first uses of it are zeroes.
   //       That assumes no one else uses sbrk but us (they could go up,
@@ -83,12 +83,8 @@ int _mi_prim_alloc(size_t size, size_t try_alignment, bool commit, bool allow_la
   if (try_alignment < MIN_EMMALLOC_ALIGN) {
     try_alignment = MIN_EMMALLOC_ALIGN;
   }
-  void* p = emmalloc_memalign(try_alignment, size);
-  *addr = p;
-  if (p == 0) {
-    return ENOMEM;
-  }
-  return 0;
+  *addr = emmalloc_memalign(try_alignment, size);
+  return (*addr != NULL ? 0 : ENOMEM);
 }
 
 
