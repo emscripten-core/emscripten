@@ -275,9 +275,9 @@ if (ENVIRONMENT_IS_NODE) {
 
 } else
 #endif // ENVIRONMENT_MAY_BE_NODE
-#if ENVIRONMENT_MAY_BE_SHELL || ASSERTIONS
-if (ENVIRONMENT_IS_SHELL) {
 
+if (ENVIRONMENT_IS_SHELL) {
+#if ENVIRONMENT_MAY_BE_SHELL
 #if ENVIRONMENT && ASSERTIONS
   if ((typeof process == 'object' && typeof require === 'function') || typeof window == 'object' || typeof importScripts == 'function') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
@@ -352,9 +352,8 @@ if (ENVIRONMENT_IS_SHELL) {
     eval(read(locateFile('{{{ TARGET_BASENAME }}}.wasm.js'))+'');
   }
 #endif
-
-} else
 #endif // ENVIRONMENT_MAY_BE_SHELL
+} else
 
 // Note that this includes Node.js workers when relevant (pthreads is enabled).
 // Node.js workers are detected as a combination of ENVIRONMENT_IS_WORKER and
