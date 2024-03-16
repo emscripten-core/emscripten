@@ -15,31 +15,29 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "get_backend.h"
+#include "set_root_backend.h"
 
 int main() {
-  int err = wasmfs_create_directory("/root", 0777, get_backend());
-  assert(err == 0);
-  int fd = open("/root/test", O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
+  int fd = open("/test", O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
   const char* msg = "Success\n";
 
   errno = 0;
   write(fd, msg, strlen(msg));
   assert(errno == 0);
-  err = close(fd);
+  int err = close(fd);
   assert(err == 0);
 
   EM_ASM({
-    var output = FS.readFile("/root/test");
+    var output = FS.readFile("/test");
     out(UTF8ArrayToString(output, 0));
     out("Length: " + output.byteLength);
-    var err = FS.unlink("/root/test");
+    var err = FS.unlink("/test");
     out("FS.unlink: " + err);
   });
 
   EM_ASM({
     try {
-      var output = FS.readFile("/root/no-exist", {encoding : 'utf8'});
+      var output = FS.readFile("/no-exist", {encoding : 'utf8'});
     } catch (err) {
     }
   });
@@ -47,7 +45,7 @@ int main() {
   EM_ASM({
     try {
       // Already unlinked above, file should not exist anymore
-      var output = FS.readFile("/root/test", {encoding : 'utf8'});
+      var output = FS.readFile("/test", {encoding : 'utf8'});
     } catch (err) {
     }
   });
