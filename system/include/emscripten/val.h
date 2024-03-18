@@ -207,7 +207,7 @@ union GenericWireType {
     unsigned u;
     size_t s;
     float f;
-    void* p;
+    const void* p;
   } w[2];
   double d;
   uint64_t u;
