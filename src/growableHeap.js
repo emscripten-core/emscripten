@@ -42,6 +42,18 @@ function GROWABLE_HEAP_U32() {
   }
   return HEAPU32;
 }
+function GROWABLE_HEAP_I64() {
+  if (wasmMemory.buffer != HEAP8.buffer) {
+    updateMemoryViews();
+  }
+  return HEAP64;
+}
+function GROWABLE_HEAP_U64() {
+  if (wasmMemory.buffer != HEAP8.buffer) {
+    updateMemoryViews();
+  }
+  return HEAPU64;
+}
 function GROWABLE_HEAP_F32() {
   if (wasmMemory.buffer != HEAP8.buffer) {
     updateMemoryViews();
