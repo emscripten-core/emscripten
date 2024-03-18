@@ -1,6 +1,7 @@
 __indirect_function_table
 __trap
 __wasm_call_ctors
+_emscripten_stack_alloc
 dynCall_iiiiiijj
 dynCall_iiiiij
 dynCall_iiiiijj
@@ -8,4 +9,3 @@ dynCall_jiji
 dynCall_viijii
 main
 memory
-stackAlloc

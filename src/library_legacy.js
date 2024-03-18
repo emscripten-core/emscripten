@@ -17,7 +17,7 @@ legacyFuncs = {
    * @param {(Uint8Array|Array<number>)} slab: An array of data.
    * @param {number=} allocator : How to allocate memory, see ALLOC_*
    */
-  $allocate__deps: ['$ALLOC_NORMAL', '$ALLOC_STACK', 'malloc', 'stackAlloc'],
+  $allocate__deps: ['$ALLOC_NORMAL', '$ALLOC_STACK', 'malloc', '$stackAlloc'],
   $allocate: (slab, allocator) => {
     var ret;
   #if ASSERTIONS
