@@ -8998,6 +8998,19 @@ int main() {
                       expected_output=rethrow_stack_trace_checks, regex=True)
     self.assertNotContained('important_function', err)
 
+  @parameterized({
+    '': (False,),
+    'wasm': (True,),
+  })
+  def test_exceptions_exit_runtime(self, wasm_eh):
+    self.set_setting('EXIT_RUNTIME')
+    if wasm_eh:
+      self.require_wasm_eh()
+      self.emcc_args.append('-fwasm-exceptions')
+    else:
+      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    self.do_other_test('test_exceptions_exit_runtime.cpp')
+
   @requires_node
   def test_jsrun(self):
     print(config.NODE_JS)
