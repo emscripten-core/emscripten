@@ -34,7 +34,7 @@ from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
-from common import requires_wasm_eh, crossplatform, with_both_sjlj, also_with_standalone_wasm
+from common import requires_wasm_eh, crossplatform, with_both_eh_sjlj, with_both_sjlj, also_with_standalone_wasm
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, flaky
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
 from common import requires_network
@@ -8843,11 +8843,8 @@ int main() {
     stderr = self.expect_fail([EMCC, '-sSTRICT', test_file('other/test_exceptions_c_linker.c')])
     self.assertContained('error: undefined symbol: __cxa_find_matching_catch_1', stderr)
 
-  @parameterized({
-    '': (False,),
-    'wasm': (True,),
-  })
-  def test_exceptions_stack_trace_and_message(self, wasm_eh):
+  @with_both_eh_sjlj
+  def test_exceptions_stack_trace_and_message(self):
     src = r'''
       #include <stdexcept>
 
@@ -8864,7 +8861,7 @@ int main() {
         return 0;
       }
     '''
-    self.emcc_args = ['-g']
+    self.emcc_args += ['-g']
 
     # Stack trace and message example for this example code:
     # exiting due to exception: [object WebAssembly.Exception],Error: std::runtime_error,my message
@@ -8884,17 +8881,13 @@ int main() {
       'at (src.wasm.)?foo',
       'at (src.wasm.)?main']
 
-    if wasm_eh:
+    if '-fwasm-excpeptions' in self.emcc_args:
       # FIXME Node v18.13 (LTS as of Jan 2023) has not yet implemented the new
       # optional 'traceStack' option in WebAssembly.Exception constructor
       # (https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/Exception)
       # and embeds stack traces unconditionally. Change this back to
       # self.require_wasm_eh() if this issue is fixed later.
       self.require_v8()
-
-      self.emcc_args += ['-fwasm-exceptions']
-    else:
-      self.emcc_args += ['-fexceptions']
 
     # Stack traces are enabled when either of ASSERTIONS or
     # EXCEPTION_STACK_TRACES is enabled. You can't disable
@@ -8926,23 +8919,16 @@ int main() {
     for check in stack_trace_checks:
       self.assertFalse(re.search(check, err), 'Expected regex "%s" to not match on:\n%s' % (check, err))
 
-  @parameterized({
-    '': (False,),
-    'wasm': (True,),
-  })
-  def test_exceptions_rethrow_stack_trace_and_message(self, wasm_eh):
-    self.emcc_args = ['-g']
-    if wasm_eh:
+  @with_both_eh_sjlj
+  def test_exceptions_rethrow_stack_trace_and_message(self):
+    self.emcc_args += ['-g']
+    if '-fwasm-excpeptions' in self.emcc_args:
       # FIXME Node v18.13 (LTS as of Jan 2023) has not yet implemented the new
       # optional 'traceStack' option in WebAssembly.Exception constructor
       # (https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/Exception)
       # and embeds stack traces unconditionally. Change this back to
       # self.require_wasm_eh() if this issue is fixed later.
       self.require_v8()
-      self.emcc_args += ['-fwasm-exceptions']
-    else:
-      self.emcc_args += ['-fexceptions']
-
     # Rethrowing exception currently loses the stack trace before the rethrowing
     # due to how rethrowing is implemented. So in the examples below we don't
     # print 'bar' at the moment.
@@ -8998,17 +8984,9 @@ int main() {
                       expected_output=rethrow_stack_trace_checks, regex=True)
     self.assertNotContained('important_function', err)
 
-  @parameterized({
-    '': (False,),
-    'wasm': (True,),
-  })
-  def test_exceptions_exit_runtime(self, wasm_eh):
+  @with_both_eh_sjlj
+  def test_exceptions_exit_runtime(self):
     self.set_setting('EXIT_RUNTIME')
-    if wasm_eh:
-      self.require_wasm_eh()
-      self.emcc_args.append('-fwasm-exceptions')
-    else:
-      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_other_test('test_exceptions_exit_runtime.cpp')
 
   @requires_node

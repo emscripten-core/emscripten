@@ -28,7 +28,7 @@ from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, para
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb
-from common import with_both_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64
+from common import with_both_eh_sjlj, with_both_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
 
@@ -90,40 +90,6 @@ def all_engines(f):
     finally:
       self.use_all_engines = old
   return decorated
-
-
-# Tests exception handling / setjmp/longjmp handling in Emscripten EH/SjLj mode
-# and if possible, new wasm EH/SjLj mode. This tests two combinations:
-# - Emscripten EH + Emscripten SjLj
-# - Wasm EH + Wasm SjLj
-def with_both_eh_sjlj(f):
-  assert callable(f)
-
-  def metafunc(self, is_native):
-    if is_native:
-      # Wasm EH is currently supported only in wasm backend and V8
-      if self.is_wasm2js():
-        self.skipTest('wasm2js does not support wasm EH/SjLj')
-      self.require_wasm_eh()
-      # FIXME Temporarily disabled. Enable this later when the bug is fixed.
-      if '-fsanitize=address' in self.emcc_args:
-        self.skipTest('Wasm EH does not work with asan yet')
-      self.emcc_args.append('-fwasm-exceptions')
-      self.set_setting('SUPPORT_LONGJMP', 'wasm')
-      f(self)
-    else:
-      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-      self.set_setting('SUPPORT_LONGJMP', 'emscripten')
-      # DISABLE_EXCEPTION_CATCHING=0 exports __cxa_can_catch and
-      # __cxa_is_pointer_type, so if we don't build in C++ mode, wasm-ld will
-      # error out because libc++abi is not included. See
-      # https://github.com/emscripten-core/emscripten/pull/14192 for details.
-      self.set_setting('DEFAULT_TO_CXX')
-      f(self)
-
-  metafunc._parameterize = {'': (False,),
-                            'wasm': (True,)}
-  return metafunc
 
 
 def no_wasm2js(note=''):
