@@ -984,8 +984,8 @@ function to64(x) {
 }
 
 // Add assertions to catch common errors when using the Promise object we
-// create on Module.ready() and return from MODULARIZE Module() invocations.
-function addReadyPromiseAssertions(promise) {
+// return from MODULARIZE Module() invocations.
+function addReadyPromiseAssertions() {
   // Warn on someone doing
   //
   //  var instance = Module();
@@ -1001,8 +1001,8 @@ function addReadyPromiseAssertions(promise) {
   return (
     res +
     `.forEach((prop) => {
-  if (!Object.getOwnPropertyDescriptor(${promise}, prop)) {
-    Object.defineProperty(${promise}, prop, {
+  if (!Object.getOwnPropertyDescriptor(readyPromise, prop)) {
+    Object.defineProperty(readyPromise, prop, {
       get: () => abort('You are getting ' + prop + '${warningEnding}'),
       set: () => abort('You are setting ' + prop + '${warningEnding}'),
     });

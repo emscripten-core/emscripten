@@ -1141,7 +1141,7 @@ def phase_linker_setup(options, state, newargs):
     # Promise. However, in Pthreads mode the Promise is used for worker
     # creation.
     if settings.MINIMAL_RUNTIME and options.oformat == OFormat.HTML and not settings.PTHREADS:
-      settings.EXPORT_READY_PROMISE = 0
+      settings.USE_READY_PROMISE = 0
 
   if settings.WASM2JS and settings.LEGACY_VM_SUPPORT:
     settings.POLYFILL_OLD_MATH_FUNCTIONS = 1
@@ -2334,9 +2334,10 @@ def modularize():
   # the return statement.
   return_value = 'moduleArg'
   if settings.WASM_ASYNC_COMPILATION:
-    return_value += '.ready'
-  if not settings.EXPORT_READY_PROMISE:
-    return_value = '{}'
+    if settings.USE_READY_PROMISE:
+      return_value = 'readyPromise'
+    else:
+      return_value = '{}'
 
   # TODO: Remove when https://bugs.webkit.org/show_bug.cgi?id=223533 is resolved.
   if async_emit != '' and settings.EXPORT_NAME == 'config':
