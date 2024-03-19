@@ -75,7 +75,7 @@ if (location.search.indexOf('hideBlocksSmallerThan') != -1) {
 function refresh() {
   var hideBlocksSmallerThan = parseInt(document.getElementById('hideBlocksSmallerThan').value);
   var url = window.location.href;
-  if (url.includes('?') url = url.split('?')[0]
+  if (url.includes('?')) url = url.split('?')[0]
   window.location.href = url + '?hideBlocksSmallerThan=' + hideBlocksSmallerThan;
 }
 

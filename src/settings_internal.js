@@ -164,9 +164,6 @@ var MINIFY_WASM_IMPORTED_MODULES = false;
 // Whether to minify exports from the Wasm module.
 var MINIFY_WASM_EXPORT_NAMES = true;
 
-// Internal: represents a browser version that is not supported at all.
-var TARGET_NOT_SUPPORTED = 0x7FFFFFFF;
-
 // Used to track whether target environment supports the 'globalThis' attribute.
 var SUPPORTS_GLOBALTHIS = false;
 

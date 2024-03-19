@@ -822,18 +822,20 @@ def make_export_wrappers(function_exports):
 
   wrappers = []
 
-  # The emscripten stack functions are called very early (by writeStackCookie) before
-  # the runtime is initialized so we can't create these wrappers that check for
-  # runtimeInitialized.
-  # Likewise `__trap` can occur before the runtime is initialized since it is used in
-  # abort.
-  # pthread_self and _emscripten_proxy_execute_task_queue are currently called in some
-  # cases after the runtime has exited.
-  # TODO: Look into removing these, and improving our robustness around thread termination.
   def install_wrapper(sym):
+    # The emscripten stack functions are called very early (by writeStackCookie) before
+    # the runtime is initialized so we can't create these wrappers that check for
+    # runtimeInitialized.
     if sym.startswith('_asan_') or sym.startswith('emscripten_stack_'):
       return False
-    if sym in ('__trap', 'pthread_self', '_emscripten_proxy_execute_task_queue'):
+    # Likewise `__trap` can occur before the runtime is initialized since it is used in
+    # abort.
+    # stackRestore is often called during stack unwinding (e.g. by invoke_xxx function) which
+    # runs after the runtime has exited.
+    # pthread_self and _emscripten_proxy_execute_task_queue are currently called in some
+    # cases after the runtime has exited.
+    # TODO: Look into removing these, and improving our robustness around thread termination.
+    if sym in ('__trap', 'pthread_self', '_emscripten_proxy_execute_task_queue', 'stackRestore'):
       return False
     return True
 

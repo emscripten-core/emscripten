@@ -41,7 +41,7 @@ globalThis.currentFile = null;
 
 function errorPrefix() {
   if (currentFile) {
-    return currentFile + ': '
+    return currentFile + ': ';
   } else {
     return '';
   }
@@ -82,16 +82,6 @@ function range(size) {
   return Array.from(Array(size).keys());
 }
 
-function bind(self, func) {
-  return function(...args) {
-    func.apply(self, args);
-  };
-}
-
-function sum(x) {
-  return x.reduce((a, b) => a + b, 0);
-}
-
 // options is optional input object containing mergeInto params
 // currently, it can contain
 //
@@ -112,7 +102,9 @@ function mergeInto(obj, other, options = null) {
     if (options.noOverride) {
       for (const key of Object.keys(other)) {
         if (obj.hasOwnProperty(key)) {
-          error(`Symbol re-definition in JavaScript library: ${key}. Do not use noOverride if this is intended`);
+          error(
+            `Symbol re-definition in JavaScript library: ${key}. Do not use noOverride if this is intended`,
+          );
           return;
         }
       }
@@ -164,28 +156,32 @@ function mergeInto(obj, other, options = null) {
       if (decoratorName === '__deps') {
         const deps = other[key];
         if (!Array.isArray(deps)) {
-          error(`JS library directive ${key}=${deps.toString()} is of type '${type}', but it should be an array`);
+          error(
+            `JS library directive ${key}=${deps.toString()} is of type '${type}', but it should be an array`,
+          );
         }
         for (let dep of deps) {
           if (dep && typeof dep !== 'string' && typeof dep !== 'function') {
-            error(`__deps entries must be of type 'string' or 'function' not '${typeof dep}': ${key}`)
+            error(
+              `__deps entries must be of type 'string' or 'function' not '${typeof dep}': ${key}`,
+            );
           }
         }
       } else {
         // General type checking for all other decorators
         const decoratorTypes = {
-          '__sig': 'string',
-          '__proxy': 'string',
-          '__asm': 'boolean',
-          '__inline': 'boolean',
-          '__postset': ['string', 'function'],
-          '__docs': 'string',
-          '__nothrow': 'boolean',
-          '__noleakcheck': 'boolean',
-          '__internal': 'boolean',
-          '__user': 'boolean',
-          '__async': 'boolean',
-          '__i53abi': 'boolean',
+          __sig: 'string',
+          __proxy: 'string',
+          __asm: 'boolean',
+          __inline: 'boolean',
+          __postset: ['string', 'function'],
+          __docs: 'string',
+          __nothrow: 'boolean',
+          __noleakcheck: 'boolean',
+          __internal: 'boolean',
+          __user: 'boolean',
+          __async: 'boolean',
+          __i53abi: 'boolean',
         };
         const expected = decoratorTypes[decoratorName];
         if (type !== expected && !expected.includes(type)) {
@@ -229,35 +225,39 @@ function isDecorator(ident) {
 }
 
 function isPowerOfTwo(x) {
-  return x > 0 && ((x & (x - 1)) == 0);
+  return x > 0 && (x & (x - 1)) == 0;
 }
 
-/** @constructor */
-globalThis.Benchmarker = function() {
-  const totals = {};
-  const ids = [];
-  const lastTime = 0;
-  this.start = function(id) {
+class Benchmarker {
+  totals = {};
+  ids = [];
+  lastTime = 0;
+
+  start(id) {
     const now = Date.now();
-    if (ids.length > 0) {
-      totals[ids[ids.length - 1]] += now - lastTime;
+    if (this.ids.length > 0) {
+      this.totals[this.ids[this.ids.length - 1]] += now - this.lastTime;
     }
-    lastTime = now;
-    ids.push(id);
-    totals[id] ||= 0;
-  };
-  this.stop = function(id) {
+    this.lastTime = now;
+    this.ids.push(id);
+    this.totals[id] ||= 0;
+  }
+
+  stop(id) {
     const now = Date.now();
-    assert(id === ids[ids.length - 1]);
-    totals[id] += now - lastTime;
-    lastTime = now;
-    ids.pop();
-  };
-  this.print = function(text) {
-    const ids = Object.keys(totals);
+    assert(id === this.ids[this.ids.length - 1]);
+    this.totals[id] += now - this.lastTime;
+    this.lastTime = now;
+    this.ids.pop();
+  }
+
+  print(text) {
+    const ids = Object.keys(this.totals);
     if (ids.length > 0) {
-      ids.sort((a, b) => totals[b] - totals[a]);
-      printErr(text + ' times: \n' + ids.map((id) => id + ' : ' + totals[id] + ' ms').join('\n'));
+      ids.sort((a, b) => this.totals[b] - this.totals[a]);
+      printErr(
+        text + ' times: \n' + ids.map((id) => id + ' : ' + this.totals[id] + ' ms').join('\n'),
+      );
     }
-  };
+  }
 }
