@@ -3363,8 +3363,12 @@ Module["preRun"] = () => {
     self.btest_exit('async_mainloop.cpp', args=args + ['-sASYNCIFY'])
 
   @requires_sound_hardware
-  def test_sdl_audio_beep_sleep(self):
-    self.btest_exit('test_sdl_audio_beep_sleep.cpp', args=['-Os', '-sASSERTIONS', '-sDISABLE_EXCEPTION_CATCHING=0', '-profiling', '-sSAFE_HEAP', '-lSDL', '-sASYNCIFY'], timeout=90)
+  @parameterized({
+    '': ([],),
+    'safeheap': (['-sSAFE_HEAP'],),
+  })
+  def test_sdl_audio_beep_sleep(self, args):
+    self.btest_exit('test_sdl_audio_beep_sleep.cpp', args=['-Os', '-sASSERTIONS', '-sDISABLE_EXCEPTION_CATCHING=0', '-profiling', '-lSDL', '-sASYNCIFY'] + args, timeout=90)
 
   def test_mainloop_reschedule(self):
     self.btest('mainloop_reschedule.cpp', '1', args=['-Os', '-sASYNCIFY'])

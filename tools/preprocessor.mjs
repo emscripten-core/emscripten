@@ -17,7 +17,6 @@ import assert from 'assert';
 import {loadSettingsFile} from '../src/utility.mjs';
 
 const args = process.argv.slice(2);
-const debug = false;
 
 assert(args.length >= 2, 'Script requires 2 arguments');
 const settingsFile = args[0];

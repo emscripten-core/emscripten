@@ -32,12 +32,6 @@ function visitNodes(root, types, func) {
   }
 }
 
-function dump(nodeArray) {
-  for (const node of nodeArray) {
-    console.dir(node);
-  }
-}
-
 function optPassSimplifyModularizeFunction(ast) {
   visitNodes(ast, ['FunctionExpression'], (node) => {
     if (node.params.length == 1 && node.params[0].name == 'Module') {
