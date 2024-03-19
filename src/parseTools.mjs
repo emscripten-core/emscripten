@@ -8,22 +8,33 @@
  * Tests live in test/other/test_parseTools.js.
  */
 
-globalThis.FOUR_GB = 4 * 1024 * 1024 * 1024;
-globalThis.WASM_PAGE_SIZE = 64 * 1024;
-// Represents a browser version that is not supported at all.
-globalThis.TARGET_NOT_SUPPORTED = 0x7FFFFFFF;
+import {
+  addToCompileTimeContext,
+  assert,
+  error,
+  isNumber,
+  printErr,
+  read,
+  runInMacroContext,
+  setCurrentFile,
+  warn,
+} from './utility.mjs';
 
+const FOUR_GB = 4 * 1024 * 1024 * 1024;
+const WASM_PAGE_SIZE = 64 * 1024;
 const FLOAT_TYPES = new Set(['float', 'double']);
+// Represents a browser version that is not supported at all.
+const TARGET_NOT_SUPPORTED = 0x7fffffff;
 
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
 // NOTE: Be careful with that ret check. If ret is |0|, |ret ? ret.toString() : ''| would result in ''!
-function processMacros(text, filename) {
+export function processMacros(text, filename) {
   // The `?` here in makes the regex non-greedy so it matches with the closest
   // set of closing braces.
   // `[\s\S]` works like `.` but include newline.
   return text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
-    const ret = vm.runInThisContext(str, {filename: filename});
+    const ret = runInMacroContext(str, {filename: filename});
     return ret !== null ? ret.toString() : '';
   });
 }
@@ -31,7 +42,7 @@ function processMacros(text, filename) {
 // Simple #if/else/endif preprocessing for a file. Checks if the
 // ident checked is true in our global.
 // Also handles #include x.js (similar to C #include <file>)
-function preprocess(filename) {
+export function preprocess(filename) {
   let text = read(filename);
   if (EXPORT_ES6 && USE_ES6_IMPORT_META) {
     // `eval`, Terser and Closure don't support module syntax; to allow it,
@@ -54,8 +65,7 @@ function preprocess(filename) {
   const showStack = [];
   const showCurrentLine = () => showStack.every((x) => x == SHOW);
 
-  const oldFilename = currentFile;
-  currentFile = filename;
+  const oldFilename = setCurrentFile(filename);
   const fileExt = filename.split('.').pop().toLowerCase();
   const isHtml = fileExt === 'html' || fileExt === 'htm' ? true : false;
   let inStyle = false;
@@ -102,7 +112,7 @@ function preprocess(filename) {
             }
           }
           const after = trimmed.substring(trimmed.indexOf(' '));
-          const truthy = !!vm.runInThisContext(after, {
+          const truthy = !!runInMacroContext(after, {
             filename,
             lineOffset: i,
             columnOffset: line.indexOf(after),
@@ -169,7 +179,7 @@ no matching #endif found (${showStack.length$}' unmatched preprocessing directiv
     );
     return ret;
   } finally {
-    currentFile = oldFilename;
+    setCurrentFile(oldFilename);
   }
 }
 
@@ -178,23 +188,23 @@ function isNiceIdent(ident, loose) {
   return /^\(?[$_]+[\w$_\d ]*\)?$/.test(ident);
 }
 
-globalThis.POINTER_SIZE = MEMORY64 ? 8 : 4;
-globalThis.POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
-globalThis.STACK_ALIGN = 16;
-globalThis.POINTER_BITS = POINTER_SIZE * 8;
-globalThis.POINTER_TYPE = `u${POINTER_BITS}`;
-globalThis.POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
-globalThis.POINTER_SHIFT = MEMORY64 ? '3' : '2';
-globalThis.POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
-globalThis.LONG_TYPE = `i${POINTER_BITS}`;
+export const POINTER_SIZE = MEMORY64 ? 8 : 4;
+const POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
+const STACK_ALIGN = 16;
+const POINTER_BITS = POINTER_SIZE * 8;
+const POINTER_TYPE = `u${POINTER_BITS}`;
+const POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
+const POINTER_SHIFT = MEMORY64 ? '3' : '2';
+const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
+const LONG_TYPE = `i${POINTER_BITS}`;
 
-globalThis.SIZE_TYPE = POINTER_TYPE;
+const SIZE_TYPE = POINTER_TYPE;
 
 // Similar to POINTER_TYPE, but this is the actual wasm type that is
 // used in practice, while POINTER_TYPE is the more refined internal
 // type (that is unsigned, where as core wasm does not have unsigned
 // types).
-globalThis.POINTER_WASM_TYPE = `i${POINTER_BITS}`;
+const POINTER_WASM_TYPE = `i${POINTER_BITS}`;
 
 function isPointerType(type) {
   return type[type.length - 1] == '*';
@@ -259,7 +269,7 @@ function splitI64(value) {
 
 // Misc
 
-function indentify(text, indent) {
+export function indentify(text, indent) {
   // Don't try to indentify huge strings - we may run out of memory
   if (text.length > 1024 * 1024) return text;
   if (typeof indent == 'number') {
@@ -551,7 +561,7 @@ function getHeapForType(type) {
   assert(false, `bad heap type: ${type}`);
 }
 
-function makeReturn64(value) {
+export function makeReturn64(value) {
   if (WASM_BIGINT) {
     return `BigInt(${value})`;
   }
@@ -680,13 +690,15 @@ function makeEval(code) {
   return ret;
 }
 
-globalThis.ATINITS = [];
+export const ATMAINS = [];
+
+export const ATINITS = [];
 
 function addAtInit(code) {
   ATINITS.push(code);
 }
 
-globalThis.ATEXITS = [];
+export const ATEXITS = [];
 
 function addAtExit(code) {
   if (EXIT_RUNTIME) {
@@ -722,7 +734,7 @@ function makeRetainedCompilerSettings() {
 // Receives a function as text, and a function that constructs a modified
 // function, to which we pass the parsed-out arguments, body, and possible
 // "async" prefix of the input function. Returns the output of that function.
-function modifyJSFunction(text, func) {
+export function modifyJSFunction(text, func) {
   // Match a function with a name.
   let async_;
   let args;
@@ -762,7 +774,7 @@ function modifyJSFunction(text, func) {
   return func(args, body, async_, oneliner);
 }
 
-function runIfMainThread(text) {
+export function runIfMainThread(text) {
   if (WASM_WORKERS && PTHREADS) {
     return `if (!ENVIRONMENT_IS_WASM_WORKER && !ENVIRONMENT_IS_PTHREAD) { ${text} }`;
   } else if (WASM_WORKERS) {
@@ -927,14 +939,14 @@ function receivedSymbol(sym) {
 
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
-function defineI64Param(name) {
+export function defineI64Param(name) {
   if (WASM_BIGINT) {
     return name;
   }
   return `${name}_low, ${name}_high`;
 }
 
-function receiveI64ParamAsI53(name, onError, handleErrors = true) {
+export function receiveI64ParamAsI53(name, onError, handleErrors = true) {
   var errorHandler = handleErrors ? `if (isNaN(${name})) { return ${onError}; }` : '';
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
@@ -1082,3 +1094,68 @@ function getPerformanceNow() {
 function implicitSelf() {
   return ENVIRONMENT.includes('node') ? 'self.' : '';
 }
+
+addToCompileTimeContext({
+  ATEXITS,
+  ATINITS,
+  FOUR_GB,
+  LONG_TYPE,
+  POINTER_HEAP,
+  POINTER_BITS,
+  POINTER_JS_TYPE,
+  POINTER_MAX,
+  POINTER_SHIFT,
+  POINTER_SIZE,
+  POINTER_TYPE,
+  POINTER_WASM_TYPE,
+  SIZE_TYPE,
+  STACK_ALIGN,
+  TARGET_NOT_SUPPORTED,
+  WASM_PAGE_SIZE,
+  addAtExit,
+  addAtInit,
+  addReadyPromiseAssertions,
+  asyncIf,
+  awaitIf,
+  buildStringArray,
+  charCode,
+  defineI64Param,
+  expectToReceiveOnModule,
+  formattedMinNodeVersion,
+  from64,
+  getEntryFunction,
+  getHeapForType,
+  getHeapOffset,
+  getNativeTypeSize,
+  getPerformanceNow,
+  getUnsharedTextDecoderView,
+  hasExportedFunction,
+  hasExportedSymbol,
+  implicitSelf,
+  isSymbolNeeded,
+  makeAsmImportsAccessInPthread,
+  makeDynCall,
+  makeEval,
+  makeGetValue,
+  makeHEAPView,
+  makeModuleReceive,
+  makeModuleReceiveExpr,
+  makeModuleReceiveWithVar,
+  makeRemovedFSAssert,
+  makeRemovedModuleAPIAssert,
+  makeRetainedCompilerSettings,
+  makeReturn64,
+  makeSetValue,
+  makeThrow,
+  modifyJSFunction,
+  receiveI64ParamAsI53,
+  receiveI64ParamAsI53Unchecked,
+  receivedSymbol,
+  runIfMainThread,
+  runIfWorkerThread,
+  runtimeKeepalivePop,
+  runtimeKeepalivePush,
+  splitI64,
+  storeException,
+  to64,
+});

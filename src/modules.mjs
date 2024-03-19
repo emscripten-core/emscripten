@@ -4,14 +4,29 @@
  * SPDX-License-Identifier: MIT
  */
 
-// "use strict";
+import * as path from 'path';
+
+import {
+  isDecorator,
+  assert,
+  isJsOnlySymbol,
+  error,
+  read,
+  warn,
+  setCurrentFile,
+  printErr,
+  addToCompileTimeContext,
+  runInMacroContext,
+  mergeInto,
+} from './utility.mjs';
+import {preprocess, processMacros} from './parseTools.mjs';
 
 // Various namespace-like modules
 
 // List of symbols that were added from the library.
-globalThis.librarySymbols = [];
+export const librarySymbols = [];
 
-globalThis.LibraryManager = {
+export const LibraryManager = {
   library: {},
   structs: {},
   loaded: false,
@@ -198,7 +213,7 @@ globalThis.LibraryManager = {
     this.libraries = libraries;
 
     for (const filename of libraries) {
-      const isUserLibrary = nodePath.isAbsolute(filename);
+      const isUserLibrary = path.isAbsolute(filename);
       if (VERBOSE) {
         if (isUserLibrary) {
           printErr('processing user library: ' + filename);
@@ -222,10 +237,10 @@ globalThis.LibraryManager = {
           },
         });
       }
-      currentFile = filename;
+      const oldFile = setCurrentFile(filename);
       try {
         processed = processMacros(preprocess(filename), filename);
-        vm.runInThisContext(processed, {filename: filename.replace(/\.\w+$/, '.preprocessed$&')});
+        runInMacroContext(processed, {filename: filename.replace(/\.\w+$/, '.preprocessed$&')});
       } catch (e) {
         error(`failure to execute js library "${filename}":`);
         if (VERBOSE) {
@@ -242,7 +257,7 @@ globalThis.LibraryManager = {
         }
         throw e;
       } finally {
-        currentFile = null;
+        setCurrentFile(oldFile);
         if (origLibrary) {
           this.library = origLibrary;
         }
@@ -251,6 +266,23 @@ globalThis.LibraryManager = {
   },
 };
 
+// options is optional input object containing mergeInto params
+// currently, it can contain
+//
+// key: noOverride, value: true
+// if it is set, it prevents symbol redefinition and shows error
+// in case of redefinition
+//
+// key: checkSig, value: true
+// if it is set, __sig is checked for functions and error is reported
+// if <function name>__sig is missing
+function addToLibrary(obj, options = null) {
+  mergeInto(LibraryManager.library, obj, options);
+}
+
+let structs = {};
+let defines = {};
+
 if (!BOOTSTRAPPING_STRUCT_INFO) {
   let structInfoFile = 'generated_struct_info32.json';
   if (MEMORY64) {
@@ -258,16 +290,13 @@ if (!BOOTSTRAPPING_STRUCT_INFO) {
   }
   // Load struct and define information.
   const temp = JSON.parse(read(structInfoFile));
-  C_STRUCTS = temp.structs;
-  C_DEFINES = temp.defines;
-} else {
-  C_STRUCTS = {};
-  C_DEFINES = {};
+  structs = temp.structs;
+  defines = temp.defines;
 }
 
 // Use proxy objects for C_DEFINES and C_STRUCTS so that we can give useful
 // error messages.
-C_STRUCTS = new Proxy(C_STRUCTS, {
+const C_STRUCTS = new Proxy(structs, {
   get(target, prop, receiver) {
     if (!(prop in target)) {
       throw new Error(
@@ -278,7 +307,7 @@ C_STRUCTS = new Proxy(C_STRUCTS, {
   },
 });
 
-cDefs = C_DEFINES = new Proxy(C_DEFINES, {
+const C_DEFINES = new Proxy(defines, {
   get(target, prop, receiver) {
     if (!(prop in target)) {
       throw new Error(
@@ -288,6 +317,9 @@ cDefs = C_DEFINES = new Proxy(C_DEFINES, {
     return target[prop];
   },
 });
+
+// shorter alias for C_DEFINES
+const cDefs = C_DEFINES;
 
 // Legacy function that existed solely to give error message.  These are now
 // provided by the cDefs proxy object above.
@@ -512,3 +544,14 @@ function exportRuntime() {
 
   return results.join('\n') + '\n';
 }
+
+addToCompileTimeContext({
+  exportRuntime,
+  LibraryManager,
+  librarySymbols,
+  addToLibrary,
+  cDefs,
+  cDefine,
+  C_STRUCTS,
+  C_DEFINES,
+});

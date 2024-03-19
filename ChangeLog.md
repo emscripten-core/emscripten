@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.57 (in development)
 -----------------------
+- JS library code is now executed in its own context/scope, which limits how
+  much of the compiler internals are accessible. If there are build time JS
+  symbols that you are depending on, but that were not added to this scope,
+  please file a bug and we can add more to this scope. (#21542)
 
 3.1.56 - 03/14/24
 -----------------
