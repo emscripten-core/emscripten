@@ -8370,11 +8370,11 @@ int main() {
 
     # Run once without closure and parse output to find wasmImports
     build_cmd = [compiler_for(filename), filename, '--output_eol=linux'] + args + self.get_emcc_args()
-    self.run_process(build_cmd + ['-g2'])
+    self.run_process(build_cmd + ['-g2', '-o', 'debug.js'])
     # find the imports we send from JS
     # TODO(sbc): Find a way to do that that doesn't depend on internal details of
     # the generated code.
-    js = read_file('a.out.js')
+    js = read_file('debug.js')
     start = js.find('wasmImports = ')
     self.assertNotEqual(start, -1)
     end = js.find('}', start)
@@ -8389,17 +8389,15 @@ int main() {
     sent = [x for x in sent if x]
     sent.sort()
 
-    self.run_process(build_cmd + ['--profiling-funcs', '--closure=1'])
-
     for exists in expected_exists:
       self.assertIn(exists, sent)
     for not_exists in expected_not_exists:
       self.assertNotIn(not_exists, sent)
 
     if check_size:
+      self.run_process(build_cmd + ['--closure=1'])
       # measure the wasm size without the name section
-      self.run_process([wasm_opt, 'a.out.wasm', '--strip-debug', '--all-features', '-o', 'a.out.nodebug.wasm'])
-      wasm_size = os.path.getsize('a.out.nodebug.wasm')
+      wasm_size = os.path.getsize('a.out.wasm')
       size_file = expected_basename + '.size'
       js_size = os.path.getsize('a.out.js')
       gz_size = get_file_gzipped_size('a.out.js')
@@ -8411,7 +8409,8 @@ int main() {
       self.check_expected_size_in_file('js', js_size_file, js_size)
       self.check_expected_size_in_file('gz', gz_size_file, gz_size)
 
-    imports, exports, funcs = self.parse_wasm('a.out.wasm')
+    self.run_process(build_cmd + ['--profiling-funcs', '--closure=1', '-o', 'profiling.js'])
+    imports, exports, funcs = self.parse_wasm('profiling.wasm')
     imports.sort()
     exports.sort()
     funcs.sort()
