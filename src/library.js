@@ -21,6 +21,20 @@
 // new function with an '_', it will not be found.
 
 addToLibrary({
+  // JS aliases for native stack manipulation functions
+  $stackSave__deps: ['emscripten_stack_get_current'],
+  $stackSave: () => _emscripten_stack_get_current(),
+  $stackRestore__deps: ['_emscripten_stack_restore'],
+  $stackRestore: (val) => __emscripten_stack_restore(val),
+  $stackAlloc__deps: ['_emscripten_stack_alloc'],
+  $stackAlloc: (sz) => __emscripten_stack_alloc(sz),
+
+  // Aliases that allow legacy names (without leading $) for these
+  // stack functions to continue to work in `__deps` entries.
+  stackAlloc: '$stackAlloc',
+  stackSave: '$stackSave',
+  stackRestore: '$stackSave',
+
   $ptrToString: (ptr) => {
 #if ASSERTIONS
     assert(typeof ptr === 'number');
@@ -596,7 +610,7 @@ addToLibrary({
 #endif
 
   $withStackSave__internal: true,
-  $withStackSave__deps: ['stackSave', 'stackRestore'],
+  $withStackSave__deps: ['$stackSave', '$stackRestore'],
   $withStackSave: (f) => {
     var stack = stackSave();
     var ret = f();

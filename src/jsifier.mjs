@@ -31,6 +31,7 @@ import {
   printErr,
   read,
   warn,
+  warnOnce,
   warningOccured,
 } from './utility.mjs';
 import {LibraryManager, librarySymbols} from './modules.mjs';

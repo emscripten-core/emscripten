@@ -826,16 +826,14 @@ def make_export_wrappers(function_exports):
     # The emscripten stack functions are called very early (by writeStackCookie) before
     # the runtime is initialized so we can't create these wrappers that check for
     # runtimeInitialized.
-    if sym.startswith('_asan_') or sym.startswith('emscripten_stack_'):
+    if sym.startswith('_asan_') or sym.startswith('emscripten_stack_') or sym.startswith('_emscripten_stack_'):
       return False
     # Likewise `__trap` can occur before the runtime is initialized since it is used in
     # abort.
-    # stackRestore is often called during stack unwinding (e.g. by invoke_xxx function) which
-    # runs after the runtime has exited.
     # pthread_self and _emscripten_proxy_execute_task_queue are currently called in some
     # cases after the runtime has exited.
     # TODO: Look into removing these, and improving our robustness around thread termination.
-    if sym in ('__trap', 'pthread_self', '_emscripten_proxy_execute_task_queue', 'stackRestore'):
+    if sym in ('__trap', 'pthread_self', '_emscripten_proxy_execute_task_queue'):
       return False
     return True
 
@@ -950,7 +948,7 @@ def create_pointer_conversion_wrappers(metadata):
   #  'P' - same as above but allow `undefined` too (requires extra check)
   mapping = {
     'sbrk': 'pP',
-    'stackAlloc': 'pp',
+    '_emscripten_stack_alloc': 'pp',
     'emscripten_builtin_malloc': 'pp',
     'malloc': 'pp',
     'webidl_malloc': 'pp',
@@ -961,9 +959,8 @@ def create_pointer_conversion_wrappers(metadata):
     'setThrew': '_p',
     'free': '_p',
     'webidl_free': '_p',
-    'stackRestore': '_p',
+    '_emscripten_stack_restore': '_p',
     '__cxa_is_pointer_type': '_p',
-    'stackSave': 'p',
     'fflush': '_p',
     'emscripten_stack_get_end': 'p',
     'emscripten_stack_get_base': 'p',

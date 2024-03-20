@@ -819,6 +819,7 @@ def phase_linker_setup(options, state, newargs):
   if settings.PURE_WASI:
     settings.STANDALONE_WASM = 1
     settings.WASM_BIGINT = 1
+    settings.SUPPORT_LONGJMP = 0
 
   if options.no_entry:
     settings.EXPECT_MAIN = 0
@@ -1301,12 +1302,12 @@ def phase_linker_setup(options, state, newargs):
       settings.REQUIRED_EXPORTS.append(sym)
 
   if settings.MAIN_READS_PARAMS and not settings.STANDALONE_WASM:
-    # callMain depends on stackAlloc
-    settings.REQUIRED_EXPORTS += ['stackAlloc']
+    # callMain depends on _emscripten_stack_alloc
+    settings.REQUIRED_EXPORTS += ['_emscripten_stack_alloc']
 
   if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
     # make_invoke depends on stackSave and stackRestore
-    settings.REQUIRED_EXPORTS += ['stackSave', 'stackRestore']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stackSave', '$stackRestore']
 
   if settings.RELOCATABLE:
     # TODO(https://reviews.llvm.org/D128515): Make this mandatory once

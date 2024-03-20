@@ -3942,6 +3942,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if MEMORY64
   // Convert an array of i64 offsets to an array of i32 offsets returning a
   // pointer to the new (stack allocated) array.
+  $convertOffsets__deps: ['$stackAlloc'],
   $convertOffsets__internal: true,
   $convertOffsets: (offsets, count) => {
     var offsets32 = stackAlloc(count * 4);
@@ -3960,7 +3961,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   glMultiDrawElements: 'glMultiDrawElementsWEBGL',
   glMultiDrawElementsANGLE: 'glMultiDrawElementsWEBGL',
 #if MEMORY64
-  glMultiDrawElementsWEBGL__deps: ['$convertOffsets', 'stackSave', 'stackRestore'],
+  glMultiDrawElementsWEBGL__deps: ['$convertOffsets', '$stackSave', '$stackRestore'],
 #endif
   glMultiDrawElementsWEBGL: (mode, counts, type, offsets, drawcount) => {
 #if MEMORY64
@@ -3983,7 +3984,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   glMultiDrawElementsInstancedWEBGL__sig: 'vipippi',
   glMultiDrawElementsInstancedANGLE: 'glMultiDrawElementsInstancedWEBGL',
 #if MEMORY64
-  glMultiDrawElementsInstancedWEBGL__deps: ['$convertOffsets', 'stackSave', 'stackRestore'],
+  glMultiDrawElementsInstancedWEBGL__deps: ['$convertOffsets', '$stackSave', '$stackRestore'],
 #endif
   glMultiDrawElementsInstancedWEBGL: (mode, counts, type, offsets, instanceCounts, drawcount) => {
 #if MEMORY64

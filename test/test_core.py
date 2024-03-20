@@ -2720,7 +2720,29 @@ The current type of b is: 9
     self.do_runf('core/stack_overflow.c', 'Aborted(stack overflow', assert_returncode=NON_ZERO)
 
   def test_stackAlloc(self):
-    self.do_core_test('stackAlloc.cpp')
+    self.do_core_test('test_stackAlloc.c')
+
+  def test_legacy_stack_deps(self):
+    # stackSave/stackRestore/stackAlloc are now normal JS library
+    # functions that must be $-prefixed in `__deps` lists.  However,
+    # to support legacy code we continue to support the non-prefixed
+    # versions in `__deps` lists.
+    create_file('lib.js', '''
+    addToLibrary({
+      foo__deps: ['stackSave', 'stackRestore'],
+      foo: () => {
+        var a = stackSave();
+        stackRestore(a);
+        return 0;
+      }
+    })''')
+    create_file('main.c', '''
+    int foo();
+
+    int main() {
+      return foo();
+    }''')
+    self.do_runf('main.c', emcc_args=['--js-library=lib.js'])
 
   def test_nestedstructs(self):
     src = r'''

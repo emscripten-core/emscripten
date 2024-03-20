@@ -22,6 +22,8 @@ $__unlockfile
 $__vfprintf_internal
 $__wasi_syscall_ret
 $__wasm_call_ctors
+$_emscripten_stack_alloc
+$_emscripten_stack_restore
 $dynCall_jiji
 $emscripten_stack_get_base
 $emscripten_stack_get_current
@@ -48,9 +50,6 @@ $pop_arg_long_double
 $printf
 $printf_core
 $setTempRet0
-$stackAlloc
-$stackRestore
-$stackSave
 $strnlen
 $vfprintf
 $wcrtomb
