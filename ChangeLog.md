@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.57 (in development)
 -----------------------
+- In `MODULARIZE` mode we no longer export the module ready promise as `ready`.
+  This was previously exposed on the Module for historical reasons even though
+  in `MODULARIZE` mode the only way to get access to the module is to wait on the
+  promise returned from the factory function. (#21564)
 - JS library code is now executed in its own context/scope, which limits how
   much of the compiler internals are accessible. If there are build time JS
   symbols that you are depending on, but that were not added to this scope,
