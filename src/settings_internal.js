@@ -170,11 +170,6 @@ var SUPPORTS_GLOBALTHIS = false;
 // Used to track whether target environment supports the 'Promise.any'.
 var SUPPORTS_PROMISE_ANY = false;
 
-// Wasm backend symbols that are considered system symbols and don't
-// have the normal C symbol name mangled applied (== prefix with an underscore)
-// (Also implicily on this list is any function that starts with string "dynCall_")
-var WASM_SYSTEM_EXPORTS = ['getTempRet0', 'setTempRet0'];
-
 // Internal: value of -flto argument (either full or thin)
 var LTO = 0;
 
