@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <setjmp.h>
 
@@ -13,6 +14,7 @@ int main() {
   jmp_buf b1;
   int val = setjmp(b1);
   if (val) {
+    assert(val == 1);
     printf("success\n");
     return 0;
   }
