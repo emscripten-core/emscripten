@@ -7182,7 +7182,7 @@ void* operator new(size_t size) {
   def test_demangle_stacks_symbol_map(self):
     # disable aggressive inlining in binaryen
     self.set_setting('BINARYEN_EXTRA_PASSES', '--one-caller-inline-max-function-size=1')
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$stackTrace')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$jsStackTrace')
 
     self.set_setting('ENVIRONMENT', 'node,shell')
     if '-O' not in str(self.emcc_args) or '-O0' in self.emcc_args or '-O1' in self.emcc_args or '-g' in self.emcc_args:
