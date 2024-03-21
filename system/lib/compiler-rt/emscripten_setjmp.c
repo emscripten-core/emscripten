@@ -67,6 +67,12 @@ uint32_t testSetjmp(uintptr_t id, TableEntry* table, uint32_t size) {
 #include "emscripten_internal.h"
 
 void emscripten_longjmp(uintptr_t env, int val) {
+  // C standard:
+  //   The longjmp function cannot cause the setjmp macro to return
+  //   the value 0; if val is 0, the setjmp macro returns the value 1.
+  if (val == 0) {
+    val = 1;
+  }
   setThrew(env, val);
   _emscripten_throw_longjmp();
 }

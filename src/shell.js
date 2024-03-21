@@ -66,12 +66,12 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #if MODULARIZE
 // Set up the promise that indicates the Module is initialized
 var readyPromiseResolve, readyPromiseReject;
-Module['ready'] = new Promise((resolve, reject) => {
+var readyPromise = new Promise((resolve, reject) => {
   readyPromiseResolve = resolve;
   readyPromiseReject = reject;
 });
 #if ASSERTIONS
-{{{ addReadyPromiseAssertions("Module['ready']") }}}
+{{{ addReadyPromiseAssertions() }}}
 #endif
 #endif
 
@@ -282,6 +282,7 @@ if (ENVIRONMENT_IS_SHELL) {
   if ((typeof process == 'object' && typeof require === 'function') || typeof window == 'object' || typeof importScripts == 'function') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 
+#if ENVIRONMENT_MAY_BE_SHELL
   if (typeof read != 'undefined') {
     read_ = read;
   }
@@ -352,9 +353,10 @@ if (ENVIRONMENT_IS_SHELL) {
     eval(read(locateFile('{{{ TARGET_BASENAME }}}.wasm.js'))+'');
   }
 #endif
+#endif // ENVIRONMENT_MAY_BE_SHELL
 
 } else
-#endif // ENVIRONMENT_MAY_BE_SHELL
+#endif // ENVIRONMENT_MAY_BE_SHELL || ASSERTIONS
 
 // Note that this includes Node.js workers when relevant (pthreads is enabled).
 // Node.js workers are detected as a combination of ENVIRONMENT_IS_WORKER and

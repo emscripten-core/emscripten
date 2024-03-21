@@ -30,9 +30,9 @@ if (Module['doWasm2JS']) {
 #endif
 #endif
 
-#if WASM == 1
+#if ASSERTIONS && WASM == 1
 if (typeof WebAssembly != 'object') {
-  abort('no native wasm support detected');
+  err('no native wasm support detected');
 }
 #endif
 

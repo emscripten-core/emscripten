@@ -684,9 +684,6 @@ def phase_parse_arguments(state):
   for s in settings_changes:
     key, value = s.split('=', 1)
     key, value = normalize_boolean_setting(key, value)
-    old_value = user_settings.get(key)
-    if old_value and old_value != value:
-      diagnostics.warning('unused-command-line-argument', f'-s{key} specified multiple times. Ignoring previous value (`{old_value}`)')
     user_settings[key] = value
 
   # STRICT is used when applying settings so it needs to be applied first before
@@ -711,7 +708,6 @@ def phase_setup(options, state, newargs):
   """
 
   if settings.RUNTIME_LINKED_LIBS:
-    diagnostics.warning('deprecated', 'RUNTIME_LINKED_LIBS is deprecated; you can simply list the libraries directly on the commandline now')
     newargs += settings.RUNTIME_LINKED_LIBS
 
   # Find input files

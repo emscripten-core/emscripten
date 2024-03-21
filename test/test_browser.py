@@ -2784,15 +2784,19 @@ Module["preRun"] = () => {
   def test_sdl_touch(self, opts):
     self.btest_exit('test_sdl_touch.c', args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'])
 
-  def test_html5_mouse(self):
-    for opts in [[], ['-O2', '-g1', '--closure=1']]:
-      print(opts)
-      self.btest('test_html5_mouse.c', args=opts + ['-DAUTOMATE_SUCCESS=1'], expected='0')
+  @parameterized({
+    '': ([],),
+    'closure': (['-O2', '-g1', '--closure=1'],),
+  })
+  def test_html5_mouse(self, opts):
+    self.btest('test_html5_mouse.c', args=opts + ['-DAUTOMATE_SUCCESS=1'], expected='0')
 
-  def test_sdl_mousewheel(self):
-    for opts in [[], ['-O2', '-g1', '--closure=1']]:
-      print(opts)
-      self.btest_exit('test_sdl_mousewheel.c', args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'])
+  @parameterized({
+    '': ([],),
+    'closure': (['-O2', '-g1', '--closure=1'],),
+  })
+  def test_sdl_mousewheel(self, opts):
+    self.btest_exit('test_sdl_mousewheel.c', args=opts + ['-DAUTOMATE_SUCCESS=1', '-lSDL', '-lGL'])
 
   @also_with_wasmfs
   def test_wget(self):
@@ -2807,62 +2811,59 @@ Module["preRun"] = () => {
     '': ([],),
     'es6': (['-sEXPORT_ES6'],),
   })
+  @also_with_wasm2js
   def test_locate_file(self, args):
     self.set_setting('EXIT_RUNTIME')
-    for wasm in [0, 1]:
-      if not wasm:
-        self.require_wasm2js()
-      self.clear()
-      create_file('src.cpp', r'''
-        #include <stdio.h>
-        #include <string.h>
-        #include <assert.h>
-        int main() {
-          FILE *f = fopen("data.txt", "r");
-          assert(f && "could not open file");
-          char buf[100];
-          int num = fread(buf, 1, 20, f);
-          assert(num == 20 && "could not read 20 bytes");
-          buf[20] = 0;
-          fclose(f);
-          printf("|%s|\n", buf);
-          assert(strcmp("load me right before", buf) == 0);
-          return 0;
-        }
-      ''')
-      create_file('data.txt', 'load me right before...')
-      create_file('pre.js', 'Module.locateFile = (x) => "sub/" + x;')
-      self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w'))
-      # put pre.js first, then the file packager data, so locateFile is there for the file loading code
-      self.compile_btest('src.cpp', ['-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-sFORCE_FILESYSTEM', '-sWASM=' + str(wasm)] + args, reporting=Reporting.JS_ONLY)
-      ensure_dir('sub')
-      if wasm:
+    create_file('src.cpp', r'''
+      #include <stdio.h>
+      #include <string.h>
+      #include <assert.h>
+      int main() {
+        FILE *f = fopen("data.txt", "r");
+        assert(f && "could not open file");
+        char buf[100];
+        int num = fread(buf, 1, 20, f);
+        assert(num == 20 && "could not read 20 bytes");
+        buf[20] = 0;
+        fclose(f);
+        printf("|%s|\n", buf);
+        assert(strcmp("load me right before", buf) == 0);
+        return 0;
+      }
+    ''')
+    create_file('data.txt', 'load me right before...')
+    create_file('pre.js', 'Module.locateFile = (x) => "sub/" + x;')
+    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w'))
+    # put pre.js first, then the file packager data, so locateFile is there for the file loading code
+    self.compile_btest('src.cpp', ['-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-sFORCE_FILESYSTEM'] + args, reporting=Reporting.JS_ONLY)
+    ensure_dir('sub')
+    if self.is_wasm():
+      shutil.move('page.wasm', Path('sub/page.wasm'))
+    shutil.move('test.data', Path('sub/test.data'))
+    self.run_browser('page.html', '/report_result?exit:0')
+
+    # alternatively, put locateFile in the HTML
+    print('in html')
+
+    create_file('shell.html', '''
+      <body>
+        <script>
+          var Module = {
+            locateFile: function(x) { return "sub/" + x }
+          };
+        </script>
+
+        {{{ SCRIPT }}}
+      </body>
+    ''')
+
+    def in_html(expected):
+      self.compile_btest('src.cpp', ['-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html', '-sSAFE_HEAP', '-sASSERTIONS', '-sFORCE_FILESYSTEM'] + args, reporting=Reporting.JS_ONLY)
+      if self.is_wasm():
         shutil.move('page.wasm', Path('sub/page.wasm'))
-      shutil.move('test.data', Path('sub/test.data'))
-      self.run_browser('page.html', '/report_result?exit:0')
+      self.run_browser('page.html', '/report_result?exit:' + expected)
 
-      # alternatively, put locateFile in the HTML
-      print('in html')
-
-      create_file('shell.html', '''
-        <body>
-          <script>
-            var Module = {
-              locateFile: function(x) { return "sub/" + x }
-            };
-          </script>
-
-          {{{ SCRIPT }}}
-        </body>
-      ''')
-
-      def in_html(expected):
-        self.compile_btest('src.cpp', ['-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html', '-sSAFE_HEAP', '-sASSERTIONS', '-sFORCE_FILESYSTEM', '-sWASM=' + str(wasm)] + args, reporting=Reporting.JS_ONLY)
-        if wasm:
-          shutil.move('page.wasm', Path('sub/page.wasm'))
-        self.run_browser('page.html', '/report_result?exit:' + expected)
-
-      in_html('0')
+    in_html('0')
 
   @requires_graphics_hardware
   def test_glfw3_default_hints(self):
@@ -2878,10 +2879,13 @@ Module["preRun"] = () => {
       print(opts)
       self.btest('test_glfw3.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
 
+  @parameterized({
+    '': (['-sUSE_GLFW=2', '-DUSE_GLFW=2'],),
+    'glfw3': (['-sUSE_GLFW=2', '-DUSE_GLFW=2'],),
+  })
   @requires_graphics_hardware
-  def test_glfw_events(self):
-    self.btest('test_glfw_events.c', args=['-sUSE_GLFW=2', "-DUSE_GLFW=2", '-lglfw', '-lGL'], expected='1')
-    self.btest('test_glfw_events.c', args=['-sUSE_GLFW=3', "-DUSE_GLFW=3", '-lglfw', '-lGL'], expected='1')
+  def test_glfw_events(self, args):
+    self.btest('test_glfw_events.c', args=args + ['-lglfw', '-lGL'], expected='1')
 
   @requires_graphics_hardware
   def test_glfw3_hi_dpi_aware(self):
@@ -3076,12 +3080,16 @@ Module["preRun"] = () => {
     self.run_browser('page.html', '', '/report_result?exit:0')
 
   def test_sdl2_threads(self):
-      self.btest_exit('test_sdl2_threads.c', args=['-pthread', '-sUSE_SDL=2', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('test_sdl2_threads.c', args=['-pthread', '-sUSE_SDL=2', '-sPROXY_TO_PTHREAD'])
 
   @requires_graphics_hardware
-  def test_sdl2_glshader(self):
-    self.reftest('test_sdl2_glshader.c', 'test_sdl_glshader.png', args=['-sUSE_SDL=2', '-O2', '--closure=1', '-g1', '-sLEGACY_GL_EMULATION'])
-    self.reftest('test_sdl2_glshader.c', 'test_sdl_glshader.png', args=['-sUSE_SDL=2', '-O2', '-sLEGACY_GL_EMULATION'], also_proxied=True) # XXX closure fails on proxy
+  @parameterized({
+    '': ([], True),
+    # fails on proxy
+    'closure': (['--closure=1', '-g1'], False),
+  })
+  def test_sdl2_glshader(self, args, also_proxied):
+    self.reftest('test_sdl2_glshader.c', 'test_sdl_glshader.png', args=args + ['-sUSE_SDL=2', '-O2', '-sLEGACY_GL_EMULATION'], also_proxied=also_proxied)
 
   @requires_graphics_hardware
   def test_sdl2_canvas_blank(self):
@@ -3333,24 +3341,34 @@ Module["preRun"] = () => {
     create_file('pre.js', 'Error.stackTraceLimit = 80;\n')
     self.btest_exit('async_2.cpp', args=['-O3', '--pre-js', 'pre.js', '-sASYNCIFY', '-sSTACK_SIZE=1MB'])
 
-  def test_async_virtual(self):
-    for opts in [0, 3]:
-      print(opts)
-      self.btest_exit('async_virtual.cpp', args=['-O' + str(opts), '-profiling', '-sASYNCIFY'])
+  @parameterized({
+    '': ([],),
+    'O3': (['-O3'],),
+  })
+  def test_async_virtual(self, args):
+    self.btest_exit('async_virtual.cpp', args=args + ['-profiling', '-sASYNCIFY'])
 
-  def test_async_virtual_2(self):
-    for opts in [0, 3]:
-      print(opts)
-      self.btest_exit('async_virtual_2.cpp', args=['-O' + str(opts), '-sASSERTIONS', '-sSAFE_HEAP', '-profiling', '-sASYNCIFY'])
+  @parameterized({
+    '': ([],),
+    'O3': (['-O3'],),
+  })
+  def test_async_virtual_2(self, args):
+    self.btest_exit('async_virtual_2.cpp', args=args + ['-sASSERTIONS', '-sSAFE_HEAP', '-profiling', '-sASYNCIFY'])
 
-  def test_async_mainloop(self):
-    for opts in [0, 3]:
-      print(opts)
-      self.btest_exit('async_mainloop.cpp', args=['-O' + str(opts), '-sASYNCIFY'])
+  @parameterized({
+    '': ([],),
+    'O3': (['-O3'],),
+  })
+  def test_async_mainloop(self, args):
+    self.btest_exit('async_mainloop.cpp', args=args + ['-sASYNCIFY'])
 
   @requires_sound_hardware
-  def test_sdl_audio_beep_sleep(self):
-    self.btest_exit('test_sdl_audio_beep_sleep.cpp', args=['-Os', '-sASSERTIONS', '-sDISABLE_EXCEPTION_CATCHING=0', '-profiling', '-sSAFE_HEAP', '-lSDL', '-sASYNCIFY'], timeout=90)
+  @parameterized({
+    '': ([],),
+    'safeheap': (['-sSAFE_HEAP'],),
+  })
+  def test_sdl_audio_beep_sleep(self, args):
+    self.btest_exit('test_sdl_audio_beep_sleep.cpp', args=['-Os', '-sASSERTIONS', '-sDISABLE_EXCEPTION_CATCHING=0', '-profiling', '-lSDL', '-sASYNCIFY'] + args, timeout=90)
 
   def test_mainloop_reschedule(self):
     self.btest('mainloop_reschedule.cpp', '1', args=['-Os', '-sASYNCIFY'])
@@ -3389,44 +3407,44 @@ Module["preRun"] = () => {
   def test_minimal_runtime_export_name(self):
     self.btest_exit('browser_test_hello_world.c', args=['-sEXPORT_NAME=Foo', '-sMINIMAL_RUNTIME'])
 
-  def test_modularize(self):
-    for opts in [
-      [],
-      ['-O1'],
-      ['-O2', '-profiling'],
-      ['-O2'],
-      ['-O2', '--closure=1']
+  @parameterized({
+    '': ([],),
+    'O1': (['-O1'],),
+    'O2': (['-O2'],),
+    'profiling': (['-O2', '-profiling'],),
+    'closure': (['-O2', '--closure=1'],),
+  })
+  def test_modularize(self, opts):
+    for args, code in [
+      # defaults
+      ([], '''
+        let promise = Module();
+        if (!promise instanceof Promise) throw new Error('Return value should be a promise');
+      '''),
+      # use EXPORT_NAME
+      (['-sEXPORT_NAME="HelloWorld"'], '''
+        if (typeof Module !== "undefined") throw "what?!"; // do not pollute the global scope, we are modularized!
+        HelloWorld.noInitialRun = true; // errorneous module capture will load this and cause timeout
+        let promise = HelloWorld();
+        if (!promise instanceof Promise) throw new Error('Return value should be a promise');
+      '''),
+      # pass in a Module option (which prevents main(), which we then invoke ourselves)
+      (['-sEXPORT_NAME="HelloWorld"'], '''
+        HelloWorld({ noInitialRun: true }).then(hello => {
+          hello._main();
+        });
+      '''),
     ]:
-      for args, code in [
-        # defaults
-        ([], '''
-          let promise = Module();
-          if (!promise instanceof Promise) throw new Error('Return value should be a promise');
-        '''),
-        # use EXPORT_NAME
-        (['-sEXPORT_NAME="HelloWorld"'], '''
-          if (typeof Module !== "undefined") throw "what?!"; // do not pollute the global scope, we are modularized!
-          HelloWorld.noInitialRun = true; // errorneous module capture will load this and cause timeout
-          let promise = HelloWorld();
-          if (!promise instanceof Promise) throw new Error('Return value should be a promise');
-        '''),
-        # pass in a Module option (which prevents main(), which we then invoke ourselves)
-        (['-sEXPORT_NAME="HelloWorld"'], '''
-          HelloWorld({ noInitialRun: true }).then(hello => {
-            hello._main();
-          });
-        '''),
-      ]:
-        print('test on', opts, args, code)
-        # this test is synchronous, so avoid async startup due to wasm features
-        self.compile_btest('browser_test_hello_world.c', ['-sMODULARIZE', '-sSINGLE_FILE'] + args + opts)
-        create_file('a.html', '''
-          <script src="a.out.js"></script>
-          <script>
-            %s
-          </script>
-        ''' % code)
-        self.run_browser('a.html', '/report_result?0')
+      print('test on', opts, args, code)
+      # this test is synchronous, so avoid async startup due to wasm features
+      self.compile_btest('browser_test_hello_world.c', ['-sMODULARIZE', '-sSINGLE_FILE'] + args + opts)
+      create_file('a.html', '''
+        <script src="a.out.js"></script>
+        <script>
+          %s
+        </script>
+      ''' % code)
+      self.run_browser('a.html', '/report_result?0')
 
   def test_modularize_network_error(self):
     browser_reporting_js_path = test_file('browser_reporting.js')
@@ -3507,14 +3525,17 @@ Module["preRun"] = () => {
       ''' % totalMemory)
       self.run_browser('a.html', '/report_result?exit:0')
 
-  def test_webidl(self):
+  @parameterized({
+    '': ([],),
+    'O1': (['-O1'],),
+    'O2': (['-O2'],),
+  })
+  def test_webidl(self, args):
     # see original in test_core.py
     self.run_process([WEBIDL_BINDER, test_file('webidl/test.idl'), 'glue'])
     self.assertExists('glue.cpp')
     self.assertExists('glue.js')
-    for opts in [[], ['-O1'], ['-O2']]:
-      print(opts)
-      self.btest('webidl/test.cpp', '1', args=['--post-js', 'glue.js', '-I.', '-DBROWSER'] + opts)
+    self.btest('webidl/test.cpp', '1', args=['--post-js', 'glue.js', '-I.', '-DBROWSER'] + args)
 
   def test_dynamic_link(self):
     create_file('main.c', r'''
@@ -4347,7 +4368,7 @@ Module["preRun"] = () => {
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
     if not self.is_wasm64() and not self.is_2gb():
-      self.assertLess(abs(size - 4800), 100)
+      self.assertLess(abs(size - 4675), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a
   # pthread by using OffscreenCanvas.
@@ -4756,7 +4777,7 @@ Module["preRun"] = () => {
     'modularize': (['-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
     'O3': (['-O3'],),
     'O3_modularize': (['-O3', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
-    'O3_modularize_MINIMAL_RUNTIME_2': (['-O3', '-sMODULARIZE', '-sEXPORT_NAME=MyModule', '-sMINIMAL_RUNTIME=2', '-Wno-unused-command-line-argument'],),
+    'O3_modularize_MINIMAL_RUNTIME_2': (['-O3', '-sMODULARIZE', '-sEXPORT_NAME=MyModule', '-sMINIMAL_RUNTIME=2'],),
   })
   def test_minimal_runtime_hello_thread(self, opts):
     self.btest_exit('pthread/hello_thread.c', args=['--closure=1', '-sMINIMAL_RUNTIME', '-pthread'] + opts)

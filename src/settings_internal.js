@@ -164,9 +164,6 @@ var MINIFY_WASM_IMPORTED_MODULES = false;
 // Whether to minify exports from the Wasm module.
 var MINIFY_WASM_EXPORT_NAMES = true;
 
-// Internal: represents a browser version that is not supported at all.
-var TARGET_NOT_SUPPORTED = 0x7FFFFFFF;
-
 // Used to track whether target environment supports the 'globalThis' attribute.
 var SUPPORTS_GLOBALTHIS = false;
 
@@ -176,7 +173,7 @@ var SUPPORTS_PROMISE_ANY = false;
 // Wasm backend symbols that are considered system symbols and don't
 // have the normal C symbol name mangled applied (== prefix with an underscore)
 // (Also implicily on this list is any function that starts with string "dynCall_")
-var WASM_SYSTEM_EXPORTS = ['stackAlloc', 'stackSave', 'stackRestore', 'getTempRet0', 'setTempRet0'];
+var WASM_SYSTEM_EXPORTS = ['getTempRet0', 'setTempRet0'];
 
 // Internal: value of -flto argument (either full or thin)
 var LTO = 0;
@@ -205,9 +202,9 @@ var WASM_EXCEPTIONS = false;
 // EXPORTED_FUNCTIONS then this gets set to 0.
 var EXPECT_MAIN = true;
 
-// Provide and export a .ready() Promise. This is currently used by default with
-// MODULARIZE, and returned from the factory function.
-var EXPORT_READY_PROMISE = true;
+// Return a "ready" Promise from the MODULARIZE factory function.
+// We disable this under some circumstance if we know its not needed.
+var USE_READY_PROMISE = true;
 
 // If true, building against Emscripten's wasm heap memory profiler.
 var MEMORYPROFILER = false;

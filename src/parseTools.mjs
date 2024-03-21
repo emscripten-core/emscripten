@@ -8,20 +8,33 @@
  * Tests live in test/other/test_parseTools.js.
  */
 
-globalThis.FOUR_GB = 4 * 1024 * 1024 * 1024;
-globalThis.WASM_PAGE_SIZE = 64 * 1024;
+import {
+  addToCompileTimeContext,
+  assert,
+  error,
+  isNumber,
+  printErr,
+  read,
+  runInMacroContext,
+  setCurrentFile,
+  warn,
+} from './utility.mjs';
 
+const FOUR_GB = 4 * 1024 * 1024 * 1024;
+const WASM_PAGE_SIZE = 64 * 1024;
 const FLOAT_TYPES = new Set(['float', 'double']);
+// Represents a browser version that is not supported at all.
+const TARGET_NOT_SUPPORTED = 0x7fffffff;
 
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
 // NOTE: Be careful with that ret check. If ret is |0|, |ret ? ret.toString() : ''| would result in ''!
-function processMacros(text, filename) {
+export function processMacros(text, filename) {
   // The `?` here in makes the regex non-greedy so it matches with the closest
   // set of closing braces.
   // `[\s\S]` works like `.` but include newline.
   return text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
-    const ret = vm.runInThisContext(str, { filename: filename });
+    const ret = runInMacroContext(str, {filename: filename});
     return ret !== null ? ret.toString() : '';
   });
 }
@@ -29,7 +42,7 @@ function processMacros(text, filename) {
 // Simple #if/else/endif preprocessing for a file. Checks if the
 // ident checked is true in our global.
 // Also handles #include x.js (similar to C #include <file>)
-function preprocess(filename) {
+export function preprocess(filename) {
   let text = read(filename);
   if (EXPORT_ES6 && USE_ES6_IMPORT_META) {
     // `eval`, Terser and Closure don't support module syntax; to allow it,
@@ -52,10 +65,9 @@ function preprocess(filename) {
   const showStack = [];
   const showCurrentLine = () => showStack.every((x) => x == SHOW);
 
-  const oldFilename = currentFile;
-  currentFile = filename;
+  const oldFilename = setCurrentFile(filename);
   const fileExt = filename.split('.').pop().toLowerCase();
-  const isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
+  const isHtml = fileExt === 'html' || fileExt === 'htm' ? true : false;
   let inStyle = false;
   const lines = text.split('\n');
   // text.split yields an extra empty element at the end if text itself ends with a newline.
@@ -100,7 +112,11 @@ function preprocess(filename) {
             }
           }
           const after = trimmed.substring(trimmed.indexOf(' '));
-          const truthy = !!vm.runInThisContext(after, { filename, lineOffset: i, columnOffset: line.indexOf(after) });
+          const truthy = !!runInMacroContext(after, {
+            filename,
+            lineOffset: i,
+            columnOffset: line.indexOf(after),
+          });
           showStack.push(truthy ? SHOW : IGNORE);
         } else if (first === '#include') {
           if (showCurrentLine()) {
@@ -128,7 +144,9 @@ function preprocess(filename) {
           showStack.pop();
         } else if (first === '#warning') {
           if (showCurrentLine()) {
-            printErr(`${filename}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+            printErr(
+              `${filename}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`,
+            );
           }
         } else if (first === '#error') {
           if (showCurrentLine()) {
@@ -154,11 +172,14 @@ function preprocess(filename) {
         }
       }
     }
-    assert(showStack.length == 0, `preprocessing error in file ${filename}, \
-no matching #endif found (${showStack.length$}' unmatched preprocessing directives on stack)`);
+    assert(
+      showStack.length == 0,
+      `preprocessing error in file ${filename}, \
+no matching #endif found (${showStack.length$}' unmatched preprocessing directives on stack)`,
+    );
     return ret;
   } finally {
-    currentFile = oldFilename;
+    setCurrentFile(oldFilename);
   }
 }
 
@@ -167,24 +188,23 @@ function isNiceIdent(ident, loose) {
   return /^\(?[$_]+[\w$_\d ]*\)?$/.test(ident);
 }
 
-globalThis.POINTER_SIZE = MEMORY64 ? 8 : 4;
-globalThis.POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
-globalThis.STACK_ALIGN = 16;
-globalThis.POINTER_BITS = POINTER_SIZE * 8;
-globalThis.POINTER_TYPE = `u${POINTER_BITS}`;
-globalThis.POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
-globalThis.POINTER_SHIFT = MEMORY64 ? '3' : '2';
-globalThis.POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
-globalThis.LONG_TYPE = `i${POINTER_BITS}`;
+export const POINTER_SIZE = MEMORY64 ? 8 : 4;
+const POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
+const STACK_ALIGN = 16;
+const POINTER_BITS = POINTER_SIZE * 8;
+const POINTER_TYPE = `u${POINTER_BITS}`;
+const POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
+const POINTER_SHIFT = MEMORY64 ? '3' : '2';
+const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
+const LONG_TYPE = `i${POINTER_BITS}`;
 
-globalThis.SIZE_TYPE = POINTER_TYPE;
-
+const SIZE_TYPE = POINTER_TYPE;
 
 // Similar to POINTER_TYPE, but this is the actual wasm type that is
 // used in practice, while POINTER_TYPE is the more refined internal
 // type (that is unsigned, where as core wasm does not have unsigned
 // types).
-globalThis.POINTER_WASM_TYPE = `i${POINTER_BITS}`;
+const POINTER_WASM_TYPE = `i${POINTER_BITS}`;
 
 function isPointerType(type) {
   return type[type.length - 1] == '*';
@@ -230,6 +250,7 @@ function splitI64(value) {
   // even if not significant negative component
 
   const low = value + '>>>0';
+  // prettier-ignore
   const high = makeInlineCalculation(
       asmCoercion('Math.abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
         '(VALUE > ' + asmEnsureFloat('0', 'double') + ' ? ' +
@@ -248,7 +269,7 @@ function splitI64(value) {
 
 // Misc
 
-function indentify(text, indent) {
+export function indentify(text, indent) {
   // Don't try to indentify huge strings - we may run out of memory
   if (text.length > 1024 * 1024) return text;
   if (typeof indent == 'number') {
@@ -264,6 +285,7 @@ function indentify(text, indent) {
 // Correction tools
 
 function getNativeTypeSize(type) {
+  // prettier-ignore
   switch (type) {
     case 'i1': case 'i8': case 'u8': return 1;
     case 'i16': case 'u16': return 2;
@@ -305,7 +327,7 @@ function ensureDot(value) {
   // if already dotted, or Infinity or NaN, nothing to do here
   // if smaller than 1 and running js opts, we always need to force a coercion
   // (0.001 will turn into 1e-3, which has no .)
-  if ((value.includes('.') || /[IN]/.test(value))) return value;
+  if (value.includes('.') || /[IN]/.test(value)) return value;
   const e = value.indexOf('e');
   if (e < 0) return value + '.0';
   return value.substr(0, e) + '.0' + value.substr(e);
@@ -351,10 +373,15 @@ function asmFloatToInt(x) {
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
   assert(typeof align === 'undefined', 'makeGetValue no longer supports align parameter');
-  assert(typeof noNeedFirst === 'undefined', 'makeGetValue no longer supports noNeedFirst parameter');
+  assert(
+    typeof noNeedFirst === 'undefined',
+    'makeGetValue no longer supports noNeedFirst parameter',
+  );
   if (typeof unsigned !== 'undefined') {
     // TODO(sbc): make this into an error at some point.
-    printErr('makeGetValue: Please use u8/u16/u32/u64 unsigned types in favor of additional argument');
+    printErr(
+      'makeGetValue: Please use u8/u16/u32/u64 unsigned types in favor of additional argument',
+    );
     if (unsigned && type.startsWith('i')) {
       type = `u${type.slice(1)}`;
     }
@@ -392,7 +419,7 @@ function makeSetValue(ptr, pos, value, type) {
   if (ASSERTIONS == 2 && (type.startsWith('i') || type.startsWith('u'))) {
     const width = getBitWidth(type);
     const assertion = `checkInt${width}(${value})`;
-    rtn += `;${assertion}`
+    rtn += `;${assertion}`;
   }
   return rtn;
 }
@@ -401,6 +428,7 @@ function makeSetValueImpl(ptr, pos, value, type) {
   if (type == 'i64' && !WASM_BIGINT) {
     // If we lack BigInt support we must fall back to an reading a pair of I32
     // values.
+    // prettier-ignore
     return '(tempI64 = [' + splitI64(value) + '], ' +
             makeSetValueImpl(ptr, pos, 'tempI64[0]', 'i32') + ',' +
             makeSetValueImpl(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), 'tempI64[1]', 'i32') + ')';
@@ -423,16 +451,16 @@ function makeHEAPView(which, start, end) {
   // The makeHEAPView, for legacy reasons, takes a heap "suffix"
   // rather than the heap "type" that used by other APIs here.
   const type = {
-    '8': 'i8',
-    'U8': 'u8',
-    '16': 'i16',
-    'U16': 'u16',
-    '32': 'i32',
-    'U32': 'u32',
-    '64': 'i64',
-    'U64': 'u64',
-    'F32': 'float',
-    'F64': 'double',
+    8: 'i8',
+    U8: 'u8',
+    16: 'i16',
+    U16: 'u16',
+    32: 'i32',
+    U32: 'u32',
+    64: 'i64',
+    U64: 'u64',
+    F32: 'float',
+    F64: 'double',
   }[which];
   const heap = getHeapForType(type);
   start = getHeapOffset(start, type);
@@ -447,8 +475,8 @@ function getFastValue(a, op, b) {
   assert(op == '+');
 
   // Convert 'true' and 'false' to '1' and '0'.
-  a = a === 'true' ? '1' : (a === 'false' ? '0' : a);
-  b = b === 'true' ? '1' : (b === 'false' ? '0' : b);
+  a = a === 'true' ? '1' : a === 'false' ? '0' : a;
+  b = b === 'true' ? '1' : b === 'false' ? '0' : b;
 
   let aNumber = null;
   let bNumber = null;
@@ -487,7 +515,7 @@ function getFastValue(a, op, b) {
   }
 
   if (b[0] === '-') {
-    op = '-'
+    op = '-';
     b = b.substr(1);
   }
 
@@ -499,8 +527,7 @@ function calcFastOffset(ptr, pos) {
 }
 
 function getBitWidth(type) {
-  if (type == 'i53' || type == 'u53')
-    return 53;
+  if (type == 'i53' || type == 'u53') return 53;
   return getNativeTypeSize(type) * 8;
 }
 
@@ -511,10 +538,13 @@ function getHeapForType(type) {
   }
   if (WASM_BIGINT) {
     switch (type) {
-      case 'i64': return 'HEAP64';
-      case 'u64': return 'HEAPU64';
+      case 'i64':
+        return 'HEAP64';
+      case 'u64':
+        return 'HEAPU64';
     }
   }
+  // prettier-ignore
   switch (type) {
     case 'i1':     // fallthrough
     case 'i8':     return 'HEAP8';
@@ -531,7 +561,7 @@ function getHeapForType(type) {
   assert(false, `bad heap type: ${type}`);
 }
 
-function makeReturn64(value) {
+export function makeReturn64(value) {
   if (WASM_BIGINT) {
     return `BigInt(${value})`;
   }
@@ -543,9 +573,11 @@ function makeReturn64(value) {
 
 function makeThrow(excPtr) {
   if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING) {
-    var assertInfo = 'Exception thrown, but exception catching is not enabled. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.';
+    var assertInfo =
+      'Exception thrown, but exception catching is not enabled. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.';
     if (MAIN_MODULE) {
-      assertInfo += ' (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)';
+      assertInfo +=
+        ' (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)';
     }
     return `assert(false, '${assertInfo}');`;
   }
@@ -562,7 +594,10 @@ function charCode(char) {
 }
 
 function makeDynCall(sig, funcPtr) {
-  assert(!sig.includes('j'), 'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!');
+  assert(
+    !sig.includes('j'),
+    'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!',
+  );
 
   let args = [];
   for (let i = 1; i < sig.length; ++i) {
@@ -595,7 +630,6 @@ function makeDynCall(sig, funcPtr) {
     }
     sig = normalizedSig;
   }
-
 
   if (funcPtr === undefined) {
     warn(`
@@ -648,20 +682,23 @@ function makeEval(code) {
   let ret = '';
   if (DYNAMIC_EXECUTION == 2) {
     // Warn on evals, but proceed.
-    ret += "err('Warning: DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:');\n";
+    ret +=
+      "err('Warning: DYNAMIC_EXECUTION=2 was set, but calling eval in the following location:');\n";
     ret += 'err(stackTrace());\n';
   }
   ret += code;
   return ret;
 }
 
-globalThis.ATINITS = [];
+export const ATMAINS = [];
+
+export const ATINITS = [];
 
 function addAtInit(code) {
   ATINITS.push(code);
 }
 
-globalThis.ATEXITS = [];
+export const ATEXITS = [];
 
 function addAtExit(code) {
   if (EXIT_RUNTIME) {
@@ -681,7 +718,12 @@ function makeRetainedCompilerSettings() {
   for (const x in global) {
     if (!ignore.has(x) && x[0] !== '_' && x == x.toUpperCase()) {
       const value = global[x];
-      if (typeof value == 'number' || typeof value == 'boolean' || typeof value == 'string' || Array.isArray(x)) {
+      if (
+        typeof value == 'number' ||
+        typeof value == 'boolean' ||
+        typeof value == 'string' ||
+        Array.isArray(x)
+      ) {
         ret[x] = value;
       }
     }
@@ -692,7 +734,7 @@ function makeRetainedCompilerSettings() {
 // Receives a function as text, and a function that constructs a modified
 // function, to which we pass the parsed-out arguments, body, and possible
 // "async" prefix of the input function. Returns the output of that function.
-function modifyJSFunction(text, func) {
+export function modifyJSFunction(text, func) {
   // Match a function with a name.
   let async_;
   let args;
@@ -732,7 +774,7 @@ function modifyJSFunction(text, func) {
   return func(args, body, async_, oneliner);
 }
 
-function runIfMainThread(text) {
+export function runIfMainThread(text) {
   if (WASM_WORKERS && PTHREADS) {
     return `if (!ENVIRONMENT_IS_WASM_WORKER && !ENVIRONMENT_IS_PTHREAD) { ${text} }`;
   } else if (WASM_WORKERS) {
@@ -875,7 +917,9 @@ function _asmjsDemangle(symbol) {
 
 // TODO(sbc): Remove this function along with _asmjsDemangle.
 function hasExportedFunction(func) {
-  warnOnce('hasExportedFunction has been replaced with hasExportedSymbol, which takes and unmangled (no leading underscore) symbol name');
+  warnOnce(
+    'hasExportedFunction has been replaced with hasExportedSymbol, which takes and unmangled (no leading underscore) symbol name',
+  );
   return WASM_EXPORTS.has(_asmjsDemangle(func));
 }
 
@@ -888,22 +932,21 @@ function hasExportedSymbol(sym) {
 // Module object.
 function receivedSymbol(sym) {
   if (EXPORTED_RUNTIME_METHODS.includes(sym)) {
-    return `Module['${sym}'] = ${sym};`
+    return `Module['${sym}'] = ${sym};`;
   }
   return '';
 }
 
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
-function defineI64Param(name) {
+export function defineI64Param(name) {
   if (WASM_BIGINT) {
     return name;
   }
   return `${name}_low, ${name}_high`;
 }
 
-
-function receiveI64ParamAsI53(name, onError, handleErrors = true) {
+export function receiveI64ParamAsI53(name, onError, handleErrors = true) {
   var errorHandler = handleErrors ? `if (isNaN(${name})) { return ${onError}; }` : '';
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
@@ -941,8 +984,8 @@ function to64(x) {
 }
 
 // Add assertions to catch common errors when using the Promise object we
-// create on Module.ready() and return from MODULARIZE Module() invocations.
-function addReadyPromiseAssertions(promise) {
+// return from MODULARIZE Module() invocations.
+function addReadyPromiseAssertions() {
   // Warn on someone doing
   //
   //  var instance = Module();
@@ -952,16 +995,20 @@ function addReadyPromiseAssertions(promise) {
   // Also warn on onRuntimeInitialized which might be a common pattern with
   // older MODULARIZE-using codebases.
   properties.push('onRuntimeInitialized');
-  const warningEnding = ' on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js';
+  const warningEnding =
+    ' on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js';
   const res = JSON.stringify(properties);
-  return res + `.forEach((prop) => {
-  if (!Object.getOwnPropertyDescriptor(${promise}, prop)) {
-    Object.defineProperty(${promise}, prop, {
+  return (
+    res +
+    `.forEach((prop) => {
+  if (!Object.getOwnPropertyDescriptor(readyPromise, prop)) {
+    Object.defineProperty(readyPromise, prop, {
       get: () => abort('You are getting ' + prop + '${warningEnding}'),
       set: () => abort('You are setting ' + prop + '${warningEnding}'),
     });
   }
-});`;
+});`
+  );
 }
 
 function asyncIf(condition) {
@@ -1024,15 +1071,15 @@ function getEntryFunction() {
     entryFunction = '_emscripten_proxy_main';
   }
   if (MAIN_MODULE) {
-    return `resolveGlobalSymbol('${entryFunction}').sym;`
+    return `resolveGlobalSymbol('${entryFunction}').sym;`;
   }
   return `_${entryFunction}`;
 }
 
 function formattedMinNodeVersion() {
-  var major = MIN_NODE_VERSION / 10000
-  var minor = (MIN_NODE_VERSION / 100) % 100
-  var rev = MIN_NODE_VERSION % 100
+  var major = MIN_NODE_VERSION / 10000;
+  var minor = (MIN_NODE_VERSION / 100) % 100;
+  var rev = MIN_NODE_VERSION % 100;
   return `v${major}.${minor}.${rev}`;
 }
 
@@ -1047,3 +1094,68 @@ function getPerformanceNow() {
 function implicitSelf() {
   return ENVIRONMENT.includes('node') ? 'self.' : '';
 }
+
+addToCompileTimeContext({
+  ATEXITS,
+  ATINITS,
+  FOUR_GB,
+  LONG_TYPE,
+  POINTER_HEAP,
+  POINTER_BITS,
+  POINTER_JS_TYPE,
+  POINTER_MAX,
+  POINTER_SHIFT,
+  POINTER_SIZE,
+  POINTER_TYPE,
+  POINTER_WASM_TYPE,
+  SIZE_TYPE,
+  STACK_ALIGN,
+  TARGET_NOT_SUPPORTED,
+  WASM_PAGE_SIZE,
+  addAtExit,
+  addAtInit,
+  addReadyPromiseAssertions,
+  asyncIf,
+  awaitIf,
+  buildStringArray,
+  charCode,
+  defineI64Param,
+  expectToReceiveOnModule,
+  formattedMinNodeVersion,
+  from64,
+  getEntryFunction,
+  getHeapForType,
+  getHeapOffset,
+  getNativeTypeSize,
+  getPerformanceNow,
+  getUnsharedTextDecoderView,
+  hasExportedFunction,
+  hasExportedSymbol,
+  implicitSelf,
+  isSymbolNeeded,
+  makeAsmImportsAccessInPthread,
+  makeDynCall,
+  makeEval,
+  makeGetValue,
+  makeHEAPView,
+  makeModuleReceive,
+  makeModuleReceiveExpr,
+  makeModuleReceiveWithVar,
+  makeRemovedFSAssert,
+  makeRemovedModuleAPIAssert,
+  makeRetainedCompilerSettings,
+  makeReturn64,
+  makeSetValue,
+  makeThrow,
+  modifyJSFunction,
+  receiveI64ParamAsI53,
+  receiveI64ParamAsI53Unchecked,
+  receivedSymbol,
+  runIfMainThread,
+  runIfWorkerThread,
+  runtimeKeepalivePop,
+  runtimeKeepalivePush,
+  splitI64,
+  storeException,
+  to64,
+});
