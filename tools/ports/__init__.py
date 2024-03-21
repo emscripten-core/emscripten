@@ -166,7 +166,7 @@ class Ports:
     dest = Ports.get_include_dir()
     assert os.path.exists(dest)
     if target:
-      dest = os.path.join(dest, target)
+      dest = os.path.join(dest, *target.split('/'))
       shared.safe_ensure_dirs(dest)
     matches = glob.glob(os.path.join(src_dir, pattern))
     assert matches, f'no headers found to install in {src_dir}'
