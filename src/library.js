@@ -618,7 +618,11 @@ addToLibrary({
     return ret;
   },
 
-  _tzset_js__deps: ['$stringToUTF8'],
+  _tzset_js__deps: ['$stringToUTF8',
+#if ASSERTIONS
+    '$lengthBytesUTF8',
+#endif
+  ],
   _tzset_js__internal: true,
   _tzset_js: (timezone, daylight, std_name, dst_name) => {
     // TODO: Use (malleable) environment variables instead of system settings.
@@ -645,12 +649,13 @@ addToLibrary({
 
     {{{ makeSetValue('daylight', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
 
-    function extractZone(date) {
-      var match = date.toTimeString().match(/\(([A-Za-z ]+)\)$/);
-      return match ? match[1] : "GMT";
-    };
+    var extractZone = (date) => date.toLocaleTimeString(undefined, {timeZoneName:'short'}).split(' ')[2];
     var winterName = extractZone(winter);
     var summerName = extractZone(summer);
+#if ASSERTIONS
+    assert(lengthBytesUTF8(winterName) <= {{{ cDefs.TZNAME_MAX }}}, `timezone name truncated to fit in TZNAME_MAX (${winterName})`);
+    assert(lengthBytesUTF8(summerName) <= {{{ cDefs.TZNAME_MAX }}}, `timezone name truncated to fit in TZNAME_MAX (${summerName})`);
+#endif
     if (summerOffset < winterOffset) {
       // Northern hemisphere
       stringToUTF8(winterName, std_name, {{{ cDefs.TZNAME_MAX + 1 }}});
