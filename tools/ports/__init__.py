@@ -166,13 +166,15 @@ class Ports:
     dest = Ports.get_include_dir()
     assert os.path.exists(dest)
     if target:
-      dest = os.path.join(dest, *target.split('/'))
-      shared.safe_ensure_dirs(dest)
+      dest = os.path.join(dest, target)
     matches = glob.glob(os.path.join(src_dir, pattern))
     assert matches, f'no headers found to install in {src_dir}'
     for f in matches:
-      logger.debug('installing: ' + os.path.join(dest, os.path.basename(f)))
-      maybe_copy(f, os.path.join(dest, os.path.basename(f)))
+      rel_path = os.path.relpath(f, start=src_dir)
+      dest_path = os.path.join(dest, os.path.dirname(rel_path))
+      shared.safe_ensure_dirs(dest_path)
+      logger.debug('installing: ' + os.path.join(dest_path, os.path.basename(f)))
+      maybe_copy(f, os.path.join(dest_path, os.path.basename(f)))
 
   @staticmethod
   def build_port(src_dir, output_path, port_name, includes=[], flags=[], cxxflags=[], exclude_files=[], exclude_dirs=[], srcs=[]):  # noqa

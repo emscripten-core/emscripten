@@ -47,7 +47,7 @@ def get(ports, settings, shared):
     source_path = os.path.join(root_path, 'src', 'cpp')
     source_include_paths = [os.path.join(root_path, 'external'), os.path.join(root_path, 'include')]
     for source_include_path in source_include_paths:
-      ports.install_headers(f'{source_include_path}/GLFW', target='contrib.glfw3/GLFW')
+      ports.install_headers(source_include_path, pattern="GLFW/*.h", target='contrib.glfw3')
 
     flags = []
 
