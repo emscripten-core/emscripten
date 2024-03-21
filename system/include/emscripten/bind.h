@@ -2133,10 +2133,10 @@ inline void register_type(const char* name) {
 // __attribute__((constructor)) (they run before C++ constructors in the same
 // file).
 #define EMSCRIPTEN_BINDINGS(name)                                              \
-  static void embind_init_##name();                                            \
-  static struct EmBindInit_##name : emscripten::internal::InitFunc {           \
+  inline void embind_init_##name();                                            \
+  inline struct EmBindInit_##name : emscripten::internal::InitFunc {           \
     EmBindInit_##name() : InitFunc(embind_init_##name) {}                      \
   } EmBindInit_##name##_instance;                                              \
-  static void embind_init_##name()
+  inline void embind_init_##name()
 
 } // end namespace emscripten
