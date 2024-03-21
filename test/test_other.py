@@ -11573,7 +11573,8 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
       }\n''')
     self.run_process([EMCC, '-c', 'src.c',
                       '-pedantic', '-Wall', '-Werror',
-                      '-Wno-gnu-zero-variadic-macro-arguments'])
+                      '-Wno-gnu-zero-variadic-macro-arguments',
+                      '-Wno-c23-extensions'])
 
   def test_em_asm_strict_c(self):
     create_file('src.c', '''
