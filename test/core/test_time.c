@@ -136,7 +136,8 @@ int main() {
 
   // Verify that mktime updates the tm struct to the correct date if its values are
   // out of range by matching against the return value of localtime.
-  struct tm tm2 { 0 }, tm_local;
+  struct tm tm2 = { 0 };
+  struct tm tm_local;
   tm2.tm_sec = tm2.tm_min = tm2.tm_hour = tm2.tm_mday = tm2.tm_mon = tm2.tm_wday =
     tm2.tm_yday = 1000;
   time_t t2 = mktime(&tm2); localtime_r(&t2, &tm_local);
@@ -182,9 +183,9 @@ int main() {
   // Verify time() returns reasonable value (between 2011 and 2030).
   time_t t4 = 0;
   time(&t4);
-  timespec ts;
+  struct timespec ts;
   assert(clock_gettime(CLOCK_REALTIME, &ts) == 0);
-  assert(abs(ts.tv_sec - t4) <= 2);
+  assert(llabs(ts.tv_sec - t4) <= 2);
   printf("time: %d\n", t4 > 1309635200ll && t4 < 1893362400ll);
 
   // Verify difftime() calculates accurate time difference.
@@ -243,11 +244,11 @@ int main() {
   printf("timespec_get test 5: %d\n", ts.tv_nsec <= 999999999);
 
   // Verify timespec_get() gets similar time value as clock_gettime
-  timespec ts_timespec_get;
+  struct timespec ts_timespec_get;
   timespec_get(&ts_timespec_get, TIME_UTC);
-  timespec ts_clock_gettime;
+  struct timespec ts_clock_gettime;
   clock_gettime(CLOCK_REALTIME, &ts_clock_gettime);
-  printf("timespec_get test 6: %d\n", abs(ts_timespec_get.tv_sec - ts_clock_gettime.tv_sec) <= 2);
+  printf("timespec_get test 6: %d\n", llabs(ts_timespec_get.tv_sec - ts_clock_gettime.tv_sec) <= 2);
 
   // verify gmtime() and localtime()
   check_gmtime_localtime(0);
