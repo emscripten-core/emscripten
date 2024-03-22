@@ -489,6 +489,10 @@ def finalize_wasm(infile, outfile, js_syms):
   # if we don't need to modify the wasm, don't tell finalize to emit a wasm file
   modify_wasm = False
 
+  # If we are doing any JS type legalization (needed for passing i64 values).
+  # This is only fully disabled when WASM_BIGINT is available.
+  legalizing = True
+
   if settings.WASM2JS:
     # wasm2js requires full legalization (and will do extra wasm binary
     # later processing later anyhow)
@@ -497,6 +501,8 @@ def finalize_wasm(infile, outfile, js_syms):
     args.append('-g')
   if settings.WASM_BIGINT:
     args.append('--bigint')
+    legalizing = False
+
   if settings.DYNCALLS:
     # we need to add all dyncalls to the wasm
     modify_wasm = True
@@ -507,19 +513,20 @@ def finalize_wasm(infile, outfile, js_syms):
       args.append('--dyncalls-i64')
       # we need to add some dyncalls to the wasm
       modify_wasm = True
+
   if settings.AUTODEBUG:
     # In AUTODEBUG mode we want to delay all legalization until later.  This is hack
     # to force wasm-emscripten-finalize not to do any legalization at all.
     args.append('--bigint')
-  else:
-    if settings.LEGALIZE_JS_FFI:
-      # When we dynamically link our JS loader adds functions from wasm modules to
-      # the table. It must add the original versions of them, not legalized ones,
-      # so that indirect calls have the right type, so export those.
-      args += building.js_legalization_pass_flags()
-      modify_wasm = True
-    else:
-      args.append('--no-legalize-javascript-ffi')
+    legalizing = False
+
+  if not settings.LEGALIZE_JS_FFI:
+    args.append('--no-legalize-javascript-ffi')
+
+  if legalizing:
+    args += building.js_legalization_pass_flags()
+    modify_wasm = True
+
   if settings.SIDE_MODULE:
     args.append('--side-module')
   if settings.STACK_OVERFLOW_CHECK >= 2:

@@ -1495,6 +1495,11 @@ def phase_linker_setup(options, state, newargs):
 
   if settings.WASM_BIGINT:
     settings.LEGALIZE_JS_FFI = 0
+  else:
+    # These symbols are needed for the JS API legalization pass in emscripten-wasm-finalize
+    # Legalization is only *fully* disabled when bigint is available.  LEGALIZE_JS_FFI=0 does not
+    # disable all legalization.
+    settings.REQUIRED_EXPORTS += ['__get_temp_ret', '__set_temp_ret']
 
   if settings.SINGLE_FILE:
     settings.GENERATE_SOURCE_MAP = 0
@@ -1518,9 +1523,6 @@ def phase_linker_setup(options, state, newargs):
 
   if settings.AUTODEBUG:
     settings.REQUIRED_EXPORTS += ['setTempRet0']
-
-  if settings.LEGALIZE_JS_FFI:
-    settings.REQUIRED_EXPORTS += ['__get_temp_ret', '__set_temp_ret']
 
   if settings.SPLIT_MODULE and settings.ASYNCIFY == 2:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_load_secondary_module']
