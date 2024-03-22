@@ -649,10 +649,12 @@ addToLibrary({
 
     {{{ makeSetValue('daylight', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
 
-    var extractZone = (date) => date.toLocaleTimeString(undefined, {timeZoneName:'short'}).split(' ')[2];
+    var extractZone = (date) => date.toLocaleTimeString(undefined, {hour12:false, timeZoneName:'short'}).split(' ')[1];
     var winterName = extractZone(winter);
     var summerName = extractZone(summer);
 #if ASSERTIONS
+    assert(winterName);
+    assert(summerName);
     assert(lengthBytesUTF8(winterName) <= {{{ cDefs.TZNAME_MAX }}}, `timezone name truncated to fit in TZNAME_MAX (${winterName})`);
     assert(lengthBytesUTF8(summerName) <= {{{ cDefs.TZNAME_MAX }}}, `timezone name truncated to fit in TZNAME_MAX (${summerName})`);
 #endif

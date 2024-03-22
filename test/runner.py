@@ -466,6 +466,7 @@ def main(args):
   all_tests = get_all_tests(modules)
   if options.crossplatform_only:
     tests = get_crossplatform_tests(modules)
+    skip_requested_tests(options.tests, modules)
   else:
     tests = tests_with_expanded_wildcards(tests, all_tests)
     tests = skip_requested_tests(tests, modules)
