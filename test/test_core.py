@@ -753,7 +753,7 @@ class TestCoreBase(RunnerCore):
     self.do_core_test('test_stack.c')
 
   def test_stack_align(self):
-    src = test_file('core/test_stack_align.cpp')
+    src = test_file('core/test_stack_align.c')
 
     def test():
       self.do_runf(src, ['''align 4: 0
@@ -1715,7 +1715,7 @@ int main() {
     self.do_core_test('test_mod_globalstruct.c')
 
   def test_sizeof(self):
-    self.do_core_test('test_sizeof.cpp')
+    self.do_core_test('test_sizeof.c')
 
   def test_llvm_used(self):
     self.do_core_test('test_llvm_used.c')
@@ -2625,7 +2625,7 @@ The current type of b is: 9
     self.do_runf('termios/test_tcgetattr.c', 'success')
 
   def test_time(self):
-    self.do_core_test('test_time.cpp')
+    self.do_core_test('test_time.c')
     for tz in ['EST+05EDT', 'UTC+0', 'CET']:
       print('extra tz test:', tz)
       with env_modify({'TZ': tz}):
@@ -2633,7 +2633,7 @@ The current type of b is: 9
         # possible. It seems that the TZ environment variable does not
         # work all the time (at least it's not well respected by
         # Node.js on Windows), but it does no harm either.
-        self.do_core_test('test_time.cpp')
+        self.do_core_test('test_time.c')
 
   def test_timeb(self):
     # Confirms they are called in reverse order
@@ -2656,6 +2656,7 @@ The current type of b is: 9
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_strptime_reentrant.c')
 
+  @crossplatform
   def test_strftime(self):
     self.do_core_test('test_strftime.c')
 
@@ -5345,7 +5346,7 @@ Pass: 0.000012 0.000012''')
     self.do_core_test('test_sscanf_caps.c')
 
   def test_sscanf_hex(self):
-    self.do_core_test('test_sscanf_hex.cpp')
+    self.do_core_test('test_sscanf_hex.c')
 
   def test_sscanf_float(self):
     self.do_core_test('test_sscanf_float.c')
