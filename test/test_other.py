@@ -8620,25 +8620,18 @@ int main() {
         assert not e_f32_f64, 'f32 converted to f64 in exports'
         assert e_i64_i64,     'i64 converted to i64 in exports'
 
+  @disabled('https://github.com/WebAssembly/binaryen/pull/6428')
   def test_no_legalize_js_ffi(self):
-    # test minimal JS FFI legalization for invoke and dyncalls
-    args = ['-sLEGALIZE_JS_FFI=0', '-sMAIN_MODULE=2', '-O3', '-sDISABLE_EXCEPTION_CATCHING=0']
-    delete_file('a.out.wasm')
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc++'}):
-      cmd = [EMXX, test_file('other/noffi.cpp'), '-g', '-o', 'a.out.js'] + args
-    print(' '.join(cmd))
-    self.run_process(cmd)
-    text = self.get_wasm_text('a.out.wasm')
-    # remove internal comments and extra whitespace
-    text = re.sub(r'\(;[^;]+;\)', '', text)
-    text = re.sub(r'\$var\$*.', '', text)
-    text = re.sub(r'param \$\d+', 'param ', text)
-    text = re.sub(r' +', ' ', text)
-    # print("text: %s" % text)
-    i_legalimport_i64 = re.search(r'\(import.*\$legalimport\$invoke_j.*', text)
-    e_legalstub_i32 = re.search(r'\(func.*\$legalstub\$dyn.*\(result i32\)', text)
-    assert i_legalimport_i64, 'legal import not generated for invoke call'
-    assert e_legalstub_i32, 'legal stub not generated for dyncall'
+    for legalizing in [0, 1]:
+      # test minimal JS FFI legalization for invoke and dyncalls
+      args = ['-sMAIN_MODULE=2', '-O3', '-sDISABLE_EXCEPTION_CATCHING=0', '-g']
+      if not legalizing:
+        args.append('-sLEGALIZE_JS_FFI=0')
+      self.run_process([EMXX, test_file('other/noffi.cpp')] + args)
+      text = self.get_wasm_text('a.out.wasm')
+      # Verify that legalization either did, or did not, occur
+      self.assertContainedIf('$legalimport', text, legalizing)
+      self.assertContainedIf('$legalstub', text, legalizing)
 
   def test_export_aliasee(self):
     # build side module
