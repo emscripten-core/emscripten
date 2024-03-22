@@ -1163,13 +1163,7 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
-  int flags = 0;
-  va_list v1;
-  va_start(v1, mode);
-  flags = va_arg(v1, int);
-  va_end(v1);
-
+int __syscall_fchmodat2(int dirfd, intptr_t path, int mode, int flags) {
   if (flags & ~AT_SYMLINK_NOFOLLOW) {
     // TODO: Test this case.
     return -EINVAL;
@@ -1186,7 +1180,7 @@ int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
 }
 
 int __syscall_chmod(intptr_t path, int mode) {
-  return __syscall_fchmodat(AT_FDCWD, path, mode, 0);
+  return __syscall_fchmodat2(AT_FDCWD, path, mode, 0);
 }
 
 int __syscall_fchmod(int fd, int mode) {
