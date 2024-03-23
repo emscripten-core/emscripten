@@ -1150,36 +1150,38 @@ var LibraryDylink = {
 #endif
   },
 
-  // Async version of dlopen.
-  _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError'],
-  _emscripten_dlopen_js: (handle, onsuccess, onerror, user_data) => {
-  return new Promise((resolve, reject) => {
-    function errorCallback(e) {
-      var filename = UTF8ToString(handle + C_STRUCTS.dso.name);
-      dlSetError(`Could not load dynamic lib: ${filename}\n${e}`);
-      runtimeKeepalivePop();
-      if(onerror) {
-        callUserCallback(() => makeDynCall('vpp', 'onerror')(handle, user_data));
-      }
-      reject(e);
+  // Utility function to encapsulate promise handling with callbacks 
+function promiseToCallback(promise, successFnPtr, errorFnPtr, user_data) {
+  function errorCallback(e) {
+    var filename = UTF8ToString(handle + C_STRUCTS.dso.name);
+    dlSetError(`Could not load dynamic lib: ${filename}\n${e}`);
+    runtimeKeepalivePop();
+    if(errorFnPtr) {
+      callUserCallback(() => makeDynCall('vpp', errorFnPtr)(handle, user_data));
     }
-    function successCallback() {
-      runtimeKeepalivePop();
-      if(onsuccess) {
-        callUserCallback(() => makeDynCall('vpp', 'onsuccess')(handle, user_data));
-      }
-      resolve();
+  }
+  function successCallback() {
+    runtimeKeepalivePop();
+    if(successFnPtr) {
+      callUserCallback(() => makeDynCall('vpp', successFnPtr)(handle, user_data));
     }
+  }
 
-    runtimeKeepalivePush();
-    var promise = dlopenInternal(handle, { loadAsync: true });
-    if (promise) {
-      promise.then(successCallback, errorCallback);
-    } else {
-      errorCallback(new Error('Promise was not created by dlopenInternal.'));
-    }
-  });
+  // Assert that the promise is provided
+  assert(promise, 'promiseToCallback was called without a valid promise.');
+  promise.then(successCallback).catch(errorCallback);
+}
+
+
+_emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$runtimeKeepalivePush', '$runtimeKeepalivePop', '$dlSetError', '$makeDynCall', '$promiseToCallback'],
+_emscripten_dlopen_js: (handle, onsuccess, onerror, user_data) => {
+  {{{ runtimeKeepalivePush() }}}
+  var promise = dlopenInternal(handle, { loadAsync: true });
+  
+  // Utility function to handle the promise
+  promiseToCallback(promise, onsuccess, onerror, user_data);
 },
+
 
 
   _dlsym_catchup_js: (handle, symbolIndex) => {
