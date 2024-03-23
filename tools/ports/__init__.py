@@ -394,9 +394,7 @@ def dependency_order(port_list):
 
 def resolve_dependencies(port_set, settings):
   def add_deps(node):
-    port_dependencies = node.process_dependencies(settings)
-    if port_dependencies is not None:
-      ports_needed.update(port_dependencies)
+    node.process_dependencies(settings)
     for d in node.deps:
       if d not in ports_by_name:
         utils.exit_with_error(f'unknown dependency `{d}` for port `{node.name}`')
@@ -499,10 +497,9 @@ def get_libs(settings):
   needed = get_needed_ports(settings)
 
   for port in dependency_order(needed):
-    if port.needed(settings):
-      port.linker_setup(Ports, settings)
-      # port.get returns a list of libraries to link
-      ret += port.get(Ports, settings, shared)
+    port.linker_setup(Ports, settings)
+    # port.get returns a list of libraries to link
+    ret += port.get(Ports, settings, shared)
 
   ret.reverse()
   return ret
