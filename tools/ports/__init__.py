@@ -48,7 +48,7 @@ def init_port(name, port):
     needed = port.needed
     port.needed = lambda s: needed(s) or name in ports_needed
   if not hasattr(port, 'process_dependencies'):
-    port.process_dependencies = lambda x: 0
+    port.process_dependencies = lambda x: None
   if not hasattr(port, 'linker_setup'):
     port.linker_setup = lambda x, y: 0
   if not hasattr(port, 'deps'):
@@ -394,7 +394,9 @@ def dependency_order(port_list):
 
 def resolve_dependencies(port_set, settings):
   def add_deps(node):
-    node.process_dependencies(settings)
+    port_dependencies = node.process_dependencies(settings)
+    if port_dependencies is not None:
+      ports_needed.update(port_dependencies)
     for d in node.deps:
       if d not in ports_by_name:
         utils.exit_with_error(f'unknown dependency `{d}` for port `{node.name}`')
