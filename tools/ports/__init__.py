@@ -48,7 +48,7 @@ def init_port(name, port):
     needed = port.needed
     port.needed = lambda s: needed(s) or name in ports_needed
   if not hasattr(port, 'process_dependencies'):
-    port.process_dependencies = lambda x: None
+    port.process_dependencies = lambda x: 0
   if not hasattr(port, 'linker_setup'):
     port.linker_setup = lambda x, y: 0
   if not hasattr(port, 'deps'):
