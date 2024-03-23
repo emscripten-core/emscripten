@@ -107,7 +107,6 @@ class interactive(BrowserCore):
     shutil.copyfile(test_file('sounds/the_entertainer.wav'), 'sound.wav')
     self.btest_exit('browser/test_sdl2_mixer_wav.c', args=[
       '-O2',
-      '-sUSE_SDL=2',
       '-sUSE_SDL_MIXER=2',
       '-sINITIAL_MEMORY=33554432',
       '--preload-file', 'sound.wav'
@@ -126,7 +125,6 @@ class interactive(BrowserCore):
       '--preload-file', music_name,
       '-DSOUND_PATH=' + json.dumps(music_name),
       '-DFLAGS=' + flags,
-      '-sUSE_SDL=2',
       '-sUSE_SDL_MIXER=2',
       '-sSDL2_MIXER_FORMATS=' + json.dumps(formats),
       '-sINITIAL_MEMORY=33554432'

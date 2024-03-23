@@ -2904,7 +2904,7 @@ Module["preRun"] = () => {
         '--preload-file', dest,
         '-DSCREENSHOT_DIRNAME="' + dirname + '"',
         '-DSCREENSHOT_BASENAME="' + basename + '"',
-        '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
+        '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
       ])
 
   @requires_graphics_hardware
@@ -2913,7 +2913,7 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl2_image.c', 600, args=[
       '--preload-file', 'screenshot.jpeg',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"',
-      '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
+      '-sUSE_SDL_IMAGE=2', '--use-preload-plugins'
     ])
 
   @also_with_wasmfs
@@ -2924,7 +2924,7 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl2_image.c', 512, args=[
       '--preload-file', 'screenshot.png',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.png"', '-DNO_PRELOADED',
-      '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=png'
+      '-sUSE_SDL_IMAGE=2', '-sSDL2_IMAGE_FORMATS=png'
     ])
     self.btest_exit('test_sdl2_image.c', 600, args=[
       '--preload-file', 'screenshot.jpg',
@@ -3105,7 +3105,7 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   def test_sdl2_gfx(self):
-    self.reftest('test_sdl2_gfx.cpp', 'test_sdl2_gfx.png', args=['-sUSE_SDL=2', '-sUSE_SDL_GFX=2'], reference_slack=2)
+    self.reftest('test_sdl2_gfx.cpp', 'test_sdl2_gfx.png', args=['-sUSE_SDL_GFX=2'], reference_slack=2)
 
   @requires_graphics_hardware
   def test_sdl2_canvas_palette_2(self):
@@ -3132,13 +3132,13 @@ Module["preRun"] = () => {
   def test_sdl2_image_prepare(self):
     # load an image file, get pixel data.
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
-    self.reftest('test_sdl2_image_prepare.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2'], manually_trigger_reftest=True)
+    self.reftest('test_sdl2_image_prepare.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL_IMAGE=2'], manually_trigger_reftest=True)
 
   @requires_graphics_hardware
   def test_sdl2_image_prepare_data(self):
     # load an image file, get pixel data.
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
-    self.reftest('test_sdl2_image_prepare_data.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2'], manually_trigger_reftest=True)
+    self.reftest('test_sdl2_image_prepare_data.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL_IMAGE=2'], manually_trigger_reftest=True)
 
   @requires_graphics_hardware
   def test_sdl2_canvas_proxy(self):
@@ -3192,31 +3192,31 @@ Module["preRun"] = () => {
   def test_sdl2_fog_simple(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.reftest('test_sdl2_fog_simple.c', 'screenshot-fog-simple.png',
-                 args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
+                 args=['-sUSE_SDL_IMAGE=2', '-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_sdl2_fog_negative(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.reftest('test_sdl2_fog_negative.c', 'screenshot-fog-negative.png',
-                 args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
+                 args=['-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_sdl2_fog_density(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.reftest('test_sdl2_fog_density.c', 'screenshot-fog-density.png',
-                 args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
+                 args=['-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_sdl2_fog_exp2(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.reftest('test_sdl2_fog_exp2.c', 'screenshot-fog-exp2.png',
-                 args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
+                 args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_sdl2_fog_linear(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.reftest('test_sdl2_fog_linear.c', 'screenshot-fog-linear.png', reference_slack=1,
-                 args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
+                 args=['-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   def test_sdl2_unwasteful(self):
     self.btest_exit('test_sdl2_unwasteful.cpp', args=['-sUSE_SDL=2', '-O1'])
@@ -3240,13 +3240,13 @@ Module["preRun"] = () => {
   def test_sdl2_ttf(self):
     shutil.copy2(test_file('freetype/LiberationSansBold.ttf'), self.get_dir())
     self.reftest('test_sdl2_ttf.c', 'test_sdl2_ttf.png',
-                 args=['-O2', '-sUSE_SDL=2', '-sUSE_SDL_TTF=2', '--embed-file', 'LiberationSansBold.ttf'])
+                 args=['-O2', '-sUSE_SDL_TTF=2', '--embed-file', 'LiberationSansBold.ttf'])
 
   @requires_graphics_hardware
   def test_sdl2_ttf_rtl(self):
     shutil.copy2(test_file('third_party/notofont/NotoNaskhArabic-Regular.ttf'), self.get_dir())
     self.reftest('test_sdl2_ttf_rtl.c', 'test_sdl2_ttf_rtl.png',
-                 args=['-O2', '-sUSE_SDL=2', '-sUSE_SDL_TTF=2', '--embed-file', 'NotoNaskhArabic-Regular.ttf'])
+                 args=['-O2', '-sUSE_SDL_TTF=2', '--embed-file', 'NotoNaskhArabic-Regular.ttf'])
 
   def test_sdl2_custom_cursor(self):
     shutil.copyfile(test_file('cursor.bmp'), 'cursor.bmp')
@@ -3287,7 +3287,6 @@ Module["preRun"] = () => {
       '--preload-file', music_name,
       '-DSOUND_PATH="%s"' % music_name,
       '-DFLAGS=' + flags,
-      '-sUSE_SDL=2',
       '-sUSE_SDL_MIXER=2',
       '-sSDL2_MIXER_FORMATS=' + ','.join(formats),
     ]

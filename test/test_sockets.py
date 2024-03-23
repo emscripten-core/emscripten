@@ -193,8 +193,8 @@ class sockets(BrowserCore):
       self.btest_exit('sockets/test_sockets_echo_client.c', args=['-pthread', '-sPROXY_TO_PTHREAD', '-DSOCKK=%d' % harness.listen_port])
 
   def test_sdl2_sockets_echo(self):
-    with CompiledServerHarness('sockets/sdl2_net_server.c', ['-sUSE_SDL=2', '-sUSE_SDL_NET=2'], 49164) as harness:
-      self.btest_exit('sockets/sdl2_net_client.c', args=['-sUSE_SDL=2', '-sUSE_SDL_NET=2', '-DSOCKK=%d' % harness.listen_port])
+    with CompiledServerHarness('sockets/sdl2_net_server.c', ['-sUSE_SDL_NET=2'], 49164) as harness:
+      self.btest_exit('sockets/sdl2_net_client.c', args=['-sUSE_SDL_NET=2', '-DSOCKK=%d' % harness.listen_port])
 
   @parameterized({
     'websockify': [WebsockifyServerHarness, 49166, ['-DTEST_DGRAM=0']],
