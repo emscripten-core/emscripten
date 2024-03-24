@@ -146,12 +146,13 @@ let LibraryWebAudio = {
 #endif
 
 #if WEBAUDIO_DEBUG
-    console.log(`emscripten_start_wasm_audio_worklet_thread_async() adding audioworklet.js...`);
+    console.log(`emscripten_start_wasm_audio_worklet_thread_async() adding Audio Worklet bootstrap script {{{ TARGET_BASENAME }}}.aw.js...`);
 #endif
 
-    let audioWorkletCreationFailed = () => {
+    let audioWorkletCreationFailed = e => {
 #if WEBAUDIO_DEBUG
       console.error(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed!`);
+      console.error(e);
 #endif
       {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
     };
@@ -172,7 +173,7 @@ let LibraryWebAudio = {
     // and/or embed from a string like with WASM_WORKERS==2 mode.
     audioWorklet.addModule('{{{ TARGET_BASENAME }}}.aw.js').then(() => {
 #if WEBAUDIO_DEBUG
-      console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule('audioworklet.js') completed`);
+      console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule('{{{ TARGET_BASENAME }}}.aw.js') completed`);
 #endif
       audioWorklet.bootstrapMessage = new AudioWorkletNode(audioContext, 'message', {
         processorOptions: {
