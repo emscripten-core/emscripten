@@ -6,7 +6,7 @@ orbs:
 executors:
   linux-node:
     docker:
-      - image: circleci/node:stretch
+      - image: circleci/node:buster
   linux-python:
     docker:
       - image: cimg/python:3.10.7
