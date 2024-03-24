@@ -91,7 +91,17 @@ public:
     void setPosition(off_t pos) { openFileState->position = pos; };
 
     oflags_t getFlags() const { return openFileState->flags; };
-    void setFlags(oflags_t flags) { openFileState->flags = flags; };
+    int setFlags(oflags_t flags) {
+      // Check if our specific file supports these flags
+      if (openFileState->file->supportsFlags(flags)) {
+        openFileState->flags = flags;
+        return 0;
+      } else {
+        // We don't support the flags that are trying to be set,
+        // so return an error
+        return -EINVAL;
+      }
+    };
   };
 
   Handle locked() { return Handle(shared_from_this()); }
