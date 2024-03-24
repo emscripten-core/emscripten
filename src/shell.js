@@ -149,7 +149,9 @@ var ENVIRONMENT_IS_WASM_WORKER = Module['$ww'];
 var _scriptDir = (typeof document != 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
 
 if (ENVIRONMENT_IS_WORKER) {
-  _scriptDir = self.location.href;
+  if (typeof self.location == 'object') {
+    _scriptDir = self.location.href;
+  }
 }
 #if ENVIRONMENT_MAY_BE_NODE
 else if (ENVIRONMENT_IS_NODE) {
@@ -364,7 +366,9 @@ if (ENVIRONMENT_IS_SHELL) {
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   if (ENVIRONMENT_IS_WORKER) { // Check worker, not web, since window could be polyfilled
-    scriptDirectory = self.location.href;
+    if (typeof self.location == 'object') {
+      scriptDirectory = self.location.href;
+    }
   } else if (typeof document != 'undefined' && document.currentScript) { // web
     scriptDirectory = document.currentScript.src;
   }
