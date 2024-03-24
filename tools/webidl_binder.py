@@ -133,6 +133,15 @@ function WrapperObject() {
 mid_js += build_constructor('WrapperObject')
 
 mid_js += ['''
+/*
+ * For now, the webidl-generated code unconditionally depends on the `assert` function,
+ * but there are certain build modes where emscripten does not define this.
+ * TODO(sbc): Make the usage of assert conditional.
+ */
+if (typeof assert == "undefined") {
+  assert = (cond) => {}
+}
+
 /** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant)
     @param {*=} __class__ */
 function getCache(__class__) {

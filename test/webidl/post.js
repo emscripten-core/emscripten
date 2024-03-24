@@ -239,7 +239,7 @@ try {
 } catch (e) {}
 
 try {
-  s = new TheModule.StringUser('abc', 1);
+  var s = new TheModule.StringUser('abc', 1);
   s.Print(123, null); // Expects a string or a wrapped pointer
 } catch (e) {}
 
