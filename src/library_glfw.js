@@ -83,7 +83,7 @@ var LibraryGLFW = {
       this.userptr = 0;
     },
 
-  $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
+  $GLFW__deps: ['emscripten_webgl_do_create_context', 'emscripten_webgl_make_context_current', 'emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
     '$stringToNewUTF8',
     'emscripten_set_window_title',
 #if FILESYSTEM
@@ -1069,13 +1069,63 @@ var LibraryGLFW = {
       for (i = 0; i < GLFW.windows.length && GLFW.windows[i] !== null; i++) {
         // no-op
       }
-      if (i > 0) throw "glfwCreateWindow only supports one window at time currently";
 
       // id for window
       id = i + 1;
 
       // not valid
       if (width <= 0 || height <= 0) return 0;
+      var canvasID = 'canvas' + (id - 1);
+      var ctxID = 'ctx' + (id - 1);
+
+      if (!document.getElementById('canvas')) {
+        mainCanvas = document.createElement('canvas');
+        mainCanvas.id = 'canvas';
+        mainCanvas.width = width;
+        mainCanvas.height = height;
+        Module['canvas'] = mainCanvas;
+      }
+
+
+      var useWebGL = GLFW.hints[0x00022001] > 0; // Use WebGL when we are told to based on GLFW_CLIENT_API
+      if (useWebGL) {
+        var contextAttributes = {
+          antialias: (GLFW.hints[0x0002100D] > 1), // GLFW_SAMPLES
+          depth: (GLFW.hints[0x00021005] > 0),     // GLFW_DEPTH_BITS
+          stencil: (GLFW.hints[0x00021006] > 0),   // GLFW_STENCIL_BITS
+          alpha: (GLFW.hints[0x00021004] > 0),      // GLFW_ALPHA_BITS
+        }
+#if OFFSCREEN_FRAMEBUFFER
+        // TODO: Make GLFW explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
+        GL.enableOffscreenFramebufferAttributes(contextAttributes);
+#endif
+
+        if (Module.ctx === undefined)
+          Module.ctx = GL.createContext(Module.canvas, contextAttributes);
+
+        if (id <= 1) {
+          GLFW.canvases = {};
+          GLFW.contexts = {};
+          GLFW.canvases.canvas0 = Module.canvas;
+          GLFW.contexts.ctx0 = Module.ctx;
+        } else {
+          var canvasElement = document.getElementById(canvasID);
+          if (!canvasElement) {
+            canvasElement = document.createElement('canvas');
+            canvasElement.id = canvasID;
+            canvasElement.width = width;
+            canvasElement.height = height;
+
+            var body = document.getElementsByTagName("body")[0];
+            body.appendChild(canvasElement);
+          }
+
+          GLFW.canvases[canvasID] = canvasElement;
+          GLFW.contexts[ctxID] = GL.createContext(canvasElement, contextAttributes);
+        }
+      } else {
+        Browser.init();
+      }
 
       if (monitor) {
         Browser.requestFullscreen();
@@ -1087,27 +1137,9 @@ var LibraryGLFW = {
       for (i = 0; i < GLFW.windows.length && GLFW.windows[i] == null; i++) {
         // no-op
       }
-      var useWebGL = GLFW.hints[0x00022001] > 0; // Use WebGL when we are told to based on GLFW_CLIENT_API
-      if (i == GLFW.windows.length) {
-        if (useWebGL) {
-          var contextAttributes = {
-            antialias: (GLFW.hints[0x0002100D] > 1), // GLFW_SAMPLES
-            depth: (GLFW.hints[0x00021005] > 0),     // GLFW_DEPTH_BITS
-            stencil: (GLFW.hints[0x00021006] > 0),   // GLFW_STENCIL_BITS
-            alpha: (GLFW.hints[0x00021004] > 0)      // GLFW_ALPHA_BITS
-          }
-#if OFFSCREEN_FRAMEBUFFER
-          // TODO: Make GLFW explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
-          GL.enableOffscreenFramebufferAttributes(contextAttributes);
-#endif
-          Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
-        } else {
-          Browser.init();
-        }
-      }
 
       // If context creation failed, do not return a valid window
-      if (!Module.ctx && useWebGL) return 0;
+      if (!GLFW.contexts[ctxID] && useWebGL) return 0;
 
       // Get non alive id
       const canvas = Module['canvas'];
@@ -1877,7 +1909,17 @@ var LibraryGLFW = {
 
   glfwGetClipboardString: (win) => {},
 
-  glfwMakeContextCurrent: (winid) => {},
+  glfwMakeContextCurrent: function(winid) {
+    if (winid !== null && GLFW.windows !== null) {
+      for (var i in GLFW.windows) {
+        if (GLFW.windows[i].id == winid) {
+          Module.ctx = GLFW.contexts['ctx' + (winid - 1)];
+          break;
+        }
+      }
+    }
+    GL.makeContextCurrent(Module.ctx);
+  },
 
   glfwGetCurrentContext: () => GLFW.active ? GLFW.active.id : 0,
 
