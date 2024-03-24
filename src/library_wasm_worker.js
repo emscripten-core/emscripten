@@ -186,7 +186,7 @@ if (ENVIRONMENT_IS_WASM_WORKER) {
       'wasmSourceMapData': wasmSourceMap,
 #endif
     });
-    worker.onmessage = _wasmWorkerRunPostMessage;
+    worker.addEventListener('message', _wasmWorkerRunPostMessage);
     return _wasmWorkersID++;
   },
 
