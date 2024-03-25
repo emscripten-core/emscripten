@@ -401,7 +401,6 @@ def resolve_dependencies(port_set, settings):
       dep = ports_by_name[d]
       if dep not in port_set:
         port_set.add(dep)
-        ports_needed.add(dep.name)
         add_deps(dep)
 
   for port in port_set.copy():
