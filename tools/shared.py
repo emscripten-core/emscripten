@@ -671,10 +671,6 @@ def print_compiler_stage(cmd):
     sys.stderr.flush()
 
 
-def mangle_c_symbol_name(name):
-  return '_' + name if not name.startswith('$') else name[1:]
-
-
 def demangle_c_symbol_name(name):
   if not is_c_symbol(name):
     return '$' + name
