@@ -431,10 +431,6 @@ function exportRuntime() {
     'HEAPU64',
   ];
 
-  // These are actually native wasm functions these days but we allow exporting
-  // them via EXPORTED_RUNTIME_METHODS for backwards compat.
-  runtimeElements = runtimeElements.concat(WASM_SYSTEM_EXPORTS);
-
   if (PTHREADS && ALLOW_MEMORY_GROWTH) {
     runtimeElements = runtimeElements.concat([
       'GROWABLE_HEAP_I8',

@@ -104,7 +104,15 @@ function isDefined(symName) {
   return false;
 }
 
-function getTransitiveDeps(symbol) {
+function resolveAlias(symbol) {
+  var value = LibraryManager.library[symbol];
+  if (typeof value == 'string' && value[0] != '=' && LibraryManager.library.hasOwnProperty(value)) {
+    return value;
+  }
+  return symbol;
+}
+
+function getTransitiveDeps(symbol, debug) {
   // TODO(sbc): Use some kind of cache to avoid quadratic behaviour here.
   const transitiveDeps = new Set();
   const seen = new Set();
@@ -114,9 +122,10 @@ function getTransitiveDeps(symbol) {
     if (!seen.has(sym)) {
       let directDeps = LibraryManager.library[sym + '__deps'] || [];
       directDeps = directDeps.filter((d) => typeof d === 'string');
-      if (directDeps.length) {
-        directDeps.forEach(transitiveDeps.add, transitiveDeps);
-        toVisit.push(...directDeps);
+      for (const dep of directDeps) {
+        const resolved = resolveAlias(dep);
+        transitiveDeps.add(resolved);
+        toVisit.push(resolved);
       }
       seen.add(sym);
     }
@@ -425,16 +434,8 @@ function(${args}) {
 
       if (symbolsOnly) {
         if (LibraryManager.library.hasOwnProperty(symbol)) {
-          var value = LibraryManager.library[symbol];
-          var resolvedSymbol = symbol;
           // Resolve aliases before looking up deps
-          if (
-            typeof value == 'string' &&
-            value[0] != '=' &&
-            LibraryManager.library.hasOwnProperty(value)
-          ) {
-            resolvedSymbol = value;
-          }
+          var resolvedSymbol = resolveAlias(symbol);
           var transtiveDeps = getTransitiveDeps(resolvedSymbol);
           symbolDeps[symbol] = transtiveDeps.filter(
             (d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library),

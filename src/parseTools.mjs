@@ -904,9 +904,6 @@ function makeAsmImportsAccessInPthread(variable) {
 }
 
 function _asmjsDemangle(symbol) {
-  if (symbol in WASM_SYSTEM_EXPORTS) {
-    return symbol;
-  }
   if (symbol.startsWith('dynCall_')) {
     return symbol;
   }
