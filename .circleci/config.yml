@@ -918,7 +918,9 @@ jobs:
           python: "$EMSDK_PYTHON"
       - run-tests:
           title: "crossplatform tests"
-          test_targets: "--crossplatform-only"
+          # Skipping test_strftime_zZ_gb_locale since this test forces the
+          # locale to one that is not necessarily available on macOS.
+          test_targets: "--crossplatform-only skip:other.test_strftime_zZ_gb_locale"
       - upload-test-results
 
   test-mac-arm64:
@@ -940,7 +942,9 @@ jobs:
       # are currently missing arm64 macos binaries.
       - run-tests:
           title: "crossplatform tests"
-          test_targets: "--crossplatform-only"
+          # Skipping test_strftime_zZ_gb_locale since this test forces the
+          # locale to one that is not necessarily available on macOS.
+          test_targets: "--crossplatform-only skip:other.test_strftime_zZ_gb_locale"
       - upload-test-results
 
 workflows:
