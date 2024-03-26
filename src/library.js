@@ -21,19 +21,25 @@
 // new function with an '_', it will not be found.
 
 addToLibrary({
-  // JS aliases for native stack manipulation functions
+  // JS aliases for native stack manipulation functions and tempret handling
   $stackSave__deps: ['emscripten_stack_get_current'],
   $stackSave: () => _emscripten_stack_get_current(),
   $stackRestore__deps: ['_emscripten_stack_restore'],
   $stackRestore: (val) => __emscripten_stack_restore(val),
   $stackAlloc__deps: ['_emscripten_stack_alloc'],
   $stackAlloc: (sz) => __emscripten_stack_alloc(sz),
+  $getTempRet0__deps: ['_emscripten_tempret_get'],
+  $getTempRet0: (val) => __emscripten_tempret_get(),
+  $setTempRet0__deps: ['_emscripten_tempret_set'],
+  $setTempRet0: (val) => __emscripten_tempret_set(val),
 
-  // Aliases that allow legacy names (without leading $) for these
-  // stack functions to continue to work in `__deps` entries.
+  // Aliases that allow legacy names (without leading $) for the
+  // functions to continue to work in `__deps` entries.
   stackAlloc: '$stackAlloc',
   stackSave: '$stackSave',
   stackRestore: '$stackSave',
+  setTempRet0: '$setTempRet0',
+  getTempRet0: '$getTempRet0',
 
   $ptrToString: (ptr) => {
 #if ASSERTIONS
@@ -649,10 +655,12 @@ addToLibrary({
 
     {{{ makeSetValue('daylight', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
 
-    var extractZone = (date) => date.toLocaleTimeString(undefined, {timeZoneName:'short'}).split(' ')[2];
+    var extractZone = (date) => date.toLocaleTimeString(undefined, {hour12:false, timeZoneName:'short'}).split(' ')[1];
     var winterName = extractZone(winter);
     var summerName = extractZone(summer);
 #if ASSERTIONS
+    assert(winterName);
+    assert(summerName);
     assert(lengthBytesUTF8(winterName) <= {{{ cDefs.TZNAME_MAX }}}, `timezone name truncated to fit in TZNAME_MAX (${winterName})`);
     assert(lengthBytesUTF8(summerName) <= {{{ cDefs.TZNAME_MAX }}}, `timezone name truncated to fit in TZNAME_MAX (${summerName})`);
 #endif
@@ -3119,11 +3127,10 @@ addToLibrary({
 #endif // MINIMAL_RUNTIME
 
   $asmjsMangle: (x) => {
-    var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
     if (x == '__main_argc_argv') {
       x = 'main';
     }
-    return x.startsWith('dynCall_') || unmangledSymbols.includes(x) ? x : '_' + x;
+    return x.startsWith('dynCall_') ? x : '_' + x;
   },
 
   $asyncLoad__docs: '/** @param {boolean=} noRunDep */',

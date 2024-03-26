@@ -224,7 +224,7 @@ var LibraryExceptions = {
   // unwinding using 'if' blocks around each function, so the remaining
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
-  $findMatchingCatch__deps: ['$exceptionLast', '$ExceptionInfo', '__resumeException', '__cxa_can_catch', 'setTempRet0'],
+  $findMatchingCatch__deps: ['$exceptionLast', '$ExceptionInfo', '__resumeException', '__cxa_can_catch', '$setTempRet0'],
   $findMatchingCatch: (args) => {
     var thrown =
 #if EXCEPTION_STACK_TRACES
