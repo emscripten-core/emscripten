@@ -149,7 +149,7 @@ to the options. You need to enable either of Emscripten EH or Wasm EH to use
 this option.
 
 If the stack pointer has been moved due to stack allocations within the Wasm
-function before an exception is thrown, you can to use ``stackSave()`` and
+function before an exception is thrown, you can use ``stackSave()`` and
 ``stackRestore()`` to restore the stack pointer so that no stack memory is
 leaked.
 
