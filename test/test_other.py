@@ -2429,7 +2429,7 @@ int f() {
     # testing 2 options
     self.do_runf('other/test_external_ports.c', 'value1=12&value2=36\n', emcc_args=[f'--use-port={external_port_path}:value1=12:value2=36'])
     # testing dependency
-    self.do_runf('other/test_external_ports.c', 'sdl2=2\n', emcc_args=[f'--use-port={external_port_path}:dependency=sdl2'])
+    self.do_runf('other/test_external_ports.c', 'mpg123=45\n', emcc_args=[f'--use-port={external_port_path}:dependency=mpg123'])
     # testing invalid dependency
     stderr = self.expect_fail([EMCC, test_file('other/test_external_ports.c'), f'--use-port={external_port_path}:dependency=invalid', '-o', 'a4.out.js'])
     self.assertFalse(os.path.exists('a4.out.js'))
