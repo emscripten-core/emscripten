@@ -33,15 +33,15 @@ var Module =
 var Module = {{{ EXPORT_NAME }}};
 #endif
 
-#if MODULARIZE && EXPORT_READY_PROMISE
+#if MODULARIZE && USE_READY_PROMISE
 // Set up the promise that indicates the Module is initialized
 var readyPromiseResolve, readyPromiseReject;
-Module['ready'] = new Promise((resolve, reject) => {
+var readyPromise = new Promise((resolve, reject) => {
   readyPromiseResolve = resolve;
   readyPromiseReject = reject;
 });
 #if ASSERTIONS
-{{{ addReadyPromiseAssertions("Module['ready']") }}}
+{{{ addReadyPromiseAssertions() }}}
 #endif
 #endif
 
@@ -125,7 +125,7 @@ var err = (text) => console.error(text);
 // compilation is ready. In that callback, call the function run() to start
 // the program.
 function ready() {
-#if MODULARIZE && EXPORT_READY_PROMISE
+#if MODULARIZE && USE_READY_PROMISE
   readyPromiseResolve(Module);
 #endif // MODULARIZE
 #if INVOKE_RUN && HAS_MAIN

@@ -4,20 +4,47 @@
  * SPDX-License-Identifier: MIT
  */
 
-// "use strict";
-
 // Convert analyzed data to javascript. Everything has already been calculated
 // before this stage, which just does the final conversion to JavaScript.
 
-globalThis.addedLibraryItems = {};
+import {
+  ATEXITS,
+  ATINITS,
+  ATMAINS,
+  defineI64Param,
+  indentify,
+  makeReturn64,
+  modifyJSFunction,
+  preprocess,
+  processMacros,
+  receiveI64ParamAsI53,
+} from './parseTools.mjs';
+import {
+  addToCompileTimeContext,
+  assert,
+  error,
+  errorOccured,
+  isDecorator,
+  isJsOnlySymbol,
+  compileTimeContext,
+  print,
+  printErr,
+  read,
+  warn,
+  warnOnce,
+  warningOccured,
+} from './utility.mjs';
+import {LibraryManager, librarySymbols} from './modules.mjs';
 
-globalThis.extraLibraryFuncs = [];
+const addedLibraryItems = {};
+
+const extraLibraryFuncs = [];
 
 // Some JS-implemented library functions are proxied to be called on the main
 // browser thread, if the Emscripten runtime is executing in a Web Worker.
 // Each such proxied function is identified via an ordinal number (this is not
 // the same namespace as function pointers in general).
-globalThis.proxiedFunctionTable = [];
+const proxiedFunctionTable = [];
 
 // Mangles the given C/JS side function name to assembly level function name (adds an underscore)
 function mangleCSymbolName(f) {
@@ -31,7 +58,7 @@ function mangleCSymbolName(f) {
 function splitter(array, filter) {
   const splitOut = array.filter(filter);
   const leftIn = array.filter((x) => !filter(x));
-  return { leftIn, splitOut };
+  return {leftIn, splitOut};
 }
 
 function escapeJSONKey(x) {
@@ -54,7 +81,7 @@ function stringifyWithFunctions(obj) {
     // Handle JS method syntax where the function property starts with its own
     // name. e.g.  foo(a) {},
     if (typeof value === 'function' && str.startsWith(key)) {
-      rtn += str + ',\n'
+      rtn += str + ',\n';
     } else {
       rtn += escapeJSONKey(key) + ':' + str + ',\n';
     }
@@ -77,7 +104,15 @@ function isDefined(symName) {
   return false;
 }
 
-function getTransitiveDeps(symbol) {
+function resolveAlias(symbol) {
+  var value = LibraryManager.library[symbol];
+  if (typeof value == 'string' && value[0] != '=' && LibraryManager.library.hasOwnProperty(value)) {
+    return value;
+  }
+  return symbol;
+}
+
+function getTransitiveDeps(symbol, debug) {
   // TODO(sbc): Use some kind of cache to avoid quadratic behaviour here.
   const transitiveDeps = new Set();
   const seen = new Set();
@@ -87,9 +122,10 @@ function getTransitiveDeps(symbol) {
     if (!seen.has(sym)) {
       let directDeps = LibraryManager.library[sym + '__deps'] || [];
       directDeps = directDeps.filter((d) => typeof d === 'string');
-      if (directDeps.length) {
-        directDeps.forEach(transitiveDeps.add, transitiveDeps);
-        toVisit.push(...directDeps);
+      for (const dep of directDeps) {
+        const resolved = resolveAlias(dep);
+        transitiveDeps.add(resolved);
+        toVisit.push(resolved);
       }
       seen.add(sym);
     }
@@ -98,7 +134,7 @@ function getTransitiveDeps(symbol) {
 }
 
 function shouldPreprocess(fileName) {
-  var content = read(fileName).trim()
+  var content = read(fileName).trim();
   return content.startsWith('#preprocess\n') || content.startsWith('#preprocess\r\n');
 }
 
@@ -121,7 +157,7 @@ function preJS() {
   return result;
 }
 
-function runJSify() {
+export function runJSify(symbolsOnly) {
   const libraryItems = [];
   const symbolDeps = {};
   const asyncFuncs = [];
@@ -157,9 +193,11 @@ function runJSify() {
     return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
       let argLines = args.split('\n');
       argLines = argLines.map((line) => line.split('//')[0]);
-      const argNames = argLines.join(' ').split(',').map((name) => name.trim());
+      const argNames = argLines
+        .join(' ')
+        .split(',')
+        .map((name) => name.trim());
       const newArgs = [];
-      let innerArgs = [];
       let argConversions = '';
       if (sig.length > argNames.length + 1) {
         error(`handleI64Signatures: signature too long for ${symbol}`);
@@ -185,7 +223,6 @@ function runJSify() {
         }
       }
 
-      var origArgs = args;
       if (!WASM_BIGINT) {
         args = newArgs.join(',');
       }
@@ -198,9 +235,9 @@ function runJSify() {
             return `${async_}(${args}) => {
 ${argConversions}
   return ${makeReturn64(body)};
-}`
+}`;
           }
-          return `${async_}(${args}) => ${makeReturn64(body)};`
+          return `${async_}(${args}) => ${makeReturn64(body)};`;
         }
         return `\
 ${async_}function(${args}) {
@@ -243,22 +280,27 @@ ${argConversions}
 
     // apply LIBRARY_DEBUG if relevant
     if (LIBRARY_DEBUG && !isJsOnlySymbol(symbol)) {
-      snippet = modifyJSFunction(snippet, (args, body, async) => `\
+      snippet = modifyJSFunction(
+        snippet,
+        (args, body, async) => `\
 function(${args}) {
   var ret = (() => { if (runtimeDebug) err("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
   ${body}
   })();
   if (runtimeDebug && typeof ret != "undefined") err("  [     return:" + prettyPrint(ret));
   return ret;
-}`);
+}`,
+      );
     }
 
     const sig = LibraryManager.library[symbol + '__sig'];
     const i53abi = LibraryManager.library[symbol + '__i53abi'];
-    if (sig &&
-        ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')))) {
+    if (
+      sig &&
+      ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')))
+    ) {
       snippet = handleI64Signatures(symbol, snippet, sig, i53abi);
-      i53ConversionDeps.forEach((d) => deps.push(d))
+      compileTimeContext.i53ConversionDeps.forEach((d) => deps.push(d));
     }
 
     const proxyingMode = LibraryManager.library[symbol + '__proxy'];
@@ -274,23 +316,27 @@ function(${args}) {
               body = `return ${body}`;
             }
             const rtnType = sig && sig.length ? sig[0] : null;
-            const proxyFunc = (MEMORY64 && rtnType == 'p') ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
+            const proxyFunc =
+              MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
             deps.push('$' + proxyFunc);
             return `
 function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
   return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${+sync}${args ? ', ' : ''}${args});
 ${body}
-}\n`
+}\n`;
           });
         } else if (WASM_WORKERS && ASSERTIONS) {
           // In ASSERTIONS builds add runtime checks that proxied functions are not attempted to be called in Wasm Workers
           // (since there is no automatic proxying architecture available)
-          snippet = modifyJSFunction(snippet, (args, body) => `
+          snippet = modifyJSFunction(
+            snippet,
+            (args, body) => `
 function(${args}) {
   assert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function '${mangled}' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");
   ${body}
-}\n`);
+}\n`,
+          );
         }
         proxiedFunctionTable.push(mangled);
       }
@@ -328,13 +374,15 @@ function(${args}) {
     // of argument.
     if (LINK_AS_CXX && !WASM_EXCEPTIONS && symbol.startsWith('__cxa_find_matching_catch_')) {
       if (DISABLE_EXCEPTION_THROWING) {
-        error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
+        error(
+          'DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.',
+        );
         return;
       }
       if (!(symbol in LibraryManager.library)) {
         // Create a new __cxa_find_matching_catch variant on demand.
         const num = +symbol.split('_').slice(-1)[0];
-        addCxaCatch(num);
+        compileTimeContext.addCxaCatch(num);
       }
       // Continue, with the code below emitting the proper JavaScript based on
       // what we just added to the library.
@@ -362,7 +410,7 @@ function(${args}) {
         LibraryManager.library[symbol + '__deps'] = [];
       }
 
-      deps = LibraryManager.library[symbol + '__deps'];
+      const deps = LibraryManager.library[symbol + '__deps'];
       let sig = LibraryManager.library[symbol + '__sig'];
       if (!WASM_BIGINT && sig && sig[0] == 'j') {
         // Without WASM_BIGINT functions that return i64 depend on setTempRet0
@@ -374,9 +422,10 @@ function(${args}) {
       let isAsyncFunction = false;
       if (ASYNCIFY) {
         const original = LibraryManager.library[symbol];
-        if (typeof original == 'function' ) {
-          isAsyncFunction = LibraryManager.library[symbol + '__async'] ||
-                            original.constructor.name == 'AsyncFunction'
+        if (typeof original == 'function') {
+          isAsyncFunction =
+            LibraryManager.library[symbol + '__async'] ||
+            original.constructor.name == 'AsyncFunction';
         }
         if (isAsyncFunction) {
           asyncFuncs.push(symbol);
@@ -385,14 +434,12 @@ function(${args}) {
 
       if (symbolsOnly) {
         if (LibraryManager.library.hasOwnProperty(symbol)) {
-          var value = LibraryManager.library[symbol];
-          var resolvedSymbol = symbol;
           // Resolve aliases before looking up deps
-          if (typeof value == 'string' && value[0] != '=' && LibraryManager.library.hasOwnProperty(value)) {
-            resolvedSymbol = value;
-          }
+          var resolvedSymbol = resolveAlias(symbol);
           var transtiveDeps = getTransitiveDeps(resolvedSymbol);
-          symbolDeps[symbol] = transtiveDeps.filter((d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library));
+          symbolDeps[symbol] = transtiveDeps.filter(
+            (d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library),
+          );
         }
         return;
       }
@@ -419,8 +466,13 @@ function(${args}) {
           if (dependent) msg += ` (referenced by ${dependent})`;
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
             error(msg);
-            warnOnce('To disable errors for undefined symbols use `-sERROR_ON_UNDEFINED_SYMBOLS=0`');
-            warnOnce(mangled + ' may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library');
+            warnOnce(
+              'To disable errors for undefined symbols use `-sERROR_ON_UNDEFINED_SYMBOLS=0`',
+            );
+            warnOnce(
+              mangled +
+                ' may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library',
+            );
           } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
             warn(msg);
           }
@@ -440,12 +492,11 @@ function(${args}) {
           // Create a stub for this symbol which can later be replaced by the
           // dynamic linker.  If this stub is called before the symbol is
           // resolved assert in debug builds or trap in release builds.
+          let target = `wasmImports['${symbol}']`;
           if (ASYNCIFY) {
             // See the definition of asyncifyStubs in preamble.js for why this
             // is needed.
             target = `asyncifyStubs['${symbol}']`;
-          } else {
-            target = `wasmImports['${symbol}']`;
           }
           let assertion = '';
           if (ASSERTIONS) {
@@ -508,10 +559,8 @@ function(${args}) {
       }
 
       if (VERBOSE) {
-        printErr(`adding ${symbol} (referenced by ${dependent})`)
+        printErr(`adding ${symbol} (referenced by ${dependent})`);
       }
-      const deps_list = deps.join("','");
-      const identDependents = symbol + `__deps: ['${deps_list}']`;
       function addDependency(dep) {
         // dependencies can be JS functions, which we just run
         if (typeof dep == 'function') {
@@ -521,15 +570,23 @@ function(${args}) {
         // in library.js and library_pthread.js.  These happen before deps are
         // processed so depending on it via `__deps` doesn't work.
         if (dep === '$noExitRuntime') {
-          error('noExitRuntime cannot be referenced via __deps mechanism.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS')
+          error(
+            'noExitRuntime cannot be referenced via __deps mechanism.  Use DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS',
+          );
         }
         return addFromLibrary(dep, `${symbol}, referenced by ${dependent}`, dep === aliasTarget);
       }
       let contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
-        if ((USE_ASAN || USE_LSAN || UBSAN_RUNTIME) && LibraryManager.library[symbol + '__noleakcheck']) {
-          contentText = modifyJSFunction(snippet, (args, body) => `(${args}) => withBuiltinMalloc(() => {${body}})`);
+        if (
+          (USE_ASAN || USE_LSAN || UBSAN_RUNTIME) &&
+          LibraryManager.library[symbol + '__noleakcheck']
+        ) {
+          contentText = modifyJSFunction(
+            snippet,
+            (args, body) => `(${args}) => withBuiltinMalloc(() => {${body}})`,
+          );
           deps.push('$withBuiltinMalloc');
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
@@ -552,7 +609,8 @@ function(${args}) {
         //  emits
         //   'var foo;[code here verbatim];'
         contentText = 'var ' + mangled + snippet;
-        if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}') contentText += ';';
+        if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}')
+          contentText += ';';
       } else if (typeof snippet == 'undefined') {
         contentText = `var ${mangled};`;
       } else {
@@ -593,13 +651,18 @@ function(${args}) {
 
       let commentText = '';
       if (force) {
-        commentText += '/** @suppress {duplicate } */\n'
+        commentText += '/** @suppress {duplicate } */\n';
       }
       if (LibraryManager.library[symbol + '__docs']) {
         commentText += LibraryManager.library[symbol + '__docs'] + '\n';
       }
 
-      const depsText = (deps ? deps.map(addDependency).filter((x) => x != '').join('\n') + '\n' : '');
+      const depsText = deps
+        ? deps
+            .map(addDependency)
+            .filter((x) => x != '')
+            .join('\n') + '\n'
+        : '';
       return depsText + commentText + contentText;
     }
 
@@ -608,7 +671,7 @@ function(${args}) {
   }
 
   function includeFile(fileName, needsPreprocess = true) {
-    print(getIncludeFile(fileName, needsPreprocess))
+    print(getIncludeFile(fileName, needsPreprocess));
   }
 
   function finalCombiner() {
@@ -655,7 +718,7 @@ var proxiedFunctionTable = [
 `);
     }
 
-    if (abortExecution) {
+    if (errorOccured()) {
       throw Error('Aborting compilation due to previous errors');
     }
 
@@ -672,14 +735,17 @@ var proxiedFunctionTable = [
       includeFile(fileName, shouldPreprocess(fileName));
     }
 
-    print('//FORWARDED_DATA:' + JSON.stringify({
-      librarySymbols,
-      warnings,
-      asyncFuncs,
-      ATINITS: ATINITS.join('\n'),
-      ATMAINS: STRICT ? '' : ATMAINS.join('\n'),
-      ATEXITS: ATEXITS.join('\n'),
-    }));
+    print(
+      '//FORWARDED_DATA:' +
+        JSON.stringify({
+          librarySymbols,
+          warnings: warningOccured(),
+          asyncFuncs,
+          ATINITS: ATINITS.join('\n'),
+          ATMAINS: STRICT ? '' : ATMAINS.join('\n'),
+          ATEXITS: ATEXITS.join('\n'),
+        }),
+    );
   }
 
   for (const sym of symbolsNeeded) {
@@ -687,16 +753,24 @@ var proxiedFunctionTable = [
   }
 
   if (symbolsOnly) {
-    print(JSON.stringify({
-      deps: symbolDeps,
-      asyncFuncs,
-      extraLibraryFuncs,
-    }));
+    print(
+      JSON.stringify({
+        deps: symbolDeps,
+        asyncFuncs,
+        extraLibraryFuncs,
+      }),
+    );
   } else {
     finalCombiner();
   }
 
-  if (abortExecution) {
+  if (errorOccured()) {
     throw Error('Aborting compilation due to previous errors');
   }
 }
+
+addToCompileTimeContext({
+  extraLibraryFuncs,
+  addedLibraryItems,
+  preJS,
+});

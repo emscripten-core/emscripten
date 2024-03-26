@@ -940,7 +940,7 @@ var LibraryHTML5 = {
     // alternative selection from OrientationLockType enum
     var orientationsType2 = ['portrait',         'portrait',           'landscape',         'landscape'];
 
-    var orientationIndex = 0;
+    var orientationIndex = {{{ cDefs.EMSCRIPTEN_ORIENTATION_UNSUPPORTED }}};
     var orientationAngle = 0;
     var screenOrientObj  = screenOrientation();
     if (typeof screenOrientObj === 'object') {

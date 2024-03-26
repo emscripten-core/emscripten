@@ -253,6 +253,7 @@ def inspect_headers(headers, cflags):
                                '-sBOOTSTRAPPING_STRUCT_INFO',
                                '-sINCOMING_MODULE_JS_API=',
                                '-sSTRICT',
+                               '-sSUPPORT_LONGJMP=0',
                                '-sASSERTIONS=0'] + node_flags
 
   # Default behavior for emcc is to warn for binaryen version check mismatches

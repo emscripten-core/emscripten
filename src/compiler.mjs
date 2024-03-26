@@ -9,21 +9,9 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import * as vm from 'vm';
 import * as url from 'url';
-import assert from 'assert';
 
-globalThis.vm = vm;
-globalThis.assert = assert;
-globalThis.nodePath = path;
-
-globalThis.print = (x) => {
-  process.stdout.write(x + '\n');
-};
-
-globalThis.printErr = (x) => {
-  process.stderr.write(x + '\n');
-};
+import {Benchmarker, applySettings, assert, loadSettingsFile, printErr, read} from './utility.mjs';
 
 function find(filename) {
   assert(filename);
@@ -38,22 +26,9 @@ function find(filename) {
   return filename;
 }
 
-globalThis.read = (filename) => {
-  assert(filename);
-  const absolute = find(filename);
-  return fs.readFileSync(absolute).toString();
-};
-
-function load(f) {
-  vm.runInThisContext(read(f), {filename: find(f)});
-}
-
-// Basic utilities
-load('utility.js');
-
 // Load default settings
-load('./settings.js');
-load('./settings_internal.js');
+loadSettingsFile(find('settings.js'));
+loadSettingsFile(find('settings_internal.js'));
 
 const argv = process.argv.slice(2);
 const symbolsOnlyArg = argv.indexOf('--symbols-only');
@@ -64,11 +39,10 @@ if (symbolsOnlyArg != -1) {
 // Load settings from JSON passed on the command line
 const settingsFile = argv[0];
 assert(settingsFile);
+const user_settings = JSON.parse(read(settingsFile));
+applySettings(user_settings);
 
-const settings = JSON.parse(read(settingsFile));
-Object.assign(global, settings);
-
-globalThis.symbolsOnly = symbolsOnlyArg != -1;
+export const symbolsOnly = symbolsOnlyArg != -1;
 
 // In case compiler.js is run directly (as in gen_sig_info)
 // ALL_INCOMING_MODULE_JS_API might not be populated yet.
@@ -88,18 +62,21 @@ if (symbolsOnly) {
 
 // Side modules are pure wasm and have no JS
 assert(
-  !SIDE_MODULE || (ASYNCIFY && globalThis.symbolsOnly),
+  !SIDE_MODULE || (ASYNCIFY && symbolsOnly),
   'JS compiler should only run on side modules if asyncify is used.',
 );
 
 // Load compiler code
 
-load('modules.js');
-load('parseTools.js');
-load('jsifier.js');
+// We can't use static import statements here because several of these
+// file depend on having the settings defined in the global scope (which
+// we do dynamically above.
+await import('./modules.mjs');
+await import('./parseTools.mjs');
 if (!STRICT) {
-  load('parseTools_legacy.js');
+  await import('./parseTools_legacy.mjs');
 }
+const jsifier = await import('./jsifier.mjs');
 
 // ===============================
 // Main
@@ -108,7 +85,7 @@ if (!STRICT) {
 const B = new Benchmarker();
 
 try {
-  runJSify();
+  jsifier.runJSify(symbolsOnly);
 
   B.print('glue');
 } catch (err) {

@@ -19,7 +19,7 @@
     "html-minifier-terser": "7.2.0"
   },
   "scripts": {
-    "lint": "eslint .",
+    "lint": "eslint --ext .js --ext .mjs .",
     "fmt": "prettier --write src/*.mjs tools/*.mjs",
     "check": "prettier --check src/*.mjs tools/*.mjs"
   }

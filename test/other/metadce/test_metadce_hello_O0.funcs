@@ -22,6 +22,10 @@ $__unlockfile
 $__vfprintf_internal
 $__wasi_syscall_ret
 $__wasm_call_ctors
+$_emscripten_stack_alloc
+$_emscripten_stack_restore
+$_emscripten_tempret_get
+$_emscripten_tempret_set
 $dynCall_jiji
 $emscripten_stack_get_base
 $emscripten_stack_get_current
@@ -34,7 +38,6 @@ $fmt_o
 $fmt_u
 $fmt_x
 $frexp
-$getTempRet0
 $getint
 $getpid
 $init_pthread_self
@@ -47,10 +50,6 @@ $pop_arg
 $pop_arg_long_double
 $printf
 $printf_core
-$setTempRet0
-$stackAlloc
-$stackRestore
-$stackSave
 $strnlen
 $vfprintf
 $wcrtomb

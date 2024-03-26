@@ -10,10 +10,6 @@ function print(x) {
   process.stdout.write(x + '\n');
 }
 
-function printErr(x) {
-  process.stderr.write(x + '\n');
-}
-
 function read(x) {
   return fs.readFileSync(x).toString();
 }
@@ -31,13 +27,6 @@ function assertAt(condition, node, message = '') {
       `${infile}:${loc.line}: ${message} (use EMCC_DEBUG_SAVE=1 to preserve temporary inputs)`,
     );
   }
-}
-
-function warnOnce(msg) {
-  if (!warnOnce.msgs) warnOnce.msgs = {};
-  if (msg in warnOnce.msgs) return;
-  warnOnce.msgs[msg] = true;
-  printErr('warning: ' + msg);
 }
 
 // Visits and walks
@@ -100,23 +89,12 @@ function emptyOut(node) {
   node.type = 'EmptyStatement';
 }
 
-function nullify(node) {
-  node.type = 'Literal';
-  node.value = null;
-  node.raw = 'null';
-}
-
 // This converts the node into something that terser will ignore in a var
 // declaration, that is, it is a way to get rid of initial values.
 function convertToNothingInVarInit(node) {
   node.type = 'Literal';
   node.value = undefined;
   node.raw = 'undefined';
-}
-
-function convertToNull(node) {
-  node.type = 'Identifier';
-  node.name = 'null';
 }
 
 function convertToNullStatement(node) {
@@ -304,13 +282,6 @@ function runJSDCE(ast, aggressive) {
   function iteration() {
     let removed = 0;
     const scopes = [{}]; // begin with empty toplevel scope
-    function DUMP() {
-      printErr('vvvvvvvvvvvvvv');
-      for (let i = 0; i < scopes.length; i++) {
-        printErr(i + ' : ' + JSON.stringify(scopes[i]));
-      }
-      printErr('^^^^^^^^^^^^^^');
-    }
     function ensureData(scope, name) {
       if (Object.prototype.hasOwnProperty.call(scope, name)) return scope[name];
       scope[name] = {
@@ -549,7 +520,6 @@ function applyImportAndExportNameChanges(ast) {
         }
       });
     } else if (node.type === 'AssignmentExpression') {
-      const target = node.left;
       const value = node.right;
       if (isExportUse(value)) {
         const name = value.property.value;
@@ -737,7 +707,6 @@ function emitDCEGraph(ast) {
       emptyOut(node); // ignore this in the second pass; this does not root
     } else if (node.type === 'AssignmentExpression') {
       const target = node.left;
-      const value = node.right;
       // Ignore assignment to the wasmExports object (as happens in
       // applySignatureConversions).
       if (isExportUse(target)) {
@@ -902,7 +871,7 @@ function emitDCEGraph(ast) {
       info.reaches[nameToGraphName[import_]] = 1;
     } // otherwise, it's a number, ignore
   }
-  for (const [e, name] of Object.entries(exportNameToGraphName)) {
+  for (const [e, _] of Object.entries(exportNameToGraphName)) {
     const name = exportNameToGraphName[e];
     infos[name] = {
       name: name,
@@ -1127,7 +1096,7 @@ function littleEndianHeap(ast) {
         // replace the heap access with LE_HEAP_STORE
         const name = target.object.name;
         const idx = target.property;
-        switch (target.object.name) {
+        switch (name) {
           case 'HEAP8':
           case 'HEAPU8': {
             // no action required - storing only 1 byte

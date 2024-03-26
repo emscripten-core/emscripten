@@ -1,4 +1,4 @@
 $__wasm_call_ctors
+$_emscripten_stack_alloc
 $main
 $sbrk
-$stackAlloc

@@ -484,7 +484,7 @@ addToLibrary({
   },
 
   // Allocate stack space for a JS string, and write it there.
-  $stringToUTF8OnStack__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
+  $stringToUTF8OnStack__deps: ['$lengthBytesUTF8', '$stringToUTF8', '$stackAlloc'],
   $stringToUTF8OnStack: (str) => {
     var size = lengthBytesUTF8(str) + 1;
     var ret = stackAlloc(size);
