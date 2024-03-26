@@ -13518,6 +13518,15 @@ int main() {
   def test_wasm_worker_preprocessor_flags(self):
     self.run_process([EMCC, '-c', test_file('wasm_worker/wasm_worker_preprocessor_flags.c'), '-sWASM_WORKERS'])
 
+  # Tests that when attempting to use WASM_WORKERS with SINGLE_FILE, a proper error message is presented.
+  def test_wasm_workers_error_messages(self):
+    stderr = self.expect_fail([EMCC, test_file('wasm_worker/hello_wasm_worker.c'), '-sWASM_WORKERS', '-sSINGLE_FILE'])
+    self.assertContained('-sSINGLE_FILE is not supported with -sWASM_WORKERS', stderr)
+    stderr = self.expect_fail([EMCC, test_file('wasm_worker/hello_wasm_worker.c'), '-sWASM_WORKERS', '-sRELOCATABLE'])
+    self.assertContained('-sRELOCATABLE is not supported with -sWASM_WORKERS', stderr)
+    stderr = self.expect_fail([EMCC, test_file('wasm_worker/hello_wasm_worker.c'), '-sWASM_WORKERS', '-sPROXY_TO_WORKER'])
+    self.assertContained('-sPROXY_TO_WORKER is not supported with -sWASM_WORKERS', stderr)
+
   @parameterized({
     # we will warn here since -O2 runs the optimizer and -g enables DWARF
     'O2_g': (True, ['-O2', '-g'],),

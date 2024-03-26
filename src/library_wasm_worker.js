@@ -20,6 +20,8 @@
 #error "Internal error! SHARED_MEMORY should be enabled when building with WASM_WORKERS"
 #endif
 #if SINGLE_FILE
+// Supporting SINGLE_FILE with WASM_WORKERS would be tedious but doable: it would require programmatically extracting the
+// JS <script> tag contents from the main .html file (distinguishing between multiple such <script> elements), and then eval()ing it.
 #error "-sSINGLE_FILE is not supported with -sWASM_WORKERS!"
 #endif
 #if LINKABLE
@@ -33,6 +35,9 @@
 #endif
 #if PROXY_TO_WORKER
 #error "-sPROXY_TO_WORKER is not supported with -sWASM_WORKERS!"
+#endif
+#if RELOCATABLE
+#error "-sRELOCATABLE is not supported with -sWASM_WORKERS!"
 #endif
 
 #endif // ~WASM_WORKERS
