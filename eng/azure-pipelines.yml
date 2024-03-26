@@ -5,73 +5,71 @@ trigger:
     - dotnet/main
     - dotnet/release/*
 
-pr:
-  branches:
-    include:
-    - dotnet/main
-    - dotnet/release/*
+pr: none
 
 variables:
-- template: /eng/common-variables.yml
-- template: /eng/common/templates/variables/pool-providers.yml
+- template: /eng/common-variables.yml@self
+- template: /eng/common/templates-official/variables/pool-providers.yml@self
 
-stages:
-- stage: build
-  displayName: Build
-  jobs:
-  - template: /eng/common/templates/jobs/jobs.yml
-    parameters:
-      enablePublishBuildArtifacts: true
-      enablePublishBuildAssets: true
-      enablePublishUsingPipelines: true
+resources:
+  repositories:
+  - repository: 1ESPipelineTemplates
+    type: git
+    name: 1ESPipelineTemplates/1ESPipelineTemplates
+    ref: refs/tags/release
+
+extends:
+  template: v1/1ES.Official.PipelineTemplate.yml@1ESPipelineTemplates
+  parameters:
+    sdl:
+      sourceAnalysisPool:
+        name: $(DncEngInternalBuildPool)
+        image: 1es-windows-2022
+        os: windows
+    containers:
+      mariner20:
+        image: mcr.microsoft.com/dotnet-buildtools/prereqs:cbl-mariner-2.0
+    stages:
+    - stage: build
+      displayName: Build
       jobs:
+      - template: /eng/common/templates-official/jobs/jobs.yml@self
+        parameters:
+          enablePublishBuildArtifacts: true
+          enablePublishBuildAssets: true
+          enablePublishUsingPipelines: true
+          jobs:
 
-      ############ LINUX BUILD ############
-      - job: Build_Linux
-        displayName: Linux
-        timeoutInMinutes: 360
-        variables:
-        - _BuildConfig: Release
-        strategy:
-          matrix:
-            x64:
-              assetManifestOS: linux
-              assetManifestPlatform: x64
-              imagename: mcr.microsoft.com/dotnet-buildtools/prereqs:cbl-mariner-2.0
-              rootfs: /crossrootfs/x64
-              archflag: --arch x64
-        pool:
-          ${{ if eq(variables['System.TeamProject'], 'public') }}:
-            name: $(DncEngPublicBuildPool)
-            demands: ImageOverride -equals build.ubuntu.2204.amd64.open
-          ${{ if eq(variables['System.TeamProject'], 'internal') }}:
-            name: $(DncEngInternalBuildPool)
-            demands: ImageOverride -equals build.ubuntu.2204.amd64
-        container:
-          image: $(imagename)
-        steps:
-        - script: |
-            git clean -ffdx
-            git reset --hard HEAD
-          displayName: 'Clean up working directory'
+          ############ LINUX BUILD ############
+          - job: Build_Linux
+            displayName: Linux
+            timeoutInMinutes: 360
+            pool:
+              name: $(DncEngInternalBuildPool)
+              image: 1es-ubuntu-2204
+              os: linux
+            container: mariner20
+            steps:
+            - script: |
+                git clean -ffdx
+                git reset --hard HEAD
+              displayName: 'Clean up working directory'
 
-        - bash: |
-            ./build.sh --ci --restore --build --pack $(archflag) --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:RestoreUsingNuGetTargets=false
-          displayName: 'Build and package'
-          env:
-            ROOTFS_DIR: $(rootfs)
+            - bash: |
+                ./build.sh --ci --restore --build --pack --arch x64 --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:RestoreUsingNuGetTargets=false
+              displayName: 'Build and package'
+              env:
+                ROOTFS_DIR: /crossrootfs/x64
 
-        - bash:
-            ./eng/common/build.sh --ci --restore --publish --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:AssetManifestOS=$(assetManifestOS) /p:PlatformName=$(assetManifestPlatform) --projects $(Build.SourcesDirectory)/emscripten.proj
-          displayName: Publish packages
-          condition: and(succeeded(), ne(variables['System.TeamProject'], 'public'), ne(variables['Build.Reason'], 'PullRequest'))
+            - bash:
+                ./eng/common/build.sh --ci --restore --publish --configuration $(_BuildConfig) $(_InternalBuildArgs) /p:AssetManifestOS=linux /p:PlatformName=x64 --projects $(Build.SourcesDirectory)/emscripten.proj
+              displayName: Publish packages
+              condition: and(succeeded(), ne(variables['System.TeamProject'], 'public'), ne(variables['Build.Reason'], 'PullRequest'))
 
-############ POST BUILD ARCADE LOGIC ############
-- ${{ if and(ne(variables['System.TeamProject'], 'public'), ne(variables['Build.Reason'], 'PullRequest')) }}:
-  - template: /eng/common/templates/post-build/post-build.yml
-    parameters:
-      publishingInfraVersion: 3
-      enableSourceLinkValidation: false
-      enableSigningValidation: false
-      enableSymbolValidation: false
-      enableNugetValidation: true
+    ############ POST BUILD ARCADE LOGIC ############
+    - template: /eng/common/templates-official/post-build/post-build.yml@self
+      parameters:
+        enableSourceLinkValidation: false
+        enableSigningValidation: false
+        enableSymbolValidation: false
+        enableNugetValidation: true
