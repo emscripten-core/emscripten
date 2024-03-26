@@ -128,6 +128,7 @@ method.
 subclass of ``std::exception``. Otherwise it will be just an empty string.
 
 .. code-block:: javascript
+
   var sp = stackSave();
   try {
     ... // some code that calls WebAssembly
@@ -149,7 +150,8 @@ this option.
 
 If the stack pointer has been moved due to stack allocations within the Wasm
 function before an exception is thrown, you can to use ``stackSave()`` and
-``stackRestore()`` to restore the stack pointer so no stack memory is leaked.
+``stackRestore()`` to restore the stack pointer so that no stack memory is
+leaked.
 
 .. note:: If you catch a Wasm exception and do not rethrow it, you need to free
    the storage associated with the exception in JS using
