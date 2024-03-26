@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------------------------
-Copyright (c) 2018-2023, Microsoft Research, Daan Leijen
+Copyright (c) 2018-2023, Microsoft Research, Daan Leijen, Alon Zakai
 This is free software; you can redistribute it and/or modify it under the
 terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
@@ -72,30 +72,14 @@ extern void* emmalloc_memalign(size_t, size_t);
 
 // Note: the `try_alignment` is just a hint and the returned pointer is not guaranteed to be aligned.
 int _mi_prim_alloc(size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, void** addr) {
-  MI_UNUSED(try_alignment); MI_UNUSED(allow_large); MI_UNUSED(commit);
+  MI_UNUSED(allow_large); MI_UNUSED(commit);
   *is_large = false;
   // TODO: Track the highest address ever seen; first uses of it are zeroes.
   //       That assumes no one else uses sbrk but us (they could go up,
   //       scribble, and then down), but we could assert on that perhaps.
   *is_zero = false;
-  // emmalloc has some limitations on alignment size.
-  // TODO: Why does mimalloc ask for an align of 4MB? that ends up allocating
-  //       8, which wastes quite a lot for us in wasm. If that is unavoidable,
-  //       we may want to improve emmalloc to support such alignment. See also
-  //       https://github.com/emscripten-core/emscripten/issues/20645
-  #define MIN_EMMALLOC_ALIGN           8
-  #define MAX_EMMALLOC_ALIGN (1024*1024)
-  if (try_alignment < MIN_EMMALLOC_ALIGN) {
-    try_alignment = MIN_EMMALLOC_ALIGN;
-  } else if (try_alignment > MAX_EMMALLOC_ALIGN) {
-    try_alignment = MAX_EMMALLOC_ALIGN;
-  }
-  void* p = emmalloc_memalign(try_alignment, size);
-  *addr = p;
-  if (p == 0) {
-    return ENOMEM;
-  }
-  return 0;
+  *addr = emmalloc_memalign(try_alignment, size);
+  return (*addr != NULL ? 0 : ENOMEM);
 }
 
 
@@ -225,7 +209,9 @@ void _mi_prim_thread_init_auto_done(void) {
 }
 
 void _mi_prim_thread_done_auto_done(void) {
-  // nothing to do
+  if (_mi_heap_default_key != (pthread_key_t)(-1)) {  // do not leak the key, see issue #809
+    pthread_key_delete(_mi_heap_default_key);
+  }
 }
 
 void _mi_prim_thread_associate_default_heap(mi_heap_t* heap) {
@@ -249,4 +235,3 @@ void _mi_prim_thread_associate_default_heap(mi_heap_t* heap) {
 
 }
 #endif
-

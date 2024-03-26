@@ -58,7 +58,7 @@ extern inline void* _mi_page_malloc(mi_heap_t* heap, mi_page_t* page, size_t siz
     }
     else {
       _mi_memzero_aligned(block, page->xblock_size - MI_PADDING_SIZE);
-    }    
+    }
   }
 
 #if (MI_DEBUG>0) && !MI_TRACK_ENABLED && !MI_TSAN
@@ -113,7 +113,7 @@ static inline mi_decl_restrict void* mi_heap_malloc_small_zero(mi_heap_t* heap, 
   if (size == 0) { size = sizeof(void*); }
   #endif
   mi_page_t* page = _mi_heap_get_free_small_page(heap, size + MI_PADDING_SIZE);
-  void* const p = _mi_page_malloc(heap, page, size + MI_PADDING_SIZE, zero);  
+  void* const p = _mi_page_malloc(heap, page, size + MI_PADDING_SIZE, zero);
   mi_track_malloc(p,size,zero);
   #if MI_STAT>1
   if (p != NULL) {
@@ -346,7 +346,7 @@ static void mi_check_padding(const mi_page_t* page, const mi_block_t* block) {
 // only maintain stats for smaller objects if requested
 #if (MI_STAT>0)
 static void mi_stat_free(const mi_page_t* page, const mi_block_t* block) {
-  #if (MI_STAT < 2)  
+  #if (MI_STAT < 2)
   MI_UNUSED(block);
   #endif
   mi_heap_t* const heap = mi_heap_get_default();
@@ -354,7 +354,7 @@ static void mi_stat_free(const mi_page_t* page, const mi_block_t* block) {
   #if (MI_STAT>1)
   const size_t usize = mi_page_usable_size_of(page, block);
   mi_heap_stat_decrease(heap, malloc, usize);
-  #endif  
+  #endif
   if (bsize <= MI_MEDIUM_OBJ_SIZE_MAX) {
     mi_heap_stat_decrease(heap, normal, bsize);
     #if (MI_STAT > 1)
@@ -366,7 +366,7 @@ static void mi_stat_free(const mi_page_t* page, const mi_block_t* block) {
   }
   else {
     mi_heap_stat_decrease(heap, huge, bsize);
-  }  
+  }
 }
 #else
 static void mi_stat_free(const mi_page_t* page, const mi_block_t* block) {
@@ -401,13 +401,29 @@ static void mi_stat_huge_free(const mi_page_t* page) {
 // multi-threaded free (or free in huge block if compiled with MI_HUGE_PAGE_ABANDON)
 static mi_decl_noinline void _mi_free_block_mt(mi_page_t* page, mi_block_t* block)
 {
+  // first see if the segment was abandoned and we can reclaim it
+  mi_segment_t* const segment = _mi_page_segment(page);
+  if (mi_option_is_enabled(mi_option_abandoned_reclaim_on_free) &&
+      #if MI_HUGE_PAGE_ABANDON
+      segment->page_kind != MI_PAGE_HUGE &&
+      #endif
+      mi_atomic_load_relaxed(&segment->thread_id) == 0)
+  {
+    // the segment is abandoned, try to reclaim it into our heap
+    mi_heap_t* heap = mi_heap_get_default();
+    if (heap->tld != NULL && _mi_segment_attempt_reclaim(heap, segment)) {
+      mi_assert_internal(_mi_prim_thread_id() == mi_atomic_load_relaxed(&segment->thread_id));
+      mi_free(block);  // recursively free as now it will be a local free in our heap
+      return;
+    }
+  }
+
   // The padding check may access the non-thread-owned page for the key values.
   // that is safe as these are constant and the page won't be freed (as the block is not freed yet).
   mi_check_padding(page, block);
   _mi_padding_shrink(page, block, sizeof(mi_block_t));       // for small size, ensure we can fit the delayed thread pointers without triggering overflow detection
-  
+
   // huge page segments are always abandoned and can be freed immediately
-  mi_segment_t* segment = _mi_page_segment(page);
   if (segment->kind == MI_SEGMENT_HUGE) {
     #if MI_HUGE_PAGE_ABANDON
     // huge page segments are always abandoned and can be freed immediately
@@ -421,7 +437,7 @@ static mi_decl_noinline void _mi_free_block_mt(mi_page_t* page, mi_block_t* bloc
     _mi_segment_huge_page_reset(segment, page, block);
     #endif
   }
-  
+
   #if (MI_DEBUG>0) && !MI_TRACK_ENABLED && !MI_TSAN        // note: when tracking, cannot use mi_usable_size with multi-threading
   if (segment->kind != MI_SEGMENT_HUGE) {                  // not for huge segments as we just reset the content
     memset(block, MI_DEBUG_FREED, mi_usable_size(block));
@@ -913,9 +929,13 @@ static bool mi_try_new_handler(bool nothrow) {
   #endif
   if (h==NULL) {
     _mi_error_message(ENOMEM, "out of memory in 'new'");
+    #if defined(_CPPUNWIND) || defined(__cpp_exceptions)  // exceptions are not always enabled
     if (!nothrow) {
       throw std::bad_alloc();
     }
+    #else
+    MI_UNUSED(nothrow);
+    #endif
     return false;
   }
   else {

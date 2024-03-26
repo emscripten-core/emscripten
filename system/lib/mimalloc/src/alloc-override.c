@@ -243,11 +243,11 @@ extern "C" {
   #endif
 
   // No forwarding here due to aliasing/name mangling issues
-  __attribute__((weak)) // XXX EMSCRIPTEN
+  mi_decl_weak // XXX EMSCRIPTEN
   void*  valloc(size_t size)               { return mi_valloc(size); }
   void   vfree(void* p)                    { mi_free(p); }
   size_t malloc_good_size(size_t size)     { return mi_malloc_good_size(size); }
-  __attribute__((weak)) // XXX EMSCRIPTEN
+  mi_decl_weak // XXX EMSCRIPTEN
   int    posix_memalign(void** p, size_t alignment, size_t size) { return mi_posix_memalign(p, alignment, size); }
 
   // `aligned_alloc` is only available when __USE_ISOC11 is defined.
@@ -258,7 +258,7 @@ extern "C" {
   // Fortunately, in the case where `aligned_alloc` is declared as `static inline` it
   // uses internally `memalign`, `posix_memalign`, or `_aligned_malloc` so we  can avoid overriding it ourselves.
   #if !defined(__GLIBC__) || __USE_ISOC11
-  __attribute__((weak)) // XXX EMSCRIPTEN
+  mi_decl_weak // XXX EMSCRIPTEN
   void* aligned_alloc(size_t alignment, size_t size) { return mi_aligned_alloc(alignment, size); }
   #endif
 #endif
@@ -266,12 +266,13 @@ extern "C" {
 // no forwarding here due to aliasing/name mangling issues
 void  cfree(void* p)                                    { mi_free(p); }
 void* pvalloc(size_t size)                              { return mi_pvalloc(size); }
-__attribute__((weak)) // XXX EMSCRIPTEN
-void* reallocarray(void* p, size_t count, size_t size)  { return mi_reallocarray(p, count, size); }
-int   reallocarr(void* p, size_t count, size_t size)    { return mi_reallocarr(p, count, size); }
-__attribute__((weak)) // XXX EMSCRIPTEN
+mi_decl_weak // XXX EMSCRIPTEN
 void* memalign(size_t alignment, size_t size)           { return mi_memalign(alignment, size); }
 void* _aligned_malloc(size_t alignment, size_t size)    { return mi_aligned_alloc(alignment, size); }
+mi_decl_weak // XXX EMSCRIPTEN
+void* reallocarray(void* p, size_t count, size_t size)  { return mi_reallocarray(p, count, size); }
+// some systems define reallocarr so mark it as a weak symbol (#751)
+mi_decl_weak int reallocarr(void* p, size_t count, size_t size)    { return mi_reallocarr(p, count, size); }
 
 #if defined(__wasi__)
   // forward __libc interface (see PR #667)
@@ -279,7 +280,7 @@ void* _aligned_malloc(size_t alignment, size_t size)    { return mi_aligned_allo
   void* __libc_calloc(size_t count, size_t size)        MI_FORWARD2(mi_calloc, count, size)
   void* __libc_realloc(void* p, size_t size)            MI_FORWARD2(mi_realloc, p, size)
   void  __libc_free(void* p)                            MI_FORWARD0(mi_free, p)
-  __attribute__((weak)) // XXX EMSCRIPTEN
+  mi_decl_weak // XXX EMSCRIPTEN
   void* __libc_memalign(size_t alignment, size_t size)  { return mi_memalign(alignment, size); }
 
 #ifdef __EMSCRIPTEN__ // emscripten adds some more on top of WASI

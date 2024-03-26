@@ -8,7 +8,7 @@ terms of the MIT license. A copy of the license can be found in the file
 #ifndef MIMALLOC_H
 #define MIMALLOC_H
 
-#define MI_MALLOC_VERSION 212   // major + 2 digits minor
+#define MI_MALLOC_VERSION 214   // major + 2 digits minor
 
 // ------------------------------------------------------
 // Compiler specific attributes
@@ -275,7 +275,7 @@ mi_decl_export int mi_reserve_huge_os_pages_at(size_t pages, int numa_node, size
 mi_decl_export int  mi_reserve_os_memory(size_t size, bool commit, bool allow_large) mi_attr_noexcept;
 mi_decl_export bool mi_manage_os_memory(void* start, size_t size, bool is_committed, bool is_large, bool is_zero, int numa_node) mi_attr_noexcept;
 
-mi_decl_export void mi_debug_show_arenas(void) mi_attr_noexcept;
+mi_decl_export void mi_debug_show_arenas(bool show_inuse, bool show_abandoned, bool show_purge) mi_attr_noexcept;
 
 // Experimental: heaps associated with specific memory arena's
 typedef int mi_arena_id_t;
@@ -332,19 +332,20 @@ typedef enum mi_option_e {
   mi_option_deprecated_segment_cache,
   mi_option_deprecated_page_reset,
   mi_option_abandoned_page_purge,     // immediately purge delayed purges on thread termination
-  mi_option_deprecated_segment_reset, 
-  mi_option_eager_commit_delay,       
+  mi_option_deprecated_segment_reset,
+  mi_option_eager_commit_delay,
   mi_option_purge_delay,              // memory purging is delayed by N milli seconds; use 0 for immediate purging or -1 for no purging at all.
   mi_option_use_numa_nodes,           // 0 = use all available numa nodes, otherwise use at most N nodes.
   mi_option_limit_os_alloc,           // 1 = do not use OS memory for allocation (but only programmatically reserved arenas)
   mi_option_os_tag,                   // tag used for OS logging (macOS only for now)
   mi_option_max_errors,               // issue at most N error messages
   mi_option_max_warnings,             // issue at most N warning messages
-  mi_option_max_segment_reclaim,      
+  mi_option_max_segment_reclaim,
   mi_option_destroy_on_exit,          // if set, release all memory on exit; sometimes used for dynamic unloading but can be unsafe.
   mi_option_arena_reserve,            // initial memory size in KiB for arena reservation (1GiB on 64-bit)
-  mi_option_arena_purge_mult,         
+  mi_option_arena_purge_mult,
   mi_option_purge_extend_delay,
+  mi_option_abandoned_reclaim_on_free,  // reclaim abandoned segments on a free
   _mi_option_last,
   // legacy option names
   mi_option_large_os_pages = mi_option_allow_large_os_pages,
@@ -513,7 +514,7 @@ template<class T, bool _mi_destroy> struct _mi_heap_stl_allocator_common : publi
 protected:
   std::shared_ptr<mi_heap_t> heap;
   template<class U, bool D> friend struct _mi_heap_stl_allocator_common;
-  
+
   _mi_heap_stl_allocator_common() {
     mi_heap_t* hp = mi_heap_new();
     this->heap.reset(hp, (_mi_destroy ? &heap_destroy : &heap_delete));  /* calls heap_delete/destroy when the refcount drops to zero */
@@ -530,7 +531,7 @@ private:
 template<class T> struct mi_heap_stl_allocator : public _mi_heap_stl_allocator_common<T, false> {
   using typename _mi_heap_stl_allocator_common<T, false>::size_type;
   mi_heap_stl_allocator() : _mi_heap_stl_allocator_common<T, false>() { } // creates fresh heap that is deleted when the destructor is called
-  mi_heap_stl_allocator(mi_heap_t* hp) : _mi_heap_stl_allocator_common<T, false>(hp) { }  // no delete nor destroy on the passed in heap 
+  mi_heap_stl_allocator(mi_heap_t* hp) : _mi_heap_stl_allocator_common<T, false>(hp) { }  // no delete nor destroy on the passed in heap
   template<class U> mi_heap_stl_allocator(const mi_heap_stl_allocator<U>& x) mi_attr_noexcept : _mi_heap_stl_allocator_common<T, false>(x) { }
 
   mi_heap_stl_allocator select_on_container_copy_construction() const { return *this; }
@@ -547,7 +548,7 @@ template<class T1, class T2> bool operator!=(const mi_heap_stl_allocator<T1>& x,
 template<class T> struct mi_heap_destroy_stl_allocator : public _mi_heap_stl_allocator_common<T, true> {
   using typename _mi_heap_stl_allocator_common<T, true>::size_type;
   mi_heap_destroy_stl_allocator() : _mi_heap_stl_allocator_common<T, true>() { } // creates fresh heap that is destroyed when the destructor is called
-  mi_heap_destroy_stl_allocator(mi_heap_t* hp) : _mi_heap_stl_allocator_common<T, true>(hp) { }  // no delete nor destroy on the passed in heap 
+  mi_heap_destroy_stl_allocator(mi_heap_t* hp) : _mi_heap_stl_allocator_common<T, true>(hp) { }  // no delete nor destroy on the passed in heap
   template<class U> mi_heap_destroy_stl_allocator(const mi_heap_destroy_stl_allocator<U>& x) mi_attr_noexcept : _mi_heap_stl_allocator_common<T, true>(x) { }
 
   mi_heap_destroy_stl_allocator select_on_container_copy_construction() const { return *this; }

@@ -29,6 +29,7 @@ terms of the MIT license. A copy of the license can be found in the file
 static _Atomic(uintptr_t) mi_segment_map[MI_SEGMENT_MAP_WSIZE + 1];  // 2KiB per TB with 64MiB segments
 
 static size_t mi_segment_map_index_of(const mi_segment_t* segment, size_t* bitidx) {
+  // note: segment can be invalid or NULL.
   mi_assert_internal(_mi_ptr_segment(segment + 1) == segment); // is it aligned on MI_SEGMENT_SIZE?
   if ((uintptr_t)segment >= MI_MAX_ADDRESS) {
     *bitidx = 0;
@@ -70,8 +71,7 @@ void _mi_segment_map_freed_at(const mi_segment_t* segment) {
 // Determine the segment belonging to a pointer or NULL if it is not in a valid segment.
 static mi_segment_t* _mi_segment_of(const void* p) {
   if (p == NULL) return NULL;
-  mi_segment_t* segment = _mi_ptr_segment(p);
-  mi_assert_internal(segment != NULL);
+  mi_segment_t* segment = _mi_ptr_segment(p);  // segment can be NULL  
   size_t bitidx;
   size_t index = mi_segment_map_index_of(segment, &bitidx);
   // fast path: for any pointer to valid small/medium/large object or first MI_SEGMENT_SIZE in huge

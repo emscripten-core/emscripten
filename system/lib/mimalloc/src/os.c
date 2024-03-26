@@ -73,14 +73,6 @@ void _mi_os_init(void) {
 bool _mi_os_decommit(void* addr, size_t size, mi_stats_t* stats);
 bool _mi_os_commit(void* addr, size_t size, bool* is_zero, mi_stats_t* tld_stats);
 
-static void* mi_align_up_ptr(void* p, size_t alignment) {
-  return (void*)_mi_align_up((uintptr_t)p, alignment);
-}
-
-static void* mi_align_down_ptr(void* p, size_t alignment) {
-  return (void*)_mi_align_down((uintptr_t)p, alignment);
-}
-
 
 /* -----------------------------------------------------------
   aligned hinting
@@ -141,13 +133,13 @@ static void mi_os_free_huge_os_pages(void* p, size_t size, mi_stats_t* stats);
 
 static void mi_os_prim_free(void* addr, size_t size, bool still_committed, mi_stats_t* tld_stats) {
   MI_UNUSED(tld_stats);
+  mi_stats_t* stats = &_mi_stats_main;
   mi_assert_internal((size % _mi_os_page_size()) == 0);
   if (addr == NULL || size == 0) return; // || _mi_os_is_huge_reserved(addr)
   int err = _mi_prim_free(addr, size);
   if (err != 0) {
     _mi_warning_message("unable to free OS memory (error: %d (0x%x), size: 0x%zx bytes, address: %p)\n", err, err, size, addr);
   }
-  mi_stats_t* stats = &_mi_stats_main;
   if (still_committed) { _mi_stat_decrease(&stats->committed, size); }
   _mi_stat_decrease(&stats->reserved, size);
 }
@@ -188,20 +180,22 @@ void  _mi_os_free(void* p, size_t size, mi_memid_t memid, mi_stats_t* tld_stats)
 -------------------------------------------------------------- */
 
 // Note: the `try_alignment` is just a hint and the returned pointer is not guaranteed to be aligned.
-static void* mi_os_prim_alloc(size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, mi_stats_t* stats) {
+static void* mi_os_prim_alloc(size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, mi_stats_t* tld_stats) {
   mi_assert_internal(size > 0 && (size % _mi_os_page_size()) == 0);
   mi_assert_internal(is_zero != NULL);
   mi_assert_internal(is_large != NULL);
   if (size == 0) return NULL;
   if (!commit) { allow_large = false; }
   if (try_alignment == 0) { try_alignment = 1; } // avoid 0 to ensure there will be no divide by zero when aligning
-
   *is_zero = false;
   void* p = NULL; 
   int err = _mi_prim_alloc(size, try_alignment, commit, allow_large, is_large, is_zero, &p);
   if (err != 0) {
     _mi_warning_message("unable to allocate OS memory (error: %d (0x%x), size: 0x%zx bytes, align: 0x%zx, commit: %d, allow large: %d)\n", err, err, size, try_alignment, commit, allow_large);
   }
+  
+  MI_UNUSED(tld_stats);
+  mi_stats_t* stats = &_mi_stats_main;
   mi_stat_counter_increase(stats->mmap_calls, 1);
   if (p != NULL) {
     _mi_stat_increase(&stats->reserved, size);
@@ -289,10 +283,8 @@ static void* mi_os_prim_alloc_aligned(size_t size, size_t alignment, bool commit
   OS API: alloc and alloc_aligned
 ----------------------------------------------------------- */
 
-void* _mi_os_alloc(size_t size, mi_memid_t* memid, mi_stats_t* tld_stats) {
-  MI_UNUSED(tld_stats);
+void* _mi_os_alloc(size_t size, mi_memid_t* memid, mi_stats_t* stats) {
   *memid = _mi_memid_none();
-  mi_stats_t* stats = &_mi_stats_main;
   if (size == 0) return NULL;
   size = _mi_os_good_alloc_size(size);
   bool os_is_large = false;
@@ -304,10 +296,9 @@ void* _mi_os_alloc(size_t size, mi_memid_t* memid, mi_stats_t* tld_stats) {
   return p;
 }
 
-void* _mi_os_alloc_aligned(size_t size, size_t alignment, bool commit, bool allow_large, mi_memid_t* memid, mi_stats_t* tld_stats)
+void* _mi_os_alloc_aligned(size_t size, size_t alignment, bool commit, bool allow_large, mi_memid_t* memid, mi_stats_t* stats)
 {
   MI_UNUSED(&_mi_os_get_aligned_hint); // suppress unused warnings
-  MI_UNUSED(tld_stats);
   *memid = _mi_memid_none();
   if (size == 0) return NULL;
   size = _mi_os_good_alloc_size(size);
@@ -316,7 +307,7 @@ void* _mi_os_alloc_aligned(size_t size, size_t alignment, bool commit, bool allo
   bool os_is_large = false;
   bool os_is_zero  = false;
   void* os_base = NULL;
-  void* p = mi_os_prim_alloc_aligned(size, alignment, commit, allow_large, &os_is_large, &os_is_zero, &os_base, &_mi_stats_main /*tld->stats*/ );
+  void* p = mi_os_prim_alloc_aligned(size, alignment, commit, allow_large, &os_is_large, &os_is_zero, &os_base, stats );
   if (p != NULL) {
     *memid = _mi_memid_create_os(commit, os_is_zero, os_is_large);
     memid->mem.os.base = os_base;
@@ -333,7 +324,7 @@ void* _mi_os_alloc_aligned(size_t size, size_t alignment, bool commit, bool allo
   to use the actual start of the memory region.
 ----------------------------------------------------------- */
 
-void* _mi_os_alloc_aligned_at_offset(size_t size, size_t alignment, size_t offset, bool commit, bool allow_large, mi_memid_t* memid, mi_stats_t* tld_stats) {
+void* _mi_os_alloc_aligned_at_offset(size_t size, size_t alignment, size_t offset, bool commit, bool allow_large, mi_memid_t* memid, mi_stats_t* stats) {
   mi_assert(offset <= MI_SEGMENT_SIZE);
   mi_assert(offset <= size);
   mi_assert((alignment % _mi_os_page_size()) == 0);
@@ -341,20 +332,20 @@ void* _mi_os_alloc_aligned_at_offset(size_t size, size_t alignment, size_t offse
   if (offset > MI_SEGMENT_SIZE) return NULL;
   if (offset == 0) {
     // regular aligned allocation
-    return _mi_os_alloc_aligned(size, alignment, commit, allow_large, memid, tld_stats);
+    return _mi_os_alloc_aligned(size, alignment, commit, allow_large, memid, stats);
   }
   else {
     // overallocate to align at an offset
     const size_t extra = _mi_align_up(offset, alignment) - offset;
     const size_t oversize = size + extra;
-    void* const start = _mi_os_alloc_aligned(oversize, alignment, commit, allow_large, memid, tld_stats);
+    void* const start = _mi_os_alloc_aligned(oversize, alignment, commit, allow_large, memid, stats);
     if (start == NULL) return NULL;
 
     void* const p = (uint8_t*)start + extra;
     mi_assert(_mi_is_aligned((uint8_t*)p + offset, alignment));
     // decommit the overallocation at the start
     if (commit && extra > _mi_os_page_size()) {
-      _mi_os_decommit(start, extra, tld_stats);
+      _mi_os_decommit(start, extra, stats);
     }
     return p;
   }

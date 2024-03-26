@@ -12,6 +12,9 @@ terms of the MIT license. A copy of the license can be found in the file
 #include "mimalloc/atomic.h"
 #include "mimalloc/prim.h"
 
+#include <stdio.h>   // fputs
+#include <stdlib.h>  // getenv
+
 //---------------------------------------------
 // Initialize
 //---------------------------------------------
@@ -40,6 +43,8 @@ int _mi_prim_free(void* addr, size_t size ) {
 //---------------------------------------------
 
 #if defined(MI_USE_SBRK)
+  #include <unistd.h>  // for sbrk
+
   static void* mi_memory_grow( size_t size ) {
     void* p = sbrk(size);
     if (p == (void*)(-1)) return NULL;

@@ -9,7 +9,6 @@ terms of the MIT license. A copy of the license can be found in the file
 #include "mimalloc/atomic.h"
 #include "mimalloc/prim.h"
 
-#include <stdio.h>  // snprintf
 #include <string.h> // memset
 
 #if defined(_MSC_VER) && (_MSC_VER < 1920)
@@ -146,7 +145,7 @@ static void mi_printf_amount(int64_t n, int64_t unit, mi_output_fun* out, void* 
   const int64_t pos = (n < 0 ? -n : n);
   if (pos < base) {
     if (n!=1 || suffix[0] != 'B') {  // skip printing 1 B for the unit column
-      snprintf(buf, len, "%d   %-3s", (int)n, (n==0 ? "" : suffix));
+      _mi_snprintf(buf, len, "%lld   %-3s", (long long)n, (n==0 ? "" : suffix));
     }
   }
   else {
@@ -158,8 +157,8 @@ static void mi_printf_amount(int64_t n, int64_t unit, mi_output_fun* out, void* 
     const long whole = (long)(tens/10);
     const long frac1 = (long)(tens%10);
     char unitdesc[8];
-    snprintf(unitdesc, 8, "%s%s%s", magnitude, (base==1024 ? "i" : ""), suffix);
-    snprintf(buf, len, "%ld.%ld %-3s", whole, (frac1 < 0 ? -frac1 : frac1), unitdesc);
+    _mi_snprintf(unitdesc, 8, "%s%s%s", magnitude, (base==1024 ? "i" : ""), suffix);
+    _mi_snprintf(buf, len, "%ld.%ld %-3s", whole, (frac1 < 0 ? -frac1 : frac1), unitdesc);
   }
   _mi_fprintf(out, arg, (fmt==NULL ? "%12s" : fmt), buf);
 }
@@ -255,7 +254,7 @@ static void mi_stats_print_bins(const mi_stat_count_t* bins, size_t max, const c
     if (bins[i].allocated > 0) {
       found = true;
       int64_t unit = _mi_bin_size((uint8_t)i);
-      snprintf(buf, 64, "%s %3lu", fmt, (long)i);
+      _mi_snprintf(buf, 64, "%s %3lu", fmt, (long)i);
       mi_stat_print(&bins[i], buf, unit, out, arg);
     }
   }
@@ -341,6 +340,9 @@ static void _mi_stats_print(mi_stats_t* stats, mi_output_fun* out0, void* arg0) 
   mi_stat_print(&stats->pages_abandoned, "-abandoned", -1, out, arg);
   mi_stat_counter_print(&stats->pages_extended, "-extended", out, arg);
   mi_stat_counter_print(&stats->page_no_retire, "-noretire", out, arg);
+  mi_stat_counter_print(&stats->arena_count, "arenas", out, arg);
+  mi_stat_counter_print(&stats->arena_crossover_count, "-crossover", out, arg);
+  mi_stat_counter_print(&stats->arena_rollback_count, "-rollback", out, arg);
   mi_stat_counter_print(&stats->mmap_calls, "mmaps", out, arg);
   mi_stat_counter_print(&stats->commit_calls, "commits", out, arg);
   mi_stat_counter_print(&stats->reset_calls, "resets", out, arg);

@@ -35,10 +35,10 @@ void _mi_prim_mem_init( mi_os_mem_config_t* config );
 
 // Free OS memory
 int _mi_prim_free(void* addr, size_t size );
-  
+
 // Allocate OS memory. Return NULL on error.
 // The `try_alignment` is just a hint and the returned pointer does not have to be aligned.
-// If `commit` is false, the virtual memory range only needs to be reserved (with no access) 
+// If `commit` is false, the virtual memory range only needs to be reserved (with no access)
 // which will later be committed explicitly using `_mi_prim_commit`.
 // `is_zero` is set to true if the memory was zero initialized (as on most OS's)
 // pre: !commit => !allow_large
@@ -82,11 +82,11 @@ mi_msecs_t _mi_prim_clock_now(void);
 typedef struct mi_process_info_s {
   mi_msecs_t  elapsed;
   mi_msecs_t  utime;
-  mi_msecs_t  stime; 
-  size_t      current_rss; 
-  size_t      peak_rss;  
+  mi_msecs_t  stime;
+  size_t      current_rss;
+  size_t      peak_rss;
   size_t      current_commit;
-  size_t      peak_commit; 
+  size_t      peak_commit;
   size_t      page_faults;
 } mi_process_info_t;
 
@@ -117,7 +117,7 @@ void _mi_prim_thread_associate_default_heap(mi_heap_t* heap);
 
 //-------------------------------------------------------------------
 // Thread id: `_mi_prim_thread_id()`
-// 
+//
 // Getting the thread id should be performant as it is called in the
 // fast path of `_mi_free` and we specialize for various platforms as
 // inlined definitions. Regular code should call `init.c:_mi_thread_id()`.
@@ -125,32 +125,22 @@ void _mi_prim_thread_associate_default_heap(mi_heap_t* heap);
 // for each thread (unequal to zero).
 //-------------------------------------------------------------------
 
-// defined in `init.c`; do not use these directly
-extern mi_decl_thread mi_heap_t* _mi_heap_default;  // default heap to allocate from
-extern bool _mi_process_is_initialized;             // has mi_process_init been called?
-
-static inline mi_threadid_t _mi_prim_thread_id(void) mi_attr_noexcept;
-
-#if defined(_WIN32)
-
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-static inline mi_threadid_t _mi_prim_thread_id(void) mi_attr_noexcept {
-  // Windows: works on Intel and ARM in both 32- and 64-bit
-  return (uintptr_t)NtCurrentTeb();
-}
-
-// We use assembly for a fast thread id on the main platforms. The TLS layout depends on
-// both the OS and libc implementation so we use specific tests for each main platform.
+// On some libc + platform combinations we can directly access a thread-local storage (TLS) slot.
+// The TLS layout depends on both the OS and libc implementation so we use specific tests for each main platform.
 // If you test on another platform and it works please send a PR :-)
 // see also https://akkadia.org/drepper/tls.pdf for more info on the TLS register.
-#elif defined(__GNUC__) && ( \
+//
+// Note: on most platforms this is not actually used anymore as we prefer `__builtin_thread_pointer()` nowadays.
+// However, we do still use it with older clang compilers and Apple OS (as we use TLS slot for the default heap there).
+#if defined(__GNUC__) && ( \
            (defined(__GLIBC__)   && (defined(__x86_64__) || defined(__i386__) || defined(__arm__) || defined(__aarch64__))) \
-        || (defined(__APPLE__)   && (defined(__x86_64__) || defined(__aarch64__))) \
+        || (defined(__APPLE__)   && (defined(__x86_64__) || defined(__aarch64__) || defined(__POWERPC__))) \
         || (defined(__BIONIC__)  && (defined(__x86_64__) || defined(__i386__) || defined(__arm__) || defined(__aarch64__))) \
         || (defined(__FreeBSD__) && (defined(__x86_64__) || defined(__i386__) || defined(__aarch64__))) \
         || (defined(__OpenBSD__) && (defined(__x86_64__) || defined(__i386__) || defined(__aarch64__))) \
       )
+
+#define MI_HAS_TLS_SLOT
 
 static inline void* mi_prim_tls_slot(size_t slot) mi_attr_noexcept {
   void* res;
@@ -175,6 +165,9 @@ static inline void* mi_prim_tls_slot(size_t slot) mi_attr_noexcept {
     __asm__ volatile ("mrs %0, tpidr_el0" : "=r" (tcb));
     #endif
     res = tcb[slot];
+  #elif defined(__APPLE__) && defined(__POWERPC__) // ppc, issue #781
+    MI_UNUSED(ofs);
+    res = pthread_getspecific(slot);
   #endif
   return res;
 }
@@ -202,8 +195,39 @@ static inline void mi_prim_tls_slot_set(size_t slot, void* value) mi_attr_noexce
     __asm__ volatile ("mrs %0, tpidr_el0" : "=r" (tcb));
     #endif
     tcb[slot] = value;
+  #elif defined(__APPLE__) && defined(__POWERPC__) // ppc, issue #781
+    MI_UNUSED(ofs);
+    pthread_setspecific(slot, value);    
   #endif
 }
+
+#endif
+
+// defined in `init.c`; do not use these directly
+extern mi_decl_thread mi_heap_t* _mi_heap_default;  // default heap to allocate from
+extern bool _mi_process_is_initialized;             // has mi_process_init been called?
+
+static inline mi_threadid_t _mi_prim_thread_id(void) mi_attr_noexcept;
+
+#if defined(_WIN32)
+
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+static inline mi_threadid_t _mi_prim_thread_id(void) mi_attr_noexcept {
+  // Windows: works on Intel and ARM in both 32- and 64-bit
+  return (uintptr_t)NtCurrentTeb();
+}
+
+#elif defined(__has_builtin) && __has_builtin(__builtin_thread_pointer) && \
+      (!defined(__APPLE__)) && /* on apple (M1) the wrong register is read (tpidr_el0 instead of tpidrro_el0) so fall back to TLS slot assembly (<https://github.com/microsoft/mimalloc/issues/343#issuecomment-763272369>)*/ \
+      (!defined(__clang_major__) || __clang_major__ >= 14)  // older clang versions emit bad code; fall back to using the TLS slot (<https://lore.kernel.org/linux-arm-kernel/202110280952.352F66D8@keescook/T/>)
+
+static inline mi_threadid_t _mi_prim_thread_id(void) mi_attr_noexcept {
+  // Works on most Unix based platforms
+  return (uintptr_t)__builtin_thread_pointer();  
+}
+
+#elif defined(MI_HAS_TLS_SLOT)
 
 static inline mi_threadid_t _mi_prim_thread_id(void) mi_attr_noexcept {
   #if defined(__BIONIC__)
@@ -251,7 +275,6 @@ static inline mi_heap_t* mi_prim_get_default_heap(void);
 #if defined(MI_MALLOC_OVERRIDE)
 #if defined(__APPLE__) // macOS
   #define MI_TLS_SLOT               89  // seems unused?
-  // #define MI_TLS_RECURSE_GUARD 1
   // other possible unused ones are 9, 29, __PTK_FRAMEWORK_JAVASCRIPTCORE_KEY4 (94), __PTK_FRAMEWORK_GC_KEY9 (112) and __PTK_FRAMEWORK_OLDGC_KEY9 (89)
   // see <https://github.com/rweichler/substrate/blob/master/include/pthread_machdep.h>
 #elif defined(__OpenBSD__)
@@ -269,6 +292,9 @@ static inline mi_heap_t* mi_prim_get_default_heap(void);
 
 
 #if defined(MI_TLS_SLOT)
+# if !defined(MI_HAS_TLS_SLOT)
+#  error "trying to use a TLS slot for the default heap, but the mi_prim_tls_slot primitives are not defined"
+# endif
 
 static inline mi_heap_t* mi_prim_get_default_heap(void) {
   mi_heap_t* heap = (mi_heap_t*)mi_prim_tls_slot(MI_TLS_SLOT);
