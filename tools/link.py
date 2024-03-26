@@ -1295,12 +1295,6 @@ def phase_linker_setup(options, state, newargs):
     settings.FULL_ES2 = 1
     settings.MAX_WEBGL_VERSION = max(2, settings.MAX_WEBGL_VERSION)
 
-  # WASM_SYSTEM_EXPORTS are actually native function but they are allowed to be exported
-  # via EXPORTED_RUNTIME_METHODS for backwards compat.
-  for sym in settings.WASM_SYSTEM_EXPORTS:
-    if sym in settings.EXPORTED_RUNTIME_METHODS:
-      settings.REQUIRED_EXPORTS.append(sym)
-
   if settings.MAIN_READS_PARAMS and not settings.STANDALONE_WASM:
     # callMain depends on _emscripten_stack_alloc
     settings.REQUIRED_EXPORTS += ['_emscripten_stack_alloc']
@@ -1517,7 +1511,7 @@ def phase_linker_setup(options, state, newargs):
     settings.MAYBE_WASM2JS = 1
 
   if settings.AUTODEBUG:
-    settings.REQUIRED_EXPORTS += ['setTempRet0']
+    settings.REQUIRED_EXPORTS += ['_emscripten_tempret_set']
 
   if settings.LEGALIZE_JS_FFI:
     settings.REQUIRED_EXPORTS += ['__get_temp_ret', '__set_temp_ret']

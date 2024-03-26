@@ -8,6 +8,7 @@ __indirect_function_table
 __wasm_call_ctors
 _emscripten_stack_alloc
 _emscripten_stack_restore
+_emscripten_tempret_set
 dynCall_iiiiiijj
 dynCall_iiiiij
 dynCall_iiiiijj
@@ -18,5 +19,4 @@ emscripten_stack_get_current
 free
 main
 memory
-setTempRet0
 setThrew

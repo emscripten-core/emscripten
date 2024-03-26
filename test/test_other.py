@@ -34,7 +34,8 @@ from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
-from common import requires_wasm_eh, crossplatform, with_both_eh_sjlj, with_both_sjlj, also_with_standalone_wasm
+from common import requires_wasm_eh, crossplatform, with_both_eh_sjlj, with_both_sjlj
+from common import also_with_standalone_wasm, also_with_env_modify
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, flaky
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
 from common import requires_network
@@ -5717,73 +5718,10 @@ int main()
       self.run_process([EMXX, 'src.cpp', '-sDISABLE_EXCEPTION_CATCHING=0'])
     self.assertContained('Caught exception: std::exception', self.run_js('a.out.js'))
 
+  @crossplatform
+  @also_with_env_modify({'gb_locale': {'LC_ALL': 'en_GB'}, 'long_tz': {'TZ': 'Asia/Kathmandu'}})
   def test_strftime_zZ(self):
-    create_file('src.c', r'''
-#include <errno.h>
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
-
-int main() {
-  // Buffer to hold the current hour of the day.  Format is HH + nul
-  // character.
-  char hour[3];
-
-  // Buffer to hold our ISO 8601 formatted UTC offset for the current
-  // timezone.  Format is [+-]hhmm + nul character.
-  char utcOffset[6];
-
-  // Buffer to hold the timezone name or abbreviation.  Just make it
-  // sufficiently large to hold most timezone names.
-  char timezone[128];
-
-  struct tm tm;
-
-  // Get the current timestamp.
-  const time_t now = time(NULL);
-
-  // What time is that here?
-  if (localtime_r(&now, &tm) == NULL) {
-    const int error = errno;
-    printf("Failed to get localtime for timestamp=%lld; errno=%d; %s", now, errno, strerror(error));
-    return 1;
-  }
-
-  size_t result = 0;
-
-  // Get the formatted hour of the day.
-  if ((result = strftime(hour, 3, "%H", &tm)) != 2) {
-    const int error = errno;
-    printf("Failed to format hour for timestamp=%lld; result=%zu; errno=%d; %s\n",
-           now, result, error, strerror(error));
-    return 1;
-  }
-  printf("The current hour of the day is: %s\n", hour);
-
-  // Get the formatted UTC offset in ISO 8601 format.
-  if ((result = strftime(utcOffset, 6, "%z", &tm)) != 5) {
-    const int error = errno;
-    printf("Failed to format UTC offset for timestamp=%lld; result=%zu; errno=%d; %s\n",
-           now, result, error, strerror(error));
-    return 1;
-  }
-  printf("The current timezone offset is: %s\n", utcOffset);
-
-  // Get the formatted timezone name or abbreviation.  We don't know how long
-  // this will be, so just expect some data to be written to the buffer.
-  if ((result = strftime(timezone, 128, "%Z", &tm)) == 0) {
-    const int error = errno;
-    printf("Failed to format timezone for timestamp=%lld; result=%zu; errno=%d; %s\n",
-           now, result, error, strerror(error));
-    return 1;
-  }
-  printf("The current timezone is: %s\n", timezone);
-
-  printf("ok!\n");
-  return 0;
-}
-''')
-    self.do_runf('src.c', 'ok!')
+    self.do_runf('other/test_strftime_zZ.c', 'ok!')
 
   def test_strptime_symmetry(self):
     self.do_runf('strptime_symmetry.cpp', 'TEST PASSED')

@@ -4500,6 +4500,15 @@ Module["preRun"] = () => {
       cmd = args + ['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1']
       self.btest_exit('webgl_offscreen_framebuffer_swap_with_bad_state.c', args=cmd)
 
+  @parameterized({
+    '': ([],),
+    'es2': (['-sFULL_ES2'],),
+    'es3': (['-sFULL_ES3'],),
+  })
+  @requires_graphics_hardware
+  def test_webgl_draw_triangle_with_uniform_color(self, args):
+    self.btest_exit('webgl_draw_triangle_with_uniform_color.c', args=args)
+
   # Tests that using an array of structs in GL uniforms works.
   @requires_graphics_hardware
   def test_webgl_array_of_structs_uniform(self):

@@ -671,10 +671,6 @@ def print_compiler_stage(cmd):
     sys.stderr.flush()
 
 
-def mangle_c_symbol_name(name):
-  return '_' + name if not name.startswith('$') else name[1:]
-
-
 def demangle_c_symbol_name(name):
   if not is_c_symbol(name):
     return '$' + name
@@ -682,15 +678,11 @@ def demangle_c_symbol_name(name):
 
 
 def is_c_symbol(name):
-  return name.startswith('_') or name in settings.WASM_SYSTEM_EXPORTS
+  return name.startswith('_')
 
 
 def treat_as_user_export(name):
-  if name.startswith('dynCall_'):
-    return False
-  if name in settings.WASM_SYSTEM_EXPORTS:
-    return False
-  return True
+  return not name.startswith('dynCall_')
 
 
 def asmjs_mangle(name):
