@@ -2845,6 +2845,14 @@ def move_file(src, dst):
 
 
 def binary_encode(data):
+  """This function encodes the given binary byte array to a UTF-8 string, by
+  first adding +1 to all the bytes [0, 255] to form values [1, 256], and then
+  encoding each of those values as UTF-8, except for specific byte values that
+  are escaped as two bytes. This kind of encoding results in a string that will
+  compress well by both gzip and brotli, unlike base64 encoding binary data
+  would do, and avoids emitting the null byte inside a string.
+  """
+
   out = bytearray(len(data) * 2) # Size output buffer conservatively
   i = 0
   for d in data:

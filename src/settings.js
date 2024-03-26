@@ -1817,7 +1817,10 @@ var WASMFS = false;
 // [link]
 var SINGLE_FILE = false;
 
-// If true, does binary encoding of data instead of base64 encoding.
+// If true, binary Wasm content is encoded using a custom UTF-8 embedding
+// instead of base64. This generates smaller binary.
+// Set this to false to revert back to earlier base64 encoding if you run into
+// issues with the binary encoding. (and please let us know of any such issues)
 var SINGLE_FILE_BINARY_ENCODE = true;
 
 // If set to 1, all JS libraries will be automatically available at link time.

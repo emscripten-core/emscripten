@@ -132,7 +132,6 @@ filename ||= '<<< filename >>>';
 #if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE
 #include "binaryDecode.js"
 var workerURL = URL.createObjectURL(new Blob([binaryDecode(filename)], {type: 'application/javascript'}));
-var worker = new Worker(workerURL);
 #else
 var workerURL = filename;
 if (SUPPORT_BASE64_EMBEDDING) {
@@ -141,8 +140,8 @@ if (SUPPORT_BASE64_EMBEDDING) {
     workerURL = URL.createObjectURL(new Blob([fileBytes], {type: 'application/javascript'}));
   }
 }
-var worker = new Worker(workerURL);
 #endif
+var worker = new Worker(workerURL);
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
