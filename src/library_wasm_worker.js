@@ -10,6 +10,7 @@
   globalThis.captureModuleArg = () => MODULARIZE ? '' : 'self.Module=d;';
   globalThis.instantiateModule = () => MODULARIZE ? `${EXPORT_NAME}(d);` : '';
   globalThis.instantiateWasm = () => MINIMAL_RUNTIME ? '' : 'd[`instantiateWasm`]=(i,r)=>{var n=new WebAssembly.Instance(d[`wasm`],i);return r(n,d[`wasm`]);};';
+  globalThis.workerSupportsFutexWait = () => AUDIO_WORKLET ? "typeof AudioWorkletGlobalScope === 'undefined'" : '1';
   null;
 }}}
 #endif
@@ -95,8 +96,8 @@ addToLibrary({
     // Run the C side Worker initialization for stack and TLS.
     __emscripten_wasm_worker_initialize(m['sb'], m['sz']);
 #if PTHREADS
-    // Record that this Wasm Worker supports synchronous blocking in emscripten_futex_wake().
-    ___set_thread_state(/*thread_ptr=*/0, /*is_main_thread=*/0, /*is_runtime_thread=*/0, /*supports_wait=*/0);
+    // Record the pthread configuration, and whether this Wasm Worker supports synchronous blocking in emscripten_futex_wait().
+    ___set_thread_state(/*thread_ptr=*/0, /*is_main_thread=*/0, /*is_runtime_thread=*/0, /*supports_wait=*/ {{{ workerSupportsFutexWait() }}});
 #endif
 #if STACK_OVERFLOW_CHECK >= 2
     // Fix up stack base. (TLS frame is created at the bottom address end of the stack)
