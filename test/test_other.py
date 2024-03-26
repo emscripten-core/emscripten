@@ -14022,6 +14022,11 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     err = self.expect_fail([EMCC, '-pthreads', '-c', test_file('hello_world.c')])
     self.assertContained('emcc: error: unrecognized command-line option `-pthreads`; did you mean `-pthread`?', err)
 
+  # Tests that when attempting to use -pthread with -sSINGLE_FILE, a proper error message is presented.
+  def test_pthread_single_file(self):
+    stderr = self.expect_fail([EMCC, test_file('pthread/hello_thread.c'), '-pthread', '-sSINGLE_FILE'])
+    self.assertContained('-sSINGLE_FILE is not supported with -pthread', stderr)
+
   def test_missing_struct_info(self):
     create_file('lib.js', '''
       {{{ C_STRUCTS.Foo }}}
