@@ -1049,7 +1049,11 @@ class libc(MuslInternalLibrary,
       path='system/lib/libc/musl/src/errno',
       filenames=['__errno_location.c'])
 
-    return math_files + exit_files + other_files + iprintf_files + errno_files
+    html5_files = files_in_path(
+      path='system/lib/html5',
+      filenames=['callback.c'])
+
+    return math_files + exit_files + other_files + iprintf_files + errno_files + html5_files
 
   def get_files(self):
     libc_files = []
