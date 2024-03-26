@@ -629,7 +629,8 @@ public:
 
 #if __cplusplus >= 202002L
   class awaiter;
-  awaiter operator co_await() const;
+  awaiter operator co_await() const&;
+  awaiter operator co_await() &&;
 
   class promise_type;
 #endif
@@ -717,6 +718,8 @@ class val::awaiter {
   constexpr static std::size_t STATE_RESULT = 2;
 
 public:
+  awaiter(val&& promise)
+    : state(std::in_place_index<STATE_PROMISE>, std::move(promise)) {}
   awaiter(const val& promise)
     : state(std::in_place_index<STATE_PROMISE>, promise) {}
 
@@ -746,7 +749,11 @@ public:
   val await_resume() { return std::move(std::get<STATE_RESULT>(state)); }
 };
 
-inline val::awaiter val::operator co_await() const {
+inline val::awaiter val::operator co_await() && {
+  return {std::move(*this)};
+}
+
+inline val::awaiter val::operator co_await() const& {
   return {*this};
 }
 
@@ -768,7 +775,7 @@ public:
   }
 
   // Return the stored promise as the actual return value of the coroutine.
-  val get_return_object() { return promise; }
+  val get_return_object() { return std::move(promise); }
 
   // For similarity with JS async functions, our coroutines are eagerly evaluated.
   auto initial_suspend() noexcept { return std::suspend_never{}; }
