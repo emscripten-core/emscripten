@@ -595,9 +595,11 @@ var wasmBinaryFile;
 if (Module['locateFile']) {
 #endif
   wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
+#if !SINGLE_FILE
   if (!isDataURI(wasmBinaryFile)) {
     wasmBinaryFile = locateFile(wasmBinaryFile);
   }
+#endif
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && !AUDIO_WORKLET // In single-file mode, repeating WASM_BINARY_FILE would emit the contents again. For an Audio Worklet, we cannot use `new URL()`.
 } else {
 #if ENVIRONMENT_MAY_BE_SHELL
