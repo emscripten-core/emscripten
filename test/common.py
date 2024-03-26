@@ -365,6 +365,29 @@ def with_env_modify(updates):
   return decorated
 
 
+# Decorator version of env_modify
+def also_with_env_modify(name_updates_mapping):
+
+  def decorated(f):
+    @wraps(f)
+    def metafunc(self, updates, *args, **kwargs):
+      if updates:
+        with env_modify(updates):
+          return f(self, *args, **kwargs)
+      else:
+        return f(self, *args, **kwargs)
+
+    parameterize = {'': (None,)}
+    for name, updates in name_updates_mapping.items():
+      parameterize[name] = (updates,)
+
+    metafunc._parameterize = parameterize
+
+    return metafunc
+
+  return decorated
+
+
 def also_with_minimal_runtime(f):
   assert callable(f)
 

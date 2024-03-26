@@ -497,10 +497,9 @@ def get_libs(settings):
   needed = get_needed_ports(settings)
 
   for port in dependency_order(needed):
-    if port.needed(settings):
-      port.linker_setup(Ports, settings)
-      # port.get returns a list of libraries to link
-      ret += port.get(Ports, settings, shared)
+    port.linker_setup(Ports, settings)
+    # port.get returns a list of libraries to link
+    ret += port.get(Ports, settings, shared)
 
   ret.reverse()
   return ret

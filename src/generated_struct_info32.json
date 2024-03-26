@@ -402,7 +402,7 @@
         "TIOCGWINSZ": 21523,
         "TIOCSPGRP": 21520,
         "TIOCSWINSZ": 21524,
-        "TZNAME_MAX": 6,
+        "TZNAME_MAX": 16,
         "UUID_TYPE_DCE_RANDOM": 4,
         "UUID_VARIANT_DCE": 1,
         "W_OK": 2,
