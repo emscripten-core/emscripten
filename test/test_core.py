@@ -7587,7 +7587,6 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     self.do_runf('main.cpp', '418\ndotest returned: 42\n')
 
-  @no_2gb('https://github.com/emscripten-core/emscripten/issues/21633')
   @parameterized({
     '': ([],),
     'no_rtti': (['-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0'],),
