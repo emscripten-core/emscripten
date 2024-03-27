@@ -672,6 +672,8 @@ are available.
 .. note:: *Embind* must understand the fully-derived type for automatic
    downcasting to work.
 
+.. note:: *Embind* does not support this unless RTTI is enabled.
+
 
 Overloaded functions
 ====================

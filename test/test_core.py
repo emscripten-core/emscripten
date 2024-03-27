@@ -7580,9 +7580,13 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     self.do_runf('main.cpp', '418\ndotest returned: 42\n')
 
-  def test_embind_polymorphic_class_no_rtti(self):
-    self.emcc_args += ['-lembind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
-    self.do_core_test('test_embind_polymorphic_class_no_rtti.cpp')
+  @no_2gb('https://github.com/emscripten-core/emscripten/issues/21633')
+  @parameterized({
+    '': ([],),
+    'no_rtti': (['-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0'],),
+  })
+  def test_embind_polymorphic_class(self, args):
+    self.do_core_test('test_embind_polymorphic_class_no_rtti.cpp', emcc_args=args + ['-lembind'])
 
   def test_embind_no_rtti_followed_by_rtti(self):
     src = r'''
