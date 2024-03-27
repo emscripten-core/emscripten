@@ -89,6 +89,9 @@ var USE_ASAN = false;
 // Whether embind has been enabled.
 var EMBIND = false;
 
+// Whether a TypeScript definition file has been requested.
+var EMIT_TSD = false;
+
 // Whether the main() function reads the argc/argv parameters.
 var MAIN_READS_PARAMS = true;
 

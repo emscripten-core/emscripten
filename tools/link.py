@@ -1344,6 +1344,9 @@ def phase_linker_setup(options, state, newargs):
   if '-lembind' in [x for _, x in state.link_flags]:
     settings.EMBIND = 1
 
+  if options.embind_emit_tsd or options.emit_tsd:
+    settings.EMIT_TSD = True
+
   if settings.PTHREADS:
     setup_pthreads(target)
     settings.JS_LIBRARIES.append((0, 'library_pthread.js'))

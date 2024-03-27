@@ -653,8 +653,17 @@ function(${args}) {
       if (force) {
         commentText += '/** @suppress {duplicate } */\n';
       }
-      if (LibraryManager.library[symbol + '__docs']) {
-        commentText += LibraryManager.library[symbol + '__docs'] + '\n';
+
+      let docs = LibraryManager.library[symbol + '__docs'];
+      if (docs) {
+        commentText += docs + '\n';
+      }
+
+      if (EMIT_TSD) {
+        LibraryManager.libraryDefinitions[mangled] = {
+          docs: docs || '',
+          snippet,
+        };
       }
 
       const depsText = deps
@@ -741,6 +750,7 @@ var proxiedFunctionTable = [
           librarySymbols,
           warnings: warningOccured(),
           asyncFuncs,
+          libraryDefinitions: LibraryManager.libraryDefinitions,
           ATINITS: ATINITS.join('\n'),
           ATMAINS: STRICT ? '' : ATMAINS.join('\n'),
           ATEXITS: ATEXITS.join('\n'),
