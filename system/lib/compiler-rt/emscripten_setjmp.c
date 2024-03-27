@@ -11,33 +11,13 @@
 #include <setjmp.h>
 #include <threads.h>
 
-extern void setThrew(uintptr_t threw, int value);
-
-#if !defined(__USING_WASM_SJLJ__)
-
 #include "emscripten_internal.h"
-
-void emscripten_longjmp(uintptr_t env, int val) {
-  // C standard:
-  //   The longjmp function cannot cause the setjmp macro to return
-  //   the value 0; if val is 0, the setjmp macro returns the value 1.
-  if (val == 0) {
-    val = 1;
-  }
-  setThrew(env, val);
-  _emscripten_throw_longjmp();
-}
-#endif
 
 #ifdef __USING_WASM_SJLJ__
 struct __WasmLongjmpArgs {
   void *env;
   int val;
 };
-
-// llvm uses `1` for the __c_longjmp tag.
-// See https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/CodeGen/WasmEHFuncInfo.h
-#define C_LONGJMP 1
 #endif
 
 // jmp_buf should have large enough size and alignment to contain
@@ -69,6 +49,10 @@ uint32_t __wasm_setjmp_test(void* env, void* func_invocation_id) {
 }
 
 #ifdef __USING_WASM_SJLJ__
+// llvm uses `1` for the __c_longjmp tag.
+// See https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/CodeGen/WasmEHFuncInfo.h
+#define C_LONGJMP 1
+
 // Wasm EH allows us to throw and catch multiple values, but that requires
 // multivalue support in the toolchain, whch is not reliable at the time.
 // TODO Consider switching to throwing two values at the same time later.
@@ -84,5 +68,16 @@ void __wasm_longjmp(void* env, int val) {
   arg->env = env;
   arg->val = val;
   __builtin_wasm_throw(C_LONGJMP, arg);
+}
+#else
+void emscripten_longjmp(uintptr_t env, int val) {
+  // C standard:
+  //   The longjmp function cannot cause the setjmp macro to return
+  //   the value 0; if val is 0, the setjmp macro returns the value 1.
+  if (val == 0) {
+    val = 1;
+  }
+  setThrew(env, val);
+  _emscripten_throw_longjmp();
 }
 #endif
