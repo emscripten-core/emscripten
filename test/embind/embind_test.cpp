@@ -1045,27 +1045,27 @@ void emval_test_call_function(val v, int i, float f, TupleVector tv, StructVecto
 
 class UniquePtrToConstructor {
 public:
-    UniquePtrToConstructor(std::unique_ptr<int> p)
+    UniquePtrToConstructor(std::unique_ptr<char> p)
         : value(*p)
     {}
     
-    int getValue() const {
+    char getValue() const {
         return value;
     }
     
 private:
-    int value;
+    char value;
 };
 
-std::unique_ptr<int> embind_test_return_unique_ptr(int v) {
-    return std::unique_ptr<int>(new int(v));
+std::unique_ptr<char> embind_test_return_unique_ptr(char v) {
+    return std::unique_ptr<char>(new char(v));
 }
 
-UniquePtrToConstructor* embind_test_construct_class_with_unique_ptr(int v) {
+UniquePtrToConstructor* embind_test_construct_class_with_unique_ptr(char v) {
     return new UniquePtrToConstructor(embind_test_return_unique_ptr(v));
 }
 
-int embind_test_accept_unique_ptr(std::unique_ptr<int> p) {
+char embind_test_accept_unique_ptr(std::unique_ptr<char> p) {
     return *p.get();
 }
 
