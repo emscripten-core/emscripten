@@ -54,7 +54,7 @@ emscripten_fetch_queue* _emscripten_get_fetch_queue() {
 void emscripten_proxy_fetch(emscripten_fetch_t* fetch) {
   // TODO: mutex lock
   emscripten_fetch_queue* queue = _emscripten_get_fetch_queue();
-  //	TODO handle case when queue->numQueuedItems >= queue->queueSize
+  //  TODO handle case when queue->numQueuedItems >= queue->queueSize
   queue->queuedOperations[queue->numQueuedItems++] = fetch;
 #ifdef FETCH_DEBUG
   emscripten_dbgf("Queued fetch to fetch-worker to process. There are "
@@ -66,6 +66,11 @@ void emscripten_proxy_fetch(emscripten_fetch_t* fetch) {
 void emscripten_fetch_attr_init(emscripten_fetch_attr_t* fetch_attr) {
   memset(fetch_attr, 0, sizeof(emscripten_fetch_attr_t));
 }
+
+
+em_promise_t emscripten_fetch_promise(emscripten_fetch_attr_t *fetch_attr, const char *url) {
+}
+
 
 emscripten_fetch_t* emscripten_fetch(emscripten_fetch_attr_t* fetch_attr, const char* url) {
   if (!fetch_attr || !url) {

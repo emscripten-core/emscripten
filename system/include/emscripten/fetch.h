@@ -204,6 +204,9 @@ void emscripten_fetch_attr_init(emscripten_fetch_attr_t * _Nonnull fetch_attr);
 // given URL or from IndexedDB database.
 emscripten_fetch_t *emscripten_fetch(emscripten_fetch_attr_t * _Nonnull fetch_attr, const char * _Nonnull url);
 
+// New promise-based fetch declaration.
+em_promise_t emscripten_fetch_promise(emscripten_fetch_attr_t * _Nonnull fetch_attr, const char * _Nonnull url);
+
 // Synchronously blocks to wait for the given fetch operation to complete. This
 // operation is not allowed in the main browser thread, in which case it will
 // return EMSCRIPTEN_RESULT_NOT_SUPPORTED. Pass timeoutMSecs=infinite to wait
