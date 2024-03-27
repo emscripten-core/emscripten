@@ -2753,9 +2753,7 @@ addToLibrary({
   $dynCallLegacy__deps: ['$createDyncallWrapper'],
 #endif
   $dynCallLegacy: (sig, ptr, args) => {
-#if MEMORY64
-    sig = sig.replace(/p/g, 'j')
-#endif
+    sig = sig.replace(/p/g, {{{ MEMORY64 ? "'j'" : "'i'" }}})
 #if ASSERTIONS
 #if MINIMAL_RUNTIME
     assert(typeof dynCalls != 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall linker flag to include it!');
@@ -2830,6 +2828,8 @@ addToLibrary({
 #endif
 #if MEMORY64
     return sig[0] == 'p' ? Number(rtn) : rtn;
+#elif CAN_ADDRESS_2GB
+    return sig[0] == 'p' ? rtn >>> 0 : rtn;
 #else
     return rtn;
 #endif

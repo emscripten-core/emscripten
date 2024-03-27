@@ -7003,7 +7003,14 @@ void* operator new(size_t size) {
 
     for which, extra_args in cases:
       print(str(args) + ' ' + which)
-      self.do_core_test('dyncall_specific.c', emcc_args=['-D' + which] + list(args) + extra_args)
+      self.do_core_test('test_dyncall_specific.c', emcc_args=['-D' + which] + list(args) + extra_args)
+
+  @parameterized({
+    '': ([],),
+    'legacy': (['-sDYNCALLS'],),
+  })
+  def test_dyncall_pointers(self, args):
+    self.do_core_test('test_dyncall_pointers.c', emcc_args=args)
 
   @also_with_wasm_bigint
   def test_getValue_setValue(self):
