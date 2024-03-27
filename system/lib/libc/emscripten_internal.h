@@ -26,6 +26,8 @@
 extern "C" {
 #endif
 
+void setThrew(uintptr_t threw, int value);
+
 // An external JS implementation that is efficient for very large copies, using
 // HEAPU8.set()
 void _emscripten_memcpy_js(void* __restrict__ dest,
