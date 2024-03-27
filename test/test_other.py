@@ -14057,10 +14057,10 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       js = read_file('test_memops_bulk_memory.js')
       if expect_bulk_mem:
         self.assertNotContained('_emscripten_memcpy_js', js)
-        self.assertIn('$emscripten_memcpy_bulkmem', funcs)
+        self.assertIn('$_emscripten_memcpy_bulkmem', funcs)
       else:
         self.assertContained('_emscripten_memcpy_js', js)
-        self.assertNotIn('$emscripten_memcpy_bulkmem', funcs)
+        self.assertNotIn('$_emscripten_memcpy_bulkmem', funcs)
 
     # By default we expect to find `_emscripten_memcpy_js` in the generaed JS
     # and not to find the `emscripten_memcpy_bulkmem` function on the wasm
