@@ -16,6 +16,9 @@
 #if PTHREADS == 2
 #error "PTHREADS=2 is no longer supported"
 #endif
+#if SINGLE_FILE
+#error "-sSINGLE_FILE is not supported with -pthread!"
+#endif
 #if BUILD_AS_WORKER
 #error "pthreads + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854"
 #endif
