@@ -1,4 +1,5 @@
 __cxa_throw
+_emscripten_memcpy_js
 _wasmfs_copy_preloaded_file_data
 _wasmfs_get_num_preloaded_dirs
 _wasmfs_get_num_preloaded_files
@@ -11,7 +12,6 @@ _wasmfs_stdin_get_char
 abort
 emscripten_date_now
 emscripten_err
-emscripten_memcpy_js
 emscripten_out
 emscripten_resize_heap
 environ_get
