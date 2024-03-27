@@ -8,3 +8,4 @@
 #define _LIBCPP_PSTL_CPU_BACKEND_SERIAL
 // __libcpp_verbose_abort creases code size too much
 #define _LIBCPP_AVAILABILITY_HAS_NO_VERBOSE_ABORT
+#define _LIBCPP_HAS_NO_TIME_ZONE_DATABASE
