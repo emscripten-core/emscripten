@@ -922,7 +922,8 @@ var LibraryEmbind = {
       if (signature.includes('j')) {
         return getDynCaller(signature, rawFunction);
       }
-#elif MEMORY64
+#endif
+#if MEMORY64 || CAN_ADDRESS_2GB
       if (signature.includes('p')) {
         return getDynCaller(signature, rawFunction);
       }

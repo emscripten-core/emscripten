@@ -510,9 +510,6 @@ struct SignatureCode<double> {
     }
 };
 
-#ifdef __wasm64__
-// With wasm32 we can fallback to 'i' for pointer types but we need special
-// handling with wasm64.
 template<>
 struct SignatureCode<void*> {
     static constexpr char get() {
@@ -525,6 +522,8 @@ struct SignatureCode<size_t> {
         return 'p';
     }
 };
+
+#ifdef __wasm64__
 template<>
 struct SignatureCode<long> {
     static constexpr char get() {
@@ -545,6 +544,7 @@ template<> struct SignatureTranslator<float> { using type = float; };
 template<> struct SignatureTranslator<double> { using type = double; };
 #ifdef __wasm64__
 template<> struct SignatureTranslator<long> { using type = long; };
+#endif
 template<> struct SignatureTranslator<size_t> { using type = size_t; };
 template<typename PtrType>
 struct SignatureTranslator<PtrType*> { using type = void*; };
@@ -552,7 +552,6 @@ template<typename PtrType>
 struct SignatureTranslator<PtrType&> { using type = void*; };
 template<typename ReturnType, typename... Args>
 struct SignatureTranslator<ReturnType (*)(Args...)> { using type = void*; };
-#endif
 
 template<typename... Args>
 EMSCRIPTEN_ALWAYS_INLINE const char* getSpecificSignature() {
