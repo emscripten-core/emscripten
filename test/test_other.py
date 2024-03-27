@@ -3178,6 +3178,11 @@ More info: https://emscripten.org
     self.assertContained('Constructed from JS destructed', output)
     self.assertNotContained('Foo* destructed', output)
 
+  def test_embind_return_value_policy(self):
+    self.emcc_args += ['-lembind']
+
+    self.do_runf('embind/test_return_value_policy.cpp')
+
   def test_jspi_wildcard(self):
     self.require_jspi()
     self.emcc_args += ['-sASYNCIFY_EXPORTS=async*']
