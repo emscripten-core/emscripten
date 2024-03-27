@@ -12035,6 +12035,20 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     out = self.run_js('foo.js', assert_returncode=NON_ZERO)
     self.assertContained('native function `main` called after runtime exit', out)
 
+  def test_native_call_nargs(self):
+    self.set_setting('ASSERTIONS')
+    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_foo'])
+    create_file('foo.c', r'''
+      #include <emscripten.h>
+      void foo(int arg) {}
+      int main() {
+        EM_ASM(_foo(99, 100));
+      }
+    ''')
+    self.build('foo.c')
+    out = self.run_js('foo.js', assert_returncode=NON_ZERO)
+    self.assertContained('native function `foo` called with 2 args but expects 1', out)
+
   def test_metadce_wasm2js_i64(self):
     # handling i64 unsigned remainder brings in some i64 support code. metadce
     # must not remove it.
