@@ -931,13 +931,11 @@ var SyscallsLibrary = {
     HEAP8[buf+len] = endChar;
     return len;
   },
-  __syscall_fchmodat: (dirfd, path, mode, varargs) => {
-#if SYSCALL_DEBUG
-    dbg('warning: untested syscall');
-#endif
+  __syscall_fchmodat2: (dirfd, path, mode, flags) => {
+    var nofollow = flags & {{{ cDefs.AT_SYMLINK_NOFOLLOW }}};
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    FS.chmod(path, mode);
+    FS.chmod(path, mode, nofollow);
     return 0;
   },
   __syscall_faccessat: (dirfd, path, amode, flags) => {

@@ -244,7 +244,7 @@ sigs = {
   __syscall_fallocate__sig: 'iiijj',
   __syscall_fchdir__sig: 'ii',
   __syscall_fchmod__sig: 'iii',
-  __syscall_fchmodat__sig: 'iipip',
+  __syscall_fchmodat2__sig: 'iipii',
   __syscall_fchown32__sig: 'iiii',
   __syscall_fchownat__sig: 'iipiii',
   __syscall_fcntl64__sig: 'iiip',
