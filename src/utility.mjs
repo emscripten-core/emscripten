@@ -4,16 +4,22 @@
  * SPDX-License-Identifier: MIT
  */
 
-// "use strict";
-
 // General JS utilities - things that might be useful in any JS project.
 // Nothing specific to Emscripten appears here.
 
-function safeQuote(x) {
+import * as url from 'url';
+import * as path from 'path';
+import * as fs from 'fs';
+import * as vm from 'vm';
+import assert from 'assert';
+
+export {assert};
+
+export function safeQuote(x) {
   return x.replace(/"/g, '\\"').replace(/'/g, "\\'");
 }
 
-function dump(item) {
+export function dump(item) {
   let funcData;
   try {
     if (typeof item == 'object' && item != null && item.funcData) {
@@ -36,19 +42,30 @@ function dump(item) {
   }
 }
 
-globalThis.warnings = false;
-globalThis.currentFile = null;
+let warnings = false;
+
+export function warningOccured() {
+  return warnings;
+}
+
+let currentFile = null;
+
+export function setCurrentFile(f) {
+  let rtn = currentFile;
+  currentFile = f;
+  return rtn;
+}
 
 function errorPrefix() {
   if (currentFile) {
-    return currentFile + ': '
+    return currentFile + ': ';
   } else {
     return '';
   }
 }
 
-function warn(a, msg) {
-  globalThis.warnings = true;
+export function warn(a, msg) {
+  warnings = true;
   if (!msg) {
     msg = a;
     a = false;
@@ -58,7 +75,7 @@ function warn(a, msg) {
   }
 }
 
-function warnOnce(a, msg) {
+export function warnOnce(a, msg) {
   if (!msg) {
     msg = a;
     a = false;
@@ -71,9 +88,13 @@ function warnOnce(a, msg) {
   }
 }
 
-globalThis.abortExecution = false;
+let abortExecution = false;
 
-function error(msg) {
+export function errorOccured() {
+  return abortExecution;
+}
+
+export function error(msg) {
   abortExecution = true;
   printErr(`error: ${errorPrefix()}${msg}`);
 }
@@ -82,37 +103,15 @@ function range(size) {
   return Array.from(Array(size).keys());
 }
 
-function bind(self, func) {
-  return function(...args) {
-    func.apply(self, args);
-  };
-}
-
-function sum(x) {
-  return x.reduce((a, b) => a + b, 0);
-}
-
-// options is optional input object containing mergeInto params
-// currently, it can contain
-//
-// key: noOverride, value: true
-// if it is set, it prevents symbol redefinition and shows error
-// in case of redefinition
-//
-// key: checkSig, value: true
-// if it is set, __sig is checked for functions and error is reported
-// if <function name>__sig is missing
-function addToLibrary(obj, options = null) {
-  mergeInto(LibraryManager.library, obj, options);
-}
-
-function mergeInto(obj, other, options = null) {
+export function mergeInto(obj, other, options = null) {
   if (options) {
     // check for unintended symbol redefinition
     if (options.noOverride) {
       for (const key of Object.keys(other)) {
         if (obj.hasOwnProperty(key)) {
-          error(`Symbol re-definition in JavaScript library: ${key}. Do not use noOverride if this is intended`);
+          error(
+            `Symbol re-definition in JavaScript library: ${key}. Do not use noOverride if this is intended`,
+          );
           return;
         }
       }
@@ -164,28 +163,32 @@ function mergeInto(obj, other, options = null) {
       if (decoratorName === '__deps') {
         const deps = other[key];
         if (!Array.isArray(deps)) {
-          error(`JS library directive ${key}=${deps.toString()} is of type '${type}', but it should be an array`);
+          error(
+            `JS library directive ${key}=${deps.toString()} is of type '${type}', but it should be an array`,
+          );
         }
         for (let dep of deps) {
           if (dep && typeof dep !== 'string' && typeof dep !== 'function') {
-            error(`__deps entries must be of type 'string' or 'function' not '${typeof dep}': ${key}`)
+            error(
+              `__deps entries must be of type 'string' or 'function' not '${typeof dep}': ${key}`,
+            );
           }
         }
       } else {
         // General type checking for all other decorators
         const decoratorTypes = {
-          '__sig': 'string',
-          '__proxy': 'string',
-          '__asm': 'boolean',
-          '__inline': 'boolean',
-          '__postset': ['string', 'function'],
-          '__docs': 'string',
-          '__nothrow': 'boolean',
-          '__noleakcheck': 'boolean',
-          '__internal': 'boolean',
-          '__user': 'boolean',
-          '__async': 'boolean',
-          '__i53abi': 'boolean',
+          __sig: 'string',
+          __proxy: 'string',
+          __asm: 'boolean',
+          __inline: 'boolean',
+          __postset: ['string', 'function'],
+          __docs: 'string',
+          __nothrow: 'boolean',
+          __noleakcheck: 'boolean',
+          __internal: 'boolean',
+          __user: 'boolean',
+          __async: 'boolean',
+          __i53abi: 'boolean',
         };
         const expected = decoratorTypes[decoratorName];
         if (type !== expected && !expected.includes(type)) {
@@ -198,19 +201,19 @@ function mergeInto(obj, other, options = null) {
   return Object.assign(obj, other);
 }
 
-function isNumber(x) {
+export function isNumber(x) {
   // XXX this does not handle 0xabc123 etc. We should likely also do x == parseInt(x) (which handles that), and remove hack |// handle 0x... as well|
   return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/)) || x == 'NaN';
 }
 
 // Symbols that start with '$' are not exported to the wasm module.
 // They are intended to be called exclusively by JS code.
-function isJsOnlySymbol(symbol) {
+export function isJsOnlySymbol(symbol) {
   return symbol[0] == '$';
 }
 
-function isDecorator(ident) {
-  suffixes = [
+export function isDecorator(ident) {
+  const suffixes = [
     '__sig',
     '__proxy',
     '__asm',
@@ -228,36 +231,115 @@ function isDecorator(ident) {
   return suffixes.some((suffix) => ident.endsWith(suffix));
 }
 
-function isPowerOfTwo(x) {
-  return x > 0 && ((x & (x - 1)) == 0);
+export function isPowerOfTwo(x) {
+  return x > 0 && (x & (x - 1)) == 0;
 }
 
-/** @constructor */
-globalThis.Benchmarker = function() {
-  const totals = {};
-  const ids = [];
-  const lastTime = 0;
-  this.start = function(id) {
-    const now = Date.now();
-    if (ids.length > 0) {
-      totals[ids[ids.length - 1]] += now - lastTime;
-    }
-    lastTime = now;
-    ids.push(id);
-    totals[id] ||= 0;
-  };
-  this.stop = function(id) {
-    const now = Date.now();
-    assert(id === ids[ids.length - 1]);
-    totals[id] += now - lastTime;
-    lastTime = now;
-    ids.pop();
-  };
-  this.print = function(text) {
-    const ids = Object.keys(totals);
-    if (ids.length > 0) {
-      ids.sort((a, b) => totals[b] - totals[a]);
-      printErr(text + ' times: \n' + ids.map((id) => id + ' : ' + totals[id] + ' ms').join('\n'));
-    }
-  };
+export function read(filename) {
+  const absolute = find(filename);
+  return fs.readFileSync(absolute).toString();
 }
+
+export function find(filename) {
+  const dirname = url.fileURLToPath(new URL('.', import.meta.url));
+  const prefixes = [process.cwd(), path.join(dirname, '..', 'src')];
+  for (let i = 0; i < prefixes.length; ++i) {
+    const combined = path.join(prefixes[i], filename);
+    if (fs.existsSync(combined)) {
+      return combined;
+    }
+  }
+  return filename;
+}
+
+// Anything needed by the script that we load below must be added to the
+// global object.  These, for example, are all needed by parseTools.js.
+export function print(x) {
+  process.stdout.write(x + '\n');
+}
+
+export function printErr(x) {
+  process.stderr.write(x + '\n');
+}
+
+export class Benchmarker {
+  totals = {};
+  ids = [];
+  lastTime = 0;
+
+  start(id) {
+    const now = Date.now();
+    if (this.ids.length > 0) {
+      this.totals[this.ids[this.ids.length - 1]] += now - this.lastTime;
+    }
+    this.lastTime = now;
+    this.ids.push(id);
+    this.totals[id] ||= 0;
+  }
+
+  stop(id) {
+    const now = Date.now();
+    assert(id === this.ids[this.ids.length - 1]);
+    this.totals[id] += now - this.lastTime;
+    this.lastTime = now;
+    this.ids.pop();
+  }
+
+  print(text) {
+    const ids = Object.keys(this.totals);
+    if (ids.length > 0) {
+      ids.sort((a, b) => this.totals[b] - this.totals[a]);
+      printErr(
+        text + ' times: \n' + ids.map((id) => id + ' : ' + this.totals[id] + ' ms').join('\n'),
+      );
+    }
+  }
+}
+
+/**
+ * Context in which JS library code is evaluated.  This is distinct from the
+ * global scope of the compiler itself which avoids exposing all of the compiler
+ * internals to user JS library code.
+ */
+export const compileTimeContext = {
+  process,
+  console,
+};
+
+/**
+ * A symbols to the macro context.
+ * This will makes the symbols available to JS library code at build time.
+ */
+export function addToCompileTimeContext(object) {
+  Object.assign(compileTimeContext, object);
+}
+
+export function applySettings(obj) {
+  // Make settings available both in the current / global context
+  // and also in the macro execution contexted.
+  Object.assign(globalThis, obj);
+  addToCompileTimeContext(obj);
+}
+
+export function loadSettingsFile(f) {
+  var settings = {};
+  vm.runInNewContext(read(f), settings, {filename: find(f)});
+  applySettings(settings);
+}
+
+export function runInMacroContext(code, options) {
+  return vm.runInNewContext(code, compileTimeContext, options);
+}
+
+addToCompileTimeContext({
+  assert,
+  error,
+  isDecorator,
+  isJsOnlySymbol,
+  mergeInto,
+  read,
+  warn,
+  warnOnce,
+  printErr,
+  range,
+});

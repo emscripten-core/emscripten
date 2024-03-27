@@ -7,16 +7,16 @@
 
 #define ALIGN(num_bytes) __attribute__((aligned(num_bytes)))
 
-struct Aligned {
+typedef struct Aligned {
   char ALIGN(4) a4;
   char ALIGN(8) a8;
   char ALIGN(16) a16;
   char ALIGN(32) a32;
-};
+} Aligned;
 
 __attribute__((noinline))
-void Test(const void* p, int size) {
-  printf("align %d: %zu\n", size, reinterpret_cast<size_t>(p) % size);
+void Test(const void* p, intptr_t size) {
+  printf("align %ld: %zu\n", size, (intptr_t)p % size);
 }
 
 int main() {
@@ -26,8 +26,8 @@ int main() {
   Test(&a.a16, 16);
   Test(&a.a32, 32);
 
-  int p = reinterpret_cast<size_t>(&a);
-  printf("base align: %d, %d, %d, %d\n", p%4, p%8, p%16, p%32);
+  intptr_t p = (intptr_t)&a;
+  printf("base align: %ld, %ld, %ld, %ld\n", p%4, p%8, p%16, p%32);
 
   return 0;
 }

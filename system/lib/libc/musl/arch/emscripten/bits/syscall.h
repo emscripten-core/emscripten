@@ -68,7 +68,7 @@
 #define SYS_linkat		__syscall_linkat
 #define SYS_symlinkat		__syscall_symlinkat
 #define SYS_readlinkat		__syscall_readlinkat
-#define SYS_fchmodat		__syscall_fchmodat
+#define SYS_fchmodat2		__syscall_fchmodat2
 #define SYS_faccessat		__syscall_faccessat
 #define SYS_pselect6		__syscall_pselect6
 #define SYS_utimensat		__syscall_utimensat

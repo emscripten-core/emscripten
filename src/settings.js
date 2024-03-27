@@ -1107,6 +1107,7 @@ var SIDE_MODULE = 0;
 
 // Deprecated, list shared libraries directly on the command line instead.
 // [link]
+// [deprecated]
 var RUNTIME_LINKED_LIBS = [];
 
 // If set to 1, this is a worker library, a special kind of library that is run

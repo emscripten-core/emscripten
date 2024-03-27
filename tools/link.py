@@ -454,7 +454,7 @@ def make_js_executable(script):
 
 
 def do_split_module(wasm_file, options):
-  os.rename(wasm_file, wasm_file + '.orig')
+  os.replace(wasm_file, wasm_file + '.orig')
   args = ['--instrument']
   if options.requested_debug:
     # Tell wasm-split to preserve function names.
@@ -819,6 +819,7 @@ def phase_linker_setup(options, state, newargs):
   if settings.PURE_WASI:
     settings.STANDALONE_WASM = 1
     settings.WASM_BIGINT = 1
+    settings.SUPPORT_LONGJMP = 0
 
   if options.no_entry:
     settings.EXPECT_MAIN = 0
@@ -1141,7 +1142,7 @@ def phase_linker_setup(options, state, newargs):
     # Promise. However, in Pthreads mode the Promise is used for worker
     # creation.
     if settings.MINIMAL_RUNTIME and options.oformat == OFormat.HTML and not settings.PTHREADS:
-      settings.EXPORT_READY_PROMISE = 0
+      settings.USE_READY_PROMISE = 0
 
   if settings.WASM2JS and settings.LEGACY_VM_SUPPORT:
     settings.POLYFILL_OLD_MATH_FUNCTIONS = 1
@@ -1294,19 +1295,13 @@ def phase_linker_setup(options, state, newargs):
     settings.FULL_ES2 = 1
     settings.MAX_WEBGL_VERSION = max(2, settings.MAX_WEBGL_VERSION)
 
-  # WASM_SYSTEM_EXPORTS are actually native function but they are allowed to be exported
-  # via EXPORTED_RUNTIME_METHODS for backwards compat.
-  for sym in settings.WASM_SYSTEM_EXPORTS:
-    if sym in settings.EXPORTED_RUNTIME_METHODS:
-      settings.REQUIRED_EXPORTS.append(sym)
-
   if settings.MAIN_READS_PARAMS and not settings.STANDALONE_WASM:
-    # callMain depends on stackAlloc
-    settings.REQUIRED_EXPORTS += ['stackAlloc']
+    # callMain depends on _emscripten_stack_alloc
+    settings.REQUIRED_EXPORTS += ['_emscripten_stack_alloc']
 
   if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
     # make_invoke depends on stackSave and stackRestore
-    settings.REQUIRED_EXPORTS += ['stackSave', 'stackRestore']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stackSave', '$stackRestore']
 
   if settings.RELOCATABLE:
     # TODO(https://reviews.llvm.org/D128515): Make this mandatory once
@@ -1516,7 +1511,7 @@ def phase_linker_setup(options, state, newargs):
     settings.MAYBE_WASM2JS = 1
 
   if settings.AUTODEBUG:
-    settings.REQUIRED_EXPORTS += ['setTempRet0']
+    settings.REQUIRED_EXPORTS += ['_emscripten_tempret_set']
 
   if settings.LEGALIZE_JS_FFI:
     settings.REQUIRED_EXPORTS += ['__get_temp_ret', '__set_temp_ret']
@@ -2334,9 +2329,10 @@ def modularize():
   # the return statement.
   return_value = 'moduleArg'
   if settings.WASM_ASYNC_COMPILATION:
-    return_value += '.ready'
-  if not settings.EXPORT_READY_PROMISE:
-    return_value = '{}'
+    if settings.USE_READY_PROMISE:
+      return_value = 'readyPromise'
+    else:
+      return_value = '{}'
 
   # TODO: Remove when https://bugs.webkit.org/show_bug.cgi?id=223533 is resolved.
   if async_emit != '' and settings.EXPORT_NAME == 'config':

@@ -101,6 +101,11 @@ int main() {
 
   float color2[4] = { 0.0f, 1.f, 0.0f, 1.0f };
   glUniform4fv(glGetUniformLocation(program, "color2"), 1, color2);
+
+  // Test that passing zero for the size paramater does not cause error
+  // https://github.com/emscripten-core/emscripten/issues/21567
+  glUniform4fv(glGetUniformLocation(program, "color2"), 0, color2);
+
   glClearColor(0.3f,0.3f,0.3f,1);
   glClear(GL_COLOR_BUFFER_BIT);
   glDrawArrays(GL_TRIANGLES, 0, 3);

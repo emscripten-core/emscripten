@@ -28,18 +28,19 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner other')
 
 from tools.shared import config
-from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, FILE_PACKAGER, WINDOWS, LLVM_NM
+from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, FILE_PACKAGER, LLVM_NM
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, EMCMAKE, EMCONFIGURE, WASM_LD
 from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
-from common import requires_wasm_eh, crossplatform, with_both_sjlj, also_with_standalone_wasm
+from common import requires_wasm_eh, crossplatform, with_both_eh_sjlj, with_both_sjlj
+from common import also_with_standalone_wasm, also_with_env_modify
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, flaky
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
 from common import requires_network
 from tools import shared, building, utils, response_file, cache
-from tools.utils import read_file, write_file, delete_file, read_binary
+from tools.utils import read_file, write_file, delete_file, read_binary, MACOS, WINDOWS
 import common
 import jsrun
 import clang_native
@@ -5717,73 +5718,12 @@ int main()
       self.run_process([EMXX, 'src.cpp', '-sDISABLE_EXCEPTION_CATCHING=0'])
     self.assertContained('Caught exception: std::exception', self.run_js('a.out.js'))
 
+  @crossplatform
+  @also_with_env_modify({'gb_locale': {'LC_ALL': 'en_GB'}, 'long_tz': {'TZ': 'Asia/Kathmandu'}})
   def test_strftime_zZ(self):
-    create_file('src.c', r'''
-#include <errno.h>
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
-
-int main() {
-  // Buffer to hold the current hour of the day.  Format is HH + nul
-  // character.
-  char hour[3];
-
-  // Buffer to hold our ISO 8601 formatted UTC offset for the current
-  // timezone.  Format is [+-]hhmm + nul character.
-  char utcOffset[6];
-
-  // Buffer to hold the timezone name or abbreviation.  Just make it
-  // sufficiently large to hold most timezone names.
-  char timezone[128];
-
-  struct tm tm;
-
-  // Get the current timestamp.
-  const time_t now = time(NULL);
-
-  // What time is that here?
-  if (localtime_r(&now, &tm) == NULL) {
-    const int error = errno;
-    printf("Failed to get localtime for timestamp=%lld; errno=%d; %s", now, errno, strerror(error));
-    return 1;
-  }
-
-  size_t result = 0;
-
-  // Get the formatted hour of the day.
-  if ((result = strftime(hour, 3, "%H", &tm)) != 2) {
-    const int error = errno;
-    printf("Failed to format hour for timestamp=%lld; result=%zu; errno=%d; %s\n",
-           now, result, error, strerror(error));
-    return 1;
-  }
-  printf("The current hour of the day is: %s\n", hour);
-
-  // Get the formatted UTC offset in ISO 8601 format.
-  if ((result = strftime(utcOffset, 6, "%z", &tm)) != 5) {
-    const int error = errno;
-    printf("Failed to format UTC offset for timestamp=%lld; result=%zu; errno=%d; %s\n",
-           now, result, error, strerror(error));
-    return 1;
-  }
-  printf("The current timezone offset is: %s\n", utcOffset);
-
-  // Get the formatted timezone name or abbreviation.  We don't know how long
-  // this will be, so just expect some data to be written to the buffer.
-  if ((result = strftime(timezone, 128, "%Z", &tm)) == 0) {
-    const int error = errno;
-    printf("Failed to format timezone for timestamp=%lld; result=%zu; errno=%d; %s\n",
-           now, result, error, strerror(error));
-    return 1;
-  }
-  printf("The current timezone is: %s\n", timezone);
-
-  printf("ok!\n");
-  return 0;
-}
-''')
-    self.do_runf('src.c', 'ok!')
+    if os.environ.get('LC_ALL') == 'en_GB' and MACOS:
+      self.skipTest('setting LC_ALL is not compatible with macOS python')
+    self.do_runf('other/test_strftime_zZ.c', 'ok!')
 
   def test_strptime_symmetry(self):
     self.do_runf('strptime_symmetry.cpp', 'TEST PASSED')
@@ -7815,10 +7755,6 @@ high = 1234
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=[{"a":1}]'])
     self.assertContained("list members in settings must be strings (not $<class 'dict'>)", err)
 
-  def test_dash_s_repeated(self):
-    err = self.expect_fail([EMCC, '-Werror', test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=foo', '-sEXPORTED_FUNCTIONS=bar'])
-    self.assertContained('emcc: error: -sEXPORTED_FUNCTIONS specified multiple times. Ignoring previous value (`foo`) [-Wunused-command-line-argument]', err)
-
   def test_zeroinit(self):
     create_file('src.c', r'''
 #include <stdio.h>
@@ -8624,25 +8560,18 @@ int main() {
         assert not e_f32_f64, 'f32 converted to f64 in exports'
         assert e_i64_i64,     'i64 converted to i64 in exports'
 
+  @disabled('https://github.com/WebAssembly/binaryen/pull/6428')
   def test_no_legalize_js_ffi(self):
-    # test minimal JS FFI legalization for invoke and dyncalls
-    args = ['-sLEGALIZE_JS_FFI=0', '-sMAIN_MODULE=2', '-O3', '-sDISABLE_EXCEPTION_CATCHING=0']
-    delete_file('a.out.wasm')
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc++'}):
-      cmd = [EMXX, test_file('other/noffi.cpp'), '-g', '-o', 'a.out.js'] + args
-    print(' '.join(cmd))
-    self.run_process(cmd)
-    text = self.get_wasm_text('a.out.wasm')
-    # remove internal comments and extra whitespace
-    text = re.sub(r'\(;[^;]+;\)', '', text)
-    text = re.sub(r'\$var\$*.', '', text)
-    text = re.sub(r'param \$\d+', 'param ', text)
-    text = re.sub(r' +', ' ', text)
-    # print("text: %s" % text)
-    i_legalimport_i64 = re.search(r'\(import.*\$legalimport\$invoke_j.*', text)
-    e_legalstub_i32 = re.search(r'\(func.*\$legalstub\$dyn.*\(result i32\)', text)
-    assert i_legalimport_i64, 'legal import not generated for invoke call'
-    assert e_legalstub_i32, 'legal stub not generated for dyncall'
+    for legalizing in [0, 1]:
+      # test minimal JS FFI legalization for invoke and dyncalls
+      args = ['-sMAIN_MODULE=2', '-O3', '-sDISABLE_EXCEPTION_CATCHING=0', '-g']
+      if not legalizing:
+        args.append('-sLEGALIZE_JS_FFI=0')
+      self.run_process([EMXX, test_file('other/noffi.cpp')] + args)
+      text = self.get_wasm_text('a.out.wasm')
+      # Verify that legalization either did, or did not, occur
+      self.assertContainedIf('$legalimport', text, legalizing)
+      self.assertContainedIf('$legalstub', text, legalizing)
 
   def test_export_aliasee(self):
     # build side module
@@ -8826,14 +8755,16 @@ int main() {
     self.emcc_args += ['-fwasm-exceptions', '-flto']
     self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
-  def test_wasm_nope(self):
-    for opts in [[], ['-O2']]:
-      print(opts)
-      # check we show a good error message if there is no wasm support
-      create_file('pre.js', 'WebAssembly = undefined;\n')
-      self.run_process([EMCC, test_file('hello_world.c'), '--pre-js', 'pre.js'] + opts)
-      out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-      self.assertContained('no native wasm support detected', out)
+  @parameterized({
+    '': ([],),
+    'O2': (['-O2'],),
+  })
+  def test_missing_wasm(self, args):
+    # Check that in debug builds we show a good error message if there is no wasm support
+    create_file('pre.js', 'WebAssembly = undefined;\n')
+    self.run_process([EMCC, test_file('hello_world.c'), '--pre-js', 'pre.js'] + args)
+    out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
+    self.assertContainedIf('no native wasm support detected', out, not args)
 
   def test_exceptions_c_linker(self):
     # Test that we don't try to create __cxa_find_matching_catch_xx function automatically
@@ -8841,11 +8772,8 @@ int main() {
     stderr = self.expect_fail([EMCC, '-sSTRICT', test_file('other/test_exceptions_c_linker.c')])
     self.assertContained('error: undefined symbol: __cxa_find_matching_catch_1', stderr)
 
-  @parameterized({
-    '': (False,),
-    'wasm': (True,),
-  })
-  def test_exceptions_stack_trace_and_message(self, wasm_eh):
+  @with_both_eh_sjlj
+  def test_exceptions_stack_trace_and_message(self):
     src = r'''
       #include <stdexcept>
 
@@ -8862,7 +8790,7 @@ int main() {
         return 0;
       }
     '''
-    self.emcc_args = ['-g']
+    self.emcc_args += ['-g']
 
     # Stack trace and message example for this example code:
     # exiting due to exception: [object WebAssembly.Exception],Error: std::runtime_error,my message
@@ -8882,17 +8810,13 @@ int main() {
       'at (src.wasm.)?foo',
       'at (src.wasm.)?main']
 
-    if wasm_eh:
+    if '-fwasm-excpeptions' in self.emcc_args:
       # FIXME Node v18.13 (LTS as of Jan 2023) has not yet implemented the new
       # optional 'traceStack' option in WebAssembly.Exception constructor
       # (https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/Exception)
       # and embeds stack traces unconditionally. Change this back to
       # self.require_wasm_eh() if this issue is fixed later.
       self.require_v8()
-
-      self.emcc_args += ['-fwasm-exceptions']
-    else:
-      self.emcc_args += ['-fexceptions']
 
     # Stack traces are enabled when either of ASSERTIONS or
     # EXCEPTION_STACK_TRACES is enabled. You can't disable
@@ -8924,23 +8848,16 @@ int main() {
     for check in stack_trace_checks:
       self.assertFalse(re.search(check, err), 'Expected regex "%s" to not match on:\n%s' % (check, err))
 
-  @parameterized({
-    '': (False,),
-    'wasm': (True,),
-  })
-  def test_exceptions_rethrow_stack_trace_and_message(self, wasm_eh):
-    self.emcc_args = ['-g']
-    if wasm_eh:
+  @with_both_eh_sjlj
+  def test_exceptions_rethrow_stack_trace_and_message(self):
+    self.emcc_args += ['-g']
+    if '-fwasm-excpeptions' in self.emcc_args:
       # FIXME Node v18.13 (LTS as of Jan 2023) has not yet implemented the new
       # optional 'traceStack' option in WebAssembly.Exception constructor
       # (https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/Exception)
       # and embeds stack traces unconditionally. Change this back to
       # self.require_wasm_eh() if this issue is fixed later.
       self.require_v8()
-      self.emcc_args += ['-fwasm-exceptions']
-    else:
-      self.emcc_args += ['-fexceptions']
-
     # Rethrowing exception currently loses the stack trace before the rethrowing
     # due to how rethrowing is implemented. So in the examples below we don't
     # print 'bar' at the moment.
@@ -8995,6 +8912,11 @@ int main() {
     err = self.do_run(rethrow_src2, assert_all=True, assert_returncode=NON_ZERO,
                       expected_output=rethrow_stack_trace_checks, regex=True)
     self.assertNotContained('important_function', err)
+
+  @with_both_eh_sjlj
+  def test_exceptions_exit_runtime(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.do_other_test('test_exceptions_exit_runtime.cpp')
 
   @requires_node
   def test_jsrun(self):
@@ -11573,7 +11495,8 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
       }\n''')
     self.run_process([EMCC, '-c', 'src.c',
                       '-pedantic', '-Wall', '-Werror',
-                      '-Wno-gnu-zero-variadic-macro-arguments'])
+                      '-Wno-gnu-zero-variadic-macro-arguments',
+                      '-Wno-c23-extensions'])
 
   def test_em_asm_strict_c(self):
     create_file('src.c', '''
@@ -11801,6 +11724,11 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('other/test_pthread_asyncify.c')
 
+  @node_pthreads
+  def test_pthread_reuse(self):
+    self.set_setting('PTHREAD_POOL_SIZE', 1)
+    self.do_run_in_out_file_test('other/test_pthread_reuse.c')
+
   def test_stdin_preprocess(self):
     create_file('temp.h', '#include <string>')
     outputStdin = self.run_process([EMCC, '-x', 'c++', '-dM', '-E', '-'], input="#include <string>", stdout=PIPE).stdout
@@ -12025,23 +11953,21 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
 
   @parameterized({
     '': ([],),
-    'minimal': (['-sMINIMAL_RUNTIME'],),
+    'minimal': (['-sMINIMAL_RUNTIME', '-sSUPPORT_ERRNO'],),
   })
   def test_support_errno(self, args):
     self.emcc_args += args + ['-sEXPORTED_FUNCTIONS=_main,___errno_location', '-Wno-deprecated']
 
-    self.do_other_test('test_support_errno.c', emcc_args=['-sSUPPORT_ERRNO'])
-    size_enabled = os.path.getsize('test_support_errno.js')
+    self.do_other_test('test_support_errno.c')
+    size_default = os.path.getsize('test_support_errno.js')
 
     # Run the same test again but with SUPPORT_ERRNO disabled.  This time we don't expect errno
     # to be set after the failing syscall.
-    self.do_other_test('test_support_errno.c', emcc_args=['-sSUPPORT_ERRNO=0'], out_suffix='_disabled')
+    self.emcc_args += ['-sSUPPORT_ERRNO=0']
+    self.do_other_test('test_support_errno.c', out_suffix='_disabled')
 
     # Verify the JS output was smaller
-    size_disabled = os.path.getsize('test_support_errno.js')
-    print(size_enabled)
-    print(size_disabled)
-    self.assertLess(size_disabled, size_enabled)
+    self.assertLess(os.path.getsize('test_support_errno.js'), size_default)
 
   def test_assembly(self):
     self.run_process([EMCC, '-c', test_file('other/test_asm.s'), '-o', 'foo.o'])
@@ -14049,13 +13975,13 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       {{{ C_STRUCTS.Foo }}}
     ''')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js'])
-    self.assertContained('Error: Missing C struct Foo! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py', err)
+    self.assertContained('Error: Missing C struct Foo! If you just added it to struct_info.json, you need to run ./tools/maint/gen_struct_info.py (then run a second time with --wasm64)', err)
 
     create_file('lib.js', '''
       {{{ C_DEFINES.Foo }}}
     ''')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library=lib.js'])
-    self.assertContained('Error: Missing C define Foo! If you just added it to struct_info.json, you need to run ./tools/gen_struct_info.py', err)
+    self.assertContained('Error: Missing C define Foo! If you just added it to struct_info.json, you need to run ./tools/maint/gen_struct_info.py (then run a second time with --wasm64)', err)
 
   def run_wasi_test_suite_test(self, name):
     if not os.path.exists(path_from_root('test/third_party/wasi-test-suite')):
@@ -14145,10 +14071,10 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       js = read_file('test_memops_bulk_memory.js')
       if expect_bulk_mem:
         self.assertNotContained('_emscripten_memcpy_js', js)
-        self.assertIn('$emscripten_memcpy_bulkmem', funcs)
+        self.assertIn('$_emscripten_memcpy_bulkmem', funcs)
       else:
         self.assertContained('_emscripten_memcpy_js', js)
-        self.assertNotIn('$emscripten_memcpy_bulkmem', funcs)
+        self.assertNotIn('$_emscripten_memcpy_bulkmem', funcs)
 
     # By default we expect to find `_emscripten_memcpy_js` in the generaed JS
     # and not to find the `emscripten_memcpy_bulkmem` function on the wasm

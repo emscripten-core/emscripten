@@ -923,7 +923,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
   # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
 
-  cflags = ['-fno-builtin']
+  cflags = ['-fno-builtin', '-DNDEBUG']
   src_dir = 'system/lib/compiler-rt/lib/builtins'
   includes = ['system/lib/libc']
   # gcc_personality_v0.c depends on libunwind, which don't include by default.

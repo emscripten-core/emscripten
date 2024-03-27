@@ -199,7 +199,7 @@ int _wasmfs_chmod(char* path, mode_t mode) {
 int _wasmfs_fchmod(int fd, mode_t mode) { return __syscall_fchmod(fd, mode); }
 
 int _wasmfs_lchmod(char* path, mode_t mode) {
-  return __syscall_fchmodat(
+  return __syscall_fchmodat2(
     AT_FDCWD, (intptr_t)path, mode, AT_SYMLINK_NOFOLLOW);
 }
 

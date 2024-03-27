@@ -28,7 +28,7 @@ from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, para
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb
-from common import with_both_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64
+from common import with_both_eh_sjlj, with_both_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
 
@@ -90,40 +90,6 @@ def all_engines(f):
     finally:
       self.use_all_engines = old
   return decorated
-
-
-# Tests exception handling / setjmp/longjmp handling in Emscripten EH/SjLj mode
-# and if possible, new wasm EH/SjLj mode. This tests two combinations:
-# - Emscripten EH + Emscripten SjLj
-# - Wasm EH + Wasm SjLj
-def with_both_eh_sjlj(f):
-  assert callable(f)
-
-  def metafunc(self, is_native):
-    if is_native:
-      # Wasm EH is currently supported only in wasm backend and V8
-      if self.is_wasm2js():
-        self.skipTest('wasm2js does not support wasm EH/SjLj')
-      self.require_wasm_eh()
-      # FIXME Temporarily disabled. Enable this later when the bug is fixed.
-      if '-fsanitize=address' in self.emcc_args:
-        self.skipTest('Wasm EH does not work with asan yet')
-      self.emcc_args.append('-fwasm-exceptions')
-      self.set_setting('SUPPORT_LONGJMP', 'wasm')
-      f(self)
-    else:
-      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-      self.set_setting('SUPPORT_LONGJMP', 'emscripten')
-      # DISABLE_EXCEPTION_CATCHING=0 exports __cxa_can_catch and
-      # __cxa_is_pointer_type, so if we don't build in C++ mode, wasm-ld will
-      # error out because libc++abi is not included. See
-      # https://github.com/emscripten-core/emscripten/pull/14192 for details.
-      self.set_setting('DEFAULT_TO_CXX')
-      f(self)
-
-  metafunc._parameterize = {'': (False,),
-                            'wasm': (True,)}
-  return metafunc
 
 
 def no_wasm2js(note=''):
@@ -787,7 +753,7 @@ class TestCoreBase(RunnerCore):
     self.do_core_test('test_stack.c')
 
   def test_stack_align(self):
-    src = test_file('core/test_stack_align.cpp')
+    src = test_file('core/test_stack_align.c')
 
     def test():
       self.do_runf(src, ['''align 4: 0
@@ -894,6 +860,9 @@ base align: 0, 0, 0, 0'''])
 
   @with_both_sjlj
   def test_longjmp_zero(self):
+    if '-fsanitize=undefined' in self.emcc_args and self.get_setting('SUPPORT_LONGJMP') == 'emscripten':
+      # For some reason this tests fails under ubsan, but only with emscripten EH.
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/21533')
     self.do_core_test('test_longjmp_zero.c')
 
   def test_longjmp_with_and_without_exceptions(self):
@@ -1746,7 +1715,7 @@ int main() {
     self.do_core_test('test_mod_globalstruct.c')
 
   def test_sizeof(self):
-    self.do_core_test('test_sizeof.cpp')
+    self.do_core_test('test_sizeof.c')
 
   def test_llvm_used(self):
     self.do_core_test('test_llvm_used.c')
@@ -2656,7 +2625,7 @@ The current type of b is: 9
     self.do_runf('termios/test_tcgetattr.c', 'success')
 
   def test_time(self):
-    self.do_core_test('test_time.cpp')
+    self.do_core_test('test_time.c')
     for tz in ['EST+05EDT', 'UTC+0', 'CET']:
       print('extra tz test:', tz)
       with env_modify({'TZ': tz}):
@@ -2664,7 +2633,7 @@ The current type of b is: 9
         # possible. It seems that the TZ environment variable does not
         # work all the time (at least it's not well respected by
         # Node.js on Windows), but it does no harm either.
-        self.do_core_test('test_time.cpp')
+        self.do_core_test('test_time.c')
 
   def test_timeb(self):
     # Confirms they are called in reverse order
@@ -2687,6 +2656,7 @@ The current type of b is: 9
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_strptime_reentrant.c')
 
+  @crossplatform
   def test_strftime(self):
     self.do_core_test('test_strftime.c')
 
@@ -2751,7 +2721,29 @@ The current type of b is: 9
     self.do_runf('core/stack_overflow.c', 'Aborted(stack overflow', assert_returncode=NON_ZERO)
 
   def test_stackAlloc(self):
-    self.do_core_test('stackAlloc.cpp')
+    self.do_core_test('test_stackAlloc.c')
+
+  def test_legacy_stack_deps(self):
+    # stackSave/stackRestore/stackAlloc are now normal JS library
+    # functions that must be $-prefixed in `__deps` lists.  However,
+    # to support legacy code we continue to support the non-prefixed
+    # versions in `__deps` lists.
+    create_file('lib.js', '''
+    addToLibrary({
+      foo__deps: ['stackSave', 'stackRestore'],
+      foo: () => {
+        var a = stackSave();
+        stackRestore(a);
+        return 0;
+      }
+    })''')
+    create_file('main.c', '''
+    int foo();
+
+    int main() {
+      return foo();
+    }''')
+    self.do_runf('main.c', emcc_args=['--js-library=lib.js'])
 
   def test_nestedstructs(self):
     src = r'''
@@ -2988,7 +2980,7 @@ The current type of b is: 9
           EM_ASM( out("Constructing lib object.") );
         }
       };
-      Foo global;
+      Foo side_global;
       ''')
     self.build_dlfcn_lib('liblib.cpp')
 
@@ -5354,7 +5346,7 @@ Pass: 0.000012 0.000012''')
     self.do_core_test('test_sscanf_caps.c')
 
   def test_sscanf_hex(self):
-    self.do_core_test('test_sscanf_hex.cpp')
+    self.do_core_test('test_sscanf_hex.c')
 
   def test_sscanf_float(self):
     self.do_core_test('test_sscanf_float.c')
@@ -7011,7 +7003,14 @@ void* operator new(size_t size) {
 
     for which, extra_args in cases:
       print(str(args) + ' ' + which)
-      self.do_core_test('dyncall_specific.c', emcc_args=['-D' + which] + list(args) + extra_args)
+      self.do_core_test('test_dyncall_specific.c', emcc_args=['-D' + which] + list(args) + extra_args)
+
+  @parameterized({
+    '': ([],),
+    'legacy': (['-sDYNCALLS'],),
+  })
+  def test_dyncall_pointers(self, args):
+    self.do_core_test('test_dyncall_pointers.c', emcc_args=args)
 
   @also_with_wasm_bigint
   def test_getValue_setValue(self):
@@ -7213,7 +7212,7 @@ void* operator new(size_t size) {
   def test_demangle_stacks_symbol_map(self):
     # disable aggressive inlining in binaryen
     self.set_setting('BINARYEN_EXTRA_PASSES', '--one-caller-inline-max-function-size=1')
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$stackTrace')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$jsStackTrace')
 
     self.set_setting('ENVIRONMENT', 'node,shell')
     if '-O' not in str(self.emcc_args) or '-O0' in self.emcc_args or '-O1' in self.emcc_args or '-g' in self.emcc_args:
@@ -7588,9 +7587,13 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
     self.do_runf('main.cpp', '418\ndotest returned: 42\n')
 
-  def test_embind_polymorphic_class_no_rtti(self):
-    self.emcc_args += ['-lembind', '-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
-    self.do_core_test('test_embind_polymorphic_class_no_rtti.cpp')
+  @no_2gb('https://github.com/emscripten-core/emscripten/issues/21633')
+  @parameterized({
+    '': ([],),
+    'no_rtti': (['-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0'],),
+  })
+  def test_embind_polymorphic_class(self, args):
+    self.do_core_test('test_embind_polymorphic_class_no_rtti.cpp', emcc_args=args + ['-lembind'])
 
   def test_embind_no_rtti_followed_by_rtti(self):
     src = r'''
@@ -9156,9 +9159,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # embind should work with stack overflow checks (see #12356)
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('DEFAULT_TO_CXX')
     self.emcc_args += ['-lembind']
-    self.do_run_in_out_file_test('core/pthread/create.c')
+    self.do_run_in_out_file_test('core/pthread/create.c', emcc_args=['-sDEFAULT_TO_CXX'])
 
   @node_pthreads
   def test_pthread_exceptions(self):

@@ -365,6 +365,29 @@ def with_env_modify(updates):
   return decorated
 
 
+# Decorator version of env_modify
+def also_with_env_modify(name_updates_mapping):
+
+  def decorated(f):
+    @wraps(f)
+    def metafunc(self, updates, *args, **kwargs):
+      if updates:
+        with env_modify(updates):
+          return f(self, *args, **kwargs)
+      else:
+        return f(self, *args, **kwargs)
+
+    parameterize = {'': (None,)}
+    for name, updates in name_updates_mapping.items():
+      parameterize[name] = (updates,)
+
+    metafunc._parameterize = parameterize
+
+    return metafunc
+
+  return decorated
+
+
 def also_with_minimal_runtime(f):
   assert callable(f)
 
@@ -463,6 +486,40 @@ def also_with_standalone_wasm(impure=False):
     return metafunc
 
   return decorated
+
+
+# Tests exception handling / setjmp/longjmp handling in Emscripten EH/SjLj mode
+# and if possible, new wasm EH/SjLj mode. This tests two combinations:
+# - Emscripten EH + Emscripten SjLj
+# - Wasm EH + Wasm SjLj
+def with_both_eh_sjlj(f):
+  assert callable(f)
+
+  def metafunc(self, is_native):
+    if is_native:
+      # Wasm EH is currently supported only in wasm backend and V8
+      if self.is_wasm2js():
+        self.skipTest('wasm2js does not support wasm EH/SjLj')
+      self.require_wasm_eh()
+      # FIXME Temporarily disabled. Enable this later when the bug is fixed.
+      if '-fsanitize=address' in self.emcc_args:
+        self.skipTest('Wasm EH does not work with asan yet')
+      self.emcc_args.append('-fwasm-exceptions')
+      self.set_setting('SUPPORT_LONGJMP', 'wasm')
+      f(self)
+    else:
+      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+      self.set_setting('SUPPORT_LONGJMP', 'emscripten')
+      # DISABLE_EXCEPTION_CATCHING=0 exports __cxa_can_catch and
+      # __cxa_is_pointer_type, so if we don't build in C++ mode, wasm-ld will
+      # error out because libc++abi is not included. See
+      # https://github.com/emscripten-core/emscripten/pull/14192 for details.
+      self.set_setting('DEFAULT_TO_CXX')
+      f(self)
+
+  metafunc._parameterize = {'': (False,),
+                            'wasm': (True,)}
+  return metafunc
 
 
 # This works just like `with_both_eh_sjlj` above but doesn't enable exceptions.
@@ -869,7 +926,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # For historical reasons emcc compiles and links as C++ by default.
     # However we want to run our tests in a more strict manner.  We can
     # remove this if the issue above is ever fixed.
-    self.set_setting('DEFAULT_TO_CXX', 0)
+    self.set_setting('NO_DEFAULT_TO_CXX')
     self.ldflags = []
     # Increate stack trace limit to maximise usefulness of test failure reports
     self.node_args = ['--stack-trace-limit=50']

@@ -10,14 +10,16 @@ import shutil
 import glob
 import importlib.util
 import sys
+import subprocess
 from typing import Set
+from urllib.request import urlopen
+
 from tools import cache
 from tools import config
 from tools import shared
 from tools import system_libs
 from tools import utils
 from tools.settings import settings
-
 from tools.toolchain_profiler import ToolchainProfiler
 
 ports = []
@@ -296,13 +298,15 @@ class Ports:
     def retrieve():
       # retrieve from remote server
       logger.info(f'retrieving port: {name} from {url}')
-      try:
-        import requests
-        response = requests.get(url)
-        data = response.content
-      except (ImportError, requests.exceptions.InvalidSchema):
-        # requests does not support 'file://' protocol and raises InvalidSchema
-        from urllib.request import urlopen
+
+      if utils.MACOS:
+        # Use `curl` over `urllib` on macOS to avoid issues with
+        # certificate verification.
+        # https://stackoverflow.com/questions/40684543/how-to-make-python-use-ca-certificates-from-mac-os-truststore
+        # Unlike on Windows or Linux, curl is guaranteed to always be
+        # available on macOS.
+        data = subprocess.check_output(['curl', '-sSL', url])
+      else:
         f = urlopen(url)
         data = f.read()
 
@@ -493,10 +497,9 @@ def get_libs(settings):
   needed = get_needed_ports(settings)
 
   for port in dependency_order(needed):
-    if port.needed(settings):
-      port.linker_setup(Ports, settings)
-      # port.get returns a list of libraries to link
-      ret += port.get(Ports, settings, shared)
+    port.linker_setup(Ports, settings)
+    # port.get returns a list of libraries to link
+    ret += port.get(Ports, settings, shared)
 
   ret.reverse()
   return ret

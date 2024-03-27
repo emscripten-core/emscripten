@@ -135,7 +135,7 @@ def get_all_tests(modules):
 
 
 def get_crossplatform_tests(modules):
-  suites = ['core2', 'other'] # We don't need all versions of every test
+  suites = ['core0', 'other'] # We don't need all versions of every test
   crossplatform_tests = []
   # Walk over the test suites and find the test functions with the
   # is_crossplatform_test attribute applied by @crossplatform decorator
@@ -466,6 +466,7 @@ def main(args):
   all_tests = get_all_tests(modules)
   if options.crossplatform_only:
     tests = get_crossplatform_tests(modules)
+    skip_requested_tests(options.tests, modules)
   else:
     tests = tests_with_expanded_wildcards(tests, all_tests)
     tests = skip_requested_tests(tests, modules)

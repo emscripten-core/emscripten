@@ -29,6 +29,8 @@ $__wasm_init_tls
 $_emscripten_check_mailbox
 $_emscripten_proxy_main
 $_emscripten_run_on_main_thread_js
+$_emscripten_stack_alloc
+$_emscripten_stack_restore
 $_emscripten_thread_crashed
 $_emscripten_thread_exit
 $_emscripten_thread_free_data
@@ -69,6 +71,7 @@ $em_task_queue_is_empty
 $emscripten_current_thread_process_queued_calls
 $emscripten_futex_wait
 $emscripten_futex_wake
+$emscripten_stack_get_current
 $emscripten_stack_set_limits
 $free_ctx
 $get_tasks_for_thread
@@ -86,8 +89,5 @@ $receive_notification
 $remove_active_ctx
 $run_js_func
 $sbrk
-$stackAlloc
-$stackRestore
-$stackSave
 $undo
 $unlock

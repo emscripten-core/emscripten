@@ -18,8 +18,30 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.56 (in development)
+3.1.57 (in development)
 -----------------------
+- musl libc updated from v1.2.4 to v1.2.5. (#21598)
+- In `MODULARIZE` mode we no longer export the module ready promise as `ready`.
+  This was previously exposed on the Module for historical reasons even though
+  in `MODULARIZE` mode the only way to get access to the module is to wait on
+  the promise returned from the factory function. (#21564)
+- JS library code is now executed in its own context/scope, which limits how
+  much of the compiler internals are accessible. If there are build time JS
+  symbols that you are depending on, but that were not added to this scope,
+  please file a bug and we can add more to this scope. (#21542)
+- The JS functions for manipulating the native/shadow stack
+  (`stackSave`/`stackRestore`/`stackAlloc`) are now just regular JS library
+  function and as such are only included if you explicitly depend on them.  If
+  you use these functions in your JS code you will need to depend on them via
+  either:
+  - The `EM_JS_DEPS` macro for `EM_ASM`/`EM_JS` code.
+  - The `__deps` attribute for JS library functions
+  - The `-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE` flag for `--pre-js`/`--post-js`
+    code
+  (#21555)
+
+3.1.56 - 03/14/24
+-----------------
 - emscripten will now generate an `unused-command-line-argument` warning if
   a `-s` setting is specified more than once on the command line with
   conflicting values.  In this case the first setting is ignored. (#21464)

@@ -5,6 +5,10 @@ $__ofl_unlock
 $__unlock
 $__unlockfile
 $__wasm_call_ctors
+$_emscripten_stack_alloc
+$_emscripten_stack_restore
+$_emscripten_tempret_get
+$_emscripten_tempret_set
 $add
 $emscripten_stack_get_base
 $emscripten_stack_get_current
@@ -12,8 +16,3 @@ $emscripten_stack_get_end
 $emscripten_stack_get_free
 $emscripten_stack_init
 $fflush
-$getTempRet0
-$setTempRet0
-$stackAlloc
-$stackRestore
-$stackSave

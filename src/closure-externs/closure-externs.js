@@ -242,7 +242,20 @@ var sampleRate;
  */
 var id;
 
+/**
+ * Used in MODULARIZE mode as the name of the incoming module argument.
+ * This is generated outside of the code we pass to closure so from closure's
+ * POV this is "extern".
+ */
 var moduleArg;
+
+/**
+ * Used in MODULARIZE mode.
+ * We need to access this after the code we pass to closure so from closure's
+ * POV this is "extern".
+ * @suppress {duplicate}
+ */
+var readyPromise;
 
 /**
  * This was removed from upstream closure compiler in

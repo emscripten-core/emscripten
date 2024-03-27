@@ -5,6 +5,8 @@
 
 #include <emscripten.h>
 
+EM_JS_DEPS(deps, "$stackSave,$stackAlloc");
+
 int main() {
   EM_ASM({
     var size = 128;
