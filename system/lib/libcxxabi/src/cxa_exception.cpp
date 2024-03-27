@@ -207,7 +207,12 @@ void __cxa_free_exception(void *thrown_object) throw() {
 }
 
 __cxa_exception* __cxa_init_primary_exception(void* object, std::type_info* tinfo,
+#ifdef __USING_WASM_EXCEPTIONS__
+// In Wasm, a destructor returns its argument
+                                              void *(_LIBCXXABI_DTOR_FUNC* dest)(void*)) throw() {
+#else
                                               void(_LIBCXXABI_DTOR_FUNC* dest)(void*)) throw() {
+#endif
   __cxa_exception* exception_header = cxa_exception_from_thrown_object(object);
   exception_header->referenceCount = 0;
   exception_header->unexpectedHandler = std::get_unexpected();

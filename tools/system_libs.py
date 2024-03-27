@@ -1619,6 +1619,12 @@ class libcxx(NoExceptLibrary, MTLibrary):
     'libdispatch.cpp',
   ]
 
+  def get_cflags(self):
+    cflags = super().get_cflags()
+    if self.eh_mode == Exceptions.WASM:
+      cflags.append('-D__USING_WASM_EXCEPTIONS__')
+    return cflags
+
 
 class libunwind(NoExceptLibrary, MTLibrary):
   name = 'libunwind'
