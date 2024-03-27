@@ -380,6 +380,7 @@ def dependency_order(port_list):
 
   def dfs(node):
     for dep in node.deps:
+      dep, _ = split_port_options(dep)
       child = port_map[dep]
       if child in unsorted:
         unsorted.remove(child)
@@ -396,6 +397,7 @@ def resolve_dependencies(port_set, settings):
   def add_deps(node):
     node.process_dependencies(settings)
     for d in node.deps:
+      d, _ = split_port_options(d)
       if d not in ports_by_name:
         utils.exit_with_error(f'unknown dependency `{d}` for port `{node.name}`')
       dep = ports_by_name[d]
@@ -426,16 +428,53 @@ def show_port_help_and_exit(port):
   sys.exit(0)
 
 
+# extract dict and delegate to port.handle_options for handling (format is 'option1=value1:option2=value2')
+def handle_port_options(name, options, error_handler):
+  port = ports_by_name[name]
+  if options == 'help':
+    show_port_help_and_exit(port)
+  if not hasattr(port, 'handle_options'):
+    error_handler(f'no options available for port `{name}`')
+  else:
+    options_dict = {}
+    for name_value in options.split(':'):
+      nv = name_value.split('=', 1)
+      if len(nv) != 2:
+        error_handler(f'`{name_value}` is missing a value')
+      if nv[0] not in port.OPTIONS:
+        error_handler(f'`{nv[0]}` is not supported; available options are {port.OPTIONS}')
+      if nv[0] in options_dict:
+        error_handler(f'duplicate option `{nv[0]}`')
+      options_dict[nv[0]] = nv[1]
+    port.handle_options(options_dict, error_handler)
+
+
+# handle port dependencies (ex: deps=['sdl2_image:formats=jpg'])
+def handle_port_deps(name, error_handler):
+  port = ports_by_name[name]
+  for dep in port.deps:
+    dep_name, dep_options = split_port_options(dep)
+    if dep_name not in ports_by_name:
+      error_handler(f'unknown dependency `{dep_name}`')
+    if dep_options:
+      handle_port_options(dep_name, dep_options, error_handler)
+    handle_port_deps(dep_name, error_handler)
+
+
+def split_port_options(arg):
+  # Ignore ':' in first or second char of string since we could be dealing with a windows drive separator
+  pos = arg.find(':', 2)
+  if pos != -1:
+    return arg[:pos], arg[pos + 1:]
+  else:
+    return arg, None
+
+
 def handle_use_port_arg(settings, arg, error_handler=None):
   if not error_handler:
     def error_handler(message):
       handle_use_port_error(arg, message)
-  # Ignore ':' in first or second char of string since we could be dealing with a windows drive separator
-  pos = arg.find(':', 2)
-  if pos != -1:
-    name, options = arg[:pos], arg[pos + 1:]
-  else:
-    name, options = arg, None
+  name, options = split_port_options(arg)
   if name.endswith('.py'):
     port_file_path = name
     if not os.path.isfile(port_file_path):
@@ -445,23 +484,8 @@ def handle_use_port_arg(settings, arg, error_handler=None):
     error_handler(f'invalid port name: `{name}`')
   ports_needed.add(name)
   if options:
-    port = ports_by_name[name]
-    if options == 'help':
-      show_port_help_and_exit(port)
-    if not hasattr(port, 'handle_options'):
-      error_handler(f'no options available for port `{name}`')
-    else:
-      options_dict = {}
-      for name_value in options.split(':'):
-        nv = name_value.split('=', 1)
-        if len(nv) != 2:
-          error_handler(f'`{name_value}` is missing a value')
-        if nv[0] not in port.OPTIONS:
-          error_handler(f'`{nv[0]}` is not supported; available options are {port.OPTIONS}')
-        if nv[0] in options_dict:
-          error_handler(f'duplicate option `{nv[0]}`')
-        options_dict[nv[0]] = nv[1]
-      port.handle_options(options_dict, error_handler)
+    handle_port_options(name, options, error_handler)
+  handle_port_deps(name, error_handler)
   return name
 
 

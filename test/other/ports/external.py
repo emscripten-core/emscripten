@@ -23,7 +23,7 @@ opts: Dict[str, Optional[str]] = {
   'dependency': None
 }
 
-deps = []
+deps = ['sdl2_image:formats=jpg']
 
 
 def get_lib_name(settings):
