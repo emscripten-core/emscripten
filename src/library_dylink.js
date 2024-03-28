@@ -1150,29 +1150,39 @@ var LibraryDylink = {
 #endif
   },
 
-  // Async version of dlopen.
-  _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError'],
-  _emscripten_dlopen_js: (handle, onsuccess, onerror, user_data) => {
-    /** @param {Object=} e */
+  // Utility function to encapsulate promise handling with callbacks
+  $promiseToCallback: function(promise, successFnPtr, errorFnPtr, user_data) {
     function errorCallback(e) {
-      var filename = UTF8ToString(handle + {{{ C_STRUCTS.dso.name }}});
-      dlSetError(`'Could not load dynamic lib: ${filename}\n${e}`);
+      var filename = UTF8ToString(handle + C_STRUCTS.dso.name);
+      dlSetError(`Could not load dynamic lib: ${filename}\n${e}`);
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {{{ makeDynCall('vpp', 'onerror') }}}(handle, user_data));
+      if(errorFnPtr) {
+        callUserCallback(() => dynCall('vpp', errorFnPtr, [0, user_data]));
+      }
     }
     function successCallback() {
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {{{ makeDynCall('vpp', 'onsuccess') }}}(handle, user_data));
+      if(successFnPtr) {
+        callUserCallback(() => dynCall('vpp', successFnPtr, [0, user_data]));
+      }
     }
 
+    // Assert that the promise is provided
+    assert(promise, 'promiseToCallback was called without a valid promise.');
+    promise.then(successCallback).catch(errorCallback);
+  },
+
+  _emscripten_dlopen_js__deps: ['$dlopenInternal', '$runtimeKeepalivePush', '$runtimeKeepalivePop', '$dlSetError', '$dynCall', '$promiseToCallback'],
+  _emscripten_dlopen_js: function(handle, onsuccess, onerror, user_data) {
     {{{ runtimeKeepalivePush() }}}
     var promise = dlopenInternal(handle, { loadAsync: true });
-    if (promise) {
-      promise.then(successCallback, errorCallback);
-    } else {
-      errorCallback();
-    }
+    
+    // Utilize the $promiseToCallback utility function
+    promiseToCallback(promise, onsuccess, onerror, user_data);
   },
+
+
+
 
   _dlsym_catchup_js: (handle, symbolIndex) => {
 #if DYLINK_DEBUG
