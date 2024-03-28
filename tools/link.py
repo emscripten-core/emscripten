@@ -1344,7 +1344,7 @@ def phase_linker_setup(options, state, newargs):
   if '-lembind' in [x for _, x in state.link_flags]:
     settings.EMBIND = 1
 
-  if options.embind_emit_tsd or options.emit_tsd:
+  if options.emit_tsd:
     settings.EMIT_TSD = True
 
   if settings.PTHREADS:
@@ -1895,7 +1895,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
   if settings.EMBIND_AOT:
     phase_embind_aot(wasm_target, js_syms)
 
-  if options.embind_emit_tsd or options.emit_tsd:
+  if options.emit_tsd:
     phase_emit_tsd(options, wasm_target, js_syms, metadata)
 
   if options.js_transform:
@@ -1981,12 +1981,7 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
 @ToolchainProfiler.profile_block('emit tsd')
 def phase_emit_tsd(options, wasm_target, js_syms, metadata):
   logger.debug('emit tsd')
-  filename = ''
-  # Support using either option for now, but prefer emit_tsd if specified.
-  if options.emit_tsd:
-    filename = options.emit_tsd
-  else:
-    filename = options.embind_emit_tsd
+  filename = options.emit_tsd
   embind_tsd = ''
   if settings.EMBIND:
     embind_tsd = run_embind_gen(wasm_target, js_syms, {'EMBIND_JS': False})

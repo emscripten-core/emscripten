@@ -1277,9 +1277,9 @@ def parse_args(newargs):
     elif check_arg('--source-map-base'):
       options.source_map_base = consume_arg()
     elif check_arg('--embind-emit-tsd'):
-      options.embind_emit_tsd = consume_arg()
+      diagnostics.warning('deprecated', '--embind-emit-tsd is deprecated.  Use --emit-tsd instead.')
+      options.emit_tsd = consume_arg()
     elif check_arg('--emit-tsd'):
-      diagnostics.warning('experimental', '--emit-tsd is still experimental. Not all definitions are generated.')
       options.emit_tsd = consume_arg()
     elif check_flag('--no-entry'):
       options.no_entry = True
