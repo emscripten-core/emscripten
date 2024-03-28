@@ -660,10 +660,10 @@ static void scan_eh_tab(scan_results &results, _Unwind_Action actions,
     //       dwarf emission
     // Parse LSDA header.
     uint8_t lpStartEncoding = *lsda++;
-    const uint8_t* lpStart =
-        (const uint8_t*)readEncodedPointer(&lsda, lpStartEncoding, base);
-    if (lpStart == 0)
-        lpStart = (const uint8_t*)funcStart;
+    const uint8_t* lpStart = lpStartEncoding == DW_EH_PE_omit
+                                 ? (const uint8_t*)funcStart
+                                 : (const uint8_t*)readEncodedPointer(&lsda, lpStartEncoding, base);
+    (void)(lpStart);  // Unused when using SjLj/Wasm exceptions
     uint8_t ttypeEncoding = *lsda++;
     if (ttypeEncoding != DW_EH_PE_omit)
     {
@@ -677,7 +677,7 @@ static void scan_eh_tab(scan_results &results, _Unwind_Action actions,
     // includes current PC.
     uint8_t callSiteEncoding = *lsda++;
 #if defined(__USING_SJLJ_EXCEPTIONS__) || defined(__USING_WASM_EXCEPTIONS__)
-    (void)callSiteEncoding;  // When using SjLj/Wasm exceptions, callSiteEncoding is never used
+    (void)callSiteEncoding;  // Unused when using SjLj/Wasm exceptions
 #endif
     uint32_t callSiteTableLength = static_cast<uint32_t>(readULEB128(&lsda));
     const uint8_t* callSiteTableStart = lsda;
@@ -1311,7 +1311,7 @@ _LIBCXXABI_FUNC_VIS _Unwind_Reason_Code __xlcxx_personality_v1(
     __attribute__((__alias__("__gxx_personality_v0")));
 #endif
 
-}  // extern "C"
+} // extern "C"
 
 }  // __cxxabiv1
 

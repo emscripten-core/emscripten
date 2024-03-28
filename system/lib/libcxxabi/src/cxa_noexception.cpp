@@ -76,7 +76,7 @@ void __cxa_free_exception(void *thrown_object) throw() {
 }
 #endif
 
-}  // extern "C"
+} // extern "C"
 
 // provide dummy implementations for the 'no exceptions' case.
 uint64_t __getExceptionClass  (const _Unwind_Exception*)           { return 0; }
