@@ -395,8 +395,16 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--embind-emit-tsd <path>``
   [link]
-  Generate a TypeScript definition file from the exported embind bindings. The
-  program will be instrumented and run in node in order to to generate the file.
+  Generates TypeScript definition file.  Deprecated: Use ``--emit-tsd`` instead.
+
+.. _emcc-emit-tsd:
+
+``--emit-tsd <path>``
+  [link]
+  Generate a TypeScript definition file for the emscripten module. The definition
+  file will include exported Wasm functions, runtime exports, and exported
+  embind bindings (if used). In order to generate bindings from embind, the
+  program will be instrumented and run in node.
 
 ``--ignore-dynamic-linking``
   [link]

@@ -39,6 +39,9 @@ See docs/process.md for more on how version tagging works.
   - The `-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE` flag for `--pre-js`/`--post-js`
     code
   (#21555)
+- TypeScript definitions for Wasm exports, runtime exports, and embind bindings
+  can now be generated with `--emit-tsd`. The option `--embind-emit-tsd` has been
+  deprecated, use `--emit-tsd` instead.
 
 3.1.56 - 03/14/24
 -----------------
