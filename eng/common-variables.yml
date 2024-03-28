@@ -9,20 +9,12 @@ variables:
     value: .NETCore
   - name: HelixApiAccessToken
     value: ''
-  - name: _RunAsPublic
-    value: True
-  - name: _RunAsInternal
-    value: False
   - name: _InternalBuildArgs
     value: ''
   - name: _BuildConfig
     value: Release
 
   - ${{ if and(ne(variables['System.TeamProject'], 'public'), notin(variables['Build.Reason'], 'PullRequest')) }}:
-    - name: _RunAsPublic
-      value: False
-    - name: _RunAsInternal
-      value: True
     - name: _SignType
       value: real
     # Publish-Build-Assets provides: MaestroAccessToken, BotAccount-dotnet-maestro-bot-PAT
