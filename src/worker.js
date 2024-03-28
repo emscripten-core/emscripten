@@ -160,6 +160,7 @@ function handleMessage(e) {
 #endif // MINIMAL_RUNTIME
 
 #if MAIN_MODULE
+      Module['dynamicLibraries'] = e.data.dynamicLibraries;
       Module['sharedModules'] = e.data.sharedModules;
 #if RUNTIME_DEBUG
       dbg(`received ${Object.keys(e.data.sharedModules).length} shared modules: ${Object.keys(e.data.sharedModules)}`);
