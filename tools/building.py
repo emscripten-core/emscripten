@@ -1154,11 +1154,6 @@ def map_to_js_libs(library_name):
     # for compatibility with GNU toolchains.
     'stdc++': [],
   }
-  # And some are hybrid and require JS and native libraries to be included
-  native_library_map = {
-    'embind': 'libembind',
-    'GL': 'libGL',
-  }
   settings_map = {
     'glfw': {'USE_GLFW': 2},
     'glfw3': {'USE_GLFW': 3},
@@ -1172,12 +1167,12 @@ def map_to_js_libs(library_name):
   if library_name in library_map:
     libs = library_map[library_name]
     logger.debug('Mapping library `%s` to JS libraries: %s' % (library_name, libs))
-    return (libs, native_library_map.get(library_name))
+    return libs
 
   if library_name.endswith('.js') and os.path.isfile(path_from_root('src', f'library_{library_name}')):
-    return ([f'library_{library_name}'], None)
+    return [f'library_{library_name}']
 
-  return (None, None)
+  return None
 
 
 # Map a linker flag to a settings. This lets a user write -lSDL2 and it will

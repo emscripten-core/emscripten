@@ -2632,14 +2632,9 @@ def process_libraries(state, linker_inputs):
 
     logger.debug('looking for library "%s"', lib)
 
-    js_libs, native_lib = building.map_to_js_libs(lib)
+    js_libs = building.map_to_js_libs(lib)
     if js_libs is not None:
       libraries += [(i, js_lib) for js_lib in js_libs]
-      # If native_lib is returned then include it in the link
-      # via forced_stdlibs.
-      if native_lib:
-        state.forced_stdlibs.append(native_lib)
-      continue
 
     # We don't need to resolve system libraries to absolute paths here, we can just
     # let wasm-ld handle that.  However, we do want to map to the correct variant.
@@ -2647,6 +2642,9 @@ def process_libraries(state, linker_inputs):
     if 'lib' + lib in system_libs_map:
       lib = system_libs_map['lib' + lib].get_link_flag()
       new_flags.append((i, lib))
+      continue
+
+    if js_libs is not None:
       continue
 
     if building.map_and_apply_to_settings(lib):
