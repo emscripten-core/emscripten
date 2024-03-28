@@ -15,7 +15,6 @@ import re
 import shlex
 import stat
 import shutil
-import sys
 import time
 from subprocess import PIPE
 from urllib.parse import quote
@@ -664,7 +663,7 @@ def check_browser_versions():
 @ToolchainProfiler.profile_block('linker_setup')
 def phase_linker_setup(options, state, newargs):
   system_libpath = '-L' + str(cache.get_lib_dir(absolute=True))
-  state.add_link_flag(sys.maxsize, system_libpath)
+  state.append_link_flag(system_libpath)
 
   # We used to do this check during on startup during `check_sanity`, but
   # we now only do it when linking, in order to reduce the overhead when
@@ -1194,7 +1193,7 @@ def phase_linker_setup(options, state, newargs):
     settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
 
   if settings.STB_IMAGE:
-    state.add_link_flag(sys.maxsize, '-lstb_image')
+    state.append_link_flag('-lstb_image')
     settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
 
   if settings.USE_WEBGL2:
@@ -1226,7 +1225,9 @@ def phase_linker_setup(options, state, newargs):
       # implements can remain unimplemented, so it won't be linked in
       # automatically)
       # TODO: find a better way to do this
-      state.forced_stdlibs.append('libwasmfs_noderawfs')
+      state.append_link_flag('--whole-archive')
+      state.append_link_flag('-lwasmfs_noderawfs')
+      state.append_link_flag('--no-whole-archive')
     settings.FILESYSTEM = 1
     settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
     settings.JS_LIBRARIES.append((0, 'library_wasmfs.js'))
@@ -1282,8 +1283,7 @@ def phase_linker_setup(options, state, newargs):
       ]
 
   if settings.FETCH:
-    state.add_link_flag(sys.maxsize, '-lfetch')
-    settings.JS_LIBRARIES.append((0, 'library_fetch.js'))
+    state.append_link_flag('-lfetch')
 
   if settings.DEMANGLE_SUPPORT:
     settings.REQUIRED_EXPORTS += ['__cxa_demangle', 'free']
@@ -1339,7 +1339,7 @@ def phase_linker_setup(options, state, newargs):
     # overrides that.
     default_setting('ABORTING_MALLOC', 0)
 
-  if '-lembind' in [x for _, x in state.link_flags]:
+  if state.has_link_flag('-lembind'):
     settings.EMBIND = 1
 
   if options.embind_emit_tsd or options.emit_tsd:
@@ -1450,7 +1450,7 @@ def phase_linker_setup(options, state, newargs):
   # When not declaring wasm module exports in outer scope one by one, disable minifying
   # wasm module export names so that the names can be passed directly to the outer scope.
   # Also, if using library_exports.js API, disable minification so that the feature can work.
-  if not settings.DECLARE_ASM_MODULE_EXPORTS or '-lexports.js' in [x for _, x in state.link_flags]:
+  if not settings.DECLARE_ASM_MODULE_EXPORTS or state.has_link_flag('-lexports.js'):
     settings.MINIFY_WASM_EXPORT_NAMES = 0
 
   # Enable minification of wasm imports and exports when appropriate, if we
@@ -1653,7 +1653,7 @@ def phase_linker_setup(options, state, newargs):
     # (because stack overflows will trap rather than corrupting data).
     settings.STACK_FIRST = True
 
-  if '--stack-first' in [x for _, x in state.link_flags]:
+  if state.has_link_flag('--stack-first'):
     settings.STACK_FIRST = True
     if settings.USE_ASAN:
       exit_with_error('--stack-first is not compatible with asan')
@@ -1846,13 +1846,13 @@ def phase_linker_setup(options, state, newargs):
 
 
 @ToolchainProfiler.profile_block('calculate system libraries')
-def phase_calculate_system_libraries(state, linker_arguments, newargs):
+def phase_calculate_system_libraries(linker_arguments, newargs):
   extra_files_to_link = []
   # Link in ports and system libraries, if necessary
   if not settings.SIDE_MODULE:
     # Ports are always linked into the main module, never the side module.
     extra_files_to_link += ports.get_libs(settings)
-  extra_files_to_link += system_libs.calculate(newargs, forced=state.forced_stdlibs)
+  extra_files_to_link += system_libs.calculate(newargs)
   linker_arguments.extend(extra_files_to_link)
 
 
@@ -2894,6 +2894,9 @@ def phase_calculate_linker_inputs(options, state, linker_inputs):
   # Decide what we will link
   process_libraries(state, linker_inputs)
 
+  # Interleave the linker inputs with the linker flags while maintainging their
+  # relative order on the command line (both of these list are pairs, with the
+  # first element being their command line position).
   linker_args = [val for _, val in sorted(linker_inputs + state.link_flags)]
 
   # If we are linking to an intermediate object then ignore other
@@ -2943,7 +2946,7 @@ def run(linker_inputs, options, state, newargs):
     logger.debug('stopping after linking to object file')
     return 0
 
-  phase_calculate_system_libraries(state, linker_arguments, newargs)
+  phase_calculate_system_libraries(linker_arguments, newargs)
 
   js_syms = {}
   if (not settings.SIDE_MODULE or settings.ASYNCIFY) and not shared.SKIP_SUBPROCS:
