@@ -49,6 +49,7 @@ __cxa_free_exception(void *thrown_exception) throw();
 // This function is an LLVM extension, which mirrors the same extension in libsupc++ and libcxxrt
 extern _LIBCXXABI_FUNC_VIS __cxa_exception*
 #ifdef __USING_WASM_EXCEPTIONS__
+// In Wasm, a destructor returns its argument
 __cxa_init_primary_exception(void* object, std::type_info* tinfo, void*(_LIBCXXABI_DTOR_FUNC* dest)(void*)) throw();
 #else
 __cxa_init_primary_exception(void* object, std::type_info* tinfo, void(_LIBCXXABI_DTOR_FUNC* dest)(void*)) throw();
@@ -58,7 +59,6 @@ __cxa_init_primary_exception(void* object, std::type_info* tinfo, void(_LIBCXXAB
 extern _LIBCXXABI_FUNC_VIS _LIBCXXABI_NORETURN void
 __cxa_throw(void *thrown_exception, std::type_info *tinfo,
 #ifdef __USING_WASM_EXCEPTIONS__
-            // In Wasm, a destructor returns its argument
             void *(_LIBCXXABI_DTOR_FUNC *dest)(void *));
 #else
             void (_LIBCXXABI_DTOR_FUNC *dest)(void *));
