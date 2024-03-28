@@ -2412,6 +2412,10 @@ def install_system_headers(stamp):
     dest = os.path.join(target_include_dir, dest)
     copytree_exist_ok(src, dest)
 
+  modules_src = utils.path_from_root('system/lib/libcxx/modules')
+  modules_dest = cache.get_sysroot_dir('modules')
+  copytree_exist_ok(modules_src, modules_dest)
+
   pkgconfig_src = utils.path_from_root('system/lib/pkgconfig')
   pkgconfig_dest = cache.get_sysroot_dir('lib/pkgconfig')
   copytree_exist_ok(pkgconfig_src, pkgconfig_dest)

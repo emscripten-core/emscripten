@@ -1,3 +1,6 @@
+// Copied from module.modulemap.in, with
+// @requires_LIBCXX_ENABLE_LOCALIZATION@ removed
+
 // Main C++ standard library interfaces
 module std_algorithm [system] {
   header "algorithm"
@@ -549,7 +552,6 @@ module std_experimental [system] {
     export *
   }
   module regex {
-    @requires_LIBCXX_ENABLE_LOCALIZATION@
     header "experimental/regex"
     export *
   }
