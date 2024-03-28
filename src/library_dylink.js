@@ -1155,13 +1155,13 @@ var LibraryDylink = {
     function errorCallback(e) {
       var filename = UTF8ToString(handle + C_STRUCTS.dso.name);
       dlSetError(`Could not load dynamic lib: ${filename}\n${e}`);
-      runtimeKeepalivePop();
+      {{{ runtimeKeepalivePop() }}}
       if(errorFnPtr) {
         callUserCallback(() => dynCall('vpp', errorFnPtr, [0, user_data]));
       }
     }
     function successCallback() {
-      runtimeKeepalivePop();
+      {{{ runtimeKeepalivePop() }}}
       if(successFnPtr) {
         callUserCallback(() => dynCall('vpp', successFnPtr, [0, user_data]));
       }
@@ -1174,7 +1174,7 @@ var LibraryDylink = {
 
   _emscripten_dlopen_js__deps: ['$dlopenInternal', '$runtimeKeepalivePush', '$runtimeKeepalivePop', '$dlSetError', '$dynCall', '$promiseToCallback'],
   _emscripten_dlopen_js: function(handle, onsuccess, onerror, user_data) {
-    runtimeKeepalivePush();
+    {{{ runtimeKeepalivePush() }}}
     var promise = dlopenInternal(handle, { loadAsync: true });
     
     // Utilize the $promiseToCallback utility function
