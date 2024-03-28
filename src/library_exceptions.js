@@ -102,17 +102,28 @@ var LibraryExceptions = {
     }
   },
 
-  // Here, we throw an exception after recording a couple of values that we need to remember
-  // We also remember that it was the last exception thrown as we need to know that later.
-  __cxa_throw__deps: ['$ExceptionInfo', '$exceptionLast', '$uncaughtExceptionCount'],
-  __cxa_throw: (ptr, type, destructor) => {
+  // Initialize exception info and return it.
+  __cxa_init_primary_exception__deps: ['$ExceptionInfo'],
+  __cxa_init_primary_exception: (ptr, type, destructor) => {
 #if EXCEPTION_DEBUG
-    dbg('__cxa_throw: ' + [ptrToString(ptr), type, ptrToString(destructor)]);
+    dbg('__cxa_init_primary_exception: ' + [ptrToString(ptr), type, ptrToString(destructor)]);
 #endif
     var info = new ExceptionInfo(ptr);
     // Initialize ExceptionInfo content after it was allocated in __cxa_allocate_exception.
     info.init(type, destructor);
-    {{{ storeException('exceptionLast', 'ptr') }}}
+    var ret;
+    {{{ storeException('ret', 'ptr') }}}
+    return ret;
+  },
+
+  // Here, we throw an exception after recording a couple of values that we need to remember
+  // We also remember that it was the last exception thrown as we need to know that later.
+  __cxa_throw__deps: ['$exceptionLast', '$uncaughtExceptionCount', '__cxa_init_primary_exception'],
+  __cxa_throw: (ptr, type, destructor) => {
+#if EXCEPTION_DEBUG
+    dbg('__cxa_throw: ' + [ptrToString(ptr), type, ptrToString(destructor)]);
+#endif
+    exceptionLast = ___cxa_init_primary_exception(ptr, type, destructor);
     uncaughtExceptionCount++;
     {{{ makeThrow('exceptionLast') }}}
   },
