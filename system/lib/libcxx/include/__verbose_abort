@@ -38,7 +38,8 @@ _LIBCPP_NORETURN _LIBCPP_AVAILABILITY_VERBOSE_ABORT _LIBCPP_OVERRIDABLE_FUNC_VIS
 // make sure that the program terminates but without taking any complex dependencies in this header.
 #if !defined(_LIBCPP_VERBOSE_ABORT)
 
-#  if !_LIBCPP_AVAILABILITY_HAS_VERBOSE_ABORT
+// XXX EMSCRIPTEN __libcpp_verbose_abort creases code size too much
+#  if !_LIBCPP_AVAILABILITY_HAS_VERBOSE_ABORT || defined (__EMSCRIPTEN__)
 // The decltype is there to suppress -Wunused warnings in this configuration.
 void __use(const char*, ...);
 #    define _LIBCPP_VERBOSE_ABORT(...) (decltype(::std::__use(__VA_ARGS__))(), __builtin_abort())

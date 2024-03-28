@@ -6,7 +6,5 @@
 #define _LIBCPP_ABI_NAMESPACE __2
 // Emscripten doesn't use PSTL at the moment.
 #define _LIBCPP_PSTL_CPU_BACKEND_SERIAL
-// __libcpp_verbose_abort creases code size too much
-#define _LIBCPP_AVAILABILITY_HAS_VERBOSE_ABORT 0
 #define _LIBCPP_HARDENING_MODE _LIBCPP_HARDENING_MODE_NONE
 #define _LIBCPP_HAS_NO_TIME_ZONE_DATABASE
