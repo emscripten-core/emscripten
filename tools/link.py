@@ -1193,8 +1193,8 @@ def phase_linker_setup(options, state, newargs):
   if not settings.WASM2JS:
     settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
 
-  if settings.STB_IMAGE and final_suffix in EXECUTABLE_ENDINGS:
-    state.forced_stdlibs.append('libstb_image')
+  if settings.STB_IMAGE:
+    state.add_link_flag(sys.maxsize, '-lstb_image')
     settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
 
   if settings.USE_WEBGL2:
@@ -1281,8 +1281,8 @@ def phase_linker_setup(options, state, newargs):
         '_wasmfs_get_cwd',
       ]
 
-  if settings.FETCH and final_suffix in EXECUTABLE_ENDINGS:
-    state.forced_stdlibs.append('libfetch')
+  if settings.FETCH:
+    state.add_link_flag(sys.maxsize, '-lfetch')
     settings.JS_LIBRARIES.append((0, 'library_fetch.js'))
 
   if settings.DEMANGLE_SUPPORT:
