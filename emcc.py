@@ -105,15 +105,26 @@ class EmccState:
     self.has_dash_c = False
     self.has_dash_E = False
     self.has_dash_S = False
+    # List of link options paired with their position on the command line [(i, option), ...].
     self.link_flags = []
     self.lib_dirs = []
-    self.forced_stdlibs = []
 
-  def add_link_flag(self, i, f):
-    if f.startswith('-L'):
-      self.lib_dirs.append(f[2:])
+  def has_link_flag(self, f):
+    return f in [x for _, x in self.link_flags]
 
-    self.link_flags.append((i, f))
+  def add_link_flag(self, i, flag):
+    if flag.startswith('-L'):
+      self.lib_dirs.append(flag[2:])
+    # Link flags should be adding in strictly ascending order
+    assert not self.link_flags or i > self.link_flags[-1][0], self.link_flags
+    self.link_flags.append((i, flag))
+
+  def append_link_flag(self, flag):
+    if self.link_flags:
+      index = self.link_flags[-1][0] + 1
+    else:
+      index = 1
+    self.add_link_flag(index, flag)
 
 
 class EmccOptions:

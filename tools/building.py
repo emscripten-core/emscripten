@@ -1142,6 +1142,7 @@ def map_to_js_libs(library_name):
     'X11': ['library_xlib.js'],
     'SDL': ['library_sdl.js'],
     'uuid': ['library_uuid.js'],
+    'fetch': ['library_fetch.js'],
     'websocket': ['library_websocket.js'],
     # These 4 libraries are separate under glibc but are all rolled into
     # libc with musl.  For compatibility with glibc we just ignore them
