@@ -1342,6 +1342,11 @@ def phase_linker_setup(options, state, newargs):
   if state.has_link_flag('-lembind'):
     settings.EMBIND = 1
 
+  if settings.EMBIND:
+    # Workaround for embind+LTO issue:
+    # https://github.com/emscripten-core/emscripten/issues/21653
+    settings.REQUIRED_EXPORTS.append('__getTypeName')
+
   if options.emit_tsd:
     settings.EMIT_TSD = True
 
