@@ -8815,7 +8815,7 @@ int main() {
       'at (src.wasm.)?foo',
       'at (src.wasm.)?main']
 
-    if '-fwasm-excpeptions' in self.emcc_args:
+    if '-fwasm-exceptions' in self.emcc_args:
       # FIXME Node v18.13 (LTS as of Jan 2023) has not yet implemented the new
       # optional 'traceStack' option in WebAssembly.Exception constructor
       # (https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/Exception)
