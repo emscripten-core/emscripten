@@ -75,7 +75,15 @@ var SyscallsLibrary = {
       var buffer = HEAPU8.slice(addr, addr + len);
       FS.msync(stream, buffer, offset, len, flags);
     },
+    // Just like `FS.getStream` but will throw EBADF if stream is undefined.
+    getStreamFromFD(fd) {
+      var stream = FS.getStreamChecked(fd);
+#if SYSCALL_DEBUG
+      dbg(`    (stream: "${stream.path}")`);
 #endif
+      return stream;
+    },
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
 
     // arguments handling
 
@@ -117,16 +125,6 @@ var SyscallsLibrary = {
 #endif
       return ret;
     },
-#if SYSCALLS_REQUIRE_FILESYSTEM
-    // Just like `FS.getStream` but will throw EBADF if stream is undefined.
-    getStreamFromFD(fd) {
-      var stream = FS.getStreamChecked(fd);
-#if SYSCALL_DEBUG
-      dbg(`    (stream: "${stream.path}")`);
-#endif
-      return stream;
-    },
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
   _mmap_js__i53abi: true,
