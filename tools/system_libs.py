@@ -2200,7 +2200,7 @@ class libstubs(DebugLibrary):
   src_files = ['emscripten_syscall_stubs.c', 'emscripten_libc_stubs.c']
 
 
-def get_libs_to_link(args, forced, only_forced):
+def get_libs_to_link(args):
   libs_to_link = []
 
   if '-nostdlib' in args:
@@ -2216,11 +2216,19 @@ def get_libs_to_link(args, forced, only_forced):
   # ones you want
   force_include = []
   force = os.environ.get('EMCC_FORCE_STDLIBS')
+  # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This
+  # avoids spending time checking for unresolved symbols in your project files,
+  # which can speed up linking, but if you do not have the proper list of
+  # actually needed libraries, errors can occur.
+  only_forced = os.environ.get('EMCC_ONLY_FORCED_STDLIBS')
+  if only_forced:
+    # One of the purposes EMCC_ONLY_FORCED_STDLIBS was to skip the scanning
+    # of the input files for reverse dependencies.
+    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` to avoid linking standard libraries')
   if force == '1':
     force_include = [name for name, lib in system_libs_map.items() if not lib.never_force]
   elif force is not None:
     force_include = force.split(',')
-  force_include += forced
   if force_include:
     logger.debug(f'forcing stdlibs: {force_include}')
 
@@ -2352,17 +2360,9 @@ def get_libs_to_link(args, forced, only_forced):
   return libs_to_link
 
 
-def calculate(args, forced):
-  # Setting this will only use the forced libs in EMCC_FORCE_STDLIBS. This avoids spending time checking
-  # for unresolved symbols in your project files, which can speed up linking, but if you do not have
-  # the proper list of actually needed libraries, errors can occur.
-  only_forced = os.environ.get('EMCC_ONLY_FORCED_STDLIBS')
-  if only_forced:
-    # One of the purposes EMCC_ONLY_FORCED_STDLIBS was to skip the scanning
-    # of the input files for reverse dependencies.
-    diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` to avoid linking standard libraries')
+def calculate(args):
 
-  libs_to_link = get_libs_to_link(args, forced, only_forced)
+  libs_to_link = get_libs_to_link(args)
 
   # When LINKABLE is set the entire link command line is wrapped in --whole-archive by
   # building.link_ldd.  And since --whole-archive/--no-whole-archive processing does not nest we

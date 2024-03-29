@@ -593,16 +593,9 @@ var LibraryBrowser = {
           Browser.mouseMovementY = Browser.getMovementY(event);
         }
 
-        // check if SDL is available
-        if (typeof SDL != "undefined") {
-          Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
-          Browser.mouseY = SDL.mouseY + Browser.mouseMovementY;
-        } else {
-          // just add the mouse delta to the current absolute mouse position
-          // FIXME: ideally this should be clamped against the canvas size and zero
-          Browser.mouseX += Browser.mouseMovementX;
-          Browser.mouseY += Browser.mouseMovementY;
-        }
+        // add the mouse delta to the current absolute mouse position
+        Browser.mouseX += Browser.mouseMovementX;
+        Browser.mouseY += Browser.mouseMovementY;
       } else {
         if (event.type === 'touchstart' || event.type === 'touchend' || event.type === 'touchmove') {
           var touch = event.touch;

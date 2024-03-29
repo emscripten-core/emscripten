@@ -3159,13 +3159,13 @@ More info: https://emscripten.org
     # Check that TypeScript generation works and that the program is runs as
     # expected.
     self.do_runf('other/embind_tsgen.cpp', 'main ran',
-                 emcc_args=['-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts'])
+                 emcc_args=['-lembind', '--emit-tsd', 'embind_tsgen.d.ts'])
     actual = read_file('embind_tsgen.d.ts')
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), actual)
 
   def test_embind_tsgen_ignore(self):
     create_file('fail.js', 'assert(false);')
-    self.emcc_args += ['-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts']
+    self.emcc_args += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
     # These extra arguments are not related to TS binding generation but we want to
     # verify that they do not interfere with it.
     extra_args = ['-sALLOW_MEMORY_GROWTH=1',
@@ -3202,7 +3202,7 @@ More info: https://emscripten.org
 
   def test_embind_tsgen_test_embind(self):
     self.run_process([EMXX, test_file('embind/embind_test.cpp'),
-                      '-lembind', '--embind-emit-tsd', 'embind_tsgen_test_embind.d.ts',
+                      '-lembind', '--emit-tsd', 'embind_tsgen_test_embind.d.ts',
                       # This test explicitly creates std::string from unsigned char pointers
                       # which is deprecated in upstream LLVM.
                       '-Wno-deprecated-declarations',
@@ -3213,11 +3213,11 @@ More info: https://emscripten.org
   def test_embind_tsgen_val(self):
     # Check that any dependencies from val still works with TS generation enabled.
     self.run_process([EMCC, test_file('other/embind_tsgen_val.cpp'),
-                      '-lembind', '--embind-emit-tsd', 'embind_tsgen_val.d.ts'])
+                      '-lembind', '--emit-tsd', 'embind_tsgen_val.d.ts'])
     self.assertExists('embind_tsgen_val.d.ts')
 
   def test_embind_tsgen_bigint(self):
-    args = [EMXX, test_file('other/embind_tsgen_bigint.cpp'), '-lembind', '--embind-emit-tsd', 'embind_tsgen_bigint.d.ts']
+    args = [EMXX, test_file('other/embind_tsgen_bigint.cpp'), '-lembind', '--emit-tsd', 'embind_tsgen_bigint.d.ts']
     # Check that TypeScript generation fails when code contains bigints but their support is not enabled
     stderr = self.expect_fail(args)
     self.assertContained("Missing primitive type to TS type for 'int64_t", stderr)
@@ -3228,14 +3228,17 @@ More info: https://emscripten.org
   def test_embind_tsgen_memory64(self):
     # Check that when memory64 is enabled longs & unsigned longs are mapped to bigint in the generated TS bindings
     self.run_process([EMXX, test_file('other/embind_tsgen_memory64.cpp'),
-                      '-lembind', '--embind-emit-tsd', 'embind_tsgen_memory64.d.ts', '-sMEMORY64', '-Wno-experimental'] +
+                      '-lembind', '--emit-tsd', 'embind_tsgen_memory64.d.ts', '-sMEMORY64', '-Wno-experimental'] +
                      self.get_emcc_args())
     self.assertFileContents(test_file('other/embind_tsgen_memory64.d.ts'), read_file('embind_tsgen_memory64.d.ts'))
 
   def test_embind_tsgen_exceptions(self):
     # Check that when Wasm exceptions and assertions are enabled bindings still generate.
     self.run_process([EMXX, test_file('other/embind_tsgen.cpp'),
-                      '-lembind', '--embind-emit-tsd', 'embind_tsgen.d.ts', '-fwasm-exceptions', '-sASSERTIONS'])
+                      '-lembind', '-fwasm-exceptions', '-sASSERTIONS',
+                      # Use the deprecated `--embind-emit-tsd` to ensure it
+                      # still works until removed.
+                      '--embind-emit-tsd', 'embind_tsgen.d.ts', '-Wno-deprecated'])
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_jsgen_method_pointer_stability(self):
@@ -8815,7 +8818,7 @@ int main() {
       'at (src.wasm.)?foo',
       'at (src.wasm.)?main']
 
-    if '-fwasm-excpeptions' in self.emcc_args:
+    if '-fwasm-exceptions' in self.emcc_args:
       # FIXME Node v18.13 (LTS as of Jan 2023) has not yet implemented the new
       # optional 'traceStack' option in WebAssembly.Exception constructor
       # (https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/Exception)
