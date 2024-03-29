@@ -551,6 +551,7 @@ jobs:
             lto2.test_float_builtins
             lto0.test_exceptions_allowed_uncaught
             lto0.test_longjmp_standalone_standalone
+            lto0.test_embind_i64_val
             core3
             core2g.test_externref
             corez.test_dylink_iostream
