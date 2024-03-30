@@ -108,12 +108,7 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     dbg('__cxa_init_primary_exception: ' + [ptrToString(ptr), type, ptrToString(destructor)]);
 #endif
-    var info = new ExceptionInfo(ptr);
-    // Initialize ExceptionInfo content after it was allocated in __cxa_allocate_exception.
-    info.init(type, destructor);
-    var ret;
-    {{{ storeException('ret', 'ptr') }}}
-    return ret;
+    return ptr;
   },
 
   // Here, we throw an exception after recording a couple of values that we need to remember
@@ -123,7 +118,10 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     dbg('__cxa_throw: ' + [ptrToString(ptr), type, ptrToString(destructor)]);
 #endif
-    exceptionLast = ___cxa_init_primary_exception(ptr, type, destructor);
+    var info = new ExceptionInfo(ptr);
+    // Initialize ExceptionInfo content after it was allocated in __cxa_allocate_exception.
+    info.init(type, destructor);
+    {{{ storeException('exceptionLast', 'ptr') }}}
     uncaughtExceptionCount++;
     {{{ makeThrow('exceptionLast') }}}
   },
