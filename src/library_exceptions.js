@@ -102,7 +102,6 @@ var LibraryExceptions = {
     }
   },
 
-  // Initialize exception info and return it.
   __cxa_init_primary_exception__deps: ['$ExceptionInfo'],
   __cxa_init_primary_exception: (ptr, type, destructor) => {
 #if EXCEPTION_DEBUG
