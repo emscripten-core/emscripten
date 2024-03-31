@@ -50,7 +50,12 @@ GitHub and set them as :term:`active <Active Tool/SDK>`:
     ./emsdk activate latest
 
     # Activate PATH and other environment variables in the current terminal
-    source ./emsdk_env.sh
+    source /path/to/emsdk/emsdk_env.sh
+
+    # Verify PATH. This command should return the full path to your emsdk directory
+    which emcc
+
+  .. note:: If you're struggling to get the ``emcc`` command working, add ``export PATH="/path/to/emsdk/upstream/emscripten:$PATH"`` to your ``/home/username/.bashrc`` file.
 
   .. note:: On Windows, run ``emsdk.bat`` instead of ``./emsdk``, and ``emsdk_env.bat`` instead of ``source ./emsdk_env.sh``.
 
