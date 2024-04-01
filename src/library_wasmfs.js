@@ -21,9 +21,6 @@ addToLibrary({
   $wasmFSDevices: {},
   $wasmFSDeviceStreams: {},
 
-  $FS__postset: `
-FS.init();
-`,
   $FS__deps: [
     '$MEMFS',
     '$wasmFSPreloadedFiles',
@@ -70,14 +67,14 @@ FS.init();
     'wasmfs_create_jsimpl_backend',
     '$wasmFS$backends',
     '$wasmFSDevices',
-    '$wasmFSDeviceStreams'
+    '$wasmFSDeviceStreams',
+#endif
+#if ASSERTIONS
+    '$ERRNO_MESSAGES', '$ERRNO_CODES',
 #endif
   ],
   $FS : {
-    init() {
-      FS.ensureErrnoError();
-    },
-    ErrnoError: null,
+    ErrnoError: ErrnoError,
     handleError(returnValue) {
       // Assume errors correspond to negative returnValues
       // since some functions like _wasmfs_open() return positive
@@ -87,16 +84,6 @@ FS.init();
       }
 
       return returnValue;
-    },
-    ensureErrnoError() {
-      if (FS.ErrnoError) return;
-      FS.ErrnoError = /** @this{Object} */ function ErrnoError(code) {
-        this.errno = code;
-        this.message = 'FS error';
-        this.name = "ErrnoError";
-      }
-      FS.ErrnoError.prototype = new Error();
-      FS.ErrnoError.prototype.constructor = FS.ErrnoError;
     },
     createDataFile(parent, name, fileData, canRead, canWrite, canOwn) {
       FS_createDataFile(parent, name, fileData, canRead, canWrite, canOwn);
@@ -118,7 +105,7 @@ FS.init();
       return current;
     },
 
-    createPreloadedFile(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) {
+    createPreloadedFile(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn = 0, preFinish = undefined) {
       return FS_createPreloadedFile(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish);
     },
 
@@ -171,8 +158,8 @@ FS.init();
 
     // libc methods
 
-    mkdir: (path, mode) => FS_mkdir(path, mode),
-    mkdirTree: (path, mode) => FS_mkdirTree(path, mode),
+    mkdir: (path, mode = undefined) => FS_mkdir(path, mode),
+    mkdirTree: (path, mode = undefined) => FS_mkdirTree(path, mode),
     rmdir: (path) => FS.handleError(
       withStackSave(() => __wasmfs_rmdir(stringToUTF8OnStack(path)))
     ),

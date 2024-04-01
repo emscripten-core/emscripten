@@ -106,18 +106,22 @@ var LibrarySDL = {
     audio: null,
 
     startTime: null,
-    initFlags: 0, // The flags passed to SDL_Init
     buttonState: 0,
     modState: 0,
     DOMButtons: [0, 0, 0],
 
     DOMEventToSDLEvent: {},
 
-    TOUCH_DEFAULT_ID: 0, // Our default deviceID for touch events (we get nothing from the browser)
+    // Our default deviceID for touch events (we get nothing from the browser)
+    TOUCH_DEFAULT_ID: 0,
 
+#if USE_CLOSURE_COMPILER
     eventHandler: null,
-    eventHandlerContext: null,
+    // The flags passed to SDL_Init
+    initFlags: 0,
+    eventHandlerContext: 0,
     eventHandlerTemp: 0,
+#endif
 
     // DOM code ==> SDL code. See
     // https://developer.mozilla.org/en/Document_Object_Model_%28DOM%29/KeyboardEvent
@@ -346,7 +350,7 @@ var LibrarySDL = {
 
     translateRGBAToColor: (r, g, b, a) => r | g << 8 | b << 16 | a << 24,
 
-    makeSurface(width, height, flags, usePageCanvas, source, rmask, gmask, bmask, amask) {
+    makeSurface(width, height, flags, usePageCanvas, source = 0, rmask = 0, gmask = 0, bmask = 0, amask = 0) {
       var is_SDL_HWSURFACE = flags & 0x00000001;
       var is_SDL_HWPALETTE = flags & 0x00200000;
       var is_SDL_OPENGL = flags & 0x04000000;
@@ -438,7 +442,7 @@ var LibrarySDL = {
 
     // Copy data from the C++-accessible storage to the canvas backing
     // for surface with HWPALETTE flag(8bpp depth)
-    copyIndexedColorData(surfData, rX, rY, rW, rH) {
+    copyIndexedColorData(surfData) {
       // HWPALETTE works with palette
       // set by SDL_SetColors
       if (!surfData.colors) {
@@ -448,10 +452,10 @@ var LibrarySDL = {
       var fullWidth  = Module['canvas'].width;
       var fullHeight = Module['canvas'].height;
 
-      var startX  = rX || 0;
-      var startY  = rY || 0;
-      var endX    = (rW || (fullWidth - startX)) + startX;
-      var endY    = (rH || (fullHeight - startY)) + startY;
+      var startX  = 0;
+      var startY  = 0;
+      var endX    = (fullWidth - startX) + startX;
+      var endY    = (fullHeight - startY) + startY;
 
       var buffer  = surfData.buffer;
 

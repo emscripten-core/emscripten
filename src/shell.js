@@ -311,8 +311,8 @@ if (ENVIRONMENT_IS_SHELL) {
 
   if (typeof scriptArgs != 'undefined') {
     arguments_ = scriptArgs;
-  } else if (typeof arguments != 'undefined') {
-    arguments_ = arguments;
+  } else if (typeof globalThis.arguments != 'undefined') {
+    arguments_ = globalThis.arguments;
   }
 
   if (typeof quit == 'function') {

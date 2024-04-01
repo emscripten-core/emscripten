@@ -94,8 +94,7 @@ var LibraryHTML5 = {
         return true;
       }
       // Test if the given call was already queued, and if so, don't add it again.
-      for (var i in JSEvents.deferredCalls) {
-        var call = JSEvents.deferredCalls[i];
+      for (var call of JSEvents.deferredCalls) {
         if (call.targetFunction == targetFunction && arraysHaveEqualContent(call.argsList, argsList)) {
           return;
         }
@@ -106,7 +105,10 @@ var LibraryHTML5 = {
         argsList
       });
 
-      JSEvents.deferredCalls.sort((x,y) => x.precedence < y.precedence);
+      // sortcallback(x, y):
+      // A negative value indicates that x should come before y.
+      // A positive value indicates that x should come after y.
+      JSEvents.deferredCalls.sort((x,y) => y.precedence - x.precedence);
     },
 
     // Erases all deferred calls to the given target function from the queue list.
@@ -151,10 +153,9 @@ var LibraryHTML5 = {
     // Removes all event handlers on the given DOM element of the given type.
     // Pass in eventTypeString == undefined/null to remove all event handlers
     // regardless of the type.
-    removeAllHandlersOnTarget: (target, eventTypeString) => {
+    removeAllHandlersOnTarget: (target) => {
       for (var i = 0; i < JSEvents.eventHandlers.length; ++i) {
-        if (JSEvents.eventHandlers[i].target == target &&
-          (!eventTypeString || eventTypeString == JSEvents.eventHandlers[i].eventTypeString)) {
+        if (JSEvents.eventHandlers[i].target) {
            JSEvents._removeHandler(i--);
          }
       }
@@ -1512,9 +1513,6 @@ var LibraryHTML5 = {
         filteringMode: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.filteringMode, 'i32') }}},
         canvasResizedCallback: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallback, 'i32') }}},
         canvasResizedCallbackUserData: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackUserData, 'i32') }}},
-#if PTHREADS
-        canvasResizedCallbackTargetThread: JSEvents.getTargetThreadForEventCallback(),
-#endif
         target,
         softFullscreen: true
     };

@@ -69,7 +69,6 @@ var LibraryGLEmulation = {
     fogStart: 0,
     fogEnd: 1,
     fogDensity: 1.0,
-    fogColor: null,
     fogMode: 0x800, // GL_EXP
     fogEnabled: false,
 
@@ -2127,7 +2126,7 @@ var LibraryGLEmulation = {
       return renderer;
     },
 
-    createRenderer(renderer) {
+    createRenderer() {
       var useCurrProgram = !!GL.currProgram;
       var hasTextures = false;
       for (var i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
@@ -2995,7 +2994,7 @@ var LibraryGLEmulation = {
       }
     },
 
-    flush(numProvidedIndexes, startIndex = 0, ptr = 0) {
+    flush(numProvidedIndexes = 0, startIndex = 0, ptr = 0) {
 #if ASSERTIONS
       assert(numProvidedIndexes >= 0 || !numProvidedIndexes);
 #endif

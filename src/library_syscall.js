@@ -20,7 +20,7 @@ var SyscallsLibrary = {
     DEFAULT_POLLMASK: {{{ cDefs.POLLIN }}} | {{{ cDefs.POLLOUT }}},
 
     // shared utilities
-    calculateAt(dirfd, path, allowEmpty) {
+    calculateAt(dirfd, path, allowEmpty = false) {
       if (PATH.isAbs(path)) {
         return path;
       }
@@ -98,7 +98,7 @@ var SyscallsLibrary = {
 
   $syscallGetVarargI__internal: true,
   $syscallGetVarargI: function() {
-#if ASSERTIONS
+#if ASSERTIONS && !USE_CLOSURE_COMPILER
     assert(SYSCALLS.varargs != undefined);
 #endif
     // the `+` prepended here is necessary to convince the JSCompiler that varargs is indeed a number.
@@ -113,7 +113,7 @@ var SyscallsLibrary = {
   $syscallGetVarargP__internal: true,
 #if MEMORY64
   $syscallGetVarargP: function() {
-#if ASSERTIONS
+#if ASSERTIONS && !USE_CLOSURE_COMPILER
     assert(SYSCALLS.varargs != undefined);
 #endif
     var ret = {{{ makeGetValue('SYSCALLS.varargs', 0, '*') }}};
@@ -847,7 +847,7 @@ var SyscallsLibrary = {
     // we want to create b in the context of this function
     path = PATH.normalize(path);
     if (path[path.length-1] === '/') path = path.substr(0, path.length-1);
-    FS.mkdir(path, mode, 0);
+    FS.mkdir(path, mode);
     return 0;
   },
   __syscall_mknodat: (dirfd, path, mode, dev) => {

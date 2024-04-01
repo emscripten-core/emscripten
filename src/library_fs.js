@@ -51,7 +51,6 @@ FS.staticInit();` +
     devices: {},
     streams: [],
     nextInode: 1,
-    nameTable: null,
     currentPath: '/',
     initialized: false,
     // Whether we are currently ignoring permissions. Useful when preparing the
@@ -62,40 +61,10 @@ FS.staticInit();` +
 #if FS_DEBUG
     trackingDelegate: {},
 #endif
-    ErrnoError: null, // set during init
     genericErrors: {},
     filesystems: null,
     syncFSRequests: 0, // we warn if there are multiple in flight at once
-
-#if ASSERTIONS
-    ErrnoError: class extends Error {
-#else
-    ErrnoError: class {
-#endif
-      // We set the `name` property to be able to identify `FS.ErrnoError`
-      // - the `name` is a standard ECMA-262 property of error objects. Kind of good to have it anyway.
-      // - when using PROXYFS, an error can come from an underlying FS
-      // as different FS objects have their own FS.ErrnoError each,
-      // the test `err instanceof FS.ErrnoError` won't detect an error coming from another filesystem, causing bugs.
-      // we'll use the reliable test `err.name == "ErrnoError"` instead
-      constructor(errno) {
-#if ASSERTIONS
-        super(ERRNO_MESSAGES[errno]);
-#endif
-        // TODO(sbc): Use the inline member declaration syntax once we
-        // support it in acorn and closure.
-        this.name = 'ErrnoError';
-        this.errno = errno;
-#if ASSERTIONS
-        for (var key in ERRNO_CODES) {
-          if (ERRNO_CODES[key] === errno) {
-            this.code = key;
-            break;
-          }
-        }
-#endif
-      }
-    },
+    ErrnoError: ErrnoError,
 
     FSStream: class {
       constructor() {
@@ -304,7 +273,7 @@ FS.staticInit();` +
       // if we failed to find it in the cache, call into the VFS
       return FS.lookup(parent, name);
     },
-    createNode(parent, name, mode, rdev) {
+    createNode(parent, name, mode, rdev = 0) {
 #if ASSERTIONS
       assert(typeof parent == 'object')
 #endif
@@ -670,13 +639,13 @@ FS.staticInit();` +
       return parent.node_ops.mknod(parent, name, mode, dev);
     },
     // helpers to create specific types of nodes
-    create(path, mode) {
+    create(path, mode = undefined) {
       mode = mode !== undefined ? mode : 438 /* 0666 */;
       mode &= {{{ cDefs.S_IALLUGO }}};
       mode |= {{{ cDefs.S_IFREG }}};
       return FS.mknod(path, mode, 0);
     },
-    mkdir(path, mode) {
+    mkdir(path, mode = undefined) {
       mode = mode !== undefined ? mode : 511 /* 0777 */;
       mode &= {{{ cDefs.S_IRWXUGO }}} | {{{ cDefs.S_ISVTX }}};
       mode |= {{{ cDefs.S_IFDIR }}};
@@ -688,7 +657,7 @@ FS.staticInit();` +
       return FS.mknod(path, mode, 0);
     },
     // Creates a whole directory tree chain if it doesn't yet exist
-    mkdirTree(path, mode) {
+    mkdirTree(path, mode = undefined) {
       var dirs = path.split('/');
       var d = '';
       for (var i = 0; i < dirs.length; ++i) {
@@ -701,7 +670,7 @@ FS.staticInit();` +
         }
       }
     },
-    mkdev(path, mode, dev) {
+    mkdev(path, mode, dev = undefined) {
       if (typeof dev == 'undefined') {
         dev = mode;
         mode = 438 /* 0666 */;
@@ -906,7 +875,7 @@ FS.staticInit();` +
       }
       return PATH_FS.resolve(FS.getPath(link.parent), link.node_ops.readlink(link));
     },
-    stat(path, dontFollow) {
+    stat(path, dontFollow = false) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
       var node = lookup.node;
       if (!node) {
@@ -920,7 +889,7 @@ FS.staticInit();` +
     lstat(path) {
       return FS.stat(path, true);
     },
-    chmod(path, mode, dontFollow) {
+    chmod(path, mode, dontFollow = false) {
       var node;
       if (typeof path == 'string') {
         var lookup = FS.lookupPath(path, { follow: !dontFollow });
@@ -943,7 +912,7 @@ FS.staticInit();` +
       var stream = FS.getStreamChecked(fd);
       FS.chmod(stream.node, mode);
     },
-    chown(path, uid, gid, dontFollow) {
+    chown(path, uid, gid, dontFollow = false) {
       var node;
       if (typeof path == 'string') {
         var lookup = FS.lookupPath(path, { follow: !dontFollow });
@@ -1009,7 +978,7 @@ FS.staticInit();` +
         timestamp: Math.max(atime, mtime)
       });
     },
-    open(path, flags, mode) {
+    open(path, flags, mode = undefined) {
       if (path === "") {
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       }
@@ -1187,7 +1156,7 @@ FS.staticInit();` +
 #endif
       return bytesRead;
     },
-    write(stream, buffer, offset, length, position, canOwn) {
+    write(stream, buffer, offset, length, position = undefined, canOwn = false) {
 #if ASSERTIONS
       assert(offset >= 0);
 #endif
@@ -1460,7 +1429,7 @@ FS.staticInit();` +
 #endif
       };
     },
-    init(input, output, error) {
+    init(input = undefined, output = undefined, error = undefined) {
 #if ASSERTIONS
       assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
 #endif
@@ -1499,7 +1468,7 @@ FS.staticInit();` +
       }
       return ret.object;
     },
-    analyzePath(path, dontResolveLastLink) {
+    analyzePath(path, dontResolveLastLink = false) {
       // operate from within the context of the symlink's target
       try {
         var lookup = FS.lookupPath(path, { follow: !dontResolveLastLink });
@@ -1570,7 +1539,7 @@ FS.staticInit();` +
         FS.chmod(node, mode);
       }
     },
-    createDevice(parent, name, input, output) {
+    createDevice(parent, name, input, output = undefined) {
       var path = PATH.join2(typeof parent == 'string' ? parent : FS.getPath(parent), name);
       var mode = FS_getMode(!!input, !!output);
       if (!FS.createDevice.major) FS.createDevice.major = 64;

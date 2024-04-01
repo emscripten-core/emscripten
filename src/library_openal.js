@@ -103,7 +103,7 @@ var LibraryOpenAL = {
     // represents the queue of buffers scheduled for physical playback. These two queues are
     // distinct because of the differing semantics of OpenAL and web audio. Some changes
     // to OpenAL parameters, such as pitch, may require the web audio queue to be flushed and rescheduled.
-    scheduleSourceAudio: (src, lookahead) => {
+    scheduleSourceAudio: (src, lookahead = false) => {
       // See comment on scheduleContextAudio above.
       if (Browser.mainLoop.timingMode === {{{ cDefs.EM_TIMING_RAF }}} && document['visibilityState'] != 'visible') {
         return;

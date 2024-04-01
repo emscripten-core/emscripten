@@ -4,6 +4,36 @@
  * SPDX-License-Identifier: MIT
  */
 
+#if ASSERTIONS
+class ErrnoError extends Error {
+#else
+class ErrnoError {
+#endif
+  // We set the `name` property to be able to identify `FS.ErrnoError`
+  // - the `name` is a standard ECMA-262 property of error objects. Kind of good to have it anyway.
+  // - when using PROXYFS, an error can come from an underlying FS
+  // as different FS objects have their own FS.ErrnoError each,
+  // the test `err instanceof FS.ErrnoError` won't detect an error coming from another filesystem, causing bugs.
+  // we'll use the reliable test `err.name == "ErrnoError"` instead
+  constructor(errno) {
+#if ASSERTIONS
+    super(ERRNO_MESSAGES[errno]);
+#endif
+    // TODO(sbc): Use the inline member declaration syntax once we
+    // support it in acorn and closure.
+    this.name = 'ErrnoError';
+    this.errno = errno;
+#if ASSERTIONS
+    for (var key in ERRNO_CODES) {
+      if (ERRNO_CODES[key] === errno) {
+        this.code = key;
+        break;
+      }
+    }
+#endif
+  }
+}
+
 addToLibrary({
   $preloadPlugins: "{{{ makeModuleReceiveExpr('preloadPlugins', '[]') }}}",
 
@@ -50,7 +80,7 @@ addToLibrary({
     '$FS_handledByPreloadPlugin',
 #endif
   ],
-  $FS_createPreloadedFile: (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
+  $FS_createPreloadedFile: (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn = false, preFinish = undefined) => {
     // TODO we should allow people to just pass in a complete filename instead
     // of parent and name being that we just join them anyways
     var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;

@@ -54,6 +54,9 @@ var LibraryBrowser = {
       timingValue: 0,
       currentFrameNumber: 0,
       queue: [],
+#if USE_CLOSURE_COMPILER
+      expectedBlockers: 0,
+#endif
       pause() {
         Browser.mainLoop.scheduler = null;
         // Incrementing this signals the previous main loop that it's now become old, and it must return.
@@ -628,7 +631,7 @@ var LibraryBrowser = {
       Browser.resizeListeners.forEach((listener) => listener(canvas.width, canvas.height));
     },
 
-    setCanvasSize(width, height, noUpdates) {
+    setCanvasSize(width, height, noUpdates = false) {
       var canvas = Module['canvas'];
       Browser.updateCanvasDimensions(canvas, width, height);
       if (!noUpdates) Browser.updateResizeListeners();
@@ -658,7 +661,7 @@ var LibraryBrowser = {
       Browser.updateResizeListeners();
     },
 
-    updateCanvasDimensions(canvas, wNative, hNative) {
+    updateCanvasDimensions(canvas, wNative = 0, hNative = 0) {
       if (wNative && hNative) {
         canvas.widthNative = wNative;
         canvas.heightNative = hNative;

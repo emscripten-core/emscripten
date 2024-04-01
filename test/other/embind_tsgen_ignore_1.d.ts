@@ -16,7 +16,7 @@ declare namespace RuntimeExports {
     let wasmMemory: any;
     let FS_createPath: any;
     function FS_createDataFile(parent: any, name: any, fileData: any, canRead: any, canWrite: any, canOwn: any): void;
-    function FS_createPreloadedFile(parent: any, name: any, url: any, canRead: any, canWrite: any, onload: any, onerror: any, dontCreateFile: any, canOwn: any, preFinish: any): void;
+    function FS_createPreloadedFile(parent: any, name: any, url: any, canRead: any, canWrite: any, onload: any, onerror: any, dontCreateFile: any, canOwn?: boolean, preFinish?: any): void;
     function FS_unlink(path: any): any;
     let FS_createLazyFile: any;
     let FS_createDevice: any;

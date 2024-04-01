@@ -140,7 +140,7 @@ addToLibrary({
       // these functions aren't actually sock_ops members, but we're
       // abusing the namespace to organize them
       //
-      createPeer(sock, addr, port) {
+      createPeer(sock, addr, port = undefined) {
         var ws;
 
         if (typeof addr == 'object') {
