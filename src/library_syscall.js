@@ -85,38 +85,7 @@ var SyscallsLibrary = {
     },
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
 
-    // arguments handling
-
     varargs: undefined,
-
-    get() {
-#if ASSERTIONS
-      assert(SYSCALLS.varargs != undefined);
-#endif
-      // the `+` prepended here is necessary to convince the JSCompiler that varargs is indeed a number.
-      var ret = {{{ makeGetValue('+SYSCALLS.varargs', 0, 'i32') }}};
-      SYSCALLS.varargs += 4;
-#if SYSCALL_DEBUG
-      dbg(`    (raw: "${ret}")`);
-#endif
-      return ret;
-    },
-
-#if MEMORY64
-    getp() {
-#if ASSERTIONS
-      assert(SYSCALLS.varargs != undefined);
-#endif
-      var ret = {{{ makeGetValue('SYSCALLS.varargs', 0, '*') }}};
-      SYSCALLS.varargs += {{{ POINTER_SIZE }}};
-#if SYSCALL_DEBUG
-      dbg(`    (raw: "${ret}")`);
-#endif
-      return ret;
-    },
-#else
-    getp() { return SYSCALLS.get() },
-#endif
 
     getStr(ptr) {
       var ret = UTF8ToString(ptr);
@@ -126,6 +95,37 @@ var SyscallsLibrary = {
       return ret;
     },
   },
+
+  $syscallGetVarargI__internal: true,
+  $syscallGetVarargI: function() {
+#if ASSERTIONS
+    assert(SYSCALLS.varargs != undefined);
+#endif
+    // the `+` prepended here is necessary to convince the JSCompiler that varargs is indeed a number.
+    var ret = {{{ makeGetValue('+SYSCALLS.varargs', 0, 'i32') }}};
+    SYSCALLS.varargs += 4;
+#if SYSCALL_DEBUG
+    dbg(`    (raw: "${ret}")`);
+#endif
+    return ret;
+  },
+
+  $syscallGetVarargP__internal: true,
+#if MEMORY64
+  $syscallGetVarargP: function() {
+#if ASSERTIONS
+    assert(SYSCALLS.varargs != undefined);
+#endif
+    var ret = {{{ makeGetValue('SYSCALLS.varargs', 0, '*') }}};
+    SYSCALLS.varargs += {{{ POINTER_SIZE }}};
+#if SYSCALL_DEBUG
+    dbg(`    (raw: "${ret}")`);
+#endif
+    return ret;
+  },
+#else
+  $syscallGetVarargP: '$syscallGetVarargI',
+#endif
 
   _mmap_js__i53abi: true,
   _mmap_js__deps: ['$SYSCALLS',
@@ -196,6 +196,10 @@ var SyscallsLibrary = {
 
     return 0;
   },
+
+#if SYSCALLS_REQUIRE_FILESYSTEM
+  __syscall_ioctl__deps: ['$syscallGetVarargP'],
+#endif
   __syscall_ioctl: (fd, op, varargs) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
@@ -216,7 +220,7 @@ var SyscallsLibrary = {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
         if (stream.tty.ops.ioctl_tcgets) {
           var termios = stream.tty.ops.ioctl_tcgets(stream);
-          var argp = SYSCALLS.getp();
+          var argp = syscallGetVarargP();
           {{{ makeSetValue('argp', C_STRUCTS.termios.c_iflag, 'termios.c_iflag || 0', 'i32') }}};
           {{{ makeSetValue('argp', C_STRUCTS.termios.c_oflag, 'termios.c_oflag || 0', 'i32') }}};
           {{{ makeSetValue('argp', C_STRUCTS.termios.c_cflag, 'termios.c_cflag || 0', 'i32') }}};
@@ -242,7 +246,7 @@ var SyscallsLibrary = {
       case {{{ cDefs.TCSETSF }}}: {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
         if (stream.tty.ops.ioctl_tcsets) {
-          var argp = SYSCALLS.getp();
+          var argp = syscallGetVarargP();
           var c_iflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_iflag, 'i32') }}};
           var c_oflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_oflag, 'i32') }}};
           var c_cflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_cflag, 'i32') }}};
@@ -257,7 +261,7 @@ var SyscallsLibrary = {
       }
       case {{{ cDefs.TIOCGPGRP }}}: {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
-        var argp = SYSCALLS.getp();
+        var argp = syscallGetVarargP();
         {{{ makeSetValue('argp', 0, 0, 'i32') }}};
         return 0;
       }
@@ -266,7 +270,7 @@ var SyscallsLibrary = {
         return -{{{ cDefs.EINVAL }}}; // not supported
       }
       case {{{ cDefs.FIONREAD }}}: {
-        var argp = SYSCALLS.getp();
+        var argp = syscallGetVarargP();
         return FS.ioctl(stream, op, argp);
       }
       case {{{ cDefs.TIOCGWINSZ }}}: {
@@ -275,7 +279,7 @@ var SyscallsLibrary = {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
         if (stream.tty.ops.ioctl_tiocgwinsz) {
           var winsize = stream.tty.ops.ioctl_tiocgwinsz(stream.tty);
-          var argp = SYSCALLS.getp();
+          var argp = syscallGetVarargP();
           {{{ makeSetValue('argp', 0, 'winsize[0]', 'i16') }}};
           {{{ makeSetValue('argp', 2, 'winsize[1]', 'i16') }}};
         }
@@ -740,6 +744,9 @@ var SyscallsLibrary = {
     FS.llseek(stream, idx * struct_size, {{{ cDefs.SEEK_SET }}});
     return pos;
   },
+#if SYSCALLS_REQUIRE_FILESYSTEM
+  __syscall_fcntl64__deps: ['$syscallGetVarargP', '$syscallGetVarargI'],
+#endif
   __syscall_fcntl64: (fd, cmd, varargs) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
@@ -750,7 +757,7 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     switch (cmd) {
       case {{{ cDefs.F_DUPFD }}}: {
-        var arg = SYSCALLS.get();
+        var arg = syscallGetVarargI();
         if (arg < 0) {
           return -{{{ cDefs.EINVAL }}};
         }
@@ -767,12 +774,12 @@ var SyscallsLibrary = {
       case {{{ cDefs.F_GETFL }}}:
         return stream.flags;
       case {{{ cDefs.F_SETFL }}}: {
-        var arg = SYSCALLS.get();
+        var arg = syscallGetVarargI();
         stream.flags |= arg;
         return 0;
       }
       case {{{ cDefs.F_GETLK }}}: {
-        var arg = SYSCALLS.getp();
+        var arg = syscallGetVarargP();
         var offset = {{{ C_STRUCTS.flock.l_type }}};
         // We're always unlocked.
         {{{ makeSetValue('arg', 'offset', cDefs.F_UNLCK, 'i16') }}};
@@ -823,10 +830,11 @@ var SyscallsLibrary = {
   __syscall_fadvise64: (fd, offset, len, advice) => {
     return 0; // your advice is important to us (but we can't use it)
   },
+  __syscall_openat__deps: ['$syscallGetVarargI'],
   __syscall_openat: (dirfd, path, flags, varargs) => {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    var mode = varargs ? SYSCALLS.get() : 0;
+    var mode = varargs ? syscallGetVarargI() : 0;
     return FS.open(path, flags, mode).fd;
   },
   __syscall_mkdirat: (dirfd, path, mode) => {
