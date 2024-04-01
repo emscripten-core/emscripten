@@ -221,7 +221,6 @@ sigs = {
   __cxa_current_primary_exception__sig: 'p',
   __cxa_end_catch__sig: 'v',
   __cxa_get_exception_ptr__sig: 'pp',
-  __cxa_init_primary_exception__sig: 'pppp',
   __cxa_rethrow__sig: 'v',
   __cxa_rethrow_primary_exception__sig: 'vp',
   __cxa_throw__sig: 'vppp',

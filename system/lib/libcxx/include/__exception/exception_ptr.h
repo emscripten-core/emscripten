@@ -38,7 +38,7 @@ _LIBCPP_OVERRIDABLE_FUNC_VIS __cxa_exception* __cxa_init_primary_exception(
     std::type_info*,
 #  if defined(_WIN32)
     void(__thiscall*)(void*)) throw();
-#  elif defined(__USING_WASM_EXCEPTIONS__)
+#  elif defined(__wasm__)
     // In Wasm, a destructor returns its argument
     void* (*)(void*)) throw();
 #  else
@@ -91,14 +91,14 @@ _LIBCPP_HIDE_FROM_ABI exception_ptr make_exception_ptr(_Ep __e) _NOEXCEPT {
   using _Ep2 = __decay_t<_Ep>;
 
   void* __ex = __cxxabiv1::__cxa_allocate_exception(sizeof(_Ep));
-#      ifdef __USING_WASM_EXCEPTIONS__
+#      ifdef __wasm__
   // In Wasm, a destructor returns its argument
   (void)__cxxabiv1::__cxa_init_primary_exception(__ex, const_cast<std::type_info*>(&typeid(_Ep)), [](void* __p) -> void* {
 #      else
   (void)__cxxabiv1::__cxa_init_primary_exception(__ex, const_cast<std::type_info*>(&typeid(_Ep)), [](void* __p) {
 #      endif
     std::__destroy_at(static_cast<_Ep2*>(__p));
-#      ifdef __USING_WASM_EXCEPTIONS__
+#      ifdef __wasm__
     return __p;
 #      endif
   });
