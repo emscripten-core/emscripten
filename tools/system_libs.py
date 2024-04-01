@@ -926,8 +926,30 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
   cflags = ['-fno-builtin', '-DNDEBUG']
   src_dir = 'system/lib/compiler-rt/lib/builtins'
   includes = ['system/lib/libc']
-  # gcc_personality_v0.c depends on libunwind, which don't include by default.
-  src_files = glob_in_path(src_dir, '*.c', excludes=['gcc_personality_v0.c', 'truncdfbf2.c', 'truncsfbf2.c', 'crtbegin.c', 'crtend.c'])
+  excludes = [
+    # gcc_personality_v0.c depends on libunwind, which don't include by default.
+    'gcc_personality_v0.c',
+    # bfloat16
+    'truncdfbf2.c',
+    'truncsfbf2.c',
+    # We provide our own crt
+    'crtbegin.c',
+    'crtend.c',
+    # 80-bit long double
+    'divxc3.c',
+    'fixxfdi.c',
+    'fixxfti.c',
+    'fixunsxfdi.c',
+    'fixunsxfsi.c',
+    'fixunsxfti.c',
+    'floatdixf.c',
+    'floattixf.c',
+    'floatundixf.c',
+    'floatuntixf.c',
+    'mulxc3.c',
+    'powixf2.c',
+  ]
+  src_files = glob_in_path(src_dir, '*.c', excludes=excludes)
   src_files += files_in_path(
       path='system/lib/compiler-rt',
       filenames=[
