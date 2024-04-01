@@ -112,7 +112,7 @@ var LibraryExceptions = {
 
   // Here, we throw an exception after recording a couple of values that we need to remember
   // We also remember that it was the last exception thrown as we need to know that later.
-  __cxa_throw__deps: ['$exceptionLast', '$uncaughtExceptionCount', '__cxa_init_primary_exception'],
+  __cxa_throw__deps: ['$ExceptionInfo', '$exceptionLast', '$uncaughtExceptionCount'],
   __cxa_throw: (ptr, type, destructor) => {
 #if EXCEPTION_DEBUG
     dbg('__cxa_throw: ' + [ptrToString(ptr), type, ptrToString(destructor)]);
