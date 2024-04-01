@@ -895,6 +895,12 @@ var ASYNCIFY_REMOVE = [];
 // [link]
 var ASYNCIFY_ADD = [];
 
+// If enabled, instrumentation status will be propagated from the add-list, ie.
+// their callers, and their callers' callers, and so on. If disabled then all
+// callers must be manually added to the add-list (like the only-list).
+// [link]
+var ASYNCIFY_PROPAGATE_ADD = true;
+
 // If the Asyncify only-list is provided, then *only* the functions in the list
 // will be instrumented. Like the remove-list, getting this wrong will break
 // your application.

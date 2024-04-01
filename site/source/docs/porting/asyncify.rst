@@ -355,12 +355,16 @@ If you know that some indirect calls matter and others do not, then you
 can provide a manual list of functions to Asyncify:
 
 * ``ASYNCIFY_REMOVE`` is a list of functions that do not unwind the stack.
-  Asyncify will do its normal whole-program analysis, then remove these
-  functions from the list of instrumented functions.
-* ``ASYNCIFY_ADD`` is a list of functions that do unwind the stack, and
-  are added after doing the normal whole-program analysis. This is mostly useful
+  As Asyncify processes the call tree, functions in this list will be removed,
+  and neither they nor their callers will be instrumented (unless their callers
+  need to be instrumented for other reasons.)
+* ``ASYNCIFY_ADD`` is a list of functions that do unwind the stack, and will be
+  processed like the imports. This is mostly useful
   if you use ``ASYNCIFY_IGNORE_INDIRECT`` but want to also mark some additional
-  functions that need to unwind.
+  functions that need to unwind. If the ``ASYNCIFY_PROPAGATE_ADD`` setting is
+  disabled however, then this list will only be added after the whole-program
+  analysis. If ``ASYNCIFY_PROPAGATE_ADD`` is disabled then you must also add
+  their callers, their callers' callers, and so on.
 * ``ASYNCIFY_ONLY`` is a list of the **only** functions that can unwind
   the stack. Asyncify will instrument exactly those and no others.
 

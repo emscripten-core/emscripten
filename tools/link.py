@@ -370,6 +370,8 @@ def get_binaryen_passes():
       passes += ['--pass-arg=asyncify-verbose']
     if settings.ASYNCIFY_IGNORE_INDIRECT:
       passes += ['--pass-arg=asyncify-ignore-indirect']
+    if settings.ASYNCIFY_PROPAGATE_ADD:
+      passes += ['--pass-arg=asyncify-propagate-addlist']
     passes += ['--pass-arg=asyncify-imports@%s' % ','.join(settings.ASYNCIFY_IMPORTS)]
 
     # shell escaping can be confusing; try to emit useful warnings

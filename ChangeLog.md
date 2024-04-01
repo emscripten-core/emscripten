@@ -42,6 +42,9 @@ See docs/process.md for more on how version tagging works.
 - TypeScript definitions for Wasm exports, runtime exports, and embind bindings
   can now be generated with `--emit-tsd`. The option `--embind-emit-tsd` has been
   deprecated, use `--emit-tsd` instead.
+- Added the `ASYNCIFY_PROPAGATE_ADD` setting, to control whether the `ASYNCIFY_ADD`
+  list propagates or not. By default this is enabled; to return to the previous
+  behaviour, disable that setting.
 
 3.1.56 - 03/14/24
 -----------------
