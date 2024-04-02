@@ -39,7 +39,7 @@ from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, get_file_suffix
 from tools.shared import run_process, exit_with_error, DEBUG
 from tools.shared import in_temp, OFormat
-from tools.shared import DYNAMICLIB_ENDINGS, STATICLIB_ENDINGS
+from tools.shared import DYNAMICLIB_ENDINGS
 from tools.response_file import substitute_response_files
 from tools import config
 from tools import cache
@@ -81,7 +81,7 @@ LINK_ONLY_FLAGS = {
     '--bind', '--closure', '--cpuprofiler', '--embed-file',
     '--emit-symbol-map', '--emrun', '--exclude-file', '--extern-post-js',
     '--extern-pre-js', '--ignore-dynamic-linking', '--js-library',
-    '--js-transform', '--memory-init-file', '--oformat', '--output_eol',
+    '--js-transform', '--oformat', '--output_eol',
     '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
     '--proxy-to-worker', '--shell-file', '--source-map-base',
     '--threadprofiler', '--use-preload-plugins'
@@ -140,11 +140,11 @@ class EmccOptions:
     self.ignore_dynamic_linking = False
     self.shell_path = None
     self.source_map_base = ''
+    self.emit_tsd = ''
     self.embind_emit_tsd = ''
     self.emrun = False
     self.cpu_profiler = False
     self.memory_profiler = False
-    self.memory_init_file = None
     self.use_preload_cache = False
     self.use_preload_plugins = False
     self.valid_abspaths = []
@@ -260,7 +260,7 @@ def apply_user_settings():
     filename = None
     if value and value[0] == '@':
       filename = removeprefix(value, '@')
-      if not os.path.exists(filename):
+      if not os.path.isfile(filename):
         exit_with_error('%s: file not found parsing argument: %s=%s' % (filename, key, value))
       value = read_file(filename).strip()
     else:
@@ -275,7 +275,7 @@ def apply_user_settings():
       try:
         value = parse_value(value, expected_type)
       except Exception as e:
-        exit_with_error('a problem occurred in evaluating the content after a "-s", specifically "%s=%s": %s', key, value, str(e))
+        exit_with_error(f'error parsing "-s" setting "{key}={value}": {e}')
 
     setattr(settings, user_key, value)
 
@@ -577,7 +577,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   if 'EMMAKEN_COMPILER' in os.environ:
     exit_with_error('`EMMAKEN_COMPILER` is no longer supported.\n' +
-                    'Please use the `LLVM_ROOT` and/or `COMPILER_WRAPPER` config settings instread')
+                    'Please use the `LLVM_ROOT` and/or `COMPILER_WRAPPER` config settings instead')
 
   if 'EMMAKEN_CFLAGS' in os.environ:
     exit_with_error('`EMMAKEN_CFLAGS` is no longer supported, please use `EMCC_CFLAGS` instead')
@@ -611,7 +611,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     libname = print_file_name[-1].split('=')[1]
     system_libpath = cache.get_lib_dir(absolute=True)
     fullpath = os.path.join(system_libpath, libname)
-    if os.path.exists(fullpath):
+    if os.path.isfile(fullpath):
       print(fullpath)
     else:
       print(libname)
@@ -663,6 +663,9 @@ def phase_parse_arguments(state):
   # warnings are properly printed during arg parse.
   newargs = diagnostics.capture_warnings(newargs)
 
+  if not diagnostics.is_enabled('deprecated'):
+    settings.WARN_DEPRECATED = 0
+
   for i in range(len(newargs)):
     if newargs[i] in ('-l', '-L', '-I', '-z'):
       # Scan for flags that can be written as either one or two arguments
@@ -681,6 +684,9 @@ def phase_parse_arguments(state):
   for s in settings_changes:
     key, value = s.split('=', 1)
     key, value = normalize_boolean_setting(key, value)
+    old_value = user_settings.get(key)
+    if old_value and old_value != value:
+      diagnostics.warning('unused-command-line-argument', f'-s{key} specified multiple times. Ignoring previous value (`{old_value}`)')
     user_settings[key] = value
 
   # STRICT is used when applying settings so it needs to be applied first before
@@ -705,7 +711,6 @@ def phase_setup(options, state, newargs):
   """
 
   if settings.RUNTIME_LINKED_LIBS:
-    diagnostics.warning('deprecated', 'RUNTIME_LINKED_LIBS is deprecated; you can simply list the libraries directly on the commandline now')
     newargs += settings.RUNTIME_LINKED_LIBS
 
   # Find input files
@@ -749,12 +754,6 @@ def phase_setup(options, state, newargs):
       file_suffix = get_file_suffix(arg)
       if file_suffix in HEADER_ENDINGS:
         has_header_inputs = True
-      if file_suffix in STATICLIB_ENDINGS and not building.is_ar(arg):
-        if building.is_bitcode(arg):
-          message = f'{arg}: File has a suffix of a static library {STATICLIB_ENDINGS}, but instead is an LLVM bitcode file! When linking LLVM bitcode files use .bc or .o.'
-        else:
-          message = arg + ': Unknown format, not a static library!'
-        exit_with_error(message)
       input_files.append((i, arg))
     elif arg.startswith('-L'):
       state.add_link_flag(i, arg)
@@ -1144,6 +1143,12 @@ def parse_args(newargs):
         requested_level = 1
         settings.SHRINK_LEVEL = 0
         settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 1)
+      elif requested_level == 'fast':
+        # TODO(https://github.com/emscripten-core/emscripten/issues/21497):
+        # If we ever map `-ffast-math` to `wasm-opt --fast-math` then
+        # then we should enable that too here.
+        requested_level = 3
+        settings.SHRINK_LEVEL = 0
       else:
         settings.SHRINK_LEVEL = 0
       settings.OPT_LEVEL = validate_arg_level(requested_level, 3, 'invalid optimization level: ' + arg, clamp=True)
@@ -1276,6 +1281,9 @@ def parse_args(newargs):
       options.source_map_base = consume_arg()
     elif check_arg('--embind-emit-tsd'):
       options.embind_emit_tsd = consume_arg()
+    elif check_arg('--emit-tsd'):
+      diagnostics.warning('experimental', '--emit-tsd is still experimental. Not all definitions are generated.')
+      options.emit_tsd = consume_arg()
     elif check_flag('--no-entry'):
       options.no_entry = True
     elif check_arg('--js-library'):
@@ -1309,7 +1317,7 @@ def parse_args(newargs):
       ports.show_ports()
       should_exit = True
     elif check_arg('--memory-init-file'):
-      options.memory_init_file = int(consume_arg())
+      exit_with_error('--memory-init-file is no longer supported')
     elif check_flag('--proxy-to-worker'):
       settings_changes.append('PROXY_TO_WORKER=1')
     elif check_arg('--valid-abspath'):
@@ -1405,6 +1413,8 @@ def parse_args(newargs):
       options.target = consume_arg()
       if options.target not in ('wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'):
         exit_with_error(f'unsupported target: {options.target} (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten)')
+    elif check_arg('--use-port'):
+      ports.handle_use_port_arg(settings, consume_arg())
     elif arg == '-mllvm':
       # Ignore the next argument rather than trying to parse it.  This is needed
       # because llvm args could, for example, start with `-o` and we don't want
@@ -1444,7 +1454,7 @@ def parse_symbol_list_file(contents):
   kind of quoting or escaping.
   """
   values = contents.splitlines()
-  return [v.strip() for v in values]
+  return [v.strip() for v in values if not v.startswith('#')]
 
 
 def parse_value(text, expected_type):
@@ -1455,7 +1465,8 @@ def parse_value(text, expected_type):
     first = text[0]
     if first == "'" or first == '"':
       text = text.rstrip()
-      assert text[-1] == text[0] and len(text) > 1, 'unclosed opened quoted string. expected final character to be "%s" and length to be greater than 1 in "%s"' % (text[0], text)
+      if text[-1] != text[0] or len(text) < 2:
+         raise ValueError(f'unclosed quoted string. expected final character to be "{text[0]}" and length to be greater than 1 in "{text[0]}"')
       return text[1:-1]
     return text
 
@@ -1467,7 +1478,7 @@ def parse_value(text, expected_type):
     while True:
       current = values[index].lstrip() # Cannot safely rstrip for cases like: "HERE-> ,"
       if not len(current):
-        exit_with_error('string array should not contain an empty value')
+        raise ValueError('empty value in string list')
       first = current[0]
       if not (first == "'" or first == '"'):
         result.append(current.rstrip())
@@ -1475,7 +1486,7 @@ def parse_value(text, expected_type):
         start = index
         while True: # Continue until closing quote found
           if index >= len(values):
-            exit_with_error("unclosed quoted string. expected final character to be '%s' in '%s'" % (first, values[start]))
+            raise ValueError(f"unclosed quoted string. expected final character to be '{first}' in '{values[start]}'")
           new = values[index].rstrip()
           if new and new[-1] == first:
             if start == index:
@@ -1496,7 +1507,7 @@ def parse_value(text, expected_type):
     text = text.rstrip()
     if text and text[0] == '[':
       if text[-1] != ']':
-        exit_with_error('unclosed opened string list. expected final character to be "]" in "%s"' % (text))
+        raise ValueError('unterminated string list. expected final character to be "]"')
       text = text[1:-1]
     if text.strip() == "":
       return []
@@ -1506,9 +1517,19 @@ def parse_value(text, expected_type):
     # if json parsing fails, we fall back to our own parser, which can handle a few
     # simpler syntaxes
     try:
-      return json.loads(text)
+      parsed = json.loads(text)
     except ValueError:
       return parse_string_list(text)
+
+    # if we succeeded in parsing as json, check some properties of it before returning
+    if type(parsed) not in (str, list):
+      raise ValueError(f'settings must be strings or lists (not ${type(parsed)})')
+    if type(parsed) is list:
+      for elem in parsed:
+        if type(elem) is not str:
+          raise ValueError(f'list members in settings must be strings (not ${type(elem)})')
+
+    return parsed
 
   if expected_type == float:
     try:

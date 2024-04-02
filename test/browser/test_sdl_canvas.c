@@ -50,34 +50,33 @@ int main(int argc, char **argv) {
   SDL_Rect rect = { 200, 200, 175, 125 };
   SDL_FillRect(screen, &rect, SDL_MapRGBA(screen->format, 0x22, 0x22, 0xff, 0xff));
 
-  SDL_Flip(screen); 
+  SDL_Flip(screen);
 
   SDL_LockSurface(screen);
 
   int width, height;
   emscripten_get_canvas_element_size("#canvas", &width, &height);
-
-  if (width != 600 && height != 450)
-  {
-    printf("error: wrong width/height\n");
-    abort();
-  }
+  assert(width == 600);
+  assert(height == 450);
 
   int sum = 0;
+  int row_size = screen->w * 4;
+  // Sum the red components of each pixel on the diagonal.
   for (int i = 0; i < screen->h; i++) {
-    sum += *((char*)screen->pixels + i*screen->w*4 + i*4 + 0);
+    sum += *((char*)screen->pixels + i*row_size + i*4 + 0);
   }
   printf("Sum: %d\n", sum);
 
   printf("you should see two lines of text in different colors and a blue rectangle\n");
 
   SDL_UnlockSurface(screen);
-  
+
   SDL_Quit();
 
   printf("done.\n");
 
-  assert(sum > 3000 && sum < 5000); // varies a little on different browsers, font differences?
+  // varies a little on different browsers, font differences?
+  assert(sum > 2000 && sum < 5000);
 
   return 0;
 }

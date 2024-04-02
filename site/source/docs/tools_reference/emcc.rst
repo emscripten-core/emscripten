@@ -99,7 +99,7 @@ Options that are modified or new in *emcc* are listed below:
   [different OPTIONs affect at different stages, most at link time]
   Emscripten build options. For the available options, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_.
 
-  .. note:: If no value is specifed it will default to ``1``.
+  .. note:: If no value is specified it will default to ``1``.
 
   .. note:: It is possible, with boolean options, to use the ``NO_`` prefix to reverse their meaning. For example, ``-sEXIT_RUNTIME=0`` is the same as ``-sNO_EXIT_RUNTIME=1`` and vice versa.  This is not recommended in most cases.
 
@@ -134,6 +134,8 @@ Options that are modified or new in *emcc* are listed below:
 
     - In this case the file should contain a list of symbols, one per line.  For legacy use cases JSON-formatted files are also supported: e.g. ``["_func1", "func2"]``.
     - The specified file path must be absolute, not relative.
+    - The file may contain comments where the first character of the line is ``'#'``.
+
 
   .. note:: Options can be specified as a single argument with or without a space
             between the ``-s`` and option name.  e.g. ``-sFOO`` or ``-s FOO``.
@@ -455,6 +457,19 @@ Options that are modified or new in *emcc* are listed below:
   By default this will also clear any download ports since the ports directory
   is usually within the cache directory.
 
+.. _emcc-use-port:
+
+``--use-port=<port>``
+  [compile+link]
+  Use the specified port. If you need to use more than one port you can use
+  this option multiple times (ex: ``--use-port=sdl2 --use-port=bzip2``). A port
+  can have options separated by ``:``
+  (ex: ``--use-port=sdl2_image:formats=png,jpg``). To use an  external port,
+  you provide the path to the port directly
+  (ex: ``--use-port=/path/to/my_port.py``). To get more information about a
+  port, use the ``help`` option (ex: ``--use-port=sdl2_image:help``).
+  To get the list of available ports, use ``--show-ports``.
+
 .. _emcc-clear-ports:
 
 ``--clear-ports``
@@ -471,24 +486,6 @@ Options that are modified or new in *emcc* are listed below:
 ``--show-ports``
   [general]
   Shows the list of available projects in the Emscripten Ports repos. After this operation is complete, this process will exit.
-
-.. _emcc-memory-init-file:
-
-``--memory-init-file 0|1``
-  [link]
-  Specifies whether to emit a separate memory initialization file.
-
-      .. note:: Note that this is only relevant when *not* emitting Wasm, as Wasm embeds the memory init data in the Wasm binary.
-
-  Possible values are:
-
-    - ``0``: Do not emit a separate memory initialization file. Instead keep the static initialization inside the generated JavaScript as text. This is the default setting if compiling with -O0 or -O1 link-time optimization flags.
-    - ``1``: Emit a separate memory initialization file in binary format. This is more efficient than storing it as text inside JavaScript, but does mean you have another file to publish. The binary file will also be loaded asynchronously, which means ``main()`` will not be called until the file is downloaded and applied; you cannot call any C functions until it arrives. This is the default setting when compiling with -O2 or higher.
-
-      .. note:: The :ref:`safest way <faq-when-safe-to-call-compiled-functions>` to ensure that it is safe to call C functions (the initialisation file has loaded) is to call a notifier function from ``main()``.
-
-      .. note:: If you assign a network request to ``Module.memoryInitializerRequest`` (before the script runs), then it will use that request instead of automatically starting a download for you. This is beneficial in that you can, in your HTML, fire off a request for the memory init file before the script actually arrives. For this to work, the network request should be an XMLHttpRequest with responseType set to ``'arraybuffer'``. (You can also put any other object here, all it must provide is a ``.response`` property containing an ArrayBuffer.)
-
 
 ``-Wwarn-absolute-paths``
   [compile+link]
@@ -546,8 +543,6 @@ Options that are modified or new in *emcc* are listed below:
 
   These rules only apply when linking.  When compiling to object code (See `-c`
   below) the name of the output file is irrelevant.
-
-  .. note:: If ``--memory-init-file`` is used, a **.mem** file will be created in addition to the generated **.js** and/or **.html** file.
 
 .. _emcc-c:
 

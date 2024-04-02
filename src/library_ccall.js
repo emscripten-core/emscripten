@@ -77,7 +77,7 @@ addToLibrary({
     // Data for a previous async operation that was in flight before us.
     var previousAsync = Asyncify.currData;
 #endif
-    var ret = func.apply(null, cArgs);
+    var ret = func(...cArgs);
     function onDone(ret) {
 #if ASYNCIFY == 1
       runtimeKeepalivePop();
@@ -143,8 +143,6 @@ addToLibrary({
       return getCFunc(ident);
     }
 #endif
-    return function() {
-      return ccall(ident, returnType, argTypes, arguments, opts);
-    }
+    return (...args) => ccall(ident, returnType, argTypes, args, opts);
   },
 });

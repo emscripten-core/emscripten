@@ -5,8 +5,8 @@
 
 import os
 
-TAG = 'release-2.6.0'
-HASH = '5909e06fe334eadf1753b97233a6f82c60e03bfafaaca4cb90b0468cb94343e72cd7513b57096e543282eefaef76e80fb0f23f4d4da4ccc43229ea74beb14ce1'
+TAG = 'release-2.8.0'
+HASH = '494ccd74540f74e717f7e4f1dc7f96398c0f4b1883ab00c4a76b0c7239bd2c185cb4358a35ef47819c49e7c14dac7c37b98a29c7b5237478121571f5e7ac4dfc'
 
 deps = ['sdl2']
 variants = {
@@ -83,6 +83,7 @@ def get(ports, settings, shared):
       exclude_files=[
         'playmus.c',
         'playwave.c',
+        'main.c',
       ],
       exclude_dirs=[
         'native_midi',
@@ -115,4 +116,4 @@ def process_dependencies(settings):
 
 
 def show():
-  return 'SDL2_mixer (USE_SDL_MIXER=2; zlib license)'
+  return 'sdl2_mixer (-sUSE_SDL_MIXER=2 or --use-port=sdl2_mixer; zlib license)'

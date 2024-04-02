@@ -83,8 +83,9 @@ function fetchDeleteCachedData(db, fetch, onsuccess, onerror) {
   }
 
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
-  var path = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.destinationPath }}} >> 2];
-  path ||= HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.url }}} >> 2];
+  var path = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.destinationPath, '*') }}};
+  path ||= {{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.url, '*') }}};
+
   var pathStr = UTF8ToString(path);
 
   try {
@@ -96,12 +97,14 @@ function fetchDeleteCachedData(db, fetch, onsuccess, onerror) {
 #if FETCH_DEBUG
       dbg(`fetch: Deleted file ${pathStr} from IndexedDB`);
 #endif
-      HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] = 0;
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, 0, '*') }}};
       writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, 0);
       writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, 0);
       writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, 0);
-      HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
-      HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = 200; // Mimic XHR HTTP status code 200 "OK"
+      // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 4, 'i16') }}};
+      // Mimic XHR HTTP status code 200 "OK"
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 200, 'i16') }}};
       stringToUTF8("OK", fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
       onsuccess(fetch, 0, value);
     };
@@ -109,8 +112,8 @@ function fetchDeleteCachedData(db, fetch, onsuccess, onerror) {
 #if FETCH_DEBUG
       dbg(`fetch: Failed to delete file ${pathStr} from IndexedDB! error: ${error}`);
 #endif
-      HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
-      HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 4, 'i16') }}} // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 404, 'i16') }}} // Mimic XHR HTTP status code 404 "Not Found"
       stringToUTF8("Not Found", fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
       onerror(fetch, 0, error);
     };
@@ -132,8 +135,8 @@ function fetchLoadCachedData(db, fetch, onsuccess, onerror) {
   }
 
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
-  var path = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.destinationPath }}} >> 2];
-  path ||= HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.url }}} >> 2];
+  var path = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.destinationPath, '*') }}};
+  path ||= {{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.url, '*') }}};
   var pathStr = UTF8ToString(path);
 
   try {
@@ -151,12 +154,12 @@ function fetchLoadCachedData(db, fetch, onsuccess, onerror) {
         // freed when emscripten_fetch_close() is called.
         var ptr = _malloc(len);
         HEAPU8.set(new Uint8Array(value), ptr);
-        HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] = ptr;
+        {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, 'ptr', '*') }}};
         writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, len);
         writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, 0);
         writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, len);
-        HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
-        HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = 200; // Mimic XHR HTTP status code 200 "OK"
+        {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 4, 'i16') }}} // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+        {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 200, 'i16') }}} // Mimic XHR HTTP status code 200 "OK"
         stringToUTF8("OK", fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
         onsuccess(fetch, 0, value);
       } else {
@@ -164,8 +167,8 @@ function fetchLoadCachedData(db, fetch, onsuccess, onerror) {
 #if FETCH_DEBUG
         dbg(`fetch: File ${pathStr} not found in IndexedDB`);
 #endif
-        HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
-        HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
+        {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 4, 'i16') }}} // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+        {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 404, 'i16') }}} // Mimic XHR HTTP status code 404 "Not Found"
         stringToUTF8("Not Found", fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
         onerror(fetch, 0, 'no data');
       }
@@ -174,8 +177,8 @@ function fetchLoadCachedData(db, fetch, onsuccess, onerror) {
 #if FETCH_DEBUG
       dbg(`fetch: Failed to load file ${pathStr} from IndexedDB!`);
 #endif
-      HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
-      HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = 404; // Mimic XHR HTTP status code 404 "Not Found"
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 4, 'i16') }}} // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 404, 'i16') }}} // Mimic XHR HTTP status code 404 "Not Found"
       stringToUTF8("Not Found", fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
       onerror(fetch, 0, error);
     };
@@ -197,8 +200,8 @@ function fetchCacheData(/** @type {IDBDatabase} */ db, fetch, data, onsuccess, o
   }
 
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
-  var destinationPath = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.destinationPath }}} >> 2];
-  destinationPath ||= HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.url }}} >> 2];
+  var destinationPath = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.destinationPath, '*') }}};
+  destinationPath ||= {{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.url, '*') }}};
   var destinationPathStr = UTF8ToString(destinationPath);
 
   try {
@@ -209,8 +212,8 @@ function fetchCacheData(/** @type {IDBDatabase} */ db, fetch, data, onsuccess, o
 #if FETCH_DEBUG
       dbg(`fetch: Stored file "${destinationPathStr}" to IndexedDB cache.`);
 #endif
-      HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
-      HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = 200; // Mimic XHR HTTP status code 200 "OK"
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 4, 'i16') }}} // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 200, 'i16') }}} // Mimic XHR HTTP status code 200 "OK"
       stringToUTF8("OK", fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
       onsuccess(fetch, 0, destinationPathStr);
     };
@@ -221,8 +224,8 @@ function fetchCacheData(/** @type {IDBDatabase} */ db, fetch, data, onsuccess, o
       // Most likely we got an error if IndexedDB is unwilling to store any more data for this page.
       // TODO: Can we identify and break down different IndexedDB-provided errors and convert those
       // to more HTTP status codes for more information?
-      HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = 4; // Mimic XHR readyState 4 === 'DONE: The operation is complete'
-      HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = 413; // Mimic XHR HTTP status code 413 "Payload Too Large"
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 4, 'i16') }}} // Mimic XHR readyState 4 === 'DONE: The operation is complete'
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 413, 'i16') }}} // Mimic XHR HTTP status code 413 "Payload Too Large"
       stringToUTF8("Payload Too Large", fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
       onerror(fetch, 0, error);
     };
@@ -317,7 +320,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   function saveResponseAndStatus() {
     var ptr = 0;
     var ptrLen = 0;
-    if (xhr.response && fetchAttrLoadToMemory && HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] === 0) {
+    if (xhr.response && fetchAttrLoadToMemory && {{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, '*') }}} === 0) {
       ptrLen = xhr.response.byteLength;
     }
     if (ptrLen > 0) {
@@ -329,7 +332,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
       ptr = _malloc(ptrLen);
       HEAPU8.set(new Uint8Array(/** @type{Array<number>} */(xhr.response)), ptr);
     }
-    HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] = ptr;
+    {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, 'ptr', '*') }}}
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, ptrLen);
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, 0);
     var len = xhr.response ? xhr.response.byteLength : 0;
@@ -339,8 +342,8 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
       // the most recent XHR.onprogress handler.
       writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, len);
     }
-    HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
-    HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
+    {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 'xhr.readyState', 'i16') }}}
+    {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'xhr.status', 'i16') }}}
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
   }
 
@@ -401,14 +404,14 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
       ptr = _malloc(ptrLen);
       HEAPU8.set(new Uint8Array(/** @type{Array<number>} */(xhr.response)), ptr);
     }
-    HEAPU32[fetch + {{{ C_STRUCTS.emscripten_fetch_t.data }}} >> 2] = ptr;
+    {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, 'ptr', '*') }}}
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, ptrLen);
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, e.loaded - ptrLen);
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, e.total);
-    HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
+    {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 'xhr.readyState', 'i16') }}}
     // If loading files from a source that does not give HTTP status code, assume success if we get data bytes
     if (xhr.readyState >= 3 && xhr.status === 0 && e.loaded > 0) xhr.status = 200;
-    HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
+    {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'xhr.status', 'i16') }}}
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
     onprogress?.(fetch, xhr, e);
     if (ptr) {
@@ -421,9 +424,9 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
       {{{ runtimeKeepalivePop() }}}
       return;
     }
-    HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
+    {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 'xhr.readyState', 'i16') }}}
     if (xhr.readyState >= 2) {
-      HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'xhr.status', 'i16') }}}
     }
     onreadystatechange?.(fetch, xhr, e);
   };
@@ -446,11 +449,11 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
   {{{ runtimeKeepalivePush() }}}
 
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
-  var onsuccess = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.onsuccess }}} >> 2];
-  var onerror = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.onerror }}} >> 2];
-  var onprogress = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.onprogress }}} >> 2];
-  var onreadystatechange = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.onreadystatechange }}} >> 2];
-  var fetchAttributes = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.attributes }}} >> 2];
+  var onsuccess = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.onsuccess, '*') }}};
+  var onerror = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.onerror, '*') }}};
+  var onprogress = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.onprogress, '*') }}};
+  var onreadystatechange = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.onreadystatechange, '*') }}};
+  var fetchAttributes = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.attributes, '*') }}};
   var fetchAttrSynchronous = !!(fetchAttributes & {{{ cDefs.EMSCRIPTEN_FETCH_SYNCHRONOUS }}});
 
   function doCallback(f) {

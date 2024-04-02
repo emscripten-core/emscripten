@@ -20,7 +20,7 @@
   },
   "scripts": {
     "lint": "eslint .",
-    "fmt": "prettier --write tools/*.js",
-    "check": "prettier --check tools/*.js"
+    "fmt": "prettier --write src/*.mjs tools/*.mjs",
+    "check": "prettier --check src/*.mjs tools/*.mjs"
   }
 }

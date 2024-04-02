@@ -17,6 +17,7 @@ MEM_SIZE_SETTINGS = {
     'GLOBAL_BASE',
     'STACK_SIZE',
     'TOTAL_STACK',
+    'INITIAL_HEAP',
     'INITIAL_MEMORY',
     'MEMORY_GROWTH_LINEAR_STEP',
     'MEMORY_GROWTH_GEOMETRIC_CAP',
@@ -109,6 +110,18 @@ COMPILE_TIME_SETTINGS = {
     'RUNTIME_LINKED_LIBS',
 }.union(PORTS_SETTINGS)
 
+# Unlike `LEGACY_SETTINGS`, deprecated settings can still be used
+# both on the command line and in the emscripten codebase.
+#
+# At some point in the future, once folks have stopped using these
+# settings we can move them to `LEGACY_SETTINGS`.
+DEPRECATED_SETTINGS = {
+    'SUPPORT_ERRNO': 'emscripten no longer uses the setErrNo library function',
+    'EXTRA_EXPORTED_RUNTIME_METHODS': 'please use EXPORTED_RUNTIME_METHODS instead',
+    'DEMANGLE_SUPPORT': 'mangled names no longer appear in stack traces',
+    'RUNTIME_LINKED_LIBS': 'you can simply list the libraries directly on the commandline now',
+    'CLOSURE_WARNINGS': 'use -Wclosure instead',
+}
 
 # Settings that don't need to be externalized when serializing to json because they
 # are not used by the JS compiler.

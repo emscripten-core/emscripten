@@ -57,6 +57,8 @@ Usage:
 
   --no-node Whether to support Node.js. By default we do, which emits some extra code.
 
+  --quiet Suppress reminder about using `FORCE_FILESYSTEM`
+
 Notes:
 
   * The file packager generates unix-style file paths. So if you are on windows and a file is accessed at
@@ -110,6 +112,7 @@ class Options:
     self.obj_output = None
     self.depfile = None
     self.from_emcc = False
+    self.quiet = False
     self.force = True
     # If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally
     # cache VFS XHR so that subsequent page loads can read the data from the
@@ -411,9 +414,11 @@ def main():
       if '=' in arg:
         options.export_name = arg.split('=', 1)[1]
       leading = ''
-    elif arg.startswith('--from-emcc'):
+    elif arg == '--from-emcc':
       options.from_emcc = True
       leading = ''
+    elif arg == '--quiet':
+      options.quiet = True
     elif arg.startswith('--plugin'):
       plugin = utils.read_file(arg.split('=', 1)[1])
       eval(plugin) # should append itself to plugins
@@ -454,7 +459,7 @@ def main():
           'and a specified --js-output')
       return 1
 
-  if not options.from_emcc:
+  if not options.from_emcc and not options.quiet:
     err('Remember to build the main file with `-sFORCE_FILESYSTEM` '
         'so that it includes support for loading this file package')
 
@@ -740,9 +745,8 @@ def generate_js(data_target, data_files, metadata):
       # LZ4FS usage
       temp = data_target + '.orig'
       shutil.move(data_target, temp)
-      meta = shared.run_js_tool(utils.path_from_root('tools/lz4-compress.js'),
-                                [utils.path_from_root('third_party/mini-lz4.js'),
-                                temp, data_target], stdout=PIPE)
+      meta = shared.run_js_tool(utils.path_from_root('tools/lz4-compress.mjs'),
+                                [temp, data_target], stdout=PIPE)
       os.unlink(temp)
       use_data = '''var compressedData = %s;
             compressedData['data'] = byteArray;
@@ -909,6 +913,10 @@ def generate_js(data_target, data_files, metadata):
           for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
             var getRequest = packages.get(`package/${packageName}/${chunkId}`);
             getRequest.onsuccess = function(event) {
+              if (!event.target.result) {
+                errback(new Error(`CachedPackageNotFound for: ${packageName}`));
+                return;
+              }
               // If there's only 1 chunk, there's nothing to concatenate it with so we can just return it now
               if (chunkCount == 1) {
                 callback(event.target.result);

@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 import os
+from typing import Dict, Set
 
 TAG = 'release-2.6.0'
 HASH = '2175d11a90211871f2289c8d57b31fe830e4b46af7361925c2c30cd521c1c677d2ee244feb682b6d3909cf085129255934751848fc81b480ea410952d990ffe0'
@@ -14,14 +15,29 @@ variants = {
   'sdl2_image_png': {'SDL2_IMAGE_FORMATS': ["png"]},
 }
 
+OPTIONS = {
+  'formats': 'A comma separated list of formats (ex: --use-port=sdl2_image:formats=png,jpg)'
+}
+
+SUPPORTED_FORMATS = {'avif', 'bmp', 'gif', 'jpg', 'jxl', 'lbm', 'pcx', 'png',
+                     'pnm', 'qoi', 'svg', 'tga', 'tif', 'webp', 'xcf', 'xpm', 'xv'}
+
+# user options (from --use-port)
+opts: Dict[str, Set] = {
+  'formats': set()
+}
+
 
 def needed(settings):
   return settings.USE_SDL_IMAGE == 2
 
 
+def get_formats(settings):
+  return set(settings.SDL2_IMAGE_FORMATS).union(opts['formats'])
+
+
 def get_lib_name(settings):
-  settings.SDL2_IMAGE_FORMATS.sort()
-  formats = '-'.join(settings.SDL2_IMAGE_FORMATS)
+  formats = '-'.join(sorted(get_formats(settings)))
 
   libname = 'libSDL2_image'
   if formats != '':
@@ -44,13 +60,15 @@ def get(ports, settings, shared):
 
     defs = ['-O2', '-sUSE_SDL=2', '-Wno-format-security']
 
-    for fmt in settings.SDL2_IMAGE_FORMATS:
+    formats = get_formats(settings)
+
+    for fmt in formats:
       defs.append('-DLOAD_' + fmt.upper())
 
-    if 'png' in settings.SDL2_IMAGE_FORMATS:
+    if 'png' in formats:
       defs += ['-sUSE_LIBPNG']
 
-    if 'jpg' in settings.SDL2_IMAGE_FORMATS:
+    if 'jpg' in formats:
       defs += ['-sUSE_LIBJPEG']
 
     ports.build_port(src_dir, final, 'sdl2_image', flags=defs, srcs=srcs)
@@ -64,13 +82,24 @@ def clear(ports, settings, shared):
 
 def process_dependencies(settings):
   settings.USE_SDL = 2
-  if 'png' in settings.SDL2_IMAGE_FORMATS:
+  formats = get_formats(settings)
+  if 'png' in formats:
     deps.append('libpng')
     settings.USE_LIBPNG = 1
-  if 'jpg' in settings.SDL2_IMAGE_FORMATS:
+  if 'jpg' in formats:
     deps.append('libjpeg')
     settings.USE_LIBJPEG = 1
 
 
+def handle_options(options, error_handler):
+  formats = options['formats'].split(',')
+  for format in formats:
+    format = format.lower().strip()
+    if format not in SUPPORTED_FORMATS:
+      error_handler(f'{format} is not a supported format')
+    else:
+      opts['formats'].add(format)
+
+
 def show():
-  return 'SDL2_image (USE_SDL_IMAGE=2; zlib license)'
+  return 'sdl2_image (-sUSE_SDL_IMAGE=2 or --use-port=sdl2_image; zlib license)'

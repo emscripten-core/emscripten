@@ -224,6 +224,7 @@ EMSCRIPTEN_RESULT emscripten_set_devicemotion_callback_on_thread(void *userData,
 
 EMSCRIPTEN_RESULT emscripten_get_devicemotion_status(EmscriptenDeviceMotionEvent *motionState __attribute__((nonnull)));
 
+#define EMSCRIPTEN_ORIENTATION_UNSUPPORTED         0
 #define EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY    1
 #define EMSCRIPTEN_ORIENTATION_PORTRAIT_SECONDARY  2
 #define EMSCRIPTEN_ORIENTATION_LANDSCAPE_PRIMARY   4

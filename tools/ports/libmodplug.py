@@ -88,7 +88,7 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'libmodplug (USE_MODPLUG=1; public domain)'
+  return 'libmodplug (-sUSE_MODPLUG=1 or --use-port=libmodplug; public domain)'
 
 
 config_h = '''/* src/config.h.  Generated from config.h.in by configure.  */

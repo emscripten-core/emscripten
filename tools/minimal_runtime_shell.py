@@ -45,14 +45,6 @@ def generate_minimal_runtime_load_statement(target_basename):
 
   files_to_load = ["script('%s')" % (target_basename + '.js')] # Main JS file always in first entry
 
-  # Download separate memory initializer file .mem
-  if not settings.MEM_INIT_IN_WASM:
-    if settings.MODULARIZE:
-      modularize_imports += ['mem: r[%d]' % len(files_to_load)]
-    else:
-      then_statements += ["%s.mem = r[%d];" % (settings.EXPORT_NAME, len(files_to_load))]
-    files_to_load += ["binary('%s')" % (target_basename + '.mem')]
-
   # Download .wasm file
   if (settings.WASM == 1 and settings.WASM2JS == 0) or not download_wasm:
     if settings.MODULARIZE:

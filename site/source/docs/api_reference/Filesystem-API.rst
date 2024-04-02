@@ -31,7 +31,7 @@ The JavaScript-based file system was originally written before pthreads were sup
 
 `Design Doc Link <https://docs.google.com/document/d/1-ZxybGvz0nCqygUDuWxCcCBhCebev3EbUSYoSOlc49Q/edit?usp=sharing>`_
 
-`Github Tracking Issue <https://github.com/emscripten-core/emscripten/issues/15041>`_
+`GitHub Tracking Issue <https://github.com/emscripten-core/emscripten/issues/15041>`_
 
 Differences you may notice with the original JS filesystem include:
 

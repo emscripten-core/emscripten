@@ -278,9 +278,9 @@ if (ENVIRONMENT_IS_WASM_WORKER) {
     };
     let tryAcquireLock = () => {
       do {
-        var val = Atomics.compareExchange(HEAP32, lock >> 2, 0/*zero represents lock being free*/, 1/*one represents lock being acquired*/);
+        var val = Atomics.compareExchange(HEAP32, {{{ getHeapOffset('lock', 'i32') }}}, 0/*zero represents lock being free*/, 1/*one represents lock being acquired*/);
         if (!val) return dispatch(0, 0/*'ok'*/);
-        var wait = Atomics.waitAsync(HEAP32, lock >> 2, val, maxWaitMilliseconds);
+        var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('lock', 'i32') }}}, val, maxWaitMilliseconds);
       } while (wait.value === 'not-equal');
 #if ASSERTIONS
       assert(wait.async || wait.value === 'timed-out');
@@ -301,12 +301,12 @@ if (ENVIRONMENT_IS_WASM_WORKER) {
     let tryAcquireSemaphore = () => {
       let val = num;
       do {
-        let ret = Atomics.compareExchange(HEAP32, sem >> 2,
-                                          val, /* We expect this many semaphore resoures to be available*/
+        let ret = Atomics.compareExchange(HEAP32, {{{ getHeapOffset('sem', 'i32') }}},
+                                          val, /* We expect this many semaphore resources to be available*/
                                           val - num /* Acquire 'num' of them */);
         if (ret == val) return dispatch(ret/*index of resource acquired*/, 0/*'ok'*/);
         val = ret;
-        let wait = Atomics.waitAsync(HEAP32, sem >> 2, ret, maxWaitMilliseconds);
+        let wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('sem', 'i32') }}}, ret, maxWaitMilliseconds);
       } while (wait.value === 'not-equal');
 #if ASSERTIONS
       assert(wait.async || wait.value === 'timed-out');

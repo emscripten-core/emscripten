@@ -67,8 +67,8 @@ function assert(condition, text) {
 }
 #endif
 
-function threadPrintErr() {
-  var text = Array.prototype.slice.call(arguments).join(' ');
+function threadPrintErr(...args) {
+  var text = args.join(' ');
 #if ENVIRONMENT_MAY_BE_NODE
   // See https://github.com/emscripten-core/emscripten/issues/14804
   if (ENVIRONMENT_IS_NODE) {
@@ -78,8 +78,8 @@ function threadPrintErr() {
 #endif
   console.error(text);
 }
-function threadAlert() {
-  var text = Array.prototype.slice.call(arguments).join(' ');
+function threadAlert(...args) {
+  var text = args.join(' ');
   postMessage({cmd: 'alert', text, threadId: Module['_pthread_self']()});
 }
 #if ASSERTIONS

@@ -1,59 +1,74 @@
-var b = Module, g = new function(a) {
-    this.buffer = new ArrayBuffer(65536 * a.initial);
-}({
-    initial: 256,
-    maximum: 256
-}), k = g.buffer, d = new Uint8Array(k), l = new TextDecoder("utf8"), m;
+var d = Module, g, h, k = new TextDecoder("utf8"), l;
 
-function c(a) {
-    this.exports = function(h) {
-        function n(f) {
-            f.set = function(e, p) {
-                this[e] = p;
+function e(b) {
+    this.exports = function(r) {
+        function u(c) {
+            c.set = function(a, f) {
+                this[a] = f;
             };
-            f.get = function(e) {
-                return this[e];
+            c.get = function(a) {
+                return this[a];
             };
-            return f;
+            return c;
         }
-        return function(f) {
-            var e = f.a.a;
+        function x(c, a, f) {
+            for (var v, p = 0, t = a, w = f.length, y = a + (3 * w >> 2) - ("=" == f[w - 2]) - ("=" == f[w - 1]); p < w; p += 4) a = m[f.charCodeAt(p + 1)], 
+            v = m[f.charCodeAt(p + 2)], c[t++] = m[f.charCodeAt(p)] << 2 | a >> 4, t < y && (c[t++] = a << 4 | v >> 2), 
+            t < y && (c[t++] = v << 6 | m[f.charCodeAt(p + 3)]);
+        }
+        for (var q, m = new Uint8Array(123), n = 25; 0 <= n; --n) m[48 + n] = 52 + n, m[65 + n] = n, 
+        m[97 + n] = 26 + n;
+        m[43] = 62;
+        m[47] = 63;
+        return function(c) {
+            var a = new ArrayBuffer(16908288), f = new Uint8Array(a), v = c.a.a;
+            q = f;
+            x(q, 1024, "aGVsbG8h");
+            c = u([]);
             return {
-                b: function() {},
-                c: function(p, q) {
-                    e(1024);
+                b: Object.create(Object.prototype, {
+                    grow: {},
+                    buffer: {
+                        get: function() {
+                            return a;
+                        }
+                    }
+                }),
+                c: function() {},
+                d: function(p, t) {
+                    v(1024);
                     return 0;
                 },
-                d: n([])
+                e: c
             };
-        }(h);
-    }(a);
+        }(r);
+    }(b);
 }
 
-(function(a, h) {
+(function(b, r) {
     return {
-        then: function(n) {
-            n({
-                instance: new c(h)
+        then: function(u) {
+            u({
+                instance: new e(r)
             });
         }
     };
-})(b.wasm, {
+})(d.wasm, {
     a: {
-        a: a => {
-            var h = console, n = h.log;
-            if (a) {
-                for (var f = a + void 0, e = a; !(e >= f) && d[e]; ) ++e;
-                a = l.decode(d.subarray(a, e));
-            } else a = "";
-            n.call(h, a);
-        },
-        memory: g
+        a: b => {
+            var r = console, u = r.log;
+            if (b) {
+                for (var x = b + void 0, q = b; !(q >= x) && g[q]; ) ++q;
+                b = k.decode(g.subarray(b, q));
+            } else b = "";
+            u.call(r, b);
+        }
     }
-}).then((a => {
-    a = a.instance.exports;
-    m = a.c;
-    d.set(new Uint8Array(b.mem), 1024);
-    a.b();
-    m();
+}).then((b => {
+    b = b.instance.exports;
+    l = b.d;
+    h = b.b;
+    g = new Uint8Array(h.buffer);
+    b.c();
+    l();
 }));

@@ -140,7 +140,7 @@ var LibraryHTML5 = {
         var call = JSEvents.deferredCalls[i];
         JSEvents.deferredCalls.splice(i, 1);
         --i;
-        call.targetFunction.apply(null, call.argsList);
+        call.targetFunction(...call.argsList);
       }
     },
 #endif
@@ -315,6 +315,7 @@ var LibraryHTML5 = {
   // Users can also add more special event targets, basically by just doing something like
   //    specialHTMLTargets["!canvas"] = Module.canvas;
   // (that will let !canvas map to the canvas held in Module.canvas).
+  $specialHTMLTargets__docs: '/** @type {Object} */',
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL || PTHREADS
   $specialHTMLTargets: "[0, typeof document != 'undefined' ? document : 0, typeof window != 'undefined' ? window : 0]",
 #else
@@ -480,16 +481,17 @@ var LibraryHTML5 = {
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     if (Module['canvas']) {
       var rect = getBoundingClientRect(Module['canvas']);
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasX / 4 }}}] = e.clientX - rect.left;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasY / 4 }}}] = e.clientY - rect.top;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasX / 4 }}}] = e.clientX - (rect.left | 0);
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasY / 4 }}}] = e.clientY - (rect.top  | 0);
     } else { // Canvas is not initialized, return 0.
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasX / 4 }}}] = 0;
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasY / 4 }}}] = 0;
     }
 #endif
+    // Note: rect contains doubles (truncated to placate SAFE_HEAP, which is the same behaviour when writing to HEAP32 anyway)
     var rect = getBoundingClientRect(target);
-    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetX / 4 }}}] = e.clientX - rect.left;
-    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetY / 4 }}}] = e.clientY - rect.top;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetX / 4 }}}] = e.clientX - (rect.left | 0);
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetY / 4 }}}] = e.clientY - (rect.top  | 0);
 
 #if MIN_SAFARI_VERSION <= 80000 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
 #if MIN_CHROME_VERSION <= 76
@@ -709,15 +711,15 @@ var LibraryHTML5 = {
 #else
       var uiEvent = JSEvents.uiEvent;
 #endif
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.detail, 'e.detail', 'i32') }}};
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.detail, '0', 'i32') }}}; // always zero for resize and scroll
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientWidth, 'b.clientWidth', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientHeight, 'b.clientHeight', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerWidth, 'innerWidth', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerHeight, 'innerHeight', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterWidth, 'outerWidth', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterHeight, 'outerHeight', 'i32') }}};
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollTop, 'pageXOffset', 'i32') }}};
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollLeft, 'pageYOffset', 'i32') }}};
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollTop, 'pageXOffset | 0', 'i32') }}}; // scroll offsets are float
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollLeft, 'pageYOffset | 0', 'i32') }}};
 #if PTHREADS
       if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, uiEvent, userData);
       else
@@ -927,23 +929,39 @@ var LibraryHTML5 = {
   },
 
   $screenOrientation: () => {
-    if (!screen) return undefined;
-    return screen.orientation || screen.mozOrientation || screen.webkitOrientation || screen.msOrientation;
+    if (!window.screen) return undefined;
+    return screen.orientation || screen['mozOrientation'] || screen['webkitOrientation'];
   },
 
   $fillOrientationChangeEventData__deps: ['$screenOrientation'],
   $fillOrientationChangeEventData: (eventStruct) => {
-    var orientations  = ["portrait-primary", "portrait-secondary", "landscape-primary", "landscape-secondary"];
-    var orientations2 = ["portrait",         "portrait",           "landscape",         "landscape"];
+    // OrientationType enum
+    var orientationsType1 = ['portrait-primary', 'portrait-secondary', 'landscape-primary', 'landscape-secondary'];
+    // alternative selection from OrientationLockType enum
+    var orientationsType2 = ['portrait',         'portrait',           'landscape',         'landscape'];
 
-    var orientationString = screenOrientation();
-    var orientation = orientations.indexOf(orientationString);
-    if (orientation == -1) {
-      orientation = orientations2.indexOf(orientationString);
+    var orientationIndex = 0;
+    var orientationAngle = 0;
+    var screenOrientObj  = screenOrientation();
+    if (typeof screenOrientObj === 'object') {
+      orientationIndex = orientationsType1.indexOf(screenOrientObj.type);
+      if (orientationIndex < 0) {
+        orientationIndex = orientationsType2.indexOf(screenOrientObj.type);
+      }
+      if (orientationIndex >= 0) {
+        orientationIndex = 1 << orientationIndex;
+      }
+      orientationAngle = screenOrientObj.angle;
     }
+#if MIN_SAFARI_VERSION < 0x100400
+    else {
+      // fallback for Safari earlier than 16.4 (March 2023)
+      orientationAngle = window.orientation;
+    }
+#endif
 
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationIndex, '1 << orientation', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationAngle, 'orientation', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationIndex, 'orientationIndex', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationAngle, 'orientationAngle', 'i32') }}};
   },
 
   $registerOrientationChangeEventCallback__deps: ['$JSEvents', '$fillOrientationChangeEventData', '$findEventTarget', 'malloc'],
@@ -969,10 +987,6 @@ var LibraryHTML5 = {
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, orientationChangeEvent, userData)) e.preventDefault();
     };
 
-    if (eventTypeId == {{{ cDefs.EMSCRIPTEN_EVENT_ORIENTATIONCHANGE }}} && screen.mozOrientation !== undefined) {
-      eventTypeString = "mozorientationchange";
-    }
-
     var eventHandler = {
       target,
       eventTypeString,
@@ -986,13 +1000,14 @@ var LibraryHTML5 = {
   emscripten_set_orientationchange_callback_on_thread__proxy: 'sync',
   emscripten_set_orientationchange_callback_on_thread__deps: ['$registerOrientationChangeEventCallback'],
   emscripten_set_orientationchange_callback_on_thread: (userData, useCapture, callbackfunc, targetThread) => {
-    if (!screen || !screen['addEventListener']) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
-    return registerOrientationChangeEventCallback(screen, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_ORIENTATIONCHANGE }}}, "orientationchange", targetThread);
+    if (!window.screen || !screen.orientation) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    return registerOrientationChangeEventCallback(screen.orientation, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_ORIENTATIONCHANGE }}}, 'change', targetThread);
   },
 
   emscripten_get_orientation_status__proxy: 'sync',
   emscripten_get_orientation_status__deps: ['$fillOrientationChangeEventData', '$screenOrientation'],
   emscripten_get_orientation_status: (orientationChangeEvent) => {
+    // screenOrientation() resolving standard, window.orientation being the deprecated mobile-only
     if (!screenOrientation() && typeof orientation == 'undefined') return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     fillOrientationChangeEventData(orientationChangeEvent);
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
@@ -1012,8 +1027,6 @@ var LibraryHTML5 = {
       succeeded = screen.mozLockOrientation(orientations);
     } else if (screen.webkitLockOrientation) {
       succeeded = screen.webkitLockOrientation(orientations);
-    } else if (screen.msLockOrientation) {
-      succeeded = screen.msLockOrientation(orientations);
     } else {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }
@@ -1031,8 +1044,6 @@ var LibraryHTML5 = {
       screen.mozUnlockOrientation();
     } else if (screen.webkitUnlockOrientation) {
       screen.webkitUnlockOrientation();
-    } else if (screen.msUnlockOrientation) {
-      screen.msUnlockOrientation();
     } else {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }
@@ -1944,11 +1955,11 @@ var LibraryHTML5 = {
         HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.pageY / 4}}}] = t.pageY;
         HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.isChanged / 4}}}] = t.isChanged;
         HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.onTarget / 4}}}] = t.onTarget;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.targetX / 4}}}] = t.clientX - targetRect.left;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.targetY / 4}}}] = t.clientY - targetRect.top;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.targetX / 4}}}] = t.clientX - (targetRect.left | 0);
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.targetY / 4}}}] = t.clientY - (targetRect.top  | 0);
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasX / 4}}}] = canvasRect ? t.clientX - canvasRect.left : 0;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasY / 4}}}] = canvasRect ? t.clientY - canvasRect.top : 0;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasX / 4}}}] = canvasRect ? t.clientX - (canvasRect.left | 0) : 0;
+        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasY / 4}}}] = canvasRect ? t.clientY - (canvasRect.top  | 0) : 0;
 #endif
 
         idx += {{{ C_STRUCTS.EmscriptenTouchPoint.__size__ / 4 }}};
@@ -2273,7 +2284,7 @@ var LibraryHTML5 = {
       }
 #if OFFSCREENCANVAS_SUPPORT
     } else if (canvas.canvasSharedPtr) {
-      var targetThread = {{{ makeGetValue('canvas.canvasSharedPtr', 8, 'i32') }}};
+      var targetThread = {{{ makeGetValue('canvas.canvasSharedPtr', 8, '*') }}};
       setOffscreenCanvasSizeOnTargetThread(targetThread, target, width, height);
       return {{{ cDefs.EMSCRIPTEN_RESULT_DEFERRED }}}; // This will have to be done asynchronously
 #endif

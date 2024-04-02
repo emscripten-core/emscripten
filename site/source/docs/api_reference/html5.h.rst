@@ -419,13 +419,13 @@ Struct
   .. c:member:: long targetX
      long targetY
 
-    These fields give the mouse coordinates mapped relative to the coordinate space of the target DOM element receiving the input events (Emscripten-specific extension).
+    These fields give the mouse coordinates mapped relative to the coordinate space of the target DOM element receiving the input events (Emscripten-specific extension; coordinates are rounded down to the nearest integer).
 
 
   .. c:member:: long canvasX
      long canvasY
 
-    These fields give the mouse coordinates mapped to the Emscripten canvas client area (Emscripten-specific extension).
+    These fields give the mouse coordinates mapped to the Emscripten canvas client area (Emscripten-specific extension; coordinates are rounded down the nearest integer).
 
 
   .. c:member:: long padding
@@ -596,7 +596,7 @@ Struct
 
   .. c:member:: long detail
 
-    Specifies additional detail/information about this event.
+    For resize and scroll events this is always zero.
 
   .. c:member:: int documentBodyClientWidth
     int documentBodyClientHeight
@@ -616,7 +616,7 @@ Struct
   .. c:member:: int scrollTop
     int scrollLeft
 
-    The page scroll position.
+    The page scroll position (rounded down to the nearest pixel).
 
 
 Callback functions
@@ -927,6 +927,10 @@ Defines
     Emscripten `orientationchange <https://w3c.github.io/screen-orientation/>`_ event.
 
 
+.. c:macro:: EMSCRIPTEN_ORIENTATION_UNKNOWN
+
+  Either the orientation API is not supported or the orientation type is not known.
+
 .. c:macro:: EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY
 
   Primary portrait mode orientation.
@@ -954,7 +958,7 @@ Struct
 
   .. c:member:: int orientationIndex
 
-    One of the :c:type:`EM_ORIENTATION_PORTRAIT_xxx <EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY>` fields, or -1 if unknown.
+    One of the :c:type:`EM_ORIENTATION_PORTRAIT_xxx <EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY>` fields, or :c:type:`EMSCRIPTEN_ORIENTATION_UNKNOWN` if unknown.
 
   .. c:member:: int orientationAngle
 
@@ -2009,7 +2013,7 @@ Struct
 
     If the current browser does not support OffscreenCanvas, you can specify the ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS`` WebGL context creation flag. If this flag is passed, and code was compiled with ``-sOFFSCREEN_FRAMEBUFFER`` enabled, the WebGL context will be created as a "proxied context". In this context mode, the WebGLRenderingContext object will actually be created on the main browser thread, and all WebGL API calls will be proxied as asynchronous messages from the pthread into the main thread. This will have a performance and latency impact in comparison to OffscreenCanvas contexts, however unlike OffscreenCanvas-based contexts, proxied contexts can be shared across any number of pthreads: you can use the ``emscripten_webgl_make_context_current()`` function in any pthread to activate and deactivate access to the WebGL context: for example, you could have one WebGL loading thread, and another WebGL rendering thread that coordinate shared access to the WebGL rendering context by cooperatively acquiring and releasing access to the WebGL rendering context via the ``emscripten_webgl_make_context_current()`` function. Proxied contexts do not require any special support from the browser, so any WebGL capable browser can create a proxied WebGL context.
 
-    The ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS`` WebGL context creation flag will always create a proxied context, even if the browser did support OffscreenCanvas. If you would like to prefer to create a higher performance OffscreenCanvas context whenever suppported by the browser, but only fall back to a proxied WebGL context to keep compatibility with browsers that do not yet have OffscreenCanvas support, you can specify the ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK`` context creation flag. In order to use this flag, code should be compiled with both ``-sOFFSCREEN_FRAMEBUFFER`` and ``-sOFFSCREENCANVAS_SUPPORT`` linker flags.
+    The ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS`` WebGL context creation flag will always create a proxied context, even if the browser did support OffscreenCanvas. If you would like to prefer to create a higher performance OffscreenCanvas context whenever supported by the browser, but only fall back to a proxied WebGL context to keep compatibility with browsers that do not yet have OffscreenCanvas support, you can specify the ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK`` context creation flag. In order to use this flag, code should be compiled with both ``-sOFFSCREEN_FRAMEBUFFER`` and ``-sOFFSCREENCANVAS_SUPPORT`` linker flags.
 
     Default value of ``proxyContextToMainThread`` after calling ``emscripten_webgl_init_context_attributes()`` is ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW``, if the WebGL context is being created on the main thread. This means that by default WebGL contexts created on the main thread are not shareable between multiple threads (to avoid accidental performance loss from enabling proxying when/if it is not needed). To create a context that can be shared between multiple pthreads, set the ``proxyContextToMainThread`` flag ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS``.
 
@@ -2086,7 +2090,7 @@ Functions
   :type target: const char*
   :param attributes: The attributes of the requested context version.
   :type attributes: const EmscriptenWebGLContextAttributes*
-  :returns: On success, a strictly positive value that represents a handle to the created context. On failure, a negative number that can be cast to an |EMSCRIPTEN_RESULT| field to get the reason why the context creation failed.
+  :returns: On success, a non-zero value that represents a handle to the created context. On failure, 0.
   :rtype: |EMSCRIPTEN_WEBGL_CONTEXT_HANDLE|
 
 

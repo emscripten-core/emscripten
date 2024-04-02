@@ -39,7 +39,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 115
+EXPECTED_BINARYEN_VERSION = 117
 
 _is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
@@ -132,7 +132,7 @@ def side_module_external_deps(external_symbols):
 
 
 def create_stub_object(external_symbols):
-  """Create a stub object, based on the JS libary symbols and their
+  """Create a stub object, based on the JS library symbols and their
   dependencies, that we can pass to wasm-ld.
   """
   stubfile = shared.get_temp_files().get('libemscripten_js_symbols.so').name
@@ -220,13 +220,17 @@ def lld_flags_for_executable(external_symbols):
       cmd.append('--growable-table')
 
   if not settings.SIDE_MODULE:
-    # Export these two section start symbols so that we can extract the string
-    # data that they contain.
-    cmd += [
-      '-z', 'stack-size=%s' % settings.STACK_SIZE,
-      '--initial-memory=%d' % settings.INITIAL_MEMORY,
-      '--max-memory=%d' % settings.MAXIMUM_MEMORY,
-    ]
+    cmd += ['-z', 'stack-size=%s' % settings.STACK_SIZE]
+
+    if settings.ALLOW_MEMORY_GROWTH:
+      cmd += ['--max-memory=%d' % settings.MAXIMUM_MEMORY]
+    else:
+      cmd += ['--no-growable-memory']
+
+    if settings.INITIAL_HEAP != -1:
+      cmd += ['--initial-heap=%d' % settings.INITIAL_HEAP]
+    if settings.INITIAL_MEMORY != -1:
+      cmd += ['--initial-memory=%d' % settings.INITIAL_MEMORY]
 
     if settings.STANDALONE_WASM:
       # when settings.EXPECT_MAIN is set we fall back to wasm-ld default of _start
@@ -1297,7 +1301,7 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
 
 def save_intermediate(src, dst):
   if DEBUG:
-    dst = 'emcc-%d-%s' % (save_intermediate.counter, dst)
+    dst = 'emcc-%02d-%s' % (save_intermediate.counter, dst)
     save_intermediate.counter += 1
     dst = os.path.join(shared.CANONICAL_TEMP_DIR, dst)
     logger.debug('saving debug copy %s' % dst)

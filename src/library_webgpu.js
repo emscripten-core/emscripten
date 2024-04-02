@@ -744,10 +744,10 @@ var LibraryWebGPU = {
       bufferWrapper.onUnmap = undefined;
     }
 
-    WebGPU.mgrBuffer.get(bufferId)["destroy"]();
+    WebGPU.mgrBuffer.get(bufferId).destroy();
   },
-  wgpuTextureDestroy: (textureId) => WebGPU.mgrTexture.get(textureId)["destroy"](),
-  wgpuQuerySetDestroy: (querySetId) => WebGPU.mgrQuerySet.get(querySetId)["destroy"](),
+  wgpuTextureDestroy: (textureId) => WebGPU.mgrTexture.get(textureId).destroy(),
+  wgpuQuerySetDestroy: (querySetId) => WebGPU.mgrQuerySet.get(querySetId).destroy(),
 
   // wgpuDevice
 
@@ -764,7 +764,7 @@ var LibraryWebGPU = {
     return device.features.size;
   },
 
-  wgpuDeviceDestroy: (deviceId) => WebGPU.mgrDevice.get(deviceId)["destroy"](),
+  wgpuDeviceDestroy: (deviceId) => WebGPU.mgrDevice.get(deviceId).destroy(),
 
   wgpuDeviceGetLimits: (deviceId, limitsOutPtr) => {
     var device = WebGPU.mgrDevice.objects[deviceId].object;
@@ -832,14 +832,14 @@ var LibraryWebGPU = {
 
   wgpuDevicePushErrorScope: (deviceId, filter) => {
     var device = WebGPU.mgrDevice.get(deviceId);
-    device["pushErrorScope"](WebGPU.ErrorFilter[filter]);
+    device.pushErrorScope(WebGPU.ErrorFilter[filter]);
   },
 
   wgpuDevicePopErrorScope__deps: ['$callUserCallback'],
   wgpuDevicePopErrorScope: (deviceId, callback, userdata) => {
     var device = WebGPU.mgrDevice.get(deviceId);
     {{{ runtimeKeepalivePush() }}}
-    device["popErrorScope"]().then((gpuError) => {
+    device.popErrorScope().then((gpuError) => {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
         if (!gpuError) {
@@ -875,7 +875,7 @@ var LibraryWebGPU = {
   wgpuDeviceSetUncapturedErrorCallback__deps: ['$callUserCallback'],
   wgpuDeviceSetUncapturedErrorCallback: (deviceId, callback, userdata) => {
     var device = WebGPU.mgrDevice.get(deviceId);
-    device["onuncapturederror"] = function(ev) {
+    device.onuncapturederror = function(ev) {
       // This will skip the callback if the runtime is no longer alive.
       callUserCallback(() => {
         // WGPUErrorType type, const char* message, void* userdata
@@ -908,7 +908,7 @@ var LibraryWebGPU = {
       if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
     }
     var device = WebGPU.mgrDevice.get(deviceId);
-    return WebGPU.mgrCommandEncoder.create(device["createCommandEncoder"](desc));
+    return WebGPU.mgrCommandEncoder.create(device.createCommandEncoder(desc));
   },
 
   wgpuDeviceCreateBuffer: (deviceId, descriptor) => {
@@ -927,7 +927,7 @@ var LibraryWebGPU = {
 
     var device = WebGPU.mgrDevice.get(deviceId);
     var bufferWrapper = {};
-    var id = WebGPU.mgrBuffer.create(device["createBuffer"](desc), bufferWrapper);
+    var id = WebGPU.mgrBuffer.create(device.createBuffer(desc), bufferWrapper);
     if (mappedAtCreation) {
       bufferWrapper.mapMode = {{{ gpu.MapMode.Write }}};
       bufferWrapper.onUnmap = [];
@@ -961,7 +961,7 @@ var LibraryWebGPU = {
     }
 
     var device = WebGPU.mgrDevice.get(deviceId);
-    return WebGPU.mgrTexture.create(device["createTexture"](desc));
+    return WebGPU.mgrTexture.create(device.createTexture(desc));
   },
 
   wgpuDeviceCreateSampler: (deviceId, descriptor) => {
@@ -993,7 +993,7 @@ var LibraryWebGPU = {
     }
 
     var device = WebGPU.mgrDevice.get(deviceId);
-    return WebGPU.mgrSampler.create(device["createSampler"](desc));
+    return WebGPU.mgrSampler.create(device.createSampler(desc));
   },
 
   wgpuDeviceCreateBindGroupLayout: (deviceId, descriptor) => {
@@ -1093,7 +1093,7 @@ var LibraryWebGPU = {
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
     var device = WebGPU.mgrDevice.get(deviceId);
-    return WebGPU.mgrBindGroupLayout.create(device["createBindGroupLayout"](desc));
+    return WebGPU.mgrBindGroupLayout.create(device.createBindGroupLayout(desc));
   },
 
   wgpuDeviceCreateBindGroup__deps: ['$readI53FromI64'],
@@ -1159,7 +1159,7 @@ var LibraryWebGPU = {
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
     var device = WebGPU.mgrDevice.get(deviceId);
-    return WebGPU.mgrBindGroup.create(device["createBindGroup"](desc));
+    return WebGPU.mgrBindGroup.create(device.createBindGroup(desc));
   },
 
   wgpuDeviceCreatePipelineLayout: (deviceId, descriptor) => {
@@ -1179,7 +1179,7 @@ var LibraryWebGPU = {
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
     var device = WebGPU.mgrDevice.get(deviceId);
-    return WebGPU.mgrPipelineLayout.create(device["createPipelineLayout"](desc));
+    return WebGPU.mgrPipelineLayout.create(device.createPipelineLayout(desc));
   },
 
   wgpuDeviceCreateQuerySet: (deviceId, descriptor) => {
@@ -1192,7 +1192,7 @@ var LibraryWebGPU = {
     };
 
     var device = WebGPU.mgrDevice.get(deviceId);
-    return WebGPU.mgrQuerySet.create(device["createQuerySet"](desc));
+    return WebGPU.mgrQuerySet.create(device.createQuerySet(desc));
   },
 
   wgpuDeviceCreateRenderBundleEncoder: (deviceId, descriptor) => {
@@ -1227,7 +1227,7 @@ var LibraryWebGPU = {
 
     var desc = makeRenderBundleEncoderDescriptor(descriptor);
     var device = WebGPU.mgrDevice.get(deviceId);
-    return WebGPU.mgrRenderBundleEncoder.create(device["createRenderBundleEncoder"](desc));
+    return WebGPU.mgrRenderBundleEncoder.create(device.createRenderBundleEncoder(desc));
   },
 
   wgpuDeviceCreateComputePipeline: (deviceId, descriptor) => {
@@ -1244,7 +1244,7 @@ var LibraryWebGPU = {
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
 
     var device = WebGPU.mgrDevice.get(deviceId);
-    return WebGPU.mgrComputePipeline.create(device["createComputePipeline"](desc));
+    return WebGPU.mgrComputePipeline.create(device.createComputePipeline(desc));
   },
 
   wgpuDeviceCreateComputePipelineAsync: (deviceId, descriptor, callback, userdata) => {
@@ -1256,7 +1256,15 @@ var LibraryWebGPU = {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
     function makePrimitiveState(rsPtr) {
       if (!rsPtr) return undefined;
-      {{{ gpu.makeCheckDescriptor('rsPtr') }}}
+      {{{ gpu.makeCheck('rsPtr') }}}
+
+      // TODO: This small hack assumes that there's only one type that can be in the chain of
+      // WGPUPrimitiveState. The correct thing would be to traverse the chain, but unclippedDepth
+      // is going to move into the core object soon, so we'll just do this for now. See:
+      // https://github.com/webgpu-native/webgpu-headers/issues/212#issuecomment-1682801259
+      var nextInChainPtr = {{{ makeGetValue('rsPtr', C_STRUCTS.WGPUPrimitiveState.nextInChain, '*') }}};
+      var sType = nextInChainPtr ? {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUChainedStruct.sType) }}} : 0;
+      
       return {
         "topology": WebGPU.PrimitiveTopology[
           {{{ gpu.makeGetU32('rsPtr', C_STRUCTS.WGPUPrimitiveState.topology) }}}],
@@ -1266,6 +1274,7 @@ var LibraryWebGPU = {
           {{{ gpu.makeGetU32('rsPtr', C_STRUCTS.WGPUPrimitiveState.frontFace) }}}],
         "cullMode": WebGPU.CullMode[
           {{{ gpu.makeGetU32('rsPtr', C_STRUCTS.WGPUPrimitiveState.cullMode) }}}],
+        "unclippedDepth": sType === {{{ gpu.SType.PrimitiveDepthClipControl }}} && {{{ gpu.makeGetBool('nextInChainPtr', C_STRUCTS.WGPUPrimitiveDepthClipControl.unclippedDepth) }}},
       };
     }
 
@@ -1451,7 +1460,7 @@ var LibraryWebGPU = {
   wgpuDeviceCreateRenderPipeline: (deviceId, descriptor) => {
     var desc = generateRenderPipelineDesc(descriptor);
     var device = WebGPU.mgrDevice.get(deviceId);
-    return WebGPU.mgrRenderPipeline.create(device["createRenderPipeline"](desc));
+    return WebGPU.mgrRenderPipeline.create(device.createRenderPipeline(desc));
   },
 
   wgpuDeviceCreateRenderPipelineAsync__deps: ['$callUserCallback', '$stringToUTF8OnStack', '$generateRenderPipelineDesc'],
@@ -1459,7 +1468,7 @@ var LibraryWebGPU = {
     var desc = generateRenderPipelineDesc(descriptor);
     var device = WebGPU.mgrDevice.get(deviceId);
     {{{ runtimeKeepalivePush() }}}
-    device["createRenderPipelineAsync"](desc).then((pipeline) => {
+    device.createRenderPipelineAsync(desc).then((pipeline) => {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
         var pipelineId = WebGPU.mgrRenderPipeline.create(pipeline);
@@ -1523,7 +1532,7 @@ var LibraryWebGPU = {
     }
 
     var device = WebGPU.mgrDevice.get(deviceId);
-    return WebGPU.mgrShaderModule.create(device["createShaderModule"](desc));
+    return WebGPU.mgrShaderModule.create(device.createShaderModule(desc));
   },
 
   // wgpuQuerySet
@@ -1556,19 +1565,16 @@ var LibraryWebGPU = {
 #endif
     var queue = WebGPU.mgrQueue.get(queueId);
     var cmds = Array.from({{{ makeHEAPView(`${POINTER_BITS}`, 'commands', `commands + commandCount * ${POINTER_SIZE}`)}}},
-      function(id) { return WebGPU.mgrCommandBuffer.get(id); });
-    queue["submit"](cmds);
+      (id) => WebGPU.mgrCommandBuffer.get(id));
+    queue.submit(cmds);
   },
 
   wgpuQueueOnSubmittedWorkDone__deps: ['$callUserCallback'],
-  wgpuQueueOnSubmittedWorkDone: (queueId, signalValue, callback, userdata) => {
+  wgpuQueueOnSubmittedWorkDone: (queueId, callback, userdata) => {
     var queue = WebGPU.mgrQueue.get(queueId);
-#if ASSERTIONS
-    assert(signalValue == 0, 'signalValue not supported, must be 0');
-#endif
 
     {{{ runtimeKeepalivePush() }}}
-    queue["onSubmittedWorkDone"]().then(() => {
+    queue.onSubmittedWorkDone().then(() => {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
         {{{ makeDynCall('vip', 'callback') }}}({{{ gpu.QueueWorkDoneStatus.Success }}}, userdata);
@@ -1587,7 +1593,7 @@ var LibraryWebGPU = {
     // There is a size limitation for ArrayBufferView. Work around by passing in a subarray
     // instead of the whole heap. crbug.com/1201109
     var subarray = HEAPU8.subarray(data, data + size);
-    queue["writeBuffer"](buffer, bufferOffset, subarray, 0, size);
+    queue.writeBuffer(buffer, bufferOffset, subarray, 0, size);
   },
 
   wgpuQueueWriteTexture: (queueId,
@@ -1600,7 +1606,7 @@ var LibraryWebGPU = {
     // This subarray isn't strictly necessary, but helps work around an issue
     // where Chromium makes a copy of the entire heap. crbug.com/1134457
     var subarray = HEAPU8.subarray(data, data + dataSize);
-    queue["writeTexture"](destination, subarray, dataLayout, writeSize);
+    queue.writeTexture(destination, subarray, dataLayout, writeSize);
   },
 
   // wgpuCommandEncoder
@@ -1631,7 +1637,7 @@ var LibraryWebGPU = {
 
     }
     var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
-    return WebGPU.mgrComputePassEncoder.create(commandEncoder["beginComputePass"](desc));
+    return WebGPU.mgrComputePassEncoder.create(commandEncoder.beginComputePass(desc));
   },
 
   wgpuCommandEncoderBeginRenderPass: (encoderId, descriptor) => {
@@ -1748,7 +1754,7 @@ var LibraryWebGPU = {
     var desc = makeRenderPassDescriptor(descriptor);
 
     var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
-    return WebGPU.mgrRenderPassEncoder.create(commandEncoder["beginRenderPass"](desc));
+    return WebGPU.mgrRenderPassEncoder.create(commandEncoder.beginRenderPass(desc));
   },
 
   wgpuCommandEncoderClearBuffer: (encoderId, bufferId, offset, size) => {
@@ -1756,34 +1762,34 @@ var LibraryWebGPU = {
     {{{ gpu.convertSentinelToUndefined('size') }}}
 
     var buffer = WebGPU.mgrBuffer.get(bufferId);
-    commandEncoder["clearBuffer"](buffer, offset, size);
+    commandEncoder.clearBuffer(buffer, offset, size);
   },
 
   wgpuCommandEncoderCopyBufferToBuffer: (encoderId, srcId, srcOffset, dstId, dstOffset, size) => {
     var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
     var src = WebGPU.mgrBuffer.get(srcId);
     var dst = WebGPU.mgrBuffer.get(dstId);
-    commandEncoder["copyBufferToBuffer"](src, srcOffset, dst, dstOffset, size);
+    commandEncoder.copyBufferToBuffer(src, srcOffset, dst, dstOffset, size);
   },
 
   wgpuCommandEncoderCopyBufferToTexture: (encoderId, srcPtr, dstPtr, copySizePtr) => {
     var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
     var copySize = WebGPU.makeExtent3D(copySizePtr);
-    commandEncoder["copyBufferToTexture"](
+    commandEncoder.copyBufferToTexture(
       WebGPU.makeImageCopyBuffer(srcPtr), WebGPU.makeImageCopyTexture(dstPtr), copySize);
   },
 
   wgpuCommandEncoderCopyTextureToBuffer: (encoderId, srcPtr, dstPtr, copySizePtr) => {
     var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
     var copySize = WebGPU.makeExtent3D(copySizePtr);
-    commandEncoder["copyTextureToBuffer"](
+    commandEncoder.copyTextureToBuffer(
       WebGPU.makeImageCopyTexture(srcPtr), WebGPU.makeImageCopyBuffer(dstPtr), copySize);
   },
 
   wgpuCommandEncoderCopyTextureToTexture: (encoderId, srcPtr, dstPtr, copySizePtr) => {
     var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
     var copySize = WebGPU.makeExtent3D(copySizePtr);
-    commandEncoder["copyTextureToTexture"](
+    commandEncoder.copyTextureToTexture(
       WebGPU.makeImageCopyTexture(srcPtr), WebGPU.makeImageCopyTexture(dstPtr), copySize);
   },
 
@@ -1793,32 +1799,32 @@ var LibraryWebGPU = {
     var querySet = WebGPU.mgrQuerySet.get(querySetId);
     var destination = WebGPU.mgrBuffer.get(destinationId);
 
-    commandEncoder["resolveQuerySet"](querySet, firstQuery, queryCount, destination, destinationOffset);
+    commandEncoder.resolveQuerySet(querySet, firstQuery, queryCount, destination, destinationOffset);
   },
 
   wgpuCommandEncoderWriteTimestamp: (encoderId, querySetId, queryIndex) => {
     var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
     var querySet = WebGPU.mgrQuerySet.get(querySetId);
-    commandEncoder["writeTimestamp"](querySet, queryIndex);
+    commandEncoder.writeTimestamp(querySet, queryIndex);
   },
 
   wgpuCommandEncoderPushDebugGroup: (encoderId, groupLabelPtr) => {
     var encoder = WebGPU.mgrCommandEncoder.get(encoderId);
-    encoder["pushDebugGroup"](UTF8ToString(groupLabelPtr));
+    encoder.pushDebugGroup(UTF8ToString(groupLabelPtr));
   },
   wgpuCommandEncoderPopDebugGroup: (encoderId) => {
     var encoder = WebGPU.mgrCommandEncoder.get(encoderId);
-    encoder["popDebugGroup"]();
+    encoder.popDebugGroup();
   },
   wgpuCommandEncoderInsertDebugMarker: (encoderId, markerLabelPtr) => {
     var encoder = WebGPU.mgrCommandEncoder.get(encoderId);
-    encoder["insertDebugMarker"](UTF8ToString(markerLabelPtr));
+    encoder.insertDebugMarker(UTF8ToString(markerLabelPtr));
   },
 
   wgpuCommandEncoderFinish: (encoderId, descriptor) => {
     // TODO: Use the descriptor.
     var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
-    return WebGPU.mgrCommandBuffer.create(commandEncoder["finish"]());
+    return WebGPU.mgrCommandBuffer.create(commandEncoder.finish());
   },
 
   wgpuCommandEncoderSetLabel: (encoderId, labelPtr) => {
@@ -1846,7 +1852,7 @@ var LibraryWebGPU = {
   wgpuShaderModuleGetCompilationInfo: (shaderModuleId, callback, userdata) => {
     var shaderModule = WebGPU.mgrShaderModule.get(shaderModuleId);
     {{{ runtimeKeepalivePush() }}}
-    shaderModule["getCompilationInfo"]().then((compilationInfo) => {
+    shaderModule.getCompilationInfo().then((compilationInfo) => {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
         var compilationMessagesPtr = _malloc({{{ C_STRUCTS.WGPUCompilationMessage.__size__ }}} * compilationInfo.messages.length);
@@ -1893,7 +1899,7 @@ var LibraryWebGPU = {
 
   wgpuComputePipelineGetBindGroupLayout: (pipelineId, groupIndex) => {
     var pipeline = WebGPU.mgrComputePipeline.get(pipelineId);
-    return WebGPU.mgrBindGroupLayout.create(pipeline["getBindGroupLayout"](groupIndex));
+    return WebGPU.mgrBindGroupLayout.create(pipeline.getBindGroupLayout(groupIndex));
   },
   wgpuComputePipelineSetLabel: (pipelineId, labelPtr) => {
     var pipeline = WebGPU.mgrComputePipeline.get(pipelineId);
@@ -1904,7 +1910,7 @@ var LibraryWebGPU = {
 
   wgpuRenderPipelineGetBindGroupLayout: (pipelineId, groupIndex) => {
     var pipeline = WebGPU.mgrRenderPipeline.get(pipelineId);
-    return WebGPU.mgrBindGroupLayout.create(pipeline["getBindGroupLayout"](groupIndex));
+    return WebGPU.mgrBindGroupLayout.create(pipeline.getBindGroupLayout(groupIndex));
   },
   wgpuRenderPipelineSetLabel: (pipelineId, labelPtr) => {
     var pipeline = WebGPU.mgrRenderPipeline.get(pipelineId);
@@ -1940,7 +1946,7 @@ var LibraryWebGPU = {
 
     var mapped;
     try {
-      mapped = bufferWrapper.object["getMappedRange"](offset, size);
+      mapped = bufferWrapper.object.getMappedRange(offset, size);
     } catch (ex) {
 #if ASSERTIONS
       err(`wgpuBufferGetConstMappedRange(${offset}, ${size}) failed: ${ex}`);
@@ -1980,7 +1986,7 @@ var LibraryWebGPU = {
 
     var mapped;
     try {
-      mapped = bufferWrapper.object["getMappedRange"](offset, size);
+      mapped = bufferWrapper.object.getMappedRange(offset, size);
     } catch (ex) {
 #if ASSERTIONS
       err(`wgpuBufferGetMappedRange(${offset}, ${size}) failed: ${ex}`);
@@ -2013,7 +2019,7 @@ var LibraryWebGPU = {
     // `callback` takes (WGPUBufferMapAsyncStatus status, void * userdata)
 
     {{{ runtimeKeepalivePush() }}}
-    buffer["mapAsync"](mode, offset, size).then(() => {
+    buffer.mapAsync(mode, offset, size).then(() => {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
         {{{ makeDynCall('vip', 'callback') }}}({{{ gpu.BufferMapAsyncStatus.Success }}}, userdata);
@@ -2057,7 +2063,7 @@ var LibraryWebGPU = {
     }
     bufferWrapper.onUnmap = undefined;
 
-    bufferWrapper.object["unmap"]();
+    bufferWrapper.object.unmap();
   },
 
   // wgpuTexture
@@ -2131,7 +2137,7 @@ var LibraryWebGPU = {
     }
 
     var texture = WebGPU.mgrTexture.get(textureId);
-    return WebGPU.mgrTextureView.create(texture["createView"](desc));
+    return WebGPU.mgrTextureView.create(texture.createView(desc));
   },
 
   // wgpuTextureView
@@ -2147,13 +2153,13 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
     var group = WebGPU.mgrBindGroup.get(groupId);
     if (dynamicOffsetCount == 0) {
-      pass["setBindGroup"](groupIndex, group);
+      pass.setBindGroup(groupIndex, group);
     } else {
       var offsets = [];
       for (var i = 0; i < dynamicOffsetCount; i++, dynamicOffsetsPtr += 4) {
         offsets.push({{{ gpu.makeGetU32('dynamicOffsetsPtr', 0) }}});
       }
-      pass["setBindGroup"](groupIndex, group, offsets);
+      pass.setBindGroup(groupIndex, group, offsets);
     }
   },
   wgpuComputePassEncoderSetLabel: (passId, labelPtr) => {
@@ -2163,41 +2169,41 @@ var LibraryWebGPU = {
   wgpuComputePassEncoderSetPipeline: (passId, pipelineId) => {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
     var pipeline = WebGPU.mgrComputePipeline.get(pipelineId);
-    pass["setPipeline"](pipeline);
+    pass.setPipeline(pipeline);
   },
 
   wgpuComputePassEncoderDispatchWorkgroups: (passId, x, y, z) => {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
-    pass["dispatchWorkgroups"](x, y, z);
+    pass.dispatchWorkgroups(x, y, z);
   },
   wgpuComputePassEncoderDispatchWorkgroupsIndirect: (passId, indirectBufferId, indirectOffset) => {
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
-    pass["dispatchWorkgroupsIndirect"](indirectBuffer, indirectOffset);
+    pass.dispatchWorkgroupsIndirect(indirectBuffer, indirectOffset);
   },
 
   wgpuComputePassEncoderWriteTimestamp: (encoderId, querySetId, queryIndex) => {
     var pass = WebGPU.mgrComputePassEncoder.get(encoderId);
     var querySet = WebGPU.mgrQuerySet.get(querySetId);
-    pass["writeTimestamp"](querySet, queryIndex);
+    pass.writeTimestamp(querySet, queryIndex);
   },
 
   wgpuComputePassEncoderPushDebugGroup: (encoderId, groupLabelPtr) => {
     var encoder = WebGPU.mgrComputePassEncoder.get(encoderId);
-    encoder["pushDebugGroup"](UTF8ToString(groupLabelPtr));
+    encoder.pushDebugGroup(UTF8ToString(groupLabelPtr));
   },
   wgpuComputePassEncoderPopDebugGroup: (encoderId) => {
     var encoder = WebGPU.mgrComputePassEncoder.get(encoderId);
-    encoder["popDebugGroup"]();
+    encoder.popDebugGroup();
   },
   wgpuComputePassEncoderInsertDebugMarker: (encoderId, markerLabelPtr) => {
     var encoder = WebGPU.mgrComputePassEncoder.get(encoderId);
-    encoder["insertDebugMarker"](UTF8ToString(markerLabelPtr));
+    encoder.insertDebugMarker(UTF8ToString(markerLabelPtr));
   },
 
   wgpuComputePassEncoderEnd: (passId) => {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
-    pass["end"]();
+    pass.end();
   },
 
   // wgpuRenderPass
@@ -2211,67 +2217,67 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     var group = WebGPU.mgrBindGroup.get(groupId);
     if (dynamicOffsetCount == 0) {
-      pass["setBindGroup"](groupIndex, group);
+      pass.setBindGroup(groupIndex, group);
     } else {
       var offsets = [];
       for (var i = 0; i < dynamicOffsetCount; i++, dynamicOffsetsPtr += 4) {
         offsets.push({{{ gpu.makeGetU32('dynamicOffsetsPtr', 0) }}});
       }
-      pass["setBindGroup"](groupIndex, group, offsets);
+      pass.setBindGroup(groupIndex, group, offsets);
     }
   },
   wgpuRenderPassEncoderSetBlendConstant: (passId, colorPtr) => {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     var color = WebGPU.makeColor(colorPtr);
-    pass["setBlendConstant"](color);
+    pass.setBlendConstant(color);
   },
   wgpuRenderPassEncoderSetIndexBuffer: (passId, bufferId, format, offset, size) => {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
     {{{ gpu.convertSentinelToUndefined('size') }}}
-    pass["setIndexBuffer"](buffer, WebGPU.IndexFormat[format], offset, size);
+    pass.setIndexBuffer(buffer, WebGPU.IndexFormat[format], offset, size);
   },
   wgpuRenderPassEncoderSetPipeline: (passId, pipelineId) => {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     var pipeline = WebGPU.mgrRenderPipeline.get(pipelineId);
-    pass["setPipeline"](pipeline);
+    pass.setPipeline(pipeline);
   },
   wgpuRenderPassEncoderSetScissorRect: (passId, x, y, w, h) => {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-    pass["setScissorRect"](x, y, w, h);
+    pass.setScissorRect(x, y, w, h);
   },
   wgpuRenderPassEncoderSetViewport: (passId, x, y, w, h, minDepth, maxDepth) => {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-    pass["setViewport"](x, y, w, h, minDepth, maxDepth);
+    pass.setViewport(x, y, w, h, minDepth, maxDepth);
   },
   wgpuRenderPassEncoderSetStencilReference: (passId, reference) => {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-    pass["setStencilReference"](reference);
+    pass.setStencilReference(reference);
   },
   wgpuRenderPassEncoderSetVertexBuffer: (passId, slot, bufferId, offset, size) => {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
     {{{ gpu.convertSentinelToUndefined('size') }}}
-    pass["setVertexBuffer"](slot, buffer, offset, size);
+    pass.setVertexBuffer(slot, buffer, offset, size);
   },
 
   wgpuRenderPassEncoderDraw: (passId, vertexCount, instanceCount, firstVertex, firstInstance) => {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-    pass["draw"](vertexCount, instanceCount, firstVertex, firstInstance);
+    pass.draw(vertexCount, instanceCount, firstVertex, firstInstance);
   },
   wgpuRenderPassEncoderDrawIndexed: (passId, indexCount, instanceCount, firstIndex, baseVertex, firstInstance) => {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-    pass["drawIndexed"](indexCount, instanceCount, firstIndex, baseVertex, firstInstance);
+    pass.drawIndexed(indexCount, instanceCount, firstIndex, baseVertex, firstInstance);
   },
   wgpuRenderPassEncoderDrawIndirect: (passId, indirectBufferId, indirectOffset) => {
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-    pass["drawIndirect"](indirectBuffer, indirectOffset);
+    pass.drawIndirect(indirectBuffer, indirectOffset);
   },
   wgpuRenderPassEncoderDrawIndexedIndirect: (passId, indirectBufferId, indirectOffset) => {
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-    pass["drawIndexedIndirect"](indirectBuffer, indirectOffset);
+    pass.drawIndexedIndirect(indirectBuffer, indirectOffset);
   },
 
   wgpuRenderPassEncoderExecuteBundles: (passId, count, bundlesPtr) => {
@@ -2283,39 +2289,39 @@ var LibraryWebGPU = {
 
     var bundles = Array.from({{{ makeHEAPView(`${POINTER_BITS}`, 'bundlesPtr', `bundlesPtr + count * ${POINTER_SIZE}`) }}},
       (id) => WebGPU.mgrRenderBundle.get(id));
-    pass["executeBundles"](bundles);
+    pass.executeBundles(bundles);
   },
 
   wgpuRenderPassEncoderBeginOcclusionQuery: (passId, queryIndex) => {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-    pass["beginOcclusionQuery"](queryIndex);
+    pass.beginOcclusionQuery(queryIndex);
   },
   wgpuRenderPassEncoderEndOcclusionQuery: (passId) => {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
-    pass["endOcclusionQuery"]();
+    pass.endOcclusionQuery();
   },
 
   wgpuRenderPassEncoderWriteTimestamp: (encoderId, querySetId, queryIndex) => {
     var pass = WebGPU.mgrRenderPassEncoder.get(encoderId);
     var querySet = WebGPU.mgrQuerySet.get(querySetId);
-    pass["writeTimestamp"](querySet, queryIndex);
+    pass.writeTimestamp(querySet, queryIndex);
   },
 
   wgpuRenderPassEncoderPushDebugGroup: (encoderId, groupLabelPtr) => {
     var encoder = WebGPU.mgrRenderPassEncoder.get(encoderId);
-    encoder["pushDebugGroup"](UTF8ToString(groupLabelPtr));
+    encoder.pushDebugGroup(UTF8ToString(groupLabelPtr));
   },
   wgpuRenderPassEncoderPopDebugGroup: (encoderId) => {
     var encoder = WebGPU.mgrRenderPassEncoder.get(encoderId);
-    encoder["popDebugGroup"]();
+    encoder.popDebugGroup();
   },
   wgpuRenderPassEncoderInsertDebugMarker: (encoderId, markerLabelPtr) => {
     var encoder = WebGPU.mgrRenderPassEncoder.get(encoderId);
-    encoder["insertDebugMarker"](UTF8ToString(markerLabelPtr));
+    encoder.insertDebugMarker(UTF8ToString(markerLabelPtr));
   },
   wgpuRenderPassEncoderEnd: (encoderId) => {
     var encoder = WebGPU.mgrRenderPassEncoder.get(encoderId);
-    encoder["end"]();
+    encoder.end();
   },
 
   // Render bundle
@@ -2336,63 +2342,63 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     var group = WebGPU.mgrBindGroup.get(groupId);
     if (dynamicOffsetCount == 0) {
-      pass["setBindGroup"](groupIndex, group);
+      pass.setBindGroup(groupIndex, group);
     } else {
       var offsets = [];
       for (var i = 0; i < dynamicOffsetCount; i++, dynamicOffsetsPtr += 4) {
         offsets.push({{{ gpu.makeGetU32('dynamicOffsetsPtr', 0) }}});
       }
-      pass["setBindGroup"](groupIndex, group, offsets);
+      pass.setBindGroup(groupIndex, group, offsets);
     }
   },
   wgpuRenderBundleEncoderSetIndexBuffer: (bundleId, bufferId, format, offset, size) => {
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
     {{{ gpu.convertSentinelToUndefined('size') }}}
-    pass["setIndexBuffer"](buffer, WebGPU.IndexFormat[format], offset, size);
+    pass.setIndexBuffer(buffer, WebGPU.IndexFormat[format], offset, size);
   },
   wgpuRenderBundleEncoderSetPipeline: (bundleId, pipelineId) => {
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     var pipeline = WebGPU.mgrRenderPipeline.get(pipelineId);
-    pass["setPipeline"](pipeline);
+    pass.setPipeline(pipeline);
   },
   wgpuRenderBundleEncoderSetVertexBuffer: (bundleId, slot, bufferId, offset, size) => {
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
     {{{ gpu.convertSentinelToUndefined('size') }}}
-    pass["setVertexBuffer"](slot, buffer, offset, size);
+    pass.setVertexBuffer(slot, buffer, offset, size);
   },
 
   wgpuRenderBundleEncoderDraw: (bundleId, vertexCount, instanceCount, firstVertex, firstInstance) => {
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
-    pass["draw"](vertexCount, instanceCount, firstVertex, firstInstance);
+    pass.draw(vertexCount, instanceCount, firstVertex, firstInstance);
   },
   wgpuRenderBundleEncoderDrawIndexed: (bundleId, indexCount, instanceCount, firstIndex, baseVertex, firstInstance) => {
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
-    pass["drawIndexed"](indexCount, instanceCount, firstIndex, baseVertex, firstInstance);
+    pass.drawIndexed(indexCount, instanceCount, firstIndex, baseVertex, firstInstance);
   },
   wgpuRenderBundleEncoderDrawIndirect: (bundleId, indirectBufferId, indirectOffset) => {
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
-    pass["drawIndirect"](indirectBuffer, indirectOffset);
+    pass.drawIndirect(indirectBuffer, indirectOffset);
   },
   wgpuRenderBundleEncoderDrawIndexedIndirect: (bundleId, indirectBufferId, indirectOffset) => {
     var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
-    pass["drawIndexedIndirect"](indirectBuffer, indirectOffset);
+    pass.drawIndexedIndirect(indirectBuffer, indirectOffset);
   },
 
   wgpuRenderBundleEncoderPushDebugGroup: (encoderId, groupLabelPtr) => {
     var encoder = WebGPU.mgrRenderBundleEncoder.get(encoderId);
-    encoder["pushDebugGroup"](UTF8ToString(groupLabelPtr));
+    encoder.pushDebugGroup(UTF8ToString(groupLabelPtr));
   },
   wgpuRenderBundleEncoderPopDebugGroup: (encoderId) => {
     var encoder = WebGPU.mgrRenderBundleEncoder.get(encoderId);
-    encoder["popDebugGroup"]();
+    encoder.popDebugGroup();
   },
   wgpuRenderBundleEncoderInsertDebugMarker: (encoderId, markerLabelPtr) => {
     var encoder = WebGPU.mgrRenderBundleEncoder.get(encoderId);
-    encoder["insertDebugMarker"](UTF8ToString(markerLabelPtr));
+    encoder.insertDebugMarker(UTF8ToString(markerLabelPtr));
   },
 
   wgpuRenderBundleEncoderFinish: (bundleId, descriptor) => {
@@ -2404,7 +2410,7 @@ var LibraryWebGPU = {
       if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
     }
     var encoder = WebGPU.mgrRenderBundleEncoder.get(bundleId);
-    return WebGPU.mgrRenderBundle.create(encoder["finish"](desc));
+    return WebGPU.mgrRenderBundle.create(encoder.finish(desc));
   },
 
   // Instance
@@ -2425,6 +2431,9 @@ var LibraryWebGPU = {
     var selectorPtr = {{{ makeGetValue('descriptorFromCanvasHTMLSelector', C_STRUCTS.WGPUSurfaceDescriptorFromCanvasHTMLSelector.selector, '*') }}};
     {{{ gpu.makeCheck('selectorPtr') }}}
     var canvas = findCanvasEventTarget(selectorPtr);
+#if OFFSCREENCANVAS_SUPPORT
+    if (canvas.offscreenCanvas) canvas = canvas.offscreenCanvas;
+#endif
     var context = canvas.getContext('webgpu');
 #if ASSERTIONS
     assert(context);
@@ -2620,13 +2629,13 @@ var LibraryWebGPU = {
     }
 
     {{{ runtimeKeepalivePush() }}}
-    adapter["requestDevice"](desc).then((device) => {
+    adapter.requestDevice(desc).then((device) => {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
-        var deviceWrapper = { queueId: WebGPU.mgrQueue.create(device["queue"]) };
+        var deviceWrapper = { queueId: WebGPU.mgrQueue.create(device.queue) };
         var deviceId = WebGPU.mgrDevice.create(device, deviceWrapper);
         if (deviceLostCallbackPtr) {
-          device["lost"].then((info) => {
+          device.lost.then((info) => {
             callUserCallback(() => WebGPU.errorCallback(deviceLostCallbackPtr,
               WebGPU.Int_DeviceLostReason[info.reason], info.message, deviceLostUserdataPtr));
           });
@@ -2696,14 +2705,18 @@ var LibraryWebGPU = {
       "usage": {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.usage) }}},
       "alphaMode": "opaque",
     };
-    context["configure"](configuration);
+    context.configure(configuration);
 
     return WebGPU.mgrSwapChain.create(context);
   },
 
+  wgpuSwapChainGetCurrentTexture: (swapChainId) => {
+    var context = WebGPU.mgrSwapChain.get(swapChainId);
+    return WebGPU.mgrTexture.create(context.getCurrentTexture());
+  },
   wgpuSwapChainGetCurrentTextureView: (swapChainId) => {
     var context = WebGPU.mgrSwapChain.get(swapChainId);
-    return WebGPU.mgrTextureView.create(context["getCurrentTexture"]()["createView"]());
+    return WebGPU.mgrTextureView.create(context.getCurrentTexture().createView());
   },
   wgpuSwapChainPresent: (swapChainId) => {
     // TODO: This could probably be emulated with ASYNCIFY.
@@ -2720,9 +2733,6 @@ for (var value in LibraryWebGPU.$WebGPU.FeatureName) {
 for (const key of Object.keys(LibraryWebGPU)) {
   if (typeof LibraryWebGPU[key] === 'function') {
     LibraryWebGPU[key + '__i53abi'] = true;
-    if (!(key + '__proxy' in LibraryWebGPU)) {
-      LibraryWebGPU[key + '__proxy'] = 'sync';
-    }
   }
 }
 

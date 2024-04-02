@@ -65,7 +65,7 @@ int main()
 	EmscriptenWebSocketCreateAttributes attr;
 	emscripten_websocket_init_create_attributes(&attr);
 
-	const char *url = "ws://localhost:8088/";
+	const char *url = "ws://localhost:8089/";
 	attr.url = url;
 	attr.protocols = "binary,base64"; // We don't really use a special protocol on the server backend in this test, but check that it can be passed.
 

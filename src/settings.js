@@ -154,15 +154,29 @@ var MALLOC = "dlmalloc";
 // [link]
 var ABORTING_MALLOC = true;
 
+// The initial amount of heap memory available to the program.  This is the
+// memory region available for dynamic allocations via `sbrk`, `malloc` and `new`.
+//
+// Unlike INITIAL_MEMORY, this setting allows the static and dynamic regions of
+// your programs memory to independently grow. In most cases we recommend using
+// this setting rather than `INITIAL_MEMORY`. However, this setting does not work
+// for imported memories (e.g. when dynamic linking is used).
+//
+// [link]
+var INITIAL_HEAP = 16777216;
+
 // The initial amount of memory to use. Using more memory than this will
 // cause us to expand the heap, which can be costly with typed arrays:
 // we need to copy the old heap into a new one in that case.
 // If ALLOW_MEMORY_GROWTH is set, this initial amount of memory can increase
 // later; if not, then it is the final and total amount of memory.
 //
+// By default, this value is calculated based on INITIAL_HEAP, STACK_SIZE,
+// as well the size of static data in input modules.
+//
 // (This option was formerly called TOTAL_MEMORY.)
 // [link]
-var INITIAL_MEMORY = 16777216;
+var INITIAL_MEMORY = -1;
 
 // Set the maximum size of memory in the wasm module (in bytes). This is only
 // relevant when ALLOW_MEMORY_GROWTH is set, as without growth, the size of
@@ -337,8 +351,9 @@ var EMULATE_FUNCTION_POINTER_CASTS = false;
 // [link]
 var EXCEPTION_DEBUG = false;
 
-// If 1, export `demangle` and `stackTrace` helper function.
+// If 1, export `demangle` and `stackTrace` JS library functions.
 // [link]
+// [deprecated]
 var DEMANGLE_SUPPORT = false;
 
 // Print out when we enter a library call (library*.js). You can also unset
@@ -958,7 +973,7 @@ var INCOMING_MODULE_JS_API = [
   'onCustomMessage', 'onExit', 'onFree', 'onFullScreen', 'onMalloc',
   'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
   'preMainLoop', 'preRun',
-  'preinitializedWebGLContext', 'memoryInitializerRequest', 'preloadPlugins',
+  'preinitializedWebGLContext', 'preloadPlugins',
   'print', 'printErr', 'quit', 'setStatus', 'statusMessage', 'stderr',
   'stdin', 'stdout', 'thisProgram', 'wasm', 'wasmBinary', 'websocket'
 ];
@@ -1092,6 +1107,7 @@ var SIDE_MODULE = 0;
 
 // Deprecated, list shared libraries directly on the command line instead.
 // [link]
+// [deprecated]
 var RUNTIME_LINKED_LIBS = [];
 
 // If set to 1, this is a worker library, a special kind of library that is run
@@ -1276,7 +1292,10 @@ var DETERMINISTIC = false;
 var MODULARIZE = false;
 
 // Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
-// be enabled for ES6 exports.
+// be enabled for ES6 exports and is implicitly enabled if not already set.
+//
+// This is implicitly enabled if the output suffix is set to 'mjs'.
+//
 // [link]
 var EXPORT_ES6 = false;
 
@@ -1384,7 +1403,7 @@ var WASM = 1;
 // means we don't need to legalize for JS (but this requires a new enough JS
 // VM).
 //
-// Standlone builds require a ``main`` entry point by default.  If you want to
+// Standalone builds require a ``main`` entry point by default.  If you want to
 // build a library (also known as a reactor) instead you can pass ``--no-entry``.
 // [link]
 var STANDALONE_WASM = false;
@@ -1455,6 +1474,7 @@ var LEGALIZE_JS_FFI = true;
 // 2 is a port of the SDL C code on emscripten-ports
 // When AUTO_JS_LIBRARIES is set to 0 this defaults to 0 and SDL
 // is not linked in.
+// Alternate syntax for using the port: --use-port=sdl2
 // [compile+link]
 var USE_SDL = 0;
 
@@ -1475,54 +1495,67 @@ var USE_SDL_TTF = 1;
 var USE_SDL_NET = 1;
 
 // 1 = use icu from emscripten-ports
+// Alternate syntax: --use-port=icu
 // [compile+link]
 var USE_ICU = false;
 
 // 1 = use zlib from emscripten-ports
+// Alternate syntax: --use-port=zlib
 // [compile+link]
 var USE_ZLIB = false;
 
 // 1 = use bzip2 from emscripten-ports
+// Alternate syntax: --use-port=bzip2
 // [compile+link]
 var USE_BZIP2 = false;
 
 // 1 = use giflib from emscripten-ports
+// Alternate syntax: --use-port=giflib
 // [compile+link]
 var USE_GIFLIB = false;
 
 // 1 = use libjpeg from emscripten-ports
+// Alternate syntax: --use-port=libjpeg
 // [compile+link]
 var USE_LIBJPEG = false;
 
 // 1 = use libpng from emscripten-ports
+// Alternate syntax: --use-port=libpng
 // [compile+link]
 var USE_LIBPNG = false;
 
 // 1 = use Regal from emscripten-ports
+// Alternate syntax: --use-port=regal
 // [compile+link]
 var USE_REGAL = false;
 
 // 1 = use Boost headers from emscripten-ports
+// Alternate syntax: --use-port=boost_headers
 // [compile+link]
 var USE_BOOST_HEADERS = false;
 
 // 1 = use bullet from emscripten-ports
+// Alternate syntax: --use-port=bullet
 // [compile+link]
 var USE_BULLET = false;
 
 // 1 = use vorbis from emscripten-ports
+// Alternate syntax: --use-port=vorbis
 // [compile+link]
 var USE_VORBIS = false;
 
 // 1 = use ogg from emscripten-ports
+// Alternate syntax: --use-port=ogg
 // [compile+link]
 var USE_OGG = false;
 
 // 1 = use mpg123 from emscripten-ports
+// Alternate syntax: --use-port=mpg123
 // [compile+link]
 var USE_MPG123 = false;
 
 // 1 = use freetype from emscripten-ports
+// Alternate syntax: --use-port=freetype
 // [compile+link]
 var USE_FREETYPE = false;
 
@@ -1532,14 +1565,17 @@ var USE_FREETYPE = false;
 var USE_SDL_MIXER = 1;
 
 // 1 = use harfbuzz from harfbuzz upstream
+// Alternate syntax: --use-port=harfbuzz
 // [compile+link]
 var USE_HARFBUZZ = false;
 
 // 3 = use cocos2d v3 from emscripten-ports
+// Alternate syntax: --use-port=cocos2d
 // [compile+link]
 var USE_COCOS2D = 0;
 
 // 1 = use libmodplug from emscripten-ports
+// Alternate syntax: --use-port=libmodplug
 // [compile+link]
 var USE_MODPLUG = false;
 
@@ -1553,6 +1589,7 @@ var SDL2_IMAGE_FORMATS = [];
 var SDL2_MIXER_FORMATS = ["ogg"];
 
 // 1 = use sqlite3 from emscripten-ports
+// Alternate syntax: --use-port=sqlite3
 // [compile+link]
 var USE_SQLITE3 = false;
 
@@ -1788,7 +1825,7 @@ var SINGLE_FILE = false;
 var AUTO_JS_LIBRARIES = true;
 
 // Like AUTO_JS_LIBRARIES but for the native libraries such as libgl, libal
-// and libhtml5.   If this is disabled it is necessary to explcitly add
+// and libhtml5.   If this is disabled it is necessary to explicitly add
 // e.g. -lhtml5 and also to first build the library using ``embuilder``.
 // [link]
 var AUTO_NATIVE_LIBRARIES = true;
@@ -1819,6 +1856,8 @@ var MIN_SAFARI_VERSION = 140100;
 
 // Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 // drop support for Chrome 57 and older.
+// This setting also applies to modern Chromium-based Edge, which shares version
+// numbers with Chrome.
 // Chrome 85 was released on 2020-08-25.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // Minimum supported value is 32, which was released on 2014-01-04.
@@ -1982,7 +2021,7 @@ var SEPARATE_DWARF_URL = '';
 // changes to the wasm after link. This can be useful in testing, for example.
 // Some example of features that require post-link wasm changes are:
 // - Lowering i64 to i32 pairs at the JS boundary (See WASM_BIGINT)
-// - Lowering sign-extnesion operation when targeting older browsers.
+// - Lowering sign-extension operation when targeting older browsers.
 var ERROR_ON_WASM_CHANGES_AFTER_LINK = false;
 
 // Abort on unhandled excptions that occur when calling exported WebAssembly
@@ -2004,7 +2043,7 @@ var ABORT_ON_WASM_EXCEPTIONS = false;
 
 // Build binaries that use as many WASI APIs as possible, and include additional
 // JS support libraries for those APIs.  This allows emscripten to produce binaries
-// are more WASI compilant and also allows it to process and execute WASI
+// are more WASI compliant and also allows it to process and execute WASI
 // binaries built with other SDKs (e.g.  wasi-sdk).
 // This setting is experimental and subject to change or removal.
 // Implies STANDALONE_WASM.

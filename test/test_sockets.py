@@ -332,7 +332,7 @@ class sockets(BrowserCore):
   })
   def test_websocket_send(self, args):
     with NodeJsWebSocketEchoServerProcess():
-      self.btest_exit('websocket/test_websocket_send.c', args=['-lwebsocket', '-sNO_EXIT_RUNTIME', '-sWEBSOCKET_DEBUG'] + args)
+      self.btest_exit('websocket/test_websocket_send.c', args=['-lwebsocket', '-sWEBSOCKET_DEBUG'] + args)
 
   # Test that native POSIX sockets API can be used by proxying calls to an intermediate WebSockets
   # -> POSIX sockets bridge server
@@ -349,3 +349,11 @@ class sockets(BrowserCore):
       with PythonTcpEchoServerProcess('7777'):
         # Build and run the TCP echo client program with Emscripten
         self.btest_exit('websocket/tcp_echo_client.c', args=['-lwebsocket', '-sPROXY_POSIX_SOCKETS', '-pthread', '-sPROXY_TO_PTHREAD'])
+
+
+class sockets64(sockets):
+  def setUp(self):
+    super().setUp()
+    self.set_setting('MEMORY64')
+    self.emcc_args.append('-Wno-experimental')
+    self.require_wasm64()
