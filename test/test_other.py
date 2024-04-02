@@ -12678,8 +12678,11 @@ exec "$@"
     err = self.expect_fail([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('other/test_check_undefined.c')])
     self.assertContained('undefined symbol: foo', err)
 
+  @parameterized({
+    'asyncify': (['-sASYNCIFY'],),
+  })
   @also_with_wasm64
-  def test_missing_symbols_at_runtime(self):
+  def test_missing_symbols_at_runtime(self, args):
     # We deliberately pick a symbol there that takes a pointer as an argument.
     # We had a regression where the pointer-handling wrapper function could
     # not be created because the "missing functions" stubs don't take any
@@ -12694,7 +12697,7 @@ exec "$@"
 
     expected = 'Aborted(missing function: glGetTexLevelParameteriv)'
     self.do_runf('test.c', expected,
-                 emcc_args=['-sWARN_ON_UNDEFINED_SYMBOLS=0', '-sAUTO_JS_LIBRARIES=0'],
+                 emcc_args=['-sWARN_ON_UNDEFINED_SYMBOLS=0', '-sAUTO_JS_LIBRARIES=0'] + args,
                  assert_returncode=NON_ZERO)
 
   @with_env_modify({'EMMAKEN_NO_SDK': '1'})

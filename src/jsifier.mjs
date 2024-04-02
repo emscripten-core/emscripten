@@ -644,7 +644,7 @@ function(${args}) {
       }
       if (isStub) {
         contentText += `\n${mangled}.stub = true;`;
-        if (ASYNCIFY) {
+        if (ASYNCIFY && MAIN_MODULE) {
           contentText += `\nasyncifyStubs['${symbol}'] = undefined;`;
         }
       }
