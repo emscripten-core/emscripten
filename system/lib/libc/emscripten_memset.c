@@ -15,7 +15,7 @@ void *__memset(void *str, int c, size_t n) {
 #if !defined(EMSCRIPTEN_STANDALONE_WASM)
   if (n >= 512) {
     _emscripten_memset_js(str, c, n);
-    return strchr;
+    return str;
   }
 #endif
 
@@ -33,11 +33,11 @@ void *__memset(void *str, int c, size_t n) {
 
 #else
 
-#define memset __memset
+#define memset __musl_memset
 #include "musl/src/string/memset.c"
 #undef memset
 
-void *__memset_wrapper(void *str, int c, size_t n) {
+void *__memset(void *str, int c, size_t n) {
 #if !defined(EMSCRIPTEN_STANDALONE_WASM)
   if (n >= 512) {
     _emscripten_memset_js(str, c, n);
@@ -45,10 +45,10 @@ void *__memset_wrapper(void *str, int c, size_t n) {
   }
 #endif
 
-  return __memset(str, c, n);
+  return __musl_memset(str, c, n);
 }
 
 #endif
 
-weak_alias(__memset_wrapper, emscripten_builtin_memset);
-weak_alias(__memset_wrapper, memset);
+weak_alias(__memset, emscripten_builtin_memset);
+weak_alias(__memset, memset);
