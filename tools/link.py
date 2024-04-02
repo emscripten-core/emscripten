@@ -2754,7 +2754,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
         extras.append(path)
         seen.add(needed)
       else:
-        exit_with_error(f'{os.path.normpath(dylib)}: shared library dependency not found: `{needed}`')
+        exit_with_error(f'{os.path.normpath(dylib)}: shared library dependency not found in library path: `{needed}`. (library path: {lib_dirs}')
       to_process.append(path)
 
   dylibs += extras

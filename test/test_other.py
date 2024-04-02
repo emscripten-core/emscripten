@@ -2221,6 +2221,46 @@ int f() {
     output = self.run_js('a.out.js')
     self.assertContained('sidey: 42\n', output)
 
+  def test_dylink_dependencies(self):
+    create_file('side1.c', r'''
+    #include <stdio.h>
+    #include <stdlib.h>
+
+    void side2();
+
+    void side1() {
+        printf("side1\n");
+        side2();
+    }
+    ''')
+    create_file('side2.c', r'''
+    #include <stdio.h>
+    #include <stdlib.h>
+
+    void side2() {
+        printf("side2\n");
+    }
+    ''')
+    create_file('main.c', '''
+    void side1();
+
+    int main() {
+        side1();
+        return 0;
+    }
+    ''')
+    self.emcc('side2.c', ['-fPIC', '-sSIDE_MODULE', '-olibside2.so'])
+    self.emcc('side1.c', ['-fPIC', '-sSIDE_MODULE', '-olibside1.so', 'libside2.so'])
+    cmd = [EMCC, 'main.c', '-fPIC', '-sMAIN_MODULE=2', 'libside1.so']
+
+    # Unless `.` is added to the library path the libside2.so won't be found.
+    err = self.expect_fail(cmd)
+    self.assertContained('emcc: error: libside1.so: shared library dependency not found in library path: `libside2.so`.', err)
+
+    # Adding -L. to the library path makes it work.
+    self.run_process(cmd + ['-L.'])
+    self.run_js('a.out.js')
+
   def test_js_link(self):
     create_file('main.c', '''
       #include <stdio.h>
@@ -8664,7 +8704,7 @@ int main() {
     # When linking against `libside2.wasm` (which depends on libside1.wasm) that library path is used
     # to locate `libside1.wasm`.  Expect the link to fail with an unmodified library path.
     err = self.expect_fail([EMCC, '-sMAIN_MODULE=2', test_file('hello_world.c'), 'libside2.wasm'])
-    self.assertContained('libside2.wasm: shared library dependency not found: `libside1.wasm`', err)
+    self.assertContained('libside2.wasm: shared library dependency not found in library path: `libside1.wasm`', err)
 
     # But succeed if `.` is added the library path.
     self.run_process([EMCC, '-sMAIN_MODULE=2', test_file('hello_world.c'), '-L.', 'libside2.wasm'])
@@ -8680,7 +8720,7 @@ int main() {
     self.run_process(final_link)
     os.remove('libside1.wasm')
     err = self.expect_fail(final_link)
-    self.assertContained('error: libside2.wasm: shared library dependency not found: `libside1.wasm`', err)
+    self.assertContained('error: libside2.wasm: shared library dependency not found in library path: `libside1.wasm`', err)
 
   def test_side_module_folder_deps(self):
     # Build side modules in a subfolder
