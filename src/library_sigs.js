@@ -326,6 +326,7 @@ sigs = {
   _emscripten_get_progname__sig: 'vpi',
   _emscripten_lookup_name__sig: 'ip',
   _emscripten_memcpy_js__sig: 'vppp',
+  _emscripten_memset_js__sig: 'vpip',
   _emscripten_notify_mailbox_postmessage__sig: 'vppp',
   _emscripten_push_main_loop_blocker__sig: 'vppp',
   _emscripten_push_uncounted_main_loop_blocker__sig: 'vppp',

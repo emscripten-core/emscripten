@@ -31,6 +31,9 @@ extern "C" {
 void _emscripten_memcpy_js(void* __restrict__ dest,
                            const void* __restrict__ src,
                            size_t n) EM_IMPORT(_emscripten_memcpy_js);
+void _emscripten_memset_js(void* __restrict__ dest,
+                           int value,
+                           size_t n) EM_IMPORT(_emscripten_memset_js);
 
 void* _emscripten_memcpy_bulkmem(void* __restrict__ dest,
                                  const void* __restrict__ src,

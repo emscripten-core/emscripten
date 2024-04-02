@@ -9,9 +9,16 @@ __attribute__((no_sanitize("address"))) void *__memset(void *str, int c, size_t 
 __attribute__((__weak__)) void *__musl_memset(void *str, int c, size_t n);
 __attribute__((__weak__)) void *__memset(void *str, int c, size_t n);
 
-#ifdef EMSCRIPTEN_OPTIMIZE_FOR_OZ
+#if defined(EMSCRIPTEN_OPTIMIZE_FOR_OZ) || __has_feature(address_sanitizer)
 
 void *__memset(void *str, int c, size_t n) {
+#if !defined(EMSCRIPTEN_STANDALONE_WASM)
+  if (n >= 512) {
+    _emscripten_memset_js(str, c, n);
+    return strchr;
+  }
+#endif
+
   unsigned char *s = (unsigned char *)str;
 #pragma clang loop unroll(disable)
   while(n--) *s++ = c;
@@ -30,7 +37,18 @@ void *__memset(void *str, int c, size_t n) {
 #include "musl/src/string/memset.c"
 #undef memset
 
+void *__memset_wrapper(void *str, int c, size_t n) {
+#if !defined(EMSCRIPTEN_STANDALONE_WASM)
+  if (n >= 512) {
+    _emscripten_memset_js(str, c, n);
+    return str;
+  }
 #endif
 
-weak_alias(__memset, emscripten_builtin_memset);
-weak_alias(__memset, memset);
+  return __memset(str, c, n);
+}
+
+#endif
+
+weak_alias(__memset_wrapper, emscripten_builtin_memset);
+weak_alias(__memset_wrapper, memset);

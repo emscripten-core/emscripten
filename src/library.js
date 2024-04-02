@@ -441,6 +441,7 @@ addToLibrary({
 #else
   _emscripten_memcpy_js: (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num),
 #endif
+  _emscripten_memset_js: (dest, value, num) => HEAPU8.fill(value, dest, dest + num),
 
 #endif
 
@@ -1204,7 +1205,7 @@ addToLibrary({
         // GMT offset as either 'Z' or +-HH:MM or +-HH or +-HHMM
         if (value.toLowerCase() === 'z'){
           date.gmtoff = 0;
-        } else {          
+        } else {
           var match = value.match(/^((?:\-|\+)\d\d):?(\d\d)?/);
           date.gmtoff = match[1] * 3600;
           if (match[2]) {
@@ -1237,7 +1238,7 @@ addToLibrary({
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_yday, 'arraySum(isLeapYear(fullDate.getFullYear()) ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, fullDate.getMonth()-1)+fullDate.getDate()-1', 'i32') }}};
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}};
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_gmtoff, 'date.gmtoff', LONG_TYPE) }}};
- 
+
       // we need to convert the matched sequence into an integer array to take care of UTF-8 characters > 0x7F
       // TODO: not sure that intArrayFromString handles all unicode characters correctly
       return buf+intArrayFromString(matches[0]).length-1;
