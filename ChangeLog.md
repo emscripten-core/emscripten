@@ -43,8 +43,11 @@ See docs/process.md for more on how version tagging works.
   can now be generated with `--emit-tsd`. The option `--embind-emit-tsd` has been
   deprecated, use `--emit-tsd` instead.
 - Added the `ASYNCIFY_PROPAGATE_ADD` setting, to control whether the `ASYNCIFY_ADD`
-  list propagates or not. By default this is enabled; to return to the previous
-  behaviour, disable that setting.
+  list propagates or not. By default this is enabled; as a result you may see larger
+  ASYNCIFY builds as more of the function tree may be instrumented than you were
+  previously manually specifying in `ASYNCIFY_ADD`. To stop propagation you can
+  specify functions in the `ASYNCIFY_REMOVE` list, or to return to the previous
+  behaviour, disable this setting (set `-sNO_ASYNCIFY_PROPAGATE_ADD`.) (#21672)
 
 3.1.56 - 03/14/24
 -----------------
