@@ -360,7 +360,7 @@ Both APIs allow one to spawn Web Workers from the main thread, though the semant
 
 With the Worker API, the user will be able to spawn a Web Worker from a custom URL. This URL can point to a completely separate JS file that was not compiled with Emscripten, to load up Workers from arbitrary URLs. With Wasm Workers, a custom URL is not specified: Wasm Workers will always spawn a Web Worker that computes in the same WebAssembly+JavaScript context as the main program.
 
-The Worker API does not integrate with SharedArrayBuffer, so interaction with the loaded Worker will always be asynchronous. Wasm Workers howerer is built on top of SharedArrayBuffer, and each Wasm Worker shares and computes in the WebAssembly Memory object of the main thread.
+The Worker API does not integrate with SharedArrayBuffer, so interaction with the loaded Worker will always be asynchronous. Wasm Workers howerer is built on top of SharedArrayBuffer, and each Wasm Worker shares and computes in the same WebAssembly Memory address space of the main thread.
 
 Both the Worker API and Wasm Workers API provide the user with ability to postMessage() function calls to the Worker. In Worker API, this message posting is restricted to need to originate/initiate from the main thread towards the Worker. With Wasm Workers however one can also postMessage() function calls to their parent (owning) thread.
 
@@ -368,13 +368,13 @@ If posting function calls with the Emscripten Worker API, it is required that th
 
 Use the Emscripten Worker API when:
  - you want to easily spawn a Worker from a JS file that was not built using Emscripten
- - you want to spawn as Worker a single separate compiled program that the main thread program represents, and these programs do not share common code
+ - you want to spawn as Worker a single separate compiled program than the main thread program represents, and the main thread and Worker programs do not share common code
  - you do not want to require the use of SharedArrayBuffer, or setting up COOP+COEP headers
- - you only need to communicate with the Worker using asynchrnous postMessage() function calls
+ - you only need to communicate with the Worker asynchronously using postMessage() function calls
 
 Use the Wasm Workers API when:
  - you want to create one or more new threads that synchronously compute in the same Wasm Module context
- - you want to spawn multiple Workers to save memory by sharing the WebAssembly Module (object code) across the Workers
+ - you want to spawn multiple Workers from the same codebase and save memory by sharing the WebAssembly Module (object code) and Memory (address space) across the Workers
  - you want to synchronously coordinate communication between threads by using atomic primitives and locks
  - your web server has been configured with the needed COOP+COEP headers to enable SharedArrayBuffer capabilities on the site
 
