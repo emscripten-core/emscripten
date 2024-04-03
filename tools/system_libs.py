@@ -1639,7 +1639,17 @@ class libcxx(NoExceptLibrary, MTLibrary):
     'support.cpp',
     'int128_builtins.cpp',
     'libdispatch.cpp',
+    # Emscripten does not have C++20's time zone support which requires access
+    # to IANA Time Zone Database. TODO Implement this using JS timezone
+    'tz.cpp',
+    'tzdb_list.cpp',
   ]
+
+  def get_cflags(self):
+    cflags = super().get_cflags()
+    if self.eh_mode == Exceptions.WASM:
+      cflags.append('-D__USING_WASM_EXCEPTIONS__')
+    return cflags
 
 
 class libunwind(NoExceptLibrary, MTLibrary):
