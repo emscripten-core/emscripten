@@ -513,9 +513,6 @@ def setup_pthreads():
   if settings.MINIMAL_RUNTIME:
     building.user_requested_exports.add('exit')
 
-  if settings.MODULARIZE and not settings.EXPORT_ES6 and settings.EXPORT_NAME == 'Module':
-    exit_with_error('pthreads + MODULARIZE currently require you to set -sEXPORT_NAME=Something (see settings.js) to Something != Module, so that the .worker.js file can work')
-
 
 def set_initial_memory():
   user_specified_initial_heap = 'INITIAL_HEAP' in user_settings
