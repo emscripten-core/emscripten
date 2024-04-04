@@ -3160,6 +3160,11 @@ More info: https://emscripten.org
     # expected.
     self.do_runf('other/embind_tsgen.cpp', 'main ran',
                  emcc_args=['-lembind', '--emit-tsd', 'embind_tsgen.d.ts'])
+
+    # Test that the output compiles with a TS file that uses the defintions.
+    cmd = shared.get_npm_cmd('tsc') + ['embind_tsgen.d.ts', '--noEmit']
+    shared.check_call(cmd)
+
     actual = read_file('embind_tsgen.d.ts')
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), actual)
 

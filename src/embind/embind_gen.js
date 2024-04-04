@@ -311,7 +311,7 @@ var LibraryEmbind = {
   $TsPrinter: class {
     constructor(definitions) {
       this.definitions = definitions;
-      const jsString = 'ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string';
+      const jsString = 'EmbindString'; // Type alias for multiple types.
       // The mapping is in the format of '<c++ name>' => ['toWireType', 'fromWireType']
       // or if the to/from wire types are the same use a single element.
       this.builtInToJsName = new Map([
@@ -334,6 +334,8 @@ var LibraryEmbind = {
         ['std::u32string', ['string']],
         ['emscripten::val', ['any']],
       ]);
+      // Signal that the type alias for EmbindString is needed.
+      this.usedEmbindString = false;
     }
 
     typeToJsName(type, isFromWireType = false) {
@@ -345,7 +347,11 @@ var LibraryEmbind = {
           throw new Error(`Missing primitive type to TS type for '${type.name}'`);
         }
         const [toWireType, fromWireType = toWireType] = this.builtInToJsName.get(type.name);
-        return isFromWireType ? fromWireType : toWireType;
+        const tsName = isFromWireType ? fromWireType : toWireType;
+        if (tsName === 'EmbindString') {
+          this.usedEmbindString = true;
+        }
+        return tsName;
       }
       if (type instanceof PointerDefinition) {
         return this.typeToJsName(type.classType);
@@ -372,7 +378,10 @@ var LibraryEmbind = {
         }
         def.printModuleEntry(this.typeToJsName.bind(this), out);
       }
-      out.push('}');
+      out.push('}\n');
+      if (this.usedEmbindString) {
+        out.unshift('type EmbindString = ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string;\n');
+      }
       console.log(out.join(''));
     }
   },
