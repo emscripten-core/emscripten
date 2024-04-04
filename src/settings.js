@@ -1465,6 +1465,7 @@ var EMIT_EMSCRIPTEN_LICENSE = false;
 // in order to interface with JavaScript.  For non-web/non-JS embeddings, setting
 // this to 0 may be desirable.
 // [link]
+// [deprecated]
 var LEGALIZE_JS_FFI = true;
 
 // Ports
