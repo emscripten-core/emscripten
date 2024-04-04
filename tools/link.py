@@ -1962,6 +1962,8 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   settings.SINGLE_FILE = False
   # Embind may be included multiple times, de-duplicate the list first.
   settings.JS_LIBRARIES = dedup_list(settings.JS_LIBRARIES)
+  # Assertions are always used.
+  settings.ASSERTIONS = 1
   # Replace embind with the TypeScript generation version.
   embind_index = settings.JS_LIBRARIES.index('embind/embind.js')
   settings.JS_LIBRARIES[embind_index] = 'embind/embind_gen.js'
