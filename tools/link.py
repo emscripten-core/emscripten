@@ -852,7 +852,7 @@ def phase_linker_setup(options, state, newargs):
     settings.IGNORE_MISSING_MAIN = 0
     # the wasm must be runnable without the JS, so there cannot be anything that
     # requires JS legalization
-    settings.LEGALIZE_JS_FFI = 0
+    default_setting('LEGALIZE_JS_FFI', 0)
     if 'MEMORY_GROWTH_LINEAR_STEP' in user_settings:
       exit_with_error('MEMORY_GROWTH_LINEAR_STEP is not compatible with STANDALONE_WASM')
     if 'MEMORY_GROWTH_GEOMETRIC_CAP' in user_settings:
