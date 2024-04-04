@@ -17,4 +17,3 @@ int main() {
   puts("blocked ok.");
   return 0;
 }
-

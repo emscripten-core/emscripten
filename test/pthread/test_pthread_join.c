@@ -13,15 +13,13 @@
 #include <emscripten/em_asm.h>
 #include <emscripten/console.h>
 
-long fib(long n)
-{
+long fib(long n) {
   if (n <= 0) return 0;
   if (n == 1) return 1;
   return fib(n-1) + fib(n-2);
 }
 
-static void *thread_start(void *arg)
-{
+static void *thread_start(void *arg) {
   long n = (long)arg;
   emscripten_outf("Thread: Computing fib(%ld)...", n);
   long fibn = fib(n);
@@ -29,8 +27,7 @@ static void *thread_start(void *arg)
   pthread_exit((void*)fibn);
 }
 
-int main()
-{
+int main() {
   // Test existence of nanosleep(), https://github.com/emscripten-core/emscripten/issues/4578
   struct timespec ts = { 1, 0 };
   nanosleep(&ts, 0);
@@ -60,4 +57,3 @@ int main()
   assert(result == 6765);
   return 0;
 }
-
