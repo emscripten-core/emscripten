@@ -2436,7 +2436,7 @@ The current type of b is: 9
 
   @node_pthreads
   def test_pthread_cancel(self):
-    self.do_run_in_out_file_test('pthread/test_pthread_cancel.cpp')
+    self.do_run_in_out_file_test('pthread/test_pthread_cancel.c')
 
   @node_pthreads
   def test_pthread_cancel_async(self):
@@ -2527,7 +2527,7 @@ The current type of b is: 9
   @node_pthreads
   def test_pthread_cleanup(self):
     self.set_setting('PTHREAD_POOL_SIZE', 4)
-    self.do_run_in_out_file_test('pthread/test_pthread_cleanup.cpp')
+    self.do_run_in_out_file_test('pthread/test_pthread_cleanup.c')
 
   @node_pthreads
   def test_pthread_setspecific_mainthread(self):

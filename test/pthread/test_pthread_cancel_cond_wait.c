@@ -22,7 +22,7 @@ volatile int res = 43;
 
 static void cleanup_handler(void *arg) {
   emscripten_log(EM_LOG_CONSOLE, "Called clean-up handler with arg %p", arg);
-  int a = reinterpret_cast<intptr_t>(arg);
+  int a = (intptr_t)(arg);
   res -= a;
 
   pthread_mutex_unlock(&mutex);
@@ -54,7 +54,7 @@ static void *thread_start(void *arg) {
 }
 
 int main() {
-  pthread_barrier_init(&barrier, nullptr, 2);
+  pthread_barrier_init(&barrier, NULL, 2);
 
   pthread_t thr;
   int s = pthread_create(&thr, NULL, thread_start, (void*)0);

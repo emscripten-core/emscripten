@@ -15,41 +15,36 @@
 
 _Atomic int sharedVar = 0;
 
-static void *thread_start(void *arg)
-{
+static void *thread_start(void *arg) {
   // As long as this thread is running, keep the shared variable latched to nonzero value.
-  for(;;)
-  {
+  for (;;) {
     ++sharedVar;
   }
 
   pthread_exit(0);
 }
 
-pthread_t thr;
-
-void BusySleep(double msecs)
-{
+void BusySleep(double msecs) {
   double t0 = emscripten_get_now();
-  while(emscripten_get_now() < t0 + msecs);
+  while (emscripten_get_now() < t0 + msecs);
 }
 
-int main()
-{
+int main() {
+  pthread_t thr;
+
   sharedVar = 0;
   int s = pthread_create(&thr, NULL, thread_start, 0);
   assert(s == 0);
 
   // Wait until thread kicks in and sets the shared variable.
-  while(sharedVar == 0)
+  while (sharedVar == 0)
     BusySleep(10);
 
   s = pthread_kill(thr, SIGKILL);
   assert(s == 0);
 
   // Wait until we see the shared variable stop incrementing. (This is a bit heuristic and hacky)
-  for(;;)
-  {
+  for(;;) {
     int val = sharedVar;
     BusySleep(100);
     int val2 = sharedVar;

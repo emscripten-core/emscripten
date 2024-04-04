@@ -10,8 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void *thread1_start(void *arg)
-{
+static void *thread1_start(void *arg) {
   emscripten_out("thread1_start!");
 
   FILE *handle = fopen("file1.txt", "r");
@@ -28,8 +27,7 @@ static void *thread1_start(void *arg)
   pthread_exit(0);
 }
 
-int main()
-{
+int main() {
   FILE *handle = fopen("file1.txt", "w");
   fputs("hello!", handle);
   fclose(handle);
