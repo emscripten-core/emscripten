@@ -20,7 +20,7 @@ static void *thread1_start(void *arg) {
    var mystr = UTF8ToString($0);
    stringToUTF8(mystr, $1, 1024);
   }, TEST_STRING, stringBuffer);
-  return nullptr;
+  return NULL;
 }
 
 int main() {

@@ -12,7 +12,6 @@
 #include <errno.h>
 #include <emscripten/em_asm.h>
 #include <emscripten/console.h>
-#include <vector>
 
 pthread_t threads[5];
 
@@ -21,7 +20,7 @@ static void *thread_start(void *arg)
   // This should be long enough for threads to pile up.
   long idx = (long)arg;
   printf("Starting thread %ld\n", idx);
-  while (true) {
+  while (1) {
     sleep(1);
   }
   printf("Finishing thread %ld\n", idx);

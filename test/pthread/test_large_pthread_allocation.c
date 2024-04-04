@@ -11,12 +11,10 @@
 #include <unistd.h>
 #include <errno.h>
 #include <emscripten.h>
-#include <vector>
 
 pthread_t threads[50];
 
-static void *thread_start(void *arg)
-{
+static void *thread_start(void *arg) {
   // This thread quits immediately...
   pthread_exit((void*)0);
 }
@@ -27,12 +25,11 @@ void CreateThread(intptr_t idx) {
 }
 
 void JoinThread(int idx) {
-  int rc = pthread_join(threads[idx], nullptr);
+  int rc = pthread_join(threads[idx], NULL);
   assert(rc == 0);
 }
 
-int main()
-{
+int main() {
   // This test should be run with a prewarmed pool of size 50. They should be fully allocated.
   assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 50);
 
