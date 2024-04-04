@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.57 (in development)
 -----------------------
+- libcxx, libcxxabi, and libunwind were updated to LLVM 18.1.2. (#21607 and
+  #21638)
 - musl libc updated from v1.2.4 to v1.2.5. (#21598)
 - In `MODULARIZE` mode we no longer export the module ready promise as `ready`.
   This was previously exposed on the Module for historical reasons even though
