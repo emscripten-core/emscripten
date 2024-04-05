@@ -9216,8 +9216,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_OFFSET_CONVERTER')
     self.set_setting('MODULARIZE')
-    create_file('post.js', 'var m = require("./test_return_address.js"); m();')
-    self.emcc_args += ['--extern-post-js', 'post.js', '-sEXPORT_NAME=foo']
+    self.set_setting('EXPORT_NAME', 'foo')
+    create_file('post.js', 'foo();')
+    self.emcc_args += ['--extern-post-js', 'post.js']
     if '-g' in self.emcc_args:
       self.emcc_args += ['-DDEBUG']
     self.do_runf('core/test_return_address.c', 'passed')
