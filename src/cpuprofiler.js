@@ -15,13 +15,17 @@
 // That doesn't work for Chrome in turn, so need to resort to user agent
 // sniffing.. (sad :/)
 if (!performance.realNow) {
-  var isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-  if (isSafari) {
-    var realPerformance = performance;
-    performance = {
-      realNow: () => realPerformance.now(),
-      now: () => realPerformance.now()
-    };
+  if (typeof navigator !== "undefined") {
+    var isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    if (isSafari) {
+      var realPerformance = performance;
+      performance = {
+        realNow: () => realPerformance.now(),
+        now: () => realPerformance.now()
+      };
+    } else {
+      performance.realNow = performance.now;
+    }
   } else {
     performance.realNow = performance.now;
   }
