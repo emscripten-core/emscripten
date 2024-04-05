@@ -81,45 +81,31 @@ if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
 }
 #endif
 
-#if !SINGLE_FILE
-#if ENVIRONMENT_MAY_BE_NODE && ((WASM == 1 && !WASM2JS) || WASM == 2)
-// Wasm or Wasm2JS loading:
-
-if (ENVIRONMENT_IS_NODE) {
-  var fs = require('fs');
-#if WASM == 2
-  if (typeof WebAssembly != 'undefined') Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
-  else eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm.js')+'');
-#else
-#if !WASM2JS
-  Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
-#endif
-#endif
-}
-#endif
-
-#if ENVIRONMENT_MAY_BE_SHELL && ((WASM == 1 && !WASM2JS) || WASM == 2)
-if (ENVIRONMENT_IS_SHELL) {
-#if WASM == 2
-  if (typeof WebAssembly != 'undefined') Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
-  else eval(read('{{{ TARGET_BASENAME }}}.wasm.js')+'');
-#else
-#if !WASM2JS
-  Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
-#endif
-#endif
-}
-#endif
-
-#endif // !SINGLE_FILE
-
 // Redefine these in a --pre-js to override behavior. If you would like to
 // remove out() or err() altogether, you can no-op it out to function() {},
 // and build with --closure 1 to get Closure optimize out all the uses
 // altogether.
 
+#if ENVIRONMENT_MAY_BE_NODE && PTHREADS
+// Set up the out() and err() hooks, which are how we can print to stdout or
+// stderr, respectively.
+// Normally just binding console.log/console.error here works fine, but
+// under node (with workers) we see missing/out-of-order messages so route
+// directly to stdout and stderr.
+// See https://github.com/emscripten-core/emscripten/issues/14804
+var defaultPrint = console.log.bind(console);
+var defaultPrintErr = console.error.bind(console);
+if (ENVIRONMENT_IS_NODE) {
+  var fs = require('fs');
+  defaultPrint = (...args) => fs.writeSync(1, args.join(' ') + '\n');
+  defaultPrintErr = (...args) => fs.writeSync(2, args.join(' ') + '\n');
+}
+var out = defaultPrint;
+var err = defaultPrintErr;
+#else
 var out = (text) => console.log(text);
 var err = (text) => console.error(text);
+#endif
 
 // Override this function in a --pre-js file to get a signal for when
 // compilation is ready. In that callback, call the function run() to start
@@ -170,5 +156,61 @@ var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function',
   ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER;
 #endif
 
+if (ENVIRONMENT_IS_WORKER) {
+  _scriptDir = self.location.href;
+}
+#if ENVIRONMENT_MAY_BE_NODE
+else if (ENVIRONMENT_IS_NODE) {
+  _scriptDir = __filename;
+}
+#endif
+
+#if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE) {
+  global.Worker = require('worker_threads').Worker;
+}
+#endif
+
 var currentScriptUrl = typeof _scriptDir != 'undefined' ? _scriptDir : ((typeof document != 'undefined' && document.currentScript) ? document.currentScript.src : undefined);
 #endif // PTHREADS
+
+#if !SINGLE_FILE
+
+#if PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) {
+#endif
+
+#if ENVIRONMENT_MAY_BE_NODE && ((WASM == 1 && !WASM2JS) || WASM == 2)
+// Wasm or Wasm2JS loading:
+
+if (ENVIRONMENT_IS_NODE) {
+  var fs = require('fs');
+#if WASM == 2
+  if (typeof WebAssembly != 'undefined') Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
+  else eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm.js')+'');
+#else
+#if !WASM2JS
+  Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
+#endif
+#endif
+}
+#endif
+
+#if ENVIRONMENT_MAY_BE_SHELL && ((WASM == 1 && !WASM2JS) || WASM == 2)
+if (ENVIRONMENT_IS_SHELL) {
+#if WASM == 2
+  if (typeof WebAssembly != 'undefined') Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
+  else eval(read('{{{ TARGET_BASENAME }}}.wasm.js')+'');
+#else
+#if !WASM2JS
+  Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
+#endif
+#endif
+}
+#endif
+
+#if PTHREADS
+}
+#endif
+
+#endif // !SINGLE_FILE
