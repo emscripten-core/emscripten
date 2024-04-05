@@ -8353,6 +8353,7 @@ int main() {
       gz_size = get_file_gzipped_size('a.out.js')
       if '-pthread' in args:
         js_size += os.path.getsize('a.out.worker.js')
+        gz_size += get_file_gzipped_size('a.out.worker.js')
       js_size_file = expected_basename + '.jssize'
       gz_size_file = expected_basename + '.gzsize'
       self.check_expected_size_in_file('wasm', size_file, wasm_size)
