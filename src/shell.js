@@ -118,8 +118,9 @@ if (Module['ENVIRONMENT']) {
 // 2) We could be the application main() thread proxied to worker. (with Emscripten -sPROXY_TO_WORKER) (ENVIRONMENT_IS_WORKER == true, ENVIRONMENT_IS_PTHREAD == false)
 // 3) We could be an application pthread running in a worker. (ENVIRONMENT_IS_WORKER == true and ENVIRONMENT_IS_PTHREAD == true)
 
-// ENVIRONMENT_IS_PTHREAD=true will have been preset in worker.js. Make it false in the main runtime thread.
-var ENVIRONMENT_IS_PTHREAD = globalThis['ENVIRONMENT_IS_PTHREAD'] || false;
+// The way we signal to a worker that it is hosting a pthread is to construct
+// it with a specific name.
+var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name == 'em-pthread';
 
 #if MODULARIZE && ASSERTIONS
 if (ENVIRONMENT_IS_PTHREAD) {
@@ -128,6 +129,31 @@ if (ENVIRONMENT_IS_PTHREAD) {
 }
 #endif
 #endif
+
+#if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE) {
+  // `require()` is no-op in an ESM module, use `createRequire()` to construct
+  // the require()` function.  This is only necessary for multi-environment
+  // builds, `-sENVIRONMENT=node` emits a static import declaration instead.
+  // TODO: Swap all `require()`'s with `import()`'s?
+#if EXPORT_ES6 && ENVIRONMENT_MAY_BE_WEB
+  const { createRequire } = await import('module');
+  /** @suppress{duplicate} */
+  var require = createRequire(import.meta.url);
+#endif
+
+#if PTHREADS || WASM_WORKERS
+  var worker_threads = require('worker_threads');
+  global.Worker = worker_threads.Worker;
+  ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
+#if PTHREADS
+  // Under node we set `workerData` to `em-pthread` to signal that the worker
+  // is hosting a pthread.
+  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && worker_threads['workerData'] == 'em-pthread'
+#endif // PTHREADS
+#endif // PTHREADS || WASM_WORKERS
+}
+#endif // ENVIRONMENT_MAY_BE_NODE
 
 #if WASM_WORKERS
 var ENVIRONMENT_IS_WASM_WORKER = Module['$ww'];
@@ -155,14 +181,18 @@ var quit_ = (status, toThrow) => {
 // before the page load. In non-MODULARIZE modes generate it here.
 var _scriptName = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
 
+#if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE) {
+#if EXPORT_ES6
+  _scriptName = typeof __filename != 'undefined' ? __filename : import.meta.url
+#else
+  _scriptName = __filename;
+#endif
+} else
+#endif // ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_WORKER) {
   _scriptName = self.location.href;
 }
-#if ENVIRONMENT_MAY_BE_NODE
-else if (ENVIRONMENT_IS_NODE) {
-  _scriptName = __filename;
-}
-#endif // ENVIRONMENT_MAY_BE_NODE
 #endif // SHARED_MEMORY && !MODULARIZE
 
 // `/` should be present at the end if `scriptDirectory` is not empty
@@ -197,15 +227,6 @@ if (ENVIRONMENT_IS_NODE) {
   }
 #endif
 
-  // `require()` is no-op in an ESM module, use `createRequire()` to construct
-  // the require()` function.  This is only necessary for multi-environment
-  // builds, `-sENVIRONMENT=node` emits a static import declaration instead.
-  // TODO: Swap all `require()`'s with `import()`'s?
-#if EXPORT_ES6 && ENVIRONMENT_MAY_BE_WEB
-  const { createRequire } = await import('module');
-  /** @suppress{duplicate} */
-  var require = createRequire(import.meta.url);
-#endif
   // These modules will usually be used on Node.js. Load them eagerly to avoid
   // the complexity of lazy-loading.
   var fs = require('fs');
@@ -268,10 +289,6 @@ if (ENVIRONMENT_IS_NODE) {
     process.exitCode = status;
     throw toThrow;
   };
-
-#if PTHREADS || WASM_WORKERS
-  global.Worker = require('worker_threads').Worker;
-#endif
 
 #if WASM == 2
   // If target shell does not support Wasm, load the JS version of the code.
@@ -398,9 +415,9 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   if (!(typeof window == 'object' || typeof importScripts == 'function')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 
+#if PTHREADS && ENVIRONMENT_MAY_BE_NODE
   // Differentiate the Web Worker from the Node Worker case, as reading must
   // be done differently.
-#if PTHREADS && ENVIRONMENT_MAY_BE_NODE
   if (!ENVIRONMENT_IS_NODE)
 #endif
   {

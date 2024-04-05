@@ -9382,6 +9382,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # test that Module.dynamicLibraries works with pthreads
     self.emcc_args += args
     self.emcc_args += ['--pre-js', 'pre.js']
+    self.emcc_args += ['--js-library', 'lib.js']
     # This test is for setting dynamicLibraries at runtime so we don't
     # want emscripten loading `liblib.so` automatically (which it would
     # do without this setting.
@@ -9391,22 +9392,29 @@ NODEFS is no longer included by default; build with -lnodefs.js
       Module['dynamicLibraries'] = ['liblib.so'];
     ''')
 
-    if args:
-      self.setup_node_pthreads()
-      create_file('post.js', '''
-        if (ENVIRONMENT_IS_PTHREAD) {
+    create_file('lib.js', '''
+      addToLibrary({
+        mainCallback: () => {
+#if PTHREADS
           err('sharedModules: ' + Object.keys(sharedModules));
           assert('liblib.so' in sharedModules);
           assert(sharedModules['liblib.so'] instanceof WebAssembly.Module);
-        }
-      ''')
-      self.emcc_args += ['--post-js', 'post.js']
+#endif
+        },
+      })
+    ''')
+
+    if args:
+      self.setup_node_pthreads()
 
     self.dylink_test(
       r'''
+        void mainCallback();
+
         #include <stdio.h>
         int side();
         int main() {
+          mainCallback();
           printf("result is %d\n", side());
           return 0;
         }
@@ -9414,7 +9422,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
       r'''
         int side() { return 42; }
       ''',
-      'result is 42')
+      'result is 42',
+      force_c=True)
 
   # Tests the emscripten_get_exported_function() API.
   def test_get_exported_function(self):

@@ -18,6 +18,7 @@ import logging
 import pprint
 import shutil
 import sys
+import textwrap
 
 from tools import building
 from tools import config
@@ -886,7 +887,7 @@ def make_export_wrappers(function_exports):
       # With assertions enabled we create a wrapper that are calls get routed through, for
       # the lifetime of the program.
       wrapper += f"createExportWrapper('{name}', {nargs});"
-    elif settings.WASM_ASYNC_COMPILATION:
+    elif settings.WASM_ASYNC_COMPILATION or settings.PTHREADS:
       # With WASM_ASYNC_COMPILATION wrapper will replace the global var and Module var on
       # first use.
       args = [f'a{i}' for i in range(nargs)]
@@ -939,12 +940,16 @@ def create_module(receiving, metadata, library_symbols):
   module = []
 
   sending = create_sending(metadata, library_symbols)
-  module.append('var wasmImports = %s;\n' % sending)
-  if settings.ASYNCIFY and (settings.ASSERTIONS or settings.ASYNCIFY == 2):
-    # instrumenting imports is used in asyncify in two ways: to add assertions
-    # that check for proper import use, and for ASYNCIFY=2 we use them to set up
-    # the Promise API on the import side.
-    module.append('Asyncify.instrumentWasmImports(wasmImports);\n')
+  if settings.PTHREADS:
+    sending = textwrap.indent(sending, '  ').strip()
+    module.append('''\
+var wasmImports;
+function assignWasmImports() {
+  wasmImports = %s;
+}
+''' % sending)
+  else:
+    module.append('var wasmImports = %s;\n' % sending)
 
   if not settings.MINIMAL_RUNTIME:
     module.append("var wasmExports = createWasm();\n")

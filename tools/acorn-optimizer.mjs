@@ -471,6 +471,15 @@ function runAJSDCE(ast) {
 
 function isWasmImportsAssign(node) {
   // var wasmImports = ..
+  //   or
+  // wasmImports = ..
+  if (
+    node.type === 'AssignmentExpression' &&
+    node.left.name == 'wasmImports' &&
+    node.right.type == 'ObjectExpression'
+  ) {
+    return true;
+  }
   return (
     node.type === 'VariableDeclaration' &&
     node.declarations.length === 1 &&
@@ -481,7 +490,11 @@ function isWasmImportsAssign(node) {
 }
 
 function getWasmImportsValue(node) {
-  return node.declarations[0].init;
+  if (node.declarations) {
+    return node.declarations[0].init;
+  } else {
+    return node.right;
+  }
 }
 
 function isExportUse(node) {

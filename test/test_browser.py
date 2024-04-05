@@ -3997,46 +3997,6 @@ Module["preRun"] = () => {
   def test_pthread_dispatch_after_exit(self):
     self.btest_exit('pthread/test_pthread_dispatch_after_exit.c', args=['-pthread'])
 
-  # Test the operation of Module.pthreadMainPrefixURL variable
-  @requires_wasm2js
-  def test_pthread_custom_pthread_main_url(self):
-    self.set_setting('EXIT_RUNTIME')
-    ensure_dir('cdn')
-    create_file('main.cpp', r'''
-      #include <assert.h>
-      #include <stdio.h>
-      #include <string.h>
-      #include <emscripten/emscripten.h>
-      #include <emscripten/threading.h>
-      #include <pthread.h>
-
-      _Atomic int result = 0;
-      void *thread_main(void *arg) {
-        result = 1;
-        pthread_exit(0);
-      }
-
-      int main() {
-        pthread_t t;
-        pthread_create(&t, 0, thread_main, 0);
-        pthread_join(t, 0);
-        assert(result == 1);
-        return 0;
-      }
-    ''')
-
-    # Test that it is possible to define "Module.locateFile" string to locate where worker.js will be loaded from.
-    create_file('shell.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
-    self.compile_btest('main.cpp', ['--shell-file', 'shell.html', '-pthread', '-sPTHREAD_POOL_SIZE', '-o', 'test.html'], reporting=Reporting.JS_ONLY)
-    shutil.move('test.worker.js', Path('cdn/test.worker.js'))
-    self.run_browser('test.html', '/report_result?exit:0')
-
-    # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
-    create_file('shell2.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.worker.js") return "cdn/test.worker.js"; else return filename; }, '))
-    self.compile_btest('main.cpp', ['--shell-file', 'shell2.html', '-pthread', '-sPTHREAD_POOL_SIZE', '-o', 'test2.html'], reporting=Reporting.JS_ONLY)
-    delete_file('test.worker.js')
-    self.run_browser('test2.html', '/report_result?exit:0')
-
   # Test that if the main thread is performing a futex wait while a pthread
   # needs it to do a proxied operation (before that pthread would wake up the
   # main thread), that it's not a deadlock.
