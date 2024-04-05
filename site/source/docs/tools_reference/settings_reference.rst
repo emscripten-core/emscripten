@@ -1131,6 +1131,15 @@ instrumented.
 See notes on ASYNCIFY_REMOVE about the names, including wildcard matching and
 character substitutions.
 
+.. _asyncify_propagate_add:
+
+ASYNCIFY_PROPAGATE_ADD
+======================
+
+If enabled, instrumentation status will be propagated from the add-list, ie.
+their callers, and their callers' callers, and so on. If disabled then all
+callers must be manually added to the add-list (like the only-list).
+
 .. _asyncify_only:
 
 ASYNCIFY_ONLY
