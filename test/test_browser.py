@@ -3872,19 +3872,17 @@ Module["preRun"] = () => {
     for arg in [[], ['-DUSE_EMSCRIPTEN_INTRINSICS']]:
       self.btest_exit('pthread/test_pthread_gcc_spinlock.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + arg)
 
-  # Test that basic thread creation works.
-  def test_pthread_create(self):
-    def test(args):
-      print(args)
-      self.btest_exit('pthread/test_pthread_create.c',
-                      args=['-pthread', '-sPTHREAD_POOL_SIZE=8'] + args,
-                      extra_tries=0) # this should be 100% deterministic
-    print() # new line
-    test([])
-    test(['-O3'])
+  @parameterized({
+    '': ([],),
+    'O3': (['-O3'],),
     # TODO: re-enable minimal runtime once the flakiness is figure out,
     # https://github.com/emscripten-core/emscripten/issues/12368
-    # test(['-sMINIMAL_RUNTIME'])
+    # 'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
+  })
+  def test_pthread_create(self, args):
+    self.btest_exit('pthread/test_pthread_create.c',
+                    args=['-pthread', '-sPTHREAD_POOL_SIZE=8'] + args,
+                    extra_tries=0) # this should be 100% deterministic
 
   # Test that preallocating worker threads work.
   def test_pthread_preallocates_workers(self):
