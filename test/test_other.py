@@ -14597,7 +14597,7 @@ addToLibrary({
     self.assertFalse(os.path.exists('out.js'))
     self.assertContained('error with `--use-port=sdl2_image:formats=jpg:formats=png` | duplicate option `formats`', stderr)
 
-  def test_mimalloc_headers(self, compiler):
+  def test_mimalloc_headers(self):
     src = r'''
       #include <mimalloc.h>
 
@@ -14606,4 +14606,4 @@ addToLibrary({
           return 0;
       }
     '''
-    self.do_run(src, emcc_args=['-sMALLOC=mimalloc'] )
+    self.do_run(src, emcc_args=['-sMALLOC=mimalloc'])
