@@ -2366,9 +2366,9 @@ def modularize():
     if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
       script_url = 'import.meta.url'
     else:
-      script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
+      script_url = "typeof document != 'undefined' ? document.currentScript?.src : undefined"
       if shared.target_environment_may_be('node'):
-        script_url_node = "if (typeof __filename !== 'undefined') _scriptDir ||= __filename;"
+        script_url_node = "if (typeof __filename != 'undefined') _scriptDir ||= __filename;"
     src = '''%(node_imports)s
 var %(EXPORT_NAME)s = (() => {
   var _scriptDir = %(script_url)s;
@@ -2420,7 +2420,7 @@ def module_export_name_substitution():
     # via the shell html in order to provide the .asm.js/.wasm content.
     replacement = settings.EXPORT_NAME
   else:
-    replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": settings.EXPORT_NAME}
+    replacement = "typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": settings.EXPORT_NAME}
   new_src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
   assert new_src != src, 'Unable to find Closure syntax __EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__ in source!'
   write_file(final_js, new_src)
