@@ -2463,11 +2463,13 @@ int f() {
       self.skipTest("test doesn't work with frozen cache")
     external_port_path = test_file("other/ports/external.py")
     # testing no option
-    self.do_runf('other/test_external_ports.c', 'value1=0&value2=0\n', emcc_args=[f'--use-port={external_port_path}'])
+    self.do_runf('other/test_external_ports.c', 'value1=0&value2=0&value3=v3\n', emcc_args=[f'--use-port={external_port_path}'])
     # testing 1 option
-    self.do_runf('other/test_external_ports.c', 'value1=12&value2=0\n', emcc_args=[f'--use-port={external_port_path}:value1=12'])
+    self.do_runf('other/test_external_ports.c', 'value1=12&value2=0&value3=v3\n', emcc_args=[f'--use-port={external_port_path}:value1=12'])
     # testing 2 options
-    self.do_runf('other/test_external_ports.c', 'value1=12&value2=36\n', emcc_args=[f'--use-port={external_port_path}:value1=12:value2=36'])
+    self.do_runf('other/test_external_ports.c', 'value1=12&value2=36&value3=v3\n', emcc_args=[f'--use-port={external_port_path}:value1=12:value2=36'])
+    # testing ':' escape
+    self.do_runf('other/test_external_ports.c', 'value1=12&value2=36&value3=v:3\n', emcc_args=[f'--use-port={external_port_path}:value1=12:value3=v::3:value2=36'])
     # testing dependency
     self.do_runf('other/test_external_ports.c', 'mpg123=45\n', emcc_args=[f'--use-port={external_port_path}:dependency=mpg123'])
     # testing invalid dependency
@@ -2481,6 +2483,7 @@ Test Description
 Options:
 * value1: Value for define TEST_VALUE_1
 * value2: Value for define TEST_VALUE_2
+* value3: String value
 * dependency: A dependency
 More info: https://emscripten.org
 ''', stdout)
