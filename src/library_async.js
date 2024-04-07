@@ -47,16 +47,15 @@ addToLibrary({
       var importPattern = {{{ new RegExp(`^(${ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS.map(x => x.split('.')[1]).join('|').replace(/\*/g, '.*')})$`) }}};
 
       for (let [x, original] of Object.entries(imports)) {
-        let sig = original.sig;
         if (typeof original == 'function') {
           let isAsyncifyImport = original.isAsync || importPattern.test(x);
 #if ASYNCIFY == 2
           // Wrap async imports with a suspending WebAssembly function.
           if (isAsyncifyImport) {
 #if ASSERTIONS
-            assert(sig, `Missing __sig for ${x}`);
+            assert(original.sig, `Missing __sig for ${x}`);
 #endif
-            let type = sigToWasmTypes(sig);
+            let type = sigToWasmTypes(original.sig);
 #if ASYNCIFY_DEBUG
             dbg('asyncify: suspendOnReturnedPromise for', x, original);
 #endif
@@ -100,7 +99,7 @@ addToLibrary({
           // The dynamic library loader needs to be able to read .sig
           // properties, so that it knows function signatures when it adds
           // them to the table.
-          imports[x].sig = sig;
+          imports[x].sig = original.sig;
 #endif // MAIN_MODULE
 #endif // ASSERTIONS
         }

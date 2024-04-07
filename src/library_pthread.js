@@ -441,7 +441,7 @@ var LibraryPThread = {
     allocateUnusedWorker() {
       var worker;
 #if MINIMAL_RUNTIME
-      var pthreadMainJs = Module['worker'];
+      var pthreadMainJs = Module['worker'] || './{{{ PTHREAD_WORKER_FILE }}}';
 #else
 #if EXPORT_ES6 && USE_ES6_IMPORT_META
       // If we're using module output and there's no explicit override, use bundler-friendly pattern.

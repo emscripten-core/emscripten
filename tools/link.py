@@ -852,7 +852,7 @@ def phase_linker_setup(options, state, newargs):
     settings.IGNORE_MISSING_MAIN = 0
     # the wasm must be runnable without the JS, so there cannot be anything that
     # requires JS legalization
-    settings.LEGALIZE_JS_FFI = 0
+    default_setting('LEGALIZE_JS_FFI', 0)
     if 'MEMORY_GROWTH_LINEAR_STEP' in user_settings:
       exit_with_error('MEMORY_GROWTH_LINEAR_STEP is not compatible with STANDALONE_WASM')
     if 'MEMORY_GROWTH_GEOMETRIC_CAP' in user_settings:
@@ -2754,7 +2754,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
         extras.append(path)
         seen.add(needed)
       else:
-        exit_with_error(f'{os.path.normpath(dylib)}: shared library dependency not found: `{needed}`')
+        exit_with_error(f'{os.path.normpath(dylib)}: shared library dependency not found in library path: `{needed}`. (library path: {lib_dirs}')
       to_process.append(path)
 
   dylibs += extras

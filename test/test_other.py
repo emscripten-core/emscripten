@@ -2221,6 +2221,46 @@ int f() {
     output = self.run_js('a.out.js')
     self.assertContained('sidey: 42\n', output)
 
+  def test_dylink_dependencies(self):
+    create_file('side1.c', r'''
+    #include <stdio.h>
+    #include <stdlib.h>
+
+    void side2();
+
+    void side1() {
+        printf("side1\n");
+        side2();
+    }
+    ''')
+    create_file('side2.c', r'''
+    #include <stdio.h>
+    #include <stdlib.h>
+
+    void side2() {
+        printf("side2\n");
+    }
+    ''')
+    create_file('main.c', '''
+    void side1();
+
+    int main() {
+        side1();
+        return 0;
+    }
+    ''')
+    self.emcc('side2.c', ['-fPIC', '-sSIDE_MODULE', '-olibside2.so'])
+    self.emcc('side1.c', ['-fPIC', '-sSIDE_MODULE', '-olibside1.so', 'libside2.so'])
+    cmd = [EMCC, 'main.c', '-fPIC', '-sMAIN_MODULE=2', 'libside1.so']
+
+    # Unless `.` is added to the library path the libside2.so won't be found.
+    err = self.expect_fail(cmd)
+    self.assertContained('emcc: error: libside1.so: shared library dependency not found in library path: `libside2.so`.', err)
+
+    # Adding -L. to the library path makes it work.
+    self.run_process(cmd + ['-L.'])
+    self.run_js('a.out.js')
+
   def test_js_link(self):
     create_file('main.c', '''
       #include <stdio.h>
@@ -8353,6 +8393,7 @@ int main() {
       gz_size = get_file_gzipped_size('a.out.js')
       if '-pthread' in args:
         js_size += os.path.getsize('a.out.worker.js')
+        gz_size += get_file_gzipped_size('a.out.worker.js')
       js_size_file = expected_basename + '.jssize'
       gz_size_file = expected_basename + '.gzsize'
       self.check_expected_size_in_file('wasm', size_file, wasm_size)
@@ -8523,13 +8564,12 @@ int main() {
   def test_legalize_js_ffi(self):
     # test disabling of JS FFI legalization
     for (args, js_ffi) in [
-        (['-sLEGALIZE_JS_FFI=1', '-sSIDE_MODULE', '-O1', '-sEXPORT_ALL'], True),
-        (['-sLEGALIZE_JS_FFI=0', '-sSIDE_MODULE', '-O1', '-sEXPORT_ALL'], False),
-        (['-sLEGALIZE_JS_FFI=0', '-sSIDE_MODULE', '-O0', '-sEXPORT_ALL'], False),
+        (['-sLEGALIZE_JS_FFI=1', '-sSIDE_MODULE', '-O1'], True),
+        (['-sLEGALIZE_JS_FFI=0', '-sSIDE_MODULE', '-O1'], False),
+        (['-sLEGALIZE_JS_FFI=0', '-sSIDE_MODULE', '-O0'], False),
+        (['-sLEGALIZE_JS_FFI=1', '-sWARN_ON_UNDEFINED_SYMBOLS=0', '-O0'], True),
         (['-sLEGALIZE_JS_FFI=0', '-sWARN_ON_UNDEFINED_SYMBOLS=0', '-O0'], False),
       ]:
-      if '-sSIDE_MODULE' in args:
-        continue
       print(args)
       delete_file('a.out.wasm')
       cmd = [EMCC, test_file('other/ffi.c'), '-g', '-o', 'a.out.wasm'] + args
@@ -8541,32 +8581,19 @@ int main() {
       text = re.sub(r'\$var\$*.', '', text)
       text = re.sub(r'param \$\d+', 'param ', text)
       text = re.sub(r' +', ' ', text)
-      # TODO: remove the unecessary ".*" in e_* regexs after binaryen #2510 lands
-      e_add_f32 = re.search(r'func \$_?add_f .*\(param f32\) \(param f32\) \(result f32\)', text)
-      i_i64_i32 = re.search(r'import .*"_?import_ll" .*\(param i32 i32\) \(result i32\)', text)
-      i_f32_f64 = re.search(r'import .*"_?import_f" .*\(param f64\) \(result f64\)', text)
-      i_i64_i64 = re.search(r'import .*"_?import_ll" .*\(param i64\) \(result i64\)', text)
-      i_f32_f32 = re.search(r'import .*"_?import_f" .*\(param f32\) \(result f32\)', text)
-      e_i64_i32 = re.search(r'func \$_?add_ll .*\(param i32\) \(param i32\) \(param i32\) \(param i32\) \(result i32\)', text)
-      e_f32_f64 = re.search(r'func \$legalstub\$_?add_f .*\(param f64\) \(param f64\) \(result f64\)', text)
-      e_i64_i64 = re.search(r'func \$_?add_ll .*\(param i64\) \(param i64\) \(result i64\)', text)
+      e_add_f32 = re.search(r'func \$add_f \(param f32\) \(param f32\) \(result f32\)', text)
       assert e_add_f32, 'add_f export missing'
+      i_i64_i32 = re.search(r'import "env" "import_ll" .*\(param i32 i32\) \(result i32\)', text)
+      i_i64_i64 = re.search(r'import "env" "import_ll" .*\(param i64\) \(result i64\)', text)
+      e_i64_i32 = re.search(r'func \$legalstub\$add_ll \(param i32\) \(param i32\) \(param i32\) \(param i32\) \(result i32\)', text)
       if js_ffi:
         assert i_i64_i32,     'i64 not converted to i32 in imports'
-        assert i_f32_f64,     'f32 not converted to f64 in imports'
         assert not i_i64_i64, 'i64 not converted to i32 in imports'
-        assert not i_f32_f32, 'f32 not converted to f64 in imports'
         assert e_i64_i32,     'i64 not converted to i32 in exports'
-        assert not e_f32_f64, 'f32 not converted to f64 in exports'
-        assert not e_i64_i64, 'i64 not converted to i64 in exports'
       else:
         assert not i_i64_i32, 'i64 converted to i32 in imports'
-        assert not i_f32_f64, 'f32 converted to f64 in imports'
         assert i_i64_i64,     'i64 converted to i32 in imports'
-        assert i_f32_f32,     'f32 converted to f64 in imports'
         assert not e_i64_i32, 'i64 converted to i32 in exports'
-        assert not e_f32_f64, 'f32 converted to f64 in exports'
-        assert e_i64_i64,     'i64 converted to i64 in exports'
 
   @disabled('https://github.com/WebAssembly/binaryen/pull/6428')
   def test_no_legalize_js_ffi(self):
@@ -8677,7 +8704,7 @@ int main() {
     # When linking against `libside2.wasm` (which depends on libside1.wasm) that library path is used
     # to locate `libside1.wasm`.  Expect the link to fail with an unmodified library path.
     err = self.expect_fail([EMCC, '-sMAIN_MODULE=2', test_file('hello_world.c'), 'libside2.wasm'])
-    self.assertContained('libside2.wasm: shared library dependency not found: `libside1.wasm`', err)
+    self.assertContained('libside2.wasm: shared library dependency not found in library path: `libside1.wasm`', err)
 
     # But succeed if `.` is added the library path.
     self.run_process([EMCC, '-sMAIN_MODULE=2', test_file('hello_world.c'), '-L.', 'libside2.wasm'])
@@ -8693,7 +8720,7 @@ int main() {
     self.run_process(final_link)
     os.remove('libside1.wasm')
     err = self.expect_fail(final_link)
-    self.assertContained('error: libside2.wasm: shared library dependency not found: `libside1.wasm`', err)
+    self.assertContained('error: libside2.wasm: shared library dependency not found in library path: `libside1.wasm`', err)
 
   def test_side_module_folder_deps(self):
     # Build side modules in a subfolder
@@ -12678,8 +12705,11 @@ exec "$@"
     err = self.expect_fail([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('other/test_check_undefined.c')])
     self.assertContained('undefined symbol: foo', err)
 
+  @parameterized({
+    'asyncify': (['-sASYNCIFY'],),
+  })
   @also_with_wasm64
-  def test_missing_symbols_at_runtime(self):
+  def test_missing_symbols_at_runtime(self, args):
     # We deliberately pick a symbol there that takes a pointer as an argument.
     # We had a regression where the pointer-handling wrapper function could
     # not be created because the "missing functions" stubs don't take any
@@ -12694,7 +12724,7 @@ exec "$@"
 
     expected = 'Aborted(missing function: glGetTexLevelParameteriv)'
     self.do_runf('test.c', expected,
-                 emcc_args=['-sWARN_ON_UNDEFINED_SYMBOLS=0', '-sAUTO_JS_LIBRARIES=0'],
+                 emcc_args=['-sWARN_ON_UNDEFINED_SYMBOLS=0', '-sAUTO_JS_LIBRARIES=0'] + args,
                  assert_returncode=NON_ZERO)
 
   @with_env_modify({'EMMAKEN_NO_SDK': '1'})
@@ -13964,7 +13994,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.set_setting('USE_PTHREADS')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.do_runf('pthread/test_pthread_create.cpp')
+    self.do_runf('pthread/test_pthread_create.c')
 
   def test_cpp_module(self):
     self.run_process([EMXX, '-std=c++20', test_file('other/hello_world.cppm'), '--precompile', '-o', 'hello_world.pcm'])
@@ -14606,3 +14636,14 @@ addToLibrary({
     stderr = self.expect_fail([compiler, test_file('hello_world.c'), '--use-port=sdl2_image:formats=jpg:formats=png', '-o', 'out.js'])
     self.assertFalse(os.path.exists('out.js'))
     self.assertContained('error with `--use-port=sdl2_image:formats=jpg:formats=png` | duplicate option `formats`', stderr)
+
+  def test_mimalloc_headers(self):
+    src = r'''
+      #include <mimalloc.h>
+
+      int main() {
+          mi_option_enable(mi_option_verbose);
+          return 0;
+      }
+    '''
+    self.do_run(src, emcc_args=['-sMALLOC=mimalloc'])
