@@ -1250,6 +1250,10 @@ uptr GetPageSize() {
 }
 #  endif  // !SANITIZER_ANDROID
 
+#  if SANITIZER_EMSCRIPTEN
+extern "C" uptr emscripten_get_module_name(char *buf, uptr buf_len);
+#  endif
+
 uptr ReadBinaryName(/*out*/ char *buf, uptr buf_len) {
 #  if SANITIZER_SOLARIS
   const char *default_module_name = getexecname();
