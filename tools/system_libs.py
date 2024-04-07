@@ -2062,7 +2062,14 @@ class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
               'system/lib/compiler-rt/lib',
               'system/lib/libc']
   never_force = True
-  cflags = ['-D_LARGEFILE64_SOURCE', '-Wno-format']
+  cflags = [
+    '-D_LARGEFILE64_SOURCE',
+    # The upstream code has many format violations and suppresses it with
+    # -Wno-format, so we match that.
+    # https://github.com/llvm/llvm-project/blob/da675b922cca3dc9a76642d792e882979a3d8c82/compiler-rt/lib/sanitizer_common/CMakeLists.txt#L225-L226
+    # TODO Remove this when the issues are resolved.
+    '-Wno-format',
+  ]
 
   src_dir = 'system/lib/compiler-rt/lib/sanitizer_common'
   src_glob = '*.cpp'
