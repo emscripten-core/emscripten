@@ -3875,9 +3875,7 @@ Module["preRun"] = () => {
   @parameterized({
     '': ([],),
     'O3': (['-O3'],),
-    # TODO: re-enable minimal runtime once the flakiness is figured out,
-    # https://github.com/emscripten-core/emscripten/issues/12368
-    # 'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
+    'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
   })
   def test_pthread_create(self, args):
     self.btest_exit('pthread/test_pthread_create.c',
