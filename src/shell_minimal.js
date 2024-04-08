@@ -143,7 +143,7 @@ function ready() {
 #if !MODULARIZE
 // In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
-var _scriptDir = (typeof document != 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
+var _scriptDir = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
 #endif
 
 // MINIMAL_RUNTIME does not support --proxy-to-worker option, so Worker and Pthread environments
@@ -171,7 +171,7 @@ if (ENVIRONMENT_IS_NODE) {
 }
 #endif
 
-var currentScriptUrl = typeof _scriptDir != 'undefined' ? _scriptDir : ((typeof document != 'undefined' && document.currentScript) ? document.currentScript.src : undefined);
+var currentScriptUrl = typeof _scriptDir != 'undefined' ? _scriptDir : ((typeof document != 'undefined') ? document.currentScript?.src : undefined);
 #endif // PTHREADS
 
 #if !SINGLE_FILE
