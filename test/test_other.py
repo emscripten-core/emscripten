@@ -3113,6 +3113,7 @@ More info: https://emscripten.org
     'no_dynamic': ['-sDYNAMIC_EXECUTION=0'],
     'aot_js': ['-sDYNAMIC_EXECUTION=0', '-sEMBIND_AOT', '-DSKIP_UNBOUND_TYPES'],
     'wasm64': ['-sMEMORY64', '-Wno-experimental'],
+    '2gb': ['-sINITIAL_MEMORY=2200mb', '-sGLOBAL_BASE=2gb'],
   })
   @parameterized({
     # With no arguments we are effectively testing c++17 since it is the default.
