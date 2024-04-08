@@ -22,7 +22,7 @@ def generate_js_library_with_lots_of_functions(out_file):
       f.write('  ' + func_name(i) + ': function() { return ' + str(i + 1) + '; },\n')
 
     f.write('}\n')
-    f.write('mergeInto(LibraryManager.library, FunctionsLibrary);\n')
+    f.write('addToLibrary(FunctionsLibrary);\n')
 
 
 def generate_c_program_that_calls_js_library_with_lots_of_functions(out_file):

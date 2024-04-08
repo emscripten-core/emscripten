@@ -81,6 +81,7 @@
 #error EMSCRIPTEN is not defined
 #endif
 
+#include <stdalign.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>
@@ -91,22 +92,24 @@
 
 int main() {
 #if __wasm64__
-  assert(sizeof(void*) == 8);
-  assert(sizeof(long) == 8);
-  assert(sizeof(intptr_t) == 8);
-  assert(sizeof(size_t) == 8);
-  assert(sizeof(ptrdiff_t) == 8);
+  assert(__SIZEOF_POINTER__ == 8);
 #else
-  assert(sizeof(void*) == 4);
-  assert(sizeof(long) == 4);
-  assert(sizeof(intptr_t) == 4);
-  assert(sizeof(size_t) == 4);
-  assert(sizeof(ptrdiff_t) == 4);
+  assert(__SIZEOF_POINTER__ == 4);
 #endif
+  assert(sizeof(void*) == __SIZEOF_POINTER__);
+  assert(sizeof(long) == __SIZEOF_POINTER__);
+  assert(sizeof(intptr_t) == __SIZEOF_POINTER__);
+  assert(sizeof(size_t) == __SIZEOF_POINTER__);
+  assert(sizeof(ptrdiff_t) == __SIZEOF_POINTER__);
   assert(sizeof(intmax_t) == 8);
-  assert(__alignof(double) == 8);
+  assert(alignof(double) == 8);
   assert(sizeof(long double) == 16);
-  assert(__alignof(long double) == 8);
+  assert(alignof(long double) == 8);
+  assert(alignof(max_align_t) == 8);
+  // __BIGGEST_ALIGNMENT__ corresponds to the default stack alignment
+  // used by llvm.  Unlike `alignof(max_align_t)` it includes SIMD types.
+  // We use this in emscripten as our default stack alignment.
+  assert(__BIGGEST_ALIGNMENT__ == 16);
   assert(__FLT_EVAL_METHOD__ == 0);
   assert(strcmp(STRINGIZE(__USER_LABEL_PREFIX__), "") == 0);
   return 0;

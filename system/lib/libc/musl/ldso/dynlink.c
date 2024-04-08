@@ -21,15 +21,23 @@
 #include <sys/membarrier.h>
 #include "pthread_impl.h"
 #include "fork_impl.h"
-#include "libc.h"
 #include "dynlink.h"
+
+static size_t ldso_page_size;
+#ifndef PAGE_SIZE
+#define PAGE_SIZE ldso_page_size
+#endif
+
+#include "libc.h"
 
 #define malloc __libc_malloc
 #define calloc __libc_calloc
 #define realloc __libc_realloc
 #define free __libc_free
 
-static void error(const char *, ...);
+static void error_impl(const char *, ...);
+static void error_noop(const char *, ...);
+static void (*error)(const char *, ...) = error_noop;
 
 #define MAXP2(a,b) (-(-(a)&-(b)))
 #define ALIGN(x,y) ((x)+(y)-1 & -(y))
@@ -208,7 +216,8 @@ static void decode_vec(size_t *v, size_t *a, size_t cnt)
 	size_t i;
 	for (i=0; i<cnt; i++) a[i] = 0;
 	for (; v[0]; v+=2) if (v[0]-1<cnt-1) {
-		a[0] |= 1UL<<v[0];
+		if (v[0] < 8*sizeof(long))
+			a[0] |= 1UL<<v[0];
 		a[v[0]] = v[1];
 	}
 }
@@ -334,6 +343,40 @@ static struct symdef find_sym(struct dso *dso, const char *s, int need_def)
 	return find_sym2(dso, s, need_def, 0);
 }
 
+static struct symdef get_lfs64(const char *name)
+{
+	const char *p;
+	static const char lfs64_list[] =
+		"aio_cancel\0aio_error\0aio_fsync\0aio_read\0aio_return\0"
+		"aio_suspend\0aio_write\0alphasort\0creat\0fallocate\0"
+		"fgetpos\0fopen\0freopen\0fseeko\0fsetpos\0fstat\0"
+		"fstatat\0fstatfs\0fstatvfs\0ftello\0ftruncate\0ftw\0"
+		"getdents\0getrlimit\0glob\0globfree\0lio_listio\0"
+		"lockf\0lseek\0lstat\0mkostemp\0mkostemps\0mkstemp\0"
+		"mkstemps\0mmap\0nftw\0open\0openat\0posix_fadvise\0"
+		"posix_fallocate\0pread\0preadv\0prlimit\0pwrite\0"
+		"pwritev\0readdir\0scandir\0sendfile\0setrlimit\0"
+		"stat\0statfs\0statvfs\0tmpfile\0truncate\0versionsort\0"
+		"__fxstat\0__fxstatat\0__lxstat\0__xstat\0";
+	size_t l;
+	char buf[16];
+	for (l=0; name[l]; l++) {
+		if (l >= sizeof buf) goto nomatch;
+		buf[l] = name[l];
+	}
+	if (!strcmp(name, "readdir64_r"))
+		return find_sym(&ldso, "readdir_r", 1);
+	if (l<2 || name[l-2]!='6' || name[l-1]!='4')
+		goto nomatch;
+	buf[l-=2] = 0;
+	for (p=lfs64_list; *p; p++) {
+		if (!strcmp(buf, p)) return find_sym(&ldso, buf, 1);
+		while (*p) p++;
+	}
+nomatch:
+	return (struct symdef){ 0 };
+}
+
 static void do_relocs(struct dso *dso, size_t *rel, size_t rel_size, size_t stride)
 {
 	unsigned char *base = dso->base;
@@ -387,6 +430,7 @@ static void do_relocs(struct dso *dso, size_t *rel, size_t rel_size, size_t stri
 			def = (sym->st_info>>4) == STB_LOCAL
 				? (struct symdef){ .dso = dso, .sym = sym }
 				: find_sym(ctx, name, type==REL_PLT);
+			if (!def.sym) def = get_lfs64(name);
 			if (!def.sym && (sym->st_shndx != SHN_UNDEF
 			    || sym->st_info>>4 != STB_WEAK)) {
 				if (dso->lazy && (type==REL_PLT || type==REL_GOT)) {
@@ -511,6 +555,24 @@ static void do_relocs(struct dso *dso, size_t *rel, size_t rel_size, size_t stri
 			continue;
 		}
 	}
+}
+
+static void do_relr_relocs(struct dso *dso, size_t *relr, size_t relr_size)
+{
+	if (dso == &ldso) return; /* self-relocation was done in _dlstart */
+	unsigned char *base = dso->base;
+	size_t *reloc_addr;
+	for (; relr_size; relr++, relr_size-=sizeof(size_t))
+		if ((relr[0]&1) == 0) {
+			reloc_addr = laddr(dso, relr[0]);
+			*reloc_addr++ += (size_t)base;
+		} else {
+			int i = 0;
+			for (size_t bitmap=relr[0]; (bitmap>>=1); i++)
+				if (bitmap&1)
+					reloc_addr[i] += (size_t)base;
+			reloc_addr += 8*sizeof(size_t)-1;
+		}
 }
 
 static void redo_lazy_relocs()
@@ -866,7 +928,7 @@ static int fixup_rpath(struct dso *p, char *buf, size_t buf_size)
 		case ENOENT:
 		case ENOTDIR:
 		case EACCES:
-			break;
+			return 0;
 		default:
 			return -1;
 		}
@@ -1355,13 +1417,17 @@ static void reloc_all(struct dso *p)
 			2+(dyn[DT_PLTREL]==DT_RELA));
 		do_relocs(p, laddr(p, dyn[DT_REL]), dyn[DT_RELSZ], 2);
 		do_relocs(p, laddr(p, dyn[DT_RELA]), dyn[DT_RELASZ], 3);
+		if (!DL_FDPIC)
+			do_relr_relocs(p, laddr(p, dyn[DT_RELR]), dyn[DT_RELRSZ]);
 
-		if (head != &ldso && p->relro_start != p->relro_end &&
-		    mprotect(laddr(p, p->relro_start), p->relro_end-p->relro_start, PROT_READ)
-		    && errno != ENOSYS) {
-			error("Error relocating %s: RELRO protection failed: %m",
-				p->name);
-			if (runtime) longjmp(*rtld_fail, 1);
+		if (head != &ldso && p->relro_start != p->relro_end) {
+			long ret = __syscall(SYS_mprotect, laddr(p, p->relro_start),
+				p->relro_end-p->relro_start, PROT_READ);
+			if (ret != 0 && ret != -ENOSYS) {
+				error("Error relocating %s: RELRO protection failed: %m",
+					p->name);
+				if (runtime) longjmp(*rtld_fail, 1);
+			}
 		}
 
 		p->relocated = 1;
@@ -1664,6 +1730,7 @@ hidden void __dls2(unsigned char *base, size_t *sp)
 	ldso.phnum = ehdr->e_phnum;
 	ldso.phdr = laddr(&ldso, ehdr->e_phoff);
 	ldso.phentsize = ehdr->e_phentsize;
+	search_vec(auxv, &ldso_page_size, AT_PAGESZ);
 	kernel_mapped_dso(&ldso);
 	decode_dyn(&ldso);
 
@@ -1755,6 +1822,9 @@ void __dls3(size_t *sp, size_t *auxv)
 		env_path = getenv("LD_LIBRARY_PATH");
 		env_preload = getenv("LD_PRELOAD");
 	}
+
+	/* Activate error handler function */
+	error = error_impl;
 
 	/* If the main program was already loaded by the kernel,
 	 * AT_PHDR will point to some location other than the dynamic
@@ -1921,6 +1991,10 @@ void __dls3(size_t *sp, size_t *auxv)
 			app.dynv[i+1] = (size_t)&debug;
 		if (DT_DEBUG_INDIRECT && app.dynv[i]==DT_DEBUG_INDIRECT) {
 			size_t *ptr = (size_t *) app.dynv[i+1];
+			*ptr = (size_t)&debug;
+		}
+		if (app.dynv[i]==DT_DEBUG_INDIRECT_REL) {
+			size_t *ptr = (size_t *)((size_t)&app.dynv[i] + app.dynv[i+1]);
 			*ptr = (size_t)&debug;
 		}
 	}
@@ -2345,7 +2419,7 @@ int dl_iterate_phdr(int(*callback)(struct dl_phdr_info *info, size_t size, void 
 	return ret;
 }
 
-static void error(const char *fmt, ...)
+static void error_impl(const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
@@ -2358,4 +2432,8 @@ static void error(const char *fmt, ...)
 	}
 	__dl_vseterr(fmt, ap);
 	va_end(ap);
+}
+
+static void error_noop(const char *fmt, ...)
+{
 }

@@ -58,21 +58,24 @@ class OpenFileState : public std::enable_shared_from_this<OpenFileState> {
   friend FileTable;
 
 public:
-  OpenFileState(private_key, oflags_t flags, std::shared_ptr<File> file)
-    : file(file), flags(flags) {}
+  // Cache directory entries at the moment the directory is opened so that
+  // subsequent getdents calls have a stable view of the contents. Including
+  // files removed after the open and excluding files added after the open is
+  // allowed, and trying to recalculate the directory contents on each getdents
+  // call could lead to missed directory entries if there are concurrent
+  // deletions that effectively move entries back past the current read position
+  // in the open directory.
+  const std::vector<Directory::Entry> dirents;
+
+  OpenFileState(private_key,
+                oflags_t flags,
+                std::shared_ptr<File> file,
+                std::vector<Directory::Entry>&& dirents)
+    : file(file), flags(flags), dirents(std::move(dirents)) {}
 
   [[nodiscard]] static int create(std::shared_ptr<File> file,
                                   oflags_t flags,
-                                  std::shared_ptr<OpenFileState>& out) {
-    assert(file);
-    if (auto f = file->dynCast<DataFile>()) {
-      if (int err = f->locked().open(flags & O_ACCMODE)) {
-        return err;
-      }
-    }
-    out = std::make_shared<OpenFileState>(private_key{0}, flags, file);
-    return 0;
-  }
+                                  std::shared_ptr<OpenFileState>& out);
 
   class Handle {
     std::shared_ptr<OpenFileState> openFileState;

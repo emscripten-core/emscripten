@@ -5,6 +5,9 @@
  * found in the LICENSE file.
  */
 
+// For LFS functions (e.g. stat64)
+#define _GNU_SOURCE 1
+
 #include <assert.h>
 #include <dirent.h>
 #include <errno.h>
@@ -19,6 +22,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/sysmacros.h>
+#include <emscripten/emscripten.h>
 
 void create_file(const char *path, const char *buffer, int mode) {
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
@@ -59,6 +63,12 @@ void test() {
   assert(err == -1);
   assert(errno == ENOENT);
 
+  // test stat64 LFS functions
+  struct stat64 s64;
+  err = stat("does_not_exist", &s64);
+  assert(err == -1);
+  assert(errno == ENOENT);
+
   // stat a folder
   memset(&s, 0, sizeof(s));
   err = stat("folder", &s);
@@ -85,7 +95,6 @@ void test() {
   assert(s.st_blocks == 1);
 #endif
 #endif
-
   // stat a file
   memset(&s, 0, sizeof(s));
   err = stat("folder/file", &s);
@@ -192,6 +201,55 @@ void test() {
   unlink("folder/subdir/file");
   err = stat("folder/subdir", &s);
   assert(s.st_mtime != TEST_TIME);
+
+  chmod("folder/file", 0666);
+  EM_ASM(
+    var stats = FS.stat("folder/file");
+    assert(stats.dev == 1);
+    assert(stats.ino);
+    assert(stats.mode == 0o100666);
+    assert(stats.nlink);
+    assert(stats.rdev == 0);
+    assert(stats.size == 6);
+    assert(stats.atime);
+    assert(stats.mtime);
+    assert(stats.ctime);
+  );
+
+  symlink("folder/file", "folder/symlinkfile");
+
+  EM_ASM(
+    var linkStats = FS.lstat("folder/symlinkfile");
+    assert(linkStats.dev == 1);
+    assert(linkStats.ino);
+#if WASMFS
+    assert(linkStats.mode == 0o120000);
+#else
+    assert(linkStats.mode == 0o120777);
+#endif
+    assert(linkStats.nlink);
+    assert(linkStats.rdev == 0);
+    assert(linkStats.size == 11);
+    assert(linkStats.atime);
+    assert(linkStats.mtime);
+    assert(linkStats.ctime);
+
+    var ex;
+    try {
+      FS.stat("nonexistent");
+    } catch (err) {
+      ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+
+    try {
+      FS.lstat("nonexistent");
+    } catch (err) {
+      ex = err;
+    }
+    assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
+  );
+  chmod("folder/file", 0777);
 
   puts("success");
 }

@@ -84,8 +84,8 @@ void *emmalloc_calloc(size_t num, size_t size);
 
 // mallinfo() returns information about current emmalloc allocation state. This function
 // is very slow, only good for debugging. Avoid calling it for "routine" diagnostics.
-struct mallinfo mallinfo();
-struct mallinfo emmalloc_mallinfo();
+struct mallinfo mallinfo(void);
+struct mallinfo emmalloc_mallinfo(void);
 
 // malloc_trim() returns unused dynamic memory back to the WebAssembly heap. Returns 1 if it
 // actually freed any memory, and 0 if not. Note: this function does not release memory back to

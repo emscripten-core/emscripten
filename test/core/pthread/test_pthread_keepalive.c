@@ -17,7 +17,7 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 bool running = false;
 
 void timeout(void* arg) {
-  _emscripten_errf("timeout");
+  emscripten_err("timeout");
   pthread_mutex_lock(&mutex);
   running = true;
   pthread_mutex_unlock(&mutex);
@@ -26,18 +26,18 @@ void timeout(void* arg) {
 
 void* thread_main(void* arg) {
   // Keep the thread runtime alive for now.
-  _emscripten_errf("thread_main");
+  emscripten_err("thread_main");
   emscripten_runtime_keepalive_push();
   emscripten_set_timeout(timeout, 0, NULL);
   return NULL;
 }
 
 void say_hello(void* arg) {
-  _emscripten_errf("say_hello");
+  emscripten_err("say_hello");
 }
 
 void keepalive_pop(void* arg) {
-  _emscripten_errf("keepalive_pop");
+  emscripten_err("keepalive_pop");
   // After this the called, thread should exit (become joinable).
   emscripten_runtime_keepalive_pop();
 }

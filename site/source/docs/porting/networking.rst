@@ -46,8 +46,8 @@ complete at the moment, it is likely that you will run into problems out of the
 box and need to adapt the code to work within the limitations that this
 emulation provides.
 
-This is the default build mode for Emscripten. Use the linker flag ``-s
-WEBSOCKET_URL`` or ``Module['websocket']['url']`` to specify the WebSocket URL
+This is the default build mode for Emscripten. Use the linker flag
+``-sWEBSOCKET_URL`` or ``Module['websocket']['url']`` to specify the WebSocket URL
 to connect to, and the linker flag ``-sWEBSOCKET_SUBPROTOCOL`` or
 ``Module['websocket']['subprotocol']`` to control the connection type
 (``'binary'`` or ``'text'``).
@@ -78,7 +78,7 @@ POSIX sockets proxying builds on top of the Emscripten WebSockets library, and
 requires multithreading and proxying the application ``main()`` to a pthread.
 
 For an example of how the POSIX Sockets proxy server works in an Emscripten
-client program, see the file ``test/websocket/tcp_echo_client.cpp``.
+client program, see the file ``test/websocket/tcp_echo_client.c``.
 
 XmlHttpRequests and Fetch API
 =============================

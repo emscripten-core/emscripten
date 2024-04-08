@@ -252,7 +252,7 @@ int main() {
   assert(strcmp(gai_strerror(EAI_MEMORY), "Out of memory") == 0);
   assert(strcmp(gai_strerror(EAI_SYSTEM), "System error") == 0);
   assert(strcmp(gai_strerror(EAI_OVERFLOW), "Overflow") == 0);
-  assert(strcmp(gai_strerror(-5), "Unknown error") == 0);
+  assert(strcmp(gai_strerror(EAI_NODATA), "Name has no usable address") == 0);
   assert(strcmp(gai_strerror(-9), "Unknown error") == 0);
   assert(strcmp(gai_strerror(-13), "Unknown error") == 0);
   assert(strcmp(gai_strerror(-100), "Unknown error") == 0);

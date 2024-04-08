@@ -11,7 +11,7 @@ This comprehensive documentation set contains everything you need to know to use
 
 **Getting started:**
 
-- :ref:`introducting-emscripten-index` explains what Emscripten does, why it is needed, its limitations and its licensing. It will help you understand whether Emscripten is the right tool for you.
+- :ref:`introducing-emscripten-index` explains what Emscripten does, why it is needed, its limitations and its licensing. It will help you understand whether Emscripten is the right tool for you.
 - :ref:`getting-started-index` walks you through downloading, installing and using the Emscripten SDK.
 
 **Emscripten Fundamentals:**
@@ -30,6 +30,7 @@ This comprehensive documentation set contains everything you need to know to use
 **Reference:**
 
 - :ref:`api-reference-index` is a reference for the Emscripten toolchain.
+- :ref:`settings-reference` is a reference of all the Emscripten compiler serttings.
 - :ref:`tools-reference` is a reference for the Emscripten integration APIs.
 - :ref:`Sanitizers` shows how to debug with sanitizers.
 - :ref:`Module-Splitting` is a guide to splitting modules and deferring the

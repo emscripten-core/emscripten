@@ -5,14 +5,14 @@
 
 int main() {
   void* handle = dlopen("libside.so", RTLD_NOW);
-  printf("handle: %p\n", handle);
   if (!handle) {
-    printf("%s\n", dlerror());
+    printf("dlopen failed: %s\n", dlerror());
     return 1;
   }
+  printf("handle: %p\n", handle);
   int* foo = (int*)dlsym(handle, "foo");
   if (!foo) {
-    printf("%s\n", dlerror());
+    printf("dlsym failed: %s\n", dlerror());
     return 1;
   }
   printf("foo = %d\n", *foo);

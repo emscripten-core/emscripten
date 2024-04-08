@@ -15,10 +15,15 @@
 #include <__algorithm/iterator_operations.h>
 #include <__algorithm/sort.h>
 #include <__config>
+#include <__debug_utils/strict_weak_ordering_check.h>
 #include <__iterator/iterator_traits.h>
+#include <__memory/destruct_n.h>
+#include <__memory/temporary_buffer.h>
+#include <__memory/unique_ptr.h>
+#include <__type_traits/is_trivially_copy_assignable.h>
 #include <__utility/move.h>
-#include <memory>
-#include <type_traits>
+#include <__utility/pair.h>
+#include <new>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
@@ -26,8 +31,39 @@
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
+template <class _AlgPolicy, class _Compare, class _BidirectionalIterator>
+_LIBCPP_HIDE_FROM_ABI
+void __insertion_sort_move(_BidirectionalIterator __first1, _BidirectionalIterator __last1,
+                           typename iterator_traits<_BidirectionalIterator>::value_type* __first2, _Compare __comp) {
+  using _Ops = _IterOps<_AlgPolicy>;
+
+  typedef typename iterator_traits<_BidirectionalIterator>::value_type value_type;
+  if (__first1 != __last1) {
+    __destruct_n __d(0);
+    unique_ptr<value_type, __destruct_n&> __h(__first2, __d);
+    value_type* __last2 = __first2;
+    ::new ((void*)__last2) value_type(_Ops::__iter_move(__first1));
+    __d.template __incr<value_type>();
+    for (++__last2; ++__first1 != __last1; ++__last2) {
+      value_type* __j2 = __last2;
+      value_type* __i2 = __j2;
+      if (__comp(*__first1, *--__i2)) {
+        ::new ((void*)__j2) value_type(std::move(*__i2));
+        __d.template __incr<value_type>();
+        for (--__j2; __i2 != __first2 && __comp(*__first1, *--__i2); --__j2)
+          *__j2 = std::move(*__i2);
+        *__j2 = _Ops::__iter_move(__first1);
+      } else {
+        ::new ((void*)__j2) value_type(_Ops::__iter_move(__first1));
+        __d.template __incr<value_type>();
+      }
+    }
+    __h.release();
+  }
+}
+
 template <class _AlgPolicy, class _Compare, class _InputIterator1, class _InputIterator2>
-void
+_LIBCPP_HIDE_FROM_ABI void
 __merge_move_construct(_InputIterator1 __first1, _InputIterator1 __last1,
         _InputIterator2 __first2, _InputIterator2 __last2,
         typename iterator_traits<_InputIterator1>::value_type* __result, _Compare __comp)
@@ -69,7 +105,7 @@ __merge_move_construct(_InputIterator1 __first1, _InputIterator1 __last1,
 }
 
 template <class _AlgPolicy, class _Compare, class _InputIterator1, class _InputIterator2, class _OutputIterator>
-void
+_LIBCPP_HIDE_FROM_ABI void
 __merge_move_assign(_InputIterator1 __first1, _InputIterator1 __last1,
         _InputIterator2 __first2, _InputIterator2 __last2,
         _OutputIterator __result, _Compare __comp)
@@ -223,8 +259,8 @@ _LIBCPP_SUPPRESS_DEPRECATED_POP
       __h.reset(__buf.first);
   }
 
-  using _Comp_ref = typename __comp_ref_type<_Compare>::type;
-  std::__stable_sort<_AlgPolicy, _Comp_ref>(__first, __last, __comp, __len, __buf.first, __buf.second);
+  std::__stable_sort<_AlgPolicy, __comp_ref_type<_Compare> >(__first, __last, __comp, __len, __buf.first, __buf.second);
+  std::__check_strict_weak_ordering_sorted(__first, __last, __comp);
 }
 
 template <class _RandomAccessIterator, class _Compare>
@@ -236,7 +272,7 @@ void stable_sort(_RandomAccessIterator __first, _RandomAccessIterator __last, _C
 template <class _RandomAccessIterator>
 inline _LIBCPP_HIDE_FROM_ABI
 void stable_sort(_RandomAccessIterator __first, _RandomAccessIterator __last) {
-  std::stable_sort(__first, __last, __less<typename iterator_traits<_RandomAccessIterator>::value_type>());
+  std::stable_sort(__first, __last, __less<>());
 }
 
 _LIBCPP_END_NAMESPACE_STD

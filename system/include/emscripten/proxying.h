@@ -27,13 +27,13 @@ extern "C" {
 typedef struct em_proxying_queue em_proxying_queue;
 
 // Create and destroy proxying queues.
-em_proxying_queue* em_proxying_queue_create();
+em_proxying_queue* em_proxying_queue_create(void);
 void em_proxying_queue_destroy(em_proxying_queue* q);
 
 // Get the queue used for proxying low-level runtime work. Work on this queue
 // may be processed at any time inside system functions, so it must be
 // nonblocking and safe to run at any time, similar to a native signal handler.
-em_proxying_queue* emscripten_proxy_get_system_queue();
+em_proxying_queue* emscripten_proxy_get_system_queue(void);
 
 // Execute all the tasks enqueued for the current thread on the given queue. New
 // tasks that are enqueued concurrently with this execution will be executed as

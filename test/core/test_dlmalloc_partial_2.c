@@ -7,12 +7,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <emscripten.h>
+#include <emscripten/console.h>
+
 void *malloc(size_t size) { return (void *)123; }
 int main() {
   void *x = malloc(10);
-  EM_ASM({ out("got 0x" + $0.toString(16)) }, x);
+  emscripten_outf("got %p", x);
   free(0);
-  EM_ASM({ out("freed a fake") });
+  emscripten_outf("freed a fake");
   return 1;
 }

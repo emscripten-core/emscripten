@@ -32,3 +32,10 @@ void _emscripten_thread_mailbox_await(pthread_t thread);
 
 // Close the mailbox and cancel any pending messages.
 void _emscripten_thread_mailbox_shutdown(pthread_t thread);
+
+// Send a postMessage notification telling the target thread to check its
+// mailbox when it returns to its event loop. Pass in the current thread and
+// main thread ids to minimize calls back into Wasm.
+void _emscripten_notify_mailbox_postmessage(pthread_t target_thread,
+                                            pthread_t curr_thread,
+                                            pthread_t main_thread);

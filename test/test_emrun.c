@@ -11,7 +11,7 @@
 
 int main(int argc, char **argv) {
   printf("argc: %d\n", argc);
-  for(int i = 0; i < argc; ++i) {
+  for (int i = 0; i < argc; ++i) {
     printf("argv[%d]: %s\n", i, argv[i]);
   }
 
@@ -20,8 +20,9 @@ int main(int argc, char **argv) {
   EM_ASM(emrun_file_dump("heap.dat", HEAPU8));
   EM_ASM(emrun_file_dump("nested/with space.dat", HEAPU8.subarray(128, 256)););
 
-  if (argc <= 1)
+  if (argc <= 1) {
     exit(1);
+  }
   printf("hello, world!\n");
   fprintf(stderr, "hello, error stream!\n");
 
@@ -30,4 +31,3 @@ int main(int argc, char **argv) {
 
   exit(100);
 }
-

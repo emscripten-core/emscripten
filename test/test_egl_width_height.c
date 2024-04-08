@@ -9,8 +9,7 @@
 #include <stdio.h>
 #include <EGL/egl.h>
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     EGLDisplay display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
 
     EGLint major, minor;

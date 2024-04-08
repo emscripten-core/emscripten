@@ -8,7 +8,13 @@ hidden long __cancel(), __syscall_cp_asm(), __syscall_cp_c();
 long __cancel()
 {
 	pthread_t self = __pthread_self();
+#ifdef __EMSCRIPTEN__
+	// Emscripten doesn't have actual async cancelation so we make a best effort
+	// by cancelling cooperatively when self->cancelasync is set.
 	if (self->canceldisable == PTHREAD_CANCEL_ENABLE || self->cancelasync)
+#else
+	if (self->canceldisable == PTHREAD_CANCEL_ENABLE)
+#endif
 		pthread_exit(PTHREAD_CANCELED);
 	self->canceldisable = PTHREAD_CANCEL_DISABLE;
 	return -ECANCELED;
@@ -57,7 +63,12 @@ static void cancel_handler(int sig, siginfo_t *si, void *ctx)
 
 	_sigaddset(&uc->uc_sigmask, SIGCANCEL);
 
-	if (self->cancelasync || pc >= (uintptr_t)__cp_begin && pc < (uintptr_t)__cp_end) {
+	if (self->cancelasync) {
+		pthread_sigmask(SIG_SETMASK, &uc->uc_sigmask, 0);
+		__cancel();
+	}
+
+	if (pc >= (uintptr_t)__cp_begin && pc < (uintptr_t)__cp_end) {
 		uc->uc_mcontext.MC_PC = (uintptr_t)__cp_cancel;
 #ifdef CANCEL_GOT
 		uc->uc_mcontext.MC_GOT = CANCEL_GOT;
@@ -72,7 +83,12 @@ static void cancel_handler(int sig, siginfo_t *si, void *ctx)
 void __testcancel()
 {
 	pthread_t self = __pthread_self();
+#ifdef __EMSCRIPTEN__
+	// See comment above about cancelasync under emscripten.
+	if (self->cancel && (self->cancelasync || !self->canceldisable))
+#else
 	if (self->cancel && !self->canceldisable)
+#endif
 		__cancel();
 }
 
@@ -80,7 +96,7 @@ void __testcancel()
 static void init_cancellation()
 {
 	struct sigaction sa = {
-		.sa_flags = SA_SIGINFO | SA_RESTART,
+		.sa_flags = SA_SIGINFO | SA_RESTART | SA_ONSTACK,
 		.sa_sigaction = cancel_handler
 	};
 	memset(&sa.sa_mask, -1, _NSIG/8);

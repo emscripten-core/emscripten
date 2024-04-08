@@ -7,8 +7,7 @@
 #include <stdio.h>
 #include <emscripten.h>
 
-int main()
-{
+int main() {
   printf("you should not see this text when in a worker!\n"); // this should not crash, but also should not show up anywhere if you are in a worker
   FILE *f = fopen("file.dat", "r");
   char buffer[100];
@@ -20,4 +19,3 @@ int main()
   printf("sprintf: %d\n", n);
   emscripten_run_script(buffer2);
 }
-

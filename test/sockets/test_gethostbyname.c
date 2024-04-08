@@ -26,7 +26,7 @@ int main() {
   const char *res;
   char buffer[2048];
   int err;
-  
+
   // gethostbyname_r calls the same stuff as gethostbyname, so we'll test the
   // more complicated one.
   // resolve the hostname to an actual address
@@ -38,6 +38,7 @@ int main() {
   char **raw_addr_list = host->h_addr_list;
   int *raw_addr = (int*)*raw_addr_list;
   res = inet_ntop(host->h_addrtype, raw_addr, str, INET_ADDRSTRLEN);
+  printf("gethostbyname -> %s\n", res);
   assert(res);
 
   // convert the string to an in_addr structure
@@ -46,6 +47,7 @@ int main() {
 
   // do a reverse lookup on the ip address
   struct hostent *host1 = gethostbyaddr(&addr, sizeof(addr), host->h_addrtype);
+  printf("gethostbyaddr -> %s\n", host1->h_name);
   assert(strstr(host1->h_name, "slashdot.org"));
 
   puts("success");

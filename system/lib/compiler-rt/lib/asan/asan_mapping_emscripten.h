@@ -44,6 +44,7 @@ extern char __global_base;
 // pointer dereferences, to be detected properly.
 // The shadow memory of the shadow memory is poisoned.
 #define MEM_TO_SHADOW(mem) ((mem) >> ASAN_SHADOW_SCALE)
+#define SHADOW_TO_MEM(mem) ((mem) << ASAN_SHADOW_SCALE)
 
 namespace __asan {
 

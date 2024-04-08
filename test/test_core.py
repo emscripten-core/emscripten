@@ -10,7 +10,6 @@ import os
 import random
 import re
 import shutil
-import sys
 import time
 import unittest
 from pathlib import Path
@@ -20,20 +19,25 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner')
 
 from tools.shared import PIPE
-from tools.shared import EMCC, EMAR
+from tools.shared import EMCC, EMAR, FILE_PACKAGER
 from tools.utils import WINDOWS, MACOS, write_file, delete_file
 from tools import shared, building, config, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
-from common import env_modify, with_env_modify, disabled, node_pthreads, also_with_wasm_bigint
-from common import read_file, read_binary, requires_v8, requires_node, compiler_for
+from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
+from common import read_file, read_binary, requires_v8, requires_node, requires_wasm2js, requires_node_canary
+from common import compiler_for, crossplatform, no_4gb, no_2gb
+from common import with_both_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
 
 # decorators for limiting which modes a test can run in
 
 logger = logging.getLogger("test_core")
+
+EM_SIGINT = 2
+EM_SIGABRT = 6
 
 
 def wasm_simd(f):
@@ -42,7 +46,7 @@ def wasm_simd(f):
     self.require_simd()
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4638')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
     if '-O3' in self.emcc_args:
       self.skipTest('SIMD tests are too slow with -O3 in the new LLVM pass manager, https://github.com/emscripten-core/emscripten/issues/13427')
@@ -58,7 +62,7 @@ def wasm_relaxed_simd(f):
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4638')
     # We don't actually run any tests yet, so don't require any engines.
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
     self.emcc_args.append('-mrelaxed-simd')
     f(self)
@@ -67,7 +71,7 @@ def wasm_relaxed_simd(f):
 
 def needs_non_trapping_float_to_int(f):
   def decorated(self):
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
     f(self)
   return decorated
@@ -98,7 +102,7 @@ def with_both_eh_sjlj(f):
   def metafunc(self, is_native):
     if is_native:
       # Wasm EH is currently supported only in wasm backend and V8
-      if not self.is_wasm():
+      if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm EH/SjLj')
       self.require_wasm_eh()
       # FIXME Temporarily disabled. Enable this later when the bug is fixed.
@@ -108,8 +112,6 @@ def with_both_eh_sjlj(f):
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       f(self)
     else:
-      if self.get_setting('MEMORY64'):
-        self.skipTest('MEMORY64 does not yet support emscripten EH/SjLj')
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
       # DISABLE_EXCEPTION_CATCHING=0 exports __cxa_can_catch and
@@ -117,31 +119,6 @@ def with_both_eh_sjlj(f):
       # error out because libc++abi is not included. See
       # https://github.com/emscripten-core/emscripten/pull/14192 for details.
       self.set_setting('DEFAULT_TO_CXX')
-      f(self)
-
-  metafunc._parameterize = {'': (False,),
-                            'wasm': (True,)}
-  return metafunc
-
-
-# This works just like `with_both_eh_sjlj` above but doesn't enable exceptions.
-# Use this for tests that use setjmp/longjmp but not exceptions handling.
-def with_both_sjlj(f):
-  assert callable(f)
-
-  def metafunc(self, is_native):
-    if is_native:
-      # Wasm SjLj is currently supported only in wasm backend and V8
-      if not self.is_wasm():
-        self.skipTest('wasm2js does not support wasm SjLj')
-      self.require_wasm_eh()
-      # FIXME Temporarily disabled. Enable this later when the bug is fixed.
-      if '-fsanitize=address' in self.emcc_args:
-        self.skipTest('Wasm EH does not work with asan yet')
-      self.set_setting('SUPPORT_LONGJMP', 'wasm')
-      f(self)
-    else:
-      self.set_setting('SUPPORT_LONGJMP', 'emscripten')
       f(self)
 
   metafunc._parameterize = {'': (False,),
@@ -157,11 +134,21 @@ def no_wasm2js(note=''):
   return decorated
 
 
-def no_wasm64(note=''):
+# Some tests are marked as only-wasm2js because they test basic codegen in a way
+# that is mainly useful for the wasm2js compiler and not LLVM. LLVM tests its
+# own codegen, while wasm2js testing is split between the binaryen repo (which
+# tests wat files) and this repo (which tests C/C++ files).
+#
+# Note that some tests here may seem excessive, e.g., testing 16-bit math, as
+# LLVM turns those things into i32 values in wasm anyhow before wasm2js.
+# However, it is still useful to test wasm2js there as LLVM emits patterns of
+# shifts and such around those values to ensure they operate as 16-bit, and we
+# want coverage of that.
+def only_wasm2js(note=''):
   assert not callable(note)
 
   def decorated(f):
-    return skip_if(f, 'is_wasm64', note)
+    return skip_if(f, 'is_wasm2js', note, negate=True)
   return decorated
 
 
@@ -178,15 +165,6 @@ def also_with_noderawfs(func):
   metafunc._parameterize = {'': (False,),
                             'rawfs': (True,)}
   return metafunc
-
-
-def can_do_standalone(self):
-  return self.is_wasm() and \
-      self.get_setting('STACK_OVERFLOW_CHECK', 0) < 2 and \
-      not self.get_setting('MINIMAL_RUNTIME') and \
-      not self.get_setting('SAFE_HEAP') and \
-      not self.get_setting('MEMORY64') and \
-      not any(a.startswith('-fsanitize=') for a in self.emcc_args)
 
 
 def also_with_wasmfs(func):
@@ -218,63 +196,20 @@ def also_with_wasmfs_js(func):
   return decorated
 
 
-# Impure means a test that cannot run in a wasm VM yet, as it is not 100%
-# standalone. We can still run them with the JS code though.
-def also_with_standalone_wasm(wasm2c=False, impure=False):
-  def decorated(func):
-    def metafunc(self, standalone):
-      if not standalone:
-        func(self)
-      else:
-        if not can_do_standalone(self):
-          self.skipTest('Test configuration is not compatible with STANDALONE_WASM')
-        self.set_setting('STANDALONE_WASM')
-        # we will not legalize the JS ffi interface, so we must use BigInt
-        # support in order for JS to have a chance to run this without trapping
-        # when it sees an i64 on the ffi.
-        self.set_setting('WASM_BIGINT')
-        self.emcc_args.append('-Wno-unused-command-line-argument')
-        # if we are impure, disallow all wasm engines
-        if impure:
-          self.wasm_engines = []
-        self.js_engines = [config.NODE_JS]
-        self.node_args += shared.node_bigint_flags()
-        func(self)
-        if wasm2c:
-          print('wasm2c')
-          self.set_setting('WASM2C')
-          self.wasm_engines = []
-          func(self)
-
-    metafunc._parameterize = {'': (False,),
-                              'standalone': (True,)}
-    return metafunc
-
-  return decorated
-
-
-def with_asyncify_and_stack_switching(f):
+def with_asyncify_and_jspi(f):
   assert callable(f)
 
-  def metafunc(self, stack_switching):
-    if stack_switching:
+  def metafunc(self, jspi):
+    if jspi:
       self.set_setting('ASYNCIFY', 2)
-      self.require_v8()
-      # enable stack switching and other relevant features (like reference types
-      # for the return value of externref)
-      self.v8_args.append('--experimental-wasm-stack-switching')
-      if not self.is_wasm():
-        self.skipTest('wasm2js does not support WebAssembly.Suspender yet')
-      # emcc warns about stack switching being experimental, and we build with
-      # warnings-as-errors, so disable that warning
-      self.emcc_args += ['-Wno-experimental']
+      self.require_jspi()
       f(self)
     else:
       self.set_setting('ASYNCIFY')
       f(self)
 
   metafunc._parameterize = {'': (False,),
-                            'stack_switching': (True,)}
+                            'jspi': (True,)}
   return metafunc
 
 
@@ -400,12 +335,6 @@ def is_sanitizing(args):
 
 
 class TestCoreBase(RunnerCore):
-  def is_wasm2js(self):
-    return self.get_setting('WASM') == 0
-
-  def is_wasm64(self):
-    return self.get_setting('MEMORY64')
-
   # A simple check whether the compiler arguments cause optimization.
   def is_optimizing(self):
     return '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args
@@ -464,8 +393,6 @@ class TestCoreBase(RunnerCore):
                             configure_args=configure_args,
                             cache_name_extra=configure_commands[0])
 
-  @also_with_standalone_wasm()
-  @also_with_wasmfs
   def test_hello_world(self):
     self.do_core_test('test_hello_world.c')
 
@@ -484,13 +411,9 @@ class TestCoreBase(RunnerCore):
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_hello_argc.c', args=['hello', 'world'])
 
-  @also_with_wasmfs
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_intvars(self):
     self.do_core_test('test_intvars.cpp')
-
-  @also_with_wasmfs
-  def test_sintvars(self):
-    self.do_core_test('test_sintvars.c')
 
   def test_int53(self):
     if common.EMTEST_REBASELINE:
@@ -508,104 +431,133 @@ class TestCoreBase(RunnerCore):
     else:
       self.do_core_test('test_convertI32PairToI53Checked.cpp', interleaved_output=False)
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64(self):
+    # test shifts etc. on 64-bit integers as well as printf() on them. we need
+    # the math testing only for wasm2js but do not apply @only_wasm2js since we
+    # do want some testing of 64-bit printf in our libc (which is not tested in
+    # clang upstream).
     self.do_core_test('test_i64.c')
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64_2(self):
     self.do_core_test('test_i64_2.cpp')
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64_3(self):
     self.do_core_test('test_i64_3.cpp')
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64_4(self):
     # stuff that also needs sign corrections
-
     self.do_core_test('test_i64_4.c')
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64_b(self):
     self.do_core_test('test_i64_b.cpp')
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64_cmp(self):
     self.do_core_test('test_i64_cmp.cpp')
 
+  @only_wasm2js('test shifts etc. on 64-bit integers')
   def test_i64_cmp2(self):
     self.do_core_test('test_i64_cmp2.c')
 
+  @only_wasm2js('test unions of i64 and double')
   def test_i64_double(self):
     self.do_core_test('test_i64_double.cpp')
 
+  @only_wasm2js('test 64-bit multiply')
   def test_i64_umul(self):
     self.do_core_test('test_i64_umul.c')
 
+  @only_wasm2js('test 64-bit math')
   @also_with_standalone_wasm()
   @no_ubsan('contains UB')
   def test_i64_precise(self):
     self.do_core_test('test_i64_precise.c')
 
+  @only_wasm2js('test 64-bit multiply')
   def test_i64_precise_needed(self):
     self.do_core_test('test_i64_precise_needed.c')
 
   def test_i64_llabs(self):
+    # test the libc llabs() method
     self.do_core_test('test_i64_llabs.c')
 
   def test_i64_zextneg(self):
+    # test zero/sign-extension in printf arguments
     self.do_core_test('test_i64_zextneg.c')
 
+  @only_wasm2js('test 64-bit math')
   def test_i64_7z(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_i64_7z.c', args=['hallo'])
 
+  @only_wasm2js('test 64-bit math with short values')
   def test_i64_i16(self):
     self.do_core_test('test_i64_i16.c')
 
+  @only_wasm2js('test 64-bit/double conversions')
   def test_i64_qdouble(self):
     self.do_core_test('test_i64_qdouble.c')
 
+  @only_wasm2js('tests va_arg() with i64 params')
   def test_i64_varargs(self):
     self.do_core_test('test_i64_varargs.c', args='waka fleefl asdfasdfasdfasdf'.split())
 
   @no_wasm2js('wasm_bigint')
-  @no_wasm64('MEMORY64 does not yet support exceptions')
   @requires_node
   def test_i64_invoke_bigint(self):
     self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-fexceptions']
-    self.node_args += shared.node_bigint_flags()
+    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_core_test('test_i64_invoke_bigint.cpp')
 
+  @only_wasm2js('tests va_arg()')
   def test_vararg_copy(self):
     self.do_run_in_out_file_test('va_arg/test_va_copy.c')
 
   def test_llvm_fabs(self):
     self.do_core_test('test_llvm_fabs.c')
 
+  @only_wasm2js('tests va_arg()')
   def test_double_varargs(self):
     self.do_core_test('test_double_varargs.c')
 
+  @only_wasm2js('tests va_arg()')
   def test_trivial_struct_varargs(self):
     self.do_core_test('test_trivial_struct_varargs.c')
 
+  @only_wasm2js('tests va_arg()')
   def test_struct_varargs(self):
     self.do_core_test('test_struct_varargs.c')
 
+  @only_wasm2js('tests va_arg()')
   def test_zero_struct_varargs(self):
     self.do_core_test('test_zero_struct_varargs.c')
 
-  def zzztest_nested_struct_varargs(self):
+  @only_wasm2js('tests va_arg()')
+  def test_nested_struct_varargs(self):
     self.do_core_test('test_nested_struct_varargs.c')
 
+  @only_wasm2js('tests 32-bit multiplication')
   def test_i32_mul_precise(self):
     self.do_core_test('test_i32_mul_precise.c')
 
+  @only_wasm2js('tests operations on 16-bit values')
   def test_i16_emcc_intrinsic(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_i16_emcc_intrinsic.c')
 
+  @only_wasm2js('tests 64-bit conversions')
   def test_double_i64_conversion(self):
     self.do_core_test('test_double_i64_conversion.c')
 
+  @only_wasm2js('tests float32 ops')
   def test_float32_precise(self):
     self.do_core_test('test_float32_precise.c')
 
@@ -615,22 +567,23 @@ class TestCoreBase(RunnerCore):
   def test_literal_negative_zero(self):
     self.do_core_test('test_literal_negative_zero.c')
 
+  @only_wasm2js('tests byte conversions')
   @also_with_standalone_wasm()
   def test_bswap64(self):
     self.do_core_test('test_bswap64.cpp')
 
   def test_sha1(self):
-    self.do_runf(test_file('sha1.c'), 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
+    self.do_runf('third_party/sha1.c', 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
 
   def test_core_types(self):
-    self.do_runf(test_file('core/test_core_types.c'))
+    self.do_runf('core/test_core_types.c')
 
   def test_cube2md5(self):
     self.emcc_args += ['--embed-file', 'cube2md5.txt']
     shutil.copyfile(test_file('cube2md5.txt'), 'cube2md5.txt')
-    self.do_run_from_file(test_file('cube2md5.cpp'), test_file('cube2md5.ok'), assert_returncode=NON_ZERO)
+    self.do_run_in_out_file_test('cube2md5.cpp', assert_returncode=NON_ZERO)
 
-  @also_with_standalone_wasm(wasm2c=True)
+  @also_with_standalone_wasm()
   @needs_make('make')
   def test_cube2hash(self):
     # A good test of i64 math
@@ -643,71 +596,7 @@ class TestCoreBase(RunnerCore):
                          ('64bitisslow', '64D8470573635EC354FEE7B7F87C566FCAF1EFB491041670')]:
       self.do_run('src.js', 'hash value: ' + output, args=[text], no_build=True)
 
-  def test_unaligned(self):
-    self.skipTest('LLVM marks the reads of s as fully aligned, making this test invalid')
-    src = r'''
-      #include <stdio.h>
-
-      struct S {
-        double x;
-        int y;
-      };
-
-      int main() {
-        // the 64-bit value here will not be 8-byte aligned
-        S s0[3] = { {0x12a751f430142, 22}, {0x17a5c85bad144, 98}, {1, 1}};
-        char buffer[10*sizeof(S)];
-        int b = int(buffer);
-        S *s = (S*)(b + 4-b%8);
-        s[0] = s0[0];
-        s[1] = s0[1];
-        s[2] = s0[2];
-
-        printf("*%d : %d : %d\n", sizeof(S), ((unsigned long)&s[0]) % 8 != ((unsigned long)&s[1]) % 8,
-                                             ((unsigned long)&s[1]) - ((unsigned long)&s[0]));
-        s[0].x++;
-        s[0].y++;
-        s[1].x++;
-        s[1].y++;
-        printf("%.1f,%d,%.1f,%d\n", s[0].x, s[0].y, s[1].x, s[1].y);
-        return 0;
-      }
-      '''
-
-    # TODO: A version of this with int64s as well
-
-    self.do_run(src, '*12 : 1 : 12\n328157500735811.0,23,416012775903557.0,99\n')
-
-    return # TODO: continue to the next part here
-
-    # Test for undefined behavior in C. This is not legitimate code, but does exist
-
-    src = r'''
-      #include <stdio.h>
-
-      int main()
-      {
-        int x[10];
-        char *p = (char*)&x[0];
-        p++;
-        short *q = (short*)p;
-        *q = 300;
-        printf("*%d:%ld*\n", *q, ((long)q)%2);
-        int *r = (int*)p;
-        *r = 515559;
-        printf("*%d*\n", *r);
-        long long *t = (long long*)p;
-        *t = 42949672960;
-        printf("*%lld*\n", *t);
-        return 0;
-      }
-    '''
-
-    try:
-      self.do_run(src, '*300:1*\n*515559*\n*42949672960*\n')
-    except Exception as e:
-      assert 'must be aligned' in str(e), e # expected to fail without emulation
-
+  @only_wasm2js('tests 64-bit alignment of structs')
   def test_align64(self):
     src = r'''
       #include <stdio.h>
@@ -756,12 +645,7 @@ class TestCoreBase(RunnerCore):
 0.00,10,123.46,0.00 : 0.00,10,123.46,0.00
 ''')
 
-  @no_asan('asan errors on corner cases we check')
-  @no_lsan('lsan errors on corner cases we check')
-  def test_aligned_alloc(self):
-    self.do_runf(test_file('test_aligned_alloc.c'), '',
-                 emcc_args=['-Wno-non-power-of-two-alignment'])
-
+  @only_wasm2js('tests signed vs unsigned values')
   def test_unsigned(self):
     src = '''
       #include <stdio.h>
@@ -847,12 +731,14 @@ class TestCoreBase(RunnerCore):
     '''
     self.do_run(src, '*255*\n*65535*\n*-1*\n*-1*\n*-1*')
 
+  @only_wasm2js('tests 1-bit fields')
   def test_bitfields(self):
     self.do_core_test('test_bitfields.c')
 
   def test_floatvars(self):
     self.do_core_test('test_floatvars.cpp')
 
+  @only_wasm2js('tests pointer casts')
   def test_closebitcasts(self):
     self.do_core_test('closebitcasts.c')
 
@@ -860,9 +746,11 @@ class TestCoreBase(RunnerCore):
     self.emcc_args += ['-ffast-math']
     self.do_core_test('test_fast_math.c', args=['5', '6', '8'])
 
+  @only_wasm2js('tests division by zero')
   def test_zerodiv(self):
     self.do_core_test('test_zerodiv.c')
 
+  @only_wasm2js('tests multiplication by zero')
   def test_zero_multiplication(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
@@ -871,81 +759,25 @@ class TestCoreBase(RunnerCore):
   def test_isnan(self):
     self.do_core_test('test_isnan.c')
 
+  @only_wasm2js('tests globals in static data')
   def test_globaldoubles(self):
     self.do_core_test('test_globaldoubles.c')
 
   def test_math(self):
     self.do_core_test('test_math.c')
 
-  def test_erf(self):
-    self.do_core_test('test_erf.c')
-
-  def test_math_hyperbolic(self):
-    self.do_core_test('test_math_hyperbolic.c')
-
+  @only_wasm2js('tests lgamma and signbit')
   def test_math_lgamma(self):
     self.do_run_in_out_file_test('math/lgamma.c', assert_returncode=NON_ZERO)
 
+  @only_wasm2js('tests fmodf (which may use JS math)')
   def test_math_fmodf(self):
     self.do_run_in_out_file_test('math/fmodf.c')
-
-  def test_frexp(self):
-    self.do_core_test('test_frexp.c')
 
   def test_rounding(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_rounding.c')
-
-  def test_fcvt(self):
-    self.do_core_test('test_fcvt.cpp')
-
-  def test_llrint(self):
-    self.do_core_test('test_llrint.c')
-
-  def test_getgep(self):
-    # Generated code includes getelementptr (getelementptr, 0, 1), i.e., GEP as the first param to GEP
-    self.do_core_test('test_getgep.c')
-
-  def test_multiply_defined_symbols(self):
-    create_file('a1.c', 'int f() { return 1; }')
-    create_file('a2.c', 'void x() {}')
-    create_file('b1.c', 'int f() { return 2; }')
-    create_file('b2.c', 'void y() {}')
-    create_file('main.c', r'''
-      #include <stdio.h>
-      int f();
-      int main() {
-        printf("result: %d\n", f());
-        return 0;
-      }
-    ''')
-
-    self.emcc('a1.c', ['-c'])
-    self.emcc('a2.c', ['-c'])
-    self.emcc('b1.c', ['-c'])
-    self.emcc('b2.c', ['-c'])
-    self.emcc('main.c', ['-c'])
-
-    building.emar('cr', 'liba.a', ['a1.o', 'a2.o'])
-    building.emar('cr', 'libb.a', ['b1.o', 'b2.o'])
-
-    # Add -Wno-deprecated to avoid warning about bitcode linking in the LTO
-    # version of this test.
-    self.run_process([EMCC, '-r', '-o', 'all.o', 'main.o', 'liba.a', 'libb.a',
-                      '-Wno-deprecated'] + self.get_emcc_args())
-
-    self.emcc('all.o', output_filename='all.js')
-    self.do_run('all.js', 'result: 1', no_build=True)
-
-  def test_if(self):
-    self.do_core_test('test_if.c')
-
-  def test_if_else(self):
-    self.do_core_test('test_if_else.c')
-
-  def test_loop(self):
-    self.do_core_test('test_loop.c')
 
   def test_stack(self):
     self.set_setting('INLINING_LIMIT')
@@ -970,60 +802,21 @@ base align: 0, 0, 0, 0'''])
   def test_stack_placement(self):
     self.set_setting('STACK_SIZE', 1024)
     self.do_core_test('test_stack_placement.c')
-    self.set_setting('GLOBAL_BASE', 102400)
+    self.set_setting('GLOBAL_BASE', '100kb')
     self.do_core_test('test_stack_placement.c')
 
   @no_sanitize('sanitizers do not yet support dynamic linking')
   @no_wasm2js('MAIN_MODULE support')
+  @needs_dylink
   def test_stack_placement_pic(self):
     self.set_setting('STACK_SIZE', 1024)
     self.set_setting('MAIN_MODULE')
     self.do_core_test('test_stack_placement.c')
-    self.set_setting('GLOBAL_BASE', 102400)
+    self.set_setting('GLOBAL_BASE', '100kb')
     self.do_core_test('test_stack_placement.c')
-
-  def test_strings(self):
-    self.do_core_test('test_strings.c', args=['wowie', 'too', '74'])
-
-  def test_strcmp_uni(self):
-    self.do_core_test('test_strcmp_uni.c')
-
-  def test_strndup(self):
-    self.do_core_test('test_strndup.c')
-
-  def test_errar(self):
-    self.do_core_test('test_errar.c')
 
   def test_mainenv(self):
     self.do_core_test('test_mainenv.c')
-
-  def test_funcs(self):
-    self.do_core_test('test_funcs.c')
-
-  def test_structs(self):
-    self.do_core_test('test_structs.c')
-
-  gen_struct_src = '''
-        #include <stdio.h>
-        #include <stdlib.h>
-        #include "emscripten.h"
-
-        struct S
-        {
-          int x, y;
-        };
-        int main()
-        {
-          S* a = {{gen_struct}};
-          a->x = 51; a->y = 62;
-          printf("*%d,%d*\\n", a->x, a->y);
-          {{del_struct}}(a);
-          return 0;
-        }
-  '''
-
-  def test_mallocstruct(self):
-    self.do_run(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
@@ -1041,11 +834,11 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('MALLOC', 'none')
     self.emcc_args += [
       '-fno-builtin',
-      path_from_root('system/lib/sbrk.c'),
+      path_from_root('system/lib/libc/sbrk.c'),
       path_from_root('system/lib/emmalloc.c')
     ]
     self.emcc_args += args
-    self.do_run_in_out_file_test(test_file('core/test_emmalloc.c'))
+    self.do_run_in_out_file_test('core/test_emmalloc.c')
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
@@ -1057,24 +850,27 @@ base align: 0, 0, 0, 0'''])
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
   @no_ubsan('UBSan changes memory consumption')
-  def test_emmalloc_memory_statistics(self, *args):
+  @no_4gb('uses INITIAL_MEMORY')
+  @no_2gb('uses INITIAL_MEMORY')
+  def test_emmalloc_memory_statistics(self):
     if self.is_wasm64():
       out_suffix = '64'
     else:
       out_suffix = ''
 
+    self.set_setting('INITIAL_MEMORY', '128mb')
     self.set_setting('MALLOC', 'emmalloc')
-    self.emcc_args += ['-sINITIAL_MEMORY=128MB', '-g'] + list(args)
-
-    self.do_core_test('test_emmalloc_memory_statistics.cpp', out_suffix=out_suffix)
+    self.emcc_args += ['-g']
+    self.do_core_test('test_emmalloc_memory_statistics.c', out_suffix=out_suffix)
 
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
-  @no_wasm64('output is sensitive to absolute data size')
+  @no_2gb('output is sensitive to absolute data layout')
+  @no_4gb('output is sensitive to absolute data layout')
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
-  def test_emmalloc_trim(self, *args):
+  def test_emmalloc_trim(self):
     self.set_setting('MALLOC', 'emmalloc')
-    self.emcc_args += ['-sINITIAL_MEMORY=128MB', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=2147418112'] + list(args)
+    self.emcc_args += ['-sINITIAL_MEMORY=128MB', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=2147418112']
 
     self.do_core_test('test_emmalloc_trim.cpp')
 
@@ -1083,32 +879,12 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('emmalloc_memalign_corruption.cpp')
 
-  def test_newstruct(self):
-    self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
-
-  def test_addr_of_stacked(self):
-    self.do_core_test('test_addr_of_stacked.c')
-
-  def test_globals(self):
-    self.do_core_test('test_globals.c')
-
-  def test_linked_list(self):
-    self.do_core_test('test_linked_list.c')
-
-  def test_sup(self):
-    self.do_run_in_out_file_test(test_file('core/test_sup.cpp'))
-
   @also_with_standalone_wasm()
   def test_assert(self):
     self.do_core_test('test_assert.cpp', assert_returncode=NON_ZERO)
 
-  def test_wcslen(self):
-    self.do_core_test('test_wcslen.c')
-
-  def test_regex(self):
-    self.do_core_test('test_regex.c')
-
-  @also_with_standalone_wasm(wasm2c=True, impure=True)
+  @crossplatform
+  @also_with_standalone_wasm(impure=True)
   def test_longjmp_standalone(self):
     self.do_core_test('test_longjmp.c')
 
@@ -1116,7 +892,10 @@ base align: 0, 0, 0, 0'''])
   def test_longjmp(self):
     self.do_core_test('test_longjmp.c')
 
-  @no_wasm64('MEMORY64 does not yet support SJLJ')
+  @with_both_sjlj
+  def test_longjmp_zero(self):
+    self.do_core_test('test_longjmp_zero.c')
+
   def test_longjmp_with_and_without_exceptions(self):
     # Emscripten SjLj with and without Emscripten EH support
     self.set_setting('SUPPORT_LONGJMP', 'emscripten')
@@ -1127,7 +906,7 @@ base align: 0, 0, 0, 0'''])
     # Wasm SjLj with and without Wasm EH support
     self.clear_setting('DISABLE_EXCEPTION_CATCHING')
     self.set_setting('SUPPORT_LONGJMP', 'wasm')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm2js does not support wasm EH/SjLj')
     self.require_wasm_eh()
     # FIXME Temporarily disabled. Enable this later when the bug is fixed.
@@ -1173,7 +952,6 @@ base align: 0, 0, 0, 0'''])
   def test_longjmp_exc(self):
     self.do_core_test('test_longjmp_exc.c', assert_returncode=NON_ZERO)
 
-  @no_wasm64('MEMORY64 does not yet support exception handling')
   def test_longjmp_throw(self):
     for disable_throw in [0, 1]:
       print(disable_throw)
@@ -1241,7 +1019,7 @@ int main()
 
   @with_both_sjlj
   def test_setjmp_noleak(self):
-    self.do_runf(test_file('core/test_setjmp_noleak.c'), 'ok.')
+    self.do_runf('core/test_setjmp_noleak.c', 'ok.')
 
   @with_both_sjlj
   def test_setjmp_within_loop(self):
@@ -1251,9 +1029,8 @@ int main()
   def test_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG')
     self.maybe_closure()
-    self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
+    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
-  @no_wasm64('MEMORY64 does not yet support exceptions')
   def test_exceptions_with_and_without_longjmp(self):
     self.set_setting('EXCEPTION_DEBUG')
     self.maybe_closure()
@@ -1261,10 +1038,10 @@ int main()
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     for support_longjmp in [0, 'emscripten']:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
-      self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
+      self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
     # Wasm EH with and without Wasm SjLj support
     self.clear_setting('DISABLE_EXCEPTION_CATCHING')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm2js does not support wasm EH/SjLj')
     self.require_wasm_eh()
     # FIXME Temporarily disabled. Enable this later when the bug is fixed.
@@ -1273,19 +1050,17 @@ int main()
     self.emcc_args.append('-fwasm-exceptions')
     for support_longjmp in [0, 'wasm']:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
-      self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
+      self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
   def test_exceptions_off(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING')
     for support_longjmp in [0, 1]:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
-      self.do_runf(test_file('core/test_exceptions.cpp'), assert_returncode=NON_ZERO)
+      self.do_runf('core/test_exceptions.cpp', assert_returncode=NON_ZERO)
 
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
   @no_asan('TODO: ASan support in minimal runtime')
-  @no_wasm64('MEMORY64 does not yet support exceptions')
   def test_exceptions_minimal_runtime(self):
-    self.set_setting('EXCEPTION_DEBUG')
     self.set_setting('EXIT_RUNTIME')
     self.maybe_closure()
     self.set_setting('MINIMAL_RUNTIME')
@@ -1294,10 +1069,11 @@ int main()
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-      self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_caught.out'))
+      self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
+      self.set_setting('EXCEPTION_DEBUG')
       self.set_setting('DISABLE_EXCEPTION_CATCHING')
-      self.do_run_from_file(test_file('core/test_exceptions.cpp'), test_file('core/test_exceptions_uncaught.out'), assert_returncode=NON_ZERO)
+      self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_uncaught', assert_returncode=NON_ZERO)
 
   @with_both_eh_sjlj
   def test_exceptions_custom(self):
@@ -1389,7 +1165,6 @@ int main(int argc, char **argv) {
     print('2')
     self.do_run('src.js', 'Caught exception: Hello\nDone.', args=['2'], no_build=True)
 
-  @no_wasm64('MEMORY64 does not yet support exceptions')
   def test_exceptions_allowed(self):
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z12somefunctionv"])
     # otherwise it is inlined and not identified
@@ -1402,25 +1177,23 @@ int main(int argc, char **argv) {
     shutil.copyfile('test_exceptions_allowed.js', 'orig.js')
 
     # check that an empty allow list works properly (as in, same as exceptions disabled)
-    src = test_file('core/test_exceptions_allowed.cpp')
-    empty_output = test_file('core/test_exceptions_allowed_empty.out')
 
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', [])
-    self.do_run_from_file(src, empty_output, assert_returncode=NON_ZERO)
+    self.do_run_in_out_file_test('core/test_exceptions_allowed.cpp', out_suffix='_empty', assert_returncode=NON_ZERO)
     empty_size = os.path.getsize('test_exceptions_allowed.js')
     if self.is_wasm():
       empty_size += os.path.getsize('test_exceptions_allowed.wasm')
     shutil.copyfile('test_exceptions_allowed.js', 'empty.js')
 
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['fake'])
-    self.do_run_from_file(src, empty_output, assert_returncode=NON_ZERO)
+    self.do_run_in_out_file_test('core/test_exceptions_allowed.cpp', out_suffix='_empty', assert_returncode=NON_ZERO)
     fake_size = os.path.getsize('test_exceptions_allowed.js')
     if self.is_wasm():
       fake_size += os.path.getsize('test_exceptions_allowed.wasm')
     shutil.copyfile('test_exceptions_allowed.js', 'fake.js')
 
     self.clear_setting('EXCEPTION_CATCHING_ALLOWED')
-    self.do_run_from_file(src, empty_output, assert_returncode=NON_ZERO)
+    self.do_run_in_out_file_test('core/test_exceptions_allowed.cpp', out_suffix='_empty', assert_returncode=NON_ZERO)
     disabled_size = os.path.getsize('test_exceptions_allowed.js')
     if self.is_wasm():
       disabled_size += os.path.getsize('test_exceptions_allowed.wasm')
@@ -1441,7 +1214,6 @@ int main(int argc, char **argv) {
     if not any(o in self.emcc_args for o in ('-O3', '-Oz', '-Os')):
       self.assertLess(disabled_size, fake_size)
 
-  @no_wasm64('MEMORY64 does not yet support exceptions')
   def test_exceptions_allowed_2(self):
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["main"])
     # otherwise it is inlined and not identified
@@ -1453,7 +1225,6 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-DMAIN_NO_SIGNATURE']
     self.do_core_test('test_exceptions_allowed_2.cpp')
 
-  @no_wasm64('MEMORY64 does not yet support exceptions')
   def test_exceptions_allowed_uncaught(self):
     self.emcc_args += ['-std=c++11']
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ["_Z4testv"])
@@ -1462,7 +1233,6 @@ int main(int argc, char **argv) {
 
     self.do_core_test('test_exceptions_allowed_uncaught.cpp')
 
-  @no_wasm64('MEMORY64 does not yet support exceptions')
   def test_exceptions_allowed_misuse(self):
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['foo'])
 
@@ -1601,6 +1371,8 @@ int main(int argc, char **argv) {
 
   @with_both_eh_sjlj
   def test_exceptions_primary(self):
+    if '-fsanitize=leak' in self.emcc_args and '-fwasm-exceptions' in self.emcc_args:
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/21124')
     self.do_core_test('test_exceptions_primary.cpp')
 
   @with_both_eh_sjlj
@@ -1617,6 +1389,8 @@ int main(int argc, char **argv) {
 
   @with_both_eh_sjlj
   def test_exceptions_multiple_inherit_rethrow(self):
+    if '-fsanitize=leak' in self.emcc_args and '-fwasm-exceptions' in self.emcc_args:
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/21124')
     self.do_core_test('test_exceptions_multiple_inherit_rethrow.cpp')
 
   @with_both_eh_sjlj
@@ -1624,7 +1398,6 @@ int main(int argc, char **argv) {
     create_file('main.cpp', 'int main() { throw; }')
     self.do_runf('main.cpp', None, assert_returncode=NON_ZERO)
 
-  @no_wasm64('MEMORY64 does not yet support exceptions')
   @with_both_eh_sjlj
   def test_EXPORT_EXCEPTION_HANDLING_HELPERS(self):
     self.set_setting('ASSERTIONS', 0)
@@ -1680,9 +1453,10 @@ int main(int argc, char **argv) {
                   // Emscripten EH sets the refcount to 0 when throwing, and
                   // increase it in __cxa_begin_catch, and decrease it in
                   // __cxa_end_catch. Fix this inconsistency later.
+                  // https://github.com/emscripten-core/emscripten/issues/17115
                   incrementExceptionRefcount(p);
 #endif
-                  console.log(getExceptionMessage(p).toString());
+                  out(getExceptionMessage(p).toString());
                   decrementExceptionRefcount(p);
               }
             }
@@ -1809,12 +1583,12 @@ int main() {
     # test setting includes -Werror.
     self.set_setting('DISABLE_EXCEPTION_THROWING', 1)
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-fwasm-exceptions'] + self.get_emcc_args())
-    self.assertContained('error: You no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions', err)
+    self.assertContained('error: you no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions', err)
     clear_all_relevant_settings(self)
 
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
     err = self.expect_fail([EMCC, test_file('hello_world.cpp'), '-fwasm-exceptions'] + self.get_emcc_args())
-    self.assertContained('error: You no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions', err)
+    self.assertContained('error: you no longer need to pass DISABLE_EXCEPTION_CATCHING or DISABLE_EXCEPTION_THROWING when using Wasm exceptions', err)
     clear_all_relevant_settings(self)
 
     # Emscripten SjLj and Wasm EH cannot mix
@@ -1857,11 +1631,13 @@ int main() {
   # Marked as impure since the WASI reactor modules (modules without main)
   # are not yet suppored by the wasm engines we test against.
   @also_with_standalone_wasm(impure=True)
+  @no_2gb('https://github.com/WebAssembly/binaryen/issues/5893')
   def test_ctors_no_main(self):
     self.emcc_args.append('--no-entry')
     self.do_core_test('test_ctors_no_main.cpp')
 
   @no_wasm2js('eval_ctors not supported yet')
+  @no_2gb('https://github.com/WebAssembly/binaryen/issues/5893')
   @also_with_standalone_wasm(impure=True)
   def test_eval_ctors_no_main(self):
     if self.get_setting('MEMORY64') == 1:
@@ -1869,28 +1645,6 @@ int main() {
     self.set_setting('EVAL_CTORS')
     self.emcc_args.append('--no-entry')
     self.do_core_test('test_ctors_no_main.cpp')
-
-  def test_class(self):
-    self.do_core_test('test_class.cpp')
-
-  def test_inherit(self):
-    self.do_core_test('test_inherit.cpp')
-
-  def test_isdigit_l(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
-    self.do_core_test('test_isdigit_l.cpp')
-
-  def test_iswdigit(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
-    self.do_core_test('test_iswdigit.cpp')
-
-  def test_polymorph(self):
-    self.do_core_test('test_polymorph.cpp')
-
-  def test_complex(self):
-    self.do_core_test('test_complex.c')
 
   def test_float_builtins(self):
     # tests wasm_libc_rt
@@ -1941,32 +1695,20 @@ int main() {
       else:
         self.do_run(src, 'marfoosh')
 
-  def test_dynamic_cast(self):
-    self.do_core_test('test_dynamic_cast.cpp')
-
-  def test_dynamic_cast_b(self):
-    self.do_core_test('test_dynamic_cast_b.cpp')
-
-  def test_dynamic_cast_2(self):
-    self.do_core_test('test_dynamic_cast_2.cpp')
-
+  @only_wasm2js('tests function pointer calls')
   def test_funcptr(self):
     self.do_core_test('test_funcptr.c')
 
+  @only_wasm2js('tests function pointer calls')
   def test_mathfuncptr(self):
     self.do_core_test('test_mathfuncptr.c')
 
+  @only_wasm2js('tests function pointer calls')
   def test_funcptrfunc(self):
     self.do_core_test('test_funcptrfunc.c')
 
-  def test_funcptr_namecollide(self):
-    self.do_core_test('test_funcptr_namecollide.c')
-
-  def test_emptyclass(self):
-    self.do_core_test('test_emptyclass.cpp')
-
   def test_alloca(self):
-    self.do_core_test('test_alloca.c')
+    self.do_runf('core/test_alloca.c')
 
   @also_with_wasmfs
   def test_rename(self):
@@ -1981,103 +1723,6 @@ int main() {
 
   def test_alloca_stack(self):
     self.do_core_test('test_alloca_stack.c')
-
-  def test_stack_byval(self):
-    self.do_core_test('test_stack_byval.cpp')
-
-  def test_stack_varargs(self):
-    # in node.js we allocate argv[0] on the stack, which means the  length
-    # of the program directory influences how much stack we need, and so
-    # long random temp dir names can lead to random failures. The stack
-    # size was increased here to avoid that.
-    self.set_setting('INLINING_LIMIT')
-    self.set_setting('STACK_SIZE', 8 * 1024)
-
-    self.do_core_test('test_stack_varargs.c')
-
-  def test_stack_varargs2(self):
-    # in node.js we allocate argv[0] on the stack, which means the  length
-    # of the program directory influences how much stack we need, and so
-    # long random temp dir names can lead to random failures. The stack
-    # size was increased here to avoid that.
-    self.set_setting('STACK_SIZE', 8 * 1024)
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
-
-      void func(int i) {
-      }
-      int main() {
-        for (int i = 0; i < 7000; i++) {
-          printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
-                   i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
-        }
-        printf("ok!\n");
-        return 0;
-      }
-    '''
-    self.do_run(src, 'ok!')
-
-    print('with return')
-
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
-
-      int main() {
-        for (int i = 0; i < 7000; i++) {
-          int j = printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
-                   i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
-          printf(" (%d)\n", j);
-        }
-        printf("ok!\n");
-        return 0;
-      }
-    '''
-    self.do_run(src, 'ok!')
-
-    print('with definitely no return')
-
-    src = r'''
-      #include <stdio.h>
-      #include <stdlib.h>
-      #include <stdarg.h>
-
-      void vary(const char *s, ...)
-      {
-        va_list v;
-        va_start(v, s);
-        char d[20];
-        vsnprintf(d, 20, s, v);
-        puts(d);
-
-        // Try it with copying
-        va_list tempva;
-        va_copy(tempva, v);
-        vsnprintf(d, 20, s, tempva);
-        puts(d);
-
-        va_end(v);
-      }
-
-      int main() {
-        for (int i = 0; i < 7000; i++) {
-          int j = printf("%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
-                   i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i, i);
-          printf(" (%d)\n", j);
-          vary("*cheez: %d+%d*", 99, 24);
-          vary("*albeit*");
-        }
-        printf("ok!\n");
-        return 0;
-      }
-    '''
-    self.do_run(src, 'ok!')
-
-  def test_stack_void(self):
-    self.emcc_args.append('-Wno-format-extra-args')
-    self.set_setting('INLINING_LIMIT')
-    self.do_core_test('test_stack_void.c')
 
   def test_life(self):
     self.do_run_in_out_file_test('life.c', args=['2'])
@@ -2119,7 +1764,7 @@ int main() {
     # Sanitizers are not compatible with LINKABLE (dynamic linking.
     if not is_sanitizing(self.emcc_args) and not self.is_wasm64():
       # test EXPORT_ALL
-      self.set_setting('EXPORTED_FUNCTIONS', [])
+      self.clear_setting('EXPORTED_FUNCTIONS')
       self.set_setting('EXPORT_ALL')
       self.set_setting('LINKABLE')
       self.do_core_test('test_emscripten_api.cpp')
@@ -2173,7 +1818,7 @@ int main() {
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.maybe_closure()
-    self.do_runf(test_file('emscripten_get_now.cpp'), 'Timer resolution is good')
+    self.do_runf('emscripten_get_now.cpp', 'Timer resolution is good')
 
   def test_emscripten_get_compiler_setting(self):
     src = test_file('core/emscripten_get_compiler_setting.c')
@@ -2186,9 +1831,6 @@ int main() {
     self.do_runf(src, read_file(output).replace('waka', shared.EMSCRIPTEN_VERSION))
 
   def test_emscripten_has_asyncify(self):
-    if self.get_setting('MEMORY64') == 1:
-      # This test passes under MEMORY64=2 but not MEMORY64=1 so we don't use is_wasm64 here.
-      self.skipTest('TODO: asyncify for wasm64')
     src = r'''
       #include <stdio.h>
       #include <emscripten.h>
@@ -2203,34 +1845,12 @@ int main() {
     self.set_setting('ASYNCIFY')
     self.do_run(src, '1')
 
-  # TODO: test only worked in non-fastcomp
-  def test_inlinejs(self):
-    self.skipTest('non-fastcomp is deprecated and fails in 3.5') # only supports EM_ASM
-
-    self.do_core_test('test_inlinejs.c')
-
-    if self.emcc_args == []:
-      # opts will eliminate the comments
-      out = read_file('src.js')
-      for i in range(1, 5):
-        assert ('comment%d' % i) in out
-
-  # TODO: test only worked in non-fastcomp
-  def test_inlinejs2(self):
-    self.skipTest('non-fastcomp is deprecated and fails in 3.5') # only supports EM_ASM
-
-    self.do_core_test('test_inlinejs2.c')
-
   def test_inlinejs3(self):
-    if self.is_wasm():
-      self.skipTest('wasm requires a proper asm module')
-
-    src = test_file('core/test_inlinejs3.c')
-    output = shared.unsuffixed(src) + '.out'
-
     self.do_core_test('test_inlinejs3.c')
 
     print('no debugger, check validation')
+    src = test_file('core/test_inlinejs3.c')
+    output = test_file('core/test_inlinejs3.out')
     src = read_file(src).replace('emscripten_debugger();', '')
     self.do_run(src, read_file(output))
 
@@ -2255,6 +1875,7 @@ int main(int argc, char **argv) {
 ''', 'false', assert_returncode=NON_ZERO)
 
   def test_em_asm(self):
+    self.maybe_closure()
     self.do_core_test('test_em_asm.cpp')
 
   def test_em_asm_c(self):
@@ -2268,18 +1889,27 @@ int main(int argc, char **argv) {
     self.emcc_args.append('-std=gnu89')
     self.do_core_test('test_em_asm_2.cpp', force_c=True)
 
-  # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(), MAIN_THREAD_EM_ASM_INT() and MAIN_THREAD_EM_ASM_DOUBLE() macros.
-  # This test is identical to test_em_asm_2, just search-replaces EM_ASM to MAIN_THREAD_EM_ASM on the test file. That way if new
-  # test cases are added to test_em_asm_2.cpp for EM_ASM, they will also get tested in MAIN_THREAD_EM_ASM form.
-  def test_main_thread_em_asm(self):
+  # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(),
+  # MAIN_THREAD_EM_ASM_INT(), MAIN_THREAD_EM_ASM_PTR, and
+  # MAIN_THREAD_EM_ASM_DOUBLE() macros.  This test is identical to
+  # test_em_asm_2, just search-replaces EM_ASM to MAIN_THREAD_EM_ASM on the test
+  # file. That way if new test cases are added to test_em_asm_2.cpp for EM_ASM,
+  # they will also get tested in MAIN_THREAD_EM_ASM form.
+  @parameterized({
+    '': ([],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+  })
+  def test_main_thread_em_asm(self, args):
+    if args:
+      self.setup_node_pthreads()
     src = read_file(test_file('core/test_em_asm_2.cpp'))
-    create_file('src.cpp', src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
+    create_file('test.cpp', src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
 
     expected_result = read_file(test_file('core/test_em_asm_2.out'))
-    create_file('result.out', expected_result.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
+    create_file('test.out', expected_result.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
 
-    self.do_run_from_file('src.cpp', 'result.out')
-    self.do_run_from_file('src.cpp', 'result.out', force_c=True)
+    self.do_run_in_out_file_test('test.cpp', emcc_args=args)
+    self.do_run_in_out_file_test('test.cpp', emcc_args=args, force_c=True)
 
   @needs_dylink
   @parameterized({
@@ -2294,6 +1924,7 @@ int main(int argc, char **argv) {
   def test_main_thread_em_asm_signatures(self):
     self.do_core_test('test_em_asm_signatures.cpp', assert_returncode=NON_ZERO)
 
+  @crossplatform
   def test_em_asm_unicode(self):
     self.do_core_test('test_em_asm_unicode.cpp')
     self.do_core_test('test_em_asm_unicode.cpp', force_c=True)
@@ -2334,6 +1965,7 @@ int main(int argc, char **argv) {
     'dylink': (['-sMAIN_MODULE=2'], False),
     'dylink_c': (['-sMAIN_MODULE=2'], True),
   })
+  @crossplatform
   def test_em_js(self, args, force_c):
     if '-sMAIN_MODULE=2' in args:
       self.check_dylink()
@@ -2352,7 +1984,7 @@ int main(int argc, char **argv) {
     self.assertContained('emcc: error: using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `foo`', err)
 
     self.set_setting('WASM_BIGINT')
-    self.node_args += shared.node_bigint_flags()
+    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_core_test('test_em_js_i64.c')
 
   def test_em_js_address_taken(self):
@@ -2362,9 +1994,11 @@ int main(int argc, char **argv) {
       self.do_core_test('test_em_js_address_taken.c')
 
   def test_runtime_stacksave(self):
-    self.do_runf(test_file('core/test_runtime_stacksave.c'), 'success')
+    self.do_runf('core/test_runtime_stacksave.c', 'success')
 
   # Tests that -sMINIMAL_RUNTIME builds can utilize -sALLOW_MEMORY_GROWTH option.
+  @no_4gb('memory growth issues')
+  @no_2gb('memory growth issues')
   def test_minimal_runtime_memorygrowth(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2376,6 +2010,8 @@ int main(int argc, char **argv) {
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
+  @no_2gb('memory growth issues')
+  @no_4gb('memory growth issues')
   def test_memorygrowth(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2396,7 +2032,7 @@ int main(int argc, char **argv) {
     self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
     win = read_file('test_memorygrowth.js')
 
-    if '-O2' in self.emcc_args and not self.is_wasm():
+    if '-O2' in self.emcc_args and self.is_wasm2js():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
       code_start = '// EMSCRIPTEN_START_FUNCS'
       self.assertContained(code_start, fail)
@@ -2410,6 +2046,8 @@ int main(int argc, char **argv) {
       self.emcc_args += ['--tracing']
       self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
 
+  @no_4gb('memory growth issues')
+  @no_2gb('memory growth issues')
   def test_memorygrowth_2(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2427,7 +2065,7 @@ int main(int argc, char **argv) {
     self.do_runf(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
     win = read_file('test_memorygrowth_2.js')
 
-    if '-O2' in self.emcc_args and not self.is_wasm():
+    if '-O2' in self.emcc_args and self.is_wasm2js():
       # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
       assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
 
@@ -2441,20 +2079,24 @@ int main(int argc, char **argv) {
     self.do_core_test('test_memorygrowth_3.c')
 
   @also_with_standalone_wasm(impure=True)
+  @no_4gb('depends on INITIAL_MEMORY')
+  @no_2gb('depends on INITIAL_MEMORY')
   def test_memorygrowth_MAXIMUM_MEMORY(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm memory specific test')
 
     # check that memory growth does not exceed the wasm mem max limit
     self.emcc_args += ['-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=64Mb', '-sMAXIMUM_MEMORY=100Mb']
     self.do_core_test('test_memorygrowth_wasm_mem_max.c')
 
+  @no_4gb('depends on INITIAL_MEMORY')
+  @no_2gb('depends on INITIAL_MEMORY')
   def test_memorygrowth_linear_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm memory specific test')
 
     # check that memory growth does not exceed the wasm mem max limit and is exactly or one step below the wasm mem max
@@ -2462,13 +2104,15 @@ int main(int argc, char **argv) {
     self.do_core_test('test_memorygrowth_memory_growth_step.c')
 
   @no_ubsan('UBSan seems to effect the precise memory usage')
+  @no_4gb('depends on specifc memory layout')
+  @no_2gb('depends on specifc memory layout')
   def test_memorygrowth_geometric_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm memory specific test')
 
-    self.emcc_args += ['-sALLOW_MEMORY_GROWTH', '-sMEMORY_GROWTH_GEOMETRIC_STEP=8.5', '-sMEMORY_GROWTH_GEOMETRIC_CAP=32MB']
+    self.emcc_args += ['-sINITIAL_MEMORY=16MB', '-sALLOW_MEMORY_GROWTH', '-sMEMORY_GROWTH_GEOMETRIC_STEP=8.5', '-sMEMORY_GROWTH_GEOMETRIC_CAP=32MB']
     self.do_core_test('test_memorygrowth_geometric_step.c')
 
   def test_memorygrowth_3_force_fail_reallocBuffer(self):
@@ -2485,20 +2129,40 @@ int main(int argc, char **argv) {
   })
   @no_asan('requires more memory when growing')
   @no_lsan('requires more memory when growing')
-  @no_wasm64('does not fail under wasm64')
+  @no_4gb('depends on MAXIMUM_MEMORY')
+  @no_2gb('depends on MAXIMUM_MEMORY')
   def test_aborting_new(self, args):
     # test that C++ new properly errors if we fail to malloc when growth is
     # enabled, with or without growth
     self.emcc_args += args
     self.do_core_test('test_aborting_new.cpp')
 
+  @parameterized({
+    'nogrow': (['-sABORTING_MALLOC=0'],),
+    'grow': (['-sABORTING_MALLOC=0', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=18MB'],)
+  })
+  @no_asan('requires more memory when growing')
+  @no_lsan('requires more memory when growing')
+  @no_4gb('depends on MAXIMUM_MEMORY')
+  @no_2gb('depends on MAXIMUM_MEMORY')
+  def test_nothrow_new(self, args):
+    self.emcc_args += args
+    self.do_core_test('test_nothrow_new.cpp')
+
   @no_wasm2js('no WebAssembly.Memory()')
   @no_asan('ASan alters the memory size')
   @no_lsan('LSan alters the memory size')
+  @no_4gb('depends on memory size')
+  @no_2gb('depends on memory size')
   def test_module_wasm_memory(self):
-    self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory.js')]
+    if self.get_setting('MEMORY64') == 1:
+      self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory64.js')]
+    else:
+      self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory.js')]
     self.set_setting('IMPORTED_MEMORY')
-    self.do_runf(test_file('core/test_module_wasm_memory.c'), 'success')
+    self.set_setting('STRICT')
+    self.set_setting('INCOMING_MODULE_JS_API', ['wasmMemory'])
+    self.do_runf('core/test_module_wasm_memory.c', 'success')
 
   def test_ssr(self): # struct self-ref
     src = '''
@@ -2539,8 +2203,10 @@ int main(int argc, char **argv) {
 
   @no_wasm2js('massive switches can break js engines')
   def test_bigswitch(self):
+    if not self.is_optimizing():
+      self.skipTest('nodejs takes ~4GB to compile this if the wasm is not optimized, which OOMs')
     self.set_setting('USE_SDL')
-    self.do_runf(test_file('bigswitch.cpp'), '''34962: GL_ARRAY_BUFFER (0x8892)
+    self.do_runf('bigswitch.cpp', '''34962: GL_ARRAY_BUFFER (0x8892)
 26214: what?
 35040: GL_STREAM_DRAW (0x88E0)
 3060: what?
@@ -2569,6 +2235,8 @@ Success!''')
   @no_ubsan('local count too large for VMs')
   @no_wasm2js('extremely deep nesting, hits stack limit on some VMs')
   def test_indirectbr_many(self):
+    if not self.is_optimizing():
+      self.skipTest('nodejs takes ~1.8GB to compile this if the wasm is not optimized, which can cause OOM on the test runners')
     self.do_core_test('test_indirectbr_many.c')
 
   def test_pack(self):
@@ -2797,6 +2465,14 @@ The current type of b is: 9
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_atexit_threads.cpp')
 
+  @node_pthreads
+  def test_pthread_cancel(self):
+    self.do_run_in_out_file_test('pthread/test_pthread_cancel.cpp')
+
+  @node_pthreads
+  def test_pthread_cancel_async(self):
+    self.do_run_in_out_file_test('pthread/test_pthread_cancel_async.c')
+
   @no_asan('test relies on null pointer reads')
   def test_pthread_specific(self):
     self.do_run_in_out_file_test('pthread/specific.c')
@@ -2812,8 +2488,10 @@ The current type of b is: 9
   def test_pthread_proxying(self, modularize):
     if modularize and self.get_setting('WASM') == 0:
       self.skipTest('MODULARIZE + WASM=0 + pthreads does not work (#16794)')
+    self.maybe_closure()
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('INITIAL_MEMORY=32mb')
+    if not self.has_changed_setting('INITIAL_MEMORY'):
+      self.set_setting('INITIAL_MEMORY=32mb')
     args = []
     if modularize:
       self.set_setting('MODULARIZE')
@@ -2828,7 +2506,8 @@ The current type of b is: 9
   @node_pthreads
   def test_pthread_proxying_cpp(self):
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('INITIAL_MEMORY=32mb')
+    if not self.has_changed_setting('INITIAL_MEMORY'):
+      self.set_setting('INITIAL_MEMORY=32mb')
     self.do_run_in_out_file_test('pthread/test_pthread_proxying_cpp.cpp',
                                  interleaved_output=False)
 
@@ -2845,6 +2524,7 @@ The current type of b is: 9
         interleaved_output=False)
 
   @node_pthreads
+  @flaky('https://github.com/emscripten-core/emscripten/issues/19795')
   def test_pthread_proxying_refcount(self):
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PTHREAD_POOL_SIZE=1')
@@ -2871,7 +2551,8 @@ The current type of b is: 9
   def test_pthread_thread_local_storage(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('INITIAL_MEMORY', '300mb')
+    if not self.has_changed_setting('INITIAL_MEMORY'):
+      self.set_setting('INITIAL_MEMORY', '300mb')
     self.do_run_in_out_file_test('pthread/test_pthread_thread_local_storage.cpp')
 
   @node_pthreads
@@ -2882,9 +2563,9 @@ The current type of b is: 9
   @node_pthreads
   def test_pthread_setspecific_mainthread(self):
     print('.. return')
-    self.do_runf(test_file('pthread/test_pthread_setspecific_mainthread.c'), 'done!', emcc_args=['-DRETURN'])
+    self.do_runf('pthread/test_pthread_setspecific_mainthread.c', 'done!', emcc_args=['-DRETURN'])
     print('.. exit')
-    self.do_runf(test_file('pthread/test_pthread_setspecific_mainthread.c'), 'done!', emcc_args=['-DEXIT'])
+    self.do_runf('pthread/test_pthread_setspecific_mainthread.c', 'done!', emcc_args=['-DEXIT'])
     print('.. pthread_exit')
     self.do_run_in_out_file_test('pthread/test_pthread_setspecific_mainthread.c')
 
@@ -2895,19 +2576,20 @@ The current type of b is: 9
 
   @node_pthreads
   @no_mac('https://github.com/emscripten-core/emscripten/issues/15014')
+  @flaky('https://github.com/emscripten-core/emscripten/issues/15014')
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
     # Add the onAbort handler at runtime during preRun.  This means that onAbort
     # handler will only be present in the main thread (much like it would if it
     # was passed in by pre-populating the module object on prior to loading).
-    self.add_pre_run("Module.onAbort = function() { console.log('onAbort called'); }")
+    self.add_pre_run("Module.onAbort = () => console.log('onAbort called');")
     self.do_run_in_out_file_test('pthread/test_pthread_abort.c', assert_returncode=NON_ZERO)
 
   @node_pthreads
   def test_pthread_abort_interrupt(self):
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     expected = ['Aborted(). Build with -sASSERTIONS for more info', 'Aborted(native code called abort())']
-    self.do_runf(test_file('pthread/test_pthread_abort_interrupt.c'), expected, assert_returncode=NON_ZERO)
+    self.do_runf('pthread/test_pthread_abort_interrupt.c', expected, assert_returncode=NON_ZERO)
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
@@ -2925,13 +2607,13 @@ The current type of b is: 9
     # Verify that secondary threads can continue to write to stdout even
     # after the main thread returns.  We had a regression where stdio
     # streams were locked when the main thread returned.
-    self.do_runf(test_file('pthread/test_pthread_stdout_after_main.c'))
+    self.do_runf('pthread/test_pthread_stdout_after_main.c')
 
   @node_pthreads
   def test_pthread_proxy_to_pthread(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.do_run_in_out_file_test(test_file('pthread/test_pthread_proxy_to_pthread.c'))
+    self.do_run_in_out_file_test('pthread/test_pthread_proxy_to_pthread.c')
 
   @node_pthreads
   @needs_dylink
@@ -2940,8 +2622,38 @@ The current type of b is: 9
     self.emcc_args.append('-Wno-experimental')
     self.do_run_in_out_file_test('pthread/test_pthread_tls_dylink.c')
 
+  def test_pthread_run_script(self):
+    shutil.copyfile(test_file('pthread/foo.js'), 'foo.js')
+    self.do_runf('pthread/test_pthread_run_script.c')
+
+    # Run the test again with PROXY_TO_PTHREAD
+    self.setup_node_pthreads()
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.set_setting('EXIT_RUNTIME')
+    self.do_runf('pthread/test_pthread_run_script.c')
+
+  @node_pthreads
+  def test_pthread_wait32_notify(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('atomic/test_wait32_notify.c')
+
+  @node_pthreads
+  @no_wasm2js('https://github.com/WebAssembly/binaryen/issues/5991')
+  def test_pthread_wait64_notify(self):
+    self.set_setting('EXIT_RUNTIME')
+    self.do_run_in_out_file_test('atomic/test_wait64_notify.c')
+
+  @node_pthreads
+  def test_pthread_wait_async(self):
+    self.set_setting('PROXY_TO_PTHREAD')
+    self.do_run_in_out_file_test('atomic/test_wait_async.c')
+
+  @node_pthreads
+  def test_pthread_run_on_main_thread(self):
+    self.do_run_in_out_file_test('pthread/test_pthread_run_on_main_thread.c')
+
   def test_tcgetattr(self):
-    self.do_runf(test_file('termios/test_tcgetattr.c'), 'success')
+    self.do_runf('termios/test_tcgetattr.c', 'success')
 
   def test_time(self):
     self.do_core_test('test_time.cpp')
@@ -2976,7 +2688,7 @@ The current type of b is: 9
     self.do_core_test('test_strptime_reentrant.c')
 
   def test_strftime(self):
-    self.do_core_test('test_strftime.cpp')
+    self.do_core_test('test_strftime.c')
 
   def test_trickystring(self):
     self.do_core_test('test_trickystring.c')
@@ -3005,10 +2717,10 @@ The current type of b is: 9
 
   @also_with_standalone_wasm()
   def test_memcpy_alignment(self):
-    self.do_runf(test_file('test_memcpy_alignment.cpp'), 'OK.')
+    self.do_runf('test_memcpy_alignment.cpp', 'OK.')
 
   def test_memset_alignment(self):
-    self.do_runf(test_file('test_memset_alignment.cpp'), 'OK.')
+    self.do_runf('test_memset_alignment.cpp', 'OK.')
 
   def test_memset(self):
     self.do_core_test('test_memset.c')
@@ -3036,7 +2748,7 @@ The current type of b is: 9
 
   def test_stack_overflow(self):
     self.set_setting('ASSERTIONS', 2)
-    self.do_runf(test_file('core/stack_overflow.c'), 'Aborted(stack overflow', assert_returncode=NON_ZERO)
+    self.do_runf('core/stack_overflow.c', 'Aborted(stack overflow', assert_returncode=NON_ZERO)
 
   def test_stackAlloc(self):
     self.do_core_test('stackAlloc.cpp')
@@ -3267,7 +2979,6 @@ The current type of b is: 9
     self.do_run(src, '|65830|')
 
   @needs_dylink
-  @disabled('EM_ASM in not yet supported in SIDE_MODULE')
   def test_dlfcn_em_asm(self):
     create_file('liblib.cpp', '''
       #include <emscripten.h>
@@ -3512,6 +3223,8 @@ Var: 42
 
   @needs_dylink
   @no_sanitize('contains ODR violation')
+  @no_2gb('output is sensitive to absolute data layout')
+  @no_4gb('output is sensitive to absolute data layout')
   def test_dlfcn_alignment_and_zeroing(self):
     self.set_setting('INITIAL_MEMORY', '16mb')
     create_file('liblib.c', r'''
@@ -3539,7 +3252,7 @@ Var: 42
         int num = 120 * 1024 * 1024; // total is 128; we'll use 5*5 = 25 at least, so allocate pretty much all of it
         void* mem = malloc(num);
         assert(mem);
-        printf("setting this range to non-zero: %ld - %ld\n", (long)mem, ((long)mem) + num);
+        printf("setting this range to non-zero: %lu - %lu\n", (uintptr_t)mem, ((uintptr_t)mem) + num);
         memset(mem, 1, num);
         EM_ASM({
           var value = HEAP8[64*1024*1024];
@@ -3688,16 +3401,11 @@ Var: 42
         /* Verify that we don't corrupt func_ptr when calling dladdr.  */
         Dl_info info;
         memset(&info, 0, sizeof(info));
-        dladdr(func_ptr, &info);
+        int rtn = dladdr(func_ptr, &info);
+        assert(rtn == 0);
 
         assert(func_ptr != NULL);
         assert(func_ptr(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) == 13);
-
-        /* Verify something useful lives in info.  */
-        assert(info.dli_fname != NULL);
-        assert(info.dli_fbase == NULL);
-        assert(info.dli_sname == NULL);
-        assert(info.dli_saddr == NULL);
 
         puts("success");
 
@@ -3855,7 +3563,8 @@ ok
   @needs_dylink
   def test_dlfcn_mallocs(self):
     # will be exhausted without functional malloc/free
-    self.set_setting('INITIAL_MEMORY', '64mb')
+    if not self.has_changed_setting('INITIAL_MEMORY'):
+      self.set_setting('INITIAL_MEMORY', '64mb')
 
     create_file('liblib.c', r'''
       #include <assert.h>
@@ -3869,7 +3578,7 @@ ok
     self.build_dlfcn_lib('liblib.c')
 
     self.prep_dlfcn_main()
-    self.do_runf(test_file('dlmalloc_proxy.c'), '*293,153*')
+    self.do_runf('dlmalloc_proxy.c', '*293,153*')
 
   @needs_dylink
   def test_dlfcn_longjmp(self):
@@ -4096,7 +3805,6 @@ ok
     self.do_run(src, 'float: 42.\n')
 
   @needs_dylink
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_dlfcn_asyncify(self):
     self.set_setting('ASYNCIFY')
 
@@ -4131,29 +3839,46 @@ ok
 
   @needs_dylink
   def test_dlfcn_rtld_local(self):
+    # Create two shared libraries that both depend on a third.
+    #  liba.so -> libsub.so
+    #  libb.so -> libsub.so
     create_file('liba.c', r'''
       #include <stdio.h>
 
-      void func_b();
+      void func_sub();
 
       void func_a() {
         printf("func_a\n");
         // Call a function from a dependent DSO. This symbol should
         // be available here even though liba itself is loaded with RTLD_LOCAL.
-        func_b();
+        func_sub();
       }
       ''')
 
     create_file('libb.c', r'''
       #include <stdio.h>
 
+      void func_sub();
+
       void func_b() {
         printf("func_b\n");
+        // Call a function from a dependent DSO. This symbol should
+        // be available here even though liba itself is loaded with RTLD_LOCAL.
+        func_sub();
       }
     ''')
 
-    self.build_dlfcn_lib('libb.c', outfile='libb.so')
-    self.build_dlfcn_lib('liba.c', outfile='liba.so', emcc_args=['libb.so'])
+    create_file('libsub.c', r'''
+      #include <stdio.h>
+
+      void func_sub() {
+        printf("func_sub\n");
+      }
+    ''')
+
+    self.build_dlfcn_lib('libsub.c', outfile='libsub.so')
+    self.build_dlfcn_lib('libb.c', outfile='libb.so', emcc_args=['libsub.so'])
+    self.build_dlfcn_lib('liba.c', outfile='liba.so', emcc_args=['libsub.so'])
 
     self.prep_dlfcn_main(['liba.so', 'libb.so', '-L.'])
     create_file('main.c', r'''
@@ -4162,28 +3887,41 @@ ok
       #include <stdio.h>
 
       int main() {
+        void* handle;
+        void (*f)();
+
         printf("main\n");
-        void* handle = dlopen("liba.so", RTLD_NOW|RTLD_LOCAL);
+        // Call a function from libb
+        handle = dlopen("liba.so", RTLD_NOW|RTLD_LOCAL);
         assert(handle);
 
-        void (*f)();
         f = dlsym(handle, "func_a");
         assert(f);
         f();
 
-        // Verify that symbols from liba.so and libb.so are not globally
+        // Same for libb
+        handle = dlopen("libb.so", RTLD_NOW|RTLD_LOCAL);
+        assert(handle);
+
+        f = dlsym(handle, "func_b");
+        assert(f);
+        f();
+
+        // Verify that symbols from all three libraries are not globally
         // visible.
-        void* func_a = dlsym(RTLD_DEFAULT, "func_a");
-        assert(func_a == NULL);
-        void* func_b = dlsym(RTLD_DEFAULT, "func_b");
-        assert(func_b == NULL);
+        f = dlsym(RTLD_DEFAULT, "func_a");
+        assert(f == NULL);
+        f = dlsym(RTLD_DEFAULT, "func_b");
+        assert(f == NULL);
+        f = dlsym(RTLD_DEFAULT, "func_sub");
+        assert(f == NULL);
 
         printf("done\n");
         return 0;
       }
       ''')
 
-    self.do_runf('main.c', 'main\nfunc_a\nfunc_b\ndone\n')
+    self.do_runf('main.c', 'main\nfunc_a\nfunc_sub\nfunc_b\nfunc_sub\ndone\n')
 
   def dylink_test(self, main, side, expected=None, header=None, force_c=False,
                   main_module=2, **kwargs):
@@ -4273,6 +4011,7 @@ ok
     ''', 'other says 11.', 'int sidey();', force_c=True, **kwargs)
 
   @needs_dylink
+  @crossplatform
   def test_dylink_basics(self):
     self.do_basic_dylink_test(need_reverse=False)
     self.verify_in_strict_mode('main.js')
@@ -4294,8 +4033,6 @@ ok
 
   @needs_dylink
   def test_dylink_memory_growth(self):
-    if not self.is_wasm():
-      self.skipTest('wasm only')
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.do_basic_dylink_test()
 
@@ -4477,21 +4214,6 @@ ok
       header='typedef float (*floatfunc)(float);', force_c=True)
 
   @needs_dylink
-  def test_missing_signatures(self):
-    create_file('test_sig.c', r'''#include <emscripten.h>
-                                       int main() {
-                                         return 0 == ( (long)&emscripten_run_script_string +
-                                                       (long)&emscripten_run_script );
-                                       }''')
-    self.set_setting('MAIN_MODULE', 1)
-    # also test main module with 4GB of memory. we need to emit a "maximum"
-    # clause then, even though 4GB is the maximum; see
-    # https://github.com/emscripten-core/emscripten/issues/14130
-    self.set_setting('ALLOW_MEMORY_GROWTH', '1')
-    self.set_setting('MAXIMUM_MEMORY', '4GB')
-    self.do_runf('test_sig.c', '')
-
-  @needs_dylink
   def test_dylink_global_init(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -4639,7 +4361,6 @@ res64 - external 64\n''', header='''\
 
   @needs_dylink
   @also_with_wasm_bigint
-  @no_wasm64('MEMORY64 does not yet support exceptions')
   def test_dylink_i64_invoke(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.dylink_test(r'''\
@@ -4759,7 +4480,7 @@ res64 - external 64\n''', header='''\
   @needs_dylink
   def test_dylink_jslib(self):
     create_file('lib.js', r'''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         test_lib_func: function(x) {
           return x + 17.2;
         }
@@ -5047,8 +4768,8 @@ res64 - external 64\n''', header='''\
 
   @with_both_eh_sjlj
   @needs_dylink
-  def test_dylink_exceptions_try_catch_3(self):
-    main = r'''
+  def test_dylink_exceptions_try_catch_6(self):
+    create_file('main.cpp', r'''
       #include <dlfcn.h>
       int main() {
         void* handle = dlopen("liblib.so", RTLD_LAZY);
@@ -5056,8 +4777,14 @@ res64 - external 64\n''', header='''\
         (side)();
         return 0;
       }
-    '''
-    side = r'''
+    ''')
+
+    # Create a dependency on __cxa_find_matching_catch_6 (6 = num clauses + 2)
+    # which is one higher than the default set of __cxa_find_matching_catch
+    # functions created in library_exceptions.js.
+    # This means we end up depending on dynamic linking code to redirect
+    # __cxa_find_matching_catch_6 to __cxa_find_matching_catch.
+    create_file('liblib.cpp', r'''
       #include <stdio.h>
       extern "C" void side() {
         try {
@@ -5066,14 +4793,16 @@ res64 - external 64\n''', header='''\
           printf("side: caught int %d\n", x);
         } catch (float x){
           printf("side: caught float %f\n", x);
+        } catch (double x){
+          printf("side: caught double %f\n", x);
+        } catch (short x){
+          printf("side: caught short %hd\n", x);
         }
       }
-      '''
+    ''')
 
-    create_file('liblib.cpp', side)
-    create_file('main.cpp', main)
     self.maybe_closure()
-    # Same as dylink_test but takes source code as filenames on disc.
+
     # side settings
     self.clear_setting('MAIN_MODULE')
     self.set_setting('SIDE_MODULE')
@@ -5084,8 +4813,7 @@ res64 - external 64\n''', header='''\
     self.set_setting('MAIN_MODULE', 1)
     self.clear_setting('SIDE_MODULE')
 
-    expected = "side: caught int 3\n"
-    self.do_runf("main.cpp", expected)
+    self.do_runf("main.cpp", "side: caught int 3\n")
 
   @needs_dylink
   @disabled('https://github.com/emscripten-core/emscripten/issues/12815')
@@ -5157,7 +4885,7 @@ res64 - external 64\n''', header='''\
     ''',
                      expected=['sidef: 10, sideg: 20.\nbsidef: 536.\nonly_in_second_0: 10, 20, 1337\nonly_in_third_1: 36, 49, 500, 1221\nonly_in_third_0: 36, 49, 500\nonly_in_second_1: 10, 20, 1337, 2112\n'],
                      # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
-                     need_reverse=not self.is_wasm())
+                     need_reverse=self.is_wasm2js())
 
     print('check warnings')
     full = self.run_js('src.js')
@@ -5168,7 +4896,8 @@ res64 - external 64\n''', header='''\
   def test_dylink_load_compiled_side_module(self):
     self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args.append('-lnodefs.js')
-    self.set_setting('INITIAL_MEMORY', '64mb')
+    if not self.has_changed_setting('INITIAL_MEMORY'):
+      self.set_setting('INITIAL_MEMORY', '64mb')
     # This test loads the module at runtime with loadWebAssemblyModule so we
     # want to suppress the automatic loading that would otherwise be done at
     # startup.
@@ -5199,7 +4928,7 @@ res64 - external 64\n''', header='''\
     ''',
                      expected=['sidef: 10'],
                      # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
-                     need_reverse=not self.is_wasm())
+                     need_reverse=self.is_wasm2js())
 
   @needs_dylink
   def test_dylink_dso_needed(self):
@@ -5214,8 +4943,8 @@ res64 - external 64\n''', header='''\
     create_file('third.c', 'int sidef() { return 36; }')
     create_file('fourth.c', 'int sideg() { return 17; }')
 
-    self.run_process([EMCC, '-fPIC', '-c', 'third.c', '-o', 'third.o'] + self.get_emcc_args(ldflags=False))
-    self.run_process([EMCC, '-fPIC', '-c', 'fourth.c', '-o', 'fourth.o'] + self.get_emcc_args(ldflags=False))
+    self.run_process([EMCC, '-fPIC', '-c', 'third.c', '-o', 'third.o'] + self.get_emcc_args(compile_only=True))
+    self.run_process([EMCC, '-fPIC', '-c', 'fourth.c', '-o', 'fourth.o'] + self.get_emcc_args(compile_only=True))
     self.run_process([EMAR, 'rc', 'libfourth.a', 'fourth.o'])
 
     self.dylink_test(main=r'''
@@ -5374,6 +5103,10 @@ main main sees -524, -534, 72.
     # module but that only one gets used at runtime.
     self.dylink_testf(test_file('core/test_dylink_weak.c'), need_reverse=False)
 
+  @needs_dylink
+  def test_dylink_weak_undef(self):
+    self.dylink_testf(test_file('core/test_dylink_weak_undef.c'), need_reverse=False)
+
   @node_pthreads
   @needs_dylink
   def test_dylink_tls(self):
@@ -5483,15 +5216,18 @@ Have even and odd!
   def test_transtrcase(self):
     self.do_core_test('test_transtrcase.c')
 
-  @no_wasm2js('very slow to compile')
-  @no_wasm64('produces different output due to %z printing')
+  @no_wasm2js('very slow to compile: https://github.com/emscripten-core/emscripten/issues/21048')
   @is_slow_test
   def test_printf(self):
     # needs to flush stdio streams
     self.emcc_args.append('-Wno-format')
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('STACK_SIZE', '1MB')
-    self.do_run_in_out_file_test('printf/test.c')
+    if self.is_wasm64():
+      out_suffix = '64'
+    else:
+      out_suffix = ''
+    self.do_run_in_out_file_test('printf/test_printf.c', out_suffix=out_suffix)
 
   def test_printf_2(self):
     self.do_core_test('test_printf_2.c')
@@ -5628,15 +5364,14 @@ Pass: 0.000012 0.000012''')
 
   def test_files(self):
     # Use closure here, to test we don't break FS stuff
-    if '-O3' in self.emcc_args and not self.is_wasm():
+    if '-O3' in self.emcc_args and self.is_wasm2js():
       print('closure 2')
       self.emcc_args += ['--closure', '2'] # Use closure 2 here for some additional coverage
       # Sadly --closure=2 is not yet free of closure warnings
       # FIXME(https://github.com/emscripten-core/emscripten/issues/17080)
       self.ldflags.append('-Wno-error=closure')
-    elif self.maybe_closure():
-      # closure can generate variables called 'gc', which pick up js shell stuff
-      self.banned_js_engines = [config.SPIDERMONKEY_ENGINE]
+    else:
+      self.maybe_closure()
 
     self.emcc_args += ['--pre-js', 'pre.js']
     self.set_setting('FORCE_FILESYSTEM')
@@ -5645,13 +5380,13 @@ Pass: 0.000012 0.000012''')
 /** @suppress{checkTypes}*/
 Module = {
   'noFSInit': true,
-  'preRun': function() {
+  'preRun': () => {
     FS.createLazyFile('/', 'test.file', 'test.file', true, false);
     // Test FS_* exporting
     Module['FS_createDataFile']('/', 'somefile.binary', [100, 200, 50, 25, 10, 77, 123], true, false, false);  // 200 becomes -56, since signed chars are used in memory
     var test_files_input = 'hi there!';
     var test_files_input_index = 0;
-    FS.init(function() {
+    FS.init(() => {
       return test_files_input.charCodeAt(test_files_input_index++) || null;
     });
   }
@@ -5663,11 +5398,8 @@ Module = {
     def clean(out):
       return '\n'.join([line for line in out.split('\n') if 'binaryen' not in line and 'wasm' not in line and 'so not running' not in line])
 
-    self.do_runf(test_file('files.cpp'), ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n'),
+    self.do_runf('files.cpp', ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n'),
                  output_nicerizer=clean)
-
-    if self.uses_memory_init_file():
-      self.assertExists('files.js.mem')
 
   def test_files_m(self):
     # Test for Module.stdin etc.
@@ -5677,8 +5409,8 @@ Module = {
     create_file('pre.js', '''
     Module = {
       data: [10, 20, 40, 30],
-      stdin: function() { return Module.data.pop() || null },
-      stdout: function(x) { out('got: ' + x) }
+      stdin: () => { return Module.data.pop() || null },
+      stdout: (x) => out('got: ' + x)
     };
     ''')
     self.emcc_args += ['--pre-js', 'pre.js']
@@ -5704,10 +5436,13 @@ Module = {
 
   def test_mount(self):
     self.set_setting('FORCE_FILESYSTEM')
-    self.do_runf(test_file('fs/test_mount.c'), 'success')
+    if self.get_setting('WASMFS'):
+      self.emcc_args += ['-licasefs.js']
+      self.emcc_args += ['-ljsfilefs.js']
+    self.do_runf('fs/test_mount.c', 'success')
 
   def test_getdents64(self):
-    self.do_runf(test_file('fs/test_getdents64.cpp'), '..')
+    self.do_runf('fs/test_getdents64.cpp', '..')
 
   def test_getdents64_special_cases(self):
     self.do_run_in_out_file_test('fs/test_getdents64_special_cases.cpp')
@@ -5715,6 +5450,7 @@ Module = {
   def test_getcwd_with_non_ascii_name(self):
     self.do_run_in_out_file_test('fs/test_getcwd_with_non_ascii_name.cpp')
 
+  @no_wasmfs('no support for /proc/self/fd/, see https://github.com/emscripten-core/emscripten/issues/19430')
   def test_proc_self_fd(self):
     self.do_run_in_out_file_test('fs/test_proc_self_fd.c')
 
@@ -5731,7 +5467,7 @@ Module = {
     if fs == 'NODEFS':
       self.require_node()
       self.emcc_args += ['-lnodefs.js']
-    self.do_runf(test_file('stdio/test_fgetc_ungetc.c'), 'success')
+    self.do_runf('stdio/test_fgetc_ungetc.c', 'success')
 
   def test_fgetc_unsigned(self):
     src = r'''
@@ -5764,7 +5500,7 @@ Module = {
         return 0;
       }
     '''
-    open('eol.txt', 'wb').write(b'\n')
+    create_file('eol.txt', b'\n', binary=True)
     self.emcc_args += ['--embed-file', 'eol.txt']
     self.do_run(src, 'SUCCESS\n')
 
@@ -5837,29 +5573,40 @@ Module = {
 
   @also_with_noderawfs
   def test_readdir(self):
+    if self.get_setting('WASMFS') and self.get_setting('NODERAWFS'):
+      # WasmFS + NODERAWFS lacks ino numbers in directory listings, see
+      # https://github.com/emscripten-core/emscripten/issues/19418
+      # We need to tell the test we are in this mode so it can ignore them.
+      self.emcc_args += ['-DWASMFS_NODERAWFS']
     self.do_run_in_out_file_test('dirent/test_readdir.c')
 
   @also_with_wasm_bigint
   def test_readdir_empty(self):
     self.do_run_in_out_file_test('dirent/test_readdir_empty.c')
 
+  def test_readdir_unlink(self):
+    self.do_run_in_out_file_test('dirent/test_readdir_unlink.c')
+
   def test_stat(self):
-    self.do_runf(test_file('stat/test_stat.c'), 'success')
+    self.set_setting("FORCE_FILESYSTEM")
+    self.do_runf('stat/test_stat.c', 'success')
     self.verify_in_strict_mode('test_stat.js')
 
   def test_fstatat(self):
-    self.do_runf(test_file('stat/test_fstatat.c'), 'success')
+    self.do_runf('stat/test_fstatat.c', 'success')
 
   @also_with_wasmfs
   def test_stat_chmod(self):
-    self.do_runf(test_file('stat/test_chmod.c'), 'success')
+    self.do_runf('stat/test_chmod.c', 'success')
 
   @also_with_wasmfs
   def test_stat_mknod(self):
-    self.do_runf(test_file('stat/test_mknod.c'), 'success')
+    self.do_runf('stat/test_mknod.c', 'success')
 
   @also_with_wasmfs
   def test_fcntl(self):
+    if self.get_setting('WASMFS'):
+      self.emcc_args += ['-sFORCE_FILESYSTEM']
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl/test_fcntl.c')
 
@@ -5868,17 +5615,14 @@ Module = {
 
   @also_with_wasm_bigint
   def test_fcntl_misc(self):
+    if self.get_setting('WASMFS'):
+      self.emcc_args += ['-sFORCE_FILESYSTEM']
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl/test_fcntl_misc.c')
 
   def test_poll(self):
-    self.add_pre_run('''
-      var dummy_device = FS.makedev(64, 0);
-      FS.registerDevice(dummy_device, {});
-
-      FS.createDataFile('/', 'file', 'abcdef', true, true, false);
-      FS.mkdev('/device', dummy_device);
-    ''')
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
     self.do_core_test('test_poll.c')
 
   def test_statvfs(self):
@@ -5888,36 +5632,36 @@ Module = {
     self.do_core_test('test_libgen.c')
 
   def test_utime(self):
-    self.do_runf(test_file('utime/test_utime.c'), 'success')
+    self.do_runf('utime/test_utime.c', 'success')
 
   def test_futimens(self):
-    self.do_runf(test_file('utime', 'test_futimens.c'), 'success')
+    self.do_runf('utime/test_futimens.c', 'success')
 
   @no_minimal_runtime('MINIMAL_RUNTIME does not have getValue() and setValue() (TODO add it to a JS library function to get it in)')
+  @requires_node  # only node handles utf well
   def test_utf(self):
-    self.banned_js_engines = [config.SPIDERMONKEY_ENGINE] # only node handles utf well
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc', '_free'])
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue', 'UTF8ToString', 'stringToUTF8'])
     self.do_core_test('test_utf.c')
 
   def test_utf32(self):
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF32ToString', 'stringToUTF32', 'lengthBytesUTF32'])
-    self.do_runf(test_file('utf32.cpp'), 'OK.')
-    self.do_runf(test_file('utf32.cpp'), 'OK.', args=['-fshort-wchar'])
+    self.do_runf('utf32.cpp', 'OK.')
+    self.do_runf('utf32.cpp', 'OK.', args=['-fshort-wchar'])
 
+  @crossplatform
   def test_utf16(self):
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['writeAsciiToMemory', 'UTF16ToString', 'stringToUTF16'])
-    self.do_runf(test_file('core/test_utf16.cpp'), 'OK.')
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF16ToString', 'stringToUTF16'])
+    self.do_runf('core/test_utf16.cpp', 'OK.')
 
   def test_utf8(self):
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii', 'writeAsciiToMemory'])
-    self.do_runf(test_file('utf8.cpp'), 'OK.')
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii'])
+    self.do_runf('utf8.cpp', 'OK.')
 
   @also_with_wasm_bigint
   def test_utf8_textdecoder(self):
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
     self.emcc_args += ['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt']
-    self.do_runf(test_file('benchmark/benchmark_utf8.cpp'), 'OK.')
+    self.do_runf('benchmark/benchmark_utf8.c', 'OK.')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
   def test_utf8_invalid(self):
@@ -5925,7 +5669,7 @@ Module = {
     for decoder_mode in [[], ['-sTEXTDECODER']]:
       self.emcc_args += decoder_mode
       print(str(decoder_mode))
-      self.do_runf(test_file('utf8_invalid.cpp'), 'OK.')
+      self.do_runf('utf8_invalid.cpp', 'OK.')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
   @no_asan('TODO: ASan support in minimal runtime')
@@ -5936,12 +5680,12 @@ Module = {
     for decoder_mode in [0, 1]:
       self.set_setting('TEXTDECODER', decoder_mode)
       print(str(decoder_mode))
-      self.do_runf(test_file('utf8_invalid.cpp'), 'OK.')
+      self.do_runf('utf8_invalid.cpp', 'OK.')
 
   def test_utf16_textdecoder(self):
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF16ToString', 'stringToUTF16', 'lengthBytesUTF16'])
     self.emcc_args += ['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt']
-    self.do_runf(test_file('benchmark/benchmark_utf16.cpp'), 'OK.')
+    self.do_runf('benchmark/benchmark_utf16.cpp', 'OK.')
 
   def test_wprintf(self):
     self.do_core_test('test_wprintf.cpp')
@@ -5955,9 +5699,6 @@ Module = {
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_direct_string_constant_usage.cpp')
-
-  def test_std_cout_new(self):
-    self.do_core_test('test_std_cout_new.cpp')
 
   def test_std_function_incomplete_return(self):
     self.do_core_test('test_std_function_incomplete_return.cpp')
@@ -5990,33 +5731,47 @@ Module = {
     self.uses_es6 = True
     self.emcc_args += ['-lnodefs.js']
     self.set_setting('SYSCALL_DEBUG')
-    self.do_runf(test_file('fs/test_nodefs_rw.c'), 'success')
+    self.do_runf('fs/test_nodefs_rw.c', 'success')
     if self.maybe_closure():
-      self.do_runf(test_file('fs/test_nodefs_rw.c'), 'success')
+      self.do_runf('fs/test_nodefs_rw.c', 'success')
 
   @also_with_noderawfs
   @requires_node
   def test_fs_nodefs_cloexec(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args += ['-lnodefs.js']
-    self.do_runf(test_file('fs/test_nodefs_cloexec.c'), 'success')
+    self.do_runf('fs/test_nodefs_cloexec.c', 'success')
+
+  @also_with_noderawfs
+  @requires_node
+  def test_fs_nodefs_dup(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+    self.emcc_args += ['-lnodefs.js']
+    self.do_runf('fs/test_nodefs_dup.c', 'success')
 
   @requires_node
   def test_fs_nodefs_home(self):
     self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args += ['-lnodefs.js']
-    self.do_runf(test_file('fs/test_nodefs_home.c'), 'success')
+    self.do_runf('fs/test_nodefs_home.c', 'success')
 
   @requires_node
   def test_fs_nodefs_nofollow(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args += ['-lnodefs.js']
-    self.do_runf(test_file('fs/test_nodefs_nofollow.c'), 'success')
+    self.do_runf('fs/test_nodefs_nofollow.c', 'success')
 
   @requires_node
   def test_fs_nodefs_readdir(self):
     # externally setup an existing folder structure: existing/a
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
     os.makedirs(os.path.join(self.working_dir, 'existing', 'a'))
     self.emcc_args += ['-lnodefs.js']
-    self.do_runf(test_file('fs/test_nodefs_readdir.c'), 'success')
+    self.do_runf('fs/test_nodefs_readdir.c', 'success')
 
   @no_windows('no symlink support on windows')
   @requires_node
@@ -6025,22 +5780,26 @@ Module = {
     create_file('filename', 'foo')
     os.symlink('filename', 'linkname')
     self.emcc_args += ['-lnodefs.js']
-    self.do_runf(test_file('fs/test_noderawfs_nofollow.c'), 'success')
+    self.do_runf('fs/test_noderawfs_nofollow.c', 'success')
 
   def test_fs_trackingdelegate(self):
     self.set_setting('FS_DEBUG')
     self.do_run_in_out_file_test('fs/test_trackingdelegate.c')
 
   @also_with_noderawfs
+  @also_with_wasmfs_js
   def test_fs_writeFile(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting("FORCE_FILESYSTEM")
     self.do_run_in_out_file_test('fs/test_writeFile.cpp')
 
-  def test_fs_writeFile_wasmfs(self):
-    self.emcc_args += ['-sWASMFS']
-    self.emcc_args += ['-sFORCE_FILESYSTEM']
-    self.do_run_in_out_file_test('fs/test_writeFile.cpp')
+  def test_fs_js_api(self):
+    self.set_setting("FORCE_FILESYSTEM")
+    self.do_runf('fs/test_fs_js_api.c', 'success')
 
   def test_fs_write(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting("FORCE_FILESYSTEM")
     self.do_run_in_out_file_test('fs/test_write.cpp')
 
   @also_with_noderawfs
@@ -6049,7 +5808,7 @@ Module = {
 
   @also_with_noderawfs
   def test_fs_append(self):
-    self.do_runf(test_file('fs/test_append.c'), 'success')
+    self.do_runf('fs/test_append.c', 'success')
 
   @parameterized({
     'memfs': ['MEMFS'],
@@ -6069,18 +5828,19 @@ Module = {
       self.emcc_args += ['-sWASMFS', '-sFORCE_FILESYSTEM']
     self.do_run_in_out_file_test('fs/test_mmap.c', emcc_args=['-D' + fs])
 
+  @no_wasmfs('wasmfs will (?) need a non-JS mechanism to ignore permissions during startup')
   @parameterized({
     '': [],
     'minimal_runtime': ['-sMINIMAL_RUNTIME=1']
   })
   def test_fs_no_main(self, *args):
-    # library_fs.js uses hooks to enable ignoreing of permisions up until ATMAINs are run.  This
+    # library_fs.js uses hooks to enable ignoring of permisions up until ATMAINs are run.  This
     # test verified that they work correctly, even in programs without a main function.
     create_file('pre.js', '''
-Module['preRun'] = function() {
+Module.preRun = () => {
   assert(FS.ignorePermissions, "ignorePermissions not set during preRun");
 }
-Module['onRuntimeInitialized'] = function() {
+Module.onRuntimeInitialized = () => {
   assert(!FS.ignorePermissions, "ignorePermissions not unset during onRuntimeInitialized");
   assert(_foo() == 42);
 }
@@ -6119,28 +5879,46 @@ Module['onRuntimeInitialized'] = function() {
   @also_with_noderawfs
   def test_fs_llseek(self):
     self.set_setting('FORCE_FILESYSTEM')
-    self.do_runf(test_file('fs/test_llseek.c'), 'success')
+    self.do_runf('fs/test_llseek.c', 'success')
 
   @also_with_noderawfs
   def test_fs_readv(self):
     self.set_setting('FORCE_FILESYSTEM')
-    self.do_runf(test_file('fs/test_readv.c'), 'success')
+    self.do_runf('fs/test_readv.c', 'success')
 
   @also_with_noderawfs
   def test_fs_writev(self):
     self.set_setting('FORCE_FILESYSTEM')
-    self.do_runf(test_file('fs/test_writev.c'), 'success')
+    self.do_runf('fs/test_writev.c', 'success')
 
   def test_fs_64bit(self):
-    self.do_runf(test_file('fs/test_64bit.c'), 'success')
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+    self.do_runf('fs/test_64bit.c', 'success')
 
   def test_sigalrm(self):
-    self.do_runf(test_file('test_sigalrm.c'), 'Received alarm!')
+    self.do_runf('test_sigalrm.c', 'Received alarm!')
     self.set_setting('EXIT_RUNTIME')
-    self.do_runf(test_file('test_sigalrm.c'), 'Received alarm!')
+    self.do_runf('test_sigalrm.c', 'Received alarm!')
 
   def test_signals(self):
-    self.do_core_test(test_file('test_signals.c'))
+    self.do_core_test('test_signals.c')
+
+  @parameterized({
+    'sigint': (EM_SIGINT, 128 + EM_SIGINT, True),
+    'sigabrt': (EM_SIGABRT, 7, False)
+  })
+  @crossplatform
+  def test_sigaction_default(self, signal, exit_code, assert_identical):
+    self.set_setting('EXIT_RUNTIME')
+    # TODO: re-enable assertions when https://github.com/emscripten-core/emscripten/issues/20315 is fixed.
+    self.set_setting('ASSERTIONS', 0)
+    self.do_core_test(
+      test_file('test_sigaction_default.c'),
+      args=[str(signal)],
+      assert_identical=assert_identical,
+      assert_returncode=exit_code
+    )
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @requires_node
@@ -6160,12 +5938,14 @@ Module['onRuntimeInitialized'] = function() {
     # Node.js fs.chmod is nearly no-op on Windows
     # TODO: NODERAWFS in WasmFS
     if not WINDOWS and not self.get_setting('WASMFS'):
-      self.emcc_args = orig_compiler_opts
+      self.emcc_args = orig_compiler_opts + ['-DNODERAWFS']
       self.set_setting('NODERAWFS')
       self.do_run_in_out_file_test('unistd/access.c')
 
   def test_unistd_curdir(self):
     self.uses_es6 = True
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test('unistd/curdir.c')
 
   @also_with_noderawfs
@@ -6173,11 +5953,11 @@ Module['onRuntimeInitialized'] = function() {
     self.do_run_in_out_file_test('unistd/close.c')
 
   def test_unistd_fsync_stdout(self):
-    self.do_run_in_out_file_test(test_file('unistd/fsync_stdout.c'))
+    self.do_run_in_out_file_test('unistd/fsync_stdout.c')
 
   @also_with_noderawfs
   def test_unistd_pipe(self):
-    self.do_runf(test_file('unistd/pipe.c'), 'success')
+    self.do_runf('unistd/pipe.c', 'success')
 
   @also_with_noderawfs
   def test_unistd_dup(self):
@@ -6222,7 +6002,14 @@ Module['onRuntimeInitialized'] = function() {
     filename = test_file('unistd/sysconf_phys_pages.c')
     if self.get_setting('ALLOW_MEMORY_GROWTH'):
       expected = (2 * 1024 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE
+    elif self.has_changed_setting('INITIAL_MEMORY'):
+      if self.get_setting('INITIAL_MEMORY') == '4200mb':
+        expected = (4200 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE
+      else:
+        assert self.get_setting('INITIAL_MEMORY') == '2200mb'
+        expected = (2200 * 1024 * 1024) // webassembly.WASM_PAGE_SIZE
     else:
+      self.set_setting('INITIAL_MEMORY', '16mb')
       expected = 16 * 1024 * 1024 // webassembly.WASM_PAGE_SIZE
     self.do_runf(filename, str(expected) + ', errno: 0')
 
@@ -6256,7 +6043,7 @@ Module['onRuntimeInitialized'] = function() {
       if os.geteuid() == 0:
         self.emcc_args += ['-DSKIP_ACCESS_TESTS']
 
-    self.do_runf(test_file('unistd/unlink.c'), 'success')
+    self.do_runf('unistd/unlink.c', 'success')
 
   @parameterized({
     'memfs': (['-DMEMFS'], False),
@@ -6297,9 +6084,6 @@ Module['onRuntimeInitialized'] = function() {
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-        if config.NODE_JS not in config.JS_ENGINES:
-          # NODEFS requires node
-          continue
         self.require_node()
       if self.get_setting('WASMFS'):
         if fs == 'NODEFS':
@@ -6320,7 +6104,7 @@ Module['onRuntimeInitialized'] = function() {
       self.emcc_args += ['-lnodefs.js']
     self.do_run_in_out_file_test('unistd/misc.c', interleaved_output=False)
 
-  @also_with_standalone_wasm(wasm2c=True)
+  @also_with_standalone_wasm()
   def test_posixtime(self):
     self.do_core_test('test_posixtime.c')
 
@@ -6330,9 +6114,19 @@ Module['onRuntimeInitialized'] = function() {
   def test_unary_literal(self):
     self.do_core_test('test_unary_literal.cpp')
 
+  @crossplatform
+  # Explicitly set LANG here since new versions of node expose
+  # `navigator.languages` which emscripten will honor and we
+  # want the test output to be consistent.
+  @with_env_modify({'LANG': 'en_US.UTF-8'})
   def test_env(self):
     self.do_core_test('test_env.c', regex=True)
 
+  @crossplatform
+  # Explicitly set LANG here since new versions of node expose
+  # `navigator.languages` which emscripten will honor and we
+  # want the test output to be consistent.
+  @with_env_modify({'LANG': 'en_US.UTF-8'})
   def test_environ(self):
     self.do_core_test('test_environ.c', regex=True)
 
@@ -6409,7 +6203,7 @@ PORT: 3979
       shutil.copy2('src.js', 'src.js.previous')
 
       # Same but for the wasm file.
-      if self.is_wasm() and not self.get_setting('WASM2JS'):
+      if self.is_wasm():
         if os.path.exists('src.wasm.previous'):
           self.assertBinaryEqual('src.wasm', 'src.wasm.previous')
         shutil.copy2('src.wasm', 'src.wasm.previous')
@@ -6439,17 +6233,13 @@ PORT: 3979
       }
     ''')
     create_file('mylib1.js', '''
-      mergeInto(LibraryManager.library, {
-        printey: function() {
-          out('hello from lib!');
-        }
+      addToLibrary({
+        printey: () => out('hello from lib!')
       });
     ''')
     create_file('mylib2.js', '''
-      mergeInto(LibraryManager.library, {
-        calcey: function(x, y) {
-          return x + y;
-        }
+      addToLibrary({
+        calcey: (x, y) => x + y
       });
     ''')
 
@@ -6457,18 +6247,8 @@ PORT: 3979
     self.do_runf('main.cpp', 'hello from lib!\n*32*\n')
 
   @with_env_modify({'LC_ALL': 'latin-1', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'})
+  @crossplatform
   def test_unicode_js_library(self):
-    create_file('main.c', '''
-      #include <stdio.h>
-
-      extern void printey();
-
-      int main() {
-        printey();
-        return 0;
-      }
-    ''')
-
     # First verify that we have correct overridden the default python file encoding.
     # The follow program should fail, assuming the above LC_CTYPE + PYTHONUTF8
     # are having the desired effect.
@@ -6480,7 +6260,7 @@ PORT: 3979
 
     create_file('modularize_post.js', '(async function main(){await Module();})()')
     self.emcc_args += ['-sMODULARIZE', '--js-library', test_file('unicode_library.js'), '--extern-post-js', 'modularize_post.js', '--post-js', test_file('unicode_postjs.js')]
-    self.do_run_from_file('main.c', test_file('test_unicode_js_library.out'))
+    self.do_run_in_out_file_test('test_unicode_js_library.c')
 
   def test_funcptr_import_type(self):
     self.emcc_args += ['--js-library', test_file('core/test_funcptr_import_type.js')]
@@ -6534,7 +6314,7 @@ int main(void) {
     # TODO: Should we remove this test?
     self.skipTest('Relies on double value rounding, extremely sensitive')
 
-    src = read_file(test_file('raytrace.cpp')).replace('double', 'float')
+    src = read_file(test_file('third_party/raytrace.cpp')).replace('double', 'float')
     output = read_file(test_file('raytrace.ppm'))
     self.do_run(src, output, args=['3', '16'])
 
@@ -6549,8 +6329,7 @@ int main(void) {
       for t in ['float', 'double']:
         print(t)
         src = orig_src.replace('double', t)
-        with open('fasta.cpp', 'w') as f:
-          f.write(src)
+        create_file('fasta.cpp', src)
         self.build('fasta.cpp', emcc_args=extra_args)
         for arg, output in results:
           self.do_run('fasta.js', output, args=[str(arg)],
@@ -6567,7 +6346,7 @@ int main(void) {
     self.test_fasta()
 
   def test_whets(self):
-    self.do_runf(test_file('whets.cpp'), 'Single Precision C Whetstone Benchmark')
+    self.do_runf('whets.cpp', 'Single Precision C Whetstone Benchmark')
 
   # node is slower, and fail on 64-bit
   @requires_v8
@@ -6575,7 +6354,8 @@ int main(void) {
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
   def test_dlmalloc_inline(self):
     # needed with typed arrays
-    self.set_setting('INITIAL_MEMORY', '128mb')
+    if not self.has_changed_setting('INITIAL_MEMORY'):
+      self.set_setting('INITIAL_MEMORY', '128mb')
 
     src = read_file(path_from_root('system/lib/dlmalloc.c')) + '\n\n\n' + read_file(test_file('dlmalloc_test.c'))
     self.do_run(src, '*1,0*', args=['200', '1'], force_c=True)
@@ -6587,11 +6367,11 @@ int main(void) {
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
   @no_wasmfs('wasmfs does some malloc/free during startup, fragmenting the heap, leading to differences later')
   def test_dlmalloc(self):
-    # needed with typed arrays
-    self.set_setting('INITIAL_MEMORY', '128mb')
+    if not self.has_changed_setting('INITIAL_MEMORY'):
+      self.set_setting('INITIAL_MEMORY', '128mb')
 
     # Linked version
-    self.do_runf(test_file('dlmalloc_test.c'), '*1,0*', args=['200', '1'])
+    self.do_runf('dlmalloc_test.c', '*1,0*', args=['200', '1'])
     self.do_run('dlmalloc_test.js', '*400,0*', args=['400', '400'], no_build=True)
 
     # TODO: do this in other passes too, passing their opts into emcc
@@ -6618,9 +6398,11 @@ int main(void) {
   # Tests that a large allocation should gracefully fail
   @no_asan('the memory size limit here is too small for asan')
   @no_lsan('the memory size limit here is too small for lsan')
+  @no_4gb('output is sensitive to absolute data layout')
+  @no_2gb('output is sensitive to absolute data layout')
   def test_dlmalloc_large(self):
     self.emcc_args += ['-sABORTING_MALLOC=0', '-sALLOW_MEMORY_GROWTH=1', '-sMAXIMUM_MEMORY=128MB']
-    self.do_runf(test_file('dlmalloc_test_large.c'), '0 0 0 1')
+    self.do_runf('dlmalloc_test_large.c', '0 0 0 1')
 
   @no_asan('asan also changes malloc, and that ends up linking in new twice')
   @no_lsan('lsan also changes malloc, and that ends up linking in new twice')
@@ -6646,7 +6428,7 @@ void* operator new(size_t size) {
     self.do_core_test('test_dlmalloc_partial_2.c', assert_returncode=NON_ZERO)
 
   def test_libcxx(self):
-    self.do_runf(test_file('hashtest.cpp'),
+    self.do_runf('hashtest.cpp',
                  'june -> 30\nPrevious (in alphabetical order) is july\nNext (in alphabetical order) is march')
 
     self.do_run('''
@@ -6674,7 +6456,7 @@ void* operator new(size_t size) {
   @also_with_standalone_wasm()
   def test_mmap_anon(self):
     # ASan needs more memory, but that is set up separately
-    if '-fsanitize=address' not in self.emcc_args:
+    if '-fsanitize=address' not in self.emcc_args and not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '128mb')
 
     self.do_core_test('test_mmap_anon.c')
@@ -6685,13 +6467,15 @@ void* operator new(size_t size) {
     # checks of the locking on the internal data structures.
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('INITIAL_MEMORY', '64mb')
+    if not self.has_changed_setting('INITIAL_MEMORY'):
+      self.set_setting('INITIAL_MEMORY', '64mb')
     self.do_core_test('test_mmap_anon.c')
 
   @no_lsan('Test code contains memory leaks')
   @parameterized({
-      '': (False,),
-      '_asyncify': (True,)
+      '': (0,),
+      'asyncify': (1,),
+      'jspi': (2,),
   })
   def test_cubescript(self, asyncify):
     # uses register keyword
@@ -6703,9 +6487,10 @@ void* operator new(size_t size) {
       self.emcc_args += ['--pre-js', test_file('asan-no-leak.js')]
 
     if asyncify:
-      if self.is_wasm64():
-        self.skipTest('TODO: asyncify for wasm64')
-      self.set_setting('ASYNCIFY')
+      self.set_setting('ASYNCIFY', asyncify)
+    if asyncify == 2:
+      self.require_jspi()
+      self.emcc_args += ['-Wno-experimental']
 
     src = test_file('third_party/cubescript/command.cpp')
     self.do_runf(src, '*\nTemp is 33\n9\n5\nhello, everyone\n*')
@@ -6718,7 +6503,7 @@ void* operator new(size_t size) {
   @wasm_simd
   def test_wasm_intrinsics_simd(self):
     def run():
-      self.do_runf(test_file('test_wasm_intrinsics_simd.c'), 'Success!')
+      self.do_runf('test_wasm_intrinsics_simd.c', 'Success!')
     # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
     self.emcc_args = ['-Wpedantic', '-Werror', '-Wall', '-xc++'] + self.emcc_args
@@ -6732,12 +6517,12 @@ void* operator new(size_t size) {
     self.emcc_args.append('-Wno-c++11-narrowing')
     self.emcc_args.append('-mfpu=neon')
     self.emcc_args.append('-msimd128')
-    self.do_runf(test_file('neon/test_neon_wasm_simd.cpp'), 'Success!')
+    self.do_runf('neon/test_neon_wasm_simd.cpp', 'Success!')
 
   # Tests invoking the SIMD API via x86 SSE1 xmmintrin.h header (_mm_x() functions)
   @wasm_simd
+  @crossplatform
   @requires_native_clang
-  @no_wasm64('https://github.com/llvm/llvm-project/issues/57577')
   @no_safe_heap('has unaligned 64-bit operations in wasm')
   @no_ubsan('test contains UB')
   def test_sse1(self):
@@ -6753,10 +6538,13 @@ void* operator new(size_t size) {
   # Tests invoking the SIMD API via x86 SSE2 emmintrin.h header (_mm_x() functions)
   @wasm_simd
   @requires_native_clang
-  @no_wasm64('https://github.com/llvm/llvm-project/issues/57577')
   @no_safe_heap('has unaligned 64-bit operations in wasm')
   @is_slow_test
+  @no_ubsan('https://github.com/emscripten-core/emscripten/issues/19688')
+  @no_asan('local count too large')
   def test_sse2(self):
+    if self.is_wasm64():
+      self.require_node_canary()
     src = test_file('sse/test_sse2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse2', stdout=PIPE).stdout
@@ -6766,7 +6554,6 @@ void* operator new(size_t size) {
     self.do_runf(src, native_result)
 
   # Tests invoking the SIMD API via x86 SSE3 pmmintrin.h header (_mm_x() functions)
-  @no_wasm64('https://github.com/llvm/llvm-project/issues/57577')
   @wasm_simd
   @requires_native_clang
   def test_sse3(self):
@@ -6779,7 +6566,6 @@ void* operator new(size_t size) {
     self.do_runf(src, native_result)
 
   # Tests invoking the SIMD API via x86 SSSE3 tmmintrin.h header (_mm_x() functions)
-  @no_wasm64('https://github.com/llvm/llvm-project/issues/57577')
   @wasm_simd
   @requires_native_clang
   def test_ssse3(self):
@@ -6792,11 +6578,13 @@ void* operator new(size_t size) {
     self.do_runf(src, native_result)
 
   # Tests invoking the SIMD API via x86 SSE4.1 smmintrin.h header (_mm_x() functions)
-  @no_wasm64('https://github.com/llvm/llvm-project/issues/57577')
+  @no_ubsan('https://github.com/emscripten-core/emscripten/issues/19749')
   @wasm_simd
   @requires_native_clang
   @is_slow_test
   def test_sse4_1(self):
+    if self.is_wasm64():
+      self.require_node_canary()
     src = test_file('sse/test_sse4_1.cpp')
     if not self.is_optimizing() and '-fsanitize=address' in self.emcc_args:
       # ASan with -O0 fails with:
@@ -6852,7 +6640,6 @@ void* operator new(size_t size) {
 
   @requires_native_clang
   @wasm_relaxed_simd
-  @no_wasm64('https://github.com/llvm/llvm-project/issues/57577')
   def test_relaxed_simd_implies_simd128(self):
     src = test_file('sse/test_sse1.cpp')
     self.build(src, emcc_args=['-msse'])
@@ -6861,14 +6648,15 @@ void* operator new(size_t size) {
   def test_gcc_unmangler(self):
     self.emcc_args += ['-I' + test_file('third_party/libiberty')]
 
-    self.do_runf(test_file('third_party/libiberty/cp-demangle.c'), '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
+    self.do_runf('third_party/libiberty/cp-demangle.c', '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
   @needs_make('make')
+  @crossplatform
   def test_lua(self):
     self.emcc_args.remove('-Werror')
     env_init = {
-      'SYSCFLAGS': ' '.join(self.get_emcc_args(ldflags=False)),
-      'SYSLDFLAGS': ' '.join(self.get_emcc_args(ldflags=True))
+      'SYSCFLAGS': ' '.join(self.get_emcc_args(compile_only=True)),
+      'SYSLDFLAGS': ' '.join(self.get_emcc_args())
     }
     libs = self.get_library('third_party/lua',
                             [Path('src/lua.o'), Path('src/liblua.a')],
@@ -6884,43 +6672,44 @@ void* operator new(size_t size) {
 
   @no_asan('issues with freetype itself')
   @needs_make('configure script')
-  @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_freetype(self):
+    if self.get_setting('WASMFS'):
+      self.emcc_args += ['-sFORCE_FILESYSTEM']
+
     self.add_pre_run("FS.createDataFile('/', 'font.ttf', %s, true, false, false);" % str(
       list(bytearray(read_binary(test_file('freetype/LiberationSansBold.ttf'))))
     ))
 
     # Not needed for js, but useful for debugging
     shutil.copyfile(test_file('freetype/LiberationSansBold.ttf'), 'font.ttf')
+    ftlib = self.get_freetype_library()
 
     # Main
-    self.do_run_from_file(test_file('freetype/main.c'),
-                          test_file('freetype/ref.txt'),
-                          args=['font.ttf', 'test!', '150', '120', '25'],
-                          libraries=self.get_freetype_library(),
-                          includes=[test_file('third_party/freetype/include')])
+    self.do_run_in_out_file_test('freetype/main.c',
+                                 args=['font.ttf', 'test!', '150', '120', '25'],
+                                 libraries=ftlib,
+                                 includes=[test_file('third_party/freetype/include')])
 
     # github issue 324
     print('[issue 324]')
-    self.do_run_from_file(test_file('freetype/main_2.c'),
-                          test_file('freetype/ref_2.txt'),
-                          args=['font.ttf', 'w', '32', '32', '25'],
-                          libraries=self.get_freetype_library(),
-                          includes=[test_file('third_party/freetype/include')])
+    self.do_run_in_out_file_test('freetype/main_2.c',
+                                 args=['font.ttf', 'w', '32', '32', '25'],
+                                 libraries=ftlib,
+                                 includes=[test_file('third_party/freetype/include')])
 
     print('[issue 324 case 2]')
-    self.do_run_from_file(test_file('freetype/main_3.c'),
-                          test_file('freetype/ref_3.txt'),
-                          args=['font.ttf', 'W', '32', '32', '0'],
-                          libraries=self.get_freetype_library(),
-                          includes=[test_file('third_party/freetype/include')])
+    self.do_run_in_out_file_test('freetype/main_3.c',
+                                 args=['font.ttf', 'W', '32', '32', '0'],
+                                 libraries=ftlib,
+                                 includes=[test_file('third_party/freetype/include')])
 
     print('[issue 324 case 3]')
-    self.do_run('main_3.js',
-                read_file(test_file('freetype/ref_4.txt')),
-                args=['font.ttf', 'ea', '40', '32', '0'],
-                no_build=True)
+    self.do_run_in_out_file_test('freetype/main_3.c',
+                                 out_suffix='_alt',
+                                 args=['font.ttf', 'ea', '40', '32', '0'],
+                                 libraries=ftlib,
+                                 includes=[test_file('third_party/freetype/include')])
 
   @no_asan('local count too large for VMs')
   @no_ubsan('local count too large for VMs')
@@ -6934,7 +6723,7 @@ void* operator new(size_t size) {
       self.emcc_args.append('-pthread')
       self.setup_node_pthreads()
     self.emcc_args += ['-sUSE_SQLITE3']
-    self.do_run_in_out_file_test(test_file('sqlite/benchmark.c'))
+    self.do_run_in_out_file_test('sqlite/benchmark.c')
 
   @needs_make('mingw32-make')
   @is_slow_test
@@ -6954,11 +6743,7 @@ void* operator new(size_t size) {
 
     # example.c uses K&R style function declarations
     self.emcc_args += ['-Wno-deprecated-non-prototype']
-    self.do_run_from_file(
-        test_file('third_party/zlib/example.c'),
-        test_file('core/test_zlib.out'),
-        libraries=zlib,
-        includes=[test_file('third_party/zlib')])
+    self.do_core_test('test_zlib.c', libraries=zlib, includes=[test_file('third_party/zlib')])
 
   @needs_make('make')
   @is_slow_test
@@ -6987,7 +6772,7 @@ void* operator new(size_t size) {
       self.set_setting('ASSERTIONS', 2)
       self.emcc_args.append('-Wno-unused-command-line-argument')
 
-    self.do_runf(test_file('third_party/bullet/Demos/HelloWorld/HelloWorld.cpp'),
+    self.do_runf('third_party/bullet/Demos/HelloWorld/HelloWorld.cpp',
                  [read_file(test_file('bullet/output.txt')), # different roundings
                   read_file(test_file('bullet/output2.txt')),
                   read_file(test_file('bullet/output3.txt')),
@@ -6999,18 +6784,20 @@ void* operator new(size_t size) {
   @no_ubsan('local count too large')
   @no_lsan('output differs')
   @needs_make('depends on freetype')
-  @no_wasm64('MEMORY64 does not yet support SJLJ')
+  @no_4gb('runs out of memory')
   @is_slow_test
   def test_poppler(self):
+    # See https://github.com/emscripten-core/emscripten/issues/20757
+    self.emcc_args.append('-Wno-deprecated-declarations')
     poppler = self.get_poppler_library()
     pdf_data = read_binary(test_file('poppler/paper.pdf'))
     create_file('paper.pdf.js', str(list(bytearray(pdf_data))))
 
     create_file('pre.js', '''
-    Module.preRun = function() {
+    Module.preRun = () => {
       FS.createDataFile('/', 'paper.pdf', eval(read_('paper.pdf.js')), true, false, false);
     };
-    Module.postRun = function() {
+    Module.postRun = () => {
       var FileData = Array.from(MEMFS.getFileDataAsTypedArray(FS.root.contents['filename-1.ppm']));
       out("Data: " + JSON.stringify(FileData.map(function(x) { return unSign(x, 8) })));
     };
@@ -7023,126 +6810,104 @@ void* operator new(size_t size) {
                 args=['-scale-to', '512', 'paper.pdf', 'filename'])
 
   @needs_make('make')
-  @no_wasm64('MEMORY64 does not yet support SJLJ')
   @is_slow_test
   def test_openjpeg(self):
-    def do_test_openjpeg():
-      def line_splitter(data):
-        out = ''
-        counter = 0
+    def line_splitter(data):
+      out = ''
+      counter = 0
 
-        for ch in data:
-          out += ch
-          if ch == ' ' and counter > 60:
-            out += '\n'
-            counter = 0
-          else:
-            counter += 1
+      for ch in data:
+        out += ch
+        if ch == ' ' and counter > 60:
+          out += '\n'
+          counter = 0
+        else:
+          counter += 1
 
-        return out
+      return out
 
-      # remove -g, so we have one test without it by default
-      self.emcc_args = [x for x in self.emcc_args if x != '-g']
+    # remove -g, so we have one test without it by default
+    self.emcc_args = [x for x in self.emcc_args if x != '-g']
 
-      original_j2k = test_file('openjpeg/syntensity_lobby_s.j2k')
-      image_bytes = list(bytearray(read_binary(original_j2k)))
-      create_file('pre.js', """
-        Module.preRun = function() { FS.createDataFile('/', 'image.j2k', %s, true, false, false); };
-        Module.postRun = function() {
-          out('Data: ' + JSON.stringify(Array.from(FS.readFile('image.raw'))));
-        };
-        """ % line_splitter(str(image_bytes)))
+    original_j2k = test_file('openjpeg/syntensity_lobby_s.j2k')
+    image_bytes = list(bytearray(read_binary(original_j2k)))
+    create_file('pre.js', """
+      Module.preRun = () => FS.createDataFile('/', 'image.j2k', %s, true, false, false);
+      Module.postRun = () => {
+        out('Data: ' + JSON.stringify(Array.from(FS.readFile('image.raw'))));
+      };
+      """ % line_splitter(str(image_bytes)))
 
-      # ensure libpng is built so that openjpeg's configure step can detect it.
-      # If we don't do this then we don't know what the state of the cache will be
-      # and this test would different non-deterministic results based on, for example,
-      # what other tests had previously run.
-      builder_cmd = [EMBUILDER, 'build', 'libpng']
-      if self.get_setting('MEMORY64'):
-        builder_cmd.append('--wasm64')
-        self.emcc_args.append('-Wno-pointer-to-int-cast')
-      self.run_process(builder_cmd)
-      lib = self.get_library('third_party/openjpeg',
-                             [Path('codec/CMakeFiles/j2k_to_image.dir/index.c.o'),
-                              Path('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'),
-                              Path('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'),
-                              Path('bin/libopenjpeg.a')],
-                             configure=['cmake', '.'],
-                             # configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
-                             make_args=[]) # no -j 2, since parallel builds can fail
+    # ensure libpng is built so that openjpeg's configure step can detect it.
+    # If we don't do this then we don't know what the state of the cache will be
+    # and this test would different non-deterministic results based on, for example,
+    # what other tests had previously run.
+    builder_cmd = [EMBUILDER, 'build', 'libpng']
+    if self.get_setting('MEMORY64'):
+      builder_cmd.append('--wasm64')
+      self.emcc_args.append('-Wno-pointer-to-int-cast')
+    self.run_process(builder_cmd)
+    lib = self.get_library('third_party/openjpeg',
+                           [Path('codec/CMakeFiles/j2k_to_image.dir/index.c.o'),
+                            Path('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'),
+                            Path('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'),
+                            Path('codec/CMakeFiles/j2k_to_image.dir/__/common/getopt.c.o'),
+                            Path('bin/libopenjpeg.a')],
+                           configure=['cmake', '.'],
+                           # configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
+                           make_args=[]) # no -j 2, since parallel builds can fail
 
-      # We use doubles in JS, so we get slightly different values than native code. So we
-      # check our output by comparing the average pixel difference
-      def image_compare(output):
-        # Get the image generated by JS, from the JSON.stringify'd array
-        m = re.search(r'\[[\d, -]*\]', output)
-        self.assertIsNotNone(m, 'Failed to find proper image output in: ' + output)
-        # Evaluate the output as a python array
-        js_data = eval(m.group(0))
+    # We use doubles in JS, so we get slightly different values than native code. So we
+    # check our output by comparing the average pixel difference
+    def image_compare(output):
+      # Get the image generated by JS, from the JSON.stringify'd array
+      m = re.search(r'\[[\d, -]*\]', output)
 
-        js_data = [x if x >= 0 else 256 + x for x in js_data] # Our output may be signed, so unsign it
+      self.assertIsNotNone(m, 'Failed to find proper image output in: ' + output)
+      # Evaluate the output as a python array
+      js_data = eval(m.group(0))
 
-        # Get the correct output
-        true_data = bytearray(read_binary(test_file('openjpeg/syntensity_lobby_s.raw')))
+      js_data = [x if x >= 0 else 256 + x for x in js_data] # Our output may be signed, so unsign it
+      # Get the correct output
+      true_data = bytearray(read_binary(test_file('openjpeg/syntensity_lobby_s.raw')))
 
-        # Compare them
-        self.assertEqual(len(js_data), len(true_data))
-        num = len(js_data)
-        diff_total = js_total = true_total = 0
-        for i in range(num):
-          js_total += js_data[i]
-          true_total += true_data[i]
-          diff_total += abs(js_data[i] - true_data[i])
-        js_mean = js_total / float(num)
-        true_mean = true_total / float(num)
-        diff_mean = diff_total / float(num)
+      # Compare them
+      self.assertEqual(len(js_data), len(true_data))
+      num = len(js_data)
+      diff_total = js_total = true_total = 0
+      for i in range(num):
+        js_total += js_data[i]
+        true_total += true_data[i]
+        diff_total += abs(js_data[i] - true_data[i])
+      js_mean = js_total / float(num)
+      true_mean = true_total / float(num)
+      diff_mean = diff_total / float(num)
 
-        image_mean = 83.265
-        # print '[image stats:', js_mean, image_mean, true_mean, diff_mean, num, ']'
-        assert abs(js_mean - image_mean) < 0.01, [js_mean, image_mean]
-        assert abs(true_mean - image_mean) < 0.01, [true_mean, image_mean]
-        assert diff_mean < 0.01, diff_mean
+      image_mean = 83.265
+      # print '[image stats:', js_mean, image_mean, true_mean, diff_mean, num, ']'
+      assert abs(js_mean - image_mean) < 0.01, [js_mean, image_mean]
+      assert abs(true_mean - image_mean) < 0.01, [true_mean, image_mean]
+      assert diff_mean < 0.01, diff_mean
 
-        return output
+    self.emcc_args += ['--minify=0'] # to compare the versions
+    self.emcc_args += ['--pre-js', 'pre.js']
 
-      self.emcc_args += ['--minify=0'] # to compare the versions
-      self.emcc_args += ['--pre-js', 'pre.js']
+    output = self.do_runf('third_party/openjpeg/codec/j2k_to_image.c',
+                          'Successfully generated', # The real test for valid output is in image_compare
+                          args='-i image.j2k -o image.raw'.split(),
+                          emcc_args=['-sUSE_LIBPNG'],
+                          libraries=lib,
+                          includes=[test_file('third_party/openjpeg/libopenjpeg'),
+                                    test_file('third_party/openjpeg/codec'),
+                                    test_file('third_party/openjpeg/common'),
+                                    Path(self.get_build_dir(), 'third_party/openjpeg')])
+    image_compare(output)
 
-      def do_test():
-        self.do_runf(test_file('third_party/openjpeg/codec/j2k_to_image.c'),
-                     'Successfully generated', # The real test for valid output is in image_compare
-                     args='-i image.j2k -o image.raw'.split(),
-                     emcc_args=['-sUSE_LIBPNG'],
-                     libraries=lib,
-                     includes=[test_file('third_party/openjpeg/libopenjpeg'),
-                               test_file('third_party/openjpeg/codec'),
-                               test_file('third_party/openjpeg/common'),
-                               Path(self.get_build_dir(), 'third_party/openjpeg')],
-                     output_nicerizer=image_compare)
-
-      do_test()
-
-      # extra testing
-      if self.get_setting('ALLOW_MEMORY_GROWTH') == 1:
-        print('no memory growth', file=sys.stderr)
-        self.set_setting('ALLOW_MEMORY_GROWTH', 0)
-        do_test()
-
-    if is_sanitizing(self.emcc_args):
-      # In ASan mode we need a large initial memory (or else wasm-ld fails).
-      # The OpenJPEG CMake will build several executables (which we need parts
-      # of in our testing, see above), so we must enable the flag for them all.
-      with env_modify({'EMCC_CFLAGS': '-sINITIAL_MEMORY=300MB'}):
-        self.emcc_args.append('-Wno-unused-command-line-argument')
-        do_test_openjpeg()
-    else:
-      do_test_openjpeg()
-
-  @also_with_standalone_wasm(wasm2c=True, impure=True)
+  @also_with_standalone_wasm(impure=True)
   @no_asan('autodebug logging interferes with asan')
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
   def test_autodebug_wasm(self):
-    output = self.do_runf(test_file('core/test_autodebug.c'), 'success')
+    output = self.do_runf('core/test_autodebug.c', 'success')
     # test that the program both works and also emits some of the logging
     # (but without the specific output, as it is logging the actual locals
     # used and so forth, which will change between opt modes and updates of
@@ -7150,28 +6915,9 @@ void* operator new(size_t size) {
     for msg in ['log_execution', 'get_i32', 'set_i32', 'load_ptr', 'load_val', 'store_ptr', 'store_val']:
       self.assertIn(msg, output)
 
-  @parameterized({
-    'full': ('full',),
-    'mask': ('mask',),
-    'none': ('none',),
-  })
-  def test_wasm2c_sandboxing(self, mode):
-    if self.get_setting('WASMFS'):
-      # wasm2c disables JS legalization since we are building in standalone
-      # mode. this happens to work without wasmfs, but with wasmfs we get the
-      # time when we create/update a file, which uses clock_time_get that has an
-      # i64 param. For such an import to work we need wasm-bigint support.
-      self.node_args += shared.node_bigint_flags()
-    if not can_do_standalone(self):
-      return self.skipTest('standalone mode not supported')
-    self.set_setting('STANDALONE_WASM')
-    self.set_setting('WASM2C')
-    self.set_setting('WASM2C_SANDBOXING', mode)
-    self.wasm_engines = []
-    self.do_core_test('test_hello_world.c')
-
   ### Integration tests
 
+  @crossplatform
   def test_ccall(self):
     self.emcc_args.append('-Wno-return-stack-address')
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap', 'STACK_SIZE'])
@@ -7228,7 +6974,7 @@ void* operator new(size_t size) {
     self.emcc_args += ['--post-js', 'post.js']
 
     self.set_setting('EXPORTED_FUNCTIONS', ['_print_bool'])
-    self.do_runf(test_file('core/test_ccall.cpp'), 'true')
+    self.do_runf('core/test_ccall.cpp', 'true')
 
   def test_EXPORTED_RUNTIME_METHODS(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall', '$ASSERTIONS'])
@@ -7243,18 +6989,23 @@ void* operator new(size_t size) {
     'minimal_runtime': ['-sMINIMAL_RUNTIME=1']
   })
   def test_dyncall_specific(self, *args):
-    if self.get_setting('WASM_BIGINT') or self.get_setting('MEMORY64'):
-      self.skipTest('not compatible with WASM_BIGINT')
+    if self.get_setting('MEMORY64'):
+      self.skipTest('not compatible with MEMORY64')
+    if self.get_setting('WASM_BIGINT'):
+      # define DYNCALLS because this test does test calling them directly, and
+      # in WASM_BIGINT mode we do not enable them by default (since we can do
+      # more without them - we don't need to legalize)
+      args = list(args) + ['-sDYNCALLS', '-DWASM_BIGINT']
     cases = [
         ('DIRECT', []),
-        ('DYNAMIC_SIG', ['-sDYNCALLS=1']),
+        ('DYNAMIC_SIG', ['-sDYNCALLS']),
       ]
     if '-sMINIMAL_RUNTIME=1' in args:
       self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
     else:
       cases += [
         ('EXPORTED', []),
-        ('EXPORTED_DYNAMIC_SIG', ['-sDYNCALLS=1', '-sEXPORTED_RUNTIME_METHODS=dynCall']),
+        ('EXPORTED_DYNAMIC_SIG', ['-sDYNCALLS', '-sEXPORTED_RUNTIME_METHODS=dynCall']),
         ('FROM_OUTSIDE', ['-sEXPORTED_RUNTIME_METHODS=dynCall_iiji'])
       ]
 
@@ -7262,12 +7013,26 @@ void* operator new(size_t size) {
       print(str(args) + ' ' + which)
       self.do_core_test('dyncall_specific.c', emcc_args=['-D' + which] + list(args) + extra_args)
 
+  @also_with_wasm_bigint
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
-    def test(out_suffix='', args=None, assert_returncode=0):
-      if not out_suffix and self.is_wasm64():
-        out_suffix = '64'
-      self.do_run_in_out_file_test('core/test_getValue_setValue.cpp', out_suffix=out_suffix, assert_returncode=assert_returncode, emcc_args=args)
+    def test(args=None, asserts=False):
+      if asserts:
+        out_suffix = '_assert'
+      else:
+        out_suffix = ''
+        if self.is_wasm64():
+          out_suffix += '64'
+        if self.get_setting('WASM_BIGINT'):
+          out_suffix += '_bigint'
+      assert_returncode = 0 if not asserts else NON_ZERO
+      self.do_run_in_out_file_test('core/test_getValue_setValue.cpp',
+                                   out_suffix=out_suffix,
+                                   assert_returncode=assert_returncode,
+                                   emcc_args=args)
+
+    if self.get_setting('WASM_BIGINT'):
+      self.emcc_args += ['-DWASM_BIGINT']
 
     # see that direct usage (not on module) works. we don't export, but the use
     # keeps it alive through JSDCE
@@ -7275,7 +7040,7 @@ void* operator new(size_t size) {
     # see that with assertions, we get a nice error message
     self.set_setting('EXPORTED_RUNTIME_METHODS', [])
     self.set_setting('ASSERTIONS')
-    test('_assert', assert_returncode=NON_ZERO)
+    test(asserts=True)
     self.set_setting('ASSERTIONS', 0)
     # see that when we export them, things work on the module
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue'])
@@ -7290,7 +7055,7 @@ void* operator new(size_t size) {
     def test(output_prefix='', args=None, assert_returncode=0):
       args += extra_args
       print(args)
-      self.do_runf(test_file('core/FS_exports.cpp'),
+      self.do_runf('core/FS_exports.cpp',
                    (read_file(test_file('core/FS_exports' + output_prefix + '.out')),
                     read_file(test_file('core/FS_exports' + output_prefix + '_2.out'))),
                    assert_returncode=assert_returncode, emcc_args=args)
@@ -7310,7 +7075,7 @@ void* operator new(size_t size) {
   def test_legacy_exported_runtime_numbers(self):
     # these used to be exported, but no longer are by default
     def test(expected, args=None, assert_returncode=0):
-      self.do_runf(test_file('core/legacy_exported_runtime_numbers.cpp'), expected,
+      self.do_runf('core/legacy_exported_runtime_numbers.cpp', expected,
                    assert_returncode=assert_returncode, emcc_args=args)
 
     # Without assertion indirect usages (via Module) result in `undefined` and direct usage
@@ -7321,14 +7086,15 @@ void* operator new(size_t size) {
     test('ALLOC_STACK is not defined', args=['-DDIRECT'], assert_returncode=NON_ZERO)
 
     # When assertions are enabled direct and indirect usage both abort with a useful error message.
-    not_exported = "Aborted('ALLOC_STACK' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the FAQ))"
-    not_included = "`ALLOC_STACK` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$ALLOC_STACK)"
+    not_exported = "Aborted('ALLOC_STACK' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ))"
+    not_included = "`ALLOC_STACK` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='$ALLOC_STACK')"
     self.set_setting('ASSERTIONS')
     test(not_exported, assert_returncode=NON_ZERO)
     test(not_included, args=['-DDIRECT'])
 
     # Adding the symbol to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE should allow direct usage, but
     # Module usage should continue to fail.
+    self.emcc_args += ['-Wno-deprecated']
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ALLOC_STACK'])
     test(not_exported, assert_returncode=NON_ZERO)
     test('1', args=['-DDIRECT'])
@@ -7339,7 +7105,7 @@ void* operator new(size_t size) {
     test('|1|', args=['-DDIRECT'])
 
   def test_response_file(self):
-    response_data = '-o %s/response_file.js %s' % (self.get_dir(), test_file('hello_world.cpp'))
+    response_data = '-o "%s/response_file.js" "%s"' % (self.get_dir(), test_file('hello_world.cpp'))
     create_file('rsp_file', response_data.replace('\\', '\\\\'))
     self.run_process([EMCC, "@rsp_file"] + self.get_emcc_args())
     self.do_run('response_file.js', 'hello, world', no_build=True)
@@ -7348,7 +7114,7 @@ void* operator new(size_t size) {
 
   def test_linker_response_file(self):
     objfile = 'response_file.o'
-    self.run_process([EMCC, '-c', test_file('hello_world.cpp'), '-o', objfile] + self.get_emcc_args(ldflags=False))
+    self.run_process([EMCC, '-c', test_file('hello_world.cpp'), '-o', objfile] + self.get_emcc_args(compile_only=True))
     # This should expand into -Wl,--start-group <objfile> -Wl,--end-group
     response_data = '--start-group ' + objfile + ' --end-group'
     create_file('rsp_file', response_data.replace('\\', '\\\\'))
@@ -7415,37 +7181,6 @@ void* operator new(size_t size) {
     self.do_run(src, 'waka 4999!')
     self.assertContained('_exported_func_from_response_file_1', read_file('src.js'))
 
-  def test_add_function(self):
-    self.set_setting('INVOKE_RUN', 0)
-    self.set_setting('WASM_ASYNC_COMPILATION', 0)
-    self.set_setting('RESERVED_FUNCTION_POINTERS')
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['callMain'])
-    src = test_file('interop/test_add_function.cpp')
-    post_js = test_file('interop/test_add_function_post.js')
-    self.emcc_args += ['--post-js', post_js]
-
-    print('basics')
-    self.do_run_in_out_file_test('interop/test_add_function.cpp')
-
-    print('with RESERVED_FUNCTION_POINTERS=0')
-    self.set_setting('RESERVED_FUNCTION_POINTERS', 0)
-    expected = 'Unable to grow wasm table'
-    if self.is_wasm2js():
-      # in wasm2js the error message doesn't come from the VM, but from our
-      # emulation code. when ASSERTIONS are enabled we show a clear message, but
-      # in optimized builds we don't waste code size on that, and the JS engine
-      # shows a generic error.
-      expected = 'wasmTable.grow is not a function'
-
-    self.do_runf(src, expected, assert_returncode=NON_ZERO)
-
-    print('- with table growth')
-    self.set_setting('ALLOW_TABLE_GROWTH')
-    self.emcc_args += ['-DGROWTH']
-    # enable costly assertions to verify correct table behavior
-    self.set_setting('ASSERTIONS', 2)
-    self.do_run_in_out_file_test('interop/test_add_function.cpp', interleaved_output=False)
-
   def test_emulate_function_pointer_casts(self):
     # Forcibly disable EXIT_RUNTIME due to:
     # https://github.com/emscripten-core/emscripten/issues/15081
@@ -7460,7 +7195,6 @@ void* operator new(size_t size) {
   })
   def test_demangle_stacks(self, extra_args):
     self.emcc_args += extra_args
-    self.set_setting('DEMANGLE_SUPPORT')
     self.set_setting('ASSERTIONS')
     # disable aggressive inlining in binaryen
     self.set_setting('BINARYEN_EXTRA_PASSES', '--one-caller-inline-max-function-size=1')
@@ -7481,15 +7215,15 @@ void* operator new(size_t size) {
     self.set_setting('BINARYEN_EXTRA_PASSES', '--one-caller-inline-max-function-size=1')
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$stackTrace')
 
-    self.set_setting('DEMANGLE_SUPPORT')
+    self.set_setting('ENVIRONMENT', 'node,shell')
     if '-O' not in str(self.emcc_args) or '-O0' in self.emcc_args or '-O1' in self.emcc_args or '-g' in self.emcc_args:
       self.skipTest("without opts, we don't emit a symbol map")
     self.emcc_args += ['--emit-symbol-map']
-    self.do_runf(test_file('core/test_demangle_stacks.cpp'), 'Aborted', assert_returncode=NON_ZERO)
+    self.do_runf('core/test_demangle_stacks.cpp', 'Aborted', assert_returncode=NON_ZERO)
     # make sure the shortened name is the right one
     full_aborter = None
     short_aborter = None
-    for line in open('test_demangle_stacks.js.symbols').readlines():
+    for line in read_file('test_demangle_stacks.js.symbols').splitlines():
       if ':' not in line:
         continue
       # split by the first ':' (wasm backend demangling may include more :'s later on)
@@ -7500,7 +7234,7 @@ void* operator new(size_t size) {
     self.assertIsNotNone(full_aborter)
     self.assertIsNotNone(short_aborter)
     print('full:', full_aborter, 'short:', short_aborter)
-    if config.SPIDERMONKEY_ENGINE and os.path.exists(config.SPIDERMONKEY_ENGINE[0]):
+    if config.SPIDERMONKEY_ENGINE:
       output = self.run_js('test_demangle_stacks.js', engine=config.SPIDERMONKEY_ENGINE, assert_returncode=NON_ZERO)
       # we may see the full one, if -g, or the short one if not
       if ' ' + short_aborter + ' ' not in output and ' ' + full_aborter + ' ' not in output:
@@ -7574,7 +7308,7 @@ void* operator new(size_t size) {
     output = 'hello, world!'
 
     def test2():
-      self.do_runf(test_file('hello_libcxx.cpp'), output)
+      self.do_runf('hello_libcxx.cpp', output)
 
     # in standalone more there is more usage of WASI APIs, which mode 2 is
     # needed to avoid in order to fully optimize, so do not test mode 1 in
@@ -7584,10 +7318,13 @@ void* operator new(size_t size) {
 
     do_test(test2, level=2, prefix='hello_libcxx')
 
-  def test_embind(self):
-    # Verify that both the old `--bind` arg and the new `-lembind` arg work
-    for args in [['-lembind'], ['--bind']]:
-      create_file('test_embind.cpp', r'''
+  @parameterized({
+    '': (['-lembind', '-sDYNAMIC_EXECUTION=0'],),
+    'flag': (['--bind'],),
+  })
+  def test_embind(self, args):
+    self.maybe_closure()
+    create_file('test_embind.cpp', r'''
       #include <stdio.h>
       #include <emscripten/val.h>
 
@@ -7602,19 +7339,20 @@ void* operator new(size_t size) {
 
         return 0;
       }
-      ''')
-      self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
+    ''')
+    self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
 
-  @parameterized({
-    '': ([],),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
-  })
   @node_pthreads
-  def test_embind_2(self, args):
-    self.emcc_args += ['-lembind', '--post-js', 'post.js'] + args
+  def test_embind_2(self):
+    self.maybe_closure()
+    self.emcc_args += [
+      '-lembind', '--post-js', 'post.js',
+      # for extra coverage, test using pthreads
+      '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'
+    ]
     create_file('post.js', '''
       function printLerp() {
-        out('lerp ' + Module.lerp(100, 200, 66) + '.');
+        out('lerp ' + Module['lerp'](100, 200, 66) + '.');
       }
     ''')
     create_file('test_embind_2.cpp', r'''
@@ -7627,7 +7365,7 @@ void* operator new(size_t size) {
         return (100 - t) * a + t * b;
       }
       EMSCRIPTEN_BINDINGS(my_module) {
-        _emscripten_err("test bindings");
+        emscripten_err("test bindings");
         function("lerp", &lerp);
       }
       int main(int argc, char **argv) {
@@ -7642,7 +7380,7 @@ void* operator new(size_t size) {
     create_file('post.js', '''
       function ready() {
         try {
-          Module.compute(new Uint8Array([1,2,3]));
+          Module['compute'](new Uint8Array([1,2,3]));
         } catch(e) {
           out(e);
         }
@@ -7669,7 +7407,7 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
       function printFirstElement() {
-        out(Module.getBufferView()[0]);
+        out(Module['getBufferView']()[0]);
       }
     ''')
     create_file('test_embind_4.cpp', r'''
@@ -7723,9 +7461,86 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('embind/test_val.cpp')
 
+  def test_embind_val_read_pointer(self):
+    self.emcc_args += ['-lembind']
+    self.do_runf('embind/test_val_read_pointer.cpp')
+
   def test_embind_val_assignment(self):
     err = self.expect_fail([EMCC, test_file('embind/test_val_assignment.cpp'), '-lembind', '-c'])
     self.assertContained('candidate function not viable: expects an lvalue for object argument', err)
+
+  @node_pthreads
+  def test_embind_val_cross_thread(self):
+    self.emcc_args += ['--bind']
+    create_file('test_embind_val_cross_thread.cpp', r'''
+      #include <emscripten.h>
+      #include <emscripten/val.h>
+      #include <thread>
+      #include <stdio.h>
+
+      using emscripten::val;
+
+      int main(int argc, char **argv) {
+        // Store a value handle from the main thread.
+        val value(0);
+        std::thread([&] {
+          // Set to a value handle from a different thread.
+          value = val(1);
+        }).join();
+        // Try to access the stored handle from the main thread.
+        // Without the check (if compiled with -DNDEBUG) this will incorrectly
+        // print "0" instead of "1" since the handle with the same ID
+        // resolves to different values on different threads.
+        printf("%d\n", value.as<int>());
+      }
+    ''')
+    self.do_runf('test_embind_val_cross_thread.cpp', 'val accessed from wrong thread', assert_returncode=NON_ZERO)
+
+  @node_pthreads
+  def test_embind_val_cross_thread_deleted(self):
+    self.emcc_args += ['--bind']
+    create_file('test_embind_val_cross_thread.cpp', r'''
+      #include <emscripten.h>
+      #include <emscripten/val.h>
+      #include <thread>
+      #include <stdio.h>
+      #include <optional>
+
+      using emscripten::val;
+
+      int main(int argc, char **argv) {
+        // Create a storage for value handles on the main thread.
+        std::optional<val> opt_value;
+        std::thread([&] {
+          // Set to a value handle from a different thread.
+          val& value = opt_value.emplace(1);
+          // Move out from the optional storage so that we free the value on the same thread.
+          val moved_out = std::move(value);
+        }).join();
+        // Now std::optional is initialized but with a deleted value handle.
+        // There should be no cross-thread error here when it tries to free that value,
+        // because the value has already been deleted on the correct thread.
+      }
+    ''')
+    self.do_runf('test_embind_val_cross_thread.cpp')
+
+  def test_embind_val_coro(self):
+    create_file('post.js', r'''Module.onRuntimeInitialized = () => {
+      Module.asyncCoro().then(console.log);
+    }''')
+    self.emcc_args += ['-std=c++20', '--bind', '--post-js=post.js']
+    self.do_runf('embind/test_val_coro.cpp', '34\n')
+
+  def test_embind_val_coro_caught(self):
+    self.set_setting('EXCEPTION_STACK_TRACES')
+    create_file('post.js', r'''Module.onRuntimeInitialized = () => {
+      Module.throwingCoro().then(
+        console.log,
+        err => console.error(`rejected with: ${err.stack}`)
+      );
+    }''')
+    self.emcc_args += ['-std=c++20', '--bind', '--post-js=post.js', '-fexceptions']
+    self.do_runf('embind/test_val_coro.cpp', 'rejected with: std::runtime_error: bang from throwingCoro!\n')
 
   def test_embind_dynamic_initialization(self):
     self.emcc_args += ['-lembind']
@@ -7735,14 +7550,14 @@ void* operator new(size_t size) {
   def test_embind_i64_val(self):
     self.set_setting('WASM_BIGINT')
     self.emcc_args += ['-lembind']
-    self.node_args += shared.node_bigint_flags()
+    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True)
 
   @no_wasm2js('wasm_bigint')
   def test_embind_i64_binding(self):
     self.set_setting('WASM_BIGINT')
-    self.emcc_args += ['-lembind']
-    self.node_args += shared.node_bigint_flags()
+    self.emcc_args += ['-lembind', '--js-library', test_file('embind/test_i64_binding.js')]
+    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_run_in_out_file_test('embind/test_i64_binding.cpp', assert_identical=True)
 
   def test_embind_no_rtti(self):
@@ -7753,7 +7568,7 @@ void* operator new(size_t size) {
       #include <stdio.h>
 
       EM_JS(void, calltest, (), {
-        console.log("dotest returned: " + Module.dotest());
+        out("dotest returned: " + Module["dotest"]());
       });
 
       int main(int argc, char** argv){
@@ -7785,7 +7600,7 @@ void* operator new(size_t size) {
       #include <stdio.h>
 
       EM_JS(void, calltest, (), {
-        console.log("dotest returned: " + Module.dotest());
+        out("dotest returned: " + Module["dotest"]());
       });
 
       int main(int argc, char** argv){
@@ -7805,7 +7620,6 @@ void* operator new(size_t size) {
     self.emcc_args += ['-lembind', '-fno-rtti', '-frtti']
     self.do_run(src, '418\ndotest returned: 42\n')
 
-  @no_wasm64('webidl not compatible with MEMORY64 yet')
   @parameterized({
     '': ('DEFAULT', False),
     'all': ('ALL', False),
@@ -7815,24 +7629,27 @@ void* operator new(size_t size) {
   })
   def test_webidl(self, mode, allow_memory_growth):
     self.uses_es6 = True
-    # TODO(): Remove once we make webidl output closure-warning free.
-    self.ldflags.append('-Wno-error=closure')
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     if self.maybe_closure():
       # avoid closure minified names competing with our test code in the global name space
       self.set_setting('MODULARIZE')
+      self.set_setting('EXPORT_NAME', 'createModule')
     else:
       self.set_setting('WASM_ASYNC_COMPILATION', 0)
 
     # Force IDL checks mode
+    if self.is_wasm64():
+      args = ['--wasm64']
+    else:
+      args = []
     with env_modify({'IDL_CHECKS': mode}):
-      self.run_process([WEBIDL_BINDER, test_file('webidl/test.idl'), 'glue'])
+      self.run_process([WEBIDL_BINDER, test_file('webidl/test.idl'), 'glue'] + args)
     self.assertExists('glue.cpp')
     self.assertExists('glue.js')
 
     post_js = '\n\n'
     if self.get_setting('MODULARIZE'):
-      post_js += 'var TheModule = Module();\n'
+      post_js += 'var TheModule = createModule();\n'
     else:
       post_js += 'var TheModule = Module;\n'
     post_js += '\n\n'
@@ -7846,14 +7663,15 @@ void* operator new(size_t size) {
 
     # Export things on "TheModule". This matches the typical use pattern of the bound library
     # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
-    self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free', '--post-js=glue.js', '--extern-post-js=extern-post.js']
+    self.emcc_args += ['--post-js=glue.js', '--extern-post-js=extern-post.js']
     if mode == 'ALL':
       self.emcc_args += ['-sASSERTIONS']
     if allow_memory_growth:
       self.set_setting('ALLOW_MEMORY_GROWTH')
+      if self.get_setting('INITIAL_MEMORY') == '4200mb':
+        self.set_setting('MAXIMUM_MEMORY', '4300mb')
 
-    expected = test_file('webidl/output_%s.txt' % mode)
-    self.do_run_from_file(test_file('webidl/test.cpp'), expected, includes=['.'])
+    self.do_run_in_out_file_test(test_file('webidl/test.cpp'), out_suffix='_' + mode, includes=['.'])
 
   # Test that we can perform fully-synchronous initialization when combining WASM_ASYNC_COMPILATION=0 + PTHREAD_POOL_DELAY_LOAD=1.
   # Also checks that PTHREAD_POOL_DELAY_LOAD=1 adds a pthreadPoolReady promise that users can wait on for pthread initialization.
@@ -7863,7 +7681,7 @@ void* operator new(size_t size) {
     self.set_setting('PTHREAD_POOL_DELAY_LOAD', 1)
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.emcc_args += ['-lembind', '--post-js=' + test_file('core/pthread/test_embind_sync_if_pthread_delayed.post.js')]
-    self.do_run_in_out_file_test(test_file('core/pthread/test_embind_sync_if_pthread_delayed.cpp'))
+    self.do_run_in_out_file_test('core/pthread/test_embind_sync_if_pthread_delayed.cpp')
 
   ### Tests for tools
 
@@ -7911,7 +7729,7 @@ void* operator new(size_t size) {
     self.emcc(os.path.abspath('src.cpp'),
               self.get_emcc_args(),
               out_filename)
-    map_referent = out_filename if not self.is_wasm() else wasm_filename
+    map_referent = out_filename if self.is_wasm2js() else wasm_filename
     # after removing the @line and @sourceMappingURL comments, the build
     # result should be identical to the non-source-mapped debug version.
     # this is worth checking because the parser AST swaps strings for token
@@ -8089,7 +7907,7 @@ void* operator new(size_t size) {
     # test that the combination of modularize + closure + pre-js works. in that mode,
     # closure should not minify the Module object in a way that the pre-js cannot use it.
     create_file('post.js', 'var TheModule = Module();\n')
-    if not self.is_wasm():
+    if self.is_wasm2js():
       # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
       self.ldflags.append('-Wno-error=closure')
 
@@ -8105,10 +7923,9 @@ void* operator new(size_t size) {
   @no_wasm2js('symbol names look different wasm2js backtraces')
   @also_with_wasm_bigint
   def test_emscripten_log(self):
-    self.set_setting('DEMANGLE_SUPPORT')
     if '-g' not in self.emcc_args:
       self.emcc_args.append('-g')
-    self.emcc_args += ['-DRUN_FROM_JS_SHELL']
+    self.emcc_args += ['-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
     self.do_run_in_out_file_test('emscripten_log/emscripten_log.cpp', interleaved_output=False)
     # test closure compiler as well
     if self.maybe_closure():
@@ -8148,9 +7965,7 @@ void* operator new(size_t size) {
       }
     ''')
     create_file('pre.js', '''
-      Module.onExit = function() {
-        out('I see exit status: ' + EXITSTATUS);
-      }
+      Module.onExit = () => out('I see exit status: ' + EXITSTATUS);
     ''')
     self.emcc_args += ['--pre-js', 'pre.js']
     print('.. exit')
@@ -8160,28 +7975,8 @@ void* operator new(size_t size) {
     print('.. _Exit')
     self.do_runf('exit.c', 'hello, world!\nI see exit status: 118', assert_returncode=118, emcc_args=['-DCAPITAL_EXIT'])
 
-  def test_noexitruntime(self):
-    src = r'''
-      #include <emscripten.h>
-      #include <stdio.h>
-      static int testPre = TEST_PRE;
-      struct Global {
-        Global() {
-          printf("in Global()\n");
-          if (testPre) { EM_ASM(noExitRuntime = true;); }
-        }
-        ~Global() { printf("ERROR: in ~Global()\n"); }
-      } global;
-      int main() {
-        if (!testPre) { EM_ASM(noExitRuntime = true;); }
-        printf("in main()\n");
-      }
-    '''
-    self.do_run(src.replace('TEST_PRE', '0'), 'in Global()\nin main()')
-    self.do_run(src.replace('TEST_PRE', '1'), 'in Global()\nin main()')
-
   def test_minmax(self):
-    self.do_runf(test_file('test_minmax.c'), 'NAN != NAN\nSuccess!')
+    self.do_runf('test_minmax.c', 'NAN != NAN\nSuccess!')
 
   def test_localeconv(self):
     self.do_run_in_out_file_test('core/test_localeconv.c')
@@ -8193,11 +7988,17 @@ void* operator new(size_t size) {
     self.do_run_in_out_file_test('core/test_setlocale.c')
 
   def test_vswprintf_utf8(self):
-    self.do_run_in_out_file_test('vswprintf_utf8.c')
+    self.do_core_test('test_vswprintf_utf8.c')
+
+  # Test async sleeps in the presence of invoke_* calls, which can happen with
+  # longjmp or exceptions.
+  def test_asyncify_longjmp(self):
+    self.set_setting('ASYNCIFY')
+    self.set_setting('STRICT')
+    self.do_core_test('test_asyncify_longjmp.c')
 
   # Test that a main with arguments is automatically asyncified.
-  @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_async_main(self):
     create_file('main.c',  r'''
 #include <stdio.h>
@@ -8210,8 +8011,7 @@ int main(int argc, char **argv) {
 
     self.do_runf('main.c', 'argc=2 argv=hello', args=['hello'])
 
-  @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_async_hello(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
@@ -8235,8 +8035,7 @@ int main() {
 
     self.do_runf('main.c', 'HelloWorld!99')
 
-  @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_async_loop(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
@@ -8255,11 +8054,9 @@ int main() {
     self.do_runf('main.c', 'hello 0\nhello 1\nhello 2\nhello 3\nhello 4\n')
 
   @requires_v8
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_async_hello_v8(self):
     self.test_async_hello()
 
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_async_ccall_bad(self):
     # check bad ccall use
     # needs to flush stdio streams
@@ -8278,7 +8075,7 @@ int main() {
 }
 ''')
     create_file('pre.js', '''
-Module['onRuntimeInitialized'] = function() {
+Module.onRuntimeInitialized = () => {
   try {
     ccall('main', 'number', ['number', 'string'], [2, 'waka']);
     var never = true;
@@ -8291,8 +8088,7 @@ Module['onRuntimeInitialized'] = function() {
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('main.c', 'The call to main is running asynchronously.')
 
-  @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_async_ccall_good(self):
     # check reasonable ccall use
     # needs to flush stdio streams
@@ -8311,7 +8107,7 @@ int main() {
 }
 ''')
     create_file('pre.js', '''
-Module['onRuntimeInitialized'] = function() {
+Module.onRuntimeInitialized = () => {
   ccall('main', null, ['number', 'string'], [2, 'waka'], { async: true });
 };
 ''')
@@ -8319,12 +8115,16 @@ Module['onRuntimeInitialized'] = function() {
     self.do_runf('main.c', 'HelloWorld')
 
   @parameterized({
-    '': (False,),
-    'exit_runtime': (True,),
+    'asyncify': (False, 1),
+    'exit_runtime_asyncify': (True, 1),
+    'jspi': (False, 2),
+    'exit_runtime_jspi': (True, 2),
   })
-  @no_wasm64('TODO: asyncify for wasm64')
-  def test_async_ccall_promise(self, exit_runtime):
-    self.set_setting('ASYNCIFY')
+  def test_async_ccall_promise(self, exit_runtime, asyncify):
+    if asyncify == 2:
+      self.require_jspi()
+      self.set_setting('ASYNCIFY_EXPORTS', ['stringf', 'floatf'])
+    self.set_setting('ASYNCIFY', asyncify)
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('ASSERTIONS')
     self.set_setting('INVOKE_RUN', 0)
@@ -8346,13 +8146,13 @@ double floatf() {
 }
 ''')
     create_file('pre.js', r'''
-Module['onRuntimeInitialized'] = function() {
+Module.onRuntimeInitialized = () => {
   runtimeKeepalivePush();
   ccall('stringf', 'string', ['string'], ['first\n'], { async: true })
     .then(function(val) {
-      console.log(val);
+      out(val);
       ccall('floatf', 'number', null, null, { async: true }).then(function(arg) {
-        console.log(arg);
+        out(arg);
         runtimeKeepalivePop();
         maybeExit();
       });
@@ -8362,14 +8162,12 @@ Module['onRuntimeInitialized'] = function() {
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('main.c', 'stringf: first\nsecond\n6.4')
 
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY')
     self.maybe_closure()
-    self.do_runf(test_file('test_fibers.cpp'), '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
+    self.do_runf('test_fibers.cpp', '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
-  @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_asyncify_unused(self):
     # test a program not using asyncify, but the pref is set
     self.do_core_test('test_hello_world.c')
@@ -8386,7 +8184,6 @@ Module['onRuntimeInitialized'] = function() {
     'onlylist_b_response': ([], True,  '["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'),
     'onlylist_c_response': ([], False, '["main","__original_main","foo(int, double)","baz()","c_baz"]'),
   })
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_lists(self, args, should_pass, response=None):
     if response is not None:
       create_file('response.file', response)
@@ -8397,7 +8194,7 @@ Module['onRuntimeInitialized'] = function() {
     if should_pass:
       self.do_core_test('test_asyncify_lists.cpp', assert_identical=True)
     else:
-       self.do_runf(test_file('core/test_asyncify_lists.cpp'), ('RuntimeError', 'Thrown at'), assert_returncode=NON_ZERO)
+       self.do_runf('core/test_asyncify_lists.cpp', ('RuntimeError', 'Thrown at'), assert_returncode=NON_ZERO)
 
     # use of ASYNCIFY_* options may require intermediate debug info. that should
     # not end up emitted in the final binary
@@ -8418,7 +8215,6 @@ Module['onRuntimeInitialized'] = function() {
     'ignoreindirect': (['-sASYNCIFY_IGNORE_INDIRECT'], False),
     'add': (['-sASYNCIFY_IGNORE_INDIRECT', '-sASYNCIFY_ADD=["__original_main","main","virt()"]'], True),
   })
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_indirect_lists(self, args, should_pass):
     self.set_setting('ASYNCIFY')
     self.emcc_args += args
@@ -8432,7 +8228,6 @@ Module['onRuntimeInitialized'] = function() {
         raise
 
   @needs_dylink
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_side_module(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_IMPORTS', ['my_sleep'])
@@ -8462,12 +8257,10 @@ Module['onRuntimeInitialized'] = function() {
     ''', 'before sleep\n42\n42\nafter sleep\n', header='void my_sleep(int);', force_c=True)
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_emscripten_scan_registers(self):
     self.set_setting('ASYNCIFY')
     self.do_core_test('test_emscripten_scan_registers.cpp')
 
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_assertions(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_IMPORTS', ['suspend'])
@@ -8476,7 +8269,6 @@ Module['onRuntimeInitialized'] = function() {
 
   @no_lsan('leaks asyncify stack during exit')
   @no_asan('leaks asyncify stack during exit')
-  @no_wasm64('TODO: asyncify for wasm64')
   def test_asyncify_during_exit(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASSERTIONS')
@@ -8488,14 +8280,24 @@ Module['onRuntimeInitialized'] = function() {
   @no_asan('asyncify stack operations confuse asan')
   @no_lsan('undefined symbol __global_base')
   @no_wasm2js('dynamic linking support in wasm2js')
-  @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
+  @needs_dylink
   def test_asyncify_main_module(self):
     self.set_setting('MAIN_MODULE', 2)
     self.do_core_test('test_hello_world.c')
 
+  # Test that pthread_join works correctly with asyncify.
+  @requires_node_canary
+  @node_pthreads
+  def test_pthread_join_and_asyncify(self):
+    # TODO Test with ASYNCIFY=1 https://github.com/emscripten-core/emscripten/issues/17552
+    self.require_jspi()
+    self.do_runf('core/test_pthread_join_and_asyncify.c', 'joining thread!\njoined thread!',
+                 emcc_args=['-sASYNCIFY_EXPORTS=run_thread',
+                            '-sEXIT_RUNTIME=1',
+                            '-pthread', '-sPROXY_TO_PTHREAD'])
+
   @no_asan('asyncify stack operations confuse asan')
-  @no_wasm64('TODO: asyncify for wasm64')
   @no_wasm2js('TODO: lazy loading in wasm2js')
   @parameterized({
     'conditional': (True,),
@@ -8553,10 +8355,9 @@ Module['onRuntimeInitialized'] = function() {
         # $foo_end is not present in the wasm, nothing to break
         shutil.copyfile(name, name + '.orig')
         return False
-      with open('wat.wat', 'w') as f:
-        f.write(wat)
+      create_file('wat.wat', wat)
       shutil.move(name, name + '.orig')
-      self.run_process([Path(building.get_binaryen_bin(), 'wasm-as'), 'wat.wat', '-o', name, '-g'])
+      self.run_process([Path(building.get_binaryen_bin(), 'wasm-as'), 'wat.wat', '-o', name, '-g', '--all-features'])
       return True
 
     def verify_working(args):
@@ -8592,25 +8393,18 @@ Module['onRuntimeInitialized'] = function() {
 
   # Test basic wasm2js functionality in all core compilation modes.
   @no_sanitize('no wasm2js support yet in sanitizers')
-  @no_wasm64('no wasm2js support yet with wasm64')
+  @requires_wasm2js
   def test_wasm2js(self):
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
     self.set_setting('WASM', 0)
     self.do_core_test('test_hello_world.c')
-    # a mem init file is emitted just like with JS
-    expect_memory_init_file = self.uses_memory_init_file()
-    if expect_memory_init_file:
-      self.assertExists('test_hello_world.js.mem')
-      mem = read_binary('test_hello_world.js.mem')
-      self.assertTrue(mem[-1] != b'\0')
-    else:
-      self.assertNotExists('test_hello_world.js.mem')
+    self.assertNotExists('test_hello_world.js.mem')
 
   @no_sanitize('no wasm2js support yet in sanitizers')
-  @no_wasm64('no wasm2js support yet with wasm64')
+  @requires_wasm2js
   def test_maybe_wasm2js(self):
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
     self.set_setting('MAYBE_WASM2JS')
     # see that running as wasm works
@@ -8626,13 +8420,13 @@ Module['onRuntimeInitialized'] = function() {
     self.assertContained('hello, world!', self.run_js('do_wasm2js.js'))
 
   @no_asan('no wasm2js support yet in asan')
-  @no_wasm64('no wasm2js support yet with wasm64')
+  @requires_wasm2js
   @parameterized({
     '': ([],),
     'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
   })
   def test_wasm2js_fallback(self, args):
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
 
     cmd = [EMCC, test_file('small_hello_world.c'), '-sWASM=2'] + args
@@ -8645,7 +8439,7 @@ Module['onRuntimeInitialized'] = function() {
     os.rename('a.out.wasm.js.unused', 'a.out.wasm.js')
 
     # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
-    open('b.out.js', 'w').write('WebAssembly = undefined;\n' + read_file('a.out.js'))
+    create_file('b.out.js', 'WebAssembly = undefined;\n' + read_file('a.out.js'))
     os.remove('a.out.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
     self.assertContained('hello!', self.run_js('b.out.js'))
 
@@ -8678,8 +8472,8 @@ Module['onRuntimeInitialized'] = function() {
       }
     ''')
     create_file('lib.js', '''
-      mergeInto(LibraryManager.library, {
-        check_memprof_requirements: function() {
+      addToLibrary({
+        check_memprof_requirements: () => {
           if (typeof _emscripten_stack_get_base === 'function' &&
               typeof _emscripten_stack_get_end === 'function' &&
               typeof _emscripten_stack_get_current === 'function' &&
@@ -8701,15 +8495,14 @@ Module['onRuntimeInitialized'] = function() {
     self.emcc_args += ['-lidbfs.js']
     self.emcc_args += ['-lnodefs.js']
     create_file('pre.js', '''
-      Module = {};
-      Module['preRun'] = function() {
+      Module.preRun = () => {
         out(typeof FS.filesystems['MEMFS']);
         out(typeof FS.filesystems['IDBFS']);
         out(typeof FS.filesystems['NODEFS']);
         // Globals
-        console.log(typeof MEMFS);
-        console.log(typeof IDBFS);
-        console.log(typeof NODEFS);
+        out(typeof MEMFS);
+        out(typeof IDBFS);
+        out(typeof NODEFS);
       };
     ''')
     self.emcc_args += ['--pre-js', 'pre.js']
@@ -8720,20 +8513,19 @@ Module['onRuntimeInitialized'] = function() {
     self.set_setting('FORCE_FILESYSTEM')
     self.set_setting('ASSERTIONS')
     create_file('pre.js', '''
-      Module = {};
-      Module['preRun'] = function() {
+      Module.preRun = () => {
         out(typeof FS.filesystems['MEMFS']);
         out(typeof FS.filesystems['IDBFS']);
         out(typeof FS.filesystems['NODEFS']);
         // Globals
-        console.log(typeof MEMFS);
-        console.log(IDBFS);
-        console.log(NODEFS);
+        out(typeof MEMFS);
+        out(IDBFS);
+        out(NODEFS);
         FS.mkdir('/working1');
         try {
           FS.mount(IDBFS, {}, '/working1');
         } catch (e) {
-          console.log('|' + e + '|');
+          out('|' + e + '|');
         }
       };
     ''')
@@ -8751,15 +8543,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_stack_overflow_check(self):
     self.set_setting('STACK_SIZE', 1048576)
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
-    self.do_runf(test_file('stack_overflow.cpp'), 'Aborted(stack overflow', assert_returncode=NON_ZERO)
+    self.do_runf('stack_overflow.cpp', 'Aborted(stack overflow', assert_returncode=NON_ZERO)
 
     self.emcc_args += ['-DONE_BIG_STRING']
-    self.do_runf(test_file('stack_overflow.cpp'), 'Aborted(stack overflow', assert_returncode=NON_ZERO)
+    self.do_runf('stack_overflow.cpp', 'Aborted(stack overflow', assert_returncode=NON_ZERO)
 
     # ASSERTIONS=2 implies STACK_OVERFLOW_CHECK=2
     self.clear_setting('STACK_OVERFLOW_CHECK')
     self.set_setting('ASSERTIONS', 2)
-    self.do_runf(test_file('stack_overflow.cpp'), 'Aborted(stack overflow', assert_returncode=NON_ZERO)
+    self.do_runf('stack_overflow.cpp', 'Aborted(stack overflow', assert_returncode=NON_ZERO)
 
   @node_pthreads
   def test_binaryen_2170_emscripten_atomic_cas_u8(self):
@@ -8768,23 +8560,25 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @also_with_standalone_wasm()
   def test_sbrk(self):
-    self.do_runf(test_file('sbrk_brk.cpp'), 'OK.')
+    self.do_runf('sbrk_brk.cpp', 'OK.')
+    self.set_setting('ALLOW_MEMORY_GROWTH')
+    self.do_runf('sbrk_brk.cpp', 'OK.')
 
   def test_brk(self):
     self.emcc_args += ['-DTEST_BRK=1']
-    self.do_runf(test_file('sbrk_brk.cpp'), 'OK.')
+    self.do_runf('sbrk_brk.cpp', 'OK.')
 
   # Tests that we can use the dlmalloc mallinfo() function to obtain information
   # about malloc()ed blocks and compute how much memory is used/freed.
   @no_asan('mallinfo is not part of ASan malloc')
   @no_lsan('mallinfo is not part of LSan malloc')
   def test_mallinfo(self):
-    self.do_runf(test_file('mallinfo.cpp'), 'OK.')
+    self.do_core_test('test_mallinfo.c')
 
   @no_asan('cannot replace malloc/free with ASan')
   @no_lsan('cannot replace malloc/free with LSan')
   def test_wrap_malloc(self):
-    self.do_runf(test_file('core/test_wrap_malloc.c'), 'OK.')
+    self.do_runf('core/test_wrap_malloc.c', 'OK.')
 
   def test_environment(self):
     self.set_setting('ASSERTIONS')
@@ -8795,11 +8589,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
       assert ('require(' in js) == ('node' in self.get_setting('ENVIRONMENT')), 'we should have require() calls only if node js specified'
 
     for engine in config.JS_ENGINES:
-      print(engine)
+      print(f'engine: {engine}')
       # set us to test in just this engine
-      self.banned_js_engines = [e for e in config.JS_ENGINES if e != engine]
+      self.require_engine(engine)
       # tell the compiler to build with just that engine
-      if engine == config.NODE_JS:
+      if engine == config.NODE_JS_TEST:
         right = 'node'
         wrong = 'shell'
       else:
@@ -8838,14 +8632,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     ''')
     self.set_setting('EXIT_RUNTIME')
     self.emcc_args.append('--post-js=post.js')
-    self.do_runf(test_file('hello_world.c'), 'post run')
+    self.do_runf('hello_world.c', 'post run')
 
   # Tests that building with -sDECLARE_ASM_MODULE_EXPORTS=0 works
   def test_no_declare_asm_module_exports(self):
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.maybe_closure()
-    self.do_runf(test_file('declare_asm_module_exports.c'), 'jsFunction: 1')
+    self.do_runf('declare_asm_module_exports.c', 'jsFunction: 1')
     js = read_file('declare_asm_module_exports.js')
     occurances = js.count('cFunction')
     if self.is_optimizing() and '-g' not in self.emcc_args:
@@ -8867,7 +8661,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    self.do_runf(test_file('declare_asm_module_exports.c'), 'jsFunction: 1')
+    self.do_runf('declare_asm_module_exports.c', 'jsFunction: 1')
 
   # Tests that -sMINIMAL_RUNTIME works well in different build modes
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
@@ -8877,13 +8671,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'streaming_inst': (['-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION'],),
     'no_export': (['-sDECLARE_ASM_MODULE_EXPORTS=0'],)
   })
+  @requires_node  # TODO: Support for non-Node.js shells under MINIMAL_RUNTIME
   def test_minimal_runtime_hello_world(self, args):
-    # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
-    self.banned_js_engines = [config.V8_ENGINE, config.SPIDERMONKEY_ENGINE]
     self.emcc_args = args
     self.set_setting('MINIMAL_RUNTIME')
     self.maybe_closure()
-    self.do_runf(test_file('small_hello_world.c'), 'hello')
+    self.do_runf('small_hello_world.c', 'hello')
 
   # Test that printf() works in MINIMAL_RUNTIME=1
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
@@ -8900,7 +8693,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # compiler.  lsan also pulls in $FS
     if '-fsanitize=leak' not in self.emcc_args and extra_setting != 'FORCE_FILESYSTEM':
       self.maybe_closure()
-    self.do_runf(test_file('hello_world.c'), 'hello, world!')
+    self.do_runf('hello_world.c', 'hello, world!')
 
   # Tests that -sMINIMAL_RUNTIME works well with SAFE_HEAP
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
@@ -8914,7 +8707,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # lsan pulls in $FS
     if '-fsanitize=leak' not in self.emcc_args:
       self.maybe_closure()
-    self.do_runf(test_file('small_hello_world.c'), 'hello')
+    self.do_runf('small_hello_world.c', 'hello')
 
   # Tests global initializer with -sMINIMAL_RUNTIME
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
@@ -8923,38 +8716,40 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
     self.maybe_closure()
-    self.do_runf(test_file('test_global_initializer.cpp'), 't1 > t0: 1')
+    self.do_runf('test_global_initializer.cpp', 't1 > t0: 1')
 
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
   def test_return_address(self):
     self.set_setting('USE_OFFSET_CONVERTER')
-    self.do_runf(test_file('core/test_return_address.c'), 'passed')
+    self.do_runf('core/test_return_address.c', 'passed')
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   @no_lsan('-fsanitize-minimal-runtime cannot be used with LSan')
   def test_ubsan_minimal_too_many_errors(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
-    if not self.is_wasm():
+    if self.is_wasm2js():
       if self.is_optimizing():
         self.skipTest('test can only be run without optimizations on asm.js')
       # Need to use `-g` to get proper line numbers in asm.js
       self.emcc_args += ['-g']
-    self.do_runf(test_file('core/test_ubsan_minimal_too_many_errors.c'),
-                 expected_output='ubsan: add-overflow\n' * 20 + 'ubsan: too many errors\n')
+    self.do_runf('core/test_ubsan_minimal_too_many_errors.c',
+                 expected_output='ubsan: add-overflow by 0x[0-9a-f]*\n' * 20 + 'ubsan: too many errors\n',
+                 regex=True)
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   @no_lsan('-fsanitize-minimal-runtime cannot be used with LSan')
   def test_ubsan_minimal_errors_same_place(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
-    if not self.is_wasm():
+    if self.is_wasm2js():
       if self.is_optimizing():
-        self.skipTest('test can only be run without optimizations on asm.js')
-      # Need to use `-g` to get proper line numbers in asm.js
+        self.skipTest('test can only be run without optimizations under wasm2js')
+      # Need to use `-g` to get proper line numbers in wasm2js
       self.emcc_args += ['-g']
-    self.do_runf(test_file('core/test_ubsan_minimal_errors_same_place.c'),
-                 expected_output='ubsan: add-overflow\n' * 5)
+    self.do_runf('core/test_ubsan_minimal_errors_same_place.c',
+                 expected_output='ubsan: add-overflow by 0x[0-9a-z]*\n' * 5,
+                 regex=True)
 
   @parameterized({
     'fsanitize_undefined': (['-fsanitize=undefined'],),
@@ -8964,11 +8759,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_overflow(self, args):
     self.emcc_args += args
-    self.do_runf(test_file('core/test_ubsan_full_overflow.c'),
-                 assert_all=True, expected_output=[
-      ".c:3:5: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'",
-      ".c:7:7: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'",
-    ])
+    self.do_runf(
+      'core/test_ubsan_full_overflow.c',
+      assert_all=True,
+      expected_output=[
+        ".c:3:5: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'",
+        ".c:7:7: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'",
+      ])
 
   @parameterized({
     'fsanitize_undefined': (['-fsanitize=undefined'],),
@@ -8977,7 +8774,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_no_return(self, args):
     self.emcc_args += ['-Wno-return-type'] + args
-    self.do_runf(test_file('core/test_ubsan_full_no_return.cpp'),
+    self.do_runf('core/test_ubsan_full_no_return.cpp',
                  expected_output='.cpp:1:5: runtime error: execution reached the end of a value-returning function without returning a value', assert_returncode=NON_ZERO)
 
   @parameterized({
@@ -8988,11 +8785,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_left_shift(self, args):
     self.emcc_args += args
-    self.do_runf(test_file('core/test_ubsan_full_left_shift.c'),
-                 assert_all=True, expected_output=[
-      '.c:3:5: runtime error: left shift of negative value -1',
-      ".c:7:5: runtime error: left shift of 16 by 29 places cannot be represented in type 'int'"
-    ])
+    self.do_runf(
+      'core/test_ubsan_full_left_shift.c',
+      assert_all=True,
+      expected_output=[
+        '.c:3:5: runtime error: left shift of negative value -1',
+        ".c:7:5: runtime error: left shift of 16 by 29 places cannot be represented in type 'int'"
+      ])
 
   @parameterized({
     'fsanitize_undefined': (['-fsanitize=undefined'],),
@@ -9001,15 +8800,19 @@ NODEFS is no longer included by default; build with -lnodefs.js
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_null_ref(self, args):
+    if '-sMAIN_MODULE=2' in args:
+      self.check_dylink()
     if is_sanitizing(self.emcc_args):
       self.skipTest('test is specific to null sanitizer')
     self.emcc_args += args
-    self.do_runf(test_file('core/test_ubsan_full_null_ref.cpp'),
-                 assert_all=True, expected_output=[
-      ".cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
-      ".cpp:4:13: runtime error: reference binding to null pointer of type 'int'",
-      ".cpp:5:14: runtime error: reference binding to null pointer of type 'int'",
-    ])
+    self.do_runf(
+      'core/test_ubsan_full_null_ref.cpp',
+      assert_all=True,
+      expected_output=[
+        ".cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
+        ".cpp:4:13: runtime error: reference binding to null pointer of type 'int'",
+        ".cpp:5:14: runtime error: reference binding to null pointer of type 'int'",
+      ])
 
   @parameterized({
     'fsanitize_undefined': (['-fsanitize=undefined'],),
@@ -9018,11 +8821,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_static_cast(self, args):
     self.emcc_args += args
-    self.do_runf(test_file('core/test_ubsan_full_static_cast.cpp'),
-                 assert_all=True, expected_output=[
-      ".cpp:18:10: runtime error: downcast of address",
-      "which does not point to an object of type 'R'",
-    ])
+    self.do_runf(
+      'core/test_ubsan_full_static_cast.cpp',
+      assert_all=True,
+      expected_output=[
+        ".cpp:18:10: runtime error: downcast of address",
+        "which does not point to an object of type 'R'",
+      ])
 
   @parameterized({
     'g': ('-g', [
@@ -9038,15 +8843,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_stack_trace(self, g_flag, expected_output):
     if g_flag == '-gsource-map':
-      if not self.is_wasm():
+      if self.is_wasm2js():
         self.skipTest('wasm2js has no source map support')
       elif self.get_setting('EVAL_CTORS'):
         self.skipTest('EVAL_CTORS does not support source maps')
 
-    create_file('pre.js', 'Module = {UBSAN_OPTIONS: "print_stacktrace=1"};')
+    create_file('pre.js', 'Module.UBSAN_OPTIONS = "print_stacktrace=1";')
     self.emcc_args += ['-fsanitize=null', g_flag, '--pre-js=pre.js']
     self.set_setting('ALLOW_MEMORY_GROWTH')
-    self.do_runf(test_file('core/test_ubsan_full_null_ref.cpp'),
+    self.do_runf('core/test_ubsan_full_null_ref.cpp',
                  assert_all=True, expected_output=expected_output)
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
@@ -9071,6 +8876,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('TODO: ASAN in wasm2js')
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm64('TODO: ASAN in memory64')
+  @no_2gb('asan doesnt support GLOBAL_BASE')
   @parameterized({
     'c': ['test_asan_no_error.c'],
     'cpp': ['test_asan_no_error.cpp'],
@@ -9087,6 +8893,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # asan to test. here we want to test asan itself, so we work around that.
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm64('TODO: ASAN in memory64')
+  @no_2gb('asan doesnt support GLOBAL_BASE')
   @parameterized({
     'use_after_free_c': ('test_asan_use_after_free.c', [
       'AddressSanitizer: heap-use-after-free on address',
@@ -9139,12 +8946,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'vector': ('test_asan_vector.cpp', [
       'AddressSanitizer: container-overflow on address'
     ]),
+    # some coverage for mimalloc as well
+    'use_after_free_c_mimalloc': ('test_asan_use_after_free.c', [
+      'AddressSanitizer: heap-use-after-free on address',
+    ], ['-sMALLOC=mimalloc']),
   })
   def test_asan(self, name, expected_output, cflags=None):
     if '-Oz' in self.emcc_args:
       self.skipTest('-Oz breaks source maps')
 
-    if not self.is_wasm():
+    if self.is_wasm2js():
       self.skipTest('wasm2js has no ASan support')
 
     self.emcc_args.append('-fsanitize=address')
@@ -9159,16 +8970,18 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   @no_wasm64('TODO: ASAN in memory64')
+  @no_2gb('asan doesnt support GLOBAL_BASE')
   def test_asan_js_stack_op(self):
     self.emcc_args.append('-fsanitize=address')
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.set_setting('INITIAL_MEMORY', '300mb')
-    self.do_runf(test_file('core/test_asan_js_stack_op.c'),
+    self.do_runf('core/test_asan_js_stack_op.c',
                  expected_output='Hello, World!')
 
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   @no_wasm64('TODO: ASAN in memory64')
+  @no_2gb('asan doesnt support GLOBAL_BASE')
   def test_asan_api(self):
     self.emcc_args.append('-fsanitize=address')
     self.set_setting('INITIAL_MEMORY', '300mb')
@@ -9177,22 +8990,24 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   @no_wasm64('TODO: ASAN in memory64')
+  @no_2gb('asan doesnt support GLOBAL_BASE')
   def test_asan_modularized_with_closure(self):
     # the bug is that createModule() returns undefined, instead of the
     # proper Promise object.
-    create_file('post.js', 'if (!(createModule() instanceof Promise)) throw "Promise was not returned :(";\n')
+    create_file('post.js', 'if (!(createModule() instanceof Promise)) throw `Promise was not returned (${typeof createModule()})`;\n')
     self.emcc_args += ['-fsanitize=address', '--extern-post-js=post.js']
     self.set_setting('MODULARIZE')
     self.set_setting('EXPORT_NAME', 'createModule')
     self.set_setting('USE_CLOSURE_COMPILER')
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.set_setting('INITIAL_MEMORY', '300mb')
-    self.do_runf(test_file('hello_world.c'), expected_output='hello, world!')
+    self.do_runf('hello_world.c', expected_output='hello, world!')
 
   @no_asan('SAFE_HEAP cannot be used with ASan')
+  @no_2gb('asan doesnt support GLOBAL_BASE')
   def test_safe_heap_user_js(self):
     self.set_setting('SAFE_HEAP')
-    self.do_runf(test_file('core/test_safe_heap_user_js.c'),
+    self.do_runf('core/test_safe_heap_user_js.c',
                  expected_output=['Aborted(segmentation fault storing 1 bytes to address 0)'], assert_returncode=NON_ZERO)
 
   def test_safe_stack(self):
@@ -9203,7 +9018,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     else:
       expected = [r'Aborted\(stack overflow \(Attempt to set SP to 0x[0-9a-fA-F]+, with stack limits \[0x[0-9a-fA-F]+ - 0x[0-9a-fA-F]+\]\)',
                   '__handle_stack_overflow']
-    self.do_runf(test_file('core/test_safe_stack.c'),
+    self.do_runf('core/test_safe_stack.c',
                  expected_output=expected,
                  regex=True,
                  assert_all=True,
@@ -9219,7 +9034,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       expected = ['Aborted(stack overflow']
     else:
       expected = ['Aborted(stack overflow', '__handle_stack_overflow']
-    self.do_runf(test_file('core/test_safe_stack.c'),
+    self.do_runf('core/test_safe_stack.c',
                  expected_output=expected,
                  assert_returncode=NON_ZERO, assert_all=True)
 
@@ -9230,7 +9045,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       expected = ['Aborted(stack overflow']
     else:
       expected = ['Aborted(stack overflow', '__handle_stack_overflow']
-    self.do_runf(test_file('core/test_safe_stack_alloca.c'),
+    self.do_runf('core/test_safe_stack_alloca.c',
                  expected_output=expected,
                  assert_returncode=NON_ZERO, assert_all=True)
 
@@ -9278,7 +9093,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # test that the node environment can be specified by itself, and that still
     # works with pthreads (even though we did not specify 'node,worker')
     self.set_setting('ENVIRONMENT', 'node')
-    self.do_run_in_out_file_test('core/pthread/create.cpp')
+    self.set_setting('STRICT_JS')
+    self.do_run_in_out_file_test('core/pthread/create.c')
 
   @node_pthreads
   @parameterized({
@@ -9325,7 +9141,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['-DALLOW_SYNC']
-    self.do_run_in_out_file_test('core/pthread/create.cpp')
+    self.do_run_in_out_file_test('core/pthread/create.c')
 
   @node_pthreads
   def test_pthread_create_proxy(self):
@@ -9333,18 +9149,18 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['-DALLOW_SYNC']
-    self.do_run_in_out_file_test('core/pthread/create.cpp')
+    self.do_run_in_out_file_test('core/pthread/create.c')
 
   @node_pthreads
   def test_pthread_create_embind_stack_check(self):
     # embind should work with stack overflow checks (see #12356)
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('EXIT_RUNTIME')
+    self.set_setting('DEFAULT_TO_CXX')
     self.emcc_args += ['-lembind']
-    self.do_run_in_out_file_test('core/pthread/create.cpp')
+    self.do_run_in_out_file_test('core/pthread/create.c')
 
   @node_pthreads
-  @no_wasm64('MEMORY64 does not yet support exceptions')
   def test_pthread_exceptions(self):
     self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.set_setting('EXIT_RUNTIME')
@@ -9363,6 +9179,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('core/pthread/test_pthread_keepalive.c')
 
   @node_pthreads
+  def test_pthread_weak_ref(self):
+    self.do_run_in_out_file_test('core/pthread/test_pthread_weak_ref.c')
+
+  @node_pthreads
   def test_pthread_exit_main(self):
     self.do_run_in_out_file_test('core/pthread/test_pthread_exit_main.c')
 
@@ -9376,7 +9196,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('NODEJS_CATCH_EXIT', 0)
     self.emcc_args += ['--post-js', test_file('pthread/test_pthread_unhandledrejection.post.js')]
-    self.do_runf(test_file('pthread/test_pthread_unhandledrejection.c'), 'passed')
+    self.do_runf('pthread/test_pthread_unhandledrejection.c', 'passed')
 
   @node_pthreads
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
@@ -9386,7 +9206,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('USE_OFFSET_CONVERTER')
     if '-g' in self.emcc_args:
       self.emcc_args += ['-DDEBUG']
-    self.do_runf(test_file('core/test_return_address.c'), 'passed')
+    self.do_runf('core/test_return_address.c', 'passed')
 
   @node_pthreads
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
@@ -9399,18 +9219,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['--extern-post-js', 'post.js', '-sEXPORT_NAME=foo']
     if '-g' in self.emcc_args:
       self.emcc_args += ['-DDEBUG']
-    self.do_runf(test_file('core/test_return_address.c'), 'passed')
+    self.do_runf('core/test_return_address.c', 'passed')
 
   def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('core/pthread/emscripten_atomics.c')
 
-  @no_asan('incompatibility with atomics')
   @node_pthreads
   def test_emscripten_atomics(self):
     self.emcc_args.append('-pthread')
     self.do_run_in_out_file_test('core/pthread/emscripten_atomics.c')
 
-  @no_asan('incompatibility with atomics')
   @node_pthreads
   def test_emscripten_futexes(self):
     self.emcc_args.append('-pthread')
@@ -9434,7 +9252,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_pthread_dylink(self):
     self.emcc_args += ['-Wno-experimental', '-pthread']
-    self.set_setting('PTHREAD_POOL_SIZE', 2)
     main = test_file('core/pthread/test_pthread_dylink.c')
 
     # test with a long .so name, as a regression test for
@@ -9443,6 +9260,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     very_long_name = 'very_very_very_very_very_very_very_very_very_long.so'
 
     self.dylink_testf(main, so_name=very_long_name,
+                      main_emcc_args=['-sPTHREAD_POOL_SIZE=2'],
                       need_reverse=False)
 
   @parameterized({
@@ -9453,13 +9271,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_pthread_dylink_entry_point(self, args):
     self.emcc_args += ['-Wno-experimental', '-pthread']
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
     main = test_file('core/pthread/test_pthread_dylink_entry_point.c')
-    self.dylink_testf(main, need_reverse=False, emcc_args=args)
+    self.dylink_testf(main, need_reverse=False, emcc_args=args, main_emcc_args=['-sPTHREAD_POOL_SIZE=1'])
 
   @needs_dylink
   @node_pthreads
-  @no_wasm64('MEMORY64 does not yet support exceptions')
   def test_pthread_dylink_exceptions(self):
     self.emcc_args += ['-Wno-experimental', '-pthread']
     self.emcc_args.append('-fexceptions')
@@ -9471,17 +9287,20 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-Wno-experimental', '-pthread']
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_side.c'))
 
+    self.emcc_args += ['--embed-file', 'liblib.so@libside.so']
     self.prep_dlfcn_main()
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
-    self.do_runf(test_file('core/pthread/test_pthread_dlopen.c'),
+    self.do_runf('core/pthread/test_pthread_dlopen.c',
                  ['side module ctor', 'done join', 'side module atexit'],
                  assert_all=True)
 
   @needs_dylink
   @node_pthreads
-  @disabled('https://github.com/emscripten-core/emscripten/issues/18887')
   def test_pthread_dlopen_many(self):
+    if self.is_wasm64():
+     self.skipTest('https://github.com/emscripten-core/emscripten/issues/18887')
+
     nthreads = 10
     self.emcc_args += ['-Wno-experimental', '-pthread']
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_side.c'))
@@ -9493,15 +9312,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', 'jslib_func')
     create_file('lib.js', r'''
-      mergeInto(LibraryManager.library, {
+      addToLibrary({
         jslib_func__sig: 'v',
-        jslib_func: function() {
-          err('hello from js');
-        }
+        jslib_func: () => err('hello from js')
       });
     ''')
     self.emcc_args.append('--js-library=lib.js')
-    self.do_runf(test_file('core/pthread/test_pthread_dlopen_many.c'),
+    self.do_runf('core/pthread/test_pthread_dlopen_many.c',
                  ['side module ctor', 'main done', 'side module atexit'],
                  emcc_args=[f'-DNUM_THREADS={nthreads}'],
                  assert_all=True)
@@ -9515,60 +9332,64 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.prep_dlfcn_main()
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
-    self.do_runf(test_file('core/pthread/test_pthread_dlsym.c'))
+    self.do_runf('core/pthread/test_pthread_dlsym.c')
 
   @needs_dylink
   @node_pthreads
   def test_pthread_dylink_tls(self):
     self.emcc_args += ['-Wno-experimental', '-pthread']
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
     main = test_file('core/pthread/test_pthread_dylink_tls.c')
-    self.dylink_testf(main, need_reverse=False)
+    self.dylink_testf(main, need_reverse=False, main_emcc_args=['-sPTHREAD_POOL_SIZE=1'])
 
   @needs_dylink
   @node_pthreads
   def test_pthread_dylink_longjmp(self):
     self.emcc_args += ['-Wno-experimental', '-pthread']
-    self.set_setting('PTHREAD_POOL_SIZE=1')
     main = test_file('core/pthread/test_pthread_dylink_longjmp.c')
-    self.dylink_testf(main, need_reverse=False)
+    self.dylink_testf(main, need_reverse=False, main_emcc_args=['-sPTHREAD_POOL_SIZE=1'])
 
   @needs_dylink
   @node_pthreads
   def test_pthread_dylink_main_module_1(self):
     self.emcc_args += ['-Wno-experimental', '-pthread']
     self.set_setting('MAIN_MODULE')
-    self.do_runf(test_file('hello_world.c'))
+    self.do_runf('hello_world.c')
 
   @needs_dylink
-  @node_pthreads
-  def test_Module_dynamicLibraries_pthreads(self):
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-pthread', '-Wno-experimental'],)
+  })
+  def test_Module_dynamicLibraries(self, args):
     # test that Module.dynamicLibraries works with pthreads
-    self.emcc_args += ['-pthread', '-Wno-experimental']
+    self.emcc_args += args
     self.emcc_args += ['--pre-js', 'pre.js']
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     # This test is for setting dynamicLibraries at runtime so we don't
     # want emscripten loading `liblib.so` automatically (which it would
     # do without this setting.
     self.set_setting('NO_AUTOLOAD_DYLIBS')
 
     create_file('pre.js', '''
-      if (typeof importScripts == 'undefined') { // !ENVIRONMENT_IS_WORKER
-        // Load liblib.so by default on non-workers
-        Module['dynamicLibraries'] = ['liblib.so'];
-      } else {
-        // Verify whether the main thread passes Module.dynamicLibraries to the worker
-        assert(Module['dynamicLibraries'].includes('liblib.so'));
-      }
+      Module['dynamicLibraries'] = ['liblib.so'];
     ''')
+
+    if args:
+      self.setup_node_pthreads()
+      create_file('post.js', '''
+        if (ENVIRONMENT_IS_PTHREAD) {
+          err('sharedModules: ' + Object.keys(sharedModules));
+          assert('liblib.so' in sharedModules);
+          assert(sharedModules['liblib.so'] instanceof WebAssembly.Module);
+        }
+      ''')
+      self.emcc_args += ['--post-js', 'post.js']
 
     self.dylink_test(
       r'''
         #include <stdio.h>
         int side();
         int main() {
-          printf("result is %d", side());
+          printf("result is %d\n", side());
           return 0;
         }
       ''',
@@ -9578,17 +9399,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
       'result is 42')
 
   # Tests the emscripten_get_exported_function() API.
-  def test_emscripten_get_exported_function(self):
-    # Could also test with -sALLOW_TABLE_GROWTH
-    self.set_setting('RESERVED_FUNCTION_POINTERS', 2)
+  def test_get_exported_function(self):
+    self.set_setting('ALLOW_TABLE_GROWTH')
     self.emcc_args += ['-lexports.js']
     self.do_core_test('test_get_exported_function.cpp')
 
   # Tests the emscripten_get_exported_function() API.
   @no_asan('TODO: ASan support in minimal runtime')
-  def test_minimal_runtime_emscripten_get_exported_function(self):
-    # Could also test with -sALLOW_TABLE_GROWTH
-    self.set_setting('RESERVED_FUNCTION_POINTERS', 2)
+  def test_minimal_runtime_get_exported_function(self):
+    self.set_setting('ALLOW_TABLE_GROWTH')
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
     self.emcc_args += ['-lexports.js']
@@ -9635,6 +9454,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     err = self.expect_fail([EMCC, '-o', 'out.wasm', test_file('core/test_ctors_no_main.cpp')] + self.get_emcc_args())
     self.assertContained('undefined symbol: main', err)
 
+  @no_2gb('crashed wasmtime')
   def test_export_start(self):
     if not can_do_standalone(self):
       self.skipTest('standalone mode only')
@@ -9674,7 +9494,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # The unhandled exception wrappers should not kick in for exceptions thrown during main
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.emcc_args.append('--minify=0')
-    output = self.do_runf(test_file('core/test_abort_on_exceptions_main.c'), assert_returncode=NON_ZERO)
+    output = self.do_runf('core/test_abort_on_exceptions_main.c', assert_returncode=NON_ZERO)
     # The exception should make it all the way out
     self.assertContained('Error: crash', output)
     # And not be translated into abort by makeAbortWrapper
@@ -9682,6 +9502,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertNotContained('Aborted', output)
 
   @node_pthreads
+  @flaky('https://github.com/emscripten-core/emscripten/issues/20067')
   def test_abort_on_exceptions_pthreads(self):
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('PROXY_TO_PTHREAD')
@@ -9691,36 +9512,20 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @needs_dylink
   def test_gl_main_module(self):
     self.set_setting('MAIN_MODULE')
-    self.do_runf(test_file('core/test_gl_get_proc_address.c'))
+    self.emcc_args += ['-sGL_ENABLE_GET_PROC_ADDRESS']
+    self.do_runf('core/test_gl_get_proc_address.c')
 
   @needs_dylink
   def test_main_module_js_symbol(self):
     self.set_setting('MAIN_MODULE', 2)
     self.emcc_args += ['--js-library', test_file('core/test_main_module_js_symbol.js')]
-    self.do_runf(test_file('core/test_main_module_js_symbol.c'))
-
-  def test_REVERSE_DEPS(self):
-    create_file('connect.c', '#include <sys/socket.h>\nint main() { return (int)(long)&connect; }')
-    self.run_process([EMCC, 'connect.c'])
-    base_size = os.path.getsize('a.out.wasm')
-
-    # 'auto' should work (its the default)
-    self.run_process([EMCC, 'connect.c', '-sREVERSE_DEPS=auto'])
-
-    # 'all' should work too although it should produce a larger binary
-    self.run_process([EMCC, 'connect.c', '-sREVERSE_DEPS=all'])
-    self.assertGreater(os.path.getsize('a.out.wasm'), base_size)
-
-    # 'none' should fail to link because the dependency on ntohs was not added.
-    err = self.expect_fail([EMCC, 'connect.c', '-sREVERSE_DEPS=none'])
-    self.assertContained('undefined symbol: ntohs', err)
+    self.do_runf('core/test_main_module_js_symbol.c')
 
   def test_emscripten_async_call(self):
     self.set_setting('EXIT_RUNTIME')
-    self.do_run_in_out_file_test(test_file('core/test_emscripten_async_call.c'))
+    self.do_run_in_out_file_test('core/test_emscripten_async_call.c')
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_wasm64('TODO: asyncify for wasm64')
   @parameterized({
     '': ([],),
     'no_dynamic_execution': (['-sDYNAMIC_EXECUTION=0'],)
@@ -9730,7 +9535,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += [
       '-lembind',
       '-sASYNCIFY',
-      '-sASYNCIFY_IMPORTS=["sleep_and_return"]',
+      '-sASYNCIFY_IMPORTS=sleep_and_return',
       '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$ASSERTIONS',
       '--post-js', test_file('core/embind_lib_with_asyncify.test.js'),
     ]
@@ -9738,8 +9543,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('embind_lib_with_asyncify.cpp')
 
   @no_asan('asyncify stack operations confuse asan')
-  @no_wasm64('TODO: asyncify for wasm64')
-  @with_asyncify_and_stack_switching
+  @with_asyncify_and_jspi
   def test_em_async_js(self):
     self.uses_es6 = True
     if not self.get_setting('ASYNCIFY'):
@@ -9751,10 +9555,24 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @requires_v8
   @no_wasm2js('wasm2js does not support reference types')
   def test_externref(self):
-    self.run_process([EMCC, '-c', test_file('core/test_externref.s'), '-o', 'asm.o'] + self.get_emcc_args(ldflags=False))
+    self.run_process([EMCC, '-c', test_file('core/test_externref.s'), '-o', 'asm.o'] + self.get_emcc_args(compile_only=True))
     self.emcc_args += ['--js-library', test_file('core/test_externref.js')]
     self.emcc_args += ['-mreference-types']
     self.do_core_test('test_externref.c', libraries=['asm.o'])
+
+  @parameterized({
+    '': [False],
+    'dynlink': [True]
+  })
+  @requires_node
+  @no_wasm2js('wasm2js does not support reference types')
+  @no_asan('https://github.com/llvm/llvm-project/pull/83196')
+  def test_externref_emjs(self, dynlink):
+    self.emcc_args += ['-mreference-types']
+    self.node_args += shared.node_reference_types_flags(self.get_nodejs())
+    if dynlink:
+      self.set_setting('MAIN_MODULE', 2)
+    self.do_core_test('test_externref_emjs.c')
 
   def test_syscall_intercept(self):
     self.do_core_test('test_syscall_intercept.c')
@@ -9763,24 +9581,65 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_js_library_i64_params(self):
     # Tests the defineI64Param and receiveI64ParamAsI53 helpers that are
     # used to recieve i64 argument in syscalls.
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['setTempRet0'])
     self.emcc_args += ['--js-library=' + test_file('core/js_library_i64_params.js')]
     self.do_core_test('js_library_i64_params.c')
 
   def test_main_reads_args(self):
-    self.run_process([EMCC, '-c', test_file('core/test_main_reads_args_real.c'), '-o', 'real.o'] + self.get_emcc_args(ldflags=False))
+    self.run_process([EMCC, '-c', test_file('core/test_main_reads_args_real.c'), '-o', 'real.o'] + self.get_emcc_args(compile_only=True))
     self.do_core_test('test_main_reads_args.c', emcc_args=['real.o', '-sEXIT_RUNTIME'], regex=True)
 
   @requires_node
   def test_promise(self):
+    # This test depends on Promise.any, which in turn requires a modern target.  Check that it
+    # fails to even build on old targets.
+    err = self.expect_fail([EMCC, test_file('core/test_promise.c'), '-sMIN_CHROME_VERSION=75'])
+    self.assertContained('error: emscripten_promise_any used, but Promise.any is not supported by the current runtime configuration', err)
     self.do_core_test('test_promise.c')
+
+  @with_asyncify_and_jspi
+  def test_promise_await(self):
+    self.do_core_test('test_promise_await.c')
+
+  def test_promise_await_error(self):
+    # Check that the API is not available when ASYNCIFY is not set
+    self.do_runf('core/test_promise_await.c', 'Aborted(emscripten_promise_await is only available with ASYNCIFY)',
+                 assert_returncode=NON_ZERO)
+
+  def test_emscripten_async_load_script(self):
+    create_file('script1.js', 'Module._set(456);''')
+    create_file('file1.txt', 'first')
+    create_file('file2.txt', 'second')
+    # `--from-emcc` needed here otherwise the output defines `var Module =` which will shadow the
+    # global `Module`.
+    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt', '--from-emcc', '--js-output=script2.js'])
+    self.do_runf('test_emscripten_async_load_script.c', emcc_args=['-sFORCE_FILESYSTEM'])
+
+  def prep_wasm_worker_in_node(self):
+    # Auto exit after 3 seconds in Nodejs environment to get WASM Worker stdout
+    self.add_pre_run("setTimeout(()=>process.exit(), 3000);")
+
+  @node_pthreads
+  def test_wasm_worker_hello(self):
+    self.prep_wasm_worker_in_node()
+    self.do_run_in_out_file_test('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
+
+  @node_pthreads
+  def test_wasm_worker_malloc(self):
+    self.prep_wasm_worker_in_node()
+    self.do_run_in_out_file_test('wasm_worker/malloc_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
+
+  @node_pthreads
+  def test_wasm_worker_wait_async(self):
+    self.prep_wasm_worker_in_node()
+    self.do_runf('atomic/test_wait_async.c', emcc_args=['-sWASM_WORKERS'])
 
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None,
              require_v8=False, v8_args=None,
              require_node=False, node_args=None,
-             require_wasm64=False):
+             require_wasm64=False,
+             init=None):
   if env is None:
     env = {}
   if settings is None:
@@ -9828,6 +9687,9 @@ def make_run(name, emcc_args, settings=None, env=None,
     if require_wasm64:
       self.require_wasm64()
 
+    if init:
+      init(self)
+
   TT.setUp = setUp
 
   return TT
@@ -9849,15 +9711,24 @@ core3 = make_run('core3', emcc_args=['-O3'])
 cores = make_run('cores', emcc_args=['-Os'])
 corez = make_run('corez', emcc_args=['-Oz'])
 
+# Test >2gb memory addresses
+core_2gb = make_run('core_2gb', emcc_args=['--profiling-funcs'],
+                    settings={'INITIAL_MEMORY': '2200mb', 'GLOBAL_BASE': '2gb'})
+
 # MEMORY64=1
-wasm64 = make_run('wasm64', emcc_args=['-Wno-experimental', '--profiling-funcs'],
+wasm64 = make_run('wasm64', emcc_args=['-O1', '-Wno-experimental', '--profiling-funcs'],
                   settings={'MEMORY64': 1}, require_wasm64=True, require_node=True)
 wasm64_v8 = make_run('wasm64_v8', emcc_args=['-Wno-experimental', '--profiling-funcs'],
                      settings={'MEMORY64': 1}, require_wasm64=True, require_v8=True)
+# Run the wasm64 tests with all memory offsets > 4gb.  Be careful running this test
+# suite with any kind of parallelism.
+wasm64_4gb = make_run('wasm64_4gb', emcc_args=['-Wno-experimental', '--profiling-funcs'],
+                      settings={'MEMORY64': 1, 'INITIAL_MEMORY': '4200mb', 'GLOBAL_BASE': '4gb'},
+                      require_wasm64=True)
 # MEMORY64=2, or "lowered"
-wasm64l = make_run('wasm64l', emcc_args=['-Wno-experimental', '--profiling-funcs'],
+wasm64l = make_run('wasm64l', emcc_args=['-O1', '-Wno-experimental', '--profiling-funcs'],
                    settings={'MEMORY64': 2},
-                   node_args=shared.node_bigint_flags())
+                   init=lambda self: shared.node_bigint_flags(self.get_nodejs()))
 
 lto0 = make_run('lto0', emcc_args=['-flto', '-O0'])
 lto1 = make_run('lto1', emcc_args=['-flto', '-O1'])
@@ -9894,10 +9765,11 @@ core2s = make_run('core2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
 core2ss = make_run('core2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
 
 bigint = make_run('bigint', emcc_args=['--profiling-funcs'], settings={'WASM_BIGINT': 1},
-                  node_args=shared.node_bigint_flags())
+                  init=lambda self: shared.node_bigint_flags(self.get_nodejs()))
 
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
+strict_js = make_run('strict_js', emcc_args=[], settings={'STRICT_JS': 1})
 
 ubsan = make_run('ubsan', emcc_args=['-fsanitize=undefined', '--profiling'])
 lsan = make_run('lsan', emcc_args=['-fsanitize=leak', '--profiling'], settings={'ALLOW_MEMORY_GROWTH': 1})

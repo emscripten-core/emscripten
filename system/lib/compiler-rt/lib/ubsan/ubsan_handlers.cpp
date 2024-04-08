@@ -76,7 +76,7 @@ enum TypeCheckKind {
   TCK_DynamicOperation
 };
 
-const char *TypeCheckKinds[] = {
+extern const char *const TypeCheckKinds[] = {
     "load of", "store to", "reference binding to", "member access within",
     "member call on", "constructor call on", "downcast of", "downcast of",
     "upcast of", "cast to virtual base of", "_Nonnull binding to",
@@ -894,6 +894,41 @@ void __ubsan::__ubsan_handle_cfi_check_fail_abort(CFICheckFailData *Data,
   else
     __ubsan_handle_cfi_bad_type(Data, Value, ValidVtable, Opts);
   Die();
+}
+
+static bool handleFunctionTypeMismatch(FunctionTypeMismatchData *Data,
+                                       ValueHandle Function,
+                                       ReportOptions Opts) {
+  SourceLocation CallLoc = Data->Loc.acquire();
+  ErrorType ET = ErrorType::FunctionTypeMismatch;
+  if (ignoreReport(CallLoc, Opts, ET))
+    return true;
+
+  ScopedReport R(Opts, CallLoc, ET);
+
+  SymbolizedStackHolder FLoc(getSymbolizedLocation(Function));
+  const char *FName = FLoc.get()->info.function;
+  if (!FName)
+    FName = "(unknown)";
+
+  Diag(CallLoc, DL_Error, ET,
+       "call to function %0 through pointer to incorrect function type %1")
+      << FName << Data->Type;
+  Diag(FLoc, DL_Note, ET, "%0 defined here") << FName;
+  return true;
+}
+
+void __ubsan::__ubsan_handle_function_type_mismatch(
+    FunctionTypeMismatchData *Data, ValueHandle Function) {
+  GET_REPORT_OPTIONS(false);
+  handleFunctionTypeMismatch(Data, Function, Opts);
+}
+
+void __ubsan::__ubsan_handle_function_type_mismatch_abort(
+    FunctionTypeMismatchData *Data, ValueHandle Function) {
+  GET_REPORT_OPTIONS(true);
+  if (handleFunctionTypeMismatch(Data, Function, Opts))
+    Die();
 }
 
 #endif  // CAN_SANITIZE_UB

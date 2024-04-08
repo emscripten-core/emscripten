@@ -4,11 +4,15 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  */
+#include <limits.h>
 #include <time.h>
 #include <stdbool.h>
 #include <pthread.h>
 
-void _tzset_js(long* timezone, int* daylight, char** tzname);
+#include "emscripten_internal.h"
+
+static char std_name[TZNAME_MAX+1];
+static char dst_name[TZNAME_MAX+1];
 
 weak void tzset() {
   static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -16,7 +20,9 @@ weak void tzset() {
   if (!done_init) {
     pthread_mutex_lock(&lock);
     if (!done_init) {
-      _tzset_js(&timezone, &daylight, tzname);
+      _tzset_js(&timezone, &daylight, std_name, dst_name);
+      tzname[0] = std_name;
+      tzname[1] = dst_name;
       done_init = true;
     }
     pthread_mutex_unlock(&lock);

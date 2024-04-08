@@ -7,13 +7,14 @@
 
 #pragma once
 
+#include <stdint.h>
 #include <emscripten/html5.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef int EMSCRIPTEN_WEBGL_CONTEXT_HANDLE;
+typedef uintptr_t EMSCRIPTEN_WEBGL_CONTEXT_HANDLE;
 
 typedef int EMSCRIPTEN_WEBGL_CONTEXT_PROXY_MODE;
 #define EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW 0
@@ -100,6 +101,7 @@ void *emscripten_webgl_get_proc_address(const char *name __attribute__((nonnull)
 
 #define GLint int
 #define GLenum int
+#define GLint64 long long int
 
 #define EMSCRIPTEN_WEBGL_PARAM_TYPE int
 #define EMSCRIPTEN_WEBGL_PARAM_TYPE_INT   0
@@ -188,12 +190,13 @@ GLint emscripten_webgl_get_parameter_o(GLenum param);
 char *emscripten_webgl_get_parameter_utf8(GLenum param);
 
 // Calls GLctx.getParameter():
-// Returns the given WebGL context state as long long, written to the given heap location.
+// Returns the given WebGL context state as GLint64, written to the given heap location.
 // Call this function only for values of 'param' that return a WebGL Number type.
-void emscripten_webgl_get_parameter_i64v(GLenum param, long long *dst __attribute__((nonnull)));
+void emscripten_webgl_get_parameter_i64v(GLenum param, GLint64 *dst __attribute__((nonnull)));
 
 #undef GLint
 #undef GLenum
+#undef GLint64
 
 #ifdef __cplusplus
 } // ~extern "C"

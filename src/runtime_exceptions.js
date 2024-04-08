@@ -15,6 +15,7 @@ class EmscriptenSjLj extends EmscriptenEH {}
 class CppException extends EmscriptenEH {
   constructor(excPtr) {
     super(excPtr);
+    this.excPtr = excPtr;
 #if !DISABLE_EXCEPTION_CATCHING
     const excInfo = getExceptionMessage(excPtr);
     this.name = excInfo[0];

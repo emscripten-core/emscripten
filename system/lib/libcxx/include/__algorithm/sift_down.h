@@ -19,10 +19,13 @@
 #  pragma GCC system_header
 #endif
 
+_LIBCPP_PUSH_MACROS
+#include <__undef_macros>
+
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 template <class _AlgPolicy, class _Compare, class _RandomAccessIterator>
-_LIBCPP_CONSTEXPR_AFTER_CXX11 void
+_LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 void
 __sift_down(_RandomAccessIterator __first, _Compare&& __comp,
             typename iterator_traits<_RandomAccessIterator>::difference_type __len,
             _RandomAccessIterator __start)
@@ -78,12 +81,12 @@ __sift_down(_RandomAccessIterator __first, _Compare&& __comp,
 }
 
 template <class _AlgPolicy, class _Compare, class _RandomAccessIterator>
-_LIBCPP_CONSTEXPR_AFTER_CXX11 _RandomAccessIterator
+_LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 _RandomAccessIterator
 __floyd_sift_down(_RandomAccessIterator __first, _Compare&& __comp,
                   typename iterator_traits<_RandomAccessIterator>::difference_type __len)
 {
     using difference_type = typename iterator_traits<_RandomAccessIterator>::difference_type;
-    _LIBCPP_ASSERT(__len >= 2, "shouldn't be called unless __len >= 2");
+    _LIBCPP_ASSERT_UNCATEGORIZED(__len >= 2, "shouldn't be called unless __len >= 2");
 
     _RandomAccessIterator __hole = __first;
     _RandomAccessIterator __child_i = __first;
@@ -110,5 +113,7 @@ __floyd_sift_down(_RandomAccessIterator __first, _Compare&& __comp,
 }
 
 _LIBCPP_END_NAMESPACE_STD
+
+_LIBCPP_POP_MACROS
 
 #endif // _LIBCPP___ALGORITHM_SIFT_DOWN_H

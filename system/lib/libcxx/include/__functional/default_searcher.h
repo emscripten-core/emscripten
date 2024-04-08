@@ -23,19 +23,19 @@
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-#if _LIBCPP_STD_VER > 14
+#if _LIBCPP_STD_VER >= 17
 
 // default searcher
 template<class _ForwardIterator, class _BinaryPredicate = equal_to<>>
 class _LIBCPP_TEMPLATE_VIS default_searcher {
 public:
-    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX17
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
     default_searcher(_ForwardIterator __f, _ForwardIterator __l,
                        _BinaryPredicate __p = _BinaryPredicate())
         : __first_(__f), __last_(__l), __pred_(__p) {}
 
     template <typename _ForwardIterator2>
-    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX17
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
     pair<_ForwardIterator2, _ForwardIterator2>
     operator () (_ForwardIterator2 __f, _ForwardIterator2 __l) const
     {
@@ -48,8 +48,9 @@ private:
     _ForwardIterator __last_;
     _BinaryPredicate __pred_;
 };
+_LIBCPP_CTAD_SUPPORTED_FOR_TYPE(default_searcher);
 
-#endif // _LIBCPP_STD_VER > 14
+#endif // _LIBCPP_STD_VER >= 17
 
 _LIBCPP_END_NAMESPACE_STD
 

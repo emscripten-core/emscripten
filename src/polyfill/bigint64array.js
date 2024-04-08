@@ -1,5 +1,5 @@
 #if !POLYFILL
-assert(false, "this file should never be included unless POLYFILL is set");
+#error "this file should never be included unless POLYFILL is set"
 #endif
 
 if (typeof globalThis.BigInt64Array === "undefined") {
@@ -38,14 +38,12 @@ if (typeof globalThis.BigInt64Array === "undefined") {
       }
       var proxy = new Proxy(
         {
-          slice: function (min, max) {
-            if (max === undefined) {
-              max = array.length;
-            }
+          slice(min, max) {
+            max ??= array.length;
             var new_buf = array.slice(min * 2, max * 2);
             return createBigInt64Array(new_buf);
           },
-          subarray: function (min, max) {
+          subarray(min, max) {
             var new_buf = array.subarray(min * 2, max * 2);
             return createBigInt64Array(new_buf);
           },
@@ -63,10 +61,8 @@ if (typeof globalThis.BigInt64Array === "undefined") {
             array.copyWithin(target * 2, start * 2, end * 2);
             return proxy;
           },
-          set: function (source, targetOffset) {
-            if (targetOffset === undefined) {
-              targetOffset = 0;
-            }
+          set(source, targetOffset) {
+            targetOffset ??= 0;
             if (2 * (source.length + targetOffset) > array.length) {
               // This is the Chrome error message
               // Firefox: "invalid or out-of-range index"
@@ -80,7 +76,7 @@ if (typeof globalThis.BigInt64Array === "undefined") {
           },
         },
         {
-          get: function (target, idx, receiver) {
+          get(target, idx, receiver) {
             if (typeof idx !== "string" || !/^\d+$/.test(idx)) {
               return Reflect.get(target, idx, receiver);
             }
@@ -88,7 +84,7 @@ if (typeof globalThis.BigInt64Array === "undefined") {
             var upper = array[idx * 2 + 1];
             return partsToBigInt(lower, upper);
           },
-          set: function (target, idx, value, receiver) {
+          set(target, idx, value, receiver) {
             if (typeof idx !== "string" || !/^\d+$/.test(idx)) {
               return Reflect.set(target, idx, value, receiver);
             }

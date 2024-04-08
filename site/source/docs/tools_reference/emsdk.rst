@@ -85,9 +85,12 @@ Emscripten Compiler Configuration File (.emscripten)
 The *Compiler Configuration File* stores the :term:`active <Active Tool/SDK>` configuration on behalf of the *emsdk*. The active configuration defines the specific set of tools that are used by default if Emscripten in called on the :ref:`Emscripten Command Prompt <emcmdprompt>`.
 
 The configuration file is named **.emscripten**. It is emsdk-specific, so it
-won't conflict with any config file the user might have in their home directory.
+won't conflict with any config file the user might have elsewhere on their
+system.
 
-The file should generally not be updated directly unless you're :ref:`building Emscripten from source <installing-from-source>`. Instead use the *emsdk* to activate specific SDKs and tools as needed (``emsdk activate <tool/SDK>``).
+The file should generally not be updated directly unless you're :ref:`building
+Emscripten from source <installing-from-source>`. Instead, use the *emsdk* to
+activate specific SDKs and tools as needed (``emsdk activate <tool/SDK>``).
 
 Below are examples of possible **.emscripten** files created by *emsdk*. Note
 the variable names used to point to the different tools::
@@ -97,7 +100,6 @@ the variable names used to point to the different tools::
   import os
   LLVM_ROOT='C:/Program Files/Emscripten/clang/e1.21.0_64bit'
   NODE_JS='C:/Program Files/Emscripten/node/0.10.17_64bit/node.exe'
-  JAVA='C:/Program Files/Emscripten/java/7.45_64bit/bin/java.exe'
 
 ::
 
@@ -110,7 +112,7 @@ the variable names used to point to the different tools::
 .. _emsdk_howto:
 
 "How to" guides
-=========================
+===============
 
 The following topics explain how to perform both common and advanced maintenance operations, ranging from installing the latest SDK through to installing your own fork from GitHub.
 
@@ -120,7 +122,7 @@ The following topics explain how to perform both common and advanced maintenance
 
 
 How do I just get the latest SDK?
-------------------------------------------------------------------------------------------------
+---------------------------------
 Use the ``update`` argument to fetch the current registry of available tools, and then specify the ``latest`` install target to get the most recent SDK: ::
 
   # Fetch the latest registry of available tools.
@@ -135,13 +137,13 @@ Use the ``update`` argument to fetch the current registry of available tools, an
 
 
 How do I use emsdk?
---------------------------------
+-------------------
 
 Use ``./emsdk help`` or just ``./emsdk`` to get information about all available commands.
 
 
 How do I check which versions of the SDK and tools are installed?
-------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------
 
 To get a list of all currently installed tools and SDK versions (and all available tools) run: ::
 
@@ -167,7 +169,7 @@ For example: ::
 .. _emsdk-remove-tool-sdk:
 
 How do I remove a tool or an SDK?
-----------------------------------------------------------------
+---------------------------------
 
 Use the ``uninstall`` argument to delete a given tool or SDK from the local computer: ::
 
@@ -178,7 +180,7 @@ If you want to completely remove Emscripten from your system, follow the guide a
 
 
 How do I check for updates to the Emscripten SDK?
-----------------------------------------------------------------
+-------------------------------------------------
 
 First use the ``update`` command to fetch package information for all new tools and SDK versions. Then use ``install <tool/sdk name>`` to install a new version: ::
 
@@ -192,7 +194,7 @@ First use the ``update`` command to fetch package information for all new tools 
 .. _emsdk-set-active-tools:
 
 How do I change the currently active SDK version?
-----------------------------------------------------------------
+-------------------------------------------------
 
 Toggle between different tools and SDK versions using the :term:`activate
 <Active Tool/SDK>` command. This will set up ``.emscripten`` to point to that
@@ -231,7 +233,7 @@ How do I install and activate old Emscripten SDKs and tools?
 .. _emsdk-dev-sdk:
 
 How do I track the latest Emscripten development with the SDK?
-------------------------------------------------------------------------------------------------
+--------------------------------------------------------------
 
 It is also possible to use the latest and greatest versions of the tools on the GitHub repositories! This allows you to obtain new features and latest fixes immediately as they are pushed to GitHub, without having to wait for release to be tagged. **No GitHub account or fork of Emscripten is required.**
 
@@ -251,7 +253,7 @@ To switch to using the latest upstream git development branch (``main``), run th
 .. _emsdk-howto-use-own-fork:
 
 How do I use my own Emscripten GitHub fork with the SDK?
-----------------------------------------------------------------
+--------------------------------------------------------
 
 It is also possible to use your own fork of the Emscripten repository via the SDK. This is useful in the case when you want to make your own modifications to the Emscripten toolchain, but still keep using the SDK environment and tools.
 
@@ -271,7 +273,3 @@ The way this works is that you first install the ``sdk-upstream-main`` SDK as in
   git checkout -b mymain --track myremote/main
 
 You can switch back and forth between remotes via the ``git checkout`` command as usual.
-
-
-
-

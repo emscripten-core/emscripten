@@ -5,8 +5,8 @@
 
 #include <string_view>
 
-#include "paths.h"
 #include "file.h"
+#include "paths.h"
 #include "wasmfs.h"
 
 namespace wasmfs::path {

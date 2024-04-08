@@ -7,7 +7,6 @@ void test_makeGetValue(int64_t* ptr);
 void test_makeSetValue(int64_t* ptr);
 int  test_receiveI64ParamAsI53(int64_t arg1, int64_t arg2);
 int  test_receiveI64ParamAsDouble(int64_t arg1, int64_t arg2);
-void test_makeSetValue_unaligned(int64_t* ptr);
 
 #define MAX_SAFE_INTEGER (1ll << 53)
 #define MIN_SAFE_INTEGER (-MAX_SAFE_INTEGER)
@@ -54,18 +53,6 @@ int main() {
 
   rtn = test_receiveI64ParamAsDouble(MIN_SAFE_INTEGER - 1, 0);
   printf("rtn = %d\n", rtn);
-
-  printf("\ntest_makeSetValue_unaligned\n");
-  // Test an unaligned read of an i64 in JS. To do that, get an unaligned
-  // pointer. i64s are only 32-bit aligned, but we can't rely on the address to
-  // happen to be unaligned here, so actually force an unaligned address (one
-  // of the iterations will be unaligned).
-  char buffer[16];
-  for (size_t i = 0; i < 8; i += 4) {
-    int64_t* unaligned_i64 = (int64_t*)(buffer + i);
-    test_makeSetValue_unaligned(unaligned_i64);
-    printf("i64 = 0x%llx\n", *unaligned_i64);
-  }
 
   printf("\ndone\n");
   return 0;

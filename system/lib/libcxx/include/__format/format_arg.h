@@ -13,15 +13,17 @@
 #include <__assert>
 #include <__concepts/arithmetic.h>
 #include <__config>
-#include <__format/format_error.h>
+#include <__format/concepts.h>
 #include <__format/format_fwd.h>
 #include <__format/format_parse_context.h>
 #include <__functional/invoke.h>
 #include <__memory/addressof.h>
+#include <__type_traits/conditional.h>
 #include <__utility/forward.h>
+#include <__utility/move.h>
 #include <__utility/unreachable.h>
 #include <__variant/monostate.h>
-#include <string>
+#include <cstdint>
 #include <string_view>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
@@ -30,7 +32,7 @@
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-#if _LIBCPP_STD_VER > 17
+#if _LIBCPP_STD_VER >= 20
 
 namespace __format {
 /// The type stored in @ref basic_format_arg.
@@ -45,16 +47,22 @@ namespace __format {
 /// It could be packed in 4-bits but that means a new type directly becomes an
 /// ABI break. The packed type is 64-bit so this reduces the maximum number of
 /// packed elements from 16 to 12.
+///
+/// @note Some members of this enum are an extension. These extensions need
+/// special behaviour in visit_format_arg. There they need to be wrapped in a
+/// handle to satisfy the user observable behaviour. The internal function
+/// __visit_format_arg doesn't do this wrapping. So in the format functions
+/// this function is used to avoid unneeded overhead.
 enum class _LIBCPP_ENUM_VIS __arg_t : uint8_t {
   __none,
   __boolean,
   __char_type,
   __int,
   __long_long,
-  __i128,
+  __i128, // extension
   __unsigned,
   __unsigned_long_long,
-  __u128,
+  __u128, // extension
   __float,
   __double,
   __long_double,
@@ -75,7 +83,7 @@ constexpr bool __use_packed_format_arg_store(size_t __size) { return __size <= _
 
 _LIBCPP_HIDE_FROM_ABI
 constexpr __arg_t __get_packed_type(uint64_t __types, size_t __id) {
-  _LIBCPP_ASSERT(__id <= __packed_types_max, "");
+  _LIBCPP_ASSERT_UNCATEGORIZED(__id <= __packed_types_max, "");
 
   if (__id > 0)
     __types >>= __id * __packed_arg_t_bits;
@@ -85,9 +93,11 @@ constexpr __arg_t __get_packed_type(uint64_t __types, size_t __id) {
 
 } // namespace __format
 
+// This function is not user obervable, so it can directly use the non-standard
+// types of the "variant". See __arg_t for more details.
 template <class _Visitor, class _Context>
-_LIBCPP_HIDE_FROM_ABI _LIBCPP_AVAILABILITY_FORMAT decltype(auto) visit_format_arg(_Visitor&& __vis,
-                                                                                  basic_format_arg<_Context> __arg) {
+_LIBCPP_HIDE_FROM_ABI decltype(auto)
+__visit_format_arg(_Visitor&& __vis, basic_format_arg<_Context> __arg) {
   switch (__arg.__type_) {
   case __format::__arg_t::__none:
     return _VSTD::invoke(_VSTD::forward<_Visitor>(__vis), __arg.__value_.__monostate_);
@@ -147,18 +157,14 @@ public:
   /// Contains the implementation for basic_format_arg::handle.
   struct __handle {
     template <class _Tp>
-    _LIBCPP_HIDE_FROM_ABI explicit __handle(_Tp&& __v) noexcept
+    _LIBCPP_HIDE_FROM_ABI explicit __handle(_Tp& __v) noexcept
         : __ptr_(_VSTD::addressof(__v)),
           __format_([](basic_format_parse_context<_CharT>& __parse_ctx, _Context& __ctx, const void* __ptr) {
-            using _Dp = remove_cvref_t<_Tp>;
-            using _Formatter = typename _Context::template formatter_type<_Dp>;
-            constexpr bool __const_formattable =
-                requires { _Formatter().format(declval<const _Dp&>(), declval<_Context&>()); };
-            using _Qp = conditional_t<__const_formattable, const _Dp, _Dp>;
+            using _Dp = remove_const_t<_Tp>;
+            using _Qp = conditional_t<__formattable_with<const _Dp, _Context>, const _Dp, _Dp>;
+            static_assert(__formattable_with<_Qp, _Context>, "Mandated by [format.arg]/10");
 
-            static_assert(__const_formattable || !is_const_v<remove_reference_t<_Tp>>, "Mandated by [format.arg]/18");
-
-            _Formatter __f;
+            typename _Context::template formatter_type<_Dp> __f;
             __parse_ctx.advance_to(__f.parse(__parse_ctx));
             __ctx.advance_to(__f.format(*const_cast<_Qp*>(static_cast<const _Dp*>(__ptr)), __ctx));
           }) {}
@@ -210,13 +216,11 @@ public:
   _LIBCPP_HIDE_FROM_ABI __basic_format_arg_value(basic_string_view<_CharT> __value) noexcept
       : __string_view_(__value) {}
   _LIBCPP_HIDE_FROM_ABI __basic_format_arg_value(const void* __value) noexcept : __ptr_(__value) {}
-  _LIBCPP_HIDE_FROM_ABI __basic_format_arg_value(__handle __value) noexcept
-      // TODO FMT Investigate why it doesn't work without the forward.
-      : __handle_(std::forward<__handle>(__value)) {}
+  _LIBCPP_HIDE_FROM_ABI __basic_format_arg_value(__handle&& __value) noexcept : __handle_(std::move(__value)) {}
 };
 
 template <class _Context>
-class _LIBCPP_TEMPLATE_VIS _LIBCPP_AVAILABILITY_FORMAT basic_format_arg {
+class _LIBCPP_TEMPLATE_VIS basic_format_arg {
 public:
   class _LIBCPP_TEMPLATE_VIS handle;
 
@@ -265,7 +269,29 @@ private:
   typename __basic_format_arg_value<_Context>::__handle& __handle_;
 };
 
-#endif //_LIBCPP_STD_VER > 17
+// This function is user facing, so it must wrap the non-standard types of
+// the "variant" in a handle to stay conforming. See __arg_t for more details.
+template <class _Visitor, class _Context>
+_LIBCPP_HIDE_FROM_ABI decltype(auto)
+visit_format_arg(_Visitor&& __vis, basic_format_arg<_Context> __arg) {
+  switch (__arg.__type_) {
+#  ifndef _LIBCPP_HAS_NO_INT128
+  case __format::__arg_t::__i128: {
+    typename __basic_format_arg_value<_Context>::__handle __h{__arg.__value_.__i128_};
+    return _VSTD::invoke(_VSTD::forward<_Visitor>(__vis), typename basic_format_arg<_Context>::handle{__h});
+  }
+
+  case __format::__arg_t::__u128: {
+    typename __basic_format_arg_value<_Context>::__handle __h{__arg.__value_.__u128_};
+    return _VSTD::invoke(_VSTD::forward<_Visitor>(__vis), typename basic_format_arg<_Context>::handle{__h});
+  }
+#  endif
+  default:
+    return _VSTD::__visit_format_arg(_VSTD::forward<_Visitor>(__vis), __arg);
+  }
+}
+
+#endif //_LIBCPP_STD_VER >= 20
 
 _LIBCPP_END_NAMESPACE_STD
 

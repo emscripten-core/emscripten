@@ -5,6 +5,7 @@
 
 from .toolchain_profiler import ToolchainProfiler
 
+from enum import Enum, unique, auto
 from functools import wraps
 from subprocess import PIPE
 import atexit
@@ -29,9 +30,14 @@ from . import colored_logger
 # Configure logging before importing any other local modules so even
 # log message during import are shown as expected.
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
+EMCC_LOGGING = int(os.environ.get('EMCC_LOGGING', '1'))
+log_level = logging.ERROR
+if DEBUG:
+  log_level = logging.DEBUG
+elif EMCC_LOGGING:
+  log_level = logging.INFO
 # can add  %(asctime)s  to see timestamps
-logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
-                    level=logging.DEBUG if DEBUG else logging.INFO)
+logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=log_level)
 colored_logger.enable()
 
 from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
@@ -44,15 +50,21 @@ from .settings import settings
 
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
-# Minimum node version required to run the emscripten compiler.  This is distinct
-# from the minimum version required to execute the generated code.  This is not an
-# exact requirement, but is the oldest version of node that we do any testing with.
-# This version aligns with the current Ubuuntu TLS 20.04 (Focal).
-MINIMUM_NODE_VERSION = (10, 19, 0)
-EXPECTED_LLVM_VERSION = 16
+PRINT_SUBPROCS = int(os.getenv('EMCC_VERBOSE', '0'))
+SKIP_SUBPROCS = False
 
-# Used only when EM_PYTHON_MULTIPROCESSING=1 env. var is set.
-multiprocessing_pool = None
+# Minimum node version required to run the emscripten compiler.  This is
+# distinct from the minimum version required to execute the generated code
+# (settings.MIN_NODE_VERSION).
+# This version currently matches the node version that we ship with emsdk
+# which means that we can say for sure that this version is well supported.
+MINIMUM_NODE_VERSION = (16, 20, 0)
+EXPECTED_LLVM_VERSION = 19
+
+# These get set by setup_temp_dirs
+TEMP_DIR = None
+EMSCRIPTEN_TEMP_DIR = None
+
 logger = logging.getLogger('shared')
 
 # warning about absolute-paths is disabled by default, and not enabled by -Wall
@@ -78,6 +90,8 @@ diagnostics.add_warning('limited-postlink-optimizations')
 diagnostics.add_warning('em-js-i64')
 diagnostics.add_warning('js-compiler')
 diagnostics.add_warning('compatibility')
+diagnostics.add_warning('unsupported')
+diagnostics.add_warning('unused-main')
 # Closure warning are not (yet) enabled by default
 diagnostics.add_warning('closure', enabled=False)
 
@@ -123,16 +137,6 @@ def get_num_cores():
   return int(os.environ.get('EMCC_CORES', os.cpu_count()))
 
 
-def mp_run_process(command_tuple):
-  cmd, env, route_stdout_to_temp_files_suffix = command_tuple
-  stdout = None
-  if route_stdout_to_temp_files_suffix:
-    stdout = get_temp_files().get(route_stdout_to_temp_files_suffix)
-  subprocess.run(cmd, stdout=stdout, stderr=None, env=env, check=True)
-  if route_stdout_to_temp_files_suffix:
-    return stdout.name
-
-
 def returncode_to_str(code):
   assert code != 0
   if code < 0:
@@ -142,9 +146,17 @@ def returncode_to_str(code):
   return f'returned {code}'
 
 
+def cap_max_workers_in_pool(max_workers):
+  # Python has an issue that it can only use max 61 cores on Windows: https://github.com/python/cpython/issues/89240
+  if WINDOWS:
+    return min(max_workers, 61)
+  return max_workers
+
+
 def run_multiple_processes(commands,
                            env=None,
-                           route_stdout_to_temp_files_suffix=None):
+                           route_stdout_to_temp_files_suffix=None,
+                           cwd=None):
   """Runs multiple subprocess commands.
 
   route_stdout_to_temp_files_suffix : string
@@ -154,21 +166,6 @@ def run_multiple_processes(commands,
 
   if env is None:
     env = os.environ.copy()
-
-  # By default, avoid using Python multiprocessing library due to a large amount
-  # of bugs it has on Windows (#8013, #718, etc.)
-  # Use EM_PYTHON_MULTIPROCESSING=1 environment variable to enable it. It can be
-  # faster, but may not work on Windows.
-  if int(os.getenv('EM_PYTHON_MULTIPROCESSING', '0')):
-    import multiprocessing
-    max_workers = get_num_cores()
-    global multiprocessing_pool
-    if not multiprocessing_pool:
-      if WINDOWS:
-        # Fix for python < 3.8 on windows. See: https://github.com/python/cpython/pull/13132
-        max_workers = min(max_workers, 61)
-      multiprocessing_pool = multiprocessing.Pool(processes=max_workers)
-    return multiprocessing_pool.map(mp_run_process, [(cmd, env, route_stdout_to_temp_files_suffix) for cmd in commands], chunksize=1)
 
   std_outs = []
 
@@ -211,7 +208,7 @@ def run_multiple_processes(commands,
       if DEBUG:
         logger.debug('Running subprocess %d/%d: %s' % (i + 1, len(commands), ' '.join(commands[i])))
       print_compiler_stage(commands[i])
-      proc = subprocess.Popen(commands[i], stdout=stdout, stderr=None, env=env)
+      proc = subprocess.Popen(commands[i], stdout=stdout, stderr=None, env=env, cwd=cwd)
       processes[i] = proc
       if route_stdout_to_temp_files_suffix:
         std_outs.append((i, stdout.name))
@@ -222,7 +219,7 @@ def run_multiple_processes(commands,
       idx = get_finished_process()
       finished_process = processes.pop(idx)
       if finished_process.returncode != 0:
-        exit_with_error('Subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
+        exit_with_error('subprocess %d/%d failed (%s)! (cmdline: %s)' % (idx + 1, len(commands), returncode_to_str(finished_process.returncode), shlex_join(commands[idx])))
       num_completed += 1
 
   if route_stdout_to_temp_files_suffix:
@@ -234,12 +231,25 @@ def run_multiple_processes(commands,
 def check_call(cmd, *args, **kw):
   """Like `run_process` above but treat failures as fatal and exit_with_error."""
   print_compiler_stage(cmd)
+  if SKIP_SUBPROCS:
+    return 0
   try:
     return run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
     exit_with_error("'%s' failed (%s)", shlex_join(cmd), returncode_to_str(e.returncode))
   except OSError as e:
     exit_with_error("'%s' failed: %s", shlex_join(cmd), str(e))
+
+
+def exec_process(cmd):
+  print_compiler_stage(cmd)
+  if utils.WINDOWS:
+    rtn = run_process(cmd, stdin=sys.stdin, check=False).returncode
+    sys.exit(rtn)
+  else:
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os.execv(cmd[0], cmd)
 
 
 def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: mutable default args
@@ -338,13 +348,22 @@ def env_with_node_in_path():
   return env
 
 
+def _get_node_version_pair(nodejs):
+  actual = run_process(nodejs + ['--version'], stdout=PIPE).stdout.strip()
+  version = actual.replace('v', '')
+  version = version.split('-')[0].split('.')
+  version = tuple(int(v) for v in version)
+  return actual, version
+
+
+def get_node_version(nodejs):
+  return _get_node_version_pair(nodejs)[1]
+
+
 @memoize
 def check_node_version():
   try:
-    actual = run_process(config.NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
-    version = actual.replace('v', '')
-    version = version.split('-')[0].split('.')
-    version = tuple(int(v) for v in version)
+    actual, version = _get_node_version_pair(config.NODE_JS)
   except Exception as e:
     diagnostics.warning('version-check', 'cannot check node version: %s', e)
     return
@@ -356,11 +375,20 @@ def check_node_version():
   return version
 
 
-def node_bigint_flags():
-  node_version = check_node_version()
+def node_bigint_flags(nodejs):
+  node_version = get_node_version(nodejs)
   # wasm bigint was enabled by default in node v16.
   if node_version and node_version < (16, 0, 0):
     return ['--experimental-wasm-bigint']
+  else:
+    return []
+
+
+def node_reference_types_flags(nodejs):
+  node_version = get_node_version(nodejs)
+  # reference types were enabled by default in node v18.
+  if node_version and node_version < (18, 0, 0):
+    return ['--experimental-wasm-reftypes']
   else:
     return []
 
@@ -369,8 +397,17 @@ def node_memory64_flags():
   return ['--experimental-wasm-memory64']
 
 
-def node_pthread_flags():
-  node_version = check_node_version()
+def node_exception_flags(nodejs):
+  node_version = get_node_version(nodejs)
+  # Exception handling was enabled by default in node v17.
+  if node_version and node_version < (17, 0, 0):
+    return ['--experimental-wasm-eh']
+  else:
+    return []
+
+
+def node_pthread_flags(nodejs):
+  node_version = get_node_version(nodejs)
   # bulk memory and wasm threads were enabled by default in node v16.
   if node_version and node_version < (16, 0, 0):
     return ['--experimental-wasm-bulk-memory', '--experimental-wasm-threads']
@@ -384,7 +421,7 @@ def check_node():
   try:
     run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
   except Exception as e:
-    exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
+    exit_with_error('the configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
 
 
 def set_version_globals():
@@ -396,9 +433,10 @@ def set_version_globals():
 
 
 def generate_sanity():
-  return f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}|{get_clang_version()}'
+  return f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}\n'
 
 
+@memoize
 def perform_sanity_checks():
   # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
   check_node_version()
@@ -418,9 +456,9 @@ def perform_sanity_checks():
   check_node()
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
-    for cmd in [CLANG_CC, LLVM_AR, LLVM_NM]:
+    for cmd in [CLANG_CC, LLVM_AR]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
-        exit_with_error('Cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
+        exit_with_error('cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
 
 
 @ToolchainProfiler.profile()
@@ -469,14 +507,10 @@ def check_sanity(force=False):
       pass
     if sanity_data == expected:
       logger.debug(f'sanity file up-to-date: {sanity_file}')
-      # Even if the sanity file is up-to-date we still need to at least
-      # check the llvm version. This comes at no extra performance cost
-      # since the version was already extracted and cached by the
-      # generate_sanity() call above.
+      # Even if the sanity file is up-to-date we still run the checks
+      # when force is set.
       if force:
         perform_sanity_checks()
-      else:
-        check_llvm_version()
       return True # all is well
     return False
 
@@ -491,8 +525,8 @@ def check_sanity(force=False):
 
     if os.path.exists(sanity_file):
       sanity_data = utils.read_file(sanity_file)
-      logger.info('old sanity: %s' % sanity_data)
-      logger.info('new sanity: %s' % expected)
+      logger.info('old sanity: %s', sanity_data.strip())
+      logger.info('new sanity: %s', expected.strip())
       logger.info('(Emscripten: config changed, clearing cache)')
       cache.erase()
     else:
@@ -563,6 +597,10 @@ def get_emscripten_temp_dir():
   return EMSCRIPTEN_TEMP_DIR
 
 
+def in_temp(name):
+  return os.path.join(get_emscripten_temp_dir(), os.path.basename(name))
+
+
 def get_canonical_temp_dir(temp_dir):
   return os.path.join(temp_dir, 'emscripten_temp')
 
@@ -616,10 +654,20 @@ def target_environment_may_be(environment):
 
 
 def print_compiler_stage(cmd):
-  """Emulate the '-v' of clang/gcc by printing the name of the sub-command
-  before executing it."""
-  if PRINT_STAGES:
-    print(' "%s" %s' % (cmd[0], shlex_join(cmd[1:])), file=sys.stderr)
+  """Emulate the '-v/-###' flags of clang/gcc by printing the sub-commands
+  that we run."""
+
+  def maybe_quote(arg):
+    if all(c.isalnum() or c in './-_' for c in arg):
+      return arg
+    else:
+      return f'"{arg}"'
+
+  if SKIP_SUBPROCS:
+    print(' ' + ' '.join([maybe_quote(a) for a in cmd]), file=sys.stderr)
+    sys.stderr.flush()
+  elif PRINT_SUBPROCS:
+    print(' %s %s' % (maybe_quote(cmd[0]), shlex_join(cmd[1:])), file=sys.stderr)
     sys.stderr.flush()
 
 
@@ -637,7 +685,7 @@ def is_c_symbol(name):
   return name.startswith('_') or name in settings.WASM_SYSTEM_EXPORTS
 
 
-def treat_as_user_function(name):
+def treat_as_user_export(name):
   if name.startswith('dynCall_'):
     return False
   if name in settings.WASM_SYSTEM_EXPORTS:
@@ -655,7 +703,7 @@ def asmjs_mangle(name):
   # to simply `main` which is expected by the emscripten JS glue code.
   if name == '__main_argc_argv':
     name = 'main'
-  if treat_as_user_function(name):
+  if treat_as_user_export(name):
     return '_' + name
   return name
 
@@ -677,9 +725,14 @@ def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
 
 
-def strip_prefix(string, prefix):
-  assert string.startswith(prefix)
-  return string[len(prefix):]
+def get_file_suffix(filename):
+  """Parses the essential suffix of a filename, discarding Unix-style version
+  numbers in the name. For example for 'libz.so.1.2.8' returns '.so'"""
+  while filename:
+    filename, suffix = os.path.splitext(filename)
+    if not suffix[1:].isdigit():
+      return suffix
+  return ''
 
 
 def make_writable(filename):
@@ -730,7 +783,7 @@ def read_and_preprocess(filename, expand_macros=False):
   if expand_macros:
     args += ['--expandMacros']
 
-  run_js_tool(path_from_root('tools/preprocessor.js'), args, stdout=open(stdout, 'w'), cwd=dirname)
+  run_js_tool(path_from_root('tools/preprocessor.mjs'), args, stdout=open(stdout, 'w'), cwd=dirname)
   out = utils.read_file(stdout)
 
   return out
@@ -749,6 +802,23 @@ def get_llvm_target():
     return 'wasm32-unknown-emscripten'
 
 
+def init():
+  set_version_globals()
+  setup_temp_dirs()
+
+
+@unique
+class OFormat(Enum):
+  # Output a relocatable object file.  We use this
+  # today for `-r` and `-shared`.
+  OBJECT = auto()
+  WASM = auto()
+  JS = auto()
+  MJS = auto()
+  HTML = auto()
+  BARE = auto()
+
+
 # ============================================================================
 # End declarations.
 # ============================================================================
@@ -756,8 +826,6 @@ def get_llvm_target():
 # Everything below this point is top level code that get run when importing this
 # file.  TODO(sbc): We should try to reduce that amount we do here and instead
 # have consumers explicitly call initialization functions.
-
-set_version_globals()
 
 CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
 CLANG_CXX = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
@@ -779,13 +847,11 @@ EMCONFIGURE = bat_suffix(path_from_root('emconfigure'))
 EM_NM = bat_suffix(path_from_root('emnm'))
 FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
 WASM_SOURCEMAP = bat_suffix(path_from_root('tools/wasm-sourcemap'))
+# Windows .dll suffix is not included in this list, since those are never
+# linked to directly on the command line.
+DYNAMICLIB_ENDINGS = ['.dylib', '.so']
+STATICLIB_ENDINGS = ['.a']
 
-# These get set by setup_temp_dirs
-TEMP_DIR = None
-EMSCRIPTEN_TEMP_DIR = None
+run_via_emxx = False
 
-setup_temp_dirs()
-
-cache.setup(config.CACHE)
-
-PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
+init()

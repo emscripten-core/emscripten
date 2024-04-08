@@ -119,19 +119,19 @@ To use ASan, simply pass ``-fsanitize=address`` to ``emcc`` or ``em++``. As
 with UBSan, you need to pass this at both the compile and link stages,
 as it affects both codegen and system libraries.
 
-You probably need to increase ``INITIAL_MEMORY`` to at least 64 MB or pass
-``-sALLOW_MEMORY_GROWTH`` so that ASan has enough memory to start. Otherwise,
+You probably need to increase :ref:`INITIAL_MEMORY` to at least 64 MB or set
+:ref:`ALLOW_MEMORY_GROWTH` so that ASan has enough memory to start. Otherwise,
 you will receive an error message that looks something like:
 
   Cannot enlarge memory arrays to size 55152640 bytes (OOM). Either (1) compile
-  with  -sINITIAL_MEMORY=X  with X higher than the current value 50331648, (2)
-  compile with  -sALLOW_MEMORY_GROWTH  which allows increasing the size at
+  with ``-sINITIAL_MEMORY=X``  with X higher than the current value 50331648, (2)
+  compile with ``-sALLOW_MEMORY_GROWTH``  which allows increasing the size at
   runtime, or (3) if you want malloc to return NULL (0) instead of this abort,
-  compile with  -sABORTING_MALLOC=0
+  compile with ``-sABORTING_MALLOC=0``
 
 ASan fully supports multi-thread environments. ASan also operates on the JS
 support code, that is, if JS tries to read from a memory address that is not
-valid, it will be caught, just like if that access happened from wasm.
+valid, it will be caught, just like if that access happened from Wasm.
 
 Examples
 --------
@@ -380,7 +380,7 @@ Emscripten provides a ``SAFE_HEAP`` mode, which can be activated by running
 with sanitizers.
 
 In general, ``SAFE_HEAP`` focuses on the specific pain points that come up when
-targeting wasm. The sanitizers on the other hand focus on the specific pain points that are
+targeting Wasm. The sanitizers on the other hand focus on the specific pain points that are
 involved with using languages like C/C++. Those two sets overlap, but are not
 identical. Which you should use depends on which types of problems you are
 looking for. You may want to test with all sanitizers and with ``SAFE_HEAP``
@@ -402,16 +402,16 @@ The specific things ``SAFE_HEAP`` errors on include:
   unaligned operations.
 * **Reads or writes past the top of valid memory** as managed by ``sbrk()``, that is,
   memory that was not properly allocated by ``malloc()``. This is not specific
-  to wasm, however, in JavaScript if the address is big enough to be outside the
+  to Wasm, however, in JavaScript if the address is big enough to be outside the
   Typed Array, ``undefined`` is returned which can be very confusing, which is
-  why this was added (in wasm at least an error is thrown; ``SAFE_HEAP`` still
-  helps with wasm though, by checking the area between the top of ``sbrk()``'s
-  memory and the end of the wasm Memory).
+  why this was added (in Wasm at least an error is thrown; ``SAFE_HEAP`` still
+  helps with Wasm though, by checking the area between the top of ``sbrk()``'s
+  memory and the end of the Wasm Memory).
 
 ``SAFE_HEAP`` does these checks by instrumenting every single load and store.
 That has the cost of slowing things down, but it does give a simple guarantee
 of finding *all* such problems. It can also be done after compilation, on an
-arbitrary wasm binary, while the sanitizers must be done when compiling from
+arbitrary Wasm binary, while the sanitizers must be done when compiling from
 source.
 
 In comparison, UBSan can also find null pointer reads and writes. It does not

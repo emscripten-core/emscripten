@@ -6,10 +6,16 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
+
 #ifndef _LIBCPP___ITERATOR_COUNTED_ITERATOR_H
 #define _LIBCPP___ITERATOR_COUNTED_ITERATOR_H
 
 #include <__assert>
+#include <__concepts/assignable.h>
+#include <__concepts/common_with.h>
+#include <__concepts/constructible.h>
+#include <__concepts/convertible_to.h>
+#include <__concepts/same_as.h>
 #include <__config>
 #include <__iterator/concepts.h>
 #include <__iterator/default_sentinel.h>
@@ -19,18 +25,21 @@
 #include <__iterator/iterator_traits.h>
 #include <__iterator/readable_traits.h>
 #include <__memory/pointer_traits.h>
+#include <__type_traits/add_pointer.h>
+#include <__type_traits/conditional.h>
 #include <__utility/move.h>
 #include <compare>
-#include <concepts>
-#include <type_traits>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
 #endif
 
+_LIBCPP_PUSH_MACROS
+#include <__undef_macros>
+
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-#if _LIBCPP_STD_VER > 17
+#if _LIBCPP_STD_VER >= 20
 
 template<class>
 struct __counted_iterator_concept {};
@@ -77,7 +86,7 @@ public:
   _LIBCPP_HIDE_FROM_ABI
   constexpr counted_iterator(_Iter __iter, iter_difference_t<_Iter> __n)
    : __current_(_VSTD::move(__iter)), __count_(__n) {
-    _LIBCPP_ASSERT(__n >= 0, "__n must not be negative.");
+    _LIBCPP_ASSERT_UNCATEGORIZED(__n >= 0, "__n must not be negative.");
   }
 
   template<class _I2>
@@ -106,7 +115,7 @@ public:
 
   _LIBCPP_HIDE_FROM_ABI
   constexpr decltype(auto) operator*() {
-    _LIBCPP_ASSERT(__count_ > 0, "Iterator is equal to or past end.");
+    _LIBCPP_ASSERT_UNCATEGORIZED(__count_ > 0, "Iterator is equal to or past end.");
     return *__current_;
   }
 
@@ -114,7 +123,7 @@ public:
   constexpr decltype(auto) operator*() const
     requires __dereferenceable<const _Iter>
   {
-    _LIBCPP_ASSERT(__count_ > 0, "Iterator is equal to or past end.");
+    _LIBCPP_ASSERT_UNCATEGORIZED(__count_ > 0, "Iterator is equal to or past end.");
     return *__current_;
   }
 
@@ -127,7 +136,7 @@ public:
 
   _LIBCPP_HIDE_FROM_ABI
   constexpr counted_iterator& operator++() {
-    _LIBCPP_ASSERT(__count_ > 0, "Iterator already at or past end.");
+    _LIBCPP_ASSERT_UNCATEGORIZED(__count_ > 0, "Iterator already at or past end.");
     ++__current_;
     --__count_;
     return *this;
@@ -135,21 +144,21 @@ public:
 
   _LIBCPP_HIDE_FROM_ABI
   decltype(auto) operator++(int) {
-    _LIBCPP_ASSERT(__count_ > 0, "Iterator already at or past end.");
+    _LIBCPP_ASSERT_UNCATEGORIZED(__count_ > 0, "Iterator already at or past end.");
     --__count_;
-#ifndef _LIBCPP_NO_EXCEPTIONS
+#ifndef _LIBCPP_HAS_NO_EXCEPTIONS
     try { return __current_++; }
     catch(...) { ++__count_; throw; }
 #else
     return __current_++;
-#endif // _LIBCPP_NO_EXCEPTIONS
+#endif // _LIBCPP_HAS_NO_EXCEPTIONS
   }
 
   _LIBCPP_HIDE_FROM_ABI
   constexpr counted_iterator operator++(int)
     requires forward_iterator<_Iter>
   {
-    _LIBCPP_ASSERT(__count_ > 0, "Iterator already at or past end.");
+    _LIBCPP_ASSERT_UNCATEGORIZED(__count_ > 0, "Iterator already at or past end.");
     counted_iterator __tmp = *this;
     ++*this;
     return __tmp;
@@ -192,7 +201,7 @@ public:
   constexpr counted_iterator& operator+=(iter_difference_t<_Iter> __n)
     requires random_access_iterator<_Iter>
   {
-    _LIBCPP_ASSERT(__n <= __count_, "Cannot advance iterator past end.");
+    _LIBCPP_ASSERT_UNCATEGORIZED(__n <= __count_, "Cannot advance iterator past end.");
     __current_ += __n;
     __count_ -= __n;
     return *this;
@@ -231,9 +240,10 @@ public:
   constexpr counted_iterator& operator-=(iter_difference_t<_Iter> __n)
     requires random_access_iterator<_Iter>
   {
-    _LIBCPP_ASSERT(-__n <= __count_, "Attempt to subtract too large of a size: "
-                                     "counted_iterator would be decremented before the "
-                                     "first element of its range.");
+    _LIBCPP_ASSERT_UNCATEGORIZED(-__n <= __count_,
+                                 "Attempt to subtract too large of a size: "
+                                 "counted_iterator would be decremented before the "
+                                 "first element of its range.");
     __current_ -= __n;
     __count_ += __n;
     return *this;
@@ -243,7 +253,7 @@ public:
   constexpr decltype(auto) operator[](iter_difference_t<_Iter> __n) const
     requires random_access_iterator<_Iter>
   {
-    _LIBCPP_ASSERT(__n < __count_, "Subscript argument must be less than size.");
+    _LIBCPP_ASSERT_UNCATEGORIZED(__n < __count_, "Subscript argument must be less than size.");
     return __current_[__n];
   }
 
@@ -263,7 +273,7 @@ public:
   }
 
   template<common_with<_Iter> _I2>
-  friend constexpr strong_ordering operator<=>(
+  _LIBCPP_HIDE_FROM_ABI friend constexpr strong_ordering operator<=>(
     const counted_iterator& __lhs, const counted_iterator<_I2>& __rhs)
   {
     return __rhs.__count_ <=> __lhs.__count_;
@@ -274,7 +284,7 @@ public:
     noexcept(noexcept(ranges::iter_move(__i.__current_)))
       requires input_iterator<_Iter>
   {
-    _LIBCPP_ASSERT(__i.__count_ > 0, "Iterator must not be past end of range.");
+    _LIBCPP_ASSERT_UNCATEGORIZED(__i.__count_ > 0, "Iterator must not be past end of range.");
     return ranges::iter_move(__i.__current_);
   }
 
@@ -283,11 +293,12 @@ public:
   friend constexpr void iter_swap(const counted_iterator& __x, const counted_iterator<_I2>& __y)
     noexcept(noexcept(ranges::iter_swap(__x.__current_, __y.__current_)))
   {
-    _LIBCPP_ASSERT(__x.__count_ > 0 && __y.__count_ > 0,
-                   "Iterators must not be past end of range.");
+    _LIBCPP_ASSERT_UNCATEGORIZED(__x.__count_ > 0 && __y.__count_ > 0,
+                                 "Iterators must not be past end of range.");
     return ranges::iter_swap(__x.__current_, __y.__current_);
   }
 };
+_LIBCPP_CTAD_SUPPORTED_FOR_TYPE(counted_iterator);
 
 template<input_iterator _Iter>
   requires same_as<_ITER_TRAITS<_Iter>, iterator_traits<_Iter>>
@@ -296,8 +307,10 @@ struct iterator_traits<counted_iterator<_Iter>> : iterator_traits<_Iter> {
                                 add_pointer_t<iter_reference_t<_Iter>>, void>;
 };
 
-#endif // _LIBCPP_STD_VER > 17
+#endif // _LIBCPP_STD_VER >= 20
 
 _LIBCPP_END_NAMESPACE_STD
+
+_LIBCPP_POP_MACROS
 
 #endif // _LIBCPP___ITERATOR_COUNTED_ITERATOR_H

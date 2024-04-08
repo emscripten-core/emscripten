@@ -184,7 +184,7 @@ function _emscripten_random() {
     return Math.random()
 }
 
-function _emscripten_memcpy_big(dest, src, num) {
+function _emscripten_memcpy_js(dest, src, num) {
     HEAPU8.set(HEAPU8.subarray(src, src + num), dest)
 }
 if (ENVIRONMENT_IS_NODE) {
@@ -192,8 +192,6 @@ if (ENVIRONMENT_IS_NODE) {
         var t = process.hrtime();
         return t[0] * 1e3 + t[1] / 1e6
     }
-} else if (typeof dateNow !== "undefined") {
-    _emscripten_get_now = dateNow
 } else if (typeof self === "object" && self["performance"] && typeof self["performance"]["now"] === "function") {
     _emscripten_get_now = (function() {
         return self["performance"]["now"]()
@@ -206,22 +204,22 @@ if (ENVIRONMENT_IS_NODE) {
     _emscripten_get_now = Date.now
 }
 var wasmImports = {
-    "abort": abort,
-    "___syscall140": ___syscall140,
-    "___syscall146": ___syscall146,
-    "___syscall54": ___syscall54,
-    "___syscall6": ___syscall6,
-    "_emscripten_get_now": _emscripten_get_now,
-    "_emscripten_memcpy_big": _emscripten_memcpy_big,
-    "_emscripten_random": _emscripten_random
+    abort: abort,
+    ___syscall140: ___syscall140,
+    ___syscall146: ___syscall146,
+    ___syscall54: ___syscall54,
+    ___syscall6: ___syscall6,
+    _emscripten_get_now: _emscripten_get_now,
+    _emscripten_memcpy_js: _emscripten_memcpy_js,
+    _emscripten_random: _emscripten_random
 };
 
 function run() {
     var ret = _main()
 }
 
-function initRuntime(asm) {
-    asm["__GLOBAL__sub_I_test_global_initializer_cpp"]()
+function initRuntime(wasmExports) {
+    wasmExports["__GLOBAL__sub_I_test_global_initializer_cpp"]()
 }
 var env = wasmImports;
 env["memory"] = wasmMemory;
@@ -249,19 +247,19 @@ var imports = {
     }
 };
 var ___errno_location, _llvm_bswap_i32, _main, _memcpy, _memset, dynCall_ii, dynCall_iiii;
-WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
-    var asm = output.instance.exports;
-    ___errno_location = asm["___errno_location"];
-    _llvm_bswap_i32 = asm["_llvm_bswap_i32"];
-    _main = asm["_main"];
-    _memcpy = asm["_memcpy"];
-    _memset = asm["_memset"];
-    dynCall_ii = asm["dynCall_ii"];
-    dynCall_iiii = asm["dynCall_iiii"];
-    initRuntime(asm);
+WebAssembly.instantiate(Module["wasm"], imports).then(((output) => {
+    var wasmExports = output.instance.exports;
+    ___errno_location = wasmExports["___errno_location"];
+    _llvm_bswap_i32 = wasmExports["_llvm_bswap_i32"];
+    _main = wasmExports["_main"];
+    _memcpy = wasmExports["_memcpy"];
+    _memset = wasmExports["_memset"];
+    dynCall_ii = wasmExports["dynCall_ii"];
+    dynCall_iiii = wasmExports["dynCall_iiii"];
+    initRuntime(wasmExports);
     ready()
 }))
 
 
 
-// EXTRA_INFO: {"mapping": {"_llvm_bswap_i32": "k", "_emscripten_random": "c", "dynCall_ii": "o", "__GLOBAL__sub_I_test_global_initializer_cpp": "i", "___errno_location": "j", "dynCall_iiii": "p", "___syscall6": "f", "_memset": "n", "_memcpy": "m", "abort": "b", "___syscall146": "a", "_emscripten_memcpy_big": "d", "___syscall54": "g", "___syscall140": "h", "_emscripten_get_now": "e", "_main": "l"}}
+// EXTRA_INFO: {"mapping": {"_llvm_bswap_i32": "k", "_emscripten_random": "c", "dynCall_ii": "o", "__GLOBAL__sub_I_test_global_initializer_cpp": "i", "___errno_location": "j", "dynCall_iiii": "p", "___syscall6": "f", "_memset": "n", "_memcpy": "m", "abort": "b", "___syscall146": "a", "_emscripten_memcpy_js": "d", "___syscall54": "g", "___syscall140": "h", "_emscripten_get_now": "e", "_main": "l"}}

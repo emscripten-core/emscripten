@@ -51,7 +51,7 @@
     <figure style="overflow:visible;" id="spinner"><div class="spinner"></div><center style="margin-top:0.5em"><strong>emscripten</strong></center></figure>
     <div class="emscripten" id="status">Downloading...</div>
     <div class="emscripten">
-      <progress value="0" max="100" id="progress" hidden=1></progress>  
+      <progress value="0" max="100" id="progress" hidden=1></progress>
     </div>
     <div class="emscripten_border">
       <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
@@ -61,10 +61,10 @@
       <input type="checkbox" id="resize">Resize canvas
       <input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer
       &nbsp;&nbsp;&nbsp;
-      <input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked, 
+      <input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked,
                                                                                 document.getElementById('resize').checked)">
     </div>
-    
+
     <hr/>
     <textarea class="emscripten" id="output" rows="8"></textarea>
     <hr>
@@ -76,11 +76,11 @@
       var Module = {
         preRun: [],
         postRun: [],
-        print: (function() {
+        print: (() => {
           var element = document.getElementById('output');
           if (element) element.value = ''; // clear browser cache
-          return function(text) {
-            if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+          return (...args) => {
+            var text = args.join(' ');
             // These replacements are necessary if you render to raw HTML
             //text = text.replace(/&/g, "&amp;");
             //text = text.replace(/</g, "&lt;");
@@ -93,25 +93,25 @@
             }
           };
         })(),
-        printErr: function(text) {
-          if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+        printErr: (...args) => {
+          var text = args.join(' '); 
           if (0) { // XXX disabled for safety typeof dump == 'function') {
             dump(text + '\n'); // fast, straight to the real console
           } else {
             console.error(text);
           }
         },
-        canvas: (function() {
+        canvas: (() => {
           var canvas = document.getElementById('canvas');
 
           // As a default initial behavior, pop up an alert when webgl context is lost. To make your
           // application robust, you may want to override this behavior before shipping!
           // See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
-          canvas.addEventListener("webglcontextlost", function(e) { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
+          canvas.addEventListener("webglcontextlost", (e) => { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
 
           return canvas;
         })(),
-        setStatus: function(text) {
+        setStatus: (text) => {
           if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
           if (text === Module.setStatus.text) return;
           var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
@@ -132,50 +132,53 @@
           statusElement.innerHTML = text;
         },
         totalDependencies: 0,
-        monitorRunDependencies: function(left) {
+        monitorRunDependencies: (left) => {
           this.totalDependencies = Math.max(this.totalDependencies, left);
           Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
         }
       };
       Module.setStatus('Downloading...');
-      window.onerror = function() {
+      window.onerror = () => {
         Module.setStatus('Exception thrown, see JavaScript console');
         spinnerElement.style.display = 'none';
-        Module.setStatus = function(text) {
+        Module.setStatus = (text) => {
           if (text) Module.printErr('[post-exception status] ' + text);
         };
       };
 
       function downloadWasm(url) {
-        return new Promise(function(resolve, reject) {
-          var wasmXHR = new XMLHttpRequest();
-          wasmXHR.open('GET', url, true);
-          wasmXHR.responseType = 'arraybuffer';
-          wasmXHR.onload = function() { resolve(wasmXHR.response); }
-          wasmXHR.onerror = function() { reject('error '  + wasmXHR.status); }
-          wasmXHR.send(null);
-        });
+        console.log('fetching wasm: ', url);
+        return fetch(url).then((response) => response.arrayBuffer());
       }
 
       var wasm = downloadWasm('manual_wasm_instantiate.wasm');
 
-      // Module.instantiateWasm is a user-implemented callback which the Emscripten runtime calls to perform
-      // the WebAssembly instantiation action. The callback function will be called with two parameters, imports
-      // and successCallback. imports is a JS object which contains all the function imports that need to be passed
-      // to the Module when instantiating, and once instantiated, the function should call successCallback() with
-      // the WebAssembly Instance object.
-      // The instantiation can be performed either synchronously or asynchronously. The return value of this function
-      // should contain the exports object of the instantiated Module, or an empty dictionary object {} if the
-      // instantiation is performed asynchronously, or false if instantiation failed.
-      Module.instantiateWasm = function(imports, successCallback) {
+      // Module.instantiateWasm is a user-implemented callback which the
+      // Emscripten runtime calls to perform the WebAssembly instantiation
+      // action. The callback function will be called with two parameters,
+      // imports and successCallback. imports is a JS object which contains
+      // all the function imports that need to be passed to the Module when
+      // instantiating, and once instantiated, the function should call
+      // successCallback() with the WebAssembly Instance object.
+      // The instantiation can be performed either synchronously or
+      // asynchronously. The return value of this function should contain the
+      // exports object of the instantiated Module, or an empty dictionary
+      // object {} if the instantiation is performed asynchronously, or false
+      // if instantiation failed.
+      Module.instantiateWasm = (imports, successCallback) => {
         console.log('instantiateWasm: instantiating asynchronously');
-        wasm.then(function(wasmBinary) {
+        wasm.then((bytes) => {
           console.log('wasm download finished, begin instantiating');
-          var wasmInstantiate = WebAssembly.instantiate(new Uint8Array(wasmBinary), imports).then(function(output) {
+          var wasmInstantiate = WebAssembly.instantiate(bytes, imports).then((output) => {
+            // When overriding instantiateWasm, in asan builds, we also need
+            // to take care of creating the WasmOffsetConverter
+            if (typeof WasmOffsetConverter != "undefined") {
+              wasmOffsetConverter = new WasmOffsetConverter(bytes, output.module);
+            }
             console.log('wasm instantiation succeeded');
             Module.testWasmInstantiationSucceeded = 1;
             successCallback(output.instance);
-          }).catch(function(e) {
+          }).catch((e) => {
             console.log('wasm instantiation failed! ' + e);
           });
         });

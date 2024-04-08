@@ -8,26 +8,21 @@
  * Tests live in test/other/test_parseTools.js.
  */
 
-global.FOUR_GB = 4 * 1024 * 1024 * 1024;
-const FLOAT_TYPES = new Set(['float', 'double']);
+globalThis.FOUR_GB = 4 * 1024 * 1024 * 1024;
+globalThis.WASM_PAGE_SIZE = 64 * 1024;
 
-let currentlyParsedFilename = '';
+const FLOAT_TYPES = new Set(['float', 'double']);
 
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
 // NOTE: Be careful with that ret check. If ret is |0|, |ret ? ret.toString() : ''| would result in ''!
-function processMacros(text) {
+function processMacros(text, filename) {
   // The `?` here in makes the regex non-greedy so it matches with the closest
   // set of closing braces.
   // `[\s\S]` works like `.` but include newline.
   return text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
-    try {
-      const ret = eval(str);
-      return ret !== null ? ret.toString() : '';
-    } catch (ex) {
-      ex.stack = 'In the following macro:\n\n' + str + '\n\n' + ex.stack;
-      throw ex;
-    }
+    const ret = vm.runInThisContext(str, { filename: filename });
+    return ret !== null ? ret.toString() : '';
   });
 }
 
@@ -57,11 +52,17 @@ function preprocess(filename) {
   const showStack = [];
   const showCurrentLine = () => showStack.every((x) => x == SHOW);
 
-  currentlyParsedFilename = filename;
+  const oldFilename = currentFile;
+  currentFile = filename;
   const fileExt = filename.split('.').pop().toLowerCase();
   const isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
   let inStyle = false;
   const lines = text.split('\n');
+  // text.split yields an extra empty element at the end if text itself ends with a newline.
+  if (!lines[lines.length - 1]) {
+    lines.pop();
+  }
+
   let ret = '';
   let emptyLine = false;
 
@@ -133,8 +134,10 @@ function preprocess(filename) {
           if (showCurrentLine()) {
             error(`${filename}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
           }
+        } else if (first === '#preprocess') {
+          // Do nothing
         } else {
-          throw new Error(`${filename}:${i + 1}: Unknown preprocessor directive ${first}`);
+          error(`${filename}:${i + 1}: Unknown preprocessor directive ${first}`);
         }
       } else {
         if (showCurrentLine()) {
@@ -155,7 +158,7 @@ function preprocess(filename) {
 no matching #endif found (${showStack.length$}' unmatched preprocessing directives on stack)`);
     return ret;
   } finally {
-    currentlyParsedFilename = null;
+    currentFile = oldFilename;
   }
 }
 
@@ -164,28 +167,24 @@ function isNiceIdent(ident, loose) {
   return /^\(?[$_]+[\w$_\d ]*\)?$/.test(ident);
 }
 
-// Simple variables or numbers, or things already quoted, do not need to be quoted
-function needsQuoting(ident) {
-  if (/^[-+]?[$_]?[\w$_\d]*$/.test(ident)) return false; // number or variable
-  if (ident[0] === '(' && ident[ident.length - 1] === ')' && ident.indexOf('(', 1) < 0) return false; // already fully quoted
-  return true;
-}
+globalThis.POINTER_SIZE = MEMORY64 ? 8 : 4;
+globalThis.POINTER_MAX = MEMORY64 ? 'Number.MAX_SAFE_INTEGER' : '0xFFFFFFFF';
+globalThis.STACK_ALIGN = 16;
+globalThis.POINTER_BITS = POINTER_SIZE * 8;
+globalThis.POINTER_TYPE = `u${POINTER_BITS}`;
+globalThis.POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
+globalThis.POINTER_SHIFT = MEMORY64 ? '3' : '2';
+globalThis.POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
+globalThis.LONG_TYPE = `i${POINTER_BITS}`;
 
-const POINTER_SIZE = MEMORY64 ? 8 : 4;
-const POINTER_BITS = POINTER_SIZE * 8;
-const POINTER_TYPE = 'u' + POINTER_BITS;
-const POINTER_JS_TYPE = MEMORY64 ? "'bigint'" : "'number'";
-const POINTER_SHIFT = MEMORY64 ? '3' : '2';
-const POINTER_HEAP = MEMORY64 ? 'HEAP64' : 'HEAP32';
-
-const SIZE_TYPE = POINTER_TYPE;
+globalThis.SIZE_TYPE = POINTER_TYPE;
 
 
 // Similar to POINTER_TYPE, but this is the actual wasm type that is
 // used in practice, while POINTER_TYPE is the more refined internal
 // type (that is unsigned, where as core wasm does not have unsigned
 // types).
-const POINTER_WASM_TYPE = 'i' + POINTER_BITS;
+globalThis.POINTER_WASM_TYPE = `i${POINTER_BITS}`;
 
 function isPointerType(type) {
   return type[type.length - 1] == '*';
@@ -196,23 +195,29 @@ function isPointerType(type) {
 // value will be replaced with tempVar.
 function makeInlineCalculation(expression, value, tempVar) {
   if (!isNiceIdent(value)) {
-    expression = tempVar + '=' + value + ',' + expression;
+    expression = `${tempVar} = ${value},${expression}`;
     value = tempVar;
   }
-  return '(' + expression.replace(/VALUE/g, value) + ')';
+  return `(${expression.replace(/VALUE/g, value)})`;
 }
 
 // XXX Make all i64 parts signed
 
 // Splits a number (an integer in a double, possibly > 32 bits) into an i64
 // value, represented by a low and high i32 pair.
-// Will suffer from rounding.
+// Will suffer from rounding and truncation.
 function splitI64(value) {
+  if (WASM_BIGINT) {
+    // Nothing to do: just make sure it is a BigInt (as it must be of that
+    // type, to be sent into wasm).
+    return `BigInt(${value})`;
+  }
+
   // general idea:
   //
   //  $1$0 = ~~$d >>> 0;
   //  $1$1 = Math.abs($d) >= 1 ? (
-  //     $d > 0 ? Math.min(Math.floor(($d)/ 4294967296.0), 4294967295.0)
+  //     $d > 0 ? Math.floor(($d)/ 4294967296.0) >>> 0
   //            : Math.ceil(Math.min(-4294967296.0, $d - $1$0)/ 4294967296.0)
   //  ) : 0;
   //
@@ -228,9 +233,8 @@ function splitI64(value) {
   const high = makeInlineCalculation(
       asmCoercion('Math.abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
         '(VALUE > ' + asmEnsureFloat('0', 'double') + ' ? ' +
-        asmCoercion('Math.min(' + asmCoercion('Math.floor((VALUE)/' +
-        asmEnsureFloat(4294967296, 'double') + ')', 'double') + ', ' +
-        asmEnsureFloat(4294967295, 'double') + ')', 'i32') + '>>>0' +
+        asmCoercion('Math.floor((VALUE)/' +
+        asmEnsureFloat(4294967296, 'double') + ')', 'double') + '>>>0' +
         ' : ' +
         asmFloatToInt(asmCoercion('Math.ceil((VALUE - +((' + asmFloatToInt('VALUE') + ')>>>0))/' +
         asmEnsureFloat(4294967296, 'double') + ')', 'double')) + '>>>0' +
@@ -254,19 +258,45 @@ function indentify(text, indent) {
       indent += ' ';
     }
   }
-  return text.replace(/\n/g, '\n' + indent);
+  return text.replace(/\n/g, `\n${indent}`);
 }
 
 // Correction tools
 
-function getHeapOffset(offset, type) {
-  if (!WASM_BIGINT && getNativeFieldSize(type) > 4 && type == 'i64') {
-    // we emulate 64-bit integer values as 32 in asmjs-unknown-emscripten, but not double
-    type = 'i32';
+function getNativeTypeSize(type) {
+  switch (type) {
+    case 'i1': case 'i8': case 'u8': return 1;
+    case 'i16': case 'u16': return 2;
+    case 'i32': case 'u32': return 4;
+    case 'i64': case 'u64': return 8;
+    case 'float': return 4;
+    case 'double': return 8;
+    default: {
+      if (type[type.length - 1] === '*') {
+        return POINTER_SIZE;
+      }
+      if (type[0] === 'i') {
+        const bits = Number(type.substr(1));
+        assert(bits % 8 === 0, `getNativeTypeSize invalid bits ${bits}, ${type} type`);
+        return bits / 8;
+      }
+      return 0;
+    }
   }
+}
 
+function getHeapOffset(offset, type) {
   const sz = getNativeTypeSize(type);
+  if (sz == 1) {
+    return offset;
+  }
+  if (MEMORY64 == 1) {
+    return `((${offset})/${sz})`;
+  }
   const shifts = Math.log(sz) / Math.LN2;
+  if (CAN_ADDRESS_2GB) {
+    return `((${offset})>>>${shifts})`;
+  }
   return `((${offset})>>${shifts})`;
 }
 
@@ -289,7 +319,7 @@ function asmEnsureFloat(value, type) {
     // may need a .0 (if it can't fit in an int)
     if (value == 0) return 'Math.fround(0)';
     value = ensureDot(value);
-    return 'Math.fround(' + value + ')';
+    return `Math.fround(${value})`;
   }
   if (FLOAT_TYPES.has(type)) {
     return ensureDot(value);
@@ -307,15 +337,15 @@ function asmCoercion(value, type) {
       return asmEnsureFloat(value, type);
     }
     if (type === 'float') {
-      return 'Math.fround(' + value + ')';
+      return `Math.fround(${value})`;
     }
-    return '(+(' + value + '))';
+    return `(+(${value}))`;
   }
-  return '((' + value + ')|0)';
+  return `((${value})|0)`;
 }
 
 function asmFloatToInt(x) {
-  return '(~~(' + x + '))';
+  return `(~~(${x}))`;
 }
 
 // See makeSetValue
@@ -326,7 +356,7 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
     // TODO(sbc): make this into an error at some point.
     printErr('makeGetValue: Please use u8/u16/u32/u64 unsigned types in favor of additional argument');
     if (unsigned && type.startsWith('i')) {
-      type = 'u' + type.slice(1);
+      type = `u${type.slice(1)}`;
     }
   } else if (type.startsWith('u')) {
     // Set `unsigned` based on the type name.
@@ -335,11 +365,11 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
 
   const offset = calcFastOffset(ptr, pos);
   if (type === 'i53' || type === 'u53') {
-    return 'readI53From' + (unsigned ? 'U' : 'I') + '64(' + offset + ')';
+    return `readI53From${unsigned ? 'U' : 'I'}64(${offset})`;
   }
 
   const slab = getHeapForType(type);
-  let ret = slab + '[' + getHeapOffset(offset, type) + ']';
+  let ret = `${slab}[${getHeapOffset(offset, type)}]`;
   if (MEMORY64 && isPointerType(type)) {
     ret = `Number(${ret})`;
   }
@@ -355,23 +385,25 @@ function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align) {
  * @param {number} value The value to set.
  * @param {string} type A string defining the type. Used to find the slab (HEAPU8, HEAP16, HEAPU32, etc.).
  *             which means we should write to all slabs, ignore type differences if any on reads, etc.
- * @param {bool} noNeedFirst Whether to ignore the offset in the pointer itself.
- * @param {bool} ignore: legacy, ignored.
- * @param {number} align: legacy, ignored.
- * @param {string} sep: TODO
- * @return {TODO}
+ * @return {string} JS code for performing the memory set operation
  */
-function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = ';') {
-  assert(typeof align === 'undefined', 'makeSetValue no longer supports align parameter');
-  assert(typeof noNeedFirst === 'undefined', 'makeSetValue no longer supports noNeedFirst parameter');
-  if (type == 'i64' && (!WASM_BIGINT || !MEMORY64)) {
-    // If we lack either BigInt support or Memory64 then we must fall back to an
-    // unaligned read of a 64-bit value: without BigInt we do not have HEAP64,
-    // and without Memory64 i64 fields are not guaranteed to be aligned to 64
-    // bits, so HEAP64[ptr>>3] might be broken.
-    return '(tempI64 = [' + splitI64(value) + '],' +
-            makeSetValue(ptr, pos, 'tempI64[0]', 'i32', noNeedFirst, ignore, align, ',') + ',' +
-            makeSetValue(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), 'tempI64[1]', 'i32', noNeedFirst, ignore, align, ',') + ')';
+function makeSetValue(ptr, pos, value, type) {
+  var rtn = makeSetValueImpl(ptr, pos, value, type);
+  if (ASSERTIONS == 2 && (type.startsWith('i') || type.startsWith('u'))) {
+    const width = getBitWidth(type);
+    const assertion = `checkInt${width}(${value})`;
+    rtn += `;${assertion}`
+  }
+  return rtn;
+}
+
+function makeSetValueImpl(ptr, pos, value, type) {
+  if (type == 'i64' && !WASM_BIGINT) {
+    // If we lack BigInt support we must fall back to an reading a pair of I32
+    // values.
+    return '(tempI64 = [' + splitI64(value) + '], ' +
+            makeSetValueImpl(ptr, pos, 'tempI64[0]', 'i32') + ',' +
+            makeSetValueImpl(ptr, getFastValue(pos, '+', getNativeTypeSize('i32')), 'tempI64[1]', 'i32') + ')';
   }
 
   const offset = calcFastOffset(ptr, pos);
@@ -384,13 +416,28 @@ function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, sep = '
   if (slab == 'HEAPU64' || slab == 'HEAP64') {
     value = `BigInt(${value})`;
   }
-  return slab + '[' + getHeapOffset(offset, type) + '] = ' + value;
+  return `${slab}[${getHeapOffset(offset, type)}] = ${value}`;
 }
 
 function makeHEAPView(which, start, end) {
-  const size = parseInt(which.replace('U', '').replace('F', '')) / 8;
-  const mod = size == 1 ? '' : ('>>' + Math.log2(size));
-  return `HEAP${which}.subarray((${start})${mod}, (${end})${mod})`;
+  // The makeHEAPView, for legacy reasons, takes a heap "suffix"
+  // rather than the heap "type" that used by other APIs here.
+  const type = {
+    '8': 'i8',
+    'U8': 'u8',
+    '16': 'i16',
+    'U16': 'u16',
+    '32': 'i32',
+    'U32': 'u32',
+    '64': 'i64',
+    'U64': 'u64',
+    'F32': 'float',
+    'F64': 'double',
+  }[which];
+  const heap = getHeapForType(type);
+  start = getHeapOffset(start, type);
+  end = getHeapOffset(end, type);
+  return `${heap}.subarray((${start}), ${end})`;
 }
 
 // Given two values and an operation, returns the result of that operation.
@@ -451,6 +498,12 @@ function calcFastOffset(ptr, pos) {
   return getFastValue(ptr, '+', pos);
 }
 
+function getBitWidth(type) {
+  if (type == 'i53' || type == 'u53')
+    return 53;
+  return getNativeTypeSize(type) * 8;
+}
+
 function getHeapForType(type) {
   assert(type);
   if (isPointerType(type)) {
@@ -468,14 +521,14 @@ function getHeapForType(type) {
     case 'u8':     return 'HEAPU8';
     case 'i16':    return 'HEAP16';
     case 'u16':    return 'HEAPU16';
-    case 'i64':    // fallthrough
     case 'i32':    return 'HEAP32';
-    case 'u64':    // fallthrough
     case 'u32':    return 'HEAPU32';
     case 'double': return 'HEAPF64';
     case 'float':  return 'HEAPF32';
+    case 'i64':    // fallthrough
+    case 'u64':    error('use i53/u53, or avoid i64/u64 without WASM_BIGINT');
   }
-  assert(false, 'bad heap type: ' + type);
+  assert(false, `bad heap type: ${type}`);
 }
 
 function makeReturn64(value) {
@@ -490,42 +543,22 @@ function makeReturn64(value) {
 
 function makeThrow(excPtr) {
   if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING) {
-    excPtr += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch."';
+    var assertInfo = 'Exception thrown, but exception catching is not enabled. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.';
     if (MAIN_MODULE) {
-      excPtr += ' + " (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)"';
+      assertInfo += ' (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)';
     }
-    return `throw ${excPtr};`;
-  }
-  if (EXCEPTION_STACK_TRACES) {
-    return `throw new CppException(${excPtr});`;
+    return `assert(false, '${assertInfo}');`;
   }
   return `throw ${excPtr};`;
 }
 
+function storeException(varName, excPtr) {
+  var exceptionToStore = EXCEPTION_STACK_TRACES ? `new CppException(${excPtr})` : `${excPtr}`;
+  return `${varName} = ${exceptionToStore};`;
+}
+
 function charCode(char) {
   return char.charCodeAt(0);
-}
-
-function getTypeFromHeap(suffix) {
-  switch (suffix) {
-    case '8': return 'i8';
-    case '16': return 'i16';
-    case '32': return 'i32';
-    case 'F32': return 'float';
-    case 'F64': return 'double';
-  }
-  assert(false, 'bad type suffix: ' + suffix);
-}
-
-function ensureValidFFIType(type) {
-  return type === 'float' ? 'double' : type; // ffi does not tolerate float XXX
-}
-
-// FFI return values must arrive as doubles, and we can force them to floats afterwards
-function asmFFICoercion(value, type) {
-  value = asmCoercion(value, ensureValidFFIType(type));
-  if (type === 'float') value = asmCoercion(value, 'float');
-  return value;
 }
 
 function makeDynCall(sig, funcPtr) {
@@ -565,7 +598,7 @@ function makeDynCall(sig, funcPtr) {
 
 
   if (funcPtr === undefined) {
-    warn(`${currentlyParsedFilename}: \
+    warn(`
 Legacy use of {{{ makeDynCall("${sig}") }}}(funcPtr, arg1, arg2, ...). \
 Starting from Emscripten 2.0.2 (Aug 31st 2020), syntax for makeDynCall has changed. \
 New syntax is {{{ makeDynCall("${sig}", "funcPtr") }}}(arg1, arg2, ...). \
@@ -596,19 +629,15 @@ Please update to new syntax.`);
 
     const dyncall = `dynCall_${sig}`;
     if (sig.length > 1) {
-      return `((${args}) => ${dyncall}.apply(null, [${funcPtr}, ${callArgs}]))`;
+      return `((${args}) => ${dyncall}(${funcPtr}, ${callArgs}))`;
     }
-    return `(() => ${dyncall}.call(null, ${funcPtr}))`;
+    return `(() => ${dyncall}(${funcPtr}))`;
   }
 
   if (needArgConversion) {
     return `((${args}) => getWasmTableEntry(${funcPtr}).call(null, ${callArgs}))`;
   }
   return `getWasmTableEntry(${funcPtr})`;
-}
-
-function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr
-  return heap + ',' + ptr;
 }
 
 function makeEval(code) {
@@ -626,22 +655,13 @@ function makeEval(code) {
   return ret;
 }
 
-global.ATINITS = [];
+globalThis.ATINITS = [];
 
 function addAtInit(code) {
   ATINITS.push(code);
 }
 
-// TODO(sbc): There are no more uses to ATMAINS or addAtMain in emscripten.
-// We should look into removing these.
-global.ATMAINS = [];
-
-function addAtMain(code) {
-  assert(HAS_MAIN, 'addAtMain called but program has no main function');
-  ATMAINS.push(code);
-}
-
-global.ATEXITS = [];
+globalThis.ATEXITS = [];
 
 function addAtExit(code) {
   if (EXIT_RUNTIME) {
@@ -650,7 +670,7 @@ function addAtExit(code) {
 }
 
 function makeRetainedCompilerSettings() {
-  const ignore = new Set(['STRUCT_INFO']);
+  const ignore = new Set();
   if (STRICT) {
     for (const setting of LEGACY_SETTINGS) {
       ignore.add(setting);
@@ -669,76 +689,104 @@ function makeRetainedCompilerSettings() {
   return ret;
 }
 
-// In wasm, the heap size must be a multiple of 64KiB.
-const WASM_PAGE_SIZE = 65536;
-
 // Receives a function as text, and a function that constructs a modified
-// function, to which we pass the parsed-out name, arguments, body, and possible
+// function, to which we pass the parsed-out arguments, body, and possible
 // "async" prefix of the input function. Returns the output of that function.
-function modifyFunction(text, func) {
+function modifyJSFunction(text, func) {
   // Match a function with a name.
-  let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   let async_;
-  let name;
   let args;
   let rest;
+  let oneliner = false;
+  let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   if (match) {
     async_ = match[1] || '';
-    name = match[2];
     args = match[3];
     rest = text.substr(match[0].length);
   } else {
-    // Match a function without a name (we could probably use a single regex
-    // for both, but it would be more complex).
-    match = text.match(/^\s*(async\s+)?function\(([^)]*)\)/);
-    assert(match, 'could not match function ' + text + '.');
-    name = '';
-    async_ = match[1] || '';
-    args = match[2];
-    rest = text.substr(match[0].length);
+    // Match an arrow function
+    let match = text.match(/^\s*(var (\w+) = )?(async\s+)?\(([^)]*)\)\s+=>\s+/);
+    if (match) {
+      async_ = match[3] || '';
+      args = match[4];
+      rest = text.substr(match[0].length);
+      rest = rest.trim();
+      oneliner = rest[0] != '{';
+    } else {
+      // Match a function without a name (we could probably use a single regex
+      // for both, but it would be more complex).
+      match = text.match(/^\s*(async\s+)?function\(([^)]*)\)/);
+      assert(match, `could not match function:\n${text}\n`);
+      async_ = match[1] || '';
+      args = match[2];
+      rest = text.substr(match[0].length);
+    }
   }
-  const bodyStart = rest.indexOf('{');
-  assert(bodyStart >= 0);
-  const bodyEnd = rest.lastIndexOf('}');
-  assert(bodyEnd > 0);
-  return func(name, args, rest.substring(bodyStart + 1, bodyEnd), async_);
+  let body = rest;
+  if (!oneliner) {
+    const bodyStart = rest.indexOf('{');
+    const bodyEnd = rest.lastIndexOf('}');
+    assert(bodyEnd > 0);
+    body = rest.substring(bodyStart + 1, bodyEnd);
+  }
+  return func(args, body, async_, oneliner);
 }
 
 function runIfMainThread(text) {
   if (WASM_WORKERS && PTHREADS) {
-    return 'if (!ENVIRONMENT_IS_WASM_WORKER && !ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';
+    return `if (!ENVIRONMENT_IS_WASM_WORKER && !ENVIRONMENT_IS_PTHREAD) { ${text} }`;
   } else if (WASM_WORKERS) {
-    return 'if (!ENVIRONMENT_IS_WASM_WORKER) { ' + text + ' }';
+    return `if (!ENVIRONMENT_IS_WASM_WORKER) { ${text} }`;
   } else if (PTHREADS) {
-    return 'if (!ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';
+    return `if (!ENVIRONMENT_IS_PTHREAD) { ${text} }`;
   } else {
     return text;
   }
 }
 
-// Legacy name for runIfMainThread.
-// TODO(remove).
-const runOnMainThread = runIfMainThread;
+function runIfWorkerThread(text) {
+  if (WASM_WORKERS && PTHREADS) {
+    return `if (ENVIRONMENT_IS_WASM_WORKER || ENVIRONMENT_IS_PTHREAD) { ${text} }`;
+  } else if (WASM_WORKERS) {
+    return `if (ENVIRONMENT_IS_WASM_WORKER) { ${text} }`;
+  } else if (PTHREADS) {
+    return `if (ENVIRONMENT_IS_PTHREAD) { ${text} }`;
+  } else {
+    return '';
+  }
+}
 
 function expectToReceiveOnModule(name) {
   return INCOMING_MODULE_JS_API.has(name);
 }
 
+// Return true if the user requested that a library symbol be included
+// either via DEFAULT_LIBRARY_FUNCS_TO_INCLUDE or EXPORTED_RUNTIME_METHODS.
+function isSymbolNeeded(symName) {
+  if (DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.includes(symName)) {
+    return true;
+  }
+  if (symName.startsWith('$') && symName.slice(1) in EXPORTED_RUNTIME_METHODS) {
+    return true;
+  }
+  return false;
+}
+
 function makeRemovedModuleAPIAssert(moduleName, localName) {
   if (!ASSERTIONS) return '';
-  if (!localName) localName = moduleName;
+  localName ||= moduleName;
   return `legacyModuleProp('${moduleName}', '${localName}');`;
 }
 
 function checkReceiving(name) {
   // ALL_INCOMING_MODULE_JS_API contains all valid incoming module API symbols
   // so calling makeModuleReceive* with a symbol not in this list is an error
-  assert(ALL_INCOMING_MODULE_JS_API.includes(name));
+  assert(ALL_INCOMING_MODULE_JS_API.has(name), `${name} is not part of INCOMING_MODULE_JS_API`);
 }
 
 // Make code to receive a value on the incoming Module object.
 function makeModuleReceive(localName, moduleName) {
-  if (!moduleName) moduleName = localName;
+  moduleName ||= localName;
   checkReceiving(moduleName);
   let ret = '';
   if (expectToReceiveOnModule(moduleName)) {
@@ -760,19 +808,19 @@ function makeModuleReceiveExpr(name, defaultValue) {
 }
 
 function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert) {
-  if (!moduleName) moduleName = localName;
+  moduleName ||= localName;
   checkReceiving(moduleName);
-  let ret = 'var ' + localName;
+  let ret = `var ${localName}`;
   if (!expectToReceiveOnModule(moduleName)) {
     if (defaultValue) {
-      ret += ' = ' + defaultValue;
+      ret += ` = ${defaultValue}`;
     }
     ret += ';';
   } else {
     if (defaultValue) {
       ret += ` = Module['${moduleName}'] || ${defaultValue};`;
     } else {
-      ret += ';' + makeModuleReceive(localName, moduleName);
+      ret += `; ${makeModuleReceive(localName, moduleName)}`;
       return ret;
     }
   }
@@ -785,7 +833,7 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert)
 function makeRemovedFSAssert(fsName) {
   assert(ASSERTIONS);
   const lower = fsName.toLowerCase();
-  if (JS_LIBRARIES.includes('library_' + lower + '.js')) return '';
+  if (JS_LIBRARIES.includes(`library_${lower}.js`)) return '';
   return `var ${fsName} = '${fsName} is no longer included by default; build with -l${lower}.js';`;
 }
 
@@ -821,7 +869,7 @@ function _asmjsDemangle(symbol) {
     return symbol;
   }
   // Strip leading "_"
-  assert(symbol.startsWith('_'), 'expected mangled symbol: ' + symbol);
+  assert(symbol.startsWith('_'), `expected mangled symbol: ${symbol}`);
   return symbol.substr(1);
 }
 
@@ -835,42 +883,42 @@ function hasExportedSymbol(sym) {
   return WASM_EXPORTS.has(sym);
 }
 
-// JS API I64 param handling: if we have BigInt support, the ABI is simple,
-// it is a BigInt. Otherwise, we legalize into pairs of i32s.
-function defineI64Param(name) {
-  if (WASM_BIGINT) {
-    return `/** @type {!BigInt} */ ${name}`;
-  }
-  return `${name}_low, ${name}_high`;
-}
-
-function receiveI64ParamAsI32s(name) {
-  if (WASM_BIGINT) {
-    return `var ${name}_low = Number(${name} & 0xffffffffn) | 0, ${name}_high = Number(${name} >> 32n) | 0;`;
+// Called when global runtime symbols such as wasmMemory, wasmExports and
+// wasmTable are set. In this case we maybe need to re-export them on the
+// Module object.
+function receivedSymbol(sym) {
+  if (EXPORTED_RUNTIME_METHODS.includes(sym)) {
+    return `Module['${sym}'] = ${sym};`
   }
   return '';
 }
 
-function receiveI64ParamAsI53(name, onError) {
+// JS API I64 param handling: if we have BigInt support, the ABI is simple,
+// it is a BigInt. Otherwise, we legalize into pairs of i32s.
+function defineI64Param(name) {
+  if (WASM_BIGINT) {
+    return name;
+  }
+  return `${name}_low, ${name}_high`;
+}
+
+
+function receiveI64ParamAsI53(name, onError, handleErrors = true) {
+  var errorHandler = handleErrors ? `if (isNaN(${name})) { return ${onError}; }` : '';
   if (WASM_BIGINT) {
     // Just convert the bigint into a double.
-    return `${name} = bigintToI53Checked(${name}); if (isNaN(${name})) return ${onError};`;
+    return `${name} = bigintToI53Checked(${name});${errorHandler}`;
   }
   // Convert the high/low pair to a Number, checking for
   // overflow of the I53 range and returning onError in that case.
-  return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high); if (isNaN(${name})) return ${onError};`;
+  return `var ${name} = convertI32PairToI53Checked(${name}_low, ${name}_high);${errorHandler}`;
 }
 
 function receiveI64ParamAsI53Unchecked(name) {
-  if (WASM_BIGINT) return `${name} = Number(${name});`;
-  return `var ${name} = convertI32PairToI53(${name}_low, ${name}_high);`;
-}
-
-function sendI64Argument(low, high) {
   if (WASM_BIGINT) {
-    return 'BigInt(low) | (BigInt(high) << 32n)';
+    return `${name} = Number(${name});`;
   }
-  return low + ', ' + high;
+  return `var ${name} = convertI32PairToI53(${name}_low, ${name}_high);`;
 }
 
 // Any function called from wasm64 may have bigint args, this function takes
@@ -916,19 +964,12 @@ function addReadyPromiseAssertions(promise) {
 });`;
 }
 
-function makeMalloc(source, param) {
-  if (hasExportedSymbol('malloc')) {
-    return `_malloc(${param})`;
-  }
-  // It should be impossible to call some functions without malloc being
-  // included, unless we have a deps_info.json bug. To let closure not error
-  // on `_malloc` not being present, they don't call malloc and instead abort
-  // with an error at runtime.
-  // TODO: A more comprehensive deps system could catch this at compile time.
-  if (!ASSERTIONS) {
-    return 'abort();';
-  }
-  return `abort('malloc was not included, but is needed in ${source}. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.');`;
+function asyncIf(condition) {
+  return condition ? 'async' : '';
+}
+
+function awaitIf(condition) {
+  return condition ? 'await' : '';
 }
 
 // Adds a call to runtimeKeepalivePush, if needed by the current build
@@ -985,15 +1026,7 @@ function getEntryFunction() {
   if (MAIN_MODULE) {
     return `resolveGlobalSymbol('${entryFunction}').sym;`
   }
-  return '_' + entryFunction;
-}
-
-function preJS() {
-  let result = '';
-  for (const fileName of PRE_JS_FILES) {
-    result += preprocess(fileName);
-  }
-  return result;
+  return `_${entryFunction}`;
 }
 
 function formattedMinNodeVersion() {
@@ -1001,4 +1034,16 @@ function formattedMinNodeVersion() {
   var minor = (MIN_NODE_VERSION / 100) % 100
   var rev = MIN_NODE_VERSION % 100
   return `v${major}.${minor}.${rev}`;
+}
+
+function getPerformanceNow() {
+  if (DETERMINISTIC) {
+    return 'deterministicNow';
+  } else {
+    return 'performance.now';
+  }
+}
+
+function implicitSelf() {
+  return ENVIRONMENT.includes('node') ? 'self.' : '';
 }

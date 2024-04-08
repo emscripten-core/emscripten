@@ -84,7 +84,7 @@ if (typeof window == "object" && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' |
   //   EM_ASM({emrun_file_dump("file.dat", HEAPU8.subarray($0, $0 + $1));}, my_data_pointer, my_data_pointer_byte_length);
   var emrun_file_dump = (filename, data) => {
     var http = new XMLHttpRequest();
-    out('Dumping out file "' + filename + '" with ' + data.length + ' bytes of data.');
+    out(`Dumping out file "${filename}" with ${data.length} bytes of data.`);
     http.open("POST", "stdio.html?file=" + filename, true);
     http.send(data); // XXX  this does not work in workers, for some odd reason (issue #2681)
   };

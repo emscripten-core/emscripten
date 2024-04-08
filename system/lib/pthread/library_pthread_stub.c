@@ -222,6 +222,7 @@ _Noreturn void __pthread_exit(void* status) {
    exit(0);
 }
 
+weak_alias(__pthread_exit, emscripten_builtin_pthread_exit);
 weak_alias(__pthread_exit, pthread_exit);
 
 int __pthread_detach(pthread_t t) {
@@ -276,10 +277,6 @@ int pthread_condattr_setclock(pthread_condattr_t *attr, clockid_t clk) {
 }
 
 int pthread_condattr_setpshared(pthread_condattr_t *attr, int shared) {
-  return 0;
-}
-
-int pthread_attr_init(pthread_attr_t *attr) {
   return 0;
 }
 
@@ -388,6 +385,10 @@ void __wait(volatile int *addr, volatile int *waiters, int val, int priv) {}
 void __lock(void* ptr) {}
 
 void __unlock(void* ptr) {}
+
+void __acquire_ptc() {}
+
+void __release_ptc() {}
 
 // When pthreads is not enabled, we can't use the Atomics futex api to do
 // proper sleeps, so simulate a busy spin wait loop instead.

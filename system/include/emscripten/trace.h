@@ -68,31 +68,31 @@ void emscripten_trace_close(void);
 
 #else
 
-#define emscripten_trace_configure(collector_url, application)
-#define emscripten_trace_configure_for_google_wtf()
-#define emscripten_trace_configure_for_test()
-#define emscripten_trace_set_enabled(enabled)
-#define emscripten_trace_set_session_username(username)
-#define emscripten_trace_record_frame_start()
-#define emscripten_trace_record_frame_end()
-#define emscripten_trace_mark(message)
-#define emscripten_trace_log_message(channel, message)
-#define emscripten_trace_report_error(error)
-#define emscripten_trace_record_allocation(address, size)
-#define emscripten_trace_record_reallocation(old_address, new_address, size)
-#define emscripten_trace_record_free(address)
-#define emscripten_trace_annotate_address_type(address, type)
-#define emscripten_trace_associate_storage_size(address, size)
-#define emscripten_trace_report_memory_layout()
-#define emscripten_trace_report_off_heap_data()
-#define emscripten_trace_enter_context(name)
-#define emscripten_trace_exit_context()
-#define emscripten_trace_task_start(task_id, taskname)
-#define emscripten_trace_task_associate_data(key, value);
-#define emscripten_trace_task_suspend(explanation);
-#define emscripten_trace_task_resume(task_id, explanation);
-#define emscripten_trace_task_end();
-#define emscripten_trace_close()
+#define emscripten_trace_configure(collector_url, application) ((void)0)
+#define emscripten_trace_configure_for_google_wtf() ((void)0)
+#define emscripten_trace_configure_for_test() ((void)0)
+#define emscripten_trace_set_enabled(enabled) ((void)0)
+#define emscripten_trace_set_session_username(username) ((void)0)
+#define emscripten_trace_record_frame_start() ((void)0)
+#define emscripten_trace_record_frame_end() ((void)0)
+#define emscripten_trace_mark(message) ((void)0)
+#define emscripten_trace_log_message(channel, message) ((void)0)
+#define emscripten_trace_report_error(error) ((void)0)
+#define emscripten_trace_record_allocation(address, size) ((void)0)
+#define emscripten_trace_record_reallocation(old_address, new_address, size) ((void)0)
+#define emscripten_trace_record_free(address) ((void)0)
+#define emscripten_trace_annotate_address_type(address, type) ((void)0)
+#define emscripten_trace_associate_storage_size(address, size) ((void)0)
+#define emscripten_trace_report_memory_layout() ((void)0)
+#define emscripten_trace_report_off_heap_data() ((void)0)
+#define emscripten_trace_enter_context(name) ((void)0)
+#define emscripten_trace_exit_context() ((void)0)
+#define emscripten_trace_task_start(task_id, taskname) ((void)0)
+#define emscripten_trace_task_associate_data(key, value) ((void)0)
+#define emscripten_trace_task_suspend(explanation) ((void)0)
+#define emscripten_trace_task_resume(task_id, explanation) ((void)0)
+#define emscripten_trace_task_end() ((void)0)
+#define emscripten_trace_close() ((void)0)
 
 #endif
 

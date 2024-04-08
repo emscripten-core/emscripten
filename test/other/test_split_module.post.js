@@ -1,5 +1,5 @@
 function saveProfileData() {
-  var __write_profile = Module['asm']['__write_profile'];
+  var __write_profile = wasmExports['__write_profile'];
   if (__write_profile) {
     var len = __write_profile(0, 0);
     var offset = _malloc(len);

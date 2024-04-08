@@ -44,8 +44,6 @@ if 'benchmark.' in str(sys.argv):
 
 non_core = unittest.skipIf(CORE_BENCHMARKS, "only running core benchmarks")
 
-IGNORE_COMPILATION = 0
-
 OPTIMIZATIONS = '-O3'
 
 PROFILING = 0
@@ -73,10 +71,7 @@ class Benchmarker():
         raise ValueError('Incorrect benchmark output:\n' + output)
 
       if not output_parser or args == ['0']: # if arg is 0, we are not running code, and have no output to parse
-        if IGNORE_COMPILATION:
-          curr = float(re.search(r'took +([\d\.]+) milliseconds', output).group(1)) / 1000
-        else:
-          curr = time.time() - start
+        curr = time.time() - start
       else:
         try:
           curr = output_parser(output)
@@ -206,12 +201,11 @@ class EmscriptenBenchmarker(Benchmarker):
       OPTIMIZATIONS,
       '-sINITIAL_MEMORY=256MB',
       '-sENVIRONMENT=node,shell',
-      '-sBENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + LLVM_FEATURE_FLAGS
     if shared_args:
       cmd += shared_args
-    if common.EMTEST_FORCE64:
+    if PROFILING:
       cmd += ['--profiling']
     else:
       cmd += ['--closure=1', '-sMINIMAL_RUNTIME']
@@ -220,8 +214,6 @@ class EmscriptenBenchmarker(Benchmarker):
     cmd += emcc_args + self.extra_args
     if '-sFILESYSTEM' not in cmd and '-sFORCE_FILESYSTEM' not in cmd:
       cmd += ['-sFILESYSTEM=0']
-    if PROFILING:
-      cmd += ['--profiling-funcs']
     self.cmd = cmd
     run_process(cmd, env=self.env)
     if self.binaryen_opts:
@@ -242,47 +234,6 @@ class EmscriptenBenchmarker(Benchmarker):
     else:
       ret.append(shared.replace_suffix(self.filename, '.wasm'))
     return ret
-
-
-class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
-  def __init__(self, name):
-    super().__init__(name, 'no engine needed')
-
-  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
-    # wasm2c doesn't want minimal runtime which the normal emscripten
-    # benchmarker defaults to, as we don't have any JS anyhow
-    emcc_args = emcc_args + [
-      '-sSTANDALONE_WASM',
-      '-sMINIMAL_RUNTIME=0',
-      '-sWASM2C'
-    ]
-
-    global LLVM_FEATURE_FLAGS
-    old_flags = LLVM_FEATURE_FLAGS
-    try:
-      # wasm2c does not support anything beyond MVP
-      LLVM_FEATURE_FLAGS = []
-      super().build(parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser)
-    finally:
-      LLVM_FEATURE_FLAGS = old_flags
-
-    # move the JS away so there is no chance we run it by mistake
-    shutil.move(self.filename, self.filename + '.old.js')
-
-    c = shared.replace_suffix(self.filenmame, '.wasm.c')
-    native = shared.replace_suffix(self.filenmame, '.exe')
-
-    run_process(['clang', c, '-o', native, OPTIMIZATIONS, '-lm',
-                 '-DWASM_RT_MAX_CALL_STACK_DEPTH=8000'])  # for havlak
-
-    self.filename = native
-
-  def run(self, args):
-    return run_process([self.filename] + args, stdout=PIPE, stderr=PIPE, check=False).stdout
-
-  def get_output_files(self):
-    # return the native code. c size may also be interesting.
-    return [self.filename]
 
 
 CHEERP_BIN = '/opt/cheerp/bin/'
@@ -375,7 +326,6 @@ if config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
       EmscriptenBenchmarker(default_v8_name, aot_v8),
       EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
       EmscriptenBenchmarker(default_v8_name + '-ctors', aot_v8, ['-sEVAL_CTORS']),
-      # EmscriptenWasm2CBenchmarker('wasm2c')
     ]
   if os.path.exists(CHEERP_BIN):
     benchmarkers += [
@@ -413,7 +363,7 @@ class benchmark(common.RunnerCore):
     for benchmarker in benchmarkers:
       benchmarker.prepare()
 
-    fingerprint = ['ignoring compilation' if IGNORE_COMPILATION else 'including compilation', time.asctime()]
+    fingerprint = ['including compilation', time.asctime()]
     try:
       fingerprint.append('em: ' + run_process(['git', 'show'], stdout=PIPE).stdout.splitlines()[0])
     except Exception:
@@ -458,8 +408,7 @@ class benchmark(common.RunnerCore):
     dirname = self.get_dir()
     filename = os.path.join(dirname, name + '.c' + ('' if force_c else 'pp'))
     src = self.hardcode_arguments(src)
-    with open(filename, 'w') as f:
-      f.write(src)
+    utils.write_file(filename, src)
 
     print()
     baseline = None
@@ -961,6 +910,12 @@ class benchmark(common.RunnerCore):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_16mb', read_file(test_file('benchmark/benchmark_memset.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
 
+  def test_malloc_multithreading(self):
+    # Multithreaded malloc test. For emcc we use mimalloc here.
+    src = read_file(test_file('other/test_malloc_multithreading.cpp'))
+    # TODO measure with different numbers of cores and not fixed 4
+    self.do_benchmark('malloc_multithreading', src, 'Done.', shared_args=['-DWORKERS=4', '-pthread'], emcc_args=['-sEXIT_RUNTIME', '-sMALLOC=mimalloc'])
+
   def test_matrix_multiply(self):
     def output_parser(output):
       return float(re.search(r'Total elapsed: ([\d\.]+)', output).group(1))
@@ -1066,44 +1021,43 @@ class benchmark(common.RunnerCore):
                       force_c=True)
 
   def test_zzz_poppler(self):
-    with open('pre.js', 'w') as f:
-      f.write('''
-        var benchmarkArgument = %s;
-        var benchmarkArgumentToPageCount = {
-          '0': 0,
-          '1': 1,
-          '2': 5,
-          '3': 15,
-          '4': 26,
-          '5': 55,
-        };
-        if (benchmarkArgument === 0) {
-          Module['arguments'] = ['-?'];
-          Module['printErr'] = function(){};
-        } else {
-          // Add 'filename' after 'input.pdf' to write the output so it can be verified.
-          Module['arguments'] = ['-scale-to', '1024', 'input.pdf',  '-f', '1', '-l', '' + benchmarkArgumentToPageCount[benchmarkArgument]];
-          Module['postRun'] = function() {
-            var files = [];
-            for (var x in FS.root.contents) {
-              if (x.startsWith('filename-')) {
-                files.push(x);
-              }
+    utils.write_file('pre.js', '''
+      var benchmarkArgument = %s;
+      var benchmarkArgumentToPageCount = {
+        '0': 0,
+        '1': 1,
+        '2': 5,
+        '3': 15,
+        '4': 26,
+        '5': 55,
+      };
+      if (benchmarkArgument === 0) {
+        Module['arguments'] = ['-?'];
+        Module['printErr'] = function(){};
+      } else {
+        // Add 'filename' after 'input.pdf' to write the output so it can be verified.
+        Module['arguments'] = ['-scale-to', '1024', 'input.pdf',  '-f', '1', '-l', '' + benchmarkArgumentToPageCount[benchmarkArgument]];
+        Module['postRun'] = function() {
+          var files = [];
+          for (var x in FS.root.contents) {
+            if (x.startsWith('filename-')) {
+              files.push(x);
             }
-            files.sort();
-            var hash = 5381;
-            var totalSize = 0;
-            files.forEach(function(file) {
-              var data = Array.from(MEMFS.getFileDataAsTypedArray(FS.root.contents[file]));
-              for (var i = 0; i < data.length; i++) {
-                hash = ((hash << 5) + hash) ^ (data[i] & 0xff);
-              }
-              totalSize += data.length;
-            });
-            out(files.length + ' files emitted, total output size: ' + totalSize + ', hashed printout: ' + hash);
-          };
-        }
-      ''' % DEFAULT_ARG)
+          }
+          files.sort();
+          var hash = 5381;
+          var totalSize = 0;
+          files.forEach(function(file) {
+            var data = Array.from(MEMFS.getFileDataAsTypedArray(FS.root.contents[file]));
+            for (var i = 0; i < data.length; i++) {
+              hash = ((hash << 5) + hash) ^ (data[i] & 0xff);
+            }
+            totalSize += data.length;
+          });
+          out(files.length + ' files emitted, total output size: ' + totalSize + ', hashed printout: ' + hash);
+        };
+      }
+    ''' % DEFAULT_ARG)
 
     def lib_builder(name, native, env_init):
       return self.get_poppler_library(env_init=env_init)

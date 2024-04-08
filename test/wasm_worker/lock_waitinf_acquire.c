@@ -17,7 +17,7 @@ volatile int numWorkersAlive = 0;
 
 void test_ended()
 {
-  EM_ASM(console.log(`Worker ${$0} last thread to finish. Reporting test end with sharedState0=${$1}, sharedState1=${$2}`), emscripten_wasm_worker_self_id(), sharedState0, sharedState1);
+  EM_ASM(out(`Worker ${$0} last thread to finish. Reporting test end with sharedState0=${$1}, sharedState1=${$2}`), emscripten_wasm_worker_self_id(), sharedState0, sharedState1);
   assert(sharedState0 == sharedState1 + 1 || sharedState1 == sharedState0 + 1);
 #ifdef REPORT_RESULT
   REPORT_RESULT(sharedState0);
@@ -26,7 +26,7 @@ void test_ended()
 
 void worker_main()
 {
-  EM_ASM(console.log(`Worker ${$0} running...`), emscripten_wasm_worker_self_id());
+  EM_ASM(out(`Worker ${$0} running...`), emscripten_wasm_worker_self_id());
   // Create contention on the lock from each thread, and stress the shared state
   // in a racy way that would show a breakage if the lock is not watertight.
   for(int i = 0; i < 1000; ++i)
@@ -50,7 +50,7 @@ void worker_main()
     emscripten_lock_release(&lock);
   }
 
-  EM_ASM(console.log(`Worker ${$0} finished.`), emscripten_wasm_worker_self_id());
+  EM_ASM(out(`Worker ${$0} finished.`), emscripten_wasm_worker_self_id());
 
   // Are we the last thread to finish? If so, test has ended.
   uint32_t v = emscripten_atomic_sub_u32((void*)&numWorkersAlive, 1);

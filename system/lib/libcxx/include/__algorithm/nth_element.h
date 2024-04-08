@@ -14,7 +14,6 @@
 #include <__algorithm/iterator_operations.h>
 #include <__algorithm/sort.h>
 #include <__config>
-#include <__debug>
 #include <__debug_utils/randomize_range.h>
 #include <__iterator/iterator_traits.h>
 #include <__utility/move.h>
@@ -26,7 +25,7 @@
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 template<class _Compare, class _RandomAccessIterator>
-_LIBCPP_CONSTEXPR_AFTER_CXX11 bool
+_LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 bool
 __nth_element_find_guard(_RandomAccessIterator& __i, _RandomAccessIterator& __j,
                          _RandomAccessIterator __m, _Compare __comp)
 {
@@ -42,7 +41,7 @@ __nth_element_find_guard(_RandomAccessIterator& __i, _RandomAccessIterator& __j,
 }
 
 template <class _AlgPolicy, class _Compare, class _RandomAccessIterator>
-_LIBCPP_CONSTEXPR_AFTER_CXX11 void
+_LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 void
 __nth_element(_RandomAccessIterator __first, _RandomAccessIterator __nth, _RandomAccessIterator __last, _Compare __comp)
 {
     using _Ops = _IterOps<_AlgPolicy>;
@@ -223,7 +222,7 @@ __nth_element(_RandomAccessIterator __first, _RandomAccessIterator __nth, _Rando
 }
 
 template <class _AlgPolicy, class _RandomAccessIterator, class _Compare>
-inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX17
+inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX20
 void __nth_element_impl(_RandomAccessIterator __first, _RandomAccessIterator __nth, _RandomAccessIterator __last,
                         _Compare& __comp) {
   if (__nth == __last)
@@ -231,8 +230,7 @@ void __nth_element_impl(_RandomAccessIterator __first, _RandomAccessIterator __n
 
   std::__debug_randomize_range<_AlgPolicy>(__first, __last);
 
-  using _Comp_ref = typename __comp_ref_type<_Compare>::type;
-  std::__nth_element<_AlgPolicy, _Comp_ref>(__first, __nth, __last, __comp);
+  std::__nth_element<_AlgPolicy, __comp_ref_type<_Compare> >(__first, __nth, __last, __comp);
 
   std::__debug_randomize_range<_AlgPolicy>(__first, __nth);
   if (__nth != __last) {
@@ -241,17 +239,16 @@ void __nth_element_impl(_RandomAccessIterator __first, _RandomAccessIterator __n
 }
 
 template <class _RandomAccessIterator, class _Compare>
-inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX17
+inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX20
 void nth_element(_RandomAccessIterator __first, _RandomAccessIterator __nth, _RandomAccessIterator __last,
                  _Compare __comp) {
   std::__nth_element_impl<_ClassicAlgPolicy>(std::move(__first), std::move(__nth), std::move(__last), __comp);
 }
 
 template <class _RandomAccessIterator>
-inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX17
+inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX20
 void nth_element(_RandomAccessIterator __first, _RandomAccessIterator __nth, _RandomAccessIterator __last) {
-  std::nth_element(std::move(__first), std::move(__nth), std::move(__last), __less<typename
-      iterator_traits<_RandomAccessIterator>::value_type>());
+  std::nth_element(std::move(__first), std::move(__nth), std::move(__last), __less<>());
 }
 
 _LIBCPP_END_NAMESPACE_STD

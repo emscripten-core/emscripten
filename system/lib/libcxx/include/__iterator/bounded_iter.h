@@ -14,12 +14,17 @@
 #include <__config>
 #include <__iterator/iterator_traits.h>
 #include <__memory/pointer_traits.h>
+#include <__type_traits/enable_if.h>
+#include <__type_traits/integral_constant.h>
+#include <__type_traits/is_convertible.h>
 #include <__utility/move.h>
-#include <type_traits>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
 #endif
+
+_LIBCPP_PUSH_MACROS
+#include <__undef_macros>
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -33,14 +38,14 @@ _LIBCPP_BEGIN_NAMESPACE_STD
 // Arithmetic operations are allowed and the bounds of the resulting iterator
 // are not checked. Hence, it is possible to create an iterator pointing outside
 // its range, but it is not possible to dereference it.
-template <class _Iterator, class = __enable_if_t< __is_cpp17_contiguous_iterator<_Iterator>::value > >
+template <class _Iterator, class = __enable_if_t< __libcpp_is_contiguous_iterator<_Iterator>::value > >
 struct __bounded_iter {
   using value_type        = typename iterator_traits<_Iterator>::value_type;
   using difference_type   = typename iterator_traits<_Iterator>::difference_type;
   using pointer           = typename iterator_traits<_Iterator>::pointer;
   using reference         = typename iterator_traits<_Iterator>::reference;
   using iterator_category = typename iterator_traits<_Iterator>::iterator_category;
-#if _LIBCPP_STD_VER > 17
+#if _LIBCPP_STD_VER >= 20
   using iterator_concept = contiguous_iterator_tag;
 #endif
 
@@ -73,10 +78,10 @@ private:
   //
   // Since it is non-standard for iterators to have this constructor, __bounded_iter must
   // be created via `std::__make_bounded_iter`.
-  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX11 explicit __bounded_iter(
+  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 explicit __bounded_iter(
       _Iterator __current, _Iterator __begin, _Iterator __end)
       : __current_(__current), __begin_(__begin), __end_(__end) {
-    _LIBCPP_ASSERT(__begin <= __end, "__bounded_iter(current, begin, end): [begin, end) is not a valid range");
+    _LIBCPP_ASSERT_INTERNAL(__begin <= __end, "__bounded_iter(current, begin, end): [begin, end) is not a valid range");
   }
 
   template <class _It>
@@ -86,20 +91,20 @@ public:
   // Dereference and indexing operations.
   //
   // These operations check that the iterator is dereferenceable, that is within [begin, end).
-  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX11 reference operator*() const _NOEXCEPT {
-    _LIBCPP_ASSERT(
+  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 reference operator*() const _NOEXCEPT {
+    _LIBCPP_ASSERT_VALID_ELEMENT_ACCESS(
         __in_bounds(__current_), "__bounded_iter::operator*: Attempt to dereference an out-of-range iterator");
     return *__current_;
   }
 
-  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX11 pointer operator->() const _NOEXCEPT {
-    _LIBCPP_ASSERT(
+  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 pointer operator->() const _NOEXCEPT {
+    _LIBCPP_ASSERT_VALID_ELEMENT_ACCESS(
         __in_bounds(__current_), "__bounded_iter::operator->: Attempt to dereference an out-of-range iterator");
     return std::__to_address(__current_);
   }
 
-  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX11 reference operator[](difference_type __n) const _NOEXCEPT {
-    _LIBCPP_ASSERT(
+  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 reference operator[](difference_type __n) const _NOEXCEPT {
+    _LIBCPP_ASSERT_VALID_ELEMENT_ACCESS(
         __in_bounds(__current_ + __n), "__bounded_iter::operator[]: Attempt to index an iterator out-of-range");
     return __current_[__n];
   }
@@ -108,54 +113,54 @@ public:
   //
   // These operations do not check that the resulting iterator is within the bounds, since that
   // would make it impossible to create a past-the-end iterator.
-  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX11 __bounded_iter& operator++() _NOEXCEPT {
+  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 __bounded_iter& operator++() _NOEXCEPT {
     ++__current_;
     return *this;
   }
-  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX11 __bounded_iter operator++(int) _NOEXCEPT {
+  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 __bounded_iter operator++(int) _NOEXCEPT {
     __bounded_iter __tmp(*this);
     ++*this;
     return __tmp;
   }
 
-  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX11 __bounded_iter& operator--() _NOEXCEPT {
+  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 __bounded_iter& operator--() _NOEXCEPT {
     --__current_;
     return *this;
   }
-  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX11 __bounded_iter operator--(int) _NOEXCEPT {
+  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 __bounded_iter operator--(int) _NOEXCEPT {
     __bounded_iter __tmp(*this);
     --*this;
     return __tmp;
   }
 
-  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX11 __bounded_iter& operator+=(difference_type __n) _NOEXCEPT {
+  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 __bounded_iter& operator+=(difference_type __n) _NOEXCEPT {
     __current_ += __n;
     return *this;
   }
-  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX11 friend __bounded_iter
+  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 friend __bounded_iter
   operator+(__bounded_iter const& __self, difference_type __n) _NOEXCEPT {
     __bounded_iter __tmp(__self);
     __tmp += __n;
     return __tmp;
   }
-  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX11 friend __bounded_iter
+  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 friend __bounded_iter
   operator+(difference_type __n, __bounded_iter const& __self) _NOEXCEPT {
     __bounded_iter __tmp(__self);
     __tmp += __n;
     return __tmp;
   }
 
-  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX11 __bounded_iter& operator-=(difference_type __n) _NOEXCEPT {
+  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 __bounded_iter& operator-=(difference_type __n) _NOEXCEPT {
     __current_ -= __n;
     return *this;
   }
-  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX11 friend __bounded_iter
+  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 friend __bounded_iter
   operator-(__bounded_iter const& __self, difference_type __n) _NOEXCEPT {
     __bounded_iter __tmp(__self);
     __tmp -= __n;
     return __tmp;
   }
-  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX11 friend difference_type
+  _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14 friend difference_type
   operator-(__bounded_iter const& __x, __bounded_iter const& __y) _NOEXCEPT {
     return __x.__current_ - __y.__current_;
   }
@@ -210,7 +215,7 @@ _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR __bounded_iter<_It> __make_bounded_iter(
 
 #if _LIBCPP_STD_VER <= 17
 template <class _Iterator>
-struct __is_cpp17_contiguous_iterator<__bounded_iter<_Iterator> > : true_type {};
+struct __libcpp_is_contiguous_iterator<__bounded_iter<_Iterator> > : true_type {};
 #endif
 
 template <class _Iterator>
@@ -225,5 +230,7 @@ struct pointer_traits<__bounded_iter<_Iterator> > {
 };
 
 _LIBCPP_END_NAMESPACE_STD
+
+_LIBCPP_POP_MACROS
 
 #endif // _LIBCPP___ITERATOR_BOUNDED_ITER_H

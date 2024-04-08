@@ -4,7 +4,7 @@
 <script>
 #if !MODULARIZE
   var {{{ EXPORT_NAME }}} = {
-#if USE_PTHREADS
+#if PTHREADS
     worker: '{{{ PTHREAD_WORKER_FILE }}}'
 #endif
 };

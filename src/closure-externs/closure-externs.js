@@ -85,18 +85,6 @@ var WebAssembly = {};
  */
 WebAssembly.Global = function(globalDescriptor, value) {};
 /**
- * @constructor
- * @param {Object} type
- */
-WebAssembly.Tag = function(type) {};
-/**
- * @constructor
- * @param {!WebAssembly.Tag} tag
- * @param {Array<Object>} payload
- * @param {Object=} options
- */
-WebAssembly.Exception = function(tag, payload, options) {};
-/**
  * @param {!WebAssembly.Tag} tag
  * @param {number} index
  */
@@ -171,10 +159,6 @@ var wakaUnknownAfter;
  * @suppress {undefinedVars}
  */
 var wakaUnknownBefore;
-/**
- * @suppress {undefinedVars}
- */
-var MozBlobBuilder;
 
 // Module loaders externs, for AMD etc.
 
@@ -245,14 +229,6 @@ var outerHeight;
 var event;
 var devicePixelRatio;
 
-// TODO: Use Closure's multifile support and/or migrate worker.js onmessage handler to inside the MODULARIZEd block
-// to be able to remove all the variables below:
-
-// Variables that are present in both output runtime .js file/JS lib files, and worker.js, so cannot be minified because
-// the names need to match:
-/** @suppress {duplicate} */
-var noExitRuntime;
-
 /*
  * AudioWorkletGlobalScope globals
  */
@@ -265,3 +241,22 @@ var sampleRate;
  * Avoid closure minifying anything to "id". See #13965
  */
 var id;
+
+var moduleArg;
+
+/**
+ * This was removed from upstream closure compiler in
+ * https://github.com/google/closure-compiler/commit/f83322c1b.
+ * Perhaps we should remove it do?
+ *
+ * @param {MediaStreamConstraints} constraints A MediaStreamConstraints object.
+ * @param {function(!MediaStream)} successCallback
+ *     A NavigatorUserMediaSuccessCallback function.
+ * @param {function(!NavigatorUserMediaError)=} errorCallback A
+ *     NavigatorUserMediaErrorCallback function.
+ * @see http://dev.w3.org/2011/webrtc/editor/getusermedia.html
+ * @see https://www.w3.org/TR/mediacapture-streams/
+ * @return {undefined}
+ */
+Navigator.prototype.webkitGetUserMedia = function(
+    constraints, successCallback, errorCallback) {};

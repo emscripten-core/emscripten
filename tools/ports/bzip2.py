@@ -34,9 +34,5 @@ def clear(ports, settings, shared):
   shared.cache.erase_lib('libbz2.a')
 
 
-def process_args(ports):
-  return []
-
-
 def show():
-  return 'bzip2 (USE_BZIP2=1; BSD license)'
+  return 'bzip2 (-sUSE_BZIP2=1 or --use-port=bzip2; BSD license)'

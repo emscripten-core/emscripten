@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $PATH: {
     isAbs: (path) => path.charAt(0) === '/',
     // split a filename into [root, dir, basename, ext], unix version
@@ -72,23 +72,26 @@ mergeInto(LibraryManager.library, {
       if (lastSlash === -1) return path;
       return path.substr(lastSlash+1);
     },
-    join: function() {
-      var paths = Array.prototype.slice.call(arguments);
-      return PATH.normalize(paths.join('/'));
-    },
-    join2: (l, r) => {
-      return PATH.normalize(l + '/' + r);
-    },
+    join: (...paths) => PATH.normalize(paths.join('/')),
+    join2: (l, r) => PATH.normalize(l + '/' + r),
   },
   // The FS-using parts are split out into a separate object, so simple path
   // usage does not require the FS.
-  $PATH_FS__deps: ['$PATH', '$FS'],
+  $PATH_FS__deps: [
+    '$PATH',
+    '$FS',
+#if WASMFS
+    // In WasmFS, FS.cwd() is implemented via a call into wasm, so we need to
+    // add a dependency on that.
+    '_wasmfs_get_cwd',
+#endif
+  ],
   $PATH_FS: {
-    resolve: function() {
+    resolve: (...args) => {
       var resolvedPath = '',
         resolvedAbsolute = false;
-      for (var i = arguments.length - 1; i >= -1 && !resolvedAbsolute; i--) {
-        var path = (i >= 0) ? arguments[i] : FS.cwd();
+      for (var i = args.length - 1; i >= -1 && !resolvedAbsolute; i--) {
+        var path = (i >= 0) ? args[i] : FS.cwd();
         // Skip empty and invalid entries
         if (typeof path != 'string') {
           throw new TypeError('Arguments to path.resolve must be strings');

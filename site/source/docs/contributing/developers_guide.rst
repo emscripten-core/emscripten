@@ -8,7 +8,8 @@ This article provides information that is relevant to people who want to
 contribute to Emscripten. We welcome contributions from anyone that is
 interested in helping out!
 
-.. tip:: The information will be less relevant if you're just using Emscripten, but may still be of interest.
+.. tip:: The information will be less relevant if you're just using Emscripten,
+   but may still be of interest.
 
 .. _developers-guide-setting-up:
 
@@ -79,12 +80,12 @@ The :ref:`Emscripten Compiler Frontend (emcc) <emccdoc>` is a python script that
   builds and integrates with the Emscripten system libraries, both the
   compiled ones and the ones implemented in JS.
 - **emcc** then calls `emscripten.py <https://github.com/emscripten-core/emscripten/blob/main/emscripten.py>`_
-  which performs the final transformation to wasm (including invoking
+  which performs the final transformation to Wasm (including invoking
   **wasm-emscripten-finalize** from Binaryen) and calls the JS compiler
   (see ``src/compiler.js`` and related files) which emits the JS.
-- If optimizing wasm, **emcc** will then call **wasm-opt**, run meta-dce, and
+- If optimizing Wasm, **emcc** will then call **wasm-opt**, run meta-dce, and
   other useful things. It will also run JS optimizations on the JS that is
-  emitted alongside the wasm.
+  emitted alongside the Wasm.
 
 Emscripten Test Suite
 =====================
@@ -151,10 +152,20 @@ one of them, with the others kept fixed). Doing this will require rebuilding
 locally, which was not needed in the main bisection described in this
 section.
 
+Working with C structs and defines
+==================================
+
+If you change the layout of C structs or modify C defines that are used in
+JavaScript library files you may need to modify ``tools/struct_info.json``.  Any
+time that file is modified or a struct layout is changed you will need to run
+``./tools/gen_struct_info.py`` to re-generate the information used by
+JavaScript. Note that you need to run both ``./tools/gen_struct_info.py`` and
+``./tools/gen_struct_info.py --wasm64``.
+
+The ``test_gen_struct_info`` test will fail if you forget to do this.
+
 See also
 ========
 
 - :ref:`Debugging`
 - :ref:`Building-Projects`
-
-

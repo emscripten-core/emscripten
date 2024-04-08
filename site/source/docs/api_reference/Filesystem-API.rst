@@ -31,7 +31,21 @@ The JavaScript-based file system was originally written before pthreads were sup
 
 `Design Doc Link <https://docs.google.com/document/d/1-ZxybGvz0nCqygUDuWxCcCBhCebev3EbUSYoSOlc49Q/edit?usp=sharing>`_
 
-`Github Tracking Issue <https://github.com/emscripten-core/emscripten/issues/15041>`_
+`GitHub Tracking Issue <https://github.com/emscripten-core/emscripten/issues/15041>`_
+
+Differences you may notice with the original JS filesystem include:
+
+- The original JS FS includes a lot of JS code by default, while WasmFS does
+  not. As a result, if you write JS of your own, say ``FS.mkdir()``, then the
+  JS FS would already have added that API support, and things would just work.
+  With WasmFS you must opt-in to including the full JS API, to avoid bloating
+  all builds. To do so, use ``-sFORCE_FILESYSTEM`` which forces the full
+  filesystem API to be supported from JS.
+
+- WasmFS requires malloc internally, so you cannot build with
+  ``-sWASMFS -sMALLOC=none``. If you want the smallest possible malloc, use
+  ``-sMALLOC=emmalloc``. (Note that the optimizer may be able to remove WasmFS
+  and malloc, if your code does not actually use files in a non-trivial way.)
 
 Including File System Support
 =============================
@@ -84,8 +98,8 @@ NODERAWFS
 
 .. note:: This file system is only for use when running inside :term:`node.js`.
 
-This is a special backend as it replaces all normal filesystem access with direct Node.js operations, without the need to do `FS.mount()`. The initial working directory will be same as process.cwd() instead of VFS root directory.  Because this mode directly uses Node.js to access the real local filesystem on your OS, the code will not necessarily be portable between OSes - it will be as portable as a Node.js program would be, which means that differences in how the underlying OS handles permissions and errors and so forth may be noticeable.  This has mostly been tested on Linux so far. 
- 
+This is a special backend as it replaces all normal filesystem access with direct Node.js operations, without the need to do `FS.mount()`. The initial working directory will be same as process.cwd() instead of VFS root directory.  Because this mode directly uses Node.js to access the real local filesystem on your OS, the code will not necessarily be portable between OSes - it will be as portable as a Node.js program would be, which means that differences in how the underlying OS handles permissions and errors and so forth may be noticeable.  This has mostly been tested on Linux so far.
+
 See `this <https://github.com/emscripten-core/emscripten/blob/d936e807c4d7a6163827c1fdc4a8e87abe41db44/tests/fs/test_nodefs_rw.c#L31>`_ section on NODEFS, where you can see a mount operation - this is not needed in NODERAWFS.
 
 .. _filesystem-api-idbfs:
@@ -180,6 +194,7 @@ By default:
 File system API
 ===============
 
+.. note:: Functions derived from libc like ``FS.readdir()`` use all-lowercase names, whereas added functions like ``FS.readFile()`` use camelCase names.
 
 .. js:function:: FS.mount(type, opts, mountpoint)
 

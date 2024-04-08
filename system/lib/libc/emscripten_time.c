@@ -13,13 +13,13 @@
 #include <threads.h>
 #include "libc.h"
 
+#include "emscripten_internal.h"
+
 // Replaces musl's __tz.c
 
 weak long  timezone = 0;
 weak int   daylight = 0;
 weak char *tzname[2] = { 0, 0 };
-
-double emscripten_get_now_res();
 
 weak clock_t __clock() {
   static thread_local double start = 0;
@@ -37,7 +37,6 @@ weak time_t __time(time_t *t) {
   return ret;
 }
 
-extern bool _emscripten_get_now_is_monotonic();
 static thread_local bool checked_monotonic = false;
 static thread_local bool is_monotonic = 0;
 

@@ -1,17 +1,14 @@
 #include <emscripten.h>
+#include <emscripten/console.h>
 #include <emscripten/wasm_worker.h>
 #include <assert.h>
 
 // Test emscripten_wasm_worker_post_function_*() API and EMSCRIPTEN_WASM_WORKER_ID_PARENT
 // to send a message back from Worker to its parent thread.
 
-EM_JS(void, console_log, (char* str), {
-  console.log(UTF8ToString(str));
-});
-
 void test_success(int i, double d)
 {
-  console_log("test_success");
+  emscripten_console_log("test_success");
   assert(!emscripten_current_thread_is_wasm_worker());
   assert(i == 10);
   assert(d == 0.5);
@@ -22,7 +19,7 @@ void test_success(int i, double d)
 
 void worker_main()
 {
-  console_log("worker_main");
+  emscripten_console_log("worker_main");
   assert(emscripten_current_thread_is_wasm_worker());
   emscripten_wasm_worker_post_function_sig(EMSCRIPTEN_WASM_WORKER_ID_PARENT, test_success, "id", 10, 0.5);
 }

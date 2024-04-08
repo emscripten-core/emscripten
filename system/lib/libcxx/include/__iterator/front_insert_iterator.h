@@ -21,6 +21,9 @@
 #  pragma GCC system_header
 #endif
 
+_LIBCPP_PUSH_MACROS
+#include <__undef_macros>
+
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 _LIBCPP_SUPPRESS_DEPRECATED_PUSH
@@ -36,7 +39,7 @@ protected:
 public:
     typedef output_iterator_tag iterator_category;
     typedef void value_type;
-#if _LIBCPP_STD_VER > 17
+#if _LIBCPP_STD_VER >= 20
     typedef ptrdiff_t difference_type;
 #else
     typedef void difference_type;
@@ -45,20 +48,21 @@ public:
     typedef void reference;
     typedef _Container container_type;
 
-    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX17 explicit front_insert_iterator(_Container& __x) : container(_VSTD::addressof(__x)) {}
-    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX17 front_insert_iterator& operator=(const typename _Container::value_type& __value)
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 explicit front_insert_iterator(_Container& __x) : container(_VSTD::addressof(__x)) {}
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 front_insert_iterator& operator=(const typename _Container::value_type& __value)
         {container->push_front(__value); return *this;}
 #ifndef _LIBCPP_CXX03_LANG
-    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX17 front_insert_iterator& operator=(typename _Container::value_type&& __value)
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 front_insert_iterator& operator=(typename _Container::value_type&& __value)
         {container->push_front(_VSTD::move(__value)); return *this;}
 #endif // _LIBCPP_CXX03_LANG
-    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX17 front_insert_iterator& operator*()     {return *this;}
-    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX17 front_insert_iterator& operator++()    {return *this;}
-    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX17 front_insert_iterator  operator++(int) {return *this;}
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 front_insert_iterator& operator*()     {return *this;}
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 front_insert_iterator& operator++()    {return *this;}
+    _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20 front_insert_iterator  operator++(int) {return *this;}
 };
+_LIBCPP_CTAD_SUPPORTED_FOR_TYPE(front_insert_iterator);
 
 template <class _Container>
-inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX17
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
 front_insert_iterator<_Container>
 front_inserter(_Container& __x)
 {
@@ -66,5 +70,7 @@ front_inserter(_Container& __x)
 }
 
 _LIBCPP_END_NAMESPACE_STD
+
+_LIBCPP_POP_MACROS
 
 #endif // _LIBCPP___ITERATOR_FRONT_INSERT_ITERATOR_H

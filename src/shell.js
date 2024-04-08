@@ -20,13 +20,16 @@
 // after the generated code, you will need to define   var Module = {};
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
-#if USE_CLOSURE_COMPILER
+#if MODULARIZE
+var Module = moduleArg;
+#elif USE_CLOSURE_COMPILER
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
 var /** @type {{
   noImageDecoding: boolean,
   noAudioDecoding: boolean,
   noWasmDecoding: boolean,
   canvas: HTMLCanvasElement,
+  ctx: Object,
   dataFileDownloads: Object,
   preloadResults: Object,
   useWebGL: boolean,
@@ -41,7 +44,7 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #endif // USE_CLOSURE_COMPILER
 
 #if POLYFILL
-#if ((MAYBE_WASM2JS && WASM != 2) || MODULARIZE) && (MIN_CHROME_VERSION < 33 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 29 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 80000)
+#if ((MAYBE_WASM2JS && WASM != 2) || MODULARIZE) && (MIN_CHROME_VERSION < 33 || MIN_FIREFOX_VERSION < 29 || MIN_SAFARI_VERSION < 80000)
 // Include a Promise polyfill for legacy browsers. This is needed either for
 // wasm2js, where we polyfill the wasm API which needs Promises, or when using
 // modularize which creates a Promise for when the module is ready.
@@ -49,7 +52,7 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #include "polyfill/promise.js"
 #endif
 
-#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 90000
+#if MIN_CHROME_VERSION < 45 || MIN_FIREFOX_VERSION < 34 || MIN_SAFARI_VERSION < 90000
 // See https://caniuse.com/mdn-javascript_builtins_object_assign
 #include "polyfill/objassign.js"
 #endif
@@ -63,7 +66,7 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #if MODULARIZE
 // Set up the promise that indicates the Module is initialized
 var readyPromiseResolve, readyPromiseReject;
-Module['ready'] = new Promise(function(resolve, reject) {
+Module['ready'] = new Promise((resolve, reject) => {
   readyPromiseResolve = resolve;
   readyPromiseReject = reject;
 });
@@ -169,8 +172,7 @@ function locateFile(path) {
 // Hooks that are implemented differently in different runtime environments.
 var read_,
     readAsync,
-    readBinary,
-    setWindowTitle;
+    readBinary;
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
@@ -181,7 +183,7 @@ if (ENVIRONMENT_IS_NODE) {
 #if ASSERTIONS
   var nodeVersion = process.versions.node;
   var numericVersion = nodeVersion.split('.').slice(0, 3);
-  numericVersion = (numericVersion[0] * 10000) + (numericVersion[1] * 100) + numericVersion[2] * 1;
+  numericVersion = (numericVersion[0] * 10000) + (numericVersion[1] * 100) + (numericVersion[2].split('-')[0] * 1);
   var minVersion = {{{ MIN_NODE_VERSION }}};
   if (numericVersion < {{{ MIN_NODE_VERSION }}}) {
     throw new Error('This emscripten-generated code requires node {{{ formattedMinNodeVersion() }}} (detected v' + nodeVersion + ')');
@@ -217,7 +219,7 @@ if (ENVIRONMENT_IS_NODE) {
 
 #include "node_shell_read.js"
 
-  if (process.argv.length > 1) {
+  if (!Module['thisProgram'] && process.argv.length > 1) {
     thisProgram = process.argv[1].replace(/\\/g, '/');
   }
 
@@ -232,10 +234,10 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
 
 #if NODEJS_CATCH_EXIT
-  process.on('uncaughtException', function(ex) {
+  process.on('uncaughtException', (ex) => {
     // suppress ExitStatus exceptions from showing an error
 #if RUNTIME_DEBUG
-    dbg('node: uncaughtException: ' + ex)
+    dbg(`node: uncaughtException: ${ex}`)
 #endif
     if (ex !== 'unwind' && !(ex instanceof ExitStatus) && !(ex.context instanceof ExitStatus)) {
       throw ex;
@@ -251,7 +253,7 @@ if (ENVIRONMENT_IS_NODE) {
   // See https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
   var nodeMajor = process.versions.node.split(".")[0];
   if (nodeMajor < 15) {
-    process.on('unhandledRejection', function(reason) { throw reason; });
+    process.on('unhandledRejection', (reason) => { throw reason; });
   }
 #endif
 
@@ -260,17 +262,8 @@ if (ENVIRONMENT_IS_NODE) {
     throw toThrow;
   };
 
-  Module['inspect'] = function () { return '[Emscripten Module object]'; };
-
-#if PTHREADS
-  let nodeWorkerThreads;
-  try {
-    nodeWorkerThreads = require('worker_threads');
-  } catch (e) {
-    console.error('The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?');
-    throw e;
-  }
-  global.Worker = nodeWorkerThreads.Worker;
+#if PTHREADS || WASM_WORKERS
+  global.Worker = require('worker_threads').Worker;
 #endif
 
 #if WASM == 2
@@ -290,39 +283,29 @@ if (ENVIRONMENT_IS_SHELL) {
 #endif
 
   if (typeof read != 'undefined') {
-    read_ = function shell_read(f) {
-#if SUPPORT_BASE64_EMBEDDING
-      const data = tryParseAsDataURI(f);
-      if (data) {
-        return intArrayToString(data);
-      }
-#endif
-      return read(f);
-    };
+    read_ = read;
   }
 
-  readBinary = function readBinary(f) {
-    let data;
-#if SUPPORT_BASE64_EMBEDDING
-    data = tryParseAsDataURI(f);
-    if (data) {
-      return data;
-    }
-#endif
+  readBinary = (f) => {
     if (typeof readbuffer == 'function') {
       return new Uint8Array(readbuffer(f));
     }
-    data = read(f, 'binary');
+    let data = read(f, 'binary');
     assert(typeof data == 'object');
     return data;
   };
 
-  readAsync = function readAsync(f, onload, onerror) {
-    setTimeout(() => onload(readBinary(f)), 0);
+  readAsync = (f, onload, onerror) => {
+    setTimeout(() => onload(readBinary(f)));
   };
 
   if (typeof clearTimeout == 'undefined') {
     globalThis.clearTimeout = (id) => {};
+  }
+
+  if (typeof setTimeout == 'undefined') {
+    // spidermonkey lacks setTimeout but we use it above in readAsync.
+    globalThis.setTimeout = (f) => (typeof f == 'function') ? f() : abort();
   }
 
   if (typeof scriptArgs != 'undefined') {
@@ -348,7 +331,7 @@ if (ENVIRONMENT_IS_SHELL) {
           if (toThrow && typeof toThrow == 'object' && toThrow.stack) {
             toLog = [toThrow, toThrow.stack];
           }
-          err('exiting due to exception: ' + toLog);
+          err(`exiting due to exception: ${toLog}`);
         }
         quit(status);
       });
@@ -396,10 +379,10 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   // and scriptDirectory will correctly be replaced with an empty string.
   // If scriptDirectory contains a query (starting with ?) or a fragment (starting with #),
   // they are removed because they could contain a slash.
-  if (scriptDirectory.indexOf('blob:') !== 0) {
-    scriptDirectory = scriptDirectory.substr(0, scriptDirectory.replace(/[?#].*/, "").lastIndexOf('/')+1);
-  } else {
+  if (scriptDirectory.startsWith('blob:')) {
     scriptDirectory = '';
+  } else {
+    scriptDirectory = scriptDirectory.substr(0, scriptDirectory.replace(/[?#].*/, '').lastIndexOf('/')+1);
   }
 
 #if ENVIRONMENT && ASSERTIONS
@@ -414,8 +397,6 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   {
 #include "web_or_worker_shell_read.js"
   }
-
-  setWindowTitle = (title) => document.title = title;
 } else
 #endif // ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 #if AUDIO_WORKLET && ASSERTIONS
@@ -438,27 +419,27 @@ if (ENVIRONMENT_IS_NODE) {
 
 // Set up the out() and err() hooks, which are how we can print to stdout or
 // stderr, respectively.
-// Normally just binding console.log/console.warn here works fine, but
+// Normally just binding console.log/console.error here works fine, but
 // under node (with workers) we see missing/out-of-order messages so route
 // directly to stdout and stderr.
 // See https://github.com/emscripten-core/emscripten/issues/14804
 var defaultPrint = console.log.bind(console);
-var defaultPrintErr = console.warn.bind(console);
+var defaultPrintErr = console.error.bind(console);
 if (ENVIRONMENT_IS_NODE) {
-  defaultPrint = (str) => fs.writeSync(1, str + '\n');
-  defaultPrintErr = (str) => fs.writeSync(2, str + '\n');
+  defaultPrint = (...args) => fs.writeSync(1, args.join(' ') + '\n');
+  defaultPrintErr = (...args) => fs.writeSync(2, args.join(' ') + '\n');
 }
 {{{ makeModuleReceiveWithVar('out', 'print',    'defaultPrint',    true) }}}
 {{{ makeModuleReceiveWithVar('err', 'printErr', 'defaultPrintErr', true) }}}
 #else
 {{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)',  true) }}}
-{{{ makeModuleReceiveWithVar('err', 'printErr', 'console.warn.bind(console)', true) }}}
+{{{ makeModuleReceiveWithVar('err', 'printErr', 'console.error.bind(console)', true) }}}
 #endif
 
 // Merge back in the overrides
 Object.assign(Module, moduleOverrides);
 // Free the object hierarchy contained in the overrides, this lets the GC
-// reclaim data used e.g. in memoryInitializerRequest, which is a large typed array.
+// reclaim data used.
 moduleOverrides = null;
 #if ASSERTIONS
 checkIncomingModuleAPI();
@@ -482,8 +463,9 @@ assert(typeof Module['filePackagePrefixURL'] == 'undefined', 'Module.filePackage
 assert(typeof Module['read'] == 'undefined', 'Module.read option was removed (modify read_ in JS)');
 assert(typeof Module['readAsync'] == 'undefined', 'Module.readAsync option was removed (modify readAsync in JS)');
 assert(typeof Module['readBinary'] == 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
-assert(typeof Module['setWindowTitle'] == 'undefined', 'Module.setWindowTitle option was removed (modify setWindowTitle in JS)');
+assert(typeof Module['setWindowTitle'] == 'undefined', 'Module.setWindowTitle option was removed (modify emscripten_set_window_title in JS)');
 assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has been renamed Module.INITIAL_MEMORY');
+{{{ makeRemovedModuleAPIAssert('asm', 'wasmExports', false) }}}
 {{{ makeRemovedModuleAPIAssert('read', 'read_') }}}
 {{{ makeRemovedModuleAPIAssert('readAsync') }}}
 {{{ makeRemovedModuleAPIAssert('readBinary') }}}
@@ -491,6 +473,11 @@ assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has be
 {{{ makeRemovedFSAssert('IDBFS') }}}
 {{{ makeRemovedFSAssert('PROXYFS') }}}
 {{{ makeRemovedFSAssert('WORKERFS') }}}
+{{{ makeRemovedFSAssert('FETCHFS') }}}
+{{{ makeRemovedFSAssert('ICASEFS') }}}
+{{{ makeRemovedFSAssert('JSFILEFS') }}}
+{{{ makeRemovedFSAssert('OPFS') }}}
+
 #if !NODERAWFS
 {{{ makeRemovedFSAssert('NODEFS') }}}
 #endif
@@ -505,19 +492,19 @@ assert(
 #endif // PTHREADS
 
 #if !ENVIRONMENT_MAY_BE_WEB
-assert(!ENVIRONMENT_IS_WEB, "web environment detected but not enabled at build time.  Add 'web' to `-sENVIRONMENT` to enable.");
+assert(!ENVIRONMENT_IS_WEB, 'web environment detected but not enabled at build time.  Add `web` to `-sENVIRONMENT` to enable.');
 #endif
 
 #if !ENVIRONMENT_MAY_BE_WORKER
-assert(!ENVIRONMENT_IS_WORKER, "worker environment detected but not enabled at build time.  Add 'worker' to `-sENVIRONMENT` to enable.");
+assert(!ENVIRONMENT_IS_WORKER, 'worker environment detected but not enabled at build time.  Add `worker` to `-sENVIRONMENT` to enable.');
 #endif
 
 #if !ENVIRONMENT_MAY_BE_NODE
-assert(!ENVIRONMENT_IS_NODE, "node environment detected but not enabled at build time.  Add 'node' to `-sENVIRONMENT` to enable.");
+assert(!ENVIRONMENT_IS_NODE, 'node environment detected but not enabled at build time.  Add `node` to `-sENVIRONMENT` to enable.');
 #endif
 
 #if !ENVIRONMENT_MAY_BE_SHELL
-assert(!ENVIRONMENT_IS_SHELL, "shell environment detected but not enabled at build time.  Add 'shell' to `-sENVIRONMENT` to enable.");
+assert(!ENVIRONMENT_IS_SHELL, 'shell environment detected but not enabled at build time.  Add `shell` to `-sENVIRONMENT` to enable.');
 #endif
 
 #endif // ASSERTIONS

@@ -25,6 +25,10 @@
 # include <sys/mman.h>
 #endif
 
+#if SANITIZER_EMSCRIPTEN
+#include "emscripten_internal.h"
+#endif
+
 namespace __sanitizer {
 
 #if !SANITIZER_GO
@@ -41,17 +45,9 @@ void ReportErrorSummary(const char *error_type, const AddressInfo &info,
 #endif
 
 #if SANITIZER_EMSCRIPTEN
-#include <emscripten/em_asm.h>
 
 static inline bool ReportSupportsColors() {
-  return !!EM_ASM_INT({
-    var setting = Module['printWithColors'];
-    if (setting != null) {
-      return setting;
-    } else {
-      return ENVIRONMENT_IS_NODE && process.stderr.isTTY;
-    }
-  });
+  return _emscripten_sanitizer_use_colors();
 }
 
 #elif !SANITIZER_FUCHSIA
@@ -121,8 +117,7 @@ void ReportMmapWriteExec(int prot, int flags) {
   stack->Reset();
   uptr top = 0;
   uptr bottom = 0;
-  GET_CALLER_PC_BP_SP;
-  (void)sp;
+  GET_CALLER_PC_BP;
   bool fast = common_flags()->fast_unwind_on_fatal;
   if (StackTrace::WillUseFastUnwind(fast)) {
     GetThreadStackTopAndBottom(false, &top, &bottom);

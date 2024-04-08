@@ -60,11 +60,6 @@ wss._socket.remotePort;
 /**
  * @suppress {duplicate}
  */
-var assert;
-
-/**
- * @suppress {duplicate}
- */
 var fs;
 
 /**

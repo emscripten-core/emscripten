@@ -8,6 +8,7 @@
 #include <emscripten.h>
 #include <stdio.h>
 #include <assert.h>
+#include <errno.h>
 
 int main(int argc, char *argv[])
 {
@@ -15,8 +16,6 @@ int main(int argc, char *argv[])
     var counter = FS.makedev(64, 0);
 
     FS.registerDevice(counter, {
-      open: function(stream) {},
-      close: function(stream) {},
       read: function(stream, buffer, offset, length, position) {
         for (var i = 0; i < length; ++i) {
           buffer[offset + i] = position + i;

@@ -8,8 +8,8 @@
 
 #pragma once
 
-#include "random.h"
 #include "parameters.h"
+#include "random.h"
 #include <assert.h>
 #include <chrono>
 #include <cstdlib>
