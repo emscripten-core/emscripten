@@ -1,4 +1,5 @@
-//===-- sanitizer_symbolizer_fuchsia.h -----------------------------------===//
+//===-- sanitizer_symbolizer_markup_constants.h
+//-----------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -8,10 +9,10 @@
 //
 // This file is shared between various sanitizers' runtime libraries.
 //
-// Define Fuchsia's string formats and limits for the markup symbolizer.
+// Define string formats and limits for the markup symbolizer.
 //===----------------------------------------------------------------------===//
-#ifndef SANITIZER_SYMBOLIZER_FUCHSIA_H
-#define SANITIZER_SYMBOLIZER_FUCHSIA_H
+#ifndef SANITIZER_SYMBOLIZER_MARKUP_CONSTANTS_H
+#define SANITIZER_SYMBOLIZER_MARKUP_CONSTANTS_H
 
 #include "sanitizer_internal_defs.h"
 
@@ -34,9 +35,15 @@ constexpr const char *kFormatData = "{{{data:%p}}}";
 // One frame in a backtrace (printed on a line by itself).
 constexpr const char *kFormatFrame = "{{{bt:%u:%p}}}";
 
+// Module contextual element.
+constexpr const char *kFormatModule = "{{{module:%d:%s:elf:%s}}}";
+
+// mmap for a module segment.
+constexpr const char *kFormatMmap = "{{{mmap:%p:0x%x:load:%d:%s:0x%x}}}";
+
 // Dump trigger element.
 #define FORMAT_DUMPFILE "{{{dumpfile:%s:%s}}}"
 
 }  // namespace __sanitizer
 
-#endif  // SANITIZER_SYMBOLIZER_FUCHSIA_H
+#endif  // SANITIZER_SYMBOLIZER_MARKUP_CONSTANTS_H
