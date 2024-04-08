@@ -766,56 +766,80 @@ var LibraryBrowser = {
     safeSetTimeout(() => _emscripten_run_script(script), millis);
   },
 
-  // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
-  emscripten_async_load_script__deps: ['$UTF8ToString'],
-  emscripten_async_load_script: (url, onload, onerror) => {
+  emscripten_async_run_script__deps: ['emscripten_run_script', '$safeSetTimeout'],
+  emscripten_async_run_script: (script, millis) => {
+    // TODO: cache these to avoid generating garbage
+    safeSetTimeout(() => _emscripten_run_script(script), millis);
+  },
+
+  
+  emscripten_async_load_script_promise__deps: ['$UTF8ToString'],
+  emscripten_async_load_script_promise: (url) => {
     url = UTF8ToString(url);
-    onload = {{{ makeDynCall('v', 'onload') }}};
-    onerror = {{{ makeDynCall('v', 'onerror') }}};
 
-#if PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) {
-      err(`emscripten_async_load_script("${url}") failed, emscripten_async_load_script is currently not available in pthreads!`);
-      return onerror ? onerror() : undefined;
-    }
-#endif
-#if ASSERTIONS
-    assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
-#endif
-    {{{ runtimeKeepalivePush() }}}
+    // Creating a promise for script loading functionality
+    return new Promise((resolve, reject) => {
+    
+      #if PTHREADS
+      if (ENVIRONMENT_IS_PTHREAD) {
+        err(`emscripten_async_load_script("${url}") failed, emscripten_async_load_script is currently not available in pthreads!`);
+        return reject('emscripten_async_load_script is not available for pthreads');
+      }
+      #endif
+      
+      #if ASSERTIONS
+      assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
+      #endif
+      
+      {{{ runtimeKeepalivePush() }}}
 
-    var loadDone = () => {
-      {{{ runtimeKeepalivePop() }}}
-      if (onload) {
-        if (runDependencies > 0) {
-          dependenciesFulfilled = onload;
-        } else {
+      var loadDone = () => {
+        {{{ runtimeKeepalivePop() }}}
+        resolve();
+      }
+
+      var loadError = () => {
+        {{{ runtimeKeepalivePop() }}}
+        reject();
+      };
+
+      #if ENVIRONMENT_MAY_BE_NODE && DYNAMIC_EXECUTION
+      if (ENVIRONMENT_IS_NODE) {
+        readAsync(url, (data) => {
+          eval(data);
+          loadDone();
+        }, loadError, false);
+        return;
+      }
+      #endif
+
+      var script = document.createElement('script');
+      script.onload = loadDone;
+      script.onerror = loadError;
+      script.src = url;
+      document.body.appendChild(script);
+
+    });
+  },
+
+
+  // Refactored the function to implement the promise based functionality and backward compatibility with callbacks
+  emscripten_async_load_script__deps: ['emscripten_async_load_script_promise', '$UTF8ToString'],
+  emscripten_async_load_script: function(url, onload, onerror)  {
+      
+      emscripten_async_load_script_promise(url).then(() => {
+        if (onload){
           onload();
         }
-      }
-    }
+      }).catch((error) => {
+        if (onerror) {
+          onerror();
+        } else {
+           err('emscripten_async_load_script error: ${error.message}');
+        }
+     });
 
-    var loadError = () => {
-      {{{ runtimeKeepalivePop() }}}
-      onerror?.();
-    };
-
-#if ENVIRONMENT_MAY_BE_NODE && DYNAMIC_EXECUTION
-    if (ENVIRONMENT_IS_NODE) {
-      readAsync(url, (data) => {
-        eval(data);
-        loadDone();
-      }, loadError, false);
-      return;
-    }
-#endif
-
-    var script = document.createElement('script');
-    script.onload = loadDone;
-    script.onerror = loadError;
-    script.src = url;
-    document.body.appendChild(script);
-  },
+    },
 
   // Runs natively in pthread, no __proxy needed.
   emscripten_get_main_loop_timing: (mode, value) => {
