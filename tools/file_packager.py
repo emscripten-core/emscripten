@@ -612,10 +612,12 @@ def generate_js(data_target, data_files, metadata):
   }
 
   Module.expectedDataFileDownloads++;
-  (function() {
+  (() => {
     // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
-    if (Module['ENVIRONMENT_IS_PTHREAD'] || Module['$ww']) return;
-    var loadPackage = function(metadata) {\n'''
+    var isPthread = typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD;
+    var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER;
+    if (isPthread || isWasmWorker) return;
+    function loadPackage(metadata) {\n'''
 
   code = '''
       function assert(check, msg) {

@@ -165,7 +165,7 @@ function dbg(...args) {
 #if ENVIRONMENT_MAY_BE_NODE && PTHREADS
   // Avoid using the console for debugging in multi-threaded node applications
   // See https://github.com/emscripten-core/emscripten/issues/14804
-  if (ENVIRONMENT_IS_NODE) {
+  if (ENVIRONMENT_IS_NODE && fs) {
     fs.writeSync(2, args.join(' ') + '\n');
   } else
 #endif
