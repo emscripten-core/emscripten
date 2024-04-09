@@ -121,6 +121,7 @@ DEPRECATED_SETTINGS = {
     'DEMANGLE_SUPPORT': 'mangled names no longer appear in stack traces',
     'RUNTIME_LINKED_LIBS': 'you can simply list the libraries directly on the commandline now',
     'CLOSURE_WARNINGS': 'use -Wclosure instead',
+    'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
 }
 
 # Settings that don't need to be externalized when serializing to json because they

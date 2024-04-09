@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.57 (in development)
 -----------------------
+- libcxx, libcxxabi, libunwind, and compiler-rt were updated to LLVM 18.1.2.
+  (#21607, #21638, and #21663)
 - musl libc updated from v1.2.4 to v1.2.5. (#21598)
 - In `MODULARIZE` mode we no longer export the module ready promise as `ready`.
   This was previously exposed on the Module for historical reasons even though
@@ -48,6 +50,10 @@ See docs/process.md for more on how version tagging works.
   previously manually specifying in `ASYNCIFY_ADD`. To stop propagation you can
   specify functions in the `ASYNCIFY_REMOVE` list, or to return to the previous
   behaviour, disable this setting (set `-sNO_ASYNCIFY_PROPAGATE_ADD`.) (#21672)
+- ports changes:
+  - Fixed transitive link dependencies (#21602)
+  - Enable use of options in ports dependencies (#21629)
+  - Enable use of `::` to escape option separator (#21710)
 
 3.1.56 - 03/14/24
 -----------------

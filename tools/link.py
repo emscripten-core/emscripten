@@ -854,7 +854,7 @@ def phase_linker_setup(options, state, newargs):
     settings.IGNORE_MISSING_MAIN = 0
     # the wasm must be runnable without the JS, so there cannot be anything that
     # requires JS legalization
-    settings.LEGALIZE_JS_FFI = 0
+    default_setting('LEGALIZE_JS_FFI', 0)
     if 'MEMORY_GROWTH_LINEAR_STEP' in user_settings:
       exit_with_error('MEMORY_GROWTH_LINEAR_STEP is not compatible with STANDALONE_WASM')
     if 'MEMORY_GROWTH_GEOMETRIC_CAP' in user_settings:
@@ -2368,9 +2368,9 @@ def modularize():
     if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
       script_url = 'import.meta.url'
     else:
-      script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
+      script_url = "typeof document != 'undefined' ? document.currentScript?.src : undefined"
       if shared.target_environment_may_be('node'):
-        script_url_node = "if (typeof __filename !== 'undefined') _scriptDir ||= __filename;"
+        script_url_node = "if (typeof __filename != 'undefined') _scriptDir ||= __filename;"
     src = '''%(node_imports)s
 var %(EXPORT_NAME)s = (() => {
   var _scriptDir = %(script_url)s;
@@ -2422,7 +2422,7 @@ def module_export_name_substitution():
     # via the shell html in order to provide the .asm.js/.wasm content.
     replacement = settings.EXPORT_NAME
   else:
-    replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": settings.EXPORT_NAME}
+    replacement = "typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": settings.EXPORT_NAME}
   new_src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
   assert new_src != src, 'Unable to find Closure syntax __EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__ in source!'
   write_file(final_js, new_src)
@@ -2756,7 +2756,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
         extras.append(path)
         seen.add(needed)
       else:
-        exit_with_error(f'{os.path.normpath(dylib)}: shared library dependency not found: `{needed}`')
+        exit_with_error(f'{os.path.normpath(dylib)}: shared library dependency not found in library path: `{needed}`. (library path: {lib_dirs}')
       to_process.append(path)
 
   dylibs += extras

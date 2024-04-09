@@ -405,7 +405,7 @@ def also_with_minimal_runtime(f):
 def also_with_wasm_bigint(f):
   assert callable(f)
 
-  def metafunc(self, with_bigint):
+  def metafunc(self, with_bigint, *args, **kwargs):
     if with_bigint:
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support WASM_BIGINT')
@@ -414,9 +414,9 @@ def also_with_wasm_bigint(f):
       self.set_setting('WASM_BIGINT')
       nodejs = self.require_node()
       self.node_args += shared.node_bigint_flags(nodejs)
-      f(self)
+      f(self, *args, **kwargs)
     else:
-      f(self)
+      f(self, *args, **kwargs)
 
   metafunc._parameterize = {'': (False,),
                             'bigint': (True,)}
@@ -426,14 +426,14 @@ def also_with_wasm_bigint(f):
 def also_with_wasm64(f):
   assert callable(f)
 
-  def metafunc(self, with_wasm64):
+  def metafunc(self, with_wasm64, *args, **kwargs):
     if with_wasm64:
       self.require_wasm64()
       self.set_setting('MEMORY64')
       self.emcc_args.append('-Wno-experimental')
-      f(self)
+      f(self, *args, **kwargs)
     else:
-      f(self)
+      f(self, *args, **kwargs)
 
   metafunc._parameterize = {'': (False,),
                             'wasm64': (True,)}

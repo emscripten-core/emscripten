@@ -27,7 +27,7 @@ from common import RunnerCore, path_from_root, requires_native_clang, test_file,
 from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_wasm2js, requires_node_canary
-from common import compiler_for, crossplatform, no_4gb, no_2gb
+from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime
 from common import with_both_eh_sjlj, with_both_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
@@ -2436,7 +2436,7 @@ The current type of b is: 9
 
   @node_pthreads
   def test_pthread_cancel(self):
-    self.do_run_in_out_file_test('pthread/test_pthread_cancel.cpp')
+    self.do_run_in_out_file_test('pthread/test_pthread_cancel.c')
 
   @node_pthreads
   def test_pthread_cancel_async(self):
@@ -2527,7 +2527,7 @@ The current type of b is: 9
   @node_pthreads
   def test_pthread_cleanup(self):
     self.set_setting('PTHREAD_POOL_SIZE', 4)
-    self.do_run_in_out_file_test('pthread/test_pthread_cleanup.cpp')
+    self.do_run_in_out_file_test('pthread/test_pthread_cleanup.c')
 
   @node_pthreads
   def test_pthread_setspecific_mainthread(self):
@@ -2539,7 +2539,10 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_setspecific_mainthread.c')
 
   @node_pthreads
+  @also_with_minimal_runtime
   def test_pthread_attr_getstack(self):
+    if self.get_setting('MINIMAL_RUNTIME') and is_sanitizing(self.emcc_args):
+      self.skipTest('MINIMAL_RUNTIME + threads + asan does not work')
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.do_run_in_out_file_test('pthread/test_pthread_attr_getstack.c')
 
@@ -2618,7 +2621,10 @@ The current type of b is: 9
     self.do_run_in_out_file_test('atomic/test_wait_async.c')
 
   @node_pthreads
+  @also_with_minimal_runtime
   def test_pthread_run_on_main_thread(self):
+    if self.get_setting('MINIMAL_RUNTIME') and is_sanitizing(self.emcc_args):
+      self.skipTest('MINIMAL_RUNTIME + threads + asan does not work')
     self.do_run_in_out_file_test('pthread/test_pthread_run_on_main_thread.c')
 
   def test_tcgetattr(self):
@@ -9219,8 +9225,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_OFFSET_CONVERTER')
     self.set_setting('MODULARIZE')
-    create_file('post.js', 'var m = require("./test_return_address.js"); m();')
-    self.emcc_args += ['--extern-post-js', 'post.js', '-sEXPORT_NAME=foo']
+    self.set_setting('EXPORT_NAME', 'foo')
+    create_file('post.js', 'foo();')
+    self.emcc_args += ['--extern-post-js', 'post.js']
     if '-g' in self.emcc_args:
       self.emcc_args += ['-DDEBUG']
     self.do_runf('core/test_return_address.c', 'passed')
@@ -9558,6 +9565,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @requires_v8
   @no_wasm2js('wasm2js does not support reference types')
+  @no_sanitize('.s files cannot be sanitized')
   def test_externref(self):
     self.run_process([EMCC, '-c', test_file('core/test_externref.s'), '-o', 'asm.o'] + self.get_emcc_args(compile_only=True))
     self.emcc_args += ['--js-library', test_file('core/test_externref.js')]

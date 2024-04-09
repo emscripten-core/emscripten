@@ -930,13 +930,15 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
     # gcc_personality_v0.c depends on libunwind, which don't include by default.
     'gcc_personality_v0.c',
     # bfloat16
+    'extendbfsf2.c',
     'truncdfbf2.c',
     'truncsfbf2.c',
     # We provide our own crt
     'crtbegin.c',
     'crtend.c',
-    # 80-bit long double
+    # 80-bit long double (xf_float)
     'divxc3.c',
+    'extendxftf2.c',
     'fixxfdi.c',
     'fixxfti.c',
     'fixunsxfdi.c',
@@ -948,6 +950,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
     'floatuntixf.c',
     'mulxc3.c',
     'powixf2.c',
+    'trunctfxf2.c',
   ]
   src_files = glob_in_path(src_dir, '*.c', excludes=excludes)
   src_files += files_in_path(
@@ -1639,7 +1642,17 @@ class libcxx(NoExceptLibrary, MTLibrary):
     'support.cpp',
     'int128_builtins.cpp',
     'libdispatch.cpp',
+    # Emscripten does not have C++20's time zone support which requires access
+    # to IANA Time Zone Database. TODO Implement this using JS timezone
+    'tz.cpp',
+    'tzdb_list.cpp',
   ]
+
+  def get_cflags(self):
+    cflags = super().get_cflags()
+    if self.eh_mode == Exceptions.WASM:
+      cflags.append('-D__USING_WASM_EXCEPTIONS__')
+    return cflags
 
 
 class libunwind(NoExceptLibrary, MTLibrary):
@@ -2049,7 +2062,14 @@ class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
               'system/lib/compiler-rt/lib',
               'system/lib/libc']
   never_force = True
-  cflags = ['-D_LARGEFILE64_SOURCE']
+  cflags = [
+    '-D_LARGEFILE64_SOURCE',
+    # The upstream code has many format violations and suppresses it with
+    # -Wno-format, so we match that.
+    # https://github.com/llvm/llvm-project/blob/da675b922cca3dc9a76642d792e882979a3d8c82/compiler-rt/lib/sanitizer_common/CMakeLists.txt#L225-L226
+    # TODO Remove this when the issues are resolved.
+    '-Wno-format',
+  ]
 
   src_dir = 'system/lib/compiler-rt/lib/sanitizer_common'
   src_glob = '*.cpp'
@@ -2426,6 +2446,7 @@ def install_system_headers(stamp):
     ('lib', 'libc', 'musl', 'include'): '',
     ('lib', 'libcxx', 'include'): os.path.join('c++', 'v1'),
     ('lib', 'libcxxabi', 'include'): os.path.join('c++', 'v1'),
+    ('lib', 'mimalloc', 'include'): '',
   }
 
   target_include_dir = cache.get_include_dir()

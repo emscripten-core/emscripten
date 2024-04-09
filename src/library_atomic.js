@@ -22,7 +22,7 @@ addToLibrary({
   //   https://github.com/tc39/proposal-atomics-wait-async/blob/master/PROPOSAL.md
   // This polyfill performs polling with setTimeout() to observe a change in the
   // target memory location.
-  $polyfillWaitAsync__postset: `if (!Atomics.waitAsync || (typeof navigator !== 'undefined' && navigator.userAgent && jstoi_q((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91)) {
+  $polyfillWaitAsync__postset: `if (!Atomics.waitAsync || (typeof navigator != 'undefined' && navigator.userAgent && jstoi_q((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91)) {
   let __Atomics_waitAsyncAddresses = [/*[i32a, index, value, maxWaitMilliseconds, promiseResolve]*/];
   function __Atomics_pollWaitAsyncAddresses() {
     let now = performance.now();

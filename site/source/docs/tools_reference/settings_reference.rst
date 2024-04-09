@@ -1870,6 +1870,8 @@ to automatically demote i64 to i32 and promote f32 to f64. This is necessary
 in order to interface with JavaScript.  For non-web/non-JS embeddings, setting
 this to 0 may be desirable.
 
+.. note:: This setting is deprecated
+
 .. _use_sdl:
 
 USE_SDL

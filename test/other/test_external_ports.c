@@ -24,7 +24,7 @@
 
 int main() {
   assert(my_port_fn(99) == 99); // check that we can call a function from my_port.h
-  printf("value1=%d&value2=%d\n", TEST_VALUE_1, TEST_VALUE_2);
+  printf("value1=%d&value2=%d&value3=%s\n", TEST_VALUE_1, TEST_VALUE_2, TEST_VALUE_3);
 
   // external port declares deps = ['sdl2_image:formats=jpg'] as a dependency
   // this makes sure that the dependency + options gets processed properly

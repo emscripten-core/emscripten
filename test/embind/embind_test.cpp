@@ -1043,30 +1043,42 @@ void emval_test_call_function(val v, int i, float f, TupleVector tv, StructVecto
     v(i, f, tv, sv);
 }
 
+struct CharWrapper {
+    CharWrapper(char v) {
+        value = v;
+    };
+
+    char getValue() {
+        return value;
+    }
+
+    char value;
+};
+
 class UniquePtrToConstructor {
 public:
-    UniquePtrToConstructor(std::unique_ptr<int> p)
-        : value(*p)
+    UniquePtrToConstructor(std::unique_ptr<CharWrapper> p)
+        : value((*p).getValue())
     {}
     
-    int getValue() const {
+    char getValue() const {
         return value;
     }
     
 private:
-    int value;
+    char value;
 };
 
-std::unique_ptr<int> embind_test_return_unique_ptr(int v) {
-    return std::unique_ptr<int>(new int(v));
+std::unique_ptr<CharWrapper> embind_test_return_unique_ptr(char v) {
+    return std::unique_ptr<CharWrapper>(new CharWrapper(v));
 }
 
-UniquePtrToConstructor* embind_test_construct_class_with_unique_ptr(int v) {
+UniquePtrToConstructor* embind_test_construct_class_with_unique_ptr(char v) {
     return new UniquePtrToConstructor(embind_test_return_unique_ptr(v));
 }
 
-int embind_test_accept_unique_ptr(std::unique_ptr<int> p) {
-    return *p.get();
+char embind_test_accept_unique_ptr(std::unique_ptr<CharWrapper> p) {
+    return (*p.get()).getValue();
 }
 
 std::unique_ptr<ValHolder> emval_test_return_unique_ptr() {
@@ -2251,6 +2263,7 @@ EMSCRIPTEN_BINDINGS(tests) {
     class_<UniquePtrToConstructor>("UniquePtrToConstructor")
         .function("getValue", &UniquePtrToConstructor::getValue)
         ;
+    class_<CharWrapper>("CharWrapper");
 
     function("embind_test_construct_class_with_unique_ptr", embind_test_construct_class_with_unique_ptr, allow_raw_pointer<ret_val>());
     function("embind_test_return_unique_ptr", embind_test_return_unique_ptr);

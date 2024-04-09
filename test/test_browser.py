@@ -441,7 +441,7 @@ If manually bisecting:
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_preload_file_with_manual_data_download(self, args):
-    create_file('file.txt', '''Hello!''')
+    create_file('file.txt', 'Hello!')
 
     self.compile_btest('manual_download_data.cpp', ['-o', 'manual_download_data.js', '--preload-file', 'file.txt@/file.txt'] + args)
     shutil.copyfile(test_file('manual_download_data.html'), 'manual_download_data.html')
@@ -3766,9 +3766,9 @@ Module["preRun"] = () => {
 
   def test_pthread_in_pthread_pool_size_strict(self):
     # Check that it fails when there's a pthread creating another pthread.
-    self.btest_exit('pthread/test_pthread_create_pthread.cpp', args=['-g2', '-pthread', '-sPTHREAD_POOL_SIZE=2', '-sPTHREAD_POOL_SIZE_STRICT=2'])
+    self.btest_exit('pthread/test_pthread_create_pthread.c', args=['-g2', '-pthread', '-sPTHREAD_POOL_SIZE=2', '-sPTHREAD_POOL_SIZE_STRICT=2'])
     # Check that it fails when there's a pthread creating another pthread.
-    self.btest_exit('pthread/test_pthread_create_pthread.cpp', args=['-g2', '-pthread', '-sPTHREAD_POOL_SIZE=1', '-sPTHREAD_POOL_SIZE_STRICT=2', '-DSMALL_POOL'])
+    self.btest_exit('pthread/test_pthread_create_pthread.c', args=['-g2', '-pthread', '-sPTHREAD_POOL_SIZE=1', '-sPTHREAD_POOL_SIZE_STRICT=2', '-DSMALL_POOL'])
 
   # Test that the emscripten_ atomics api functions work.
   @parameterized({
@@ -3797,7 +3797,7 @@ Module["preRun"] = () => {
 
   # Test that we error if not ALLOW_BLOCKING_ON_MAIN_THREAD
   def test_pthread_main_thread_blocking_wait(self):
-    self.btest('pthread/main_thread_wait.cpp', expected='abort:Blocking on the main thread is not allowed by default.', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE', '-sALLOW_BLOCKING_ON_MAIN_THREAD=0'])
+    self.btest('pthread/main_thread_wait.c', expected='abort:Blocking on the main thread is not allowed by default.', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE', '-sALLOW_BLOCKING_ON_MAIN_THREAD=0'])
 
   # Test that we error or warn depending on ALLOW_BLOCKING_ON_MAIN_THREAD or ASSERTIONS
   def test_pthread_main_thread_blocking_join(self):
@@ -3872,29 +3872,25 @@ Module["preRun"] = () => {
     for arg in [[], ['-DUSE_EMSCRIPTEN_INTRINSICS']]:
       self.btest_exit('pthread/test_pthread_gcc_spinlock.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + arg)
 
-  # Test that basic thread creation works.
-  def test_pthread_create(self):
-    def test(args):
-      print(args)
-      self.btest_exit('pthread/test_pthread_create.cpp',
-                      args=['-pthread', '-sPTHREAD_POOL_SIZE=8'] + args,
-                      extra_tries=0) # this should be 100% deterministic
-    print() # new line
-    test([])
-    test(['-O3'])
-    # TODO: re-enable minimal runtime once the flakiness is figure out,
-    # https://github.com/emscripten-core/emscripten/issues/12368
-    # test(['-sMINIMAL_RUNTIME'])
+  @parameterized({
+    '': ([],),
+    'O3': (['-O3'],),
+    'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
+  })
+  def test_pthread_create(self, args):
+    self.btest_exit('pthread/test_pthread_create.c',
+                    args=['-pthread', '-sPTHREAD_POOL_SIZE=8'] + args,
+                    extra_tries=0) # this should be 100% deterministic
 
   # Test that preallocating worker threads work.
   def test_pthread_preallocates_workers(self):
-    self.btest_exit('pthread/test_pthread_preallocates_workers.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=4', '-sPTHREAD_POOL_DELAY_LOAD'])
+    self.btest_exit('pthread/test_pthread_preallocates_workers.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=4', '-sPTHREAD_POOL_DELAY_LOAD'])
 
   # Test that allocating a lot of threads doesn't regress. This needs to be checked manually!
   @no_2gb('uses INITIAL_MEMORY')
   @no_4gb('uses INITIAL_MEMORY')
   def test_pthread_large_pthread_allocation(self):
-    self.btest_exit('pthread/test_large_pthread_allocation.cpp', args=['-sINITIAL_MEMORY=128MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=50'])
+    self.btest_exit('pthread/test_large_pthread_allocation.c', args=['-sINITIAL_MEMORY=128MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=50'])
 
   # Tests the -sPROXY_TO_PTHREAD option.
   def test_pthread_proxy_to_pthread(self):
@@ -3903,15 +3899,15 @@ Module["preRun"] = () => {
   # Test that a pthread can spawn another pthread of its own.
   def test_pthread_create_pthread(self):
     for modularize in [[], ['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')]]:
-      self.btest_exit('pthread/test_pthread_create_pthread.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=2'] + modularize)
+      self.btest_exit('pthread/test_pthread_create_pthread.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=2'] + modularize)
 
   # Test another case of pthreads spawning pthreads, but this time the callers immediately join on the threads they created.
   def test_pthread_nested_spawns(self):
-    self.btest_exit('pthread/test_pthread_nested_spawns.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=2'])
+    self.btest_exit('pthread/test_pthread_nested_spawns.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=2'])
 
   # Test that main thread can wait for a pthread to finish via pthread_join().
   def test_pthread_join(self):
-    self.btest_exit('pthread/test_pthread_join.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_join.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test that threads can rejoin the pool once detached and finished
   def test_std_thread_detach(self):
@@ -3919,20 +3915,20 @@ Module["preRun"] = () => {
 
   # Test pthread_cancel() operation
   def test_pthread_cancel(self):
-    self.btest_exit('pthread/test_pthread_cancel.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_cancel.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test that pthread_cancel() cancels pthread_cond_wait() operation
   def test_pthread_cancel_cond_wait(self):
-    self.btest_exit('pthread/test_pthread_cancel_cond_wait.cpp', assert_returncode=1, args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_cancel_cond_wait.c', assert_returncode=1, args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test pthread_kill() operation
   @no_chrome('pthread_kill hangs chrome renderer, and keep subsequent tests from passing')
   def test_pthread_kill(self):
-    self.btest_exit('pthread/test_pthread_kill.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_kill.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test that pthread cleanup stack (pthread_cleanup_push/_pop) works.
   def test_pthread_cleanup(self):
-    self.btest_exit('pthread/test_pthread_cleanup.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_cleanup.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Tests the pthread mutex api.
   @parameterized({
@@ -3940,7 +3936,7 @@ Module["preRun"] = () => {
     'spinlock': (['-DSPINLOCK_TEST'],),
   })
   def test_pthread_mutex(self, args):
-    self.btest_exit('pthread/test_pthread_mutex.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args)
+    self.btest_exit('pthread/test_pthread_mutex.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args)
 
   def test_pthread_attr_getstack(self):
     self.btest_exit('pthread/test_pthread_attr_getstack.c', args=['-pthread', '-sPTHREAD_POOL_SIZE=2'])
@@ -3988,7 +3984,7 @@ Module["preRun"] = () => {
     'debug': (True,),
   })
   def test_pthread_printf(self, debug):
-     self.btest_exit('pthread/test_pthread_printf.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE', '-sLIBRARY_DEBUG=%d' % debug])
+     self.btest_exit('pthread/test_pthread_printf.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE', '-sLIBRARY_DEBUG=%d' % debug])
 
   # Test that pthreads are able to do cout. Failed due to https://bugzilla.mozilla.org/show_bug.cgi?id=1154858.
   def test_pthread_iostream(self):
@@ -4004,7 +4000,7 @@ Module["preRun"] = () => {
 
   # Test that pthreads have access to filesystem.
   def test_pthread_file_io(self):
-    self.btest_exit('pthread/test_pthread_file_io.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
+    self.btest_exit('pthread/test_pthread_file_io.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
   # Test that the pthread_create() function operates benignly in the case that threading is not supported.
   @parameterized({
@@ -4073,7 +4069,7 @@ Module["preRun"] = () => {
   def test_pthread_sbrk(self, args):
     # With aborting malloc = 1, test allocating memory in threads
     # With aborting malloc = 0, allocate so much memory in threads that some of the allocations fail.
-    self.btest_exit('pthread/test_pthread_sbrk.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '-sINITIAL_MEMORY=128MB'] + args)
+    self.btest_exit('pthread/test_pthread_sbrk.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '-sINITIAL_MEMORY=128MB'] + args)
 
   # Test that -sABORTING_MALLOC=0 works in both pthreads and non-pthreads
   # builds. (sbrk fails gracefully)
@@ -4128,16 +4124,16 @@ Module["preRun"] = () => {
   # pthreads, instead of each pthread independently reporting wallclock times
   # since the launch of that pthread.
   def test_pthread_clock_drift(self):
-    self.btest_exit('pthread/test_pthread_clock_drift.cpp', args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('pthread/test_pthread_clock_drift.c', args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   def test_pthread_utf8_funcs(self):
-    self.btest_exit('pthread/test_pthread_utf8_funcs.cpp', args=['-pthread', '-sPTHREAD_POOL_SIZE'])
+    self.btest_exit('pthread/test_pthread_utf8_funcs.c', args=['-pthread', '-sPTHREAD_POOL_SIZE'])
 
   # Test the emscripten_futex_wake(addr, INT_MAX); functionality to wake all
   # waiters
   @also_with_wasm2js
   def test_pthread_wake_all(self):
-    self.btest_exit('pthread/test_futex_wake_all.cpp', args=['-O3', '-pthread'])
+    self.btest_exit('pthread/test_futex_wake_all.c', args=['-O3', '-pthread'])
 
   # Test that stack base and max correctly bound the stack on pthreads.
   def test_pthread_stack_bounds(self):
@@ -5503,7 +5499,7 @@ Module["preRun"] = () => {
                expected=['exception:Uncaught rejected!', 'exception:uncaught exception: rejected!'])
 
   def test_pthread_key_recreation(self):
-    self.btest_exit('pthread/test_pthread_key_recreation.cpp', args=['-pthread', '-sPTHREAD_POOL_SIZE=1'])
+    self.btest_exit('pthread/test_pthread_key_recreation.c', args=['-pthread', '-sPTHREAD_POOL_SIZE=1'])
 
   def test_full_js_library_strict(self):
     self.btest_exit('hello_world.c', args=['-sINCLUDE_FULL_LIBRARY', '-sSTRICT_JS'])
