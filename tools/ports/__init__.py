@@ -437,7 +437,8 @@ def handle_port_options(name, options, error_handler):
     error_handler(f'no options available for port `{name}`')
   else:
     options_dict = {}
-    for name_value in options.split(':'):
+    for name_value in options.replace('::', '\0').split(':'):
+      name_value = name_value.replace('\0', ':')
       nv = name_value.split('=', 1)
       if len(nv) != 2:
         error_handler(f'`{name_value}` is missing a value')

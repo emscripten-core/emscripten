@@ -44,6 +44,10 @@ See docs/process.md for more on how version tagging works.
 - TypeScript definitions for Wasm exports, runtime exports, and embind bindings
   can now be generated with `--emit-tsd`. The option `--embind-emit-tsd` has been
   deprecated, use `--emit-tsd` instead.
+- ports changes:
+  - Fixed transitive link dependencies (#21602)
+  - Enable use of options in ports dependencies (#21629)
+  - Enable use of `::` to escape option separator (#21710)
 
 3.1.56 - 03/14/24
 -----------------

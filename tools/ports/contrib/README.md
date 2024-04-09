@@ -37,6 +37,9 @@ calls the handler function with these (valid) options. If you detect an error
 with a value, you should use the error handler provided to report the 
 failure.
 
+Since emscripten uses `:` as the option separator, `::` is the escape syntax 
+(ex: `--use-port=name:opt1=abc::def`)
+
 > ### Note
 > If the options influence the way the library produced by the port is built, 
 > you must ensure that the library name accounts for these options. Check 
