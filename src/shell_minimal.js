@@ -134,6 +134,18 @@ function ready() {
 #endif
 #endif
 
+#if PTHREADS
+// MINIMAL_RUNTIME does not support --proxy-to-worker option, so Worker and Pthread environments
+// coincide.
+#if WASM_WORKERS
+var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function',
+  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && !ENVIRONMENT_IS_WASM_WORKER;
+#else
+var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function',
+  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER;
+#endif
+#endif
+
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
 {{{ preJS() }}}
@@ -144,16 +156,6 @@ function ready() {
 // In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
 var _scriptDir = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
-#endif
-
-// MINIMAL_RUNTIME does not support --proxy-to-worker option, so Worker and Pthread environments
-// coincide.
-#if WASM_WORKERS
-var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function',
-  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && !ENVIRONMENT_IS_WASM_WORKER;
-#else
-var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function',
-  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER;
 #endif
 
 if (ENVIRONMENT_IS_WORKER) {
