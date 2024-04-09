@@ -7909,6 +7909,7 @@ int main() {
 
   @uses_canonical_tmp
   @with_env_modify({'EMCC_DEBUG': '1'})
+  @disabled("Letting https://github.com/WebAssembly/binaryen/pull/6464 roll in")
   def test_eval_ctors_debug_output(self):
     create_file('lib.js', r'''
 addToLibrary({
