@@ -7909,7 +7909,6 @@ int main() {
 
   @uses_canonical_tmp
   @with_env_modify({'EMCC_DEBUG': '1'})
-  @disabled("Letting https://github.com/WebAssembly/binaryen/pull/6464 roll in")
   def test_eval_ctors_debug_output(self):
     create_file('lib.js', r'''
 addToLibrary({
@@ -7927,7 +7926,7 @@ int main() {}
     err = self.run_process([EMXX, 'src.cpp', '--js-library', 'lib.js', '-O2', '-sEVAL_CTORS'], stderr=PIPE).stderr
     # logging should show we failed, and why
     self.assertNotContained('ctor_evaller: not successful', err)
-    self.assertContained('stopping since could not eval: call import: env.external_thing', err)
+    self.assertContained('could not eval: call import: env.external_thing', err)
 
   def test_override_js_execution_environment(self):
     create_file('main.c', r'''
