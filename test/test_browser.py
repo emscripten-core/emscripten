@@ -441,7 +441,7 @@ If manually bisecting:
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_preload_file_with_manual_data_download(self, args):
-    create_file('file.txt', '''Hello!''')
+    create_file('file.txt', 'Hello!')
 
     self.compile_btest('manual_download_data.cpp', ['-o', 'manual_download_data.js', '--preload-file', 'file.txt@/file.txt'] + args)
     shutil.copyfile(test_file('manual_download_data.html'), 'manual_download_data.html')
@@ -3875,9 +3875,7 @@ Module["preRun"] = () => {
   @parameterized({
     '': ([],),
     'O3': (['-O3'],),
-    # TODO: re-enable minimal runtime once the flakiness is figured out,
-    # https://github.com/emscripten-core/emscripten/issues/12368
-    # 'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
+    'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
   })
   def test_pthread_create(self, args):
     self.btest_exit('pthread/test_pthread_create.c',

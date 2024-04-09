@@ -146,7 +146,7 @@ var ENVIRONMENT_IS_WASM_WORKER = Module['$ww'];
 #if SHARED_MEMORY && !MODULARIZE
 // In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
-var _scriptDir = (typeof document != 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
+var _scriptDir = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
 
 if (ENVIRONMENT_IS_WORKER) {
   _scriptDir = self.location.href;

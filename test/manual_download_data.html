@@ -51,7 +51,7 @@
     <figure style="overflow:visible;" id="spinner"><div class="spinner"></div><center style="margin-top:0.5em"><strong>emscripten</strong></center></figure>
     <div class="emscripten" id="status">Downloading...</div>
     <div class="emscripten">
-      <progress value="0" max="100" id="progress" hidden=1></progress>  
+      <progress value="0" max="100" id="progress" hidden=1></progress>
     </div>
     <div class="emscripten_border">
       <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
@@ -61,10 +61,10 @@
       <input type="checkbox" id="resize">Resize canvas
       <input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer
       &nbsp;&nbsp;&nbsp;
-      <input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked, 
+      <input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked,
                                                                                 document.getElementById('resize').checked)">
     </div>
-    
+
     <hr/>
     <textarea class="emscripten" id="output" rows="8"></textarea>
     <hr>
@@ -76,7 +76,7 @@
       var Module = {
         preRun: [],
         postRun: [],
-        print: (function() {
+        print: (() => {
           var element = document.getElementById('output');
           if (element) element.value = ''; // clear browser cache
           return function(text) {
@@ -93,7 +93,7 @@
             }
           };
         })(),
-        printErr: function(text) {
+        printErr: (text) => {
           if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
           if (0) { // XXX disabled for safety typeof dump == 'function') {
             dump(text + '\n'); // fast, straight to the real console
@@ -101,7 +101,7 @@
             console.error(text);
           }
         },
-        canvas: (function() {
+        canvas: (() => {
           var canvas = document.getElementById('canvas');
 
           // As a default initial behavior, pop up an alert when webgl context is lost. To make your
@@ -111,7 +111,7 @@
 
           return canvas;
         })(),
-        setStatus: function(text) {
+        setStatus: (text) => {
           if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
           if (text === Module.setStatus.text) return;
           var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
@@ -132,10 +132,14 @@
           statusElement.innerHTML = text;
         },
         totalDependencies: 0,
-        monitorRunDependencies: function(left) {
+        monitorRunDependencies: (left) => {
           this.totalDependencies = Math.max(this.totalDependencies, left);
           Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
-        }
+        },
+        getPreloadedPackage: (remotePackageName, remotePackageSize) => {
+          console.log(`Runtime asking for remote package ${remotePackageName}, expected size ${remotePackageSize} bytes.`);
+          return Module['downloadedData'];
+        },
       };
       Module.setStatus('Downloading...');
       window.onerror = function() {
@@ -158,7 +162,7 @@
       }
 
       function addScriptToDom(scriptCode) {
-        return new Promise(function(resolve, reject) {
+        return new Promise((resolve, reject) => {
           var script = document.createElement('script');
           var blob = new Blob([scriptCode], { type: 'application/javascript' });
           var objectUrl = URL.createObjectURL(blob);
@@ -179,15 +183,10 @@
         });
       }
 
-      Module.getPreloadedPackage = function(remotePackageName, remotePackageSize) {
-        console.log('Runtime asking for remote package ' + remotePackageName + ', expected size ' + remotePackageSize + 'bytes.');
-        return Module['downloadedData'];
-      }
-
-      var dataDownload = download('/test/manual_download_data.data').then(function(data) {
+      var dataDownload = download('/test/manual_download_data.data').then((data) => {
         console.log('downloaded data file');
         Module['downloadedData'] = data;
-        var jsDownload = download('manual_download_data.js').then(function(data) {
+        var jsDownload = download('manual_download_data.js').then((data) => {
           console.log('downloaded js file');
           Module['mainScriptUrlOrBlob'] = new Blob([data], { type: 'application/javascript' });
           addScriptToDom(data);

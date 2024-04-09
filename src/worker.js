@@ -45,7 +45,7 @@ if (ENVIRONMENT_IS_NODE) {
       // __filename is undefined in ES6 modules, and import.meta.url only in ES6
       // modules.
 #if EXPORT_ES6
-      href: typeof __filename !== 'undefined' ? __filename : import.meta.url
+      href: typeof __filename != 'undefined' ? __filename : import.meta.url
 #else
       href: __filename
 #endif
