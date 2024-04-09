@@ -2031,7 +2031,7 @@ def fix_es6_import_statements(js_file):
   save_intermediate('es6-module')
 
 
-def create_worker_file(input_file, target_dir, output_file):
+def create_worker_file(input_file, target_dir, output_file, options):
   output_file = os.path.join(target_dir, output_file)
   input_file = utils.path_from_root(input_file)
   contents = shared.read_and_preprocess(input_file, expand_macros=True)
@@ -2044,6 +2044,8 @@ def create_worker_file(input_file, target_dir, output_file):
     contents = building.acorn_optimizer(output_file, ['minifyWhitespace'], return_output=True)
     write_file(output_file, contents)
 
+  tools.line_endings.convert_line_endings_in_file(output_file, os.linesep, options.output_eol)
+
 
 @ToolchainProfiler.profile_block('final emitting')
 def phase_final_emitting(options, state, target, wasm_target):
@@ -2054,15 +2056,15 @@ def phase_final_emitting(options, state, target, wasm_target):
 
   target_dir = os.path.dirname(os.path.abspath(target))
   if settings.PTHREADS:
-    create_worker_file('src/worker.js', target_dir, settings.PTHREAD_WORKER_FILE)
+    create_worker_file('src/worker.js', target_dir, settings.PTHREAD_WORKER_FILE, options)
 
   # Deploy the Wasm Worker bootstrap file as an output file (*.ww.js)
   if settings.WASM_WORKERS == 1:
-    create_worker_file('src/wasm_worker.js', target_dir, settings.WASM_WORKER_FILE)
+    create_worker_file('src/wasm_worker.js', target_dir, settings.WASM_WORKER_FILE, options)
 
   # Deploy the Audio Worklet module bootstrap file (*.aw.js)
   if settings.AUDIO_WORKLET == 1:
-    create_worker_file('src/audio_worklet.js', target_dir, settings.AUDIO_WORKLET_FILE)
+    create_worker_file('src/audio_worklet.js', target_dir, settings.AUDIO_WORKLET_FILE, options)
 
   if settings.MODULARIZE:
     modularize()
