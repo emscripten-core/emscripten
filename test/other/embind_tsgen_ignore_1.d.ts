@@ -34,6 +34,7 @@ interface WasmModule {
   __emscripten_thread_exit(_0: number): void;
 }
 
+type EmbindString = ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string;
 export interface Test {
   x: number;
   readonly y: number;
@@ -43,8 +44,8 @@ export interface Test {
   functionFive(x: number, y: number): number;
   constFn(): number;
   longFn(_0: number): number;
-  functionThree(_0: ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string): number;
-  functionSix(str: ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string): number;
+  functionThree(_0: EmbindString): number;
+  functionSix(str: EmbindString): number;
   delete(): void;
 }
 
@@ -137,7 +138,8 @@ interface EmbindModule {
   smart_ptr_function(_0: ClassWithSmartPtrConstructor): number;
   smart_ptr_function_with_params(foo: ClassWithSmartPtrConstructor): number;
   function_with_callback_param(_0: (message: string) => void): number;
-  string_test(_0: ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string): string;
+  string_test(_0: EmbindString): string;
   wstring_test(_0: string): string;
 }
+
 export type MainModule = WasmModule & typeof RuntimeExports & EmbindModule;
