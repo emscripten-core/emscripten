@@ -427,10 +427,17 @@ def main():
       mode = leading
       # position of @ if we're doing 'src@dst'. '__' is used to keep the index
       # same with the original if they escaped with '@@'.
-      at_position = arg.replace('@@', '__').find('@')
+      at_occurrences = [
+          i for i, c in enumerate(arg.replace('@@', '__')) if c == '@'
+      ]
       # '@@' in input string means there is an actual @ character, a single '@'
       # means the 'src@dst' notation.
-      uses_at_notation = (at_position != -1)
+      uses_at_notation = False
+      at_position = 0
+      if at_occurrences:
+        uses_at_notation = True
+        # Find middle occurence of @ to handle the case when <src> contains `@`.
+        at_position = at_occurrences[len(at_occurrences) // 2]
 
       if uses_at_notation:
         srcpath = arg[0:at_position].replace('@@', '@') # split around the @
