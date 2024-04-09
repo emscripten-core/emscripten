@@ -7669,8 +7669,9 @@ void* operator new(size_t size) {
     post_js += '\n\n'
     create_file('extern-post.js', post_js)
 
-    # Export things on "TheModule". This matches the typical use pattern of the bound library
-    # being used as Box2D.* or Ammo.*, and we cannot rely on "Module" being always present (closure may remove it).
+    # Export things on "TheModule". This matches the typical use pattern of
+    # the bound library being used as Box2D.* or Ammo.*, and we cannot rely
+    # on "Module" being always present (closure may remove it).
     self.emcc_args += ['--post-js=glue.js', '--extern-post-js=extern-post.js']
     if mode == 'ALL':
       self.emcc_args += ['-sASSERTIONS']
@@ -7681,8 +7682,10 @@ void* operator new(size_t size) {
 
     self.do_run_in_out_file_test(test_file('webidl/test.cpp'), out_suffix='_' + mode, includes=['.'])
 
-  # Test that we can perform fully-synchronous initialization when combining WASM_ASYNC_COMPILATION=0 + PTHREAD_POOL_DELAY_LOAD=1.
-  # Also checks that PTHREAD_POOL_DELAY_LOAD=1 adds a pthreadPoolReady promise that users can wait on for pthread initialization.
+  # Test that we can perform fully-synchronous initialization when combining
+  # WASM_ASYNC_COMPILATION=0 + PTHREAD_POOL_DELAY_LOAD=1.  Also checks that
+  # PTHREAD_POOL_DELAY_LOAD=1 adds a pthreadPoolReady promise that users
+  # can wait on for pthread initialization.
   @node_pthreads
   def test_embind_sync_if_pthread_delayed(self):
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
