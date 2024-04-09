@@ -186,7 +186,7 @@
       var dataDownload = download('/test/manual_download_data.data').then((data) => {
         console.log('downloaded data file');
         Module['downloadedData'] = data;
-        var jsDownload = download('manual_download_data.js').then((data) => {
+        var jsDownload = download('/test/manual_download_data.js').then((data) => {
           console.log('downloaded js file');
           Module['mainScriptUrlOrBlob'] = new Blob([data], { type: 'application/javascript' });
           addScriptToDom(data);

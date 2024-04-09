@@ -443,12 +443,13 @@ If manually bisecting:
   def test_preload_file_with_manual_data_download(self, args):
     create_file('file.txt', 'Hello!')
 
-    self.compile_btest('manual_download_data.cpp', ['-o', 'manual_download_data.js', '--preload-file', 'file.txt@/file.txt'] + args)
+    self.compile_btest('manual_download_data.cpp', ['-o', 'out.js', '--preload-file', 'file.txt@/file.txt'] + args)
     shutil.copyfile(test_file('manual_download_data.html'), 'manual_download_data.html')
 
     # Move .data file out of server root to ensure that getPreloadedPackage is actually used
     os.mkdir('test')
-    shutil.move('manual_download_data.data', 'test/manual_download_data.data')
+    shutil.move('out.js', 'test/manual_download_data.js')
+    shutil.move('out.data', 'test/manual_download_data.data')
 
     self.run_browser('manual_download_data.html', '/report_result?1')
 
@@ -4817,11 +4818,16 @@ Module["preRun"] = () => {
   def test_pthread_reltime(self):
     self.btest_exit('pthread/test_pthread_reltime.cpp', args=['-pthread', '-sPTHREAD_POOL_SIZE'])
 
-  # Tests that it is possible to load the main .js file of the application manually via a Blob URL, and still use pthreads.
+  # Tests that it is possible to load the main .js file of the application manually via a Blob URL,
+  # and still use pthreads.
   def test_load_js_from_blob_with_pthreads(self):
     # TODO: enable this with wasm, currently pthreads/atomics have limitations
     self.set_setting('EXIT_RUNTIME')
-    self.compile_btest('pthread/hello_thread.c', ['-pthread', '-o', 'hello_thread_with_blob_url.js'], reporting=Reporting.JS_ONLY)
+    self.compile_btest('pthread/hello_thread.c', ['-pthread', '-o', 'out.js'], reporting=Reporting.JS_ONLY)
+
+    # Now run the test with the JS file renamed and with its content
+    # stored in Module['mainScriptUrlOrBlob'].
+    shutil.move('out.js', 'hello_thread_with_blob_url.js')
     shutil.copyfile(test_file('pthread/main_js_as_blob_loader.html'), 'hello_thread_with_blob_url.html')
     self.run_browser('hello_thread_with_blob_url.html', '/report_result?exit:0')
 
