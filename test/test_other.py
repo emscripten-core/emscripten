@@ -4912,7 +4912,12 @@ Waste<3> *getMore() {
     'O2': [['-O2']],
     'O3': [['-O3']],
   })
-  def test_symbol_map(self, opts):
+  @parameterized({
+    '': [1],
+    'wasm2js': [0],
+    'wasm2js_2': [2],
+  })
+  def test_symbol_map(self, wasm, opts):
     def get_symbols_lines(symbols_file):
       self.assertTrue(os.path.isfile(symbols_file), "Symbols file %s isn't created" % symbols_file)
       # check that the map is correct
@@ -4939,10 +4944,8 @@ Waste<3> *getMore() {
     UNMINIFIED_HEAP8 = 'var HEAP8 = new '
     UNMINIFIED_MIDDLE = 'function middle'
 
-    for wasm in [0, 1, 2]:
-      print(opts, wasm)
-      self.clear()
-      create_file('src.c', r'''
+    self.clear()
+    create_file('src.c', r'''
 #include <emscripten.h>
 
 EM_JS(int, run_js, (), {
@@ -4962,47 +4965,48 @@ int main() {
 EM_ASM({ _middle() });
 }
 ''')
-      cmd = [EMCC, 'src.c', '--emit-symbol-map'] + opts
-      if wasm != 1:
-        cmd.append(f'-sWASM={wasm}')
-      self.run_process(cmd)
+    cmd = [EMCC, 'src.c', '--emit-symbol-map'] + opts
+    if wasm != 1:
+      cmd.append(f'-sWASM={wasm}')
+    self.run_process(cmd)
 
-      minified_middle = get_minified_middle('a.out.js.symbols')
-      self.assertNotEqual(minified_middle, None, "Missing minified 'middle' function")
-      if wasm:
-        # stack traces are standardized enough that we can easily check that the
-        # minified name is actually in the output
-        stack_trace_reference = 'wasm-function[%s]' % minified_middle
-        out = self.run_js('a.out.js')
-        self.assertContained(stack_trace_reference, out)
-        # make sure there are no symbols in the wasm itself
-        wat = self.get_wasm_text('a.out.wasm')
-        for func_start in ('(func $middle', '(func $_middle'):
-          self.assertNotContained(func_start, wat)
+    minified_middle = get_minified_middle('a.out.js.symbols')
+    self.assertNotEqual(minified_middle, None, "Missing minified 'middle' function")
+    if wasm:
+      # stack traces are standardized enough that we can easily check that the
+      # minified name is actually in the output
+      stack_trace_reference = 'wasm-function[%s]' % minified_middle
+      out = self.run_js('a.out.js')
+      self.assertContained(stack_trace_reference, out)
+      # make sure there are no symbols in the wasm itself
+      wat = self.get_wasm_text('a.out.wasm')
+      for func_start in ('(func $middle', '(func $_middle'):
+        self.assertNotContained(func_start, wat)
 
-      # Ensure symbols file type according to `-sWASM=` mode
-      if wasm == 0:
-        self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'js', 'Primary symbols file should store JS mappings')
-      elif wasm == 1:
-        self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'wasm', 'Primary symbols file should store Wasm mappings')
-      elif wasm == 2:
-        # special case when both JS and Wasm targets are created
-        minified_middle_2 = get_minified_middle('a.out.wasm.js.symbols')
-        self.assertNotEqual(minified_middle_2, None, "Missing minified 'middle' function")
-        self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'wasm', 'Primary symbols file should store Wasm mappings')
-        self.assertEqual(guess_symbols_file_type('a.out.wasm.js.symbols'), 'js', 'Secondary symbols file should store JS mappings')
+    # Ensure symbols file type according to `-sWASM=` mode
+    if wasm == 0:
+      self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'js', 'Primary symbols file should store JS mappings')
+    elif wasm == 1:
+      self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'wasm', 'Primary symbols file should store Wasm mappings')
+    elif wasm == 2:
+      # special case when both JS and Wasm targets are created
+      minified_middle_2 = get_minified_middle('a.out.wasm.js.symbols')
+      self.assertNotEqual(minified_middle_2, None, "Missing minified 'middle' function")
+      self.assertEqual(guess_symbols_file_type('a.out.js.symbols'), 'wasm', 'Primary symbols file should store Wasm mappings')
+      self.assertEqual(guess_symbols_file_type('a.out.wasm.js.symbols'), 'js', 'Secondary symbols file should store JS mappings')
+    return
 
-      # check we don't keep unnecessary debug info with wasm2js when emitting
-      # a symbol map
-      if wasm == 0 and '-O' in str(opts):
-        js = read_file('a.out.js')
-        self.assertNotContained(UNMINIFIED_HEAP8, js)
-        self.assertNotContained(UNMINIFIED_MIDDLE, js)
-        # verify those patterns would exist with more debug info
-        self.run_process(cmd + ['--profiling-funcs'])
-        js = read_file('a.out.js')
-        self.assertContained(UNMINIFIED_HEAP8, js)
-        self.assertContained(UNMINIFIED_MIDDLE, js)
+    # check we don't keep unnecessary debug info with wasm2js when emitting
+    # a symbol map
+    if wasm == 0 and '-O' in str(opts):
+      js = read_file('a.out.js')
+      self.assertNotContained(UNMINIFIED_HEAP8, js)
+      self.assertNotContained(UNMINIFIED_MIDDLE, js)
+      # verify those patterns would exist with more debug info
+      self.run_process(cmd + ['--profiling-funcs'])
+      js = read_file('a.out.js')
+      self.assertContained(UNMINIFIED_HEAP8, js)
+      self.assertContained(UNMINIFIED_MIDDLE, js)
 
   @parameterized({
     '': [[]],
@@ -9145,6 +9149,18 @@ int main() {
   @requires_v8
   def test_single_file_shell_sync_compile(self):
     self.do_runf('hello_world.c', emcc_args=['-sSINGLE_FILE', '-sWASM_ASYNC_COMPILATION=0'])
+
+  def test_single_file_no_clobber_wasm(self):
+    create_file('hello_world.wasm', 'not wasm')
+    self.do_runf('hello_world.c', emcc_args=['-sSINGLE_FILE'])
+    self.assertExists('hello_world.js')
+    self.assertFileContents('hello_world.wasm', 'not wasm')
+
+  def test_wasm2js_no_clobber_wasm(self):
+    create_file('hello_world.wasm', 'not wasm')
+    self.do_runf('hello_world.c', emcc_args=['-sWASM=0'])
+    self.assertExists('hello_world.js')
+    self.assertFileContents('hello_world.wasm', 'not wasm')
 
   def test_emar_M(self):
     create_file('file1', ' ')
