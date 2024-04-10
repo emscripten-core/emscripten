@@ -144,16 +144,16 @@ var quit_ = (status, toThrow) => {
 };
 
 #if SHARED_MEMORY && !MODULARIZE
-// In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
+// In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
-var _scriptDir = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
+var _scriptName = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
 
 if (ENVIRONMENT_IS_WORKER) {
-  _scriptDir = self.location.href;
+  _scriptName = self.location.href;
 }
 #if ENVIRONMENT_MAY_BE_NODE
 else if (ENVIRONMENT_IS_NODE) {
-  _scriptDir = __filename;
+  _scriptName = __filename;
 }
 #endif // ENVIRONMENT_MAY_BE_NODE
 #endif // SHARED_MEMORY && !MODULARIZE
@@ -371,8 +371,8 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 #if MODULARIZE
   // When MODULARIZE, this JS may be executed later, after document.currentScript
   // is gone, so we saved it, and we use it here instead of any other info.
-  if (_scriptDir) {
-    scriptDirectory = _scriptDir;
+  if (_scriptName) {
+    scriptDirectory = _scriptName;
   }
 #endif
   // blob urls look like blob:http://site.com/etc/etc and we cannot infer anything from them.

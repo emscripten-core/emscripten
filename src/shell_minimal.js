@@ -153,17 +153,17 @@ var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function',
 #if PTHREADS
 
 #if !MODULARIZE
-// In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
+// In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
-var _scriptDir = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
+var _scriptName = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
 #endif
 
 if (ENVIRONMENT_IS_WORKER) {
-  _scriptDir = self.location.href;
+  _scriptName = self.location.href;
 }
 #if ENVIRONMENT_MAY_BE_NODE
 else if (ENVIRONMENT_IS_NODE) {
-  _scriptDir = __filename;
+  _scriptName = __filename;
 }
 #endif
 
