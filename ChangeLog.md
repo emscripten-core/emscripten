@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.57 (in development)
+3.1.58 (in development)
 -----------------------
+
+3.1.57 - 04/10/24
+-----------------
 - libcxx, libcxxabi, libunwind, and compiler-rt were updated to LLVM 18.1.2.
   (#21607, #21638, and #21663)
 - musl libc updated from v1.2.4 to v1.2.5. (#21598)
