@@ -172,8 +172,6 @@ if (ENVIRONMENT_IS_NODE) {
   global.Worker = require('worker_threads').Worker;
 }
 #endif
-
-var currentScriptUrl = typeof _scriptDir != 'undefined' ? _scriptDir : ((typeof document != 'undefined') ? document.currentScript?.src : undefined);
 #endif // PTHREADS
 
 #if !SINGLE_FILE
