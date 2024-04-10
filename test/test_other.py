@@ -3307,6 +3307,12 @@ More info: https://emscripten.org
     cmd = shared.get_npm_cmd('tsc') + [test_file('other/test_tsd.ts'), '--noEmit']
     shared.check_call(cmd)
 
+  def test_emit_tsd_wasm_only(self):
+    self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
+                      '--emit-tsd', 'test_emit_tsd_wasm_only.d.ts', '-o', 'out.wasm'] +
+                     self.get_emcc_args())
+    self.assertFileContents(test_file('other/test_emit_tsd_wasm_only.d.ts'), read_file('test_emit_tsd_wasm_only.d.ts'))
+
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, config.LLVM_ROOT)

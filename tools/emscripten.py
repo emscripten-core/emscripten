@@ -385,7 +385,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
   if not outfile_js:
     report_missing_exports_wasm_only(metadata)
     logger.debug('emscript: skipping js glue generation')
-    return
+    return metadata
 
   # memory and global initializers
 
@@ -633,7 +633,9 @@ def create_tsd_exported_runtime_methods(metadata):
 
 def create_tsd(metadata, embind_tsd):
   out = '// TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.\n'
-  if settings.EXPORTED_RUNTIME_METHODS:
+  # Don't create runtime export defintions if there are no library defintions (e.g. wasm only output).
+  has_runtime_exports = hasattr(metadata, 'library_definitions') and settings.EXPORTED_RUNTIME_METHODS
+  if has_runtime_exports:
     out += create_tsd_exported_runtime_methods(metadata)
   # Manually generate defintions for any Wasm function exports.
   out += 'interface WasmModule {\n'
@@ -657,7 +659,7 @@ def create_tsd(metadata, embind_tsd):
   out += f'\n{embind_tsd}'
   # Combine all the various exports.
   export_interfaces = 'WasmModule'
-  if settings.EXPORTED_RUNTIME_METHODS:
+  if has_runtime_exports:
     export_interfaces += ' & typeof RuntimeExports'
   # Add in embind defintions.
   if embind_tsd:
