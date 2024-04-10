@@ -35,7 +35,7 @@ from common import env_modify, no_mac, no_windows, only_windows, requires_native
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
 from common import requires_wasm_eh, crossplatform, with_both_eh_sjlj, with_both_sjlj
-from common import also_with_standalone_wasm, also_with_env_modify
+from common import also_with_standalone_wasm, also_with_env_modify, also_with_wasm2js
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, flaky
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
 from common import requires_network
@@ -9091,30 +9091,29 @@ int main() {
 
   @is_slow_test
   @parameterized({
-    '': (False,),
-    'wasm2js': (True,),
+    '': (True,),
+    'disabled': (False,),
   })
-  def test_single_file(self, wasm2js):
-    for (single_file_enabled,
-         debug_enabled,
-         closure_enabled) in itertools.product([True, False], repeat=3):
+  @also_with_wasm2js
+  def test_single_file(self, single_file_enabled):
+    for (debug_enabled,
+         closure_enabled) in itertools.product([True, False], repeat=2):
       # skip unhelpful option combinations
       if closure_enabled and debug_enabled:
         continue
 
-      expect_wasm = not wasm2js
-
-      cmd = [EMCC, test_file('hello_world.c')]
+      cmd = [EMCC, test_file('hello_world.c')] + self.get_emcc_args()
 
       if single_file_enabled:
         expect_wasm = False
         cmd += ['-sSINGLE_FILE']
+      else:
+        expect_wasm = self.is_wasm()
+
       if debug_enabled:
         cmd += ['-g']
       if closure_enabled:
-        cmd += ['--closure=1']
-      if wasm2js:
-        cmd += ['-sWASM=0']
+        cmd += ['--closure=1', '-Wno-closure']
 
       self.clear()
 
@@ -9122,8 +9121,11 @@ int main() {
         print(' '.join(cmd))
         self.run_process(cmd)
         print(os.listdir('.'))
-        assert expect_wasm == os.path.exists('a.out.wasm')
-        assert not os.path.exists('a.out.wat')
+        if expect_wasm:
+          self.assertExists('a.out.wasm')
+        else:
+          self.assertNotExists('a.out.wasm')
+        self.assertNotExists('a.out.wat')
         self.assertContained('hello, world!', self.run_js('a.out.js'))
 
       do_test(cmd)
@@ -9132,7 +9134,7 @@ int main() {
 
       if debug_enabled:
         separate_dwarf_cmd = cmd + ['-gseparate-dwarf']
-        if wasm2js:
+        if self.is_wasm2js():
           self.expect_fail(separate_dwarf_cmd)
         else:
           do_test(separate_dwarf_cmd)

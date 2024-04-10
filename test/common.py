@@ -440,6 +440,23 @@ def also_with_wasm64(f):
   return metafunc
 
 
+def also_with_wasm2js(f):
+  assert callable(f)
+
+  def metafunc(self, with_wasm2js, *args, **kwargs):
+    assert self.get_setting('WASM') is None
+    if with_wasm2js:
+      self.require_wasm2js()
+      self.set_setting('WASM', 0)
+      f(self, *args, **kwargs)
+    else:
+      f(self, *args, **kwargs)
+
+  metafunc._parameterize = {'': (False,),
+                            'wasm2js': (True,)}
+  return metafunc
+
+
 def can_do_standalone(self, impure=False):
   # Pure standalone engines don't support MEMORY64 yet.  Even with MEMORY64=2 (lowered)
   # the WASI APIs that take pointer values don't have 64-bit variants yet.
