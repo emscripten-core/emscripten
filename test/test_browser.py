@@ -23,7 +23,7 @@ from urllib.request import urlopen
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
 from common import read_file, also_with_minimal_runtime, EMRUN, no_wasm64, no_2gb, no_4gb
-from common import requires_wasm2js
+from common import requires_wasm2js, also_with_wasm2js
 from tools import shared
 from tools import ports
 from tools import utils
@@ -111,23 +111,6 @@ def no_wasmfs(note):
       f(self, *args, **kwargs)
     return decorated
   return decorator
-
-
-def also_with_wasm2js(f):
-  assert callable(f)
-
-  def metafunc(self, with_wasm2js, *args, **kwargs):
-    assert self.get_setting('WASM') is None
-    if with_wasm2js:
-      self.require_wasm2js()
-      self.set_setting('WASM', 0)
-      f(self, *args, **kwargs)
-    else:
-      f(self, *args, **kwargs)
-
-  metafunc._parameterize = {'': (False,),
-                            'wasm2js': (True,)}
-  return metafunc
 
 
 def shell_with_script(shell_file, output_file, replacement):
