@@ -787,6 +787,8 @@ def phase_linker_setup(options, state, newargs):
     settings.MODULARIZE = 1
 
   if options.oformat in (OFormat.WASM, OFormat.BARE):
+    if options.emit_tsd:
+      exit_with_error('Wasm only output is not compatible --emit-tsd')
     # If the user asks directly for a wasm file then this *is* the target
     wasm_target = target
   elif settings.SINGLE_FILE or settings.WASM == 0:
