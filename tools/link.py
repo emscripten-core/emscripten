@@ -789,6 +789,10 @@ def phase_linker_setup(options, state, newargs):
   if options.oformat in (OFormat.WASM, OFormat.BARE):
     # If the user asks directly for a wasm file then this *is* the target
     wasm_target = target
+  elif settings.SINGLE_FILE or settings.WASM == 0:
+    # In SINGLE_FILE or WASM2JS mode the wasm file is not part of the output at
+    # all so we generate it the temp directory.
+    wasm_target = in_temp(shared.replace_suffix(target, '.wasm'))
   else:
     # Otherwise the wasm file is produced alongside the final target.
     wasm_target = get_secondary_target(target, '.wasm')
@@ -1901,7 +1905,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
     phase_embind_aot(wasm_target, js_syms)
 
   if options.emit_tsd:
-    phase_emit_tsd(options, wasm_target, js_syms, metadata)
+    phase_emit_tsd(options, wasm_target, state.js_target, js_syms, metadata)
 
   if options.js_transform:
     phase_source_transforms(options)
@@ -1984,14 +1988,14 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
 
 
 @ToolchainProfiler.profile_block('emit tsd')
-def phase_emit_tsd(options, wasm_target, js_syms, metadata):
+def phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata):
   logger.debug('emit tsd')
   filename = options.emit_tsd
   embind_tsd = ''
   if settings.EMBIND:
     embind_tsd = run_embind_gen(wasm_target, js_syms, {'EMBIND_JS': False})
   all_tsd = emscripten.create_tsd(metadata, embind_tsd)
-  out_file = os.path.join(os.path.dirname(wasm_target), filename)
+  out_file = os.path.join(os.path.dirname(js_target), filename)
   write_file(out_file, all_tsd)
 
 
@@ -2261,10 +2265,10 @@ def phase_binaryen(target, options, wasm_target):
 
     if settings.WASM != 2:
       final_js = wasm2js
-      # if we only target JS, we don't need the wasm any more
-      delete_file(wasm_target)
 
     save_intermediate('wasm2js')
+
+  generating_wasm = settings.WASM == 2 or not settings.WASM2JS
 
   # emit the final symbols, either in the binary or in a symbol map.
   # this will also remove debug info if we only kept it around in the intermediate invocations.
@@ -2272,12 +2276,18 @@ def phase_binaryen(target, options, wasm_target):
   # have anything to do here.
   if options.emit_symbol_map:
     intermediate_debug_info -= 1
-    if os.path.exists(wasm_target):
+    if generating_wasm:
       building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
       save_intermediate_with_wasm('symbolmap', wasm_target)
 
-  if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and os.path.exists(wasm_target):
-    building.emit_debug_on_side(wasm_target)
+  if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and generating_wasm:
+    # if the dwarf filename wasn't provided, use the default target + a suffix
+    wasm_file_with_dwarf = settings.SEPARATE_DWARF
+    if wasm_file_with_dwarf is True:
+      # Historically this file has been called `.wasm.debug.wasm`
+      # TODO(sbc): Should this just be `.debug.wasm`
+      wasm_file_with_dwarf = get_secondary_target(target, '.wasm.debug.wasm')
+    building.emit_debug_on_side(wasm_target, wasm_file_with_dwarf)
 
   # we have finished emitting the wasm, and so intermediate debug info will
   # definitely no longer be used tracking it.
@@ -2285,8 +2295,7 @@ def phase_binaryen(target, options, wasm_target):
     intermediate_debug_info -= 1
   assert intermediate_debug_info == 0
   # strip debug info if it was not already stripped by the last command
-  if not debug_function_names and building.binaryen_kept_debug_info and \
-     building.os.path.exists(wasm_target):
+  if not debug_function_names and building.binaryen_kept_debug_info and generating_wasm:
     with ToolchainProfiler.profile_block('strip_name_section'):
       building.strip(wasm_target, wasm_target, debug=False, sections=["name"])
 
