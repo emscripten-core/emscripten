@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.58 (in development)
 -----------------------
+- Enable use of `::` to escape port option separator (#21710)
 
 3.1.57 - 04/10/24
 -----------------
@@ -56,7 +57,6 @@ See docs/process.md for more on how version tagging works.
 - ports changes:
   - Fixed transitive link dependencies (#21602)
   - Enable use of options in ports dependencies (#21629)
-  - Enable use of `::` to escape option separator (#21710)
 
 3.1.56 - 03/14/24
 -----------------
