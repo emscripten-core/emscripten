@@ -119,7 +119,14 @@ if (Module['ENVIRONMENT']) {
 // 3) We could be an application pthread running in a worker. (ENVIRONMENT_IS_WORKER == true and ENVIRONMENT_IS_PTHREAD == true)
 
 // ENVIRONMENT_IS_PTHREAD=true will have been preset in worker.js. Make it false in the main runtime thread.
-var ENVIRONMENT_IS_PTHREAD = Module['ENVIRONMENT_IS_PTHREAD'] || false;
+var ENVIRONMENT_IS_PTHREAD = globalThis['ENVIRONMENT_IS_PTHREAD'] || false;
+
+#if MODULARIZE && ASSERTIONS
+if (ENVIRONMENT_IS_PTHREAD) {
+  assert(!globalThis.moduleLoaded, 'module should only be loaded once on each pthread worker');
+  globalThis.moduleLoaded = true;
+}
+#endif
 #endif
 
 #if WASM_WORKERS

@@ -20,6 +20,9 @@ assert(INITIAL_MEMORY >= {{{STACK_SIZE}}}, 'INITIAL_MEMORY should be larger than
 #if PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
   wasmMemory = Module['wasmMemory'];
+#if ASSERTIONS
+  assert(wasmMemory, 'wasmMemory not set on incomming module object');
+#endif
 } else {
 #endif // PTHREADS
 
