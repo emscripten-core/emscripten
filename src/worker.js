@@ -192,8 +192,9 @@ function handleMessage(e) {
       Module['workerID'] = e.data.workerID;
 #endif
 
-#if !MINIMAL_RUNTIME || MODULARIZE
-      {{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_PTHREAD') }}} = true;
+#if !MINIMAL_RUNTIME
+      // Set ENVIRONMENT_IS_PTHREAD before importing the main script
+      globalThis['ENVIRONMENT_IS_PTHREAD'] = true;
 #endif
 
 #if MODULARIZE && EXPORT_ES6

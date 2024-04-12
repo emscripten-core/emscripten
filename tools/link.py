@@ -721,6 +721,13 @@ def phase_linker_setup(options, state, newargs):
   options.extern_pre_js = read_js_files(options.extern_pre_js)
   options.extern_post_js = read_js_files(options.extern_post_js)
 
+  if settings.PTHREADS:
+    # Don't run extern pre/post code on pthreads.
+    if options.extern_pre_js:
+      options.extern_pre_js = 'if (typeof ENVIRONMENT_IS_PTHREAD == "undefined") {' + options.extern_pre_js + '}'
+    if options.extern_post_js:
+      options.extern_post_js = 'if (typeof ENVIRONMENT_IS_PTHREAD == "undefined") {' + options.extern_post_js + '}'
+
   # TODO: support source maps with js_transform
   if options.js_transform and settings.GENERATE_SOURCE_MAP:
     logger.warning('disabling source maps because a js transform is being done')

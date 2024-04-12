@@ -21,6 +21,8 @@ See docs/process.md for more on how version tagging works.
 3.1.58 (in development)
 -----------------------
 - Enable use of `::` to escape port option separator (#21710)
+- In multi-threaded builds `--extern-pre-js` and `--extern-post-js` code is
+  now only run on the main thread, and not on each of the workers. (#21750)
 
 3.1.57 - 04/10/24
 -----------------
