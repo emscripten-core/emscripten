@@ -1,7 +1,8 @@
 __cxa_can_catch
+__cxa_decrement_exception_refcount
 __cxa_free_exception
+__cxa_increment_exception_refcount
 __cxa_is_pointer_type
-__errno_location
 __indirect_function_table
 __wasm_call_ctors
 dynCall_iiiiiijj
@@ -10,7 +11,6 @@ dynCall_iiiiijj
 dynCall_jiiii
 dynCall_jiji
 dynCall_viijii
-getTempRet0
 main
 memory
 setTempRet0

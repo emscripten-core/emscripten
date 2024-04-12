@@ -116,11 +116,17 @@ size_t wcsrtombs(char* restrict dst, const wchar_t** restrict src, size_t len,
 #  pragma GCC system_header
 #endif
 
+// We define this here to support older versions of glibc <wchar.h> that do
+// not define this for clang.
 #ifdef __cplusplus
 #define __CORRECT_ISO_CPP_WCHAR_H_PROTO
 #endif
 
-#include_next <wchar.h>
+#  if __has_include_next(<wchar.h>)
+#    include_next <wchar.h>
+#  else
+#    include <__mbstate_t.h> // make sure we have mbstate_t regardless of the existence of <wchar.h>
+#  endif
 
 // Determine whether we have const-correct overloads for wcschr and friends.
 #if defined(_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_)

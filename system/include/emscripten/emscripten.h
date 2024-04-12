@@ -77,7 +77,7 @@ void emscripten_force_exit(int status) __attribute__((__noreturn__));
 
 double emscripten_get_device_pixel_ratio(void);
 
-char *emscripten_get_window_title();
+char *emscripten_get_window_title(void);
 void emscripten_set_window_title(const char *);
 void emscripten_get_screen_size(int *width __attribute__((nonnull)), int *height __attribute__((nonnull)));
 void emscripten_hide_mouse(void);
@@ -95,6 +95,7 @@ void emscripten_idb_async_store(const char *db_name __attribute__((nonnull)), co
 void emscripten_idb_async_delete(const char *db_name __attribute__((nonnull)), const char *file_id __attribute__((nonnull)), void* arg, em_arg_callback_func ondelete, em_arg_callback_func onerror);
 typedef void (*em_idb_exists_func)(void*, int);
 void emscripten_idb_async_exists(const char *db_name __attribute__((nonnull)), const char *file_id __attribute__((nonnull)), void* arg, em_idb_exists_func oncheck, em_arg_callback_func onerror);
+void emscripten_idb_async_clear(const char *db_name __attribute__((nonnull)), void* arg, em_arg_callback_func onclear, em_arg_callback_func onerror);
 
 // IDB "sync"
 
@@ -102,6 +103,7 @@ void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffe
 void emscripten_idb_store(const char *db_name, const char *file_id, void* buffer, int num, int *perror);
 void emscripten_idb_delete(const char *db_name, const char *file_id, int *perror);
 void emscripten_idb_exists(const char *db_name, const char *file_id, int* pexists, int *perror);
+void emscripten_idb_clear(const char *db_name, int *perror);
 
 void emscripten_idb_load_blob(const char *db_name, const char *file_id, int* pblob, int *perror);
 void emscripten_idb_store_blob(const char *db_name, const char *file_id, void* buffer, int num, int *perror);
@@ -155,8 +157,10 @@ char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);
 #define EM_LOG_C_STACK   8
 #define EM_LOG_JS_STACK 16
 #define EM_LOG_DEMANGLE 32  // deprecated
+#pragma clang deprecated(EM_LOG_DEMANGLE)
 #define EM_LOG_NO_PATHS 64
-#define EM_LOG_FUNC_PARAMS 128
+#define EM_LOG_FUNC_PARAMS 128  // deprecated
+#pragma clang deprecated(EM_LOG_FUNC_PARAMS)
 #define EM_LOG_DEBUG    256
 #define EM_LOG_INFO     512
 

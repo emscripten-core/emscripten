@@ -14,17 +14,21 @@
 #include <__algorithm/iterator_operations.h>
 #include <__config>
 #include <__iterator/iterator_traits.h>
+#include <__type_traits/is_copy_assignable.h>
+#include <__type_traits/is_copy_constructible.h>
 #include <__utility/move.h>
-#include <type_traits>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
 #endif
 
+_LIBCPP_PUSH_MACROS
+#include <__undef_macros>
+
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 template <class _AlgPolicy, class _Compare, class _RandomAccessIterator>
-_LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX11
+_LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14
 void __sift_up(_RandomAccessIterator __first, _RandomAccessIterator __last, _Compare&& __comp,
         typename iterator_traits<_RandomAccessIterator>::difference_type __len) {
   using value_type = typename iterator_traits<_RandomAccessIterator>::value_type;
@@ -50,15 +54,14 @@ void __sift_up(_RandomAccessIterator __first, _RandomAccessIterator __last, _Com
 }
 
 template <class _AlgPolicy, class _RandomAccessIterator, class _Compare>
-inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX11
+inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX14
 void __push_heap(_RandomAccessIterator __first, _RandomAccessIterator __last, _Compare& __comp) {
-  using _CompRef = typename __comp_ref_type<_Compare>::type;
   typename iterator_traits<_RandomAccessIterator>::difference_type __len = __last - __first;
-  std::__sift_up<_AlgPolicy, _CompRef>(std::move(__first), std::move(__last), __comp, __len);
+  std::__sift_up<_AlgPolicy, __comp_ref_type<_Compare> >(std::move(__first), std::move(__last), __comp, __len);
 }
 
 template <class _RandomAccessIterator, class _Compare>
-inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX17
+inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX20
 void push_heap(_RandomAccessIterator __first, _RandomAccessIterator __last, _Compare __comp) {
   static_assert(std::is_copy_constructible<_RandomAccessIterator>::value, "Iterators must be copy constructible.");
   static_assert(std::is_copy_assignable<_RandomAccessIterator>::value, "Iterators must be copy assignable.");
@@ -67,12 +70,13 @@ void push_heap(_RandomAccessIterator __first, _RandomAccessIterator __last, _Com
 }
 
 template <class _RandomAccessIterator>
-inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_AFTER_CXX17
+inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX20
 void push_heap(_RandomAccessIterator __first, _RandomAccessIterator __last) {
-  std::push_heap(std::move(__first), std::move(__last),
-      __less<typename iterator_traits<_RandomAccessIterator>::value_type>());
+  std::push_heap(std::move(__first), std::move(__last), __less<>());
 }
 
 _LIBCPP_END_NAMESPACE_STD
+
+_LIBCPP_POP_MACROS
 
 #endif // _LIBCPP___ALGORITHM_PUSH_HEAP_H

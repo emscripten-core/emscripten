@@ -18,7 +18,7 @@
 #  pragma GCC system_header
 #endif
 
-#if _LIBCPP_STD_VER > 17
+#if _LIBCPP_STD_VER >= 20
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -27,18 +27,18 @@ namespace chrono
 
 class day {
 private:
-    unsigned char __d;
+    unsigned char __d_;
 public:
-    _LIBCPP_HIDE_FROM_ABI day() = default;
-    _LIBCPP_HIDE_FROM_ABI explicit inline constexpr day(unsigned __val) noexcept : __d(static_cast<unsigned char>(__val)) {}
-    _LIBCPP_HIDE_FROM_ABI inline constexpr day& operator++()    noexcept { ++__d; return *this; }
+    day() = default;
+    _LIBCPP_HIDE_FROM_ABI explicit inline constexpr day(unsigned __val) noexcept : __d_(static_cast<unsigned char>(__val)) {}
+    _LIBCPP_HIDE_FROM_ABI inline constexpr day& operator++()    noexcept { ++__d_; return *this; }
     _LIBCPP_HIDE_FROM_ABI inline constexpr day  operator++(int) noexcept { day __tmp = *this; ++(*this); return __tmp; }
-    _LIBCPP_HIDE_FROM_ABI inline constexpr day& operator--()    noexcept { --__d; return *this; }
+    _LIBCPP_HIDE_FROM_ABI inline constexpr day& operator--()    noexcept { --__d_; return *this; }
     _LIBCPP_HIDE_FROM_ABI inline constexpr day  operator--(int) noexcept { day __tmp = *this; --(*this); return __tmp; }
     _LIBCPP_HIDE_FROM_ABI        constexpr day& operator+=(const days& __dd) noexcept;
     _LIBCPP_HIDE_FROM_ABI        constexpr day& operator-=(const days& __dd) noexcept;
-    _LIBCPP_HIDE_FROM_ABI explicit inline constexpr operator unsigned() const noexcept { return __d; }
-    _LIBCPP_HIDE_FROM_ABI inline constexpr bool ok() const noexcept { return __d >= 1 && __d <= 31; }
+    _LIBCPP_HIDE_FROM_ABI explicit inline constexpr operator unsigned() const noexcept { return __d_; }
+    _LIBCPP_HIDE_FROM_ABI inline constexpr bool ok() const noexcept { return __d_ >= 1 && __d_ <= 31; }
   };
 
 
@@ -79,6 +79,6 @@ day& day::operator-=(const days& __dd) noexcept
 
 _LIBCPP_END_NAMESPACE_STD
 
-#endif // _LIBCPP_STD_VER > 17
+#endif // _LIBCPP_STD_VER >= 20
 
 #endif // _LIBCPP___CHRONO_DAY_H

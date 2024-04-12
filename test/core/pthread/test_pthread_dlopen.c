@@ -52,7 +52,7 @@ int main() {
   while (!started) {}
 
   printf("loading dylib\n");
-  void* handle = dlopen("liblib.so", RTLD_NOW|RTLD_GLOBAL);
+  void* handle = dlopen("libside.so", RTLD_NOW|RTLD_GLOBAL);
   if (!handle) {
     printf("dlerror: %s\n", dlerror());
   }
@@ -77,6 +77,18 @@ int main() {
   rc = pthread_join(t, NULL);
   assert(rc == 0);
   printf("done join\n");
+
+  printf("starting second & third thread\n");
+  pthread_t t2, t3;
+  rc = pthread_create(&t2, NULL, thread_main, NULL);
+  assert(rc == 0);
+  rc = pthread_create(&t3, NULL, thread_main, NULL);
+  assert(rc == 0);
+  rc = pthread_join(t2, NULL);
+  assert(rc == 0);
+  rc = pthread_join(t3, NULL);
+  assert(rc == 0);
+  printf("starting second & third thread\n");
 
   dlclose(handle);
   return 0;

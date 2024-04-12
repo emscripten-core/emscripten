@@ -22,10 +22,10 @@ EMSCRIPTEN_BINDINGS(constants) {
 
 int main() {
     EM_ASM(
-        console.log("NEGATIVE_FLOAT_NUM = " + Module['NEGATIVE_FLOAT_NUM']);
-        console.log("NEGATIVE_INT_NUM = " + Module['NEGATIVE_INT_NUM']);
-        console.log("negative_float_num = " + Module['negative_float_num']);
-        console.log("negative_double_num = " + Module['negative_double_num']);
-        console.log("negative_int_num = " + Module['negative_int_num']);
+      out("NEGATIVE_FLOAT_NUM = " + Module['NEGATIVE_FLOAT_NUM']);
+      out("NEGATIVE_INT_NUM = " + Module['NEGATIVE_INT_NUM']);
+      out("negative_float_num = " + Module['negative_float_num']);
+      out("negative_double_num = " + Module['negative_double_num']);
+      out("negative_int_num = " + Module['negative_int_num']);
     );
 }

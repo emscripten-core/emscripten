@@ -18,6 +18,9 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#if __cplusplus >= 201703L
+#include <optional>
+#endif
 
 #include <emscripten/em_macros.h>
 #include <emscripten/val.h>
@@ -37,7 +40,7 @@ enum class sharing_policy {
 
 namespace internal {
 
-typedef long GenericEnumValue;
+typedef int GenericEnumValue;
 
 typedef void* GenericFunction;
 typedef void (*VoidFunctionPtr)(void);
@@ -56,7 +59,6 @@ void _embind_register_void(
 void _embind_register_bool(
     TYPEID boolType,
     const char* name,
-    size_t size,
     bool trueValue,
     bool falseValue);
 
@@ -89,8 +91,7 @@ void _embind_register_std_wstring(
     const char* name);
 
 void _embind_register_emval(
-    TYPEID emvalType,
-    const char* name);
+    TYPEID emvalType);
 
 void _embind_register_memory_view(
     TYPEID memoryViewType,
@@ -250,12 +251,20 @@ void _embind_register_constant(
     TYPEID constantType,
     double value);
 
+void _embind_register_optional(
+    TYPEID optionalType,
+    TYPEID type);
+
+void _embind_register_user_type(
+    TYPEID type,
+    const char* typeName);
+
 // Register an InitFunc in the global linked list of init functions.
 void _embind_register_bindings(struct InitFunc* f);
 
-// Binding initialization functions registerd by EMSCRIPTEN_BINDINGS macro
+// Binding initialization functions registered by EMSCRIPTEN_BINDINGS macro
 // below.  Stored as linked list of static data object avoiding std containers
-// to avoid static contructor ordering issues.
+// to avoid static constructor ordering issues.
 struct InitFunc {
   InitFunc(void (*init_func)()) : init_func(init_func) {
     // This the function immediately upon constructions, and also register
@@ -516,6 +525,12 @@ struct SignatureCode<size_t> {
         return 'p';
     }
 };
+template<>
+struct SignatureCode<long> {
+    static constexpr char get() {
+        return 'j';
+    }
+};
 #endif
 
 template<typename... Args>
@@ -529,6 +544,7 @@ template<> struct SignatureTranslator<void> { using type = void; };
 template<> struct SignatureTranslator<float> { using type = float; };
 template<> struct SignatureTranslator<double> { using type = double; };
 #ifdef __wasm64__
+template<> struct SignatureTranslator<long> { using type = long; };
 template<> struct SignatureTranslator<size_t> { using type = size_t; };
 template<typename PtrType>
 struct SignatureTranslator<PtrType*> { using type = void*; };
@@ -1859,6 +1875,21 @@ public:
     }
 };
 
+#if __cplusplus >= 201703L
+template<typename T>
+void register_optional() {
+    // Optional types are automatically registered for some internal types so
+    // only run the register method once so we don't conflict with a user's
+    // bindings if they also register the optional type.
+    thread_local bool hasRun;
+    if (hasRun) {
+        return;
+    }
+    hasRun = true;
+    internal::_embind_register_optional(internal::TypeID<std::optional<T>>::get(), internal::TypeID<T>::get());
+}
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 // VECTORS
 ////////////////////////////////////////////////////////////////////////////////
@@ -1867,6 +1898,20 @@ namespace internal {
 
 template<typename VectorType>
 struct VectorAccess {
+// This nearly duplicated code is used for generating more specific TypeScript
+// types when using more modern C++ versions.
+#if __cplusplus >= 201703L
+    static std::optional<typename VectorType::value_type> get(
+        const VectorType& v,
+        typename VectorType::size_type index
+    ) {
+        if (index < v.size()) {
+            return v[index];
+        } else {
+            return {};
+        }
+    }
+#else
     static val get(
         const VectorType& v,
         typename VectorType::size_type index
@@ -1877,6 +1922,7 @@ struct VectorAccess {
             return val::undefined();
         }
     }
+#endif
 
     static bool set(
         VectorType& v,
@@ -1893,6 +1939,9 @@ struct VectorAccess {
 template<typename T>
 class_<std::vector<T>> register_vector(const char* name) {
     typedef std::vector<T> VecType;
+#if __cplusplus >= 201703L
+    register_optional<T>();
+#endif
 
     void (VecType::*push_back)(const T&) = &VecType::push_back;
     void (VecType::*resize)(const size_t, const T&) = &VecType::resize;
@@ -1915,6 +1964,21 @@ namespace internal {
 
 template<typename MapType>
 struct MapAccess {
+// This nearly duplicated code is used for generating more specific TypeScript
+// types when using more modern C++ versions.
+#if __cplusplus >= 201703L
+    static std::optional<typename MapType::mapped_type> get(
+        const MapType& m,
+        const typename MapType::key_type& k
+    ) {
+        auto i = m.find(k);
+        if (i == m.end()) {
+            return {};
+        } else {
+            return i->second;
+        }
+    }
+#else
     static val get(
         const MapType& m,
         const typename MapType::key_type& k
@@ -1926,6 +1990,7 @@ struct MapAccess {
             return val(i->second);
         }
     }
+#endif
 
     static void set(
         MapType& m,
@@ -1952,6 +2017,9 @@ struct MapAccess {
 template<typename K, typename V>
 class_<std::map<K, V>> register_map(const char* name) {
     typedef std::map<K,V> MapType;
+#if __cplusplus >= 201703L
+    register_optional<V>();
+#endif
 
     size_t (MapType::*size)() const = &MapType::size;
     return class_<MapType>(name)
@@ -1962,6 +2030,36 @@ class_<std::map<K, V>> register_map(const char* name) {
         .function("keys", internal::MapAccess<MapType>::keys)
         ;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// std::optional
+////////////////////////////////////////////////////////////////////////////////
+
+#if __cplusplus >= 201703L
+namespace internal {
+template <typename T>
+struct BindingType<std::optional<T>> {
+    using ValBinding = BindingType<val>;
+    using WireType = ValBinding::WireType;
+
+    static WireType toWireType(std::optional<T> value) {
+        if (value) {
+            return ValBinding::toWireType(val(*value));
+        }
+        return ValBinding::toWireType(val::undefined());
+    }
+
+
+    static std::optional<T> fromWireType(WireType value) {
+        val optional = val::take_ownership(value);
+        if (optional.isUndefined()) {
+            return {};
+        }
+        return optional.as<T>();
+    }
+};
+} // end namespace internal
+#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2020,6 +2118,12 @@ void constant(const char* name, const ConstantType& v) {
         name,
         TypeID<const ConstantType&>::get(),
         static_cast<double>(asGenericValue(BT::toWireType(v))));
+}
+
+template <typename T>
+inline void register_type(const char* name) {
+  using namespace internal;
+  _embind_register_user_type(TypeID<T>::get(), name);
 }
 
 // EMSCRIPTEN_BINDINGS creates a static struct to initialize the binding which

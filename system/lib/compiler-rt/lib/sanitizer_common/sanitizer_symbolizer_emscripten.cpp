@@ -17,15 +17,9 @@
 #if SANITIZER_EMSCRIPTEN
 
 #include "sanitizer_symbolizer_internal.h"
+#include "emscripten_internal.h"
 
 namespace __sanitizer {
-
-extern "C" {
-  const char *emscripten_pc_get_function(uptr pc);
-  const char *emscripten_pc_get_file(uptr pc);
-  int emscripten_pc_get_line(uptr pc);
-  int emscripten_pc_get_column(uptr pc);
-}
 
 class EmscriptenSymbolizerTool : public SymbolizerTool {
  public:

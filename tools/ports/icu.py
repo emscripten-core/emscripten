@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
 import os
 
 TAG = 'release-68-2'
@@ -15,6 +14,7 @@ variants = {'icu-mt': {'PTHREADS': 1}}
 libname_libicu_common = 'libicu_common'
 libname_libicu_stubdata = 'libicu_stubdata'
 libname_libicu_i18n = 'libicu_i18n'
+libname_libicu_io = 'libicu_io'
 
 
 def needed(settings):
@@ -35,8 +35,6 @@ def get(ports, settings, shared):
     icu_source_path = os.path.join(source_path, 'source')
 
   def build_lib(lib_output, lib_src, other_includes, build_flags):
-    logging.debug('building port: icu- ' + lib_output)
-
     additional_build_flags = [
         # TODO: investigate why this is needed and remove
         '-Wno-macro-redefined',
@@ -78,10 +76,19 @@ def get(ports, settings, shared):
     other_includes = [os.path.join(icu_source_path, 'common')]
     build_lib(lib_output, lib_src, other_includes, ['-DU_I18N_IMPLEMENTATION=1'])
 
+  # creator for libicu_io
+  def create_libicu_io(lib_output):
+    prepare_build()
+    lib_src = os.path.join(icu_source_path, 'io')
+    ports.install_headers(os.path.join(lib_src, 'unicode'), target='unicode')
+    other_includes = [os.path.join(icu_source_path, 'common'), os.path.join(icu_source_path, 'i18n')]
+    build_lib(lib_output, lib_src, other_includes, ['-DU_IO_IMPLEMENTATION=1'])
+
   return [
       shared.cache.get_lib(get_lib_name(libname_libicu_common, settings), create_libicu_common), # this also prepares the build
       shared.cache.get_lib(get_lib_name(libname_libicu_stubdata, settings), create_libicu_stubdata),
-      shared.cache.get_lib(get_lib_name(libname_libicu_i18n, settings), create_libicu_i18n)
+      shared.cache.get_lib(get_lib_name(libname_libicu_i18n, settings), create_libicu_i18n),
+      shared.cache.get_lib(get_lib_name(libname_libicu_io, settings), create_libicu_io)
   ]
 
 
@@ -89,11 +96,8 @@ def clear(ports, settings, shared):
   shared.cache.erase_lib(get_lib_name(libname_libicu_common, settings))
   shared.cache.erase_lib(get_lib_name(libname_libicu_stubdata, settings))
   shared.cache.erase_lib(get_lib_name(libname_libicu_i18n, settings))
-
-
-def process_args(ports):
-  return []
+  shared.cache.erase_lib(get_lib_name(libname_libicu_io, settings))
 
 
 def show():
-  return 'icu (USE_ICU=1; Unicode License)'
+  return 'icu (-sUSE_ICU=1 or --use-port=icu; Unicode License)'

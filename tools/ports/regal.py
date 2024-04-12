@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
 import os
 
 TAG = 'version_7'
@@ -24,7 +23,6 @@ def get(ports, settings, shared):
   ports.fetch_project('regal', f'https://github.com/emscripten-ports/regal/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    logging.info('building port: regal')
     source_path = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG)
 
     # copy sources
@@ -108,8 +106,6 @@ def get(ports, settings, shared):
       '-I' + source_path_regal,
       '-I' + source_path_lookup3,
       '-I' + source_path_boost,
-      '-Wall',
-      '-Werror',
       '-Wno-deprecated-register',
       '-Wno-unused-parameter'
     ]
@@ -129,9 +125,5 @@ def linker_setup(ports, settings):
   settings.FULL_ES2 = 1
 
 
-def process_args(ports):
-  return []
-
-
 def show():
-  return 'regal (USE_REGAL=1; Regal license)'
+  return 'regal (-sUSE_REGAL=1 or --use-port=regal; Regal license)'

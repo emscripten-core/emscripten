@@ -39,7 +39,7 @@ void set_flag(void* flag) {
   // because this code needs to run after the thread runtime has exited.
 
   // clang-format off
-  EM_ASM({setTimeout(() => Atomics.store(HEAP32, $0 >> 2, 1))}, flag);
+  EM_ASM({setTimeout(() => Atomics.store(HEAP32, $0 / 4, 1))}, flag);
   // clang-format on
 }
 
@@ -113,14 +113,18 @@ void test_exit_then_proxy() {
   pthread_join(thread, NULL);
 }
 
-void* wait_then_cancel(void* running) {
-  *((_Atomic int*)running) = 1;
+struct flags {
+  _Atomic int running;
+  _Atomic int proxied;
+};
 
-  // Wait 20 ms for the proxying to start.
-  // TODO: Test with with a cancellable async proxying API to avoid the wait.
-  int wait_val = 0;
-  int wait_time = 20000000;
-  __builtin_wasm_memory_atomic_wait32(&wait_val, 0, wait_time);
+void* wait_then_cancel(void* arg) {
+  struct flags* flags = arg;
+  flags->running = 1;
+
+  // Wait for the proxying to start.
+  while (!flags->proxied) {
+  }
 
   pthread_cancel(pthread_self());
   pthread_testcancel();
@@ -128,14 +132,13 @@ void* wait_then_cancel(void* running) {
   return NULL;
 }
 
-void* wait_then_exit(void* running) {
-  *((_Atomic int*)running) = 1;
+void* wait_then_exit(void* arg) {
+  struct flags* flags = arg;
+  flags->running = 1;
 
-  // Wait 20 ms for the proxying to start.
-  // TODO: Test with with a cancellable async proxying API to avoid the wait.
-  int wait_val = 0;
-  int wait_time = 20000000;
-  __builtin_wasm_memory_atomic_wait32(&wait_val, 0, wait_time);
+  // Wait for the proxying to start.
+  while (!flags->proxied) {
+  }
 
   pthread_exit(NULL);
   assert(0 && "thread should have exited!");
@@ -145,11 +148,11 @@ void* wait_then_exit(void* running) {
 void test_proxy_then_cancel() {
   printf("testing proxy followed by cancel\n");
 
-  _Atomic int running = 0;
+  struct flags flags = (struct flags){.running = 0, .proxied = 0};
   pthread_t thread;
-  pthread_create(&thread, NULL, wait_then_cancel, &running);
+  pthread_create(&thread, NULL, wait_then_cancel, &flags);
 
-  while (!running) {
+  while (!flags.running) {
   }
 
   // The pending proxied work should be canceled when the thread is canceled.
@@ -163,20 +166,18 @@ void test_proxy_then_cancel() {
   assert(ret == 1);
   add_promise(promise);
 
-  ret = emscripten_proxy_sync(queue, thread, explode, NULL);
-  assert(ret == 0);
-
+  flags.proxied = 1;
   pthread_join(thread, NULL);
 }
 
 void test_proxy_then_exit() {
   printf("testing proxy followed by exit\n");
 
-  _Atomic int running = 0;
+  struct flags flags = (struct flags){.running = 0, .proxied = 0};
   pthread_t thread;
-  pthread_create(&thread, NULL, wait_then_exit, &running);
+  pthread_create(&thread, NULL, wait_then_exit, &flags);
 
-  while (!running) {
+  while (!flags.running) {
   }
 
   // The pending proxied work should be canceled when the thread exits.
@@ -190,9 +191,7 @@ void test_proxy_then_exit() {
   assert(ret == 1);
   add_promise(promise);
 
-  ret = emscripten_proxy_sync(queue, thread, explode, NULL);
-  assert(ret == 0);
-
+  flags.proxied = 1;
   pthread_join(thread, NULL);
 }
 

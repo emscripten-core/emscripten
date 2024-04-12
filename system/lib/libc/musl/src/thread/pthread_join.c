@@ -29,9 +29,8 @@ static int __pthread_timedjoin_np(pthread_t t, void **res, const struct timespec
 		// This also handle cases where the thread becomes detached
 		// *during* the join.
 		if (state >= DT_DETACHED) {
-			// Even though the man page says this is undefined
-			// behaviour we ave several tests in the posixtest suite
-			// that depend on this.
+			// Even though the man page says this is undefined behaviour we have
+			// several tests in the posixtest suite that depend on this.
 			r = EINVAL;
 			break;
 		}

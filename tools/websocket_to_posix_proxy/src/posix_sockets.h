@@ -42,14 +42,13 @@
 
 #define GET_SOCKET_ERROR() (WSAGetLastError())
 
-static inline void PRINT_SOCKET_ERROR(int errorCode)
-{
-	void *lpMsgBuf = 0;
-	HRESULT hresult = HRESULT_FROM_WIN32(errorCode);
-	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-		0, hresult, 0 /*Default language*/, (LPTSTR)&lpMsgBuf, 0, 0);
-	printf("Call failed! WSAGetLastError: %s(%d)\n", (char*)lpMsgBuf, errorCode);
-	LocalFree(lpMsgBuf);
+static inline void PRINT_SOCKET_ERROR(int errorCode) {
+  void *lpMsgBuf = 0;
+  HRESULT hresult = HRESULT_FROM_WIN32(errorCode);
+  FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+    0, hresult, 0 /*Default language*/, (LPTSTR)&lpMsgBuf, 0, 0);
+  printf("Call failed! WSAGetLastError: %s(%d)\n", (char*)lpMsgBuf, errorCode);
+  LocalFree(lpMsgBuf);
 }
 
 #endif

@@ -4,6 +4,8 @@
 
 #define __BYTE_ORDER __LITTLE_ENDIAN
 
+#define __LONG_MAX  __LONG_MAX__
+
 #define _Addr __PTRDIFF_TYPE__
 #define _Int64 __INT64_TYPE__
 #define _Reg __PTRDIFF_TYPE__
@@ -48,7 +50,7 @@ typedef int wchar_t;
 #endif
 #endif
 #if defined(__NEED_wint_t) && !defined(__DEFINED_wint_t)
-typedef unsigned wint_t;
+typedef __WINT_TYPE__ wint_t;
 #define __DEFINED_wint_t
 #endif
 

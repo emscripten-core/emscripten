@@ -12,7 +12,8 @@
 #include <__algorithm/copy.h>
 #include <__config>
 #include <__iterator/iterator_traits.h>
-#include <type_traits>
+#include <__type_traits/enable_if.h>
+#include <__utility/convert_to_integral.h>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
@@ -21,11 +22,11 @@
 _LIBCPP_BEGIN_NAMESPACE_STD
 
 template<class _InputIterator, class _Size, class _OutputIterator>
-inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX17
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
 typename enable_if
 <
-    __is_cpp17_input_iterator<_InputIterator>::value &&
-   !__is_cpp17_random_access_iterator<_InputIterator>::value,
+    __has_input_iterator_category<_InputIterator>::value &&
+   !__has_random_access_iterator_category<_InputIterator>::value,
     _OutputIterator
 >::type
 copy_n(_InputIterator __first, _Size __orig_n, _OutputIterator __result)
@@ -47,10 +48,10 @@ copy_n(_InputIterator __first, _Size __orig_n, _OutputIterator __result)
 }
 
 template<class _InputIterator, class _Size, class _OutputIterator>
-inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX17
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_SINCE_CXX20
 typename enable_if
 <
-    __is_cpp17_random_access_iterator<_InputIterator>::value,
+    __has_random_access_iterator_category<_InputIterator>::value,
     _OutputIterator
 >::type
 copy_n(_InputIterator __first, _Size __orig_n, _OutputIterator __result)

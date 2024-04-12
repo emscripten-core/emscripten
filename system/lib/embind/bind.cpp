@@ -20,7 +20,8 @@ using namespace emscripten;
 using namespace internal;
 
 extern "C" {
-const char* EMSCRIPTEN_KEEPALIVE __getTypeName(const std::type_info* ti) {
+
+const char* __getTypeName(const std::type_info* ti) {
   if (has_unbound_type_names) {
 #ifdef USE_CXA_DEMANGLE
     int stat;
@@ -51,7 +52,7 @@ const char* EMSCRIPTEN_KEEPALIVE __getTypeName(const std::type_info* ti) {
 
 static InitFunc* init_funcs = nullptr;
 
-EMSCRIPTEN_KEEPALIVE void _embind_initialize_bindings() {
+void _embind_initialize_bindings() {
   for (auto* f = init_funcs; f; f = f->next) {
     f->init_func();
   }
@@ -60,6 +61,10 @@ EMSCRIPTEN_KEEPALIVE void _embind_initialize_bindings() {
 void _embind_register_bindings(InitFunc* f) {
   f->next = init_funcs;
   init_funcs = f;
+}
+
+void _emval_coro_resume(val::awaiter* awaiter, EM_VAL result) {
+  awaiter->resume_with(val::take_ownership(result));
 }
 
 }
@@ -119,7 +124,8 @@ EMSCRIPTEN_BINDINGS(builtin) {
 
   _embind_register_void(TypeID<void>::get(), "void");
 
-  _embind_register_bool(TypeID<bool>::get(), "bool", sizeof(bool), true, false);
+  _embind_register_bool(TypeID<bool>::get(), "bool", true, false);
+  static_assert(sizeof(bool) == 1);
 
   register_integer<char>("char");
   register_integer<signed char>("signed char");
@@ -148,7 +154,7 @@ EMSCRIPTEN_BINDINGS(builtin) {
   _embind_register_std_wstring(TypeID<std::wstring>::get(), sizeof(wchar_t), "std::wstring");
   _embind_register_std_wstring(TypeID<std::u16string>::get(), sizeof(char16_t), "std::u16string");
   _embind_register_std_wstring(TypeID<std::u32string>::get(), sizeof(char32_t), "std::u32string");
-  _embind_register_emval(TypeID<val>::get(), "emscripten::val");
+  _embind_register_emval(TypeID<val>::get());
 
   // Some of these types are aliases for each other. Luckily,
   // embind.js's _embind_register_memory_view ignores duplicate
@@ -173,10 +179,9 @@ EMSCRIPTEN_BINDINGS(builtin) {
   register_memory_view<uint16_t>("emscripten::memory_view<uint16_t>");
   register_memory_view<int32_t>("emscripten::memory_view<int32_t>");
   register_memory_view<uint32_t>("emscripten::memory_view<uint32_t>");
+  register_memory_view<int64_t>("emscripten::memory_view<int64_t>");
+  register_memory_view<uint64_t>("emscripten::memory_view<uint64_t>");
 
   register_memory_view<float>("emscripten::memory_view<float>");
   register_memory_view<double>("emscripten::memory_view<double>");
-#if __SIZEOF_LONG_DOUBLE__ == __SIZEOF_DOUBLE__
-  register_memory_view<long double>("emscripten::memory_view<long double>");
-#endif
 }

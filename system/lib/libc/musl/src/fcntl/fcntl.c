@@ -24,7 +24,14 @@ int fcntl(int fd, int cmd, ...)
 	if (cmd == F_GETOWN) {
 		struct f_owner_ex ex;
 		int ret = __syscall(SYS_fcntl, fd, F_GETOWN_EX, &ex);
+#ifdef __EMSCRIPTEN__
+		// XXX Emscripten: Mirror the behaviour/limitation of glibc which
+		// will misinterpret negative PIDs in range of -1 to -4095 as being
+		// errno values.
+		if (ret == -EINVAL) ret = __syscall(SYS_fcntl, fd, cmd, (void *)arg);
+#else
 		if (ret == -EINVAL) return __syscall(SYS_fcntl, fd, cmd, (void *)arg);
+#endif
 		if (ret) return __syscall_ret(ret);
 		return ex.type == F_OWNER_PGRP ? -ex.pid : ex.pid;
 	}

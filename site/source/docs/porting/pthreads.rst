@@ -144,9 +144,27 @@ The Emscripten implementation for the pthreads API should follow the POSIX stand
 
 - Note that the function emscripten_num_logical_cores() will always return the value of navigator.hardwareConcurrency, i.e. the number of logical cores on the system, even when shared memory is not supported. This means that it is possible for emscripten_num_logical_cores() to return a value greater than 1, while at the same time emscripten_has_threading_support() can return false. The return value of emscripten_has_threading_support() denotes whether the browser has shared memory support available.
 
-- Pthreads + memory growth (``ALLOW_MEMORY_GROWTH``) is especially tricky, see `wasm design issue #1271 <https://github.com/WebAssembly/design/issues/1271>`_. This currently causes JS accessing the wasm memory to be slow - but this will likely only be noticeable if the JS does large amounts of memory reads and writes (wasm runs at full speed, so moving work over can fix this). This also requires that your JS be aware that the HEAP* views may need to be updated - JS code embedded with ``--js-library`` etc will automatically be transformed to use the ``GROWABLE_HEAP_*`` helper functions where ``HEAP*`` are used, but external code that uses ``Module.HEAP*`` directly may encounter problems with views being smaller than memory.
+- Pthreads + memory growth (``ALLOW_MEMORY_GROWTH``) is especially tricky, see `Wasm design issue #1271 <https://github.com/WebAssembly/design/issues/1271>`_. This currently causes JS accessing the Wasm memory to be slow - but this will likely only be noticeable if the JS does large amounts of memory reads and writes (Wasm runs at full speed, so moving work over can fix this). This also requires that your JS be aware that the HEAP* views may need to be updated - JS code embedded with ``--js-library`` etc will automatically be transformed to use the ``GROWABLE_HEAP_*`` helper functions where ``HEAP*`` are used, but external code that uses ``Module.HEAP*`` directly may encounter problems with views being smaller than memory.
 
 Also note that when compiling code that uses pthreads, an additional JavaScript file ``NAME.worker.js`` is generated alongside the output .js file (where ``NAME`` is the basename of the main file being emitted). That file must be deployed with the rest of the generated code files. By default, ``NAME.worker.js`` will be loaded relative to the main HTML page URL. If it is desirable to load the file from a different location e.g. in a CDN environment, then one can define the ``Module.locateFile(filename)`` function in the main HTML ``Module`` object to return the URL of the target location of the ``NAME.worker.js`` entry point. If this function is not defined in ``Module``, then the default location relative to the main HTML file is used.
+
+.. _Allocator_performance:
+
+Allocator performance
+=====================
+
+The default system allocator in Emscripten, ``dlmalloc``, is very efficient in a
+single-threaded program, but it has a single global lock which means if there is
+contention on ``malloc`` then you can see overhead. You can use
+`mimalloc <https://github.com/microsoft/mimalloc>`_
+instead by using ``-sMALLOC=mimalloc``, which is a more sophisticated allocator
+tuned for multithreaded performance. ``mimalloc`` has separate allocation
+contexts on each thread, allowing performance to scale a lot better under
+``malloc/free`` contention.
+
+Note that ``mimalloc`` is larger in code size than ``dlmalloc``, and also uses
+more memory at runtime (so you may need to adjust ``INITIAL_MEMORY`` to a higher
+value), so there are tradeoffs here.
 
 Running code and tests
 ======================

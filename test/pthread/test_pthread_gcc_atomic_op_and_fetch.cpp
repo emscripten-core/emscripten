@@ -102,7 +102,7 @@ int main()
 			or_and_fetch_data = (1<<NUM_THREADS);
 			if (emscripten_has_threading_support())
 			{
-				for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_or_and_fetch, (void*)(1<<i));
+				for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_or_and_fetch, (void*)(1ll<<i));
 				for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
 				assert(or_and_fetch_data == (1<<(NUM_THREADS+1))-1);
 			}
@@ -118,7 +118,7 @@ int main()
 			and_and_fetch_data = (1<<(NUM_THREADS+1))-1;
 			if (emscripten_has_threading_support())
 			{
-				for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_and_and_fetch, (void*)(~(1<<i)));
+				for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_and_and_fetch, (void*)(~(1ll<<i)));
 				for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
 				assert(and_and_fetch_data == 1<<NUM_THREADS);
 			}
@@ -134,7 +134,7 @@ int main()
 			xor_and_fetch_data = 1<<NUM_THREADS;
 			if (emscripten_has_threading_support())
 			{
-				for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_xor_and_fetch, (void*)(~(1<<i)));
+				for(int i = 0; i < NUM_THREADS; ++i) pthread_create(&thread[i], NULL, thread_xor_and_fetch, (void*)(~(1ll<<i)));
 				for(int i = 0; i < NUM_THREADS; ++i) pthread_join(thread[i], NULL);
 				assert(xor_and_fetch_data == (1<<(NUM_THREADS+1))-1);
 			}

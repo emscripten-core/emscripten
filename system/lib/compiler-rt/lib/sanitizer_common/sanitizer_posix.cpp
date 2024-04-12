@@ -57,11 +57,9 @@ void *MmapOrDie(uptr size, const char *mem_type, bool raw_report) {
 void UnmapOrDie(void *addr, uptr size) {
   if (!addr || !size) return;
   uptr res = internal_munmap(addr, size);
-  if (UNLIKELY(internal_iserror(res))) {
-    Report("ERROR: %s failed to deallocate 0x%zx (%zd) bytes at address %p\n",
-           SanitizerToolName, size, size, addr);
-    CHECK("unable to unmap" && 0);
-  }
+  int reserrno;
+  if (UNLIKELY(internal_iserror(res, &reserrno)))
+    ReportMunmapFailureAndDie(addr, size, reserrno);
   DecreaseTotalMmap(size);
 }
 
@@ -87,12 +85,14 @@ void *MmapAlignedOrDieOnFatalError(uptr size, uptr alignment,
   CHECK(IsPowerOfTwo(size));
   CHECK(IsPowerOfTwo(alignment));
   uptr map_size = size + alignment;
+  // mmap maps entire pages and rounds up map_size needs to be a an integral 
+  // number of pages. 
+  // We need to be aware of this size for calculating end and for unmapping
+  // fragments before and after the alignment region.
+  map_size = RoundUpTo(map_size, GetPageSizeCached());
   uptr map_res = (uptr)MmapOrDieOnFatalError(map_size, mem_type);
   if (UNLIKELY(!map_res))
     return nullptr;
-#ifndef SANITIZER_EMSCRIPTEN
-  uptr map_end = map_res + map_size;
-#endif
   uptr res = map_res;
   if (!IsAligned(res, alignment)) {
     res = (map_res + alignment - 1) & ~(alignment - 1);
@@ -101,13 +101,6 @@ void *MmapAlignedOrDieOnFatalError(uptr size, uptr alignment,
     UnmapOrDie((void*)map_res, res - map_res);
 #endif
   }
-#ifndef SANITIZER_EMSCRIPTEN
-  // Emscripten's fake mmap doesn't support partial unmapping
-  uptr end = res + size;
-  end = RoundUpTo(end, GetPageSizeCached());
-  if (end != map_end)
-    UnmapOrDie((void*)end, map_end - end);
-#endif
   return (void*)res;
 }
 
@@ -162,6 +155,14 @@ bool MprotectReadOnly(uptr addr, uptr size) {
   return true;
 #else
   return 0 == internal_mprotect((void *)addr, size, PROT_READ);
+#endif
+}
+
+bool MprotectReadWrite(uptr addr, uptr size) {
+#if SANITIZER_EMSCRIPTEN
+  return true;
+#else
+  return 0 == internal_mprotect((void *)addr, size, PROT_READ | PROT_WRITE);
 #endif
 }
 

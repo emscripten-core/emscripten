@@ -14,14 +14,17 @@
 
 #define BUFSIZE 1024
 
-int main() {
-  const char * file = "/test.txt";
+void test(const char* file) {
+  const char *url = "/test.txt";
+
   printf("calling wget\n");
-  emscripten_wget(file , file);
+  int result = emscripten_wget(url , file);
+  assert(result == 0);
   printf("back from wget\n");
 
   printf("calling wget again to overwrite previous file\n");
-  emscripten_wget(file , file);
+  result = emscripten_wget(url , file);
+  assert(result == 0);
   printf("back from wget\n");
 
   FILE * f = fopen(file, "r");
@@ -30,11 +33,18 @@ int main() {
   char buf[BUFSIZE];
   fgets(buf, BUFSIZE, f);
   buf[BUFSIZE-1] = 0;
-  for(int i = 0; i < BUFSIZE; ++i) {
+  for (int i = 0; i < BUFSIZE; ++i) {
     buf[i] = tolower(buf[i]);
   }
   assert(strstr(buf, "emscripten"));
   fclose(f);
+}
+
+int main() {
+  test("/test.txt");
+
+  // Test in a nested subdirectory. wget will create the parent dirs.
+  test("/some/subdir/test.txt");
 
   printf("exiting main\n");
   // Implicit return from main with ASYNCIFY + EXIT_RUNTIME

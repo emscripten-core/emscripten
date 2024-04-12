@@ -25,7 +25,7 @@ Child1 implements Parent;
 interface Child2 {
   void Child2();
   long getValCube();
-  static void printStatic();
+  static void printStatic(long arg0);
   void virtualFunc();
   void virtualFunc2();
   void virtualFunc3(long x);

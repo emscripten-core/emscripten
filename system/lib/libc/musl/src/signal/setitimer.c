@@ -5,9 +5,12 @@
 #define IS32BIT(x) !((x)+0x80000000ULL>>32)
 
 #ifdef __EMSCRIPTEN__
-#include <signal.h>
-#include <stdio.h>
 #include <emscripten/emscripten.h>
+#include <signal.h>
+#include <stdint.h>
+#include <stdio.h>
+
+#include "emscripten_internal.h"
 
 // Timeouts can either fire directly from the JS event loop (which calls
 // `_emscripten_timeout`), or from `_emscripten_check_timers` (which is called
@@ -18,8 +21,6 @@ static double current_timeout_ms[3];
 static double current_intervals_ms[3];
 
 #define MAX(a,b) ((a)>(b)?(a):(b))
-
-int _setitimer_js(int which, double timeout);
 
 void __getitimer(int which, struct itimerval *old, double now)
 {
@@ -37,11 +38,25 @@ void _emscripten_timeout(int which, double now)
 		signum = SIGPROF;
 	else if (which == ITIMER_VIRTUAL)
 		signum = SIGVTALRM;
-	int next_timeout = current_intervals_ms[which];
-	if (next_timeout)
-		current_timeout_ms[which] = now + next_timeout;
-	else
+	double next_timeout = 0.0;
+	if (current_intervals_ms[which]) {
+		// If time went backwards, schedule the next timer as if it didn't.
+		now = __builtin_wasm_max_f64(now, current_timeout_ms[which]);
+		// The next alarm is due 'interval' ms after the previous one.
+		// If this alarm was delayed, that is sooner than 'interval' ms
+		// from now. The delay could even be so long that we missed the
+		// next alarm(s) entirely. Schedule the alarm for the next
+		// multiple of 'interval' ms from the original due time.
+		uint64_t intervals =
+			(uint64_t)(now - current_timeout_ms[which]) /
+			  (uint64_t)current_intervals_ms[which] +
+			1;
+		current_timeout_ms[which] +=
+			intervals * current_intervals_ms[which];
+		next_timeout = current_timeout_ms[which] - now;
+	} else {
 		current_timeout_ms[which] = 0;
+	}
 	_setitimer_js(which, next_timeout);
 	raise(signum);
 }

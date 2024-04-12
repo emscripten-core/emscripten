@@ -4,10 +4,9 @@
 # found in the LICENSE file.
 
 import os
-import logging
 
 VERSION = '3.2.0'
-HASH = '2e5ab5ad83a0d8801abd3f82a276f776a0ad330edc0ab843f879dd7ad3fd2e0dc0e9a3efbb6c5f2e67d14c0e37f0d9abdb40c5e25d8231a357c0025669f219c3'
+HASH = 'c9d88068d8017046842f444f02f31dbae109026ede943aaf265db5508de8b4b2be84203950f274a237f515bf7cbd361629d2032c6e8ee8f50354b430bba3a8ca'
 
 deps = ['freetype']
 variants = {'harfbuzz-mt': {'PTHREADS': 1}}
@@ -80,14 +79,9 @@ def get_lib_name(settings):
 
 
 def get(ports, settings, shared):
-  # Harfbuzz only published `.xz` packages, but not all python builds support
-  # unpacking lzma archives, so we mirror a `.gz` version:
-  # See https://github.com/emscripten-core/emsdk/issues/982
-  ports.fetch_project('harfbuzz', f'https://storage.googleapis.com/webassembly/emscripten-ports/harfbuzz-{VERSION}.tar.gz', sha512hash=HASH)
+  ports.fetch_project('harfbuzz', f'https://github.com/harfbuzz/harfbuzz/releases/download/{VERSION}/harfbuzz-{VERSION}.tar.xz', sha512hash=HASH)
 
   def create(final):
-    logging.info('building port: harfbuzz')
-
     source_path = os.path.join(ports.get_dir(), 'harfbuzz', 'harfbuzz-' + VERSION)
     freetype_include = ports.get_include_dir('freetype2')
     ports.install_headers(os.path.join(source_path, 'src'), target='harfbuzz')
@@ -154,8 +148,8 @@ def process_dependencies(settings):
 
 
 def process_args(ports):
-  return ['-I' + ports.get_include_dir('harfbuzz')]
+  return ['-isystem', ports.get_include_dir('harfbuzz')]
 
 
 def show():
-  return 'harfbuzz (USE_HARFBUZZ=1; MIT license)'
+  return 'harfbuzz (-sUSE_HARFBUZZ=1 or --use-port=harfbuzz; MIT license)'

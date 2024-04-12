@@ -4,8 +4,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if USE_CLOSURE_COMPILER
-
+#if MODULARIZE
+var Module = moduleArg;
+#elif USE_CLOSURE_COMPILER
 // if (!Module)` is crucial for Closure Compiler here as it will
 // otherwise replace every `Module` occurrence with the object below
 var /** @type{Object} */ Module;
@@ -15,7 +16,7 @@ if (!Module) /** @suppress{checkTypes}*/Module =
 #endif
   {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
 
-#elif !MODULARIZE && (ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL)
+#elif ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
 
 // When running on the web we expect Module to be defined externally, in the
 // HTML.  Otherwise we must define it here before its first use
@@ -81,7 +82,7 @@ if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
 #endif
 
 #if !SINGLE_FILE
-#if ENVIRONMENT_MAY_BE_NODE && ((WASM == 1 && (!WASM2JS || !MEM_INIT_IN_WASM)) || WASM == 2)
+#if ENVIRONMENT_MAY_BE_NODE && ((WASM == 1 && !WASM2JS) || WASM == 2)
 // Wasm or Wasm2JS loading:
 
 if (ENVIRONMENT_IS_NODE) {
@@ -94,13 +95,10 @@ if (ENVIRONMENT_IS_NODE) {
   Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
 #endif
 #endif
-#if !MEM_INIT_IN_WASM
-  Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
-#endif
 }
 #endif
 
-#if ENVIRONMENT_MAY_BE_SHELL && ((WASM == 1 && (!WASM2JS || !MEM_INIT_IN_WASM)) || WASM == 2)
+#if ENVIRONMENT_MAY_BE_SHELL && ((WASM == 1 && !WASM2JS) || WASM == 2)
 if (ENVIRONMENT_IS_SHELL) {
 #if WASM == 2
   if (typeof WebAssembly != 'undefined') Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
@@ -109,9 +107,6 @@ if (ENVIRONMENT_IS_SHELL) {
 #if !WASM2JS
   Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
 #endif
-#endif
-#if !MEM_INIT_IN_WASM
-  Module['mem'] = read('{{{ TARGET_BASENAME }}}.mem', 'binary');
 #endif
 }
 #endif
@@ -148,7 +143,7 @@ function ready() {
 
 #if POLYFILL
 // See https://caniuse.com/mdn-javascript_builtins_object_assign
-#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 90000
+#if MIN_CHROME_VERSION < 45 || MIN_FIREFOX_VERSION < 34 || MIN_SAFARI_VERSION < 90000
 #include "polyfill/objassign.js"
 #endif
 #endif
@@ -171,7 +166,8 @@ var _scriptDir = (typeof document != 'undefined' && document.currentScript) ? do
 var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function',
   ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && !ENVIRONMENT_IS_WASM_WORKER;
 #else
-var ENVIRONMENT_IS_WORKER = ENVIRONMENT_IS_PTHREAD = typeof importScripts == 'function';
+var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function',
+  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER;
 #endif
 
 var currentScriptUrl = typeof _scriptDir != 'undefined' ? _scriptDir : ((typeof document != 'undefined' && document.currentScript) ? document.currentScript.src : undefined);

@@ -19,12 +19,12 @@
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-template <class _Tp> struct _LIBCPP_TEMPLATE_VIS alignment_of
-    : public integral_constant<size_t, _LIBCPP_ALIGNOF(_Tp)> {};
-
-#if _LIBCPP_STD_VER > 14
 template <class _Tp>
-inline constexpr size_t alignment_of_v = alignment_of<_Tp>::value;
+struct _LIBCPP_TEMPLATE_VIS alignment_of : public integral_constant<size_t, _LIBCPP_ALIGNOF(_Tp)> {};
+
+#if _LIBCPP_STD_VER >= 17
+template <class _Tp>
+inline constexpr size_t alignment_of_v = _LIBCPP_ALIGNOF(_Tp);
 #endif
 
 _LIBCPP_END_NAMESPACE_STD

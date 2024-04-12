@@ -425,6 +425,27 @@ typedef void (GLFWCALL * GLFWthreadfun)(void *);
  * Prototypes
  *************************************************************************/
 
+#ifdef __EMSCRIPTEN__
+// Redirect GLFW2 symbols when they have different signatures under GLFW3.
+// This avoids the problem of JS symbols having different signatures in
+// different configurations.
+#define glfwGetWindowSize glfwGetWindowSize_v2
+#define glfwSetWindowSize glfwSetWindowSize_v2
+#define glfwSetWindowPos glfwSetWindowPos_v2
+#define glfwSetWindowTitle glfwSetWindowTitle_v2
+#define glfwIconifyWindow glfwIconifyWindow_v2
+#define glfwRestoreWindow glfwRestoreWindow_v2
+#define glfwSetWindowSizeCallback glfwSetWindowSizeCallback_v2
+#define glfwSetWindowCloseCallback glfwSetWindowCloseCallback_v2
+#define glfwSetWindowRefreshCallback glfwSetWindowRefreshCallback_v2
+#define glfwGetKey glfwGetKey_v2
+#define glfwGetMouseButton glfwGetMouseButton_v2
+#define glfwSetKeyCallback glfwSetKeyCallback_v2
+#define glfwSetCharCallback glfwSetCharCallback_v2
+#define glfwSetMouseButtonCallback glfwSetMouseButtonCallback_v2
+#define glfwSwapBuffers glfwSwapBuffers_v2
+#endif
+
 /* GLFW initialization, termination and version querying */
 GLFWAPI int  GLFWAPIENTRY glfwInit( void );
 GLFWAPI void GLFWAPIENTRY glfwTerminate( void );
@@ -508,7 +529,6 @@ GLFWAPI void GLFWAPIENTRY glfwFreeImage( GLFWimage *img );
 GLFWAPI int  GLFWAPIENTRY glfwLoadTexture2D( const char *name, int flags );
 GLFWAPI int  GLFWAPIENTRY glfwLoadMemoryTexture2D( const void *data, long size, int flags );
 GLFWAPI int  GLFWAPIENTRY glfwLoadTextureImage2D( GLFWimage *img, int flags );
-
 
 #ifdef __cplusplus
 }

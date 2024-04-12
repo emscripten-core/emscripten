@@ -23,14 +23,11 @@ function dump(item) {
     return '// ' + JSON.stringify(item, null, '  ').replace(/\n/g, '\n// ');
   } catch (e) {
     const ret = [];
-    for (const i in item) {
-      if (Object.prototype.hasOwnProperty.call(item, i)) {
-        const j = item[i];
-        if (typeof j == 'string' || typeof j == 'number') {
-          ret.push(i + ': ' + j);
-        } else {
-          ret.push(i + ': [?]');
-        }
+    for (const [i, j] of Object.entries(item)) {
+      if (typeof j == 'string' || typeof j == 'number') {
+        ret.push(`${i}: ${j}`);
+      } else {
+        ret.push(`${i}: [?]`);
       }
     }
     return ret.join(',\n');
@@ -39,16 +36,25 @@ function dump(item) {
   }
 }
 
-global.warnings = false;
+globalThis.warnings = false;
+globalThis.currentFile = null;
+
+function errorPrefix() {
+  if (currentFile) {
+    return currentFile + ': '
+  } else {
+    return '';
+  }
+}
 
 function warn(a, msg) {
-  global.warnings = true;
+  globalThis.warnings = true;
   if (!msg) {
     msg = a;
     a = false;
   }
   if (!a) {
-    printErr('warning: ' + msg);
+    printErr(`warning: ${errorPrefix()}${msg}`);
   }
 }
 
@@ -58,18 +64,18 @@ function warnOnce(a, msg) {
     a = false;
   }
   if (!a) {
-    if (!warnOnce.msgs) warnOnce.msgs = {};
+    warnOnce.msgs ||= {};
     if (msg in warnOnce.msgs) return;
     warnOnce.msgs[msg] = true;
     warn(msg);
   }
 }
 
-global.abortExecution = false;
+globalThis.abortExecution = false;
 
 function error(msg) {
   abortExecution = true;
-  printErr('error: ' + msg);
+  printErr(`error: ${errorPrefix()}${msg}`);
 }
 
 function range(size) {
@@ -96,6 +102,10 @@ function sum(x) {
 // key: checkSig, value: true
 // if it is set, __sig is checked for functions and error is reported
 // if <function name>__sig is missing
+function addToLibrary(obj, options = null) {
+  mergeInto(LibraryManager.library, obj, options);
+}
+
 function mergeInto(obj, other, options = null) {
   if (options) {
     // check for unintended symbol redefinition
@@ -119,6 +129,72 @@ function mergeInto(obj, other, options = null) {
     }
   }
 
+  if (!options || !options.allowMissing) {
+    for (const ident of Object.keys(other)) {
+      if (isDecorator(ident)) {
+        const index = ident.lastIndexOf('__');
+        const basename = ident.slice(0, index);
+        if (!(basename in obj) && !(basename in other)) {
+          error(`Missing library element '${basename}' for library config '${ident}'`);
+        }
+      }
+    }
+  }
+
+  for (const key of Object.keys(other)) {
+    if (isDecorator(key)) {
+      if (key.endsWith('__sig')) {
+        if (obj.hasOwnProperty(key)) {
+          const oldsig = obj[key];
+          const newsig = other[key];
+          if (oldsig == newsig) {
+            warn(`signature redefinition for: ${key}`);
+          } else {
+            error(`signature redefinition for: ${key}. (old=${oldsig} vs new=${newsig})`);
+          }
+        }
+      }
+
+      const index = key.lastIndexOf('__');
+      const decoratorName = key.slice(index);
+      const type = typeof other[key];
+
+      // Specific type checking for `__deps` which is expected to be an array
+      // (not just any old `object`)
+      if (decoratorName === '__deps') {
+        const deps = other[key];
+        if (!Array.isArray(deps)) {
+          error(`JS library directive ${key}=${deps.toString()} is of type '${type}', but it should be an array`);
+        }
+        for (let dep of deps) {
+          if (dep && typeof dep !== 'string' && typeof dep !== 'function') {
+            error(`__deps entries must be of type 'string' or 'function' not '${typeof dep}': ${key}`)
+          }
+        }
+      } else {
+        // General type checking for all other decorators
+        const decoratorTypes = {
+          '__sig': 'string',
+          '__proxy': 'string',
+          '__asm': 'boolean',
+          '__inline': 'boolean',
+          '__postset': ['string', 'function'],
+          '__docs': 'string',
+          '__nothrow': 'boolean',
+          '__noleakcheck': 'boolean',
+          '__internal': 'boolean',
+          '__user': 'boolean',
+          '__async': 'boolean',
+          '__i53abi': 'boolean',
+        };
+        const expected = decoratorTypes[decoratorName];
+        if (type !== expected && !expected.includes(type)) {
+          error(`Decorator (${key}} has wrong type. Expected '${expected}' not '${type}'`);
+        }
+      }
+    }
+  }
+
   return Object.assign(obj, other);
 }
 
@@ -127,7 +203,13 @@ function isNumber(x) {
   return x == parseFloat(x) || (typeof x == 'string' && x.match(/^-?\d+$/)) || x == 'NaN';
 }
 
-function isJsLibraryConfigIdentifier(ident) {
+// Symbols that start with '$' are not exported to the wasm module.
+// They are intended to be called exclusively by JS code.
+function isJsOnlySymbol(symbol) {
+  return symbol[0] == '$';
+}
+
+function isDecorator(ident) {
   suffixes = [
     '__sig',
     '__proxy',
@@ -140,6 +222,8 @@ function isJsLibraryConfigIdentifier(ident) {
     '__noleakcheck',
     '__internal',
     '__user',
+    '__async',
+    '__i53abi',
   ];
   return suffixes.some((suffix) => ident.endsWith(suffix));
 }
@@ -149,7 +233,7 @@ function isPowerOfTwo(x) {
 }
 
 /** @constructor */
-function Benchmarker() {
+globalThis.Benchmarker = function() {
   const totals = {};
   const ids = [];
   const lastTime = 0;
@@ -160,7 +244,7 @@ function Benchmarker() {
     }
     lastTime = now;
     ids.push(id);
-    totals[id] = totals[id] || 0;
+    totals[id] ||= 0;
   };
   this.stop = function(id) {
     const now = Date.now();

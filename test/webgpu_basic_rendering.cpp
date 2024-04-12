@@ -8,6 +8,7 @@
 #include <webgpu/webgpu_cpp.h>
 
 #undef NDEBUG
+#include <array>
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
@@ -17,42 +18,50 @@
 #include <emscripten/html5.h>
 #include <emscripten/html5_webgpu.h>
 
-void GetDevice(void (*callback)(wgpu::Device)) {
-    // Left as null (until supported in Emscripten)
-    static const WGPUInstance instance = nullptr;
+static const wgpu::Instance instance = wgpuCreateInstance(nullptr);
 
-    wgpuInstanceRequestAdapter(instance, nullptr, [](WGPURequestAdapterStatus status, WGPUAdapter adapter, const char* message, void* userdata) {
+void GetDevice(void (*callback)(wgpu::Device)) {
+    instance.RequestAdapter(nullptr, [](WGPURequestAdapterStatus status, WGPUAdapter cAdapter, const char* message, void* userdata) {
         if (message) {
-            printf("wgpuInstanceRequestAdapter: %s\n", message);
+            printf("RequestAdapter: %s\n", message);
         }
         if (status == WGPURequestAdapterStatus_Unavailable) {
             printf("WebGPU unavailable; exiting cleanly\n");
-            // exit(0) (rather than emscripten_force_exit(0)) ensures there is no dangling keepalive.
+            // exit(0) (rather than emscripten_force_exit(0)) ensures there is
+            // no dangling keepalive.
+#if _REENTRANT
+            // FIXME: In multi-threaded builds this callback runs on the main
+            // which seems to be causing the runtime to stay alive here and
+            // results in the 99 being returned.
+            emscripten_force_exit(0);
+#else
             exit(0);
+#endif
         }
         assert(status == WGPURequestAdapterStatus_Success);
 
-        wgpuAdapterRequestDevice(adapter, nullptr, [](WGPURequestDeviceStatus status, WGPUDevice dev, const char* message, void* userdata) {
+        wgpu::Adapter adapter = wgpu::Adapter::Acquire(cAdapter);
+        adapter.RequestDevice(nullptr, [](WGPURequestDeviceStatus status, WGPUDevice cDevice, const char* message, void* userdata) {
             if (message) {
-                printf("wgpuAdapterRequestDevice: %s\n", message);
+                printf("RequestDevice: %s\n", message);
             }
             assert(status == WGPURequestDeviceStatus_Success);
 
-            wgpu::Device device = wgpu::Device::Acquire(dev);
+            wgpu::Device device = wgpu::Device::Acquire(cDevice);
             reinterpret_cast<void (*)(wgpu::Device)>(userdata)(device);
         }, userdata);
     }, reinterpret_cast<void*>(callback));
 }
 
 static const char shaderCode[] = R"(
-    @stage(vertex)
+    @vertex
     fn main_v(@builtin(vertex_index) idx: u32) -> @builtin(position) vec4<f32> {
         var pos = array<vec2<f32>, 3>(
             vec2<f32>(0.0, 0.5), vec2<f32>(-0.5, -0.5), vec2<f32>(0.5, -0.5));
         return vec4<f32>(pos[idx], 0.0, 1.0);
     }
 
-    @stage(fragment)
+    @fragment
     fn main_f() -> @location(0) vec4<f32> {
         return vec4<f32>(0.0, 0.502, 1.0, 1.0); // 0x80/0xff ~= 0.502
     }
@@ -75,11 +84,16 @@ void init() {
     wgpu::ShaderModule shaderModule{};
     {
         wgpu::ShaderModuleWGSLDescriptor wgslDesc{};
-        wgslDesc.source = shaderCode;
+        wgslDesc.code = shaderCode;
 
         wgpu::ShaderModuleDescriptor descriptor{};
         descriptor.nextInChain = &wgslDesc;
         shaderModule = device.CreateShaderModule(&descriptor);
+        shaderModule.GetCompilationInfo([](WGPUCompilationInfoRequestStatus status, const WGPUCompilationInfo* info, void*) {
+            assert(status == WGPUCompilationInfoRequestStatus_Success);
+            assert(info->messageCount == 0);
+            std::printf("Shader compile succeeded\n");
+        }, nullptr);
     }
 
     {
@@ -102,17 +116,16 @@ void init() {
 
         wgpu::FragmentState fragmentState{};
         fragmentState.module = shaderModule;
-        fragmentState.entryPoint = "main_f";
         fragmentState.targetCount = 1;
         fragmentState.targets = &colorTargetState;
 
         wgpu::DepthStencilState depthStencilState{};
         depthStencilState.format = wgpu::TextureFormat::Depth32Float;
+        depthStencilState.depthCompare = wgpu::CompareFunction::Always;
 
         wgpu::RenderPipelineDescriptor descriptor{};
         descriptor.layout = device.CreatePipelineLayout(&pl);
         descriptor.vertex.module = shaderModule;
-        descriptor.vertex.entryPoint = "main_v";
         descriptor.fragment = &fragmentState;
         descriptor.primitive.topology = wgpu::PrimitiveTopology::TriangleList;
         descriptor.depthStencil = &depthStencilState;
@@ -297,6 +310,13 @@ void doRenderTest() {
         descriptor.usage = wgpu::TextureUsage::RenderAttachment | wgpu::TextureUsage::CopySrc;
         descriptor.size = {1, 1, 1};
         descriptor.format = wgpu::TextureFormat::BGRA8Unorm;
+
+        // Test for viewFormats binding
+        std::array<wgpu::TextureFormat, 2> viewFormats =
+            { wgpu::TextureFormat::BGRA8Unorm, wgpu::TextureFormat::BGRA8Unorm };
+        descriptor.viewFormatCount = viewFormats.size();
+        descriptor.viewFormats = viewFormats.data();
+
         readbackTexture = device.CreateTexture(&descriptor);
     }
     wgpu::Texture depthTexture;
@@ -308,6 +328,12 @@ void doRenderTest() {
         depthTexture = device.CreateTexture(&descriptor);
     }
     render(readbackTexture.CreateView(), depthTexture.CreateView());
+
+    {
+        // A little texture.GetFormat test
+        assert(wgpu::TextureFormat::BGRA8Unorm == readbackTexture.GetFormat());
+        assert(wgpu::TextureFormat::Depth32Float == depthTexture.GetFormat());
+    }
 
     {
         wgpu::BufferDescriptor descriptor{};
@@ -370,7 +396,6 @@ void run() {
 
         wgpu::SurfaceDescriptor surfDesc{};
         surfDesc.nextInChain = &canvasDesc;
-        wgpu::Instance instance{};  // null instance
         wgpu::Surface surface = instance.CreateSurface(&surfDesc);
 
         wgpu::SwapChainDescriptor scDesc{};
@@ -404,6 +429,7 @@ int main() {
     // emscripten_set_main_loop, and that should keep it alive until
     // emscripten_cancel_main_loop.
     //
-    // This code is returned when the runtime exits unless something else sets it, like exit(0).
+    // This code is returned when the runtime exits unless something else sets
+    // it, like exit(0).
     return 99;
 }

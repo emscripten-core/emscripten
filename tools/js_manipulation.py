@@ -108,6 +108,9 @@ def isidentifier(name):
 
 def make_dynCall(sig, args):
   # wasm2c and asyncify are not yet compatible with direct wasm table calls
+  if settings.MEMORY64:
+    args = list(args)
+    args[0] = f'Number({args[0]})'
   if settings.DYNCALLS or not is_legal_sig(sig):
     args = ','.join(args)
     if not settings.MAIN_MODULE and not settings.SIDE_MODULE:
@@ -117,11 +120,8 @@ def make_dynCall(sig, args):
     else:
       return 'Module["dynCall_%s"](%s)' % (sig, args)
   else:
-    func_ptr = args[0]
-    if settings.MEMORY64:
-      func_ptr = f'Number({func_ptr})'
     call_args = ",".join(args[1:])
-    return f'getWasmTableEntry({func_ptr})({call_args})'
+    return f'getWasmTableEntry({args[0]})({call_args})'
 
 
 def make_invoke(sig):
@@ -178,9 +178,15 @@ def make_wasm64_wrapper(sig):
   if sig[0] == 'p':
     result = f'Number({result})'
 
-  return f'''
-  function wasm64Wrapper_{sig}(f) {{
-    return function({args_in}) {{
-      return {result};
-    }};
-  }}'''
+  # We can't use an arrow function for the inner wrapper here since there
+  # are certain places we need to avoid strict mode still.
+  # e.g. emscripten_get_callstack (getCallstack) which uses the `arguments`
+  # global.
+  return f'  var makeWrapper_{sig} = (f) => function ({args_in}) {{ return {result} }};\n'
+
+
+def make_unsign_pointer_wrapper(sig):
+  assert sig[0] == 'p'
+  n_args = len(sig) - 1
+  args = ','.join('a%d' % i for i in range(n_args))
+  return f'  var makeWrapper_{sig} = (f) => ({args}) => f({args}) >>> 0;\n'

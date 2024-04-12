@@ -54,10 +54,10 @@ Emscripten tools and dependencies
     `LLVM <http://en.wikipedia.org/wiki/LLVM>`_ is a compiler infrastructure designed to allow optimization of programs written in arbitrary programming languages.
 
   Fastcomp
-    Fastcomp is Emscripten's second compiler core, after the JS compiler and before the new LLVM wasm backend.
+    Fastcomp was Emscripten's second compiler core, after the JS compiler and before the new LLVM Wasm backend.
 
   Binaryen
-    `Binaryen <https://github.com/WebAssembly/binaryen/>`_ is a WebAssembly compiler toolkit, which Emscripten uses to modify and optimize wasm.
+    `Binaryen <https://github.com/WebAssembly/binaryen/>`_ is a WebAssembly compiler toolkit, which Emscripten uses to modify and optimize Wasm.
 
   node.js
     `Node.js <https://nodejs.org/en/>`_ is a cross-platform runtime environment for server-side and networking applications written in JavaScript. Essentially it allows you to run JavaScript applications outside of a browser context.

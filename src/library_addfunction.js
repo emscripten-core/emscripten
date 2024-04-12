@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   // This gives correct answers for everything less than 2^{14} = 16384
   // I hope nobody is contemplating functions with 16384 arguments...
-  $uleb128Encode: function(n, target) {
+  $uleb128Encode: (n, target) => {
 #if ASSERTIONS
     assert(n < 16384);
 #endif
@@ -20,17 +20,16 @@ mergeInto(LibraryManager.library, {
 
   // Converts a signature like 'vii' into a description of the wasm types, like
   // { parameters: ['i32', 'i32'], results: [] }.
-  $sigToWasmTypes: function(sig) {
+  $sigToWasmTypes: (sig) => {
+#if ASSERTIONS && !WASM_BIGINT
+    assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
+#endif
     var typeNames = {
       'i': 'i32',
-#if MEMORY64
       'j': 'i64',
-#else
-      // i64 values will be split into two i32s.
-      'j': 'i32',
-#endif
       'f': 'f32',
       'd': 'f64',
+      'e': 'externref',
 #if MEMORY64
       'p': 'i64',
 #else
@@ -46,16 +45,11 @@ mergeInto(LibraryManager.library, {
       assert(sig[i] in typeNames, 'invalid signature char: ' + sig[i]);
 #endif
       type.parameters.push(typeNames[sig[i]]);
-#if !MEMORY64
-      if (sig[i] === 'j') {
-        type.parameters.push('i32');
-      }
-#endif
     }
     return type;
   },
   $generateFuncType__deps: ['$uleb128Encode'],
-  $generateFuncType : function(sig, target){
+  $generateFuncType: (sig, target) => {
     var sigRet = sig.slice(0, 1);
     var sigParam = sig.slice(1);
     var typeCodes = {
@@ -68,8 +62,9 @@ mergeInto(LibraryManager.library, {
       'j': 0x7e, // i64
       'f': 0x7d, // f32
       'd': 0x7c, // f64
+      'e': 0x6f, // externref
     };
-  
+
     // Parameters, length + signatures
     target.push(0x60 /* form: func */);
     uleb128Encode(sigParam.length, target);
@@ -77,9 +72,9 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
       assert(sigParam[i] in typeCodes, 'invalid signature char: ' + sigParam[i]);
 #endif
-  target.push(typeCodes[sigParam[i]]);
+      target.push(typeCodes[sigParam[i]]);
     }
-  
+
     // Return values, length + signatures
     // With no multi-return in MVP, either 0 (void) or 1 (anything else)
     if (sigRet == 'v') {
@@ -90,10 +85,14 @@ mergeInto(LibraryManager.library, {
   },
   // Wraps a JS function as a wasm function with a given signature.
   $convertJsFunctionToWasm__deps: ['$uleb128Encode', '$sigToWasmTypes', '$generateFuncType'],
-  $convertJsFunctionToWasm: function(func, sig) {
+  $convertJsFunctionToWasm: (func, sig) => {
 #if WASM2JS
     // return func;
 #else // WASM2JS
+
+#if ASSERTIONS && !WASM_BIGINT
+    assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
+#endif
 
     // If the type reflection proposal is available, use the new
     // "WebAssembly.Function" constructor.
@@ -118,7 +117,7 @@ mergeInto(LibraryManager.library, {
     ];
     // Write the overall length of the type section followed by the body
     uleb128Encode(typeSectionBody.length, bytes);
-    bytes.push.apply(bytes, typeSectionBody);
+    bytes.push(...typeSectionBody);
 
     // The rest of the module is static
     bytes.push(
@@ -144,8 +143,8 @@ mergeInto(LibraryManager.library, {
   // Weak map of functions in the table to their indexes, created on first use.
   $functionsInTableMap: undefined,
 
-  $getEmptyTableSlot__deps: ['$freeTableIndexes'],
-  $getEmptyTableSlot: function() {
+  $getEmptyTableSlot__deps: ['$freeTableIndexes', '$wasmTable'],
+  $getEmptyTableSlot: () => {
     // Reuse a free index if there is one, otherwise grow.
     if (freeTableIndexes.length) {
       return freeTableIndexes.pop();
@@ -163,7 +162,7 @@ mergeInto(LibraryManager.library, {
   },
 
   $updateTableMap__deps: ['$getWasmTableEntry'],
-  $updateTableMap: function(offset, count) {
+  $updateTableMap: (offset, count) => {
     if (functionsInTableMap) {
       for (var i = offset; i < offset + count; i++) {
         var item = getWasmTableEntry(i);
@@ -175,8 +174,8 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  $getFunctionAddress__deps: ['$updateTableMap', '$functionsInTableMap'],
-  $getFunctionAddress: function(func) {
+  $getFunctionAddress__deps: ['$updateTableMap', '$functionsInTableMap', '$wasmTable'],
+  $getFunctionAddress: (func) => {
     // First, create the map if this is the first use.
     if (!functionsInTableMap) {
       functionsInTableMap = new WeakMap();
@@ -192,8 +191,9 @@ mergeInto(LibraryManager.library, {
   $addFunction__docs: '/** @param {string=} sig */',
   $addFunction__deps: ['$convertJsFunctionToWasm', '$getFunctionAddress',
                        '$functionsInTableMap', '$getEmptyTableSlot',
-                       '$getWasmTableEntry', '$setWasmTableEntry'],
-  $addFunction: function(func, sig) {
+                       '$getWasmTableEntry', '$setWasmTableEntry',
+                       '$wasmTable'],
+  $addFunction: (func, sig) => {
   #if ASSERTIONS
     assert(typeof func != 'undefined');
   #endif // ASSERTIONS
@@ -237,9 +237,11 @@ mergeInto(LibraryManager.library, {
     return ret;
   },
 
-  $removeFunction__deps: ['$functionsInTableMap', '$freeTableIndexes', '$getWasmTableEntry'],
-  $removeFunction: function(index) {
+  $removeFunction__deps: ['$functionsInTableMap', '$freeTableIndexes',
+                          '$getWasmTableEntry', '$setWasmTableEntry'],
+  $removeFunction: (index) => {
     functionsInTableMap.delete(getWasmTableEntry(index));
+    setWasmTableEntry(index, null);
     freeTableIndexes.push(index);
   },
 });

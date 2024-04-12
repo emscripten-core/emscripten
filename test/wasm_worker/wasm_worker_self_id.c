@@ -1,12 +1,7 @@
-#include <emscripten.h>
 #include <emscripten/wasm_worker.h>
 #include <assert.h>
 
 // Test the function emscripten_wasm_worker_self_id()
-
-EM_JS(void, console_log, (char* str), {
-  console.log(UTF8ToString(str));
-});
 
 emscripten_wasm_worker_t worker1 = 0;
 emscripten_wasm_worker_t worker2 = 0;

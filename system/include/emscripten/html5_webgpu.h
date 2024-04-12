@@ -29,8 +29,8 @@ WEBGPU_MAKE_IMPORT_EXPORT(queue, Queue)
 
 WEBGPU_MAKE_IMPORT_EXPORT(command_buffer, CommandBuffer)
 WEBGPU_MAKE_IMPORT_EXPORT(command_encoder, CommandEncoder)
-WEBGPU_MAKE_IMPORT_EXPORT(render_passEncoder, RenderPassEncoder)
-WEBGPU_MAKE_IMPORT_EXPORT(compute_passEncoder, ComputePassEncoder)
+WEBGPU_MAKE_IMPORT_EXPORT(render_pass_encoder, RenderPassEncoder)
+WEBGPU_MAKE_IMPORT_EXPORT(compute_pass_encoder, ComputePassEncoder)
 
 WEBGPU_MAKE_IMPORT_EXPORT(bind_group, BindGroup)
 WEBGPU_MAKE_IMPORT_EXPORT(buffer, Buffer)

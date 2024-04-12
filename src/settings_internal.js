@@ -16,8 +16,8 @@
 // underscore.
 var WASM_EXPORTS = [];
 
-// Similar to above but only includes the functions symbols.
-var WASM_FUNCTION_EXPORTS = [];
+// Similar to above but only includes the global/data symbols.
+var WASM_GLOBAL_EXPORTS = [];
 
 // An array of all symbols exported from all the side modules specified on the
 // command line.
@@ -143,11 +143,6 @@ var AUDIO_WORKLET_FILE = '';
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 
-// When this is false we use an external memory init file
-// See --memory-init-file.  When not using wasm2js this flag is ignored, and
-// this setting will always be true.
-var MEM_INIT_IN_WASM = true;
-
 // If set to 1, src/base64Utils.js will be included in the bundle.
 // This is set internally when needed (SINGLE_FILE)
 var SUPPORT_BASE64_EMBEDDING = false;
@@ -175,6 +170,9 @@ var TARGET_NOT_SUPPORTED = 0x7FFFFFFF;
 // Used to track whether target environment supports the 'globalThis' attribute.
 var SUPPORTS_GLOBALTHIS = false;
 
+// Used to track whether target environment supports the 'Promise.any'.
+var SUPPORTS_PROMISE_ANY = false;
+
 // Wasm backend symbols that are considered system symbols and don't
 // have the normal C symbol name mangled applied (== prefix with an underscore)
 // (Also implicily on this list is any function that starts with string "dynCall_")
@@ -183,8 +181,12 @@ var WASM_SYSTEM_EXPORTS = ['stackAlloc', 'stackSave', 'stackRestore', 'getTempRe
 // Internal: value of -flto argument (either full or thin)
 var LTO = 0;
 
-// Whether we may be accessing the address 2GB or higher. If so then we need
-// to be using unsigned pointers in JS.
+// Whether we may be accessing the address 2GB or higher. If so, then we need
+// to interpret incoming i32 pointers as unsigned.
+//
+// This setting does not apply (and is never set to true) under MEMORY64, since
+// in that case we get 64-bit pointers coming through to JS (converting them to
+// i53 in most cases).
 var CAN_ADDRESS_2GB = false;
 
 // Whether to emit DWARF in a separate wasm file on the side (this is not called
@@ -206,9 +208,6 @@ var EXPECT_MAIN = true;
 // Provide and export a .ready() Promise. This is currently used by default with
 // MODULARIZE, and returned from the factory function.
 var EXPORT_READY_PROMISE = true;
-
-// struct_info that is either generated or cached
-var STRUCT_INFO = '';
 
 // If true, building against Emscripten's wasm heap memory profiler.
 var MEMORYPROFILER = false;
@@ -234,10 +233,14 @@ var HAS_MAIN = false;
 // Set to true if we are linking as C++ and including C++ stdlibs
 var LINK_AS_CXX = false;
 
-// Set when some minimum browser version triggers doesn't support the
-// minimum set of ES6 features.  This triggers transpilation to ES5
-// using closure compiler.
-var TRANSPILE_TO_ES5 = false;
+// Set when closure compiler may be run: Either emcc will run it, or the user
+// might run it after emcc. Either way, some JS changes and annotations must be
+// emitted in that case for closure compiler.
+var MAYBE_CLOSURE_COMPILER = false;
+
+// Set when some minimum browser version triggers doesn't support the minimum
+// set of JavaScript features.  This triggers transpilation using babel.
+var TRANSPILE = false;
 
 // A copy of the default the default INCOMING_MODULE_JS_API. (Soon to
 // include additional items).
@@ -245,7 +248,7 @@ var ALL_INCOMING_MODULE_JS_API = [];
 
 // List of all imports that are weak, and therefore allowed to be undefined at
 // runtime.  This is used by the JS compiler to avoid build-time warnings/errors
-// when weak symbols are undefined.  Only applies in the case of dyanmic linking
+// when weak symbols are undefined.  Only applies in the case of dynamic linking
 // (MAIN_MODULE).
 var WEAK_IMPORTS = [];
 
@@ -259,3 +262,17 @@ var POST_JS_FILES = [];
 
 // Set when -pthread / -sPTHREADS is passed
 var PTHREADS = false;
+
+var BULK_MEMORY = false;
+
+var MINIFY_WHITESPACE = true;
+
+var ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS = [];
+
+var WARN_DEPRECATED = true;
+
+// WebGL 2 provides new garbage-free entry points to call to WebGL. Use
+// those always when possible.
+// We currently set this to false for certain browser when large memory sizes
+// (2gb+ or 4gb+) are used
+var WEBGL_USE_GARBAGE_FREE_APIS = false;

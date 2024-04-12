@@ -23,7 +23,7 @@ extern "C" {
 EMSCRIPTEN_RESULT emscripten_websocket_get_ready_state(EMSCRIPTEN_WEBSOCKET_T socket, unsigned short *readyState __attribute__((nonnull)));
 
 // Returns the WebSocket.bufferedAmount field into bufferedAmount. bufferedAmount must not be a null pointer.
-EMSCRIPTEN_RESULT emscripten_websocket_get_buffered_amount(EMSCRIPTEN_WEBSOCKET_T socket, unsigned long long *bufferedAmount __attribute__((nonnull)));
+EMSCRIPTEN_RESULT emscripten_websocket_get_buffered_amount(EMSCRIPTEN_WEBSOCKET_T socket, size_t *bufferedAmount __attribute__((nonnull)));
 
 // Writes the WebSocket.url field as a UTF-8 string to the memory area pointed by url. The memory area must contain at least urlLength bytes of free space. If this memory area cannot
 // fit the url string, it will be truncated. Call emscripten_websocket_get_url_length() to determine how large memory area will be required to store the url.

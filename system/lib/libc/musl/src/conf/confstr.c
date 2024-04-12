@@ -26,7 +26,7 @@ size_t confstr(int name, char *buf, size_t len)
 	} else if (name == _CS_POSIX_V6_ILP32_OFFBIG_CFLAGS) {
 		s = "-m32 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64";
 #endif
-	} else if ((name&~4U)!=1 && name-_CS_POSIX_V6_ILP32_OFF32_CFLAGS>33U) {
+	} else if ((name&~4U)!=1 && name-_CS_POSIX_V6_ILP32_OFF32_CFLAGS>35U) {
 		errno = EINVAL;
 		return 0;
 	}

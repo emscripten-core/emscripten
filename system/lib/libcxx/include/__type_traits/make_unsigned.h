@@ -25,30 +25,37 @@
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-typedef
-    __type_list<unsigned char,
-    __type_list<unsigned short,
-    __type_list<unsigned int,
-    __type_list<unsigned long,
-    __type_list<unsigned long long,
-#ifndef _LIBCPP_HAS_NO_INT128
-    __type_list<__uint128_t,
-#endif
-    __nat
-#ifndef _LIBCPP_HAS_NO_INT128
-    >
-#endif
-    > > > > > __unsigned_types;
-
-template <class _Tp, bool = is_integral<_Tp>::value || is_enum<_Tp>::value>
-struct __make_unsigned {};
+#if __has_builtin(__make_unsigned)
 
 template <class _Tp>
-struct __make_unsigned<_Tp, true>
-{
-    typedef typename __find_first<__unsigned_types, sizeof(_Tp)>::type type;
+using __make_unsigned_t = __make_unsigned(_Tp);
+
+#else
+// clang-format off
+typedef __type_list<unsigned char,
+        __type_list<unsigned short,
+        __type_list<unsigned int,
+        __type_list<unsigned long,
+        __type_list<unsigned long long,
+#  ifndef _LIBCPP_HAS_NO_INT128
+        __type_list<__uint128_t,
+#  endif
+        __nat
+#  ifndef _LIBCPP_HAS_NO_INT128
+        >
+#  endif
+        > > > > > __unsigned_types;
+// clang-format on
+
+template <class _Tp, bool = is_integral<_Tp>::value || is_enum<_Tp>::value>
+struct __make_unsigned{};
+
+template <class _Tp>
+struct __make_unsigned<_Tp, true> {
+  typedef typename __find_first<__unsigned_types, sizeof(_Tp)>::type type;
 };
 
+// clang-format off
 template <> struct __make_unsigned<bool,               true> {};
 template <> struct __make_unsigned<  signed short,     true> {typedef unsigned short     type;};
 template <> struct __make_unsigned<unsigned short,     true> {typedef unsigned short     type;};
@@ -58,31 +65,36 @@ template <> struct __make_unsigned<  signed long,      true> {typedef unsigned l
 template <> struct __make_unsigned<unsigned long,      true> {typedef unsigned long      type;};
 template <> struct __make_unsigned<  signed long long, true> {typedef unsigned long long type;};
 template <> struct __make_unsigned<unsigned long long, true> {typedef unsigned long long type;};
-#ifndef _LIBCPP_HAS_NO_INT128
+#  ifndef _LIBCPP_HAS_NO_INT128
 template <> struct __make_unsigned<__int128_t,         true> {typedef __uint128_t        type;};
 template <> struct __make_unsigned<__uint128_t,        true> {typedef __uint128_t        type;};
-#endif
+#  endif
+// clang-format on
 
 template <class _Tp>
-struct _LIBCPP_TEMPLATE_VIS make_unsigned
-{
-    typedef typename __apply_cv<_Tp, typename __make_unsigned<typename remove_cv<_Tp>::type>::type>::type type;
+using __make_unsigned_t = __apply_cv_t<_Tp, typename __make_unsigned<__remove_cv_t<_Tp> >::type>;
+
+#endif // __has_builtin(__make_unsigned)
+
+template <class _Tp>
+struct make_unsigned {
+  using type _LIBCPP_NODEBUG = __make_unsigned_t<_Tp>;
 };
 
-#if _LIBCPP_STD_VER > 11
-template <class _Tp> using make_unsigned_t = typename make_unsigned<_Tp>::type;
+#if _LIBCPP_STD_VER >= 14
+template <class _Tp>
+using make_unsigned_t = __make_unsigned_t<_Tp>;
 #endif
 
 #ifndef _LIBCPP_CXX03_LANG
 template <class _Tp>
-_LIBCPP_HIDE_FROM_ABI constexpr
-typename make_unsigned<_Tp>::type __to_unsigned_like(_Tp __x) noexcept {
-    return static_cast<typename make_unsigned<_Tp>::type>(__x);
+_LIBCPP_HIDE_FROM_ABI constexpr __make_unsigned_t<_Tp> __to_unsigned_like(_Tp __x) noexcept {
+  return static_cast<__make_unsigned_t<_Tp> >(__x);
 }
 #endif
 
 template <class _Tp, class _Up>
-using __copy_unsigned_t = __conditional_t<is_unsigned<_Tp>::value, typename make_unsigned<_Up>::type, _Up>;
+using __copy_unsigned_t = __conditional_t<is_unsigned<_Tp>::value, __make_unsigned_t<_Up>, _Up>;
 
 _LIBCPP_END_NAMESPACE_STD
 

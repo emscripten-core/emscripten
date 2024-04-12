@@ -9,6 +9,7 @@
 #include <pthread.h>
 #include <emscripten.h>
 #include <emscripten/threading.h>
+#include <emscripten/console.h>
 #include <unistd.h>
 
 #define NUM_THREADS 8
@@ -82,9 +83,9 @@ EM_BOOL WaitToJoin(double time, void *userData)
 	if (!threadsRunning)
 	{
 		if (counter == numThreadsToCreateTotal)
-			EM_ASM(console.log('All threads finished. Counter = ' + $0 + ' as expected.'), counter);
+			emscripten_outf("All threads finished. Counter = %d as expected", counter);
 		else
-			EM_ASM(console.error('All threads finished, but counter = ' + $0 + ' != ' + $1 + '!'), counter, numThreadsToCreateTotal);
+			emscripten_errf("All threads finished, but counter = %d != %d!", counter, numThreadsToCreateTotal);
 		assert(counter == 50);
 		emscripten_force_exit(0);
 		return EM_FALSE;

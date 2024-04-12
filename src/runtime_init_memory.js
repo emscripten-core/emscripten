@@ -11,8 +11,10 @@
 
 {{{ makeModuleReceiveWithVar('INITIAL_MEMORY', undefined, INITIAL_MEMORY) }}}
 
+#if ASSERTIONS
 assert(INITIAL_MEMORY >= {{{STACK_SIZE}}}, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + {{{STACK_SIZE}}} + ')');
-
+#endif
+  
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 
 #if PTHREADS
@@ -35,13 +37,15 @@ if (ENVIRONMENT_IS_PTHREAD) {
       // https://github.com/emscripten-core/emscripten/issues/14130
       // And in the pthreads case we definitely need to emit a maximum. So
       // always emit one.
-      'maximum': {{{ MAXIMUM_MEMORY }}} / {{{ WASM_PAGE_SIZE }}}
+      'maximum': {{{ MAXIMUM_MEMORY }}} / {{{ WASM_PAGE_SIZE }}},
 #else
-      'maximum': INITIAL_MEMORY / {{{ WASM_PAGE_SIZE }}}
+      'maximum': INITIAL_MEMORY / {{{ WASM_PAGE_SIZE }}},
 #endif // ALLOW_MEMORY_GROWTH
 #if SHARED_MEMORY
-      ,
-      'shared': true
+      'shared': true,
+#endif
+#if MEMORY64 == 1
+      'index': 'i64',
 #endif
     });
 #if SHARED_MEMORY

@@ -43,8 +43,6 @@ if (EMSCRIPTEN)
 	# emulation code may be present for old browser quirks.
 	append_linker_flags("-sMIN_FIREFOX_VERSION=70")
 	append_linker_flags("-sMIN_SAFARI_VERSION=130000")
-	append_linker_flags("-sMIN_IE_VERSION=0x7FFFFFFF") # Do not support Internet Explorer at all (this is the Emscripten default, shown here for posterity)
-	append_linker_flags("-sMIN_EDGE_VERSION=79") # Require Chromium-based Edge browser
 	append_linker_flags("-sMIN_CHROME_VERSION=80")
 
 	# Fine tuning for code size: do not generate code to abort program execution on malloc() failures, that will
@@ -72,9 +70,6 @@ if (EMSCRIPTEN)
 
 	# Optimization flag to optimize aggressively for size. (other options -Os, -O3, -O2, -O1, -O0)
 	append_linker_flags("-Oz")
-
-	# Reduce code size: We do not need libc errno field support in our build output.
-	append_linker_flags("-sSUPPORT_ERRNO=0")
 
 	# Reduce code size: We do not need native POSIX filesystem emulation support (Emscripten FS/MEMFS)
 	append_linker_flags("-sFILESYSTEM=0")

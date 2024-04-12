@@ -72,8 +72,9 @@ weak int clock_getcpuclockid(pid_t pid, clockid_t *clockid) {
   return 0;
 }
 
-
+// ==========================================================================
 // pwd.h
+// ==========================================================================
 
 struct passwd *getpwnam(const char *name) {
   errno = ENOENT;
@@ -106,7 +107,9 @@ struct passwd *getpwent(void) {
   return NULL;
 }
 
+// ==========================================================================
 // grp.h
+// ==========================================================================
 
 weak struct group *getgrnam(const char *name) {
   errno = ENOENT;
@@ -187,6 +190,10 @@ weak int posix_spawn(pid_t *pid, const char *path,
   return -1;
 }
 
+// ==========================================================================
+// stdio.h
+// ==========================================================================
+
 weak FILE *popen(const char *command, const char *type) {
   errno = ENOSYS;
   return NULL;
@@ -212,4 +219,37 @@ weak int setgroups(size_t size, const gid_t *list) {
 weak int sigaltstack(const stack_t *restrict ss, stack_t *restrict old_ss) {
   errno = ENOSYS;
   return -1;
+}
+
+// ==========================================================================
+// dlfcn.h
+// ==========================================================================
+
+#ifndef EMSCRIPTEN_DYNAMIC_LINKING
+void __dl_seterr(const char*, ...);
+
+weak void *__dlsym(void *restrict p, const char *restrict s, void *restrict ra) {
+  __dl_seterr("dynamic linking not enabled");
+  return NULL;
+}
+
+weak void* dlopen(const char* file, int flags) {
+  __dl_seterr("dynamic linking not enabled");
+  return NULL;
+}
+#endif
+
+// ==========================================================================
+// stdlib.h
+// ==========================================================================
+
+#define MIN(x, y) (((x) < (y)) ? (x) : (y))
+
+weak int getloadavg(double loadavg[], int nelem) {
+  // http://linux.die.net/man/3/getloadavg
+  int limit = MIN(nelem, 3);
+  for (int i = 0; i < limit; i++) {
+    loadavg[i] = 0.1;
+  }
+  return limit;
 }
