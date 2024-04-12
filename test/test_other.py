@@ -14680,3 +14680,7 @@ addToLibrary({
       }
     '''
     self.do_run(src, emcc_args=['-sMALLOC=mimalloc'])
+
+  def test_SUPPORT_BIG_ENDIAN(self):
+    # Just a simple build-only test for now
+    self.run_process([EMCC, '-sSUPPORT_BIG_ENDIAN', test_file('hello_world.c')])
