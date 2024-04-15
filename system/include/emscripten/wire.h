@@ -106,6 +106,7 @@ struct TypeID {
 
 template<typename T>
 struct TypeID<std::unique_ptr<T>> {
+    static_assert(std::is_class<T>::value, "The type for a std::unique_ptr binding must be a class.");
     static constexpr TYPEID get() {
         return TypeID<T>::get();
     }

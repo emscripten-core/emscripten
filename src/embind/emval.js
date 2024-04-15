@@ -315,7 +315,7 @@ var LibraryEmVal = {
 #if MIN_CHROME_VERSION < 49 || MIN_FIREFOX_VERSION < 42 || MIN_SAFARI_VERSION < 100101
   $reflectConstruct: null,
   $reflectConstruct__postset: `
-    if (typeof Reflect !== 'undefined') {
+    if (typeof Reflect != 'undefined') {
       reflectConstruct = Reflect.construct;
     } else {
       reflectConstruct = function(target, args) {

@@ -3121,9 +3121,7 @@ addToLibrary({
 
 #else // MINIMAL_RUNTIME
   // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
-  $callUserCallback: (func) => {
-    func();
-  },
+  $callUserCallback: (func) => func(),
 #endif // MINIMAL_RUNTIME
 
   $asmjsMangle: (x) => {

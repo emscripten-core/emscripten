@@ -555,6 +555,9 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   # should not minify these symbol names.
   CLOSURE_EXTERNS = [path_from_root('src/closure-externs/closure-externs.js')]
 
+  if settings.MODULARIZE:
+    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/modularize-externs.js')]
+
   if settings.USE_WEBGPU:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/webgpu-externs.js')]
 
@@ -980,11 +983,7 @@ def strip(infile, outfile, debug=False, sections=None):
 
 # extract the DWARF info from the main file, and leave the wasm with
 # debug into as a file on the side
-def emit_debug_on_side(wasm_file):
-  # if the dwarf filename wasn't provided, use the default target + a suffix
-  wasm_file_with_dwarf = settings.SEPARATE_DWARF
-  if wasm_file_with_dwarf is True:
-    wasm_file_with_dwarf = wasm_file + '.debug.wasm'
+def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   embedded_path = settings.SEPARATE_DWARF_URL
   if not embedded_path:
     # a path was provided - make it relative to the wasm.

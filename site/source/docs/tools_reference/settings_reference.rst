@@ -1131,6 +1131,15 @@ instrumented.
 See notes on ASYNCIFY_REMOVE about the names, including wildcard matching and
 character substitutions.
 
+.. _asyncify_propagate_add:
+
+ASYNCIFY_PROPAGATE_ADD
+======================
+
+If enabled, instrumentation status will be propagated from the add-list, ie.
+their callers, and their callers' callers, and so on. If disabled then all
+callers must be manually added to the add-list (like the only-list).
+
 .. _asyncify_only:
 
 ASYNCIFY_ONLY
@@ -1860,6 +1869,8 @@ Whether to legalize the JS FFI interfaces (imports/exports) by wrapping them
 to automatically demote i64 to i32 and promote f32 to f64. This is necessary
 in order to interface with JavaScript.  For non-web/non-JS embeddings, setting
 this to 0 may be desirable.
+
+.. note:: This setting is deprecated
 
 .. _use_sdl:
 

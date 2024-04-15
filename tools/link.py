@@ -370,6 +370,8 @@ def get_binaryen_passes():
       passes += ['--pass-arg=asyncify-verbose']
     if settings.ASYNCIFY_IGNORE_INDIRECT:
       passes += ['--pass-arg=asyncify-ignore-indirect']
+    if settings.ASYNCIFY_PROPAGATE_ADD:
+      passes += ['--pass-arg=asyncify-propagate-addlist']
     passes += ['--pass-arg=asyncify-imports@%s' % ','.join(settings.ASYNCIFY_IMPORTS)]
 
     # shell escaping can be confusing; try to emit useful warnings
@@ -719,6 +721,13 @@ def phase_linker_setup(options, state, newargs):
   options.extern_pre_js = read_js_files(options.extern_pre_js)
   options.extern_post_js = read_js_files(options.extern_post_js)
 
+  if settings.PTHREADS:
+    # Don't run extern pre/post code on pthreads.
+    if options.extern_pre_js:
+      options.extern_pre_js = 'if (typeof ENVIRONMENT_IS_PTHREAD == "undefined") {' + options.extern_pre_js + '}'
+    if options.extern_post_js:
+      options.extern_post_js = 'if (typeof ENVIRONMENT_IS_PTHREAD == "undefined") {' + options.extern_post_js + '}'
+
   # TODO: support source maps with js_transform
   if options.js_transform and settings.GENERATE_SOURCE_MAP:
     logger.warning('disabling source maps because a js transform is being done')
@@ -785,8 +794,14 @@ def phase_linker_setup(options, state, newargs):
     settings.MODULARIZE = 1
 
   if options.oformat in (OFormat.WASM, OFormat.BARE):
+    if options.emit_tsd:
+      exit_with_error('Wasm only output is not compatible --emit-tsd')
     # If the user asks directly for a wasm file then this *is* the target
     wasm_target = target
+  elif settings.SINGLE_FILE or settings.WASM == 0:
+    # In SINGLE_FILE or WASM2JS mode the wasm file is not part of the output at
+    # all so we generate it the temp directory.
+    wasm_target = in_temp(shared.replace_suffix(target, '.wasm'))
   else:
     # Otherwise the wasm file is produced alongside the final target.
     wasm_target = get_secondary_target(target, '.wasm')
@@ -852,7 +867,7 @@ def phase_linker_setup(options, state, newargs):
     settings.IGNORE_MISSING_MAIN = 0
     # the wasm must be runnable without the JS, so there cannot be anything that
     # requires JS legalization
-    settings.LEGALIZE_JS_FFI = 0
+    default_setting('LEGALIZE_JS_FFI', 0)
     if 'MEMORY_GROWTH_LINEAR_STEP' in user_settings:
       exit_with_error('MEMORY_GROWTH_LINEAR_STEP is not compatible with STANDALONE_WASM')
     if 'MEMORY_GROWTH_GEOMETRIC_CAP' in user_settings:
@@ -1899,7 +1914,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
     phase_embind_aot(wasm_target, js_syms)
 
   if options.emit_tsd:
-    phase_emit_tsd(options, wasm_target, js_syms, metadata)
+    phase_emit_tsd(options, wasm_target, state.js_target, js_syms, metadata)
 
   if options.js_transform:
     phase_source_transforms(options)
@@ -1982,14 +1997,14 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
 
 
 @ToolchainProfiler.profile_block('emit tsd')
-def phase_emit_tsd(options, wasm_target, js_syms, metadata):
+def phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata):
   logger.debug('emit tsd')
   filename = options.emit_tsd
   embind_tsd = ''
   if settings.EMBIND:
     embind_tsd = run_embind_gen(wasm_target, js_syms, {'EMBIND_JS': False})
   all_tsd = emscripten.create_tsd(metadata, embind_tsd)
-  out_file = os.path.join(os.path.dirname(wasm_target), filename)
+  out_file = os.path.join(os.path.dirname(js_target), filename)
   write_file(out_file, all_tsd)
 
 
@@ -2029,7 +2044,7 @@ def fix_es6_import_statements(js_file):
   save_intermediate('es6-module')
 
 
-def create_worker_file(input_file, target_dir, output_file):
+def create_worker_file(input_file, target_dir, output_file, options):
   output_file = os.path.join(target_dir, output_file)
   input_file = utils.path_from_root(input_file)
   contents = shared.read_and_preprocess(input_file, expand_macros=True)
@@ -2042,6 +2057,8 @@ def create_worker_file(input_file, target_dir, output_file):
     contents = building.acorn_optimizer(output_file, ['minifyWhitespace'], return_output=True)
     write_file(output_file, contents)
 
+  tools.line_endings.convert_line_endings_in_file(output_file, os.linesep, options.output_eol)
+
 
 @ToolchainProfiler.profile_block('final emitting')
 def phase_final_emitting(options, state, target, wasm_target):
@@ -2052,15 +2069,15 @@ def phase_final_emitting(options, state, target, wasm_target):
 
   target_dir = os.path.dirname(os.path.abspath(target))
   if settings.PTHREADS:
-    create_worker_file('src/worker.js', target_dir, settings.PTHREAD_WORKER_FILE)
+    create_worker_file('src/worker.js', target_dir, settings.PTHREAD_WORKER_FILE, options)
 
   # Deploy the Wasm Worker bootstrap file as an output file (*.ww.js)
   if settings.WASM_WORKERS == 1:
-    create_worker_file('src/wasm_worker.js', target_dir, settings.WASM_WORKER_FILE)
+    create_worker_file('src/wasm_worker.js', target_dir, settings.WASM_WORKER_FILE, options)
 
   # Deploy the Audio Worklet module bootstrap file (*.aw.js)
   if settings.AUDIO_WORKLET == 1:
-    create_worker_file('src/audio_worklet.js', target_dir, settings.AUDIO_WORKLET_FILE)
+    create_worker_file('src/audio_worklet.js', target_dir, settings.AUDIO_WORKLET_FILE, options)
 
   if settings.MODULARIZE:
     modularize()
@@ -2257,10 +2274,10 @@ def phase_binaryen(target, options, wasm_target):
 
     if settings.WASM != 2:
       final_js = wasm2js
-      # if we only target JS, we don't need the wasm any more
-      delete_file(wasm_target)
 
     save_intermediate('wasm2js')
+
+  generating_wasm = settings.WASM == 2 or not settings.WASM2JS
 
   # emit the final symbols, either in the binary or in a symbol map.
   # this will also remove debug info if we only kept it around in the intermediate invocations.
@@ -2268,12 +2285,18 @@ def phase_binaryen(target, options, wasm_target):
   # have anything to do here.
   if options.emit_symbol_map:
     intermediate_debug_info -= 1
-    if os.path.exists(wasm_target):
+    if generating_wasm:
       building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
       save_intermediate_with_wasm('symbolmap', wasm_target)
 
-  if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and os.path.exists(wasm_target):
-    building.emit_debug_on_side(wasm_target)
+  if settings.DEBUG_LEVEL >= 3 and settings.SEPARATE_DWARF and generating_wasm:
+    # if the dwarf filename wasn't provided, use the default target + a suffix
+    wasm_file_with_dwarf = settings.SEPARATE_DWARF
+    if wasm_file_with_dwarf is True:
+      # Historically this file has been called `.wasm.debug.wasm`
+      # TODO(sbc): Should this just be `.debug.wasm`
+      wasm_file_with_dwarf = get_secondary_target(target, '.wasm.debug.wasm')
+    building.emit_debug_on_side(wasm_target, wasm_file_with_dwarf)
 
   # we have finished emitting the wasm, and so intermediate debug info will
   # definitely no longer be used tracking it.
@@ -2281,8 +2304,7 @@ def phase_binaryen(target, options, wasm_target):
     intermediate_debug_info -= 1
   assert intermediate_debug_info == 0
   # strip debug info if it was not already stripped by the last command
-  if not debug_function_names and building.binaryen_kept_debug_info and \
-     building.os.path.exists(wasm_target):
+  if not debug_function_names and building.binaryen_kept_debug_info and generating_wasm:
     with ToolchainProfiler.profile_block('strip_name_section'):
       building.strip(wasm_target, wasm_target, debug=False, sections=["name"])
 
@@ -2366,12 +2388,12 @@ def modularize():
     if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
       script_url = 'import.meta.url'
     else:
-      script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
+      script_url = "typeof document != 'undefined' ? document.currentScript?.src : undefined"
       if shared.target_environment_may_be('node'):
-        script_url_node = "if (typeof __filename !== 'undefined') _scriptDir ||= __filename;"
+        script_url_node = "if (typeof __filename != 'undefined') _scriptName ||= __filename;"
     src = '''%(node_imports)s
 var %(EXPORT_NAME)s = (() => {
-  var _scriptDir = %(script_url)s;
+  var _scriptName = %(script_url)s;
   %(script_url_node)s
   return (%(src)s);
 })();
@@ -2420,7 +2442,7 @@ def module_export_name_substitution():
     # via the shell html in order to provide the .asm.js/.wasm content.
     replacement = settings.EXPORT_NAME
   else:
-    replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": settings.EXPORT_NAME}
+    replacement = "typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": settings.EXPORT_NAME}
   new_src = re.sub(r'{\s*[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:\s*1\s*}', replacement, src)
   assert new_src != src, 'Unable to find Closure syntax __EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__ in source!'
   write_file(final_js, new_src)
@@ -2754,7 +2776,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
         extras.append(path)
         seen.add(needed)
       else:
-        exit_with_error(f'{os.path.normpath(dylib)}: shared library dependency not found: `{needed}`')
+        exit_with_error(f'{os.path.normpath(dylib)}: shared library dependency not found in library path: `{needed}`. (library path: {lib_dirs}')
       to_process.append(path)
 
   dylibs += extras

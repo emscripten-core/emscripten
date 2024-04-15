@@ -284,7 +284,7 @@ set(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
 
 # Set a global EMSCRIPTEN variable that can be used in client CMakeLists.txt to
 # detect when building using Emscripten.
-set(EMSCRIPTEN 1 CACHE BOOL "If true, we are targeting Emscripten output.")
+set(EMSCRIPTEN 1 CACHE INTERNAL "If true, we are targeting Emscripten output.")
 
 # Hardwire support for cmake-2.8/Modules/CMakeBackwardsCompatibilityC.cmake
 # without having CMake to try complex things to autodetect these:

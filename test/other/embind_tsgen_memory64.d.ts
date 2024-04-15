@@ -17,4 +17,5 @@ interface WasmModule {
 interface EmbindModule {
   longFn(_0: bigint): bigint;
 }
+
 export type MainModule = WasmModule & typeof RuntimeExports & EmbindModule;

@@ -318,6 +318,7 @@ commands:
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
             test/runner << parameters.test_targets >>
+      - upload-test-results
   setup-macos:
     steps:
       - run:
@@ -720,6 +721,7 @@ jobs:
           test_targets: "
             core0.test_hello_argc
             core2.test_demangle_stacks_symbol_map"
+      - upload-test-results
   test-node-compat:
     # We don't use `bionic` here since its too old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`

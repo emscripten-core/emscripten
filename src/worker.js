@@ -45,7 +45,7 @@ if (ENVIRONMENT_IS_NODE) {
       // __filename is undefined in ES6 modules, and import.meta.url only in ES6
       // modules.
 #if EXPORT_ES6
-      href: typeof __filename !== 'undefined' ? __filename : import.meta.url
+      href: typeof __filename != 'undefined' ? __filename : import.meta.url
 #else
       href: __filename
 #endif
@@ -192,8 +192,9 @@ function handleMessage(e) {
       Module['workerID'] = e.data.workerID;
 #endif
 
-#if !MINIMAL_RUNTIME || MODULARIZE
-      {{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_PTHREAD') }}} = true;
+#if !MINIMAL_RUNTIME
+      // Set ENVIRONMENT_IS_PTHREAD before importing the main script
+      globalThis['ENVIRONMENT_IS_PTHREAD'] = true;
 #endif
 
 #if MODULARIZE && EXPORT_ES6

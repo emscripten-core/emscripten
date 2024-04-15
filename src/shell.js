@@ -75,23 +75,6 @@ var readyPromise = new Promise((resolve, reject) => {
 #endif
 #endif
 
-// --pre-jses are emitted after the Module integration code, so that they can
-// refer to Module (if they choose; they can also define Module)
-{{{ preJS() }}}
-
-// Sometimes an existing Module object exists with properties
-// meant to overwrite the default module functionality. Here
-// we collect those properties and reapply _after_ we configure
-// the current environment's defaults to avoid having to be so
-// defensive during initialization.
-var moduleOverrides = Object.assign({}, Module);
-
-var arguments_ = [];
-var thisProgram = './this.program';
-var quit_ = (status, toThrow) => {
-  throw toThrow;
-};
-
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
 
@@ -136,24 +119,48 @@ if (Module['ENVIRONMENT']) {
 // 3) We could be an application pthread running in a worker. (ENVIRONMENT_IS_WORKER == true and ENVIRONMENT_IS_PTHREAD == true)
 
 // ENVIRONMENT_IS_PTHREAD=true will have been preset in worker.js. Make it false in the main runtime thread.
-var ENVIRONMENT_IS_PTHREAD = Module['ENVIRONMENT_IS_PTHREAD'] || false;
+var ENVIRONMENT_IS_PTHREAD = globalThis['ENVIRONMENT_IS_PTHREAD'] || false;
+
+#if MODULARIZE && ASSERTIONS
+if (ENVIRONMENT_IS_PTHREAD) {
+  assert(!globalThis.moduleLoaded, 'module should only be loaded once on each pthread worker');
+  globalThis.moduleLoaded = true;
+}
+#endif
 #endif
 
 #if WASM_WORKERS
 var ENVIRONMENT_IS_WASM_WORKER = Module['$ww'];
 #endif
 
+// --pre-jses are emitted after the Module integration code, so that they can
+// refer to Module (if they choose; they can also define Module)
+{{{ preJS() }}}
+
+// Sometimes an existing Module object exists with properties
+// meant to overwrite the default module functionality. Here
+// we collect those properties and reapply _after_ we configure
+// the current environment's defaults to avoid having to be so
+// defensive during initialization.
+var moduleOverrides = Object.assign({}, Module);
+
+var arguments_ = [];
+var thisProgram = './this.program';
+var quit_ = (status, toThrow) => {
+  throw toThrow;
+};
+
 #if SHARED_MEMORY && !MODULARIZE
-// In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
+// In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
-var _scriptDir = (typeof document != 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
+var _scriptName = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
 
 if (ENVIRONMENT_IS_WORKER) {
-  _scriptDir = self.location.href;
+  _scriptName = self.location.href;
 }
 #if ENVIRONMENT_MAY_BE_NODE
 else if (ENVIRONMENT_IS_NODE) {
-  _scriptDir = __filename;
+  _scriptName = __filename;
 }
 #endif // ENVIRONMENT_MAY_BE_NODE
 #endif // SHARED_MEMORY && !MODULARIZE
@@ -371,8 +378,8 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 #if MODULARIZE
   // When MODULARIZE, this JS may be executed later, after document.currentScript
   // is gone, so we saved it, and we use it here instead of any other info.
-  if (_scriptDir) {
-    scriptDirectory = _scriptDir;
+  if (_scriptName) {
+    scriptDirectory = _scriptName;
   }
 #endif
   // blob urls look like blob:http://site.com/etc/etc and we cannot infer anything from them.
