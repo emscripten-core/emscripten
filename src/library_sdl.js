@@ -2157,12 +2157,14 @@ var LibrarySDL = {
   // We support JPG, PNG, TIF because browsers do
   IMG_Init: (flags) => flags,
 
-  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', '$withStackSave', '$stringToUTF8OnStack', '$stackAlloc'],
+  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', '$stackSave', '$stackRestore', '$stringToUTF8OnStack', '$stackAlloc'],
   IMG_Load_RW__proxy: 'sync',
   IMG_Load_RW: (rwopsID, freeSrc) => {
+    var sp = stackSave();
     try {
       // stb_image integration support
       var cleanup = () => {
+        stackRestore(sp);
         if (rwops && freeSrc) _SDL_FreeRW(rwopsID);
       }
       var addCleanup = (func) => {
@@ -2172,7 +2174,7 @@ var LibrarySDL = {
           func();
         }
       }
-      var callStbImage = (func, params) => withStackSave(() => {
+      var callStbImage = (func, params) => {
         var x = stackAlloc({{{ getNativeTypeSize('i32') }}});
         var y = stackAlloc({{{ getNativeTypeSize('i32') }}});
         var comp = stackAlloc({{{ getNativeTypeSize('i32') }}});
@@ -2187,7 +2189,7 @@ var LibrarySDL = {
           size: {{{ makeGetValue('x', 0, 'i32') }}} * {{{ makeGetValue('y', 0, 'i32') }}} * {{{ makeGetValue('comp', 0, 'i32') }}},
           bpp: {{{ makeGetValue('comp', 0, 'i32') }}}
         };
-      });
+      };
 
       var rwops = SDL.rwops[rwopsID];
       if (rwops === undefined) {

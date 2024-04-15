@@ -18,7 +18,7 @@ var LibraryWget = {
 
   emscripten_async_wget__deps: [
     '$PATH_FS', '$wget', '$callUserCallback', '$Browser',
-    '$withStackSave', '$stringToUTF8OnStack',
+    '$stackRestore', '$stringToUTF8OnStack',
     '$FS_mkdirTree',
     '$FS_createPreloadedFile',
     '$FS_unlink',
@@ -34,9 +34,9 @@ var LibraryWget = {
       if (callback) {
         {{{ runtimeKeepalivePop() }}}
         callUserCallback(() => {
-          withStackSave(() => {
-            {{{ makeDynCall('vp', 'callback') }}}(stringToUTF8OnStack(_file));
-          });
+          var sp = stackSave();
+          {{{ makeDynCall('vp', 'callback') }}}(stringToUTF8OnStack(_file));
+          stackRestore(sp);
         });
       }
     }
@@ -82,7 +82,7 @@ var LibraryWget = {
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 
-  emscripten_async_wget2__deps: ['$PATH_FS', '$wget', '$withStackSave', '$stringToUTF8OnStack'],
+  emscripten_async_wget2__deps: ['$PATH_FS', '$wget', '$stackRestore', '$stringToUTF8OnStack'],
   emscripten_async_wget2__proxy: 'sync',
   emscripten_async_wget2: (url, file, request, param, userdata, onload, onerror, onprogress) => {
     {{{ runtimeKeepalivePush() }}}
@@ -115,9 +115,9 @@ var LibraryWget = {
 
         FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(/** @type{ArrayBuffer}*/(http.response)), true, true, false);
         if (onload) {
-          withStackSave(() => {
-            {{{ makeDynCall('vipp', 'onload') }}}(handle, userdata, stringToUTF8OnStack(_file));
-          });
+          var sp = stackSave();
+          {{{ makeDynCall('vipp', 'onload') }}}(handle, userdata, stringToUTF8OnStack(_file));
+          stackRestore(sp);
         }
       } else {
         if (onerror) {{{ makeDynCall('vipi', 'onerror') }}}(handle, userdata, http.status);
@@ -175,13 +175,13 @@ var LibraryWget = {
 
     function onerrorjs() {
       if (onerror) {
-        withStackSave(() => {
-          var statusText = 0;
-          if (http.statusText) {
-            statusText = stringToUTF8OnStack(http.statusText);
-          }
-          {{{ makeDynCall('vipip', 'onerror') }}}(handle, userdata, http.status, statusText);
-        });
+        var sp = stackSave();
+        var statusText = 0;
+        if (http.statusText) {
+          statusText = stringToUTF8OnStack(http.statusText);
+        }
+        {{{ makeDynCall('vipip', 'onerror') }}}(handle, userdata, http.status, statusText);
+        stackRestore(sp);
       }
     }
 

@@ -176,13 +176,13 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
 
 var LibraryWebGPU = {
   $WebGPU__postset: 'WebGPU.initManagers();',
-  $WebGPU__deps: ['$withStackSave', '$stringToUTF8OnStack'],
+  $WebGPU__deps: ['$stackSave', '$stackRestore', '$stringToUTF8OnStack'],
   $WebGPU: {
     errorCallback: (callback, type, message, userdata) => {
-      withStackSave(() => {
-        var messagePtr = stringToUTF8OnStack(message);
-        {{{ makeDynCall('vipp', 'callback') }}}(type, messagePtr, userdata);
-      });
+      var sp = stackSave();
+      var messagePtr = stringToUTF8OnStack(message);
+      {{{ makeDynCall('vipp', 'callback') }}}(type, messagePtr, userdata);
+      stackRestore(sp);
     },
 
     initManagers: () => {
@@ -1477,16 +1477,16 @@ var LibraryWebGPU = {
     }, (pipelineError) => {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
-        withStackSave(() => {
-          var messagePtr = stringToUTF8OnStack(pipelineError.message);
-          if (pipelineError.reason === 'validation') {
-            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.ValidationError }}}, 0, messagePtr, userdata);
-          } else if (pipelineError.reason === 'internal') {
-            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.InternalError }}}, 0, messagePtr, userdata);
-          } else {
-            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Unknown }}}, 0, messagePtr, userdata);
-          }
-        });
+        var sp = stackSave();
+        var messagePtr = stringToUTF8OnStack(pipelineError.message);
+        if (pipelineError.reason === 'validation') {
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.ValidationError }}}, 0, messagePtr, userdata);
+        } else if (pipelineError.reason === 'internal') {
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.InternalError }}}, 0, messagePtr, userdata);
+        } else {
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Unknown }}}, 0, messagePtr, userdata);
+        }
+        stackRestore(sp);
       });
     });
   },
@@ -2476,10 +2476,10 @@ var LibraryWebGPU = {
     }
 
     if (!('gpu' in navigator)) {
-      withStackSave(() => {
-        var messagePtr = stringToUTF8OnStack('WebGPU not available on this browser (navigator.gpu is not available)');
-        {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Unavailable }}}, 0, messagePtr, userdata);
-      });
+      var sp = stackSave();
+      var messagePtr = stringToUTF8OnStack('WebGPU not available on this browser (navigator.gpu is not available)');
+      {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Unavailable }}}, 0, messagePtr, userdata);
+      stackRestore(sp);
       return;
     }
 
@@ -2491,19 +2491,19 @@ var LibraryWebGPU = {
           var adapterId = WebGPU.mgrAdapter.create(adapter);
           {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Success }}}, adapterId, 0, userdata);
         } else {
-          withStackSave(() => {
-            var messagePtr = stringToUTF8OnStack('WebGPU not available on this system (requestAdapter returned null)');
-            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Unavailable }}}, 0, messagePtr, userdata);
-          });
+          var sp = stackSave();
+          var messagePtr = stringToUTF8OnStack('WebGPU not available on this system (requestAdapter returned null)');
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Unavailable }}}, 0, messagePtr, userdata);
+          stackRestore(sp);
         }
       });
     }, (ex) => {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
-        withStackSave(() => {
-          var messagePtr = stringToUTF8OnStack(ex.message);
-          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Error }}}, 0, messagePtr, userdata);
-        });
+        var sp = stackSave();
+        var messagePtr = stringToUTF8OnStack(ex.message);
+        {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Error }}}, 0, messagePtr, userdata);
+        stackRestore(sp);
       });
     });
   },
@@ -2645,10 +2645,10 @@ var LibraryWebGPU = {
     }, function(ex) {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
-        withStackSave(() => {
-          var messagePtr = stringToUTF8OnStack(ex.message);
-          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestDeviceStatus.Error }}}, 0, messagePtr, userdata);
-        });
+        var sp = stackSave();
+        var messagePtr = stringToUTF8OnStack(ex.message);
+        {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestDeviceStatus.Error }}}, 0, messagePtr, userdata);
+        stackRestore(sp);
       });
     });
   },
