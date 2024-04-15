@@ -766,12 +766,6 @@ var LibraryBrowser = {
     safeSetTimeout(() => _emscripten_run_script(script), millis);
   },
 
-  emscripten_async_run_script__deps: ['emscripten_run_script', '$safeSetTimeout'],
-  emscripten_async_run_script: (script, millis) => {
-    // TODO: cache these to avoid generating garbage
-    safeSetTimeout(() => _emscripten_run_script(script), millis);
-  },
-
   
   emscripten_async_load_script_promise__deps: ['$UTF8ToString'],
   emscripten_async_load_script_promise: (url) => {
