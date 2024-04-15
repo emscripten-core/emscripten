@@ -8215,11 +8215,18 @@ Module.onRuntimeInitialized = () => {
   @parameterized({
     'normal': ([], True),
     'ignoreindirect': (['-sASYNCIFY_IGNORE_INDIRECT'], False),
-    'add': (['-sASYNCIFY_IGNORE_INDIRECT', '-sASYNCIFY_ADD=["__original_main","main","virt()"]'], True),
+    'add': (['-sASYNCIFY_IGNORE_INDIRECT', '-sASYNCIFY_ADD=["virt()"]'], True),
+    # If ASYNCIFY_PROPAGATE_ADD is disabled then we must specify the callers of
+    # virt() manually, rather than have them inferred automatically.
+    'add_no_prop': (['-sASYNCIFY_IGNORE_INDIRECT', '-sASYNCIFY_ADD=["__original_main","main","virt()"]', '-sASYNCIFY_PROPAGATE_ADD=0'], True),
   })
   def test_asyncify_indirect_lists(self, args, should_pass):
     self.set_setting('ASYNCIFY')
     self.emcc_args += args
+    if '-flto' in str(self.emcc_args):
+      # LTO ends up inlining virt(), so ASYNCIFY_ADD does not work as expected.
+      # If wasm-opt were aware of LLVM's no-inline mark this would not happen.
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/21757')
     try:
       self.do_core_test('test_asyncify_indirect_lists.cpp', assert_identical=True)
       if not should_pass:
