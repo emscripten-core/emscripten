@@ -664,7 +664,10 @@ def create_tsd(metadata, embind_tsd):
     export_interfaces += ' & EmbindModule'
   out += f'export type MainModule = {export_interfaces};\n'
   if settings.MODULARIZE:
-    out += 'export default function MainModuleFactory (options?: unknown): Promise<MainModule>;\n'
+    return_type = 'MainModule'
+    if settings.WASM_ASYNC_COMPILATION:
+      return_type = f'Promise<{return_type}>'
+    out += f'export default function MainModuleFactory (options?: unknown): {return_type};\n'
   return out
 
 

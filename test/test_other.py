@@ -3307,6 +3307,17 @@ More info: https://emscripten.org
     cmd = shared.get_npm_cmd('tsc') + [test_file('other/test_tsd.ts'), '--noEmit']
     shared.check_call(cmd)
 
+  def test_emit_tsd_sync_compilation(self):
+    self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
+                      '--emit-tsd', 'test_emit_tsd_sync.d.ts',
+                      '-sMODULARIZE', '-sWASM_ASYNC_COMPILATION=0',
+                      '-o', 'test_emit_tsd_sync.js'] +
+                     self.get_emcc_args())
+    self.assertFileContents(test_file('other/test_emit_tsd_sync.d.ts'), read_file('test_emit_tsd_sync.d.ts'))
+    # Test that the output compiles with a TS file that uses the defintions.
+    cmd = shared.get_npm_cmd('tsc') + [test_file('other/test_tsd_sync.ts'), '--noEmit']
+    shared.check_call(cmd)
+
   def test_emit_tsd_wasm_only(self):
     err = self.expect_fail([EMCC, test_file('other/test_emit_tsd.c'),
                             '--emit-tsd', 'test_emit_tsd_wasm_only.d.ts', '-o', 'out.wasm'])
