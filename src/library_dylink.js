@@ -1097,42 +1097,36 @@ var LibraryDylink = {
   },
 
   // void* dlopen(const char* filename, int flags);
-  $dlopenInternal__deps: ['$ENV', '$dlSetError', '$PATH'],
-  $dlopenInternal: (handle, jsflags) => {
-    // void *dlopen(const char *file, int mode);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/dlopen.html
-    var filename = UTF8ToString(handle + {{{ C_STRUCTS.dso.name }}});
-    var flags = {{{ makeGetValue('handle', C_STRUCTS.dso.flags, 'i32') }}};
-#if DYLINK_DEBUG
-    dbg(`dlopenInternal: ${filename}`);
-#endif
-    filename = PATH.normalize(filename);
-    var searchpaths = [];
+$dlopenInternal__deps: ['$loadDynamicLibrary', '$dlSetError', '$PATH'],
+$dlopenInternal: function(filename, flags) {
+ 
+  filename = UTF8ToString(filename);
+  filename = PATH.normalize(filename);
 
-    var global = Boolean(flags & {{{ cDefs.RTLD_GLOBAL }}});
-    var localScope = global ? null : {};
+  var global = Boolean(flags & {{{ cDefs.RTLD_GLOBAL }}});
+  var nodelete = Boolean(flags & {{{ cDefs.RTLD_NODELETE }}});
 
-    // We don't care about RTLD_NOW and RTLD_LAZY.
-    var combinedFlags = {
-      global,
-      nodelete:  Boolean(flags & {{{ cDefs.RTLD_NODELETE }}}),
-      loadAsync: jsflags.loadAsync,
-    }
+  var loadAsync = !!(flags & {{{ cDefs.RTLD_NOW }}});  
 
-    if (jsflags.loadAsync) {
-      return loadDynamicLibrary(filename, combinedFlags, localScope, handle);
-    }
+  var promise = loadDynamicLibrary(filename, {
+    global: global,
+    nodelete: nodelete,
+    loadAsync: loadAsync
+  });
 
-    try {
-      return loadDynamicLibrary(filename, combinedFlags, localScope, handle)
-    } catch (e) {
-#if ASSERTIONS
-      err(`Error in loading dynamic library ${filename}: ${e}`);
-#endif
-      dlSetError(`Could not load dynamic lib: ${filename}\n${e}`);
-      return 0;
-    }
-  },
+  if (loadAsync) {
+    return promise.then(module => {
+      var handle = _malloc(4);
+      {{{ makeSetValue('handle', 0, 'module', 'i32') }}};
+      return handle;  
+    }).catch(err => {
+      $dlSetError('Dlopen failed: ' + err.message);
+      return 0;  
+    });
+  } else {
+    return Asyncify.handleSync(promise);
+  }
+},
 
   _dlopen_js__deps: ['$dlopenInternal'],
 #if ASYNCIFY
@@ -1172,13 +1166,23 @@ var LibraryDylink = {
     promise.then(successCallback).catch(errorCallback);
   },
 
-  _emscripten_dlopen_js__deps: ['$dlopenInternal', '$runtimeKeepalivePush', '$runtimeKeepalivePop', '$dlSetError', '$dynCall', '$promiseToCallback'],
-  _emscripten_dlopen_js: function(handle, onsuccess, onerror, user_data) {
-    runtimeKeepalivePush();
-    var promise = dlopenInternal(handle, { loadAsync: true });
+  _emscripten_dlopen_js__deps: ['$dlopenInternal', '$runtimeKeepalivePush', '$runtimeKeepalivePop', '$dlSetError', '$dynCall'],
+  _emscripten_dlopen_js: function(handle, promise, onsuccess, onerror,) {
+     
+     {{{ runtimeKeepalivePush() }}}
+
+    var filename = UTF8ToString(handle);
+    var flags = {{{ makeGetValue('promise', 4, 'i32') }}};
+
+    dlopenInternal(filename, flags)
+      .then(module => {
+      {{{ makeDynCall('vpp', 'onsuccess') }}}(module, handle);
+      {{{ runtimeKeepalivePop() }}};
+    }).catch(err => {
+      {{{ makeDynCall('vpp', 'onerror') }}}(0, user_data);
+      {{{ runtimeKeepalivePop() }}};
+    });
     
-    // Utilize the $promiseToCallback utility function
-    promiseToCallback(promise, onsuccess, onerror, user_data);
   },
 
 
