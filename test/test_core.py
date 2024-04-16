@@ -5590,6 +5590,10 @@ Module = {
     self.do_runf('stat/test_stat.c', 'success')
     self.verify_in_strict_mode('test_stat.js')
 
+  def test_statx(self):
+    self.set_setting("FORCE_FILESYSTEM")
+    self.do_runf('stat/test_statx.c', 'success')
+
   def test_fstatat(self):
     self.do_runf('stat/test_fstatat.c', 'success')
 
