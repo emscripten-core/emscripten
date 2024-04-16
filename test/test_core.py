@@ -6910,6 +6910,7 @@ void* operator new(size_t size) {
     # reference-types is enabled. So make sure this test passes when
     # reference-types feature is enabled as well.
     self.emcc_args += ['-mreference-types']
+    self.node_args += shared.node_reference_types_flags(self.get_nodejs())
     output = self.do_runf('core/test_autodebug.c', 'success')
     # test that the program both works and also emits some of the logging
     # (but without the specific output, as it is logging the actual locals
