@@ -6905,6 +6905,11 @@ void* operator new(size_t size) {
   @no_asan('autodebug logging interferes with asan')
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
   def test_autodebug_wasm(self):
+    # Even though the test itself doesn't directly use reference types,
+    # Binaryen's '--instrument-locals' will add their logging functions if
+    # reference-types is enabled. So make sure this test passes when
+    # reference-types feature is enabled as well.
+    self.emcc_args += ['-mreference-types']
     output = self.do_runf('core/test_autodebug.c', 'success')
     # test that the program both works and also emits some of the logging
     # (but without the specific output, as it is logging the actual locals
