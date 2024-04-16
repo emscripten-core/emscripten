@@ -135,7 +135,9 @@ FS.init();
       }
 
       // Copy the file into a JS buffer on the heap.
-      var buf = withStackSave(() => __wasmfs_read_file(stringToUTF8OnStack(path)));
+      var sp = stackSave();
+      var buf = __wasmfs_read_file(stringToUTF8OnStack(path));
+      stackRestore(sp);
 
       // The signed integer length resides in the first 8 bytes of the buffer.
       var length = {{{ makeGetValue('buf', '0', 'i53') }}};
@@ -519,8 +521,9 @@ FS.init();
     return FS_mknod(path, mode, 0);
   },
 
-  $FS_writeFile__deps: ['_wasmfs_write_file'],
-  $FS_writeFile: (path, data) => withStackSave(() => {
+  $FS_writeFile__deps: ['_wasmfs_write_file', '$stackSave', '$stackRestore'],
+  $FS_writeFile: (path, data) => {
+    var sp = stackSave();
     var pathBuffer = stringToUTF8OnStack(path);
     if (typeof data == 'string') {
       var buf = new Uint8Array(lengthBytesUTF8(data) + 1);
@@ -536,8 +539,9 @@ FS.init();
     }
     var ret = __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
     _free(dataBuffer);
+    stackRestore(sp);
     return ret;
-  }),
+  },
 
   $FS_mkdir__deps: ['_wasmfs_mkdir'],
   $FS_mkdir: (path, mode = 511 /* 0777 */) => FS.handleError(withStackSave(() => {

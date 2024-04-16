@@ -960,7 +960,7 @@ var LibraryPThread = {
   $proxyToMainThreadPtr: (...args) => BigInt(proxyToMainThread(...args)),
 #endif
 
-  $proxyToMainThread__deps: ['$withStackSave', '$stackAlloc', '_emscripten_run_on_main_thread_js'].concat(i53ConversionDeps),
+  $proxyToMainThread__deps: ['$stackSave', '$stackRestore', '$stackAlloc', '_emscripten_run_on_main_thread_js'].concat(i53ConversionDeps),
   $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
   $proxyToMainThread: (funcIndex, emAsmAddr, sync, ...callArgs) => {
     // EM_ASM proxying is done by passing a pointer to the address of the EM_ASM
@@ -973,34 +973,36 @@ var LibraryPThread = {
     // all the args here.
     // We also pass 'sync' to C separately, since C needs to look at it.
     // Allocate a buffer, which will be copied by the C code.
-    return withStackSave(() => {
-      // First passed parameter specifies the number of arguments to the function.
-      // When BigInt support is enabled, we must handle types in a more complex
-      // way, detecting at runtime if a value is a BigInt or not (as we have no
-      // type info here). To do that, add a "prefix" before each value that
-      // indicates if it is a BigInt, which effectively doubles the number of
-      // values we serialize for proxying. TODO: pack this?
-      var serializedNumCallArgs = callArgs.length {{{ WASM_BIGINT ? "* 2" : "" }}};
-      var args = stackAlloc(serializedNumCallArgs * 8);
-      var b = {{{ getHeapOffset('args', 'i64') }}};
-      for (var i = 0; i < callArgs.length; i++) {
-        var arg = callArgs[i];
+    //
+    // First passed parameter specifies the number of arguments to the function.
+    // When BigInt support is enabled, we must handle types in a more complex
+    // way, detecting at runtime if a value is a BigInt or not (as we have no
+    // type info here). To do that, add a "prefix" before each value that
+    // indicates if it is a BigInt, which effectively doubles the number of
+    // values we serialize for proxying. TODO: pack this?
+    var serializedNumCallArgs = callArgs.length {{{ WASM_BIGINT ? "* 2" : "" }}};
+    var sp = stackSave();
+    var args = stackAlloc(serializedNumCallArgs * 8);
+    var b = {{{ getHeapOffset('args', 'i64') }}};
+    for (var i = 0; i < callArgs.length; i++) {
+      var arg = callArgs[i];
 #if WASM_BIGINT
-        if (typeof arg == 'bigint') {
-          // The prefix is non-zero to indicate a bigint.
-          HEAP64[b + 2*i] = 1n;
-          HEAP64[b + 2*i + 1] = arg;
-        } else {
-          // The prefix is zero to indicate a JS Number.
-          HEAP64[b + 2*i] = 0n;
-          HEAPF64[b + 2*i + 1] = arg;
-        }
-#else
-        HEAPF64[b + i] = arg;
-#endif
+      if (typeof arg == 'bigint') {
+        // The prefix is non-zero to indicate a bigint.
+        HEAP64[b + 2*i] = 1n;
+        HEAP64[b + 2*i + 1] = arg;
+      } else {
+        // The prefix is zero to indicate a JS Number.
+        HEAP64[b + 2*i] = 0n;
+        HEAPF64[b + 2*i + 1] = arg;
       }
-      return __emscripten_run_on_main_thread_js(funcIndex, emAsmAddr, serializedNumCallArgs, args, sync);
-    });
+#else
+      HEAPF64[b + i] = arg;
+#endif
+    }
+    var rtn = __emscripten_run_on_main_thread_js(funcIndex, emAsmAddr, serializedNumCallArgs, args, sync);
+    stackRestore(sp);
+    return rtn;
   },
 
   // Reuse global JS array to avoid creating JS garbage for each proxied call

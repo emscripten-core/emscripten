@@ -5,7 +5,7 @@
  */
 
 var LibraryHTML5 = {
-  $JSEvents__deps: ['$withStackSave',
+  $JSEvents__deps: [
 #if PTHREADS
     '_emscripten_run_callback_on_thread',
 #endif
@@ -2303,7 +2303,7 @@ var LibraryHTML5 = {
 #if OFFSCREENCANVAS_SUPPORT
   _emscripten_set_offscreencanvas_size: 'emscripten_set_canvas_element_size',
 
-  $setOffscreenCanvasSizeOnTargetThread__deps: ['$stringToNewUTF8', '_emscripten_set_offscreencanvas_size_on_thread', '$withStackSave'],
+  $setOffscreenCanvasSizeOnTargetThread__deps: ['$stringToNewUTF8', '_emscripten_set_offscreencanvas_size_on_thread'],
   $setOffscreenCanvasSizeOnTargetThread: (targetThread, targetCanvas, width, height) => {
     targetCanvas = targetCanvas ? UTF8ToString(targetCanvas) : '';
     var targetCanvasPtr = 0;
@@ -2346,7 +2346,7 @@ var LibraryHTML5 = {
   },
 #endif
 
-  $setCanvasElementSize__deps: ['emscripten_set_canvas_element_size', '$withStackSave', '$stringToUTF8OnStack'],
+  $setCanvasElementSize__deps: ['emscripten_set_canvas_element_size', '$stackSave', '$stackRestore', '$stringToUTF8OnStack'],
   $setCanvasElementSize: (target, width, height) => {
 #if GL_DEBUG
     dbg(`setCanvasElementSize(target=${target},width=${width},height=${height}`);
@@ -2357,10 +2357,10 @@ var LibraryHTML5 = {
     } else {
       // This function is being called from high-level JavaScript code instead of asm.js/Wasm,
       // and it needs to synchronously proxy over to another thread, so marshal the string onto the heap to do the call.
-      withStackSave(() => {
-        var targetInt = stringToUTF8OnStack(target.id);
-        _emscripten_set_canvas_element_size(targetInt, width, height);
-      });
+      var sp = stackSave();
+      var targetInt = stringToUTF8OnStack(target.id);
+      _emscripten_set_canvas_element_size(targetInt, width, height);
+      stackRestore(sp);
     }
   },
 
@@ -2428,16 +2428,18 @@ var LibraryHTML5 = {
 #endif
 
   // JavaScript-friendly API, returns pair [width, height]
-  $getCanvasElementSize__deps: ['emscripten_get_canvas_element_size', '$withStackSave', '$stringToUTF8OnStack'],
-  $getCanvasElementSize: (target) => withStackSave(() => {
+  $getCanvasElementSize__deps: ['emscripten_get_canvas_element_size', '$stackSave', '$stackRestore', '$stringToUTF8OnStack'],
+  $getCanvasElementSize: (target) => {
+    var sp = stackSave();
     var w = stackAlloc(8);
     var h = w + 4;
 
     var targetInt = stringToUTF8OnStack(target.id);
     var ret = _emscripten_get_canvas_element_size(targetInt, w, h);
     var size = [{{{ makeGetValue('w', 0, 'i32')}}}, {{{ makeGetValue('h', 0, 'i32')}}}];
+    stackRestore(sp);
     return size;
-  }),
+  },
 
   emscripten_set_element_css_size__proxy: 'sync',
   emscripten_set_element_css_size__deps: ['$JSEvents', '$findEventTarget'],
