@@ -766,6 +766,28 @@ var LibraryBrowser = {
     safeSetTimeout(() => _emscripten_run_script(script), millis);
   },
 
+  function promiseToCallbacks(promise, onload, onerror) {
+    
+    onload = {{{ makeDynCall('v', 'onload') }}};
+    onerror = {{{ makeDynCall('v', 'onerror') }}};
+    promise.then(onload).catch(onerror);
+  
+  }
+
+  function callbacksToPromise(func, onload, onerror) {
+  return new Promise((resolve, reject) => {
+    func((result) => {
+      var onload = {{{ makeDynCall('v', 'onload') }}};
+      onload();
+      resolve(result);
+    }, (error) => {
+      var onerror = {{{ makeDynCall('v', 'onerror') }}};
+      onerror();
+      reject(error);
+    });
+  });
+}
+
   
   emscripten_async_load_script_promise__deps: ['$UTF8ToString'],
   emscripten_async_load_script_promise: (url) => {
@@ -773,7 +795,6 @@ var LibraryBrowser = {
 
     // Creating a promise for script loading functionality
     return new Promise((resolve, reject) => {
-    
       #if PTHREADS
       if (ENVIRONMENT_IS_PTHREAD) {
         err(`emscripten_async_load_script("${url}") failed, emscripten_async_load_script is currently not available in pthreads!`);
@@ -818,22 +839,11 @@ var LibraryBrowser = {
 
 
   // Refactored the function to implement the promise based functionality and backward compatibility with callbacks
-  emscripten_async_load_script__deps: ['emscripten_async_load_script_promise', '$UTF8ToString'],
+  emscripten_async_load_script__deps: ['$emscripten_async_load_script_promise', '$UTF8ToString', '$promiseToCallbacks'],
   emscripten_async_load_script: function(url, onload, onerror)  {
-      
-      emscripten_async_load_script_promise(url).then(() => {
-        if (onload){
-          onload();
-        }
-      }).catch((error) => {
-        if (onerror) {
-          onerror();
-        } else {
-           err('emscripten_async_load_script error: ${error.message}');
-        }
-     });
-
-    },
+      var promise = emscripten_async_load_script_promise(url);
+      promiseToCallbacks(promise, onload, onerror);
+  },
 
   // Runs natively in pthread, no __proxy needed.
   emscripten_get_main_loop_timing: (mode, value) => {
