@@ -55,7 +55,8 @@ addToLibrary({
   _wasmfs_node_readdir__docs: '/** @suppress {checkTypes} */',
   _wasmfs_node_readdir__deps: [
     '$wasmfsNodeConvertNodeCode',
-    '$withStackSave',
+    '$stackSave',
+    '$stackRestore',
     '$stringToUTF8OnStack',
     '_wasmfs_node_record_dirent',
   ],
@@ -69,21 +70,21 @@ addToLibrary({
       return wasmfsNodeConvertNodeCode(e);
     }
     entries.forEach((entry) => {
-      withStackSave(() => {
-        let name = stringToUTF8OnStack(entry.name);
-        let type;
-        // TODO: Figure out how to use `cDefine` here.
-        if (entry.isFile()) {
-          type = 1;
-        } else if (entry.isDirectory()) {
-          type = 2;
-        } else if (entry.isSymbolicLink()) {
-          type = 3;
-        } else {
-          type = 0;
-        }
-        __wasmfs_node_record_dirent(vec, name, type);
-      });
+      let sp = stackSave();
+      let name = stringToUTF8OnStack(entry.name);
+      let type;
+      // TODO: Figure out how to use `cDefine` here.
+      if (entry.isFile()) {
+        type = 1;
+      } else if (entry.isDirectory()) {
+        type = 2;
+      } else if (entry.isSymbolicLink()) {
+        type = 3;
+      } else {
+        type = 0;
+      }
+      __wasmfs_node_record_dirent(vec, name, type);
+      stackRestore(sp);
     });
     // implicitly return 0
   },

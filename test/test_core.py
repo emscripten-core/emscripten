@@ -8232,6 +8232,10 @@ Module.onRuntimeInitialized = () => {
   def test_asyncify_indirect_lists(self, args, should_pass):
     self.set_setting('ASYNCIFY')
     self.emcc_args += args
+    if '-flto' in str(self.emcc_args):
+      # LTO ends up inlining virt(), so ASYNCIFY_ADD does not work as expected.
+      # If wasm-opt were aware of LLVM's no-inline mark this would not happen.
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/21757')
     try:
       self.do_core_test('test_asyncify_indirect_lists.cpp', assert_identical=True)
       if not should_pass:
