@@ -83,6 +83,9 @@ addToLibrary({
 #if ASSERTIONS || EXIT_RUNTIME
     '$keepRuntimeAlive',
 #endif
+#if PTHREADS
+    '$exitOnMainThread',
+#endif
 #if PTHREADS_DEBUG
     '$runtimeKeepaliveCounter',
 #endif

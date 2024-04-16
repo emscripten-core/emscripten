@@ -599,9 +599,6 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   if settings.DYNCALLS:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/dyncall-externs.js')]
 
-  if settings.MINIMAL_RUNTIME and settings.PTHREADS:
-    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/minimal_runtime_worker_externs.js')]
-
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
   # Keep in sync with ecmaVersion in tools/acorn-optimizer.mjs
   args += ['--language_in', 'ECMASCRIPT_2021']

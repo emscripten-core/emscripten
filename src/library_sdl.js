@@ -2907,14 +2907,14 @@ var LibrarySDL = {
     return SDL.setGetVolume(SDL.music, volume);
   },
 
-  Mix_LoadMUS_RW__docs: '/** @param {number} a1 */',
-  Mix_LoadMUS_RW: 'Mix_LoadWAV_RW',
+  Mix_LoadMUS_RW__deps: ['Mix_LoadWAV_RW'],
+  Mix_LoadMUS_RW: (filename) => _Mix_LoadWAV_RW(filename, 0),
 
   Mix_LoadMUS__deps: ['Mix_LoadMUS_RW', 'SDL_RWFromFile', 'SDL_FreeRW'],
   Mix_LoadMUS__proxy: 'sync',
   Mix_LoadMUS: (filename) => {
     var rwops = _SDL_RWFromFile(filename, 0);
-    var result = _Mix_LoadMUS_RW(rwops, 0);
+    var result = _Mix_LoadMUS_RW(rwops);
     _SDL_FreeRW(rwops);
     return result;
   },

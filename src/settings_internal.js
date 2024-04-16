@@ -131,9 +131,6 @@ var USER_EXPORTED_FUNCTIONS = [];
 // name of the file containing wasm binary, if relevant
 var WASM_BINARY_FILE = '';
 
-// name of the file containing the pthread *.worker.js, if relevant
-var PTHREAD_WORKER_FILE = '';
-
 // name of the file containing the Wasm Worker *.ww.js, if relevant
 var WASM_WORKER_FILE = '';
 
