@@ -888,21 +888,6 @@ function buildStringArray(array) {
   }
 }
 
-// Generates access to a JS imports scope variable in pthreads worker.js. In MODULARIZE mode these flow into the imports object for the Module.
-// In non-MODULARIZE mode, we can directly access the variables in global scope.
-function makeAsmImportsAccessInPthread(variable) {
-  if (!MINIMAL_RUNTIME) {
-    // Regular runtime uses the name "Module" for both imports and exports.
-    return `Module['${variable}']`;
-  }
-  if (MODULARIZE) {
-    // MINIMAL_RUNTIME uses 'imports' as the name for the imports object in MODULARIZE builds.
-    return `imports['${variable}']`;
-  }
-  // In non-MODULARIZE builds, can access the imports from global scope.
-  return `self.${variable}`;
-}
-
 function _asmjsDemangle(symbol) {
   if (symbol.startsWith('dynCall_')) {
     return symbol;
@@ -1130,7 +1115,6 @@ addToCompileTimeContext({
   hasExportedSymbol,
   implicitSelf,
   isSymbolNeeded,
-  makeAsmImportsAccessInPthread,
   makeDynCall,
   makeEval,
   makeGetValue,

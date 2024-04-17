@@ -345,11 +345,8 @@ class other(RunnerCore):
                       test_file('hello_world.c')] + args)
     src = read_file('subdir/hello_world.mjs')
     self.assertContained("new URL('hello_world.wasm', import.meta.url)", src)
-    self.assertContained("new Worker(new URL('hello_world.worker.mjs', import.meta.url), {type: 'module'})", src)
-    self.assertContained("new Worker(pthreadMainJs, {type: 'module'})", src)
+    self.assertContained("new Worker(new URL(import.meta.url), workerOptions)", src)
     self.assertContained('export default Module;', src)
-    src = read_file('subdir/hello_world.worker.mjs')
-    self.assertContained("import('./hello_world.mjs')", src)
     self.assertContained('hello, world!', self.run_js('subdir/hello_world.mjs'))
 
   @node_pthreads
@@ -360,8 +357,7 @@ class other(RunnerCore):
                       test_file('hello_world.c'), '-sSINGLE_FILE'])
     src = read_file('hello_world.mjs')
     self.assertNotContained("new URL('data:", src)
-    self.assertContained("new Worker(new URL('hello_world.worker.mjs', import.meta.url), {type: 'module'})", src)
-    self.assertContained("new Worker(pthreadMainJs, {type: 'module'})", src)
+    self.assertContained("new Worker(new URL(import.meta.url), workerOptions)", src)
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
   def test_emcc_output_mjs_closure(self):
@@ -409,8 +405,7 @@ class other(RunnerCore):
   @parameterized({
     '': ([],),
     # load a worker before startup to check ES6 modules there as well
-    # pass -O2 to ensure the worker JS file is minified with Acorn
-    'pthreads': (['-O2', '-pthread', '-sPTHREAD_POOL_SIZE=1'],),
+    'pthreads': (['-pthread', '-sPTHREAD_POOL_SIZE=1'],),
   })
   def test_export_es6(self, args, package_json):
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6',
@@ -3305,6 +3300,17 @@ More info: https://emscripten.org
     self.assertFileContents(test_file('other/test_emit_tsd.d.ts'), read_file('test_emit_tsd.d.ts'))
     # Test that the output compiles with a TS file that uses the defintions.
     cmd = shared.get_npm_cmd('tsc') + [test_file('other/test_tsd.ts'), '--noEmit']
+    shared.check_call(cmd)
+
+  def test_emit_tsd_sync_compilation(self):
+    self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
+                      '--emit-tsd', 'test_emit_tsd_sync.d.ts',
+                      '-sMODULARIZE', '-sWASM_ASYNC_COMPILATION=0',
+                      '-o', 'test_emit_tsd_sync.js'] +
+                     self.get_emcc_args())
+    self.assertFileContents(test_file('other/test_emit_tsd_sync.d.ts'), read_file('test_emit_tsd_sync.d.ts'))
+    # Test that the output compiles with a TS file that uses the defintions.
+    cmd = shared.get_npm_cmd('tsc') + [test_file('other/test_tsd_sync.ts'), '--noEmit']
     shared.check_call(cmd)
 
   def test_emit_tsd_wasm_only(self):
@@ -8409,9 +8415,6 @@ int main() {
       size_file = expected_basename + '.size'
       js_size = os.path.getsize('a.out.js')
       gz_size = get_file_gzipped_size('a.out.js')
-      if '-pthread' in args:
-        js_size += os.path.getsize('a.out.worker.js')
-        gz_size += get_file_gzipped_size('a.out.worker.js')
       js_size_file = expected_basename + '.jssize'
       gz_size_file = expected_basename + '.gzsize'
       self.check_expected_size_in_file('wasm', size_file, wasm_size)
@@ -12301,8 +12304,13 @@ exec "$@"
     self.run_process([EMCC, test_file('core/test_longjmp.c'), '-c', '-sSUPPORT_LONGJMP=wasm', '-o', 'a.o'])
 
   def test_pthread_MODULARIZE(self):
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-pthread', '-sMODULARIZE'])
-    self.assertContained('pthreads + MODULARIZE currently require you to set -sEXPORT_NAME=Something (see settings.js) to Something != Module, so that the .worker.js file can work', err)
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.mjs', '-pthread', '-sPROXY_TO_PTHREAD', '-sMODULARIZE', '-sEXIT_RUNTIME'])
+    create_file('runner.mjs', '''
+      import Hello from "./out.mjs";
+      Hello();
+    ''')
+    output = self.run_js('runner.mjs')
+    self.assertContained('hello, world!', output)
 
   def test_jslib_clobber_i(self):
     # Regression check for an issue we have where a library clobbering the global `i` variable could
@@ -14486,10 +14494,17 @@ addToLibrary({
     create_file('b.cpp', '#include <emscripten/bind.h>')
     self.run_process([EMXX, '-std=c++23', '-lembind', 'a.cpp', 'b.cpp'])
 
+  def test_legacy_pthread_worker_js(self):
+    self.do_runf('hello_world.c', emcc_args=['-pthread', '-sSTRICT'])
+    self.assertNotExists('hello_world.worker.js')
+    self.do_runf('hello_world.c', emcc_args=['-pthread'])
+    self.assertExists('hello_world.worker.js')
+
   def test_no_pthread(self):
     self.do_runf('hello_world.c', emcc_args=['-pthread', '-no-pthread'])
     self.assertExists('hello_world.js')
     self.assertNotExists('hello_world.worker.js')
+    self.assertNotContained('Worker', read_file('hello_world.js'))
 
   def test_sysroot_includes_first(self):
     self.do_other_test('test_stdint_limits.c', emcc_args=['-std=c11', '-iwithsysroot/include'])

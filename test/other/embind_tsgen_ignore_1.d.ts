@@ -10,10 +10,6 @@ declare namespace RuntimeExports {
     let HEAPU32: any;
     let HEAP64: any;
     let HEAPU64: any;
-    function keepRuntimeAlive(): any;
-    /** @constructor */
-    function ExitStatus(status: any): void;
-    let wasmMemory: any;
     let FS_createPath: any;
     function FS_createDataFile(parent: any, name: any, fileData: any, canRead: any, canWrite: any, canOwn: any): void;
     function FS_createPreloadedFile(parent: any, name: any, url: any, canRead: any, canWrite: any, onload: any, onerror: any, dontCreateFile: any, canOwn: any, preFinish: any): void;
@@ -24,14 +20,8 @@ declare namespace RuntimeExports {
     let removeRunDependency: any;
 }
 interface WasmModule {
-  _pthread_self(): number;
   _main(_0: number, _1: number): number;
-  __embind_initialize_bindings(): void;
-  __emscripten_tls_init(): number;
   __emscripten_proxy_main(_0: number, _1: number): number;
-  __emscripten_thread_init(_0: number, _1: number, _2: number, _3: number, _4: number, _5: number): void;
-  __emscripten_thread_crashed(): void;
-  __emscripten_thread_exit(_0: number): void;
 }
 
 type EmbindString = ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string;

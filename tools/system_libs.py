@@ -1092,6 +1092,7 @@ class libc(MuslInternalLibrary,
         'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
         'res_query.c', 'res_querydomain.c',
         'proto.c',
+        'ppoll.c',
         'syscall.c', 'popen.c', 'pclose.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
         'getentropy.c',
@@ -1232,7 +1233,7 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/linux',
-        filenames=['getdents.c', 'gettid.c', 'utimes.c'])
+        filenames=['getdents.c', 'gettid.c', 'utimes.c', 'statx.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/sched',

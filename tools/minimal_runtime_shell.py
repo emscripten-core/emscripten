@@ -68,9 +68,6 @@ def generate_minimal_runtime_load_statement(target_basename):
     if download_wasm and settings.WASM_WORKERS == 1:
       files_to_load += ["binary('%s')" % (target_basename + '.ww.js')]
 
-  if settings.MODULARIZE and settings.PTHREADS:
-    modularize_imports += ["worker: '{{{ PTHREAD_WORKER_FILE }}}'"]
-
   # Download Wasm2JS code if target browser does not support WebAssembly
   if settings.WASM == 2:
     if settings.MODULARIZE:
@@ -194,7 +191,7 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
 
   shell = shell.replace('{{{ TARGET_BASENAME }}}', target_basename)
   shell = shell.replace('{{{ EXPORT_NAME }}}', settings.EXPORT_NAME)
-  shell = shell.replace('{{{ PTHREAD_WORKER_FILE }}}', settings.PTHREAD_WORKER_FILE)
+  shell = shell.replace('{{{ TARGET_JS_NAME }}}', settings.TARGET_JS_NAME)
 
   # In SINGLE_FILE build, embed the main .js file into the .html output
   if settings.SINGLE_FILE:

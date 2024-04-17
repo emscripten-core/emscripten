@@ -63,7 +63,9 @@ function report_error(e) {
 }
 
 if (typeof window === 'object' && window) {
-  window.addEventListener('error', event => report_error(event.error));
+  window.addEventListener('error', event => {
+    report_error(event.error || event)
+  });
   window.addEventListener('unhandledrejection', event => report_error(event.reason));
 }
 
@@ -76,11 +78,17 @@ if (hasModule) {
         maybeReportResultToServer('exit:' + status);
       }
     }
+    // Force these handlers to be proxied back to the main thread.
+    // Without this tagging the handler will run each thread, which means
+    // each thread uses its own copy of `maybeReportResultToServer` which
+    // breaks the checking for duplicate reporting.
+    Module['onExit'].proxy = true;
   }
 
   if (!Module['onAbort']) {
     Module['onAbort'] = function(reason) {
       maybeReportResultToServer('abort:' + reason);
     }
+    Module['onAbort'].proxy = true;
   }
 }

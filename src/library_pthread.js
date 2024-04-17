@@ -75,7 +75,7 @@ var LibraryPThread = {
         ) {
           t = _pthread_self();
         }
-        return 'w:' + (Module['workerID'] || 0) + ',t:' + ptrToString(t) + ': ';
+        return 'w:' + workerID + ',t:' + ptrToString(t) + ': ';
       }
 
       // Prefix all err()/dbg() messages with the calling thread ID.
@@ -127,16 +127,6 @@ var LibraryPThread = {
     },
 
     initWorker() {
-#if MAYBE_CLOSURE_COMPILER
-      // worker.js is not compiled together with us, and must access certain
-      // things.
-      PThread['receiveObjectTransfer'] = PThread.receiveObjectTransfer;
-      PThread['threadInitTLS'] = PThread.threadInitTLS;
-#if !MINIMAL_RUNTIME
-      PThread['setExitStatus'] = PThread.setExitStatus;
-#endif
-#endif
-
 #if isSymbolNeeded('$noExitRuntime')
       // The default behaviour for pthreads is always to exit once they return
       // from their entry point (or call pthread_exit).  If we set noExitRuntime
@@ -373,16 +363,6 @@ var LibraryPThread = {
       worker.postMessage({
         'cmd': 'load',
         'handlers': handlers,
-        // If the application main .js file was loaded from a Blob, then it is not possible
-        // to access the URL of the current script that could be passed to a Web Worker so that
-        // it could load up the same file. In that case, developer must either deliver the Blob
-        // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
-        // independently load up the same main application file.
-        'urlOrBlob': Module['mainScriptUrlOrBlob']
-#if !EXPORT_ES6
-        || _scriptName
-#endif
-        ,
 #if WASM2JS
         // the polyfill WebAssembly.Memory instance has function properties,
         // which will fail in postMessage, so just send a custom object with the
@@ -440,34 +420,50 @@ var LibraryPThread = {
     // Creates a new web Worker and places it in the unused worker pool to wait for its use.
     allocateUnusedWorker() {
       var worker;
-#if MINIMAL_RUNTIME
-      var pthreadMainJs = Module['worker'] || './{{{ PTHREAD_WORKER_FILE }}}';
-#else
+      var workerOptions = {
+#if EXPORT_ES6
+        'type': 'module',
+#endif
+#if ENVIRONMENT_MAY_BE_NODE
+        // This is the way that we signal to the node worker that it is hosting
+        // a pthread.
+        'workerData': 'em-pthread',
+#endif
+#if ENVIRONMENT_MAY_BE_WEB
+        // This is the way that we signal to the Web Worker that it is hosting
+        // a pthread.
+        'name': 'em-pthread',
+#endif
+      };
 #if EXPORT_ES6 && USE_ES6_IMPORT_META
-      // If we're using module output and there's no explicit override, use bundler-friendly pattern.
-      if (!Module['locateFile']) {
+      // If we're using module output, use bundler-friendly pattern.
 #if PTHREADS_DEBUG
-        dbg('Allocating a new web worker from ' + new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url));
+      dbg('Allocating a new web worker from ' + import.meta.url);
 #endif
 #if TRUSTED_TYPES
-        // Use Trusted Types compatible wrappers.
-        if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
-          var p = trustedTypes.createPolicy(
-            'emscripten#workerPolicy1',
-            {
-              createScriptURL: (ignored) => new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url);
-            }
-          );
-          worker = new Worker(p.createScriptURL('ignored'), {type: 'module'});
-        } else
+      // Use Trusted Types compatible wrappers.
+      if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
+        var p = trustedTypes.createPolicy(
+          'emscripten#workerPolicy1',
+          {
+            createScriptURL: (ignored) => new URL(import.meta.url);
+          }
+        );
+        worker = new Worker(p.createScriptURL('ignored'), workerOptions);
+      } else
 #endif
-        worker = new Worker(new URL('{{{ PTHREAD_WORKER_FILE }}}', import.meta.url), {type: 'module'});
-      } else {
-#endif
-      // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
-      // via Module.locateFile() function. If not specified, then the default URL 'worker.js' relative
-      // to the main html file is loaded.
-      var pthreadMainJs = locateFile('{{{ PTHREAD_WORKER_FILE }}}');
+      worker = new Worker(new URL(import.meta.url), workerOptions);
+#else
+      var pthreadMainJs = _scriptName;
+#if expectToReceiveOnModule('mainScriptUrlOrBlob')
+      // We can't use makeModuleReceiveWithVar here since we want to also
+      // call URL.createObjectURL on the mainScriptUrlOrBlob.
+      if (Module['mainScriptUrlOrBlob']) {
+        pthreadMainJs = Module['mainScriptUrlOrBlob'];
+        if (typeof pthreadMainJs != 'string') {
+          pthreadMainJs = URL.createObjectURL(pthreadMainJs);
+        }
+      }
 #endif
 #if PTHREADS_DEBUG
       dbg(`Allocating a new web worker from ${pthreadMainJs}`);
@@ -476,14 +472,12 @@ var LibraryPThread = {
       // Use Trusted Types compatible wrappers.
       if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
         var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: (ignored) => pthreadMainJs });
-        worker = new Worker(p.createScriptURL('ignored'){{{ EXPORT_ES6 ? ", {type: 'module'}" : '' }}});
+        worker = new Worker(p.createScriptURL('ignored'), workerOptions);
       } else
 #endif
-      worker = new Worker(pthreadMainJs{{{ EXPORT_ES6 ? ", {type: 'module'}" : '' }}});
-#if EXPORT_ES6 && USE_ES6_IMPORT_META
-    }
-#endif
-    PThread.unusedWorkers.push(worker);
+      worker = new Worker(pthreadMainJs, workerOptions);
+#endif // EXPORT_ES6 && USE_ES6_IMPORT_META
+      PThread.unusedWorkers.push(worker);
     },
 
     getNewWorker() {
@@ -960,7 +954,7 @@ var LibraryPThread = {
   $proxyToMainThreadPtr: (...args) => BigInt(proxyToMainThread(...args)),
 #endif
 
-  $proxyToMainThread__deps: ['$withStackSave', '$stackAlloc', '_emscripten_run_on_main_thread_js'].concat(i53ConversionDeps),
+  $proxyToMainThread__deps: ['$stackSave', '$stackRestore', '$stackAlloc', '_emscripten_run_on_main_thread_js'].concat(i53ConversionDeps),
   $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
   $proxyToMainThread: (funcIndex, emAsmAddr, sync, ...callArgs) => {
     // EM_ASM proxying is done by passing a pointer to the address of the EM_ASM
@@ -973,34 +967,36 @@ var LibraryPThread = {
     // all the args here.
     // We also pass 'sync' to C separately, since C needs to look at it.
     // Allocate a buffer, which will be copied by the C code.
-    return withStackSave(() => {
-      // First passed parameter specifies the number of arguments to the function.
-      // When BigInt support is enabled, we must handle types in a more complex
-      // way, detecting at runtime if a value is a BigInt or not (as we have no
-      // type info here). To do that, add a "prefix" before each value that
-      // indicates if it is a BigInt, which effectively doubles the number of
-      // values we serialize for proxying. TODO: pack this?
-      var serializedNumCallArgs = callArgs.length {{{ WASM_BIGINT ? "* 2" : "" }}};
-      var args = stackAlloc(serializedNumCallArgs * 8);
-      var b = {{{ getHeapOffset('args', 'i64') }}};
-      for (var i = 0; i < callArgs.length; i++) {
-        var arg = callArgs[i];
+    //
+    // First passed parameter specifies the number of arguments to the function.
+    // When BigInt support is enabled, we must handle types in a more complex
+    // way, detecting at runtime if a value is a BigInt or not (as we have no
+    // type info here). To do that, add a "prefix" before each value that
+    // indicates if it is a BigInt, which effectively doubles the number of
+    // values we serialize for proxying. TODO: pack this?
+    var serializedNumCallArgs = callArgs.length {{{ WASM_BIGINT ? "* 2" : "" }}};
+    var sp = stackSave();
+    var args = stackAlloc(serializedNumCallArgs * 8);
+    var b = {{{ getHeapOffset('args', 'i64') }}};
+    for (var i = 0; i < callArgs.length; i++) {
+      var arg = callArgs[i];
 #if WASM_BIGINT
-        if (typeof arg == 'bigint') {
-          // The prefix is non-zero to indicate a bigint.
-          HEAP64[b + 2*i] = 1n;
-          HEAP64[b + 2*i + 1] = arg;
-        } else {
-          // The prefix is zero to indicate a JS Number.
-          HEAP64[b + 2*i] = 0n;
-          HEAPF64[b + 2*i + 1] = arg;
-        }
-#else
-        HEAPF64[b + i] = arg;
-#endif
+      if (typeof arg == 'bigint') {
+        // The prefix is non-zero to indicate a bigint.
+        HEAP64[b + 2*i] = 1n;
+        HEAP64[b + 2*i + 1] = arg;
+      } else {
+        // The prefix is zero to indicate a JS Number.
+        HEAP64[b + 2*i] = 0n;
+        HEAPF64[b + 2*i + 1] = arg;
       }
-      return __emscripten_run_on_main_thread_js(funcIndex, emAsmAddr, serializedNumCallArgs, args, sync);
-    });
+#else
+      HEAPF64[b + i] = arg;
+#endif
+    }
+    var rtn = __emscripten_run_on_main_thread_js(funcIndex, emAsmAddr, serializedNumCallArgs, args, sync);
+    stackRestore(sp);
+    return rtn;
   },
 
   // Reuse global JS array to avoid creating JS garbage for each proxied call

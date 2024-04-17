@@ -5590,6 +5590,10 @@ Module = {
     self.do_runf('stat/test_stat.c', 'success')
     self.verify_in_strict_mode('test_stat.js')
 
+  def test_statx(self):
+    self.set_setting("FORCE_FILESYSTEM")
+    self.do_runf('stat/test_statx.c', 'success')
+
   def test_fstatat(self):
     self.do_runf('stat/test_fstatat.c', 'success')
 
@@ -6905,6 +6909,12 @@ void* operator new(size_t size) {
   @no_asan('autodebug logging interferes with asan')
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
   def test_autodebug_wasm(self):
+    # Even though the test itself doesn't directly use reference types,
+    # Binaryen's '--instrument-locals' will add their logging functions if
+    # reference-types is enabled. So make sure this test passes when
+    # reference-types feature is enabled as well.
+    self.emcc_args += ['-mreference-types']
+    self.node_args += shared.node_reference_types_flags(self.get_nodejs())
     output = self.do_runf('core/test_autodebug.c', 'success')
     # test that the program both works and also emits some of the logging
     # (but without the specific output, as it is logging the actual locals
@@ -8232,6 +8242,10 @@ Module.onRuntimeInitialized = () => {
   def test_asyncify_indirect_lists(self, args, should_pass):
     self.set_setting('ASYNCIFY')
     self.emcc_args += args
+    if '-flto' in str(self.emcc_args):
+      # LTO ends up inlining virt(), so ASYNCIFY_ADD does not work as expected.
+      # If wasm-opt were aware of LLVM's no-inline mark this would not happen.
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/21757')
     try:
       self.do_core_test('test_asyncify_indirect_lists.cpp', assert_identical=True)
       if not should_pass:
@@ -9378,6 +9392,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # test that Module.dynamicLibraries works with pthreads
     self.emcc_args += args
     self.emcc_args += ['--pre-js', 'pre.js']
+    self.emcc_args += ['--js-library', 'lib.js']
     # This test is for setting dynamicLibraries at runtime so we don't
     # want emscripten loading `liblib.so` automatically (which it would
     # do without this setting.
@@ -9387,22 +9402,29 @@ NODEFS is no longer included by default; build with -lnodefs.js
       Module['dynamicLibraries'] = ['liblib.so'];
     ''')
 
-    if args:
-      self.setup_node_pthreads()
-      create_file('post.js', '''
-        if (ENVIRONMENT_IS_PTHREAD) {
+    create_file('lib.js', '''
+      addToLibrary({
+        mainCallback: () => {
+#if PTHREADS
           err('sharedModules: ' + Object.keys(sharedModules));
           assert('liblib.so' in sharedModules);
           assert(sharedModules['liblib.so'] instanceof WebAssembly.Module);
-        }
-      ''')
-      self.emcc_args += ['--post-js', 'post.js']
+#endif
+        },
+      })
+    ''')
+
+    if args:
+      self.setup_node_pthreads()
 
     self.dylink_test(
       r'''
+        void mainCallback();
+
         #include <stdio.h>
         int side();
         int main() {
+          mainCallback();
           printf("result is %d\n", side());
           return 0;
         }
@@ -9410,7 +9432,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
       r'''
         int side() { return 42; }
       ''',
-      'result is 42')
+      'result is 42',
+      force_c=True)
 
   # Tests the emscripten_get_exported_function() API.
   def test_get_exported_function(self):

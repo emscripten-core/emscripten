@@ -727,15 +727,15 @@ addToLibrary({
    * Passing a NULL callback function to a emscripten_set_socket_*_callback call
    * will deregister the callback registered for that Event.
    */
-  $_setNetworkCallback__deps: ['$withStackSave', '$stringToUTF8OnStack'],
+  $_setNetworkCallback__deps: ['$stackSave', '$stackRestore', '$stringToUTF8OnStack'],
   $_setNetworkCallback: (event, userData, callback) => {
     function _callback(data) {
       try {
         if (event === 'error') {
-          withStackSave(function() {
-            var msg = stringToUTF8OnStack(data[2]);
-            {{{ makeDynCall('viiii', 'callback') }}}(data[0], data[1], msg, userData);
-          });
+          var sp = stackSave();
+          var msg = stringToUTF8OnStack(data[2]);
+          {{{ makeDynCall('viiii', 'callback') }}}(data[0], data[1], msg, userData);
+          stackRestore(sp);
         } else {
           {{{ makeDynCall('vii', 'callback') }}}(data, userData);
         }
