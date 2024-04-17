@@ -290,22 +290,22 @@ def trim_asm_const_body(body):
   return body
 
 
-def create_global_exports(metadata):
-  global_exports = []
-  for k, v in metadata.global_exports.items():
+def create_global_exports(global_exports):
+  lines = []
+  for k, v in global_exports.items():
     v = int(v)
     if settings.RELOCATABLE:
       v += settings.GLOBAL_BASE
     mangled = asmjs_mangle(k)
     if settings.MINIMAL_RUNTIME:
-      global_exports.append("var %s = %s;" % (mangled, v))
+      lines.append("var %s = %s;" % (mangled, v))
     else:
-      global_exports.append("var %s = Module['%s'] = %s;" % (mangled, mangled, v))
+      lines.append("var %s = Module['%s'] = %s;" % (mangled, mangled, v))
 
-  return '\n'.join(global_exports)
+  return '\n'.join(lines)
 
 
-def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
+def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadata=None):
   # Overview:
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
   #     to use emscripten's wasm<->JS ABI
@@ -328,12 +328,6 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
 
   if settings.RELOCATABLE and settings.MEMORY64 == 2:
     metadata.imports += ['__memory_base32']
-
-  if settings.ASYNCIFY == 1:
-    metadata.function_exports['asyncify_start_unwind'] = webassembly.FuncType([webassembly.Type.I32], [])
-    metadata.function_exports['asyncify_stop_unwind'] = webassembly.FuncType([], [])
-    metadata.function_exports['asyncify_start_rewind'] = webassembly.FuncType([webassembly.Type.I32], [])
-    metadata.function_exports['asyncify_stop_rewind'] = webassembly.FuncType([], [])
 
   # If the binary has already been finalized the settings have already been
   # updated and we can skip updating them.
@@ -444,18 +438,31 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
       '// === Body ===\n',
       '// === Body ===\n\n' + extra_code + '\n')
 
+  if base_metadata:
+    function_exports = base_metadata.function_exports
+    global_exports = base_metadata.global_exports
+  else:
+    function_exports = metadata.function_exports
+    global_exports = metadata.global_exports
+
+  if settings.ASYNCIFY == 1:
+    function_exports['asyncify_start_unwind'] = webassembly.FuncType([webassembly.Type.I32], [])
+    function_exports['asyncify_stop_unwind'] = webassembly.FuncType([], [])
+    function_exports['asyncify_start_rewind'] = webassembly.FuncType([webassembly.Type.I32], [])
+    function_exports['asyncify_stop_rewind'] = webassembly.FuncType([], [])
+
   with open(outfile_js, 'w', encoding='utf-8') as out:
     out.write(pre)
     pre = None
 
-    receiving = create_receiving(metadata.function_exports)
+    receiving = create_receiving(function_exports)
 
     if settings.MINIMAL_RUNTIME:
       if settings.DECLARE_ASM_MODULE_EXPORTS:
-        post = compute_minimal_runtime_initializer_and_exports(post, metadata.function_exports, receiving)
+        post = compute_minimal_runtime_initializer_and_exports(post, function_exports, receiving)
       receiving = ''
 
-    module = create_module(receiving, metadata, forwarded_json['librarySymbols'])
+    module = create_module(receiving, metadata, global_exports, forwarded_json['librarySymbols'])
 
     metadata.library_definitions = forwarded_json['libraryDefinitions']
 
@@ -638,8 +645,7 @@ def create_tsd(metadata, embind_tsd):
     out += create_tsd_exported_runtime_methods(metadata)
   # Manually generate defintions for any Wasm function exports.
   out += 'interface WasmModule {\n'
-  function_exports = metadata.function_exports
-  for name, types in function_exports.items():
+  for name, types in metadata.function_exports.items():
     mangled = asmjs_mangle(name)
     should_export = settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS
     if not should_export:
@@ -950,8 +956,8 @@ def create_receiving(function_exports):
     return '\n'.join(receiving) + '\n'
 
 
-def create_module(receiving, metadata, library_symbols):
-  receiving += create_global_exports(metadata)
+def create_module(receiving, metadata, global_exports, library_symbols):
+  receiving += create_global_exports(global_exports)
   module = []
 
   sending = create_sending(metadata, library_symbols)
