@@ -6416,11 +6416,11 @@ int main(void) {
 console.log('before');
 var result = Module();
 // It should be an object.
-console.log(typeof result);
+console.log('typeof result: ' + typeof result);
 // And it should have the exports that Module has, showing it is Module in fact.
-console.log(typeof result._main);
+console.log('typeof _main: ' + typeof result._main);
 // And it should not be a Promise.
-console.log(typeof result.then);
+console.log('typeof result.then: ' + typeof result.then);
 console.log('after');
 ''')
     self.run_process([EMCC, test_file('hello_world.c'),
@@ -6430,11 +6430,24 @@ console.log('after');
     self.assertContained('''\
 before
 hello, world!
-object
-function
-undefined
+typeof result: object
+typeof _main: function
+typeof result.then: undefined
 after
 ''', self.run_js('a.out.js'))
+
+  def test_modularize_argument_misuse(self):
+    create_file('test.c', '''
+      #include <emscripten.h>
+      EMSCRIPTEN_KEEPALIVE int foo() { return 42; }''')
+
+    create_file('post.js', r'''
+      var arg = { bar: 1 };
+      var promise = Module(arg);
+      arg._foo();''')
+
+    expected = "Aborted(Access to module property ('_foo') is no longer possible via the incoming module contructor argument; Instead, use the result of the module promise"
+    self.do_runf('test.c', expected, assert_returncode=NON_ZERO, emcc_args=['--no-entry', '-sMODULARIZE', '--extern-post-js=post.js'])
 
   def test_export_all_3142(self):
     create_file('src.cpp', r'''
