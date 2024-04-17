@@ -4813,6 +4813,69 @@ res64 - external 64\n''', header='''\
 
     self.do_runf("main.cpp", "side: caught int 3\n")
 
+  @with_both_eh_sjlj
+  @needs_dylink
+  def test_dylink_exceptions_try_catch_64_bit(self):
+    self.set_setting('WASM_BIGINT')
+    create_file('main.cpp', r'''
+      #include <dlfcn.h>
+      #include <cstdint>
+      #include <iostream>
+      int main() {
+        void* handle = dlopen("liblib.so", RTLD_LAZY);
+        int64_t (*side)(int,int) = (int64_t (*)(int,int))dlsym(handle, "side");
+        try{
+          (side)(1,2);              
+        }catch(int x){
+            std::cout << "Caught int " << x << std::endl;
+        }
+        return 0;
+      }
+    ''')
+
+    # Create a dependency on __cxa_find_matching_catch_6 (6 = num clauses + 2)
+    # which is one higher than the default set of __cxa_find_matching_catch
+    # functions created in library_exceptions.js.
+    # This means we end up depending on dynamic linking code to redirect
+    # __cxa_find_matching_catch_6 to __cxa_find_matching_catch.
+    create_file('liblib.cpp', r'''
+#include <stdio.h>
+#include <emscripten.h>
+#include <string>
+
+static volatile int should_throw = 0;
+
+int64_t kaboom(int64_t j,int k,int64_t l) {
+    if (should_throw) {
+        throw 3;
+    }
+    return 0;
+}
+extern "C" int64_t side(int a,int b) {
+      // object with destructor to force invoke
+      std::string x("YAY"); 
+
+      should_throw=1;
+      kaboom(1,2,3);
+      return 0;
+}
+    ''')
+
+    self.maybe_closure()
+
+    # side settings
+    self.clear_setting('MAIN_MODULE')
+    self.set_setting('SIDE_MODULE')
+    out_file = self.build('liblib.cpp', js_outfile=False)
+    shutil.move(out_file, "liblib.so")
+
+    # main settings
+    self.set_setting('MAIN_MODULE', 1)
+    self.clear_setting('SIDE_MODULE')
+
+    self.do_runf("main.cpp", "Caught int 3\n")
+
+
   @needs_dylink
   @disabled('https://github.com/emscripten-core/emscripten/issues/12815')
   def test_dylink_hyper_dupe(self):
