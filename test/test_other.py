@@ -12304,8 +12304,13 @@ exec "$@"
     self.run_process([EMCC, test_file('core/test_longjmp.c'), '-c', '-sSUPPORT_LONGJMP=wasm', '-o', 'a.o'])
 
   def test_pthread_MODULARIZE(self):
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-pthread', '-sMODULARIZE'])
-    self.assertContained('pthreads + MODULARIZE currently require you to set -sEXPORT_NAME=Something (see settings.js) to Something != Module, so that the .worker.js file can work', err)
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.mjs', '-pthread', '-sPROXY_TO_PTHREAD', '-sMODULARIZE', '-sEXIT_RUNTIME'])
+    create_file('runner.mjs', '''
+      import Hello from "./out.mjs";
+      Hello();
+    ''')
+    output = self.run_js('runner.mjs')
+    self.assertContained('hello, world!', output)
 
   def test_jslib_clobber_i(self):
     # Regression check for an issue we have where a library clobbering the global `i` variable could
