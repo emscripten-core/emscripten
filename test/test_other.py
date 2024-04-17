@@ -6224,10 +6224,8 @@ This locale is not the C locale.
     test(['-O2'], 46000)
     test(['-O3', '--closure=1'], 17000)
     # js too
-    # -Wclosure is needed due to
-    # https://github.com/google/closure-compiler/issues/4108
-    test(['-O3', '--closure=1', '-Wno-closure', '-sWASM=0'], 36000)
-    test(['-O3', '--closure=2', '-Wno-closure', '-sWASM=0'], 33000) # might change now and then
+    test(['-O3', '--closure=1', '-sWASM=0'], 36000)
+    test(['-O3', '--closure=2', '-sWASM=0'], 33000) # might change now and then
 
   def test_no_browser(self):
     BROWSER_INIT = 'var Browser'
@@ -9138,7 +9136,7 @@ int main() {
       if debug_enabled:
         cmd += ['-g']
       if closure_enabled:
-        cmd += ['--closure=1', '-Wno-closure']
+        cmd += ['--closure=1']
 
       self.clear()
 
@@ -10681,7 +10679,7 @@ int main () {
 
     for closure in [[], ['--closure=1']]:
       for opt in [['-O2'], ['-O3'], ['-Os']]:
-        test(['-sWASM=0', '-Wno-closure'], closure, opt)
+        test(['-sWASM=0'], closure, opt)
         test(['-sWASM_ASYNC_COMPILATION=0'], closure, opt)
 
   @parameterized({
