@@ -34,8 +34,9 @@
 
 // libc
 
-void abort() {
-  _Exit(1);
+void _abort_js(void) {
+  __builtin_trap();
+  _Exit(117);
 }
 
 _Static_assert(CLOCK_REALTIME == __WASI_CLOCKID_REALTIME, "must match");

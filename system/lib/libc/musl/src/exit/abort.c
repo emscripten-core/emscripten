@@ -6,8 +6,20 @@
 #include "lock.h"
 #include "ksigaction.h"
 
+#if __EMSCRIPTEN__
+#include "emscripten_internal.h"
+#endif
+
 _Noreturn void abort(void)
 {
+#if __EMSCRIPTEN__
+	/* In emscripten we call out JS to perform that actual abort where it can
+	 * produce nice error.
+	 * Note that JS library function not called `abort` to avoid conflit with
+	 * the JavaScript abort helper (which takes a JS string and is used to
+	 * implement _abort_js) */
+	_abort_js();
+#else
 	raise(SIGABRT);
 
 	/* If there was a SIGABRT handler installed and it returned, or if
@@ -27,4 +39,5 @@ _Noreturn void abort(void)
 	a_crash();
 	raise(SIGKILL);
 	_Exit(127);
+#endif
 }
