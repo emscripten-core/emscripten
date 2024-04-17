@@ -267,7 +267,7 @@ def error_on_legacy_suite_names(args):
       utils.exit_with_error('`%s` test suite has been replaced with `%s`', a, new)
 
 
-def load_test_suites(args, modules, start_at):
+def load_test_suites(args, modules, start_at, repeat):
   found_start = not start_at
 
   loader = unittest.TestLoader()
@@ -296,8 +296,9 @@ def load_test_suites(args, modules, start_at):
             found_start = True
           else:
             continue
-        total_tests += 1
-        suite.addTest(test)
+        for _x in range(repeat):
+          total_tests += 1
+          suite.addTest(test)
       suites.append((m.__name__, suite))
   if not found_start:
     utils.exit_with_error(f'unable to find --start-at test: {start_at}')
@@ -389,6 +390,8 @@ def parse_args(args):
                            'Useful when combined with --failfast')
   parser.add_argument('--force64', action='store_const', const=True, default=None)
   parser.add_argument('--crossplatform-only', action='store_true')
+  parser.add_argument('--repeat', type=int, default=1,
+                      help='Repeat each test N times (default: 1).')
   return parser.parse_args()
 
 
@@ -476,7 +479,7 @@ def main(args):
     if os.path.exists(common.LAST_TEST):
       options.start_at = utils.read_file(common.LAST_TEST).strip()
 
-  suites, unmatched_tests = load_test_suites(tests, modules, options.start_at)
+  suites, unmatched_tests = load_test_suites(tests, modules, options.start_at, options.repeat)
   if unmatched_tests:
     print('ERROR: could not find the following tests: ' + ' '.join(unmatched_tests))
     return 1
