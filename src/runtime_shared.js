@@ -18,7 +18,7 @@
         // the heap. AudioWorkletGlobalScope is unable to access global JS vars
         // in the compiled main JS file.
         shouldExport = true;
-      } else if (EXPORTED_RUNTIME_METHODS.includes(x)) {
+      } else if (EXPORTS.includes(x)) {
         shouldExport = true;
       }
     }

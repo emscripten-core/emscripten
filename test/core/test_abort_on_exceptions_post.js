@@ -1,7 +1,7 @@
 addOnPostRun(function() {
   try {
     // Crash the program
-    _cFunc();
+    cFunc();
   }
   catch(e) {
     // Catch the abort
@@ -10,7 +10,7 @@ addOnPostRun(function() {
   out("again");
   try {
     // Try executing a function directly
-    _cFunc();
+    cFunc();
     out("never");
   }
   catch(e) {

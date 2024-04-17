@@ -1,2 +1,4 @@
 $__wasm_call_ctors
+$_emscripten_stack_restore
 $_start
+$emscripten_stack_get_current

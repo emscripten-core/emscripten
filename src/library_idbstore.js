@@ -25,10 +25,10 @@ var LibraryIDBStore = {
           if (onerror) {{{ makeDynCall('vp', 'onerror') }}}(arg);
           return;
         }
-        var buffer = _malloc(byteArray.length);
+        var buffer = malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
         {{{ makeDynCall('vppi', 'onload') }}}(arg, buffer, byteArray.length);
-        _free(buffer);
+        free(buffer);
       });
     });
   },
@@ -101,7 +101,7 @@ var LibraryIDBStore = {
         wakeUp();
         return;
       }
-      var buffer = _malloc(byteArray.length); // must be freed by the caller!
+      var buffer = malloc(byteArray.length); // must be freed by the caller!
       HEAPU8.set(byteArray, buffer);
       {{{ makeSetValue('pbuffer', 0, 'buffer', '*') }}};
       {{{ makeSetValue('pnum',    0, 'byteArray.length', 'i32') }}};

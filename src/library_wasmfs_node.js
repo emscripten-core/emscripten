@@ -87,7 +87,7 @@ addToLibrary({
         } else {
           type = {{{ cDefine('File::UnknownKind') }}};
         }
-        __wasmfs_node_record_dirent(vec, name, type);
+        _wasmfs_node_record_dirent(vec, name, type);
         stackRestore(sp);
         // implicitly return 0
       });

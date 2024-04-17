@@ -67,10 +67,10 @@ var LibraryWget = {
     asyncLoad(UTF8ToString(url), (byteArray) => {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
-        var buffer = _malloc(byteArray.length);
+        var buffer = malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
         {{{ makeDynCall('vppi', 'onload') }}}(userdata, buffer, byteArray.length);
-        _free(buffer);
+        free(buffer);
       });
     }, () => {
       if (onerror) {
@@ -189,10 +189,10 @@ var LibraryWget = {
     http.onload = (e) => {
       if (http.status >= 200 && http.status < 300 || (http.status === 0 && _url.substr(0,4).toLowerCase() != "http")) {
         var byteArray = new Uint8Array(/** @type{ArrayBuffer} */(http.response));
-        var buffer = _malloc(byteArray.length);
+        var buffer = malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
         if (onload) {{{ makeDynCall('vippi', 'onload') }}}(handle, userdata, buffer, byteArray.length);
-        if (free) _free(buffer);
+        if (free) free(buffer);
       } else {
         onerrorjs();
       }

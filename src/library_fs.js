@@ -1482,7 +1482,7 @@ FS.staticInit();
       FS.initialized = false;
       // force-flush all streams, so we get musl std streams printed out
 #if hasExportedSymbol('fflush')
-      _fflush(0);
+      fflush(0);
 #endif
       // close all of our streams
       for (var i = 0; i < FS.streams.length; i++) {

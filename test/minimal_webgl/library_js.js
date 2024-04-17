@@ -26,7 +26,7 @@ addToLibrary({
       ctx.strokeText(String.fromCharCode(unicodeChar), 0, canvas.height-7);
     }
     ctx.fillText(String.fromCharCode(unicodeChar), 0, canvas.height-7);
-    _uploadFlipped(canvas);
+    uploadFlipped(canvas);
   },
   load_texture_from_url__deps: ['uploadFlipped'],
   load_texture_from_url: function(glTexture, url, outW, outH) {
@@ -35,7 +35,7 @@ addToLibrary({
       HEAPU32[outW>>2] = img.width;
       HEAPU32[outH>>2] = img.height;
       GLctx.bindTexture(0xDE1/*GLctx.TEXTURE_2D*/, GL.textures[glTexture]);
-      _uploadFlipped(img);
+      uploadFlipped(img);
     };
     img.src = UTF8ToString(url);
   }

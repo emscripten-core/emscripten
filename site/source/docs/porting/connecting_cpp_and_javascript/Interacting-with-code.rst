@@ -238,7 +238,7 @@ The parameters you pass to and receive from functions need to be primitive value
   - JavaScript string ``someString`` can be converted to a ``char *`` using ``ptr = stringToNewUTF8(someString)``.
 
     .. note:: The conversion to a pointer allocates memory, which needs to be
-      freed up via a call to ``free(ptr)`` afterwards (``_free`` in JavaScript side) -
+      freed up via a call to ``free(ptr)`` afterwards -
   - ``char *`` received from C/C++ can be converted to a JavaScript string using :js:func:`UTF8ToString`.
 
     There are other convenience functions for converting strings and encodings
@@ -702,10 +702,10 @@ to process the data, and finally frees the buffer.
 
 .. code-block:: javascript
 
-   var buf = Module._malloc(myTypedArray.length*myTypedArray.BYTES_PER_ELEMENT);
+   var buf = Module.malloc(myTypedArray.length*myTypedArray.BYTES_PER_ELEMENT);
    Module.HEAPU8.set(myTypedArray, buf);
    Module.ccall('my_function', 'number', ['number'], [buf]);
-   Module._free(buf);
+   Module.free(buf);
 
 Here ``my_function`` is a C function that receives a single integer parameter
 (or a pointer, they are both just 32-bit integers for us) and returns an

@@ -58,7 +58,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
   function threadAlert(...args) {
     var text = args.join(' ');
-    postMessage({cmd: 'alert', text, threadId: _pthread_self()});
+    postMessage({cmd: 'alert', text, threadId: pthread_self()});
   }
   self.alert = threadAlert;
 
@@ -155,23 +155,23 @@ if (ENVIRONMENT_IS_PTHREAD) {
         establishStackSpace(msgData.pthread_ptr);
 
         // Pass the thread address to wasm to store it for fast access.
-        __emscripten_thread_init(msgData.pthread_ptr, /*is_main=*/0, /*is_runtime=*/0, /*can_block=*/1, 0, 0);
+        _emscripten_thread_init(msgData.pthread_ptr, /*is_main=*/0, /*is_runtime=*/0, /*can_block=*/1, 0, 0);
 
         PThread.receiveObjectTransfer(msgData);
         PThread.threadInitTLS();
 
         // Await mailbox notifications with `Atomics.waitAsync` so we can start
         // using the fast `Atomics.notify` notification path.
-        __emscripten_thread_mailbox_await(msgData.pthread_ptr);
+        _emscripten_thread_mailbox_await(msgData.pthread_ptr);
 
         if (!initializedJS) {
 #if EMBIND
 #if PTHREADS_DEBUG
-          dbg(`worker: Pthread 0x${_pthread_self().toString(16)} initializing embind.`);
+          dbg(`worker: Pthread 0x${pthread_self().toString(16)} initializing embind.`);
 #endif
           // Embind must initialize itself on all threads, as it generates support JS.
           // We only do this once per worker since they get reused
-          __embind_initialize_bindings();
+          _embind_initialize_bindings();
 #endif // EMBIND
           initializedJS = true;
         }
@@ -186,7 +186,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
             throw ex;
           }
 #if RUNTIME_DEBUG
-          dbg(`worker: Pthread 0x${_pthread_self().toString(16)} completed its main entry point with an 'unwind', keeping the worker alive for asynchronous operation.`);
+          dbg(`worker: Pthread 0x${pthread_self().toString(16)} completed its main entry point with an 'unwind', keeping the worker alive for asynchronous operation.`);
 #endif
         }
       } else if (msgData.target === 'setimmediate') {
@@ -207,7 +207,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
       err(`worker: onmessage() captured an uncaught exception: ${ex}`);
       if (ex?.stack) err(ex.stack);
 #endif
-      __emscripten_thread_crashed();
+      _emscripten_thread_crashed();
       throw ex;
     }
   };

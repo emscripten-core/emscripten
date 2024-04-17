@@ -658,15 +658,15 @@ function emitDCEGraph(ast) {
   // The exports are trickier, as they have a different form whether or not
   // async compilation is enabled. It can be either:
   //
-  //  var _malloc = Module['_malloc'] = wasmExports['_malloc'];
+  //  var malloc = Module['malloc'] = wasmExports['malloc'];
   //
   // or
   //
-  //  var _malloc = wasmExports['_malloc'];
+  //  var malloc = wasmExports['malloc'];
   //
   // or
   //
-  //  var _malloc = Module['_malloc'] = (x) => wasmExports['_malloc'](x);
+  //  var malloc = Module['malloc'] = (x) => wasmExports['malloc'](x);
   //
   // or, in the minimal runtime, it looks like
   //
@@ -674,7 +674,7 @@ function emitDCEGraph(ast) {
   //   var wasmExports = output.instance.exports; // may also not have "var", if
   //                                              // declared outside and used elsewhere
   //   ..
-  //   _malloc = wasmExports["malloc"];
+  //   malloc = wasmExports["malloc"];
   //   ..
   //  });
   const imports = [];

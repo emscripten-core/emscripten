@@ -31,7 +31,7 @@ var LibraryHtml5WebGL = {
   emscripten_webgl_create_context_proxied__proxy: 'sync',
   emscripten_webgl_create_context_proxied__deps: ['emscripten_webgl_do_create_context'],
   emscripten_webgl_create_context_proxied: (target, attributes) =>
-    _emscripten_webgl_do_create_context(target, attributes),
+    emscripten_webgl_do_create_context(target, attributes),
 
   // The other proxied GL commands are defined in C (guarded by the
   // __EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__ definition).
@@ -111,11 +111,11 @@ var LibraryHtml5WebGL = {
         dbg('Performance warning: forcing renderViaOffscreenBackBuffer=true and preserveDrawingBuffer=true since proxying WebGL rendering.');
 #endif
         // We will be proxying - if OffscreenCanvas is supported, we can proxy a bit more efficiently by avoiding having to create an Offscreen FBO.
-        if (!_emscripten_supports_offscreencanvas()) {
+        if (!emscripten_supports_offscreencanvas()) {
           {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, '1', 'i8') }}};
           {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, '1', 'i8') }}};
         }
-        return _emscripten_webgl_create_context_proxied(target, attributes);
+        return emscripten_webgl_create_context_proxied(target, attributes);
       }
     }
 #endif
@@ -131,12 +131,12 @@ var LibraryHtml5WebGL = {
     if (canvas.offscreenCanvas) canvas = canvas.offscreenCanvas;
 
 #if GL_DEBUG
-    if (_emscripten_supports_offscreencanvas() && canvas instanceof OffscreenCanvas) dbg(`emscripten_webgl_create_context: Creating an OffscreenCanvas-based WebGL context on target "${targetStr}"`);
+    if (emscripten_supports_offscreencanvas() && canvas instanceof OffscreenCanvas) dbg(`emscripten_webgl_create_context: Creating an OffscreenCanvas-based WebGL context on target "${targetStr}"`);
     else if (typeof HTMLCanvasElement != 'undefined' && canvas instanceof HTMLCanvasElement) dbg(`emscripten_webgl_create_context: Creating an HTMLCanvasElement-based WebGL context on target "${targetStr}"`);
 #endif
 
     if (contextAttributes.explicitSwapControl) {
-      var supportsOffscreenCanvas = canvas.transferControlToOffscreen || (_emscripten_supports_offscreencanvas() && canvas instanceof OffscreenCanvas);
+      var supportsOffscreenCanvas = canvas.transferControlToOffscreen || (emscripten_supports_offscreencanvas() && canvas instanceof OffscreenCanvas);
 
       if (!supportsOffscreenCanvas) {
 #if OFFSCREEN_FRAMEBUFFER
@@ -161,7 +161,7 @@ var LibraryHtml5WebGL = {
         if (!canvas.controlTransferredOffscreen) {
           GL.offscreenCanvases[canvas.id] = {
             canvas: canvas.transferControlToOffscreen(),
-            canvasSharedPtr: _malloc(12),
+            canvasSharedPtr: malloc(12),
             id: canvas.id
           };
           canvas.controlTransferredOffscreen = true;
@@ -249,7 +249,7 @@ var LibraryHtml5WebGL = {
 
   emscripten_webgl_do_commit_frame: () => {
 #if TRACE_WEBGL_CALLS
-    var threadId = (typeof _pthread_self != 'undefined') ? _pthread_self : () => 1;
+    var threadId = (typeof pthread_self != 'undefined') ? _pthread_self : () => 1;
     err(`[Thread ${threadId()}, GL ctx: ${GL.currentContext.handle}]: emscripten_webgl_do_commit_frame()`);
 #endif
     if (!GL.currentContext || !GL.currentContext.GLctx) {
@@ -322,7 +322,7 @@ var LibraryHtml5WebGL = {
   // the call over to the target thread.
   $emscripten_webgl_destroy_context_before_on_calling_thread__deps: ['emscripten_webgl_get_current_context', 'emscripten_webgl_make_context_current'],
   $emscripten_webgl_destroy_context_before_on_calling_thread: (contextHandle) => {
-    if (_emscripten_webgl_get_current_context() == contextHandle) _emscripten_webgl_make_context_current(0);
+    if (emscripten_webgl_get_current_context() == contextHandle) emscripten_webgl_make_context_current(0);
   },
 #endif
 
@@ -413,7 +413,7 @@ var LibraryHtml5WebGL = {
 
     var webGlEventHandlerFunc = (e = event) => {
 #if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, 0, userData);
+      if (targetThread) _emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, 0, userData);
       else
 #endif
       if ({{{ makeDynCall('iiii', 'callbackfunc') }}}(eventTypeId, 0, userData)) e.preventDefault();

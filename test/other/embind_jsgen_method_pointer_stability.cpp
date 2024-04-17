@@ -10,9 +10,9 @@ void malloc_in_static_constructor(void) {
   // that method pointers still work correctly.
   EM_ASM(
     if (typeof InvokerFunctions == 'undefined') {
-      _malloc(10);
+      malloc(10);
     } else {
-      _malloc(100);
+      malloc(100);
     }
   );
 }

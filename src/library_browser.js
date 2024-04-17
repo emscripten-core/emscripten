@@ -647,7 +647,7 @@ var LibraryBrowser = {
   emscripten_async_run_script__deps: ['emscripten_run_script', '$safeSetTimeout'],
   emscripten_async_run_script: (script, millis) => {
     // TODO: cache these to avoid generating garbage
-    safeSetTimeout(() => _emscripten_run_script(script), millis);
+    safeSetTimeout(() => emscripten_run_script(script), millis);
   },
 
   // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
@@ -706,13 +706,13 @@ var LibraryBrowser = {
   emscripten_get_window_title: () => {
     var buflen = 256;
 
-    if (!_emscripten_get_window_title.buffer) {
-      _emscripten_get_window_title.buffer = _malloc(buflen);
+    if (!emscripten_get_window_title.buffer) {
+      emscripten_get_window_title.buffer = malloc(buflen);
     }
 
-    stringToUTF8(document.title, _emscripten_get_window_title.buffer, buflen);
+    stringToUTF8(document.title, emscripten_get_window_title.buffer, buflen);
 
-    return _emscripten_get_window_title.buffer;
+    return emscripten_get_window_title.buffer;
   },
 
   emscripten_set_window_title__proxy: 'sync',
@@ -778,9 +778,9 @@ var LibraryBrowser = {
       if (data) {
         if (!data.byteLength) data = new Uint8Array(data);
         if (!info.buffer || info.bufferSize < data.length) {
-          if (info.buffer) _free(info.buffer);
+          if (info.buffer) free(info.buffer);
           info.bufferSize = data.length;
-          info.buffer = _malloc(data.length);
+          info.buffer = malloc(data.length);
         }
         HEAPU8.set(data, info.buffer);
         callbackInfo.func(info.buffer, data.length, callbackInfo.arg);
@@ -797,7 +797,7 @@ var LibraryBrowser = {
   emscripten_destroy_worker: (id) => {
     var info = Browser.workers[id];
     info.worker.terminate();
-    if (info.buffer) _free(info.buffer);
+    if (info.buffer) free(info.buffer);
     Browser.workers[id] = null;
   },
 
@@ -885,7 +885,7 @@ var LibraryBrowser = {
 
     var ctx = canvas.getContext("2d");
     var image = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    var buf = _malloc(canvas.width * canvas.height * 4);
+    var buf = malloc(canvas.width * canvas.height * 4);
 
     HEAPU8.set(image.data, buf);
 
@@ -898,7 +898,7 @@ var LibraryBrowser = {
   emscripten_get_preloaded_image_data_from_FILE__deps: ['$getPreloadedImageData', 'fileno'],
   emscripten_get_preloaded_image_data_from_FILE__proxy: 'sync',
   emscripten_get_preloaded_image_data_from_FILE: (file, w, h) => {
-    var fd = _fileno(file);
+    var fd = fileno(file);
     var stream = FS.getStream(fd);
     if (stream) {
       return getPreloadedImageData(stream.path, w, h);

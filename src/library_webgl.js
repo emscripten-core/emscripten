@@ -666,7 +666,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
           }
         }
 #if PTHREADS
-        err(`[Thread ${_pthread_self()}, GL ctx: ${contextHandle}]: ${f}(${args}) -> ${ret}`);
+        err(`[Thread ${pthread_self()}, GL ctx: ${contextHandle}]: ${f}(${args}) -> ${ret}`);
 #else
         err(`[ctx: ${contextHandle}]: ${f}(${args}) -> ${ret}`);
 #endif
@@ -1093,14 +1093,14 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if PTHREADS
       // with pthreads a context is a location in memory with some synchronized
       // data between threads
-      var handle = _malloc({{{ 2 * POINTER_SIZE }}});
+      var handle = malloc({{{ 2 * POINTER_SIZE }}});
 #if GL_ASSERTIONS
       assert(handle, 'malloc() failed in GL.registerContext!');
 #endif
 #if GL_SUPPORT_EXPLICIT_SWAP_CONTROL
       {{{ makeSetValue('handle', 0, 'webGLContextAttributes.explicitSwapControl', 'i8')}}};
 #endif
-      {{{ makeSetValue('handle', POINTER_SIZE, '_pthread_self()', '*')}}}; // the thread pointer of the thread that owns the control of the context
+      {{{ makeSetValue('handle', POINTER_SIZE, 'pthread_self()', '*')}}}; // the thread pointer of the thread that owns the control of the context
 #else // PTHREADS
       // without pthreads a context is just an integer ID
       var handle = GL.getNewId(GL.contexts);
@@ -1193,7 +1193,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
         GL.contexts[contextHandle].GLctx.canvas.GLctxObject = undefined;
       }
 #if PTHREADS
-      _free(GL.contexts[contextHandle].handle);
+      free(GL.contexts[contextHandle].handle);
 #endif
       GL.contexts[contextHandle] = null;
     },
@@ -4161,7 +4161,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       return 0;
     }
 
-    var mem = _malloc(length), binding = emscriptenWebGLGetBufferBinding(target);
+    var mem = malloc(length), binding = emscriptenWebGLGetBufferBinding(target);
     if (!mem) return 0;
 
     binding = GL.mappedBuffers[binding] ??= {};
@@ -4243,7 +4243,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
       GLctx.bufferSubData(target, mapping.offset, HEAPU8.subarray(mapping.mem, mapping.mem+mapping.length));
     }
-    _free(mapping.mem);
+    free(mapping.mem);
     mapping.mem = 0;
     return 1;
   },

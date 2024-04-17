@@ -287,7 +287,7 @@ Note that you need to emit HTML as in that example, as the memory profiler
 output is rendered onto the page. To view it, load ``page.html`` in your
 browser (remember to use a :ref:`local webserver <faq-local-webserver>`). The display
 auto-updates, so you can open the devtools console and run a command like
-``_malloc(1024 * 1024)``. That will allocate 1MB of memory, which will then show
+``malloc(1024 * 1024)``. That will allocate 1MB of memory, which will then show
 up on the memory profiler display.
 
 .. _debugging-autodebugger:

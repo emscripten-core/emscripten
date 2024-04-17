@@ -68,12 +68,12 @@ var LibraryPThread = {
     debugInit() {
       function pthreadLogPrefix() {
         var t = 0;
-        if (runtimeInitialized && typeof _pthread_self != 'undefined'
+        if (runtimeInitialized && typeof pthread_self != 'undefined'
 #if EXIT_RUNTIME
         && !runtimeExited
 #endif
         ) {
-          t = _pthread_self();
+          t = pthread_self();
         }
         return `w:${workerID},t:${ptrToString(t)}: `;
       }
@@ -200,7 +200,7 @@ var LibraryPThread = {
 
       // Finally, free the underlying (and now-unused) pthread structure in
       // linear memory.
-      __emscripten_thread_free_data(pthread_ptr);
+      _emscripten_thread_free_data(pthread_ptr);
     },
     receiveObjectTransfer(data) {
 #if OFFSCREENCANVAS_SUPPORT
@@ -233,7 +233,7 @@ var LibraryPThread = {
 
         // If this message is intended to a recipient that is not the main
         // thread, forward it to the target thread.
-        if (d.targetThread && d.targetThread != _pthread_self()) {
+        if (d.targetThread && d.targetThread != pthread_self()) {
           var targetWorker = PThread.pthreads[d.targetThread];
           if (targetWorker) {
             targetWorker.postMessage(d, d.transferList);
@@ -651,7 +651,7 @@ var LibraryPThread = {
     // Pass the thread address to the native code where they stored in wasm
     // globals which act as a form of TLS. Global constructors trying
     // to access this value will read the wrong value, but that is UB anyway.
-    __emscripten_thread_init(
+    _emscripten_thread_init(
       tb,
       /*is_main=*/!ENVIRONMENT_IS_WORKER,
       /*is_runtime=*/1,
@@ -669,7 +669,7 @@ var LibraryPThread = {
   $pthreadCreateProxied__internal: true,
   $pthreadCreateProxied__proxy: 'sync',
   $pthreadCreateProxied__deps: ['__pthread_create_js'],
-  $pthreadCreateProxied: (pthread_ptr, attr, startRoutine, arg) => ___pthread_create_js(pthread_ptr, attr, startRoutine, arg),
+  $pthreadCreateProxied: (pthread_ptr, attr, startRoutine, arg) => __pthread_create_js(pthread_ptr, attr, startRoutine, arg),
 
 #if OFFSCREENCANVAS_SUPPORT
   // ASan wraps the emscripten_builtin_pthread_create call in
@@ -688,7 +688,7 @@ var LibraryPThread = {
 #endif
   ],
   __pthread_create_js: (pthread_ptr, attr, startRoutine, arg) => {
-    if (!_emscripten_has_threading_support()) {
+    if (!emscripten_has_threading_support()) {
 #if ASSERTIONS
       dbg('pthread_create: environment does not support SharedArrayBuffer, pthreads are not available');
 #endif
@@ -764,7 +764,7 @@ var LibraryPThread = {
             // Create a shared information block in heap so that we can control
             // the canvas size from any thread.
             if (!canvas.canvasSharedPtr) {
-              canvas.canvasSharedPtr = _malloc({{{ 8 + POINTER_SIZE }}});
+              canvas.canvasSharedPtr = malloc({{{ 8 + POINTER_SIZE }}});
               {{{ makeSetValue('canvas.canvasSharedPtr', 0, 'canvas.width', 'i32') }}};
               {{{ makeSetValue('canvas.canvasSharedPtr', 4, 'canvas.height', 'i32') }}};
               {{{ makeSetValue('canvas.canvasSharedPtr', 8, 0, '*') }}}; // pthread ptr to the thread that owns this canvas, filled in below.
@@ -884,7 +884,7 @@ var LibraryPThread = {
 #if PROXY_TO_PTHREAD
     {{{ runtimeKeepalivePop() }}};
 #endif
-    _exit(returnCode);
+    exit(returnCode);
   },
 
 #if MEMORY64
@@ -933,7 +933,7 @@ var LibraryPThread = {
       HEAPF64[b + i] = arg;
 #endif
     }
-    var rtn = __emscripten_run_on_main_thread_js(funcIndex, emAsmAddr, serializedNumCallArgs, args, sync);
+    var rtn = _emscripten_run_on_main_thread_js(funcIndex, emAsmAddr, serializedNumCallArgs, args, sync);
     stackRestore(sp);
     return rtn;
   },
@@ -1020,7 +1020,7 @@ var LibraryPThread = {
 #endif
     // Set stack limits used by `emscripten/stack.h` function.  These limits are
     // cached in wasm-side globals to make checks as fast as possible.
-    _emscripten_stack_set_limits(stackHigh, stackLow);
+    emscripten_stack_set_limits(stackHigh, stackLow);
 
 #if STACK_OVERFLOW_CHECK >= 2
     setStackLimits();
@@ -1068,7 +1068,7 @@ var LibraryPThread = {
     // Before we call the thread entry point, make sure any shared libraries
     // have been loaded on this there.  Otherwise our table might be not be
     // in sync and might not contain the function pointer `ptr` at all.
-    __emscripten_dlsync_self();
+    _emscripten_dlsync_self();
 #endif
     // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
     // Native codebases sometimes spawn threads with other thread entry point
@@ -1090,12 +1090,12 @@ var LibraryPThread = {
       // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
       // pthreads. To exit a pthread with live runtime, use the function
       // emscripten_unwind_to_js_event_loop() in the pthread body.
-      __emscripten_thread_exit(result);
+      _emscripten_thread_exit(result);
 #else
       if (keepRuntimeAlive()) {
         EXITSTATUS = result;
       } else {
-        __emscripten_thread_exit(result);
+        _emscripten_thread_exit(result);
       }
 #endif
     }
@@ -1146,19 +1146,19 @@ var LibraryPThread = {
     // This first promise resolves once the main thread has loaded all modules.
     var info = makePromise();
     promises.push(info.promise);
-    __emscripten_dlsync_self_async(info.id);
+    _emscripten_dlsync_self_async(info.id);
 
 
     // We then create a sequence of promises, one per thread, that resolve once
     // each thread has performed its sync using _emscripten_proxy_dlsync.
     // Any new threads that are created after this call will automatically be
-    // in sync because we call `__emscripten_dlsync_self` in
+    // in sync because we call `_emscripten_dlsync_self` in
     // invokeEntryPoint before the threads entry point is called.
     for (const ptr of Object.keys(PThread.pthreads)) {
       const pthread_ptr = Number(ptr);
       if (pthread_ptr !== caller && !PThread.finishedThreads.has(pthread_ptr)) {
         info = makePromise();
-        __emscripten_proxy_dlsync_async(pthread_ptr, info.id);
+        _emscripten_proxy_dlsync_async(pthread_ptr, info.id);
         PThread.outstandingPromises[pthread_ptr] = info;
         promises.push(info.promise);
       }
@@ -1191,7 +1191,7 @@ var LibraryPThread = {
     for (const ptr of Object.keys(PThread.pthreads)) {
       const pthread_ptr = Number(ptr);
       if (!PThread.finishedThreads.has(pthread_ptr)) {
-        __emscripten_proxy_dlsync(pthread_ptr);
+        _emscripten_proxy_dlsync(pthread_ptr);
       }
     }
   },
@@ -1209,14 +1209,14 @@ var LibraryPThread = {
   $checkMailbox: () => {
     // Only check the mailbox if we have a live pthread runtime. We implement
     // pthread_self to return 0 if there is no live runtime.
-    var pthread_ptr = _pthread_self();
+    var pthread_ptr = pthread_self();
     if (pthread_ptr) {
       // If we are using Atomics.waitAsync as our notification mechanism, wait
       // for a notification before processing the mailbox to avoid missing any
       // work that could otherwise arrive after we've finished processing the
       // mailbox and before we're ready for the next notification.
-      __emscripten_thread_mailbox_await(pthread_ptr);
-      callUserCallback(__emscripten_check_mailbox);
+      _emscripten_thread_mailbox_await(pthread_ptr);
+      callUserCallback(_emscripten_check_mailbox);
     }
   },
 

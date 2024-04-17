@@ -7,7 +7,7 @@
 #if STACK_OVERFLOW_CHECK
 // Initializes the stack cookie. Called at the startup of main and at the startup of each thread in pthreads mode.
 function writeStackCookie() {
-  var max = _emscripten_stack_get_end();
+  var max = emscripten_stack_get_end();
 #if RUNTIME_DEBUG
   dbg(`writeStackCookie: ${ptrToString(max)}`);
 #endif
@@ -20,7 +20,7 @@ function writeStackCookie() {
   if (max == 0) {
     max += 4;
   }
-  // The stack grow downwards towards _emscripten_stack_get_end.
+  // The stack grow downwards towards emscripten_stack_get_end.
   // We write cookies to the final two words in the stack and detect if they are
   // ever overwritten.
   {{{ makeSetValue('max', 0, '0x02135467', 'u32') }}};
@@ -35,7 +35,7 @@ function checkStackCookie() {
 #if !MINIMAL_RUNTIME
   if (ABORT) return;
 #endif
-  var max = _emscripten_stack_get_end();
+  var max = emscripten_stack_get_end();
 #if RUNTIME_DEBUG >= 2
   dbg(`checkStackCookie: ${ptrToString(max)}`);
 #endif

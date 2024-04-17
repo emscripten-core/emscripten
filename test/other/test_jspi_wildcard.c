@@ -7,13 +7,13 @@
 #include <stdio.h>
 
 EM_ASYNC_JS(int, test, (), {
-  const promise1 = Module._async1();
+  const promise1 = Module.async1();
   assert(promise1 instanceof Promise);
   await promise1;
-  const promise2 = Module._async2();
+  const promise2 = Module.async2();
   assert(promise2 instanceof Promise);
   await promise2;
-  assert(!(Module._sync() instanceof Promise));
+  assert(!(Module.sync() instanceof Promise));
 });
 
 EMSCRIPTEN_KEEPALIVE int async1() {

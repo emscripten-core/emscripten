@@ -576,8 +576,8 @@ var LibraryEGL = {
       EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
       return 0;
     }
-    if (interval == 0) _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_SETTIMEOUT }}}, 0);
-    else _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, interval);
+    if (interval == 0) emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_SETTIMEOUT }}}, 0);
+    else emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, interval);
 
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     return 1;

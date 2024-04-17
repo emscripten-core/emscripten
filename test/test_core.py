@@ -1736,13 +1736,13 @@ int main() {
     self.do_core_test('test_set_align.c')
 
   def test_emscripten_api(self):
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_save_me_aimee'])
+    self.set_setting('EXPORTS', ['main', 'save_me_aimee'])
     self.do_core_test('test_emscripten_api.cpp')
 
     # Sanitizers are not compatible with LINKABLE (dynamic linking.
     if not is_sanitizing(self.emcc_args) and not self.is_wasm64():
       # test EXPORT_ALL
-      self.clear_setting('EXPORTED_FUNCTIONS')
+      self.clear_setting('EXPORTS')
       self.set_setting('EXPORT_ALL')
       self.set_setting('LINKABLE')
       self.do_core_test('test_emscripten_api.cpp')
@@ -1945,7 +1945,7 @@ int main(int argc, char **argv) {
   def test_em_js(self, args, force_c):
     if '-sMAIN_MODULE=2' in args:
       self.check_dylink()
-    self.emcc_args += ['-sEXPORTED_FUNCTIONS=_main,_malloc'] + args
+    self.emcc_args += ['-sEXPORTS=main,malloc'] + args
     if '-pthread' in args:
       self.setup_node_pthreads()
 
@@ -2823,7 +2823,7 @@ The current type of b is: 9
     self.set_setting('NO_AUTOLOAD_DYLIBS')
     self.emcc_args += libs
     # This means we can use MAIN_MODULE=2 without needing to explicitly
-    # specify EXPORTED_FUNCTIONS.
+    # specify EXPORTS.
     self.set_setting('MAIN_MODULE', 2)
 
   def build_dlfcn_lib(self, filename, outfile='liblib.so', emcc_args=None):
@@ -3261,7 +3261,6 @@ Var: 42
   @needs_dylink
   def test_dlfcn_self(self):
     self.set_setting('MAIN_MODULE')
-    self.set_setting('EXPORT_ALL')
 
     self.do_core_test('test_dlfcn_self.c')
 
@@ -5638,8 +5637,7 @@ got: 10
   @no_minimal_runtime('MINIMAL_RUNTIME does not have getValue() and setValue() (TODO add it to a JS library function to get it in)')
   @requires_node  # only node handles utf well
   def test_utf(self):
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc', '_free'])
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue', 'UTF8ToString', 'stringToUTF8'])
+    self.set_setting('EXPORTS', ['main', 'malloc', 'free', 'getValue', 'setValue', 'UTF8ToString', 'stringToUTF8'])
     self.do_core_test('test_utf.c')
 
   def test_utf32(self):
@@ -5839,7 +5837,7 @@ Module.onRuntimeInitialized = () => {
   assert(_foo() == 42);
 }
 ''')
-    self.set_setting('EXPORTED_FUNCTIONS', '_foo')
+    self.set_setting('EXPORTS', 'foo')
     self.set_setting('FORCE_FILESYSTEM')
     self.emcc_args += ['--pre-js', 'pre.js'] + list(args)
     self.do_run('int foo() { return 42; }', '', force_c=True)
@@ -6924,7 +6922,6 @@ void* operator new(size_t size) {
   @crossplatform
   def test_ccall(self):
     self.emcc_args.append('-Wno-return-stack-address')
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap', 'STACK_SIZE'])
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     create_file('post.js', '''
       out('*');
@@ -6960,7 +6957,7 @@ void* operator new(size_t size) {
       ''')
     self.emcc_args += ['--post-js', 'post.js']
 
-    self.set_setting('EXPORTED_FUNCTIONS', ['_get_int', '_get_float', '_get_bool', '_get_string', '_print_int', '_print_float', '_print_bool', '_print_string', '_multi', '_pointer', '_call_ccall_again', '_malloc'])
+    self.set_setting('EXPORTS', ['get_int', 'get_float', 'get_bool', 'get_string', 'print_int', 'print_float', 'print_bool', 'print_string', 'multi', 'pointer', 'call_ccall_again', 'malloc', 'ccall', 'cwrap', 'STACK_SIZE'])
     self.do_core_test('test_ccall.cpp')
 
     if self.maybe_closure():
@@ -6968,7 +6965,6 @@ void* operator new(size_t size) {
 
   def test_ccall_cwrap_fast_path(self):
     self.emcc_args.append('-Wno-return-stack-address')
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.set_setting('ASSERTIONS', 0)
     create_file('post.js', '''
@@ -6977,7 +6973,7 @@ void* operator new(size_t size) {
       ''')
     self.emcc_args += ['--post-js', 'post.js']
 
-    self.set_setting('EXPORTED_FUNCTIONS', ['_print_bool'])
+    self.set_setting('EXPORTS', ['print_bool', 'ccall', 'cwrap'])
     self.do_runf('core/test_ccall.cpp', 'true')
 
   def test_EXPORTED_RUNTIME_METHODS(self):
@@ -7009,8 +7005,8 @@ void* operator new(size_t size) {
     else:
       cases += [
         ('EXPORTED', []),
-        ('EXPORTED_DYNAMIC_SIG', ['-sDYNCALLS', '-sEXPORTED_RUNTIME_METHODS=dynCall']),
-        ('FROM_OUTSIDE', ['-sEXPORTED_RUNTIME_METHODS=dynCall_iiji'])
+        ('EXPORTED_DYNAMIC_SIG', ['-sDYNCALLS', '-sEXPORTS=dynCall,main']),
+        ('FROM_OUTSIDE', ['-sEXPORTS=dynCall_iiji,main'])
       ]
 
     for which, extra_args in cases:
@@ -7054,13 +7050,12 @@ void* operator new(size_t size) {
     test(args=['-DDIRECT', '-DASSERTIONS_2'])
 
     # see that with assertions, we get a nice error message
-    self.set_setting('EXPORTED_RUNTIME_METHODS', [])
     self.set_setting('ASSERTIONS')
     test(asserts=True)
     self.set_setting('ASSERTIONS', 0)
 
     # see that when we export them, things work on the module
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue'])
+    self.set_setting('EXPORTS', ['main', 'getValue', 'setValue'])
     test()
 
   @parameterized({
@@ -7081,12 +7076,11 @@ void* operator new(size_t size) {
     # keeps it alive through JSDCE
     test(args=['-DDIRECT', '-sFORCE_FILESYSTEM'])
     # see that with assertions, we get a nice error message
-    self.set_setting('EXPORTED_RUNTIME_METHODS', [])
     self.set_setting('ASSERTIONS')
     test('_assert', args=[], assert_returncode=NON_ZERO)
     self.set_setting('ASSERTIONS', 0)
     # see that when we export them, things work on the module
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['FS_createDataFile'])
+    self.set_setting('EXPORTS', ['FS_createDataFile', 'main'])
     test(args=['-sFORCE_FILESYSTEM'])
 
   def test_legacy_exported_runtime_numbers(self):
@@ -7103,7 +7097,7 @@ void* operator new(size_t size) {
     test('ALLOC_STACK is not defined', args=['-DDIRECT'], assert_returncode=NON_ZERO)
 
     # When assertions are enabled direct and indirect usage both abort with a useful error message.
-    not_exported = "Aborted('ALLOC_STACK' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ))"
+    not_exported = "Aborted('ALLOC_STACK' was not exported. add it to EXPORTS (see the Emscripten FAQ))"
     not_included = "`ALLOC_STACK` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='$ALLOC_STACK')"
     self.set_setting('ASSERTIONS')
     test(not_exported, assert_returncode=NON_ZERO)
@@ -7149,15 +7143,15 @@ void* operator new(size_t size) {
       }
 
       int main() {
-        int x = EM_ASM_INT({ return Module._other_function() });
+        int x = EM_ASM_INT({ return Module.other_function() });
         emscripten_run_script_string(""); // Add a reference to a symbol that exists in src/deps_info.json to uncover issue #2836 in the test suite.
         printf("waka %d!\n", x);
         return 0;
       }
     '''
-    create_file('exps', '_main\n_other_function\n')
+    create_file('exps', 'main\nother_function\n')
 
-    self.set_setting('EXPORTED_FUNCTIONS', '@exps')
+    self.set_setting('EXPORTS', '@exps')
     self.do_run(src, '''waka 5!''')
     assert 'other_function' in read_file('src.js')
 
@@ -7175,14 +7169,14 @@ void* operator new(size_t size) {
     count = 0
     while count < num_exports:
       src += 'int exported_func_from_response_file_%d () { return %d;}\n' % (count, count)
-      rsp_file_lines.append('_exported_func_from_response_file_%d' % count)
+      rsp_file_lines.append('exported_func_from_response_file_%d' % count)
       count += 1
 
     src += r'''
       }
 
       int main() {
-        int x = EM_ASM_INT({ return Module._exported_func_from_response_file_4999() });
+        int x = EM_ASM_INT({ return Module.exported_func_from_response_file_4999() });
         // Add a reference to a symbol that exists in src/deps_info.json to uncover
         // issue #2836 in the test suite.
         emscripten_run_script_string("");
@@ -7191,12 +7185,12 @@ void* operator new(size_t size) {
       }
     '''
 
-    rsp_file_lines.append('_main')
+    rsp_file_lines.append('main')
     create_file('large_exported_response.json', '\n'.join(rsp_file_lines) + '\n')
 
-    self.set_setting('EXPORTED_FUNCTIONS', '@large_exported_response.json')
+    self.set_setting('EXPORTS', '@large_exported_response.json')
     self.do_run(src, 'waka 4999!')
-    self.assertContained('_exported_func_from_response_file_1', read_file('src.js'))
+    self.assertContained('exported_func_from_response_file_1', read_file('src.js'))
 
   def test_emulate_function_pointer_casts(self):
     # Forcibly disable EXIT_RUNTIME due to:
@@ -8141,7 +8135,7 @@ Module.onRuntimeInitialized = () => {
     self.set_setting('ASSERTIONS')
     self.set_setting('INVOKE_RUN', 0)
     self.set_setting('EXIT_RUNTIME', exit_runtime)
-    self.set_setting('EXPORTED_FUNCTIONS', ['_stringf', '_floatf'])
+    self.set_setting('EXPORTS', ['stringf', 'floatf'])
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$maybeExit', '$ccall'])
     create_file('main.c', r'''
 #include <stdio.h>
@@ -8493,13 +8487,14 @@ Module.onRuntimeInitialized = () => {
     create_file('lib.js', '''
       addToLibrary({
         check_memprof_requirements: () => {
-          if (typeof _emscripten_stack_get_base === 'function' &&
-              typeof _emscripten_stack_get_end === 'function' &&
-              typeof _emscripten_stack_get_current === 'function' &&
-              typeof Module['___heap_base'] === 'number') {
+          if (typeof emscripten_stack_get_base === 'function' &&
+              typeof emscripten_stack_get_end === 'function' &&
+              typeof emscripten_stack_get_current === 'function' &&
+              typeof Module['__heap_base'] === 'number') {
              out('able to run memprof');
              return 0;
            } else {
+             out(Module['__heap_base']);
              out('missing the required variables to run memprof');
              return 1;
            }
@@ -9452,9 +9447,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
       # In non-standalone mode exporting an empty list of functions signal that we don't
       # have a main and so should not generate an error.
-      self.set_setting('EXPORTED_FUNCTIONS', [])
+      self.set_setting('EXPORTS', [])
       self.do_core_test('test_ctors_no_main.cpp')
-      self.clear_setting('EXPORTED_FUNCTIONS')
+      self.clear_setting('EXPORTS')
 
   # Marked as impure since the WASI reactor modules (modules without main)
   # are not yet supported by the wasm engines we test against.
@@ -9475,7 +9470,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if not can_do_standalone(self):
       self.skipTest('standalone mode only')
     self.set_setting('STANDALONE_WASM')
-    self.set_setting('EXPORTED_FUNCTIONS', ['__start'])
+    self.set_setting('EXPORTS', ['_start'])
     self.do_core_test('test_hello_world.c')
 
   # Tests the operation of API found in #include <emscripten/math.h>
@@ -9492,7 +9487,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_abort_on_exceptions(self):
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('ALLOW_TABLE_GROWTH')
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['ccall', 'cwrap'])
+    self.set_setting('EXPORTS', ['ccall', 'cwrap', 'main'])
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$addFunction'])
     self.emcc_args += ['-lembind', '--post-js', test_file('core/test_abort_on_exceptions_post.js')]
     self.do_core_test('test_abort_on_exceptions.cpp', interleaved_output=False)
@@ -9556,7 +9551,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.uses_es6 = True
     if not self.get_setting('ASYNCIFY'):
       self.set_setting('ASYNCIFY')
-    self.set_setting('EXPORTED_RUNTIME_METHODS', 'ccall')
+    self.set_setting('EXPORTS', 'ccall,main')
     self.maybe_closure()
     self.do_core_test('test_em_async_js.c')
 

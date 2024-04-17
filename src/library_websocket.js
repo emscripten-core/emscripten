@@ -20,7 +20,7 @@ var LibraryWebSocket = {
     getSocketEvent(socketId) {
       // Singleton event pointer.  Use EmscriptenWebSocketCloseEvent, which is
       // the largest event struct
-      this.socketEvent ||= _malloc({{{ C_STRUCTS.EmscriptenWebSocketCloseEvent.__size__ }}});
+      this.socketEvent ||= malloc({{{ C_STRUCTS.EmscriptenWebSocketCloseEvent.__size__ }}});
       {{{ makeSetValue('this.socketEvent', 0, 'socketId', 'u32') }}};
       return this.socketEvent;
     },
@@ -151,7 +151,7 @@ var LibraryWebSocket = {
   emscripten_websocket_set_onopen_callback_on_thread: (socketId, userData, callbackFunc, thread) => {
 // TODO:
 //    if (thread == {{{ cDefs.EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD }}} ||
-//      (thread == _pthread_self()) return emscripten_websocket_set_onopen_callback_on_calling_thread(socketId, userData, callbackFunc);
+//      (thread == pthread_self()) return emscripten_websocket_set_onopen_callback_on_calling_thread(socketId, userData, callbackFunc);
     var socket = WS.getSocket(socketId);
     if (!socket) {
 #if WEBSOCKET_DEBUG
@@ -252,7 +252,7 @@ var LibraryWebSocket = {
 #endif
       } else {
         var len = e.data.byteLength;
-        var buf = _malloc(len);
+        var buf = malloc(len);
         HEAP8.set(new Uint8Array(e.data), buf);
 #if WEBSOCKET_DEBUG
         var s = `WebSocket onmessage, received data: ${len} bytes of binary:`;
@@ -270,7 +270,7 @@ var LibraryWebSocket = {
       {{{ makeSetValue('eventPtr', C_STRUCTS.EmscriptenWebSocketMessageEvent.numBytes, 'len', 'i32') }}},
       {{{ makeSetValue('eventPtr', C_STRUCTS.EmscriptenWebSocketMessageEvent.isText, 'isText', 'i8') }}},
       {{{ makeDynCall('iipp', 'callbackFunc') }}}(0/*TODO*/, eventPtr, userData);
-      _free(buf);
+      free(buf);
     }
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },

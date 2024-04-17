@@ -63,7 +63,7 @@ addToLibrary({
         return;
       case {{{ cDefs.EM_PROMISE_MATCH_RELEASE }}}:
         info.resolve(getPromise(value));
-        _emscripten_promise_destroy(value);
+        emscripten_promise_destroy(value);
         return;
       case {{{ cDefs.EM_PROMISE_REJECT }}}:
         info.reject(value);
@@ -122,7 +122,7 @@ addToLibrary({
           return getPromise(resultVal);
         case {{{ cDefs.EM_PROMISE_MATCH_RELEASE }}}:
           var ret = getPromise(resultVal);
-          _emscripten_promise_destroy(resultVal);
+          emscripten_promise_destroy(resultVal);
           return ret;
         case {{{ cDefs.EM_PROMISE_REJECT }}}:
           throw resultVal;

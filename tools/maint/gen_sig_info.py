@@ -175,7 +175,7 @@ def ignore_symbol(s, cxx):
   if s.startswith('gl') and any(s.endswith(x) for x in ('NV', 'EXT', 'WEBGL', 'ARB', 'ANGLE')):
     return True
   if s in {'__stack_base', '__memory_base', '__table_base', '__global_base', '__heap_base',
-           '__stack_pointer', '__stack_high', '__stack_low', '_load_secondary_module',
+           '__stack_pointer', '__stack_high', '__stack_low', '__load_secondary_module',
            '__asyncify_state', '__asyncify_data',
            # legacy aliases, not callable from native code.
            'stackSave', 'stackRestore', 'stackAlloc', 'getTempRet0', 'setTempRet0',

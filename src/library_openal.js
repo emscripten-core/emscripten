@@ -2656,7 +2656,7 @@ var LibraryOpenAL = {
         AL.alcErr = {{{ cDefs.ALC_INVALID_ENUM }}};
         return 0;
       }
-      return _alcGetString(deviceId, param);
+      return alcGetString(deviceId, param);
     }
 
     ret = stringToNewUTF8(ret);
@@ -2868,7 +2868,7 @@ var LibraryOpenAL = {
     for (var i = 0; i < count; ++i) {
       var srcId = {{{ makeGetValue('pSourceIds', 'i*4', 'i32') }}};
       AL.setSourceState(AL.currentCtx.sources[srcId], {{{ cDefs.AL_STOPPED }}});
-      _alSourcei(srcId, 0x1009 /* AL_BUFFER */, 0);
+      alSourcei(srcId, 0x1009 /* AL_BUFFER */, 0);
       delete AL.currentCtx.sources[srcId];
       AL.freeIds.push(srcId);
     }

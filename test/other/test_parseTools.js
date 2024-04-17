@@ -102,35 +102,35 @@ addToLibrary({
   test_makeSetValue__deps: ['$writeI53ToI64'],
   test_makeSetValue: function(ptr) {
     out('\ntest_makeSetValue:');
-    _clearI64(ptr);
+    clearI64(ptr);
     {{{ makeSetValue('ptr', '0', 0x12345678AB, 'i64') }}};
-    _printI64(ptr);
+    printI64(ptr);
 
     // This value doesn't fit into i64.  The current behaviour truncate (i.e.
     // ignore the upper bits), in the same way that `BigInt64Array[X] = Y` does.
     // (see splitI16 in parseTools.js)
-    _clearI64(ptr);
+    clearI64(ptr);
     {{{ makeSetValue('ptr', '0', 0x1122334455667788AA, 'i64') }}};
-    _printI64(ptr);
+    printI64(ptr);
 
-    _clearI64(ptr);
+    clearI64(ptr);
     {{{ makeSetValue('ptr', '0', -0x1122334455667788AA, 'i64') }}};
-    _printI64(ptr);
+    printI64(ptr);
 
-    _clearI64(ptr);
+    clearI64(ptr);
     {{{ makeSetValue('ptr', '0', 0x12345678AB, 'i53') }}};
-    _printI64(ptr);
+    printI64(ptr);
 
-    _clearI64(ptr);
+    clearI64(ptr);
     {{{ makeSetValue('ptr', '0', -1, 'i53') }}};
-    _printI64(ptr);
+    printI64(ptr);
 
-    _clearI64(ptr);
+    clearI64(ptr);
     {{{ makeSetValue('ptr', '0', 0xff, 'i32') }}};
-    _printI64(ptr);
+    printI64(ptr);
 
-    _clearI64(ptr);
+    clearI64(ptr);
     {{{ makeSetValue('ptr', '0', 0x12345678ab, 'i32') }}};
-    _printI64(ptr);
+    printI64(ptr);
   },
 });

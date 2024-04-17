@@ -28,12 +28,15 @@ $__pthread_mutex_lock
 $__throw_bad_alloc_shim\28\29
 $__unlockfile
 $__wasm_call_ctors
+$_emscripten_stack_alloc
+$_emscripten_stack_restore
 $abort
 $char*\20std::__2::copy_n\5babi:nn180100\5d<char\20const*\2c\20unsigned\20long\2c\20char*\2c\200>\28char\20const*\2c\20unsigned\20long\2c\20char*\29
 $decltype\28auto\29\20std::__2::__variant_detail::__visitation::__base::__dispatcher<0ul>::__dispatch\5babi:nn180100\5d<std::__2::__variant_detail::__dtor<std::__2::__variant_detail::__traits<std::__2::vector<wasmfs::Directory::Entry\2c\20std::__2::allocator<wasmfs::Directory::Entry>>\2c\20int>\2c\20\28std::__2::__variant_detail::_Trait\291>::__destroy\5babi:nn180100\5d\28\29::'lambda'\28auto&\29&&\2c\20std::__2::__variant_detail::__base<\28std::__2::__variant_detail::_Trait\291\2c\20std::__2::vector<wasmfs::Directory::Entry\2c\20std::__2::allocator<wasmfs::Directory::Entry>>\2c\20int>&>\28auto\2c\20std::__2::__variant_detail::__base<\28std::__2::__variant_detail::_Trait\291\2c\20std::__2::vector<wasmfs::Directory::Entry\2c\20std::__2::allocator<wasmfs::Directory::Entry>>\2c\20int>&\29
 $decltype\28auto\29\20std::__2::__variant_detail::__visitation::__base::__dispatcher<1ul>::__dispatch\5babi:nn180100\5d<std::__2::__variant_detail::__dtor<std::__2::__variant_detail::__traits<long\2c\20std::__2::shared_ptr<wasmfs::File>>\2c\20\28std::__2::__variant_detail::_Trait\291>::__destroy\5babi:nn180100\5d\28\29::'lambda'\28auto&\29&&\2c\20std::__2::__variant_detail::__base<\28std::__2::__variant_detail::_Trait\291\2c\20long\2c\20std::__2::shared_ptr<wasmfs::File>>&>\28auto\2c\20std::__2::__variant_detail::__base<\28std::__2::__variant_detail::_Trait\291\2c\20long\2c\20std::__2::shared_ptr<wasmfs::File>>&\29
 $dummy
 $emscripten_builtin_malloc
+$emscripten_stack_get_current
 $fflush
 $is_equal\28std::type_info\20const*\2c\20std::type_info\20const*\2c\20bool\29
 $main

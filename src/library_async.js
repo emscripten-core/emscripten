@@ -214,7 +214,7 @@ addToLibrary({
 #endif
         {{{ runtimeKeepalivePush(); }}}
         // Keep the runtime alive so that a re-wind can be done later.
-        runAndAbortIfError(_asyncify_stop_unwind);
+        runAndAbortIfError(asyncify_stop_unwind);
         if (typeof Fibers != 'undefined') {
           Fibers.trampoline();
         }
@@ -240,7 +240,7 @@ addToLibrary({
       // The Asyncify ABI only interprets the first two fields, the rest is for the runtime.
       // We also embed a stack in the same memory region here, right next to the structure.
       // This struct is also defined as asyncify_data_t in emscripten/fiber.h
-      var ptr = _malloc({{{ C_STRUCTS.asyncify_data_s.__size__ }}} + Asyncify.StackSize);
+      var ptr = malloc({{{ C_STRUCTS.asyncify_data_s.__size__ }}} + Asyncify.StackSize);
       Asyncify.setDataHeader(ptr, ptr + {{{ C_STRUCTS.asyncify_data_s.__size__ }}}, Asyncify.StackSize);
       Asyncify.setDataRewindFunc(ptr);
       return ptr;
@@ -342,7 +342,7 @@ addToLibrary({
           dbg(`ASYNCIFY: start rewind ${Asyncify.currData}`);
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
-          runAndAbortIfError(() => _asyncify_start_rewind(Asyncify.currData));
+          runAndAbortIfError(() => asyncify_start_rewind(Asyncify.currData));
           if (typeof MainLoop != 'undefined' && MainLoop.func) {
             MainLoop.resume();
           }
@@ -394,7 +394,7 @@ addToLibrary({
           if (typeof MainLoop != 'undefined' && MainLoop.func) {
             MainLoop.pause();
           }
-          runAndAbortIfError(() => _asyncify_start_unwind(Asyncify.currData));
+          runAndAbortIfError(() => asyncify_start_unwind(Asyncify.currData));
         }
       } else if (Asyncify.state === Asyncify.State.Rewinding) {
         // Stop a resume.
@@ -402,8 +402,8 @@ addToLibrary({
         dbg('ASYNCIFY: stop rewind');
 #endif
         Asyncify.state = Asyncify.State.Normal;
-        runAndAbortIfError(_asyncify_stop_rewind);
-        _free(Asyncify.currData);
+        runAndAbortIfError(asyncify_stop_rewind);
+        free(Asyncify.currData);
         Asyncify.currData = null;
         // Call all sleep callbacks now that the sleep-resume is all done.
         Asyncify.sleepCallbacks.forEach(callUserCallback);
@@ -472,7 +472,7 @@ addToLibrary({
     return Asyncify.handleSleep((wakeUp) => {
       asyncLoad(UTF8ToString(url), (byteArray) => {
         // can only allocate the buffer after the wakeUp, not during an asyncing
-        var buffer = _malloc(byteArray.length); // must be freed by caller!
+        var buffer = malloc(byteArray.length); // must be freed by caller!
         HEAPU8.set(byteArray, buffer);
         {{{ makeSetValue('pbuffer', 0, 'buffer', '*') }}};
         {{{ makeSetValue('pnum',  0, 'byteArray.length', 'i32') }}};
@@ -512,8 +512,8 @@ addToLibrary({
     createWasm();
   }),
 
-  _load_secondary_module__sig: 'v',
-  _load_secondary_module: async function() {
+  __load_secondary_module__sig: 'v',
+  __load_secondary_module: async function() {
     // Mark the module as loading for the wasm module (so it doesn't try to load it again).
     wasmExports['load_secondary_module_status'].value = 1;
     var imports = {'primary': wasmExports};
@@ -548,10 +548,10 @@ addToLibrary({
     finishContextSwitch(newFiber) {
       var stack_base = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_base,  '*') }}};
       var stack_max =  {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_limit, '*') }}};
-      _emscripten_stack_set_limits(stack_base, stack_max);
+      emscripten_stack_set_limits(stack_base, stack_max);
 
 #if STACK_OVERFLOW_CHECK >= 2
-      ___set_stack_limits(stack_base, stack_max);
+      __set_stack_limits(stack_base, stack_max);
 #endif
 
       stackRestore({{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr,   '*') }}});
@@ -578,7 +578,7 @@ addToLibrary({
         dbg('ASYNCIFY/FIBER: start rewind', asyncifyData, '(resuming fiber', newFiber, ')');
 #endif
         Asyncify.state = Asyncify.State.Rewinding;
-        _asyncify_start_rewind(asyncifyData);
+        asyncify_start_rewind(asyncifyData);
         Asyncify.doRewind(asyncifyData);
       }
     },
@@ -601,7 +601,7 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
       dbg('ASYNCIFY/FIBER: start unwind', asyncifyData);
 #endif
-      _asyncify_start_unwind(asyncifyData);
+      asyncify_start_unwind(asyncifyData);
 
       var stackTop = stackSave();
       {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr, 'stackTop', '*') }}};
@@ -615,7 +615,7 @@ addToLibrary({
       dbg('ASYNCIFY/FIBER: stop rewind');
 #endif
       Asyncify.state = Asyncify.State.Normal;
-      _asyncify_stop_rewind();
+      asyncify_stop_rewind();
       Asyncify.currData = null;
     }
   },

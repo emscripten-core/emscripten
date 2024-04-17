@@ -128,7 +128,7 @@ LibraryJSEventLoop = {
   emscripten_set_timeout_loop__deps: ['$callUserCallback', 'emscripten_get_now'],
   emscripten_set_timeout_loop: (cb, msecs, userData) => {
     function tick() {
-      var t = _emscripten_get_now();
+      var t = emscripten_get_now();
       var n = t + msecs;
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
@@ -137,7 +137,7 @@ LibraryJSEventLoop = {
           // negative setTimeout as timeout of 0
           // (https://stackoverflow.com/questions/8430966/is-calling-settimeout-with-a-negative-delay-ok)
           {{{ runtimeKeepalivePush() }}}
-          setTimeout(tick, n - _emscripten_get_now());
+          setTimeout(tick, n - emscripten_get_now());
         }
       });
     }
@@ -226,7 +226,7 @@ LibraryJSEventLoop = {
       MainLoop.func = null;
       // do not set timing and call scheduler, we will do it on the next lines
       setMainLoop(func, 0, false, MainLoop.arg, true);
-      _emscripten_set_main_loop_timing(timingMode, timingValue);
+      emscripten_set_main_loop_timing(timingMode, timingValue);
       MainLoop.scheduler();
     },
 
@@ -334,7 +334,7 @@ LibraryJSEventLoop = {
     }
     if (mode == {{{ cDefs.EM_TIMING_SETTIMEOUT }}}) {
       MainLoop.scheduler = function MainLoop_scheduler_setTimeout() {
-        var timeUntilNextTick = Math.max(0, MainLoop.tickStartTime + value - _emscripten_get_now())|0;
+        var timeUntilNextTick = Math.max(0, MainLoop.tickStartTime + value - emscripten_get_now())|0;
         setTimeout(MainLoop.runner, timeUntilNextTick); // doing this each time means that on exception, we stop
       };
       MainLoop.method = 'timeout';
@@ -424,7 +424,7 @@ LibraryJSEventLoop = {
     }
 
     // We create the loop runner here but it is not actually running until
-    // _emscripten_set_main_loop_timing is called (which might happen a
+    // emscripten_set_main_loop_timing is called (which might happen a
     // later time).  This member signifies that the current runner has not
     // yet been started so that we can call runtimeKeepalivePush when it
     // gets it timing set for the first time.
@@ -468,7 +468,7 @@ LibraryJSEventLoop = {
         MainLoop.scheduler();
         return;
       } else if (MainLoop.timingMode == {{{ cDefs.EM_TIMING_SETTIMEOUT }}}) {
-        MainLoop.tickStartTime = _emscripten_get_now();
+        MainLoop.tickStartTime = emscripten_get_now();
       }
 
 #if ASSERTIONS
@@ -488,10 +488,10 @@ LibraryJSEventLoop = {
 
     if (!noSetTiming) {
       if (fps && fps > 0) {
-        _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_SETTIMEOUT }}}, 1000.0 / fps);
+        emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_SETTIMEOUT }}}, 1000.0 / fps);
       } else {
         // Do rAF by rendering each frame (no decimating)
-        _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, 1);
+        emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, 1);
       }
 
       MainLoop.scheduler();

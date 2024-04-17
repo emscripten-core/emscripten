@@ -261,7 +261,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.keyEvent ||= _malloc({{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}});
+    JSEvents.keyEvent ||= malloc({{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}});
 
     var keyEventHandlerFunc = (e) => {
 #if ASSERTIONS
@@ -269,7 +269,7 @@ var LibraryHTML5 = {
 #endif
 
 #if PTHREADS
-      var keyEventData = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}}) : JSEvents.keyEvent; // This allocated block is passed as satellite data to the proxied function call, so the call frees up the data block when done.
+      var keyEventData = targetThread ? malloc({{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}}) : JSEvents.keyEvent; // This allocated block is passed as satellite data to the proxied function call, so the call frees up the data block when done.
 #else
       var keyEventData = JSEvents.keyEvent;
 #endif
@@ -292,7 +292,7 @@ var LibraryHTML5 = {
       stringToUTF8(e.locale || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.locale }}}, {{{ cDefs.EM_HTML5_SHORT_STRING_LEN_BYTES }}});
 
 #if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, keyEventData, userData);
+      if (targetThread) _emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, keyEventData, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, keyEventData, userData)) e.preventDefault();
@@ -515,7 +515,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.mouseEvent ||= _malloc({{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}});
+    JSEvents.mouseEvent ||= malloc({{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}});
     target = findEventTarget(target);
 
     var mouseEventHandlerFunc = (e = event) => {
@@ -524,9 +524,9 @@ var LibraryHTML5 = {
 
 #if PTHREADS
       if (targetThread) {
-        var mouseEventData = _malloc({{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}}); // This allocated block is passed as satellite data to the proxied function call, so the call frees up the data block when done.
+        var mouseEventData = malloc({{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}}); // This allocated block is passed as satellite data to the proxied function call, so the call frees up the data block when done.
         fillMouseEventData(mouseEventData, e, target);
-        __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, mouseEventData, userData);
+        _emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, mouseEventData, userData);
       } else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, JSEvents.mouseEvent, userData)) e.preventDefault();
@@ -606,12 +606,12 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.wheelEvent ||= _malloc({{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}});
+    JSEvents.wheelEvent ||= malloc({{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}});
 
     // The DOM Level 3 events spec event 'wheel'
     var wheelHandlerFunc = (e = event) => {
 #if PTHREADS
-      var wheelEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}}) : JSEvents.wheelEvent; // This allocated block is passed as satellite data to the proxied function call, so the call frees up the data block when done.
+      var wheelEvent = targetThread ? malloc({{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}}) : JSEvents.wheelEvent; // This allocated block is passed as satellite data to the proxied function call, so the call frees up the data block when done.
 #else
       var wheelEvent = JSEvents.wheelEvent;
 #endif
@@ -621,7 +621,7 @@ var LibraryHTML5 = {
       {{{ makeSetValue('wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, 'e["deltaZ"]', 'double') }}};
       {{{ makeSetValue('wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaMode, 'e["deltaMode"]', 'i32') }}};
 #if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, wheelEvent, userData);
+      if (targetThread) _emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, wheelEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, wheelEvent, userData)) e.preventDefault();
@@ -681,7 +681,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.uiEvent ||= _malloc({{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}});
+    JSEvents.uiEvent ||= malloc({{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}});
 
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     target = findEventTarget(target);
@@ -708,7 +708,7 @@ var LibraryHTML5 = {
         return;
       }
 #if PTHREADS
-      var uiEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}}) : JSEvents.uiEvent;
+      var uiEvent = targetThread ? malloc({{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}}) : JSEvents.uiEvent;
 #else
       var uiEvent = JSEvents.uiEvent;
 #endif
@@ -722,7 +722,7 @@ var LibraryHTML5 = {
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollTop, 'pageXOffset | 0', 'i32') }}}; // scroll offsets are float
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollLeft, 'pageYOffset | 0', 'i32') }}};
 #if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, uiEvent, userData);
+      if (targetThread) _emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, uiEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, uiEvent, userData)) e.preventDefault();
@@ -753,14 +753,14 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.focusEvent ||= _malloc({{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}});
+    JSEvents.focusEvent ||= malloc({{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}});
 
     var focusEventHandlerFunc = (e = event) => {
       var nodeName = JSEvents.getNodeNameForTarget(e.target);
       var id = e.target.id ? e.target.id : '';
 
 #if PTHREADS
-      var focusEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}}) : JSEvents.focusEvent;
+      var focusEvent = targetThread ? malloc({{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}}) : JSEvents.focusEvent;
 #else
       var focusEvent = JSEvents.focusEvent;
 #endif
@@ -768,7 +768,7 @@ var LibraryHTML5 = {
       stringToUTF8(id, focusEvent + {{{ C_STRUCTS.EmscriptenFocusEvent.id }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
 
 #if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, focusEvent, userData);
+      if (targetThread) _emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, focusEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, focusEvent, userData)) e.preventDefault();
@@ -817,16 +817,16 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.deviceOrientationEvent ||= _malloc({{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}});
+    JSEvents.deviceOrientationEvent ||= malloc({{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}});
 
     var deviceOrientationEventHandlerFunc = (e = event) => {
       fillDeviceOrientationEventData(JSEvents.deviceOrientationEvent, e, target); // TODO: Thread-safety with respect to emscripten_get_deviceorientation_status()
 
 #if PTHREADS
       if (targetThread) {
-        var deviceOrientationEvent = _malloc({{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}});
+        var deviceOrientationEvent = malloc({{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}});
         fillDeviceOrientationEventData(deviceOrientationEvent, e, target);
-        __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, deviceOrientationEvent, userData);
+        _emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, deviceOrientationEvent, userData);
       } else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, JSEvents.deviceOrientationEvent, userData)) e.preventDefault();
@@ -887,16 +887,16 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.deviceMotionEvent ||= _malloc({{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}});
+    JSEvents.deviceMotionEvent ||= malloc({{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}});
 
     var deviceMotionEventHandlerFunc = (e = event) => {
       fillDeviceMotionEventData(JSEvents.deviceMotionEvent, e, target); // TODO: Thread-safety with respect to emscripten_get_devicemotion_status()
 
 #if PTHREADS
       if (targetThread) {
-        var deviceMotionEvent = _malloc({{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}});
+        var deviceMotionEvent = malloc({{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}});
         fillDeviceMotionEventData(deviceMotionEvent, e, target);
-        __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, deviceMotionEvent, userData);
+        _emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, deviceMotionEvent, userData);
       } else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, JSEvents.deviceMotionEvent, userData)) e.preventDefault();
@@ -969,11 +969,11 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.orientationChangeEvent ||= _malloc({{{ C_STRUCTS.EmscriptenOrientationChangeEvent.__size__ }}});
+    JSEvents.orientationChangeEvent ||= malloc({{{ C_STRUCTS.EmscriptenOrientationChangeEvent.__size__ }}});
 
     var orientationChangeEventHandlerFunc = (e = event) => {
 #if PTHREADS
-      var orientationChangeEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenOrientationChangeEvent.__size__ }}}) : JSEvents.orientationChangeEvent;
+      var orientationChangeEvent = targetThread ? malloc({{{ C_STRUCTS.EmscriptenOrientationChangeEvent.__size__ }}}) : JSEvents.orientationChangeEvent;
 #else
       var orientationChangeEvent = JSEvents.orientationChangeEvent;
 #endif
@@ -981,7 +981,7 @@ var LibraryHTML5 = {
       fillOrientationChangeEventData(orientationChangeEvent);
 
 #if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, orientationChangeEvent, userData);
+      if (targetThread) _emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, orientationChangeEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, orientationChangeEvent, userData)) e.preventDefault();
@@ -1081,11 +1081,11 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.fullscreenChangeEvent ||= _malloc({{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}});
+    JSEvents.fullscreenChangeEvent ||= malloc({{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}});
 
     var fullscreenChangeEventhandlerFunc = (e = event) => {
 #if PTHREADS
-      var fullscreenChangeEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}}) : JSEvents.fullscreenChangeEvent;
+      var fullscreenChangeEvent = targetThread ? malloc({{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}}) : JSEvents.fullscreenChangeEvent;
 #else
       var fullscreenChangeEvent = JSEvents.fullscreenChangeEvent;
 #endif
@@ -1093,7 +1093,7 @@ var LibraryHTML5 = {
       fillFullscreenChangeEventData(fullscreenChangeEvent);
 
 #if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, fullscreenChangeEvent, userData);
+      if (targetThread) _emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, fullscreenChangeEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, fullscreenChangeEvent, userData)) e.preventDefault();
@@ -1168,7 +1168,7 @@ var LibraryHTML5 = {
 
     if (strategy.canvasResizedCallback) {
 #if PTHREADS
-      if (strategy.canvasResizedCallbackTargetThread) __emscripten_run_callback_on_thread(strategy.canvasResizedCallbackTargetThread, strategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
+      if (strategy.canvasResizedCallbackTargetThread) _emscripten_run_callback_on_thread(strategy.canvasResizedCallbackTargetThread, strategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
       else
 #endif
       {{{ makeDynCall('iipp', 'strategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
@@ -1306,7 +1306,7 @@ var LibraryHTML5 = {
 
         if (currentFullscreenStrategy.canvasResizedCallback) {
 #if PTHREADS
-          if (currentFullscreenStrategy.canvasResizedCallbackTargetThread) __emscripten_run_callback_on_thread(currentFullscreenStrategy.canvasResizedCallbackTargetThread, currentFullscreenStrategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
+          if (currentFullscreenStrategy.canvasResizedCallbackTargetThread) _emscripten_run_callback_on_thread(currentFullscreenStrategy.canvasResizedCallbackTargetThread, currentFullscreenStrategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
           else
 #endif
           {{{ makeDynCall('iipp', 'currentFullscreenStrategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
@@ -1416,7 +1416,7 @@ var LibraryHTML5 = {
 
     if (!inCenteredWithoutScalingFullscreenMode && currentFullscreenStrategy.canvasResizedCallback) {
 #if PTHREADS
-      if (currentFullscreenStrategy.canvasResizedCallbackTargetThread) __emscripten_run_callback_on_thread(currentFullscreenStrategy.canvasResizedCallbackTargetThread, currentFullscreenStrategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
+      if (currentFullscreenStrategy.canvasResizedCallbackTargetThread) _emscripten_run_callback_on_thread(currentFullscreenStrategy.canvasResizedCallbackTargetThread, currentFullscreenStrategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
       else
 #endif
       {{{ makeDynCall('iipp', 'currentFullscreenStrategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
@@ -1532,7 +1532,7 @@ var LibraryHTML5 = {
       removeEventListener('resize', softFullscreenResizeWebGLRenderTarget);
       if (strategy.canvasResizedCallback) {
 #if PTHREADS
-        if (strategy.canvasResizedCallbackTargetThread) __emscripten_run_callback_on_thread(strategy.canvasResizedCallbackTargetThread, strategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
+        if (strategy.canvasResizedCallbackTargetThread) _emscripten_run_callback_on_thread(strategy.canvasResizedCallbackTargetThread, strategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
         else
 #endif
         {{{ makeDynCall('iipp', 'strategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
@@ -1546,7 +1546,7 @@ var LibraryHTML5 = {
     // Inform the caller that the canvas size has changed.
     if (strategy.canvasResizedCallback) {
 #if PTHREADS
-      if (strategy.canvasResizedCallbackTargetThread) __emscripten_run_callback_on_thread(strategy.canvasResizedCallbackTargetThread, strategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
+      if (strategy.canvasResizedCallbackTargetThread) _emscripten_run_callback_on_thread(strategy.canvasResizedCallbackTargetThread, strategy.canvasResizedCallback, {{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
       else
 #endif
       {{{ makeDynCall('iipp', 'strategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, strategy.canvasResizedCallbackUserData);
@@ -1611,18 +1611,18 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.pointerlockChangeEvent ||= _malloc({{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}});
+    JSEvents.pointerlockChangeEvent ||= malloc({{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}});
 
     var pointerlockChangeEventHandlerFunc = (e = event) => {
 #if PTHREADS
-      var pointerlockChangeEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}}) : JSEvents.pointerlockChangeEvent;
+      var pointerlockChangeEvent = targetThread ? malloc({{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}}) : JSEvents.pointerlockChangeEvent;
 #else
       var pointerlockChangeEvent = JSEvents.pointerlockChangeEvent;
 #endif
       fillPointerlockChangeEventData(pointerlockChangeEvent);
 
 #if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, pointerlockChangeEvent, userData);
+      if (targetThread) _emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, pointerlockChangeEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, pointerlockChangeEvent, userData)) e.preventDefault();
@@ -1667,7 +1667,7 @@ var LibraryHTML5 = {
 
     var pointerlockErrorEventHandlerFunc = (e = event) => {
 #if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, 0, userData);
+      if (targetThread) _emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, 0, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, 0, userData)) e.preventDefault();
@@ -1840,11 +1840,11 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.visibilityChangeEvent ||= _malloc({{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}});
+    JSEvents.visibilityChangeEvent ||= malloc({{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}});
 
     var visibilityChangeEventHandlerFunc = (e = event) => {
 #if PTHREADS
-      var visibilityChangeEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}}) : JSEvents.visibilityChangeEvent;
+      var visibilityChangeEvent = targetThread ? malloc({{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}}) : JSEvents.visibilityChangeEvent;
 #else
       var visibilityChangeEvent = JSEvents.visibilityChangeEvent;
 #endif
@@ -1852,7 +1852,7 @@ var LibraryHTML5 = {
       fillVisibilityChangeEventData(visibilityChangeEvent);
 
 #if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, visibilityChangeEvent, userData);
+      if (targetThread) _emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, visibilityChangeEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, visibilityChangeEvent, userData)) e.preventDefault();
@@ -1894,7 +1894,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.touchEvent ||= _malloc({{{ C_STRUCTS.EmscriptenTouchEvent.__size__ }}});
+    JSEvents.touchEvent ||= malloc({{{ C_STRUCTS.EmscriptenTouchEvent.__size__ }}});
 
     target = findEventTarget(target);
 
@@ -1924,7 +1924,7 @@ var LibraryHTML5 = {
       }
 
 #if PTHREADS
-      var touchEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenTouchEvent.__size__ }}}) : JSEvents.touchEvent;
+      var touchEvent = targetThread ? malloc({{{ C_STRUCTS.EmscriptenTouchEvent.__size__ }}}) : JSEvents.touchEvent;
 #else
       var touchEvent = JSEvents.touchEvent;
 #endif
@@ -1966,7 +1966,7 @@ var LibraryHTML5 = {
       {{{ makeSetValue('touchEvent', C_STRUCTS.EmscriptenTouchEvent.numTouches, 'numTouches', 'i32') }}};
 
 #if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, touchEvent, userData);
+      if (targetThread) _emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, touchEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, touchEvent, userData)) e.preventDefault();
@@ -2042,18 +2042,18 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.gamepadEvent ||= _malloc({{{ C_STRUCTS.EmscriptenGamepadEvent.__size__ }}});
+    JSEvents.gamepadEvent ||= malloc({{{ C_STRUCTS.EmscriptenGamepadEvent.__size__ }}});
 
     var gamepadEventHandlerFunc = (e = event) => {
 #if PTHREADS
-      var gamepadEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenGamepadEvent.__size__ }}}) : JSEvents.gamepadEvent;
+      var gamepadEvent = targetThread ? malloc({{{ C_STRUCTS.EmscriptenGamepadEvent.__size__ }}}) : JSEvents.gamepadEvent;
 #else
       var gamepadEvent = JSEvents.gamepadEvent;
 #endif
       fillGamepadEventData(gamepadEvent, e["gamepad"]);
 
 #if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, gamepadEvent, userData);
+      if (targetThread) _emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, gamepadEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, gamepadEvent, userData)) e.preventDefault();
@@ -2075,14 +2075,14 @@ var LibraryHTML5 = {
   emscripten_set_gamepadconnected_callback_on_thread__proxy: 'sync',
   emscripten_set_gamepadconnected_callback_on_thread__deps: ['$registerGamepadEventCallback', 'emscripten_sample_gamepad_data'],
   emscripten_set_gamepadconnected_callback_on_thread: (userData, useCapture, callbackfunc, targetThread) => {
-    if (_emscripten_sample_gamepad_data()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    if (emscripten_sample_gamepad_data()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     return registerGamepadEventCallback({{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}}, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_GAMEPADCONNECTED }}}, "gamepadconnected", targetThread);
   },
 
   emscripten_set_gamepaddisconnected_callback_on_thread__proxy: 'sync',
   emscripten_set_gamepaddisconnected_callback_on_thread__deps: ['$registerGamepadEventCallback', 'emscripten_sample_gamepad_data'],
   emscripten_set_gamepaddisconnected_callback_on_thread: (userData, useCapture, callbackfunc, targetThread) => {
-    if (_emscripten_sample_gamepad_data()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    if (emscripten_sample_gamepad_data()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     return registerGamepadEventCallback({{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}}, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_GAMEPADDISCONNECTED }}}, "gamepaddisconnected", targetThread);
   },
 
@@ -2182,18 +2182,18 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.batteryEvent ||= _malloc({{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}});
+    JSEvents.batteryEvent ||= malloc({{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}});
 
     var batteryEventHandlerFunc = (e = event) => {
 #if PTHREADS
-      var batteryEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}}) : JSEvents.batteryEvent;
+      var batteryEvent = targetThread ? malloc({{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}}) : JSEvents.batteryEvent;
 #else
       var batteryEvent = JSEvents.batteryEvent;
 #endif
       fillBatteryEventData(batteryEvent, battery());
 
 #if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, batteryEvent, userData);
+      if (targetThread) _emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, batteryEvent, userData);
       else
 #endif
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, batteryEvent, userData)) e.preventDefault();
@@ -2354,7 +2354,7 @@ var LibraryHTML5 = {
       // and it needs to synchronously proxy over to another thread, so marshal the string onto the heap to do the call.
       var sp = stackSave();
       var targetInt = stringToUTF8OnStack(target.id);
-      _emscripten_set_canvas_element_size(targetInt, width, height);
+      emscripten_set_canvas_element_size(targetInt, width, height);
       stackRestore(sp);
     }
   },
@@ -2430,7 +2430,7 @@ var LibraryHTML5 = {
     var h = w + 4;
 
     var targetInt = stringToUTF8OnStack(target.id);
-    var ret = _emscripten_get_canvas_element_size(targetInt, w, h);
+    var ret = emscripten_get_canvas_element_size(targetInt, w, h);
     var size = [{{{ makeGetValue('w', 0, 'i32')}}}, {{{ makeGetValue('h', 0, 'i32')}}}];
     stackRestore(sp);
     return size;

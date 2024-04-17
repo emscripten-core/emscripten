@@ -68,7 +68,7 @@ EM_JS_DEPS(deps, "$stringToUTF8,$lengthBytesUTF8");
 EM_JS(char*, return_utf8_str, (void), {
     var jsString = 'こんにちは';
     var lengthBytes = lengthBytesUTF8(jsString)+1;
-    var stringOnWasmHeap = _malloc(lengthBytes);
+    var stringOnWasmHeap = malloc(lengthBytes);
     stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
     // FIXME(https://github.com/emscripten-core/emscripten/issues/16975)
 #if __wasm64__
@@ -81,7 +81,7 @@ EM_JS(char*, return_utf8_str, (void), {
 EM_JS(char*, return_str, (void), {
   var jsString = 'hello from js';
   var lengthBytes = jsString.length+1;
-  var stringOnWasmHeap = _malloc(lengthBytes);
+  var stringOnWasmHeap = malloc(lengthBytes);
   stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
     // FIXME(https://github.com/emscripten-core/emscripten/issues/16975)
 #if __wasm64__

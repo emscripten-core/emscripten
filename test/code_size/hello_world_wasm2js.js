@@ -1,30 +1,30 @@
 var d = Module, g, h, k = new TextDecoder, l;
 
 function e(b) {
-    this.exports = function(r) {
-        function u(c) {
-            c.set = function(a, f) {
-                this[a] = f;
+    this.exports = function(t) {
+        function u(f) {
+            f.set = function(a, m) {
+                this[a] = m;
             };
-            c.get = function(a) {
+            f.get = function(a) {
                 return this[a];
             };
-            return c;
+            return f;
         }
-        function x(c, a, f) {
-            for (var v, p = 0, t = a, w = f.length, y = a + (3 * w >> 2) - ("=" == f[w - 2]) - ("=" == f[w - 1]); p < w; p += 4) a = m[f.charCodeAt(p + 1)], 
-            v = m[f.charCodeAt(p + 2)], c[t++] = m[f.charCodeAt(p)] << 2 | a >> 4, t < y && (c[t++] = a << 4 | v >> 2), 
-            t < y && (c[t++] = v << 6 | m[f.charCodeAt(p + 3)]);
+        function x(f, a, m) {
+            for (var v, n = 0, c = a, w = m.length, y = a + (3 * w >> 2) - ("=" == m[w - 2]) - ("=" == m[w - 1]); n < w; n += 4) a = p[m.charCodeAt(n + 1)], 
+            v = p[m.charCodeAt(n + 2)], f[c++] = p[m.charCodeAt(n)] << 2 | a >> 4, c < y && (f[c++] = a << 4 | v >> 2), 
+            c < y && (f[c++] = v << 6 | p[m.charCodeAt(n + 3)]);
         }
-        for (var q, m = new Uint8Array(123), n = 25; 0 <= n; --n) m[48 + n] = 52 + n, m[65 + n] = n, 
-        m[97 + n] = 26 + n;
-        m[43] = 62;
-        m[47] = 63;
-        return function(c) {
-            var a = new ArrayBuffer(16908288), f = new Uint8Array(a), v = c.a.a;
-            q = f;
-            x(q, 1024, "aGVsbG8h");
-            c = u([]);
+        for (var r, p = new Uint8Array(123), q = 25; 0 <= q; --q) p[48 + q] = 52 + q, p[65 + q] = q, 
+        p[97 + q] = 26 + q;
+        p[43] = 62;
+        p[47] = 63;
+        return function(f) {
+            var a = new ArrayBuffer(16908288), m = new Uint8Array(a), v = f.a.a, n = 66576;
+            r = m;
+            x(r, 1024, "aGVsbG8h");
+            f = u([]);
             return {
                 b: Object.create(Object.prototype, {
                     grow: {},
@@ -35,33 +35,43 @@ function e(b) {
                     }
                 }),
                 c: function() {},
-                d: function(p, t) {
+                d: function(c, w) {
                     v(1024);
                     return 0;
                 },
-                e: c
+                e: f,
+                f: function(c) {
+                    n = c | 0;
+                },
+                g: function(c) {
+                    n = c = n - (c | 0) & -16;
+                    return c | 0;
+                },
+                h: function() {
+                    return n | 0;
+                }
             };
-        }(r);
+        }(t);
     }(b);
 }
 
-(function(b, r) {
+(function(b, t) {
     return {
         then: function(u) {
             u({
-                instance: new e(r)
+                instance: new e(t)
             });
         }
     };
 })(d.wasm, {
     a: {
         a: b => {
-            var r = console, u = r.log;
+            var t = console, u = t.log;
             if (b) {
-                for (var x = b + void 0, q = b; !(q >= x) && g[q]; ) ++q;
-                b = k.decode(g.subarray(b, q));
+                for (var x = b + void 0, r = b; !(r >= x) && g[r]; ) ++r;
+                b = k.decode(g.subarray(b, r));
             } else b = "";
-            u.call(r, b);
+            u.call(t, b);
         }
     }
 }).then((b => {

@@ -5,14 +5,14 @@
  */
 
 legacyFuncs = {
-  $ALLOC_NORMAL: 0,  // Tries to use _malloc()
+  $ALLOC_NORMAL: 0,  // Tries to use malloc()
   $ALLOC_STACK: 1,  // Lives for the duration of the current function call
 
   /**
    * allocate(): This function is no longer used by emscripten but is kept around to avoid
    *             breaking external users.
    *             You should normally not use allocate(), and instead allocate
-   *             memory using _malloc()/stackAlloc(), initialize it with
+   *             memory using malloc()/stackAlloc(), initialize it with
    *             setValue(), and so forth.
    * @param {(Uint8Array|Array<number>)} slab: An array of data.
    * @param {number=} allocator : How to allocate memory, see ALLOC_*
@@ -28,7 +28,7 @@ legacyFuncs = {
     if (allocator == ALLOC_STACK) {
       ret = stackAlloc(slab.length);
     } else {
-      ret = _malloc(slab.length);
+      ret = malloc(slab.length);
     }
 
     if (!slab.subarray && !slab.slice) {
@@ -79,7 +79,7 @@ legacyFuncs = {
 #if SUPPORT_ERRNO
   $setErrNo__deps: ['__errno_location'],
   $setErrNo: (value) => {
-    {{{makeSetValue("___errno_location()", 0, 'value', 'i32') }}};
+    {{{makeSetValue("__errno_location()", 0, 'value', 'i32') }}};
     return value;
   },
 #else
@@ -105,14 +105,14 @@ legacyFuncs = {
           s = s.substr(1);
         var buf = stringToUTF8OnStack(s);
         var status = stackAlloc(4);
-        var ret = ___cxa_demangle(buf, 0, 0, status);
+        var ret = __cxa_demangle(buf, 0, 0, status);
         if ({{{ makeGetValue('status', '0', 'i32') }}} === 0 && ret) {
           return UTF8ToString(ret);
         }
         // otherwise, libcxxabi failed
       } catch(e) {
       } finally {
-        _free(ret);
+        free(ret);
         if (demangle.recursionGuard < 2) --demangle.recursionGuard;
       }
       // failure when using libcxxabi, don't demangle

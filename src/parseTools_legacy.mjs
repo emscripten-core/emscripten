@@ -82,7 +82,7 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep = ';') {
   if (!isNumber(num)) num = stripCorrections(num);
   if (!isNumber(align)) align = stripCorrections(align);
   if (!isNumber(num) || parseInt(num) / align >= UNROLL_LOOP_MAX) {
-    return '(_memcpy(' + dest + ', ' + src + ', ' + num + ')|0)';
+    return '(memcpy(' + dest + ', ' + src + ', ' + num + ')|0)';
   }
   num = parseInt(num);
   // remove corrections, since we will be correcting after we add anyhow,
@@ -104,7 +104,7 @@ function makeCopyValues(dest, src, num, type, modifier, align, sep = ';') {
 
 function makeMalloc(source, param) {
   warn('use of legacy parseTools function: makeMalloc');
-  return `_malloc(${param})`;
+  return `malloc(${param})`;
 }
 
 function getNativeFieldSize(type) {

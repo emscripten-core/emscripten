@@ -703,7 +703,7 @@ var LibraryGLFW = {
 #endif
     },
 
-    getTime: () => _emscripten_get_now() / 1000,
+    getTime: () => emscripten_get_now() / 1000,
 
     /* GLFW2 wrapping */
 
@@ -713,7 +713,7 @@ var LibraryGLFW = {
 
       win.title = title;
       if (GLFW.active.id == win.id) {
-        _emscripten_set_window_title(title);
+        emscripten_set_window_title(title);
       }
     },
 
@@ -744,8 +744,8 @@ var LibraryGLFW = {
                 id: stringToNewUTF8(gamepad.id),
                 buttonsCount: gamepad.buttons.length,
                 axesCount: gamepad.axes.length,
-                buttons: _malloc(gamepad.buttons.length),
-                axes: _malloc(gamepad.axes.length*4),
+                buttons: malloc(gamepad.buttons.length),
+                axes: malloc(gamepad.axes.length*4),
               };
 
               if (GLFW.joystickFunc) {
@@ -770,9 +770,9 @@ var LibraryGLFW = {
                 {{{ makeDynCall('vii', 'GLFW.joystickFunc') }}}(joy, 0x00040002); // GLFW_DISCONNECTED
               }
 
-              _free(GLFW.joys[joy].id);
-              _free(GLFW.joys[joy].buttons);
-              _free(GLFW.joys[joy].axes);
+              free(GLFW.joys[joy].id);
+              free(GLFW.joys[joy].buttons);
+              free(GLFW.joys[joy].axes);
 
               delete GLFW.joys[joy];
             }
@@ -836,7 +836,7 @@ var LibraryGLFW = {
       event.preventDefault();
 
 #if FILESYSTEM
-      var filenames = _malloc(event.dataTransfer.files.length*4);
+      var filenames = malloc(event.dataTransfer.files.length*4);
       var filenamesArray = [];
       var count = event.dataTransfer.files.length;
 
@@ -861,9 +861,9 @@ var LibraryGLFW = {
             {{{ makeDynCall('vpii', 'GLFW.active.dropFunc') }}}(GLFW.active.id, count, filenames);
 
             for (var i = 0; i < filenamesArray.length; ++i) {
-              _free(filenamesArray[i]);
+              free(filenamesArray[i]);
             }
-            _free(filenames);
+            free(filenames);
           }
         };
         reader.readAsArrayBuffer(file);
@@ -1493,8 +1493,8 @@ var LibraryGLFW = {
   glfwSwapInterval__deps: ['emscripten_set_main_loop_timing'],
   glfwSwapInterval: (interval) => {
     interval = Math.abs(interval); // GLFW uses negative values to enable GLX_EXT_swap_control_tear, which we don't have, so just treat negative and positive the same.
-    if (interval == 0) _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_SETTIMEOUT }}}, 0);
-    else _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, interval);
+    if (interval == 0) emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_SETTIMEOUT }}}, 0);
+    else emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, interval);
   },
 
 #if USE_GLFW == 3
@@ -1517,7 +1517,7 @@ var LibraryGLFW = {
   glfwGetMonitors: (count) => {
     {{{ makeSetValue('count', '0', '1', 'i32') }}};
     if (!GLFW.monitors) {
-      GLFW.monitors = _malloc({{{ POINTER_SIZE }}});
+      GLFW.monitors = malloc({{{ POINTER_SIZE }}});
       {{{ makeSetValue('GLFW.monitors', '0', '1', 'i32') }}};
     }
     return GLFW.monitors;

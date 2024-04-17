@@ -2,7 +2,7 @@ function saveProfileData() {
   var __write_profile = wasmExports['__write_profile'];
   if (__write_profile) {
     var len = __write_profile(0, 0);
-    var offset = _malloc(len);
+    var offset = malloc(len);
     var actualLen = __write_profile(offset, len);
     var profile_data = HEAPU8.subarray(offset, offset + len);
     if (typeof fs === 'undefined') {
@@ -14,11 +14,11 @@ function saveProfileData() {
     }
     console.log('profile size is', actualLen, 'bytes (allocated', len, 'bytes)');
     console.log('wrote profile data')
-    _free(offset);
+    free(offset);
   }
 
   // Say hello *after* recording the profile so that all functions are deferred.
-  var result = _say_hello();
+  var result = say_hello();
   if (typeof Asyncify !== 'undefined') {
     console.log((result instanceof Promise) ? 'result is promise' : '');
   }

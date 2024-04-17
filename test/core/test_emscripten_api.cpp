@@ -17,7 +17,7 @@ int main() {
   emscripten_run_script("out('hello world' + '!')");
   printf("*%d*\n", emscripten_run_script_int("5*20"));
   printf("*%s*\n", emscripten_run_script_string("'five'+'six'"));
-  emscripten_run_script("Module['_save_me_aimee']()");
+  emscripten_run_script("Module['save_me_aimee']()");
   //
   double d = 0.1234567891231219886553;
   int len = emscripten_print_double(d, NULL, -1);

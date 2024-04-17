@@ -36,7 +36,7 @@ var emscriptenMemoryProfiler = {
   allocationSitePtrs: {},
 
   // Stores an associative array of records HEAP ptr -> size so that we can
-  // retrieve how much memory was freed in calls to _free() and decrement the
+  // retrieve how much memory was freed in calls to free() and decrement the
   // tracked usage accordingly.
   // E.g. sizeOfAllocatedPtr[address] returns the size of the heap pointer
   // starting at 'address'.
@@ -162,7 +162,7 @@ var emscriptenMemoryProfiler = {
   recordStackWatermark() {
     if (typeof runtimeInitialized == 'undefined' || runtimeInitialized) {
       var self = emscriptenMemoryProfiler;
-      self.stackTopWatermark = Math.min(self.stackTopWatermark, _emscripten_stack_get_current());
+      self.stackTopWatermark = Math.min(self.stackTopWatermark, emscripten_stack_get_current());
     }
   },
 
@@ -184,9 +184,9 @@ var emscriptenMemoryProfiler = {
 
     self.recordStackWatermark();
 
-    // Remember the size of the allocated block to know how much will be _free()d later.
+    // Remember the size of the allocated block to know how much will be free()d later.
     self.sizeOfAllocatedPtr[ptr] = size;
-    // Also track if this was a _malloc performed at preRun time.
+    // Also track if this was a malloc performed at preRun time.
     if (!self.pagePreRunIsFinished) self.sizeOfPreRunAllocatedPtr[ptr] = size;
 
     var loc = new Error().stack.toString();
@@ -225,7 +225,7 @@ var emscriptenMemoryProfiler = {
     }
     delete self.allocationSitePtrs[ptr];
     delete self.sizeOfAllocatedPtr[ptr];
-    delete self.sizeOfPreRunAllocatedPtr[ptr]; // Also free if this happened to be a _malloc performed at preRun time.
+    delete self.sizeOfPreRunAllocatedPtr[ptr]; // Also free if this happened to be a malloc performed at preRun time.
     ++self.totalTimesFreeCalled;
   },
 
@@ -488,9 +488,9 @@ var emscriptenMemoryProfiler = {
     if (typeof runtimeInitialized != 'undefined' && !runtimeInitialized) {
       return;
     }
-    var stackBase = _emscripten_stack_get_base();
-    var stackMax = _emscripten_stack_get_end();
-    var stackCurrent = _emscripten_stack_get_current();
+    var stackBase = emscripten_stack_get_base();
+    var stackMax = emscripten_stack_get_end();
+    var stackCurrent = emscripten_stack_get_current();
     var width = (nBits(HEAP8.length) + 3) / 4; // Pointer 'word width'
     var html = 'Total HEAP size: ' + self.formatBytes(HEAP8.length) + '.';
     html += '<br />' + colorBar('#202020') + 'STATIC memory area size: ' + self.formatBytes(stackMax - {{{ GLOBAL_BASE }}});
@@ -502,8 +502,8 @@ var emscriptenMemoryProfiler = {
     html += '. STACK_MAX: ' + toHex(stackMax, width) + '.';
     html += '<br />STACK memory area used now (should be zero): ' + self.formatBytes(stackBase - stackCurrent) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + self.formatBytes(stackBase - self.stackTopWatermark);
 
-    var heap_base = Module['___heap_base'];
-    var heap_end = _sbrk({{{ to64('0') }}});
+    var heap_base = Module['__heap_base'];
+    var heap_end = sbrk({{{ to64('0') }}});
     html += "<br />DYNAMIC memory area size: " + self.formatBytes(heap_end - heap_base);
     html += ". start: " + toHex(heap_base, width);
     html += ". end: " + toHex(heap_end, width) + ".";

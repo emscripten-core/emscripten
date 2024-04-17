@@ -152,7 +152,7 @@ function invoke_%s(%s) {
   } catch(e) {
     stackRestore(sp);
     %s
-    _setThrew(1, 0);%s
+    setThrew(1, 0);%s
   }
 }''' % (sig, ','.join(args), body, maybe_rethrow, exceptional_ret)
 

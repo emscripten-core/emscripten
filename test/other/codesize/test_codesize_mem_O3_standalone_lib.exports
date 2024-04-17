@@ -1,4 +1,6 @@
 __indirect_function_table
+_emscripten_stack_restore
 _initialize
+emscripten_stack_get_current
 foo
 memory

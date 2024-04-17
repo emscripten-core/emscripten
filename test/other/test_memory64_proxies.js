@@ -1,9 +1,9 @@
 addOnPostRun(() => {
   // check >4gb alloc
-  const bigChunk = _malloc(4 * 1024 * 1024 * 1024 + 100);
+  const bigChunk = malloc(4 * 1024 * 1024 * 1024 + 100);
   assert(bigChunk > 0);
 
-  const littleChunk = _malloc(100);
+  const littleChunk = malloc(100);
   HEAP8[littleChunk] = 2;
   assert(HEAP8[littleChunk] === 2);
 

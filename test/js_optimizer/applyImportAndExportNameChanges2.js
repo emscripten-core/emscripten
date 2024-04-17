@@ -113,7 +113,7 @@ var SYSCALLS = {
     })
 };
 
-function ___syscall140(which, varargs) {
+function __syscall140(which, varargs) {
     SYSCALLS.varargs = varargs;
     try {
         var stream = SYSCALLS.getStreamFromFD(),
@@ -132,7 +132,7 @@ function ___syscall140(which, varargs) {
     }
 }
 
-function ___syscall146(which, varargs) {
+function __syscall146(which, varargs) {
     SYSCALLS.varargs = varargs;
     try {
         var stream = SYSCALLS.get(),
@@ -154,7 +154,7 @@ function ___syscall146(which, varargs) {
     }
 }
 
-function ___syscall54(which, varargs) {
+function __syscall54(which, varargs) {
     SYSCALLS.varargs = varargs;
     try {
         return 0
@@ -164,7 +164,7 @@ function ___syscall54(which, varargs) {
     }
 }
 
-function ___syscall6(which, varargs) {
+function __syscall6(which, varargs) {
     SYSCALLS.varargs = varargs;
     try {
         var stream = SYSCALLS.getStreamFromFD();
@@ -176,11 +176,11 @@ function ___syscall6(which, varargs) {
     }
 }
 
-function _emscripten_get_now() {
+function emscripten_get_now() {
     abort()
 }
 
-function _emscripten_random() {
+function emscripten_random() {
     return Math.random()
 }
 
@@ -188,34 +188,34 @@ function _emscripten_memcpy_js(dest, src, num) {
     HEAPU8.set(HEAPU8.subarray(src, src + num), dest)
 }
 if (ENVIRONMENT_IS_NODE) {
-    _emscripten_get_now = function _emscripten_get_now_actual() {
+    emscripten_get_now = function emscripten_get_now_actual() {
         var t = process.hrtime();
         return t[0] * 1e3 + t[1] / 1e6
     }
 } else if (typeof self === "object" && self["performance"] && typeof self["performance"]["now"] === "function") {
-    _emscripten_get_now = (function() {
+    emscripten_get_now = (function() {
         return self["performance"]["now"]()
     })
 } else if (typeof performance === "object" && typeof performance["now"] === "function") {
-    _emscripten_get_now = (function() {
+    emscripten_get_now = (function() {
         return performance["now"]()
     })
 } else {
-    _emscripten_get_now = Date.now
+    emscripten_get_now = Date.now
 }
 var wasmImports = {
     abort: abort,
-    ___syscall140: ___syscall140,
-    ___syscall146: ___syscall146,
-    ___syscall54: ___syscall54,
-    ___syscall6: ___syscall6,
-    _emscripten_get_now: _emscripten_get_now,
+    __syscall140: __syscall140,
+    __syscall146: __syscall146,
+    __syscall54: __syscall54,
+    __syscall6: __syscall6,
+    emscripten_get_now: emscripten_get_now,
     _emscripten_memcpy_js: _emscripten_memcpy_js,
-    _emscripten_random: _emscripten_random
+    emscripten_random: emscripten_random
 };
 
 function run() {
-    var ret = _main()
+    var ret = main()
 }
 
 function initRuntime(wasmExports) {
@@ -246,14 +246,14 @@ var imports = {
         })
     }
 };
-var ___errno_location, _llvm_bswap_i32, _main, _memcpy, _memset, dynCall_ii, dynCall_iiii;
+var __errno_location, llvm_bswap_i32, main, memcpy, memset, dynCall_ii, dynCall_iiii;
 WebAssembly.instantiate(Module["wasm"], imports).then(((output) => {
     var wasmExports = output.instance.exports;
-    ___errno_location = wasmExports["___errno_location"];
-    _llvm_bswap_i32 = wasmExports["_llvm_bswap_i32"];
-    _main = wasmExports["_main"];
-    _memcpy = wasmExports["_memcpy"];
-    _memset = wasmExports["_memset"];
+    __errno_location = wasmExports["__errno_location"];
+    llvm_bswap_i32 = wasmExports["llvm_bswap_i32"];
+    main = wasmExports["main"];
+    memcpy = wasmExports["memcpy"];
+    memset = wasmExports["memset"];
     dynCall_ii = wasmExports["dynCall_ii"];
     dynCall_iiii = wasmExports["dynCall_iiii"];
     initRuntime(wasmExports);
@@ -262,4 +262,4 @@ WebAssembly.instantiate(Module["wasm"], imports).then(((output) => {
 
 
 
-// EXTRA_INFO: {"mapping": {"_llvm_bswap_i32": "k", "_emscripten_random": "c", "dynCall_ii": "o", "__GLOBAL__sub_I_test_global_initializer_cpp": "i", "___errno_location": "j", "dynCall_iiii": "p", "___syscall6": "f", "_memset": "n", "_memcpy": "m", "abort": "b", "___syscall146": "a", "_emscripten_memcpy_js": "d", "___syscall54": "g", "___syscall140": "h", "_emscripten_get_now": "e", "_main": "l"}}
+// EXTRA_INFO: {"mapping": {"llvm_bswap_i32": "k", "emscripten_random": "c", "dynCall_ii": "o", "__GLOBAL__sub_I_test_global_initializer_cpp": "i", "__errno_location": "j", "dynCall_iiii": "p", "__syscall6": "f", "memset": "n", "memcpy": "m", "abort": "b", "__syscall146": "a", "_emscripten_memcpy_js": "d", "__syscall54": "g", "__syscall140": "h", "emscripten_get_now": "e", "main": "l"}}

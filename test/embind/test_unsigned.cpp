@@ -36,6 +36,6 @@ int main()
 //        Module['set_bind_u64'](2147483648); // todo: embind does not currently support 64-bit integers.
         Module['set_bind_u32'](2147483648);
 //        Module['_set_c_u64'](2147483648); // todo: embind does not currently support 64-bit integers.
-        Module['_set_c_u32'](2147483648);
+        Module['set_c_u32'](2147483648);
     );
 }

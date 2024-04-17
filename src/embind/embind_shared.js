@@ -117,9 +117,9 @@ var LibraryEmbindShared = {
   },
   $getTypeName__deps: ['$readLatin1String', '__getTypeName', 'free'],
   $getTypeName: (type) => {
-    var ptr = ___getTypeName(type);
+    var ptr = __getTypeName(type);
     var rv = readLatin1String(ptr);
-    _free(ptr);
+    free(ptr);
     return rv;
   },
   $getFunctionName__deps: [],

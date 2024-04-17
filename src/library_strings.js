@@ -477,7 +477,7 @@ addToLibrary({
   $stringToNewUTF8__deps: ['$lengthBytesUTF8', '$stringToUTF8', 'malloc'],
   $stringToNewUTF8: (str) => {
     var size = lengthBytesUTF8(str) + 1;
-    var ret = _malloc(size);
+    var ret = malloc(size);
     if (ret) stringToUTF8(str, ret, size);
     return ret;
   },

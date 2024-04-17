@@ -58,7 +58,15 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
   # way that minifies well with Closure
   # e.g. var a,b,c,d,e,f;
 
-  exports = [asmjs_mangle(x) for x in exports if x != building.WASM_CALL_CTORS]
+  exports = [x for x in exports if x != building.WASM_CALL_CTORS]
+
+  # We export __main_argc_argv` as `main`
+  if '__main_argc_argv' in exports:
+    exports[exports.index('__main_argc_argv')] = 'main'
+
+  if settings.MANGLED_SYMBOLS:
+    # We still support mangling the exports
+    exports += [asmjs_mangle(x) for x in exports]
 
   declares = 'var ' + ',\n '.join(exports) + ';'
   post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS_DECLARES >>>', declares)
@@ -93,8 +101,7 @@ def maybe_disable_filesystem(imports):
   else:
     # TODO(sbc): Find a better way to identify wasi syscalls
     syscall_prefixes = ('__syscall_', 'fd_')
-    side_module_imports = [shared.demangle_c_symbol_name(s) for s in settings.SIDE_MODULE_IMPORTS]
-    all_imports = set(imports).union(side_module_imports)
+    all_imports = set(imports).union(settings.SIDE_MODULE_IMPORTS)
     syscalls = {d for d in all_imports if d.startswith(syscall_prefixes) or d == 'path_open'}
     # check if the only filesystem syscalls are in: close, ioctl, llseek, write
     # (without open, etc.. nothing substantial can be done, so we can disable
@@ -231,11 +238,11 @@ def report_missing_exports_wasm_only(metadata):
       diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
 
 
-def report_missing_exports(js_symbols):
+def report_missing_exports(js_symbols, runtime_symbols):
   if diagnostics.is_enabled('undefined'):
     # Report any symbol that was explicitly exported but is present neither
     # as a native function nor as a JS library function.
-    defined_symbols = set(asmjs_mangle(e) for e in settings.WASM_EXPORTS).union(js_symbols)
+    defined_symbols = set(settings.WASM_EXPORTS).union(js_symbols).union(runtime_symbols)
     missing = set(settings.USER_EXPORTS) - defined_symbols
     for symbol in sorted(missing):
       diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
@@ -290,18 +297,23 @@ def trim_asm_const_body(body):
 
 def create_global_exports(global_exports):
   lines = []
-  for k, v in global_exports.items():
-    if building.is_internal_global(k):
+  for name, value in global_exports.items():
+    if building.is_internal_global(name):
       continue
 
-    v = int(v)
+    value = int(value)
     if settings.RELOCATABLE:
-      v += settings.GLOBAL_BASE
-    mangled = asmjs_mangle(k)
+      value += settings.GLOBAL_BASE
     if settings.MINIMAL_RUNTIME:
-      lines.append("var %s = %s;" % (mangled, v))
+      lines.append("var %s = %s;" % (name, value))
     else:
-      lines.append("var %s = Module['%s'] = %s;" % (mangled, mangled, v))
+      lines.append("var %s = Module['%s'] = %s;" % (name, name, value))
+    if settings.MANGLED_SYMBOLS:
+      mangled = asmjs_mangle(name)
+      if settings.MINIMAL_RUNTIME:
+        lines.append("var %s = %s;" % (mangled, name))
+      else:
+        lines.append("var %s = Module['%s'] = %s;" % (mangled, mangled, name))
 
   return '\n'.join(lines)
 
@@ -419,7 +431,15 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
         pre += f"  ignoredModuleProp('{sym}');\n"
     pre += "}\n"
 
-  report_missing_exports(forwarded_json['librarySymbols'])
+  runtime_symbols = set(building.get_runtime_symbols())
+  js_symbols = set(s[1:] if s[0] == '$' else s for s in forwarded_json['librarySymbols'])
+  report_missing_exports(js_symbols, runtime_symbols)
+
+  missing_exports = set(settings.EXPORTS) - js_symbols - set(settings.WASM_EXPORTS)
+  runtime_exports = '\n// exported runtime symbols\n'
+  for r in sorted(missing_exports):
+    if r in runtime_symbols:
+      runtime_exports += f"Module['{r}'] = {r};\n"
 
   if settings.MINIMAL_RUNTIME:
     # In MINIMAL_RUNTIME, atinit exists in the postamble part
@@ -468,6 +488,8 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     metadata.library_definitions = forwarded_json['libraryDefinitions']
 
     write_output_file(out, module)
+
+    out.write(runtime_exports)
 
     out.write(post)
     module = None
@@ -578,7 +600,7 @@ def finalize_wasm(infile, outfile, js_syms):
   if settings.GENERATE_SOURCE_MAP:
     building.save_intermediate(outfile + '.map', 'post_finalize.map')
 
-  expected_exports = set(settings.EXPORTED_FUNCTIONS)
+  expected_exports = set(settings.EXPORTS)
   expected_exports.update(asmjs_mangle(s) for s in settings.REQUIRED_EXPORTS)
   expected_exports.update(asmjs_mangle(s) for s in settings.EXPORT_IF_DEFINED)
   # Assume that when JS symbol dependencies are exported it is because they
@@ -592,27 +614,26 @@ def finalize_wasm(infile, outfile, js_syms):
   # These are any exports that were not requested on the command line and are
   # not known auto-generated system functions.
   unexpected_exports = [e for e in metadata.all_exports if treat_as_user_export(e)]
-  unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
 
   if not settings.STANDALONE_WASM and 'main' in metadata.all_exports or '__main_argc_argv' in metadata.all_exports:
-    if 'EXPORTED_FUNCTIONS' in user_settings and '_main' not in settings.USER_EXPORTS:
-      # If `_main` was unexpectedly exported we assume it was added to
+    if 'EXPORTS' in user_settings and 'main' not in settings.USER_EXPORTS:
+      # If `main` was unexpectedly exported we assume it was added to
       # EXPORT_IF_DEFINED by `phase_linker_setup` in order that we can detect
       # it and report this warning.  After reporting the warning we explicitly
       # ignore the export and run as if there was no main function since that
-      # is defined is behaviour for programs that don't include `_main` in
-      # EXPORTED_FUNCTIONS.
-      diagnostics.warning('unused-main', '`main` is defined in the input files, but `_main` is not in `EXPORTED_FUNCTIONS`. Add it to this list if you want `main` to run.')
+      # is defined is behaviour for programs that don't include `main` in
+      # EXPORTS.
+      diagnostics.warning('unused-main', '`main` is defined in the input files, but `main` is not in export list. Add it to this list if you want `main` to run.')
       if 'main' in metadata.all_exports:
         metadata.all_exports.remove('main')
       else:
         metadata.all_exports.remove('__main_argc_argv')
     else:
-      unexpected_exports.append('_main')
+      unexpected_exports.append('main')
 
   building.user_requested_exports.update(unexpected_exports)
-  settings.EXPORTED_FUNCTIONS.extend(unexpected_exports)
+  settings.EXPORTS.extend(unexpected_exports)
 
   return metadata
 
@@ -661,14 +682,14 @@ def create_tsd(metadata, embind_tsd):
   # Manually generate defintions for any Wasm function exports.
   out += 'interface WasmModule {\n'
   for name, functype in metadata.function_exports.items():
-    mangled = asmjs_mangle(name)
-    should_export = settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS
+    should_export = settings.EXPORT_KEEPALIVE and name in settings.EXPORTS
     if not should_export:
       continue
     arguments = []
     for index, type in enumerate(functype.params):
       arguments.append(f"_{index}: {type_to_ts_type(type)}")
-    out += f'  {mangled}({", ".join(arguments)}): '
+    name = asmjs_mangle(name)
+    out += f'  {name}({", ".join(arguments)}): '
     assert len(functype.returns) <= 1, 'One return type only supported'
     if functype.returns:
       out += f'{type_to_ts_type(functype.returns[0])}'
@@ -832,41 +853,36 @@ def add_standard_wasm_imports(send_items_map):
     send_items_map[s] = s
 
 
-def create_sending(metadata, library_symbols):
+def is_c_library_symbol(s):
+  return not s.startswith('$')
+
+
+def create_sending(metadata, js_symbols):
   # Map of wasm imports to mangled/external/JS names
   send_items_map = {}
 
   for name in metadata.invoke_funcs:
     send_items_map[name] = name
   for name in metadata.imports:
-    if name in metadata.em_js_funcs:
-      send_items_map[name] = name
-    else:
-      send_items_map[name] = asmjs_mangle(name)
+    send_items_map[name] = name
 
   add_standard_wasm_imports(send_items_map)
 
   if settings.MAIN_MODULE:
     # When including dynamic linking support, also add any JS library functions
-    # that are part of EXPORTED_FUNCTIONS (or in the case of MAIN_MODULE=1 add
+    # that are part of EXPORTS (or in the case of MAIN_MODULE=1 add
     # all JS library functions).  This allows `dlsym(RTLD_DEFAULT)` to lookup JS
     # library functions, since `wasmImports` acts as the global symbol table.
     wasm_exports = set(metadata.function_exports)
-    library_symbols = set(library_symbols)
+    js_symbols = set(js_symbols)
     if settings.MAIN_MODULE == 1:
-      for f in library_symbols:
-        if shared.is_c_symbol(f):
-          demangled = shared.demangle_c_symbol_name(f)
-          if demangled in wasm_exports:
-            continue
-          send_items_map[demangled] = f
+      for f in js_symbols:
+        if is_c_library_symbol(f) and f not in wasm_exports:
+          send_items_map[f] = f
     else:
-      for f in settings.EXPORTED_FUNCTIONS + settings.SIDE_MODULE_IMPORTS:
-        if f in library_symbols and shared.is_c_symbol(f):
-          demangled = shared.demangle_c_symbol_name(f)
-          if demangled in wasm_exports:
-            continue
-          send_items_map[demangled] = f
+      for f in settings.EXPORTS + settings.SIDE_MODULE_IMPORTS:
+        if f in js_symbols and f not in wasm_exports:
+          send_items_map[f] = f
 
   sorted_items = sorted(send_items_map.items())
   prefix = ''
@@ -907,20 +923,29 @@ def make_export_wrappers(function_exports):
 
   for name, types in function_exports.items():
     nargs = len(types.params)
-    mangled = asmjs_mangle(name)
-    wrapper = 'var %s = ' % mangled
+    wrapper = 'var %s = ' % name
 
     # TODO(sbc): Can we avoid exporting the dynCall_ functions on the module.
-    should_export = settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS
+    should_export = settings.EXPORT_KEEPALIVE and name in settings.EXPORTS
+    exported = ''
     if (name.startswith('dynCall_') and settings.MODULARIZE != 'instance') or should_export:
+      mangled = asmjs_mangle(name)
+      if settings.MANGLED_SYMBOLS:
+        export_name = mangled
+      else:
+        export_name = name
       if settings.MODULARIZE == 'instance':
         # Update the export declared at the top level.
-        wrapper += f" __exp_{mangled} = "
+        wrapper += f' __exp_{export_name} = '
       else:
-        exported = "Module['%s'] = " % mangled
-    else:
-      exported = ''
-    wrapper += exported
+        exported += f"Module['{export_name}'] = "
+      if settings.MANGLED_SYMBOLS and name != mangled:
+        exported += f'{mangled} = '
+        wrappers.append(f'var {mangled};')
+      if name == '__main_argc_argv':
+        wrappers.append('var main;')
+        exported += 'main = '
+      wrapper += exported
 
     if settings.ASSERTIONS and install_wrapper(name):
       # With assertions enabled we create a wrapper that are calls get routed through, for
@@ -931,7 +956,7 @@ def make_export_wrappers(function_exports):
       # first use.
       args = [f'a{i}' for i in range(nargs)]
       args = ', '.join(args)
-      wrapper += f"({args}) => ({mangled} = {exported}wasmExports['{name}'])({args});"
+      wrapper += f"({args}) => ({name} = {exported}wasmExports['{name}'])({args});"
     else:
       wrapper += f"wasmExports['{name}']"
 
@@ -950,21 +975,29 @@ def create_receiving(function_exports):
   if settings.MINIMAL_RUNTIME:
     # In Wasm exports are assigned inside a function to variables
     # existing in top level JS scope, i.e.
-    # var _main;
+    # var main;
     # WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
     #   var wasmExports = output.instance.exports;
-    #   _main = wasmExports["_main"];
+    #   main = wasmExports["main"];
     generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
     exports_that_are_not_initializers = [x for x in function_exports if x != building.WASM_CALL_CTORS]
 
-    for s in exports_that_are_not_initializers:
-      mangled = asmjs_mangle(s)
-      dynCallAssignment = ('dynCalls["' + s.replace('dynCall_', '') + '"] = ') if generate_dyncall_assignment and mangled.startswith('dynCall_') else ''
-      should_export = settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS)
+    for name in exports_that_are_not_initializers:
+      dynCallAssignment = ('dynCalls["' + name.replace('dynCall_', '') + '"] = ') if generate_dyncall_assignment and name.startswith('dynCall_') else ''
+      should_export = settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and name in settings.EXPORTS)
       export_assignment = ''
+      if name == '__main_argc_argv':
+        export_name = 'main'
+      else:
+        export_name = name
+      mangled = asmjs_mangle(name)
       if settings.MODULARIZE and should_export:
-        export_assignment = f"Module['{mangled}'] = "
-      receiving += [f'{export_assignment}{dynCallAssignment}{mangled} = wasmExports["{s}"]']
+        export_assignment += f"Module['{export_name}'] = "
+        if settings.MANGLED_SYMBOLS:
+          export_assignment += f"Module['{mangled}'] = "
+      if settings.MANGLED_SYMBOLS:
+        export_assignment += f'{mangled} = '
+      receiving += [f"{export_assignment}{dynCallAssignment}{export_name} = wasmExports['{name}']"]
   else:
     receiving += make_export_wrappers(function_exports)
 
@@ -974,11 +1007,11 @@ def create_receiving(function_exports):
     return '\n'.join(receiving) + '\n'
 
 
-def create_module(receiving, metadata, global_exports, library_symbols):
+def create_module(receiving, metadata, global_exports, js_symbols):
   receiving += create_global_exports(global_exports)
   module = []
 
-  sending = create_sending(metadata, library_symbols)
+  sending = create_sending(metadata, js_symbols)
   if settings.PTHREADS:
     sending = textwrap.indent(sending, '  ').strip()
     module.append('''\

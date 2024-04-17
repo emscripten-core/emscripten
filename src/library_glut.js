@@ -292,12 +292,12 @@ var LibraryGLUT = {
       }
       Browser.setCanvasSize(width, height, true); // N.B. GLUT.reshapeFunc is also registered as a canvas resize callback.
                                                   // Just call it once here.
-      /* Can't call _glutReshapeWindow as that requests cancelling fullscreen. */
+      /* Can't call glutReshapeWindow as that requests cancelling fullscreen. */
       if (GLUT.reshapeFunc) {
         // out("GLUT.reshapeFunc (from FS): " + width + ", " + height);
         {{{ makeDynCall('vii', 'GLUT.reshapeFunc') }}}(width, height);
       }
-      _glutPostRedisplay();
+      glutPostRedisplay();
     }
   },
 
@@ -588,7 +588,7 @@ var LibraryGLUT = {
     if (GLUT.reshapeFunc) {
       {{{ makeDynCall('vii', 'GLUT.reshapeFunc') }}}(width, height);
     }
-    _glutPostRedisplay();
+    glutPostRedisplay();
   },
 
   glutPositionWindow__proxy: 'sync',
@@ -596,7 +596,7 @@ var LibraryGLUT = {
   glutPositionWindow: (x, y) => {
     Browser.exitFullscreen();
     /* TODO */
-    _glutPostRedisplay();
+    glutPostRedisplay();
   },
 
   glutFullScreen__proxy: 'sync',
@@ -633,8 +633,8 @@ var LibraryGLUT = {
   glutMainLoop__proxy: 'sync',
   glutMainLoop__deps: ['$GLUT', 'glutReshapeWindow', 'glutPostRedisplay'],
   glutMainLoop: () => {
-    _glutReshapeWindow(Module['canvas'].width, Module['canvas'].height);
-    _glutPostRedisplay();
+    glutReshapeWindow(Module['canvas'].width, Module['canvas'].height);
+    glutPostRedisplay();
     throw 'unwind';
   },
 

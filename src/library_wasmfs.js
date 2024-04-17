@@ -8,7 +8,7 @@ addToLibrary({
   $MEMFS__deps: ['wasmfs_create_memory_backend'],
   $MEMFS: {
     createBackend(opts) {
-      return _wasmfs_create_memory_backend();
+      return wasmfs_create_memory_backend();
     }
   },
   $wasmFSPreloadedFiles: [],
@@ -123,11 +123,11 @@ FS.init();
     },
 
 #if hasExportedSymbol('_wasmfs_read_file') // Support the JS function exactly
-                                           // when the __wasmfs_* function is
+                                           // when the _wasmfs_* function is
                                            // present to be called (otherwise,
                                            // we'd error anyhow). This depends
                                            // on other code including the
-                                           // __wasmfs_* method properly.
+                                           // _wasmfs_* method properly.
     readFile(path, opts = {}) {
       opts.encoding = opts.encoding || 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
@@ -136,7 +136,7 @@ FS.init();
 
       // Copy the file into a JS buffer on the heap.
       var sp = stackSave();
-      var buf = __wasmfs_read_file(stringToUTF8OnStack(path));
+      var buf = _wasmfs_read_file(stringToUTF8OnStack(path));
       stackRestore(sp);
 
       // The signed integer length resides in the first 8 bytes of the buffer.
@@ -154,7 +154,7 @@ FS.init();
 #endif
 
 #if hasExportedSymbol('_wasmfs_get_cwd') // Similar to readFile, above.
-    cwd: () => UTF8ToString(__wasmfs_get_cwd()),
+    cwd: () => UTF8ToString(_wasmfs_get_cwd()),
 #endif
 
 #if FORCE_FILESYSTEM || INCLUDE_FULL_LIBRARY // see comment above
@@ -176,32 +176,32 @@ FS.init();
     mkdir: (path, mode) => FS_mkdir(path, mode),
     mkdirTree: (path, mode) => FS_mkdirTree(path, mode),
     rmdir: (path) => FS.handleError(
-      withStackSave(() => __wasmfs_rmdir(stringToUTF8OnStack(path)))
+      withStackSave(() => _wasmfs_rmdir(stringToUTF8OnStack(path)))
     ),
     open: (path, flags, mode) => withStackSave(() => {
       flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
       mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
       var buffer = stringToUTF8OnStack(path);
-      var fd = FS.handleError(__wasmfs_open(buffer, flags, mode));
+      var fd = FS.handleError(_wasmfs_open(buffer, flags, mode));
       return { fd : fd };
     }),
     create: (path, mode) => FS_create(path, mode),
-    close: (stream) => FS.handleError(-__wasmfs_close(stream.fd)),
+    close: (stream) => FS.handleError(-_wasmfs_close(stream.fd)),
     unlink: (path) => FS_unlink(path),
     chdir: (path) => withStackSave(() => {
       var buffer = stringToUTF8OnStack(path);
-      return __wasmfs_chdir(buffer);
+      return _wasmfs_chdir(buffer);
     }),
     read(stream, buffer, offset, length, position) {
       var seeking = typeof position != 'undefined';
 
-      var dataBuffer = _malloc(length);
+      var dataBuffer = malloc(length);
 
       var bytesRead;
       if (seeking) {
-        bytesRead = __wasmfs_pread(stream.fd, dataBuffer, length, position);
+        bytesRead = _wasmfs_pread(stream.fd, dataBuffer, length, position);
       } else {
-        bytesRead = __wasmfs_read(stream.fd, dataBuffer, length);
+        bytesRead = _wasmfs_read(stream.fd, dataBuffer, length);
       }
       bytesRead = FS.handleError(bytesRead);
 
@@ -209,51 +209,51 @@ FS.init();
         buffer[offset + i] = {{{ makeGetValue('dataBuffer', 'i', 'i8')}}}
       }
 
-      _free(dataBuffer);
+      free(dataBuffer);
       return bytesRead;
     },
     // Note that canOwn is an optimization that we ignore for now in WasmFS.
     write(stream, buffer, offset, length, position, canOwn) {
       var seeking = typeof position != 'undefined';
 
-      var dataBuffer = _malloc(length);
+      var dataBuffer = malloc(length);
       for (var i = 0; i < length; i++) {
         {{{ makeSetValue('dataBuffer', 'i', 'buffer[offset + i]', 'i8') }}};
       }
 
       var bytesRead;
       if (seeking) {
-        bytesRead = __wasmfs_pwrite(stream.fd, dataBuffer, length, position);
+        bytesRead = _wasmfs_pwrite(stream.fd, dataBuffer, length, position);
       } else {
-        bytesRead = __wasmfs_write(stream.fd, dataBuffer, length);
+        bytesRead = _wasmfs_write(stream.fd, dataBuffer, length);
       }
       bytesRead = FS.handleError(bytesRead);
-      _free(dataBuffer);
+      free(dataBuffer);
 
       return bytesRead;
     },
     allocate(stream, offset, length) {
-      return FS.handleError(__wasmfs_allocate(stream.fd, {{{ splitI64('offset') }}}, {{{ splitI64('length') }}}));
+      return FS.handleError(_wasmfs_allocate(stream.fd, {{{ splitI64('offset') }}}, {{{ splitI64('length') }}}));
     },
     writeFile: (path, data) => FS_writeFile(path, data),
     mmap: (stream, length, offset, prot, flags) => {
-      var buf = FS.handleError(__wasmfs_mmap(length, prot, flags, stream.fd, {{{ splitI64('offset') }}}));
+      var buf = FS.handleError(_wasmfs_mmap(length, prot, flags, stream.fd, {{{ splitI64('offset') }}}));
       return { ptr: buf, allocated: true };
     },
     // offset is passed to msync to maintain backwards compatibility with the legacy JS API but is not used by WasmFS.
     msync: (stream, bufferPtr, offset, length, mmapFlags) => {
       assert(offset === 0);
       // TODO: assert that stream has the fd corresponding to the mapped buffer (bufferPtr).
-      return FS.handleError(__wasmfs_msync(bufferPtr, length, mmapFlags));
+      return FS.handleError(_wasmfs_msync(bufferPtr, length, mmapFlags));
     },
     munmap: (addr, length) => (
-      FS.handleError(__wasmfs_munmap(addr, length))
+      FS.handleError(_wasmfs_munmap(addr, length))
     ),
     symlink: (target, linkpath) => withStackSave(() => (
-      __wasmfs_symlink(stringToUTF8OnStack(target), stringToUTF8OnStack(linkpath))
+      _wasmfs_symlink(stringToUTF8OnStack(target), stringToUTF8OnStack(linkpath))
     )),
     readlink(path) {
-      var readBuffer = FS.handleError(withStackSave(() => __wasmfs_readlink(stringToUTF8OnStack(path))));
+      var readBuffer = FS.handleError(withStackSave(() => _wasmfs_readlink(stringToUTF8OnStack(path))));
       return UTF8ToString(readBuffer);
     },
     statBufToObject(statBuf) {
@@ -275,53 +275,53 @@ FS.init();
       }
     },
     stat(path) {
-      var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
+      var statBuf = malloc({{{ C_STRUCTS.stat.__size__ }}});
       FS.handleError(withStackSave(() =>
-        __wasmfs_stat(stringToUTF8OnStack(path), statBuf)
+        _wasmfs_stat(stringToUTF8OnStack(path), statBuf)
       ));
       var stats = FS.statBufToObject(statBuf);
-      _free(statBuf);
+      free(statBuf);
 
       return stats;
     },
     lstat(path) {
-      var statBuf = _malloc({{{ C_STRUCTS.stat.__size__ }}});
+      var statBuf = malloc({{{ C_STRUCTS.stat.__size__ }}});
       FS.handleError(withStackSave(() =>
-        __wasmfs_lstat(stringToUTF8OnStack(path), statBuf)
+        _wasmfs_lstat(stringToUTF8OnStack(path), statBuf)
       ));
       var stats = FS.statBufToObject(statBuf);
-      _free(statBuf);
+      free(statBuf);
 
       return stats;
     },
     chmod(path, mode) {
       return FS.handleError(withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
-        return __wasmfs_chmod(buffer, mode);
+        return _wasmfs_chmod(buffer, mode);
       }));
     },
     lchmod(path, mode) {
       return FS.handleError(withStackSave(() => {
         var buffer = stringToUTF8OnStack(path);
-        return __wasmfs_lchmod(buffer, mode);
+        return _wasmfs_lchmod(buffer, mode);
       }));
     },
     fchmod(fd, mode) {
-      return FS.handleError(__wasmfs_fchmod(fd, mode));
+      return FS.handleError(_wasmfs_fchmod(fd, mode));
     },
     utime: (path, atime, mtime) => (
       FS.handleError(withStackSave(() => (
-        __wasmfs_utime(stringToUTF8OnStack(path), atime, mtime)
+        _wasmfs_utime(stringToUTF8OnStack(path), atime, mtime)
       )))
     ),
     truncate(path, len) {
-      return FS.handleError(withStackSave(() => (__wasmfs_truncate(stringToUTF8OnStack(path), {{{ splitI64('len') }}}))));
+      return FS.handleError(withStackSave(() => (_wasmfs_truncate(stringToUTF8OnStack(path), {{{ splitI64('len') }}}))));
     },
     ftruncate(fd, len) {
-      return FS.handleError(__wasmfs_ftruncate(fd, {{{ splitI64('len') }}}));
+      return FS.handleError(_wasmfs_ftruncate(fd, {{{ splitI64('len') }}}));
     },
     findObject(path) {
-      var result = withStackSave(() => __wasmfs_identify(stringToUTF8OnStack(path)));
+      var result = withStackSave(() => _wasmfs_identify(stringToUTF8OnStack(path)));
       if (result == {{{ cDefs.ENOENT }}}) {
         return null;
       }
@@ -333,16 +333,16 @@ FS.init();
     readdir: (path) => withStackSave(() => {
       var pathBuffer = stringToUTF8OnStack(path);
       var entries = [];
-      var state = __wasmfs_readdir_start(pathBuffer);
+      var state = _wasmfs_readdir_start(pathBuffer);
       if (!state) {
         // TODO: The old FS threw an ErrnoError here.
         throw new Error("No such directory");
       }
       var entry;
-      while (entry = __wasmfs_readdir_get(state)) {
+      while (entry = _wasmfs_readdir_get(state)) {
         entries.push(UTF8ToString(entry));
       }
-      __wasmfs_readdir_finish(state);
+      _wasmfs_readdir_finish(state);
       return entries;
     }),
     mount: (type, opts, mountpoint) => {
@@ -354,16 +354,16 @@ FS.init();
       }
 #endif
       var backendPointer = type.createBackend(opts);
-      return FS.handleError(withStackSave(() => __wasmfs_mount(stringToUTF8OnStack(mountpoint), backendPointer)));
+      return FS.handleError(withStackSave(() => _wasmfs_mount(stringToUTF8OnStack(mountpoint), backendPointer)));
     },
     unmount: (mountpoint) => (
-      FS.handleError(withStackSave(() => __wasmfs_unmount(stringToUTF8OnStack(mountpoint))))
+      FS.handleError(withStackSave(() => _wasmfs_unmount(stringToUTF8OnStack(mountpoint))))
     ),
     // TODO: lookup
     mknod: (path, mode, dev) => FS_mknod(path, mode, dev),
     makedev: (ma, mi) => ((ma) << 8 | (mi)),
     registerDevice(dev, ops) {
-      var backendPointer = _wasmfs_create_jsimpl_backend();
+      var backendPointer = wasmfs_create_jsimpl_backend();
       var definedOps = {
         userRead: ops.read,
         userWrite: ops.write,
@@ -458,19 +458,19 @@ FS.init();
       }
 
       return FS.handleError(withStackSave(() => (
-        _wasmfs_create_file(stringToUTF8OnStack(path), mode, deviceBackend)
+        wasmfs_create_file(stringToUTF8OnStack(path), mode, deviceBackend)
       )));
     },
     rename(oldPath, newPath) {
       return FS.handleError(withStackSave(() => {
         var oldPathBuffer = stringToUTF8OnStack(oldPath);
         var newPathBuffer = stringToUTF8OnStack(newPath);
-        return __wasmfs_rename(oldPathBuffer, newPathBuffer);
+        return _wasmfs_rename(oldPathBuffer, newPathBuffer);
       }));
     },
     // TODO: syncfs
     llseek(stream, offset, whence) {
-      return FS.handleError(__wasmfs_llseek(stream.fd, {{{ splitI64('offset') }}}, whence));
+      return FS.handleError(_wasmfs_llseek(stream.fd, {{{ splitI64('offset') }}}, whence));
     }
     // TODO: ioctl
 
@@ -512,7 +512,7 @@ FS.init();
   $FS_mknod__deps: ['_wasmfs_mknod'],
   $FS_mknod: (path, mode, dev) => FS.handleError(withStackSave(() => {
     var pathBuffer = stringToUTF8OnStack(path);
-    return __wasmfs_mknod(pathBuffer, mode, dev);
+    return _wasmfs_mknod(pathBuffer, mode, dev);
   })),
 
   $FS_create__deps: ['$FS_mknod'],
@@ -532,15 +532,15 @@ FS.init();
       var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
       data = buf.slice(0, actualNumBytes);
     }
-    var dataBuffer = _malloc(data.length);
+    var dataBuffer = malloc(data.length);
 #if ASSERTIONS
     assert(dataBuffer);
 #endif
     for (var i = 0; i < data.length; i++) {
       {{{ makeSetValue('dataBuffer', 'i', 'data[i]', 'i8') }}};
     }
-    var ret = __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
-    _free(dataBuffer);
+    var ret = _wasmfs_write_file(pathBuffer, dataBuffer, data.length);
+    free(dataBuffer);
     stackRestore(sp);
     return ret;
   },
@@ -548,7 +548,7 @@ FS.init();
   $FS_mkdir__deps: ['_wasmfs_mkdir'],
   $FS_mkdir: (path, mode = 511 /* 0777 */) => FS.handleError(withStackSave(() => {
     var buffer = stringToUTF8OnStack(path);
-    return __wasmfs_mkdir(buffer, mode);
+    return _wasmfs_mkdir(buffer, mode);
   })),
 
   $FS_mkdirTree__docs: `
@@ -574,7 +574,7 @@ FS.init();
   $FS_unlink__deps: ['_wasmfs_unlink'],
   $FS_unlink: (path) => withStackSave(() => {
     var buffer = stringToUTF8OnStack(path);
-    return __wasmfs_unlink(buffer);
+    return _wasmfs_unlink(buffer);
   }),
 
   // Wasm access calls.
@@ -622,7 +622,7 @@ FS.init();
         if (ABORT) {
           clearInterval(intervalID);
         } else {
-          _emscripten_proxy_execute_queue(queue);
+          emscripten_proxy_execute_queue(queue);
         }
       }, 50);
   },

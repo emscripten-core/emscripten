@@ -12,7 +12,7 @@ var LibraryExceptions = {
 
   // This class is the exception metadata which is prepended to each thrown object (in WASM memory).
   // It is allocated in one block among with a thrown object in __cxa_allocate_exception and freed
-  // in ___cxa_free_exception. It roughly corresponds to __cxa_exception structure in libcxxabi. The
+  // in __cxa_free_exception. It roughly corresponds to __cxa_exception structure in libcxxabi. The
   // class itself is just a native pointer wrapper, and contains all the necessary accessors for the
   // fields in the native structure.
   // TODO: Unfortunately this approach still cannot be considered thread-safe because single
@@ -139,8 +139,8 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     dbg('__cxa_begin_catch ' + [ptrToString(ptr), 'stack', exceptionCaught]);
 #endif
-    ___cxa_increment_exception_refcount(ptr);
-    return ___cxa_get_exception_ptr(ptr);
+    __cxa_increment_exception_refcount(ptr);
+    return __cxa_get_exception_ptr(ptr);
   },
 
   // We're done with a catch. Now, we can run the destructor if there is one
@@ -150,7 +150,7 @@ var LibraryExceptions = {
   __cxa_end_catch__deps: ['$exceptionCaught', '$exceptionLast', '__cxa_decrement_exception_refcount', 'setThrew'],
   __cxa_end_catch: () => {
     // Clear state flag.
-    _setThrew(0, 0);
+    setThrew(0, 0);
 #if ASSERTIONS
     assert(exceptionCaught.length > 0);
 #endif
@@ -160,7 +160,7 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     dbg('__cxa_end_catch popped ' + [info, exceptionLast, 'stack', exceptionCaught]);
 #endif
-    ___cxa_decrement_exception_refcount(info.excPtr);
+    __cxa_decrement_exception_refcount(info.excPtr);
     exceptionLast = 0; // XXX in decRef?
   },
 
@@ -175,7 +175,7 @@ var LibraryExceptions = {
       return 0;
     }
     var info = exceptionCaught[exceptionCaught.length - 1];
-    ___cxa_increment_exception_refcount(info.excPtr);
+    __cxa_increment_exception_refcount(info.excPtr);
     return info.excPtr;
   },
 
@@ -185,7 +185,7 @@ var LibraryExceptions = {
     var info = new ExceptionInfo(ptr);
     exceptionCaught.push(info);
     info.set_rethrown(true);
-    ___cxa_rethrow();
+    __cxa_rethrow();
   },
 
   // Finds a suitable catch clause for when an exception is thrown.
@@ -233,7 +233,7 @@ var LibraryExceptions = {
         break;
       }
       var adjusted_ptr_addr = info.ptr + {{{ C_STRUCTS.__cxa_exception.adjustedPtr }}};
-      if (___cxa_can_catch(caughtType, thrownType, adjusted_ptr_addr)) {
+      if (__cxa_can_catch(caughtType, thrownType, adjusted_ptr_addr)) {
 #if EXCEPTION_DEBUG
         dbg("  findMatchingCatch found " + [ptrToString(info.get_adjusted_ptr()), caughtType]);
 #endif
@@ -263,15 +263,15 @@ var LibraryExceptions = {
     var sp = stackSave();
     var type_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
     var message_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
-    ___get_exception_message(ptr, type_addr_addr, message_addr_addr);
+    __get_exception_message(ptr, type_addr_addr, message_addr_addr);
     var type_addr = {{{ makeGetValue('type_addr_addr', 0, '*') }}};
     var message_addr = {{{ makeGetValue('message_addr_addr', 0, '*') }}};
     var type = UTF8ToString(type_addr);
-    _free(type_addr);
+    free(type_addr);
     var message;
     if (message_addr) {
       message = UTF8ToString(message_addr);
-      _free(message_addr);
+      free(message_addr);
     }
     stackRestore(sp);
     return [type, message];
@@ -283,7 +283,7 @@ var LibraryExceptions = {
     // exported, whereas in dynamic linking, tags are defined in library.js in
     // JS code and wasm modules import them.
 #if RELOCATABLE
-    ___cpp_exception // defined in library.js
+    __cpp_exception // defined in library.js
 #else
     wasmExports['__cpp_exception']
 #endif
@@ -311,19 +311,19 @@ var LibraryExceptions = {
     // In Wasm EH, the value extracted from WebAssembly.Exception is a pointer
     // to the unwind header. Convert it to the actual thrown value.
     var unwind_header = ex.getArg(getCppExceptionTag(), 0);
-    return ___thrown_object_from_unwind_exception(unwind_header);
+    return __thrown_object_from_unwind_exception(unwind_header);
   },
 
   $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount', '$getCppExceptionThrownObjectFromWebAssemblyException'],
   $incrementExceptionRefcount: (ex) => {
     var ptr = getCppExceptionThrownObjectFromWebAssemblyException(ex);
-    ___cxa_increment_exception_refcount(ptr);
+    __cxa_increment_exception_refcount(ptr);
   },
 
   $decrementExceptionRefcount__deps: ['__cxa_decrement_exception_refcount', '$getCppExceptionThrownObjectFromWebAssemblyException'],
   $decrementExceptionRefcount: (ex) => {
     var ptr = getCppExceptionThrownObjectFromWebAssemblyException(ex);
-    ___cxa_decrement_exception_refcount(ptr);
+    __cxa_decrement_exception_refcount(ptr);
   },
 
   $getExceptionMessage__deps: ['$getCppExceptionThrownObjectFromWebAssemblyException', '$getExceptionMessageCommon'],
@@ -334,10 +334,10 @@ var LibraryExceptions = {
 
 #elif !DISABLE_EXCEPTION_CATCHING
   $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount'],
-  $incrementExceptionRefcount: (ptr) => ___cxa_increment_exception_refcount(ptr),
+  $incrementExceptionRefcount: (ptr) => __cxa_increment_exception_refcount(ptr),
 
   $decrementExceptionRefcount__deps: ['__cxa_decrement_exception_refcount'],
-  $decrementExceptionRefcount: (ptr) => ___cxa_decrement_exception_refcount(ptr),
+  $decrementExceptionRefcount: (ptr) => __cxa_decrement_exception_refcount(ptr),
 
   $getExceptionMessage__deps: ['$getExceptionMessageCommon'],
   $getExceptionMessage: (ptr) => getExceptionMessageCommon(ptr),

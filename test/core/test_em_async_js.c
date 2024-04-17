@@ -22,9 +22,11 @@ EM_ASYNC_JS(double, foo, (int timeout), {
     () => {
       // Do a simple call back into compiled code synchronously. This is
       // allowed (an async one would not).
-      _inc_result();
+      inc_result();
       // Do the same with ccall.
+      out("XXX");
       ccall("inc_result");
+      out("YYY");
       // Finish the async operation.
       out("resolving promise");
       resolve();
@@ -32,7 +34,7 @@ EM_ASYNC_JS(double, foo, (int timeout), {
     timeout
   ));
   // Do another simple call back into compiled code synchronously.
-  return _get_result();
+  return get_result();
 });
 
 // Test out void return and no params.

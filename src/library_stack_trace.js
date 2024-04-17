@@ -15,8 +15,8 @@ var LibraryStackTrace = {
     // Find the symbols in the callstack that corresponds to the functions that
     // report callstack information, and remove everything up to these from the
     // output.
-    var iThisFunc = callstack.lastIndexOf('_emscripten_log');
-    var iThisFunc2 = callstack.lastIndexOf('_emscripten_get_callstack');
+    var iThisFunc = callstack.lastIndexOf('emscripten_log ');
+    var iThisFunc2 = callstack.lastIndexOf('emscripten_get_callstack ');
     var iNextLine = callstack.indexOf('\n', Math.max(iThisFunc, iThisFunc2))+1;
     callstack = callstack.slice(iNextLine);
 
@@ -259,7 +259,7 @@ var LibraryStackTrace = {
   // Look up the function name from our stack frame cache with our PC representation.
 #if USE_OFFSET_CONVERTER
   emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'free', '$stringToNewUTF8'],
-  // Don't treat allocation of _emscripten_pc_get_function.ret as a leak
+  // Don't treat allocation of emscripten_pc_get_function.ret as a leak
   emscripten_pc_get_function__noleakcheck: true,
 #endif
   emscripten_pc_get_function: (pc) => {
@@ -284,9 +284,9 @@ var LibraryStackTrace = {
     } else {
       name = wasmOffsetConverter.getName(pc);
     }
-    if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
-    _emscripten_pc_get_function.ret = stringToNewUTF8(name);
-    return _emscripten_pc_get_function.ret;
+    if (emscripten_pc_get_function.ret) free(emscripten_pc_get_function.ret);
+    emscripten_pc_get_function.ret = stringToNewUTF8(name);
+    return emscripten_pc_get_function.ret;
 #endif
   },
 
@@ -320,15 +320,15 @@ var LibraryStackTrace = {
 
   // Look up the file name from our stack frame cache with our PC representation.
   emscripten_pc_get_file__deps: ['$convertPCtoSourceLocation', 'free', '$stringToNewUTF8'],
-  // Don't treat allocation of _emscripten_pc_get_file.ret as a leak
+  // Don't treat allocation of emscripten_pc_get_file.ret as a leak
   emscripten_pc_get_file__noleakcheck: true,
   emscripten_pc_get_file: (pc) => {
     var result = convertPCtoSourceLocation(pc);
     if (!result) return 0;
 
-    if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
-    _emscripten_pc_get_file.ret = stringToNewUTF8(result.file);
-    return _emscripten_pc_get_file.ret;
+    if (emscripten_pc_get_file.ret) free(emscripten_pc_get_file.ret);
+    emscripten_pc_get_file.ret = stringToNewUTF8(result.file);
+    return emscripten_pc_get_file.ret;
   },
 
   // Look up the line number from our stack frame cache with our PC representation.

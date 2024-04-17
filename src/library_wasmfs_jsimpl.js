@@ -71,7 +71,7 @@ addToLibrary({
     assert(wasmFS$backends[backend]);
 #endif
     await wasmFS$backends[backend].allocFile(file);
-    _emscripten_proxy_finish(ctx);
+    emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_jsimpl_async_free_file__deps: ['emscripten_proxy_finish'],
@@ -80,7 +80,7 @@ addToLibrary({
     assert(wasmFS$backends[backend]);
 #endif
     await wasmFS$backends[backend].freeFile(file);
-    _emscripten_proxy_finish(ctx);
+    emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_jsimpl_async_write__i53abi: true,
@@ -91,7 +91,7 @@ addToLibrary({
 #endif
     var result = await wasmFS$backends[backend].write(file, buffer, length, offset);
     {{{ makeSetValue('result_p', 0, 'result', SIZE_TYPE) }}};
-    _emscripten_proxy_finish(ctx);
+    emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_jsimpl_async_read__i53abi: true,
@@ -102,7 +102,7 @@ addToLibrary({
 #endif
     var result = await wasmFS$backends[backend].read(file, buffer, length, offset);
     {{{ makeSetValue('result_p', 0, 'result', SIZE_TYPE) }}};
-    _emscripten_proxy_finish(ctx);
+    emscripten_proxy_finish(ctx);
   },
 
   _wasmfs_jsimpl_async_get_size__deps: ['emscripten_proxy_finish'],
@@ -112,6 +112,6 @@ addToLibrary({
 #endif
     var size = await wasmFS$backends[backend].getSize(file);
     {{{ makeSetValue('size_p', 0, 'size', 'i64') }}};
-    _emscripten_proxy_finish(ctx);
+    emscripten_proxy_finish(ctx);
   },
 });

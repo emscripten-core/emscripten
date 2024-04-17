@@ -6,9 +6,9 @@ addToLibrary({
 
 	glTexImage3D__deps: ['orig_glTexImage3D'],
 	glTexImage3D: function(target, level, internalFormat, width, height, depth, border, format, type, pixels) {
-		_glTexImage3D.createdType = type;
+		glTexImage3D.createdType = type;
 		// Check that the original fuction exists
-		assert(_orig_glTexImage3D);
+		assert(orig_glTexImage3D);
 		// Also try invoking glTexImage3D to verify that it is actually the
 		// underlying function from library_webgl2.js
 		var texImage3D_called = false;
@@ -18,11 +18,11 @@ addToLibrary({
 				texImage3D_called = true;
 			},
 		};
-		_orig_glTexImage3D();
+		orig_glTexImage3D();
 		assert(texImage3D_called);
 	},
 
 	what_got_created: function() {
-		return _glTexImage3D.createdType;
+		return glTexImage3D.createdType;
 	}
 });

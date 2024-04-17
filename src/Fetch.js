@@ -152,7 +152,7 @@ function fetchLoadCachedData(db, fetch, onsuccess, onerror) {
 #endif
         // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
         // freed when emscripten_fetch_close() is called.
-        var ptr = _malloc(len);
+        var ptr = malloc(len);
         HEAPU8.set(new Uint8Array(value), ptr);
         {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, 'ptr', '*') }}};
         writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, len);
@@ -329,7 +329,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 #endif
       // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
       // freed when emscripten_fetch_close() is called.
-      ptr = _malloc(ptrLen);
+      ptr = malloc(ptrLen);
       HEAPU8.set(new Uint8Array(/** @type{Array<number>} */(xhr.response)), ptr);
     }
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, 'ptr', '*') }}}
@@ -401,7 +401,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
       assert(onprogress, 'When doing a streaming fetch, you should have an onprogress handler registered to receive the chunks!');
 #endif
       // Allocate byte data in Emscripten heap for the streamed memory block (freed immediately after onprogress call)
-      ptr = _malloc(ptrLen);
+      ptr = malloc(ptrLen);
       HEAPU8.set(new Uint8Array(/** @type{Array<number>} */(xhr.response)), ptr);
     }
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, 'ptr', '*') }}}
@@ -415,7 +415,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
     onprogress?.(fetch, xhr, e);
     if (ptr) {
-      _free(ptr);
+      free(ptr);
     }
   };
   xhr.onreadystatechange = (e) => {

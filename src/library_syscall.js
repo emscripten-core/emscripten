@@ -817,7 +817,7 @@ var SyscallsLibrary = {
   __syscall_fstatfs64__deps: ['__syscall_statfs64'],
   __syscall_fstatfs64: (fd, size, buf) => {
     var stream = SYSCALLS.getStreamFromFD(fd);
-    return ___syscall_statfs64(0, size, buf);
+    return __syscall_statfs64(0, size, buf);
   },
   __syscall_fadvise64__nothrow: true,
   __syscall_fadvise64__proxy: 'none',

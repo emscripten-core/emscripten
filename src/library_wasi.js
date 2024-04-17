@@ -159,7 +159,7 @@ var WasiLibrary = {
     if (clk_id === {{{ cDefs.__WASI_CLOCKID_REALTIME }}}) {
       now = Date.now();
     } else if (nowIsMonotonic) {
-      now = _emscripten_get_now();
+      now = emscripten_get_now();
     } else {
       return {{{ cDefs.ENOSYS }}};
     }
@@ -181,7 +181,7 @@ var WasiLibrary = {
     if (clk_id === {{{ cDefs.CLOCK_REALTIME }}}) {
       nsec = 1000 * 1000; // educated guess that it's milliseconds
     } else if (nowIsMonotonic) {
-      nsec = _emscripten_get_now_res();
+      nsec = emscripten_get_now_res();
     } else {
       return {{{ cDefs.ENOSYS }}};
     }
@@ -255,7 +255,7 @@ var WasiLibrary = {
   $flush_NO_FILESYSTEM: () => {
     // flush anything remaining in the buffers during shutdown
 #if hasExportedSymbol('fflush')
-    _fflush(0);
+    fflush(0);
 #endif
     if (printCharBuffers[1].length) printChar(1, {{{ charCode("\n") }}});
     if (printCharBuffers[2].length) printChar(2, {{{ charCode("\n") }}});

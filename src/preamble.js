@@ -102,14 +102,14 @@ function assert(condition, text) {
 // We used to include malloc/free by default in the past. Show a helpful error in
 // builds with assertions.
 #if !hasExportedSymbol('malloc')
-function _malloc() {
-  abort('malloc() called but not included in the build - add `_malloc` to EXPORTED_FUNCTIONS');
+function malloc() {
+  abort('malloc() called but not included in the build - add `malloc` to EXPORTS');
 }
 #endif // malloc
 #if !hasExportedSymbol('free')
-function _free() {
+function free() {
   // Show a helpful error since we used to include free by default in the past.
-  abort('free() called but not included in the build - add `_free` to EXPORTED_FUNCTIONS');
+  abort('free() called but not included in the build - add `free` to EXPORTS');
 }
 #endif // free
 #endif // ASSERTIONS
@@ -269,7 +269,7 @@ function exitRuntime() {
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
 #if !STANDALONE_WASM
-  ___funcs_on_exit(); // Native atexit() functions
+  __funcs_on_exit(); // Native atexit() functions
 #endif
   callRuntimeCallbacks(__ATEXIT__);
   <<< ATEXITS >>>
@@ -464,7 +464,7 @@ function abort(what) {
   // caught by 'catch_all'), but in case throwing RuntimeError is fine because
   // the module has not even been instantiated, even less running.
   if (runtimeInitialized) {
-    ___trap();
+    __trap();
   }
 #endif
   /** @suppress {checkTypes} */

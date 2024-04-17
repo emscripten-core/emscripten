@@ -19,9 +19,9 @@ function run() {
   // User requested the PROXY_TO_PTHREAD option, so call a stub main which
   // pthread_create()s a new thread that will call the user's real main() for
   // the application.
-  var ret = __emscripten_proxy_main();
+  var ret = _emscripten_proxy_main();
 #else
-  var ret = _main();
+  var ret = main();
 
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
@@ -38,7 +38,7 @@ function run() {
   runtimeExited = true;
 #endif
 
-  _proc_exit(ret);
+  proc_exit(ret);
 #endif
 #endif // PROXY_TO_PTHREAD
 
@@ -62,7 +62,7 @@ function initRuntime(wasmExports) {
 #endif
 
 #if STACK_OVERFLOW_CHECK
-  _emscripten_stack_init();
+  emscripten_stack_init();
   writeStackCookie();
 #if STACK_OVERFLOW_CHECK >= 2
   setStackLimits();
@@ -82,7 +82,7 @@ function initRuntime(wasmExports) {
 
 // Initialize wasm (asynchronous)
 
-// In non-fastcomp non-asm.js builds, grab wasm exports to outer scope
+// In wasm2js builds, grab wasm exports to outer scope
 // for emscripten_get_exported_function() to be able to access them.
 #if LibraryManager.has('library_exports.js')
 var wasmExports;

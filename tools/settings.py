@@ -130,6 +130,7 @@ DEPRECATED_SETTINGS = {
 # are not used by the JS compiler.
 INTERNAL_SETTINGS = {
     'SIDE_MODULE_IMPORTS',
+    'EXPORTED_FUNCTIONS',
 }
 
 user_settings: Dict[str, str] = {}

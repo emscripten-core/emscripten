@@ -70,6 +70,8 @@ $emscripten_builtin_malloc
 $emscripten_current_thread_process_queued_calls
 $emscripten_futex_wait
 $emscripten_futex_wake
+$emscripten_main_runtime_thread_id
+$emscripten_main_thread_process_queued_calls
 $emscripten_stack_get_current
 $emscripten_stack_set_limits
 $free_ctx

@@ -1830,7 +1830,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
   def test_emscripten_async_load_script(self):
     def setup():
       create_file('script1.js', '''
-        Module._set(456);
+        Module.set(456);
       ''')
       create_file('file1.txt', 'first')
       create_file('file2.txt', 'second')

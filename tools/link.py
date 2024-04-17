@@ -636,6 +636,21 @@ def check_browser_versions():
 
 @ToolchainProfiler.profile_block('linker_setup')
 def phase_linker_setup(options, state, newargs):
+  if 'EXPORTS' in user_settings:
+    if 'EXPORTED_FUNCTIONS' in user_settings:
+      exit_with_error('EXPORTS and EXPORTED_FUNCTIONS are mutually exclusive')
+    if 'EXPORTED_RUNTIME_METHODS' in user_settings:
+      exit_with_error('EXPORTS and EXPORTED_RUNTIME_METHODS are mutually exclusive')
+    if 'EXTRA_EXPORTED_RUNTIME_METHODS' in user_settings:
+      exit_with_error('EXPORTS and EXTRA_EXPORTED_RUNTIME_METHODS are mutually exclusive')
+  else:
+    settings.EXPORTS = [shared.demangle_legacy_symbol_name(s) for s in settings.EXPORTED_FUNCTIONS]
+    settings.EXPORTS += settings.EXPORTED_RUNTIME_METHODS
+    settings.EXPORTS += settings.EXTRA_EXPORTED_RUNTIME_METHODS
+
+  # used for warnings in emscripten.py
+  settings.USER_EXPORTS = settings.EXPORTS.copy()
+
   system_libpath = '-L' + str(cache.get_lib_dir(absolute=True))
   state.append_link_flag(system_libpath)
 
@@ -644,6 +659,10 @@ def phase_linker_setup(options, state, newargs):
   # only compiling.
   if not shared.SKIP_SUBPROCS:
     shared.check_llvm_version()
+
+  if settings.SAFE_HEAP:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('segfault')
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('alignfault')
 
   autoconf = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in state.orig_args or 'conftest.cpp' in state.orig_args
   if autoconf:
@@ -719,9 +738,6 @@ def phase_linker_setup(options, state, newargs):
   for s, reason in DEPRECATED_SETTINGS.items():
     if s in user_settings:
       diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
-
-  if settings.EXTRA_EXPORTED_RUNTIME_METHODS:
-    settings.EXPORTED_RUNTIME_METHODS += settings.EXTRA_EXPORTED_RUNTIME_METHODS
 
   # If no output format was specified we try to deduce the format based on
   # the output filename extension
@@ -799,7 +815,7 @@ def phase_linker_setup(options, state, newargs):
     settings.STANDALONE_WASM = 1
 
   if settings.LZ4:
-    settings.EXPORTED_RUNTIME_METHODS += ['LZ4']
+    settings.EXPORTS += ['LZ4']
 
   if settings.PURE_WASI:
     settings.STANDALONE_WASM = 1
@@ -813,18 +829,18 @@ def phase_linker_setup(options, state, newargs):
   if options.no_entry:
     settings.EXPECT_MAIN = 0
   elif settings.STANDALONE_WASM:
-    if '_main' in settings.EXPORTED_FUNCTIONS:
+    if 'main' in settings.EXPORTS:
       # TODO(sbc): Make this into a warning?
-      logger.debug('including `_main` in EXPORTED_FUNCTIONS is not necessary in standalone mode')
+      logger.debug('including `main` in export list is not necessary in standalone mode')
   else:
-    # In normal non-standalone mode we have special handling of `_main` in EXPORTED_FUNCTIONS.
-    # 1. If the user specifies exports, but doesn't include `_main` we assume they want to build a
+    # In normal non-standalone mode we have special handling of `main` in EXPORTS.
+    # 1. If the user specifies exports, but doesn't include `main` we assume they want to build a
     #    reactor.
-    # 2. If the user doesn't export anything we default to exporting `_main` (unless `--no-entry`
+    # 2. If the user doesn't export anything we default to exporting `main` (unless `--no-entry`
     #    is specified (see above).
-    if 'EXPORTED_FUNCTIONS' in user_settings:
-      if '_main' in settings.USER_EXPORTS:
-        settings.EXPORTED_FUNCTIONS.remove('_main')
+    if 'EXPORTS' in user_settings:
+      if 'main' in settings.USER_EXPORTS:
+        settings.EXPORTS.remove('main')
         settings.EXPORT_IF_DEFINED.append('main')
       else:
         settings.EXPECT_MAIN = 0
@@ -851,9 +867,9 @@ def phase_linker_setup(options, state, newargs):
       exit_with_error('MINIMAL_RUNTIME reduces JS size, and is incompatible with STANDALONE_WASM which focuses on ignoring JS anyhow and being 100% wasm')
 
   # Note the exports the user requested
-  building.user_requested_exports.update(settings.EXPORTED_FUNCTIONS)
+  building.user_requested_exports.update(settings.EXPORTS)
 
-  if '_main' in settings.EXPORTED_FUNCTIONS or 'main' in settings.EXPORT_IF_DEFINED:
+  if 'main' in settings.EXPORTS or 'main' in settings.EXPORT_IF_DEFINED:
     settings.EXPORT_IF_DEFINED.append('__main_argc_argv')
   elif settings.ASSERTIONS and not settings.STANDALONE_WASM:
     # In debug builds when `main` is not explicitly requested as an
@@ -909,6 +925,7 @@ def phase_linker_setup(options, state, newargs):
     default_setting('DEFAULT_TO_CXX', 0)
     default_setting('IGNORE_MISSING_MAIN', 0)
     default_setting('AUTO_NATIVE_LIBRARIES', 0)
+    default_setting('MANGLED_SYMBOLS', 0)
     if settings.MAIN_MODULE != 1:
       # These two settings cannot be disabled with MAIN_MODULE=1 because all symbols
       # are needed in this mode.
@@ -925,15 +942,17 @@ def phase_linker_setup(options, state, newargs):
 
   if not settings.MINIMAL_RUNTIME and not settings.STRICT:
     # Export the HEAP object by default, when not running in STRICT mode
-    settings.EXPORTED_RUNTIME_METHODS.extend([
+    settings.EXPORTS.extend([
       'HEAPF32',
       'HEAPF64',
-      'HEAP_DATA_VIEW',
       'HEAP8',  'HEAPU8',
       'HEAP16', 'HEAPU16',
       'HEAP32', 'HEAPU32',
-      'HEAP64', 'HEAPU64',
     ])
+    if settings.SUPPORT_BIG_ENDIAN:
+      settings.EXPORTS.append('HEAP_DATA_VIEW')
+    if settings.WASM_BIGINT:
+      settings.EXPORTS.extend(['HEAP64', 'HEAPU64'])
 
   # Default to TEXTDECODER=2 (always use TextDecoder to decode UTF-8 strings)
   # in -Oz builds, since custom decoder for UTF-8 takes up space.
@@ -1021,7 +1040,7 @@ def phase_linker_setup(options, state, newargs):
     settings.LINKABLE = 1
 
   if settings.LINKABLE and settings.USER_EXPORTS:
-    diagnostics.warning('unused-command-line-argument', 'EXPORTED_FUNCTIONS is not valid with LINKABLE set (normally due to SIDE_MODULE=1/MAIN_MODULE=1) since all functions are exported this mode.  To export only a subset use SIDE_MODULE=2/MAIN_MODULE=2')
+    diagnostics.warning('unused-command-line-argument', 'specifying exports is not valid with LINKABLE set (normally due to SIDE_MODULE=1/MAIN_MODULE=1) since all functions are exported this mode.  To export only a subset use SIDE_MODULE=2/MAIN_MODULE=2')
 
   if settings.MAIN_MODULE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
@@ -1118,8 +1137,8 @@ def phase_linker_setup(options, state, newargs):
       'emscripten_stack_get_current',
     ]
 
-    # We call one of these two functions during startup which caches the stack limits
-    # in wasm globals allowing get_base/get_free to be super fast.
+    # stackCheckInit calls one of these two functions duing startup which caches
+    # the stack limits in wasm globals allowing get_base/get_free to be super fast.
     # See compiler-rt/stack_limits.S.
     if settings.RELOCATABLE:
       settings.REQUIRED_EXPORTS += ['emscripten_stack_set_limits']
@@ -1190,7 +1209,7 @@ def phase_linker_setup(options, state, newargs):
 
   if settings.STB_IMAGE:
     state.append_link_flag('-lstb_image')
-    settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
+    settings.EXPORTS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
 
   if settings.USE_WEBGL2:
     settings.MAX_WEBGL_VERSION = 2
@@ -1397,14 +1416,14 @@ def phase_linker_setup(options, state, newargs):
       # all symbols that the audio worklet scope needs onto the Module object.
       # MINIMAL_RUNTIME exports these manually, since this export mechanism is placed
       # in global scope that is not suitable for MINIMAL_RUNTIME loader.
-      settings.EXPORTED_RUNTIME_METHODS += ['stackSave', 'stackAlloc', 'stackRestore', 'wasmTable']
+      settings.EXPORTS += ['stackSave', 'stackAlloc', 'stackRestore', 'wasmTable']
 
   if settings.FORCE_FILESYSTEM and not settings.MINIMAL_RUNTIME:
     # when the filesystem is forced, we export by default methods that filesystem usage
     # may need, including filesystem usage from standalone file packager output (i.e.
     # file packages not built together with emcc, but that are loaded at runtime
     # separately, and they need emcc's output to contain the support they need)
-    settings.EXPORTED_RUNTIME_METHODS += [
+    settings.EXPORTS += [
       'FS_createPath',
       'FS_createDataFile',
       'FS_createPreloadedFile',
@@ -1412,12 +1431,12 @@ def phase_linker_setup(options, state, newargs):
     ]
     if not settings.WASMFS:
       # The old FS has some functionality that WasmFS lacks.
-      settings.EXPORTED_RUNTIME_METHODS += [
+      settings.EXPORTS += [
         'FS_createLazyFile',
         'FS_createDevice'
       ]
 
-    settings.EXPORTED_RUNTIME_METHODS += [
+    settings.EXPORTS += [
       'addRunDependency',
       'removeRunDependency',
     ]
@@ -1515,7 +1534,7 @@ def phase_linker_setup(options, state, newargs):
     settings.REQUIRED_EXPORTS += ['__get_temp_ret', '__set_temp_ret']
 
   if settings.SPLIT_MODULE and settings.ASYNCIFY == 2:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_load_secondary_module']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['__load_secondary_module']
 
   # wasm side modules have suffix .wasm
   if settings.SIDE_MODULE and shared.suffix(target) == '.js':
@@ -1818,7 +1837,7 @@ def phase_linker_setup(options, state, newargs):
     # JS, you may need to manipulate the refcount manually not to leak memory.
     # What you need to do is different depending on the kind of EH you use
     # (https://github.com/emscripten-core/emscripten/issues/17115).
-    settings.EXPORTED_FUNCTIONS += ['getExceptionMessage', 'incrementExceptionRefcount', 'decrementExceptionRefcount']
+    settings.EXPORTS += ['getExceptionMessage', 'incrementExceptionRefcount', 'decrementExceptionRefcount']
     if settings.WASM_EXCEPTIONS:
       settings.REQUIRED_EXPORTS += ['__cpp_exception']
 
@@ -1866,10 +1885,10 @@ def phase_calculate_system_libraries(linker_arguments, newargs):
 def phase_link(linker_arguments, wasm_target, js_syms):
   logger.debug(f'linking: {linker_arguments}')
 
-  # Make a final pass over settings.EXPORTED_FUNCTIONS to remove any
+  # Make a final pass over settings.EXPORTS to remove any
   # duplication between functions added by the driver/libraries and function
   # specified by the user
-  settings.EXPORTED_FUNCTIONS = dedup_list(settings.EXPORTED_FUNCTIONS)
+  settings.EXPORTS = dedup_list(settings.EXPORTS)
   settings.REQUIRED_EXPORTS = dedup_list(settings.REQUIRED_EXPORTS)
   settings.EXPORT_IF_DEFINED = dedup_list(settings.EXPORT_IF_DEFINED)
 
@@ -1877,7 +1896,7 @@ def phase_link(linker_arguments, wasm_target, js_syms):
   if settings.LINKABLE and not settings.EXPORT_ALL:
     # In LINKABLE mode we pass `--export-dynamic` along with `--whole-archive`.  This results
     # in over 7000 exports, which cannot be distinguished from the few symbols we explicitly
-    # export via EMSCRIPTEN_KEEPALIVE or EXPORTED_FUNCTIONS.
+    # export via EMSCRIPTEN_KEEPALIVE or EXPORTS.
     # In order to avoid unnecessary exported symbols on the `Module` object we run the linker
     # twice in this mode:
     # 1. Without `--export-dynamic` to get the base exports
@@ -2962,16 +2981,14 @@ def process_dynamic_libs(dylibs, lib_dirs):
     strong_imports = sorted(imports.difference(weak_imports))
     logger.debug('Adding symbols requirements from `%s`: %s', dylib, imports)
 
-    mangled_imports = [shared.asmjs_mangle(e) for e in sorted(imports)]
-    mangled_strong_imports = [shared.asmjs_mangle(e) for e in strong_imports]
     for sym in weak_imports:
       mangled = shared.asmjs_mangle(sym)
       if mangled not in settings.SIDE_MODULE_IMPORTS and mangled not in building.user_requested_exports:
         settings.WEAK_IMPORTS.append(sym)
-    settings.SIDE_MODULE_IMPORTS.extend(mangled_imports)
+    settings.SIDE_MODULE_IMPORTS.extend(imports)
     settings.EXPORT_IF_DEFINED.extend(sorted(imports))
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(sorted(imports))
-    building.user_requested_exports.update(mangled_strong_imports)
+    building.user_requested_exports.update(strong_imports)
 
 
 def unmangle_symbols_from_cmdline(symbols):
@@ -3139,6 +3156,7 @@ def run(linker_inputs, options, state, newargs):
     js_info = get_js_sym_info()
     if not settings.SIDE_MODULE:
       js_syms = js_info['deps']
+
       if settings.LINKABLE:
         for native_deps in js_syms.values():
           settings.REQUIRED_EXPORTS += native_deps
@@ -3153,10 +3171,12 @@ def run(linker_inputs, options, state, newargs):
           add_js_deps(sym)
         for sym in js_info['extraLibraryFuncs']:
           add_js_deps(sym)
-        for sym in settings.EXPORTED_RUNTIME_METHODS:
-          add_js_deps(shared.demangle_c_symbol_name(sym))
-        for sym in settings.EXPORTED_FUNCTIONS:
-          add_js_deps(shared.demangle_c_symbol_name(sym))
+        for sym in settings.EXPORTS:
+          add_js_deps(sym)
+          add_js_deps('$' + sym)
+
+      for sym in building.get_runtime_symbols():
+        js_syms['$' + sym] = []
     if settings.ASYNCIFY:
       settings.ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS = settings.ASYNCIFY_IMPORTS[:]
       settings.ASYNCIFY_IMPORTS += ['*.' + x for x in js_info['asyncFuncs']]

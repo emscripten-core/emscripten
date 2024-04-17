@@ -124,7 +124,7 @@ function unexportedRuntimeSymbol(sym) {
     Object.defineProperty(Module, sym, {
       configurable: true,
       get() {
-        var msg = `'${sym}' was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ)`;
+        var msg = `'${sym}' was not exported. add it to EXPORTS (see the Emscripten FAQ)`;
         if (isExportedByForceFilesystem(sym)) {
           msg += '. Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you';
         }

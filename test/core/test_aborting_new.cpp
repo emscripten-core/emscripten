@@ -14,7 +14,7 @@ int main() {
   EM_ASM({
     // Catch the failure here so we can report it.
     try {
-      _allocate_too_much();
+      allocate_too_much();
       out("no abort happened");
     } catch (e) {
       assert(("" + e).indexOf("Aborted") >= 0, "expect an abort from new");

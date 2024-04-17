@@ -64,7 +64,7 @@ addToLibrary({
     // When used with JSPI the work will be executed in an async block so there
     // is no need to notify when done.
 #if PTHREADS
-    _emscripten_proxy_finish(ctx);
+    emscripten_proxy_finish(ctx);
 #endif
   },
 
@@ -168,7 +168,7 @@ addToLibrary({
         let type = child.kind == "file" ?
             {{{ cDefine('File::DataFileKind') }}} :
         {{{ cDefine('File::DirectoryKind') }}};
-          __wasmfs_opfs_record_entry(entriesPtr, namePtr, type)
+          _wasmfs_opfs_record_entry(entriesPtr, namePtr, type)
         stackRestore(sp);
       }
     } catch {

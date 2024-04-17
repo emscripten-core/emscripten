@@ -1916,13 +1916,13 @@ var LibraryWebGPU = {
     shaderModule.getCompilationInfo().then((compilationInfo) => {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
-        var compilationMessagesPtr = _malloc({{{ C_STRUCTS.WGPUCompilationMessage.__size__ }}} * compilationInfo.messages.length);
+        var compilationMessagesPtr = malloc({{{ C_STRUCTS.WGPUCompilationMessage.__size__ }}} * compilationInfo.messages.length);
         var messageStringPtrs = []; // save these to free later
         for (var i = 0; i < compilationInfo.messages.length; ++i) {
           var compilationMessage = compilationInfo.messages[i];
           var compilationMessagePtr = compilationMessagesPtr + {{{ C_STRUCTS.WGPUCompilationMessage.__size__ }}} * i;
           var messageSize = lengthBytesUTF8(compilationMessage.message) + 1;
-          var messagePtr = _malloc(messageSize);
+          var messagePtr = malloc(messageSize);
           messageStringPtrs.push(messagePtr);
           stringToUTF8(compilationMessage.message, messagePtr, messageSize);
           {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.message, 'messagePtr', '*') }}};
@@ -1937,17 +1937,17 @@ var LibraryWebGPU = {
           {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.utf16Offset, 'compilationMessage.offset', 'i64') }}};
           {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.utf16Length, 'compilationMessage.length', 'i64') }}};
         }
-        var compilationInfoPtr = _malloc({{{ C_STRUCTS.WGPUCompilationInfo.__size__ }}});
+        var compilationInfoPtr = malloc({{{ C_STRUCTS.WGPUCompilationInfo.__size__ }}});
         {{{ makeSetValue('compilationInfoPtr', C_STRUCTS.WGPUCompilationInfo.messageCount, 'compilationInfo.messages.length', '*') }}}
         {{{ makeSetValue('compilationInfoPtr', C_STRUCTS.WGPUCompilationInfo.messages, 'compilationMessagesPtr', '*') }}};
 
         {{{ makeDynCall('vipp', 'callback') }}}({{{ gpu.CompilationInfoRequestStatus.Success }}}, compilationInfoPtr, userdata);
 
         messageStringPtrs.forEach((ptr) => {
-          _free(ptr);
+          free(ptr);
         });
-        _free(compilationMessagesPtr);
-        _free(compilationInfoPtr);
+        free(compilationMessagesPtr);
+        free(compilationInfoPtr);
       });
     });
   },
@@ -2015,9 +2015,9 @@ var LibraryWebGPU = {
       // TODO(kainino0x): Somehow inject a validation error?
       return 0;
     }
-    var data = _memalign(16, mapped.byteLength);
+    var data = memalign(16, mapped.byteLength);
     HEAPU8.set(new Uint8Array(mapped), data);
-    bufferWrapper.onUnmap.push(() => _free(data));
+    bufferWrapper.onUnmap.push(() => free(data));
     return data;
   },
 
@@ -2056,11 +2056,11 @@ var LibraryWebGPU = {
       return 0;
     }
 
-    var data = _memalign(16, mapped.byteLength);
+    var data = memalign(16, mapped.byteLength);
     zeroMemory(data, mapped.byteLength);
     bufferWrapper.onUnmap.push(() => {
       new Uint8Array(mapped).set(HEAPU8.subarray(data, data + mapped.byteLength));
-      _free(data);
+      free(data);
     });
     return data;
   },

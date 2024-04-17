@@ -95,19 +95,19 @@ addToLibrary({
     // remove this in the future.  Note that this call is not exactly correct,
     // since this limit will include the TLS slot, that will be part of the
     // region between m['sb'] and m['sz'], so we need to fix up the call below.
-    ___set_stack_limits(m['sb'] + m['sz'], m['sb']);
+    __set_stack_limits(m['sb'] + m['sz'], m['sb']);
 #endif
     // Run the C side Worker initialization for stack and TLS.
-    __emscripten_wasm_worker_initialize(m['sb'], m['sz']);
+    _emscripten_wasm_worker_initialize(m['sb'], m['sz']);
 #if PTHREADS
     // Record the pthread configuration, and whether this Wasm Worker supports synchronous blocking in emscripten_futex_wait().
     // (regular Wasm Workers do, AudioWorklets don't)
-    ___set_thread_state(/*thread_ptr=*/0, /*is_main_thread=*/0, /*is_runtime_thread=*/0, /*supports_wait=*/ {{{ workerSupportsFutexWait() }}});
+    __set_thread_state(/*thread_ptr=*/0, /*is_main_thread=*/0, /*is_runtime_thread=*/0, /*supports_wait=*/ {{{ workerSupportsFutexWait() }}});
 #endif
 #if STACK_OVERFLOW_CHECK >= 2
     // Fix up stack base. (TLS frame is created at the bottom address end of the stack)
     // See https://github.com/emscripten-core/emscripten/issues/16496
-    ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
+    __set_stack_limits(emscripten_stack_get_base(), emscripten_stack_get_end());
 #endif
 
 #if STACK_OVERFLOW_CHECK
@@ -165,7 +165,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
 }`,
   _emscripten_create_wasm_worker: (stackLowestAddress, stackSize) => {
 #if ASSERTIONS
-    if (!_emscripten_has_threading_support()) {
+    if (!emscripten_has_threading_support()) {
       err('create_wasm_worker: environment does not support SharedArrayBuffer, wasm workers are not available');
       return 0;
     }

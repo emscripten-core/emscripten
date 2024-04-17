@@ -8,7 +8,7 @@ var Module = require("./test.js");
 console.log("\nTesting main.js");
 
 var length = 20;
-var ptr = Module._malloc(length); // Get buffer from emscripten.
+var ptr = Module.malloc(length); // Get buffer from emscripten.
 var buffer= new Uint8Array(Module.HEAPU8.buffer, ptr, length); // Get a bytes view on the newly allocated buffer.
 
 // Populate the buffer in JavaScript land.
@@ -27,4 +27,4 @@ bufferTest(ptr, length); // Call our exported C function to prove the buffer was
 console.log("\nbufferTest finished\n");
 
 // free the heap buffer
-Module._free(ptr);
+Module.free(ptr);

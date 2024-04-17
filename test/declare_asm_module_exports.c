@@ -7,7 +7,7 @@ int EMSCRIPTEN_KEEPALIVE cFunction(void) {
 }
 
 EM_JS(int, jsFunction, (), {
-  return _cFunction();
+  return cFunction();
 });
 
 // Intentional use of __main_argc_argv

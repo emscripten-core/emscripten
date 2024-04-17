@@ -109,7 +109,7 @@ addToLibrary({
     dbg('store_val_i32 ' + [loc, value]);
     return value;
   },
-  $store_val_i64__deps: ['setTempRet0'],
+  $store_val_i64__deps: ['$setTempRet0'],
   $store_val_i64: (loc, low, high) => {
     dbg('store_val_i64 ' + [loc, low, high]);
     setTempRet0(high);

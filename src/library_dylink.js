@@ -90,7 +90,7 @@ var LibraryDylink = {
       // test to check if e was not a Number.
       if (e !== e+0) throw e;
 #endif
-      _setThrew(1, 0);
+      setThrew(1, 0);
 #if WASM_BIGINT
       // In theory this if statement could be done on
       // creating the function, but I just added this to
@@ -350,7 +350,7 @@ var LibraryDylink = {
 #endif
     var sp = stackSave();
     var cmsg = stringToUTF8OnStack(msg);
-    ___dl_seterr(cmsg, 0);
+    __dl_seterr(cmsg, 0);
     stackRestore(sp);
   },
 
@@ -373,15 +373,15 @@ var LibraryDylink = {
       // Currently we don't support freeing of static data when modules are
       // unloaded via dlclose.  This function is tagged as `noleakcheck` to
       // avoid having this reported as leak.
-      return _calloc(size, 1);
+      return calloc(size, 1);
     }
-    var ret = ___heap_base;
+    var ret = __heap_base;
     // Keep __heap_base stack aligned.
     var end = ret + alignMemory(size, {{{ STACK_ALIGN }}});
 #if ASSERTIONS
     assert(end <= HEAP8.length, 'failure to getMemory - memory growth etc. is not supported there, call malloc/sbrk directly or increase INITIAL_MEMORY');
 #endif
-    ___heap_base = end;
+    __heap_base = end;
     GOT['__heap_base'].value = {{{ to64('end') }}};
     return ret;
   },
@@ -766,7 +766,7 @@ var LibraryDylink = {
         // now.  Otherwise this is delayed until `setDylinkStackLimits` is
         // called after initialization.
         if (moduleExports['__set_stack_limits'] && runtimeInitialized) {
-          moduleExports['__set_stack_limits']({{{ to64('_emscripten_stack_get_base()') }}}, {{{ to64('_emscripten_stack_get_end()') }}});
+          moduleExports['__set_stack_limits']({{{ to64('emscripten_stack_get_base()') }}}, {{{ to64('emscripten_stack_get_end()') }}});
         }
 #endif
 

@@ -50,9 +50,9 @@ var LibraryTracing = {
 
     init: () => {
       Module['emscripten_trace_configure'] = traceConfigure;
-      Module['emscripten_trace_configure_for_google_wtf'] = _emscripten_trace_configure_for_google_wtf;
+      Module['emscripten_trace_configure_for_google_wtf'] = emscripten_trace_configure_for_google_wtf;
       Module['emscripten_trace_enter_context'] = traceEnterContext;
-      Module['emscripten_trace_exit_context'] = _emscripten_trace_exit_context;
+      Module['emscripten_trace_exit_context'] = emscripten_trace_exit_context;
       Module['emscripten_trace_log_message'] = traceLogMessage;
       Module['emscripten_trace_mark'] = traceMark;
     },
@@ -63,7 +63,7 @@ var LibraryTracing = {
     },
 
     configure: (collector_url, application) => {
-      EmscriptenTrace.now = _emscripten_get_now;
+      EmscriptenTrace.now = emscripten_get_now;
       var now = new Date();
       var session_id = now.getTime().toString() + '_' +
                           Math.floor((Math.random() * 100) + 1).toString();
@@ -254,10 +254,10 @@ var LibraryTracing = {
     if (EmscriptenTrace.postEnabled) {
       var memory_layout = {
         'static_base':  {{{ GLOBAL_BASE }}},
-        'stack_base':   _emscripten_stack_get_base(),
-        'stack_top':    _emscripten_stack_get_current(),
-        'stack_max':    _emscripten_stack_get_end(),
-        'dynamic_top':  _sbrk(0),
+        'stack_base':   emscripten_stack_get_base(),
+        'stack_top':    emscripten_stack_get_current(),
+        'stack_max':    emscripten_stack_get_end(),
+        'dynamic_top':  sbrk(0),
         'total_memory': HEAP8.length
       };
       var now = EmscriptenTrace.now();

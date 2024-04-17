@@ -5,7 +5,7 @@ EM_JS(void, suspend, (), {
   Asyncify.handleSleep((wakeUp) => {
     Module.resume = wakeUp;
     setTimeout(function() {
-      Module._resume_from_inside_c();
+      Module.resume_from_inside_c();
     }, 1);
   });
 });

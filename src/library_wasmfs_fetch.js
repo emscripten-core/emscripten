@@ -26,7 +26,7 @@ addToLibrary({
       }
       // This is the first time we want the file's data.
       var url = '';
-      var fileUrl_p = __wasmfs_fetch_get_file_path(file);
+      var fileUrl_p = _wasmfs_fetch_get_file_path(file);
       var fileUrl = UTF8ToString(fileUrl_p);
       var isAbs = fileUrl.indexOf('://') !== -1;
       if (isAbs) {
@@ -50,7 +50,7 @@ addToLibrary({
     // Start with the normal JSFile operations. This sets
     //   wasmFS$backends[backend]
     // which we will then augment.
-    __wasmfs_create_js_file_backend_js(backend);
+    _wasmfs_create_js_file_backend_js(backend);
 
     // Add the async operations on top.
     var jsFileOps = wasmFS$backends[backend];

@@ -15,11 +15,11 @@ addToLibrary({
   // Returns an integer less than, equal to, or greater than zero if uu1  is found, respectively, to be
   // lexicographically  less  than,  equal, or greater than uu2.
   uuid_compare__deps: ['memcmp'],
-  uuid_compare: (uu1, uu2) => _memcmp(uu1, uu2, 16),
+  uuid_compare: (uu1, uu2) => memcmp(uu1, uu2, 16),
 
   // Copies the 'compact' UUID variable from src to dst.
   uuid_copy__deps: ['memcpy'],
-  uuid_copy: (dst, src) => _memcpy(dst, src, 16),
+  uuid_copy: (dst, src) => memcpy(dst, src, 16),
 
   // Write a RFC4122 version 4 compliant UUID largely based on the method found in
   // http://stackoverflow.com/questions/105034/how-to-create-a-guid-uuid-in-javascript
@@ -117,18 +117,14 @@ addToLibrary({
   },
 
   // Convert a 'compact' form UUID to a lower case string.
+  // void uuid_unparse_lower(const uuid_t uu, char *out);
   uuid_unparse_lower__deps: ['uuid_unparse'],
-  uuid_unparse_lower: (uu, out) => {
-    // void uuid_unparse_lower(const uuid_t uu, char *out);
-    _uuid_unparse(uu, out);
-  },
+  uuid_unparse_lower: (uu, out) => uuid_unparse(uu, out),
 
   // Convert a 'compact' form UUID to an upper case string.
+  // void uuid_unparse_upper(const uuid_t uu, char *out);
   uuid_unparse_upper__deps: ['uuid_unparse'],
-  uuid_unparse_upper: (uu, out) => {
-    // void uuid_unparse_upper(const uuid_t uu, char *out);
-    _uuid_unparse(uu, out, true);
-  },
+  uuid_unparse_upper: (uu, out) => uuid_unparse(uu, out, true),
 
   // int uuid_type(const uuid_t uu);
   uuid_type: (uu) => {{{ cDefs.UUID_TYPE_DCE_RANDOM }}},

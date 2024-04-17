@@ -1,3 +1,5 @@
 __indirect_function_table
+_emscripten_stack_restore
 _start
+emscripten_stack_get_current
 memory

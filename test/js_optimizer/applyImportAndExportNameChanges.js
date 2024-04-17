@@ -2,15 +2,15 @@ var name;
 var wasmImports = {
   save1: 1,
   number: 33,
-  __syscall6: ___syscall6,
-  __setErrNo: ___setErrNo,
-  memset: _memset,
-  sbrk: _sbrk,
-  memcpy: _memcpy,
-  emscripten_memcpy_js: _emscripten_memcpy_js,
-  __syscall54: ___syscall54,
-  __syscall140: ___syscall140,
-  __syscall146: ___syscall146
+  __syscall6: __syscall6,
+  __setErrNo: __setErrNo,
+  memset: memset,
+  sbrk: sbrk,
+  memcpy: memcpy,
+  _emscripten_memcpy_js: _emscripten_memcpy_js,
+  __syscall54: __syscall54,
+  __syscall140: __syscall140,
+  __syscall146: __syscall146
 };
 
 // exports

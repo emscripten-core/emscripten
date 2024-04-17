@@ -12,7 +12,7 @@
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 // -- jshint doesn't understand library syntax, so we need to mark the symbols exposed here
-/*global getStringOrSymbol, emval_freelist, emval_handles, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_decref*/
+/*global getStringOrSymbol, emval_freelist, emval_handles, Emval, _emval_unregister, count_emval_handles, emval_symbols, _emval_decref*/
 /*global emval_addMethodCaller, emval_methodCallers, addToLibrary, global, emval_lookupTypes, makeLegalFunctionName*/
 /*global emval_get_global*/
 
@@ -116,7 +116,7 @@ var LibraryEmVal = {
   _emval_run_destructors: (handle) => {
     var destructors = Emval.toValue(handle);
     runDestructors(destructors);
-    __emval_decref(handle);
+    _emval_decref(handle);
   },
 
   _emval_new_array__deps: ['$Emval'],
@@ -470,7 +470,7 @@ var LibraryEmVal = {
   _emval_coro_suspend__deps: ['$Emval', '_emval_coro_resume'],
   _emval_coro_suspend: (promiseHandle, awaiterPtr) => {
     Emval.toValue(promiseHandle).then(result => {
-      __emval_coro_resume(awaiterPtr, Emval.toHandle(result));
+      _emval_coro_resume(awaiterPtr, Emval.toHandle(result));
     });
   },
 
@@ -483,7 +483,7 @@ var LibraryEmVal = {
           // user-friendly error message and stacktrace from C++ exception
           // if EXCEPTION_STACK_TRACES is enabled and numeric exception
           // with metadata optimised out otherwise.
-          ___cxa_rethrow();
+          __cxa_rethrow();
         } catch (e) {
           // But catch it so that it rejects the promise instead of throwing
           // in an unpredictable place during async execution.

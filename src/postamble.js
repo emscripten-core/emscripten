@@ -133,9 +133,9 @@ function stackCheckInit() {
   assert(!ENVIRONMENT_IS_PTHREAD);
 #endif
 #if RELOCATABLE
-  _emscripten_stack_set_limits({{{ STACK_HIGH }}} , {{{ STACK_LOW }}});
+  emscripten_stack_set_limits({{{ STACK_HIGH }}} , {{{ STACK_LOW }}});
 #else
-  _emscripten_stack_init();
+  emscripten_stack_init();
 #endif
   // TODO(sbc): Move writeStackCookie to native to to avoid this.
   writeStackCookie();
@@ -228,7 +228,7 @@ function run() {
 #endif
 #else
 #if ASSERTIONS
-    assert(!Module['_main'], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');
+    assert(!Module['main'], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');
 #endif // ASSERTIONS
 #endif // HAS_MAIN
 
@@ -278,9 +278,9 @@ function checkUnflushedContent() {
 #elif WASMFS && hasExportedSymbol('wasmfs_flush')
     // In WasmFS we must also flush the WasmFS internal buffers, for this check
     // to work.
-    _wasmfs_flush();
+    wasmfs_flush();
 #elif hasExportedSymbol('fflush')
-    _fflush(0);
+    fflush(0);
 #endif
 #if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
     // also flush in the JS FS layer
@@ -374,9 +374,9 @@ var workerResponded = false, workerCallbackId = -1;
     if (data) {
       if (!data.byteLength) data = new Uint8Array(data);
       if (!buffer || bufferSize < data.length) {
-        if (buffer) _free(buffer);
+        if (buffer) free(buffer);
         bufferSize = data.length;
-        buffer = _malloc(data.length);
+        buffer = malloc(data.length);
       }
       HEAPU8.set(data, buffer);
     }

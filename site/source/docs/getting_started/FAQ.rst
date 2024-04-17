@@ -350,7 +350,7 @@ Here is an example of how to use it:
     <script type="text/javascript">
       var Module = {
         onRuntimeInitialized: function() {
-          Module._foobar(); // foobar was exported
+          Module.foobar(); // foobar was exported
         }
       };
     </script>

@@ -6,10 +6,10 @@
 /*global addToLibrary*/
 
 /*global Module, asm*/
-/*global _malloc, _free, _memcpy*/
+/*global malloc, free, memcpy*/
 /*global FUNCTION_TABLE, HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64*/
 /*global readLatin1String*/
-/*global Emval, emval_handle_array, __emval_decref*/
+/*global Emval, emval_handle_array, _emval_decref*/
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 // -- jshint doesn't understand library syntax, so we need to specifically tell it about the symbols we define
@@ -46,7 +46,7 @@ var LibraryEmbind = {
     name: 'emscripten::val',
     'fromWireType': (handle) => {
       var rv = Emval.toValue(handle);
-      __emval_decref(handle);
+      _emval_decref(handle);
       return rv;
     },
     'toWireType': (destructors, value) => Emval.toHandle(value),
@@ -536,7 +536,7 @@ var LibraryEmbind = {
           str = a.join('');
         }
 
-        _free(value);
+        free(value);
 
         return str;
       },
@@ -558,7 +558,7 @@ var LibraryEmbind = {
         }
 
         // assumes POINTER_SIZE alignment
-        var base = _malloc({{{ POINTER_SIZE }}} + length + 1);
+        var base = malloc({{{ POINTER_SIZE }}} + length + 1);
         var ptr = base + {{{ POINTER_SIZE }}};
         {{{ makeSetValue('base', '0', 'length', SIZE_TYPE) }}};
         if (stdStringIsUTF8 && valueIsOfTypeString) {
@@ -568,7 +568,7 @@ var LibraryEmbind = {
             for (var i = 0; i < length; ++i) {
               var charCode = value.charCodeAt(i);
               if (charCode > 255) {
-                _free(ptr);
+                free(ptr);
                 throwBindingError('String has UTF-16 code units that do not fit in 8 bits');
               }
               HEAPU8[ptr + i] = charCode;
@@ -581,14 +581,14 @@ var LibraryEmbind = {
         }
 
         if (destructors !== null) {
-          destructors.push(_free, base);
+          destructors.push(free, base);
         }
         return base;
       },
       argPackAdvance: GenericWireTypeSize,
       'readValueFromPointer': readPointer,
       destructorFunction(ptr) {
-        _free(ptr);
+        free(ptr);
       },
     });
   },
@@ -636,7 +636,7 @@ var LibraryEmbind = {
           }
         }
 
-        _free(value);
+        free(value);
 
         return str;
       },
@@ -647,20 +647,20 @@ var LibraryEmbind = {
 
         // assumes POINTER_SIZE alignment
         var length = lengthBytesUTF(value);
-        var ptr = _malloc({{{ POINTER_SIZE }}} + length + charSize);
+        var ptr = malloc({{{ POINTER_SIZE }}} + length + charSize);
         {{{ makeSetValue('ptr', '0', 'length / charSize', SIZE_TYPE) }}};
 
         encodeString(value, ptr + {{{ POINTER_SIZE }}}, length + charSize);
 
         if (destructors !== null) {
-          destructors.push(_free, ptr);
+          destructors.push(free, ptr);
         }
         return ptr;
       },
       argPackAdvance: GenericWireTypeSize,
       'readValueFromPointer': readPointer,
       destructorFunction(ptr) {
-        _free(ptr);
+        free(ptr);
       }
     });
   },
@@ -671,7 +671,7 @@ var LibraryEmbind = {
 
   _embind_register_user_type__deps: ['_embind_register_emval'],
   _embind_register_user_type: (rawType, name) => {
-    __embind_register_emval(rawType);
+    _embind_register_emval(rawType);
   },
 
   _embind_register_optional__deps: ['$registerType', '$EmValOptionalType'],

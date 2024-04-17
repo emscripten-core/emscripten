@@ -663,14 +663,13 @@ def print_compiler_stage(cmd):
     sys.stderr.flush()
 
 
-def demangle_c_symbol_name(name):
+def demangle_legacy_symbol_name(name):
+  def is_c_symbol(name):
+    return name.startswith('_')
+
   if not is_c_symbol(name):
     return '$' + name
   return name[1:] if name.startswith('_') else name
-
-
-def is_c_symbol(name):
-  return name.startswith('_')
 
 
 def treat_as_user_export(name):
@@ -683,11 +682,7 @@ def asmjs_mangle(name):
   Prepends '_' and replaces non-alphanumerics with '_'.
   Used by wasm backend for JS library consistency with asm.js.
   """
-  # We also use this function to convert the clang-mangled `__main_argc_argv`
-  # to simply `main` which is expected by the emscripten JS glue code.
-  if name == '__main_argc_argv':
-    name = 'main'
-  if treat_as_user_export(name):
+  if treat_as_user_export(name) and not name.startswith('$'):
     return '_' + name
   return name
 

@@ -293,10 +293,6 @@ def apply_user_settings():
 
     setattr(settings, user_key, value)
 
-    if key == 'EXPORTED_FUNCTIONS':
-      # used for warnings in emscripten.py
-      settings.USER_EXPORTS = settings.EXPORTED_FUNCTIONS.copy()
-
     # TODO(sbc): Remove this legacy way.
     if key == 'WASM_OBJECT_FILES':
       settings.LTO = 0 if value else 'full'
@@ -1516,7 +1512,7 @@ def is_valid_abspath(options, path_name):
 
 def parse_symbol_list_file(contents):
   """Parse contents of one-symbol-per-line response file.  This format can by used
-  with, for example, -sEXPORTED_FUNCTIONS=@filename and avoids the need for any
+  with, for example, -sEXPORTS=@filename and avoids the need for any
   kind of quoting or escaping.
   """
   values = contents.splitlines()

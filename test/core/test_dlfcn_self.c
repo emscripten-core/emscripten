@@ -13,7 +13,7 @@
 int EMSCRIPTEN_KEEPALIVE global = 123;
 
 EMSCRIPTEN_KEEPALIVE void foo(int x) {
-  printf("%d\n", x);
+  printf("foo called: %d\n", x);
 }
 
 void repeatable() {
@@ -32,7 +32,9 @@ void repeatable() {
 }
 
 int main() {
+  printf("in main\n");
   repeatable();
   repeatable();
+  printf("done main\n");
   return 0;
 }

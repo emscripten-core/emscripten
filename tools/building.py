@@ -29,8 +29,8 @@ from .shared import LLVM_OBJCOPY
 from .shared import run_process, check_call, exit_with_error
 from .shared import path_from_root
 from .shared import asmjs_mangle, DEBUG
-from .shared import LLVM_DWARFDUMP, demangle_c_symbol_name
-from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
+from .shared import LLVM_DWARFDUMP
+from .shared import get_emscripten_temp_dir, exe_suffix
 from .utils import WINDOWS
 from .settings import settings
 from .feature_matrix import UNSUPPORTED
@@ -111,7 +111,6 @@ def side_module_external_deps(external_symbols):
   """
   deps = set()
   for sym in settings.SIDE_MODULE_IMPORTS:
-    sym = demangle_c_symbol_name(sym)
     if sym in external_symbols:
       deps = deps.union(external_symbols[sym])
   return sorted(list(deps))
@@ -174,16 +173,14 @@ def lld_flags_for_executable(external_symbols):
     # removed when __cxa_atexit is a no-op.
     cmd.append('-u__cxa_atexit')
 
-  c_exports = [e for e in settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
-  # Strip the leading underscores
-  c_exports = [demangle_c_symbol_name(e) for e in c_exports]
   # Filter out symbols external/JS symbols
-  c_exports = [e for e in c_exports if e not in external_symbols]
+  c_exports = [e for e in settings.EXPORTS if e not in external_symbols and '$' + e not in
+               external_symbols]
   c_exports += settings.REQUIRED_EXPORTS
   if settings.MAIN_MODULE:
     c_exports += side_module_external_deps(external_symbols)
   for export in c_exports:
-    if settings.ERROR_ON_UNDEFINED_SYMBOLS:
+    if settings.ERROR_ON_UNDEFINED_SYMBOLS and diagnostics.is_enabled('undefined'):
       cmd.append('--export=' + export)
     else:
       cmd.append('--export-if-defined=' + export)
@@ -560,14 +557,25 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   if settings.USE_WEBGPU:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/webgpu-externs.js')]
 
-  # Closure compiler needs to know about all exports that come from the wasm module, because to optimize for small code size,
-  # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
-  # externs file for the exports, Closure is able to reason about the exports.
+  # Closure compiler needs to know about all exports that come from the wasm module, because to
+  # optimize for small code size, the exported symbols are added to global scope via a foreach loop
+  # in a way that evades Closure's static analysis. With an explicit externs file for the exports,
+  # Closure is able to reason about the exports.
   if settings.WASM_EXPORTS and not settings.DECLARE_ASM_MODULE_EXPORTS:
     # Generate an exports file that records all the exported symbols from the wasm module.
-    module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % asmjs_mangle(i) for i in settings.WASM_EXPORTS])
+    module_exports_suppressions = []
+
+    def add_suppression(sym):
+      module_exports_suppressions.append('/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % sym)
+
+    for sym in settings.WASM_EXPORTS:
+      add_suppression(sym)
+      if sym == '__main_argc_argv':
+        add_suppression('main')
+      if settings.MANGLED_SYMBOLS:
+        add_suppression(asmjs_mangle(sym))
     exports_file = shared.get_temp_files().get('.js', prefix='emcc_module_exports_')
-    exports_file.write(module_exports_suppressions.encode())
+    exports_file.write('\n'.join(module_exports_suppressions).encode())
     exports_file.close()
 
     CLOSURE_EXTERNS += [exports_file.name]
@@ -783,7 +791,7 @@ def metadce(js_file, wasm_file, debug_info, last):
     # Ignore exported wasm globals.  Those get inlined directly into the JS code.
     exports = sorted(set(settings.WASM_EXPORTS) - set(settings.WASM_GLOBAL_EXPORTS))
 
-  extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in exports) + ']}'
+  extra_info = '{ "exports": [' + ','.join(f'["{x}", "{x}"]' for x in exports) + ']}'
 
   txt = acorn_optimizer(js_file, ['emitDCEGraph', '--no-print'], return_output=True, extra_info=extra_info)
   if shared.SKIP_SUBPROCS:
@@ -794,7 +802,8 @@ def metadce(js_file, wasm_file, debug_info, last):
   required_symbols = user_requested_exports.union(set(settings.SIDE_MODULE_IMPORTS))
   for item in graph:
     if 'export' in item:
-      export = asmjs_mangle(item['export'])
+      export = item['export']
+      # export = asmjs_mangle(export)
       if settings.EXPORT_ALL or export in required_symbols:
         item['root'] = True
 
@@ -1269,3 +1278,82 @@ def get_emcc_node_flags(node_version):
   # 10.1.7 will turn into "100107".
   str_node_version = "%02d%02d%02d" % node_version
   return [f'-sMIN_NODE_VERSION={str_node_version}']
+
+
+def get_runtime_symbols():
+  runtime_symbols = [
+    'run',
+    'addOnPreRun',
+    'addOnInit',
+    'addOnPreMain',
+    'addOnExit',
+    'addOnPostRun',
+    'addRunDependency',
+    'removeRunDependency',
+    'out',
+    'err',
+    'callMain',
+    'abort',
+    'wasmMemory',
+    'wasmExports',
+    'HEAPF32',
+    'HEAPF64',
+    'HEAP_DATA_VIEW',
+    'HEAP8',
+    'HEAPU8',
+    'HEAP16',
+    'HEAPU16',
+    'HEAP32',
+    'HEAPU32',
+    'HEAP64',
+    'HEAPU64',
+  ]
+
+  if settings.PTHREADS and settings.ALLOW_MEMORY_GROWTH:
+    runtime_symbols += [
+      'GROWABLE_HEAP_I8',
+      'GROWABLE_HEAP_U8',
+      'GROWABLE_HEAP_I16',
+      'GROWABLE_HEAP_U16',
+      'GROWABLE_HEAP_I32',
+      'GROWABLE_HEAP_U32',
+      'GROWABLE_HEAP_F32',
+      'GROWABLE_HEAP_F64',
+    ]
+
+  if settings.USE_OFFSET_CONVERTER:
+    runtime_symbols.append('WasmOffsetConverter')
+
+  if settings.LOAD_SOURCE_MAP:
+    runtime_symbols.append('WasmSourceMap')
+
+  if settings.STACK_OVERFLOW_CHECK:
+    runtime_symbols.append('writeStackCookie')
+    runtime_symbols.append('checkStackCookie')
+
+  if settings.SUPPORT_BASE64_EMBEDDING:
+    runtime_symbols.append('intArrayFromBase64')
+    runtime_symbols.append('tryParseAsDataURI')
+
+  if settings.RETAIN_COMPILER_SETTINGS:
+    runtime_symbols.append('getCompilerSetting')
+
+  if settings.RUNTIME_DEBUG:
+    runtime_symbols.append('prettyPrint')
+
+  # dynCall_* methods are not hardcoded here, as they
+  # depend on the file being compiled. check for them
+  # and add them.
+  for e in settings.EXPORTS:
+    if e.startswith('dynCall_'):
+      # a specific dynCall; add to the list
+      runtime_symbols.append(e)
+
+  # Only export legacy runtime elements when explicitly
+  # requested.
+  # for e in settings.EXPORTS:
+  #   if e in if legacyRuntimeElements:
+  #     const newName = legacyRuntimeElements.get(name);
+  #     warn(`deprecated item in EXPORTED_RUNTIME_METHODS: ${name} use ${newName} instead.`)
+  #     runtimeElements.push(name)
+  return runtime_symbols
