@@ -245,9 +245,8 @@ var moduleArg;
  * Used in MODULARIZE mode.
  * We need to access this after the code we pass to closure so from closure's
  * POV this is "extern".
- * @suppress {duplicate}
  */
-var readyPromise;
+var moduleRtn;
 
 /**
  * This was removed from upstream closure compiler in
