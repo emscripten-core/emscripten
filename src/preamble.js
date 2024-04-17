@@ -14,6 +14,10 @@
 // An online HTML version (which may be of a different version of Emscripten)
 //    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
 
+#if PTHREADS
+#include "runtime_pthread.js"
+#endif
+
 #if RELOCATABLE
 {{{ makeModuleReceiveWithVar('dynamicLibraries', undefined, '[]', true) }}}
 #endif
@@ -897,11 +901,27 @@ function instantiateAsync(binary, binaryFile, imports, callback) {
 }
 #endif // WASM_ASYNC_COMPILATION
 
-// Create the wasm instance.
-// Receives the wasm imports, returns the exports.
-function createWasm() {
+function getWasmImports() {
+#if PTHREADS
+  assignWasmImports();
+#endif
+#if ASYNCIFY && (ASSERTIONS || ASYNCIFY == 2)
+  // instrumenting imports is used in asyncify in two ways: to add assertions
+  // that check for proper import use, and for ASYNCIFY=2 we use them to set up
+  // the Promise API on the import side.
+#if PTHREADS || ASYNCIFY_LAZY_LOAD_CODE
+  // In pthreads builds getWasmImports is called more than once but we only
+  // and the instrument the imports once.
+  if (!wasmImports.__instrumented) {
+    wasmImports.__instrumented = true;
+    Asyncify.instrumentWasmImports(wasmImports);
+  }
+#else
+  Asyncify.instrumentWasmImports(wasmImports);
+#endif
+#endif
   // prepare imports
-  var info = {
+  return {
 #if MINIFY_WASM_IMPORTED_MODULES
     'a': wasmImports,
 #else // MINIFY_WASM_IMPORTED_MODULES
@@ -915,7 +935,13 @@ function createWasm() {
     'GOT.mem': new Proxy(wasmImports, GOTHandler),
     'GOT.func': new Proxy(wasmImports, GOTHandler),
 #endif
-  };
+  }
+}
+
+// Create the wasm instance.
+// Receives the wasm imports, returns the exports.
+function createWasm() {
+  var info = getWasmImports();
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup
@@ -1047,21 +1073,6 @@ function createWasm() {
   // Also pthreads and wasm workers initialize the wasm instance through this
   // path.
   if (Module['instantiateWasm']) {
-
-#if USE_OFFSET_CONVERTER
-#if ASSERTIONS
-{{{ runIfWorkerThread("assert(Module['wasmOffsetData'], 'wasmOffsetData not found on Module object');") }}}
-#endif
-{{{ runIfWorkerThread("wasmOffsetConverter = resetPrototype(WasmOffsetConverter, Module['wasmOffsetData']);") }}}
-#endif
-
-#if LOAD_SOURCE_MAP
-#if ASSERTIONS
-{{{ runIfWorkerThread("assert(Module['wasmSourceMapData'], 'wasmSourceMapData not found on Module object');") }}}
-#endif
-{{{ runIfWorkerThread("wasmSourceMap = resetPrototype(WasmSourceMap, Module['wasmSourceMapData']);") }}}
-#endif
-
     try {
       return Module['instantiateWasm'](info, receiveInstance);
     } catch(e) {

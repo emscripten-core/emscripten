@@ -12,6 +12,10 @@
 #include "runtime_asan.js"
 #endif
 
+#if PTHREADS
+#include "runtime_pthread.js"
+#endif
+
 #if ASSERTIONS
 /** @type {function(*, string=)} */
 function assert(condition, text) {
@@ -85,11 +89,19 @@ else {
 #endif // MODULARIZE
 #endif // PTHREADS
 
+#if PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) {
+#endif
+
 #if ASSERTIONS && SHARED_MEMORY
 assert(wasmMemory.buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
 #endif
 
 updateMemoryViews();
+
+#if PTHREADS
+}
+#endif
 #endif // IMPORTED_MEMORY
 
 #include "runtime_stack_check.js"
