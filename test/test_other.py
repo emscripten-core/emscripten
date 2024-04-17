@@ -6446,7 +6446,7 @@ after
       var promise = Module(arg);
       arg._foo();''')
 
-    expected = "Aborted(Access to module property ('_foo') is no longer possible via the incoming module contructor argument; Instead, use the result of the module promise"
+    expected = "Aborted(Access to module property ('_foo') is no longer possible via the module constructor argument; Instead, use the result of the module constructor"
     self.do_runf('test.c', expected, assert_returncode=NON_ZERO, emcc_args=['--no-entry', '-sMODULARIZE', '--extern-post-js=post.js'])
 
   def test_export_all_3142(self):
@@ -6983,7 +6983,7 @@ int main() {
     out = self.run_js('a.out.js')
     self.assertContained('invalid mode for dlopen(): Either RTLD_LAZY or RTLD_NOW is required', out)
 
-  def test_dlopen_contructors(self):
+  def test_dlopen_constructors(self):
     create_file('side.c', r'''
       #include <stdio.h>
       #include <assert.h>
@@ -6998,7 +6998,7 @@ int main() {
       __attribute__((constructor)) void ctor(void) {
         printf("foo address: %p\n", ptr);
         // Check that relocations have already been applied by the time
-        // contructor functions run.
+        // constructor functions run.
         check_relocations();
         printf("done ctor\n");
       }

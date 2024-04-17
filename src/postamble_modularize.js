@@ -29,11 +29,7 @@ for (const prop of Object.keys(Module)) {
     Object.defineProperty(moduleArg, prop, {
       configurable: true,
       get() {
-#if WASM_ASYNC_COMPILATION
-        abort(`Access to module property ('${prop}') is no longer possible via the incoming module contructor argument; Instead, use the result of the module promise.`)
-#else
-        abort(`Access to module property ('${prop}') is no longer possible via the module input argument; Instead, use the module constructor return value.`)
-#endif
+        abort(`Access to module property ('${prop}') is no longer possible via the module constructor argument; Instead, use the result of the module constructor.`)
       }
     });
   }
