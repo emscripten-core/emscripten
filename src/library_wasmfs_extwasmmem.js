@@ -339,7 +339,7 @@ extWasmMemFS_local.index = new Uint32Array(Module['extWasmMemFS']['index']);
     },
 
     w_lock: function() {
-      while(Atomics.exchange(extWasmMemFS_local.control, 0, 1) === 0) {}
+      while(Atomics.exchange(extWasmMemFS_local.control, 0, 1)) {}
       while(Atomics.load(extWasmMemFS_local.control, 1) !== 0) {}
       extWasmMemFS_local.update_typed_arrays();
     },
