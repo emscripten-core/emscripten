@@ -92,10 +92,12 @@ var LibraryDylink = {
         if (e !== e+0) throw e;
 #endif
         _setThrew(1, 0);
-        // In theory this if could be done on creating the function, 
-        // but I just added this to save wasting code space
-        // and it only happens on an exception
-        if(sig[0]=="j")return BigInt(0);
+#if WASM_BIGINT        
+        // In theory this if statement could be done on
+        // creating the function, but I just added this to
+        // save wasting code space as it only happens on exception.
+        if (sig[0] == "j") return 0n;
+#endif        
       }
     }
   },
