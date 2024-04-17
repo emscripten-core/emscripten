@@ -54,14 +54,7 @@ function initRuntime(wasmExports) {
 #endif
 
 #if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) {
-    // Export needed variables that worker.js needs to Module.
-    Module['HEAPU32'] = HEAPU32;
-    Module['__emscripten_thread_init'] = __emscripten_thread_init;
-    Module['__emscripten_thread_exit'] = __emscripten_thread_exit;
-    Module['_pthread_self'] = _pthread_self;
-    return;
-  }
+  if (ENVIRONMENT_IS_PTHREAD) return
 #endif
 
 #if WASM_WORKERS
