@@ -4825,7 +4825,7 @@ res64 - external 64\n''', header='''\
         void* handle = dlopen("liblib.so", RTLD_LAZY);
         int64_t (*side)(int,int) = (int64_t (*)(int,int))dlsym(handle, "side");
         try{
-          (side)(1,2);              
+          (side)(1,2);
         }catch(int x){
             std::cout << "Caught int " << x << std::endl;
         }
@@ -4853,7 +4853,7 @@ int64_t kaboom(int64_t j,int k,int64_t l) {
 }
 extern "C" int64_t side(int a,int b) {
       // object with destructor to force invoke
-      std::string x("YAY"); 
+      std::string x("YAY");
 
       should_throw=1;
       kaboom(1,2,3);
@@ -4874,7 +4874,6 @@ extern "C" int64_t side(int a,int b) {
     self.clear_setting('SIDE_MODULE')
 
     self.do_runf("main.cpp", "Caught int 3\n")
-
 
   @needs_dylink
   @disabled('https://github.com/emscripten-core/emscripten/issues/12815')
