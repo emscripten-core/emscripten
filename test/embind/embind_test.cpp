@@ -1309,6 +1309,12 @@ std::vector<std::shared_ptr<StringHolder>> emval_test_return_shared_ptr_vector()
     return sharedStrVector;
 }
 
+std::vector<SmallClass*> emval_test_return_vector_pointers() {
+    std::vector<SmallClass*> vec;
+    vec.push_back(new SmallClass());
+    return vec;
+}
+
 void test_string_with_vec(const std::string& p1, std::vector<std::string>& v1) {
     // THIS DOES NOT WORK -- need to get as val and then call vecFromJSArray
     printf("%s\n", p1.c_str());
@@ -1336,6 +1342,12 @@ std::optional<std::string> embind_test_return_optional_string(bool create) {
 std::optional<SmallClass> embind_test_return_optional_small_class(bool create) {
     if (create) {
         return SmallClass();
+    }
+    return {};
+}
+std::optional<SmallClass*> embind_test_return_optional_small_class_pointer(bool create) {
+    if (create) {
+        return new SmallClass();
     }
     return {};
 }
@@ -1885,6 +1897,7 @@ EMSCRIPTEN_BINDINGS(tests) {
     register_vector<emscripten::val>("EmValVector");
     register_vector<float>("FloatVector");
     register_vector<std::vector<int>>("IntegerVectorVector");
+    register_vector<SmallClass*>("SmallClassPointerVector");
 
     class_<DummyForPointer>("DummyForPointer");
 
@@ -2352,6 +2365,7 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     function("emval_test_return_vector", &emval_test_return_vector);
     function("emval_test_return_vector_of_vectors", &emval_test_return_vector_of_vectors);
+    function("emval_test_return_vector_pointers", &emval_test_return_vector_pointers);
 
     register_vector<std::shared_ptr<StringHolder>>("SharedPtrVector");
     function("emval_test_return_shared_ptr_vector", &emval_test_return_shared_ptr_vector);
@@ -2371,10 +2385,12 @@ EMSCRIPTEN_BINDINGS(tests) {
     register_optional<int>();
     register_optional<float>();
     register_optional<SmallClass>();
+    register_optional<SmallClass*>();
     register_optional<std::string>();
     function("embind_test_return_optional_int", &embind_test_return_optional_int);
     function("embind_test_return_optional_float", &embind_test_return_optional_float);
     function("embind_test_return_optional_small_class", &embind_test_return_optional_small_class);
+    function("embind_test_return_optional_small_class_pointer", &embind_test_return_optional_small_class_pointer);
     function("embind_test_return_optional_string", &embind_test_return_optional_string);
     function("embind_test_optional_int_arg", &embind_test_optional_int_arg);
     function("embind_test_optional_float_arg", &embind_test_optional_float_arg);

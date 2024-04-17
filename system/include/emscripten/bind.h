@@ -1885,7 +1885,9 @@ void register_optional() {
         return;
     }
     hasRun = true;
-    internal::_embind_register_optional(internal::TypeID<std::optional<T>>::get(), internal::TypeID<T>::get());
+    internal::_embind_register_optional(
+        internal::TypeID<std::optional<T>>::get(),
+        internal::TypeID<typename std::remove_pointer<T>::type>::get());
 }
 #endif
 
