@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <AL/al.h>
 #include <AL/alc.h>
+#include <AL/alext.h>
 #include <assert.h>
 #include <stdint.h>
 #include <unistd.h>
@@ -32,7 +33,6 @@ void EMSCRIPTEN_KEEPALIVE test_finished() {
   ALC_DEVICE_PAUSE_SOFT alcDevicePauseSOFT;
   ALC_DEVICE_RESUME_SOFT alcDeviceResumeSOFT;
 #endif
-}
 
 void playSource(void* arg) {
   ALuint source = static_cast<ALuint>(reinterpret_cast<intptr_t>(arg));
@@ -119,8 +119,9 @@ int main() {
   printf("Default device: %s\n", alcGetString(NULL, ALC_DEFAULT_DEVICE_SPECIFIER));
 
   ALCdevice* device = alcOpenDevice(NULL);
+  assert(alcIsExtensionPresent(device, "ALC_SOFT_HRTF") == AL_TRUE);
 #if defined(TEST_ANIMATED_LOOPED_PANNED_PLAYBACK)
-  ALCint attrs[] = {0x1992 /* ALC_HRTF_SOFT */, ALC_TRUE, 0x1996 /* ALC_HRTF_ID_SOFT */, 0, 0};
+  ALCint attrs[] = {ALC_HRTF_SOFT, ALC_TRUE, ALC_HRTF_ID_SOFT, 0, 0};
   ALCcontext* context = alcCreateContext(device, attrs);
 #else
   ALCcontext* context = alcCreateContext(device, NULL);
