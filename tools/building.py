@@ -32,7 +32,7 @@ from .shared import asmjs_mangle, DEBUG
 from .shared import LLVM_DWARFDUMP, demangle_c_symbol_name
 from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
 from .utils import WINDOWS
-from .settings import settings, default_setting
+from .settings import settings
 from .feature_matrix import UNSUPPORTED
 
 logger = logging.getLogger('building')
@@ -44,20 +44,6 @@ EXPECTED_BINARYEN_VERSION = 117
 _is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
 user_requested_exports: Set[str] = set()
-
-
-# .. but for Popen, we cannot have doublequotes, so provide functionality to
-# remove them when needed.
-def remove_quotes(arg):
-  if isinstance(arg, list):
-    return [remove_quotes(a) for a in arg]
-
-  if arg.startswith('"') and arg.endswith('"'):
-    return arg[1:-1].replace('\\"', '"')
-  elif arg.startswith("'") and arg.endswith("'"):
-    return arg[1:-1].replace("\\'", "'")
-  else:
-    return arg
 
 
 def get_building_env():
@@ -1063,34 +1049,15 @@ def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
 
 
 def is_ar(filename):
+  """Return True if a the given filename is an ar archive, False otherwise.
+  """
   try:
-    if _is_ar_cache.get(filename):
-      return _is_ar_cache[filename]
     header = open(filename, 'rb').read(8)
-    sigcheck = header in (b'!<arch>\n', b'!<thin>\n')
-    _is_ar_cache[filename] = sigcheck
-    return sigcheck
   except Exception as e:
     logger.debug('is_ar failed to test whether file \'%s\' is a llvm archive file! Failed on exception: %s' % (filename, e))
     return False
 
-
-def is_bitcode(filename):
-  try:
-    # look for magic signature
-    b = open(filename, 'rb').read(4)
-    if b[:2] == b'BC':
-      return True
-    # on macOS, there is a 20-byte prefix which starts with little endian
-    # encoding of 0x0B17C0DE
-    elif b == b'\xDE\xC0\x17\x0B':
-      b = bytearray(open(filename, 'rb').read(22))
-      return b[20:] == b'BC'
-  except IndexError:
-    # not enough characters in the input
-    # note that logging will be done on the caller function
-    pass
-  return False
+  return header in (b'!<arch>\n', b'!<thin>\n')
 
 
 def is_wasm(filename):
@@ -1110,85 +1077,6 @@ def is_wasm_dylib(filename):
       module.seek(section.offset)
       if module.read_string() in ('dylink', 'dylink.0'):
         return True
-  return False
-
-
-def map_to_js_libs(library_name):
-  """Given the name of a special Emscripten-implemented system library, returns an
-  pair containing
-  1. Array of absolute paths to JS library files, inside emscripten/src/ that corresponds to the
-     library name. `None` means there is no mapping and the library will be processed by the linker
-     as a require for normal native library.
-  2. Optional name of a corresponding native library to link in.
-  """
-  # Some native libraries are implemented in Emscripten as system side JS libraries
-  library_map = {
-    'embind': ['embind/embind.js', 'embind/emval.js'],
-    'EGL': ['library_egl.js'],
-    'GL': ['library_webgl.js', 'library_html5_webgl.js'],
-    'webgl.js': ['library_webgl.js', 'library_html5_webgl.js'],
-    'GLESv2': ['library_webgl.js'],
-    # N.b. there is no GLESv3 to link to (note [f] in https://www.khronos.org/registry/implementers_guide.html)
-    'GLEW': ['library_glew.js'],
-    'glfw': ['library_glfw.js'],
-    'glfw3': ['library_glfw.js'],
-    'GLU': [],
-    'glut': ['library_glut.js'],
-    'openal': ['library_openal.js'],
-    'X11': ['library_xlib.js'],
-    'SDL': ['library_sdl.js'],
-    'uuid': ['library_uuid.js'],
-    'fetch': ['library_fetch.js'],
-    'websocket': ['library_websocket.js'],
-    # These 4 libraries are separate under glibc but are all rolled into
-    # libc with musl.  For compatibility with glibc we just ignore them
-    # completely.
-    'dl': [],
-    'm': [],
-    'rt': [],
-    'pthread': [],
-    # This is the name of GNU's C++ standard library. We ignore it here
-    # for compatibility with GNU toolchains.
-    'stdc++': [],
-  }
-  settings_map = {
-    'glfw': {'USE_GLFW': 2},
-    'glfw3': {'USE_GLFW': 3},
-    'SDL': {'USE_SDL': 1},
-  }
-
-  if library_name in settings_map:
-    for key, value in settings_map[library_name].items():
-      default_setting(key, value)
-
-  if library_name in library_map:
-    libs = library_map[library_name]
-    logger.debug('Mapping library `%s` to JS libraries: %s' % (library_name, libs))
-    return libs
-
-  if library_name.endswith('.js') and os.path.isfile(path_from_root('src', f'library_{library_name}')):
-    return [f'library_{library_name}']
-
-  return None
-
-
-# Map a linker flag to a settings. This lets a user write -lSDL2 and it will
-# have the same effect as -sUSE_SDL=2.
-def map_and_apply_to_settings(library_name):
-  # most libraries just work, because the -l name matches the name of the
-  # library we build. however, if a library has variations, which cause us to
-  # build multiple versions with multiple names, then we need this mechanism.
-  library_map = {
-    # SDL2_mixer's built library name contains the specific codecs built in.
-    'SDL2_mixer': [('USE_SDL_MIXER', 2)],
-  }
-
-  if library_name in library_map:
-    for key, value in library_map[library_name]:
-      logger.debug('Mapping library `%s` to settings changes: %s = %s' % (library_name, key, value))
-      setattr(settings, key, value)
-    return True
-
   return False
 
 
