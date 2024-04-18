@@ -2793,7 +2793,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
     imports = [i.field for i in imports if i.kind in (webassembly.ExternType.FUNC, webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG)]
     # For now we ignore `invoke_` functions imported by side modules and rely
     # on the dynamic linker to create them on the fly.
-    # TODO(sbc): Integrate with metadata.invokeFuncs that comes from the
+    # TODO(sbc): Integrate with metadata.invoke_funcs that comes from the
     # main module to avoid creating new invoke functions at runtime.
     imports = set(imports)
     imports = set(i for i in imports if not i.startswith('invoke_'))
