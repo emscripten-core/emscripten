@@ -2350,31 +2350,21 @@ def modularize(options):
      shared.target_environment_may_be('web'):
     async_emit = 'async '
 
-  # Return the incoming `moduleArg`.  This is is equivalent to the `Module` var within the
-  # generated code but its not run through closure minification so we can reference it in
-  # the return statement.
-  return_value = 'moduleArg'
-  if settings.WASM_ASYNC_COMPILATION:
-    if settings.USE_READY_PROMISE:
-      return_value = 'readyPromise'
-    else:
-      return_value = '{}'
-
   # TODO: Remove when https://bugs.webkit.org/show_bug.cgi?id=223533 is resolved.
   if async_emit != '' and settings.EXPORT_NAME == 'config':
     diagnostics.warning('emcc', 'EXPORT_NAME should not be named "config" when targeting Safari')
 
   src = '''
 %(maybe_async)sfunction(moduleArg = {}) {
+  var moduleRtn;
 
 %(src)s
 
-  return %(return_value)s
+  return moduleRtn;
 }
 ''' % {
     'maybe_async': async_emit,
     'src': src,
-    'return_value': return_value,
   }
 
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS:

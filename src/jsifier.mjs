@@ -744,6 +744,10 @@ var proxiedFunctionTable = [
       includeFile(fileName, shouldPreprocess(fileName));
     }
 
+    if (MODULARIZE) {
+      includeFile('postamble_modularize.js');
+    }
+
     print(
       '//FORWARDED_DATA:' +
         JSON.stringify({

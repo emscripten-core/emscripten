@@ -854,7 +854,15 @@ def create_sending(metadata, library_symbols):
     # This prevents closure compiler from minifying the field names in this
     # object.
     prefix = '/** @export */\n  '
-  return '{\n  ' + ',\n  '.join(f'{prefix}{k}: {v}' for k, v in sorted_items) + '\n}'
+
+  elems = []
+  for k, v in sorted_items:
+    if k == v:
+      elems.append(f'{prefix}{k}')
+    else:
+      elems.append(f'{prefix}{k}: {v}')
+
+  return '{\n  ' + ',\n  '.join(elems) + '\n}'
 
 
 def make_export_wrappers(function_exports):

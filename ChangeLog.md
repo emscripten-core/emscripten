@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.58 (in development)
 -----------------------
+- In `-sMODULARIZE` mode, the argument passed into the module constructor is
+  no longer mutated in place.  The expectation is that the module instance will
+  be available via the constructor return value.  Attempting to access methods
+  on the object passed *into* the constructor will now abort. (#21775)
 - Enable use of `::` to escape port option separator (#21710)
 - In multi-threaded builds `--extern-pre-js` and `--extern-post-js` code is
   now only run on the main thread, and not on each of the workers. (#21750)
