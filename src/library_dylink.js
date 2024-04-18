@@ -1166,23 +1166,23 @@ $dlopenInternal: function(filename, flags) {
     promise.then(successCallback).catch(errorCallback);
   },
 
-  _emscripten_dlopen_js__deps: ['$dlopenInternal', '$runtimeKeepalivePush', '$runtimeKeepalivePop', '$dlSetError', '$dynCall'],
-  _emscripten_dlopen_js: function(handle, promise, onsuccess, onerror,) {
-     
-     {{{ runtimeKeepalivePush() }}}
+  _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError', $promiseToCallback],
+  _emscripten_dlopen_js: (filename, onsuccess, onerror, user_data) => {
+    /** @param {Object=} e */
+    function errorCallback(e) {
+      var filename = UTF8ToString(filename + {{{ C_STRUCTS.dso.name }}});
+      dlSetError(`'Could not load dynamic lib: ${filename}\n${e}`);
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {{{ makeDynCall('vpp', 'onerror') }}}(handle, user_data));
+    }
+    function successCallback() {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {{{ makeDynCall('vpp', 'onsuccess') }}}(handle, user_data));
+    }
 
-    var filename = UTF8ToString(handle);
-    var flags = {{{ makeGetValue('promise', 4, 'i32') }}};
-
-    dlopenInternal(filename, flags)
-      .then(module => {
-      {{{ makeDynCall('vpp', 'onsuccess') }}}(module, handle);
-      {{{ runtimeKeepalivePop() }}};
-    }).catch(err => {
-      {{{ makeDynCall('vpp', 'onerror') }}}(0, user_data);
-      {{{ runtimeKeepalivePop() }}};
-    });
-    
+    {{{ runtimeKeepalivePush() }}}
+    var promise = dlopenInternal(filename, { loadAsync: true });
+    promiseToCallback(promise, successCallback, errorCallback,user_data);
   },
 
 

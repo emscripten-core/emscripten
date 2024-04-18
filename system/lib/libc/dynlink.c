@@ -587,9 +587,11 @@ void* dlopen(const char* file, int flags) {
 void emscripten_dlopen(const char* filename, int flags, void* user_data,
                        em_dlopen_callback onsuccess, em_arg_callback_func onerror) {
   
-  em_promise_t promise = emscripten_dlopen_promise(filename,flags);
-  emscripten_promise_then(promise, onsuccess, user_data);
-  emscripten_promise_catch(promise, onerror, user_data);
+
+  char buf[2*NAME_MAX+2];
+  filename = resolve_path(buf, filename, sizeof buf);
+  em_promise_t promise = emscripten_dlopen_promise(filename,flags,user_data);
+  promiseToCallback(promise, onsuccess, onerror, user_data);
 
 }
 
@@ -611,7 +613,7 @@ static void promise_onerror(void* user_data) {
 // based API (emscripten_dlopen).
 // TODO(sbc): Consider inverting this and perhaps deprecating/removing
 // the old API.
-em_promise_t emscripten_dlopen_promise(const char* filename, int flags) {
+em_promise_t emscripten_dlopen_promise(const char* filename, int flags,void* user_data) {
   
     if (!filename) {
         return emscripten_promise_resolve(EM_PROMISE_FULFILL, RTLD_DEFAULT);
@@ -630,7 +632,9 @@ em_promise_t emscripten_dlopen_promise(const char* filename, int flags) {
     if (!p) {
         emscripten_promise_reject(promise, NULL);
     } else {
-        _emscripten_dlopen_js(p, promise, dlopen_onsuccess, dlopen_onerror);
+        struct async_data* d = malloc(sizeof(struct async_data));
+        d->user_data = user_data;
+        _emscripten_dlopen_js(p, dlopen_onsuccess, dlopen_onerror,d);
     }
 
     return promise;
