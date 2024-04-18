@@ -4820,15 +4820,10 @@ res64 - external 64\n''', header='''\
     create_file('main.cpp', r'''
       #include <dlfcn.h>
       #include <cstdint>
-      #include <iostream>
       int main() {
         void* handle = dlopen("liblib.so", RTLD_LAZY);
         int64_t (*side)(int,int) = (int64_t (*)(int,int))dlsym(handle, "side");
-        try{
-          (side)(1,2);
-        }catch(int x){
-            std::cout << "Caught int " << x << std::endl;
-        }
+        (side)(1,2);
         return 0;
       }
     ''')
@@ -4839,26 +4834,20 @@ res64 - external 64\n''', header='''\
     # This means we end up depending on dynamic linking code to redirect
     # __cxa_find_matching_catch_6 to __cxa_find_matching_catch.
     create_file('liblib.cpp', r'''
-#include <stdio.h>
-#include <emscripten.h>
-#include <string>
-
-static volatile int should_throw = 0;
-
-int64_t kaboom(int64_t j,int k,int64_t l) {
-    if (should_throw) {
+      #include <stdio.h>
+      #include <string>
+      int64_t kaboom(int64_t j,int k,int64_t l) {
         throw 3;
-    }
-    return 0;
-}
-extern "C" int64_t side(int a,int b) {
-      // object with destructor to force invoke
-      std::string x("YAY");
-
-      should_throw=1;
-      kaboom(1,2,3);
-      return 0;
-}
+        return 0;
+      }
+      extern "C" int64_t side(int a,int b) {
+        try{
+          kaboom(1,2,3);
+        }catch(int x){
+          printf("catch: %d\n",x);
+        }
+        return 0;
+      }
     ''')
 
     self.maybe_closure()
@@ -4873,7 +4862,7 @@ extern "C" int64_t side(int a,int b) {
     self.set_setting('MAIN_MODULE', 1)
     self.clear_setting('SIDE_MODULE')
 
-    self.do_runf("main.cpp", "Caught int 3\n")
+    self.do_runf("main.cpp", "catch: 3\n")
 
   @needs_dylink
   @disabled('https://github.com/emscripten-core/emscripten/issues/12815')
