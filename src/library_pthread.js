@@ -551,14 +551,14 @@ var LibraryPThread = {
     worker.pthread_ptr = 0;
   },
 
-  __emscripten_thread_cleanup: (thread) => {
+  _emscripten_thread_cleanup: (thread) => {
     // Called when a thread needs to be cleaned up so it can be reused.
     // A thread is considered reusable when it either returns from its
     // entry point, calls pthread_exit, or acts upon a cancellation.
     // Detached threads are responsible for calling this themselves,
     // otherwise pthread_join is responsible for calling this.
 #if PTHREADS_DEBUG
-    dbg(`__emscripten_thread_cleanup: ${ptrToString(thread)}`)
+    dbg(`_emscripten_thread_cleanup: ${ptrToString(thread)}`)
 #endif
     if (!ENVIRONMENT_IS_PTHREAD) cleanupThread(thread);
     else postMessage({ 'cmd': 'cleanupThread', 'thread': thread });
@@ -702,7 +702,7 @@ var LibraryPThread = {
 #endif
     navigator['hardwareConcurrency'],
 
-  __emscripten_init_main_thread_js: (tb) => {
+  _emscripten_init_main_thread_js: (tb) => {
     // Pass the thread address to the native code where they stored in wasm
     // globals which act as a form of TLS. Global constructors trying
     // to access this value will read the wrong value, but that is UB anyway.
