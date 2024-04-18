@@ -1851,14 +1851,14 @@ def phase_link(linker_arguments, wasm_target, js_syms):
   rtn = None
   if settings.LINKABLE:
     # In LINKABLE mode we pass `--export-dynamic` along with `--whole-archive`.  This results
-    # over 7000 exports, which cannot be distingished from the few symbols we explicitly
+    # in over 7000 exports, which cannot be distinguished from the few symbols we explicitly
     # export via EMSCRIPTEN_KEEPALIVE or EXPORTED_FUNCTIONS.
-    # In order to be able limit the number of symbols we export on the `Module` object we
-    # run the linker twice in this mode.
+    # In order to avoid unnecessary exported symbols on the `Module` object we run the linker
+    # twice in this mode:
     # 1. Without `--export-dynamic` to get the base exports
     # 2. With `--export-dynamic` to get the actual linkable Wasm binary
     # TODO(sbc): Remove this double execution of wasm-ld if we ever find a way to
-    # distingiush EMSCRIPTEN_KEEPALIVE exports from `--export-dynamic` exports.
+    # distinguish EMSCRIPTEN_KEEPALIVE exports from `--export-dynamic` exports.
     settings.LINKABLE = False
     building.link_lld(linker_arguments, wasm_target, external_symbols=js_syms)
     settings.LINKABLE = True
