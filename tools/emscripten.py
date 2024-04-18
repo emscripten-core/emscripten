@@ -143,8 +143,8 @@ def update_settings_glue(wasm_file, metadata):
       settings.WEAK_IMPORTS += webassembly.get_weak_imports(wasm_file)
 
   settings.WASM_EXPORTS = metadata.all_exports
-  settings.WASM_GLOBAL_EXPORTS = list(metadata.namedGlobals.keys())
-  settings.HAVE_EM_ASM = bool(settings.MAIN_MODULE or len(metadata.asmConsts) != 0)
+  settings.WASM_GLOBAL_EXPORTS = list(metadata.global_exports.keys())
+  settings.HAVE_EM_ASM = bool(settings.MAIN_MODULE or len(metadata.em_asm_consts) != 0)
 
   # start with the MVP features, and add any detected features.
   settings.BINARYEN_FEATURES = ['--mvp-features'] + metadata.features
@@ -163,7 +163,7 @@ def update_settings_glue(wasm_file, metadata):
 
   # When using dynamic linking the main function might be in a side module.
   # To be safe assume they do take input parameters.
-  settings.MAIN_READS_PARAMS = metadata.mainReadsParams or bool(settings.MAIN_MODULE)
+  settings.MAIN_READS_PARAMS = metadata.main_reads_params or bool(settings.MAIN_MODULE)
   if settings.MAIN_READS_PARAMS and not settings.STANDALONE_WASM:
     # callMain depends on this library function
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stringToUTF8OnStack']
@@ -173,7 +173,7 @@ def update_settings_glue(wasm_file, metadata):
     # exported.  In theory it should always be present since its defined in compiler-rt.
     assert 'emscripten_stack_get_end' in metadata.function_exports
 
-  for deps in metadata.jsDeps:
+  for deps in metadata.js_deps:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(deps.split(','))
 
 
@@ -290,19 +290,19 @@ def trim_asm_const_body(body):
   return body
 
 
-def create_named_globals(metadata):
-  named_globals = []
-  for k, v in metadata.namedGlobals.items():
+def create_global_exports(metadata):
+  global_exports = []
+  for k, v in metadata.global_exports.items():
     v = int(v)
     if settings.RELOCATABLE:
       v += settings.GLOBAL_BASE
     mangled = asmjs_mangle(k)
     if settings.MINIMAL_RUNTIME:
-      named_globals.append("var %s = %s;" % (mangled, v))
+      global_exports.append("var %s = %s;" % (mangled, v))
     else:
-      named_globals.append("var %s = Module['%s'] = %s;" % (mangled, mangled, v))
+      global_exports.append("var %s = Module['%s'] = %s;" % (mangled, mangled, v))
 
-  return '\n'.join(named_globals)
+  return '\n'.join(global_exports)
 
 
 def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
@@ -340,7 +340,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
   if finalize:
     update_settings_glue(out_wasm, metadata)
 
-  if not settings.WASM_BIGINT and metadata.emJsFuncs:
+  if not settings.WASM_BIGINT and metadata.em_js_funcs:
     import_map = {}
 
     with webassembly.Module(in_wasm) as module:
@@ -349,7 +349,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
         if imp.module not in ('GOT.mem', 'GOT.func'):
           import_map[imp.field] = imp
 
-    for em_js_func, raw in metadata.emJsFuncs.items():
+    for em_js_func, raw in metadata.em_js_funcs.items():
       c_sig = raw.split('<::>')[0].strip('()')
       if not c_sig or c_sig == 'void':
         c_sig = []
@@ -405,7 +405,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True):
     if settings.ASYNCIFY == 1:
       metadata.imports += ['__asyncify_state', '__asyncify_data']
 
-  if metadata.invokeFuncs:
+  if metadata.invoke_funcs:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
 
   glue, forwarded_data = compile_javascript()
@@ -674,7 +674,7 @@ def create_tsd(metadata, embind_tsd):
 
 def create_asm_consts(metadata):
   asm_consts = {}
-  for addr, const in metadata.asmConsts.items():
+  for addr, const in metadata.em_asm_consts.items():
     body = trim_asm_const_body(const)
     args = []
     max_arity = 16
@@ -735,7 +735,7 @@ def func_type_to_sig(type):
 def create_em_js(metadata):
   em_js_funcs = []
   separator = '<::>'
-  for name, raw in metadata.emJsFuncs.items():
+  for name, raw in metadata.em_js_funcs.items():
     assert separator in raw
     args, body = raw.split(separator, 1)
     args = args[1:-1]
@@ -746,8 +746,8 @@ def create_em_js(metadata):
     arg_names = [arg.split()[-1].replace('*', '') for arg in args if arg]
     args = ','.join(arg_names)
     func = f'function {name}({args}) {body}'
-    if (settings.MAIN_MODULE or settings.ASYNCIFY == 2) and name in metadata.emJsFuncTypes:
-      sig = func_type_to_sig(metadata.emJsFuncTypes[name])
+    if (settings.MAIN_MODULE or settings.ASYNCIFY == 2) and name in metadata.em_js_func_types:
+      sig = func_type_to_sig(metadata.em_js_func_types[name])
       func = func + f'\n{name}.sig = \'{sig}\';'
     em_js_funcs.append(func)
 
@@ -816,10 +816,10 @@ def create_sending(metadata, library_symbols):
   # Map of wasm imports to mangled/external/JS names
   send_items_map = {}
 
-  for name in metadata.invokeFuncs:
+  for name in metadata.invoke_funcs:
     send_items_map[name] = name
   for name in metadata.imports:
-    if name in metadata.emJsFuncs:
+    if name in metadata.em_js_funcs:
       send_items_map[name] = name
     else:
       send_items_map[name] = asmjs_mangle(name)
@@ -951,7 +951,7 @@ def create_receiving(function_exports):
 
 
 def create_module(receiving, metadata, library_symbols):
-  receiving += create_named_globals(metadata)
+  receiving += create_global_exports(metadata)
   module = []
 
   sending = create_sending(metadata, library_symbols)
@@ -973,7 +973,7 @@ function assignWasmImports() {
   if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
     module.append(create_invoke_wrappers(metadata))
   else:
-    assert not metadata.invokeFuncs, "invoke_ functions exported but exceptions and longjmp are both disabled"
+    assert not metadata.invoke_funcs, "invoke_ functions exported but exceptions and longjmp are both disabled"
   if settings.MEMORY64 or settings.CAN_ADDRESS_2GB:
     module.append(create_pointer_conversion_wrappers(metadata))
   return module
@@ -982,7 +982,7 @@ function assignWasmImports() {
 def create_invoke_wrappers(metadata):
   """Asm.js-style exception handling: invoke wrapper generation."""
   invoke_wrappers = ''
-  for invoke in metadata.invokeFuncs:
+  for invoke in metadata.invoke_funcs:
     sig = removeprefix(invoke, 'invoke_')
     invoke_wrappers += '\n' + js_manipulation.make_invoke(sig) + '\n'
   return invoke_wrappers
