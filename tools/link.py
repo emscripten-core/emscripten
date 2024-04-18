@@ -1849,7 +1849,7 @@ def phase_link(linker_arguments, wasm_target, js_syms):
   settings.EXPORT_IF_DEFINED = dedup_list(settings.EXPORT_IF_DEFINED)
 
   rtn = None
-  if settings.LINKABLE:
+  if settings.LINKABLE and not settings.EXPORT_ALL:
     # In LINKABLE mode we pass `--export-dynamic` along with `--whole-archive`.  This results
     # in over 7000 exports, which cannot be distinguished from the few symbols we explicitly
     # export via EMSCRIPTEN_KEEPALIVE or EXPORTED_FUNCTIONS.
