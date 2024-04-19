@@ -123,8 +123,9 @@ interface EmbindModule {
   DerivedClass: {};
   a_bool: boolean;
   an_int: number;
-  optional_test(_0: Foo | undefined): number | undefined;
+  optional_test(_0?: Foo): number | undefined;
   global_fn(_0: number, _1: number): number;
+  optional_and_nonoptional_test(_0: Foo | undefined, _1: number): number | undefined;
   smart_ptr_function(_0: ClassWithSmartPtrConstructor): number;
   smart_ptr_function_with_params(foo: ClassWithSmartPtrConstructor): number;
   function_with_callback_param(_0: (message: string) => void): number;

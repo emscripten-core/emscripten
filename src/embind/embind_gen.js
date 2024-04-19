@@ -55,11 +55,25 @@ var LibraryEmbind = {
 
     printSignature(nameMap, out) {
       out.push('(');
-
       const argOut = [];
-      for (const arg of this.argumentTypes) {
-        argOut.push(`${arg.name}: ${nameMap(arg.type)}`);
+      // Work backwards on the arguments, so optional types can be replaced
+      // with TS optional params until we see the first non-optional argument.
+      let seenNonOptional = false;
+      for (let i = this.argumentTypes.length - 1; i >= 0; i--) {
+        const arg = this.argumentTypes[i];
+        let argType;
+        let argName;
+        if (arg.type instanceof OptionalType && !seenNonOptional) {
+          argType = nameMap(arg.type.type);
+          argName = arg.name + '?';
+        } else {
+          seenNonOptional = true;
+          argType = nameMap(arg.type);
+          argName = arg.name;
+        }
+        argOut.unshift(`${argName}: ${argType}`);
       }
+
       out.push(argOut.join(', '));
       out.push(`): ${nameMap(this.returnType, true)}`);
     }
