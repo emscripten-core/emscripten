@@ -13,11 +13,11 @@
 _Noreturn void abort(void)
 {
 #if __EMSCRIPTEN__
-	/* In emscripten we call out JS to perform that actual abort where it can
-	 * produce nice error.
-	 * Note that JS library function not called `abort` to avoid conflit with
-	 * the JavaScript abort helper (which takes a JS string and is used to
-	 * implement _abort_js) */
+	/* In emscripten we call out JS to perform the actual abort where it can
+	 * produce a nice error.
+	 * Note that the JS library function not called `abort` to avoid conflict with
+	 * the JavaScript abort helper (which takes a JS string as an argument and is
+	 * itself used to implement _abort_js) */
 	_abort_js();
 #else
 	raise(SIGABRT);

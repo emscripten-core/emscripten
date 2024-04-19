@@ -36,6 +36,7 @@
 
 void _abort_js(void) {
   __builtin_trap();
+  /* Beyond this point should be unreachable. */
   _Exit(117);
 }
 

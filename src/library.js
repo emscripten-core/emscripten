@@ -398,9 +398,9 @@ addToLibrary({
   // ==========================================================================
 
 #if !STANDALONE_WASM
-  // Use to implement that native `abort` symbol.  Note that we use the
-  // disctive JavaScript `abort` helper in order to implement this function,
-  // but we use a ditict name here to avoid confusing the two.
+  // Used to implement the native `abort` symbol.  Note that we use the
+  // JavaScript `abort` helper in order to implement this function, but we use a
+  // distinct name here to avoid confusing the two.
   _abort_js: () => {
 #if ASSERTIONS
     abort('native code called abort()');
