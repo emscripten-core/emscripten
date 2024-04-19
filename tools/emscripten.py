@@ -128,7 +128,7 @@ def align_memory(addr):
   return (addr + 15) & -16
 
 
-def update_settings_glue(wasm_file, metadata):
+def update_settings_glue(wasm_file, metadata, base_metadata):
   maybe_disable_filesystem(metadata.imports)
 
   # Integrate info from backend
@@ -142,7 +142,10 @@ def update_settings_glue(wasm_file, metadata):
     if settings.MAIN_MODULE:
       settings.WEAK_IMPORTS += webassembly.get_weak_imports(wasm_file)
 
-  settings.WASM_EXPORTS = metadata.all_exports
+  if base_metadata:
+    settings.WASM_EXPORTS = base_metadata.all_exports
+  else:
+    settings.WASM_EXPORTS = metadata.all_exports
   settings.WASM_GLOBAL_EXPORTS = list(metadata.global_exports.keys())
   settings.HAVE_EM_ASM = bool(settings.MAIN_MODULE or len(metadata.em_asm_consts) != 0)
 
@@ -332,7 +335,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
   # If the binary has already been finalized the settings have already been
   # updated and we can skip updating them.
   if finalize:
-    update_settings_glue(out_wasm, metadata)
+    update_settings_glue(out_wasm, metadata, base_metadata)
 
   if not settings.WASM_BIGINT and metadata.em_js_funcs:
     import_map = {}
