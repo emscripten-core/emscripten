@@ -4370,6 +4370,7 @@ res64 - external 64\n''', header='''\
     int main(int argc, char *argv[]) {
         int64_t temp = 42;
         printf("got %lld\n", sidey(temp));
+        printf("got %lld\n", sidey(0));
         return 0;
     }''', r'''\
     #include <stdint.h>
@@ -4380,7 +4381,7 @@ res64 - external 64\n''', header='''\
 
     EMSCRIPTEN_KEEPALIVE int64_t do_call(int64_t arg) {
         if (arg == 0) {
-            throw;
+            throw 0;
         }
         return 2 * arg;
     }
@@ -4391,7 +4392,7 @@ res64 - external 64\n''', header='''\
             return 0;
         }
     }
-    }''', 'got 84', need_reverse=False)
+    }''', 'got 84\ngot 0', need_reverse=False)
 
   @needs_dylink
   def test_dylink_class(self):
