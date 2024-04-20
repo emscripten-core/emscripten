@@ -239,8 +239,8 @@ def get_main_reads_params(module, export_map):
   return True
 
 
-def get_named_globals(module, exports):
-  named_globals = {}
+def get_global_exports(module, exports):
+  global_exports = {}
   internal_start_stop_symbols = set(['__start_em_asm', '__stop_em_asm',
                                      '__start_em_lib_deps', '__stop_em_lib_deps',
                                      '__em_lib_deps'])
@@ -250,8 +250,8 @@ def get_named_globals(module, exports):
       if export.name in internal_start_stop_symbols or any(export.name.startswith(p) for p in internal_prefixes):
         continue
       g = module.get_global(export.index)
-      named_globals[export.name] = str(get_global_value(g))
-  return named_globals
+      global_exports[export.name] = str(get_global_value(g))
+  return global_exports
 
 
 def get_function_exports(module):
@@ -279,7 +279,7 @@ def update_metadata(filename, metadata):
     metadata.all_exports = [utils.removeprefix(e.name, '__em_js__') for e in module.get_exports()]
 
   metadata.imports = imports
-  metadata.invokeFuncs = invoke_funcs
+  metadata.invoke_funcs = invoke_funcs
 
 
 def get_string_at(module, address):
@@ -292,14 +292,14 @@ def get_string_at(module, address):
 class Metadata:
   imports: List[str]
   export: List[str]
-  asmConsts: Dict[int, str]
-  jsDeps: List[str]
-  emJsFuncs: Dict[str, str]
-  emJsFuncTypes: Dict[str, str]
+  em_asm_consts: Dict[int, str]
+  js_deps: List[str]
+  em_js_funcs: Dict[str, str]
+  em_js_func_types: Dict[str, str]
   features: List[str]
-  invokeFuncs: List[str]
-  mainReadsParams: bool
-  namedGlobals: List[str]
+  invoke_funcs: List[str]
+  main_reads_params: bool
+  global_exports: List[str]
 
   def __init__(self):
     pass
@@ -347,14 +347,14 @@ def extract_metadata(filename):
     metadata.imports = import_names
     metadata.function_exports = get_function_exports(module)
     metadata.all_exports = [utils.removeprefix(e.name, '__em_js__') for e in exports]
-    metadata.asmConsts = get_section_strings(module, export_map, 'em_asm')
-    metadata.jsDeps = [d for d in get_section_strings(module, export_map, 'em_lib_deps').values() if d]
-    metadata.emJsFuncs = em_js_funcs
-    metadata.emJsFuncTypes = em_js_func_types
+    metadata.em_asm_consts = get_section_strings(module, export_map, 'em_asm')
+    metadata.js_deps = [d for d in get_section_strings(module, export_map, 'em_lib_deps').values() if d]
+    metadata.em_js_funcs = em_js_funcs
+    metadata.em_js_func_types = em_js_func_types
     metadata.features = features
-    metadata.invokeFuncs = invoke_funcs
-    metadata.mainReadsParams = get_main_reads_params(module, export_map)
-    metadata.namedGlobals = get_named_globals(module, exports)
+    metadata.invoke_funcs = invoke_funcs
+    metadata.main_reads_params = get_main_reads_params(module, export_map)
+    metadata.global_exports = get_global_exports(module, exports)
 
     # print("Metadata parsed: " + pprint.pformat(metadata))
     return metadata
