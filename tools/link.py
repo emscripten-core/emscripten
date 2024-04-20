@@ -32,6 +32,7 @@ from . import shared
 from . import system_libs
 from . import utils
 from . import webassembly
+from . import extract_metadata
 from .utils import read_file, read_binary, write_file, delete_file
 from .utils import removeprefix, exit_with_error
 from .shared import in_temp, safe_copy, do_replace, OFormat
@@ -1847,11 +1848,28 @@ def phase_link(linker_arguments, wasm_target, js_syms):
   settings.REQUIRED_EXPORTS = dedup_list(settings.REQUIRED_EXPORTS)
   settings.EXPORT_IF_DEFINED = dedup_list(settings.EXPORT_IF_DEFINED)
 
+  rtn = None
+  if settings.LINKABLE and not settings.EXPORT_ALL:
+    # In LINKABLE mode we pass `--export-dynamic` along with `--whole-archive`.  This results
+    # in over 7000 exports, which cannot be distinguished from the few symbols we explicitly
+    # export via EMSCRIPTEN_KEEPALIVE or EXPORTED_FUNCTIONS.
+    # In order to avoid unnecessary exported symbols on the `Module` object we run the linker
+    # twice in this mode:
+    # 1. Without `--export-dynamic` to get the base exports
+    # 2. With `--export-dynamic` to get the actual linkable Wasm binary
+    # TODO(sbc): Remove this double execution of wasm-ld if we ever find a way to
+    # distinguish EMSCRIPTEN_KEEPALIVE exports from `--export-dynamic` exports.
+    settings.LINKABLE = False
+    building.link_lld(linker_arguments, wasm_target, external_symbols=js_syms)
+    settings.LINKABLE = True
+    rtn = extract_metadata.extract_metadata(wasm_target)
+
   building.link_lld(linker_arguments, wasm_target, external_symbols=js_syms)
+  return rtn
 
 
 @ToolchainProfiler.profile_block('post link')
-def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
+def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms, base_metadata=None):
   global final_js
 
   target_basename = unsuffixed_basename(target)
@@ -1868,7 +1886,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
 
   settings.TARGET_JS_NAME = os.path.basename(state.js_target)
 
-  metadata = phase_emscript(in_wasm, wasm_target, js_syms)
+  metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
   if settings.EMBIND_AOT:
     phase_embind_aot(wasm_target, js_syms)
@@ -1887,7 +1905,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms):
 
 
 @ToolchainProfiler.profile_block('emscript')
-def phase_emscript(in_wasm, wasm_target, js_syms):
+def phase_emscript(in_wasm, wasm_target, js_syms, base_metadata):
   # Emscripten
   logger.debug('emscript')
 
@@ -1898,7 +1916,7 @@ def phase_emscript(in_wasm, wasm_target, js_syms):
   if shared.SKIP_SUBPROCS:
     return
 
-  metadata = emscripten.emscript(in_wasm, wasm_target, final_js, js_syms)
+  metadata = emscripten.emscript(in_wasm, wasm_target, final_js, js_syms, base_metadata=base_metadata)
   save_intermediate('original')
   return metadata
 
@@ -3068,24 +3086,27 @@ def run(linker_inputs, options, state, newargs):
     js_info = get_js_sym_info()
     if not settings.SIDE_MODULE:
       js_syms = js_info['deps']
+      if settings.LINKABLE:
+        for native_deps in js_syms.values():
+          settings.REQUIRED_EXPORTS += native_deps
+      else:
+        def add_js_deps(sym):
+          if sym in js_syms:
+            native_deps = js_syms[sym]
+            if native_deps:
+              settings.REQUIRED_EXPORTS += native_deps
 
-      def add_js_deps(sym):
-        if sym in js_syms:
-          native_deps = js_syms[sym]
-          if native_deps:
-            settings.REQUIRED_EXPORTS += native_deps
-
-      for sym in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE:
-        add_js_deps(sym)
-      for sym in js_info['extraLibraryFuncs']:
-        add_js_deps(sym)
-      for sym in settings.EXPORTED_RUNTIME_METHODS:
-        add_js_deps(shared.demangle_c_symbol_name(sym))
+        for sym in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE:
+          add_js_deps(sym)
+        for sym in js_info['extraLibraryFuncs']:
+          add_js_deps(sym)
+        for sym in settings.EXPORTED_RUNTIME_METHODS:
+          add_js_deps(shared.demangle_c_symbol_name(sym))
     if settings.ASYNCIFY:
       settings.ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS = settings.ASYNCIFY_IMPORTS[:]
       settings.ASYNCIFY_IMPORTS += ['*.' + x for x in js_info['asyncFuncs']]
 
-  phase_link(linker_arguments, wasm_target, js_syms)
+  base_metadata = phase_link(linker_arguments, wasm_target, js_syms)
 
   # Special handling for when the user passed '-Wl,--version'.  In this case the linker
   # does not create the output file, but just prints its version and exits with 0.
@@ -3099,6 +3120,6 @@ def run(linker_inputs, options, state, newargs):
 
   # Perform post-link steps (unless we are running bare mode)
   if options.oformat != OFormat.BARE:
-    phase_post_link(options, state, wasm_target, wasm_target, target, js_syms)
+    phase_post_link(options, state, wasm_target, wasm_target, target, js_syms, base_metadata)
 
   return 0

@@ -20,6 +20,13 @@ See docs/process.md for more on how version tagging works.
 
 3.1.58 (in development)
 -----------------------
+- The `-sMAIN_MODULE=1` mode no longer exports all the main module symbols on
+  `Module` object.  This saves a huge about of generated JS code due the fact
+  that `-sMAIN_MODULE=1` includes *all* native symbols in your program as well
+  is from the standard library.  The generated JS code for a simple program
+  in this mode is reduced from from 3.3mb to 0.5mb.  The current implementation
+  of this feature requires wasm-ld to be on the program twice which could have a
+  noticeable effect on link times. (#21785)
 - In `-sMODULARIZE` mode, the argument passed into the module constructor is
   no longer mutated in place.  The expectation is that the module instance will
   be available via the constructor return value.  Attempting to access methods
