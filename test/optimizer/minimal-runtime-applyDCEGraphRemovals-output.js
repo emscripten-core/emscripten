@@ -7,15 +7,15 @@ var wasmImports = {
 
 WebAssembly.instantiate(Module["wasm"], imports).then(output => {
   wasmExports = output.instance.exports;
-  expD1 = wasmExports["expD1"];
-  expD2 = wasmExports["expD2"];
-  expD3 = wasmExports["expD3"];
+  _expD1 = wasmExports["expD1"];
+  _expD2 = wasmExports["expD2"];
+  _expD3 = wasmExports["expD3"];
   initRuntime(wasmExports);
   ready();
 });
 
-expD1;
+_expD1;
 
-Module["expD2"];
+Module["_expD2"];
 
-wasmExports["expD3"];
+wasmExports["_expD3"];

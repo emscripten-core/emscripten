@@ -733,6 +733,15 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
   return js_file
 
 
+def is_internal_global(name):
+  internal_start_stop_symbols = set(['__start_em_asm', '__stop_em_asm',
+                                     '__start_em_js', '__stop_em_js',
+                                     '__start_em_lib_deps', '__stop_em_lib_deps',
+                                     '__em_lib_deps'])
+  internal_prefixes = ('__em_js__', '__em_lib_deps')
+  return name in internal_start_stop_symbols or any(name.startswith(p) for p in internal_prefixes)
+
+
 # run binaryen's wasm-metadce to dce both js and wasm
 def metadce(js_file, wasm_file, debug_info):
   logger.debug('running meta-DCE')
@@ -786,14 +795,17 @@ def metadce(js_file, wasm_file, debug_info):
     if 'import' in item and item['import'][1] in WASI_IMPORTS:
       item['import'][0] = settings.WASI_MODULE_NAME
 
-  # map import names from wasm to JS, using the actual name the wasm uses for the import
+  # map import/export names to native wasm symbols.
   import_name_map = {}
+  export_name_map = {}
   for item in graph:
     if 'import' in item:
       name = item['import'][1]
-      import_name_map[item['name']] = 'emcc$import$' + name
+      import_name_map[item['name']] = name
       if asmjs_mangle(name) in settings.SIDE_MODULE_IMPORTS:
         item['root'] = True
+    elif 'export' in item:
+      export_name_map[item['name']] = item['export']
   temp = temp_files.get('.json', prefix='emcc_dce_graph_').name
   utils.write_file(temp, json.dumps(graph, indent=2))
   # run wasm-metadce
@@ -804,7 +816,8 @@ def metadce(js_file, wasm_file, debug_info):
                              debug=debug_info,
                              stdout=PIPE)
   # find the unused things in js
-  unused = []
+  unused_imports = []
+  unused_exports = []
   PREFIX = 'unused: '
   for line in out.splitlines():
     if line.startswith(PREFIX):
@@ -814,21 +827,25 @@ def metadce(js_file, wasm_file, debug_info):
       if settings.MAIN_MODULE and name.split('$')[-1] in ('wasmMemory', 'wasmTable'):
         continue
       # we only remove imports and exports in applyDCEGraphRemovals
-      if name in import_name_map:
-        name = import_name_map[name]
-        unused.append(name)
+      if name.startswith('emcc$import$'):
+        native_name = import_name_map[name]
+        unused_imports.append(native_name)
       elif name.startswith('emcc$export$'):
-        unused.append(name)
-  if not unused:
+        if settings.DECLARE_ASM_MODULE_EXPORTS:
+          native_name = export_name_map[name]
+          if not is_internal_global(native_name):
+            unused_exports.append(native_name)
+  if not unused_exports and not unused_imports:
     # nothing found to be unused, so we have nothing to remove
     return js_file
   # remove them
   passes = ['applyDCEGraphRemovals']
   if settings.MINIFY_WHITESPACE:
     passes.append('--minify-whitespace')
-  extra_info = {'unused': unused}
   if DEBUG:
-    logger.debug("unused: %s", str(unused))
+    logger.debug("unused_imports: %s", str(unused_imports))
+    logger.debug("unused_exports: %s", str(unused_exports))
+  extra_info = {'unusedImports': unused_imports, 'unusedExports': unused_exports}
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
 
