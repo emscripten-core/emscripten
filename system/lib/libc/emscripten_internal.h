@@ -26,6 +26,8 @@
 extern "C" {
 #endif
 
+_Noreturn void _abort_js(void);
+
 void setThrew(uintptr_t threw, int value);
 
 // An external JS implementation that is efficient for very large copies, using
