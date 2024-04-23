@@ -3312,7 +3312,7 @@ More info: https://emscripten.org
   def test_emit_tsd(self):
     self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
                       '--emit-tsd', 'test_emit_tsd.d.ts', '-sEXPORT_ES6',
-                      '-sMODULARIZE', '-sEXPORTED_RUNTIME_METHODS=UTF8ArrayToString',
+                      '-sMODULARIZE', '-sEXPORTED_RUNTIME_METHODS=UTF8ArrayToString,wasmTable',
                       '-Wno-experimental', '-o', 'test_emit_tsd.js'] +
                      self.get_emcc_args())
     self.assertFileContents(test_file('other/test_emit_tsd.d.ts'), read_file('test_emit_tsd.d.ts'))

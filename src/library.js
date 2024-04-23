@@ -398,11 +398,10 @@ addToLibrary({
   // ==========================================================================
 
 #if !STANDALONE_WASM
-  // TODO: There are currently two abort() functions that get imported to asm
-  // module scope: the built-in runtime function abort(), and this library
-  // function _abort(). Remove one of these, importing two functions for the
-  // same purpose is wasteful.
-  abort: () => {
+  // Used to implement the native `abort` symbol.  Note that we use the
+  // JavaScript `abort` helper in order to implement this function, but we use a
+  // distinct name here to avoid confusing the two.
+  _abort_js: () => {
 #if ASSERTIONS
     abort('native code called abort()');
 #else
@@ -3272,6 +3271,7 @@ addToLibrary({
   $getNativeTypeSize__deps: ['$POINTER_SIZE'],
   $getNativeTypeSize: {{{ getNativeTypeSize }}},
 
+  $wasmTable__docs: '/** @type {WebAssembly.Table} */',
 #if RELOCATABLE
   // In RELOCATABLE mode we create the table in JS.
   $wasmTable: `=new WebAssembly.Table({

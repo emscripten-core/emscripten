@@ -623,13 +623,25 @@ def create_tsd_exported_runtime_methods(metadata):
   # Use the TypeScript compiler to generate defintions for all of the runtime
   # exports. The JS from the library any JS docs are included in the file used
   # for generation.
-  js_doc = 'var RuntimeExports = {};'
+  js_doc = 'var RuntimeExports = {};\n'
   for name in settings.EXPORTED_RUNTIME_METHODS:
+    docs = '/** @type {{any}} */'
+    snippet = ''
     if name in metadata.library_definitions:
       definition = metadata.library_definitions[name]
-      js_doc += f'{definition["docs"]}\nRuntimeExports[\'{name}\'] = \n{definition["snippet"]};\n'
-    else:
-      js_doc += f'/** @type {{any}} */RuntimeExports[\'{name}\'];\n'
+      if definition['snippet']:
+        snippet = ' = ' + definition['snippet']
+        # Clear the doc so the type is either computed from the snippet or
+        # defined by the definition below.
+        docs = ''
+      if definition['docs']:
+        docs = definition['docs']
+        # TSC does not generate the correct type if there are jsdocs and nothing
+        # is assigned to the property.
+        if not snippet:
+          snippet = ' = null'
+    js_doc += f'{docs}\nRuntimeExports[\'{name}\']{snippet};\n'
+
   js_doc_file = in_temp('jsdoc.js')
   tsc_output_file = in_temp('jsdoc.d.ts')
   utils.write_file(js_doc_file, js_doc)
