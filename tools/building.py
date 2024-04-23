@@ -763,12 +763,6 @@ def metadce(js_file, wasm_file, debug_info):
       if settings.EXPORT_ALL or export in required_symbols:
         item['root'] = True
 
-  # fixup wasm backend prefixing
-  for item in graph:
-    if 'import' in item:
-      if item['import'][1][0] == '_':
-        item['import'][1] = item['import'][1][1:]
-
   # fix wasi imports TODO: support wasm stable with an option?
   WASI_IMPORTS = {
     'environ_get',
@@ -815,6 +809,10 @@ def metadce(js_file, wasm_file, debug_info):
   for line in out.splitlines():
     if line.startswith(PREFIX):
       name = line.replace(PREFIX, '').strip()
+      # With dynamic linking we never want to strip the memory or the table
+      # This can be removed once SIDE_MODULE_IMPORTS includes tables and memories.
+      if settings.MAIN_MODULE and name.split('$')[-1] in ('wasmMemory', 'wasmTable'):
+        continue
       # we only remove imports and exports in applyDCEGraphRemovals
       if name in import_name_map:
         name = import_name_map[name]
@@ -829,6 +827,8 @@ def metadce(js_file, wasm_file, debug_info):
   if settings.MINIFY_WHITESPACE:
     passes.append('--minify-whitespace')
   extra_info = {'unused': unused}
+  if DEBUG:
+    logger.debug("unused: %s", str(unused))
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
 
