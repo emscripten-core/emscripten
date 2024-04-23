@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.58 (in development)
+3.1.59 (in development)
 -----------------------
+
+3.1.58 - 04/23/24
+-----------------
 - The `-sMAIN_MODULE=1` mode no longer exports all the main module symbols on
   `Module` object.  This saves a huge about of generated JS code due the fact
   that `-sMAIN_MODULE=1` includes *all* native symbols in your program as well
