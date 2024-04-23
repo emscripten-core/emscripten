@@ -372,8 +372,9 @@ bindings. For example:
 Embind supports three return value policies that behave differently depending
 on the return type of the function. The policies work as follows:
 
-* default (no argument) - Use the object's copy constructor since this is generally
-  safe and decouples returned values lifetime from the original.
+* *default (no argument)* - For return by value and reference a new object will be allocated using the
+  object's copy constructor. JS then owns the object and is responsible for deleting it. Returning a
+  pointer is not allowed by default (use an explicit policy below).
 * :cpp:type:`return_value_policy::take_ownership` - Ownership is transferred to JS.
 * :cpp:type:`return_value_policy::reference` - Reference an existing object but do not take
   ownership. Care must be taken to not delete the object while it is still in use in JS.
@@ -385,27 +386,27 @@ More details below:
 +====================+=============+===============================================================+
 | **default**                                                                                      |
 +--------------------+-------------+---------------------------------------------------------------+
-| Value (``T``)      | copy        | JS deletes the copy, C++ the original.                        |
+| Value (``T``)      | copy        | JS must delete the copied object.                             |
 +--------------------+-------------+---------------------------------------------------------------+
-| Reference (``T&``) | copy        | JS deletes the copy, C++ the original.                        |
+| Reference (``T&``) | copy        | JS must delete the copied object.                             |
 +--------------------+-------------+---------------------------------------------------------------+
 | Pointer (``T*``)   | n/a         | Pointers must explicitly use a return policy.                 |
 +--------------------+-------------+---------------------------------------------------------------+
 | **take_ownership**                                                                               |
 +--------------------+-------------+---------------------------------------------------------------+
-| Value (``T``)      | move        | JS deletes the moved object.                                  |
+| Value (``T``)      | move        | JS must delete the moved object.                              |
 +--------------------+-------------+---------------------------------------------------------------+
-| Reference (``T&``) | move        | JS deletes the moved object.                                  |
+| Reference (``T&``) | move        | JS must delete the moved object.                              |
 +--------------------+-------------+---------------------------------------------------------------+
-| Pointer (``T*``)   | none        | JS deletes the object.                                        |
+| Pointer (``T*``)   | none        | JS must delete the object.                                    |
 +--------------------+-------------+---------------------------------------------------------------+
 | **reference**                                                                                    |
 +--------------------+-------------+---------------------------------------------------------------+
 | Value (``T``)      | n/a         | Reference to a value is not allowed.                          |
 +--------------------+-------------+---------------------------------------------------------------+
-| Reference (``T&``) | none        | C++ deletes the object.                                       |
+| Reference (``T&``) | none        | C++ must delete the object.                                   |
 +--------------------+-------------+---------------------------------------------------------------+
-| Pointer (``T*``)   | none        | C++ deletes the object.                                       |
+| Pointer (``T*``)   | none        | C++ must delete the object.                                   |
 +--------------------+-------------+---------------------------------------------------------------+
 
 .. _embind-raw-pointers:
