@@ -372,7 +372,7 @@ bindings. For example:
 Embind supports three return value policies that behave differently depending
 on the return type of the function. The policies work as follows:
 
-* default (no argument) - Use the objects copy constructor since this is generally
+* default (no argument) - Use the object's copy constructor since this is generally
   safe and decouples returned values lifetime from the original.
 * :cpp:type:`return_value_policy::take_ownership` - Ownership is transferred to JS.
 * :cpp:type:`return_value_policy::reference` - Reference an existing object but do not take
