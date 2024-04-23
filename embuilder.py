@@ -71,8 +71,9 @@ MINIMAL_TASKS = [
     'crtbegin',
     'libunwind-except',
     'libnoexit',
-    'sqlite3',
-    'sqlite3-mt',
+# dotnet change, remove it, so that we don't download the sqlite3 source code in emsdk
+#    'sqlite3',
+#    'sqlite3-mt',
     'libwebgpu',
     'libwebgpu_cpp',
 ]
