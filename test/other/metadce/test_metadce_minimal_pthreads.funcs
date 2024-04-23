@@ -57,8 +57,6 @@ $cancel_active_ctxs
 $cancel_ctx
 $cancel_notification
 $dispose_chunk
-$dlfree
-$dlmalloc
 $do_proxy
 $em_proxying_ctx_deinit
 $em_task_queue_cancel
@@ -68,6 +66,8 @@ $em_task_queue_enqueue
 $em_task_queue_execute
 $em_task_queue_free
 $em_task_queue_is_empty
+$emscripten_builtin_free
+$emscripten_builtin_malloc
 $emscripten_current_thread_process_queued_calls
 $emscripten_futex_wait
 $emscripten_futex_wake

@@ -369,12 +369,13 @@ def get_clang_flags(user_args):
   if settings.RELOCATABLE and '-fPIC' not in user_args:
     flags.append('-fPIC')
 
-  # We use default visiibilty=default in emscripten even though the upstream
-  # backend defaults visibility=hidden.  This matched the expectations of C/C++
-  # code in the wild which expects undecorated symbols to be exported to other
-  # DSO's by default.
-  if not any(a.startswith('-fvisibility') for a in user_args):
-    flags.append('-fvisibility=default')
+  if settings.RELOCATABLE or settings.LINKABLE or '-fPIC' in user_args:
+    if not any(a.startswith('-fvisibility') for a in user_args):
+      # For relocatable code we default to visibility=default in emscripten even
+      # though the upstream backend defaults visibility=hidden.  This matches the
+      # expectations of C/C++ code in the wild which expects undecorated symbols
+      # to be exported to other DSO's by default.
+      flags.append('-fvisibility=default')
 
   if settings.LTO:
     if not any(a.startswith('-flto') for a in user_args):
