@@ -762,6 +762,13 @@ def metadce(js_file, wasm_file, debug_info):
       export = asmjs_mangle(item['export'])
       if settings.EXPORT_ALL or export in required_symbols:
         item['root'] = True
+
+  # fixup wasm backend prefixing
+  for item in graph:
+    if 'import' in item:
+      if item['import'][1][0] == '_':
+        item['import'][1] = item['import'][1][1:]
+
   # fix wasi imports TODO: support wasm stable with an option?
   WASI_IMPORTS = {
     'environ_get',
@@ -782,13 +789,9 @@ def metadce(js_file, wasm_file, debug_info):
     'path_open',
   }
   for item in graph:
-    if 'import' in item and item['import'][1][1:] in WASI_IMPORTS:
+    if 'import' in item and item['import'][1] in WASI_IMPORTS:
       item['import'][0] = settings.WASI_MODULE_NAME
-  # fixup wasm backend prefixing
-  for item in graph:
-    if 'import' in item:
-      if item['import'][1][0] == '_':
-        item['import'][1] = item['import'][1][1:]
+
   # map import names from wasm to JS, using the actual name the wasm uses for the import
   import_name_map = {}
   for item in graph:
