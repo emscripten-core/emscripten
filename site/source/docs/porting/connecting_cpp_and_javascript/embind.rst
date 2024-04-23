@@ -218,7 +218,7 @@ a C++ object is no longer needed and can be deleted:
 
 .. note:: Both C++ objects constructed from the JavaScript side as well as
     those returned from C++ methods must be explicitly deleted, unless a
-    ``reference`` return value policy is used.
+    ``reference`` return value policy is used (see below).
 
 
 .. tip:: The ``try`` … ``finally`` JavaScript construct can be used to guarantee
