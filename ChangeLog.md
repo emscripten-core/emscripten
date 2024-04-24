@@ -20,9 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.59 (in development)
 -----------------------
-- Use `-fwhole-program-vtables` with clang when possible, automatically. This
-  should allow better devirtualization (but may in theory uncover LLVM LTO
-  bugs).
+- Use `-fwhole-program-vtables` with clang when possible, automatically (in
+  `-flto` builds without dynamic linking). This should allow better
+  devirtualization (but may in theory uncover LLVM LTO bugs).
 
 3.1.58 - 04/23/24
 -----------------
