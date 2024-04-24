@@ -6049,12 +6049,10 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('unistd/unlink.c', 'success')
 
   @parameterized({
-    'memfs': (['-DMEMFS'], False),
+    'memfs': ([], False),
     'nodefs': (['-DNODEFS', '-lnodefs.js'], True)
   })
   def test_unistd_links(self, args, nodefs):
-    self.emcc_args += args
-
     if nodefs:
       self.require_node()
       if WINDOWS:
@@ -6068,7 +6066,7 @@ Module.onRuntimeInitialized = () => {
         self.skipTest('TODO: wasmfs+node')
       self.emcc_args += ['-sFORCE_FILESYSTEM']
 
-    self.do_run_in_out_file_test('unistd/links.c')
+    self.do_run_in_out_file_test('unistd/links.c', emcc_args=args)
 
   @no_windows('Skipping NODEFS test, since it would require administrative privileges.')
   @requires_node

@@ -1,24 +1,18 @@
 readlink(link)
-errno: 0
+errno: No error information
 
 readlink(file)
-errno: 28
+errno: Invalid argument
 not a link
 
 readlink(folder)
-errno: 28
+errno: Invalid argument
 not a link
 
 symlink/overwrite
-ret: -1
-errno: 20
 
 symlink/normal
-ret: 0
-errno: 0
+
 readlink(created link)
-errno: 0
 
 readlink(short buffer)
-ret: 4
-errno: 0
