@@ -1,6 +1,6 @@
-#include <cassert>
+#include <assert.h>
 #include <emscripten.h>
-#include <iostream>
+#include <stdio.h>
 #include <webgpu/webgpu.h>
 
 int adapter_limit_maxColorAttachmentBytesPerSample = -1;
@@ -29,11 +29,10 @@ void on_device_request_ended(WGPURequestDeviceStatus status,
   WGPUSupportedLimits device_supported_limits{};
   wgpuDeviceGetLimits(device, &device_supported_limits);
 
-  std::cout << "required maxColorAttachmentBytesPerSample="
-            << adapter_limit_maxColorAttachmentBytesPerSample << std::endl;
-  std::cout << "supported maxColorAttachmentBytesPerSample="
-            << device_supported_limits.limits.maxColorAttachmentBytesPerSample
-            << std::endl;
+  printf("required maxColorAttachmentBytesPerSample=%d\n",
+         adapter_limit_maxColorAttachmentBytesPerSample);
+  printf("supported maxColorAttachmentBytesPerSample=%d\n",
+         device_supported_limits.limits.maxColorAttachmentBytesPerSample);
 
   // device supported limit MUST be equal or larger than what was requested,
   // otherwise device acquisition should have failed
@@ -46,7 +45,7 @@ void on_adapter_request_ended(WGPURequestAdapterStatus status,
                               char const* message,
                               void* userdata) {
   if (status == WGPURequestAdapterStatus_Unavailable) {
-    std::cout << "WebGPU unavailable; exiting cleanly" << std::endl;
+    printf("WebGPU unavailable; exiting cleanly\n");
     exit(0);
   }
 
@@ -60,8 +59,9 @@ void on_adapter_request_ended(WGPURequestAdapterStatus status,
 
   // use js callout instead
   adapter_limit_maxColorAttachmentBytesPerSample = get_limit();
-  std::cout << "adapter supports maxColorAttachmentBytesPerSample="
-            << adapter_limit_maxColorAttachmentBytesPerSample << std::endl;
+  assert(adapter_limit_maxColorAttachmentBytesPerSample > 0);
+  printf("adapter supports maxColorAttachmentBytesPerSample=%d\n",
+         adapter_limit_maxColorAttachmentBytesPerSample);
 
   // if max supported limit is the default, we cant check if requesting more
   // works

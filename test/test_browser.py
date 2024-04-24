@@ -4526,7 +4526,7 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   def test_webgpu_required_limits(self):
-    self.btest_exit('webgpu_required_limits.cpp', args=['-sUSE_WEBGPU', '-sASYNCIFY'])
+    self.btest_exit('webgpu_required_limits.c', args=['-sUSE_WEBGPU', '-sASYNCIFY'])
 
   # TODO(#19645): Extend this test to proxied WebGPU when it's re-enabled.
   @requires_graphics_hardware
