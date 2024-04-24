@@ -45,7 +45,12 @@ void on_adapter_request_ended(WGPURequestAdapterStatus status,
                               WGPUAdapter adapter,
                               char const* message,
                               void* userdata) {
-  assert(status == WGPURequestAdapterStatus::WGPURequestAdapterStatus_Success);
+  if (status == WGPURequestAdapterStatus_Unavailable) {
+    std::cout << "WebGPU unavailable; exiting cleanly" << std::endl;
+    exit(0);
+  }
+
+  assert(status == WGPURequestAdapterStatus_Success);
 
   // retrieving limits supported by adapter - currently unsupported!
   // WGPUSupportedLimits adapter_supported_limits {};
@@ -58,7 +63,8 @@ void on_adapter_request_ended(WGPURequestAdapterStatus status,
   std::cout << "adapter supports maxColorAttachmentBytesPerSample="
             << adapter_limit_maxColorAttachmentBytesPerSample << std::endl;
 
-  // if max supported limit is the default, we cant check if requesting more works
+  // if max supported limit is the default, we cant check if requesting more
+  // works
   if (adapter_limit_maxColorAttachmentBytesPerSample == 32) {
     exit(0);
   }
