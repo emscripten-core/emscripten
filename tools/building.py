@@ -353,11 +353,11 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   # Keep JS code comments intact through the acorn optimization pass so that
   # JSDoc comments will be carried over to a later Closure run.
   if settings.MAYBE_CLOSURE_COMPILER:
-    cmd += ['--closureFriendly']
+    cmd += ['--closure-friendly']
   if settings.EXPORT_ES6:
-    cmd += ['--exportES6']
+    cmd += ['--export-es6']
   if settings.VERBOSE:
-    cmd += ['verbose']
+    cmd += ['--verbose']
   if return_output:
     return check_call(cmd, stdout=PIPE).stdout
 
@@ -708,7 +708,7 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
   # Don't minify if we are going to run closure compiler afterwards
   minify = settings.MINIFY_WHITESPACE and not settings.MAYBE_CLOSURE_COMPILER
   if minify:
-    passes.append('minifyWhitespace')
+    passes.append('--minify-whitespace')
   if passes:
     logger.debug('running cleanup on shell code: ' + ' '.join(passes))
     js_file = acorn_optimizer(js_file, passes)
@@ -723,7 +723,7 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
       # the js some more.
       passes = ['AJSDCE']
       if minify:
-        passes.append('minifyWhitespace')
+        passes.append('--minify-whitespace')
       logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
       js_file = acorn_optimizer(js_file, passes)
       if settings.MINIFY_WASM_IMPORTS_AND_EXPORTS:
@@ -753,7 +753,7 @@ def metadce(js_file, wasm_file, debug_info):
 
   extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in exports) + ']}'
 
-  txt = acorn_optimizer(js_file, ['emitDCEGraph', 'noPrint'], return_output=True, extra_info=extra_info)
+  txt = acorn_optimizer(js_file, ['emitDCEGraph', '--no-print'], return_output=True, extra_info=extra_info)
   graph = json.loads(txt)
   # ensure that functions expected to be exported to the outside are roots
   required_symbols = user_requested_exports.union(set(settings.SIDE_MODULE_IMPORTS))
@@ -827,7 +827,7 @@ def metadce(js_file, wasm_file, debug_info):
   # remove them
   passes = ['applyDCEGraphRemovals']
   if settings.MINIFY_WHITESPACE:
-    passes.append('minifyWhitespace')
+    passes.append('--minify-whitespace')
   extra_info = {'unused': unused}
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
@@ -889,7 +889,7 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_in
   # apply them
   passes = ['applyImportAndExportNameChanges']
   if settings.MINIFY_WHITESPACE:
-    passes.append('minifyWhitespace')
+    passes.append('--minify-whitespace')
   extra_info = {'mapping': mapping}
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
@@ -915,7 +915,7 @@ def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, sym
       if symbols_file_js:
         passes += ['symbolMap=%s' % symbols_file_js]
     if settings.MINIFY_WHITESPACE:
-      passes += ['minifyWhitespace']
+      passes += ['--minify-whitespace']
     passes += ['last']
     if passes:
       # hackish fixups to work around wasm2js style and the js optimizer FIXME
