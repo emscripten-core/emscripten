@@ -24,9 +24,9 @@ void on_device_request_ended(WGPURequestDeviceStatus status,
                              WGPUDevice device,
                              char const* message,
                              void* userdata) {
-  assert(status == WGPURequestDeviceStatus::WGPURequestDeviceStatus_Success);
+  assert(status == WGPURequestDeviceStatus_Success);
 
-  WGPUSupportedLimits device_supported_limits{};
+  WGPUSupportedLimits device_supported_limits;
   wgpuDeviceGetLimits(device, &device_supported_limits);
 
   printf("required maxColorAttachmentBytesPerSample=%d\n",
@@ -52,10 +52,9 @@ void on_adapter_request_ended(WGPURequestAdapterStatus status,
   assert(status == WGPURequestAdapterStatus_Success);
 
   // retrieving limits supported by adapter - currently unsupported!
-  // WGPUSupportedLimits adapter_supported_limits {};
-  // wgpuAdapterGetLimits(adapter, &adapter_supported_limits);
-  // adapter_limit_maxColorAttachmentBytesPerSample =
-  // adapter_supported_limits.limits.maxColorAttachmentBytesPerSample;
+  //WGPUSupportedLimits adapter_supported_limits = {0,};
+  //wgpuAdapterGetLimits(adapter, &adapter_supported_limits);
+  //adapter_limit_maxColorAttachmentBytesPerSample = adapter_supported_limits.limits.maxColorAttachmentBytesPerSample;
 
   // use js callout instead
   adapter_limit_maxColorAttachmentBytesPerSample = get_limit();
@@ -69,7 +68,7 @@ void on_adapter_request_ended(WGPURequestAdapterStatus status,
     exit(0);
   }
 
-  WGPURequiredLimits device_required_limits{};
+  WGPURequiredLimits device_required_limits = {0,};
   device_required_limits.limits.minStorageBufferOffsetAlignment =
     256; // irrelevant but needs to be set
   device_required_limits.limits.minUniformBufferOffsetAlignment =
@@ -79,20 +78,20 @@ void on_adapter_request_ended(WGPURequestAdapterStatus status,
   device_required_limits.limits.maxColorAttachmentBytesPerSample =
     adapter_limit_maxColorAttachmentBytesPerSample;
 
-  WGPUDeviceDescriptor device_desc{};
+  WGPUDeviceDescriptor device_desc = {0,};
   device_desc.requiredFeatureCount = 0;
   device_desc.requiredLimits = &device_required_limits;
 
   wgpuAdapterRequestDevice(
-    adapter, &device_desc, on_device_request_ended, nullptr);
+    adapter, &device_desc, on_device_request_ended, NULL);
 }
 
 int main() {
-  const WGPUInstance instance = wgpuCreateInstance(nullptr);
+  const WGPUInstance instance = wgpuCreateInstance(NULL);
 
-  WGPURequestAdapterOptions adapter_options{};
+  WGPURequestAdapterOptions adapter_options = {0,};
   wgpuInstanceRequestAdapter(
-    instance, &adapter_options, on_adapter_request_ended, nullptr);
+    instance, &adapter_options, on_adapter_request_ended, NULL);
 
   return 0;
 }
