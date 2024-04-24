@@ -371,7 +371,7 @@ def get_clang_flags(user_args):
 
   # Whether this compile command is emitting something that will only be used in
   # a whole-program link, that is, without dynamic linking being possible.
-  for_whole_program_link = not settings.RELOCATABLE and not settings.LINKABLE and not '-fPIC' in user_args
+  for_whole_program_link = not settings.RELOCATABLE and not settings.LINKABLE and '-fPIC' not in user_args
 
   if not for_whole_program_link:
     if not any(a.startswith('-fvisibility') for a in user_args):
