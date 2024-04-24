@@ -38,7 +38,7 @@ static mode_t g_umask = S_IRWXU | S_IRWXG | S_IRWXO;
 #endif
 
 #define UNIMPLEMENTED(name, args) \
-  int __syscall_##name args { \
+  weak int __syscall_##name args { \
     REPORT(name); \
     return -ENOSYS; \
   }
