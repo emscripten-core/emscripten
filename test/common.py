@@ -509,7 +509,7 @@ def also_with_standalone_wasm(impure=False):
 # and if possible, new wasm EH/SjLj mode. This tests two combinations:
 # - Emscripten EH + Emscripten SjLj
 # - Wasm EH + Wasm SjLj
-def with_both_eh_sjlj(f):
+def with_all_eh_sjlj(f):
   assert callable(f)
 
   def metafunc(self, is_native):
@@ -539,9 +539,9 @@ def with_both_eh_sjlj(f):
   return metafunc
 
 
-# This works just like `with_both_eh_sjlj` above but doesn't enable exceptions.
+# This works just like `with_all_eh_sjlj` above but doesn't enable exceptions.
 # Use this for tests that use setjmp/longjmp but not exceptions handling.
-def with_both_sjlj(f):
+def with_all_sjlj(f):
   assert callable(f)
 
   def metafunc(self, is_native):
@@ -559,7 +559,7 @@ def with_both_sjlj(f):
       f(self)
 
   metafunc._parameterize = {'': (False,),
-                            'wasm_sjlj': (True,)}
+                            'wasm': (True,)}
   return metafunc
 
 
