@@ -714,7 +714,9 @@ function emitDCEGraph(ast) {
           value = value.left;
         }
         assertAt(value.type === 'Identifier', value);
-        imports.push(value.name); // the name doesn't matter, only the value which is that actual thing we are importing
+        const nativeName = item.key.type == 'Literal' ? item.key.value : item.key.name;
+        assert(nativeName);
+        imports.push([value.name, nativeName]);
       });
       foundWasmImportsAssign = true;
       emptyOut(node); // ignore this in the second pass; this does not root
@@ -873,15 +875,15 @@ function emitDCEGraph(ast) {
     return 'emcc$' + what + '$' + name;
   }
   const infos = {}; // the graph name of the item => info for it
-  for (const import_ of imports) {
-    const name = getGraphName(import_, 'import');
+  for (const [jsName, nativeName] of imports) {
+    const name = getGraphName(jsName, 'import');
     const info = (infos[name] = {
       name: name,
-      import: ['env', import_],
+      import: ['env', nativeName],
       reaches: {},
     });
-    if (nameToGraphName.hasOwnProperty(import_)) {
-      info.reaches[nameToGraphName[import_]] = 1;
+    if (nameToGraphName.hasOwnProperty(jsName)) {
+      info.reaches[nameToGraphName[jsName]] = 1;
     } // otherwise, it's a number, ignore
   }
   for (const [e, _] of Object.entries(exportNameToGraphName)) {
