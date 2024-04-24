@@ -2787,19 +2787,19 @@ More info: https://emscripten.org
     'JSDCE-fors': ('optimizer/JSDCE-fors.js', ['JSDCE']),
     'JSDCE-objectPattern': ('optimizer/JSDCE-objectPattern.js', ['JSDCE']),
     'AJSDCE': ('optimizer/AJSDCE.js', ['AJSDCE']),
-    'emitDCEGraph': ('optimizer/emitDCEGraph.js', ['emitDCEGraph', 'noPrint']),
-    'emitDCEGraph-closure': ('optimizer/emitDCEGraph.js', ['emitDCEGraph', 'noPrint', '--closureFriendly']),
-    'emitDCEGraph2': ('optimizer/emitDCEGraph2.js', ['emitDCEGraph', 'noPrint']),
-    'emitDCEGraph3': ('optimizer/emitDCEGraph3.js', ['emitDCEGraph', 'noPrint']),
-    'emitDCEGraph4': ('optimizer/emitDCEGraph4.js', ['emitDCEGraph', 'noPrint']),
-    'emitDCEGraph5': ('optimizer/emitDCEGraph5.js', ['emitDCEGraph', 'noPrint']),
+    'emitDCEGraph': ('optimizer/emitDCEGraph.js', ['emitDCEGraph', '--no-print']),
+    'emitDCEGraph-closure': ('optimizer/emitDCEGraph.js', ['emitDCEGraph', '--no-print', '--closure-friendly']),
+    'emitDCEGraph2': ('optimizer/emitDCEGraph2.js', ['emitDCEGraph', '--no-print']),
+    'emitDCEGraph3': ('optimizer/emitDCEGraph3.js', ['emitDCEGraph', '--no-print']),
+    'emitDCEGraph4': ('optimizer/emitDCEGraph4.js', ['emitDCEGraph', '--no-print']),
+    'emitDCEGraph5': ('optimizer/emitDCEGraph5.js', ['emitDCEGraph', '--no-print']),
     'minimal-runtime-applyDCEGraphRemovals': ('optimizer/minimal-runtime-applyDCEGraphRemovals.js', ['applyDCEGraphRemovals']),
     'applyDCEGraphRemovals': ('optimizer/applyDCEGraphRemovals.js', ['applyDCEGraphRemovals']),
     'applyImportAndExportNameChanges': ('optimizer/applyImportAndExportNameChanges.js', ['applyImportAndExportNameChanges']),
     'applyImportAndExportNameChanges2': ('optimizer/applyImportAndExportNameChanges2.js', ['applyImportAndExportNameChanges']),
-    'minimal-runtime-emitDCEGraph': ('optimizer/minimal-runtime-emitDCEGraph.js', ['emitDCEGraph', 'noPrint']),
-    'minimal-runtime-2-emitDCEGraph': ('optimizer/minimal-runtime-2-emitDCEGraph.js', ['emitDCEGraph', 'noPrint']),
-    'standalone-emitDCEGraph': ('optimizer/standalone-emitDCEGraph.js', ['emitDCEGraph', 'noPrint']),
+    'minimal-runtime-emitDCEGraph': ('optimizer/minimal-runtime-emitDCEGraph.js', ['emitDCEGraph', '--no-print']),
+    'minimal-runtime-2-emitDCEGraph': ('optimizer/minimal-runtime-2-emitDCEGraph.js', ['emitDCEGraph', '--no-print']),
+    'standalone-emitDCEGraph': ('optimizer/standalone-emitDCEGraph.js', ['emitDCEGraph', '--no-print']),
     'emittedJSPreservesParens': ('optimizer/emittedJSPreservesParens.js', []),
     'growableHeap': ('optimizer/test-growableHeap.js', ['growableHeap']),
     'unsignPointers': ('optimizer/test-unsignPointers.js', ['unsignPointers']),
@@ -2826,7 +2826,7 @@ More info: https://emscripten.org
     lines.append('// EMSCRIPTEN_END_FUNCS\n')
     create_file('huge.js', '\n'.join(lines))
     self.assertGreater(os.path.getsize('huge.js'), 50_000_000)
-    self.run_process([PYTHON, path_from_root('tools/js_optimizer.py'), 'huge.js', 'minifyWhitespace'])
+    self.run_process([PYTHON, path_from_root('tools/js_optimizer.py'), 'huge.js', '--minify-whitespace'])
 
   @parameterized({
     'wasm2js': ('wasm2js', ['minifyNames', 'last']),

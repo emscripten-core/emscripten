@@ -933,9 +933,7 @@ function emitDCEGraph(ast) {
             // example, we might call Module.dynCall_vi in library code, but it
             // won't exist in a standalone (non-JS) build anyhow. We can ignore
             // it in that case as the JS won't be used, but warn to be safe.
-            if (verbose) {
-              console.warn('metadce: missing declaration for ' + reached);
-            }
+            trace('metadce: missing declaration for ' + reached);
           }
         }
       }
@@ -1966,23 +1964,29 @@ function reattachComments(ast, comments) {
 let suffix = '';
 
 const argv = process.argv.slice(2);
-// If enabled, output retains parentheses and comments so that the
-// output can further be passed out to Closure.
-let closureFriendly = argv.indexOf('--closureFriendly');
-if (closureFriendly != -1) {
-  argv.splice(closureFriendly, 1);
-  closureFriendly = true;
-} else {
-  closureFriendly = false;
+
+function getArg(arg) {
+  const index = argv.indexOf(arg);
+  if (index == -1) {
+    return false;
+  }
+  argv.splice(index, 1);
+  return true;
 }
 
-let exportES6 = argv.indexOf('--exportES6');
-if (exportES6 != -1) {
-  argv.splice(exportES6, 1);
-  exportES6 = true;
-} else {
-  exportES6 = false;
+function trace(...args) {
+  if (verbose) {
+    console.warn(...args);
+  }
 }
+
+// If enabled, output retains parentheses and comments so that the
+// output can further be passed out to Closure.
+const closureFriendly = getArg('--closure-friendly');
+const exportES6 = getArg('--export-es6');
+const verbose = getArg('--verbose');
+const noPrint = getArg('--no-print');
+const minifyWhitespace = getArg('--minify-whitespace');
 
 let outfile;
 const outfileIndex = argv.indexOf('-o');
@@ -2026,25 +2030,12 @@ try {
   throw err;
 }
 
-let minifyWhitespace = false;
-let noPrint = false;
-let verbose = false;
-
 const registry = {
   JSDCE: runJSDCE,
   AJSDCE: runAJSDCE,
   applyImportAndExportNameChanges: applyImportAndExportNameChanges,
   emitDCEGraph: emitDCEGraph,
   applyDCEGraphRemovals: applyDCEGraphRemovals,
-  minifyWhitespace: () => {
-    minifyWhitespace = true;
-  },
-  noPrint: () => {
-    noPrint = true;
-  },
-  verbose: () => {
-    verbose = true;
-  },
   // TODO: remove 'last' in the python driver code
   last: () => {},
   dump: () => dump(ast),
