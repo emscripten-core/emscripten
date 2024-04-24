@@ -4841,11 +4841,7 @@ res64 - external 64\n''', header='''\
         printf("only_in_third_1: %d, %d, %d, %d\n", sidef(), sideg, second_to_third, x);
       }
     ''')
-    if self.is_wasm():
-      libname = 'third.wasm'
-    else:
-      libname = 'third.js'
-    self.run_process([EMCC, 'third.cpp', '-o', libname, '-sSIDE_MODULE'] + self.get_emcc_args())
+    self.run_process([EMCC, 'third.cpp', '-o', 'third.wasm', '-sSIDE_MODULE'] + self.get_emcc_args())
     self.dylink_test(main=r'''
       #include <stdio.h>
       #include <emscripten.h>
@@ -4857,14 +4853,14 @@ res64 - external 64\n''', header='''\
       extern void only_in_third_0();
       int main() {
         EM_ASM({
-          loadDynamicLibrary('%s'); // hyper-dynamic! works at least for functions (and consts not used in same block)
+          loadDynamicLibrary('third.wasm'); // hyper-dynamic! works at least for functions (and consts not used in same block)
         });
-        printf("sidef: %%d, sideg: %%d.\n", sidef(), sideg);
-        printf("bsidef: %%d.\n", bsidef());
+        printf("sidef: %d, sideg: %d.\n", sidef(), sideg);
+        printf("bsidef: %d.\n", bsidef());
         only_in_second_0();
         only_in_third_0();
       }
-    ''' % libname,
+    ''',
                      side=r'''
       #include <stdio.h>
       int sidef() { return 10; } // third will try to override these, but fail!
@@ -4882,13 +4878,11 @@ res64 - external 64\n''', header='''\
         printf("only_in_second_1: %d, %d, %d, %d\n", sidef(), sideg, third_to_second, x);
       }
     ''',
-                     expected=['sidef: 10, sideg: 20.\nbsidef: 536.\nonly_in_second_0: 10, 20, 1337\nonly_in_third_1: 36, 49, 500, 1221\nonly_in_third_0: 36, 49, 500\nonly_in_second_1: 10, 20, 1337, 2112\n'],
-                     # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
-                     need_reverse=self.is_wasm2js())
+                     expected=['sidef: 10, sideg: 20.\nbsidef: 536.\nonly_in_second_0: 10, 20, 1337\nonly_in_third_1: 36, 49, 500, 1221\nonly_in_third_0: 36, 49, 500\nonly_in_second_1: 10, 20, 1337, 2112\n'])
 
     print('check warnings')
     full = self.run_js('src.js')
-    self.assertContained("warning: symbol '_sideg' from '%s' already exists" % libname, full)
+    self.assertContained("warning: symbol '_sideg' from 'third.wasm' already exists", full)
 
   @needs_dylink
   @requires_node
@@ -4926,8 +4920,9 @@ res64 - external 64\n''', header='''\
       int sidef() { return 10; }
     ''',
                      expected=['sidef: 10'],
-                     # in wasm, we can't flip as the side would have an EM_ASM, which we don't support yet TODO
-                     need_reverse=self.is_wasm2js())
+                     # Since the main function loads the side module it cannot itself
+                     # live in the side module.
+                     need_reverse=False)
 
   @needs_dylink
   def test_dylink_dso_needed(self):
