@@ -24,7 +24,7 @@ from tools.utils import WINDOWS, MACOS, write_file, delete_file
 from tools import shared, building, config, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
-from common import skip_if, needs_dylink, no_windows, no_mac, is_slow_test, parameterized
+from common import skip_if, no_windows, no_mac, is_slow_test, parameterized, parameterize
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime
@@ -77,18 +77,49 @@ def needs_non_trapping_float_to_int(f):
   return decorated
 
 
+def needs_dylink(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    self.check_dylink()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
+def with_dylink_reversed(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, dylink_reversed, *args, **kwargs):
+    self.dylink_reversed = dylink_reversed
+    self.check_dylink()
+
+    return func(self, *args, **kwargs)
+
+  parameterize(decorated, {'': (False,),
+                           'reversed': (True,)})
+
+  return decorated
+
+
 # without EMTEST_ALL_ENGINES set we only run tests in a single VM by
 # default. in some tests we know that cross-VM differences may happen and
 # so are worth testing, and they should be marked with this decorator
 def all_engines(f):
-  def decorated(self):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, *args, **kwargs):
     old = self.use_all_engines
     self.use_all_engines = True
     self.set_setting('ENVIRONMENT', 'web,node,shell')
     try:
-      f(self)
+      f(self, *args, **kwargs)
     finally:
       self.use_all_engines = old
+
   return decorated
 
 
@@ -128,8 +159,8 @@ def also_with_noderawfs(func):
       self.set_setting('NODERAWFS')
     func(self)
 
-  metafunc._parameterize = {'': (False,),
-                            'rawfs': (True,)}
+  parameterize(metafunc, {'': (False,),
+                          'rawfs': (True,)})
   return metafunc
 
 
@@ -174,8 +205,8 @@ def with_asyncify_and_jspi(f):
       self.set_setting('ASYNCIFY')
       f(self)
 
-  metafunc._parameterize = {'': (False,),
-                            'jspi': (True,)}
+  parameterize(metafunc, {'': (False,),
+                          'jspi': (True,)})
   return metafunc
 
 
@@ -3941,8 +3972,15 @@ ok
                    main_module=2,
                    so_dir='',
                    so_name='liblib.so',
-                   need_reverse=True, **kwargs):
+                   **kwargs):
     main_emcc_args = main_emcc_args or []
+    if getattr(self, 'dylink_reversed', False):
+      # Test the reverse case.  There we flip the role of the side module and main module.
+      # - We add --no-entry since the side module doesn't have a `main`
+      side_ = side
+      side = main
+      main = side_
+      main_emcc_args += ['--no-entry']
     self.maybe_closure()
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.emcc_args.copy()
@@ -3984,13 +4022,6 @@ ok
 
     self.emcc_args = old_args
 
-    if need_reverse:
-      print('flip')
-      # Test the reverse as well.  There we flip the role of the side module and main module.
-      # - We add --no-entry since the side module doesn't have a `main`
-      self.dylink_testf(side, main, expected, force_c, main_emcc_args + ['--no-entry'],
-                        main_module, so_dir, so_name, need_reverse=False, **kwargs)
-
   def do_basic_dylink_test(self, **kwargs):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -4011,10 +4042,10 @@ ok
   @needs_dylink
   @crossplatform
   def test_dylink_basics(self):
-    self.do_basic_dylink_test(need_reverse=False)
+    self.do_basic_dylink_test()
     self.verify_in_strict_mode('main.js')
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_basics_no_modify(self):
     if self.is_optimizing():
       self.skipTest('no modify mode only works with non-optimizing builds')
@@ -4024,23 +4055,23 @@ ok
     self.set_setting('ERROR_ON_WASM_CHANGES_AFTER_LINK')
     self.do_basic_dylink_test()
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_no_export(self):
     self.set_setting('NO_DECLARE_ASM_MODULE_EXPORTS')
     self.do_basic_dylink_test()
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_memory_growth(self):
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.do_basic_dylink_test()
 
-  @needs_dylink
+  @with_dylink_reversed
   @no_asan('SAFE_HEAP cannot be used with ASan')
   def test_dylink_safe_heap(self):
     self.set_setting('SAFE_HEAP')
     self.do_basic_dylink_test()
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_locate_file(self):
     so_dir = 'so_dir'
     so_name = 'liblib.so'
@@ -4056,7 +4087,7 @@ ok
     ''' % (so_name, so_dir))
     self.do_basic_dylink_test(so_dir=so_dir, so_name=so_name, main_emcc_args=['--pre-js', 'pre.js'])
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_function_pointer_equality(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -4081,7 +4112,7 @@ ok
       }
     ''', 'success', header='void* get_address();', force_c=True)
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_floats(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -4094,7 +4125,7 @@ ok
       float sidey() { return 11.5; }
     ''', 'other says 12.50', force_c=True)
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_printf(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -4113,7 +4144,7 @@ ok
 
   # Verify that a function pointer can be passed back and forth and invoked
   # on both sides.
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_funcpointer(self):
     self.dylink_test(
       main=r'''
@@ -4136,7 +4167,7 @@ ok
       expected='hello from funcptr: 1\nhello from funcptr: 0\n',
       header='typedef void (*intfunc)(int );', force_c=True)
 
-  @needs_dylink
+  @with_dylink_reversed
   # test dynamic linking of a module with multiple function pointers, stored
   # statically
   def test_dylink_static_funcpointers(self):
@@ -4162,7 +4193,7 @@ ok
       expected='hello 0\nhello 1\nhello 2\n',
       header='typedef void (*voidfunc)(); void sidey(voidfunc f);', force_c=True)
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_funcpointers_wrapper(self):
     self.dylink_test(
       main=r'''\
@@ -4189,7 +4220,7 @@ ok
       extern charfunc get();
       ''', force_c=True)
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_static_funcpointer_float(self):
     self.dylink_test(
       main=r'''\
@@ -4211,7 +4242,7 @@ ok
       expected='hello 1: 56.779999\ngot: 1\nhello 1: 12.340000\n',
       header='typedef float (*floatfunc)(float);', force_c=True)
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_global_init(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -4226,7 +4257,7 @@ ok
       void nothing() {}
     ''', 'a new Class\n')
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_global_inits(self):
     def test():
       self.dylink_test(header=r'''
@@ -4253,7 +4284,7 @@ ok
     # full = self.run_js('src.js')
     # self.assertNotContained('already exists', full)
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_i64(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -4270,8 +4301,8 @@ ok
       }
     ''', 'other says 42.', force_c=True)
 
+  @with_dylink_reversed
   @all_engines
-  @needs_dylink
   def test_dylink_i64_b(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -4304,7 +4335,7 @@ ok
       }
     ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.', force_c=True)
 
-  @needs_dylink
+  @with_dylink_reversed
   @also_with_wasm_bigint
   def test_dylink_i64_c(self):
     self.dylink_test(r'''
@@ -4392,9 +4423,9 @@ res64 - external 64\n''', header='''\
             return 0;
         }
     }
-    }''', 'got 84\ngot 0', need_reverse=False)
+    }''', 'got 84\ngot 0')
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_class(self):
     self.dylink_test(header=r'''
       #include <stdio.h>
@@ -4412,7 +4443,7 @@ res64 - external 64\n''', header='''\
       Class::Class(const char *name) { printf("new %s\n", name); }
     ''', expected=['new main\n'])
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_global_var(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -4425,7 +4456,7 @@ res64 - external 64\n''', header='''\
       int x = 123;
     ''', expected=['extern is 123.\n'], force_c=True)
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_global_var_modded(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -4442,7 +4473,7 @@ res64 - external 64\n''', header='''\
       Initter initter;
     ''', expected=['extern is 456.\n'])
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_stdlib(self):
     self.dylink_test(header=r'''
       #include <math.h>
@@ -4476,7 +4507,7 @@ res64 - external 64\n''', header='''\
       }
     ''', expected=['hello through side\n\npow_two: 59.'], force_c=True)
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_jslib(self):
     create_file('lib.js', r'''
       addToLibrary({
@@ -4511,7 +4542,7 @@ res64 - external 64\n''', header='''\
       }
     ''', expected='other says 45.2', main_emcc_args=['--js-library', 'lib.js'], force_c=True)
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_many_postsets(self):
     NUM = 1234
     self.dylink_test(header=r'''
@@ -4542,7 +4573,7 @@ res64 - external 64\n''', header='''\
       }
     ''', expected=['simple.\nsimple.\nsimple.\nsimple.\n'], force_c=True)
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_postsets_chunking(self):
     self.dylink_test(header=r'''
       extern int global_var;
@@ -4576,15 +4607,17 @@ res64 - external 64\n''', header='''\
       int global_var = 12345;
     ''', expected=['12345\n'], force_c=True)
 
-  @needs_dylink
   @parameterized({
     'libcxx': ('libc,libc++,libmalloc,libc++abi',),
     'all': ('1',),
     'missing': ('libc,libmalloc,libc++abi', False, False, False),
     'missing_assertions': ('libc,libmalloc,libc++abi', False, False, True),
   })
-  def test_dylink_syslibs(self, syslibs, expect_pass=True, need_reverse=True, assertions=True):
+  @with_dylink_reversed
+  def test_dylink_syslibs(self, syslibs, expect_pass=True, with_reversed=True, assertions=True):
     # one module uses libcxx, need to force its inclusion when it isn't the main
+    if not with_reversed and self.dylink_reversed:
+      self.skipTest('with_reversed is false')
     self.emcc_args.append('-Wno-deprecated')
     self.set_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
 
@@ -4611,9 +4644,9 @@ res64 - external 64\n''', header='''\
       ''', side=r'''
         #include <iostream>
         void side() { std::cout << "cout hello from side\n"; }
-      ''', expected=expected, need_reverse=need_reverse, main_module=1, assert_returncode=assert_returncode)
+      ''', expected=expected, main_module=1, assert_returncode=assert_returncode)
 
-  @needs_dylink
+  @with_dylink_reversed
   @with_env_modify({'EMCC_FORCE_STDLIBS': 'libc++'})
   def test_dylink_iostream(self):
     self.dylink_test(header=r'''
@@ -4631,7 +4664,7 @@ res64 - external 64\n''', header='''\
       std::string side() { return "and hello from side"; }
     ''', expected=['hello from main and hello from side\n'])
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_dynamic_cast(self): # issue 3465
     self.dylink_test(header=r'''
       class Base {
@@ -4679,7 +4712,7 @@ res64 - external 64\n''', header='''\
     ''', expected=['starting main\nBase\nDerived\nOK'])
 
   @with_all_eh_sjlj
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_raii_exceptions(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -4710,7 +4743,7 @@ res64 - external 64\n''', header='''\
     ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'])
 
   @with_all_eh_sjlj
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_exceptions_try_catch(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -4736,7 +4769,7 @@ res64 - external 64\n''', header='''\
       ''', expected=['main: caught 3\nside: caught 5.3\n'])
 
   @with_all_eh_sjlj
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_exceptions_try_catch_2(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -4814,7 +4847,7 @@ res64 - external 64\n''', header='''\
 
     self.do_runf("main.cpp", "side: caught int 3\n")
 
-  @needs_dylink
+  @with_dylink_reversed
   @disabled('https://github.com/emscripten-core/emscripten/issues/12815')
   def test_dylink_hyper_dupe(self):
     self.set_setting('INITIAL_MEMORY', '64mb')
@@ -4919,10 +4952,7 @@ res64 - external 64\n''', header='''\
       #include <stdio.h>
       int sidef() { return 10; }
     ''',
-                     expected=['sidef: 10'],
-                     # Since the main function loads the side module it cannot itself
-                     # live in the side module.
-                     need_reverse=False)
+                     expected=['sidef: 10'])
 
   @needs_dylink
   def test_dylink_dso_needed(self):
@@ -4931,7 +4961,7 @@ res64 - external 64\n''', header='''\
       self.do_runf('main.c', expected_output, emcc_args=emcc_args)
     self._test_dylink_dso_needed(do_run)
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_dot_a(self):
     # .a linking must force all .o files inside it, when in a shared module
     create_file('third.c', 'int sidef() { return 36; }')
@@ -4954,7 +4984,7 @@ res64 - external 64\n''', header='''\
                      side=['libfourth.a', 'third.o'],
                      expected=['sidef: 36, sideg: 17.\n'], force_c=True)
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_spaghetti(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
@@ -4995,7 +5025,7 @@ main main sees -524, -534, 72.
 '''])
 
   @needs_make('mingw32-make')
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_zlib(self):
     self.set_setting('RELOCATABLE')
     zlib_archive = self.get_zlib_library(cmake=WINDOWS)
@@ -5007,7 +5037,7 @@ main main sees -524, -534, 72.
                      expected=read_file(test_file('core/test_zlib.out')),
                      force_c=True)
 
-  # @needs_dylink
+  # @with_dylink_reversed
   # def test_dylink_bullet(self):
   #   self.emcc_args += ['-I' + test_file('bullet/src')]
   #   side = self.get_bullet_library(self, True)
@@ -5017,7 +5047,7 @@ main main sees -524, -534, 72.
   #                              read_file(test_file('bullet/output2.txt')),
   #                              read_file(test_file('bullet/output3.txt'))])
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_dylink_rtti(self):
     # Verify that objects created in one module and be dynamic_cast<> correctly
     # in the another module.
@@ -5088,32 +5118,29 @@ main main sees -524, -534, 72.
         return 0;
       }
       ''',
-      expected='3 hello world!',
-      need_reverse=False)
+      expected='3 hello world!')
 
   @needs_dylink
   def test_dylink_weak(self):
     # Verify that weakly defined symbols can be defined in both side module and main
     # module but that only one gets used at runtime.
-    self.dylink_testf(test_file('core/test_dylink_weak.c'), need_reverse=False)
+    self.dylink_testf(test_file('core/test_dylink_weak.c'))
 
   @needs_dylink
   def test_dylink_weak_undef(self):
-    self.dylink_testf(test_file('core/test_dylink_weak_undef.c'), need_reverse=False)
+    self.dylink_testf(test_file('core/test_dylink_weak_undef.c'))
 
   @node_pthreads
   @needs_dylink
   def test_dylink_tls(self):
     self.emcc_args.append('-Wno-experimental')
-    self.dylink_testf(test_file('core/test_dylink_tls.c'),
-                      need_reverse=False)
+    self.dylink_testf(test_file('core/test_dylink_tls.c'))
 
   @node_pthreads
   @needs_dylink
   def test_dylink_tls_export(self):
     self.emcc_args.append('-Wno-experimental')
-    self.dylink_testf(test_file('core/test_dylink_tls_export.c'),
-                      need_reverse=False)
+    self.dylink_testf(test_file('core/test_dylink_tls_export.c'))
 
   def test_random(self):
     src = r'''#include <stdlib.h>
@@ -8249,7 +8276,7 @@ Module.onRuntimeInitialized = () => {
       if should_pass:
         raise
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_asyncify_side_module(self):
     self.set_setting('ASYNCIFY')
     self.set_setting('ASYNCIFY_IMPORTS', ['my_sleep'])
@@ -9071,7 +9098,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  expected_output=expected,
                  assert_returncode=NON_ZERO, assert_all=True)
 
-  @needs_dylink
+  @with_dylink_reversed
   def test_safe_stack_dylink(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('STACK_SIZE', 65536)
@@ -9262,7 +9289,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PTHREAD_POOL_SIZE', '2')
     self.do_run_in_out_file_test('core/test_stdio_locking.c')
 
-  @needs_dylink
+  @with_dylink_reversed
   @node_pthreads
   def test_pthread_dylink_basics(self):
     self.emcc_args.append('-Wno-experimental')
@@ -9282,8 +9309,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     very_long_name = 'very_very_very_very_very_very_very_very_very_long.so'
 
     self.dylink_testf(main, so_name=very_long_name,
-                      main_emcc_args=['-sPTHREAD_POOL_SIZE=2'],
-                      need_reverse=False)
+                      main_emcc_args=['-sPTHREAD_POOL_SIZE=2'])
 
   @parameterized({
     '': (['-sNO_AUTOLOAD_DYLIBS'],),
@@ -9294,7 +9320,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_dylink_entry_point(self, args):
     self.emcc_args += ['-Wno-experimental', '-pthread']
     main = test_file('core/pthread/test_pthread_dylink_entry_point.c')
-    self.dylink_testf(main, need_reverse=False, emcc_args=args, main_emcc_args=['-sPTHREAD_POOL_SIZE=1'])
+    self.dylink_testf(main, emcc_args=args, main_emcc_args=['-sPTHREAD_POOL_SIZE=1'])
 
   @needs_dylink
   @node_pthreads
@@ -9361,14 +9387,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_dylink_tls(self):
     self.emcc_args += ['-Wno-experimental', '-pthread']
     main = test_file('core/pthread/test_pthread_dylink_tls.c')
-    self.dylink_testf(main, need_reverse=False, main_emcc_args=['-sPTHREAD_POOL_SIZE=1'])
+    self.dylink_testf(main, main_emcc_args=['-sPTHREAD_POOL_SIZE=1'])
 
   @needs_dylink
   @node_pthreads
   def test_pthread_dylink_longjmp(self):
     self.emcc_args += ['-Wno-experimental', '-pthread']
     main = test_file('core/pthread/test_pthread_dylink_longjmp.c')
-    self.dylink_testf(main, need_reverse=False, main_emcc_args=['-sPTHREAD_POOL_SIZE=1'])
+    self.dylink_testf(main, main_emcc_args=['-sPTHREAD_POOL_SIZE=1'])
 
   @needs_dylink
   @node_pthreads
@@ -9377,11 +9403,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('MAIN_MODULE')
     self.do_runf('hello_world.c')
 
-  @needs_dylink
   @parameterized({
     '': ([],),
     'pthreads': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-pthread', '-Wno-experimental'],)
   })
+  @with_dylink_reversed
   def test_Module_dynamicLibraries(self, args):
     # test that Module.dynamicLibraries works with pthreads
     self.emcc_args += args
