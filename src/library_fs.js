@@ -904,7 +904,7 @@ FS.staticInit();` +
       if (!link.node_ops.readlink) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
-      return PATH_FS.resolve(FS.getPath(parent), link.node_ops.readlink(link));
+      return PATH_FS.resolve(FS.getPath(link.parent), link.node_ops.readlink(link));
     },
     stat(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
