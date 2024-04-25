@@ -596,27 +596,29 @@ function instrumentWasmTableWithAbort() {
 }
 #endif
 
-var wasmBinaryFile;
+function findWasmBinary() {
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && !AUDIO_WORKLET
-if (Module['locateFile']) {
+  if (Module['locateFile']) {
 #endif
-  wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
+    var f = '{{{ WASM_BINARY_FILE }}}';
 #if !SINGLE_FILE
-  if (!isDataURI(wasmBinaryFile)) {
-    wasmBinaryFile = locateFile(wasmBinaryFile);
-  }
+    if (!isDataURI(f)) {
+      return locateFile(f);
+    }
 #endif
+    return f;
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && !AUDIO_WORKLET // In single-file mode, repeating WASM_BINARY_FILE would emit the contents again. For an Audio Worklet, we cannot use `new URL()`.
-} else {
+  }
 #if ENVIRONMENT_MAY_BE_SHELL
   if (ENVIRONMENT_IS_SHELL)
-    wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
-  else
+    return '{{{ WASM_BINARY_FILE }}}';
 #endif
   // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
-  wasmBinaryFile = new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).href;
-}
+  return new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).href;
 #endif
+}
+
+var wasmBinaryFile;
 
 function getBinarySync(file) {
   if (file == wasmBinaryFile && wasmBinary) {
@@ -1086,6 +1088,8 @@ function createWasm() {
     }
   }
 #endif
+
+  if (!wasmBinaryFile) wasmBinaryFile = findWasmBinary();
 
 #if WASM_ASYNC_COMPILATION
 #if RUNTIME_DEBUG
