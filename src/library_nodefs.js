@@ -235,7 +235,7 @@ addToLibrary({
         var path = NODEFS.realPath(node);
         try {
           path = fs.readlinkSync(path);
-          path = nodePath.relative(nodePath.resolve(node.mount.opts.root), path);
+          path = PATH.isRel(path) ? path : nodePath.relative(nodePath.resolve(node.mount.opts.root), path);
           return path;
         } catch (e) {
           if (!e.code) throw e;

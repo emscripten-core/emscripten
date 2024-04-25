@@ -7,6 +7,7 @@
 addToLibrary({
   $PATH: {
     isAbs: (path) => path.charAt(0) === '/',
+    isRel: (path) => path.includes( './' ) || path.includes( '../' ),
     // split a filename into [root, dir, basename, ext], unix version
     // 'root' is just a slash, or nothing.
     splitPath: (filename) => {
@@ -92,6 +93,7 @@ addToLibrary({
         resolvedAbsolute = false;
       for (var i = args.length - 1; i >= -1 && !resolvedAbsolute; i--) {
         var path = (i >= 0) ? args[i] : FS.cwd();
+        path = !PATH.isRel(path) && !PATH.isAbs(path) ? FS.cwd() + '/' + path : path;
         // Skip empty and invalid entries
         if (typeof path != 'string') {
           throw new TypeError('Arguments to path.resolve must be strings');
