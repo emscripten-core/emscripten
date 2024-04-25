@@ -778,17 +778,14 @@ def create_em_js(metadata):
 def add_standard_wasm_imports(send_items_map):
   extra_sent_items = []
 
-  if settings.IMPORTED_MEMORY:
-    memory_import = 'wasmMemory'
-    if settings.MODULARIZE and settings.PTHREADS:
-      # Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
-      # Module scope, so lookup via Module as well.
-      memory_import += " || Module['wasmMemory']"
-    send_items_map['memory'] = memory_import
-
   if settings.SAFE_HEAP:
     extra_sent_items.append('segfault')
     extra_sent_items.append('alignfault')
+
+  # Special case for importing memory and table
+  # TODO(sbc): can we make these into normal library symbols?
+  if settings.IMPORTED_MEMORY:
+    send_items_map['memory'] = 'wasmMemory'
 
   if settings.RELOCATABLE:
     send_items_map['__indirect_function_table'] = 'wasmTable'

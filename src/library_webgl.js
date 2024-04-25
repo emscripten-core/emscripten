@@ -2412,7 +2412,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniform1iv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLIntBuffers'
 #endif
   ],
@@ -2453,7 +2453,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniform2iv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLIntBuffers'
 #endif
   ],
@@ -2495,7 +2495,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniform3iv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLIntBuffers'
 #endif
   ],
@@ -2538,7 +2538,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniform4iv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLIntBuffers'
 #endif
   ],
@@ -2582,7 +2582,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniform1fv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
@@ -2623,7 +2623,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniform2fv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
@@ -2665,7 +2665,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniform3fv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && !(MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS)
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
@@ -2708,7 +2708,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniform4fv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
@@ -2756,7 +2756,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniformMatrix2fv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
@@ -2800,7 +2800,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniformMatrix3fv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
@@ -2849,7 +2849,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniformMatrix4fv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && !(MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS)
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],

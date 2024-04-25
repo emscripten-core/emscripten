@@ -2046,7 +2046,7 @@ def create_worker_file(input_file, target_dir, output_file, options):
 
   # Minify the worker JS file, if JS minification is enabled.
   if settings.MINIFY_WHITESPACE:
-    contents = building.acorn_optimizer(output_file, ['minifyWhitespace'], return_output=True)
+    contents = building.acorn_optimizer(output_file, ['--minify-whitespace'], return_output=True)
     write_file(output_file, contents)
 
   tools.line_endings.convert_line_endings_in_file(output_file, os.linesep, options.output_eol)

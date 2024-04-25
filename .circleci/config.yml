@@ -112,7 +112,7 @@ commands:
     description: "install canary version of node"
     steps:
       - install-node-version:
-         node_version: "22.0.0-v8-canary20231108ff311d5a39"
+         node_version: "22.0.0-v8-canary20240423a2eb2005bd"
          canary: true
   install-v8:
     description: "install v8 using jsvu"

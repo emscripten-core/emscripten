@@ -34,11 +34,11 @@ from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
-from common import requires_wasm_eh, crossplatform, with_both_eh_sjlj, with_both_sjlj
+from common import requires_wasm_eh, crossplatform, with_all_eh_sjlj, with_all_sjlj
 from common import also_with_standalone_wasm, also_with_env_modify, also_with_wasm2js
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, flaky
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
-from common import requires_network
+from common import requires_network, parameterize
 from tools import shared, building, utils, response_file, cache
 from tools.utils import read_file, write_file, delete_file, read_binary, MACOS, WINDOWS
 import common
@@ -104,8 +104,8 @@ def uses_canonical_tmp(func):
 def with_both_compilers(f):
   assert callable(f)
 
-  f._parameterize = {'': (EMCC,),
-                     'emxx': (EMXX,)}
+  parameterize(f, {'': (EMCC,),
+                   'emxx': (EMXX,)})
   return f
 
 
@@ -121,8 +121,8 @@ def also_with_wasmfs(f):
     else:
       f(self)
 
-  metafunc._parameterize = {'': (False,),
-                            'wasmfs': (True,)}
+  parameterize(metafunc, {'': (False,),
+                          'wasmfs': (True,)})
   return metafunc
 
 
@@ -133,8 +133,8 @@ def wasmfs_all_backends(f):
     self.emcc_args.append(f'-D{backend}')
     f(self)
 
-  metafunc._parameterize = {'': ('WASMFS_MEMORY_BACKEND',),
-                            'node': ('WASMFS_NODE_BACKEND',)}
+  parameterize(metafunc, {'': ('WASMFS_MEMORY_BACKEND',),
+                          'node': ('WASMFS_NODE_BACKEND',)})
   return metafunc
 
 
@@ -151,9 +151,9 @@ def also_with_wasmfs_all_backends(f):
     else:
       f(self)
 
-  metafunc._parameterize = {'': (None,),
-                            'wasmfs': ('WASMFS_MEMORY_BACKEND',),
-                            'wasmfs_node': ('WASMFS_NODE_BACKEND',)}
+  parameterize(metafunc, {'': (None,),
+                          'wasmfs': ('WASMFS_MEMORY_BACKEND',),
+                          'wasmfs_node': ('WASMFS_NODE_BACKEND',)})
   return metafunc
 
 
@@ -2410,7 +2410,7 @@ int f() {
     self.do_runf('bzip2_test.c', 'usage: unzcrash filename',
                  emcc_args=['--use-port=bzip2', '-Wno-pointer-sign'])
 
-  @with_both_sjlj
+  @with_all_sjlj
   @requires_network
   def test_freetype(self):
     # copy the Liberation Sans Bold truetype file located in the
@@ -2787,19 +2787,19 @@ More info: https://emscripten.org
     'JSDCE-fors': ('optimizer/JSDCE-fors.js', ['JSDCE']),
     'JSDCE-objectPattern': ('optimizer/JSDCE-objectPattern.js', ['JSDCE']),
     'AJSDCE': ('optimizer/AJSDCE.js', ['AJSDCE']),
-    'emitDCEGraph': ('optimizer/emitDCEGraph.js', ['emitDCEGraph', 'noPrint']),
-    'emitDCEGraph-closure': ('optimizer/emitDCEGraph.js', ['emitDCEGraph', 'noPrint', '--closureFriendly']),
-    'emitDCEGraph2': ('optimizer/emitDCEGraph2.js', ['emitDCEGraph', 'noPrint']),
-    'emitDCEGraph3': ('optimizer/emitDCEGraph3.js', ['emitDCEGraph', 'noPrint']),
-    'emitDCEGraph4': ('optimizer/emitDCEGraph4.js', ['emitDCEGraph', 'noPrint']),
-    'emitDCEGraph5': ('optimizer/emitDCEGraph5.js', ['emitDCEGraph', 'noPrint']),
+    'emitDCEGraph': ('optimizer/emitDCEGraph.js', ['emitDCEGraph', '--no-print']),
+    'emitDCEGraph-closure': ('optimizer/emitDCEGraph.js', ['emitDCEGraph', '--no-print', '--closure-friendly']),
+    'emitDCEGraph2': ('optimizer/emitDCEGraph2.js', ['emitDCEGraph', '--no-print']),
+    'emitDCEGraph3': ('optimizer/emitDCEGraph3.js', ['emitDCEGraph', '--no-print']),
+    'emitDCEGraph4': ('optimizer/emitDCEGraph4.js', ['emitDCEGraph', '--no-print']),
+    'emitDCEGraph5': ('optimizer/emitDCEGraph5.js', ['emitDCEGraph', '--no-print']),
     'minimal-runtime-applyDCEGraphRemovals': ('optimizer/minimal-runtime-applyDCEGraphRemovals.js', ['applyDCEGraphRemovals']),
     'applyDCEGraphRemovals': ('optimizer/applyDCEGraphRemovals.js', ['applyDCEGraphRemovals']),
     'applyImportAndExportNameChanges': ('optimizer/applyImportAndExportNameChanges.js', ['applyImportAndExportNameChanges']),
     'applyImportAndExportNameChanges2': ('optimizer/applyImportAndExportNameChanges2.js', ['applyImportAndExportNameChanges']),
-    'minimal-runtime-emitDCEGraph': ('optimizer/minimal-runtime-emitDCEGraph.js', ['emitDCEGraph', 'noPrint']),
-    'minimal-runtime-2-emitDCEGraph': ('optimizer/minimal-runtime-2-emitDCEGraph.js', ['emitDCEGraph', 'noPrint']),
-    'standalone-emitDCEGraph': ('optimizer/standalone-emitDCEGraph.js', ['emitDCEGraph', 'noPrint']),
+    'minimal-runtime-emitDCEGraph': ('optimizer/minimal-runtime-emitDCEGraph.js', ['emitDCEGraph', '--no-print']),
+    'minimal-runtime-2-emitDCEGraph': ('optimizer/minimal-runtime-2-emitDCEGraph.js', ['emitDCEGraph', '--no-print']),
+    'standalone-emitDCEGraph': ('optimizer/standalone-emitDCEGraph.js', ['emitDCEGraph', '--no-print']),
     'emittedJSPreservesParens': ('optimizer/emittedJSPreservesParens.js', []),
     'growableHeap': ('optimizer/test-growableHeap.js', ['growableHeap']),
     'unsignPointers': ('optimizer/test-unsignPointers.js', ['unsignPointers']),
@@ -2826,7 +2826,7 @@ More info: https://emscripten.org
     lines.append('// EMSCRIPTEN_END_FUNCS\n')
     create_file('huge.js', '\n'.join(lines))
     self.assertGreater(os.path.getsize('huge.js'), 50_000_000)
-    self.run_process([PYTHON, path_from_root('tools/js_optimizer.py'), 'huge.js', 'minifyWhitespace'])
+    self.run_process([PYTHON, path_from_root('tools/js_optimizer.py'), 'huge.js', '--minify-whitespace'])
 
   @parameterized({
     'wasm2js': ('wasm2js', ['minifyNames', 'last']),
@@ -8859,7 +8859,7 @@ int main() {
     stderr = self.expect_fail([EMCC, '-sSTRICT', test_file('other/test_exceptions_c_linker.c')])
     self.assertContained('error: undefined symbol: __cxa_find_matching_catch_1', stderr)
 
-  @with_both_eh_sjlj
+  @with_all_eh_sjlj
   def test_exceptions_stack_trace_and_message(self):
     src = r'''
       #include <stdexcept>
@@ -8935,7 +8935,7 @@ int main() {
     for check in stack_trace_checks:
       self.assertFalse(re.search(check, err), 'Expected regex "%s" to not match on:\n%s' % (check, err))
 
-  @with_both_eh_sjlj
+  @with_all_eh_sjlj
   def test_exceptions_rethrow_stack_trace_and_message(self):
     self.emcc_args += ['-g']
     if '-fwasm-excpeptions' in self.emcc_args:
@@ -9000,7 +9000,7 @@ int main() {
                       expected_output=rethrow_stack_trace_checks, regex=True)
     self.assertNotContained('important_function', err)
 
-  @with_both_eh_sjlj
+  @with_all_eh_sjlj
   def test_exceptions_exit_runtime(self):
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_exceptions_exit_runtime.cpp')
