@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.59 (in development)
 -----------------------
+- Fix the location of the dummy `.worker.js` file that is now generated as part
+  of pthread builds so that is generated alongside the main JavaScript file.
+  See #21701. ()
 
 3.1.58 - 04/23/24
 -----------------
