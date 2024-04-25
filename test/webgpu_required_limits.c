@@ -3,22 +3,48 @@
 #include <stdio.h>
 #include <webgpu/webgpu.h>
 
-int adapter_limit_maxColorAttachmentBytesPerSample = -1;
+WGPUSupportedLimits adapter_supported_limits = {
+  0,
+};
 
-EM_ASYNC_JS(int, get_limit, (), {
-  if (!navigator.gpu) {
-    throw Error("WebGPU not supported.");
-  }
-
-  const adapter = await navigator.gpu.requestAdapter();
-  if (!adapter) {
-    throw Error("Couldn't request WebGPU adapter.");
-  }
-
-  console.log("adapter limits", adapter.limits);
-
-  return adapter.limits.maxColorAttachmentBytesPerSample;
-});
+void assertLimitsCompatible(WGPULimits required_limits,
+                            WGPULimits supported_limits) {
+#define ASSERT_LIMITS_COMPATIBLE(limitName)                                    \
+  assert(required_limits.limitName == supported_limits.limitName)
+  ASSERT_LIMITS_COMPATIBLE(maxTextureDimension1D);
+  ASSERT_LIMITS_COMPATIBLE(maxTextureDimension2D);
+  ASSERT_LIMITS_COMPATIBLE(maxTextureDimension3D);
+  ASSERT_LIMITS_COMPATIBLE(maxTextureArrayLayers);
+  ASSERT_LIMITS_COMPATIBLE(maxBindGroups);
+  ASSERT_LIMITS_COMPATIBLE(maxBindGroupsPlusVertexBuffers);
+  ASSERT_LIMITS_COMPATIBLE(maxBindingsPerBindGroup);
+  ASSERT_LIMITS_COMPATIBLE(maxDynamicUniformBuffersPerPipelineLayout);
+  ASSERT_LIMITS_COMPATIBLE(maxDynamicStorageBuffersPerPipelineLayout);
+  ASSERT_LIMITS_COMPATIBLE(maxSampledTexturesPerShaderStage);
+  ASSERT_LIMITS_COMPATIBLE(maxSamplersPerShaderStage);
+  ASSERT_LIMITS_COMPATIBLE(maxStorageBuffersPerShaderStage);
+  ASSERT_LIMITS_COMPATIBLE(maxStorageTexturesPerShaderStage);
+  ASSERT_LIMITS_COMPATIBLE(maxUniformBuffersPerShaderStage);
+  ASSERT_LIMITS_COMPATIBLE(minUniformBufferOffsetAlignment);
+  ASSERT_LIMITS_COMPATIBLE(minStorageBufferOffsetAlignment);
+  ASSERT_LIMITS_COMPATIBLE(maxUniformBufferBindingSize);
+  ASSERT_LIMITS_COMPATIBLE(maxStorageBufferBindingSize);
+  ASSERT_LIMITS_COMPATIBLE(maxVertexBuffers);
+  ASSERT_LIMITS_COMPATIBLE(maxBufferSize);
+  ASSERT_LIMITS_COMPATIBLE(maxVertexAttributes);
+  ASSERT_LIMITS_COMPATIBLE(maxVertexBufferArrayStride);
+  ASSERT_LIMITS_COMPATIBLE(maxInterStageShaderComponents);
+  ASSERT_LIMITS_COMPATIBLE(maxInterStageShaderVariables);
+  ASSERT_LIMITS_COMPATIBLE(maxColorAttachments);
+  ASSERT_LIMITS_COMPATIBLE(maxColorAttachmentBytesPerSample);
+  ASSERT_LIMITS_COMPATIBLE(maxComputeWorkgroupStorageSize);
+  ASSERT_LIMITS_COMPATIBLE(maxComputeInvocationsPerWorkgroup);
+  ASSERT_LIMITS_COMPATIBLE(maxComputeWorkgroupSizeX);
+  ASSERT_LIMITS_COMPATIBLE(maxComputeWorkgroupSizeY);
+  ASSERT_LIMITS_COMPATIBLE(maxComputeWorkgroupSizeZ);
+  ASSERT_LIMITS_COMPATIBLE(maxComputeWorkgroupsPerDimension);
+#undef assertLimitCompatible
+}
 
 void on_device_request_ended(WGPURequestDeviceStatus status,
                              WGPUDevice device,
@@ -29,15 +55,9 @@ void on_device_request_ended(WGPURequestDeviceStatus status,
   WGPUSupportedLimits device_supported_limits;
   wgpuDeviceGetLimits(device, &device_supported_limits);
 
-  printf("required maxColorAttachmentBytesPerSample=%d\n",
-         adapter_limit_maxColorAttachmentBytesPerSample);
-  printf("supported maxColorAttachmentBytesPerSample=%d\n",
-         device_supported_limits.limits.maxColorAttachmentBytesPerSample);
-
-  // device supported limit MUST be equal or larger than what was requested,
-  // otherwise device acquisition should have failed
-  assert(device_supported_limits.limits.maxColorAttachmentBytesPerSample >=
-         adapter_limit_maxColorAttachmentBytesPerSample);
+  // verify that the obtained device fullfils required limits 
+  assertLimitsCompatible(adapter_supported_limits.limits,
+                         device_supported_limits.limits);
 }
 
 void on_adapter_request_ended(WGPURequestAdapterStatus status,
@@ -51,47 +71,23 @@ void on_adapter_request_ended(WGPURequestAdapterStatus status,
 
   assert(status == WGPURequestAdapterStatus_Success);
 
-  // retrieving limits supported by adapter - currently unsupported!
-  //WGPUSupportedLimits adapter_supported_limits = {0,};
-  //wgpuAdapterGetLimits(adapter, &adapter_supported_limits);
-  //adapter_limit_maxColorAttachmentBytesPerSample = adapter_supported_limits.limits.maxColorAttachmentBytesPerSample;
+  wgpuAdapterGetLimits(adapter, &adapter_supported_limits);
 
-  // use js callout instead
-  adapter_limit_maxColorAttachmentBytesPerSample = get_limit();
-  assert(adapter_limit_maxColorAttachmentBytesPerSample > 0);
-  printf("adapter supports maxColorAttachmentBytesPerSample=%d\n",
-         adapter_limit_maxColorAttachmentBytesPerSample);
-
-  // if max supported limit is the default, we cant check if requesting more
-  // works
-  if (adapter_limit_maxColorAttachmentBytesPerSample == 32) {
-    exit(0);
-  }
-
+  // for device limits, require the limits supported by adapter
   WGPURequiredLimits device_required_limits = {0,};
-  device_required_limits.limits.minStorageBufferOffsetAlignment =
-    256; // irrelevant but needs to be set
-  device_required_limits.limits.minUniformBufferOffsetAlignment =
-    256; // irrelevant but needs to be set
-
-  // requesting adapter supported limit
-  device_required_limits.limits.maxColorAttachmentBytesPerSample =
-    adapter_limit_maxColorAttachmentBytesPerSample;
+  device_required_limits.limits = adapter_supported_limits.limits;
 
   WGPUDeviceDescriptor device_desc = {0,};
   device_desc.requiredFeatureCount = 0;
   device_desc.requiredLimits = &device_required_limits;
-
-  wgpuAdapterRequestDevice(
-    adapter, &device_desc, on_device_request_ended, NULL);
+  wgpuAdapterRequestDevice(adapter, &device_desc, on_device_request_ended, NULL);
 }
 
 int main() {
   const WGPUInstance instance = wgpuCreateInstance(NULL);
 
   WGPURequestAdapterOptions adapter_options = {0,};
-  wgpuInstanceRequestAdapter(
-    instance, &adapter_options, on_adapter_request_ended, NULL);
+  wgpuInstanceRequestAdapter(instance, &adapter_options, on_adapter_request_ended, NULL);
 
   return 0;
 }
