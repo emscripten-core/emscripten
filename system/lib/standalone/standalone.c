@@ -332,8 +332,8 @@ weak char* _emscripten_sanitizer_get_option(const char* name) {
   return strdup("");
 }
 
-weak char* emscripten_get_module_name(char* buf, size_t length) {
-  return strncpy(buf, "<unknown>", length);
+weak void _emscripten_get_progname(char* buf, int length) {
+  strncpy(buf, "<unknown>", length);
 }
 
 weak void _emscripten_runtime_keepalive_clear() {}
