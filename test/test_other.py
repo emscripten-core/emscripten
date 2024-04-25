@@ -10166,21 +10166,44 @@ T6:(else) !ASSERTIONS""", output)
 
   # Tests that a pthreads + modularize build can be run in node js
   @node_pthreads
-  def test_node_js_pthread_module(self):
+  @parameterized({
+    '': (False,),
+    'es6': (True,),
+  })
+  def test_node_js_pthread_module(self, es6):
     # create module loader script
+    if es6:
+      ext = '.mjs'
+      create_file('moduleLoader.mjs', '''
+        import test_module from "./subdir/module.mjs";
+        test_module().then((test_module_instance) => {
+          test_module_instance._main();
+        });
+        ''')
+    else:
+      ext = '.js'
+      create_file('moduleLoader.js', '''
+        const test_module = require("./subdir/module.js");
+        test_module().then((test_module_instance) => {
+          test_module_instance._main();
+        });
+        ''')
     ensure_dir('subdir')
-    create_file('subdir/moduleLoader.js', '''
-const test_module = require("./module");
-test_module().then((test_module_instance) => {
-  test_module_instance._main();
-});
-''')
 
     # build hello_world.c
-    self.run_process([EMCC, test_file('hello_world.c'), '-o', Path('subdir/module.js'), '-pthread', '-sPTHREAD_POOL_SIZE=2', '-sMODULARIZE', '-sEXPORT_NAME=test_module', '-sENVIRONMENT=worker,node'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'subdir/module' + ext, '-pthread', '-sPTHREAD_POOL_SIZE=2', '-sMODULARIZE', '-sEXPORT_NAME=test_module'] + self.get_emcc_args())
 
     # run the module
-    ret = self.run_js('subdir/moduleLoader.js')
+    ret = self.run_js('moduleLoader' + ext)
+    self.assertContained('hello, world!', ret)
+
+    create_file('workerLoader.js', f'''
+      const {{ Worker, isMainThread }} = require('worker_threads');
+      new Worker('./moduleLoader{ext}');
+      ''')
+
+    # run the same module, but inside of a worker
+    ret = self.run_js('workerLoader.js')
     self.assertContained('hello, world!', ret)
 
   @no_windows('node system() does not seem to work, see https://github.com/emscripten-core/emscripten/pull/10547')
