@@ -2061,7 +2061,8 @@ def phase_final_emitting(options, state, target, wasm_target):
 
   target_dir = os.path.dirname(os.path.abspath(target))
   if settings.PTHREADS and not settings.STRICT:
-    write_file(unsuffixed_basename(target) + '.worker.js', '''\
+    worker_file = shared.replace_suffix(target, get_worker_js_suffix())
+    write_file(worker_file, '''\
 // This file is no longer used by emscripten and has been created as a placeholder
 // to allow build systems to transition away from depending on it.
 //
