@@ -57,15 +57,14 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
   # Declare all exports out to global JS scope so that JS library functions can access them in a
   # way that minifies well with Closure
   # e.g. var a,b,c,d,e,f;
-  exports_that_are_not_initializers = [x for x in exports if x not in building.WASM_CALL_CTORS]
-  # In Wasm backend the exports are still unmangled at this point, so mangle the names here
-  exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
+
+  exports = [asmjs_mangle(x) for x in exports if x != building.WASM_CALL_CTORS]
 
   # Decide whether we should generate the global dynCalls dictionary for the dynCall() function?
-  if settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and len([x for x in exports_that_are_not_initializers if x.startswith('dynCall_')]) > 0:
-    exports_that_are_not_initializers += ['dynCalls = {}']
+  if settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and len([x for x in exports if x.startswith('dynCall_')]) > 0:
+    exports += ['dynCalls = {}']
 
-  declares = 'var ' + ',\n '.join(exports_that_are_not_initializers) + ';'
+  declares = 'var ' + ',\n '.join(exports) + ';'
   post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS_DECLARES >>>', declares)
 
   # Generate assignments from all wasm exports out to the JS variables above: e.g. a = wasmExports['a']; b = wasmExports['b'];
