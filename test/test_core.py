@@ -9613,7 +9613,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('wasm2js does not support reference types')
   @no_sanitize('.s files cannot be sanitized')
   def test_externref(self):
-    self.run_process([EMCC, '-c', test_file('core/test_externref.s'), '-o', 'asm.o'] + self.get_emcc_args(compile_only=True))
+    self.run_process([EMCC, '-c', test_file('core/test_externref.s'), '-o', 'asm.o'] + self.get_emcc_args(asm_only=True))
     self.emcc_args += ['--js-library', test_file('core/test_externref.js')]
     self.emcc_args += ['-mreference-types']
     self.do_core_test('test_externref.c', libraries=['asm.o'])
