@@ -881,7 +881,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # emcc warns about stack switching being experimental, and we build with
     # warnings-as-errors, so disable that warning
     self.emcc_args += ['-Wno-experimental']
-    self.set_setting('ASYNCIFY', 2)
+    self.set_setting('JSPI')
     if self.is_wasm2js():
       self.skipTest('JSPI is not currently supported for WASM2JS')
 
