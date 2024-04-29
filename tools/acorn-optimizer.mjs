@@ -2061,8 +2061,8 @@ if (!noPrint) {
 
   let output = terserAst.print_to_string({
     beautify: !minifyWhitespace,
-    indent_level: minifyWhitespace ? 0 : 1,
-    keep_quoted_props: true, // for closure
+    indent_level: minifyWhitespace ? 0 : 2,
+    keep_quoted_props: closureFriendly, // for closure
     wrap_func_args: false, // don't add extra braces
     comments: true, // for closure as well
   });

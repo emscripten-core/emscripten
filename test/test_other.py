@@ -2839,9 +2839,8 @@ More info: https://emscripten.org
     # script calls)
     shutil.copyfile(test_file('optimizer', name + '.js'), name + '.js')
     self.run_process([PYTHON, path_from_root('tools/js_optimizer.py'), name + '.js'] + passes)
-    expected = read_file(test_file('optimizer', name + '-output.js'))
     actual = read_file(name + '.js.jsopt.js')
-    self.assertIdentical(expected, actual)
+    self.assertFileContents(test_file('optimizer', name + '-output.js'), actual)
 
   def test_m_mm(self):
     create_file('foo.c', '#include <emscripten.h>')
