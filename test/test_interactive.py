@@ -247,12 +247,16 @@ class interactive(BrowserCore):
   })
   def test_html5_event_callback_in_two_threads(self, args):
     # TODO: Make this automatic by injecting enter key press in e.g. shell html file.
-    self.btest('html5_event_callback_in_two_threads.c', expected='1', args=args)
+    self.btest_exit('html5_event_callback_in_two_threads.c', args=args)
 
-  # Test that emscripten_hide_mouse() is callable from pthreads (and proxies to main thread to obtain the proper window.devicePixelRatio value).
-  def test_emscripten_hide_mouse(self):
-    for args in [[], ['-pthread']]:
-      self.btest('emscripten_hide_mouse.c', expected='0', args=args)
+  # Test that emscripten_hide_mouse() is callable from pthreads (and proxies to main
+  # thread to obtain the proper window.devicePixelRatio value).
+  @parameterized({
+    '': ([],),
+    'threads': (['-pthread'],),
+  })
+  def test_emscripten_hide_mouse(self, args):
+    self.btest('emscripten_hide_mouse.c', expected='0', args=args)
 
   # Tests that WebGL can be run on another thread after first having run it on one thread (and that thread has exited). The intent of this is to stress graceful deinit semantics, so that it is not possible to "taint" a Canvas
   # to a bad state after a rendering thread in a program quits and restarts. (perhaps e.g. between level loads, or subsystem loads/restarts or something like that)
@@ -283,3 +287,11 @@ class interactive(BrowserCore):
   # Tests that AUDIO_WORKLET+MINIMAL_RUNTIME+MODULARIZE combination works together.
   def test_audio_worklet_modularize(self):
     self.btest('webaudio/audioworklet.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMINIMAL_RUNTIME', '-sMODULARIZE'])
+
+
+class interactive64(interactive):
+  def setUp(self):
+    super().setUp()
+    self.set_setting('MEMORY64')
+    self.emcc_args.append('-Wno-experimental')
+    self.require_wasm64()
