@@ -134,7 +134,7 @@ var LibraryPThread = {
       // pthread_join to them would block forever.
       // pthreads can still choose to set `noExitRuntime` explicitly, or
       // call emscripten_unwind_to_js_event_loop to extend their lifetime beyond
-      // their main function.  See comment in src/worker.js for more.
+      // their main function.  See comment in src/runtime_pthread.js for more.
       noExitRuntime = false;
 #endif
     },
