@@ -807,7 +807,7 @@ def phase_linker_setup(options, state, newargs):
     # 2. If the user doesn't export anything we default to exporting `_main` (unless `--no-entry`
     #    is specified (see above).
     if 'EXPORTED_FUNCTIONS' in user_settings:
-      if '_main' in settings.USER_EXPORTED_FUNCTIONS:
+      if '_main' in settings.USER_EXPORTS:
         settings.EXPORTED_FUNCTIONS.remove('_main')
         settings.EXPORT_IF_DEFINED.append('main')
       else:
@@ -998,7 +998,7 @@ def phase_linker_setup(options, state, newargs):
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1
 
-  if settings.LINKABLE and settings.USER_EXPORTED_FUNCTIONS:
+  if settings.LINKABLE and settings.USER_EXPORTS:
     diagnostics.warning('unused-command-line-argument', 'EXPORTED_FUNCTIONS is not valid with LINKABLE set (normally due to SIDE_MODULE=1/MAIN_MODULE=1) since all functions are exported this mode.  To export only a subset use SIDE_MODULE=2/MAIN_MODULE=2')
 
   if settings.MAIN_MODULE:
