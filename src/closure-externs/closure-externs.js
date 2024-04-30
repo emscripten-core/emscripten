@@ -112,6 +112,16 @@ WebAssembly.Memory.prototype.buffer;
  * @type {number}
  */
 WebAssembly.Table.prototype.length;
+/**
+ * @param {!Function} func
+ * @returns {Function}
+ */
+WebAssembly.promising = function(func) {};
+/**
+ * @constructor
+ * @param {!Function} func
+ */
+WebAssembly.Suspending = function(func) {};
 
 /**
  * @record
