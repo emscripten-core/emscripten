@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
-#define ASSUME_AL_FLOAT32
 #endif
 #include <AL/al.h>
 #include <AL/alc.h>
