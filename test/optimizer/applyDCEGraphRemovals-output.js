@@ -1,42 +1,34 @@
 var name;
 
 var wasmImports = {
- save1: 1,
- save2: 2
+  save1: 1,
+  save2: 2
 };
 
-var expD1 = Module["expD1"] = wasmExports["expD1"];
+var _expD1 = Module["_expD1"] = wasmExports["expD1"];
 
-var expD2 = Module["expD2"] = wasmExports["expD2"];
+var _expD2 = Module["_expD2"] = wasmExports["expD2"];
 
-var expD3 = Module["expD3"] = wasmExports["expD3"];
+var _expD3 = Module["_expD3"] = wasmExports["expD3"];
 
-var expD4;
+var _expD5 = wasmExports["expD5"];
 
-var expD5 = wasmExports["expD5"];
+var _expI1 = Module["_expI1"] = () => (expI1 = Module["_expI1"] = wasmExports["expI1"])();
 
-var expD6;
+var _expI2 = Module["_expI2"] = () => (expI2 = Module["_expI2"] = wasmExports["expI2"])();
 
-var expI1 = Module["expI1"] = () => (expI1 = Module["expI1"] = wasmExports["expI1"])();
+var _expI3 = Module["_expI3"] = () => (expI3 = Module["_expI3"] = wasmExports["expI3"])();
 
-var expI2 = Module["expI2"] = () => (expI2 = Module["expI2"] = wasmExports["expI2"])();
+var _expI5 = () => (_expI5 = wasmExports["expI5"])();
 
-var expI3 = Module["expI3"] = () => (expI3 = Module["expI3"] = wasmExports["expI3"])();
+_expD1;
 
-var expI4;
+Module["_expD2"];
 
-var expI5 = () => (expI5 = wasmExports["expI5"])();
+wasmExports["_expD3"];
 
-var expI6;
+_expI1;
 
-expD1;
+Module["_expI2"];
 
-Module["expD2"];
-
-wasmExports["expD3"];
-
-expI1;
-
-Module["expI2"];
-
-wasmExports["expI3"];
+wasmExports["_expI3"];

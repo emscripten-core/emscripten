@@ -881,7 +881,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # emcc warns about stack switching being experimental, and we build with
     # warnings-as-errors, so disable that warning
     self.emcc_args += ['-Wno-experimental']
-    self.set_setting('ASYNCIFY', 2)
+    self.set_setting('JSPI')
     if self.is_wasm2js():
       self.skipTest('JSPI is not currently supported for WASM2JS')
 
@@ -1109,12 +1109,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   # param @main_file whether this is the main file of the test. some arguments
   #                  (like --pre-js) do not need to be passed when building
   #                  libraries, for example
-  def get_emcc_args(self, main_file=False, compile_only=False):
+  def get_emcc_args(self, main_file=False, compile_only=False, asm_only=False):
     def is_ldflag(f):
       return any(f.startswith(s) for s in ['-sENVIRONMENT=', '--pre-js=', '--post-js='])
 
-    args = self.serialize_settings(compile_only) + self.emcc_args
-    if compile_only:
+    args = self.serialize_settings(compile_only or asm_only) + self.emcc_args
+    if asm_only:
+      args = [a for a in args if not a.startswith('-O')]
+    if compile_only or asm_only:
       args = [a for a in args if not is_ldflag(a)]
     else:
       args += self.ldflags

@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.59 (in development)
 -----------------------
+- Fix the location of the dummy `.worker.js` file that is now generated as part
+  of pthread builds so that is generated alongside the main JavaScript file.
+  See #21701. ()
+- `-sASYNCIFY=2` is setting now deprecated, use `-sJSPI` instead.
 
 3.1.58 - 04/23/24
 -----------------
