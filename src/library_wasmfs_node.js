@@ -188,7 +188,11 @@ addToLibrary({
     try {
       // TODO: Cache open file descriptors to guarantee that opened files will
       // still exist when we try to access them.
+#if MIN_NODE_VERSION < 131300
+      let nread = fs.readSync(fd, new Int8Array(HEAPU8.buffer, buf_p, len), 0, len, pos);
+#else
       let nread = fs.readSync(fd, new Int8Array(HEAPU8.buffer, buf_p, len), { position: pos });
+#endif
       {{{ makeSetValue('nread_p', 0, 'nread', 'i32') }}};
     } catch (e) {
       if (!e.code) throw e;
@@ -202,7 +206,11 @@ addToLibrary({
     try {
       // TODO: Cache open file descriptors to guarantee that opened files will
       // still exist when we try to access them.
+#if MIN_NODE_VERSION < 180300
+      let nwritten = fs.writeSync(fd, new Int8Array(HEAPU8.buffer, buf_p, len), 0, len, pos);
+#else
       let nwritten = fs.writeSync(fd, new Int8Array(HEAPU8.buffer, buf_p, len), { position: pos });
+#endif
       {{{ makeSetValue('nwritten_p', 0, 'nwritten', 'i32') }}};
     } catch (e) {
       if (!e.code) throw e;

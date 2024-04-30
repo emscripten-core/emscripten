@@ -373,6 +373,16 @@ fs.write = function(fd, buffer, offset, length, position, callback) {};
 /**
  * @param {*} fd
  * @param {*} buffer
+ * @param {number=} offset
+ * @param {number=} length
+ * @param {number=} position
+ * @return {number}
+ */
+fs.writeSync = function(fd, buffer, offset, length, position) {};
+
+/**
+ * @param {*} fd
+ * @param {*} buffer
  * @param {Object.<string,number>=} options
  * @return {number}
  */
@@ -387,6 +397,17 @@ fs.writeSync = function(fd, buffer, options) {};
  * @param {function(string, number, *)=} callback
  */
 fs.read = function(fd, buffer, offset, length, position, callback) {};
+
+/**
+ * @param {*} fd
+ * @param {*} buffer
+ * @param {number} offset
+ * @param {number} length
+ * @param {number} position
+ * @return {number}
+ * @nosideeffects
+ */
+fs.readSync = function(fd, buffer, offset, length, position) {};
 
 /**
  * @param {*} fd
