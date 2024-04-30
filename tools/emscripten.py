@@ -295,6 +295,9 @@ def trim_asm_const_body(body):
 def create_global_exports(global_exports):
   lines = []
   for k, v in global_exports.items():
+    if building.is_internal_global(k):
+      continue
+
     v = int(v)
     if settings.RELOCATABLE:
       v += settings.GLOBAL_BASE
