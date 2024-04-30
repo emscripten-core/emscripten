@@ -242,6 +242,7 @@ def get_main_reads_params(module, export_map):
 def get_global_exports(module, exports):
   global_exports = {}
   internal_start_stop_symbols = set(['__start_em_asm', '__stop_em_asm',
+                                     '__start_em_js', '__stop_em_js',
                                      '__start_em_lib_deps', '__stop_em_lib_deps',
                                      '__em_lib_deps'])
   internal_prefixes = ('__em_js__', '__em_lib_deps')
