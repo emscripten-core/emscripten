@@ -230,7 +230,7 @@ def set_memory(static_bump):
 def report_missing_exports_wasm_only(metadata):
   if diagnostics.is_enabled('undefined'):
     defined_symbols = set(asmjs_mangle(e) for e in metadata.all_exports)
-    missing = set(settings.USER_EXPORTED_FUNCTIONS) - defined_symbols
+    missing = set(settings.USER_EXPORTS) - defined_symbols
     for symbol in sorted(missing):
       diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
 
@@ -240,7 +240,7 @@ def report_missing_exports(js_symbols):
     # Report any symbol that was explicitly exported but is present neither
     # as a native function nor as a JS library function.
     defined_symbols = set(asmjs_mangle(e) for e in settings.WASM_EXPORTS).union(js_symbols)
-    missing = set(settings.USER_EXPORTED_FUNCTIONS) - defined_symbols
+    missing = set(settings.USER_EXPORTS) - defined_symbols
     for symbol in sorted(missing):
       diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
 
@@ -600,7 +600,7 @@ def finalize_wasm(infile, outfile, js_syms):
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
 
   if not settings.STANDALONE_WASM and 'main' in metadata.all_exports or '__main_argc_argv' in metadata.all_exports:
-    if 'EXPORTED_FUNCTIONS' in user_settings and '_main' not in settings.USER_EXPORTED_FUNCTIONS:
+    if 'EXPORTED_FUNCTIONS' in user_settings and '_main' not in settings.USER_EXPORTS:
       # If `_main` was unexpectedly exported we assume it was added to
       # EXPORT_IF_DEFINED by `phase_linker_setup` in order that we can detect
       # it and report this warning.  After reporting the warning we explicitly
