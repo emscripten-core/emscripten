@@ -383,14 +383,6 @@ fs.writeSync = function(fd, buffer, offset, length, position) {};
 /**
  * @param {*} fd
  * @param {*} buffer
- * @param {Object.<string,number>=} options
- * @return {number}
- */
-fs.writeSync = function(fd, buffer, options) {};
-
-/**
- * @param {*} fd
- * @param {*} buffer
  * @param {number} offset
  * @param {number} length
  * @param {number} position
@@ -408,15 +400,6 @@ fs.read = function(fd, buffer, offset, length, position, callback) {};
  * @nosideeffects
  */
 fs.readSync = function(fd, buffer, offset, length, position) {};
-
-/**
- * @param {*} fd
- * @param {*} buffer
- * @param {Object.<string,number>=} options
- * @return {number}
- * @nosideeffects
- */
-fs.readSync = function(fd, buffer, options) {};
 
 /**
  * @param {string} filename

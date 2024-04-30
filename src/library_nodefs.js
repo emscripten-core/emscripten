@@ -276,22 +276,14 @@ addToLibrary({
         // Node.js < 6 compatibility: node errors on 0 length reads
         if (length === 0) return 0;
         try {
-#if MIN_NODE_VERSION < 131300
           return fs.readSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position);
-#else
-          return fs.readSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), { position });
-#endif
         } catch (e) {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
       write(stream, buffer, offset, length, position) {
         try {
-#if MIN_NODE_VERSION < 180300
           return fs.writeSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position);
-#else
-          return fs.writeSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), { position });
-#endif
         } catch (e) {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
