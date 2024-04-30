@@ -5822,6 +5822,7 @@ Module = {
     self.set_setting("FORCE_FILESYSTEM")
     self.do_runf('fs/test_fs_js_api.c', 'success')
 
+  @also_with_noderawfs
   def test_fs_write(self):
     if self.get_setting('WASMFS'):
       self.set_setting("FORCE_FILESYSTEM")
