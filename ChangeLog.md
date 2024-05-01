@@ -18,12 +18,19 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.59 (in development)
+3.1.60 (in development)
 -----------------------
+
+3.1.59 - 04/30/24
+-----------------
 - Fix the location of the dummy `.worker.js` file that is now generated as part
   of pthread builds so that is generated alongside the main JavaScript file.
   See #21701. ()
 - `-sASYNCIFY=2` is setting now deprecated, use `-sJSPI` instead.
+- Due to the upstream LLVM change
+  (https://github.com/llvm/llvm-project/pull/80923), multivalue and
+  reference-types features are now enabled by default in Emscripten. This only
+  enables the language features and does not turn on the multivalue ABI.
 
 3.1.58 - 04/23/24
 -----------------
