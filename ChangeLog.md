@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.60 (in development)
 -----------------------
+- The `EXPORTED_FUNCTIONS` list can now include JS library symbols even if they
+  have not been otherwise included (e.g. via `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`).
+  (#21867)
 
 3.1.59 - 04/30/24
 -----------------
