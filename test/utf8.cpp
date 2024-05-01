@@ -10,6 +10,8 @@
 #include <cassert>
 #include <emscripten.h>
 
+EM_JS_DEPS(deps, "$UTF8ToString,$stringToUTF8,$AsciiToString,$stringToAscii");
+
 // This code tests that Unicode std::wstrings can be marshalled between C++ and JS.
 int main() {
   const char latin1String[] = "\x26\xA0\xF7";
@@ -45,9 +47,11 @@ int main() {
     if (numBytesWritten != 69) throw 'stringToUTF8 wrote an invalid length ' + numBytesWritten;
   }, utf8String, utf8String2, 128);
   assert(strlen(utf8String) == strlen(utf8String2));
-  for(int i = 0; i < strlen(utf8String)+1; ++i)
-    if (utf8String[i] != utf8String2[i])
+  for (int i = 0; i < strlen(utf8String)+1; ++i) {
+    if (utf8String[i] != utf8String2[i]) {
       printf("i=%d:%u,%u\n", i, (unsigned int)(unsigned char)utf8String[i], (unsigned int)(unsigned char)utf8String2[i]);
+    }
+  }
   assert(!strcmp(utf8String, utf8String2));
 
   // Test that text gets properly cut off if output buffer is too small.
