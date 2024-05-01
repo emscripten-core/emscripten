@@ -798,6 +798,8 @@ jobs:
           test_targets: "other skip:other.test_native_link_error_message"
   test-browser-chrome:
     executor: bionic
+    environment:
+      EMTEST_LACKS_WEBGPU: "1"
     steps:
       - run-tests-chrome:
           title: "browser"
@@ -807,12 +809,16 @@ jobs:
             "
   test-browser-chrome-wasm64:
     executor: bionic
+    environment:
+      EMTEST_LACKS_WEBGPU: "1"
     steps:
       - run-tests-chrome:
           title: "browser64"
           test_targets: "browser64"
   test-browser-chrome-2gb:
     executor: bionic
+    environment:
+      EMTEST_LACKS_WEBGPU: "1"
     steps:
       - run-tests-chrome:
           title: "browser_2gb"
@@ -820,6 +826,7 @@ jobs:
   test-browser-chrome-wasm64-4gb:
     executor: bionic
     environment:
+      EMTEST_LACKS_WEBGPU: "1"
       EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-chrome:
