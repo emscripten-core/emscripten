@@ -339,16 +339,16 @@ var LibraryWebGPU = {
       return desc;
     },
 
-    fillLimitStruct: (limits, limitsOutPtr) => {
-      var limitsPtr = {{{ C_STRUCTS.WGPUSupportedLimits.limits }}};
+    fillLimitStruct: (limits, supportedLimitsOutPtr) => {
+      var limitsOutPtr = supportedLimitsOutPtr + {{{ C_STRUCTS.WGPUSupportedLimits.limits }}};
 
       function setLimitValueU32(name, limitOffset) {
         var limitValue = limits[name];
-        {{{ makeSetValue('limitsOutPtr', 'limitsPtr + limitOffset', 'limitValue', 'i32') }}};
+        {{{ makeSetValue('limitsOutPtr', 'limitOffset', 'limitValue', 'i32') }}};
       }
       function setLimitValueU64(name, limitOffset) {
         var limitValue = limits[name];
-        {{{ makeSetValue('limitsOutPtr', 'limitsPtr + limitOffset', 'limitValue', 'i64') }}};
+        {{{ makeSetValue('limitsOutPtr', 'limitOffset', 'limitValue', 'i64') }}};
       }
   
       setLimitValueU32('maxTextureDimension1D', {{{ C_STRUCTS.WGPULimits.maxTextureDimension1D }}});

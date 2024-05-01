@@ -89,5 +89,7 @@ int main() {
   WGPURequestAdapterOptions adapter_options = {0,};
   wgpuInstanceRequestAdapter(instance, &adapter_options, on_adapter_request_ended, NULL);
 
-  return 0;
+  // This code is returned when the runtime exits unless something else sets
+  // it, like exit(0).
+  return 99;
 }
