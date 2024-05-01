@@ -8077,19 +8077,18 @@ int main() {}
     self.assertNotContained(error, read_file('a.out.js'))
 
   def test_warn_module_out_err(self):
-    error = 'was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ)'
-
     def test(contents, expected, args=[], assert_returncode=0):  # noqa
       create_file('src.c', r'''
-  #include <emscripten.h>
-  int main() {
-    EM_ASM({ %s });
-    return 0;
-  }
-  ''' % contents)
+        #include <emscripten.h>
+        int main() {
+          EM_ASM({ %s });
+          return 0;
+        }
+        ''' % contents)
       self.do_runf('src.c', expected, emcc_args=args, assert_returncode=assert_returncode)
 
     # error shown (when assertions are on)
+    error = 'was not exported. add it to EXPORTED_RUNTIME_METHODS (see the Emscripten FAQ)'
     test("Module.out('x')", error, assert_returncode=NON_ZERO)
     test("Module['out']('x')", error, assert_returncode=NON_ZERO)
     test("Module.err('x')", error, assert_returncode=NON_ZERO)
