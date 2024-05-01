@@ -350,7 +350,7 @@ var LibraryPThread = {
 #endif
       ];
       for (var handler of knownHandlers) {
-        if (Module.hasOwnProperty(handler)) {
+        if (Module.propertyIsEnumerable(handler)) {
           handlers.push(handler);
         }
       }

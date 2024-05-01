@@ -85,6 +85,11 @@ function missingLibrarySymbol(sym) {
 }
 
 function unexportedRuntimeSymbol(sym) {
+#if PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) {
+    return;
+  }
+#endif
   if (!Object.getOwnPropertyDescriptor(Module, sym)) {
     Object.defineProperty(Module, sym, {
       configurable: true,
