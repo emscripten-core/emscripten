@@ -134,7 +134,7 @@ addToLibrary({
         var fd = process.stdin.fd;
 
         try {
-          bytesRead = fs.readSync(fd, buf);
+          bytesRead = fs.readSync(fd, buf, 0, BUFSIZE);
         } catch(e) {
           // Cross-platform differences: on Windows, reading EOF throws an exception, but on other OSes,
           // reading EOF returns 0. Uniformize behavior by treating the EOF exception to return 0.
