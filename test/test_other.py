@@ -4779,6 +4779,14 @@ int main() {
           for flush in [0, 1]:
             test(cxx, no_exit, assertions, flush)
 
+  def test_extra_opt_levels(self):
+    # Opt levels that we don't tend to test elsewhere
+    for opt in ['-Og', '-Ofast']:
+      print(opt)
+      proc = self.run_process([EMCC, '-v', test_file('hello_world.c'), opt], stderr=PIPE)
+      self.assertContained(opt, proc.stderr)
+      self.assertContained('hello, world!', self.run_js('a.out.js'))
+
   @parameterized({
     '': [[]],
     'O1': [['-O1']],
@@ -8784,6 +8792,7 @@ int main() {
 
   @is_slow_test
   @parameterized({
+    '': ([],),
     '01': (['-O1'],),
     'O2': (['-O2'],),
     'O3': (['-O3'],),
