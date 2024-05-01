@@ -186,6 +186,7 @@ def skipExecIf(cond, message):
 
 
 requires_graphics_hardware = skipExecIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE'), 'This test requires graphics hardware')
+requires_webgpu = unittest.skipIf(os.getenv('EMTEST_LACKS_WEBGPU'), "This test requires WebGPU to be available")
 requires_sound_hardware = skipExecIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), 'This test requires sound hardware')
 requires_offscreen_canvas = skipExecIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'), 'This test requires a browser with OffscreenCanvas')
 
@@ -4518,12 +4519,12 @@ Module["preRun"] = () => {
     'closure_advanced': (['-sASSERTIONS', '--closure=1', '-O3'],),
     'main_module': (['-sMAIN_MODULE=1'],),
   })
-  @requires_graphics_hardware
+  @requires_webgpu
   def test_webgpu_basic_rendering(self, args):
     self.btest_exit('webgpu_basic_rendering.cpp', args=['-sUSE_WEBGPU'] + args)
 
   # TODO(#19645): Extend this test to proxied WebGPU when it's re-enabled.
-  @requires_graphics_hardware
+  @requires_webgpu
   def test_webgpu_basic_rendering_pthreads(self):
     self.btest_exit('webgpu_basic_rendering.cpp', args=['-sUSE_WEBGPU', '-pthread', '-sOFFSCREENCANVAS_SUPPORT'])
 

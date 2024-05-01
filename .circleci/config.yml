@@ -368,6 +368,7 @@ commands:
             # TODO: Do GL testing when https://bugzil.la/1375585 (lack of WebGL
             #       support in headless mode) resolves
             EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
+            EMTEST_LACKS_WEBGPU: "1"
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             # OffscreenCanvas support is not yet done in Firefox.
             EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
