@@ -64,11 +64,6 @@ void on_adapter_request_ended(WGPURequestAdapterStatus status,
                               WGPUAdapter adapter,
                               char const* message,
                               void* userdata) {
-  if (status == WGPURequestAdapterStatus_Unavailable) {
-    printf("WebGPU unavailable; exiting cleanly\n");
-    exit(0);
-  }
-
   assert(status == WGPURequestAdapterStatus_Success);
 
   wgpuAdapterGetLimits(adapter, &adapter_supported_limits);
