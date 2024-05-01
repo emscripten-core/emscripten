@@ -6,8 +6,8 @@ __cxa_rethrow
 __cxa_throw
 __cxa_uncaught_exceptions
 __resumeException
+_abort_js
 _emscripten_memcpy_js
-abort
 emscripten_resize_heap
 environ_get
 environ_sizes_get

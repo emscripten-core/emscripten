@@ -57,15 +57,14 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
   # Declare all exports out to global JS scope so that JS library functions can access them in a
   # way that minifies well with Closure
   # e.g. var a,b,c,d,e,f;
-  exports_that_are_not_initializers = [x for x in exports if x not in building.WASM_CALL_CTORS]
-  # In Wasm backend the exports are still unmangled at this point, so mangle the names here
-  exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
+
+  exports = [asmjs_mangle(x) for x in exports if x != building.WASM_CALL_CTORS]
 
   # Decide whether we should generate the global dynCalls dictionary for the dynCall() function?
-  if settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and len([x for x in exports_that_are_not_initializers if x.startswith('dynCall_')]) > 0:
-    exports_that_are_not_initializers += ['dynCalls = {}']
+  if settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and len([x for x in exports if x.startswith('dynCall_')]) > 0:
+    exports += ['dynCalls = {}']
 
-  declares = 'var ' + ',\n '.join(exports_that_are_not_initializers) + ';'
+  declares = 'var ' + ',\n '.join(exports) + ';'
   post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS_DECLARES >>>', declares)
 
   # Generate assignments from all wasm exports out to the JS variables above: e.g. a = wasmExports['a']; b = wasmExports['b'];
@@ -231,7 +230,7 @@ def set_memory(static_bump):
 def report_missing_exports_wasm_only(metadata):
   if diagnostics.is_enabled('undefined'):
     defined_symbols = set(asmjs_mangle(e) for e in metadata.all_exports)
-    missing = set(settings.USER_EXPORTED_FUNCTIONS) - defined_symbols
+    missing = set(settings.USER_EXPORTS) - defined_symbols
     for symbol in sorted(missing):
       diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
 
@@ -241,7 +240,7 @@ def report_missing_exports(js_symbols):
     # Report any symbol that was explicitly exported but is present neither
     # as a native function nor as a JS library function.
     defined_symbols = set(asmjs_mangle(e) for e in settings.WASM_EXPORTS).union(js_symbols)
-    missing = set(settings.USER_EXPORTED_FUNCTIONS) - defined_symbols
+    missing = set(settings.USER_EXPORTS) - defined_symbols
     for symbol in sorted(missing):
       diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
 
@@ -296,6 +295,9 @@ def trim_asm_const_body(body):
 def create_global_exports(global_exports):
   lines = []
   for k, v in global_exports.items():
+    if building.is_internal_global(k):
+      continue
+
     v = int(v)
     if settings.RELOCATABLE:
       v += settings.GLOBAL_BASE
@@ -598,7 +600,7 @@ def finalize_wasm(infile, outfile, js_syms):
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
 
   if not settings.STANDALONE_WASM and 'main' in metadata.all_exports or '__main_argc_argv' in metadata.all_exports:
-    if 'EXPORTED_FUNCTIONS' in user_settings and '_main' not in settings.USER_EXPORTED_FUNCTIONS:
+    if 'EXPORTED_FUNCTIONS' in user_settings and '_main' not in settings.USER_EXPORTS:
       # If `_main` was unexpectedly exported we assume it was added to
       # EXPORT_IF_DEFINED by `phase_linker_setup` in order that we can detect
       # it and report this warning.  After reporting the warning we explicitly
@@ -623,13 +625,25 @@ def create_tsd_exported_runtime_methods(metadata):
   # Use the TypeScript compiler to generate defintions for all of the runtime
   # exports. The JS from the library any JS docs are included in the file used
   # for generation.
-  js_doc = 'var RuntimeExports = {};'
+  js_doc = 'var RuntimeExports = {};\n'
   for name in settings.EXPORTED_RUNTIME_METHODS:
+    docs = '/** @type {{any}} */'
+    snippet = ''
     if name in metadata.library_definitions:
       definition = metadata.library_definitions[name]
-      js_doc += f'{definition["docs"]}\nRuntimeExports[\'{name}\'] = \n{definition["snippet"]};\n'
-    else:
-      js_doc += f'/** @type {{any}} */RuntimeExports[\'{name}\'];\n'
+      if definition['snippet']:
+        snippet = ' = ' + definition['snippet']
+        # Clear the doc so the type is either computed from the snippet or
+        # defined by the definition below.
+        docs = ''
+      if definition['docs']:
+        docs = definition['docs']
+        # TSC does not generate the correct type if there are jsdocs and nothing
+        # is assigned to the property.
+        if not snippet:
+          snippet = ' = null'
+    js_doc += f'{docs}\nRuntimeExports[\'{name}\']{snippet};\n'
+
   js_doc_file = in_temp('jsdoc.js')
   tsc_output_file = in_temp('jsdoc.d.ts')
   utils.write_file(js_doc_file, js_doc)
@@ -766,17 +780,14 @@ def create_em_js(metadata):
 def add_standard_wasm_imports(send_items_map):
   extra_sent_items = []
 
-  if settings.IMPORTED_MEMORY:
-    memory_import = 'wasmMemory'
-    if settings.MODULARIZE and settings.PTHREADS:
-      # Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
-      # Module scope, so lookup via Module as well.
-      memory_import += " || Module['wasmMemory']"
-    send_items_map['memory'] = memory_import
-
   if settings.SAFE_HEAP:
     extra_sent_items.append('segfault')
     extra_sent_items.append('alignfault')
+
+  # Special case for importing memory and table
+  # TODO(sbc): can we make these into normal library symbols?
+  if settings.IMPORTED_MEMORY:
+    send_items_map['memory'] = 'wasmMemory'
 
   if settings.RELOCATABLE:
     send_items_map['__indirect_function_table'] = 'wasmTable'
@@ -1068,6 +1079,7 @@ def create_pointer_conversion_wrappers(metadata):
     'emscripten_main_runtime_thread_id': 'p',
     '_emscripten_set_offscreencanvas_size_on_thread': '_pp__',
     'fileno': '_p',
+    '_emscripten_run_callback_on_thread': '_pp_pp',
   }
 
   for function in settings.SIGNATURE_CONVERSIONS:

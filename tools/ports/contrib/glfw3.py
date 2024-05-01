@@ -79,7 +79,7 @@ def linker_setup(ports, settings):
 # so that we don't conflict with the builtin GLFW headers that emscripten
 # includes
 def process_args(ports):
-  return ['-isystem', ports.get_include_dir('contrib.glfw3')]
+  return ['-isystem', ports.get_include_dir('contrib.glfw3'), '-DEMSCRIPTEN_USE_PORT_CONTRIB_GLFW3']
 
 
 def handle_options(options, error_handler):

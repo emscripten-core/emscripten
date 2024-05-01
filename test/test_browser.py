@@ -2571,8 +2571,6 @@ Module["preRun"] = () => {
     if self.is_wasm64():
       if '-sMIN_CHROME_VERSION=0' in opts:
         self.skipTest('wasm64 does not support older browsers')
-      if '-sPROXY_TO_PTHREAD' in opts:
-        self.skipTest('_emscripten_set_keypress_callback_on_thread broken under wasm64')
     if '-sHTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0' in opts:
       # In this mode an exception can be thrown by the browser, and we don't
       # want the test to fail in that case so we override the error handling.

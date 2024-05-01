@@ -47,7 +47,7 @@
   "name": "emcc$import$_emscripten_console_log",
   "import": [
    "env",
-   "_emscripten_console_log"
+   "a"
   ],
   "reaches": [
    "emcc$defun$_emscripten_console_log"

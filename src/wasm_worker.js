@@ -23,6 +23,7 @@ if (ENVIRONMENT_IS_NODE) {
     self: global,
     require,
     __filename,
+    __dirname,
     Worker: nodeWorkerThreads.Worker,
     importScripts: (f) => vm.runInThisContext(fs.readFileSync(f, 'utf8'), {filename: f}),
     postMessage: (msg) => parentPort.postMessage(msg),

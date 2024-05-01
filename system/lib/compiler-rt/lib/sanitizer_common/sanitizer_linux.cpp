@@ -1251,7 +1251,7 @@ uptr GetPageSize() {
 #  endif  // !SANITIZER_ANDROID
 
 #  if SANITIZER_EMSCRIPTEN
-extern "C" uptr emscripten_get_module_name(char *buf, uptr buf_len);
+extern "C" void _emscripten_get_progname(char *buf, int buf_len);
 #  endif
 
 uptr ReadBinaryName(/*out*/ char *buf, uptr buf_len) {
@@ -1260,7 +1260,8 @@ uptr ReadBinaryName(/*out*/ char *buf, uptr buf_len) {
   CHECK_NE(default_module_name, NULL);
   return internal_snprintf(buf, buf_len, "%s", default_module_name);
 #  elif SANITIZER_EMSCRIPTEN
-  return emscripten_get_module_name(buf, buf_len);
+  _emscripten_get_progname(buf, buf_len);
+  return internal_strlen(buf);
 #  else
 #    if SANITIZER_FREEBSD || SANITIZER_NETBSD
 #      if SANITIZER_FREEBSD

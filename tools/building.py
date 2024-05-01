@@ -353,11 +353,11 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
   # Keep JS code comments intact through the acorn optimization pass so that
   # JSDoc comments will be carried over to a later Closure run.
   if settings.MAYBE_CLOSURE_COMPILER:
-    cmd += ['--closureFriendly']
+    cmd += ['--closure-friendly']
   if settings.EXPORT_ES6:
-    cmd += ['--exportES6']
+    cmd += ['--export-es6']
   if settings.VERBOSE:
-    cmd += ['verbose']
+    cmd += ['--verbose']
   if return_output:
     return check_call(cmd, stdout=PIPE).stdout
 
@@ -708,7 +708,7 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
   # Don't minify if we are going to run closure compiler afterwards
   minify = settings.MINIFY_WHITESPACE and not settings.MAYBE_CLOSURE_COMPILER
   if minify:
-    passes.append('minifyWhitespace')
+    passes.append('--minify-whitespace')
   if passes:
     logger.debug('running cleanup on shell code: ' + ' '.join(passes))
     js_file = acorn_optimizer(js_file, passes)
@@ -723,7 +723,7 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
       # the js some more.
       passes = ['AJSDCE']
       if minify:
-        passes.append('minifyWhitespace')
+        passes.append('--minify-whitespace')
       logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
       js_file = acorn_optimizer(js_file, passes)
       if settings.MINIFY_WASM_IMPORTS_AND_EXPORTS:
@@ -731,6 +731,15 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
                                                   minify_exports=settings.MINIFY_WASM_EXPORT_NAMES,
                                                   debug_info=debug_info)
   return js_file
+
+
+def is_internal_global(name):
+  internal_start_stop_symbols = set(['__start_em_asm', '__stop_em_asm',
+                                     '__start_em_js', '__stop_em_js',
+                                     '__start_em_lib_deps', '__stop_em_lib_deps',
+                                     '__em_lib_deps'])
+  internal_prefixes = ('__em_js__', '__em_lib_deps')
+  return name in internal_start_stop_symbols or any(name.startswith(p) for p in internal_prefixes)
 
 
 # run binaryen's wasm-metadce to dce both js and wasm
@@ -753,7 +762,7 @@ def metadce(js_file, wasm_file, debug_info):
 
   extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in exports) + ']}'
 
-  txt = acorn_optimizer(js_file, ['emitDCEGraph', 'noPrint'], return_output=True, extra_info=extra_info)
+  txt = acorn_optimizer(js_file, ['emitDCEGraph', '--no-print'], return_output=True, extra_info=extra_info)
   graph = json.loads(txt)
   # ensure that functions expected to be exported to the outside are roots
   required_symbols = user_requested_exports.union(set(settings.SIDE_MODULE_IMPORTS))
@@ -762,6 +771,7 @@ def metadce(js_file, wasm_file, debug_info):
       export = asmjs_mangle(item['export'])
       if settings.EXPORT_ALL or export in required_symbols:
         item['root'] = True
+
   # fix wasi imports TODO: support wasm stable with an option?
   WASI_IMPORTS = {
     'environ_get',
@@ -782,21 +792,20 @@ def metadce(js_file, wasm_file, debug_info):
     'path_open',
   }
   for item in graph:
-    if 'import' in item and item['import'][1][1:] in WASI_IMPORTS:
+    if 'import' in item and item['import'][1] in WASI_IMPORTS:
       item['import'][0] = settings.WASI_MODULE_NAME
-  # fixup wasm backend prefixing
-  for item in graph:
-    if 'import' in item:
-      if item['import'][1][0] == '_':
-        item['import'][1] = item['import'][1][1:]
-  # map import names from wasm to JS, using the actual name the wasm uses for the import
+
+  # map import/export names to native wasm symbols.
   import_name_map = {}
+  export_name_map = {}
   for item in graph:
     if 'import' in item:
       name = item['import'][1]
-      import_name_map[item['name']] = 'emcc$import$' + name
+      import_name_map[item['name']] = name
       if asmjs_mangle(name) in settings.SIDE_MODULE_IMPORTS:
         item['root'] = True
+    elif 'export' in item:
+      export_name_map[item['name']] = item['export']
   temp = temp_files.get('.json', prefix='emcc_dce_graph_').name
   utils.write_file(temp, json.dumps(graph, indent=2))
   # run wasm-metadce
@@ -807,25 +816,36 @@ def metadce(js_file, wasm_file, debug_info):
                              debug=debug_info,
                              stdout=PIPE)
   # find the unused things in js
-  unused = []
+  unused_imports = []
+  unused_exports = []
   PREFIX = 'unused: '
   for line in out.splitlines():
     if line.startswith(PREFIX):
       name = line.replace(PREFIX, '').strip()
+      # With dynamic linking we never want to strip the memory or the table
+      # This can be removed once SIDE_MODULE_IMPORTS includes tables and memories.
+      if settings.MAIN_MODULE and name.split('$')[-1] in ('wasmMemory', 'wasmTable'):
+        continue
       # we only remove imports and exports in applyDCEGraphRemovals
-      if name in import_name_map:
-        name = import_name_map[name]
-        unused.append(name)
+      if name.startswith('emcc$import$'):
+        native_name = import_name_map[name]
+        unused_imports.append(native_name)
       elif name.startswith('emcc$export$'):
-        unused.append(name)
-  if not unused:
+        if settings.DECLARE_ASM_MODULE_EXPORTS:
+          native_name = export_name_map[name]
+          if not is_internal_global(native_name):
+            unused_exports.append(native_name)
+  if not unused_exports and not unused_imports:
     # nothing found to be unused, so we have nothing to remove
     return js_file
   # remove them
   passes = ['applyDCEGraphRemovals']
   if settings.MINIFY_WHITESPACE:
-    passes.append('minifyWhitespace')
-  extra_info = {'unused': unused}
+    passes.append('--minify-whitespace')
+  if DEBUG:
+    logger.debug("unused_imports: %s", str(unused_imports))
+    logger.debug("unused_exports: %s", str(unused_exports))
+  extra_info = {'unusedImports': unused_imports, 'unusedExports': unused_exports}
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
 
@@ -886,7 +906,7 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_in
   # apply them
   passes = ['applyImportAndExportNameChanges']
   if settings.MINIFY_WHITESPACE:
-    passes.append('minifyWhitespace')
+    passes.append('--minify-whitespace')
   extra_info = {'mapping': mapping}
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
@@ -912,7 +932,7 @@ def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, sym
       if symbols_file_js:
         passes += ['symbolMap=%s' % symbols_file_js]
     if settings.MINIFY_WHITESPACE:
-      passes += ['minifyWhitespace']
+      passes += ['--minify-whitespace']
     passes += ['last']
     if passes:
       # hackish fixups to work around wasm2js style and the js optimizer FIXME

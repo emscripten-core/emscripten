@@ -805,16 +805,11 @@ var NODEJS_CATCH_REJECTION = true;
 // Whether to support async operations in the compiled code. This makes it
 // possible to call JS functions from synchronous-looking code in C/C++.
 //
-// - Run binaryen's Asyncify pass to transform the code using asyncify. This
-//   emits a normal wasm file in the end, so it works everywhere, but it has a
-//   significant cost in terms of code size and speed.
+// - 1 (default): Run binaryen's Asyncify pass to transform the code using
+//   asyncify. This emits a normal wasm file in the end, so it works everywhere,
+//   but it has a significant cost in terms of code size and speed.
 //   See https://emscripten.org/docs/porting/asyncify.html
-// - Depend on VM support for the wasm stack switching proposal. This allows
-//   async operations to happen without the overhead of modifying the wasm.
-//   This is experimental atm while spec discussion is ongoing, see
-//   https://github.com/WebAssembly/js-promise-integration/
-//   TODO: document which of the following flags are still relevant in this
-//   mode (e.g. IGNORE_INDIRECT etc. are not needed)
+// - 2 (deprecated): Use ``-sJSPI`` instead.
 //
 // [link]
 var ASYNCIFY = 0;
@@ -932,6 +927,16 @@ var ASYNCIFY_DEBUG = 0;
 // Only supported for ASYNCIFY==2 mode.
 // [link]
 var ASYNCIFY_EXPORTS = [];
+
+// Use VM support for the JavaScript Promise Integration proposal. This allows
+// async operations to happen without the overhead of modifying the wasm. This
+// is experimental atm while spec discussion is ongoing, see
+// https://github.com/WebAssembly/js-promise-integration/ TODO: document which
+// of the following flags are still relevant in this mode (e.g. IGNORE_INDIRECT
+// etc. are not needed)
+//
+// [link]
+var JSPI = 0;
 
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all. You should use

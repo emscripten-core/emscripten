@@ -482,7 +482,7 @@ def setup_pthreads():
 
   default_setting('DEFAULT_PTHREAD_STACK_SIZE', settings.STACK_SIZE)
 
-  # Functions needs to be exported from the module since they are used in worker.js
+  # Functions needs by runtime_pthread.js
   settings.REQUIRED_EXPORTS += [
     '_emscripten_thread_free_data',
     '_emscripten_thread_crashed',
@@ -807,7 +807,7 @@ def phase_linker_setup(options, state, newargs):
     # 2. If the user doesn't export anything we default to exporting `_main` (unless `--no-entry`
     #    is specified (see above).
     if 'EXPORTED_FUNCTIONS' in user_settings:
-      if '_main' in settings.USER_EXPORTED_FUNCTIONS:
+      if '_main' in settings.USER_EXPORTS:
         settings.EXPORTED_FUNCTIONS.remove('_main')
         settings.EXPORT_IF_DEFINED.append('main')
       else:
@@ -998,7 +998,7 @@ def phase_linker_setup(options, state, newargs):
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1
 
-  if settings.LINKABLE and settings.USER_EXPORTED_FUNCTIONS:
+  if settings.LINKABLE and settings.USER_EXPORTS:
     diagnostics.warning('unused-command-line-argument', 'EXPORTED_FUNCTIONS is not valid with LINKABLE set (normally due to SIDE_MODULE=1/MAIN_MODULE=1) since all functions are exported this mode.  To export only a subset use SIDE_MODULE=2/MAIN_MODULE=2')
 
   if settings.MAIN_MODULE:
@@ -2046,7 +2046,7 @@ def create_worker_file(input_file, target_dir, output_file, options):
 
   # Minify the worker JS file, if JS minification is enabled.
   if settings.MINIFY_WHITESPACE:
-    contents = building.acorn_optimizer(output_file, ['minifyWhitespace'], return_output=True)
+    contents = building.acorn_optimizer(output_file, ['--minify-whitespace'], return_output=True)
     write_file(output_file, contents)
 
   tools.line_endings.convert_line_endings_in_file(output_file, os.linesep, options.output_eol)
@@ -2061,7 +2061,8 @@ def phase_final_emitting(options, state, target, wasm_target):
 
   target_dir = os.path.dirname(os.path.abspath(target))
   if settings.PTHREADS and not settings.STRICT:
-    write_file(unsuffixed_basename(target) + '.worker.js', '''\
+    worker_file = shared.replace_suffix(target, get_worker_js_suffix())
+    write_file(worker_file, '''\
 // This file is no longer used by emscripten and has been created as a placeholder
 // to allow build systems to transition away from depending on it.
 //

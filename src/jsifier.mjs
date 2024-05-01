@@ -661,8 +661,8 @@ function(${args}) {
 
       if (EMIT_TSD) {
         LibraryManager.libraryDefinitions[mangled] = {
-          docs: docs || '',
-          snippet,
+          docs: docs ?? null,
+          snippet: snippet ?? null,
         };
       }
 

@@ -89,6 +89,7 @@ typedef int (*em_func_ij)(uint64_t);
 typedef uint64_t (*em_func_ji)(int);
 typedef int (*em_func_ijj)(uint64_t, uint64_t);
 typedef int (*em_func_iij)(int, uint64_t);
+typedef int (*em_func_iijj)(int, uint64_t, uint64_t);
 typedef uint64_t (*em_func_jjj)(uint64_t, uint64_t);
 typedef void (*em_func_vij)(int, uint64_t);
 typedef void (*em_func_viij)(int, int, uint64_t);
@@ -248,6 +249,9 @@ static void _do_call(void* arg) {
 #ifdef __wasm64__
     case EM_FUNC_SIG_IP:
       q->returnValue.i = ((em_func_ij)q->functionPtr)(q->args[0].j);
+      break;
+    case EM_FUNC_SIG_IIPP:
+      q->returnValue.i = ((em_func_iijj)q->functionPtr)(q->args[0].i, q->args[1].j, q->args[2].j);
       break;
     case EM_FUNC_SIG_PI:
       q->returnValue.j = ((em_func_ji)q->functionPtr)(q->args[0].i);

@@ -37,19 +37,19 @@ SAFE_HEAP_LOAD(bar(SAFE_HEAP_LOAD_D(5 * 8, 8, 0)) * 2, 2, 0);
 SAFE_HEAP_STORE_D(x * 4, SAFE_HEAP_LOAD(y * 4, 4, 0), 4);
 
 function SAFE_HEAP_FOO(ptr) {
- return HEAP8[ptr];
+  return HEAP8[ptr];
 }
 
 function setValue_safe(ptr) {
- return HEAP8[ptr];
+  return HEAP8[ptr];
 }
 
 function getValue_safe(ptr) {
- return HEAP8[ptr];
+  return HEAP8[ptr];
 }
 
 function somethingElse() {
- return SAFE_HEAP_LOAD(ptr, 1, 0);
+  return SAFE_HEAP_LOAD(ptr, 1, 0);
 }
 
 HEAP8.length;

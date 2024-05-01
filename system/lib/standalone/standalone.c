@@ -34,8 +34,10 @@
 
 // libc
 
-void abort() {
-  _Exit(1);
+void _abort_js(void) {
+  __builtin_trap();
+  /* Beyond this point should be unreachable. */
+  _Exit(117);
 }
 
 _Static_assert(CLOCK_REALTIME == __WASI_CLOCKID_REALTIME, "must match");
@@ -330,8 +332,8 @@ weak char* _emscripten_sanitizer_get_option(const char* name) {
   return strdup("");
 }
 
-weak char* emscripten_get_module_name(char* buf, size_t length) {
-  return strncpy(buf, "<unknown>", length);
+weak void _emscripten_get_progname(char* buf, int length) {
+  strncpy(buf, "<unknown>", length);
 }
 
 weak void _emscripten_runtime_keepalive_clear() {}
