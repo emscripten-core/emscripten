@@ -43,7 +43,7 @@ void assertLimitsCompatible(WGPULimits required_limits,
   ASSERT_LIMITS_COMPATIBLE(maxComputeWorkgroupSizeY);
   ASSERT_LIMITS_COMPATIBLE(maxComputeWorkgroupSizeZ);
   ASSERT_LIMITS_COMPATIBLE(maxComputeWorkgroupsPerDimension);
-#undef assertLimitCompatible
+#undef ASSERT_LIMITS_COMPATIBLE
 }
 
 void on_device_request_ended(WGPURequestDeviceStatus status,
