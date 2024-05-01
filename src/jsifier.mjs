@@ -172,9 +172,10 @@ export function runJSify(symbolsOnly) {
       symbolsNeeded.push('$' + sym);
     }
   }
-  if (INCLUDE_FULL_LIBRARY) {
-    for (const key of Object.keys(LibraryManager.library)) {
-      if (!isDecorator(key)) {
+
+  for (const key of Object.keys(LibraryManager.library)) {
+    if (!isDecorator(key)) {
+      if (INCLUDE_FULL_LIBRARY || EXPORTED_FUNCTIONS.has(mangleCSymbolName(key))) {
         symbolsNeeded.push(key);
       }
     }

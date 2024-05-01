@@ -743,8 +743,7 @@ var EXCEPTION_CATCHING_ALLOWED = [];
 var DISABLE_EXCEPTION_THROWING = false;
 
 // Make the exception message printing function, 'getExceptionMessage' available
-// in the JS library for use, by adding necessary symbols to EXPORTED_FUNCTIONS
-// and DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.
+// in the JS library for use, by adding necessary symbols to EXPORTED_FUNCTIONS.
 //
 // This works with both Emscripten EH and Wasm EH. When you catch an exception
 // from JS, that gives you a user-thrown value in case of Emscripten EH, and a
@@ -1042,14 +1041,16 @@ var NODERAWFS = false;
 // [link]
 var NODE_CODE_CACHING = false;
 
-// Functions that are explicitly exported. These functions are kept alive
-// through LLVM dead code elimination, and also made accessible outside of the
-// generated code even after running closure compiler (on "Module").  The
+// Symbols that are explicitly exported. These symbols are kept alive through
+// LLVM dead code elimination, and also made accessible outside of the
+// generated code even after running closure compiler (on "Module").  Native
 // symbols listed here require an ``_`` prefix.
 //
 // By default if this setting is not specified on the command line the
 // ``_main`` function will be implicitly exported.  In STANDALONE_WASM mode the
 // default export is ``__start`` (or ``__initialize`` if --no-entry is specified).
+//
+// JS Library symbols can also be added to this list (without the leading `$`).
 // [link]
 var EXPORTED_FUNCTIONS = [];
 
@@ -1074,13 +1075,16 @@ var EXPORT_KEEPALIVE = true;
 var RETAIN_COMPILER_SETTINGS = false;
 
 // JS library elements (C functions implemented in JS) that we include by
-// default. If you want to make sure something is included by the JS compiler,
+// default.  If you want to make sure something is included by the JS compiler,
 // add it here.  For example, if you do not use some ``emscripten_*`` C API call
-// from C, but you want to call it from JS, add it here (and in EXPORTED
-// FUNCTIONS with prefix "_", if you use closure compiler).  Note that the name
-// may be slightly misleading, as this is for any JS library element, and not
-// just functions. For example, you can include the Browser object by adding
-// "$Browser" to this list.
+// from C, but you want to call it from JS, add it here.
+// Note that the name may be slightly misleading, as this is for any JS
+// library element, and not just functions. For example, you can include the
+// Browser object by adding "$Browser" to this list.
+//
+// If you want to both include and export a JS library symbol, it is enough to
+// simply add it to EXPORTED_FUNCTIONS, without also adding it to
+// DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.
 // [link]
 var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [];
 
