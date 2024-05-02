@@ -240,8 +240,8 @@ a C++ object is no longer needed and can be deleted:
         }
     }
 
-Automatic management
---------------------
+Automatic memory management
+---------------------------
 
 JavaScript only gained support for `finalizers`_ in ECMAScript 2021, or ECMA-262
 Edition 12. The new API is called `FinalizationRegistry`_ and it still does not
