@@ -808,7 +808,7 @@ function isSymbolNeeded(symName) {
   if (DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.includes(symName)) {
     return true;
   }
-  if (symName.startsWith('$') && symName.slice(1) in EXPORTED_RUNTIME_METHODS) {
+  if (symName.startsWith('$') && EXPORTED_RUNTIME_METHODS.has(symName.slice(1))) {
     return true;
   }
   return false;
@@ -913,7 +913,7 @@ function hasExportedSymbol(sym) {
 // wasmTable are set. In this case we maybe need to re-export them on the
 // Module object.
 function receivedSymbol(sym) {
-  if (EXPORTED_RUNTIME_METHODS.includes(sym)) {
+  if (EXPORTED_RUNTIME_METHODS.has(sym)) {
     return `Module['${sym}'] = ${sym};`;
   }
   return '';
