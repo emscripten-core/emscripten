@@ -12,21 +12,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-#endif
+#include <assert.h>
 #include <AL/al.h>
 #include <AL/alc.h>
 #include <AL/alext.h>
-
-static int result = EXIT_SUCCESS;
-
-static void end_test() {
-#ifdef __EMSCRIPTEN__
-  REPORT_RESULT(result);
-#endif
-  exit(result);
-}
 
 #define NUM_ALC_EXTENSIONS 2
 static const ALCchar *alc_extensions[NUM_ALC_EXTENSIONS] = {
@@ -45,23 +34,13 @@ static const ALCchar *al_extensions[NUM_AL_EXTENSIONS] = {
 
 static void check_alc_extension(const ALCchar *extension) {
   ALCdevice *device = alcOpenDevice(NULL);
-  if (!device) {
-    fprintf(stderr, "Failed to open default device.");
-    result = EXIT_FAILURE;
-    return;
-  }
 
-  if (alcIsExtensionPresent(device, extension) != ALC_TRUE) {
-    fprintf(stderr, "Extension %s was not present.", extension);
-    result = EXIT_FAILURE;
-  }
+  assert(device);
+  assert(alcIsExtensionPresent(device, extension) == ALC_TRUE);
 }
 
 static void check_al_extension(const ALchar *extension) {
-  if (alIsExtensionPresent(extension) != ALC_TRUE) {
-    fprintf(stderr, "Extension %s was not present.", extension);
-    result = EXIT_FAILURE;
-  }
+  assert(alIsExtensionPresent(extension) == ALC_TRUE);
 }
 
 int main() {
@@ -74,5 +53,5 @@ int main() {
     check_al_extension(al_extensions[i]);
   }
 
-  end_test();
+  return 0;
 }
