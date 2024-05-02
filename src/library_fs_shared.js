@@ -170,6 +170,18 @@ addToLibrary({
     }
     return FS_stdin_getChar_buffer.shift();
   },
+
+  $FS_unlink__deps: ['$FS'],
+  $FS_unlink: 'FS.unlink',
+
+  $FS_createPath__deps: ['$FS'],
+  $FS_createPath: 'FS.createPath',
+
+  $FS_createDevice__deps: ['$FS'],
+  $FS_createDevice: 'FS.createDevice',
+
+  $FS_readFile__deps: ['$FS'],
+  $FS_readFile: 'FS.readFile',
 });
 
 // Normally only the FS things that the compiler sees are needed are included.
