@@ -368,13 +368,11 @@ function addMissingLibraryStubs(unusedLibSymbols) {
 
 // export parts of the JS runtime that the user asked for
 function exportRuntime() {
-  const EXPORTED_RUNTIME_METHODS_SET = new Set(EXPORTED_RUNTIME_METHODS);
-
   // optionally export something.
   function maybeExport(name) {
     // If requested to be exported, export it.  HEAP objects are exported
     // separately in updateMemoryViews
-    if (EXPORTED_RUNTIME_METHODS_SET.has(name) && !name.startsWith('HEAP')) {
+    if (EXPORTED_RUNTIME_METHODS.has(name) && !name.startsWith('HEAP')) {
       return `Module['${name}'] = ${name};`;
     }
   }
@@ -449,7 +447,7 @@ function exportRuntime() {
   // dynCall_* methods are not hardcoded here, as they
   // depend on the file being compiled. check for them
   // and add them.
-  for (const name of EXPORTED_RUNTIME_METHODS_SET) {
+  for (const name of EXPORTED_RUNTIME_METHODS) {
     if (/^dynCall_/.test(name)) {
       // a specific dynCall; add to the list
       runtimeElements.push(name);
@@ -472,7 +470,7 @@ function exportRuntime() {
 
   // check all exported things exist, warn about typos
   runtimeElementsSet = new Set(runtimeElements);
-  for (const name of EXPORTED_RUNTIME_METHODS_SET) {
+  for (const name of EXPORTED_RUNTIME_METHODS) {
     if (!runtimeElementsSet.has(name)) {
       warn(`invalid item in EXPORTED_RUNTIME_METHODS: ${name}`);
     }
@@ -491,7 +489,7 @@ function exportRuntime() {
 
     const unexported = [];
     for (const name of runtimeElements) {
-      if (!EXPORTED_RUNTIME_METHODS_SET.has(name) && !unusedLibSymbols.has(name)) {
+      if (!EXPORTED_RUNTIME_METHODS.has(name) && !unusedLibSymbols.has(name)) {
         unexported.push(name);
       }
     }
