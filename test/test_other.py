@@ -13365,7 +13365,7 @@ Module.postRun = () => {{
 
   @parameterized({
     '': ([],),
-    'O2': (['-O2'],),
+    'O3': (['-O3'],),
   })
   @crossplatform
   def test_es5_transpile(self, args):
@@ -13478,6 +13478,9 @@ myMethod: 43
     self.set_setting('LEGACY_VM_SUPPORT')
     self.do_runf('test.c', expected, output_basename='test_old')
     check_for_es6('test_old.js', False)
+    if '-O3' in args:
+      # Verify that output is minified
+      self.assertEqual(len(read_file('test_old.js').splitlines()), 1)
 
     # If we add `-sPOLYFILL=0` that transpiler is not run at all
     print('with old browser + -sPOLYFILL=0')
