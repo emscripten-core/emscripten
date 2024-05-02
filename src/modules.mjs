@@ -370,31 +370,12 @@ function addMissingLibraryStubs(unusedLibSymbols) {
 function exportRuntime() {
   const EXPORTED_RUNTIME_METHODS_SET = new Set(EXPORTED_RUNTIME_METHODS);
 
-  const legacyRuntimeElements = new Map([
-    ['print', 'out'],
-    ['printErr', 'err'],
-  ]);
-
   // optionally export something.
-  // in ASSERTIONS mode we show a useful error if it is used without
-  // being exported. how we show the message depends on whether it's
-  // a function (almost all of them) or a number.
   function maybeExport(name) {
-    // HEAP objects are exported separately in updateMemoryViews
-    if (name.startsWith('HEAP')) {
-      return;
-    }
-    // if requested to be exported, export it
-    if (EXPORTED_RUNTIME_METHODS_SET.has(name)) {
-      let exported = name;
-      // the exported name may differ from the internal name
-      if (exported.startsWith('FS_')) {
-        // this is a filesystem value, FS.x exported as FS_x
-        exported = 'FS.' + exported.substr(3);
-      } else if (legacyRuntimeElements.has(exported)) {
-        exported = legacyRuntimeElements.get(exported);
-      }
-      return `Module['${name}'] = ${exported};`;
+    // If requested to be exported, export it.  HEAP objects are exported
+    // separately in updateMemoryViews
+    if (EXPORTED_RUNTIME_METHODS_SET.has(name) && !name.startsWith('HEAP')) {
+      return `Module['${name}'] = ${name};`;
     }
   }
 
@@ -408,12 +389,6 @@ function exportRuntime() {
     'addOnPostRun',
     'addRunDependency',
     'removeRunDependency',
-    'FS_createFolder',
-    'FS_createPath',
-    'FS_createLazyFile',
-    'FS_createLink',
-    'FS_createDevice',
-    'FS_readFile',
     'out',
     'err',
     'callMain',
@@ -481,16 +456,6 @@ function exportRuntime() {
     }
   }
 
-  // Only export legacy runtime elements when explicitly
-  // requested.
-  for (const name of EXPORTED_RUNTIME_METHODS_SET) {
-    if (legacyRuntimeElements.has(name)) {
-      const newName = legacyRuntimeElements.get(name);
-      warn(`deprecated item in EXPORTED_RUNTIME_METHODS: ${name} use ${newName} instead.`);
-      runtimeElements.push(name);
-    }
-  }
-
   // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
   // '$ which indicates they are JS methods.
   let runtimeElementsSet = new Set(runtimeElements);
@@ -517,6 +482,8 @@ function exportRuntime() {
   const results = exports.filter((name) => name);
 
   if (ASSERTIONS && !EXPORT_ALL) {
+    // in ASSERTIONS mode we show a useful error if it is used without being
+    // exported.  See `unexportedRuntimeSymbol` in runtime_debug.js.
     const unusedLibSymbols = getUnusedLibrarySymbols();
     if (unusedLibSymbols.size) {
       results.push(addMissingLibraryStubs(unusedLibSymbols));

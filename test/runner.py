@@ -366,29 +366,29 @@ def run_tests(options, suites):
 
 def parse_args(args):
   parser = argparse.ArgumentParser(prog='runner.py', description=__doc__)
-  parser.add_argument('--save-dir', action='store_true', default=None,
+  parser.add_argument('--save-dir', action='store_true',
                       help='Save the temporary directory used during for each '
                            'test.  Implies --cores=1.  Defaults to true when running a single test')
   parser.add_argument('--no-clean', action='store_true',
                       help='Do not clean the temporary directory before each test run')
-  parser.add_argument('--verbose', '-v', action='store_true', default=None)
-  parser.add_argument('--all-engines', action='store_true', default=None)
-  parser.add_argument('--detect-leaks', action='store_true', default=None)
+  parser.add_argument('--verbose', '-v', action='store_true')
+  parser.add_argument('--all-engines', action='store_true')
+  parser.add_argument('--detect-leaks', action='store_true')
   parser.add_argument('--skip-slow', action='store_true', help='Skip tests marked as slow')
   parser.add_argument('--cores', '-j',
                       help='Set the number tests to run in parallel.  Defaults '
                            'to the number of CPU cores.', default=None)
-  parser.add_argument('--rebaseline', action='store_true', default=None,
+  parser.add_argument('--rebaseline', action='store_true',
                       help='Automatically update test expectations for tests that support it.')
   parser.add_argument('--browser',
                       help='Command to launch web browser in which to run browser tests.')
   parser.add_argument('tests', nargs='*')
-  parser.add_argument('--failfast', action='store_const', const=True, default=False)
+  parser.add_argument('--failfast', action='store_true')
   parser.add_argument('--start-at', metavar='NAME', help='Skip all tests up until <NAME>')
   parser.add_argument('--continue', dest='_continue', action='store_true',
                       help='Resume from the last run test.'
                            'Useful when combined with --failfast')
-  parser.add_argument('--force64', action='store_const', const=True, default=None)
+  parser.add_argument('--force64', action='store_true')
   parser.add_argument('--crossplatform-only', action='store_true')
   parser.add_argument('--repeat', type=int, default=1,
                       help='Repeat each test N times (default: 1).')
