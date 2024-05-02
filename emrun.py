@@ -1569,14 +1569,13 @@ def parse_args(args):
 
   # Support legacy argument names with `_` in them (but don't
   # advertize these in the --help message.
-  newargs = []
-  for a in args:
+  for i, a in enumerate(args):
+    if a == '--':
+      break
     if a.startswith('--') and '_' in a:
-      newargs.append(a.replace('_', '-'))
-    else:
-      newargs.append(a)
+      args[i] = a.replace('_', '-')
 
-  return parser.parse_args(newargs)
+  return parser.parse_args(args)
 
 
 def run(args):
