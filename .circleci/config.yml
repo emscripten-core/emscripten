@@ -368,6 +368,7 @@ commands:
             # TODO: Do GL testing when https://bugzil.la/1375585 (lack of WebGL
             #       support in headless mode) resolves
             EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
+            EMTEST_LACKS_WEBGPU: "1"
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             # OffscreenCanvas support is not yet done in Firefox.
             EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
@@ -797,6 +798,8 @@ jobs:
           test_targets: "other skip:other.test_native_link_error_message"
   test-browser-chrome:
     executor: bionic
+    environment:
+      EMTEST_LACKS_WEBGPU: "1"
     steps:
       - run-tests-chrome:
           title: "browser"
@@ -806,12 +809,16 @@ jobs:
             "
   test-browser-chrome-wasm64:
     executor: bionic
+    environment:
+      EMTEST_LACKS_WEBGPU: "1"
     steps:
       - run-tests-chrome:
           title: "browser64"
           test_targets: "browser64"
   test-browser-chrome-2gb:
     executor: bionic
+    environment:
+      EMTEST_LACKS_WEBGPU: "1"
     steps:
       - run-tests-chrome:
           title: "browser_2gb"
@@ -819,6 +826,7 @@ jobs:
   test-browser-chrome-wasm64-4gb:
     executor: bionic
     environment:
+      EMTEST_LACKS_WEBGPU: "1"
       EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-chrome:
