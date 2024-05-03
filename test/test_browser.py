@@ -2297,6 +2297,9 @@ void *getBindBuffer() {
   def test_openal_capture_sanity(self):
     self.btest('openal_capture_sanity.c', expected='0')
 
+  def test_openal_extensions(self):
+    self.btest_exit('openal_extensions.c')
+
   def test_runtimelink(self):
     create_file('header.h', r'''
       struct point {
