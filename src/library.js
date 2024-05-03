@@ -3125,11 +3125,11 @@ addToLibrary({
 #endif
       onload(new Uint8Array(arrayBuffer));
       if (dep) removeRunDependency(dep);
-    }, (event) => {
+    }, (err) => {
       if (onerror) {
-        onerror();
+        onerror(err);
       } else {
-        throw `Loading data file "${url}" failed.`;
+        throw err;
       }
     });
     if (dep) addRunDependency(dep);
