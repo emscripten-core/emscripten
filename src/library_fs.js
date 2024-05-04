@@ -1863,4 +1863,7 @@ FS.staticInit();` +
    */`,
   $FS_mkdirTree__deps: ['$FS'],
   $FS_mkdirTree: (path, mode) => FS.mkdirTree(path, mode),
+
+  $FS_createLazyFile__deps: ['$FS'],
+  $FS_createLazyFile: 'FS.createLazyFile',
 });

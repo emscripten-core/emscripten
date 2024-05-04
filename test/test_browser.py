@@ -186,6 +186,7 @@ def skipExecIf(cond, message):
 
 
 requires_graphics_hardware = skipExecIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE'), 'This test requires graphics hardware')
+requires_webgpu = unittest.skipIf(os.getenv('EMTEST_LACKS_WEBGPU'), "This test requires WebGPU to be available")
 requires_sound_hardware = skipExecIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), 'This test requires sound hardware')
 requires_offscreen_canvas = skipExecIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'), 'This test requires a browser with OffscreenCanvas')
 
@@ -2296,6 +2297,9 @@ void *getBindBuffer() {
   def test_openal_capture_sanity(self):
     self.btest('openal_capture_sanity.c', expected='0')
 
+  def test_openal_extensions(self):
+    self.btest_exit('openal_extensions.c')
+
   def test_runtimelink(self):
     create_file('header.h', r'''
       struct point {
@@ -2571,8 +2575,6 @@ Module["preRun"] = () => {
     if self.is_wasm64():
       if '-sMIN_CHROME_VERSION=0' in opts:
         self.skipTest('wasm64 does not support older browsers')
-      if '-sPROXY_TO_PTHREAD' in opts:
-        self.skipTest('_emscripten_set_keypress_callback_on_thread broken under wasm64')
     if '-sHTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0' in opts:
       # In this mode an exception can be thrown by the browser, and we don't
       # want the test to fail in that case so we override the error handling.
@@ -4520,12 +4522,16 @@ Module["preRun"] = () => {
     'closure_advanced': (['-sASSERTIONS', '--closure=1', '-O3'],),
     'main_module': (['-sMAIN_MODULE=1'],),
   })
-  @requires_graphics_hardware
+  @requires_webgpu
   def test_webgpu_basic_rendering(self, args):
     self.btest_exit('webgpu_basic_rendering.cpp', args=['-sUSE_WEBGPU'] + args)
 
+  @requires_webgpu
+  def test_webgpu_required_limits(self):
+    self.btest_exit('webgpu_required_limits.c', args=['-sUSE_WEBGPU', '-sASYNCIFY'])
+
   # TODO(#19645): Extend this test to proxied WebGPU when it's re-enabled.
-  @requires_graphics_hardware
+  @requires_webgpu
   def test_webgpu_basic_rendering_pthreads(self):
     self.btest_exit('webgpu_basic_rendering.cpp', args=['-sUSE_WEBGPU', '-pthread', '-sOFFSCREENCANVAS_SUPPORT'])
 
@@ -5591,7 +5597,7 @@ class emrun(RunnerCore):
         args_base + ['--private_browsing', '--port', '6941'],
         args_base + ['--dump_out_directory', 'other dir/multiple', '--port', '6942']
     ]:
-      args += [self.in_dir('hello_world.html'), '--', '1', '2', '--3', 'escaped space']
+      args += [self.in_dir('hello_world.html'), '--', '1', '2', '--3', 'escaped space', 'with_underscore']
       print(shared.shlex_join(args))
       proc = self.run_process(args, check=False)
       self.assertEqual(proc.returncode, 100)
@@ -5604,6 +5610,7 @@ class emrun(RunnerCore):
       self.assertContained('argc: 5', stdout)
       self.assertContained('argv[3]: --3', stdout)
       self.assertContained('argv[4]: escaped space', stdout)
+      self.assertContained('argv[5]: with_underscore', stdout)
       self.assertContained('hello, world!', stdout)
       self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
       self.assertContained('Testing char sequences: %20%21 &auml;', stdout)

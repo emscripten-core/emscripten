@@ -34,7 +34,7 @@ void ListOfModules::init() {
   modules_.Initialize(2);
 
   char name[256];
-  emscripten_get_module_name(name, 256);
+  _emscripten_get_progname(name, 256);
 
   LoadedModule main_module;
   main_module.set(name, 0);

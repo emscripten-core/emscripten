@@ -125,8 +125,8 @@ var EMIT_NAME_SECTION = false;
 // Whether we are emitting a symbol map.
 var EMIT_SYMBOL_MAP = false;
 
-// List of function explicitly exported by user on the command line.
-var USER_EXPORTED_FUNCTIONS = [];
+// List of symbols explicitly exported by user on the command line.
+var USER_EXPORTS = [];
 
 // name of the file containing wasm binary, if relevant
 var WASM_BINARY_FILE = '';

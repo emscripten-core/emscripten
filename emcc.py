@@ -292,11 +292,14 @@ def apply_user_settings():
 
     if key == 'EXPORTED_FUNCTIONS':
       # used for warnings in emscripten.py
-      settings.USER_EXPORTED_FUNCTIONS = settings.EXPORTED_FUNCTIONS.copy()
+      settings.USER_EXPORTS = settings.EXPORTED_FUNCTIONS.copy()
 
     # TODO(sbc): Remove this legacy way.
     if key == 'WASM_OBJECT_FILES':
       settings.LTO = 0 if value else 'full'
+
+    if key == 'JSPI':
+      settings.ASYNCIFY = 2
 
 
 def cxx_to_c_compiler(cxx):

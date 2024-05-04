@@ -2466,15 +2466,6 @@ addToLibrary({
     else return lengthBytesUTF8(str);
   },
 
-  emscripten_get_module_name__deps: ['$stringToUTF8'],
-  emscripten_get_module_name: (buf, length) => {
-#if MINIMAL_RUNTIME
-    return stringToUTF8('{{{ TARGET_BASENAME }}}.wasm', buf, length);
-#else
-    return stringToUTF8(wasmBinaryFile, buf, length);
-#endif
-  },
-
 #if USE_ASAN || USE_LSAN || UBSAN_RUNTIME
   // When lsan or asan is enabled withBuiltinMalloc temporarily replaces calls
   // to malloc, free, and memalign.
@@ -2953,17 +2944,9 @@ addToLibrary({
 
   // Use program_invocation_short_name and program_invocation_name in compiled
   // programs. This function is for implementing them.
-#if !MINIMAL_RUNTIME
-  _emscripten_get_progname__deps: ['$stringToUTF8'],
-#endif
+  _emscripten_get_progname__deps: ['$getExecutableName', '$stringToUTF8'],
   _emscripten_get_progname: (str, len) => {
-#if !MINIMAL_RUNTIME
-#if ASSERTIONS
-    assert(typeof str == 'number');
-    assert(typeof len == 'number');
-#endif
-    stringToUTF8(thisProgram, str, len);
-#endif
+    stringToUTF8(getExecutableName(), str, len);
   },
 
   emscripten_console_log: (str) => {

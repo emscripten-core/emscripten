@@ -642,7 +642,6 @@ sigs = {
   emscripten_get_gamepad_status__sig: 'iip',
   emscripten_get_heap_max__sig: 'p',
   emscripten_get_main_loop_timing__sig: 'vpp',
-  emscripten_get_module_name__sig: 'ppp',
   emscripten_get_mouse_status__sig: 'ip',
   emscripten_get_now__sig: 'd',
   emscripten_get_now_res__sig: 'd',

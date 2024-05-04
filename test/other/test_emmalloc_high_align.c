@@ -16,6 +16,8 @@ int main() {
   // MB). This is similar to what mimalloc does in practice.
   void* before = sbrk(0);
   void* p = aligned_alloc(ALIGN, SIZE);
+  // aligned_alloc returns NULL on error; validate we actually allocated.
+  assert(p);
   void* after = sbrk(0);
   emscripten_console_logf("before: %p  after: %p  p: %p\n", before, after, p);
 

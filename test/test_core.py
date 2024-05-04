@@ -5670,17 +5670,14 @@ Module = {
     self.do_core_test('test_utf.c')
 
   def test_utf32(self):
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF32ToString', 'stringToUTF32', 'lengthBytesUTF32'])
     self.do_runf('utf32.cpp', 'OK.')
     self.do_runf('utf32.cpp', 'OK.', args=['-fshort-wchar'])
 
   @crossplatform
   def test_utf16(self):
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF16ToString', 'stringToUTF16'])
     self.do_runf('core/test_utf16.cpp', 'OK.')
 
   def test_utf8(self):
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii'])
     self.do_runf('utf8.cpp', 'OK.')
 
   @also_with_wasm_bigint
@@ -5689,26 +5686,25 @@ Module = {
     self.do_runf('benchmark/benchmark_utf8.c', 'OK.')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
-  def test_utf8_invalid(self):
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
-    for decoder_mode in [[], ['-sTEXTDECODER']]:
-      self.emcc_args += decoder_mode
-      print(str(decoder_mode))
-      self.do_runf('utf8_invalid.cpp', 'OK.')
+  @parameterized({
+    '': [[]],
+    'textdecoder': [['-sTEXTDECODER']],
+  })
+  def test_utf8_invalid(self, args):
+    self.do_runf('utf8_invalid.cpp', 'OK.', emcc_args=args)
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
   @no_asan('TODO: ASan support in minimal runtime')
-  def test_minimal_runtime_utf8_invalid(self):
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
+  @parameterized({
+    '': [[]],
+    'textdecoder': [['-sTEXTDECODER']],
+  })
+  def test_minimal_runtime_utf8_invalid(self, args):
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    for decoder_mode in [0, 1]:
-      self.set_setting('TEXTDECODER', decoder_mode)
-      print(str(decoder_mode))
-      self.do_runf('utf8_invalid.cpp', 'OK.')
+    self.do_runf('utf8_invalid.cpp', 'OK.', emcc_args=args)
 
   def test_utf16_textdecoder(self):
-    self.set_setting('EXPORTED_RUNTIME_METHODS', ['UTF16ToString', 'stringToUTF16', 'lengthBytesUTF16'])
     self.emcc_args += ['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt']
     self.do_runf('benchmark/benchmark_utf16.cpp', 'OK.')
 
@@ -5822,6 +5818,7 @@ Module = {
     self.set_setting("FORCE_FILESYSTEM")
     self.do_runf('fs/test_fs_js_api.c', 'success')
 
+  @also_with_noderawfs
   def test_fs_write(self):
     if self.get_setting('WASMFS'):
       self.set_setting("FORCE_FILESYSTEM")
@@ -9613,7 +9610,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('wasm2js does not support reference types')
   @no_sanitize('.s files cannot be sanitized')
   def test_externref(self):
-    self.run_process([EMCC, '-c', test_file('core/test_externref.s'), '-o', 'asm.o'] + self.get_emcc_args(compile_only=True))
+    self.run_process([EMCC, '-c', test_file('core/test_externref.s'), '-o', 'asm.o'] + self.get_emcc_args(asm_only=True))
     self.emcc_args += ['--js-library', test_file('core/test_externref.js')]
     self.emcc_args += ['-mreference-types']
     self.do_core_test('test_externref.c', libraries=['asm.o'])

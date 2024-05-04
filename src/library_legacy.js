@@ -126,7 +126,11 @@ legacyFuncs = {
     var js = jsStackTrace();
     if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();
     return js;
-  }
+  },
+
+  // Legacy names for runtime `out`/`err` symbols.
+  $print: 'out',
+  $printErr: 'err',
 };
 
 if (WARN_DEPRECATED && !INCLUDE_FULL_LIBRARY) {
