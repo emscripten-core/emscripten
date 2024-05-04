@@ -29,15 +29,52 @@ void setup() {
     FS.symlink('../test/../there!', 'link');
     FS.writeFile('file', 'test');
     FS.mkdir('folder');
+
+    FS.mkdir('folder/subfolder');
+    FS.writeFile('folder/subfolder/file', 'subfolder');
+
+    FS.mkdir('relative');
+    FS.writeFile('relative/file', 'relative');
+    FS.mkdir('relative/subrelative');
+    FS.writeFile('relative/subrelative/file', 'subrelative');
+
+    FS.mkdir('absolute');
+    FS.writeFile('absolute/file', 'absolute');
+    FS.mkdir('absolute/subabsolute');
+    FS.writeFile('absolute/subabsolute/file', 'subabsolute');
   );
 #else
+  int fd;
   mkdir("working", 0777);
   chdir("working");
   symlink("../test/../there!", "link");
-  int fd = open("file", O_RDWR);
+  fd = open("file", O_RDWR);
   write(fd, "test", 5);
   close(fd);
   mkdir("folder", 0777);
+
+  mkdir("folder/subfolder", 0777);
+  fd = open("folder/subfolder/file", O_RDWR);
+  write(fd, "subfolder", 10);
+  close(fd);
+
+  mkdir("relative", 0777);
+  fd = open("relative/file", O_RDWR);
+  write(fd, "relative", 10);
+  close(fd);
+  mkdir("relative/subrelative", 0777);
+  fd = open("relative/subrelative/file", O_RDWR);
+  write(fd, "subrelative", 10);
+  close(fd);
+
+  mkdir("absolute", 0777);
+  fd = open("absolute/file", O_RDWR);
+  write(fd, "absolute", 10);
+  close(fd);
+  mkdir("absolute/subabsolute", 0777);
+  fd = open("absolute/subabsolute/file", O_RDWR);
+  write(fd, "subabsolute", 10);
+  close(fd);
 #endif
 }
 
@@ -115,6 +152,44 @@ int main() {
   assert(ret == -1);
   assert(errno == ELOOP);
   errno = 0;
+
+
+  char* links[] = {
+    "../relative/file",
+    "../../relative/subrelative/file",
+    "./folder/subfolder/file",
+    "/working/absolute/file",
+    "/working/absolute/subabsolute/file",
+    "/working/folder/subfolder/file"
+  };
+
+  char* paths[] = {
+    "./folder/relative",
+    "./folder/subfolder/subrelative",
+    "./subfolderrelative",
+    "/working/folder/absolute",
+    "/working/folder/subfolder/subabsolute",
+    "/working/subfolderabsolute"
+    };
+
+  int pathLengths[] = {22, 34, 30, 22, 34, 30};
+  int targetLengths[] = {8, 11, 9, 8, 11, 9};
+
+  char *path, *target;
+  FILE *fd;
+
+  for (int i = 0; i < sizeof paths / sizeof paths[0]; i++) {
+    path = malloc(pathLengths[i]);
+    target = malloc(targetLengths[i]);
+
+    symlink(links[i], paths[i]);
+    readlink(paths[i], path, pathLengths[i]);
+    fd = fopen(path, "r");
+    fread(target, 1, targetLengths[i], fd);
+    printf("\nsymlink/%s\n", target);
+    fclose(fd);
+    free(target);
+  }
 
   return 0;
 }

@@ -16,3 +16,15 @@ symlink/normal
 readlink(created link)
 
 readlink(short buffer)
+
+symlink/relative
+
+symlink/subrelative
+
+symlink/subfolder
+
+symlink/absolute
+
+symlink/subabsolute
+
+symlink/subfolder
