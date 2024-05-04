@@ -1014,8 +1014,8 @@ FS.staticInit();` +
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       }
       flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
-      mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
       if ((flags & {{{ cDefs.O_CREAT }}})) {
+        mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
         mode = (mode & {{{ cDefs.S_IALLUGO }}}) | {{{ cDefs.S_IFREG }}};
       } else {
         mode = 0;
