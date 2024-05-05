@@ -57,7 +57,6 @@ void setup() {
   write(fd, "test", 5);
   close(fd);
   mkdir("folder", 0777);
-
   mkdir("folder/subfolder", 0777);
   fd = open("folder/subfolder/file", O_RDWR);
   write(fd, "subfolder", 10);
@@ -71,6 +70,9 @@ void setup() {
   fd = open("relative/subrelative/file", O_RDWR);
   write(fd, "subrelative", 10);
   close(fd);
+  symlink("../relative/file", "./folder/relative");
+  symlink("../../relative/subrelative/file", "./folder/subfolder/subrelative");
+  symlink("./folder/subfolder/file", "./subfolderrelative");
 
   mkdir("absolute", 0777);
   fd = open("absolute/file", O_RDWR);
@@ -80,6 +82,9 @@ void setup() {
   fd = open("absolute/subabsolute/file", O_RDWR);
   write(fd, "subabsolute", 10);
   close(fd);
+  symlink(realpath("absolute/file", NULL), "./folder/absolute");
+  symlink(realpath("absolute/subabsolute/file", NULL), "./folder/subfolder/subabsolute");
+  symlink(realpath("folder/subfolder/file", NULL), "./subfolderabsolute");
 #endif
 }
 
