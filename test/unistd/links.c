@@ -29,7 +29,6 @@ void setup() {
     FS.symlink('../test/../there!', 'link');
     FS.writeFile('file', 'test');
     FS.mkdir('folder');
-
     FS.mkdir('folder/subfolder');
     FS.writeFile('folder/subfolder/file', 'subfolder');
 
@@ -37,11 +36,17 @@ void setup() {
     FS.writeFile('relative/file', 'relative');
     FS.mkdir('relative/subrelative');
     FS.writeFile('relative/subrelative/file', 'subrelative');
+    FS.symlink("../relative/file", "./folder/relative");
+    FS.symlink("../../relative/subrelative/file", "./folder/subfolder/subrelative");
+    FS.symlink("./folder/subfolder/file", "./subfolderrelative");
 
     FS.mkdir('absolute');
     FS.writeFile('absolute/file', 'absolute');
     FS.mkdir('absolute/subabsolute');
     FS.writeFile('absolute/subabsolute/file', 'subabsolute');
+    FS.symlink(fs.realpathSync("absolute/file"), "./folder/absolute");
+    FS.symlink(fs.realpathSync("absolute/subabsolute/file"), "./folder/subfolder/subabsolute");
+    FS.symlink(fs.realpathSync("folder/subfolder/file"), "./subfolderabsolute");
   );
 #else
   int fd;
@@ -154,22 +159,13 @@ int main() {
   errno = 0;
 
 
-  char* links[] = {
-    "../relative/file",
-    "../../relative/subrelative/file",
-    "./folder/subfolder/file",
-    "/working/absolute/file",
-    "/working/absolute/subabsolute/file",
-    "/working/folder/subfolder/file"
-  };
-
   char* paths[] = {
     "./folder/relative",
     "./folder/subfolder/subrelative",
     "./subfolderrelative",
-    "/working/folder/absolute",
-    "/working/folder/subfolder/subabsolute",
-    "/working/subfolderabsolute"
+    "./folder/absolute",
+    "./folder/subfolder/subabsolute",
+    "./subfolderabsolute"
     };
 
   int pathLengths[] = {22, 34, 30, 22, 34, 30};
@@ -182,7 +178,6 @@ int main() {
     path = malloc(pathLengths[i]);
     target = malloc(targetLengths[i]);
 
-    symlink(links[i], paths[i]);
     readlink(paths[i], path, pathLengths[i]);
     fd = fopen(path, "r");
     fread(target, 1, targetLengths[i], fd);
