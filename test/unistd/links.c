@@ -168,22 +168,19 @@ int main() {
     "./subfolderabsolute"
     };
 
-  int pathLengths[] = {22, 34, 30, 22, 34, 30};
-  int targetLengths[] = {8, 11, 9, 8, 11, 9};
-
-  char *path, *target;
-  FILE *fd;
-
   for (int i = 0; i < sizeof paths / sizeof paths[0]; i++) {
-    path = malloc(pathLengths[i]);
-    target = malloc(targetLengths[i]);
-
-    readlink(paths[i], path, pathLengths[i]);
-    fd = fopen(path, "r");
-    fread(target, 1, targetLengths[i], fd);
-    printf("\nsymlink/%s\n", target);
-    fclose(fd);
-    free(target);
+    char path[256] = {0};
+    readlink(paths[i], path, 256);
+    FILE *fd = fopen(path, "r");
+    if (fd == NULL) {
+      printf("\nfailed to open file %s\n", path);
+    }
+    else {
+      char target[12] = {0};
+      fread(target, 1, 12, fd);
+      printf("\nsymlink/%s\n", target);
+      fclose(fd);
+    }
   }
 
   return 0;
