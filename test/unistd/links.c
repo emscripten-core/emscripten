@@ -31,11 +31,10 @@ void setup() {
     FS.mkdir('folder');
   );
 #else
-  int fd;
   mkdir("working", 0777);
   chdir("working");
   symlink("../test/../there!", "link");
-  fd = open("file", O_RDWR);
+  int fd = open("file", O_RDWR);
   write(fd, "test", 5);
   close(fd);
   mkdir("folder", 0777);

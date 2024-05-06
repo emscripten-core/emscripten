@@ -1,29 +1,23 @@
-reading /working/inside-symlink/test
-buffer is Link it
+readlink: /working/directory
+buffer is 'Link it'
 
-reading /working/outside-symlink/test
-failed to open file /working/outside-symlink/test
+readlink: /working/directory
+buffer is 'Link it'
 
-reading /direct-inside-link/test
-opened file /direct-inside-link/test
+readlink: /working/relative/file
+buffer is 'Relative'
 
-reading /direct-outside-link/test
-failed to open file /direct-outside-link/test
+readlink: /working/relative/subrelative/file
+buffer is 'Subrelative'
 
-reading /working/directory/relative
-buffer is relative
+readlink: /working/directory/subdirectory/file
+buffer is 'Subdirectory'
 
-reading /working/directory/subdirectory/subrelative
-buffer is subrelative
+readlink: /working/absolute/file
+buffer is 'Absolute'
 
-reading /working/subdirectoryrelative
-buffer is subdirectory
+readlink: /working/absolute/subabsolute/file
+buffer is 'Subabsolute'
 
-reading /working/directory/absolute
-buffer is absolute
-
-reading /working/directory/subdirectory/subabsolute
-buffer is subabsolute
-
-reading /working/subdirectoryabsolute
-buffer is subdirectory
+readlink: /working/directory/subdirectory/file
+buffer is 'Subdirectory'
