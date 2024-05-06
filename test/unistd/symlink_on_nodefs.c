@@ -16,19 +16,41 @@
 
 int main() {
   EM_ASM(
-    fs.mkdirSync('./new-directory', '0777');
-    fs.writeFileSync('./new-directory/test', 'Link it');
-    fs.symlinkSync(fs.realpathSync('./new-directory'), './symlink');
+    fs.mkdirSync('directory', '0777');
+    fs.writeFileSync('directory/test', 'Link it');
+    fs.symlinkSync('/working/directory', 'inside-symlink');
+    fs.symlinkSync(fs.realpathSync('./directory'), 'outside-symlink');
+    fs.mkdirSync('directory/subdirectory', '0777');
+    fs.writeFileSync('directory/subdirectory/file', 'subdirectory');
+
+    fs.mkdirSync('relative', '0777');
+    fs.writeFileSync('relative/file', 'relative');
+    fs.mkdirSync('relative/subrelative', '0777');
+    fs.writeFileSync('relative/subrelative/file', 'subrelative');
+    fs.symlinkSync("../relative/file", "directory/relative");
+    fs.symlinkSync("../../relative/subrelative/file", "directory/subdirectory/subrelative");
+    fs.symlinkSync("./directory/subdirectory/file", "subdirectoryrelative");
+
+    fs.mkdirSync('absolute', '0777');
+    fs.writeFileSync('absolute/file', 'absolute');
+    fs.mkdirSync('absolute/subabsolute', '0777');
+    fs.writeFileSync('absolute/subabsolute/file', 'subabsolute');
+    fs.symlinkSync("/working/absolute/file", "directory/absolute");
+    fs.symlinkSync("/working/absolute/subabsolute/file", "directory/subdirectory/subabsolute");
+    fs.symlinkSync("/working/directory/subdirectory/file", "subdirectoryabsolute");
 
     FS.mkdir('working');
     FS.mount(NODEFS, { root: '.' }, 'working');
 
-    FS.mkdir('direct-link');
-    FS.mount(NODEFS, { root: './symlink' }, 'direct-link');
+    FS.mkdir('direct-inside-link');
+    FS.mount(NODEFS, { root: './inside-symlink' }, 'direct-inside-link');
+
+    FS.mkdir('direct-outside-link');
+    FS.mount(NODEFS, { root: './outside-symlink' }, 'direct-outside-link');
   );
 
   {
-    const char* path = "/working/symlink/test";
+    const char* path = "/working/inside-symlink/test";
     printf("reading %s\n", path);
 
     FILE* fd = fopen(path, "r");
@@ -47,12 +69,30 @@ int main() {
   printf("\n");
 
   {
-    const char* path = "/direct-link/test";
+    const char* path = "/working/outside-symlink/test";
+    printf("reading %s\n", path);
+
+    FILE* fd = fopen(path, "r");
+    if (fd == NULL) {
+      printf("failed to open file %s\n", path);
+    }
+    else {
+      char buffer[8];
+      fread(buffer, 1, 7, fd);
+      buffer[7] = 0;
+      printf("buffer is %s\n", buffer);
+      fclose(fd);
+    }
+  }
+
+  printf("\n");
+
+  {
+    const char* path = "/direct-inside-link/test";
     printf("reading %s\n", path);
 
     FILE* fd = fopen(path, "r");
     if (fd != NULL) {
-      // This should not happen, it resolves to ../new-directory which is not mounted
       printf("opened file %s\n", path);
       fclose(fd);
     }
@@ -60,6 +100,53 @@ int main() {
       printf("failed to open file %s\n", path);
     }
   }
-  
+
+  printf("\n");
+
+  {
+    const char* path = "/direct-outside-link/test";
+    printf("reading %s\n", path);
+
+    FILE* fd = fopen(path, "r");
+    if (fd != NULL) {
+      printf("opened file %s\n", path);
+      fclose(fd);
+    }
+    else {
+      printf("failed to open file %s\n", path);
+    }
+  }
+
+  printf("\n");
+
+  {
+    char* paths[] = {
+      "/working/directory/relative",
+      "/working/directory/subdirectory/subrelative",
+      "/working/subdirectoryrelative",
+      "/working/directory/absolute",
+      "/working/directory/subdirectory/subabsolute",
+      "/working/subdirectoryabsolute"
+      };
+
+    for (int i = 0; i < sizeof paths / sizeof paths[0]; i++) {
+      printf("reading %s\n", paths[i]);
+      char link[256] = {0};
+      readlink(paths[i], link, 256);
+      FILE *fd = fopen(link, "r");
+      if (fd == NULL) {
+        printf("failed to open file %s\n", link);
+      }
+      else {
+        char buffer[256] = {0};
+        fread(buffer, 1, 256, fd);
+        printf("buffer is %s\n", buffer);
+        fclose(fd);
+      }
+
+      printf("\n");
+    }
+  }
+
   return 0;
 }

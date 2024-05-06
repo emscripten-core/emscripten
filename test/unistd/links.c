@@ -29,24 +29,6 @@ void setup() {
     FS.symlink('../test/../there!', 'link');
     FS.writeFile('file', 'test');
     FS.mkdir('folder');
-    FS.mkdir('folder/subfolder');
-    FS.writeFile('folder/subfolder/file', 'subfolder');
-
-    FS.mkdir('relative');
-    FS.writeFile('relative/file', 'relative');
-    FS.mkdir('relative/subrelative');
-    FS.writeFile('relative/subrelative/file', 'subrelative');
-    FS.symlink("../relative/file", "./folder/relative");
-    FS.symlink("../../relative/subrelative/file", "./folder/subfolder/subrelative");
-    FS.symlink("./folder/subfolder/file", "./subfolderrelative");
-
-    FS.mkdir('absolute');
-    FS.writeFile('absolute/file', 'absolute');
-    FS.mkdir('absolute/subabsolute');
-    FS.writeFile('absolute/subabsolute/file', 'subabsolute');
-    FS.symlink(fs.realpathSync("absolute/file"), "./folder/absolute");
-    FS.symlink(fs.realpathSync("absolute/subabsolute/file"), "./folder/subfolder/subabsolute");
-    FS.symlink(fs.realpathSync("folder/subfolder/file"), "./subfolderabsolute");
   );
 #else
   int fd;
@@ -57,34 +39,6 @@ void setup() {
   write(fd, "test", 5);
   close(fd);
   mkdir("folder", 0777);
-  mkdir("folder/subfolder", 0777);
-  fd = open("folder/subfolder/file", O_RDWR);
-  write(fd, "subfolder", 10);
-  close(fd);
-
-  mkdir("relative", 0777);
-  fd = open("relative/file", O_RDWR);
-  write(fd, "relative", 10);
-  close(fd);
-  mkdir("relative/subrelative", 0777);
-  fd = open("relative/subrelative/file", O_RDWR);
-  write(fd, "subrelative", 10);
-  close(fd);
-  symlink("../relative/file", "./folder/relative");
-  symlink("../../relative/subrelative/file", "./folder/subfolder/subrelative");
-  symlink("./folder/subfolder/file", "./subfolderrelative");
-
-  mkdir("absolute", 0777);
-  fd = open("absolute/file", O_RDWR);
-  write(fd, "absolute", 10);
-  close(fd);
-  mkdir("absolute/subabsolute", 0777);
-  fd = open("absolute/subabsolute/file", O_RDWR);
-  write(fd, "subabsolute", 10);
-  close(fd);
-  symlink(realpath("absolute/file", NULL), "./folder/absolute");
-  symlink(realpath("absolute/subabsolute/file", NULL), "./folder/subfolder/subabsolute");
-  symlink(realpath("folder/subfolder/file", NULL), "./subfolderabsolute");
 #endif
 }
 
@@ -162,31 +116,6 @@ int main() {
   assert(ret == -1);
   assert(errno == ELOOP);
   errno = 0;
-
-
-  char* paths[] = {
-    "./folder/relative",
-    "./folder/subfolder/subrelative",
-    "./subfolderrelative",
-    "./folder/absolute",
-    "./folder/subfolder/subabsolute",
-    "./subfolderabsolute"
-    };
-
-  for (int i = 0; i < sizeof paths / sizeof paths[0]; i++) {
-    char path[256] = {0};
-    readlink(paths[i], path, 256);
-    FILE *fd = fopen(path, "r");
-    if (fd == NULL) {
-      printf("\nfailed to open file %s\n", path);
-    }
-    else {
-      char target[12] = {0};
-      fread(target, 1, 12, fd);
-      printf("\nsymlink/%s\n", target);
-      fclose(fd);
-    }
-  }
 
   return 0;
 }

@@ -1,5 +1,29 @@
-reading /working/symlink/test
+reading /working/inside-symlink/test
 buffer is Link it
 
-reading /direct-link/test
-failed to open file /direct-link/test
+reading /working/outside-symlink/test
+failed to open file /working/outside-symlink/test
+
+reading /direct-inside-link/test
+opened file /direct-inside-link/test
+
+reading /direct-outside-link/test
+failed to open file /direct-outside-link/test
+
+reading /working/directory/relative
+buffer is relative
+
+reading /working/directory/subdirectory/subrelative
+buffer is subrelative
+
+reading /working/subdirectoryrelative
+buffer is subdirectory
+
+reading /working/directory/absolute
+buffer is absolute
+
+reading /working/directory/subdirectory/subabsolute
+buffer is subabsolute
+
+reading /working/subdirectoryabsolute
+buffer is subdirectory
