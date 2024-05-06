@@ -145,6 +145,10 @@ addToLibrary({
   _emscripten_create_wasm_worker__postset: `
 if (ENVIRONMENT_IS_WASM_WORKER) {
   _wasmWorkers[0] = this;
+#if AUDIO_WORKLET
+  // Audio Worklets do not have postMessage()ing capabilities.
+  if (!ENVIRONMENT_IS_AUDIO_WORKLET)
+#endif
   addEventListener("message", _wasmWorkerAppendToQueue);
 }`,
   _emscripten_create_wasm_worker: (stackLowestAddress, stackSize) => {
