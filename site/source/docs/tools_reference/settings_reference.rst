@@ -1993,16 +1993,6 @@ Alternate syntax: --use-port=libpng
 
 .. note:: Applicable during both linking and compilation
 
-.. _use_regal:
-
-USE_REGAL
-=========
-
-1 = use Regal from emscripten-ports
-Alternate syntax: --use-port=regal
-
-.. note:: Applicable during both linking and compilation
-
 .. _use_boost_headers:
 
 USE_BOOST_HEADERS

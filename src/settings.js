@@ -1540,11 +1540,6 @@ var USE_LIBJPEG = false;
 // [compile+link]
 var USE_LIBPNG = false;
 
-// 1 = use Regal from emscripten-ports
-// Alternate syntax: --use-port=regal
-// [compile+link]
-var USE_REGAL = false;
-
 // 1 = use Boost headers from emscripten-ports
 // Alternate syntax: --use-port=boost_headers
 // [compile+link]
@@ -2235,4 +2230,5 @@ var LEGACY_SETTINGS = [
   ['MIN_IE_VERSION', [0x7FFFFFFF], 'No longer supported'],
   ['WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG', [0], 'No longer supported'],
   ['AUTO_ARCHIVE_INDEXES', [0, 1], 'No longer needed'],
+  ['USE_REGAL', [0], 'No longer supported'],
 ];

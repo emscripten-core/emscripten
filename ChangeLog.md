@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.60 (in development)
 -----------------------
+- The regal port was removed since the project seems to be long dead upstream.
+  Please get in touch if you were depending on this library.
 - The `EXPORTED_FUNCTIONS` list can now include JS library symbols even if they
   have not been otherwise included (e.g. via `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`).
   (#21867)

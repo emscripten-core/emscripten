@@ -1522,12 +1522,6 @@ keydown(100);keyup(100); // trigger the end
                  args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
-  def test_sdl_ogl_regal(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    self.reftest('test_sdl_ogl.c', 'screenshot-gray-purple.png', reference_slack=1,
-                 args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sUSE_REGAL', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL', '-lc++', '-lc++abi'])
-
-  @requires_graphics_hardware
   def test_sdl_ogl_defaultmatrixmode(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
     self.reftest('test_sdl_ogl_defaultMatrixMode.c', 'screenshot-gray-purple.png', reference_slack=1,
@@ -2031,11 +2025,6 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   @no_swiftshader
-  def test_cubegeom_pre_regal(self):
-    self.reftest('third_party/cubegeom/cubegeom_pre.c', 'third_party/cubegeom/cubegeom_pre.png', args=['-sUSE_REGAL', '-DUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'])
-
-  @requires_graphics_hardware
-  @no_swiftshader
   def test_cubegeom_pre_relocatable(self):
     # RELOCATABLE needs to be set via `set_setting` so that it will also apply when
     # building `browser_reporting.c`
@@ -2061,14 +2050,6 @@ keydown(100);keyup(100); // trigger the end
     # proxy only in the simple, normal case (we can't trace GL calls when
     # proxied)
     self.reftest('third_party/cubegeom/cubegeom.c', 'third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'] + args, also_proxied=not args)
-
-  @requires_graphics_hardware
-  def test_cubegeom_regal(self):
-    self.reftest('third_party/cubegeom/cubegeom.c', 'third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-sUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'], also_proxied=True)
-
-  @requires_graphics_hardware
-  def test_cubegeom_regal_mt(self):
-    self.reftest('third_party/cubegeom/cubegeom.c', 'third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-pthread', '-sUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'], also_proxied=False)
 
   @requires_graphics_hardware
   @parameterized({
@@ -2146,11 +2127,6 @@ void *getBindBuffer() {
   @no_swiftshader
   def test_cubegeom_pre_vao(self):
     self.reftest('third_party/cubegeom/cubegeom_pre_vao.c', 'third_party/cubegeom/cubegeom_pre_vao.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
-
-  @requires_graphics_hardware
-  @no_swiftshader
-  def test_cubegeom_pre_vao_regal(self):
-    self.reftest('third_party/cubegeom/cubegeom_pre_vao.c', 'third_party/cubegeom/cubegeom_pre_vao.png', args=['-sUSE_REGAL', '-DUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'])
 
   @requires_graphics_hardware
   @no_swiftshader
