@@ -6068,7 +6068,7 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('unistd/unlink.c', 'success')
 
   @parameterized({
-    'memfs': ([], False),
+    '': ([], False),
     'nodefs': (['-DNODEFS', '-lnodefs.js'], True)
   })
   def test_unistd_links(self, args, nodefs):

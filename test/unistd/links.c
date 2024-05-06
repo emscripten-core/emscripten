@@ -7,38 +7,32 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
-#else
-#include <sys/stat.h>
-#include <fcntl.h>
 #endif
 
 void setup() {
-#ifdef __EMSCRIPTEN__
-  EM_ASM(
-    FS.mkdir('working');
-#if NODEFS
-    FS.mount(NODEFS, { root: '.' }, 'working');
+  int rtn = mkdir("working", 0777);
+  assert(rtn == 0);
+#if defined(__EMSCRIPTEN__) && defined(NODEFS)
+  EM_ASM(FS.mount(NODEFS, { root: '.' }, 'working'));
 #endif
-    FS.chdir('working');
-    FS.symlink('../test/../there!', 'link');
-    FS.writeFile('file', 'test');
-    FS.mkdir('folder');
-  );
-#else
-  mkdir("working", 0777);
-  chdir("working");
+  rtn = chdir("working");
+  assert(rtn == 0);
   symlink("../test/../there!", "link");
-  int fd = open("file", O_RDWR);
-  write(fd, "test", 5);
+  int fd = open("file", O_RDWR | O_CREAT, 0777);
+  assert(fd >= 0);
+  rtn = write(fd, "test", 5);
+  assert(rtn == 5);
   close(fd);
-  mkdir("folder", 0777);
-#endif
+  rtn = mkdir("folder", 0777);
+  assert(rtn == 0);
 }
 
 int main() {

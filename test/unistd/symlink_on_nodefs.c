@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
@@ -14,52 +15,39 @@
 #include <limits.h>
 #include <stdlib.h>
 
-int main() {
+void setup() {
   EM_ASM(
-    fs.mkdirSync('./new-directory', '0777');
-    fs.writeFileSync('./new-directory/test', 'Link it');
-    fs.symlinkSync(fs.realpathSync('./new-directory'), './symlink');
+    fs.mkdirSync('new-directory', '0777');
+    fs.writeFileSync('new-directory/test', 'Link it');
+    fs.symlinkSync(fs.realpathSync('new-directory'), 'symlink');
 
     FS.mkdir('working');
     FS.mount(NODEFS, { root: '.' }, 'working');
 
     FS.mkdir('direct-link');
-    FS.mount(NODEFS, { root: './symlink' }, 'direct-link');
+    FS.mount(NODEFS, { root: 'symlink' }, 'direct-link');
   );
+}
 
-  {
-    const char* path = "/working/symlink/test";
-    printf("reading %s\n", path);
+int main() {
+  setup();
 
-    FILE* fd = fopen(path, "r");
-    if (fd == NULL) {
-      printf("failed to open file %s\n", path);
-    }
-    else {
-      char buffer[8];
-      fread(buffer, 1, 7, fd);
-      buffer[7] = 0;
-      printf("buffer is %s\n", buffer);
-      fclose(fd);
-    }
-  }
+  char buf[1024];
+  readlink("/working/symlink", buf, 1024);
+  printf("readlink: %s\n", buf);
 
-  printf("\n");
+  FILE* fd = fopen("/working/symlink/test", "r");
+  assert(fd);
+  char buffer[8] = {0};
+  int rtn = fread(buffer, 1, 7, fd);
+  assert(rtn == 7);
+  printf("buffer is '%s'\n", buffer);
+  fclose(fd);
 
-  {
-    const char* path = "/direct-link/test";
-    printf("reading %s\n", path);
+  // This should fail, since it resolves to ../new-directory which is not
+  // mounted
+  fd = fopen("/direct-link/test", "r");
+  assert(fd == NULL);
 
-    FILE* fd = fopen(path, "r");
-    if (fd != NULL) {
-      // This should not happen, it resolves to ../new-directory which is not mounted
-      printf("opened file %s\n", path);
-      fclose(fd);
-    }
-    else {
-      printf("failed to open file %s\n", path);
-    }
-  }
-  
   return 0;
 }
