@@ -3298,13 +3298,16 @@ More info: https://emscripten.org
     self.assertFileContents(test_file('other/embind_tsgen_memory64.d.ts'), read_file('embind_tsgen_memory64.d.ts'))
 
   def test_embind_tsgen_exceptions(self):
-    # Check that when Wasm exceptions and assertions are enabled bindings still generate.
-    self.run_process([EMXX, test_file('other/embind_tsgen.cpp'),
-                      '-lembind', '-fwasm-exceptions', '-sASSERTIONS',
-                      # Use the deprecated `--embind-emit-tsd` to ensure it
-                      # still works until removed.
-                      '--embind-emit-tsd', 'embind_tsgen.d.ts', '-Wno-deprecated'])
-    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
+    for wasm_exnref in [0, 1]:
+      self.set_setting('WASM_EXNREF', wasm_exnref)
+      # Check that when Wasm exceptions and assertions are enabled bindings still generate.
+      self.run_process([EMXX, test_file('other/embind_tsgen.cpp'),
+                        '-lembind', '-fwasm-exceptions', '-sASSERTIONS',
+                        # Use the deprecated `--embind-emit-tsd` to ensure it
+                        # still works until removed.
+                        '--embind-emit-tsd', 'embind_tsgen.d.ts', '-Wno-deprecated']
+                       + self.get_emcc_args())
+      self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_jsgen_method_pointer_stability(self):
     self.emcc_args += ['-lembind', '-sEMBIND_AOT']
@@ -8531,6 +8534,7 @@ int main() {
                   '-sDEMANGLE_SUPPORT', '-Wno-deprecated'], [], ['waka']), # noqa
     # Wasm EH's code size increase is smaller than that of Emscripten EH
     'except_wasm':   (['-O2', '-fwasm-exceptions'], [], ['waka']), # noqa
+    'except_wasm_exnref':   (['-O2', '-fwasm-exceptions', '-sWASM_EXNREF'], [], ['waka']), # noqa
     # eval_ctors 1 can partially optimize, but runs into getenv() for locale
     # code. mode 2 ignores those and fully optimizes out the ctors
     'ctors1':    (['-O2', '-sEVAL_CTORS'],   [], ['waka']), # noqa
@@ -8830,7 +8834,8 @@ int main() {
   @parameterized({
     'noexcept': [],
     'except': ['-sDISABLE_EXCEPTION_CATCHING=0'],
-    'except_wasm': ['-fwasm-exceptions']
+    'except_wasm': ['-fwasm-exceptions'],
+    'except_wasm_exnref': ['-fwasm-exceptions', '-sWASM_EXNREF']
   })
   def test_lto_libcxx(self, *args):
     self.run_process([EMXX, test_file('hello_libcxx.cpp'), '-flto'] + list(args))
@@ -8849,10 +8854,14 @@ int main() {
 
   # We have LTO tests covered in 'wasmltoN' targets in test_core.py, but they
   # don't run as a part of Emscripten CI, so we add a separate LTO test here.
-  @requires_wasm_eh
   def test_lto_wasm_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG')
+    self.require_wasm_eh()
     self.emcc_args += ['-fwasm-exceptions', '-flto']
+    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
+    # New Wasm EH with exnref
+    self.require_wasm_exnref()
+    self.set_setting('WASM_EXNREF')
     self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
   @parameterized({
@@ -12269,12 +12278,16 @@ int main () {
     # We should consider making this a warning since the `_main` export is redundant.
     self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=_main', '-sSTANDALONE_WASM', test_file('core/test_hello_world.c')])
 
-  @requires_wasm_eh
   def test_standalone_wasm_exceptions(self):
     self.set_setting('STANDALONE_WASM')
     self.set_setting('WASM_BIGINT')
     self.wasm_engines = []
     self.emcc_args += ['-fwasm-exceptions']
+    self.require_wasm_eh()
+    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
+    # New Wasm EH with exnref
+    self.require_wasm_exnref()
+    self.set_setting('WASM_EXNREF')
     self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
   def test_missing_malloc_export(self):
