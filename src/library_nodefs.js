@@ -127,6 +127,11 @@ addToLibrary({
         if (NODEFS.isWindows && !stat.blocks) {
           stat.blocks = (stat.size+stat.blksize-1)/stat.blksize|0;
         }
+        if (NODEFS.isWindows) {
+          // Node.js on Windows never represents permission bit 'x', so
+          // propagate read bits to execute bits.
+          stat.mode = stat.mode | (stat.mode & 292) >> 2;
+        }
         return {
           dev: stat.dev,
           ino: stat.ino,
