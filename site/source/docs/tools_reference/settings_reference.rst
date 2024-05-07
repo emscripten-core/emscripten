@@ -994,6 +994,17 @@ ASSERTIONS is enabled. This option is for users who want exceptions' stack
 traces but do not want other overheads ASSERTIONS can incur.
 This option implies EXPORT_EXCEPTION_HANDLING_HELPERS.
 
+.. _experimental_new_wasm_exceptions:
+
+EXPERIMENTAL_NEW_WASM_EXCEPTIONS
+================================
+
+Emit instructions for the new Wasm exception handling proposal, which was
+adopted on Oct 2023. The implementation of the new proposal is still in
+progress and this feature is currently experimental.
+
+.. note:: Applicable during both linking and compilation
+
 .. _nodejs_catch_exit:
 
 NODEJS_CATCH_EXIT
