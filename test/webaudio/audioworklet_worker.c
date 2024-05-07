@@ -13,10 +13,9 @@
 int workletToWorkerFutexLocation = 0;
 int workletToWorkerFlag = 0;
 
-void run_in_worker()
-{
-  while(0 == emscripten_futex_wait(&workletToWorkerFutexLocation, 0, 30000)) {
-    if(workletToWorkerFlag == 1) {
+void run_in_worker() {
+  while (0 == emscripten_futex_wait(&workletToWorkerFutexLocation, 0, 30000)) {
+    if (workletToWorkerFlag == 1) {
       printf("Test success\n");
       break;
     }

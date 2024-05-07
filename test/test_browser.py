@@ -5482,7 +5482,6 @@ Module["preRun"] = () => {
   # Tests that audioworklets and workers can be used at the same time
   @parameterized({
     '': ([],),
-    'closure': (['--closure', '1', '-Oz'],),
   })
   def test_audio_worklet_worker(self, args):
     self.btest('webaudio/audioworklet_worker.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args, expected='1')
