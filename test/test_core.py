@@ -1557,6 +1557,7 @@ int main() {
       self.clear_setting('DISABLE_EXCEPTION_CATCHING')
       self.clear_setting('SUPPORT_LONGJMP')
       self.clear_setting('ASYNCIFY')
+      self.clear_setting('EXPERIMENTAL_NEW_WASM_EXCEPTIONS')
 
     # Emscripten EH and Wasm EH cannot be enabled at the same time
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)

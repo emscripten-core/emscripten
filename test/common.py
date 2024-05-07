@@ -285,6 +285,16 @@ def requires_wasm_eh(func):
   return decorated
 
 
+def requires_new_wasm_eh(func):
+  assert callable(func)
+
+  def decorated(self, *args, **kwargs):
+    self.require_new_wasm_eh()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def requires_v8(func):
   assert callable(func)
 
@@ -500,24 +510,29 @@ def also_with_standalone_wasm(impure=False):
 
 
 # Tests exception handling / setjmp/longjmp handling in Emscripten EH/SjLj mode
-# and if possible, new wasm EH/SjLj mode. This tests two combinations:
+# and new wasm EH/SjLj modes. This tests three combinations:
 # - Emscripten EH + Emscripten SjLj
-# - Wasm EH + Wasm SjLj
+# - Wasm EH + Wasm SjLj (Phase 3, to be deprecated)
+# - Wasm EH _ Wasm SjLj (New, experimental)
 def with_all_eh_sjlj(f):
   assert callable(f)
 
   @wraps(f)
-  def metafunc(self, is_native, *args, **kwargs):
-    if is_native:
+  def metafunc(self, mode, *args, **kwargs):
+    if mode == 'wasm' or mode == 'new_wasm':
       # Wasm EH is currently supported only in wasm backend and V8
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm EH/SjLj')
-      self.require_wasm_eh()
       # FIXME Temporarily disabled. Enable this later when the bug is fixed.
       if '-fsanitize=address' in self.emcc_args:
         self.skipTest('Wasm EH does not work with asan yet')
       self.emcc_args.append('-fwasm-exceptions')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
+      if mode == 'wasm':
+        self.require_wasm_eh()
+      if mode == 'new_wasm':
+        self.require_new_wasm_eh()
+        self.set_setting('EXPERIMENTAL_NEW_WASM_EXCEPTIONS')
       f(self, *args, **kwargs)
     else:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
@@ -529,8 +544,9 @@ def with_all_eh_sjlj(f):
       self.set_setting('DEFAULT_TO_CXX')
       f(self, *args, **kwargs)
 
-  parameterize(metafunc, {'': (False,),
-                          'wasm': (True,)})
+  parameterize(metafunc, {'emscripten': ('emscripten',),
+                          'wasm': ('wasm',),
+                          'new_wasm': ('new_wasm',)})
   return metafunc
 
 
@@ -540,22 +556,27 @@ def with_all_sjlj(f):
   assert callable(f)
 
   @wraps(f)
-  def metafunc(self, is_native):
-    if is_native:
+  def metafunc(self, mode):
+    if mode == 'wasm' or mode == 'new_wasm':
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm SjLj')
-      self.require_wasm_eh()
       # FIXME Temporarily disabled. Enable this later when the bug is fixed.
       if '-fsanitize=address' in self.emcc_args:
         self.skipTest('Wasm EH does not work with asan yet')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
+      if mode == 'wasm':
+        self.require_wasm_eh()
+      if mode == 'new_wasm':
+        self.require_new_wasm_eh()
+        self.set_setting('EXPERIMENTAL_NEW_WASM_EXCEPTIONS')
       f(self)
     else:
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
       f(self)
 
-  parameterize(metafunc, {'': (False,),
-                          'wasm': (True,)})
+  parameterize(metafunc, {'emscripten': ('emscripten',),
+                          'wasm': ('wasm',),
+                          'new_wasm': ('new_wasm',)})
   return metafunc
 
 
@@ -876,6 +897,26 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('test requires node >= 17 or d8 (and EMTEST_SKIP_EH is set)')
     else:
       self.fail('either d8 or node >= 17 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+
+  def require_new_wasm_eh(self):
+    nodejs = self.get_nodejs()
+    if nodejs:
+      version = shared.get_node_version(nodejs)
+      if version >= (22, 0, 0):
+        self.js_engines = [nodejs]
+        self.node_args.append('--experimental-wasm-exnref')
+        return
+
+    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+      self.emcc_args.append('-sENVIRONMENT=shell')
+      self.js_engines = [config.V8_ENGINE]
+      self.v8_args.append('--experimental-wasm-exnref')
+      return
+
+    if 'EMTEST_SKIP_EH' in os.environ:
+      self.skipTest('test requires node >= 22 or d8 (and EMTEST_SKIP_EH is set)')
+    else:
+      self.fail('either d8 or node >= 22 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def require_jspi(self):
     # emcc warns about stack switching being experimental, and we build with

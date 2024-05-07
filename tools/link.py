@@ -427,6 +427,10 @@ def get_binaryen_passes():
     extras = settings.BINARYEN_EXTRA_PASSES.split(',')
     passes += [('--' + p) if p[0] != '-' else p for p in extras if p]
 
+  # Run the translator to the new EH instructions (adopted in Oct 2023)
+  if settings.EXPERIMENTAL_NEW_WASM_EXCEPTIONS:
+    passes += ['--experimental-new-eh']
+
   return passes
 
 
