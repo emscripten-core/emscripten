@@ -1,23 +1,5 @@
-readlink: /working/directory
-buffer is 'Link it'
+readlink: '/working/directory'
+buffer: 'Link it'
 
-readlink: /working/directory
-buffer is 'Link it'
-
-readlink: /working/relative/file
-buffer is 'Relative'
-
-readlink: /working/relative/subrelative/file
-buffer is 'Subrelative'
-
-readlink: /working/directory/subdirectory/file
-buffer is 'Subdirectory'
-
-readlink: /working/absolute/file
-buffer is 'Absolute'
-
-readlink: /working/absolute/subabsolute/file
-buffer is 'Subabsolute'
-
-readlink: /working/directory/subdirectory/file
-buffer is 'Subdirectory'
+readlink: '/working/directory'
+buffer: 'Link it'
