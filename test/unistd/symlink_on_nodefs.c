@@ -46,8 +46,11 @@ void test_inside_symlink()
 
 void test_outside_symlink()
 {
+  // outside-symlink is link to an absolute path which is not part of the emscripten VFS
+  // and so we should be able to open it.
   FILE* fd = fopen("/working/outside-symlink/test", "r");
   assert(fd == NULL);
+  assert(errno == ENOENT)
 }
 
 void test_mount_link()

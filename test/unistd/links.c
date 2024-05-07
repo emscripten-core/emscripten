@@ -78,8 +78,7 @@ void setup() {
   symlink("/working/directory/subdirectory/file", "/working/subdirectoryabsolute");
 }
 
-void test_reading_existing_symlinks()
-{
+void test_reading_existing_symlinks() {
   char* files[] = {"link", "file", "directory"};
 
   for (int i = 0; i < sizeof files / sizeof files[0]; i++) {
@@ -105,16 +104,14 @@ void test_reading_existing_symlinks()
   }
 }
 
-void test_overwriting_symlink()
-{
+void test_overwriting_symlink() {
   int rtn = symlink("new-nonexistent-path", "link");
   assert(rtn == -1);
   assert(errno == EEXIST);
   errno = 0;
 }
 
-void test_creating_symlink()
-{
+void test_creating_symlink() {
   int rtn = symlink("new-nonexistent-path", "directory/link");
   assert(rtn == 0);
   assert(errno == 0);
@@ -132,8 +129,7 @@ void test_creating_symlink()
   errno = 0;
 }
 
-void test_reading_shortened_symlink()
-{
+void test_reading_shortened_symlink() {
   char buffer[256] = {0};
   readlink("directory/link", buffer, 256);
   buffer[0] = buffer[1] = buffer[2] = buffer[3] = buffer[4] = buffer[5] = '*';
@@ -148,8 +144,7 @@ void test_reading_shortened_symlink()
   errno = 0;
 }
 
-void test_noticing_loop_in_symlink()
-{
+void test_noticing_loop_in_symlink() {
   // FS.lookupPath should notice the symlink loop and return ELOOP, not go into
   // an infinite recurse.
   //
@@ -163,8 +158,7 @@ void test_noticing_loop_in_symlink()
 }
 
 
-void test_relative_path_symlinks()
-{
+void test_relative_path_symlinks() {
   char* parents[] = {
     "/working/directory/",
     "/working/directory/subdirectory/",
@@ -195,18 +189,17 @@ void test_relative_path_symlinks()
   }
 }
 
-void test_absolute_path_symlinks()
-{
-  char* paths[] = {
+void test_absolute_path_symlinks() {
+  char* links[] = {
     "/working/directory/absolute",
     "/working/directory/subdirectory/subabsolute",
     "/working/subdirectoryabsolute"
   };
 
-  for (int i = 0; i < sizeof paths / sizeof paths[0]; i++) {
-    printf("symlink: '%s'\n", paths[i]);
+  for (int i = 0; i < sizeof links / sizeof links[0]; i++) {
+    printf("symlink: '%s'\n", links[i]);
     char buf[256] = {0};
-    readlink(paths[i], buf, 256);
+    readlink(links[i], buf, 256);
     FILE *fd = fopen(buf, "r");
     assert(fd);
     char buffer[13] = {0};
