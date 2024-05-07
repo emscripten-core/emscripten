@@ -40,7 +40,7 @@ from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_w
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
 from common import requires_network, parameterize
 from tools import shared, building, utils, response_file, cache
-from tools.utils import read_file, write_file, delete_file, read_binary, MACOS, WINDOWS
+from tools.utils import read_file, write_file, delete_file, delete_dir, read_binary, MACOS, WINDOWS
 import common
 import jsrun
 import clang_native
@@ -14268,6 +14268,44 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_windows_batch_file_dp0_expansion_bug(self):
     create_file('build_with_quotes.bat',  f'@"emcc" {test_file("hello_world.c")}')
     self.run_process(['build_with_quotes.bat'])
+
+  @only_windows('Check that directory permissions are properly retrieved on Windows')
+  @requires_node
+  def test_windows_nodefs_execution_permission(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+    delete_dir('new-dir')
+    src = r'''
+    #include <assert.h>
+    #include <emscripten.h>
+    #include <sys/stat.h>
+    #include <string.h>
+
+    int main(int argc, char * argv[]) {
+      EM_ASM(
+        FS.mkdir('/working');
+        FS.mount(NODEFS, { root: '{{WORKING_DIR}}' }, '/working');
+        FS.mkdir('/working/new-dir');
+        FS.writeFile('/working/new-dir/test.txt', 'test');
+      );
+
+      int err;
+      struct stat s;
+      memset(&s, 0, sizeof(s));
+      err = stat("/working/new-dir", &s);
+      assert(S_ISDIR(s.st_mode));
+      assert((s.st_mode & S_IXUSR) == S_IXUSR);
+      assert((s.st_mode & S_IXGRP) == S_IXGRP);
+      assert((s.st_mode & S_IXOTH) == S_IXOTH);
+
+      err = stat("/working/new-dir/test.txt", &s);
+      assert((s.st_mode & S_IXUSR) == S_IXUSR);
+      assert((s.st_mode & S_IXGRP) == S_IXGRP);
+      assert((s.st_mode & S_IXOTH) == S_IXOTH);
+    }
+    '''.replace('{{WORKING_DIR}}', Path(self.working_dir).as_posix())
+    self.emcc_args += ['-lnodefs.js']
+    self.do_run(src)
 
   @parameterized({
     'wasm2js': (True,),
