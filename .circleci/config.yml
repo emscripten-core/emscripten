@@ -609,7 +609,7 @@ jobs:
             wasmfs.test_stat
             wasmfs.test_fstatat
             wasmfs.test_futimens
-            wasmfs.test_unistd_links_memfs
+            wasmfs.test_unistd_links
             wasmfs.test_fcntl_open
             wasmfs.test_fs_js_api
             wasmfs.test_fs_llseek
