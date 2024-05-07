@@ -7,13 +7,13 @@ errno: Invalid argument
 readlink: 'directory'
 errno: Invalid argument
 
-symlink: 'directory/relative'
+symlink: '/working/directory/relative'
 buffer: 'Relative'
 
-symlink: 'directory/subdirectory/subrelative'
+symlink: '/working/directory/subdirectory/subrelative'
 buffer: 'Subrelative'
 
-symlink: 'subdirectoryrelative'
+symlink: '/working/subdirectoryrelative'
 buffer: 'Subdirectory'
 
 symlink: '/working/directory/absolute'

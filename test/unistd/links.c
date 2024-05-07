@@ -165,16 +165,26 @@ void test_noticing_loop_in_symlink()
 
 void test_relative_path_symlinks()
 {
-  char* paths[] = {
-    "directory/relative",
-    "directory/subdirectory/subrelative",
+  char* parents[] = {
+    "/working/directory/",
+    "/working/directory/subdirectory/",
+    "/working/"
+  };
+
+  char* links[] = {
+    "relative",
+    "subrelative",
     "subdirectoryrelative",
   };
 
-  for (int i = 0; i < sizeof paths / sizeof paths[0]; i++) {
-    printf("symlink: '%s'\n", paths[i]);
+  for (int i = 0; i < sizeof links / sizeof links[0]; i++) {
+    int rtn = chdir(parents[i]);
+    assert(rtn == 0);
+    char symlink[256] = {0};
+    strcat(strcpy(symlink, parents[i]), links[i]);
+    printf("symlink: '%s'\n", symlink);
     char buf[256] = {0};
-    int rtn = readlink(paths[i], buf, 256);
+    rtn = readlink(links[i], buf, 256);
     FILE *fd = fopen(buf, "r");
     assert(fd);
     char buffer[13] = {0};
@@ -195,7 +205,7 @@ void test_absolute_path_symlinks()
 
   for (int i = 0; i < sizeof paths / sizeof paths[0]; i++) {
     printf("symlink: '%s'\n", paths[i]);
-    char buf[1024] = {0};
+    char buf[256] = {0};
     readlink(paths[i], buf, 256);
     FILE *fd = fopen(buf, "r");
     assert(fd);
