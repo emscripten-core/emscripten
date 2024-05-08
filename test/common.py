@@ -513,7 +513,7 @@ def also_with_standalone_wasm(impure=False):
 # and new wasm EH/SjLj modes. This tests three combinations:
 # - Emscripten EH + Emscripten SjLj
 # - Wasm EH + Wasm SjLj (Phase 3, to be deprecated)
-# - Wasm EH _ Wasm SjLj (New, experimental)
+# - Wasm EH + Wasm SjLj (New proposal witn exnref, experimental)
 def with_all_eh_sjlj(f):
   assert callable(f)
 
