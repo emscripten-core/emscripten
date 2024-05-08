@@ -285,11 +285,11 @@ def requires_wasm_eh(func):
   return decorated
 
 
-def requires_wasm_eh_exnref(func):
+def requires_wasm_exnref(func):
   assert callable(func)
 
   def decorated(self, *args, **kwargs):
-    self.require_wasm_eh_exnref()
+    self.require_wasm_exnref()
     return func(self, *args, **kwargs)
 
   return decorated
@@ -531,7 +531,7 @@ def with_all_eh_sjlj(f):
       if mode == 'wasm':
         self.require_wasm_eh()
       if mode == 'wasm_exnref':
-        self.require_wasm_eh_exnref()
+        self.require_wasm_exnref()
         self.set_setting('WASM_EXNREF')
       f(self, *args, **kwargs)
     else:
@@ -567,7 +567,7 @@ def with_all_sjlj(f):
       if mode == 'wasm':
         self.require_wasm_eh()
       if mode == 'wasm_exnref':
-        self.require_wasm_eh_exnref()
+        self.require_wasm_exnref()
         self.set_setting('WASM_EXNREF')
       f(self)
     else:
@@ -898,7 +898,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       self.fail('either d8 or node >= 17 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
-  def require_wasm_eh_exnref(self):
+  def require_wasm_exnref(self):
     nodejs = self.get_nodejs()
     if nodejs:
       version = shared.get_node_version(nodejs)
