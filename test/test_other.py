@@ -14287,7 +14287,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
         FS.writeFile('/working/new-dir/test.txt', 'test');
       );
     }
-    
+
     void test() {
       int err;
       struct stat s;
