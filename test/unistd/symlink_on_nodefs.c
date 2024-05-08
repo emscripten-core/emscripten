@@ -50,7 +50,7 @@ void test_outside_symlink()
   // and so we should be able to open it.
   FILE* fd = fopen("/working/outside-symlink/test", "r");
   assert(fd == NULL);
-  assert(errno == ENOENT)
+  assert(errno == ENOENT);
 }
 
 void test_mount_link()
