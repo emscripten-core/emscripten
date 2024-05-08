@@ -285,11 +285,11 @@ def requires_wasm_eh(func):
   return decorated
 
 
-def requires_new_wasm_eh(func):
+def requires_wasm_eh_exnref(func):
   assert callable(func)
 
   def decorated(self, *args, **kwargs):
-    self.require_new_wasm_eh()
+    self.require_wasm_eh_exnref()
     return func(self, *args, **kwargs)
 
   return decorated
@@ -519,7 +519,7 @@ def with_all_eh_sjlj(f):
 
   @wraps(f)
   def metafunc(self, mode, *args, **kwargs):
-    if mode == 'wasm' or mode == 'new_wasm':
+    if mode == 'wasm' or mode == 'wasm_exnref':
       # Wasm EH is currently supported only in wasm backend and V8
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm EH/SjLj')
@@ -530,9 +530,9 @@ def with_all_eh_sjlj(f):
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       if mode == 'wasm':
         self.require_wasm_eh()
-      if mode == 'new_wasm':
-        self.require_new_wasm_eh()
-        self.set_setting('EXPERIMENTAL_NEW_WASM_EXCEPTIONS')
+      if mode == 'wasm_exnref':
+        self.require_wasm_eh_exnref()
+        self.set_setting('WASM_EXNREF')
       f(self, *args, **kwargs)
     else:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
@@ -546,7 +546,7 @@ def with_all_eh_sjlj(f):
 
   parameterize(metafunc, {'emscripten': ('emscripten',),
                           'wasm': ('wasm',),
-                          'new_wasm': ('new_wasm',)})
+                          'wasm_exnref': ('wasm_exnref',)})
   return metafunc
 
 
@@ -557,7 +557,7 @@ def with_all_sjlj(f):
 
   @wraps(f)
   def metafunc(self, mode):
-    if mode == 'wasm' or mode == 'new_wasm':
+    if mode == 'wasm' or mode == 'wasm_exnref':
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm SjLj')
       # FIXME Temporarily disabled. Enable this later when the bug is fixed.
@@ -566,9 +566,9 @@ def with_all_sjlj(f):
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
       if mode == 'wasm':
         self.require_wasm_eh()
-      if mode == 'new_wasm':
-        self.require_new_wasm_eh()
-        self.set_setting('EXPERIMENTAL_NEW_WASM_EXCEPTIONS')
+      if mode == 'wasm_exnref':
+        self.require_wasm_eh_exnref()
+        self.set_setting('WASM_EXNREF')
       f(self)
     else:
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
@@ -576,7 +576,7 @@ def with_all_sjlj(f):
 
   parameterize(metafunc, {'emscripten': ('emscripten',),
                           'wasm': ('wasm',),
-                          'new_wasm': ('new_wasm',)})
+                          'wasm_exnref': ('wasm_exnref',)})
   return metafunc
 
 
@@ -898,7 +898,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       self.fail('either d8 or node >= 17 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
-  def require_new_wasm_eh(self):
+  def require_wasm_eh_exnref(self):
     nodejs = self.get_nodejs()
     if nodejs:
       version = shared.get_node_version(nodejs)
