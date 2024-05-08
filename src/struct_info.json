@@ -30,7 +30,10 @@
             "S_IFSOCK",
             "S_IFBLK",
             "S_IFLNK",
-            "S_IFCHR"
+            "S_IFCHR",
+            "S_IRUSR",
+            "S_IRGRP",
+            "S_IROTH"
         ],
         "structs": {
             "stat": [
