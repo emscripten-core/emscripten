@@ -17,65 +17,56 @@
 #include <emscripten.h>
 #endif
 
-void setup() {
-  int rtn = mkdir("working", 0777);
+void makedir(char *dir) {
+  int rtn = mkdir(dir, 0777);
   assert(rtn == 0);
+}
+
+void makefile(char *file, char *content) {
+  int fd = open(file, O_RDWR | O_CREAT, 0777);
+  assert(fd >= 0);
+  int rtn = write(fd, content, strlen(content));
+  assert(rtn == strlen(content));
+  close(fd);
+}
+
+void makelink(char *link, char *path) {
+  int rtn = symlink(link, path);
+  assert(rtn == 0);
+}
+
+void changedir(char *dir) {
+  int rtn = chdir(dir);
+  assert(rtn == 0);
+}
+
+void setup() {
+  makedir("working");
 #if defined(__EMSCRIPTEN__) && defined(NODEFS)
   EM_ASM(FS.mount(NODEFS, { root: '.' }, 'working'));
 #endif
-  rtn = chdir("working");
-  assert(rtn == 0);
-  symlink("../test/../there!", "link");
-  int fd = open("file", O_RDWR | O_CREAT, 0777);
-  assert(fd >= 0);
-  rtn = write(fd, "test", 5);
-  assert(rtn == 5);
-  close(fd);
-  rtn = mkdir("directory", 0777);
-  assert(rtn == 0);
-  rtn = mkdir("directory/subdirectory", 0777);
-  assert(rtn == 0);
-  fd = open("directory/subdirectory/file", O_RDWR | O_CREAT, 0777);
-  assert(fd >= 0);
-  rtn = write(fd, "Subdirectory", 13);
-  assert(rtn == 13);
-  close(fd);
+  changedir("working");
+  makelink("../test/../there!", "link");
+  makefile("file", "test");
+  makedir("directory");
+  makedir("directory/subdirectory");
+  makefile("directory/subdirectory/file", "Subdirectory");
 
-  rtn = mkdir("relative", 0777);
-  assert(rtn == 0);
-  fd = open("relative/file", O_RDWR | O_CREAT, 0777);
-  assert(fd >= 0);
-  rtn = write(fd, "Relative", 9);
-  assert(rtn == 9);
-  close(fd);
-  rtn = mkdir("relative/subrelative", 0777);
-  assert(rtn == 0);
-  fd = open("relative/subrelative/file", O_RDWR | O_CREAT, 0777);
-  assert(fd >= 0);
-  rtn = write(fd, "Subrelative", 12);
-  assert(rtn == 12);
-  close(fd);
-  symlink("../relative/file", "directory/relative");
-  symlink("../../relative/subrelative/file", "directory/subdirectory/subrelative");
-  symlink("directory/subdirectory/file", "subdirectoryrelative");
+  makedir("relative");
+  makedir("relative/subrelative");
+  makefile("relative/file", "Relative");
+  makefile("relative/subrelative/file", "Subrelative");
+  makelink("../relative/file", "directory/relative");
+  makelink("../../relative/subrelative/file", "directory/subdirectory/subrelative");
+  makelink("directory/subdirectory/file", "subdirectoryrelative");
 
-  rtn = mkdir("absolute", 0777);
-  assert(rtn == 0);
-  fd = open("absolute/file", O_RDWR | O_CREAT, 0777);
-  assert(fd >= 0);
-  rtn = write(fd, "Absolute", 9);
-  assert(rtn == 9);
-  close(fd);
-  rtn = mkdir("absolute/subabsolute", 0777);
-  assert(rtn == 0);
-  fd = open("absolute/subabsolute/file", O_RDWR | O_CREAT, 0777);
-  assert(fd >= 0);
-  rtn = write(fd, "Subabsolute", 12);
-  assert(rtn == 12);
-  close(fd);
-  symlink("/working/absolute/file", "/working/directory/absolute");
-  symlink("/working/absolute/subabsolute/file", "/working/directory/subdirectory/subabsolute");
-  symlink("/working/directory/subdirectory/file", "/working/subdirectoryabsolute");
+  makedir("absolute");
+  makedir("absolute/subabsolute");
+  makefile("absolute/file", "Absolute");
+  makefile("absolute/subabsolute/file", "Subabsolute");
+  makelink("/working/absolute/file", "/working/directory/absolute");
+  makelink("/working/absolute/subabsolute/file", "/working/directory/subdirectory/subabsolute");
+  makelink("/working/directory/subdirectory/file", "/working/subdirectoryabsolute");
 }
 
 void test_reading_existing_symlinks() {
