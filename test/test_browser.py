@@ -5479,6 +5479,13 @@ Module["preRun"] = () => {
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/19161')
     self.btest_exit('webaudio/audioworklet.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args)
 
+  # Tests that audioworklets and workers can be used at the same time
+  @parameterized({
+    '': ([],),
+  })
+  def test_audio_worklet_worker(self, args):
+    self.btest('webaudio/audioworklet_worker.c', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args, expected='1')
+
   # Tests that posting functions between the main thread and the audioworklet thread works
   @parameterized({
     '': ([],),

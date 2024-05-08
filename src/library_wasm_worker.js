@@ -143,7 +143,12 @@ addToLibrary({
 #endif
   ],
   _emscripten_create_wasm_worker__postset: `
-if (ENVIRONMENT_IS_WASM_WORKER) {
+if (ENVIRONMENT_IS_WASM_WORKER
+// AudioWorkletGlobalScope does not contain addEventListener
+#if AUDIO_WORKLET
+  && !ENVIRONMENT_IS_AUDIO_WORKLET
+#endif
+  ) {
   _wasmWorkers[0] = this;
   addEventListener("message", _wasmWorkerAppendToQueue);
 }`,
