@@ -14272,40 +14272,47 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   @only_windows('Check that directory permissions are properly retrieved on Windows')
   @requires_node
   def test_windows_nodefs_execution_permission(self):
-    if self.get_setting('WASMFS'):
-      self.set_setting('FORCE_FILESYSTEM')
-    delete_dir('new-dir')
     src = r'''
     #include <assert.h>
     #include <emscripten.h>
     #include <sys/stat.h>
     #include <string.h>
+    #include <stdio.h>
 
-    int main(int argc, char * argv[]) {
+    void setup() {
       EM_ASM(
         FS.mkdir('/working');
-        FS.mount(NODEFS, { root: '{{WORKING_DIR}}' }, '/working');
+        FS.mount(NODEFS, { root: '.' }, '/working');
         FS.mkdir('/working/new-dir');
         FS.writeFile('/working/new-dir/test.txt', 'test');
       );
-
+    }
+    
+    void test() {
       int err;
       struct stat s;
       memset(&s, 0, sizeof(s));
       err = stat("/working/new-dir", &s);
       assert(S_ISDIR(s.st_mode));
-      assert((s.st_mode & S_IXUSR) == S_IXUSR);
-      assert((s.st_mode & S_IXGRP) == S_IXGRP);
-      assert((s.st_mode & S_IXOTH) == S_IXOTH);
+      assert(s.st_mode & S_IXUSR);
+      assert(s.st_mode & S_IXGRP);
+      assert(s.st_mode & S_IXOTH);
 
       err = stat("/working/new-dir/test.txt", &s);
-      assert((s.st_mode & S_IXUSR) == S_IXUSR);
-      assert((s.st_mode & S_IXGRP) == S_IXGRP);
-      assert((s.st_mode & S_IXOTH) == S_IXOTH);
+      assert(s.st_mode & S_IXUSR);
+      assert(s.st_mode & S_IXGRP);
+      assert(s.st_mode & S_IXOTH);
+
+      puts("success");
     }
-    '''.replace('{{WORKING_DIR}}', Path(self.working_dir).as_posix())
-    self.emcc_args += ['-lnodefs.js']
-    self.do_run(src)
+
+    int main(int argc, char * argv[]) {
+      setup();
+      test();
+      return EXIT_SUCCESS;
+    }
+    '''
+    self.do_run(src, emcc_args=['-lnodefs.js'])
 
   @parameterized({
     'wasm2js': (True,),
