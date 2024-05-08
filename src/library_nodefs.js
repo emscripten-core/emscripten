@@ -119,15 +119,15 @@ addToLibrary({
           if (!e.code) throw e;
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
-        // node.js v0.10.20 doesn't report blksize and blocks on Windows. Fake them with default blksize of 4096.
-        // See http://support.microsoft.com/kb/140365
-        if (NODEFS.isWindows && !stat.blksize) {
-          stat.blksize = 4096;
-        }
-        if (NODEFS.isWindows && !stat.blocks) {
-          stat.blocks = (stat.size+stat.blksize-1)/stat.blksize|0;
-        }
         if (NODEFS.isWindows) {
+          // node.js v0.10.20 doesn't report blksize and blocks on Windows. Fake them with default blksize of 4096.
+          // See http://support.microsoft.com/kb/140365
+          if (!stat.blksize) {
+            stat.blksize = 4096;
+          }
+          if (!stat.blocks) {
+            stat.blocks = (stat.size+stat.blksize-1)/stat.blksize|0;
+          }
           // Node.js on Windows never represents permission bit 'x', so
           // propagate read bits to execute bits.
           stat.mode = stat.mode | (stat.mode & 292) >> 2;
