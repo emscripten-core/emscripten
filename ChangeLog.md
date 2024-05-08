@@ -25,7 +25,7 @@ See docs/process.md for more on how version tagging works.
 - The `EXPORTED_FUNCTIONS` list can now include JS library symbols even if they
   have not been otherwise included (e.g. via `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`).
   (#21867)
-- Due to the upstream LLVM change
+- Due to the upstream LLVM changes
   (https://github.com/llvm/llvm-project/pull/80923 and
   https://github.com/llvm/llvm-project/pull/90792), multivalue feature is now
   enabled by default in Emscripten. This only enables the language features and
