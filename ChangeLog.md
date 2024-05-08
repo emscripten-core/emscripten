@@ -144,17 +144,17 @@ See docs/process.md for more on how version tagging works.
   the top of the JS file.  This is useful as it allows things like `{{{
   POINTER_SIZE }}}` and `{{{ makeGetValue(..) }}}` to be used in pre/post JS
   files, just like they can be in JS library files. (#21227)
-- Added concept of contrib ports which are ports contributed by the wider
-  community and supported on a "best effort" basis. See
-  `tools/ports/contrib/README.md` for details.A first contrib port is
-  available via `--use-port=contrib.glfw3`: an emscripten port of glfw written
-  in C++ with many features like support for multiple windows. (#21244 and
+- Added concept of contrib ports which are ports contributed by the wider 
+  community and supported on a "best effort" basis. See 
+  `tools/ports/contrib/README.md` for details.A first contrib port is 
+  available via `--use-port=contrib.glfw3`: an emscripten port of glfw written 
+  in C++ with many features like support for multiple windows. (#21244 and 
   #21276)
 - Added concept of external ports which live outside emscripten and are
   loaded on demand using the syntax `--use-port=/path/to/my_port.py` (#21316)
 - `embuilder` can now build ports with options as well as external ports using
   the same syntax introduced with `--use-port`
-  (ex: `embuilder sdl2_image:formats=png,jpg`) (#21345)
+  (ex: `embuilder sdl2_image:formats=png,jpg`) (#21345) 
 - Allow comments in response files. Any line starting with `#` is now ignored.
   This is useful when listing exported symbols. (#21330)
 
@@ -200,7 +200,7 @@ See docs/process.md for more on how version tagging works.
   is intending to target them today.  (#20924)
 - C++ objects passed into embind's val via constructors, methods, and call
   function will not be automatically destroyed after the function call. This
-  makes the behavior consistent for invocations.
+  makes the behavior consistent for invocations. 
 - The `SUPPORT_ERRNO` setting is now deprecated as it only controlled setting
   errno from JS library functions and emscripten no longer requires this.
   (#21074)
@@ -272,7 +272,7 @@ See docs/process.md for more on how version tagging works.
 - The `glfwSetWindowSize` function no longer switches to fullscreen when the
   width/height provided as parameters match the screen size. This behavior
   now matches the behavior of SDL and glut. In order to switch to fullscreen,
-  the client code should invoke `Module.requestFullscreen(...)` from a user
+  the client code should invoke `Module.requestFullscreen(...)` from a user 
   triggered event otherwise the browser raises an error. (#20600)
 
 3.1.48 - 11/05/23
@@ -473,7 +473,7 @@ See docs/process.md for more on how version tagging works.
    - stringToUTF8Array
    - stringToUTF8
    - lengthBytesUTF8
-
+  
   If you use any of these functions in your JS code you will now need to include
   them explicitly in one of the following ways:
    - Add them to a `__deps` entry in your JS library file (with leading $)
@@ -508,7 +508,7 @@ See docs/process.md for more on how version tagging works.
 - When targeting node, and using `-sMODULARIZE`, we no longer internally catch
   unhandled promise rejections or exit status code. That is to say the,
   `NODEJS_CATCH_REJECTION` and `NODEJS_CATCH_EXIT` are no longer compatible
-  with `-sMODULARIZE`.
+  with `-sMODULARIZE`.   
 
 3.1.33 - 03/08/23
 -----------------
@@ -529,7 +529,7 @@ See docs/process.md for more on how version tagging works.
   (#18861)
 - The `emscripten_proxy_async_with_callback` API was replaced with a simpler
   `emscripten_proxy_callback` API that takes a second callback to be called if
-  the worker thread dies before completing the proxied work.
+  the worker thread dies before completing the proxied work.  
 
 3.1.32 - 02/17/23
 -----------------

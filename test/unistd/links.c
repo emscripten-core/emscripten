@@ -17,12 +17,12 @@
 #include <emscripten.h>
 #endif
 
-void makedir(char *dir) {
+void makedir(const char *dir) {
   int rtn = mkdir(dir, 0777);
   assert(rtn == 0);
 }
 
-void makefile(char *file, char *content) {
+void makefile(const char *file, const char *content) {
   int fd = open(file, O_RDWR | O_CREAT, 0777);
   assert(fd >= 0);
   int rtn = write(fd, content, strlen(content));
@@ -30,12 +30,12 @@ void makefile(char *file, char *content) {
   close(fd);
 }
 
-void makelink(char *link, char *path) {
+void makelink(const char *link, const char *path) {
   int rtn = symlink(link, path);
   assert(rtn == 0);
 }
 
-void changedir(char *dir) {
+void changedir(const char *dir) {
   int rtn = chdir(dir);
   assert(rtn == 0);
 }
