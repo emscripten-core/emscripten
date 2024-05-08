@@ -40,7 +40,7 @@ from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_w
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
 from common import requires_network, parameterize
 from tools import shared, building, utils, response_file, cache
-from tools.utils import read_file, write_file, delete_file, delete_dir, read_binary, MACOS, WINDOWS
+from tools.utils import read_file, write_file, delete_file, read_binary, MACOS, WINDOWS
 import common
 import jsrun
 import clang_native
