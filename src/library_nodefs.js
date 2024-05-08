@@ -234,9 +234,7 @@ addToLibrary({
       readlink(node) {
         var path = NODEFS.realPath(node);
         try {
-          path = fs.readlinkSync(path);
-          path = nodePath.relative(nodePath.resolve(node.mount.opts.root), path);
-          return path;
+          return fs.readlinkSync(path);
         } catch (e) {
           if (!e.code) throw e;
           // node under windows can return code 'UNKNOWN' here:
