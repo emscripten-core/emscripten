@@ -3297,17 +3297,20 @@ More info: https://emscripten.org
                      self.get_emcc_args())
     self.assertFileContents(test_file('other/embind_tsgen_memory64.d.ts'), read_file('embind_tsgen_memory64.d.ts'))
 
-  def test_embind_tsgen_exceptions(self):
-    for wasm_exnref in [0, 1]:
-      self.set_setting('WASM_EXNREF', wasm_exnref)
-      # Check that when Wasm exceptions and assertions are enabled bindings still generate.
-      self.run_process([EMXX, test_file('other/embind_tsgen.cpp'),
-                        '-lembind', '-fwasm-exceptions', '-sASSERTIONS',
-                        # Use the deprecated `--embind-emit-tsd` to ensure it
-                        # still works until removed.
-                        '--embind-emit-tsd', 'embind_tsgen.d.ts', '-Wno-deprecated']
-                       + self.get_emcc_args())
-      self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
+  @parameterized({
+    '': [0],
+    'wasm_exnref': [1]
+  })
+  def test_embind_tsgen_exceptions(self, wasm_exnref):
+    self.set_setting('WASM_EXNREF', wasm_exnref)
+    # Check that when Wasm exceptions and assertions are enabled bindings still generate.
+    self.run_process([EMXX, test_file('other/embind_tsgen.cpp'),
+                      '-lembind', '-fwasm-exceptions', '-sASSERTIONS',
+                      # Use the deprecated `--embind-emit-tsd` to ensure it
+                      # still works until removed.
+                      '--embind-emit-tsd', 'embind_tsgen.d.ts', '-Wno-deprecated']
+                     + self.get_emcc_args())
+    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_jsgen_method_pointer_stability(self):
     self.emcc_args += ['-lembind', '-sEMBIND_AOT']
