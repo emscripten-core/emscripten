@@ -1649,19 +1649,18 @@ int f() {
   @also_with_wasmfs
   @crossplatform
   def test_stdin(self, args):
-    create_file('in.txt', 'abcdef\nghijkl')
+    create_file('in.txt', 'abcdef\nghijkl\n')
+    self.set_setting('ENVIRONMENT', 'node,shell')
     self.emcc(test_file('module/test_stdin.c'), args=args, output_filename='out.js')
 
     for engine in config.JS_ENGINES:
-      if engine == config.V8_ENGINE:
-        continue # no stdin support in v8 shell
       engine[0] = os.path.normpath(engine[0])
-      print(engine, file=sys.stderr)
       # work around a bug in python's subprocess module
       # (we'd use self.run_js() normally)
       delete_file('out.txt')
       cmd = jsrun.make_command(os.path.normpath('out.js'), engine)
       cmd = shared.shlex_join(cmd)
+      print(cmd, file=sys.stderr)
       if WINDOWS:
         os.system(f'type "in.txt" | {cmd} >out.txt')
       else: # posix
