@@ -398,11 +398,10 @@ addToLibrary({
   // ==========================================================================
 
 #if !STANDALONE_WASM
-  // TODO: There are currently two abort() functions that get imported to asm
-  // module scope: the built-in runtime function abort(), and this library
-  // function _abort(). Remove one of these, importing two functions for the
-  // same purpose is wasteful.
-  abort: () => {
+  // Used to implement the native `abort` symbol.  Note that we use the
+  // JavaScript `abort` helper in order to implement this function, but we use a
+  // distinct name here to avoid confusing the two.
+  _abort_js: () => {
 #if ASSERTIONS
     abort('native code called abort()');
 #else
@@ -2467,15 +2466,6 @@ addToLibrary({
     else return lengthBytesUTF8(str);
   },
 
-  emscripten_get_module_name__deps: ['$stringToUTF8'],
-  emscripten_get_module_name: (buf, length) => {
-#if MINIMAL_RUNTIME
-    return stringToUTF8('{{{ TARGET_BASENAME }}}.wasm', buf, length);
-#else
-    return stringToUTF8(wasmBinaryFile, buf, length);
-#endif
-  },
-
 #if USE_ASAN || USE_LSAN || UBSAN_RUNTIME
   // When lsan or asan is enabled withBuiltinMalloc temporarily replaces calls
   // to malloc, free, and memalign.
@@ -2954,17 +2944,9 @@ addToLibrary({
 
   // Use program_invocation_short_name and program_invocation_name in compiled
   // programs. This function is for implementing them.
-#if !MINIMAL_RUNTIME
-  _emscripten_get_progname__deps: ['$stringToUTF8'],
-#endif
+  _emscripten_get_progname__deps: ['$getExecutableName', '$stringToUTF8'],
   _emscripten_get_progname: (str, len) => {
-#if !MINIMAL_RUNTIME
-#if ASSERTIONS
-    assert(typeof str == 'number');
-    assert(typeof len == 'number');
-#endif
-    stringToUTF8(thisProgram, str, len);
-#endif
+    stringToUTF8(getExecutableName(), str, len);
   },
 
   emscripten_console_log: (str) => {
@@ -3272,6 +3254,7 @@ addToLibrary({
   $getNativeTypeSize__deps: ['$POINTER_SIZE'],
   $getNativeTypeSize: {{{ getNativeTypeSize }}},
 
+  $wasmTable__docs: '/** @type {WebAssembly.Table} */',
 #if RELOCATABLE
   // In RELOCATABLE mode we create the table in JS.
   $wasmTable: `=new WebAssembly.Table({

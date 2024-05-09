@@ -26,6 +26,8 @@
 extern "C" {
 #endif
 
+_Noreturn void _abort_js(void);
+
 void setThrew(uintptr_t threw, int value);
 
 // An external JS implementation that is efficient for very large copies, using
@@ -53,7 +55,6 @@ const char* emscripten_pc_get_file(uintptr_t pc);
 int emscripten_pc_get_line(uintptr_t pc);
 int emscripten_pc_get_column(uintptr_t pc);
 
-char* emscripten_get_module_name(char* buf, size_t length);
 void* emscripten_builtin_mmap(
   void* addr, size_t length, int prot, int flags, int fd, off_t offset);
 int emscripten_builtin_munmap(void* addr, size_t length);

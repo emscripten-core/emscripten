@@ -18,8 +18,35 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.58 (in development)
+3.1.60 (in development)
 -----------------------
+- Under nodefs, symbolic links to files outside of mount locations no longer work.
+  This reverts the previous behaviour added in #3277. (#21805)
+- The `EXPORTED_FUNCTIONS` list can now include JS library symbols even if they
+  have not been otherwise included (e.g. via `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`).
+  (#21867)
+- Due to the upstream LLVM changes
+  (https://github.com/llvm/llvm-project/pull/80923 and
+  https://github.com/llvm/llvm-project/pull/90792), multivalue feature is now
+  enabled by default in Emscripten. This only enables the language features and
+  does not turn on the multivalue ABI.
+
+3.1.59 - 04/30/24
+-----------------
+- Fix the location of the dummy `.worker.js` file that is now generated as part
+  of pthread builds so that is generated alongside the main JavaScript file.
+  See #21701. ()
+- `-sASYNCIFY=2` is setting now deprecated, use `-sJSPI` instead.
+
+3.1.58 - 04/23/24
+-----------------
+- The `-sMAIN_MODULE=1` mode no longer exports all the main module symbols on
+  `Module` object.  This saves a huge about of generated JS code due the fact
+  that `-sMAIN_MODULE=1` includes *all* native symbols in your program as well
+  is from the standard library.  The generated JS code for a simple program
+  in this mode is reduced from from 3.3mb to 0.5mb.  The current implementation
+  of this feature requires wasm-ld to be on the program twice which could have a
+  noticeable effect on link times. (#21785)
 - In `-sMODULARIZE` mode, the argument passed into the module constructor is
   no longer mutated in place.  The expectation is that the module instance will
   be available via the constructor return value.  Attempting to access methods
@@ -27,6 +54,7 @@ See docs/process.md for more on how version tagging works.
 - Enable use of `::` to escape port option separator (#21710)
 - In multi-threaded builds `--extern-pre-js` and `--extern-post-js` code is
   now only run on the main thread, and not on each of the workers. (#21750)
+- Fix crash when throwing exceptions in dynamically linked int64 functions (#21759)
 - Multi-threaded builds no depend on a separate `.worker.js` file.  This saves
   on code size and network requests.  In order to make this change go smoothly,
   without breaking build systems that expect a `worker.js`, emscripten will

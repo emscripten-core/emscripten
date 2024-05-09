@@ -24,10 +24,7 @@
 #endif
 #include <AL/al.h>
 #include <AL/alc.h>
-#ifdef ASSUME_AL_FLOAT32
-#define AL_FORMAT_MONO_FLOAT32                   0x10010
-#define AL_FORMAT_STEREO_FLOAT32                 0x10011
-#endif
+#include <AL/alext.h>
 
 const char* alformat_string(ALenum format) {
     switch(format) {

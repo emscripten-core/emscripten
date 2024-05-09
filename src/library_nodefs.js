@@ -71,7 +71,7 @@ addToLibrary({
         if (NODEFS.isWindows) {
           // Node.js on Windows never represents permission bit 'x', so
           // propagate read bits to execute bits
-          stat.mode = stat.mode | ((stat.mode & 292) >> 2);
+          stat.mode |= (stat.mode & {{{ cDefs.S_IRUSR | cDefs.S_IRGRP | cDefs.S_IROTH }}}) >> 2;
         }
       } catch (e) {
         if (!e.code) throw e;
@@ -234,9 +234,7 @@ addToLibrary({
       readlink(node) {
         var path = NODEFS.realPath(node);
         try {
-          path = fs.readlinkSync(path);
-          path = nodePath.relative(nodePath.resolve(node.mount.opts.root), path);
-          return path;
+          return fs.readlinkSync(path);
         } catch (e) {
           if (!e.code) throw e;
           // node under windows can return code 'UNKNOWN' here:
@@ -276,14 +274,14 @@ addToLibrary({
         // Node.js < 6 compatibility: node errors on 0 length reads
         if (length === 0) return 0;
         try {
-          return fs.readSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), { position: position });
+          return fs.readSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position);
         } catch (e) {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
       write(stream, buffer, offset, length, position) {
         try {
-          return fs.writeSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), { position: position });
+          return fs.writeSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position);
         } catch (e) {
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }

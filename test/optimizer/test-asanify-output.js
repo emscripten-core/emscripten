@@ -37,11 +37,11 @@ _asan_js_load_2(bar(_asan_js_load_d(5)));
 _asan_js_store_f(x, _asan_js_load_4(y));
 
 function _asan_js_load_1(ptr) {
- return HEAP8[ptr];
+  return HEAP8[ptr];
 }
 
 function somethingElse() {
- return _asan_js_load_1(ptr);
+  return _asan_js_load_1(ptr);
 }
 
 HEAP8.length;

@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
@@ -14,52 +15,62 @@
 #include <limits.h>
 #include <stdlib.h>
 
-int main() {
+void setup() {
   EM_ASM(
-    fs.mkdirSync('./new-directory', '0777');
-    fs.writeFileSync('./new-directory/test', 'Link it');
-    fs.symlinkSync(fs.realpathSync('./new-directory'), './symlink');
+    fs.mkdirSync('directory', '0777');
+    fs.writeFileSync('directory/test', 'Link it');
+    fs.symlinkSync('/working/directory', 'inside-symlink');
+    fs.symlinkSync(fs.realpathSync('directory'), 'outside-symlink');
 
     FS.mkdir('working');
     FS.mount(NODEFS, { root: '.' }, 'working');
 
-    FS.mkdir('direct-link');
-    FS.mount(NODEFS, { root: './symlink' }, 'direct-link');
+    FS.mkdir('mount-link');
+    FS.mount(NODEFS, { root: 'inside-symlink' }, 'mount-link');
   );
+}
 
-  {
-    const char* path = "/working/symlink/test";
-    printf("reading %s\n", path);
+void test_inside_symlink()
+{
+  char buf[256] = {0};
+  readlink("/working/inside-symlink", buf, 256);
+  printf("readlink: '%s'\n", buf);
+  FILE* fd = fopen("/working/inside-symlink/test", "r");
+  assert(fd);
+  char buffer[8] = {0};
+  int rtn = fread(buffer, 1, 7, fd);
+  assert(rtn == 7);
+  printf("buffer: '%s'\n", buffer);
+  fclose(fd);
+}
 
-    FILE* fd = fopen(path, "r");
-    if (fd == NULL) {
-      printf("failed to open file %s\n", path);
-    }
-    else {
-      char buffer[8];
-      fread(buffer, 1, 7, fd);
-      buffer[7] = 0;
-      printf("buffer is %s\n", buffer);
-      fclose(fd);
-    }
-  }
+void test_outside_symlink()
+{
+  // outside-symlink is link to an absolute path which is not part of the emscripten VFS
+  // and so we should be able to open it.
+  FILE* fd = fopen("/working/outside-symlink/test", "r");
+  assert(fd == NULL);
+  assert(errno == ENOENT);
+}
 
-  printf("\n");
+void test_mount_link()
+{
+  char buf[256] = {0};
+  readlink("/mount-link", buf, 256);
+  printf("\nreadlink: '%s'\n", buf);
+  FILE* fd = fopen("/mount-link/test", "r");
+  assert(fd);
+  char buffer[8] = {0};
+  int rtn = fread(buffer, 1, 7, fd);
+  assert(rtn == 7);
+  printf("buffer: '%s'\n", buffer);
+  fclose(fd);
+}
 
-  {
-    const char* path = "/direct-link/test";
-    printf("reading %s\n", path);
-
-    FILE* fd = fopen(path, "r");
-    if (fd != NULL) {
-      // This should not happen, it resolves to ../new-directory which is not mounted
-      printf("opened file %s\n", path);
-      fclose(fd);
-    }
-    else {
-      printf("failed to open file %s\n", path);
-    }
-  }
-  
+int main() {
+  setup();
+  test_inside_symlink();
+  test_outside_symlink();
+  test_mount_link();
   return 0;
 }

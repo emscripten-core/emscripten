@@ -27,13 +27,7 @@
 #endif
 #include <AL/al.h>
 #include <AL/alc.h>
-
-#ifdef ASSUME_AL_FLOAT32
-// We, in particular, are expected to support this, since
-// this is the data type used by Web Audio.
-#define AL_FORMAT_MONO_FLOAT32                   0x10010
-#define AL_FORMAT_STEREO_FLOAT32                 0x10011
-#endif
+#include <AL/alext.h>
 
 #define countof(x) (sizeof(x)/sizeof((x)[0]))
 

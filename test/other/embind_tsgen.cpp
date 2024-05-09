@@ -102,6 +102,10 @@ std::optional<int> optional_test(std::optional<Foo> arg) {
   return {};
 }
 
+std::optional<int> optional_and_nonoptional_test(std::optional<Foo> arg1, int arg2) {
+  return {};
+}
+
 class BaseClass {
  public:
   virtual ~BaseClass() = default;
@@ -174,6 +178,7 @@ EMSCRIPTEN_BINDINGS(Test) {
   register_optional<int>();
   register_optional<Foo>();
   function("optional_test", &optional_test);
+  function("optional_and_nonoptional_test", &optional_and_nonoptional_test);
 
   function("string_test", &string_test);
   function("wstring_test", &wstring_test);

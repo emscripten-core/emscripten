@@ -956,8 +956,7 @@ EXPORT_EXCEPTION_HANDLING_HELPERS
 =================================
 
 Make the exception message printing function, 'getExceptionMessage' available
-in the JS library for use, by adding necessary symbols to EXPORTED_FUNCTIONS
-and DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.
+in the JS library for use, by adding necessary symbols to EXPORTED_FUNCTIONS.
 
 This works with both Emscripten EH and Wasm EH. When you catch an exception
 from JS, that gives you a user-thrown value in case of Emscripten EH, and a
@@ -995,6 +994,17 @@ ASSERTIONS is enabled. This option is for users who want exceptions' stack
 traces but do not want other overheads ASSERTIONS can incur.
 This option implies EXPORT_EXCEPTION_HANDLING_HELPERS.
 
+.. _wasm_exnref:
+
+WASM_EXNREF
+===========
+
+Emit instructions for the new Wasm exception handling proposal with exnref,
+which was adopted on Oct 2023. The implementation of the new proposal is
+still in progress and this feature is currently experimental.
+
+.. note:: Applicable during both linking and compilation
+
 .. _nodejs_catch_exit:
 
 NODEJS_CATCH_EXIT
@@ -1030,16 +1040,11 @@ ASYNCIFY
 Whether to support async operations in the compiled code. This makes it
 possible to call JS functions from synchronous-looking code in C/C++.
 
-- Run binaryen's Asyncify pass to transform the code using asyncify. This
-  emits a normal wasm file in the end, so it works everywhere, but it has a
-  significant cost in terms of code size and speed.
+- 1 (default): Run binaryen's Asyncify pass to transform the code using
+  asyncify. This emits a normal wasm file in the end, so it works everywhere,
+  but it has a significant cost in terms of code size and speed.
   See https://emscripten.org/docs/porting/asyncify.html
-- Depend on VM support for the wasm stack switching proposal. This allows
-  async operations to happen without the overhead of modifying the wasm.
-  This is experimental atm while spec discussion is ongoing, see
-  https://github.com/WebAssembly/js-promise-integration/
-  TODO: document which of the following flags are still relevant in this
-  mode (e.g. IGNORE_INDIRECT etc. are not needed)
+- 2 (deprecated): Use ``-sJSPI`` instead.
 
 .. _asyncify_imports:
 
@@ -1186,6 +1191,18 @@ Specify which of the exports will have JSPI applied to them and return a
 promise.
 Only supported for ASYNCIFY==2 mode.
 
+.. _jspi:
+
+JSPI
+====
+
+Use VM support for the JavaScript Promise Integration proposal. This allows
+async operations to happen without the overhead of modifying the wasm. This
+is experimental atm while spec discussion is ongoing, see
+https://github.com/WebAssembly/js-promise-integration/ TODO: document which
+of the following flags are still relevant in this mode (e.g. IGNORE_INDIRECT
+etc. are not needed)
+
 .. _exported_runtime_methods:
 
 EXPORTED_RUNTIME_METHODS
@@ -1306,14 +1323,16 @@ to load ok, but we do actually recompile).
 EXPORTED_FUNCTIONS
 ==================
 
-Functions that are explicitly exported. These functions are kept alive
-through LLVM dead code elimination, and also made accessible outside of the
-generated code even after running closure compiler (on "Module").  The
+Symbols that are explicitly exported. These symbols are kept alive through
+LLVM dead code elimination, and also made accessible outside of the
+generated code even after running closure compiler (on "Module").  Native
 symbols listed here require an ``_`` prefix.
 
 By default if this setting is not specified on the command line the
 ``_main`` function will be implicitly exported.  In STANDALONE_WASM mode the
 default export is ``__start`` (or ``__initialize`` if --no-entry is specified).
+
+JS Library symbols can also be added to this list (without the leading `$`).
 
 .. _export_all:
 
@@ -1351,13 +1370,16 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
 ================================
 
 JS library elements (C functions implemented in JS) that we include by
-default. If you want to make sure something is included by the JS compiler,
+default.  If you want to make sure something is included by the JS compiler,
 add it here.  For example, if you do not use some ``emscripten_*`` C API call
-from C, but you want to call it from JS, add it here (and in EXPORTED
-FUNCTIONS with prefix "_", if you use closure compiler).  Note that the name
-may be slightly misleading, as this is for any JS library element, and not
-just functions. For example, you can include the Browser object by adding
-"$Browser" to this list.
+from C, but you want to call it from JS, add it here.
+Note that the name may be slightly misleading, as this is for any JS
+library element, and not just functions. For example, you can include the
+Browser object by adding "$Browser" to this list.
+
+If you want to both include and export a JS library symbol, it is enough to
+simply add it to EXPORTED_FUNCTIONS, without also adding it to
+DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.
 
 .. _include_full_library:
 

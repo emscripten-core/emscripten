@@ -131,17 +131,6 @@ def skip_if(func, condition, explanation='', negate=False):
   return decorated
 
 
-def needs_dylink(func):
-  assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    self.check_dylink()
-    return func(self, *args, **kwargs)
-
-  return decorated
-
-
 def is_slow_test(func):
   assert callable(func)
 
@@ -296,6 +285,16 @@ def requires_wasm_eh(func):
   return decorated
 
 
+def requires_wasm_exnref(func):
+  assert callable(func)
+
+  def decorated(self, *args, **kwargs):
+    self.require_wasm_exnref()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def requires_v8(func):
   assert callable(func)
 
@@ -377,11 +376,11 @@ def also_with_env_modify(name_updates_mapping):
       else:
         return f(self, *args, **kwargs)
 
-    parameterize = {'': (None,)}
+    params = {'': (None,)}
     for name, updates in name_updates_mapping.items():
-      parameterize[name] = (updates,)
+      params[name] = (updates,)
 
-    metafunc._parameterize = parameterize
+    parameterize(metafunc, params)
 
     return metafunc
 
@@ -391,20 +390,22 @@ def also_with_env_modify(name_updates_mapping):
 def also_with_minimal_runtime(f):
   assert callable(f)
 
+  @wraps(f)
   def metafunc(self, with_minimal_runtime, *args, **kwargs):
     assert self.get_setting('MINIMAL_RUNTIME') is None
     if with_minimal_runtime:
       self.set_setting('MINIMAL_RUNTIME', 1)
     f(self, *args, **kwargs)
 
-  metafunc._parameterize = {'': (False,),
-                            'minimal_runtime': (True,)}
+  parameterize(metafunc, {'': (False,),
+                          'minimal_runtime': (True,)})
   return metafunc
 
 
 def also_with_wasm_bigint(f):
   assert callable(f)
 
+  @wraps(f)
   def metafunc(self, with_bigint, *args, **kwargs):
     if with_bigint:
       if self.is_wasm2js():
@@ -418,14 +419,15 @@ def also_with_wasm_bigint(f):
     else:
       f(self, *args, **kwargs)
 
-  metafunc._parameterize = {'': (False,),
-                            'bigint': (True,)}
+  parameterize(metafunc, {'': (False,),
+                          'bigint': (True,)})
   return metafunc
 
 
 def also_with_wasm64(f):
   assert callable(f)
 
+  @wraps(f)
   def metafunc(self, with_wasm64, *args, **kwargs):
     if with_wasm64:
       self.require_wasm64()
@@ -435,14 +437,15 @@ def also_with_wasm64(f):
     else:
       f(self, *args, **kwargs)
 
-  metafunc._parameterize = {'': (False,),
-                            'wasm64': (True,)}
+  parameterize(metafunc, {'': (False,),
+                          'wasm64': (True,)})
   return metafunc
 
 
 def also_with_wasm2js(f):
   assert callable(f)
 
+  @wraps(f)
   def metafunc(self, with_wasm2js, *args, **kwargs):
     assert self.get_setting('WASM') is None
     if with_wasm2js:
@@ -452,8 +455,8 @@ def also_with_wasm2js(f):
     else:
       f(self, *args, **kwargs)
 
-  metafunc._parameterize = {'': (False,),
-                            'wasm2js': (True,)}
+  parameterize(metafunc, {'': (False,),
+                          'wasm2js': (True,)})
   return metafunc
 
 
@@ -477,6 +480,7 @@ def can_do_standalone(self, impure=False):
 # standalone. We can still run them with the JS code though.
 def also_with_standalone_wasm(impure=False):
   def decorated(func):
+    @wraps(func)
     def metafunc(self, standalone):
       if not standalone:
         func(self)
@@ -498,32 +502,38 @@ def also_with_standalone_wasm(impure=False):
         self.node_args += shared.node_bigint_flags(nodejs)
         func(self)
 
-    metafunc._parameterize = {'': (False,),
-                              'standalone': (True,)}
+    parameterize(metafunc, {'': (False,),
+                            'standalone': (True,)})
     return metafunc
 
   return decorated
 
 
 # Tests exception handling / setjmp/longjmp handling in Emscripten EH/SjLj mode
-# and if possible, new wasm EH/SjLj mode. This tests two combinations:
+# and new wasm EH/SjLj modes. This tests three combinations:
 # - Emscripten EH + Emscripten SjLj
-# - Wasm EH + Wasm SjLj
-def with_both_eh_sjlj(f):
+# - Wasm EH + Wasm SjLj (Phase 3, to be deprecated)
+# - Wasm EH + Wasm SjLj (New proposal witn exnref, experimental)
+def with_all_eh_sjlj(f):
   assert callable(f)
 
-  def metafunc(self, is_native):
-    if is_native:
+  @wraps(f)
+  def metafunc(self, mode, *args, **kwargs):
+    if mode == 'wasm' or mode == 'wasm_exnref':
       # Wasm EH is currently supported only in wasm backend and V8
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm EH/SjLj')
-      self.require_wasm_eh()
       # FIXME Temporarily disabled. Enable this later when the bug is fixed.
       if '-fsanitize=address' in self.emcc_args:
         self.skipTest('Wasm EH does not work with asan yet')
       self.emcc_args.append('-fwasm-exceptions')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
-      f(self)
+      if mode == 'wasm':
+        self.require_wasm_eh()
+      if mode == 'wasm_exnref':
+        self.require_wasm_exnref()
+        self.set_setting('WASM_EXNREF')
+      f(self, *args, **kwargs)
     else:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
@@ -532,34 +542,41 @@ def with_both_eh_sjlj(f):
       # error out because libc++abi is not included. See
       # https://github.com/emscripten-core/emscripten/pull/14192 for details.
       self.set_setting('DEFAULT_TO_CXX')
-      f(self)
+      f(self, *args, **kwargs)
 
-  metafunc._parameterize = {'': (False,),
-                            'wasm': (True,)}
+  parameterize(metafunc, {'emscripten': ('emscripten',),
+                          'wasm': ('wasm',),
+                          'wasm_exnref': ('wasm_exnref',)})
   return metafunc
 
 
-# This works just like `with_both_eh_sjlj` above but doesn't enable exceptions.
+# This works just like `with_all_eh_sjlj` above but doesn't enable exceptions.
 # Use this for tests that use setjmp/longjmp but not exceptions handling.
-def with_both_sjlj(f):
+def with_all_sjlj(f):
   assert callable(f)
 
-  def metafunc(self, is_native):
-    if is_native:
+  @wraps(f)
+  def metafunc(self, mode):
+    if mode == 'wasm' or mode == 'wasm_exnref':
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm SjLj')
-      self.require_wasm_eh()
       # FIXME Temporarily disabled. Enable this later when the bug is fixed.
       if '-fsanitize=address' in self.emcc_args:
         self.skipTest('Wasm EH does not work with asan yet')
       self.set_setting('SUPPORT_LONGJMP', 'wasm')
+      if mode == 'wasm':
+        self.require_wasm_eh()
+      if mode == 'wasm_exnref':
+        self.require_wasm_exnref()
+        self.set_setting('WASM_EXNREF')
       f(self)
     else:
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
       f(self)
 
-  metafunc._parameterize = {'': (False,),
-                            'wasm_sjlj': (True,)}
+  parameterize(metafunc, {'emscripten': ('emscripten',),
+                          'wasm': ('wasm',),
+                          'wasm_exnref': ('wasm_exnref',)})
   return metafunc
 
 
@@ -651,6 +668,23 @@ def find_browser_test_file(filename):
   return filename
 
 
+def parameterize(func, parameters):
+  """Add additional parameterization to a test function.
+
+  This function create or adds to the `_parameterize` property of a function
+  which is then expanded by the RunnerMeta metaclass into multiple separate
+  test functions.
+  """
+  prev = getattr(func, '_parameterize', None)
+  if prev:
+    # If we're parameterizing 2nd time, construct a cartesian product for various combinations.
+    func._parameterize = {
+      '_'.join(filter(None, [k1, k2])): v1 + v2 for (k1, v1), (k2, v2) in itertools.product(prev.items(), parameters.items())
+    }
+  else:
+    func._parameterize = parameters
+
+
 def parameterized(parameters):
   """
   Mark a test as parameterized.
@@ -672,14 +706,7 @@ def parameterized(parameters):
       # runs test_something(4, 5, 6)
   """
   def decorator(func):
-    prev = getattr(func, '_parameterize', None)
-    if prev:
-      # If we're parameterizing 2nd time, construct a cartesian product for various combinations.
-      func._parameterize = {
-        '_'.join(filter(None, [k1, k2])): v1 + v2 for (k1, v1), (k2, v2) in itertools.product(prev.items(), parameters.items())
-      }
-    else:
-      func._parameterize = parameters
+    parameterize(func, parameters)
     return func
   return decorator
 
@@ -871,11 +898,31 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     else:
       self.fail('either d8 or node >= 17 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
+  def require_wasm_exnref(self):
+    nodejs = self.get_nodejs()
+    if nodejs:
+      version = shared.get_node_version(nodejs)
+      if version >= (22, 0, 0):
+        self.js_engines = [nodejs]
+        self.node_args.append('--experimental-wasm-exnref')
+        return
+
+    if config.V8_ENGINE and config.V8_ENGINE in self.js_engines:
+      self.emcc_args.append('-sENVIRONMENT=shell')
+      self.js_engines = [config.V8_ENGINE]
+      self.v8_args.append('--experimental-wasm-exnref')
+      return
+
+    if 'EMTEST_SKIP_EH' in os.environ:
+      self.skipTest('test requires node >= 22 or d8 (and EMTEST_SKIP_EH is set)')
+    else:
+      self.fail('either d8 or node >= 22 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+
   def require_jspi(self):
     # emcc warns about stack switching being experimental, and we build with
     # warnings-as-errors, so disable that warning
     self.emcc_args += ['-Wno-experimental']
-    self.set_setting('ASYNCIFY', 2)
+    self.set_setting('JSPI')
     if self.is_wasm2js():
       self.skipTest('JSPI is not currently supported for WASM2JS')
 
@@ -1103,12 +1150,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   # param @main_file whether this is the main file of the test. some arguments
   #                  (like --pre-js) do not need to be passed when building
   #                  libraries, for example
-  def get_emcc_args(self, main_file=False, compile_only=False):
+  def get_emcc_args(self, main_file=False, compile_only=False, asm_only=False):
     def is_ldflag(f):
       return any(f.startswith(s) for s in ['-sENVIRONMENT=', '--pre-js=', '--post-js='])
 
-    args = self.serialize_settings(compile_only) + self.emcc_args
-    if compile_only:
+    args = self.serialize_settings(compile_only or asm_only) + self.emcc_args
+    if asm_only:
+      args = [a for a in args if not a.startswith('-O')]
+    if compile_only or asm_only:
       args = [a for a in args if not is_ldflag(a)]
     else:
       args += self.ldflags
