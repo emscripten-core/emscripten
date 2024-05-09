@@ -915,8 +915,8 @@ base align: 0, 0, 0, 0'''])
     self.emcc_args.append('-fwasm-exceptions')
     for arg in ['-fwasm-exceptions', '-fno-exceptions']:
       self.do_core_test('test_longjmp.c', emcc_args=[arg])
-    # Wasm SjLj with and with new experimental EH support
-    self.require_new_wasm_eh()
+    # Wasm SjLj with and with new EH (exnref) support
+    self.require_wasm_exnref()
     self.set_setting('WASM_EXNREF')
     self.do_core_test('test_longjmp.c', emcc_args=['-fwasm-exceptions'])
 
@@ -1055,8 +1055,8 @@ int main()
     for support_longjmp in [0, 'wasm']:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
       self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
-    # Wasm new experimental EH with and without Wasm SjLj support
-    self.require_new_wasm_eh()
+    # Wasm new EH (exnref) with and without Wasm SjLj support
+    self.require_wasm_exnref()
     self.set_setting('WASM_EXNREF')
     for support_longjmp in [0, 'wasm']:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
