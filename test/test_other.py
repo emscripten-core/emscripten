@@ -113,13 +113,13 @@ def also_with_wasmfs(f):
   assert callable(f)
 
   @wraps(f)
-  def metafunc(self, wasmfs):
+  def metafunc(self, wasmfs, *args, **kwargs):
     if wasmfs:
       self.set_setting('WASMFS')
       self.emcc_args.append('-DWASMFS')
-      f(self)
+      f(self, *args, **kwargs)
     else:
-      f(self)
+      f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'wasmfs': (True,)})
@@ -1642,32 +1642,31 @@ int f() {
     self.emcc('lib.c', ['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'pre.js'], output_filename='a.out.js')
     self.assertContained('libfunc\n', self.run_js('a.out.js'))
 
+  @parameterized({
+    '': ([],),
+    'closure': (['-O2', '--closure=1'],),
+  })
   @also_with_wasmfs
   @crossplatform
-  def test_stdin(self):
-    def run_test():
-      for engine in config.JS_ENGINES:
-        if engine == config.V8_ENGINE:
-          continue # no stdin support in v8 shell
-        engine[0] = os.path.normpath(engine[0])
-        print(engine, file=sys.stderr)
-        # work around a bug in python's subprocess module
-        # (we'd use self.run_js() normally)
-        delete_file('out.txt')
-        cmd = jsrun.make_command(os.path.normpath('out.js'), engine)
-        cmd = shared.shlex_join(cmd)
-        if WINDOWS:
-          os.system(f'type "in.txt" | {cmd} >out.txt')
-        else: # posix
-          os.system(f'cat in.txt | {cmd} > out.txt')
-        self.assertContained('abcdef\nghijkl\neof', read_file('out.txt'))
-
-    self.emcc(test_file('module/test_stdin.c'), output_filename='out.js')
+  def test_stdin(self, args):
     create_file('in.txt', 'abcdef\nghijkl')
-    run_test()
-    self.emcc(test_file('module/test_stdin.c'),
-              ['-O2', '--closure=1'], output_filename='out.js')
-    run_test()
+    self.emcc(test_file('module/test_stdin.c'), args=args, output_filename='out.js')
+
+    for engine in config.JS_ENGINES:
+      if engine == config.V8_ENGINE:
+        continue # no stdin support in v8 shell
+      engine[0] = os.path.normpath(engine[0])
+      print(engine, file=sys.stderr)
+      # work around a bug in python's subprocess module
+      # (we'd use self.run_js() normally)
+      delete_file('out.txt')
+      cmd = jsrun.make_command(os.path.normpath('out.js'), engine)
+      cmd = shared.shlex_join(cmd)
+      if WINDOWS:
+        os.system(f'type "in.txt" | {cmd} >out.txt')
+      else: # posix
+        os.system(f'cat in.txt | {cmd} > out.txt')
+      self.assertContained('abcdef\nghijkl\neof', read_file('out.txt'))
 
   def test_ungetc_fscanf(self):
     create_file('main.c', r'''
