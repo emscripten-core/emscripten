@@ -136,19 +136,19 @@ addToLibrary({
         try {
           bytesRead = fs.readSync(fd, buf, 0, BUFSIZE);
         } catch(e) {
-          // Cross-platform differences: on Windows, reading EOF throws an exception, but on other OSes,
-          // reading EOF returns 0. Uniformize behavior by treating the EOF exception to return 0.
+          // Cross-platform differences: on Windows, reading EOF throws an
+          // exception, but on other OSes, reading EOF returns 0. Uniformize
+          // behavior by treating the EOF exception to return 0.
           if (e.toString().includes('EOF')) bytesRead = 0;
           else throw e;
         }
 
         if (bytesRead > 0) {
           result = buf.slice(0, bytesRead).toString('utf-8');
-        } else {
-          result = null;
         }
       } else
 #endif
+#if ENVIRONMENT_MAY_BE_WEB
       if (typeof window != 'undefined' &&
         typeof window.prompt == 'function') {
         // Browser.
@@ -156,13 +156,18 @@ addToLibrary({
         if (result !== null) {
           result += '\n';
         }
-      } else if (typeof readline == 'function') {
+      } else
+#endif
+#if ENVIRONMENT_MAY_BE_SHELL
+      if (typeof readline == 'function') {
         // Command line.
         result = readline();
-        if (result !== null) {
+        if (result) {
           result += '\n';
         }
-      }
+      } else
+#endif
+      {}
       if (!result) {
         return null;
       }
