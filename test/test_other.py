@@ -34,7 +34,7 @@ from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
-from common import requires_wasm_eh, crossplatform, with_all_eh_sjlj, with_all_sjlj
+from common import requires_wasm_exnref, crossplatform, with_all_eh_sjlj, with_all_sjlj
 from common import also_with_standalone_wasm, also_with_env_modify, also_with_wasm2js
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, flaky
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
@@ -3308,8 +3308,8 @@ More info: https://emscripten.org
                       '-lembind', '-fwasm-exceptions', '-sASSERTIONS',
                       # Use the deprecated `--embind-emit-tsd` to ensure it
                       # still works until removed.
-                      '--embind-emit-tsd', 'embind_tsgen.d.ts', '-Wno-deprecated']
-                     + self.get_emcc_args())
+                      '--embind-emit-tsd', 'embind_tsgen.d.ts', '-Wno-deprecated'] +
+                     self.get_emcc_args())
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_jsgen_method_pointer_stability(self):
@@ -8857,13 +8857,12 @@ int main() {
 
   # We have LTO tests covered in 'wasmltoN' targets in test_core.py, but they
   # don't run as a part of Emscripten CI, so we add a separate LTO test here.
+  @requires_wasm_exnref
   def test_lto_wasm_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG')
-    self.require_wasm_eh()
     self.emcc_args += ['-fwasm-exceptions', '-flto']
     self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
     # New Wasm EH with exnref
-    self.require_wasm_exnref()
     self.set_setting('WASM_EXNREF')
     self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
@@ -12281,15 +12280,14 @@ int main () {
     # We should consider making this a warning since the `_main` export is redundant.
     self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=_main', '-sSTANDALONE_WASM', test_file('core/test_hello_world.c')])
 
+  @requires_wasm_exnref
   def test_standalone_wasm_exceptions(self):
     self.set_setting('STANDALONE_WASM')
     self.set_setting('WASM_BIGINT')
     self.wasm_engines = []
     self.emcc_args += ['-fwasm-exceptions']
-    self.require_wasm_eh()
     self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
     # New Wasm EH with exnref
-    self.require_wasm_exnref()
     self.set_setting('WASM_EXNREF')
     self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
