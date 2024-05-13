@@ -331,7 +331,34 @@ struct async {
     };
 };
 
+namespace return_value_policy {
+
+struct take_ownership : public allow_raw_pointers {};
+struct reference : public allow_raw_pointers {};
+
+} // end namespace return_value_policy
+
 namespace internal {
+
+template<typename ReturnType, typename... Rest>
+struct GetReturnValuePolicy {
+    using tag = rvp::default_tag;
+};
+
+template<typename ReturnType, typename... Rest>
+struct GetReturnValuePolicy<ReturnType, return_value_policy::take_ownership, Rest...> {
+    using tag = rvp::take_ownership;
+};
+
+template<typename ReturnType, typename... Rest>
+struct GetReturnValuePolicy<ReturnType, return_value_policy::reference, Rest...> {
+    using tag = rvp::reference;
+};
+
+template<typename ReturnType, typename T, typename... Rest>
+struct GetReturnValuePolicy<ReturnType, T, Rest...> {
+    using tag = GetReturnValuePolicy<ReturnType, Rest...>::tag;
+};
 
 template<typename... Policies>
 struct isAsync;
@@ -402,22 +429,21 @@ internal::LambdaSignature<LambdaType>* optional_override(const LambdaType& fp) {
 
 namespace internal {
 
-template<typename ReturnType, typename... Args>
+template<typename ReturnPolicy, typename ReturnType, typename... Args>
 struct Invoker {
     static typename internal::BindingType<ReturnType>::WireType invoke(
         ReturnType (*fn)(Args...),
         typename internal::BindingType<Args>::WireType... args
     ) {
         return internal::BindingType<ReturnType>::toWireType(
-            fn(
-                internal::BindingType<Args>::fromWireType(args)...
-            )
+            fn(internal::BindingType<Args>::fromWireType(args)...),
+            ReturnPolicy{}
         );
     }
 };
 
-template<typename... Args>
-struct Invoker<void, Args...> {
+template<typename ReturnPolicy, typename... Args>
+struct Invoker<ReturnPolicy, void, Args...> {
     static void invoke(
         void (*fn)(Args...),
         typename internal::BindingType<Args>::WireType... args
@@ -447,7 +473,7 @@ using maybe_wrap_async = typename std::conditional<
         T
         >::type;
 
-template<typename FunctorType, typename ReturnType, typename... Args>
+template<typename ReturnPolicy, typename FunctorType, typename ReturnType, typename... Args>
 struct FunctorInvoker {
     static typename internal::BindingType<ReturnType>::WireType invoke(
         FunctorType& function,
@@ -456,12 +482,13 @@ struct FunctorInvoker {
         return internal::BindingType<ReturnType>::toWireType(
             function(
                 internal::BindingType<Args>::fromWireType(args)...)
+            , ReturnPolicy{}
         );
     }
 };
 
-template<typename FunctorType, typename... Args>
-struct FunctorInvoker<FunctorType, void, Args...> {
+template<typename ReturnPolicy, typename FunctorType, typename... Args>
+struct FunctorInvoker<ReturnPolicy, FunctorType, void, Args...> {
     static void invoke(
         FunctorType& function,
         typename internal::BindingType<Args>::WireType... args
@@ -573,7 +600,8 @@ template<typename ReturnType, typename... Args, typename... Policies>
 void function(const char* name, ReturnType (*fn)(Args...), Policies...) {
     using namespace internal;
     typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-    using OriginalInvoker = Invoker<ReturnType, Args...>;
+    using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
+    using OriginalInvoker = Invoker<ReturnPolicy, ReturnType, Args...>;
     auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
     _embind_register_function(
         name,
@@ -611,7 +639,7 @@ void raw_destructor(ClassType* ptr) {
     delete ptr;
 }
 
-template<typename FunctionPointerType, typename ReturnType, typename ThisType, typename... Args>
+template<typename ReturnPolicy, typename FunctionPointerType, typename ReturnType, typename ThisType, typename... Args>
 struct FunctionInvoker {
     static typename internal::BindingType<ReturnType>::WireType invoke(
         FunctionPointerType* function,
@@ -621,13 +649,14 @@ struct FunctionInvoker {
         return internal::BindingType<ReturnType>::toWireType(
             (*function)(
                 internal::BindingType<ThisType>::fromWireType(wireThis),
-                internal::BindingType<Args>::fromWireType(args)...)
+                internal::BindingType<Args>::fromWireType(args)...),
+            ReturnPolicy{}
         );
     }
 };
 
-template<typename FunctionPointerType, typename ThisType, typename... Args>
-struct FunctionInvoker<FunctionPointerType, void, ThisType, Args...> {
+template<typename ReturnPolicy, typename FunctionPointerType, typename ThisType, typename... Args>
+struct FunctionInvoker<ReturnPolicy, FunctionPointerType, void, ThisType, Args...> {
     static void invoke(
         FunctionPointerType* function,
         typename internal::BindingType<ThisType>::WireType wireThis,
@@ -639,7 +668,8 @@ struct FunctionInvoker<FunctionPointerType, void, ThisType, Args...> {
     }
 };
 
-template<typename MemberPointer,
+template<typename ReturnPolicy,
+         typename MemberPointer,
          typename ReturnType,
          typename ThisType,
          typename... Args>
@@ -653,14 +683,17 @@ struct MethodInvoker {
             (internal::BindingType<ThisType>::fromWireType(wireThis)->*method)(
                 internal::BindingType<Args>::fromWireType(args)...
             )
+            ,
+            ReturnPolicy{}
         );
     }
 };
 
-template<typename MemberPointer,
+template<typename ReturnPolicy,
+         typename MemberPointer,
          typename ThisType,
          typename... Args>
-struct MethodInvoker<MemberPointer, void, ThisType, Args...> {
+struct MethodInvoker<ReturnPolicy, MemberPointer, void, ThisType, Args...> {
     static void invoke(
         const MemberPointer& method,
         typename internal::BindingType<ThisType>::WireType wireThis,
@@ -683,7 +716,7 @@ struct MemberAccess {
         const MemberPointer& field,
         const ClassType& ptr
     ) {
-        return MemberBinding::toWireType(ptr.*field);
+        return MemberBinding::toWireType(ptr.*field, rvp::default_tag{});
     }
 
     template<typename ClassType>
@@ -702,7 +735,7 @@ struct GlobalAccess {
     typedef typename MemberBinding::WireType WireType;
 
     static WireType get(FieldType* context) {
-        return MemberBinding::toWireType(*context);
+        return MemberBinding::toWireType(*context, rvp::default_tag{});
     }
 
     static void set(FieldType* context, WireType value) {
@@ -737,7 +770,7 @@ struct GetterPolicy<GetterReturnType (GetterThisType::*)() const> {
 
     template<typename ClassType>
     static WireType get(const Context& context, const ClassType& ptr) {
-        return Binding::toWireType((ptr.*context)());
+        return Binding::toWireType((ptr.*context)(), rvp::default_tag{});
     }
 
     static void* getContext(Context context) {
@@ -761,7 +794,7 @@ struct GetterPolicy<GetterReturnType (*)(const GetterThisType&)> {
 
     template<typename ClassType>
     static WireType get(const Context& context, const ClassType& ptr) {
-        return Binding::toWireType(context(ptr));
+        return Binding::toWireType(context(ptr), rvp::default_tag{});
     }
 
     static void* getContext(Context context) {
@@ -779,7 +812,7 @@ struct GetterPolicy<std::function<GetterReturnType(const GetterThisType&)>> {
 
     template<typename ClassType>
     static WireType get(const Context& context, const ClassType& ptr) {
-        return Binding::toWireType(context(ptr));
+        return Binding::toWireType(context(ptr), rvp::default_tag{});
     }
 
     static void* getContext(const Context& context) {
@@ -797,7 +830,7 @@ struct GetterPolicy<PropertyTag<Getter, GetterReturnType>> {
 
     template<typename ClassType>
     static WireType get(const Context& context, const ClassType& ptr) {
-        return Binding::toWireType(context(ptr));
+        return Binding::toWireType(context(ptr), rvp::default_tag{});
     }
 
     static void* getContext(const Context& context) {
@@ -897,7 +930,7 @@ private:
 
 template<typename ClassType, typename ElementType>
 typename BindingType<ElementType>::WireType get_by_index(int index, ClassType& ptr) {
-    return BindingType<ElementType>::toWireType(ptr[index]);
+    return BindingType<ElementType>::toWireType(ptr[index], rvp::default_tag{});
 }
 
 template<typename ClassType, typename ElementType>
@@ -1375,7 +1408,8 @@ struct RegisterClassConstructor<ReturnType (*)(Args...)> {
     template <typename ClassType, typename... Policies>
     static void invoke(ReturnType (*factory)(Args...)) {
         typename WithPolicies<allow_raw_pointers, Policies...>::template ArgTypeList<ReturnType, Args...> args;
-        auto invoke = &Invoker<ReturnType, Args...>::invoke;
+        using ReturnPolicy = rvp::default_tag;
+        auto invoke = &Invoker<ReturnPolicy, ReturnType, Args...>::invoke;
         _embind_register_class_constructor(
             TypeID<ClassType>::get(),
             args.getCount(),
@@ -1392,7 +1426,8 @@ struct RegisterClassConstructor<std::function<ReturnType (Args...)>> {
     template <typename ClassType, typename... Policies>
     static void invoke(std::function<ReturnType (Args...)> factory) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-        auto invoke = &FunctorInvoker<decltype(factory), ReturnType, Args...>::invoke;
+        using ReturnPolicy = rvp::default_tag;
+        auto invoke = &FunctorInvoker<ReturnPolicy, decltype(factory), ReturnType, Args...>::invoke;
         _embind_register_class_constructor(
             TypeID<ClassType>::get(),
             args.getCount(),
@@ -1405,11 +1440,11 @@ struct RegisterClassConstructor<std::function<ReturnType (Args...)>> {
 
 template<typename ReturnType, typename... Args>
 struct RegisterClassConstructor<ReturnType (Args...)> {
-
     template <typename ClassType, typename Callable, typename... Policies>
     static void invoke(Callable& factory) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-        auto invoke = &FunctorInvoker<decltype(factory), ReturnType, Args...>::invoke;
+        using ReturnPolicy = rvp::default_tag;
+        auto invoke = &FunctorInvoker<ReturnPolicy, decltype(factory), ReturnType, Args...>::invoke;
         _embind_register_class_constructor(
             TypeID<ClassType>::get(),
             args.getCount(),
@@ -1433,7 +1468,8 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {
     template <typename CT, typename... Policies>
     static void invoke(const char* methodName,
                        ReturnType (ClassType::*memberFunction)(Args...)) {
-        using OriginalInvoker = MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>;
+        using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
+        using OriginalInvoker = MethodInvoker<ReturnPolicy, decltype(memberFunction), ReturnType, ClassType*, Args...>;
         auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<ClassType>, Args...> args;
@@ -1462,7 +1498,8 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
     template <typename CT, typename... Policies>
     static void invoke(const char* methodName,
                        ReturnType (ClassType::*memberFunction)(Args...) const)  {
-        using OriginalInvoker = MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>;
+        using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
+        using OriginalInvoker = MethodInvoker<ReturnPolicy, decltype(memberFunction), ReturnType, const ClassType*, Args...>;
         auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<const ClassType>, Args...> args;
@@ -1492,7 +1529,8 @@ struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
     static void invoke(const char* methodName,
                        ReturnType (*function)(ThisType, Args...)) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
-        using OriginalInvoker = FunctionInvoker<decltype(function), ReturnType, ThisType, Args...>;
+        using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
+        using OriginalInvoker = FunctionInvoker<ReturnPolicy, decltype(function), ReturnType, ThisType, Args...>;
         auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
@@ -1520,7 +1558,8 @@ struct RegisterClassMethod<std::function<ReturnType (ThisType, Args...)>> {
     static void invoke(const char* methodName,
                        std::function<ReturnType (ThisType, Args...)> function) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
-        using OriginalInvoker = FunctorInvoker<decltype(function), ReturnType, ThisType, Args...>;
+        using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
+        using OriginalInvoker = FunctorInvoker<ReturnPolicy, decltype(function), ReturnType, ThisType, Args...>;
         auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
@@ -1542,7 +1581,8 @@ struct RegisterClassMethod<ReturnType (ThisType, Args...)> {
     static void invoke(const char* methodName,
                        Callable& callable) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
-        using OriginalInvoker = FunctorInvoker<decltype(callable), ReturnType, ThisType, Args...>;
+        using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
+        using OriginalInvoker = FunctorInvoker<ReturnPolicy, decltype(callable), ReturnType, ThisType, Args...>;
         auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
@@ -1653,7 +1693,8 @@ public:
         smart_ptr<SmartPtr>(smartPtrName);
 
         typename WithPolicies<Policies...>::template ArgTypeList<SmartPtr, Args...> args;
-        auto invoke = &Invoker<SmartPtr, Args...>::invoke;
+        using ReturnPolicy = GetReturnValuePolicy<SmartPtr, return_value_policy::take_ownership>::tag;
+        auto invoke = &Invoker<ReturnPolicy, SmartPtr, Args...>::invoke;
         _embind_register_class_constructor(
             TypeID<ClassType>::get(),
             args.getCount(),
@@ -1824,7 +1865,8 @@ public:
         using namespace internal;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-        using OriginalInvoker = internal::Invoker<ReturnType, Args...>;
+        using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
+        using OriginalInvoker = internal::Invoker<ReturnPolicy, ReturnType, Args...>;
         auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
         _embind_register_class_class_function(
             TypeID<ClassType>::get(),
@@ -2043,11 +2085,12 @@ struct BindingType<std::optional<T>> {
     using ValBinding = BindingType<val>;
     using WireType = ValBinding::WireType;
 
-    static WireType toWireType(std::optional<T> value) {
+    template<typename ReturnPolicy = void>
+    static WireType toWireType(std::optional<T> value, rvp::default_tag) {
         if (value) {
-            return ValBinding::toWireType(val(*value));
+            return ValBinding::toWireType(val(*value), rvp::default_tag{});
         }
-        return ValBinding::toWireType(val::undefined());
+        return ValBinding::toWireType(val::undefined(), rvp::default_tag{});
     }
 
 
@@ -2118,7 +2161,7 @@ void constant(const char* name, const ConstantType& v) {
     _embind_register_constant(
         name,
         TypeID<const ConstantType&>::get(),
-        static_cast<double>(asGenericValue(BT::toWireType(v))));
+        static_cast<double>(asGenericValue(BT::toWireType(v, rvp::default_tag{}))));
 }
 
 template <typename T>
