@@ -300,6 +300,10 @@ def apply_user_settings():
 
     if key == 'JSPI':
       settings.ASYNCIFY = 2
+    if key == 'JSPI_IMPORTS':
+      settings.ASYNCIFY_IMPORTS = value
+    if key == 'JSPI_EXPORTS':
+      settings.ASYNCIFY_EXPORTS = value
 
 
 def cxx_to_c_compiler(cxx):

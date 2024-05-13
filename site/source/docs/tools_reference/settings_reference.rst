@@ -1223,7 +1223,7 @@ Default value: 0
 ASYNCIFY_IMPORTS
 ================
 
-Imports which can do an sync operation, in addition to the default ones that
+Imports which can do an async operation, in addition to the default ones that
 emscripten defines like emscripten_sleep. If you add more you will need to
 mention them to here, or else they will not work (in ASSERTIONS builds an
 error will be shown).
@@ -1379,9 +1379,9 @@ Default value: 0
 ASYNCIFY_EXPORTS
 ================
 
-Specify which of the exports will have JSPI applied to them and return a
-promise.
-Only supported for ASYNCIFY==2 mode.
+Deprecated, use JSPI_EXPORTS instead.
+
+.. note:: This setting is deprecated
 
 Default value: []
 
@@ -1398,6 +1398,34 @@ of the following flags are still relevant in this mode (e.g. IGNORE_INDIRECT
 etc. are not needed)
 
 Default value: 0
+
+.. _jspi_exports:
+
+JSPI_EXPORTS
+============
+
+A list of exported module functions that will be asynchronous. Each export
+will return a ``Promise`` that will be resolved with the result. Any exports
+that will call an asynchronous import (listed in ``JSPI_IMPORTS``) must be
+included here.
+
+By default this includes ``main``.
+
+Default value: []
+
+.. _jspi_imports:
+
+JSPI_IMPORTS
+============
+
+A list of imported module functions that will potentially do asynchronous
+work. The imported function should return a ``Promise`` when doing
+asynchronous work.
+
+Note when using ``--js-library``, the function can be marked with
+``<function_name>_async:: true`` in the library instead of this setting.
+
+Default value: []
 
 .. _exported_runtime_methods:
 
