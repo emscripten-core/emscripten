@@ -3202,9 +3202,13 @@ More info: https://emscripten.org
 
     self.do_runf('embind/test_return_value_policy.cpp')
 
-  def test_jspi_wildcard(self):
+  @parameterized({
+    '': [['-sJSPI_EXPORTS=async*']],
+    'deprecated': [['-Wno-deprecated', '-sASYNCIFY_EXPORTS=async*']]
+  })
+  def test_jspi_wildcard(self, opts):
     self.require_jspi()
-    self.emcc_args += ['-sASYNCIFY_EXPORTS=async*']
+    self.emcc_args += opts
 
     self.do_runf('other/test_jspi_wildcard.c', 'done')
 
@@ -12579,7 +12583,7 @@ exec "$@"
       self.emcc_args += ['--pre-js', test_file('other/test_load_split_module.pre.js')]
     if jspi:
       self.require_jspi()
-      self.emcc_args += ['-g', '-sASYNCIFY_EXPORTS=say_hello']
+      self.emcc_args += ['-g', '-sJSPI_EXPORTS=say_hello']
     self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free']
     output = self.do_other_test('test_split_module.c')
     if jspi:
