@@ -20,9 +20,18 @@ See docs/process.md for more on how version tagging works.
 
 3.1.60 (in development)
 -----------------------
+- Under nodefs, symbolic links to files outside of mount locations no longer work.
+  This reverts the previous behaviour added in #3277. (#21805)
 - The `EXPORTED_FUNCTIONS` list can now include JS library symbols even if they
   have not been otherwise included (e.g. via `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`).
   (#21867)
+- Due to the upstream LLVM changes
+  (https://github.com/llvm/llvm-project/pull/80923 and
+  https://github.com/llvm/llvm-project/pull/90792), multivalue feature is now
+  enabled by default in Emscripten. This only enables the language features and
+  does not turn on the multivalue ABI.
+- Embind now supports return value policies to better define object lifetimes.
+  See https://emscripten.org/docs/porting/connecting_cpp_and_javascript/embind.html#object-ownership for more information.
 
 3.1.59 - 04/30/24
 -----------------
@@ -30,10 +39,6 @@ See docs/process.md for more on how version tagging works.
   of pthread builds so that is generated alongside the main JavaScript file.
   See #21701. ()
 - `-sASYNCIFY=2` is setting now deprecated, use `-sJSPI` instead.
-- Due to the upstream LLVM change
-  (https://github.com/llvm/llvm-project/pull/80923), multivalue and
-  reference-types features are now enabled by default in Emscripten. This only
-  enables the language features and does not turn on the multivalue ABI.
 
 3.1.58 - 04/23/24
 -----------------

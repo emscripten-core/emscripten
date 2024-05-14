@@ -49,6 +49,17 @@ addToLibrary({
 #endif
       return ERRNO_CODES[code];
     },
+    tryFSOperation(f) {
+      try {
+        return f();
+      } catch (e) {
+        if (!e.code) throw e;
+        // node under windows can return code 'UNKNOWN' here:
+        // https://github.com/emscripten-core/emscripten/issues/15468
+        if (e.code === 'UNKNOWN') throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+        throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
+      }
+    },
     mount(mount) {
 #if ASSERTIONS
       assert(ENVIRONMENT_IS_NODE);
@@ -66,18 +77,15 @@ addToLibrary({
     },
     getMode(path) {
       var stat;
-      try {
+      return NODEFS.tryFSOperation(() => {
         stat = fs.lstatSync(path);
         if (NODEFS.isWindows) {
           // Node.js on Windows never represents permission bit 'x', so
           // propagate read bits to execute bits
           stat.mode |= (stat.mode & {{{ cDefs.S_IRUSR | cDefs.S_IRGRP | cDefs.S_IROTH }}}) >> 2;
         }
-      } catch (e) {
-        if (!e.code) throw e;
-        throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
-      }
-      return stat.mode;
+        return stat.mode;
+      });
     },
     realPath(node) {
       var parts = [];
@@ -109,18 +117,15 @@ addToLibrary({
       }
       return newFlags;
     },
+
     node_ops: {
       getattr(node) {
         var path = NODEFS.realPath(node);
         var stat;
-        try {
-          stat = fs.lstatSync(path);
-        } catch (e) {
-          if (!e.code) throw e;
-          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
-        }
+        NODEFS.tryFSOperation(() => stat = fs.lstatSync(path));
         if (NODEFS.isWindows) {
-          // node.js v0.10.20 doesn't report blksize and blocks on Windows. Fake them with default blksize of 4096.
+          // node.js v0.10.20 doesn't report blksize and blocks on Windows. Fake
+          // them with default blksize of 4096.
           // See http://support.microsoft.com/kb/140365
           if (!stat.blksize) {
             stat.blksize = 4096;
@@ -150,7 +155,7 @@ addToLibrary({
       },
       setattr(node, attr) {
         var path = NODEFS.realPath(node);
-        try {
+        NODEFS.tryFSOperation(() => {
           if (attr.mode !== undefined) {
             fs.chmodSync(path, attr.mode);
             // update the common node structure mode as well
@@ -163,10 +168,7 @@ addToLibrary({
           if (attr.size !== undefined) {
             fs.truncateSync(path, attr.size);
           }
-        } catch (e) {
-          if (!e.code) throw e;
-          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
-        }
+        });
       },
       lookup(parent, name) {
         var path = PATH.join2(NODEFS.realPath(parent), name);
@@ -177,102 +179,58 @@ addToLibrary({
         var node = NODEFS.createNode(parent, name, mode, dev);
         // create the backing node for this in the fs root as well
         var path = NODEFS.realPath(node);
-        try {
+        NODEFS.tryFSOperation(() => {
           if (FS.isDir(node.mode)) {
             fs.mkdirSync(path, node.mode);
           } else {
             fs.writeFileSync(path, '', { mode: node.mode });
           }
-        } catch (e) {
-          if (!e.code) throw e;
-          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
-        }
+        });
         return node;
       },
       rename(oldNode, newDir, newName) {
         var oldPath = NODEFS.realPath(oldNode);
         var newPath = PATH.join2(NODEFS.realPath(newDir), newName);
-        try {
-          fs.renameSync(oldPath, newPath);
-        } catch (e) {
-          if (!e.code) throw e;
-          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
-        }
+        NODEFS.tryFSOperation(() => fs.renameSync(oldPath, newPath));
         oldNode.name = newName;
       },
       unlink(parent, name) {
         var path = PATH.join2(NODEFS.realPath(parent), name);
-        try {
-          fs.unlinkSync(path);
-        } catch (e) {
-          if (!e.code) throw e;
-          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
-        }
+        NODEFS.tryFSOperation(() => fs.unlinkSync(path));
       },
       rmdir(parent, name) {
         var path = PATH.join2(NODEFS.realPath(parent), name);
-        try {
-          fs.rmdirSync(path);
-        } catch (e) {
-          if (!e.code) throw e;
-          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
-        }
+        NODEFS.tryFSOperation(() => fs.rmdirSync(path));
       },
       readdir(node) {
         var path = NODEFS.realPath(node);
-        try {
-          return fs.readdirSync(path);
-        } catch (e) {
-          if (!e.code) throw e;
-          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
-        }
+        return NODEFS.tryFSOperation(() => fs.readdirSync(path));
       },
       symlink(parent, newName, oldPath) {
         var newPath = PATH.join2(NODEFS.realPath(parent), newName);
-        try {
-          fs.symlinkSync(oldPath, newPath);
-        } catch (e) {
-          if (!e.code) throw e;
-          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
-        }
+        NODEFS.tryFSOperation(() => fs.symlinkSync(oldPath, newPath));
       },
       readlink(node) {
         var path = NODEFS.realPath(node);
-        try {
-          path = fs.readlinkSync(path);
-          path = nodePath.relative(nodePath.resolve(node.mount.opts.root), path);
-          return path;
-        } catch (e) {
-          if (!e.code) throw e;
-          // node under windows can return code 'UNKNOWN' here:
-          // https://github.com/emscripten-core/emscripten/issues/15468
-          if (e.code === 'UNKNOWN') throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
-          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
-        }
+        return NODEFS.tryFSOperation(() => fs.readlinkSync(path));
       },
     },
     stream_ops: {
       open(stream) {
         var path = NODEFS.realPath(stream.node);
-        try {
+        NODEFS.tryFSOperation(() => {
           if (FS.isFile(stream.node.mode)) {
             stream.shared.refcount = 1;
             stream.nfd = fs.openSync(path, NODEFS.flagsForNode(stream.flags));
           }
-        } catch (e) {
-          if (!e.code) throw e;
-          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
-        }
+        });
       },
       close(stream) {
-        try {
+        NODEFS.tryFSOperation(() => {
           if (FS.isFile(stream.node.mode) && stream.nfd && --stream.shared.refcount === 0) {
             fs.closeSync(stream.nfd);
           }
-        } catch (e) {
-          if (!e.code) throw e;
-          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
-        }
+        });
       },
       dup(stream) {
         stream.shared.refcount++;
@@ -280,18 +238,14 @@ addToLibrary({
       read(stream, buffer, offset, length, position) {
         // Node.js < 6 compatibility: node errors on 0 length reads
         if (length === 0) return 0;
-        try {
-          return fs.readSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position);
-        } catch (e) {
-          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
-        }
+        return NODEFS.tryFSOperation(() =>
+          fs.readSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position)
+        );
       },
       write(stream, buffer, offset, length, position) {
-        try {
-          return fs.writeSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position);
-        } catch (e) {
-          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
-        }
+        return NODEFS.tryFSOperation(() =>
+          fs.writeSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position)
+        );
       },
       llseek(stream, offset, whence) {
         var position = offset;
@@ -299,12 +253,10 @@ addToLibrary({
           position += stream.position;
         } else if (whence === {{{ cDefs.SEEK_END }}}) {
           if (FS.isFile(stream.node.mode)) {
-            try {
+            NODEFS.tryFSOperation(() => {
               var stat = fs.fstatSync(stream.nfd);
               position += stat.size;
-            } catch (e) {
-              throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
-            }
+            });
           }
         }
 

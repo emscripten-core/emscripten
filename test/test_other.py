@@ -34,7 +34,7 @@ from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disable
 from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
-from common import requires_wasm_eh, crossplatform, with_all_eh_sjlj, with_all_sjlj
+from common import requires_wasm_exnref, crossplatform, with_all_eh_sjlj, with_all_sjlj
 from common import also_with_standalone_wasm, also_with_env_modify, also_with_wasm2js
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, flaky
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
@@ -113,13 +113,13 @@ def also_with_wasmfs(f):
   assert callable(f)
 
   @wraps(f)
-  def metafunc(self, wasmfs):
+  def metafunc(self, wasmfs, *args, **kwargs):
     if wasmfs:
       self.set_setting('WASMFS')
       self.emcc_args.append('-DWASMFS')
-      f(self)
+      f(self, *args, **kwargs)
     else:
-      f(self)
+      f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'wasmfs': (True,)})
@@ -1642,32 +1642,30 @@ int f() {
     self.emcc('lib.c', ['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'pre.js'], output_filename='a.out.js')
     self.assertContained('libfunc\n', self.run_js('a.out.js'))
 
+  @parameterized({
+    '': ([],),
+    'closure': (['-O2', '--closure=1'],),
+  })
   @also_with_wasmfs
   @crossplatform
-  def test_stdin(self):
-    def run_test():
-      for engine in config.JS_ENGINES:
-        if engine == config.V8_ENGINE:
-          continue # no stdin support in v8 shell
-        engine[0] = os.path.normpath(engine[0])
-        print(engine, file=sys.stderr)
-        # work around a bug in python's subprocess module
-        # (we'd use self.run_js() normally)
-        delete_file('out.txt')
-        cmd = jsrun.make_command(os.path.normpath('out.js'), engine)
-        cmd = shared.shlex_join(cmd)
-        if WINDOWS:
-          os.system(f'type "in.txt" | {cmd} >out.txt')
-        else: # posix
-          os.system(f'cat in.txt | {cmd} > out.txt')
-        self.assertContained('abcdef\nghijkl\neof', read_file('out.txt'))
+  def test_stdin(self, args):
+    create_file('in.txt', 'abcdef\nghijkl\n')
+    self.set_setting('ENVIRONMENT', 'node,shell')
+    self.emcc(test_file('module/test_stdin.c'), args=args, output_filename='out.js')
 
-    self.emcc(test_file('module/test_stdin.c'), output_filename='out.js')
-    create_file('in.txt', 'abcdef\nghijkl')
-    run_test()
-    self.emcc(test_file('module/test_stdin.c'),
-              ['-O2', '--closure=1'], output_filename='out.js')
-    run_test()
+    for engine in config.JS_ENGINES:
+      engine[0] = os.path.normpath(engine[0])
+      # work around a bug in python's subprocess module
+      # (we'd use self.run_js() normally)
+      delete_file('out.txt')
+      cmd = jsrun.make_command(os.path.normpath('out.js'), engine)
+      cmd = shared.shlex_join(cmd)
+      print(cmd, file=sys.stderr)
+      if WINDOWS:
+        os.system(f'type "in.txt" | {cmd} >out.txt')
+      else: # posix
+        os.system(f'cat in.txt | {cmd} > out.txt')
+      self.assertContained('abcdef\nghijkl\neof', read_file('out.txt'))
 
   def test_ungetc_fscanf(self):
     create_file('main.c', r'''
@@ -3199,6 +3197,11 @@ More info: https://emscripten.org
     self.assertContained('Constructed from JS destructed', output)
     self.assertNotContained('Foo* destructed', output)
 
+  def test_embind_return_value_policy(self):
+    self.emcc_args += ['-lembind']
+
+    self.do_runf('embind/test_return_value_policy.cpp')
+
   def test_jspi_wildcard(self):
     self.require_jspi()
     self.emcc_args += ['-sASYNCIFY_EXPORTS=async*']
@@ -3297,13 +3300,19 @@ More info: https://emscripten.org
                      self.get_emcc_args())
     self.assertFileContents(test_file('other/embind_tsgen_memory64.d.ts'), read_file('embind_tsgen_memory64.d.ts'))
 
-  def test_embind_tsgen_exceptions(self):
+  @parameterized({
+    '': [0],
+    'wasm_exnref': [1]
+  })
+  def test_embind_tsgen_exceptions(self, wasm_exnref):
+    self.set_setting('WASM_EXNREF', wasm_exnref)
     # Check that when Wasm exceptions and assertions are enabled bindings still generate.
     self.run_process([EMXX, test_file('other/embind_tsgen.cpp'),
                       '-lembind', '-fwasm-exceptions', '-sASSERTIONS',
                       # Use the deprecated `--embind-emit-tsd` to ensure it
                       # still works until removed.
-                      '--embind-emit-tsd', 'embind_tsgen.d.ts', '-Wno-deprecated'])
+                      '--embind-emit-tsd', 'embind_tsgen.d.ts', '-Wno-deprecated'] +
+                     self.get_emcc_args())
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_jsgen_method_pointer_stability(self):
@@ -8531,6 +8540,7 @@ int main() {
                   '-sDEMANGLE_SUPPORT', '-Wno-deprecated'], [], ['waka']), # noqa
     # Wasm EH's code size increase is smaller than that of Emscripten EH
     'except_wasm':   (['-O2', '-fwasm-exceptions'], [], ['waka']), # noqa
+    'except_wasm_exnref':   (['-O2', '-fwasm-exceptions', '-sWASM_EXNREF'], [], ['waka']), # noqa
     # eval_ctors 1 can partially optimize, but runs into getenv() for locale
     # code. mode 2 ignores those and fully optimizes out the ctors
     'ctors1':    (['-O2', '-sEVAL_CTORS'],   [], ['waka']), # noqa
@@ -8830,7 +8840,8 @@ int main() {
   @parameterized({
     'noexcept': [],
     'except': ['-sDISABLE_EXCEPTION_CATCHING=0'],
-    'except_wasm': ['-fwasm-exceptions']
+    'except_wasm': ['-fwasm-exceptions'],
+    'except_wasm_exnref': ['-fwasm-exceptions', '-sWASM_EXNREF']
   })
   def test_lto_libcxx(self, *args):
     self.run_process([EMXX, test_file('hello_libcxx.cpp'), '-flto'] + list(args))
@@ -8849,10 +8860,13 @@ int main() {
 
   # We have LTO tests covered in 'wasmltoN' targets in test_core.py, but they
   # don't run as a part of Emscripten CI, so we add a separate LTO test here.
-  @requires_wasm_eh
+  @requires_wasm_exnref
   def test_lto_wasm_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG')
     self.emcc_args += ['-fwasm-exceptions', '-flto']
+    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
+    # New Wasm EH with exnref
+    self.set_setting('WASM_EXNREF')
     self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
   @parameterized({
@@ -12269,12 +12283,15 @@ int main () {
     # We should consider making this a warning since the `_main` export is redundant.
     self.run_process([EMCC, '-sEXPORTED_FUNCTIONS=_main', '-sSTANDALONE_WASM', test_file('core/test_hello_world.c')])
 
-  @requires_wasm_eh
+  @requires_wasm_exnref
   def test_standalone_wasm_exceptions(self):
     self.set_setting('STANDALONE_WASM')
     self.set_setting('WASM_BIGINT')
     self.wasm_engines = []
     self.emcc_args += ['-fwasm-exceptions']
+    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
+    # New Wasm EH with exnref
+    self.set_setting('WASM_EXNREF')
     self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
   def test_missing_malloc_export(self):
