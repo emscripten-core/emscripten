@@ -66,6 +66,11 @@ def write_setting(f, setting_name, setting_default, comment, tags):
     for t in tag.split():
       if all_tags[t]:
         f.write('\n.. note:: ' + all_tags[t] + '\n')
+  # TODO: Properly handle multi-line values, like for INCOMING_MODULE_JS_API,
+  #       which is [, newline, and then lines of content. For now print a
+  #       placeholder.
+  if setting_default == '[':
+    setting_default = '(multi-line value, see settings.js)'
   f.write('\nDefault value: ' + setting_default + '\n')
 
 
@@ -96,8 +101,7 @@ def write_file(f):
       # Format:
       #   var NAME = DEFAULT;
       # Split it and strip the final ';'.
-      _, setting_name, _, setting_default = line.split()
-      setting_default = setting_default[:-1]
+      _, setting_name, _, setting_default = line.strip(';').split()
       comment = '\n'.join(current_comment).strip()
       write_setting(f, setting_name, setting_default, comment, current_tags)
       current_comment = []

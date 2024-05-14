@@ -1451,7 +1451,7 @@ list contains a set of commonly used symbols.
 
 FIXME: should this just be  0  if we want everything?
 
-Default value: 
+Default value: (multi-line value, see settings.js)
 
 .. _case_insensitive_fs:
 
@@ -3070,7 +3070,7 @@ This option is no longer used. The appropriate shadow memory size is now
 calculated from INITIAL_MEMORY and MAXIMUM_MEMORY. Will be removed in a
 future release.
 
-Default value: -
+Default value: -1
 
 .. _use_offset_converter:
 

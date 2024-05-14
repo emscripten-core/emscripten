@@ -2000,7 +2000,7 @@ var MAYBE_WASM2JS = false;
 // calculated from INITIAL_MEMORY and MAXIMUM_MEMORY. Will be removed in a
 // future release.
 // [link]
-var ASAN_SHADOW_SIZE = -1
+var ASAN_SHADOW_SIZE = -1;
 
 // Whether we should use the offset converter.  This is needed for older
 // versions of v8 (<7.7) that does not give the hex module offset into wasm
