@@ -56,7 +56,7 @@ all_tags = {
 output_file = path_from_root('site/source/docs/tools_reference/settings_reference.rst')
 
 
-def write_setting(f, setting_name, comment, tags):
+def write_setting(f, setting_name, setting_default, comment, tags):
   # Convert markdown backticks to rst double backticks
   f.write('\n.. _' + setting_name.lower() + ':\n')
   f.write('\n' + setting_name + '\n')
@@ -66,6 +66,7 @@ def write_setting(f, setting_name, comment, tags):
     for t in tag.split():
       if all_tags[t]:
         f.write('\n.. note:: ' + all_tags[t] + '\n')
+  f.write('\nDefault value: ' + setting_default + '\n')
 
 
 def write_file(f):
@@ -92,9 +93,13 @@ def write_file(f):
           continue
       current_comment.append(line)
     elif line.startswith('var'):
-      setting_name = line.split()[1]
+      # Format:
+      #   var NAME = DEFAULT;
+      # Split it and strip the final ';'.
+      _, setting_name, _, setting_default = line.split()
+      setting_default = setting_default[:-1]
       comment = '\n'.join(current_comment).strip()
-      write_setting(f, setting_name, comment, current_tags)
+      write_setting(f, setting_name, setting_default, comment, current_tags)
       current_comment = []
       current_tags = []
 
