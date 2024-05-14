@@ -15,7 +15,7 @@
 
 int result = 1;
 
-void success() {
+void report_result() {
   REPORT_RESULT(result);
 #ifdef FORCE_EXIT
   emscripten_force_exit(0);
@@ -144,8 +144,11 @@ void test() {
   );
 #endif
 
+#ifdef IDBFS_AUTO_PERSIST
+  report_result();
+#else
   // sync from memory state to persisted and then
-  // run 'success'
+  // run 'report_result'
   EM_ASM(
     // Ensure IndexedDB is closed at exit.
     Module['onExit'] = function() {
@@ -153,9 +156,10 @@ void test() {
     };
     FS.syncfs(function (err) {
       assert(!err);
-      ccall('success', 'v');
+      ccall('report_result', 'v');
     });
   );
+#endif
 }
 
 int main() {

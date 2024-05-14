@@ -1045,6 +1045,11 @@ var FORCE_FILESYSTEM = false;
 // [link]
 var NODERAWFS = false;
 
+// Enables IDBFS backend to automatically persist filesystem to IDBFS after
+// any filesystem operation that modifies the filesystem.
+// This avoids needing to manually call FS.syncfs(cb) after FS operations.
+var IDBFS_AUTO_PERSIST = false;
+
 // This saves the compiled wasm module in a file with name
 // ``$WASM_BINARY_NAME.$V8_VERSION.cached``
 // and loads it on subsequent runs. This caches the compiled wasm code from
