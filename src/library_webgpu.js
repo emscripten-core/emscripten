@@ -99,6 +99,13 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       DeviceLost: 2,
       Unknown: 3,
     },
+    CompositeAlphaMode: [
+      'auto',
+      'opaque',
+      'premultiplied',
+      'unpremultiplied',
+      'inherit',
+    ],
     CreatePipelineAsyncStatus: {
       Success: 0,
       ValidationError: 1,
@@ -567,6 +574,14 @@ var LibraryWebGPU = {
       undefined,
       'store',
       'discard',
+    ],
+    SurfaceGetCurrentTextureStatus: [
+      'success',
+      'timeout',
+      'outdated',
+      'lost',
+      'out-of-memory',
+      'device-lost',
     ],
     TextureAspect: [
       undefined,
@@ -2673,11 +2688,88 @@ var LibraryWebGPU = {
     sampler.label = UTF8ToString(labelPtr);
   },
 
+  // WGPUSurfaceCapabilities
+
+  wgpuSurfaceCapabilitiesFreeMembers: (value) => {
+    // wgpuSurfaceCapabilities does currently allocate anything
+  },
+
   // WGPUSurface
+
+  wgpuSurfaceConfigure: (surfaceId, config) => {
+    {{{ gpu.makeCheckDescriptor('config') }}}
+    var deviceId = {{{ makeGetValue('config', C_STRUCTS.WGPUSurfaceConfiguration.device, '*') }}};
+    var context = WebGPU.mgrSurface.get(surfaceId);
+
+#if ASSERTIONS
+    assert({{{ gpu.PresentMode.Fifo }}} ===
+      {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.presentMode) }}});
+#endif
+
+    var canvasSize = [
+      {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.width) }}},
+      {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.height) }}}
+    ];
+
+    if (canvasSize[0] !== 0) {
+      context["canvas"]["width"] = canvasSize[0];
+    }
+
+    if (canvasSize[1] !== 0) {
+      context["canvas"]["height"] = canvasSize[1];
+    }
+
+    var configuration = {
+      "device": WebGPU.mgrDevice.get(deviceId),
+      "format": WebGPU.TextureFormat[
+        {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.format) }}}],
+      "usage": {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.usage) }}},
+      // viewFormatCount
+      // viewFormats
+      "alphaMode": "opaque",
+      "width": canvasSize[0],
+      "height": canvasSize[1],
+      "presentMode": {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.presentMode) }}},
+    };
+    context.configure(configuration);
+  },
+
+  wgpuSurfaceGetCapabilities: (surfaceId, adapterId, capabilitiesPtr) => {
+    if (capabilitiesPtr !== 0) {
+      {{{ makeSetValue('capabilitiesPtr', C_STRUCTS.WGPUSurfaceCapabilities.formatCount, '1', 'i32') }}};
+      var format = navigator["gpu"]["getPreferredCanvasFormat"]();
+      var formatsPtr = WebGPU.Int_PreferredFormat[format]; // FIXME
+      {{{ makeSetValue('capabilitiesPtr', C_STRUCTS.WGPUSurfaceCapabilities.formats, 'formatsPtr', '*') }}};
+      // "presentModeCount",
+      // "presentModes",
+      // "alphaModeCount",
+      // "alphaModes"
+    }
+  },
+
+  wgpuSurfaceGetCurrentTexture: (surfaceId, surfaceTexturePtr) => {
+    var context = WebGPU.mgrSurface.get(surfaceId);
+    var texture = WebGPU.mgrTexture.create(context.getCurrentTexture());
+    if (surfaceTexturePtr !== 0) {
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.texture, 'texture', '*') }}};
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.suboptimal, '0', 'i32') }}};
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.status, '0', 'i32') }}};
+    }
+  },
 
   wgpuSurfaceGetPreferredFormat: (surfaceId, adapterId) => {
     var format = navigator["gpu"]["getPreferredCanvasFormat"]();
     return WebGPU.Int_PreferredFormat[format];
+  },
+
+  wgpuSurfacePresent: (surfaceId) => {
+    // TODO: This could probably be emulated with ASYNCIFY.
+    abort('wgpuSurfacePresent is unsupported (use requestAnimationFrame via html5.h instead)');
+  },
+
+  wgpuSurfaceUnconfigure: (surfaceId) => {
+    var context = WebGPU.mgrSurface.get(surfaceId);
+    context.unconfigure();
   },
 
   // WGPUSwapChain
