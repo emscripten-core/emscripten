@@ -194,3 +194,38 @@ typedef struct LongLongTypes {
   unsigned long long* lluArray;
   long long ll;
 } LongLongTypes;
+
+// Returning child objects in a hierarchy
+
+struct ISmallObject {
+  virtual int getID(int number) = 0;
+};
+
+struct IObjectProvider {
+  virtual ISmallObject* getObject() = 0;
+};
+
+class SmallObject : public ISmallObject {
+public:
+  int getID(int number) {
+    return number;
+  }
+};
+
+class ObjectProvider : public IObjectProvider {
+public:
+  ISmallObject* getObject() {
+    return &m_smallObject;
+  }
+private:
+  SmallObject m_smallObject;
+};
+
+class ObjectFactory {
+public:
+  IObjectProvider* getProvider() {
+    return &m_ObjectProvider;
+  }
+private:
+  ObjectProvider m_ObjectProvider;
+};

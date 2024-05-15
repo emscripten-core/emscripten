@@ -243,6 +243,20 @@ try {
   s.Print(123, null); // Expects a string or a wrapped pointer
 } catch (e) {}
 
+// Returned pointers (issue 14745)
+
+var factory = new TheModule.ObjectFactory();
+var objectProvider = factory.getProvider();
+var smallObject = objectProvider.getObject();
+
+// This will print 123 if we managed to access the object, which means that integers
+// were correctly typecast to ObjectProvider pointer and SmallObject pointer.
+console.log(smallObject.getID(123));
+
+TheModule.destroy(factory)
+
+// end of issue 14745
+
 // Check for overflowing the stack
 
 var before = Date.now();
@@ -284,8 +298,6 @@ if (isMemoryGrowthAllowed) {
     console.log('ERROR: An array was not copied to HEAP32 after memory reallocation');
   }
 }
-
-//
 
 console.log('\ndone.')
 })();
