@@ -229,3 +229,13 @@ public:
 private:
   ObjectProvider m_ObjectProvider;
 };
+
+class ArrayArgumentTest {
+public:
+  ArrayArgumentTest() : m_array("I should match the member variable"){};
+  ~ArrayArgumentTest(){};
+  bool byteArrayTest(const char* arg) { return strcmp(arg, m_array) == 0; }
+  bool domStringTest(const char* arg) { return strcmp(arg, m_array) == 0; }
+private:
+  const char* m_array;
+};
