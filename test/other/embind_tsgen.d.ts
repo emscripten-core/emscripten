@@ -65,11 +65,6 @@ export interface Foo {
   delete(): void;
 }
 
-export type ValObj = {
-  foo: Foo,
-  bar: Bar
-};
-
 export interface ClassWithConstructor {
   fn(_0: number): number;
   delete(): void;
@@ -83,6 +78,12 @@ export interface ClassWithSmartPtrConstructor {
   fn(_0: number): number;
   delete(): void;
 }
+
+export type ValObj = {
+  foo: Foo,
+  bar: Bar,
+  callback: (message: string) => void
+};
 
 export interface BaseClass {
   fn(_0: number): number;
