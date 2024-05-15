@@ -429,7 +429,7 @@ def get_binaryen_passes():
 
   # Run the translator to the new EH instructions with exnref
   if settings.WASM_EXNREF:
-    passes += ['--experimental-new-eh']
+    passes += ['--emit-exnref']
 
   return passes
 
