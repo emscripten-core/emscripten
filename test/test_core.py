@@ -2164,10 +2164,7 @@ int main(int argc, char **argv) {
   @no_4gb('depends on memory size')
   @no_2gb('depends on memory size')
   def test_module_wasm_memory(self):
-    if self.get_setting('MEMORY64') == 1:
-      self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory64.js')]
-    else:
-      self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory.js')]
+    self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory.js')]
     self.set_setting('IMPORTED_MEMORY')
     self.set_setting('STRICT')
     self.set_setting('INCOMING_MODULE_JS_API', ['wasmMemory'])
