@@ -1535,6 +1535,17 @@ handles permissions and errors and so forth may be noticeable.
 
 Default value: false
 
+.. _idbfs_auto_persist:
+
+IDBFS_AUTO_PERSIST
+==================
+
+Enables IDBFS backend to automatically persist filesystem to IDBFS after
+any filesystem operation that modifies the filesystem.
+This avoids needing to manually call FS.syncfs(cb) after FS operations.
+
+Default value: false
+
 .. _node_code_caching:
 
 NODE_CODE_CACHING
