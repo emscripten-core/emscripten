@@ -376,9 +376,7 @@ def deref_if_nonpointer(m):
 
 
 def type_to_cdec(raw):
-  ret = type_to_c(raw.type.name, non_pointing=True)
-  if raw.getExtendedAttribute('Const'):
-    ret = 'const ' + ret
+  ret = type_to_c(full_typename(raw), non_pointing=True)
   if raw.type.name not in interfaces:
     return ret
   if raw.getExtendedAttribute('Ref'):

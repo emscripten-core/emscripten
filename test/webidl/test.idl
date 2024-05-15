@@ -196,3 +196,16 @@ interface ObjectFactory {
   void ObjectFactory();
   IObjectProvider getProvider();
 };
+
+interface ArrayArgumentTest {
+  void ArrayArgumentTest();
+  boolean byteArrayTest([Const] byte[] arg);
+  boolean domStringTest([Const] DOMString arg);
+};
+
+[JSImplementation = "ArrayArgumentTest"] 
+interface JSArrayArgumentTest {
+  void JSArrayArgumentTest();
+  boolean byteArrayTest([Const] byte[] arg);
+  boolean domStringTest([Const] DOMString arg);
+};
