@@ -1355,18 +1355,13 @@ keydown(100);keyup(100); // trigger the end
     '': ([],),
     'extra': (['-DEXTRA_WORK'],),
     'autopersist': (['-DIDBFS_AUTO_PERSIST', '-sIDBFS_AUTO_PERSIST'],),
+    'force_exit': (['-sEXIT_RUNTIME', '-DFORCE_EXIT'],),
   })
   def test_fs_idbfs_sync(self, args):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
     secret = str(time.time())
     self.btest('fs/test_idbfs_sync.c', '1', args=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_report_result', '-lidbfs.js'] + args + ['-DFIRST'])
     self.btest('fs/test_idbfs_sync.c', '1', args=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_report_result', '-lidbfs.js'] + args)
-
-  def test_fs_idbfs_sync_force_exit(self):
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
-    secret = str(time.time())
-    self.btest('fs/test_idbfs_sync.c', '1', args=['-lidbfs.js', '-DFIRST', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-sEXIT_RUNTIME', '-DFORCE_EXIT', '-lidbfs.js'])
-    self.btest('fs/test_idbfs_sync.c', '1', args=['-lidbfs.js', f'-DSECRET="{secret }"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-sEXIT_RUNTIME', '-DFORCE_EXIT', '-lidbfs.js'])
 
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()

@@ -133,7 +133,18 @@ void test() {
 
 #endif
 
-#if EXTRA_WORK
+  // If the test failed, then delete test files from IndexedDB so that the test
+  // runner will not leak test state to subsequent tests that reuse this same
+  // file.
+  if (result != 1) {
+    unlink("/working1/empty.txt");
+    unlink("/working1/waka.txt");
+    unlink("/working1/moar.txt");
+    rmdir("/working1/dir");
+    EM_ASM(FS.syncfs(function(){})); // And persist deleted changes
+  }
+
+#if EXTRA_WORK && !FIRST
   EM_ASM(
     for (var i = 0; i < 100; i++) {
       FS.syncfs(function (err) {

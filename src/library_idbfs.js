@@ -55,9 +55,10 @@ addToLibrary({
     mount: (...args) => { 
       var mnt = MEMFS.mount(...args);
       mnt.idbPersistState = 0; // IndexedDB sync starts in idle state
+      var memfs_node_ops = mnt.node_ops;
       mnt.node_ops = Object.assign({}, mnt.node_ops); // Clone node_ops to inject write tracking
       mnt.node_ops.mknod = (parent, name, mode, dev) => {
-        var node = MEMFS.createNode(parent, name, mode, dev);
+        var node = memfs_node_ops.mknod(parent, name, mode, dev);
         node.idbfs_mount = mnt.mount; // Remember for each IDBFS node which IDBFS mount point they came from so we know which mount to persist on modification.
         node.memfs_stream_ops = node.stream_ops; // Remember original MEMFS stream_ops for this node
         node.stream_ops = Object.assign({}, node.stream_ops); // Clone stream_ops to inject write tracking
@@ -80,6 +81,12 @@ addToLibrary({
 
         return node;
       };
+      // Also kick off persisting the filesystem on other operations that modify the filesystem.
+      mnt.node_ops.mkdir   = (...args) => { var ret = memfs_node_ops.mkdir(...args);   IDBFS.queuePersist(mnt.mount); return ret; };
+      mnt.node_ops.rmdir   = (...args) => { var ret = memfs_node_ops.rmdir(...args);   IDBFS.queuePersist(mnt.mount); return ret; };
+      mnt.node_ops.symlink = (...args) => { var ret = memfs_node_ops.symlink(...args); IDBFS.queuePersist(mnt.mount); return ret; };
+      mnt.node_ops.unlink  = (...args) => { var ret = memfs_node_ops.unlink(...args);  IDBFS.queuePersist(mnt.mount); return ret; };
+      mnt.node_ops.rename  = (...args) => { var ret = memfs_node_ops.rename(...args);  IDBFS.queuePersist(mnt.mount); return ret; };
       return mnt;
     },
 #else
