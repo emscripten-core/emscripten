@@ -99,13 +99,6 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       DeviceLost: 2,
       Unknown: 3,
     },
-    CompositeAlphaMode: [
-      'auto',
-      'opaque',
-      'premultiplied',
-      'unpremultiplied',
-      'inherit',
-    ],
     CreatePipelineAsyncStatus: {
       Success: 0,
       ValidationError: 1,
@@ -574,14 +567,6 @@ var LibraryWebGPU = {
       undefined,
       'store',
       'discard',
-    ],
-    SurfaceGetCurrentTextureStatus: [
-      'success',
-      'timeout',
-      'outdated',
-      'lost',
-      'out-of-memory',
-      'device-lost',
     ],
     TextureAspect: [
       undefined,
@@ -2734,26 +2719,20 @@ var LibraryWebGPU = {
     context.configure(configuration);
   },
 
-  wgpuSurfaceGetCapabilities: (surfaceId, adapterId, capabilitiesPtr) => {
-    if (capabilitiesPtr !== 0) {
-      {{{ makeSetValue('capabilitiesPtr', C_STRUCTS.WGPUSurfaceCapabilities.formatCount, '1', 'i32') }}};
-      var format = navigator["gpu"]["getPreferredCanvasFormat"]();
-      var formatsPtr = WebGPU.Int_PreferredFormat[format]; // FIXME
-      {{{ makeSetValue('capabilitiesPtr', C_STRUCTS.WGPUSurfaceCapabilities.formats, 'formatsPtr', '*') }}};
-      // "presentModeCount",
-      // "presentModes",
-      // "alphaModeCount",
-      // "alphaModes"
-    }
-  },
-
   wgpuSurfaceGetCurrentTexture: (surfaceId, surfaceTexturePtr) => {
+    {{{ gpu.makeCheck('surfaceTexturePtr') }}}
     var context = WebGPU.mgrSurface.get(surfaceId);
-    var texture = WebGPU.mgrTexture.create(context.getCurrentTexture());
-    if (surfaceTexturePtr !== 0) {
+
+    try {
+      var texture = WebGPU.mgrTexture.create(context.getCurrentTexture());
       {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.texture, 'texture', '*') }}};
       {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.suboptimal, '0', 'i32') }}};
-      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.status, '0', 'i32') }}};
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.status, /*Success=*/0, 'i32') }}};
+    } catch (ex) {
+#if ASSERTIONS
+      err(`wgpuSurfaceGetCurrentTexture() failed: ${ex}`);
+#endif
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.status, /*Timeout=*/1, 'i32') }}};
     }
   },
 

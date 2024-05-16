@@ -398,8 +398,7 @@ void run() {
 
         wgpu::SurfaceConfiguration config{
             .device = device,
-            .format = wgpu::TextureFormat::BGRA8Unorm,
-            // .format = capabilities.formats[0],
+            .format = capabilities.formats[0],
             .usage = wgpu::TextureUsage::RenderAttachment,
             .alphaMode = capabilities.alphaModes[0],
             .width = kWidth,

@@ -9,7 +9,18 @@
 
 #include <webgpu/webgpu.h>
 
+#include <array>
 #include <cassert>
+
+static constexpr std::array<WGPUTextureFormat, 3>
+    kBGRA8UnormPreferredContextFormats = {WGPUTextureFormat_BGRA8Unorm,
+                                          WGPUTextureFormat_RGBA8Unorm,
+                                          WGPUTextureFormat_RGBA16Float};
+
+static constexpr std::array<WGPUTextureFormat, 3>
+    kRGBA8UnormPreferredContextFormats = {WGPUTextureFormat_RGBA8Unorm,
+                                          WGPUTextureFormat_BGRA8Unorm,
+                                          WGPUTextureFormat_RGBA16Float};
 
 //
 // WebGPU function definitions, with methods organized by "class". Note these
@@ -27,3 +38,24 @@ WGPUInstance wgpuCreateInstance(const WGPUInstanceDescriptor* descriptor) {
 
 void wgpuInstanceReference(WGPUInstance) { /* no-op for now */ }
 void wgpuInstanceRelease(WGPUInstance) { /* no-op for now */ }
+
+// WGPUSurface
+
+void wgpuSurfaceGetCapabilities(WGPUSurface surface,
+                                WGPUAdapter adapter,
+                                WGPUSurfaceCapabilities* capabilities) {
+  WGPUTextureFormat preferredFormat =
+      wgpuSurfaceGetPreferredFormat(surface, adapter);
+  assert(preferredFormat == WGPUTextureFormat_BGRA8Unorm ||
+         preferredFormat == WGPUTextureFormat_RGBA8Unorm);
+  capabilities->formatCount = 3;
+  if (preferredFormat == WGPUTextureFormat_RGBA8Unorm) {
+    capabilities->formats = reinterpret_cast<const WGPUTextureFormat*>(
+        kBGRA8UnormPreferredContextFormats.data());
+  } else {
+    capabilities->formats = reinterpret_cast<const WGPUTextureFormat*>(
+        kRGBA8UnormPreferredContextFormats.data());
+  }
+
+  // TODO: What do we return for presentModes and alphaModes?
+};
