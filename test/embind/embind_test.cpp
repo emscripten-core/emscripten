@@ -2382,6 +2382,16 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("test_string_with_vec", &test_string_with_vec);
 
 #if __cplusplus >= 201703L
+    // Backwards compatibility test for binding code with optionals that
+    // predates the register_optional helper added in 3.1.52.
+    struct SomeOptType {};
+    class_<std::optional<SomeOptType>>("OptionalSomeOptType")
+        .constructor();
+    // register_vector internally calls register_optional, which should not
+    // error out when registering an optional already registered, whether with
+    // register_optional or a pre-3.1.52 class_ binding.
+    register_vector<SomeOptType>("SomeOptTypeVec");
+
     register_optional<int>();
     register_optional<float>();
     register_optional<SmallClass>();

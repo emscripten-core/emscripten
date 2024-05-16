@@ -678,7 +678,8 @@ var LibraryEmbind = {
 
   _embind_register_emval__deps: [
     '$registerType',  '$EmValType'],
-  _embind_register_emval: (rawType) => registerType(rawType, EmValType),
+  _embind_register_emval: (rawType) =>
+      registerType(rawType, EmValType, {ignoreDuplicateRegistrations: true}),
 
   _embind_register_user_type__deps: ['_embind_register_emval'],
   _embind_register_user_type: (rawType, name) => {

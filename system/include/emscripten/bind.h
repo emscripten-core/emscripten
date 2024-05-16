@@ -1919,14 +1919,8 @@ public:
 #if __cplusplus >= 201703L
 template<typename T>
 void register_optional() {
-    // Optional types are automatically registered for some internal types so
-    // only run the register method once so we don't conflict with a user's
-    // bindings if they also register the optional type.
-    thread_local bool hasRun;
-    if (hasRun) {
-        return;
-    }
-    hasRun = true;
+    // Optional types are automatically registered for some internal types; the
+    // JS implementation will ignore duplicate registrations.
     internal::_embind_register_optional(
         internal::TypeID<std::optional<T>>::get(),
         internal::TypeID<typename std::remove_pointer<T>::type>::get());
