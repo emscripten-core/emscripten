@@ -2164,10 +2164,7 @@ int main(int argc, char **argv) {
   @no_4gb('depends on memory size')
   @no_2gb('depends on memory size')
   def test_module_wasm_memory(self):
-    if self.get_setting('MEMORY64') == 1:
-      self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory64.js')]
-    else:
-      self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory.js')]
+    self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory.js')]
     self.set_setting('IMPORTED_MEMORY')
     self.set_setting('STRICT')
     self.set_setting('INCOMING_MODULE_JS_API', ['wasmMemory'])
@@ -7709,7 +7706,7 @@ void* operator new(size_t size) {
     # Export things on "TheModule". This matches the typical use pattern of
     # the bound library being used as Box2D.* or Ammo.*, and we cannot rely
     # on "Module" being always present (closure may remove it).
-    self.emcc_args += ['--post-js=glue.js', '--extern-post-js=extern-post.js']
+    self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free', '-sEXPORTED_RUNTIME_METHODS=stringToUTF8', '--post-js=glue.js', '--extern-post-js=extern-post.js']
     if mode == 'ALL':
       self.emcc_args += ['-sASSERTIONS']
     if allow_memory_growth:
@@ -8171,7 +8168,7 @@ Module.onRuntimeInitialized = () => {
   def test_async_ccall_promise(self, exit_runtime, asyncify):
     if asyncify == 2:
       self.require_jspi()
-      self.set_setting('ASYNCIFY_EXPORTS', ['stringf', 'floatf'])
+      self.set_setting('JSPI_EXPORTS', ['stringf', 'floatf'])
     self.set_setting('ASYNCIFY', asyncify)
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('ASSERTIONS')
@@ -8348,7 +8345,7 @@ Module.onRuntimeInitialized = () => {
     # TODO Test with ASYNCIFY=1 https://github.com/emscripten-core/emscripten/issues/17552
     self.require_jspi()
     self.do_runf('core/test_pthread_join_and_asyncify.c', 'joining thread!\njoined thread!',
-                 emcc_args=['-sASYNCIFY_EXPORTS=run_thread',
+                 emcc_args=['-sJSPI_EXPORTS=run_thread',
                             '-sEXIT_RUNTIME=1',
                             '-pthread', '-sPROXY_TO_PTHREAD'])
 
