@@ -59,6 +59,7 @@ addToLibrary({
       mnt.node_ops = Object.assign({}, mnt.node_ops); // Clone node_ops to inject write tracking
       mnt.node_ops.mknod = (parent, name, mode, dev) => {
         var node = memfs_node_ops.mknod(parent, name, mode, dev);
+        node.node_ops = mnt.node_ops; // Propagate injected node_ops to the newly created child node
         node.idbfs_mount = mnt.mount; // Remember for each IDBFS node which IDBFS mount point they came from so we know which mount to persist on modification.
         node.memfs_stream_ops = node.stream_ops; // Remember original MEMFS stream_ops for this node
         node.stream_ops = Object.assign({}, node.stream_ops); // Clone stream_ops to inject write tracking
