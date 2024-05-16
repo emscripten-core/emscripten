@@ -819,7 +819,7 @@ var NODEJS_CATCH_REJECTION = true;
 // [link]
 var ASYNCIFY = 0;
 
-// Imports which can do an sync operation, in addition to the default ones that
+// Imports which can do an async operation, in addition to the default ones that
 // emscripten defines like emscripten_sleep. If you add more you will need to
 // mention them to here, or else they will not work (in ASSERTIONS builds an
 // error will be shown).
@@ -927,10 +927,8 @@ var ASYNCIFY_LAZY_LOAD_CODE = false;
 // [link]
 var ASYNCIFY_DEBUG = 0;
 
-// Specify which of the exports will have JSPI applied to them and return a
-// promise.
-// Only supported for ASYNCIFY==2 mode.
-// [link]
+// Deprecated, use JSPI_EXPORTS instead.
+// [deprecated]
 var ASYNCIFY_EXPORTS = [];
 
 // Use VM support for the JavaScript Promise Integration proposal. This allows
@@ -942,6 +940,25 @@ var ASYNCIFY_EXPORTS = [];
 //
 // [link]
 var JSPI = 0;
+
+// A list of exported module functions that will be asynchronous. Each export
+// will return a ``Promise`` that will be resolved with the result. Any exports
+// that will call an asynchronous import (listed in ``JSPI_IMPORTS``) must be
+// included here.
+//
+// By default this includes ``main``.
+// [link]
+var JSPI_EXPORTS = [];
+
+
+// A list of imported module functions that will potentially do asynchronous
+// work. The imported function should return a ``Promise`` when doing
+// asynchronous work.
+//
+// Note when using ``--js-library``, the function can be marked with
+// ``<function_name>_async:: true`` in the library instead of this setting.
+// [link]
+var JSPI_IMPORTS = [];
 
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all. You should use
@@ -2000,7 +2017,7 @@ var MAYBE_WASM2JS = false;
 // calculated from INITIAL_MEMORY and MAXIMUM_MEMORY. Will be removed in a
 // future release.
 // [link]
-var ASAN_SHADOW_SIZE = -1
+var ASAN_SHADOW_SIZE = -1;
 
 // Whether we should use the offset converter.  This is needed for older
 // versions of v8 (<7.7) that does not give the hex module offset into wasm

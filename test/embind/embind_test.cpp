@@ -2843,7 +2843,7 @@ EMSCRIPTEN_BINDINGS(noncopyable) {
         .function("method", &Noncopyable::method)
         ;
 
-    function("getNoncopyable", &getNoncopyable);
+    function("getNoncopyable", &getNoncopyable, return_value_policy::take_ownership());
 }
 
 struct HasReadOnlyProperty {

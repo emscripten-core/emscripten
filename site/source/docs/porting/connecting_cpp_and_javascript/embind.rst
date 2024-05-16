@@ -203,15 +203,6 @@ to enable the closure compiler.
 Memory management
 =================
 
-JavaScript only gained support for `finalizers`_ in ECMAScript 2021, or ECMA-262
-Edition 12. The new API is called `FinalizationRegistry`_ and it still does not
-offer any guarantees that the provided finalization callback will be called.
-Embind uses this for cleanup if available, but only for smart pointers,
-and only as a last resort.
-
-.. warning:: It is strongly recommended that JavaScript code explicitly deletes
-    any C++ object handles it has received.
-
 The :js:func:`delete()` JavaScript method is provided to manually signal that
 a C++ object is no longer needed and can be deleted:
 
@@ -226,7 +217,8 @@ a C++ object is no longer needed and can be deleted:
     y.delete();
 
 .. note:: Both C++ objects constructed from the JavaScript side as well as
-    those returned from C++ methods must be explicitly deleted.
+    those returned from C++ methods must be explicitly deleted, unless a
+    ``reference`` return value policy is used (see below).
 
 
 .. tip:: The ``try`` … ``finally`` JavaScript construct can be used to guarantee
@@ -247,6 +239,19 @@ a C++ object is no longer needed and can be deleted:
             x.delete(); // will be called no matter what
         }
     }
+
+Automatic memory management
+---------------------------
+
+JavaScript only gained support for `finalizers`_ in ECMAScript 2021, or ECMA-262
+Edition 12. The new API is called `FinalizationRegistry`_ and it still does not
+offer any guarantees that the provided finalization callback will be called.
+Embind uses this for cleanup if available, but only for smart pointers,
+and only as a last resort.
+
+.. warning:: It is strongly recommended that JavaScript code explicitly deletes
+    any C++ object handles it has received.
+
 
 Cloning and Reference Counting
 ------------------------------
@@ -344,13 +349,76 @@ The JavaScript code does not need to worry about lifetime management.
 Advanced class concepts
 =======================
 
+.. _embind-object-ownership:
+
+Object Ownership
+----------------
+
+JavaScript and C++ have very different memory models which can lead to it being
+unclear which language owns and is responsible for deleting an object when it
+moves between languages. To make object ownership more explicit, *embind*
+supports smart pointers and return value policies. Return value
+polices dictate what happens to a C++ object when it is returned to JavaScript.
+
+To use a return value policy, pass the desired policy into function or method
+bindings. For example:
+
+.. code:: cpp
+
+    EMSCRIPTEN_BINDINGS(module) {
+      function("createData", &createData, return_value_policy::take_ownership());
+    }
+
+Embind supports three return value policies that behave differently depending
+on the return type of the function. The policies work as follows:
+
+* *default (no argument)* - For return by value and reference a new object will be allocated using the
+  object's copy constructor. JS then owns the object and is responsible for deleting it. Returning a
+  pointer is not allowed by default (use an explicit policy below).
+* :cpp:type:`return_value_policy::take_ownership` - Ownership is transferred to JS.
+* :cpp:type:`return_value_policy::reference` - Reference an existing object but do not take
+  ownership. Care must be taken to not delete the object while it is still in use in JS.
+
+More details below:
+
++--------------------+-------------+---------------------------------------------------------------+
+| Return Type        | Constructor | Cleanup                                                       |
++====================+=============+===============================================================+
+| **default**                                                                                      |
++--------------------+-------------+---------------------------------------------------------------+
+| Value (``T``)      | copy        | JS must delete the copied object.                             |
++--------------------+-------------+---------------------------------------------------------------+
+| Reference (``T&``) | copy        | JS must delete the copied object.                             |
++--------------------+-------------+---------------------------------------------------------------+
+| Pointer (``T*``)   | n/a         | Pointers must explicitly use a return policy.                 |
++--------------------+-------------+---------------------------------------------------------------+
+| **take_ownership**                                                                               |
++--------------------+-------------+---------------------------------------------------------------+
+| Value (``T``)      | move        | JS must delete the moved object.                              |
++--------------------+-------------+---------------------------------------------------------------+
+| Reference (``T&``) | move        | JS must delete the moved object.                              |
++--------------------+-------------+---------------------------------------------------------------+
+| Pointer (``T*``)   | none        | JS must delete the object.                                    |
++--------------------+-------------+---------------------------------------------------------------+
+| **reference**                                                                                    |
++--------------------+-------------+---------------------------------------------------------------+
+| Value (``T``)      | n/a         | Reference to a value is not allowed.                          |
++--------------------+-------------+---------------------------------------------------------------+
+| Reference (``T&``) | none        | C++ must delete the object.                                   |
++--------------------+-------------+---------------------------------------------------------------+
+| Pointer (``T*``)   | none        | C++ must delete the object.                                   |
++--------------------+-------------+---------------------------------------------------------------+
+
 .. _embind-raw-pointers:
 
 Raw pointers
 ------------
 
 Because raw pointers have unclear lifetime semantics, *embind* requires
-their use to be marked with :cpp:type:`allow_raw_pointers`.
+their use to be marked with either :cpp:type:`allow_raw_pointers` or with a
+:cpp:type:`return_value_policy`. If the function returns a pointer it is
+recommended to use a :cpp:type:`return_value_policy` instead of the general
+:cpp:type:`allow_raw_pointers`.
 
 For example:
 
@@ -358,17 +426,19 @@ For example:
 
     class C {};
     C* passThrough(C* ptr) { return ptr; }
+    C* createC() { return new C(); }
     EMSCRIPTEN_BINDINGS(raw_pointers) {
         class_<C>("C");
         function("passThrough", &passThrough, allow_raw_pointers());
+        function("createC", &createC, return_value_policy::take_ownership());
     }
 
 .. note::
 
-   Currently the markup serves only to allow raw pointer use, and
-   show that you've thought about the use of the raw pointers. Eventually
-   we hope to implement `Boost.Python-like raw pointer policies`_ for
-   managing object ownership.
+   Currently allow_raw_pointers for pointer arguments only serves to allow raw
+   pointer use, and show that you've thought about the use of the raw pointers.
+   Eventually we hope to implement `Boost.Python-like raw pointer policies`_ for
+   managing object ownership of arguments as well.
 
 .. _embind-external-constructors:
 

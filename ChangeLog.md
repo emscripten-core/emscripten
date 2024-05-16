@@ -30,6 +30,8 @@ See docs/process.md for more on how version tagging works.
   https://github.com/llvm/llvm-project/pull/90792), multivalue feature is now
   enabled by default in Emscripten. This only enables the language features and
   does not turn on the multivalue ABI.
+- Embind now supports return value policies to better define object lifetimes.
+  See https://emscripten.org/docs/porting/connecting_cpp_and_javascript/embind.html#object-ownership for more information.
 
 3.1.59 - 04/30/24
 -----------------

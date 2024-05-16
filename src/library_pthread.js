@@ -446,7 +446,7 @@ var LibraryPThread = {
         var p = trustedTypes.createPolicy(
           'emscripten#workerPolicy1',
           {
-            createScriptURL: (ignored) => new URL(import.meta.url);
+            createScriptURL: (ignored) => new URL(import.meta.url)
           }
         );
         worker = new Worker(p.createScriptURL('ignored'), workerOptions);

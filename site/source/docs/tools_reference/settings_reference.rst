@@ -24,6 +24,8 @@ system libraries are built.
 ASSERTIONS == 2 gives even more runtime checks, that may be very slow. That
 includes internal dlmalloc assertions, for example.
 
+Default value: 1
+
 .. _stack_overflow_check:
 
 STACK_OVERFLOW_CHECK
@@ -41,6 +43,8 @@ defaults 1, absent any other settings:
 - 2: Same as above, but also runs a binaryen pass which adds a check to all
   stack pointer assignments. Has a small performance cost.
 
+Default value: 0
+
 .. _check_null_writes:
 
 CHECK_NULL_WRITES
@@ -52,6 +56,8 @@ check (for example, if you want reads from the address zero to always return
 zero) you can disabled this here.  This setting has no effect when
 STACK_OVERFLOW_CHECK is disabled.
 
+Default value: true
+
 .. _verbose:
 
 VERBOSE
@@ -59,6 +65,8 @@ VERBOSE
 
 When set to 1, will generate more verbose output during compilation.
 [general]
+
+Default value: false
 
 .. _invoke_run:
 
@@ -68,6 +76,8 @@ INVOKE_RUN
 Whether we will run the main() function. Disable if you embed the generated
 code in your own, and will call main() yourself at the right time (which you
 can do with Module.callMain(), with an optional parameter of commandline args).
+
+Default value: true
 
 .. _exit_runtime:
 
@@ -85,6 +95,8 @@ This setting is controlled automatically in STANDALONE_WASM mode:
 - For a command (has a main function) this is always 1
 - For a reactor (no a main function) this is always 0
 
+Default value: false
+
 .. _stack_size:
 
 STACK_SIZE
@@ -94,6 +106,8 @@ The total stack size. There is no way to enlarge the stack, so this
 value must be large enough for the program's requirements. If
 assertions are on, we will assert on not exceeding this, otherwise,
 it will fail silently.
+
+Default value: 64*1024
 
 .. _malloc:
 
@@ -125,6 +139,8 @@ is usually worth the extra size. dlmalloc is also a good choice if you want
 the extra security checks it does (such as noticing metadata corruption in
 its internal data structures, which emmalloc does not do).
 
+Default value: "dlmalloc"
+
 .. _aborting_malloc:
 
 ABORTING_MALLOC
@@ -151,6 +167,8 @@ Note that this setting does not affect the behavior of operator new in C++.
 This function will always abort on allocation failure if exceptions are disabled.
 If you want new to return 0 on failure, use it with std::nothrow.
 
+Default value: true
+
 .. _initial_heap:
 
 INITIAL_HEAP
@@ -163,6 +181,8 @@ Unlike INITIAL_MEMORY, this setting allows the static and dynamic regions of
 your programs memory to independently grow. In most cases we recommend using
 this setting rather than `INITIAL_MEMORY`. However, this setting does not work
 for imported memories (e.g. when dynamic linking is used).
+
+Default value: 16777216
 
 .. _initial_memory:
 
@@ -179,6 +199,8 @@ By default, this value is calculated based on INITIAL_HEAP, STACK_SIZE,
 as well the size of static data in input modules.
 
 (This option was formerly called TOTAL_MEMORY.)
+
+Default value: -1
 
 .. _maximum_memory:
 
@@ -205,6 +227,8 @@ To use more than 2GB, set this to something higher, like 4GB.
 
 (This option was formerly called WASM_MEM_MAX and BINARYEN_MEM_MAX.)
 
+Default value: 2147483648
+
 .. _allow_memory_growth:
 
 ALLOW_MEMORY_GROWTH
@@ -223,6 +247,8 @@ ALLOW_MEMORY_GROWTH enables fully standard behavior, of both malloc
 returning 0 when it fails, and also of being able to allocate more
 memory from the system as necessary.
 
+Default value: false
+
 .. _memory_growth_geometric_step:
 
 MEMORY_GROWTH_GEOMETRIC_STEP
@@ -237,6 +263,8 @@ to reduce performance hiccups coming from memory resize, and the smaller
 this value is, the more memory is conserved, at the performance of more
 stuttering when the heap grows. (profiled to be on the order of ~20 msecs)
 
+Default value: 0.20
+
 .. _memory_growth_geometric_cap:
 
 MEMORY_GROWTH_GEOMETRIC_CAP
@@ -246,6 +274,8 @@ Specifies a cap for the maximum geometric overgrowth size, in bytes. Use
 this value to constrain the geometric grow to not exceed a specific rate.
 Pass MEMORY_GROWTH_GEOMETRIC_CAP=0 to disable the cap and allow unbounded
 size increases.
+
+Default value: 96*1024*1024
 
 .. _memory_growth_linear_step:
 
@@ -258,6 +288,8 @@ MEMORY_GROWTH_LINEAR_STEP to a multiple of WASM page size (64KB), eg. 16MB to
 replace geometric overgrowth rate with a constant growth step size. When
 MEMORY_GROWTH_LINEAR_STEP is used, the variables MEMORY_GROWTH_GEOMETRIC_STEP
 and MEMORY_GROWTH_GEOMETRIC_CAP are ignored.
+
+Default value: -1
 
 .. _memory64:
 
@@ -274,6 +306,8 @@ Assumes WASM_BIGINT.
 
 .. note:: This is an experimental setting
 
+Default value: 0
+
 .. _initial_table:
 
 INITIAL_TABLE
@@ -288,6 +322,8 @@ a large enough table size that can be consistent across both builds. This
 setting may be removed at any time and should not be used except in
 conjunction with SPLIT_MODULE and dynamic linking.
 
+Default value: -1
+
 .. _allow_table_growth:
 
 ALLOW_TABLE_GROWTH
@@ -295,6 +331,8 @@ ALLOW_TABLE_GROWTH
 
 If true, allows more functions to be added to the table at runtime. This is
 necessary for dynamic linking, and set automatically in that mode.
+
+Default value: false
 
 .. _global_base:
 
@@ -305,6 +343,8 @@ Where global data begins; the start of static memory.
 A GLOBAL_BASE of 1024 or above is useful for optimizing load/store offsets, as it
 enables the --low-memory-unused pass
 
+Default value: 1024
+
 .. _table_base:
 
 TABLE_BASE
@@ -313,12 +353,16 @@ TABLE_BASE
 Where where table slots (function addresses) are allocated.
 This must be at least 1 to reserve the zero slot for the null pointer.
 
+Default value: 1
+
 .. _use_closure_compiler:
 
 USE_CLOSURE_COMPILER
 ====================
 
 Whether closure compiling is being run on this output
+
+Default value: false
 
 .. _closure_warnings:
 
@@ -333,12 +377,16 @@ errors, similar to -Werror compiler flag.
 
 .. note:: This setting is deprecated
 
+Default value: 'quiet'
+
 .. _ignore_closure_compiler_errors:
 
 IGNORE_CLOSURE_COMPILER_ERRORS
 ==============================
 
 Ignore closure warnings and errors (like on duplicate definitions)
+
+Default value: false
 
 .. _declare_asm_module_exports:
 
@@ -356,6 +404,8 @@ modifications of the global scope can confuse external JS minifier tools, and
 also things can break if the scope the code is in is not the global scope
 (e.g. if you manually enclose them in a function scope).
 
+Default value: true
+
 .. _inlining_limit:
 
 INLINING_LIMIT
@@ -366,6 +416,8 @@ This does not affect the inlining policy in Binaryen.
 
 .. note:: Only applicable during compilation
 
+Default value: false
+
 .. _support_big_endian:
 
 SUPPORT_BIG_ENDIAN
@@ -375,6 +427,8 @@ If set to 1, perform acorn pass that converts each HEAP access into a
 function call that uses DataView to enforce LE byte order for HEAP buffer;
 This makes generated JavaScript run on BE as well as LE machines. (If 0, only
 LE systems are supported). Does not affect generated wasm.
+
+Default value: false
 
 .. _safe_heap:
 
@@ -390,12 +444,16 @@ Wasm-only builds allow unaligned memory accesses. Note, however, that
 on some architectures unaligned accesses can be very slow, so it is still
 a good idea to verify your code with the more strict mode 1)
 
+Default value: 0
+
 .. _safe_heap_log:
 
 SAFE_HEAP_LOG
 =============
 
 Log out all SAFE_HEAP operations
+
+Default value: false
 
 .. _emulate_function_pointer_casts:
 
@@ -413,12 +471,16 @@ emulated values may not match (this is true of native too, for that matter -
 this is all undefined behavior). This approaches appears good enough to
 support Python, which is the main use case motivating this feature.
 
+Default value: false
+
 .. _exception_debug:
 
 EXCEPTION_DEBUG
 ===============
 
 Print out exceptions in emscriptened code.
+
+Default value: false
 
 .. _demangle_support:
 
@@ -428,6 +490,8 @@ DEMANGLE_SUPPORT
 If 1, export `demangle` and `stackTrace` JS library functions.
 
 .. note:: This setting is deprecated
+
+Default value: false
 
 .. _library_debug:
 
@@ -440,6 +504,8 @@ it back. A simple way to set it in C++ is::
 
   emscripten_run_script("runtimeDebug = ...;");
 
+Default value: false
+
 .. _syscall_debug:
 
 SYSCALL_DEBUG
@@ -450,12 +516,16 @@ to the string name, which can be convenient for debugging. (Other system
 calls are not numbered and already have clear names; use LIBRARY_DEBUG
 to get logging for all of them.)
 
+Default value: false
+
 .. _socket_debug:
 
 SOCKET_DEBUG
 ============
 
 Log out socket/network data transfer.
+
+Default value: false
 
 .. _dylink_debug:
 
@@ -464,12 +534,16 @@ DYLINK_DEBUG
 
 Log dynamic linker information
 
+Default value: 0
+
 .. _fs_debug:
 
 FS_DEBUG
 ========
 
 Register file system callbacks using trackingDelegate in library_fs.js
+
+Default value: false
 
 .. _socket_webrtc:
 
@@ -485,6 +559,8 @@ You can set 'subprotocol' to null, if you don't want to specify it
 Run time configuration may be useful as it lets an application select
 multiple different services.
 
+Default value: false
+
 .. _websocket_url:
 
 WEBSOCKET_URL
@@ -496,6 +572,8 @@ In the (default) case of only a prefix being specified the URL will be construct
 prefix + addr + ':' + port
 where addr and port are derived from the socket connect/bind/accept calls.
 
+Default value: 'ws://'
+
 .. _proxy_posix_sockets:
 
 PROXY_POSIX_SOCKETS
@@ -503,6 +581,8 @@ PROXY_POSIX_SOCKETS
 
 If 1, the POSIX sockets API uses a native bridge process server to proxy sockets calls
 from browser to native world.
+
+Default value: false
 
 .. _websocket_subprotocol:
 
@@ -513,12 +593,16 @@ A string containing a comma separated list of WebSocket subprotocols
 as would be present in the Sec-WebSocket-Protocol header.
 You can set 'null', if you don't want to specify it.
 
+Default value: 'binary'
+
 .. _openal_debug:
 
 OPENAL_DEBUG
 ============
 
 Print out debugging information from our OpenAL implementation.
+
+Default value: false
 
 .. _websocket_debug:
 
@@ -529,6 +613,8 @@ If 1, prints out debugging related to calls from ``emscripten_web_socket_*``
 functions in ``emscripten/websocket.h``.
 If 2, additionally traces bytes communicated via the sockets.
 
+Default value: false
+
 .. _gl_assertions:
 
 GL_ASSERTIONS
@@ -537,12 +623,16 @@ GL_ASSERTIONS
 Adds extra checks for error situations in the GL library. Can impact
 performance.
 
+Default value: false
+
 .. _trace_webgl_calls:
 
 TRACE_WEBGL_CALLS
 =================
 
 If enabled, prints out all API calls to WebGL contexts. (*very* verbose)
+
+Default value: false
 
 .. _gl_debug:
 
@@ -552,6 +642,8 @@ GL_DEBUG
 Enables more verbose debug printing of WebGL related operations. As with
 LIBRARY_DEBUG, this is toggleable at runtime with option GL.debug.
 
+Default value: false
+
 .. _gl_testing:
 
 GL_TESTING
@@ -560,12 +652,16 @@ GL_TESTING
 When enabled, sets preserveDrawingBuffer in the context, to allow tests to
 work (but adds overhead)
 
+Default value: false
+
 .. _gl_max_temp_buffer_size:
 
 GL_MAX_TEMP_BUFFER_SIZE
 =======================
 
 How large GL emulation temp buffers are
+
+Default value: 2097152
 
 .. _gl_unsafe_opts:
 
@@ -574,12 +670,16 @@ GL_UNSAFE_OPTS
 
 Enables some potentially-unsafe optimizations in GL emulation code
 
+Default value: true
+
 .. _full_es2:
 
 FULL_ES2
 ========
 
 Forces support for all GLES2 features, not just the WebGL-friendly subset.
+
+Default value: false
 
 .. _gl_emulate_gles_version_string_format:
 
@@ -594,6 +694,8 @@ version strings (at the expense of a little bit of added code size), and to
 false to make GL contexts appear like WebGL contexts and to save some bytes
 from the output.
 
+Default value: true
+
 .. _gl_extensions_in_prefixed_format:
 
 GL_EXTENSIONS_IN_PREFIXED_FORMAT
@@ -603,6 +705,8 @@ If true, all GL extensions are advertised in both unprefixed WebGL extension
 format, but also in desktop/mobile GLES/GL extension format with ``GL_``
 prefix.
 
+Default value: true
+
 .. _gl_support_automatic_enable_extensions:
 
 GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
@@ -611,6 +715,8 @@ GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
 If true, adds support for automatically enabling all GL extensions for
 GLES/GL emulation purposes. This takes up code size. If you set this to 0,
 you will need to manually enable the extensions you need.
+
+Default value: true
 
 .. _gl_support_simple_enable_extensions:
 
@@ -629,6 +735,8 @@ This way code size is increased only for the extensions that are actually used.
 N.B. if setting this to 0, GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS must be set
 to zero as well.
 
+Default value: true
+
 .. _gl_track_errors:
 
 GL_TRACK_ERRORS
@@ -638,6 +746,8 @@ If set to 0, Emscripten GLES2->WebGL translation layer does not track the kind
 of GL errors that exist in GLES2 but do not exist in WebGL. Settings this to 0
 saves code size. (Good to keep at 1 for development)
 
+Default value: true
+
 .. _gl_support_explicit_swap_control:
 
 GL_SUPPORT_EXPLICIT_SWAP_CONTROL
@@ -645,6 +755,8 @@ GL_SUPPORT_EXPLICIT_SWAP_CONTROL
 
 If true, GL contexts support the explicitSwapControl context creation flag.
 Set to 0 to save a little bit of space on projects that do not need it.
+
+Default value: false
 
 .. _gl_pool_temp_buffers:
 
@@ -658,6 +770,8 @@ GL library a little bit, at the expense of generating garbage in WebGL 1. If
 you are only using WebGL 2 and do not support WebGL 1, this is not needed and
 you can turn it off.
 
+Default value: true
+
 .. _gl_explicit_uniform_location:
 
 GL_EXPLICIT_UNIFORM_LOCATION
@@ -665,6 +779,8 @@ GL_EXPLICIT_UNIFORM_LOCATION
 
 If true, enables support for the EMSCRIPTEN_explicit_uniform_location WebGL
 extension. See docs/EMSCRIPTEN_explicit_uniform_location.txt
+
+Default value: false
 
 .. _gl_explicit_uniform_binding:
 
@@ -674,12 +790,16 @@ GL_EXPLICIT_UNIFORM_BINDING
 If true, enables support for the EMSCRIPTEN_uniform_layout_binding WebGL
 extension. See docs/EMSCRIPTEN_explicit_uniform_binding.txt
 
+Default value: false
+
 .. _use_webgl2:
 
 USE_WEBGL2
 ==========
 
 Deprecated. Pass -sMAX_WEBGL_VERSION=2 to target WebGL 2.0.
+
+Default value: false
 
 .. _min_webgl_version:
 
@@ -689,6 +809,8 @@ MIN_WEBGL_VERSION
 Specifies the lowest WebGL version to target. Pass -sMIN_WEBGL_VERSION=1
 to enable targeting WebGL 1, and -sMIN_WEBGL_VERSION=2 to drop support
 for WebGL 1.0
+
+Default value: 1
 
 .. _max_webgl_version:
 
@@ -704,6 +826,8 @@ support, as that may not always be what the application wants. If you want
 such a fallback, you can try to create a context with WebGL2, and if that
 fails try to create one with WebGL1.
 
+Default value: 1
+
 .. _webgl2_backwards_compatibility_emulation:
 
 WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION
@@ -716,6 +840,8 @@ in WebGL2/GLES3. Currently this emulates GL_EXT_shader_texture_lod extension
 in GLSLES 1.00 shaders, support for unsized internal texture formats, and the
 GL_HALF_FLOAT_OES != GL_HALF_FLOAT mixup.
 
+Default value: false
+
 .. _full_es3:
 
 FULL_ES3
@@ -723,6 +849,8 @@ FULL_ES3
 
 Forces support for all GLES3 features, not just the WebGL2-friendly subset.
 This automatically turns on FULL_ES2 and WebGL2 support.
+
+Default value: false
 
 .. _legacy_gl_emulation:
 
@@ -732,6 +860,8 @@ LEGACY_GL_EMULATION
 Includes code to emulate various desktop GL features. Incomplete but useful
 in some cases, see
 http://kripken.github.io/emscripten-site/docs/porting/multimedia_and_graphics/OpenGL-support.html
+
+Default value: false
 
 .. _gl_ffp_only:
 
@@ -744,6 +874,8 @@ that it can perform extra optimizations by knowing that the user code does
 not use shaders at all. If LEGACY_GL_EMULATION = 0, this setting has no
 effect.
 
+Default value: false
+
 .. _gl_preinitialized_context:
 
 GL_PREINITIALIZED_CONTEXT
@@ -753,12 +885,16 @@ If you want to create the WebGL context up front in JS code, set this to 1
 and set Module['preinitializedWebGLContext'] to a precreated WebGL context.
 WebGL initialization afterwards will use this GL context to render.
 
+Default value: false
+
 .. _use_webgpu:
 
 USE_WEBGPU
 ==========
 
 Enables support for WebGPU (via "webgpu/webgpu.h").
+
+Default value: false
 
 .. _stb_image:
 
@@ -772,6 +908,8 @@ will not be as fast as the browser itself.  When enabled, stb-image will be
 used automatically from IMG_Load and IMG_Load_RW. You can also call the
 ``stbi_*`` functions directly yourself.
 
+Default value: false
+
 .. _gl_disable_half_float_extension_if_broken:
 
 GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN
@@ -781,6 +919,8 @@ From Safari 8 (where WebGL was introduced to Safari) onwards, OES_texture_half_f
 are broken and do not function correctly, when used as source textures.
 See https://bugs.webkit.org/show_bug.cgi?id=183321, https://bugs.webkit.org/show_bug.cgi?id=169999,
 https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
+
+Default value: false
 
 .. _gl_workaround_safari_getcontext_bug:
 
@@ -793,6 +933,8 @@ context version was passed. See https://bugs.webkit.org/show_bug.cgi?id=222758 a
 https://github.com/emscripten-core/emscripten/issues/13295.
 Set this to 0 to force-disable the workaround if you know the issue will not affect you.
 
+Default value: true
+
 .. _gl_enable_get_proc_address:
 
 GL_ENABLE_GET_PROC_ADDRESS
@@ -804,6 +946,8 @@ does not natively provide such functionality, and it must be emulated. Using glG
 is not recommended. If you still need to use this, e.g. when porting an existing renderer,
 you can link with -sGL_ENABLE_GET_PROC_ADDRESS=1 to get support for this functionality.
 
+Default value: true
+
 .. _js_math:
 
 JS_MATH
@@ -814,12 +958,16 @@ compiled musl code. However, it can be significantly slower as it calls out to J
 also may give different results as JS math is specced somewhat differently than libc, and
 can also vary between browsers.
 
+Default value: false
+
 .. _polyfill_old_math_functions:
 
 POLYFILL_OLD_MATH_FUNCTIONS
 ===========================
 
 If set, enables polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
+
+Default value: false
 
 .. _legacy_vm_support:
 
@@ -836,6 +984,8 @@ browsers and shell environments. Specifically:
 - Avoid TypedArray.fill, if necessary, in zeroMemory utility function.
 
 You can also configure the above options individually.
+
+Default value: false
 
 .. _environment:
 
@@ -870,6 +1020,8 @@ ones we identify at runtime using ``ENVIRONMENT_IS_*``. Specifically:
 Note that by default we do not include the 'shell' environment since direct
 usage of d8, js, jsc is extremely rare.
 
+Default value: 'web,webview,worker,node'
+
 .. _lz4:
 
 LZ4
@@ -887,6 +1039,8 @@ Limitations:
   for special preloading operations like pre-decoding of images using browser codecs,
   preloadPlugin stuff, etc.
 - LZ4 files are read-only.
+
+Default value: false
 
 .. _disable_exception_catching:
 
@@ -914,6 +1068,8 @@ and does not control the native Wasm exception handling.
 
 [compile+link] - affects user code at compile and system libraries at link
 
+Default value: 1
+
 .. _exception_catching_allowed:
 
 EXCEPTION_CATCHING_ALLOWED
@@ -928,6 +1084,8 @@ This option only applies to Emscripten (JavaScript-based) exception handling
 and does not control the native Wasm exception handling.
 
 [compile+link] - affects user code at compile and system libraries at link
+
+Default value: []
 
 .. _disable_exception_throwing:
 
@@ -949,6 +1107,8 @@ code).
 
 This option only applies to Emscripten (JavaScript-based) exception handling
 and does not control the native Wasm exception handling.
+
+Default value: false
 
 .. _export_exception_handling_helpers:
 
@@ -983,6 +1143,8 @@ depending on the kind of EH you use
 See test_EXPORT_EXCEPTION_HANDLING_HELPERS in test/test_core.py for an
 example usage.
 
+Default value: false
+
 .. _exception_stack_traces:
 
 EXCEPTION_STACK_TRACES
@@ -994,6 +1156,8 @@ ASSERTIONS is enabled. This option is for users who want exceptions' stack
 traces but do not want other overheads ASSERTIONS can incur.
 This option implies EXPORT_EXCEPTION_HANDLING_HELPERS.
 
+Default value: false
+
 .. _wasm_exnref:
 
 WASM_EXNREF
@@ -1004,6 +1168,8 @@ which was adopted on Oct 2023. The implementation of the new proposal is
 still in progress and this feature is currently experimental.
 
 .. note:: Applicable during both linking and compilation
+
+Default value: false
 
 .. _nodejs_catch_exit:
 
@@ -1019,6 +1185,8 @@ catch and handle ExitStatus exceptions.  However, this means all other
 uncaught exceptions are also caught and re-thrown, which is not always
 desirable.
 
+Default value: true
+
 .. _nodejs_catch_rejection:
 
 NODEJS_CATCH_REJECTION
@@ -1031,6 +1199,8 @@ rejection and throw an exception, which will cause  the process exit
 immediately with a non-0 return code.
 This not needed in Node 15+ so this setting will default to false if
 MIN_NODE_VERSION is 150000 or above.
+
+Default value: true
 
 .. _asyncify:
 
@@ -1046,18 +1216,22 @@ possible to call JS functions from synchronous-looking code in C/C++.
   See https://emscripten.org/docs/porting/asyncify.html
 - 2 (deprecated): Use ``-sJSPI`` instead.
 
+Default value: 0
+
 .. _asyncify_imports:
 
 ASYNCIFY_IMPORTS
 ================
 
-Imports which can do an sync operation, in addition to the default ones that
+Imports which can do an async operation, in addition to the default ones that
 emscripten defines like emscripten_sleep. If you add more you will need to
 mention them to here, or else they will not work (in ASSERTIONS builds an
 error will be shown).
 Note that this list used to contain the default ones, which meant that you
 had to list them when adding your own; the default ones are now added
 automatically.
+
+Default value: []
 
 .. _asyncify_ignore_indirect:
 
@@ -1068,6 +1242,8 @@ Whether indirect calls can be on the stack during an unwind/rewind.
 If you know they cannot, then setting this can be extremely helpful, as otherwise asyncify
 must assume an indirect call can reach almost everywhere.
 
+Default value: false
+
 .. _asyncify_stack_size:
 
 ASYNCIFY_STACK_SIZE
@@ -1077,6 +1253,8 @@ The size of the asyncify stack - the region used to store unwind/rewind
 info. This must be large enough to store the call stack and locals. If it is too
 small, you will see a wasm trap due to executing an "unreachable" instruction.
 In that case, you should increase this size.
+
+Default value: 4096
 
 .. _asyncify_remove:
 
@@ -1121,6 +1299,8 @@ Note: Whitespace is part of the function signature! I.e.
 "foo(char const *, int &)" will not match "foo(char const*, int&)", and
 neither would "foo(const char*, int &)".
 
+Default value: []
+
 .. _asyncify_add:
 
 ASYNCIFY_ADD
@@ -1136,6 +1316,8 @@ instrumented.
 See notes on ASYNCIFY_REMOVE about the names, including wildcard matching and
 character substitutions.
 
+Default value: []
+
 .. _asyncify_propagate_add:
 
 ASYNCIFY_PROPAGATE_ADD
@@ -1144,6 +1326,8 @@ ASYNCIFY_PROPAGATE_ADD
 If enabled, instrumentation status will be propagated from the add-list, ie.
 their callers, and their callers' callers, and so on. If disabled then all
 callers must be manually added to the add-list (like the only-list).
+
+Default value: true
 
 .. _asyncify_only:
 
@@ -1157,12 +1341,16 @@ your application.
 See notes on ASYNCIFY_REMOVE about the names, including wildcard matching and
 character substitutions.
 
+Default value: []
+
 .. _asyncify_advise:
 
 ASYNCIFY_ADVISE
 ===============
 
 If enabled will output which functions have been instrumented and why.
+
+Default value: false
 
 .. _asyncify_lazy_load_code:
 
@@ -1171,6 +1359,8 @@ ASYNCIFY_LAZY_LOAD_CODE
 
 Allows lazy code loading: where emscripten_lazy_load_code() is written, we
 will pause execution, load the rest of the code, and then resume.
+
+Default value: false
 
 .. _asyncify_debug:
 
@@ -1182,14 +1372,18 @@ Runtime debug logging from asyncify internals.
 - 1: Minimal logging.
 - 2: Verbose logging.
 
+Default value: 0
+
 .. _asyncify_exports:
 
 ASYNCIFY_EXPORTS
 ================
 
-Specify which of the exports will have JSPI applied to them and return a
-promise.
-Only supported for ASYNCIFY==2 mode.
+Deprecated, use JSPI_EXPORTS instead.
+
+.. note:: This setting is deprecated
+
+Default value: []
 
 .. _jspi:
 
@@ -1203,6 +1397,36 @@ https://github.com/WebAssembly/js-promise-integration/ TODO: document which
 of the following flags are still relevant in this mode (e.g. IGNORE_INDIRECT
 etc. are not needed)
 
+Default value: 0
+
+.. _jspi_exports:
+
+JSPI_EXPORTS
+============
+
+A list of exported module functions that will be asynchronous. Each export
+will return a ``Promise`` that will be resolved with the result. Any exports
+that will call an asynchronous import (listed in ``JSPI_IMPORTS``) must be
+included here.
+
+By default this includes ``main``.
+
+Default value: []
+
+.. _jspi_imports:
+
+JSPI_IMPORTS
+============
+
+A list of imported module functions that will potentially do asynchronous
+work. The imported function should return a ``Promise`` when doing
+asynchronous work.
+
+Note when using ``--js-library``, the function can be marked with
+``<function_name>_async:: true`` in the library instead of this setting.
+
+Default value: []
+
 .. _exported_runtime_methods:
 
 EXPORTED_RUNTIME_METHODS
@@ -1215,6 +1439,8 @@ Note that the name may be slightly misleading, as this is for any JS library
 element, and not just methods. For example, we can export the FS object by
 having "FS" in this list.
 
+Default value: []
+
 .. _extra_exported_runtime_methods:
 
 EXTRA_EXPORTED_RUNTIME_METHODS
@@ -1223,6 +1449,8 @@ EXTRA_EXPORTED_RUNTIME_METHODS
 Deprecated, use EXPORTED_RUNTIME_METHODS instead.
 
 .. note:: This setting is deprecated
+
+Default value: []
 
 .. _incoming_module_js_api:
 
@@ -1251,6 +1479,8 @@ list contains a set of commonly used symbols.
 
 FIXME: should this just be  0  if we want everything?
 
+Default value: (multi-line value, see settings.js)
+
 .. _case_insensitive_fs:
 
 CASE_INSENSITIVE_FS
@@ -1259,6 +1489,8 @@ CASE_INSENSITIVE_FS
 If set to nonzero, the provided virtual filesystem if treated
 case-insensitive, like Windows and macOS do. If set to 0, the VFS is
 case-sensitive, like on Linux.
+
+Default value: false
 
 .. _filesystem:
 
@@ -1273,6 +1505,8 @@ automatically set this if it detects that syscall usage (which is static)
 does not require a full filesystem. If you still want filesystem support, use
 FORCE_FILESYSTEM
 
+Default value: true
+
 .. _force_filesystem:
 
 FORCE_FILESYSTEM
@@ -1281,6 +1515,8 @@ FORCE_FILESYSTEM
 Makes full filesystem support be included, even if statically it looks like
 it is not used. For example, if your C code uses no files, but you include
 some JS that does, you might need this.
+
+Default value: false
 
 .. _noderawfs:
 
@@ -1296,6 +1532,8 @@ Node.js to access the real local filesystem on your OS, the code will not
 necessarily be portable between OSes - it will be as portable as a Node.js
 program would be, which means that differences in how the underlying OS
 handles permissions and errors and so forth may be noticeable.
+
+Default value: false
 
 .. _node_code_caching:
 
@@ -1318,6 +1556,8 @@ to load ok, but we do actually recompile).
   as mentioned earlier. If that is in a read-only directory, you may need
   to place them elsewhere. You can use the locateFile() hook to do so.
 
+Default value: false
+
 .. _exported_functions:
 
 EXPORTED_FUNCTIONS
@@ -1334,6 +1574,8 @@ default export is ``__start`` (or ``__initialize`` if --no-entry is specified).
 
 JS Library symbols can also be added to this list (without the leading `$`).
 
+Default value: []
+
 .. _export_all:
 
 EXPORT_ALL
@@ -1346,6 +1588,8 @@ prevent DCE or cause anything to be included in linking. It only does
 for all X that end up in the JS file. This is useful to export the JS
 library functions on Module, for things like dynamic linking.
 
+Default value: false
+
 .. _export_keepalive:
 
 EXPORT_KEEPALIVE
@@ -1355,6 +1599,8 @@ If true, we export the symbols that are present in JS onto the Module
 object.
 It only does ``Module['X'] = X;``
 
+Default value: true
+
 .. _retain_compiler_settings:
 
 RETAIN_COMPILER_SETTINGS
@@ -1363,6 +1609,8 @@ RETAIN_COMPILER_SETTINGS
 Remembers the values of these settings, and makes them accessible
 through getCompilerSetting and emscripten_get_compiler_setting.
 To see what is retained, look for compilerSettings in the generated code.
+
+Default value: false
 
 .. _default_library_funcs_to_include:
 
@@ -1381,6 +1629,8 @@ If you want to both include and export a JS library symbol, it is enough to
 simply add it to EXPORTED_FUNCTIONS, without also adding it to
 DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.
 
+Default value: []
+
 .. _include_full_library:
 
 INCLUDE_FULL_LIBRARY
@@ -1395,6 +1645,8 @@ include all needed C libraries.  For example, if a module uses malloc or new,
 you will need to use those in the main file too to pull in malloc for use by
 the module.
 
+Default value: false
+
 .. _relocatable:
 
 RELOCATABLE
@@ -1405,6 +1657,8 @@ globals and function pointers are all offset (by gb and fp, respectively)
 Automatically set for SIDE_MODULE or MAIN_MODULE.
 
 .. note:: Applicable during both linking and compilation
+
+Default value: false
 
 .. _main_module:
 
@@ -1421,6 +1675,8 @@ a side module at runtime.
 
 .. note:: Applicable during both linking and compilation
 
+Default value: 0
+
 .. _side_module:
 
 SIDE_MODULE
@@ -1429,6 +1685,8 @@ SIDE_MODULE
 Corresponds to MAIN_MODULE (also supports modes 1 and 2)
 
 .. note:: Applicable during both linking and compilation
+
+Default value: 0
 
 .. _runtime_linked_libs:
 
@@ -1439,6 +1697,8 @@ Deprecated, list shared libraries directly on the command line instead.
 
 .. note:: This setting is deprecated
 
+Default value: []
+
 .. _build_as_worker:
 
 BUILD_AS_WORKER
@@ -1446,6 +1706,8 @@ BUILD_AS_WORKER
 
 If set to 1, this is a worker library, a special kind of library that is run
 in a worker. See emscripten.h
+
+Default value: false
 
 .. _proxy_to_worker:
 
@@ -1455,6 +1717,8 @@ PROXY_TO_WORKER
 If set to 1, we build the project into a js file that will run in a worker,
 and generate an html file that proxies input and output to/from it.
 
+Default value: false
+
 .. _proxy_to_worker_filename:
 
 PROXY_TO_WORKER_FILENAME
@@ -1463,6 +1727,8 @@ PROXY_TO_WORKER_FILENAME
 If set, the script file name the main thread loads.  Useful if your project
 doesn't run the main emscripten- generated script immediately but does some
 setup before
+
+Default value: ''
 
 .. _proxy_to_pthread:
 
@@ -1485,6 +1751,8 @@ is enabled. This has to happen because this is the only chance - this browser
 main thread does the only pthread_create call that happens on
 that thread, so it's the only chance to transfer the canvas from there.
 
+Default value: false
+
 .. _linkable:
 
 LINKABLE
@@ -1500,6 +1768,8 @@ MAIN_MODULE and SIDE_MODULE both imply this, so it not normally necessary
 to set this explicitly. Note that MAIN_MODULE and SIDE_MODULE mode 2 do
 *not* set this, so that we still do normal DCE on them, and in that case
 you must keep relevant things alive yourself using exporting.
+
+Default value: false
 
 .. _strict:
 
@@ -1524,6 +1794,8 @@ Changes enabled by this:
 
 .. note:: Applicable during both linking and compilation
 
+Default value: false
+
 .. _ignore_missing_main:
 
 IGNORE_MISSING_MAIN
@@ -1534,12 +1806,16 @@ If this is disabled then one must provide a ``main`` symbol or explicitly
 opt out by passing ``--no-entry`` or an EXPORTED_FUNCTIONS list that doesn't
 include ``_main``.
 
+Default value: true
+
 .. _strict_js:
 
 STRICT_JS
 =========
 
 Add ``"use strict;"`` to generated JS
+
+Default value: false
 
 .. _warn_on_undefined_symbols:
 
@@ -1555,6 +1831,8 @@ WARN_ON_UNDEFINED_SYMBOLS=0 to disable the warnings if they annoy you.  See
 also ERROR_ON_UNDEFINED_SYMBOLS.  Any undefined symbols that are listed in-
 EXPORTED_FUNCTIONS will also be reported.
 
+Default value: true
+
 .. _error_on_undefined_symbols:
 
 ERROR_ON_UNDEFINED_SYMBOLS
@@ -1566,6 +1844,8 @@ to 0, in which case if an undefined function is called a runtime error will
 occur.  Any undefined symbols that are listed in EXPORTED_FUNCTIONS will also
 be reported.
 
+Default value: true
+
 .. _small_xhr_chunks:
 
 SMALL_XHR_CHUNKS
@@ -1573,6 +1853,8 @@ SMALL_XHR_CHUNKS
 
 Use small chunk size for binary synchronous XHR's in Web Workers.  Used for
 testing.  See test_chunked_synchronous_xhr in runner.py and library.js.
+
+Default value: false
 
 .. _headless:
 
@@ -1586,6 +1868,8 @@ debugging if actual rendering is not the issue. Note that the shim code is
 very partial - it is hard to fake a whole browser! - so keep your
 expectations low for this to work.
 
+Default value: false
+
 .. _deterministic:
 
 DETERMINISTIC
@@ -1597,6 +1881,8 @@ environments, for example, not doing anything different based on the
 browser's language setting (which would mean you can get different results
 in different browsers, or in the browser and in node).
 Good for comparing builds for debugging purposes (and nothing else).
+
+Default value: false
 
 .. _modularize:
 
@@ -1664,6 +1950,8 @@ factory function, you can use --extern-pre-js or --extern-post-js. While
 intended usage is to add code that is optimized with the rest of the emitted
 code, allowing better dead code elimination and minification.
 
+Default value: false
+
 .. _export_es6:
 
 EXPORT_ES6
@@ -1673,6 +1961,8 @@ Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
 be enabled for ES6 exports and is implicitly enabled if not already set.
 
 This is implicitly enabled if the output suffix is set to 'mjs'.
+
+Default value: false
 
 .. _use_es6_import_meta:
 
@@ -1684,6 +1974,8 @@ to auto-detect WASM Module path.
 It might not be supported on old browsers / toolchains. This setting
 may not be disabled when Node.js is targeted (-sENVIRONMENT=*node*).
 
+Default value: true
+
 .. _export_name:
 
 EXPORT_NAME
@@ -1691,6 +1983,8 @@ EXPORT_NAME
 
 Global variable to export the module as for environments without a
 standardized module loading system (e.g. the browser and SM shell).
+
+Default value: 'Module'
 
 .. _dynamic_execution:
 
@@ -1728,12 +2022,16 @@ DYNAMIC_EXECUTION=0 is set, and an attempt to call them will throw an exception:
 When -sDYNAMIC_EXECUTION=2 is set, attempts to call to eval() are demoted to
 warnings instead of throwing an exception.
 
+Default value: 1
+
 .. _bootstrapping_struct_info:
 
 BOOTSTRAPPING_STRUCT_INFO
 =========================
 
 whether we are in the generate struct_info bootstrap phase
+
+Default value: false
 
 .. _emscripten_tracing:
 
@@ -1744,6 +2042,8 @@ Add some calls to emscripten tracing APIs
 
 .. note:: Applicable during both linking and compilation
 
+Default value: false
+
 .. _use_glfw:
 
 USE_GLFW
@@ -1752,6 +2052,8 @@ USE_GLFW
 Specify the GLFW version that is being linked against.  Only relevant, if you
 are linking against the GLFW library.  Valid options are 2 for GLFW2 and 3
 for GLFW3.
+
+Default value: 0
 
 .. _wasm:
 
@@ -1768,6 +2070,8 @@ the WebAssembly file is loaded if browser/shell supports it. Otherwise the
 
 If WASM=2 is enabled and the browser fails to compile the WebAssembly module,
 the page will be reloaded in Wasm2JS mode.
+
+Default value: 1
 
 .. _standalone_wasm:
 
@@ -1809,6 +2113,8 @@ VM).
 Standalone builds require a ``main`` entry point by default.  If you want to
 build a library (also known as a reactor) instead you can pass ``--no-entry``.
 
+Default value: false
+
 .. _binaryen_ignore_implicit_traps:
 
 BINARYEN_IGNORE_IMPLICIT_TRAPS
@@ -1824,6 +2130,8 @@ could be executed unconditionally. For that reason this option is generally
 not useful on large and complex projects, but in a small and simple enough
 codebase it may help reduce code size a little bit.
 
+Default value: false
+
 .. _binaryen_extra_passes:
 
 BINARYEN_EXTRA_PASSES
@@ -1832,6 +2140,8 @@ BINARYEN_EXTRA_PASSES
 A comma-separated list of extra passes to run in the binaryen optimizer,
 Setting this does not override/replace the default passes. It is appended at
 the end of the list of passes.
+
+Default value: ""
 
 .. _wasm_async_compilation:
 
@@ -1844,6 +2154,8 @@ smallest modules to run in chrome.
 
 (This option was formerly called BINARYEN_ASYNC_COMPILATION)
 
+Default value: true
+
 .. _dyncalls:
 
 DYNCALLS
@@ -1851,6 +2163,8 @@ DYNCALLS
 
 If set to 1, the dynCall() and dynCall_sig() API is made available
 to caller.
+
+Default value: false
 
 .. _wasm_bigint:
 
@@ -1861,6 +2175,8 @@ WebAssembly integration with JavaScript BigInt. When enabled we don't need to
 legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where an
 i64 is used. If WASM_BIGINT is present, the default minimum supported browser
 versions will be increased to the min version that supports BigInt.
+
+Default value: false
 
 .. _emit_producers_section:
 
@@ -1875,12 +2191,16 @@ about their tools to be included in their builds for privacy or security
 reasons, see
 https://github.com/WebAssembly/tool-conventions/issues/93.
 
+Default value: false
+
 .. _emit_emscripten_license:
 
 EMIT_EMSCRIPTEN_LICENSE
 =======================
 
 Emits emscripten license info in the JS output.
+
+Default value: false
 
 .. _legalize_js_ffi:
 
@@ -1893,6 +2213,8 @@ in order to interface with JavaScript.  For non-web/non-JS embeddings, setting
 this to 0 may be desirable.
 
 .. note:: This setting is deprecated
+
+Default value: true
 
 .. _use_sdl:
 
@@ -1908,6 +2230,8 @@ Alternate syntax for using the port: --use-port=sdl2
 
 .. note:: Applicable during both linking and compilation
 
+Default value: 0
+
 .. _use_sdl_gfx:
 
 USE_SDL_GFX
@@ -1916,6 +2240,8 @@ USE_SDL_GFX
 Specify the SDL_gfx version that is being linked against. Must match USE_SDL
 
 .. note:: Applicable during both linking and compilation
+
+Default value: 0
 
 .. _use_sdl_image:
 
@@ -1926,6 +2252,8 @@ Specify the SDL_image version that is being linked against. Must match USE_SDL
 
 .. note:: Applicable during both linking and compilation
 
+Default value: 1
+
 .. _use_sdl_ttf:
 
 USE_SDL_TTF
@@ -1935,6 +2263,8 @@ Specify the SDL_ttf version that is being linked against. Must match USE_SDL
 
 .. note:: Applicable during both linking and compilation
 
+Default value: 1
+
 .. _use_sdl_net:
 
 USE_SDL_NET
@@ -1943,6 +2273,8 @@ USE_SDL_NET
 Specify the SDL_net version that is being linked against. Must match USE_SDL
 
 .. note:: Applicable during both linking and compilation
+
+Default value: 1
 
 .. _use_icu:
 
@@ -1954,6 +2286,8 @@ Alternate syntax: --use-port=icu
 
 .. note:: Applicable during both linking and compilation
 
+Default value: false
+
 .. _use_zlib:
 
 USE_ZLIB
@@ -1963,6 +2297,8 @@ USE_ZLIB
 Alternate syntax: --use-port=zlib
 
 .. note:: Applicable during both linking and compilation
+
+Default value: false
 
 .. _use_bzip2:
 
@@ -1974,6 +2310,8 @@ Alternate syntax: --use-port=bzip2
 
 .. note:: Applicable during both linking and compilation
 
+Default value: false
+
 .. _use_giflib:
 
 USE_GIFLIB
@@ -1983,6 +2321,8 @@ USE_GIFLIB
 Alternate syntax: --use-port=giflib
 
 .. note:: Applicable during both linking and compilation
+
+Default value: false
 
 .. _use_libjpeg:
 
@@ -1994,6 +2334,8 @@ Alternate syntax: --use-port=libjpeg
 
 .. note:: Applicable during both linking and compilation
 
+Default value: false
+
 .. _use_libpng:
 
 USE_LIBPNG
@@ -2003,6 +2345,8 @@ USE_LIBPNG
 Alternate syntax: --use-port=libpng
 
 .. note:: Applicable during both linking and compilation
+
+Default value: false
 
 .. _use_regal:
 
@@ -2014,6 +2358,8 @@ Alternate syntax: --use-port=regal
 
 .. note:: Applicable during both linking and compilation
 
+Default value: false
+
 .. _use_boost_headers:
 
 USE_BOOST_HEADERS
@@ -2023,6 +2369,8 @@ USE_BOOST_HEADERS
 Alternate syntax: --use-port=boost_headers
 
 .. note:: Applicable during both linking and compilation
+
+Default value: false
 
 .. _use_bullet:
 
@@ -2034,6 +2382,8 @@ Alternate syntax: --use-port=bullet
 
 .. note:: Applicable during both linking and compilation
 
+Default value: false
+
 .. _use_vorbis:
 
 USE_VORBIS
@@ -2043,6 +2393,8 @@ USE_VORBIS
 Alternate syntax: --use-port=vorbis
 
 .. note:: Applicable during both linking and compilation
+
+Default value: false
 
 .. _use_ogg:
 
@@ -2054,6 +2406,8 @@ Alternate syntax: --use-port=ogg
 
 .. note:: Applicable during both linking and compilation
 
+Default value: false
+
 .. _use_mpg123:
 
 USE_MPG123
@@ -2063,6 +2417,8 @@ USE_MPG123
 Alternate syntax: --use-port=mpg123
 
 .. note:: Applicable during both linking and compilation
+
+Default value: false
 
 .. _use_freetype:
 
@@ -2074,6 +2430,8 @@ Alternate syntax: --use-port=freetype
 
 .. note:: Applicable during both linking and compilation
 
+Default value: false
+
 .. _use_sdl_mixer:
 
 USE_SDL_MIXER
@@ -2083,6 +2441,8 @@ Specify the SDL_mixer version that is being linked against.
 Doesn't *have* to match USE_SDL, but a good idea.
 
 .. note:: Applicable during both linking and compilation
+
+Default value: 1
 
 .. _use_harfbuzz:
 
@@ -2094,6 +2454,8 @@ Alternate syntax: --use-port=harfbuzz
 
 .. note:: Applicable during both linking and compilation
 
+Default value: false
+
 .. _use_cocos2d:
 
 USE_COCOS2D
@@ -2103,6 +2465,8 @@ USE_COCOS2D
 Alternate syntax: --use-port=cocos2d
 
 .. note:: Applicable during both linking and compilation
+
+Default value: 0
 
 .. _use_modplug:
 
@@ -2114,6 +2478,8 @@ Alternate syntax: --use-port=libmodplug
 
 .. note:: Applicable during both linking and compilation
 
+Default value: false
+
 .. _sdl2_image_formats:
 
 SDL2_IMAGE_FORMATS
@@ -2122,12 +2488,16 @@ SDL2_IMAGE_FORMATS
 Formats to support in SDL2_image. Valid values: bmp, gif, lbm, pcx, png, pnm,
 tga, xcf, xpm, xv
 
+Default value: []
+
 .. _sdl2_mixer_formats:
 
 SDL2_MIXER_FORMATS
 ==================
 
 Formats to support in SDL2_mixer. Valid values: ogg, mp3, mod, mid
+
+Default value: ["ogg"]
 
 .. _use_sqlite3:
 
@@ -2139,6 +2509,8 @@ Alternate syntax: --use-port=sqlite3
 
 .. note:: Applicable during both linking and compilation
 
+Default value: false
+
 .. _shared_memory:
 
 SHARED_MEMORY
@@ -2146,6 +2518,8 @@ SHARED_MEMORY
 
 If 1, target compiling a shared Wasm Memory.
 [compile+link] - affects user code at compile and system libraries at link.
+
+Default value: false
 
 .. _wasm_workers:
 
@@ -2157,6 +2531,8 @@ to create threads using a lightweight web-specific API that builds on top
 of Wasm SharedArrayBuffer + Atomics API.
 [compile+link] - affects user code at compile and system libraries at link.
 
+Default value: 0
+
 .. _audio_worklet:
 
 AUDIO_WORKLET
@@ -2165,12 +2541,16 @@ AUDIO_WORKLET
 If true, enables targeting Wasm Web Audio AudioWorklets. Check out the
 full documentation in site/source/docs/api_reference/wasm_audio_worklets.rst
 
+Default value: 0
+
 .. _webaudio_debug:
 
 WEBAUDIO_DEBUG
 ==============
 
 If true, enables deep debugging of Web Audio backend.
+
+Default value: 0
 
 .. _pthread_pool_size:
 
@@ -2198,6 +2578,8 @@ browser reports, and is how you can get exactly enough workers for a
 threadpool equal to the number of cores).
 [link] - affects generated JS runtime code at link time
 
+Default value: 0
+
 .. _pthread_pool_size_strict:
 
 PTHREAD_POOL_SIZE_STRICT
@@ -2218,6 +2600,8 @@ Values:
 - ``0`` - disable warnings on thread pool exhaustion
 - ``1`` - enable warnings on thread pool exhaustion (default)
 - ``2`` - make thread pool exhaustion a hard error
+
+Default value: 1
 
 .. _pthread_pool_delay_load:
 
@@ -2240,6 +2624,8 @@ If you do need to synchronously wait on the created threads
 promise before doing so or you're very likely to run into deadlocks.
 [link] - affects generated JS runtime code at link time
 
+Default value: false
+
 .. _default_pthread_stack_size:
 
 DEFAULT_PTHREAD_STACK_SIZE
@@ -2252,12 +2638,16 @@ stack is separate from this stack.  This stack only contains certain function
 local variables, such as those that have their addresses taken, or ones that
 are too large to fit as local vars in wasm code.
 
+Default value: 0
+
 .. _pthreads_profiling:
 
 PTHREADS_PROFILING
 ==================
 
 True when building with --threadprofiler
+
+Default value: false
 
 .. _allow_blocking_on_main_thread:
 
@@ -2271,12 +2661,16 @@ https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-t
 This may become set to 0 by default in the future; for now, this just
 warns in the console.
 
+Default value: true
+
 .. _pthreads_debug:
 
 PTHREADS_DEBUG
 ==============
 
 If true, add in debug traces for diagnosing pthreads related issues.
+
+Default value: false
 
 .. _eval_ctors:
 
@@ -2317,6 +2711,8 @@ This allows more programs to be optimized, but you need to make sure your
 program does not depend on those features - even just checking the value of
 argc can lead to problems.
 
+Default value: 0
+
 .. _textdecoder:
 
 TEXTDECODER
@@ -2328,6 +2724,8 @@ If set to 2, we assume TextDecoder is present and usable, and do not emit
 any JS code to fall back if it is missing. In single threaded -Oz build modes,
 TEXTDECODER defaults to value == 2 to save code size.
 
+Default value: 1
+
 .. _embind_std_string_is_utf8:
 
 EMBIND_STD_STRING_IS_UTF8
@@ -2335,6 +2733,8 @@ EMBIND_STD_STRING_IS_UTF8
 
 Embind specific: If enabled, assume UTF-8 encoded data in std::string binding.
 Disable this to support binary data transfer.
+
+Default value: true
 
 .. _embind_aot:
 
@@ -2347,6 +2747,8 @@ DYNAMIC_EXECUTION=0 this allows exported bindings to be just as fast as
 DYNAMIC_EXECUTION=1 mode, but without the need for eval(). If there are many
 bindings the JS output size may be larger though.
 
+Default value: false
+
 .. _offscreencanvas_support:
 
 OFFSCREENCANVAS_SUPPORT
@@ -2356,6 +2758,8 @@ If set to 1, enables support for transferring canvases to pthreads and
 creating WebGL contexts in them, as well as explicit swap control for GL
 contexts. This needs browser support for the OffscreenCanvas specification.
 
+Default value: false
+
 .. _offscreencanvases_to_pthread:
 
 OFFSCREENCANVASES_TO_PTHREAD
@@ -2364,6 +2768,8 @@ OFFSCREENCANVASES_TO_PTHREAD
 If you are using PROXY_TO_PTHREAD with OFFSCREENCANVAS_SUPPORT, then specify
 here a comma separated list of CSS ID selectors to canvases to proxy over
 to the pthread at program startup, e.g. '#canvas1, #canvas2'.
+
+Default value: "#canvas"
 
 .. _offscreen_framebuffer:
 
@@ -2386,6 +2792,8 @@ OffscreenCanvas and Offscreen Framebuffer support can be enabled at the same
 time, and allows one to utilize OffscreenCanvas where available, and to fall
 back to Offscreen Framebuffer otherwise.
 
+Default value: false
+
 .. _fetch_support_indexeddb:
 
 FETCH_SUPPORT_INDEXEDDB
@@ -2395,6 +2803,8 @@ If nonzero, Fetch API supports backing to IndexedDB. If 0, IndexedDB is not
 utilized. Set to 0 if IndexedDB support is not interesting for target
 application, to save a few kBytes.
 
+Default value: true
+
 .. _fetch_debug:
 
 FETCH_DEBUG
@@ -2402,12 +2812,16 @@ FETCH_DEBUG
 
 If nonzero, prints out debugging information in library_fetch.js
 
+Default value: false
+
 .. _fetch:
 
 FETCH
 =====
 
 If nonzero, enables emscripten_fetch API.
+
+Default value: false
 
 .. _wasmfs:
 
@@ -2419,6 +2833,8 @@ This will eventually replace the current JS file system implementation.
 If set to 1, uses new filesystem implementation.
 
 .. note:: This is an experimental setting
+
+Default value: false
 
 .. _single_file:
 
@@ -2436,6 +2852,8 @@ child-src directive to allow blob:. If you aren't using Content Security
 Policy, or your CSP header doesn't include either script-src or child-src,
 then you can safely ignore this warning.
 
+Default value: false
+
 .. _auto_js_libraries:
 
 AUTO_JS_LIBRARIES
@@ -2446,6 +2864,8 @@ This gets set to 0 in STRICT mode (or with MINIMAL_RUNTIME) which mean you
 need to explicitly specify -lfoo.js in at link time in order to access
 library function in library_foo.js.
 
+Default value: true
+
 .. _auto_native_libraries:
 
 AUTO_NATIVE_LIBRARIES
@@ -2454,6 +2874,8 @@ AUTO_NATIVE_LIBRARIES
 Like AUTO_JS_LIBRARIES but for the native libraries such as libgl, libal
 and libhtml5.   If this is disabled it is necessary to explicitly add
 e.g. -lhtml5 and also to first build the library using ``embuilder``.
+
+Default value: true
 
 .. _min_firefox_version:
 
@@ -2467,6 +2889,8 @@ for Firefox versions older than < majorVersion.
 Firefox 79 was released on 2020-07-28.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 Minimum supported value is 34 which was released on 2014-12-01.
+
+Default value: 79
 
 .. _min_safari_version:
 
@@ -2485,6 +2909,8 @@ see https://github.com/emscripten-core/emscripten/pull/7191.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 Minimum supported value is 90000 which was released in 2015.
 
+Default value: 140100
+
 .. _min_chrome_version:
 
 MIN_CHROME_VERSION
@@ -2498,6 +2924,8 @@ Chrome 85 was released on 2020-08-25.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 Minimum supported value is 32, which was released on 2014-01-04.
 
+Default value: 85
+
 .. _min_node_version:
 
 MIN_NODE_VERSION
@@ -2509,6 +2937,8 @@ This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 Version is encoded in MMmmVV, e.g. 181401 denotes Node 18.14.01.
 Minimum supported value is 101900, which was released 2020-02-05.
 
+Default value: 160000
+
 .. _support_errno:
 
 SUPPORT_ERRNO
@@ -2518,6 +2948,8 @@ Whether we support setting errno from JS library code.
 In MINIMAL_RUNTIME builds, this option defaults to 0.
 
 .. note:: This setting is deprecated
+
+Default value: true
 
 .. _minimal_runtime:
 
@@ -2534,6 +2966,8 @@ be useful for really small programs).
 
 By default, no symbols will be exported on the ``Module`` object. In order
 to export kept alive symbols, please use ``-sEXPORT_KEEPALIVE=1``.
+
+Default value: 0
 
 .. _minimal_runtime_streaming_wasm_compilation:
 
@@ -2557,6 +2991,8 @@ for faster startup speeds. However this setting is disabled by default
 since it requires server side configuration and for really small pages there
 is no observable difference (also has a ~100 byte impact to code size)
 
+Default value: false
+
 .. _minimal_runtime_streaming_wasm_instantiation:
 
 MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
@@ -2571,6 +3007,8 @@ MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION cannot be simultaneously active.
 Which one of these two is faster depends on the size of the wasm module,
 the size of the JS runtime file, and the size of the preloaded data file
 to download, and the browser in question.
+
+Default value: false
 
 .. _support_longjmp:
 
@@ -2593,6 +3031,8 @@ little bit of code size and performance when catching exceptions.
 longjmp support at codegen time, while at link it allows linking in the
 library support.
 
+Default value: true
+
 .. _disable_deprecated_find_event_target_behavior:
 
 DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
@@ -2602,6 +3042,8 @@ If set to 1, disables old deprecated HTML5 API event target lookup behavior.
 When enabled, there is no "Module.canvas" object, no magic "null" default
 handling, and DOM element 'target' parameters are taken to refer to CSS
 selectors, instead of referring to DOM IDs.
+
+Default value: true
 
 .. _html5_support_deferring_user_sensitive_requests:
 
@@ -2618,6 +3060,8 @@ requests until a suitable event callback is generated. Set this to 0
 to disable support for deferring to save code space if your application does
 not need support for deferred calls.
 
+Default value: true
+
 .. _minify_html:
 
 MINIFY_HTML
@@ -2630,6 +3074,8 @@ minification is done, but whitespace is retained. Minification requires at
 least -O1 or -Os to be used. Pass -sMINIFY_HTML=0 to explicitly choose to
 disable HTML minification altogether.
 
+Default value: true
+
 .. _maybe_wasm2js:
 
 MAYBE_WASM2JS
@@ -2641,6 +3087,8 @@ normal wasm or that wasm2js code. For details of how to do that, see the
 test_maybe_wasm2js test.  This option can be useful for debugging and
 bisecting.
 
+Default value: false
+
 .. _asan_shadow_size:
 
 ASAN_SHADOW_SIZE
@@ -2649,6 +3097,8 @@ ASAN_SHADOW_SIZE
 This option is no longer used. The appropriate shadow memory size is now
 calculated from INITIAL_MEMORY and MAXIMUM_MEMORY. Will be removed in a
 future release.
+
+Default value: -1
 
 .. _use_offset_converter:
 
@@ -2660,6 +3110,8 @@ versions of v8 (<7.7) that does not give the hex module offset into wasm
 binary in stack traces, as well as for avoiding using source map entries
 across function boundaries.
 
+Default value: false
+
 .. _load_source_map:
 
 LOAD_SOURCE_MAP
@@ -2667,6 +3119,8 @@ LOAD_SOURCE_MAP
 
 Whether we should load the WASM source map at runtime.
 This is enabled automatically when using -gsource-map with sanitizers.
+
+Default value: false
 
 .. _default_to_cxx:
 
@@ -2676,6 +3130,8 @@ DEFAULT_TO_CXX
 Default to c++ mode even when run as ``emcc`` rather then ``emc++``.
 When this is disabled ``em++`` is required linking C++ programs. Disabling
 this will match the behaviour of gcc/g++ and clang/clang++.
+
+Default value: true
 
 .. _printf_long_double:
 
@@ -2687,6 +3143,8 @@ that at full precision by default. Instead we print as 64-bit doubles, which
 saves libc code size. You can flip this option on to get a libc with full
 long double printing precision.
 
+Default value: false
+
 .. _separate_dwarf_url:
 
 SEPARATE_DWARF_URL
@@ -2695,6 +3153,8 @@ SEPARATE_DWARF_URL
 Setting this affects the path emitted in the wasm that refers to the DWARF
 file, in -gseparate-dwarf mode. This allows the debugging file to be hosted
 in a custom location.
+
+Default value: ''
 
 .. _error_on_wasm_changes_after_link:
 
@@ -2713,6 +3173,8 @@ changes to the wasm after link. This can be useful in testing, for example.
 Some example of features that require post-link wasm changes are:
 - Lowering i64 to i32 pairs at the JS boundary (See WASM_BIGINT)
 - Lowering sign-extension operation when targeting older browsers.
+
+Default value: false
 
 .. _abort_on_wasm_exceptions:
 
@@ -2734,6 +3196,8 @@ bytes extra.
 Exceptions that occur within the ``main`` function are already handled via an
 alternative mechanimsm.
 
+Default value: false
+
 .. _pure_wasi:
 
 PURE_WASI
@@ -2747,6 +3211,8 @@ This setting is experimental and subject to change or removal.
 Implies STANDALONE_WASM.
 
 .. note:: This is an experimental setting
+
+Default value: false
 
 .. _imported_memory:
 
@@ -2763,6 +3229,8 @@ depend on being able to define the memory in JavaScript:
 - ASYNCIFY_LAZY_LOAD_CODE
 - WASM2JS (WASM=0)
 
+Default value: false
+
 .. _split_module:
 
 SPLIT_MODULE
@@ -2776,6 +3244,8 @@ fed into wasm-split (the binaryen tool).
 As well as this the generated JS code will contains help functions
 to loading split modules.
 
+Default value: false
+
 .. _autoload_dylibs:
 
 AUTOLOAD_DYLIBS
@@ -2783,6 +3253,8 @@ AUTOLOAD_DYLIBS
 
 For MAIN_MODULE builds, automatically load any dynamic library dependencies
 on startup, before loading the main module.
+
+Default value: true
 
 .. _allow_unimplemented_syscalls:
 
@@ -2793,6 +3265,8 @@ Include unimplemented JS syscalls to be included in the final output.  This
 allows programs that depend on these syscalls at runtime to be compiled, even
 though these syscalls will fail (or do nothing) at runtime.
 
+Default value: true
+
 .. _trusted_types:
 
 TRUSTED_TYPES
@@ -2801,6 +3275,8 @@ TRUSTED_TYPES
 Allow calls to Worker(...) and importScripts(...) to be Trusted Types compatible.
 Trusted Types is a Web Platform feature designed to mitigate DOM XSS by restricting
 the usage of DOM sink APIs. See https://w3c.github.io/webappsec-trusted-types/.
+
+Default value: false
 
 .. _polyfill:
 
@@ -2813,6 +3289,8 @@ polyfilling yourself via some other mechanism you can prevent emscripten
 from generating these by passing ``-sNO_POLYFILL`` or ``-sPOLYFILL=0``
 With default browser targets emscripten does not need any polyfills so this
 settings is *only* needed when also explicitly targeting older browsers.
+
+Default value: true
 
 .. _runtime_debug:
 
@@ -2833,6 +3311,8 @@ are enabled:
 - SOCKET_DEBUG
 - FETCH_DEBUG
 
+Default value: false
+
 .. _legacy_runtime:
 
 LEGACY_RUNTIME
@@ -2842,6 +3322,8 @@ Include JS library symbols that were previously part of the default runtime.
 Without this, such symbols can be made available by adding them to
 DEFAULT_LIBRARY_FUNCS_TO_INCLUDE, or via the dependencies of another JS
 library symbol.
+
+Default value: false
 
 .. _signature_conversions:
 
@@ -2853,3 +3335,5 @@ pointer argument. Only affects MEMORY64=1 builds, see create_pointer_conversion_
 in emscripten.py for details.
 Use _ for non-pointer arguments, p for pointer/i53 arguments, and P for optional pointer/i53 values.
 Example use -sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p
+
+Default value: []

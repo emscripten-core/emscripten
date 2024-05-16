@@ -3197,9 +3197,18 @@ More info: https://emscripten.org
     self.assertContained('Constructed from JS destructed', output)
     self.assertNotContained('Foo* destructed', output)
 
-  def test_jspi_wildcard(self):
+  def test_embind_return_value_policy(self):
+    self.emcc_args += ['-lembind']
+
+    self.do_runf('embind/test_return_value_policy.cpp')
+
+  @parameterized({
+    '': [['-sJSPI_EXPORTS=async*']],
+    'deprecated': [['-Wno-deprecated', '-sASYNCIFY_EXPORTS=async*']]
+  })
+  def test_jspi_wildcard(self, opts):
     self.require_jspi()
-    self.emcc_args += ['-sASYNCIFY_EXPORTS=async*']
+    self.emcc_args += opts
 
     self.do_runf('other/test_jspi_wildcard.c', 'done')
 
@@ -12388,8 +12397,12 @@ exec "$@"
     # because Emscripten EH and Wasm SjLj cannot be used at the same time.
     self.run_process([EMCC, test_file('core/test_longjmp.c'), '-c', '-sSUPPORT_LONGJMP=wasm', '-o', 'a.o'])
 
-  def test_pthread_MODULARIZE(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.mjs', '-pthread', '-sPROXY_TO_PTHREAD', '-sMODULARIZE', '-sEXIT_RUNTIME'])
+  @parameterized({
+    '': [[]],
+    'trusted': [['-sTRUSTED_TYPES']]
+  })
+  def test_pthread_export_es6(self, args):
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.mjs', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'] + args)
     create_file('runner.mjs', '''
       import Hello from "./out.mjs";
       Hello();
@@ -12482,7 +12495,8 @@ exec "$@"
   # For this test verify the different build options that generate anonymous enclosing function scopes. (DYNCALLS and MEMORY64)
   @parameterized({
     'plain': [[]],
-    'dyncalls': [['-sDYNCALLS']]})
+    'dyncalls': [['-sDYNCALLS']]
+  })
   def test_this_in_dyncall(self, args):
     self.do_run_in_out_file_test('no_this_in_dyncall.c', emcc_args=['--js-library', test_file('no_this_in_dyncall.js')] + args)
 
@@ -12574,7 +12588,7 @@ exec "$@"
       self.emcc_args += ['--pre-js', test_file('other/test_load_split_module.pre.js')]
     if jspi:
       self.require_jspi()
-      self.emcc_args += ['-g', '-sASYNCIFY_EXPORTS=say_hello']
+      self.emcc_args += ['-g', '-sJSPI_EXPORTS=say_hello']
     self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free']
     output = self.do_other_test('test_split_module.c')
     if jspi:
@@ -14280,6 +14294,51 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_windows_batch_file_dp0_expansion_bug(self):
     create_file('build_with_quotes.bat',  f'@"emcc" {test_file("hello_world.c")}')
     self.run_process(['build_with_quotes.bat'])
+
+  @only_windows('Check that directory permissions are properly retrieved on Windows')
+  @requires_node
+  def test_windows_nodefs_execution_permission(self):
+    src = r'''
+    #include <assert.h>
+    #include <emscripten.h>
+    #include <sys/stat.h>
+    #include <string.h>
+    #include <stdio.h>
+
+    void setup() {
+      EM_ASM(
+        FS.mkdir('/working');
+        FS.mount(NODEFS, { root: '.' }, '/working');
+        FS.mkdir('/working/new-dir');
+        FS.writeFile('/working/new-dir/test.txt', 'test');
+      );
+    }
+
+    void test() {
+      int err;
+      struct stat s;
+      memset(&s, 0, sizeof(s));
+      err = stat("/working/new-dir", &s);
+      assert(S_ISDIR(s.st_mode));
+      assert(s.st_mode & S_IXUSR);
+      assert(s.st_mode & S_IXGRP);
+      assert(s.st_mode & S_IXOTH);
+
+      err = stat("/working/new-dir/test.txt", &s);
+      assert(s.st_mode & S_IXUSR);
+      assert(s.st_mode & S_IXGRP);
+      assert(s.st_mode & S_IXOTH);
+
+      puts("success");
+    }
+
+    int main(int argc, char * argv[]) {
+      setup();
+      test();
+      return EXIT_SUCCESS;
+    }
+    '''
+    self.do_run(src, emcc_args=['-lnodefs.js'])
 
   @parameterized({
     'wasm2js': (True,),
