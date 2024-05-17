@@ -2667,7 +2667,7 @@ var LibraryWebGPU = {
   // WGPUAdapterProperties
 
   wgpuAdapterPropertiesFreeMembers: (value) => {
-    // wgpuAdapterGetProperties does currently allocate anything
+    // wgpuAdapterGetProperties doesn't currently allocate anything.
   },
 
   // WGPUSampler
@@ -2675,12 +2675,6 @@ var LibraryWebGPU = {
   wgpuSamplerSetLabel: (samplerId, labelPtr) => {
     var sampler = WebGPU.mgrSampler.get(samplerId);
     sampler.label = UTF8ToString(labelPtr);
-  },
-
-  // WGPUSurfaceCapabilities
-
-  wgpuSurfaceCapabilitiesFreeMembers: (value) => {
-    // wgpuSurfaceCapabilities does currently allocate anything
   },
 
   // WGPUSurface

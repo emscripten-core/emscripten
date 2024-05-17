@@ -12,16 +12,6 @@
 #include <array>
 #include <cassert>
 
-static constexpr std::array<WGPUTextureFormat, 3>
-    kBGRA8UnormPreferredContextFormats = {WGPUTextureFormat_BGRA8Unorm,
-                                          WGPUTextureFormat_RGBA8Unorm,
-                                          WGPUTextureFormat_RGBA16Float};
-
-static constexpr std::array<WGPUTextureFormat, 3>
-    kRGBA8UnormPreferredContextFormats = {WGPUTextureFormat_RGBA8Unorm,
-                                          WGPUTextureFormat_BGRA8Unorm,
-                                          WGPUTextureFormat_RGBA16Float};
-
 //
 // WebGPU function definitions, with methods organized by "class". Note these
 // don't need to be extern "C" because they are already declared in webgpu.h.
@@ -45,18 +35,49 @@ void wgpuSurfaceGetCapabilities(WGPUSurface surface,
                                 WGPUAdapter adapter,
                                 WGPUSurfaceCapabilities* capabilities) {
   assert(capabilities->nextInChain == nullptr); // TODO: Return WGPUStatus_Error
-  WGPUTextureFormat preferredFormat =
-      wgpuSurfaceGetPreferredFormat(surface, adapter);
-  assert(preferredFormat == WGPUTextureFormat_BGRA8Unorm ||
-         preferredFormat == WGPUTextureFormat_RGBA8Unorm);
-  capabilities->formatCount = 3;
-  if (preferredFormat == WGPUTextureFormat_RGBA8Unorm) {
-    capabilities->formats = reinterpret_cast<const WGPUTextureFormat*>(
-        kBGRA8UnormPreferredContextFormats.data());
-  } else {
-    capabilities->formats = reinterpret_cast<const WGPUTextureFormat*>(
-        kRGBA8UnormPreferredContextFormats.data());
+
+  static constexpr std::array<WGPUTextureFormat, 3> kSurfaceFormatsRGBAFirst = {
+    WGPUTextureFormat_RGBA8Unorm,
+    WGPUTextureFormat_BGRA8Unorm,
+    WGPUTextureFormat_RGBA16Float,
+  };
+  static constexpr std::array<WGPUTextureFormat, 3> kSurfaceFormatsBGRAFirst = {
+    WGPUTextureFormat_BGRA8Unorm,
+    WGPUTextureFormat_RGBA8Unorm,
+    WGPUTextureFormat_RGBA16Float,
+  };
+  WGPUTextureFormat preferredFormat = wgpuSurfaceGetPreferredFormat(surface, adapter);
+  switch (preferredFormat) {
+    case WGPUTextureFormat_RGBA8Unorm:
+      capabilities->formatCount = kSurfaceFormatsRGBAFirst.size();
+      capabilities->formats = kSurfaceFormatsRGBAFirst.data();
+      break;
+    case WGPUTextureFormat_BGRA8Unorm:
+      capabilities->formatCount = kSurfaceFormatsBGRAFirst.size();
+      capabilities->formats = kSurfaceFormatsBGRAFirst.data();
+      break;
+    default:
+      assert(false);
   }
 
-  // TODO: What do we return for presentModes and alphaModes?
+  {
+    static constexpr WGPUPresentMode kPresentMode = WGPUPresentMode_Fifo;
+    capabilities->presentModeCount = 1;
+    capabilities->presentModes = &kPresentMode;
+  }
+
+  {
+    static constexpr std::array<WGPUCompositeAlphaMode, 2> kAlphaModes = {
+      WGPUCompositeAlphaMode_Opaque,
+      WGPUCompositeAlphaMode_Premultiplied,
+    };
+    capabilities->alphaModeCount = kAlphaModes.size();
+    capabilities->alphaModes = kAlphaModes.data();
+  }
 };
+
+// WGPUSurfaceCapabilities
+
+void wgpuSurfaceCapabilitiesFreeMembers(WGPUSurfaceCapabilities value) {
+  // wgpuSurfaceCapabilities doesn't currently allocate anything.
+}
