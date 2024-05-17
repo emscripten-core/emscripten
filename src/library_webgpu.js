@@ -154,6 +154,10 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       RenderPassDescriptorMaxDrawCount: 0xF,
       TextureBindingViewDimensionDescriptor: 0x11,
     },
+    SurfaceGetCurrentTextureStatus: {
+      Success: 0,
+      DeviceLost: 5,
+    },
     QueueWorkDoneStatus: {
       Success: 0,
       Error: 1,
