@@ -336,8 +336,9 @@ typedef enum WGPUCullMode {
 } WGPUCullMode WGPU_ENUM_ATTRIBUTE;
 
 typedef enum WGPUDeviceLostReason {
-    WGPUDeviceLostReason_Undefined = 0x00000000,
-    WGPUDeviceLostReason_Destroyed = 0x00000001,
+    WGPUDeviceLostReason_Undefined = 0x00000001,
+    WGPUDeviceLostReason_Unknown = 0x00000001,
+    WGPUDeviceLostReason_Destroyed = 0x00000002,
     WGPUDeviceLostReason_Force32 = 0x7FFFFFFF
 } WGPUDeviceLostReason WGPU_ENUM_ATTRIBUTE;
 

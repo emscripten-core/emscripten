@@ -150,7 +150,7 @@ class BootstrapMessages extends AudioWorkletProcessor {
     // scope to create the real AudioWorkletProcessors that call out to Wasm to
     // do audio processing.
     let p = globalThis['messagePort'] = this.port;
-    p.onmessage = (msg) => {
+    p.onmessage = async (msg) => {
       let d = msg.data;
       if (d['_wpn']) {
         // '_wpn' is short for 'Worklet Processor Node', using an identifier
@@ -161,7 +161,7 @@ class BootstrapMessages extends AudioWorkletProcessor {
         // MODULARIZE+AUDIO_WORKLET builds.
         if (globalThis.AudioWorkletModule) {
           // This populates the Module object with all the Wasm properties
-          AudioWorkletModule(Module);
+          globalThis.Module = await AudioWorkletModule(Module);
           // We have now instantiated the Module function, can discard it from
           // global scope
           delete globalThis.AudioWorkletModule;

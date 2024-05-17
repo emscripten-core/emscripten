@@ -4052,6 +4052,7 @@ ok
     self.verify_in_strict_mode('main.js')
 
   @with_dylink_reversed
+  @no_wasm64('Requires table64 lowering in all cases')
   def test_dylink_basics_no_modify(self):
     if self.is_optimizing():
       self.skipTest('no modify mode only works with non-optimizing builds')
