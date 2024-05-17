@@ -2727,12 +2727,17 @@ var LibraryWebGPU = {
       var texture = WebGPU.mgrTexture.create(context.getCurrentTexture());
       {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.texture, 'texture', '*') }}};
       {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.suboptimal, '0', 'i32') }}};
-      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.status, /*Success=*/0, 'i32') }}};
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.status, 
+        gpu.SurfaceGetCurrentTextureStatus.Success, 'i32') }}};
     } catch (ex) {
 #if ASSERTIONS
       err(`wgpuSurfaceGetCurrentTexture() failed: ${ex}`);
 #endif
-      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.status, /*Timeout=*/1, 'i32') }}};
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.texture, '0', '*') }}};
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.suboptimal, '0', 'i32') }}};
+      // TODO(https://github.com/webgpu-native/webgpu-headers/issues/291): What should the status be here?
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.status,
+        gpu.SurfaceGetCurrentTextureStatus.DeviceLost, 'i32') }}};
     }
   },
 

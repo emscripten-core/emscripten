@@ -400,10 +400,9 @@ void run() {
             .device = device,
             .format = capabilities.formats[0],
             .usage = wgpu::TextureUsage::RenderAttachment,
-            .alphaMode = capabilities.alphaModes[0],
+            .alphaMode = wgpu::CompositeAlphaMode::Auto,
             .width = kWidth,
             .height = kHeight,
-            // .presentMode = capabilities.presentModes[0]};
             .presentMode = wgpu::PresentMode::Fifo};
         surface.Configure(&config);
 

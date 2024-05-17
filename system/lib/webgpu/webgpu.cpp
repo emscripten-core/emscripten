@@ -44,6 +44,7 @@ void wgpuInstanceRelease(WGPUInstance) { /* no-op for now */ }
 void wgpuSurfaceGetCapabilities(WGPUSurface surface,
                                 WGPUAdapter adapter,
                                 WGPUSurfaceCapabilities* capabilities) {
+  assert(capabilities->nextInChain == nullptr); // TODO: Return WGPUStatus_Error
   WGPUTextureFormat preferredFormat =
       wgpuSurfaceGetPreferredFormat(surface, adapter);
   assert(preferredFormat == WGPUTextureFormat_BGRA8Unorm ||
