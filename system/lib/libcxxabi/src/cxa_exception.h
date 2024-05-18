@@ -63,7 +63,7 @@ struct _LIBCXXABI_HIDDEN __cxa_exception {
 
     //  Manage the exception object itself.
     std::type_info *exceptionType;
-#ifdef __USING_WASM_EXCEPTIONS__
+#ifdef __WASM_EXCEPTIONS__
     // In Wasm, a destructor returns its argument
     void *(_LIBCXXABI_DTOR_FUNC *exceptionDestructor)(void *);
 #else
