@@ -1711,7 +1711,6 @@ sigs = {
   wgpuShaderModuleReference__sig: 'vp',
   wgpuShaderModuleRelease__sig: 'vp',
   wgpuShaderModuleSetLabel__sig: 'vpp',
-  wgpuSurfaceCapabilitiesFreeMembers__sig: 'vp',
   wgpuSurfaceConfigure__sig: 'vpp',
   wgpuSurfaceGetCurrentTexture__sig: 'vpp',
   wgpuSurfaceGetPreferredFormat__sig: 'ipp',
