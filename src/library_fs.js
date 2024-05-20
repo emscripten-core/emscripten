@@ -815,6 +815,10 @@ FS.staticInit();` +
       } catch (e) {
         throw e;
       } finally {
+        // ensure the parent directory reference is updated (a
+        // fallback for cases where the node_ops.rename update doesn't
+        // propagate across different file systems or mount points)
+        old_node.parent = new_dir;
         // add the node back to the hash (in case node_ops.rename
         // changed its name)
         FS.hashAddNode(old_node);
