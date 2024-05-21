@@ -819,8 +819,7 @@ FS.staticInit();` +
         // changed its name)
         FS.hashAddNode(old_node);
       }
-      // update old node (called here to ensure consistency 
-      // across fs implementations)
+      // update old node (we do this here to avoid each backend needing to)
       old_node.parent = new_dir;
 #if FS_DEBUG
       if (FS.trackingDelegate['onMovePath']) {
