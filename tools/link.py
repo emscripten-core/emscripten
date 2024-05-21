@@ -405,6 +405,9 @@ def get_binaryen_passes():
   if settings.MEMORY64 == 2:
     passes += ['--memory64-lowering']
 
+  if settings.MEMORY64:
+    passes += ['--table64-lowering']
+
   if settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
     passes += ['--ignore-implicit-traps']
   # normally we can assume the memory, if imported, has not been modified
@@ -429,7 +432,7 @@ def get_binaryen_passes():
 
   # Run the translator to the new EH instructions with exnref
   if settings.WASM_EXNREF:
-    passes += ['--experimental-new-eh']
+    passes += ['--emit-exnref']
 
   return passes
 

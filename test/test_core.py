@@ -2164,10 +2164,7 @@ int main(int argc, char **argv) {
   @no_4gb('depends on memory size')
   @no_2gb('depends on memory size')
   def test_module_wasm_memory(self):
-    if self.get_setting('MEMORY64') == 1:
-      self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory64.js')]
-    else:
-      self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory.js')]
+    self.emcc_args += ['--pre-js', test_file('core/test_module_wasm_memory.js')]
     self.set_setting('IMPORTED_MEMORY')
     self.set_setting('STRICT')
     self.set_setting('INCOMING_MODULE_JS_API', ['wasmMemory'])
@@ -4055,6 +4052,7 @@ ok
     self.verify_in_strict_mode('main.js')
 
   @with_dylink_reversed
+  @no_wasm64('Requires table64 lowering in all cases')
   def test_dylink_basics_no_modify(self):
     if self.is_optimizing():
       self.skipTest('no modify mode only works with non-optimizing builds')
@@ -7709,7 +7707,7 @@ void* operator new(size_t size) {
     # Export things on "TheModule". This matches the typical use pattern of
     # the bound library being used as Box2D.* or Ammo.*, and we cannot rely
     # on "Module" being always present (closure may remove it).
-    self.emcc_args += ['--post-js=glue.js', '--extern-post-js=extern-post.js']
+    self.emcc_args += ['-sEXPORTED_FUNCTIONS=_malloc,_free', '-sEXPORTED_RUNTIME_METHODS=stringToUTF8', '--post-js=glue.js', '--extern-post-js=extern-post.js']
     if mode == 'ALL':
       self.emcc_args += ['-sASSERTIONS']
     if allow_memory_growth:

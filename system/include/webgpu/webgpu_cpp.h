@@ -187,8 +187,9 @@ namespace wgpu {
     };
 
     enum class DeviceLostReason : uint32_t {
-        Undefined = 0x00000000,
-        Destroyed = 0x00000001,
+        Undefined = 0x00000001,
+        Unknown = 0x00000001,
+        Destroyed = 0x00000002,
     };
 
     enum class ErrorFilter : uint32_t {

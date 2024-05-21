@@ -110,3 +110,5 @@ Parent:42
 Aborted(Assertion failed: [CHECK FAILED] Parent::voidStar(something:something): Expecting <pointer>)
 Aborted(Assertion failed: [CHECK FAILED] StringUser::Print(anotherString:anotherString): Expecting <string>)
 123
+true
+true

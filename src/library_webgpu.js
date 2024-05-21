@@ -398,8 +398,9 @@ var LibraryWebGPU = {
       'info': 2,
     },
     Int_DeviceLostReason: {
-      'undefined': 0,
-      'destroyed': 1,
+      'undefined': 1,
+      'unknown': 1,
+      'destroyed': 2,
     },
     Int_PreferredFormat: {
       'rgba8unorm': 0x12,
