@@ -198,7 +198,6 @@ addToLibrary({
         old_node.name = new_name;
         new_dir.contents[new_name] = old_node;
         new_dir.timestamp = old_node.parent.timestamp;
-        old_node.parent = new_dir;
       },
       unlink(parent, name) {
         delete parent.contents[name];
