@@ -815,13 +815,13 @@ FS.staticInit();` +
       } catch (e) {
         throw e;
       } finally {
-        // update old node (called here to ensure consistency 
-        // across fs implementations)
-        old_node.parent = new_dir;
         // add the node back to the hash (in case node_ops.rename
         // changed its name)
         FS.hashAddNode(old_node);
       }
+      // update old node (called here to ensure consistency 
+      // across fs implementations)
+      old_node.parent = new_dir;
 #if FS_DEBUG
       if (FS.trackingDelegate['onMovePath']) {
         FS.trackingDelegate['onMovePath'](old_path, new_path);
