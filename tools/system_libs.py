@@ -1570,12 +1570,12 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
     if self.eh_mode == Exceptions.NONE:
       cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
-      cflags.append('-D__USING_EMSCRIPTEN_EXCEPTIONS__')
+      cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
       # The code used to interpret exceptions during terminate
       # is not compatible with emscripten exceptions.
       cflags.append('-DLIBCXXABI_SILENT_TERMINATE')
     elif self.eh_mode == Exceptions.WASM:
-      cflags.append('-D__USING_WASM_EXCEPTIONS__')
+      cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 
   def get_files(self):
@@ -1652,7 +1652,7 @@ class libcxx(NoExceptLibrary, MTLibrary):
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.eh_mode == Exceptions.WASM:
-      cflags.append('-D__USING_WASM_EXCEPTIONS__')
+      cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 
 
@@ -1684,9 +1684,9 @@ class libunwind(NoExceptLibrary, MTLibrary):
     if self.eh_mode == Exceptions.NONE:
       cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
-      cflags.append('-D__USING_EMSCRIPTEN_EXCEPTIONS__')
+      cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
     elif self.eh_mode == Exceptions.WASM:
-      cflags.append('-D__USING_WASM_EXCEPTIONS__')
+      cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 
 
