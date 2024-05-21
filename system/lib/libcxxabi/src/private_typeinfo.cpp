@@ -1560,6 +1560,6 @@ int __cxa_is_pointer_type(__shim_type_info* type) {
 }
 
 }
-#endif // __USING_EMSCRIPTEN_EXCEPTIONS__
+#endif // __EMSCRIPTEN_EXCEPTIONS__
 
 }  // __cxxabiv1
