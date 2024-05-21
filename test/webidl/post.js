@@ -257,6 +257,22 @@ TheModule.destroy(factory)
 
 // end of issue 14745
 
+// octet[] to char* (issue 14827)
+
+const arrayTestObj = new TheModule.ArrayArgumentTest();
+const bufferAddr = TheModule._malloc(35);
+TheModule.stringToUTF8('I should match the member variable', bufferAddr, 35);
+
+const arrayTestResult = arrayTestObj.byteArrayTest(bufferAddr);
+const arrayDomStringResult = arrayTestObj.domStringTest('I should match the member variable');
+console.log(arrayTestResult);
+console.log(arrayDomStringResult);
+
+TheModule.destroy(arrayTestObj)
+TheModule._free(bufferAddr);
+	
+// end of issue 14827
+
 // Check for overflowing the stack
 
 var before = Date.now();

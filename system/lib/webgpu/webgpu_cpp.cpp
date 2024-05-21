@@ -219,6 +219,7 @@ namespace wgpu {
     static_assert(alignof(DeviceLostReason) == alignof(WGPUDeviceLostReason), "alignof mismatch for DeviceLostReason");
 
     static_assert(static_cast<uint32_t>(DeviceLostReason::Undefined) == WGPUDeviceLostReason_Undefined, "value mismatch for DeviceLostReason::Undefined");
+    static_assert(static_cast<uint32_t>(DeviceLostReason::Unknown) == WGPUDeviceLostReason_Unknown, "value mismatch for DeviceLostReason::Unknown");
     static_assert(static_cast<uint32_t>(DeviceLostReason::Destroyed) == WGPUDeviceLostReason_Destroyed, "value mismatch for DeviceLostReason::Destroyed");
 
     // ErrorFilter
