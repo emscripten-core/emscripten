@@ -676,7 +676,8 @@ private:
   pthread_t thread;
   EM_VAL handle;
 
-  friend struct internal::BindingType<val>;
+  template <typename T, typename>
+  friend struct ::emscripten::internal::BindingType;
 };
 
 struct val::iterator {
