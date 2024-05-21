@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.60 (in development)
+3.1.61 (in development)
 -----------------------
+
+3.1.60 - 05/20/24
+-----------------
 - Under nodefs, symbolic links to files outside of mount locations no longer work.
   This reverts the previous behaviour added in #3277. (#21805)
 - The `EXPORTED_FUNCTIONS` list can now include JS library symbols even if they
