@@ -816,7 +816,7 @@ FS.staticInit();` +
         throw e;
       } finally {
         // update old node (called here to ensure consistency 
-        // across fs engines)
+        // across fs implementations)
         old_node.parent = new_dir;
         // add the node back to the hash (in case node_ops.rename
         // changed its name)
