@@ -1533,7 +1533,7 @@ __base_class_type_info::search_below_dst(__dynamic_cast_info* info,
 
 // XXX EMSCRIPTEN
 
-#ifndef __USING_WASM_EXCEPTIONS__
+#ifndef __WASM_EXCEPTIONS__
 
 // These functions are used by the emscripten-style exception handling
 // mechanism.
