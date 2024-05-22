@@ -798,6 +798,12 @@ var LibraryEmbind = {
     assert(!isAsync, 'Async bindings are only supported with JSPI.');
 #endif
 
+#if ASYNCIFY == 2
+    if (isAsync) {
+      cppInvokerFunc = Asyncify.makeAsyncFunction(cppInvokerFunc);
+    }
+#endif
+
     var isClassMethodFunc = (argTypes[1] !== null && classType !== null);
 
     // Free functions with signature "void function()" do not need an invoker that marshalls between wire types.

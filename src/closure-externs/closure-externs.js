@@ -112,6 +112,16 @@ WebAssembly.Memory.prototype.buffer;
  * @type {number}
  */
 WebAssembly.Table.prototype.length;
+/**
+ * @param {!Function} func
+ * @returns {Function}
+ */
+WebAssembly.promising = function(func) {};
+/**
+ * @constructor
+ * @param {!Function} func
+ */
+WebAssembly.Suspending = function(func) {};
 
 /**
  * @record
@@ -125,26 +135,13 @@ FunctionType.prototype.parameters;
  * @type {Array<string>}
  */
 FunctionType.prototype.results;
-/**
- * @record
- */
- function FunctionUsage() {}
- /**
-  * @type {string|undefined}
-  */
-FunctionUsage.prototype.promising;
- /**
-  * @type {string|undefined}
-  */
-FunctionUsage.prototype.suspending;
 
 /**
  * @constructor
  * @param {!FunctionType} type
  * @param {!Function} func
- * @param {FunctionUsage=} usage
  */
-WebAssembly.Function = function(type, func, usage) {};
+WebAssembly.Function = function(type, func) {};
 /**
  * @param {Function} func
  * @return {FunctionType}
