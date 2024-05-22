@@ -308,6 +308,8 @@
         "File::DirectoryKind": 2,
         "File::SymlinkKind": 3,
         "File::UnknownKind": 0,
+        "GL_UNPACK_ALIGNMENT": 3317,
+        "GL_UNPACK_ROW_LENGTH": 3314,
         "ICANON": 2,
         "ICRNL": 256,
         "IEXTEN": 32768,
