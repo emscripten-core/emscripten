@@ -400,7 +400,7 @@ void run() {
             .device = device,
             .format = capabilities.formats[0],
             .usage = wgpu::TextureUsage::RenderAttachment,
-            .alphaMode = wgpu::CompositeAlphaMode::Auto,
+            .alphaMode = wgpu::CompositeAlphaMode::Opaque,
             .width = kWidth,
             .height = kHeight,
             .presentMode = wgpu::PresentMode::Fifo};

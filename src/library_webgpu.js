@@ -99,6 +99,9 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       DeviceLost: 2,
       Unknown: 3,
     },
+    CompositeAlphaMode: {
+      Opaque: 1,
+    },
     CreatePipelineAsyncStatus: {
       Success: 0,
       ValidationError: 1,
@@ -2686,6 +2689,11 @@ var LibraryWebGPU = {
     var context = WebGPU.mgrSurface.get(surfaceId);
 
 #if ASSERTIONS
+    var viewFormatCount = {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.viewFormatCount) }}};
+    var viewFormats = {{{ makeGetValue('config', C_STRUCTS.WGPUSurfaceConfiguration.viewFormats, '*') }}};
+    assert(viewFormatCount === 0 && viewFormats === 0, "TODO: Support viewFormats.");
+    var alphaMode = {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.alphaMode) }}};
+    assert({{{ gpu.CompositeAlphaMode.Opaque }}} === alphaMode, "TODO: Support alphaMode.");
     assert({{{ gpu.PresentMode.Fifo }}} ===
       {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.presentMode) }}});
 #endif
@@ -2708,12 +2716,7 @@ var LibraryWebGPU = {
       "format": WebGPU.TextureFormat[
         {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.format) }}}],
       "usage": {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.usage) }}},
-      // viewFormatCount
-      // viewFormats
       "alphaMode": "opaque",
-      "width": canvasSize[0],
-      "height": canvasSize[1],
-      "presentMode": {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.presentMode) }}},
     };
     context.configure(configuration);
   },
