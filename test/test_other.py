@@ -199,6 +199,17 @@ def requires_pkg_config(func):
   return decorated
 
 
+def requires_jspi(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    self.require_jspi()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def llvm_nm(file):
   output = shared.run_process([LLVM_NM, file], stdout=PIPE).stdout
 
@@ -3061,8 +3072,8 @@ More info: https://emscripten.org
     '': ['-sDYNAMIC_EXECUTION=1'],
     'no_dynamic': ['-sDYNAMIC_EXECUTION=0'],
   })
+  @requires_jspi
   def test_embind_jspi(self, extra):
-    self.require_jspi()
     self.emcc_args += ['-lembind', '-g']
     self.emcc_args += [extra]
 
@@ -3202,19 +3213,19 @@ More info: https://emscripten.org
 
     self.do_runf('embind/test_return_value_policy.cpp')
 
+  @requires_jspi
   @parameterized({
     '': [['-sJSPI_EXPORTS=async*']],
     'deprecated': [['-Wno-deprecated', '-sASYNCIFY_EXPORTS=async*']]
   })
   def test_jspi_wildcard(self, opts):
-    self.require_jspi()
     self.emcc_args += opts
 
     self.do_runf('other/test_jspi_wildcard.c', 'done')
 
+  @requires_jspi
   def test_jspi_add_function(self):
     # make sure synchronous functions in the wasmTable aren't processed with Asyncify.makeAsyncFunction
-    self.require_jspi()
     self.emcc_args += [
       '-sASYNCIFY=2',
       '-sEXPORTED_RUNTIME_METHODS=addFunction,dynCall',
