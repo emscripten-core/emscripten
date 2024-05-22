@@ -812,6 +812,9 @@ FS.staticInit();` +
       // do the underlying fs rename
       try {
         old_dir.node_ops.rename(old_node, new_dir, new_name);
+        // update old node (we do this here to avoid each backend 
+        // needing to)
+        old_node.parent = new_dir;
       } catch (e) {
         throw e;
       } finally {
@@ -819,8 +822,6 @@ FS.staticInit();` +
         // changed its name)
         FS.hashAddNode(old_node);
       }
-      // update old node (we do this here to avoid each backend needing to)
-      old_node.parent = new_dir;
 #if FS_DEBUG
       if (FS.trackingDelegate['onMovePath']) {
         FS.trackingDelegate['onMovePath'](old_path, new_path);
