@@ -8612,8 +8612,7 @@ int main() {
 
   @parameterized({
     'js_fs':  (['-O3', '-sNO_WASMFS'], [], []), # noqa
-    # XXX disabled for LLVM roll
-    # 'wasmfs': (['-O3', '-sWASMFS'],    [], []), # noqa
+    'wasmfs': (['-O3', '-sWASMFS'],    [], []), # noqa
   })
   def test_metadce_files(self, *args):
     self.run_metadce_test('files.cpp', *args)
