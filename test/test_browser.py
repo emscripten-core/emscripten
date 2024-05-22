@@ -1354,7 +1354,7 @@ keydown(100);keyup(100); // trigger the end
   @parameterized({
     '': ([],),
     'extra': (['-DEXTRA_WORK'],),
-    'autopersist': (['-DIDBFS_AUTO_PERSIST', '-sIDBFS_AUTO_PERSIST'],),
+    'autopersist': (['-DIDBFS_AUTO_PERSIST'],),
     'force_exit': (['-sEXIT_RUNTIME', '-DFORCE_EXIT'],),
   })
   def test_fs_idbfs_sync(self, args):

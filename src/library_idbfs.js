@@ -24,7 +24,6 @@ addToLibrary({
     DB_VERSION: 21,
     DB_STORE_NAME: 'FILE_DATA',
 
-#if IDBFS_AUTO_PERSIST
     // Queues a new VFS -> IDBFS synchronization operation
     queuePersist: (mount) => {
       function onPersistComplete() {
@@ -52,48 +51,54 @@ addToLibrary({
       }
     },
 
-    mount: (...args) => { 
-      var mnt = MEMFS.mount(...args);
-      mnt.idbPersistState = 0; // IndexedDB sync starts in idle state
-      var memfs_node_ops = mnt.node_ops;
-      mnt.node_ops = Object.assign({}, mnt.node_ops); // Clone node_ops to inject write tracking
-      mnt.node_ops.mknod = (parent, name, mode, dev) => {
-        var node = memfs_node_ops.mknod(parent, name, mode, dev);
-        node.node_ops = mnt.node_ops; // Propagate injected node_ops to the newly created child node
-        node.idbfs_mount = mnt.mount; // Remember for each IDBFS node which IDBFS mount point they came from so we know which mount to persist on modification.
-        node.memfs_stream_ops = node.stream_ops; // Remember original MEMFS stream_ops for this node
-        node.stream_ops = Object.assign({}, node.stream_ops); // Clone stream_ops to inject write tracking
+    mount: (mount) => {
+      // reuse core MEMFS functionality
+      var mnt = MEMFS.mount(mount);
+      // If the automatic IDBFS persistence option has been selected, then automatically persist
+      // all modifications to the filesystem as they occur.
+      if (mount?.opts?.autoPersist) {
+        mnt.idbPersistState = 0; // IndexedDB sync starts in idle state
+        var memfs_node_ops = mnt.node_ops;
+        mnt.node_ops = Object.assign({}, mnt.node_ops); // Clone node_ops to inject write tracking
+        mnt.node_ops.mknod = (parent, name, mode, dev) => {
+          var node = memfs_node_ops.mknod(parent, name, mode, dev);
+          // Propagate injected node_ops to the newly created child node
+          node.node_ops = mnt.node_ops;
+          // Remember for each IDBFS node which IDBFS mount point they came from so we know which mount to persist on modification.
+          node.idbfs_mount = mnt.mount;
+          // Remember original MEMFS stream_ops for this node
+          node.memfs_stream_ops = node.stream_ops;
+          // Clone stream_ops to inject write tracking
+          node.stream_ops = Object.assign({}, node.stream_ops);
 
-        // Track all file writes
-        node.stream_ops.write = (stream, buffer, offset, length, position, canOwn) => {
-          stream.node.isModified = true; // This file has been modified, we must persist IndexedDB when this file closes
-          return node.memfs_stream_ops.write(stream, buffer, offset, length, position, canOwn);
+          // Track all file writes
+          node.stream_ops.write = (stream, buffer, offset, length, position, canOwn) => {
+            // This file has been modified, we must persist IndexedDB when this file closes
+            stream.node.isModified = true;
+            return node.memfs_stream_ops.write(stream, buffer, offset, length, position, canOwn);
+          };
+
+          // Persist IndexedDB on file close
+          node.stream_ops.close = (stream) => {
+            var n = stream.node;
+            if (n.isModified) {
+              IDBFS.queuePersist(n.idbfs_mount);
+              n.isModified = false;
+            }
+            if (n.memfs_stream_ops.close) return n.memfs_stream_ops.close(stream);
+          };
+
+          return node;
         };
-
-        // Persist IndexedDB on file close
-        node.stream_ops.close = (stream) => {
-          var n = stream.node;
-          if (n.isModified) {
-            IDBFS.queuePersist(n.idbfs_mount);
-            n.isModified = false;
-          }
-          if (n.memfs_stream_ops.close) return n.memfs_stream_ops.close(stream);
-        };
-
-        return node;
-      };
-      // Also kick off persisting the filesystem on other operations that modify the filesystem.
-      mnt.node_ops.mkdir   = (...args) => { var ret = memfs_node_ops.mkdir(...args);   IDBFS.queuePersist(mnt.mount); return ret; };
-      mnt.node_ops.rmdir   = (...args) => { var ret = memfs_node_ops.rmdir(...args);   IDBFS.queuePersist(mnt.mount); return ret; };
-      mnt.node_ops.symlink = (...args) => { var ret = memfs_node_ops.symlink(...args); IDBFS.queuePersist(mnt.mount); return ret; };
-      mnt.node_ops.unlink  = (...args) => { var ret = memfs_node_ops.unlink(...args);  IDBFS.queuePersist(mnt.mount); return ret; };
-      mnt.node_ops.rename  = (...args) => { var ret = memfs_node_ops.rename(...args);  IDBFS.queuePersist(mnt.mount); return ret; };
+        // Also kick off persisting the filesystem on other operations that modify the filesystem.
+        mnt.node_ops.mkdir   = (...args) => { IDBFS.queuePersist(mnt.mount); return memfs_node_ops.mkdir(...args);   };
+        mnt.node_ops.rmdir   = (...args) => { IDBFS.queuePersist(mnt.mount); return memfs_node_ops.rmdir(...args);   };
+        mnt.node_ops.symlink = (...args) => { IDBFS.queuePersist(mnt.mount); return memfs_node_ops.symlink(...args); };
+        mnt.node_ops.unlink  = (...args) => { IDBFS.queuePersist(mnt.mount); return memfs_node_ops.unlink(...args);  };
+        mnt.node_ops.rename  = (...args) => { IDBFS.queuePersist(mnt.mount); return memfs_node_ops.rename(...args);  };
+      }
       return mnt;
     },
-#else
-    // reuse all of the core MEMFS functionality
-    mount: (...args) => MEMFS.mount(...args),
-#endif
 
     syncfs: (mount, populate, callback) => {
       IDBFS.getLocalSet(mount, (err, local) => {

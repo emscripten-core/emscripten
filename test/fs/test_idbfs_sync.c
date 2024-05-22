@@ -176,7 +176,11 @@ void test() {
 int main() {
   EM_ASM(
     FS.mkdir('/working1');
-    FS.mount(IDBFS, {}, '/working1');
+    FS.mount(IDBFS, { 
+#ifdef IDBFS_AUTO_PERSIST
+      autoPersist: true
+#endif
+    }, '/working1');
 
 #if !FIRST
     // syncfs(true, f) should not break on already-existing directories:
