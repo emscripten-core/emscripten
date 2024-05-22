@@ -415,7 +415,7 @@ def main(args):
 
   cxxflags = [
     '-I' + utils.path_from_root('system/lib/libcxxabi/src'),
-    '-D__USING_EMSCRIPTEN_EXCEPTIONS__',
+    '-D__EMSCRIPTEN_EXCEPTIONS__',
     '-I' + utils.path_from_root('system/lib/wasmfs/'),
     '-std=c++17',
   ]
