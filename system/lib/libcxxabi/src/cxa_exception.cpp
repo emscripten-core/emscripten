@@ -207,7 +207,7 @@ void __cxa_free_exception(void *thrown_object) throw() {
 }
 
 __cxa_exception* __cxa_init_primary_exception(void* object, std::type_info* tinfo,
-#ifdef __WASM_EXCEPTIONS__
+#ifdef __wasm__
 // In Wasm, a destructor returns its argument
                                               void *(_LIBCXXABI_DTOR_FUNC* dest)(void*)) throw() {
 #else
@@ -279,7 +279,7 @@ void __throw_exception_with_stack_trace(_Unwind_Exception*);
 #endif
 
 void
-#ifdef __WASM_EXCEPTIONS__
+#ifdef __wasm__
 // In Wasm, a destructor returns its argument
 __cxa_throw(void *thrown_object, std::type_info *tinfo, void *(_LIBCXXABI_DTOR_FUNC *dest)(void *)) {
 #else
