@@ -429,7 +429,7 @@ var LibraryPThread = {
         // a pthread.
         'workerData': 'em-pthread',
 #endif
-#if ENVIRONMENT_MAY_BE_WEB
+#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
         // This is the way that we signal to the Web Worker that it is hosting
         // a pthread.
         'name': 'em-pthread',
