@@ -100,6 +100,7 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       Unknown: 3,
     },
     CompositeAlphaMode: {
+      Auto: 0,
       Opaque: 1,
     },
     CreatePipelineAsyncStatus: {
@@ -2693,7 +2694,9 @@ var LibraryWebGPU = {
     var viewFormats = {{{ makeGetValue('config', C_STRUCTS.WGPUSurfaceConfiguration.viewFormats, '*') }}};
     assert(viewFormatCount === 0 && viewFormats === 0, "TODO: Support viewFormats.");
     var alphaMode = {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.alphaMode) }}};
-    assert({{{ gpu.CompositeAlphaMode.Opaque }}} === alphaMode, "TODO: Support alphaMode.");
+    assert(alphaMode === {{{ gpu.CompositeAlphaMode.Auto }}} ||
+      alphaMode === {{{ gpu.CompositeAlphaMode.Opaque }}},
+      "TODO: Support WGPUCompositeAlphaMode_Premultiplied.");
     assert({{{ gpu.PresentMode.Fifo }}} ===
       {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.presentMode) }}});
 #endif
