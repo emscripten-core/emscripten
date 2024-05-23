@@ -619,6 +619,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
     return 0
 
+  if '-print-resource-dir' in newargs:
+    shared.check_call([clang] + newargs)
+    return 0
+
   if '-print-libgcc-file-name' in newargs or '--print-libgcc-file-name' in newargs:
     settings.limit_settings(None)
     compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt']
