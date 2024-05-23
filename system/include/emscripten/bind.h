@@ -1388,7 +1388,7 @@ struct RegisterClassConstructor<ReturnType (*)(Args...)> {
     template <typename ClassType, typename... Policies>
     static void invoke(ReturnType (*factory)(Args...)) {
         typename WithPolicies<allow_raw_pointers, Policies...>::template ArgTypeList<ReturnType, Args...> args;
-        using ReturnPolicy = rvp::default_tag;
+        using ReturnPolicy = rvp::take_ownership;
         auto invoke = &Invoker<ReturnPolicy, ReturnType, Args...>::invoke;
         _embind_register_class_constructor(
             TypeID<ClassType>::get(),
@@ -1406,7 +1406,7 @@ struct RegisterClassConstructor<std::function<ReturnType (Args...)>> {
     template <typename ClassType, typename... Policies>
     static void invoke(std::function<ReturnType (Args...)> factory) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-        using ReturnPolicy = rvp::default_tag;
+        using ReturnPolicy = rvp::take_ownership;
         auto invoke = &FunctorInvoker<ReturnPolicy, decltype(factory), ReturnType, Args...>::invoke;
         _embind_register_class_constructor(
             TypeID<ClassType>::get(),
@@ -1423,7 +1423,7 @@ struct RegisterClassConstructor<ReturnType (Args...)> {
     template <typename ClassType, typename Callable, typename... Policies>
     static void invoke(Callable& factory) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-        using ReturnPolicy = rvp::default_tag;
+        using ReturnPolicy = rvp::take_ownership;
         auto invoke = &FunctorInvoker<ReturnPolicy, decltype(factory), ReturnType, Args...>::invoke;
         _embind_register_class_constructor(
             TypeID<ClassType>::get(),
