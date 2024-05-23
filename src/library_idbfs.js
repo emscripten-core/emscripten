@@ -91,11 +91,11 @@ addToLibrary({
           return node;
         };
         // Also kick off persisting the filesystem on other operations that modify the filesystem.
-        mnt.node_ops.mkdir   = (...args) => { IDBFS.queuePersist(mnt.mount); return memfs_node_ops.mkdir(...args);   };
-        mnt.node_ops.rmdir   = (...args) => { IDBFS.queuePersist(mnt.mount); return memfs_node_ops.rmdir(...args);   };
-        mnt.node_ops.symlink = (...args) => { IDBFS.queuePersist(mnt.mount); return memfs_node_ops.symlink(...args); };
-        mnt.node_ops.unlink  = (...args) => { IDBFS.queuePersist(mnt.mount); return memfs_node_ops.unlink(...args);  };
-        mnt.node_ops.rename  = (...args) => { IDBFS.queuePersist(mnt.mount); return memfs_node_ops.rename(...args);  };
+        mnt.node_ops.mkdir   = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.mkdir(...args));
+        mnt.node_ops.rmdir   = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.rmdir(...args));
+        mnt.node_ops.symlink = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.symlink(...args));
+        mnt.node_ops.unlink  = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.unlink(...args));
+        mnt.node_ops.rename  = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.rename(...args));
       }
       return mnt;
     },
