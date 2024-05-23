@@ -2063,6 +2063,7 @@ def phase_final_emitting(options, state, target, wasm_target):
 // to allow build systems to transition away from depending on it.
 //
 // Future versions of emscripten will likely stop generating this file at all.
+throw new Error('Dummy worker.js file should never be used');
 ''')
 
   # Deploy the Wasm Worker bootstrap file as an output file (*.ww.js)
