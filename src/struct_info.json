@@ -1204,6 +1204,13 @@
           "ALC_INVALID_ENUM"
         ]
     },
+    {
+        "file": "GL/gl.h",
+        "defines": [
+          "GL_UNPACK_ALIGNMENT",
+          "GL_UNPACK_ROW_LENGTH"
+        ]
+    },
     // ===========================================
     // WebGPU
     //   NOTE: This section is auto-generated.
