@@ -95,11 +95,11 @@ addToLibrary({
       }
     },
 #if ASYNCIFY == 1 && MEMORY64
-    saveOrRestoreRewindArguments(funcName, passedArguments) {
-      if (passedArguments.length === 0) {
-        return Asyncify.rewindArguments[funcName] || []
-      }
+    saveRewindArguments(funcName, passedArguments) {
       return Asyncify.rewindArguments[funcName] = Array.from(passedArguments)
+    },
+    restoreRewindArguments(funcName) {
+      return Asyncify.rewindArguments[funcName] || []
     },
 #endif
     instrumentWasmExports(exports) {
@@ -130,14 +130,9 @@ addToLibrary({
             try {
 #endif
 #if ASYNCIFY == 1 && MEMORY64
-              // When re-winding, the arguments to a function are ignored.  For i32 arguments we
-              // can just call the function with no args at all since and the engine will produce zeros
-              // for all arguments.  However, for i64 arguments we get `undefined cannot be converted to
-              // BigInt`.
-              return original(...Asyncify.saveOrRestoreRewindArguments(x, args));
-#else
-              return original(...args);
+              Asyncify.saveRewindArguments(x, args);
 #endif
+              return original(...args);
 #if ASYNCIFY == 1
             } finally {
               if (!ABORT) {
@@ -265,12 +260,16 @@ addToLibrary({
       {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'rewindId', 'i32') }}};
     },
 
+    getDataRewindFuncName(ptr) {
+      var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
+      var name = Asyncify.callStackIdToName[id];
+      return name;
+    },
+
 #if RELOCATABLE
     getDataRewindFunc__deps: [ '$resolveGlobalSymbol' ],
 #endif
-    getDataRewindFunc(ptr) {
-      var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
-      var name = Asyncify.callStackIdToName[id];
+    getDataRewindFunc(name) {
       var func = wasmExports[name];
 #if RELOCATABLE
       // Exported functions in side modules are not listed in `wasmExports`,
@@ -283,14 +282,23 @@ addToLibrary({
     },
 
     doRewind(ptr) {
-      var start = Asyncify.getDataRewindFunc(ptr);
+      var name = Asyncify.getDataRewindFuncName(ptr);
+      var func = Asyncify.getDataRewindFunc(name);
 #if ASYNCIFY_DEBUG
-      dbg('ASYNCIFY: start:', start);
+      dbg('ASYNCIFY: doRewind:', name);
 #endif
       // Once we have rewound and the stack we no longer need to artificially
       // keep the runtime alive.
       {{{ runtimeKeepalivePop(); }}}
-      return start();
+#if MEMORY64
+      // When re-winding, the arguments to a function are ignored.  For i32 arguments we
+      // can just call the function with no args at all since and the engine will produce zeros
+      // for all arguments.  However, for i64 arguments we get `undefined cannot be converted to
+      // BigInt`.
+      return func(...Asyncify.restoreRewindArguments(name));
+#else
+      return func();
+#endif
     },
 
     // This receives a function to call to start the async operation, and
@@ -441,7 +449,7 @@ addToLibrary({
     },
     makeAsyncFunction(original) {
 #if ASYNCIFY_DEBUG
-      dbg('asyncify: returnPromiseOnSuspend for', original);
+      dbg('asyncify: makeAsyncFunction for', original);
 #endif
       return WebAssembly.promising(original);
     },
