@@ -4868,11 +4868,15 @@ Module["preRun"] = () => {
 
   # Tests that pthreads code works as intended in a Worker. That is, a pthreads-using
   # program can run either on the main thread (normal tests) or when we start it in
-  # a Worker in this test (in that case, both the main application thread and the worker threads
-  # are all inside Web Workers).
-  def test_pthreads_started_in_worker(self):
+  # a Worker in this test (in that case, both the main application thread and the worker
+  # threads are all inside Web Workers).
+  @parameterized({
+    '': ([],),
+    'limited_env': (['-sENVIRONMENT=worker'],),
+  })
+  def test_pthreads_started_in_worker(self, args):
     self.set_setting('EXIT_RUNTIME')
-    self.compile_btest('pthread/test_pthread_atomics.cpp', ['-o', 'test.js', '-pthread', '-sPTHREAD_POOL_SIZE=8'], reporting=Reporting.JS_ONLY)
+    self.compile_btest('pthread/test_pthread_atomics.cpp', ['-o', 'test.js', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args, reporting=Reporting.JS_ONLY)
     create_file('test.html', '''
       <script>
         new Worker('test.js');
