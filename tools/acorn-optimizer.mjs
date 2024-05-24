@@ -2056,8 +2056,6 @@ const registry = {
   applyImportAndExportNameChanges: applyImportAndExportNameChanges,
   emitDCEGraph: emitDCEGraph,
   applyDCEGraphRemovals: applyDCEGraphRemovals,
-  // TODO: remove 'last' in the python driver code
-  last: () => {},
   dump: () => dump(ast),
   littleEndianHeap: littleEndianHeap,
   growableHeap: growableHeap,
