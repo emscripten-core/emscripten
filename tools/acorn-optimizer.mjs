@@ -270,7 +270,7 @@ function hasSideEffects(node) {
 // as they appear (like ArrowFunctionExpression). Instead, we do a conservative
 // analysis here.
 
-function runJSDCE(ast, aggressive) {
+function JSDCE(ast, aggressive) {
   function iteration() {
     let removed = 0;
     const scopes = [{}]; // begin with empty toplevel scope
@@ -457,8 +457,8 @@ function runJSDCE(ast, aggressive) {
 }
 
 // Aggressive JSDCE - multiple iterations
-function runAJSDCE(ast) {
-  runJSDCE(ast, /* aggressive= */ true);
+function AJSDCE(ast) {
+  JSDCE(ast, /* aggressive= */ true);
 }
 
 function isWasmImportsAssign(node) {
@@ -2000,6 +2000,11 @@ function trace(...args) {
   }
 }
 
+function error(...args) {
+  console.error(...args);
+  throw new Error(...args);
+}
+
 // If enabled, output retains parentheses and comments so that the
 // output can further be passed out to Closure.
 const closureFriendly = getArg('--closure-friendly');
@@ -2051,23 +2056,26 @@ try {
 }
 
 const registry = {
-  JSDCE: runJSDCE,
-  AJSDCE: runAJSDCE,
-  applyImportAndExportNameChanges: applyImportAndExportNameChanges,
-  emitDCEGraph: emitDCEGraph,
-  applyDCEGraphRemovals: applyDCEGraphRemovals,
-  dump: () => dump(ast),
-  littleEndianHeap: littleEndianHeap,
-  growableHeap: growableHeap,
-  unsignPointers: unsignPointers,
-  minifyLocals: minifyLocals,
-  asanify: asanify,
-  safeHeap: safeHeap,
-  minifyGlobals: minifyGlobals,
+  JSDCE,
+  AJSDCE,
+  applyImportAndExportNameChanges,
+  emitDCEGraph,
+  applyDCEGraphRemovals,
+  dump,
+  littleEndianHeap,
+  growableHeap,
+  unsignPointers,
+  minifyLocals,
+  asanify,
+  safeHeap,
+  minifyGlobals,
 };
 
 passes.forEach((pass) => {
   trace(`running AST pass: ${pass}`);
+  if (!(pass in registry)) {
+    error(`unknown optimizer pass: ${pass}`);
+  }
   registry[pass](ast);
 });
 
