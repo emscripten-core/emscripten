@@ -933,7 +933,6 @@ def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, sym
         passes += ['symbolMap=%s' % symbols_file_js]
     if settings.MINIFY_WHITESPACE:
       passes += ['--minify-whitespace']
-    passes += ['last']
     if passes:
       # hackish fixups to work around wasm2js style and the js optimizer FIXME
       wasm2js_js = f'// EMSCRIPTEN_START_ASM\n{wasm2js_js}// EMSCRIPTEN_END_ASM\n'
