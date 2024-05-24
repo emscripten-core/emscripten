@@ -818,13 +818,15 @@ f.close()
     expected = os.path.join(libdir, 'libcompiler_rt.a')
     self.assertEqual(output.strip(), expected)
 
+  @crossplatform
   def test_print_resource_dir(self):
     output = self.run_process([EMCC, '-print-resource-dir'], stdout=PIPE).stdout
     print(output)
     lines = output.strip().splitlines()
     self.assertEqual(len(lines), 1)
-    resource_dir = lines[0]
-    self.assertContained(os.path.dirname(config.LLVM_ROOT), resource_dir)
+    resource_dir = os.path.normcase(lines[0])
+    llvm_root = os.path.normcase(os.path.dirname(config.LLVM_ROOT))
+    self.assertContained(llvm_root, resource_dir)
 
   @crossplatform
   @parameterized({
