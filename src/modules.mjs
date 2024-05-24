@@ -282,8 +282,8 @@ function addToLibrary(obj, options = null) {
   mergeInto(LibraryManager.library, obj, options);
 }
 
-let structs = {};
-let defines = {};
+export let structs = {};
+export let defines = {};
 
 if (!BOOTSTRAPPING_STRUCT_INFO) {
   let structInfoFile = 'struct_info_generated.json';

@@ -24,22 +24,21 @@ addToLibrary({
       if (flags["fs"]) {
         flags = flags["fs"];
       }
-      NODEFS.flagsForNodeMap = {
-        "{{{ cDefs.O_APPEND }}}": flags["O_APPEND"],
-        "{{{ cDefs.O_CREAT }}}": flags["O_CREAT"],
-        "{{{ cDefs.O_EXCL }}}": flags["O_EXCL"],
-        "{{{ cDefs.O_NOCTTY }}}": flags["O_NOCTTY"],
-        "{{{ cDefs.O_RDONLY }}}": flags["O_RDONLY"],
-        "{{{ cDefs.O_RDWR }}}": flags["O_RDWR"],
-        "{{{ cDefs.O_DSYNC }}}": flags["O_SYNC"],
-        "{{{ cDefs.O_TRUNC }}}": flags["O_TRUNC"],
-        "{{{ cDefs.O_WRONLY }}}": flags["O_WRONLY"],
-        "{{{ cDefs.O_NOFOLLOW }}}": flags["O_NOFOLLOW"],
-      };
+      NODEFS.flagsForNodeMap = {}
+      NODEFS.flagsForNodeMap[cDefs.O_APPEND] = flags["O_APPEND"];
+      NODEFS.flagsForNodeMap[cDefs.O_CREAT] = flags["O_CREAT"];
+      NODEFS.flagsForNodeMap[cDefs.O_EXCL] = flags["O_EXCL"];
+      NODEFS.flagsForNodeMap[cDefs.O_NOCTTY] = flags["O_NOCTTY"];
+      NODEFS.flagsForNodeMap[cDefs.O_RDONLY] = flags["O_RDONLY"];
+      NODEFS.flagsForNodeMap[cDefs.O_RDWR] = flags["O_RDWR"];
+      NODEFS.flagsForNodeMap[cDefs.O_DSYNC] = flags["O_SYNC"];
+      NODEFS.flagsForNodeMap[cDefs.O_TRUNC] = flags["O_TRUNC"];
+      NODEFS.flagsForNodeMap[cDefs.O_WRONLY] = flags["O_WRONLY"];
+      NODEFS.flagsForNodeMap[cDefs.O_NOFOLLOW] = flags["O_NOFOLLOW"];
 #if ASSERTIONS
       // The 0 define must match on both sides, as otherwise we would not
       // know to add it.
-      assert(NODEFS.flagsForNodeMap["0"] === 0);
+      assert(NODEFS.flagsForNodeMap[0] === 0);
 #endif
     },
     convertNodeCode(e) {

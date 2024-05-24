@@ -1884,7 +1884,7 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms, base_
     phase_embind_aot(wasm_target, js_syms)
 
   if options.emit_tsd:
-    phase_emit_tsd(options, wasm_target, state.js_target, js_syms, metadata)
+    phase_emit_tsd(options, wasm_target, os.path.dirname(state.js_target), js_syms, metadata)
 
   if options.js_transform:
     phase_source_transforms(options)
@@ -1909,7 +1909,6 @@ def phase_emscript(in_wasm, wasm_target, js_syms, base_metadata):
     return
 
   metadata = emscripten.emscript(in_wasm, wasm_target, final_js, js_syms, base_metadata=base_metadata)
-  save_intermediate('original')
   return metadata
 
 
@@ -1971,14 +1970,14 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
 
 
 @ToolchainProfiler.profile_block('emit tsd')
-def phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata):
+def phase_emit_tsd(options, wasm_target, outdir, js_syms, metadata):
   logger.debug('emit tsd')
   filename = options.emit_tsd
   embind_tsd = ''
   if settings.EMBIND:
     embind_tsd = run_embind_gen(wasm_target, js_syms, {'EMBIND_JS': False})
   all_tsd = emscripten.create_tsd(metadata, embind_tsd)
-  out_file = os.path.join(os.path.dirname(js_target), filename)
+  out_file = os.path.join(outdir, filename)
   write_file(out_file, all_tsd)
 
 

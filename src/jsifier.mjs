@@ -34,7 +34,7 @@ import {
   warnOnce,
   warningOccured,
 } from './utility.mjs';
-import {LibraryManager, librarySymbols} from './modules.mjs';
+import {LibraryManager, librarySymbols, defines, structs} from './modules.mjs';
 
 const addedLibraryItems = {};
 
@@ -705,6 +705,38 @@ function(${args}) {
 
     postSets.push(...orderedPostSets);
 
+    if (STRICT_JS) {
+      print('"use strict";');
+    }
+    if (!OPT_LEVEL) {
+      // In optimizaing builds we run an acron pass to remove all references
+      // to cDefs/cStructs.
+      function stringify(obj, indent) {
+        var indentStr = ''.padStart(indent, ' ');
+        var rtn = ['{\n'];
+        for (const [key, value] of Object.entries(obj)) {
+          if (key.startsWith('WGPU') && !USE_WEBGPU) {
+            continue;
+          }
+          if (key.includes(':')) {
+            rtn.push(indentStr, '  "', key, '": ');
+          } else {
+            rtn.push(indentStr, '  ', key, ': ');
+          }
+          if (typeof value == 'object') {
+            rtn.push(stringify(value, indent + 2), ',\n');
+          } else {
+            rtn.push(value, ',\n');
+          }
+        }
+        rtn.push(indentStr, '}');
+        return rtn.join('');
+      }
+      print('// cDefs only exists in debug builds. In release builds these are inlined');
+      print('var cDefs = ' + stringify(defines, 0) + ';');
+      print('// cStructs only exists in debug builds. In release builds these are inlined');
+      print('var cStructs = ' + stringify(structs, 0) + ';');
+    }
     const shellFile = MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js';
     includeFile(shellFile);
 

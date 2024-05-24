@@ -3,10 +3,7 @@
  * Copyright 2010 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
-#if STRICT_JS
-"use strict";
 
-#endif
 // The Module object: Our interface to the outside world. We import
 // and export values on it. There are various ways Module can be used:
 // 1. Not defined. We create it here

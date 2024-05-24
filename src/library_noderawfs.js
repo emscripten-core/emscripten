@@ -159,9 +159,9 @@ addToLibrary({
         // this stream is created by in-memory filesystem
         return VFS.write(stream, buffer, offset, length, position);
       }
-      if (stream.flags & +"{{{ cDefs.O_APPEND }}}") {
+      if (stream.flags & {{{ cDefs.O_APPEND }}}) {
         // seek to the end before writing in append mode
-        FS.llseek(stream, 0, +"{{{ cDefs.SEEK_END }}}");
+        FS.llseek(stream, 0, {{{ cDefs.SEEK_END }}});
       }
       var seeking = typeof position != 'undefined';
       if (!seeking && stream.seekable) position = stream.position;

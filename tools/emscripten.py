@@ -476,7 +476,11 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     out.write(post)
     module = None
 
-    return metadata
+  building.save_intermediate(outfile_js, 'original.js')
+  if settings.OPT_LEVEL:
+    new = building.macro_substitution(outfile_js)
+    os.rename(new, outfile_js)
+  return metadata
 
 
 @ToolchainProfiler.profile()

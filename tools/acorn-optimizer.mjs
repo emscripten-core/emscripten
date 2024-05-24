@@ -1077,6 +1077,10 @@ function createLiteral(value) {
   });
 }
 
+function replaceWithConstant(node, value) {
+  Object.assign(node, createLiteral(value));
+}
+
 function makeCallExpression(node, name, args) {
   Object.assign(node, {
     type: 'CallExpression',
@@ -1930,6 +1934,53 @@ function minifyGlobals(ast) {
   suffix = '// EXTRA_INFO:' + JSON.stringify(json);
 }
 
+function macroSubstitution(ast) {
+  const structInfoFile = wasm64
+    ? 'struct_info_generated_wasm64.json'
+    : 'struct_info_generated.json';
+  const structInfoURL = new URL('../src/' + structInfoFile, import.meta.url);
+  // Load struct and define information.
+  const structInfo = JSON.parse(read(structInfoURL));
+  const structs = structInfo.structs;
+  const defines = structInfo.defines;
+
+  fullWalk(ast, (node) => {
+    if (node.type == 'MemberExpression') {
+      if (node.object.name == 'cDefs') {
+        // Handle cDefs.FOO
+        const name = node.property.name;
+        const value = defines[name];
+        if (typeof value == 'undefined') {
+          error('unknown C macro in JS code: cDefs.', name);
+        }
+        trace('replacing:', name);
+        trace('with:', value);
+        replaceWithConstant(node, value);
+      } else if (node.object.type == 'MemberExpression') {
+        // Handle cStructs.foo.bar
+        const inner = node.object.object;
+        const outer = node.object;
+        if (inner.name == 'cStructs') {
+          const structName = outer.property.name;
+          const info = structs[structName];
+          if (typeof info == 'undefined') {
+            error('unknown C struct in JS code: cStructs.', structName);
+          }
+          const fieldName = node.property.name;
+          const value = info[fieldName];
+          console.error(info);
+          if (typeof value == 'undefined') {
+            error(`unknown C struct field in JS code: cStructs.${structName}.${fieldName}`);
+          }
+          trace(`replacing: cStructs.${structName}.${fieldName}`);
+          trace('with:', value);
+          replaceWithConstant(node, value);
+        }
+      }
+    }
+  });
+}
+
 // Utilities
 
 function reattachComments(ast, commentsMap) {
@@ -2014,6 +2065,7 @@ function error(...args) {
 const closureFriendly = getArg('--closure-friendly');
 const exportES6 = getArg('--export-es6');
 const verbose = getArg('--verbose');
+const wasm64 = getArg('--wasm64');
 const noPrint = getArg('--no-print');
 const minifyWhitespace = getArg('--minify-whitespace');
 
@@ -2084,6 +2136,7 @@ const registry = {
   asanify,
   safeHeap,
   minifyGlobals,
+  macroSubstitution,
 };
 
 passes.forEach((pass) => {
