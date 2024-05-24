@@ -23,6 +23,9 @@ See docs/process.md for more on how version tagging works.
 - The JSPI feature now uses the updated browser API for JSPI (available in
   Chrome v126+). To support older versions of Chrome use Emscripten version
   3.1.60 or earlier.
+- IDBFS mount has gained a new option { autoPersist: true }, which if passed,
+  changes the semantics of the IDBFS mount to automatically persist any changes
+  made to the filesystem. (#21938)
 
 3.1.60 - 05/20/24
 -----------------

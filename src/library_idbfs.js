@@ -23,8 +23,83 @@ addToLibrary({
     },
     DB_VERSION: 21,
     DB_STORE_NAME: 'FILE_DATA',
-    // reuse all of the core MEMFS functionality
-    mount: (...args) => MEMFS.mount(...args),
+
+    // Queues a new VFS -> IDBFS synchronization operation
+    queuePersist: (mount) => {
+      function onPersistComplete() {
+        if (mount.idbPersistState === 'again') startPersist(); // If a new sync request has appeared in between, kick off a new sync
+        else mount.idbPersistState = 0; // Otherwise reset sync state back to idle to wait for a new sync later
+      }
+      function startPersist() {
+        mount.idbPersistState = 'idb'; // Mark that we are currently running a sync operation
+        IDBFS.syncfs(mount, /*populate:*/false, onPersistComplete);
+      }
+
+      if (!mount.idbPersistState) {
+        // Programs typically write/copy/move multiple files in the in-memory
+        // filesystem within a single app frame, so when a filesystem sync
+        // command is triggered, do not start it immediately, but only after
+        // the current frame is finished. This way all the modified files
+        // inside the main loop tick will be batched up to the same sync.
+        mount.idbPersistState = setTimeout(startPersist, 0);
+      } else if (mount.idbPersistState === 'idb') {
+        // There is an active IndexedDB sync operation in-flight, but we now
+        // have accumulated more files to sync. We should therefore queue up
+        // a new sync after the current one finishes so that all writes
+        // will be properly persisted.
+        mount.idbPersistState = 'again';
+      }
+    },
+
+    mount: (mount) => {
+      // reuse core MEMFS functionality
+      var mnt = MEMFS.mount(mount);
+      // If the automatic IDBFS persistence option has been selected, then automatically persist
+      // all modifications to the filesystem as they occur.
+      if (mount?.opts?.autoPersist) {
+        mnt.idbPersistState = 0; // IndexedDB sync starts in idle state
+        var memfs_node_ops = mnt.node_ops;
+        mnt.node_ops = Object.assign({}, mnt.node_ops); // Clone node_ops to inject write tracking
+        mnt.node_ops.mknod = (parent, name, mode, dev) => {
+          var node = memfs_node_ops.mknod(parent, name, mode, dev);
+          // Propagate injected node_ops to the newly created child node
+          node.node_ops = mnt.node_ops;
+          // Remember for each IDBFS node which IDBFS mount point they came from so we know which mount to persist on modification.
+          node.idbfs_mount = mnt.mount;
+          // Remember original MEMFS stream_ops for this node
+          node.memfs_stream_ops = node.stream_ops;
+          // Clone stream_ops to inject write tracking
+          node.stream_ops = Object.assign({}, node.stream_ops);
+
+          // Track all file writes
+          node.stream_ops.write = (stream, buffer, offset, length, position, canOwn) => {
+            // This file has been modified, we must persist IndexedDB when this file closes
+            stream.node.isModified = true;
+            return node.memfs_stream_ops.write(stream, buffer, offset, length, position, canOwn);
+          };
+
+          // Persist IndexedDB on file close
+          node.stream_ops.close = (stream) => {
+            var n = stream.node;
+            if (n.isModified) {
+              IDBFS.queuePersist(n.idbfs_mount);
+              n.isModified = false;
+            }
+            if (n.memfs_stream_ops.close) return n.memfs_stream_ops.close(stream);
+          };
+
+          return node;
+        };
+        // Also kick off persisting the filesystem on other operations that modify the filesystem.
+        mnt.node_ops.mkdir   = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.mkdir(...args));
+        mnt.node_ops.rmdir   = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.rmdir(...args));
+        mnt.node_ops.symlink = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.symlink(...args));
+        mnt.node_ops.unlink  = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.unlink(...args));
+        mnt.node_ops.rename  = (...args) => (IDBFS.queuePersist(mnt.mount), memfs_node_ops.rename(...args));
+      }
+      return mnt;
+    },
+
     syncfs: (mount, populate, callback) => {
       IDBFS.getLocalSet(mount, (err, local) => {
         if (err) return callback(err);

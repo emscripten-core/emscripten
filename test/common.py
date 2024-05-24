@@ -985,6 +985,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.js_engines = config.JS_ENGINES.copy()
     self.settings_mods = {}
     self.skip_exec = None
+    self.proxied = False
     self.emcc_args = ['-Wclosure', '-Werror', '-Wno-limited-postlink-optimizations']
     # TODO(https://github.com/emscripten-core/emscripten/issues/11121)
     # For historical reasons emcc compiles and links as C++ by default.
@@ -2302,17 +2303,25 @@ class BrowserCore(RunnerCore):
 
   def btest(self, filename, expected=None, reference=None,
             reference_slack=0, manual_reference=None, post_build=None,
-            args=None, also_proxied=False,
-            url_suffix='', timeout=None,
+            args=None, url_suffix='', timeout=None,
             manually_trigger_reftest=False, extra_tries=1,
             reporting=Reporting.FULL,
             output_basename='test'):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
     if args is None:
       args = []
-    original_args = args
     args = args.copy()
     filename = find_browser_test_file(filename)
+
+    # Run via --proxy-to-worker.  This gets set by the @also_with_proxying.
+    if self.proxied:
+      if reference:
+        assert not manual_reference
+        manual_reference = True
+        manually_trigger_reftest = False
+        assert not post_build
+        post_build = self.post_manual_reftest
+      args += ['--proxy-to-worker', '-sGL_TESTING']
     if reference:
       reference = find_browser_test_file(reference)
       expected = [str(i) for i in range(0, reference_slack + 1)]
@@ -2339,17 +2348,6 @@ class BrowserCore(RunnerCore):
       self.assertContained('RESULT: ' + expected[0], output)
     else:
       self.run_browser(outfile + url_suffix, expected=['/report_result?' + e for e in expected], timeout=timeout, extra_tries=extra_tries)
-
-    if also_proxied:
-      print('proxied...')
-      if reference:
-        assert not manual_reference
-        manual_reference = True
-        assert not post_build
-        post_build = self.post_manual_reftest
-      # run proxied
-      self.btest(filename, expected, reference, reference_slack, manual_reference, post_build,
-                 original_args + ['--proxy-to-worker', '-sGL_TESTING'], timeout=timeout)
 
 
 ###################################################################################################

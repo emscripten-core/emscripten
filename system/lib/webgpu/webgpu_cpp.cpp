@@ -191,6 +191,17 @@ namespace wgpu {
     static_assert(static_cast<uint32_t>(CompilationMessageType::Warning) == WGPUCompilationMessageType_Warning, "value mismatch for CompilationMessageType::Warning");
     static_assert(static_cast<uint32_t>(CompilationMessageType::Info) == WGPUCompilationMessageType_Info, "value mismatch for CompilationMessageType::Info");
 
+    // CompositeAlphaMode
+
+    static_assert(sizeof(CompositeAlphaMode) == sizeof(WGPUCompositeAlphaMode), "sizeof mismatch for CompositeAlphaMode");
+    static_assert(alignof(CompositeAlphaMode) == alignof(WGPUCompositeAlphaMode), "alignof mismatch for CompositeAlphaMode");
+
+    static_assert(static_cast<uint32_t>(CompositeAlphaMode::Auto) == WGPUCompositeAlphaMode_Auto, "value mismatch for CompositeAlphaMode::Auto");
+    static_assert(static_cast<uint32_t>(CompositeAlphaMode::Opaque) == WGPUCompositeAlphaMode_Opaque, "value mismatch for CompositeAlphaMode::Opaque");
+    static_assert(static_cast<uint32_t>(CompositeAlphaMode::Premultiplied) == WGPUCompositeAlphaMode_Premultiplied, "value mismatch for CompositeAlphaMode::Premultiplied");
+    static_assert(static_cast<uint32_t>(CompositeAlphaMode::Unpremultiplied) == WGPUCompositeAlphaMode_Unpremultiplied, "value mismatch for CompositeAlphaMode::Unpremultiplied");
+    static_assert(static_cast<uint32_t>(CompositeAlphaMode::Inherit) == WGPUCompositeAlphaMode_Inherit, "value mismatch for CompositeAlphaMode::Inherit");
+
     // CreatePipelineAsyncStatus
 
     static_assert(sizeof(CreatePipelineAsyncStatus) == sizeof(WGPUCreatePipelineAsyncStatus), "sizeof mismatch for CreatePipelineAsyncStatus");
@@ -429,6 +440,18 @@ namespace wgpu {
     static_assert(static_cast<uint32_t>(StoreOp::Undefined) == WGPUStoreOp_Undefined, "value mismatch for StoreOp::Undefined");
     static_assert(static_cast<uint32_t>(StoreOp::Store) == WGPUStoreOp_Store, "value mismatch for StoreOp::Store");
     static_assert(static_cast<uint32_t>(StoreOp::Discard) == WGPUStoreOp_Discard, "value mismatch for StoreOp::Discard");
+
+    // SurfaceGetCurrentTextureStatus
+
+    static_assert(sizeof(SurfaceGetCurrentTextureStatus) == sizeof(WGPUSurfaceGetCurrentTextureStatus), "sizeof mismatch for SurfaceGetCurrentTextureStatus");
+    static_assert(alignof(SurfaceGetCurrentTextureStatus) == alignof(WGPUSurfaceGetCurrentTextureStatus), "alignof mismatch for SurfaceGetCurrentTextureStatus");
+
+    static_assert(static_cast<uint32_t>(SurfaceGetCurrentTextureStatus::Success) == WGPUSurfaceGetCurrentTextureStatus_Success, "value mismatch for SurfaceGetCurrentTextureStatus::Success");
+    static_assert(static_cast<uint32_t>(SurfaceGetCurrentTextureStatus::Timeout) == WGPUSurfaceGetCurrentTextureStatus_Timeout, "value mismatch for SurfaceGetCurrentTextureStatus::Timeout");
+    static_assert(static_cast<uint32_t>(SurfaceGetCurrentTextureStatus::Outdated) == WGPUSurfaceGetCurrentTextureStatus_Outdated, "value mismatch for SurfaceGetCurrentTextureStatus::Outdated");
+    static_assert(static_cast<uint32_t>(SurfaceGetCurrentTextureStatus::Lost) == WGPUSurfaceGetCurrentTextureStatus_Lost, "value mismatch for SurfaceGetCurrentTextureStatus::Lost");
+    static_assert(static_cast<uint32_t>(SurfaceGetCurrentTextureStatus::OutOfMemory) == WGPUSurfaceGetCurrentTextureStatus_OutOfMemory, "value mismatch for SurfaceGetCurrentTextureStatus::OutOfMemory");
+    static_assert(static_cast<uint32_t>(SurfaceGetCurrentTextureStatus::DeviceLost) == WGPUSurfaceGetCurrentTextureStatus_DeviceLost, "value mismatch for SurfaceGetCurrentTextureStatus::DeviceLost");
 
     // TextureAspect
 
@@ -1302,6 +1325,96 @@ namespace wgpu {
     static_assert(offsetof(StorageTextureBindingLayout, viewDimension) == offsetof(WGPUStorageTextureBindingLayout, viewDimension),
             "offsetof mismatch for StorageTextureBindingLayout::viewDimension");
 
+template <typename T>
+    static T& AsNonConstReference(const T& value) {
+        return const_cast<T&>(value);
+    }
+
+    // SurfaceCapabilities
+    SurfaceCapabilities::~SurfaceCapabilities() {
+        if (this->formats != nullptr || this->presentModes != nullptr || this->alphaModes != nullptr) {
+            wgpuSurfaceCapabilitiesFreeMembers(
+                *reinterpret_cast<WGPUSurfaceCapabilities*>(this));
+        }
+    }
+
+    static void Reset(SurfaceCapabilities& value) {
+        SurfaceCapabilities defaultValue{};
+        AsNonConstReference(value.formatCount) = defaultValue.formatCount;
+        AsNonConstReference(value.formats) = defaultValue.formats;
+        AsNonConstReference(value.presentModeCount) = defaultValue.presentModeCount;
+        AsNonConstReference(value.presentModes) = defaultValue.presentModes;
+        AsNonConstReference(value.alphaModeCount) = defaultValue.alphaModeCount;
+        AsNonConstReference(value.alphaModes) = defaultValue.alphaModes;
+    }
+
+    SurfaceCapabilities::SurfaceCapabilities(SurfaceCapabilities&& rhs)
+    : formatCount(rhs.formatCount),
+      formats(rhs.formats),
+      presentModeCount(rhs.presentModeCount),
+      presentModes(rhs.presentModes),
+      alphaModeCount(rhs.alphaModeCount),
+      alphaModes(rhs.alphaModes){
+        Reset(rhs);
+    }
+
+    SurfaceCapabilities& SurfaceCapabilities::operator=(SurfaceCapabilities&& rhs) {
+        if (&rhs == this) {
+            return *this;
+        }
+        this->~SurfaceCapabilities();
+        AsNonConstReference(this->formatCount) = std::move(rhs.formatCount);
+        AsNonConstReference(this->formats) = std::move(rhs.formats);
+        AsNonConstReference(this->presentModeCount) = std::move(rhs.presentModeCount);
+        AsNonConstReference(this->presentModes) = std::move(rhs.presentModes);
+        AsNonConstReference(this->alphaModeCount) = std::move(rhs.alphaModeCount);
+        AsNonConstReference(this->alphaModes) = std::move(rhs.alphaModes);
+        Reset(rhs);
+        return *this;
+    }
+
+    static_assert(sizeof(SurfaceCapabilities) == sizeof(WGPUSurfaceCapabilities), "sizeof mismatch for SurfaceCapabilities");
+    static_assert(alignof(SurfaceCapabilities) == alignof(WGPUSurfaceCapabilities), "alignof mismatch for SurfaceCapabilities");
+    static_assert(offsetof(SurfaceCapabilities, nextInChain) == offsetof(WGPUSurfaceCapabilities, nextInChain),
+            "offsetof mismatch for SurfaceCapabilities::nextInChain");
+    static_assert(offsetof(SurfaceCapabilities, formatCount) == offsetof(WGPUSurfaceCapabilities, formatCount),
+            "offsetof mismatch for SurfaceCapabilities::formatCount");
+    static_assert(offsetof(SurfaceCapabilities, formats) == offsetof(WGPUSurfaceCapabilities, formats),
+            "offsetof mismatch for SurfaceCapabilities::formats");
+    static_assert(offsetof(SurfaceCapabilities, presentModeCount) == offsetof(WGPUSurfaceCapabilities, presentModeCount),
+            "offsetof mismatch for SurfaceCapabilities::presentModeCount");
+    static_assert(offsetof(SurfaceCapabilities, presentModes) == offsetof(WGPUSurfaceCapabilities, presentModes),
+            "offsetof mismatch for SurfaceCapabilities::presentModes");
+    static_assert(offsetof(SurfaceCapabilities, alphaModeCount) == offsetof(WGPUSurfaceCapabilities, alphaModeCount),
+            "offsetof mismatch for SurfaceCapabilities::alphaModeCount");
+    static_assert(offsetof(SurfaceCapabilities, alphaModes) == offsetof(WGPUSurfaceCapabilities, alphaModes),
+            "offsetof mismatch for SurfaceCapabilities::alphaModes");
+
+    // SurfaceConfiguration
+
+    static_assert(sizeof(SurfaceConfiguration) == sizeof(WGPUSurfaceConfiguration), "sizeof mismatch for SurfaceConfiguration");
+    static_assert(alignof(SurfaceConfiguration) == alignof(WGPUSurfaceConfiguration), "alignof mismatch for SurfaceConfiguration");
+    static_assert(offsetof(SurfaceConfiguration, nextInChain) == offsetof(WGPUSurfaceConfiguration, nextInChain),
+            "offsetof mismatch for SurfaceConfiguration::nextInChain");
+    static_assert(offsetof(SurfaceConfiguration, device) == offsetof(WGPUSurfaceConfiguration, device),
+            "offsetof mismatch for SurfaceConfiguration::device");
+    static_assert(offsetof(SurfaceConfiguration, format) == offsetof(WGPUSurfaceConfiguration, format),
+            "offsetof mismatch for SurfaceConfiguration::format");
+    static_assert(offsetof(SurfaceConfiguration, usage) == offsetof(WGPUSurfaceConfiguration, usage),
+            "offsetof mismatch for SurfaceConfiguration::usage");
+    static_assert(offsetof(SurfaceConfiguration, viewFormatCount) == offsetof(WGPUSurfaceConfiguration, viewFormatCount),
+            "offsetof mismatch for SurfaceConfiguration::viewFormatCount");
+    static_assert(offsetof(SurfaceConfiguration, viewFormats) == offsetof(WGPUSurfaceConfiguration, viewFormats),
+            "offsetof mismatch for SurfaceConfiguration::viewFormats");
+    static_assert(offsetof(SurfaceConfiguration, alphaMode) == offsetof(WGPUSurfaceConfiguration, alphaMode),
+            "offsetof mismatch for SurfaceConfiguration::alphaMode");
+    static_assert(offsetof(SurfaceConfiguration, width) == offsetof(WGPUSurfaceConfiguration, width),
+            "offsetof mismatch for SurfaceConfiguration::width");
+    static_assert(offsetof(SurfaceConfiguration, height) == offsetof(WGPUSurfaceConfiguration, height),
+            "offsetof mismatch for SurfaceConfiguration::height");
+    static_assert(offsetof(SurfaceConfiguration, presentMode) == offsetof(WGPUSurfaceConfiguration, presentMode),
+            "offsetof mismatch for SurfaceConfiguration::presentMode");
+
     // SurfaceDescriptor
 
     static_assert(sizeof(SurfaceDescriptor) == sizeof(WGPUSurfaceDescriptor), "sizeof mismatch for SurfaceDescriptor");
@@ -1319,6 +1432,17 @@ namespace wgpu {
 
     static_assert(offsetof(SurfaceDescriptorFromCanvasHTMLSelector, selector) == offsetof(WGPUSurfaceDescriptorFromCanvasHTMLSelector, selector),
             "offsetof mismatch for SurfaceDescriptorFromCanvasHTMLSelector::selector");
+
+    // SurfaceTexture
+
+    static_assert(sizeof(SurfaceTexture) == sizeof(WGPUSurfaceTexture), "sizeof mismatch for SurfaceTexture");
+    static_assert(alignof(SurfaceTexture) == alignof(WGPUSurfaceTexture), "alignof mismatch for SurfaceTexture");
+    static_assert(offsetof(SurfaceTexture, texture) == offsetof(WGPUSurfaceTexture, texture),
+            "offsetof mismatch for SurfaceTexture::texture");
+    static_assert(offsetof(SurfaceTexture, suboptimal) == offsetof(WGPUSurfaceTexture, suboptimal),
+            "offsetof mismatch for SurfaceTexture::suboptimal");
+    static_assert(offsetof(SurfaceTexture, status) == offsetof(WGPUSurfaceTexture, status),
+            "offsetof mismatch for SurfaceTexture::status");
 
     // SwapChainDescriptor
 
@@ -1799,10 +1923,6 @@ namespace wgpu {
             "offsetof mismatch for RenderPipelineDescriptor::multisample");
     static_assert(offsetof(RenderPipelineDescriptor, fragment) == offsetof(WGPURenderPipelineDescriptor, fragment),
             "offsetof mismatch for RenderPipelineDescriptor::fragment");
-template <typename T>
-    static T& AsNonConstReference(const T& value) {
-        return const_cast<T&>(value);
-    }
 
     // AdapterProperties
     AdapterProperties::~AdapterProperties() {
@@ -2566,9 +2686,25 @@ template <typename T>
     static_assert(sizeof(Surface) == sizeof(WGPUSurface), "sizeof mismatch for Surface");
     static_assert(alignof(Surface) == alignof(WGPUSurface), "alignof mismatch for Surface");
 
+    void Surface::Configure(SurfaceConfiguration const * config) const {
+        wgpuSurfaceConfigure(Get(), reinterpret_cast<WGPUSurfaceConfiguration const * >(config));
+    }
+    void Surface::GetCapabilities(Adapter const& adapter, SurfaceCapabilities * capabilities) const {
+        *capabilities = SurfaceCapabilities();
+        wgpuSurfaceGetCapabilities(Get(), adapter.Get(), reinterpret_cast<WGPUSurfaceCapabilities * >(capabilities));
+    }
+    void Surface::GetCurrentTexture(SurfaceTexture * surfaceTexture) const {
+        wgpuSurfaceGetCurrentTexture(Get(), reinterpret_cast<WGPUSurfaceTexture * >(surfaceTexture));
+    }
     TextureFormat Surface::GetPreferredFormat(Adapter const& adapter) const {
         auto result = wgpuSurfaceGetPreferredFormat(Get(), adapter.Get());
         return static_cast<TextureFormat>(result);
+    }
+    void Surface::Present() const {
+        wgpuSurfacePresent(Get());
+    }
+    void Surface::Unconfigure() const {
+        wgpuSurfaceUnconfigure(Get());
     }
     void Surface::WGPUReference(WGPUSurface handle) {
         if (handle != nullptr) {
