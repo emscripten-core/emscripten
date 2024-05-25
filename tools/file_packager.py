@@ -965,56 +965,110 @@ def generate_js(data_target, data_files, metadata):
           });
           return;
         }'''.strip()
-    ret += '''
-      function fetchRemotePackage(packageName, packageSize, callback, errback) {
-        %(node_support_code)s
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', packageName, true);
-        xhr.responseType = 'arraybuffer';
-        xhr.onprogress = function(event) {
-          var url = packageName;
-          var size = packageSize;
-          if (event.total) size = event.total;
-          if (event.loaded) {
-            if (!xhr.addedTotal) {
-              xhr.addedTotal = true;
-              if (!Module.dataFileDownloads) Module.dataFileDownloads = {};
-              Module.dataFileDownloads[url] = {
-                loaded: event.loaded,
-                total: size
-              };
-            } else {
-              Module.dataFileDownloads[url].loaded = event.loaded;
-            }
-            var total = 0;
-            var loaded = 0;
-            var num = 0;
-            for (var download in Module.dataFileDownloads) {
-            var data = Module.dataFileDownloads[download];
-              total += data.total;
-              loaded += data.loaded;
-              num++;
-            }
-            total = Math.ceil(total * Module.expectedDataFileDownloads/num);
-            if (Module['setStatus']) Module['setStatus'](`Downloading data... (${loaded}/${total})`);
-          } else if (!Module.dataFileDownloads) {
-            if (Module['setStatus']) Module['setStatus']('Downloading data...');
-          }
-        };
-        xhr.onerror = function(event) {
-          throw new Error("NetworkError for: " + packageName);
-        }
-        xhr.onload = function(event) {
-          if (xhr.status == 200 || xhr.status == 304 || xhr.status == 206 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
-            var packageData = xhr.response;
-            callback(packageData);
-          } else {
-            throw new Error(xhr.statusText + " : " + xhr.responseURL);
-          }
-        };
-        xhr.send(null);
-      };
+    if options.use_fetch:
+      ret += '''
+        function fetchRemotePackage(packageName, packageSize, callback, errback) {
+          %(node_support_code)s
+          Module.dataFileDownloads = Module.dataFileDownloads || {};
+          const url = packageName;
+          fetch(url).then(response => {
 
+            let received = 0;
+
+            const reader = response.body.getReader();
+            const headers = response.headers;
+
+            console.log(response, [...headers.entries()]);
+
+            if(!response.ok) {
+              throw new Error(response.statusText + ' : ' + response.url);
+            }
+
+            const total = headers.get('Content-Length') ?? packageSize;
+            const chunks = [];
+
+            const iterate = () => reader.read().then(handleChunk).catch(cause => {
+              throw new Error(response.statusText + ' : ' + response.url, {cause});
+            });
+
+            const handleChunk = ({done, value}) => {
+              if(!done) {
+                console.log({done, value});
+                chunks.push(value);
+                received += value.length;
+                Module.dataFileDownloads[url] = Module.dataFileDownloads[url] ?? {};
+                Module.dataFileDownloads[url].loaded = received;
+                Module.dataFileDownloads[url].total = total;
+                console.log(JSON.stringify(Module.dataFileDownloads));
+                return iterate();
+              }
+              else {
+                const size = chunks.map(c => c.length).reduce((a, b) => a + b, 0);
+                let index = 0;
+                const packageData = new Uint8Array(size);
+                for(const chunk of chunks) {
+                  packageData.set(chunk, index);
+                  index += chunk.length;
+                }
+                console.log(packageData);
+                callback(packageData.buffer);
+              }
+            };
+            return iterate();
+          });
+        }\n''' % {'node_support_code': node_support_code}
+    else:
+      ret += '''
+        function fetchRemotePackage(packageName, packageSize, callback, errback) {
+          %(node_support_code)s
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', packageName, true);
+          xhr.responseType = 'arraybuffer';
+          xhr.onprogress = function(event) {
+            var url = packageName;
+            var size = packageSize;
+            if (event.total) size = event.total;
+            if (event.loaded) {
+              if (!xhr.addedTotal) {
+                xhr.addedTotal = true;
+                if (!Module.dataFileDownloads) Module.dataFileDownloads = {};
+                Module.dataFileDownloads[url] = {
+                  loaded: event.loaded,
+                  total: size
+                };
+              } else {
+                Module.dataFileDownloads[url].loaded = event.loaded;
+              }
+              var total = 0;
+              var loaded = 0;
+              var num = 0;
+              for (var download in Module.dataFileDownloads) {
+              var data = Module.dataFileDownloads[download];
+                total += data.total;
+                loaded += data.loaded;
+                num++;
+              }
+              total = Math.ceil(total * Module.expectedDataFileDownloads/num);
+              if (Module['setStatus']) Module['setStatus'](`Downloading data... (${loaded}/${total})`);
+            } else if (!Module.dataFileDownloads) {
+              if (Module['setStatus']) Module['setStatus']('Downloading data...');
+            }
+          };
+          xhr.onerror = function(event) {
+            throw new Error("NetworkError for: " + packageName);
+          }
+          xhr.onload = function(event) {
+            if (xhr.status == 200 || xhr.status == 304 || xhr.status == 206 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
+              var packageData = xhr.response;
+              callback(packageData);
+            } else {
+              throw new Error(xhr.statusText + " : " + xhr.responseURL);
+            }
+          };
+          xhr.send(null);
+        };\n'''
+
+    ret += '''
       function handleError(error) {
         console.error('package error:', error);
       };\n''' % {'node_support_code': node_support_code}

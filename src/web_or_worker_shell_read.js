@@ -20,7 +20,19 @@
       return new Uint8Array(/** @type{!ArrayBuffer} */(xhr.response));
     };
   }
-
+#if USE_FETCH
+  readAsync = (url, onload, onerror) => {
+    fetch(url)
+    .then(response => {
+      if(response.ok) {
+        onload(response.arrayBuffer());
+        return;
+      }
+      throw new Error(response.statusText + ' : ' + response.url);
+    })
+    .catch(onerror)
+  };
+#else
   readAsync = (url, onload, onerror) => {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
@@ -35,4 +47,4 @@
     xhr.onerror = onerror;
     xhr.send(null);
   }
-
+#endif

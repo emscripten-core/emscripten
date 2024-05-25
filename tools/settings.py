@@ -74,6 +74,7 @@ JS_ONLY_SETTINGS = {
     'PTHREAD_POOL_SIZE_STRICT',
     'PTHREAD_POOL_DELAY_LOAD',
     'DEFAULT_PTHREAD_STACK_SIZE',
+    'USE_FETCH',
 }
 
 # Subset of settings that apply at compile time.
