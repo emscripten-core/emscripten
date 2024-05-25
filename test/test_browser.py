@@ -291,7 +291,11 @@ If manually bisecting:
                     args=['-Wno-deprecated-pragma', '--pre-js', path_from_root('src/emscripten-source-map.min.js'), '-gsource-map'])
 
   @also_with_wasmfs
-  def test_preload_file(self):
+  @parameterized({
+    '': ([],),
+    'USE_FETCH': (['-sUSE_FETCH'],),
+  })
+  def test_preload_file(self, args):
     create_file('somefile.txt', 'load me right before running the code please')
     create_file('.somefile.txt', 'load me right before running the code please')
     create_file('some@file.txt', 'load me right before running the code please')
@@ -355,7 +359,7 @@ If manually bisecting:
     create_file(tricky_filename, 'load me right before running the code please')
     make_main(tricky_filename)
     # As an Emscripten-specific feature, the character '@' must be escaped in the form '@@' to not confuse with the 'src@dst' notation.
-    self.btest_exit('main.cpp', args=['--preload-file', tricky_filename.replace('@', '@@')])
+    self.btest_exit('main.cpp', ['--preload-file', tricky_filename.replace('@', '@@')] + args)
 
     # TODO: WASMFS doesn't support the rest of this test yet. Exit early.
     if self.get_setting('WASMFS'):
@@ -364,7 +368,7 @@ If manually bisecting:
     # By absolute path
 
     make_main('somefile.txt') # absolute becomes relative
-    self.btest_exit('main.cpp', args=['--preload-file', absolute_src_path])
+    self.btest_exit('main.cpp', ['--preload-file', absolute_src_path] + args)
 
     # Test subdirectory handling with asset packaging.
     delete_dir('assets')

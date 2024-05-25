@@ -807,6 +807,12 @@ var NODEJS_CATCH_EXIT = true;
 // [link]
 var NODEJS_CATCH_REJECTION = true;
 
+// Whether to use fetch instead of XHR to load files and packages.
+// Defaults to FALSE
+//
+// [link]
+var USE_FETCH = false;
+
 // Whether to support async operations in the compiled code. This makes it
 // possible to call JS functions from synchronous-looking code in C/C++.
 //
@@ -2176,6 +2182,7 @@ var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = false;
 // Internal (testing only): Forces memory growing to fail.
 // [link]
 var TEST_MEMORY_GROWTH_FAILS = false;
+
 
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]

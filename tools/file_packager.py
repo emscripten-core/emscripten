@@ -26,6 +26,8 @@ Usage:
   --preload  ,
   --embed    See emcc --help for more details on those options.
 
+  --use-fetch Use fetch instead of XHR.
+
   --exclude E [F..] Specifies filename pattern matches to use for excluding given files from being added to the package.
                     See https://docs.python.org/2/library/fnmatch.html for syntax.
 
@@ -128,6 +130,7 @@ class Options:
     self.use_preload_plugins = False
     self.support_node = True
     self.wasm64 = False
+    self.use_fetch = False
 
 
 class DataFile:
@@ -373,6 +376,8 @@ def main():
       leading = 'preload'
     elif arg == '--embed':
       leading = 'embed'
+    elif arg == '--use-fetch':
+      options.use_fetch = True
     elif arg == '--exclude':
       leading = 'exclude'
     elif arg == '--no-force':
@@ -973,14 +978,12 @@ def generate_js(data_target, data_files, metadata):
           const url = packageName;
           fetch(url).then(response => {
 
-            let received = 0;
+            let loaded = 0;
 
             const reader = response.body.getReader();
             const headers = response.headers;
 
-            console.log(response, [...headers.entries()]);
-
-            if(!response.ok) {
+            if (!response.ok) {
               throw new Error(response.statusText + ' : ' + response.url);
             }
 
@@ -992,14 +995,19 @@ def generate_js(data_target, data_files, metadata):
             });
 
             const handleChunk = ({done, value}) => {
-              if(!done) {
-                console.log({done, value});
+              if (!done) {
                 chunks.push(value);
-                received += value.length;
+                loaded += value.length;
                 Module.dataFileDownloads[url] = Module.dataFileDownloads[url] ?? {};
-                Module.dataFileDownloads[url].loaded = received;
+                Module.dataFileDownloads[url].loaded = loaded;
                 Module.dataFileDownloads[url].total = total;
-                console.log(JSON.stringify(Module.dataFileDownloads));
+
+                if (total) {
+                  if (Module['setStatus']) Module['setStatus'](`Downloading data... (${loaded}/${total})`);
+                }
+                else {
+                  if (Module['setStatus']) Module['setStatus']('Downloading data...');
+                }
                 return iterate();
               }
               else {
@@ -1010,13 +1018,13 @@ def generate_js(data_target, data_files, metadata):
                   packageData.set(chunk, index);
                   index += chunk.length;
                 }
-                console.log(packageData);
+                
                 callback(packageData.buffer);
               }
             };
             return iterate();
           });
-        }\n''' % {'node_support_code': node_support_code}
+        };\n''' % {'node_support_code': node_support_code}
     else:
       ret += '''
         function fetchRemotePackage(packageName, packageSize, callback, errback) {
@@ -1066,12 +1074,12 @@ def generate_js(data_target, data_files, metadata):
             }
           };
           xhr.send(null);
-        };\n'''
+        };\n''' % {'node_support_code': node_support_code}
 
     ret += '''
       function handleError(error) {
         console.error('package error:', error);
-      };\n''' % {'node_support_code': node_support_code}
+      };\n'''
 
     code += '''
       function processPackageData(arrayBuffer) {
@@ -1160,30 +1168,46 @@ def generate_js(data_target, data_files, metadata):
     }\n'''
 
   if options.separate_metadata:
-      _metadata_template = '''
+    _metadata_template = '''
     Module['removeRunDependency']('%(metadata_file)s');
-  }
+  }'''
+    
+    if options.use_fetch:
+      ret += '''
+        function runMetaWithFS() {
+          Module['addRunDependency']('%(metadata_file)s');
+          var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
+          fetch(REMOTE_METADATA_NAME)
+          .then(response => {
+            if(response.ok) {
+              return response.json();
+            }
+          })
+          .then(loadPackage);
+        }''' % {'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
+    else:
+      ret += '''
+        function runMetaWithFS() {
+          Module['addRunDependency']('%(metadata_file)s');
+          var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
+          var xhr = new XMLHttpRequest();
+          xhr.onreadystatechange = function() {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                loadPackage(JSON.parse(xhr.responseText));
+            }
+          }
+          xhr.open('GET', REMOTE_METADATA_NAME, true);
+          xhr.overrideMimeType('application/json');
+          xhr.send(null);
+        }''' % {'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
 
-  function runMetaWithFS() {
-    Module['addRunDependency']('%(metadata_file)s');
-    var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
-    var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function() {
-     if (xhr.readyState === 4 && xhr.status === 200) {
-       loadPackage(JSON.parse(xhr.responseText));
-     }
-    }
-    xhr.open('GET', REMOTE_METADATA_NAME, true);
-    xhr.overrideMimeType('application/json');
-    xhr.send(null);
-  }
-
-  if (Module['calledRun']) {
-    runMetaWithFS();
-  } else {
-    if (!Module['preRun']) Module['preRun'] = [];
-    Module["preRun"].push(runMetaWithFS);
-  }\n''' % {'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
+    '''
+    if (Module['calledRun']) {
+      runMetaWithFS();
+    } else {
+      if (!Module['preRun']) Module['preRun'] = [];
+      Module["preRun"].push(runMetaWithFS);
+    }\n''' % {'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
 
   else:
       _metadata_template = '''

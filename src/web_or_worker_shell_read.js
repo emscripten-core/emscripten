@@ -25,11 +25,11 @@
     fetch(url)
     .then(response => {
       if(response.ok) {
-        onload(response.arrayBuffer());
-        return;
+        return response.arrayBuffer();
       }
       throw new Error(response.statusText + ' : ' + response.url);
     })
+    .then(onload)
     .catch(onerror)
   };
 #else

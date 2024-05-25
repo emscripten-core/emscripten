@@ -74,7 +74,6 @@ JS_ONLY_SETTINGS = {
     'PTHREAD_POOL_SIZE_STRICT',
     'PTHREAD_POOL_DELAY_LOAD',
     'DEFAULT_PTHREAD_STACK_SIZE',
-    'USE_FETCH',
 }
 
 # Subset of settings that apply at compile time.
@@ -97,6 +96,7 @@ COMPILE_TIME_SETTINGS = {
     'WASM_OBJECT_FILES',
     'WASM_WORKERS',
     'BULK_MEMORY',
+    'USE_FETCH',
 
     # Internal settings used during compilation
     'EXCEPTION_CATCHING_ALLOWED',
