@@ -807,7 +807,7 @@ var NODEJS_CATCH_EXIT = true;
 // [link]
 var NODEJS_CATCH_REJECTION = true;
 
-// Whether to use fetch instead of XHR to load files and packages.
+// Whether to use fetch instead of XHR to load file packages and shared libraries.
 // Defaults to FALSE
 //
 // [link]
