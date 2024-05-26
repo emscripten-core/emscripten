@@ -1198,7 +1198,7 @@ def generate_js(data_target, data_files, metadata):
     Module["preRun"].push(runMetaWithFS);
   }\n''' % {'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
 
-  elif options.separate_metadata and optons.use_fetch:
+  elif options.separate_metadata and options.use_fetch:
       _metadata_template = '''
     Module['removeRunDependency']('%(metadata_file)s');
   }
