@@ -1479,8 +1479,8 @@ keydown(100);keyup(100); // trigger the end
     create_file('files.js', out, binary=True)
     self.btest_exit('fs/test_lz4fs.cpp', 2, args=['--pre-js', 'files.js'])'''
   @parameterized({
-    '': ([],[]),
-    'use_fetch': (['-sUSE_FETCH'],['--use-fetch']),
+    '': ([], []),
+    'use_fetch': (['-sUSE_FETCH'], ['--use-fetch']),
   })
   def test_separate_metadata_later(self, args, packArgs):
     # see issue #6654 - we need to handle separate-metadata both when we run before
