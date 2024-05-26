@@ -1479,14 +1479,17 @@ keydown(100);keyup(100); // trigger the end
     out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'files/file1.txt', 'files/file2.txt', 'files/file3.txt'])
     create_file('files.js', out, binary=True)
     self.btest_exit('fs/test_lz4fs.cpp', 2, args=['--pre-js', 'files.js'])'''
-
-  def test_separate_metadata_later(self):
+  @parameterized({
+    '': ([],),
+    'use_fetch': (['-sUSE_FETCH'],),
+  })
+  def test_separate_metadata_later(self, args):
     # see issue #6654 - we need to handle separate-metadata both when we run before
     # the main program, and when we are run later
 
     create_file('data.dat', ' ')
     self.run_process([FILE_PACKAGER, 'more.data', '--preload', 'data.dat', '--separate-metadata', '--js-output=more.js'])
-    self.btest(Path('browser/separate_metadata_later.cpp'), '1', args=['-sFORCE_FILESYSTEM'])
+    self.btest(Path('browser/separate_metadata_later.cpp'), '1', args=['-sFORCE_FILESYSTEM'] + args)
 
   def test_idbstore(self):
     secret = str(time.time())
