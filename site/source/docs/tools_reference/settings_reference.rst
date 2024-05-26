@@ -1208,7 +1208,6 @@ USE_FETCH
 =========
 
 Whether to use fetch instead of XHR to load file packages and shared libraries.
-Defaults to FALSE
 
 Default value: false
 
