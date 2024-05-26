@@ -1018,7 +1018,7 @@ def generate_js(data_target, data_files, metadata):
                   packageData.set(chunk, index);
                   index += chunk.length;
                 }
-                
+
                 callback(packageData.buffer);
               }
             };
