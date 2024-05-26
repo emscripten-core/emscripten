@@ -1167,11 +1167,6 @@ def generate_js(data_target, data_files, metadata):
       Module["preRun"].push(runWithFS); // FS is not initialized yet, wait for it
     }\n'''
 
-  if options.separate_metadata:
-    _metadata_template = '''
-    Module['removeRunDependency']('%(metadata_file)s');
-  }'''
-
   if options.separate_metadata and not options.use_fetch:
       _metadata_template = '''
     Module['removeRunDependency']('%(metadata_file)s');
