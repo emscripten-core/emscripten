@@ -296,7 +296,6 @@ If manually bisecting:
   })
   @also_with_wasmfs
   def test_preload_file(self, args):
-    print(repr(args))
     create_file('somefile.txt', 'load me right before running the code please')
     create_file('.somefile.txt', 'load me right before running the code please')
     create_file('some@file.txt', 'load me right before running the code please')
