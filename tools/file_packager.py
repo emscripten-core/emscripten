@@ -1172,43 +1172,55 @@ def generate_js(data_target, data_files, metadata):
     Module['removeRunDependency']('%(metadata_file)s');
   }'''
 
-    if options.use_fetch:
-      ret += '''
-        function runMetaWithFS() {
-          Module['addRunDependency']('%(metadata_file)s');
-          var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
-          fetch(REMOTE_METADATA_NAME)
-          .then(response => {
-            if(response.ok) {
-              return response.json();
-            }
-          })
-          .then(loadPackage);
-        }''' % {'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
-    else:
-      ret += '''
-        function runMetaWithFS() {
-          Module['addRunDependency']('%(metadata_file)s');
-          var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
-          var xhr = new XMLHttpRequest();
-          xhr.onreadystatechange = function() {
-            if (xhr.readyState === 4 && xhr.status === 200) {
-                loadPackage(JSON.parse(xhr.responseText));
-            }
-          }
-          xhr.open('GET', REMOTE_METADATA_NAME, true);
-          xhr.overrideMimeType('application/json');
-          xhr.send(null);
-        }''' % {'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
+  if options.separate_metadata and not options.use_fetch:
+      _metadata_template = '''
+    Module['removeRunDependency']('%(metadata_file)s');
+  }
 
-    '''
-    if (Module['calledRun']) {
-      runMetaWithFS();
-    } else {
-      if (!Module['preRun']) Module['preRun'] = [];
-      Module["preRun"].push(runMetaWithFS);
-    }\n'''
+  function runMetaWithFS() {
+    Module['addRunDependency']('%(metadata_file)s');
+    var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function() {
+     if (xhr.readyState === 4 && xhr.status === 200) {
+       loadPackage(JSON.parse(xhr.responseText));
+     }
+    }
+    xhr.open('GET', REMOTE_METADATA_NAME, true);
+    xhr.overrideMimeType('application/json');
+    xhr.send(null);
+  }
 
+  if (Module['calledRun']) {
+    runMetaWithFS();
+  } else {
+    if (!Module['preRun']) Module['preRun'] = [];
+    Module["preRun"].push(runMetaWithFS);
+  }\n''' % {'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
+
+  elif options.separate_metadata and optons.use_fetch:
+      _metadata_template = '''
+    Module['removeRunDependency']('%(metadata_file)s');
+  }
+
+  function runMetaWithFS() {
+    Module['addRunDependency']('%(metadata_file)s');
+    var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
+    fetch(REMOTE_METADATA_NAME)
+    .then(response => {
+      if(response.ok) {
+        return response.json();
+      }
+    })
+    .then(loadPackage);
+  }
+
+  if (Module['calledRun']) {
+    runMetaWithFS();
+  } else {
+    if (!Module['preRun']) Module['preRun'] = [];
+    Module["preRun"].push(runMetaWithFS);
+  }\n''' % {'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
   else:
       _metadata_template = '''
     }
