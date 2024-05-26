@@ -290,12 +290,13 @@ If manually bisecting:
     self.btest_exit('emscripten_log/emscripten_log.cpp',
                     args=['-Wno-deprecated-pragma', '--pre-js', path_from_root('src/emscripten-source-map.min.js'), '-gsource-map'])
 
-  @also_with_wasmfs
   @parameterized({
     '': ([],),
-    'USE_FETCH': (['-sUSE_FETCH'],),
+    'use_fetch': (['-sUSE_FETCH'],),
   })
+  @also_with_wasmfs
   def test_preload_file(self, args):
+    print(repr(args))
     create_file('somefile.txt', 'load me right before running the code please')
     create_file('.somefile.txt', 'load me right before running the code please')
     create_file('some@file.txt', 'load me right before running the code please')
@@ -348,7 +349,7 @@ If manually bisecting:
     for srcpath, dstpath in test_cases:
       print('Testing', srcpath, dstpath)
       make_main(dstpath)
-      self.btest_exit('main.cpp', args=['--preload-file', srcpath])
+      self.btest_exit('main.cpp', args=['--preload-file', srcpath] + args)
     if WINDOWS:
       # On Windows, the following non-alphanumeric non-control code ASCII characters are supported.
       # The characters <, >, ", |, ?, * are not allowed, because the Windows filesystem doesn't support those.
@@ -359,7 +360,7 @@ If manually bisecting:
     create_file(tricky_filename, 'load me right before running the code please')
     make_main(tricky_filename)
     # As an Emscripten-specific feature, the character '@' must be escaped in the form '@@' to not confuse with the 'src@dst' notation.
-    self.btest_exit('main.cpp', ['--preload-file', tricky_filename.replace('@', '@@')] + args)
+    self.btest_exit('main.cpp', args=['--preload-file', tricky_filename.replace('@', '@@')] + args)
 
     # TODO: WASMFS doesn't support the rest of this test yet. Exit early.
     if self.get_setting('WASMFS'):
@@ -368,7 +369,7 @@ If manually bisecting:
     # By absolute path
 
     make_main('somefile.txt') # absolute becomes relative
-    self.btest_exit('main.cpp', ['--preload-file', absolute_src_path] + args)
+    self.btest_exit('main.cpp', args=['--preload-file', absolute_src_path] + args)
 
     # Test subdirectory handling with asset packaging.
     delete_dir('assets')
@@ -1409,13 +1410,17 @@ keydown(100);keyup(100); // trigger the end
     ''' % (secret, secret2))
     self.btest_exit('fs/test_workerfs_read.c', args=['-lworkerfs.js', '--pre-js', 'pre.js', f'-DSECRET="{secret }"', f'-DSECRET2="{secret2}"', '--proxy-to-worker', '-lworkerfs.js'])
 
-  def test_fs_workerfs_package(self):
+  @parameterized({
+    '': ([],),
+    'use_fetch': (['-sUSE_FETCH'],),
+  })
+  def test_fs_workerfs_package(self, args):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
     create_file('file1.txt', 'first')
     ensure_dir('sub')
     create_file('sub/file2.txt', 'second')
     self.run_process([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', Path('sub/file2.txt'), '--separate-metadata', '--js-output=files.js'])
-    self.btest(Path('fs/test_workerfs_package.cpp'), '1', args=['-lworkerfs.js', '--proxy-to-worker', '-lworkerfs.js'])
+    self.btest(Path('fs/test_workerfs_package.cpp'), '1', args=['-lworkerfs.js', '--proxy-to-worker', '-lworkerfs.js'] + args)
 
   def test_fs_lz4fs_package(self):
     # generate data
@@ -2333,7 +2338,11 @@ void *getBindBuffer() {
   def test_openal_extensions(self):
     self.btest_exit('openal_extensions.c')
 
-  def test_runtimelink(self):
+  @parameterized({
+    '': ([],),
+    'use_fetch': (['-sUSE_FETCH'],)
+  })
+  def test_runtimelink(self, args):
     create_file('header.h', r'''
       struct point {
         int x, y;
@@ -2380,7 +2389,7 @@ void *getBindBuffer() {
       }
     ''')
     self.run_process([EMCC, 'supp.c', '-o', 'supp.wasm', '-sSIDE_MODULE', '-O2'] + self.get_emcc_args())
-    self.btest_exit('main.c', args=['-sMAIN_MODULE=2', '-O2', 'supp.wasm'])
+    self.btest_exit('main.c', args=['-sMAIN_MODULE=2', '-O2', 'supp.wasm'] + args)
 
   @also_with_wasm2js
   def test_pre_run_deps(self):
