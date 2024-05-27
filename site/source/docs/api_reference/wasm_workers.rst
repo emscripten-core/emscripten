@@ -266,7 +266,7 @@ table.
     <tr><td class='cellborder'>Thread stack</td>
     <td class='cellborder'>Specify in pthread_attr_t structure.</td>
     <td class='cellborder'>Manage thread stack area explicitly with <pre>emscripten_create_wasm_worker_*_tls()</pre> functions, or
-      <br>automatically allocate stack with <pre>emscripten_malloc_wasm_worker()</pre> API.</td></tr>
+      <br>automatically allocate stack+TLS area with <pre>emscripten_malloc_wasm_worker()</pre> API.</td></tr>
 
     <tr><td class='cellborder'>Thread Local Storage (TLS)</td>
     <td class='cellborder'>Supported transparently.</td>
@@ -345,11 +345,22 @@ table.
 Wasm Workers stack size considerations
 ======================================
 
-When instantiating a Wasm Worker, one has to create a memory array for the LLVM data stack for the created Worker. This data stack will generally consist only of local variables that have been "spilled" by LLVM into memory, e.g. to contain large arrays, structs, or other variables that are referenced by a memory address. This stack will not contain program flow information.
+When instantiating a Wasm Worker, one has to create a memory array for the LLVM
+data stack for the created Worker. This data stack will generally consist only
+of local variables that have been "spilled" by LLVM into memory, e.g. to contain
+large arrays, structs, or other variables that are referenced by a memory
+address. This stack will not contain control flow information.
 
-Since WebAssembly does not support virtual memory, the size of the LLVM data stack that is defined both for Wasm Workers but also the main thread will not be possible to grow at runtime. So if the Worker (or the main thread) runs out of stack space, the program behavior will be undefined. Use the Emscripten linker flag -sSTACK_OVERFLOW_CHECK=2 to emit runtime stack overflow checks into the program code to detect these situations during development.
+Since WebAssembly does not support virtual memory, the size of the LLVM data
+stack that is defined both for Wasm Workers but also the main thread will not be
+possible to grow at runtime. So if the Worker (or the main thread) runs out of
+stack space, the program behavior will be undefined. Use the Emscripten linker
+flag -sSTACK_OVERFLOW_CHECK=2 to emit runtime stack overflow checks into the
+program code to detect these situations during development.
 
-Note that a stack overflow in this LLVM data stack does not imply stack overflow security vulnerabilities in the WebAssembly VM. The Wasm VM program flow stack is separate from this LLVM data stack, and guarded from access from Wasm code. However, if your threat model consists of executing untrusted program code, or executing a program from untrusted input inside the WebAssembly module, you may need to consider your security model to include safekeeping the LLVM data stack as well.
+Note that to avoid the need to perform two separate allocations, the TLS memory
+for the Wasm Worker will be located at the bottom end (low memory address) of
+the Wasm Worker stack space.
 
 Wasm Workers vs the earlier Emscripten Worker API
 =================================================
@@ -362,7 +373,7 @@ With the Worker API, the user will be able to spawn a Web Worker from a custom U
 
 The Worker API does not integrate with SharedArrayBuffer, so interaction with the loaded Worker will always be asynchronous. Wasm Workers howerer is built on top of SharedArrayBuffer, and each Wasm Worker shares and computes in the same WebAssembly Memory address space of the main thread.
 
-Both the Worker API and Wasm Workers API provide the user with ability to postMessage() function calls to the Worker. In Worker API, this message posting is restricted to need to originate/initiate from the main thread towards the Worker. With Wasm Workers however one can also postMessage() function calls to their parent (owning) thread.
+Both the Worker API and Wasm Workers API provide the user with ability to postMessage() function calls to the Worker. In Worker API, this message posting is restricted to need to originate/initiate from the main thread towards the Worker (using the API ``emscripten_call_worker()`` and ``emscripten_worker_respond()`` in ``<emscripten.h>``). With Wasm Workers however one can also postMessage() function calls to their parent (owning) thread.
 
 If posting function calls with the Emscripten Worker API, it is required that the target Worker URL points to an Emscripten compiled program (so it has the ``Module`` structure to locate function names). Only functions that have been exported to the ``Module`` object are callable. With Wasm Workers, any C/C++ function may be posted, and does not need to be exported.
 
