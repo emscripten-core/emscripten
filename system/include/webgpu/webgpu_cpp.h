@@ -1560,7 +1560,7 @@ namespace wgpu {
         TextureUsage usage = TextureUsage::RenderAttachment;
         size_t viewFormatCount = 0;
         TextureFormat const * viewFormats;
-        CompositeAlphaMode alphaMode = CompositeAlphaMode::Opaque;
+        CompositeAlphaMode alphaMode = CompositeAlphaMode::Auto;
         uint32_t width;
         uint32_t height;
         PresentMode presentMode = PresentMode::Fifo;
