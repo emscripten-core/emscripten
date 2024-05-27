@@ -369,6 +369,37 @@ class Ports:
     utils.write_file(filename, contents)
 
 
+class OrderedSet:
+  """Partial implementation of OrderedSet.  Just enough for what we need here."""
+  def __init__(self, items):
+    self.dict = dict()
+    for i in items:
+      self.dict[i] = True
+
+  def __repr__(self):
+    return f"OrderedSet({list(self.dict.keys())})"
+
+  def __len__(self):
+    return len(self.dict.keys())
+
+  def copy(self):
+    return OrderedSet(self.dict.keys())
+
+  def __iter__(self):
+    return iter(self.dict.keys())
+
+  def pop(self, index=-1):
+    key = list(self.dict.keys())[index]
+    self.dict.pop(key)
+    return key
+
+  def add(self, item):
+    self.dict[item] = True
+
+  def remove(self, item):
+    del self.dict[item]
+
+
 def dependency_order(port_list):
   # Perform topological sort of ports according to the dependency DAG
   port_map = {p.name: p for p in port_list}
@@ -376,7 +407,7 @@ def dependency_order(port_list):
   # Perform depth first search of dependecy graph adding nodes to
   # the stack only after all children have been explored.
   stack = []
-  unsorted = set(port_list)
+  unsorted = OrderedSet(port_list)
 
   def dfs(node):
     for dep in node.deps:
@@ -492,14 +523,14 @@ def handle_use_port_arg(settings, arg, error_handler=None):
 
 def get_needed_ports(settings):
   # Start with directly needed ports, and transitively add dependencies
-  needed = set(p for p in ports if p.needed(settings))
+  needed = OrderedSet(p for p in ports if p.needed(settings))
   resolve_dependencies(needed, settings)
   return needed
 
 
 def build_port(port_name, settings):
   port = ports_by_name[port_name]
-  port_set = {port}
+  port_set = OrderedSet([port])
   resolve_dependencies(port_set, settings)
   for port in dependency_order(port_set):
     port.get(Ports, settings, shared)
