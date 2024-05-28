@@ -31,6 +31,16 @@ export interface Test {
   delete(): void;
 }
 
+export interface TestParamNames {
+  functionOne(x: number, y: number): number;
+  functionTwo(x: number, y: number): number;
+  functionFour(x: boolean): number;
+  constFn(): number;
+  longFn(a: number): number;
+  functionThree(str: EmbindString): number;
+  delete(): void;
+}
+
 export interface BarValue<T extends number> {
   value: T;
 }
@@ -99,6 +109,7 @@ export type ValArr = [ number, number, number ];
 
 interface EmbindModule {
   Test: {staticFunction(_0: number): number; staticFunctionWithParam(x: number): number; staticProperty: number};
+  TestParamNames: {staticFunctionWithParam(x: number): number};
   class_returning_fn(): Test;
   class_unique_ptr_returning_fn(): Test;
   a_class_instance: Test;
@@ -118,6 +129,7 @@ interface EmbindModule {
   an_int: number;
   optional_test(_0?: Foo): number | undefined;
   global_fn(_0: number, _1: number): number;
+  global_fn_with_parameter_names(x: number, y: number): number;
   optional_and_nonoptional_test(_0: Foo | undefined, _1: number): number | undefined;
   smart_ptr_function(_0: ClassWithSmartPtrConstructor): number;
   smart_ptr_function_with_params(foo: ClassWithSmartPtrConstructor): number;

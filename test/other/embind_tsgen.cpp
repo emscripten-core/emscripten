@@ -31,6 +31,20 @@ private:
   int y;
 };
 
+class TestParamNames {
+ public:
+  int function_one(char x, int y) { return 42; }
+  int function_two(unsigned char x, int y) { return 43; }
+  int function_three(const std::string&) { return 1; }
+  int function_four(bool x) { return 2; }
+
+  long long_fn(unsigned long a) { return 3; }
+
+  int const_fn() const { return 0; }
+
+  static int static_function(int x) { return 1; }
+};
+
 Test class_returning_fn() { return Test(); }
 
 std::unique_ptr<Test> class_unique_ptr_returning_fn() {
@@ -137,6 +151,17 @@ EMSCRIPTEN_BINDINGS(Test) {
       .class_property("staticProperty", &Test::static_property)
 	;
 
+    class_<TestParamNames>("TestParamNames")
+      .EMSCRIPTEN_MEMBER_FUNCTION("functionOne", &TestParamNames::function_one, (char x, int y))
+      .EMSCRIPTEN_MEMBER_FUNCTION("functionTwo", &TestParamNames::function_two, (unsigned char x, int y))
+      .EMSCRIPTEN_MEMBER_FUNCTION("functionThree", &TestParamNames::function_three, (const std::string& str))
+      .EMSCRIPTEN_MEMBER_FUNCTION("functionFour", &TestParamNames::function_four, (bool x))
+      .EMSCRIPTEN_MEMBER_FUNCTION("longFn", &TestParamNames::long_fn, (unsigned long a))
+      .EMSCRIPTEN_MEMBER_FUNCTION("constFn", &TestParamNames::const_fn, ())
+      .EMSCRIPTEN_CLASS_FUNCTION("staticFunctionWithParam", &TestParamNames::static_function, (int x))
+	;
+
+
   function("class_returning_fn", &class_returning_fn);
   function("class_unique_ptr_returning_fn",
                    &class_unique_ptr_returning_fn);
@@ -177,6 +202,8 @@ EMSCRIPTEN_BINDINGS(Test) {
   class_<Foo>("Foo").function("process", &Foo::process);
 
   function("global_fn", &global_fn);
+
+  EMSCRIPTEN_FUNCTION("global_fn_with_parameter_names", &global_fn, (int x, int y));
 
   register_optional<int>();
   register_optional<Foo>();

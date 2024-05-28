@@ -593,7 +593,57 @@ void function(const char* name, ReturnType (*fn)(Args...), Policies...) {
         isAsync<Policies...>::value);
 }
 
+#define EMSCRIPTEN_FUNCTION(name, fn, args) \
+    ([]() { \
+        auto lambda = +[]args{}; \
+        static_assert(::emscripten::internal::are_function_pointer_args_same<decltype(fn), decltype(lambda)>::value, "Argument list does not match function signature"); \
+       ::emscripten::function(name#args, fn); \
+    })()
+
+#define EMSCRIPTEN_FUNCTION_INLINE(return_type, name, args, body) \
+    ::emscripten::function(name#args, +[]args -> return_type body);
+
+#define EMSCRIPTEN_MEMBER_FUNCTION(name, fn, args) \
+    function((([]() { \
+        auto lambda = +[]args{}; \
+        static_assert(::emscripten::internal::are_function_pointer_args_same<decltype(fn), decltype(lambda)>::value, "Argument list does not match function signature"); \
+    })(), name#args), fn)
+
+#define EMSCRIPTEN_CLASS_FUNCTION(name, fn, args) \
+    class_function((([]() { \
+        auto lambda = +[]args{}; \
+        static_assert(::emscripten::internal::are_function_pointer_args_same<decltype(fn), decltype(lambda)>::value, "Argument list does not match function signature"); \
+    })(), name#args), fn)
+
 namespace internal {
+
+template<typename T>
+struct function_traits;
+
+template<typename Ret, typename... Args>
+struct function_traits<Ret(*)(Args...)> {
+    using return_type = Ret;
+    using argument_types = std::tuple<Args...>;
+};
+
+template<typename Ret, typename ClassType, typename... Args>
+struct function_traits<Ret(ClassType::*)(Args...) const> {
+    using return_type = Ret;
+    using argument_types = std::tuple<Args...>;
+};
+
+template<typename Ret, typename ClassType, typename... Args>
+struct function_traits<Ret(ClassType::*)(Args...)> {
+    using return_type = Ret;
+    using argument_types = std::tuple<Args...>;
+};
+
+// Helper type to compare function argument types
+template<typename Func1, typename Func2>
+struct are_function_pointer_args_same {
+    static constexpr bool value = std::is_same_v<typename function_traits<Func1>::argument_types,
+                                                 typename function_traits<Func2>::argument_types>;
+};
 
 template<typename ClassType, typename... Args>
 ClassType* operator_new(Args&&... args) {

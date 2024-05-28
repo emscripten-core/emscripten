@@ -3309,6 +3309,21 @@ More info: https://emscripten.org
                       '-lembind', '--emit-tsd', 'embind_tsgen_val.d.ts'])
     self.assertExists('embind_tsgen_val.d.ts')
 
+  def test_embind_tsgen_parameter_mismatch(self):
+    args = [EMXX, test_file('other/embind_tsgen_parameter_mismatch.cpp'), '-lembind', '--emit-tsd', 'embind_tsgen_parameter_mismatch.d.ts']
+    stderr = self.expect_fail(args)
+    self.assertContained("fn1_1", stderr)
+    self.assertContained("fn1_2", stderr)
+    self.assertContained("fn1_3", stderr)
+    self.assertContained("fn2_1", stderr)
+    self.assertContained("fn2_2", stderr)
+    self.assertContained("fn2_3", stderr)
+    self.assertContained("fn3_1", stderr)
+    self.assertContained("fn3_2", stderr)
+    self.assertContained("fn3_3", stderr)
+    self.assertContained("Argument list does not match function signature", stderr)
+    self.assertContained("9 errors generated.", stderr)
+
   def test_embind_tsgen_bigint(self):
     args = [EMXX, test_file('other/embind_tsgen_bigint.cpp'), '-lembind', '--emit-tsd', 'embind_tsgen_bigint.d.ts']
     # Check that TypeScript generation fails when code contains bigints but their support is not enabled

@@ -145,7 +145,7 @@ var LibraryEmbindShared = {
 #if ASSERTIONS
       assert(signature[signature.length - 1] == ")", "Parentheses for argument names should match.");
 #endif
-      return signature.substr(argsIndex, signature.length - argsIndex - 1).replaceAll(" ", "").split(",").filter(n => n.length);
+      return signature.substr(argsIndex, signature.length - argsIndex - 1).match(/\w+(?=\s*(,|$))/g) || [];
     } else {
       return [];
     }
