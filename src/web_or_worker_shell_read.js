@@ -22,17 +22,13 @@
   }
 
   readAsync = (url, onload, onerror) => {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.responseType = 'arraybuffer';
-    xhr.onload = () => {
-      if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
-        onload(xhr.response);
-        return;
+    fetch(url)
+    .then(response => {
+      if(response.ok) {
+        return response.arrayBuffer();
       }
-      onerror();
-    };
-    xhr.onerror = onerror;
-    xhr.send(null);
-  }
-
+      throw new Error(response.statusText + ' : ' + response.url);
+    })
+    .then(onload)
+    .catch(onerror)
+  };
