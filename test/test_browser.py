@@ -344,7 +344,7 @@ If manually bisecting:
     for srcpath, dstpath in test_cases:
       print('Testing', srcpath, dstpath)
       make_main(dstpath)
-      self.btest_exit('main.cpp', args=['--preload-file', srcpath])
+      self.btest_exit('main.cpp', args=['--preload-file', srcpath] + args)
     if WINDOWS:
       # On Windows, the following non-alphanumeric non-control code ASCII characters are supported.
       # The characters <, >, ", |, ?, * are not allowed, because the Windows filesystem doesn't support those.
@@ -355,7 +355,7 @@ If manually bisecting:
     create_file(tricky_filename, 'load me right before running the code please')
     make_main(tricky_filename)
     # As an Emscripten-specific feature, the character '@' must be escaped in the form '@@' to not confuse with the 'src@dst' notation.
-    self.btest_exit('main.cpp', args=['--preload-file', tricky_filename.replace('@', '@@')])
+    self.btest_exit('main.cpp', args=['--preload-file', tricky_filename.replace('@', '@@')] + args)
 
     # TODO: WASMFS doesn't support the rest of this test yet. Exit early.
     if self.get_setting('WASMFS'):
@@ -364,7 +364,7 @@ If manually bisecting:
     # By absolute path
 
     make_main('somefile.txt') # absolute becomes relative
-    self.btest_exit('main.cpp', args=['--preload-file', absolute_src_path])
+    self.btest_exit('main.cpp', args=['--preload-file', absolute_src_path] + args)
 
     # Test subdirectory handling with asset packaging.
     delete_dir('assets')
@@ -2376,7 +2376,7 @@ void *getBindBuffer() {
       }
     ''')
     self.run_process([EMCC, 'supp.c', '-o', 'supp.wasm', '-sSIDE_MODULE', '-O2'] + self.get_emcc_args())
-    self.btest_exit('main.c', args=['-sMAIN_MODULE=2', '-O2', 'supp.wasm'])
+    self.btest_exit('main.c', args=['-sMAIN_MODULE=2', '-O2', 'supp.wasm'] + args)
 
   @also_with_wasm2js
   def test_pre_run_deps(self):
