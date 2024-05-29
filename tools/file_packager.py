@@ -1125,6 +1125,7 @@ def generate_js(data_target, data_files, metadata):
       if(response.ok) {
         return response.json();
       }
+      throw new Error(response.statusText + ' : ' + response.url);
     })
     .then(loadPackage);
   }
