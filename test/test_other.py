@@ -12027,6 +12027,35 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     expected = read_file(test_file('other/test_standalone_syscalls.out'))
     for engine in config.WASM_ENGINES:
       self.assertContained(expected, self.run_js('test.wasm', engine))
+  
+  def test_fetch_polyfill(self):
+    path = 'hello-world.txt'
+    create_file(path, 'hello, world!')
+    create_file('main.cpp', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <string.h>
+      #include <emscripten.h>
+      int main() {
+        FILE *f = fopen("%s", "r");
+        char buf[100];
+        fread(buf, 1, 20, f);
+        buf[20] = 0;
+        fclose(f);
+        printf("|%%s|\n", buf);
+        return 0;
+      }
+      ''' % path)
+    def test(args, expect_fail):
+      self.run_process([EMCC, 'main.cpp'] + args + ['--preload-file', path])
+      js = read_file('a.out.js')
+      create_file('a.out.js', 'fetch = undefined;\n' + js)
+      return self.run_js('a.out.js', assert_returncode=NON_ZERO if expect_fail else 0)
+
+    test([], expect_fail=True)
+
+    output = test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
+    self.assertContained('|hello, world!|', output)
 
   @parameterized({
     'wasm2js': (['-sWASM=0'], ''),
