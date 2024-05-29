@@ -27,7 +27,7 @@
       if(response.ok) {
         return response.arrayBuffer();
       }
-      return Promise.reject(response.statusText + ' : ' + response.url);
+      return Promise.reject(new Error(response.statusText + ' : ' + response.url));
     })
     .then(onload, onerror)
   };

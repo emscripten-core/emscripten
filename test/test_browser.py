@@ -699,7 +699,7 @@ If manually bisecting:
           <center><canvas id='canvas' width='256' height='256'></canvas></center>
           <hr><div id='output'></div><hr>
           <script type='text/javascript'>
-            const handler = event => {
+            window.addEventListener('unhandledrejection', event => {
               const error = String(event.reason);
               window.disableErrorReporting = true;
               window.onerror = null;
@@ -708,8 +708,7 @@ If manually bisecting:
               xhr.open('GET', 'http://localhost:8888/report_result?' + result, true);
               xhr.send();
               setTimeout(function() { window.close() }, 1000);
-            };
-            window.addEventListener('unhandledrejection', handler);
+            });
             var Module = {
               locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "''' + assetLocalization + r'''" + path;}},
               print: (function() {

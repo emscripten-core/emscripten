@@ -972,7 +972,7 @@ def generate_js(data_target, data_files, metadata):
         Module.dataFileDownloads = Module.dataFileDownloads || {};
         const url = packageName;
         fetch(url)
-        .catch(error => Promise.reject(error + ' : ' + url)) // If fetch fails, rewrite the error to include the failing URL.
+        .catch(cause => Promise.reject(new Error('Network Error : ' + url, {cause}))) // If fetch fails, rewrite the error to include the failing URL & the cause.
         .then(response => {
 
           let loaded = 0;
@@ -981,14 +981,14 @@ def generate_js(data_target, data_files, metadata):
           const headers = response.headers;
 
           if (!response.ok) {
-            return Promise.reject(response.statusText + ' : ' + response.url);
+            return Promise.reject(new Error(response.statusText + ' : ' + response.url));
           }
 
           const total = headers.get('Content-Length') ?? packageSize;
           const chunks = [];
 
           const iterate = () => reader.read().then(handleChunk).catch(cause => {
-            return Promise.reject(response.statusText + ' : ' + response.url, {cause});
+            return Promise.reject(new Error(response.statusText + ' : ' + response.url, {cause}));
           });
 
           const handleChunk = ({done, value}) => {
@@ -1127,7 +1127,7 @@ def generate_js(data_target, data_files, metadata):
       if(response.ok) {
         return response.json();
       }
-      return Promise.reject(response.statusText + ' : ' + response.url);
+      return Promise.reject(new Error(response.statusText + ' : ' + response.url));
     })
     .then(loadPackage);
   }
