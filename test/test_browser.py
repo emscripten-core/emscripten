@@ -705,7 +705,7 @@ If manually bisecting:
               window.onerror = null;
               var result = error.includes("test.data") ? 1 : 0;
               var xhr = new XMLHttpRequest();
-              xhr.open('GET', 'http://localhost:8888/report_result?' + result + error, true);
+              xhr.open('GET', 'http://localhost:8888/report_result?' + result, true);
               xhr.send();
               setTimeout(function() { window.close() }, 1000);
             };
