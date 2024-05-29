@@ -12027,7 +12027,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     expected = read_file(test_file('other/test_standalone_syscalls.out'))
     for engine in config.WASM_ENGINES:
       self.assertContained(expected, self.run_js('test.wasm', engine))
-  
+
   def test_fetch_polyfill(self):
     path = 'hello-world.txt'
     create_file(path, 'hello, world!')
