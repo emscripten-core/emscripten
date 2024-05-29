@@ -971,7 +971,9 @@ def generate_js(data_target, data_files, metadata):
         %(node_support_code)s
         Module.dataFileDownloads = Module.dataFileDownloads || {};
         const url = packageName;
-        fetch(url).then(response => {
+        fetch(url)
+        .catch(error => { throw new Error(error + ' : ' + url) }) // Do this first so we don't catch errors from then()
+        .then(response => {
 
           let loaded = 0;
 
