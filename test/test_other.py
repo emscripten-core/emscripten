@@ -12046,6 +12046,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
         return 0;
       }
       ''' % path)
+
     def test(args, expect_fail):
       self.run_process([EMCC, 'main.cpp'] + args + ['--preload-file', path])
       js = read_file('a.out.js')
