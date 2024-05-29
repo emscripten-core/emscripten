@@ -366,7 +366,7 @@ class other(RunnerCore):
   })
   @node_pthreads
   def test_emcc_output_worker_mjs(self, args):
-    create_file('extern-post.js', 'await Module();')
+    create_file('extern-post.js', 'if (!isPthread) await Module();')
     os.mkdir('subdir')
     self.run_process([EMCC, '-o', 'subdir/hello_world.mjs',
                       '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '-O1',
