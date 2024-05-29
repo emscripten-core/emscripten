@@ -5613,6 +5613,7 @@ Module["preRun"] = () => {
     test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
     test(['-sLEGACY_VM_SUPPORT', '-sNO_PROXY'], expect_fail=True)
 
+
 class emrun(RunnerCore):
   def test_emrun_info(self):
     if not has_browser():
@@ -5716,6 +5717,7 @@ class emrun(RunnerCore):
       self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
       self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
       self.assertContained('hello, error stream!', stderr)
+
 
 class browser64(browser):
   def setUp(self):
