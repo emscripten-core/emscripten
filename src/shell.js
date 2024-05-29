@@ -63,7 +63,7 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #endif
 
 #if MIN_CHROME_VERSION < 40 || MIN_FIREFOX_VERSION < 39 || MIN_SAFARI_VERSION < 103000
-// See https://caniuse.com/mdn-javascript_builtins_bigint64array
+// See https://caniuse.com/fetch
 #include "polyfill/fetch.js"
 #endif
 #endif // POLYFILL

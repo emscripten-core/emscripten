@@ -12028,11 +12028,10 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     for engine in config.WASM_ENGINES:
       self.assertContained(expected, self.run_js('test.wasm', engine))
 
-  def test_fetch_polyfill(self):
+  def test_fetch_polyfill_preload(self):
     path = 'hello-world.txt'
     create_file(path, 'hello, world!')
     create_file('main.cpp', r'''
-      #include <assert.h>
       #include <stdio.h>
       #include <string.h>
       #include <emscripten.h>
@@ -12057,6 +12056,44 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
 
     output = test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
     self.assertContained('|hello, world!|', output)
+
+  def test_fetch_polyfill_shared_lib(self):
+    create_file('library.c', r'''
+      #include <stdio.h>
+      int library_func() {
+        return 42;
+      }
+    ''')
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <dlfcn.h>
+      #include <stdio.h>
+      #include <emscripten.h>
+      int main() {
+        int found = EM_ASM_INT(
+          return preloadedWasm['/library.so'] !== undefined;
+        );
+        void *lib_handle = dlopen("/library.so", RTLD_NOW);
+        assert(lib_handle);
+        typedef int (*voidfunc)();
+        voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
+        printf("Got val: %d\n", x());
+        assert(x);
+        assert(x() == 42);
+        return 0;
+      }
+    ''')
+
+    self.run_process([EMCC, 'library.c', '-sSIDE_MODULE', '-O2', '-o', 'library.so'])
+
+    def test(args, expect_fail):
+      self.run_process([EMCC, 'main.c', 'library.so', '-sMAIN_MODULE', '-o', 'a.out.js'])
+      js = read_file('a.out.js')
+      create_file('a.out.js', 'fetch = undefined;\n' + js)
+      return self.run_js('a.out.js', assert_returncode=NON_ZERO if expect_fail else 0)
+
+    test([], expect_fail=True)
+    test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
 
   @parameterized({
     'wasm2js': (['-sWASM=0'], ''),

@@ -5550,6 +5550,68 @@ Module["preRun"] = () => {
     shutil.copyfile('webpack/src/hello.wasm', 'webpack/dist/hello.wasm')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
 
+  def test_fetch_polyfill_shared_lib(self):
+    create_file('library.c', r'''
+      #include <stdio.h>
+      int library_func() {
+        return 42;
+      }
+    ''')
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <dlfcn.h>
+      #include <stdio.h>
+      #include <emscripten.h>
+      int main() {
+        int found = EM_ASM_INT(
+          return preloadedWasm['/library.so'] !== undefined;
+        );
+        void *lib_handle = dlopen("/library.so", RTLD_NOW);
+        typedef int (*voidfunc)();
+        voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
+        printf("Got val: %d\n", x());
+        assert(x() == 42);
+        return 0;
+      }
+    ''')
+    create_file('on_window_error_shell.html', r'''
+      <html>
+          <center><canvas id='canvas' width='256' height='256'></canvas></center>
+          <hr><div id='output'></div><hr>
+          <script type='text/javascript'>
+            var Module = {
+              print: (function() {
+                var element = document.getElementById('output');
+                return function(text) {
+                  if(window.disableErrorReporting) return;
+                  element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';
+                  var result = text.includes("42") ? 1 : 0;
+                  var xhr = new XMLHttpRequest();
+                  xhr.open('GET', 'http://localhost:8888/report_result?' + result, true);
+                  xhr.send();
+                };
+              })(),
+              canvas: document.getElementById('canvas')
+            };
+          </script>
+          {{{ SCRIPT }}}
+        </body>
+      </html>''')
+
+    self.run_process([EMCC, 'library.c', '-sSIDE_MODULE', '-O2', '-o', 'library.so'])
+
+    def test(args, expect_fail):
+      self.compile_btest('main.c', ['library.so', '-sMAIN_MODULE', '--shell-file', 'on_window_error_shell.html', '-o', 'a.out.html'])
+      js = read_file('a.out.js')
+      if expect_fail:
+        create_file('a.out.js', 'fetch = undefined;\n' + js)
+        return self.run_browser('a.out.html', '/report_result?abort:TypeError')
+      else:
+         return self.run_browser('a.out.html', '/report_result?1')
+
+    test([], expect_fail=True)
+    test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
+    test(['-sLEGACY_VM_SUPPORT', '-sNO_PROXY'], expect_fail=True)
 
 class emrun(RunnerCore):
   def test_emrun_info(self):
@@ -5654,7 +5716,6 @@ class emrun(RunnerCore):
       self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
       self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
       self.assertContained('hello, error stream!', stderr)
-
 
 class browser64(browser):
   def setUp(self):
