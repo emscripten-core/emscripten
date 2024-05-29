@@ -2997,8 +2997,6 @@ def package_files(options, target):
   if options.embed_files:
     file_args.append('--embed')
     file_args += options.embed_files
-  if settings.USE_FETCH:
-    file_args.append('--use-fetch')
   if options.exclude_files:
     file_args.append('--exclude')
     file_args += options.exclude_files

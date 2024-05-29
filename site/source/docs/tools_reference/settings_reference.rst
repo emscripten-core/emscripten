@@ -1202,15 +1202,6 @@ MIN_NODE_VERSION is 150000 or above.
 
 Default value: true
 
-.. _use_fetch:
-
-USE_FETCH
-=========
-
-Whether to use fetch instead of XHR to load file packages and shared libraries.
-
-Default value: false
-
 .. _asyncify:
 
 ASYNCIFY

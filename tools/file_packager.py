@@ -21,12 +21,10 @@ data downloads.
 
 Usage:
 
-  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--use-fetch]
+  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
-
-  --use-fetch Use fetch instead of XHR.
 
   --exclude E [F..] Specifies filename pattern matches to use for excluding given files from being added to the package.
                     See https://docs.python.org/2/library/fnmatch.html for syntax.
@@ -130,7 +128,6 @@ class Options:
     self.use_preload_plugins = False
     self.support_node = True
     self.wasm64 = False
-    self.use_fetch = False
 
 
 class DataFile:
@@ -362,7 +359,7 @@ def generate_object_file(data_files):
 
 def main():
   if len(sys.argv) == 1:
-    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--use-fetch]
+    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node]
   See the source for more details.''')
     return 1
 
@@ -376,8 +373,6 @@ def main():
       leading = 'preload'
     elif arg == '--embed':
       leading = 'embed'
-    elif arg == '--use-fetch':
-      options.use_fetch = True
     elif arg == '--exclude':
       leading = 'exclude'
     elif arg == '--no-force':
@@ -970,8 +965,8 @@ def generate_js(data_target, data_files, metadata):
           });
           return;
         }'''.strip()
-    if options.use_fetch:
-      ret += '''
+
+    ret += '''
       function fetchRemotePackage(packageName, packageSize, callback, errback) {
         %(node_support_code)s
         Module.dataFileDownloads = Module.dataFileDownloads || {};
@@ -1024,56 +1019,6 @@ def generate_js(data_target, data_files, metadata):
           };
           return iterate();
         });
-      };\n''' % {'node_support_code': node_support_code}
-    else:
-      ret += '''
-      function fetchRemotePackage(packageName, packageSize, callback, errback) {
-        %(node_support_code)s
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', packageName, true);
-        xhr.responseType = 'arraybuffer';
-        xhr.onprogress = function(event) {
-          var url = packageName;
-          var size = packageSize;
-          if (event.total) size = event.total;
-          if (event.loaded) {
-            if (!xhr.addedTotal) {
-              xhr.addedTotal = true;
-              if (!Module.dataFileDownloads) Module.dataFileDownloads = {};
-              Module.dataFileDownloads[url] = {
-                loaded: event.loaded,
-                total: size
-              };
-            } else {
-              Module.dataFileDownloads[url].loaded = event.loaded;
-            }
-            var total = 0;
-            var loaded = 0;
-            var num = 0;
-            for (var download in Module.dataFileDownloads) {
-            var data = Module.dataFileDownloads[download];
-              total += data.total;
-              loaded += data.loaded;
-              num++;
-            }
-            total = Math.ceil(total * Module.expectedDataFileDownloads/num);
-            if (Module['setStatus']) Module['setStatus'](`Downloading data... (${loaded}/${total})`);
-          } else if (!Module.dataFileDownloads) {
-            if (Module['setStatus']) Module['setStatus']('Downloading data...');
-          }
-        };
-        xhr.onerror = function(event) {
-          throw new Error("NetworkError for: " + packageName);
-        }
-        xhr.onload = function(event) {
-          if (xhr.status == 200 || xhr.status == 304 || xhr.status == 206 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
-            var packageData = xhr.response;
-            callback(packageData);
-          } else {
-            throw new Error(xhr.statusText + " : " + xhr.responseURL);
-          }
-        };
-        xhr.send(null);
       };\n''' % {'node_support_code': node_support_code}
 
     ret += '''
@@ -1167,33 +1112,7 @@ def generate_js(data_target, data_files, metadata):
       Module["preRun"].push(runWithFS); // FS is not initialized yet, wait for it
     }\n'''
 
-  if options.separate_metadata and not options.use_fetch:
-      _metadata_template = '''
-    Module['removeRunDependency']('%(metadata_file)s');
-  }
-
-  function runMetaWithFS() {
-    Module['addRunDependency']('%(metadata_file)s');
-    var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
-    var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function() {
-     if (xhr.readyState === 4 && xhr.status === 200) {
-       loadPackage(JSON.parse(xhr.responseText));
-     }
-    }
-    xhr.open('GET', REMOTE_METADATA_NAME, true);
-    xhr.overrideMimeType('application/json');
-    xhr.send(null);
-  }
-
-  if (Module['calledRun']) {
-    runMetaWithFS();
-  } else {
-    if (!Module['preRun']) Module['preRun'] = [];
-    Module["preRun"].push(runMetaWithFS);
-  }\n''' % {'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
-
-  elif options.separate_metadata and options.use_fetch:
+  if options.separate_metadata:
       _metadata_template = '''
     Module['removeRunDependency']('%(metadata_file)s');
   }

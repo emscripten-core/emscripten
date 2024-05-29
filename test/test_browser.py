@@ -290,12 +290,8 @@ If manually bisecting:
     self.btest_exit('emscripten_log/emscripten_log.cpp',
                     args=['-Wno-deprecated-pragma', '--pre-js', path_from_root('src/emscripten-source-map.min.js'), '-gsource-map'])
 
-  @parameterized({
-    '': ([],),
-    'use_fetch': (['-sUSE_FETCH'],),
-  })
   @also_with_wasmfs
-  def test_preload_file(self, args):
+  def test_preload_file(self):
     create_file('somefile.txt', 'load me right before running the code please')
     create_file('.somefile.txt', 'load me right before running the code please')
     create_file('some@file.txt', 'load me right before running the code please')
@@ -1409,17 +1405,13 @@ keydown(100);keyup(100); // trigger the end
     ''' % (secret, secret2))
     self.btest_exit('fs/test_workerfs_read.c', args=['-lworkerfs.js', '--pre-js', 'pre.js', f'-DSECRET="{secret }"', f'-DSECRET2="{secret2}"', '--proxy-to-worker', '-lworkerfs.js'])
 
-  @parameterized({
-    '': ([],),
-    'use_fetch': (['-sUSE_FETCH'],),
-  })
-  def test_fs_workerfs_package(self, args):
+  def test_fs_workerfs_package(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
     create_file('file1.txt', 'first')
     ensure_dir('sub')
     create_file('sub/file2.txt', 'second')
     self.run_process([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', Path('sub/file2.txt'), '--separate-metadata', '--js-output=files.js'])
-    self.btest(Path('fs/test_workerfs_package.cpp'), '1', args=['-lworkerfs.js', '--proxy-to-worker', '-lworkerfs.js'] + args)
+    self.btest(Path('fs/test_workerfs_package.cpp'), '1', args=['-lworkerfs.js', '--proxy-to-worker', '-lworkerfs.js'])
 
   def test_fs_lz4fs_package(self):
     # generate data
@@ -1478,17 +1470,14 @@ keydown(100);keyup(100); // trigger the end
     out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'files/file1.txt', 'files/file2.txt', 'files/file3.txt'])
     create_file('files.js', out, binary=True)
     self.btest_exit('fs/test_lz4fs.cpp', 2, args=['--pre-js', 'files.js'])'''
-  @parameterized({
-    '': ([], []),
-    'use_fetch': (['-sUSE_FETCH'], ['--use-fetch']),
-  })
-  def test_separate_metadata_later(self, args, packArgs):
+
+  def test_separate_metadata_later(self):
     # see issue #6654 - we need to handle separate-metadata both when we run before
     # the main program, and when we are run later
 
     create_file('data.dat', ' ')
-    self.run_process([FILE_PACKAGER, 'more.data', '--preload', 'data.dat', '--separate-metadata', '--js-output=more.js'] + packArgs)
-    self.btest(Path('browser/separate_metadata_later.cpp'), '1', args=['-sFORCE_FILESYSTEM'] + args)
+    self.run_process([FILE_PACKAGER, 'more.data', '--preload', 'data.dat', '--separate-metadata', '--js-output=more.js'])
+    self.btest(Path('browser/separate_metadata_later.cpp'), '1', args=['-sFORCE_FILESYSTEM'])
 
   def test_idbstore(self):
     secret = str(time.time())
@@ -2340,11 +2329,7 @@ void *getBindBuffer() {
   def test_openal_extensions(self):
     self.btest_exit('openal_extensions.c')
 
-  @parameterized({
-    '': ([],),
-    'use_fetch': (['-sUSE_FETCH'],)
-  })
-  def test_runtimelink(self, args):
+  def test_runtimelink(self):
     create_file('header.h', r'''
       struct point {
         int x, y;

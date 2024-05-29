@@ -96,7 +96,6 @@ COMPILE_TIME_SETTINGS = {
     'WASM_OBJECT_FILES',
     'WASM_WORKERS',
     'BULK_MEMORY',
-    'USE_FETCH',
 
     # Internal settings used during compilation
     'EXCEPTION_CATCHING_ALLOWED',
