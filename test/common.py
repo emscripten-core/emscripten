@@ -936,7 +936,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if nodejs:
       version = shared.get_node_version(nodejs)
       # Support for JSPI came earlier than 22, but the new API changes are not yet in any node
-      if version > (22, 0, 0):
+      if version >= (23, 0, 0):
         self.js_engines = [nodejs]
         self.node_args += exp_args
         return
@@ -948,9 +948,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return
 
     if 'EMTEST_SKIP_JSPI' in os.environ:
-      self.skipTest('test requires node > 22 or d8 (and EMTEST_SKIP_JSPI is set)')
+      self.skipTest('test requires node >= 23 or d8 (and EMTEST_SKIP_JSPI is set)')
     else:
-      self.fail('either d8 or node > 22 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
+      self.fail('either d8 or node >= 23 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
 
   def require_wasm2js(self):
     if self.is_wasm64():
