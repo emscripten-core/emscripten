@@ -1059,8 +1059,8 @@ function getEntryFunction() {
 }
 
 function formattedMinNodeVersion() {
-  var major = (MIN_NODE_VERSION / 10000) | 0;
-  var minor = ((MIN_NODE_VERSION / 100) | 0) % 100;
+  var major = MIN_NODE_VERSION / 10000;
+  var minor = (MIN_NODE_VERSION / 100) % 100;
   var rev = MIN_NODE_VERSION % 100;
   return `v${major}.${minor}.${rev}`;
 }
