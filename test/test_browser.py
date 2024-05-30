@@ -5567,39 +5567,24 @@ Module["preRun"] = () => {
       #include <stdio.h>
       #include <emscripten.h>
       int main() {
-        int found = EM_ASM_INT(
-          return preloadedWasm['/library.so'] !== undefined;
-        );
         void *lib_handle = dlopen("/library.so", RTLD_NOW);
         typedef int (*voidfunc)();
         voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
         printf("%d\n", x());
-        return 0;
+        return x();
       }
     ''')
-    create_file('report_result.html', r'''
-      <html>
-      <body>
-        <script type='text/javascript'>
-          var Module = {
-            print: (text) => fetch('http://localhost:8888/report_result?'+ (text.includes("42") ? 1 : 0))
-          };
-        </script>
-        {{{ SCRIPT }}}
-      </body>
-      </html>
-    ''')
-
+    
     self.run_process([EMCC, 'library.c', '-sSIDE_MODULE', '-O2', '-o', 'library.so'])
 
     def test(args, expect_fail):
-      self.compile_btest('main.c', ['library.so', '-sMAIN_MODULE', '--shell-file', 'report_result.html', '-o', 'a.out.html'])
+      self.compile_btest('main.c', ['library.so', '-sMAIN_MODULE=2', '-sEXIT_RUNTIME', '-o', 'a.out.html'])
       js = read_file('a.out.js')
       if expect_fail:
         create_file('a.out.js', 'fetch = undefined;\n' + js)
         return self.run_browser('a.out.html', '/report_result?abort:TypeError')
       else:
-         return self.run_browser('a.out.html', '/report_result?1')
+        return self.run_browser('a.out.html', '/report_result?exit:42')
 
     test([], expect_fail=True)
     test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
