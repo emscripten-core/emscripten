@@ -5562,10 +5562,8 @@ Module["preRun"] = () => {
       }
     ''')
     create_file('main.c', r'''
-      #include <assert.h>
       #include <dlfcn.h>
       #include <stdio.h>
-      #include <emscripten.h>
       int main() {
         void *lib_handle = dlopen("/library.so", RTLD_NOW);
         typedef int (*voidfunc)();
@@ -5578,8 +5576,8 @@ Module["preRun"] = () => {
 
     def test(args, expect_fail):
       self.compile_btest('main.c', ['library.so', '-sMAIN_MODULE=2', '-sEXIT_RUNTIME', '-o', 'a.out.html'])
-      js = read_file('a.out.js')
       if expect_fail:
+        js = read_file('a.out.js')
         create_file('a.out.js', 'fetch = undefined;\n' + js)
         return self.run_browser('a.out.html', '/report_result?abort:TypeError')
       else:
