@@ -5573,39 +5573,34 @@ Module["preRun"] = () => {
         void *lib_handle = dlopen("/library.so", RTLD_NOW);
         typedef int (*voidfunc)();
         voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
-        printf("Got val: %d\n", x());
-        assert(x() == 42);
+        printf("%d\n", x());
         return 0;
       }
     ''')
-    create_file('on_window_error_shell.html', r'''
+    create_file('report_result.html', r'''
       <html>
-          <center><canvas id='canvas' width='256' height='256'></canvas></center>
-          <hr><div id='output'></div><hr>
-          <script type='text/javascript'>
-            var Module = {
-              print: (function() {
-                var element = document.getElementById('output');
-                return function(text) {
-                  if(window.disableErrorReporting) return;
-                  element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';
-                  var result = text.includes("42") ? 1 : 0;
-                  var xhr = new XMLHttpRequest();
-                  xhr.open('GET', 'http://localhost:8888/report_result?' + result, true);
-                  xhr.send();
-                };
-              })(),
-              canvas: document.getElementById('canvas')
-            };
-          </script>
-          {{{ SCRIPT }}}
-        </body>
-      </html>''')
+      <body>
+        <script type='text/javascript'>
+          var Module = {
+            print: (function() {
+              return function(text) {
+                fetch('http://localhost:8888/report_result?'
+                  + (text.includes("42") ? 1 : 0)
+                );
+              };
+            })(),
+            canvas: document.getElementById('canvas')
+          };
+        </script>
+        {{{ SCRIPT }}}
+      </body>
+      </html>
+    ''')
 
     self.run_process([EMCC, 'library.c', '-sSIDE_MODULE', '-O2', '-o', 'library.so'])
 
     def test(args, expect_fail):
-      self.compile_btest('main.c', ['library.so', '-sMAIN_MODULE', '--shell-file', 'on_window_error_shell.html', '-o', 'a.out.html'])
+      self.compile_btest('main.c', ['library.so', '-sMAIN_MODULE', '--shell-file', 'report_result.html', '-o', 'a.out.html'])
       js = read_file('a.out.js')
       if expect_fail:
         create_file('a.out.js', 'fetch = undefined;\n' + js)

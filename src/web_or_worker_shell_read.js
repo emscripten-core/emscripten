@@ -23,8 +23,8 @@
 
   readAsync = (url, onload, onerror) => {
     fetch(url)
-    .then(response => {
-      if(response.ok) {
+    .then((response) => {
+      if (response.ok) {
         return response.arrayBuffer();
       }
       return Promise.reject(new Error(response.statusText + ' : ' + response.url));
