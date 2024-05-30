@@ -2270,7 +2270,7 @@ class BrowserCore(RunnerCore):
         # also include report_result.c and force-include report_result.h
         self.run_process([EMCC, '-c', '-I' + TEST_ROOT,
                           '-DEMTEST_PORT_NUMBER=%d' % self.port,
-                          test_file('report_result.c')] + self.get_emcc_args(compile_only=True))
+                          test_file('report_result.c')] + self.get_emcc_args(compile_only=True) + (['-fPIC'] if '-fPIC' in args else []))
         args += ['report_result.o', '-include', test_file('report_result.h')]
     if EMTEST_BROWSER == 'node':
       args.append('-DEMTEST_NODE')
