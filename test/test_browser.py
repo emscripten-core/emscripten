@@ -5574,7 +5574,7 @@ Module["preRun"] = () => {
     self.run_process([EMCC, 'library.c', '-sSIDE_MODULE', '-O2', '-o', 'library.so'])
 
     def test(args, expect_fail):
-      self.compile_btest('main.c', ['-fPIC', '-Wno-unused-command-line-argument', 'library.so', '-sMAIN_MODULE=2', '-sEXIT_RUNTIME', '-o', 'a.out.html'] + args)
+      self.compile_btest('main.c', ['-fPIC', 'library.so', '-sMAIN_MODULE=2', '-sEXIT_RUNTIME', '-o', 'a.out.html'] + args)
       if expect_fail:
         js = read_file('a.out.js')
         create_file('a.out.js', 'fetch = undefined;\n' + js)
