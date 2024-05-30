@@ -6,13 +6,13 @@ orbs:
 executors:
   linux-node:
     docker:
-      - image: circleci/node:stretch
+      - image: cimg/node:18.20.3
   linux-python:
     docker:
       - image: cimg/python:3.10.7
   bionic:
     docker:
-      - image: emscripten/emscripten-ci
+      - image: emscripten/emscripten-ci:focal
     environment:
       LANG: "C.UTF-8"
       EMCC_CORES: "4"
@@ -41,7 +41,7 @@ commands:
           name: download chrome
           command: |
             # TODO: Make these part of the base image
-            apt-get install libu2f-udev libvulkan1
+            apt-get install -q -y libu2f-udev libvulkan1 xdg-utils
             # wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
             # If that download link breaks, temporarily use this URL instead:
             # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
@@ -170,7 +170,7 @@ commands:
           command: |
             ./emcc --clear-cache
       - pip-install
-      - run: apt-get install ninja-build
+      - run: apt-get install -q -y ninja-build
       - run:
           name: embuilder build ALL
           command: |
@@ -791,7 +791,7 @@ jobs:
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
     steps:
-      - run: apt-get install ninja-build scons
+      - run: apt-get install -q -y ninja-build scons
       - run-tests-linux:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
