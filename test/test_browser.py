@@ -700,7 +700,9 @@ If manually bisecting:
           <center><canvas id='canvas' width='256' height='256'></canvas></center>
           <hr><div id='output'></div><hr>
           <script type='text/javascript'>
-            window.onerror = (error) => {
+            const handler = (event) => {
+              event.stopImmediatePropagation();
+              const error = String(event instanceof ErrorEvent ? event.message : (event.reason || event));
               window.disableErrorReporting = true;
               window.onerror = null;
               var result = error.includes("test.data") ? 1 : 0;
@@ -709,6 +711,8 @@ If manually bisecting:
               xhr.send();
               setTimeout(function() { window.close() }, 1000);
             }
+            window.addEventListener('error', handler);
+            window.addEventListener('unhandledrejection', handler);
             var Module = {
               locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "''' + assetLocalization + r'''" + path;}},
               print: (function() {
@@ -5544,6 +5548,39 @@ Module["preRun"] = () => {
       self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
     shutil.copyfile('webpack/src/hello.wasm', 'webpack/dist/hello.wasm')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
+
+  def test_fetch_polyfill_shared_lib(self):
+    create_file('library.c', r'''
+      #include <stdio.h>
+      int library_func() {
+        return 42;
+      }
+    ''')
+    create_file('main.c', r'''
+      #include <dlfcn.h>
+      #include <stdio.h>
+      int main() {
+        void *lib_handle = dlopen("/library.so", RTLD_NOW);
+        typedef int (*voidfunc)();
+        voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
+        return x();
+      }
+    ''')
+
+    self.run_process([EMCC, 'library.c', '-sSIDE_MODULE', '-O2', '-o', 'library.so'])
+
+    def test(args, expect_fail):
+      self.compile_btest('main.c', ['-fPIC', 'library.so', '-sMAIN_MODULE=2', '-sEXIT_RUNTIME', '-o', 'a.out.html'] + args)
+      if expect_fail:
+        js = read_file('a.out.js')
+        create_file('a.out.js', 'fetch = undefined;\n' + js)
+        return self.run_browser('a.out.html', '/report_result?abort:TypeError')
+      else:
+        return self.run_browser('a.out.html', '/report_result?exit:42')
+
+    test([], expect_fail=True)
+    test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
+    test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
 
 
 class emrun(RunnerCore):
