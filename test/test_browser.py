@@ -5573,7 +5573,7 @@ Module["preRun"] = () => {
         return x();
       }
     ''')
-    
+
     self.run_process([EMCC, 'library.c', '-sSIDE_MODULE', '-O2', '-o', 'library.so'])
 
     def test(args, expect_fail):
