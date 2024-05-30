@@ -914,9 +914,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return
 
     if 'EMTEST_SKIP_EH' in os.environ:
-      self.skipTest('test requires node >= 22 or d8 (and EMTEST_SKIP_EH is set)')
+      self.skipTest('test requires canary or d8 (and EMTEST_SKIP_EH is set)')
     else:
-      self.fail('either d8 or node >= 22 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+      self.fail('either d8 or node canary required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def require_jspi(self):
     # emcc warns about stack switching being experimental, and we build with
