@@ -366,7 +366,7 @@ class other(RunnerCore):
   })
   @node_pthreads
   def test_emcc_output_worker_mjs(self, args):
-    create_file('extern-post.js', 'await Module();')
+    create_file('extern-post.js', 'if (!isPthread) await Module();')
     os.mkdir('subdir')
     self.run_process([EMCC, '-o', 'subdir/hello_world.mjs',
                       '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '-O1',
@@ -3587,6 +3587,31 @@ More info: https://emscripten.org
     self.assertTrue('./subdir \\' in after)
     self.assertTrue('./subdir/data2.txt \\' in after)
 
+  def test_file_packager_modularize(self):
+    create_file('somefile.txt', 'hello world')
+    self.run_process([FILE_PACKAGER, 'test.data', '--js-output=embed.js', '--preload', 'somefile.txt'])
+
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      int main() {
+        FILE *f = fopen("somefile.txt", "r");
+        assert(f);
+        char buf[20] = { 0 };
+        int rtn = fread(buf, 1, 20, f);
+        fclose(f);
+        printf("|%s|\n", buf);
+        return 0;
+      }
+    ''')
+
+    create_file('post.js', 'MyModule(Module).then(() => console.log("done"));')
+
+    self.run_process([EMCC, 'main.c', '--extern-pre-js=embed.js', '--extern-post-js=post.js', '-sMODULARIZE', '-sEXPORT_NAME=MyModule', '-sFORCE_FILESYSTEM'])
+
+    result = self.run_js('a.out.js')
+    self.assertContained('|hello world|', result)
+
   def test_sdl_headless(self):
     shutil.copyfile(test_file('screenshot.png'), 'example.png')
     self.do_other_test('test_sdl_headless.c', emcc_args=['-sHEADLESS'])
@@ -6496,19 +6521,6 @@ typeof _main: function
 typeof result.then: undefined
 after
 ''', self.run_js('a.out.js'))
-
-  def test_modularize_argument_misuse(self):
-    create_file('test.c', '''
-      #include <emscripten.h>
-      EMSCRIPTEN_KEEPALIVE int foo() { return 42; }''')
-
-    create_file('post.js', r'''
-      var arg = { bar: 1 };
-      var promise = Module(arg);
-      arg._foo();''')
-
-    expected = "Aborted(Access to module property ('_foo') is no longer possible via the module constructor argument; Instead, use the result of the module constructor"
-    self.do_runf('test.c', expected, assert_returncode=NON_ZERO, emcc_args=['--no-entry', '-sMODULARIZE', '--extern-post-js=post.js'])
 
   def test_export_all_3142(self):
     create_file('src.cpp', r'''

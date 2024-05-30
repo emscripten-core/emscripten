@@ -9268,7 +9268,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('USE_OFFSET_CONVERTER')
     self.set_setting('MODULARIZE')
     self.set_setting('EXPORT_NAME', 'foo')
-    create_file('post.js', 'foo();')
+    create_file('post.js', 'if (!isPthread) foo();')
     self.emcc_args += ['--extern-post-js', 'post.js']
     if '-g' in self.emcc_args:
       self.emcc_args += ['-DDEBUG']

@@ -25,6 +25,7 @@ sphinxcontrib-htmlhelp<=2.0.0
 sphinxcontrib-serializinghtml<=1.1.5
 sphinxcontrib-qthelp<=1.0.3
 alabaster<=0.7.12
+pygments==2.17.2
 # See https://github.com/readthedocs/readthedocs.org/issues/9038
 jinja2<3.1
 
