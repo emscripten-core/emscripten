@@ -34,6 +34,8 @@ if (typeof globalThis.fetch == 'undefined') {
       const keys = [];
       const headers = {};
 
+      request.responseType = 'arraybuffer';
+
       const response = () => ({
         ok: ((request.status / 100) | 0) == 2, // 200-299
         statusText: request.statusText,
@@ -42,6 +44,7 @@ if (typeof globalThis.fetch == 'undefined') {
         text: () => Promise.resolve(request.responseText),
         json: () => Promise.resolve(request.responseText).then(JSON.parse),
         blob: () => Promise.resolve(new Blob([request.response])),
+        arrayBuffer: () => Promise.resolve(request.response),
         clone: response,
         headers: {
           keys: () => keys,

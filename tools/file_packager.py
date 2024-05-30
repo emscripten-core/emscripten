@@ -977,12 +977,18 @@ def generate_js(data_target, data_files, metadata):
 
           let loaded = 0;
 
-          const reader = response.body.getReader();
-          const headers = response.headers;
-
           if (!response.ok) {
             return Promise.reject(new Error(response.statusText + ' : ' + response.url));
           }
+
+          // If we're using the polyfill, readers won't be available...
+          if(!response.body && response.arrayBuffer) {
+            response.arrayBuffer().then(buffer => callback(buffer));
+            return;
+          }
+
+          const reader = response.body.getReader();
+          const headers = response.headers;
 
           const total = headers.get('Content-Length') ?? packageSize;
           const chunks = [];

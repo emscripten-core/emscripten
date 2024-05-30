@@ -5550,6 +5550,70 @@ Module["preRun"] = () => {
     shutil.copyfile('webpack/src/hello.wasm', 'webpack/dist/hello.wasm')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
 
+  def test_fetch_polyfill_preload(self):
+    path = 'hello-world.txt'
+    create_file(path, 'hello, world!')
+    create_file('main.cpp', r'''
+      #include <stdio.h>
+      #include <string.h>
+      #include <emscripten.h>
+      int main() {
+        FILE *f = fopen("%s", "r");
+        char buf[100];
+        fread(buf, 1, 20, f);
+        buf[20] = 0;
+        fclose(f);
+        printf("|%%s|\n", buf);
+        return 0;
+      }
+      ''' % path)
+    create_file('on_window_error_shell.html', r'''
+      <html>
+          <center><canvas id='canvas' width='256' height='256'></canvas></center>
+          <hr><div id='output'></div><hr>
+          <script type='text/javascript'>
+            window.addEventListener('error', event => {
+              const error = String(event.message);
+              console.log({error});
+              window.disableErrorReporting = true;
+              window.onerror = null;
+              var xhr = new XMLHttpRequest();
+              xhr.open('GET', 'http://localhost:8888/report_result?' + error, true);
+              xhr.send();
+              setTimeout(function() { window.close() }, 1000);
+            });
+            var Module = {
+              print: (function() {
+                var element = document.getElementById('output');
+                return function(text) {
+                  console.log({text});
+                  if(window.disableErrorReporting) return;
+                  element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';
+                  var xhr = new XMLHttpRequest();
+                  xhr.open('GET', 'http://localhost:8888/report_result?' + (text === '|hello, world!|' ? 1 : 0), true);
+                  xhr.send();
+                };
+              })(),
+              canvas: document.getElementById('canvas')
+            };
+          </script>
+          {{{ SCRIPT }}}
+        </body>
+      </html>''')
+
+    def test(args, expect_fail):
+      self.compile_btest('main.cpp', args + ['--preload-file', path, '--shell-file', 'on_window_error_shell.html', '-o', 'a.out.html'])
+      js = read_file('a.out.js')
+      if expect_fail:
+        create_file('a.out.js', 'fetch = undefined;\n' + js)
+        return self.run_browser('a.out.html', '/report_result?TypeError: fetch is not a function')
+      else:
+         return self.run_browser('a.out.html', '/report_result?1')
+
+    test([], expect_fail=True)
+    test(['-sPOLYFILL'], expect_fail=False)
+    test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
+
   def test_fetch_polyfill_shared_lib(self):
     create_file('library.c', r'''
       #include <stdio.h>
