@@ -5582,13 +5582,8 @@ Module["preRun"] = () => {
       <body>
         <script type='text/javascript'>
           var Module = {
-            print: (function() {
-              return function(text) {
-                fetch('http://localhost:8888/report_result?'
-                  + (text.includes("42") ? 1 : 0)
-                );
-              };
-            })()
+            print: (text) => fetch('http://localhost:8888/report_result?'+ (text.includes("42") ? 1 : 0)
+            )
           };
         </script>
         {{{ SCRIPT }}}
