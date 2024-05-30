@@ -821,16 +821,15 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.require_engine(nodejs)
     return nodejs
 
-  def node_is_canary(self):
-    nodejs = self.get_nodejs()
-    if nodejs:
-      if 'canary' in nodejs:
+  def node_is_canary(self, nodejs):
+    if nodejs and 'canary' in nodejs:
         return True
     return False
 
   def require_node_canary(self):
-    if self.node_is_canary():
-        self.require_engine(self.get_nodejs())
+    nodejs = self.get_nodejs()
+    if self.node_is_canary(nodejs):
+        self.require_engine(nodejs)
         return
 
     if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
@@ -937,10 +936,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     exp_args = ['--experimental-wasm-stack-switching', '--experimental-wasm-type-reflection']
     nodejs = self.get_nodejs()
-    print('NODEJS is ' + str(nodejs))
+    print('NODEJS is ' + nodejs)
     if nodejs:
       # Support for JSPI came earlier than 22, but the new API changes are not yet in any node
-      if self.node_is_canary():
+      if self.node_is_canary(nodejs):
         self.js_engines = [nodejs]
         self.node_args += exp_args
         return
