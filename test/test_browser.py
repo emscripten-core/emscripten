@@ -708,7 +708,6 @@ If manually bisecting:
               var xhr = new XMLHttpRequest();
               xhr.open('GET', 'http://localhost:8888/report_result?' + result, true);
               xhr.send();
-              console.log(event, error);
               setTimeout(function() { window.close() }, 1000);
             }
             window.addEventListener('error', handler);
