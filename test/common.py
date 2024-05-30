@@ -821,12 +821,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.require_engine(nodejs)
     return nodejs
 
-  def require_node_canary(self):
+  def node_is_canary(self):
     nodejs = self.get_nodejs()
     if nodejs:
-      version = shared.get_node_version(nodejs)
-      if version >= (20, 0, 0):
-        self.require_engine(nodejs)
+      if 'canary' in nodejs:
+        return True
+    return False
+
+  def require_node_canary(self):
+    if self.node_is_canary():
+        self.require_engine(self.get_nodejs())
         return
 
     if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
@@ -934,10 +938,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     exp_args = ['--experimental-wasm-stack-switching', '--experimental-wasm-type-reflection']
     nodejs = self.get_nodejs()
     if nodejs:
-      version = shared.get_node_version(nodejs)
-      print('NODE VERSION ' + str(version))
       # Support for JSPI came earlier than 22, but the new API changes are not yet in any node
-      if version >= (23, 0, 0):
+      if self.node_is_canary():
         self.js_engines = [nodejs]
         self.node_args += exp_args
         return
@@ -949,9 +951,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return
 
     if 'EMTEST_SKIP_JSPI' in os.environ:
-      self.skipTest('test requires node >= 23 or d8 (and EMTEST_SKIP_JSPI is set)')
+      self.skipTest('test requires node canary or d8 (and EMTEST_SKIP_JSPI is set)')
     else:
-      self.fail('either d8 or node >= 23 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
+      self.fail('either d8 or node canary required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
 
   def require_wasm2js(self):
     if self.is_wasm64():
