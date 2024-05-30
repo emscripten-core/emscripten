@@ -359,7 +359,7 @@ def generate_object_file(data_files):
 
 def main():
   if len(sys.argv) == 1:
-    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins]
+    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node]
   See the source for more details.''')
     return 1
 
@@ -775,7 +775,7 @@ def generate_js(data_target, data_files, metadata):
       }
       var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;\n''' % (js_manipulation.escape_for_js_string(data_target), js_manipulation.escape_for_js_string(remote_package_name))
     metadata['remote_package_size'] = remote_package_size
-    ret += '''var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];\n'''
+    ret += '''      var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];\n'''
 
     if options.use_preload_cache:
       # Set the id to a hash of the preloaded data, so that caches survive over multiple builds
@@ -965,59 +965,74 @@ def generate_js(data_target, data_files, metadata):
           });
           return;
         }'''.strip()
+
     ret += '''
       function fetchRemotePackage(packageName, packageSize, callback, errback) {
         %(node_support_code)s
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', packageName, true);
-        xhr.responseType = 'arraybuffer';
-        xhr.onprogress = function(event) {
-          var url = packageName;
-          var size = packageSize;
-          if (event.total) size = event.total;
-          if (event.loaded) {
-            if (!xhr.addedTotal) {
-              xhr.addedTotal = true;
-              if (!Module.dataFileDownloads) Module.dataFileDownloads = {};
-              Module.dataFileDownloads[url] = {
-                loaded: event.loaded,
-                total: size
-              };
-            } else {
-              Module.dataFileDownloads[url].loaded = event.loaded;
-            }
-            var total = 0;
-            var loaded = 0;
-            var num = 0;
-            for (var download in Module.dataFileDownloads) {
-            var data = Module.dataFileDownloads[download];
-              total += data.total;
-              loaded += data.loaded;
-              num++;
-            }
-            total = Math.ceil(total * Module.expectedDataFileDownloads/num);
-            if (Module['setStatus']) Module['setStatus'](`Downloading data... (${loaded}/${total})`);
-          } else if (!Module.dataFileDownloads) {
-            if (Module['setStatus']) Module['setStatus']('Downloading data...');
-          }
-        };
-        xhr.onerror = function(event) {
-          throw new Error("NetworkError for: " + packageName);
-        }
-        xhr.onload = function(event) {
-          if (xhr.status == 200 || xhr.status == 304 || xhr.status == 206 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
-            var packageData = xhr.response;
-            callback(packageData);
-          } else {
-            throw new Error(xhr.statusText + " : " + xhr.responseURL);
-          }
-        };
-        xhr.send(null);
-      };
+        Module.dataFileDownloads = Module.dataFileDownloads || {};
+        const url = packageName;
+        fetch(url)
+        .catch(cause => Promise.reject(new Error('Network Error : ' + url, {cause}))) // If fetch fails, rewrite the error to include the failing URL & the cause.
+        .then(response => {
 
+          let loaded = 0;
+
+          if (!response.ok) {
+            return Promise.reject(new Error(response.statusText + ' : ' + response.url));
+          }
+
+          // If we're using the polyfill, readers won't be available...
+          if(!response.body && response.arrayBuffer) {
+            response.arrayBuffer().then(buffer => callback(buffer));
+            return;
+          }
+
+          const reader = response.body.getReader();
+          const headers = response.headers;
+
+          const total = headers.get('Content-Length') ?? packageSize;
+          const chunks = [];
+
+          const iterate = () => reader.read().then(handleChunk).catch(cause => {
+            return Promise.reject(new Error(response.statusText + ' : ' + response.url, {cause}));
+          });
+
+          const handleChunk = ({done, value}) => {
+            if (!done) {
+              chunks.push(value);
+              loaded += value.length;
+              Module.dataFileDownloads[url] = Module.dataFileDownloads[url] ?? {};
+              Module.dataFileDownloads[url].loaded = loaded;
+              Module.dataFileDownloads[url].total = total;
+
+              if (total) {
+                if (Module['setStatus']) Module['setStatus'](`Downloading data... (${loaded}/${total})`);
+              }
+              else {
+                if (Module['setStatus']) Module['setStatus']('Downloading data...');
+              }
+              return iterate();
+            }
+            else {
+              const size = chunks.map(c => c.length).reduce((a, b) => a + b, 0);
+              let index = 0;
+              const packageData = new Uint8Array(size);
+              for(const chunk of chunks) {
+                packageData.set(chunk, index);
+                index += chunk.length;
+              }
+
+              callback(packageData.buffer);
+            }
+          };
+          return iterate();
+        });
+      };\n''' % {'node_support_code': node_support_code}
+
+    ret += '''
       function handleError(error) {
         console.error('package error:', error);
-      };\n''' % {'node_support_code': node_support_code}
+      };\n'''
 
     code += '''
       function processPackageData(arrayBuffer) {
@@ -1113,15 +1128,14 @@ def generate_js(data_target, data_files, metadata):
   function runMetaWithFS() {
     Module['addRunDependency']('%(metadata_file)s');
     var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
-    var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function() {
-     if (xhr.readyState === 4 && xhr.status === 200) {
-       loadPackage(JSON.parse(xhr.responseText));
-     }
-    }
-    xhr.open('GET', REMOTE_METADATA_NAME, true);
-    xhr.overrideMimeType('application/json');
-    xhr.send(null);
+    fetch(REMOTE_METADATA_NAME)
+    .then(response => {
+      if(response.ok) {
+        return response.json();
+      }
+      return Promise.reject(new Error(response.statusText + ' : ' + response.url));
+    })
+    .then(loadPackage);
   }
 
   if (Module['calledRun']) {
@@ -1130,7 +1144,6 @@ def generate_js(data_target, data_files, metadata):
     if (!Module['preRun']) Module['preRun'] = [];
     Module["preRun"].push(runMetaWithFS);
   }\n''' % {'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
-
   else:
       _metadata_template = '''
     }
