@@ -5611,7 +5611,7 @@ Module["preRun"] = () => {
          return self.run_browser('a.out.html', '/report_result?1')
 
     test([], expect_fail=True)
-    test(['-sPOLYFILL'], expect_fail=False)
+    test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
     test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
 
   def test_fetch_polyfill_shared_lib(self):
