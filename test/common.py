@@ -935,6 +935,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     nodejs = self.get_nodejs()
     if nodejs:
       version = shared.get_node_version(nodejs)
+      print('NODE VERSION ' + str(version))
       # Support for JSPI came earlier than 22, but the new API changes are not yet in any node
       if version >= (23, 0, 0):
         self.js_engines = [nodejs]
