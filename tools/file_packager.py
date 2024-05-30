@@ -990,11 +990,11 @@ def generate_js(data_target, data_files, metadata):
           const reader = response.body.getReader();
           const headers = response.headers;
 
-          const total = headers.get('Content-Length') ?? packageSize;
+          const size = headers.get('Content-Length') ?? packageSize;
           const chunks = [];
 
           const iterate = () => reader.read().then(handleChunk).catch(cause => {
-            return Promise.reject(new Error(response.statusText + ' : ' + response.url, {cause}));
+            return Promise.reject(new Error('Unexpected error while handling : ' + response.url + ' ' + cause, {cause}));
           });
 
           const handleChunk = ({done, value}) => {
@@ -1003,10 +1003,18 @@ def generate_js(data_target, data_files, metadata):
               loaded += value.length;
               Module.dataFileDownloads[url] = Module.dataFileDownloads[url] ?? {};
               Module.dataFileDownloads[url].loaded = loaded;
-              Module.dataFileDownloads[url].total = total;
+              Module.dataFileDownloads[url].total = size;
 
-              if (total) {
-                if (Module['setStatus']) Module['setStatus'](`Downloading data... (${loaded}/${total})`);
+              let totalLoaded = 0;
+              let totalSize = 0;
+
+              for (const dowload of Object.values(Module.dataFileDownloads)) {
+                totalLoaded += dowload.loaded;
+                totalSize += dowload.total;
+              }
+
+              if (totalSize) {
+                if (Module['setStatus']) Module['setStatus'](`Downloading data... (${totalLoaded}/${totalSize})`);
               }
               else {
                 if (Module['setStatus']) Module['setStatus']('Downloading data...');

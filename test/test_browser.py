@@ -699,7 +699,7 @@ If manually bisecting:
           <center><canvas id='canvas' width='256' height='256'></canvas></center>
           <hr><div id='output'></div><hr>
           <script type='text/javascript'>
-            const handler = event => {
+            const handler = (event) => {
               event.stopImmediatePropagation();
               const error = String(event instanceof ErrorEvent ? event.message : (event.reason || event));
               window.disableErrorReporting = true;
