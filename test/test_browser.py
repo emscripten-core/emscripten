@@ -5588,8 +5588,7 @@ Module["preRun"] = () => {
                   + (text.includes("42") ? 1 : 0)
                 );
               };
-            })(),
-            canvas: document.getElementById('canvas')
+            })()
           };
         </script>
         {{{ SCRIPT }}}
