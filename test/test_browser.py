@@ -712,6 +712,7 @@ If manually bisecting:
               setTimeout(function() { window.close() }, 1000);
             }
             window.addEventListener('error', handler);
+            window.addEventListener('unhandledrejection', handler);
             var Module = {
               locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "''' + assetLocalization + r'''" + path;}},
               print: (function() {
