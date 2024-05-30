@@ -2,7 +2,7 @@
 
 import * as acorn from 'acorn';
 import * as terser from '../third_party/terser/terser.js';
-import * as fs from 'fs';
+import * as fs from 'node:fs';
 
 // Utilities
 
