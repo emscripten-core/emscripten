@@ -7,11 +7,11 @@
 // General JS utilities - things that might be useful in any JS project.
 // Nothing specific to Emscripten appears here.
 
-import * as url from 'url';
-import * as path from 'path';
-import * as fs from 'fs';
-import * as vm from 'vm';
-import assert from 'assert';
+import * as url from 'node:url';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
+import * as vm from 'node:vm';
+import assert from 'node:assert';
 
 export {assert};
 
