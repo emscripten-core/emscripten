@@ -5570,7 +5570,6 @@ Module["preRun"] = () => {
         void *lib_handle = dlopen("/library.so", RTLD_NOW);
         typedef int (*voidfunc)();
         voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
-        printf("%d\n", x());
         return x();
       }
     ''')
