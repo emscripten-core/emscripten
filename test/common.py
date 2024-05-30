@@ -902,8 +902,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def require_wasm_exnref(self):
     nodejs = self.get_nodejs()
     if nodejs:
-      version = shared.get_node_version(nodejs)
-      if version >= (22, 0, 0):
+      if self.node_is_canary(nodejs):
         self.js_engines = [nodejs]
         self.node_args.append('--experimental-wasm-exnref')
         return
