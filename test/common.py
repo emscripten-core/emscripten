@@ -937,6 +937,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     exp_args = ['--experimental-wasm-stack-switching', '--experimental-wasm-type-reflection']
     nodejs = self.get_nodejs()
+    print('NODEJS is ' + str(nodejs))
     if nodejs:
       # Support for JSPI came earlier than 22, but the new API changes are not yet in any node
       if self.node_is_canary():
