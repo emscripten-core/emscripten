@@ -5675,7 +5675,7 @@ Module["preRun"] = () => {
 
     test([], expect_fail=True)
     test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
-    test(['-sLEGACY_VM_SUPPORT', '-sNO_PROXY'], expect_fail=True)
+    test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
 
 
 class emrun(RunnerCore):
