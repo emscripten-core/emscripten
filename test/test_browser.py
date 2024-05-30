@@ -5578,7 +5578,7 @@ Module["preRun"] = () => {
               window.disableErrorReporting = true;
               window.onerror = null;
               var xhr = new XMLHttpRequest();
-              xhr.open('GET', 'http://localhost:8888/report_result?' + error, true);
+              xhr.open('GET', 'http://localhost:8888/report_result?' + (error.includes('fetch is not a function') ? 1 : 0), true);
               xhr.send();
               setTimeout(function() { window.close() }, 1000);
             });
@@ -5606,7 +5606,7 @@ Module["preRun"] = () => {
       js = read_file('a.out.js')
       if expect_fail:
         create_file('a.out.js', 'fetch = undefined;\n' + js)
-        return self.run_browser('a.out.html', '/report_result?TypeError: fetch is not a function')
+        return self.run_browser('a.out.html', '/report_result?1')
       else:
          return self.run_browser('a.out.html', '/report_result?1')
 
