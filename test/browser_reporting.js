@@ -13,13 +13,13 @@ function reportResultToServer(result, port) {
   if ((typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) || (typeof ENVIRONMENT_IS_AUDIO_WORKLET !== 'undefined' && ENVIRONMENT_IS_AUDIO_WORKLET)) {
     out('RESULT: ' + result);
   } else {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', 'http://localhost:' + port + '/report_result?' + result);
-    xhr.send();
-    if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
-      /* for easy debugging, don't close window on failure */
-      setTimeout(function() { window.close() }, 1000);
-    }
+    let doFetch = typeof origFetch != 'undefined' ? origFetch : fetch;
+    doFetch('http://localhost:' + port + '/report_result?' + result).then(() => {
+      if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
+        /* for easy debugging, don't close window on failure */
+        window.close();
+      }
+    });
   }
 }
 
@@ -36,8 +36,7 @@ function reportErrorToServer(message) {
   if (typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) {
     err(message);
   } else {
-    xhr.open('GET', encodeURI('http://localhost:8888?stderr=' + message));
-    xhr.send();
+    fetch(encodeURI('http://localhost:8888?stderr=' + message));
   }
 }
 

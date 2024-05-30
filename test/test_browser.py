@@ -176,15 +176,16 @@ def no_swiftshader(f):
 def also_with_threads(f):
   assert callable(f)
 
-  def metafunc(self, threads, *args, **kwargs):
+  @wraps(f)
+  def decorated(self, threads, *args, **kwargs):
     if threads:
       self.emcc_args += ['-pthread']
     f(self, *args, **kwargs)
 
-  metafunc._parameterize = {'': (False,),
-                            'threads': (True,)}
+  parameterize(decorated, {'': (False,),
+                           'pthreads': (True,)})
 
-  return metafunc
+  return decorated
 
 
 def skipExecIf(cond, message):
@@ -700,16 +701,14 @@ If manually bisecting:
           <center><canvas id='canvas' width='256' height='256'></canvas></center>
           <hr><div id='output'></div><hr>
           <script type='text/javascript'>
-            const handler = (event) => {
+            const handler = async (event) => {
               event.stopImmediatePropagation();
               const error = String(event instanceof ErrorEvent ? event.message : (event.reason || event));
               window.disableErrorReporting = true;
               window.onerror = null;
               var result = error.includes("test.data") ? 1 : 0;
-              var xhr = new XMLHttpRequest();
-              xhr.open('GET', 'http://localhost:8888/report_result?' + result, true);
-              xhr.send();
-              setTimeout(function() { window.close() }, 1000);
+              await fetch('http://localhost:8888/report_result?' + result);
+              window.close();
             }
             window.addEventListener('error', handler);
             window.addEventListener('unhandledrejection', handler);
@@ -1638,11 +1637,9 @@ keydown(100);keyup(100); // trigger the end
         Worker Test
         <script>
           var worker = new Worker('worker.js');
-          worker.onmessage = (event) => {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'http://localhost:%s/report_result?' + event.data);
-            xhr.send();
-            setTimeout(function() { window.close() }, 1000);
+          worker.onmessage = async (event) => {
+            await fetch('http://localhost:%s/report_result?' + event.data);
+            window.close();
           };
         </script>
       </body>
@@ -1689,12 +1686,10 @@ keydown(100);keyup(100); // trigger the end
         <script>
           var worker = new Worker("%s");
           var buffer = [];
-          worker.onmessage = (event) => {
+          worker.onmessage = async (event) => {
             if (event.data.channel === "stdout") {
-              var xhr = new XMLHttpRequest();
-              xhr.open('GET', 'http://localhost:%s/report_result?' + event.data.line);
-              xhr.send();
-              setTimeout(function() { window.close() }, 1000);
+              await fetch('http://localhost:%s/report_result?' + event.data.line);
+              window.close();
             } else {
               if (event.data.trace) event.data.trace.split("\n").map(function(v) { console.error(v); });
               if (event.data.line) {
@@ -2450,13 +2445,11 @@ void *getBindBuffer() {
     post_hook = r'''
       function myJSCallback() {
         // Run on the next event loop, as code may run in a postRun right after main().
-        setTimeout(function() {
-          var xhr = new XMLHttpRequest();
+        setTimeout(async () => {
           out('done timeout noted = ' + Module.noted);
           assert(Module.noted);
-          xhr.open('GET', 'http://localhost:%s/report_result?' + HEAP32[Module.noted/4]);
-          xhr.send();
-          setTimeout(function() { window.close() }, 1000);
+          await fetch('http://localhost:%s/report_result?' + HEAP32[Module.noted/4]);
+          window.close();
         }, 0);
         // called from main, this is an ok time
         doCcall(100);
@@ -4338,7 +4331,7 @@ Module["preRun"] = () => {
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
     if not self.is_wasm64() and not self.is_2gb():
-      self.assertLess(abs(size - 4675), 100)
+      self.assertLess(abs(size - 4510), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a
   # pthread by using OffscreenCanvas.
@@ -4962,11 +4955,10 @@ Module["preRun"] = () => {
       shutil.move('test.wasm', Path(filesystem_path, 'test.wasm'))
       create_file(Path(filesystem_path, 'test.html'), '''
         <script>
-          setTimeout(function() {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'test.js', false);
-            xhr.send(null);
-            eval(xhr.responseText);
+          setTimeout(async () => {
+            let response = await fetch('test.js');
+            let text = await response.text();
+            eval(text);
             %s
           }, 1);
         </script>
@@ -5573,7 +5565,7 @@ Module["preRun"] = () => {
       self.compile_btest('main.c', ['-fPIC', 'library.so', '-sMAIN_MODULE=2', '-sEXIT_RUNTIME', '-o', 'a.out.html'] + args)
       if expect_fail:
         js = read_file('a.out.js')
-        create_file('a.out.js', 'fetch = undefined;\n' + js)
+        create_file('a.out.js', 'let origFetch = fetch; fetch = undefined;\n' + js)
         return self.run_browser('a.out.html', '/report_result?abort:TypeError')
       else:
         return self.run_browser('a.out.html', '/report_result?exit:42')

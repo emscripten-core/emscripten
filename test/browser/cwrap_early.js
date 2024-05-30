@@ -5,13 +5,11 @@ Module['preRun'] = () => {
   // doesn't actually call it
   var wrappedAdd = Module['cwrap']('add', 'number', ['number', 'number']);
   // but to call the compiled code, we must wait for the runtime
-  Module['onRuntimeInitialized'] = function() {
+  Module['onRuntimeInitialized'] = async () => {
     console.log('onRuntimeInitialized');
     if (wrappedAdd(5, 6) != 11) throw '5 + 6 should be 11';
     // report success
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', 'http://localhost:8888/report_result?0', true);
-    xhr.send();
-    setTimeout(function() { window.close() }, 1000);
+    await fetch('http://localhost:8888/report_result?0');
+    window.close();
   };
 };

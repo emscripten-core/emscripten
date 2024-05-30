@@ -1956,9 +1956,7 @@ def harness_server_func(in_queue, out_queue, port):
           To get logging to the console from browser tests, add this to
           print/printErr/the exception handler in src/shell.html:
 
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', encodeURI('http://localhost:8888?stdout=' + text));
-            xhr.send();
+            fetch(encodeURI('http://localhost:8888?stdout=' + text));
         '''
         print('[client logging:', unquote_plus(self.path), ']')
         self.send_response(200)
