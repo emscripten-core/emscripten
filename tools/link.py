@@ -677,13 +677,6 @@ def phase_linker_setup(options, state, newargs):
   options.extern_pre_js = read_js_files(options.extern_pre_js)
   options.extern_post_js = read_js_files(options.extern_post_js)
 
-  if settings.PTHREADS:
-    # Don't run extern pre/post code on pthreads.
-    if options.extern_pre_js:
-      options.extern_pre_js = 'if (!isPthread) {' + options.extern_pre_js + '}'
-    if options.extern_post_js:
-      options.extern_post_js = 'if (!isPthread) {' + options.extern_post_js + '}'
-
   # TODO: support source maps with js_transform
   if options.js_transform and settings.GENERATE_SOURCE_MAP:
     logger.warning('disabling source maps because a js transform is being done')
@@ -2082,7 +2075,7 @@ throw new Error('Dummy worker.js file should never be used');
     create_worker_file('src/audio_worklet.js', target_dir, settings.AUDIO_WORKLET_FILE, options)
 
   if settings.MODULARIZE:
-    modularize(options)
+    modularize()
   elif settings.USE_CLOSURE_COMPILER:
     module_export_name_substitution()
 
@@ -2109,8 +2102,6 @@ throw new Error('Dummy worker.js file should never be used');
     src = read_file(final_js)
     final_js += '.epp.js'
     with open(final_js, 'w', encoding='utf-8') as f:
-      if settings.PTHREADS and (options.extern_pre_js or options.extern_post_js):
-        f.write(make_pthread_detection())
       f.write(options.extern_pre_js)
       f.write(src)
       f.write(options.extern_post_js)
@@ -2352,34 +2343,7 @@ def node_pthread_detection():
     return "require('worker_threads').workerData === 'em-pthread'\n"
 
 
-def make_pthread_detection():
-  """Create code for detecting if we are running in a pthread.
-
-  Normally this detection is done when the module is itself is run but there
-  are some cases were we need to do this detection outside of the normal
-  module code.
-
-  1. When running in MODULARIZE mode we need use this to know if we should
-     run the module constructor on startup (true only for pthreads)
-  2. When using `--extern-pre-js` and `--extern-post-js` we need to avoid
-     running this code on pthreads.
-  """
-
-  if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
-    code = "var isPthread = globalThis.self?.name === 'em-pthread';\n"
-    # In order to support both web and node we also need to detect node here.
-    if settings.ENVIRONMENT_MAY_BE_NODE:
-      code += "var isNode = typeof globalThis.process?.versions?.node == 'string';\n"
-      code += f'if (isNode) isPthread = {node_pthread_detection()}\n'
-  elif settings.ENVIRONMENT_MAY_BE_NODE:
-    code = f'var isPthread = {node_pthread_detection()}\n'
-  else:
-    assert False
-
-  return code
-
-
-def modularize(options):
+def modularize():
   global final_js
   logger.debug(f'Modularizing, assigning to var {settings.EXPORT_NAME}')
   src = read_file(final_js)
@@ -2461,8 +2425,18 @@ else if (typeof define === 'function' && define['amd'])
 ''' % {'EXPORT_NAME': settings.EXPORT_NAME}
 
   if settings.PTHREADS:
-    if not options.extern_pre_js and not options.extern_post_js:
-      src += make_pthread_detection()
+    # Create code for detecting if we are running in a pthread.
+    # Normally this detection is done when the module is itself run but
+    # when running in MODULARIZE mode we need use this to know if we should
+    # run the module constructor on startup (true only for pthreads).
+    if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
+      src += "var isPthread = globalThis.self?.name === 'em-pthread';\n"
+      # In order to support both web and node we also need to detect node here.
+      if settings.ENVIRONMENT_MAY_BE_NODE:
+        src += "var isNode = typeof globalThis.process?.versions?.node == 'string';\n"
+        src += f'if (isNode) isPthread = {node_pthread_detection()}\n'
+    elif settings.ENVIRONMENT_MAY_BE_NODE:
+      src += f'var isPthread = {node_pthread_detection()}\n'
     src += '// When running as a pthread, construct a new instance on startup\n'
     src += 'isPthread && %s();\n' % settings.EXPORT_NAME
 
