@@ -16,10 +16,8 @@
       function sendResult(success) {
         if (window.sentTestResult) return;
         window.sentTestResult = true;
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', 'http://localhost:8888/report_result?' + (success ? 1 : 0));
-        xhr.send();
-        setTimeout(function() { window.close() }, 1000);
+        fetch('http://localhost:8888/report_result?' + (success ? 1 : 0))
+          .then(() => window.close());
       }
 
       var Module = {

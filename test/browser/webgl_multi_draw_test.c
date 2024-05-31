@@ -60,10 +60,7 @@ int main()
 
   if (!extAvailable) {
     EM_ASM({
-      xhr = new XMLHttpRequest();
-      xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20WEBGL_multi_draw%20is%20not%20supported!');
-      xhr.send();
-      setTimeout(function() { window.close() }, 2000);
+      fetch("http://localhost:8888/report_result?skipped:%20WEBGL_multi_draw%20is%20not%20supported!").then(() => windows.close());
     });
     return 0;
   }
