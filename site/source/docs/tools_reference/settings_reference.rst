@@ -2933,12 +2933,11 @@ MIN_NODE_VERSION
 
 Specifies minimum node version to target for the generated code.  This is
 distinct from the minimum version required run the emscripten compiler.
-This version aligns with the current Node LTS release, and the version
-of node that is included with emsdk.
-Version is encoded in MMmmVV, e.g. 181401 denotes Node 18.14.1.
+This version aligns with the current Ubuuntu TLS 20.04 (Focal).
+Version is encoded in MMmmVV, e.g. 181401 denotes Node 18.14.01.
 Minimum supported value is 101900, which was released 2020-02-05.
 
-Default value: 182003
+Default value: 160000
 
 .. _support_errno:
 

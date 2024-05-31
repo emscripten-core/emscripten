@@ -3,7 +3,7 @@
 /** Implements a set of potentially unsafe JavaScript AST optimizations for aggressive code size optimizations.
     Enabled when building with -sMINIMAL_RUNTIME=2 linker flag. */
 
-import * as fs from 'fs';
+import * as fs from 'node:fs';
 import * as acorn from 'acorn';
 import * as terser from '../third_party/terser/terser.js';
 

@@ -137,12 +137,13 @@ class interactive(BrowserCore):
     # TODO: investigate why this does not pass
     self.btest_exit('browser/test_sdl2_audio_beep.cpp', args=['-O2', '--closure=1', '--minify=0', '-sDISABLE_EXCEPTION_CATCHING=0', '-sUSE_SDL=2'])
 
-  def test_openal_playback(self):
+  @parameterized({
+    '': ([],),
+    'proxy_to_pthread': (['-sPROXY_TO_PTHREAD', '-pthread'],),
+  })
+  def test_openal_playback(self, args):
     shutil.copyfile(test_file('sounds/audio.wav'), self.in_dir('audio.wav'))
-
-    for args in [[], ['-pthread', '-sPROXY_TO_PTHREAD']]:
-      self.compile_btest('openal_playback.cpp', ['-O2', '--preload-file', 'audio.wav', '-o', 'page.html'] + args)
-      self.run_browser('page.html', '/report_result?1')
+    self.btest('openal_playback.cpp', '1', args=['-O2', '--preload-file', 'audio.wav'] + args)
 
   def test_openal_buffers(self):
     self.btest('openal_buffers.c', '0', args=['--preload-file', test_file('sounds/the_entertainer.wav') + '@/'],)
@@ -193,8 +194,7 @@ class interactive(BrowserCore):
   def test_freealut(self):
     src = test_file('third_party/freealut/examples/hello_world.c')
     inc = test_file('third_party/freealut/include')
-    self.compile_btest(src, ['-O2', '-o', 'page.html', '-I' + inc] + self.get_freealut_library())
-    self.run_browser('page.html', message='You should hear "Hello World!"')
+    self.btest_exit(src, args=['-O2', '-I' + inc] + self.get_freealut_library())
 
   def test_glfw_cursor_disabled(self):
     self.btest_exit('interactive/test_glfw_cursor_disabled.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
