@@ -1827,6 +1827,13 @@ module({
             assert.equal("foo", e.getString());
             e.delete();
         });
+
+        test("can construct class with external constructor with no copy constructor", function() {
+            var e = new cm.HasExternalConstructorNoCopy(42);
+            assert.instanceof(e, cm.HasExternalConstructorNoCopy);
+            assert.equal(42, e.getInt());
+            e.delete();
+        });
     });
 
     BaseFixture.extend("const", function() {

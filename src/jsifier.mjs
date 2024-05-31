@@ -629,12 +629,8 @@ function(${args}) {
       if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
         contentText += `\nModule['${mangled}'] = ${mangled};`;
       }
-      // Relocatable code needs signatures to create proper wrappers. Stack
-      // switching needs signatures so we can create a proper
-      // WebAssembly.Function with the signature for the Promise API.
-      // TODO: For asyncify we could only add the signatures we actually need,
-      //       of async imports/exports.
-      if (sig && (RELOCATABLE || ASYNCIFY == 2)) {
+      // Relocatable code needs signatures to create proper wrappers.
+      if (sig && RELOCATABLE) {
         if (!WASM_BIGINT) {
           sig = sig[0].replace('j', 'i') + sig.slice(1).replace(/j/g, 'ii');
         }

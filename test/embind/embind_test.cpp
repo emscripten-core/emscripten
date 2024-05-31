@@ -1609,6 +1609,22 @@ HasExternalConstructor* createHasExternalConstructor(const std::string& str) {
     return new HasExternalConstructor(str);
 }
 
+class HasExternalConstructorNoCopy {
+private:
+    HasExternalConstructorNoCopy(int i) : m(i) {}
+    int m;
+public:
+    HasExternalConstructorNoCopy(HasExternalConstructorNoCopy&) = delete;
+    HasExternalConstructorNoCopy(HasExternalConstructorNoCopy&&) = default;
+    int getInt() {
+        return m;
+    }
+    static HasExternalConstructorNoCopy create(int i) {
+        HasExternalConstructorNoCopy obj(i);
+        return obj;
+    }
+};
+
 template<typename T>
 class CustomSmartPtr {
 public:
@@ -2409,6 +2425,11 @@ EMSCRIPTEN_BINDINGS(tests) {
     class_<HasExternalConstructor>("HasExternalConstructor")
         .constructor(&createHasExternalConstructor)
         .function("getString", &HasExternalConstructor::getString)
+        ;
+
+    class_<HasExternalConstructorNoCopy>("HasExternalConstructorNoCopy")
+        .constructor(&HasExternalConstructorNoCopy::create)
+        .function("getInt", &HasExternalConstructorNoCopy::getInt)
         ;
 
     auto HeldBySmartPtr_class = class_<HeldBySmartPtr>("HeldBySmartPtr");

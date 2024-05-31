@@ -1,8 +1,9 @@
 var hasModule = typeof Module === 'object' && Module;
 
-/** @param {boolean=} sync
-    @param {number=} port */
-function reportResultToServer(result, sync, port) {
+/**
+ * @param {number=} port
+ */
+function reportResultToServer(result, port) {
   port = port || 8888;
   if (reportResultToServer.reported) {
     // Only report one result per test, even if the test misbehaves and tries to report more.
@@ -12,21 +13,22 @@ function reportResultToServer(result, sync, port) {
   if ((typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) || (typeof ENVIRONMENT_IS_AUDIO_WORKLET !== 'undefined' && ENVIRONMENT_IS_AUDIO_WORKLET)) {
     out('RESULT: ' + result);
   } else {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', 'http://localhost:' + port + '/report_result?' + result, !sync);
-    xhr.send();
-    if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
-      /* for easy debugging, don't close window on failure */
-      setTimeout(function() { window.close() }, 1000);
-    }
+    let doFetch = typeof origFetch != 'undefined' ? origFetch : fetch;
+    doFetch('http://localhost:' + port + '/report_result?' + result).then(() => {
+      if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
+        /* for easy debugging, don't close window on failure */
+        window.close();
+      }
+    });
   }
 }
 
-/** @param {boolean=} sync
-    @param {number=} port */
-function maybeReportResultToServer(result, sync, port) {
+/**
+ * @param {number=} port
+ */
+function maybeReportResultToServer(result, port) {
   if (reportResultToServer.reported) return;
-  reportResultToServer(result, sync, port);
+  reportResultToServer(result, port);
 }
 
 function reportErrorToServer(message) {
@@ -34,8 +36,7 @@ function reportErrorToServer(message) {
   if (typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) {
     err(message);
   } else {
-    xhr.open('GET', encodeURI('http://localhost:8888?stderr=' + message));
-    xhr.send();
+    fetch(encodeURI('http://localhost:8888?stderr=' + message));
   }
 }
 

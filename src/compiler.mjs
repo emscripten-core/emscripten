@@ -7,9 +7,9 @@
 
 // LLVM => JavaScript compiler, main entry point
 
-import * as fs from 'fs';
-import * as path from 'path';
-import * as url from 'url';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as url from 'node:url';
 
 import {Benchmarker, applySettings, assert, loadSettingsFile, printErr, read} from './utility.mjs';
 

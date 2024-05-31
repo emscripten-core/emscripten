@@ -99,6 +99,10 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       DeviceLost: 2,
       Unknown: 3,
     },
+    CompositeAlphaMode: {
+      Auto: 0,
+      Opaque: 1,
+    },
     CreatePipelineAsyncStatus: {
       Success: 0,
       ValidationError: 1,
@@ -153,6 +157,10 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       PrimitiveDepthClipControl: 0x7,
       RenderPassDescriptorMaxDrawCount: 0xF,
       TextureBindingViewDimensionDescriptor: 0x11,
+    },
+    SurfaceGetCurrentTextureStatus: {
+      Success: 0,
+      DeviceLost: 5,
     },
     QueueWorkDoneStatus: {
       Success: 0,
@@ -2664,7 +2672,7 @@ var LibraryWebGPU = {
   // WGPUAdapterProperties
 
   wgpuAdapterPropertiesFreeMembers: (value) => {
-    // wgpuAdapterGetProperties does currently allocate anything
+    // wgpuAdapterGetProperties doesn't currently allocate anything.
   },
 
   // WGPUSampler
@@ -2676,9 +2684,81 @@ var LibraryWebGPU = {
 
   // WGPUSurface
 
+  wgpuSurfaceConfigure: (surfaceId, config) => {
+    {{{ gpu.makeCheckDescriptor('config') }}}
+    var deviceId = {{{ makeGetValue('config', C_STRUCTS.WGPUSurfaceConfiguration.device, '*') }}};
+    var context = WebGPU.mgrSurface.get(surfaceId);
+
+#if ASSERTIONS
+    var viewFormatCount = {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.viewFormatCount) }}};
+    var viewFormats = {{{ makeGetValue('config', C_STRUCTS.WGPUSurfaceConfiguration.viewFormats, '*') }}};
+    assert(viewFormatCount === 0 && viewFormats === 0, "TODO: Support viewFormats.");
+    var alphaMode = {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.alphaMode) }}};
+    assert(alphaMode === {{{ gpu.CompositeAlphaMode.Auto }}} ||
+      alphaMode === {{{ gpu.CompositeAlphaMode.Opaque }}},
+      "TODO: Support WGPUCompositeAlphaMode_Premultiplied.");
+    assert({{{ gpu.PresentMode.Fifo }}} ===
+      {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.presentMode) }}});
+#endif
+
+    var canvasSize = [
+      {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.width) }}},
+      {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.height) }}}
+    ];
+
+    if (canvasSize[0] !== 0) {
+      context["canvas"]["width"] = canvasSize[0];
+    }
+
+    if (canvasSize[1] !== 0) {
+      context["canvas"]["height"] = canvasSize[1];
+    }
+
+    var configuration = {
+      "device": WebGPU.mgrDevice.get(deviceId),
+      "format": WebGPU.TextureFormat[
+        {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.format) }}}],
+      "usage": {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.usage) }}},
+      "alphaMode": "opaque",
+    };
+    context.configure(configuration);
+  },
+
+  wgpuSurfaceGetCurrentTexture: (surfaceId, surfaceTexturePtr) => {
+    {{{ gpu.makeCheck('surfaceTexturePtr') }}}
+    var context = WebGPU.mgrSurface.get(surfaceId);
+
+    try {
+      var texture = WebGPU.mgrTexture.create(context.getCurrentTexture());
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.texture, 'texture', '*') }}};
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.suboptimal, '0', 'i32') }}};
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.status, 
+        gpu.SurfaceGetCurrentTextureStatus.Success, 'i32') }}};
+    } catch (ex) {
+#if ASSERTIONS
+      err(`wgpuSurfaceGetCurrentTexture() failed: ${ex}`);
+#endif
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.texture, '0', '*') }}};
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.suboptimal, '0', 'i32') }}};
+      // TODO(https://github.com/webgpu-native/webgpu-headers/issues/291): What should the status be here?
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.status,
+        gpu.SurfaceGetCurrentTextureStatus.DeviceLost, 'i32') }}};
+    }
+  },
+
   wgpuSurfaceGetPreferredFormat: (surfaceId, adapterId) => {
     var format = navigator["gpu"]["getPreferredCanvasFormat"]();
     return WebGPU.Int_PreferredFormat[format];
+  },
+
+  wgpuSurfacePresent: (surfaceId) => {
+    // TODO: This could probably be emulated with ASYNCIFY.
+    abort('wgpuSurfacePresent is unsupported (use requestAnimationFrame via html5.h instead)');
+  },
+
+  wgpuSurfaceUnconfigure: (surfaceId) => {
+    var context = WebGPU.mgrSurface.get(surfaceId);
+    context.unconfigure();
   },
 
   // WGPUSwapChain

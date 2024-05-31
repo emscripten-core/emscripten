@@ -23,7 +23,7 @@ from urllib.request import urlopen
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
 from common import read_file, also_with_minimal_runtime, EMRUN, no_wasm64, no_2gb, no_4gb
-from common import requires_wasm2js, also_with_wasm2js
+from common import requires_wasm2js, also_with_wasm2js, parameterize
 from tools import shared
 from tools import ports
 from tools import utils
@@ -78,6 +78,9 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
 
 
 def also_with_wasmfs(f):
+  assert callable(f)
+
+  @wraps(f)
   def metafunc(self, wasmfs, *args, **kwargs):
     if wasmfs:
       self.set_setting('WASMFS')
@@ -86,9 +89,22 @@ def also_with_wasmfs(f):
     else:
       f(self, *args, **kwargs)
 
-  metafunc._parameterize = {'': (False,),
-                            'wasmfs': (True,)}
+  parameterize(metafunc, {'': (False,),
+                          'wasmfs': (True,)})
 
+  return metafunc
+
+
+def also_with_proxying(f):
+  assert callable(f)
+
+  @wraps(f)
+  def metafunc(self, proxied, *args, **kwargs):
+    self.proxied = proxied
+    f(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,),
+                          'proxied': (True,)})
   return metafunc
 
 
@@ -161,11 +177,13 @@ def also_with_threads(f):
   assert callable(f)
 
   @wraps(f)
-  def decorated(self, *args, **kwargs):
+  def decorated(self, threads, *args, **kwargs):
+    if threads:
+      self.emcc_args += ['-pthread']
     f(self, *args, **kwargs)
-    print('(threads)')
-    self.emcc_args += ['-pthread']
-    f(self, *args, **kwargs)
+
+  parameterize(decorated, {'': (False,),
+                           'pthreads': (True,)})
 
   return decorated
 
@@ -683,15 +701,17 @@ If manually bisecting:
           <center><canvas id='canvas' width='256' height='256'></canvas></center>
           <hr><div id='output'></div><hr>
           <script type='text/javascript'>
-            window.onerror = (error) => {
+            const handler = async (event) => {
+              event.stopImmediatePropagation();
+              const error = String(event instanceof ErrorEvent ? event.message : (event.reason || event));
               window.disableErrorReporting = true;
               window.onerror = null;
               var result = error.includes("test.data") ? 1 : 0;
-              var xhr = new XMLHttpRequest();
-              xhr.open('GET', 'http://localhost:8888/report_result?' + result, true);
-              xhr.send();
-              setTimeout(function() { window.close() }, 1000);
+              await fetch('http://localhost:8888/report_result?' + result);
+              window.close();
             }
+            window.addEventListener('error', handler);
+            window.addEventListener('unhandledrejection', handler);
             var Module = {
               locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "''' + assetLocalization + r'''" + path;}},
               print: (function() {
@@ -761,10 +781,11 @@ If manually bisecting:
     ])
 
   @also_with_wasmfs
+  @also_with_proxying
   def test_sdl_image_prepare(self):
     # load an image file, get pixel data.
     shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
-    self.reftest('test_sdl_image_prepare.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'], also_proxied=True, manually_trigger_reftest=True)
+    self.reftest('test_sdl_image_prepare.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'], manually_trigger_reftest=True)
 
   @parameterized({
     '': ([],),
@@ -1337,18 +1358,14 @@ keydown(100);keyup(100); // trigger the end
   @parameterized({
     '': ([],),
     'extra': (['-DEXTRA_WORK'],),
+    'autopersist': (['-DIDBFS_AUTO_PERSIST'],),
+    'force_exit': (['-sEXIT_RUNTIME', '-DFORCE_EXIT'],),
   })
-  def test_fs_idbfs_sync(self, extra):
+  def test_fs_idbfs_sync(self, args):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
     secret = str(time.time())
-    self.btest('fs/test_idbfs_sync.c', '1', args=['-lidbfs.js', '-DFIRST', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-lidbfs.js'])
-    self.btest('fs/test_idbfs_sync.c', '1', args=['-lidbfs.js', f'-DSECRET="{secret }"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-lidbfs.js'] + extra)
-
-  def test_fs_idbfs_sync_force_exit(self):
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall')
-    secret = str(time.time())
-    self.btest('fs/test_idbfs_sync.c', '1', args=['-lidbfs.js', '-DFIRST', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-sEXIT_RUNTIME', '-DFORCE_EXIT', '-lidbfs.js'])
-    self.btest('fs/test_idbfs_sync.c', '1', args=['-lidbfs.js', f'-DSECRET="{secret }"', '-sEXPORTED_FUNCTIONS=_main,_test,_success', '-sEXIT_RUNTIME', '-DFORCE_EXIT', '-lidbfs.js'])
+    self.btest('fs/test_idbfs_sync.c', '1', args=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_report_result', '-lidbfs.js'] + args + ['-DFIRST'])
+    self.btest('fs/test_idbfs_sync.c', '1', args=['-lidbfs.js', f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_test,_report_result', '-lidbfs.js'] + args)
 
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
@@ -1592,25 +1609,20 @@ keydown(100);keyup(100); // trigger the end
   def test_glfw_time(self):
     self.btest_exit('test_glfw_time.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
 
-  def _test_egl_base(self, *args):
-    self.btest_exit('test_egl.c', args=['-O2', '-lEGL', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'] + list(args))
-
+  @parameterized({
+    '': ([],),
+    'proxy_to_pthread': (['-pthread', '-sPROXY_TO_PTHREAD', '-sOFFSCREEN_FRAMEBUFFER'],),
+  })
   @requires_graphics_hardware
-  def test_egl(self):
-    self._test_egl_base()
+  def test_egl(self, args):
+    self.btest_exit('test_egl.c', args=['-O2', '-lEGL', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'] + args)
 
-  @requires_graphics_hardware
-  def test_egl_with_proxy_to_pthread(self):
-    self._test_egl_base('-pthread', '-sPROXY_TO_PTHREAD', '-sOFFSCREEN_FRAMEBUFFER')
-
-  def _test_egl_width_height_base(self, *args):
-    self.btest_exit('test_egl_width_height.c', args=['-O2', '-lEGL', '-lGL'] + list(args))
-
-  def test_egl_width_height(self):
-    self._test_egl_width_height_base()
-
-  def test_egl_width_height_with_proxy_to_pthread(self):
-    self._test_egl_width_height_base('-pthread', '-sPROXY_TO_PTHREAD')
+  @parameterized({
+    '': ([],),
+    'proxy_to_pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_egl_width_height(self, args):
+    self.btest_exit('test_egl_width_height.c', args=['-O2', '-lEGL', '-lGL'] + args)
 
   @requires_graphics_hardware
   def test_egl_createcontext_error(self):
@@ -1625,11 +1637,9 @@ keydown(100);keyup(100); // trigger the end
         Worker Test
         <script>
           var worker = new Worker('worker.js');
-          worker.onmessage = (event) => {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'http://localhost:%s/report_result?' + event.data);
-            xhr.send();
-            setTimeout(function() { window.close() }, 1000);
+          worker.onmessage = async (event) => {
+            await fetch('http://localhost:%s/report_result?' + event.data);
+            window.close();
           };
         </script>
       </body>
@@ -1676,12 +1686,10 @@ keydown(100);keyup(100); // trigger the end
         <script>
           var worker = new Worker("%s");
           var buffer = [];
-          worker.onmessage = (event) => {
+          worker.onmessage = async (event) => {
             if (event.data.channel === "stdout") {
-              var xhr = new XMLHttpRequest();
-              xhr.open('GET', 'http://localhost:%s/report_result?' + event.data.line);
-              xhr.send();
-              setTimeout(function() { window.close() }, 1000);
+              await fetch('http://localhost:%s/report_result?' + event.data.line);
+              window.close();
             } else {
               if (event.data.trace) event.data.trace.split("\n").map(function(v) { console.error(v); });
               if (event.data.line) {
@@ -1957,8 +1965,9 @@ keydown(100);keyup(100); // trigger the end
 
   @no_wasm64('TODO: LEGACY_GL_EMULATION + wasm64')
   @requires_graphics_hardware
+  @also_with_proxying
   def test_sdl_glshader2(self):
-    self.btest_exit('test_sdl_glshader2.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sGL_ENABLE_GET_PROC_ADDRESS'], also_proxied=True)
+    self.btest_exit('test_sdl_glshader2.c', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
   @requires_graphics_hardware
   def test_gl_glteximage(self):
@@ -1990,9 +1999,10 @@ keydown(100);keyup(100); // trigger the end
     self.reftest('gl_ps_strides.c', 'gl_ps_strides.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'])
 
   @requires_graphics_hardware
+  @also_with_proxying
   def test_gl_ps_worker(self):
     shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    self.reftest('gl_ps_worker.c', 'gl_ps.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1, also_proxied=True)
+    self.reftest('gl_ps_worker.c', 'gl_ps.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1)
 
   @requires_graphics_hardware
   def test_gl_renderers(self):
@@ -2013,8 +2023,9 @@ keydown(100);keyup(100); // trigger the end
     self.reftest('gl_vertex_buffer.c', 'gl_vertex_buffer.png', args=['-sGL_UNSAFE_OPTS=0', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], reference_slack=1)
 
   @requires_graphics_hardware
+  @also_with_proxying
   def test_gles2_uniform_arrays(self):
-    self.btest('gles2_uniform_arrays.cpp', args=['-sGL_ASSERTIONS', '-lGL', '-lSDL'], expected='1', also_proxied=True)
+    self.btest('gles2_uniform_arrays.cpp', args=['-sGL_ASSERTIONS', '-lGL', '-lSDL'], expected='1')
 
   @requires_graphics_hardware
   def test_gles2_conformance(self):
@@ -2056,19 +2067,23 @@ keydown(100);keyup(100); // trigger the end
     '': ([],),
     'tracing': (['-sTRACE_WEBGL_CALLS'],),
   })
+  @also_with_proxying
   @requires_graphics_hardware
   def test_cubegeom(self, args):
-    # proxy only in the simple, normal case (we can't trace GL calls when
-    # proxied)
-    self.reftest('third_party/cubegeom/cubegeom.c', 'third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'] + args, also_proxied=not args)
+    if self.proxied and args:
+      # proxy only in the simple, normal case (we can't trace GL calls when proxied)
+      self.skipTest('tracing + proxying not supported')
+    self.reftest('third_party/cubegeom/cubegeom.c', 'third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'] + args)
 
   @requires_graphics_hardware
+  @also_with_proxying
   def test_cubegeom_regal(self):
-    self.reftest('third_party/cubegeom/cubegeom.c', 'third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-sUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'], also_proxied=True)
+    self.reftest('third_party/cubegeom/cubegeom.c', 'third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-sUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'])
 
   @requires_graphics_hardware
+  @also_with_proxying
   def test_cubegeom_regal_mt(self):
-    self.reftest('third_party/cubegeom/cubegeom.c', 'third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-pthread', '-sUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'], also_proxied=False)
+    self.reftest('third_party/cubegeom/cubegeom.c', 'third_party/cubegeom/cubegeom.png', args=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-pthread', '-sUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'])
 
   @requires_graphics_hardware
   @parameterized({
@@ -2102,12 +2117,14 @@ void *getBindBuffer() {
     self.reftest('third_party/cubegeom/cubegeom_color.c', 'third_party/cubegeom/cubegeom_color.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
+  @also_with_proxying
   def test_cubegeom_normal(self):
-    self.reftest('third_party/cubegeom/cubegeom_normal.c', 'third_party/cubegeom/cubegeom_normal.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], also_proxied=True)
+    self.reftest('third_party/cubegeom/cubegeom_normal.c', 'third_party/cubegeom/cubegeom_normal.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
+  @also_with_proxying
   def test_cubegeom_normal_dap(self): # draw is given a direct pointer to clientside memory, no element array buffer
-    self.reftest('third_party/cubegeom/cubegeom_normal_dap.c', 'third_party/cubegeom/cubegeom_normal.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], also_proxied=True)
+    self.reftest('third_party/cubegeom/cubegeom_normal_dap.c', 'third_party/cubegeom/cubegeom_normal.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_normal_dap_far(self): # indices do nto start from 0
@@ -2131,8 +2148,9 @@ void *getBindBuffer() {
     self.reftest('third_party/cubegeom/cubegeom_mt.c', 'third_party/cubegeom/cubegeom_mt.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL']) # multitexture
 
   @requires_graphics_hardware
+  @also_with_proxying
   def test_cubegeom_color2(self):
-    self.reftest('third_party/cubegeom/cubegeom_color2.c', 'third_party/cubegeom/cubegeom_color2.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], also_proxied=True)
+    self.reftest('third_party/cubegeom/cubegeom_color2.c', 'third_party/cubegeom/cubegeom_color2.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_cubegeom_texturematrix(self):
@@ -2167,12 +2185,18 @@ void *getBindBuffer() {
     self.reftest('third_party/cubegeom/cubegeom_pre_vao_es.c', 'third_party/cubegeom/cubegeom_pre_vao.png', args=['-sFULL_ES2', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
+  @no_swiftshader
+  def test_cubegeom_row_length(self):
+    self.reftest('third_party/cubegeom/cubegeom_pre_vao_es.c', 'third_party/cubegeom/cubegeom_pre_vao.png', args=['-sFULL_ES2', '-lGL', '-lSDL', '-DUSE_UNPACK_ROW_LENGTH'])
+
+  @requires_graphics_hardware
   def test_cubegeom_u4fv_2(self):
     self.reftest('third_party/cubegeom/cubegeom_u4fv_2.c', 'third_party/cubegeom/cubegeom_u4fv_2.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
+  @also_with_proxying
   def test_cube_explosion(self):
-    self.reftest('cube_explosion.c', 'cube_explosion.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], also_proxied=True)
+    self.reftest('cube_explosion.c', 'cube_explosion.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_glgettexenv(self):
@@ -2421,13 +2445,11 @@ void *getBindBuffer() {
     post_hook = r'''
       function myJSCallback() {
         // Run on the next event loop, as code may run in a postRun right after main().
-        setTimeout(function() {
-          var xhr = new XMLHttpRequest();
+        setTimeout(async () => {
           out('done timeout noted = ' + Module.noted);
           assert(Module.noted);
-          xhr.open('GET', 'http://localhost:%s/report_result?' + HEAP32[Module.noted/4]);
-          xhr.send();
-          setTimeout(function() { window.close() }, 1000);
+          await fetch('http://localhost:%s/report_result?' + HEAP32[Module.noted/4]);
+          window.close();
         }, 0);
         // called from main, this is an ok time
         doCcall(100);
@@ -3069,13 +3091,12 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl2_threads.c', args=['-pthread', '-sUSE_SDL=2', '-sPROXY_TO_PTHREAD'])
 
   @requires_graphics_hardware
-  @parameterized({
-    '': ([], True),
-    # fails on proxy
-    'closure': (['--closure=1', '-g1'], False),
-  })
-  def test_sdl2_glshader(self, args, also_proxied):
-    self.reftest('test_sdl2_glshader.c', 'test_sdl_glshader.png', args=args + ['-sUSE_SDL=2', '-O2', '-sLEGACY_GL_EMULATION'], also_proxied=also_proxied)
+  @also_with_proxying
+  def test_sdl2_glshader(self):
+    if not self.proxied:
+      # closure build current fails on proxying
+      self.emcc_args += ['--closure=1', '-g1']
+    self.reftest('test_sdl2_glshader.c', 'test_sdl_glshader.png', args=['-sUSE_SDL=2', '-O2', '-sLEGACY_GL_EMULATION'])
 
   @requires_graphics_hardware
   def test_sdl2_canvas_blank(self):
@@ -4310,7 +4331,7 @@ Module["preRun"] = () => {
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
     if not self.is_wasm64() and not self.is_2gb():
-      self.assertLess(abs(size - 4675), 100)
+      self.assertLess(abs(size - 4510), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a
   # pthread by using OffscreenCanvas.
@@ -4781,8 +4802,9 @@ Module["preRun"] = () => {
     self.run_browser('hello_thread_with_blob_url.html', '/report_result?exit:0')
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
+  @also_with_proxying
   def test_single_file_html(self):
-    self.btest('single_file_static_initializer.cpp', '19', args=['-sSINGLE_FILE'], also_proxied=True)
+    self.btest('single_file_static_initializer.cpp', '19', args=['-sSINGLE_FILE'])
     self.assertExists('test.html')
     self.assertNotExists('test.js')
     self.assertNotExists('test.worker.js')
@@ -4839,11 +4861,15 @@ Module["preRun"] = () => {
 
   # Tests that pthreads code works as intended in a Worker. That is, a pthreads-using
   # program can run either on the main thread (normal tests) or when we start it in
-  # a Worker in this test (in that case, both the main application thread and the worker threads
-  # are all inside Web Workers).
-  def test_pthreads_started_in_worker(self):
+  # a Worker in this test (in that case, both the main application thread and the worker
+  # threads are all inside Web Workers).
+  @parameterized({
+    '': ([],),
+    'limited_env': (['-sENVIRONMENT=worker'],),
+  })
+  def test_pthreads_started_in_worker(self, args):
     self.set_setting('EXIT_RUNTIME')
-    self.compile_btest('pthread/test_pthread_atomics.cpp', ['-o', 'test.js', '-pthread', '-sPTHREAD_POOL_SIZE=8'], reporting=Reporting.JS_ONLY)
+    self.compile_btest('pthread/test_pthread_atomics.cpp', ['-o', 'test.js', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args, reporting=Reporting.JS_ONLY)
     create_file('test.html', '''
       <script>
         new Worker('test.js');
@@ -4929,11 +4955,10 @@ Module["preRun"] = () => {
       shutil.move('test.wasm', Path(filesystem_path, 'test.wasm'))
       create_file(Path(filesystem_path, 'test.html'), '''
         <script>
-          setTimeout(function() {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'test.js', false);
-            xhr.send(null);
-            eval(xhr.responseText);
+          setTimeout(async () => {
+            let response = await fetch('test.js');
+            let text = await response.text();
+            eval(text);
             %s
           }, 1);
         </script>
@@ -4946,8 +4971,9 @@ Module["preRun"] = () => {
   def test_emscripten_request_animation_frame_loop(self):
     self.btest_exit('emscripten_request_animation_frame_loop.c')
 
+  @also_with_proxying
   def test_request_animation_frame(self):
-    self.btest_exit('request_animation_frame.cpp', also_proxied=True)
+    self.btest_exit('request_animation_frame.cpp')
 
   def test_emscripten_set_timeout(self):
     self.btest_exit('emscripten_set_timeout.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
@@ -5514,6 +5540,39 @@ Module["preRun"] = () => {
       self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
     shutil.copyfile('webpack/src/hello.wasm', 'webpack/dist/hello.wasm')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
+
+  def test_fetch_polyfill_shared_lib(self):
+    create_file('library.c', r'''
+      #include <stdio.h>
+      int library_func() {
+        return 42;
+      }
+    ''')
+    create_file('main.c', r'''
+      #include <dlfcn.h>
+      #include <stdio.h>
+      int main() {
+        void *lib_handle = dlopen("/library.so", RTLD_NOW);
+        typedef int (*voidfunc)();
+        voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
+        return x();
+      }
+    ''')
+
+    self.run_process([EMCC, 'library.c', '-sSIDE_MODULE', '-O2', '-o', 'library.so'])
+
+    def test(args, expect_fail):
+      self.compile_btest('main.c', ['-fPIC', 'library.so', '-sMAIN_MODULE=2', '-sEXIT_RUNTIME', '-o', 'a.out.html'] + args)
+      if expect_fail:
+        js = read_file('a.out.js')
+        create_file('a.out.js', 'let origFetch = fetch; fetch = undefined;\n' + js)
+        return self.run_browser('a.out.html', '/report_result?abort:TypeError')
+      else:
+        return self.run_browser('a.out.html', '/report_result?exit:42')
+
+    test([], expect_fail=True)
+    test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
+    test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
 
 
 class emrun(RunnerCore):

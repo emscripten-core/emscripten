@@ -308,6 +308,8 @@
         "File::DirectoryKind": 2,
         "File::SymlinkKind": 3,
         "File::UnknownKind": 0,
+        "GL_UNPACK_ALIGNMENT": 3317,
+        "GL_UNPACK_ROW_LENGTH": 3314,
         "ICANON": 2,
         "ICRNL": 256,
         "IEXTEN": 32768,
@@ -1260,6 +1262,29 @@
             "limits": 8,
             "nextInChain": 0
         },
+        "WGPUSurfaceCapabilities": {
+            "__size__": 56,
+            "alphaModeCount": 40,
+            "alphaModes": 48,
+            "formatCount": 8,
+            "formats": 16,
+            "nextInChain": 0,
+            "presentModeCount": 24,
+            "presentModes": 32
+        },
+        "WGPUSurfaceConfiguration": {
+            "__size__": 56,
+            "alphaMode": 40,
+            "device": 8,
+            "format": 16,
+            "height": 48,
+            "nextInChain": 0,
+            "presentMode": 52,
+            "usage": 20,
+            "viewFormatCount": 24,
+            "viewFormats": 32,
+            "width": 44
+        },
         "WGPUSurfaceDescriptor": {
             "__size__": 16,
             "label": 8,
@@ -1269,6 +1294,12 @@
             "__size__": 24,
             "chain": 0,
             "selector": 16
+        },
+        "WGPUSurfaceTexture": {
+            "__size__": 16,
+            "status": 12,
+            "suboptimal": 8,
+            "texture": 0
         },
         "WGPUSwapChainDescriptor": {
             "__size__": 40,
