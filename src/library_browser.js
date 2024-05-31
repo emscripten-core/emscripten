@@ -802,10 +802,10 @@ var LibraryBrowser = {
 
 #if ENVIRONMENT_MAY_BE_NODE && DYNAMIC_EXECUTION
     if (ENVIRONMENT_IS_NODE) {
-      readAsync(url, (data) => {
+      readAsync(url, false).then((data) => {
         eval(data);
         loadDone();
-      }, loadError, false);
+      }, loadError);
       return;
     }
 #endif
