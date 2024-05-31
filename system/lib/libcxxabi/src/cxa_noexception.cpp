@@ -74,6 +74,14 @@ void __cxa_free_exception(void *thrown_object) throw() {
         ((char *)cxa_exception_from_thrown_object(thrown_object));
     free((void *)raw_buffer);
 }
+
+__cxa_exception*
+__cxa_init_primary_exception(void* object,
+                             std::type_info* tinfo,
+                             void*(_LIBCXXABI_DTOR_FUNC* dest)(void*)) throw() {
+  __cxa_exception* exception_header = cxa_exception_from_thrown_object(object);
+  return exception_header;
+}
 #endif
 
 } // extern "C"

@@ -14891,3 +14891,23 @@ addToLibrary({
   def test_SUPPORT_BIG_ENDIAN(self):
     # Just a simple build-only test for now
     self.run_process([EMCC, '-sSUPPORT_BIG_ENDIAN', test_file('hello_world.c')])
+
+  @parameterized({
+    'noexcept': ['-fno-exceptions'],
+    'default': [],
+    'except': ['-sDISABLE_EXCEPTION_CATCHING=0'],
+    'except_wasm': ['-fwasm-exceptions'],
+    'except_wasm_exnref': ['-fwasm-exceptions', '-sWASM_EXNREF']
+  })
+  def test_std_promise_link(self, *args):
+    # Regression test for a bug where std::promise's destructor caused a link
+    # error with __cxa_init_primary_exception when no exception argument was
+    # given (which defaults to -fignore-exceptions)
+    create_file('src.cpp', r'''
+      #include <future>
+      int main() {
+        std::promise<int> p;
+        return 0;
+      }
+    ''')
+    self.run_process([EMXX, 'src.cpp', '-pthread'] + list(args))
