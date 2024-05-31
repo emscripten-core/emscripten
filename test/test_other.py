@@ -14899,7 +14899,7 @@ addToLibrary({
     'except_wasm': ['-fwasm-exceptions'],
     'except_wasm_exnref': ['-fwasm-exceptions', '-sWASM_EXNREF']
   })
-  def test_std_promise(self, *args):
+  def test_std_promise_link(self, *args):
     # Regression test for the bug where std::promise's destructor caused a link
     # error with __cxa_init_primary_exception when no exception argument is
     # given (which defaults to -fignore-exceptions)
