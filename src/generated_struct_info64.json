@@ -792,6 +792,18 @@
             "minor": 1,
             "patch": 2
         },
+        "WGPUAdapterInfo": {
+            "__size__": 56,
+            "adapterType": 44,
+            "architecture": 16,
+            "backendType": 40,
+            "description": 32,
+            "device": 24,
+            "deviceID": 52,
+            "nextInChain": 0,
+            "vendor": 8,
+            "vendorID": 48
+        },
         "WGPUAdapterProperties": {
             "__size__": 72,
             "adapterType": 56,

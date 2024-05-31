@@ -420,6 +420,14 @@ void run() {
 int main() {
     GetAdapter([](wgpu::Adapter a) {
         adapter = a;
+
+        wgpu::AdapterInfo info;
+        adapter.GetInfo(&info);
+        printf("adapter vendor: %s\n", info.vendor);
+        printf("adapter architecture: %s\n", info.architecture);
+        printf("adapter device: %s\n", info.device);
+        printf("adapter description: %s\n", info.description);
+
         GetDevice([](wgpu::Device dev) {
             device = dev;
             run();
