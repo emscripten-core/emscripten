@@ -1055,6 +1055,9 @@ workflows:
       - test-browser-firefox:
           requires:
             - build-linux
+      - test-browser-webview:
+          requires:
+            - build-linux
       - test-sockets-chrome:
           requires:
             - build-linux
