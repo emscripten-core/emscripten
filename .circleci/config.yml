@@ -339,6 +339,9 @@ commands:
       - prepare-for-tests
       - download-libwebview
       - run:
+          command: |
+            cd test/webview-browser/ && npm install
+      - run:
           name: run tests (<< parameters.title >>)
           environment:
             EMTEST_LACKS_SOUND_HARDWARE: "1"
