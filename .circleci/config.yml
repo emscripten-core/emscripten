@@ -832,7 +832,7 @@ jobs:
           # headers on emsdk-bundled clang
           test_targets: "other skip:other.test_native_link_error_message"
   test-browser-webview:
-    executor: bionic
+    executor: xenial
     environment:
       EMTEST_LACKS_WEBGPU: "1"
     steps:
