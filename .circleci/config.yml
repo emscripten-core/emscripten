@@ -47,6 +47,12 @@ commands:
             # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
             wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-unstable_current_amd64.deb
             dpkg -i ~/chrome.deb
+  download-libwebkit2gtk:
+    description: "Download libwebkit2gtk"
+    steps:
+      - run:
+          name: download libwebkit2gtk
+          command: apt-get install libwebkit2gtk-3.0
   emsdk-env:
     description: "emsdk_env.sh"
     steps:
@@ -313,6 +319,32 @@ commands:
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
+            # There are tests in the browser test suite that using libraries
+            # that are not included by "./embuilder build ALL".  For example the
+            # PIC version of libSDL which is used by test_sdl2_misc_main_module
+            export EM_FROZEN_CACHE=""
+            test/runner << parameters.test_targets >>
+      - upload-test-results
+  run-tests-webview:
+    description: "Runs browser tests under webview"
+    parameters:
+      test_targets:
+        description: "Test suites to run"
+        type: string
+      title:
+        description: "Name of given test suite"
+        type: string
+        default: ""
+    steps:
+      - prepare-for-tests
+      - download-libwebview
+      - run:
+          name: run tests (<< parameters.title >>)
+          environment:
+            EMTEST_LACKS_SOUND_HARDWARE: "1"
+            EMTEST_DETECT_TEMPFILE_LEAKS: "0"
+          command: |
+            export EMTEST_BROWSER="test/webview-browser/index.js"
             # There are tests in the browser test suite that using libraries
             # that are not included by "./embuilder build ALL".  For example the
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
@@ -796,6 +828,17 @@ jobs:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
           test_targets: "other skip:other.test_native_link_error_message"
+  test-browser-webview:
+    executor: bionic
+    environment:
+      EMTEST_LACKS_WEBGPU: "1"
+    steps:
+      - run-tests-webvuew:
+          title: "browser"
+          # Skip test_4gb_fail as it OOMs on the current bot
+          test_targets: "
+            browser skip:browser.test_4gb_fail
+            "
   test-browser-chrome:
     executor: bionic
     environment:
