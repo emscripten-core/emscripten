@@ -836,7 +836,7 @@ jobs:
     environment:
       EMTEST_LACKS_WEBGPU: "1"
     steps:
-      - run-tests-webvuew:
+      - run-tests-webview:
           title: "browser"
           # Skip test_4gb_fail as it OOMs on the current bot
           test_targets: "
