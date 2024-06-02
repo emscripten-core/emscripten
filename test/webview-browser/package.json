@@ -1,0 +1,10 @@
+{
+  "name": "webview-browser",
+  "version": "0.0.0",
+  "description": "Simple webview browser implementation.",
+  "main": "index.js",
+  "author": "Sean Morris",
+  "dependencies": {
+    "node-gtk": "^0.14.0"
+  }
+}
