@@ -337,7 +337,7 @@ commands:
         default: ""
     steps:
       - prepare-for-tests
-      - download-libwebview
+      - download-libwebkit2gtk
       - run:
           command: |
             cd test/webview-browser/ && npm install
