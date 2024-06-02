@@ -52,7 +52,7 @@ commands:
     steps:
       - run:
           name: download libwebkit2gtk
-          command: apt-get install libwebkit2gtk-3.0 libstdc++6
+          command: apt-get install libwebkit2gtk-3.0 libstdc++6 gcc-4.9
   emsdk-env:
     description: "emsdk_env.sh"
     steps:
