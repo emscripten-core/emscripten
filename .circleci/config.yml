@@ -53,9 +53,9 @@ commands:
       - run:
           name: download libwebkit2gtk
           command: |
+            apt-get install software-properties-common
             add-apt-repository -y ppa:ubuntu-toolchain-r/test
-            apt install -y g++-11
-            apt-get install libwebkit2gtk-3.0 libstdc++6 gcc-4.9
+            apt-get install libwebkit2gtk-3.0 libstdc++6 gcc-4.9 g++-11
   emsdk-env:
     description: "emsdk_env.sh"
     steps:
