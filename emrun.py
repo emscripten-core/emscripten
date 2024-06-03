@@ -1573,7 +1573,10 @@ def parse_args(args):
     if a == '--':
       break
     if a.startswith('--') and '_' in a:
-      args[i] = a.replace('_', '-')
+      # Only replace '_' in that argument name, not that its value
+      parts = a.split('=')
+      parts[0] = parts[0].replace('_', '-')
+      args[i] = '='.join(parts)
 
   return parser.parse_args(args)
 
