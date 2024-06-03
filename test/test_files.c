@@ -4,12 +4,25 @@
 // found in the LICENSE file.
 
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+void test_fclose() {
+  FILE* f = fopen("temp.txt", "w");
+  int fd = fileno(f);
+  // Close the underlying FD, which should then cause fclose to
+  // fail.
+  int ret = close(fd);
+  assert(ret == 0);
+  ret = fclose(f);
+  printf("fclose error: %s\n", strerror(errno));
+  assert(ret == EOF);
+}
 
 // Reading
 void test_reading() {
@@ -161,6 +174,7 @@ void test_tempfiles() {
 }
 
 int main() {
+  test_fclose();
   test_reading();
   test_stdstreams();
   test_writing();
