@@ -53,10 +53,13 @@ commands:
       - run:
           name: download libwebkit2gtk
           command: |
-            apt-get install -y software-properties-common
-            add-apt-repository -y ppa:ubuntu-toolchain-r/test
-            apt-get update
-            apt-get install -y libwebkit2gtk-3.0 libstdc++6 gcc-4.9 g++-11
+            apt-get install -y \
+              libwebkit2gtk-3.0 \
+              build-essential \
+              gobject-introspection \
+              libgirepository1.0-dev \
+              libcairo2-dev \
+              libcairo2
   emsdk-env:
     description: "emsdk_env.sh"
     steps:
