@@ -1009,6 +1009,8 @@ var SyscallsLibrary = {
     assert(!flags);
 #endif
     if (old.fd === newfd) return -{{{ cDefs.EINVAL }}};
+    // Check newfd is within range of valid open file descriptors.
+    if (newfd < 0 || newfd >= FS.MAX_OPEN_FDS) return -{{{ cDefs.EBADF }}};
     var existing = FS.getStream(newfd);
     if (existing) FS.close(existing);
     return FS.dupStream(old, newfd).fd;

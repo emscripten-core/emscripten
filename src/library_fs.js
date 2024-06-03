@@ -449,6 +449,9 @@ FS.staticInit();` +
     // object isn't directly passed in. not possible until
     // SOCKFS is completed.
     createStream(stream, fd = -1) {
+#if ASSERTIONS
+      assert(fd >= -1);
+#endif
 
       // clone it, so we can return an instance of FSStream
       stream = Object.assign(new FS.FSStream(), stream);
