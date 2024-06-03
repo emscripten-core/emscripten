@@ -53,6 +53,7 @@ commands:
       - run:
           name: download libwebkit2gtk
           command: |
+            apt-get update
             apt-get install -y \
               libwebkit2gtk-4.0 \
               build-essential \
