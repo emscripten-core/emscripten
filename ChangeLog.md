@@ -23,6 +23,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.61 - 05/31/24
 -----------------
+- The internal `readAsync` function now returns a promise rather than accepting
+  callback arguments.
 - The JSPI feature now uses the updated browser API for JSPI (available in
   Chrome v126+). To support older versions of Chrome use Emscripten version
   3.1.60 or earlier.
