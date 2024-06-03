@@ -5658,19 +5658,24 @@ class emrun(RunnerCore):
         args_base,
         args_base + ['--port', '0'],
         args_base + ['--private_browsing', '--port', '6941'],
-        args_base + ['--dump_out_directory', 'other dir/multiple', '--port', '6942']
+        args_base + ['--dump_out_directory', 'other dir/multiple', '--port', '6942'],
+        args_base + ['--dump_out_directory=foo_bar', '--port', '6942'],
     ]:
       args += [self.in_dir('hello_world.html'), '--', '1', '2', '--3', 'escaped space', 'with_underscore']
       print(shared.shlex_join(args))
       proc = self.run_process(args, check=False)
       self.assertEqual(proc.returncode, 100)
-      dump_dir = 'other dir/multiple' if '--dump_out_directory' in args else 'dump_out'
+      dump_dir = 'dump_out'
+      if '--dump_out_directory' in args:
+        dump_dir = 'other dir/multiple'
+      elif '--dump_out_directory=foo_bar' in args:
+        dump_dir = 'foo_bar'
       self.assertExists(self.in_dir(f'{dump_dir}/test.dat'))
       self.assertExists(self.in_dir(f'{dump_dir}/heap.dat'))
       self.assertExists(self.in_dir(f'{dump_dir}/nested/with space.dat'))
       stdout = read_file(self.in_dir('stdout.txt'))
       stderr = read_file(self.in_dir('stderr.txt'))
-      self.assertContained('argc: 5', stdout)
+      self.assertContained('argc: 6', stdout)
       self.assertContained('argv[3]: --3', stdout)
       self.assertContained('argv[4]: escaped space', stdout)
       self.assertContained('argv[5]: with_underscore', stdout)
