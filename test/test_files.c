@@ -11,10 +11,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-int main()
-{
-  // Reading
-
+// Reading
+void test_reading() {
   FILE *file = fopen("somefile.binary", "rb");
   assert(file);
 
@@ -38,7 +36,6 @@ int main()
   free(buffer);
 
   // Do it again, with a loop on feof
-
   printf("loop: ");
   file = fopen("somefile.binary", "rb");
   assert(file);
@@ -46,20 +43,22 @@ int main()
     char c = fgetc(file);
     if (c != EOF) printf("%d ", c);
   }
-  fclose (file);
+  fclose(file);
   printf("\n");
+}
 
-  // Standard streams
-
+// Standard streams
+void test_stdstreams() {
   char gets_buffer[1024];
-  printf("input:%s\n", gets(gets_buffer));
+  printf("input:%s\n", fgets(gets_buffer, 1024, stdin));
   fwrite("texto\n", 1, 6, stdout);
   fwrite("texte\n", 1, 6, stderr);
   putchar('$');
   putc('\n', stdout);
+}
 
-  // Writing
-
+// Writing
+void test_writing() {
   char data[5] = { 10, 30, 20, 11, 88 };
   FILE *outf = fopen("go.out", "wb");
   fwrite(data, 1, 5, outf);
@@ -73,14 +72,16 @@ int main()
   int num = fread(data2, 1, 10, inf);
   fclose(inf);
   printf("%d : %d,%d,%d,%d,%d\n", num, data2[0], data2[1], data2[2], data2[3], data2[4]);
+}
 
+void test_seeking() {
   // Test reading a file that has not been cached
-  
+
   FILE *other = fopen("test.file", "r");
   assert(other);
 
   char otherData[1000];
-  num = fread(otherData, 1, 9, other);
+  int num = fread(otherData, 1, 9, other);
   otherData[num] = 0;
   printf("other=%s.\n", otherData);
 
@@ -102,21 +103,24 @@ int main()
   printf("seeked=%s.\n", otherData);
 
   fclose(other);
+}
 
-  // fscanf
-
-  outf = fopen("fscan.f", "w");
+// fscanf
+void test_fscanf() {
+  FILE* outf = fopen("fscan.f", "w");
   fprintf(outf, "10 hello");
   fclose(outf);
 
   int number;
   char text[100];
-  inf = fopen("fscan.f", "r");
-  num = fscanf(inf, "%d %s", &number, text);
+  FILE* inf = fopen("fscan.f", "r");
+  int num = fscanf(inf, "%d %s", &number, text);
   fclose(inf);
   printf("fscanfed: %d - %s\n", number, text);
+}
 
-  // temp files
+// temp files
+void test_tempfiles() {
   const char *tname = "file_XXXXXX";
   char tname1[100];
   char tname2[100];
@@ -142,10 +146,11 @@ int main()
     assert(strncmp("/tmp/", str, 5) == 0);
   }
 
+  char data[5] = { 10, 30, 20, 11, 88 };
   FILE *n = fopen("/dev/null", "w");
   printf("5 bytes to dev/null: %zu\n", fwrite(data, 1, 5, n));
   fclose(n);
-  
+
   // Test file creation with O_TRUNC (regression test for #16784)
   const char *file_name = "test.out";
   int fd = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR);
@@ -153,9 +158,16 @@ int main()
   int status = write(fd, "blablabla\n", 10);
   assert(status == 10);
   close(fd);
+}
 
+int main() {
+  test_reading();
+  test_stdstreams();
+  test_writing();
+  test_seeking();
+  test_fscanf();
+  test_tempfiles();
   printf("ok.\n");
-
   return 0;
 }
 
