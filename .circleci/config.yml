@@ -54,7 +54,7 @@ commands:
           name: download libwebkit2gtk
           command: |
             apt-get install -y \
-              libwebkit2gtk-3.0 \
+              libwebkit2gtk-4.0 \
               build-essential \
               gobject-introspection \
               libgirepository1.0-dev \
@@ -344,10 +344,10 @@ commands:
         default: ""
     steps:
       - prepare-for-tests
+      - download-libwebkit2gtk
       - run:
           command: |
             cd test/webview-browser/ && npm install
-      - download-libwebkit2gtk
       - run:
           name: run tests (<< parameters.title >>)
           environment:
