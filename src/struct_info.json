@@ -1557,6 +1557,11 @@
                 "arrayLayerCount",
                 "aspect"
             ],
+            "WGPUUncapturedErrorCallbackInfo": [
+                "nextInChain",
+                "callback",
+                "userdata"
+            ],
             "WGPUVertexAttribute": [
                 "format",
                 "offset",
@@ -1693,7 +1698,8 @@
                 "requiredLimits",
                 "defaultQueue",
                 "deviceLostCallback",
-                "deviceLostUserdata"
+                "deviceLostUserdata",
+                "uncapturedErrorCallbackInfo"
             ],
             "WGPURenderPassDescriptor": [
                 "nextInChain",

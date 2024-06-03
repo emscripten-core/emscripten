@@ -1524,6 +1524,18 @@ template <typename T>
     static_assert(offsetof(TextureViewDescriptor, aspect) == offsetof(WGPUTextureViewDescriptor, aspect),
             "offsetof mismatch for TextureViewDescriptor::aspect");
 
+    // UncapturedErrorCallbackInfo
+
+    static_assert(sizeof(UncapturedErrorCallbackInfo) == sizeof(WGPUUncapturedErrorCallbackInfo), "sizeof mismatch for UncapturedErrorCallbackInfo");
+    static_assert(alignof(UncapturedErrorCallbackInfo) == alignof(WGPUUncapturedErrorCallbackInfo), "alignof mismatch for UncapturedErrorCallbackInfo");
+
+    static_assert(offsetof(UncapturedErrorCallbackInfo, nextInChain) == offsetof(WGPUUncapturedErrorCallbackInfo, nextInChain),
+            "offsetof mismatch for UncapturedErrorCallbackInfo::nextInChain");
+    static_assert(offsetof(UncapturedErrorCallbackInfo, callback) == offsetof(WGPUUncapturedErrorCallbackInfo, callback),
+            "offsetof mismatch for UncapturedErrorCallbackInfo::callback");
+    static_assert(offsetof(UncapturedErrorCallbackInfo, userdata) == offsetof(WGPUUncapturedErrorCallbackInfo, userdata),
+            "offsetof mismatch for UncapturedErrorCallbackInfo::userdata");
+
     // VertexAttribute
 
     static_assert(sizeof(VertexAttribute) == sizeof(WGPUVertexAttribute), "sizeof mismatch for VertexAttribute");
@@ -1841,6 +1853,8 @@ template <typename T>
             "offsetof mismatch for DeviceDescriptor::deviceLostCallback");
     static_assert(offsetof(DeviceDescriptor, deviceLostUserdata) == offsetof(WGPUDeviceDescriptor, deviceLostUserdata),
             "offsetof mismatch for DeviceDescriptor::deviceLostUserdata");
+    static_assert(offsetof(DeviceDescriptor, uncapturedErrorCallbackInfo) == offsetof(WGPUDeviceDescriptor, uncapturedErrorCallbackInfo),
+            "offsetof mismatch for DeviceDescriptor::uncapturedErrorCallbackInfo");
 
     // RenderPassDescriptor
 

@@ -153,6 +153,7 @@ struct WGPUTextureBindingLayout;
 struct WGPUTextureBindingViewDimensionDescriptor;
 struct WGPUTextureDataLayout;
 struct WGPUTextureViewDescriptor;
+struct WGPUUncapturedErrorCallbackInfo;
 struct WGPUVertexAttribute;
 struct WGPUBindGroupDescriptor;
 struct WGPUBindGroupLayoutEntry;
@@ -1174,6 +1175,12 @@ typedef struct WGPUTextureViewDescriptor {
     WGPUTextureAspect aspect;
 } WGPUTextureViewDescriptor WGPU_STRUCTURE_ATTRIBUTE;
 
+typedef struct WGPUUncapturedErrorCallbackInfo {
+    WGPUChainedStruct const * nextInChain;
+    WGPUErrorCallback callback;
+    void * userdata;
+} WGPUUncapturedErrorCallbackInfo WGPU_STRUCTURE_ATTRIBUTE;
+
 typedef struct WGPUVertexAttribute {
     WGPUVertexFormat format;
     uint64_t offset;
@@ -1331,6 +1338,7 @@ typedef struct WGPUDeviceDescriptor {
     WGPUQueueDescriptor defaultQueue;
     WGPUDeviceLostCallback deviceLostCallback;
     void * deviceLostUserdata;
+    WGPUUncapturedErrorCallbackInfo uncapturedErrorCallbackInfo;
 } WGPUDeviceDescriptor WGPU_STRUCTURE_ATTRIBUTE;
 
 typedef struct WGPURenderPassDescriptor {

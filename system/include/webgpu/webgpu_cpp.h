@@ -670,6 +670,7 @@ namespace wgpu {
     struct TextureBindingViewDimensionDescriptor;
     struct TextureDataLayout;
     struct TextureViewDescriptor;
+    struct UncapturedErrorCallbackInfo;
     struct VertexAttribute;
     struct BindGroupDescriptor;
     struct BindGroupLayoutEntry;
@@ -1631,6 +1632,12 @@ namespace wgpu {
         TextureAspect aspect = TextureAspect::All;
     };
 
+    struct UncapturedErrorCallbackInfo {
+        ChainedStruct const * nextInChain = nullptr;
+        ErrorCallback callback = nullptr;
+        void * userdata = nullptr;
+    };
+
     struct VertexAttribute {
         VertexFormat format;
         uint64_t offset;
@@ -1788,6 +1795,7 @@ namespace wgpu {
         QueueDescriptor defaultQueue;
         DeviceLostCallback deviceLostCallback = nullptr;
         void * deviceLostUserdata = nullptr;
+        UncapturedErrorCallbackInfo uncapturedErrorCallbackInfo;
     };
 
     struct RenderPassDescriptor {

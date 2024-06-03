@@ -961,7 +961,7 @@
             "stencilWriteMask": 52
         },
         "WGPUDeviceDescriptor": {
-            "__size__": 36,
+            "__size__": 48,
             "defaultQueue": 20,
             "deviceLostCallback": 28,
             "deviceLostUserdata": 32,
@@ -969,7 +969,8 @@
             "nextInChain": 0,
             "requiredFeatureCount": 8,
             "requiredFeatures": 12,
-            "requiredLimits": 16
+            "requiredLimits": 16,
+            "uncapturedErrorCallbackInfo": 36
         },
         "WGPUExtent3D": {
             "__size__": 12,
@@ -1354,6 +1355,12 @@
             "label": 4,
             "mipLevelCount": 20,
             "nextInChain": 0
+        },
+        "WGPUUncapturedErrorCallbackInfo": {
+            "__size__": 12,
+            "callback": 4,
+            "nextInChain": 0,
+            "userdata": 8
         },
         "WGPUVertexAttribute": {
             "__size__": 24,

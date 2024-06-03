@@ -54,7 +54,11 @@ void GetAdapter(void (*callback)(wgpu::Adapter)) {
 }
 
 void GetDevice(void (*callback)(wgpu::Device)) {
-    adapter.RequestDevice(nullptr, [](WGPURequestDeviceStatus status, WGPUDevice cDevice, const char* message, void* userdata) {
+    wgpu::DeviceDescriptor desc{};
+    desc.uncapturedErrorCallbackInfo = {nullptr, [](WGPUErrorType type, char const* message, void*) {
+        printf("%d: %s\n", type, message);
+    }, nullptr};
+    adapter.RequestDevice(&desc, [](WGPURequestDeviceStatus status, WGPUDevice cDevice, const char* message, void* userdata) {
         if (message) {
             printf("RequestDevice: %s\n", message);
         }
@@ -66,11 +70,6 @@ void GetDevice(void (*callback)(wgpu::Device)) {
 }
 
 void init() {
-    device.SetUncapturedErrorCallback(
-        [](WGPUErrorType errorType, const char* message, void*) {
-            printf("%d: %s\n", errorType, message);
-        }, nullptr);
-
     queue = device.GetQueue();
 
     wgpu::ShaderModule shaderModule{};

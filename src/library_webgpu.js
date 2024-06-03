@@ -2639,6 +2639,8 @@ var LibraryWebGPU = {
 
       var deviceLostCallbackPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.deviceLostCallback, '*') }}};
       var deviceLostUserdataPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.deviceLostUserdata, '*') }}};
+      var uncapturedErrorCallbackPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.uncapturedErrorCallbackInfo + C_STRUCTS.WGPUUncapturedErrorCallbackInfo.callback, '*') }}};
+      var uncapturedErrorUserDataPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.uncapturedErrorCallbackInfo + C_STRUCTS.WGPUUncapturedErrorCallbackInfo.userdata, '*') }}};
 
       var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.label, '*') }}};
       if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
@@ -2655,6 +2657,26 @@ var LibraryWebGPU = {
             callUserCallback(() => WebGPU.errorCallback(deviceLostCallbackPtr,
               WebGPU.Int_DeviceLostReason[info.reason], info.message, deviceLostUserdataPtr));
           });
+        }
+        if (uncapturedErrorCallbackPtr) {
+          device.onuncapturederror = function(ev) {
+            // This will skip the callback if the runtime is no longer alive.
+            callUserCallback(() => {
+              // WGPUErrorType type, const char* message, void* userdata
+              var Validation = 0x00000001;
+              var OutOfMemory = 0x00000002;
+              var type;
+      #if ASSERTIONS
+              assert(typeof GPUValidationError != 'undefined');
+              assert(typeof GPUOutOfMemoryError != 'undefined');
+      #endif
+              if (ev.error instanceof GPUValidationError) type = Validation;
+              else if (ev.error instanceof GPUOutOfMemoryError) type = OutOfMemory;
+              // TODO: Implement GPUInternalError
+
+              WebGPU.errorCallback(uncapturedErrorCallbackPtr, type, ev.error.message, uncapturedErrorUserDataPtr);
+            });
+          };
         }
         {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestDeviceStatus.Success }}}, deviceId, 0, userdata);
       });
