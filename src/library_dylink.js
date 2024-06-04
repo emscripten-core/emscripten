@@ -172,6 +172,16 @@ var LibraryDylink = {
         // correctly.
         rtn.required = true;
       }
+      var value = resolveGlobalSymbol(symName, true).sym;
+      if (!value) {
+        return rtn;
+      }
+      if (typeof value == 'function') {
+        /** @suppress {checkTypes} */
+        rtn.value = addFunction(value, value.sig);
+      } else if (typeof value == {{{ POINTER_JS_TYPE }}}) {
+        rtn.value = value;
+      }
       return rtn;
     }
   },
