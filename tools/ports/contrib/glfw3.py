@@ -6,8 +6,8 @@
 import os
 from typing import Dict
 
-TAG = '3.4.0.20240514'
-HASH = '88e12d35724d01b5adbcb168e1efee9fa496cd529abeb42d526cfa74a6d68562ba622ad5736a5c830f3c96a5c0edd490bb945250b6eff991ad3e06de1f43a1e3'
+TAG = '3.4.0.20240601'
+HASH = '3083c320b402fd97c3cf9b55c2c1025bb133b3de0ab32cbb4af13e2471f9a9202bb0c9ae11f578829ae59568bb332762a67686be33689b7803343b84d8032254'
 
 # contrib port information (required)
 URL = 'https://github.com/pongasoft/emscripten-glfw'

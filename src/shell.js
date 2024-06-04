@@ -324,8 +324,10 @@ if (ENVIRONMENT_IS_SHELL) {
     return data;
   };
 
-  readAsync = (f, onload, onerror) => {
-    setTimeout(() => onload(readBinary(f)));
+  readAsync = (f) => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => resolve(readBinary(f)));
+    });
   };
 
   if (typeof clearTimeout == 'undefined') {
