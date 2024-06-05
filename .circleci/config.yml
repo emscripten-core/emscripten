@@ -347,14 +347,14 @@ commands:
       - prepare-for-tests
       - download-libwebkit2gtk
       - run:
-          command: |
-            cd test/webview-browser/ && npm install
-      - run:
           name: run tests (<< parameters.title >>)
           environment:
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
           command: |
+            cd test/webview-browser/
+            npm install
+            cd ../..
             export EMTEST_BROWSER=`pwd`'/test/webview-browser/index.js'
             # There are tests in the browser test suite that using libraries
             # that are not included by "./embuilder build ALL".  For example the
