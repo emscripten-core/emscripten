@@ -337,10 +337,6 @@ commands:
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
           command: |
-            add-apt-repository -y ppa:ubuntu-toolchain-r/test
-            apt update
-            sudo apt install -y g++-11
-            apt-get upgrade -y
             apt-get install -y \
               libwebkit2gtk-4.0 \
               build-essential \
@@ -836,10 +832,16 @@ jobs:
           # headers on emsdk-bundled clang
           test_targets: "other skip:other.test_native_link_error_message"
   test-browser-webview:
-    executor: bionic
-    environment:
-      EMTEST_LACKS_WEBGPU: "1"
+    # We don't use `bionic` here since its tool old to run recent node versions:
+    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_3.4.29' not found`
+    executor: linux-python
     steps:
+      - prepare-for-tests
+      # The linux-python image uses /home/circleci rather than /root and jsvu
+      # hardcodes /root into its launcher scripts so we need to reinstall v8.
+      - run: rm -rf $HOME/.jsvu
+      - install-v8
+      - install-node-canary
       - run-tests-webview:
           title: "browser"
           # Skip test_4gb_fail as it OOMs on the current bot
