@@ -81,3 +81,12 @@ void wgpuSurfaceGetCapabilities(WGPUSurface surface,
 void wgpuSurfaceCapabilitiesFreeMembers(WGPUSurfaceCapabilities value) {
   // wgpuSurfaceCapabilities doesn't currently allocate anything.
 }
+
+// WGPUAdapterInfo
+
+void wgpuAdapterInfoFreeMembers(WGPUAdapterInfo value) {
+  delete[] value.vendor;
+  delete[] value.architecture;
+  delete[] value.device;
+  delete[] value.description;
+}

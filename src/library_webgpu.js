@@ -2502,7 +2502,7 @@ var LibraryWebGPU = {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
         if (adapter) {
-          var adapterId = WebGPU.mgrAdapter.create(adapter);
+          var adapterId = WebGPU.mgrAdapter.create(adapter, { infoPtrs: {}});
           {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Success }}}, adapterId, 0, userdata);
         } else {
           var sp = stackSave();
@@ -2537,26 +2537,32 @@ var LibraryWebGPU = {
     return adapter.features.size;
   },
 
-  wgpuAdapterGetInfo__deps: ['$stringToUTF8'],
+  wgpuAdapterGetInfo__deps: ['$stringToUTF8', '$lengthBytesUTF8', 'malloc', 'realloc'],
   wgpuAdapterGetInfo: (adapterId, info) => {
     var adapter = WebGPU.mgrAdapter.get(adapterId);
     {{{ gpu.makeCheckDescriptor('info') }}}
 
-    function allocateUTF8String(string) {
-      var stringSize = lengthBytesUTF8(string) + 1;
-      var stringPtr = _malloc(stringSize);
-      stringToUTF8(string, stringPtr, stringSize);
+    function allocateUTF8String(stringPtr, stringValue) {
+      var stringSize = lengthBytesUTF8(stringValue) + 1;
+      if (!stringPtr) {
+        stringPtr = _malloc(stringSize);
+      } else {
+        _realloc(stringPtr, stringSize)
+      }
+      stringToUTF8(stringValue, stringPtr, stringSize);
       return stringPtr;
     }
 
-    var vendorPtr = allocateUTF8String(adapter.info.vendor);
-    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.vendor, 'vendorPtr', '*') }}};
-    var architecturePtr = allocateUTF8String(adapter.info.architecture);
-    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.architecture, 'architecturePtr', '*') }}};
-    var devicePtr = allocateUTF8String(adapter.info.device);
-    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.device, 'devicePtr', '*') }}};
-    var descriptionPtr = allocateUTF8String(adapter.info.description);
-    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.description, 'descriptionPtr', '*') }}};
+    var adapterWrapper = WebGPU.mgrAdapter.objects[adapterId];
+    {{{ gpu.makeCheckDefined('adapterWrapper') }}}
+    adapterWrapper.infoPtrs.vendor = allocateUTF8String(adapterWrapper.infoPtrs.vendor, adapter.info.vendor);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.vendor, 'adapterWrapper.infoPtrs.vendor', '*') }}};
+    adapterWrapper.infoPtrs.architecture = allocateUTF8String(adapterWrapper.infoPtrs.architecture, adapter.info.architecture);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.architecture, 'adapterWrapper.infoPtrs.architecture', '*') }}};
+    adapterWrapper.infoPtrs.device = allocateUTF8String(adapterWrapper.infoPtrs.device, adapter.info.device);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.device, 'adapterWrapper.infoPtrs.device', '*') }}};
+    adapterWrapper.infoPtrs.description = allocateUTF8String(adapterWrapper.infoPtrs.description, adapter.info.description);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.description, 'adapterWrapper.infoPtrs.description', '*') }}};
     {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.backendType, gpu.BackendType.WebGPU, 'i32') }}};
     var adapterType = adapter.isFallbackAdapter ? {{{ gpu.AdapterType.CPU }}} : {{{ gpu.AdapterType.Unknown }}};
     {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.adapterType, 'adapterType', 'i32') }}};
@@ -2695,12 +2701,6 @@ var LibraryWebGPU = {
         stackRestore(sp);
       });
     });
-  },
-
-  // WGPUAdapterInfo
-
-  wgpuAdapterInfoFreeMembers: (value) => {
-    // TODO: Call _free on vendorPtr, architecturePtr, devicePtr, and descriptionPtr.
   },
 
   // WGPUAdapterProperties
