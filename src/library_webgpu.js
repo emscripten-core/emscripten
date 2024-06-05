@@ -891,17 +891,15 @@ var LibraryWebGPU = {
     device.onuncapturederror = function(ev) {
       // This will skip the callback if the runtime is no longer alive.
       callUserCallback(() => {
-        // WGPUErrorType type, const char* message, void* userdata
-        var Validation = 0x00000001;
-        var OutOfMemory = 0x00000002;
-        var type;
+        var type = {{{ gpu.ErrorType.Unknown }}};
 #if ASSERTIONS
         assert(typeof GPUValidationError != 'undefined');
         assert(typeof GPUOutOfMemoryError != 'undefined');
+        assert(typeof GPUInternalError != 'undefined');
 #endif
-        if (ev.error instanceof GPUValidationError) type = Validation;
-        else if (ev.error instanceof GPUOutOfMemoryError) type = OutOfMemory;
-        // TODO: Implement GPUInternalError
+        if (ev.error instanceof GPUValidationError) type = {{{ gpu.ErrorType.Validation }}};
+        else if (ev.error instanceof GPUOutOfMemoryError) type = {{{ gpu.ErrorType.OutOfMemory }}};
+        else if (ev.error instanceof GPUInternalError) type = {{{ gpu.ErrorType.Internal }}};
 
         WebGPU.errorCallback(callback, type, ev.error.message, userdata);
       });
@@ -2662,17 +2660,15 @@ var LibraryWebGPU = {
           device.onuncapturederror = function(ev) {
             // This will skip the callback if the runtime is no longer alive.
             callUserCallback(() => {
-              // WGPUErrorType type, const char* message, void* userdata
-              var Validation = 0x00000001;
-              var OutOfMemory = 0x00000002;
-              var type;
-      #if ASSERTIONS
+              var type = {{{ gpu.ErrorType.Unknown }}};
+#if ASSERTIONS
               assert(typeof GPUValidationError != 'undefined');
               assert(typeof GPUOutOfMemoryError != 'undefined');
-      #endif
-              if (ev.error instanceof GPUValidationError) type = Validation;
-              else if (ev.error instanceof GPUOutOfMemoryError) type = OutOfMemory;
-              // TODO: Implement GPUInternalError
+              assert(typeof GPUInternalError != 'undefined');
+#endif
+              if (ev.error instanceof GPUValidationError) type = {{{ gpu.ErrorType.Validation }}};
+              else if (ev.error instanceof GPUOutOfMemoryError) type = {{{ gpu.ErrorType.OutOfMemory }}};
+              else if (ev.error instanceof GPUInternalError) type = {{{ gpu.ErrorType.Internal }}};
 
               WebGPU.errorCallback(uncapturedErrorCallbackPtr, type, ev.error.message, uncapturedErrorUserDataPtr);
             });
