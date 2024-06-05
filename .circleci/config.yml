@@ -331,7 +331,6 @@ commands:
         default: ""
     steps:
       - prepare-for-tests
-      - download-libwebkit2gtk
       - run:
           name: run tests (<< parameters.title >>)
           environment:
