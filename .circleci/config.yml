@@ -332,8 +332,7 @@ commands:
     steps:
       - run:
           command: |
-            rm -rf /home/circleci
-            ln -s /root /home/circleci
+            ln -s /home/circleci /root
       - prepare-for-tests
       - run:
           name: run tests (<< parameters.title >>)
