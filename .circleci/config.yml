@@ -330,6 +330,10 @@ commands:
         type: string
         default: ""
     steps:
+      - run:
+          command: |
+            rm -rf /home/circleci
+            ln -s /root /home/circleci
       - prepare-for-tests
       - run:
           name: run tests (<< parameters.title >>)
@@ -337,8 +341,6 @@ commands:
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
           command: |
-            rm -rf /home/circleci
-            ln -s /root /home/circleci
             sudo apt-get update
             sudo apt-get install -y \
               libwebkit2gtk-4.0 \
