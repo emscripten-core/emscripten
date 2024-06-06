@@ -842,7 +842,7 @@ jobs:
       # hardcodes /root into its launcher scripts so we need to reinstall v8.
       - run: rm -rf $HOME/.jsvu
       - install-v8
-      - install-node-version
+      - install-node-version:
           node_version: "18.20.3"
       - run-tests-webview:
           title: "browser"
