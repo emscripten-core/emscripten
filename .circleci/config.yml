@@ -341,6 +341,7 @@ commands:
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
           command: |
             sudo apt-get update
+            sudo apt-get do-release-upgrade -y
             sudo apt-get install -y \
               libwebkit2gtk-4.0 \
               build-essential \
@@ -836,13 +837,9 @@ jobs:
           # headers on emsdk-bundled clang
           test_targets: "other skip:other.test_native_link_error_message"
   test-browser-webview:
-    # We don't use `bionic` here since its tool old to run recent node versions:
-    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_3.4.29' not found`
-    executor: linux-python
+    executor: bionic
     steps:
       - prepare-for-tests
-      - install-node-version:
-          node_version: "18.20.3"
       - run-tests-webview:
           title: "browser"
           # Skip test_4gb_fail as it OOMs on the current bot
