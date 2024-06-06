@@ -421,7 +421,7 @@ addToLibrary({
                 ret.push({{{ makeGetValue('arg++', 0, 'u8') }}});
               }
             } else {
-              ret = ret.concat(intArrayFromString('(null)'.substr(0, argLength), true));
+              ret.push(...intArrayFromString('(null)'.substr(0, argLength), true));
             }
             if (flagLeftAlign) {
               while (argLength < width--) {

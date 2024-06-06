@@ -135,7 +135,7 @@ addToLibrary({
       for (var i = samePartsLength; i < fromParts.length; i++) {
         outputParts.push('..');
       }
-      outputParts = outputParts.concat(toParts.slice(samePartsLength));
+      outputParts.push(...toParts.slice(samePartsLength));
       return outputParts.join('/');
     }
   }

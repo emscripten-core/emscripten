@@ -64,7 +64,7 @@ function callMain() {
 #endif
 
 #if MAIN_READS_PARAMS && STANDALONE_WASM
-  mainArgs = [thisProgram].concat(args)
+  mainArgs = [thisProgram, ...args]
 #elif MAIN_READS_PARAMS
   args.unshift(thisProgram);
 

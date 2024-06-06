@@ -139,7 +139,7 @@ if (sig[0] === "j") {
     codeSection.push(...codeBody);
     sections.push(codeSection);
 
-    var bytes = new Uint8Array([].concat.apply([], sections));
+    var bytes = new Uint8Array([].concat(...sections));
     // We can compile this wasm module synchronously because it is small.
     var module = new WebAssembly.Module(bytes);
     var instance = new WebAssembly.Instance(module, {

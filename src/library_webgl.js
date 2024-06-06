@@ -1230,7 +1230,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   $webglGetExtensions() {
     var exts = getEmscriptenSupportedExtensions(GLctx);
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-    exts = exts.concat(exts.map((e) => "GL_" + e));
+    exts.push(...exts.map((e) => "GL_" + e));
 #endif
     return exts;
   },

@@ -320,7 +320,7 @@ var LibraryEmVal = {
     } else {
       reflectConstruct = function(target, args) {
         // limited polyfill for Reflect.construct that handles variadic args and native objects, but not new.target
-        return new (target.bind.apply(target, [null].concat(args)))();
+        return new (target.bind.apply(target, [null, ...args]))();
       };
     }
   `,

@@ -961,7 +961,9 @@ var LibraryEmbind = {
     }, argCount - 1);
 
     whenDependentTypesAreResolved([], argTypes, (argTypes) => {
-      var invokerArgsArray = [argTypes[0] /* return value */, null /* no class 'this'*/].concat(argTypes.slice(1) /* actual params */);
+      var invokerArgsArray = [argTypes[0] /* return value */,
+                              null /* no class 'this'*/,
+                              ...argTypes.slice(1) /* actual params */];
       replacePublicSymbol(name, craftInvokerFunction(name, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn, isAsync), argCount - 1);
       return [];
     });
@@ -2108,7 +2110,9 @@ var LibraryEmbind = {
         // Replace the initial unbound-types-handler stub with the proper
         // function. If multiple overloads are registered, the function handlers
         // go into an overload table.
-        var invokerArgsArray = [argTypes[0] /* return value */, null /* no class 'this'*/].concat(argTypes.slice(1) /* actual params */);
+        var invokerArgsArray = [argTypes[0] /* return value */,
+                                null /* no class 'this'*/,
+                                ...argTypes.slice(1) /* actual params */];
         var func = craftInvokerFunction(humanName, invokerArgsArray, null /* no class 'this'*/, rawInvoker, fn, isAsync);
         if (undefined === proto[methodName].overloadTable) {
           func.argCount = argCount-1;

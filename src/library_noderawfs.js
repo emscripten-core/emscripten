@@ -64,7 +64,7 @@ addToLibrary({
     symlink(...args) { fs.symlinkSync(...args); },
     rename(...args) { fs.renameSync(...args); },
     rmdir(...args) { fs.rmdirSync(...args); },
-    readdir(...args) { return ['.', '..'].concat(fs.readdirSync(...args)); },
+    readdir(...args) { return ['.', '..', ...fs.readdirSync(...args)]; },
     unlink(...args) { fs.unlinkSync(...args); },
     readlink(...args) { return fs.readlinkSync(...args); },
     stat(...args) { return fs.statSync(...args); },
