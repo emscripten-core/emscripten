@@ -846,7 +846,6 @@ jobs:
           test_targets: "
             browser skip:browser.test_4gb_fail
             "
-
   test-browser-chrome:
     executor: bionic
     environment:
