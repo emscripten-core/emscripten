@@ -105,17 +105,7 @@ def generate_minimal_runtime_load_statement(target_basename):
   %s
   });''' % modularize_imports]
 
-  binary_xhr = '''\
-    function binary(url) { // Downloads a binary file and outputs it in the specified callback
-      return new Promise((ok, err) => {
-        var x = new XMLHttpRequest();
-        x.open('GET', url, true);
-        x.responseType = 'arraybuffer';
-        x.onload = () => { ok(x.response); }
-        x.send(null);
-      });
-    }
-  '''
+  binary_xhr = '  var binary = (url) => fetch(url).then((rsp) => rsp.arrayBuffer());'
 
   script_xhr = '''\
   function script(url) { // Downloads a script file and adds it to DOM
