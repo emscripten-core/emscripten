@@ -151,14 +151,7 @@
       };
 
       function download(url) {
-        return new Promise(function(resolve, reject) {
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', url, true);
-          xhr.responseType = 'arraybuffer';
-          xhr.onload = function() { resolve(xhr.response); };
-          xhr.onerror = function(e) { reject(e); };
-          xhr.send(null);
-        });
+        return fetch(url).then((rsp) => rsp.arrayBuffer());
       }
 
       function addScriptToDom(scriptCode) {
