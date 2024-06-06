@@ -2502,7 +2502,8 @@ var LibraryWebGPU = {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
         if (adapter) {
-          var adapterId = WebGPU.mgrAdapter.create(adapter, { infoPtrs: {}});
+          var adapterWrapper = { infoPtrs: {} };
+          var adapterId = WebGPU.mgrAdapter.create(adapter, adapterWrapper);
           {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Success }}}, adapterId, 0, userdata);
         } else {
           var sp = stackSave();
