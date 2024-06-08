@@ -3081,7 +3081,7 @@ var LibraryOpenAL = {
       return;
     }
     switch (param) {
-    case 'AL_SOURCE_DISTANCE_MODEL':
+    case 0x200 /* AL_SOURCE_DISTANCE_MODEL */:
       AL.currentCtx.sourceDistanceModel = true;
       AL.updateContextGlobal(AL.currentCtx);
       break;
@@ -3103,7 +3103,7 @@ var LibraryOpenAL = {
       return;
     }
     switch (param) {
-    case 'AL_SOURCE_DISTANCE_MODEL':
+    case 0x200 /* AL_SOURCE_DISTANCE_MODEL */:
       AL.currentCtx.sourceDistanceModel = false;
       AL.updateContextGlobal(AL.currentCtx);
       break;
@@ -3125,7 +3125,7 @@ var LibraryOpenAL = {
       return 0;
     }
     switch (param) {
-    case 'AL_SOURCE_DISTANCE_MODEL':
+    case 0x200 /* AL_SOURCE_DISTANCE_MODEL */:
       return AL.currentCtx.sourceDistanceModel ? {{{ cDefs.AL_FALSE }}} : {{{ cDefs.AL_TRUE }}};
     default:
 #if OPENAL_DEBUG
