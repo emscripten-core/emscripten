@@ -726,7 +726,7 @@ var LibraryOpenAL = {
       if (src.bufQueue[src.bufsProcessed].audioBuf !== null) {
         src.bufsProcessed = 0;
         while (offset > src.bufQueue[src.bufsProcessed].audioBuf.duration) {
-          offset -= src.bufQueue[src.bufsProcessed].audiobuf.duration;
+          offset -= src.bufQueue[src.bufsProcessed].audioBuf.duration;
           src.bufsProcessed++;
         }
 
