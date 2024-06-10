@@ -102,11 +102,8 @@ if (!isDataURI(wasmSourceMapFile)) {
 }
 
 function getSourceMap() {
-  try {
-    return JSON.parse(read_(wasmSourceMapFile));
-  } catch (err) {
-    abort(err);
-  }
+  var buf = readBinary(wasmSourceMapFile);
+  return JSON.parse(UTF8ArrayToString(buf, 0, buf.length));
 }
 
 function getSourceMapPromise() {
