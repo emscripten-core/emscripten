@@ -11558,7 +11558,6 @@ int main(void) {
       }
     ''')
     expected = [
-      '`Module.read` has been replaced by `read_`',
       '`Module.asm` has been replaced by `wasmExports`',
     ]
     self.do_runf('src.c', expected, assert_all=True, emcc_args=['-sASSERTIONS'])
@@ -11590,7 +11589,6 @@ int main(void) {
       }
     ''')
     expected = '''
-Aborted(`Module.read` has been replaced by `read_` (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
 Aborted(`Module.wasmBinary` has been replaced by `wasmBinary` (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
 Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
 '''
