@@ -6813,12 +6813,11 @@ void* operator new(size_t size) {
     # See https://github.com/emscripten-core/emscripten/issues/20757
     self.emcc_args.append('-Wno-deprecated-declarations')
     poppler = self.get_poppler_library()
-    pdf_data = read_binary(test_file('poppler/paper.pdf'))
-    create_file('paper.pdf.js', str(list(bytearray(pdf_data))))
+    shutil.copyfile(test_file('poppler/paper.pdf'), 'paper.pdf')
 
     create_file('pre.js', '''
     Module.preRun = () => {
-      FS.createDataFile('/', 'paper.pdf', eval(read_('paper.pdf.js')), true, false, false);
+      FS.createDataFile('/', 'paper.pdf', readBinary('paper.pdf'), true, false, false);
     };
     Module.postRun = () => {
       var FileData = Array.from(MEMFS.getFileDataAsTypedArray(FS.root.contents['filename-1.ppm']));

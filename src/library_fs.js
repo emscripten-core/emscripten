@@ -1634,20 +1634,18 @@ FS.staticInit();` +
     // been loaded successfully. No-op for files that have been loaded already.
     forceLoadFile(obj) {
       if (obj.isDevice || obj.isFolder || obj.link || obj.contents) return true;
+ #if FS_DEBUG
+      dbg(`forceLoadFile: ${obj.url}`)
+ #endif
       if (typeof XMLHttpRequest != 'undefined') {
         throw new Error("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
-      } else if (read_) {
-        // Command-line.
+      } else { // Command-line.
         try {
-          // WARNING: Can't read binary files in V8's d8 or tracemonkey's js, as
-          //          read() will try to parse UTF8.
-          obj.contents = intArrayFromString(read_(obj.url), true);
+          obj.contents = readBinary(obj.url);
           obj.usedBytes = obj.contents.length;
         } catch (e) {
           throw new FS.ErrnoError({{{ cDefs.EIO }}});
         }
-      } else {
-        throw new Error('Cannot load without read() or XMLHttpRequest.');
       }
     },
     // Creates a file record for lazy-loading from a URL. XXX This requires a synchronous
