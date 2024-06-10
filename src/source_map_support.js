@@ -112,10 +112,8 @@ function getSourceMap() {
 function getSourceMapPromise() {
   if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch == 'function') {
     return fetch(wasmSourceMapFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}})
-      .then((response) => response['json']())
+      .then((response) => response.json())
       .catch(getSourceMap);
   }
-  return new Promise(function(resolve, reject) {
-    resolve(getSourceMap());
-  });
+  return Promise.resolve(getSourceMap());
 }
