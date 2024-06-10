@@ -1243,7 +1243,8 @@ var LibraryWebGPU = {
     return WebGPU.mgrRenderBundleEncoder.create(device.createRenderBundleEncoder(desc));
   },
 
-  wgpuDeviceCreateComputePipeline: (deviceId, descriptor) => {
+  $generateComputePipelineDesc__internal: true,
+  $generateComputePipelineDesc: (descriptor) => {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
 
     var desc = {
@@ -1255,13 +1256,42 @@ var LibraryWebGPU = {
     };
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePipelineDescriptor.label, '*') }}};
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
+    return desc;
+  },
 
+  wgpuDeviceCreateComputePipeline__deps: ['$generateComputePipelineDesc'],
+  wgpuDeviceCreateComputePipeline: (deviceId, descriptor) => {
+    var desc = generateComputePipelineDesc(descriptor);
     var device = WebGPU.mgrDevice.get(deviceId);
     return WebGPU.mgrComputePipeline.create(device.createComputePipeline(desc));
   },
 
+  wgpuDeviceCreateComputePipelineAsync__deps: ['$callUserCallback', '$stringToUTF8OnStack', '$generateComputePipelineDesc'],
   wgpuDeviceCreateComputePipelineAsync: (deviceId, descriptor, callback, userdata) => {
-    abort('TODO: wgpuDeviceCreateComputePipelineAsync unimplemented');
+    var desc = generateComputePipelineDesc(descriptor);
+    var device = WebGPU.mgrDevice.get(deviceId);
+    {{{ runtimeKeepalivePush() }}}
+    device.createComputePipelineAsync(desc).then((pipeline) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        var pipelineId = WebGPU.mgrComputePipeline.create(pipeline);
+        {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Success }}}, pipelineId, 0, userdata);
+      });
+    }, (pipelineError) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        var sp = stackSave();
+        var messagePtr = stringToUTF8OnStack(pipelineError.message);
+        if (pipelineError.reason === 'validation') {
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.ValidationError }}}, 0, messagePtr, userdata);
+        } else if (pipelineError.reason === 'internal') {
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.InternalError }}}, 0, messagePtr, userdata);
+        } else {
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Unknown }}}, 0, messagePtr, userdata);
+        }
+        stackRestore(sp);
+      });
+    });
   },
 
   $generateRenderPipelineDesc__internal: true,
