@@ -3357,7 +3357,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   var canThrow = library[x + '__nothrow'] !== true;
 #endif
 
-  if (!library[x + '__deps']) library[x + '__deps'] = [];
+  library[x + '__deps'] ??= [];
 
 #if PURE_WASI
   // In PURE_WASI mode we can't assume the wasm binary was built by emscripten
