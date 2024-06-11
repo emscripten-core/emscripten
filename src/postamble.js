@@ -220,7 +220,7 @@ function run() {
     readyPromiseResolve(Module);
 #endif
 #if expectToReceiveOnModule('onRuntimeInitialized')
-    if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
+    Module['onRuntimeInitialized']?.();
 #endif
 
 #if HAS_MAIN
