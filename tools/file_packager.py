@@ -1094,12 +1094,12 @@ def generate_js(data_target, data_files, metadata):
       }\n'''
 
   ret += '''
-    function runWithFS() {\n'''
+    function runWithFS(Module) {\n'''
   ret += code
   ret += '''
     }
     if (Module['calledRun']) {
-      runWithFS();
+      runWithFS(Module);
     } else {
       if (!Module['preRun']) Module['preRun'] = [];
       Module["preRun"].push(runWithFS); // FS is not initialized yet, wait for it
