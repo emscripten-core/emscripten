@@ -2408,7 +2408,7 @@ var LibraryOpenAL = {
     case 0x1005 /* ALC_DEVICE_SPECIFIER */:
       if (typeof AudioContext != 'undefined' ||
           typeof webkitAudioContext != 'undefined') {
-        ret = AL.DEVICE_NAME.concat('\0');
+        ret = AL.DEVICE_NAME + '\0';
       } else {
         ret = '\0';
       }
@@ -2417,9 +2417,9 @@ var LibraryOpenAL = {
       ret = AL.CAPTURE_DEVICE_NAME;
       break;
     case 0x310 /* ALC_CAPTURE_DEVICE_SPECIFIER */:
-      if (deviceId === 0)
-        ret = AL.CAPTURE_DEVICE_NAME.concat('\0');
-        else {
+      if (deviceId === 0) {
+        ret = AL.CAPTURE_DEVICE_NAME + '\0';
+      } else {
         var c = AL.requireValidCaptureDevice(deviceId, 'alcGetString');
         if (!c) {
           return 0;
@@ -2433,12 +2433,7 @@ var LibraryOpenAL = {
         return 0;
       }
 
-      ret = '';
-      for (var ext in AL.ALC_EXTENSIONS) {
-        ret = ret.concat(ext);
-        ret = ret.concat(' ');
-      }
-      ret = ret.trim();
+      ret = Object.keys(AL.ALC_EXTENSIONS).join(' ')
       break;
     default:
       AL.alcErr = {{{ cDefs.ALC_INVALID_ENUM }}};
@@ -3049,12 +3044,7 @@ var LibraryOpenAL = {
       ret = 'WebAudio';
       break;
     case 0xB004 /* AL_EXTENSIONS */:
-      ret = '';
-      for (var ext in AL.AL_EXTENSIONS) {
-        ret = ret.concat(ext);
-        ret = ret.concat(' ');
-      }
-      ret = ret.trim();
+      ret = Object.keys(AL.AL_EXTENSIONS).join(' ');
       break;
     default:
       if (AL.currentCtx) {
