@@ -32,7 +32,6 @@ function maybeReportResultToServer(result, port) {
 }
 
 function reportErrorToServer(message) {
-  var xhr = new XMLHttpRequest();
   if (typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) {
     err(message);
   } else {

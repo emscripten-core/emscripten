@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.62 (in development)
 -----------------------
+- The internal `read_` function was removed.  We now just use `readBinary` or
+  `readAsync`. (#22080)
 
 3.1.61 - 05/31/24
 -----------------
