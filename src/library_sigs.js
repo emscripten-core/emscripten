@@ -1556,7 +1556,6 @@ sigs = {
   wgpuAdapterGetLimits__sig: 'ipp',
   wgpuAdapterGetProperties__sig: 'vpp',
   wgpuAdapterHasFeature__sig: 'ipi',
-  wgpuAdapterInfoFreeMembers__sig: 'vp',
   wgpuAdapterPropertiesFreeMembers__sig: 'vp',
   wgpuAdapterReference__sig: 'vp',
   wgpuAdapterRelease__sig: 'vp',
