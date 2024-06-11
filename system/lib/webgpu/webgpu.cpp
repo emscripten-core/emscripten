@@ -86,7 +86,6 @@ void wgpuSurfaceCapabilitiesFreeMembers(WGPUSurfaceCapabilities value) {
 // WGPUAdapterInfo
 
 void wgpuAdapterInfoFreeMembers(WGPUAdapterInfo value) {
-  std::cout << "vendor: " << value.vendor << "\n";
   free(const_cast<char *>(value.vendor));
   free(const_cast<char *>(value.architecture));
   free(const_cast<char *>(value.device));
