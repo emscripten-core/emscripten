@@ -10,6 +10,7 @@
 #include <webgpu/webgpu.h>
 
 #include <array>
+#include <cstdlib>
 #include <cassert>
 
 //
@@ -85,8 +86,9 @@ void wgpuSurfaceCapabilitiesFreeMembers(WGPUSurfaceCapabilities value) {
 // WGPUAdapterInfo
 
 void wgpuAdapterInfoFreeMembers(WGPUAdapterInfo value) {
-  delete[] value.vendor;
-  delete[] value.architecture;
-  delete[] value.device;
-  delete[] value.description;
+  std::cout << "vendor: " << value.vendor << "\n";
+  free(const_cast<char *>(value.vendor));
+  free(const_cast<char *>(value.architecture));
+  free(const_cast<char *>(value.device));
+  free(const_cast<char *>(value.description));
 }
