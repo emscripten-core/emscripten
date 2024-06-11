@@ -215,9 +215,7 @@ function locateFile(path) {
 }
 
 // Hooks that are implemented differently in different runtime environments.
-var read_,
-    readAsync,
-    readBinary;
+var readAsync, readBinary;
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
@@ -311,10 +309,6 @@ if (ENVIRONMENT_IS_SHELL) {
 #endif
 
 #if ENVIRONMENT_MAY_BE_SHELL
-  if (typeof read != 'undefined') {
-    read_ = read;
-  }
-
   readBinary = (f) => {
     if (typeof readbuffer == 'function') {
       return new Uint8Array(readbuffer(f));
@@ -492,13 +486,12 @@ assert(typeof Module['memoryInitializerPrefixURL'] == 'undefined', 'Module.memor
 assert(typeof Module['pthreadMainPrefixURL'] == 'undefined', 'Module.pthreadMainPrefixURL option was removed, use Module.locateFile instead');
 assert(typeof Module['cdInitializerPrefixURL'] == 'undefined', 'Module.cdInitializerPrefixURL option was removed, use Module.locateFile instead');
 assert(typeof Module['filePackagePrefixURL'] == 'undefined', 'Module.filePackagePrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['read'] == 'undefined', 'Module.read option was removed (modify read_ in JS)');
+assert(typeof Module['read'] == 'undefined', 'Module.read option was removed');
 assert(typeof Module['readAsync'] == 'undefined', 'Module.readAsync option was removed (modify readAsync in JS)');
 assert(typeof Module['readBinary'] == 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
 assert(typeof Module['setWindowTitle'] == 'undefined', 'Module.setWindowTitle option was removed (modify emscripten_set_window_title in JS)');
 assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has been renamed Module.INITIAL_MEMORY');
 {{{ makeRemovedModuleAPIAssert('asm', 'wasmExports', false) }}}
-{{{ makeRemovedModuleAPIAssert('read', 'read_') }}}
 {{{ makeRemovedModuleAPIAssert('readAsync') }}}
 {{{ makeRemovedModuleAPIAssert('readBinary') }}}
 {{{ makeRemovedModuleAPIAssert('setWindowTitle') }}}
