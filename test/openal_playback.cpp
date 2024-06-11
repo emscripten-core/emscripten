@@ -257,6 +257,11 @@ int main() {
 #elif defined(TEST_ANIMATED_LOOPED_DOPPLER_PLAYBACK)
   printf("You should hear a continuously looping clip of the 1902 piano song \"The Entertainer\" played back at a dynamic playback rate that smoothly varies its pitch according to a sine wave doppler shift. Press OK when confirmed.\n");
 #elif defined(TEST_ANIMATED_LOOPED_PANNED_PLAYBACK)
+  assert(!alIsEnabled(AL_SOURCE_DISTANCE_MODEL));
+  alDisable(AL_SOURCE_DISTANCE_MODEL);
+  assert(!alIsEnabled(AL_SOURCE_DISTANCE_MODEL));
+  alEnable(AL_SOURCE_DISTANCE_MODEL);
+  assert(alIsEnabled(AL_SOURCE_DISTANCE_MODEL));
   printf("You should hear a continuously looping clip of the 1902 piano song \"The Entertainer\" smoothly panning around the listener. Press OK when confirmed.\n");
 #elif defined(TEST_ANIMATED_LOOPED_RELATIVE_PLAYBACK)
   alSourcei(sources[0], AL_SOURCE_RELATIVE, AL_TRUE);
