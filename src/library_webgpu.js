@@ -77,6 +77,7 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
     MIP_LEVEL_COUNT_UNDEFINED: 0xFFFFFFFF,
     ARRAY_LAYER_COUNT_UNDEFINED: 0xFFFFFFFF,
     AdapterType: {
+      CPU: 3,
       Unknown: 4,
     },
     BackendType: {
@@ -2534,6 +2535,26 @@ var LibraryWebGPU = {
       });
     }
     return adapter.features.size;
+  },
+
+  wgpuAdapterGetInfo__deps: ['$stringToNewUTF8'],
+  wgpuAdapterGetInfo: (adapterId, info) => {
+    var adapter = WebGPU.mgrAdapter.get(adapterId);
+    {{{ gpu.makeCheckDescriptor('info') }}}
+
+    var vendorPtr = stringToNewUTF8(adapter.info.vendor);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.vendor, 'vendorPtr', '*') }}};
+    var architecturePtr = stringToNewUTF8(adapter.info.architecture);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.architecture, 'architecturePtr', '*') }}};
+    var devicePtr = stringToNewUTF8(adapter.info.device);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.device, 'devicePtr', '*') }}};
+    var descriptionPtr = stringToNewUTF8(adapter.info.description);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.description, 'descriptionPtr', '*') }}};
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.backendType, gpu.BackendType.WebGPU, 'i32') }}};
+    var adapterType = adapter.isFallbackAdapter ? {{{ gpu.AdapterType.CPU }}} : {{{ gpu.AdapterType.Unknown }}};
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.adapterType, 'adapterType', 'i32') }}};
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.vendorID, '0', 'i32') }}};
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.deviceID, '0', 'i32') }}};
   },
 
   wgpuAdapterGetProperties: (adapterId, properties) => {

@@ -10,6 +10,7 @@
 #include <webgpu/webgpu.h>
 
 #include <array>
+#include <cstdlib>
 #include <cassert>
 
 //
@@ -80,4 +81,13 @@ void wgpuSurfaceGetCapabilities(WGPUSurface surface,
 
 void wgpuSurfaceCapabilitiesFreeMembers(WGPUSurfaceCapabilities value) {
   // wgpuSurfaceCapabilities doesn't currently allocate anything.
+}
+
+// WGPUAdapterInfo
+
+void wgpuAdapterInfoFreeMembers(WGPUAdapterInfo value) {
+  free(const_cast<char *>(value.vendor));
+  free(const_cast<char *>(value.architecture));
+  free(const_cast<char *>(value.device));
+  free(const_cast<char *>(value.description));
 }
