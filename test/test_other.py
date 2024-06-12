@@ -13553,19 +13553,19 @@ myMethod: 43
     self.emcc_args.append('-fsanitize=leak')
     self.do_other_test('test_gmtime_noleak.c')
 
-  def test_build_fetch_examples(self):
+  def test_build_fetch_tests(self):
     # We can't run these outside of the browser, but at least we can
     # make sure they build.
     self.set_setting('FETCH')
-    self.build(test_file('fetch/example_async_xhr_to_memory.c'))
-    self.build(test_file('fetch/example_async_xhr_to_memory_via_indexeddb.c'))
-    self.build(test_file('fetch/example_idb_delete.c'))
-    self.build(test_file('fetch/example_idb_store.c'))
-    self.build(test_file('fetch/example_stream_async_xhr.c'))
-    self.build(test_file('fetch/example_synchronous_fetch.c'))
-    self.build(test_file('fetch/example_sync_xhr_to_memory.c'))
-    self.build(test_file('fetch/example_waitable_xhr_to_memory.c'))
-    self.build(test_file('fetch/example_xhr_progress.c'))
+    self.build(test_file('fetch/test_fetch_to_memory_sync.c'))
+    self.build(test_file('fetch/test_fetch_to_memory_async.c'))
+    self.build(test_file('fetch/test_fetch_persist.c'))
+    self.build(test_file('fetch/test_fetch_idb_delete.c'))
+    self.build(test_file('fetch/test_fetch_idb_store.c'))
+    self.build(test_file('fetch/test_fetch_stream_async.c'))
+    self.build(test_file('fetch/test_fetch_sync.c'))
+    self.build(test_file('fetch/test_fetch_waitable.c'))
+    self.build(test_file('fetch/test_fetch_progress.c'))
 
   def test_fetch_init_node(self):
     # Make sure that `Fetch` initialises correctly under Node where

@@ -9,14 +9,15 @@
 #include <math.h>
 #include <emscripten/fetch.h>
 
-int main()
-{
+int main() {
   emscripten_fetch_attr_t attr;
   emscripten_fetch_attr_init(&attr);
   strcpy(attr.requestMethod, "GET");
   attr.attributes = EMSCRIPTEN_FETCH_LOAD_TO_MEMORY | EMSCRIPTEN_FETCH_SYNCHRONOUS;
   emscripten_fetch_t *fetch = emscripten_fetch(&attr, "gears.png");
+  assert(fetch);
   printf("Fetch finished with status %d\n", fetch->status);
   assert(fetch->status == 200);
+  printf("Downloaded %llu bytes", fetch->numBytes);
   return 0;
 }
