@@ -26,7 +26,7 @@ var LibraryDylink = {
         // than just running the promises in parallel, this makes a chain of
         // promises to run in series.
         wasmPlugin['promiseChainEnd'] = wasmPlugin['promiseChainEnd'].then(
-          () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true}, name)).then(
+          () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true}, name, {})).then(
             (exports) => {
 #if DYLINK_DEBUG
               dbg(`registering preloadedWasm: ${name}`);
@@ -877,7 +877,7 @@ var LibraryDylink = {
     if (flags.loadAsync) {
       return metadata.neededDynlibs
         .reduce((chain, dynNeeded) => chain.then(() =>
-          loadDynamicLibrary(dynNeeded, flags)
+          loadDynamicLibrary(dynNeeded, flags, localScope)
         ), Promise.resolve())
         .then(loadModule);
     }

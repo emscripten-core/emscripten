@@ -2316,13 +2316,13 @@ void *getBindBuffer() {
     'closure': (['--closure=1'],),
   })
   def test_openal_error(self, args):
-    self.btest_exit('openal_error.c', args=args)
+    self.btest_exit('openal/test_openal_error.c', args=args)
 
   def test_openal_capture_sanity(self):
-    self.btest('openal_capture_sanity.c', expected='0')
+    self.btest_exit('openal/test_openal_capture_sanity.c')
 
   def test_openal_extensions(self):
-    self.btest_exit('openal_extensions.c')
+    self.btest_exit('openal/test_openal_extensions.c')
 
   def test_runtimelink(self):
     create_file('header.h', r'''
