@@ -2559,7 +2559,7 @@ var LibraryWebGPU = {
 
   wgpuAdapterGetProperties__deps: ['$warnOnce'],
   wgpuAdapterGetProperties: (adapterId, properties) => {
-    warnOnce('getProperties is deprecated, use getInfo instead');
+    warnOnce('wgpuAdapterGetProperties is deprecated, use wgpuAdapterGetInfo instead');
 
     {{{ gpu.makeCheckDescriptor('properties') }}}
     {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.vendorID, '0', 'i32') }}};
