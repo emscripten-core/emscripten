@@ -50,6 +50,10 @@ PROFILING = 0
 
 LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
 
+# A comma separated list of benchmarkers to run during test_benchmark tests. See
+# `named_benchmarkers` for what is available.
+EMTEST_BENCHMARKERS = os.getenv('EMTEST_BENCHMARKERS', 'clang,v8,v8-lto,v8-ctors')
+
 
 class Benchmarker():
   # called when we init the object, which is during startup, even if we are
@@ -305,52 +309,30 @@ class CheerpBenchmarker(Benchmarker):
 
 benchmarkers: List[Benchmarker] = []
 
-if not common.EMTEST_FORCE64:
-  benchmarkers += [
-    NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
-    # NativeBenchmarker('gcc',   ['gcc', '-no-pie'],  ['g++', '-no-pie'])
-  ]
+# avoid the baseline compiler running, because it adds a lot of noise
+# (the nondeterministic time it takes to get to the full compiler ends up
+# mattering as much as the actual benchmark)
+aot_v8 = (config.V8_ENGINE if config.V8_ENGINE else []) + ['--no-liftoff']
 
-if config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
-  # avoid the baseline compiler running, because it adds a lot of noise
-  # (the nondeterministic time it takes to get to the full compiler ends up
-  # mattering as much as the actual benchmark)
-  aot_v8 = config.V8_ENGINE + ['--no-liftoff']
-  default_v8_name = os.environ.get('EMBENCH_NAME') or 'v8'
-  if common.EMTEST_FORCE64:
-    benchmarkers += [
-      EmscriptenBenchmarker(default_v8_name, aot_v8, ['-sMEMORY64=2']),
-    ]
-  else:
-    benchmarkers += [
-      EmscriptenBenchmarker(default_v8_name, aot_v8),
-      EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
-      EmscriptenBenchmarker(default_v8_name + '-ctors', aot_v8, ['-sEVAL_CTORS']),
-    ]
-  if os.path.exists(CHEERP_BIN):
-    benchmarkers += [
-      # CheerpBenchmarker('cheerp-v8-wasm', aot_v8),
-    ]
-
-if config.SPIDERMONKEY_ENGINE and config.SPIDERMONKEY_ENGINE in config.JS_ENGINES:
+named_benchmarkers = {
+  'clang': NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
+  'gcc': NativeBenchmarker('gcc',   ['gcc', '-no-pie'],  ['g++', '-no-pie']),
+  'v8': EmscriptenBenchmarker('v8', aot_v8),
+  'v8-lto': EmscriptenBenchmarker('v8-lto', aot_v8, ['-flto']),
+  'v8-ctors': EmscriptenBenchmarker('v8-ctors', aot_v8, ['-sEVAL_CTORS']),
+  'v8-64': EmscriptenBenchmarker('v8-64', aot_v8, ['-sMEMORY64=2']),
+  'node': EmscriptenBenchmarker('node', config.NODE_JS),
+  'node-64': EmscriptenBenchmarker('node-64', config.NODE_JS, ['-sMEMORY64=2']),
+  'cherp-v8': CheerpBenchmarker('cheerp-v8-wasm', aot_v8),
   # TODO: ensure no baseline compiler is used, see v8
-  benchmarkers += [
-    # EmscriptenBenchmarker('sm', SPIDERMONKEY_ENGINE),
-  ]
-  if os.path.exists(CHEERP_BIN):
-    benchmarkers += [
-      # CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE),
-    ]
+  'sm': EmscriptenBenchmarker('sm', config.SPIDERMONKEY_ENGINE),
+  'cherp-sm': CheerpBenchmarker('cheerp-sm-wasm', config.SPIDERMONKEY_ENGINE)
+}
 
-if config.NODE_JS and config.NODE_JS in config.JS_ENGINES:
-  if common.EMTEST_FORCE64:
-    benchmarkers += [
-      EmscriptenBenchmarker('Node.js', config.NODE_JS, ['-sMEMORY64=2']),
-    ]
-  else:
-    benchmarkers += [
-      # EmscriptenBenchmarker('Node.js', config.NODE_JS),
-    ]
+for name in EMTEST_BENCHMARKERS.split(','):
+  if name not in named_benchmarkers:
+    raise Exception('error, unknown benchmarker ' + name)
+  benchmarkers.append(named_benchmarkers[name])
 
 
 class benchmark(common.RunnerCore):

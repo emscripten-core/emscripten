@@ -406,7 +406,6 @@ def configure():
   common.EMTEST_LACKS_NATIVE_CLANG = int(os.getenv('EMTEST_LACKS_NATIVE_CLANG', '0'))
   common.EMTEST_REBASELINE = int(os.getenv('EMTEST_REBASELINE', '0'))
   common.EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
-  common.EMTEST_FORCE64 = int(os.getenv('EMTEST_FORCE64', '0'))
   if common.EMTEST_VERBOSE:
     logging.root.setLevel(logging.DEBUG)
 

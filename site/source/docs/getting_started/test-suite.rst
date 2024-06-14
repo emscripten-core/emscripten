@@ -181,11 +181,19 @@ As with all the test suites, you can also run a specific benchmark:
   # Run one specific benchmark
   test/runner benchmark.test_skinning
 
-Usually you will want to customize the in `test/test_benchmark.py` to
-run the benchmarks you want (there is currently no external config file). Things
-you may want to modify include:
+You can also specify which benchmarkers are run by using the environment
+variable `EMTEST_BENCHMARKERS`. It accepts a comma separated list of named
+benchmarkers (names can be found in `named_benchmarkers` in
+`test/test_benchmark.py`).
 
-* ``benchmarkers`` is the list of VMs to run the benchmarks on.
+.. code-block:: bash
+
+  # Run one specific benchmark and with clang and v8.
+  EMTEST_BENCHMARKERS=clang,v8 test/runner benchmark.test_skinning
+
+To further customize how the benchmarks are run, you will want to edit the file
+`test/test_benchmark.py`. Some of the options include:
+
 * ``DEFAULT_ARG`` is how long the benchmark should run (they all try to run for
   a similar amount of time for consistency).
 * ``TEST_REPS`` is how many times to repeat each run (more will take longer, but
