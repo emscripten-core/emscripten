@@ -3958,6 +3958,52 @@ ok
 
     self.do_runf('main.c', 'main\nfunc_a\nfunc_sub\nfunc_b\nfunc_sub\ndone\n')
 
+  @needs_dylink
+  def test_dlfcn_preload(self):
+    # Create chain of dependencies and load the first libary with preload plugin.
+    # main -> libb.so -> liba.so
+    create_file('liba.c', r'''
+      #include <stdio.h>
+      int liba_fun() {
+        return 23;
+      }
+    ''')
+    self.build_dlfcn_lib('liba.c', outfile='liba.so')
+
+    create_file('libb.c', r'''
+      #include <stdio.h>
+      int liba_fun();
+
+      int libb_fun() {
+        return liba_fun()*2;
+      }
+    ''')
+    self.build_dlfcn_lib('libb.c', outfile='libb.so', emcc_args=['liba.so'])
+
+    self.prep_dlfcn_main(['--preload-file', 'libb.so', '--use-preload-plugins'])
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <dlfcn.h>
+      #include <stdio.h>
+      #include <sys/stat.h>
+
+      int main() {
+        // Check the file exists in the VFS
+        struct stat statbuf;
+        assert(stat("/libb.so", &statbuf) == 0);
+        void *lib_handle = dlopen("/libb.so", RTLD_LOCAL | RTLD_NOW);
+        assert(lib_handle);
+        typedef int (*intfunc)();
+        intfunc x = (intfunc)dlsym(lib_handle, "libb_fun");
+        assert(x);
+        assert(x() == 46);
+        printf("done\n");
+        return 0;
+
+      }
+    ''')
+    self.do_runf('main.c', 'done\n')
+
   def dylink_test(self, main, side, expected=None, header=None, force_c=False,
                   main_module=2, **kwargs):
     # Same as dylink_testf but take source code in string form
@@ -6813,12 +6859,11 @@ void* operator new(size_t size) {
     # See https://github.com/emscripten-core/emscripten/issues/20757
     self.emcc_args.append('-Wno-deprecated-declarations')
     poppler = self.get_poppler_library()
-    pdf_data = read_binary(test_file('poppler/paper.pdf'))
-    create_file('paper.pdf.js', str(list(bytearray(pdf_data))))
+    shutil.copyfile(test_file('poppler/paper.pdf'), 'paper.pdf')
 
     create_file('pre.js', '''
     Module.preRun = () => {
-      FS.createDataFile('/', 'paper.pdf', eval(read_('paper.pdf.js')), true, false, false);
+      FS.createDataFile('/', 'paper.pdf', readBinary('paper.pdf'), true, false, false);
     };
     Module.postRun = () => {
       var FileData = Array.from(MEMFS.getFileDataAsTypedArray(FS.root.contents['filename-1.ppm']));
@@ -9413,13 +9458,17 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += args
     self.emcc_args += ['--pre-js', 'pre.js']
     self.emcc_args += ['--js-library', 'lib.js']
-    # This test is for setting dynamicLibraries at runtime so we don't
+    # This test is for setting dynamicLibraries at runtime, so we don't
     # want emscripten loading `liblib.so` automatically (which it would
-    # do without this setting.
+    # do without this setting)
     self.set_setting('NO_AUTOLOAD_DYLIBS')
 
     create_file('pre.js', '''
-      Module['dynamicLibraries'] = ['liblib.so'];
+      if (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIRONMENT_IS_PTHREAD) {
+        // Load liblib.so on the main thread, this would be equivalent to
+        // defining it outside the module (e.g. in MODULARIZE mode).
+        Module['dynamicLibraries'] = ['liblib.so'];
+      }
     ''')
 
     create_file('lib.js', '''

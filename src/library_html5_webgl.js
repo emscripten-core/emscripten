@@ -541,7 +541,7 @@ function handleWebGLProxying(funcs) {
       funcs[i + '_main_thread'] = i + '_calling_thread';
       funcs[i + '_main_thread__proxy'] = 'sync';
       funcs[i + '_main_thread__sig'] = sig;
-      if (!funcs[i + '__deps']) funcs[i + '__deps'] = [];
+      funcs[i + '__deps'] ??= [];
       funcs[i + '__deps'].push(i + '_calling_thread');
       funcs[i + '__deps'].push(i + '_main_thread');
       delete funcs[i + '__proxy'];

@@ -77,6 +77,7 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
     MIP_LEVEL_COUNT_UNDEFINED: 0xFFFFFFFF,
     ARRAY_LAYER_COUNT_UNDEFINED: 0xFFFFFFFF,
     AdapterType: {
+      CPU: 3,
       Unknown: 4,
     },
     BackendType: {
@@ -1243,7 +1244,8 @@ var LibraryWebGPU = {
     return WebGPU.mgrRenderBundleEncoder.create(device.createRenderBundleEncoder(desc));
   },
 
-  wgpuDeviceCreateComputePipeline: (deviceId, descriptor) => {
+  $generateComputePipelineDesc__internal: true,
+  $generateComputePipelineDesc: (descriptor) => {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
 
     var desc = {
@@ -1255,13 +1257,42 @@ var LibraryWebGPU = {
     };
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePipelineDescriptor.label, '*') }}};
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
+    return desc;
+  },
 
+  wgpuDeviceCreateComputePipeline__deps: ['$generateComputePipelineDesc'],
+  wgpuDeviceCreateComputePipeline: (deviceId, descriptor) => {
+    var desc = generateComputePipelineDesc(descriptor);
     var device = WebGPU.mgrDevice.get(deviceId);
     return WebGPU.mgrComputePipeline.create(device.createComputePipeline(desc));
   },
 
+  wgpuDeviceCreateComputePipelineAsync__deps: ['$callUserCallback', '$stringToUTF8OnStack', '$generateComputePipelineDesc'],
   wgpuDeviceCreateComputePipelineAsync: (deviceId, descriptor, callback, userdata) => {
-    abort('TODO: wgpuDeviceCreateComputePipelineAsync unimplemented');
+    var desc = generateComputePipelineDesc(descriptor);
+    var device = WebGPU.mgrDevice.get(deviceId);
+    {{{ runtimeKeepalivePush() }}}
+    device.createComputePipelineAsync(desc).then((pipeline) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        var pipelineId = WebGPU.mgrComputePipeline.create(pipeline);
+        {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Success }}}, pipelineId, 0, userdata);
+      });
+    }, (pipelineError) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        var sp = stackSave();
+        var messagePtr = stringToUTF8OnStack(pipelineError.message);
+        if (pipelineError.reason === 'validation') {
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.ValidationError }}}, 0, messagePtr, userdata);
+        } else if (pipelineError.reason === 'internal') {
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.InternalError }}}, 0, messagePtr, userdata);
+        } else {
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Unknown }}}, 0, messagePtr, userdata);
+        }
+        stackRestore(sp);
+      });
+    });
   },
 
   $generateRenderPipelineDesc__internal: true,
@@ -2536,7 +2567,30 @@ var LibraryWebGPU = {
     return adapter.features.size;
   },
 
+  wgpuAdapterGetInfo__deps: ['$stringToNewUTF8'],
+  wgpuAdapterGetInfo: (adapterId, info) => {
+    var adapter = WebGPU.mgrAdapter.get(adapterId);
+    {{{ gpu.makeCheckDescriptor('info') }}}
+
+    var vendorPtr = stringToNewUTF8(adapter.info.vendor);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.vendor, 'vendorPtr', '*') }}};
+    var architecturePtr = stringToNewUTF8(adapter.info.architecture);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.architecture, 'architecturePtr', '*') }}};
+    var devicePtr = stringToNewUTF8(adapter.info.device);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.device, 'devicePtr', '*') }}};
+    var descriptionPtr = stringToNewUTF8(adapter.info.description);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.description, 'descriptionPtr', '*') }}};
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.backendType, gpu.BackendType.WebGPU, 'i32') }}};
+    var adapterType = adapter.isFallbackAdapter ? {{{ gpu.AdapterType.CPU }}} : {{{ gpu.AdapterType.Unknown }}};
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.adapterType, 'adapterType', 'i32') }}};
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.vendorID, '0', 'i32') }}};
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.deviceID, '0', 'i32') }}};
+  },
+
+  wgpuAdapterGetProperties__deps: ['$warnOnce'],
   wgpuAdapterGetProperties: (adapterId, properties) => {
+    warnOnce('wgpuAdapterGetProperties is deprecated, use wgpuAdapterGetInfo instead');
+
     {{{ gpu.makeCheckDescriptor('properties') }}}
     {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.vendorID, '0', 'i32') }}};
     {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.vendorName, '0', 'i32') }}};

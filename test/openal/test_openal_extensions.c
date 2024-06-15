@@ -33,6 +33,7 @@ static const ALCchar *al_extensions[NUM_AL_EXTENSIONS] = {
 };
 
 static void check_alc_extension(const ALCchar *extension) {
+  printf("checking: %s\n", extension);
   ALCdevice *device = alcOpenDevice(NULL);
 
   assert(device);
@@ -40,10 +41,12 @@ static void check_alc_extension(const ALCchar *extension) {
 }
 
 static void check_al_extension(const ALchar *extension) {
+  printf("checking: %s\n", extension);
   assert(alIsExtensionPresent(extension) == ALC_TRUE);
 }
 
 int main() {
+  printf("AL_EXTENSIONS: %s\n", alGetString(AL_EXTENSIONS));
 
   for (int i = 0; i < NUM_ALC_EXTENSIONS; i++) {
     check_alc_extension(alc_extensions[i]);
@@ -53,5 +56,6 @@ int main() {
     check_al_extension(al_extensions[i]);
   }
 
+  printf("done\n");
   return 0;
 }

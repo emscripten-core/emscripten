@@ -1552,6 +1552,7 @@ sigs = {
   uuid_unparse_upper__sig: 'vpp',
   uuid_variant__sig: 'ip',
   wgpuAdapterEnumerateFeatures__sig: 'ppp',
+  wgpuAdapterGetInfo__sig: 'vpp',
   wgpuAdapterGetLimits__sig: 'ipp',
   wgpuAdapterGetProperties__sig: 'vpp',
   wgpuAdapterHasFeature__sig: 'ipi',

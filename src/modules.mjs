@@ -94,23 +94,23 @@ export const LibraryManager = {
     if (FILESYSTEM) {
       libraries.push('library_fs_shared.js');
       if (WASMFS) {
-        libraries = libraries.concat([
+        libraries.push(
           'library_wasmfs.js',
           'library_wasmfs_js_file.js',
           'library_wasmfs_jsimpl.js',
           'library_wasmfs_fetch.js',
           'library_wasmfs_node.js',
           'library_wasmfs_opfs.js',
-        ]);
+        );
       } else {
         // Core filesystem libraries (always linked against, unless -sFILESYSTEM=0 is specified)
-        libraries = libraries.concat([
+        libraries.push(
           'library_fs.js',
           'library_memfs.js',
           'library_tty.js',
           'library_pipefs.js', // ok to include it by default since it's only used if the syscall is used
           'library_sockfs.js', // ok to include it by default since it's only used if the syscall is used
-        ]);
+        );
 
         if (NODERAWFS) {
           // NODERAWFS requires NODEFS
@@ -126,7 +126,7 @@ export const LibraryManager = {
 
     // Additional JS libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
     if (AUTO_JS_LIBRARIES) {
-      libraries = libraries.concat([
+      libraries.push(
         'library_webgl.js',
         'library_html5_webgl.js',
         'library_openal.js',
@@ -137,7 +137,7 @@ export const LibraryManager = {
         'library_glew.js',
         'library_idbstore.js',
         'library_async.js',
-      ]);
+      );
       if (USE_SDL != 2) {
         libraries.push('library_sdl.js');
       }
@@ -206,7 +206,7 @@ export const LibraryManager = {
     // These must be added last after all Emscripten-provided system libraries
     // above, so that users can override built-in JS library symbols in their
     // own code.
-    libraries = libraries.concat(JS_LIBRARIES);
+    libraries.push(...JS_LIBRARIES);
 
     // Deduplicate libraries to avoid processing any library file multiple times
     libraries = libraries.filter((item, pos) => libraries.indexOf(item) == pos);
@@ -407,7 +407,7 @@ function exportRuntime() {
   ];
 
   if (PTHREADS && ALLOW_MEMORY_GROWTH) {
-    runtimeElements = runtimeElements.concat([
+    runtimeElements.push(
       'GROWABLE_HEAP_I8',
       'GROWABLE_HEAP_U8',
       'GROWABLE_HEAP_I16',
@@ -416,7 +416,7 @@ function exportRuntime() {
       'GROWABLE_HEAP_U32',
       'GROWABLE_HEAP_F32',
       'GROWABLE_HEAP_F64',
-    ]);
+    );
   }
   if (USE_OFFSET_CONVERTER) {
     runtimeElements.push('WasmOffsetConverter');

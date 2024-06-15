@@ -1184,8 +1184,8 @@ var LibraryGLFW = {
             Browser.updateResizeListeners();
           }
         }
-        if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullscreen);
-        if (Module['onFullscreen']) Module['onFullscreen'](Browser.isFullscreen);
+        Module['onFullScreen']?.(Browser.isFullscreen);
+        Module['onFullscreen']?.(Browser.isFullscreen);
       }
 
       if (!Browser.fullscreenHandlersInstalled) {

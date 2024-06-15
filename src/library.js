@@ -758,7 +758,6 @@ addToLibrary({
 
     // expand format
     var EXPANSION_RULES_1 = {
-      '%c': '%a %b %d %H:%M:%S %Y',     // Replaced by the locale's appropriate date and time representation - e.g., Mon Aug  3 14:02:01 2013
       '%D': '%m/%d/%y',                 // Equivalent to %m / %d / %y
       '%F': '%Y-%m-%d',                 // Equivalent to %Y - %m - %d
       '%h': '%b',                       // Equivalent to %b
@@ -787,6 +786,7 @@ addToLibrary({
       '%Ow': '%w',                      // Replaced by the number of the weekday (Sunday=0) using the locale's alternative numeric symbols.
       '%OW': '%W',                      // Replaced by the week number of the year (Monday as the first day of the week) using the locale's alternative numeric symbols.
       '%Oy': '%y',                      // Replaced by the year (offset from %C ) using the locale's alternative numeric symbols.
+      '%c': '%a %b %d %H:%M:%S %Y',     // Replaced by the locale's appropriate date and time representation - e.g., Mon Aug  3 14:02:01 2013
     };
     for (var rule in EXPANSION_RULES_1) {
       pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_1[rule]);
@@ -822,41 +822,41 @@ addToLibrary({
     }
 
     function getFirstWeekStartDate(janFourth) {
-        switch (janFourth.getDay()) {
-          case 0: // Sunday
-            return new Date(janFourth.getFullYear()-1, 11, 29);
-          case 1: // Monday
-            return janFourth;
-          case 2: // Tuesday
-            return new Date(janFourth.getFullYear(), 0, 3);
-          case 3: // Wednesday
-            return new Date(janFourth.getFullYear(), 0, 2);
-          case 4: // Thursday
-            return new Date(janFourth.getFullYear(), 0, 1);
-          case 5: // Friday
-            return new Date(janFourth.getFullYear()-1, 11, 31);
-          case 6: // Saturday
-            return new Date(janFourth.getFullYear()-1, 11, 30);
-        }
+      switch (janFourth.getDay()) {
+        case 0: // Sunday
+          return new Date(janFourth.getFullYear()-1, 11, 29);
+        case 1: // Monday
+          return janFourth;
+        case 2: // Tuesday
+          return new Date(janFourth.getFullYear(), 0, 3);
+        case 3: // Wednesday
+          return new Date(janFourth.getFullYear(), 0, 2);
+        case 4: // Thursday
+          return new Date(janFourth.getFullYear(), 0, 1);
+        case 5: // Friday
+          return new Date(janFourth.getFullYear()-1, 11, 31);
+        case 6: // Saturday
+          return new Date(janFourth.getFullYear()-1, 11, 30);
+      }
     }
 
     function getWeekBasedYear(date) {
-        var thisDate = addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
+      var thisDate = addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
 
-        var janFourthThisYear = new Date(thisDate.getFullYear(), 0, 4);
-        var janFourthNextYear = new Date(thisDate.getFullYear()+1, 0, 4);
+      var janFourthThisYear = new Date(thisDate.getFullYear(), 0, 4);
+      var janFourthNextYear = new Date(thisDate.getFullYear()+1, 0, 4);
 
-        var firstWeekStartThisYear = getFirstWeekStartDate(janFourthThisYear);
-        var firstWeekStartNextYear = getFirstWeekStartDate(janFourthNextYear);
+      var firstWeekStartThisYear = getFirstWeekStartDate(janFourthThisYear);
+      var firstWeekStartNextYear = getFirstWeekStartDate(janFourthNextYear);
 
-        if (compareByDay(firstWeekStartThisYear, thisDate) <= 0) {
-          // this date is after the start of the first week of this year
-          if (compareByDay(firstWeekStartNextYear, thisDate) <= 0) {
-            return thisDate.getFullYear()+1;
-          }
-          return thisDate.getFullYear();
+      if (compareByDay(firstWeekStartThisYear, thisDate) <= 0) {
+        // this date is after the start of the first week of this year
+        if (compareByDay(firstWeekStartNextYear, thisDate) <= 0) {
+          return thisDate.getFullYear()+1;
         }
-        return thisDate.getFullYear()-1;
+        return thisDate.getFullYear();
+      }
+      return thisDate.getFullYear()-1;
     }
 
     var EXPANSION_RULES_2 = {
@@ -3357,7 +3357,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   var canThrow = library[x + '__nothrow'] !== true;
 #endif
 
-  if (!library[x + '__deps']) library[x + '__deps'] = [];
+  library[x + '__deps'] ??= [];
 
 #if PURE_WASI
   // In PURE_WASI mode we can't assume the wasm binary was built by emscripten

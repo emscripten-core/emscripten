@@ -4,13 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-  read_ = (url) => {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, false);
-    xhr.send(null);
-    return xhr.responseText;
-  }
-
+#if ENVIRONMENT_MAY_BE_WORKER
   if (ENVIRONMENT_IS_WORKER) {
     readBinary = (url) => {
       var xhr = new XMLHttpRequest();
@@ -20,6 +14,7 @@
       return new Uint8Array(/** @type{!ArrayBuffer} */(xhr.response));
     };
   }
+#endif
 
   readAsync = (url) => {
 #if ENVIRONMENT_MAY_BE_WEBVIEW

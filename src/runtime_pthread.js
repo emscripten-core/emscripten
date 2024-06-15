@@ -129,6 +129,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         };
 
 #if MAIN_MODULE
+        dynamicLibraries = msgData['dynamicLibraries'];
         sharedModules = msgData['sharedModules'];
 #if RUNTIME_DEBUG
         dbg(`worker: received ${Object.keys(msgData['sharedModules']).length} shared modules: ${Object.keys(msgData.sharedModules)}`);

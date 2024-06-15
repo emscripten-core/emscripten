@@ -35,7 +35,7 @@ void EMSCRIPTEN_KEEPALIVE test_finished() {
 #endif
 
 void playSource(void* arg) {
-  ALuint source = static_cast<ALuint>(reinterpret_cast<intptr_t>(arg));
+  ALuint source = (ALuint)((intptr_t)(arg));
   ALint state;
 
   alGetSourcei(source, AL_SOURCE_STATE, &state);
@@ -74,7 +74,7 @@ void playSource(void* arg) {
 }
 
 void main_tick(void *arg) {
-  ALuint source = static_cast<ALuint>(reinterpret_cast<intptr_t>(arg));
+  ALuint source = (ALuint)((intptr_t)(arg));
   double t = emscripten_get_now() * 0.001;
 
 #if defined(TEST_LOOPED_SEEK_PLAYBACK)
@@ -257,13 +257,18 @@ int main() {
 #elif defined(TEST_ANIMATED_LOOPED_DOPPLER_PLAYBACK)
   printf("You should hear a continuously looping clip of the 1902 piano song \"The Entertainer\" played back at a dynamic playback rate that smoothly varies its pitch according to a sine wave doppler shift. Press OK when confirmed.\n");
 #elif defined(TEST_ANIMATED_LOOPED_PANNED_PLAYBACK)
+  assert(!alIsEnabled(AL_SOURCE_DISTANCE_MODEL));
+  alDisable(AL_SOURCE_DISTANCE_MODEL);
+  assert(!alIsEnabled(AL_SOURCE_DISTANCE_MODEL));
+  alEnable(AL_SOURCE_DISTANCE_MODEL);
+  assert(alIsEnabled(AL_SOURCE_DISTANCE_MODEL));
   printf("You should hear a continuously looping clip of the 1902 piano song \"The Entertainer\" smoothly panning around the listener. Press OK when confirmed.\n");
 #elif defined(TEST_ANIMATED_LOOPED_RELATIVE_PLAYBACK)
   alSourcei(sources[0], AL_SOURCE_RELATIVE, AL_TRUE);
   printf("You should hear a continuously looping clip of the 1902 piano song \"The Entertainer\" centered at the listener. If it is panning, then the test failed. Press OK when confirmed.\n");
 #elif defined(TEST_ALC_SOFT_PAUSE_DEVICE)
-  alcDevicePauseSOFT = reinterpret_cast<ALC_DEVICE_PAUSE_SOFT>(alcGetProcAddress(device, "alcDevicePauseSOFT"));
-  alcDeviceResumeSOFT = reinterpret_cast<ALC_DEVICE_RESUME_SOFT>(alcGetProcAddress(device, "alcDeviceResumeSOFT"));
+  alcDevicePauseSOFT = (ALC_DEVICE_PAUSE_SOFT)(alcGetProcAddress(device, "alcDevicePauseSOFT"));
+  alcDeviceResumeSOFT = (ALC_DEVICE_RESUME_SOFT)(alcGetProcAddress(device, "alcDeviceResumeSOFT"));
   assert(alcDevicePauseSOFT && alcDeviceResumeSOFT);
   printf("You should hear a looping clip of the 1902 piano song \"The Entertainer\" That pauses for 1 second every second. Press OK when confirmed.\n");
 #elif defined(TEST_AL_SOFT_LOOP_POINTS)
@@ -293,11 +298,11 @@ int main() {
 #if defined(TEST_LOOPED_PLAYBACK)
   emscripten_set_main_loop_arg(main_tick, (void*)sources[0], 0, 0);
 #else
-  emscripten_async_call(playSource, reinterpret_cast<void*>(sources[0]), 700);
+  emscripten_async_call(playSource, (void*)(sources[0]), 700);
 #endif
 #else
   usleep(700000);
-  playSource(reinterpret_cast<void*>(sources[0]));
+  playSource((void*)(sources[0]));
 #endif
 
   return 0;

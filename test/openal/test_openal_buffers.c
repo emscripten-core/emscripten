@@ -92,8 +92,8 @@ void iter() {
 
   // Exit once we've processed the entire clip.
   if (offset >= size) {
-#ifdef __EMSCRIPTEN__
-    REPORT_RESULT(0);
+#if __EMSCRIPTEN__
+    emscripten_cancel_main_loop();
 #endif
     exit(0);
   }

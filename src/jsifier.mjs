@@ -700,7 +700,7 @@ function(${args}) {
       }
     }
 
-    postSets = postSets.concat(orderedPostSets);
+    postSets.push(...orderedPostSets);
 
     const shellFile = MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js';
     includeFile(shellFile);

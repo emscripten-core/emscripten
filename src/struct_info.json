@@ -1224,6 +1224,17 @@
                 "next",
                 "sType"
             ],
+            "WGPUAdapterInfo": [
+                "nextInChain",
+                "vendor",
+                "architecture",
+                "device",
+                "description",
+                "backendType",
+                "adapterType",
+                "vendorID",
+                "deviceID"
+            ],
             "WGPUAdapterProperties": [
                 "nextInChain",
                 "vendorID",
