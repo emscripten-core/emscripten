@@ -3980,7 +3980,7 @@ ok
     ''')
     self.build_dlfcn_lib('libb.c', outfile='libb.so', emcc_args=['liba.so'])
 
-    self.prep_dlfcn_main(['--preload-file', 'libb.so', '--use-preload-plugins'])
+    self.prep_dlfcn_main(['--preload-file', 'libb.so', '--use-preload-plugins', '-L.', '-sAUTOLOAD_DYLIBS=0', 'libb.so'])
     create_file('main.c', r'''
       #include <assert.h>
       #include <dlfcn.h>
