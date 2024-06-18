@@ -20,12 +20,6 @@ executors:
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
       EMTEST_BUILD_VERBOSE: "2"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
-  mac:
-    environment:
-      EMSDK_NOTTY: "1"
-    macos:
-      xcode: "13.4.1"
-    resource_class: macos.x86.medium.gen2
   mac-arm64:
     environment:
       EMSDK_NOTTY: "1"
@@ -912,8 +906,7 @@ jobs:
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMCC_SKIP_SANITY_CHECK: "1"
-      # test_sse1 (the only @crossplatform native clang test) currently fails
-      # on the macOS bots).
+      # Some native clang tests assume x86 clang (e.g. -sse2)      
       EMTEST_LACKS_NATIVE_CLANG: "1"
       EMTEST_SKIP_NODE_CANARY: "1"
     steps:
@@ -924,33 +917,9 @@ jobs:
           name: Remove Linux binaries
           command: |
             rm -rf ~/emsdk ~/vms ~/.jsvu
-      # note we do *not* build all libraries and freeze the cache; as we run
-      # only limited tests here, it's more efficient to build on demand
-      - install-emsdk
-      - pip-install:
-          python: "$EMSDK_PYTHON"
-      - run-tests:
-          title: "crossplatform tests"
-          test_targets: "--crossplatform-only"
-      - upload-test-results
-
-  test-mac:
-    executor: mac
-    environment:
-      # We don't install d8 or modern node on the mac runner so we skip any
-      # tests that depend on those.
-      EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_EH: "1"
-      EMTEST_SKIP_WASM64: "1"
-      EMTEST_SKIP_SCONS: "1"
-      # Some native clang tests assume x86 clang (e.g. -sse2)
-      EMTEST_LACKS_NATIVE_CLANG: "1"
-      EMCC_SKIP_SANITY_CHECK: "1"
-    steps:
-      - setup-macos
       - install-emsdk
       # TODO: We can't currently do pip install here since numpy and other packages
-      # are currently missing arm64 macos binaries.
+      # are currently missing arm64 macos binaries.      
       - run-tests:
           title: "crossplatform tests"
           test_targets: "--crossplatform-only"
@@ -1016,7 +985,6 @@ workflows:
       - test-spidermonkey
       - test-node-compat
       - test-windows
-      - test-mac
       - test-mac-arm64:
           # The mac tester also uses the libraries built on the linux builder to
           # save total build time (this is fine because the libraries are wasm
