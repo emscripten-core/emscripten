@@ -20,12 +20,6 @@ executors:
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
       EMTEST_BUILD_VERBOSE: "2"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
-  mac:
-    environment:
-      EMSDK_NOTTY: "1"
-    macos:
-      xcode: "13.4.1"
-    resource_class: macos.x86.medium.gen2
   mac-arm64:
     environment:
       EMSDK_NOTTY: "1"
@@ -902,38 +896,6 @@ jobs:
           test_targets: "sockets.test_nodejs_sockets_echo*"
       - upload-test-results
 
-  test-mac:
-    executor: mac
-    environment:
-      # We don't install d8 or modern node on the mac runner so we skip any
-      # tests that depend on those.
-      EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_EH: "1"
-      EMTEST_SKIP_WASM64: "1"
-      EMTEST_SKIP_SCONS: "1"
-      EMCC_SKIP_SANITY_CHECK: "1"
-      # test_sse1 (the only @crossplatform native clang test) currently fails
-      # on the macOS bots).
-      EMTEST_LACKS_NATIVE_CLANG: "1"
-      EMTEST_SKIP_NODE_CANARY: "1"
-    steps:
-      - setup-macos
-      - attach_workspace:
-          at: ~/
-      - run:
-          name: Remove Linux binaries
-          command: |
-            rm -rf ~/emsdk ~/vms ~/.jsvu
-      # note we do *not* build all libraries and freeze the cache; as we run
-      # only limited tests here, it's more efficient to build on demand
-      - install-emsdk
-      - pip-install:
-          python: "$EMSDK_PYTHON"
-      - run-tests:
-          title: "crossplatform tests"
-          test_targets: "--crossplatform-only"
-      - upload-test-results
-
   test-mac-arm64:
     executor: mac-arm64
     environment:
@@ -1017,9 +979,3 @@ workflows:
       - test-node-compat
       - test-windows
       - test-mac-arm64
-      - test-mac:
-          # The mac tester also uses the libraries built on the linux builder to
-          # save total build time (this is fine because the libraries are wasm
-          # and do not depend on the underlying build platform)
-          requires:
-            - build-linux
