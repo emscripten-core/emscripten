@@ -1016,8 +1016,8 @@ workflows:
       - test-spidermonkey
       - test-node-compat
       - test-windows
-      - test-mac-arm64
-      - test-mac:
+      - test-mac
+      - test-mac-arm64:
           # The mac tester also uses the libraries built on the linux builder to
           # save total build time (this is fine because the libraries are wasm
           # and do not depend on the underlying build platform)
