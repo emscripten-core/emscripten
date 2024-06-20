@@ -4615,8 +4615,8 @@ Module["preRun"] = () => {
 
   # Test emscripten_fetch() usage to stream a XHR in to memory without storing the full file in memory
   @also_with_wasm2js
+  @disabled('moz-chunked-arraybuffer was firefox-only and has been removed')
   def test_fetch_stream_file(self):
-    self.skipTest('moz-chunked-arraybuffer was firefox-only and has been removed')
     # Strategy: create a large 128MB file, and compile with a small 16MB Emscripten heap, so that the tested file
     # won't fully fit in the heap. This verifies that streaming works properly.
     s = '12345678'
@@ -4643,18 +4643,11 @@ Module["preRun"] = () => {
     shutil.copyfile(test_file('gears.png'), 'gears.png')
     self.btest_exit('fetch/test_fetch_sync_xhr.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
 
-  # Tests emscripten_fetch() usage when user passes none of the main 3 flags (append/replace/no_download).
-  # In that case, in append is implicitly understood.
+  # Tests synchronous emscripten_fetch() usage from pthread
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  def test_fetch_implicit_append(self):
+  def test_fetch_sync(self):
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/example_synchronous_fetch.c', args=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
-
-  # Tests synchronous emscripten_fetch() usage from wasm pthread in fastcomp.
-  @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  def test_fetch_sync_xhr_in_wasm(self):
-    shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/example_synchronous_fetch.c', args=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/test_fetch_sync.c', args=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Tests that the Fetch API works for synchronous XHRs when used with --proxy-to-worker.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
@@ -4681,6 +4674,32 @@ Module["preRun"] = () => {
 
   def test_fetch_post(self):
     self.btest_exit('fetch/test_fetch_post.c', args=['-sFETCH'])
+
+  def test_fetch_progress(self):
+    create_file('myfile.dat', 'hello world\n' * 1000)
+    self.btest_exit('fetch/test_fetch_progress.c', args=['-sFETCH'])
+
+  def test_fetch_to_memory_async(self):
+    create_file('myfile.dat', 'hello world\n' * 1000)
+    self.btest_exit('fetch/test_fetch_to_memory_async.c', args=['-sFETCH'])
+
+  def test_fetch_to_memory_sync(self):
+    create_file('myfile.dat', 'hello world\n' * 1000)
+    self.btest_exit('fetch/test_fetch_to_memory_sync.c', args=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
+
+  @disabled('moz-chunked-arraybuffer was firefox-only and has been removed')
+  def test_fetch_stream_async(self):
+    create_file('myfile.dat', 'hello world\n' * 1000)
+    self.btest_exit('fetch/test_fetch_stream_async.c', args=['-sFETCH'])
+
+  @disabled('waitable fetch operations were disabled when the fetch worker was removed')
+  def test_fetch_waitable(self):
+    create_file('myfile.dat', 'hello world\n' * 1000)
+    self.btest_exit('fetch/test_fetch_waitable.c', args=['-sFETCH'])
+
+  def test_fetch_persist(self):
+    create_file('myfile.dat', 'hello world\n')
+    self.btest_exit('fetch/test_fetch_persist.c', args=['-sFETCH'])
 
   @parameterized({
     '': ([],),
