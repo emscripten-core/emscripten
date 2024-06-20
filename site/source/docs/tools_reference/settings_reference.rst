@@ -350,7 +350,7 @@ Default value: 1024
 TABLE_BASE
 ==========
 
-Where where table slots (function addresses) are allocated.
+Where table slots (function addresses) are allocated.
 This must be at least 1 to reserve the zero slot for the null pointer.
 
 Default value: 1

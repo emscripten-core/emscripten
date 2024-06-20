@@ -273,7 +273,7 @@ var ALLOW_TABLE_GROWTH = false;
 // [link]
 var GLOBAL_BASE = 1024;
 
-// Where where table slots (function addresses) are allocated.
+// Where table slots (function addresses) are allocated.
 // This must be at least 1 to reserve the zero slot for the null pointer.
 // [link]
 var TABLE_BASE = 1;
