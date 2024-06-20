@@ -11922,6 +11922,10 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.do_run_in_out_file_test('other/test_pthread_reuse.c')
 
+  @node_pthreads
+  def test_pthread_relocatable(self):
+    self.do_runf('hello_world.c', 'hello, world!', emcc_args=['-sRELOCATABLE'])
+
   def test_stdin_preprocess(self):
     create_file('temp.h', '#include <string>')
     outputStdin = self.run_process([EMCC, '-x', 'c++', '-dM', '-E', '-'], input="#include <string>", stdout=PIPE).stdout
