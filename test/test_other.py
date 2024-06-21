@@ -2825,7 +2825,7 @@ More info: https://emscripten.org
     'standalone-emitDCEGraph': ('optimizer/standalone-emitDCEGraph.js', ['emitDCEGraph', '--no-print']),
     'emittedJSPreservesParens': ('optimizer/emittedJSPreservesParens.js', []),
     'growableHeap': ('optimizer/test-growableHeap.js', ['growableHeap']),
-    'unsignPointers': ('optimizer/test-unsignPointers.js', ['unsignPointers']),
+    'unsignPointers': ('optimizer/test-unsignPointers.js', ['unsignPointers', '--closure-friendly']),
     'asanify': ('optimizer/test-asanify.js', ['asanify']),
     'safeHeap': ('optimizer/test-safeHeap.js', ['safeHeap']),
     'LittleEndianHeap': ('optimizer/test-LittleEndianHeap.js', ['littleEndianHeap']),
@@ -8370,12 +8370,12 @@ int main() {
         (['-O0', '--profiling-funcs'], False, False, True, False),
         (['-O1'],        False, False, True, False),
         (['-O2'],        False, True,  False, False),
-        (['-O2', '-g1'], False, True,  True, False),
+        (['-O2', '-g1'], False, False, True, False),
         (['-O2', '-g'],  True,  False, True, False),
         (['-O2', '--closure=1'],         False, True, False, True),
         (['-O2', '--closure=1', '-g1'],  False, True, True,  True),
       ]:
-      print(args, expect_emit_text)
+      print(args, expect_emit_text, expect_clean_js, expect_whitespace_js, expect_closured)
       delete_file('a.out.wat')
       cmd = [EMCC, test_file('hello_world.c')] + args
       print(' '.join(cmd))

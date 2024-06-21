@@ -1,5 +1,8 @@
-HEAP32[x >>> 2];
+/**
+ * This is a multi-line comment
+ */ HEAP32[x >>> 2];
 
+// This is a single-line comment
 HEAP8[x >>> 0];
 
 HEAP8.length;
@@ -20,6 +23,7 @@ HEAPU8.subarray(x >>> 0, y >>> 0);
 
 process.versions.node;
 
+// something completely different
 insideCall(HEAP32[x >>> 2]);
 
 heap[x >>> 0];
