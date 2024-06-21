@@ -22,6 +22,8 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - The internal `read_` function was removed.  We now just use `readBinary` or
   `readAsync`. (#22080)
+- reference-types feature is now enabled by default in Emscripten, due to the
+  upstream LLVM change (https://github.com/llvm/llvm-project/pull/93261).
 
 3.1.61 - 05/31/24
 -----------------
