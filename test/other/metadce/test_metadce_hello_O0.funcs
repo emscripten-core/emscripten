@@ -14,6 +14,7 @@ $__ofl_lock
 $__ofl_unlock
 $__original_main
 $__stdio_write
+$__strerror_l
 $__syscall_getpid
 $__towrite
 $__trunctfdf2
@@ -50,6 +51,7 @@ $pop_arg
 $pop_arg_long_double
 $printf
 $printf_core
+$strerror
 $strnlen
 $vfprintf
 $wcrtomb
