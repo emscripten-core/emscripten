@@ -720,7 +720,7 @@ void Socket(int client_fd, uint8_t *data, uint64_t numBytes) {
   d->type = Translate_Socket_Type(d->type);
   d->protocol = Translate_Socket_Protocol(d->protocol);
   SOCKET_T ret = socket(d->domain, d->type, d->protocol);
-  int errorCode = (ret < 0) ? GET_SOCKET_ERROR() : 0;
+  int errorCode = IS_CREATE_SOCKET_ERROR(ret) ? GET_SOCKET_ERROR() : 0;
 
 #ifdef POSIX_SOCKET_DEBUG
   printf("socket(domain=%d,type=%d,protocol=%d)->%d\n", d->domain, d->type, d->protocol, ret);
@@ -745,6 +745,11 @@ void Socket(int client_fd, uint8_t *data, uint64_t numBytes) {
   SendWebSocketMessage(client_fd, &r, sizeof(r));
 }
 
+static int translate_return_value_to_error_code(int apiCallReturnValue)
+{
+  return IS_SOCKET_API_ERROR(apiCallReturnValue) ? GET_SOCKET_ERROR() : 0;
+}
+
 // int socketpair(int domain, int type, int protocol, int socket_vector[2]);
 void Socketpair(int client_fd, uint8_t *data, uint64_t numBytes) {
   typedef struct MSG {
@@ -766,7 +771,7 @@ void Socketpair(int client_fd, uint8_t *data, uint64_t numBytes) {
   d->type = Translate_Socket_Type(d->type);
   d->protocol = Translate_Socket_Protocol(d->protocol);
   int ret = socketpair(d->domain, d->type, d->protocol, socket_vector);
-  int errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
+  int errorCode = translate_return_value_to_error_code(ret);
 #endif
 
 #ifdef POSIX_SOCKET_DEBUG
@@ -826,7 +831,7 @@ void Shutdown(int client_fd, uint8_t *data, uint64_t numBytes) {
 
   if (IsSocketPartOfConnection(client_fd, d->socket)) {
     ret = shutdown(d->socket, d->how);
-    errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
+    errorCode = translate_return_value_to_error_code(ret);
 #ifdef POSIX_SOCKET_DEBUG
     printf("shutdown(socket=%d,how=%d)->%d\n", d->socket, d->how, ret);
     if (errorCode) PRINT_SOCKET_ERROR(errorCode);
@@ -866,7 +871,7 @@ void Bind(int client_fd, uint8_t *data, uint64_t numBytes) {
 
   if (IsSocketPartOfConnection(client_fd, d->socket)) {
     ret = bind(d->socket, (struct sockaddr*)d->address, d->address_len);
-    errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
+    errorCode = translate_return_value_to_error_code(ret);
 #ifdef POSIX_SOCKET_DEBUG
     printf("bind(socket=%d,address=%p,address_len=%d, address=\"%s\")->%d\n", d->socket, d->address, d->address_len, BufferToString(d->address, d->address_len), ret);
     if (errorCode) PRINT_SOCKET_ERROR(errorCode);
@@ -903,7 +908,7 @@ void Connect(int client_fd, uint8_t *data, uint64_t numBytes) {
 
   if (IsSocketPartOfConnection(client_fd, d->socket)) {
     ret = connect(d->socket, (struct sockaddr*)d->address, actualAddressLen);
-    errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
+    errorCode = translate_return_value_to_error_code(ret);
 #ifdef POSIX_SOCKET_DEBUG
     printf("connect(socket=%d,address=%p,address_len=%d, address=\"%s\")->%d\n", d->socket, d->address, d->address_len, BufferToString(d->address, actualAddressLen), ret);
     if (errorCode) PRINT_SOCKET_ERROR(errorCode);
@@ -937,7 +942,7 @@ void Listen(int client_fd, uint8_t *data, uint64_t numBytes) {
 
   if (IsSocketPartOfConnection(client_fd, d->socket)) {
     ret = listen(d->socket, d->backlog);
-    errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
+    errorCode = translate_return_value_to_error_code(ret);
 #ifdef POSIX_SOCKET_DEBUG
     printf("listen(socket=%d,backlog=%d)->%d\n", d->socket, d->backlog, ret);
     if (errorCode) PRINT_SOCKET_ERROR(errorCode);
@@ -978,7 +983,7 @@ void Accept(int client_fd, uint8_t *data, uint64_t numBytes) {
     printf("accept(socket=%d,address=%p,address_len=%u, address=\"%s\")\n", d->socket, address, d->address_len, BufferToString(address, addressLen));
 #endif
     ret = accept(d->socket, d->address_len ? (struct sockaddr*)address : 0, d->address_len ? &addressLen : 0);
-    errorCode = (ret < 0) ? GET_SOCKET_ERROR() : 0;
+    errorCode = IS_CREATE_SOCKET_ERROR(ret) ? GET_SOCKET_ERROR() : 0;
 
 #ifdef POSIX_SOCKET_DEBUG
     printf("accept returned %d (address=\"%s\")\n", ret, BufferToString(address, addressLen));
@@ -1032,7 +1037,7 @@ void Getsockname(int client_fd, uint8_t *data, uint64_t numBytes) {
 
   if (IsSocketPartOfConnection(client_fd, d->socket)) {
     ret = getsockname(d->socket, (struct sockaddr*)address, &addressLen);
-    errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
+    errorCode = translate_return_value_to_error_code(ret);
 
 #ifdef POSIX_SOCKET_DEBUG
     printf("getsockname(socket=%d,address=%p,address_len=%u)->%d (ret address: \"%s\")\n", d->socket, address, d->address_len, ret, BufferToString(address, addressLen));
@@ -1080,7 +1085,7 @@ void Getpeername(int client_fd, uint8_t *data, uint64_t numBytes)
 
   if (IsSocketPartOfConnection(client_fd, d->socket)) {
     ret = getpeername(d->socket, (struct sockaddr*)address, &addressLen);
-    errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
+    errorCode = translate_return_value_to_error_code(ret);
 
 #ifdef POSIX_SOCKET_DEBUG
     printf("getpeername(socket=%d,address=%p,address_len=%u, address=\"%s\")->%d\n", d->socket, address, d->address_len, BufferToString(address, addressLen), ret);
@@ -1128,7 +1133,7 @@ void Send(int client_fd, uint8_t *data, uint64_t numBytes) {
 
   if (IsSocketPartOfConnection(client_fd, d->socket)) {
     ret = send(d->socket, (const char *)d->message, actualBytes, d->flags);
-    errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
+    errorCode = translate_return_value_to_error_code(ret);
 
 #ifdef POSIX_SOCKET_DEBUG
     printf("send(socket=%d,message=%p,length=%zd,flags=%d, data=\"%s\")->" SEND_FORMATTING_SPECIFIER "\n", d->socket, d->message, d->length, d->flags, BufferToString(d->message, d->length), ret);
@@ -1167,7 +1172,7 @@ void Recv(int client_fd, uint8_t *data, uint64_t numBytes) {
 
   if (IsSocketPartOfConnection(client_fd, d->socket)) {
     ret = recv(d->socket, (char *)buffer, d->length, d->flags);
-    errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
+    errorCode = translate_return_value_to_error_code(ret);
     receivedBytes = MAX(ret, 0);
 
 #ifdef POSIX_SOCKET_DEBUG
@@ -1215,7 +1220,7 @@ void Sendto(int client_fd, uint8_t *data, uint64_t numBytes) {
 
   if (IsSocketPartOfConnection(client_fd, d->socket)) {
     ret = sendto(d->socket, (const char *)d->message, d->length, d->flags, (struct sockaddr*)d->dest_addr, d->dest_len);
-    errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
+    errorCode = translate_return_value_to_error_code(ret);
 
 #ifdef POSIX_SOCKET_DEBUG
     printf("sendto(socket=%d,message=%p,length=%zd,flags=%d,dest_addr=%p,dest_len=%d)->" SEND_FORMATTING_SPECIFIER "\n", d->socket, d->message, d->length, d->flags, d->dest_addr, d->dest_len, ret);
@@ -1257,7 +1262,7 @@ void Recvfrom(int client_fd, uint8_t *data, uint64_t numBytes) {
 
   if (IsSocketPartOfConnection(client_fd, d->socket)) {
     ret = recvfrom(d->socket, (char *)buffer, d->length, d->flags, (struct sockaddr*)address, &address_len);
-    errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
+    errorCode = translate_return_value_to_error_code(ret);
 #ifdef POSIX_SOCKET_DEBUG
     printf("recvfrom(socket=%d,buffer=%p,length=%zd,flags=%d,address=%p,address_len=%u, address=\"%s\")->%d\n", d->socket, buffer, d->length, d->flags, address, d->address_len, BufferToString(address, address_len), ret);
     if (errorCode) PRINT_SOCKET_ERROR(errorCode);
@@ -1333,7 +1338,7 @@ void Getsockopt(int client_fd, uint8_t *data, uint64_t numBytes) {
 
   if (IsSocketPartOfConnection(client_fd, d->socket)) {
     ret = getsockopt(d->socket, d->level, d->option_name, (char*)option_value, &option_len);
-    errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
+    errorCode = translate_return_value_to_error_code(ret);
 
 #ifdef POSIX_SOCKET_DEBUG
     printf("getsockopt(socket=%d,level=%d,option_name=%d,option_value=%p,option_len=%u, optionData=\"%s\")->%d\n", d->socket, d->level, d->option_name, option_value, d->option_len, BufferToString(option_value, option_len), ret);
@@ -1391,7 +1396,7 @@ void Setsockopt(int client_fd, uint8_t *data, uint64_t numBytes) {
 
   if (IsSocketPartOfConnection(client_fd, d->socket)) {
     ret = setsockopt(d->socket, d->level, d->option_name, (const char *)d->option_value, actualOptionLen);
-    errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
+    errorCode = translate_return_value_to_error_code(ret);
 
 #ifdef POSIX_SOCKET_DEBUG
     printf("setsockopt(socket=%d,level=%d,option_name=%d,option_value=%p,option_len=%d, optionData=\"%s\")->%d\n", d->socket, d->level, d->option_name, d->option_value, d->option_len, BufferToString(d->option_value, actualOptionLen), ret);
@@ -1439,7 +1444,7 @@ void Getaddrinfo(int client_fd, uint8_t *data, uint64_t numBytes) {
 
   struct addrinfo *res = 0;
   int ret = getaddrinfo(d->node, d->service, d->hasHints ? &hints : 0, &res);
-  int errorCode = (ret != 0) ? GET_SOCKET_ERROR() : 0;
+  int errorCode = translate_return_value_to_error_code(ret);
 
 #ifdef POSIX_SOCKET_DEBUG
   printf("getaddrinfo(node=%s,service=%s,hasHints=%d,ai_flags=%d,ai_family=%d,ai_socktype=%d,ai_protocol=%d)->%d\n", d->node, d->service, d->hasHints, d->ai_flags, d->ai_family, d->ai_socktype, d->ai_protocol, ret);
