@@ -760,6 +760,9 @@ function instantiateSync(file, info) {
 // nested objects that has prototypes, but it suffices for WasmSourceMap and
 // WasmOffsetConverter.
 function resetPrototype(constructor, attrs) {
+  if (attrs === undefined || attrs === null) {
+    return attrs;
+  }
   var object = Object.create(constructor.prototype);
   return Object.assign(object, attrs);
 }
