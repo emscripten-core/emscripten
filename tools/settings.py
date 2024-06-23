@@ -178,6 +178,15 @@ class SettingsManager:
     if 'EMCC_STRICT' in os.environ:
       self.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
 
+    # If set, perform acorn pass that converts each HEAP access into a function
+    # call that uses DataView to enforce LE byte order for HEAP buffer; This
+    # makes generated JavaScript run on BE as well as LE machines. (If 0, only
+    # LE systems are supported). Does not affect generated wasm.
+    if 'EMCC_SUPPORT_BIG_ENDIAN' in os.environ:
+      self.attrs['SUPPORT_BIG_ENDIAN'] = int(os.environ.get('EMCC_SUPPORT_BIG_ENDIAN'))
+    else:
+      self.attrs['SUPPORT_BIG_ENDIAN'] = 0
+
     # Special handling for LEGACY_SETTINGS.  See src/setting.js for more
     # details
     for legacy in self.attrs['LEGACY_SETTINGS']:

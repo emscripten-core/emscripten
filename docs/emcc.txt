@@ -617,6 +617,8 @@ Environment variables
 
    * "EMCC_SKIP_SANITY_CHECK" [general]
 
+   * "EMCC_SUPPORT_BIG_ENDIAN" [general]
+
    * "EM_IGNORE_SANITY" [general]
 
    * "EM_CONFIG" [general]
