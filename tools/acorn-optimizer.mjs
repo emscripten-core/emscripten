@@ -1954,19 +1954,19 @@ function reattachComments(ast, comments) {
       ++j;
     }
     if (j >= symbols.length) {
+      trace(`dropping comment: no symbol comes after it (${comments[i].value.slice(0, 30)})`);
       break;
     }
     if (symbols[j].start.pos - comments[i].end > 20) {
       // This comment is too far away to refer to the given symbol. Drop
       // the comment altogether.
+      trace(`dropping comment: too far from any symbol (${comments[i].value.slice(0, 30)})`);
       continue;
     }
-    if (!Array.isArray(symbols[j].start.comments_before)) {
-      symbols[j].start.comments_before = [];
-    }
+    symbols[j].start.comments_before ??= [];
     symbols[j].start.comments_before.push(
       new terser.AST_Token(
-        comments[i].type == 'Line' ? 'comment' : 'comment2',
+        comments[i].type == 'Line' ? 'comment1' : 'comment2',
         comments[i].value,
         undefined,
         undefined,
