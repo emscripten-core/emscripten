@@ -1488,9 +1488,8 @@
             "withCredentials": 60
         },
         "emscripten_fetch_t": {
-            "__attributes": 112,
-            "__proxyState": 108,
-            "__size__": 208,
+            "__attributes": 108,
+            "__size__": 200,
             "data": 12,
             "dataOffset": 24,
             "id": 0,
