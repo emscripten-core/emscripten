@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.62 (in development)
 -----------------------
+- The `EMSCRIPTEN_FETCH_WAITABLE` flag along with the `emscripten_fetch_wait`
+  API were marked a deprecated.  These feature have not functions for several
+  years now. (#22138)
 - The internal `read_` function was removed.  We now just use `readBinary` or
   `readAsync`. (#22080)
 - reference-types feature is now enabled by default in Emscripten, due to the

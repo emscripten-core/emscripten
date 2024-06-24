@@ -13568,7 +13568,6 @@ myMethod: 43
     self.build(test_file('fetch/test_fetch_idb_store.c'))
     self.build(test_file('fetch/test_fetch_stream_async.c'))
     self.build(test_file('fetch/test_fetch_sync.c'))
-    self.build(test_file('fetch/test_fetch_waitable.c'))
     self.build(test_file('fetch/test_fetch_progress.c'))
 
   def test_fetch_init_node(self):
