@@ -63,7 +63,6 @@ EMTEST_RETRY_FLAKY = None
 EMTEST_LACKS_NATIVE_CLANG = None
 EMTEST_VERBOSE = None
 EMTEST_REBASELINE = None
-EMTEST_FORCE64 = None
 
 # Verbosity level control for subprocess calls to configure + make.
 # 0: disabled.
