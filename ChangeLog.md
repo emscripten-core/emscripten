@@ -27,6 +27,8 @@ See docs/process.md for more on how version tagging works.
   `readAsync`. (#22080)
 - reference-types feature is now enabled by default in Emscripten, due to the
   upstream LLVM change (https://github.com/llvm/llvm-project/pull/93261).
+- Emscripten now uses `strftime` from musl rather than using a custom
+  JavaScript implementation. (#21379)
 
 3.1.61 - 05/31/24
 -----------------

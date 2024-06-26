@@ -1,6 +1,7 @@
 __cxa_throw
 _abort_js
 _emscripten_memcpy_js
+_tzset_js
 _wasmfs_copy_preloaded_file_data
 _wasmfs_get_num_preloaded_dirs
 _wasmfs_get_num_preloaded_files
@@ -17,4 +18,3 @@ emscripten_resize_heap
 environ_get
 environ_sizes_get
 getentropy
-strftime_l
