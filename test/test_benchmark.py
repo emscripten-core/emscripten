@@ -57,7 +57,7 @@ EMTEST_BENCHMARKERS = os.getenv('EMTEST_BENCHMARKERS', 'clang,v8,v8-lto,v8-ctors
 
 
 class Benchmarker():
-  # whether to record statistics. set by SizeBenchmarker.
+  # Whether to record statistics. Set by SizeBenchmarker.
   record_stats = False
 
   # called when we init the object, which is during startup, even if we are
@@ -269,12 +269,16 @@ class EmscriptenBenchmarker(Benchmarker):
     return ret
 
 
+# This benchmarker will make a test benchmark build with Emscripten and record
+# the file output sizes in out/test/stats.json. The file format is specified at
+# https://skia.googlesource.com/buildbot/+/refs/heads/main/perf/FORMAT.md
+# Running the benchmark will be skipped.
 class SizeBenchmarker(EmscriptenBenchmarker):
   record_stats = True
 
   def __init__(self, name):
     # do not set an engine, as we will not run the code
-    super().__init__(name, engine=None, extra_args=[])
+    super().__init__(name, engine=None)
 
   def run(self, args):
     return
