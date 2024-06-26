@@ -57,7 +57,9 @@ EMTEST_BENCHMARKERS = os.getenv('EMTEST_BENCHMARKERS', 'clang,v8,v8-lto,v8-ctors
 
 
 class Benchmarker():
+  # whether to record statistics. set by SizeBenchmarker.
   record_stats = False
+
   # called when we init the object, which is during startup, even if we are
   # not running benchmarks
   def __init__(self, name):
