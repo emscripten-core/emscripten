@@ -273,7 +273,8 @@ class SizeBenchmarker(EmscriptenBenchmarker):
   record_stats = True
 
   def __init__(self, name):
-    super().__init__(name, None, [])
+    # do not set an engine, as we will not run the code
+    super().__init__(name, engine=None, extra_args=[])
 
   def run(self, args):
     return
