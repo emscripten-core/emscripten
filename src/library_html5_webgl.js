@@ -59,24 +59,24 @@ var LibraryHtml5WebGL = {
 #if ASSERTIONS
     assert(attributes);
 #endif
-    var a = {{{ getHeapOffset('attributes', 'i32') }}};
-    var powerPreference = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.powerPreference }}}>>2)];
+    var attr32 = {{{ getHeapOffset('attributes', 'i32') }}};
+    var powerPreference = HEAP32[attr32 + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.powerPreference }}}>>2)];
     var contextAttributes = {
-      'alpha': !!HEAP8[a + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.alpha }}}],
-      'depth': !!HEAP8[a + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.depth }}}],
-      'stencil': !!HEAP8[a + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.stencil }}}],
-      'antialias': !!HEAP8[a + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.antialias }}}],
-      'premultipliedAlpha': !!HEAP8[a + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha }}}],
-      'preserveDrawingBuffer': !!HEAP8[a + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer }}}],
+      'alpha': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.alpha }}}],
+      'depth': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.depth }}}],
+      'stencil': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.stencil }}}],
+      'antialias': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.antialias }}}],
+      'premultipliedAlpha': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha }}}],
+      'preserveDrawingBuffer': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer }}}],
       'powerPreference': webglPowerPreferences[powerPreference],
-      'failIfMajorPerformanceCaveat': !!HEAP8[a + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat }}}],
+      'failIfMajorPerformanceCaveat': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat }}}],
       // The following are not predefined WebGL context attributes in the WebGL specification, so the property names can be minified by Closure.
-      majorVersion: HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)],
-      minorVersion: HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion }}}>>2)],
-      enableExtensionsByDefault: HEAP8[a + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault }}}],
-      explicitSwapControl: HEAP8[a + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl }}}],
-      proxyContextToMainThread: HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread }}}>>2)],
-      renderViaOffscreenBackBuffer: HEAP8[a + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer }}}]
+      majorVersion: HEAP32[attr32 + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)],
+      minorVersion: HEAP32[attr32 + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion }}}>>2)],
+      enableExtensionsByDefault: HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault }}}],
+      explicitSwapControl: HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl }}}],
+      proxyContextToMainThread: HEAP32[attr32 + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread }}}>>2)],
+      renderViaOffscreenBackBuffer: HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer }}}]
     };
 
     var canvas = findCanvasEventTarget(target);
@@ -264,19 +264,19 @@ var LibraryHtml5WebGL = {
     if (!t) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     t = t.getContextAttributes();
 
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.alpha, 't.alpha', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.depth, 't.depth', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.stencil, 't.stencil', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.antialias, 't.antialias', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha, 't.premultipliedAlpha', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, 't.preserveDrawingBuffer', 'i32') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.alpha, 't.alpha', 'i8') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.depth, 't.depth', 'i8') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.stencil, 't.stencil', 'i8') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.antialias, 't.antialias', 'i8') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha, 't.premultipliedAlpha', 'i8') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, 't.preserveDrawingBuffer', 'i8') }}};
     var power = t['powerPreference'] && webglPowerPreferences.indexOf(t['powerPreference']);
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.powerPreference, 'power', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat, 't.failIfMajorPerformanceCaveat', 'i32') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat, 't.failIfMajorPerformanceCaveat', 'i8') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion, 'c.version', 'i32') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion, 0, 'i32') }}};
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 'c.attributes.enableExtensionsByDefault', 'i32') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 'c.attributes.enableExtensionsByDefault', 'i8') }}};
 #endif
 #if GL_SUPPORT_EXPLICIT_SWAP_CONTROL
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl, 'c.attributes.explicitSwapControl', 'i8') }}};
