@@ -153,13 +153,13 @@ static void wait_for_call_result(PosixSocketCallResult *b) {
 #endif
 }
 
-static EM_BOOL
+static bool
 bridge_socket_on_message(int eventType,
                          const EmscriptenWebSocketMessageEvent* websocketEvent,
                          void* userData) {
   if (websocketEvent->numBytes < sizeof(SocketCallResultHeader)) {
     emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "Received corrupt WebSocket result message with size %d, not enough space for header, at least %d bytes!\n", (int)websocketEvent->numBytes, (int)sizeof(SocketCallResultHeader));
-    return EM_TRUE;
+    return true;
   }
 
   SocketCallResultHeader *header = (SocketCallResultHeader *)websocketEvent->data;
@@ -172,13 +172,13 @@ bridge_socket_on_message(int eventType,
   if (!b) {
     emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "Received WebSocket result message to unknown call ID %d!\n", (int)header->callId);
     // TODO: Craft a socket result that signifies a failure, and wake the listening thread
-    return EM_TRUE;
+    return true;
   }
 
   if (websocketEvent->numBytes < b->bytes) {
     emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "Received corrupt WebSocket result message with size %d, expected at least %d bytes!\n", (int)websocketEvent->numBytes, b->bytes);
     // TODO: Craft a socket result that signifies a failure, and wake the listening thread
-    return EM_TRUE;
+    return true;
   }
 
   b->bytes = websocketEvent->numBytes;
@@ -186,7 +186,7 @@ bridge_socket_on_message(int eventType,
 
   if (!b->data) {
     emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "Out of memory, tried to allocate %d bytes!\n", websocketEvent->numBytes);
-    return EM_TRUE;
+    return true;
   }
 
   if (b->operationCompleted != 0) {
@@ -196,7 +196,7 @@ bridge_socket_on_message(int eventType,
   b->operationCompleted = 1;
   emscripten_futex_wake(&b->operationCompleted, INT_MAX);
 
-  return EM_TRUE;
+  return true;
 }
 
 EMSCRIPTEN_WEBSOCKET_T emscripten_init_websocket_to_posix_socket_bridge(const char *bridgeUrl) {

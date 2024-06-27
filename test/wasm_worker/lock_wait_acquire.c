@@ -10,8 +10,8 @@ emscripten_lock_t lock = EMSCRIPTEN_LOCK_T_STATIC_INITIALIZER;
 
 void worker_main()
 {
-  EM_BOOL success = emscripten_lock_wait_acquire(&lock, 0); // Expect no contention on free lock.
-  assert(success == EM_TRUE);
+  bool success = emscripten_lock_wait_acquire(&lock, 0); // Expect no contention on free lock.
+  assert(success == true);
 
   double t0 = emscripten_performance_now();
   success = emscripten_lock_wait_acquire(&lock, 0); // We already have the lock, and emscripten_lock is not recursive, so this should fail.

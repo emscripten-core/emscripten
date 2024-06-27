@@ -47,7 +47,7 @@ void emscripten_resume_audio_context_sync(EMSCRIPTEN_WEBAUDIO_T audioContext);
 // Returns the current AudioContext state.
 AUDIO_CONTEXT_STATE emscripten_audio_context_state(EMSCRIPTEN_WEBAUDIO_T audioContext);
 
-typedef void (*EmscriptenStartWebAudioWorkletCallback)(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData2);
+typedef void (*EmscriptenStartWebAudioWorkletCallback)(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData2);
 
 // Calls .suspend() on the given AudioContext and releases the JS object table
 // reference to the given audio context. The specified handle is invalid
@@ -89,7 +89,7 @@ typedef struct WebAudioWorkletProcessorCreateOptions
 	const WebAudioParamDescriptor *audioParamDescriptors;
 } WebAudioWorkletProcessorCreateOptions;
 
-typedef void (*EmscriptenWorkletProcessorCreatedCallback)(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData3);
+typedef void (*EmscriptenWorkletProcessorCreatedCallback)(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData3);
 
 // Creates a new AudioWorkletProcessor with the given name and specified set of control parameters.
 // userData3: A custom userdata pointer to pass to the callback function. This value will be passed on to the call to the given EmscriptenWorkletProcessorCreatedCallback callback function.
@@ -113,7 +113,7 @@ typedef struct AudioParamFrame
 	float *data;
 } AudioParamFrame;
 
-typedef EM_BOOL (*EmscriptenWorkletNodeProcessCallback)(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData4);
+typedef bool (*EmscriptenWorkletNodeProcessCallback)(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData4);
 
 typedef struct EmscriptenAudioWorkletNodeCreateOptions
 {
@@ -129,10 +129,10 @@ typedef struct EmscriptenAudioWorkletNodeCreateOptions
 // userData4: A custom userdata pointer to pass to the callback function. This value will be passed on to the call to the given EmscriptenWorkletNodeProcessCallback callback function.
 EMSCRIPTEN_AUDIO_WORKLET_NODE_T emscripten_create_wasm_audio_worklet_node(EMSCRIPTEN_WEBAUDIO_T audioContext, const char *name, const EmscriptenAudioWorkletNodeCreateOptions *options, EmscriptenWorkletNodeProcessCallback processCallback, void *userData4);
 
-// Returns EM_TRUE if the current thread is executing a Wasm AudioWorklet, EM_FALSE otherwise.
+// Returns true if the current thread is executing a Wasm AudioWorklet, false otherwise.
 // Note that calling this function can be relatively slow as it incurs a Wasm->JS transition,
 // so avoid calling it in hot paths.
-EM_BOOL emscripten_current_thread_is_audio_worklet(void);
+bool emscripten_current_thread_is_audio_worklet(void);
 
 #define EMSCRIPTEN_AUDIO_MAIN_THREAD 0
 

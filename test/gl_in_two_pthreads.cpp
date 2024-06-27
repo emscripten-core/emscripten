@@ -31,7 +31,7 @@ void *thread_main(void *param)
 {
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
-  attr.explicitSwapControl = EM_TRUE;
+  attr.explicitSwapControl = true;
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   assert(ctx);
 
@@ -74,7 +74,7 @@ int main()
   // Create a context
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
-  attr.explicitSwapControl = EM_TRUE;
+  attr.explicitSwapControl = true;
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   assert(ctx);
 
