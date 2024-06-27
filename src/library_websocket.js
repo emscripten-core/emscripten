@@ -294,7 +294,7 @@ var LibraryWebSocket = {
     var url = UTF8ToString({{{ makeGetValue('createAttributes', 0, '*') }}});
     var protocols = {{{ makeGetValue('createAttributes', C_STRUCTS.EmscriptenWebSocketCreateAttributes.protocols, '*') }}}
     // TODO: Add support for createOnMainThread==false; currently all WebSocket connections are created on the main thread.
-    // var createOnMainThread = HEAP32[createAttrs+2];
+    // var createOnMainThread = HEAP8[createAttributes+2];
 
     var socket = protocols ? new WebSocket(url, UTF8ToString(protocols).split(',')) : new WebSocket(url);
     // We always marshal received WebSocket data back to Wasm, so enable receiving the data as arraybuffers for easy marshalling.
