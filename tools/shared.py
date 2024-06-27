@@ -433,7 +433,10 @@ def set_version_globals():
 
 
 def generate_sanity():
-  return f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}\n'
+  llvm_root = config.LLVM_ROOT
+  if WINDOWS:
+    llvm_root = config.LLVM_ROOT.lower()
+  return f'{EMSCRIPTEN_VERSION}|{llvm_root}\n'
 
 
 @memoize
