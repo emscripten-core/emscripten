@@ -2695,8 +2695,6 @@ The current type of b is: 9
     self.do_core_test('test_strptime_days.c')
 
   def test_strptime_reentrant(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_strptime_reentrant.c')
 
   @crossplatform

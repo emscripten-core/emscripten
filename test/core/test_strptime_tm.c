@@ -5,6 +5,10 @@
  * found in the LICENSE file.
  */
 
+// glibc requires _XOPEN_SOURCE to be defined in order to get strptime.
+#define _XOPEN_SOURCE
+// glibc requires _DEFAULT_SOURCE to be defined in order to get tm_gmtoff.
+#define _DEFAULT_SOURCE
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
