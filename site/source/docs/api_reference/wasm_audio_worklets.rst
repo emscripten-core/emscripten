@@ -95,7 +95,7 @@ own noise generator AudioWorkletProcessor node type:
 
 .. code-block:: cpp
 
-  void AudioThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData)
+  void AudioThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData)
   {
     if (!success) return; // Check browser console in a debug build for detailed errors
     WebAudioWorkletProcessorCreateOptions opts = {
@@ -110,7 +110,7 @@ which resumes the audio context when the user clicks on the DOM Canvas element t
 
 .. code-block:: cpp
 
-  void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData)
+  void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData)
   {
     if (!success) return; // Check browser console in a debug build for detailed errors
 
@@ -137,13 +137,13 @@ which resumes the audio context when the user clicks on the DOM Canvas element t
 
 .. code-block:: cpp
 
-  EM_BOOL OnCanvasClick(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData)
+  bool OnCanvasClick(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData)
   {
     EMSCRIPTEN_WEBAUDIO_T audioContext = (EMSCRIPTEN_WEBAUDIO_T)userData;
     if (emscripten_audio_context_state(audioContext) != AUDIO_CONTEXT_STATE_RUNNING) {
       emscripten_resume_audio_context_sync(audioContext);
     }
-    return EM_FALSE;
+    return false;
   }
 
 5. Finally we can implement the audio callback that is to generate the noise:
@@ -152,7 +152,7 @@ which resumes the audio context when the user clicks on the DOM Canvas element t
 
   #include <emscripten/em_math.h>
 
-  EM_BOOL GenerateNoise(int numInputs, const AudioSampleFrame *inputs,
+  bool GenerateNoise(int numInputs, const AudioSampleFrame *inputs,
                         int numOutputs, AudioSampleFrame *outputs,
                         int numParams, const AudioParamFrame *params,
                         void *userData)
@@ -161,7 +161,7 @@ which resumes the audio context when the user clicks on the DOM Canvas element t
       for(int j = 0; j < 128*outputs[i].numberOfChannels; ++j)
         outputs[i].data[j] = emscripten_random() * 0.2 - 0.1; // Warning: scale down audio volume by factor of 0.2, raw noise can be really loud otherwise
 
-    return EM_TRUE; // Keep the graph output going
+    return true; // Keep the graph output going
   }
 
 And that's it! Compile the code with the linker flags ``-sAUDIO_WORKLET=1 -sWASM_WORKERS=1`` to enable targeting AudioWorklets.

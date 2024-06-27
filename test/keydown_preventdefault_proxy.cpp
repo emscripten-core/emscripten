@@ -12,7 +12,7 @@ static int result = 1;
 // Returning 0 signals that the event was not consumed by the code, and will allow the event to pass on and bubble up normally.
 extern "C"
 {
-  EM_BOOL keydown_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
+  bool keydown_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
   {
     if ((e->keyCode == 65) || (e->keyCode == 8))
     {
@@ -29,7 +29,7 @@ extern "C"
 
 extern "C"
 {
-  EM_BOOL keypress_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
+  bool keypress_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
   {
     result *= 3;
     return 0;
@@ -38,7 +38,7 @@ extern "C"
 
 extern "C"
 {
-  EM_BOOL keyup_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
+  bool keyup_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
   {
     if ((e->keyCode == 65) || (e->keyCode == 8))
     {

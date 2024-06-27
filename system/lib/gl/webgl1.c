@@ -77,7 +77,7 @@ EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *targ
   if (attributes->proxyContextToMainThread == EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS ||
     (attributes->proxyContextToMainThread == EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK && !emscripten_supports_offscreencanvas())) {
     EmscriptenWebGLContextAttributes attrs = *attributes;
-    attrs.renderViaOffscreenBackBuffer = EM_TRUE;
+    attrs.renderViaOffscreenBackBuffer = true;
     return (EMSCRIPTEN_WEBGL_CONTEXT_HANDLE)emscripten_sync_run_in_main_runtime_thread_ptr(EM_FUNC_SIG_PPP, &emscripten_webgl_do_create_context, target, &attrs);
   } else {
     return emscripten_webgl_do_create_context(target, attributes);

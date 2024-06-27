@@ -18,7 +18,7 @@ float mod_dist(float v, float t)
   return fminf(d, 6.f - d);
 }
 // Per-frame animation tick.
-EM_BOOL draw_frame(double t, void *unused)
+bool draw_frame(double t, void *unused)
 {
   static double prevT;
   double dt = t - prevT;
@@ -57,13 +57,13 @@ EM_BOOL draw_frame(double t, void *unused)
       clamp01(2.f - mod_dist(c, 0.f)),
       clamp01(2.f - mod_dist(c, 2.f)),
       clamp01(2.f - mod_dist(c, 4.f)),
-      1.f, text[i], 64.f, EM_TRUE);
+      1.f, text[i], 64.f, true);
   }
 
   // snow foreground
   for(int i = NUM_FLAKES/2; i < NUM_FLAKES; ++i) SIM;
 
-  return EM_TRUE;
+  return true;
 }
 
 int main()

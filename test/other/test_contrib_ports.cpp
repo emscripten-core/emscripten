@@ -17,7 +17,7 @@ int main() {
   GLFWwindow* window = glfwCreateWindow(320, 200, "test_glfw3_port", 0, 0);
   assert(window != 0);
   // this call ensures that it uses the right port
-  assert(emscripten_glfw_is_window_fullscreen(window) == EM_FALSE);
+  assert(emscripten_glfw_is_window_fullscreen(window) == false);
   glfwTerminate();
 
 

@@ -51,7 +51,7 @@ const char *emscripten_result_to_string(EMSCRIPTEN_RESULT result) {
 
 // The event handler functions can return 1 to suppress the event and disable the default action. That calls event.preventDefault();
 // Returning 0 signals that the event was not consumed by the code, and will allow the event to pass on and bubble up normally.
-EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
+bool key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
 {
   if (eventType == EMSCRIPTEN_EVENT_KEYPRESS && (!strcmp(e->key, "f") || e->which == 102)) {
     EmscriptenFullscreenChangeEvent fsce;
@@ -80,7 +80,7 @@ EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *user
 
 int callCount = 0;
 
-EM_BOOL fullscreenchange_callback(int eventType, const EmscriptenFullscreenChangeEvent *e, void *userData) {
+bool fullscreenchange_callback(int eventType, const EmscriptenFullscreenChangeEvent *e, void *userData) {
   printf("%s, isFullscreen: %d, fullscreenEnabled: %d, fs element nodeName: \"%s\", fs element id: \"%s\". New size: %dx%d pixels. Screen size: %dx%d pixels.\n",
     emscripten_event_type_to_string(eventType), e->isFullscreen, e->fullscreenEnabled, e->nodeName, e->id, e->elementWidth, e->elementHeight, e->screenWidth, e->screenHeight);
 
@@ -99,7 +99,7 @@ EM_BOOL fullscreenchange_callback(int eventType, const EmscriptenFullscreenChang
   return 0;
 }
 
-EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
+bool mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
   return 0;
 }
 
@@ -118,7 +118,7 @@ void draw() {
   glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
-EM_BOOL on_canvassize_changed(int eventType, const void *reserved, void *userData) {
+bool on_canvassize_changed(int eventType, const void *reserved, void *userData) {
   int w, h;
   emscripten_get_canvas_element_size("#canvas", &w, &h);
   double cssW, cssH;
