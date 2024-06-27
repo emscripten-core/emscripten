@@ -433,9 +433,7 @@ def set_version_globals():
 
 
 def generate_sanity():
-  llvm_root = config.LLVM_ROOT
-  if WINDOWS:
-    llvm_root = config.LLVM_ROOT.lower()
+  llvm_root = os.path.normcase(config.LLVM_ROOT)
   return f'{EMSCRIPTEN_VERSION}|{llvm_root}\n'
 
 
