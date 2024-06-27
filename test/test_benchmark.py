@@ -454,8 +454,8 @@ class benchmark(common.RunnerCore):
     for b in benchmarkers:
       if skip_native and isinstance(b, NativeBenchmarker):
         continue
-      if isinstance(b, SizeBenchmarker):
-        # The size benchmarker doesn't need to do repetitions.
+      if not b.run:
+        # If we won't run the benchmark, we don't need repetitions.
         reps = 0
       baseline = b
       print('Running benchmarker: %s: %s' % (b.__class__.__name__, b.name))
