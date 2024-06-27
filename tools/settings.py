@@ -123,6 +123,7 @@ DEPRECATED_SETTINGS = {
     'RUNTIME_LINKED_LIBS': 'you can simply list the libraries directly on the commandline now',
     'CLOSURE_WARNINGS': 'use -Wclosure instead',
     'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
+    'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead'
 }
 
 # Settings that don't need to be externalized when serializing to json because they

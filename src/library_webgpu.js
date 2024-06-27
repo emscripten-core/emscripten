@@ -77,6 +77,7 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
     MIP_LEVEL_COUNT_UNDEFINED: 0xFFFFFFFF,
     ARRAY_LAYER_COUNT_UNDEFINED: 0xFFFFFFFF,
     AdapterType: {
+      CPU: 3,
       Unknown: 4,
     },
     BackendType: {
@@ -98,6 +99,10 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       Error: 1,
       DeviceLost: 2,
       Unknown: 3,
+    },
+    CompositeAlphaMode: {
+      Auto: 0,
+      Opaque: 1,
     },
     CreatePipelineAsyncStatus: {
       Success: 0,
@@ -153,6 +158,10 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       PrimitiveDepthClipControl: 0x7,
       RenderPassDescriptorMaxDrawCount: 0xF,
       TextureBindingViewDimensionDescriptor: 0x11,
+    },
+    SurfaceGetCurrentTextureStatus: {
+      Success: 0,
+      DeviceLost: 5,
     },
     QueueWorkDoneStatus: {
       Success: 0,
@@ -398,8 +407,9 @@ var LibraryWebGPU = {
       'info': 2,
     },
     Int_DeviceLostReason: {
-      'undefined': 0,
-      'destroyed': 1,
+      'undefined': 1,
+      'unknown': 1,
+      'destroyed': 2,
     },
     Int_PreferredFormat: {
       'rgba8unorm': 0x12,
@@ -1234,7 +1244,8 @@ var LibraryWebGPU = {
     return WebGPU.mgrRenderBundleEncoder.create(device.createRenderBundleEncoder(desc));
   },
 
-  wgpuDeviceCreateComputePipeline: (deviceId, descriptor) => {
+  $generateComputePipelineDesc__internal: true,
+  $generateComputePipelineDesc: (descriptor) => {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
 
     var desc = {
@@ -1246,13 +1257,42 @@ var LibraryWebGPU = {
     };
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePipelineDescriptor.label, '*') }}};
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
+    return desc;
+  },
 
+  wgpuDeviceCreateComputePipeline__deps: ['$generateComputePipelineDesc'],
+  wgpuDeviceCreateComputePipeline: (deviceId, descriptor) => {
+    var desc = generateComputePipelineDesc(descriptor);
     var device = WebGPU.mgrDevice.get(deviceId);
     return WebGPU.mgrComputePipeline.create(device.createComputePipeline(desc));
   },
 
+  wgpuDeviceCreateComputePipelineAsync__deps: ['$callUserCallback', '$stringToUTF8OnStack', '$generateComputePipelineDesc'],
   wgpuDeviceCreateComputePipelineAsync: (deviceId, descriptor, callback, userdata) => {
-    abort('TODO: wgpuDeviceCreateComputePipelineAsync unimplemented');
+    var desc = generateComputePipelineDesc(descriptor);
+    var device = WebGPU.mgrDevice.get(deviceId);
+    {{{ runtimeKeepalivePush() }}}
+    device.createComputePipelineAsync(desc).then((pipeline) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        var pipelineId = WebGPU.mgrComputePipeline.create(pipeline);
+        {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Success }}}, pipelineId, 0, userdata);
+      });
+    }, (pipelineError) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        var sp = stackSave();
+        var messagePtr = stringToUTF8OnStack(pipelineError.message);
+        if (pipelineError.reason === 'validation') {
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.ValidationError }}}, 0, messagePtr, userdata);
+        } else if (pipelineError.reason === 'internal') {
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.InternalError }}}, 0, messagePtr, userdata);
+        } else {
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Unknown }}}, 0, messagePtr, userdata);
+        }
+        stackRestore(sp);
+      });
+    });
   },
 
   $generateRenderPipelineDesc__internal: true,
@@ -2527,7 +2567,30 @@ var LibraryWebGPU = {
     return adapter.features.size;
   },
 
+  wgpuAdapterGetInfo__deps: ['$stringToNewUTF8'],
+  wgpuAdapterGetInfo: (adapterId, info) => {
+    var adapter = WebGPU.mgrAdapter.get(adapterId);
+    {{{ gpu.makeCheckDescriptor('info') }}}
+
+    var vendorPtr = stringToNewUTF8(adapter.info.vendor);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.vendor, 'vendorPtr', '*') }}};
+    var architecturePtr = stringToNewUTF8(adapter.info.architecture);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.architecture, 'architecturePtr', '*') }}};
+    var devicePtr = stringToNewUTF8(adapter.info.device);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.device, 'devicePtr', '*') }}};
+    var descriptionPtr = stringToNewUTF8(adapter.info.description);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.description, 'descriptionPtr', '*') }}};
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.backendType, gpu.BackendType.WebGPU, 'i32') }}};
+    var adapterType = adapter.isFallbackAdapter ? {{{ gpu.AdapterType.CPU }}} : {{{ gpu.AdapterType.Unknown }}};
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.adapterType, 'adapterType', 'i32') }}};
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.vendorID, '0', 'i32') }}};
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.deviceID, '0', 'i32') }}};
+  },
+
+  wgpuAdapterGetProperties__deps: ['$warnOnce'],
   wgpuAdapterGetProperties: (adapterId, properties) => {
+    warnOnce('wgpuAdapterGetProperties is deprecated, use wgpuAdapterGetInfo instead');
+
     {{{ gpu.makeCheckDescriptor('properties') }}}
     {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.vendorID, '0', 'i32') }}};
     {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.vendorName, '0', 'i32') }}};
@@ -2663,7 +2726,7 @@ var LibraryWebGPU = {
   // WGPUAdapterProperties
 
   wgpuAdapterPropertiesFreeMembers: (value) => {
-    // wgpuAdapterGetProperties does currently allocate anything
+    // wgpuAdapterGetProperties doesn't currently allocate anything.
   },
 
   // WGPUSampler
@@ -2675,9 +2738,81 @@ var LibraryWebGPU = {
 
   // WGPUSurface
 
+  wgpuSurfaceConfigure: (surfaceId, config) => {
+    {{{ gpu.makeCheckDescriptor('config') }}}
+    var deviceId = {{{ makeGetValue('config', C_STRUCTS.WGPUSurfaceConfiguration.device, '*') }}};
+    var context = WebGPU.mgrSurface.get(surfaceId);
+
+#if ASSERTIONS
+    var viewFormatCount = {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.viewFormatCount) }}};
+    var viewFormats = {{{ makeGetValue('config', C_STRUCTS.WGPUSurfaceConfiguration.viewFormats, '*') }}};
+    assert(viewFormatCount === 0 && viewFormats === 0, "TODO: Support viewFormats.");
+    var alphaMode = {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.alphaMode) }}};
+    assert(alphaMode === {{{ gpu.CompositeAlphaMode.Auto }}} ||
+      alphaMode === {{{ gpu.CompositeAlphaMode.Opaque }}},
+      "TODO: Support WGPUCompositeAlphaMode_Premultiplied.");
+    assert({{{ gpu.PresentMode.Fifo }}} ===
+      {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.presentMode) }}});
+#endif
+
+    var canvasSize = [
+      {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.width) }}},
+      {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.height) }}}
+    ];
+
+    if (canvasSize[0] !== 0) {
+      context["canvas"]["width"] = canvasSize[0];
+    }
+
+    if (canvasSize[1] !== 0) {
+      context["canvas"]["height"] = canvasSize[1];
+    }
+
+    var configuration = {
+      "device": WebGPU.mgrDevice.get(deviceId),
+      "format": WebGPU.TextureFormat[
+        {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.format) }}}],
+      "usage": {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.usage) }}},
+      "alphaMode": "opaque",
+    };
+    context.configure(configuration);
+  },
+
+  wgpuSurfaceGetCurrentTexture: (surfaceId, surfaceTexturePtr) => {
+    {{{ gpu.makeCheck('surfaceTexturePtr') }}}
+    var context = WebGPU.mgrSurface.get(surfaceId);
+
+    try {
+      var texture = WebGPU.mgrTexture.create(context.getCurrentTexture());
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.texture, 'texture', '*') }}};
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.suboptimal, '0', 'i32') }}};
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.status, 
+        gpu.SurfaceGetCurrentTextureStatus.Success, 'i32') }}};
+    } catch (ex) {
+#if ASSERTIONS
+      err(`wgpuSurfaceGetCurrentTexture() failed: ${ex}`);
+#endif
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.texture, '0', '*') }}};
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.suboptimal, '0', 'i32') }}};
+      // TODO(https://github.com/webgpu-native/webgpu-headers/issues/291): What should the status be here?
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.status,
+        gpu.SurfaceGetCurrentTextureStatus.DeviceLost, 'i32') }}};
+    }
+  },
+
   wgpuSurfaceGetPreferredFormat: (surfaceId, adapterId) => {
     var format = navigator["gpu"]["getPreferredCanvasFormat"]();
     return WebGPU.Int_PreferredFormat[format];
+  },
+
+  wgpuSurfacePresent: (surfaceId) => {
+    // TODO: This could probably be emulated with ASYNCIFY.
+    abort('wgpuSurfacePresent is unsupported (use requestAnimationFrame via html5.h instead)');
+  },
+
+  wgpuSurfaceUnconfigure: (surfaceId) => {
+    var context = WebGPU.mgrSurface.get(surfaceId);
+    context.unconfigure();
   },
 
   // WGPUSwapChain

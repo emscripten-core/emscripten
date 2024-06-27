@@ -113,6 +113,8 @@ The *IDBFS* file system implements the :js:func:`FS.syncfs` interface, which whe
 
 This is provided to overcome the limitation that browsers do not offer synchronous APIs for persistent storage, and so (by default) all writes exist only temporarily in-memory.
 
+If the mount option `autoPersist: true` is passed when mounting IDBFS, then whenever any changes are made to the IDBFS directory tree, they will be automatically persisted to the IndexedDB backend. This lets users avoid needing to manually call `FS.syncfs` to persist changes to the IDBFS mounted directory tree.
+
 .. _filesystem-api-workerfs:
 
 WORKERFS

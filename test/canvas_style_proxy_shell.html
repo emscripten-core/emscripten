@@ -151,12 +151,10 @@
         canvas.style.cursor = 'none';
       }
 
-      window.verifyCanvasStyle = function () {
+      window.verifyCanvasStyle = async () => {
         var success = Module.canvas.style.cursor === 'pointer';
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', 'http://localhost:8888/report_result?' + (success ? 1 : 0));
-        xhr.send();
-        setTimeout(function() { window.close() }, 1000);
+        await fetch('http://localhost:8888/report_result?' + (success ? 1 : 0));
+        window.close();
       }
 
     </script>

@@ -728,266 +728,6 @@ addToLibrary({
     return newDate;
   },
 
-  // Note: this is not used in STANDALONE_WASM mode, because it is more
-  //       compact to do it in JS.
-  strftime__deps: ['$isLeapYear', '$arraySum', '$addDays', '$MONTH_DAYS_REGULAR', '$MONTH_DAYS_LEAP',
-                   '$intArrayFromString', '$writeArrayToMemory'
-  ],
-  strftime: (s, maxsize, format, tm) => {
-    // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
-
-    var tm_zone = {{{ makeGetValue('tm', C_STRUCTS.tm.tm_zone, '*') }}};
-
-    var date = {
-      tm_sec: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_sec, 'i32') }}},
-      tm_min: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_min, 'i32') }}},
-      tm_hour: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_hour, 'i32') }}},
-      tm_mday: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_mday, 'i32') }}},
-      tm_mon: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_mon, 'i32') }}},
-      tm_year: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_year, 'i32') }}},
-      tm_wday: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_wday, 'i32') }}},
-      tm_yday: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_yday, 'i32') }}},
-      tm_isdst: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_isdst, 'i32') }}},
-      tm_gmtoff: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_gmtoff, LONG_TYPE) }}},
-      tm_zone: tm_zone ? UTF8ToString(tm_zone) : ''
-    };
-    {{{ from64('date.tm_gmtoff') }}}
-
-    var pattern = UTF8ToString(format);
-
-    // expand format
-    var EXPANSION_RULES_1 = {
-      '%c': '%a %b %d %H:%M:%S %Y',     // Replaced by the locale's appropriate date and time representation - e.g., Mon Aug  3 14:02:01 2013
-      '%D': '%m/%d/%y',                 // Equivalent to %m / %d / %y
-      '%F': '%Y-%m-%d',                 // Equivalent to %Y - %m - %d
-      '%h': '%b',                       // Equivalent to %b
-      '%r': '%I:%M:%S %p',              // Replaced by the time in a.m. and p.m. notation
-      '%R': '%H:%M',                    // Replaced by the time in 24-hour notation
-      '%T': '%H:%M:%S',                 // Replaced by the time
-      '%x': '%m/%d/%y',                 // Replaced by the locale's appropriate date representation
-      '%X': '%H:%M:%S',                 // Replaced by the locale's appropriate time representation
-      // Modified Conversion Specifiers
-      '%Ec': '%c',                      // Replaced by the locale's alternative appropriate date and time representation.
-      '%EC': '%C',                      // Replaced by the name of the base year (period) in the locale's alternative representation.
-      '%Ex': '%m/%d/%y',                // Replaced by the locale's alternative date representation.
-      '%EX': '%H:%M:%S',                // Replaced by the locale's alternative time representation.
-      '%Ey': '%y',                      // Replaced by the offset from %EC (year only) in the locale's alternative representation.
-      '%EY': '%Y',                      // Replaced by the full alternative year representation.
-      '%Od': '%d',                      // Replaced by the day of the month, using the locale's alternative numeric symbols, filled as needed with leading zeros if there is any alternative symbol for zero; otherwise, with leading <space> characters.
-      '%Oe': '%e',                      // Replaced by the day of the month, using the locale's alternative numeric symbols, filled as needed with leading <space> characters.
-      '%OH': '%H',                      // Replaced by the hour (24-hour clock) using the locale's alternative numeric symbols.
-      '%OI': '%I',                      // Replaced by the hour (12-hour clock) using the locale's alternative numeric symbols.
-      '%Om': '%m',                      // Replaced by the month using the locale's alternative numeric symbols.
-      '%OM': '%M',                      // Replaced by the minutes using the locale's alternative numeric symbols.
-      '%OS': '%S',                      // Replaced by the seconds using the locale's alternative numeric symbols.
-      '%Ou': '%u',                      // Replaced by the weekday as a number in the locale's alternative representation (Monday=1).
-      '%OU': '%U',                      // Replaced by the week number of the year (Sunday as the first day of the week, rules corresponding to %U ) using the locale's alternative numeric symbols.
-      '%OV': '%V',                      // Replaced by the week number of the year (Monday as the first day of the week, rules corresponding to %V ) using the locale's alternative numeric symbols.
-      '%Ow': '%w',                      // Replaced by the number of the weekday (Sunday=0) using the locale's alternative numeric symbols.
-      '%OW': '%W',                      // Replaced by the week number of the year (Monday as the first day of the week) using the locale's alternative numeric symbols.
-      '%Oy': '%y',                      // Replaced by the year (offset from %C ) using the locale's alternative numeric symbols.
-    };
-    for (var rule in EXPANSION_RULES_1) {
-      pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_1[rule]);
-    }
-
-    var WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-    function leadingSomething(value, digits, character) {
-      var str = typeof value == 'number' ? value.toString() : (value || '');
-      while (str.length < digits) {
-        str = character[0]+str;
-      }
-      return str;
-    }
-
-    function leadingNulls(value, digits) {
-      return leadingSomething(value, digits, '0');
-    }
-
-    function compareByDay(date1, date2) {
-      function sgn(value) {
-        return value < 0 ? -1 : (value > 0 ? 1 : 0);
-      }
-
-      var compare;
-      if ((compare = sgn(date1.getFullYear()-date2.getFullYear())) === 0) {
-        if ((compare = sgn(date1.getMonth()-date2.getMonth())) === 0) {
-          compare = sgn(date1.getDate()-date2.getDate());
-        }
-      }
-      return compare;
-    }
-
-    function getFirstWeekStartDate(janFourth) {
-        switch (janFourth.getDay()) {
-          case 0: // Sunday
-            return new Date(janFourth.getFullYear()-1, 11, 29);
-          case 1: // Monday
-            return janFourth;
-          case 2: // Tuesday
-            return new Date(janFourth.getFullYear(), 0, 3);
-          case 3: // Wednesday
-            return new Date(janFourth.getFullYear(), 0, 2);
-          case 4: // Thursday
-            return new Date(janFourth.getFullYear(), 0, 1);
-          case 5: // Friday
-            return new Date(janFourth.getFullYear()-1, 11, 31);
-          case 6: // Saturday
-            return new Date(janFourth.getFullYear()-1, 11, 30);
-        }
-    }
-
-    function getWeekBasedYear(date) {
-        var thisDate = addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
-
-        var janFourthThisYear = new Date(thisDate.getFullYear(), 0, 4);
-        var janFourthNextYear = new Date(thisDate.getFullYear()+1, 0, 4);
-
-        var firstWeekStartThisYear = getFirstWeekStartDate(janFourthThisYear);
-        var firstWeekStartNextYear = getFirstWeekStartDate(janFourthNextYear);
-
-        if (compareByDay(firstWeekStartThisYear, thisDate) <= 0) {
-          // this date is after the start of the first week of this year
-          if (compareByDay(firstWeekStartNextYear, thisDate) <= 0) {
-            return thisDate.getFullYear()+1;
-          }
-          return thisDate.getFullYear();
-        }
-        return thisDate.getFullYear()-1;
-    }
-
-    var EXPANSION_RULES_2 = {
-      '%a': (date) => WEEKDAYS[date.tm_wday].substring(0,3) ,
-      '%A': (date) => WEEKDAYS[date.tm_wday],
-      '%b': (date) => MONTHS[date.tm_mon].substring(0,3),
-      '%B': (date) => MONTHS[date.tm_mon],
-      '%C': (date) => {
-        var year = date.tm_year+1900;
-        return leadingNulls((year/100)|0,2);
-      },
-      '%d': (date) => leadingNulls(date.tm_mday, 2),
-      '%e': (date) => leadingSomething(date.tm_mday, 2, ' '),
-      '%g': (date) => {
-        // %g, %G, and %V give values according to the ISO 8601:2000 standard week-based year.
-        // In this system, weeks begin on a Monday and week 1 of the year is the week that includes
-        // January 4th, which is also the week that includes the first Thursday of the year, and
-        // is also the first week that contains at least four days in the year.
-        // If the first Monday of January is the 2nd, 3rd, or 4th, the preceding days are part of
-        // the last week of the preceding year; thus, for Saturday 2nd January 1999,
-        // %G is replaced by 1998 and %V is replaced by 53. If December 29th, 30th,
-        // or 31st is a Monday, it and any following days are part of week 1 of the following year.
-        // Thus, for Tuesday 30th December 1997, %G is replaced by 1998 and %V is replaced by 01.
-
-        return getWeekBasedYear(date).toString().substring(2);
-      },
-      '%G': getWeekBasedYear,
-      '%H': (date) => leadingNulls(date.tm_hour, 2),
-      '%I': (date) => {
-        var twelveHour = date.tm_hour;
-        if (twelveHour == 0) twelveHour = 12;
-        else if (twelveHour > 12) twelveHour -= 12;
-        return leadingNulls(twelveHour, 2);
-      },
-      '%j': (date) => {
-        // Day of the year (001-366)
-        return leadingNulls(date.tm_mday + arraySum(isLeapYear(date.tm_year+1900) ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, date.tm_mon-1), 3);
-      },
-      '%m': (date) => leadingNulls(date.tm_mon+1, 2),
-      '%M': (date) => leadingNulls(date.tm_min, 2),
-      '%n': () => '\n',
-      '%p': (date) => {
-        if (date.tm_hour >= 0 && date.tm_hour < 12) {
-          return 'AM';
-        }
-        return 'PM';
-      },
-      '%S': (date) => leadingNulls(date.tm_sec, 2),
-      '%t': () => '\t',
-      '%u': (date) => date.tm_wday || 7,
-      '%U': (date) => {
-        var days = date.tm_yday + 7 - date.tm_wday;
-        return leadingNulls(Math.floor(days / 7), 2);
-      },
-      '%V': (date) => {
-        // Replaced by the week number of the year (Monday as the first day of the week)
-        // as a decimal number [01,53]. If the week containing 1 January has four
-        // or more days in the new year, then it is considered week 1.
-        // Otherwise, it is the last week of the previous year, and the next week is week 1.
-        // Both January 4th and the first Thursday of January are always in week 1. [ tm_year, tm_wday, tm_yday]
-        var val = Math.floor((date.tm_yday + 7 - (date.tm_wday + 6) % 7 ) / 7);
-        // If 1 Jan is just 1-3 days past Monday, the previous week
-        // is also in this year.
-        if ((date.tm_wday + 371 - date.tm_yday - 2) % 7 <= 2) {
-          val++;
-        }
-        if (!val) {
-          val = 52;
-          // If 31 December of prev year a Thursday, or Friday of a
-          // leap year, then the prev year has 53 weeks.
-          var dec31 = (date.tm_wday + 7 - date.tm_yday - 1) % 7;
-          if (dec31 == 4 || (dec31 == 5 && isLeapYear(date.tm_year%400-1))) {
-            val++;
-          }
-        } else if (val == 53) {
-          // If 1 January is not a Thursday, and not a Wednesday of a
-          // leap year, then this year has only 52 weeks.
-          var jan1 = (date.tm_wday + 371 - date.tm_yday) % 7;
-          if (jan1 != 4 && (jan1 != 3 || !isLeapYear(date.tm_year)))
-            val = 1;
-        }
-        return leadingNulls(val, 2);
-      },
-      '%w': (date) => date.tm_wday,
-      '%W': (date) => {
-        var days = date.tm_yday + 7 - ((date.tm_wday + 6) % 7);
-        return leadingNulls(Math.floor(days / 7), 2);
-      },
-      '%y': (date) => {
-        // Replaced by the last two digits of the year as a decimal number [00,99]. [ tm_year]
-        return (date.tm_year+1900).toString().substring(2);
-      },
-      // Replaced by the year as a decimal number (for example, 1997). [ tm_year]
-      '%Y': (date) => date.tm_year+1900,
-      '%z': (date) => {
-        // Replaced by the offset from UTC in the ISO 8601:2000 standard format ( +hhmm or -hhmm ).
-        // For example, "-0430" means 4 hours 30 minutes behind UTC (west of Greenwich).
-        var off = date.tm_gmtoff;
-        var ahead = off >= 0;
-        off = Math.abs(off) / 60;
-        // convert from minutes into hhmm format (which means 60 minutes = 100 units)
-        off = (off / 60)*100 + (off % 60);
-        return (ahead ? '+' : '-') + String("0000" + off).slice(-4);
-      },
-      '%Z': (date) => date.tm_zone,
-      '%%': () => '%'
-    };
-
-    // Replace %% with a pair of NULLs (which cannot occur in a C string), then
-    // re-inject them after processing.
-    pattern = pattern.replace(/%%/g, '\0\0')
-    for (var rule in EXPANSION_RULES_2) {
-      if (pattern.includes(rule)) {
-        pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_2[rule](date));
-      }
-    }
-    pattern = pattern.replace(/\0\0/g, '%')
-
-    var bytes = intArrayFromString(pattern, false);
-    if (bytes.length > maxsize) {
-      return 0;
-    }
-
-    writeArrayToMemory(bytes, s);
-    return bytes.length-1;
-  },
-  strftime_l__deps: ['strftime'],
-  strftime_l: (s, maxsize, format, tm, loc) => {
-    return _strftime(s, maxsize, format, tm); // no locale support yet
-  },
-
   strptime__deps: ['$isLeapYear', '$arraySum', '$addDays', '$MONTH_DAYS_REGULAR', '$MONTH_DAYS_LEAP',
                    '$jstoi_q', '$intArrayFromString' ],
   strptime: (buf, format, tm) => {
@@ -1431,129 +1171,15 @@ addToLibrary({
     'EOWNERDEAD': {{{ cDefs.EOWNERDEAD }}},
     'ESTRPIPE': {{{ cDefs.ESTRPIPE }}},
   }`,
-  $ERRNO_MESSAGES: {
-    0: 'Success',
-    {{{ cDefs.EPERM }}}: 'Not super-user',
-    {{{ cDefs.ENOENT }}}: 'No such file or directory',
-    {{{ cDefs.ESRCH }}}: 'No such process',
-    {{{ cDefs.EINTR }}}: 'Interrupted system call',
-    {{{ cDefs.EIO }}}: 'I/O error',
-    {{{ cDefs.ENXIO }}}: 'No such device or address',
-    {{{ cDefs.E2BIG }}}: 'Arg list too long',
-    {{{ cDefs.ENOEXEC }}}: 'Exec format error',
-    {{{ cDefs.EBADF }}}: 'Bad file number',
-    {{{ cDefs.ECHILD }}}: 'No children',
-    {{{ cDefs.EWOULDBLOCK }}}: 'No more processes',
-    {{{ cDefs.ENOMEM }}}: 'Not enough core',
-    {{{ cDefs.EACCES }}}: 'Permission denied',
-    {{{ cDefs.EFAULT }}}: 'Bad address',
-    {{{ cDefs.ENOTBLK }}}: 'Block device required',
-    {{{ cDefs.EBUSY }}}: 'Mount device busy',
-    {{{ cDefs.EEXIST }}}: 'File exists',
-    {{{ cDefs.EXDEV }}}: 'Cross-device link',
-    {{{ cDefs.ENODEV }}}: 'No such device',
-    {{{ cDefs.ENOTDIR }}}: 'Not a directory',
-    {{{ cDefs.EISDIR }}}: 'Is a directory',
-    {{{ cDefs.EINVAL }}}: 'Invalid argument',
-    {{{ cDefs.ENFILE }}}: 'Too many open files in system',
-    {{{ cDefs.EMFILE }}}: 'Too many open files',
-    {{{ cDefs.ENOTTY }}}: 'Not a typewriter',
-    {{{ cDefs.ETXTBSY }}}: 'Text file busy',
-    {{{ cDefs.EFBIG }}}: 'File too large',
-    {{{ cDefs.ENOSPC }}}: 'No space left on device',
-    {{{ cDefs.ESPIPE }}}: 'Illegal seek',
-    {{{ cDefs.EROFS }}}: 'Read only file system',
-    {{{ cDefs.EMLINK }}}: 'Too many links',
-    {{{ cDefs.EPIPE }}}: 'Broken pipe',
-    {{{ cDefs.EDOM }}}: 'Math arg out of domain of func',
-    {{{ cDefs.ERANGE }}}: 'Math result not representable',
-    {{{ cDefs.ENOMSG }}}: 'No message of desired type',
-    {{{ cDefs.EIDRM }}}: 'Identifier removed',
-    {{{ cDefs.ECHRNG }}}: 'Channel number out of range',
-    {{{ cDefs.EL2NSYNC }}}: 'Level 2 not synchronized',
-    {{{ cDefs.EL3HLT }}}: 'Level 3 halted',
-    {{{ cDefs.EL3RST }}}: 'Level 3 reset',
-    {{{ cDefs.ELNRNG }}}: 'Link number out of range',
-    {{{ cDefs.EUNATCH }}}: 'Protocol driver not attached',
-    {{{ cDefs.ENOCSI }}}: 'No CSI structure available',
-    {{{ cDefs.EL2HLT }}}: 'Level 2 halted',
-    {{{ cDefs.EDEADLK }}}: 'Deadlock condition',
-    {{{ cDefs.ENOLCK }}}: 'No record locks available',
-    {{{ cDefs.EBADE }}}: 'Invalid exchange',
-    {{{ cDefs.EBADR }}}: 'Invalid request descriptor',
-    {{{ cDefs.EXFULL }}}: 'Exchange full',
-    {{{ cDefs.ENOANO }}}: 'No anode',
-    {{{ cDefs.EBADRQC }}}: 'Invalid request code',
-    {{{ cDefs.EBADSLT }}}: 'Invalid slot',
-    {{{ cDefs.EDEADLOCK }}}: 'File locking deadlock error',
-    {{{ cDefs.EBFONT }}}: 'Bad font file fmt',
-    {{{ cDefs.ENOSTR }}}: 'Device not a stream',
-    {{{ cDefs.ENODATA }}}: 'No data (for no delay io)',
-    {{{ cDefs.ETIME }}}: 'Timer expired',
-    {{{ cDefs.ENOSR }}}: 'Out of streams resources',
-    {{{ cDefs.ENONET }}}: 'Machine is not on the network',
-    {{{ cDefs.ENOPKG }}}: 'Package not installed',
-    {{{ cDefs.EREMOTE }}}: 'The object is remote',
-    {{{ cDefs.ENOLINK }}}: 'The link has been severed',
-    {{{ cDefs.EADV }}}: 'Advertise error',
-    {{{ cDefs.ESRMNT }}}: 'Srmount error',
-    {{{ cDefs.ECOMM }}}: 'Communication error on send',
-    {{{ cDefs.EPROTO }}}: 'Protocol error',
-    {{{ cDefs.EMULTIHOP }}}: 'Multihop attempted',
-    {{{ cDefs.EDOTDOT }}}: 'Cross mount point (not really error)',
-    {{{ cDefs.EBADMSG }}}: 'Trying to read unreadable message',
-    {{{ cDefs.ENOTUNIQ }}}: 'Given log. name not unique',
-    {{{ cDefs.EBADFD }}}: 'f.d. invalid for this operation',
-    {{{ cDefs.EREMCHG }}}: 'Remote address changed',
-    {{{ cDefs.ELIBACC }}}: 'Can   access a needed shared lib',
-    {{{ cDefs.ELIBBAD }}}: 'Accessing a corrupted shared lib',
-    {{{ cDefs.ELIBSCN }}}: '.lib section in a.out corrupted',
-    {{{ cDefs.ELIBMAX }}}: 'Attempting to link in too many libs',
-    {{{ cDefs.ELIBEXEC }}}: 'Attempting to exec a shared library',
-    {{{ cDefs.ENOSYS }}}: 'Function not implemented',
-    {{{ cDefs.ENOTEMPTY }}}: 'Directory not empty',
-    {{{ cDefs.ENAMETOOLONG }}}: 'File or path name too long',
-    {{{ cDefs.ELOOP }}}: 'Too many symbolic links',
-    {{{ cDefs.EOPNOTSUPP }}}: 'Operation not supported on transport endpoint',
-    {{{ cDefs.EPFNOSUPPORT }}}: 'Protocol family not supported',
-    {{{ cDefs.ECONNRESET }}}: 'Connection reset by peer',
-    {{{ cDefs.ENOBUFS }}}: 'No buffer space available',
-    {{{ cDefs.EAFNOSUPPORT }}}: 'Address family not supported by protocol family',
-    {{{ cDefs.EPROTOTYPE }}}: 'Protocol wrong type for socket',
-    {{{ cDefs.ENOTSOCK }}}: 'Socket operation on non-socket',
-    {{{ cDefs.ENOPROTOOPT }}}: 'Protocol not available',
-    {{{ cDefs.ESHUTDOWN }}}: 'Can\'t send after socket shutdown',
-    {{{ cDefs.ECONNREFUSED }}}: 'Connection refused',
-    {{{ cDefs.EADDRINUSE }}}: 'Address already in use',
-    {{{ cDefs.ECONNABORTED }}}: 'Connection aborted',
-    {{{ cDefs.ENETUNREACH }}}: 'Network is unreachable',
-    {{{ cDefs.ENETDOWN }}}: 'Network interface is not configured',
-    {{{ cDefs.ETIMEDOUT }}}: 'Connection timed out',
-    {{{ cDefs.EHOSTDOWN }}}: 'Host is down',
-    {{{ cDefs.EHOSTUNREACH }}}: 'Host is unreachable',
-    {{{ cDefs.EINPROGRESS }}}: 'Connection already in progress',
-    {{{ cDefs.EALREADY }}}: 'Socket already connected',
-    {{{ cDefs.EDESTADDRREQ }}}: 'Destination address required',
-    {{{ cDefs.EMSGSIZE }}}: 'Message too long',
-    {{{ cDefs.EPROTONOSUPPORT }}}: 'Unknown protocol',
-    {{{ cDefs.ESOCKTNOSUPPORT }}}: 'Socket type not supported',
-    {{{ cDefs.EADDRNOTAVAIL }}}: 'Address not available',
-    {{{ cDefs.ENETRESET }}}: 'Connection reset by network',
-    {{{ cDefs.EISCONN }}}: 'Socket is already connected',
-    {{{ cDefs.ENOTCONN }}}: 'Socket is not connected',
-    {{{ cDefs.ETOOMANYREFS }}}: 'Too many references',
-    {{{ cDefs.EUSERS }}}: 'Too many users',
-    {{{ cDefs.EDQUOT }}}: 'Quota exceeded',
-    {{{ cDefs.ESTALE }}}: 'Stale file handle',
-    {{{ cDefs.ENOTSUP }}}: 'Not supported',
-    {{{ cDefs.ENOMEDIUM }}}: 'No medium (in tape drive)',
-    {{{ cDefs.EILSEQ }}}: 'Illegal byte sequence',
-    {{{ cDefs.EOVERFLOW }}}: 'Value too large for defined data type',
-    {{{ cDefs.ECANCELED }}}: 'Operation canceled',
-    {{{ cDefs.ENOTRECOVERABLE }}}: 'State not recoverable',
-    {{{ cDefs.EOWNERDEAD }}}: 'Previous owner died',
-    {{{ cDefs.ESTRPIPE }}}: 'Streams pipe error',
+
+#if PURE_WASI
+  $strError: (errno) => errno + '',
+#else
+  $strError__deps: ['strerror', '$UTF8ToString'],
+  $strError: (errno) => {
+    return UTF8ToString(_strerror(errno));
   },
+#endif
 
 #if PROXY_POSIX_SOCKETS == 0
   // ==========================================================================
@@ -3119,19 +2745,22 @@ addToLibrary({
   $asyncLoad__docs: '/** @param {boolean=} noRunDep */',
   $asyncLoad: (url, onload, onerror, noRunDep) => {
     var dep = !noRunDep ? getUniqueRunDependency(`al ${url}`) : '';
-    readAsync(url, (arrayBuffer) => {
+    readAsync(url).then(
+      (arrayBuffer) => {
 #if ASSERTIONS
-      assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
+        assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
 #endif
-      onload(new Uint8Array(arrayBuffer));
-      if (dep) removeRunDependency(dep);
-    }, (event) => {
-      if (onerror) {
-        onerror();
-      } else {
-        throw `Loading data file "${url}" failed.`;
+        onload(new Uint8Array(arrayBuffer));
+        if (dep) removeRunDependency(dep);
+      },
+      (err) => {
+        if (onerror) {
+          onerror();
+        } else {
+          throw `Loading data file "${url}" failed.`;
+        }
       }
-    });
+    );
     if (dep) addRunDependency(dep);
   },
 
@@ -3354,7 +2983,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   var canThrow = library[x + '__nothrow'] !== true;
 #endif
 
-  if (!library[x + '__deps']) library[x + '__deps'] = [];
+  library[x + '__deps'] ??= [];
 
 #if PURE_WASI
   // In PURE_WASI mode we can't assume the wasm binary was built by emscripten
@@ -3383,7 +3012,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   pre += "var ret = (() => {";
   post += "})();\n";
   post += "if (ret && ret < 0 && canWarn) {\n";
-  post += "  dbg(`error: syscall may have failed with ${-ret} (${ERRNO_MESSAGES[-ret]})`);\n";
+  post += "  dbg(`error: syscall may have failed with ${-ret} (${strError(-ret)})`);\n";
   post += "}\n";
   post += "dbg(`syscall return: ${ret}`);\n";
   post += "return ret;\n";
@@ -3397,7 +3026,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     "  if (typeof FS == 'undefined' || !(e.name === 'ErrnoError')) throw e;\n";
 #if SYSCALL_DEBUG
     handler +=
-    "  dbg(`error: syscall failed with ${e.errno} (${ERRNO_MESSAGES[e.errno]})`);\n" +
+    "  dbg(`error: syscall failed with ${e.errno} (${strError(e.errno)})`);\n" +
     "  canWarn = false;\n";
 #endif
     // Musl syscalls are negated.

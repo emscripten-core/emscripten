@@ -15,7 +15,7 @@
 
 int result = 1;
 
-void success() {
+void report_result() {
   REPORT_RESULT(result);
 #ifdef FORCE_EXIT
   emscripten_force_exit(0);
@@ -133,7 +133,18 @@ void test() {
 
 #endif
 
-#if EXTRA_WORK
+  // If the test failed, then delete test files from IndexedDB so that the test
+  // runner will not leak test state to subsequent tests that reuse this same
+  // file.
+  if (result != 1) {
+    unlink("/working1/empty.txt");
+    unlink("/working1/waka.txt");
+    unlink("/working1/moar.txt");
+    rmdir("/working1/dir");
+    EM_ASM(FS.syncfs(function(){})); // And persist deleted changes
+  }
+
+#if EXTRA_WORK && !FIRST
   EM_ASM(
     for (var i = 0; i < 100; i++) {
       FS.syncfs(function (err) {
@@ -144,8 +155,11 @@ void test() {
   );
 #endif
 
+#ifdef IDBFS_AUTO_PERSIST
+  report_result();
+#else
   // sync from memory state to persisted and then
-  // run 'success'
+  // run 'report_result'
   EM_ASM(
     // Ensure IndexedDB is closed at exit.
     Module['onExit'] = function() {
@@ -153,15 +167,20 @@ void test() {
     };
     FS.syncfs(function (err) {
       assert(!err);
-      ccall('success', 'v');
+      ccall('report_result', 'v');
     });
   );
+#endif
 }
 
 int main() {
   EM_ASM(
     FS.mkdir('/working1');
-    FS.mount(IDBFS, {}, '/working1');
+    FS.mount(IDBFS, { 
+#ifdef IDBFS_AUTO_PERSIST
+      autoPersist: true
+#endif
+    }, '/working1');
 
 #if !FIRST
     // syncfs(true, f) should not break on already-existing directories:

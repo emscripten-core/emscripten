@@ -19,7 +19,7 @@
 
 namespace __cxxabiv1 {
 
-#ifdef __USING_EMSCRIPTEN_EXCEPTIONS__
+#ifdef __EMSCRIPTEN_EXCEPTIONS__
 
 struct _LIBCXXABI_HIDDEN __cxa_exception {
   size_t referenceCount;
@@ -63,7 +63,7 @@ struct _LIBCXXABI_HIDDEN __cxa_exception {
 
     //  Manage the exception object itself.
     std::type_info *exceptionType;
-#ifdef __USING_WASM_EXCEPTIONS__
+#ifdef __wasm__
     // In Wasm, a destructor returns its argument
     void *(_LIBCXXABI_DTOR_FUNC *exceptionDestructor)(void *);
 #else
@@ -184,7 +184,7 @@ extern "C" _LIBCXXABI_FUNC_VIS __cxa_eh_globals * __cxa_get_globals_fast ();
 extern "C" _LIBCXXABI_FUNC_VIS void * __cxa_allocate_dependent_exception ();
 extern "C" _LIBCXXABI_FUNC_VIS void __cxa_free_dependent_exception (void * dependent_exception);
 
-#endif // !__USING_EMSCRIPTEN_EXCEPTIONS__
+#endif // !__EMSCRIPTEN_EXCEPTIONS__
 
 }  // namespace __cxxabiv1
 

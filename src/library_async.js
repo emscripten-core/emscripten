@@ -42,7 +42,7 @@ addToLibrary({
       dbg('asyncify instrumenting imports');
 #endif
 #if ASSERTIONS && ASYNCIFY == 2
-      assert('Suspender' in WebAssembly, 'JSPI not supported by current environment. Perhaps it needs to be enabled via flags?');
+      assert('Suspending' in WebAssembly, 'JSPI not supported by current environment. Perhaps it needs to be enabled via flags?');
 #endif
       var importPattern = {{{ new RegExp(`^(${ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS.map(x => x.split('.')[1]).join('|').replace(/\*/g, '.*')})$`) }}};
 
@@ -52,21 +52,10 @@ addToLibrary({
 #if ASYNCIFY == 2
           // Wrap async imports with a suspending WebAssembly function.
           if (isAsyncifyImport) {
-#if ASSERTIONS
-            assert(original.sig, `Missing __sig for ${x}`);
-#endif
-            let type = sigToWasmTypes(original.sig);
 #if ASYNCIFY_DEBUG
             dbg('asyncify: suspendOnReturnedPromise for', x, original);
 #endif
-            // Add space for the suspender promise that will be used in the
-            // Wasm wrapper function.
-            type.parameters.unshift('externref');
-            imports[x] = original = new WebAssembly.Function(
-              type,
-              original,
-              { suspending: 'first' }
-            );
+            imports[x] = original = new WebAssembly.Suspending(original);
           }
 #endif
 #if ASSERTIONS && ASYNCIFY != 2 // We cannot apply assertions with stack switching, as the imports must not be modified from suspender.suspendOnReturnedPromise TODO find a way
@@ -106,11 +95,11 @@ addToLibrary({
       }
     },
 #if ASYNCIFY == 1 && MEMORY64
-    saveOrRestoreRewindArguments(funcName, passedArguments) {
-      if (passedArguments.length === 0) {
-        return Asyncify.rewindArguments[funcName] || []
-      }
+    saveRewindArguments(funcName, passedArguments) {
       return Asyncify.rewindArguments[funcName] = Array.from(passedArguments)
+    },
+    restoreRewindArguments(funcName) {
+      return Asyncify.rewindArguments[funcName] || []
     },
 #endif
     instrumentWasmExports(exports) {
@@ -141,14 +130,9 @@ addToLibrary({
             try {
 #endif
 #if ASYNCIFY == 1 && MEMORY64
-              // When re-winding, the arguments to a function are ignored.  For i32 arguments we
-              // can just call the function with no args at all since and the engine will produce zeros
-              // for all arguments.  However, for i64 arguments we get `undefined cannot be converted to
-              // BigInt`.
-              return original(...Asyncify.saveOrRestoreRewindArguments(x, args));
-#else
-              return original(...args);
+              Asyncify.saveRewindArguments(x, args);
 #endif
+              return original(...args);
 #if ASYNCIFY == 1
             } finally {
               if (!ABORT) {
@@ -276,12 +260,16 @@ addToLibrary({
       {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'rewindId', 'i32') }}};
     },
 
+    getDataRewindFuncName(ptr) {
+      var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
+      var name = Asyncify.callStackIdToName[id];
+      return name;
+    },
+
 #if RELOCATABLE
     getDataRewindFunc__deps: [ '$resolveGlobalSymbol' ],
 #endif
-    getDataRewindFunc(ptr) {
-      var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
-      var name = Asyncify.callStackIdToName[id];
+    getDataRewindFunc(name) {
       var func = wasmExports[name];
 #if RELOCATABLE
       // Exported functions in side modules are not listed in `wasmExports`,
@@ -294,14 +282,23 @@ addToLibrary({
     },
 
     doRewind(ptr) {
-      var start = Asyncify.getDataRewindFunc(ptr);
+      var name = Asyncify.getDataRewindFuncName(ptr);
+      var func = Asyncify.getDataRewindFunc(name);
 #if ASYNCIFY_DEBUG
-      dbg('ASYNCIFY: start:', start);
+      dbg('ASYNCIFY: doRewind:', name);
 #endif
       // Once we have rewound and the stack we no longer need to artificially
       // keep the runtime alive.
       {{{ runtimeKeepalivePop(); }}}
-      return start();
+#if MEMORY64
+      // When re-winding, the arguments to a function are ignored.  For i32 arguments we
+      // can just call the function with no args at all since and the engine will produce zeros
+      // for all arguments.  However, for i64 arguments we get `undefined cannot be converted to
+      // BigInt`.
+      return func(...Asyncify.restoreRewindArguments(name));
+#else
+      return func();
+#endif
     },
 
     // This receives a function to call to start the async operation, and
@@ -452,22 +449,9 @@ addToLibrary({
     },
     makeAsyncFunction(original) {
 #if ASYNCIFY_DEBUG
-      dbg('asyncify: returnPromiseOnSuspend for', original);
+      dbg('asyncify: makeAsyncFunction for', original);
 #endif
-      // TODO: remove `WebAssembly.Function.type` call when the new API is ready on all the testers.
-      var type = original.type ? original.type() : WebAssembly.Function.type(original);
-      var parameters = type.parameters;
-      var results = type.results;
-#if ASSERTIONS
-      assert(results.length !== 0, 'There must be a return result')
-      assert(parameters[0] === 'externref', 'First param must be externref.');
-#endif
-      // Remove the extern ref.
-      parameters.shift();
-      return new WebAssembly.Function(
-        { parameters , results: ['externref'] },
-        original,
-        { promising : 'first' });
+      return WebAssembly.promising(original);
     },
 #endif
   },

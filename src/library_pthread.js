@@ -379,6 +379,7 @@ var LibraryPThread = {
         'wasmOffsetConverter': wasmOffsetConverter,
 #endif
 #if MAIN_MODULE
+        'dynamicLibraries': dynamicLibraries,
         // Share all modules that have been loaded so far.  New workers
         // won't start running threads until these are all loaded.
         'sharedModules': sharedModules,
@@ -429,7 +430,7 @@ var LibraryPThread = {
         // a pthread.
         'workerData': 'em-pthread',
 #endif
-#if ENVIRONMENT_MAY_BE_WEB
+#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
         // This is the way that we signal to the Web Worker that it is hosting
         // a pthread.
         'name': 'em-pthread',
@@ -446,7 +447,7 @@ var LibraryPThread = {
         var p = trustedTypes.createPolicy(
           'emscripten#workerPolicy1',
           {
-            createScriptURL: (ignored) => new URL(import.meta.url);
+            createScriptURL: (ignored) => new URL(import.meta.url)
           }
         );
         worker = new Worker(p.createScriptURL('ignored'), workerOptions);
@@ -954,7 +955,7 @@ var LibraryPThread = {
   $proxyToMainThreadPtr: (...args) => BigInt(proxyToMainThread(...args)),
 #endif
 
-  $proxyToMainThread__deps: ['$stackSave', '$stackRestore', '$stackAlloc', '_emscripten_run_on_main_thread_js'].concat(i53ConversionDeps),
+  $proxyToMainThread__deps: ['$stackSave', '$stackRestore', '$stackAlloc', '_emscripten_run_on_main_thread_js', ...i53ConversionDeps],
   $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
   $proxyToMainThread: (funcIndex, emAsmAddr, sync, ...callArgs) => {
     // EM_ASM proxying is done by passing a pointer to the address of the EM_ASM
@@ -1241,6 +1242,12 @@ var LibraryPThread = {
       }
     }
   },
+#elif RELOCATABLE
+  // Provide a dummy version of _emscripten_thread_exit_joinable when
+  // RELOCATABLE is used without MAIN_MODULE.  This is because the call
+  // site in pthread_create.c is not able to distinguish between these
+  // two cases.
+  _emscripten_thread_exit_joinable: (thread) => {},
 #endif // MAIN_MODULE
 
   $checkMailbox__deps: ['$callUserCallback',

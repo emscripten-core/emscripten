@@ -301,5 +301,11 @@ int main() {
   size = strftime(s, sizeof(s), "%Y-%m-%d %G %V %w", &tm);
   TEST(!cmp(s, "2018-12-17 2018 51 1"), "strftime test #37b", s);
 
+  size = strftime(s, sizeof(s), "%c", &tm);
+  TEST(!cmp(s, "Mon Dec 17 00:00:00 2018"), "strftime test #36", s);
+
+  size = strftime(s, sizeof(s), "%Ec", &tm);
+  TEST(!cmp(s, "Mon Dec 17 00:00:00 2018"), "strftime test #36a", s);
+
   return 0;
 }

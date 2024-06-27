@@ -1101,7 +1101,6 @@
                 "readyState",
                 "status",
                 "statusText",
-                "__proxyState",
                 "__attributes"
             ]
         },
@@ -1204,6 +1203,13 @@
           "ALC_INVALID_ENUM"
         ]
     },
+    {
+        "file": "GL/gl.h",
+        "defines": [
+          "GL_UNPACK_ALIGNMENT",
+          "GL_UNPACK_ROW_LENGTH"
+        ]
+    },
     // ===========================================
     // WebGPU
     //   NOTE: This section is auto-generated.
@@ -1216,6 +1222,17 @@
             "WGPUChainedStruct": [
                 "next",
                 "sType"
+            ],
+            "WGPUAdapterInfo": [
+                "nextInChain",
+                "vendor",
+                "architecture",
+                "device",
+                "description",
+                "backendType",
+                "adapterType",
+                "vendorID",
+                "deviceID"
             ],
             "WGPUAdapterProperties": [
                 "nextInChain",
@@ -1480,6 +1497,27 @@
                 "format",
                 "viewDimension"
             ],
+            "WGPUSurfaceCapabilities": [
+                "nextInChain",
+                "formatCount",
+                "formats",
+                "presentModeCount",
+                "presentModes",
+                "alphaModeCount",
+                "alphaModes"
+            ],
+            "WGPUSurfaceConfiguration": [
+                "nextInChain",
+                "device",
+                "format",
+                "usage",
+                "viewFormatCount",
+                "viewFormats",
+                "alphaMode",
+                "width",
+                "height",
+                "presentMode"
+            ],
             "WGPUSurfaceDescriptor": [
                 "nextInChain",
                 "label"
@@ -1487,6 +1525,11 @@
             "WGPUSurfaceDescriptorFromCanvasHTMLSelector": [
                 "chain",
                 "selector"
+            ],
+            "WGPUSurfaceTexture": [
+                "texture",
+                "suboptimal",
+                "status"
             ],
             "WGPUSwapChainDescriptor": [
                 "nextInChain",

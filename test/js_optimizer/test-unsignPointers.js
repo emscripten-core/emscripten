@@ -1,5 +1,17 @@
+/**
+ * Multi-line comment.
+ */
+/**
+ * Another multi-line comment.
+ */
+/**
+ * A third multi-line comment.
+ */
 HEAP32[x >> 2];
 
+// Single line comment
+// Another single line comment
+// A third single line comment
 HEAP8[x];
 
 HEAP8.length;

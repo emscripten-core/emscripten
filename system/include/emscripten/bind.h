@@ -504,25 +504,6 @@ struct Invoker<ReturnPolicy, void, Args...> {
     }
 };
 
-namespace async {
-
-template<typename F, F f> struct Wrapper;
-template<typename ReturnType, typename... Args, ReturnType(*f)(Args...)>
-struct Wrapper<ReturnType(*)(Args...), f> {
-    EMSCRIPTEN_KEEPALIVE static ReturnType invoke(Args... args) {
-        return f(args...);
-    }
-};
-
-} // end namespace async
-
-template<typename T, typename... Policies>
-using maybe_wrap_async = typename std::conditional<
-        isAsync<Policies...>::value,
-        async::Wrapper<decltype(&T::invoke), &T::invoke>,
-        T
-        >::type;
-
 template<typename ReturnPolicy, typename FunctorType, typename ReturnType, typename... Args>
 struct FunctorInvoker {
     static typename internal::BindingType<ReturnType>::WireType invoke(
@@ -651,8 +632,7 @@ void function(const char* name, ReturnType (*fn)(Args...), Policies...) {
     using namespace internal;
     typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
     using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
-    using OriginalInvoker = Invoker<ReturnPolicy, ReturnType, Args...>;
-    auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
+    auto invoke = Invoker<ReturnPolicy, ReturnType, Args...>::invoke;
     _embind_register_function(
         name,
         args.getCount(),
@@ -1463,7 +1443,7 @@ struct RegisterClassConstructor<ReturnType (*)(Args...)> {
     template <typename ClassType, typename... Policies>
     static void invoke(ReturnType (*factory)(Args...)) {
         typename WithPolicies<allow_raw_pointers, Policies...>::template ArgTypeList<ReturnType, Args...> args;
-        using ReturnPolicy = rvp::default_tag;
+        using ReturnPolicy = rvp::take_ownership;
         auto invoke = &Invoker<ReturnPolicy, ReturnType, Args...>::invoke;
         _embind_register_class_constructor(
             TypeID<ClassType>::get(),
@@ -1481,7 +1461,7 @@ struct RegisterClassConstructor<std::function<ReturnType (Args...)>> {
     template <typename ClassType, typename... Policies>
     static void invoke(std::function<ReturnType (Args...)> factory) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-        using ReturnPolicy = rvp::default_tag;
+        using ReturnPolicy = rvp::take_ownership;
         auto invoke = &FunctorInvoker<ReturnPolicy, decltype(factory), ReturnType, Args...>::invoke;
         _embind_register_class_constructor(
             TypeID<ClassType>::get(),
@@ -1498,7 +1478,7 @@ struct RegisterClassConstructor<ReturnType (Args...)> {
     template <typename ClassType, typename Callable, typename... Policies>
     static void invoke(Callable& factory) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-        using ReturnPolicy = rvp::default_tag;
+        using ReturnPolicy = rvp::take_ownership;
         auto invoke = &FunctorInvoker<ReturnPolicy, decltype(factory), ReturnType, Args...>::invoke;
         _embind_register_class_constructor(
             TypeID<ClassType>::get(),
@@ -1524,8 +1504,7 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {
     static void invoke(const char* methodName,
                        ReturnType (ClassType::*memberFunction)(Args...)) {
         using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
-        using OriginalInvoker = MethodInvoker<ReturnPolicy, decltype(memberFunction), ReturnType, ClassType*, Args...>;
-        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
+        auto invoke = MethodInvoker<ReturnPolicy, decltype(memberFunction), ReturnType, ClassType*, Args...>::invoke;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<ClassType>, Args...> args;
         _embind_register_class_function(
@@ -1554,8 +1533,7 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
     static void invoke(const char* methodName,
                        ReturnType (ClassType::*memberFunction)(Args...) const)  {
         using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
-        using OriginalInvoker = MethodInvoker<ReturnPolicy, decltype(memberFunction), ReturnType, const ClassType*, Args...>;
-        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
+        auto invoke = MethodInvoker<ReturnPolicy, decltype(memberFunction), ReturnType, const ClassType*, Args...>::invoke;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<const ClassType>, Args...> args;
         _embind_register_class_function(
@@ -1585,8 +1563,7 @@ struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
                        ReturnType (*function)(ThisType, Args...)) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
         using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
-        using OriginalInvoker = FunctionInvoker<ReturnPolicy, decltype(function), ReturnType, ThisType, Args...>;
-        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
+        auto invoke = FunctionInvoker<ReturnPolicy, decltype(function), ReturnType, ThisType, Args...>::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
             methodName,
@@ -1614,8 +1591,7 @@ struct RegisterClassMethod<std::function<ReturnType (ThisType, Args...)>> {
                        std::function<ReturnType (ThisType, Args...)> function) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
         using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
-        using OriginalInvoker = FunctorInvoker<ReturnPolicy, decltype(function), ReturnType, ThisType, Args...>;
-        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
+        auto invoke = FunctorInvoker<ReturnPolicy, decltype(function), ReturnType, ThisType, Args...>::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
             methodName,
@@ -1637,8 +1613,7 @@ struct RegisterClassMethod<ReturnType (ThisType, Args...)> {
                        Callable& callable) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
         using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
-        using OriginalInvoker = FunctorInvoker<ReturnPolicy, decltype(callable), ReturnType, ThisType, Args...>;
-        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
+        auto invoke = FunctorInvoker<ReturnPolicy, decltype(callable), ReturnType, ThisType, Args...>::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
             methodName,
@@ -1956,8 +1931,7 @@ public:
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
         using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
-        using OriginalInvoker = internal::Invoker<ReturnPolicy, ReturnType, Args...>;
-        auto invoke = &maybe_wrap_async<OriginalInvoker, Policies...>::invoke;
+        auto invoke = internal::Invoker<ReturnPolicy, ReturnType, Args...>::invoke;
         _embind_register_class_class_function(
             TypeID<ClassType>::get(),
             methodName,

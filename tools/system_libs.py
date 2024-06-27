@@ -1070,9 +1070,10 @@ class libc(MuslInternalLibrary,
       path='system/lib/libc/musl/src/string',
       filenames=['strlen.c'])
 
+    # Transitively required by many system call imports
     errno_files = files_in_path(
       path='system/lib/libc/musl/src/errno',
-      filenames=['__errno_location.c'])
+      filenames=['__errno_location.c', 'strerror.c'])
 
     return math_files + exit_files + other_files + iprintf_files + errno_files
 
@@ -1226,6 +1227,11 @@ class libc(MuslInternalLibrary,
           'timespec_get.c',
           'utime.c',
           '__map_file.c',
+          'strftime.c',
+          '__tz.c',
+          '__tm_to_secs.c',
+          '__year_to_secs.c',
+          '__month_to_secs.c',
         ])
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/legacy',
@@ -1284,7 +1290,6 @@ class libc(MuslInternalLibrary,
           'emscripten_scan_stack.c',
           'emscripten_time.c',
           'mktime.c',
-          'tzset.c',
           'kill.c',
           'lookup_name.c',
           'pthread_sigmask.c',
@@ -1570,12 +1575,12 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
     if self.eh_mode == Exceptions.NONE:
       cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
-      cflags.append('-D__USING_EMSCRIPTEN_EXCEPTIONS__')
+      cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
       # The code used to interpret exceptions during terminate
       # is not compatible with emscripten exceptions.
       cflags.append('-DLIBCXXABI_SILENT_TERMINATE')
     elif self.eh_mode == Exceptions.WASM:
-      cflags.append('-D__USING_WASM_EXCEPTIONS__')
+      cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 
   def get_files(self):
@@ -1652,7 +1657,7 @@ class libcxx(NoExceptLibrary, MTLibrary):
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.eh_mode == Exceptions.WASM:
-      cflags.append('-D__USING_WASM_EXCEPTIONS__')
+      cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 
 
@@ -1684,9 +1689,9 @@ class libunwind(NoExceptLibrary, MTLibrary):
     if self.eh_mode == Exceptions.NONE:
       cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
     elif self.eh_mode == Exceptions.EMSCRIPTEN:
-      cflags.append('-D__USING_EMSCRIPTEN_EXCEPTIONS__')
+      cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
     elif self.eh_mode == Exceptions.WASM:
-      cflags.append('-D__USING_WASM_EXCEPTIONS__')
+      cflags.append('-D__WASM_EXCEPTIONS__')
     return cflags
 
 
@@ -2191,12 +2196,7 @@ class libstandalonewasm(MuslInternalLibrary):
     # It is more efficient to use JS methods for time, normally.
     files += files_in_path(
         path='system/lib/libc/musl/src/time',
-        filenames=['strftime.c',
-                   '__month_to_secs.c',
-                   '__secs_to_tm.c',
-                   '__tm_to_secs.c',
-                   '__tz.c',
-                   '__year_to_secs.c',
+        filenames=['__secs_to_tm.c',
                    'clock.c',
                    'clock_gettime.c',
                    'gettimeofday.c',

@@ -32,11 +32,9 @@
         });
         document.body.dispatchEvent(event);
       }
-      function reportResult(result) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', 'http://localhost:8888/report_gl_result?' + result, true);
-        xhr.send();
-        setTimeout(function() { window.close() }, 1000);
+      async function reportResult(result) {
+        await fetch('http://localhost:8888/report_gl_result?' + result);
+        window.close();
       }
       function doTest() {
         var firstImage = Module.canvas.toDataURL();

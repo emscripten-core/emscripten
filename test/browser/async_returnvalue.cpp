@@ -33,18 +33,14 @@ int main() {
 #ifdef BAD
   EM_ASM({
     window.disableErrorReporting = true;
-    window.onerror = function(e) {
+    window.onerror = async (e) => {
       var success = e.toString().indexOf("import sync_tunnel was not in ASYNCIFY_IMPORTS, but changed the state") > 0;
       if (success && !Module.reported) {
         Module.reported = true;
         console.log("reporting success");
         // manually REPORT_RESULT; we shouldn't call back into native code at this point
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", "http://localhost:8888/report_result?0");
-        xhr.onload = xhr.onerror = function() {
-          window.close();
-        };
-        xhr.send();
+        await fetch("http://localhost:8888/report_result?0");
+        window.close();
       }
     };
   });

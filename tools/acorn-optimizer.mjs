@@ -2,7 +2,7 @@
 
 import * as acorn from 'acorn';
 import * as terser from '../third_party/terser/terser.js';
-import * as fs from 'fs';
+import * as fs from 'node:fs';
 
 // Utilities
 
@@ -270,7 +270,7 @@ function hasSideEffects(node) {
 // as they appear (like ArrowFunctionExpression). Instead, we do a conservative
 // analysis here.
 
-function runJSDCE(ast, aggressive) {
+function JSDCE(ast, aggressive) {
   function iteration() {
     let removed = 0;
     const scopes = [{}]; // begin with empty toplevel scope
@@ -457,8 +457,8 @@ function runJSDCE(ast, aggressive) {
 }
 
 // Aggressive JSDCE - multiple iterations
-function runAJSDCE(ast) {
-  runJSDCE(ast, /* aggressive= */ true);
+function AJSDCE(ast) {
+  JSDCE(ast, /* aggressive= */ true);
 }
 
 function isWasmImportsAssign(node) {
@@ -1932,7 +1932,7 @@ function minifyGlobals(ast) {
 
 // Utilities
 
-function reattachComments(ast, comments) {
+function reattachComments(ast, commentsMap) {
   const symbols = [];
 
   // Collect all code symbols
@@ -1949,33 +1949,37 @@ function reattachComments(ast, comments) {
 
   // Walk through all comments in ascending line number, and match each
   // comment to the appropriate code block.
-  for (let i = 0, j = 0; i < comments.length; ++i) {
-    while (j < symbols.length && symbols[j].start.pos < comments[i].end) {
+  let j = 0;
+  for (const [pos, comments] of Object.entries(commentsMap)) {
+    while (j < symbols.length && symbols[j].start.pos < pos) {
       ++j;
     }
     if (j >= symbols.length) {
+      trace('dropping comments: no symbol comes after them');
       break;
     }
-    if (symbols[j].start.pos - comments[i].end > 20) {
+    if (symbols[j].start.pos - pos > 20) {
       // This comment is too far away to refer to the given symbol. Drop
       // the comment altogether.
+      trace('dropping comments: too far from any symbol');
       continue;
     }
-    if (!Array.isArray(symbols[j].start.comments_before)) {
-      symbols[j].start.comments_before = [];
+    symbols[j].start.comments_before ??= [];
+    for (const comment of comments) {
+      trace('reattaching comment');
+      symbols[j].start.comments_before.push(
+        new terser.AST_Token(
+          comment.type == 'Line' ? 'comment1' : 'comment2',
+          comment.value,
+          undefined,
+          undefined,
+          false,
+          undefined,
+          undefined,
+          '0',
+        ),
+      );
     }
-    symbols[j].start.comments_before.push(
-      new terser.AST_Token(
-        comments[i].type == 'Line' ? 'comment' : 'comment2',
-        comments[i].value,
-        undefined,
-        undefined,
-        false,
-        undefined,
-        undefined,
-        '0',
-      ),
-    );
   }
 }
 
@@ -1998,6 +2002,11 @@ function trace(...args) {
   if (verbose) {
     console.warn(...args);
   }
+}
+
+function error(...args) {
+  console.error(...args);
+  throw new Error(...args);
 }
 
 // If enabled, output retains parentheses and comments so that the
@@ -2024,19 +2033,30 @@ let extraInfo = null;
 if (extraInfoStart > 0) {
   extraInfo = JSON.parse(input.substr(extraInfoStart + 14));
 }
-// Collect all JS code comments to this array so that we can retain them in the outputted code
-// if --closureFriendly was requested.
-const sourceComments = [];
+// Collect all JS code comments to this map so that we can retain them in the
+// outputted code if --closureFriendly was requested.
+const sourceComments = {};
+const params = {
+  // Keep in sync with --language_in that we pass to closure in building.py
+  ecmaVersion: 2021,
+  sourceType: exportES6 ? 'module' : 'script',
+  allowAwaitOutsideFunction: true,
+};
+if (closureFriendly) {
+  const currentComments = [];
+  Object.assign(params, {
+    preserveParens: true,
+    onToken: (token) => {
+      // Associate comments with the start position of the next token.
+      sourceComments[token.start] = currentComments.slice();
+      currentComments.length = 0;
+    },
+    onComment: currentComments,
+  });
+}
 let ast;
 try {
-  ast = acorn.parse(input, {
-    // Keep in sync with --language_in that we pass to closure in building.py
-    ecmaVersion: 2021,
-    preserveParens: closureFriendly,
-    onComment: closureFriendly ? sourceComments : undefined,
-    sourceType: exportES6 ? 'module' : 'script',
-    allowAwaitOutsideFunction: true,
-  });
+  ast = acorn.parse(input, params);
 } catch (err) {
   err.message += (() => {
     let errorMessage = '\n' + input.split(acorn.lineBreak)[err.loc.line - 1] + '\n';
@@ -2051,25 +2071,26 @@ try {
 }
 
 const registry = {
-  JSDCE: runJSDCE,
-  AJSDCE: runAJSDCE,
-  applyImportAndExportNameChanges: applyImportAndExportNameChanges,
-  emitDCEGraph: emitDCEGraph,
-  applyDCEGraphRemovals: applyDCEGraphRemovals,
-  // TODO: remove 'last' in the python driver code
-  last: () => {},
-  dump: () => dump(ast),
-  littleEndianHeap: littleEndianHeap,
-  growableHeap: growableHeap,
-  unsignPointers: unsignPointers,
-  minifyLocals: minifyLocals,
-  asanify: asanify,
-  safeHeap: safeHeap,
-  minifyGlobals: minifyGlobals,
+  JSDCE,
+  AJSDCE,
+  applyImportAndExportNameChanges,
+  emitDCEGraph,
+  applyDCEGraphRemovals,
+  dump,
+  littleEndianHeap,
+  growableHeap,
+  unsignPointers,
+  minifyLocals,
+  asanify,
+  safeHeap,
+  minifyGlobals,
 };
 
 passes.forEach((pass) => {
   trace(`running AST pass: ${pass}`);
+  if (!(pass in registry)) {
+    error(`unknown optimizer pass: ${pass}`);
+  }
   registry[pass](ast);
 });
 
