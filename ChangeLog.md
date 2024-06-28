@@ -29,6 +29,7 @@ See docs/process.md for more on how version tagging works.
   upstream LLVM change (https://github.com/llvm/llvm-project/pull/93261).
 - Emscripten now uses `strftime` from musl rather than using a custom
   JavaScript implementation. (#21379)
+- Embind now supports return value policies for properties.
 
 3.1.61 - 05/31/24
 -----------------
