@@ -447,13 +447,13 @@ var LibraryPThread = {
         var p = trustedTypes.createPolicy(
           'emscripten#workerPolicy1',
           {
-            createScriptURL: (ignored) => new URL(import.meta.url)
+            createScriptURL: (ignored) => new URL("{{{ TARGET_JS_NAME }}}", import.meta.url)
           }
         );
         worker = new Worker(p.createScriptURL('ignored'), workerOptions);
       } else
 #endif
-      worker = new Worker(new URL(import.meta.url), workerOptions);
+      worker = new Worker(new URL("{{{ TARGET_JS_NAME }}}", import.meta.url), workerOptions);
 #else
       var pthreadMainJs = _scriptName;
 #if expectToReceiveOnModule('mainScriptUrlOrBlob')
