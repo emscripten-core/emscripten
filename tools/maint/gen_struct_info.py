@@ -439,9 +439,9 @@ def main(args):
   if args.output:
     output_file = args.output
   elif args.wasm64:
-    output_file = utils.path_from_root('src/generated_struct_info64.json')
+    output_file = utils.path_from_root('src/struct_info_generated_wasm64.json')
   else:
-    output_file = utils.path_from_root('src/generated_struct_info32.json')
+    output_file = utils.path_from_root('src/struct_info_generated.json')
 
   with open(output_file, 'w') as f:
     output_json(info, f)
