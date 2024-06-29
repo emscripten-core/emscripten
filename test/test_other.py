@@ -374,7 +374,7 @@ class other(RunnerCore):
                       test_file('hello_world.c')] + args)
     src = read_file('subdir/hello_world.mjs')
     self.assertContained("new URL('hello_world.wasm', import.meta.url)", src)
-    self.assertContained("new Worker(new URL(import.meta.url), workerOptions)", src)
+    self.assertContained("new Worker(new URL('hello_world.mjs', import.meta.url), workerOptions)", src)
     self.assertContained('export default Module;', src)
     self.assertContained('hello, world!', self.run_js('subdir/hello_world.mjs'))
 
@@ -386,7 +386,7 @@ class other(RunnerCore):
                       test_file('hello_world.c'), '-sSINGLE_FILE'])
     src = read_file('hello_world.mjs')
     self.assertNotContained("new URL('data:", src)
-    self.assertContained("new Worker(new URL(import.meta.url), workerOptions)", src)
+    self.assertContained("new Worker(new URL('hello_world.mjs', import.meta.url), workerOptions)", src)
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
   def test_emcc_output_mjs_closure(self):
