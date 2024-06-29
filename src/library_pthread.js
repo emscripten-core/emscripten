@@ -453,7 +453,7 @@ var LibraryPThread = {
         worker = new Worker(p.createScriptURL('ignored'), workerOptions);
       } else
 #endif
-      worker = new Worker(new URL("{{{ TARGET_JS_NAME }}}", import.meta.url), workerOptions);
+      worker = new Worker(new URL('{{{ TARGET_JS_NAME }}}', import.meta.url), workerOptions);
 #else
       var pthreadMainJs = _scriptName;
 #if expectToReceiveOnModule('mainScriptUrlOrBlob')
