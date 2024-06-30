@@ -19,21 +19,20 @@ var LibraryBrowser = {
 #endif
 #endif
   ],
-  $Browser__postset: `
-    // exports
-    Module["requestFullscreen"] = Browser.requestFullscreen;
-#if ASSERTIONS
-    Module["requestFullScreen"] = Browser.requestFullScreen;
-#endif
-    Module["requestAnimationFrame"] = Browser.requestAnimationFrame;
-    Module["setCanvasSize"] = Browser.setCanvasSize;
-    Module["pauseMainLoop"] = Browser.mainLoop.pause;
-    Module["resumeMainLoop"] = Browser.mainLoop.resume;
-    Module["getUserMedia"] = Browser.getUserMedia;
-    Module["createContext"] = Browser.createContext;
-    var preloadedImages = {};
-    var preloadedAudios = {};`,
 
+  $requestFullscreen: 'Browser.requestFullscreen',
+#if ASSERTIONS
+  // Legacy name for requestFullscreen (with uppercase S)
+  $requestFullScreen: 'Browser.requestFullScreen',
+#endif
+  $requestAnimationFrame: 'Browser.requestAnimationFrame',
+  $setCanvasSize: 'Browser.setCanvasSize',
+  $pauseMainLoop: 'Browser.mainLoop.pause',
+  $resumeMainLoop: 'Browser.mainLoop.resume',
+  $getUserMedia: 'Browser.getUserMedia',
+  $createContext: 'Browser.createContext',
+
+  $Browser__postset: `var preloadedImages = {}, preloadedAudios = {};`,
   $Browser: {
     mainLoop: {
       running: false,
