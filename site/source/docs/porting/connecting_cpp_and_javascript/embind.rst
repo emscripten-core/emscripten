@@ -1211,6 +1211,16 @@ registered using :cpp:func:`EMSCRIPTEN_DECLARE_VAL_TYPE` in combination with
         register_type<CallbackType>("(message: string) => void");
     }
 
+Embind Debugging
+======================
+
+TO help you debug, you can use enable `-sEMBIND_DEBUG` which log every wasm call.
+To use it, invoke *emcc* with the `-sEMBIND_DEBUG` option
+
+emcc -lembind quick_example.cpp -sEMBIND_DEBUG example.js
+
+Running this command will build the program with an js call every time you call the wasm.
+
 Performance
 ===========
 
