@@ -210,6 +210,17 @@ def requires_jspi(func):
   return decorated
 
 
+def requires_dylink(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    self.check_dylink()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def llvm_nm(file):
   output = shared.run_process([LLVM_NM, file], stdout=PIPE).stdout
 
@@ -3345,6 +3356,54 @@ More info: https://emscripten.org
     # Test that when method pointers are allocated at different addresses that
     # AOT JS generation still works correctly.
     self.do_runf('other/embind_jsgen_method_pointer_stability.cpp', 'done')
+
+  def build_dylink_lib(self, filename, outfile='liblib.so', emcc_args=None):
+    self.clear_setting('MAIN_MODULE')
+    self.set_setting('SIDE_MODULE')
+    cmd = [compiler_for(filename), filename, '-o', outfile] + self.get_emcc_args()
+    if emcc_args:
+      cmd += emcc_args
+    self.run_process(cmd)
+
+  def prep_dylink_main(self):
+    self.clear_setting('SIDE_MODULE')
+    self.set_setting('MAIN_MODULE', 1)
+
+  @requires_dylink
+  def test_embind_dylink_visibility_hidden(self):
+    # Check that embind is usable from a library built with "-fvisibility=hidden"
+    create_file('liba.cpp', r'''
+      #include <emscripten/val.h>
+
+      #define EXPORT __attribute__((visibility("default")))
+      using namespace emscripten;
+
+      EXPORT void liba_fun() {
+        unsigned char buffer[1];
+        val view(typed_memory_view(1, buffer));
+      }
+    ''')
+
+    self.build_dylink_lib('liba.cpp', outfile='liba.so', emcc_args=['-std=c++11', '-fvisibility=hidden'])
+    self.prep_dylink_main()
+    self.emcc_args = ['liba.so', '-L.', '--bind']
+    create_file('main.cpp', r'''
+      #include <stdio.h>
+      #include <emscripten/val.h>
+
+      using namespace emscripten;
+
+      void liba_fun();
+
+      int main() {
+
+        liba_fun();
+
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    self.do_runf('main.cpp', 'done\n')
 
   def test_emit_tsd(self):
     self.run_process([EMCC, test_file('other/test_emit_tsd.c'),

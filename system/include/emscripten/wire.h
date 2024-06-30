@@ -24,6 +24,7 @@
 #include <string>
 
 #define EMSCRIPTEN_ALWAYS_INLINE __attribute__((always_inline))
+#define EMSCRIPTEN_EXPORT __attribute__((visibility("default")))
 
 #ifndef EMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES
 #define EMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES 1
@@ -430,7 +431,7 @@ constexpr bool typeSupportsMemoryView() {
 } // namespace internal
 
 template<typename ElementType>
-struct memory_view {
+struct EMSCRIPTEN_EXPORT memory_view {
     memory_view() = delete;
     explicit memory_view(size_t size, const ElementType* data)
         : size(size)
