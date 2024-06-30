@@ -251,8 +251,7 @@ _mm_div_ss(__m128 __a, __m128 __b)
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_min_ps(__m128 __a, __m128 __b)
 {
-//  return (__m128)wasm_f32x4_pmin((v128_t)__a, (v128_t)__b); // TODO: Migrate to this, once it works in VMs
-  return (__m128)wasm_v128_bitselect((v128_t)__a, (v128_t)__b, (v128_t)wasm_f32x4_lt((v128_t)__a, (v128_t)__b));
+  return (__m128)wasm_f32x4_pmin((v128_t)__b, (v128_t)__a);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
@@ -264,8 +263,7 @@ _mm_min_ss(__m128 __a, __m128 __b)
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm_max_ps(__m128 __a, __m128 __b)
 {
-//  return (__m128)wasm_f32x4_pmax((v128_t)__a, (v128_t)__b); // TODO: Migrate to this, once it works in VMs
-  return (__m128)wasm_v128_bitselect((v128_t)__a, (v128_t)__b, (v128_t)wasm_f32x4_gt((v128_t)__a, (v128_t)__b));
+  return (__m128)wasm_f32x4_pmax((v128_t)__b, (v128_t)__a);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
