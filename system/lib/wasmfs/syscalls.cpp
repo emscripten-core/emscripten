@@ -1492,13 +1492,12 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
       // matter for us.
       flags = flags & ~O_LARGEFILE;
       // On linux only a few flags can be modified, and we support only a subset
-      // of those. Error on anything else.
-      auto supportedFlags = flags & O_APPEND;
+      // of those. Error on anything else
+      auto supportedFlags = flags & (O_APPEND | O_NONBLOCK);
       if (flags != supportedFlags) {
         return -EINVAL;
       }
-      openFile->locked().setFlags(flags);
-      return 0;
+      return openFile->locked().setFlags(flags);
     }
     case F_GETLK: {
       // If these constants differ then we'd need a case for both.
