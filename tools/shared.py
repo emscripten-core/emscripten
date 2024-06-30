@@ -821,6 +821,7 @@ class OFormat(Enum):
 
 CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
 CLANG_CXX = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
+CLANG_SCAN_DEPS = build_llvm_tool_path(exe_suffix('clang-scan-deps'))
 LLVM_AR = build_llvm_tool_path(exe_suffix('llvm-ar'))
 LLVM_DWP = build_llvm_tool_path(exe_suffix('llvm-dwp'))
 LLVM_RANLIB = build_llvm_tool_path(exe_suffix('llvm-ranlib'))
