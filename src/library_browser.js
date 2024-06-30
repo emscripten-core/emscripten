@@ -718,7 +718,7 @@ var LibraryBrowser = {
       PATH.basename(_file),
       // TODO: This copy is not needed if the contents are already a Uint8Array,
       //       which they often are (and always are in WasmFS).
-      new Uint8Array(data.object.contents), true, true,
+      FS.readFile(_file), true, true,
       () => {
         {{{ runtimeKeepalivePop() }}}
         if (onload) {{{ makeDynCall('vp', 'onload') }}}(file);
