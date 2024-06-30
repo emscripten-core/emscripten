@@ -296,6 +296,8 @@ Options that are modified or new in *emcc* are listed below:
   code together with everything else, keep it in the same scope if running
   `MODULARIZE`, etc.).
 
+.. _emcc-extern-post-js:
+
 ``--extern-post-js <file>``
   [link]
   Like ``--extern-pre-js``, but appends to the end.
