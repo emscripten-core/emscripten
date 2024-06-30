@@ -14313,6 +14313,48 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.setup_node_pthreads()
     run(['-pthread'], expect_bulk_mem=True)
 
+  @with_env_modify({'EMCC_FORCE_STDLIBS': '1'})
+  def test_memops_bulk_memory_side(self):
+    create_file('pre.js', '''
+    Module["dynamicLibraries"] = ["libside.wasm"];
+    ''')
+    create_file('side.c', '''
+#include <assert.h>
+#include <string.h>
+#include <emscripten/console.h>
+#include <emscripten/emscripten.h>
+
+void EMSCRIPTEN_KEEPALIVE side_main() {
+  char buffer[1024];
+  char out[1024];
+  memset(buffer, 'a', 1024);
+  buffer[sizeof(buffer) - 1] = '\\0';
+  memcpy(out, buffer, sizeof(buffer));
+  assert(strcmp(buffer, out) == 0);
+  emscripten_console_log(buffer);
+}
+    ''')
+    create_file('main.c', '''
+#include <assert.h>
+#include <string.h>
+
+extern void side_main();
+
+int main() {
+  side_main();
+  return 0;
+}
+    ''')
+    common_args = [] # OK
+    # common_args += ['-sMIN_SAFARI_VERSION=150000'] # Breaks
+    common_args += ['-sWASM_BIGINT=1'] # Also breaks (because it forces MIN_SAFARI_VERSION to 150000)
+    # common_args += ['-mbulk-memory'] # Fixes the build, and can also be only applied to the SIDE MODULE
+    side_args = ['-sSIDE_MODULE=2'] + common_args
+    main_args = ['-sMAIN_MODULE=1', '-sEXPORT_ALL=1', '-sWARN_ON_UNDEFINED_SYMBOLS=0', '--pre-js=pre.js'] + common_args
+    self.run_process([EMCC, 'side.c', '-o', 'libside.wasm'] + side_args)
+    self.run_process([EMCC, 'main.c', '-o', 'test.js'] + main_args)
+    self.assertContained('a' * 1023, self.run_js('test.js', interleaved_output=True))
+
   def test_memory_init_file_unsupported(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--memory-init-file=1'])
     self.assertContained('error: --memory-init-file is no longer supported', err)
