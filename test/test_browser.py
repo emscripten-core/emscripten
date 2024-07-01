@@ -5548,13 +5548,13 @@ Module["preRun"] = () => {
   def test_webpack(self, es6):
     if es6:
       shutil.copytree(test_file('webpack_es6'), 'webpack')
-      self.emcc_args += ['-sEXPORT_ES6']
+      self.emcc_args += ['-sEXPORT_ES6', '-pthread', '-sPTHREAD_POOL_SIZE=1']
       outfile = 'src/hello.mjs'
     else:
       shutil.copytree(test_file('webpack'), 'webpack')
       outfile = 'src/hello.js'
     with utils.chdir('webpack'):
-      self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web', '-o', outfile])
+      self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-o', outfile])
       self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
     shutil.copyfile('webpack/src/hello.wasm', 'webpack/dist/hello.wasm')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
