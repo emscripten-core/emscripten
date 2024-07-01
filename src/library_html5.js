@@ -1446,10 +1446,9 @@ var LibraryHTML5 = {
     }
 
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
-    var canPerformRequests = JSEvents.canPerformEventHandlerRequests();
-
-    // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
-    if (!canPerformRequests) {
+    // Queue this function call if we're not currently in an event handler and
+    // the user saw it appropriate to do so.
+    if (!JSEvents.canPerformEventHandlerRequests()) {
       if (strategy.deferUntilInEventHandler) {
         JSEvents.deferCall(JSEvents_requestFullscreen, 1 /* priority over pointer lock */, [target, strategy]);
         return {{{ cDefs.EMSCRIPTEN_RESULT_DEFERRED }}};
@@ -1766,10 +1765,9 @@ var LibraryHTML5 = {
     }
 
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
-    var canPerformRequests = JSEvents.canPerformEventHandlerRequests();
-
-    // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
-    if (!canPerformRequests) {
+    // Queue this function call if we're not currently in an event handler and
+    // the user saw it appropriate to do so.
+    if (!JSEvents.canPerformEventHandlerRequests()) {
       if (deferUntilInEventHandler) {
         JSEvents.deferCall(requestPointerLock, 2 /* priority below fullscreen */, [target]);
         return {{{ cDefs.EMSCRIPTEN_RESULT_DEFERRED }}};
