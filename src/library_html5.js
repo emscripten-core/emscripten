@@ -94,8 +94,7 @@ var LibraryHTML5 = {
         return true;
       }
       // Test if the given call was already queued, and if so, don't add it again.
-      for (var i in JSEvents.deferredCalls) {
-        var call = JSEvents.deferredCalls[i];
+      for (var call of JSEvents.deferredCalls) {
         if (call.targetFunction == targetFunction && arraysHaveEqualContent(call.argsList, argsList)) {
           return;
         }
@@ -111,12 +110,7 @@ var LibraryHTML5 = {
 
     // Erases all deferred calls to the given target function from the queue list.
     removeDeferredCalls(targetFunction) {
-      for (var i = 0; i < JSEvents.deferredCalls.length; ++i) {
-        if (JSEvents.deferredCalls[i].targetFunction == targetFunction) {
-          JSEvents.deferredCalls.splice(i, 1);
-          --i;
-        }
-      }
+      JSEvents.deferredCalls = JSEvents.deferredCalls.filter((call) => call.targetFunction != targetFunction);
     },
 
     canPerformEventHandlerRequests() {
@@ -136,10 +130,9 @@ var LibraryHTML5 = {
       if (!JSEvents.canPerformEventHandlerRequests()) {
         return;
       }
-      for (var i = 0; i < JSEvents.deferredCalls.length; ++i) {
-        var call = JSEvents.deferredCalls[i];
-        JSEvents.deferredCalls.splice(i, 1);
-        --i;
+      var deferredCalls = JSEvents.deferredCalls;
+      JSEvents.deferredCalls = [];
+      for (var call of deferredCalls) {
         call.targetFunction(...call.argsList);
       }
     },
@@ -1348,8 +1341,8 @@ var LibraryHTML5 = {
 
   // Applies old visibility states, given a list of changes returned by hideEverythingExceptGivenElement().
   $restoreHiddenElements: (hiddenElements) => {
-    for (var i = 0; i < hiddenElements.length; ++i) {
-      hiddenElements[i].node.style.display = hiddenElements[i].displayState;
+    for (var elem of hiddenElements) {
+      elem.node.style.display = elem.displayState;
     }
   },
 
@@ -1907,22 +1900,20 @@ var LibraryHTML5 = {
       // only changed touches in e.changedTouches, and touches on target at a.targetTouches), mark a boolean in
       // each Touch object so that we can later loop only once over all touches we see to marshall over to Wasm.
 
-      for (var i = 0; i < et.length; ++i) {
-        t = et[i];
+      for (let t of et) {
         // Browser might recycle the generated Touch objects between each frame (Firefox on Android), so reset any
         // changed/target states we may have set from previous frame.
         t.isChanged = t.onTarget = 0;
         touches[t.identifier] = t;
       }
       // Mark which touches are part of the changedTouches list.
-      for (var i = 0; i < e.changedTouches.length; ++i) {
-        t = e.changedTouches[i];
+      for (let t of e.changedTouches) {
         t.isChanged = 1;
         touches[t.identifier] = t;
       }
       // Mark which touches are part of the targetTouches list.
-      for (var i = 0; i < e.targetTouches.length; ++i) {
-        touches[e.targetTouches[i].identifier].onTarget = 1;
+      for (let t of e.targetTouches) {
+        touches[t.identifier].onTarget = 1;
       }
 
 #if PTHREADS
@@ -1942,8 +1933,7 @@ var LibraryHTML5 = {
 #endif
       var targetRect = getBoundingClientRect(target);
       var numTouches = 0;
-      for (var i in touches) {
-        t = touches[i];
+      for (let t of Object.values(touches)) {
         HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.identifier / 4}}}] = t.identifier;
         HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenX / 4}}}] = t.screenX;
         HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenY / 4}}}] = t.screenY;
