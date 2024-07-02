@@ -155,8 +155,8 @@ Linux
 
   ::
 
-    # Install Python
-    sudo apt-get install python3
+    # Install Python and bzip2
+    sudo apt-get install python3 bzip2
 
     # Install CMake (optional, only needed for tests and building Binaryen or LLVM)
     sudo apt-get install cmake
