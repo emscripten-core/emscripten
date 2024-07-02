@@ -303,7 +303,8 @@ def load_test_suites(args, modules, start_at, repeat):
   if not found_start:
     utils.exit_with_error(f'unable to find --start-at test: {start_at}')
   if total_tests == 1 or parallel_testsuite.num_cores() == 1:
-    common.EMTEST_SAVE_DIR = True
+    # TODO: perhaps leave it at 2 if it was 2 before?
+    common.EMTEST_SAVE_DIR = 1
   return suites, unmatched_test_names
 
 
@@ -398,7 +399,6 @@ def parse_args(args):
 def configure():
   common.EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
   common.EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
-  common.EMTEST_SAVE_DIR = int(os.getenv('EMTEST_SAVE_DIR', '0'))
   common.EMTEST_ALL_ENGINES = int(os.getenv('EMTEST_ALL_ENGINES', '0'))
   common.EMTEST_SKIP_SLOW = int(os.getenv('EMTEST_SKIP_SLOW', '0'))
   common.EMTEST_SKIP_FLAKY = int(os.getenv('EMTEST_SKIP_FLAKY', '0'))
@@ -419,7 +419,8 @@ def main(args):
   # Some options make sense being set in the environment, others not-so-much.
   # TODO(sbc): eventually just make these command-line only.
   if os.getenv('EMTEST_SAVE_DIR'):
-    print('Prefer --save-dir over setting $EMTEST_SAVE_DIR')
+    print('ERROR: use --save-dir instead of EMTEST_SAVE_DIR=1, and --no-clean instead of EMTEST_SAVE_DIR=2')
+    return 1
   if os.getenv('EMTEST_REBASELINE'):
     print('Prefer --rebaseline over setting $EMTEST_REBASELINE')
   if os.getenv('EMTEST_VERBOSE'):
@@ -442,10 +443,10 @@ def main(args):
 
   set_env('EMTEST_BROWSER', options.browser)
   set_env('EMTEST_DETECT_TEMPFILE_LEAKS', options.detect_leaks)
+  if options.save_dir:
+    common.EMTEST_SAVE_DIR = 1
   if options.no_clean:
-    set_env('EMTEST_SAVE_DIR', 2)
-  else:
-    set_env('EMTEST_SAVE_DIR', options.save_dir)
+    common.EMTEST_SAVE_DIR = 2
   set_env('EMTEST_SKIP_SLOW', options.skip_slow)
   set_env('EMTEST_ALL_ENGINES', options.all_engines)
   set_env('EMTEST_REBASELINE', options.rebaseline)
