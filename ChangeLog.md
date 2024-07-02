@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.62 (in development)
+3.1.63 (in development)
 -----------------------
+
+3.1.62 - 07/02/24
+-----------------
 - The `EM_BOOL` type changed from `int/u32` to `bool/u8`.  This changes the
   layout and size of some structs in the emscripten API. (#22157)
 - The `EMSCRIPTEN_FETCH_WAITABLE` flag along with the `emscripten_fetch_wait`
