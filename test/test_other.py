@@ -13840,6 +13840,14 @@ int main() {
   def test_wasm_worker_closure(self):
     self.run_process([EMCC, test_file('wasm_worker/lock_async_acquire.c'), '-O2', '-sWASM_WORKERS', '--closure=1'])
 
+  def test_wasm_worker_errors(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sWASM_WORKERS', '-sSINGLE_FILE'])
+    self.assertContained('-sSINGLE_FILE is not supported with -sWASM_WORKERS', err)
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sWASM_WORKERS', '-sPROXY_TO_WORKER'])
+    self.assertContained('-sPROXY_TO_WORKER is not supported with -sWASM_WORKERS', err)
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sWASM_WORKERS', '-sRELOCATABLE'])
+    self.assertContained('dynamic linking is not supported with -sWASM_WORKERS', err)
+
   def test_clock_nanosleep(self):
     self.do_runf('other/test_clock_nanosleep.c')
 
