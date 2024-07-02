@@ -9,14 +9,6 @@
 #include "locale_impl.h"
 #include "time_impl.h"
 
-static int is_leap(int y)
-{
-	/* Avoid overflow */
-	if (y>INT_MAX-1900) y -= 2000;
-	y += 1900;
-	return !(y%4) && ((y%100) || !(y%400));
-}
-
 static int week_num(const struct tm *tm)
 {
 	int val = (tm->tm_yday + 7U - (tm->tm_wday+6U)%7) / 7;
@@ -30,14 +22,14 @@ static int week_num(const struct tm *tm)
 		 * or Friday of a leap year, then the
 		 * prev year has 53 weeks. */
 		int dec31 = (tm->tm_wday + 7U - tm->tm_yday - 1) % 7;
-		if (dec31 == 4 || (dec31 == 5 && is_leap(tm->tm_year%400-1)))
+		if (dec31 == 4 || (dec31 == 5 && __is_leap_year(tm->tm_year%400-1)))
 			val++;
 	} else if (val == 53) {
 		/* If 1 January is not a Thursday, and not
 		 * a Wednesday of a leap year, then this
 		 * year has only 52 weeks. */
 		int jan1 = (tm->tm_wday + 371U - tm->tm_yday) % 7;
-		if (jan1 != 4 && (jan1 != 3 || !is_leap(tm->tm_year)))
+		if (jan1 != 4 && (jan1 != 3 || !__is_leap_year(tm->tm_year)))
 			val = 1;
 	}
 	return val;
