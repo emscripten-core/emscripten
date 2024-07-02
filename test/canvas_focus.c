@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 
-EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
+bool key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
   static int i = 0;
   printf("key_callback %d\n", i);
   i++;

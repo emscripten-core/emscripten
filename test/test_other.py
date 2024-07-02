@@ -14918,3 +14918,6 @@ addToLibrary({
       }
     ''')
     self.run_process([EMXX, 'src.cpp', '-pthread'] + list(args))
+
+  def test_embool(self):
+    self.do_other_test('test_embool.c')

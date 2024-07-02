@@ -15,7 +15,7 @@ int main()
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   emscripten_webgl_make_context_current(ctx);
 
-  EM_BOOL hasVaos = emscripten_webgl_enable_extension(ctx, "OES_vertex_array_object");
+  bool hasVaos = emscripten_webgl_enable_extension(ctx, "OES_vertex_array_object");
   if (hasVaos)
   {
     GLuint vao = 0;

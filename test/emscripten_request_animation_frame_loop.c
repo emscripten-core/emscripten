@@ -11,7 +11,7 @@ void testDone(void *userData) {
 	exit(0);
 }
 
-EM_BOOL tick(double time, void *userData) {
+bool tick(double time, void *userData) {
 	assert(time > previousRafTime);
 	previousRafTime = time;
 	assert((long)userData == 1);

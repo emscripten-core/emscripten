@@ -8,9 +8,10 @@
 #pragma once
 
 #include <limits.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <emscripten/html5.h>
+#include <emscripten/em_types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -88,7 +89,7 @@ typedef struct emscripten_fetch_attr_t {
 
   // Indicates whether cross-site access control requests should be made using
   // credentials.
-  EM_BOOL withCredentials;
+  bool withCredentials;
 
   // Specifies the destination path in IndexedDB where to store the downloaded
   // content body. If this is empty, the transfer is not stored to IndexedDB at

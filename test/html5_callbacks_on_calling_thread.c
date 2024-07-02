@@ -12,7 +12,7 @@
 void *mainRuntimeThreadId = 0;
 void *registeringThreadId = 0;
 
-EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
+bool mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
   static int once;
 
   void *threadId = pthread_self();

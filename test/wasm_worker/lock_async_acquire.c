@@ -12,7 +12,7 @@ emscripten_lock_t lock = EMSCRIPTEN_LOCK_T_STATIC_INITIALIZER;
 volatile int sharedState0 = 0;
 volatile int sharedState1 = 1;
 
-EM_BOOL testFinished = EM_FALSE;
+bool testFinished = false;
 
 int numTimesMainThreadAcquiredLock = 0;
 int numTimesWasmWorkerAcquiredLock = 0;
@@ -52,7 +52,7 @@ void work()
         REPORT_RESULT(0);
 #endif
       }
-      testFinished = EM_TRUE;
+      testFinished = true;
     }
   }
 }

@@ -12,7 +12,7 @@ using namespace std;
 
 int seen = 0;
 
-EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void* userData) {
+bool mouse_callback(int eventType, const EmscriptenMouseEvent *e, void* userData) {
   cout << "mouse_callback+" << endl;
   seen++;
   return 0;
