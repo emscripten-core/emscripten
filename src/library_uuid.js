@@ -61,7 +61,10 @@ addToLibrary({
     uuid[8] = (uuid[8] & 0x3F) | 0x80; // uuid variant
     writeArrayToMemory(uuid, out);
   },
-
+  
+  // If uuid_generate is secure and random enough, we can just uuid_generate_random
+  uuid_generate_random : 'uuid_generate',
+  
   // Compares the value of the supplied 'compact' UUID variable uu to the NULL value.
   // If the value is equal to the NULL UUID, 1 is returned, otherwise 0 is returned.
   uuid_is_null: (uu) => {
