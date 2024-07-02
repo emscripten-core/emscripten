@@ -339,7 +339,7 @@ def js_optimizer(filename, passes):
 
 
 # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
-def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
+def acorn_optimizer(filename, passes, extra_info=None, return_output=False, worker_js=False):
   optimizer = path_from_root('tools/acorn-optimizer.mjs')
   original_filename = filename
   if extra_info is not None:
@@ -350,12 +350,13 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
       f.write('// EXTRA_INFO: ' + extra_info)
     filename = temp
   cmd = config.NODE_JS + [optimizer, filename] + passes
-  # Keep JS code comments intact through the acorn optimization pass so that
-  # JSDoc comments will be carried over to a later Closure run.
-  if settings.MAYBE_CLOSURE_COMPILER:
-    cmd += ['--closure-friendly']
-  if settings.EXPORT_ES6:
-    cmd += ['--export-es6']
+  if not worker_js:
+    # Keep JS code comments intact through the acorn optimization pass so that
+    # JSDoc comments will be carried over to a later Closure run.
+    if settings.MAYBE_CLOSURE_COMPILER:
+      cmd += ['--closure-friendly']
+    if settings.EXPORT_ES6:
+      cmd += ['--export-es6']
   if settings.VERBOSE:
     cmd += ['--verbose']
   if return_output:

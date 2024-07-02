@@ -4657,12 +4657,6 @@ Module["preRun"] = () => {
     self.btest_exit('fetch/test_fetch_sync_xhr.cpp',
                     args=['-sFETCH_DEBUG', '-sFETCH', '--proxy-to-worker'])
 
-  # Tests waiting on EMSCRIPTEN_FETCH_WAITABLE request from a worker thread
-  @unittest.skip("emscripten_fetch_wait relies on an asm.js-based web worker")
-  def test_fetch_sync_fetch_in_main_thread(self):
-    shutil.copyfile(test_file('gears.png'), 'gears.png')
-    self.btest_exit('fetch/test_fetch_sync_in_main_thread.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-pthread', '-sPROXY_TO_PTHREAD'])
-
   @disabled('https://github.com/emscripten-core/emscripten/issues/16746')
   def test_fetch_idb_store(self):
     self.btest_exit('fetch/test_fetch_idb_store.cpp', args=['-pthread', '-sFETCH', '-sPROXY_TO_PTHREAD'])
@@ -4691,11 +4685,6 @@ Module["preRun"] = () => {
   def test_fetch_stream_async(self):
     create_file('myfile.dat', 'hello world\n' * 1000)
     self.btest_exit('fetch/test_fetch_stream_async.c', args=['-sFETCH'])
-
-  @disabled('waitable fetch operations were disabled when the fetch worker was removed')
-  def test_fetch_waitable(self):
-    create_file('myfile.dat', 'hello world\n' * 1000)
-    self.btest_exit('fetch/test_fetch_waitable.c', args=['-sFETCH'])
 
   def test_fetch_persist(self):
     create_file('myfile.dat', 'hello world\n')
@@ -5552,10 +5541,20 @@ Module["preRun"] = () => {
     create_file('post.js', 'throw "foo";')
     self.btest('hello_world.c', args=['--post-js=post.js'], expected='exception:foo')
 
-  def test_webpack(self):
-    shutil.copytree(test_file('webpack'), 'webpack')
+  @parameterized({
+    '': (False,),
+    'es6': (True,),
+  })
+  def test_webpack(self, es6):
+    if es6:
+      shutil.copytree(test_file('webpack_es6'), 'webpack')
+      self.emcc_args += ['-sEXPORT_ES6', '-pthread', '-sPTHREAD_POOL_SIZE=1']
+      outfile = 'src/hello.mjs'
+    else:
+      shutil.copytree(test_file('webpack'), 'webpack')
+      outfile = 'src/hello.js'
     with utils.chdir('webpack'):
-      self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web', '-o', 'src/hello.js'])
+      self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-o', outfile])
       self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
     shutil.copyfile('webpack/src/hello.wasm', 'webpack/dist/hello.wasm')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')

@@ -147,57 +147,7 @@ emscripten_fetch_t* emscripten_fetch(emscripten_fetch_attr_t* fetch_attr, const 
 }
 
 EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t* fetch, double timeoutMsecs) {
-#if __EMSCRIPTEN_PTHREADS__
-  if (!fetch) {
-    return EMSCRIPTEN_RESULT_INVALID_PARAM;
-  }
-  uint32_t proxyState = fetch->__proxyState;
-  if (proxyState == 2) {
-    // already finished.
-    return EMSCRIPTEN_RESULT_SUCCESS;
-  }
-  if (proxyState != 1) {
-    // the fetch should be ongoing?
-    return EMSCRIPTEN_RESULT_INVALID_PARAM;
-  }
-#ifdef FETCH_DEBUG
-  emscripten_dbg("fetch: emscripten_fetch_wait..");
-#endif
-  if (timeoutMsecs <= 0) {
-    return EMSCRIPTEN_RESULT_TIMED_OUT;
-  }
-  while (proxyState == 1 /*sent to proxy worker*/) {
-    if (emscripten_is_main_browser_thread()) {
-      emscripten_err("fetch: emscripten_fetch_wait failed: main thread cannot block to wait for long periods of time! Migrate the application to run in a worker to perform synchronous file IO, or switch to using asynchronous IO.");
-      return EMSCRIPTEN_RESULT_FAILED;
-    }
-    int ret = emscripten_futex_wait(&fetch->__proxyState, proxyState, timeoutMsecs);
-    if (ret == -ETIMEDOUT) {
-      return EMSCRIPTEN_RESULT_TIMED_OUT;
-    }
-    proxyState = fetch->__proxyState;
-  }
-#ifdef FETCH_DEBUG
-  emscripten_dbg("fetch: emscripten_fetch_wait done..");
-#endif
-
-  if (proxyState != 2) {
-    return EMSCRIPTEN_RESULT_FAILED;
-  }
-  return EMSCRIPTEN_RESULT_SUCCESS;
-#else
-  if (fetch->readyState >= STATE_DONE) {
-    return EMSCRIPTEN_RESULT_SUCCESS; // already finished.
-  }
-  if (timeoutMsecs == 0) {
-    return EMSCRIPTEN_RESULT_TIMED_OUT /*Main thread testing completion with sleep=0msecs*/;
-  } else {
-#ifdef FETCH_DEBUG
-    emscripten_err("fetch: emscripten_fetch_wait() cannot stop to wait when building without pthreads!");
-#endif
-    return EMSCRIPTEN_RESULT_FAILED /*Main thread cannot block to wait*/;
-  }
-#endif
+  return EMSCRIPTEN_RESULT_FAILED;
 }
 
 EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t* fetch) {
@@ -205,9 +155,6 @@ EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t* fetch) {
     return EMSCRIPTEN_RESULT_SUCCESS; // Closing null pointer is ok, same as with free().
   }
 
-#if __EMSCRIPTEN_PTHREADS__
-  fetch->__proxyState = 0;
-#endif
   // This function frees the fetch pointer so that it is invalid to access it anymore.
   // Use a few key fields as an integrity check that we are being passed a good pointer to a valid
   // fetch structure, which has not been yet closed. (double close is an error)

@@ -40,7 +40,7 @@ def check_defines(info):
 
 
 def main():
-  json_file = utils.path_from_root('src/generated_struct_info32.json')
+  json_file = utils.path_from_root('src/struct_info_generated.json')
   info = json.loads(utils.read_file(json_file))
   check_structs(info)
   check_defines(info)

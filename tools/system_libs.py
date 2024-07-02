@@ -1070,9 +1070,10 @@ class libc(MuslInternalLibrary,
       path='system/lib/libc/musl/src/string',
       filenames=['strlen.c'])
 
+    # Transitively required by many system call imports
     errno_files = files_in_path(
       path='system/lib/libc/musl/src/errno',
-      filenames=['__errno_location.c'])
+      filenames=['__errno_location.c', 'strerror.c'])
 
     return math_files + exit_files + other_files + iprintf_files + errno_files
 
@@ -1226,6 +1227,11 @@ class libc(MuslInternalLibrary,
           'timespec_get.c',
           'utime.c',
           '__map_file.c',
+          'strftime.c',
+          '__tz.c',
+          '__tm_to_secs.c',
+          '__year_to_secs.c',
+          '__month_to_secs.c',
         ])
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/legacy',
@@ -1284,7 +1290,6 @@ class libc(MuslInternalLibrary,
           'emscripten_scan_stack.c',
           'emscripten_time.c',
           'mktime.c',
-          'tzset.c',
           'kill.c',
           'lookup_name.c',
           'pthread_sigmask.c',
@@ -2191,12 +2196,7 @@ class libstandalonewasm(MuslInternalLibrary):
     # It is more efficient to use JS methods for time, normally.
     files += files_in_path(
         path='system/lib/libc/musl/src/time',
-        filenames=['strftime.c',
-                   '__month_to_secs.c',
-                   '__secs_to_tm.c',
-                   '__tm_to_secs.c',
-                   '__tz.c',
-                   '__year_to_secs.c',
+        filenames=['__secs_to_tm.c',
                    'clock.c',
                    'clock_gettime.c',
                    'gettimeofday.c',
@@ -2292,12 +2292,17 @@ def get_libs_to_link(args):
   if settings.SIDE_MODULE:
     return libs_to_link
 
-  for forced in force_include:
-    if forced not in system_libs_map:
-      shared.exit_with_error('invalid forced library: %s', forced)
-    add_library(forced)
+  # We add the forced libs last so that any libraries that are added in the normal
+  # sequence below are added in the correct order even when they are also part of
+  # EMCC_FORCE_STDLIBS.
+  def add_forced_libs():
+    for forced in force_include:
+      if forced not in system_libs_map:
+        shared.exit_with_error('invalid forced library: %s', forced)
+      add_library(forced)
 
   if '-nodefaultlibs' in args:
+    add_forced_libs()
     return libs_to_link
 
   sanitize = settings.USE_LSAN or settings.USE_ASAN or settings.UBSAN_RUNTIME
@@ -2325,6 +2330,7 @@ def get_libs_to_link(args):
   if only_forced:
     add_library('libcompiler_rt')
     add_sanitizer_libs()
+    add_forced_libs()
     return libs_to_link
 
   if settings.AUTO_NATIVE_LIBRARIES:
@@ -2390,6 +2396,7 @@ def get_libs_to_link(args):
     add_library('libwasmfs')
 
   add_sanitizer_libs()
+  add_forced_libs()
   return libs_to_link
 
 

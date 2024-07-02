@@ -1101,7 +1101,6 @@
                 "readyState",
                 "status",
                 "statusText",
-                "__proxyState",
                 "__attributes"
             ]
         },

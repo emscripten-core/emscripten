@@ -286,9 +286,9 @@ let structs = {};
 let defines = {};
 
 if (!BOOTSTRAPPING_STRUCT_INFO) {
-  let structInfoFile = 'generated_struct_info32.json';
+  let structInfoFile = 'struct_info_generated.json';
   if (MEMORY64) {
-    structInfoFile = 'generated_struct_info64.json';
+    structInfoFile = 'struct_info_generated_wasm64.json';
   }
   // Load struct and define information.
   const temp = JSON.parse(read(structInfoFile));

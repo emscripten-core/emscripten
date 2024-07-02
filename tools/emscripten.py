@@ -1075,6 +1075,7 @@ def create_pointer_conversion_wrappers(metadata):
     'stbi_image_free': 'vp',
     'stbi_load': 'ppppp_',
     'stbi_load_from_memory': 'pp_ppp_',
+    'strerror': 'p_',
     'emscripten_proxy_finish': '_p',
     'emscripten_proxy_execute_queue': '_p',
     '_emval_coro_resume': '_pp',
