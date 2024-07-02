@@ -7,10 +7,16 @@
 
 // glibc requires _XOPEN_SOURCE to be defined in order to get strptime.
 #define _XOPEN_SOURCE
+#include <assert.h>
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
+#if __GLIBC__ || __EMSCRIPTEN__
+// Not all implementations support this (for example, upstream musl)
+#define HAVE_WDAY
+#endif
 
 int main() {
   int result = 0;
@@ -30,12 +36,15 @@ int main() {
   }
 
   if (tm.tm_sec != 21 || tm.tm_min != 13 || tm.tm_hour != 16 ||
-      tm.tm_mday != 12 || tm.tm_mon != 1 || tm.tm_year != 107 ||
-      tm.tm_wday != 1 || tm.tm_yday != 42) {
+      tm.tm_mday != 12 || tm.tm_mon != 1 || tm.tm_year != 107) {
     printf("ERR: unexpected tm content (1) - %d/%d/%d %d:%d:%d\n", tm.tm_mon + 1,
            tm.tm_mday, tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
     exit(EXIT_FAILURE);
   }
+#ifdef HAVE_WDAY
+  assert(tm.tm_wday == 1);
+  assert(tm.tm_yday == 42);
+#endif
 
   if (strptime("8", "%d", &tm) == NULL) {
     printf("ERR: strptime failed");
@@ -43,12 +52,15 @@ int main() {
   }
 
   if (tm.tm_sec != 21 || tm.tm_min != 13 || tm.tm_hour != 16 ||
-      tm.tm_mday != 8 || tm.tm_mon != 1 || tm.tm_year != 107 ||
-      tm.tm_wday != 4 || tm.tm_yday != 38) {
+      tm.tm_mday != 8 || tm.tm_mon != 1 || tm.tm_year != 107) {
     printf("ERR: unexpected tm content (2) - %d/%d/%d %d:%d:%d\n", tm.tm_mon + 1,
            tm.tm_mday, tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec);
     exit(EXIT_FAILURE);
   }
+#ifdef HAVE_WDAY
+  assert(tm.tm_wday == 4);
+  assert(tm.tm_yday == 38);
+#endif
 
   printf("OK\n");
 }
