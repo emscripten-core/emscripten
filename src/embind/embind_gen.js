@@ -44,12 +44,13 @@ var LibraryEmbind = {
   },
   $FunctionDefinition__deps: ['$createJsInvoker', '$createJsInvokerSignature', '$emittedFunctions'],
   $FunctionDefinition: class {
-    constructor(name, returnType, argumentTypes, functionIndex, thisType = null, isAsync = false) {
+    constructor(name, returnType, argumentTypes, functionIndex, thisType = null, isConstructor = false, isAsync = false) {
       this.name = name;
       this.returnType = returnType;
       this.argumentTypes = argumentTypes;
       this.functionIndex = functionIndex;
       this.thisType = thisType;
+      this.isConstructor = isConstructor;
       this.isAsync = isAsync;
     }
 
@@ -75,7 +76,14 @@ var LibraryEmbind = {
       }
 
       out.push(argOut.join(', '));
-      out.push(`): ${nameMap(this.returnType, true)}`);
+      let returnType = this.returnType;
+      // Constructors can return a pointer, but it will be a non-null pointer.
+      // Change the return type to the class type so the TS output doesn't
+      // have `| null`.
+      if (this.isConstructor && this.returnType instanceof PointerDefinition) {
+        returnType = this.returnType.classType;
+      }
+      out.push(`): ${nameMap(returnType, true)}`);
     }
 
     printFunction(nameMap, out) {
@@ -183,7 +191,7 @@ var LibraryEmbind = {
     printModuleEntry(nameMap, out) {
       out.push(`  ${this.name}: {`);
       const entries = [];
-      for(const construct of this.constructors) {
+      for (const construct of this.constructors) {
         const entry = [];
         entry.push('new');
         construct.printSignature(nameMap, entry);
@@ -368,7 +376,7 @@ var LibraryEmbind = {
         return tsName;
       }
       if (type instanceof PointerDefinition) {
-        return this.typeToJsName(type.classType);
+        return `${this.typeToJsName(type.classType)} | null`;
       }
       if (type instanceof OptionalType) {
         return `${this.typeToJsName(type.type)} | undefined`;
@@ -432,7 +440,7 @@ var LibraryEmbind = {
     registerType(id, new IntegerType(id));
   },
   $createFunctionDefinition__deps: ['$FunctionDefinition', '$heap32VectorToArray', '$readLatin1String', '$Argument', '$whenDependentTypesAreResolved', '$getFunctionName', '$getFunctionArgsName', '$PointerDefinition', '$ClassDefinition'],
-  $createFunctionDefinition: (name, argCount, rawArgTypesAddr, functionIndex, hasThis, isAsync, cb) => {
+  $createFunctionDefinition: (name, argCount, rawArgTypesAddr, functionIndex, hasThis, isConstructor, isAsync, cb) => {
     const argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = typeof name === 'string' ? name : readLatin1String(name);
 
@@ -462,7 +470,7 @@ var LibraryEmbind = {
           args.push(new Argument(`_${i - argStart}`, argTypes[i]));
         }
       }
-      const funcDef = new FunctionDefinition(name, returnType, args, functionIndex, thisType, isAsync);
+      const funcDef = new FunctionDefinition(name, returnType, args, functionIndex, thisType, isConstructor, isAsync);
       cb(funcDef);
       return [];
     });
@@ -514,7 +522,7 @@ var LibraryEmbind = {
   },
   _embind_register_function__deps: ['$moduleDefinitions', '$createFunctionDefinition'],
   _embind_register_function: (name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync) => {
-    createFunctionDefinition(name, argCount, rawArgTypesAddr, fn, false, isAsync, (funcDef) => {
+    createFunctionDefinition(name, argCount, rawArgTypesAddr, fn, false, false, isAsync, (funcDef) => {
       moduleDefinitions.push(funcDef);
     });
   },
@@ -559,7 +567,7 @@ var LibraryEmbind = {
   ) {
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
       classType = classType[0];
-      createFunctionDefinition(`constructor ${classType.name}`, argCount, rawArgTypesAddr, rawConstructor, false, false, (funcDef) => {
+      createFunctionDefinition(`constructor ${classType.name}`, argCount, rawArgTypesAddr, rawConstructor, false, true, false, (funcDef) => {
         classType.constructors.push(funcDef);
       });
       return [];
@@ -575,7 +583,7 @@ var LibraryEmbind = {
           context,
           isPureVirtual,
           isAsync) {
-    createFunctionDefinition(methodName, argCount, rawArgTypesAddr, context, true, isAsync, (funcDef) => {
+    createFunctionDefinition(methodName, argCount, rawArgTypesAddr, context, true, false, isAsync, (funcDef) => {
       const classDef = funcDef.thisType;
       classDef.methods.push(funcDef);
     });
@@ -616,7 +624,7 @@ var LibraryEmbind = {
                                                   isAsync) {
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
       classType = classType[0];
-      createFunctionDefinition(methodName, argCount, rawArgTypesAddr, fn, false, isAsync, (funcDef) => {
+      createFunctionDefinition(methodName, argCount, rawArgTypesAddr, fn, false, false, isAsync, (funcDef) => {
         classType.staticMethods.push(funcDef);
       });
       return [];

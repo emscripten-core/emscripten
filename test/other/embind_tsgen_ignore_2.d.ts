@@ -17,6 +17,10 @@ export interface Test {
   delete(): void;
 }
 
+export interface Obj {
+  delete(): void;
+}
+
 export interface BarValue<T extends number> {
   value: T;
 }
@@ -87,6 +91,8 @@ interface EmbindModule {
   Test: {staticFunction(_0: number): number; staticFunctionWithParam(x: number): number; staticProperty: number};
   class_returning_fn(): Test;
   class_unique_ptr_returning_fn(): Test;
+  Obj: {};
+  getPointer(_0: Obj | null): Obj | null;
   a_class_instance: Test;
   an_enum: Bar;
   Bar: {valueOne: BarValue<0>, valueTwo: BarValue<1>, valueThree: BarValue<2>};
@@ -105,8 +111,8 @@ interface EmbindModule {
   optional_test(_0?: Foo): number | undefined;
   global_fn(_0: number, _1: number): number;
   optional_and_nonoptional_test(_0: Foo | undefined, _1: number): number | undefined;
-  smart_ptr_function(_0: ClassWithSmartPtrConstructor): number;
-  smart_ptr_function_with_params(foo: ClassWithSmartPtrConstructor): number;
+  smart_ptr_function(_0: ClassWithSmartPtrConstructor | null): number;
+  smart_ptr_function_with_params(foo: ClassWithSmartPtrConstructor | null): number;
   function_with_callback_param(_0: (message: string) => void): number;
   string_test(_0: EmbindString): string;
   wstring_test(_0: string): string;
