@@ -1127,6 +1127,7 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
                    wasm_file,
                    '--dwarfdump=' + LLVM_DWARFDUMP,
                    '-o',  map_file,
+                   '--sources',
                    '--basepath=' + base_path]
   check_call(sourcemap_cmd)
 
