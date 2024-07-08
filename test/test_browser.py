@@ -28,7 +28,7 @@ from tools import shared
 from tools import ports
 from tools import utils
 from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE
-from tools.utils import delete_file, delete_dir
+from tools.utils import delete_dir
 
 
 def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum, port):
@@ -237,21 +237,19 @@ class browser(BrowserCore):
       self.skipTest('This test requires being run in non-strict mode (EMCC_STRICT env. variable unset)')
     # TODO: This test is verifying behavior that will be deprecated at some point in the future, remove this test once
     # system JS libraries are no longer automatically linked to anymore.
-    self.reftest('hello_world_sdl.cpp', 'htmltest.png')
+    self.reftest('hello_world_sdl.c', 'htmltest.png')
 
   def test_sdl1(self):
-    self.reftest('hello_world_sdl.cpp', 'htmltest.png', args=['-lSDL', '-lGL'])
-    self.reftest('hello_world_sdl.cpp', 'htmltest.png', args=['-sUSE_SDL', '-lGL']) # is the default anyhow
+    self.reftest('hello_world_sdl.c', 'htmltest.png', args=['-lSDL', '-lGL'])
+    self.reftest('hello_world_sdl.c', 'htmltest.png', args=['-sUSE_SDL', '-lGL']) # is the default anyhow
 
   def test_sdl1_es6(self):
-    self.reftest('hello_world_sdl.cpp', 'htmltest.png', args=['-sUSE_SDL', '-lGL', '-sEXPORT_ES6'])
+    self.reftest('hello_world_sdl.c', 'htmltest.png', args=['-sUSE_SDL', '-lGL', '-sEXPORT_ES6'])
 
   # Deliberately named as test_zzz_* to make this test the last one
   # as this test may take the focus away from the main test window
   # by opening a new window and possibly not closing it.
   def test_zzz_html_source_map(self):
-    cpp_file = 'src.cpp'
-    html_file = 'src.html'
     # browsers will try to 'guess' the corresponding original line if a
     # generated line is unmapped, so if we want to make sure that our
     # numbering is correct, we need to provide a couple of 'possible wrong
@@ -259,7 +257,7 @@ class browser(BrowserCore):
     # multiple mapped lines. in other words, if the program consists of a
     # single 'throw' statement, browsers may just map any thrown exception to
     # that line, because it will be the only mapped line.
-    create_file(cpp_file, r'''
+    create_file('src.cpp', r'''
       #include <cstdio>
 
       int main() {
@@ -273,14 +271,12 @@ class browser(BrowserCore):
       ''')
     # use relative paths when calling emcc, because file:// URIs can only load
     # sourceContent when the maps are relative paths
-    delete_file(html_file)
-    delete_file(html_file + '.map')
     self.compile_btest('src.cpp', ['-o', 'src.html', '-gsource-map'])
-    self.assertExists(html_file)
+    self.assertExists('src.html')
     self.assertExists('src.wasm.map')
     if not has_browser():
       self.skipTest('need a browser')
-    webbrowser.open_new('file://' + html_file)
+    webbrowser.open_new('file://src.html')
     print('''
 If manually bisecting:
   Check that you see src.cpp among the page sources.
@@ -306,7 +302,7 @@ If manually bisecting:
       # TODO: change this when wasmfs supports relative paths.
       if self.get_setting('WASMFS'):
         path = "/" + path
-      create_file('main.cpp', r'''
+      create_file('main.c', r'''
         #include <assert.h>
         #include <stdio.h>
         #include <string.h>
@@ -346,7 +342,7 @@ If manually bisecting:
     for srcpath, dstpath in test_cases:
       print('Testing', srcpath, dstpath)
       make_main(dstpath)
-      self.btest_exit('main.cpp', args=['--preload-file', srcpath])
+      self.btest_exit('main.c', args=['--preload-file', srcpath])
     if WINDOWS:
       # On Windows, the following non-alphanumeric non-control code ASCII characters are supported.
       # The characters <, >, ", |, ?, * are not allowed, because the Windows filesystem doesn't support those.
@@ -357,7 +353,7 @@ If manually bisecting:
     create_file(tricky_filename, 'load me right before running the code please')
     make_main(tricky_filename)
     # As an Emscripten-specific feature, the character '@' must be escaped in the form '@@' to not confuse with the 'src@dst' notation.
-    self.btest_exit('main.cpp', args=['--preload-file', tricky_filename.replace('@', '@@')])
+    self.btest_exit('main.c', args=['--preload-file', tricky_filename.replace('@', '@@')])
 
     # TODO: WASMFS doesn't support the rest of this test yet. Exit early.
     if self.get_setting('WASMFS'):
@@ -366,7 +362,7 @@ If manually bisecting:
     # By absolute path
 
     make_main('somefile.txt') # absolute becomes relative
-    self.btest_exit('main.cpp', args=['--preload-file', absolute_src_path])
+    self.btest_exit('main.c', args=['--preload-file', absolute_src_path])
 
     # Test subdirectory handling with asset packaging.
     delete_dir('assets')
@@ -379,7 +375,7 @@ If manually bisecting:
     absolute_assets_src_path = 'assets'
 
     def make_main_two_files(path1, path2, nonexistingpath):
-      create_file('main.cpp', r'''
+      create_file('main.c', r'''
         #include <stdio.h>
         #include <assert.h>
         #include <string.h>
@@ -419,13 +415,13 @@ If manually bisecting:
       (srcpath, dstpath1, dstpath2, nonexistingpath) = test
       make_main_two_files(dstpath1, dstpath2, nonexistingpath)
       print(srcpath)
-      self.btest_exit('main.cpp', args=['--preload-file', srcpath, '--exclude-file', '*/.*'])
+      self.btest_exit('main.c', args=['--preload-file', srcpath, '--exclude-file', '*/.*'])
 
     # Should still work with -o subdir/..
 
     make_main('somefile.txt') # absolute becomes relative
     ensure_dir('dirrey')
-    self.compile_btest('main.cpp', ['--preload-file', absolute_src_path, '-o', 'dirrey/page.html'], reporting=Reporting.JS_ONLY)
+    self.compile_btest('main.c', ['--preload-file', absolute_src_path, '-o', 'dirrey/page.html'], reporting=Reporting.JS_ONLY)
     self.run_browser('dirrey/page.html', '/report_result?exit:0')
 
     # With FS.preloadFile
@@ -435,7 +431,7 @@ If manually bisecting:
       Module.preRun = () => FS.createPreloadedFile('/', 'someotherfile.txt', 'somefile.txt', true, false);
     ''')
     make_main('someotherfile.txt')
-    self.btest_exit('main.cpp', args=['--pre-js', 'pre.js', '--use-preload-plugins'])
+    self.btest_exit('main.c', args=['--pre-js', 'pre.js', '--use-preload-plugins'])
 
   # Tests that user .html shell files can manually download .data files created with --preload-file cmdline.
   @parameterized({
@@ -445,15 +441,15 @@ If manually bisecting:
   def test_preload_file_with_manual_data_download(self, args):
     create_file('file.txt', 'Hello!')
 
-    self.compile_btest('manual_download_data.cpp', ['-o', 'out.js', '--preload-file', 'file.txt@/file.txt'] + args)
-    shutil.copyfile(test_file('manual_download_data.html'), 'manual_download_data.html')
+    self.compile_btest('browser/test_manual_download_data.c', ['-sEXIT_RUNTIME', '-o', 'out.js', '--preload-file', 'file.txt@/file.txt'] + args)
+    shutil.copyfile(test_file('browser/test_manual_download_data.html'), 'test_manual_download_data.html')
 
     # Move .data file out of server root to ensure that getPreloadedPackage is actually used
     os.mkdir('test')
-    shutil.move('out.js', 'test/manual_download_data.js')
-    shutil.move('out.data', 'test/manual_download_data.data')
+    shutil.move('out.js', 'test/test_manual_download_data.js')
+    shutil.move('out.data', 'test/test_manual_download_data.data')
 
-    self.run_browser('manual_download_data.html', '/report_result?1')
+    self.run_browser('test_manual_download_data.html', '/report_result?exit:0')
 
   # Tests that if the output files have single or double quotes in them, that it will be handled by
   # correctly escaping the names.
@@ -467,8 +463,8 @@ If manually bisecting:
     txt = 'file with ' + tricky_part + '.txt'
     create_file(os.path.join(d, txt), 'load me right before')
 
-    cpp = os.path.join(d, 'file with ' + tricky_part + '.cpp')
-    create_file(cpp, r'''
+    src = os.path.join(d, 'file with ' + tricky_part + '.c')
+    create_file(src, r'''
       #include <assert.h>
       #include <stdio.h>
       #include <string.h>
@@ -491,7 +487,7 @@ If manually bisecting:
     self.run_process([FILE_PACKAGER, data_file, '--use-preload-cache', '--indexedDB-name=testdb', '--preload', abs_txt + '@' + txt, '--js-output=' + data_js_file])
     page_file = os.path.join(d, 'file with ' + tricky_part + '.html')
     abs_page_file = os.path.abspath(page_file)
-    self.compile_btest(cpp, ['--pre-js', data_js_file, '-o', abs_page_file, '-sFORCE_FILESYSTEM'], reporting=Reporting.JS_ONLY)
+    self.compile_btest(src, ['--pre-js', data_js_file, '-o', abs_page_file, '-sFORCE_FILESYSTEM'], reporting=Reporting.JS_ONLY)
     self.run_browser(page_file, '/report_result?exit:0')
 
   @parameterized({
@@ -687,7 +683,7 @@ If manually bisecting:
     def setup(assetLocalization):
       self.clear()
       create_file('data.txt', 'data')
-      create_file('main.cpp', r'''
+      create_file('main.c', r'''
         #include <stdio.h>
         #include <string.h>
         #include <emscripten.h>
@@ -728,18 +724,18 @@ If manually bisecting:
     def test():
       # test test missing file should run xhr.onload with status different than 200, 304 or 206
       setup("")
-      self.compile_btest('main.cpp', ['--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
+      self.compile_btest('main.c', ['--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
       shutil.move('test.data', 'missing.data')
       self.run_browser('test.html', '/report_result?1')
 
       # test unknown protocol should go through xhr.onerror
       setup("unknown_protocol://")
-      self.compile_btest('main.cpp', ['--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
+      self.compile_btest('main.c', ['--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
       self.run_browser('test.html', '/report_result?1')
 
       # test wrong protocol and port
       setup("https://localhost:8800/")
-      self.compile_btest('main.cpp', ['--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
+      self.compile_btest('main.c', ['--shell-file', 'on_window_error_shell.html', '--preload-file', 'data.txt', '-o', 'test.html'])
       self.run_browser('test.html', '/report_result?1')
 
     test()
@@ -750,14 +746,14 @@ If manually bisecting:
 
   @also_with_wasmfs
   def test_dev_random(self):
-    self.btest_exit(Path('filesystem/dev_random.cpp'))
+    self.btest_exit('filesystem/test_dev_random.c')
 
   def test_sdl_swsurface(self):
     self.btest_exit('test_sdl_swsurface.c', args=['-lSDL', '-lGL'])
 
   def test_sdl_surface_lock_opts(self):
     # Test Emscripten-specific extensions to optimize SDL_LockSurface and SDL_UnlockSurface.
-    self.reftest('hello_world_sdl.cpp', 'htmltest.png', args=['-DTEST_SDL_LOCK_OPTS', '-lSDL', '-lGL'])
+    self.reftest('hello_world_sdl.c', 'htmltest.png', args=['-DTEST_SDL_LOCK_OPTS', '-lSDL', '-lGL'])
 
   @also_with_wasmfs
   def test_sdl_image(self):
@@ -1936,7 +1932,7 @@ keydown(100);keyup(100); // trigger the end
     'O1': (['-O1'],),
   })
   def test_fs_after_main(self, args):
-    self.btest('fs_after_main.cpp', '0', args=args)
+    self.btest_exit('test_fs_after_main.c', args=args)
 
   def test_sdl_quit(self):
     self.btest_exit('test_sdl_quit.c', args=['-lSDL', '-lGL'])
@@ -1947,7 +1943,7 @@ keydown(100);keyup(100); // trigger the end
     self.btest_exit('test_sdl_resize.c', args=['-lSDL', '-lGL'])
 
   def test_glshaderinfo(self):
-    self.btest('glshaderinfo.cpp', '1', args=['-lGL', '-lglut'])
+    self.btest_exit('test_glshaderinfo.c', args=['-lGL', '-lglut'])
 
   @requires_graphics_hardware
   def test_glgetattachedshaders(self):
@@ -2260,7 +2256,7 @@ void *getBindBuffer() {
     self.btest_exit('test_sdl_surface_refcount.c', args=['-lSDL'])
 
   def test_sdl_free_screen(self):
-    self.reftest('test_sdl_free_screen.cpp', 'htmltest.png', args=['-lSDL', '-lGL'])
+    self.reftest('test_sdl_free_screen.c', 'htmltest.png', args=['-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_glbegin_points(self):
@@ -2387,7 +2383,7 @@ void *getBindBuffer() {
       };
     ''')
 
-    self.btest('pre_run_deps.cpp', expected='10', args=['--pre-js', 'pre.js'])
+    self.btest('test_pre_run_deps.c', expected='10', args=['--pre-js', 'pre.js'])
 
   @also_with_wasm2js
   def test_runtime_misuse(self):
@@ -2463,8 +2459,8 @@ void *getBindBuffer() {
     ''')
 
     for filename, extra_args, second_code in [
-      ('runtime_misuse.cpp', [], 600),
-      ('runtime_misuse_2.cpp', ['--pre-js', 'pre_runtime.js'], 601) # 601, because no main means we *do* run another call after exit()
+      ('test_runtime_misuse.c', [], 600),
+      ('test_runtime_misuse_2.c', ['--pre-js', 'pre_runtime.js'], 601) # 601, because no main means we *do* run another call after exit()
     ]:
       print('\n', filename, extra_args)
 
@@ -2480,7 +2476,7 @@ void *getBindBuffer() {
       self.btest(filename, expected='606', args=['--post-js', 'post.js'] + extra_args, reporting=Reporting.NONE)
 
   def test_cwrap_early(self):
-    self.btest(Path('browser/cwrap_early.cpp'), args=['-O2', '-sASSERTIONS', '--pre-js', test_file('browser/cwrap_early.js'), '-sEXPORTED_RUNTIME_METHODS=cwrap'], expected='0')
+    self.btest('browser/test_cwrap_early.c', args=['-O2', '-sASSERTIONS', '--pre-js', test_file('browser/test_cwrap_early.js'), '-sEXPORTED_RUNTIME_METHODS=cwrap'], expected='0')
 
   @no_wasm64('TODO: wasm64 + BUILD_AS_WORKER')
   def test_worker_api(self):
@@ -2620,7 +2616,7 @@ Module["preRun"] = () => {
     self.btest_exit('test_gamepad.c', args=args)
 
   def test_html5_unknown_event_target(self):
-    self.btest_exit('test_html5_unknown_event_target.cpp')
+    self.btest_exit('test_html5_unknown_event_target.c')
 
   @requires_graphics_hardware
   @parameterized({
@@ -2822,7 +2818,7 @@ Module["preRun"] = () => {
   @also_with_wasm2js
   def test_locate_file(self, args):
     self.set_setting('EXIT_RUNTIME')
-    create_file('src.cpp', r'''
+    create_file('src.c', r'''
       #include <stdio.h>
       #include <string.h>
       #include <assert.h>
@@ -2843,7 +2839,7 @@ Module["preRun"] = () => {
     create_file('pre.js', 'Module.locateFile = (x) => "sub/" + x;')
     self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w'))
     # put pre.js first, then the file packager data, so locateFile is there for the file loading code
-    self.compile_btest('src.cpp', ['-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-sFORCE_FILESYSTEM'] + args, reporting=Reporting.JS_ONLY)
+    self.compile_btest('src.c', ['-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-sFORCE_FILESYSTEM'] + args, reporting=Reporting.JS_ONLY)
     ensure_dir('sub')
     if self.is_wasm():
       shutil.move('page.wasm', Path('sub/page.wasm'))
@@ -2866,7 +2862,7 @@ Module["preRun"] = () => {
     ''')
 
     def in_html(expected):
-      self.compile_btest('src.cpp', ['-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html', '-sSAFE_HEAP', '-sASSERTIONS', '-sFORCE_FILESYSTEM'] + args, reporting=Reporting.JS_ONLY)
+      self.compile_btest('src.c', ['-O2', '-g', '--shell-file', 'shell.html', '--pre-js', 'data.js', '-o', 'page.html', '-sSAFE_HEAP', '-sASSERTIONS', '-sFORCE_FILESYSTEM'] + args, reporting=Reporting.JS_ONLY)
       if self.is_wasm():
         shutil.move('page.wasm', Path('sub/page.wasm'))
       self.run_browser('page.html', '/report_result?exit:' + expected)
@@ -3112,7 +3108,7 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   def test_sdl2_gfx(self):
-    self.reftest('test_sdl2_gfx.cpp', 'test_sdl2_gfx.png', args=['-sUSE_SDL=2', '-sUSE_SDL_GFX=2'], reference_slack=2)
+    self.reftest('test_sdl2_gfx.c', 'test_sdl2_gfx.png', args=['-sUSE_SDL=2', '-sUSE_SDL_GFX=2'], reference_slack=2)
 
   @requires_graphics_hardware
   def test_sdl2_canvas_palette_2(self):
@@ -3226,12 +3222,12 @@ Module["preRun"] = () => {
                  args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   def test_sdl2_unwasteful(self):
-    self.btest_exit('test_sdl2_unwasteful.cpp', args=['-sUSE_SDL=2', '-O1'])
+    self.btest_exit('test_sdl2_unwasteful.c', args=['-sUSE_SDL=2', '-O1'])
 
   @no_2gb('https://github.com/libsdl-org/SDL/issues/9052')
   @no_4gb('https://github.com/libsdl-org/SDL/issues/9052')
   def test_sdl2_canvas_write(self):
-    self.btest_exit('test_sdl2_canvas_write.cpp', args=['-sUSE_SDL=2'])
+    self.btest_exit('test_sdl2_canvas_write.c', args=['-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_gl_frames_swap(self):
@@ -3378,10 +3374,10 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl_audio_beep_sleep.cpp', args=['-Os', '-sASSERTIONS', '-sDISABLE_EXCEPTION_CATCHING=0', '-profiling', '-lSDL', '-sASYNCIFY'] + args, timeout=90)
 
   def test_mainloop_reschedule(self):
-    self.btest('mainloop_reschedule.cpp', '1', args=['-Os', '-sASYNCIFY'])
+    self.btest('test_mainloop_reschedule.c', '1', args=['-Os', '-sASYNCIFY'])
 
   def test_mainloop_infloop(self):
-    self.btest('mainloop_infloop.cpp', '1', args=['-sASYNCIFY'])
+    self.btest('test_mainloop_infloop.c', '1', args=['-sASYNCIFY'])
 
   def test_async_iostream(self):
     self.btest('async_iostream.cpp', '1', args=['-sASYNCIFY'])
@@ -3783,7 +3779,7 @@ Module["preRun"] = () => {
     'closure': (['--closure=1'],),
   })
   def test_pthread_atomics(self, args):
-    self.btest_exit('pthread/test_pthread_atomics.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '-g1'] + args)
+    self.btest_exit('pthread/test_pthread_atomics.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '-g1'] + args)
 
   # Test 64-bit atomics.
   def test_pthread_64bit_atomics(self):
@@ -4877,7 +4873,7 @@ Module["preRun"] = () => {
   })
   def test_pthreads_started_in_worker(self, args):
     self.set_setting('EXIT_RUNTIME')
-    self.compile_btest('pthread/test_pthread_atomics.cpp', ['-o', 'test.js', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args, reporting=Reporting.JS_ONLY)
+    self.compile_btest('pthread/test_pthread_atomics.c', ['-o', 'test.js', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args, reporting=Reporting.JS_ONLY)
     create_file('test.html', '''
       <script>
         new Worker('test.js');
@@ -4894,13 +4890,13 @@ Module["preRun"] = () => {
     self.btest_exit('access_file_after_heap_resize.c', args=['-sALLOW_MEMORY_GROWTH', '--pre-js', 'data.js', '-sFORCE_FILESYSTEM'])
 
   def test_unicode_html_shell(self):
-    create_file('main.cpp', r'''
+    create_file('main.c', r'''
       int main() {
         return 0;
       }
     ''')
     create_file('shell.html', read_file(path_from_root('src/shell.html')).replace('Emscripten-Generated Code', 'Emscripten-Generated Emoji 😅'))
-    self.btest_exit('main.cpp', args=['--shell-file', 'shell.html'])
+    self.btest_exit('main.c', args=['--shell-file', 'shell.html'])
 
   # Tests the functionality of the emscripten_thread_sleep() function.
   def test_emscripten_thread_sleep(self):
