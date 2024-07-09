@@ -1512,7 +1512,7 @@ keydown(100);keyup(100); // trigger the end
         document.dispatchEvent(event);
       }
     ''')
-    self.btest_exit('test_sdl_pumpevents.c', assert_returncode=7, args=['--pre-js', 'pre.js', '-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_pumpevents.c', args=['--pre-js', 'pre.js', '-lSDL', '-lGL'])
 
   def test_sdl_canvas_size(self):
     self.btest_exit('test_sdl_canvas_size.c',
