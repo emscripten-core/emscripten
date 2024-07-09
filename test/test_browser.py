@@ -1004,7 +1004,7 @@ keydown(100);keyup(100); // trigger the end
 
       create_file('test.html', html)
 
-    self.btest('keydown_preventdefault_proxy.cpp', '300', args=['--proxy-to-worker', '-sEXPORTED_FUNCTIONS=_main'], post_build=post)
+    self.btest_exit('browser/test_keydown_preventdefault_proxy.c', 300, args=['--proxy-to-worker', '-sEXPORTED_FUNCTIONS=_main'], post_build=post)
 
   def test_sdl_text(self):
     create_file('pre.js', '''
