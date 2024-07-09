@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
-#include <emscripten/emscripten.h>
 
 int main()
 {
@@ -14,10 +13,8 @@ int main()
 	char str[128] = {};
 	fread(str, 1, sizeof(str), handle);
 	printf("str: %s\n", str);
-	const bool success = (strcmp(str, "Hello!") == 0);
+	int success = (strcmp(str, "Hello!") == 0);
 	assert(success);
 	printf("OK\n");
-#ifdef REPORT_RESULT
-	REPORT_RESULT(success);
-#endif
+	return 0;
 }

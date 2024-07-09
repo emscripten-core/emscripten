@@ -5,35 +5,32 @@
 
 #include <stdio.h>
 #include <assert.h>
-#include <emscripten.h>
+#include <emscripten/emscripten.h>
+#include <emscripten/eventloop.h>
 
 // test file operations after main() exits
 
 #define NAME "file.cpp"
 
 EMSCRIPTEN_KEEPALIVE
-extern "C" void finish() {
+void finish() {
   EM_ASM({
     var printed = Module['extraSecretBuffer'].split('Iteration').length - 1;
     console.log(printed);
     assert(printed == 5, 'should have printed 5 iterations');
   });
   printf("Test passed.\n");
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  emscripten_force_exit(0);
 }
 
 EMSCRIPTEN_KEEPALIVE
-extern "C" void looper() {
+void looper() {
   // exiting main should not cause any weirdness with file opening
   printf("Iteration\n");
   FILE* f = fopen("/dev/stdin", "rb");
   if (!f) {
     printf("Test failed.\n");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(1);
-#endif
+    emscripten_force_exit(1);
   }
   fclose(f);
 }
@@ -71,4 +68,7 @@ int main() {
     }
     looper();
   });
+
+  emscripten_runtime_keepalive_push();
+  return 99;
 }
