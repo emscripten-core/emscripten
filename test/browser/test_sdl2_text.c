@@ -13,7 +13,7 @@
 
 int result = 0;
 
-void one() {
+EMSCRIPTEN_KEEPALIVE void one() {
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
     switch (event.type) {
