@@ -903,21 +903,20 @@ window.close = () => {
     create_file('pre.js', '''
       function keydown(c) {
        %s
-        var event = new KeyboardEvent('keydown', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
-        document.dispatchEvent(event);
+        simulateKeyDown(c);
        %s
       }
 
       function keyup(c) {
        %s
-        var event = new KeyboardEvent('keyup', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
-        document.dispatchEvent(event);
+        simulateKeyUp(c);
        %s
       }
     ''' % (settimeout_start, settimeout_end, settimeout_start, settimeout_end))
-    self.btest_exit('test_sdl_key.c', 223092870, args=defines + async_ + ['--pre-js=pre.js', '-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_key.c', 223092870, args=defines + async_ + ['--pre-js', test_file('browser/fake_events.js'), '--pre-js=pre.js', '-lSDL', '-lGL'])
 
   def test_sdl_key_proxy(self):
+    shutil.copyfile(test_file('browser/fake_events.js'), 'fake_events.js')
     create_file('pre.js', '''
       Module.postRun = () => {
         function doOne() {
@@ -931,25 +930,15 @@ window.close = () => {
     def post():
       html = read_file('test.html')
       html = html.replace('</body>', '''
+<script src='fake_events.js'></script>
 <script>
-function keydown(c) {
-  var event = new KeyboardEvent('keydown', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
-  document.dispatchEvent(event);
-}
-
-function keyup(c) {
-  var event = new KeyboardEvent('keyup', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
-  document.dispatchEvent(event);
-}
-
-keydown(1250);keydown(38);keyup(38);keyup(1250); // alt, up
-keydown(1248);keydown(1249);keydown(40);keyup(40);keyup(1249);keyup(1248); // ctrl, shift, down
-keydown(37);keyup(37); // left
-keydown(39);keyup(39); // right
-keydown(65);keyup(65); // a
-keydown(66);keyup(66); // b
-keydown(100);keyup(100); // trigger the end
-
+simulateKeyDown(1250);simulateKeyDown(38);simulateKeyUp(38);simulateKeyUp(1250); // alt, up
+simulateKeyDown(1248);simulateKeyDown(1249);simulateKeyDown(40);simulateKeyUp(40);simulateKeyUp(1249);simulateKeyUp(1248); // ctrl, shift, down
+simulateKeyDown(37);simulateKeyUp(37); // left
+simulateKeyDown(39);simulateKeyUp(39); // right
+simulateKeyDown(65);simulateKeyUp(65); // a
+simulateKeyDown(66);simulateKeyUp(66); // b
+simulateKeyDown(100);simulateKeyUp(100); // trigger the end
 </script>
 </body>''')
       create_file('test.html', html)
@@ -963,47 +952,24 @@ keydown(100);keyup(100); // trigger the end
     def post():
       html = read_file('test.html')
       html = html.replace('</body>', '''
+<script src='fake_events.js'></script>
 <script>
-function keydown(c) {
-  var event = new KeyboardEvent('keydown', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
-  return document.dispatchEvent(event);
-}
+// Send 'A'.  The corresonding keypress event will not be prevented.
+simulateKeyDown(65);
+simulateKeyUp(65);
 
-function keypress(c) {
-  var event = new KeyboardEvent('keypress', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
-  return document.dispatchEvent(event);
-}
+// Send backspace.  The corresonding keypress event *will* be prevented due to proxyClient.js.
+simulateKeyDown(8);
+simulateKeyUp(8);
 
-function keyup(c) {
-  var event = new KeyboardEvent('keyup', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
-  return document.dispatchEvent(event);
-}
-
-function sendKey(c) {
-  // Simulate the sending of the keypress event when the
-  // prior keydown event is not prevent defaulted.
-  if (keydown(c) === false) {
-    console.log('keydown prevent defaulted, NOT sending keypress!!!');
-  } else {
-    keypress(c);
-  }
-  keyup(c);
-}
-
-// Send 'a'. Simulate the sending of the keypress event when the
-// prior keydown event is not prevent defaulted.
-sendKey(65);
-
-// Send backspace. Keypress should not be sent over as default handling of
-// the Keydown event should be prevented.
-sendKey(8);
-
-keydown(100);keyup(100); // trigger the end
+simulateKeyDown(100);
+simulateKeyUp(100);
 </script>
 </body>''')
 
       create_file('test.html', html)
 
+    shutil.copyfile(test_file('browser/fake_events.js'), 'fake_events.js')
     self.btest_exit('browser/test_keydown_preventdefault_proxy.c', 300, args=['--proxy-to-worker'], post_build=post)
 
   def test_sdl_text(self):
@@ -1015,72 +981,14 @@ keydown(100);keyup(100); // trigger the end
         }
         setTimeout(doOne, 1000/60);
       }
-
-      function simulateKeyEvent(c) {
-        var event = new KeyboardEvent('keypress', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
-        document.body.dispatchEvent(event);
-      }
     ''')
 
-    self.btest_exit('test_sdl_text.c', args=['--pre-js', 'pre.js', '-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_text.c', args=['--pre-js', 'pre.js', '--pre-js', test_file('browser/fake_events.js'), '-lSDL', '-lGL'])
 
   def test_sdl_mouse(self):
-    create_file('pre.js', '''
-      globalThis.simulateMouseEvent = (x, y, button) => {
-        var event = document.createEvent("MouseEvents");
-        if (button >= 0) {
-          var event1 = document.createEvent("MouseEvents");
-          event1.initMouseEvent('mousedown', true, true, window,
-                     1, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
-                     0, 0, 0, 0,
-                     button, null);
-          Module['canvas'].dispatchEvent(event1);
-          var event2 = document.createEvent("MouseEvents");
-          event2.initMouseEvent('mouseup', true, true, window,
-                     1, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
-                     0, 0, 0, 0,
-                     button, null);
-          Module['canvas'].dispatchEvent(event2);
-        } else {
-          var event1 = document.createEvent("MouseEvents");
-          event1.initMouseEvent('mousemove', true, true, window,
-                     0, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
-                     0, 0, 0, 0,
-                     0, null);
-          Module['canvas'].dispatchEvent(event1);
-        }
-      }
-    ''')
-
-    self.btest_exit('test_sdl_mouse.c', args=['-O2', '--minify=0', '--pre-js', 'pre.js', '-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_mouse.c', args=['-O2', '--minify=0', '--pre-js', test_file('browser/fake_events.js'), '-lSDL', '-lGL'])
 
   def test_sdl_mouse_offsets(self):
-    create_file('pre.js', '''
-      globalThis.simulateMouseEvent = (x, y, button) => {
-        var event = document.createEvent("MouseEvents");
-        if (button >= 0) {
-          var event1 = document.createEvent("MouseEvents");
-          event1.initMouseEvent('mousedown', true, true, window,
-                     1, x, y, x, y,
-                     0, 0, 0, 0,
-                     button, null);
-          Module['canvas'].dispatchEvent(event1);
-          var event2 = document.createEvent("MouseEvents");
-          event2.initMouseEvent('mouseup', true, true, window,
-                     1, x, y, x, y,
-                     0, 0, 0, 0,
-                     button, null);
-          Module['canvas'].dispatchEvent(event2);
-        } else {
-          var event1 = document.createEvent("MouseEvents");
-          event1.initMouseEvent('mousemove', true, true, window,
-                     0, x, y, x, y,
-                     0, 0, 0, 0,
-                     0, null);
-          Module['canvas'].dispatchEvent(event1);
-        }
-      }
-    ''')
     create_file('page.html', '''
       <html>
         <head>
@@ -1127,7 +1035,7 @@ keydown(100);keyup(100); // trigger the end
       </html>
     ''')
 
-    self.compile_btest('browser/test_sdl_mouse.c', ['-DTEST_SDL_MOUSE_OFFSETS', '-O2', '--minify=0', '-o', 'sdl_mouse.js', '--pre-js', 'pre.js', '-lSDL', '-lGL', '-sEXIT_RUNTIME'])
+    self.compile_btest('browser/test_sdl_mouse.c', ['-DTEST_SDL_MOUSE_OFFSETS', '-O2', '--minify=0', '-o', 'sdl_mouse.js', '--pre-js', test_file('browser/fake_events.js'), '-lSDL', '-lGL', '-sEXIT_RUNTIME'])
     self.run_browser('page.html', '', '/report_result?exit:0')
 
   def test_glut_touchevents(self):
@@ -1506,13 +1414,7 @@ keydown(100);keyup(100); // trigger the end
 
   def test_sdl_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
-    create_file('pre.js', '''
-      function keydown(c) {
-        var event = new KeyboardEvent('keydown', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
-        document.dispatchEvent(event);
-      }
-    ''')
-    self.btest_exit('test_sdl_pumpevents.c', args=['--pre-js', 'pre.js', '-lSDL', '-lGL'])
+    self.btest_exit('test_sdl_pumpevents.c', args=['--pre-js', test_file('browser/fake_events.js'), '-lSDL', '-lGL'])
 
   def test_sdl_canvas_size(self):
     self.btest_exit('test_sdl_canvas_size.c',
@@ -1772,6 +1674,7 @@ keydown(100);keyup(100); // trigger the end
     'full_944': ('hello_world_gles_full_944.c',),
   })
   def test_glgears_animation(self, filename):
+    shutil.copyfile(test_file('browser/fake_events.js'), 'fake_events.js')
     args = ['-o', 'something.html',
             '-DHAVE_BUILTIN_SINCOS', '-sGL_TESTING', '-lGL', '-lglut',
             '--shell-file', test_file('hello_world_gles_shell.html')]
@@ -2590,9 +2493,8 @@ Module["preRun"] = () => {
     'legacy': (['-sMIN_FIREFOX_VERSION=0', '-sMIN_SAFARI_VERSION=0', '-sMIN_CHROME_VERSION=0', '-Wno-transpile'],)
   })
   def test_html5_core(self, opts):
-    if self.is_wasm64():
-      if '-sMIN_CHROME_VERSION=0' in opts:
-        self.skipTest('wasm64 does not support older browsers')
+    if self.is_wasm64() and '-sMIN_CHROME_VERSION=0' in opts:
+      self.skipTest('wasm64 does not support older browsers')
     if '-sHTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0' in opts:
       # In this mode an exception can be thrown by the browser, and we don't
       # want the test to fail in that case so we override the error handling.
@@ -2937,25 +2839,7 @@ Module["preRun"] = () => {
     ])
 
   def test_sdl2_key(self):
-    create_file('pre.js', '''
-      function keydown(keyCode, code) {
-        var event = new KeyboardEvent('keydown', { keyCode, code, charCode: keyCode, view: window, bubbles: true, cancelable: true });
-        var prevented = !document.dispatchEvent(event);
-
-        //send keypress if not prevented
-        if (!prevented) {
-          var event = new KeyboardEvent('keypress', { keyCode, code, charCode: keyCode, view: window, bubbles: true, cancelable: true });
-          document.dispatchEvent(event);
-        }
-      }
-
-      function keyup(keyCode, code) {
-        var event = new KeyboardEvent('keyup', { keyCode, code, charCode: keyCode, view: window, bubbles: true, cancelable: true });
-        document.dispatchEvent(event);
-      }
-    ''')
-
-    self.btest_exit('test_sdl2_key.c', 37182145, args=['-sUSE_SDL=2', '--pre-js', 'pre.js'])
+    self.btest_exit('test_sdl2_key.c', 37182145, args=['-sUSE_SDL=2', '--pre-js', test_file('browser/fake_events.js')])
 
   def test_sdl2_text(self):
     create_file('pre.js', '''
@@ -2966,74 +2850,16 @@ Module["preRun"] = () => {
         }
         setTimeout(doOne, 1000/60);
       }
-
-      function simulateKeyEvent(c) {
-        var event = new KeyboardEvent('keypress', { keyCode: c, charCode: c, view: window, bubbles: true, cancelable: true });
-        document.body.dispatchEvent(event);
-      }
     ''')
 
-    self.btest_exit('test_sdl2_text.c', args=['--pre-js', 'pre.js', '-sUSE_SDL=2'])
+    self.btest_exit('test_sdl2_text.c', args=['--pre-js', 'pre.js', '--pre-js', test_file('browser/fake_events.js'), '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_mouse(self):
-    create_file('pre.js', '''
-      globalThis.simulateMouseEvent = (x, y, button) => {
-        var event = document.createEvent("MouseEvents");
-        if (button >= 0) {
-          var event1 = document.createEvent("MouseEvents");
-          event1.initMouseEvent('mousedown', true, true, window,
-                     1, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
-                     0, 0, 0, 0,
-                     button, null);
-          Module['canvas'].dispatchEvent(event1);
-          var event2 = document.createEvent("MouseEvents");
-          event2.initMouseEvent('mouseup', true, true, window,
-                     1, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
-                     0, 0, 0, 0,
-                     button, null);
-          Module['canvas'].dispatchEvent(event2);
-        } else {
-          var event1 = document.createEvent("MouseEvents");
-          event1.initMouseEvent('mousemove', true, true, window,
-                     0, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y, Module['canvas'].offsetLeft + x, Module['canvas'].offsetTop + y,
-                     0, 0, 0, 0,
-                     0, null);
-          Module['canvas'].dispatchEvent(event1);
-        }
-      }
-    ''')
-
-    self.btest_exit('test_sdl2_mouse.c', args=['-O2', '--minify=0', '--pre-js', 'pre.js', '-sUSE_SDL=2'])
+    self.btest_exit('test_sdl2_mouse.c', args=['-O2', '--minify=0', '--pre-js', test_file('browser/fake_events.js'), '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_mouse_offsets(self):
-    create_file('pre.js', '''
-      globalThis.simulateMouseEvent = (x, y, button) => {
-        var event = document.createEvent("MouseEvents");
-        if (button >= 0) {
-          var event1 = document.createEvent("MouseEvents");
-          event1.initMouseEvent('mousedown', true, true, window,
-                     1, x, y, x, y,
-                     0, 0, 0, 0,
-                     button, null);
-          Module['canvas'].dispatchEvent(event1);
-          var event2 = document.createEvent("MouseEvents");
-          event2.initMouseEvent('mouseup', true, true, window,
-                     1, x, y, x, y,
-                     0, 0, 0, 0,
-                     button, null);
-          Module['canvas'].dispatchEvent(event2);
-        } else {
-          var event1 = document.createEvent("MouseEvents");
-          event1.initMouseEvent('mousemove', true, true, window,
-                     0, x, y, x, y,
-                     0, 0, 0, 0,
-                     0, null);
-          Module['canvas'].dispatchEvent(event1);
-        }
-      }
-    ''')
     create_file('page.html', '''
       <html>
         <head>
@@ -3080,7 +2906,7 @@ Module["preRun"] = () => {
       </html>
     ''')
 
-    self.compile_btest('browser/test_sdl2_mouse.c', ['-DTEST_SDL_MOUSE_OFFSETS=1', '-O2', '--minify=0', '-o', 'sdl2_mouse.js', '--pre-js', 'pre.js', '-sUSE_SDL=2', '-sEXIT_RUNTIME'])
+    self.compile_btest('browser/test_sdl2_mouse.c', ['-DTEST_SDL_MOUSE_OFFSETS=1', '-O2', '--minify=0', '-o', 'sdl2_mouse.js', '--pre-js', test_file('browser/fake_events.js'), '-sUSE_SDL=2', '-sEXIT_RUNTIME'])
     self.run_browser('page.html', '', '/report_result?exit:0')
 
   def test_sdl2_threads(self):
@@ -3150,13 +2976,7 @@ Module["preRun"] = () => {
 
   def test_sdl2_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
-    create_file('pre.js', '''
-      function keydown(keyCode, code) {
-        var event = new KeyboardEvent('keydown', { keyCode, code, charCode: keyCode, view: window, bubbles: true, cancelable: true });
-        document.dispatchEvent(event);
-      }
-    ''')
-    self.btest_exit('test_sdl2_pumpevents.c', args=['--pre-js', 'pre.js', '-sUSE_SDL=2'])
+    self.btest_exit('test_sdl2_pumpevents.c', args=['--pre-js', test_file('browser/fake_events.js'), '-sUSE_SDL=2'])
 
   def test_sdl2_timer(self):
     self.btest_exit('test_sdl2_timer.c', args=['-sUSE_SDL=2'])
