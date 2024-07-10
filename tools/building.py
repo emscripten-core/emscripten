@@ -749,8 +749,9 @@ def is_internal_global(name):
 # get the flags to pass into the very last binaryen tool invocation, that runs
 # the final set of optimizations
 def get_last_binaryen_opts():
-  return ['--optimize-stack-ir',
-          opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL)]
+  return [f'--optimize-level={settings.OPT_LEVEL}',
+          f'--shrink-level={settings.SHRINK_LEVEL}',
+          '--optimize-stack-ir']
 
 
 # run binaryen's wasm-metadce to dce both js and wasm
@@ -903,10 +904,7 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_in
     args.append('--minify-imports')
   # this is always the last tool we run (if we run it)
   args += get_last_binaryen_opts()
-  out = run_wasm_opt(wasm_file, wasm_file,
-                     [pass_name],
-                     debug=debug_info,
-                     stdout=PIPE)
+  out = run_wasm_opt(wasm_file, wasm_file, args, debug=debug_info, stdout=PIPE)
 
   # get the mapping
   SEP = ' => '
