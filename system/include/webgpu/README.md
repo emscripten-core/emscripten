@@ -15,14 +15,13 @@ is included here because it is strongly tied to an exact `webgpu.h` revision.
 
 To update these bindings from Dawn:
 1. Copy [`webgpu_enum_class_bitmasks.h`](https://source.chromium.org/chromium/chromium/src/+/main:third_party/dawn/include/webgpu/webgpu_enum_class_bitmasks.h) from Dawn's source to `system/include/webgpu/webgpu_enum_class_bitmasks.h`
-1. Build Dawn's `emscripten_bits_gen` target (in a gn or CMake build of Dawn, or a build of Chromium) - or, use the Chromium Code Search copy of the generated files if no changes are needed
-1. Copy the generated [`emscripten-bits/system`](https://source.chromium.org/chromium/chromium/src/+/main:out/linux-Debug/gen/third_party/dawn/emscripten-bits/system/) files into Emscripten's `system` directory
+1. Build Dawn's `emdawnwebgpu_headers_gen` and `emdawnwebgpu_js_gen` targets (in a gn build of Dawn, or a build of Chromium) - or, use the Chromium Code Search copy of the generated files if no changes are needed
+1. Copy the generated [`include`](https://source.chromium.org/chromium/chromium/src/+/main:out/linux-Debug/gen/third_party/dawn/src/emdawnwebgpu/include/) files into Emscripten's `system` directory
     - `system/include/webgpu/webgpu.h`
     - `system/include/webgpu/webgpu_cpp.h`
     - `system/include/webgpu/webgpu_cpp_chained_struct.h`
-    - `system/lib/webgpu/webgpu_cpp.cpp`
-1. Paste the contents of [`library_webgpu_enum_tables.js`](https://source.chromium.org/chromium/chromium/src/+/main:out/linux-Debug/gen/third_party/dawn/emscripten-bits/library_webgpu_enum_tables.js) over the "Map from enum number to enum string" section of [`library_webgpu.js`](../../../src/library_webgpu.js)
-1. Paste [`webgpu_struct_info.json`](https://source.chromium.org/chromium/chromium/src/+/main:out/linux-Debug/gen/third_party/dawn/emscripten-bits/webgpu_struct_info.json) over the "WebGPU" section of [`struct_info.json`](../../../src/struct_info.json).
+1. Paste the contents of [`library_webgpu_enum_tables.js`](https://source.chromium.org/chromium/chromium/src/+/main:out/linux-Debug/gen/third_party/dawn/src/emdawnwebgpu/library_webgpu_enum_tables.js) over the "Map from enum number to enum string" section of [`library_webgpu.js`](../../../src/library_webgpu.js)
+1. Paste [`struct_info_webgpu.json`](https://source.chromium.org/chromium/chromium/src/+/main:out/linux-Debug/gen/third_party/dawn/src/emdawnwebgpu/struct_info_webgpu.json) into [`struct_info_webgpu.json`](../../../src/struct_info_webgpu.json).
 1. **Manually update the `globalThis.gpu` compile-time enum tables (AdapterType, BackendType, etc.)**:
     - Inspect the `webgpu.h` diff for changes to the integer values of any enums used here. (It's not necessary to add new enum values to these tables until they're needed for something.)
 1. **Manually update the "Map from enum string back to enum number" tables.**
