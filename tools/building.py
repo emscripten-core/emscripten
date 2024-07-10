@@ -715,6 +715,8 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
     js_file = acorn_optimizer(js_file, passes)
   # if we can optimize this js+wasm combination under the assumption no one else
   # will see the internals, do so
+  # XXX aside from linkable, we know the entire end-of-opt pipeline here. So we can tell the last one last=True and it can do StackIR
+  # but for linkable, must do that be4
   if not settings.LINKABLE:
     # if we are optimizing for size, shrink the combined wasm+JS
     # TODO: support this when a symbol map is used
@@ -895,6 +897,9 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_in
   # might make sense to run Stack IR optimizations here or even -O (as
   # metadce which runs before us might open up new general optimization
   # opportunities). however, the benefit is less than 0.5%.
+  # TODO: Avoid StackIR before, do it just here!!1
+  #   if settings.OPT_LEVEL > 0:
+  #     args.append(opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL))
 
   # get the mapping
   SEP = ' => '

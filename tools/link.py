@@ -424,6 +424,13 @@ def get_binaryen_passes():
   if settings.WASM_EXNREF:
     passes += ['--emit-exnref']
 
+  # If we are not linkable then we will invoke wasm-opt later (for metadce
+  # and/or import/export minification). Avoid doing StackIR optimizations at
+  # this time, so that we only do them at the very end (which is more
+  # efficient).
+  if not settings.LINKABLE:
+    passes += ['--no-stack-ir']
+
   return passes
 
 
