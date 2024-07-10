@@ -424,13 +424,14 @@ def get_binaryen_passes():
   if settings.WASM_EXNREF:
     passes += ['--emit-exnref']
 
-  # If we are not going to run metadce then we will invoke wasm-opt later for
-  # that purpose (and also possibly for import/export minification). Avoid doing
-  # StackIR opts at this time, so we only do them at the very end (which is more
-  # efficient, as if we do StackIR optimizations now then we'd throw that away
-  # when we reload the wasm in anothre Binaryen tool, and also StackIR
-  # optimizations lead to stacky code that Binaryen would need to do more work
-  # to handle in its structured IR).
+  # If we are going to run metadce then that means we will be running binaryen
+  # tools after the main invocation, whose flags are determined here
+  # (specifically we will run metadce and possibly also wasm-opt for import/
+  # export minification). And when we run such a tool it will "undo" any
+  # StackIR optimizations (since the conversion to BinaryenIR undoes them as it
+  # restructures the code). We could re-run those opts, but it is most efficient
+  # to just not do them now if we'll invoke other tools later, and we'll do them
+  # only in the very last invocation.
   if will_metadce():
     passes += ['--no-stack-ir']
 
