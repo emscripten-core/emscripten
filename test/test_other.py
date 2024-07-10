@@ -4851,8 +4851,7 @@ int main() {
     'O1': [['-O1']],
   })
   def test_fs_after_main(self, args):
-    self.run_process([EMXX, test_file('fs_after_main.cpp')])
-    self.assertContained('Test passed.', self.run_js('a.out.js'))
+    self.do_runf('test_fs_after_main.c', 'Test passed.')
 
   def test_oz_size(self):
     sizes = {}

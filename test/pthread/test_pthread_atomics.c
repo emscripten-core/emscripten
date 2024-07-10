@@ -23,7 +23,7 @@ volatile unsigned int globalUint = 0;
 volatile float globalFloat = 0.0f;
 volatile double globalDouble = 0.0;
 
-const int N = 10;
+#define N 10
 int sharedData[N] = {};
 
 struct Test
@@ -37,7 +37,7 @@ uint64_t threadCasAccumulatedReadData[NUM_THREADS] = {};
 
 int rand_32()
 {
-	return (int)(emscripten_random() * float(0x3FFFFFFF));
+	return (int)(emscripten_random() * (float)0x3FFFFFFF);
 }
 
 void *ThreadMain(void *arg)
@@ -105,7 +105,7 @@ void RunTest(int test)
 	pthread_attr_init(&attr);
 	pthread_attr_setstacksize(&attr, 4*1024);
 
-	emscripten_outf("Main thread has thread ID %d\n", (int)pthread_self());
+	emscripten_outf("Main thread has thread ID %ld\n", (intptr_t)pthread_self());
 	assert(pthread_self() != 0);
 
 	switch(test)
