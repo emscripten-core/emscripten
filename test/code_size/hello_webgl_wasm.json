@@ -3,8 +3,15 @@
   "a.html.gz": 328,
   "a.js": 4059,
   "a.js.gz": 2153,
+<<<<<<< HEAD
   "a.wasm": 10399,
   "a.wasm.gz": 6695,
   "total": 14912,
   "total_gz": 9176
+=======
+  "a.wasm": 10427,
+  "a.wasm.gz": 6719,
+  "total": 14940,
+  "total_gz": 9200
+>>>>>>> origin/main
 }
