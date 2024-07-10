@@ -1,15 +1,8 @@
 {
   "a.html": 346,
   "a.html.gz": 262,
-<<<<<<< HEAD
   "a.js": 21719,
   "a.js.gz": 11420,
   "total": 22065,
   "total_gz": 11682
-=======
-  "a.js": 21717,
-  "a.js.gz": 11425,
-  "total": 22063,
-  "total_gz": 11687
->>>>>>> origin/main
 }
