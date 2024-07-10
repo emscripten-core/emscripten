@@ -267,17 +267,17 @@ var LibraryHTML5 = {
 #endif
       {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.timestamp, 'e.timeStamp', 'double') }}};
 
-      var idx ={{{ getHeapOffset('keyEventData', 'i32') }}};
+      var idx = {{{ getHeapOffset('keyEventData', 'i32') }}};
 
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.location / 4}}}] = e.location;
-      HEAP8[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.ctrlKey }}}] = e.ctrlKey;
-      HEAP8[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.shiftKey }}}] = e.shiftKey;
-      HEAP8[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.altKey }}}] = e.altKey;
-      HEAP8[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.metaKey }}}] = e.metaKey;
-      HEAP8[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.repeat }}}] = e.repeat;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charCode / 4}}}] = e.charCode;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.keyCode / 4}}}] = e.keyCode;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.which / 4}}}] = e.which;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.location / 4 }}}] = e.location;
+      HEAP8[keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.ctrlKey }}}] = e.ctrlKey;
+      HEAP8[keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.shiftKey }}}] = e.shiftKey;
+      HEAP8[keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.altKey }}}] = e.altKey;
+      HEAP8[keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.metaKey }}}] = e.metaKey;
+      HEAP8[keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.repeat }}}] = e.repeat;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charCode / 4 }}}] = e.charCode;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.keyCode / 4 }}}] = e.keyCode;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.which / 4 }}}] = e.which;
       stringToUTF8(e.key || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.key }}}, {{{ cDefs.EM_HTML5_SHORT_STRING_LEN_BYTES }}});
       stringToUTF8(e.code || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.code }}}, {{{ cDefs.EM_HTML5_SHORT_STRING_LEN_BYTES }}});
       stringToUTF8(e.char || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charValue }}}, {{{ cDefs.EM_HTML5_SHORT_STRING_LEN_BYTES }}});
@@ -439,10 +439,10 @@ var LibraryHTML5 = {
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.screenY / 4 }}}] = e.screenY;
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.clientX / 4 }}}] = e.clientX;
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.clientY / 4 }}}] = e.clientY;
-    HEAP8[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.ctrlKey }}}] = e.ctrlKey;
-    HEAP8[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.shiftKey }}}] = e.shiftKey;
-    HEAP8[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.altKey }}}] = e.altKey;
-    HEAP8[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.metaKey }}}] = e.metaKey;
+    HEAP8[eventStruct + {{{ C_STRUCTS.EmscriptenMouseEvent.ctrlKey }}}] = e.ctrlKey;
+    HEAP8[eventStruct + {{{ C_STRUCTS.EmscriptenMouseEvent.shiftKey }}}] = e.shiftKey;
+    HEAP8[eventStruct + {{{ C_STRUCTS.EmscriptenMouseEvent.altKey }}}] = e.altKey;
+    HEAP8[eventStruct + {{{ C_STRUCTS.EmscriptenMouseEvent.metaKey }}}] = e.metaKey;
     HEAP16[idx*2 + {{{ C_STRUCTS.EmscriptenMouseEvent.button / 2 }}}] = e.button;
     HEAP16[idx*2 + {{{ C_STRUCTS.EmscriptenMouseEvent.buttons / 2 }}}] = e.buttons;
 
@@ -1922,35 +1922,35 @@ var LibraryHTML5 = {
       var touchEvent = JSEvents.touchEvent;
 #endif
       {{{ makeSetValue('touchEvent', C_STRUCTS.EmscriptenTouchEvent.timestamp, 'e.timeStamp', 'double') }}};
-      var idx ={{{ getHeapOffset('touchEvent', 'i32') }}};// Pre-shift the ptr to index to HEAP32 to save code size
-      HEAP8[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.ctrlKey }}}] = e.ctrlKey;
-      HEAP8[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.shiftKey }}}] = e.shiftKey;
-      HEAP8[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.altKey }}}] = e.altKey;
-      HEAP8[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.metaKey }}}] = e.metaKey;
-      idx += {{{ C_STRUCTS.EmscriptenTouchEvent.touches / 4 }}}; // Advance to the start of the touch array.
+      HEAP8[touchEvent + {{{ C_STRUCTS.EmscriptenTouchEvent.ctrlKey }}}] = e.ctrlKey;
+      HEAP8[touchEvent + {{{ C_STRUCTS.EmscriptenTouchEvent.shiftKey }}}] = e.shiftKey;
+      HEAP8[touchEvent + {{{ C_STRUCTS.EmscriptenTouchEvent.altKey }}}] = e.altKey;
+      HEAP8[touchEvent + {{{ C_STRUCTS.EmscriptenTouchEvent.metaKey }}}] = e.metaKey;
+      var idx = touchEvent + {{{ C_STRUCTS.EmscriptenTouchEvent.touches }}};
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
       var canvasRect = Module['canvas'] ? getBoundingClientRect(Module['canvas']) : undefined;
 #endif
       var targetRect = getBoundingClientRect(target);
       var numTouches = 0;
       for (let t of Object.values(touches)) {
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.identifier / 4}}}] = t.identifier;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenX / 4}}}] = t.screenX;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenY / 4}}}] = t.screenY;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.clientX / 4}}}] = t.clientX;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.clientY / 4}}}] = t.clientY;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.pageX / 4}}}] = t.pageX;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.pageY / 4}}}] = t.pageY;
+        var idx32 = {{{ getHeapOffset('idx', 'i32') }}}; // Pre-shift the ptr to index to HEAP32 to save code size
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.identifier / 4 }}}] = t.identifier;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.screenX / 4 }}}] = t.screenX;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.screenY / 4 }}}] = t.screenY;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.clientX / 4 }}}] = t.clientX;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.clientY / 4 }}}] = t.clientY;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.pageX / 4 }}}] = t.pageX;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.pageY / 4 }}}] = t.pageY;
         HEAP8[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.isChanged }}}] = t.isChanged;
         HEAP8[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.onTarget }}}] = t.onTarget;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.targetX / 4}}}] = t.clientX - (targetRect.left | 0);
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.targetY / 4}}}] = t.clientY - (targetRect.top  | 0);
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.targetX / 4 }}}] = t.clientX - (targetRect.left | 0);
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.targetY / 4 }}}] = t.clientY - (targetRect.top  | 0);
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasX / 4}}}] = canvasRect ? t.clientX - (canvasRect.left | 0) : 0;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasY / 4}}}] = canvasRect ? t.clientY - (canvasRect.top  | 0) : 0;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasX / 4 }}}] = canvasRect ? t.clientX - (canvasRect.left | 0) : 0;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasY / 4 }}}] = canvasRect ? t.clientY - (canvasRect.top  | 0) : 0;
 #endif
 
-        idx += {{{ C_STRUCTS.EmscriptenTouchPoint.__size__ / 4 }}};
+        idx += {{{ C_STRUCTS.EmscriptenTouchPoint.__size__ }}};
 
         if (++numTouches > 31) {
           break;

@@ -6,11 +6,9 @@
 #include <stdio.h>
 #include <emscripten.h>
 
-extern "C" {
-
 int noted = 0;
 
-char* EMSCRIPTEN_KEEPALIVE note(int n) {
+EMSCRIPTEN_KEEPALIVE char* note(int n) {
   EM_ASM({ Module.noted = Number($0); out("set noted " + Module.noted) }, &noted);
   EM_ASM({ out([$0, $1]) }, n, noted);
   noted += n;
@@ -18,9 +16,6 @@ char* EMSCRIPTEN_KEEPALIVE note(int n) {
   return (char*)"silly-string";
 }
 
-void free(void*) { // free is valid to call even after the runtime closes, so useful as a hack here for this test
+void free(void* ptr) { // free is valid to call even after the runtime closes, so useful as a hack here for this test
   EM_ASM({ out(['reporting', $0]) }, noted);
 }
-
-}
-

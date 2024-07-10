@@ -57,20 +57,31 @@ def main():
       print("system/include/compat exists and is not a directory, exiting...")
       return 1
 
+  SIMDE_FILE_HEADER_RE = r'^(/\* :: )(Begin |End )[^ ]+/(simde/simde/[^ ]+ :: \*/$)'
+  # Replace file headers, which contains tmp directory names and changes every time we
+  # update simde, causing a larger diff than necessary.
+  neon_h_buf = re.sub(SIMDE_FILE_HEADER_RE, r'\1\2\3', neon_h_buf, count=0, flags=re.MULTILINE)
+
+  line_to_prefix = "#  define HEDLEY_EMSCRIPTEN_VERSION HEDLEY_VERSION_ENCODE(__EMSCRIPTEN_major__, __EMSCRIPTEN_minor__, __EMSCRIPTEN_tiny__)\n"
+  line_to_insert = "#include <emscripten/version.h>\n"
+  try:
+    insert_location = neon_h_buf.index(line_to_prefix)
+  except ValueError:
+    print(f"Error looking for place to insert {line_to_insert[:-1]!r}. Please update 'line_to_prefix' in simde_update.py.")
+    return 1
+  neon_h_buf = neon_h_buf[:insert_location] + line_to_insert + neon_h_buf[insert_location:]
+
   with open(path.join(emdir, "system", "include", "compat", "arm_neon.h"), "w+") as f:
     try:
       f.write("#define SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
       f.write("#define SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
-      SIMDE_FILE_HEADER_RE = r'^(/\* :: )(Begin |End )[^ ]+/(simde/simde/[^ ]+ :: \*/$)'
-      # Replace file headers, which contains tmp directory names and changes every time we
-      # update simde, causing a larger diff than necessary.
-      f.write(re.sub(SIMDE_FILE_HEADER_RE, r'\1\2\3', neon_h_buf, count=0, flags=re.MULTILINE))
+      f.write(neon_h_buf)
       f.write("#undef SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
       f.write("#undef SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
-      print("'system/include/compat/arm_neon.h' updated")
     except Exception:
       print("error writing 'system/include/compat/arm_neon.h'")
       return 1
+  print("'system/include/compat/arm_neon.h' updated")
 
   return 0
 

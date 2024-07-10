@@ -8,7 +8,7 @@ var LibraryWebSocket = {
   $webSockets__deps: ['$HandleAllocator'],
   $webSockets: "new HandleAllocator();",
 
-  $WS__deps: ['$webSockets'],
+  $WS__deps: ['$webSockets', 'malloc'],
   $WS: {
     socketEvent: null,
     getSocket(socketId) {
