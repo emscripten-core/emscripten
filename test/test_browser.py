@@ -954,7 +954,7 @@ keydown(100);keyup(100); // trigger the end
 </body>''')
       create_file('test.html', html)
 
-    self.btest_exit('test_sdl_key_proxy.c', 223092870, args=['--proxy-to-worker', '--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one', '-lSDL', '-lGL'], post_build=post)
+    self.btest_exit('test_sdl_key_proxy.c', 223092870, args=['--proxy-to-worker', '--pre-js', 'pre.js', '-lSDL', '-lGL'], post_build=post)
 
   def test_canvas_focus(self):
     self.btest_exit('canvas_focus.c')
@@ -1004,7 +1004,7 @@ keydown(100);keyup(100); // trigger the end
 
       create_file('test.html', html)
 
-    self.btest_exit('browser/test_keydown_preventdefault_proxy.c', 300, args=['--proxy-to-worker', '-sEXPORTED_FUNCTIONS=_main'], post_build=post)
+    self.btest_exit('browser/test_keydown_preventdefault_proxy.c', 300, args=['--proxy-to-worker'], post_build=post)
 
   def test_sdl_text(self):
     create_file('pre.js', '''
@@ -1381,8 +1381,8 @@ keydown(100);keyup(100); // trigger the end
 
     args = ['--pre-js', 'pre.js', '-lidbfs.js', '-sEXIT_RUNTIME', '-sASYNCIFY']
     secret = str(time.time())
-    self.btest('fs/test_idbfs_fsync.c', '1', args=args + ['-DFIRST', f'-DSECRET="{secret }"', '-sEXPORTED_FUNCTIONS=_main,_success', '-lidbfs.js'])
-    self.btest('fs/test_idbfs_fsync.c', '1', args=args + [f'-DSECRET="{secret}"', '-sEXPORTED_FUNCTIONS=_main,_success', '-lidbfs.js'])
+    self.btest('fs/test_idbfs_fsync.c', '1', args=args + ['-DFIRST', f'-DSECRET="{secret }"', '-lidbfs.js'])
+    self.btest('fs/test_idbfs_fsync.c', '1', args=args + [f'-DSECRET="{secret}"', '-lidbfs.js'])
 
   def test_fs_memfs_fsync(self):
     args = ['-sASYNCIFY', '-sEXIT_RUNTIME']
@@ -1856,7 +1856,7 @@ keydown(100);keyup(100); // trigger the end
     self.reftest('clientside_vertex_arrays_es3.c', 'gl_triangle.png', args=['-sFULL_ES3', '-sUSE_GLFW=3', '-lglfw', '-lGLESv2'])
 
   def test_emscripten_api(self):
-    self.btest_exit('emscripten_api_browser.c', args=['-sEXPORTED_FUNCTIONS=_main,_third', '-lSDL'])
+    self.btest_exit('emscripten_api_browser.c', args=['-lSDL'])
 
   @also_with_wasmfs
   def test_emscripten_async_load_script(self):
@@ -2973,7 +2973,7 @@ Module["preRun"] = () => {
       }
     ''')
 
-    self.btest_exit('test_sdl2_text.c', args=['--pre-js', 'pre.js', '-sEXPORTED_FUNCTIONS=_main,_one', '-sUSE_SDL=2'])
+    self.btest_exit('test_sdl2_text.c', args=['--pre-js', 'pre.js', '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_mouse(self):
@@ -4061,7 +4061,6 @@ Module["preRun"] = () => {
   # Test that it is possible to synchronously call a JavaScript function on the
   # main thread and get a return value back.
   def test_pthread_call_sync_on_main_thread(self):
-    self.set_setting('EXPORTED_FUNCTIONS', '_main,_malloc')
     self.btest_exit('pthread/call_sync_on_main_thread.c', args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD', '-DPROXY_TO_PTHREAD=1', '--js-library', test_file('pthread/call_sync_on_main_thread.js')])
     self.btest_exit('pthread/call_sync_on_main_thread.c', args=['-O3', '-pthread', '-DPROXY_TO_PTHREAD=0', '--js-library', test_file('pthread/call_sync_on_main_thread.js')])
     self.btest_exit('pthread/call_sync_on_main_thread.c', args=['-Oz', '-DPROXY_TO_PTHREAD=0', '--js-library', test_file('pthread/call_sync_on_main_thread.js')])
