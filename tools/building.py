@@ -715,13 +715,14 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
     js_file = acorn_optimizer(js_file, passes)
   # if we can optimize this js+wasm combination under the assumption no one else
   # will see the internals, do so
-  # XXX aside from linkable, we know the entire end-of-opt pipeline here. So we can tell the last one last=True and it can do StackIR
-  # but for linkable, must do that be4
   if not settings.LINKABLE:
     # if we are optimizing for size, shrink the combined wasm+JS
     # TODO: support this when a symbol map is used
     if expensive_optimizations:
-      js_file = metadce(js_file, wasm_file, debug_info=debug_info)
+      js_file = metadce(js_file,
+                        wasm_file,
+                        debug_info=debug_info,
+                        last=not settings.MINIFY_WASM_IMPORTS_AND_EXPORTS)
       # now that we removed unneeded communication between js and wasm, we can clean up
       # the js some more.
       passes = ['AJSDCE']
@@ -745,8 +746,15 @@ def is_internal_global(name):
   return name in internal_start_stop_symbols or any(name.startswith(p) for p in internal_prefixes)
 
 
+# get the flags to pass into the very last binaryen tool invocation, that runs
+# the final set of optimizations
+def get_last_binaryen_opts():
+  return ['--optimize-stack-ir',
+          opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL)]
+
+
 # run binaryen's wasm-metadce to dce both js and wasm
-def metadce(js_file, wasm_file, debug_info):
+def metadce(js_file, wasm_file, debug_info, last):
   logger.debug('running meta-DCE')
   temp_files = shared.get_temp_files()
   # first, get the JS part of the graph
@@ -812,10 +820,13 @@ def metadce(js_file, wasm_file, debug_info):
   temp = temp_files.get('.json', prefix='emcc_dce_graph_').name
   utils.write_file(temp, json.dumps(graph, indent=2))
   # run wasm-metadce
+  args = ['--graph-file=' + temp]
+  if last:
+    args += get_last_binaryen_opts()
   out = run_binaryen_command('wasm-metadce',
                              wasm_file,
                              wasm_file,
-                             ['--graph-file=' + temp],
+                             args,
                              debug=debug_info,
                              stdout=PIPE)
   # find the unused things in js
@@ -880,26 +891,22 @@ def asyncify_lazy_load_code(wasm_target, debug):
 def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_info):
   logger.debug('minifying wasm imports and exports')
   # run the pass
+  args = []
   if minify_exports:
     # standalone wasm mode means we need to emit a wasi import module.
     # otherwise, minify even the imported module names.
     if settings.MINIFY_WASM_IMPORTED_MODULES:
-      pass_name = '--minify-imports-and-exports-and-modules'
+      args.append('--minify-imports-and-exports-and-modules')
     else:
-      pass_name = '--minify-imports-and-exports'
+      args.append('--minify-imports-and-exports')
   else:
-    pass_name = '--minify-imports'
+    args.append('--minify-imports')
+  # this is always the last tool we run (if we run it)
+  args += get_last_binaryen_opts()
   out = run_wasm_opt(wasm_file, wasm_file,
                      [pass_name],
                      debug=debug_info,
                      stdout=PIPE)
-  # TODO this is the last tool we run, after normal opts and metadce. it
-  # might make sense to run Stack IR optimizations here or even -O (as
-  # metadce which runs before us might open up new general optimization
-  # opportunities). however, the benefit is less than 0.5%.
-  # TODO: Avoid StackIR before, do it just here!!1
-  #   if settings.OPT_LEVEL > 0:
-  #     args.append(opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL))
 
   # get the mapping
   SEP = ' => '

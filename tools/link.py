@@ -427,7 +427,10 @@ def get_binaryen_passes():
   # If we are not linkable then we will invoke wasm-opt later (for metadce
   # and/or import/export minification). Avoid doing StackIR optimizations at
   # this time, so that we only do them at the very end (which is more
-  # efficient).
+  # efficient, as if we do StackIR optimizations now then we'd throw that away
+  # when we reload the wasm in anothre Binaryen tool, and also StackIR
+  # optimizations lead to stacky code that Binaryen would need to do more work
+  # to handle in its structured IR).
   if not settings.LINKABLE:
     passes += ['--no-stack-ir']
 
