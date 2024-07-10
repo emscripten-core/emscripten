@@ -8499,7 +8499,7 @@ int main() {
 
     if check_size:
       # measure the wasm size without the name section
-      self.run_process([wasm_opt, 'a.out.wasm', '--strip-debug', '--all-features', '-o', 'a.out.nodebug.wasm'])
+      building.strip('a.out.wasm', 'a.out.nodebug.wasm', sections=['name'])
       wasm_size = os.path.getsize('a.out.nodebug.wasm')
       size_file = expected_basename + '.size'
       js_size = os.path.getsize('a.out.js')
