@@ -8038,6 +8038,26 @@ int main() {}
     self.assertNotContained('ctor_evaller: not successful', err)
     self.assertContained('could not eval: call import: env.external_thing', err)
 
+  @uses_canonical_tmp
+  @with_env_modify({'EMCC_DEBUG': '1'})
+  @parameterized({
+    # StackIR optimizations should happen once at the end, and not multiple
+    # times in the middle. In -O2 we simply do them in the main wasm-opt
+    # invocation, while in -O3 we run wasm-opt later, and so we should disable
+    # StackIR first and enable it at the end.
+    'O2': (['-O2'], False),
+    'O3': (['-O3'], True),
+  })
+  def test_binaryen_stack_ir(self, opts, disable_and_enable):
+    err = self.run_process([EMXX, test_file('hello_world.c')] + opts, stderr=PIPE).stderr
+    DISABLE = '--no-stack-ir'
+    ENABLE = '--optimize-stack-ir'
+    self.assertContainedIf(DISABLE, err, disable_and_enable)
+    self.assertContainedIf(ENABLE, err, disable_and_enable)
+    # they should also appear at most once each
+    self.assertLess(err.count(DISABLE), 2)
+    self.assertLess(err.count(ENABLE), 2)
+
   def test_override_js_execution_environment(self):
     create_file('main.c', r'''
       #include <emscripten.h>
