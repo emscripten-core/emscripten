@@ -152,14 +152,16 @@ size_t emscripten_get_heap_max() {
 }
 
 int emscripten_resize_heap(size_t size) {
-#if defined(EMSCRIPTEN_MEMORY_GROWTH) && !defined(EMSCRIPTEN_PURE_WASI)
+#if defined(EMSCRIPTEN_MEMORY_GROWTH)
   size_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
   assert(old_size < size);
   ssize_t diff = (size - old_size + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE;
   size_t result = __builtin_wasm_memory_grow(0, diff);
   if (result != (size_t)-1) {
+#if !defined(EMSCRIPTEN_PURE_WASI)
     // Success, update JS (see https://github.com/WebAssembly/WASI/issues/82)
     emscripten_notify_memory_growth(0);
+#endif
     return 1;
   }
 #endif
