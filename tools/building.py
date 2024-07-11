@@ -1067,15 +1067,18 @@ def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
   args = []
   if symbols_file:
     args += ['--print-function-map']
-  if not debug_info:
-    # to remove debug info, we just write to that same file, and without -g
-    args += ['-o', wasm_file]
   else:
     # suppress the wasm-opt warning regarding "no output file specified"
     args += ['--quiet']
   output = run_wasm_opt(wasm_file, args=args, stdout=PIPE)
   if symbols_file:
     utils.write_file(symbols_file, output)
+  if not debug_info:
+    # strip the names section using llvm-objcopy. this is slightly slower than
+    # using wasm-opt (we could run wasm-opt without -g here and just tell it to
+    # write the file back out), but running wasm-opt would undo StackIR
+    # optimizations, if we did those.
+    strip(wasm_file, wasm_file, sections=['name'])
 
 
 def is_ar(filename):
