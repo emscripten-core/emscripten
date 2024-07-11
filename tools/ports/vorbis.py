@@ -20,7 +20,7 @@ def get(ports, settings, shared):
 
   def create(final):
     source_path = os.path.join(ports.get_dir(), 'vorbis', 'Vorbis-' + TAG)
-    ports.install_header_dir(os.path.join(source_path, 'include', 'vorbis'))
+    ports.install_headers(os.path.join(source_path, 'include', 'vorbis'), target='vorbis')
     ports.build_port(os.path.join(source_path, 'lib'), final, 'vorbis',
                      flags=['-sUSE_OGG'],
                      exclude_files=['psytune', 'barkmel', 'tone', 'misc'])

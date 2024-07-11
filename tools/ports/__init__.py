@@ -153,12 +153,12 @@ class Ports:
 
   @staticmethod
   def install_header_dir(src_dir, target=None):
+    """Like install_headers but recusively copied all files in a directory"""
     if not target:
       target = os.path.basename(src_dir)
     dest = Ports.get_include_dir(target)
-    utils.delete_dir(dest)
     logger.debug(f'installing headers: {dest}')
-    shutil.copytree(src_dir, dest)
+    shutil.copytree(src_dir, dest, dirs_exist_ok=True, copy_function=maybe_copy)
 
   @staticmethod
   def install_headers(src_dir, pattern='*.h', target=None):
