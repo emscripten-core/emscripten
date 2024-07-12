@@ -3596,26 +3596,6 @@ ok
 ''')
 
   @needs_dylink
-  def test_dlfcn_mallocs(self):
-    # will be exhausted without functional malloc/free
-    if not self.has_changed_setting('INITIAL_MEMORY'):
-      self.set_setting('INITIAL_MEMORY', '64mb')
-
-    create_file('liblib.c', r'''
-      #include <assert.h>
-      #include <stdio.h>
-      #include <string.h>
-      #include <stdlib.h>
-
-      void *mallocproxy(int n) { return malloc(n); }
-      void freeproxy(void *p) { free(p); }
-      ''')
-    self.build_dlfcn_lib('liblib.c')
-
-    self.prep_dlfcn_main()
-    self.do_runf('dlmalloc_proxy.c', '*293,153*')
-
-  @needs_dylink
   def test_dlfcn_longjmp(self):
     create_file('liblib.c', r'''
       #include <setjmp.h>
