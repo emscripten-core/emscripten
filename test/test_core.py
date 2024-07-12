@@ -3986,6 +3986,11 @@ ok
 
   def dylink_test(self, main, side, expected=None, header=None, force_c=False,
                   main_module=2, **kwargs):
+    # Temporarily enableing WASM_BIGINT in all dylink tests in order to allow
+    # a recent llvm change to land:
+    # https://github.com/llvm/llvm-project/pull/75242
+    # Once that lands we can use --no-shlib-sigcheck instead.
+    self.set_setting('WASM_BIGINT')
     # Same as dylink_testf but take source code in string form
     if not isinstance(side, list):
       side_file = 'liblib.cpp' if not force_c else 'liblib.c'
