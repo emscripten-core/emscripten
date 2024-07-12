@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.63 (in development)
+3.1.64 (in development)
 -----------------------
+
+3.1.63 - 07/12/24
+-----------------
 - Fix html5 input event bug that was introduced in 3.1.62. (#22201)
 - Fix webpack + pthreads bug that was introduced in 3.1.60. (#22165)
 
