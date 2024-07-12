@@ -4010,6 +4010,13 @@ ok
                    so_dir='',
                    so_name='liblib.so',
                    **kwargs):
+    # Temporarily enableing WASM_BIGINT in all dylink tests in order to allow
+    # a recent llvm change to land:
+    # https://github.com/llvm/llvm-project/pull/75242
+    # Once that lands we can use --no-shlib-sigcheck instead.
+    self.set_setting('WASM_BIGINT')
+    if self.get_setting('MEMORY64') == 2:
+      self.skipTest('MEMORY64=2 + dynamic linking is in flux')
     main_emcc_args = main_emcc_args or []
     if getattr(self, 'dylink_reversed', False):
       # Test the reverse case.  There we flip the role of the side module and main module.
