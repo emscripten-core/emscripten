@@ -1103,7 +1103,7 @@ class libc(MuslInternalLibrary,
         'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
         '_Fork.c',
         # 'env' exclusion
-        '__reset_tls.c', '__init_tls.c', '__libc_start_main.c', '__stack_chk_fail.c',
+        '__reset_tls.c', '__init_tls.c', '__libc_start_main.c',
     ]
 
     ignore += LIBC_SOCKETS

@@ -14937,3 +14937,6 @@ addToLibrary({
       }
     ''')
     self.run_process([EMXX, 'src.cpp', '-pthread'] + list(args))
+
+  def test_stack_protector(self):
+    self.do_other_test('test_stack_protector.c', emcc_args=['-fstack-protector'], assert_returncode=NON_ZERO)
