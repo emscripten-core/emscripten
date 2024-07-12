@@ -647,8 +647,10 @@ def create_tsd_exported_runtime_methods(metadata):
   js_doc_file = in_temp('jsdoc.js')
   tsc_output_file = in_temp('jsdoc.d.ts')
   utils.write_file(js_doc_file, js_doc)
-  if shutil.which('tsc'):
-    tsc = ['tsc']
+  tsc = shutil.which('tsc')
+  if tsc:
+    # Use the full path from the which command so windows can find tsc.
+    tsc = [tsc]
   else:
     tsc = shared.get_npm_cmd('tsc')
   cmd = tsc + ['--outFile', tsc_output_file, '--declaration', '--emitDeclarationOnly', '--allowJs', js_doc_file]
