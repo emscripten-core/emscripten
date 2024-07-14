@@ -1176,11 +1176,6 @@ _mm_set1_epi8(char __b)
 {
   return (__m128i)wasm_i8x16_splat(__b);
 }
-static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
-_mm_setr_epi64(long long q0, long long q1)
-{
-  return (__m128i)wasm_i64x2_make(q0, q1);
-}
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm_setr_epi64(__m64 q0, __m64 q1)
