@@ -3360,6 +3360,7 @@ Module["preRun"] = () => {
     self.assertExists('glue.js')
     self.btest('webidl/test.cpp', '1', args=['--post-js', 'glue.js', '-I.', '-DBROWSER'] + args)
 
+  @no_wasm64('https://github.com/llvm/llvm-project/issues/98778')
   def test_dynamic_link(self):
     create_file('main.c', r'''
       #include <stdio.h>
@@ -3465,6 +3466,7 @@ Module["preRun"] = () => {
     self._test_dylink_dso_needed(do_run)
 
   @requires_graphics_hardware
+  @no_wasm64('https://github.com/llvm/llvm-project/issues/98778')
   def test_dynamic_link_glemu(self):
     create_file('main.c', r'''
       #include <stdio.h>
@@ -5374,9 +5376,9 @@ Module["preRun"] = () => {
     shutil.copyfile('webpack/src/hello.wasm', 'webpack/dist/hello.wasm')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
 
+  @no_wasm64('https://github.com/llvm/llvm-project/issues/98778')
   def test_fetch_polyfill_shared_lib(self):
     create_file('library.c', r'''
-      #include <stdio.h>
       int library_func() {
         return 42;
       }
@@ -5392,7 +5394,7 @@ Module["preRun"] = () => {
       }
     ''')
 
-    self.run_process([EMCC, 'library.c', '-sSIDE_MODULE', '-O2', '-o', 'library.so'])
+    self.emcc('library.c', ['-sSIDE_MODULE', '-O2', '-o', 'library.so'])
 
     def test(args, expect_fail):
       self.compile_btest('main.c', ['-fPIC', 'library.so', '-sMAIN_MODULE=2', '-sEXIT_RUNTIME', '-o', 'a.out.html'] + args)
