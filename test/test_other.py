@@ -14940,3 +14940,13 @@ addToLibrary({
 
   def test_stack_protector(self):
     self.do_other_test('test_stack_protector.c', emcc_args=['-fstack-protector'], assert_returncode=NON_ZERO)
+
+  def test_save_temp(self):
+    self.run_process([EMCC, '--save-temps', test_file('hello_world.c')])
+    self.assertExists('a.out.js')
+    # clang itself takes care of creating these three
+    self.assertExists('hello_world.i')
+    self.assertExists('hello_world.s')
+    self.assertExists('hello_world.bc')
+    # emcc takes care of creating the .o
+    self.assertExists('hello_world.o')

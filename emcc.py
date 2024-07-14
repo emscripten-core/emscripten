@@ -27,6 +27,7 @@ import logging
 import os
 import re
 import shlex
+import shutil
 import sys
 import time
 import tarfile
@@ -133,6 +134,7 @@ class EmccOptions:
     self.output_file = None
     self.no_minify = False
     self.post_link = False
+    self.save_temps = False
     self.executable = False
     self.compiler_wrapper = None
     self.oformat = None
@@ -984,6 +986,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     # with -MF! (clang seems to not recognize it)
     logger.debug(('just preprocessor ' if state.has_dash_E else 'just dependencies: ') + ' '.join(cmd))
     shared.exec_process(cmd)
+    assert False, 'exec_process does not return'
 
   # Precompiled headers support
   if state.mode == Mode.PCH:
@@ -996,6 +999,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
       cmd += ['-o', options.output_file]
     logger.debug(f"running (for precompiled headers): {cmd[0]} {' '.join(cmd[1:])}")
     shared.exec_process(cmd)
+    assert False, 'exec_process does not return'
 
   if state.mode == Mode.COMPILE_ONLY:
     inputs = [i[1] for i in input_files]
@@ -1008,6 +1012,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
       if get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
         diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
     shared.exec_process(cmd)
+    assert False, 'exec_process does not return'
 
   # In COMPILE_AND_LINK we need to compile source files too, but we also need to
   # filter out the link flags
@@ -1054,8 +1059,10 @@ def phase_compile_inputs(options, state, newargs, input_files):
       cmd += ['-Xclang', '-split-dwarf-file', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
       cmd += ['-Xclang', '-split-dwarf-output', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
     shared.check_call(cmd)
-    if output_file not in ('-', os.devnull) and not shared.SKIP_SUBPROCS:
+    if not shared.SKIP_SUBPROCS:
       assert os.path.exists(output_file)
+      if options.save_temps:
+        shutil.copyfile(output_file, shared.unsuffixed_basename(input_file) + '.o')
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for i, input_file in input_files:
@@ -1184,6 +1191,8 @@ def parse_args(newargs):
         settings.LTO = 'full'
     elif arg == "-fno-lto":
       settings.LTO = 0
+    elif arg == "--save-temps":
+      options.save_temps = True
     elif check_arg('--llvm-lto'):
       logger.warning('--llvm-lto ignored when using llvm backend')
       consume_arg()
