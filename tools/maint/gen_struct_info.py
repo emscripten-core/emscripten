@@ -77,6 +77,31 @@ from tools.settings import settings
 QUIET = (__name__ != '__main__')
 DEBUG = False
 
+CFLAGS = [
+    # Avoid parsing problems due to gcc specific syntax.
+    '-D_GNU_SOURCE',
+]
+
+INTERNAL_CFLAGS = [
+    '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
+    '-I' + utils.path_from_root('system/lib/libc/musl/src/include'),
+    '-I' + utils.path_from_root('system/lib/pthread/'),
+]
+
+CXXFLAGS = [
+    '-I' + utils.path_from_root('system/lib/libcxxabi/src'),
+    '-D__EMSCRIPTEN_EXCEPTIONS__',
+    '-I' + utils.path_from_root('system/lib/wasmfs/'),
+    '-std=c++17',
+]
+
+DEFAULT_JSON_FILES = [
+    utils.path_from_root('src/struct_info.json'),
+    utils.path_from_root('src/struct_info_internal.json'),
+    utils.path_from_root('src/struct_info_cxx.json'),
+    utils.path_from_root('src/struct_info_webgpu.json'),
+]
+
 
 def show(msg):
   if shared.DEBUG or not QUIET:
@@ -179,7 +204,7 @@ def gen_inspect_code(path, struct, code):
   c_ascent(code)
 
 
-def inspect_headers(headers, cflags):
+def generate_c_code(headers):
   code = ['#include <stdio.h>', '#include <stddef.h>']
   for header in headers:
     code.append('#include "' + header['name'] + '"')
@@ -211,28 +236,10 @@ def inspect_headers(headers, cflags):
   code.append('return 0;')
   code.append('}')
 
-  # Write the source code to a temporary file.
-  src_file = tempfile.mkstemp('.c', text=True)
-  show('Generating C code... ' + src_file[1])
-  os.write(src_file[0], '\n'.join(code).encode())
+  return code
 
-  js_file = tempfile.mkstemp('.js')
 
-  # Check sanity early on before populating the cache with libcompiler_rt
-  # If we don't do this the parallel build of compiler_rt will run while holding the cache
-  # lock and with EM_EXCLUSIVE_CACHE_ACCESS set causing N processes to race to run sanity checks.
-  # While this is not in itself serious problem it is wasteful and noise on stdout.
-  # For the same reason we run this early in embuilder.py and emcc.py.
-  # TODO(sbc): If we can remove EM_EXCLUSIVE_CACHE_ACCESS then this would not longer be needed.
-  shared.check_sanity()
-
-  compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt'].build()
-
-  # Close all unneeded FDs.
-  os.close(src_file[0])
-  os.close(js_file[0])
-
-  info = []
+def generate_cmd(js_file_path, src_file_path, cflags, compiler_rt):
   # Compile the program.
   show('Compiling generated code...')
 
@@ -244,7 +251,7 @@ def inspect_headers(headers, cflags):
   node_flags = building.get_emcc_node_flags(shared.check_node_version())
 
   # -O1+ produces calls to iprintf, which libcompiler_rt doesn't support
-  cmd = [compiler] + cflags + ['-o', js_file[1], src_file[1],
+  cmd = [compiler] + cflags + ['-o', js_file_path, src_file_path,
                                '-O0',
                                '-Werror',
                                '-Wno-format',
@@ -272,6 +279,33 @@ def inspect_headers(headers, cflags):
     cmd += ['-sMEMORY64=2', '-Wno-experimental']
 
   show(shared.shlex_join(cmd))
+  return cmd
+
+
+def inspect_headers(headers, cflags):
+  # Write the source code to a temporary file.
+  src_file_fd, src_file_path = tempfile.mkstemp('.c', text=True)
+  show('Generating C code... ' + src_file_path)
+  code = generate_c_code(headers)
+  os.write(src_file_fd, '\n'.join(code).encode())
+  os.close(src_file_fd)
+
+  # Check sanity early on before populating the cache with libcompiler_rt
+  # If we don't do this the parallel build of compiler_rt will run while holding the cache
+  # lock and with EM_EXCLUSIVE_CACHE_ACCESS set causing N processes to race to run sanity checks.
+  # While this is not in itself serious problem it is wasteful and noise on stdout.
+  # For the same reason we run this early in embuilder.py and emcc.py.
+  # TODO(sbc): If we can remove EM_EXCLUSIVE_CACHE_ACCESS then this would not longer be needed.
+  shared.check_sanity()
+
+  compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt'].build()
+
+  js_file_fd, js_file_path = tempfile.mkstemp('.js')
+  # Close the unneeded FD.
+  os.close(js_file_fd)
+
+  cmd = generate_cmd(js_file_path, src_file_path, cflags, compiler_rt)
+
   try:
     subprocess.check_call(cmd, env=system_libs.clean_env())
   except subprocess.CalledProcessError as e:
@@ -279,20 +313,20 @@ def inspect_headers(headers, cflags):
     sys.exit(1)
 
   # Run the compiled program.
-  show('Calling generated program... ' + js_file[1])
+  show('Calling generated program... ' + js_file_path)
   args = []
   if settings.MEMORY64:
     args += shared.node_bigint_flags(config.NODE_JS)
-  info = shared.run_js_tool(js_file[1], node_args=args, stdout=shared.PIPE).splitlines()
+  info = shared.run_js_tool(js_file_path, node_args=args, stdout=shared.PIPE).splitlines()
 
   if not DEBUG:
     # Remove all temporary files.
-    os.unlink(src_file[1])
+    os.unlink(src_file_path)
 
-    if os.path.exists(js_file[1]):
-      os.unlink(js_file[1])
-      wasm_file = shared.replace_suffix(js_file[1], '.wasm')
-      os.unlink(wasm_file)
+    if os.path.exists(js_file_path):
+      os.unlink(js_file_path)
+      wasm_file_path = shared.replace_suffix(js_file_path, '.wasm')
+      os.unlink(wasm_file_path)
 
   # Parse the output of the program into a dict.
   return parse_c_output(info)
@@ -366,16 +400,10 @@ def output_json(obj, stream):
 def main(args):
   global QUIET
 
-  default_json_files = [
-      utils.path_from_root('src/struct_info.json'),
-      utils.path_from_root('src/struct_info_internal.json'),
-      utils.path_from_root('src/struct_info_cxx.json'),
-      utils.path_from_root('src/struct_info_webgpu.json'),
-  ]
   parser = argparse.ArgumentParser(description='Generate JSON infos for structs.')
   parser.add_argument('json', nargs='*',
                       help='JSON file with a list of structs and their fields (defaults to src/struct_info.json)',
-                      default=default_json_files)
+                      default=DEFAULT_JSON_FILES)
   parser.add_argument('-q', dest='quiet', action='store_true', default=False,
                       help='Don\'t output anything besides error messages.')
   parser.add_argument('-o', dest='output', metavar='path', default=None,
@@ -392,34 +420,20 @@ def main(args):
 
   QUIET = args.quiet
 
-  # Avoid parsing problems due to gcc specifc syntax.
-  cflags = ['-D_GNU_SOURCE']
+  extra_cflags = []
 
   if args.wasm64:
     settings.MEMORY64 = 2
 
   # Add the user options to the list as well.
   for path in args.includes:
-    cflags.append('-I' + path)
+    extra_cflags.append('-I' + path)
 
   for arg in args.defines:
-    cflags.append('-D' + arg)
+    extra_cflags.append('-D' + arg)
 
   for arg in args.undefines:
-    cflags.append('-U' + arg)
-
-  internal_cflags = [
-    '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
-    '-I' + utils.path_from_root('system/lib/libc/musl/src/include'),
-    '-I' + utils.path_from_root('system/lib/pthread/'),
-  ]
-
-  cxxflags = [
-    '-I' + utils.path_from_root('system/lib/libcxxabi/src'),
-    '-D__EMSCRIPTEN_EXCEPTIONS__',
-    '-I' + utils.path_from_root('system/lib/wasmfs/'),
-    '-std=c++17',
-  ]
+    extra_cflags.append('-U' + arg)
 
   # Look for structs in all passed headers.
   info = {'defines': {}, 'structs': {}}
@@ -429,11 +443,11 @@ def main(args):
     header_files = parse_json(f)
     # Inspect all collected structs.
     if 'internal' in f:
-      use_cflags = cflags + internal_cflags
+      use_cflags = CFLAGS + extra_cflags + INTERNAL_CFLAGS
     elif 'cxx' in f:
-      use_cflags = cflags + cxxflags
+      use_cflags = CFLAGS + extra_cflags + CXXFLAGS
     else:
-      use_cflags = cflags
+      use_cflags = CFLAGS + extra_cflags
     info_fragment = inspect_code(header_files, use_cflags)
     merge_info(info, info_fragment)
 
