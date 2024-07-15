@@ -25,7 +25,7 @@ See docs/process.md for more on how version tagging works.
   (its) `PATH`.
 - Updated `emscons` to apply the `EMSCRIPTEN_ROOT`, `EMSCONS_PKG_CONFIG_LIBDIR`
   and `EMSCONS_PKG_CONFIG_PATH` environment variables. The SCons tool will use
-  last two to set up `PKG_CONFIG_LIBDIR` and `PKG_CONFIG_PATH` respetively.
+  last two to set up `PKG_CONFIG_LIBDIR` and `PKG_CONFIG_PATH` respectively.
 
 3.1.63 - 07/12/24
 -----------------
