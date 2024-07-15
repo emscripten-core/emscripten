@@ -2087,7 +2087,7 @@ int main(int argc, char **argv) {
     self.set_setting('SAFE_HEAP')
     self.do_core_test('test_memorygrowth_3.c')
 
-  @also_with_standalone_wasm(impure=True)
+  @also_with_standalone_wasm()
   @no_4gb('depends on INITIAL_MEMORY')
   @no_2gb('depends on INITIAL_MEMORY')
   def test_memorygrowth_MAXIMUM_MEMORY(self):
