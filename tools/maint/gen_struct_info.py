@@ -78,7 +78,7 @@ QUIET = (__name__ != '__main__')
 DEBUG = False
 
 CFLAGS = [
-    # Avoid parsing problems due to gcc specifc syntax.
+    # Avoid parsing problems due to gcc specific syntax.
     '-D_GNU_SOURCE',
 ]
 
@@ -284,12 +284,11 @@ def generate_cmd(js_file_path, src_file_path, cflags, compiler_rt):
 
 def inspect_headers(headers, cflags):
   # Write the source code to a temporary file.
-  src_file = tempfile.mkstemp('.c', text=True)
-  show('Generating C code... ' + src_file[1])
+  src_file_fd, src_file_path = tempfile.mkstemp('.c', text=True)
+  show('Generating C code... ' + src_file_path)
   code = generate_c_code(headers)
-  os.write(src_file[0], '\n'.join(code).encode())
-  os.close(src_file[0])
-  src_file_path = src_file[1]
+  os.write(src_file_fd, '\n'.join(code).encode())
+  os.close(src_file_fd)
 
   # Check sanity early on before populating the cache with libcompiler_rt
   # If we don't do this the parallel build of compiler_rt will run while holding the cache
@@ -301,10 +300,9 @@ def inspect_headers(headers, cflags):
 
   compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt'].build()
 
-  js_file = tempfile.mkstemp('.js')
+  js_file_fd, js_file_path = tempfile.mkstemp('.js')
   # Close the unneeded FD.
-  os.close(js_file[0])
-  js_file_path = js_file[1]
+  os.close(js_file_fd)
 
   cmd = generate_cmd(js_file_path, src_file_path, cflags, compiler_rt)
 
@@ -315,11 +313,11 @@ def inspect_headers(headers, cflags):
     sys.exit(1)
 
   # Run the compiled program.
-  show('Calling generated program... ' + js_file[1])
+  show('Calling generated program... ' + js_file_path)
   args = []
   if settings.MEMORY64:
     args += shared.node_bigint_flags(config.NODE_JS)
-  info = shared.run_js_tool(js_file[1], node_args=args, stdout=shared.PIPE).splitlines()
+  info = shared.run_js_tool(js_file_path, node_args=args, stdout=shared.PIPE).splitlines()
 
   if not DEBUG:
     # Remove all temporary files.
