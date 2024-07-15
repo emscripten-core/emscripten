@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
 import os
 import shutil
 
@@ -19,8 +18,6 @@ def get(ports, settings, shared):
   ports.fetch_project('bullet', f'https://github.com/emscripten-ports/bullet/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    logging.info('building port: bullet')
-
     source_path = os.path.join(ports.get_dir(), 'bullet', 'Bullet-' + TAG)
     src_path = os.path.join(source_path, 'bullet', 'src')
 
@@ -55,8 +52,8 @@ def clear(ports, settings, shared):
 
 
 def process_args(ports):
-  return ['-I' + ports.get_include_dir('bullet')]
+  return ['-isystem', ports.get_include_dir('bullet')]
 
 
 def show():
-  return 'bullet (USE_BULLET=1; zlib license)'
+  return 'bullet (-sUSE_BULLET=1 or --use-port=bullet; zlib license)'

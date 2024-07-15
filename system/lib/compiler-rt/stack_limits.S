@@ -16,12 +16,16 @@
 
 .globaltype __stack_pointer, PTR
 
+.section .globals,"",@
+
 # TODO(sbc): It would be nice if these we initialized directly
 # using PTR.const rather than using the `emscripten_stack_init`
 .globaltype __stack_end, PTR
 __stack_end:
 .globaltype __stack_base, PTR
 __stack_base:
+
+.section .text,"",@
 
 emscripten_stack_get_base:
   .functype emscripten_stack_get_base () -> (PTR)
@@ -81,9 +85,9 @@ emscripten_stack_get_free:
 #ifdef __EMSCRIPTEN_WASM_WORKERS__
 # TODO: Relocate the following to its own file wasm_worker.S, but need to figure out how to reference
 # __stack_base and __stack_end globals from a separate file as externs in order for that to work.
-.globl emscripten_wasm_worker_initialize
-emscripten_wasm_worker_initialize:
-  .functype emscripten_wasm_worker_initialize (PTR /*stackLowestAddress*/, i32 /*stackSize*/) -> ()
+.globl _emscripten_wasm_worker_initialize
+_emscripten_wasm_worker_initialize:
+  .functype _emscripten_wasm_worker_initialize (PTR /*stackLowestAddress*/, i32 /*stackSize*/) -> ()
 
   // __stack_end = stackLowestAddress + (__builtin_wasm_tls_size() + 15) & -16;
   local.get 0

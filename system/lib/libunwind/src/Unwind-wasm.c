@@ -1,9 +1,23 @@
-#include "config.h"
-#include "unwind.h"
-#include <stdbool.h>
-#include <threads.h>
+//===----------------------------------------------------------------------===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//
+//  Implements Wasm exception handling proposal
+//  (https://github.com/WebAssembly/exception-handling) based C++ exceptions
+//
+//===----------------------------------------------------------------------===//
 
-#ifdef __USING_WASM_EXCEPTIONS__
+#include <stdbool.h>
+
+#include "config.h"
+
+#ifdef __WASM_EXCEPTIONS__
+
+#include "unwind.h"
+#include <threads.h>
 
 _Unwind_Reason_Code __gxx_personality_wasm0(int version, _Unwind_Action actions,
                                             uint64_t exceptionClass,
@@ -41,10 +55,9 @@ _Unwind_Reason_Code _Unwind_CallPersonality(void *exception_ptr) {
 
   // Call personality function. Wasm does not have two-phase unwinding, so we
   // only do the cleanup phase.
-  _Unwind_Reason_Code ret = __gxx_personality_wasm0(
+  return __gxx_personality_wasm0(
       1, _UA_SEARCH_PHASE, exception_object->exception_class, exception_object,
       (struct _Unwind_Context *)&__wasm_lpad_context);
-  return ret;
 }
 
 /// Called by __cxa_throw.
@@ -52,6 +65,7 @@ _LIBUNWIND_EXPORT _Unwind_Reason_Code
 _Unwind_RaiseException(_Unwind_Exception *exception_object) {
   _LIBUNWIND_TRACE_API("_Unwind_RaiseException(exception_object=%p)",
                        (void *)exception_object);
+  // Use Wasm EH's 'throw' instruction.
   __builtin_wasm_throw(0, exception_object);
 }
 
@@ -72,9 +86,8 @@ _LIBUNWIND_EXPORT void _Unwind_SetGR(struct _Unwind_Context *context, int index,
                        (void *)context, index, value);
   // We only use this function to set __wasm_lpad_context.selector field, which
   // is index 1 in the personality function.
-  if (index != 1)
-    return;
-  ((struct _Unwind_LandingPadContext *)context)->selector = value;
+  if (index == 1)
+    ((struct _Unwind_LandingPadContext *)context)->selector = value;
 }
 
 /// Called by personality handler to get instruction pointer.
@@ -88,7 +101,7 @@ _LIBUNWIND_EXPORT uintptr_t _Unwind_GetIP(struct _Unwind_Context *context) {
   return result;
 }
 
-/// Not used in wasm.
+/// Not used in Wasm.
 _LIBUNWIND_EXPORT void _Unwind_SetIP(struct _Unwind_Context *context,
                                      uintptr_t value) {}
 
@@ -101,10 +114,10 @@ _Unwind_GetLanguageSpecificData(struct _Unwind_Context *context) {
   return result;
 }
 
-/// Not used in wasm.
+/// Not used in Wasm.
 _LIBUNWIND_EXPORT uintptr_t
 _Unwind_GetRegionStart(struct _Unwind_Context *context) {
   return 0;
 }
 
-#endif
+#endif // defined(__WASM_EXCEPTIONS__)

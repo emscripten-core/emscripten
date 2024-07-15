@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-import logging
 
 VERSION = '3.2.0'
 HASH = 'c9d88068d8017046842f444f02f31dbae109026ede943aaf265db5508de8b4b2be84203950f274a237f515bf7cbd361629d2032c6e8ee8f50354b430bba3a8ca'
@@ -83,8 +82,6 @@ def get(ports, settings, shared):
   ports.fetch_project('harfbuzz', f'https://github.com/harfbuzz/harfbuzz/releases/download/{VERSION}/harfbuzz-{VERSION}.tar.xz', sha512hash=HASH)
 
   def create(final):
-    logging.info('building port: harfbuzz')
-
     source_path = os.path.join(ports.get_dir(), 'harfbuzz', 'harfbuzz-' + VERSION)
     freetype_include = ports.get_include_dir('freetype2')
     ports.install_headers(os.path.join(source_path, 'src'), target='harfbuzz')
@@ -151,8 +148,8 @@ def process_dependencies(settings):
 
 
 def process_args(ports):
-  return ['-I' + ports.get_include_dir('harfbuzz')]
+  return ['-isystem', ports.get_include_dir('harfbuzz')]
 
 
 def show():
-  return 'harfbuzz (USE_HARFBUZZ=1; MIT license)'
+  return 'harfbuzz (-sUSE_HARFBUZZ=1 or --use-port=harfbuzz; MIT license)'

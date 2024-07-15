@@ -10,6 +10,10 @@
 #include <emscripten/heap.h>
 #include <emscripten/em_asm.h>
 
+#if __cplusplus >= 201703L
+#include <optional>
+#endif
+
 using namespace emscripten;
 
 val emval_test_mallinfo() {
@@ -125,6 +129,22 @@ unsigned emval_test_sum(val v) {
         rv += v[i].as<double>();
     }
     return rv;
+}
+
+struct DestructorCounter {
+    static int count;
+    ~DestructorCounter() {
+        count++;
+    };
+};
+
+int DestructorCounter::count = 0;
+
+void emval_test_callback_arg_lifetime(val callback) {
+    DestructorCounter dc;
+    int destructorCount = DestructorCounter::count;
+    callback(dc);
+    assert(destructorCount == DestructorCounter::count);
 }
 
 std::string get_non_ascii_string(bool embindStdStringUTF8Support) {
@@ -490,6 +510,9 @@ public:
     int getBaseMember() {
         return baseMember;
     }
+    static std::string classFunction() {
+        return "Base";
+    };
     std::string name;
     int member;
     int baseMember;
@@ -545,6 +568,9 @@ public:
     }
     int getMember() {
         return member;
+    }
+    static std::string classFunction() {
+        return "Derived";
     }
     int member;
 private:
@@ -1017,30 +1043,42 @@ void emval_test_call_function(val v, int i, float f, TupleVector tv, StructVecto
     v(i, f, tv, sv);
 }
 
+struct CharWrapper {
+    CharWrapper(char v) {
+        value = v;
+    };
+
+    char getValue() {
+        return value;
+    }
+
+    char value;
+};
+
 class UniquePtrToConstructor {
 public:
-    UniquePtrToConstructor(std::unique_ptr<int> p)
-        : value(*p)
+    UniquePtrToConstructor(std::unique_ptr<CharWrapper> p)
+        : value((*p).getValue())
     {}
     
-    int getValue() const {
+    char getValue() const {
         return value;
     }
     
 private:
-    int value;
+    char value;
 };
 
-std::unique_ptr<int> embind_test_return_unique_ptr(int v) {
-    return std::unique_ptr<int>(new int(v));
+std::unique_ptr<CharWrapper> embind_test_return_unique_ptr(char v) {
+    return std::unique_ptr<CharWrapper>(new CharWrapper(v));
 }
 
-UniquePtrToConstructor* embind_test_construct_class_with_unique_ptr(int v) {
+UniquePtrToConstructor* embind_test_construct_class_with_unique_ptr(char v) {
     return new UniquePtrToConstructor(embind_test_return_unique_ptr(v));
 }
 
-int embind_test_accept_unique_ptr(std::unique_ptr<int> p) {
-    return *p.get();
+char embind_test_accept_unique_ptr(std::unique_ptr<CharWrapper> p) {
+    return (*p.get()).getValue();
 }
 
 std::unique_ptr<ValHolder> emval_test_return_unique_ptr() {
@@ -1271,10 +1309,75 @@ std::vector<std::shared_ptr<StringHolder>> emval_test_return_shared_ptr_vector()
     return sharedStrVector;
 }
 
+std::vector<SmallClass*> emval_test_return_vector_pointers() {
+    std::vector<SmallClass*> vec;
+    vec.push_back(new SmallClass());
+    return vec;
+}
+
 void test_string_with_vec(const std::string& p1, std::vector<std::string>& v1) {
     // THIS DOES NOT WORK -- need to get as val and then call vecFromJSArray
     printf("%s\n", p1.c_str());
 }
+
+#if __cplusplus >= 201703L
+std::optional<int> embind_test_return_optional_int(bool create) {
+    if (create) {
+        return 42;
+    }
+    return {};
+}
+std::optional<float> embind_test_return_optional_float(bool create) {
+    if (create) {
+        return 4.2;
+    }
+    return {};
+}
+std::optional<std::string> embind_test_return_optional_string(bool create) {
+    if (create) {
+        return "hello";
+    }
+    return {};
+}
+std::optional<SmallClass> embind_test_return_optional_small_class(bool create) {
+    if (create) {
+        return SmallClass();
+    }
+    return {};
+}
+std::optional<SmallClass*> embind_test_return_optional_small_class_pointer(bool create) {
+    if (create) {
+        return new SmallClass();
+    }
+    return {};
+}
+
+int embind_test_optional_int_arg(std::optional<int> arg) {
+    if (arg) {
+        return *arg;
+    }
+    return -1;
+}
+float embind_test_optional_float_arg(std::optional<float> arg) {
+    if (arg) {
+        return *arg;
+    }
+    return -1.1;
+}
+std::string embind_test_optional_string_arg(std::optional<std::string> arg) {
+    if (arg) {
+        return *arg;
+    }
+    return "no value";
+}
+
+int embind_test_optional_small_class_arg(std::optional<SmallClass> arg) {
+    if (arg) {
+        return arg->member;
+    }
+    return -1;
+}
+#endif
 
 val embind_test_getglobal() {
     return val::global();
@@ -1505,6 +1608,22 @@ public:
 HasExternalConstructor* createHasExternalConstructor(const std::string& str) {
     return new HasExternalConstructor(str);
 }
+
+class HasExternalConstructorNoCopy {
+private:
+    HasExternalConstructorNoCopy(int i) : m(i) {}
+    int m;
+public:
+    HasExternalConstructorNoCopy(HasExternalConstructorNoCopy&) = delete;
+    HasExternalConstructorNoCopy(HasExternalConstructorNoCopy&&) = default;
+    int getInt() {
+        return m;
+    }
+    static HasExternalConstructorNoCopy create(int i) {
+        HasExternalConstructorNoCopy obj(i);
+        return obj;
+    }
+};
 
 template<typename T>
 class CustomSmartPtr {
@@ -1794,6 +1913,7 @@ EMSCRIPTEN_BINDINGS(tests) {
     register_vector<emscripten::val>("EmValVector");
     register_vector<float>("FloatVector");
     register_vector<std::vector<int>>("IntegerVectorVector");
+    register_vector<SmallClass*>("SmallClassPointerVector");
 
     class_<DummyForPointer>("DummyForPointer");
 
@@ -1821,6 +1941,9 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("emval_test_add", &emval_test_add);
     function("const_ref_adder", &const_ref_adder);
     function("emval_test_sum", &emval_test_sum);
+
+    class_<DestructorCounter>("DestructorCounter");
+    function("emval_test_callback_arg_lifetime", &emval_test_callback_arg_lifetime);
 
     function("get_non_ascii_string", &get_non_ascii_string);
     function("get_non_ascii_wstring", &get_non_ascii_wstring);
@@ -2019,6 +2142,7 @@ EMSCRIPTEN_BINDINGS(tests) {
         .function("getMember", &Derived::getMember)
         .function("setMember", &Derived::setMember)
         .property("member", &Derived::member)
+        .class_function("classFunction", &Derived::classFunction)
         ;
 
     class_<Base>("Base")
@@ -2033,6 +2157,7 @@ EMSCRIPTEN_BINDINGS(tests) {
         .function("setBaseMember", &Base::setBaseMember)
         .property("member", &Base::member)
         .property("baseMember", &Base::baseMember)
+        .class_function("classFunction", &Base::classFunction)
         ;
 
     class_<SecondBase>("SecondBase")
@@ -2165,9 +2290,9 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("embind_test_accept_big_class_instance", &embind_test_accept_big_class_instance);
 
     class_<UniquePtrToConstructor>("UniquePtrToConstructor")
-        .constructor<std::unique_ptr<int>>()
         .function("getValue", &UniquePtrToConstructor::getValue)
         ;
+    class_<CharWrapper>("CharWrapper");
 
     function("embind_test_construct_class_with_unique_ptr", embind_test_construct_class_with_unique_ptr, allow_raw_pointer<ret_val>());
     function("embind_test_return_unique_ptr", embind_test_return_unique_ptr);
@@ -2256,6 +2381,7 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     function("emval_test_return_vector", &emval_test_return_vector);
     function("emval_test_return_vector_of_vectors", &emval_test_return_vector_of_vectors);
+    function("emval_test_return_vector_pointers", &emval_test_return_vector_pointers);
 
     register_vector<std::shared_ptr<StringHolder>>("SharedPtrVector");
     function("emval_test_return_shared_ptr_vector", &emval_test_return_shared_ptr_vector);
@@ -2271,6 +2397,23 @@ EMSCRIPTEN_BINDINGS(tests) {
 
     function("test_string_with_vec", &test_string_with_vec);
 
+#if __cplusplus >= 201703L
+    register_optional<int>();
+    register_optional<float>();
+    register_optional<SmallClass>();
+    register_optional<SmallClass*>();
+    register_optional<std::string>();
+    function("embind_test_return_optional_int", &embind_test_return_optional_int);
+    function("embind_test_return_optional_float", &embind_test_return_optional_float);
+    function("embind_test_return_optional_small_class", &embind_test_return_optional_small_class);
+    function("embind_test_return_optional_small_class_pointer", &embind_test_return_optional_small_class_pointer);
+    function("embind_test_return_optional_string", &embind_test_return_optional_string);
+    function("embind_test_optional_int_arg", &embind_test_optional_int_arg);
+    function("embind_test_optional_float_arg", &embind_test_optional_float_arg);
+    function("embind_test_optional_string_arg", &embind_test_optional_string_arg);
+    function("embind_test_optional_small_class_arg", &embind_test_optional_small_class_arg);
+#endif
+
     register_map<std::string, int>("StringIntMap");
     function("embind_test_get_string_int_map", embind_test_get_string_int_map);
 
@@ -2282,6 +2425,11 @@ EMSCRIPTEN_BINDINGS(tests) {
     class_<HasExternalConstructor>("HasExternalConstructor")
         .constructor(&createHasExternalConstructor)
         .function("getString", &HasExternalConstructor::getString)
+        ;
+
+    class_<HasExternalConstructorNoCopy>("HasExternalConstructorNoCopy")
+        .constructor(&HasExternalConstructorNoCopy::create)
+        .function("getInt", &HasExternalConstructorNoCopy::getInt)
         ;
 
     auto HeldBySmartPtr_class = class_<HeldBySmartPtr>("HeldBySmartPtr");
@@ -2661,6 +2809,7 @@ struct BoundClass {
     UnboundClass property;
 };
 
+#ifndef SKIP_UNBOUND_TYPES
 EMSCRIPTEN_BINDINGS(incomplete) {
     constant("hasUnboundTypeNames", emscripten::has_unbound_type_names);
 
@@ -2686,6 +2835,7 @@ EMSCRIPTEN_BINDINGS(incomplete) {
         .property("property", &BoundClass::property)
         ;
 }
+#endif
 
 class Noncopyable {
     Noncopyable(const Noncopyable&) = delete;
@@ -2714,7 +2864,7 @@ EMSCRIPTEN_BINDINGS(noncopyable) {
         .function("method", &Noncopyable::method)
         ;
 
-    function("getNoncopyable", &getNoncopyable);
+    function("getNoncopyable", &getNoncopyable, return_value_policy::take_ownership());
 }
 
 struct HasReadOnlyProperty {

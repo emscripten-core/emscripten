@@ -111,10 +111,7 @@ Defines
       var jsString = 'Hello with some exotic Unicode characters: Tässä on yksi lumiukko: ☃, ole hyvä.';
       // 'jsString.length' would return the length of the string as UTF-16
       // units, but Emscripten C strings operate as UTF-8.
-      var lengthBytes = lengthBytesUTF8(jsString)+1;
-      var stringOnWasmHeap = _malloc(lengthBytes);
-      stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
-      return stringOnWasmHeap;
+      return stringToNewUTF8(jsString);
     });
 
     int main() {
@@ -194,9 +191,7 @@ Defines
       var lengthBytes = lengthBytesUTF8(jsString)+1;
       // 'jsString.length' would return the length of the string as UTF-16
       // units, but Emscripten C strings operate as UTF-8.
-      var stringOnWasmHeap = _malloc(lengthBytes);
-      stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
-      return stringOnWasmHeap;
+      return stringToNewUTF8(jsString);
     });
     printf("UTF8 string says: %s\n", str);
     free(str); // Each call to _malloc() must be paired with free(), or heap memory will leak!
@@ -223,6 +218,10 @@ Defines
 .. c:macro:: MAIN_THREAD_EM_ASM_DOUBLE(code, ...)
 
   Similar to :c:macro:`MAIN_THREAD_EM_ASM` but returns a ``double`` value.
+
+.. c:macro:: MAIN_THREAD_EM_ASM_PTR(code, ...)
+
+  Similar to :c:macro:`MAIN_THREAD_EM_ASM` but returns a pointer value.
 
 .. c:macro:: MAIN_THREAD_ASYNC_EM_ASM(code, ...)
 
@@ -483,8 +482,9 @@ Functions
 
 .. c:function:: void emscripten_exit_with_live_runtime(void)
 
-  Exits the program immediately, but leaves the runtime alive so that you can continue to run code later (so global destructors etc., are not run). Note that the runtime is kept alive automatically when you do an asynchronous operation like :c:func:`emscripten_async_call`, so you don't need to call this function for those cases.
+  Stops the current thread of execution, but leaves the runtime alive so that you can continue to run code later (so global destructors etc., are not run). Note that the runtime is kept alive automatically when you do an asynchronous operation like :c:func:`emscripten_async_call`, so you don't need to call this function for those cases.
 
+  In a multithreaded application, this just exits the current thread (and allows running code later in the Web Worker in which it runs).
 
 .. c:function:: void emscripten_force_exit(int status)
 
@@ -778,7 +778,7 @@ Functions
 
 .. c:function:: void emscripten_dlopen(const char *filename, int flags, void* user_data, em_dlopen_callback onsuccess, em_arg_callback_func onerror);
 
-  Starts and asyncronous dlopen operation to load a shared library from a
+  Starts an asynchronous dlopen operation to load a shared library from a
   filename or URL.  Returns immediately and requires the caller to return to the
   event loop.  The ``onsuccess`` and ``onerror`` callbacks are used to signal
   success or failure of the request.  Upon ``onerror`` callback the normal
@@ -870,6 +870,21 @@ Asynchronous IndexedDB API
 
     - *(void*)* : Equal to ``arg`` (user defined data).
 
+.. c:function:: void emscripten_idb_async_clear(const char *db_name, void* arg, em_arg_callback_func onclear, em_arg_callback_func onerror)
+
+  Clears all data from local IndexedDB storage asynchronously.
+
+  When the storage has been cleared then the ``onclear`` callback will be called. If any error occurred ``onerror`` will be called.
+
+  :param db_name: The IndexedDB database.
+  :param void* arg: User-defined data that is passed to the callbacks, untouched by the API itself. This may be used by a callback to identify the associated call.
+  :param em_arg_callback_func onclear: Callback on successful clear. The callback function parameter is:
+
+    - *(void*)* : Equal to ``arg`` (user defined data).
+
+  :param em_arg_callback_func onerror: Callback in the event of failure. The callback function parameter is:
+
+    - *(void*)* : Equal to ``arg`` (user defined data).
 
 
 .. c:function:: int emscripten_run_preload_plugins(const char* file, em_str_callback_func onload, em_str_callback_func onerror)
@@ -1033,7 +1048,7 @@ Defines
 
 .. c:macro:: EM_LOG_ERROR
 
-  If specified, prints an error message (combined with :c:data:`EM_LOG_CONSOLE`). If neither :c:data:`EM_LOG_WARN`, :c:data:`EM_LOG_ERROR`, :c:data:`EM_LOG_INFO` nor :c:data:`EM_LOG_DEBUG` is specified, a log message is printed. :c:data:`EM_LOG_WARN`, :c:data:`EM_LOG_INFO`, :c:data:`EM_LOG_DEBUG` and :c:data:`EM_LOG_ERROR` are mutually exclusive. If :c:data:`EM_LOG_CONSOLE` is not specified then the message will be outputed via err() (for :c:data:`EM_LOG_ERROR` or :c:data:`EM_LOG_WARN`) or out() otherwise.
+  If specified, prints an error message (combined with :c:data:`EM_LOG_CONSOLE`). If neither :c:data:`EM_LOG_WARN`, :c:data:`EM_LOG_ERROR`, :c:data:`EM_LOG_INFO` nor :c:data:`EM_LOG_DEBUG` is specified, a log message is printed. :c:data:`EM_LOG_WARN`, :c:data:`EM_LOG_INFO`, :c:data:`EM_LOG_DEBUG` and :c:data:`EM_LOG_ERROR` are mutually exclusive. If :c:data:`EM_LOG_CONSOLE` is not specified then the message will be outputted via err() (for :c:data:`EM_LOG_ERROR` or :c:data:`EM_LOG_WARN`) or out() otherwise.
 
 .. c:macro:: EM_LOG_C_STACK
 
@@ -1046,10 +1061,6 @@ Defines
 .. c:macro:: EM_LOG_NO_PATHS
 
   If specified, the pathnames of the file information in the call stack will be omitted.
-
-.. c:macro:: EM_LOG_FUNC_PARAMS
-
-  If specified, prints out the actual values of the parameters the functions were invoked with.
 
 
 Functions
@@ -1301,14 +1312,16 @@ Sleeping
 
 .. c:function:: void emscripten_sleep(unsigned int ms)
 
-  Sleep for `ms` milliseconds. This is a normal "synchronous" sleep, which blocks all other operations while it runs. In other words, if
-  there are other async events waiting to happen, they will not happen during this sleep, which makes sense as conceptually this code is
-  on the stack (that's how it looks in the C source code).
+  Sleep for `ms` milliseconds. This appears to be a normal "synchronous" sleep
+  to the code, that is, execution does not continue to the next source line
+  until the sleep is done. Note, however, that this is implemented using a
+  return to the event loop (it is not possible to actually sleep in a blocking
+  manner on the Web), which means that other async events may happen.
 
 Network
 -------
 
-.. c:function:: void emscripten_wget(const char* url, const char* file)
+.. c:function:: int emscripten_wget(const char* url, const char* file)
 
   Load file from url in *synchronously*. For the asynchronous version, see the :c:func:`emscripten_async_wget`.
 
@@ -1318,6 +1331,7 @@ Network
 
   :param const char* url: The URL to load.
   :param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created. A relative pathname may be passed, which will be interpreted relative to the current working directory at the time of the call to this function.
+  :return: 0 on success or 1 on error.
 
 .. c:function:: void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror);
 
@@ -1368,11 +1382,18 @@ IndexedDB
   :param pexists: An out parameter that will be filled with a non-zero value if the file exists in that database.
   :param perror: An out parameter that will be filled with a non-zero value if an error occurred.
 
+.. c:function:: void emscripten_idb_clear(const char *db_name, int *perror);
 
-Upstream Asyncify functions
-===========================
+  Synchronously clears all data from IndexedDB.
 
-These functions only work with the upstream wasm backend when using Asyncify.
+  :param db_name: The name of the database to clear
+  :param perror: An out parameter that will be filled with a non-zero value if an error occurred.
+
+
+Asyncify functions
+==================
+
+These functions only work when using Asyncify.
 
 Typedefs
 --------
@@ -1392,18 +1413,18 @@ Functions
 .. c:function:: void emscripten_scan_stack(em_scan_func func)
 
     Scan the C userspace stack, which means the stack managed by the compiled
-    code (as opposed to the wasm VM's internal stack, which is not directly
+    code (as opposed to the Wasm VM's internal stack, which is not directly
     observable). This data is already in linear memory; this function just
     gives you a simple way to know where it is.
 
 .. c:function:: void emscripten_scan_registers(em_scan_func func)
 
-    Scan "registers", by which we mean data that is not in memory. In wasm,
+    Scan "registers", by which we mean data that is not in memory. In Wasm,
     that means data stored in locals, including locals in functions higher up
-    the stack - the wasm VM has spilled them, but none of that is observable to
+    the stack - the Wasm VM has spilled them, but none of that is observable to
     user code).
 
-    Note that this function scans wasm locals. Depending on the LLVM
+    Note that this function scans Wasm locals. Depending on the LLVM
     optimization level, this may not scan the original locals in your source
     code. For example in ``-O0`` locals may be stored on the stack. To make
     sure you scan everything necessary, you can also do
@@ -1415,15 +1436,15 @@ Functions
 
 .. c:function:: void emscripten_lazy_load_code()
 
-    This creates two wasm files at compile time: the first wasm which is
+    This creates two Wasm files at compile time: the first Wasm which is
     downloaded and run normally, and a second that is lazy-loaded. When an
-    ``emscripten_lazy_load_code()`` call is reached, we load the second wasm
+    ``emscripten_lazy_load_code()`` call is reached, we load the second Wasm
     and resume execution using it.
 
     The idea here is that the initial download can be quite small, if you
     place enough ``emscripten_lazy_load_code()`` calls in your codebase, as
-    the optimizer can remove code from the first wasm if it sees it can't
-    be reached. The second downloaded wasm can contain your full codebase,
+    the optimizer can remove code from the first Wasm if it sees it can't
+    be reached. The second downloaded Wasm can contain your full codebase,
     including rarely-used functions, in which case the lazy-loading may
     not happen at all.
 
@@ -1440,8 +1461,8 @@ Emscripten runtime JS code, or run Emscripten binaries in your own runtime.
 .. c:function:: void emscripten_notify_memory_growth(i32 index)
 
     Called when memory has grown. In a JS runtime, this is used to know when
-    to update the JS views on the wasm memory, which otherwise we would need
-    to constantly check for after any wasm code runs. See
+    to update the JS views on the Wasm memory, which otherwise we would need
+    to constantly check for after any Wasm code runs. See
     `this wasi discussion <https://github.com/WebAssembly/WASI/issues/82>`_.
 
     :param i32 index: Which memory has grown.

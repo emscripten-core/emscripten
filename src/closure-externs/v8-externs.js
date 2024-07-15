@@ -32,8 +32,3 @@ var scriptArgs = [];
  * @suppress {duplicate}
  */
 var quit = function(status) {};
-/**
- * @return {number}
- * @suppress {duplicate}
- */
-var dateNow = function() {};

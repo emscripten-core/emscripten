@@ -87,8 +87,8 @@ execute it. You can run them using :term:`node.js`:
 This prints "hello, world!" to the console, as expected.
 
 .. note:: Older node.js versions do not have WebAssembly support yet. In that
-   case you will see an error message suggesting that you build with ``-s
-   WASM=0`` to disable WebAssembly, and then emscripten will emit the compiled
+   case you will see an error message suggesting that you build with
+   ``-sWASM=0`` to disable WebAssembly, and then emscripten will emit the compiled
    code as JavaScript. In general, WebAssembly is recommended as it has
    widespread browser support and is more efficient both to execute and to
    download (and therefore emscripten emits it by default), but sometimes you
@@ -128,15 +128,15 @@ displaying the output of the ``printf()`` calls in the native code.
 
 The HTML output isn't limited just to just displaying text. You can also use the
 SDL API to show a colored cube in a ``<canvas>`` element (on browsers that
-support it). For an example, build the `hello_world_sdl.cpp
-<https://github.com/emscripten-core/emscripten/blob/main/test/hello_world_sdl.cpp>`_
+support it). For an example, build the `hello_world_sdl.c
+<https://github.com/emscripten-core/emscripten/blob/main/test/hello_world_sdl.c>`_
 test code and then refresh the browser: ::
 
-    ./emcc test/hello_world_sdl.cpp -o hello.html
+    ./emcc test/hello_world_sdl.c -o hello.html
 
 The source code for the second example is given below:
 
-.. include:: ../../../../test/hello_world_sdl.cpp
+.. include:: ../../../../test/hello_world_sdl.c
    :literal:
 
 
@@ -173,7 +173,7 @@ shown below):
 
     FILE *file = fopen("test/hello_world_file.txt", "rb");
 
-  We compile the example from the directory "above" **tests** to ensure that
+  We compile the example from the directory "above" **test** to ensure the
   virtual filesystem is created with the correct structure relative to the
   compile-time directory.
 

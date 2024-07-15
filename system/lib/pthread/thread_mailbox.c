@@ -44,9 +44,6 @@ void emscripten_thread_mailbox_unref(pthread_t thread) {
   }
 }
 
-// Defined in emscripten_thread_state.S.
-int _emscripten_thread_supports_atomics_wait(void);
-
 void _emscripten_thread_mailbox_shutdown(pthread_t thread) {
   assert(thread == pthread_self());
 
@@ -73,8 +70,7 @@ void _emscripten_thread_mailbox_init(pthread_t thread) {
   thread->waiting_async = 0;
 }
 
-// Exported for use in worker.js, but otherwise an internal function.
-EMSCRIPTEN_KEEPALIVE
+// Internal function, called from runtime_pthread.js
 void _emscripten_check_mailbox() {
   // Before we attempt to execute a request from another thread make sure we
   // are in sync with all the loaded code.
@@ -89,13 +85,6 @@ void _emscripten_check_mailbox() {
   atomic_compare_exchange_strong(
     &mailbox->notification, &expected, NOTIFICATION_NONE);
 }
-
-// Send a postMessage notification telling the target thread to check its
-// mailbox when it returns to its event loop. Pass in the current thread and
-// main thread ids to minimize calls back into Wasm.
-void _emscripten_notify_mailbox_postmessage(pthread_t target_thread,
-                                            pthread_t curr_thread,
-                                            pthread_t main_thread);
 
 void emscripten_thread_mailbox_send(pthread_t thread, task t) {
   assert(thread->mailbox_refcount > 0);

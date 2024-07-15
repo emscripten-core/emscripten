@@ -1,6 +1,7 @@
-__errno_location
 __indirect_function_table
 __wasm_call_ctors
+_emscripten_stack_alloc
+_emscripten_stack_restore
 add
 emscripten_stack_get_base
 emscripten_stack_get_current
@@ -10,6 +11,3 @@ emscripten_stack_init
 fflush
 global_val
 memory
-stackAlloc
-stackRestore
-stackSave

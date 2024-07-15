@@ -3267,6 +3267,7 @@ typedef void (APIENTRYP PFNGLGETPROGRAMSTRINGARBPROC) (GLenum target, GLenum pna
 typedef GLboolean (APIENTRYP PFNGLISPROGRAMARBPROC) (GLuint program);
 #ifdef GL_GLEXT_PROTOTYPES
 GLAPI void APIENTRY glProgramStringARB (GLenum target, GLenum format, GLsizei len, const void *string);
+GLAPI void APIENTRY glBindProgram (GLenum target, GLuint program);
 GLAPI void APIENTRY glBindProgramARB (GLenum target, GLuint program);
 GLAPI void APIENTRY glDeleteProgramsARB (GLsizei n, const GLuint *programs);
 GLAPI void APIENTRY glGenProgramsARB (GLsizei n, GLuint *programs);
@@ -4151,6 +4152,7 @@ typedef void (APIENTRYP PFNGLGETUNIFORMFVARBPROC) (GLhandleARB programObj, GLint
 typedef void (APIENTRYP PFNGLGETUNIFORMIVARBPROC) (GLhandleARB programObj, GLint location, GLint *params);
 typedef void (APIENTRYP PFNGLGETSHADERSOURCEARBPROC) (GLhandleARB obj, GLsizei maxLength, GLsizei *length, GLcharARB *source);
 #ifdef GL_GLEXT_PROTOTYPES
+GLAPI void APIENTRY glDeleteObject (GLhandleARB obj);
 GLAPI void APIENTRY glDeleteObjectARB (GLhandleARB obj);
 GLAPI GLhandleARB APIENTRY glGetHandleARB (GLenum pname);
 GLAPI void APIENTRY glDetachObjectARB (GLhandleARB containerObj, GLhandleARB attachedObj);
@@ -4182,7 +4184,9 @@ GLAPI void APIENTRY glUniformMatrix2fvARB (GLint location, GLsizei count, GLbool
 GLAPI void APIENTRY glUniformMatrix3fvARB (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 GLAPI void APIENTRY glUniformMatrix4fvARB (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 GLAPI void APIENTRY glGetObjectParameterfvARB (GLhandleARB obj, GLenum pname, GLfloat *params);
+GLAPI void APIENTRY glGetObjectParameteriv (GLhandleARB obj, GLenum pname, GLint *params);
 GLAPI void APIENTRY glGetObjectParameterivARB (GLhandleARB obj, GLenum pname, GLint *params);
+GLAPI void APIENTRY glGetInfoLog (GLhandleARB obj, GLsizei maxLength, GLsizei *length, GLcharARB *infoLog);
 GLAPI void APIENTRY glGetInfoLogARB (GLhandleARB obj, GLsizei maxLength, GLsizei *length, GLcharARB *infoLog);
 GLAPI void APIENTRY glGetAttachedObjectsARB (GLhandleARB containerObj, GLsizei maxCount, GLsizei *count, GLhandleARB *obj);
 GLAPI GLint APIENTRY glGetUniformLocationARB (GLhandleARB programObj, const GLcharARB *name);

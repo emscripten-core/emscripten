@@ -3,6 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import copy
 import difflib
 import os
 import re
@@ -13,8 +14,10 @@ from . import diagnostics
 
 # Subset of settings that take a memory size (i.e. 1Gb, 64kb etc)
 MEM_SIZE_SETTINGS = {
+    'GLOBAL_BASE',
     'STACK_SIZE',
     'TOTAL_STACK',
+    'INITIAL_HEAP',
     'INITIAL_MEMORY',
     'MEMORY_GROWTH_LINEAR_STEP',
     'MEMORY_GROWTH_GEOMETRIC_CAP',
@@ -52,6 +55,27 @@ PORTS_SETTINGS = {
     'USE_SQLITE3',
 }
 
+# Subset of settings that apply only when generating JS
+JS_ONLY_SETTINGS = {
+    'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE',
+    'INCLUDE_FULL_LIBRARY',
+    'PROXY_TO_WORKER',
+    'PROXY_TO_WORKER_FILENAME',
+    'BUILD_AS_WORKER',
+    'STRICT_JS',
+    'SMALL_XHR_CHUNKS',
+    'HEADLESS',
+    'MODULARIZE',
+    'EXPORT_ES6',
+    'USE_ES6_IMPORT_META',
+    'EXPORT_NAME',
+    'DYNAMIC_EXECUTION',
+    'PTHREAD_POOL_SIZE',
+    'PTHREAD_POOL_SIZE_STRICT',
+    'PTHREAD_POOL_DELAY_LOAD',
+    'DEFAULT_PTHREAD_STACK_SIZE',
+}
+
 # Subset of settings that apply at compile time.
 # (Keep in sync with [compile] comments in settings.js)
 COMPILE_TIME_SETTINGS = {
@@ -62,15 +86,16 @@ COMPILE_TIME_SETTINGS = {
     'MAIN_MODULE',
     'SIDE_MODULE',
     'RELOCATABLE',
+    'LINKABLE',
     'STRICT',
     'EMSCRIPTEN_TRACING',
     'PTHREADS',
     'USE_PTHREADS', # legacy name of PTHREADS setting
     'SHARED_MEMORY',
     'SUPPORT_LONGJMP',
-    'DEFAULT_TO_CXX',
     'WASM_OBJECT_FILES',
     'WASM_WORKERS',
+    'BULK_MEMORY',
 
     # Internal settings used during compilation
     'EXCEPTION_CATCHING_ALLOWED',
@@ -79,10 +104,27 @@ COMPILE_TIME_SETTINGS = {
     'OPT_LEVEL',
     'DEBUG_LEVEL',
 
+    # Affects ports
+    'GL_ENABLE_GET_PROC_ADDRESS', # NOTE: if SDL2 is updated to not rely on eglGetProcAddress(), this can be removed
+
     # This is legacy setting that we happen to handle very early on
     'RUNTIME_LINKED_LIBS',
 }.union(PORTS_SETTINGS)
 
+# Unlike `LEGACY_SETTINGS`, deprecated settings can still be used
+# both on the command line and in the emscripten codebase.
+#
+# At some point in the future, once folks have stopped using these
+# settings we can move them to `LEGACY_SETTINGS`.
+DEPRECATED_SETTINGS = {
+    'SUPPORT_ERRNO': 'emscripten no longer uses the setErrNo library function',
+    'EXTRA_EXPORTED_RUNTIME_METHODS': 'please use EXPORTED_RUNTIME_METHODS instead',
+    'DEMANGLE_SUPPORT': 'mangled names no longer appear in stack traces',
+    'RUNTIME_LINKED_LIBS': 'you can simply list the libraries directly on the commandline now',
+    'CLOSURE_WARNINGS': 'use -Wclosure instead',
+    'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
+    'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead'
+}
 
 # Settings that don't need to be externalized when serializing to json because they
 # are not used by the JS compiler.
@@ -91,6 +133,11 @@ INTERNAL_SETTINGS = {
 }
 
 user_settings: Dict[str, str] = {}
+
+
+def default_setting(name, new_default):
+  if name not in user_settings:
+    setattr(settings, name, new_default)
 
 
 class SettingsManager:
@@ -197,7 +244,7 @@ class SettingsManager:
         exit_with_error('legacy setting used in strict mode: %s', name)
       fixed_values, error_message = self.legacy_settings[name]
       if fixed_values and value not in fixed_values:
-        exit_with_error('Invalid command line option -s ' + name + '=' + str(value) + ': ' + error_message)
+        exit_with_error(f'invalid command line setting `-s{name}={value}`: {error_message}')
       diagnostics.warning('legacy-settings', 'use of legacy setting: %s (%s)', name, error_message)
 
     if name in self.alt_names:
@@ -231,7 +278,7 @@ class SettingsManager:
         value = bool(value)
       if value in ('True', 'False', 'true', 'false'):
         exit_with_error('attempt to set `%s` to `%s`; use 1/0 to set boolean settings' % (name, value))
-    if type(value) != expected_type:
+    if type(value) is not expected_type:
       exit_with_error('setting `%s` expects `%s` but got `%s`' % (name, expected_type.__name__, type(value).__name__))
 
   def __getitem__(self, key):
@@ -239,6 +286,12 @@ class SettingsManager:
 
   def __setitem__(self, key, value):
     self.attrs[key] = value
+
+  def backup(self):
+    return copy.deepcopy(self.attrs)
+
+  def restore(self, previous):
+    self.attrs.update(previous)
 
 
 settings = SettingsManager()

@@ -17,7 +17,7 @@ let LibraryWebAudio = {
   // Note: To let that AudioContext be garbage collected later, call the function
   // emscriptenDestroyAudioContext() to unbind it from Wasm.
   $emscriptenRegisterAudioObject__deps: ['$EmAudio', '$EmAudioCounter'],
-  $emscriptenRegisterAudioObject: function(object) {
+  $emscriptenRegisterAudioObject: (object) => {
 #if ASSERTIONS
     assert(object, 'Called emscriptenRegisterAudioObject() with a null object handle!');
 #endif
@@ -35,15 +35,15 @@ let LibraryWebAudio = {
 
   // Call this function from JavaScript to get the Web Audio object corresponding to the given
   // Wasm handle ID.
-  $emscriptenGetAudioObject: function(objectHandle) {
-    return EmAudio[objectHandle];
-  },
+  $emscriptenGetAudioObject: (objectHandle) => EmAudio[objectHandle],
 
-  // emscripten_create_audio_context() does not itself use emscriptenGetAudioObject() function, but mark it as a
-  // dependency, because the user will not be able to utilize the node unless they call emscriptenGetAudioObject()
-  // on it on JS side to connect it to the graph, so this avoids the user needing to manually do it on the command line.
+  // emscripten_create_audio_context() does not itself use
+  // emscriptenGetAudioObject() function, but mark it as a dependency, because
+  // the user will not be able to utilize the node unless they call
+  // emscriptenGetAudioObject() on it on JS side to connect it to the graph, so
+  // this avoids the user needing to manually do it on the command line.
   emscripten_create_audio_context__deps: ['$emscriptenRegisterAudioObject', '$emscriptenGetAudioObject'],
-  emscripten_create_audio_context: function(options) {
+  emscripten_create_audio_context: (options) => {
     let ctx = window.AudioContext || window.webkitAudioContext;
 #if ASSERTIONS
     if (!ctx) console.error('emscripten_create_audio_context failed! Web Audio is not supported.');
@@ -60,10 +60,10 @@ let LibraryWebAudio = {
     console.dir(opts);
 #endif
 
-  	return ctx && emscriptenRegisterAudioObject(new ctx(opts));
+    return ctx && emscriptenRegisterAudioObject(new ctx(opts));
   },
 
-  emscripten_resume_audio_context_async: function(contextHandle, callback, userData) {
+  emscripten_resume_audio_context_async: (contextHandle, callback, userData) => {
     function cb(state) {
 #if WEBAUDIO_DEBUG
       console.log(`emscripten_resume_audio_context_async() callback: New audio state="${EmAudio[contextHandle].state}", ID=${state}`);
@@ -76,7 +76,7 @@ let LibraryWebAudio = {
     EmAudio[contextHandle].resume().then(() => { cb(1/*running*/) }).catch(() => { cb(0/*suspended*/) });
   },
 
-  emscripten_resume_audio_context_sync: function(contextHandle) {
+  emscripten_resume_audio_context_sync: (contextHandle) => {
 #if ASSERTIONS
     assert(EmAudio[contextHandle], `Called emscripten_resume_audio_context_sync() on a nonexisting context handle ${contextHandle}`);
     assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_resume_audio_context_sync() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
@@ -87,7 +87,7 @@ let LibraryWebAudio = {
     EmAudio[contextHandle].resume();
   },
 
-  emscripten_audio_context_state: function(contextHandle) {
+  emscripten_audio_context_state: (contextHandle) => {
 #if ASSERTIONS
     assert(EmAudio[contextHandle], `Called emscripten_audio_context_state() on a nonexisting context handle ${contextHandle}`);
     assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_audio_context_state() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
@@ -95,8 +95,7 @@ let LibraryWebAudio = {
     return ['suspended', 'running', 'closed', 'interrupted'].indexOf(EmAudio[contextHandle].state);
   },
 
-  emscripten_destroy_audio_context__sig: 'vi',
-  emscripten_destroy_audio_context: function(contextHandle) {
+  emscripten_destroy_audio_context: (contextHandle) => {
 #if ASSERTIONS
     assert(EmAudio[contextHandle], `Called emscripten_destroy_audio_context() on an already freed context handle ${contextHandle}`);
     assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_destroy_audio_context() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
@@ -108,7 +107,7 @@ let LibraryWebAudio = {
     delete EmAudio[contextHandle];
   },
 
-  emscripten_destroy_web_audio_node: function(objectHandle) {
+  emscripten_destroy_web_audio_node: (objectHandle) => {
 #if ASSERTIONS
     assert(EmAudio[objectHandle], `Called emscripten_destroy_web_audio_node() on a nonexisting/already freed object handle ${objectHandle}`);
     assert(EmAudio[objectHandle].disconnect, `Called emscripten_destroy_web_audio_node() on a handle ${objectHandle} that is not an Web Audio Node, but of type ${typeof EmAudio[objectHandle]}`);
@@ -124,12 +123,9 @@ let LibraryWebAudio = {
 
 #if AUDIO_WORKLET
   emscripten_start_wasm_audio_worklet_thread_async__deps: [
-    'wasm_workers_id',
+    '$_wasmWorkersID',
     '$_EmAudioDispatchProcessorCallback'],
-  emscripten_start_wasm_audio_worklet_thread_async: function(contextHandle, stackLowestAddress, stackSize, callback, userData) {
-#if !AUDIO_WORKLET
-    abort('emscripten_create_wasm_audio_worklet() requires building with -s AUDIO_WORKLET=1 enabled!');
-#endif
+  emscripten_start_wasm_audio_worklet_thread_async: (contextHandle, stackLowestAddress, stackSize, callback, userData) => {
 
 #if ASSERTIONS
     assert(contextHandle, `Called emscripten_start_wasm_audio_worklet_thread_async() with a null Web Audio Context handle!`);
@@ -157,7 +153,7 @@ let LibraryWebAudio = {
 #if WEBAUDIO_DEBUG
       console.error(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed!`);
 #endif
-      {{{ makeDynCall('viii', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
+      {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
     };
 
     // Does browser not support AudioWorklets?
@@ -172,14 +168,18 @@ let LibraryWebAudio = {
       return audioWorkletCreationFailed();
     }
 
-    // TODO: In MINIMAL_RUNTIME builds, read this file off of a preloaded Blob, and/or embed from a string like with WASM_WORKERS==2 mode.
+    // TODO: In MINIMAL_RUNTIME builds, read this file off of a preloaded Blob,
+    // and/or embed from a string like with WASM_WORKERS==2 mode.
     audioWorklet.addModule('{{{ TARGET_BASENAME }}}.aw.js').then(() => {
 #if WEBAUDIO_DEBUG
       console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule('audioworklet.js') completed`);
 #endif
       audioWorklet.bootstrapMessage = new AudioWorkletNode(audioContext, 'message', {
         processorOptions: {
-          '$ww': _wasm_workers_id++, // Assign the loaded AudioWorkletGlobalScope a Wasm Worker ID so that it can utilized its own TLS slots, and it is recognized to not be the main browser thread.
+          // Assign the loaded AudioWorkletGlobalScope a Wasm Worker ID so that
+          // it can utilized its own TLS slots, and it is recognized to not be
+          // the main browser thread.
+          '$ww': _wasmWorkersID++,
 #if MINIMAL_RUNTIME
           'wasm': Module['wasm'],
           'mem': wasmMemory,
@@ -193,13 +193,16 @@ let LibraryWebAudio = {
       });
       audioWorklet.bootstrapMessage.port.onmessage = _EmAudioDispatchProcessorCallback;
 
-      // AudioWorklets do not have a importScripts() function like Web Workers do (and AudioWorkletGlobalScope does not allow dynamic import() either),
-      // but instead, the main thread must load all JS code into the worklet scope. Send the application main JS script to the audio worklet.
+      // AudioWorklets do not have a importScripts() function like Web Workers
+      // do (and AudioWorkletGlobalScope does not allow dynamic import()
+      // either), but instead, the main thread must load all JS code into the
+      // worklet scope. Send the application main JS script to the audio
+      // worklet.
       return audioWorklet.addModule(
 #if MINIMAL_RUNTIME
         Module['js']
 #else
-        Module['mainScriptUrlOrBlob'] || _scriptDir
+        Module['mainScriptUrlOrBlob'] || _scriptName
 #endif
       );
     }).then(() => {
@@ -210,12 +213,15 @@ let LibraryWebAudio = {
     }).catch(audioWorkletCreationFailed);
   },
 
-  $_EmAudioDispatchProcessorCallback: function(e) {
-    let data = e.data, wasmCall = data['_wsc']; // '_wsc' is short for 'wasm call', trying to use an identifier name that will never conflict with user code
+  $_EmAudioDispatchProcessorCallback: (e) => {
+    let data = e.data;
+    // '_wsc' is short for 'wasm call', trying to use an identifier name that
+    // will never conflict with user code
+    let wasmCall = data['_wsc'];
     wasmCall && getWasmTableEntry(wasmCall)(...data['x']);
   },
 
-  emscripten_create_wasm_audio_worklet_processor_async: function(contextHandle, options, callback, userData) {
+  emscripten_create_wasm_audio_worklet_processor_async: (contextHandle, options, callback, userData) => {
 #if ASSERTIONS
     assert(contextHandle, `Called emscripten_create_wasm_audio_worklet_processor_async() with a null Web Audio Context handle!`);
     assert(EmAudio[contextHandle], `Called emscripten_create_wasm_audio_worklet_processor_async() with a nonexisting/already freed Web Audio Context handle ${contextHandle}!`);
@@ -228,7 +234,7 @@ let LibraryWebAudio = {
       audioParamDescriptors = HEAPU32[options+2] >> 2,
       i = 0;
 
-    while(numAudioParams--) {
+    while (numAudioParams--) {
       audioParams.push({
         name: i++,
         defaultValue: HEAPF32[audioParamDescriptors++],
@@ -243,15 +249,18 @@ let LibraryWebAudio = {
 #endif
 
     EmAudio[contextHandle].audioWorklet.bootstrapMessage.port.postMessage({
-      _wpn: UTF8ToString(HEAPU32[options]), // '_wpn' == 'Worklet Processor Name', use a deliberately mangled name so that this field won't accidentally be mixed with user submitted messages.
-      audioParams: audioParams,
-      contextHandle: contextHandle,
-      callback: callback,
-      userData: userData
+      // '_wpn' == 'Worklet Processor Name', use a deliberately mangled name so
+      // that this field won't accidentally be mixed with user submitted
+      // messages.
+      _wpn: UTF8ToString(HEAPU32[options]),
+      audioParams,
+      contextHandle,
+      callback,
+      userData
     });
   },
 
-  emscripten_create_wasm_audio_worklet_node: function(contextHandle, name, options, callback, userData) {
+  emscripten_create_wasm_audio_worklet_node: (contextHandle, name, options, callback, userData) => {
 #if ASSERTIONS
     assert(contextHandle, `Called emscripten_create_wasm_audio_worklet_node() with a null Web Audio Context handle!`);
     assert(EmAudio[contextHandle], `Called emscripten_create_wasm_audio_worklet_node() with a nonexisting/already freed Web Audio Context handle ${contextHandle}!`);
@@ -261,7 +270,7 @@ let LibraryWebAudio = {
 
     function readChannelCountArray(heapIndex, numOutputs) {
       let channelCounts = [];
-      while(numOutputs--) channelCounts.push(HEAPU32[heapIndex++]);
+      while (numOutputs--) channelCounts.push(HEAPU32[heapIndex++]);
       return channelCounts;
     }
 
@@ -280,64 +289,54 @@ let LibraryWebAudio = {
   },
 #endif // ~AUDIO_WORKLET
 
-  emscripten_current_thread_is_audio_worklet: function() {
-    return typeof AudioWorkletGlobalScope !== 'undefined';
-  },
+  emscripten_current_thread_is_audio_worklet: () => typeof AudioWorkletGlobalScope !== 'undefined',
 
-  emscripten_audio_worklet_post_function_v__sig: 'vip',
-  emscripten_audio_worklet_post_function_v: function(audioContext, funcPtr) {
+  emscripten_audio_worklet_post_function_v: (audioContext, funcPtr) => {
     (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : globalThis['messagePort']).postMessage({'_wsc': funcPtr, 'x': [] }); // "WaSm Call"
   },
 
-  $emscripten_audio_worklet_post_function_1: function(audioContext, funcPtr, arg0) {
+  $emscripten_audio_worklet_post_function_1: (audioContext, funcPtr, arg0) => {
     (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : globalThis['messagePort']).postMessage({'_wsc': funcPtr, 'x': [arg0] }); // "WaSm Call"
   },
 
-  emscripten_audio_worklet_post_function_vi__sig: 'vipi',
   emscripten_audio_worklet_post_function_vi__deps: ['$emscripten_audio_worklet_post_function_1'],
   emscripten_audio_worklet_post_function_vi(audioContext, funcPtr, arg0) {
     emscripten_audio_worklet_post_function_1(audioContext, funcPtr, arg0)
   },
 
-  emscripten_audio_worklet_post_function_vd__sig: 'vipd',
   emscripten_audio_worklet_post_function_vd__deps: ['$emscripten_audio_worklet_post_function_1'],
   emscripten_audio_worklet_post_function_vd(audioContext, funcPtr, arg0) {
     emscripten_audio_worklet_post_function_1(audioContext, funcPtr, arg0)
   },
 
-  $emscripten_audio_worklet_post_function_2: function(audioContext, funcPtr, arg0, arg1) {
+  $emscripten_audio_worklet_post_function_2: (audioContext, funcPtr, arg0, arg1) => {
     (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : globalThis['messagePort']).postMessage({'_wsc': funcPtr, 'x': [arg0, arg1] }); // "WaSm Call"
   },
 
-  emscripten_audio_worklet_post_function_vii__sig: 'vipii',
   emscripten_audio_worklet_post_function_vii__deps: ['$emscripten_audio_worklet_post_function_2'],
-  emscripten_audio_worklet_post_function_vii: function(audioContext, funcPtr, arg0, arg1) {
+  emscripten_audio_worklet_post_function_vii: (audioContext, funcPtr, arg0, arg1) => {
     emscripten_audio_worklet_post_function_2(audioContext, funcPtr, arg0, arg1);
   },
 
-  emscripten_audio_worklet_post_function_vdd__sig: 'vipdd',
   emscripten_audio_worklet_post_function_vdd__deps: ['$emscripten_audio_worklet_post_function_2'],
-  emscripten_audio_worklet_post_function_vdd: function(audioContext, funcPtr, arg0, arg1) {
+  emscripten_audio_worklet_post_function_vdd: (audioContext, funcPtr, arg0, arg1) => {
     emscripten_audio_worklet_post_function_2(audioContext, funcPtr, arg0, arg1);
   },
 
-  $emscripten_audio_worklet_post_function_3: function(audioContext, funcPtr, arg0, arg1, arg2) {
+  $emscripten_audio_worklet_post_function_3: (audioContext, funcPtr, arg0, arg1, arg2) => {
     (audioContext ? EmAudio[audioContext].audioWorklet.bootstrapMessage.port : globalThis['messagePort']).postMessage({'_wsc': funcPtr, 'x': [arg0, arg1, arg2] }); // "WaSm Call"
   },
-  emscripten_audio_worklet_post_function_viii__sig: 'vipiii',
   emscripten_audio_worklet_post_function_viii__deps: ['$emscripten_audio_worklet_post_function_3'],
-  emscripten_audio_worklet_post_function_viii: function(audioContext, funcPtr, arg0, arg1, arg2) {
+  emscripten_audio_worklet_post_function_viii: (audioContext, funcPtr, arg0, arg1, arg2) => {
     emscripten_audio_worklet_post_function_3(audioContext, funcPtr, arg0, arg1, arg2);
   },
-  emscripten_audio_worklet_post_function_vddd__sig: 'vipddd',
   emscripten_audio_worklet_post_function_vddd__deps: ['$emscripten_audio_worklet_post_function_3'],
-  emscripten_audio_worklet_post_function_vddd: function(audioContext, funcPtr, arg0, arg1, arg2) {
+  emscripten_audio_worklet_post_function_vddd: (audioContext, funcPtr, arg0, arg1, arg2) => {
     emscripten_audio_worklet_post_function_3(audioContext, funcPtr, arg0, arg1, arg2);
   },
 
   emscripten_audio_worklet_post_function_sig__deps: ['$readAsmConstArgs'],
-  emscripten_audio_worklet_post_function_sig__sig: 'vippp',
-  emscripten_audio_worklet_post_function_sig: function(audioContext, funcPtr, sigPtr, varargs) {
+  emscripten_audio_worklet_post_function_sig: (audioContext, funcPtr, sigPtr, varargs) => {
 #if ASSERTIONS
     assert(audioContext >= 0);
     assert(funcPtr);
@@ -349,4 +348,4 @@ let LibraryWebAudio = {
   }
 };
 
-mergeInto(LibraryManager.library, LibraryWebAudio);
+addToLibrary(LibraryWebAudio);

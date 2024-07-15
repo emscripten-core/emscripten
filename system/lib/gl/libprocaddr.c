@@ -7,6 +7,8 @@
 
 // GL proc address library integration
 
+#if GL_ENABLE_GET_PROC_ADDRESS
+
 extern void* emscripten_GetProcAddress(const char *name);
 
 __attribute__((weak)) // SDL2 will link in its own version of this
@@ -21,3 +23,5 @@ void* eglGetProcAddress(const char* name) {
 void* glfwGetProcAddress(const char* name) {
   return emscripten_GetProcAddress(name);
 }
+
+#endif

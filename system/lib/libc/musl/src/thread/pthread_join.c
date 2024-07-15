@@ -29,9 +29,8 @@ static int __pthread_timedjoin_np(pthread_t t, void **res, const struct timespec
 		// This also handle cases where the thread becomes detached
 		// *during* the join.
 		if (state >= DT_DETACHED) {
-			// Even though the man page says this is undefined
-			// behaviour we ave several tests in the posixtest suite
-			// that depend on this.
+			// Even though the man page says this is undefined behaviour we have
+			// several tests in the posixtest suite that depend on this.
 			r = EINVAL;
 			break;
 		}
@@ -46,7 +45,7 @@ static int __pthread_timedjoin_np(pthread_t t, void **res, const struct timespec
 	if (res) *res = t->result;
 #ifdef __EMSCRIPTEN__
 	// Thread was exited during this call, be sure to clean it up.
-	if (state == DT_EXITED) __emscripten_thread_cleanup(t);
+	if (state == DT_EXITED) _emscripten_thread_cleanup(t);
 #else // XXX Emscripten map_base unused
 	if (t->map_base) __munmap(t->map_base, t->map_size);
 #endif

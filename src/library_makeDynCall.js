@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
-  $createDyncallWrapper__deps: ['$generateFuncType', '$uleb128Encode'],
-  $createDyncallWrapper: function(sig) {
+addToLibrary({
+  $createDyncallWrapper__deps: ['$generateFuncType', '$uleb128Encode', 'setTempRet0', '$wasmTable'],
+  $createDyncallWrapper: (sig) => {
     var sections = [];
     var prelude = [
       0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")
@@ -31,7 +31,7 @@ mergeInto(LibraryManager.library, {
 
     var typeSection = [0x01 /* Type section code */];
     uleb128Encode(typeSectionBody.length, typeSection); // length of section in bytes
-    typeSection.push.apply(typeSection, typeSectionBody);
+    typeSection.push(...typeSectionBody);
     sections.push(typeSection);
 
     var importSection = [
@@ -133,10 +133,10 @@ if (sig[0] === "j") {
 
     var codeBody = [0x01]; // one code
     uleb128Encode(convert_code.length, codeBody);
-    codeBody.push.apply(codeBody, convert_code);
+    codeBody.push(...convert_code);
     var codeSection = [0x0A /* Code section code */];
     uleb128Encode(codeBody.length, codeSection);
-    codeSection.push.apply(codeSection, codeBody);
+    codeSection.push(...codeBody);
     sections.push(codeSection);
 
     var bytes = new Uint8Array([].concat.apply([], sections));

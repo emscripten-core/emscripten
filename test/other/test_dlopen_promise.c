@@ -22,7 +22,7 @@ em_promise_result_t on_rejected(void **result, void* data, void *value) {
 
 int main() {
   em_promise_t inner = emscripten_dlopen_promise("libside.so", RTLD_NOW);
-  em_promise_t outer = emscripten_promise_then(outer, on_fullfilled, on_rejected, NULL);
+  em_promise_t outer = emscripten_promise_then(inner, on_fullfilled, on_rejected, NULL);
   emscripten_promise_destroy(outer);
   emscripten_promise_destroy(inner);
   printf("returning from main\n");

@@ -16,7 +16,7 @@
 // Uncomment to trace TLS allocations.
 // #define DEBUG_TLS
 #ifdef DEBUG_TLS
-#define dbg(fmt, ...) _emscripten_dbgf(fmt, ##__VA_ARGS__)
+#define dbg(fmt, ...) emscripten_dbgf(fmt, ##__VA_ARGS__)
 #else
 #define dbg(fmt, ...)
 #endif

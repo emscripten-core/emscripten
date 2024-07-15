@@ -27,7 +27,7 @@
     {
         "file": "threading_internal.h",
         "defines": [
-            "EM_QUEUED_JS_CALL_MAX_ARGS"
+            "EM_THREAD_STATUS_NUMFIELDS"
         ]
     },
     {
@@ -40,6 +40,8 @@
               "mem_size",
               "table_addr",
               "table_size",
+              "file_data",
+              "file_data_size",
               "name"
             ]
         }

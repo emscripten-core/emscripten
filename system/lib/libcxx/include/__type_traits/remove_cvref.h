@@ -20,20 +20,25 @@
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
+#if __has_builtin(__remove_cvref) && !defined(_LIBCPP_COMPILER_GCC)
 template <class _Tp>
-using __uncvref_t _LIBCPP_NODEBUG = typename remove_cv<typename remove_reference<_Tp>::type>::type;
+using __remove_cvref_t _LIBCPP_NODEBUG = __remove_cvref(_Tp);
+#else
+template <class _Tp>
+using __remove_cvref_t _LIBCPP_NODEBUG = __remove_cv_t<__libcpp_remove_reference_t<_Tp> >;
+#endif // __has_builtin(__remove_cvref)
 
 template <class _Tp, class _Up>
-struct __is_same_uncvref : _IsSame<__uncvref_t<_Tp>, __uncvref_t<_Up> > {};
+struct __is_same_uncvref : _IsSame<__remove_cvref_t<_Tp>, __remove_cvref_t<_Up> > {};
 
-#if _LIBCPP_STD_VER > 17
-// remove_cvref - same as __uncvref
+#if _LIBCPP_STD_VER >= 20
 template <class _Tp>
 struct remove_cvref {
-    using type _LIBCPP_NODEBUG = __uncvref_t<_Tp>;
+  using type _LIBCPP_NODEBUG = __remove_cvref_t<_Tp>;
 };
 
-template <class _Tp> using remove_cvref_t = typename remove_cvref<_Tp>::type;
+template <class _Tp>
+using remove_cvref_t = __remove_cvref_t<_Tp>;
 #endif
 
 _LIBCPP_END_NAMESPACE_STD

@@ -17,7 +17,7 @@ function hexDump(bytes) {
 }
 
 var decoder = new TextDecoder('utf-8');
-var port = 8088;
+var port = 8089;
 var ws = require('ws');
 var wss = new ws.WebSocketServer({ port: port });
 console.log('WebSocket server listening on ws://localhost:' + port + '/');

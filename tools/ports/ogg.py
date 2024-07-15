@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
 import os
 
 TAG = 'version_1'
@@ -18,11 +17,9 @@ def get(ports, settings, shared):
   ports.fetch_project('ogg', f'https://github.com/emscripten-ports/ogg/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    logging.info('building port: ogg')
-
     source_path = os.path.join(ports.get_dir(), 'ogg', 'Ogg-' + TAG)
     ports.write_file(os.path.join(source_path, 'include', 'ogg', 'config_types.h'), config_types_h)
-    ports.install_header_dir(os.path.join(source_path, 'include', 'ogg'), 'ogg')
+    ports.install_headers(os.path.join(source_path, 'include', 'ogg'), target='ogg')
     ports.build_port(os.path.join(source_path, 'src'), final, 'ogg')
 
   return [shared.cache.get_lib('libogg.a', create)]
@@ -32,12 +29,8 @@ def clear(ports, settings, shared):
   shared.cache.erase_lib('libogg.a')
 
 
-def process_args(ports):
-  return []
-
-
 def show():
-  return 'ogg (USE_OGG=1; zlib license)'
+  return 'ogg (-sUSE_OGG=1 or --use-port=ogg; zlib license)'
 
 
 config_types_h = '''\

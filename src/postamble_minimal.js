@@ -48,40 +48,33 @@ function run() {
 }
 #endif
 
-function initRuntime(asm) {
+function initRuntime(wasmExports) {
 #if ASSERTIONS || SAFE_HEAP || USE_ASAN
   runtimeInitialized = true;
 #endif
 
 #if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) {
-    // Export needed variables that worker.js needs to Module.
-    Module['HEAPU32'] = HEAPU32;
-    Module['__emscripten_thread_init'] = __emscripten_thread_init;
-    Module['__emscripten_thread_exit'] = __emscripten_thread_exit;
-    Module['_pthread_self'] = _pthread_self;
-    return;
-  }
+  if (ENVIRONMENT_IS_PTHREAD) return
 #endif
 
 #if WASM_WORKERS
-  if (ENVIRONMENT_IS_WASM_WORKER) return __wasm_worker_initializeRuntime();
+  if (ENVIRONMENT_IS_WASM_WORKER) return _wasmWorkerInitializeRuntime();
 #endif
 
 #if STACK_OVERFLOW_CHECK
   _emscripten_stack_init();
   writeStackCookie();
 #if STACK_OVERFLOW_CHECK >= 2
-  ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
+  setStackLimits();
 #endif
 #endif
 
 #if PTHREADS
-  PThread.tlsInitFunctions.push(asm['_emscripten_tls_init']);
+  PThread.tlsInitFunctions.push(wasmExports['_emscripten_tls_init']);
 #endif
 
 #if hasExportedSymbol('__wasm_call_ctors')
-  asm['__wasm_call_ctors']();
+  wasmExports['__wasm_call_ctors']();
 #endif
 
   <<< ATINITS >>>
@@ -89,19 +82,10 @@ function initRuntime(asm) {
 
 // Initialize wasm (asynchronous)
 
-var imports = {
-#if MINIFY_WASM_IMPORTED_MODULES
-  'a': wasmImports,
-#else // MINIFY_WASM_IMPORTED_MODULES
-  'env': wasmImports,
-  '{{{ WASI_MODULE_NAME }}}': wasmImports,
-#endif // MINIFY_WASM_IMPORTED_MODULES
-};
-
 // In non-fastcomp non-asm.js builds, grab wasm exports to outer scope
 // for emscripten_get_exported_function() to be able to access them.
 #if LibraryManager.has('library_exports.js')
-var asm;
+var wasmExports;
 #endif
 
 #if PTHREADS
@@ -111,6 +95,20 @@ var wasmModule;
 #if DECLARE_ASM_MODULE_EXPORTS
 <<< WASM_MODULE_EXPORTS_DECLARES >>>
 #endif
+
+#if PTHREADS
+function loadModule() {
+  assignWasmImports();
+#endif
+
+var imports = {
+#if MINIFY_WASM_IMPORTED_MODULES
+  'a': wasmImports,
+#else // MINIFY_WASM_IMPORTED_MODULES
+  'env': wasmImports,
+  '{{{ WASI_MODULE_NAME }}}': wasmImports,
+#endif // MINIFY_WASM_IMPORTED_MODULES
+};
 
 #if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
@@ -125,9 +123,9 @@ if (!WebAssembly.instantiateStreaming && !Module['wasm']) throw 'Must load WebAs
 #endif
 (WebAssembly.instantiateStreaming
   ? WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
-  : WebAssembly.instantiate(Module['wasm'], imports)).then(function(output) {
+  : WebAssembly.instantiate(Module['wasm'], imports)).then((output) => {
 #else
-WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports).then(function(output) {
+WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports).then((output) => {
 #endif
 
 #else // Non-streaming instantiation
@@ -137,12 +135,12 @@ WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
 if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
 #endif
 
-WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
+WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif
 
-#if !LibraryManager.has('library_exports.js') && !EMBIND
-  // If not using the emscripten_get_exported_function() API or embind, keep the
-  // 'asm' exports variable in local scope to this instantiate function to save
+#if !LibraryManager.has('library_exports.js')
+  // If not using the emscripten_get_exported_function() API, keep the
+  // `wasmExports` variable in local scope to this instantiate function to save
   // code size.  (otherwise access it without to export it to outer scope)
   var
 #endif
@@ -163,16 +161,16 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   // that case, 'output' is a WebAssembly.Instance.
   // In main thread, Module['wasm'] is either a typed array or a fetch stream.
   // In that case, 'output.instance' is the WebAssembly.Instance.
-  asm = (output.instance || output).exports;
+  wasmExports = (output.instance || output).exports;
 #else
-  asm = output.exports;
+  wasmExports = output.exports;
 #endif
 #else
-  asm = output.instance.exports;
+  wasmExports = output.instance.exports;
 #endif
 
-#if MEMORY64
-  asm = instrumentWasmExportsForMemory64(asm);
+#if MEMORY64 || CAN_ADDRESS_2GB
+  wasmExports = applySignatureConversions(wasmExports);
 #endif
 
 #if USE_OFFSET_CONVERTER
@@ -183,50 +181,44 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
 #if !DECLARE_ASM_MODULE_EXPORTS
-  exportAsmFunctions(asm);
+  exportWasmSymbols(wasmExports);
 #else
   <<< WASM_MODULE_EXPORTS >>>
 #endif
-  wasmTable = asm['__indirect_function_table'];
+#if '$wasmTable' in addedLibraryItems
+  wasmTable = wasmExports['__indirect_function_table'];
 #if ASSERTIONS
   assert(wasmTable);
+#endif
 #endif
 
 #if AUDIO_WORKLET
   // If we are in the audio worklet environment, we can only access the Module object
   // and not the global scope of the main JS script. Therefore we need to export
-  // all functions that the audio worklet scope needs onto the Module object.
-  Module['wasmTable'] = wasmTable;
+  // all symbols that the audio worklet scope needs onto the Module object.
 #if ASSERTIONS
-  // In ASSERTIONS-enabled builds, the following symbols have gotten read-only getters
-  // saved to the Module. Remove those getters so we can manually export the stack
-  // functions here.
+  // In ASSERTIONS-enabled builds, the needed symbols have gotten read-only getters
+  // saved to the Module. Remove the getters so we can manually export them here.
   delete Module['stackSave'];
   delete Module['stackAlloc'];
   delete Module['stackRestore'];
+  delete Module['wasmTable'];
 #endif
   Module['stackSave'] = stackSave;
   Module['stackAlloc'] = stackAlloc;
   Module['stackRestore'] = stackRestore;
+  Module['wasmTable'] = wasmTable;
 #endif
 
 #if !IMPORTED_MEMORY
-  wasmMemory = asm['memory'];
+  wasmMemory = wasmExports['memory'];
 #if ASSERTIONS
   assert(wasmMemory);
-  assert(wasmMemory.buffer.byteLength === {{{ INITIAL_MEMORY }}});
 #endif
   updateMemoryViews();
 #endif
 
-#if !MEM_INIT_IN_WASM && !SINGLE_FILE
-#if ASSERTIONS
-  if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
-#endif
-  HEAPU8.set(new Uint8Array(Module['mem']), {{{ GLOBAL_BASE }}});
-#endif
-
-  initRuntime(asm);
+  initRuntime(wasmExports);
 #if PTHREADS
   // Export Wasm module for pthread creation to access.
   wasmModule = output.module || Module['wasm'];
@@ -237,7 +229,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 }
 
 #if ASSERTIONS || WASM == 2
-, function(error) {
+, (error) => {
 #if ASSERTIONS
   console.error(error);
 #endif
@@ -258,3 +250,13 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 }
 #endif // ASSERTIONS || WASM == 2
 );
+
+#if PTHREADS
+}
+
+if (!ENVIRONMENT_IS_PTHREAD) {
+  // When running in a pthread we delay module loading untill we have
+  // received the module via postMessage
+  loadModule();
+}
+#endif

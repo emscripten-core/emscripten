@@ -16,13 +16,13 @@ var LibraryPThreadStub = {
   // Stub implementation for pthread.h when not compiling with pthreads support enabled.
   // ===================================================================================
 
-  emscripten_is_main_browser_thread: function() {
+  emscripten_is_main_browser_thread: () =>
 #if MINIMAL_RUNTIME
-    return typeof importScripts == 'undefined';
+    typeof importScripts == 'undefined'
 #else
-    return !ENVIRONMENT_IS_WORKER;
+    !ENVIRONMENT_IS_WORKER
 #endif
-  },
+  ,
 };
 
-mergeInto(LibraryManager.library, LibraryPThreadStub);
+addToLibrary(LibraryPThreadStub);

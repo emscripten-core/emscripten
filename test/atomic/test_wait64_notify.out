@@ -1,0 +1,11 @@
+main: creating worker
+main: entering timeout loop to wait for wasm worker to run
+worker_main
+Waiting on address with unexpected value should return 'not-equal'
+Waiting on address with unexpected value should return 'not-equal' also if timeout==0
+Waiting for 0 nanoseconds should return 'timed-out'
+Waiting for >0 nanoseconds should return 'timed-out'
+Waiting for infinitely long should return 'ok'
+main: seen worker running
+main: waking worker
+Test finished

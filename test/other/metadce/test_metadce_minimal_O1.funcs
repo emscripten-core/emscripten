@@ -1,8 +1,7 @@
-$__errno_location
 $__wasm_call_ctors
+$_emscripten_stack_alloc
+$_emscripten_stack_restore
+$_emscripten_tempret_get
+$_emscripten_tempret_set
 $add
-$getTempRet0
-$setTempRet0
-$stackAlloc
-$stackRestore
-$stackSave
+$emscripten_stack_get_current

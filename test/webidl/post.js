@@ -81,7 +81,7 @@ try {
 } catch(e) {}
 console.log(succeeded);
 
-TheModule.Child2.prototype.printStatic(); // static calls go through the prototype
+TheModule.Child2.prototype.printStatic(42); // static calls go through the prototype
 
 // virtual function
 c2.virtualFunc();
@@ -186,13 +186,13 @@ console.log('int_array[0] == ' + arrayClass.get_int_array(0));
 console.log('int_array[7] == ' + arrayClass.get_int_array(7));
 
 try {
-  arrayClass.set_int_array(-1, struct);
+  arrayClass.set_int_array(-1, 42);
 } catch (e) {
   console.log('idx -1: ' + e);
 }
 
 try {
-  arrayClass.set_int_array(8, struct);
+  arrayClass.set_int_array(8, 42);
 } catch (e) {
   console.log('idx 8: ' + e);
 }
@@ -243,6 +243,36 @@ try {
   s.Print(123, null); // Expects a string or a wrapped pointer
 } catch (e) {}
 
+// Returned pointers (issue 14745)
+
+var factory = new TheModule.ObjectFactory();
+var objectProvider = factory.getProvider();
+var smallObject = objectProvider.getObject();
+
+// This will print 123 if we managed to access the object, which means that integers
+// were correctly typecast to ObjectProvider pointer and SmallObject pointer.
+console.log(smallObject.getID(123));
+
+TheModule.destroy(factory)
+
+// end of issue 14745
+
+// octet[] to char* (issue 14827)
+
+const arrayTestObj = new TheModule.ArrayArgumentTest();
+const bufferAddr = TheModule._malloc(35);
+TheModule.stringToUTF8('I should match the member variable', bufferAddr, 35);
+
+const arrayTestResult = arrayTestObj.byteArrayTest(bufferAddr);
+const arrayDomStringResult = arrayTestObj.domStringTest('I should match the member variable');
+console.log(arrayTestResult);
+console.log(arrayDomStringResult);
+
+TheModule.destroy(arrayTestObj)
+TheModule._free(bufferAddr);
+	
+// end of issue 14827
+
 // Check for overflowing the stack
 
 var before = Date.now();
@@ -270,7 +300,7 @@ if (isMemoryGrowthAllowed) {
     intArray = intArray.concat(intArray);
     storeArray.setArray(intArray);
   }
-  
+
   // Make sure the array was copied to the newly allocated HEAP
   var numCopiedEntries = 0;
   for (var i = 0; i < intArray.length; i++) {
@@ -284,8 +314,6 @@ if (isMemoryGrowthAllowed) {
     console.log('ERROR: An array was not copied to HEAP32 after memory reallocation');
   }
 }
-
-//
 
 console.log('\ndone.')
 })();

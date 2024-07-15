@@ -60,9 +60,9 @@ void AppendToErrorMessageBuffer(const char *buffer) {
 void PrintMemoryByte(InternalScopedString *str, const char *before, u8 byte,
                      bool in_shadow, const char *after) {
   Decorator d;
-  str->append("%s%s%x%x%s%s", before,
-              in_shadow ? d.ShadowByte(byte) : d.MemoryByte(), byte >> 4,
-              byte & 15, d.Default(), after);
+  str->AppendF("%s%s%x%x%s%s", before,
+               in_shadow ? d.ShadowByte(byte) : d.MemoryByte(), byte >> 4,
+               byte & 15, d.Default(), after);
 }
 
 static void PrintZoneForPointer(uptr ptr, uptr zone_ptr,
@@ -351,6 +351,18 @@ void ReportBadParamsToAnnotateContiguousContainer(uptr beg, uptr end,
   ScopedInErrorReport in_report;
   ErrorBadParamsToAnnotateContiguousContainer error(
       GetCurrentTidOrInvalid(), stack, beg, end, old_mid, new_mid);
+  in_report.ReportError(error);
+}
+
+void ReportBadParamsToAnnotateDoubleEndedContiguousContainer(
+    uptr storage_beg, uptr storage_end, uptr old_container_beg,
+    uptr old_container_end, uptr new_container_beg, uptr new_container_end,
+    BufferedStackTrace *stack) {
+  ScopedInErrorReport in_report;
+  ErrorBadParamsToAnnotateDoubleEndedContiguousContainer error(
+      GetCurrentTidOrInvalid(), stack, storage_beg, storage_end,
+      old_container_beg, old_container_end, new_container_beg,
+      new_container_end);
   in_report.ReportError(error);
 }
 

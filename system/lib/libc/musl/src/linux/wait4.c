@@ -12,7 +12,7 @@ pid_t wait4(pid_t pid, int *status, int options, struct rusage *ru)
 	if (ru) {
 		long long kru64[18];
 		r = __syscall(SYS_wait4_time64, pid, status, options, kru64);
-		if (!r) {
+		if (r > 0) {
 			ru->ru_utime = (struct timeval)
 				{ .tv_sec = kru64[0], .tv_usec = kru64[1] };
 			ru->ru_stime = (struct timeval)
@@ -26,7 +26,7 @@ pid_t wait4(pid_t pid, int *status, int options, struct rusage *ru)
 	}
 #endif
 	char *dest = ru ? (char *)&ru->ru_maxrss - 4*sizeof(long) : 0;
-	r = __syscall(SYS_wait4, pid, status, options, dest);
+	r = __sys_wait4(pid, status, options, dest);
 	if (r>0 && ru && sizeof(time_t) > sizeof(long)) {
 		long kru[4];
 		memcpy(kru, dest, 4*sizeof(long));

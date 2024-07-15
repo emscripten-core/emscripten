@@ -11,7 +11,7 @@
 #define _LIBCPP___UTILITY_TO_UNDERLYING_H
 
 #include <__config>
-#include <type_traits>
+#include <__type_traits/underlying_type.h>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
@@ -21,17 +21,15 @@ _LIBCPP_BEGIN_NAMESPACE_STD
 
 #ifndef _LIBCPP_CXX03_LANG
 template <class _Tp>
-_LIBCPP_INLINE_VISIBILITY constexpr typename underlying_type<_Tp>::type
-__to_underlying(_Tp __val) noexcept {
+_LIBCPP_HIDE_FROM_ABI constexpr typename underlying_type<_Tp>::type __to_underlying(_Tp __val) noexcept {
   return static_cast<typename underlying_type<_Tp>::type>(__val);
 }
 #endif // !_LIBCPP_CXX03_LANG
 
-#if _LIBCPP_STD_VER > 20
+#if _LIBCPP_STD_VER >= 23
 template <class _Tp>
-_LIBCPP_NODISCARD_EXT _LIBCPP_INLINE_VISIBILITY constexpr underlying_type_t<_Tp>
-to_underlying(_Tp __val) noexcept {
-  return _VSTD::__to_underlying(__val);
+_LIBCPP_NODISCARD_EXT _LIBCPP_HIDE_FROM_ABI constexpr underlying_type_t<_Tp> to_underlying(_Tp __val) noexcept {
+  return std::__to_underlying(__val);
 }
 #endif
 

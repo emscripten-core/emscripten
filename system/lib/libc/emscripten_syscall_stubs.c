@@ -34,21 +34,17 @@ static mode_t g_umask = S_IRWXU | S_IRWXG | S_IRWXO;
 #define REPORT(name)
 #else
 #define REPORT(name) \
-  emscripten_console_error("warning: unsupported syscall: __syscall_" #name "\n");
+  emscripten_err("warning: unsupported syscall: __syscall_" #name "\n");
 #endif
 
 #define UNIMPLEMENTED(name, args) \
-  int __syscall_##name args { \
+  weak int __syscall_##name args { \
     REPORT(name); \
     return -ENOSYS; \
   }
 
 #define STRINGIFY(s) #s
 #define STR(s) STRINGIFY(s)
-
-#ifndef weak
-#define weak __attribute__((__weak__))
-#endif
 
 weak int __syscall_uname(intptr_t buf) {
   if (!buf) {
@@ -108,7 +104,7 @@ weak int __syscall_getppid() {
   return g_ppid;
 }
 
-weak int __syscall_link(intptr_t oldpath, intptr_t newpath) {
+weak int __syscall_linkat(int olddirfd, intptr_t oldpath, int newdirfd, intptr_t newpath, int flags) {
   return -EMLINK; // no hardlinks for us
 }
 

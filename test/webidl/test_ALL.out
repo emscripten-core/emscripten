@@ -1,0 +1,114 @@
+Parent:42
+*
+84
+object
+object
+8
+8
+8
+6
+6
+9
+10
+10
+boolean
+true
+c1
+Parent:7
+Child1:7
+7
+14
+196
+588
+14
+28
+true
+Child1::parentFunc(90)
+c1 v2
+Parent:16
+Child1:15
+15
+30
+900
+2700
+true
+c2
+Parent:9
+Child2:9
+9
+18
+5832
+0
+0
+1
+*static*: 42
+*virtualf*
+*virtualf*
+*virtualf2*
+Parent:9
+Child2:9
+*js virtualf replacement*
+*js virtualf replacement*
+*js virtualf2 replacement*
+*js virtualf3 replacement 123*
+caught: a JSImplementation must implement all functions, you forgot Child2JS::virtualFunc4.
+*js virtualf3 replacement 43*
+*virtualf*
+*virtualf*
+*virtualf2*
+*ok*
+|hello|43|world|41|
+12.35
+a returned string
+10
+object
+10
+11
+object
+10
+11
+21.12
+198
+getAsArray: 24
+Inner::+= => 2
+0
+1
+34,34
+78
+return char 127
+char: 127
+char: -1
+return unsigned char 255
+unsigned char: 255
+return unsigned short 65535
+unsigned short int: 65535
+return unsigned long -1
+unsigned long int: 4294967295
+void * 3
+int_array[0] == 0
+int_array[7] == 7
+int_array[0] == 42
+int_array[7] == 43
+idx -1: Array index -1 out of bounds: [0,8)
+idx 8: Array index 8 out of bounds: [0,8)
+struct_array[0].attr1 == 0
+struct_array[0].attr2 == 0
+struct_array[7].attr1 == 7
+struct_array[7].attr2 == -7
+struct_array[0].attr1 == 13
+struct_array[0].attr2 == 17
+struct_array[7].attr1 == 14
+struct_array[7].attr2 == 18
+struct_ptr_array[0]->attr1 == 100
+struct_ptr_array[0]->attr2 == 101
+1 : 0.50
+4 : 0.25
+9 : 0.01
+10 : -20.42
+Aborted(Assertion failed: [CHECK FAILED] Parent::Parent(val:val): Expecting <integer>)
+Parent:42
+Aborted(Assertion failed: [CHECK FAILED] Parent::voidStar(something:something): Expecting <pointer>)
+Aborted(Assertion failed: [CHECK FAILED] StringUser::Print(anotherString:anotherString): Expecting <string>)
+123
+true
+true

@@ -8,13 +8,14 @@
 https://emscripten.org/docs/porting/connecting_cpp_and_javascript/WebIDL-Binder.html
 """
 
+import argparse
 import os
 import sys
 from typing import List
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
-sys.path.append(__rootdir__)
+sys.path.insert(0, __rootdir__)
 
 from tools import utils
 
@@ -32,30 +33,46 @@ CHECKS = os.environ.get('IDL_CHECKS', 'DEFAULT')
 # DEBUG=1 will print debug info in render_function
 DEBUG = os.environ.get('IDL_VERBOSE') == '1'
 
-if DEBUG:
-  print("Debug print ON, CHECKS=%s" % CHECKS)
+
+def dbg(*args):
+  if DEBUG:
+    print(*args, file=sys.stderr)
+
+
+dbg(f'Debug print ON, CHECKS=${CHECKS}')
 
 # We need to avoid some closure errors on the constructors we define here.
 CONSTRUCTOR_CLOSURE_SUPPRESSIONS = '/** @suppress {undefinedVars, duplicate} @this{Object} */'
 
 
 class Dummy:
-  def __init__(self, init):
-    for k, v in init.items():
-      self.__dict__[k] = v
+  def __init__(self, type):
+    self.type = type
+
+  def __repr__(self):
+    return f'<Dummy type:{self.type}>'
 
   def getExtendedAttribute(self, _name):
     return None
 
 
-input_file = sys.argv[1]
-output_base = sys.argv[2]
+parser = argparse.ArgumentParser()
+parser.add_argument('--wasm64', action='store_true', default=False,
+                    help='Build for wasm64')
+parser.add_argument('infile')
+parser.add_argument('outfile')
+options = parser.parse_args()
 
-utils.delete_file(output_base + '.cpp')
-utils.delete_file(output_base + '.js')
+input_file = options.infile
+output_base = options.outfile
+cpp_output = output_base + '.cpp'
+js_output = output_base + '.js'
+
+utils.delete_file(cpp_output)
+utils.delete_file(js_output)
 
 p = WebIDL.Parser()
-p.parse(r'''
+p.parse('''
 interface VoidPtr {
 };
 ''' + utils.read_file(input_file))
@@ -76,18 +93,22 @@ for thing in data:
 # print interfaces
 # print implements
 
-pre_c = []
-mid_c = []
-mid_js = []
-
-pre_c += [r'''
+pre_c = ['''
 #include <emscripten.h>
+#include <stdlib.h>
 
-EM_JS_DEPS(webidl_binder, "$intArrayFromString");
+EM_JS_DEPS(webidl_binder, "$intArrayFromString,$UTF8ToString,$alignMemory");
 ''']
 
-mid_c += [r'''
+mid_c = ['''
 extern "C" {
+
+// Define custom allocator functions that we can force export using
+// EMSCRIPTEN_KEEPALIVE.  This avoids all webidl users having to add
+// malloc/free to -sEXPORTED_FUNCTIONS.
+EMSCRIPTEN_KEEPALIVE void webidl_free(void* p) { free(p); }
+EMSCRIPTEN_KEEPALIVE void* webidl_malloc(size_t len) { return malloc(len); }
+
 ''']
 
 
@@ -101,7 +122,7 @@ Module['{name}'] = {name};
 '''.format(name=name, implementing=implementing_name)]
 
 
-mid_js += ['''
+mid_js = ['''
 // Bindings utilities
 
 /** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
@@ -176,15 +197,15 @@ var ensureCache = {
   temps: [], // extra allocations
   needed: 0, // the total size we need next time
 
-  prepare: function() {
+  prepare() {
     if (ensureCache.needed) {
       // clear the temps
       for (var i = 0; i < ensureCache.temps.length; i++) {
-        Module['_free'](ensureCache.temps[i]);
+        Module['_webidl_free'](ensureCache.temps[i]);
       }
       ensureCache.temps.length = 0;
       // prepare to allocate a bigger buffer
-      Module['_free'](ensureCache.buffer);
+      Module['_webidl_free'](ensureCache.buffer);
       ensureCache.buffer = 0;
       ensureCache.size += ensureCache.needed;
       // clean up
@@ -192,22 +213,22 @@ var ensureCache = {
     }
     if (!ensureCache.buffer) { // happens first time, or when we need to grow
       ensureCache.size += 128; // heuristic, avoid many small grow events
-      ensureCache.buffer = Module['_malloc'](ensureCache.size);
+      ensureCache.buffer = Module['_webidl_malloc'](ensureCache.size);
       assert(ensureCache.buffer);
     }
     ensureCache.pos = 0;
   },
-  alloc: function(array, view) {
+  alloc(array, view) {
     assert(ensureCache.buffer);
     var bytes = view.BYTES_PER_ELEMENT;
     var len = array.length * bytes;
-    len = (len + 7) & -8; // keep things aligned to 8 byte boundaries
+    len = alignMemory(len, 8); // keep things aligned to 8 byte boundaries
     var ret;
     if (ensureCache.pos + len >= ensureCache.size) {
       // we failed to allocate in the buffer, ensureCache time around :(
       assert(len > 0); // null terminator, at least
       ensureCache.needed += len;
-      ret = Module['_malloc'](len);
+      ret = Module['_webidl_malloc'](len);
       ensureCache.temps.push(ret);
     } else {
       // we can allocate in the buffer
@@ -216,14 +237,8 @@ var ensureCache = {
     }
     return ret;
   },
-  copy: function(array, view, offset) {
-    offset >>>= 0;
-    var bytes = view.BYTES_PER_ELEMENT;
-    switch (bytes) {
-      case 2: offset >>>= 1; break;
-      case 4: offset >>>= 2; break;
-      case 8: offset >>>= 3; break;
-    }
+  copy(array, view, offset) {
+    offset /= view.BYTES_PER_ELEMENT;
     for (var i = 0; i < array.length; i++) {
       view[offset + i] = array[i];
     }
@@ -240,6 +255,7 @@ function ensureString(value) {
   }
   return value;
 }
+
 /** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function ensureInt8(value) {
   if (typeof value === 'object') {
@@ -249,6 +265,7 @@ function ensureInt8(value) {
   }
   return value;
 }
+
 /** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function ensureInt16(value) {
   if (typeof value === 'object') {
@@ -258,6 +275,7 @@ function ensureInt16(value) {
   }
   return value;
 }
+
 /** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function ensureInt32(value) {
   if (typeof value === 'object') {
@@ -267,6 +285,7 @@ function ensureInt32(value) {
   }
   return value;
 }
+
 /** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function ensureFloat32(value) {
   if (typeof value === 'object') {
@@ -276,6 +295,7 @@ function ensureFloat32(value) {
   }
   return value;
 }
+
 /** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function ensureFloat64(value) {
   if (typeof value === 'object') {
@@ -284,21 +304,6 @@ function ensureFloat64(value) {
     return offset;
   }
   return value;
-}
-
-''']
-
-mid_c += ['''
-// Not using size_t for array indices as the values used by the javascript code are signed.
-
-EM_JS(void, array_bounds_check_error, (size_t idx, size_t size), {
-  throw 'Array index ' + idx + ' out of bounds: [0,' + size + ')';
-});
-
-void array_bounds_check(const int array_size, const int array_idx) {
-  if (array_idx < 0 || array_idx >= array_size) {
-    array_bounds_check_error(array_idx, array_size);
-  }
 }
 ''']
 
@@ -313,38 +318,37 @@ def type_to_c(t, non_pointing=False):
   # print 'to c ', t
   def base_type_to_c(t):
     if t == 'Long':
-      ret = 'int'
+      return 'int'
     elif t == 'UnsignedLong':
-      ret = 'unsigned int'
+      return 'unsigned int'
     elif t == 'LongLong':
-      ret = 'long long'
+      return 'long long'
     elif t == 'UnsignedLongLong':
-      ret = 'unsigned long long'
+      return 'unsigned long long'
     elif t == 'Short':
-      ret = 'short'
+      return 'short'
     elif t == 'UnsignedShort':
-      ret = 'unsigned short'
+      return 'unsigned short'
     elif t == 'Byte':
-      ret = 'char'
+      return 'char'
     elif t == 'Octet':
-      ret = 'unsigned char'
+      return 'unsigned char'
     elif t == 'Void':
-      ret = 'void'
+      return 'void'
     elif t == 'String':
-      ret = 'char*'
+      return 'char*'
     elif t == 'Float':
-      ret = 'float'
+      return 'float'
     elif t == 'Double':
-      ret = 'double'
+      return 'double'
     elif t == 'Boolean':
-      ret = 'bool'
-    elif t == 'Any' or t == 'VoidPtr':
-      ret = 'void*'
+      return 'bool'
+    elif t in ('Any', 'VoidPtr'):
+      return 'void*'
     elif t in interfaces:
-      ret = (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')
+      return (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')
     else:
-      ret = t
-    return ret
+      return t
 
   t = t.replace(' (Wrapper)', '')
 
@@ -372,9 +376,7 @@ def deref_if_nonpointer(m):
 
 
 def type_to_cdec(raw):
-  ret = type_to_c(raw.type.name, non_pointing=True)
-  if raw.getExtendedAttribute('Const'):
-    ret = 'const ' + ret
+  ret = type_to_c(full_typename(raw), non_pointing=True)
   if raw.type.name not in interfaces:
     return ret
   if raw.getExtendedAttribute('Ref'):
@@ -385,7 +387,7 @@ def type_to_cdec(raw):
 
 
 def render_function(class_name, func_name, sigs, return_type, non_pointer,
-                    copy, operator, constructor, func_scope,
+                    copy, operator, constructor, is_static, func_scope,
                     call_content=None, const=False, array_attribute=False):
   legacy_mode = CHECKS not in ['ALL', 'FAST']
   all_checks = CHECKS == 'ALL'
@@ -397,21 +399,27 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
   all_args = sigs.get(max_args)
 
   if DEBUG:
-    print('renderfunc', class_name, func_name, list(sigs.keys()), return_type, constructor)
-    for i in range(max_args):
-      a = all_args[i]
+    dbg('renderfunc', class_name, func_name, list(sigs.keys()), return_type, constructor)
+    for i, a in enumerate(all_args):
       if isinstance(a, WebIDL.IDLArgument):
-        print(' ', a.identifier.name, a.identifier, a.type, a.optional)
+        dbg('  ', a.identifier.name, a.identifier, a.type, a.optional)
       else:
-        print("  arg%d" % i)
+        dbg('  arg%d (%s)' % (i, a))
 
   # JS
 
   cache = ('getCache(%s)[this.ptr] = this;' % class_name) if constructor else ''
-  call_prefix = '' if not constructor else 'this.ptr = '
+  call_prefix = ''
+  if constructor:
+    call_prefix += 'this.ptr = '
   call_postfix = ''
   if return_type != 'Void' and not constructor:
     call_prefix = 'return '
+
+  ptr_rtn = constructor or return_type in interfaces or return_type == 'String'
+  if options.wasm64 and ptr_rtn:
+    call_postfix += ')'
+
   if not constructor:
     if return_type in interfaces:
       call_prefix += 'wrapPointer('
@@ -423,10 +431,16 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
       call_prefix += '!!('
       call_postfix += ')'
 
+  if options.wasm64 and ptr_rtn:
+    call_prefix += 'Number('
+
   args = [(all_args[i].identifier.name if isinstance(all_args[i], WebIDL.IDLArgument) else ('arg%d' % i)) for i in range(max_args)]
-  if not constructor:
+  if not constructor and not is_static:
     body = '  var self = this.ptr;\n'
-    pre_arg = ['self']
+    if options.wasm64:
+      pre_arg = ['BigInt(self)']
+    else:
+      pre_arg = ['self']
   else:
     body = ''
     pre_arg = []
@@ -434,7 +448,9 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
   if any(arg.type.isString() or arg.type.isArray() for arg in all_args):
     body += '  ensureCache.prepare();\n'
 
-  full_name = "%s::%s" % (class_name, func_name)
+  def is_ptr_arg(i):
+    t = all_args[i].type
+    return (t.isArray() or t.isAny() or t.isString() or t.isObject() or t.isInterface())
 
   for i, (js_arg, arg) in enumerate(zip(args, all_args)):
     if i >= min_args:
@@ -451,7 +467,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
       else:
         arg_name = ''
       # Format assert fail message
-      check_msg = "[CHECK FAILED] %s(%s:%s): " % (full_name, js_arg, arg_name)
+      check_msg = "[CHECK FAILED] %s::%s(%s:%s): " % (class_name, func_name, js_arg, arg_name)
       if isinstance(arg.type, WebIDL.IDLWrapperType):
         inner = arg.type.inner
       else:
@@ -499,9 +515,11 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
 
     if do_default:
       if not (arg.type.isArray() and not array_attribute):
-        body += "  if ({0} && typeof {0} === 'object') {0} = {0}.ptr;\n".format(js_arg)
+        body += f"  if ({js_arg} && typeof {js_arg} === 'object') {js_arg} = {js_arg}.ptr;\n"
         if arg.type.isString():
           body += "  else {0} = ensureString({0});\n".format(js_arg)
+        if options.wasm64 and is_ptr_arg(i):
+          body += f'  if ({args[i]} === null) {args[i]} = 0;\n'
       else:
         # an array can be received here
         arg_type = arg.type.name
@@ -516,17 +534,45 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
         elif arg_type == 'Double':
           body += "  if (typeof {0} == 'object') {{ {0} = ensureFloat64({0}); }}\n".format(js_arg)
 
+  call_args = pre_arg.copy()
+
+  for i, arg in enumerate(args):
+    if options.wasm64 and is_ptr_arg(i):
+      arg = f'BigInt({arg})'
+    call_args.append(arg)
+
   c_names = {}
+
+  def make_call_args(i):
+    if pre_arg:
+      i += 1
+    return ', '.join(call_args[:i])
+
   for i in range(min_args, max_args):
-    c_names[i] = 'emscripten_bind_%s_%d' % (bindings_name, i)
-    body += '  if (%s === undefined) { %s%s(%s)%s%s }\n' % (args[i], call_prefix, '_' + c_names[i], ', '.join(pre_arg + args[:i]), call_postfix, '' if 'return ' in call_prefix else '; ' + (cache or ' ') + 'return')
-  c_names[max_args] = 'emscripten_bind_%s_%d' % (bindings_name, max_args)
-  body += '  %s%s(%s)%s;\n' % (call_prefix, '_' + c_names[max_args], ', '.join(pre_arg + args), call_postfix)
+    c_names[i] = f'emscripten_bind_{bindings_name}_{i}'
+    if 'return ' in call_prefix:
+      after_call = ''
+    else:
+      after_call = '; ' + cache + 'return'
+    args_for_call = make_call_args(i)
+    body += '  if (%s === undefined) { %s_%s(%s)%s%s }\n' % (args[i], call_prefix, c_names[i],
+                                                             args_for_call,
+                                                             call_postfix, after_call)
+  dbg(call_prefix)
+  c_names[max_args] = f'emscripten_bind_{bindings_name}_{max_args}'
+  args_for_call = make_call_args(len(args))
+  body += '  %s_%s(%s)%s;\n' % (call_prefix, c_names[max_args], args_for_call, call_postfix)
   if cache:
-    body += '  ' + cache + '\n'
-  mid_js.append(r'''%sfunction%s(%s) {
+    body += f'  {cache}\n'
+
+  if constructor:
+    declare_name = ' ' + func_name
+  else:
+    declare_name = ''
+  mid_js.append(r'''function%s(%s) {
 %s
-};''' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, (' ' + func_name) if constructor else '', ', '.join(args), body[:-1]))
+};
+''' % (declare_name, ', '.join(args), body[:-1]))
 
   # C
 
@@ -536,24 +582,31 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
       continue
     sig = list(map(full_typename, raw))
     if array_attribute:
-      sig = [x.replace('[]', '') for x in sig] # for arrays, ignore that this is an array - our get/set methods operate on the elements
+      # for arrays, ignore that this is an array - our get/set methods operate on the elements
+      sig = [x.replace('[]', '') for x in sig]
 
     c_arg_types = list(map(type_to_c, sig))
+    c_class_name = type_to_c(class_name, non_pointing=True)
 
     normal_args = ', '.join(['%s %s' % (c_arg_types[j], args[j]) for j in range(i)])
-    if constructor:
+    if constructor or is_static:
       full_args = normal_args
     else:
-      full_args = type_to_c(class_name, non_pointing=True) + '* self' + ('' if not normal_args else ', ' + normal_args)
+      full_args = c_class_name + '* self'
+      if normal_args:
+        full_args += ', ' + normal_args
     call_args = ', '.join(['%s%s' % ('*' if raw[j].getExtendedAttribute('Ref') else '', args[j]) for j in range(i)])
     if constructor:
-      call = 'new ' + type_to_c(class_name, non_pointing=True)
-      call += '(' + call_args + ')'
+      call = 'new ' + c_class_name + '(' + call_args + ')'
     elif call_content is not None:
       call = call_content
     else:
-      call = 'self->' + func_name
-      call += '(' + call_args + ')'
+      call = func_name + '(' + call_args + ')'
+      if is_static:
+
+        call = c_class_name + '::' + call
+      else:
+        call = 'self->' + call
 
     if operator:
       cast_self = 'self'
@@ -592,15 +645,16 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
       if i == max_args:
         dec_args = ', '.join([type_to_cdec(raw[j]) + ' ' + args[j] for j in range(i)])
         js_call_args = ', '.join(['%s%s' % (('(ptrdiff_t)' if sig[j] in interfaces else '') + take_addr_if_nonpointer(raw[j]), args[j]) for j in range(i)])
+        em_asm_macro = 'EM_ASM_%s' % ('PTR' if c_return_type[-1] == '*' else 'INT' if c_return_type not in C_FLOATS else 'DOUBLE')
 
         js_impl_methods.append(r'''  %s %s(%s) %s {
-    %sEM_ASM_%s({
+    %s (%s) %s({
       var self = Module['getCache'](Module['%s'])[$0];
       if (!self.hasOwnProperty('%s')) throw 'a JSImplementation must implement all functions, you forgot %s::%s.';
       %sself['%s'](%s)%s;
     }, (ptrdiff_t)this%s);
   }''' % (c_return_type, func_name, dec_args, maybe_const,
-          basic_return, 'INT' if c_return_type not in C_FLOATS else 'DOUBLE',
+          basic_return, c_return_type, em_asm_macro,
           class_name,
           func_name, class_name, func_name,
           return_prefix,
@@ -608,6 +662,23 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
           ','.join(['$%d' % i for i in range(1, max_args + 1)]),
           return_postfix,
           (', ' if js_call_args else '') + js_call_args))
+
+
+def add_bounds_check_impl():
+  if hasattr(add_bounds_check_impl, 'done'):
+    return
+  add_bounds_check_impl.done = True
+  mid_c.append('''
+EM_JS(void, array_bounds_check_error, (size_t idx, size_t size), {
+  throw 'Array index ' + idx + ' out of bounds: [0,' + size + ')';
+});
+
+static void array_bounds_check(size_t array_size, size_t array_idx) {
+  if (array_idx < 0 || array_idx >= array_size) {
+    array_bounds_check_error(array_idx, array_size);
+  }
+}
+''')
 
 
 for name, interface in interfaces.items():
@@ -641,13 +712,13 @@ names = sorted(interfaces.keys(), key=lambda x: nodeHeight.get(x, 0), reverse=Tr
 for name in names:
   interface = interfaces[name]
 
-  mid_js += ['\n// ' + name + '\n']
-  mid_c += ['\n// ' + name + '\n']
+  mid_js += ['\n// Interface: ' + name + '\n\n']
+  mid_c += ['\n// Interface: ' + name + '\n\n']
 
   js_impl_methods: List[str] = []
 
   cons = interface.getExtendedAttribute('Constructor')
-  if type(cons) == list:
+  if type(cons) is list:
     raise Exception('do not use "Constructor", instead create methods with the name of the interface')
 
   js_impl = interface.getExtendedAttribute('JSImplementation')
@@ -658,7 +729,7 @@ for name in names:
 
   # Ensure a constructor even if one is not specified.
   if not any(m.identifier.name == name for m in interface.members):
-    mid_js += ['%sfunction %s() { throw "cannot construct a %s, no constructor in IDL" }\n' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, name, name)]
+    mid_js += ['%s\nfunction %s() { throw "cannot construct a %s, no constructor in IDL" }\n' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, name, name)]
     mid_js += build_constructor(name)
 
   for m in interface.members:
@@ -674,9 +745,9 @@ for name in names:
         temp = temp.parentScope
       if parent_constructor:
         continue
+    mid_js += [CONSTRUCTOR_CLOSURE_SUPPRESSIONS, '\n']
     if not constructor:
-      mid_js += [r'''
-%s.prototype['%s'] = %s.prototype.%s = ''' % (name, m.identifier.name, name, m.identifier.name)]
+      mid_js += ["%s.prototype['%s'] = %s.prototype.%s = " % (name, m.identifier.name, name, m.identifier.name)]
     sigs = {}
     return_type = None
     for ret, args in m.signatures():
@@ -694,9 +765,10 @@ for name in names:
                     m.getExtendedAttribute('Value'),
                     (m.getExtendedAttribute('Operator') or [None])[0],
                     constructor,
+                    is_static=m.isStatic(),
                     func_scope=m.parentScope.identifier.name,
                     const=m.getExtendedAttribute('Const'))
-    mid_js += [';\n']
+    mid_js += ['\n']
     if constructor:
       mid_js += build_constructor(name)
 
@@ -706,29 +778,33 @@ for name in names:
     attr = m.identifier.name
 
     if m.type.isArray():
-      get_sigs = {1: [Dummy({'type': WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.long]})]}
-      set_sigs = {2: [Dummy({'type': WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.long]}),
-                      Dummy({'type': m.type})]}
+      get_sigs = {1: [Dummy(type=WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.long])]}
+      set_sigs = {2: [Dummy(type=WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.long]),
+                      Dummy(type=m.type.inner)]}
       get_call_content = take_addr_if_nonpointer(m) + 'self->' + attr + '[arg0]'
       set_call_content = 'self->' + attr + '[arg0] = ' + deref_if_nonpointer(m) + 'arg1'
       if m.getExtendedAttribute('BoundsChecked'):
+
         bounds_check = "array_bounds_check(sizeof(self->%s) / sizeof(self->%s[0]), arg0)" % (attr, attr)
+        add_bounds_check_impl()
+
         get_call_content = "(%s, %s)" % (bounds_check, get_call_content)
         set_call_content = "(%s, %s)" % (bounds_check, set_call_content)
     else:
       get_sigs = {0: []}
-      set_sigs = {1: [Dummy({'type': m.type})]}
+      set_sigs = {1: [Dummy(type=m.type)]}
       get_call_content = take_addr_if_nonpointer(m) + 'self->' + attr
       set_call_content = 'self->' + attr + ' = ' + deref_if_nonpointer(m) + 'arg0'
 
     get_name = 'get_' + attr
-    mid_js += [r'''
-  %s.prototype['%s'] = %s.prototype.%s = ''' % (name, get_name, name, get_name)]
+    mid_js += [r'''%s
+%s.prototype['%s'] = %s.prototype.%s = ''' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, name, get_name, name, get_name)]
     render_function(name,
                     get_name, get_sigs, m.type.name,
                     None,
                     None,
                     None,
+                    False,
                     False,
                     func_scope=interface,
                     call_content=get_call_content,
@@ -737,32 +813,40 @@ for name in names:
 
     if m.readonly:
       mid_js += [r'''
-    Object.defineProperty(%s.prototype, '%s', { get: %s.prototype.%s });''' % (name, attr, name, get_name)]
+/** @suppress {checkTypes} */
+Object.defineProperty(%s.prototype, '%s', { get: %s.prototype.%s });
+''' % (name, attr, name, get_name)]
     else:
       set_name = 'set_' + attr
       mid_js += [r'''
-    %s.prototype['%s'] = %s.prototype.%s = ''' % (name, set_name, name, set_name)]
+%s
+%s.prototype['%s'] = %s.prototype.%s = ''' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, name, set_name, name, set_name)]
       render_function(name,
                       set_name, set_sigs, 'Void',
                       None,
                       None,
                       None,
                       False,
+                      False,
                       func_scope=interface,
                       call_content=set_call_content,
                       const=m.getExtendedAttribute('Const'),
                       array_attribute=m.type.isArray())
       mid_js += [r'''
-    Object.defineProperty(%s.prototype, '%s', { get: %s.prototype.%s, set: %s.prototype.%s });''' % (name, attr, name, get_name, name, set_name)]
+/** @suppress {checkTypes} */
+Object.defineProperty(%s.prototype, '%s', { get: %s.prototype.%s, set: %s.prototype.%s });
+''' % (name, attr, name, get_name, name, set_name)]
 
   if not interface.getExtendedAttribute('NoDelete'):
     mid_js += [r'''
-  %s.prototype['__destroy__'] = %s.prototype.__destroy__ = ''' % (name, name)]
+%s
+%s.prototype['__destroy__'] = %s.prototype.__destroy__ = ''' % (CONSTRUCTOR_CLOSURE_SUPPRESSIONS, name, name)]
     render_function(name,
                     '__destroy__', {0: []}, 'Void',
                     None,
                     None,
                     None,
+                    False,
                     False,
                     func_scope=interface,
                     call_content='delete self')
@@ -770,7 +854,7 @@ for name in names:
   # Emit C++ class implementation that calls into JS implementation
 
   if js_impl:
-    pre_c += [r'''
+    pre_c += ['''
 class %s : public %s {
 public:
 %s
@@ -780,12 +864,12 @@ public:
 deferred_js = []
 
 for name, enum in enums.items():
-  mid_c += ['\n// ' + name + '\n']
-  deferred_js += ['\n', '// ' + name + '\n']
+  mid_c += [f'\n// ${name}\n']
+  deferred_js += [f'\n// ${name}\n']
   for value in enum.values():
-    function_id = "%s_%s" % (name, value.split('::')[-1])
+    function_id = '%s_%s' % (name, value.split('::')[-1])
     function_id = 'emscripten_enum_%s' % function_id
-    mid_c += [r'''%s EMSCRIPTEN_KEEPALIVE %s() {
+    mid_c += ['''%s EMSCRIPTEN_KEEPALIVE %s() {
   return %s;
 }
 ''' % (name, function_id, value)]
@@ -802,7 +886,7 @@ for name, enum in enums.items():
         # namespace is a namespace, so the enums get collapsed into the top level namespace.
         deferred_js += ["Module['%s'] = _%s();\n" % (identifier, function_id)]
     else:
-      raise Exception("Illegal enum value %s" % value)
+      raise Exception(f'Illegal enum value ${value}')
 
 mid_c += ['\n}\n\n']
 if len(deferred_js):
@@ -818,12 +902,12 @@ if len(deferred_js):
 
 # Write
 
-with open(output_base + '.cpp', 'w') as c:
+with open(cpp_output, 'w') as c:
   for x in pre_c:
     c.write(x)
   for x in mid_c:
     c.write(x)
 
-with open(output_base + '.js', 'w') as js:
+with open(js_output, 'w') as js:
   for x in mid_js:
     js.write(x)

@@ -106,6 +106,7 @@ struct TypeID {
 
 template<typename T>
 struct TypeID<std::unique_ptr<T>> {
+    static_assert(std::is_class<T>::value, "The type for a std::unique_ptr binding must be a class.");
     static constexpr TYPEID get() {
         return TypeID<T>::get();
     }
@@ -115,6 +116,14 @@ template<typename T>
 struct TypeID<T*> {
     static_assert(!std::is_pointer<T*>::value, "Implicitly binding raw pointers is illegal.  Specify allow_raw_pointer<arg<?>>");
 };
+
+namespace rvp {
+
+struct default_tag {};
+struct take_ownership : public default_tag {};
+struct reference : public default_tag {};
+
+} // end namespace rvp
 
 template<typename T>
 struct AllowedRawPointer {
@@ -244,16 +253,16 @@ struct WithPolicies {
 template<typename T, typename = void>
 struct BindingType;
 
-#define EMSCRIPTEN_DEFINE_NATIVE_BINDING_TYPE(type)                 \
-template<>                                                  \
-struct BindingType<type> {                                  \
-    typedef type WireType;                                  \
-    constexpr static WireType toWireType(const type& v) {   \
-        return v;                                           \
-    }                                                       \
-    constexpr static type fromWireType(WireType v) {        \
-        return v;                                           \
-    }                                                       \
+#define EMSCRIPTEN_DEFINE_NATIVE_BINDING_TYPE(type)                            \
+template<>                                                                     \
+struct BindingType<type> {                                                     \
+    typedef type WireType;                                                     \
+    constexpr static WireType toWireType(const type& v, rvp::default_tag) {    \
+        return v;                                                              \
+    }                                                                          \
+    constexpr static type fromWireType(WireType v) {                           \
+        return v;                                                              \
+    }                                                                          \
 }
 
 EMSCRIPTEN_DEFINE_NATIVE_BINDING_TYPE(char);
@@ -278,7 +287,7 @@ struct BindingType<void> {
 template<>
 struct BindingType<bool> {
     typedef bool WireType;
-    static WireType toWireType(bool b) {
+    static WireType toWireType(bool b, rvp::default_tag) {
         return b;
     }
     static bool fromWireType(WireType wt) {
@@ -294,7 +303,7 @@ struct BindingType<std::basic_string<T>> {
         size_t length;
         T data[1]; // trailing data
     }* WireType;
-    static WireType toWireType(const String& v) {
+    static WireType toWireType(const String& v, rvp::default_tag) {
         WireType wt = (WireType)malloc(sizeof(size_t) + v.length() * sizeof(T));
         wt->length = v.length();
         memcpy(wt->data, v.data(), v.length() * sizeof(T));
@@ -320,9 +329,6 @@ struct BindingType<const T&> : public BindingType<T> {
 template<typename T>
 struct BindingType<T&&> {
     typedef typename BindingType<T>::WireType WireType;
-    static WireType toWireType(const T& v) {
-        return BindingType<T>::toWireType(v);
-    }
     static T fromWireType(WireType wt) {
         return BindingType<T>::fromWireType(wt);
     }
@@ -331,9 +337,19 @@ struct BindingType<T&&> {
 template<typename T>
 struct BindingType<T*> {
     typedef T* WireType;
-    static WireType toWireType(T* p) {
+
+    static WireType toWireType(T* p, rvp::default_tag) {
         return p;
     }
+
+    static WireType toWireType(T* p, rvp::take_ownership) {
+        return p;
+    }
+
+    static WireType toWireType(T* p, rvp::reference) {
+        return p;
+    }
+
     static T* fromWireType(WireType wt) {
         return wt;
     }
@@ -344,12 +360,19 @@ struct GenericBindingType {
     typedef typename std::remove_reference<T>::type ActualT;
     typedef ActualT* WireType;
 
-    static WireType toWireType(const T& v) {
-        return new T(v);
+    template<typename R>
+    static WireType toWireType(R&& v, rvp::default_tag) {
+        return new ActualT(v);
     }
 
-    static WireType toWireType(T&& v) {
-        return new T(std::forward<T>(v));
+    template<typename R>
+    static WireType toWireType(R&& v, rvp::take_ownership) {
+        return new ActualT(std::move(v));
+    }
+
+    template<typename R>
+    static WireType toWireType(R&& v, rvp::reference) {
+        return &v;
     }
 
     static ActualT& fromWireType(WireType p) {
@@ -361,8 +384,8 @@ template<typename T>
 struct GenericBindingType<std::unique_ptr<T>> {
     typedef typename BindingType<T*>::WireType WireType;
 
-    static WireType toWireType(std::unique_ptr<T> p) {
-        return BindingType<T*>::toWireType(p.release());
+    static WireType toWireType(std::unique_ptr<T> p, rvp::default_tag) {
+        return BindingType<T*>::toWireType(p.release(), rvp::default_tag{});
     }
 
     static std::unique_ptr<T> fromWireType(WireType wt) {
@@ -374,7 +397,7 @@ template<typename Enum>
 struct EnumBindingType {
     typedef Enum WireType;
 
-    static WireType toWireType(Enum v) {
+    static WireType toWireType(Enum v, rvp::default_tag) {
         return v;
     }
     static Enum fromWireType(WireType v) {
@@ -441,7 +464,7 @@ struct BindingType<memory_view<ElementType>> {
     // on the C++ side, nor is toWireType implemented in
     // JavaScript.)
     typedef memory_view<ElementType> WireType;
-    static WireType toWireType(const memory_view<ElementType>& mv) {
+    static WireType toWireType(const memory_view<ElementType>& mv, rvp::default_tag) {
         return mv;
     }
 };

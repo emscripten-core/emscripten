@@ -9,6 +9,7 @@ TAG = 'version_1'
 HASH = '0d0b1280ba0501ad0a23cf1daa1f86821c722218b59432734d3087a89acd22aabd5c3e5e1269700dcd41e87073046e906060f167c032eb91a3ac8c5808a02783'
 
 variants = {'freetype-wasm-sjlj': {'SUPPORT_LONGJMP': 'wasm'}}
+deps = ['zlib']
 
 
 def needed(settings):
@@ -87,6 +88,7 @@ def get(ports, settings, shared):
 
     flags = [
       '-DFT2_BUILD_LIBRARY',
+      '-DFT_CONFIG_OPTION_SYSTEM_ZLIB',
       '-I' + source_path + '/include',
       '-I' + source_path + '/truetype',
       '-I' + source_path + '/sfnt',
@@ -112,11 +114,11 @@ def clear(ports, settings, shared):
 
 
 def process_args(ports):
-  return ['-I' + ports.get_include_dir('freetype2')]
+  return ['-isystem', ports.get_include_dir('freetype2')]
 
 
 def show():
-  return 'freetype (USE_FREETYPE=1; freetype license)'
+  return 'freetype (-sUSE_FREETYPE=1 or --use-port=freetype; freetype license)'
 
 
 ftconf_h = r'''/***************************************************************************/

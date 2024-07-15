@@ -85,18 +85,6 @@ var WebAssembly = {};
  */
 WebAssembly.Global = function(globalDescriptor, value) {};
 /**
- * @constructor
- * @param {Object} type
- */
-WebAssembly.Tag = function(type) {};
-/**
- * @constructor
- * @param {!WebAssembly.Tag} tag
- * @param {Array<Object>} payload
- * @param {Object=} options
- */
-WebAssembly.Exception = function(tag, payload, options) {};
-/**
  * @param {!WebAssembly.Tag} tag
  * @param {number} index
  */
@@ -124,6 +112,16 @@ WebAssembly.Memory.prototype.buffer;
  * @type {number}
  */
 WebAssembly.Table.prototype.length;
+/**
+ * @param {!Function} func
+ * @returns {Function}
+ */
+WebAssembly.promising = function(func) {};
+/**
+ * @constructor
+ * @param {!Function} func
+ */
+WebAssembly.Suspending = function(func) {};
 
 /**
  * @record
@@ -137,26 +135,13 @@ FunctionType.prototype.parameters;
  * @type {Array<string>}
  */
 FunctionType.prototype.results;
-/**
- * @record
- */
- function FunctionUsage() {}
- /**
-  * @type {string|undefined}
-  */
-FunctionUsage.prototype.promising;
- /**
-  * @type {string|undefined}
-  */
-FunctionUsage.prototype.suspending;
 
 /**
  * @constructor
  * @param {!FunctionType} type
  * @param {!Function} func
- * @param {FunctionUsage=} usage
  */
-WebAssembly.Function = function(type, func, usage) {};
+WebAssembly.Function = function(type, func) {};
 /**
  * @param {Function} func
  * @return {FunctionType}
@@ -171,10 +156,6 @@ var wakaUnknownAfter;
  * @suppress {undefinedVars}
  */
 var wakaUnknownBefore;
-/**
- * @suppress {undefinedVars}
- */
-var MozBlobBuilder;
 
 // Module loaders externs, for AMD etc.
 
@@ -212,14 +193,6 @@ var removeEventListener = function (type, listener) {};
  */
 var close;
 
-// Due to the way MODULARIZE works, Closure is run on generated code that does not define _scriptDir,
-// but only after MODULARIZE has finished, _scriptDir is injected to the generated code.
-// Therefore it cannot be minified.
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _scriptDir;
-
 // Closure run on asm.js uses a hack to execute only on shell code, declare externs needed for it.
 /**
  * @suppress {undefinedVars}
@@ -245,14 +218,6 @@ var outerHeight;
 var event;
 var devicePixelRatio;
 
-// TODO: Use Closure's multifile support and/or migrate worker.js onmessage handler to inside the MODULARIZEd block
-// to be able to remove all the variables below:
-
-// Variables that are present in both output runtime .js file/JS lib files, and worker.js, so cannot be minified because
-// the names need to match:
-/** @suppress {duplicate} */
-var noExitRuntime;
-
 /*
  * AudioWorkletGlobalScope globals
  */
@@ -265,3 +230,34 @@ var sampleRate;
  * Avoid closure minifying anything to "id". See #13965
  */
 var id;
+
+/**
+ * Used in MODULARIZE mode as the name of the incoming module argument.
+ * This is generated outside of the code we pass to closure so from closure's
+ * POV this is "extern".
+ */
+var moduleArg;
+
+/**
+ * Used in MODULARIZE mode.
+ * We need to access this after the code we pass to closure so from closure's
+ * POV this is "extern".
+ */
+var moduleRtn;
+
+/**
+ * This was removed from upstream closure compiler in
+ * https://github.com/google/closure-compiler/commit/f83322c1b.
+ * Perhaps we should remove it do?
+ *
+ * @param {MediaStreamConstraints} constraints A MediaStreamConstraints object.
+ * @param {function(!MediaStream)} successCallback
+ *     A NavigatorUserMediaSuccessCallback function.
+ * @param {function(!NavigatorUserMediaError)=} errorCallback A
+ *     NavigatorUserMediaErrorCallback function.
+ * @see http://dev.w3.org/2011/webrtc/editor/getusermedia.html
+ * @see https://www.w3.org/TR/mediacapture-streams/
+ * @return {undefined}
+ */
+Navigator.prototype.webkitGetUserMedia = function(
+    constraints, successCallback, errorCallback) {};

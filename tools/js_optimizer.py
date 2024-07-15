@@ -13,7 +13,7 @@ import shutil
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
-sys.path.append(__rootdir__)
+sys.path.insert(0, __rootdir__)
 
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.utils import path_from_root
@@ -22,7 +22,7 @@ from tools import building, config, shared, utils
 temp_files = shared.get_temp_files()
 
 
-ACORN_OPTIMIZER = path_from_root('tools/acorn-optimizer.js')
+ACORN_OPTIMIZER = path_from_root('tools/acorn-optimizer.mjs')
 
 NUM_CHUNKS_PER_CORE = 3
 MIN_CHUNK_SIZE = int(os.environ.get('EMCC_JSOPT_MIN_CHUNK_SIZE') or 512 * 1024) # configuring this is just for debugging purposes
@@ -37,9 +37,16 @@ func_sig_json = re.compile(r'\["defun", ?"([_\w$]+)",')
 import_sig = re.compile(r'(var|const) ([_\w$]+ *=[^;]+);')
 
 
-def split_funcs(js, just_split=False):
-  if just_split:
-    return [('(json)', line) for line in js.splitlines()]
+def get_acorn_cmd():
+  node = config.NODE_JS
+  if not any('--stack-size' in arg for arg in node):
+    # Use an 8Mb stack (rather than the ~1Mb default) when running the
+    # js optimizer since larger inputs can cause terser to use a lot of stack.
+    node.append('--stack-size=8192')
+  return node + [ACORN_OPTIMIZER]
+
+
+def split_funcs(js):
   # split properly even if there are no newlines,
   # which is important for deterministic builds (as which functions
   # are in each chunk may differ, so we need to split them up and combine
@@ -58,7 +65,7 @@ def split_funcs(js, just_split=False):
 
 class Minifier:
   """minification support. We calculate minification of
-  globals here, then pass that into the parallel acorn-optimizer.js runners which
+  globals here, then pass that into the parallel acorn-optimizer.mjs runners which
   perform minification of locals.
   """
 
@@ -68,7 +75,7 @@ class Minifier:
     self.profiling_funcs = False
 
   def minify_shell(self, shell, minify_whitespace):
-    # Run through acorn-optimizer.js to find and minify the global symbols
+    # Run through acorn-optimizer.mjs to find and minify the global symbols
     # We send it the globals, which it parses at the proper time. JS decides how
     # to minify all global names, we receive a dictionary back, which is then
     # used by the function processors
@@ -90,9 +97,9 @@ class Minifier:
         f.write('\n')
         f.write('// EXTRA_INFO:' + json.dumps(self.serialize()))
 
-      cmd = config.NODE_JS + [ACORN_OPTIMIZER, temp_file, 'minifyGlobals']
+      cmd = get_acorn_cmd() + [temp_file, 'minifyGlobals']
       if minify_whitespace:
-        cmd.append('minifyWhitespace')
+        cmd.append('--minify-whitespace')
       output = shared.run_process(cmd, stdout=subprocess.PIPE).stdout
 
     assert len(output) and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
@@ -100,9 +107,8 @@ class Minifier:
     self.globs = json.loads(metadata)
 
     if self.symbols_file:
-      with open(self.symbols_file, 'w') as f:
-        for key, value in self.globs.items():
-          f.write(value + ':' + key + '\n')
+      mapping = '\n'.join(f'{value}:{key}' for key, value in self.globs.items())
+      utils.write_file(self.symbols_file, mapping + '\n')
       print('wrote symbol map file to', self.symbols_file, file=sys.stderr)
 
     return code.replace('13371337', '0.0')
@@ -127,8 +133,7 @@ def chunkify(funcs, chunk_size):
   # initialize reasonably, the rest of the funcs we need to split out
   curr = []
   total_size = 0
-  for i in range(len(funcs)):
-    func = funcs[i]
+  for func in funcs:
     curr_size = len(func[1])
     if total_size + curr_size < chunk_size:
       curr.append(func)
@@ -143,7 +148,8 @@ def chunkify(funcs, chunk_size):
   return [''.join(func[1] for func in chunk) for chunk in chunks] # remove function names
 
 
-def run_on_js(filename, passes, extra_info=None, just_split=False, just_concat=False):
+@ToolchainProfiler.profile_block('js_optimizer.run_on_file')
+def run_on_file(filename, passes, extra_info=None):
   with ToolchainProfiler.profile_block('js_optimizer.split_markers'):
     if not isinstance(passes, list):
       passes = [passes]
@@ -157,7 +163,7 @@ def run_on_js(filename, passes, extra_info=None, just_split=False, just_concat=F
     end_funcs = js.rfind(end_funcs_marker)
 
     if start_funcs < 0 or end_funcs < start_funcs:
-      shared.exit_with_error('Invalid input file. Did not contain appropriate markers. (start_funcs: %s, end_funcs: %s' % (start_funcs, end_funcs))
+      shared.exit_with_error('invalid input file. Did not contain appropriate markers. (start_funcs: %s, end_funcs: %s' % (start_funcs, end_funcs))
 
     minify_globals = 'minifyNames' in passes
     if minify_globals:
@@ -179,19 +185,17 @@ def run_on_js(filename, passes, extra_info=None, just_split=False, just_concat=F
       pre = js[:start_funcs + len(start_funcs_marker)]
       post = js[end_funcs + len(end_funcs_marker):]
       js = js[start_funcs + len(start_funcs_marker):end_funcs]
-      if 'asm' not in passes:
-        # can have Module[..] and inlining prevention code, push those to post
-        class Finals:
-          buf = []
+      # can have Module[..] and inlining prevention code, push those to post
+      finals = []
 
-        def process(line):
-          if len(line) and (line.startswith(('Module[', 'if (globalScope)')) or line.endswith('["X"]=1;')):
-            Finals.buf.append(line)
-            return False
-          return True
+      def process(line):
+        if line and (line.startswith(('Module[', 'if (globalScope)')) or line.endswith('["X"]=1;')):
+          finals.append(line)
+          return False
+        return True
 
-        js = '\n'.join(filter(process, js.split('\n')))
-        post = '\n'.join(Finals.buf) + '\n' + post
+      js = '\n'.join(line for line in js.split('\n') if process(line))
+      post = '\n'.join(finals) + '\n' + post
       post = end_funcs_marker + post
   else:
     with ToolchainProfiler.profile_block('js_optimizer.minify_globals'):
@@ -215,8 +219,8 @@ EMSCRIPTEN_FUNCS();
           return False
         return True
 
-      passes = list(filter(check_symbol_mapping, passes))
-      asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes).split('EMSCRIPTEN_FUNCS();')
+      passes = [p for p in passes if check_symbol_mapping(p)]
+      asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, '--minify-whitespace' in passes).split('EMSCRIPTEN_FUNCS();')
       asm_shell_post = asm_shell_post.replace('});', '})')
       pre += asm_shell_pre + '\n' + start_funcs_marker
       post = end_funcs_marker + asm_shell_post + post
@@ -233,59 +237,41 @@ EMSCRIPTEN_FUNCS();
 
   with ToolchainProfiler.profile_block('js_optimizer.split'):
     total_size = len(js)
-    funcs = split_funcs(js, just_split)
+    funcs = split_funcs(js)
     js = None
 
   with ToolchainProfiler.profile_block('js_optimizer.split_to_chunks'):
     # if we are making source maps, we want our debug numbering to start from the
     # top of the file, so avoid breaking the JS into chunks
-    cores = shared.get_num_cores()
 
-    if not just_split:
-      intended_num_chunks = int(round(cores * NUM_CHUNKS_PER_CORE))
-      chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
-      chunks = chunkify(funcs, chunk_size)
-    else:
-      # keep same chunks as before
-      chunks = [f[1] for f in funcs]
+    intended_num_chunks = round(shared.get_num_cores() * NUM_CHUNKS_PER_CORE)
+    chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
+    chunks = chunkify(funcs, chunk_size)
 
-    chunks = [chunk for chunk in chunks if len(chunk)]
-    if DEBUG and len(chunks):
-      print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(map(len, chunks)), '-', min(map(len, chunks)), file=sys.stderr)
+    chunks = [chunk for chunk in chunks if chunk]
+    if DEBUG:
+      lengths = [len(c) for c in chunks]
+      if not lengths:
+        lengths = [0]
+      print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(lengths), '-', min(lengths), file=sys.stderr)
     funcs = None
 
-    if len(chunks):
-      serialized_extra_info = ''
-      if minify_globals:
-        serialized_extra_info += '// EXTRA_INFO:' + json.dumps(minify_info)
-      elif extra_info:
-        serialized_extra_info += '// EXTRA_INFO:' + json.dumps(extra_info)
-      with ToolchainProfiler.profile_block('js_optimizer.write_chunks'):
-        def write_chunk(chunk, i):
-          temp_file = temp_files.get('.jsfunc_%d.js' % i).name
-          with open(temp_file, 'w') as f:
-            f.write(chunk)
-            f.write(serialized_extra_info)
-          return temp_file
-        filenames = [write_chunk(chunks[i], i) for i in range(len(chunks))]
-    else:
-      filenames = []
+    serialized_extra_info = ''
+    if minify_globals:
+      assert not extra_info
+      serialized_extra_info += '// EXTRA_INFO:' + json.dumps(minify_info)
+    elif extra_info:
+      serialized_extra_info += '// EXTRA_INFO:' + json.dumps(extra_info)
+    with ToolchainProfiler.profile_block('js_optimizer.write_chunks'):
+      def write_chunk(chunk, i):
+        temp_file = temp_files.get('.jsfunc_%d.js' % i).name
+        utils.write_file(temp_file, chunk + serialized_extra_info)
+        return temp_file
+      filenames = [write_chunk(chunk, i) for i, chunk in enumerate(chunks)]
 
   with ToolchainProfiler.profile_block('run_optimizer'):
-    if len(filenames):
-      commands = [config.NODE_JS + [ACORN_OPTIMIZER, f] + passes for f in filenames]
-
-      if os.environ.get('EMCC_SAVE_OPT_TEMP') and os.environ.get('EMCC_SAVE_OPT_TEMP') != '0':
-        for filename in filenames:
-          saved = 'save_' + os.path.basename(filename)
-          while os.path.exists(saved):
-            saved = 'input' + str(int(saved.replace('input', '').replace('.txt', '')) + 1) + '.txt'
-          shutil.copyfile(filename, os.path.join(shared.get_emscripten_temp_dir(), saved))
-
-      filenames = shared.run_multiple_processes(commands, route_stdout_to_temp_files_suffix='js_opt.jo.js')
-
-    for filename in filenames:
-      temp_files.note(filename)
+    commands = [get_acorn_cmd() + [f] + passes for f in filenames]
+    filenames = shared.run_multiple_processes(commands, route_stdout_to_temp_files_suffix='js_opt.jo.js')
 
   with ToolchainProfiler.profile_block('split_closure_cleanup'):
     if closure or cleanup:
@@ -305,14 +291,14 @@ EMSCRIPTEN_FUNCS();
         if closure:
           if DEBUG:
             print('running closure on shell code', file=sys.stderr)
-          cld = building.closure_compiler(cld, pretty='minifyWhitespace' not in passes)
+          cld = building.closure_compiler(cld, pretty='--minify-whitespace' not in passes)
           temp_files.note(cld)
         elif cleanup:
           if DEBUG:
             print('running cleanup on shell code', file=sys.stderr)
           acorn_passes = ['JSDCE']
-          if 'minifyWhitespace' in passes:
-            acorn_passes.append('minifyWhitespace')
+          if '--minify-whitespace' in passes:
+            acorn_passes.append('--minify-whitespace')
           cld = building.acorn_optimizer(cld, acorn_passes)
           temp_files.note(cld)
         coutput = utils.read_file(cld)
@@ -334,51 +320,34 @@ EMSCRIPTEN_FUNCS();
       pre = coutput[:start] + '(' + (USELESS_CODE_COMMENT if has_useless_code_comment else '') + 'function(global,env,buffer) {\n' + pre_2[brace:]
       post = post_1 + end_asm + coutput[end + 1:]
 
-  with ToolchainProfiler.profile_block('write_pre'):
-    filename += '.jo.js'
-    temp_files.note(filename)
-    f = open(filename, 'w')
-    f.write(pre)
-    pre = None
+  filename += '.jo.js'
+  temp_files.note(filename)
 
-  with ToolchainProfiler.profile_block('sort_or_concat'):
-    if not just_concat:
+  with open(filename, 'w') as f:
+    with ToolchainProfiler.profile_block('write_pre'):
+      f.write(pre)
+      pre = None
+
+    with ToolchainProfiler.profile_block('sort_or_concat'):
       # sort functions by size, to make diffing easier and to improve aot times
       funcses = []
       for out_file in filenames:
-        funcses.append(split_funcs(utils.read_file(out_file), False))
+        funcses.append(split_funcs(utils.read_file(out_file)))
       funcs = [item for sublist in funcses for item in sublist]
       funcses = None
       if not os.environ.get('EMCC_NO_OPT_SORT'):
         funcs.sort(key=lambda x: (len(x[1]), x[0]), reverse=True)
 
-      if 'last' in passes and len(funcs):
-        count = funcs[0][1].count('\n')
-        if count > 3000:
-          print('warning: Output contains some very large functions (%s lines in %s), consider building source files with -Os or -Oz)' % (count, funcs[0][0]), file=sys.stderr)
-
       for func in funcs:
         f.write(func[1])
       funcs = None
-    else:
-      # just concat the outputs
-      for out_file in filenames:
-        f.write(utils.read_file(out_file))
 
-  with ToolchainProfiler.profile_block('write_post'):
-    f.write('\n')
-    f.write(post)
-    f.write('\n')
-    f.close()
+    with ToolchainProfiler.profile_block('write_post'):
+      f.write('\n')
+      f.write(post)
+      f.write('\n')
 
   return filename
-
-
-@ToolchainProfiler.profile_block('js_optimizer.run_on_js')
-def run(filename, passes, extra_info=None):
-  just_split = 'receiveJSON' in passes
-  just_concat = 'emitJSON' in passes
-  return run_on_js(filename, passes, extra_info=extra_info, just_split=just_split, just_concat=just_concat)
 
 
 def main():
@@ -388,7 +357,7 @@ def main():
     sys.argv = sys.argv[:-1]
   else:
     extra_info = None
-  out = run(sys.argv[1], sys.argv[2:], extra_info=extra_info)
+  out = run_on_file(sys.argv[1], sys.argv[2:], extra_info=extra_info)
   shutil.copyfile(out, sys.argv[1] + '.jsopt.js')
   return 0
 

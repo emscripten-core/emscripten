@@ -97,12 +97,19 @@ struct pthread {
 	// wait until it reaches 0, at which point the mailbox is considered
 	// closed and no further messages will be enqueued.
 	_Atomic int mailbox_refcount;
-	// Whether the thread has executed a `waitAsync` on this pthread struct
-	// and can be notified of new mailbox messages via `Atomics.notify`.
-	// Otherwise the notification has to fall back to the postMessage path.
+	// Whether the thread has executed an `Atomics.waitAsync` on this
+	// pthread struct and can be notified of new mailbox messages via
+	// `Atomics.notify`. Otherwise, such as when the environment does not
+	// implement `Atomics.waitAsync` or when the thread has not had a chance
+	// to initialize itself yet, the notification has to fall back to the
+	// postMessage path. Once this becomes true, it remains true so we never
+	// fall back to postMessage unnecessarily.
 	_Atomic int waiting_async;
 #endif
-#if _REENTRANT
+#ifdef EMSCRIPTEN_DYNAMIC_LINKING
+	// When dynamic linking is enabled, threads use this to facilitate the
+	// synchronization of loaded code between threads.
+	// See emscripten_futex_wait.c.
 	_Atomic char sleeping;
 #endif
 };
@@ -251,7 +258,7 @@ extern hidden unsigned __default_guardsize;
 
 #ifdef __EMSCRIPTEN__
 // Keep in sync with DEFAULT_PTHREAD_STACK_SIZE in settings.js
-#define DEFAULT_STACK_SIZE (2*1024*1024)
+#define DEFAULT_STACK_SIZE (64*1024)
 #else
 #define DEFAULT_STACK_SIZE 131072
 #endif

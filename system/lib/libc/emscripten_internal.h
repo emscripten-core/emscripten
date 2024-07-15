@@ -12,6 +12,9 @@
  */
 
 #include <emscripten/em_macros.h>
+#include <emscripten/proxying.h>
+#include <emscripten/html5.h>
+#include <emscripten/wasm_worker.h>
 
 #include <signal.h>    // for `sighandler_t`
 #include <stdbool.h>   // for `bool`
@@ -23,31 +26,35 @@
 extern "C" {
 #endif
 
+_Noreturn void _abort_js(void);
+
+void setThrew(uintptr_t threw, int value);
+
 // An external JS implementation that is efficient for very large copies, using
 // HEAPU8.set()
-void emscripten_memcpy_big(void* __restrict__ dest,
+void _emscripten_memcpy_js(void* __restrict__ dest,
                            const void* __restrict__ src,
-                           size_t n) EM_IMPORT(emscripten_memcpy_big);
+                           size_t n) EM_IMPORT(_emscripten_memcpy_js);
+
+void* _emscripten_memcpy_bulkmem(void* __restrict__ dest,
+                                 const void* __restrict__ src,
+                                 size_t n);
+void* _emscripten_memset_bulkmem(void* ptr, char value, size_t n);
 
 void emscripten_notify_memory_growth(size_t memory_index);
 
-// Declare these functions `int` rather than time_t to avoid int64 at the wasm
-// boundary (avoids 64-bit complexity at the boundary when WASM_BIGINT is
-// missing).
-// TODO(sbc): Covert back to `time_t` before 2038 ...
-int _timegm_js(struct tm* tm);
-int _mktime_js(struct tm* tm);
-void _localtime_js(const time_t* __restrict__ t, struct tm* __restrict__ tm);
-void _gmtime_js(const time_t* __restrict__ t, struct tm* __restrict__ tm);
+time_t _timegm_js(struct tm* tm);
+time_t _mktime_js(struct tm* tm);
+void _localtime_js(time_t t, struct tm* __restrict__ tm);
+void _gmtime_js(time_t t, struct tm* __restrict__ tm);
 
-void _tzset_js(long* timezone, int* daylight, char** tzname);
+void _tzset_js(long* timezone, int* daylight, char* std_name, char* dst_name);
 
 const char* emscripten_pc_get_function(uintptr_t pc);
 const char* emscripten_pc_get_file(uintptr_t pc);
 int emscripten_pc_get_line(uintptr_t pc);
 int emscripten_pc_get_column(uintptr_t pc);
 
-char* emscripten_get_module_name(char* buf, size_t length);
 void* emscripten_builtin_mmap(
   void* addr, size_t length, int prot, int flags, int fd, off_t offset);
 int emscripten_builtin_munmap(void* addr, size_t length);
@@ -71,13 +78,13 @@ int _mmap_js(size_t length,
              int prot,
              int flags,
              int fd,
-             size_t offset,
+             off_t offset,
              int* allocated,
              void** addr);
 int _munmap_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset);
+  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset);
 int _msync_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, size_t offset);
+  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset);
 
 struct dso;
 
@@ -93,6 +100,19 @@ void* _dlsym_catchup_js(struct dso* handle, int sym_index);
 
 int _setitimer_js(int which, double timeout);
 
+// Synchronous version of "dlsync_threads".  Called only on the main thread.
+// Runs _emscripten_dlsync_self on each of the threads that are running at
+// the time of the call.
+void _emscripten_dlsync_threads();
+
+// Asynchronous version of "dlsync_threads".  Called only on the main thread.
+// Runs _emscripten_dlsync_self on each of the threads that are running at
+// the time of the call.  Once this is done the callback is called with the
+// given em_proxying_ctx.
+void _emscripten_dlsync_threads_async(pthread_t calling_thread,
+                                      void (*callback)(em_proxying_ctx*),
+                                      em_proxying_ctx* ctx);
+
 #ifdef _GNU_SOURCE
 void __call_sighandler(sighandler_t handler, int sig);
 #endif
@@ -101,11 +121,37 @@ double emscripten_get_now_res(void);
 
 void* emscripten_return_address(int level);
 
+int _emscripten_sanitizer_use_colors(void);
+char* _emscripten_sanitizer_get_option(const char* name);
+
 void _emscripten_fs_load_embedded_files(void* ptr);
 
 void _emscripten_throw_longjmp(void);
 
+void _emscripten_runtime_keepalive_clear();
+
 void __handle_stack_overflow(void* addr);
+
+// Internal fetch API
+struct emscripten_fetch_t;
+void emscripten_start_fetch(struct emscripten_fetch_t* fetch);
+size_t _emscripten_fetch_get_response_headers_length(int32_t fetchID);
+size_t _emscripten_fetch_get_response_headers(int32_t fetchID, char *dst, size_t dstSizeBytes);
+void _emscripten_fetch_free(unsigned int);
+
+EMSCRIPTEN_RESULT _emscripten_set_offscreencanvas_size(const char *target, int width, int height);
+
+// Internal implementation function in JavaScript side that emscripten_create_wasm_worker() calls to
+// to perform the wasm worker creation.
+emscripten_wasm_worker_t _emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize);
+
+void __resumeException(void* exn);
+void __cxa_call_unexpected(void* exn);
+void llvm_eh_typeid_for(void* exn);
+
+uint32_t _emscripten_lookup_name(const char *name);
+
+int _emscripten_system(const char *command);
 
 #ifdef __cplusplus
 }

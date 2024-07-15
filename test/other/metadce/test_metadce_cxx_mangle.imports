@@ -6,8 +6,9 @@ env.__cxa_rethrow
 env.__cxa_throw
 env.__cxa_uncaught_exceptions
 env.__resumeException
-env.abort
-env.emscripten_memcpy_big
+env._abort_js
+env._emscripten_memcpy_js
+env._tzset_js
 env.emscripten_resize_heap
 env.invoke_diii
 env.invoke_fiii
@@ -29,7 +30,6 @@ env.invoke_viiii
 env.invoke_viiiiiii
 env.invoke_viiiiiiiiii
 env.invoke_viiiiiiiiiiiiiii
-env.strftime_l
 wasi_snapshot_preview1.environ_get
 wasi_snapshot_preview1.environ_sizes_get
 wasi_snapshot_preview1.fd_close

@@ -34,7 +34,7 @@ void ListOfModules::init() {
   modules_.Initialize(2);
 
   char name[256];
-  emscripten_get_module_name(name, 256);
+  _emscripten_get_progname(name, 256);
 
   LoadedModule main_module;
   main_module.set(name, 0);
@@ -126,6 +126,8 @@ u64 MonotonicNanoTime() {
   clock_gettime(CLOCK_MONOTONIC, &ts);
   return (u64)ts.tv_sec * (1000ULL * 1000 * 1000) + ts.tv_nsec;
 }
+
+void GetMemoryProfile(fill_profile_f cb, uptr *stats) {}
 
 } // namespace __sanitizer
 

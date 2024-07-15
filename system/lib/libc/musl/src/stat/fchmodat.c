@@ -2,21 +2,25 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "syscall.h"
-#include "kstat.h"
 
 int fchmodat(int fd, const char *path, mode_t mode, int flag)
 {
-	if (!flag) return syscall(SYS_fchmodat, fd, path, mode, flag);
+#ifndef __EMSCRIPTEN__
+	if (!flag) return syscall(SYS_fchmodat, fd, path, mode);
+#endif
+
+	int ret = __syscall(SYS_fchmodat2, fd, path, mode, flag);
+	if (ret != -ENOSYS) return __syscall_ret(ret);
 
 	if (flag != AT_SYMLINK_NOFOLLOW)
 		return __syscall_ret(-EINVAL);
 
-	struct kstat st;
-	int ret, fd2;
+	struct stat st;
+	int fd2;
 	char proc[15+3*sizeof(int)];
 
-	if ((ret = __syscall(SYS_fstatat, fd, path, &st, flag)))
-		return __syscall_ret(ret);
+	if (fstatat(fd, path, &st, flag))
+		return -1;
 	if (S_ISLNK(st.st_mode))
 		return __syscall_ret(-EOPNOTSUPP);
 
@@ -27,10 +31,14 @@ int fchmodat(int fd, const char *path, mode_t mode, int flag)
 	}
 
 	__procfdname(proc, fd2);
-	ret = __syscall(SYS_fstatat, AT_FDCWD, proc, &st, 0);
+	ret = stat(proc, &st);
 	if (!ret) {
-		if (S_ISLNK(st.st_mode)) ret = -EOPNOTSUPP;
-		else ret = __syscall(SYS_fchmodat, AT_FDCWD, proc, mode);
+		if (S_ISLNK(st.st_mode)) ret = __syscall_ret(-EOPNOTSUPP);
+#ifdef __EMSCRIPTEN__
+		else ret = syscall(SYS_fchmodat2, AT_FDCWD, proc, mode, 0);
+#else
+		else ret = syscall(SYS_fchmodat, AT_FDCWD, proc, mode);
+#endif
 	}
 
 #ifdef __EMSCRIPTEN__
@@ -38,5 +46,5 @@ int fchmodat(int fd, const char *path, mode_t mode, int flag)
 #else
 	__syscall(SYS_close, fd2);
 #endif
-	return __syscall_ret(ret);
+	return ret;
 }

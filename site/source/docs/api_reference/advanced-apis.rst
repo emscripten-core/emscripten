@@ -78,9 +78,9 @@ example, writing a new local file system) or legacy file system compatibility.
 .. js:function:: FS.isRoot(node)
 .. js:function:: FS.isMountpoint(node)
 .. js:function:: FS.isFIFO(node)
-.. js:function:: FS.nextfd(fd_start, fd_end)
+.. js:function:: FS.nextfd()
 .. js:function:: FS.getStream(fd)
-.. js:function:: FS.createStream(stream, fd_start, fd_end)
+.. js:function:: FS.createStream(stream, fd)
 .. js:function:: FS.closeStream(fd)
 .. js:function:: FS.getStreamFromPtr(ptr)
 .. js:function:: FS.getPtrForStream(stream)
@@ -98,8 +98,6 @@ example, writing a new local file system) or legacy file system compatibility.
 .. js:function:: FS.quit()
 .. js:function:: FS.indexedDB()
 .. js:function:: FS.DB_NAME()
-.. js:function:: FS.saveFilesToDB(paths, onload, onerror)
-.. js:function:: FS.loadFilesFromDB(paths, onload, onerror)
 
   For advanced users only.
 

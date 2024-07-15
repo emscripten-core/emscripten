@@ -17,10 +17,8 @@
 pthread_mutex_t vectorMutex = PTHREAD_MUTEX_INITIALIZER;
 std::vector<void*> allocatedMemory;
 
-static void *thread_start(void *arg)
-{
-  for(int i = 0; i < NUM_BLOCKS_TO_ALLOC; ++i)
-  {
+static void *thread_start(void *arg) {
+  for (int i = 0; i < NUM_BLOCKS_TO_ALLOC; ++i) {
     void *mem = malloc(4);
     pthread_mutex_lock(&vectorMutex);
     allocatedMemory.push_back(mem);
@@ -29,26 +27,23 @@ static void *thread_start(void *arg)
   pthread_exit(0);
 }
 
-int main()
-{
+int main() {
   pthread_t thr[NUM_THREADS];
-  for(int i = 0; i < NUM_THREADS; ++i)
-  {
+  for (int i = 0; i < NUM_THREADS; ++i) {
     int rc = pthread_create(&thr[i], NULL, thread_start, 0);
     assert(rc == 0);
   }
   unsigned long numBlocksToFree = NUM_BLOCKS_TO_ALLOC * NUM_THREADS;
-  while(numBlocksToFree > 0)
-  {
+  while (numBlocksToFree > 0) {
     pthread_mutex_lock(&vectorMutex);
-    for(size_t i = 0; i < allocatedMemory.size(); ++i)
+    for (size_t i = 0; i < allocatedMemory.size(); ++i) {
       free(allocatedMemory[i]);
+    }
     numBlocksToFree -= allocatedMemory.size();
     allocatedMemory.clear();
     pthread_mutex_unlock(&vectorMutex);
   }
-  for(int i = 0; i < NUM_THREADS; ++i)
-  {
+  for (int i = 0; i < NUM_THREADS; ++i) {
     int res = 0;
     int rc = pthread_join(thr[i], (void**)&res);
     assert(rc == 0);

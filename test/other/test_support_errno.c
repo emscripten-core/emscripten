@@ -8,12 +8,13 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
-#include <sys/types.h>
-#include <netdb.h>
+#include <emscripten/em_asm.h>
+#include <emscripten/em_js.h>
+
+EM_JS_DEPS(test, "$setErrNo");
 
 int main() {
-  void* rtn = gethostbyaddr(NULL, 0, 0);
-  printf("rtn     : %p\n", rtn);
+  EM_ASM(setErrNo(5));
   printf("errno   : %d\n", errno);
   printf("strerror: %s\n", strerror(errno));
   return 0;

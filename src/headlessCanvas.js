@@ -464,7 +464,7 @@ function headlessCanvas() {
               var id = this.id++;
               this.items[id] = {
                 which: 'shader',
-                type: type,
+                type,
               };
               return id;
             },

@@ -7,14 +7,24 @@
 // Implementation of functions from emscripten/eventloop.h.
 
 LibraryJSEventLoop = {
-  emscripten_unwind_to_js_event_loop: function() {
+  emscripten_unwind_to_js_event_loop: () => {
     throw 'unwind';
+  },
+
+  $safeSetTimeout__deps: ['$callUserCallback'],
+  $safeSetTimeout__docs: '/** @param {number=} timeout */',
+  $safeSetTimeout: (func, timeout) => {
+    {{{ runtimeKeepalivePush() }}}
+    return setTimeout(() => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(func);
+    }, timeout);
   },
 
   // Just like setImmediate but returns an i32 that can be passed back
   // to wasm rather than a JS object.
-  $setImmediateWrapped: function(func) {
-    if (!setImmediateWrapped.mapping) setImmediateWrapped.mapping = [];
+  $setImmediateWrapped: (func) => {
+    setImmediateWrapped.mapping ||= [];
     var id = setImmediateWrapped.mapping.length;
     setImmediateWrapped.mapping[id] = setImmediate(() => {
       setImmediateWrapped.mapping[id] = undefined;
@@ -24,7 +34,7 @@ LibraryJSEventLoop = {
   },
 
   // Just like clearImmediate but takes an i32 rather than an object.
-  $clearImmediateWrapped: function(id) {
+  $clearImmediateWrapped: (id) => {
 #if ASSERTIONS
     assert(id);
     assert(setImmediateWrapped.mapping[id]);
@@ -64,38 +74,31 @@ LibraryJSEventLoop = {
       })
     }`,
 
-  $polyfillSetImmediate: function() {
+  $polyfillSetImmediate: () => {
     // nop, used for its postset to ensure setImmediate() polyfill is
     // not duplicated between emscripten_set_immediate() and
     // emscripten_set_immediate_loop() if application links to both of them.
   },
 
-  emscripten_set_immediate__sig: 'ipp',
   emscripten_set_immediate__deps: ['$polyfillSetImmediate', '$callUserCallback'],
-  emscripten_set_immediate: function(cb, userData) {
-    polyfillSetImmediate();
+  emscripten_set_immediate: (cb, userData) => {
     {{{ runtimeKeepalivePush(); }}}
-    return emSetImmediate(function() {
+    return emSetImmediate(() => {
       {{{ runtimeKeepalivePop(); }}}
-      callUserCallback(function() {
-        {{{ makeDynCall('vp', 'cb') }}}(userData);
-      });
+      callUserCallback(() => {{{ makeDynCall('vp', 'cb') }}}(userData));
     });
   },
 
-  emscripten_clear_immediate__sig: 'vi',
   emscripten_clear_immediate__deps: ['$polyfillSetImmediate'],
-  emscripten_clear_immediate: function(id) {
+  emscripten_clear_immediate: (id) => {
     {{{ runtimeKeepalivePop(); }}}
     emClearImmediate(id);
   },
 
-  emscripten_set_immediate_loop__sig: 'vpp',
   emscripten_set_immediate_loop__deps: ['$polyfillSetImmediate', '$callUserCallback'],
-  emscripten_set_immediate_loop: function(cb, userData) {
-    polyfillSetImmediate();
+  emscripten_set_immediate_loop: (cb, userData) => {
     function tick() {
-      callUserCallback(function() {
+      callUserCallback(() => {
         if ({{{ makeDynCall('ip', 'cb') }}}(userData)) {
           emSetImmediate(tick);
         } else {
@@ -107,31 +110,25 @@ LibraryJSEventLoop = {
     emSetImmediate(tick);
   },
 
-  emscripten_set_timeout__sig: 'ipdp',
   emscripten_set_timeout__deps: ['$safeSetTimeout'],
-  emscripten_set_timeout: function(cb, msecs, userData) {
-    return safeSetTimeout(() => {{{ makeDynCall('vp', 'cb') }}}(userData), msecs);
-  },
+  emscripten_set_timeout: (cb, msecs, userData) =>
+    safeSetTimeout(() => {{{ makeDynCall('vp', 'cb') }}}(userData), msecs),
 
-  emscripten_clear_timeout__sig: 'vi',
-  emscripten_clear_timeout: function(id) {
-    clearTimeout(id);
-  },
+  emscripten_clear_timeout: 'clearTimeout',
 
-  emscripten_set_timeout_loop__sig: 'vpdp',
-  emscripten_set_timeout_loop__deps: ['$callUserCallback'],
-  emscripten_set_timeout_loop: function(cb, msecs, userData) {
+  emscripten_set_timeout_loop__deps: ['$callUserCallback', 'emscripten_get_now'],
+  emscripten_set_timeout_loop: (cb, msecs, userData) => {
     function tick() {
-      var t = performance.now();
+      var t = _emscripten_get_now();
       var n = t + msecs;
       {{{ runtimeKeepalivePop() }}}
-      callUserCallback(function() {
-        if ({{{ makeDynCall('idi', 'cb') }}}(t, userData)) {
+      callUserCallback(() => {
+        if ({{{ makeDynCall('idp', 'cb') }}}(t, userData)) {
           // Save a little bit of code space: modern browsers should treat
           // negative setTimeout as timeout of 0
           // (https://stackoverflow.com/questions/8430966/is-calling-settimeout-with-a-negative-delay-ok)
           {{{ runtimeKeepalivePush() }}}
-          setTimeout(tick, n - performance.now());
+          setTimeout(tick, n - _emscripten_get_now());
         }
       });
     }
@@ -139,22 +136,18 @@ LibraryJSEventLoop = {
     return setTimeout(tick, 0);
   },
 
-  emscripten_set_interval__sig: 'ipdp',
   emscripten_set_interval__deps: ['$callUserCallback'],
-  emscripten_set_interval: function(cb, msecs, userData) {
+  emscripten_set_interval: (cb, msecs, userData) => {
     {{{ runtimeKeepalivePush() }}}
-    return setInterval(function() {
-      callUserCallback(function() {
-        {{{ makeDynCall('vi', 'cb') }}}(userData)
-      });
+    return setInterval(() => {
+      callUserCallback(() => {{{ makeDynCall('vp', 'cb') }}}(userData));
     }, msecs);
   },
 
-  emscripten_clear_interval__sig: 'vi',
-  emscripten_clear_interval: function(id) {
+  emscripten_clear_interval: (id) => {
     {{{ runtimeKeepalivePop() }}}
     clearInterval(id);
   },
 };
 
-mergeInto(LibraryManager.library, LibraryJSEventLoop);
+addToLibrary(LibraryJSEventLoop);

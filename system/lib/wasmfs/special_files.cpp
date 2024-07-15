@@ -12,6 +12,7 @@
 #include <wasi/api.h>
 
 #include "special_files.h"
+#include "wasmfs_internal.h"
 
 namespace wasmfs::SpecialFiles {
 
@@ -45,8 +46,15 @@ class StdinFile : public DataFile {
   }
 
   ssize_t read(uint8_t* buf, size_t len, off_t offset) override {
-    // TODO: Implement reading from stdin.
-    abort();
+    for (size_t i = 0; i < len; i++) {
+      auto c = _wasmfs_stdin_get_char();
+      if (c < 0) {
+        // No more input can be read, return what we did read.
+        return i;
+      }
+      buf[i] = c;
+    }
+    return len;
   };
 
   int flush() override { return 0; }
@@ -113,7 +121,7 @@ class StdoutFile : public WritingStdFile {
     // This is confirmed to occur when running with EXIT_RUNTIME and
     // PROXY_TO_PTHREAD. This results in only a single console.log statement
     // being outputted. The solution for now is to use out() and err() instead.
-    return writeToJS(buf, len, &_emscripten_out, writeBuffer);
+    return writeToJS(buf, len, &emscripten_out, writeBuffer);
   }
 
 public:
@@ -127,7 +135,7 @@ class StderrFile : public WritingStdFile {
     //       emscripten_err does.
     //       This will not show in HTML - a console.warn in a worker is
     //       sufficient. This would be a change from the current FS.
-    return writeToJS(buf, len, &_emscripten_err, writeBuffer);
+    return writeToJS(buf, len, &emscripten_err, writeBuffer);
   }
 
 public:

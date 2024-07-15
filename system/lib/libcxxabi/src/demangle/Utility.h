@@ -16,13 +16,14 @@
 #ifndef DEMANGLE_UTILITY_H
 #define DEMANGLE_UTILITY_H
 
-#include "StringView.h"
+#include "DemangleConfig.h"
+
 #include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <exception>
 #include <limits>
+#include <string_view>
 
 DEMANGLE_NAMESPACE_BEGIN
 
@@ -46,7 +47,7 @@ class OutputBuffer {
         BufferCapacity = Need;
       Buffer = static_cast<char *>(std::realloc(Buffer, BufferCapacity));
       if (Buffer == nullptr)
-        std::terminate();
+        std::abort();
     }
   }
 
@@ -64,23 +65,22 @@ class OutputBuffer {
     if (isNeg)
       *--TempPtr = '-';
 
-    return operator+=(StringView(TempPtr, Temp.data() + Temp.size()));
+    return operator+=(
+        std::string_view(TempPtr, Temp.data() + Temp.size() - TempPtr));
   }
 
 public:
   OutputBuffer(char *StartBuf, size_t Size)
-      : Buffer(StartBuf), CurrentPosition(0), BufferCapacity(Size) {}
+      : Buffer(StartBuf), BufferCapacity(Size) {}
+  OutputBuffer(char *StartBuf, size_t *SizePtr)
+      : OutputBuffer(StartBuf, StartBuf ? *SizePtr : 0) {}
   OutputBuffer() = default;
   // Non-copyable
   OutputBuffer(const OutputBuffer &) = delete;
   OutputBuffer &operator=(const OutputBuffer &) = delete;
 
-  operator StringView() const { return StringView(Buffer, CurrentPosition); }
-
-  void reset(char *Buffer_, size_t BufferCapacity_) {
-    CurrentPosition = 0;
-    Buffer = Buffer_;
-    BufferCapacity = BufferCapacity_;
+  operator std::string_view() const {
+    return std::string_view(Buffer, CurrentPosition);
   }
 
   /// If a ParameterPackExpansion (or similar type) is encountered, the offset
@@ -103,10 +103,10 @@ public:
     *this += Close;
   }
 
-  OutputBuffer &operator+=(StringView R) {
+  OutputBuffer &operator+=(std::string_view R) {
     if (size_t Size = R.size()) {
       grow(Size);
-      std::memcpy(Buffer + CurrentPosition, R.begin(), Size);
+      std::memcpy(Buffer + CurrentPosition, &*R.begin(), Size);
       CurrentPosition += Size;
     }
     return *this;
@@ -118,18 +118,18 @@ public:
     return *this;
   }
 
-  OutputBuffer &prepend(StringView R) {
+  OutputBuffer &prepend(std::string_view R) {
     size_t Size = R.size();
 
     grow(Size);
     std::memmove(Buffer + Size, Buffer, CurrentPosition);
-    std::memcpy(Buffer, R.begin(), Size);
+    std::memcpy(Buffer, &*R.begin(), Size);
     CurrentPosition += Size;
 
     return *this;
   }
 
-  OutputBuffer &operator<<(StringView R) { return (*this += R); }
+  OutputBuffer &operator<<(std::string_view R) { return (*this += R); }
 
   OutputBuffer &operator<<(char C) { return (*this += C); }
 
@@ -158,7 +158,7 @@ public:
   }
 
   void insert(size_t Pos, const char *S, size_t N) {
-    assert(Pos <= CurrentPosition);
+    DEMANGLE_ASSERT(Pos <= CurrentPosition, "");
     if (N == 0)
       return;
     grow(N);
@@ -171,7 +171,7 @@ public:
   void setCurrentPosition(size_t NewPos) { CurrentPosition = NewPos; }
 
   char back() const {
-    assert(CurrentPosition);
+    DEMANGLE_ASSERT(CurrentPosition, "");
     return Buffer[CurrentPosition - 1];
   }
 
@@ -197,21 +197,6 @@ public:
   ScopedOverride(const ScopedOverride &) = delete;
   ScopedOverride &operator=(const ScopedOverride &) = delete;
 };
-
-inline bool initializeOutputBuffer(char *Buf, size_t *N, OutputBuffer &OB,
-                                   size_t InitSize) {
-  size_t BufferSize;
-  if (Buf == nullptr) {
-    Buf = static_cast<char *>(std::malloc(InitSize));
-    if (Buf == nullptr)
-      return false;
-    BufferSize = InitSize;
-  } else
-    BufferSize = *N;
-
-  OB.reset(Buf, BufferSize);
-  return true;
-}
 
 DEMANGLE_NAMESPACE_END
 

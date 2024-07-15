@@ -55,8 +55,7 @@ To see how our CI builds things, the relevant script is
 In general, the repos you need to build are LLVM and Binaryen (as emscripten
 itself doesn't have any binaries to build).
 
-When packaging build results, you need the following executables (when using
-the wasm backend):
+When packaging build results, you need the following executables:
 
   * From LLVM:
     * clang

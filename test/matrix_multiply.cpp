@@ -107,10 +107,6 @@ int main(int argc, char **argv)
   }
   printf("Performing %d multiplications of matrices of size %dx%d and %dx%d. Distributing multiplication across %d animation frames (matrix muls per frame=%d).\n", NumFrames*ItersPerFrame, A, B, B, C, NumFrames, ItersPerFrame);
 
-// #define EM_TIMING_SETTIMEOUT 0
-// #define EM_TIMING_RAF 1
-// #define EM_TIMING_SETIMMEDIATE 2
-
   mA = new float[A*B];
   mB = new float[B*C];
   mDst = new float[A*C];

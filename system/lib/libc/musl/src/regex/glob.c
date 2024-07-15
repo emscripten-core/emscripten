@@ -265,7 +265,7 @@ int glob(const char *restrict pat, int flags, int (*errfunc)(const char *path, i
 			if (append(&tail, pat, strlen(pat), 0))
 				return GLOB_NOSPACE;
 			cnt++;
-		} else
+		} else if (!error)
 			return GLOB_NOMATCH;
 	}
 
@@ -306,6 +306,3 @@ void globfree(glob_t *g)
 	g->gl_pathc = 0;
 	g->gl_pathv = NULL;
 }
-
-weak_alias(glob, glob64);
-weak_alias(globfree, globfree64);

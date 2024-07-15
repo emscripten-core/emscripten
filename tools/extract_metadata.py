@@ -6,7 +6,7 @@
 import logging
 from typing import List, Dict
 
-from . import webassembly
+from . import webassembly, utils
 from .webassembly import OpCode, AtomicOpCode, MemoryOpCode
 from .shared import exit_with_error
 from .settings import settings
@@ -95,7 +95,7 @@ def parse_function_for_memory_inits(module, func_index, offset_map):
     elif opcode in (OpCode.BLOCK,):
       module.read_type()
     elif opcode in (OpCode.I32_CONST, OpCode.I64_CONST):
-      const_values.append(module.read_uleb())
+      const_values.append(module.read_sleb())
     elif opcode in (OpCode.GLOBAL_SET, OpCode.BR, OpCode.GLOBAL_GET, OpCode.LOCAL_SET, OpCode.LOCAL_GET, OpCode.LOCAL_TEE):
       module.read_uleb()
     elif opcode == OpCode.CALL:
@@ -105,7 +105,7 @@ def parse_function_for_memory_inits(module, func_index, offset_map):
       if opcode == MemoryOpCode.MEMORY_INIT:
         segment_idx = module.read_uleb()
         segment = segments[segment_idx]
-        offset = const_values[-3]
+        offset = to_unsigned(const_values[-3])
         offset_map[segment] = offset
         memory = module.read_uleb()
         assert memory == 0
@@ -149,12 +149,19 @@ def get_passive_segment_offsets(module):
   return offset_map
 
 
+def to_unsigned(val):
+  if val < 0:
+    return val & ((2 ** 32) - 1)
+  else:
+    return val
+
+
 def find_segment_with_address(module, address):
   segments = module.get_segments()
   active = [s for s in segments if s.init]
 
   for seg in active:
-    offset = get_const_expr_value(seg.init)
+    offset = to_unsigned(get_const_expr_value(seg.init))
     if offset is None:
       continue
     if address >= offset and address < offset + seg.size:
@@ -194,8 +201,8 @@ def get_section_strings(module, export_map, section_name):
   end = export_map[stop_name]
   start_global = module.get_global(start.index)
   end_global = module.get_global(end.index)
-  start_addr = get_global_value(start_global)
-  end_addr = get_global_value(end_global)
+  start_addr = to_unsigned(get_global_value(start_global))
+  end_addr = to_unsigned(get_global_value(end_global))
 
   seg = find_segment_with_address(module, start_addr)
   if not seg:
@@ -224,7 +231,7 @@ def get_main_reads_params(module, export_map):
 
   main_func = module.get_function(main.index)
   if is_orig_main_wrapper(module, main_func):
-    # If main is simple wrapper function then we know that __orginial_main
+    # If main is simple wrapper function then we know that __original_main
     # doesn't read arguments.
     return False
 
@@ -232,23 +239,21 @@ def get_main_reads_params(module, export_map):
   return True
 
 
-def get_named_globals(module, exports):
-  named_globals = {}
-  internal_start_stop_symbols = set(['__start_em_asm', '__stop_em_asm',
-                                     '__start_em_lib_deps', '__stop_em_lib_deps',
-                                     '__em_lib_deps'])
-  internal_prefixes = ('__em_js__', '__em_lib_deps')
+def get_global_exports(module, exports):
+  global_exports = {}
   for export in exports:
     if export.kind == webassembly.ExternType.GLOBAL:
-      if export.name in internal_start_stop_symbols or any(export.name.startswith(p) for p in internal_prefixes):
-        continue
       g = module.get_global(export.index)
-      named_globals[export.name] = str(get_global_value(g))
-  return named_globals
+      global_exports[export.name] = str(get_global_value(g))
+  return global_exports
 
 
-def get_export_names(module):
-  return [e.name for e in module.get_exports() if e.kind in [webassembly.ExternType.FUNC, webassembly.ExternType.TAG]]
+def get_function_exports(module):
+  rtn = {}
+  for e in module.get_exports():
+    if e.kind == webassembly.ExternType.FUNC:
+      rtn[e.name] = module.get_function_type(e.index)
+  return rtn
 
 
 def update_metadata(filename, metadata):
@@ -264,10 +269,11 @@ def update_metadata(filename, metadata):
       elif i.kind in (webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG):
         imports.append(i.field)
 
-    metadata.exports = get_export_names(module)
+    metadata.function_exports = get_function_exports(module)
+    metadata.all_exports = [utils.removeprefix(e.name, '__em_js__') for e in module.get_exports()]
 
   metadata.imports = imports
-  metadata.invokeFuncs = invoke_funcs
+  metadata.invoke_funcs = invoke_funcs
 
 
 def get_string_at(module, address):
@@ -280,14 +286,14 @@ def get_string_at(module, address):
 class Metadata:
   imports: List[str]
   export: List[str]
-  asmConsts: Dict[int, str]
-  jsDeps: List[str]
-  emJsFuncs: Dict[str, str]
-  emJsFuncTypes: Dict[str, str]
+  em_asm_consts: Dict[int, str]
+  js_deps: List[str]
+  em_js_funcs: Dict[str, str]
+  em_js_func_types: Dict[str, str]
   features: List[str]
-  invokeFuncs: List[str]
-  mainReadsParams: bool
-  namedGlobals: List[str]
+  invoke_funcs: List[str]
+  main_reads_params: bool
+  global_exports: List[str]
 
   def __init__(self):
     pass
@@ -306,9 +312,9 @@ def extract_metadata(filename):
     export_map = {e.name: e for e in exports}
     for e in exports:
       if e.kind == webassembly.ExternType.GLOBAL and e.name.startswith('__em_js__'):
-        name = e.name[len('__em_js__'):]
+        name = utils.removeprefix(e.name, '__em_js__')
         globl = module.get_global(e.index)
-        string_address = get_global_value(globl)
+        string_address = to_unsigned(get_global_value(globl))
         em_js_funcs[name] = get_string_at(module, string_address)
 
     for i in imports:
@@ -333,15 +339,16 @@ def extract_metadata(filename):
     # calls __original_main (which has no parameters).
     metadata = Metadata()
     metadata.imports = import_names
-    metadata.exports = get_export_names(module)
-    metadata.asmConsts = get_section_strings(module, export_map, 'em_asm')
-    metadata.jsDeps = [d for d in get_section_strings(module, export_map, 'em_lib_deps').values() if d]
-    metadata.emJsFuncs = em_js_funcs
-    metadata.emJsFuncTypes = em_js_func_types
+    metadata.function_exports = get_function_exports(module)
+    metadata.all_exports = [utils.removeprefix(e.name, '__em_js__') for e in exports]
+    metadata.em_asm_consts = get_section_strings(module, export_map, 'em_asm')
+    metadata.js_deps = [d for d in get_section_strings(module, export_map, 'em_lib_deps').values() if d]
+    metadata.em_js_funcs = em_js_funcs
+    metadata.em_js_func_types = em_js_func_types
     metadata.features = features
-    metadata.invokeFuncs = invoke_funcs
-    metadata.mainReadsParams = get_main_reads_params(module, export_map)
-    metadata.namedGlobals = get_named_globals(module, exports)
+    metadata.invoke_funcs = invoke_funcs
+    metadata.main_reads_params = get_main_reads_params(module, export_map)
+    metadata.global_exports = get_global_exports(module, exports)
 
     # print("Metadata parsed: " + pprint.pformat(metadata))
     return metadata

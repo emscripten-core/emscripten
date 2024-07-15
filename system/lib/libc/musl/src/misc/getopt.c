@@ -16,7 +16,7 @@ weak_alias(__optreset, optreset);
 void __getopt_msg(const char *a, const char *b, const char *c, size_t l)
 {
 	FILE *f = stderr;
-	b = __lctrans_cur(b);
+	b = LCTRANS_CUR(b); /* XXX EMSCRIPTEN: Use macro version here */
 	FLOCK(f);
 	fputs(a, f)>=0
 	&& fwrite(b, strlen(b), 1, f)
@@ -87,7 +87,8 @@ int getopt(int argc, char * const argv[], const char *optstring)
 	if (optstring[i] == ':') {
 		optarg = 0;
 		if (optstring[i+1] != ':' || optpos) {
-			optarg = argv[optind++] + optpos;
+			optarg = argv[optind++];
+			if (optpos) optarg += optpos;
 			optpos = 0;
 		}
 		if (optind > argc) {

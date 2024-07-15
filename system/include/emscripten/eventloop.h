@@ -26,9 +26,9 @@ void emscripten_set_immediate_loop(EM_BOOL (*cb)(void *user_data), void *user_da
 int emscripten_set_interval(void (*cb)(void *user_data) __attribute__((nonnull)), double interval_ms, void *user_data);
 void emscripten_clear_interval(int id);
 
-void emscripten_runtime_keepalive_push();
-void emscripten_runtime_keepalive_pop();
-EM_BOOL emscripten_runtime_keepalive_check();
+void emscripten_runtime_keepalive_push(void);
+void emscripten_runtime_keepalive_pop(void);
+EM_BOOL emscripten_runtime_keepalive_check(void);
 
 #ifdef __cplusplus
 }

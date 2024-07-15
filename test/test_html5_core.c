@@ -11,9 +11,9 @@
 #include <emscripten/html5.h>
 
 static inline const char *emscripten_event_type_to_string(int eventType) {
-  const char *events[] = { "(invalid)", "(none)", "keypress", "keydown", "keyup", "click", "mousedown", "mouseup", "dblclick", "mousemove", "wheel", "resize", 
-    "scroll", "blur", "focus", "focusin", "focusout", "deviceorientation", "devicemotion", "orientationchange", "fullscreenchange", "pointerlockchange", 
-    "visibilitychange", "touchstart", "touchend", "touchmove", "touchcancel", "gamepadconnected", "gamepaddisconnected", "beforeunload", 
+  const char *events[] = { "(invalid)", "(none)", "keypress", "keydown", "keyup", "click", "mousedown", "mouseup", "dblclick", "mousemove", "wheel", "resize",
+    "scroll", "blur", "focus", "focusin", "focusout", "deviceorientation", "devicemotion", "orientationchange", "fullscreenchange", "pointerlockchange",
+    "visibilitychange", "touchstart", "touchend", "touchmove", "touchcancel", "gamepadconnected", "gamepaddisconnected", "beforeunload",
     "batterychargingchange", "batterylevelchange", "webglcontextlost", "webglcontextrestored", "mouseenter", "mouseleave", "mouseover", "mouseout", "(invalid)" };
   ++eventType;
   if (eventType < 0) eventType = 0;
@@ -38,11 +38,10 @@ const char *emscripten_result_to_string(EMSCRIPTEN_RESULT result) {
 
 // The event handler functions can return 1 to suppress the event and disable the default action. That calls event.preventDefault();
 // Returning 0 signals that the event was not consumed by the code, and will allow the event to pass on and bubble up normally.
-EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
-{
-  printf("%s, key: \"%s\", code: \"%s\", location: %lu,%s%s%s%s repeat: %d, locale: \"%s\", char: \"%s\", charCode: %lu, keyCode: %lu, which: %lu, timestamp: %lf\n",
-    emscripten_event_type_to_string(eventType), e->key, e->code, e->location, 
-    e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "", 
+EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
+  printf("%s, key: \"%s\", code: \"%s\", location: %u,%s%s%s%s repeat: %d, locale: \"%s\", char: \"%s\", charCode: %u, keyCode: %u, which: %u, timestamp: %lf\n",
+    emscripten_event_type_to_string(eventType), e->key, e->code, e->location,
+    e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "",
     e->repeat, e->locale, e->charValue, e->charCode, e->keyCode, e->which,
     e->timestamp);
 
@@ -89,22 +88,20 @@ EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *user
   return 0;
 }
 
-EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData)
-{
-  printf("%s, screen: (%ld,%ld), client: (%ld,%ld),%s%s%s%s button: %hu, buttons: %hu, movement: (%ld,%ld), canvas: (%ld,%ld), timestamp: %lf\n",
+EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
+  printf("%s, screen: (%d,%d), client: (%d,%d),%s%s%s%s button: %hu, buttons: %hu, movement: (%d,%d), canvas: (%d,%d), timestamp: %lf\n",
     emscripten_event_type_to_string(eventType), e->screenX, e->screenY, e->clientX, e->clientY,
-    e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "", 
+    e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "",
     e->button, e->buttons, e->movementX, e->movementY, e->canvasX, e->canvasY,
     e->timestamp);
 
   return 0;
 }
 
-EM_BOOL wheel_callback(int eventType, const EmscriptenWheelEvent *e, void *userData)
-{
-  printf("%s, screen: (%ld,%ld), client: (%ld,%ld),%s%s%s%s button: %hu, buttons: %hu, canvas: (%ld,%ld), delta:(%g,%g,%g), deltaMode:%lu, timestamp: %lf\n",
+EM_BOOL wheel_callback(int eventType, const EmscriptenWheelEvent *e, void *userData) {
+  printf("%s, screen: (%d,%d), client: (%d,%d),%s%s%s%s button: %hu, buttons: %hu, canvas: (%d,%d), delta:(%g,%g,%g), deltaMode:%u, timestamp: %lf\n",
     emscripten_event_type_to_string(eventType), e->mouse.screenX, e->mouse.screenY, e->mouse.clientX, e->mouse.clientY,
-    e->mouse.ctrlKey ? " CTRL" : "", e->mouse.shiftKey ? " SHIFT" : "", e->mouse.altKey ? " ALT" : "", e->mouse.metaKey ? " META" : "", 
+    e->mouse.ctrlKey ? " CTRL" : "", e->mouse.shiftKey ? " SHIFT" : "", e->mouse.altKey ? " ALT" : "", e->mouse.metaKey ? " META" : "",
     e->mouse.button, e->mouse.buttons, e->mouse.canvasX, e->mouse.canvasY,
     (float)e->deltaX, (float)e->deltaY, (float)e->deltaZ, e->deltaMode,
     e->mouse.timestamp);
@@ -112,33 +109,29 @@ EM_BOOL wheel_callback(int eventType, const EmscriptenWheelEvent *e, void *userD
   return 0;
 }
 
-EM_BOOL uievent_callback(int eventType, const EmscriptenUiEvent *e, void *userData)
-{
-  printf("%s, detail: %ld, document.body.client size: (%d,%d), window.inner size: (%d,%d), scrollPos: (%d, %d)\n",
+EM_BOOL uievent_callback(int eventType, const EmscriptenUiEvent *e, void *userData) {
+  printf("%s, detail: %d, document.body.client size: (%d,%d), window.inner size: (%d,%d), scrollPos: (%d, %d)\n",
     emscripten_event_type_to_string(eventType), e->detail, e->documentBodyClientWidth, e->documentBodyClientHeight,
     e->windowInnerWidth, e->windowInnerHeight, e->scrollTop, e->scrollLeft);
 
   return 0;
 }
 
-EM_BOOL focusevent_callback(int eventType, const EmscriptenFocusEvent *e, void *userData)
-{
+EM_BOOL focusevent_callback(int eventType, const EmscriptenFocusEvent *e, void *userData) {
   printf("%s, nodeName: \"%s\", id: \"%s\"\n", emscripten_event_type_to_string(eventType), e->nodeName, e->id[0] == '\0' ? "(empty string)" : e->id);
 
   return 0;
 }
 
-EM_BOOL deviceorientation_callback(int eventType, const EmscriptenDeviceOrientationEvent *e, void *userData)
-{
+EM_BOOL deviceorientation_callback(int eventType, const EmscriptenDeviceOrientationEvent *e, void *userData) {
   printf("%s, (%g, %g, %g)\n", emscripten_event_type_to_string(eventType), e->alpha, e->beta, e->gamma);
 
   return 0;
 }
 
-EM_BOOL devicemotion_callback(int eventType, const EmscriptenDeviceMotionEvent *e, void *userData)
-{
+EM_BOOL devicemotion_callback(int eventType, const EmscriptenDeviceMotionEvent *e, void *userData) {
   printf("%s, accel: (%g, %g, %g), accelInclGravity: (%g, %g, %g), rotationRate: (%g, %g, %g), supportedFields: %s %s %s\n",
-    emscripten_event_type_to_string(eventType), 
+    emscripten_event_type_to_string(eventType),
     e->accelerationX, e->accelerationY, e->accelerationZ,
     e->accelerationIncludingGravityX, e->accelerationIncludingGravityY, e->accelerationIncludingGravityZ,
     e->rotationRateAlpha, e->rotationRateBeta, e->rotationRateGamma,
@@ -149,53 +142,46 @@ EM_BOOL devicemotion_callback(int eventType, const EmscriptenDeviceMotionEvent *
   return 0;
 }
 
-EM_BOOL orientationchange_callback(int eventType, const EmscriptenOrientationChangeEvent *e, void *userData)
-{
+EM_BOOL orientationchange_callback(int eventType, const EmscriptenOrientationChangeEvent *e, void *userData) {
   printf("%s, orientationAngle: %d, orientationIndex: %d\n", emscripten_event_type_to_string(eventType), e->orientationAngle, e->orientationIndex);
 
   return 0;
 }
 
-EM_BOOL fullscreenchange_callback(int eventType, const EmscriptenFullscreenChangeEvent *e, void *userData)
-{
+EM_BOOL fullscreenchange_callback(int eventType, const EmscriptenFullscreenChangeEvent *e, void *userData) {
   printf("%s, isFullscreen: %d, fullscreenEnabled: %d, fs element nodeName: \"%s\", fs element id: \"%s\". New size: %dx%d pixels. Screen size: %dx%d pixels.\n",
     emscripten_event_type_to_string(eventType), e->isFullscreen, e->fullscreenEnabled, e->nodeName, e->id, e->elementWidth, e->elementHeight, e->screenWidth, e->screenHeight);
 
   return 0;
 }
 
-EM_BOOL pointerlockchange_callback(int eventType, const EmscriptenPointerlockChangeEvent *e, void *userData)
-{
+EM_BOOL pointerlockchange_callback(int eventType, const EmscriptenPointerlockChangeEvent *e, void *userData) {
   printf("%s, isActive: %d, pointerlock element nodeName: \"%s\", id: \"%s\"\n",
     emscripten_event_type_to_string(eventType), e->isActive, e->nodeName, e->id);
 
   return 0;
 }
 
-EM_BOOL visibilitychange_callback(int eventType, const EmscriptenVisibilityChangeEvent *e, void *userData)
-{
+EM_BOOL visibilitychange_callback(int eventType, const EmscriptenVisibilityChangeEvent *e, void *userData) {
   printf("%s, hidden: %d, visibilityState: %d\n", emscripten_event_type_to_string(eventType), e->hidden, e->visibilityState);
 
   return 0;
 }
 
-EM_BOOL touch_callback(int eventType, const EmscriptenTouchEvent *e, void *userData)
-{
+EM_BOOL touch_callback(int eventType, const EmscriptenTouchEvent *e, void *userData) {
   printf("%s, numTouches: %d timestamp: %lf %s%s%s%s\n",
     emscripten_event_type_to_string(eventType), e->numTouches, e->timestamp,
     e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "");
-  for(int i = 0; i < e->numTouches; ++i)
-  {
+  for (int i = 0; i < e->numTouches; ++i) {
     const EmscriptenTouchPoint *t = &e->touches[i];
-    printf("  %ld: screen: (%ld,%ld), client: (%ld,%ld), page: (%ld,%ld), isChanged: %d, onTarget: %d, canvas: (%ld, %ld)\n",
+    printf("  %d: screen: (%d,%d), client: (%d,%d), page: (%d,%d), isChanged: %d, onTarget: %d, canvas: (%d, %d)\n",
       t->identifier, t->screenX, t->screenY, t->clientX, t->clientY, t->pageX, t->pageY, t->isChanged, t->onTarget, t->canvasX, t->canvasY);
   }
-  
+
   return 0;
 }
 
-const char *beforeunload_callback(int eventType, const void *reserved, void *userData)
-{
+const char *beforeunload_callback(int eventType, const void *reserved, void *userData) {
 #ifdef REPORT_RESULT
   return ""; // For test harness, don't show a confirmation dialog to not block and keep the test runner automated.
 #else
@@ -203,8 +189,7 @@ const char *beforeunload_callback(int eventType, const void *reserved, void *use
 #endif
 }
 
-void formatTime(char *str, int seconds)
-{
+void formatTime(char *str, int seconds) {
   int h = seconds / (60*60);
   seconds -= h*60*60;
   int m = seconds / 60;
@@ -219,8 +204,7 @@ void formatTime(char *str, int seconds)
   }
 }
 
-EM_BOOL battery_callback(int eventType, const EmscriptenBatteryEvent *e, void *userData)
-{
+EM_BOOL battery_callback(int eventType, const EmscriptenBatteryEvent *e, void *userData) {
   char t1[64];
   formatTime(t1, (int)e->chargingTime);
   char t2[64];
@@ -231,24 +215,20 @@ EM_BOOL battery_callback(int eventType, const EmscriptenBatteryEvent *e, void *u
   return 0;
 }
 
-EM_BOOL webglcontext_callback(int eventType, const void *reserved, void *userData)
-{
+EM_BOOL webglcontext_callback(int eventType, const void *reserved, void *userData) {
   printf("%s.\n", emscripten_event_type_to_string(eventType));
 
   return 0;
 }
 
-#ifdef REPORT_RESULT
-void report_result(void *arg)
-{
+#ifndef KEEP_ALIVE
+void test_done(void *arg) {
   emscripten_html5_remove_all_event_listeners();
-  REPORT_RESULT(0);
+  exit(0);
 }
 #endif
 
-int main()
-{
-
+int main() {
   EMSCRIPTEN_RESULT ret = emscripten_set_keypress_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);
   TEST_RESULT(emscripten_set_keypress_callback);
   ret = emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);
@@ -309,7 +289,7 @@ int main()
     orientationchange_callback(EMSCRIPTEN_EVENT_ORIENTATIONCHANGE, &oce, 0);
   }
 
-  int newOrientation = (oce.orientationIndex == EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY 
+  int newOrientation = (oce.orientationIndex == EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY
   || oce.orientationIndex == EMSCRIPTEN_ORIENTATION_PORTRAIT_SECONDARY) ? EMSCRIPTEN_ORIENTATION_LANDSCAPE_PRIMARY : EMSCRIPTEN_ORIENTATION_PORTRAIT_PRIMARY;
   // Test locking of orientation.
   ret = emscripten_lock_orientation(newOrientation);
@@ -368,8 +348,8 @@ int main()
   TEST_RESULT(emscripten_exit_pointerlock);
 
   int vibratePattern[] = {
-    150, 500, 
-    300, 500, 
+    150, 500,
+    300, 500,
     450
   };
   ret = emscripten_vibrate_pattern(vibratePattern, sizeof(vibratePattern)/sizeof(vibratePattern[0]));
@@ -420,7 +400,7 @@ int main()
   emscripten_set_window_title(source_window_title);
   char *current_window_title = emscripten_get_window_title();
   ret = (strcmp(source_window_title, current_window_title) == 0 \
-		  ? EMSCRIPTEN_RESULT_SUCCESS : EMSCRIPTEN_RESULT_FAILED);
+                  ? EMSCRIPTEN_RESULT_SUCCESS : EMSCRIPTEN_RESULT_FAILED);
   TEST_RESULT(emscripten_get_window_title);
 
   int width, height;
@@ -428,11 +408,11 @@ int main()
   ret = (width && height) ? EMSCRIPTEN_RESULT_SUCCESS : EMSCRIPTEN_RESULT_FAILED;
   TEST_RESULT(emscripten_get_screen_size);
 
-#ifdef REPORT_RESULT
-  // Keep the page running for a moment.
-  emscripten_async_call(report_result, 0, 5000);
-#else
+#ifdef KEEP_ALIVE
   emscripten_exit_with_live_runtime();
+#else
+  // Keep the page running for a moment.
+  emscripten_async_call(test_done, 0, 5000);
 #endif
   return 0;
 }

@@ -33,8 +33,9 @@ public:
 class Child2 : public Parent {
 public:
   Child2() : Parent(9) { printf("Child2:%d\n", value); };
+  virtual ~Child2() = default;
   int getValCube() { return value*value*value; }
-  static void printStatic() { printf("*static*\n"); }
+  static void printStatic(int arg0) { printf("*static*: %d\n", arg0); }
 
   virtual void virtualFunc() { printf("*virtualf*\n"); }
   virtual void virtualFunc2() { printf("*virtualf2*\n"); }
@@ -193,3 +194,48 @@ typedef struct LongLongTypes {
   unsigned long long* lluArray;
   long long ll;
 } LongLongTypes;
+
+// Returning child objects in a hierarchy
+
+struct ISmallObject {
+  virtual int getID(int number) = 0;
+};
+
+struct IObjectProvider {
+  virtual ISmallObject* getObject() = 0;
+};
+
+class SmallObject : public ISmallObject {
+public:
+  int getID(int number) {
+    return number;
+  }
+};
+
+class ObjectProvider : public IObjectProvider {
+public:
+  ISmallObject* getObject() {
+    return &m_smallObject;
+  }
+private:
+  SmallObject m_smallObject;
+};
+
+class ObjectFactory {
+public:
+  IObjectProvider* getProvider() {
+    return &m_ObjectProvider;
+  }
+private:
+  ObjectProvider m_ObjectProvider;
+};
+
+class ArrayArgumentTest {
+public:
+  ArrayArgumentTest() : m_array("I should match the member variable"){};
+  ~ArrayArgumentTest(){};
+  bool byteArrayTest(const char* arg) { return strcmp(arg, m_array) == 0; }
+  bool domStringTest(const char* arg) { return strcmp(arg, m_array) == 0; }
+private:
+  const char* m_array;
+};

@@ -10,6 +10,7 @@ import shutil
 import sys
 import time
 import unittest
+import json
 import zlib
 from pathlib import Path
 from typing import List
@@ -44,16 +45,21 @@ if 'benchmark.' in str(sys.argv):
 
 non_core = unittest.skipIf(CORE_BENCHMARKS, "only running core benchmarks")
 
-IGNORE_COMPILATION = 0
-
 OPTIMIZATIONS = '-O3'
 
 PROFILING = 0
 
 LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
 
+# A comma separated list of benchmarkers to run during test_benchmark tests. See
+# `named_benchmarkers` for what is available.
+EMTEST_BENCHMARKERS = os.getenv('EMTEST_BENCHMARKERS', 'clang,v8,v8-lto,v8-ctors')
+
 
 class Benchmarker():
+  # Whether to record statistics. Set by SizeBenchmarker.
+  record_stats = False
+
   # called when we init the object, which is during startup, even if we are
   # not running benchmarks
   def __init__(self, name):
@@ -73,10 +79,7 @@ class Benchmarker():
         raise ValueError('Incorrect benchmark output:\n' + output)
 
       if not output_parser or args == ['0']: # if arg is 0, we are not running code, and have no output to parse
-        if IGNORE_COMPILATION:
-          curr = float(re.search(r'took +([\d\.]+) milliseconds', output).group(1)) / 1000
-        else:
-          curr = time.time() - start
+        curr = time.time() - start
       else:
         try:
           curr = output_parser(output)
@@ -113,13 +116,38 @@ class Benchmarker():
 
     # size
 
-    size = sum(os.path.getsize(f) for f in self.get_output_files())
-    gzip_size = sum(len(zlib.compress(read_binary(f))) for f in self.get_output_files())
+    recorded_stats = []
 
-    print('        size: %8s, compressed: %8s' % (size, gzip_size), end=' ')
+    def add_stat(name, size, gzip_size):
+      recorded_stats.append({
+        'value': name,
+        'measurement': size,
+      })
+      recorded_stats.append({
+        'value': name + ' (gzipped)',
+        'measurement': gzip_size,
+      })
+
+    total_size = 0
+    total_gzip_size = 0
+
+    for file in self.get_output_files():
+      size = os.path.getsize(file)
+      gzip_size = len(zlib.compress(read_binary(file)))
+      if self.record_stats:
+        add_stat(utils.removeprefix(os.path.basename(file), 'size_'), size, gzip_size)
+      total_size += size
+      total_gzip_size += gzip_size
+
+    if self.record_stats:
+      add_stat('total', total_size, total_gzip_size)
+
+    print('        size: %8s, compressed: %8s' % (total_size, total_gzip_size), end=' ')
     if self.get_size_text():
       print('  (' + self.get_size_text() + ')', end=' ')
     print()
+
+    return recorded_stats
 
   def get_size_text(self):
     return ''
@@ -206,12 +234,11 @@ class EmscriptenBenchmarker(Benchmarker):
       OPTIMIZATIONS,
       '-sINITIAL_MEMORY=256MB',
       '-sENVIRONMENT=node,shell',
-      '-sBENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + LLVM_FEATURE_FLAGS
     if shared_args:
       cmd += shared_args
-    if common.EMTEST_FORCE64:
+    if PROFILING:
       cmd += ['--profiling']
     else:
       cmd += ['--closure=1', '-sMINIMAL_RUNTIME']
@@ -220,8 +247,6 @@ class EmscriptenBenchmarker(Benchmarker):
     cmd += emcc_args + self.extra_args
     if '-sFILESYSTEM' not in cmd and '-sFORCE_FILESYSTEM' not in cmd:
       cmd += ['-sFILESYSTEM=0']
-    if PROFILING:
-      cmd += ['--profiling-funcs']
     self.cmd = cmd
     run_process(cmd, env=self.env)
     if self.binaryen_opts:
@@ -244,45 +269,19 @@ class EmscriptenBenchmarker(Benchmarker):
     return ret
 
 
-class EmscriptenWasm2CBenchmarker(EmscriptenBenchmarker):
+# This benchmarker will make a test benchmark build with Emscripten and record
+# the file output sizes in out/test/stats.json. The file format is specified at
+# https://skia.googlesource.com/buildbot/+/refs/heads/main/perf/FORMAT.md
+# Running the benchmark will be skipped.
+class SizeBenchmarker(EmscriptenBenchmarker):
+  record_stats = True
+
   def __init__(self, name):
-    super().__init__(name, 'no engine needed')
+    # do not set an engine, as we will not run the code
+    super().__init__(name, engine=None)
 
-  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
-    # wasm2c doesn't want minimal runtime which the normal emscripten
-    # benchmarker defaults to, as we don't have any JS anyhow
-    emcc_args = emcc_args + [
-      '-sSTANDALONE_WASM',
-      '-sMINIMAL_RUNTIME=0',
-      '-sWASM2C'
-    ]
-
-    global LLVM_FEATURE_FLAGS
-    old_flags = LLVM_FEATURE_FLAGS
-    try:
-      # wasm2c does not support anything beyond MVP
-      LLVM_FEATURE_FLAGS = []
-      super().build(parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser)
-    finally:
-      LLVM_FEATURE_FLAGS = old_flags
-
-    # move the JS away so there is no chance we run it by mistake
-    shutil.move(self.filename, self.filename + '.old.js')
-
-    c = shared.replace_suffix(self.filenmame, '.wasm.c')
-    native = shared.replace_suffix(self.filenmame, '.exe')
-
-    run_process(['clang', c, '-o', native, OPTIMIZATIONS, '-lm',
-                 '-DWASM_RT_MAX_CALL_STACK_DEPTH=8000'])  # for havlak
-
-    self.filename = native
-
-  def run(self, args):
-    return run_process([self.filename] + args, stdout=PIPE, stderr=PIPE, check=False).stdout
-
-  def get_output_files(self):
-    # return the native code. c size may also be interesting.
-    return [self.filename]
+  # we will not actually run the benchmarks
+  run = None
 
 
 CHEERP_BIN = '/opt/cheerp/bin/'
@@ -354,57 +353,36 @@ class CheerpBenchmarker(Benchmarker):
 
 benchmarkers: List[Benchmarker] = []
 
-if not common.EMTEST_FORCE64:
-  benchmarkers += [
-    NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
-    # NativeBenchmarker('gcc',   ['gcc', '-no-pie'],  ['g++', '-no-pie'])
-  ]
+# avoid the baseline compiler running, because it adds a lot of noise
+# (the nondeterministic time it takes to get to the full compiler ends up
+# mattering as much as the actual benchmark)
+aot_v8 = (config.V8_ENGINE if config.V8_ENGINE else []) + ['--no-liftoff']
 
-if config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
-  # avoid the baseline compiler running, because it adds a lot of noise
-  # (the nondeterministic time it takes to get to the full compiler ends up
-  # mattering as much as the actual benchmark)
-  aot_v8 = config.V8_ENGINE + ['--no-liftoff']
-  default_v8_name = os.environ.get('EMBENCH_NAME') or 'v8'
-  if common.EMTEST_FORCE64:
-    benchmarkers += [
-      EmscriptenBenchmarker(default_v8_name, aot_v8, ['-sMEMORY64=2']),
-    ]
-  else:
-    benchmarkers += [
-      EmscriptenBenchmarker(default_v8_name, aot_v8),
-      EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
-      EmscriptenBenchmarker(default_v8_name + '-ctors', aot_v8, ['-sEVAL_CTORS']),
-      # EmscriptenWasm2CBenchmarker('wasm2c')
-    ]
-  if os.path.exists(CHEERP_BIN):
-    benchmarkers += [
-      # CheerpBenchmarker('cheerp-v8-wasm', aot_v8),
-    ]
-
-if config.SPIDERMONKEY_ENGINE and config.SPIDERMONKEY_ENGINE in config.JS_ENGINES:
+named_benchmarkers = {
+  'clang': NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
+  'gcc': NativeBenchmarker('gcc',   ['gcc', '-no-pie'],  ['g++', '-no-pie']),
+  'size': SizeBenchmarker('size'),
+  'v8': EmscriptenBenchmarker('v8', aot_v8),
+  'v8-lto': EmscriptenBenchmarker('v8-lto', aot_v8, ['-flto']),
+  'v8-ctors': EmscriptenBenchmarker('v8-ctors', aot_v8, ['-sEVAL_CTORS']),
+  'v8-64': EmscriptenBenchmarker('v8-64', aot_v8, ['-sMEMORY64=2']),
+  'node': EmscriptenBenchmarker('node', config.NODE_JS),
+  'node-64': EmscriptenBenchmarker('node-64', config.NODE_JS, ['-sMEMORY64=2']),
+  'cherp-v8': CheerpBenchmarker('cheerp-v8-wasm', aot_v8),
   # TODO: ensure no baseline compiler is used, see v8
-  benchmarkers += [
-    # EmscriptenBenchmarker('sm', SPIDERMONKEY_ENGINE),
-  ]
-  if os.path.exists(CHEERP_BIN):
-    benchmarkers += [
-      # CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE),
-    ]
+  'sm': EmscriptenBenchmarker('sm', config.SPIDERMONKEY_ENGINE),
+  'cherp-sm': CheerpBenchmarker('cheerp-sm-wasm', config.SPIDERMONKEY_ENGINE)
+}
 
-if config.NODE_JS and config.NODE_JS in config.JS_ENGINES:
-  if common.EMTEST_FORCE64:
-    benchmarkers += [
-      EmscriptenBenchmarker('Node.js', config.NODE_JS, ['-sMEMORY64=2']),
-    ]
-  else:
-    benchmarkers += [
-      # EmscriptenBenchmarker('Node.js', config.NODE_JS),
-    ]
+for name in EMTEST_BENCHMARKERS.split(','):
+  if name not in named_benchmarkers:
+    raise Exception('error, unknown benchmarker ' + name)
+  benchmarkers.append(named_benchmarkers[name])
 
 
 class benchmark(common.RunnerCore):
   save_dir = True
+  stats = [] # type: ignore
 
   @classmethod
   def setUpClass(cls):
@@ -413,7 +391,7 @@ class benchmark(common.RunnerCore):
     for benchmarker in benchmarkers:
       benchmarker.prepare()
 
-    fingerprint = ['ignoring compilation' if IGNORE_COMPILATION else 'including compilation', time.asctime()]
+    fingerprint = ['including compilation', time.asctime()]
     try:
       fingerprint.append('em: ' + run_process(['git', 'show'], stdout=PIPE).stdout.splitlines()[0])
     except Exception:
@@ -425,6 +403,17 @@ class benchmark(common.RunnerCore):
       pass
     fingerprint.append('llvm: ' + config.LLVM_ROOT)
     print('Running Emscripten benchmarks... [ %s ]' % ' | '.join(fingerprint))
+
+  @classmethod
+  def tearDownClass(cls):
+    super().tearDownClass()
+    if cls.stats:
+      output = {
+        'version': 1,
+        'git_hash': '',
+        'results': cls.stats
+      }
+      utils.write_file('stats.json', json.dumps(output, indent=2) + '\n')
 
   # avoid depending on argument reception from the commandline
   def hardcode_arguments(self, code):
@@ -458,19 +447,34 @@ class benchmark(common.RunnerCore):
     dirname = self.get_dir()
     filename = os.path.join(dirname, name + '.c' + ('' if force_c else 'pp'))
     src = self.hardcode_arguments(src)
-    with open(filename, 'w') as f:
-      f.write(src)
+    utils.write_file(filename, src)
 
     print()
     baseline = None
     for b in benchmarkers:
       if skip_native and isinstance(b, NativeBenchmarker):
         continue
+      if not b.run:
+        # If we won't run the benchmark, we don't need repetitions.
+        reps = 0
       baseline = b
       print('Running benchmarker: %s: %s' % (b.__class__.__name__, b.name))
       b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser=output_parser is not None)
       b.bench(args, output_parser, reps, expected_output)
-      b.display(baseline)
+      recorded_stats = b.display(baseline)
+      if recorded_stats:
+        self.add_stats(name, recorded_stats)
+
+  def add_stats(self, name, stats):
+    self.stats.append({
+      'key': {
+        'test': name,
+        'units': 'bytes'
+      },
+      'measurements': {
+        'stats': stats
+      }
+    })
 
   def test_primes(self, check=True):
     src = r'''
@@ -961,6 +965,12 @@ class benchmark(common.RunnerCore):
       return float(re.search(r'Total time: ([\d\.]+)', output).group(1))
     self.do_benchmark('memset_16mb', read_file(test_file('benchmark/benchmark_memset.cpp')), 'Total time:', output_parser=output_parser, shared_args=['-DMIN_COPY=1048576', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
 
+  def test_malloc_multithreading(self):
+    # Multithreaded malloc test. For emcc we use mimalloc here.
+    src = read_file(test_file('other/test_malloc_multithreading.cpp'))
+    # TODO measure with different numbers of cores and not fixed 4
+    self.do_benchmark('malloc_multithreading', src, 'Done.', shared_args=['-DWORKERS=4', '-pthread'], emcc_args=['-sEXIT_RUNTIME', '-sMALLOC=mimalloc'])
+
   def test_matrix_multiply(self):
     def output_parser(output):
       return float(re.search(r'Total elapsed: ([\d\.]+)', output).group(1))
@@ -1066,44 +1076,43 @@ class benchmark(common.RunnerCore):
                       force_c=True)
 
   def test_zzz_poppler(self):
-    with open('pre.js', 'w') as f:
-      f.write('''
-        var benchmarkArgument = %s;
-        var benchmarkArgumentToPageCount = {
-          '0': 0,
-          '1': 1,
-          '2': 5,
-          '3': 15,
-          '4': 26,
-          '5': 55,
-        };
-        if (benchmarkArgument === 0) {
-          Module['arguments'] = ['-?'];
-          Module['printErr'] = function(){};
-        } else {
-          // Add 'filename' after 'input.pdf' to write the output so it can be verified.
-          Module['arguments'] = ['-scale-to', '1024', 'input.pdf',  '-f', '1', '-l', '' + benchmarkArgumentToPageCount[benchmarkArgument]];
-          Module['postRun'] = function() {
-            var files = [];
-            for (var x in FS.root.contents) {
-              if (x.startsWith('filename-')) {
-                files.push(x);
-              }
+    utils.write_file('pre.js', '''
+      var benchmarkArgument = %s;
+      var benchmarkArgumentToPageCount = {
+        '0': 0,
+        '1': 1,
+        '2': 5,
+        '3': 15,
+        '4': 26,
+        '5': 55,
+      };
+      if (benchmarkArgument === 0) {
+        Module['arguments'] = ['-?'];
+        Module['printErr'] = function(){};
+      } else {
+        // Add 'filename' after 'input.pdf' to write the output so it can be verified.
+        Module['arguments'] = ['-scale-to', '1024', 'input.pdf',  '-f', '1', '-l', '' + benchmarkArgumentToPageCount[benchmarkArgument]];
+        Module['postRun'] = function() {
+          var files = [];
+          for (var x in FS.root.contents) {
+            if (x.startsWith('filename-')) {
+              files.push(x);
             }
-            files.sort();
-            var hash = 5381;
-            var totalSize = 0;
-            files.forEach(function(file) {
-              var data = Array.from(MEMFS.getFileDataAsTypedArray(FS.root.contents[file]));
-              for (var i = 0; i < data.length; i++) {
-                hash = ((hash << 5) + hash) ^ (data[i] & 0xff);
-              }
-              totalSize += data.length;
-            });
-            out(files.length + ' files emitted, total output size: ' + totalSize + ', hashed printout: ' + hash);
-          };
-        }
-      ''' % DEFAULT_ARG)
+          }
+          files.sort();
+          var hash = 5381;
+          var totalSize = 0;
+          files.forEach(function(file) {
+            var data = Array.from(MEMFS.getFileDataAsTypedArray(FS.root.contents[file]));
+            for (var i = 0; i < data.length; i++) {
+              hash = ((hash << 5) + hash) ^ (data[i] & 0xff);
+            }
+            totalSize += data.length;
+          });
+          out(files.length + ' files emitted, total output size: ' + totalSize + ', hashed printout: ' + hash);
+        };
+      }
+    ''' % DEFAULT_ARG)
 
     def lib_builder(name, native, env_init):
       return self.get_poppler_library(env_init=env_init)

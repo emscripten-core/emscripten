@@ -395,7 +395,7 @@ fs.read = function(fd, buffer, offset, length, position, callback) {};
  * @param {*} buffer
  * @param {number} offset
  * @param {number} length
- * @param {number} position
+ * @param {number=} position
  * @return {number}
  * @nosideeffects
  */

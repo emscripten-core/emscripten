@@ -10,9 +10,12 @@
 #ifndef _LIBCPP___RANGES_ENABLE_VIEW_H
 #define _LIBCPP___RANGES_ENABLE_VIEW_H
 
+#include <__concepts/derived_from.h>
+#include <__concepts/same_as.h>
 #include <__config>
-#include <concepts>
-#include <type_traits>
+#include <__type_traits/is_class.h>
+#include <__type_traits/is_convertible.h>
+#include <__type_traits/remove_cv.h>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
@@ -20,27 +23,28 @@
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-#if _LIBCPP_STD_VER > 17
+#if _LIBCPP_STD_VER >= 20
 
 namespace ranges {
 
-struct view_base { };
+struct view_base {};
 
-template<class _Derived>
+template <class _Derived>
   requires is_class_v<_Derived> && same_as<_Derived, remove_cv_t<_Derived>>
 class view_interface;
 
-template<class _Op, class _Yp>
+template <class _Op, class _Yp>
   requires is_convertible_v<_Op*, view_interface<_Yp>*>
 void __is_derived_from_view_interface(const _Op*, const view_interface<_Yp>*);
 
 template <class _Tp>
-inline constexpr bool enable_view = derived_from<_Tp, view_base> ||
-  requires { ranges::__is_derived_from_view_interface((_Tp*)nullptr, (_Tp*)nullptr); };
+inline constexpr bool enable_view = derived_from<_Tp, view_base> || requires {
+  ranges::__is_derived_from_view_interface((_Tp*)nullptr, (_Tp*)nullptr);
+};
 
 } // namespace ranges
 
-#endif // _LIBCPP_STD_VER > 17
+#endif // _LIBCPP_STD_VER >= 20
 
 _LIBCPP_END_NAMESPACE_STD
 

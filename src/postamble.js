@@ -6,6 +6,24 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
+#if HEADLESS
+if (!ENVIRONMENT_IS_WEB) {
+#include "headlessCanvas.js"
+#include "headless.js"
+}
+#endif
+
+#if PROXY_TO_WORKER
+if (ENVIRONMENT_IS_WORKER) {
+#include "webGLWorker.js'
+#include "proxyWorker.js"
+}
+#endif
+
+#if DETERMINISTIC
+#include "deterministic.js"
+#endif
+
 {{{ exportRuntime() }}}
 
 var calledRun;
@@ -52,21 +70,18 @@ function callMain() {
 
   var argc = args.length;
   var argv = stackAlloc((argc + 1) * {{{ POINTER_SIZE }}});
-  var argv_ptr = argv >> {{{ POINTER_SHIFT }}};
+  var argv_ptr = argv;
   args.forEach((arg) => {
-    {{{ POINTER_HEAP }}}[argv_ptr++] = {{{ to64('allocateUTF8OnStack(arg)') }}};
+    {{{ makeSetValue('argv_ptr', 0, 'stringToUTF8OnStack(arg)', '*') }}};
+    argv_ptr += {{{ POINTER_SIZE }}};
   });
-  {{{ POINTER_HEAP }}}[argv_ptr] = {{{ to64('0') }}};
+  {{{ makeSetValue('argv_ptr', 0, 0, '*') }}};
 #else
   var argc = 0;
   var argv = 0;
 #endif // MAIN_READS_PARAMS
 
   try {
-#if BENCHMARK
-    var start = Date.now();
-#endif
-
 #if ABORT_ON_WASM_EXCEPTIONS
     // See abortWrapperDepth in preamble.js!
     abortWrapperDepth += 1;
@@ -81,11 +96,7 @@ function callMain() {
     var ret = entryFunction(argc, {{{ to64('argv') }}});
 #endif // STANDALONE_WASM
 
-#if BENCHMARK
-    Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
-#endif
-
-#if ASYNCIFY == 2
+#if ASYNCIFY == 2 && !PROXY_TO_PTHREAD
     // The current spec of JSPI returns a promise only if the function suspends
     // and a plain value otherwise. This will likely change:
     // https://github.com/WebAssembly/js-promise-integration/issues/11
@@ -118,7 +129,7 @@ function stackCheckInit() {
   // get these values before even running any of the ctors so we call it redundantly
   // here.
 #if ASSERTIONS && PTHREADS
-  // See $establishStackSpace for the equivelent code that runs on a thread
+  // See $establishStackSpace for the equivalent code that runs on a thread
   assert(!ENVIRONMENT_IS_PTHREAD);
 #endif
 #if RELOCATABLE
@@ -131,11 +142,10 @@ function stackCheckInit() {
 }
 #endif
 
-#if RELOCATABLE
-var dylibsLoaded = false;
-#if '$LDSO' in addedLibraryItems
-LDSO.init();
-#endif
+#if MAIN_MODULE && PTHREADS
+// Map of modules to be shared with new threads.  This gets populated by the
+// main thread and shared with all new workers via the initial `load` message.
+var sharedModules = {};
 #endif
 
 #if MAIN_READS_PARAMS
@@ -145,8 +155,8 @@ function run() {
 #endif
 
   if (runDependencies > 0) {
-#if RUNTIME_LOGGING
-    err('run() called, but dependencies remain, so not running');
+#if RUNTIME_DEBUG
+    dbg('run() called, but dependencies remain, so not running');
 #endif
     return;
   }
@@ -156,27 +166,6 @@ function run() {
   if (!ENVIRONMENT_IS_PTHREAD)
 #endif
     stackCheckInit();
-#endif
-
-#if RELOCATABLE
-  if (!dylibsLoaded) {
-  // Loading of dynamic libraries needs to happen on each thread, so we can't
-  // use the normal __ATPRERUN__ mechanism.
-#if MAIN_MODULE
-    loadDylibs();
-#else
-    reportUndefinedSymbols();
-#endif
-    dylibsLoaded = true;
-
-    // Loading dylibs can add run dependencies.
-    if (runDependencies > 0) {
-#if RUNTIME_LOGGING
-      err('loadDylibs added run() dependencies, not running yet');
-#endif
-      return;
-    }
-  }
 #endif
 
 #if WASM_WORKERS
@@ -206,8 +195,8 @@ function run() {
 
   // a preRun added a dependency, run will be called later
   if (runDependencies > 0) {
-#if RUNTIME_LOGGING
-    err('run() called, but dependencies remain, so not running');
+#if RUNTIME_DEBUG
+    dbg('run() called, but dependencies remain, so not running');
 #endif
     return;
   }
@@ -231,7 +220,7 @@ function run() {
     readyPromiseResolve(Module);
 #endif
 #if expectToReceiveOnModule('onRuntimeInitialized')
-    if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
+    Module['onRuntimeInitialized']?.();
 #endif
 
 #if HAS_MAIN
@@ -291,6 +280,10 @@ function checkUnflushedContent() {
   try { // it doesn't matter if it fails
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0 && '$flush_NO_FILESYSTEM' in addedLibraryItems
     flush_NO_FILESYSTEM();
+#elif WASMFS && hasExportedSymbol('wasmfs_flush')
+    // In WasmFS we must also flush the WasmFS internal buffers, for this check
+    // to work.
+    _wasmfs_flush();
 #elif hasExportedSymbol('fflush')
     _fflush(0);
 #endif
@@ -302,7 +295,7 @@ function checkUnflushedContent() {
       var stream = info.object;
       var rdev = stream.rdev;
       var tty = TTY.ttys[rdev];
-      if (tty && tty.output && tty.output.length) {
+      if (tty?.output?.length) {
         has = true;
       }
     });
@@ -311,7 +304,7 @@ function checkUnflushedContent() {
   out = oldOut;
   err = oldErr;
   if (has) {
-    warnOnce('stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1 (see the FAQ), or make sure to emit a newline when you printf etc.');
+    warnOnce('stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1 (see the Emscripten FAQ), or make sure to emit a newline when you printf etc.');
 #if FILESYSTEM == 0 || SYSCALLS_REQUIRE_FILESYSTEM == 0
     warnOnce('(this may also be due to not including full filesystem support - try building with -sFORCE_FILESYSTEM)');
 #endif

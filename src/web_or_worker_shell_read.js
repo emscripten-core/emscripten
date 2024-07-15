@@ -4,66 +4,47 @@
  * SPDX-License-Identifier: MIT
  */
 
-  read_ = (url) => {
-#if SUPPORT_BASE64_EMBEDDING
-    try {
-#endif
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', url, false);
-      xhr.send(null);
-      return xhr.responseText;
-#if SUPPORT_BASE64_EMBEDDING
-    } catch (err) {
-      var data = tryParseAsDataURI(url);
-      if (data) {
-        return intArrayToString(data);
-      }
-      throw err;
-    }
-#endif
-  }
-
+#if ENVIRONMENT_MAY_BE_WORKER
   if (ENVIRONMENT_IS_WORKER) {
     readBinary = (url) => {
-#if SUPPORT_BASE64_EMBEDDING
-      try {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, false);
+      xhr.responseType = 'arraybuffer';
+      xhr.send(null);
+      return new Uint8Array(/** @type{!ArrayBuffer} */(xhr.response));
+    };
+  }
 #endif
+
+  readAsync = (url) => {
+#if ENVIRONMENT_MAY_BE_WEBVIEW
+    // Fetch has some additional restrictions over XHR, like it can't be used on a file:// url.
+    // See https://github.com/github/fetch/pull/92#issuecomment-140665932
+    // Cordova or Electron apps are typically loaded from a file:// url.
+    // So use XHR on webview if URL is a file URL.
+    if (isFileURI(url)) {
+      return new Promise((reject, resolve) => {
         var xhr = new XMLHttpRequest();
-        xhr.open('GET', url, false);
+        xhr.open('GET', url, true);
         xhr.responseType = 'arraybuffer';
+        xhr.onload = () => {
+          if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
+            resolve(xhr.response);
+          }
+          reject(xhr.status);
+        };
+        xhr.onerror = reject;
         xhr.send(null);
-        return new Uint8Array(/** @type{!ArrayBuffer} */(xhr.response));
-#if SUPPORT_BASE64_EMBEDDING
-      } catch (err) {
-        var data = tryParseAsDataURI(url);
-        if (data) {
-          return data;
+      });
+    }
+#elif ASSERTIONS
+    assert(!isFileURI(url), "readAsync does not work with file:// URLs");
+#endif
+    return fetch(url, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}})
+      .then((response) => {
+        if (response.ok) {
+          return response.arrayBuffer();
         }
-        throw err;
-      }
-#endif
-    };
-  }
-
-  readAsync = (url, onload, onerror) => {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.responseType = 'arraybuffer';
-    xhr.onload = () => {
-      if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
-        onload(xhr.response);
-        return;
-      }
-#if SUPPORT_BASE64_EMBEDDING
-      var data = tryParseAsDataURI(url);
-      if (data) {
-        onload(data.buffer);
-        return;
-      }
-#endif
-      onerror();
-    };
-    xhr.onerror = onerror;
-    xhr.send(null);
-  }
-
+        return Promise.reject(new Error(response.status + ' : ' + response.url));
+      })
+  };

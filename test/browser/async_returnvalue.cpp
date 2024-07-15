@@ -11,14 +11,14 @@
 // A "sync" tunnel that adds 1.
 #if USE_EM_JS
 EM_JS(int, sync_tunnel, (int value), {
-  return Asyncify.handleSleep(function(wakeUp) {
+  return Asyncify.handleSleep((wakeUp) => {
     setTimeout(function() {
       wakeUp(value + 1);
     }, 1);
   });
 })
 EM_JS(int, sync_tunnel_bool, (bool value), {
-  return Asyncify.handleSleep(function(wakeUp) {
+  return Asyncify.handleSleep((wakeUp) => {
     setTimeout(function() {
       wakeUp(!value);
     }, 1);
@@ -33,18 +33,14 @@ int main() {
 #ifdef BAD
   EM_ASM({
     window.disableErrorReporting = true;
-    window.onerror = function(e) {
+    window.onerror = async (e) => {
       var success = e.toString().indexOf("import sync_tunnel was not in ASYNCIFY_IMPORTS, but changed the state") > 0;
       if (success && !Module.reported) {
         Module.reported = true;
         console.log("reporting success");
         // manually REPORT_RESULT; we shouldn't call back into native code at this point
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", "http://localhost:8888/report_result?0");
-        xhr.onload = xhr.onerror = function() {
-          window.close();
-        };
-        xhr.send();
+        await fetch("http://localhost:8888/report_result?0");
+        window.close();
       }
     };
   });

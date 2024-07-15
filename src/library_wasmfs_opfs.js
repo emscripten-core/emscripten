@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-mergeInto(LibraryManager.library, {
+addToLibrary({
   $wasmfsOPFSDirectoryHandles__deps: ['$HandleAllocator'],
   $wasmfsOPFSDirectoryHandles: "new HandleAllocator()",
   $wasmfsOPFSFileHandles__deps: ['$HandleAllocator'],
@@ -14,14 +14,73 @@ mergeInto(LibraryManager.library, {
   $wasmfsOPFSBlobs__deps: ["$HandleAllocator"],
   $wasmfsOPFSBlobs: "new HandleAllocator()",
 
-  _wasmfs_opfs_init_root_directory__deps: ['$wasmfsOPFSDirectoryHandles'],
+#if !PTHREADS
+  // OPFS will only be used on modern browsers that supports JS classes.
+  $FileSystemAsyncAccessHandle: class {
+    // This class implements the same interface as the sync version, but has
+    // async reads and writes. Hopefully this will one day be implemented by the
+    // platform so we can remove it.
+    constructor(handle) {
+      this.handle = handle;
+    }
+    async close() {}
+    async flush() {}
+    async getSize() {
+      let file = await this.handle.getFile();
+      return file.size;
+    }
+    async read(buffer, options = { at: 0 }) {
+      let file = await this.handle.getFile();
+      // The end position may be past the end of the file, but slice truncates
+      // it.
+      let slice = await file.slice(options.at, options.at + buffer.length);
+      let fileBuffer = await slice.arrayBuffer();
+      let array = new Uint8Array(fileBuffer);
+      buffer.set(array);
+      return array.length;
+    }
+    async write(buffer, options = { at: 0 }) {
+      let writable = await this.handle.createWritable({keepExistingData: true});
+      await writable.write({ type: 'write', position: options.at, data: buffer });
+      await writable.close();
+      return buffer.length;
+    }
+    async truncate(size) {
+      let writable = await this.handle.createWritable({keepExistingData: true});
+      await writable.truncate(size);
+      await writable.close();
+    }
+  },
+
+  $wasmfsOPFSCreateAsyncAccessHandle__deps: ['$FileSystemAsyncAccessHandle'],
+  $wasmfsOPFSCreateAsyncAccessHandle: (fileHandle) => new FileSystemAsyncAccessHandle(fileHandle),
+#endif
+
+#if PTHREADS
+  $wasmfsOPFSProxyFinish__deps: ['emscripten_proxy_finish'],
+#endif
+  $wasmfsOPFSProxyFinish: (ctx) => {
+    // When using pthreads the proxy needs to know when the work is finished.
+    // When used with JSPI the work will be executed in an async block so there
+    // is no need to notify when done.
+#if PTHREADS
+    _emscripten_proxy_finish(ctx);
+#endif
+  },
+
+  _wasmfs_opfs_init_root_directory__deps: ['$wasmfsOPFSDirectoryHandles', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_init_root_directory: async function(ctx) {
-    if (wasmfsOPFSDirectoryHandles.allocated.length == 0) {
-      // Directory 0 is reserved as the root
+    // allocated.length starts off as 1 since 0 is a reserved handle
+    if (wasmfsOPFSDirectoryHandles.allocated.length == 1) {
+      // Closure compiler errors on this as it does not recognize the OPFS
+      // API yet, it seems. Unfortunately an existing annotation for this is in
+      // the closure compiler codebase, and cannot be overridden in user code
+      // (it complains on a duplicate type annotation), so just suppress it.
+      /** @suppress {checkTypes} */
       let root = await navigator.storage.getDirectory();
       wasmfsOPFSDirectoryHandles.allocated.push(root);
     }
-    _emscripten_proxy_finish(ctx);
+    wasmfsOPFSProxyFinish(ctx);
   },
 
   // Return the file ID for the file with `name` under `parent`, creating it if
@@ -75,7 +134,7 @@ mergeInto(LibraryManager.library, {
   },
 
   _wasmfs_opfs_get_child__deps: ['$wasmfsOPFSGetOrCreateFile',
-                                 '$wasmfsOPFSGetOrCreateDir'],
+                                 '$wasmfsOPFSGetOrCreateDir', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_get_child:
       async function(ctx, parent, namePtr, childTypePtr, childIDPtr) {
     let name = UTF8ToString(namePtr);
@@ -87,10 +146,15 @@ mergeInto(LibraryManager.library, {
     }
     {{{ makeSetValue('childTypePtr', 0, 'childType', 'i32') }}};
     {{{ makeSetValue('childIDPtr', 0, 'childID', 'i32') }}};
-    _emscripten_proxy_finish(ctx);
+    wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_get_entries__deps: [],
+  _wasmfs_opfs_get_entries__deps: [
+    '$wasmfsOPFSProxyFinish',
+    '$stackSave',
+    '$stackRestore',
+    '_wasmfs_opfs_record_entry',
+  ],
   _wasmfs_opfs_get_entries: async function(ctx, dirID, entriesPtr, errPtr) {
     let dirHandle = wasmfsOPFSDirectoryHandles.get(dirID);
 
@@ -99,54 +163,55 @@ mergeInto(LibraryManager.library, {
       let iter = dirHandle.entries();
       for (let entry; entry = await iter.next(), !entry.done;) {
         let [name, child] = entry.value;
-        withStackSave(() => {
-          let namePtr = allocateUTF8OnStack(name);
-          let type = child.kind == "file" ?
-              {{{ cDefine('File::DataFileKind') }}} :
-          {{{ cDefine('File::DirectoryKind') }}};
+        let sp = stackSave();
+        let namePtr = stringToUTF8OnStack(name);
+        let type = child.kind == "file" ?
+            {{{ cDefine('File::DataFileKind') }}} :
+        {{{ cDefine('File::DirectoryKind') }}};
           __wasmfs_opfs_record_entry(entriesPtr, namePtr, type)
-        });
+        stackRestore(sp);
       }
     } catch {
       let err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
-    _emscripten_proxy_finish(ctx);
+    wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_insert_file__deps: ['$wasmfsOPFSGetOrCreateFile'],
+  _wasmfs_opfs_insert_file__deps: ['$wasmfsOPFSGetOrCreateFile', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_insert_file: async function(ctx, parent, namePtr, childIDPtr) {
     let name = UTF8ToString(namePtr);
     let childID = await wasmfsOPFSGetOrCreateFile(parent, name, true);
     {{{ makeSetValue('childIDPtr', 0, 'childID', 'i32') }}};
-    _emscripten_proxy_finish(ctx);
+    wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_insert_directory__deps: ['$wasmfsOPFSGetOrCreateDir'],
+  _wasmfs_opfs_insert_directory__deps: ['$wasmfsOPFSGetOrCreateDir', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_insert_directory:
       async function(ctx, parent, namePtr, childIDPtr) {
     let name = UTF8ToString(namePtr);
     let childID = await wasmfsOPFSGetOrCreateDir(parent, name, true);
     {{{ makeSetValue('childIDPtr', 0, 'childID', 'i32') }}};
-    _emscripten_proxy_finish(ctx);
+    wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_move__deps: ['$wasmfsOPFSFileHandles',
-                            '$wasmfsOPFSDirectoryHandles'],
-  _wasmfs_opfs_move: async function(ctx, fileID, newDirID, namePtr, errPtr) {
+  _wasmfs_opfs_move_file__deps: ['$wasmfsOPFSFileHandles',
+                                 '$wasmfsOPFSDirectoryHandles',
+                                 '$wasmfsOPFSProxyFinish'],
+  _wasmfs_opfs_move_file: async function(ctx, fileID, newParentID, namePtr, errPtr) {
     let name = UTF8ToString(namePtr);
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
-    let newDirHandle = wasmfsOPFSDirectoryHandles.get(newDirID);
+    let newDirHandle = wasmfsOPFSDirectoryHandles.get(newParentID);
     try {
       await fileHandle.move(newDirHandle, name);
     } catch {
       let err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
-    _emscripten_proxy_finish(ctx);
+    wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_remove_child__deps: ['$wasmfsOPFSDirectoryHandles'],
+  _wasmfs_opfs_remove_child__deps: ['$wasmfsOPFSDirectoryHandles', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_remove_child: async function(ctx, dirID, namePtr, errPtr) {
     let name = UTF8ToString(namePtr);
     let dirHandle = wasmfsOPFSDirectoryHandles.get(dirID);
@@ -156,33 +221,45 @@ mergeInto(LibraryManager.library, {
       let err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
-    _emscripten_proxy_finish(ctx);
+    wasmfsOPFSProxyFinish(ctx);
   },
 
   _wasmfs_opfs_free_file__deps: ['$wasmfsOPFSFileHandles'],
-  _wasmfs_opfs_free_file: function(fileID) {
+  _wasmfs_opfs_free_file: (fileID) => {
     wasmfsOPFSFileHandles.free(fileID);
   },
 
   _wasmfs_opfs_free_directory__deps: ['$wasmfsOPFSDirectoryHandles'],
-  _wasmfs_opfs_free_directory: function(dirID) {
+  _wasmfs_opfs_free_directory: (dirID) => {
     wasmfsOPFSDirectoryHandles.free(dirID);
   },
 
   _wasmfs_opfs_open_access__deps: ['$wasmfsOPFSFileHandles',
-                                   '$wasmfsOPFSAccessHandles'],
+                                   '$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish',
+#if !PTHREADS
+                                   '$wasmfsOPFSCreateAsyncAccessHandle'
+#endif
+                                  ],
   _wasmfs_opfs_open_access: async function(ctx, fileID, accessIDPtr) {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
     let accessID;
     try {
       let accessHandle;
+#if PTHREADS
       // TODO: Remove this once the Access Handles API has settled.
-      if (FileSystemFileHandle.prototype.createSyncAccessHandle.length == 0) {
+      // TODO: Closure is confused by this code that supports two versions of
+      //       the same API, so suppress type checking on it.
+      /** @suppress {checkTypes} */
+      var len = FileSystemFileHandle.prototype.createSyncAccessHandle.length;
+      if (len == 0) {
         accessHandle = await fileHandle.createSyncAccessHandle();
       } else {
         accessHandle = await fileHandle.createSyncAccessHandle(
             {mode: "in-place"});
       }
+#else
+      accessHandle = await wasmfsOPFSCreateAsyncAccessHandle(fileHandle);
+#endif
       accessID = wasmfsOPFSAccessHandles.allocate(accessHandle);
     } catch (e) {
       // TODO: Presumably only one of these will appear in the final API?
@@ -197,11 +274,11 @@ mergeInto(LibraryManager.library, {
       }
     }
     {{{ makeSetValue('accessIDPtr', 0, 'accessID', 'i32') }}};
-    _emscripten_proxy_finish(ctx);
+    wasmfsOPFSProxyFinish(ctx);
   },
 
   _wasmfs_opfs_open_blob__deps: ['$wasmfsOPFSFileHandles',
-                                 '$wasmfsOPFSBlobs'],
+                                 '$wasmfsOPFSBlobs', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_open_blob: async function(ctx, fileID, blobIDPtr) {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
     let blobID;
@@ -219,10 +296,10 @@ mergeInto(LibraryManager.library, {
       }
     }
     {{{ makeSetValue('blobIDPtr', 0, 'blobID', 'i32') }}};
-    _emscripten_proxy_finish(ctx);
+    wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_close_access__deps: ['$wasmfsOPFSAccessHandles'],
+  _wasmfs_opfs_close_access__deps: ['$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_close_access: async function(ctx, accessID, errPtr) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     try {
@@ -232,20 +309,20 @@ mergeInto(LibraryManager.library, {
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
     wasmfsOPFSAccessHandles.free(accessID);
-    _emscripten_proxy_finish(ctx);
+    wasmfsOPFSProxyFinish(ctx);
   },
 
   _wasmfs_opfs_close_blob__deps: ['$wasmfsOPFSBlobs'],
-  _wasmfs_opfs_close_blob: function(blobID) {
+  _wasmfs_opfs_close_blob: (blobID) => {
     wasmfsOPFSBlobs.free(blobID);
   },
 
   _wasmfs_opfs_read_access__deps: ['$wasmfsOPFSAccessHandles'],
-  _wasmfs_opfs_read_access: function(accessID, bufPtr, len, pos) {
+  _wasmfs_opfs_read_access: {{{ asyncIf(!PTHREADS) }}}  function(accessID, bufPtr, len, pos) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     let data = HEAPU8.subarray(bufPtr, bufPtr + len);
     try {
-      return accessHandle.read(data, {at: pos});
+      return {{{ awaitIf(!PTHREADS) }}} accessHandle.read(data, {at: pos});
     } catch (e) {
       if (e.name == "TypeError") {
         return -{{{ cDefs.EINVAL }}};
@@ -257,7 +334,7 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  _wasmfs_opfs_read_blob__deps: ['$wasmfsOPFSBlobs'],
+  _wasmfs_opfs_read_blob__deps: ['$wasmfsOPFSBlobs', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_read_blob: async function(ctx, blobID, bufPtr, len, pos, nreadPtr) {
     let blob = wasmfsOPFSBlobs.get(blobID);
     let slice = blob.slice(pos, pos + len);
@@ -283,15 +360,15 @@ mergeInto(LibraryManager.library, {
     }
 
     {{{ makeSetValue('nreadPtr', 0, 'nread', 'i32') }}};
-    _emscripten_proxy_finish(ctx);
+    wasmfsOPFSProxyFinish(ctx);
   },
 
   _wasmfs_opfs_write_access__deps: ['$wasmfsOPFSAccessHandles'],
-  _wasmfs_opfs_write_access: function(accessID, bufPtr, len, pos) {
+  _wasmfs_opfs_write_access: {{{ asyncIf(!PTHREADS) }}} function(accessID, bufPtr, len, pos) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     let data = HEAPU8.subarray(bufPtr, bufPtr + len);
     try {
-      return accessHandle.write(data, {at: pos});
+      return {{{ awaitIf(!PTHREADS) }}} accessHandle.write(data, {at: pos});
     } catch (e) {
       if (e.name == "TypeError") {
         return -{{{ cDefs.EINVAL }}};
@@ -303,7 +380,7 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  _wasmfs_opfs_get_size_access__deps: ['$wasmfsOPFSAccessHandles'],
+  _wasmfs_opfs_get_size_access__deps: ['$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_get_size_access: async function(ctx, accessID, sizePtr) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     let size;
@@ -313,16 +390,16 @@ mergeInto(LibraryManager.library, {
       size = -{{{ cDefs.EIO }}};
     }
     {{{ makeSetValue('sizePtr', 0, 'size', 'i64') }}};
-    _emscripten_proxy_finish(ctx);
+    wasmfsOPFSProxyFinish(ctx);
   },
 
   _wasmfs_opfs_get_size_blob__deps: ['$wasmfsOPFSBlobs'],
-  _wasmfs_opfs_get_size_blob: function(blobID) {
+  _wasmfs_opfs_get_size_blob: (blobID) => {
     // This cannot fail.
     return wasmfsOPFSBlobs.get(blobID).size;
   },
 
-  _wasmfs_opfs_get_size_file__deps: ['$wasmfsOPFSFileHandles'],
+  _wasmfs_opfs_get_size_file__deps: ['$wasmfsOPFSFileHandles', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_get_size_file: async function(ctx, fileID, sizePtr) {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
     let size;
@@ -332,14 +409,12 @@ mergeInto(LibraryManager.library, {
       size = -{{{ cDefs.EIO }}};
     }
     {{{ makeSetValue('sizePtr', 0, 'size', 'i64') }}};
-    _emscripten_proxy_finish(ctx);
+    wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_set_size_access__deps: ['$wasmfsOPFSAccessHandles'],
-  _wasmfs_opfs_set_size_access: async function(ctx, accessID,
-                                               {{{ defineI64Param('size') }}},
-                                               errPtr) {
-    {{{ receiveI64ParamAsDouble('size') }}};
+  _wasmfs_opfs_set_size_access__i53abi: true,
+  _wasmfs_opfs_set_size_access__deps: ['$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish'],
+  _wasmfs_opfs_set_size_access: async function(ctx, accessID, size, errPtr) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     try {
       await accessHandle.truncate(size);
@@ -347,14 +422,12 @@ mergeInto(LibraryManager.library, {
       let err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
-    _emscripten_proxy_finish(ctx);
+    wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_set_size_file__deps: ['$wasmfsOPFSFileHandles'],
-  _wasmfs_opfs_set_size_file: async function(ctx, fileID,
-                                             {{{ defineI64Param('size') }}},
-                                             errPtr) {
-    {{{ receiveI64ParamAsDouble('size') }}};
+  _wasmfs_opfs_set_size_file__i53abi: true,
+  _wasmfs_opfs_set_size_file__deps: ['$wasmfsOPFSFileHandles', '$wasmfsOPFSProxyFinish'],
+  _wasmfs_opfs_set_size_file: async function(ctx, fileID, size, errPtr) {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
     try {
       let writable = await fileHandle.createWritable({keepExistingData: true});
@@ -364,10 +437,10 @@ mergeInto(LibraryManager.library, {
       let err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
-    _emscripten_proxy_finish(ctx);
+    wasmfsOPFSProxyFinish(ctx);
   },
 
-  _wasmfs_opfs_flush_access__deps: ['$wasmfsOPFSAccessHandles'],
+  _wasmfs_opfs_flush_access__deps: ['$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_flush_access: async function(ctx, accessID, errPtr) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
     try {
@@ -376,6 +449,6 @@ mergeInto(LibraryManager.library, {
       let err = -{{{ cDefs.EIO }}};
       {{{ makeSetValue('errPtr', 0, 'err', 'i32') }}};
     }
-    _emscripten_proxy_finish(ctx);
+    wasmfsOPFSProxyFinish(ctx);
   }
 });

@@ -1,8 +1,9 @@
 var hasModule = typeof Module === 'object' && Module;
 
-/** @param {boolean=} sync
-    @param {number=} port */
-function reportResultToServer(result, sync, port) {
+/**
+ * @param {number=} port
+ */
+function reportResultToServer(result, port) {
   port = port || 8888;
   if (reportResultToServer.reported) {
     // Only report one result per test, even if the test misbehaves and tries to report more.
@@ -12,30 +13,29 @@ function reportResultToServer(result, sync, port) {
   if ((typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) || (typeof ENVIRONMENT_IS_AUDIO_WORKLET !== 'undefined' && ENVIRONMENT_IS_AUDIO_WORKLET)) {
     out('RESULT: ' + result);
   } else {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', 'http://localhost:' + port + '/report_result?' + result, !sync);
-    xhr.send();
-    if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
-      /* for easy debugging, don't close window on failure */
-      setTimeout(function() { window.close() }, 1000);
-    }
+    let doFetch = typeof origFetch != 'undefined' ? origFetch : fetch;
+    doFetch('http://localhost:' + port + '/report_result?' + result).then(() => {
+      if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
+        /* for easy debugging, don't close window on failure */
+        window.close();
+      }
+    });
   }
 }
 
-/** @param {boolean=} sync
-    @param {number=} port */
-function maybeReportResultToServer(result, sync, port) {
+/**
+ * @param {number=} port
+ */
+function maybeReportResultToServer(result, port) {
   if (reportResultToServer.reported) return;
-  reportResultToServer(result, sync, port);
+  reportResultToServer(result, port);
 }
 
 function reportErrorToServer(message) {
-  var xhr = new XMLHttpRequest();
   if (typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) {
     err(message);
   } else {
-    xhr.open('GET', encodeURI('http://localhost:8888?stderr=' + message));
-    xhr.send();
+    fetch(encodeURI('http://localhost:8888?stderr=' + message));
   }
 }
 
@@ -63,20 +63,32 @@ function report_error(e) {
 }
 
 if (typeof window === 'object' && window) {
-  window.addEventListener('error', event => report_error(event.error));
+  window.addEventListener('error', event => {
+    report_error(event.error || event)
+  });
   window.addEventListener('unhandledrejection', event => report_error(event.reason));
 }
 
 if (hasModule) {
   if (!Module['onExit']) {
     Module['onExit'] = function(status) {
-      maybeReportResultToServer('exit:' + status);
+      // If Module['REPORT_EXIT'] is set to false, do not report the result of
+      // onExit.
+      if (Module['REPORT_EXIT'] !== false) {
+        maybeReportResultToServer('exit:' + status);
+      }
     }
+    // Force these handlers to be proxied back to the main thread.
+    // Without this tagging the handler will run each thread, which means
+    // each thread uses its own copy of `maybeReportResultToServer` which
+    // breaks the checking for duplicate reporting.
+    Module['onExit'].proxy = true;
   }
 
   if (!Module['onAbort']) {
     Module['onAbort'] = function(reason) {
       maybeReportResultToServer('abort:' + reason);
     }
+    Module['onAbort'].proxy = true;
   }
 }

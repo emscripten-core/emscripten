@@ -16,7 +16,7 @@
 #include <__iterator/concepts.h>
 #include <__iterator/incrementable_traits.h>
 #include <__iterator/iterator_traits.h>
-#include <type_traits>
+#include <__type_traits/enable_if.h>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
@@ -24,18 +24,19 @@
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-template <class _InputIter>
-inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX14
-    typename enable_if<__is_cpp17_input_iterator<_InputIter>::value, _InputIter>::type
-    next(_InputIter __x, typename iterator_traits<_InputIter>::difference_type __n = 1) {
-  _LIBCPP_ASSERT(__n >= 0 || __is_cpp17_bidirectional_iterator<_InputIter>::value,
-                 "Attempt to next(it, n) with negative n on a non-bidirectional iterator");
+template <class _InputIter, __enable_if_t<__has_input_iterator_category<_InputIter>::value, int> = 0>
+inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX17 _InputIter
+next(_InputIter __x, typename iterator_traits<_InputIter>::difference_type __n = 1) {
+  // Calling `advance` with a negative value on a non-bidirectional iterator is a no-op in the current implementation.
+  // Note that this check duplicates the similar check in `std::advance`.
+  _LIBCPP_ASSERT_PEDANTIC(__n >= 0 || __has_bidirectional_iterator_category<_InputIter>::value,
+                          "Attempt to next(it, n) with negative n on a non-bidirectional iterator");
 
-  _VSTD::advance(__x, __n);
+  std::advance(__x, __n);
   return __x;
 }
 
-#if _LIBCPP_STD_VER > 17 && !defined(_LIBCPP_HAS_NO_INCOMPLETE_RANGES)
+#if _LIBCPP_STD_VER >= 20
 
 // [range.iter.op.next]
 
@@ -44,15 +45,13 @@ namespace __next {
 
 struct __fn {
   template <input_or_output_iterator _Ip>
-  _LIBCPP_HIDE_FROM_ABI
-  constexpr _Ip operator()(_Ip __x) const {
+  _LIBCPP_HIDE_FROM_ABI constexpr _Ip operator()(_Ip __x) const {
     ++__x;
     return __x;
   }
 
   template <input_or_output_iterator _Ip>
-  _LIBCPP_HIDE_FROM_ABI
-  constexpr _Ip operator()(_Ip __x, iter_difference_t<_Ip> __n) const {
+  _LIBCPP_HIDE_FROM_ABI constexpr _Ip operator()(_Ip __x, iter_difference_t<_Ip> __n) const {
     ranges::advance(__x, __n);
     return __x;
   }
@@ -73,11 +72,11 @@ struct __fn {
 } // namespace __next
 
 inline namespace __cpo {
-  inline constexpr auto next = __next::__fn{};
+inline constexpr auto next = __next::__fn{};
 } // namespace __cpo
 } // namespace ranges
 
-#endif // _LIBCPP_STD_VER > 17 && !defined(_LIBCPP_HAS_NO_INCOMPLETE_RANGES)
+#endif // _LIBCPP_STD_VER >= 20
 
 _LIBCPP_END_NAMESPACE_STD
 
