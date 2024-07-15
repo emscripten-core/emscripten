@@ -102,6 +102,7 @@ DEFAULT_JSON_FILES = [
     utils.path_from_root('src/struct_info_webgpu.json'),
 ]
 
+
 def show(msg):
   if shared.DEBUG or not QUIET:
     sys.stderr.write('gen_struct_info: %s\n' % msg)
