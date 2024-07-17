@@ -15010,3 +15010,8 @@ addToLibrary({
     self.assertExists('hello_world.bc')
     # emcc takes care of creating the .o
     self.assertExists('hello_world.o')
+
+  def test_extra_struct_info(self):
+    stderr = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', test_file('other/test_extra_struct_info.js')], stderr=PIPE).stderr
+    self.assertContained('(before) AF_INET=2', stderr)
+    self.assertContained('(after) AF_INET=42', stderr)

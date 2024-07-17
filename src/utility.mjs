@@ -328,6 +328,8 @@ export function loadSettingsFile(f) {
 }
 
 export function runInMacroContext(code, options) {
+  compileTimeContext['__filename'] = options.filename;
+  compileTimeContext['__dirname'] = path.dirname(options.filename);
   return vm.runInNewContext(code, compileTimeContext, options);
 }
 
