@@ -1288,10 +1288,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     long_lines = []
 
     def cleanup(line):
-      if len(line) > 2048:
-        # Sanity check that this is really the emscripten program/module on
-        # a single line.
-        assert line.startswith('var Module=typeof Module!="undefined"')
+      if len(line) > 2048 and line.startswith('var Module=typeof Module!="undefined"'):
         long_lines.append(line)
         line = '<REPLACED ENTIRE PROGRAM ON SINGLE LINE>'
       return line
@@ -1366,7 +1363,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if assert_returncode == NON_ZERO:
         self.fail('JS subprocess unexpectedly succeeded (%s):  Output:\n%s' % (error.cmd, ret))
       else:
-        self.fail('JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
+        self.fail('JS subprocess failed (%s): %s (expected=%s).  Output:\n%s' % (error.cmd, error.returncode, assert_returncode, ret))
 
     #  We should pass all strict mode checks
     self.assertNotContained('strict warning:', ret)
