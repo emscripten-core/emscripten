@@ -657,12 +657,7 @@ addToLibrary({
 
     {{{ makeSetValue('daylight', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
 
-    var extractZone = (date) => {
-      var timezoneOffset = date.getTimezoneOffset();
-      if (isNaN(timezoneOffset) || timezoneOffset === 0) {
-        return `UTC`;
-      }
-
+    var extractZone = (timezoneOffset) => {
       // Why inverse sign?
       // Read here https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/getTimezoneOffset
       var sign = timezoneOffset >= 0 ? "-" : "+";
@@ -674,8 +669,8 @@ addToLibrary({
       return `UTC${sign}${hours}${minutes}`;
     }
 
-    var winterName = extractZone(winter);
-    var summerName = extractZone(summer);
+    var winterName = extractZone(winterOffset);
+    var summerName = extractZone(summerOffset);
 #if ASSERTIONS
     assert(winterName);
     assert(summerName);
