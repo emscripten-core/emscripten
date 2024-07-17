@@ -5946,15 +5946,16 @@ int main()
     if MACOS:
       self.skipTest('setting LC_ALL is not compatible with macOS python')
 
-    tz_lang_envs = [
-        {"LC_ALL": "en_GB", "TZ": "Europe/London"},
-        {"LC_ALL": "th_TH", "TZ": "Asia/Bangkok"},
-        {"LC_ALL": "ar-AE", "TZ": "United Arab Emirates"},
+    tz_lang_infos = [
+      {"env": {"LC_ALL": "en_GB", "TZ": "Europe/London"}, "expected_utc": "UTC+0100"},
+      {"env": {"LC_ALL": "th_TH", "TZ": "Asia/Bangkok"}, "expected_utc": "UTC+0700"},
+      {"env": {"LC_ALL": "ar-AE", "TZ": "Asia/Dubai"}, "expected_utc": "UTC+0400"},
+      {"env": {"LC_ALL": "en-US", "TZ": "America/Los_Angeles"}, "expected_utc": "UTC-0700"}
     ]
 
-    for tz_lang_env in tz_lang_envs:
-        with env_modify(tz_lang_env):
-            self.do_runf('other/test_strftime_zZ.c', 'ok!')
+    for tz_lang_info in tz_lang_infos:
+      with env_modify(tz_lang_info["env"]):
+        self.do_runf('other/test_strftime_zZ.c', "The current timezone is: %s" % (tz_lang_info["expected_utc"]))
 
   def test_strptime_symmetry(self):
     self.do_other_test('test_strptime_symmetry.c')
