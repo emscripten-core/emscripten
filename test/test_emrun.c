@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <emscripten.h>
@@ -14,15 +15,13 @@ int main(int argc, char **argv) {
   for (int i = 0; i < argc; ++i) {
     printf("argv[%d]: %s\n", i, argv[i]);
   }
+  assert(argc > 1);
 
   // Dump a file to local filesystem with emrun.
   EM_ASM(emrun_file_dump("test.dat", HEAPU8.subarray(0, 128)););
   EM_ASM(emrun_file_dump("heap.dat", HEAPU8));
   EM_ASM(emrun_file_dump("nested/with space.dat", HEAPU8.subarray(128, 256)););
 
-  if (argc <= 1) {
-    exit(1);
-  }
   printf("hello, world!\n");
   fprintf(stderr, "hello, error stream!\n");
 
