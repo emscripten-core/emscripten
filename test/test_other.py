@@ -15030,5 +15030,4 @@ addToLibrary({
     self.assertContained('(after) AF_INET=42', stderr)
 
   def test_fs_writev_partial_write(self):
-    self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test('fs/test_writev_partial_write.c')
