@@ -5942,6 +5942,10 @@ Module.onRuntimeInitialized = () => {
     self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_writev.c', 'success')
 
+  def test_fs_writev_partial_write(self):
+    self.set_setting('FORCE_FILESYSTEM')
+    self.do_run_in_out_file_test('fs/test_writev_partial_write.c')
+
   def test_fs_64bit(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')

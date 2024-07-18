@@ -223,6 +223,7 @@ var WasiLibrary = {
       var curr = FS.write(stream, HEAP8, ptr, len, offset);
       if (curr < 0) return -1;
       ret += curr;
+      if (curr < len) break; // no more space to write
       if (typeof offset != 'undefined') {
         offset += curr;
       }
