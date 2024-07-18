@@ -320,10 +320,8 @@ commands:
           environment:
             HOMEBREW_NO_AUTO_UPDATE: "1"
           command: |
-            brew list cmake || brew install cmake
-            brew list ninja || brew install ninja
-            brew list python3 || brew install python3
-            brew list pkg-config || brew install pkg-config
+            brew update
+            brew install cmake ninja python3 pkg-config
       - checkout
       - run:
           name: submodule update
