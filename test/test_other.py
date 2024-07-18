@@ -36,7 +36,7 @@ from common import env_modify, no_mac, no_windows, only_windows, requires_native
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
 from common import requires_wasm_exnref, crossplatform, with_all_eh_sjlj, with_all_sjlj
-from common import also_with_standalone_wasm, also_with_env_modify, also_with_wasm2js
+from common import also_with_standalone_wasm, also_with_wasm2js
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, flaky
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
 from common import requires_network, parameterize
@@ -5942,11 +5942,20 @@ int main()
     self.do_runf('hello_world.c', emcc_args=['-sWASM_BIGINT'])
 
   @crossplatform
-  @also_with_env_modify({'gb_locale': {'LC_ALL': 'en_GB'}, 'long_tz': {'TZ': 'Asia/Kathmandu'}})
   def test_strftime_zZ(self):
-    if os.environ.get('LC_ALL') == 'en_GB' and MACOS:
+    if MACOS:
       self.skipTest('setting LC_ALL is not compatible with macOS python')
-    self.do_runf('other/test_strftime_zZ.c', 'ok!')
+
+    tz_lang_infos = [
+      {'env': {'LC_ALL': 'en_GB', 'TZ': 'Europe/London'}, 'expected_utc': 'UTC+0100'},
+      {'env': {'LC_ALL': 'th_TH', 'TZ': 'Asia/Bangkok'}, 'expected_utc': 'UTC+0700'},
+      {'env': {'LC_ALL': 'ar-AE', 'TZ': 'Asia/Dubai'}, 'expected_utc': 'UTC+0400'},
+      {'env': {'LC_ALL': 'en-US', 'TZ': 'America/Los_Angeles'}, 'expected_utc': 'UTC-0700'}
+    ]
+
+    for tz_lang_info in tz_lang_infos:
+      with env_modify(tz_lang_info['env']):
+        self.do_runf('other/test_strftime_zZ.c', 'The current timezone is: %s' % (tz_lang_info['expected_utc']))
 
   def test_strptime_symmetry(self):
     self.do_other_test('test_strptime_symmetry.c')
