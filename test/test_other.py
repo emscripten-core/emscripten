@@ -12154,7 +12154,11 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     stderr = self.run_process([EMCC, 'a.c', 'b.c'], stderr=PIPE).stderr
     self.assertContained('function signature mismatch: foo', stderr)
     self.expect_fail([EMCC, '-Wl,--fatal-warnings', 'a.c', 'b.c'])
+    # STRICT mode implies fatal warnings
     self.expect_fail([EMCC, '-sSTRICT', 'a.c', 'b.c'])
+    # Unless `--no-fatal-warnings` is explictly passed
+    stderr = self.run_process([EMCC, '-sSTRICT', '-Wl,--no-fatal-warnings', 'a.c', 'b.c'], stderr=PIPE).stderr
+    self.assertContained('function signature mismatch: foo', stderr)
 
   # Verifies that warning messages that Closure outputs are recorded to console
   def test_closure_warnings(self):
