@@ -15029,5 +15029,6 @@ addToLibrary({
     self.assertContained('(before) AF_INET=2', stderr)
     self.assertContained('(after) AF_INET=42', stderr)
 
+  @also_with_wasmfs
   def test_fs_writev_partial_write(self):
     self.do_run_in_out_file_test('fs/test_writev_partial_write.c')
