@@ -159,7 +159,7 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     // The write was successful.
     bytesWritten += result;
     if (result < len) {
-      // The read was short, so stop here.
+      // The write was short, so stop here.
       break;
     }
   }
