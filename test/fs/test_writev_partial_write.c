@@ -70,7 +70,11 @@ void test_writev_direct(void) {
 void test_via_stdio(void) {
   // XXX: We open in append mode because truncating JS based files is not
   // supported yet. See #22262
+#ifdef WASMFS
   FILE* f = fopen("/device", "a");
+#else
+  FILE* f = fopen("/device", "w");
+#endif
   assert(f);
   // Use line buffering. The bug is exposed with line buffering because with
   // line buffering two entries in __stdio_write's iovs are used.
