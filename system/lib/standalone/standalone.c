@@ -1151,6 +1151,14 @@ weak double emscripten_date_now(void) {
   return clock_gettime_ms(CLOCK_REALTIME);
 }
 
+weak void __secs_to_zone(long long t, int local, int *isdst, long *offset, long *oppoff, const char **zonename) {
+  REPORT_UNSUPPORTED(__secs_to_zone);
+}
+
+weak void _tzset_js(long* timezone, int* daylight, char* std_name, char* dst_name) {
+  REPORT_UNSUPPORTED(_tzset_js);
+}
+
 // C++ ABI
 
 #if EMSCRIPTEN_NOCATCH
