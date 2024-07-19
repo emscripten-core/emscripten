@@ -68,7 +68,9 @@ void test_writev_direct(void) {
 // and is included here as this code most closely matches the original bug
 // report
 void test_via_stdio(void) {
-  FILE* f = fopen("/device", "w");
+  // XXX: We open in append mode because truncating JS based files is not
+  // supported yet. See #22262
+  FILE* f = fopen("/device", "a");
   assert(f);
   // Use line buffering. The bug is exposed with line buffering because with
   // line buffering two entries in __stdio_write's iovs are used.
