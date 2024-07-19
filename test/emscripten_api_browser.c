@@ -74,7 +74,7 @@ void four(void *arg) {
   emscripten_set_main_loop(mainey, 0, 0);
 }
 
-void __attribute__((used)) third() {
+EMSCRIPTEN_KEEPALIVE void third() {
   int now = SDL_GetTicks();
   printf("thard! %d\n", now);
   assert(abs(now - last - 1000) < 500);

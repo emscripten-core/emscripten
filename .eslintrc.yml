@@ -1,11 +1,12 @@
 env:
   browser: true
-  es2020: true
+  es2022: true
   node: true
 extends:
   - prettier
 parserOptions:
-  ecmaVersion: 12
+  ecmaVersion: 13
+  sourceType: "module"
 ignorePatterns:
   - "out/"
   - "site/"
@@ -21,7 +22,6 @@ ignorePatterns:
   - "src/closure-externs/"
   - "src/embind/"
   - "src/emrun_postjs.js"
-  - "src/worker.js"
   - "src/wasm_worker.js"
   - "src/audio_worklet.js"
   - "src/wasm2js.js"
@@ -54,7 +54,10 @@ rules:
   max-len: "off"
   no-multi-spaces: "off"
   require-jsdoc: "off"
-  no-unused-vars: "off"
   arrow-body-style: ["error", "as-needed"]
   space-infix-ops: "error"
   quotes: ["error", "single", {"avoidEscape": true}]
+overrides:
+  - files: "**/*.mjs"
+    rules:
+      no-unused-vars: ["error", {"vars": "all", "args": "none", "ignoreRestSiblings": false, "destructuredArrayIgnorePattern": "^_" }]

@@ -52,9 +52,13 @@ struct ValArr {
   int x, y, z;
 };
 
+EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
+
 struct ValObj {
   Foo foo;
   Bar bar;
+  CallbackType callback;
+  ValObj() : callback(val::undefined()) {}
 };
 
 class ClassWithConstructor {
@@ -81,8 +85,6 @@ int smart_ptr_function(std::shared_ptr<ClassWithSmartPtrConstructor>) {
   return 0;
 }
 
-EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
-
 int function_with_callback_param(CallbackType ct) {
   ct(val("hello"));
   return 0;
@@ -99,6 +101,10 @@ std::wstring wstring_test(std::wstring arg) {
 }
 
 std::optional<int> optional_test(std::optional<Foo> arg) {
+  return {};
+}
+
+std::optional<int> optional_and_nonoptional_test(std::optional<Foo> arg1, int arg2) {
   return {};
 }
 
@@ -161,7 +167,8 @@ EMSCRIPTEN_BINDINGS(Test) {
 
   value_object<ValObj>("ValObj")
       .field("foo", &ValObj::foo)
-      .field("bar", &ValObj::bar);
+      .field("bar", &ValObj::bar)
+      .field("callback", &ValObj::callback);
 
   register_vector<int>("IntVec");
 
@@ -174,6 +181,7 @@ EMSCRIPTEN_BINDINGS(Test) {
   register_optional<int>();
   register_optional<Foo>();
   function("optional_test", &optional_test);
+  function("optional_and_nonoptional_test", &optional_and_nonoptional_test);
 
   function("string_test", &string_test);
   function("wstring_test", &wstring_test);

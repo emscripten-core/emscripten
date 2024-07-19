@@ -21,6 +21,26 @@
 // new function with an '_', it will not be found.
 
 addToLibrary({
+  // JS aliases for native stack manipulation functions and tempret handling
+  $stackSave__deps: ['emscripten_stack_get_current'],
+  $stackSave: () => _emscripten_stack_get_current(),
+  $stackRestore__deps: ['_emscripten_stack_restore'],
+  $stackRestore: (val) => __emscripten_stack_restore(val),
+  $stackAlloc__deps: ['_emscripten_stack_alloc'],
+  $stackAlloc: (sz) => __emscripten_stack_alloc(sz),
+  $getTempRet0__deps: ['_emscripten_tempret_get'],
+  $getTempRet0: (val) => __emscripten_tempret_get(),
+  $setTempRet0__deps: ['_emscripten_tempret_set'],
+  $setTempRet0: (val) => __emscripten_tempret_set(val),
+
+  // Aliases that allow legacy names (without leading $) for the
+  // functions to continue to work in `__deps` entries.
+  stackAlloc: '$stackAlloc',
+  stackSave: '$stackSave',
+  stackRestore: '$stackSave',
+  setTempRet0: '$setTempRet0',
+  getTempRet0: '$getTempRet0',
+
   $ptrToString: (ptr) => {
 #if ASSERTIONS
     assert(typeof ptr === 'number');
@@ -62,6 +82,9 @@ addToLibrary({
     'proc_exit',
 #if ASSERTIONS || EXIT_RUNTIME
     '$keepRuntimeAlive',
+#endif
+#if PTHREADS
+    '$exitOnMainThread',
 #endif
 #if PTHREADS_DEBUG
     '$runtimeKeepaliveCounter',
@@ -375,11 +398,10 @@ addToLibrary({
   // ==========================================================================
 
 #if !STANDALONE_WASM
-  // TODO: There are currently two abort() functions that get imported to asm
-  // module scope: the built-in runtime function abort(), and this library
-  // function _abort(). Remove one of these, importing two functions for the
-  // same purpose is wasteful.
-  abort: () => {
+  // Used to implement the native `abort` symbol.  Note that we use the
+  // JavaScript `abort` helper in order to implement this function, but we use a
+  // distinct name here to avoid confusing the two.
+  _abort_js: () => {
 #if ASSERTIONS
     abort('native code called abort()');
 #else
@@ -393,8 +415,8 @@ addToLibrary({
   $ENV: {},
 
   // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm
-  // variant, so we should never emit emscripten_memcpy_js() in the build.
-  // In STANDALONE_WASM we avoid the emscripten_memcpy_js dependency so keep
+  // variant, so we should never emit _emscripten_memcpy_js() in the build.
+  // In STANDALONE_WASM we avoid the _emscripten_memcpy_js dependency so keep
   // the wasm file standalone.
   // In BULK_MEMORY mode we include native versions of these functions based
   // on memory.fill and memory.copy.
@@ -415,11 +437,11 @@ addToLibrary({
   //   AppleWebKit/605.1.15 Safari/604.1 Version/13.0.4 iPhone OS 13_3 on iPhone 6s with iOS 13.3
   //   AppleWebKit/605.1.15 Version/13.0.3 Intel Mac OS X 10_15_1 on Safari 13.0.3 (15608.3.10.1.4) on macOS Catalina 10.15.1
   // Hence the support status of .copyWithin() for Safari version range [10.0.0, 10.1.0] is unknown.
-  emscripten_memcpy_js: `= Uint8Array.prototype.copyWithin
+  _emscripten_memcpy_js: `= Uint8Array.prototype.copyWithin
     ? (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num)
     : (dest, src, num) => HEAPU8.set(HEAPU8.subarray(src, src+num), dest)`,
 #else
-  emscripten_memcpy_js: (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num),
+  _emscripten_memcpy_js: (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num),
 #endif
 
 #endif
@@ -596,7 +618,7 @@ addToLibrary({
 #endif
 
   $withStackSave__internal: true,
-  $withStackSave__deps: ['stackSave', 'stackRestore'],
+  $withStackSave__deps: ['$stackSave', '$stackRestore'],
   $withStackSave: (f) => {
     var stack = stackSave();
     var ret = f();
@@ -604,7 +626,11 @@ addToLibrary({
     return ret;
   },
 
-  _tzset_js__deps: ['$stringToUTF8'],
+  _tzset_js__deps: ['$stringToUTF8',
+#if ASSERTIONS
+    '$lengthBytesUTF8',
+#endif
+  ],
   _tzset_js__internal: true,
   _tzset_js: (timezone, daylight, std_name, dst_name) => {
     // TODO: Use (malleable) environment variables instead of system settings.
@@ -631,12 +657,15 @@ addToLibrary({
 
     {{{ makeSetValue('daylight', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
 
-    function extractZone(date) {
-      var match = date.toTimeString().match(/\(([A-Za-z ]+)\)$/);
-      return match ? match[1] : "GMT";
-    };
+    var extractZone = (date) => date.toLocaleTimeString(undefined, {hour12:false, timeZoneName:'short'}).split(' ')[1];
     var winterName = extractZone(winter);
     var summerName = extractZone(summer);
+#if ASSERTIONS
+    assert(winterName);
+    assert(summerName);
+    assert(lengthBytesUTF8(winterName) <= {{{ cDefs.TZNAME_MAX }}}, `timezone name truncated to fit in TZNAME_MAX (${winterName})`);
+    assert(lengthBytesUTF8(summerName) <= {{{ cDefs.TZNAME_MAX }}}, `timezone name truncated to fit in TZNAME_MAX (${summerName})`);
+#endif
     if (summerOffset < winterOffset) {
       // Northern hemisphere
       stringToUTF8(winterName, std_name, {{{ cDefs.TZNAME_MAX + 1 }}});
@@ -697,266 +726,6 @@ addToLibrary({
     }
 
     return newDate;
-  },
-
-  // Note: this is not used in STANDALONE_WASM mode, because it is more
-  //       compact to do it in JS.
-  strftime__deps: ['$isLeapYear', '$arraySum', '$addDays', '$MONTH_DAYS_REGULAR', '$MONTH_DAYS_LEAP',
-                   '$intArrayFromString', '$writeArrayToMemory'
-  ],
-  strftime: (s, maxsize, format, tm) => {
-    // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
-
-    var tm_zone = {{{ makeGetValue('tm', C_STRUCTS.tm.tm_zone, '*') }}};
-
-    var date = {
-      tm_sec: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_sec, 'i32') }}},
-      tm_min: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_min, 'i32') }}},
-      tm_hour: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_hour, 'i32') }}},
-      tm_mday: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_mday, 'i32') }}},
-      tm_mon: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_mon, 'i32') }}},
-      tm_year: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_year, 'i32') }}},
-      tm_wday: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_wday, 'i32') }}},
-      tm_yday: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_yday, 'i32') }}},
-      tm_isdst: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_isdst, 'i32') }}},
-      tm_gmtoff: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_gmtoff, LONG_TYPE) }}},
-      tm_zone: tm_zone ? UTF8ToString(tm_zone) : ''
-    };
-    {{{ from64('date.tm_gmtoff') }}}
-
-    var pattern = UTF8ToString(format);
-
-    // expand format
-    var EXPANSION_RULES_1 = {
-      '%c': '%a %b %d %H:%M:%S %Y',     // Replaced by the locale's appropriate date and time representation - e.g., Mon Aug  3 14:02:01 2013
-      '%D': '%m/%d/%y',                 // Equivalent to %m / %d / %y
-      '%F': '%Y-%m-%d',                 // Equivalent to %Y - %m - %d
-      '%h': '%b',                       // Equivalent to %b
-      '%r': '%I:%M:%S %p',              // Replaced by the time in a.m. and p.m. notation
-      '%R': '%H:%M',                    // Replaced by the time in 24-hour notation
-      '%T': '%H:%M:%S',                 // Replaced by the time
-      '%x': '%m/%d/%y',                 // Replaced by the locale's appropriate date representation
-      '%X': '%H:%M:%S',                 // Replaced by the locale's appropriate time representation
-      // Modified Conversion Specifiers
-      '%Ec': '%c',                      // Replaced by the locale's alternative appropriate date and time representation.
-      '%EC': '%C',                      // Replaced by the name of the base year (period) in the locale's alternative representation.
-      '%Ex': '%m/%d/%y',                // Replaced by the locale's alternative date representation.
-      '%EX': '%H:%M:%S',                // Replaced by the locale's alternative time representation.
-      '%Ey': '%y',                      // Replaced by the offset from %EC (year only) in the locale's alternative representation.
-      '%EY': '%Y',                      // Replaced by the full alternative year representation.
-      '%Od': '%d',                      // Replaced by the day of the month, using the locale's alternative numeric symbols, filled as needed with leading zeros if there is any alternative symbol for zero; otherwise, with leading <space> characters.
-      '%Oe': '%e',                      // Replaced by the day of the month, using the locale's alternative numeric symbols, filled as needed with leading <space> characters.
-      '%OH': '%H',                      // Replaced by the hour (24-hour clock) using the locale's alternative numeric symbols.
-      '%OI': '%I',                      // Replaced by the hour (12-hour clock) using the locale's alternative numeric symbols.
-      '%Om': '%m',                      // Replaced by the month using the locale's alternative numeric symbols.
-      '%OM': '%M',                      // Replaced by the minutes using the locale's alternative numeric symbols.
-      '%OS': '%S',                      // Replaced by the seconds using the locale's alternative numeric symbols.
-      '%Ou': '%u',                      // Replaced by the weekday as a number in the locale's alternative representation (Monday=1).
-      '%OU': '%U',                      // Replaced by the week number of the year (Sunday as the first day of the week, rules corresponding to %U ) using the locale's alternative numeric symbols.
-      '%OV': '%V',                      // Replaced by the week number of the year (Monday as the first day of the week, rules corresponding to %V ) using the locale's alternative numeric symbols.
-      '%Ow': '%w',                      // Replaced by the number of the weekday (Sunday=0) using the locale's alternative numeric symbols.
-      '%OW': '%W',                      // Replaced by the week number of the year (Monday as the first day of the week) using the locale's alternative numeric symbols.
-      '%Oy': '%y',                      // Replaced by the year (offset from %C ) using the locale's alternative numeric symbols.
-    };
-    for (var rule in EXPANSION_RULES_1) {
-      pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_1[rule]);
-    }
-
-    var WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-    function leadingSomething(value, digits, character) {
-      var str = typeof value == 'number' ? value.toString() : (value || '');
-      while (str.length < digits) {
-        str = character[0]+str;
-      }
-      return str;
-    }
-
-    function leadingNulls(value, digits) {
-      return leadingSomething(value, digits, '0');
-    }
-
-    function compareByDay(date1, date2) {
-      function sgn(value) {
-        return value < 0 ? -1 : (value > 0 ? 1 : 0);
-      }
-
-      var compare;
-      if ((compare = sgn(date1.getFullYear()-date2.getFullYear())) === 0) {
-        if ((compare = sgn(date1.getMonth()-date2.getMonth())) === 0) {
-          compare = sgn(date1.getDate()-date2.getDate());
-        }
-      }
-      return compare;
-    }
-
-    function getFirstWeekStartDate(janFourth) {
-        switch (janFourth.getDay()) {
-          case 0: // Sunday
-            return new Date(janFourth.getFullYear()-1, 11, 29);
-          case 1: // Monday
-            return janFourth;
-          case 2: // Tuesday
-            return new Date(janFourth.getFullYear(), 0, 3);
-          case 3: // Wednesday
-            return new Date(janFourth.getFullYear(), 0, 2);
-          case 4: // Thursday
-            return new Date(janFourth.getFullYear(), 0, 1);
-          case 5: // Friday
-            return new Date(janFourth.getFullYear()-1, 11, 31);
-          case 6: // Saturday
-            return new Date(janFourth.getFullYear()-1, 11, 30);
-        }
-    }
-
-    function getWeekBasedYear(date) {
-        var thisDate = addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
-
-        var janFourthThisYear = new Date(thisDate.getFullYear(), 0, 4);
-        var janFourthNextYear = new Date(thisDate.getFullYear()+1, 0, 4);
-
-        var firstWeekStartThisYear = getFirstWeekStartDate(janFourthThisYear);
-        var firstWeekStartNextYear = getFirstWeekStartDate(janFourthNextYear);
-
-        if (compareByDay(firstWeekStartThisYear, thisDate) <= 0) {
-          // this date is after the start of the first week of this year
-          if (compareByDay(firstWeekStartNextYear, thisDate) <= 0) {
-            return thisDate.getFullYear()+1;
-          }
-          return thisDate.getFullYear();
-        }
-        return thisDate.getFullYear()-1;
-    }
-
-    var EXPANSION_RULES_2 = {
-      '%a': (date) => WEEKDAYS[date.tm_wday].substring(0,3) ,
-      '%A': (date) => WEEKDAYS[date.tm_wday],
-      '%b': (date) => MONTHS[date.tm_mon].substring(0,3),
-      '%B': (date) => MONTHS[date.tm_mon],
-      '%C': (date) => {
-        var year = date.tm_year+1900;
-        return leadingNulls((year/100)|0,2);
-      },
-      '%d': (date) => leadingNulls(date.tm_mday, 2),
-      '%e': (date) => leadingSomething(date.tm_mday, 2, ' '),
-      '%g': (date) => {
-        // %g, %G, and %V give values according to the ISO 8601:2000 standard week-based year.
-        // In this system, weeks begin on a Monday and week 1 of the year is the week that includes
-        // January 4th, which is also the week that includes the first Thursday of the year, and
-        // is also the first week that contains at least four days in the year.
-        // If the first Monday of January is the 2nd, 3rd, or 4th, the preceding days are part of
-        // the last week of the preceding year; thus, for Saturday 2nd January 1999,
-        // %G is replaced by 1998 and %V is replaced by 53. If December 29th, 30th,
-        // or 31st is a Monday, it and any following days are part of week 1 of the following year.
-        // Thus, for Tuesday 30th December 1997, %G is replaced by 1998 and %V is replaced by 01.
-
-        return getWeekBasedYear(date).toString().substring(2);
-      },
-      '%G': getWeekBasedYear,
-      '%H': (date) => leadingNulls(date.tm_hour, 2),
-      '%I': (date) => {
-        var twelveHour = date.tm_hour;
-        if (twelveHour == 0) twelveHour = 12;
-        else if (twelveHour > 12) twelveHour -= 12;
-        return leadingNulls(twelveHour, 2);
-      },
-      '%j': (date) => {
-        // Day of the year (001-366)
-        return leadingNulls(date.tm_mday + arraySum(isLeapYear(date.tm_year+1900) ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, date.tm_mon-1), 3);
-      },
-      '%m': (date) => leadingNulls(date.tm_mon+1, 2),
-      '%M': (date) => leadingNulls(date.tm_min, 2),
-      '%n': () => '\n',
-      '%p': (date) => {
-        if (date.tm_hour >= 0 && date.tm_hour < 12) {
-          return 'AM';
-        }
-        return 'PM';
-      },
-      '%S': (date) => leadingNulls(date.tm_sec, 2),
-      '%t': () => '\t',
-      '%u': (date) => date.tm_wday || 7,
-      '%U': (date) => {
-        var days = date.tm_yday + 7 - date.tm_wday;
-        return leadingNulls(Math.floor(days / 7), 2);
-      },
-      '%V': (date) => {
-        // Replaced by the week number of the year (Monday as the first day of the week)
-        // as a decimal number [01,53]. If the week containing 1 January has four
-        // or more days in the new year, then it is considered week 1.
-        // Otherwise, it is the last week of the previous year, and the next week is week 1.
-        // Both January 4th and the first Thursday of January are always in week 1. [ tm_year, tm_wday, tm_yday]
-        var val = Math.floor((date.tm_yday + 7 - (date.tm_wday + 6) % 7 ) / 7);
-        // If 1 Jan is just 1-3 days past Monday, the previous week
-        // is also in this year.
-        if ((date.tm_wday + 371 - date.tm_yday - 2) % 7 <= 2) {
-          val++;
-        }
-        if (!val) {
-          val = 52;
-          // If 31 December of prev year a Thursday, or Friday of a
-          // leap year, then the prev year has 53 weeks.
-          var dec31 = (date.tm_wday + 7 - date.tm_yday - 1) % 7;
-          if (dec31 == 4 || (dec31 == 5 && isLeapYear(date.tm_year%400-1))) {
-            val++;
-          }
-        } else if (val == 53) {
-          // If 1 January is not a Thursday, and not a Wednesday of a
-          // leap year, then this year has only 52 weeks.
-          var jan1 = (date.tm_wday + 371 - date.tm_yday) % 7;
-          if (jan1 != 4 && (jan1 != 3 || !isLeapYear(date.tm_year)))
-            val = 1;
-        }
-        return leadingNulls(val, 2);
-      },
-      '%w': (date) => date.tm_wday,
-      '%W': (date) => {
-        var days = date.tm_yday + 7 - ((date.tm_wday + 6) % 7);
-        return leadingNulls(Math.floor(days / 7), 2);
-      },
-      '%y': (date) => {
-        // Replaced by the last two digits of the year as a decimal number [00,99]. [ tm_year]
-        return (date.tm_year+1900).toString().substring(2);
-      },
-      // Replaced by the year as a decimal number (for example, 1997). [ tm_year]
-      '%Y': (date) => date.tm_year+1900,
-      '%z': (date) => {
-        // Replaced by the offset from UTC in the ISO 8601:2000 standard format ( +hhmm or -hhmm ).
-        // For example, "-0430" means 4 hours 30 minutes behind UTC (west of Greenwich).
-        var off = date.tm_gmtoff;
-        var ahead = off >= 0;
-        off = Math.abs(off) / 60;
-        // convert from minutes into hhmm format (which means 60 minutes = 100 units)
-        off = (off / 60)*100 + (off % 60);
-        return (ahead ? '+' : '-') + String("0000" + off).slice(-4);
-      },
-      '%Z': (date) => date.tm_zone,
-      '%%': () => '%'
-    };
-
-    // Replace %% with a pair of NULLs (which cannot occur in a C string), then
-    // re-inject them after processing.
-    pattern = pattern.replace(/%%/g, '\0\0')
-    for (var rule in EXPANSION_RULES_2) {
-      if (pattern.includes(rule)) {
-        pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_2[rule](date));
-      }
-    }
-    pattern = pattern.replace(/\0\0/g, '%')
-
-    var bytes = intArrayFromString(pattern, false);
-    if (bytes.length > maxsize) {
-      return 0;
-    }
-
-    writeArrayToMemory(bytes, s);
-    return bytes.length-1;
-  },
-  strftime_l__deps: ['strftime'],
-  strftime_l: (s, maxsize, format, tm, loc) => {
-    return _strftime(s, maxsize, format, tm); // no locale support yet
   },
 
   strptime__deps: ['$isLeapYear', '$arraySum', '$addDays', '$MONTH_DAYS_REGULAR', '$MONTH_DAYS_LEAP',
@@ -1402,129 +1171,15 @@ addToLibrary({
     'EOWNERDEAD': {{{ cDefs.EOWNERDEAD }}},
     'ESTRPIPE': {{{ cDefs.ESTRPIPE }}},
   }`,
-  $ERRNO_MESSAGES: {
-    0: 'Success',
-    {{{ cDefs.EPERM }}}: 'Not super-user',
-    {{{ cDefs.ENOENT }}}: 'No such file or directory',
-    {{{ cDefs.ESRCH }}}: 'No such process',
-    {{{ cDefs.EINTR }}}: 'Interrupted system call',
-    {{{ cDefs.EIO }}}: 'I/O error',
-    {{{ cDefs.ENXIO }}}: 'No such device or address',
-    {{{ cDefs.E2BIG }}}: 'Arg list too long',
-    {{{ cDefs.ENOEXEC }}}: 'Exec format error',
-    {{{ cDefs.EBADF }}}: 'Bad file number',
-    {{{ cDefs.ECHILD }}}: 'No children',
-    {{{ cDefs.EWOULDBLOCK }}}: 'No more processes',
-    {{{ cDefs.ENOMEM }}}: 'Not enough core',
-    {{{ cDefs.EACCES }}}: 'Permission denied',
-    {{{ cDefs.EFAULT }}}: 'Bad address',
-    {{{ cDefs.ENOTBLK }}}: 'Block device required',
-    {{{ cDefs.EBUSY }}}: 'Mount device busy',
-    {{{ cDefs.EEXIST }}}: 'File exists',
-    {{{ cDefs.EXDEV }}}: 'Cross-device link',
-    {{{ cDefs.ENODEV }}}: 'No such device',
-    {{{ cDefs.ENOTDIR }}}: 'Not a directory',
-    {{{ cDefs.EISDIR }}}: 'Is a directory',
-    {{{ cDefs.EINVAL }}}: 'Invalid argument',
-    {{{ cDefs.ENFILE }}}: 'Too many open files in system',
-    {{{ cDefs.EMFILE }}}: 'Too many open files',
-    {{{ cDefs.ENOTTY }}}: 'Not a typewriter',
-    {{{ cDefs.ETXTBSY }}}: 'Text file busy',
-    {{{ cDefs.EFBIG }}}: 'File too large',
-    {{{ cDefs.ENOSPC }}}: 'No space left on device',
-    {{{ cDefs.ESPIPE }}}: 'Illegal seek',
-    {{{ cDefs.EROFS }}}: 'Read only file system',
-    {{{ cDefs.EMLINK }}}: 'Too many links',
-    {{{ cDefs.EPIPE }}}: 'Broken pipe',
-    {{{ cDefs.EDOM }}}: 'Math arg out of domain of func',
-    {{{ cDefs.ERANGE }}}: 'Math result not representable',
-    {{{ cDefs.ENOMSG }}}: 'No message of desired type',
-    {{{ cDefs.EIDRM }}}: 'Identifier removed',
-    {{{ cDefs.ECHRNG }}}: 'Channel number out of range',
-    {{{ cDefs.EL2NSYNC }}}: 'Level 2 not synchronized',
-    {{{ cDefs.EL3HLT }}}: 'Level 3 halted',
-    {{{ cDefs.EL3RST }}}: 'Level 3 reset',
-    {{{ cDefs.ELNRNG }}}: 'Link number out of range',
-    {{{ cDefs.EUNATCH }}}: 'Protocol driver not attached',
-    {{{ cDefs.ENOCSI }}}: 'No CSI structure available',
-    {{{ cDefs.EL2HLT }}}: 'Level 2 halted',
-    {{{ cDefs.EDEADLK }}}: 'Deadlock condition',
-    {{{ cDefs.ENOLCK }}}: 'No record locks available',
-    {{{ cDefs.EBADE }}}: 'Invalid exchange',
-    {{{ cDefs.EBADR }}}: 'Invalid request descriptor',
-    {{{ cDefs.EXFULL }}}: 'Exchange full',
-    {{{ cDefs.ENOANO }}}: 'No anode',
-    {{{ cDefs.EBADRQC }}}: 'Invalid request code',
-    {{{ cDefs.EBADSLT }}}: 'Invalid slot',
-    {{{ cDefs.EDEADLOCK }}}: 'File locking deadlock error',
-    {{{ cDefs.EBFONT }}}: 'Bad font file fmt',
-    {{{ cDefs.ENOSTR }}}: 'Device not a stream',
-    {{{ cDefs.ENODATA }}}: 'No data (for no delay io)',
-    {{{ cDefs.ETIME }}}: 'Timer expired',
-    {{{ cDefs.ENOSR }}}: 'Out of streams resources',
-    {{{ cDefs.ENONET }}}: 'Machine is not on the network',
-    {{{ cDefs.ENOPKG }}}: 'Package not installed',
-    {{{ cDefs.EREMOTE }}}: 'The object is remote',
-    {{{ cDefs.ENOLINK }}}: 'The link has been severed',
-    {{{ cDefs.EADV }}}: 'Advertise error',
-    {{{ cDefs.ESRMNT }}}: 'Srmount error',
-    {{{ cDefs.ECOMM }}}: 'Communication error on send',
-    {{{ cDefs.EPROTO }}}: 'Protocol error',
-    {{{ cDefs.EMULTIHOP }}}: 'Multihop attempted',
-    {{{ cDefs.EDOTDOT }}}: 'Cross mount point (not really error)',
-    {{{ cDefs.EBADMSG }}}: 'Trying to read unreadable message',
-    {{{ cDefs.ENOTUNIQ }}}: 'Given log. name not unique',
-    {{{ cDefs.EBADFD }}}: 'f.d. invalid for this operation',
-    {{{ cDefs.EREMCHG }}}: 'Remote address changed',
-    {{{ cDefs.ELIBACC }}}: 'Can   access a needed shared lib',
-    {{{ cDefs.ELIBBAD }}}: 'Accessing a corrupted shared lib',
-    {{{ cDefs.ELIBSCN }}}: '.lib section in a.out corrupted',
-    {{{ cDefs.ELIBMAX }}}: 'Attempting to link in too many libs',
-    {{{ cDefs.ELIBEXEC }}}: 'Attempting to exec a shared library',
-    {{{ cDefs.ENOSYS }}}: 'Function not implemented',
-    {{{ cDefs.ENOTEMPTY }}}: 'Directory not empty',
-    {{{ cDefs.ENAMETOOLONG }}}: 'File or path name too long',
-    {{{ cDefs.ELOOP }}}: 'Too many symbolic links',
-    {{{ cDefs.EOPNOTSUPP }}}: 'Operation not supported on transport endpoint',
-    {{{ cDefs.EPFNOSUPPORT }}}: 'Protocol family not supported',
-    {{{ cDefs.ECONNRESET }}}: 'Connection reset by peer',
-    {{{ cDefs.ENOBUFS }}}: 'No buffer space available',
-    {{{ cDefs.EAFNOSUPPORT }}}: 'Address family not supported by protocol family',
-    {{{ cDefs.EPROTOTYPE }}}: 'Protocol wrong type for socket',
-    {{{ cDefs.ENOTSOCK }}}: 'Socket operation on non-socket',
-    {{{ cDefs.ENOPROTOOPT }}}: 'Protocol not available',
-    {{{ cDefs.ESHUTDOWN }}}: 'Can\'t send after socket shutdown',
-    {{{ cDefs.ECONNREFUSED }}}: 'Connection refused',
-    {{{ cDefs.EADDRINUSE }}}: 'Address already in use',
-    {{{ cDefs.ECONNABORTED }}}: 'Connection aborted',
-    {{{ cDefs.ENETUNREACH }}}: 'Network is unreachable',
-    {{{ cDefs.ENETDOWN }}}: 'Network interface is not configured',
-    {{{ cDefs.ETIMEDOUT }}}: 'Connection timed out',
-    {{{ cDefs.EHOSTDOWN }}}: 'Host is down',
-    {{{ cDefs.EHOSTUNREACH }}}: 'Host is unreachable',
-    {{{ cDefs.EINPROGRESS }}}: 'Connection already in progress',
-    {{{ cDefs.EALREADY }}}: 'Socket already connected',
-    {{{ cDefs.EDESTADDRREQ }}}: 'Destination address required',
-    {{{ cDefs.EMSGSIZE }}}: 'Message too long',
-    {{{ cDefs.EPROTONOSUPPORT }}}: 'Unknown protocol',
-    {{{ cDefs.ESOCKTNOSUPPORT }}}: 'Socket type not supported',
-    {{{ cDefs.EADDRNOTAVAIL }}}: 'Address not available',
-    {{{ cDefs.ENETRESET }}}: 'Connection reset by network',
-    {{{ cDefs.EISCONN }}}: 'Socket is already connected',
-    {{{ cDefs.ENOTCONN }}}: 'Socket is not connected',
-    {{{ cDefs.ETOOMANYREFS }}}: 'Too many references',
-    {{{ cDefs.EUSERS }}}: 'Too many users',
-    {{{ cDefs.EDQUOT }}}: 'Quota exceeded',
-    {{{ cDefs.ESTALE }}}: 'Stale file handle',
-    {{{ cDefs.ENOTSUP }}}: 'Not supported',
-    {{{ cDefs.ENOMEDIUM }}}: 'No medium (in tape drive)',
-    {{{ cDefs.EILSEQ }}}: 'Illegal byte sequence',
-    {{{ cDefs.EOVERFLOW }}}: 'Value too large for defined data type',
-    {{{ cDefs.ECANCELED }}}: 'Operation canceled',
-    {{{ cDefs.ENOTRECOVERABLE }}}: 'State not recoverable',
-    {{{ cDefs.EOWNERDEAD }}}: 'Previous owner died',
-    {{{ cDefs.ESTRPIPE }}}: 'Streams pipe error',
+
+#if PURE_WASI
+  $strError: (errno) => errno + '',
+#else
+  $strError__deps: ['strerror', '$UTF8ToString'],
+  $strError: (errno) => {
+    return UTF8ToString(_strerror(errno));
   },
+#endif
 
 #if PROXY_POSIX_SOCKETS == 0
   // ==========================================================================
@@ -2370,110 +2025,6 @@ addToLibrary({
     }
   },
 
-  $getCallstack__deps: ['$jsStackTrace', '$warnOnce'],
-  $getCallstack__docs: '/** @param {number=} flags */',
-  $getCallstack: function(flags) {
-    var callstack = jsStackTrace();
-
-    // Find the symbols in the callstack that corresponds to the functions that
-    // report callstack information, and remove everything up to these from the
-    // output.
-    var iThisFunc = callstack.lastIndexOf('_emscripten_log');
-    var iThisFunc2 = callstack.lastIndexOf('_emscripten_get_callstack');
-    var iNextLine = callstack.indexOf('\n', Math.max(iThisFunc, iThisFunc2))+1;
-    callstack = callstack.slice(iNextLine);
-
-    // If user requested to see the original source stack, but no source map
-    // information is available, just fall back to showing the JS stack.
-    if (flags & {{{ cDefs.EM_LOG_C_STACK }}} && typeof emscripten_source_map == 'undefined') {
-      warnOnce('Source map information is not available, emscripten_log with EM_LOG_C_STACK will be ignored. Build with "--pre-js $EMSCRIPTEN/src/emscripten-source-map.min.js" linker flag to add source map loading to code.');
-      flags ^= {{{ cDefs.EM_LOG_C_STACK }}};
-      flags |= {{{ cDefs.EM_LOG_JS_STACK }}};
-    }
-
-    // Process all lines:
-    var lines = callstack.split('\n');
-    callstack = '';
-    // New FF30 with column info: extract components of form:
-    // '       Object._main@http://server.com:4324:12'
-    var newFirefoxRe = new RegExp('\\s*(.*?)@(.*?):([0-9]+):([0-9]+)');
-    // Old FF without column info: extract components of form:
-    // '       Object._main@http://server.com:4324'
-    var firefoxRe = new RegExp('\\s*(.*?)@(.*):(.*)(:(.*))?');
-    // Extract components of form:
-    // '    at Object._main (http://server.com/file.html:4324:12)'
-    var chromeRe = new RegExp('\\s*at (.*?) \\\((.*):(.*):(.*)\\\)');
-
-    for (var l in lines) {
-      var line = lines[l];
-
-      var symbolName = '';
-      var file = '';
-      var lineno = 0;
-      var column = 0;
-
-      var parts = chromeRe.exec(line);
-      if (parts && parts.length == 5) {
-        symbolName = parts[1];
-        file = parts[2];
-        lineno = parts[3];
-        column = parts[4];
-      } else {
-        parts = newFirefoxRe.exec(line);
-        if (!parts) parts = firefoxRe.exec(line);
-        if (parts && parts.length >= 4) {
-          symbolName = parts[1];
-          file = parts[2];
-          lineno = parts[3];
-          // Old Firefox doesn't carry column information, but in new FF30, it
-          // is present. See https://bugzilla.mozilla.org/show_bug.cgi?id=762556
-          column = parts[4]|0;
-        } else {
-          // Was not able to extract this line for demangling/sourcemapping
-          // purposes. Output it as-is.
-          callstack += line + '\n';
-          continue;
-        }
-      }
-
-      var haveSourceMap = false;
-
-      if (flags & {{{ cDefs.EM_LOG_C_STACK }}}) {
-        var orig = emscripten_source_map.originalPositionFor({line: lineno, column: column});
-        haveSourceMap = orig?.source;
-        if (haveSourceMap) {
-          if (flags & {{{ cDefs.EM_LOG_NO_PATHS }}}) {
-            orig.source = orig.source.substring(orig.source.replace(/\\/g, "/").lastIndexOf('/')+1);
-          }
-          callstack += `    at ${symbolName} (${orig.source}:${orig.line}:${orig.column})\n`;
-        }
-      }
-      if ((flags & {{{ cDefs.EM_LOG_JS_STACK }}}) || !haveSourceMap) {
-        if (flags & {{{ cDefs.EM_LOG_NO_PATHS }}}) {
-          file = file.substring(file.replace(/\\/g, "/").lastIndexOf('/')+1);
-        }
-        callstack += (haveSourceMap ? (`     = ${symbolName}`) : (`    at ${symbolName}`)) + ` (${file}:${lineno}:${column})\n`;
-      }
-    }
-    // Trim extra whitespace at the end of the output.
-    callstack = callstack.replace(/\s+$/, '');
-    return callstack;
-  },
-
-  emscripten_get_callstack__deps: ['$getCallstack', '$lengthBytesUTF8', '$stringToUTF8'],
-  emscripten_get_callstack: function(flags, str, maxbytes) {
-    var callstack = getCallstack(flags);
-    // User can query the required amount of bytes to hold the callstack.
-    if (!str || maxbytes <= 0) {
-      return lengthBytesUTF8(callstack)+1;
-    }
-    // Output callstack string as C string to HEAP.
-    var bytesWrittenExcludingNull = stringToUTF8(callstack, str, maxbytes);
-
-    // Return number of bytes written, including null.
-    return bytesWrittenExcludingNull+1;
-  },
-
   $emscriptenLog__deps: ['$getCallstack'],
   $emscriptenLog: (flags, str) => {
     if (flags & {{{ cDefs.EM_LOG_C_STACK | cDefs.EM_LOG_JS_STACK }}}) {
@@ -2539,250 +2090,6 @@ addToLibrary({
     var str = x + '';
     if (to) return stringToUTF8(str, to, max);
     else return lengthBytesUTF8(str);
-  },
-
-  // Generates a representation of the program counter from a line of stack trace.
-  // The exact return value depends in whether we are running WASM or JS, and whether
-  // the engine supports offsets into WASM. See the function body for details.
-  $convertFrameToPC__docs: '/** @returns {number} */',
-  $convertFrameToPC__internal: true,
-  $convertFrameToPC: (frame) => {
-#if !USE_OFFSET_CONVERTER
-    abort('Cannot use convertFrameToPC (needed by __builtin_return_address) without -sUSE_OFFSET_CONVERTER');
-#else
-#if ASSERTIONS
-    assert(wasmOffsetConverter);
-#endif
-    var match;
-
-    if (match = /\bwasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
-      // some engines give the binary offset directly, so we use that as return address
-      return +match[1];
-    } else if (match = /\bwasm-function\[(\d+)\]:(\d+)/.exec(frame)) {
-      // other engines only give function index and offset in the function,
-      // so we try using the offset converter. If that doesn't work,
-      // we pack index and offset into a "return address"
-      return wasmOffsetConverter.convert(+match[1], +match[2]);
-    } else if (match = /:(\d+):\d+(?:\)|$)/.exec(frame)) {
-      // If we are in js, we can use the js line number as the "return address".
-      // This should work for wasm2js.  We tag the high bit to distinguish this
-      // from wasm addresses.
-      return 0x80000000 | +match[1];
-    }
-#endif
-    // return 0 if we can't find any
-    return 0;
-  },
-
-  // Returns a representation of a call site of the caller of this function, in a manner
-  // similar to __builtin_return_address. If level is 0, we return the call site of the
-  // caller of this function.
-  emscripten_return_address__deps: ['$convertFrameToPC', '$jsStackTrace'],
-  emscripten_return_address: (level) => {
-    var callstack = jsStackTrace().split('\n');
-    if (callstack[0] == 'Error') {
-      callstack.shift();
-    }
-    // skip this function and the caller to get caller's return address
-#if MEMORY64
-    // MEMORY64 injects and extra wrapper within emscripten_return_address
-    // to handle BigInt conversions.
-    var caller = callstack[level + 4];
-#else
-    var caller = callstack[level + 3];
-#endif
-    return convertFrameToPC(caller);
-  },
-
-  $UNWIND_CACHE: {},
-
-  // This function pulls the JavaScript stack trace and updates UNWIND_CACHE so
-  // that our representation of the program counter is mapped to the line of the
-  // stack trace for every line in the stack trace. This allows
-  // emscripten_pc_get_* to lookup the line of the stack trace from the PC and
-  // return meaningful information.
-  //
-  // Additionally, it saves a copy of the entire stack trace and the return
-  // address of the caller. This is because there are two common forms of a
-  // stack trace.  The first form starts the stack trace at the caller of the
-  // function requesting a stack trace. In this case, the function can simply
-  // walk down the stack from the return address using emscripten_return_address
-  // with increasing values for level.  The second form starts the stack trace
-  // at the current function. This requires a helper function to get the program
-  // counter. This helper function will return the return address.  This is the
-  // program counter at the call site. But there is a problem: when calling into
-  // code that performs stack unwinding, the program counter has changed since
-  // execution continued from calling the helper function. So we can't just walk
-  // down the stack and expect to see the PC value we got. By caching the call
-  // stack, we can call emscripten_stack_unwind with the PC value and use that
-  // to unwind the cached stack. Naturally, the PC helper function will have to
-  // call emscripten_stack_snapshot to cache the stack. We also return the
-  // return address of the caller so the PC helper function does not need to
-  // call emscripten_return_address, saving a lot of time.
-  //
-  // One might expect that a sensible solution is to call the stack unwinder and
-  // explicitly tell it how many functions to skip from the stack. However,
-  // existing libraries do not work this way.  For example, compiler-rt's
-  // sanitizer_common library has macros GET_CALLER_PC_BP_SP and
-  // GET_CURRENT_PC_BP_SP, which obtains the PC value for the two common cases
-  // stated above, respectively. Then, it passes the PC, BP, SP values along
-  // until some other function uses them to unwind. On standard machines, the
-  // stack can be unwound by treating BP as a linked list.  This makes PC
-  // unnecessary to walk the stack, since walking is done with BP, which remains
-  // valid until the function returns. But on Emscripten, BP does not exist, at
-  // least in JavaScript frames, so we have to rely on PC values. Therefore, we
-  // must be able to unwind from a PC value that may no longer be on the
-  // execution stack, and so we are forced to cache the entire call stack.
-  emscripten_stack_snapshot__deps: ['$convertFrameToPC', '$UNWIND_CACHE', '$saveInUnwindCache', '$jsStackTrace'],
-  emscripten_stack_snapshot: function() {
-    var callstack = jsStackTrace().split('\n');
-    if (callstack[0] == 'Error') {
-      callstack.shift();
-    }
-    saveInUnwindCache(callstack);
-
-    // Caches the stack snapshot so that emscripten_stack_unwind_buffer() can
-    // unwind from this spot.
-    UNWIND_CACHE.last_addr = convertFrameToPC(callstack[3]);
-    UNWIND_CACHE.last_stack = callstack;
-    return UNWIND_CACHE.last_addr;
-  },
-
-  $saveInUnwindCache__deps: ['$UNWIND_CACHE', '$convertFrameToPC'],
-  $saveInUnwindCache__internal: true,
-  $saveInUnwindCache: (callstack) => {
-    callstack.forEach((frame) => {
-      var pc = convertFrameToPC(frame);
-      if (pc) {
-        UNWIND_CACHE[pc] = frame;
-      }
-    });
-  },
-
-  // Unwinds the stack from a cached PC value. See emscripten_stack_snapshot for
-  // how this is used.  addr must be the return address of the last call to
-  // emscripten_stack_snapshot, or this function will instead use the current
-  // call stack.
-  emscripten_stack_unwind_buffer__deps: ['$UNWIND_CACHE', '$saveInUnwindCache', '$convertFrameToPC', '$jsStackTrace'],
-  emscripten_stack_unwind_buffer: (addr, buffer, count) => {
-    var stack;
-    if (UNWIND_CACHE.last_addr == addr) {
-      stack = UNWIND_CACHE.last_stack;
-    } else {
-      stack = jsStackTrace().split('\n');
-      if (stack[0] == 'Error') {
-        stack.shift();
-      }
-      saveInUnwindCache(stack);
-    }
-
-    var offset = 3;
-    while (stack[offset] && convertFrameToPC(stack[offset]) != addr) {
-      ++offset;
-    }
-
-    for (var i = 0; i < count && stack[i+offset]; ++i) {
-      {{{ makeSetValue('buffer', 'i*4', 'convertFrameToPC(stack[i + offset])', 'i32') }}};
-    }
-    return i;
-  },
-
-  // Look up the function name from our stack frame cache with our PC representation.
-#if USE_OFFSET_CONVERTER
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'free', '$stringToNewUTF8'],
-  // Don't treat allocation of _emscripten_pc_get_function.ret as a leak
-  emscripten_pc_get_function__noleakcheck: true,
-#endif
-  emscripten_pc_get_function: (pc) => {
-#if !USE_OFFSET_CONVERTER
-    abort('Cannot use emscripten_pc_get_function without -sUSE_OFFSET_CONVERTER');
-    return 0;
-#else
-    var name;
-    if (pc & 0x80000000) {
-      // If this is a JavaScript function, try looking it up in the unwind cache.
-      var frame = UNWIND_CACHE[pc];
-      if (!frame) return 0;
-
-      var match;
-      if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
-        name = match[1];
-      } else if (match = /^(.+?)@/.exec(frame)) {
-        name = match[1];
-      } else {
-        return 0;
-      }
-    } else {
-      name = wasmOffsetConverter.getName(pc);
-    }
-    if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
-    _emscripten_pc_get_function.ret = stringToNewUTF8(name);
-    return _emscripten_pc_get_function.ret;
-#endif
-  },
-
-  $convertPCtoSourceLocation__deps: ['$UNWIND_CACHE', '$convertFrameToPC'],
-  $convertPCtoSourceLocation: (pc) => {
-    if (UNWIND_CACHE.last_get_source_pc == pc) return UNWIND_CACHE.last_source;
-
-    var match;
-    var source;
-#if LOAD_SOURCE_MAP
-    if (wasmSourceMap) {
-      source = wasmSourceMap.lookup(pc);
-    }
-#endif
-
-    if (!source) {
-      var frame = UNWIND_CACHE[pc];
-      if (!frame) return null;
-      // Example: at callMain (a.out.js:6335:22)
-      if (match = /\((.*):(\d+):(\d+)\)$/.exec(frame)) {
-        source = {file: match[1], line: match[2], column: match[3]};
-      // Example: main@a.out.js:1337:42
-      } else if (match = /@(.*):(\d+):(\d+)/.exec(frame)) {
-        source = {file: match[1], line: match[2], column: match[3]};
-      }
-    }
-    UNWIND_CACHE.last_get_source_pc = pc;
-    UNWIND_CACHE.last_source = source;
-    return source;
-  },
-
-  // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['$convertPCtoSourceLocation', 'free', '$stringToNewUTF8'],
-  // Don't treat allocation of _emscripten_pc_get_file.ret as a leak
-  emscripten_pc_get_file__noleakcheck: true,
-  emscripten_pc_get_file: (pc) => {
-    var result = convertPCtoSourceLocation(pc);
-    if (!result) return 0;
-
-    if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
-    _emscripten_pc_get_file.ret = stringToNewUTF8(result.file);
-    return _emscripten_pc_get_file.ret;
-  },
-
-  // Look up the line number from our stack frame cache with our PC representation.
-  emscripten_pc_get_line__deps: ['$convertPCtoSourceLocation'],
-  emscripten_pc_get_line: (pc) => {
-    var result = convertPCtoSourceLocation(pc);
-    return result ? result.line : 0;
-  },
-
-  // Look up the column number from our stack frame cache with our PC representation.
-  emscripten_pc_get_column__deps: ['$convertPCtoSourceLocation'],
-  emscripten_pc_get_column: (pc) => {
-    var result = convertPCtoSourceLocation(pc);
-    return result ? result.column || 0 : 0;
-  },
-
-  emscripten_get_module_name__deps: ['$stringToUTF8'],
-  emscripten_get_module_name: (buf, length) => {
-#if MINIMAL_RUNTIME
-    return stringToUTF8('{{{ TARGET_BASENAME }}}.wasm', buf, length);
-#else
-    return stringToUTF8(wasmBinaryFile, buf, length);
-#endif
   },
 
 #if USE_ASAN || USE_LSAN || UBSAN_RUNTIME
@@ -3065,9 +2372,7 @@ addToLibrary({
   $dynCallLegacy__deps: ['$createDyncallWrapper'],
 #endif
   $dynCallLegacy: (sig, ptr, args) => {
-#if MEMORY64
-    sig = sig.replace(/p/g, 'j')
-#endif
+    sig = sig.replace(/p/g, {{{ MEMORY64 ? "'j'" : "'i'" }}})
 #if ASSERTIONS
 #if MINIMAL_RUNTIME
     assert(typeof dynCalls != 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall linker flag to include it!');
@@ -3142,6 +2447,8 @@ addToLibrary({
 #endif
 #if MEMORY64
     return sig[0] == 'p' ? Number(rtn) : rtn;
+#elif CAN_ADDRESS_2GB
+    return sig[0] == 'p' ? rtn >>> 0 : rtn;
 #else
     return rtn;
 #endif
@@ -3263,17 +2570,9 @@ addToLibrary({
 
   // Use program_invocation_short_name and program_invocation_name in compiled
   // programs. This function is for implementing them.
-#if !MINIMAL_RUNTIME
-  _emscripten_get_progname__deps: ['$stringToUTF8'],
-#endif
+  _emscripten_get_progname__deps: ['$getExecutableName', '$stringToUTF8'],
   _emscripten_get_progname: (str, len) => {
-#if !MINIMAL_RUNTIME
-#if ASSERTIONS
-    assert(typeof str == 'number');
-    assert(typeof len == 'number');
-#endif
-    stringToUTF8(thisProgram, str, len);
-#endif
+    stringToUTF8(getExecutableName(), str, len);
   },
 
   emscripten_console_log: (str) => {
@@ -3332,11 +2631,7 @@ addToLibrary({
       }
     }
 #endif
-#if MINIMAL_RUNTIME
-    throw e;
-#else
     quit_(1, e);
-#endif
   },
 
   $runtimeKeepaliveCounter__internal: true,
@@ -3437,35 +2732,35 @@ addToLibrary({
 
 #else // MINIMAL_RUNTIME
   // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
-  $callUserCallback: (func) => {
-    func();
-  },
+  $callUserCallback: (func) => func(),
 #endif // MINIMAL_RUNTIME
 
   $asmjsMangle: (x) => {
-    var unmangledSymbols = {{{ buildStringArray(WASM_SYSTEM_EXPORTS) }}};
     if (x == '__main_argc_argv') {
       x = 'main';
     }
-    return x.startsWith('dynCall_') || unmangledSymbols.includes(x) ? x : '_' + x;
+    return x.startsWith('dynCall_') ? x : '_' + x;
   },
 
   $asyncLoad__docs: '/** @param {boolean=} noRunDep */',
   $asyncLoad: (url, onload, onerror, noRunDep) => {
     var dep = !noRunDep ? getUniqueRunDependency(`al ${url}`) : '';
-    readAsync(url, (arrayBuffer) => {
+    readAsync(url).then(
+      (arrayBuffer) => {
 #if ASSERTIONS
-      assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
+        assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
 #endif
-      onload(new Uint8Array(arrayBuffer));
-      if (dep) removeRunDependency(dep);
-    }, (event) => {
-      if (onerror) {
-        onerror();
-      } else {
-        throw `Loading data file "${url}" failed.`;
+        onload(new Uint8Array(arrayBuffer));
+        if (dep) removeRunDependency(dep);
+      },
+      (err) => {
+        if (onerror) {
+          onerror();
+        } else {
+          throw `Loading data file "${url}" failed.`;
+        }
       }
-    });
+    );
     if (dep) addRunDependency(dep);
   },
 
@@ -3565,15 +2860,15 @@ addToLibrary({
       assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);
 #endif
       return this.allocated[id];
-    };
+    }
     has(id) {
       return this.allocated[id] !== undefined;
-    };
+    }
     allocate(handle) {
       var id = this.freelist.pop() || this.allocated.length;
       this.allocated[id] = handle;
       return id;
-    };
+    }
     free(id) {
 #if ASSERTIONS
       assert(this.allocated[id] !== undefined);
@@ -3582,12 +2877,13 @@ addToLibrary({
       // apparently arrays with holes in them can be less efficient.
       this.allocated[id] = undefined;
       this.freelist.push(id);
-    };
+    }
   },
 
   $getNativeTypeSize__deps: ['$POINTER_SIZE'],
   $getNativeTypeSize: {{{ getNativeTypeSize }}},
 
+  $wasmTable__docs: '/** @type {WebAssembly.Table} */',
 #if RELOCATABLE
   // In RELOCATABLE mode we create the table in JS.
   $wasmTable: `=new WebAssembly.Table({
@@ -3687,7 +2983,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   var canThrow = library[x + '__nothrow'] !== true;
 #endif
 
-  if (!library[x + '__deps']) library[x + '__deps'] = [];
+  library[x + '__deps'] ??= [];
 
 #if PURE_WASI
   // In PURE_WASI mode we can't assume the wasm binary was built by emscripten
@@ -3716,7 +3012,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   pre += "var ret = (() => {";
   post += "})();\n";
   post += "if (ret && ret < 0 && canWarn) {\n";
-  post += "  dbg(`error: syscall may have failed with ${-ret} (${ERRNO_MESSAGES[-ret]})`);\n";
+  post += "  dbg(`error: syscall may have failed with ${-ret} (${strError(-ret)})`);\n";
   post += "}\n";
   post += "dbg(`syscall return: ${ret}`);\n";
   post += "return ret;\n";
@@ -3730,7 +3026,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     "  if (typeof FS == 'undefined' || !(e.name === 'ErrnoError')) throw e;\n";
 #if SYSCALL_DEBUG
     handler +=
-    "  dbg(`error: syscall failed with ${e.errno} (${ERRNO_MESSAGES[e.errno]})`);\n" +
+    "  dbg(`error: syscall failed with ${e.errno} (${strError(e.errno)})`);\n" +
     "  canWarn = false;\n";
 #endif
     // Musl syscalls are negated.

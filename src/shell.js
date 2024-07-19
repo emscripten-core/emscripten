@@ -10,7 +10,7 @@
 // The Module object: Our interface to the outside world. We import
 // and export values on it. There are various ways Module can be used:
 // 1. Not defined. We create it here
-// 2. A function parameter, function(Module) { ..generated code.. }
+// 2. A function parameter, function(moduleArg) => Promise<Module>
 // 3. pre-run appended it, var Module = {}; ..generated code..
 // 4. External script tag defines var Module.
 // We need to check if Module already exists (e.g. case 3 above).
@@ -61,36 +61,24 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 // See https://caniuse.com/mdn-javascript_builtins_bigint64array
 #include "polyfill/bigint64array.js"
 #endif
+
+#if MIN_CHROME_VERSION < 40 || MIN_FIREFOX_VERSION < 39 || MIN_SAFARI_VERSION < 103000
+// See https://caniuse.com/fetch
+#include "polyfill/fetch.js"
+#endif
 #endif // POLYFILL
 
 #if MODULARIZE
 // Set up the promise that indicates the Module is initialized
 var readyPromiseResolve, readyPromiseReject;
-Module['ready'] = new Promise((resolve, reject) => {
+var readyPromise = new Promise((resolve, reject) => {
   readyPromiseResolve = resolve;
   readyPromiseReject = reject;
 });
 #if ASSERTIONS
-{{{ addReadyPromiseAssertions("Module['ready']") }}}
+{{{ addReadyPromiseAssertions() }}}
 #endif
 #endif
-
-// --pre-jses are emitted after the Module integration code, so that they can
-// refer to Module (if they choose; they can also define Module)
-{{{ preJS() }}}
-
-// Sometimes an existing Module object exists with properties
-// meant to overwrite the default module functionality. Here
-// we collect those properties and reapply _after_ we configure
-// the current environment's defaults to avoid having to be so
-// defensive during initialization.
-var moduleOverrides = Object.assign({}, Module);
-
-var arguments_ = [];
-var thisProgram = './this.program';
-var quit_ = (status, toThrow) => {
-  throw toThrow;
-};
 
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
@@ -135,32 +123,89 @@ if (Module['ENVIRONMENT']) {
 // 2) We could be the application main() thread proxied to worker. (with Emscripten -sPROXY_TO_WORKER) (ENVIRONMENT_IS_WORKER == true, ENVIRONMENT_IS_PTHREAD == false)
 // 3) We could be an application pthread running in a worker. (ENVIRONMENT_IS_WORKER == true and ENVIRONMENT_IS_PTHREAD == true)
 
-// ENVIRONMENT_IS_PTHREAD=true will have been preset in worker.js. Make it false in the main runtime thread.
-var ENVIRONMENT_IS_PTHREAD = Module['ENVIRONMENT_IS_PTHREAD'] || false;
+// The way we signal to a worker that it is hosting a pthread is to construct
+// it with a specific name.
+var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name == 'em-pthread';
+
+#if MODULARIZE && ASSERTIONS
+if (ENVIRONMENT_IS_PTHREAD) {
+  assert(!globalThis.moduleLoaded, 'module should only be loaded once on each pthread worker');
+  globalThis.moduleLoaded = true;
+}
 #endif
+#endif
+
+#if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE) {
+  // `require()` is no-op in an ESM module, use `createRequire()` to construct
+  // the require()` function.  This is only necessary for multi-environment
+  // builds, `-sENVIRONMENT=node` emits a static import declaration instead.
+  // TODO: Swap all `require()`'s with `import()`'s?
+#if EXPORT_ES6 && ENVIRONMENT_MAY_BE_WEB
+  const { createRequire } = await import('module');
+  /** @suppress{duplicate} */
+  var require = createRequire(import.meta.url);
+#endif
+
+#if PTHREADS || WASM_WORKERS
+  var worker_threads = require('worker_threads');
+  global.Worker = worker_threads.Worker;
+  ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
+#if PTHREADS
+  // Under node we set `workerData` to `em-pthread` to signal that the worker
+  // is hosting a pthread.
+  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && worker_threads['workerData'] == 'em-pthread'
+#endif // PTHREADS
+#endif // PTHREADS || WASM_WORKERS
+}
+#endif // ENVIRONMENT_MAY_BE_NODE
 
 #if WASM_WORKERS
 var ENVIRONMENT_IS_WASM_WORKER = Module['$ww'];
 #endif
 
-#if SHARED_MEMORY && !MODULARIZE
-// In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
-// before the page load. In non-MODULARIZE modes generate it here.
-var _scriptDir = (typeof document != 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
+// --pre-jses are emitted after the Module integration code, so that they can
+// refer to Module (if they choose; they can also define Module)
+{{{ preJS() }}}
 
-if (ENVIRONMENT_IS_WORKER) {
-  _scriptDir = self.location.href;
-}
+// Sometimes an existing Module object exists with properties
+// meant to overwrite the default module functionality. Here
+// we collect those properties and reapply _after_ we configure
+// the current environment's defaults to avoid having to be so
+// defensive during initialization.
+var moduleOverrides = Object.assign({}, Module);
+
+var arguments_ = [];
+var thisProgram = './this.program';
+var quit_ = (status, toThrow) => {
+  throw toThrow;
+};
+
+#if SHARED_MEMORY && !MODULARIZE
+// In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
+// before the page load. In non-MODULARIZE modes generate it here.
+var _scriptName = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
+
 #if ENVIRONMENT_MAY_BE_NODE
-else if (ENVIRONMENT_IS_NODE) {
-  _scriptDir = __filename;
-}
+if (ENVIRONMENT_IS_NODE) {
+#if EXPORT_ES6
+  _scriptName = typeof __filename != 'undefined' ? __filename : import.meta.url
+#else
+  _scriptName = __filename;
+#endif
+} else
 #endif // ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_WORKER) {
+  _scriptName = self.location.href;
+}
 #endif // SHARED_MEMORY && !MODULARIZE
 
 // `/` should be present at the end if `scriptDirectory` is not empty
 var scriptDirectory = '';
 function locateFile(path) {
+#if RUNTIME_DEBUG
+  dbg('locateFile:', path, 'scriptDirectory:', scriptDirectory);
+#endif
 #if expectToReceiveOnModule('locateFile')
   if (Module['locateFile']) {
     return Module['locateFile'](path, scriptDirectory);
@@ -170,9 +215,7 @@ function locateFile(path) {
 }
 
 // Hooks that are implemented differently in different runtime environments.
-var read_,
-    readAsync,
-    readBinary;
+var readAsync, readBinary;
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
@@ -190,32 +233,19 @@ if (ENVIRONMENT_IS_NODE) {
   }
 #endif
 
-  // `require()` is no-op in an ESM module, use `createRequire()` to construct
-  // the require()` function.  This is only necessary for multi-environment
-  // builds, `-sENVIRONMENT=node` emits a static import declaration instead.
-  // TODO: Swap all `require()`'s with `import()`'s?
-#if EXPORT_ES6 && ENVIRONMENT_MAY_BE_WEB
-  const { createRequire } = await import('module');
-  /** @suppress{duplicate} */
-  var require = createRequire(import.meta.url);
-#endif
   // These modules will usually be used on Node.js. Load them eagerly to avoid
   // the complexity of lazy-loading.
   var fs = require('fs');
   var nodePath = require('path');
 
-  if (ENVIRONMENT_IS_WORKER) {
-    scriptDirectory = nodePath.dirname(scriptDirectory) + '/';
-  } else {
 #if EXPORT_ES6
-    // EXPORT_ES6 + ENVIRONMENT_IS_NODE always requires use of import.meta.url,
-    // since there's no way getting the current absolute path of the module when
-    // support for that is not available.
-    scriptDirectory = require('url').fileURLToPath(new URL('./', import.meta.url)); // includes trailing slash
+  // EXPORT_ES6 + ENVIRONMENT_IS_NODE always requires use of import.meta.url,
+  // since there's no way getting the current absolute path of the module when
+  // support for that is not available.
+  scriptDirectory = require('url').fileURLToPath(new URL('./', import.meta.url)); // includes trailing slash
 #else
-    scriptDirectory = __dirname + '/';
+  scriptDirectory = __dirname + '/';
 #endif
-  }
 
 #include "node_shell_read.js"
 
@@ -262,10 +292,6 @@ if (ENVIRONMENT_IS_NODE) {
     throw toThrow;
   };
 
-#if PTHREADS || WASM_WORKERS
-  global.Worker = require('worker_threads').Worker;
-#endif
-
 #if WASM == 2
   // If target shell does not support Wasm, load the JS version of the code.
   if (typeof WebAssembly == 'undefined') {
@@ -282,10 +308,7 @@ if (ENVIRONMENT_IS_SHELL) {
   if ((typeof process == 'object' && typeof require === 'function') || typeof window == 'object' || typeof importScripts == 'function') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 
-  if (typeof read != 'undefined') {
-    read_ = read;
-  }
-
+#if ENVIRONMENT_MAY_BE_SHELL
   readBinary = (f) => {
     if (typeof readbuffer == 'function') {
       return new Uint8Array(readbuffer(f));
@@ -295,8 +318,10 @@ if (ENVIRONMENT_IS_SHELL) {
     return data;
   };
 
-  readAsync = (f, onload, onerror) => {
-    setTimeout(() => onload(readBinary(f)));
+  readAsync = (f) => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => resolve(readBinary(f)));
+    });
   };
 
   if (typeof clearTimeout == 'undefined') {
@@ -352,9 +377,10 @@ if (ENVIRONMENT_IS_SHELL) {
     eval(read(locateFile('{{{ TARGET_BASENAME }}}.wasm.js'))+'');
   }
 #endif
+#endif // ENVIRONMENT_MAY_BE_SHELL
 
 } else
-#endif // ENVIRONMENT_MAY_BE_SHELL
+#endif // ENVIRONMENT_MAY_BE_SHELL || ASSERTIONS
 
 // Note that this includes Node.js workers when relevant (pthreads is enabled).
 // Node.js workers are detected as a combination of ENVIRONMENT_IS_WORKER and
@@ -369,8 +395,8 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 #if MODULARIZE
   // When MODULARIZE, this JS may be executed later, after document.currentScript
   // is gone, so we saved it, and we use it here instead of any other info.
-  if (_scriptDir) {
-    scriptDirectory = _scriptDir;
+  if (_scriptName) {
+    scriptDirectory = _scriptName;
   }
 #endif
   // blob urls look like blob:http://site.com/etc/etc and we cannot infer anything from them.
@@ -389,9 +415,9 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   if (!(typeof window == 'object' || typeof importScripts == 'function')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 
+#if PTHREADS && ENVIRONMENT_MAY_BE_NODE
   // Differentiate the Web Worker from the Node Worker case, as reading must
   // be done differently.
-#if PTHREADS && ENVIRONMENT_MAY_BE_NODE
   if (!ENVIRONMENT_IS_NODE)
 #endif
   {
@@ -460,13 +486,12 @@ assert(typeof Module['memoryInitializerPrefixURL'] == 'undefined', 'Module.memor
 assert(typeof Module['pthreadMainPrefixURL'] == 'undefined', 'Module.pthreadMainPrefixURL option was removed, use Module.locateFile instead');
 assert(typeof Module['cdInitializerPrefixURL'] == 'undefined', 'Module.cdInitializerPrefixURL option was removed, use Module.locateFile instead');
 assert(typeof Module['filePackagePrefixURL'] == 'undefined', 'Module.filePackagePrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['read'] == 'undefined', 'Module.read option was removed (modify read_ in JS)');
+assert(typeof Module['read'] == 'undefined', 'Module.read option was removed');
 assert(typeof Module['readAsync'] == 'undefined', 'Module.readAsync option was removed (modify readAsync in JS)');
 assert(typeof Module['readBinary'] == 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
 assert(typeof Module['setWindowTitle'] == 'undefined', 'Module.setWindowTitle option was removed (modify emscripten_set_window_title in JS)');
 assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has been renamed Module.INITIAL_MEMORY');
 {{{ makeRemovedModuleAPIAssert('asm', 'wasmExports', false) }}}
-{{{ makeRemovedModuleAPIAssert('read', 'read_') }}}
 {{{ makeRemovedModuleAPIAssert('readAsync') }}}
 {{{ makeRemovedModuleAPIAssert('readBinary') }}}
 {{{ makeRemovedModuleAPIAssert('setWindowTitle') }}}

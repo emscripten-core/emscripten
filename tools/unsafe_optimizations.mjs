@@ -3,7 +3,7 @@
 /** Implements a set of potentially unsafe JavaScript AST optimizations for aggressive code size optimizations.
     Enabled when building with -sMINIMAL_RUNTIME=2 linker flag. */
 
-import * as fs from 'fs';
+import * as fs from 'node:fs';
 import * as acorn from 'acorn';
 import * as terser from '../third_party/terser/terser.js';
 
@@ -29,12 +29,6 @@ function visitNodes(root, types, func) {
       const continueTraversal = visitNodes(root[member], types, func);
       if (continueTraversal === false) return false;
     }
-  }
-}
-
-function dump(nodeArray) {
-  for (const node of nodeArray) {
-    console.dir(node);
   }
 }
 
@@ -75,7 +69,13 @@ function optPassRemoveRedundantOperatorNews(ast) {
     for (let i = 0; i < nodeArray.length; ++i) {
       const n = nodeArray[i];
       if (n.type == 'ExpressionStatement' && n.expression.type == 'NewExpression') {
-        nodeArray.splice(i--, 1);
+        // Make an exception for new `new Promise` which is sometimes used
+        // in emscripten with real side effects.  For example, see
+        // loadWasmModuleToWorker which returns a `new Promise` that is never
+        // referenced (a least in some builds).
+        if (n.expression.callee.name !== 'Promise') {
+          nodeArray.splice(i--, 1);
+        }
       }
     }
   });
@@ -258,6 +258,8 @@ function runTests() {
     'WebAssembly.instantiate(c.wasm,{}).then(a=>{});',
   );
   test('let x=new Uint16Array(a);', 'let x=new Uint16Array(a);');
+  // new Promise should be preserved
+  test('new Promise();', 'new Promise;');
 
   // optPassMergeVarDeclarations:
   test('var a; var b;', 'var a,b;');

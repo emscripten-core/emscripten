@@ -253,6 +253,7 @@ def inspect_headers(headers, cflags):
                                '-sBOOTSTRAPPING_STRUCT_INFO',
                                '-sINCOMING_MODULE_JS_API=',
                                '-sSTRICT',
+                               '-sSUPPORT_LONGJMP=0',
                                '-sASSERTIONS=0'] + node_flags
 
   # Default behavior for emcc is to warn for binaryen version check mismatches
@@ -369,6 +370,7 @@ def main(args):
       utils.path_from_root('src/struct_info.json'),
       utils.path_from_root('src/struct_info_internal.json'),
       utils.path_from_root('src/struct_info_cxx.json'),
+      utils.path_from_root('src/struct_info_webgpu.json'),
   ]
   parser = argparse.ArgumentParser(description='Generate JSON infos for structs.')
   parser.add_argument('json', nargs='*',
@@ -414,7 +416,7 @@ def main(args):
 
   cxxflags = [
     '-I' + utils.path_from_root('system/lib/libcxxabi/src'),
-    '-D__USING_EMSCRIPTEN_EXCEPTIONS__',
+    '-D__EMSCRIPTEN_EXCEPTIONS__',
     '-I' + utils.path_from_root('system/lib/wasmfs/'),
     '-std=c++17',
   ]
@@ -438,9 +440,9 @@ def main(args):
   if args.output:
     output_file = args.output
   elif args.wasm64:
-    output_file = utils.path_from_root('src/generated_struct_info64.json')
+    output_file = utils.path_from_root('src/struct_info_generated_wasm64.json')
   else:
-    output_file = utils.path_from_root('src/generated_struct_info32.json')
+    output_file = utils.path_from_root('src/struct_info_generated.json')
 
   with open(output_file, 'w') as f:
     output_json(info, f)

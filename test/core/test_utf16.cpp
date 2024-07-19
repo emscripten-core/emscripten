@@ -10,6 +10,8 @@
 #include <vector>
 #include <wchar.h>
 
+EM_JS_DEPS(deps, "$UTF16ToString,$stringToUTF16");
+
 // Roundtrip a (non-)null-terminated string between C++ and JS.
 EM_JS(void, roundtripString, (const char16_t* str, int strBytes, char16_t* result, int resultBytes), {
 #if __wasm64__

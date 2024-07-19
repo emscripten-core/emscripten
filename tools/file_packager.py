@@ -604,7 +604,7 @@ def generate_js(data_target, data_files, metadata):
     ret = ''
   else:
     ret = '''
-  var Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": options.export_name}
+  var Module = typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": options.export_name}
 
   ret += '''
   if (!Module.expectedDataFileDownloads) {
@@ -612,10 +612,12 @@ def generate_js(data_target, data_files, metadata):
   }
 
   Module.expectedDataFileDownloads++;
-  (function() {
+  (() => {
     // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
-    if (Module['ENVIRONMENT_IS_PTHREAD'] || Module['$ww']) return;
-    var loadPackage = function(metadata) {\n'''
+    var isPthread = typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD;
+    var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER;
+    if (isPthread || isWasmWorker) return;
+    function loadPackage(metadata) {\n'''
 
   code = '''
       function assert(check, msg) {
@@ -994,9 +996,9 @@ def generate_js(data_target, data_files, metadata):
               num++;
             }
             total = Math.ceil(total * Module.expectedDataFileDownloads/num);
-            if (Module['setStatus']) Module['setStatus'](`Downloading data... (${loaded}/${total})`);
+            Module['setStatus']?.(`Downloading data... (${loaded}/${total})`);
           } else if (!Module.dataFileDownloads) {
-            if (Module['setStatus']) Module['setStatus']('Downloading data...');
+            Module['setStatus']?.('Downloading data...');
           }
         };
         xhr.onerror = function(event) {
@@ -1063,7 +1065,7 @@ def generate_js(data_target, data_files, metadata):
           }
         , preloadFallback);
 
-        if (Module['setStatus']) Module['setStatus']('Downloading...');\n'''
+        Module['setStatus']?.('Downloading...');\n'''
     else:
       # Not using preload cache, so we might as well start the xhr ASAP,
       # potentially before JS parsing of the main codebase if it's after us.
@@ -1092,12 +1094,12 @@ def generate_js(data_target, data_files, metadata):
       }\n'''
 
   ret += '''
-    function runWithFS() {\n'''
+    function runWithFS(Module) {\n'''
   ret += code
   ret += '''
     }
     if (Module['calledRun']) {
-      runWithFS();
+      runWithFS(Module);
     } else {
       if (!Module['preRun']) Module['preRun'] = [];
       Module["preRun"].push(runWithFS); // FS is not initialized yet, wait for it

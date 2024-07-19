@@ -144,8 +144,8 @@ function stackCheckInit() {
 
 #if MAIN_MODULE && PTHREADS
 // Map of modules to be shared with new threads.  This gets populated by the
-// main thread and shared with all new workers.
-var sharedModules = Module['sharedModules'] || [];
+// main thread and shared with all new workers via the initial `load` message.
+var sharedModules = {};
 #endif
 
 #if MAIN_READS_PARAMS
@@ -220,7 +220,7 @@ function run() {
     readyPromiseResolve(Module);
 #endif
 #if expectToReceiveOnModule('onRuntimeInitialized')
-    if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
+    Module['onRuntimeInitialized']?.();
 #endif
 
 #if HAS_MAIN

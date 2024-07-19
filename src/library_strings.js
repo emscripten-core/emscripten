@@ -7,10 +7,11 @@
 #include "arrayUtils.js"
 
 addToLibrary({
+  // TextDecoder constructor defaults to UTF-8
 #if TEXTDECODER == 2
-  $UTF8Decoder: "new TextDecoder('utf8')",
+  $UTF8Decoder: "new TextDecoder()",
 #elif TEXTDECODER == 1
-  $UTF8Decoder: "typeof TextDecoder != 'undefined' ? new TextDecoder('utf8') : undefined",
+  $UTF8Decoder: "typeof TextDecoder != 'undefined' ? new TextDecoder() : undefined",
 #endif
 
   $UTF8ArrayToString__docs: `
@@ -484,7 +485,7 @@ addToLibrary({
   },
 
   // Allocate stack space for a JS string, and write it there.
-  $stringToUTF8OnStack__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
+  $stringToUTF8OnStack__deps: ['$lengthBytesUTF8', '$stringToUTF8', '$stackAlloc'],
   $stringToUTF8OnStack: (str) => {
     var size = lengthBytesUTF8(str) + 1;
     var ret = stackAlloc(size);

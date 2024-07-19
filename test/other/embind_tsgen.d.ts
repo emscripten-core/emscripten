@@ -1,8 +1,22 @@
 // TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
+declare namespace RuntimeExports {
+    let HEAPF32: any;
+    let HEAPF64: any;
+    let HEAP_DATA_VIEW: any;
+    let HEAP8: any;
+    let HEAPU8: any;
+    let HEAP16: any;
+    let HEAPU16: any;
+    let HEAP32: any;
+    let HEAPU32: any;
+    let HEAP64: any;
+    let HEAPU64: any;
+}
 interface WasmModule {
   _main(_0: number, _1: number): number;
 }
 
+type EmbindString = ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string;
 export interface Test {
   x: number;
   readonly y: number;
@@ -12,8 +26,8 @@ export interface Test {
   functionFive(x: number, y: number): number;
   constFn(): number;
   longFn(_0: number): number;
-  functionThree(_0: ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string): number;
-  functionSix(str: ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string): number;
+  functionThree(_0: EmbindString): number;
+  functionSix(str: EmbindString): number;
   delete(): void;
 }
 
@@ -51,11 +65,6 @@ export interface Foo {
   delete(): void;
 }
 
-export type ValObj = {
-  foo: Foo,
-  bar: Bar
-};
-
 export interface ClassWithConstructor {
   fn(_0: number): number;
   delete(): void;
@@ -69,6 +78,12 @@ export interface ClassWithSmartPtrConstructor {
   fn(_0: number): number;
   delete(): void;
 }
+
+export type ValObj = {
+  foo: Foo,
+  bar: Bar,
+  callback: (message: string) => void
+};
 
 export interface BaseClass {
   fn(_0: number): number;
@@ -101,12 +116,14 @@ interface EmbindModule {
   DerivedClass: {};
   a_bool: boolean;
   an_int: number;
-  optional_test(_0: Foo | undefined): number | undefined;
+  optional_test(_0?: Foo): number | undefined;
   global_fn(_0: number, _1: number): number;
+  optional_and_nonoptional_test(_0: Foo | undefined, _1: number): number | undefined;
   smart_ptr_function(_0: ClassWithSmartPtrConstructor): number;
   smart_ptr_function_with_params(foo: ClassWithSmartPtrConstructor): number;
   function_with_callback_param(_0: (message: string) => void): number;
-  string_test(_0: ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string): string;
+  string_test(_0: EmbindString): string;
   wstring_test(_0: string): string;
 }
-export type MainModule = WasmModule & EmbindModule;
+
+export type MainModule = WasmModule & typeof RuntimeExports & EmbindModule;

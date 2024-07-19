@@ -28,7 +28,7 @@ addToLibrary({
     '$PROXYFS',
 #endif
 #if ASSERTIONS
-    '$ERRNO_MESSAGES', '$ERRNO_CODES',
+    '$strError', '$ERRNO_CODES',
 #endif
   ],
   $FS__postset: function() {
@@ -80,7 +80,7 @@ FS.staticInit();` +
       // we'll use the reliable test `err.name == "ErrnoError"` instead
       constructor(errno) {
 #if ASSERTIONS
-        super(ERRNO_MESSAGES[errno]);
+        super(runtimeInitialized ? strError(errno) : '');
 #endif
         // TODO(sbc): Use the inline member declaration syntax once we
         // support it in acorn and closure.
@@ -449,6 +449,9 @@ FS.staticInit();` +
     // object isn't directly passed in. not possible until
     // SOCKFS is completed.
     createStream(stream, fd = -1) {
+#if ASSERTIONS
+      assert(fd >= -1);
+#endif
 
       // clone it, so we can return an instance of FSStream
       stream = Object.assign(new FS.FSStream(), stream);
@@ -812,6 +815,9 @@ FS.staticInit();` +
       // do the underlying fs rename
       try {
         old_dir.node_ops.rename(old_node, new_dir, new_name);
+        // update old node (we do this here to avoid each backend 
+        // needing to)
+        old_node.parent = new_dir;
       } catch (e) {
         throw e;
       } finally {
@@ -1014,8 +1020,8 @@ FS.staticInit();` +
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       }
       flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
-      mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
       if ((flags & {{{ cDefs.O_CREAT }}})) {
+        mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
         mode = (mode & {{{ cDefs.S_IALLUGO }}}) | {{{ cDefs.S_IFREG }}};
       } else {
         mode = 0;
@@ -1628,20 +1634,18 @@ FS.staticInit();` +
     // been loaded successfully. No-op for files that have been loaded already.
     forceLoadFile(obj) {
       if (obj.isDevice || obj.isFolder || obj.link || obj.contents) return true;
+ #if FS_DEBUG
+      dbg(`forceLoadFile: ${obj.url}`)
+ #endif
       if (typeof XMLHttpRequest != 'undefined') {
         throw new Error("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
-      } else if (read_) {
-        // Command-line.
+      } else { // Command-line.
         try {
-          // WARNING: Can't read binary files in V8's d8 or tracemonkey's js, as
-          //          read() will try to parse UTF8.
-          obj.contents = intArrayFromString(read_(obj.url), true);
+          obj.contents = readBinary(obj.url);
           obj.usedBytes = obj.contents.length;
         } catch (e) {
           throw new FS.ErrnoError({{{ cDefs.EIO }}});
         }
-      } else {
-        throw new Error('Cannot load without read() or XMLHttpRequest.');
       }
     },
     // Creates a file record for lazy-loading from a URL. XXX This requires a synchronous
@@ -1863,4 +1867,7 @@ FS.staticInit();` +
    */`,
   $FS_mkdirTree__deps: ['$FS'],
   $FS_mkdirTree: (path, mode) => FS.mkdirTree(path, mode),
+
+  $FS_createLazyFile__deps: ['$FS'],
+  $FS_createLazyFile: 'FS.createLazyFile',
 });

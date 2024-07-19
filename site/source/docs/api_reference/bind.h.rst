@@ -99,7 +99,7 @@ select_overload and select_const
       template<typename Signature>
       typename std::add_pointer<Signature>::type select_overload(typename std::add_pointer<Signature>::type fn)
 
-   :param typename std\:\:add_pointer<Signature>::type fn
+   :param typename std\:\:add_pointer<Signature>::type fn:
 
 .. cpp:function:: typename internal::MemberFunctionType<ClassType, Signature>::type select_overload()
 
@@ -109,7 +109,7 @@ select_overload and select_const
       template<typename Signature, typename ClassType>
       typename internal::MemberFunctionType<ClassType, Signature>::type select_overload(Signature (ClassType::*fn))
 
-   :param Signature (ClassType::\*fn)
+   :param Signature (ClassType::\*fn):
 
 .. cpp:function:: auto select_const()
 
@@ -119,7 +119,7 @@ select_overload and select_const
       template<typename ClassType, typename ReturnType, typename... Args>
       auto select_const(ReturnType (ClassType::*method)(Args...) const)
 
-   :param ReturnType (ClassType::\*method)(Args...) const
+   :param ReturnType (ClassType::\*method)(Args...) const:
 
 
 .. cpp:function:: typename internal::CalculateLambdaSignature<LambdaType>::type optional_override(const LambdaType& fp)
@@ -130,7 +130,7 @@ select_overload and select_const
       template<typename LambdaType>
       typename internal::CalculateLambdaSignature<LambdaType>::type optional_override(const LambdaType& fp)
 
-   :param const LambdaType& fp
+   :param const LambdaType& fp:
 
 
 Functions
@@ -186,7 +186,7 @@ Value tuples
 
       Constructor.
 
-      :param const char* name
+      :param const char* name:
 
 
    .. cpp:function:: ~value_array()
@@ -201,13 +201,13 @@ Value tuples
 
    .. cpp:function:: value_array& element(Getter getter, Setter setter)
 
-      :param Getter getter. Note that ``Getter`` is a typename (templated type).
-      :param Setter setter. Note that ``Setter`` is a typename (templated type).
+      :param Getter getter: Note that ``Getter`` is a typename (templated type).
+      :param Setter setter: Note that ``Setter`` is a typename (templated type).
 
 
    .. cpp:function:: value_array& element(index<Index>)
 
-      :param index<Index>:Note that ``Index`` is an integer template parameter.
+      :param index<Index>: Note that ``Index`` is an integer template parameter.
 
 
 
@@ -227,7 +227,7 @@ Value structs
 
       Constructor.
 
-      :param const char* name
+      :param const char* name:
 
 
    .. cpp:function:: ~value_object()
@@ -237,22 +237,22 @@ Value structs
 
    .. cpp:function:: value_object& field(const char* fieldName, FieldType InstanceType::*field)
 
-      :param const char* fieldName.
-      :param FieldType InstanceType\:\:\*field.
+      :param const char* fieldName:
+      :param FieldType InstanceType\:\:\*field:
 
 
 
    .. cpp:function:: value_object& field(const char* fieldName, Getter getter, Setter setter)
 
-      :param const char* fieldName.
-      :param Getter getter. Note that ``Getter`` is a typename (templated type).
-      :param Setter setter. Note that ``Setter`` is a typename (templated type).
+      :param const char* fieldName:
+      :param Getter getter: Note that ``Getter`` is a typename (templated type).
+      :param Setter setter: Note that ``Setter`` is a typename (templated type).
 
 
    .. cpp:function:: value_object& field(const char* fieldName, index<Index>)
 
-      :param const char* fieldName.
-      :param index<Index>. Note that ``Index`` is an integer template parameter.
+      :param const char* fieldName:
+      :param index<Index>: Note that ``Index`` is an integer template parameter.
 
 
 Smart pointers
@@ -272,7 +272,7 @@ Smart pointers
 
    .. cpp:function:: static void* share(void* v)
 
-      :param void* v
+      :param void* v:
 
 
    .. cpp:function:: static PointerType* construct_null()
@@ -325,7 +325,7 @@ Smart pointers
 
    .. cpp:function:: static element_type* get(const PointerType& ptr)
 
-      :param const PointerType& ptr
+      :param const PointerType& ptr:
 
    .. cpp:function:: static sharing_policy get_sharing_policy()
 
@@ -369,7 +369,7 @@ Classes
 
       Constructor.
 
-      :param val&& wrapped
+      :param val&& wrapped:
       :param Args&&... args: Note that ``Args`` is a typename (templated type).
 
 
@@ -382,14 +382,14 @@ Classes
 
       Constructor.
 
-      :param const char* name
+      :param const char* name:
       :param Args&&... args: Note that ``Args`` is a typename (templated type).
       :returns: Note that ``ReturnType`` is a typename (templated type).
 
 
 .. cpp:function:: EMSCRIPTEN_WRAPPER(T)
 
-   :param T
+   :param T:
 
 
 .. cpp:type:: base
@@ -442,7 +442,7 @@ Classes
          template<typename From, typename To>
          static To* convertPointer(From* ptr)
 
-      :param From* ptr
+      :param From* ptr:
 
 
 
@@ -494,7 +494,7 @@ Classes
 
       Constructor.
 
-      :param const char* name
+      :param const char* name:
 
 
    .. cpp:function:: const class_& smart_ptr(const char* name) const
@@ -505,7 +505,7 @@ Classes
          template<typename PointerType>
          EMSCRIPTEN_ALWAYS_INLINE const class_& smart_ptr(const char* name) const
 
-      :param const char* name.
+      :param const char* name:
       :returns: |class_-function-returns|
 
 
@@ -552,7 +552,7 @@ Classes
       See :ref:`embind-external-constructors` for more information.
 
 
-      :param Callable callable Note that ``Callable`` may be either a member function pointer, function pointer, ``std::function`` or function object.
+      :param Callable callable: Note that ``Callable`` may be either a member function pointer, function pointer, ``std::function`` or function object.
       :param Policies... policies: |policies-argument|
       :returns: |class_-function-returns|
 
@@ -565,8 +565,8 @@ Classes
          template<typename SmartPtr, typename... Args, typename... Policies>
          EMSCRIPTEN_ALWAYS_INLINE const class_& smart_ptr_constructor(const char* smartPtrName, SmartPtr (*factory)(Args...), Policies...) const
 
-      :param const char* smartPtrName
-      :param SmartPtr (\*factory)(Args...)
+      :param const char* smartPtrName:
+      :param SmartPtr (\*factory)(Args...):
       :param Policies... policies: |policies-argument|
       :returns: |class_-function-returns|
 
@@ -583,9 +583,9 @@ Classes
            ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<>()
          ) const
 
-      :param const char* wrapperClassName
-      :param const char* pointerName
-      :param emscripten\:\:constructor<ConstructorArgs...> constructor)
+      :param const char* wrapperClassName:
+      :param const char* pointerName:
+      :param emscripten\:\:constructor<ConstructorArgs...> constructor):
       :returns: |class_-function-returns|
 
 
@@ -600,8 +600,8 @@ Classes
            ::emscripten::constructor<ConstructorArgs...> constructor = ::emscripten::constructor<>()
          ) const
 
-      :param const char* wrapperClassName
-      :param \:\:emscripten\:\:constructor<ConstructorArgs...> constructor)
+      :param const char* wrapperClassName:
+      :param \:\:emscripten\:\:constructor<ConstructorArgs...> constructor):
 
       :returns: |class_-function-returns|
 
@@ -636,8 +636,8 @@ Classes
              .function<val(const MyClass&)>("myFunctor", std::bind(&my_functor_taking_this, _1));
 
 
-      :param const char* methodName
-      :param Callable callable Note that ``Callable`` may be either a member function pointer, function pointer, ``std::function`` or function object.
+      :param const char* methodName:
+      :param Callable callable: Note that ``Callable`` may be either a member function pointer, function pointer, ``std::function`` or function object.
       :param typename... Policies: |policies-argument|
       :returns: |class_-function-returns|
 
@@ -650,8 +650,8 @@ Classes
          template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
          EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, const FieldType ClassType::*field) const
 
-      :param const char* fieldName
-      :param const FieldType ClassType\:\:\*field
+      :param const char* fieldName:
+      :param const FieldType ClassType\:\:\*field:
 
       :returns: |class_-function-returns|
 
@@ -664,8 +664,8 @@ Classes
          template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
          EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, FieldType ClassType::*field) const
 
-      :param const char* fieldName
-      :param FieldType ClassType\:\:\*field
+      :param const char* fieldName:
+      :param FieldType ClassType\:\:\*field:
 
       :returns: |class_-function-returns|
 
@@ -684,8 +684,8 @@ Classes
       ``Getter`` is a function object, the property type must be specified as a template parameter as it cannot be deduced,
       e.g.: ``myClass.property<int>("myIntProperty", MyIntGetterFunctor());``
 
-      :param const char* fieldName
-      :param Getter getter Note that ``Getter`` is a function template typename.
+      :param const char* fieldName:
+      :param Getter getter: Note that ``Getter`` is a function template typename.
       :returns: |class_-function-returns|
 
 
@@ -704,7 +704,7 @@ Classes
       property type must be specified as a template parameter as it cannot be deduced, e.g.:
       ``myClass.property<int>("myIntProperty", MyIntGetterFunctor(), MyIntSetterFunctor());``
 
-      :param const char* fieldName
+      :param const char* fieldName:
       :param Getter getter: Note that ``Getter`` is a function template typename.
       :param Setter setter: Note that ``Setter`` is a function template typename.
       :returns: |class_-function-returns|
@@ -727,8 +727,8 @@ Classes
       A method name specified in the human-readable well-known symbol format (e.g., ``@@species``)
       is bound using the named ``Symbol`` for JavaScript (e.g., ``Symbol.species``).
 
-      :param const char* methodName
-      :param ReturnType (\*classMethod)(Args...)
+      :param const char* methodName:
+      :param ReturnType (\*classMethod)(Args...):
       :param Policies...: |policies-argument|
       :returns: |class_-function-returns|
 
@@ -740,8 +740,8 @@ Classes
          template<typename FieldType>
          EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, FieldType *field) const
 
-      :param const char* fieldName
-      :param FieldType ClassType\:\:\*field
+      :param const char* fieldName:
+      :param FieldType ClassType\:\:\*field:
 
       :returns: |class_-function-returns|
 
@@ -762,7 +762,7 @@ Vectors
 
    A function to register a ``std::vector<T>``.
 
-   :param const char* name
+   :param const char* name:
 
 
 Maps
@@ -778,7 +778,7 @@ Maps
 
    A function to register a ``std::map<K, V>``.
 
-   :param const char* name
+   :param const char* name:
 
 
 
@@ -808,7 +808,7 @@ Enums
 
       Constructor.
 
-      :param const char* name
+      :param const char* name:
 
 
    .. cpp:function::  enum_& value(const char* name, EnumType value)

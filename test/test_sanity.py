@@ -550,20 +550,20 @@ fi
       self.assertNotExists(PORTS_DIR)
 
       # Building a file that doesn't need ports should not trigger anything
-      output = self.do([EMCC, test_file('hello_world_sdl.cpp')])
+      output = self.do([EMCC, test_file('hello_world_sdl.c')])
       self.assertNotContained(RETRIEVING_MESSAGE, output)
       self.assertNotContained(BUILDING_MESSAGE, output)
       self.assertNotExists(PORTS_DIR)
 
       def first_use():
-        output = self.do([EMCC, test_file('hello_world_sdl.cpp'), '-sUSE_SDL=2'])
+        output = self.do([EMCC, test_file('hello_world_sdl.c'), '-sUSE_SDL=2'])
         self.assertContained(RETRIEVING_MESSAGE, output)
         self.assertContained(BUILDING_MESSAGE, output)
         self.assertExists(PORTS_DIR)
 
       def second_use():
         # Using it again avoids retrieve and build
-        output = self.do([EMCC, test_file('hello_world_sdl.cpp'), '-sUSE_SDL=2'])
+        output = self.do([EMCC, test_file('hello_world_sdl.c'), '-sUSE_SDL=2'])
         self.assertNotContained(RETRIEVING_MESSAGE, output)
         self.assertNotContained(BUILDING_MESSAGE, output)
 

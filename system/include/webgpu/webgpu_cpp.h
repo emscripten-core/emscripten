@@ -170,6 +170,14 @@ namespace wgpu {
         Info = 0x00000003,
     };
 
+    enum class CompositeAlphaMode : uint32_t {
+        Auto = 0x00000000,
+        Opaque = 0x00000001,
+        Premultiplied = 0x00000002,
+        Unpremultiplied = 0x00000003,
+        Inherit = 0x00000004,
+    };
+
     enum class CreatePipelineAsyncStatus : uint32_t {
         Success = 0x00000000,
         ValidationError = 0x00000001,
@@ -187,8 +195,9 @@ namespace wgpu {
     };
 
     enum class DeviceLostReason : uint32_t {
-        Undefined = 0x00000000,
-        Destroyed = 0x00000001,
+        Undefined = 0x00000001,
+        Unknown = 0x00000001,
+        Destroyed = 0x00000002,
     };
 
     enum class ErrorFilter : uint32_t {
@@ -337,6 +346,15 @@ namespace wgpu {
         Undefined = 0x00000000,
         Store = 0x00000001,
         Discard = 0x00000002,
+    };
+
+    enum class SurfaceGetCurrentTextureStatus : uint32_t {
+        Success = WGPUSurfaceGetCurrentTextureStatus_Success,
+        Timeout = WGPUSurfaceGetCurrentTextureStatus_Timeout,
+        Outdated = WGPUSurfaceGetCurrentTextureStatus_Outdated,
+        Lost = WGPUSurfaceGetCurrentTextureStatus_Lost,
+        OutOfMemory = WGPUSurfaceGetCurrentTextureStatus_OutOfMemory,
+        DeviceLost = WGPUSurfaceGetCurrentTextureStatus_DeviceLost,
     };
 
     enum class TextureAspect : uint32_t {
@@ -604,6 +622,7 @@ namespace wgpu {
     class Texture;
     class TextureView;
 
+    struct AdapterInfo;
     struct AdapterProperties;
     struct BindGroupEntry;
     struct BlendComponent;
@@ -642,8 +661,11 @@ namespace wgpu {
     struct ShaderModuleDescriptor;
     struct StencilFaceState;
     struct StorageTextureBindingLayout;
+    struct SurfaceCapabilities;
+    struct SurfaceConfiguration;
     struct SurfaceDescriptor;
     struct SurfaceDescriptorFromCanvasHTMLSelector;
+    struct SurfaceTexture;
     struct SwapChainDescriptor;
     struct TextureBindingLayout;
     struct TextureBindingViewDimensionDescriptor;
@@ -776,6 +798,7 @@ namespace wgpu {
         using ObjectBase::operator=;
 
         size_t EnumerateFeatures(FeatureName * features) const;
+        void GetInfo(AdapterInfo * info) const;
         Bool GetLimits(SupportedLimits * limits) const;
         void GetProperties(AdapterProperties * properties) const;
         Bool HasFeature(FeatureName feature) const;
@@ -1124,7 +1147,12 @@ namespace wgpu {
         using ObjectBase::ObjectBase;
         using ObjectBase::operator=;
 
+        void Configure(SurfaceConfiguration const * config) const;
+        void GetCapabilities(Adapter const& adapter, SurfaceCapabilities * capabilities) const;
+        void GetCurrentTexture(SurfaceTexture * surfaceTexture) const;
         TextureFormat GetPreferredFormat(Adapter const& adapter) const;
+        void Present() const;
+        void Unconfigure() const;
 
       private:
         friend ObjectBase<Surface, WGPUSurface>;
@@ -1187,6 +1215,24 @@ namespace wgpu {
     Instance CreateInstance(InstanceDescriptor const * descriptor = nullptr);
     Bool GetInstanceFeatures(InstanceFeatures * features);
     Proc GetProcAddress(Device device, char const * procName);
+
+    struct AdapterInfo {
+        AdapterInfo() = default;
+        ~AdapterInfo();
+        AdapterInfo(const AdapterInfo&) = delete;
+        AdapterInfo& operator=(const AdapterInfo&) = delete;
+        AdapterInfo(AdapterInfo&&);
+        AdapterInfo& operator=(AdapterInfo&&);
+        ChainedStructOut  * nextInChain = nullptr;
+        char const * const vendor = nullptr;
+        char const * const architecture = nullptr;
+        char const * const device = nullptr;
+        char const * const description = nullptr;
+        BackendType const backendType = {};
+        AdapterType const adapterType = {};
+        uint32_t const vendorID = {};
+        uint32_t const deviceID = {};
+    };
 
     struct AdapterProperties {
         AdapterProperties() = default;
@@ -1511,6 +1557,35 @@ namespace wgpu {
         TextureViewDimension viewDimension = TextureViewDimension::e2D;
     };
 
+    struct SurfaceCapabilities {
+        SurfaceCapabilities() = default;
+        ~SurfaceCapabilities();
+        SurfaceCapabilities(const SurfaceCapabilities&) = delete;
+        SurfaceCapabilities& operator=(const SurfaceCapabilities&) = delete;
+        SurfaceCapabilities(SurfaceCapabilities&&);
+        SurfaceCapabilities& operator=(SurfaceCapabilities&&);
+        ChainedStructOut  * nextInChain = nullptr;
+        size_t const formatCount = {};
+        TextureFormat const * const formats = {};
+        size_t const presentModeCount = {};
+        PresentMode const * const presentModes = {};
+        size_t const alphaModeCount = {};
+        CompositeAlphaMode const * const alphaModes = {};
+    };
+
+    struct SurfaceConfiguration {
+        ChainedStruct const * nextInChain = nullptr;
+        Device device;
+        TextureFormat format;
+        TextureUsage usage = TextureUsage::RenderAttachment;
+        size_t viewFormatCount = 0;
+        TextureFormat const * viewFormats;
+        CompositeAlphaMode alphaMode = CompositeAlphaMode::Auto;
+        uint32_t width;
+        uint32_t height;
+        PresentMode presentMode = PresentMode::Fifo;
+    };
+
     struct SurfaceDescriptor {
         ChainedStruct const * nextInChain = nullptr;
         char const * label = nullptr;
@@ -1523,6 +1598,12 @@ namespace wgpu {
         }
         static constexpr size_t kFirstMemberAlignment = detail::ConstexprMax(alignof(ChainedStruct), alignof(char const * ));
         alignas(kFirstMemberAlignment) char const * selector;
+    };
+
+    struct SurfaceTexture {
+        Texture texture;
+        Bool suboptimal;
+        SurfaceGetCurrentTextureStatus status;
     };
 
     struct SwapChainDescriptor {

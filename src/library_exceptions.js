@@ -224,7 +224,7 @@ var LibraryExceptions = {
   // unwinding using 'if' blocks around each function, so the remaining
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
-  $findMatchingCatch__deps: ['$exceptionLast', '$ExceptionInfo', '__resumeException', '__cxa_can_catch', 'setTempRet0'],
+  $findMatchingCatch__deps: ['$exceptionLast', '$ExceptionInfo', '__resumeException', '__cxa_can_catch', '$setTempRet0'],
   $findMatchingCatch: (args) => {
     var thrown =
 #if EXCEPTION_STACK_TRACES
@@ -254,9 +254,7 @@ var LibraryExceptions = {
     // Due to inheritance, those types may not precisely match the
     // type of the thrown object. Find one which matches, and
     // return the type of the catch block which should be called.
-    for (var arg in args) {
-      var caughtType = args[arg];
-
+    for (var caughtType of args) {
       if (caughtType === 0 || caughtType === thrownType) {
         // Catch all clause matched or exactly the same type is caught
         break;
@@ -287,8 +285,9 @@ var LibraryExceptions = {
 
 #endif
 #if WASM_EXCEPTIONS || !DISABLE_EXCEPTION_CATCHING
-  $getExceptionMessageCommon__deps: ['__get_exception_message', 'free', '$withStackSave', 'stackAlloc'],
-  $getExceptionMessageCommon: (ptr) => withStackSave(() => {
+  $getExceptionMessageCommon__deps: ['__get_exception_message', 'free', '$stackSave', '$stackRestore', '$stackAlloc'],
+  $getExceptionMessageCommon: (ptr) => {
+    var sp = stackSave();
     var type_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
     var message_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
     ___get_exception_message(ptr, type_addr_addr, message_addr_addr);
@@ -301,8 +300,9 @@ var LibraryExceptions = {
       message = UTF8ToString(message_addr);
       _free(message_addr);
     }
+    stackRestore(sp);
     return [type, message];
-  }),
+  },
 #endif
 #if WASM_EXCEPTIONS
   $getCppExceptionTag: () =>

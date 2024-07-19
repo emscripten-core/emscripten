@@ -6,8 +6,8 @@
 import os
 from typing import Dict
 
-TAG = '1.1.0'
-HASH = 'ca97ef5db558d957f78f2698ca6aef66f17e3253ad6434417793d6283f3cda16cbe18a460d9403b9a939651e0e5349f53a859b7d19a9220b2e168030f74fcb56'
+TAG = '3.4.0.20240627'
+HASH = '6598834deece7087fd5dda14ec6d410ae651c39b9955eb050dd736a7d3eb650075fc69cf70340f4f0514bef63723a5bbcc315397ec44ba7cab46e59fa137e27f'
 
 # contrib port information (required)
 URL = 'https://github.com/pongasoft/emscripten-glfw'
@@ -45,9 +45,9 @@ def get(ports, settings, shared):
   def create(final):
     root_path = os.path.join(ports.get_dir(), 'contrib.glfw3')
     source_path = os.path.join(root_path, 'src', 'cpp')
-    source_include_paths = [os.path.join(root_path, 'external', 'GLFW'), os.path.join(root_path, 'include', 'GLFW')]
+    source_include_paths = [os.path.join(root_path, 'external'), os.path.join(root_path, 'include')]
     for source_include_path in source_include_paths:
-      ports.install_headers(source_include_path, target='GLFW')
+      ports.install_headers(os.path.join(source_include_path, 'GLFW'), target=os.path.join('contrib.glfw3', 'GLFW'))
 
     flags = []
 
@@ -79,7 +79,7 @@ def linker_setup(ports, settings):
 # so that we don't conflict with the builtin GLFW headers that emscripten
 # includes
 def process_args(ports):
-  return ['-isystem', ports.get_include_dir('contrib.glfw3')]
+  return ['-isystem', ports.get_include_dir('contrib.glfw3'), '-DEMSCRIPTEN_USE_PORT_CONTRIB_GLFW3']
 
 
 def handle_options(options, error_handler):

@@ -137,51 +137,52 @@ class interactive(BrowserCore):
     # TODO: investigate why this does not pass
     self.btest_exit('browser/test_sdl2_audio_beep.cpp', args=['-O2', '--closure=1', '--minify=0', '-sDISABLE_EXCEPTION_CATCHING=0', '-sUSE_SDL=2'])
 
-  def test_openal_playback(self):
+  @parameterized({
+    '': ([],),
+    'proxy_to_pthread': (['-sPROXY_TO_PTHREAD', '-pthread'],),
+  })
+  def test_openal_playback(self, args):
     shutil.copyfile(test_file('sounds/audio.wav'), self.in_dir('audio.wav'))
-
-    for args in [[], ['-pthread', '-sPROXY_TO_PTHREAD']]:
-      self.compile_btest('openal_playback.cpp', ['-O2', '--preload-file', 'audio.wav', '-o', 'page.html'] + args)
-      self.run_browser('page.html', '/report_result?1')
+    self.btest('openal/test_openal_playback.c', '1', args=['-O2', '--preload-file', 'audio.wav'] + args)
 
   def test_openal_buffers(self):
-    self.btest('openal_buffers.c', '0', args=['--preload-file', test_file('sounds/the_entertainer.wav') + '@/'],)
+    self.btest_exit('openal/test_openal_buffers.c', args=['--preload-file', test_file('sounds/the_entertainer.wav') + '@/'],)
 
   def test_openal_buffers_animated_pitch(self):
-    self.btest('openal_buffers.c', '0', args=['-DTEST_ANIMATED_PITCH=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/'],)
+    self.btest_exit('openal/test_openal_buffers.c', args=['-DTEST_ANIMATED_PITCH=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/'],)
 
   def test_openal_looped_pitched_playback(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal/test_openal_playback.c', '1', args=['-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_looped_seek_playback(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_LOOPED_SEEK_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal/test_openal_playback.c', '1', args=['-DTEST_LOOPED_SEEK_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_animated_looped_pitched_playback(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_PITCHED_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal/test_openal_playback.c', '1', args=['-DTEST_ANIMATED_LOOPED_PITCHED_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_animated_looped_distance_playback(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_DISTANCE_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal/test_openal_playback.c', '1', args=['-DTEST_ANIMATED_LOOPED_DISTANCE_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_animated_looped_doppler_playback(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_DOPPLER_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal/test_openal_playback.c', '1', args=['-DTEST_ANIMATED_LOOPED_DOPPLER_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_animated_looped_panned_playback(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_PANNED_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal/test_openal_playback.c', '1', args=['-DTEST_ANIMATED_LOOPED_PANNED_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_animated_looped_relative_playback(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_RELATIVE_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal/test_openal_playback.c', '1', args=['-DTEST_ANIMATED_LOOPED_RELATIVE_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_al_soft_loop_points(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_AL_SOFT_LOOP_POINTS=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal/test_openal_playback.c', '1', args=['-DTEST_AL_SOFT_LOOP_POINTS=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_alc_soft_pause_device(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_ALC_SOFT_PAUSE_DEVICE=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal/test_openal_playback.c', '1', args=['-DTEST_ALC_SOFT_PAUSE_DEVICE=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_al_soft_source_spatialize(self):
-    self.btest('openal_playback.cpp', '1', args=['-DTEST_AL_SOFT_SOURCE_SPATIALIZE=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
+    self.btest('openal/test_openal_playback.c', '1', args=['-DTEST_AL_SOFT_SOURCE_SPATIALIZE=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'],)
 
   def test_openal_capture(self):
-    self.btest('openal_capture.c', expected='0')
+    self.btest_exit('openal/test_openal_capture.c')
 
   def get_freealut_library(self):
     self.emcc_args += ['-Wno-pointer-sign']
@@ -193,8 +194,7 @@ class interactive(BrowserCore):
   def test_freealut(self):
     src = test_file('third_party/freealut/examples/hello_world.c')
     inc = test_file('third_party/freealut/include')
-    self.compile_btest(src, ['-O2', '-o', 'page.html', '-I' + inc] + self.get_freealut_library())
-    self.run_browser('page.html', message='You should hear "Hello World!"')
+    self.btest_exit(src, args=['-O2', '-I' + inc] + self.get_freealut_library())
 
   def test_glfw_cursor_disabled(self):
     self.btest_exit('interactive/test_glfw_cursor_disabled.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'])
@@ -247,12 +247,16 @@ class interactive(BrowserCore):
   })
   def test_html5_event_callback_in_two_threads(self, args):
     # TODO: Make this automatic by injecting enter key press in e.g. shell html file.
-    self.btest('html5_event_callback_in_two_threads.c', expected='1', args=args)
+    self.btest_exit('html5_event_callback_in_two_threads.c', args=args)
 
-  # Test that emscripten_hide_mouse() is callable from pthreads (and proxies to main thread to obtain the proper window.devicePixelRatio value).
-  def test_emscripten_hide_mouse(self):
-    for args in [[], ['-pthread']]:
-      self.btest('emscripten_hide_mouse.c', expected='0', args=args)
+  # Test that emscripten_hide_mouse() is callable from pthreads (and proxies to main
+  # thread to obtain the proper window.devicePixelRatio value).
+  @parameterized({
+    '': ([],),
+    'threads': (['-pthread'],),
+  })
+  def test_emscripten_hide_mouse(self, args):
+    self.btest('emscripten_hide_mouse.c', expected='0', args=args)
 
   # Tests that WebGL can be run on another thread after first having run it on one thread (and that thread has exited). The intent of this is to stress graceful deinit semantics, so that it is not possible to "taint" a Canvas
   # to a bad state after a rendering thread in a program quits and restarts. (perhaps e.g. between level loads, or subsystem loads/restarts or something like that)
@@ -283,3 +287,11 @@ class interactive(BrowserCore):
   # Tests that AUDIO_WORKLET+MINIMAL_RUNTIME+MODULARIZE combination works together.
   def test_audio_worklet_modularize(self):
     self.btest('webaudio/audioworklet.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMINIMAL_RUNTIME', '-sMODULARIZE'])
+
+
+class interactive64(interactive):
+  def setUp(self):
+    super().setUp()
+    self.set_setting('MEMORY64')
+    self.emcc_args.append('-Wno-experimental')
+    self.require_wasm64()

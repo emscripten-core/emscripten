@@ -1,25 +1,26 @@
 {
   "private": true,
   "devDependencies": {
-    "es-check": "^7.1.1",
+    "es-check": "^7.2.1",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
-    "prettier": "^3.1.1",
+    "prettier": "^3.3.2",
     "source-map": "0.7.4",
-    "webpack": "^5.89.0",
+    "typescript": "^5.5.2",
+    "webpack": "^5.92.1",
     "webpack-cli": "^5.1.4",
-    "ws": "^8.16.0"
+    "ws": "^8.17.1"
   },
   "dependencies": {
-    "@babel/cli": "^7.23.4",
-    "@babel/core": "^7.23.7",
-    "@babel/preset-env": "^7.23.8",
-    "acorn": "^8.11.3",
+    "@babel/cli": "^7.24.7",
+    "@babel/core": "^7.24.7",
+    "@babel/preset-env": "^7.24.7",
+    "acorn": "^8.12.0",
     "google-closure-compiler": "20230802.0.0",
     "html-minifier-terser": "7.2.0"
   },
   "scripts": {
-    "lint": "eslint .",
+    "lint": "eslint --ext .js --ext .mjs .",
     "fmt": "prettier --write src/*.mjs tools/*.mjs",
     "check": "prettier --check src/*.mjs tools/*.mjs"
   }

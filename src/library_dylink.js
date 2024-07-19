@@ -26,7 +26,7 @@ var LibraryDylink = {
         // than just running the promises in parallel, this makes a chain of
         // promises to run in series.
         wasmPlugin['promiseChainEnd'] = wasmPlugin['promiseChainEnd'].then(
-          () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true}, name)).then(
+          () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true}, name, {})).then(
             (exports) => {
 #if DYLINK_DEBUG
               dbg(`registering preloadedWasm: ${name}`);
@@ -72,27 +72,31 @@ var LibraryDylink = {
   // generation time.
 #if !DISABLE_EXCEPTION_CATCHING || SUPPORT_LONGJMP == 'emscripten'
   $createInvokeFunction__internal: true,
-  $createInvokeFunction__deps: ['$dynCall', 'setThrew', 'stackSave', 'stackRestore'],
-  $createInvokeFunction: (sig) => {
-    return function() {
-      var sp = stackSave();
-      try {
-        return dynCall(sig, arguments[0], Array.prototype.slice.call(arguments, 1));
-      } catch(e) {
-        stackRestore(sp);
-        // Create a try-catch guard that rethrows the Emscripten EH exception.
+  $createInvokeFunction__deps: ['$dynCall', 'setThrew', '$stackSave', '$stackRestore'],
+  $createInvokeFunction: (sig) => (ptr, ...args) => {
+    var sp = stackSave();
+    try {
+      return dynCall(sig, ptr, args);
+    } catch(e) {
+      stackRestore(sp);
+      // Create a try-catch guard that rethrows the Emscripten EH exception.
 #if EXCEPTION_STACK_TRACES
-        // Exceptions thrown from C++ and longjmps will be an instance of
-        // EmscriptenEH.
-        if (!(e instanceof EmscriptenEH)) throw e;
+      // Exceptions thrown from C++ and longjmps will be an instance of
+      // EmscriptenEH.
+      if (!(e instanceof EmscriptenEH)) throw e;
 #else
-        // Exceptions thrown from C++ will be a pointer (number) and longjmp
-        // will throw the number Infinity. Use the compact and fast "e !== e+0"
-        // test to check if e was not a Number.
-        if (e !== e+0) throw e;
+      // Exceptions thrown from C++ will be a pointer (number) and longjmp
+      // will throw the number Infinity. Use the compact and fast "e !== e+0"
+      // test to check if e was not a Number.
+      if (e !== e+0) throw e;
 #endif
-        _setThrew(1, 0);
-      }
+      _setThrew(1, 0);
+#if WASM_BIGINT
+      // In theory this if statement could be done on
+      // creating the function, but I just added this to
+      // save wasting code space as it only happens on exception.
+      if (sig[0] == "j") return 0n;
+#endif
     }
   },
 #endif
@@ -134,8 +138,7 @@ var LibraryDylink = {
       // `__cxa_find_matching_catch_` (see jsifier.js) that we know are needed,
       // but a side module loaded at runtime might need different/additional
       // variants so we create those dynamically.
-      sym = wasmImports[symName] = function() {
-        var args = Array.from(arguments);
+      sym = wasmImports[symName] = (...args) => {
 #if MEMORY64
         args = args.map(Number);
 #endif
@@ -340,15 +343,15 @@ var LibraryDylink = {
   },
 
   $dlSetError__internal: true,
-  $dlSetError__deps: ['__dl_seterr', '$stringToUTF8OnStack', '$withStackSave'],
+  $dlSetError__deps: ['__dl_seterr', '$stringToUTF8OnStack', '$stackSave', '$stackRestore'],
   $dlSetError: (msg) => {
 #if DYLINK_DEBUG
     dbg(`dlSetError: ${msg}`);
 #endif
-    withStackSave(() => {
-      var cmsg = stringToUTF8OnStack(msg);
-      ___dl_seterr(cmsg, 0);
-    });
+    var sp = stackSave();
+    var cmsg = stringToUTF8OnStack(msg);
+    ___dl_seterr(cmsg, 0);
+    stackRestore(sp);
   },
 
   // We support some amount of allocation during startup in the case of
@@ -874,7 +877,7 @@ var LibraryDylink = {
     if (flags.loadAsync) {
       return metadata.neededDynlibs
         .reduce((chain, dynNeeded) => chain.then(() =>
-          loadDynamicLibrary(dynNeeded, flags)
+          loadDynamicLibrary(dynNeeded, flags, localScope)
         ), Promise.resolve())
         .then(loadModule);
     }

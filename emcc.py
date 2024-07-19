@@ -105,15 +105,26 @@ class EmccState:
     self.has_dash_c = False
     self.has_dash_E = False
     self.has_dash_S = False
+    # List of link options paired with their position on the command line [(i, option), ...].
     self.link_flags = []
     self.lib_dirs = []
-    self.forced_stdlibs = []
 
-  def add_link_flag(self, i, f):
-    if f.startswith('-L'):
-      self.lib_dirs.append(f[2:])
+  def has_link_flag(self, f):
+    return f in [x for _, x in self.link_flags]
 
-    self.link_flags.append((i, f))
+  def add_link_flag(self, i, flag):
+    if flag.startswith('-L'):
+      self.lib_dirs.append(flag[2:])
+    # Link flags should be adding in strictly ascending order
+    assert not self.link_flags or i > self.link_flags[-1][0], self.link_flags
+    self.link_flags.append((i, flag))
+
+  def append_link_flag(self, flag):
+    if self.link_flags:
+      index = self.link_flags[-1][0] + 1
+    else:
+      index = 1
+    self.add_link_flag(index, flag)
 
 
 class EmccOptions:
@@ -281,11 +292,18 @@ def apply_user_settings():
 
     if key == 'EXPORTED_FUNCTIONS':
       # used for warnings in emscripten.py
-      settings.USER_EXPORTED_FUNCTIONS = settings.EXPORTED_FUNCTIONS.copy()
+      settings.USER_EXPORTS = settings.EXPORTED_FUNCTIONS.copy()
 
     # TODO(sbc): Remove this legacy way.
     if key == 'WASM_OBJECT_FILES':
       settings.LTO = 0 if value else 'full'
+
+    if key == 'JSPI':
+      settings.ASYNCIFY = 2
+    if key == 'JSPI_IMPORTS':
+      settings.ASYNCIFY_IMPORTS = value
+    if key == 'JSPI_EXPORTS':
+      settings.ASYNCIFY_EXPORTS = value
 
 
 def cxx_to_c_compiler(cxx):
@@ -358,12 +376,13 @@ def get_clang_flags(user_args):
   if settings.RELOCATABLE and '-fPIC' not in user_args:
     flags.append('-fPIC')
 
-  # We use default visiibilty=default in emscripten even though the upstream
-  # backend defaults visibility=hidden.  This matched the expectations of C/C++
-  # code in the wild which expects undecorated symbols to be exported to other
-  # DSO's by default.
-  if not any(a.startswith('-fvisibility') for a in user_args):
-    flags.append('-fvisibility=default')
+  if settings.RELOCATABLE or settings.LINKABLE or '-fPIC' in user_args:
+    if not any(a.startswith('-fvisibility') for a in user_args):
+      # For relocatable code we default to visibility=default in emscripten even
+      # though the upstream backend defaults visibility=hidden.  This matches the
+      # expectations of C/C++ code in the wild which expects undecorated symbols
+      # to be exported to other DSO's by default.
+      flags.append('-fvisibility=default')
 
   if settings.LTO:
     if not any(a.startswith('-flto') for a in user_args):
@@ -600,6 +619,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
     return 0
 
+  if '-print-resource-dir' in newargs:
+    shared.check_call([clang] + newargs)
+    return 0
+
   if '-print-libgcc-file-name' in newargs or '--print-libgcc-file-name' in newargs:
     settings.limit_settings(None)
     compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt']
@@ -684,9 +707,6 @@ def phase_parse_arguments(state):
   for s in settings_changes:
     key, value = s.split('=', 1)
     key, value = normalize_boolean_setting(key, value)
-    old_value = user_settings.get(key)
-    if old_value and old_value != value:
-      diagnostics.warning('unused-command-line-argument', f'-s{key} specified multiple times. Ignoring previous value (`{old_value}`)')
     user_settings[key] = value
 
   # STRICT is used when applying settings so it needs to be applied first before
@@ -1280,9 +1300,9 @@ def parse_args(newargs):
     elif check_arg('--source-map-base'):
       options.source_map_base = consume_arg()
     elif check_arg('--embind-emit-tsd'):
-      options.embind_emit_tsd = consume_arg()
+      diagnostics.warning('deprecated', '--embind-emit-tsd is deprecated.  Use --emit-tsd instead.')
+      options.emit_tsd = consume_arg()
     elif check_arg('--emit-tsd'):
-      diagnostics.warning('experimental', '--emit-tsd is still experimental. Not all definitions are generated.')
       options.emit_tsd = consume_arg()
     elif check_flag('--no-entry'):
       options.no_entry = True

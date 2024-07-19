@@ -77,9 +77,9 @@ addToLibrary({
   $makePromiseCallback__deps: ['$getPromise',
                                '$POINTER_SIZE',
                                'emscripten_promise_destroy',
-                               'stackAlloc',
-                               'stackRestore',
-                               'stackSave'],
+                               '$stackAlloc',
+                               '$stackRestore',
+                               '$stackSave'],
   $makePromiseCallback: (callback, userData) => {
     return (value) => {
 #if RUNTIME_DEBUG
@@ -101,11 +101,11 @@ addToLibrary({
         // MEMORY64 mode when they are later converted to void* rejection
         // values.
 #if MEMORY64
-        if (typeof e !== 'bigint') {
+        if (typeof e != 'bigint') {
           throw 0n;
         }
 #else
-        if (typeof e !== 'number') {
+        if (typeof e != 'number') {
           throw 0;
         }
 #endif
@@ -224,7 +224,7 @@ addToLibrary({
     dbg(`emscripten_promise_any: ${promises}`);
 #endif
 #if ASSERTIONS
-    assert(typeof Promise.any !== 'undefined', "Promise.any does not exist");
+    assert(typeof Promise.any != 'undefined', "Promise.any does not exist");
 #endif
     var id = promiseMap.allocate({
       promise: Promise.any(promises).catch((err) => {

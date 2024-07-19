@@ -28,14 +28,16 @@ var LibraryGL = {
 
   $miniTempWebGLFloatBuffers: [],
   $miniTempWebGLFloatBuffers__postset: `var miniTempWebGLFloatBuffersStorage = new Float32Array({{{ GL_POOL_TEMP_BUFFERS_SIZE }}});
-for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; ++i) {
-  miniTempWebGLFloatBuffers[i] = miniTempWebGLFloatBuffersStorage.subarray(0, i+1);
+// Create GL_POOL_TEMP_BUFFERS_SIZE+1 temporary buffers, for uploads of size 0 through GL_POOL_TEMP_BUFFERS_SIZE inclusive
+for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; ++i) {
+  miniTempWebGLFloatBuffers[i] = miniTempWebGLFloatBuffersStorage.subarray(0, i);
 }`,
 
   $miniTempWebGLIntBuffers: [],
   $miniTempWebGLIntBuffers__postset: `var miniTempWebGLIntBuffersStorage = new Int32Array({{{ GL_POOL_TEMP_BUFFERS_SIZE }}});
-for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; ++i) {
-  miniTempWebGLIntBuffers[i] = miniTempWebGLIntBuffersStorage.subarray(0, i+1);
+// Create GL_POOL_TEMP_BUFFERS_SIZE+1 temporary buffers, for uploads of size 0 through GL_POOL_TEMP_BUFFERS_SIZE inclusive
+for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; ++i) {
+  miniTempWebGLIntBuffers[i] = miniTempWebGLIntBuffersStorage.subarray(0, i);
 }`,
 
   $heapObjectForWebGLType: (type) => {
@@ -288,6 +290,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #endif
 
     unpackAlignment: 4, // default alignment is 4 bytes
+    unpackRowLength: 0,
 
     // Records a GL error condition that occurred, stored until user calls
     // glGetError() to fetch it. As per GLES2 spec, only the first error is
@@ -1056,7 +1059,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
       assert(handle, 'malloc() failed in GL.registerContext!');
 #endif
 #if GL_SUPPORT_EXPLICIT_SWAP_CONTROL
-      {{{ makeSetValue('handle', 0, 'webGLContextAttributes.explicitSwapControl', 'i32')}}};
+      {{{ makeSetValue('handle', 0, 'webGLContextAttributes.explicitSwapControl', 'i8')}}};
 #endif
       {{{ makeSetValue('handle', POINTER_SIZE, '_pthread_self()', '*')}}}; // the thread pointer of the thread that owns the control of the context
 #else // PTHREADS
@@ -1235,8 +1238,10 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glPixelStorei: (pname, param) => {
-    if (pname == 0xCF5 /* GL_UNPACK_ALIGNMENT */) {
+    if (pname == {{{ cDefs.GL_UNPACK_ALIGNMENT }}}) {
       GL.unpackAlignment = param;
+    } else if (pname == {{{ cDefs.GL_UNPACK_ROW_LENGTH }}}) {
+      GL.unpackRowLength = param;
     }
     GLctx.pixelStorei(pname, param);
   },
@@ -1548,15 +1553,15 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
     GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
   },
 
-  $computeUnpackAlignedImageSize: (width, height, sizePerPixel, alignment) => {
+  $computeUnpackAlignedImageSize: (width, height, sizePerPixel) => {
     function roundedToNextMultipleOf(x, y) {
 #if GL_ASSERTIONS
       assert((y & (y-1)) === 0, 'Unpack alignment must be a power of 2! (Allowed values per WebGL spec are 1, 2, 4 or 8)');
 #endif
       return (x + y - 1) & -y;
     }
-    var plainRowSize = width * sizePerPixel;
-    var alignedRowSize = roundedToNextMultipleOf(plainRowSize, alignment);
+    var plainRowSize = (GL.unpackRowLength || width) * sizePerPixel;
+    var alignedRowSize = roundedToNextMultipleOf(plainRowSize, GL.unpackAlignment);
     return height * alignedRowSize;
   },
 
@@ -1600,7 +1605,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   $emscriptenWebGLGetTexPixelData: (type, format, width, height, pixels, internalFormat) => {
     var heap = heapObjectForWebGLType(type);
     var sizePerPixel = colorChannelsInGlTextureFormat(format) * heap.BYTES_PER_ELEMENT;
-    var bytes = computeUnpackAlignedImageSize(width, height, sizePerPixel, GL.unpackAlignment);
+    var bytes = computeUnpackAlignedImageSize(width, height, sizePerPixel);
 #if GL_ASSERTIONS
     assert(pixels % heap.BYTES_PER_ELEMENT == 0, 'Pointer to texture data passed to texture get function must be aligned to the byte size of the pixel type!');
 #endif
@@ -2412,7 +2417,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniform1iv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLIntBuffers'
 #endif
   ],
@@ -2439,7 +2444,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = miniTempWebGLIntBuffers[count-1];
+      var view = miniTempWebGLIntBuffers[count];
       for (var i = 0; i < count; ++i) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
       }
@@ -2453,7 +2458,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniform2iv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLIntBuffers'
 #endif
   ],
@@ -2480,7 +2485,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 2 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = miniTempWebGLIntBuffers[2*count-1];
+      var view = miniTempWebGLIntBuffers[2*count];
       for (var i = 0; i < 2*count; i += 2) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
@@ -2495,7 +2500,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniform3iv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLIntBuffers'
 #endif
   ],
@@ -2522,7 +2527,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 3 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = miniTempWebGLIntBuffers[3*count-1];
+      var view = miniTempWebGLIntBuffers[3*count];
       for (var i = 0; i < 3*count; i += 3) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
@@ -2538,7 +2543,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniform4iv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLIntBuffers'
 #endif
   ],
@@ -2565,7 +2570,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = miniTempWebGLIntBuffers[4*count-1];
+      var view = miniTempWebGLIntBuffers[4*count];
       for (var i = 0; i < 4*count; i += 4) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
@@ -2582,7 +2587,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniform1fv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
@@ -2609,7 +2614,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = miniTempWebGLFloatBuffers[count-1];
+      var view = miniTempWebGLFloatBuffers[count];
       for (var i = 0; i < count; ++i) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
       }
@@ -2623,7 +2628,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniform2fv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
@@ -2650,7 +2655,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 2 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = miniTempWebGLFloatBuffers[2*count-1];
+      var view = miniTempWebGLFloatBuffers[2*count];
       for (var i = 0; i < 2*count; i += 2) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2665,7 +2670,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniform3fv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && !(MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS)
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
@@ -2692,7 +2697,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 3 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = miniTempWebGLFloatBuffers[3*count-1];
+      var view = miniTempWebGLFloatBuffers[3*count];
       for (var i = 0; i < 3*count; i += 3) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2708,7 +2713,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniform4fv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
@@ -2735,7 +2740,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = miniTempWebGLFloatBuffers[4*count-1];
+      var view = miniTempWebGLFloatBuffers[4*count];
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
       value = {{{ getHeapOffset('value', 'float') }}};
@@ -2756,7 +2761,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniformMatrix2fv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
@@ -2783,7 +2788,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = miniTempWebGLFloatBuffers[4*count-1];
+      var view = miniTempWebGLFloatBuffers[4*count];
       for (var i = 0; i < 4*count; i += 4) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2800,7 +2805,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniformMatrix3fv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && MIN_WEBGL_VERSION == 1
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
@@ -2827,7 +2832,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 9 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = miniTempWebGLFloatBuffers[9*count-1];
+      var view = miniTempWebGLFloatBuffers[9*count];
       for (var i = 0; i < 9*count; i += 9) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2849,7 +2854,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   },
 
   glUniformMatrix4fv__deps: ['$webglGetUniformLocation'
-#if GL_POOL_TEMP_BUFFERS && !(MIN_WEBGL_VERSION >= 2 && WEBGL_USE_GARBAGE_FREE_APIS)
+#if GL_POOL_TEMP_BUFFERS && (MIN_WEBGL_VERSION == 1 || !WEBGL_USE_GARBAGE_FREE_APIS)
     , '$miniTempWebGLFloatBuffers'
 #endif
   ],
@@ -2876,7 +2881,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 16 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = miniTempWebGLFloatBuffers[16*count-1];
+      var view = miniTempWebGLFloatBuffers[16*count];
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
       value = {{{ getHeapOffset('value', 'float') }}};
@@ -3942,6 +3947,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
 #if MEMORY64
   // Convert an array of i64 offsets to an array of i32 offsets returning a
   // pointer to the new (stack allocated) array.
+  $convertOffsets__deps: ['$stackAlloc'],
   $convertOffsets__internal: true,
   $convertOffsets: (offsets, count) => {
     var offsets32 = stackAlloc(count * 4);
@@ -3960,7 +3966,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   glMultiDrawElements: 'glMultiDrawElementsWEBGL',
   glMultiDrawElementsANGLE: 'glMultiDrawElementsWEBGL',
 #if MEMORY64
-  glMultiDrawElementsWEBGL__deps: ['$convertOffsets', 'stackSave', 'stackRestore'],
+  glMultiDrawElementsWEBGL__deps: ['$convertOffsets', '$stackSave', '$stackRestore'],
 #endif
   glMultiDrawElementsWEBGL: (mode, counts, type, offsets, drawcount) => {
 #if MEMORY64
@@ -3983,7 +3989,7 @@ for (/**@suppress{duplicate}*/var i = 0; i < {{{ GL_POOL_TEMP_BUFFERS_SIZE }}}; 
   glMultiDrawElementsInstancedWEBGL__sig: 'vipippi',
   glMultiDrawElementsInstancedANGLE: 'glMultiDrawElementsInstancedWEBGL',
 #if MEMORY64
-  glMultiDrawElementsInstancedWEBGL__deps: ['$convertOffsets', 'stackSave', 'stackRestore'],
+  glMultiDrawElementsInstancedWEBGL__deps: ['$convertOffsets', '$stackSave', '$stackRestore'],
 #endif
   glMultiDrawElementsInstancedWEBGL: (mode, counts, type, offsets, instanceCounts, drawcount) => {
 #if MEMORY64

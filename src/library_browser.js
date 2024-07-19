@@ -593,16 +593,9 @@ var LibraryBrowser = {
           Browser.mouseMovementY = Browser.getMovementY(event);
         }
 
-        // check if SDL is available
-        if (typeof SDL != "undefined") {
-          Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
-          Browser.mouseY = SDL.mouseY + Browser.mouseMovementY;
-        } else {
-          // just add the mouse delta to the current absolute mouse position
-          // FIXME: ideally this should be clamped against the canvas size and zero
-          Browser.mouseX += Browser.mouseMovementX;
-          Browser.mouseY += Browser.mouseMovementY;
-        }
+        // add the mouse delta to the current absolute mouse position
+        Browser.mouseX += Browser.mouseMovementX;
+        Browser.mouseY += Browser.mouseMovementY;
       } else {
         if (event.type === 'touchstart' || event.type === 'touchend' || event.type === 'touchmove') {
           var touch = event.touch;
@@ -809,10 +802,10 @@ var LibraryBrowser = {
 
 #if ENVIRONMENT_MAY_BE_NODE && DYNAMIC_EXECUTION
     if (ENVIRONMENT_IS_NODE) {
-      readAsync(url, (data) => {
+      readAsync(url, false).then((data) => {
         eval(data);
         loadDone();
-      }, loadError, false);
+      }, loadError);
       return;
     }
 #endif
@@ -876,7 +869,7 @@ var LibraryBrowser = {
           Browser.setImmediate = /** @type{function(function(): ?, ...?): number} */(function Browser_emulated_setImmediate(func) {
             setImmediates.push(func);
             if (ENVIRONMENT_IS_WORKER) {
-              if (Module['setImmediates'] === undefined) Module['setImmediates'] = [];
+              Module['setImmediates'] ??= [];
               Module['setImmediates'].push(func);
               postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
             } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.

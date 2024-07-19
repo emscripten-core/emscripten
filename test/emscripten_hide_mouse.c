@@ -5,9 +5,7 @@
 
 EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
   printf("Mouse click on canvas.\n");
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  emscripten_force_exit(0);
   return 0;
 }
 

@@ -17,7 +17,7 @@ legacyFuncs = {
    * @param {(Uint8Array|Array<number>)} slab: An array of data.
    * @param {number=} allocator : How to allocate memory, see ALLOC_*
    */
-  $allocate__deps: ['$ALLOC_NORMAL', '$ALLOC_STACK', 'malloc', 'stackAlloc'],
+  $allocate__deps: ['$ALLOC_NORMAL', '$ALLOC_STACK', 'malloc', '$stackAlloc'],
   $allocate: (slab, allocator) => {
     var ret;
   #if ASSERTIONS
@@ -120,6 +120,17 @@ legacyFuncs = {
     });
   },
 #endif
+
+  $stackTrace__deps: ['$jsStackTrace'],
+  $stackTrace: function() {
+    var js = jsStackTrace();
+    if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();
+    return js;
+  },
+
+  // Legacy names for runtime `out`/`err` symbols.
+  $print: 'out',
+  $printErr: 'err',
 };
 
 if (WARN_DEPRECATED && !INCLUDE_FULL_LIBRARY) {

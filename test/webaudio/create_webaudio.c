@@ -24,7 +24,7 @@ int main()
 			if (audioContext.state != 'running') {
 				audioContext.resume();
 #ifdef REPORT_RESULT
-				__ReportResult(0, 0);
+				__ReportResult(0);
 #endif
 			} else {
 				audioContext.suspend();
