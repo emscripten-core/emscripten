@@ -18,7 +18,10 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.64 (in development)
+3.1.65 (in development)
+-----------------------
+
+3.1.64 - 07/22/24
 -----------------------
 - Updated the SCons tool to not require the `EMSCRIPTEN_ROOT` environment
   variable, in which case it will assume that SCons will find the binaries in
