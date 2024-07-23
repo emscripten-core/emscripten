@@ -59,7 +59,7 @@ SKIP_SUBPROCS = False
 # This version currently matches the node version that we ship with emsdk
 # which means that we can say for sure that this version is well supported.
 MINIMUM_NODE_VERSION = (16, 20, 0)
-EXPECTED_LLVM_VERSION = 19
+EXPECTED_LLVM_VERSION = 20
 
 # These get set by setup_temp_dirs
 TEMP_DIR = None
