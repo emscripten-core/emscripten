@@ -121,21 +121,15 @@ int main() {
   printf("\n");
 
   // Check the size.
-  if (lseek(fd4, 0, SEEK_END) == -1) {
-    puts("bad seek");
-    return 1;
-  }
+  int result = lseek(fd4, 0, SEEK_END);
+  assert(result != -1);
   printf("size: %lld\n", lseek(fd4, 0, SEEK_CUR));
 
   // Resize.
-  if (ftruncate(fd4, 42)) {
-    puts("bad truncate");
-    return 1;
-  }
-  if (lseek(fd4, 0, SEEK_END) == -1) {
-    puts("bad seek");
-    return 1;
-  }
+  result = ftruncate(fd4, 42);
+  assert(!result);
+  result = lseek(fd4, 0, SEEK_END);
+  assert(result != -1);
   printf("resize: %lld\n", lseek(fd4, 0, SEEK_CUR));
 
   return 0;
