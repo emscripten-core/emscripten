@@ -111,6 +111,7 @@ static void getname(char *d, const char **p)
 	*p += i;
 	d[i<TZNAME_MAX?i:TZNAME_MAX] = 0;
 }
+#endif
 
 #define VEC(...) ((const unsigned char[]){__VA_ARGS__})
 
@@ -119,6 +120,7 @@ static uint32_t zi_read32(const unsigned char *z)
 	return (unsigned)z[0]<<24 | z[1]<<16 | z[2]<<8 | z[3];
 }
 
+#ifndef __EMSCRIPTEN__
 static size_t zi_dotprod(const unsigned char *z, const unsigned char *v, size_t n)
 {
 	size_t y;
@@ -280,7 +282,6 @@ static void do_tzset()
 #endif
 }
 
-#ifndef __EMSCRIPTEN__
 /* Search zoneinfo rules to find the one that applies to the given time,
  * and determine alternate opposite-DST-status rule that may be needed. */
 
@@ -440,7 +441,6 @@ dst:
 	*zonename = __tzname[1];
 	UNLOCK(lock);
 }
-#endif
 
 static void __tzset()
 {

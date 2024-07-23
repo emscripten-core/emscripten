@@ -2669,6 +2669,7 @@ The current type of b is: 9
   def test_tcgetattr(self):
     self.do_runf('termios/test_tcgetattr.c', 'success')
 
+  @also_with_standalone_wasm()
   def test_time(self):
     self.do_core_test('test_time.c')
     for tz in ['EST+05EDT', 'UTC+0', 'CET']:
