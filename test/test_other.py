@@ -15028,3 +15028,8 @@ addToLibrary({
     stderr = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', test_file('other/test_extra_struct_info.js')], stderr=PIPE).stderr
     self.assertContained('(before) AF_INET=2', stderr)
     self.assertContained('(after) AF_INET=42', stderr)
+
+  @also_with_wasmfs
+  def test_fs_writev_partial_write(self):
+    self.set_setting('FORCE_FILESYSTEM')
+    self.do_run_in_out_file_test('fs/test_writev_partial_write.c')
