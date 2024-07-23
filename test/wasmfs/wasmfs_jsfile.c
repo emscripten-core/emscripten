@@ -110,7 +110,6 @@ int main() {
   lseek(fd4, 0, SEEK_SET);
   assert(errno == 0);
   int bytesRead = read(fd4, buf, sizeof(buf));
-
   for (ssize_t i = 0; i < bytesRead; i++) {
     if (buf[i] == 0) {
       printf("\\0");
@@ -132,5 +131,19 @@ int main() {
   assert(result != -1);
   printf("resize: %lld\n", lseek(fd4, 0, SEEK_CUR));
 
+  // Check the contents remain after the resize (but are a tad shorter).
+  lseek(fd4, 0, SEEK_SET);
+  assert(errno == 0);
+  bytesRead = read(fd4, buf, sizeof(buf));
+  for (ssize_t i = 0; i < bytesRead; i++) {
+    if (buf[i] == 0) {
+      printf("\\0");
+    } else {
+      printf("%c", buf[i]);
+    }
+  }
+  printf("\n");
+
+  puts("\ndone.");
   return 0;
 }
