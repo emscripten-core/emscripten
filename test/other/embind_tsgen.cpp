@@ -31,16 +31,16 @@ private:
   int y;
 };
 
+class Foo {
+ public:
+  void process(const Test& input) {}
+};
+
 Test class_returning_fn() { return Test(); }
 
 std::unique_ptr<Test> class_unique_ptr_returning_fn() {
   return std::make_unique<Test>();
 }
-
-class Foo {
- public:
-  void process(const Test& input) {}
-};
 
 enum Bar { kValueOne, kValueTwo, kValueThree };
 
@@ -84,6 +84,9 @@ class ClassWithSmartPtrConstructor {
 int smart_ptr_function(std::shared_ptr<ClassWithSmartPtrConstructor>) {
   return 0;
 }
+
+struct Obj {};
+Obj* get_pointer(Obj* ptr) { return ptr; }
 
 int function_with_callback_param(CallbackType ct) {
   ct(val("hello"));
@@ -140,6 +143,8 @@ EMSCRIPTEN_BINDINGS(Test) {
   function("class_returning_fn", &class_returning_fn);
   function("class_unique_ptr_returning_fn",
                    &class_unique_ptr_returning_fn);
+  class_<Obj>("Obj");
+  function("getPointer", &get_pointer, allow_raw_pointers());
 
   constant("an_int", 5);
   constant("a_bool", false);
