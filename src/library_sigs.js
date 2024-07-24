@@ -404,6 +404,7 @@ sigs = {
   _wasmfs_jsimpl_free_file__sig: 'vpp',
   _wasmfs_jsimpl_get_size__sig: 'ipp',
   _wasmfs_jsimpl_read__sig: 'ippppj',
+  _wasmfs_jsimpl_set_size__sig: 'ippj',
   _wasmfs_jsimpl_write__sig: 'ippppj',
   _wasmfs_node_close__sig: 'ii',
   _wasmfs_node_fstat_size__sig: 'iip',
