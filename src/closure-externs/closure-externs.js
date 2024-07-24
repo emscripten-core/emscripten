@@ -235,6 +235,17 @@ var id;
  * Used in MODULARIZE mode as the name of the incoming module argument.
  * This is generated outside of the code we pass to closure so from closure's
  * POV this is "extern".
+ * @type {{
+ *   noImageDecoding: boolean,
+ *   noAudioDecoding: boolean,
+ *   noWasmDecoding: boolean,
+ *   canvas: HTMLCanvasElement,
+ *   ctx: Object,
+ *   dataFileDownloads: Object,
+ *   preloadResults: Object,
+ *   useWebGL: boolean,
+ *   expectedDataFileDownloads: number,
+ * }}
  */
 var moduleArg;
 
