@@ -27,6 +27,7 @@ from subprocess import PIPE, STDOUT
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner other')
 
+from tools.building import get_building_env
 from tools.shared import config
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, FILE_PACKAGER, LLVM_NM
 from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, EMCMAKE, EMCONFIGURE, WASM_LD
@@ -35,7 +36,7 @@ from common import env_modify, no_mac, no_windows, only_windows, requires_native
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
 from common import requires_wasm_exnref, crossplatform, with_all_eh_sjlj, with_all_sjlj
-from common import also_with_standalone_wasm, also_with_env_modify, also_with_wasm2js
+from common import also_with_standalone_wasm, also_with_wasm2js
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, flaky
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
 from common import requires_network, parameterize
@@ -3038,7 +3039,7 @@ More info: https://emscripten.org
   @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
   def test_scons(self):
     # this test copies the site_scons directory alongside the test
-    shutil.copytree(test_file('scons'), 'test')
+    shutil.copytree(test_file('scons/simple'), 'test')
     shutil.copytree(path_from_root('tools/scons/site_scons'), Path('test/site_scons'))
     with utils.chdir('test'):
       self.run_process(['scons'])
@@ -3046,16 +3047,75 @@ More info: https://emscripten.org
     self.assertContained('If you see this - the world is all right!', output)
 
   @requires_scons
-  @with_env_modify({'EMSCRIPTEN_TOOLPATH': path_from_root('tools/scons/site_scons'),
-                    'EMSCRIPTEN_ROOT': path_from_root()})
+  @with_env_modify({
+    'EMSCRIPTEN_ROOT': path_from_root(),
+    'EMSCONS_PKG_CONFIG_LIBDIR': '/pkg/config/libdir',
+    'EMSCONS_PKG_CONFIG_PATH': '/pkg/config/path',
+  })
+  def test_scons_env(self):
+    # this test copies the site_scons directory alongside the test
+    shutil.copytree(test_file('scons/env'), 'test')
+    shutil.copytree(path_from_root('tools/scons/site_scons'), Path('test/site_scons'))
+
+    expected_to_propagate = json.dumps({
+      'CC': path_from_root('emcc'),
+      'CXX': path_from_root('em++'),
+      'AR': path_from_root('emar'),
+      'RANLIB': path_from_root('emranlib'),
+      'ENV': {
+        'PKG_CONFIG_LIBDIR': '/pkg/config/libdir',
+        'PKG_CONFIG_PATH': '/pkg/config/path',
+      }
+    })
+
+    with utils.chdir('test'):
+      self.run_process(['scons', '--expected-env', expected_to_propagate])
+
+  @requires_scons
+  def test_scons_env_no_emscons(self):
+    shutil.copytree(test_file('scons/env'), 'test')
+    shutil.copytree(path_from_root('tools/scons/site_scons'), Path('test/site_scons'))
+
+    expected_to_propagate = json.dumps({
+      'CC': 'emcc',
+      'CXX': 'em++',
+      'AR': 'emar',
+      'RANLIB': 'emranlib',
+      'ENV': {
+        'PKG_CONFIG_LIBDIR': None,
+        'PKG_CONFIG_PATH': None,
+      }
+    })
+
+    with utils.chdir('test'):
+      self.run_process(['scons', '--expected-env', expected_to_propagate])
+
+  @requires_scons
   def test_emscons(self):
-    # uses the emscons wrapper which requires EMSCRIPTEN_TOOLPATH to find
-    # site_scons
-    shutil.copytree(test_file('scons'), 'test')
+    shutil.copytree(test_file('scons/simple'), 'test')
     with utils.chdir('test'):
       self.run_process([path_from_root('emscons'), 'scons'])
       output = self.run_js('scons_integration.js', assert_returncode=5)
     self.assertContained('If you see this - the world is all right!', output)
+
+  @requires_scons
+  def test_emscons_env(self):
+    shutil.copytree(test_file('scons/env'), 'test')
+
+    building_env = get_building_env()
+    expected_to_propagate = json.dumps({
+      'CC': path_from_root('emcc'),
+      'CXX': path_from_root('em++'),
+      'AR': path_from_root('emar'),
+      'RANLIB': path_from_root('emranlib'),
+      'ENV': {
+        'PKG_CONFIG_LIBDIR': building_env['PKG_CONFIG_LIBDIR'],
+        'PKG_CONFIG_PATH': building_env['PKG_CONFIG_PATH'],
+      }
+    })
+
+    with utils.chdir('test'):
+      self.run_process([path_from_root('emscons'), 'scons', '--expected-env', expected_to_propagate])
 
   def test_embind_fail(self):
     out = self.expect_fail([EMXX, test_file('embind/test_unsigned.cpp')])
@@ -5882,11 +5942,20 @@ int main()
     self.do_runf('hello_world.c', emcc_args=['-sWASM_BIGINT'])
 
   @crossplatform
-  @also_with_env_modify({'gb_locale': {'LC_ALL': 'en_GB'}, 'long_tz': {'TZ': 'Asia/Kathmandu'}})
   def test_strftime_zZ(self):
-    if os.environ.get('LC_ALL') == 'en_GB' and MACOS:
+    if MACOS:
       self.skipTest('setting LC_ALL is not compatible with macOS python')
-    self.do_runf('other/test_strftime_zZ.c', 'ok!')
+
+    tz_lang_infos = [
+      {'env': {'LC_ALL': 'en_GB', 'TZ': 'Europe/London'}, 'expected_utc': 'UTC+0100'},
+      {'env': {'LC_ALL': 'th_TH', 'TZ': 'Asia/Bangkok'}, 'expected_utc': 'UTC+0700'},
+      {'env': {'LC_ALL': 'ar-AE', 'TZ': 'Asia/Dubai'}, 'expected_utc': 'UTC+0400'},
+      {'env': {'LC_ALL': 'en-US', 'TZ': 'America/Los_Angeles'}, 'expected_utc': 'UTC-0700'}
+    ]
+
+    for tz_lang_info in tz_lang_infos:
+      with env_modify(tz_lang_info['env']):
+        self.do_runf('other/test_strftime_zZ.c', 'The current timezone is: %s' % (tz_lang_info['expected_utc']))
 
   def test_strptime_symmetry(self):
     self.do_other_test('test_strptime_symmetry.c')
@@ -12094,7 +12163,11 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     stderr = self.run_process([EMCC, 'a.c', 'b.c'], stderr=PIPE).stderr
     self.assertContained('function signature mismatch: foo', stderr)
     self.expect_fail([EMCC, '-Wl,--fatal-warnings', 'a.c', 'b.c'])
+    # STRICT mode implies fatal warnings
     self.expect_fail([EMCC, '-sSTRICT', 'a.c', 'b.c'])
+    # Unless `--no-fatal-warnings` is explictly passed
+    stderr = self.run_process([EMCC, '-sSTRICT', '-Wl,--no-fatal-warnings', 'a.c', 'b.c'], stderr=PIPE).stderr
+    self.assertContained('function signature mismatch: foo', stderr)
 
   # Verifies that warning messages that Closure outputs are recorded to console
   def test_closure_warnings(self):
@@ -14940,3 +15013,23 @@ addToLibrary({
 
   def test_stack_protector(self):
     self.do_other_test('test_stack_protector.c', emcc_args=['-fstack-protector'], assert_returncode=NON_ZERO)
+
+  def test_save_temp(self):
+    self.run_process([EMCC, '--save-temps', test_file('hello_world.c')])
+    self.assertExists('a.out.js')
+    # clang itself takes care of creating these three
+    self.assertExists('hello_world.i')
+    self.assertExists('hello_world.s')
+    self.assertExists('hello_world.bc')
+    # emcc takes care of creating the .o
+    self.assertExists('hello_world.o')
+
+  def test_extra_struct_info(self):
+    stderr = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', test_file('other/test_extra_struct_info.js')], stderr=PIPE).stderr
+    self.assertContained('(before) AF_INET=2', stderr)
+    self.assertContained('(after) AF_INET=42', stderr)
+
+  @also_with_wasmfs
+  def test_fs_writev_partial_write(self):
+    self.set_setting('FORCE_FILESYSTEM')
+    self.do_run_in_out_file_test('fs/test_writev_partial_write.c')

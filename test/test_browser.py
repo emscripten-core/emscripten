@@ -3361,52 +3361,32 @@ Module["preRun"] = () => {
     self.btest('webidl/test.cpp', '1', args=['--post-js', 'glue.js', '-I.', '-DBROWSER'] + args)
 
   @no_wasm64('https://github.com/llvm/llvm-project/issues/98778')
-  def test_dynamic_link(self):
+  @parameterized({
+    '': ([],),
+    'proxy_to_worker': (['--proxy-to-worker'],),
+  })
+  def test_dylink(self, args):
     create_file('main.c', r'''
+      #include <assert.h>
       #include <stdio.h>
       #include <stdlib.h>
       #include <string.h>
-      #include <emscripten.h>
       char *side(const char *data);
       int main() {
-        char *temp = side("hello through side\n");
-        char *ret = (char*)malloc(strlen(temp)+1);
-        strcpy(ret, temp);
-        temp[1] = 'x';
-        EM_ASM({
-          Module.realPrint = out;
-          out = (x) => {
-            if (!Module.printed) Module.printed = x;
-            Module.realPrint(x);
-          };
-        });
+        char *ret = side("hello through side\n");
         puts(ret);
-        EM_ASM({ assert(Module.printed === 'hello through side', ['expected', Module.printed]); });
+        assert(strcmp(ret, "hello through side\n") == 0);
         return 0;
       }
     ''')
     create_file('side.c', r'''
-      #include <stdlib.h>
       #include <string.h>
-      char *side(const char *data);
       char *side(const char *data) {
-        char *ret = (char*)malloc(strlen(data)+1);
-        strcpy(ret, data);
-        return ret;
+        return strdup(data);
       }
     ''')
     self.emcc('side.c', ['-sSIDE_MODULE', '-O2', '-o', 'side.wasm'])
-    self.btest_exit(self.in_dir('main.c'), args=['-sMAIN_MODULE=2', '-O2', 'side.wasm'])
-
-    print('wasm in worker (we can read binary data synchronously there)')
-
-    self.emcc('side.c', ['-sSIDE_MODULE', '-O2', '-o', 'side.wasm'])
-    self.btest_exit(self.in_dir('main.c'), args=['-sMAIN_MODULE=2', '-O2', '--proxy-to-worker', 'side.wasm'])
-
-    print('wasm (will auto-preload since no sync binary reading)')
-
-    # same wasm side module works
-    self.btest_exit(self.in_dir('main.c'), args=['-sMAIN_MODULE=2', '-O2', '-sEXPORT_ALL', 'side.wasm'])
+    self.btest_exit(self.in_dir('main.c'), args=['-sMAIN_MODULE=2', '-O2', 'side.wasm'] + args)
 
   def test_dlopen_async(self):
     create_file('side.c', 'int foo = 42;\n')
@@ -3467,7 +3447,7 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   @no_wasm64('https://github.com/llvm/llvm-project/issues/98778')
-  def test_dynamic_link_glemu(self):
+  def test_dylink_glemu(self):
     create_file('main.c', r'''
       #include <stdio.h>
       #include <string.h>
@@ -3493,7 +3473,7 @@ Module["preRun"] = () => {
 
     self.btest_exit(self.in_dir('main.c'), args=['-sMAIN_MODULE=2', '-O2', '-sLEGACY_GL_EMULATION', '-lSDL', '-lGL', 'side.wasm'])
 
-  def test_dynamic_link_many(self):
+  def test_dylink_many(self):
     # test asynchronously loading two side modules during startup
     create_file('main.c', r'''
       #include <assert.h>
@@ -3515,7 +3495,7 @@ Module["preRun"] = () => {
     self.emcc('side2.c', ['-sSIDE_MODULE', '-o', 'side2.wasm'])
     self.btest_exit(self.in_dir('main.c'), args=['-sMAIN_MODULE=2', 'side1.wasm', 'side2.wasm'])
 
-  def test_dynamic_link_pthread_many(self):
+  def test_dylink_pthread_many(self):
     # Test asynchronously loading two side modules during startup
     # They should always load in the same order
     # Verify that function pointers in the browser's main thread
@@ -5449,8 +5429,15 @@ class emrun(RunnerCore):
       proc.terminate()
       proc.wait()
 
+  def test_program_arg_separator(self):
+    # Verify that trying to pass argument to the page without the `--` separator will
+    # generate an actionable error message
+    err = self.expect_fail([EMRUN, '--foo'])
+    self.assertContained('error: unrecognized arguments: --foo', err)
+    self.assertContained('remember to add `--` between arguments', err)
+
   def test_emrun(self):
-    self.run_process([EMCC, test_file('test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
+    self.emcc(test_file('test_emrun.c'), ['--emrun', '-o', 'test_emrun.html'])
     if not has_browser():
       self.skipTest('need a browser')
 
@@ -5458,18 +5445,12 @@ class emrun(RunnerCore):
     # browser that is launched will have that directory as startup directory, and the browser will
     # not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to
     # delete it. Therefore switch away from that directory before launching.
-
     os.chdir(path_from_root())
+
     args_base = [EMRUN, '--timeout', '30', '--safe_firefox_profile',
                  '--kill-exit', '--port', '6939', '--verbose',
                  '--log-stdout', self.in_dir('stdout.txt'),
                  '--log-stderr', self.in_dir('stderr.txt')]
-
-    # Verify that trying to pass argument to the page without the `--` separator will
-    # generate an actionable error message
-    err = self.expect_fail(args_base + ['--foo'])
-    self.assertContained('error: unrecognized arguments: --foo', err)
-    self.assertContained('remember to add `--` between arguments', err)
 
     if EMTEST_BROWSER is not None:
       # If EMTEST_BROWSER carried command line arguments to pass to the browser,
@@ -5490,13 +5471,13 @@ class emrun(RunnerCore):
           args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
 
     for args in [
-        args_base,
-        args_base + ['--port', '0'],
-        args_base + ['--private_browsing', '--port', '6941'],
-        args_base + ['--dump_out_directory', 'other dir/multiple', '--port', '6942'],
-        args_base + ['--dump_out_directory=foo_bar', '--port', '6942'],
+        [],
+        ['--port', '0'],
+        ['--private_browsing', '--port', '6941'],
+        ['--dump_out_directory', 'other dir/multiple', '--port', '6942'],
+        ['--dump_out_directory=foo_bar', '--port', '6942'],
     ]:
-      args += [self.in_dir('hello_world.html'), '--', '1', '2', '--3', 'escaped space', 'with_underscore']
+      args = args_base + args + [self.in_dir('test_emrun.html'), '--', '1', '2', '--3', 'escaped space', 'with_underscore']
       print(shared.shlex_join(args))
       proc = self.run_process(args, check=False)
       self.assertEqual(proc.returncode, 100)

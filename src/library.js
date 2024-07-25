@@ -657,9 +657,20 @@ addToLibrary({
 
     {{{ makeSetValue('daylight', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
 
-    var extractZone = (date) => date.toLocaleTimeString(undefined, {hour12:false, timeZoneName:'short'}).split(' ')[1];
-    var winterName = extractZone(winter);
-    var summerName = extractZone(summer);
+    var extractZone = (timezoneOffset) => {
+      // Why inverse sign?
+      // Read here https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/getTimezoneOffset
+      var sign = timezoneOffset >= 0 ? "-" : "+";
+
+      var absOffset = Math.abs(timezoneOffset)
+      var hours = String(Math.floor(absOffset / 60)).padStart(2, "0");
+      var minutes = String(absOffset % 60).padStart(2, "0");
+
+      return `UTC${sign}${hours}${minutes}`;
+    }
+
+    var winterName = extractZone(winterOffset);
+    var summerName = extractZone(summerOffset);
 #if ASSERTIONS
     assert(winterName);
     assert(summerName);

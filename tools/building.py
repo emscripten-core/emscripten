@@ -194,6 +194,12 @@ def lld_flags_for_executable(external_symbols):
   if settings.RELOCATABLE:
     cmd.append('--experimental-pic')
     cmd.append('--unresolved-symbols=import-dynamic')
+    if not settings.WASM_BIGINT:
+      # When we don't have WASM_BIGINT available, JS signature legalization
+      # in binaryen will mutate the signatures of the imports/exports of our
+      # shared libraries.  Because of this we need to disabled signature
+      # checking of shared library functions in this case.
+      cmd.append('--no-shlib-sigcheck')
     if settings.SIDE_MODULE:
       cmd.append('-shared')
     else:
@@ -258,7 +264,7 @@ def link_lld(args, target, external_symbols=None):
     args.insert(0, '--whole-archive')
     args.append('--no-whole-archive')
 
-  if settings.STRICT:
+  if settings.STRICT and '--no-fatal-warnings' not in args:
     args.append('--fatal-warnings')
 
   if any(a in args for a in ('--strip-all', '-s')):

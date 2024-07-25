@@ -375,6 +375,8 @@ FS.init();
           wasmFSDeviceStreams[file] = undefined;
         },
         getSize: (file) => {},
+        // Devices cannot be resized.
+        setSize: (file, size) => 0,
         read: (file, buffer, length, offset) => {
           var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
           try {

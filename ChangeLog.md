@@ -18,8 +18,17 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.64 (in development)
+3.1.65 (in development)
 -----------------------
+
+3.1.64 - 07/22/24
+-----------------------
+- Updated the SCons tool to not require the `EMSCRIPTEN_ROOT` environment
+  variable, in which case it will assume that SCons will find the binaries in
+  (its) `PATH`.
+- Updated `emscons` to apply the `EMSCRIPTEN_ROOT`, `EMSCONS_PKG_CONFIG_LIBDIR`
+  and `EMSCONS_PKG_CONFIG_PATH` environment variables. The SCons tool will use
+  last two to set up `PKG_CONFIG_LIBDIR` and `PKG_CONFIG_PATH` respectively.
 
 3.1.63 - 07/12/24
 -----------------
