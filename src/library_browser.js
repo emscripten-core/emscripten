@@ -124,7 +124,7 @@ var LibraryBrowser = {
 
       var imagePlugin = {};
       imagePlugin['canHandle'] = function imagePlugin_canHandle(name) {
-        return !Module.noImageDecoding && /\.(jpg|jpeg|png|bmp)$/i.test(name);
+        return !Module.noImageDecoding && /\.(jpg|jpeg|png|bmp|webp)$/i.test(name);
       };
       imagePlugin['handle'] = function imagePlugin_handle(byteArray, name, onload, onerror) {
         var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
