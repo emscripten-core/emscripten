@@ -1940,7 +1940,8 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   settings.PRE_JS_FILES = []
   settings.POST_JS_FILES = []
   # Force node since that is where the tool runs.
-  settings.ENVIRONMENT = 'node'
+  # When SHARED_MEMORY or PROXY_TO_WORKER are enabled, add the required 'worker' environment.
+  settings.ENVIRONMENT = 'node' + (',worker' if settings.SHARED_MEMORY or settings.PROXY_TO_WORKER else '')
   settings.MINIMAL_RUNTIME = 0
   # Required function to trigger TS generation.
   settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
