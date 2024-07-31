@@ -38,6 +38,7 @@ opts: Dict[str, Union[str, bool]] = {
 
 port_name = 'contrib.glfw3'
 
+
 def get_lib_name(settings):
   return (f'lib_{port_name}-O{opts["optimizationLevel"]}' +
           ('-nw' if opts['disableWarning'] else '') +
