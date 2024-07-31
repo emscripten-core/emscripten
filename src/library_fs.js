@@ -1267,6 +1267,9 @@ FS.staticInit();` +
       if (!stream.stream_ops.mmap) {
         throw new FS.ErrnoError({{{ cDefs.ENODEV }}});
       }
+      if (!length) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
       return stream.stream_ops.mmap(stream, length, position, prot, flags);
     },
     msync(stream, buffer, offset, length, mmapFlags) {
