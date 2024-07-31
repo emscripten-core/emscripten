@@ -3353,6 +3353,14 @@ More info: https://emscripten.org
     self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
     self.assertFileContents(test_file('other/embind_tsgen_ignore_3.d.ts'), read_file('embind_tsgen.d.ts'))
 
+  def test_embind_tsgen_worker_env(self):
+    self.emcc_args += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
+    # Passing -sWASM_WORKERS or -sPROXY_TO_WORKER requires the 'worker' environment
+    # at link time. Verify that TS binding generation still works in this case.
+    for flag in ('-sWASM_WORKERS', '-sPROXY_TO_WORKER'):
+      self.emcc(test_file('other/embind_tsgen.cpp'), [flag])
+      self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
+
   def test_embind_tsgen_test_embind(self):
     self.run_process([EMXX, test_file('embind/embind_test.cpp'),
                       '-lembind', '--emit-tsd', 'embind_tsgen_test_embind.d.ts',
