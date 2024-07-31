@@ -200,10 +200,12 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     return (ctx.getSupportedExtensions() || []).filter(ext => supportedExtensions.includes(ext));
   },
 
-  $GL__postset: 'var GLctx;',
+  $GLctx__internal: true,
+  $GLctx: undefined,
+  $GL__deps: [
+    '$GLctx',
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
   // If GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS is enabled, GL.initExtensions() will call to initialize these.
-  $GL__deps: [
 #if PTHREADS
     'malloc', // Needed by registerContext
     'free', // Needed by deleteContext
@@ -219,8 +221,8 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
     '$webgl_enable_WEBGL_multi_draw',
     '$getEmscriptenSupportedExtensions',
-  ],
 #endif // GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
+  ],
   $GL: {
 #if GL_DEBUG
     debug: true,
