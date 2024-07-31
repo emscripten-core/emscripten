@@ -1995,15 +1995,6 @@ var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = true;
 // [link]
 var HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS = true;
 
-// Specifies whether the generated .html file is run through html-minifier. The
-// set of optimization passes run by html-minifier depends on debug and
-// optimization levels. In -g2 and higher, no minification is performed. In -g1,
-// minification is done, but whitespace is retained. Minification requires at
-// least -O1 or -Os to be used. Pass -sMINIFY_HTML=0 to explicitly choose to
-// disable HTML minification altogether.
-// [link]
-var MINIFY_HTML = true;
-
 // Whether we *may* be using wasm2js. This compiles to wasm normally, but lets
 // you run wasm2js *later* on the wasm, and you can pick between running the
 // normal wasm or that wasm2js code. For details of how to do that, see the
@@ -2257,4 +2248,5 @@ var LEGACY_SETTINGS = [
   ['MIN_IE_VERSION', [0x7FFFFFFF], 'No longer supported'],
   ['WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG', [0], 'No longer supported'],
   ['AUTO_ARCHIVE_INDEXES', [0, 1], 'No longer needed'],
+  ['MINIFY_HTML', [0], 'No longer supported'],
 ];

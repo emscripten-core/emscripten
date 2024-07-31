@@ -3061,20 +3061,6 @@ size if your application does not need support for deferred calls.
 
 Default value: true
 
-.. _minify_html:
-
-MINIFY_HTML
-===========
-
-Specifies whether the generated .html file is run through html-minifier. The
-set of optimization passes run by html-minifier depends on debug and
-optimization levels. In -g2 and higher, no minification is performed. In -g1,
-minification is done, but whitespace is retained. Minification requires at
-least -O1 or -Os to be used. Pass -sMINIFY_HTML=0 to explicitly choose to
-disable HTML minification altogether.
-
-Default value: true
-
 .. _maybe_wasm2js:
 
 MAYBE_WASM2JS
