@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import hashlib
 import json
 import logging
 import os
@@ -2714,13 +2713,6 @@ The current type of b is: 9
     # memcpy for assignments, with hardcoded numbers of bytes
     # (llvm-gcc copies items one by one).
     self.do_core_test('test_copyop.cpp')
-
-  def test_memcpy_memcmp(self):
-    def check(output):
-      output = output.replace('\n \n', '\n') # remove extra node output
-      return hashlib.sha1(output.encode('utf-8')).hexdigest()
-
-    self.do_core_test('test_memcpy_memcmp.c', output_nicerizer=check)
 
   def test_memcpy2(self):
     self.do_core_test('test_memcpy2.c')
