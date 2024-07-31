@@ -397,9 +397,9 @@ var LibraryWebGPU = {
 
     // Map from enum string back to enum number, for callbacks.
     Int_BufferMapState: {
-      'unmapped': 0,
-      'pending': 1,
-      'mapped': 2,
+      'unmapped': 1,
+      'pending': 2,
+      'mapped': 3,
     },
     Int_CompilationMessageType : {
       'error': 0,
