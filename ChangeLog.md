@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.65 (in development)
 -----------------------
+- Add WebP (`.webp`) decoding support in file preloading. (#22282)
 
 3.1.64 - 07/22/24
 -----------------------

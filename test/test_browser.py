@@ -776,6 +776,14 @@ If manually bisecting:
       '-lSDL', '-lGL',
     ])
 
+  def test_sdl_image_webp(self):
+    shutil.copyfile(test_file('screenshot.webp'), 'screenshot.webp')
+    self.btest_exit('test_sdl_image.c', args=[
+      '--preload-file', 'screenshot.webp',
+      '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.webp"', '--use-preload-plugins',
+      '-lSDL', '-lGL',
+    ])
+
   @also_with_wasmfs
   @also_with_proxying
   def test_sdl_image_prepare(self):
