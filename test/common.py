@@ -1306,7 +1306,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return '\n'.join(lines)
 
   def run_js(self, filename, engine=None, args=None,
-             output_nicerizer=None,
              assert_returncode=0,
              interleaved_output=True):
     # use files, as PIPE can get too full and hang us
@@ -1347,8 +1346,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     ret = read_file(stdout_file)
     if not interleaved_output:
       ret += read_file(stderr_file)
-    if output_nicerizer:
-      ret = output_nicerizer(ret)
     if assert_returncode != 0:
       ret = self.clean_js_output(ret)
     if error or timeout_error or EMTEST_VERBOSE:
@@ -1739,7 +1736,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return output
 
   ## Does a complete test - builds, runs, checks output, etc.
-  def _build_and_run(self, filename, expected_output, args=None, output_nicerizer=None,
+  def _build_and_run(self, filename, expected_output, args=None,
                      no_build=False,
                      libraries=None,
                      includes=None,
@@ -1772,7 +1769,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
     for engine in engines:
       js_output = self.run_js(js_file, engine, args,
-                              output_nicerizer=output_nicerizer,
                               assert_returncode=assert_returncode,
                               interleaved_output=interleaved_output)
       js_output = js_output.replace('\r\n', '\n')

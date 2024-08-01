@@ -3107,8 +3107,7 @@ The current type of b is: 9
         return 0;
       }
       '''
-    self.do_run(src, 'Sort with main comparison: 5 4 3 2 1 *Sort with lib comparison: 1 2 3 4 5 *',
-                output_nicerizer=lambda x: x.replace('\n', '*'))
+    self.do_run(src, 'Sort with main comparison: 5 4 3 2 1 \nSort with lib comparison: 1 2 3 4 5 \n')
 
   @needs_dylink
   def test_dlfcn_data_and_fptr(self):
@@ -5443,15 +5442,11 @@ Module = {
 
     self.do_run_in_out_file_test('test_files.c')
 
-  def test_files_m(self):
-    # Test for Module.stdin etc.
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
-
+  def test_module_stdin(self):
     create_file('pre.js', '''
+    var data = [10, 20, 40, 30];
     Module = {
-      data: [10, 20, 40, 30],
-      stdin: () => { return Module.data.pop() || null },
+      stdin: () => { return data.pop() || null },
       stdout: (x) => out('got: ' + x)
     };
     ''')
@@ -5463,18 +5458,22 @@ Module = {
 
       int main () {
         char c;
-        fprintf(stderr, "isatty? %d,%d,%d\n", isatty(fileno(stdin)), isatty(fileno(stdout)), isatty(fileno(stderr)));
+        fprintf(stderr, "isatty? in=%d,out=%d,err=%d\n", isatty(fileno(stdin)), isatty(fileno(stdout)), isatty(fileno(stderr)));
         while ((c = fgetc(stdin)) != EOF) {
-          putc(c+5, stdout);
+          putc(c, stdout);
         }
+        putc('\n', stdout);
         return 0;
       }
       '''
 
-    def clean(out):
-      return '\n'.join(l for l in out.splitlines() if 'warning' not in l and 'binaryen' not in l)
-
-    self.do_run(src, ('got: 35\ngot: 45\ngot: 25\ngot: 15\nisatty? 0,0,1\n', 'got: 35\ngot: 45\ngot: 25\ngot: 15\nisatty? 0,0,1', 'isatty? 0,0,1\ngot: 35\ngot: 45\ngot: 25\ngot: 15'), output_nicerizer=clean)
+    self.do_run(src, '''\
+isatty? in=0,out=0,err=1
+got: 30
+got: 40
+got: 20
+got: 10
+''')
 
   def test_mount(self):
     self.set_setting('FORCE_FILESYSTEM')
@@ -6359,27 +6358,22 @@ int main(void) {
     output = read_file(test_file('raytrace.ppm'))
     self.do_run(src, output, args=['3', '16'])
 
-  def test_fasta(self):
-    results = [(1, '''GG*ctt**tgagc*'''),
-               (20, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa**tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
-               (50, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg*''')]
+  @parameterized({
+    '': ('double',),
+    'float': ('float',),
+  })
+  def test_fasta(self, float_type):
+    results = [('1', '''GG\nctt\n\ntgagc\n'''),
+               ('20', '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT\ncttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg\n\ntacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa\n\ntgacgtcttttgatctgacggcgttaacaaagatactctg\n'''),
+               ('50', '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT\ncttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg\n\ntactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa\n\nNtactMcSMtYtcMgRtacttctWBacgaa\n\nagatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct\n\nttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc\n\nggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa\n\ngaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa\n\nggcatgtatg\n''')]
 
     orig_src = read_file(test_file('fasta.cpp'))
 
-    def test(extra_args):
-      for t in ['float', 'double']:
-        print(t)
-        src = orig_src.replace('double', t)
-        create_file('fasta.cpp', src)
-        self.build('fasta.cpp', emcc_args=extra_args)
-        for arg, output in results:
-          self.do_run('fasta.js', output, args=[str(arg)],
-                      output_nicerizer=lambda x: x.replace('\n', '*'),
-                      no_build=True,
-                      emcc_args=extra_args)
-        shutil.copyfile('fasta.js', '%s.js' % t)
-
-    test([])
+    src = orig_src.replace('double', float_type)
+    create_file('fasta.cpp', src)
+    self.build('fasta.cpp')
+    for arg, output in results:
+      self.do_run('fasta.js', output, args=[arg], no_build=True)
 
   @needs_non_trapping_float_to_int
   def test_fasta_nontrapping(self):
@@ -6708,8 +6702,7 @@ void* operator new(size_t size) {
                 'hello lua world!\n17\n1\n2\n3\n4\n7',
                 args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
                 libraries=libs,
-                includes=[test_file('lua')],
-                output_nicerizer=lambda output: output.replace('\n\n', '\n').replace('\n\n', '\n'))
+                includes=[test_file('lua')])
 
   @no_asan('issues with freetype itself')
   @needs_make('configure script')
