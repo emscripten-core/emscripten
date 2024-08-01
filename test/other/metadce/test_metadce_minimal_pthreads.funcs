@@ -21,7 +21,7 @@ $__tl_lock
 $__tl_unlock
 $__wait
 $__wake
-$__wake.1
+$__wake
 $__wasi_syscall_ret
 $__wasm_call_ctors
 $__wasm_init_memory
@@ -40,14 +40,14 @@ $_emscripten_tls_init
 $_emscripten_yield
 $_main_thread
 $a_cas
-$a_cas.7
-$a_cas_p.1
+$a_cas
+$a_cas_p
 $a_dec
 $a_fetch_add
-$a_fetch_add.1
+$a_fetch_add
 $a_inc
 $a_store
-$a_swap.1
+$a_swap
 $add
 $call_callback_then_free_ctx
 $call_cancel_then_free_ctx
