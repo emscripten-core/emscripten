@@ -8667,8 +8667,6 @@ int main() {
 
   @node_pthreads
   def test_metadce_minimal_pthreads(self):
-    self.skipTest('let https://github.com/WebAssembly/binaryen/pull/6793 roll')
-
     self.run_metadce_test('minimal_main.c', ['-Oz', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   @parameterized({
@@ -8749,9 +8747,7 @@ int main() {
 
   @parameterized({
     'js_fs':  (['-O3', '-sNO_WASMFS'], [], []), # noqa
-    # TODO: Re-enable after https://github.com/WebAssembly/binaryen/pull/6793
-    #       rolls in.
-    # 'wasmfs': (['-O3', '-sWASMFS'],    [], []), # noqa
+    'wasmfs': (['-O3', '-sWASMFS'],    [], []), # noqa
   })
   def test_metadce_files(self, *args):
     self.run_metadce_test('files.cpp', *args)
