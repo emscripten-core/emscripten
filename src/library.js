@@ -446,15 +446,14 @@ addToLibrary({
 
 #endif
 
+#if !STANDALONE_WASM
   // ==========================================================================
   // assert.h
   // ==========================================================================
 
-#if !STANDALONE_WASM
   __assert_fail: (condition, filename, line, func) => {
     abort(`Assertion failed: ${UTF8ToString(condition)}, at: ` + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
-#endif
 
   // ==========================================================================
   // time.h
@@ -595,6 +594,7 @@ addToLibrary({
     stringToUTF8(s, buf, 26);
     return buf;
   },
+#endif
 
 #if STACK_OVERFLOW_CHECK >= 2
   // Set stack limits used by binaryen's `StackCheck` pass.
@@ -626,6 +626,7 @@ addToLibrary({
     return ret;
   },
 
+#if !STANDALONE_WASM
   _tzset_js__deps: ['$stringToUTF8',
 #if ASSERTIONS
     '$lengthBytesUTF8',
@@ -686,6 +687,7 @@ addToLibrary({
       stringToUTF8(summerName, std_name, {{{ cDefs.TZNAME_MAX + 1 }}});
     }
   },
+#endif
 
   $MONTH_DAYS_REGULAR: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
   $MONTH_DAYS_LEAP: [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
