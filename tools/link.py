@@ -1872,7 +1872,7 @@ def phase_link(linker_arguments, wasm_target, js_syms):
 
 
 @ToolchainProfiler.profile_block('post link')
-def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms, base_metadata=None):
+def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms, base_metadata=None, linker_inputs=None):
   global final_js
 
   target_basename = unsuffixed_basename(target)
@@ -1892,10 +1892,10 @@ def phase_post_link(options, state, in_wasm, wasm_target, target, js_syms, base_
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
   if settings.EMBIND_AOT:
-    phase_embind_aot(wasm_target, js_syms)
+    phase_embind_aot(wasm_target, js_syms, linker_inputs)
 
   if options.emit_tsd:
-    phase_emit_tsd(options, wasm_target, state.js_target, js_syms, metadata)
+    phase_emit_tsd(options, wasm_target, state.js_target, js_syms, metadata, linker_inputs)
 
   if options.js_transform:
     phase_source_transforms(options)
@@ -1924,10 +1924,17 @@ def phase_emscript(in_wasm, wasm_target, js_syms, base_metadata):
   return metadata
 
 
-def run_embind_gen(wasm_target, js_syms, extra_settings):
+def run_embind_gen(wasm_target, js_syms, extra_settings, linker_inputs):
   # Save settings so they can be restored after TS generation.
   original_settings = settings.backup()
   settings.attrs.update(extra_settings)
+
+  if settings.MAIN_MODULE and linker_inputs:
+    # Copy libraries to the temp directory so they can be used when running
+    # in node.
+    for _i, linker_input in linker_inputs:
+      if building.is_wasm_dylib(linker_input):
+        safe_copy(linker_input, in_temp(''))
 
   # Ignore any options or settings that can conflict with running the TS
   # generation output.
@@ -1983,20 +1990,20 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
 
 
 @ToolchainProfiler.profile_block('emit tsd')
-def phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata):
+def phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata, linker_inputs):
   logger.debug('emit tsd')
   filename = options.emit_tsd
   embind_tsd = ''
   if settings.EMBIND:
-    embind_tsd = run_embind_gen(wasm_target, js_syms, {'EMBIND_JS': False})
+    embind_tsd = run_embind_gen(wasm_target, js_syms, {'EMBIND_JS': False}, linker_inputs)
   all_tsd = emscripten.create_tsd(metadata, embind_tsd)
   out_file = os.path.join(os.path.dirname(js_target), filename)
   write_file(out_file, all_tsd)
 
 
 @ToolchainProfiler.profile_block('embind aot js')
-def phase_embind_aot(wasm_target, js_syms):
-  out = run_embind_gen(wasm_target, js_syms, {})
+def phase_embind_aot(wasm_target, js_syms, linker_inputs):
+  out = run_embind_gen(wasm_target, js_syms, {}, linker_inputs)
   if DEBUG:
     write_file(in_temp('embind_aot.js'), out)
   src = read_file(final_js)
@@ -3117,6 +3124,6 @@ def run(linker_inputs, options, state, newargs):
 
   # Perform post-link steps (unless we are running bare mode)
   if options.oformat != OFormat.BARE:
-    phase_post_link(options, state, wasm_target, wasm_target, target, js_syms, base_metadata)
+    phase_post_link(options, state, wasm_target, wasm_target, target, js_syms, base_metadata, linker_inputs)
 
   return 0

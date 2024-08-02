@@ -3361,6 +3361,31 @@ More info: https://emscripten.org
       self.emcc(test_file('other/embind_tsgen.cpp'), [flag])
       self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
+  def test_embind_tsgen_dylink(self):
+    create_file('side.h', r'''
+      void someLibraryFunc();
+    ''')
+    create_file('side.cpp', r'''
+      #include "side.h"
+      void someLibraryFunc() {}
+    ''')
+    create_file('main.cpp', r'''
+      #include "side.h"
+      #include <emscripten/bind.h>
+      void mainLibraryFunc() {}
+
+      EMSCRIPTEN_BINDINGS( MainLibrary ) {
+        emscripten::function("mainLibraryFunc", &mainLibraryFunc );
+        emscripten::function("someLibraryFunc", &someLibraryFunc );
+      }
+    ''')
+    self.run_process([
+      EMCC,
+      '-o', 'libside.wasm',
+      'side.cpp',
+      '-sSIDE_MODULE'])
+    self.emcc('main.cpp', ['libside.wasm', '-sMAIN_MODULE=2', '-lembind', '--emit-tsd', 'embind_tsgen.d.ts'])
+
   def test_embind_tsgen_test_embind(self):
     self.run_process([EMXX, test_file('embind/embind_test.cpp'),
                       '-lembind', '--emit-tsd', 'embind_tsgen_test_embind.d.ts',
