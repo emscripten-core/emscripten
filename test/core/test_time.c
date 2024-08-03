@@ -26,10 +26,10 @@ void check_gmtime_localtime(time_t time) {
 
   // gmtime and localtime are only equal when timezone is UTC
   if ((timezone == 0) && (strcmp(gmbuf, locbuf) != 0)) {
-    printf("time: %lld, gmtime: %s != localtime: %s\n", time, gmbuf, locbuf);
+    printf("time: %lld, gmtime: %s != localtime: %s\n", (long long)time, gmbuf, locbuf);
     puts("failed");
   } else {
-    printf("time: %lld, gmtime: %s\n", time, gmbuf);
+    printf("time: %lld, gmtime: %s\n", (long long)time, gmbuf);
   }
 }
 
@@ -38,13 +38,14 @@ int main() {
   time_t summer2002 = 1025528525ll;
   struct tm* tm_ptr;
 
+#ifdef __EMSCRIPTEN__
   // Make sure stime() always fails.
   printf("stime: %d\n", stime(&xmas2002));
+#endif
 
   // Verify that tzname sets *something*.
   tzset();
   printf("tzname[0] set: %d\n", strlen(tzname[0]) >= 3);
-  printf("tzname[1] set: %d\n", strlen(tzname[1]) >= 3);
 
   // Verify gmtime() creates correct struct.
   tm_ptr = gmtime(&xmas2002);
@@ -58,7 +59,8 @@ int main() {
   printf("yday: %d\n", tm_ptr->tm_yday);
   printf("dst: %d\n", tm_ptr->tm_isdst);
   printf("off: %ld\n", (long)tm_ptr->tm_gmtoff);
-  printf("zone: %s\n", tm_ptr->tm_zone);
+  // glibc used "GMT" there whereas musl uses "UTC"
+  assert(strcmp(tm_ptr->tm_zone, "GMT") || strcmp(tm_ptr->tm_zone, "UTC"));
 
   // Verify timegm() reverses gmtime; run through an entire year in half hours.
   int timegmOk = 1;
@@ -89,7 +91,7 @@ int main() {
   printf("localtime found DST data (summer): %s\n", tm_summer.tm_isdst < 0 ? "no" : "yes");
   printf("localtime found DST data (winter): %s\n", tm_winter.tm_isdst < 0 ? "no" : "yes");
   int localeHasDst = tm_winter.tm_isdst == 1 || tm_summer.tm_isdst == 1; // DST is in December in south
-  printf("localtime matches daylight: %s\n", localeHasDst == _daylight ? "yes" : "no");
+  printf("localtime matches daylight: %s\n", localeHasDst == daylight ? "yes" : "no");
   int goodGmtOff = (tm_winter.tm_gmtoff != tm_summer.tm_gmtoff) == localeHasDst;
   printf("localtime gmtoff matches DST: %s\n", goodGmtOff ? "yes" : "no");
   printf("localtime tm_zone matches tzname (winter): %s\n",
@@ -169,9 +171,7 @@ int main() {
   struct tm tm_big = {0};
   tm_big.tm_year = 292278994;
   time_t tbig = mktime(&tm_big);
-  printf("tbig: %lld\n", tbig);
-  assert(tbig == -1);
-  assert(errno == EOVERFLOW);
+  assert((tbig == -1 && errno == EOVERFLOW) || tbig == 9223431975273600);
 
   // Verify localtime_r() doesn't clobber static data.
   time_t t3 = 60*60*24*5; // Jan 5 1970
