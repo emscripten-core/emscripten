@@ -1185,7 +1185,7 @@ catch and handle ExitStatus exceptions.  However, this means all other
 uncaught exceptions are also caught and re-thrown, which is not always
 desirable.
 
-Default value: true
+Default value: false
 
 .. _nodejs_catch_rejection:
 

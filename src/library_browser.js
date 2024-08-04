@@ -770,13 +770,11 @@ var LibraryBrowser = {
   emscripten_async_load_script__deps: ['$UTF8ToString'],
   emscripten_async_load_script: (url, onload, onerror) => {
     url = UTF8ToString(url);
-    onload = {{{ makeDynCall('v', 'onload') }}};
-    onerror = {{{ makeDynCall('v', 'onerror') }}};
-
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
       err(`emscripten_async_load_script("${url}") failed, emscripten_async_load_script is currently not available in pthreads!`);
-      return onerror ? onerror() : undefined;
+      onerror && {{{ makeDynCall('v', 'onerror') }}}();
+      return;
     }
 #endif
 #if ASSERTIONS
@@ -787,17 +785,20 @@ var LibraryBrowser = {
     var loadDone = () => {
       {{{ runtimeKeepalivePop() }}}
       if (onload) {
+        var onloadCallback = () => callUserCallback({{{ makeDynCall('v', 'onload') }}});
         if (runDependencies > 0) {
-          dependenciesFulfilled = onload;
+          dependenciesFulfilled = onloadCallback;
         } else {
-          onload();
+          onloadCallback();
         }
       }
     }
 
     var loadError = () => {
       {{{ runtimeKeepalivePop() }}}
-      onerror?.();
+      if (onerror) {
+        callUserCallback({{{ makeDynCall('v', 'onerror') }}});
+      }
     };
 
 #if ENVIRONMENT_MAY_BE_NODE && DYNAMIC_EXECUTION

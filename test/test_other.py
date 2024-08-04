@@ -3869,11 +3869,12 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
 
   @requires_node
   def test_node_catch_exit(self):
-    # Test that in node.js exceptions are not caught if NODEJS_EXIT_CATCH=0
+    # Test that in top level JS exceptions are caught and rethrown when NODEJS_EXIT_CATCH=1
+    # is set but not by default.
     create_file('count.c', '''
       #include <string.h>
       int count(const char *str) {
-          return (int)strlen(str);
+        return (int)strlen(str);
       }
     ''')
 
@@ -3885,13 +3886,13 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
 
     reference_error_text = 'console.log(xxx); //< here is the ReferenceError'
 
-    self.run_process([EMCC, 'count.c', '-o', 'count.js'])
+    self.run_process([EMCC, 'count.c', '-o', 'count.js', '-sNODEJS_CATCH_EXIT=1'])
 
     # Check that the ReferenceError is caught and rethrown and thus the original error line is masked
     self.assertNotContained(reference_error_text,
                             self.run_js('index.js', assert_returncode=NON_ZERO))
 
-    self.run_process([EMCC, 'count.c', '-o', 'count.js', '-sNODEJS_CATCH_EXIT=0'])
+    self.run_process([EMCC, 'count.c', '-o', 'count.js'])
 
     # Check that the ReferenceError is not caught, so we see the error properly
     self.assertContained(reference_error_text,
@@ -6213,16 +6214,17 @@ Failed to open file for writing: /tmp/file; errno=2; Permission denied
 
   def test_force_exit(self):
     create_file('src.c', r'''
+#include <emscripten/console.h>
 #include <emscripten/emscripten.h>
 
-EMSCRIPTEN_KEEPALIVE void callback() {
-  EM_ASM({ out('callback pre()') });
+void callback() {
+  emscripten_out("callback pre()");
   emscripten_force_exit(42);
-  EM_ASM({ out('callback post()') });
+  emscripten_out("callback post()");
 }
 
 int main() {
-  EM_ASM({ setTimeout(() => { out("calling callback()"); _callback() }, 100) });
+  emscripten_async_call(callback, NULL, 100);
   emscripten_exit_with_live_runtime();
   return 123;
 }
@@ -11767,8 +11769,8 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
       Promise.reject();
     ''')
     self.run_process([EMCC, test_file('hello_world.c'), '-sASSERTIONS', '--extern-post-js', 'test.js'])
-    # A return code of 7 is from the unhandled Promise rejection
-    self.run_js('a.out.js', assert_returncode=7)
+    # Node exits with 1 on Uncaught Fatal Exception (including unhandled rejections)
+    self.run_js('a.out.js', assert_returncode=1)
 
   def test_on_reject_promise(self):
     # Check that promise rejections give the correct error code
@@ -11776,8 +11778,9 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
       Promise.reject();
     ''')
     self.run_process([EMCC, test_file('hello_world.c'), '--extern-post-js', 'test.js'])
-    # A return code of 7 is from the unhandled Promise rejection
-    self.run_js('a.out.js', assert_returncode=7)
+    # Node exits with 1 on Uncaught Fatal Exception (including unhandled rejections)
+    err = self.run_js('a.out.js', assert_returncode=1)
+    self.assertContained('UnhandledPromiseRejection', err)
 
   def test_em_asm_duplicate_strings(self):
     # We had a regression where tow different EM_ASM strings from two diffferent

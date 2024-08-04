@@ -795,7 +795,7 @@ var WASM_EXNREF = false;
 // desirable.
 //
 // [link]
-var NODEJS_CATCH_EXIT = true;
+var NODEJS_CATCH_EXIT = false;
 
 // Catch unhandled rejections in node. This only effect versions of node older
 // than 15.  Without this, old version node will print a warning, but exit

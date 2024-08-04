@@ -5955,7 +5955,7 @@ Module.onRuntimeInitialized = () => {
 
   @parameterized({
     'sigint': (EM_SIGINT, 128 + EM_SIGINT, True),
-    'sigabrt': (EM_SIGABRT, 7, False)
+    'sigabrt': (EM_SIGABRT, 1, False)
   })
   @crossplatform
   def test_sigaction_default(self, signal, exit_code, assert_identical):
