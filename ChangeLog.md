@@ -20,13 +20,13 @@ See docs/process.md for more on how version tagging works.
 
 3.1.65 (in development)
 -----------------------
+- The `NODEJS_CATCH_EXIT` setting is now disabled by default.  This setting
+  is only useful under very specific circumstances, and has some downsides, so
+  disabling it by default makes sense. (#22257)
 - Add WebP (`.webp`) decoding support in file preloading. (#22282)
 
 3.1.64 - 07/22/24
 -----------------------
-- The `NODEJS_CATCH_EXIT` setting is now disabled by default.  This setting
-  is only useful under very specific circumstances, and has some downsides, so
-  disabling it by default makes sense. (#22257)
 - Updated the SCons tool to not require the `EMSCRIPTEN_ROOT` environment
   variable, in which case it will assume that SCons will find the binaries in
   (its) `PATH`.
