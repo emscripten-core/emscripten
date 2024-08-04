@@ -2892,6 +2892,8 @@ def process_dynamic_libs(dylibs, lib_dirs):
         exit_with_error(f'{os.path.normpath(dylib)}: shared library dependency not found in library path: `{needed}`. (library path: {lib_dirs}')
       to_process.append(path)
 
+    seen.add(os.path.basename(dylib))
+
   dylibs += extras
   for dylib in dylibs:
     exports = webassembly.get_exports(dylib)
