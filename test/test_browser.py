@@ -5194,8 +5194,12 @@ Module["preRun"] = () => {
   @no_wasm64()
   @parameterized({
     '': (['-pthread', '-sPROXY_TO_PTHREAD'],),
-    'jspi': (['-Wno-experimental', '-sASYNCIFY=2'],),
-    'jspi_wasm_bigint': (['-Wno-experimental', '-sASYNCIFY=2', '-sWASM_BIGINT'],),
+    'jspi': (['-sASYNCIFY=2'],),
+    'jspi_wasm_bigint': (['-sASYNCIFY=2', '-sWASM_BIGINT'],),
+    'async': (['-DOPFS_ASYNC', '-pthread'],),
+    'async_jspi': (['-DOPFS_ASYNC', '-sASYNCIFY=2'],),
+    'async_jspi_await': (['-DOPFS_ASYNC_AWAIT', '-sASYNCIFY=2'],),
+    'async_jspi_await_threads': (['-DOPFS_ASYNC_AWAIT', '-sASYNCIFY=2', '-pthread'],)
   })
   def test_wasmfs_opfs(self, args):
     if '-sASYNCIFY=2' in args:
