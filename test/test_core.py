@@ -2671,14 +2671,20 @@ The current type of b is: 9
   @also_with_standalone_wasm()
   def test_time(self):
     self.do_core_test('test_time.c')
-    for tz in ['EST+05EDT', 'UTC+0', 'CET']:
-      print('extra tz test:', tz)
-      with env_modify({'TZ': tz}):
-        # Run the test with different time zone settings if
-        # possible. It seems that the TZ environment variable does not
-        # work all the time (at least it's not well respected by
-        # Node.js on Windows), but it does no harm either.
-        self.do_core_test('test_time.c')
+
+  @parameterized({
+    '1': ('EST+05EDT',),
+    '2': ('UTC+0',),
+    '3': ('CET',),
+  })
+  def test_time_tz(self, tz):
+    print('testing with TZ=%s' % tz)
+    with env_modify({'TZ': tz}):
+      # Run the test with different time zone settings if
+      # possible. It seems that the TZ environment variable does not
+      # work all the time (at least it's not well respected by
+      # Node.js on Windows), but it does no harm either.
+      self.do_core_test('test_time.c')
 
   def test_timeb(self):
     # Confirms they are called in reverse order
