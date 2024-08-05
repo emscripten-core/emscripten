@@ -20,19 +20,16 @@
 #error "Internal error! SHARED_MEMORY should be enabled when building with WASM_WORKERS"
 #endif
 #if SINGLE_FILE
-#error "-sSINGLE_FILE is not supported with -sWASM_WORKERS!"
+#error "-sSINGLE_FILE is not supported with -sWASM_WORKERS"
 #endif
 #if LINKABLE
-#error "-sLINKABLE is not supported with -sWASM_WORKERS!"
+#error "-sLINKABLE is not supported with -sWASM_WORKERS"
 #endif
-#if SIDE_MODULE
-#error "-sSIDE_MODULE is not supported with -sWASM_WORKERS!"
-#endif
-#if MAIN_MODULE
-#error "-sMAIN_MODULE is not supported with -sWASM_WORKERS!"
+#if RELOCATABLE
+#error "dynamic linking is not supported with -sWASM_WORKERS"
 #endif
 #if PROXY_TO_WORKER
-#error "-sPROXY_TO_WORKER is not supported with -sWASM_WORKERS!"
+#error "-sPROXY_TO_WORKER is not supported with -sWASM_WORKERS"
 #endif
 
 #endif // ~WASM_WORKERS
