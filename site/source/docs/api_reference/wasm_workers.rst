@@ -266,7 +266,7 @@ table.
     <tr><td class='cellborder'>Thread stack</td>
     <td class='cellborder'>Specify in pthread_attr_t structure.</td>
     <td class='cellborder'>Manage thread stack area explicitly with <pre>emscripten_create_wasm_worker_*_tls()</pre> functions, or
-      <br>automatically allocate stack with <pre>emscripten_malloc_wasm_worker()</pre> API.</td></tr>
+      <br>automatically allocate stack+TLS area with <pre>emscripten_malloc_wasm_worker()</pre> API.</td></tr>
 
     <tr><td class='cellborder'>Thread Local Storage (TLS)</td>
     <td class='cellborder'>Supported transparently.</td>
@@ -341,6 +341,53 @@ table.
     <td class='cellborder'><pre>Not supported.</pre></td></tr>
 
   </table>
+
+Wasm Workers stack size considerations
+======================================
+
+When instantiating a Wasm Worker, one has to create a memory array for the LLVM
+data stack for the created Worker. This data stack will generally consist only
+of local variables that have been "spilled" by LLVM into memory, e.g. to contain
+large arrays, structs, or other variables that are referenced by a memory
+address. This stack will not contain control flow information.
+
+Since WebAssembly does not support virtual memory, the size of the LLVM data
+stack that is defined both for Wasm Workers but also the main thread will not be
+possible to grow at runtime. So if the Worker (or the main thread) runs out of
+stack space, the program behavior will be undefined. Use the Emscripten linker
+flag -sSTACK_OVERFLOW_CHECK=2 to emit runtime stack overflow checks into the
+program code to detect these situations during development.
+
+Note that to avoid the need to perform two separate allocations, the TLS memory
+for the Wasm Worker will be located at the bottom end (low memory address) of
+the Wasm Worker stack space.
+
+Wasm Workers vs the earlier Emscripten Worker API
+=================================================
+
+Emscripten provides a second Worker API as part of the emscripten.h header. This Worker API predates the advent of SharedArrayBuffer, and is quite distinct from Wasm Workers API, just the naming of these two APIs is similar due to historical reasons.
+
+Both APIs allow one to spawn Web Workers from the main thread, though the semantics are different.
+
+With the Worker API, the user will be able to spawn a Web Worker from a custom URL. This URL can point to a completely separate JS file that was not compiled with Emscripten, to load up Workers from arbitrary URLs. With Wasm Workers, a custom URL is not specified: Wasm Workers will always spawn a Web Worker that computes in the same WebAssembly+JavaScript context as the main program.
+
+The Worker API does not integrate with SharedArrayBuffer, so interaction with the loaded Worker will always be asynchronous. Wasm Workers howerer is built on top of SharedArrayBuffer, and each Wasm Worker shares and computes in the same WebAssembly Memory address space of the main thread.
+
+Both the Worker API and Wasm Workers API provide the user with ability to postMessage() function calls to the Worker. In Worker API, this message posting is restricted to need to originate/initiate from the main thread towards the Worker (using the API ``emscripten_call_worker()`` and ``emscripten_worker_respond()`` in ``<emscripten.h>``). With Wasm Workers however one can also postMessage() function calls to their parent (owning) thread.
+
+If posting function calls with the Emscripten Worker API, it is required that the target Worker URL points to an Emscripten compiled program (so it has the ``Module`` structure to locate function names). Only functions that have been exported to the ``Module`` object are callable. With Wasm Workers, any C/C++ function may be posted, and does not need to be exported.
+
+Use the Emscripten Worker API when:
+ - you want to easily spawn a Worker from a JS file that was not built using Emscripten
+ - you want to spawn as Worker a single separate compiled program than the main thread program represents, and the main thread and Worker programs do not share common code
+ - you do not want to require the use of SharedArrayBuffer, or setting up COOP+COEP headers
+ - you only need to communicate with the Worker asynchronously using postMessage() function calls
+
+Use the Wasm Workers API when:
+ - you want to create one or more new threads that synchronously compute in the same Wasm Module context
+ - you want to spawn multiple Workers from the same codebase and save memory by sharing the WebAssembly Module (object code) and Memory (address space) across the Workers
+ - you want to synchronously coordinate communication between threads by using atomic primitives and locks
+ - your web server has been configured with the needed COOP+COEP headers to enable SharedArrayBuffer capabilities on the site
 
 Limitations
 ===========
