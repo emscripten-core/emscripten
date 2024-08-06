@@ -1579,6 +1579,10 @@ int _mmap_js(size_t length,
     return -EPERM;
   }
 
+  if (!length) {
+    return -EINVAL;
+  }
+
   // One of MAP_PRIVATE, MAP_SHARED, or MAP_SHARED_VALIDATE must be used.
   int mapType = flags & MAP_TYPE;
   if (mapType != MAP_PRIVATE && mapType != MAP_SHARED &&

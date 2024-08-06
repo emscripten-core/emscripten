@@ -174,6 +174,9 @@ addToLibrary({
       throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
     },
     mmap(stream, length, position, prot, flags) {
+      if (!length) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
       if (stream.stream_ops) {
         // this stream is created by in-memory filesystem
         return VFS.mmap(stream, length, position, prot, flags);

@@ -363,6 +363,21 @@ def with_env_modify(updates):
   return decorated
 
 
+def also_with_noderawfs(func):
+  assert callable(func)
+
+  def metafunc(self, rawfs, *args, **kwargs):
+    if rawfs:
+      self.require_node()
+      self.emcc_args += ['-DNODERAWFS']
+      self.set_setting('NODERAWFS')
+    func(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,),
+                          'rawfs': (True,)})
+  return metafunc
+
+
 # Decorator version of env_modify
 def also_with_env_modify(name_updates_mapping):
 
