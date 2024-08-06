@@ -124,7 +124,7 @@ var LibraryBrowser = {
 
       var imagePlugin = {};
       imagePlugin['canHandle'] = function imagePlugin_canHandle(name) {
-        return !Module.noImageDecoding && /\.(jpg|jpeg|png|bmp|webp)$/i.test(name);
+        return !Module['noImageDecoding'] && /\.(jpg|jpeg|png|bmp|webp)$/i.test(name);
       };
       imagePlugin['handle'] = function imagePlugin_handle(byteArray, name, onload, onerror) {
         var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
@@ -160,7 +160,7 @@ var LibraryBrowser = {
 
       var audioPlugin = {};
       audioPlugin['canHandle'] = function audioPlugin_canHandle(name) {
-        return !Module.noAudioDecoding && name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
+        return !Module['noAudioDecoding'] && name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
       };
       audioPlugin['handle'] = function audioPlugin_handle(byteArray, name, onload, onerror) {
         var done = false;
