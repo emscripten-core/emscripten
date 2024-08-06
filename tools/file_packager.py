@@ -1113,6 +1113,20 @@ def generate_js(data_target, data_files, metadata):
   function runMetaWithFS() {
     Module['addRunDependency']('%(metadata_file)s');
     var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
+    if (
+      typeof process === "object" &&
+      typeof process.versions === "object" &&
+      typeof process.versions.node === "string"
+    ) {
+      require("fs").readFile(REMOTE_METADATA_NAME, function (err, contents) {
+        if (err) {
+          console.log(err)
+        } else {
+          loadPackage(JSON.parse(contents.toString()))
+        }
+      });
+      return;
+    }
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function() {
      if (xhr.readyState === 4 && xhr.status === 200) {
