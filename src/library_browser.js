@@ -316,8 +316,6 @@ var LibraryBrowser = {
       return ctx;
     },
 
-    destroyContext(canvas, useWebGL, setInModule) {},
-
     fullscreenHandlersInstalled: false,
     lockPointer: undefined,
     resizeCanvas: undefined,

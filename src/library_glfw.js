@@ -1143,7 +1143,7 @@ var LibraryGLFW = {
       for (var i = 0; i < GLFW.windows.length; i++)
         if (GLFW.windows[i] !== null) return;
 
-      Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
+      delete Module.ctx;
     },
 
     swapBuffers: (winid) => {
