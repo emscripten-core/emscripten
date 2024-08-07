@@ -83,7 +83,7 @@ weak int _mmap_js(size_t length,
 }
 
 weak int _munmap_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset) {
+  void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
   return -ENOSYS;
 }
 
@@ -91,14 +91,14 @@ weak int _munmap_js(
 // corner case error checking; everything else is not permitted.
 // TODO: full file support for WASI, or an option for it
 // open()
-weak int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
-  if (!strcmp((const char*)path, "/dev/stdin")) {
+weak int __syscall_openat(int dirfd, const char *path, int flags, ...) {
+  if (!strcmp(path, "/dev/stdin")) {
     return STDIN_FILENO;
   }
-  if (!strcmp((const char*)path, "/dev/stdout")) {
+  if (!strcmp(path, "/dev/stdout")) {
     return STDOUT_FILENO;
   }
-  if (!strcmp((const char*)path, "/dev/stderr")) {
+  if (!strcmp(path, "/dev/stderr")) {
     return STDERR_FILENO;
   }
   return -EPERM;
@@ -112,11 +112,11 @@ weak int __syscall_fcntl64(int fd, int cmd, ...) {
   return -ENOSYS;
 }
 
-weak int __syscall_fstat64(int fd, intptr_t buf) {
+weak int __syscall_fstat64(int fd, struct stat *buf) {
   return -ENOSYS;
 }
 
-weak int __syscall_stat64(intptr_t path, intptr_t buf) {
+weak int __syscall_stat64(const char *path, struct stat *buf) {
   return -ENOSYS;
 }
 
@@ -124,15 +124,15 @@ weak int __syscall_dup(int fd) {
   return -ENOSYS;
 }
 
-weak int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
+weak int __syscall_mkdirat(int dirfd, const char *path, mode_t mode) {
   return -ENOSYS;
 }
 
-weak int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
+weak int __syscall_newfstatat(int dirfd, const char *path, struct stat *buf, int flags) {
   return -ENOSYS;
 }
 
-weak int __syscall_lstat64(intptr_t path, intptr_t buf) {
+weak int __syscall_lstat64(const char *path, struct stat *buf) {
   return -ENOSYS;
 }
 

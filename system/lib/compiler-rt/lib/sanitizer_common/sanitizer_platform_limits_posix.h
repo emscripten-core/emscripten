@@ -38,6 +38,11 @@
 #define SANITIZER_HAS_STATFS64 1
 #endif
 
+#if SANITIZER_EMSCRIPTEN
+#include <signal.h> // For sigset_t
+#include <time.h>   // For clock_t and clockid_t
+#endif
+
 #if defined(__sparc__)
 // FIXME: This can't be included from tsan which does not support sparc yet.
 #include "sanitizer_glibc_version.h"
@@ -520,16 +525,17 @@ struct __sanitizer_dirent64 {
 #endif
 
 #if SANITIZER_EMSCRIPTEN
-typedef int __sanitizer_clock_t;
+typedef clock_t __sanitizer_clock_t;
 #elif defined(__x86_64__) && !defined(_LP64)
 typedef long long __sanitizer_clock_t;
 #else
 typedef long __sanitizer_clock_t;
 #endif
 
-#if SANITIZER_LINUX || SANITIZER_EMSCRIPTEN
+#if SANITIZER_LINUX
 typedef int __sanitizer_clockid_t;
-typedef unsigned long long __sanitizer_eventfd_t;
+#elif SANITIZER_EMSCRIPTEN
+typedef clockid_t __sanitizer_clockid_t;
 #endif
 
 #if SANITIZER_LINUX
@@ -582,7 +588,7 @@ struct __sanitizer_sigset_t {
   uptr val[128 / sizeof(uptr)];
 };
 #elif SANITIZER_EMSCRIPTEN
-typedef unsigned long __sanitizer_sigset_t;
+typedef sigset_t __sanitizer_sigset_t;
 #endif
 
 struct __sanitizer_siginfo_pad {

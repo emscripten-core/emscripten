@@ -2063,9 +2063,7 @@ class libubsan_minimal_rt(CompilerRTLibrary, MTLibrary):
 
 class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
   name = 'libsanitizer_common_rt'
-  # TODO(sbc): We should not need musl-internal headers here.
-  includes = ['system/lib/libc/musl/src/internal',
-              'system/lib/compiler-rt/lib',
+  includes = ['system/lib/compiler-rt/lib',
               'system/lib/libc']
   never_force = True
   cflags = [
