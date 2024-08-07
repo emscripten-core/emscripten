@@ -41,9 +41,9 @@ FS.ignorePermissions = false;
     addAtExit('FS.quit();');
     return `
 FS.createPreloadedFile = FS_createPreloadedFile;
-FS.staticInit();` +
-           // Get module methods from settings
-           '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}';
+FS.staticInit();
+// Set module methods based on EXPORTED_RUNTIME_METHODS
+{{{ EXPORTED_RUNTIME_METHODS.filter((func) => func.startsWith('FS_')).map((func) => 'Module["' + func + '"] = FS.' + func.substr(3) + ";\n").reduce((str, func) => str + func, '') }}}`;
   },
   $FS: {
     root: null,
