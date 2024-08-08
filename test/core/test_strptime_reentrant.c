@@ -13,7 +13,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#if __GLIBC__ || __EMSCRIPTEN__
+#if defined(__GLIBC__) || (defined(__EMSCRIPTEN__) && !defined(STANDALONE))
 // Not all implementations support this (for example, upstream musl)
 #define HAVE_WDAY
 #endif

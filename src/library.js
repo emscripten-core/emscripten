@@ -687,7 +687,6 @@ addToLibrary({
       stringToUTF8(summerName, std_name, {{{ cDefs.TZNAME_MAX + 1 }}});
     }
   },
-#endif
 
   $MONTH_DAYS_REGULAR: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
   $MONTH_DAYS_LEAP: [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
@@ -1004,6 +1003,7 @@ addToLibrary({
   strptime_l: (buf, format, tm, locale) => {
     return _strptime(buf, format, tm); // no locale support yet
   },
+#endif
 
   // ==========================================================================
   // setjmp.h
