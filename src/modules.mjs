@@ -75,6 +75,10 @@ export const LibraryManager = {
       libraries.push('library_wget.js');
     }
 
+    if (!STANDALONE_WASM) {
+      libraries.push('library_time.js');
+    }
+
     if (EMSCRIPTEN_TRACING) {
       libraries.push('library_memoryprofiler.js');
     }
