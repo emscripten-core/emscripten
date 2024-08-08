@@ -8936,7 +8936,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.append('-fsanitize=address')
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.set_setting('INITIAL_MEMORY', '300mb')
-    self.do_runf(test_file('core', name), '', assert_returncode=NON_ZERO)
+    self.do_runf('core/' + name, '', assert_returncode=NON_ZERO)
 
   # note: these tests have things like -fno-builtin-memset in order to avoid
   # clang optimizing things away. for example, a memset might be optimized into
@@ -9014,7 +9014,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('INITIAL_MEMORY', '300mb')
     if cflags:
       self.emcc_args += cflags
-    self.do_runf(test_file('core', name),
+    self.do_runf('core/' + name,
                  expected_output=expected_output, assert_all=True,
                  check_for_error=False, assert_returncode=NON_ZERO)
 
