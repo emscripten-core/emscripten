@@ -4522,6 +4522,22 @@ int main() {
 ''')
     self.do_runf('src.c', 'c calling: 14\n', emcc_args=['--js-library', 'lib.js'])
 
+  def test_js_lib_errors(self):
+    create_file('lib.js', '''\
+// This is a library file
+#endif // line 2
+''')
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'])
+    self.assertContained('lib.js:2: #endif without matching #if', err)
+
+    create_file('lib.js', '''\
+// This is a library file
+
+#else // line 3
+''')
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'])
+    self.assertContained('lib.js:3: #else without matching #if', err)
+
   def test_js_internal_deps(self):
     create_file('lib.js', r'''
 addToLibrary({
