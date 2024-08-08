@@ -2204,6 +2204,7 @@ class libstandalonewasm(MuslInternalLibrary):
                    'localtime_r.c',
                    'gmtime_r.c',
                    'mktime.c',
+                   'strptime.c',
                    'timegm.c',
                    'time.c'])
     # It is more efficient to use JS for __assert_fail, as it avoids always

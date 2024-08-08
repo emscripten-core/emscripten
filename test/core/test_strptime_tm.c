@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#if __GLIBC__ || __EMSCRIPTEN__
+#if defined(__GLIBC__) || (defined(__EMSCRIPTEN__) && !defined(STANDALONE))
 // Not all implementations support these (for example, upstream musl)
 #define HAVE_WDAY
 #define HAVE_TIMEZONE
@@ -88,15 +88,12 @@ int main() {
 #ifdef HAVE_TIMEZONE
   // check timezone offsets
   STRPTIME("2020-05-01T00:00+0100","%Y-%m-%dT%H:%M%z",&tm);
-  printf("tm_gmtoff: %ld\n",tm.tm_gmtoff);
   assert(tm.tm_gmtoff == 3600);
 
   STRPTIME("2020-05-01T00:00Z","%Y-%m-%dT%H:%M%z",&tm);
-  printf("tm_gmtoff: %ld\n",tm.tm_gmtoff);
   assert(tm.tm_gmtoff == 0);
 
   STRPTIME("2020-05-01T00:00-02:30","%Y-%m-%dT%H:%M%z",&tm);
-  printf("tm_gmtoff: %ld\n",tm.tm_gmtoff);
   assert(tm.tm_gmtoff == -9000);
 #endif
 

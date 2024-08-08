@@ -2681,13 +2681,19 @@ The current type of b is: 9
   def test_gmtime(self):
     self.do_core_test('test_gmtime.c')
 
+  @also_with_standalone_wasm()
   def test_strptime_tm(self):
+    if self.get_setting('STANDALONE_WASM'):
+      self.emcc_args += ['-DSTANDALONE']
     self.do_core_test('test_strptime_tm.c')
 
   def test_strptime_days(self):
     self.do_core_test('test_strptime_days.c')
 
+  @also_with_standalone_wasm()
   def test_strptime_reentrant(self):
+    if self.get_setting('STANDALONE_WASM'):
+      self.emcc_args += ['-DSTANDALONE']
     self.do_core_test('test_strptime_reentrant.c')
 
   @crossplatform
