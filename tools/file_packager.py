@@ -968,6 +968,14 @@ def generate_js(data_target, data_files, metadata):
     ret += '''
       function fetchRemotePackage(packageName, packageSize, callback, errback) {
         %(node_support_code)s
+        if (typeof XMLHttpRequest === 'undefined') {
+          fetch(packageName).then(function(response) {
+            return response.arrayBuffer();
+          }).then(function(data) {
+            callback(data);
+          });
+          return;
+        }
         var xhr = new XMLHttpRequest();
         xhr.open('GET', packageName, true);
         xhr.responseType = 'arraybuffer';
@@ -1005,7 +1013,7 @@ def generate_js(data_target, data_files, metadata):
           throw new Error("NetworkError for: " + packageName);
         }
         xhr.onload = function(event) {
-          if (xhr.status == 200 || xhr.status == 304 || xhr.status == 206 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
+          if ((xhr.status >= 200 && xhr.status < 300) || xhr.status == 304 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
             var packageData = xhr.response;
             callback(packageData);
           } else {
@@ -1113,9 +1121,17 @@ def generate_js(data_target, data_files, metadata):
   function runMetaWithFS() {
     Module['addRunDependency']('%(metadata_file)s');
     var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
+    if (typeof XMLHttpRequest === 'undefined') {
+      fetch(REMOTE_METADATA_NAME).then(function(response) {
+        return response.json();
+      }).then(function(data) {
+        loadPackage(data);
+      });
+      return;
+    }
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function() {
-     if (xhr.readyState === 4 && xhr.status === 200) {
+     if (xhr.readyState === 4 && xhr.status >= 200 && xhr.status < 300) {
        loadPackage(JSON.parse(xhr.responseText));
      }
     }
