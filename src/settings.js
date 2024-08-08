@@ -336,10 +336,9 @@ var SAFE_HEAP_LOG = false;
 
 // Allows function pointers to be cast, wraps each call of an incorrect type
 // with a runtime correction.  This adds overhead and should not be used
-// normally.  It also forces ALIASING_FUNCTION_POINTERS to 0.  Aside from making
-// calls not fail, this tries to convert values as best it can.
-// We use 64 bits (i64) to represent values, as if we wrote the sent value to
-// memory and loaded the received type from the same memory (using
+// normally.  Aside from making calls not fail, this tries to convert values as
+// best it can.  We use 64 bits (i64) to represent values, as if we wrote the
+// sent value to memory and loaded the received type from the same memory (using
 // truncs/extends/ reinterprets). This means that when types do not match the
 // emulated values may not match (this is true of native too, for that matter -
 // this is all undefined behavior). This approaches appears good enough to
