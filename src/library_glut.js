@@ -573,7 +573,7 @@ var LibraryGLUT = {
   glutDestroyWindow__proxy: 'sync',
   glutDestroyWindow__deps: ['$Browser'],
   glutDestroyWindow: (name) => {
-    Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
+    delete Module.ctx;
     return 1;
   },
 
