@@ -889,6 +889,7 @@ f.close()
     'static_cpp':  ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DCPP_LIBRARY_TYPE=STATIC']),
     'stdproperty': ('stdproperty',    'helloworld.js',         []),
     'post_build':  ('post_build',     'hello.js',              []),
+    'cxx20':       ('cxx20',          'test.js',               []),
   })
   def test_cmake(self, test_dir, output_file, cmake_args):
     # Test all supported generators.
@@ -936,7 +937,7 @@ f.close()
         # Run through node, if CMake produced a .js file.
         if output_file.endswith('.js'):
           ret = self.run_js(output_file)
-          self.assertTextDataIdentical(read_file(cmakelistsdir + '/out.txt').strip(), ret.strip())
+          self.assertFileContents(os.path.join(cmakelistsdir, 'out.txt'), ret)
 
         if test_dir == 'post_build':
           ret = self.run_process(['ctest'], env=env)
