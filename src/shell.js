@@ -27,7 +27,6 @@ var Module = moduleArg;
 var /** @type {{
   canvas: HTMLCanvasElement,
   ctx: Object,
-  useWebGL: boolean,
 }}
  */ Module;
 if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
