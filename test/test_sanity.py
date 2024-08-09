@@ -26,7 +26,7 @@ from tools import response_file
 from tools import ports
 
 SANITY_FILE = cache.get_path('sanity.txt')
-commands = [[EMCC], [path_from_root('test/runner'), 'blahblah']]
+commands = [[EMCC], [path_from_root('test/runner.bat'), 'blahblah']]
 expected_llvm_version = str(shared.EXPECTED_LLVM_VERSION) + '.0.0'
 
 
@@ -773,7 +773,7 @@ fi
   def test_binaryen_version(self):
     restore_and_set_up()
     with open(EM_CONFIG, 'a') as f:
-      f.write('\nBINARYEN_ROOT = "' + self.in_dir('fake') + '"')
+      f.write('\nBINARYEN_ROOT = "' + self.in_dir('fake').replace('\\', '/') + '"')
 
     make_fake_tool(self.in_dir('fake', 'bin', 'wasm-opt'), 'foo')
     self.check_working([EMCC, test_file('hello_world.c')], 'error parsing binaryen version (wasm-opt version foo). Please check your binaryen installation')
