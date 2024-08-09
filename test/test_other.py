@@ -7677,28 +7677,11 @@ extraLibraryFuncs.push('jsfunc');
     self.do_runf('hello_world.c', emcc_args=['--js-library', 'lib.js'])
 
   @crossplatform
+  @also_with_wasmfs
   def test_realpath(self):
-    create_file('src.c', r'''
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-
-int main(int argc, char **argv) {
-  char *t_realpath_buf = realpath("/boot/README.txt", NULL);
-  if (!t_realpath_buf) {
-    perror("Resolve failed");
-    return 1;
-  }
-
-  printf("Resolved: %s\n", t_realpath_buf);
-  free(t_realpath_buf);
-  return 0;
-}
-''')
     ensure_dir('boot')
     create_file('boot/README.txt', ' ')
-    self.run_process([EMCC, 'src.c', '-sSAFE_HEAP', '--embed-file', 'boot'])
-    self.assertContained('Resolved: /boot/README.txt', self.run_js('a.out.js'))
+    self.do_other_test('test_realpath.c', emcc_args=['-sSAFE_HEAP', '--embed-file', 'boot'])
 
   @crossplatform
   @parameterized({
@@ -7707,83 +7690,15 @@ int main(int argc, char **argv) {
     'wasmfs': (['-sWASMFS', '-sFORCE_FILESYSTEM'],),
   })
   def test_realpath_nodefs(self, args):
-    create_file('src.c', r'''
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-#include <emscripten.h>
-
-#define TEST_PATH "/working/TEST_NODEFS.txt"
-
-int main(int argc, char **argv) {
-  errno = 0;
-  EM_ASM({
-    FS.mkdir('/working');
-    FS.mount(NODEFS, { root: '.' }, '/working');
-  });
-  char *t_realpath_buf = realpath(TEST_PATH, NULL);
-  if (NULL == t_realpath_buf) {
-    perror("Resolve failed");
-    return 1;
-  } else {
-    printf("Resolved: %s\n", t_realpath_buf);
-    free(t_realpath_buf);
-    return 0;
-  }
-}
-''')
     create_file('TEST_NODEFS.txt', ' ')
-    self.do_runf('src.c',
-                 expected_output='Resolved: /working/TEST_NODEFS.txt',
-                 emcc_args=args + ['-lnodefs.js'])
+    self.do_other_test('test_realpath_nodefs.c', emcc_args=args + ['-lnodefs.js'])
 
+  @also_with_wasmfs
   def test_realpath_2(self):
     ensure_dir('Folder')
-    create_file('src.c', r'''
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-
-int testrealpath(const char* path)    {
-  errno = 0;
-  char *t_realpath_buf = realpath(path, NULL);
-  if (NULL == t_realpath_buf) {
-    printf("Resolve failed: \"%s\"\n",path);fflush(stdout);
-    return 1;
-  } else {
-    printf("Resolved: \"%s\" => \"%s\"\n", path, t_realpath_buf);fflush(stdout);
-    free(t_realpath_buf);
-    return 0;
-  }
-}
-
-int main(int argc, char **argv)
-{
-    // files:
-    testrealpath("testfile.txt");
-    testrealpath("Folder/testfile.txt");
-    testrealpath("testnonexistentfile.txt");
-    // folders
-    testrealpath("Folder");
-    testrealpath("/Folder");
-    testrealpath("./");
-    testrealpath("");
-    testrealpath("/");
-    return 0;
-}
-''')
     create_file('testfile.txt', '')
     create_file('Folder/testfile.txt', '')
-    self.run_process([EMCC, 'src.c', '--embed-file', 'testfile.txt', '--embed-file', 'Folder'])
-    self.assertContained('''Resolved: "testfile.txt" => "/testfile.txt"
-Resolved: "Folder/testfile.txt" => "/Folder/testfile.txt"
-Resolve failed: "testnonexistentfile.txt"
-Resolved: "Folder" => "/Folder"
-Resolved: "/Folder" => "/Folder"
-Resolved: "./" => "/"
-Resolve failed: ""
-Resolved: "/" => "/"
-''', self.run_js('a.out.js'))
+    self.do_other_test('test_realpath_2.c', emcc_args=['--embed-file', 'testfile.txt', '--embed-file', 'Folder'])
 
   @with_env_modify({'EMCC_LOGGING': '0'})  # this test assumes no emcc output
   def test_no_warnings(self):
