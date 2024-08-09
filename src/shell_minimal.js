@@ -16,10 +16,9 @@ if (!Module) /** @suppress{checkTypes}*/Module =
 #endif
   {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
 
-#elif ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-
-// When running on the web we expect Module to be defined externally, in the
-// HTML.  Otherwise we must define it here before its first use
+#else
+// Module must defined before its first use, but it may be defined
+// externally, e.g. in the html.
 var Module =
 #if SUPPORTS_GLOBALTHIS
   // As a small code size optimization, we can use 'globalThis' to refer to the global scope Module variable.
@@ -28,9 +27,6 @@ var Module =
   // Otherwise do a good old typeof check.
   typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {};
 #endif
-
-#else
-var Module = {{{ EXPORT_NAME }}};
 #endif
 
 #if MODULARIZE && USE_READY_PROMISE

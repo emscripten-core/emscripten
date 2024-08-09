@@ -3,12 +3,8 @@
 <canvas style='display:block; margin:auto;'></canvas>
 <script>
 
-#if !MODULARIZE
-var {{{ EXPORT_NAME }}} = {}
-#endif
-
 #if WASM == 2
-  var supportsWasm = window.WebAssembly && location.search.indexOf('_rwasm=0') < 0;
+var supportsWasm = window.WebAssembly && location.search.indexOf('_rwasm=0') < 0;
 #endif
 
 // Depending on the build flags that one uses, different files need to be downloaded
