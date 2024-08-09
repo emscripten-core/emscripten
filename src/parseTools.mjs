@@ -67,8 +67,6 @@ export function preprocess(filename) {
 
   const oldFilename = setCurrentFile(filename);
   const fileExt = filename.split('.').pop().toLowerCase();
-  const isHtml = fileExt === 'html' || fileExt === 'htm' ? true : false;
-  let inStyle = false;
   const lines = text.split('\n');
   // text.split yields an extra empty element at the end if text itself ends with a newline.
   if (!lines[lines.length - 1]) {
@@ -80,21 +78,6 @@ export function preprocess(filename) {
 
   try {
     for (let [i, line] of lines.entries()) {
-      if (isHtml) {
-        if (line.includes('<style') && !inStyle) {
-          inStyle = true;
-        }
-        if (line.includes('</style') && inStyle) {
-          inStyle = false;
-        }
-        if (inStyle) {
-          if (showCurrentLine()) {
-            ret += line + '\n';
-          }
-          continue;
-        }
-      }
-
       const trimmed = line.trim();
       if (trimmed.startsWith('#')) {
         const first = trimmed.split(' ', 1)[0];
