@@ -4534,6 +4534,22 @@ int main() {
 ''')
     self.do_runf('src.c', 'c calling: 14\n', emcc_args=['--js-library', 'lib.js'])
 
+  def test_js_lib_errors(self):
+    create_file('lib.js', '''\
+// This is a library file
+#endif // line 2
+''')
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'])
+    self.assertContained('lib.js:2: #endif without matching #if', err)
+
+    create_file('lib.js', '''\
+// This is a library file
+
+#else // line 3
+''')
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'])
+    self.assertContained('lib.js:3: #else without matching #if', err)
+
   def test_js_internal_deps(self):
     create_file('lib.js', r'''
 addToLibrary({
@@ -5752,7 +5768,7 @@ int main() {
     self.set_setting('MAIN_MODULE', '1')
     self.set_setting('ALLOW_MEMORY_GROWTH', '1')
     self.set_setting('MAXIMUM_MEMORY', '4GB')
-    self.do_runf(test_file('hello_world.c'))
+    self.do_runf('hello_world.c')
 
   def test_dashS(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-S'])
@@ -14023,10 +14039,10 @@ int main() {
       #include <stdint.h>
       extern "C" {
         int __gxx_personality_v0(int version, void* actions, uint64_t exception_class, void* exception_object, void* context);
-        int main() {
-          __gxx_personality_v0(0, NULL, 0, NULL, NULL);
-          return 0;
-        }
+      }
+      int main() {
+        __gxx_personality_v0(0, NULL, 0, NULL, NULL);
+        return 0;
       }
     ''', assert_returncode=NON_ZERO, emcc_args=['-fexceptions'])
 
@@ -14820,7 +14836,7 @@ addToLibrary({
     self.assertContained('success', self.run_js('a.out.js'))
 
   def test_unused_destructor(self):
-    self.do_runf(test_file('other/test_unused_destructor.c'), emcc_args=['-flto', '-O2'])
+    self.do_runf('other/test_unused_destructor.c', emcc_args=['-flto', '-O2'])
     # Verify that the string constant in the destructor is not included in the binary
     self.assertNotIn(b'hello from dtor', read_binary('test_unused_destructor.wasm'))
 
@@ -15030,8 +15046,8 @@ addToLibrary({
     console.log({{{ POINTER_SIZE }}});
     ''')
     self.emcc_args += ['--pre-js', 'pre.js', '--post-js', 'post.js']
-    self.do_runf(test_file('hello_world.c'), 'assertions enabled\n4', emcc_args=['-sASSERTIONS=1'])
-    self.do_runf(test_file('hello_world.c'), 'assertions disabled\n4', emcc_args=['-sASSERTIONS=0'])
+    self.do_runf('hello_world.c', 'assertions enabled\n4', emcc_args=['-sASSERTIONS=1'])
+    self.do_runf('hello_world.c', 'assertions disabled\n4', emcc_args=['-sASSERTIONS=0'])
     self.assertNotContained('#preprocess', read_file('hello_world.js'))
 
   @with_both_compilers

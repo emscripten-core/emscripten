@@ -132,7 +132,9 @@ export function preprocess(filename) {
             }
           }
         } else if (first === '#else') {
-          assert(showStack.length > 0);
+          if (showStack.length == 0) {
+            error(`${filename}:${i + 1}: #else without matching #if`);
+          }
           const curr = showStack.pop();
           if (curr == IGNORE) {
             showStack.push(SHOW);
@@ -140,7 +142,9 @@ export function preprocess(filename) {
             showStack.push(IGNORE);
           }
         } else if (first === '#endif') {
-          assert(showStack.length > 0);
+          if (showStack.length == 0) {
+            error(`${filename}:${i + 1}: #endif without matching #if`);
+          }
           showStack.pop();
         } else if (first === '#warning') {
           if (showCurrentLine()) {

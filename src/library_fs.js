@@ -34,16 +34,16 @@ addToLibrary({
   $FS__postset: function() {
     // TODO: do we need noFSInit?
     addAtInit(`
-if (!Module['noFSInit'] && !FS.init.initialized)
+if (!Module['noFSInit'] && !FS.initialized)
   FS.init();
 FS.ignorePermissions = false;
 `)
     addAtExit('FS.quit();');
     return `
 FS.createPreloadedFile = FS_createPreloadedFile;
-FS.staticInit();` +
-           // Get module methods from settings
-           '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}';
+FS.staticInit();
+// Set module methods based on EXPORTED_RUNTIME_METHODS
+{{{ EXPORTED_RUNTIME_METHODS.filter((func) => func.startsWith('FS_')).map((func) => 'Module["' + func + '"] = FS.' + func.substr(3) + ";\n").reduce((str, func) => str + func, '') }}}`;
   },
   $FS: {
     root: null,
@@ -1471,9 +1471,9 @@ FS.staticInit();` +
     },
     init(input, output, error) {
 #if ASSERTIONS
-      assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
+      assert(!FS.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
 #endif
-      FS.init.initialized = true;
+      FS.initialized = true;
 
       // Allow Module.stdin etc. to provide defaults, if none explicitly passed to us here
       Module['stdin'] = input || Module['stdin'];
@@ -1483,7 +1483,7 @@ FS.staticInit();` +
       FS.createStandardStreams();
     },
     quit() {
-      FS.init.initialized = false;
+      FS.initialized = false;
       // force-flush all streams, so we get musl std streams printed out
 #if hasExportedSymbol('fflush')
       _fflush(0);

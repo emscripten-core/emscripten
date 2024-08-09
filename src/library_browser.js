@@ -104,6 +104,7 @@ var LibraryBrowser = {
 #endif
       }
     },
+    useWebGL: false,
     isFullscreen: false,
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
@@ -309,14 +310,12 @@ var LibraryBrowser = {
 #endif
         Module.ctx = ctx;
         if (useWebGL) GL.makeContextCurrent(contextHandle);
-        Module.useWebGL = useWebGL;
+        Browser.useWebGL = useWebGL;
         Browser.moduleContextCreatedCallbacks.forEach((callback) => callback());
         Browser.init();
       }
       return ctx;
     },
-
-    destroyContext(canvas, useWebGL, setInModule) {},
 
     fullscreenHandlersInstalled: false,
     lockPointer: undefined,
