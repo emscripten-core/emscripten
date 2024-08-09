@@ -233,8 +233,6 @@ var LibraryDylink = {
 #endif
         } else if (typeof value == {{{ POINTER_JS_TYPE }}}) {
           GOT[symName].value = value;
-        } else {
-          err(`unhandled export type for '${symName}': ${typeof value}`);
         }
 #if DYLINK_DEBUG == 2
         dbg(`updateGOT:  after: ${symName} : ${GOT[symName].value} (${value})`);
@@ -267,9 +265,8 @@ var LibraryDylink = {
         continue;
       }
 #endif
-      if (typeof value == 'object') {
-        // a breaking change in the wasm spec, globals are now objects
-        // https://github.com/WebAssembly/mutable-global/issues/1
+      if (typeof value == 'object' && value.value) {
+        // For Wasm globals, extract the inner value.
         value = value.value;
       }
       if (typeof value == {{{ POINTER_JS_TYPE }}}) {
@@ -315,8 +312,6 @@ var LibraryDylink = {
         } else if (typeof value == 'bigint') {
           entry.value = value;
 #endif
-        } else {
-          throw new Error(`bad export type for '${symName}': ${typeof value}`);
         }
       }
     }

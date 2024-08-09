@@ -6,4 +6,5 @@ dynCall_jiji
 emscripten_stack_get_current
 main
 malloc
+memory
 setThrew

@@ -6,4 +6,3 @@ __table_base
 _emscripten_memcpy_js
 emscripten_resize_heap
 fd_write
-memory
