@@ -25,9 +25,13 @@ int main() {
   assert(result == -1);
   assert(errno == EBADF);
 
+  // Test stat of file with trailing slash should fail.
+  assert(stat("/dev/stdout/", &invalid) == -1);
+  assert(errno == ENOTDIR);
+
   // Test opening a file and calling fstat.
   struct stat file;
-  int fd = open("/dev/stdout/", O_WRONLY);
+  int fd = open("/dev/stdout", O_WRONLY);
   assert(fd >= 0);
   assert(fstat(fd, &file) != -1);
 
@@ -48,7 +52,7 @@ int main() {
   close(fd);
 
   // Check to see if the previous inode number matches.
-  int newfd = open("/dev/stdout/", O_WRONLY);
+  int newfd = open("/dev/stdout", O_WRONLY);
   struct stat newFile;
   assert(newfd >= 0);
   assert(fstat(newfd, &newFile) != -1);
@@ -95,7 +99,7 @@ int main() {
 
   // Test calling stat without opening a file.
   struct stat statFile;
-  assert(stat("/dev/stdout/", &statFile) != -1);
+  assert(stat("/dev/stdout", &statFile) != -1);
 
   assert(statFile.st_size == 0);
   assert((statFile.st_mode & S_IFMT) == S_IFCHR);

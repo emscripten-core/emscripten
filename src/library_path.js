@@ -37,8 +37,8 @@ addToLibrary({
       return parts;
     },
     normalize: (path) => {
-      var isAbsolute = PATH.isAbs(path),
-          trailingSlash = path.substr(-1) === '/';
+      var isAbsolute = PATH.isAbs(path);
+      var trailingSlash = path.endsWith('/');
       // Normalize the path
       path = PATH.normalizeArray(path.split('/').filter((p) => !!p), !isAbsolute).join('/');
       if (!path && !isAbsolute) {

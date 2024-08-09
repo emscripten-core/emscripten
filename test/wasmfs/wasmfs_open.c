@@ -16,13 +16,15 @@
 // FIXME: Merge with other existing close and open tests.
 
 int main() {
-  // Test writing to a file with a trailing slash.
+  // Opening a file with trailing backslash should fail.
   int fd = open("/dev/stdout/", O_WRONLY);
-
-  dprintf(fd, "WORKING WITH TRAILING BACKSLASH\n");
-
-  // Close open file
-  close(fd);
+  assert(fd == -1);
+#ifdef WASMFS
+  assert(errno == ENOTDIR);
+#else
+  assert(errno == ENOENT);
+#endif
+  printf("Errno: %s\n", strerror(errno));
 
   // Test writing to a file with no trailing backslash.
   int fd2 = open("/dev/stdout", O_WRONLY);

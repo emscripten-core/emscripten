@@ -177,6 +177,7 @@ FS.staticInit();
     // paths
     //
     lookupPath(path, opts = {}) {
+      var trailingSlash = path.endsWith('/');
       path = PATH_FS.resolve(path);
 
       if (!path) return { path: '', node: null };
@@ -231,6 +232,10 @@ FS.staticInit();
             }
           }
         }
+      }
+
+      if (trailingSlash && !FS.isDir(current.mode)) {
+        throw new FS.ErrnoError({{{ cDefs.ENOTDIR }}});
       }
 
       return { path: current_path, node: current };

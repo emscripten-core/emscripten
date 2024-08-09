@@ -20,6 +20,8 @@ int main(int argc, char **argv) {
   testrealpath("testfile.txt");
   testrealpath("Folder/testfile.txt");
   testrealpath("testnonexistentfile.txt");
+  // Filenames with trailing slash should fail.
+  testrealpath("Folder/testfile.txt/");
   // folders
   testrealpath("Folder");
   testrealpath("/Folder");
