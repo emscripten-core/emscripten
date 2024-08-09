@@ -1701,6 +1701,26 @@ Module['stdin'] = () => data.shift() || null;
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('module/test_stdin.c', 'hello, world!')
 
+  @also_with_noderawfs
+  @crossplatform
+  def test_module_stdout_stderr(self):
+    self.set_setting('FORCE_FILESYSTEM')
+    create_file('pre.js', '''
+let stdout = '';
+let stderr = '';
+
+Module['print'] = (text) => stdout += text;
+Module['printErr'] = (text) => stderr += text;
+Module['postRun'] = () => {
+    assert(stderr == '', 'stderr should be empty. \\n' +
+        'stderr: \\n' + stderr);
+    assert(stdout.startsWith('hello, world!'), 'stdout should start with the famous greeting. \\n' +
+        'stdout: \\n' + stdout);
+}
+''')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    self.do_runf('hello_world.c')
+
   def test_ungetc_fscanf(self):
     create_file('main.c', r'''
       #include <stdio.h>
@@ -13504,26 +13524,6 @@ Module.postRun = () => {{
 ''')
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_run_in_out_file_test('unistd/close.c')
-
-  @requires_node
-  def test_noderawfs_override_standard_streams(self):
-    self.set_setting('NODERAWFS')
-    self.set_setting('FORCE_FILESYSTEM')
-    create_file('pre.js', '''
-let stdout = '';
-let stderr = '';
-
-Module['print'] = (text) => stdout += text;
-Module['printErr'] = (text) => stderr += text;
-Module['postRun'] = () => {
-    assert(stderr == '', 'stderr should be empty. \\n' +
-        'stderr: \\n' + stderr);
-    assert(stdout.startsWith('hello, world!'), 'stdout should start with the famous greeting. \\n' +
-        'stdout: \\n' + stdout);
-}
-''')
-    self.emcc_args += ['--pre-js', 'pre.js']
-    self.do_runf('hello_world.c')
 
   # WASMFS tests
 
