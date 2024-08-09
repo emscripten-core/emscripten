@@ -3191,7 +3191,7 @@ Module["preRun"] = () => {
     'O3': (['-O3'],),
   })
   def test_async_mainloop(self, args):
-    self.btest_exit('async_mainloop.cpp', args=args + ['-sASYNCIFY'])
+    self.btest_exit('test_async_mainloop.c', args=args + ['-sASYNCIFY'])
 
   @requires_sound_hardware
   @parameterized({
