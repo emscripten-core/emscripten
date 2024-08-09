@@ -15,7 +15,6 @@ import re
 import shlex
 import stat
 import shutil
-import time
 from subprocess import PIPE
 from urllib.parse import quote
 
@@ -2581,50 +2580,6 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   write_file(target, shell)
 
 
-def minify_html(filename):
-  if settings.DEBUG_LEVEL >= 2:
-    return
-
-  opts = []
-  # -g1 and greater retain whitespace and comments in source
-  if settings.DEBUG_LEVEL == 0:
-    opts += ['--collapse-whitespace',
-             '--collapse-inline-tag-whitespace',
-             '--remove-comments',
-             '--remove-tag-whitespace',
-             '--sort-attributes',
-             '--sort-class-name']
-  # -g2 and greater do not minify HTML at all
-  if settings.DEBUG_LEVEL <= 1:
-    opts += ['--decode-entities',
-             '--collapse-boolean-attributes',
-             '--remove-attribute-quotes',
-             '--remove-redundant-attributes',
-             '--remove-script-type-attributes',
-             '--remove-style-link-type-attributes',
-             '--use-short-doctype',
-             '--minify-css', 'true',
-             '--minify-js', 'true']
-
-  # html-minifier also has the following options, but they look unsafe for use:
-  # '--remove-optional-tags': removes e.g. <head></head> and <body></body> tags from the page.
-  #                           (Breaks at least browser.test_sdl2glshader)
-  # '--remove-empty-attributes': removes all attributes with whitespace-only values.
-  #                              (Breaks at least browser.test_asmfs_hello_file)
-  # '--remove-empty-elements': removes all elements with empty contents.
-  #                            (Breaks at least browser.test_asm_swapping)
-
-  logger.debug(f'minifying HTML file {filename}')
-  size_before = os.path.getsize(filename)
-  start_time = time.time()
-  shared.check_call(shared.get_npm_cmd('html-minifier-terser') + [filename, '-o', filename] + opts, env=shared.env_with_node_in_path())
-
-  elapsed_time = time.time() - start_time
-  size_after = os.path.getsize(filename)
-  delta = size_after - size_before
-  logger.debug(f'HTML minification took {elapsed_time:.2f} seconds, and shrunk size of {filename} from {size_before} to {size_after} bytes, delta={delta} ({delta * 100.0 / size_before:+.2f}%)')
-
-
 def generate_html(target, options, js_target, target_basename, wasm_target):
   logger.debug('generating HTML')
 
@@ -2632,9 +2587,6 @@ def generate_html(target, options, js_target, target_basename, wasm_target):
     generate_minimal_runtime_html(target, options, js_target, target_basename)
   else:
     generate_traditional_runtime_html(target, options, js_target, target_basename, wasm_target)
-
-  if settings.MINIFY_HTML and (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1):
-    minify_html(target)
 
   tools.line_endings.convert_line_endings_in_file(target, os.linesep, options.output_eol)
 

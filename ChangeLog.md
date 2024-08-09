@@ -24,6 +24,9 @@ See docs/process.md for more on how version tagging works.
   is only useful under very specific circumstances, and has some downsides, so
   disabling it by default makes sense. (#22257)
 - Add WebP (`.webp`) decoding support in file preloading. (#22282)
+- The `MINIFY_HTML` settings, along with the internal use of terser to minify
+  html output was removed.  Folks who want to run terser of their html can
+  continue to do so via an explict separate build step. (#22297)
 
 3.1.64 - 07/22/24
 -----------------------
