@@ -21,11 +21,7 @@ int main() {
   assert(errno == EBADF);
 
   err = isatty(open("/dev/stdin", O_RDONLY));
-#ifdef NODERAWFS
-  assert(!err);
-#else
   assert(err == 1);
-#endif
 
   err = isatty(open("/dev/null", O_RDONLY));
   assert(!err);

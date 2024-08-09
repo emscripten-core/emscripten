@@ -1699,7 +1699,7 @@ const data = 'hello, world!\\n'.split('').map(c => c.charCodeAt(0));
 Module['stdin'] = () => data.shift() || null;
 ''')
     self.emcc_args += ['--pre-js', 'pre.js']
-    self.do_runf(test_file('module/test_stdin.c'), 'hello, world!')
+    self.do_runf('module/test_stdin.c', 'hello, world!')
 
   def test_ungetc_fscanf(self):
     create_file('main.c', r'''
@@ -13452,7 +13452,6 @@ void foo() {}
   def test_unistd_swab(self):
     self.do_run_in_out_file_test('unistd/swab.c')
 
-  @also_with_noderawfs
   def test_unistd_isatty(self):
     self.do_runf('unistd/isatty.c', 'success')
 
@@ -13508,7 +13507,7 @@ Module['postRun'] = () => {
 }
 ''')
     self.emcc_args += ['--pre-js', 'pre.js']
-    self.do_runf(test_file('hello_world.c'))
+    self.do_runf('hello_world.c')
 
   # WASMFS tests
 
