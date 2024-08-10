@@ -105,7 +105,6 @@ updateMemoryViews();
 #endif // IMPORTED_MEMORY
 
 #include "runtime_stack_check.js"
-#include "runtime_assertions.js"
 
 #if LOAD_SOURCE_MAP
 var wasmSourceMap;
