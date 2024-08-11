@@ -363,6 +363,23 @@ def with_env_modify(updates):
   return decorated
 
 
+def also_with_wasmfs(f):
+  assert callable(f)
+
+  @wraps(f)
+  def metafunc(self, wasmfs, *args, **kwargs):
+    if wasmfs:
+      self.set_setting('WASMFS')
+      self.emcc_args.append('-DWASMFS')
+      f(self, *args, **kwargs)
+    else:
+      f(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,),
+                          'wasmfs': (True,)})
+  return metafunc
+
+
 def also_with_noderawfs(func):
   assert callable(func)
 
