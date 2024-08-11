@@ -470,7 +470,6 @@ checkIncomingModuleAPI();
 // minified.
 {{{ makeModuleReceive('arguments_', 'arguments') }}}
 {{{ makeModuleReceive('thisProgram') }}}
-{{{ makeModuleReceive('quit_', 'quit') }}}
 
 // perform assertions in shell.js after we set up out() and err(), as otherwise if an assertion fails it cannot print the message
 #if ASSERTIONS

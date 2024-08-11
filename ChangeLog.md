@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.65 (in development)
 -----------------------
+- Remove `Module['quit']` handling.  This could be used to override the internal
+  method for shutting down the program, but it was neither documented nor
+  tested.  Programs that want to intercept the shutting down of a program can
+  use `Module['onExit']`. (#22371)
 - The `NODEJS_CATCH_EXIT` setting is now disabled by default.  This setting
   is only useful under very specific circumstances, and has some downsides, so
   disabling it by default makes sense. (#22257)
