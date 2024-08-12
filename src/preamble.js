@@ -163,7 +163,6 @@ assert(!Module['INITIAL_MEMORY'], 'Detected runtime INITIAL_MEMORY setting.  Use
 #endif // !IMPORTED_MEMORY && ASSERTIONS
 
 #include "runtime_stack_check.js"
-#include "runtime_assertions.js"
 
 var __ATPRERUN__  = []; // functions called before the runtime is initialized
 var __ATINIT__    = []; // functions called during startup
