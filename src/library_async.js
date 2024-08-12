@@ -123,7 +123,7 @@ addToLibrary({
 #endif
           ret[x] = (...args) => {
 #if ASYNCIFY_DEBUG >= 2
-            dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length} try ${x}`);
+            dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} try ${x}`);
 #endif
 #if ASYNCIFY == 1
             Asyncify.exportCallStack.push(x);
