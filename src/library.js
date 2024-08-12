@@ -188,9 +188,10 @@ addToLibrary({
 
   // Grows the wasm memory to the given byte size, and updates the JS views to
   // it. Returns 1 on success, 0 on error.
+  $growMemory__deps: ['$alignMemory'],
   $growMemory: (size) => {
     var b = wasmMemory.buffer;
-    var pages = (size - b.byteLength + {{{ WASM_PAGE_SIZE - 1 }}}) / {{{ WASM_PAGE_SIZE }}};
+    var pages = alignMemory(size - b.byteLength, {{{ WASM_PAGE_SIZE }}}) / {{{ WASM_PAGE_SIZE }}};
 #if RUNTIME_DEBUG
     dbg(`growMemory: ${size} (+${size - b.byteLength} bytes / ${pages} pages)`);
 #endif
@@ -2262,7 +2263,7 @@ addToLibrary({
 #if ASSERTIONS
     assert(alignment, "alignment argument is required");
 #endif
-    return Math.ceil(size / alignment) * alignment;
+    return ((size + (alignment - 1)) / alignment) | 0;
   },
 
   // Allocate memory for an mmap operation. This allocates space of the right
