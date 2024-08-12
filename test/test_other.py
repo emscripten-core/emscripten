@@ -36,7 +36,7 @@ from common import env_modify, no_mac, no_windows, only_windows, requires_native
 from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
 from common import compiler_for, EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary
 from common import requires_wasm_exnref, crossplatform, with_all_eh_sjlj, with_all_sjlj
-from common import also_with_standalone_wasm, also_with_wasm2js, also_with_noderawfs
+from common import also_with_standalone_wasm, also_with_wasm2js, also_with_noderawfs, also_with_wasmfs
 from common import also_with_minimal_runtime, also_with_wasm_bigint, also_with_wasm64, flaky
 from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER
 from common import requires_network, parameterize
@@ -108,23 +108,6 @@ def with_both_compilers(f):
   parameterize(f, {'': (EMCC,),
                    'emxx': (EMXX,)})
   return f
-
-
-def also_with_wasmfs(f):
-  assert callable(f)
-
-  @wraps(f)
-  def metafunc(self, wasmfs, *args, **kwargs):
-    if wasmfs:
-      self.set_setting('WASMFS')
-      self.emcc_args.append('-DWASMFS')
-      f(self, *args, **kwargs)
-    else:
-      f(self, *args, **kwargs)
-
-  parameterize(metafunc, {'': (False,),
-                          'wasmfs': (True,)})
-  return metafunc
 
 
 def wasmfs_all_backends(f):
