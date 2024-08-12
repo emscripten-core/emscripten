@@ -10,10 +10,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
-#include "emscripten.h"
+#include "emscripten/heap.h"
 
 int get_memory_size() {
-  return EM_ASM_INT({ return HEAP8.length });
+  return emscripten_get_heap_size();
 }
 
 int main() {
