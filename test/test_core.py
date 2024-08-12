@@ -2094,7 +2094,7 @@ int main(int argc, char **argv) {
 
     # check that memory growth does not exceed the wasm mem max limit and is exactly or one step below the wasm mem max
     self.emcc_args += ['-sALLOW_MEMORY_GROWTH', '-sSTACK_SIZE=1Mb', '-sINITIAL_MEMORY=64Mb', '-sMAXIMUM_MEMORY=130Mb', '-sMEMORY_GROWTH_LINEAR_STEP=1Mb']
-    self.do_core_test('test_memorygrowth_memory_growth_step.c')
+    self.do_core_test('test_memorygrowth_linear_step.c')
 
   @no_ubsan('UBSan seems to effect the precise memory usage')
   @no_4gb('depends on specifc memory layout')
