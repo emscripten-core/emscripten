@@ -418,17 +418,21 @@ function exportRuntime() {
     'HEAPU64',
   ];
 
-  if (PTHREADS && ALLOW_MEMORY_GROWTH) {
-    runtimeElements.push(
-      'GROWABLE_HEAP_I8',
-      'GROWABLE_HEAP_U8',
-      'GROWABLE_HEAP_I16',
-      'GROWABLE_HEAP_U16',
-      'GROWABLE_HEAP_I32',
-      'GROWABLE_HEAP_U32',
-      'GROWABLE_HEAP_F32',
-      'GROWABLE_HEAP_F64',
-    );
+  if (PTHREADS) {
+    runtimeElements.push('PThread');
+
+    if (ALLOW_MEMORY_GROWTH) {
+      runtimeElements.push(
+        'GROWABLE_HEAP_I8',
+        'GROWABLE_HEAP_U8',
+        'GROWABLE_HEAP_I16',
+        'GROWABLE_HEAP_U16',
+        'GROWABLE_HEAP_I32',
+        'GROWABLE_HEAP_U32',
+        'GROWABLE_HEAP_F32',
+        'GROWABLE_HEAP_F64',
+      );
+    }
   }
   if (USE_OFFSET_CONVERTER) {
     runtimeElements.push('WasmOffsetConverter');
