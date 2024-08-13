@@ -11,7 +11,8 @@
 int numFrames = 0;
 
 void looper() {
-  static double frame0 = emscripten_get_now();
+  static double frame0 = 0;
+  if (!frame0) frame0 = emscripten_get_now();
 
   double start = emscripten_get_now();
 

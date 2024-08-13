@@ -13317,6 +13317,22 @@ void foo() {}
   def test_emscripten_set_immediate_loop(self):
     self.do_runf('emscripten_set_immediate_loop.c')
 
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+  })
+  def test_emscripten_main_loop(self, args):
+    self.do_runf('test_emscripten_main_loop.c', emcc_args=args)
+
+  def test_emscripten_main_loop_and_blocker(self):
+    self.do_runf('test_emscripten_main_loop_and_blocker.c')
+
+  def test_emscripten_main_loop_settimeout(self):
+    self.do_runf('test_emscripten_main_loop_settimeout.c')
+
+  def test_emscripten_main_loop_setimmediate(self):
+    self.do_runf('test_emscripten_main_loop_setimmediate.c')
+
   @node_pthreads
   def test_pthread_trap(self):
     # TODO(https://github.com/emscripten-core/emscripten/issues/15161):
