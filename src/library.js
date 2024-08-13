@@ -182,10 +182,6 @@ addToLibrary({
   },
 #endif // ABORTING_MALLOC
 
-#if TEST_MEMORY_GROWTH_FAILS
-  $growMemory: (size) => false,
-#else
-
   // Grows the wasm memory to the given byte size, and updates the JS views to
   // it. Returns 1 on success, 0 on error.
   $growMemory: (size) => {
@@ -215,7 +211,6 @@ addToLibrary({
     // implicit 0 return to save code size (caller will cast "undefined" into 0
     // anyhow)
   },
-#endif // ~TEST_MEMORY_GROWTH_FAILS
 
   emscripten_resize_heap__deps: [
     '$getHeapMax',
