@@ -12,7 +12,7 @@ double prevTime = -1.0;
 int frame = 0;
 bool blockerExecuted = false;
 
-void final(void*) {
+void final(void* arg) {
   assert(frame == 20);
   exit(0);
 }
@@ -34,7 +34,7 @@ void looper() {
   }
 }
 
-void main_loop_blocker(void*) {
+void main_loop_blocker(void* arg) {
   blockerExecuted = true;
   emscripten_pause_main_loop();
   emscripten_resume_main_loop();

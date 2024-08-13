@@ -1797,7 +1797,7 @@ int main() {
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.maybe_closure()
-    self.do_runf('emscripten_get_now.cpp', 'Timer resolution is good')
+    self.do_runf('test_emscripten_get_now.c', 'Timer resolution is good')
 
   def test_emscripten_get_compiler_setting(self):
     src = test_file('core/emscripten_get_compiler_setting.c')
