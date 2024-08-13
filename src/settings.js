@@ -2171,10 +2171,6 @@ var SIGNATURE_CONVERSIONS = [];
 // [link]
 var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = false;
 
-// Internal (testing only): Forces memory growing to fail.
-// [link]
-var TEST_MEMORY_GROWTH_FAILS = false;
-
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
 // For removed settings (which now effectively have a fixed value and can no

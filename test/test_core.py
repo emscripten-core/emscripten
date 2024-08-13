@@ -2113,7 +2113,8 @@ int main(int argc, char **argv) {
       self.skipTest('test needs to modify memory growth')
 
     self.set_setting('ALLOW_MEMORY_GROWTH')
-    self.set_setting('TEST_MEMORY_GROWTH_FAILS')
+    # Force memory growth to fail at runtime
+    self.add_pre_run('growMemory = (size) => false;')
     self.do_core_test('test_memorygrowth_3.c')
 
   @parameterized({

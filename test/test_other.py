@@ -6834,6 +6834,8 @@ int main() {
   })
   @also_with_wasm2js
   def test_failing_alloc(self, growth):
+    # Force memory growth to fail at runtime
+    self.add_pre_run('growMemory = (size) => false;')
     for pre_fail, post_fail, opts in [
       ('', '', []),
       ('EM_ASM( Module.temp = _sbrk() );', 'EM_ASM( assert(Module.temp === _sbrk(), "must not adjust brk when an alloc fails!") );', []),
@@ -6880,7 +6882,6 @@ int main() {
 }
 ''' % (pre_fail, post_fail))
         args = [EMXX, 'main.cpp', '-sEXPORTED_FUNCTIONS=_main,_sbrk', '-sINITIAL_MEMORY=16MB'] + opts + aborting_args
-        args += ['-sTEST_MEMORY_GROWTH_FAILS'] # In this test, force memory growing to fail
         if growth:
           args += ['-sALLOW_MEMORY_GROWTH']
         # growth disables aborting by default, but it can be overridden
