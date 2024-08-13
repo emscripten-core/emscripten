@@ -219,6 +219,7 @@ addToLibrary({
 
   emscripten_resize_heap__deps: [
     '$getHeapMax',
+    '$alignMemory',
 #if ASSERTIONS == 2
     'emscripten_get_now',
 #endif
@@ -289,8 +290,6 @@ addToLibrary({
 #endif
     }
 
-    var alignUp = (x, multiple) => x + (multiple - x % multiple) % multiple;
-
     // Loop through potential heap size increases. If we attempt a too eager
     // reservation that fails, cut down on the attempted size and reserve a
     // smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
@@ -306,7 +305,7 @@ addToLibrary({
       var overGrownHeapSize = oldSize + {{{ MEMORY_GROWTH_LINEAR_STEP }}} / cutDown; // ensure linear growth
 #endif
 
-      var newSize = Math.min(maxHeapSize, alignUp(Math.max(requestedSize, overGrownHeapSize), {{{ WASM_PAGE_SIZE }}}));
+      var newSize = Math.min(maxHeapSize, alignMemory(Math.max(requestedSize, overGrownHeapSize), {{{ WASM_PAGE_SIZE }}}));
 
 #if ASSERTIONS == 2
       var t0 = _emscripten_get_now();
