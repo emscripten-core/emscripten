@@ -154,7 +154,6 @@ assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' &
 #endif
 
 #if IMPORTED_MEMORY
-// In non-standalone/normal mode, we create the memory here.
 #include "runtime_init_memory.js"
 #elif ASSERTIONS
 // If memory is defined in wasm, the user can't provide it, or set INITIAL_MEMORY
