@@ -5,7 +5,7 @@
 #include <emscripten/stack.h>
 #include <emscripten/console.h>
 #include <malloc.h>
-#include <sys/param.h> // For MAX()
+#include <sys/param.h> // For MAX() and roundup()
 
 #include "emscripten_internal.h"
 
@@ -13,7 +13,6 @@
 #error __EMSCRIPTEN_WASM_WORKERS__ should be defined when building this file!
 #endif
 
-#define ROUND_UP(x, ALIGNMENT) (((x)+ALIGNMENT-1)&-ALIGNMENT)
 #define SBRK_ALIGN (__alignof__(max_align_t))
 #define STACK_ALIGN __BIGGEST_ALIGNMENT__
 
@@ -27,10 +26,10 @@ static void emscripten_wasm_worker_main_thread_initialize() {
 	uintptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
 	assert((*sbrk_ptr % STACK_ALIGN) == 0);
 	if (__builtin_wasm_tls_align() > STACK_ALIGN) {
-		*sbrk_ptr = ROUND_UP(*sbrk_ptr, __builtin_wasm_tls_align());
+		*sbrk_ptr = roundup(*sbrk_ptr, __builtin_wasm_tls_align());
 	}
 	__wasm_init_tls((void*)*sbrk_ptr);
-	*sbrk_ptr += ROUND_UP(__builtin_wasm_tls_size(), SBRK_ALIGN);
+	*sbrk_ptr += roundup(__builtin_wasm_tls_size(), SBRK_ALIGN);
 }
 
 emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackPlusTLSAddress, size_t stackPlusTLSSize)
@@ -48,7 +47,7 @@ emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackPlusTLSAddress
 #ifndef NDEBUG
 	// The Worker's TLS area will be spliced off from the stack region, so the
 	// stack needs to be at least as large as the TLS region.
-	uint32_t tlsSize = ROUND_UP(__builtin_wasm_tls_size(), __builtin_wasm_tls_align());
+	uint32_t tlsSize = roundup(__builtin_wasm_tls_size(), __builtin_wasm_tls_align());
 	assert(stackPlusTLSSize > tlsSize);
 #endif
 	// The TLS region lives at the start of the stack region (the lowest address
@@ -57,7 +56,7 @@ emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackPlusTLSAddress
 	// requirment.
 	if (__builtin_wasm_tls_align() > STACK_ALIGN) {
 		uintptr_t tlsBase = (uintptr_t)stackPlusTLSAddress;
-		tlsBase = ROUND_UP(tlsBase, __builtin_wasm_tls_align());
+		tlsBase = roundup(tlsBase, __builtin_wasm_tls_align());
 		size_t padding = tlsBase - (uintptr_t)stackPlusTLSAddress;
 		stackPlusTLSAddress = (void*)tlsBase;
 		stackPlusTLSSize -= padding;
@@ -69,7 +68,7 @@ emscripten_wasm_worker_t emscripten_malloc_wasm_worker(size_t stackSize)
 {
 	// Add the TLS size to the provided stackSize so that the allocation
 	// will always be large enough to hold the worker TLS data.
-	stackSize += ROUND_UP(__builtin_wasm_tls_size(), STACK_ALIGN);
+	stackSize += roundup(__builtin_wasm_tls_size(), STACK_ALIGN);
 	void* stackPlusTLSAddress = emscripten_builtin_memalign(MAX(__builtin_wasm_tls_align(), STACK_ALIGN), stackSize);
 	return emscripten_create_wasm_worker(stackPlusTLSAddress, stackSize);
 }

@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/param.h> // For roundup macro
 
 #include <emscripten/heap.h>
 
@@ -28,8 +29,6 @@ struct map {
   int prot;
   struct map* next;
 } __attribute__((aligned (1)));
-
-#define ALIGN_TO(value,alignment) (((value) + ((alignment) - 1)) & ~((alignment) - 1))
 
 // Linked list of all mapping, guarded by a musl-style lock (LOCK/UNLOCK)
 static volatile int lock[1];
@@ -115,7 +114,7 @@ intptr_t __syscall_mmap2(intptr_t addr, size_t len, int prot, int flags, int fd,
   // but it is widely used way to allocate memory pages on Linux, BSD and Mac.
   // In this case fd argument is ignored.
   if (flags & MAP_ANONYMOUS) {
-    size_t alloc_len = ALIGN_TO(len, 16);
+    size_t alloc_len = roundup(len, 16);
     // For anonymous maps, allocate that mapping at the end of the region.
     void* ptr = emscripten_builtin_memalign(WASM_PAGE_SIZE, alloc_len + sizeof(struct map));
     if (!ptr) {

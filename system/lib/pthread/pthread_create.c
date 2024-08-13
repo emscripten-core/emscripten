@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sys/param.h> // For roundup macro
 #include <threads.h>
 #include <unistd.h>
 #include <emscripten/heap.h>
@@ -108,8 +109,6 @@ void __tl_sync(pthread_t td)
 static volatile size_t dummy = 0;
 weak_alias(dummy, __pthread_tsd_size);
 
-#define ROUND_UP(x, ALIGNMENT) (((x)+ALIGNMENT-1)&-ALIGNMENT)
-
 int __pthread_create(pthread_t* restrict res,
                      const pthread_attr_t* restrict attrp,
                      void* (*entry)(void*),
@@ -192,14 +191,14 @@ int __pthread_create(pthread_t* restrict res,
 
   // 2. tls data
   if (__builtin_wasm_tls_size()) {
-    offset = ROUND_UP(offset, __builtin_wasm_tls_align());
+    offset = roundup(offset, __builtin_wasm_tls_align());
     new->tls_base = (void*)offset;
     offset += __builtin_wasm_tls_size();
   }
 
   // 3. tsd slots
   if (__pthread_tsd_size) {
-    offset = ROUND_UP(offset, TSD_ALIGN);
+    offset = roundup(offset, TSD_ALIGN);
     new->tsd = (void*)offset;
     offset += __pthread_tsd_size;
   }
@@ -210,7 +209,7 @@ int __pthread_create(pthread_t* restrict res,
   if (attr._a_stackaddr) {
     new->stack = (void*)attr._a_stackaddr;
   } else {
-    offset = ROUND_UP(offset + new->stack_size, STACK_ALIGN);
+    offset = roundup(offset + new->stack_size, STACK_ALIGN);
     new->stack = (void*)offset;
   }
 

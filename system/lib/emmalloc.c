@@ -58,6 +58,7 @@
 #include <assert.h>
 #include <malloc.h>
 #include <stdio.h>
+#include <sys/param.h> // For roundup macro
 #include <emscripten/heap.h>
 #include <emscripten/threading.h>
 
@@ -136,7 +137,6 @@ static volatile uint8_t multithreadingLock = 0;
 #endif
 
 #define IS_POWER_OF_2(val) (((val) & ((val)-1)) == 0)
-#define ALIGN_UP(ptr, alignment) ((uint8_t*)((((uintptr_t)(ptr)) + ((alignment)-1)) & ~((alignment)-1)))
 #define HAS_ALIGNMENT(ptr, alignment) ((((uintptr_t)(ptr)) & ((alignment)-1)) == 0)
 
 static_assert(IS_POWER_OF_2(MALLOC_ALIGNMENT), "MALLOC_ALIGNMENT must be a power of two value!");
@@ -464,7 +464,7 @@ static bool claim_more_memory(size_t numBytes) {
   // to form a seamlessly contiguous region with earlier root regions, which would
   // lead to inefficiently treating the sbrk()ed region to be a new disjoint root
   // region.
-  numBytes = (size_t)ALIGN_UP(numBytes, MALLOC_ALIGNMENT);
+  numBytes = (size_t)roundup(numBytes, MALLOC_ALIGNMENT);
 
   // Claim memory via sbrk
   uint8_t *startPtr = (uint8_t*)sbrk(numBytes);
@@ -576,7 +576,7 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
   // requested allocation alignment, so the payload memory area needs to be rounded
   // upwards to the desired alignment.
   uint8_t *payloadStartPtr = region_payload_start_ptr(freeRegion);
-  uint8_t *payloadStartPtrAligned = ALIGN_UP(payloadStartPtr, alignment);
+  uint8_t *payloadStartPtrAligned = roundup(payloadStartPtr, alignment);
   uint8_t *payloadEndPtr = region_payload_end_ptr(freeRegion);
 
   // Do we have enough free space, taking into account alignment?
@@ -645,7 +645,7 @@ static size_t validate_alloc_size(size_t size) {
   assert(size + REGION_HEADER_SIZE > size);
 
   // Allocation sizes must be a multiple of pointer sizes, and at least 2*sizeof(pointer).
-  size_t validatedSize = size > SMALLEST_ALLOCATION_SIZE ? (size_t)ALIGN_UP(size, sizeof(Region*)) : SMALLEST_ALLOCATION_SIZE;
+  size_t validatedSize = size > SMALLEST_ALLOCATION_SIZE ? (size_t)roundup(size, sizeof(Region*)) : SMALLEST_ALLOCATION_SIZE;
   assert(validatedSize >= size); // 32-bit wraparound should not occur, too large sizes should be stopped before
 
   return validatedSize;
@@ -1244,7 +1244,7 @@ static int trim_dynamic_heap_reservation(size_t pad) {
 
   // Round padding up to multiple of 4 bytes to keep sbrk() and memory region alignment intact.
   // Also have at least 8 bytes of payload so that we can form a full free region.
-  size_t newRegionSize = (size_t)ALIGN_UP(pad, 4);
+  size_t newRegionSize = (size_t)roundup(pad, 4);
   if (pad > 0) {
     newRegionSize += sizeof(Region) - (newRegionSize - pad);
   }
