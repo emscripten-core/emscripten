@@ -866,8 +866,7 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert)
     if (defaultValue) {
       ret += ` = Module['${moduleName}'] || ${defaultValue};`;
     } else {
-      ret += `; ${makeModuleReceive(localName, moduleName)}`;
-      return ret;
+      ret += ` = Module['${moduleName}'];`;
     }
   }
   if (!noAssert) {
