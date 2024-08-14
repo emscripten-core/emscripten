@@ -41,6 +41,8 @@ EM_SIGABRT = 6
 
 
 def wasm_simd(f):
+  assert callable(f)
+
   @wraps(f)
   def decorated(self, *args, **kwargs):
     self.require_simd()
@@ -58,6 +60,9 @@ def wasm_simd(f):
 
 
 def wasm_relaxed_simd(f):
+  assert callable(f)
+
+  @wraps(f)
   def decorated(self):
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4638')
@@ -70,6 +75,9 @@ def wasm_relaxed_simd(f):
 
 
 def needs_non_trapping_float_to_int(f):
+  assert callable(f)
+
+  @wraps(f)
   def decorated(self):
     if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
@@ -151,6 +159,9 @@ def only_wasm2js(note=''):
 
 # Similar to also_with_wasmfs, but also enables the full JS API
 def also_with_wasmfs_js(func):
+  assert callable(func)
+
+  @wraps(func)
   def decorated(self):
     func(self)
     print('wasmfs')
@@ -166,6 +177,7 @@ def also_with_wasmfs_js(func):
 def with_asyncify_and_jspi(f):
   assert callable(f)
 
+  @wraps(f)
   def metafunc(self, jspi):
     if jspi:
       self.set_setting('ASYNCIFY', 2)
@@ -186,6 +198,7 @@ def no_optimize(note=''):
   def decorator(func):
     assert callable(func)
 
+    @wraps(func)
     def decorated(self):
       if self.is_optimizing():
         self.skipTest(note)

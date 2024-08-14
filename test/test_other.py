@@ -111,6 +111,9 @@ def with_both_compilers(f):
 
 
 def wasmfs_all_backends(f):
+  assert callable(f)
+
+  @wraps(f)
   def metafunc(self, backend):
     self.set_setting('WASMFS')
     self.emcc_args.append('-DWASMFS')
