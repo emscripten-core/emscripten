@@ -11577,12 +11577,12 @@ int main(void) {
     # enabling exceptions at link and compile works
     'on': (['-fexceptions'], ['-fexceptions'], True),
     # just compile isn't enough as the JS runtime lacks support
-    'compile_only': (['-fexceptions'], [], False),
+    'compile_only': (['-fexceptions'], [], False, True),
     # just link isn't enough as codegen didn't emit exceptions support
     'link_only': ([], ['-fexceptions'], False),
     'standalone': (['-fexceptions'], ['-fexceptions', '-sSTANDALONE_WASM', '-sWASM_BIGINT'], True),
   })
-  def test_f_exception(self, compile_flags, link_flags, expect_caught):
+  def test_f_exception(self, compile_flags, link_flags, expect_caught, expect_link_failure=False):
     create_file('src.cpp', r'''
       #include <stdio.h>
       int main () {
@@ -11595,6 +11595,11 @@ int main(void) {
       }
     ''')
     self.run_process([EMXX, 'src.cpp', '-c', '-o', 'src.o'] + compile_flags)
+    if expect_link_failure:
+      err = self.expect_fail([EMXX, 'src.o'] + link_flags)
+      self.assertContained("error: DISABLE_EXCEPTION_CATCHING was set, which means no C++ exception catching support code is linked in, but such support is required by symbol '__cxa_begin_catch'", err)
+      return
+
     self.run_process([EMXX, 'src.o'] + link_flags)
     result = self.run_js('a.out.js', assert_returncode=0 if expect_caught else NON_ZERO)
     if not expect_caught:
