@@ -1006,7 +1006,7 @@ var INCOMING_MODULE_JS_API = [
   'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
   'preMainLoop', 'preRun',
   'preinitializedWebGLContext', 'preloadPlugins',
-  'print', 'printErr', 'quit', 'setStatus', 'statusMessage', 'stderr',
+  'print', 'printErr', 'setStatus', 'statusMessage', 'stderr',
   'stdin', 'stdout', 'thisProgram', 'wasm', 'wasmBinary', 'websocket'
 ];
 
