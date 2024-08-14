@@ -383,6 +383,7 @@ def also_with_wasmfs(f):
 def also_with_noderawfs(func):
   assert callable(func)
 
+  @wraps(func)
   def metafunc(self, rawfs, *args, **kwargs):
     if rawfs:
       self.require_node()

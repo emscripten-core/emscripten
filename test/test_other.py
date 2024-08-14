@@ -9640,6 +9640,7 @@ end
     self.assertContained('block "main" took', stderr)
 
   @also_with_wasmfs
+  @crossplatform
   def test_noderawfs(self):
     self.run_process([EMXX, test_file('fs/test_fopen_write.cpp'), '-sNODERAWFS'] + self.get_emcc_args())
     self.assertContained("read 11 bytes. Result: Hello data!", self.run_js('a.out.js'))
