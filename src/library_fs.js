@@ -1403,7 +1403,7 @@ FS.staticInit();
         }
       }, {}, '/proc/self/fd');
     },
-    createStandardStreams() {
+    createStandardStreams(input, output, error) {
       // TODO deprecate the old functionality of a single
       // input / output callback and that utilizes FS.createDevice
       // and instead require a unique set of stream ops
@@ -1412,18 +1412,18 @@ FS.staticInit();
       // default tty devices. however, if the standard streams
       // have been overwritten we create a unique device for
       // them instead.
-      if (Module['stdin']) {
-        FS.createDevice('/dev', 'stdin', Module['stdin']);
+      if (input) {
+        FS.createDevice('/dev', 'stdin', input);
       } else {
         FS.symlink('/dev/tty', '/dev/stdin');
       }
-      if (Module['stdout']) {
-        FS.createDevice('/dev', 'stdout', null, Module['stdout']);
+      if (output) {
+        FS.createDevice('/dev', 'stdout', null, output);
       } else {
         FS.symlink('/dev/tty', '/dev/stdout');
       }
-      if (Module['stderr']) {
-        FS.createDevice('/dev', 'stderr', null, Module['stderr']);
+      if (error) {
+        FS.createDevice('/dev', 'stderr', null, error);
       } else {
         FS.symlink('/dev/tty1', '/dev/stderr');
       }
@@ -1476,11 +1476,17 @@ FS.staticInit();
       FS.initialized = true;
 
       // Allow Module.stdin etc. to provide defaults, if none explicitly passed to us here
-      Module['stdin'] = input || Module['stdin'];
-      Module['stdout'] = output || Module['stdout'];
-      Module['stderr'] = error || Module['stderr'];
+#if expectToReceiveOnModule('stdin')
+      input ??= Module['stdin'];
+#endif
+#if expectToReceiveOnModule('stdout')
+      output ??= Module['stdout'];
+#endif
+#if expectToReceiveOnModule('stderr')
+      error ??= Module['stderr'];
+#endif
 
-      FS.createStandardStreams();
+      FS.createStandardStreams(input, output, error);
     },
     quit() {
       FS.initialized = false;
