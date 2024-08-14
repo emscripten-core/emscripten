@@ -247,6 +247,7 @@ def requires_native_clang(func):
 def requires_node(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_node()
     return func(self, *args, **kwargs)
@@ -257,6 +258,7 @@ def requires_node(func):
 def requires_node_canary(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_node_canary()
     return func(self, *args, **kwargs)
@@ -267,6 +269,7 @@ def requires_node_canary(func):
 def requires_wasm64(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_wasm64()
     return func(self, *args, **kwargs)
@@ -277,6 +280,7 @@ def requires_wasm64(func):
 def requires_wasm_eh(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_wasm_eh()
     return func(self, *args, **kwargs)
@@ -287,6 +291,7 @@ def requires_wasm_eh(func):
 def requires_wasm_exnref(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_wasm_exnref()
     return func(self, *args, **kwargs)
@@ -297,6 +302,7 @@ def requires_wasm_exnref(func):
 def requires_v8(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_v8()
     return func(self, *args, **kwargs)
@@ -316,6 +322,8 @@ def requires_wasm2js(f):
 
 
 def node_pthreads(f):
+  assert callable(f)
+
   @wraps(f)
   def decorated(self, *args, **kwargs):
     self.setup_node_pthreads()
