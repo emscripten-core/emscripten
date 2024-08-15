@@ -51,3 +51,13 @@
   __attribute__((aligned(1)))             \
   char __em_lib_deps_##tag[] = deps;      \
   _EM_END_CDECL
+
+/*
+ * EM_JSPI: Use this macro to mark a function that is asynchronous. The marked
+ * function will be wrapped with a JavaScript Promise Integration wrapper. This
+ * can be used on functions that are exported, or put in the function reference
+ * table.
+ *
+ * Note: This requires -sJSPI.
+ */
+#define EM_JSPI __attribute__((annotate("jspi")))

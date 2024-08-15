@@ -13,8 +13,7 @@ EM_ASYNC_JS(int, async_call, (), {
   return 42;
 });
 
-// TODO Remove EMSCRIPTEN_KEEPALIVE when support for async attributes is enabled.
-EMSCRIPTEN_KEEPALIVE void *run_thread(void *args) {
+EM_JSPI void *run_thread(void *args) {
   int ret = async_call();
   assert(ret == 42);
   return NULL;

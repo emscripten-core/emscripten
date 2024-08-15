@@ -258,6 +258,13 @@ var MINIFY_WHITESPACE = true;
 
 var ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS = [];
 
+// A map of LLVM annotations that are read from a custom section in the Wasm
+// file. The key is the annotation name and the value is an array of function
+// indexes that had the annotation.
+// For example `__attribute__((annotate("a_name"))) void foo();` becomes
+// `{a_name: [<func_index>]}`.
+var LLVM_ANNOTATIONS = {};
+
 var WARN_DEPRECATED = true;
 
 // WebGL 2 provides new garbage-free entry points to call to WebGL. Use

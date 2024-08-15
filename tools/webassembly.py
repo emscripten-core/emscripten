@@ -12,6 +12,7 @@ from functools import wraps
 import logging
 import os
 import sys
+import struct
 
 from . import utils
 
@@ -300,6 +301,25 @@ class Module:
       types.append(FuncType(params, returns))
 
     return types
+
+  def parse_llvm_annotations_section(self):
+    annotations = {}
+    prefix = 'llvm.func_attr.annotate.'
+    for section in self.sections():
+      if section.type == SecType.CUSTOM and section.name.startswith(prefix):
+        self.seek(section.offset)
+        self.read_string()  # name
+        name_size = self.tell() - section.offset
+        # After the name, each function index is an i32.
+        index_count = int((section.size - name_size) / 4)
+        indexes = []
+        for _n in range(0, index_count):
+          byte_data = self.buf.read(4)
+          i32_value = struct.unpack("<i", byte_data)[0]
+          indexes.append(i32_value)
+
+        annotations[section.name[len(prefix):]] = indexes
+    return annotations
 
   def parse_features_section(self):
     features = []

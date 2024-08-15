@@ -294,6 +294,7 @@ class Metadata:
   invoke_funcs: List[str]
   main_reads_params: bool
   global_exports: List[str]
+  llvm_annotations: Dict[str, List[int]]
 
   def __init__(self):
     pass
@@ -349,6 +350,7 @@ def extract_metadata(filename):
     metadata.invoke_funcs = invoke_funcs
     metadata.main_reads_params = get_main_reads_params(module, export_map)
     metadata.global_exports = get_global_exports(module, exports)
+    metadata.llvm_annotations = module.parse_llvm_annotations_section()
 
     # print("Metadata parsed: " + pprint.pformat(metadata))
     return metadata
