@@ -2407,7 +2407,7 @@ def modularize():
     else:
       script_url = "typeof document != 'undefined' ? document.currentScript?.src : undefined"
       if shared.target_environment_may_be('node'):
-        script_url_node = "if (typeof __filename != 'undefined') _scriptName ||= __filename;"
+        script_url_node = "if (typeof __filename != 'undefined') _scriptName = _scriptName || __filename;"
     src = '''%(node_imports)s
 var %(EXPORT_NAME)s = (() => {
   var _scriptName = %(script_url)s;
