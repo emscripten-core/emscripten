@@ -2093,11 +2093,6 @@ throw new Error('Dummy worker.js file should never be used');
   if settings.AUDIO_WORKLET == 1:
     create_worker_file('src/audio_worklet.js', target_dir, settings.AUDIO_WORKLET_FILE, options)
 
-  if settings.MODULARIZE:
-    modularize()
-  elif settings.USE_CLOSURE_COMPILER:
-    module_export_name_substitution()
-
   # Run a final optimization pass to clean up items that were not possible to
   # optimize by Closure, or unoptimalities that were left behind by processing
   # steps that occurred after Closure.
