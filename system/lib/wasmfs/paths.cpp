@@ -75,11 +75,6 @@ ParsedParent doParseParent(std::string_view path,
     path.remove_prefix(1);
   }
 
-  // Ignore trailing '/'.
-  while (!path.empty() && path.back() == '/') {
-    path.remove_suffix(1);
-  }
-
   // An empty path here means that the path was equivalent to "/" and does not
   // contain a child segment for us to return. The root is its own parent, so we
   // can handle this by returning (root, ".").
