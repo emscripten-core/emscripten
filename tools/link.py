@@ -2098,6 +2098,16 @@ throw new Error('Dummy worker.js file should never be used');
   elif settings.USE_CLOSURE_COMPILER:
     module_export_name_substitution()
 
+  ## from issue #22290, running tranpiler after modularize()
+  if final_js:
+    if settings.TRANSPILE:
+      with ToolchainProfiler.profile_block('transpile'):
+        final_js = building.transpile(final_js)
+      save_intermediate('transpile')
+      # Run acorn one more time to minify whitespace after babel runs
+      if settings.MINIFY_WHITESPACE:
+        final_js = building.acorn_optimizer(final_js, ['--minify-whitespace'])
+
   # Run a final optimization pass to clean up items that were not possible to
   # optimize by Closure, or unoptimalities that were left behind by processing
   # steps that occurred after Closure.
@@ -2244,14 +2254,6 @@ def phase_binaryen(target, options, wasm_target):
       with ToolchainProfiler.profile_block('closure_compile'):
         final_js = building.closure_compiler(final_js, extra_closure_args=options.closure_args)
       save_intermediate('closure')
-
-    if settings.TRANSPILE:
-      with ToolchainProfiler.profile_block('transpile'):
-        final_js = building.transpile(final_js)
-      save_intermediate('transpile')
-      # Run acorn one more time to minify whitespace after babel runs
-      if settings.MINIFY_WHITESPACE:
-        final_js = building.acorn_optimizer(final_js, ['--minify-whitespace'])
 
   if settings.ASYNCIFY_LAZY_LOAD_CODE:
     with ToolchainProfiler.profile_block('asyncify_lazy_load_code'):
