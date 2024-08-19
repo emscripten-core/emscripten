@@ -15,11 +15,7 @@ addToLibrary({
     // Override the init function with our own
     FS.init = NODERAWFS.init;`,
   $NODERAWFS: {
-    init(input, output, error) {
-      // Call the original FS.init, this will setup the
-      // stdin, stdout and stderr devices
-      VFS.init(input, output, error);
-
+    init() {
       var _wrapNodeError = function(func) {
         return function(...args) {
           try {
@@ -39,6 +35,9 @@ addToLibrary({
         /** @suppress {partialAlias} */
         FS[_key] = _wrapNodeError(NODERAWFS[_key]);
       }
+
+      // Setup the stdin, stdout and stderr devices
+      FS.createStandardStreams();
     },
     lookup(parent, name) {
 #if ASSERTIONS
@@ -54,6 +53,12 @@ addToLibrary({
       var st = fs.lstatSync(path);
       var mode = NODEFS.getMode(path);
       return { path, node: { id: st.ino, mode, node_ops: NODERAWFS, path }};
+    },
+    createStandardStreams() {
+      FS.createStream({ nfd: 0, position: 0, path: '', flags: 0, tty: false, seekable: false }, 0);
+      for (var i = 1; i < 3; i++) {
+        FS.createStream({ nfd: i, position: 0, path: '', flags: {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}}, tty: false, seekable: false }, i);
+      }
     },
     // generic function for all node creation
     cwd() { return process.cwd(); },

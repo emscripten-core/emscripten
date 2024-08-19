@@ -150,8 +150,8 @@ FS.staticInit();
         this.node_ops = {};
         this.stream_ops = {};
         this.rdev = rdev;
-        this.readMode = 292/*{{{ cDefs.S_IRUGO }}}*/ | 73/*{{{ cDefs.S_IXUGO }}}*/;
-        this.writeMode = 146/*{{{ cDefs.S_IWUGO }}}*/;
+        this.readMode = {{{ cDefs.S_IRUGO }}} | {{{ cDefs.S_IXUGO }}};
+        this.writeMode = {{{ cDefs.S_IWUGO }}};
       }
       get read() {
         return (this.mode & this.readMode) === this.readMode;
