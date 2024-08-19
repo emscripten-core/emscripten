@@ -5132,6 +5132,7 @@ Waste<3> *getMore() {
       warning = 'linking a library with `-shared` will emit a static object file'
       self.assertContainedIf(warning, err, suffix in shared_suffixes)
 
+  @crossplatform
   @parameterized({
     'O2': [['-O2']],
     'O3': [['-O3']],
