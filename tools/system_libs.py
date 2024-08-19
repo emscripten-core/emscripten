@@ -1239,7 +1239,7 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/linux',
-        filenames=['getdents.c', 'gettid.c', 'utimes.c', 'statx.c'])
+        filenames=['getdents.c', 'gettid.c', 'utimes.c', 'statx.c', 'wait4.c', 'wait3.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/sched',
