@@ -1679,7 +1679,6 @@ int f() {
   @crossplatform
   def test_module_stdin(self):
     self.set_setting('FORCE_FILESYSTEM')
-    self.set_setting('EXIT_RUNTIME')
     create_file('pre.js', '''
 const data = 'hello, world!\\n'.split('').map(c => c.charCodeAt(0));
 Module['stdin'] = () => data.shift() || null;
@@ -2041,7 +2040,6 @@ Module['postRun'] = () => {
       'main.cpp',
       '0123456789',
       emcc_args=[
-        '-sEXIT_RUNTIME',
         '-sMAIN_MODULE',
         '-sDISABLE_EXCEPTION_CATCHING=0',
         '-sASSERTIONS=2',
@@ -2068,7 +2066,7 @@ Module['postRun'] = () => {
           printf("\n");
           printother();
           printf("\n");
-          printf("*");
+          printf("*\n");
           return 0;
         }
       ''')
@@ -2099,9 +2097,9 @@ Module['postRun'] = () => {
       print('...')
       # The normal build system is over. We need to do an additional step to link in the dynamic
       # libraries, since we ignored them before
-      self.run_process([EMCC, '-Llibdir', 'main.o'] + link_flags + ['-lother', '-sEXIT_RUNTIME'])
+      self.run_process([EMCC, '-Llibdir', 'main.o'] + link_flags + ['-lother'])
 
-      self.assertContained('*hello from lib\n|hello from lib|\n*', self.run_js('a.out.js'))
+      self.assertContained('*hello from lib\n|hello from lib|\n*\n', self.run_js('a.out.js'))
 
     test(['-lfile'], '') # -l, auto detection from library path
     test([self.in_dir('libdir', 'libfile.so.3.1.4.1.5.9')], '.3.1.4.1.5.9') # handle libX.so.1.2.3 as well
@@ -6354,7 +6352,7 @@ int main(const int argc, const char * const * const argv) {
   }
 }
 ''')
-    self.run_process([EMXX, 'src.cpp', '-sEXIT_RUNTIME', '-sDISABLE_EXCEPTION_CATCHING=0'])
+    self.run_process([EMXX, 'src.cpp', '-sDISABLE_EXCEPTION_CATCHING=0'])
     self.assertContained('''\
 Constructed locale "C"
 This locale is the global locale.
@@ -6522,7 +6520,7 @@ int main(void) {
 
     for args in [[], ['-O2']]:
       print('args:', args)
-      self.run_process([EMCC, 'z.o', 'libtest.a', '-sEXIT_RUNTIME'] + args)
+      self.run_process([EMCC, 'z.o', 'libtest.a'] + args)
       self.run_js('a.out.js', assert_returncode=161)
 
   def test_link_with_bad_o_in_a(self):
@@ -7316,14 +7314,12 @@ Module.preRun = () => {
 ''')
     self.run_process([EMCC, 'side.c', '-o', 'tmp.so', '-sSIDE_MODULE'])
     self.set_setting('MAIN_MODULE', 2)
-    self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_dlopen_async.c', ['--pre-js=pre.js', '--embed-file', 'tmp.so@/usr/lib/libside.so'])
 
   def test_dlopen_promise(self):
     create_file('side.c', 'int foo = 42;\n')
     self.run_process([EMCC, 'side.c', '-o', 'libside.so', '-sSIDE_MODULE'])
     self.set_setting('MAIN_MODULE', 2)
-    self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_dlopen_promise.c')
 
   @parameterized({
@@ -7336,10 +7332,11 @@ Module.preRun = () => {
   def test_dlopen_blocking(self, asyncify):
     self.run_process([EMCC, test_file('other/test_dlopen_blocking_side.c'), '-o', 'libside.so', '-sSIDE_MODULE'])
     self.set_setting('MAIN_MODULE', 2)
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('NO_AUTOLOAD_DYLIBS')
     if asyncify:
       self.set_setting('ASYNCIFY', asyncify)
+      if asyncify == 1:
+        self.set_setting('EXIT_RUNTIME')
       if asyncify == 2:
         self.require_jspi()
     self.emcc_args.append('libside.so')
@@ -7822,7 +7819,6 @@ extraLibraryFuncs.push('jsfunc');
   def test_malloc_multithreading(self, allocator, args):
     args = args + [
       '-O2',
-      '-sEXIT_RUNTIME',
       '-DTOTAL=10000',
       '-sINITIAL_MEMORY=128mb',
       '-sTOTAL_STACK=1mb',
@@ -8802,7 +8798,7 @@ int main() {
     self.run_process(cmd)
 
     # build main module
-    args = ['-g', '-sEXPORTED_FUNCTIONS=_main,_foo', '-sMAIN_MODULE=2', '-sEXIT_RUNTIME', '-lnodefs.js']
+    args = ['-g', '-sEXPORTED_FUNCTIONS=_main,_foo', '-sMAIN_MODULE=2', '-lnodefs.js']
     cmd = [EMCC, test_file('other/alias/main.c'), '-o', 'main.js'] + args
     print(' '.join(cmd))
     self.run_process(cmd)
@@ -11196,13 +11192,10 @@ int main () {
     self.do_runf('safe_heap_2.c', '0 1 2 3 4',
                  emcc_args=['-sSAFE_HEAP=2'])
 
+  @also_with_wasm2js
   def test_safe_heap_log(self):
     self.set_setting('SAFE_HEAP')
     self.set_setting('SAFE_HEAP_LOG')
-    self.set_setting('EXIT_RUNTIME')
-    self.do_runf('hello_world.c', 'SAFE_HEAP load: ')
-
-    self.set_setting('WASM', 0)
     self.do_runf('hello_world.c', 'SAFE_HEAP load: ')
 
   def test_mini_printfs(self):
@@ -11366,7 +11359,7 @@ int main(void) {
     self.do_runf(
       'other/test_lsan_leaks.c',
       assert_all=True,
-      emcc_args=['-fsanitize=address', '-DDISABLE_CONTEXT', '-sEXIT_RUNTIME'],
+      emcc_args=['-fsanitize=address', '-DDISABLE_CONTEXT'],
       assert_returncode=NON_ZERO,
       expected_output=[
         'Direct leak of 3427 byte(s) in 3 object(s) allocated from:',
@@ -11994,7 +11987,6 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
   @node_pthreads
   def test_main_pthread_join_detach(self):
     # Verify that we're unable to join the main thread
-    self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('other/test_pthread_self_join_detach.c')
 
   @node_pthreads
@@ -12011,7 +12003,6 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     self.set_setting('PTHREADS_DEBUG')
     self.set_setting('ASYNCIFY')
     self.set_setting('PTHREAD_POOL_SIZE', 2)
-    self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('other/test_pthread_asyncify.c')
 
   @node_pthreads
@@ -12847,6 +12838,7 @@ exec "$@"
 
   def test_runtime_keepalive(self):
     self.uses_es6 = True
+    # Depends on Module['onExit']
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_runtime_keepalive.cpp')
 
@@ -13893,7 +13885,7 @@ int main() {
     ''')
     expected = 'nap time\ni am awake\n'
 
-    shared_args = ['-Os', '-sEXIT_RUNTIME', '-sENVIRONMENT=shell']
+    shared_args = ['-Os', '-sENVIRONMENT=shell']
     self.run_process([EMXX, 'main.cpp', '-sASYNCIFY'] + shared_args)
     self.assertContained(expected, self.run_js('a.out.js'))
     asyncify_size = os.path.getsize('a.out.wasm')
@@ -14861,14 +14853,10 @@ addToLibrary({
     self.do_other_test('test_regex.c')
 
   def test_isdigit_l(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_isdigit_l.cpp')
 
   def test_iswdigit(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
-    self.do_other_test('test_iswdigit.cpp')
+    self.do_other_test('test_iswdigit.c')
 
   def test_complex(self):
     self.do_other_test('test_complex.c')

@@ -6,12 +6,11 @@
  */
 
 #include <stdio.h>
-#include <cctype>
-#include <cwctype>
+#include <ctype.h>
+#include <wctype.h>
 
 int main() {
-  using namespace std;
   printf("%d ", isdigit('0'));
-  printf("%d ", iswdigit(L'0'));
+  printf("%d\n", iswdigit(L'0'));
   return 0;
 }
