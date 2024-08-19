@@ -55,9 +55,10 @@ addToLibrary({
       return { path, node: { id: st.ino, mode, node_ops: NODERAWFS, path }};
     },
     createStandardStreams() {
-      FS.createStream({ nfd: 0, position: 0, path: '', flags: 0, tty: false, seekable: false }, 0);
+      // FIXME: tty is set to true to appease isatty(), the underlying ioctl syscalls still needs to be implemented, see issue #22264.
+      FS.createStream({ nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false }, 0);
       for (var i = 1; i < 3; i++) {
-        FS.createStream({ nfd: i, position: 0, path: '', flags: {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}}, tty: false, seekable: false }, i);
+        FS.createStream({ nfd: i, position: 0, path: '', flags: {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}}, tty: true, seekable: false }, i);
       }
     },
     // generic function for all node creation
