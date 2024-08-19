@@ -1675,7 +1675,6 @@ int f() {
         os.system(f'cat in.txt | {cmd} > out.txt')
       self.assertContained('abcdef\nghijkl\neof', read_file('out.txt'))
 
-  # @also_with_noderawfs # NODERAWFS doesn't use library_tty.js for stdio streams
   @crossplatform
   def test_module_stdin(self):
     self.set_setting('FORCE_FILESYSTEM')
@@ -1687,7 +1686,6 @@ Module['stdin'] = () => data.shift() || null;
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('module/test_stdin.c', 'hello, world!')
 
-  # @also_with_noderawfs # NODERAWFS doesn't use library_tty.js for stdio streams
   @crossplatform
   def test_module_stdout_stderr(self):
     self.set_setting('FORCE_FILESYSTEM')
@@ -1707,7 +1705,6 @@ Module['postRun'] = () => {
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('hello_world.c')
 
-  # @also_with_noderawfs # NODERAWFS doesn't use library_tty.js for stdio streams
   @crossplatform
   def test_module_print_printerr(self):
     self.set_setting('FORCE_FILESYSTEM')
@@ -9733,7 +9730,7 @@ end
     # ioctl requires filesystem
     self.do_other_test('test_ioctl.c', emcc_args=['-sFORCE_FILESYSTEM'])
 
-  # @also_with_noderawfs # NODERAWFS doesn't use library_tty.js for stdio streams
+  # @also_with_noderawfs # NODERAWFS reports ENOTTY, see issue #22264.
   def test_ioctl_termios(self):
     # ioctl requires filesystem
     self.do_other_test('test_ioctl_termios.c', emcc_args=['-sFORCE_FILESYSTEM'])
