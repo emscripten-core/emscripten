@@ -125,7 +125,6 @@ var LibraryExceptions = {
 
   llvm_eh_typeid_for: (type) => type,
 
-#if !DISABLE_EXCEPTION_CATCHING
   __cxa_begin_catch__deps: ['$exceptionCaught', '__cxa_increment_exception_refcount',
                             '__cxa_get_exception_ptr',
                             '$uncaughtExceptionCount'],
@@ -257,17 +256,7 @@ var LibraryExceptions = {
     {{{ makeThrow('exceptionLast') }}}
   },
 
-  $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount'],
-  $incrementExceptionRefcount: (ptr) => ___cxa_increment_exception_refcount(ptr),
-
-  $decrementExceptionRefcount__deps: ['__cxa_decrement_exception_refcount'],
-  $decrementExceptionRefcount: (ptr) => ___cxa_decrement_exception_refcount(ptr),
-
-  $getExceptionMessage__deps: ['$getExceptionMessageCommon'],
-  $getExceptionMessage: (ptr) => getExceptionMessageCommon(ptr),
-#endif // !DISABLE_EXCEPTION_CATCHING
-#endif // !WASM_EXCEPTIONS
-
+#endif
 #if WASM_EXCEPTIONS || !DISABLE_EXCEPTION_CATCHING
   $getExceptionMessageCommon__deps: ['__get_exception_message', 'free', '$stackSave', '$stackRestore', '$stackAlloc'],
   $getExceptionMessageCommon: (ptr) => {
@@ -342,23 +331,19 @@ var LibraryExceptions = {
     var ptr = getCppExceptionThrownObjectFromWebAssemblyException(ex);
     return getExceptionMessageCommon(ptr);
   },
-#endif // WASM_EXCEPTIONS
+
+#elif !DISABLE_EXCEPTION_CATCHING
+  $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount'],
+  $incrementExceptionRefcount: (ptr) => ___cxa_increment_exception_refcount(ptr),
+
+  $decrementExceptionRefcount__deps: ['__cxa_decrement_exception_refcount'],
+  $decrementExceptionRefcount: (ptr) => ___cxa_decrement_exception_refcount(ptr),
+
+  $getExceptionMessage__deps: ['$getExceptionMessageCommon'],
+  $getExceptionMessage: (ptr) => getExceptionMessageCommon(ptr),
+
+#endif
 };
-
-function addStub(name) {
-  LibraryManager.library[name] = function() { abort(); };
-  LibraryManager.library[`${name}__sig`] = '';
-#if !INCLUDE_FULL_LIBRARY
-  LibraryManager.library[`${name}__deps`] = [function() {
-    error(`DISABLE_EXCEPTION_CATCHING was set, which means no C++ exception catching support code is linked in, but such support is required by symbol '${name}'. Either set DISABLE_EXCEPTION_CATCHING=0 (if you do want exception catching) or compile all source files with DISABLE_EXCEPTION_CATCHING=1.`);
-  }];
-#endif
-}
-
-#if DISABLE_EXCEPTION_CATCHING
-addStub('__cxa_begin_catch');
-addStub('__cxa_end_catch');
-#endif
 
 #if !WASM_EXCEPTIONS
 // In LLVM, exceptions generate a set of functions of form
@@ -367,9 +352,6 @@ addStub('__cxa_end_catch');
 // a single function '__cxa_find_matching_catch' that variadically processes all
 // of these functions using JS 'arguments' object.
 addCxaCatch = (n) => {
-#if DISABLE_EXCEPTION_CATCHING
-  addStub(`__cxa_find_matching_catch_${n}`);
-#else
   const args = [];
   // Confusingly, the actual number of asrgument is n - 2. According to the llvm
   // code in WebAssemblyLowerEmscriptenEHSjLj.cpp:
@@ -386,7 +368,6 @@ addCxaCatch = (n) => {
   LibraryManager.library[`__cxa_find_matching_catch_${n}__sig`] = sig;
   LibraryManager.library[`__cxa_find_matching_catch_${n}__deps`] = ['$findMatchingCatch'];
   LibraryManager.library[`__cxa_find_matching_catch_${n}`] = eval(`(${args}) => findMatchingCatch([${argString}])`);
-#endif
 };
 
 // Add the first 2-5 catch handlers preemptively.  Others get added on demand in
