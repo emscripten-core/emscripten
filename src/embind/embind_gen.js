@@ -243,7 +243,15 @@ var LibraryEmbind = {
     }
 
     print(nameMap, out) {
-      out.push(`${this.readonly ? 'readonly ' : ''}${this.name}: ${nameMap(this.type)}`);
+      const setType = nameMap(this.type, false);
+      const getType = nameMap(this.type, true);
+      if (this.readonly || setType === getType) {
+        out.push(`${this.readonly ? 'readonly ' : ''}${this.name}: ${getType}`);
+        return;
+      }
+      // The getter/setter types don't match, so generate each get/set definition.
+      out.push(`get ${this.name}(): ${getType};`);
+      out.push(`set ${this.name}(value: ${setType})`);
     }
   },
   $ConstantDefinition: class {

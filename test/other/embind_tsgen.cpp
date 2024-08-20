@@ -22,9 +22,12 @@ class Test {
 
   int getY() const { return y; }
 
+  std::string string_property;
+
   static int static_function(int x) { return 1; }
 
   static int static_property;
+  static std::string static_string_property;
 
 private:
   int x;
@@ -135,9 +138,11 @@ EMSCRIPTEN_BINDINGS(Test) {
       .function("constFn", &Test::const_fn)
       .property("x", &Test::getX, &Test::setX)
       .property("y", &Test::getY)
+      .property("stringProperty", &Test::string_property)
       .class_function("staticFunction", &Test::static_function)
       .class_function("staticFunctionWithParam(x)", &Test::static_function)
       .class_property("staticProperty", &Test::static_property)
+      .class_property("staticStringProperty", &Test::static_string_property)
 	;
 
   function("class_returning_fn", &class_returning_fn);
@@ -221,6 +226,7 @@ EMSCRIPTEN_BINDINGS(Test) {
 }
 
 int Test::static_property = 42;
+std::string Test::static_string_property = "";
 
 int main() {
   // Main should not be run during TypeScript generation, but should run when
