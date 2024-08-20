@@ -1555,10 +1555,6 @@ int __cxa_can_catch(__shim_type_info* catchType, __shim_type_info* excpType, voi
   return ret;
 }
 
-int __cxa_is_pointer_type(__shim_type_info* type) {
-  return !!dynamic_cast<__pointer_type_info*>(type);
-}
-
 }
 #endif // __EMSCRIPTEN_EXCEPTIONS__
 

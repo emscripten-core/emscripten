@@ -17,8 +17,13 @@
 #include "cxa_exception.h"
 #include "include/atomic_support.h"
 #include "fallback_malloc.h"
+#include "private_typeinfo.h"
 #include "stdio.h"
 #include "assert.h"
+
+#ifdef __WASM_EXCEPTIONS__
+#error "This file should only be included when building with emscripten exceptions"
+#endif
 
 // Define to enable extra debugging on stderr.
 #if EXCEPTIONS_DEBUG
@@ -107,6 +112,26 @@ void __cxa_free_exception(void *thrown_object) throw() {
     char *raw_buffer =
         ((char *)cxa_exception_from_thrown_object(thrown_object));
     __aligned_free_with_fallback((void *)raw_buffer);
+}
+
+void *__cxa_get_exception_ptr(void *thrown_object) throw() {
+    // Get pointer which is expected to be received by catch clause in C++ code.
+    // It may be adjusted when the pointer is casted to some of the exception
+    // object base classes (e.g. when virtual inheritance is used). When a pointer
+    // is thrown this method should return the thrown pointer itself.
+    // Work around a fastcomp bug, this code is still included for some reason in
+    // a build without exceptions support.
+    __cxa_exception* ex = cxa_exception_from_thrown_object(thrown_object);
+    bool is_pointer = !!dynamic_cast<__pointer_type_info*>(ex->exceptionType);
+    void* rtn;
+    if (is_pointer)
+        rtn = *(void**)thrown_object;
+    else if (ex->adjustedPtr)
+        rtn = ex->adjustedPtr;
+    else
+        rtn = ex;
+    DEBUG("__cxa_get_exception_ptr %p -> %p\n", thrown_object, rtn);
+    return rtn;
 }
 
 /*

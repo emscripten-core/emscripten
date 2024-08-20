@@ -1687,7 +1687,6 @@ def phase_linker_setup(options, state, newargs):
       # these symbols whenever __cxa_find_matching_catch_* functions are
       # found.  However, under LTO these symbols don't exist prior to linking
       # so we include then unconditionally when exceptions are enabled.
-      '__cxa_is_pointer_type',
       '__cxa_can_catch',
 
       # __cxa_begin_catch depends on this but we can't use deps info in this
