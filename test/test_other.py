@@ -9730,7 +9730,7 @@ end
     # ioctl requires filesystem
     self.do_other_test('test_ioctl.c', emcc_args=['-sFORCE_FILESYSTEM'])
 
-  # @also_with_noderawfs # NODERAWFS reports ENOTTY, see issue #22264.
+  # @also_with_noderawfs # NODERAWFS needs to implement the ioctl syscalls, see issue #22264.
   def test_ioctl_termios(self):
     # ioctl requires filesystem
     self.do_other_test('test_ioctl_termios.c', emcc_args=['-sFORCE_FILESYSTEM'])
