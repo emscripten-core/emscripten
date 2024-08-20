@@ -10904,6 +10904,7 @@ int main () {
     'math': ('math', False),
     'hello_wasm_worker': ('hello_wasm_worker', False, True),
     'hello_embind_val': ('embind_val', False),
+    'hello_embind': ('embind_hello', False),
   })
   @crossplatform
   def test_minimal_runtime_code_size(self, test_name, js, compare_js_output=False):
@@ -10945,6 +10946,7 @@ int main () {
                            '-sMODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-sMAX_WEBGL_VERSION=2']
     hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web,worker']
+    embind_hello_sources = [test_file('code_size/embind_hello_world.cpp'), '-lembind']
     embind_val_sources = [test_file('code_size/embind_val_hello_world.cpp'),
                           '-lembind',
                           '-fno-rtti',
@@ -10959,6 +10961,7 @@ int main () {
       'hello_webgl2': hello_webgl2_sources,
       'hello_wasm_worker': hello_wasm_worker_sources,
       'embind_val': embind_val_sources,
+      'embind_hello': embind_hello_sources,
     }[test_name]
 
     def print_percent(actual, expected):

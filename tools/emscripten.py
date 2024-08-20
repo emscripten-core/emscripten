@@ -60,10 +60,6 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
 
   exports = [asmjs_mangle(x) for x in exports if x != building.WASM_CALL_CTORS]
 
-  # Decide whether we should generate the global dynCalls dictionary for the dynCall() function?
-  if settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and len([x for x in exports if x.startswith('dynCall_')]) > 0:
-    exports += ['dynCalls = {}']
-
   declares = 'var ' + ',\n '.join(exports) + ';'
   post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS_DECLARES >>>', declares)
 
