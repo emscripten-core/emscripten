@@ -1675,7 +1675,6 @@ int f() {
         os.system(f'cat in.txt | {cmd} > out.txt')
       self.assertContained('abcdef\nghijkl\neof', read_file('out.txt'))
 
-  @also_with_noderawfs
   @crossplatform
   def test_module_stdin(self):
     self.set_setting('FORCE_FILESYSTEM')
@@ -1687,9 +1686,27 @@ Module['stdin'] = () => data.shift() || null;
     self.emcc_args += ['--pre-js', 'pre.js']
     self.do_runf('module/test_stdin.c', 'hello, world!')
 
-  @also_with_noderawfs
   @crossplatform
   def test_module_stdout_stderr(self):
+    self.set_setting('FORCE_FILESYSTEM')
+    create_file('pre.js', '''
+let stdout = [];
+let stderr = [];
+
+Module['stdout'] = (char) => stdout.push(char);
+Module['stderr'] = (char) => stderr.push(char);
+Module['postRun'] = () => {
+    assert(stderr.length === 0, 'stderr should be empty. \\n' +
+        'stderr: \\n' + stderr);
+    assert(UTF8ArrayToString(stdout, 0).startsWith('hello, world!'), 'stdout should start with the famous greeting. \\n' +
+        'stdout: \\n' + stdout);
+}
+''')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    self.do_runf('hello_world.c')
+
+  @crossplatform
+  def test_module_print_printerr(self):
     self.set_setting('FORCE_FILESYSTEM')
     create_file('pre.js', '''
 let stdout = '';
@@ -1698,7 +1715,7 @@ let stderr = '';
 Module['print'] = (text) => stdout += text;
 Module['printErr'] = (text) => stderr += text;
 Module['postRun'] = () => {
-    assert(stderr == '', 'stderr should be empty. \\n' +
+    assert(stderr === '', 'stderr should be empty. \\n' +
         'stderr: \\n' + stderr);
     assert(stdout.startsWith('hello, world!'), 'stdout should start with the famous greeting. \\n' +
         'stdout: \\n' + stdout);
@@ -9716,7 +9733,7 @@ end
     # ioctl requires filesystem
     self.do_other_test('test_ioctl.c', emcc_args=['-sFORCE_FILESYSTEM'])
 
-  @also_with_noderawfs
+  # @also_with_noderawfs # NODERAWFS needs to implement the ioctl syscalls, see issue #22264.
   def test_ioctl_termios(self):
     # ioctl requires filesystem
     self.do_other_test('test_ioctl_termios.c', emcc_args=['-sFORCE_FILESYSTEM'])
@@ -9733,6 +9750,7 @@ end
     # fflush with the full filesystem will flush from libc, but not the JS logging, which awaits a newline
     self.do_other_test('test_fflush_fs.cpp', emcc_args=['-sFORCE_FILESYSTEM'])
 
+  @also_with_noderawfs
   def test_fflush_fs_exit(self):
     # on exit, we can send out a newline as no more code will run
     self.do_other_test('test_fflush_fs_exit.cpp', emcc_args=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
