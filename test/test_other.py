@@ -8668,13 +8668,14 @@ int main() {
     'mangle':   (['-O2', '-fexceptions',
                   '-sDEMANGLE_SUPPORT', '-Wno-deprecated'], [], ['waka']), # noqa
     # Wasm EH's code size increase is smaller than that of Emscripten EH
-    'except_wasm':   (['-O2', '-fwasm-exceptions'], [], ['waka']), # noqa
-    'except_wasm_exnref':   (['-O2', '-fwasm-exceptions', '-sWASM_EXNREF'], [], ['waka']), # noqa
+    'except_wasm':   (['-O2', '-fwasm-exceptions'], [], ['waka']),
+    'except_wasm_exnref':   (['-O2', '-fwasm-exceptions', '-sWASM_EXNREF'], [], ['waka']),
     # eval_ctors 1 can partially optimize, but runs into getenv() for locale
     # code. mode 2 ignores those and fully optimizes out the ctors
-    'ctors1':    (['-O2', '-sEVAL_CTORS'],   [], ['waka']), # noqa
-    'ctors2':    (['-O2', '-sEVAL_CTORS=2'], [], ['waka']), # noqa
-    'wasmfs':    (['-O2', '-sWASMFS'],       [], ['waka']), # noqa
+    'ctors1':    (['-O2', '-sEVAL_CTORS'],   [], ['waka']),
+    'ctors2':    (['-O2', '-sEVAL_CTORS=2'], [], ['waka']),
+    'wasmfs':    (['-O2', '-sWASMFS'],       [], ['waka']),
+    'lto':    (['-O2', '-flto'],       [], ['waka']),
   })
   def test_metadce_cxx(self, *args):
     # do not check functions in this test as there are a lot of libc++ functions
