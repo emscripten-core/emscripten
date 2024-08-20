@@ -8675,7 +8675,7 @@ int main() {
     'ctors1':    (['-O2', '-sEVAL_CTORS'],   [], ['waka']),
     'ctors2':    (['-O2', '-sEVAL_CTORS=2'], [], ['waka']),
     'wasmfs':    (['-O2', '-sWASMFS'],       [], ['waka']),
-    'lto':    (['-O2', '-flto'],       [], ['waka']),
+    'lto':       (['-O2', '-flto'],       [], ['waka']),
   })
   def test_metadce_cxx(self, *args):
     # do not check functions in this test as there are a lot of libc++ functions
