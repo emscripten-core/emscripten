@@ -8548,12 +8548,11 @@ int main() {
                                      test_file('other/test_unoptimized_code_size_strict.js.size'),
                                      os.path.getsize('strict.js'))
 
-  def run_metadce_test(self, filename, args=[], expected_exists=[], expected_not_exists=[], check_size=True,  # noqa
-                       check_sent=True, check_imports=True, check_exports=True, check_funcs=True):
+  def run_metadce_test(self, filename, args=[], expected_exists=[], expected_not_exists=[],  # noqa
+                       check_funcs=True):
 
     # in -Os, -Oz, we remove imports wasm doesn't need
-    print('Running metadce test: %s:' % filename, args, expected_exists,
-          expected_not_exists, check_sent, check_imports, check_exports, check_funcs)
+    print('Running metadce test: %s:' % filename, args, expected_exists, expected_not_exists, check_funcs)
     filename = test_file('other/metadce', filename)
     expected_basename = test_file('other/metadce', self.id().split('.')[-1])
 
@@ -8585,18 +8584,17 @@ int main() {
     for not_exists in expected_not_exists:
       self.assertNotIn(not_exists, sent)
 
-    if check_size:
-      # measure the wasm size without the name section
-      building.strip('a.out.wasm', 'a.out.nodebug.wasm', sections=['name'])
-      wasm_size = os.path.getsize('a.out.nodebug.wasm')
-      size_file = expected_basename + '.size'
-      js_size = os.path.getsize('a.out.js')
-      gz_size = get_file_gzipped_size('a.out.js')
-      js_size_file = expected_basename + '.jssize'
-      gz_size_file = expected_basename + '.gzsize'
-      self.check_expected_size_in_file('wasm', size_file, wasm_size)
-      self.check_expected_size_in_file('js', js_size_file, js_size)
-      self.check_expected_size_in_file('gz', gz_size_file, gz_size)
+    # measure the wasm size without the name section
+    building.strip('a.out.wasm', 'a.out.nodebug.wasm', sections=['name'])
+    wasm_size = os.path.getsize('a.out.nodebug.wasm')
+    size_file = expected_basename + '.size'
+    js_size = os.path.getsize('a.out.js')
+    gz_size = get_file_gzipped_size('a.out.js')
+    js_size_file = expected_basename + '.jssize'
+    gz_size_file = expected_basename + '.gzsize'
+    self.check_expected_size_in_file('wasm', size_file, wasm_size)
+    self.check_expected_size_in_file('js', js_size_file, js_size)
+    self.check_expected_size_in_file('gz', gz_size_file, gz_size)
 
     imports, exports, funcs = self.parse_wasm('a.out.wasm')
     imports.sort()
@@ -8616,20 +8614,17 @@ int main() {
 
     funcs = [strip_numeric_suffixes(f) for f in funcs]
 
-    if check_sent:
-      sent_file = expected_basename + '.sent'
-      sent_data = '\n'.join(sent) + '\n'
-      self.assertFileContents(sent_file, sent_data)
+    sent_file = expected_basename + '.sent'
+    sent_data = '\n'.join(sent) + '\n'
+    self.assertFileContents(sent_file, sent_data)
 
-    if check_imports:
-      filename = expected_basename + '.imports'
-      data = '\n'.join(imports) + '\n'
-      self.assertFileContents(filename, data)
+    filename = expected_basename + '.imports'
+    data = '\n'.join(imports) + '\n'
+    self.assertFileContents(filename, data)
 
-    if check_exports:
-      filename = expected_basename + '.exports'
-      data = '\n'.join(exports) + '\n'
-      self.assertFileContents(filename, data)
+    filename = expected_basename + '.exports'
+    data = '\n'.join(exports) + '\n'
+    self.assertFileContents(filename, data)
 
     if check_funcs:
       filename = expected_basename + '.funcs'
