@@ -20,7 +20,8 @@ type EmbindString = ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string;
 export interface Test {
   x: number;
   readonly y: number;
-  get stringProperty(): string;set stringProperty(value: EmbindString);
+  get stringProperty(): string;
+  set stringProperty(value: EmbindString);
   functionOne(_0: number, _1: number): number;
   functionTwo(_0: number, _1: number): number;
   functionFour(_0: boolean): number;
@@ -103,7 +104,7 @@ export interface DerivedClass extends BaseClass {
 export type ValArr = [ number, number, number ];
 
 interface EmbindModule {
-  Test: {staticFunction(_0: number): number; staticFunctionWithParam(x: number): number; staticProperty: number; get staticStringProperty(): string;set staticStringProperty(value: EmbindString)};
+  Test: {staticFunction(_0: number): number; staticFunctionWithParam(x: number): number; staticProperty: number; get staticStringProperty(): string; set staticStringProperty(value: EmbindString)};
   class_returning_fn(): Test;
   class_unique_ptr_returning_fn(): Test;
   Obj: {};
