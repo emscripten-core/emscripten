@@ -2384,7 +2384,9 @@ def get_libs_to_link(args):
     if settings.LINK_AS_CXX:
       add_library('libwebgpu_cpp')
 
-  if settings.WASM_WORKERS:
+  if settings.WASM_WORKERS and (not settings.SINGLE_FILE and
+                                not settings.RELOCATABLE and
+                                not settings.PROXY_TO_WORKER):
     add_library('libwasm_workers')
 
   if settings.WASMFS:

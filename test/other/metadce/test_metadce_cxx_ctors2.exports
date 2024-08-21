@@ -1,4 +1,3 @@
-__cxa_is_pointer_type
 __indirect_function_table
 _emscripten_stack_alloc
 _emscripten_stack_restore
