@@ -231,6 +231,16 @@ def get_file_gzipped_size(f):
   return size
 
 
+def deminify_syms(names, minification_map):
+  deminify_map = {}
+  for line in read_file(minification_map).splitlines():
+    minified_name, name = line.split(':')
+    deminify_map[minified_name] = name
+  # Include both the original name and the deminified name so that
+  # changes to minification are also visible.
+  return [f'{name} ({deminify_map[name]})' for name in names]
+
+
 class other(RunnerCore):
   def assertIsObjectFile(self, filename):
     self.assertTrue(building.is_wasm(filename))
@@ -8557,7 +8567,7 @@ int main() {
     expected_basename = test_file('other/metadce', self.id().split('.')[-1])
 
     # Run once without closure and parse output to find wasmImports
-    build_cmd = [compiler_for(filename), filename, '--output_eol=linux'] + args + self.get_emcc_args()
+    build_cmd = [compiler_for(filename), filename, '--output_eol=linux', '--emit-minification-map=minify.map'] + args + self.get_emcc_args()
     self.run_process(build_cmd + ['-g2'])
     # find the imports we send from JS
     # TODO(sbc): Find a way to do that that doesn't depend on internal details of
@@ -8575,6 +8585,10 @@ int main() {
     relevant = relevant.split(',')
     sent = [x.split(':')[0].strip() for x in relevant]
     sent = [x for x in sent if x]
+    # Deminify the sent list, if minification occured
+    if os.path.exists('minify.map'):
+      sent = deminify_syms(sent, 'minify.map')
+      os.remove('minify.map')
     sent.sort()
 
     self.run_process(build_cmd + ['--profiling-funcs', '--closure=1'])
@@ -8597,6 +8611,11 @@ int main() {
     self.check_expected_size_in_file('gz', gz_size_file, gz_size)
 
     imports, exports, funcs = self.parse_wasm('a.out.wasm')
+    # Deminify the imports/export lists, if minification occured
+    if os.path.exists('minify.map'):
+      exports = deminify_syms(exports, 'minify.map')
+      imports = [i.split('.', 1)[1] for i in imports]
+      imports = deminify_syms(imports, 'minify.map')
     imports.sort()
     exports.sort()
     funcs.sort()

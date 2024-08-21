@@ -1,4 +1,4 @@
-a.a
-a.b
-a.c
-a.d
+a (fd_write)
+b (fd_read)
+c (fd_close)
+d (__syscall_openat)
