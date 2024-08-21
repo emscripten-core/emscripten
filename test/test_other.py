@@ -8558,13 +8558,13 @@ int main() {
                                      test_file('other/test_unoptimized_code_size_strict.js.size'),
                                      os.path.getsize('strict.js'))
 
-  def run_metadce_test(self, filename, args=[], expected_exists=[], expected_not_exists=[],  # noqa
-                       check_funcs=True):
+  def run_codesize_test(self, filename, args=[], expected_exists=[], expected_not_exists=[],  # noqa
+                        check_funcs=True):
 
     # in -Os, -Oz, we remove imports wasm doesn't need
     print('Running metadce test: %s:' % filename, args, expected_exists, expected_not_exists, check_funcs)
-    filename = test_file('other/metadce', filename)
-    expected_basename = test_file('other/metadce', self.id().split('.')[-1])
+    filename = test_file('other/codesize', filename)
+    expected_basename = test_file('other/codesize', self.id().split('.')[-1])
 
     # Run once without closure and parse output to find wasmImports
     build_cmd = [compiler_for(filename), filename, '--output_eol=linux', '--emit-minification-map=minify.map'] + args + self.get_emcc_args()
@@ -8665,14 +8665,14 @@ int main() {
     # WasmFS should not be fully linked into a minimal program.
     'wasmfs': (['-Oz', '-sWASMFS'], [], []), # noqa
   })
-  def test_metadce_minimal(self, *args):
+  def test_codesize_minimal(self, *args):
     self.set_setting('STRICT')
     self.emcc_args.append('--no-entry')
-    self.run_metadce_test('minimal.c', *args)
+    self.run_codesize_test('minimal.c', *args)
 
   @node_pthreads
-  def test_metadce_minimal_pthreads(self):
-    self.run_metadce_test('minimal_main.c', ['-Oz', '-pthread', '-sPROXY_TO_PTHREAD'])
+  def test_codesize_minimal_pthreads(self):
+    self.run_codesize_test('minimal_main.c', ['-Oz', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   @parameterized({
     'noexcept': (['-O2'],                    [], ['waka']), # noqa
@@ -8691,11 +8691,11 @@ int main() {
     'wasmfs':    (['-O2', '-sWASMFS'],       [], ['waka']),
     'lto':       (['-Oz', '-flto'],          [], ['waka']),
   })
-  def test_metadce_cxx(self, *args):
+  def test_codesize_cxx(self, *args):
     # do not check functions in this test as there are a lot of libc++ functions
     # pulled in here, and small LLVM backend changes can affect their size and
     # lead to different inlining decisions which add or remove a function
-    self.run_metadce_test('hello_libcxx.cpp', *args, check_funcs=False)
+    self.run_codesize_test('hello_libcxx.cpp', *args, check_funcs=False)
 
   @parameterized({
     'O0': ([],      [], ['waka']), # noqa
@@ -8714,8 +8714,8 @@ int main() {
     # WasmFS should not be fully linked into a hello world program.
     'wasmfs': (['-O3', '-sWASMFS'],        [], []), # noqa
   })
-  def test_metadce_hello(self, *args):
-    self.run_metadce_test('hello_world.c', *args)
+  def test_codesize_hello(self, *args):
+    self.run_codesize_test('hello_world.c', *args)
 
   @parameterized({
     'O3':                 ('mem.c', ['-O3'],
@@ -8740,23 +8740,23 @@ int main() {
                           ('mem_no_argv.c', ['-O3', '-sSTANDALONE_WASM', '-flto'],
                            [], []),         # noqa
   })
-  def test_metadce_mem(self, filename, *args):
-    self.run_metadce_test(filename, *args)
+  def test_codesize_mem(self, filename, *args):
+    self.run_codesize_test(filename, *args)
 
   @parameterized({
     'O3':            (['-O3'],                      [], []), # noqa
     # argc/argv support code etc. is in the wasm
     'O3_standalone': (['-O3', '-sSTANDALONE_WASM'], [], []), # noqa
   })
-  def test_metadce_libcxxabi_message(self, *args):
-    self.run_metadce_test('libcxxabi_message.cpp', *args)
+  def test_codesize_libcxxabi_message(self, *args):
+    self.run_codesize_test('libcxxabi_message.cpp', *args)
 
   @parameterized({
     'js_fs':  (['-O3', '-sNO_WASMFS'], [], []), # noqa
     'wasmfs': (['-O3', '-sWASMFS'],    [], []), # noqa
   })
-  def test_metadce_files(self, *args):
-    self.run_metadce_test('files.cpp', *args)
+  def test_codesize_files(self, *args):
+    self.run_codesize_test('files.cpp', *args)
 
   # ensures runtime exports work, even with metadce
   @parameterized({
