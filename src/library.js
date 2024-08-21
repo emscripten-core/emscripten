@@ -1857,7 +1857,7 @@ addToLibrary({
 
 #if DYNCALLS || !WASM_BIGINT
 #if MINIMAL_RUNTIME
-  $dynCalls: '[]',
+  $dynCalls: '{}',
 #endif
   $dynCallLegacy__deps: [
 #if MAIN_MODULE == 1
