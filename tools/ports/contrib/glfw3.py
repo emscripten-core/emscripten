@@ -6,8 +6,8 @@
 import os
 from typing import Union, Dict
 
-TAG = '3.4.0.20240804'
-HASH = 'a34c392c1fe0365e7ad986b5867a4f171e708f4f5be05ea656ff2ea231c2fa2b7157072e269147c22c97c748e536f689e99799603fabaaaba411b8adf61205a7'
+TAG = '3.4.0.20240817'
+HASH = 'f75e711ec47c5eb04cff7fef5f2ef6788445bb86ed570a884ccb0e839744c3ed38b5f94808d1fac1417f356177e753e4ac8cafed9ad808d24d8fd08d23ca07f0'
 
 # contrib port information (required)
 URL = 'https://github.com/pongasoft/emscripten-glfw'
@@ -90,7 +90,7 @@ def linker_setup(ports, settings):
 # so that we don't conflict with the builtin GLFW headers that emscripten
 # includes
 def process_args(ports):
-  return ['-isystem', ports.get_include_dir(port_name), '-DEMSCRIPTEN_USE_PORT_CONTRIB_GLFW3']
+  return ['-isystem', ports.get_include_dir(port_name), f'-DEMSCRIPTEN_USE_PORT_CONTRIB_GLFW3={TAG.replace(".", "")}']
 
 
 def check_option(option, value, error_handler):
