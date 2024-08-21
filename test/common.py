@@ -577,8 +577,8 @@ def with_all_eh_sjlj(f):
     else:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
-      # DISABLE_EXCEPTION_CATCHING=0 exports __cxa_can_catch and
-      # __cxa_is_pointer_type, so if we don't build in C++ mode, wasm-ld will
+      # DISABLE_EXCEPTION_CATCHING=0 exports __cxa_can_catch,
+      # so if we don't build in C++ mode, wasm-ld will
       # error out because libc++abi is not included. See
       # https://github.com/emscripten-core/emscripten/pull/14192 for details.
       self.set_setting('DEFAULT_TO_CXX')
