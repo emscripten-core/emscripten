@@ -1349,7 +1349,6 @@ void Getsockopt(int client_fd, uint8_t *data, uint64_t numBytes) {
     int callId;
     int ret;
     int errno_;
-    int option_len;
     uint8_t option_value[];
   } Result;
 
@@ -1359,7 +1358,6 @@ void Getsockopt(int client_fd, uint8_t *data, uint64_t numBytes) {
   r->callId = d->header.callId;
   r->ret = ret;
   r->errno_ = errorCode;
-  r->option_len = option_len;
   memcpy(r->option_value, option_value, actualOptionLen);
   SendWebSocketMessage(client_fd, r, resultSize);
   free(r);
