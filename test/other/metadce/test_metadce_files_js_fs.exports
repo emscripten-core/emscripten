@@ -1,4 +1,4 @@
-e
-f
-g
-h
+e (memory)
+f (__wasm_call_ctors)
+g (main)
+h (__indirect_function_table)
