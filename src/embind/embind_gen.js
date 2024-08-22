@@ -175,9 +175,11 @@ var LibraryEmbind = {
       }
       out.push(' {\n');
       for (const property of this.properties) {
-        out.push('  ');
-        property.print(nameMap, out);
-        out.push(';\n');
+        const props = [];
+        property.print(nameMap, props);
+        for (const formattedProp of props) {
+          out.push(`  ${formattedProp};\n`);
+        }
       }
       for (const method of this.methods) {
         out.push('  ');
@@ -205,9 +207,15 @@ var LibraryEmbind = {
       for (const prop of this.staticProperties) {
         const entry = [];
         prop.print(nameMap, entry);
-        entries.push(entry.join(''));
+        entries.push(...entry);
       }
-      out.push(entries.join('; '));
+      if (entries.length) {
+        out.push('\n');
+        for (const entry of entries) {
+          out.push(`    ${entry};\n`);
+        }
+        out.push('  ');
+      }
       out.push('};\n');
     }
 
@@ -243,7 +251,15 @@ var LibraryEmbind = {
     }
 
     print(nameMap, out) {
-      out.push(`${this.readonly ? 'readonly ' : ''}${this.name}: ${nameMap(this.type)}`);
+      const setType = nameMap(this.type, false);
+      const getType = nameMap(this.type, true);
+      if (this.readonly || setType === getType) {
+        out.push(`${this.readonly ? 'readonly ' : ''}${this.name}: ${getType}`);
+        return;
+      }
+      // The getter/setter types don't match, so generate each get/set definition.
+      out.push(`get ${this.name}(): ${getType}`);
+      out.push(`set ${this.name}(value: ${setType})`);
     }
   },
   $ConstantDefinition: class {
