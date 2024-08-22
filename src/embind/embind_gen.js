@@ -207,9 +207,15 @@ var LibraryEmbind = {
       for (const prop of this.staticProperties) {
         const entry = [];
         prop.print(nameMap, entry);
-        entries.push(entry.join('; '));
+        entries.push(...entry);
       }
-      out.push(entries.join('; '));
+      if (entries.length) {
+        out.push('\n');
+        for (const entry of entries) {
+          out.push(`    ${entry};\n`);
+        }
+        out.push('  ');
+      }
       out.push('};\n');
     }
 

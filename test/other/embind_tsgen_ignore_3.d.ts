@@ -104,7 +104,13 @@ export interface DerivedClass extends BaseClass {
 export type ValArr = [ number, number, number ];
 
 interface EmbindModule {
-  Test: {staticFunction(_0: number): number; staticFunctionWithParam(x: number): number; staticProperty: number; get staticStringProperty(): string; set staticStringProperty(value: EmbindString)};
+  Test: {
+    staticFunction(_0: number): number;
+    staticFunctionWithParam(x: number): number;
+    staticProperty: number;
+    get staticStringProperty(): string;
+    set staticStringProperty(value: EmbindString);
+  };
   class_returning_fn(): Test;
   class_unique_ptr_returning_fn(): Test;
   Obj: {};
@@ -114,12 +120,23 @@ interface EmbindModule {
   Bar: {valueOne: BarValue<0>, valueTwo: BarValue<1>, valueThree: BarValue<2>};
   EmptyEnum: {};
   enum_returning_fn(): Bar;
-  IntVec: {new(): IntVec};
-  MapIntInt: {new(): MapIntInt};
+  IntVec: {
+    new(): IntVec;
+  };
+  MapIntInt: {
+    new(): MapIntInt;
+  };
   Foo: {};
-  ClassWithConstructor: {new(_0: number, _1: ValArr): ClassWithConstructor};
-  ClassWithTwoConstructors: {new(): ClassWithTwoConstructors; new(_0: number): ClassWithTwoConstructors};
-  ClassWithSmartPtrConstructor: {new(_0: number, _1: ValArr): ClassWithSmartPtrConstructor};
+  ClassWithConstructor: {
+    new(_0: number, _1: ValArr): ClassWithConstructor;
+  };
+  ClassWithTwoConstructors: {
+    new(): ClassWithTwoConstructors;
+    new(_0: number): ClassWithTwoConstructors;
+  };
+  ClassWithSmartPtrConstructor: {
+    new(_0: number, _1: ValArr): ClassWithSmartPtrConstructor;
+  };
   BaseClass: {};
   DerivedClass: {};
   a_bool: boolean;
