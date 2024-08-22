@@ -9111,6 +9111,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # works with pthreads (even though we did not specify 'node,worker')
     self.set_setting('ENVIRONMENT', 'node')
     self.set_setting('STRICT_JS')
+    self.set_setting('STRICT')
     self.do_run_in_out_file_test('core/pthread/create.c')
 
   @node_pthreads
