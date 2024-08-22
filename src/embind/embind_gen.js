@@ -243,6 +243,18 @@ var LibraryEmbind = {
     }
 
   },
+  $printProperty: (prop, nameMap, out) => {
+    const setType = nameMap(prop.type, false);
+    const getType = nameMap(prop.type, true);
+    if (prop.readonly || setType === getType) {
+      out.push(`${prop.readonly ? 'readonly ' : ''}${prop.name}: ${getType}`);
+      return;
+    }
+    // The getter/setter types don't match, so generate each get/set definition.
+    out.push(`get ${prop.name}(): ${getType}`);
+    out.push(`set ${prop.name}(value: ${setType})`);
+  },
+  $ClassProperty__deps: ['$printProperty'],
   $ClassProperty: class {
     constructor(type, name, readonly) {
       this.type = type;
@@ -251,15 +263,7 @@ var LibraryEmbind = {
     }
 
     print(nameMap, out) {
-      const setType = nameMap(this.type, false);
-      const getType = nameMap(this.type, true);
-      if (this.readonly || setType === getType) {
-        out.push(`${this.readonly ? 'readonly ' : ''}${this.name}: ${getType}`);
-        return;
-      }
-      // The getter/setter types don't match, so generate each get/set definition.
-      out.push(`get ${this.name}(): ${getType}`);
-      out.push(`set ${this.name}(value: ${setType})`);
+      printProperty(this, nameMap, out);
     }
   },
   $ConstantDefinition: class {
@@ -325,6 +329,7 @@ var LibraryEmbind = {
       out.push(' ];\n\n');
     }
   },
+  $ValueObjectDefinition__deps: ['$printProperty'],
   $ValueObjectDefinition: class {
     constructor(typeId, name) {
       this.typeId = typeId;
@@ -336,12 +341,14 @@ var LibraryEmbind = {
     }
 
     print(nameMap, out) {
-      out.push(`export type ${this.name} = {\n`);
+      out.push(`export type ${this.name} = {\n  `);
       const outFields = [];
-      for (const {name, type} of this.fields) {
-        outFields.push(`  ${name}: ${nameMap(type)}`);
+      for (const field of this.fields) {
+        const property = [];
+        printProperty(field, nameMap, property);
+        outFields.push(...property);
       }
-      out.push(outFields.join(',\n'))
+      out.push(outFields.join(',\n  '))
       out.push('\n};\n\n');
     }
   },
