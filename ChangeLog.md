@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.65 (in development)
+3.1.66 (in development)
 -----------------------
+
+3.1.65 - 08/22/24
+-----------------
 - A new `--emit-minification-map` command line flag was added, which can be used
   to emit a minifiction map in the case that import/export minification is
   performed (this happens at higher optimization levels). (#22428)
