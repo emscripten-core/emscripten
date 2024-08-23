@@ -2030,6 +2030,9 @@ Module['postRun'] = () => {
     self.run_process([EMCC, 'main.c', '--embed-file', 'tst', '--exclude-file', '*.exe'])
     self.assertEqual(self.run_js('a.out.js').strip(), '')
 
+  def test_dylink_strict(self):
+    self.do_runf('hello_world.c', 'hello, world!', emcc_args=['-sSTRICT', '-sMAIN_MODULE=1'])
+
   def test_dylink_exceptions_and_assetions(self):
     # Linking side modules using the STL and exceptions should not abort with
     # "function in Table but not functionsInTableMap" when using ASSERTIONS=2
