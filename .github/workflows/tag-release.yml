@@ -24,7 +24,7 @@ jobs:
               const tag_sha = '${{ inputs.release-sha }}';
               const release_version = '${{ inputs.release-version }}';
               console.log(`Version ${release_version} at SHA ${tag_sha}`);
-              const regex = /Release ([0-9]+.[0-9]+.[0-9]+)/;
+              const regex = /^[0-9]+.[0-9]+.[0-9]+$/;
               const match = release_version.match(regex);
               if (!match) {
                 throw new Error('Malformed release version');
