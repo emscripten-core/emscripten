@@ -45,7 +45,7 @@ from tools.response_file import substitute_response_files
 from tools import config
 from tools import cache
 from tools.settings import default_setting, user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
-from tools.utils import read_file, removeprefix
+from tools.utils import read_file, removeprefix, EMSCRIPTEN_VERSION
 
 logger = logging.getLogger('emcc')
 
@@ -569,7 +569,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return 0
 
   if '-dumpversion' in args: # gcc's doc states "Print the compiler version [...] and don't do anything else."
-    print(shared.EMSCRIPTEN_VERSION)
+    print(EMSCRIPTEN_VERSION)
     return 0
 
   if '--cflags' in args:
@@ -1099,7 +1099,7 @@ def version_string():
   elif os.path.exists(utils.path_from_root('emscripten-revision.txt')):
     rev = read_file(utils.path_from_root('emscripten-revision.txt')).strip()
     revision_suffix = ' (%s)' % rev
-  return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {shared.EMSCRIPTEN_VERSION}{revision_suffix}'
+  return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {EMSCRIPTEN_VERSION}{revision_suffix}'
 
 
 def parse_args(newargs):

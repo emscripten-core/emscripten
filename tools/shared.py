@@ -425,7 +425,7 @@ def check_node():
 
 
 def generate_sanity():
-  return f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}\n'
+  return f'{utils.EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}\n'
 
 
 @memoize

@@ -484,7 +484,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # -dumpversion
     output = self.run_process([compiler, '-dumpversion'], stdout=PIPE, stderr=PIPE)
-    self.assertEqual(shared.EMSCRIPTEN_VERSION, output.stdout.strip())
+    self.assertEqual(utils.EMSCRIPTEN_VERSION, output.stdout.strip())
 
     # properly report source code errors, and stop there
     self.clear()
@@ -5765,7 +5765,7 @@ dir
 major: %d
 minor: %d
 tiny: %d
-''' % (shared.EMSCRIPTEN_VERSION_MAJOR, shared.EMSCRIPTEN_VERSION_MINOR, shared.EMSCRIPTEN_VERSION_TINY)
+''' % (utils.EMSCRIPTEN_VERSION_MAJOR, utils.EMSCRIPTEN_VERSION_MINOR, utils.EMSCRIPTEN_VERSION_TINY)
     self.do_runf('src.c', expected)
     self.do_runf('src.c', expected, emcc_args=['-sSTRICT'])
 
@@ -5845,7 +5845,7 @@ __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALI
     def test(args):
       print(args)
       out = self.run_process([EMXX, 'src.cpp', '-E'] + args, stdout=PIPE).stdout
-      self.assertContained('%d %d %d __attribute__((used))' % (shared.EMSCRIPTEN_VERSION_MAJOR, shared.EMSCRIPTEN_VERSION_MINOR, shared.EMSCRIPTEN_VERSION_TINY), out)
+      self.assertContained('%d %d %d __attribute__((used))' % (utils.EMSCRIPTEN_VERSION_MAJOR, utils.EMSCRIPTEN_VERSION_MINOR, utils.EMSCRIPTEN_VERSION_TINY), out)
 
     test([])
     test(['-lembind'])
