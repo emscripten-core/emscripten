@@ -35,3 +35,10 @@ jobs:
                 ref: `refs/tags/${release_version}`,
                 sha: tag_sha
               });
+        - name: Update Changelog
+          run: python3 tools/maint/create_release.py --action
+        - name: Create Changelog PR
+          uses: peter-evans/create-pull-request@v6
+          with:
+            title: `Mark ${{ env.RELEASE_VERSION }} as released`
+            delete-branch: true
