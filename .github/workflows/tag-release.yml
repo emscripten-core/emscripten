@@ -40,5 +40,5 @@ jobs:
         - name: Create Changelog PR
           uses: peter-evans/create-pull-request@v6
           with:
-            title: `Mark ${{ env.RELEASE_VERSION }} as released`
+            title: Mark ${{ env.RELEASE_VERSION }} as released
             delete-branch: true
