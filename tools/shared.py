@@ -40,7 +40,7 @@ elif EMCC_LOGGING:
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=log_level)
 colored_logger.enable()
 
-from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
+from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS, set_version_globals
 from . import cache, tempfiles
 from . import diagnostics
 from . import config
@@ -422,14 +422,6 @@ def check_node():
     run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
   except Exception as e:
     exit_with_error('the configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
-
-
-def set_version_globals():
-  global EMSCRIPTEN_VERSION, EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY
-  filename = path_from_root('emscripten-version.txt')
-  EMSCRIPTEN_VERSION = utils.read_file(filename).strip().strip('"')
-  parts = [int(x) for x in EMSCRIPTEN_VERSION.split('-')[0].split('.')]
-  EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
 
 
 def generate_sanity():

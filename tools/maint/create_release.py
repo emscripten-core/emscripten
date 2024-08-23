@@ -13,7 +13,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(os.path.dirname(script_dir))
 
 sys.path.insert(0, root_dir)
-from tools import shared, utils
+from tools import utils
 
 
 def main(argv):
@@ -23,10 +23,10 @@ def main(argv):
 
   is_github_runner = len(argv) > 1 and argv[1] == '--action'
 
-  shared.set_version_globals()
+  utils.set_version_globals()
 
-  release_version = [shared.EMSCRIPTEN_VERSION_MAJOR, shared.EMSCRIPTEN_VERSION_MINOR,
-                     shared.EMSCRIPTEN_VERSION_TINY]
+  release_version = [utils.EMSCRIPTEN_VERSION_MAJOR, utils.EMSCRIPTEN_VERSION_MINOR,
+                     utils.EMSCRIPTEN_VERSION_TINY]
   new_dev_version = list(release_version)
   new_dev_version[2] += 1
 
