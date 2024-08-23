@@ -60,6 +60,7 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
 struct ValObj {
   Foo foo;
   Bar bar;
+  std::string str;
   CallbackType callback;
   ValObj() : callback(val::undefined()) {}
 };
@@ -178,6 +179,7 @@ EMSCRIPTEN_BINDINGS(Test) {
   value_object<ValObj>("ValObj")
       .field("foo", &ValObj::foo)
       .field("bar", &ValObj::bar)
+      .field("str", &ValObj::str)
       .field("callback", &ValObj::callback);
 
   register_vector<int>("IntVec");
