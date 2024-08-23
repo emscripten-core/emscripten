@@ -3808,19 +3808,19 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
         for (var i = 0; i < GL.currentContext.maxVertexAttribs; ++i) {
           var cb = GL.currentContext.clientBuffers[i];
           if (cb.clientside && cb.enabled) {
-            const arrayClasses = {
-                0x1401 /* GL_UNSIGNED_BYTE */: Uint8Array,
-                0x1403 /* GL_UNSIGNED_SHORT */: Uint16Array,
+            let arrayClass;
+            switch(type) {
+              case 0x1401 /* GL_UNSIGNED_BYTE */: arrayClass = Uint8Array; break;
+              case 0x1403 /* GL_UNSIGNED_SHORT */: arrayClass = Uint16Array; break;
 #if FULL_ES3
-                0x1405 /* GL_UNSIGNED_INT */: Uint32Array
+              case 0x1405 /* GL_UNSIGNED_INT */: arrayClass = Uint32Array; break;
 #endif
-            };
-
-            const arrayClass = arrayClasses[type];
-            if (!arrayClass) {
-              GL.recordError(0x502 /* GL_INVALID_OPERATION */);
-              err('type is not supported in glDrawElements');
-              return;
+              default:
+                GL.recordError(0x502 /* GL_INVALID_OPERATION */);
+#if GL_ASSERTIONS
+                err('type is not supported in glDrawElements');
+#endif
+                return;
             }
 
             vertexes = new arrayClass(HEAPU8.buffer, indices, count).reduce((max, current) => Math.max(max, current)) + 1;
