@@ -4,10 +4,11 @@ name: Tag release and update Changelog
 on:
   workflow_dispatch:
     inputs:
+      release-version:
+        required: true
       release-sha:
         required: true
         type: string
-  push:
 
 jobs:
     create-release:
@@ -20,3 +21,16 @@ jobs:
           with:
             script: |
               console.log('running');
+              const tag_sha = '${{ inputs.release-sha }}';
+              const release_version = '${{ inputs.release-version }}';
+              const regex = /Release ([0-9]+.[0-9]+.[0-9]+)/;
+              const match = message.match(regex);
+              if (!match) {
+                throw new Error('Malformed release version')
+              }
+              await github.rest.git.createRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `refs/tags/${release_version}`,
+                sha: tag_sha
+              })
