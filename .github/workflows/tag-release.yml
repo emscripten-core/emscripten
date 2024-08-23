@@ -1,5 +1,4 @@
-# 
-
+# Tag release and update changelog
 name: Tag release and update Changelog
 
 on:
@@ -18,6 +17,6 @@ jobs:
           uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
         - name: Tag release sha
           uses: actions/github-script@v7
-            with:
-              script: |
-                console.log('running');
+          with:
+            script: |
+              console.log('running');
