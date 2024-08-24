@@ -2197,12 +2197,14 @@ class libstandalonewasm(MuslInternalLibrary):
     files += files_in_path(
         path='system/lib/libc/musl/src/time',
         filenames=['__secs_to_tm.c',
+                   '__tz.c',
                    'clock.c',
                    'clock_gettime.c',
                    'gettimeofday.c',
                    'localtime_r.c',
                    'gmtime_r.c',
                    'mktime.c',
+                   'strptime.c',
                    'timegm.c',
                    'time.c'])
     # It is more efficient to use JS for __assert_fail, as it avoids always
@@ -2382,7 +2384,9 @@ def get_libs_to_link(args):
     if settings.LINK_AS_CXX:
       add_library('libwebgpu_cpp')
 
-  if settings.WASM_WORKERS:
+  if settings.WASM_WORKERS and (not settings.SINGLE_FILE and
+                                not settings.RELOCATABLE and
+                                not settings.PROXY_TO_WORKER):
     add_library('libwasm_workers')
 
   if settings.WASMFS:

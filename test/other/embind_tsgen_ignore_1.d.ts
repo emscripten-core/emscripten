@@ -29,6 +29,8 @@ type EmbindString = ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string;
 export interface Test {
   x: number;
   readonly y: number;
+  get stringProperty(): string;
+  set stringProperty(value: EmbindString);
   functionOne(_0: number, _1: number): number;
   functionTwo(_0: number, _1: number): number;
   functionFour(_0: boolean): number;
@@ -92,12 +94,6 @@ export interface ClassWithSmartPtrConstructor {
   delete(): void;
 }
 
-export type ValObj = {
-  foo: Foo,
-  bar: Bar,
-  callback: (message: string) => void
-};
-
 export interface BaseClass {
   fn(_0: number): number;
   delete(): void;
@@ -110,8 +106,22 @@ export interface DerivedClass extends BaseClass {
 
 export type ValArr = [ number, number, number ];
 
+export type ValObj = {
+  foo: Foo,
+  bar: Bar,
+  get str(): string,
+  set str(value: EmbindString),
+  callback: (message: string) => void
+};
+
 interface EmbindModule {
-  Test: {staticFunction(_0: number): number; staticFunctionWithParam(x: number): number; staticProperty: number};
+  Test: {
+    staticFunction(_0: number): number;
+    staticFunctionWithParam(x: number): number;
+    staticProperty: number;
+    get staticStringProperty(): string;
+    set staticStringProperty(value: EmbindString);
+  };
   class_returning_fn(): Test;
   class_unique_ptr_returning_fn(): Test;
   Obj: {};
@@ -121,12 +131,23 @@ interface EmbindModule {
   Bar: {valueOne: BarValue<0>, valueTwo: BarValue<1>, valueThree: BarValue<2>};
   EmptyEnum: {};
   enum_returning_fn(): Bar;
-  IntVec: {new(): IntVec};
-  MapIntInt: {new(): MapIntInt};
+  IntVec: {
+    new(): IntVec;
+  };
+  MapIntInt: {
+    new(): MapIntInt;
+  };
   Foo: {};
-  ClassWithConstructor: {new(_0: number, _1: ValArr): ClassWithConstructor};
-  ClassWithTwoConstructors: {new(): ClassWithTwoConstructors; new(_0: number): ClassWithTwoConstructors};
-  ClassWithSmartPtrConstructor: {new(_0: number, _1: ValArr): ClassWithSmartPtrConstructor};
+  ClassWithConstructor: {
+    new(_0: number, _1: ValArr): ClassWithConstructor;
+  };
+  ClassWithTwoConstructors: {
+    new(): ClassWithTwoConstructors;
+    new(_0: number): ClassWithTwoConstructors;
+  };
+  ClassWithSmartPtrConstructor: {
+    new(_0: number, _1: ValArr): ClassWithSmartPtrConstructor;
+  };
   BaseClass: {};
   DerivedClass: {};
   a_bool: boolean;

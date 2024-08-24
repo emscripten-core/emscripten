@@ -462,10 +462,9 @@ EMULATE_FUNCTION_POINTER_CASTS
 
 Allows function pointers to be cast, wraps each call of an incorrect type
 with a runtime correction.  This adds overhead and should not be used
-normally.  It also forces ALIASING_FUNCTION_POINTERS to 0.  Aside from making
-calls not fail, this tries to convert values as best it can.
-We use 64 bits (i64) to represent values, as if we wrote the sent value to
-memory and loaded the received type from the same memory (using
+normally.  Aside from making calls not fail, this tries to convert values as
+best it can.  We use 64 bits (i64) to represent values, as if we wrote the
+sent value to memory and loaded the received type from the same memory (using
 truncs/extends/ reinterprets). This means that when types do not match the
 emulated values may not match (this is true of native too, for that matter -
 this is all undefined behavior). This approaches appears good enough to
@@ -1185,7 +1184,7 @@ catch and handle ExitStatus exceptions.  However, this means all other
 uncaught exceptions are also caught and re-thrown, which is not always
 desirable.
 
-Default value: true
+Default value: false
 
 .. _nodejs_catch_rejection:
 

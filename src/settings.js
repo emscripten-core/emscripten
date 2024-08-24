@@ -336,10 +336,9 @@ var SAFE_HEAP_LOG = false;
 
 // Allows function pointers to be cast, wraps each call of an incorrect type
 // with a runtime correction.  This adds overhead and should not be used
-// normally.  It also forces ALIASING_FUNCTION_POINTERS to 0.  Aside from making
-// calls not fail, this tries to convert values as best it can.
-// We use 64 bits (i64) to represent values, as if we wrote the sent value to
-// memory and loaded the received type from the same memory (using
+// normally.  Aside from making calls not fail, this tries to convert values as
+// best it can.  We use 64 bits (i64) to represent values, as if we wrote the
+// sent value to memory and loaded the received type from the same memory (using
 // truncs/extends/ reinterprets). This means that when types do not match the
 // emulated values may not match (this is true of native too, for that matter -
 // this is all undefined behavior). This approaches appears good enough to
@@ -795,7 +794,7 @@ var WASM_EXNREF = false;
 // desirable.
 //
 // [link]
-var NODEJS_CATCH_EXIT = true;
+var NODEJS_CATCH_EXIT = false;
 
 // Catch unhandled rejections in node. This only effect versions of node older
 // than 15.  Without this, old version node will print a warning, but exit
@@ -1007,7 +1006,7 @@ var INCOMING_MODULE_JS_API = [
   'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
   'preMainLoop', 'preRun',
   'preinitializedWebGLContext', 'preloadPlugins',
-  'print', 'printErr', 'quit', 'setStatus', 'statusMessage', 'stderr',
+  'print', 'printErr', 'setStatus', 'statusMessage', 'stderr',
   'stdin', 'stdout', 'thisProgram', 'wasm', 'wasmBinary', 'websocket'
 ];
 
@@ -2171,10 +2170,6 @@ var SIGNATURE_CONVERSIONS = [];
 // Internal (testing only): Disables the blitOffscreenFramebuffer VAO path.
 // [link]
 var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = false;
-
-// Internal (testing only): Forces memory growing to fail.
-// [link]
-var TEST_MEMORY_GROWTH_FAILS = false;
 
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]

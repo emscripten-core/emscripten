@@ -19,7 +19,7 @@ var LibraryDylink = {
     var wasmPlugin = {
       'promiseChainEnd': Promise.resolve(),
       'canHandle': (name) => {
-        return !Module.noWasmDecoding && name.endsWith('.so')
+        return !Module['noWasmDecoding'] && name.endsWith('.so')
       },
       'handle': (byteArray, name, onload, onerror) => {
         // loadWebAssemblyModule can not load modules out-of-order, so rather

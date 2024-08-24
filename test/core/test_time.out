@@ -1,6 +1,5 @@
 stime: -1
 tzname[0] set: 1
-tzname[1] set: 1
 sec: 43
 min: 22
 hour: 3
@@ -11,8 +10,8 @@ wday: 3
 yday: 358
 dst: 0
 off: 0
-zone: GMT
-timegm <-> gmtime: 1
+old year still: 102
+new year: 70
 old year still: 102
 new year: 70
 localtime found DST data (summer): yes
@@ -22,14 +21,10 @@ localtime gmtoff matches DST: yes
 localtime tm_zone matches tzname (winter): yes
 localtime tm_zone matches tzname (summer): yes
 localtime equals std: true
-localtime <-> mktime: 1
 mktime updates parameter to be in range: 1
 mktime parameter is equivalent to localtime return: 1
 mktime guesses DST (winter): 1
 mktime guesses DST (summer): 1
-tbig: -1
-old year still: 102
-new year: 70
 time: 1
 difftime+: 268848637.000000
 difftime-: -268848637.000000

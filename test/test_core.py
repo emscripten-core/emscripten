@@ -27,6 +27,7 @@ from common import skip_if, no_windows, no_mac, is_slow_test, parameterized, par
 from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_with_wasm_bigint
 from common import read_file, read_binary, requires_v8, requires_node, requires_wasm2js, requires_node_canary
 from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime
+from common import also_with_noderawfs, also_with_wasmfs
 from common import with_all_eh_sjlj, with_all_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64, requires_wasm_exnref
 from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON
 import clang_native
@@ -40,6 +41,8 @@ EM_SIGABRT = 6
 
 
 def wasm_simd(f):
+  assert callable(f)
+
   @wraps(f)
   def decorated(self, *args, **kwargs):
     self.require_simd()
@@ -57,6 +60,9 @@ def wasm_simd(f):
 
 
 def wasm_relaxed_simd(f):
+  assert callable(f)
+
+  @wraps(f)
   def decorated(self):
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4638')
@@ -69,6 +75,9 @@ def wasm_relaxed_simd(f):
 
 
 def needs_non_trapping_float_to_int(f):
+  assert callable(f)
+
+  @wraps(f)
   def decorated(self):
     if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
@@ -148,38 +157,11 @@ def only_wasm2js(note=''):
   return decorated
 
 
-def also_with_noderawfs(func):
-  assert callable(func)
-
-  def metafunc(self, rawfs):
-    if rawfs:
-      self.require_node()
-      self.emcc_args += ['-DNODERAWFS']
-      self.set_setting('NODERAWFS')
-    func(self)
-
-  parameterize(metafunc, {'': (False,),
-                          'rawfs': (True,)})
-  return metafunc
-
-
-def also_with_wasmfs(func):
-  def decorated(self):
-    func(self)
-    if self.get_setting('WASMFS'):
-      # Nothing more to test.
-      return
-    print('wasmfs')
-    if self.get_setting('STANDALONE_WASM'):
-      self.skipTest("test currently cannot run both with WASMFS and STANDALONE_WASM")
-    self.set_setting('WASMFS')
-    self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
-    func(self)
-  return decorated
-
-
 # Similar to also_with_wasmfs, but also enables the full JS API
 def also_with_wasmfs_js(func):
+  assert callable(func)
+
+  @wraps(func)
   def decorated(self):
     func(self)
     print('wasmfs')
@@ -195,6 +177,7 @@ def also_with_wasmfs_js(func):
 def with_asyncify_and_jspi(f):
   assert callable(f)
 
+  @wraps(f)
   def metafunc(self, jspi):
     if jspi:
       self.set_setting('ASYNCIFY', 2)
@@ -215,6 +198,7 @@ def no_optimize(note=''):
   def decorator(func):
     assert callable(func)
 
+    @wraps(func)
     def decorated(self):
       if self.is_optimizing():
         self.skipTest(note)
@@ -488,8 +472,6 @@ class TestCoreBase(RunnerCore):
 
   @only_wasm2js('test 64-bit math')
   def test_i64_7z(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_i64_7z.c', args=['hallo'])
 
   @only_wasm2js('test 64-bit math with short values')
@@ -545,8 +527,6 @@ class TestCoreBase(RunnerCore):
 
   @only_wasm2js('tests operations on 16-bit values')
   def test_i16_emcc_intrinsic(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_i16_emcc_intrinsic.c')
 
   @only_wasm2js('tests 64-bit conversions')
@@ -748,8 +728,6 @@ class TestCoreBase(RunnerCore):
 
   @only_wasm2js('tests multiplication by zero')
   def test_zero_multiplication(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_zero_multiplication.c')
 
   def test_isnan(self):
@@ -771,8 +749,6 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('math/fmodf.c')
 
   def test_rounding(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_rounding.c')
 
   def test_stack(self):
@@ -1068,7 +1044,6 @@ int main()
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
   @no_asan('TODO: ASan support in minimal runtime')
   def test_exceptions_minimal_runtime(self):
-    self.set_setting('EXIT_RUNTIME')
     self.maybe_closure()
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
@@ -1085,10 +1060,8 @@ int main()
   @with_all_eh_sjlj
   def test_exceptions_custom(self):
     self.set_setting('EXCEPTION_DEBUG')
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
     self.maybe_closure()
-    src = '''
+    src = r'''
     #include <iostream>
 
     class MyException {
@@ -1120,11 +1093,12 @@ int main()
             std::cout << "Caught...";
         }
 
+        std::cout << "\n";
         return 0;
     }
     '''
 
-    self.do_run(src, 'Throw...Construct...Caught...Destruct...Throw...Construct...Copy...Caught...Destruct...Destruct...')
+    self.do_run(src, 'Throw...Construct...Caught...Destruct...Throw...Construct...Copy...Caught...Destruct...Destruct...\n')
 
   @with_all_eh_sjlj
   def test_exceptions_2(self):
@@ -1265,8 +1239,6 @@ int main(int argc, char **argv) {
 
   @with_all_eh_sjlj
   def test_exceptions_uncaught(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
     src = r'''
       #include <stdio.h>
       #include <exception>
@@ -1296,15 +1268,13 @@ int main(int argc, char **argv) {
         std::ofstream os("test");
         os << std::unitbuf << "foo"; // trigger a call to std::uncaught_exception from
                                      // std::basic_ostream::sentry::~sentry
-        std::cout << "success";
+        std::cout << "success\n";
       }
     '''
-    self.do_run(src, 'success')
+    self.do_run(src, 'success\n')
 
   @with_all_eh_sjlj
   def test_exceptions_uncaught_2(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
     src = r'''
       #include <iostream>
       #include <exception>
@@ -1328,7 +1298,7 @@ int main(int argc, char **argv) {
 
   @with_all_eh_sjlj
   def test_exceptions_typed(self):
-    # needs to flush stdio streams
+    # Depends on static destructors running
     self.set_setting('EXIT_RUNTIME')
     self.clear_setting('SAFE_HEAP') # Throwing null will cause an ignorable null pointer access.
     self.do_core_test('test_exceptions_typed.cpp')
@@ -1725,8 +1695,6 @@ int main() {
     self.do_run_in_out_file_test('stdio/test_rename.c')
 
   def test_remove(self):
-   # needs to flush stdio streams
-   self.set_setting('EXIT_RUNTIME')
    self.do_run_in_out_file_test('cstdio/test_remove.cpp')
 
   def test_alloca_stack(self):
@@ -1823,10 +1791,8 @@ int main() {
     self.do_run(src, 'got null')
 
   def test_emscripten_get_now(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
     self.maybe_closure()
-    self.do_runf('emscripten_get_now.cpp', 'Timer resolution is good')
+    self.do_runf('test_emscripten_get_now.c', 'Timer resolution is good')
 
   def test_emscripten_get_compiler_setting(self):
     src = test_file('core/emscripten_get_compiler_setting.c')
@@ -2109,7 +2075,7 @@ int main(int argc, char **argv) {
 
     # check that memory growth does not exceed the wasm mem max limit and is exactly or one step below the wasm mem max
     self.emcc_args += ['-sALLOW_MEMORY_GROWTH', '-sSTACK_SIZE=1Mb', '-sINITIAL_MEMORY=64Mb', '-sMAXIMUM_MEMORY=130Mb', '-sMEMORY_GROWTH_LINEAR_STEP=1Mb']
-    self.do_core_test('test_memorygrowth_memory_growth_step.c')
+    self.do_core_test('test_memorygrowth_linear_step.c')
 
   @no_ubsan('UBSan seems to effect the precise memory usage')
   @no_4gb('depends on specifc memory layout')
@@ -2128,7 +2094,8 @@ int main(int argc, char **argv) {
       self.skipTest('test needs to modify memory growth')
 
     self.set_setting('ALLOW_MEMORY_GROWTH')
-    self.set_setting('TEST_MEMORY_GROWTH_FAILS')
+    # Force memory growth to fail at runtime
+    self.add_pre_run('growMemory = (size) => false;')
     self.do_core_test('test_memorygrowth_3.c')
 
   @parameterized({
@@ -2644,13 +2611,11 @@ The current type of b is: 9
 
   @node_pthreads
   def test_pthread_wait32_notify(self):
-    self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('atomic/test_wait32_notify.c')
 
   @node_pthreads
   @no_wasm2js('https://github.com/WebAssembly/binaryen/issues/5991')
   def test_pthread_wait64_notify(self):
-    self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('atomic/test_wait64_notify.c')
 
   @node_pthreads
@@ -2668,16 +2633,23 @@ The current type of b is: 9
   def test_tcgetattr(self):
     self.do_runf('termios/test_tcgetattr.c', 'success')
 
+  @also_with_standalone_wasm()
   def test_time(self):
     self.do_core_test('test_time.c')
-    for tz in ['EST+05EDT', 'UTC+0', 'CET']:
-      print('extra tz test:', tz)
-      with env_modify({'TZ': tz}):
-        # Run the test with different time zone settings if
-        # possible. It seems that the TZ environment variable does not
-        # work all the time (at least it's not well respected by
-        # Node.js on Windows), but it does no harm either.
-        self.do_core_test('test_time.c')
+
+  @parameterized({
+    '1': ('EST+05EDT',),
+    '2': ('UTC+0',),
+    '3': ('CET',),
+  })
+  def test_time_tz(self, tz):
+    print('testing with TZ=%s' % tz)
+    with env_modify({'TZ': tz}):
+      # Run the test with different time zone settings if
+      # possible. It seems that the TZ environment variable does not
+      # work all the time (at least it's not well respected by
+      # Node.js on Windows), but it does no harm either.
+      self.do_core_test('test_time.c')
 
   def test_timeb(self):
     # Confirms they are called in reverse order
@@ -2689,13 +2661,19 @@ The current type of b is: 9
   def test_gmtime(self):
     self.do_core_test('test_gmtime.c')
 
+  @also_with_standalone_wasm()
   def test_strptime_tm(self):
+    if self.get_setting('STANDALONE_WASM'):
+      self.emcc_args += ['-DSTANDALONE']
     self.do_core_test('test_strptime_tm.c')
 
   def test_strptime_days(self):
     self.do_core_test('test_strptime_days.c')
 
+  @also_with_standalone_wasm()
   def test_strptime_reentrant(self):
+    if self.get_setting('STANDALONE_WASM'):
+      self.emcc_args += ['-DSTANDALONE']
     self.do_core_test('test_strptime_reentrant.c')
 
   @crossplatform
@@ -3107,8 +3085,7 @@ The current type of b is: 9
         return 0;
       }
       '''
-    self.do_run(src, 'Sort with main comparison: 5 4 3 2 1 *Sort with lib comparison: 1 2 3 4 5 *',
-                output_nicerizer=lambda x: x.replace('\n', '*'))
+    self.do_run(src, 'Sort with main comparison: 5 4 3 2 1 \nSort with lib comparison: 1 2 3 4 5 \n')
 
   @needs_dylink
   def test_dlfcn_data_and_fptr(self):
@@ -5262,11 +5239,12 @@ Have even and odd!
   def test_transtrcase(self):
     self.do_core_test('test_transtrcase.c')
 
+  @also_with_wasmfs # tests EXIT_RUNTIME flushing
   @no_wasm2js('very slow to compile: https://github.com/emscripten-core/emscripten/issues/21048')
   @is_slow_test
   def test_printf(self):
-    # needs to flush stdio streams
     self.emcc_args.append('-Wno-format')
+    # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('STACK_SIZE', '1MB')
     if self.is_wasm64():
@@ -5370,15 +5348,11 @@ Pass: 0.000012 0.000012''')
     self.do_core_test('test_sscanf_n.c')
 
   def test_sscanf_whitespace(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_sscanf_whitespace.c')
 
   def test_sscanf_other_whitespace(self):
     # use i16s in printf
     self.set_setting('SAFE_HEAP', 0)
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_sscanf_other_whitespace.c')
 
   def test_sscanf_3(self):
@@ -5443,15 +5417,11 @@ Module = {
 
     self.do_run_in_out_file_test('test_files.c')
 
-  def test_files_m(self):
-    # Test for Module.stdin etc.
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
-
+  def test_module_stdin(self):
     create_file('pre.js', '''
+    var data = [10, 20, 40, 30];
     Module = {
-      data: [10, 20, 40, 30],
-      stdin: () => { return Module.data.pop() || null },
+      stdin: () => { return data.pop() || null },
       stdout: (x) => out('got: ' + x)
     };
     ''')
@@ -5463,18 +5433,22 @@ Module = {
 
       int main () {
         char c;
-        fprintf(stderr, "isatty? %d,%d,%d\n", isatty(fileno(stdin)), isatty(fileno(stdout)), isatty(fileno(stderr)));
+        fprintf(stderr, "isatty? in=%d,out=%d,err=%d\n", isatty(fileno(stdin)), isatty(fileno(stdout)), isatty(fileno(stderr)));
         while ((c = fgetc(stdin)) != EOF) {
-          putc(c+5, stdout);
+          putc(c, stdout);
         }
+        putc('\n', stdout);
         return 0;
       }
       '''
 
-    def clean(out):
-      return '\n'.join(l for l in out.splitlines() if 'warning' not in l and 'binaryen' not in l)
-
-    self.do_run(src, ('got: 35\ngot: 45\ngot: 25\ngot: 15\nisatty? 0,0,1\n', 'got: 35\ngot: 45\ngot: 25\ngot: 15\nisatty? 0,0,1', 'isatty? 0,0,1\ngot: 35\ngot: 45\ngot: 25\ngot: 15'), output_nicerizer=clean)
+    self.do_run(src, '''\
+isatty? in=0,out=0,err=1
+got: 30
+got: 40
+got: 20
+got: 10
+''')
 
   def test_mount(self):
     self.set_setting('FORCE_FILESYSTEM')
@@ -5736,19 +5710,13 @@ Module = {
     self.do_core_test('test_write_stdout_fileno.c')
     self.do_core_test('test_write_stdout_fileno.c', args=['-sFILESYSTEM=0'])
 
-  @also_with_wasmfs # tests EXIT_RUNTIME flushing
   def test_direct_string_constant_usage(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_direct_string_constant_usage.cpp')
 
   def test_std_function_incomplete_return(self):
     self.do_core_test('test_std_function_incomplete_return.cpp')
 
   def test_istream(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
-
     for linkable in [0]: # , 1]:
       print(linkable)
       # regression check for issue #273
@@ -5949,7 +5917,7 @@ Module.onRuntimeInitialized = () => {
 
   @parameterized({
     'sigint': (EM_SIGINT, 128 + EM_SIGINT, True),
-    'sigabrt': (EM_SIGABRT, 7, False)
+    'sigabrt': (EM_SIGABRT, 1, False)
   })
   @crossplatform
   def test_sigaction_default(self, signal, exit_code, assert_identical):
@@ -6359,27 +6327,22 @@ int main(void) {
     output = read_file(test_file('raytrace.ppm'))
     self.do_run(src, output, args=['3', '16'])
 
-  def test_fasta(self):
-    results = [(1, '''GG*ctt**tgagc*'''),
-               (20, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa**tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
-               (50, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg*''')]
+  @parameterized({
+    '': ('double',),
+    'float': ('float',),
+  })
+  def test_fasta(self, float_type):
+    results = [('1', '''GG\nctt\n\ntgagc\n'''),
+               ('20', '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT\ncttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg\n\ntacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa\n\ntgacgtcttttgatctgacggcgttaacaaagatactctg\n'''),
+               ('50', '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA\nTCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT\ncttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg\n\ntactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa\n\nNtactMcSMtYtcMgRtacttctWBacgaa\n\nagatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct\n\nttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc\n\nggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa\n\ngaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa\n\nggcatgtatg\n''')]
 
     orig_src = read_file(test_file('fasta.cpp'))
 
-    def test(extra_args):
-      for t in ['float', 'double']:
-        print(t)
-        src = orig_src.replace('double', t)
-        create_file('fasta.cpp', src)
-        self.build('fasta.cpp', emcc_args=extra_args)
-        for arg, output in results:
-          self.do_run('fasta.js', output, args=[str(arg)],
-                      output_nicerizer=lambda x: x.replace('\n', '*'),
-                      no_build=True,
-                      emcc_args=extra_args)
-        shutil.copyfile('fasta.js', '%s.js' % t)
-
-    test([])
+    src = orig_src.replace('double', float_type)
+    create_file('fasta.cpp', src)
+    self.build('fasta.cpp')
+    for arg, output in results:
+      self.do_run('fasta.js', output, args=[arg], no_build=True)
 
   @needs_non_trapping_float_to_int
   def test_fasta_nontrapping(self):
@@ -6708,8 +6671,7 @@ void* operator new(size_t size) {
                 'hello lua world!\n17\n1\n2\n3\n4\n7',
                 args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
                 libraries=libs,
-                includes=[test_file('lua')],
-                output_nicerizer=lambda output: output.replace('\n\n', '\n').replace('\n\n', '\n'))
+                includes=[test_file('lua')])
 
   @no_asan('issues with freetype itself')
   @needs_make('configure script')
@@ -7489,9 +7451,7 @@ void* operator new(size_t size) {
     self.do_runf('test_embind_4.cpp', '107')
 
   def test_embind_5(self):
-    self.emcc_args += ['-lembind']
-    self.set_setting('EXIT_RUNTIME')
-    self.do_core_test('test_embind_5.cpp')
+    self.do_core_test('test_embind_5.cpp', emcc_args=['-lembind'])
 
   def test_embind_custom_marshal(self):
     self.emcc_args += ['-lembind', '--pre-js', test_file('embind/test_custom_marshal.js')]
@@ -8096,9 +8056,6 @@ int main() {
 
   @with_asyncify_and_jspi
   def test_async_loop(self):
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
-
     create_file('main.c',  r'''
 #include <stdio.h>
 #include <emscripten.h>
@@ -8119,7 +8076,6 @@ int main() {
   def test_async_ccall_bad(self):
     # check bad ccall use
     # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ccall'])
     self.set_setting('ASYNCIFY')
     self.set_setting('ASSERTIONS')
@@ -8150,8 +8106,6 @@ Module.onRuntimeInitialized = () => {
   @with_asyncify_and_jspi
   def test_async_ccall_good(self):
     # check reasonable ccall use
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('ASYNCIFY')
     self.set_setting('ASSERTIONS')
     self.set_setting('INVOKE_RUN', 0)
@@ -8184,7 +8138,6 @@ Module.onRuntimeInitialized = () => {
       self.require_jspi()
       self.set_setting('JSPI_EXPORTS', ['stringf', 'floatf'])
     self.set_setting('ASYNCIFY', asyncify)
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('ASSERTIONS')
     self.set_setting('INVOKE_RUN', 0)
     self.set_setting('EXIT_RUNTIME', exit_runtime)
@@ -8951,7 +8904,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.append('-fsanitize=address')
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.set_setting('INITIAL_MEMORY', '300mb')
-    self.do_runf(test_file('core', name), '', assert_returncode=NON_ZERO)
+    self.do_runf('core/' + name, '', assert_returncode=NON_ZERO)
 
   # note: these tests have things like -fno-builtin-memset in order to avoid
   # clang optimizing things away. for example, a memset might be optimized into
@@ -9029,7 +8982,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('INITIAL_MEMORY', '300mb')
     if cflags:
       self.emcc_args += cflags
-    self.do_runf(test_file('core', name),
+    self.do_runf('core/' + name,
                  expected_output=expected_output, assert_all=True,
                  check_for_error=False, assert_returncode=NON_ZERO)
 
@@ -9154,12 +9107,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
   # @also_with_standalone_wasm(impure=True)
   @node_pthreads
   def test_pthread_create(self):
-    if not self.get_setting('STANDALONE_WASM'):
-      self.set_setting('EXIT_RUNTIME')
     # test that the node environment can be specified by itself, and that still
     # works with pthreads (even though we did not specify 'node,worker')
     self.set_setting('ENVIRONMENT', 'node')
     self.set_setting('STRICT_JS')
+    self.set_setting('STRICT')
     self.do_run_in_out_file_test('core/pthread/create.c')
 
   @node_pthreads
@@ -9205,7 +9157,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_create_pool(self):
     # with a pool, we can synchronously depend on workers being available
     self.set_setting('PTHREAD_POOL_SIZE', 2)
-    self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['-DALLOW_SYNC']
     self.do_run_in_out_file_test('core/pthread/create.c')
 
@@ -9221,14 +9172,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_create_embind_stack_check(self):
     # embind should work with stack overflow checks (see #12356)
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
-    self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['-lembind']
     self.do_run_in_out_file_test('core/pthread/create.c', emcc_args=['-sDEFAULT_TO_CXX'])
 
   @node_pthreads
   def test_pthread_exceptions(self):
     self.set_setting('PTHREAD_POOL_SIZE', 2)
-    self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['-fexceptions']
     self.do_run_in_out_file_test('core/pthread/exceptions.cpp')
 
@@ -9259,7 +9208,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # Check that an unhandled promise rejection is propagated to the main thread
     # as an error.
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('NODEJS_CATCH_EXIT', 0)
     self.emcc_args += ['--post-js', test_file('pthread/test_pthread_unhandledrejection.post.js')]
     self.do_runf('pthread/test_pthread_unhandledrejection.c', 'passed')
 
@@ -9600,6 +9548,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('core/test_main_module_js_symbol.c')
 
   def test_emscripten_async_call(self):
+    # Depends on `atexit`
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('core/test_emscripten_async_call.c')
 
@@ -9665,7 +9614,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   def test_main_reads_args(self):
     self.run_process([EMCC, '-c', test_file('core/test_main_reads_args_real.c'), '-o', 'real.o'] + self.get_emcc_args(compile_only=True))
-    self.do_core_test('test_main_reads_args.c', emcc_args=['real.o', '-sEXIT_RUNTIME'], regex=True)
+    self.do_core_test('test_main_reads_args.c', emcc_args=['real.o'], regex=True)
 
   @requires_node
   def test_promise(self):

@@ -25,15 +25,8 @@ var Module = moduleArg;
 #elif USE_CLOSURE_COMPILER
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
 var /** @type {{
-  noImageDecoding: boolean,
-  noAudioDecoding: boolean,
-  noWasmDecoding: boolean,
   canvas: HTMLCanvasElement,
   ctx: Object,
-  dataFileDownloads: Object,
-  preloadResults: Object,
-  useWebGL: boolean,
-  expectedDataFileDownloads: number,
 }}
  */ Module;
 if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
@@ -477,7 +470,6 @@ checkIncomingModuleAPI();
 // minified.
 {{{ makeModuleReceive('arguments_', 'arguments') }}}
 {{{ makeModuleReceive('thisProgram') }}}
-{{{ makeModuleReceive('quit_', 'quit') }}}
 
 // perform assertions in shell.js after we set up out() and err(), as otherwise if an assertion fails it cannot print the message
 #if ASSERTIONS

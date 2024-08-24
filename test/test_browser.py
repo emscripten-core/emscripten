@@ -776,6 +776,14 @@ If manually bisecting:
       '-lSDL', '-lGL',
     ])
 
+  def test_sdl_image_webp(self):
+    shutil.copyfile(test_file('screenshot.webp'), 'screenshot.webp')
+    self.btest_exit('test_sdl_image.c', args=[
+      '--preload-file', 'screenshot.webp',
+      '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.webp"', '--use-preload-plugins',
+      '-lSDL', '-lGL',
+    ])
+
   @also_with_wasmfs
   @also_with_proxying
   def test_sdl_image_prepare(self):
@@ -1251,7 +1259,7 @@ simulateKeyUp(100);
     'closure': (['-sENVIRONMENT=web', '-O2', '--closure=1'],),
   })
   def test_emscripten_get_now(self, args):
-    self.btest_exit('emscripten_get_now.cpp', args=args)
+    self.btest_exit('test_emscripten_get_now.c', args=args)
 
   def test_write_file_in_environment_web(self):
     self.btest_exit('write_file.c', args=['-sENVIRONMENT=web', '-Os', '--closure=1'])
@@ -1799,7 +1807,7 @@ simulateKeyUp(100);
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_emscripten_main_loop(self, args):
-    self.btest_exit('emscripten_main_loop.cpp', args=args)
+    self.btest_exit('test_emscripten_main_loop.c', args=args)
 
   @parameterized({
     '': ([],),
@@ -1807,19 +1815,19 @@ simulateKeyUp(100);
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sAUTO_JS_LIBRARIES=0'],),
   })
   def test_emscripten_main_loop_settimeout(self, args):
-    self.btest_exit('emscripten_main_loop_settimeout.cpp', args=args)
+    self.btest_exit('test_emscripten_main_loop_settimeout.c', args=args)
 
   @parameterized({
     '': ([],),
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'],),
   })
   def test_emscripten_main_loop_and_blocker(self, args):
-    self.btest_exit('emscripten_main_loop_and_blocker.cpp', args=args)
+    self.btest_exit('test_emscripten_main_loop_and_blocker.c', args=args)
 
   def test_emscripten_main_loop_and_blocker_exit(self):
     # Same as above but tests that EXIT_RUNTIME works with emscripten_main_loop.  The
     # app should still stay alive until the loop ends
-    self.btest_exit('emscripten_main_loop_and_blocker.cpp')
+    self.btest_exit('test_emscripten_main_loop_and_blocker.c')
 
   @parameterized({
     '': ([],),
@@ -1828,7 +1836,7 @@ simulateKeyUp(100);
     'strict': (['-sSTRICT'],),
   })
   def test_emscripten_main_loop_setimmediate(self, args):
-    self.btest_exit('emscripten_main_loop_setimmediate.cpp', args=args)
+    self.btest_exit('test_emscripten_main_loop_setimmediate.c', args=args)
 
   @parameterized({
     '': ([],),
@@ -3183,7 +3191,7 @@ Module["preRun"] = () => {
     'O3': (['-O3'],),
   })
   def test_async_mainloop(self, args):
-    self.btest_exit('async_mainloop.cpp', args=args + ['-sASYNCIFY'])
+    self.btest_exit('test_async_mainloop.c', args=args + ['-sASYNCIFY'])
 
   @requires_sound_hardware
   @parameterized({

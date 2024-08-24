@@ -35,6 +35,8 @@ void looper() {
   fclose(f);
 }
 
+EM_JS_DEPS(deps, "$safeSetTimeout");
+
 int main() {
   EM_ASM({
     (function() {
@@ -60,10 +62,12 @@ int main() {
       counter++;
       if (counter < 5) {
         out('js queueing');
-        setTimeout(looper, 1);
+        // Use safeSetTimeout here so that `looper` get called via
+        // `callUserCallback` which gracefully handles things like `exit`.
+        safeSetTimeout(looper, 1);
       } else {
         out('js finishing');
-        setTimeout(Module['_finish'], 1);
+        safeSetTimeout(Module['_finish'], 1);
       }
     }
     looper();

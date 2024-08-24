@@ -200,10 +200,12 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     return (ctx.getSupportedExtensions() || []).filter(ext => supportedExtensions.includes(ext));
   },
 
-  $GL__postset: 'var GLctx;',
+  $GLctx__internal: true,
+  $GLctx: undefined,
+  $GL__deps: [
+    '$GLctx',
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
   // If GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS is enabled, GL.initExtensions() will call to initialize these.
-  $GL__deps: [
 #if PTHREADS
     'malloc', // Needed by registerContext
     'free', // Needed by deleteContext
@@ -219,8 +221,8 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
     '$webgl_enable_WEBGL_multi_draw',
     '$getEmscriptenSupportedExtensions',
-  ],
 #endif // GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
+  ],
   $GL: {
 #if GL_DEBUG
     debug: true,
@@ -1277,15 +1279,12 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
 #if GL_EMULATE_GLES_VERSION_STRING_FORMAT
         case 0x1F02 /* GL_VERSION */:
-          var glVersion = GLctx.getParameter(0x1F02 /*GL_VERSION*/);
+          var webGLVersion = GLctx.getParameter(0x1F02 /*GL_VERSION*/);
           // return GLES version string corresponding to the version of the WebGL context
+          var glVersion = `OpenGL ES 2.0 (${webGLVersion})`;
 #if MAX_WEBGL_VERSION >= 2
-          if ({{{ isCurrentContextWebGL2() }}}) glVersion = `OpenGL ES 3.0 (${glVersion})`;
-          else
+          if ({{{ isCurrentContextWebGL2() }}}) glVersion = `OpenGL ES 3.0 (${webGLVersion})`;
 #endif
-          {
-            glVersion = `OpenGL ES 2.0 (${glVersion})`;
-          }
           ret = stringToNewUTF8(glVersion);
           break;
         case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
@@ -1533,7 +1532,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
     }
 #endif
+#if INCLUDE_WEBGL1_FALLBACK
     GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
+#endif
   },
 
 
@@ -1550,7 +1551,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
     }
 #endif
+#if INCLUDE_WEBGL1_FALLBACK
     GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
+#endif
   },
 
   $computeUnpackAlignedImageSize: (width, height, sizePerPixel) => {
@@ -1714,6 +1717,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
     }
 #endif
+#if INCLUDE_WEBGL1_FALLBACK
     var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, format);
     if (!pixelData) {
       GL.recordError(0x500/*GL_INVALID_ENUM*/);
@@ -1723,6 +1727,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       return;
     }
     GLctx.readPixels(x, y, width, height, format, type, pixelData);
+#endif
   },
 
   glBindTexture: (target, texture) => {
@@ -1862,11 +1867,13 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       return;
     }
 #endif
+#if INCLUDE_WEBGL1_FALLBACK
     // N.b. here first form specifies a heap subarray, second form an integer
     // size, so the ?: code here is polymorphic. It is advised to avoid
     // randomly mixing both uses in calling code, to avoid any potential JS
     // engine JIT issues.
     GLctx.bufferData(target, data ? HEAPU8.subarray(data, data+size) : size, usage);
+#endif
   },
 
   glBufferSubData: (target, offset, size, data) => {
@@ -1876,7 +1883,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       return;
     }
 #endif
+#if INCLUDE_WEBGL1_FALLBACK
     GLctx.bufferSubData(target, offset, HEAPU8.subarray(data, data+size));
+#endif
   },
 
   // Queries EXT

@@ -247,6 +247,7 @@ def requires_native_clang(func):
 def requires_node(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_node()
     return func(self, *args, **kwargs)
@@ -257,6 +258,7 @@ def requires_node(func):
 def requires_node_canary(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_node_canary()
     return func(self, *args, **kwargs)
@@ -267,6 +269,7 @@ def requires_node_canary(func):
 def requires_wasm64(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_wasm64()
     return func(self, *args, **kwargs)
@@ -277,6 +280,7 @@ def requires_wasm64(func):
 def requires_wasm_eh(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_wasm_eh()
     return func(self, *args, **kwargs)
@@ -287,6 +291,7 @@ def requires_wasm_eh(func):
 def requires_wasm_exnref(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_wasm_exnref()
     return func(self, *args, **kwargs)
@@ -297,6 +302,7 @@ def requires_wasm_exnref(func):
 def requires_v8(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_v8()
     return func(self, *args, **kwargs)
@@ -316,6 +322,8 @@ def requires_wasm2js(f):
 
 
 def node_pthreads(f):
+  assert callable(f)
+
   @wraps(f)
   def decorated(self, *args, **kwargs):
     self.setup_node_pthreads()
@@ -361,6 +369,39 @@ def with_env_modify(updates):
     return modified
 
   return decorated
+
+
+def also_with_wasmfs(f):
+  assert callable(f)
+
+  @wraps(f)
+  def metafunc(self, wasmfs, *args, **kwargs):
+    if wasmfs:
+      self.set_setting('WASMFS')
+      self.emcc_args.append('-DWASMFS')
+      f(self, *args, **kwargs)
+    else:
+      f(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,),
+                          'wasmfs': (True,)})
+  return metafunc
+
+
+def also_with_noderawfs(func):
+  assert callable(func)
+
+  @wraps(func)
+  def metafunc(self, rawfs, *args, **kwargs):
+    if rawfs:
+      self.require_node()
+      self.emcc_args += ['-DNODERAWFS']
+      self.set_setting('NODERAWFS')
+    func(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,),
+                          'rawfs': (True,)})
+  return metafunc
 
 
 # Decorator version of env_modify
@@ -536,8 +577,8 @@ def with_all_eh_sjlj(f):
     else:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
-      # DISABLE_EXCEPTION_CATCHING=0 exports __cxa_can_catch and
-      # __cxa_is_pointer_type, so if we don't build in C++ mode, wasm-ld will
+      # DISABLE_EXCEPTION_CATCHING=0 exports __cxa_can_catch,
+      # so if we don't build in C++ mode, wasm-ld will
       # error out because libc++abi is not included. See
       # https://github.com/emscripten-core/emscripten/pull/14192 for details.
       self.set_setting('DEFAULT_TO_CXX')
@@ -1288,10 +1329,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     long_lines = []
 
     def cleanup(line):
-      if len(line) > 2048:
-        # Sanity check that this is really the emscripten program/module on
-        # a single line.
-        assert line.startswith('var Module=typeof Module!="undefined"')
+      if len(line) > 2048 and line.startswith('var Module=typeof Module!="undefined"'):
         long_lines.append(line)
         line = '<REPLACED ENTIRE PROGRAM ON SINGLE LINE>'
       return line
@@ -1306,7 +1344,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return '\n'.join(lines)
 
   def run_js(self, filename, engine=None, args=None,
-             output_nicerizer=None,
              assert_returncode=0,
              interleaved_output=True):
     # use files, as PIPE can get too full and hang us
@@ -1347,8 +1384,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     ret = read_file(stdout_file)
     if not interleaved_output:
       ret += read_file(stderr_file)
-    if output_nicerizer:
-      ret = output_nicerizer(ret)
     if assert_returncode != 0:
       ret = self.clean_js_output(ret)
     if error or timeout_error or EMTEST_VERBOSE:
@@ -1366,7 +1401,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if assert_returncode == NON_ZERO:
         self.fail('JS subprocess unexpectedly succeeded (%s):  Output:\n%s' % (error.cmd, ret))
       else:
-        self.fail('JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
+        self.fail('JS subprocess failed (%s): %s (expected=%s).  Output:\n%s' % (error.cmd, error.returncode, assert_returncode, ret))
 
     #  We should pass all strict mode checks
     self.assertNotContained('strict warning:', ret)
@@ -1739,7 +1774,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return output
 
   ## Does a complete test - builds, runs, checks output, etc.
-  def _build_and_run(self, filename, expected_output, args=None, output_nicerizer=None,
+  def _build_and_run(self, filename, expected_output, args=None,
                      no_build=False,
                      libraries=None,
                      includes=None,
@@ -1772,7 +1807,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
     for engine in engines:
       js_output = self.run_js(js_file, engine, args,
-                              output_nicerizer=output_nicerizer,
                               assert_returncode=assert_returncode,
                               interleaved_output=interleaved_output)
       js_output = js_output.replace('\r\n', '\n')

@@ -1,0 +1,15 @@
+__indirect_function_table
+__wasm_call_ctors
+_emscripten_stack_alloc
+_emscripten_stack_restore
+dynCall_iiiiiijj
+dynCall_iiiiij
+dynCall_iiiiijj
+dynCall_iiiij
+dynCall_iij
+dynCall_ji
+dynCall_jiji
+dynCall_viijii
+emscripten_stack_get_current
+main
+memory

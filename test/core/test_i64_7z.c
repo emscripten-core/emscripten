@@ -16,6 +16,6 @@ int main(int argc, char *argv[]) {
     printf("one %lld, %lld", a, b);
     return 0;
   }
-  printf("zero %lld, %lld", a, b);
+  printf("zero %lld, %lld\n", a, b);
   return 0;
 }

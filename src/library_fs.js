@@ -34,16 +34,16 @@ addToLibrary({
   $FS__postset: function() {
     // TODO: do we need noFSInit?
     addAtInit(`
-if (!Module['noFSInit'] && !FS.init.initialized)
+if (!Module['noFSInit'] && !FS.initialized)
   FS.init();
 FS.ignorePermissions = false;
 `)
     addAtExit('FS.quit();');
     return `
 FS.createPreloadedFile = FS_createPreloadedFile;
-FS.staticInit();` +
-           // Get module methods from settings
-           '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}';
+FS.staticInit();
+// Set module methods based on EXPORTED_RUNTIME_METHODS
+{{{ EXPORTED_RUNTIME_METHODS.filter((func) => func.startsWith('FS_')).map((func) => 'Module["' + func + '"] = FS.' + func.substr(3) + ";\n").reduce((str, func) => str + func, '') }}}`;
   },
   $FS: {
     root: null,
@@ -150,8 +150,8 @@ FS.staticInit();` +
         this.node_ops = {};
         this.stream_ops = {};
         this.rdev = rdev;
-        this.readMode = 292/*{{{ cDefs.S_IRUGO }}}*/ | 73/*{{{ cDefs.S_IXUGO }}}*/;
-        this.writeMode = 146/*{{{ cDefs.S_IWUGO }}}*/;
+        this.readMode = {{{ cDefs.S_IRUGO }}} | {{{ cDefs.S_IXUGO }}};
+        this.writeMode = {{{ cDefs.S_IWUGO }}};
       }
       get read() {
         return (this.mode & this.readMode) === this.readMode;
@@ -1267,6 +1267,9 @@ FS.staticInit();` +
       if (!stream.stream_ops.mmap) {
         throw new FS.ErrnoError({{{ cDefs.ENODEV }}});
       }
+      if (!length) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
       return stream.stream_ops.mmap(stream, length, position, prot, flags);
     },
     msync(stream, buffer, offset, length, mmapFlags) {
@@ -1400,7 +1403,7 @@ FS.staticInit();` +
         }
       }, {}, '/proc/self/fd');
     },
-    createStandardStreams() {
+    createStandardStreams(input, output, error) {
       // TODO deprecate the old functionality of a single
       // input / output callback and that utilizes FS.createDevice
       // and instead require a unique set of stream ops
@@ -1409,18 +1412,18 @@ FS.staticInit();` +
       // default tty devices. however, if the standard streams
       // have been overwritten we create a unique device for
       // them instead.
-      if (Module['stdin']) {
-        FS.createDevice('/dev', 'stdin', Module['stdin']);
+      if (input) {
+        FS.createDevice('/dev', 'stdin', input);
       } else {
         FS.symlink('/dev/tty', '/dev/stdin');
       }
-      if (Module['stdout']) {
-        FS.createDevice('/dev', 'stdout', null, Module['stdout']);
+      if (output) {
+        FS.createDevice('/dev', 'stdout', null, output);
       } else {
         FS.symlink('/dev/tty', '/dev/stdout');
       }
-      if (Module['stderr']) {
-        FS.createDevice('/dev', 'stderr', null, Module['stderr']);
+      if (error) {
+        FS.createDevice('/dev', 'stderr', null, error);
       } else {
         FS.symlink('/dev/tty1', '/dev/stderr');
       }
@@ -1468,19 +1471,25 @@ FS.staticInit();` +
     },
     init(input, output, error) {
 #if ASSERTIONS
-      assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
+      assert(!FS.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
 #endif
-      FS.init.initialized = true;
+      FS.initialized = true;
 
       // Allow Module.stdin etc. to provide defaults, if none explicitly passed to us here
-      Module['stdin'] = input || Module['stdin'];
-      Module['stdout'] = output || Module['stdout'];
-      Module['stderr'] = error || Module['stderr'];
+#if expectToReceiveOnModule('stdin')
+      input ??= Module['stdin'];
+#endif
+#if expectToReceiveOnModule('stdout')
+      output ??= Module['stdout'];
+#endif
+#if expectToReceiveOnModule('stderr')
+      error ??= Module['stderr'];
+#endif
 
-      FS.createStandardStreams();
+      FS.createStandardStreams(input, output, error);
     },
     quit() {
-      FS.init.initialized = false;
+      FS.initialized = false;
       // force-flush all streams, so we get musl std streams printed out
 #if hasExportedSymbol('fflush')
       _fflush(0);

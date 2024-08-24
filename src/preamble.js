@@ -34,6 +34,14 @@ if (Module['doWasm2JS']) {
 #endif
 #endif
 
+#if MAYBE_WASM2JS
+if (WebAssembly.isWasm2js) {
+  // We don't need to actually download a wasm binary, mark it as present but
+  // empty.
+  wasmBinary = [];
+}
+#endif
+
 #if ASSERTIONS && WASM == 1
 if (typeof WebAssembly != 'object') {
   err('no native wasm support detected');
@@ -163,7 +171,6 @@ assert(!Module['INITIAL_MEMORY'], 'Detected runtime INITIAL_MEMORY setting.  Use
 #endif // !IMPORTED_MEMORY && ASSERTIONS
 
 #include "runtime_stack_check.js"
-#include "runtime_assertions.js"
 
 var __ATPRERUN__  = []; // functions called before the runtime is initialized
 var __ATINIT__    = []; // functions called during startup
