@@ -896,10 +896,13 @@ def phase_linker_setup(options, state, newargs):
     if not settings.MODULARIZE and not settings.EXPORT_ES6:
       default_setting('STRICT_JS', 1)
     default_setting('DEFAULT_TO_CXX', 0)
-    default_setting('AUTO_JS_LIBRARIES', 0)
-    default_setting('AUTO_NATIVE_LIBRARIES', 0)
     default_setting('IGNORE_MISSING_MAIN', 0)
-    default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
+    default_setting('AUTO_NATIVE_LIBRARIES', 0)
+    if settings.MAIN_MODULE != 1:
+      # These two settings cannot be disabled with MAIN_MODULE=1 because all symbols
+      # are needed in this mode.
+      default_setting('AUTO_JS_LIBRARIES', 0)
+      default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
     if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
       # Out default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
       default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
