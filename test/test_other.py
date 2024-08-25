@@ -12735,6 +12735,9 @@ exec "$@"
   def test_syslog(self):
     self.do_other_test('test_syslog.c')
 
+  def test_syscall_stubs(self):
+    self.do_other_test('test_syscall_stubs.c')
+
   @parameterized({
     '': (False, False),
     'custom': (True, False),
