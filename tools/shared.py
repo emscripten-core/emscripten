@@ -433,7 +433,8 @@ def set_version_globals():
 
 
 def generate_sanity():
-  return f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}\n'
+  llvm_root = os.path.normcase(config.LLVM_ROOT)
+  return f'{EMSCRIPTEN_VERSION}|{llvm_root}\n'
 
 
 @memoize
