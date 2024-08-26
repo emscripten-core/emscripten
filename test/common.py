@@ -872,8 +872,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def require_node_canary(self):
     nodejs = self.get_nodejs()
     if self.node_is_canary(nodejs):
-        self.require_engine(nodejs)
-        return
+      self.require_engine(nodejs)
+      return
 
     if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
       self.skipTest('test requires node canary and EMTEST_SKIP_NODE_CANARY is set')
@@ -889,10 +889,13 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.wasm_engines = []
 
   def require_wasm64(self):
+    if self.is_browser_test():
+      return
+
     nodejs = self.get_nodejs()
     if nodejs:
       version = shared.get_node_version(nodejs)
-      if version >= (16, 0, 0):
+      if version >= (23, 0, 0):
         self.js_engines = [nodejs]
         self.node_args += shared.node_memory64_flags()
         return
@@ -904,11 +907,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return
 
     if 'EMTEST_SKIP_WASM64' in os.environ:
-      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_WASM64 is set)')
+      self.skipTest('test requires node >= 23 or d8 (and EMTEST_SKIP_WASM64 is set)')
     else:
-      self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
+      self.fail('either d8 or node >= 23 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def require_simd(self):
+    if self.is_browser_test():
+      return
+
     nodejs = self.get_nodejs()
     if nodejs:
       version = shared.get_node_version(nodejs)
