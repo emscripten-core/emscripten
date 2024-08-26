@@ -1235,7 +1235,7 @@ class libc(MuslInternalLibrary,
         ])
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/legacy',
-        filenames=['getpagesize.c', 'err.c'])
+        filenames=['getpagesize.c', 'err.c', 'euidaccess.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/linux',

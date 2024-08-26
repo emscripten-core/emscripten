@@ -99,6 +99,7 @@
             "F_DUPFD",
             "F_SETLK",
             "O_WRONLY",
+            "AT_EACCESS",
             "AT_FDCWD",
             "AT_SYMLINK_NOFOLLOW",
             "AT_REMOVEDIR",

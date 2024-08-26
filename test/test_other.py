@@ -12407,7 +12407,10 @@ int main () {
     self.assertIdentical(one, two)
 
   def test_err(self):
-    self.do_other_test('test_err.cpp')
+    self.do_other_test('test_err.c')
+
+  def test_euidaccess(self):
+    self.do_other_test('test_euidaccess.c')
 
   def test_shared_flag(self):
     # Test that `-shared` flag causes object file generation but gives a warning
