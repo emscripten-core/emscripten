@@ -3803,6 +3803,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   glDrawElements: (mode, count, type, indices) => {
 #if FULL_ES2
     var buf;
+    var vertexes = 0;
     if (!GLctx.currentElementArrayBufferBinding) {
       var size = GL.calcBufLength(1, type, 0, count);
       buf = GL.getTempIndexBuffer(size);
@@ -3810,12 +3811,39 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       GLctx.bufferSubData(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/,
                           0,
                           HEAPU8.subarray(indices, indices + size));
+      
+      // Calculating vertex count if shader's attribute data is on client side
+      if (count > 0) {
+        for (var i = 0; i < GL.currentContext.maxVertexAttribs; ++i) {
+          var cb = GL.currentContext.clientBuffers[i];
+          if (cb.clientside && cb.enabled) {
+            let arrayClass;
+            switch(type) {
+              case 0x1401 /* GL_UNSIGNED_BYTE */: arrayClass = Uint8Array; break;
+              case 0x1403 /* GL_UNSIGNED_SHORT */: arrayClass = Uint16Array; break;
+#if FULL_ES3
+              case 0x1405 /* GL_UNSIGNED_INT */: arrayClass = Uint32Array; break;
+#endif
+              default:
+                GL.recordError(0x502 /* GL_INVALID_OPERATION */);
+#if GL_ASSERTIONS
+                err('type is not supported in glDrawElements');
+#endif
+                return;
+            }
+
+            vertexes = new arrayClass(HEAPU8.buffer, indices, count).reduce((max, current) => Math.max(max, current)) + 1;
+            break;
+          }
+        }
+      }
+
       // the index is now 0
       indices = 0;
     }
 
     // bind any client-side buffers
-    GL.preDrawHandleClientVertexAttribBindings(count);
+    GL.preDrawHandleClientVertexAttribBindings(vertexes);
 #endif
 
     GLctx.drawElements(mode, count, type, indices);
