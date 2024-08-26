@@ -1,5 +1,7 @@
 # Tag release and update changelog
 name: Tag release and update Changelog
+permissions:
+  contents: write
 
 on:
   workflow_dispatch:
