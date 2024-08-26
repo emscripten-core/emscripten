@@ -27,7 +27,7 @@ def get(ports, settings, shared):
   ports.fetch_project('freetype', f'https://github.com/emscripten-ports/FreeType/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'freetype', 'FreeType-' + TAG)
+    source_path = ports.get_dir('freetype', 'FreeType-' + TAG)
     ports.write_file(os.path.join(source_path, 'include/ftconfig.h'), ftconf_h)
     ports.install_header_dir(os.path.join(source_path, 'include'),
                              target=os.path.join('freetype2'))
