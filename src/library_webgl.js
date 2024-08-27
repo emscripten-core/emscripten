@@ -1279,15 +1279,12 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
 #if GL_EMULATE_GLES_VERSION_STRING_FORMAT
         case 0x1F02 /* GL_VERSION */:
-          var glVersion = GLctx.getParameter(0x1F02 /*GL_VERSION*/);
+          var webGLVersion = GLctx.getParameter(0x1F02 /*GL_VERSION*/);
           // return GLES version string corresponding to the version of the WebGL context
+          var glVersion = `OpenGL ES 2.0 (${webGLVersion})`;
 #if MAX_WEBGL_VERSION >= 2
-          if ({{{ isCurrentContextWebGL2() }}}) glVersion = `OpenGL ES 3.0 (${glVersion})`;
-          else
+          if ({{{ isCurrentContextWebGL2() }}}) glVersion = `OpenGL ES 3.0 (${webGLVersion})`;
 #endif
-          {
-            glVersion = `OpenGL ES 2.0 (${glVersion})`;
-          }
           ret = stringToNewUTF8(glVersion);
           break;
         case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
@@ -1535,7 +1532,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
     }
 #endif
+#if INCLUDE_WEBGL1_FALLBACK
     GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
+#endif
   },
 
 
@@ -1552,7 +1551,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
     }
 #endif
+#if INCLUDE_WEBGL1_FALLBACK
     GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
+#endif
   },
 
   $computeUnpackAlignedImageSize: (width, height, sizePerPixel) => {
@@ -1716,6 +1717,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
     }
 #endif
+#if INCLUDE_WEBGL1_FALLBACK
     var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, format);
     if (!pixelData) {
       GL.recordError(0x500/*GL_INVALID_ENUM*/);
@@ -1725,6 +1727,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       return;
     }
     GLctx.readPixels(x, y, width, height, format, type, pixelData);
+#endif
   },
 
   glBindTexture: (target, texture) => {
@@ -1864,11 +1867,13 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       return;
     }
 #endif
+#if INCLUDE_WEBGL1_FALLBACK
     // N.b. here first form specifies a heap subarray, second form an integer
     // size, so the ?: code here is polymorphic. It is advised to avoid
     // randomly mixing both uses in calling code, to avoid any potential JS
     // engine JIT issues.
     GLctx.bufferData(target, data ? HEAPU8.subarray(data, data+size) : size, usage);
+#endif
   },
 
   glBufferSubData: (target, offset, size, data) => {
@@ -1878,7 +1883,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       return;
     }
 #endif
+#if INCLUDE_WEBGL1_FALLBACK
     GLctx.bufferSubData(target, offset, HEAPU8.subarray(data, data+size));
+#endif
   },
 
   // Queries EXT
@@ -3796,6 +3803,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   glDrawElements: (mode, count, type, indices) => {
 #if FULL_ES2
     var buf;
+    var vertexes = 0;
     if (!GLctx.currentElementArrayBufferBinding) {
       var size = GL.calcBufLength(1, type, 0, count);
       buf = GL.getTempIndexBuffer(size);
@@ -3803,12 +3811,39 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       GLctx.bufferSubData(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/,
                           0,
                           HEAPU8.subarray(indices, indices + size));
+      
+      // Calculating vertex count if shader's attribute data is on client side
+      if (count > 0) {
+        for (var i = 0; i < GL.currentContext.maxVertexAttribs; ++i) {
+          var cb = GL.currentContext.clientBuffers[i];
+          if (cb.clientside && cb.enabled) {
+            let arrayClass;
+            switch(type) {
+              case 0x1401 /* GL_UNSIGNED_BYTE */: arrayClass = Uint8Array; break;
+              case 0x1403 /* GL_UNSIGNED_SHORT */: arrayClass = Uint16Array; break;
+#if FULL_ES3
+              case 0x1405 /* GL_UNSIGNED_INT */: arrayClass = Uint32Array; break;
+#endif
+              default:
+                GL.recordError(0x502 /* GL_INVALID_OPERATION */);
+#if GL_ASSERTIONS
+                err('type is not supported in glDrawElements');
+#endif
+                return;
+            }
+
+            vertexes = new arrayClass(HEAPU8.buffer, indices, count).reduce((max, current) => Math.max(max, current)) + 1;
+            break;
+          }
+        }
+      }
+
       // the index is now 0
       indices = 0;
     }
 
     // bind any client-side buffers
-    GL.preDrawHandleClientVertexAttribBindings(count);
+    GL.preDrawHandleClientVertexAttribBindings(vertexes);
 #endif
 
     GLctx.drawElements(mode, count, type, indices);

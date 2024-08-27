@@ -925,6 +925,9 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_in
   if settings.MINIFY_WHITESPACE:
     passes.append('--minify-whitespace')
   extra_info = {'mapping': mapping}
+  if settings.MINIFICATION_MAP:
+    lines = [f'{new}:{old}' for old, new in mapping.items()]
+    utils.write_file(settings.MINIFICATION_MAP, '\n'.join(lines) + '\n')
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
 

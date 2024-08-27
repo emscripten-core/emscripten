@@ -175,9 +175,11 @@ var LibraryEmbind = {
       }
       out.push(' {\n');
       for (const property of this.properties) {
-        out.push('  ');
-        property.print(nameMap, out);
-        out.push(';\n');
+        const props = [];
+        property.print(nameMap, props);
+        for (const formattedProp of props) {
+          out.push(`  ${formattedProp};\n`);
+        }
       }
       for (const method of this.methods) {
         out.push('  ');
@@ -205,9 +207,15 @@ var LibraryEmbind = {
       for (const prop of this.staticProperties) {
         const entry = [];
         prop.print(nameMap, entry);
-        entries.push(entry.join(''));
+        entries.push(...entry);
       }
-      out.push(entries.join('; '));
+      if (entries.length) {
+        out.push('\n');
+        for (const entry of entries) {
+          out.push(`    ${entry};\n`);
+        }
+        out.push('  ');
+      }
       out.push('};\n');
     }
 
@@ -235,6 +243,18 @@ var LibraryEmbind = {
     }
 
   },
+  $printProperty: (prop, nameMap, out) => {
+    const setType = nameMap(prop.type, false);
+    const getType = nameMap(prop.type, true);
+    if (prop.readonly || setType === getType) {
+      out.push(`${prop.readonly ? 'readonly ' : ''}${prop.name}: ${getType}`);
+      return;
+    }
+    // The getter/setter types don't match, so generate each get/set definition.
+    out.push(`get ${prop.name}(): ${getType}`);
+    out.push(`set ${prop.name}(value: ${setType})`);
+  },
+  $ClassProperty__deps: ['$printProperty'],
   $ClassProperty: class {
     constructor(type, name, readonly) {
       this.type = type;
@@ -243,7 +263,7 @@ var LibraryEmbind = {
     }
 
     print(nameMap, out) {
-      out.push(`${this.readonly ? 'readonly ' : ''}${this.name}: ${nameMap(this.type)}`);
+      printProperty(this, nameMap, out);
     }
   },
   $ConstantDefinition: class {
@@ -309,6 +329,7 @@ var LibraryEmbind = {
       out.push(' ];\n\n');
     }
   },
+  $ValueObjectDefinition__deps: ['$printProperty'],
   $ValueObjectDefinition: class {
     constructor(typeId, name) {
       this.typeId = typeId;
@@ -320,12 +341,14 @@ var LibraryEmbind = {
     }
 
     print(nameMap, out) {
-      out.push(`export type ${this.name} = {\n`);
+      out.push(`export type ${this.name} = {\n  `);
       const outFields = [];
-      for (const {name, type} of this.fields) {
-        outFields.push(`  ${name}: ${nameMap(type)}`);
+      for (const field of this.fields) {
+        const property = [];
+        printProperty(field, nameMap, property);
+        outFields.push(...property);
       }
-      out.push(outFields.join(',\n'))
+      out.push(outFields.join(',\n  '))
       out.push('\n};\n\n');
     }
   },

@@ -166,10 +166,6 @@ var LibraryPThread = {
     },
 #endif
 
-#if !MINIMAL_RUNTIME
-    setExitStatus: (status) => EXITSTATUS = status,
-#endif
-
     terminateAllThreads__deps: ['$terminateWorker'],
     terminateAllThreads: () => {
 #if ASSERTIONS
@@ -1143,7 +1139,7 @@ var LibraryPThread = {
       __emscripten_thread_exit(result);
 #else
       if (keepRuntimeAlive()) {
-        PThread.setExitStatus(result);
+        EXITSTATUS = result;
       } else {
         __emscripten_thread_exit(result);
       }

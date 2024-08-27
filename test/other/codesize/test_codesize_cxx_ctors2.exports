@@ -1,0 +1,11 @@
+__indirect_function_table
+_emscripten_stack_alloc
+_emscripten_stack_restore
+dynCall_iiiiiijj
+dynCall_iiiiij
+dynCall_iiiiijj
+dynCall_jiji
+dynCall_viijii
+emscripten_stack_get_current
+main
+memory

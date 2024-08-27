@@ -1,0 +1,3 @@
+a (memory)
+b (__wasm_call_ctors)
+c (__indirect_function_table)

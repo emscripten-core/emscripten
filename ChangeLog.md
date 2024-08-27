@@ -18,8 +18,14 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.65 (in development)
+3.1.66 (in development)
 -----------------------
+
+3.1.65 - 08/22/24
+-----------------
+- A new `--emit-minification-map` command line flag was added, which can be used
+  to emit a minifiction map in the case that import/export minification is
+  performed (this happens at higher optimization levels). (#22428)
 - Remove `Module['quit']` handling.  This could be used to override the internal
   method for shutting down the program, but it was neither documented nor
   tested.  Programs that want to intercept the shutting down of a program can

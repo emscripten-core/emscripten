@@ -60,10 +60,6 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
 
   exports = [asmjs_mangle(x) for x in exports if x != building.WASM_CALL_CTORS]
 
-  # Decide whether we should generate the global dynCalls dictionary for the dynCall() function?
-  if settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and len([x for x in exports if x.startswith('dynCall_')]) > 0:
-    exports += ['dynCalls = {}']
-
   declares = 'var ' + ',\n '.join(exports) + ';'
   post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS_DECLARES >>>', declares)
 
@@ -1036,7 +1032,6 @@ def create_pointer_conversion_wrappers(metadata):
     'free': '_p',
     'webidl_free': '_p',
     '_emscripten_stack_restore': '_p',
-    '__cxa_is_pointer_type': '_p',
     'fflush': '_p',
     'emscripten_stack_get_end': 'p',
     'emscripten_stack_get_base': 'p',
@@ -1053,6 +1048,7 @@ def create_pointer_conversion_wrappers(metadata):
     '__cxa_can_catch': '_ppp',
     '__cxa_increment_exception_refcount': '_p',
     '__cxa_decrement_exception_refcount': '_p',
+    '__cxa_get_exception_ptr': 'pp',
     '_wasmfs_write_file': '_ppp',
     '_wasmfs_mknod': '_p__',
     '_wasmfs_get_cwd': 'p_',

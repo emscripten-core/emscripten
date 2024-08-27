@@ -490,6 +490,10 @@ def setup_pthreads():
 
   default_setting('DEFAULT_PTHREAD_STACK_SIZE', settings.STACK_SIZE)
 
+  if not settings.MINIMAL_RUNTIME and 'instantiateWasm' not in settings.INCOMING_MODULE_JS_API:
+    # pthreads runtime depends on overriding instantiateWasm
+    settings.INCOMING_MODULE_JS_API.append('instantiateWasm')
+
   # Functions needs by runtime_pthread.js
   settings.REQUIRED_EXPORTS += [
     '_emscripten_thread_free_data',
@@ -892,10 +896,13 @@ def phase_linker_setup(options, state, newargs):
     if not settings.MODULARIZE and not settings.EXPORT_ES6:
       default_setting('STRICT_JS', 1)
     default_setting('DEFAULT_TO_CXX', 0)
-    default_setting('AUTO_JS_LIBRARIES', 0)
-    default_setting('AUTO_NATIVE_LIBRARIES', 0)
     default_setting('IGNORE_MISSING_MAIN', 0)
-    default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
+    default_setting('AUTO_NATIVE_LIBRARIES', 0)
+    if settings.MAIN_MODULE != 1:
+      # These two settings cannot be disabled with MAIN_MODULE=1 because all symbols
+      # are needed in this mode.
+      default_setting('AUTO_JS_LIBRARIES', 0)
+      default_setting('ALLOW_UNIMPLEMENTED_SYSCALLS', 0)
     if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
       # Out default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
       default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
@@ -1659,6 +1666,8 @@ def phase_linker_setup(options, state, newargs):
     # For chrome see: https://crbug.com/324992397
     if settings.MIN_CHROME_VERSION != feature_matrix.UNSUPPORTED and settings.MEMORY64 and settings.MAXIMUM_MEMORY > 2 ** 32:
       settings.WEBGL_USE_GARBAGE_FREE_APIS = 0
+    if settings.WEBGL_USE_GARBAGE_FREE_APIS and settings.MIN_WEBGL_VERSION >= 2:
+      settings.INCLUDE_WEBGL1_FALLBACK = 0
 
   if settings.MINIMAL_RUNTIME:
     if settings.EXIT_RUNTIME:
@@ -1685,7 +1694,6 @@ def phase_linker_setup(options, state, newargs):
       # these symbols whenever __cxa_find_matching_catch_* functions are
       # found.  However, under LTO these symbols don't exist prior to linking
       # so we include then unconditionally when exceptions are enabled.
-      '__cxa_is_pointer_type',
       '__cxa_can_catch',
 
       # __cxa_begin_catch depends on this but we can't use deps info in this
@@ -2409,7 +2417,7 @@ def modularize():
     else:
       script_url = "typeof document != 'undefined' ? document.currentScript?.src : undefined"
       if shared.target_environment_may_be('node'):
-        script_url_node = "if (typeof __filename != 'undefined') _scriptName ||= __filename;"
+        script_url_node = "if (typeof __filename != 'undefined') _scriptName = _scriptName || __filename;"
     src = '''%(node_imports)s
 var %(EXPORT_NAME)s = (() => {
   var _scriptName = %(script_url)s;
@@ -2591,7 +2599,6 @@ def minify_html(filename):
   # -g1 and greater retain whitespace and comments in source
   if settings.DEBUG_LEVEL == 0:
     opts += ['--collapse-whitespace',
-             '--collapse-inline-tag-whitespace',
              '--remove-comments',
              '--remove-tag-whitespace',
              '--sort-attributes',
@@ -2609,6 +2616,10 @@ def minify_html(filename):
              '--minify-js', 'true']
 
   # html-minifier also has the following options, but they look unsafe for use:
+  # '--collapse-inline-tag-whitespace': removes whitespace between inline tags in visible text,
+  #                                     causing words to be joined together. See
+  #                                     https://github.com/terser/html-minifier-terser/issues/179
+  #                                     https://github.com/emscripten-core/emscripten/issues/22188
   # '--remove-optional-tags': removes e.g. <head></head> and <body></body> tags from the page.
   #                           (Breaks at least browser.test_sdl2glshader)
   # '--remove-empty-attributes': removes all attributes with whitespace-only values.
