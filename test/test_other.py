@@ -9315,7 +9315,7 @@ int main() {
   @also_with_wasm2js
   def test_single_file(self, single_file_enabled):
     for (debug_enabled,
-         closure_enabled) in itertools.product([True, False], [True, False]):
+         closure_enabled) in itertools.product([True, False], repeat=2):
       # skip unhelpful option combinations
       if closure_enabled and debug_enabled:
         continue
