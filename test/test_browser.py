@@ -5359,10 +5359,12 @@ Module["preRun"] = () => {
     self.btest('hello_world.c', args=['--post-js=post.js'], expected='exception:foo')
 
   @parameterized({
-    '': (False,),
-    'es6': (True,),
+    '': (False, []),
+    'es6': (True, []),
+    'es6_wasm2js': (True, ['-sWASM=0']),
   })
-  def test_webpack(self, es6):
+  def test_webpack(self, es6, args):
+    self.emcc_args += args
     if es6:
       shutil.copytree(test_file('webpack_es6'), 'webpack')
       self.emcc_args += ['-sEXPORT_ES6', '-pthread', '-sPTHREAD_POOL_SIZE=1']
@@ -5373,7 +5375,8 @@ Module["preRun"] = () => {
     with utils.chdir('webpack'):
       self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-o', outfile])
       self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
-    shutil.copyfile('webpack/src/hello.wasm', 'webpack/dist/hello.wasm')
+    if os.path.exists('webpack/src/hello.wasm'):
+      shutil.copyfile('webpack/src/hello.wasm', 'webpack/dist/hello.wasm')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
 
   @no_wasm64('https://github.com/llvm/llvm-project/issues/98778')
