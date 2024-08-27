@@ -278,7 +278,13 @@
     {
         "file": "signal.h",
         "defines": [
-            "SIGALRM"
+            "SIGALRM",
+            "SIGFPE",
+            "SIGHUP",
+            "SIGINT",
+            "SIGKILL",
+            "SIGQUIT",
+            "SIGTERM"
         ]
     },
     {
