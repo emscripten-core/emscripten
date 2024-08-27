@@ -2185,9 +2185,13 @@ void *getBindBuffer() {
     self.reftest('s3tc.c', 's3tc.png', args=['--preload-file', 'screenshot.dds', '-sLEGACY_GL_EMULATION', '-sGL_FFP_ONLY', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
-  def test_anisotropic(self):
+  @parameterized({
+    '': ([],),
+    'subimage': (['-DTEST_TEXSUBIMAGE'],),
+  })
+  def test_anisotropic(self, args):
     shutil.copyfile(test_file('browser/water.dds'), 'water.dds')
-    self.reftest('test_anisotropic.c', 'test_anisotropic.png', reference_slack=2, args=['--preload-file', 'water.dds', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-Wno-incompatible-pointer-types'])
+    self.reftest('test_anisotropic.c', 'test_anisotropic.png', reference_slack=2, args=['--preload-file', 'water.dds', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-Wno-incompatible-pointer-types'] + args)
 
   @requires_graphics_hardware
   def test_tex_nonbyte(self):
@@ -4945,6 +4949,14 @@ Module["preRun"] = () => {
   @also_with_minimal_runtime
   def test_wasm_worker_embedded(self):
     self.btest('wasm_worker/hello_wasm_worker.c', expected='0', args=['-sWASM_WORKERS=2'])
+
+  # Tests that it is possible to call emscripten_futex_wait() in Wasm Workers.
+  @parameterized({
+    '': ([],),
+    'pthread': (['-pthread'],),
+  })
+  def test_wasm_worker_futex_wait(self, args):
+    self.btest('wasm_worker/wasm_worker_futex_wait.c', expected='0', args=['-sWASM_WORKERS=1', '-sASSERTIONS'] + args)
 
   # Tests Wasm Worker thread stack setup
   @also_with_minimal_runtime

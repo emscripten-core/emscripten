@@ -2340,6 +2340,20 @@ Module['postRun'] = () => {
     self.run_process(cmd + ['-L.'])
     self.run_js('a.out.js')
 
+  def test_dylink_LEGACY_GL_EMULATION(self):
+    # LEGACY_GL_EMULATION wraps JS library functions. This test ensure that when it does
+    # so it preserves the `.sig` attributes needed by dynamic linking.
+    create_file('test.c', r'''
+#include <GLES2/gl2.h>
+#include <stdio.h>
+
+int main() {
+  printf("glUseProgram: %p\n", &glUseProgram);
+  printf("done\n");
+  return 0;
+}''')
+    self.do_runf('test.c', 'done\n', emcc_args=['-sLEGACY_GL_EMULATION', '-sMAIN_MODULE=2'])
+
   def test_js_link(self):
     create_file('main.c', '''
       #include <stdio.h>
@@ -2725,15 +2739,15 @@ More info: https://emscripten.org
 
   def test_GetProcAddress_LEGACY_GL_EMULATION(self):
     # without legacy gl emulation, getting a proc from there should fail
-    self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.cpp', args=['0'], emcc_args=['-sLEGACY_GL_EMULATION=0', '-sGL_ENABLE_GET_PROC_ADDRESS'])
+    self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.c', args=['0'], emcc_args=['-sLEGACY_GL_EMULATION=0', '-sGL_ENABLE_GET_PROC_ADDRESS'])
     # with it, it should work
-    self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.cpp', args=['1'], emcc_args=['-sLEGACY_GL_EMULATION', '-sGL_ENABLE_GET_PROC_ADDRESS'])
+    self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.c', args=['1'], emcc_args=['-sLEGACY_GL_EMULATION', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
   # Verifies that is user is building without -sGL_ENABLE_GET_PROC_ADDRESS, then
   # at link time they should get a helpful error message guiding them to enable
   # the option.
   def test_get_proc_address_error_message(self):
-    err = self.expect_fail([EMCC, '-sGL_ENABLE_GET_PROC_ADDRESS=0', test_file('other/test_GetProcAddress_LEGACY_GL_EMULATION.cpp')])
+    err = self.expect_fail([EMCC, '-sGL_ENABLE_GET_PROC_ADDRESS=0', test_file('other/test_GetProcAddress_LEGACY_GL_EMULATION.c')])
     self.assertContained('error: linker: Undefined symbol: SDL_GL_GetProcAddress(). Please pass -sGL_ENABLE_GET_PROC_ADDRESS at link time to link in SDL_GL_GetProcAddress().', err)
 
   def test_prepost(self):
@@ -12407,7 +12421,10 @@ int main () {
     self.assertIdentical(one, two)
 
   def test_err(self):
-    self.do_other_test('test_err.cpp')
+    self.do_other_test('test_err.c')
+
+  def test_euidaccess(self):
+    self.do_other_test('test_euidaccess.c')
 
   def test_shared_flag(self):
     # Test that `-shared` flag causes object file generation but gives a warning

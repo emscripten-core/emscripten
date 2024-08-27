@@ -950,7 +950,7 @@ var SyscallsLibrary = {
 #endif
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
-    assert(flags === 0);
+    assert(flags === 0 || flags == {{{ cDefs.AT_EACCESS }}});
 #endif
     path = SYSCALLS.calculateAt(dirfd, path);
     if (amode & ~{{{ cDefs.S_IRWXO }}}) {
