@@ -1003,6 +1003,9 @@ var SyscallsLibrary = {
         mtime = (seconds*1000) + (nanoseconds/(1000*1000));
       }
     }
+    // -1 here means UTIME_OMIT was passed.  FS.utime tables the max of these
+    // two values and sets the timestamp to that single value.  If both were
+    // set to UTIME_OMIT then we can skip the call completely.
     if (mtime != -1 || atime != -1) {
       FS.utime(path, atime, mtime);
     }

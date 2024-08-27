@@ -32,7 +32,7 @@ void setup() {
   symlink("file", "folder/file-link");
 }
 
-void check_times(int fd, struct timespec* expected, int tollerance) {
+void check_times(int fd, struct timespec* expected, int tolerance) {
   struct stat s;
   int rtn = fstatat(fd, "", &s, AT_EMPTY_PATH);
   assert(rtn == 0);
@@ -40,9 +40,9 @@ void check_times(int fd, struct timespec* expected, int tollerance) {
   printf("mtime: tv_sec=%lld tv_nsec=%ld\n", s.st_mtim.tv_sec, s.st_mtim.tv_nsec);
   printf("expected atime: tv_sec=%lld tv_nsec=%ld\n", expected[0].tv_sec, expected[0].tv_nsec);
   printf("expected mtime: tv_sec=%lld tv_nsec=%ld\n", expected[1].tv_sec, expected[1].tv_nsec);
-  if (tollerance) {
-    assert(llabs(expected[0].tv_sec - s.st_atim.tv_sec) <= tollerance);
-    assert(llabs(expected[1].tv_sec - s.st_mtim.tv_sec) <= tollerance);
+  if (tolerance) {
+    assert(llabs(expected[0].tv_sec - s.st_atim.tv_sec) <= tolerance);
+    assert(llabs(expected[1].tv_sec - s.st_mtim.tv_sec) <= tolerance);
   } else {
     assert(expected[0].tv_sec == s.st_atim.tv_sec);
     assert(expected[1].tv_sec == s.st_mtim.tv_sec);
@@ -67,7 +67,7 @@ void test() {
   assert(s.st_rdev == 0);
   assert(s.st_size == 8);
   assert(s.st_ctime);
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) && !defined(NODERAWFS)
   assert(s.st_blksize == 4096);
   assert(s.st_blocks == 1);
 #endif
@@ -105,8 +105,8 @@ void test() {
   err = futimens(fd, newtimes);
   assert(!err);
 
-#if defined(__EMSCRIPTEN__) && !defined(WASMFS)
-  // The trandiation emscripten FS only supports single timestamp so both
+#if defined(__EMSCRIPTEN__) && !defined(WASMFS) && !defined(NODERAWFS)
+  // The original emscripten FS (in JS) only supports a single timestamp so both
   // mtime and atime will always be the same.
   times[0].tv_sec = 42;
   times[0].tv_nsec = 88;
