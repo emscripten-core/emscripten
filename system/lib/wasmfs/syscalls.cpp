@@ -353,10 +353,6 @@ static timespec ms_to_timespec(double ms) {
   return ts;
 }
 
-static double timespec_to_ms(timespec ts) {
-  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec) / (1000 * 1000);
-}
-
 int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
   // Only accept valid flags.
   if (flags & ~(AT_EMPTY_PATH | AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) {
@@ -1123,6 +1119,16 @@ int __syscall_readlinkat(int dirfd,
   return bytes;
 }
 
+static double timespec_to_ms(timespec ts) {
+  if (ts.tv_nsec == UTIME_OMIT) {
+    return INFINITY;
+  }
+  if (ts.tv_nsec == UTIME_NOW) {
+    return emscripten_date_now();
+  }
+  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec) / (1000 * 1000);
+}
+
 // TODO: Test this with non-AT_FDCWD values.
 int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
   const char* path = (const char*)path_;
@@ -1148,7 +1154,7 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
   // TODO: Check for write access to the file (see man page for specifics).
   double aTime, mTime;
 
-  if (times == NULL) {
+  if (times == nullptr) {
     aTime = mTime = emscripten_date_now();
   } else {
     aTime = timespec_to_ms(times[0]);
@@ -1156,8 +1162,12 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
   }
 
   auto locked = parsed.getFile()->locked();
-  locked.setATime(aTime);
-  locked.setMTime(mTime);
+  if (aTime != INFINITY) {
+    locked.setATime(aTime);
+  }
+  if (mTime != INFINITY) {
+    locked.setMTime(mTime);
+  }
 
   return 0;
 }

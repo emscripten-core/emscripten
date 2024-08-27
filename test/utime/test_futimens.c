@@ -85,6 +85,7 @@ void test() {
 
   // UTIME_OMIT means that the timeval is ignored, so
   // this call should do nothing.
+  printf("check double UTIME_OMIT...\n");
   struct timespec newtimes[2];
   newtimes[0].tv_sec = 42;
   newtimes[0].tv_nsec = UTIME_OMIT;
@@ -96,6 +97,7 @@ void test() {
 
   // Setting just one of the two times to UTIME_OMIT means
   // the other should be honored.
+  printf("check single UTIME_OMIT...\n");
   newtimes[0].tv_sec = 41;
   newtimes[0].tv_nsec = UTIME_OMIT;
   newtimes[1].tv_sec = 42;
@@ -103,13 +105,18 @@ void test() {
   err = futimens(fd, newtimes);
   assert(!err);
 
+#if defined(__EMSCRIPTEN__) && !defined(WASMFS)
+  // The trandiation emscripten FS only supports single timestamp so both
+  // mtime and atime will always be the same.
   times[0].tv_sec = 42;
   times[0].tv_nsec = 88;
+#endif
   times[1].tv_sec = 42;
   times[1].tv_nsec = 88;
   check_times(fd, times, 0);
 
   // UTIME_NOW means use the current date and ignore the seconds value
+  printf("check single UTIME_NOW...\n");
   newtimes[0].tv_sec = 99;
   newtimes[0].tv_nsec = UTIME_NOW;
   newtimes[1].tv_sec = 99;
