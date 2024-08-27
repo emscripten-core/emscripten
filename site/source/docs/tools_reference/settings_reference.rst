@@ -2855,14 +2855,19 @@ child-src directive to allow blob:. If you aren't using Content Security
 Policy, or your CSP header doesn't include either script-src or child-src,
 then you can safely ignore this warning.
 
+Default value: false
+
 .. _single_file_binary_encode:
 
 SINGLE_FILE_BINARY_ENCODE
 =========================
 
-If true, does binary encoding of data instead of base64 encoding.
+If true, binary Wasm content is encoded using a custom UTF-8 embedding
+instead of base64. This generates smaller binary.
+Set this to false to revert back to earlier base64 encoding if you run into
+issues with the binary encoding. (and please let us know of any such issues)
 
-Default value: false
+Default value: true
 
 .. _auto_js_libraries:
 
