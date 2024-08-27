@@ -2597,7 +2597,6 @@ def minify_html(filename):
   # -g1 and greater retain whitespace and comments in source
   if settings.DEBUG_LEVEL == 0:
     opts += ['--collapse-whitespace',
-             '--collapse-inline-tag-whitespace',
              '--remove-comments',
              '--remove-tag-whitespace',
              '--sort-attributes',
@@ -2615,6 +2614,10 @@ def minify_html(filename):
              '--minify-js', 'true']
 
   # html-minifier also has the following options, but they look unsafe for use:
+  # '--collapse-inline-tag-whitespace': removes whitespace between inline tags in visible text,
+  #                                     causing words to be joined together. See
+  #                                     https://github.com/terser/html-minifier-terser/issues/179
+  #                                     https://github.com/emscripten-core/emscripten/issues/22188
   # '--remove-optional-tags': removes e.g. <head></head> and <body></body> tags from the page.
   #                           (Breaks at least browser.test_sdl2glshader)
   # '--remove-empty-attributes': removes all attributes with whitespace-only values.
