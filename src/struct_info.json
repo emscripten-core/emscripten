@@ -33,7 +33,9 @@
             "S_IFCHR",
             "S_IRUSR",
             "S_IRGRP",
-            "S_IROTH"
+            "S_IROTH",
+            "UTIME_OMIT",
+            "UTIME_NOW"
         ],
         "structs": {
             "stat": [

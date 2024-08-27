@@ -409,6 +409,8 @@
         "TIOCSPGRP": 21520,
         "TIOCSWINSZ": 21524,
         "TZNAME_MAX": 16,
+        "UTIME_NOW": 1073741823,
+        "UTIME_OMIT": 1073741822,
         "UUID_TYPE_DCE_RANDOM": 4,
         "UUID_VARIANT_DCE": 1,
         "W_OK": 2,
