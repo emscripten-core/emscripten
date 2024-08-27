@@ -22,7 +22,6 @@ ignorePatterns:
   - "src/closure-externs/"
   - "src/embind/"
   - "src/emrun_postjs.js"
-  - "src/worker.js"
   - "src/wasm_worker.js"
   - "src/audio_worklet.js"
   - "src/wasm2js.js"

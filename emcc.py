@@ -27,6 +27,7 @@ import logging
 import os
 import re
 import shlex
+import shutil
 import sys
 import time
 import tarfile
@@ -105,15 +106,26 @@ class EmccState:
     self.has_dash_c = False
     self.has_dash_E = False
     self.has_dash_S = False
+    # List of link options paired with their position on the command line [(i, option), ...].
     self.link_flags = []
     self.lib_dirs = []
-    self.forced_stdlibs = []
 
-  def add_link_flag(self, i, f):
-    if f.startswith('-L'):
-      self.lib_dirs.append(f[2:])
+  def has_link_flag(self, f):
+    return f in [x for _, x in self.link_flags]
 
-    self.link_flags.append((i, f))
+  def add_link_flag(self, i, flag):
+    if flag.startswith('-L'):
+      self.lib_dirs.append(flag[2:])
+    # Link flags should be adding in strictly ascending order
+    assert not self.link_flags or i > self.link_flags[-1][0], self.link_flags
+    self.link_flags.append((i, flag))
+
+  def append_link_flag(self, flag):
+    if self.link_flags:
+      index = self.link_flags[-1][0] + 1
+    else:
+      index = 1
+    self.add_link_flag(index, flag)
 
 
 class EmccOptions:
@@ -122,6 +134,7 @@ class EmccOptions:
     self.output_file = None
     self.no_minify = False
     self.post_link = False
+    self.save_temps = False
     self.executable = False
     self.compiler_wrapper = None
     self.oformat = None
@@ -281,11 +294,18 @@ def apply_user_settings():
 
     if key == 'EXPORTED_FUNCTIONS':
       # used for warnings in emscripten.py
-      settings.USER_EXPORTED_FUNCTIONS = settings.EXPORTED_FUNCTIONS.copy()
+      settings.USER_EXPORTS = settings.EXPORTED_FUNCTIONS.copy()
 
     # TODO(sbc): Remove this legacy way.
     if key == 'WASM_OBJECT_FILES':
       settings.LTO = 0 if value else 'full'
+
+    if key == 'JSPI':
+      settings.ASYNCIFY = 2
+    if key == 'JSPI_IMPORTS':
+      settings.ASYNCIFY_IMPORTS = value
+    if key == 'JSPI_EXPORTS':
+      settings.ASYNCIFY_EXPORTS = value
 
 
 def cxx_to_c_compiler(cxx):
@@ -358,12 +378,13 @@ def get_clang_flags(user_args):
   if settings.RELOCATABLE and '-fPIC' not in user_args:
     flags.append('-fPIC')
 
-  # We use default visiibilty=default in emscripten even though the upstream
-  # backend defaults visibility=hidden.  This matched the expectations of C/C++
-  # code in the wild which expects undecorated symbols to be exported to other
-  # DSO's by default.
-  if not any(a.startswith('-fvisibility') for a in user_args):
-    flags.append('-fvisibility=default')
+  if settings.RELOCATABLE or settings.LINKABLE or '-fPIC' in user_args:
+    if not any(a.startswith('-fvisibility') for a in user_args):
+      # For relocatable code we default to visibility=default in emscripten even
+      # though the upstream backend defaults visibility=hidden.  This matches the
+      # expectations of C/C++ code in the wild which expects undecorated symbols
+      # to be exported to other DSO's by default.
+      flags.append('-fvisibility=default')
 
   if settings.LTO:
     if not any(a.startswith('-flto') for a in user_args):
@@ -598,6 +619,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if '-print-search-dirs' in newargs or '--print-search-dirs' in newargs:
     print(f'programs: ={config.LLVM_ROOT}')
     print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
+    return 0
+
+  if '-print-resource-dir' in newargs:
+    shared.check_call([clang] + newargs)
     return 0
 
   if '-print-libgcc-file-name' in newargs or '--print-libgcc-file-name' in newargs:
@@ -961,6 +986,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     # with -MF! (clang seems to not recognize it)
     logger.debug(('just preprocessor ' if state.has_dash_E else 'just dependencies: ') + ' '.join(cmd))
     shared.exec_process(cmd)
+    assert False, 'exec_process does not return'
 
   # Precompiled headers support
   if state.mode == Mode.PCH:
@@ -973,6 +999,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
       cmd += ['-o', options.output_file]
     logger.debug(f"running (for precompiled headers): {cmd[0]} {' '.join(cmd[1:])}")
     shared.exec_process(cmd)
+    assert False, 'exec_process does not return'
 
   if state.mode == Mode.COMPILE_ONLY:
     inputs = [i[1] for i in input_files]
@@ -985,6 +1012,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
       if get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
         diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
     shared.exec_process(cmd)
+    assert False, 'exec_process does not return'
 
   # In COMPILE_AND_LINK we need to compile source files too, but we also need to
   # filter out the link flags
@@ -1031,8 +1059,10 @@ def phase_compile_inputs(options, state, newargs, input_files):
       cmd += ['-Xclang', '-split-dwarf-file', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
       cmd += ['-Xclang', '-split-dwarf-output', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
     shared.check_call(cmd)
-    if output_file not in ('-', os.devnull) and not shared.SKIP_SUBPROCS:
+    if not shared.SKIP_SUBPROCS:
       assert os.path.exists(output_file)
+      if options.save_temps:
+        shutil.copyfile(output_file, shared.unsuffixed_basename(input_file) + '.o')
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for i, input_file in input_files:
@@ -1161,6 +1191,8 @@ def parse_args(newargs):
         settings.LTO = 'full'
     elif arg == "-fno-lto":
       settings.LTO = 0
+    elif arg == "--save-temps":
+      options.save_temps = True
     elif check_arg('--llvm-lto'):
       logger.warning('--llvm-lto ignored when using llvm backend')
       consume_arg()
@@ -1254,6 +1286,8 @@ def parse_args(newargs):
     elif check_flag('--emit-symbol-map'):
       options.emit_symbol_map = True
       settings.EMIT_SYMBOL_MAP = 1
+    elif check_arg('--emit-minification-map'):
+      settings.MINIFICATION_MAP = consume_arg()
     elif check_arg('--embed-file'):
       options.embed_files.append(consume_arg())
     elif check_arg('--preload-file'):
@@ -1277,9 +1311,9 @@ def parse_args(newargs):
     elif check_arg('--source-map-base'):
       options.source_map_base = consume_arg()
     elif check_arg('--embind-emit-tsd'):
-      options.embind_emit_tsd = consume_arg()
+      diagnostics.warning('deprecated', '--embind-emit-tsd is deprecated.  Use --emit-tsd instead.')
+      options.emit_tsd = consume_arg()
     elif check_arg('--emit-tsd'):
-      diagnostics.warning('experimental', '--emit-tsd is still experimental. Not all definitions are generated.')
       options.emit_tsd = consume_arg()
     elif check_flag('--no-entry'):
       options.no_entry = True

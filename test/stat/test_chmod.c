@@ -132,7 +132,7 @@ void test() {
   // chmod the actual symlink
   //
   err = lchmod("file-link", 0500);
-  assert(err); // linux does not support lchmod, and neither does our libc, musl
+  assert(!err);
 
   // make sure the file it references didn't change
   stat("file-link", &s);

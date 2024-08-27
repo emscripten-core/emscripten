@@ -92,7 +92,7 @@ int __syscall_renameat(int olddirfd, intptr_t oldpath, int newdirfd, intptr_t ne
 int __syscall_linkat(int olddirfd, intptr_t oldpath, int newdirfd, intptr_t newpath, int flags);
 int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath);
 int __syscall_readlinkat(int dirfd, intptr_t path, intptr_t buf, size_t bufsize);
-int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...);
+int __syscall_fchmodat2(int dirfd, intptr_t path, int mode, int flags);
 int __syscall_faccessat(int dirfd, intptr_t path, int amode, int flags);
 int __syscall_pselect6(int nfds, intptr_t readfds, intptr_t writefds, intptr_t exceptfds, intptr_t timeout, intptr_t sigmaks);
 int __syscall_utimensat(int dirfd, intptr_t path, intptr_t times, int flags);

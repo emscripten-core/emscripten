@@ -6,13 +6,13 @@ orbs:
 executors:
   linux-node:
     docker:
-      - image: circleci/node:stretch
+      - image: cimg/node:18.20.3
   linux-python:
     docker:
       - image: cimg/python:3.10.7
   bionic:
     docker:
-      - image: emscripten/emscripten-ci
+      - image: emscripten/emscripten-ci:focal
     environment:
       LANG: "C.UTF-8"
       EMCC_CORES: "4"
@@ -20,12 +20,6 @@ executors:
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
       EMTEST_BUILD_VERBOSE: "2"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
-  mac:
-    environment:
-      EMSDK_NOTTY: "1"
-    macos:
-      xcode: "13.4.1"
-    resource_class: macos.x86.medium.gen2
   mac-arm64:
     environment:
       EMSDK_NOTTY: "1"
@@ -41,7 +35,7 @@ commands:
           name: download chrome
           command: |
             # TODO: Make these part of the base image
-            apt-get install libu2f-udev libvulkan1
+            apt-get install -q -y libu2f-udev libvulkan1 xdg-utils
             # wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
             # If that download link breaks, temporarily use this URL instead:
             # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
@@ -112,7 +106,7 @@ commands:
     description: "install canary version of node"
     steps:
       - install-node-version:
-         node_version: "22.0.0-v8-canary20231108ff311d5a39"
+         node_version: "22.0.0-v8-canary20240423a2eb2005bd"
          canary: true
   install-v8:
     description: "install v8 using jsvu"
@@ -170,7 +164,7 @@ commands:
           command: |
             ./emcc --clear-cache
       - pip-install
-      - run: apt-get install ninja-build
+      - run: apt-get install -q -y ninja-build
       - run:
           name: embuilder build ALL
           command: |
@@ -318,6 +312,7 @@ commands:
             # PIC version of libSDL which is used by test_sdl2_misc_main_module
             export EM_FROZEN_CACHE=""
             test/runner << parameters.test_targets >>
+      - upload-test-results
   setup-macos:
     steps:
       - run:
@@ -325,10 +320,8 @@ commands:
           environment:
             HOMEBREW_NO_AUTO_UPDATE: "1"
           command: |
-            brew list cmake || brew install cmake
-            brew list ninja || brew install ninja
-            brew list python3 || brew install python3
-            brew list pkg-config || brew install pkg-config
+            brew update
+            brew install cmake ninja python3 pkg-config
       - checkout
       - run:
           name: submodule update
@@ -367,6 +360,7 @@ commands:
             # TODO: Do GL testing when https://bugzil.la/1375585 (lack of WebGL
             #       support in headless mode) resolves
             EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
+            EMTEST_LACKS_WEBGPU: "1"
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             # OffscreenCanvas support is not yet done in Firefox.
             EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
@@ -550,6 +544,8 @@ jobs:
             lto2.test_dylink_syslibs_all
             lto2.test_float_builtins
             lto0.test_exceptions_allowed_uncaught
+            lto0.test_longjmp_standalone_standalone
+            lto0.test_embind_i64_val
             core3
             core2g.test_externref
             corez.test_dylink_iostream
@@ -605,7 +601,7 @@ jobs:
             wasmfs.test_stat
             wasmfs.test_fstatat
             wasmfs.test_futimens
-            wasmfs.test_unistd_links_memfs
+            wasmfs.test_unistd_links
             wasmfs.test_fcntl_open
             wasmfs.test_fs_js_api
             wasmfs.test_fs_llseek
@@ -618,17 +614,6 @@ jobs:
     steps:
       - run-tests-linux:
           test_targets: "wasm2js1"
-  test-wasm64l:
-    environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
-    executor: bionic
-    steps:
-      - run-tests-linux:
-          frozen_cache: false
-          # On older versions of node wasm64l.test_bigswitch uses a lot (~3.5Gb)
-          # of memory, so skip it here, but run it in test-wasm64 instead which
-          # has node canary installed.
-          test_targets: "wasm64l skip:wasm64l.test_bigswitch"
   test-wasm64:
     # We don't use `bionic` here since its tool old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
@@ -646,6 +631,7 @@ jobs:
             wasm64
             core_2gb.test_*em_asm*
             core_2gb.test_*embind*
+            wasm64l.test_hello_world
             wasm64l.test_bigswitch
             other.test_memory64_proxies
             other.test_failing_growth_wasm64"
@@ -718,6 +704,7 @@ jobs:
           test_targets: "
             core0.test_hello_argc
             core2.test_demangle_stacks_symbol_map"
+      - upload-test-results
   test-node-compat:
     # We don't use `bionic` here since its too old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
@@ -757,7 +744,8 @@ jobs:
             other.test_js_optimizer_verbose
             other.test_node_unhandled_rejection
             other.test_full_js_library*
-            core2.test_hello_world"
+            core2.test_hello_world
+            core2.test_fs_write_rawfs"
       # Run a few test with the most recent version of node
       # In particular we have some tests that require node flags on older
       # versions of node but not with the most recent version.
@@ -785,13 +773,15 @@ jobs:
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
     steps:
-      - run: apt-get install ninja-build scons
+      - run: apt-get install -q -y ninja-build scons
       - run-tests-linux:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
           test_targets: "other skip:other.test_native_link_error_message"
   test-browser-chrome:
     executor: bionic
+    environment:
+      EMTEST_LACKS_WEBGPU: "1"
     steps:
       - run-tests-chrome:
           title: "browser"
@@ -801,12 +791,16 @@ jobs:
             "
   test-browser-chrome-wasm64:
     executor: bionic
+    environment:
+      EMTEST_LACKS_WEBGPU: "1"
     steps:
       - run-tests-chrome:
           title: "browser64"
           test_targets: "browser64"
   test-browser-chrome-2gb:
     executor: bionic
+    environment:
+      EMTEST_LACKS_WEBGPU: "1"
     steps:
       - run-tests-chrome:
           title: "browser_2gb"
@@ -814,6 +808,7 @@ jobs:
   test-browser-chrome-wasm64-4gb:
     executor: bionic
     environment:
+      EMTEST_LACKS_WEBGPU: "1"
       EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-chrome:
@@ -889,40 +884,6 @@ jobs:
           test_targets: "sockets.test_nodejs_sockets_echo*"
       - upload-test-results
 
-  test-mac:
-    executor: mac
-    environment:
-      # We don't install d8 or modern node on the mac runner so we skip any
-      # tests that depend on those.
-      EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_EH: "1"
-      EMTEST_SKIP_WASM64: "1"
-      EMTEST_SKIP_SCONS: "1"
-      EMCC_SKIP_SANITY_CHECK: "1"
-      # test_sse1 (the only @crossplatform native clang test) currently fails
-      # on the macOS bots).
-      EMTEST_LACKS_NATIVE_CLANG: "1"
-      EMTEST_SKIP_NODE_CANARY: "1"
-    steps:
-      - setup-macos
-      - attach_workspace:
-          at: ~/
-      - run:
-          name: Remove Linux binaries
-          command: |
-            rm -rf ~/emsdk ~/vms ~/.jsvu
-      # note we do *not* build all libraries and freeze the cache; as we run
-      # only limited tests here, it's more efficient to build on demand
-      - install-emsdk
-      - pip-install:
-          python: "$EMSDK_PYTHON"
-      - run-tests:
-          title: "crossplatform tests"
-          # Skipping test_strftime_zZ_gb_locale since this test forces the
-          # locale to one that is not necessarily available on macOS.
-          test_targets: "--crossplatform-only skip:other.test_strftime_zZ_gb_locale"
-      - upload-test-results
-
   test-mac-arm64:
     executor: mac-arm64
     environment:
@@ -942,9 +903,7 @@ jobs:
       # are currently missing arm64 macos binaries.
       - run-tests:
           title: "crossplatform tests"
-          # Skipping test_strftime_zZ_gb_locale since this test forces the
-          # locale to one that is not necessarily available on macOS.
-          test_targets: "--crossplatform-only skip:other.test_strftime_zZ_gb_locale"
+          test_targets: "--crossplatform-only"
       - upload-test-results
 
 workflows:
@@ -976,9 +935,6 @@ workflows:
       - test-wasm64-4gb:
           requires:
             - build-linux
-      - test-wasm64l:
-          requires:
-            - build-linux
       - test-wasm2js1:
           requires:
             - build-linux
@@ -1008,9 +964,3 @@ workflows:
       - test-node-compat
       - test-windows
       - test-mac-arm64
-      - test-mac:
-          # The mac tester also uses the libraries built on the linux builder to
-          # save total build time (this is fine because the libraries are wasm
-          # and do not depend on the underlying build platform)
-          requires:
-            - build-linux

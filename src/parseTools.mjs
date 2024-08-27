@@ -132,7 +132,9 @@ export function preprocess(filename) {
             }
           }
         } else if (first === '#else') {
-          assert(showStack.length > 0);
+          if (showStack.length == 0) {
+            error(`${filename}:${i + 1}: #else without matching #if`);
+          }
           const curr = showStack.pop();
           if (curr == IGNORE) {
             showStack.push(SHOW);
@@ -140,7 +142,9 @@ export function preprocess(filename) {
             showStack.push(IGNORE);
           }
         } else if (first === '#endif') {
-          assert(showStack.length > 0);
+          if (showStack.length == 0) {
+            error(`${filename}:${i + 1}: #endif without matching #if`);
+          }
           showStack.pop();
         } else if (first === '#warning') {
           if (showCurrentLine()) {
@@ -808,7 +812,7 @@ function isSymbolNeeded(symName) {
   if (DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.includes(symName)) {
     return true;
   }
-  if (symName.startsWith('$') && symName.slice(1) in EXPORTED_RUNTIME_METHODS) {
+  if (symName.startsWith('$') && EXPORTED_RUNTIME_METHODS.has(symName.slice(1))) {
     return true;
   }
   return false;
@@ -862,8 +866,7 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert)
     if (defaultValue) {
       ret += ` = Module['${moduleName}'] || ${defaultValue};`;
     } else {
-      ret += `; ${makeModuleReceive(localName, moduleName)}`;
-      return ret;
+      ret += ` = Module['${moduleName}'];`;
     }
   }
   if (!noAssert) {
@@ -886,21 +889,6 @@ function buildStringArray(array) {
   } else {
     return '[]';
   }
-}
-
-// Generates access to a JS imports scope variable in pthreads worker.js. In MODULARIZE mode these flow into the imports object for the Module.
-// In non-MODULARIZE mode, we can directly access the variables in global scope.
-function makeAsmImportsAccessInPthread(variable) {
-  if (!MINIMAL_RUNTIME) {
-    // Regular runtime uses the name "Module" for both imports and exports.
-    return `Module['${variable}']`;
-  }
-  if (MODULARIZE) {
-    // MINIMAL_RUNTIME uses 'imports' as the name for the imports object in MODULARIZE builds.
-    return `imports['${variable}']`;
-  }
-  // In non-MODULARIZE builds, can access the imports from global scope.
-  return `self.${variable}`;
 }
 
 function _asmjsDemangle(symbol) {
@@ -928,7 +916,7 @@ function hasExportedSymbol(sym) {
 // wasmTable are set. In this case we maybe need to re-export them on the
 // Module object.
 function receivedSymbol(sym) {
-  if (EXPORTED_RUNTIME_METHODS.includes(sym)) {
+  if (EXPORTED_RUNTIME_METHODS.has(sym)) {
     return `Module['${sym}'] = ${sym};`;
   }
   return '';
@@ -1130,7 +1118,6 @@ addToCompileTimeContext({
   hasExportedSymbol,
   implicitSelf,
   isSymbolNeeded,
-  makeAsmImportsAccessInPthread,
   makeDynCall,
   makeEval,
   makeGetValue,

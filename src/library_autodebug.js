@@ -29,6 +29,14 @@ addToLibrary({
     dbg('get_f64 ' + [loc, index, value]);
     return value;
   },
+  $get_funcref: (loc, index, value) => {
+    dbg('get_funcref ' + [loc, index, value]);
+    return value;
+  },
+  $get_externref: (loc, index, value) => {
+    dbg('get_externref ' + [loc, index, value]);
+    return value;
+  },
   $get_anyref: (loc, index, value) => {
     dbg('get_anyref ' + [loc, index, value]);
     return value;
@@ -53,6 +61,14 @@ addToLibrary({
   },
   $set_f64: (loc, index, value) => {
     dbg('set_f64 ' + [loc, index, value]);
+    return value;
+  },
+  $set_funcref: (loc, index, value) => {
+    dbg('set_afuncef ' + [loc, index, value]);
+    return value;
+  },
+  $set_externref: (loc, index, value) => {
+    dbg('set_externref ' + [loc, index, value]);
     return value;
   },
   $set_anyref: (loc, index, value) => {
@@ -115,12 +131,16 @@ extraLibraryFuncs.push(
   '$get_i64',
   '$get_f32',
   '$get_f64',
+  '$get_funcref',
+  '$get_externref',
   '$get_anyref',
   '$get_exnref',
   '$set_i32',
   '$set_i64',
   '$set_f32',
   '$set_f64',
+  '$set_funcref',
+  '$set_externref',
   '$set_anyref',
   '$set_exnref',
   '$load_ptr',

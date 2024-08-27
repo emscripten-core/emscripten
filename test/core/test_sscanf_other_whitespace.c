@@ -26,5 +26,6 @@ int main() {
     printf("%d, %d, ", x, y);
   }
 
+  printf("\n");
   return 0;
 }

@@ -2821,7 +2821,7 @@ var LibraryGLEmulation = {
       err('WARNING: using emscripten GL immediate mode emulation. This is very limited in what it supports');
       GLImmediate.initted = true;
 
-      if (!Module.useWebGL) return; // a 2D canvas may be currently used TODO: make sure we are actually called in that case
+      if (!Browser.useWebGL) return; // a 2D canvas may be currently used TODO: make sure we are actually called in that case
 
       // User can override the maximum number of texture units that we emulate. Using fewer texture units increases runtime performance
       // slightly, so it is advantageous to choose as small value as needed.

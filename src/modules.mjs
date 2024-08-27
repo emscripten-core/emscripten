@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import * as path from 'path';
+import * as path from 'node:path';
 
 import {
   isDecorator,
@@ -28,6 +28,8 @@ export const librarySymbols = [];
 
 export const LibraryManager = {
   library: {},
+  // The JS and JS docs of each library definition indexed my mangled name.
+  libraryDefinitions: {},
   structs: {},
   loaded: false,
   libraries: [],
@@ -73,6 +75,10 @@ export const LibraryManager = {
       libraries.push('library_wget.js');
     }
 
+    if (!STANDALONE_WASM) {
+      libraries.push('library_time.js');
+    }
+
     if (EMSCRIPTEN_TRACING) {
       libraries.push('library_memoryprofiler.js');
     }
@@ -92,23 +98,23 @@ export const LibraryManager = {
     if (FILESYSTEM) {
       libraries.push('library_fs_shared.js');
       if (WASMFS) {
-        libraries = libraries.concat([
+        libraries.push(
           'library_wasmfs.js',
           'library_wasmfs_js_file.js',
           'library_wasmfs_jsimpl.js',
           'library_wasmfs_fetch.js',
           'library_wasmfs_node.js',
           'library_wasmfs_opfs.js',
-        ]);
+        );
       } else {
         // Core filesystem libraries (always linked against, unless -sFILESYSTEM=0 is specified)
-        libraries = libraries.concat([
+        libraries.push(
           'library_fs.js',
           'library_memfs.js',
           'library_tty.js',
           'library_pipefs.js', // ok to include it by default since it's only used if the syscall is used
           'library_sockfs.js', // ok to include it by default since it's only used if the syscall is used
-        ]);
+        );
 
         if (NODERAWFS) {
           // NODERAWFS requires NODEFS
@@ -124,7 +130,7 @@ export const LibraryManager = {
 
     // Additional JS libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
     if (AUTO_JS_LIBRARIES) {
-      libraries = libraries.concat([
+      libraries.push(
         'library_webgl.js',
         'library_html5_webgl.js',
         'library_openal.js',
@@ -135,7 +141,7 @@ export const LibraryManager = {
         'library_glew.js',
         'library_idbstore.js',
         'library_async.js',
-      ]);
+      );
       if (USE_SDL != 2) {
         libraries.push('library_sdl.js');
       }
@@ -204,7 +210,7 @@ export const LibraryManager = {
     // These must be added last after all Emscripten-provided system libraries
     // above, so that users can override built-in JS library symbols in their
     // own code.
-    libraries = libraries.concat(JS_LIBRARIES);
+    libraries.push(...JS_LIBRARIES);
 
     // Deduplicate libraries to avoid processing any library file multiple times
     libraries = libraries.filter((item, pos) => libraries.indexOf(item) == pos);
@@ -283,15 +289,23 @@ function addToLibrary(obj, options = null) {
 let structs = {};
 let defines = {};
 
+/**
+ * Read JSON file containing struct and macro/define information
+ * that can then be used in JavaScript via macros.
+ */
+function loadStructInfo(filename) {
+  const temp = JSON.parse(read(filename));
+  Object.assign(structs, temp.structs);
+  Object.assign(defines, temp.defines);
+}
+
 if (!BOOTSTRAPPING_STRUCT_INFO) {
-  let structInfoFile = 'generated_struct_info32.json';
-  if (MEMORY64) {
-    structInfoFile = 'generated_struct_info64.json';
-  }
   // Load struct and define information.
-  const temp = JSON.parse(read(structInfoFile));
-  structs = temp.structs;
-  defines = temp.defines;
+  if (MEMORY64) {
+    loadStructInfo('struct_info_generated_wasm64.json');
+  } else {
+    loadStructInfo('struct_info_generated.json');
+  }
 }
 
 // Use proxy objects for C_DEFINES and C_STRUCTS so that we can give useful
@@ -366,33 +380,12 @@ function addMissingLibraryStubs(unusedLibSymbols) {
 
 // export parts of the JS runtime that the user asked for
 function exportRuntime() {
-  const EXPORTED_RUNTIME_METHODS_SET = new Set(EXPORTED_RUNTIME_METHODS);
-
-  const legacyRuntimeElements = new Map([
-    ['print', 'out'],
-    ['printErr', 'err'],
-  ]);
-
   // optionally export something.
-  // in ASSERTIONS mode we show a useful error if it is used without
-  // being exported. how we show the message depends on whether it's
-  // a function (almost all of them) or a number.
   function maybeExport(name) {
-    // HEAP objects are exported separately in updateMemoryViews
-    if (name.startsWith('HEAP')) {
-      return;
-    }
-    // if requested to be exported, export it
-    if (EXPORTED_RUNTIME_METHODS_SET.has(name)) {
-      let exported = name;
-      // the exported name may differ from the internal name
-      if (exported.startsWith('FS_')) {
-        // this is a filesystem value, FS.x exported as FS_x
-        exported = 'FS.' + exported.substr(3);
-      } else if (legacyRuntimeElements.has(exported)) {
-        exported = legacyRuntimeElements.get(exported);
-      }
-      return `Module['${name}'] = ${exported};`;
+    // If requested to be exported, export it.  HEAP objects are exported
+    // separately in updateMemoryViews
+    if (EXPORTED_RUNTIME_METHODS.has(name) && !name.startsWith('HEAP')) {
+      return `Module['${name}'] = ${name};`;
     }
   }
 
@@ -406,12 +399,6 @@ function exportRuntime() {
     'addOnPostRun',
     'addRunDependency',
     'removeRunDependency',
-    'FS_createFolder',
-    'FS_createPath',
-    'FS_createLazyFile',
-    'FS_createLink',
-    'FS_createDevice',
-    'FS_readFile',
     'out',
     'err',
     'callMain',
@@ -432,7 +419,7 @@ function exportRuntime() {
   ];
 
   if (PTHREADS && ALLOW_MEMORY_GROWTH) {
-    runtimeElements = runtimeElements.concat([
+    runtimeElements.push(
       'GROWABLE_HEAP_I8',
       'GROWABLE_HEAP_U8',
       'GROWABLE_HEAP_I16',
@@ -441,7 +428,7 @@ function exportRuntime() {
       'GROWABLE_HEAP_U32',
       'GROWABLE_HEAP_F32',
       'GROWABLE_HEAP_F64',
-    ]);
+    );
   }
   if (USE_OFFSET_CONVERTER) {
     runtimeElements.push('WasmOffsetConverter');
@@ -472,19 +459,9 @@ function exportRuntime() {
   // dynCall_* methods are not hardcoded here, as they
   // depend on the file being compiled. check for them
   // and add them.
-  for (const name of EXPORTED_RUNTIME_METHODS_SET) {
+  for (const name of EXPORTED_RUNTIME_METHODS) {
     if (/^dynCall_/.test(name)) {
       // a specific dynCall; add to the list
-      runtimeElements.push(name);
-    }
-  }
-
-  // Only export legacy runtime elements when explicitly
-  // requested.
-  for (const name of EXPORTED_RUNTIME_METHODS_SET) {
-    if (legacyRuntimeElements.has(name)) {
-      const newName = legacyRuntimeElements.get(name);
-      warn(`deprecated item in EXPORTED_RUNTIME_METHODS: ${name} use ${newName} instead.`);
       runtimeElements.push(name);
     }
   }
@@ -505,7 +482,7 @@ function exportRuntime() {
 
   // check all exported things exist, warn about typos
   runtimeElementsSet = new Set(runtimeElements);
-  for (const name of EXPORTED_RUNTIME_METHODS_SET) {
+  for (const name of EXPORTED_RUNTIME_METHODS) {
     if (!runtimeElementsSet.has(name)) {
       warn(`invalid item in EXPORTED_RUNTIME_METHODS: ${name}`);
     }
@@ -515,6 +492,8 @@ function exportRuntime() {
   const results = exports.filter((name) => name);
 
   if (ASSERTIONS && !EXPORT_ALL) {
+    // in ASSERTIONS mode we show a useful error if it is used without being
+    // exported.  See `unexportedRuntimeSymbol` in runtime_debug.js.
     const unusedLibSymbols = getUnusedLibrarySymbols();
     if (unusedLibSymbols.size) {
       results.push(addMissingLibraryStubs(unusedLibSymbols));
@@ -522,7 +501,7 @@ function exportRuntime() {
 
     const unexported = [];
     for (const name of runtimeElements) {
-      if (!EXPORTED_RUNTIME_METHODS_SET.has(name) && !unusedLibSymbols.has(name)) {
+      if (!EXPORTED_RUNTIME_METHODS.has(name) && !unusedLibSymbols.has(name)) {
         unexported.push(name);
       }
     }
@@ -543,6 +522,7 @@ function exportRuntime() {
 
 addToCompileTimeContext({
   exportRuntime,
+  loadStructInfo,
   LibraryManager,
   librarySymbols,
   addToLibrary,

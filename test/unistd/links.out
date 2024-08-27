@@ -1,24 +1,26 @@
-readlink(link)
-errno: 0
+readlink: 'link'
+errno: No error information
 
-readlink(file)
-errno: 28
-not a link
+readlink: 'file'
+errno: Invalid argument
 
-readlink(folder)
-errno: 28
-not a link
+readlink: 'directory'
+errno: Invalid argument
 
-symlink/overwrite
-ret: -1
-errno: 20
+symlink: '/working/directory/relative'
+buffer: 'Relative'
 
-symlink/normal
-ret: 0
-errno: 0
-readlink(created link)
-errno: 0
+symlink: '/working/directory/subdirectory/subrelative'
+buffer: 'Subrelative'
 
-readlink(short buffer)
-ret: 4
-errno: 0
+symlink: '/working/subdirectoryrelative'
+buffer: 'Subdirectory'
+
+symlink: '/working/directory/absolute'
+buffer: 'Absolute'
+
+symlink: '/working/directory/subdirectory/subabsolute'
+buffer: 'Subabsolute'
+
+symlink: '/working/subdirectoryabsolute'
+buffer: 'Subdirectory'

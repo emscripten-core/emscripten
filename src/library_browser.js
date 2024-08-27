@@ -104,6 +104,7 @@ var LibraryBrowser = {
 #endif
       }
     },
+    useWebGL: false,
     isFullscreen: false,
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
@@ -124,7 +125,7 @@ var LibraryBrowser = {
 
       var imagePlugin = {};
       imagePlugin['canHandle'] = function imagePlugin_canHandle(name) {
-        return !Module.noImageDecoding && /\.(jpg|jpeg|png|bmp)$/i.test(name);
+        return !Module['noImageDecoding'] && /\.(jpg|jpeg|png|bmp|webp)$/i.test(name);
       };
       imagePlugin['handle'] = function imagePlugin_handle(byteArray, name, onload, onerror) {
         var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
@@ -160,7 +161,7 @@ var LibraryBrowser = {
 
       var audioPlugin = {};
       audioPlugin['canHandle'] = function audioPlugin_canHandle(name) {
-        return !Module.noAudioDecoding && name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
+        return !Module['noAudioDecoding'] && name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
       };
       audioPlugin['handle'] = function audioPlugin_handle(byteArray, name, onload, onerror) {
         var done = false;
@@ -309,14 +310,12 @@ var LibraryBrowser = {
 #endif
         Module.ctx = ctx;
         if (useWebGL) GL.makeContextCurrent(contextHandle);
-        Module.useWebGL = useWebGL;
+        Browser.useWebGL = useWebGL;
         Browser.moduleContextCreatedCallbacks.forEach((callback) => callback());
         Browser.init();
       }
       return ctx;
     },
-
-    destroyContext(canvas, useWebGL, setInModule) {},
 
     fullscreenHandlersInstalled: false,
     lockPointer: undefined,
@@ -593,16 +592,9 @@ var LibraryBrowser = {
           Browser.mouseMovementY = Browser.getMovementY(event);
         }
 
-        // check if SDL is available
-        if (typeof SDL != "undefined") {
-          Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
-          Browser.mouseY = SDL.mouseY + Browser.mouseMovementY;
-        } else {
-          // just add the mouse delta to the current absolute mouse position
-          // FIXME: ideally this should be clamped against the canvas size and zero
-          Browser.mouseX += Browser.mouseMovementX;
-          Browser.mouseY += Browser.mouseMovementY;
-        }
+        // add the mouse delta to the current absolute mouse position
+        Browser.mouseX += Browser.mouseMovementX;
+        Browser.mouseY += Browser.mouseMovementY;
       } else {
         if (event.type === 'touchstart' || event.type === 'touchend' || event.type === 'touchmove') {
           var touch = event.touch;
@@ -777,13 +769,11 @@ var LibraryBrowser = {
   emscripten_async_load_script__deps: ['$UTF8ToString'],
   emscripten_async_load_script: (url, onload, onerror) => {
     url = UTF8ToString(url);
-    onload = {{{ makeDynCall('v', 'onload') }}};
-    onerror = {{{ makeDynCall('v', 'onerror') }}};
-
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
       err(`emscripten_async_load_script("${url}") failed, emscripten_async_load_script is currently not available in pthreads!`);
-      return onerror ? onerror() : undefined;
+      onerror && {{{ makeDynCall('v', 'onerror') }}}();
+      return;
     }
 #endif
 #if ASSERTIONS
@@ -794,25 +784,28 @@ var LibraryBrowser = {
     var loadDone = () => {
       {{{ runtimeKeepalivePop() }}}
       if (onload) {
+        var onloadCallback = () => callUserCallback({{{ makeDynCall('v', 'onload') }}});
         if (runDependencies > 0) {
-          dependenciesFulfilled = onload;
+          dependenciesFulfilled = onloadCallback;
         } else {
-          onload();
+          onloadCallback();
         }
       }
     }
 
     var loadError = () => {
       {{{ runtimeKeepalivePop() }}}
-      onerror?.();
+      if (onerror) {
+        callUserCallback({{{ makeDynCall('v', 'onerror') }}});
+      }
     };
 
 #if ENVIRONMENT_MAY_BE_NODE && DYNAMIC_EXECUTION
     if (ENVIRONMENT_IS_NODE) {
-      readAsync(url, (data) => {
+      readAsync(url, false).then((data) => {
         eval(data);
         loadDone();
-      }, loadError, false);
+      }, loadError);
       return;
     }
 #endif
@@ -876,7 +869,7 @@ var LibraryBrowser = {
           Browser.setImmediate = /** @type{function(function(): ?, ...?): number} */(function Browser_emulated_setImmediate(func) {
             setImmediates.push(func);
             if (ENVIRONMENT_IS_WORKER) {
-              if (Module['setImmediates'] === undefined) Module['setImmediates'] = [];
+              Module['setImmediates'] ??= [];
               Module['setImmediates'].push(func);
               postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
             } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
@@ -905,7 +898,7 @@ var LibraryBrowser = {
 #if OFFSCREEN_FRAMEBUFFER
     'emscripten_webgl_commit_frame',
 #endif
-#if EXIT_RUNTIME && !MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME
     '$maybeExit',
 #endif
   ],
@@ -938,10 +931,10 @@ var LibraryBrowser = {
     function checkIsRunning() {
       if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) {
 #if RUNTIME_DEBUG
-        dbg('main loop exiting..');
+        dbg('main loop exiting');
 #endif
         {{{ runtimeKeepalivePop() }}}
-#if EXIT_RUNTIME && !MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME
         maybeExit();
 #endif
         return false;

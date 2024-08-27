@@ -157,6 +157,8 @@ static struct fdpic_dummy_loadmap app_dummy_loadmap;
 
 struct debug *_dl_debug_addr = &debug;
 
+extern weak hidden char __ehdr_start[];
+
 extern hidden int __malloc_replaced;
 
 hidden void (*const __init_array_start)(void)=0, (*const __fini_array_start)(void)=0;
@@ -515,7 +517,7 @@ static void do_relocs(struct dso *dso, size_t *rel, size_t rel_size, size_t stri
 			break;
 #endif
 		case REL_TLSDESC:
-			if (stride<3) addend = reloc_addr[1];
+			if (stride<3) addend = reloc_addr[!TLSDESC_BACKWARDS];
 			if (def.dso->tls_id > static_tls_cnt) {
 				struct td_index *new = malloc(sizeof *new);
 				if (!new) {
@@ -540,13 +542,13 @@ static void do_relocs(struct dso *dso, size_t *rel, size_t rel_size, size_t stri
 					+ addend;
 #endif
 			}
-#ifdef TLSDESC_BACKWARDS
 			/* Some archs (32-bit ARM at least) invert the order of
 			 * the descriptor members. Fix them up here. */
-			size_t tmp = reloc_addr[0];
-			reloc_addr[0] = reloc_addr[1];
-			reloc_addr[1] = tmp;
-#endif
+			if (TLSDESC_BACKWARDS) {
+				size_t tmp = reloc_addr[0];
+				reloc_addr[0] = reloc_addr[1];
+				reloc_addr[1] = tmp;
+			}
 			break;
 		default:
 			error("Error relocating %s: unsupported relocation type %d",
@@ -1725,7 +1727,7 @@ hidden void __dls2(unsigned char *base, size_t *sp)
 	} else {
 		ldso.base = base;
 	}
-	Ehdr *ehdr = (void *)ldso.base;
+	Ehdr *ehdr = __ehdr_start ? (void *)__ehdr_start : (void *)ldso.base;
 	ldso.name = ldso.shortname = "libc.so";
 	ldso.phnum = ehdr->e_phnum;
 	ldso.phdr = laddr(&ldso, ehdr->e_phoff);

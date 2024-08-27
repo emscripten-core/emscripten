@@ -240,6 +240,12 @@ Options that are modified or new in *emcc* are listed below:
      "[name].js.symbols" (with WASM symbols) and
      "[name].wasm.js.symbols" (with ASM.js symbols)
 
+"--emit-minification-map <file>"
+   [link] In cases where emscripten performs import/export minificiton
+   this option can be used to output a file that maps minified names
+   back to their original names.  The format of this file is single
+   line per import/export of the form "<minname>:<origname>".
+
 "-flto"
    [compile+link] Enables link-time optimizations (LTO).
 
@@ -410,9 +416,15 @@ Options that are modified or new in *emcc* are listed below:
    instead.
 
 "--embind-emit-tsd <path>"
-   [link] Generate a TypeScript definition file from the exported
-   embind bindings. The program will be instrumented and run in node
-   in order to to generate the file.
+   [link] Generates TypeScript definition file.  Deprecated: Use "--
+   emit-tsd" instead.
+
+"--emit-tsd <path>"
+   [link] Generate a TypeScript definition file for the emscripten
+   module. The definition file will include exported Wasm functions,
+   runtime exports, and exported embind bindings (if used). In order
+   to generate bindings from embind, the program will be instrumented
+   and run in node.
 
 "--ignore-dynamic-linking"
    [link] Tells the compiler to ignore dynamic linking (the user will

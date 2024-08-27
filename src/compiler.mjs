@@ -7,9 +7,9 @@
 
 // LLVM => JavaScript compiler, main entry point
 
-import * as fs from 'fs';
-import * as path from 'path';
-import * as url from 'url';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as url from 'node:url';
 
 import {Benchmarker, applySettings, assert, loadSettingsFile, printErr, read} from './utility.mjs';
 
@@ -55,6 +55,7 @@ WASM_EXPORTS = new Set(WASM_EXPORTS);
 SIDE_MODULE_EXPORTS = new Set(SIDE_MODULE_EXPORTS);
 INCOMING_MODULE_JS_API = new Set(INCOMING_MODULE_JS_API);
 ALL_INCOMING_MODULE_JS_API = new Set(ALL_INCOMING_MODULE_JS_API);
+EXPORTED_RUNTIME_METHODS = new Set(EXPORTED_RUNTIME_METHODS);
 WEAK_IMPORTS = new Set(WEAK_IMPORTS);
 if (symbolsOnly) {
   INCLUDE_FULL_LIBRARY = 1;

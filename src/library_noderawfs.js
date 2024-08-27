@@ -7,7 +7,15 @@
 addToLibrary({
   $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$mmapAlloc', '$FS_modeStringToFlags'],
   $NODERAWFS__postset: `
-    if (ENVIRONMENT_IS_NODE) {
+    if (!ENVIRONMENT_IS_NODE) {
+      throw new Error("NODERAWFS is currently only supported on Node.js environment.")
+    }
+    // Use this to reference our in-memory filesystem
+    var VFS = Object.assign({}, FS);
+    // Override the init function with our own
+    FS.init = NODERAWFS.init;`,
+  $NODERAWFS: {
+    init() {
       var _wrapNodeError = function(func) {
         return function(...args) {
           try {
@@ -20,15 +28,17 @@ addToLibrary({
           }
         }
       };
-      /** @suppress {partialAlias} */
-      var VFS = Object.assign({}, FS);
+
+      // Wrap the whole in-memory filesystem API with
+      // our Node.js based functions
       for (var _key in NODERAWFS) {
+        /** @suppress {partialAlias} */
         FS[_key] = _wrapNodeError(NODERAWFS[_key]);
       }
-    } else {
-      throw new Error("NODERAWFS is currently only supported on Node.js environment.")
-    }`,
-  $NODERAWFS: {
+
+      // Setup the stdin, stdout and stderr devices
+      FS.createStandardStreams();
+    },
     lookup(parent, name) {
 #if ASSERTIONS
       assert(parent)
@@ -45,9 +55,10 @@ addToLibrary({
       return { path, node: { id: st.ino, mode, node_ops: NODERAWFS, path }};
     },
     createStandardStreams() {
+      // FIXME: tty is set to true to appease isatty(), the underlying ioctl syscalls still needs to be implemented, see issue #22264.
       FS.createStream({ nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false }, 0);
       for (var i = 1; i < 3; i++) {
-        FS.createStream({ nfd: i, position: 0, path: '', flags: 577, tty: true, seekable: false }, i);
+        FS.createStream({ nfd: i, position: 0, path: '', flags: {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}}, tty: true, seekable: false }, i);
       }
     },
     // generic function for all node creation
@@ -149,7 +160,7 @@ addToLibrary({
       }
       var seeking = typeof position != 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
-      var bytesRead = fs.readSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), { position: position });
+      var bytesRead = fs.readSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position);
       // update position marker when non-seeking
       if (!seeking) stream.position += bytesRead;
       return bytesRead;
@@ -165,7 +176,7 @@ addToLibrary({
       }
       var seeking = typeof position != 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
-      var bytesWritten = fs.writeSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), { position: position });
+      var bytesWritten = fs.writeSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position);
       // update position marker when non-seeking
       if (!seeking) stream.position += bytesWritten;
       return bytesWritten;
@@ -174,6 +185,9 @@ addToLibrary({
       throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
     },
     mmap(stream, length, position, prot, flags) {
+      if (!length) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
       if (stream.stream_ops) {
         // this stream is created by in-memory filesystem
         return VFS.mmap(stream, length, position, prot, flags);

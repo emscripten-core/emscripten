@@ -54,10 +54,19 @@ int emscripten_builtin_pthread_create(pthread_t *thread,
                                       void *(*callback)(void *), void *arg);
 }
 
+struct ThreadStartParams {
+  thread_callback_t start_routine;
+  void *arg;
+};
+
 static thread_return_t THREAD_CALLING_CONV asan_thread_start(void *arg) {
   AsanThread *t = (AsanThread *)arg;
   SetCurrentThread(t);
-  return t->ThreadStart(GetTid());
+  t->ThreadStart(GetTid());
+  ThreadStartParams params;
+  t->GetStartData(params);
+  auto res = (*params.start_routine)(params.arg);
+  return res;
 }
 
 INTERCEPTOR(int, pthread_create, pthread_t *thread,
@@ -72,8 +81,8 @@ INTERCEPTOR(int, pthread_create, pthread_t *thread,
     pthread_attr_getdetachstate(attr, &detached);
 
   u32 current_tid = GetCurrentTidOrInvalid();
-  AsanThread *t =
-      AsanThread::Create(start_routine, arg, current_tid, &stack, detached);
+  ThreadStartParams params = {start_routine, arg};
+  AsanThread* t = AsanThread::Create(params, current_tid, &stack, detached);
 
   int result;
   {

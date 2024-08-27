@@ -206,6 +206,24 @@ void __cxa_free_exception(void *thrown_object) throw() {
     __aligned_free_with_fallback((void *)raw_buffer);
 }
 
+__cxa_exception* __cxa_init_primary_exception(void* object, std::type_info* tinfo,
+#ifdef __wasm__
+// In Wasm, a destructor returns its argument
+                                              void *(_LIBCXXABI_DTOR_FUNC* dest)(void*)) throw() {
+#else
+                                              void(_LIBCXXABI_DTOR_FUNC* dest)(void*)) throw() {
+#endif
+  __cxa_exception* exception_header = cxa_exception_from_thrown_object(object);
+  exception_header->referenceCount = 0;
+  exception_header->unexpectedHandler = std::get_unexpected();
+  exception_header->terminateHandler = std::get_terminate();
+  exception_header->exceptionType = tinfo;
+  exception_header->exceptionDestructor = dest;
+  setOurExceptionClass(&exception_header->unwindHeader);
+  exception_header->unwindHeader.exception_cleanup = exception_cleanup_func;
+
+  return exception_header;
+}
 
 //  This function shall allocate a __cxa_dependent_exception and
 //  return a pointer to it. (Really to the object, not past its' end).
@@ -254,40 +272,33 @@ will call terminate, assuming that there was no handler for the
 exception.
 */
 
-#if defined(__EMSCRIPTEN__) && defined(__USING_WASM_EXCEPTIONS__) && !defined(NDEBUG)
+#if defined(__EMSCRIPTEN__) && defined(__WASM_EXCEPTIONS__) && !defined(NDEBUG)
 extern "C" {
 void __throw_exception_with_stack_trace(_Unwind_Exception*);
 } // extern "C"
 #endif
 
 void
-#ifdef __USING_WASM_EXCEPTIONS__
+#ifdef __wasm__
 // In Wasm, a destructor returns its argument
 __cxa_throw(void *thrown_object, std::type_info *tinfo, void *(_LIBCXXABI_DTOR_FUNC *dest)(void *)) {
 #else
 __cxa_throw(void *thrown_object, std::type_info *tinfo, void (_LIBCXXABI_DTOR_FUNC *dest)(void *)) {
 #endif
-    __cxa_eh_globals *globals = __cxa_get_globals();
-    __cxa_exception* exception_header = cxa_exception_from_thrown_object(thrown_object);
+  __cxa_eh_globals* globals = __cxa_get_globals();
+  globals->uncaughtExceptions += 1; // Not atomically, since globals are thread-local
 
-    exception_header->unexpectedHandler = std::get_unexpected();
-    exception_header->terminateHandler  = std::get_terminate();
-    exception_header->exceptionType = tinfo;
-    exception_header->exceptionDestructor = dest;
-    setOurExceptionClass(&exception_header->unwindHeader);
-    exception_header->referenceCount = 1;  // This is a newly allocated exception, no need for thread safety.
-    globals->uncaughtExceptions += 1;   // Not atomically, since globals are thread-local
-
-    exception_header->unwindHeader.exception_cleanup = exception_cleanup_func;
+  __cxa_exception* exception_header = __cxa_init_primary_exception(thrown_object, tinfo, dest);
+  exception_header->referenceCount = 1; // This is a newly allocated exception, no need for thread safety.
 
 #if __has_feature(address_sanitizer)
-    // Inform the ASan runtime that now might be a good time to clean stuff up.
-    __asan_handle_no_return();
+  // Inform the ASan runtime that now might be a good time to clean stuff up.
+  __asan_handle_no_return();
 #endif
 
 #ifdef __USING_SJLJ_EXCEPTIONS__
     _Unwind_SjLj_RaiseException(&exception_header->unwindHeader);
-#elif defined(__EMSCRIPTEN__) && defined(__USING_WASM_EXCEPTIONS__) && !defined(NDEBUG)
+#elif defined(__EMSCRIPTEN__) && defined(__WASM_EXCEPTIONS__) && !defined(NDEBUG)
     // In debug mode, call a JS library function to use WebAssembly.Exception JS
     // API, which enables us to include stack traces
     __throw_exception_with_stack_trace(&exception_header->unwindHeader);
@@ -640,7 +651,7 @@ void __cxa_rethrow() {
     }
 #ifdef __USING_SJLJ_EXCEPTIONS__
     _Unwind_SjLj_RaiseException(&exception_header->unwindHeader);
-#elif defined(__EMSCRIPTEN__) && defined(__USING_WASM_EXCEPTIONS__) && !defined(NDEBUG)
+#elif defined(__EMSCRIPTEN__) && defined(__WASM_EXCEPTIONS__) && !defined(NDEBUG)
     // In debug mode, call a JS library function to use WebAssembly.Exception JS
     // API, which enables us to include stack traces
     __throw_exception_with_stack_trace(&exception_header->unwindHeader);
@@ -769,7 +780,7 @@ __cxa_rethrow_primary_exception(void* thrown_object)
         dep_exception_header->unwindHeader.exception_cleanup = dependent_exception_cleanup;
 #ifdef __USING_SJLJ_EXCEPTIONS__
         _Unwind_SjLj_RaiseException(&dep_exception_header->unwindHeader);
-#elif defined(__EMSCRIPTEN__) && defined(__USING_WASM_EXCEPTIONS__) && !defined(NDEBUG)
+#elif defined(__EMSCRIPTEN__) && defined(__WASM_EXCEPTIONS__) && !defined(NDEBUG)
         // In debug mode, call a JS library function to use
         // WebAssembly.Exception JS API, which enables us to include stack
         // traces
@@ -796,6 +807,6 @@ __cxa_uncaught_exceptions() throw()
     return globals->uncaughtExceptions;
 }
 
-}  // extern "C"
+} // extern "C"
 
 }  // abi

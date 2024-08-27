@@ -9,6 +9,7 @@ TAG = 'version_1'
 HASH = '0d0b1280ba0501ad0a23cf1daa1f86821c722218b59432734d3087a89acd22aabd5c3e5e1269700dcd41e87073046e906060f167c032eb91a3ac8c5808a02783'
 
 variants = {'freetype-wasm-sjlj': {'SUPPORT_LONGJMP': 'wasm'}}
+deps = ['zlib']
 
 
 def needed(settings):
@@ -26,7 +27,7 @@ def get(ports, settings, shared):
   ports.fetch_project('freetype', f'https://github.com/emscripten-ports/FreeType/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'freetype', 'FreeType-' + TAG)
+    source_path = ports.get_dir('freetype', 'FreeType-' + TAG)
     ports.write_file(os.path.join(source_path, 'include/ftconfig.h'), ftconf_h)
     ports.install_header_dir(os.path.join(source_path, 'include'),
                              target=os.path.join('freetype2'))
@@ -87,6 +88,7 @@ def get(ports, settings, shared):
 
     flags = [
       '-DFT2_BUILD_LIBRARY',
+      '-DFT_CONFIG_OPTION_SYSTEM_ZLIB',
       '-I' + source_path + '/include',
       '-I' + source_path + '/truetype',
       '-I' + source_path + '/sfnt',

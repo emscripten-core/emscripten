@@ -13,17 +13,19 @@ LICENSE = 'Test License'
 OPTIONS = {
   'value1': 'Value for define TEST_VALUE_1',
   'value2': 'Value for define TEST_VALUE_2',
-  'dependency': 'A dependency'
+  'value3': 'String value',
+  'dependency': 'A dependency',
 }
 
 # user options (from --use-port)
 opts: Dict[str, Optional[str]] = {
   'value1': None,
   'value2': None,
+  'value3': "v3",
   'dependency': None
 }
 
-deps = []
+deps = ['sdl2_image:formats=jpg']
 
 
 def get_lib_name(settings):
@@ -57,6 +59,7 @@ def process_args(ports):
     args.append(f'-DTEST_VALUE_2={opts["value2"]}')
   if opts['dependency']:
     args.append(f'-DTEST_DEPENDENCY_{opts["dependency"].upper()}')
+  args.append(f'-DTEST_VALUE_3="{opts["value3"]}"')
   return args
 
 

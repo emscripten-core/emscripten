@@ -26,7 +26,7 @@ def get(ports, settings, shared):
 
   def create(final):
     # copy includes to a location so they can be used as 'SDL2/'
-    src_dir = os.path.join(ports.get_dir(), 'sdl2', SUBDIR)
+    src_dir = ports.get_dir('sdl2', SUBDIR)
     source_include_path = os.path.join(src_dir, 'include')
     ports.install_headers(source_include_path, target='SDL2')
 

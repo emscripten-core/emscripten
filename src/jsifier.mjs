@@ -124,6 +124,9 @@ function getTransitiveDeps(symbol, debug) {
       directDeps = directDeps.filter((d) => typeof d === 'string');
       for (const dep of directDeps) {
         const resolved = resolveAlias(dep);
+        if (VERBOSE && !transitiveDeps.has(dep)) {
+          printErr(`adding dependency ${symbol} -> ${dep}`);
+        }
         transitiveDeps.add(resolved);
         toVisit.push(resolved);
       }
@@ -172,9 +175,10 @@ export function runJSify(symbolsOnly) {
       symbolsNeeded.push('$' + sym);
     }
   }
-  if (INCLUDE_FULL_LIBRARY) {
-    for (const key of Object.keys(LibraryManager.library)) {
-      if (!isDecorator(key)) {
+
+  for (const key of Object.keys(LibraryManager.library)) {
+    if (!isDecorator(key)) {
+      if (INCLUDE_FULL_LIBRARY || EXPORTED_FUNCTIONS.has(mangleCSymbolName(key))) {
         symbolsNeeded.push(key);
       }
     }
@@ -628,12 +632,8 @@ function(${args}) {
       if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
         contentText += `\nModule['${mangled}'] = ${mangled};`;
       }
-      // Relocatable code needs signatures to create proper wrappers. Stack
-      // switching needs signatures so we can create a proper
-      // WebAssembly.Function with the signature for the Promise API.
-      // TODO: For asyncify we could only add the signatures we actually need,
-      //       of async imports/exports.
-      if (sig && (RELOCATABLE || ASYNCIFY == 2)) {
+      // Relocatable code needs signatures to create proper wrappers.
+      if (sig && RELOCATABLE) {
         if (!WASM_BIGINT) {
           sig = sig[0].replace('j', 'i') + sig.slice(1).replace(/j/g, 'ii');
         }
@@ -644,7 +644,7 @@ function(${args}) {
       }
       if (isStub) {
         contentText += `\n${mangled}.stub = true;`;
-        if (ASYNCIFY) {
+        if (ASYNCIFY && MAIN_MODULE) {
           contentText += `\nasyncifyStubs['${symbol}'] = undefined;`;
         }
       }
@@ -653,8 +653,17 @@ function(${args}) {
       if (force) {
         commentText += '/** @suppress {duplicate } */\n';
       }
-      if (LibraryManager.library[symbol + '__docs']) {
-        commentText += LibraryManager.library[symbol + '__docs'] + '\n';
+
+      let docs = LibraryManager.library[symbol + '__docs'];
+      if (docs) {
+        commentText += docs + '\n';
+      }
+
+      if (EMIT_TSD) {
+        LibraryManager.libraryDefinitions[mangled] = {
+          docs: docs ?? null,
+          snippet: snippet ?? null,
+        };
       }
 
       const depsText = deps
@@ -694,7 +703,7 @@ function(${args}) {
       }
     }
 
-    postSets = postSets.concat(orderedPostSets);
+    postSets.push(...orderedPostSets);
 
     const shellFile = MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js';
     includeFile(shellFile);
@@ -735,12 +744,17 @@ var proxiedFunctionTable = [
       includeFile(fileName, shouldPreprocess(fileName));
     }
 
+    if (MODULARIZE) {
+      includeFile('postamble_modularize.js');
+    }
+
     print(
       '//FORWARDED_DATA:' +
         JSON.stringify({
           librarySymbols,
           warnings: warningOccured(),
           asyncFuncs,
+          libraryDefinitions: LibraryManager.libraryDefinitions,
           ATINITS: ATINITS.join('\n'),
           ATMAINS: STRICT ? '' : ATMAINS.join('\n'),
           ATEXITS: ATEXITS.join('\n'),
