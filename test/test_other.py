@@ -9308,13 +9308,14 @@ int main() {
 
   @is_slow_test
   @parameterized({
-    '': (True,),
-    'disabled': (False,),
+    '': (1,),
+    'disabled': (0,),
+    'binary_encode': (2,),
   })
-  def test_single_file(self, wasm2js):
-    for (single_file_enabled,
-         debug_enabled,
-         closure_enabled) in itertools.product([0, 1, 2], [True, False], [True, False]):
+  @also_with_wasm2js
+  def test_single_file(self, single_file_enabled):
+    for (debug_enabled,
+         closure_enabled) in itertools.product([True, False], [True, False]):
       # skip unhelpful option combinations
       if closure_enabled and debug_enabled:
         continue
@@ -9328,6 +9329,7 @@ int main() {
         expect_wasm = self.is_wasm()
 
       cmd += [f'-sSINGLE_FILE_BINARY_ENCODE={int(single_file_enabled == 2)}']
+
       if debug_enabled:
         cmd += ['-g']
       if closure_enabled:
