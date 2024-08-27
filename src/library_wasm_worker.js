@@ -10,7 +10,6 @@
   globalThis.captureModuleArg = () => MODULARIZE ? '' : 'self.Module=d;';
   globalThis.instantiateModule = () => MODULARIZE ? `${EXPORT_NAME}(d);` : '';
   globalThis.instantiateWasm = () => MINIMAL_RUNTIME ? '' : 'd[`instantiateWasm`]=(i,r)=>{var n=new WebAssembly.Instance(d[`wasm`],i);return r(n,d[`wasm`]);};';
-  globalThis.workerSupportsFutexWait = () => AUDIO_WORKLET ? "typeof AudioWorkletGlobalScope === 'undefined'" : '1';
   null;
 }}}
 #endif
@@ -32,6 +31,11 @@
 #if PROXY_TO_WORKER
 #error "-sPROXY_TO_WORKER is not supported with -sWASM_WORKERS"
 #endif
+
+{{{
+  globalThis.workerSupportsFutexWait = () => AUDIO_WORKLET ? "typeof AudioWorkletGlobalScope === 'undefined'" : '1';
+  null;
+}}}
 
 #endif // ~WASM_WORKERS
 
@@ -97,6 +101,7 @@ addToLibrary({
     __emscripten_wasm_worker_initialize(m['sb'], m['sz']);
 #if PTHREADS
     // Record the pthread configuration, and whether this Wasm Worker supports synchronous blocking in emscripten_futex_wait().
+    // (regular Wasm Workers do, AudioWorklets don't)
     ___set_thread_state(/*thread_ptr=*/0, /*is_main_thread=*/0, /*is_runtime_thread=*/0, /*supports_wait=*/ {{{ workerSupportsFutexWait() }}});
 #endif
 #if STACK_OVERFLOW_CHECK >= 2
