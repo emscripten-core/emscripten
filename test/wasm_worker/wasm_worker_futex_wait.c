@@ -10,20 +10,17 @@
 
 _Atomic uint32_t futex_value = 0;
 
-void wake_worker_after_delay(void *user_data)
-{
+void wake_worker_after_delay(void *user_data) {
   futex_value = 1;
   emscripten_futex_wake(&futex_value, INT_MAX);  
 }
 
-void wake_worker()
-{
+void wake_worker() {
   printf("Waking worker thread from futex wait.\n");
   emscripten_set_timeout(wake_worker_after_delay, 500, 0);
 }
 
-void worker_main()
-{
+void worker_main() {
   printf("Worker sleeping for futex wait.\n");
   emscripten_wasm_worker_post_function_v(0, wake_worker);
   int rc = emscripten_futex_wait(&futex_value, 0, INFINITY);
@@ -33,7 +30,6 @@ void worker_main()
 #endif
 }
 
-int main()
-{
+int main() {
   emscripten_wasm_worker_post_function_v(emscripten_malloc_wasm_worker(1024), worker_main);
 }
