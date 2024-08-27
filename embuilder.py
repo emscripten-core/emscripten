@@ -66,6 +66,7 @@ MINIMAL_TASKS = [
     'libmimalloc-mt',
     'libGL',
     'libGL-getprocaddr',
+    'libGL-emu-getprocaddr',
     'libGL-emu-webgl2-ofb-getprocaddr',
     'libGL-webgl2-ofb-getprocaddr',
     'libGL-ww-getprocaddr',
