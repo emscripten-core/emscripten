@@ -2185,9 +2185,13 @@ void *getBindBuffer() {
     self.reftest('s3tc.c', 's3tc.png', args=['--preload-file', 'screenshot.dds', '-sLEGACY_GL_EMULATION', '-sGL_FFP_ONLY', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
-  def test_anisotropic(self):
+  @parameterized({
+    '': ([],),
+    'subimage': (['-DTEST_TEXSUBIMAGE'],),
+  })
+  def test_anisotropic(self, args):
     shutil.copyfile(test_file('browser/water.dds'), 'water.dds')
-    self.reftest('test_anisotropic.c', 'test_anisotropic.png', reference_slack=2, args=['--preload-file', 'water.dds', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-Wno-incompatible-pointer-types'])
+    self.reftest('test_anisotropic.c', 'test_anisotropic.png', reference_slack=2, args=['--preload-file', 'water.dds', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-Wno-incompatible-pointer-types'] + args)
 
   @requires_graphics_hardware
   def test_tex_nonbyte(self):
