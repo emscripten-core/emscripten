@@ -54,9 +54,9 @@ LLVM maintains a WebAssembly SIMD Intrinsics header file that is provided with E
 
        int main() {
        #ifdef __wasm_simd128__
-         v128 v1 = wasm_f32x4_make(1.2f, 3.4f, 5.6f, 7.8f);
-         v128 v2 = wasm_f32x4_make(2.1f, 4.3f, 6.5f, 8.7f);
-         v128 v3 = v1 + v2;
+         v128_t v1 = wasm_f32x4_make(1.2f, 3.4f, 5.6f, 7.8f);
+         v128_t v2 = wasm_f32x4_make(2.1f, 4.3f, 6.5f, 8.7f);
+         v128_t v3 = wasm_f32x4_add(v1, v2);
          // Prints "v3: [3.3, 7.7, 12.1, 16.5]"
          printf("v3: [%.1f, %.1f, %.1f, %.1f]\n",
                 wasm_f32x4_extract_lane(v3, 0),

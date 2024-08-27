@@ -1856,14 +1856,21 @@ addToLibrary({
   },
 
 #if DYNCALLS || !WASM_BIGINT
-#if MAIN_MODULE == 1
-  $dynCallLegacy__deps: ['$createDyncallWrapper'],
+#if MINIMAL_RUNTIME
+  $dynCalls: '{}',
 #endif
+  $dynCallLegacy__deps: [
+#if MAIN_MODULE == 1
+    '$createDyncallWrapper'
+#endif
+#if MINIMAL_RUNTIME
+    '$dynCalls',
+#endif
+  ],
   $dynCallLegacy: (sig, ptr, args) => {
     sig = sig.replace(/p/g, {{{ MEMORY64 ? "'j'" : "'i'" }}})
 #if ASSERTIONS
 #if MINIMAL_RUNTIME
-    assert(typeof dynCalls != 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall linker flag to include it!');
     assert(sig in dynCalls, `bad function pointer type - sig is not in dynCalls: '${sig}'`);
 #else
     assert(('dynCall_' + sig) in Module, `bad function pointer type - dynCall function not found for sig '${sig}'`);

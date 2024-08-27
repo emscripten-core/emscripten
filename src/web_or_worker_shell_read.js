@@ -30,6 +30,7 @@
         xhr.onload = () => {
           if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
             resolve(xhr.response);
+            return;
           }
           reject(xhr.status);
         };

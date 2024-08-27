@@ -38,7 +38,7 @@ def get(ports, settings, shared):
   libname = get_lib_name(settings)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'sdl2_mixer', 'SDL_mixer-' + TAG)
+    source_path = ports.get_dir('sdl2_mixer', 'SDL_mixer-' + TAG)
     flags = [
       '-sUSE_SDL=2',
       '-O2',

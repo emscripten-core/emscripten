@@ -20,12 +20,9 @@ var LibraryExceptions = {
   // reference counter) is not protected from that. Also protection is not enough, separate state
   // should be allocated. libcxxabi has concept of dependent exception which is used for that
   // purpose, it references the primary exception.
-  $ExceptionInfo__deps: [
-    '__cxa_is_pointer_type',
 #if EXCEPTION_DEBUG
-    '$ptrToString'
+  $ExceptionInfo__deps: ['$ptrToString'],
 #endif
-  ],
   $ExceptionInfo: class {
     // excPtr - Thrown object pointer to wrap. Metadata pointer is calculated from it.
     constructor(excPtr) {
@@ -84,22 +81,6 @@ var LibraryExceptions = {
     get_adjusted_ptr() {
       return {{{ makeGetValue('this.ptr', C_STRUCTS.__cxa_exception.adjustedPtr, '*') }}};
     }
-
-    // Get pointer which is expected to be received by catch clause in C++ code. It may be adjusted
-    // when the pointer is casted to some of the exception object base classes (e.g. when virtual
-    // inheritance is used). When a pointer is thrown this method should return the thrown pointer
-    // itself.
-    get_exception_ptr() {
-      // Work around a fastcomp bug, this code is still included for some reason in a build without
-      // exceptions support.
-      var isPointer = ___cxa_is_pointer_type(this.get_type());
-      if (isPointer) {
-        return {{{ makeGetValue('this.excPtr', '0', '*') }}};
-      }
-      var adjusted = this.get_adjusted_ptr();
-      if (adjusted !== 0) return adjusted;
-      return this.excPtr;
-    }
   },
 
   // Here, we throw an exception after recording a couple of values that we need to remember
@@ -144,8 +125,8 @@ var LibraryExceptions = {
 
   llvm_eh_typeid_for: (type) => type,
 
-#if !DISABLE_EXCEPTION_CATCHING
   __cxa_begin_catch__deps: ['$exceptionCaught', '__cxa_increment_exception_refcount',
+                            '__cxa_get_exception_ptr',
                             '$uncaughtExceptionCount'],
   __cxa_begin_catch: (ptr) => {
     var info = new ExceptionInfo(ptr);
@@ -158,8 +139,8 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     dbg('__cxa_begin_catch ' + [ptrToString(ptr), 'stack', exceptionCaught]);
 #endif
-    ___cxa_increment_exception_refcount(info.excPtr);
-    return info.get_exception_ptr();
+    ___cxa_increment_exception_refcount(ptr);
+    return ___cxa_get_exception_ptr(ptr);
   },
 
   // We're done with a catch. Now, we can run the destructor if there is one
@@ -181,15 +162,6 @@ var LibraryExceptions = {
 #endif
     ___cxa_decrement_exception_refcount(info.excPtr);
     exceptionLast = 0; // XXX in decRef?
-  },
-
-  __cxa_get_exception_ptr__deps: ['$ExceptionInfo'],
-  __cxa_get_exception_ptr: (ptr) => {
-    var rtn = new ExceptionInfo(ptr).get_exception_ptr();
-#if EXCEPTION_DEBUG
-    dbg('__cxa_get_exception_ptr ' + ptrToString(ptr) + ' -> ' + ptrToString(rtn));
-#endif
-    return rtn;
   },
 
   __cxa_uncaught_exceptions__deps: ['$uncaughtExceptionCount'],
@@ -284,17 +256,7 @@ var LibraryExceptions = {
     {{{ makeThrow('exceptionLast') }}}
   },
 
-  $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount'],
-  $incrementExceptionRefcount: (ptr) => ___cxa_increment_exception_refcount(ptr),
-
-  $decrementExceptionRefcount__deps: ['__cxa_decrement_exception_refcount'],
-  $decrementExceptionRefcount: (ptr) => ___cxa_decrement_exception_refcount(ptr),
-
-  $getExceptionMessage__deps: ['$getExceptionMessageCommon'],
-  $getExceptionMessage: (ptr) => getExceptionMessageCommon(ptr),
-#endif // !DISABLE_EXCEPTION_CATCHING
-#endif // !WASM_EXCEPTIONS
-
+#endif
 #if WASM_EXCEPTIONS || !DISABLE_EXCEPTION_CATCHING
   $getExceptionMessageCommon__deps: ['__get_exception_message', 'free', '$stackSave', '$stackRestore', '$stackAlloc'],
   $getExceptionMessageCommon: (ptr) => {
@@ -369,23 +331,19 @@ var LibraryExceptions = {
     var ptr = getCppExceptionThrownObjectFromWebAssemblyException(ex);
     return getExceptionMessageCommon(ptr);
   },
-#endif // WASM_EXCEPTIONS
+
+#elif !DISABLE_EXCEPTION_CATCHING
+  $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount'],
+  $incrementExceptionRefcount: (ptr) => ___cxa_increment_exception_refcount(ptr),
+
+  $decrementExceptionRefcount__deps: ['__cxa_decrement_exception_refcount'],
+  $decrementExceptionRefcount: (ptr) => ___cxa_decrement_exception_refcount(ptr),
+
+  $getExceptionMessage__deps: ['$getExceptionMessageCommon'],
+  $getExceptionMessage: (ptr) => getExceptionMessageCommon(ptr),
+
+#endif
 };
-
-function addStub(name) {
-  LibraryManager.library[name] = function() { abort(); };
-  LibraryManager.library[`${name}__sig`] = '';
-#if !INCLUDE_FULL_LIBRARY
-  LibraryManager.library[`${name}__deps`] = [function() {
-    error(`DISABLE_EXCEPTION_CATCHING was set, which means no C++ exception catching support code is linked in, but such support is required by symbol '${name}'. Either set DISABLE_EXCEPTION_CATCHING=0 (if you do want exception catching) or compile all source files with DISABLE_EXCEPTION_CATCHING=1.`);
-  }];
-#endif
-}
-
-#if DISABLE_EXCEPTION_CATCHING
-addStub('__cxa_begin_catch');
-addStub('__cxa_end_catch');
-#endif
 
 #if !WASM_EXCEPTIONS
 // In LLVM, exceptions generate a set of functions of form
@@ -394,9 +352,6 @@ addStub('__cxa_end_catch');
 // a single function '__cxa_find_matching_catch' that variadically processes all
 // of these functions using JS 'arguments' object.
 addCxaCatch = (n) => {
-#if DISABLE_EXCEPTION_CATCHING
-  addStub(`__cxa_find_matching_catch_${n}`);
-#else
   const args = [];
   // Confusingly, the actual number of asrgument is n - 2. According to the llvm
   // code in WebAssemblyLowerEmscriptenEHSjLj.cpp:
@@ -413,7 +368,6 @@ addCxaCatch = (n) => {
   LibraryManager.library[`__cxa_find_matching_catch_${n}__sig`] = sig;
   LibraryManager.library[`__cxa_find_matching_catch_${n}__deps`] = ['$findMatchingCatch'];
   LibraryManager.library[`__cxa_find_matching_catch_${n}`] = eval(`(${args}) => findMatchingCatch([${argString}])`);
-#endif
 };
 
 // Add the first 2-5 catch handlers preemptively.  Others get added on demand in

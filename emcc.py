@@ -1286,6 +1286,8 @@ def parse_args(newargs):
     elif check_flag('--emit-symbol-map'):
       options.emit_symbol_map = True
       settings.EMIT_SYMBOL_MAP = 1
+    elif check_arg('--emit-minification-map'):
+      settings.MINIFICATION_MAP = consume_arg()
     elif check_arg('--embed-file'):
       options.embed_files.append(consume_arg())
     elif check_arg('--preload-file'):

@@ -898,7 +898,7 @@ var LibraryBrowser = {
 #if OFFSCREEN_FRAMEBUFFER
     'emscripten_webgl_commit_frame',
 #endif
-#if EXIT_RUNTIME && !MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME
     '$maybeExit',
 #endif
   ],
@@ -931,10 +931,10 @@ var LibraryBrowser = {
     function checkIsRunning() {
       if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) {
 #if RUNTIME_DEBUG
-        dbg('main loop exiting..');
+        dbg('main loop exiting');
 #endif
         {{{ runtimeKeepalivePop() }}}
-#if EXIT_RUNTIME && !MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME
         maybeExit();
 #endif
         return false;

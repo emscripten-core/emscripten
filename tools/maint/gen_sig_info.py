@@ -295,7 +295,6 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
     # Enable as many settings as we can here to ensure the maximum number
     # of JS symbols are included.
     'STACK_OVERFLOW_CHECK': 1,
-    'DISABLE_EXCEPTION_CATCHING': 0,
     'USE_SDL': 1,
     'USE_GLFW': 0,
     'FETCH': 1,
