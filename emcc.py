@@ -45,7 +45,7 @@ from tools.response_file import substitute_response_files
 from tools import config
 from tools import cache
 from tools.settings import default_setting, user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
-from tools.utils import read_file, removeprefix, EMSCRIPTEN_VERSION
+from tools.utils import read_file, removeprefix
 
 logger = logging.getLogger('emcc')
 
