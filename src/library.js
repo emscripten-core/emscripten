@@ -364,15 +364,14 @@ addToLibrary({
         var signalToNumber = (sig) => {
           // implement only the most common ones, and fallback to SIGINT
           switch (sig) {
-            case 'SIGHUP': return 1;
-            case 'SIGINT': return 2;
-            case 'SIGQUIT': return 3;
-            case 'SIGFPE': return 8;
-            case 'SIGKILL': return 9;
-            case 'SIGALRM': return 14;
-            case 'SIGTERM': return 15;
+            case 'SIGHUP': return {{{ cDefs.SIGHUP }}};
+            case 'SIGQUIT': return {{{ cDefs.SIGQUIT }}};
+            case 'SIGFPE': return {{{ cDefs.SIGFPE }}};
+            case 'SIGKILL': return {{{ cDefs.SIGKILL }}};
+            case 'SIGALRM': return {{{ cDefs.SIGALRM }}};
+            case 'SIGTERM': return {{{ cDefs.SIGTERM }}};
+            default: return {{{ cDefs.SIGINT }}};
           }
-          return 2; // SIGINT
         }
         return _W_EXITCODE(0, signalToNumber(ret.signal));
       }
