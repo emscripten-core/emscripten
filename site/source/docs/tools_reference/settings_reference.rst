@@ -2525,9 +2525,13 @@ Default value: false
 WASM_WORKERS
 ============
 
-If true, enables support for Wasm Workers. Wasm Workers enable applications
+If 1, enables support for Wasm Workers. Wasm Workers enable applications
 to create threads using a lightweight web-specific API that builds on top
-of Wasm SharedArrayBuffer + Atomics API.
+of Wasm SharedArrayBuffer + Atomics API. When enabled, a new build output
+file a.ww.js will be generated to bootstrap the Wasm Worker JS contexts.
+If 2, enables support for Wasm Workers, but without using a separate a.ww.js
+file on the side. This can simplify deployment of builds, but will have a
+downside that the generated build will no longer be csp-eval compliant.
 [compile+link] - affects user code at compile and system libraries at link.
 
 Default value: 0
