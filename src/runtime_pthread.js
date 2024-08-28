@@ -222,10 +222,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
           dbg(`worker: Pthread 0x${_pthread_self().toString(16)} completed its main entry point with an 'unwind', keeping the worker alive for asynchronous operation.`);
 #endif
         }
-      } else if (cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
-        if (_pthread_self()) {
-          __emscripten_thread_exit({{{ cDefs.PTHREAD_CANCELED }}});
-        }
       } else if (msgData.target === 'setimmediate') {
         // no-op
       } else if (cmd === 'checkMailbox') {

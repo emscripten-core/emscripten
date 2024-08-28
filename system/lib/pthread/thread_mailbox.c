@@ -84,6 +84,9 @@ void _emscripten_check_mailbox() {
   notification_state expected = NOTIFICATION_RECEIVED;
   atomic_compare_exchange_strong(
     &mailbox->notification, &expected, NOTIFICATION_NONE);
+  // After every mailbox check we call `__pthread_testcancel` in case
+  // one of the proxied functions was from pthread_kill(SIGCANCEL).
+  __pthread_testcancel();
 }
 
 void emscripten_thread_mailbox_send(pthread_t thread, task t) {

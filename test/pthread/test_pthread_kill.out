@@ -1,3 +1,4 @@
-thread startd
-thread killed
-Main: Done. Successfully killed thread. sharedVar: 0
+thread has started, sending SIGTERM
+SIGTERM sent
+signal: 15 onthread=1
+got term signal, shutting down thread

@@ -226,7 +226,6 @@ sigs = {
   __cxa_uncaught_exceptions__sig: 'i',
   __handle_stack_overflow__sig: 'vp',
   __pthread_create_js__sig: 'ipppp',
-  __pthread_kill_js__sig: 'ipi',
   __resumeException__sig: 'vp',
   __syscall__newselect__sig: 'iipppp',
   __syscall_accept4__sig: 'iippiii',
