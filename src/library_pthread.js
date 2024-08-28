@@ -35,6 +35,7 @@ var LibraryPThread = {
   $PThread__postset: 'PThread.init();',
   $PThread__deps: ['_emscripten_thread_init',
                    '$killThread',
+                   '$terminateWorker',
                    '$cancelThread', '$cleanupThread', '$zeroMemory',
 #if MAIN_MODULE
                    '$markAsFinished',
@@ -166,7 +167,6 @@ var LibraryPThread = {
     },
 #endif
 
-    terminateAllThreads__deps: ['$terminateWorker'],
     terminateAllThreads: () => {
 #if ASSERTIONS
       assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! terminateAllThreads() can only ever be called from main application thread!');
