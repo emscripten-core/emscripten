@@ -1063,8 +1063,12 @@ var LibraryPThread = {
 
   $establishStackSpace__internal: true,
   $establishStackSpace__deps: ['$stackRestore'],
-  $establishStackSpace: () => {
-    var pthread_ptr = _pthread_self();
+  $establishStackSpace: (pthread_ptr) => {
+#if ALLOW_MEMORY_GROWTH
+    // If memory growth is enabled, the memory views may have gotten out of date,
+    // so resync them before accessing the pthread ptr below.
+    updateMemoryViews();
+#endif
     var stackHigh = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack, '*') }}};
     var stackSize = {{{ makeGetValue('pthread_ptr', C_STRUCTS.pthread.stack_size, '*') }}};
     var stackLow = stackHigh - stackSize;
