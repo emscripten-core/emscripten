@@ -301,10 +301,10 @@ export class Benchmarker {
  * global scope of the compiler itself which avoids exposing all of the compiler
  * internals to user JS library code.
  */
-export const compileTimeContext = {
+export const compileTimeContext = vm.createContext({
   process,
   console,
-};
+});
 
 /**
  * A symbols to the macro context.
@@ -330,7 +330,7 @@ export function loadSettingsFile(f) {
 export function runInMacroContext(code, options) {
   compileTimeContext['__filename'] = options.filename;
   compileTimeContext['__dirname'] = path.dirname(options.filename);
-  return vm.runInNewContext(code, compileTimeContext, options);
+  return vm.runInContext(code, compileTimeContext, options);
 }
 
 addToCompileTimeContext({
