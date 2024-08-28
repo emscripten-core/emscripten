@@ -13413,6 +13413,10 @@ void foo() {}
     self.assertContained('at (test_pthread_trap.wasm.)?thread_main', output, regex=True)
 
   @node_pthreads
+  def test_pthread_kill(self):
+    self.do_run_in_out_file_test('pthread/test_pthread_kill.c')
+
+  @node_pthreads
   def test_emscripten_set_interval(self):
     self.do_runf('emscripten_set_interval.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
 

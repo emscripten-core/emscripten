@@ -11,7 +11,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
-#include <emscripten.h>
 
 _Atomic int sharedVar = 0;
 
@@ -24,9 +23,8 @@ static void *thread_start(void *arg) {
   pthread_exit(0);
 }
 
-void BusySleep(double msecs) {
-  double t0 = emscripten_get_now();
-  while (emscripten_get_now() < t0 + msecs);
+void BusySleep(long msecs) {
+  usleep(msecs * 1000);
 }
 
 int main() {
@@ -39,8 +37,10 @@ int main() {
   // Wait until thread kicks in and sets the shared variable.
   while (sharedVar == 0)
     BusySleep(10);
+  printf("thread startd\n");
 
   s = pthread_kill(thr, SIGKILL);
+  printf("thread killed\n");
   assert(s == 0);
 
   // Wait until we see the shared variable stop incrementing. (This is a bit heuristic and hacky)
@@ -55,7 +55,7 @@ int main() {
   sharedVar = 0;
 
   // Wait for a long time, if the thread is still running, it should progress and set sharedVar by this time.
-  BusySleep(3000);
+  BusySleep(1000);
 
   // Finally test that the thread is not doing any work and it is dead.
   assert(sharedVar == 0);
