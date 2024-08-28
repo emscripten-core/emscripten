@@ -56,11 +56,11 @@ var SyscallsLibrary = {
       var mtime = stat.mtime.getTime();
       var ctime = stat.ctime.getTime();
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, 'Math.floor(atime / 1000)', 'i64') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '(atime % 1000) * 1000', SIZE_TYPE) }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '(atime % 1000) * 1000 * 1000', SIZE_TYPE) }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, 'Math.floor(mtime / 1000)', 'i64') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '(mtime % 1000) * 1000', SIZE_TYPE) }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '(mtime % 1000) * 1000 * 1000', SIZE_TYPE) }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, 'Math.floor(ctime / 1000)', 'i64') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '(ctime % 1000) * 1000', SIZE_TYPE) }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '(ctime % 1000) * 1000 * 1000', SIZE_TYPE) }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i64') }}};
       return 0;
     },
@@ -978,19 +978,37 @@ var SyscallsLibrary = {
     assert(flags === 0);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path, true);
+    var now = Date.now(), atime, mtime;
     if (!times) {
-      var atime = Date.now();
-      var mtime = atime;
+      atime = now;
+      mtime = now;
     } else {
       var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i53') }}};
       var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-      atime = (seconds*1000) + (nanoseconds/(1000*1000));
+      if (nanoseconds == {{{ cDefs.UTIME_NOW }}}) {
+        atime = now;
+      } else if (nanoseconds == {{{ cDefs.UTIME_OMIT }}}) {
+        atime = -1;
+      } else {
+        atime = (seconds*1000) + (nanoseconds/(1000*1000));
+      }
       times += {{{ C_STRUCTS.timespec.__size__ }}};
       seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i53') }}};
       nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-      mtime = (seconds*1000) + (nanoseconds/(1000*1000));
+      if (nanoseconds == {{{ cDefs.UTIME_NOW }}}) {
+        mtime = now;
+      } else if (nanoseconds == {{{ cDefs.UTIME_OMIT }}}) {
+        mtime = -1;
+      } else {
+        mtime = (seconds*1000) + (nanoseconds/(1000*1000));
+      }
     }
-    FS.utime(path, atime, mtime);
+    // -1 here means UTIME_OMIT was passed.  FS.utime tables the max of these
+    // two values and sets the timestamp to that single value.  If both were
+    // set to UTIME_OMIT then we can skip the call completely.
+    if (mtime != -1 || atime != -1) {
+      FS.utime(path, atime, mtime);
+    }
     return 0;
   },
   __syscall_fallocate__i53abi: true,

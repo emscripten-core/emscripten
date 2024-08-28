@@ -5654,6 +5654,7 @@ got: 10
   def test_utime(self):
     self.do_runf('utime/test_utime.c', 'success')
 
+  @also_with_noderawfs
   def test_futimens(self):
     self.do_runf('utime/test_futimens.c', 'success')
 
