@@ -36,7 +36,7 @@ int wasmfs_create_directory(const char* path __attribute__((nonnull)), mode_t mo
 
 // Unmounts the directory (Which must be a valid mountpoint) at a specific path.
 // Returns 0 on success, or a negative value on error.
-int wasmfs_unmount(intptr_t path);
+int wasmfs_unmount(const char* path);
 
 // Backend creation
 
