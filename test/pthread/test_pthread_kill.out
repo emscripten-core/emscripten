@@ -1,0 +1,3 @@
+thread startd
+thread killed
+Main: Done. Successfully killed thread. sharedVar: 0
