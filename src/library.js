@@ -2021,7 +2021,6 @@ addToLibrary({
     throw 'unwind';
   },
 
-  _emscripten_runtime_keepalive_clear__proxy: 'sync',
   _emscripten_runtime_keepalive_clear: () => {
 #if isSymbolNeeded('$noExitRuntime')
     noExitRuntime = false;
