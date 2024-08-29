@@ -14701,7 +14701,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   @also_with_standalone_wasm()
   def test_console_out(self):
-    self.do_other_test('test_console_out.c')
+    self.do_other_test('test_console_out.c', regex=True)
 
   @requires_wasm64
   def test_explicit_target(self):

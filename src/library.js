@@ -2062,6 +2062,10 @@ addToLibrary({
   emscripten_dbgn: (str, len) => dbg(UTF8ToString(str, len)),
 #endif
 
+  emscripten_dbg_backtrace: (str) => {
+    dbg(UTF8ToString(str) + '\n' + new Error().stack);
+  },
+
   // Use program_invocation_short_name and program_invocation_name in compiled
   // programs. This function is for implementing them.
   _emscripten_get_progname__deps: ['$getExecutableName', '$stringToUTF8'],
@@ -2088,6 +2092,13 @@ addToLibrary({
     assert(typeof str == 'number');
 #endif
     console.error(UTF8ToString(str));
+  },
+
+  emscripten_console_trace: (str) => {
+#if ASSERTIONS
+    assert(typeof str == 'number');
+#endif
+    console.trace(UTF8ToString(str));
   },
 
   emscripten_throw_number: (number) => {
