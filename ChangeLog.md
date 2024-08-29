@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.66 (in development)
 -----------------------
+- The behaviour of the `pthread_kill` function was fixed to match the spec
+  and will now run the designated handler on the target thread. (#22467)
 - Added support for WebGL extensions EXT_clip_control, EXT_depth_clamp,
   EXT_polygon_offset_clamp and WEBGL_polygon_mode (#20841)
 
