@@ -252,11 +252,11 @@ let LibraryWebAudio = {
       // '_wpn' == 'Worklet Processor Name', use a deliberately mangled name so
       // that this field won't accidentally be mixed with user submitted
       // messages.
-      _wpn: UTF8ToString(HEAPU32[options]),
-      audioParams,
-      contextHandle,
-      callback,
-      userData
+      '_wpn': UTF8ToString(HEAPU32[options]),
+      'audioParams': audioParams,
+      'contextHandle': contextHandle,
+      'callback': callback,
+      'userData': userData
     });
   },
 
