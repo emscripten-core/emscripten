@@ -25,6 +25,7 @@ jobs:
         - name: Tag release sha
           uses: actions/github-script@v7
           with:
+            github-token: ${{ secrets.TEST_TOKEN }}
             script: |
               const tag_sha = '${{ inputs.release-sha }}';
               const release_version = '${{ env.RELEASE_VERSION }}';
