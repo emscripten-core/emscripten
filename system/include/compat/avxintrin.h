@@ -346,10 +346,11 @@ _mm256_permutevar_ps(__m256 __a, __m256i __c) {
       (__m128d)(__a), (__m128d)(__a), ((__imm) & 1), (((__imm) >> 1) & 1));    \
   })
 
-#define _mm256_permute_pd(__a, __imm)                                          \
+#define _mm256_permute_pd(__A, __imm)                                          \
   __extension__({                                                              \
-    _mm256_set_m128d(_mm_permute_pd((__a).v1, (__imm) >> 2),                   \
-                     _mm_permute_pd((__a).v0, (__imm)));                       \
+    __m256d __a = (__A);                                                       \
+    _mm256_set_m128d(_mm_permute_pd(__a.v1, (__imm) >> 2),                     \
+                     _mm_permute_pd(__a.v0, (__imm)));                         \
   })
 
 #define _mm_permute_ps(__a, __imm)                                             \
@@ -362,10 +363,11 @@ _mm256_permutevar_ps(__m256 __a, __m256i __c) {
                                 (((__imm) >> 6) & 3));                         \
   })
 
-#define _mm256_permute_ps(__a, __imm)                                          \
+#define _mm256_permute_ps(__A, __imm)                                          \
   __extension__({                                                              \
-    _mm256_set_m128(_mm_permute_ps((__a).v1, (__imm)),                         \
-                    _mm_permute_ps((__a).v0, (__imm)));                        \
+    __m256 __a = (__A);                                                        \
+    _mm256_set_m128(_mm_permute_ps(__a.v1, (__imm)),                           \
+                    _mm_permute_ps(__a.v0, (__imm)));                          \
   })
 
 static __inline__ __m128d
@@ -451,16 +453,20 @@ _mm256_permute2f128_si256(__m256i __a, __m256i __b, const int imm8) {
   return ret;
 }
 
-#define _mm256_blend_pd(__a, __b, imm8)                                        \
+#define _mm256_blend_pd(__A, __B, imm8)                                        \
   __extension__({                                                              \
-    _mm256_set_m128d(_mm_blend_pd((__a).v1, (__b).v1, (imm8) >> 2),            \
-                     _mm_blend_pd((__a).v0, (__b).v0, (imm8)));                \
+    __m256d __a = (__A);                                                       \
+    __m256d __b = (__B);                                                       \
+    _mm256_set_m128d(_mm_blend_pd(__a.v1, __b.v1, (imm8) >> 2),                \
+                     _mm_blend_pd(__a.v0, __b.v0, (imm8)));                    \
   })
 
-#define _mm256_blend_ps(__a, __b, imm)                                         \
+#define _mm256_blend_ps(__A, __B, imm)                                         \
   __extension__({                                                              \
-    _mm256_set_m128(_mm_blend_ps((__a).v1, (__b).v1, (imm) >> 4),              \
-                    _mm_blend_ps((__a).v0, (__b).v0, (imm)));                  \
+    __m256 __a = (__A);                                                        \
+    __m256 __b = (__B);                                                        \
+    _mm256_set_m128(_mm_blend_ps(__a.v1, __b.v1, (imm) >> 4),                  \
+                    _mm_blend_ps(__a.v0, __b.v0, (imm)));                      \
   })
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
@@ -479,22 +485,28 @@ _mm256_blendv_ps(__m256 __a, __m256 __b, __m256 __c) {
   return ret;
 }
 
-#define _mm256_dp_ps(__a, __b, imm)                                            \
+#define _mm256_dp_ps(__A, __B, imm)                                            \
   __extension__({                                                              \
-    _mm256_set_m128(_mm_dp_ps((__a).v1, (__b).v1, (imm)),                      \
-                    _mm_dp_ps((__a).v0, (__b).v0, (imm)));                     \
+    __m256 __a = (__A);                                                        \
+    __m256 __b = (__B);                                                        \
+    _mm256_set_m128(_mm_dp_ps(__a.v1, __b.v1, (imm)),                          \
+                    _mm_dp_ps(__a.v0, __b.v0, (imm)));                         \
   })
 
-#define _mm256_shuffle_ps(__a, __b, mask)                                      \
+#define _mm256_shuffle_ps(__A, __B, mask)                                      \
   __extension__({                                                              \
-    _mm256_set_m128(_mm_shuffle_ps((__a).v1, (__b).v1, (mask)),                \
-                    _mm_shuffle_ps((__a).v0, (__b).v0, (mask)));               \
+    __m256 __a = (__A);                                                        \
+    __m256 __b = (__B);                                                        \
+    _mm256_set_m128(_mm_shuffle_ps(__a.v1, __b.v1, (mask)),                    \
+                    _mm_shuffle_ps(__a.v0, __b.v0, (mask)));                   \
   })
 
-#define _mm256_shuffle_pd(__a, __b, mask)                                      \
+#define _mm256_shuffle_pd(__A, __B, mask)                                      \
   __extension__({                                                              \
-    _mm256_set_m128d(_mm_shuffle_pd((__a).v1, (__b).v1, (mask) >> 2),          \
-                     _mm_shuffle_pd((__a).v0, (__b).v0, (mask)));              \
+    __m256d __a = (__A);                                                       \
+    __m256d __b = (__B);                                                       \
+    _mm256_set_m128d(_mm_shuffle_pd(__a.v1, __b.v1, (mask) >> 2),              \
+                     _mm_shuffle_pd(__a.v0, __b.v0, (mask)));                  \
   })
 
 #define _CMP_EQ_OQ 0
@@ -710,56 +722,68 @@ _mm256_cmp_ps(__m256 __a, __m256 __b, const int imm8) {
   return ret;
 }
 
-#define _mm256_extract_epi32(X, N)                                             \
+#define _mm256_extract_epi32(__A, N)                                           \
   __extension__({                                                              \
-    ((N) & 0x7) < 4 ? _mm_extract_epi32((X).v0, (N) & 0x3)                     \
-                    : _mm_extract_epi32((X).v1, (N) & 0x3);                    \
+    __m256i __a = (__A);                                                       \
+    ((N) & 0x7) < 4 ? _mm_extract_epi32(__a.v0, (N) & 0x3)                     \
+                    : _mm_extract_epi32(__a.v1, (N) & 0x3);                    \
   })
 
-#define _mm256_extract_epi16(X, N)                                             \
+#define _mm256_extract_epi16(__A, N)                                           \
   __extension__({                                                              \
-    ((N) & 0xF) < 8 ? _mm_extract_epi16((X).v0, (N) & 0x7)                     \
-                    : _mm_extract_epi16((X).v1, (N) & 0x7);                    \
+    __m256i __a = (__A);                                                       \
+    ((N) & 0xF) < 8 ? _mm_extract_epi16(__a.v0, (N) & 0x7)                     \
+                    : _mm_extract_epi16(__a.v1, (N) & 0x7);                    \
   })
 
-#define _mm256_extract_epi8(X, N)                                              \
+#define _mm256_extract_epi8(__A, N)                                            \
   __extension__({                                                              \
-    ((N) & 0x1F) < 16 ? _mm_extract_epi8((X).v0, (N) & 0xF)                    \
-                      : _mm_extract_epi8((X).v1, (N) & 0xF);                   \
+    __m256i __a = (__A);                                                       \
+    ((N) & 0x1F) < 16 ? _mm_extract_epi8(__a.v0, (N) & 0xF)                    \
+                      : _mm_extract_epi8(__a.v1, (N) & 0xF);                   \
   })
 
-#define _mm256_extract_epi64(X, N)                                             \
+#define _mm256_extract_epi64(__A, N)                                           \
   __extension__({                                                              \
-    ((N) & 0x3) < 2 ? _mm_extract_epi64((X).v0, (N) & 0x1)                     \
-                    : _mm_extract_epi64((X).v1, (N) & 0x1);                    \
+    __m256i __a = (__A);                                                       \
+    ((N) & 0x3) < 2 ? _mm_extract_epi64(__a.v0, (N) & 0x1)                     \
+                    : _mm_extract_epi64(__a.v1, (N) & 0x1);                    \
   })
 
-#define _mm256_insert_epi32(X, I, N)                                           \
+#define _mm256_insert_epi32(__A, __I, N)                                       \
   __extension__({                                                              \
+    __m256i __a = (__A);                                                       \
+    int32_t __i = (__I);                                                       \
     ((N) & 0x7) < 4                                                            \
-      ? _mm256_set_m128i((X).v1, _mm_insert_epi32((X).v0, (I), (N) & 0x3))     \
-      : _mm256_set_m128i(_mm_insert_epi32((X).v1, (I), (N) & 0x3), (X).v0);    \
+      ? _mm256_set_m128i(__a.v1, _mm_insert_epi32(__a.v0, __i, (N) & 0x3))     \
+      : _mm256_set_m128i(_mm_insert_epi32(__a.v1, __i, (N) & 0x3), __a.v0);    \
   })
 
-#define _mm256_insert_epi16(X, I, N)                                           \
+#define _mm256_insert_epi16(__A, __I, N)                                       \
   __extension__({                                                              \
+    __m256i __a = (__A);                                                       \
+    int16_t __i = (__I);                                                       \
     ((N) & 0xF) < 8                                                            \
-      ? _mm256_set_m128i((X).v1, _mm_insert_epi16((X).v0, (I), (N) & 0x7))     \
-      : _mm256_set_m128i(_mm_insert_epi16((X).v1, (I), (N) & 0x7), (X).v0);    \
+      ? _mm256_set_m128i(__a.v1, _mm_insert_epi16(__a.v0, __i, (N) & 0x7))     \
+      : _mm256_set_m128i(_mm_insert_epi16(__a.v1, __i, (N) & 0x7), __a.v0);    \
   })
 
-#define _mm256_insert_epi8(X, I, N)                                            \
+#define _mm256_insert_epi8(__A, __I, N)                                        \
   __extension__({                                                              \
+    __m256i __a = (__A);                                                       \
+    int8_t __i = (__I);                                                        \
     ((N) & 0x1F) < 16                                                          \
-      ? _mm256_set_m128i((X).v1, _mm_insert_epi8((X).v0, (I), (N) & 0xF))      \
-      : _mm256_set_m128i(_mm_insert_epi8((X).v1, (I), (N) & 0xF), (X).v0);     \
+      ? _mm256_set_m128i(__a.v1, _mm_insert_epi8(__a.v0, __i, (N) & 0xF))      \
+      : _mm256_set_m128i(_mm_insert_epi8(__a.v1, __i, (N) & 0xF), __a.v0);     \
   })
 
-#define _mm256_insert_epi64(X, I, N)                                           \
+#define _mm256_insert_epi64(__A, __I, N)                                       \
   __extension__({                                                              \
+    __m256i __a = (__A);                                                       \
+    int64_t __i = (__I);                                                       \
     ((N) & 0x3) < 2                                                            \
-      ? _mm256_set_m128i((X).v1, _mm_insert_epi64((X).v0, (I), (N) & 0x1))     \
-      : _mm256_set_m128i(_mm_insert_epi64((X).v1, (I), (N) & 0x1), (X).v0);    \
+      ? _mm256_set_m128i(__a.v1, _mm_insert_epi64(__a.v0, __i, (N) & 0x1))     \
+      : _mm256_set_m128i(_mm_insert_epi64(__a.v1, __i, (N) & 0x1), __a.v0);    \
   })
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))

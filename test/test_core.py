@@ -6619,7 +6619,7 @@ void* operator new(size_t size) {
   @is_slow_test
   @no_asan('local count too large')
   def test_avx(self):
-    if  '-O0' in self.emcc_args or self.is_wasm64() and self.is_4gb():
+    if '-O0' in self.emcc_args or self.is_wasm64() and self.is_4gb():
       self.skipTest("too many locals")
 
     src = test_file('sse/test_avx.cpp')
