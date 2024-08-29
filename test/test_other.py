@@ -8559,7 +8559,7 @@ int main() {
     # We don't care too about unoptimized code size but we would like to keep it
     # under control to a certain extent.  This test allows us to track major
     # changes to the size of the unoptimized and unminified code size.
-    # Run with `--rebase` when this test fails.
+    # Run with `--rebaseline` when this test fails.
     self.build(test_file('hello_world.c'), emcc_args=['-O0', '--output_eol=linux'])
     self.check_expected_size_in_file('wasm',
                                      test_file('other/test_unoptimized_code_size.wasm.size'),
@@ -9331,8 +9331,9 @@ int main() {
 
   @is_slow_test
   @parameterized({
-    '': (True,),
-    'disabled': (False,),
+    '': (1,),
+    'disabled': (0,),
+    'binary_encode': (2,),
   })
   @also_with_wasm2js
   def test_single_file(self, single_file_enabled):
@@ -9349,6 +9350,8 @@ int main() {
         cmd += ['-sSINGLE_FILE']
       else:
         expect_wasm = self.is_wasm()
+
+      cmd += [f'-sSINGLE_FILE_BINARY_ENCODE={int(single_file_enabled == 2)}']
 
       if debug_enabled:
         cmd += ['-g']
@@ -10940,6 +10943,7 @@ int main () {
     'random_printf_wasm2js': ('random_printf', True),
     'hello_webgl_wasm': ('hello_webgl', False),
     'hello_webgl_wasm2js': ('hello_webgl', True),
+    'hello_webgl2_wasm_singlefile': ('hello_webgl2_wasm_singlefile', False),
     'hello_webgl2_wasm': ('hello_webgl2', False),
     'hello_webgl2_wasm2js': ('hello_webgl2', True),
     'math': ('math', False),
@@ -10986,6 +10990,7 @@ int main () {
                            '-lGL',
                            '-sMODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-sMAX_WEBGL_VERSION=2']
+    hello_webgl2_wasm_singlefile_sources = hello_webgl2_sources + ['-sSINGLE_FILE']
     hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web,worker']
     embind_hello_sources = [test_file('code_size/embind_hello_world.cpp'), '-lembind']
     embind_val_sources = [test_file('code_size/embind_val_hello_world.cpp'),
@@ -11000,6 +11005,7 @@ int main () {
       'hello_webgl': hello_webgl_sources,
       'math': math_sources,
       'hello_webgl2': hello_webgl2_sources,
+      'hello_webgl2_wasm_singlefile': hello_webgl2_wasm_singlefile_sources,
       'hello_wasm_worker': hello_wasm_worker_sources,
       'embind_val': embind_val_sources,
       'embind_hello': embind_hello_sources,

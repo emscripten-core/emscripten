@@ -603,6 +603,10 @@ function instrumentWasmTableWithAbort() {
 }
 #endif
 
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
+#include "binaryDecode.js"
+#endif
+
 function findWasmBinary() {
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && !AUDIO_WORKLET
   if (Module['locateFile']) {
@@ -613,7 +617,13 @@ function findWasmBinary() {
       return locateFile(f);
     }
 #endif
+
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
+    return binaryDecode(f);
+#else
     return f;
+#endif
+
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && !AUDIO_WORKLET // In single-file mode, repeating WASM_BINARY_FILE would emit the contents again. For an Audio Worklet, we cannot use `new URL()`.
   }
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -628,6 +638,9 @@ function findWasmBinary() {
 var wasmBinaryFile;
 
 function getBinarySync(file) {
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE
+  return file;
+#else
   if (file == wasmBinaryFile && wasmBinary) {
     return new Uint8Array(wasmBinary);
   }
@@ -644,6 +657,7 @@ function getBinarySync(file) {
   throw 'both async and sync fetching of the wasm failed';
 #else
   throw 'sync fetching of the wasm failed: you can preload it to Module["wasmBinary"] manually, or emcc.py will do that for you when generating HTML (but not JS)';
+#endif
 #endif
 }
 
