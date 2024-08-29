@@ -742,21 +742,21 @@ _mm256_cmp_ps(__m256 __a, __m256 __b, const int imm8) {
   })
 
 #define _mm256_insert_epi16(X, I, N)                                           \
-  ({                                                                           \
+  __extension__({                                                              \
     ((N) & 0xF) < 8                                                            \
       ? _mm256_set_m128i((X).v1, _mm_insert_epi16((X).v0, (I), (N) & 0x7))     \
       : _mm256_set_m128i(_mm_insert_epi16((X).v1, (I), (N) & 0x7), (X).v0);    \
   })
 
 #define _mm256_insert_epi8(X, I, N)                                            \
-  ({                                                                           \
+  __extension__({                                                              \
     ((N) & 0x1F) < 16                                                          \
       ? _mm256_set_m128i((X).v1, _mm_insert_epi8((X).v0, (I), (N) & 0xF))      \
       : _mm256_set_m128i(_mm_insert_epi8((X).v1, (I), (N) & 0xF), (X).v0);     \
   })
 
 #define _mm256_insert_epi64(X, I, N)                                           \
-  ({                                                                           \
+  __extension__({                                                              \
     ((N) & 0x3) < 2                                                            \
       ? _mm256_set_m128i((X).v1, _mm_insert_epi64((X).v0, (I), (N) & 0x1))     \
       : _mm256_set_m128i(_mm_insert_epi64((X).v1, (I), (N) & 0x1), (X).v0);    \
