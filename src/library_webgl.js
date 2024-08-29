@@ -96,6 +96,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   $webgl_enable_ANGLE_instanced_arrays: (ctx) => {
     // Extension available in WebGL 1 from Firefox 26 and Google Chrome 30 onwards. Core feature in WebGL 2.
     var ext = ctx.getExtension('ANGLE_instanced_arrays');
+    // Because this extension is a core function in WebGL 2, assign the extension entry points in place of
+    // where the core functions will reside in WebGL 2. This way the calling code can call these without
+    // having to dynamically branch depending if running against WebGL 1 or WebGL 2.
     if (ext) {
       ctx['vertexAttribDivisor'] = (index, divisor) => ext['vertexAttribDivisorANGLE'](index, divisor);
       ctx['drawArraysInstanced'] = (mode, first, count, primcount) => ext['drawArraysInstancedANGLE'](mode, first, count, primcount);
@@ -143,6 +146,27 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   emscripten_webgl_enable_WEBGL_multi_draw__deps: ['$webgl_enable_WEBGL_multi_draw'],
   emscripten_webgl_enable_WEBGL_multi_draw: (ctx) => webgl_enable_WEBGL_multi_draw(GL.contexts[ctx].GLctx),
 
+  $webgl_enable_EXT_polygon_offset_clamp: (ctx) => {
+    return !!(ctx.extPolygonOffsetClamp = ctx.getExtension('EXT_polygon_offset_clamp'));
+  },
+
+  emscripten_webgl_enable_EXT_polygon_offset_clamp__deps: ['$webgl_enable_EXT_polygon_offset_clamp'],
+  emscripten_webgl_enable_EXT_polygon_offset_clamp: (ctx) => webgl_enable_EXT_polygon_offset_clamp(GL.contexts[ctx].GLctx),
+
+  $webgl_enable_EXT_clip_control: (ctx) => {
+    return !!(ctx.extClipControl = ctx.getExtension('EXT_clip_control'));
+  },
+
+  emscripten_webgl_enable_EXT_clip_control__deps: ['$webgl_enable_EXT_clip_control'],
+  emscripten_webgl_enable_EXT_clip_control: (ctx) => webgl_enable_EXT_clip_control(GL.contexts[ctx].GLctx),
+
+  $webgl_enable_WEBGL_polygon_mode: (ctx) => {
+    return !!(ctx.webglPolygonMode = ctx.getExtension('WEBGL_polygon_mode'));
+  },
+
+  emscripten_webgl_enable_WEBGL_polygon_mode__deps: ['$webgl_enable_WEBGL_polygon_mode'],
+  emscripten_webgl_enable_WEBGL_polygon_mode: (ctx) => webgl_enable_WEBGL_polygon_mode(GL.contexts[ctx].GLctx),
+
   $getEmscriptenSupportedExtensions__internal: true,
   $getEmscriptenSupportedExtensions: (ctx) => {
     // Restrict the list of advertised extensions to those that we actually
@@ -177,9 +201,11 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       'WEBGL_clip_cull_distance',
 #endif
       // WebGL 1 and WebGL 2 extensions
+      'EXT_clip_control',
       'EXT_color_buffer_half_float',
       'EXT_depth_clamp',
       'EXT_float_blend',
+      'EXT_polygon_offset_clamp',
       'EXT_texture_compression_bptc',
       'EXT_texture_compression_rgtc',
       'EXT_texture_filter_anisotropic',
@@ -195,6 +221,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       'WEBGL_debug_shaders',
       'WEBGL_lose_context',
       'WEBGL_multi_draw',
+      'WEBGL_polygon_mode'
     ];
     // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
     return (ctx.getSupportedExtensions() || []).filter(ext => supportedExtensions.includes(ext));
@@ -219,6 +246,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     '$webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
     '$webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance',
 #endif
+    '$webgl_enable_EXT_polygon_offset_clamp',
+    '$webgl_enable_EXT_clip_control',
+    '$webgl_enable_WEBGL_polygon_mode',
     '$webgl_enable_WEBGL_multi_draw',
     '$getEmscriptenSupportedExtensions',
 #endif // GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
@@ -802,6 +832,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       }
       disableHalfFloatExtensionIfBroken(ctx);
 #endif
+
       return handle;
     },
 
@@ -1184,6 +1215,11 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       context.anisotropicExt = GLctx.getExtension('EXT_texture_filter_anisotropic');
 #endif
 
+      // Extensions that are available in both WebGL 1 and WebGL 2
+      webgl_enable_WEBGL_multi_draw(GLctx);
+      webgl_enable_EXT_polygon_offset_clamp(GLctx);
+      webgl_enable_EXT_clip_control(GLctx);
+      webgl_enable_WEBGL_polygon_mode(GLctx);
 #if MIN_WEBGL_VERSION == 1
       // Extensions that are only available in WebGL 1 (the calls will be no-ops
       // if called on a WebGL 2 context active)
@@ -1195,9 +1231,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       // Extensions that are available from WebGL >= 2 (no-op if called on a WebGL 1 context active)
       webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GLctx);
       webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GLctx);
-#endif
 
-#if MAX_WEBGL_VERSION >= 2
       // On WebGL 2, EXT_disjoint_timer_query is replaced with an alternative
       // that's based on core APIs, and exposes only the queryCounterEXT()
       // entrypoint.
@@ -1213,8 +1247,6 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       {
         GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
       }
-
-      webgl_enable_WEBGL_multi_draw(GLctx);
 
       getEmscriptenSupportedExtensions(GLctx).forEach((ext) => {
         // WEBGL_lose_context, WEBGL_debug_renderer_info and WEBGL_debug_shaders
@@ -4214,6 +4246,30 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     return 1;
   },
 #endif
+
+  glPolygonOffsetClampEXT__sig: 'vfff',
+  glPolygonOffsetClampEXT: (factor, units, clamp) => {
+#if GL_ASSERTIONS
+    assert(GLctx.extPolygonOffsetClamp, "EXT_polygon_offset_clamp not supported, or not enabled. Before calling glPolygonOffsetClampEXT(), call emscripten_webgl_enable_EXT_polygon_offset_clamp() to enable this extension, and verify that it returns true to indicate support. (alternatively, build with -sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=1 to enable all GL extensions by default)");
+#endif
+    GLctx.extPolygonOffsetClamp['polygonOffsetClampEXT'](factor, units, clamp);
+  },
+
+  glClipControlEXT__sig: 'vii',
+  glClipControlEXT: (origin, depth) => {
+#if GL_ASSERTIONS
+    assert(GLctx.extClipControl, "EXT_clip_control not supported, or not enabled. Before calling glClipControlEXT(), call emscripten_webgl_enable_EXT_clip_control() to enable this extension, and verify that it returns true to indicate support. (alternatively, build with -sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=1 to enable all GL extensions by default)");
+#endif
+    GLctx.extClipControl['clipControlEXT'](origin, depth);
+  },
+
+  glPolygonModeWEBGL__sig: 'vii',
+  glPolygonModeWEBGL: (face, mode) => {
+#if GL_ASSERTIONS
+    assert(GLctx.webglPolygonMode, "WEBGL_polygon_mode not supported, or not enabled. Before calling glPolygonModeWEBGL(), call emscripten_webgl_enable_WEBGL_polygon_mode() to enable this extension, and verify that it returns true to indicate support. (alternatively, build with -sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=1 to enable all GL extensions by default)");
+#endif
+    GLctx.webglPolygonMode['polygonModeWEBGL'](face, mode);
+  },
 };
 
 #if !GL_ENABLE_GET_PROC_ADDRESS

@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.66 (in development)
 -----------------------
+- Added support for WebGL extensions EXT_clip_control, EXT_depth_clamp,
+  EXT_polygon_offset_clamp and WEBGL_polygon_mode (#20841)
 
 3.1.65 - 08/22/24
 -----------------
