@@ -24,6 +24,10 @@ See docs/process.md for more on how version tagging works.
   and will now run the designated handler on the target thread. (#22467)
 - Added support for WebGL extensions EXT_clip_control, EXT_depth_clamp,
   EXT_polygon_offset_clamp and WEBGL_polygon_mode (#20841)
+- New `emscripten_console_trace` and `emscripten_dbg_backtrace` APIs we were
+  added to `console.h`.  The former simply maps directly to `console.trace`.
+  The latter uses `dbg()` so it writes directly to stderr under node (better for
+  multi-threaded apps).
 
 3.1.65 - 08/22/24
 -----------------

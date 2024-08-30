@@ -2059,6 +2059,10 @@ addToLibrary({
 #if ASSERTIONS || RUNTIME_DEBUG
   emscripten_dbg: (str) => dbg(UTF8ToString(str)),
   emscripten_dbgn: (str, len) => dbg(UTF8ToString(str, len)),
+
+  emscripten_dbg_backtrace: (str) => {
+    dbg(UTF8ToString(str) + '\n' + new Error().stack);
+  },
 #endif
 
   // Use program_invocation_short_name and program_invocation_name in compiled
@@ -2087,6 +2091,13 @@ addToLibrary({
     assert(typeof str == 'number');
 #endif
     console.error(UTF8ToString(str));
+  },
+
+  emscripten_console_trace: (str) => {
+#if ASSERTIONS
+    assert(typeof str == 'number');
+#endif
+    console.trace(UTF8ToString(str));
   },
 
   emscripten_throw_number: (number) => {
