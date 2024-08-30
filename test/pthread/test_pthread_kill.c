@@ -12,15 +12,16 @@
 #include <errno.h>
 #include <signal.h>
 
-_Atomic int sharedVar = 0;
-_Atomic int gotTermSignal = 0;
+pthread_cond_t started_cond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t started_lock = PTHREAD_MUTEX_INITIALIZER;
+_Atomic int got_term_signal = 0;
 
 pthread_t thr;
 
 void signal_handler(int sig, siginfo_t * info, void * arg) {
   printf("signal: %d onthread=%d\n", sig, pthread_self() == thr);
   if (sig == SIGTERM) {
-    gotTermSignal = 1;
+    got_term_signal = 1;
   }
 }
 
@@ -38,10 +39,12 @@ void sleepms(long msecs) {
 }
 
 void *thread_start(void *arg) {
+  pthread_mutex_lock(&started_lock);
+  pthread_cond_signal(&started_cond);
+  pthread_mutex_unlock(&started_lock);
   // As long as this thread is running, keep the shared variable latched to nonzero value.
-  while (!gotTermSignal) {
+  while (!got_term_signal) {
     sleepms(1);
-    ++sharedVar;
   }
   printf("got term signal, shutting down thread\n");
   pthread_exit(0);
@@ -50,14 +53,13 @@ void *thread_start(void *arg) {
 int main() {
   setup_handler();
 
-  sharedVar = 0;
   int s = pthread_create(&thr, NULL, thread_start, 0);
   assert(s == 0);
 
   // Wait until thread kicks in and sets the shared variable.
-  while (sharedVar == 0) {
-    sleepms(10);
-  }
+  pthread_mutex_lock(&started_lock);
+  pthread_cond_wait(&started_cond, &started_lock);
+  pthread_mutex_unlock(&started_lock);
   printf("thread has started, sending SIGTERM\n");
 
   s = pthread_kill(thr, SIGTERM);
