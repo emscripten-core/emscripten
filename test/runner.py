@@ -135,7 +135,7 @@ def get_all_tests(modules):
 
 
 def get_crossplatform_tests(modules):
-  suites = ['core0', 'other'] # We don't need all versions of every test
+  suites = ['core0', 'other', 'sanity'] # We don't need all versions of every test
   crossplatform_tests = []
   # Walk over the test suites and find the test functions with the
   # is_crossplatform_test attribute applied by @crossplatform decorator
