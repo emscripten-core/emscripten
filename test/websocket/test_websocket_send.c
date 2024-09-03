@@ -3,6 +3,7 @@
 #include <emscripten/websocket.h>
 #include <assert.h>
 
+// This test performs that same server communications using two different
 // sockets. This verifies that multiple sockets are supported simultaneously.
 EMSCRIPTEN_WEBSOCKET_T sock1;
 EMSCRIPTEN_WEBSOCKET_T sock2;
@@ -42,6 +43,7 @@ bool WebSocketError(int eventType, const EmscriptenWebSocketErrorEvent *e, void 
 
 bool WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e, void *userData) {
   printf("message(socket=%d, eventType=%d, userData=%p data=%p, numBytes=%d, isText=%d)\n", e->socket, eventType, userData, e->data, e->numBytes, e->isText);
+  static int text_received = 0;
   assert(e->socket == sock1 || e->socket == sock2);
   if (e->isText) {
     printf("text data: \"%s\"\n", e->data);
