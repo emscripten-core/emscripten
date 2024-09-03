@@ -581,8 +581,10 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
   $dumpTable__deps: ['$wasmTable'],
   $dumpTable: () => {
-    for (var i = 0; i < wasmTable.length; i++)
+    var len = wasmTable.length;
+    for (var i = {{{ toIndexType(0) }}} ; i < len; i++) {
       dbg(`table: ${i} : ${wasmTable.get(i)}`);
+    }
   },
 #endif
 
@@ -641,7 +643,7 @@ var LibraryDylink = {
         tableBase = {{{ makeGetValue('handle', C_STRUCTS.dso.table_addr, '*') }}};
       }
 
-      var tableGrowthNeeded = tableBase + metadata.tableSize - wasmTable.length;
+      var tableGrowthNeeded = tableBase + metadata.tableSize - {{{ from64Expr('wasmTable.length') }}};
       if (tableGrowthNeeded > 0) {
 #if DYLINK_DEBUG
         dbg("loadModule: growing table: " + tableGrowthNeeded);

@@ -963,6 +963,11 @@ function from64Expr(x, assign = true) {
   return `Number(${x})`;
 }
 
+function toIndexType(x) {
+  if (MEMORY64 != 1) return x;
+  return `toIndexType(${x})`;
+}
+
 function to64(x) {
   if (!MEMORY64) return x;
   return `BigInt(${x})`;
@@ -1153,4 +1158,5 @@ addToCompileTimeContext({
   splitI64,
   storeException,
   to64,
+  toIndexType,
 });
