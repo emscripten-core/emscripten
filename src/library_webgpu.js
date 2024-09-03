@@ -7,9 +7,15 @@
 /*
  * WebGPU support.
  *
- * This file implements the common C header <webgpu/webgpu.h> on top of the
+ * IMPORTANT NOTICE:
+ * These bindings are in a temporary **breaking-change freeze**.
+ * Bugfixes and small feature additions are still welcome.
+ * Please see system/include/webgpu/README.md for more information.
+ *
+ * This file and system/lib/webgpu/webgpu.cpp together implement the
+ * to-be-standardized C header <webgpu/webgpu.h> on top of the
  * browser's native JS WebGPU implementation. This allows applications targeting
- * wgpu-native (https://github.com/gfx-rs/wgpu) or
+ * wgpu-native (https://github.com/gfx-rs/wgpu-native) or
  * Dawn (https://dawn.googlesource.com/dawn/) to also target the Web with the
  * same graphics API and fairly minimal changes - similar to OpenGL ES 2.0/3.0
  * on WebGL 1.0/2.0.
