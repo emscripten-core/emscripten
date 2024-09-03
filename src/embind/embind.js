@@ -1510,7 +1510,7 @@ var LibraryEmbind = {
     // at run-time, not build-time.
     finalizationRegistry = new FinalizationRegistry((info) => {
 #if ASSERTIONS
-      console.warn(info.leakWarning.stack.replace(/^Error: /, ''));
+      console.warn(info.leakWarning);
 #endif
       releaseClassHandle(info.$$);
     });
@@ -1526,13 +1526,14 @@ var LibraryEmbind = {
         // This is more useful than the empty stacktrace of `FinalizationRegistry`
         // callback.
         var cls = $$.ptrType.registeredClass;
-        info.leakWarning = new Error(`Embind found a leaked C++ instance ${cls.name} <${ptrToString($$.ptr)}>.\n` +
+        var err = new Error(`Embind found a leaked C++ instance ${cls.name} <${ptrToString($$.ptr)}>.\n` +
         "We'll free it automatically in this case, but this functionality is not reliable across various environments.\n" +
         "Make sure to invoke .delete() manually once you're done with the instance instead.\n" +
         "Originally allocated"); // `.stack` will add "at ..." after this sentence
         if ('captureStackTrace' in Error) {
-          Error.captureStackTrace(info.leakWarning, RegisteredPointer_fromWireType);
+          Error.captureStackTrace(err, RegisteredPointer_fromWireType);
         }
+        info.leakWarning = err.stack.replace(/^Error: /, '');
 #endif
         finalizationRegistry.register(handle, info, handle);
       }
