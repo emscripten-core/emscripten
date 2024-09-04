@@ -2889,6 +2889,7 @@ More info: https://emscripten.org
     'unsignPointers': ('test-unsignPointers.js', ['unsignPointers', '--closure-friendly']),
     'asanify': ('test-asanify.js', ['asanify']),
     'safeHeap': ('test-safeHeap.js', ['safeHeap']),
+    'object_literals': ('test-object-literals.js', []),
     'LittleEndianHeap': ('test-LittleEndianHeap.js', ['littleEndianHeap']),
   })
   @crossplatform
