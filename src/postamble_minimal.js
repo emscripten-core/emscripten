@@ -106,7 +106,13 @@ var imports = {
   'a': wasmImports,
 #else // MINIFY_WASM_IMPORTED_MODULES
   'env': wasmImports,
+
+// There does not currently exist a ENVIRONMENT_MAY_BE_WASI, so liken it to the shell environments.
+// (e.g. anyone building with -sENVIRONMENT=web won't be running in WASI)
+#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
   '{{{ WASI_MODULE_NAME }}}': wasmImports,
+#endif
+
 #endif // MINIFY_WASM_IMPORTED_MODULES
 };
 
