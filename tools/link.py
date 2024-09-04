@@ -393,10 +393,7 @@ def get_binaryen_passes():
       passes += ['--pass-arg=asyncify-onlylist@%s' % ','.join(settings.ASYNCIFY_ONLY)]
 
   if settings.MEMORY64 == 2:
-    passes += ['--memory64-lowering']
-
-  if settings.MEMORY64:
-    passes += ['--table64-lowering']
+    passes += ['--memory64-lowering', '--table64-lowering']
 
   if settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
     passes += ['--ignore-implicit-traps']
@@ -1368,17 +1365,6 @@ def phase_linker_setup(options, state, newargs):
   settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(feature_matrix.Feature.PROMISE_ANY)
   if not settings.BULK_MEMORY:
     settings.BULK_MEMORY = feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY)
-    if settings.BULK_MEMORY and settings.MEMORY64 and settings.MIN_NODE_VERSION < 180000:
-      # Note that we do not update tools/feature_matrix.py for this, as this issue is
-      # wasm64-specific: bulk memory for wasm32 has shipped in Node.js 12.5, but
-      # bulk memory for wasm64 has shipped only in Node.js 18.
-      #
-      # Feature matrix currently cannot express such complex combinations of
-      # features, so the only options are to either choose the least common
-      # denominator and disable bulk memory altogether for Node.js < 18 or to
-      # special-case this situation here. The former would be limiting for
-      # wasm32 users, so instead we do the latter:
-      settings.BULK_MEMORY = 0
 
   if settings.AUDIO_WORKLET:
     if settings.AUDIO_WORKLET == 1:
@@ -1977,9 +1963,11 @@ def run_embind_gen(wasm_target, js_syms, extra_settings, linker_inputs):
   # Replace embind with the TypeScript generation version.
   embind_index = settings.JS_LIBRARIES.index('embind/embind.js')
   settings.JS_LIBRARIES[embind_index] = 'embind/embind_gen.js'
-  outfile_js = in_temp('tsgen_a.out.js')
+  if settings.MEMORY64:
+    settings.MIN_NODE_VERSION = 160000
+  outfile_js = in_temp('tsgen.js')
   # The Wasm outfile may be modified by emscripten.emscript, so use a temporary file.
-  outfile_wasm = in_temp('tsgen_a.out.wasm')
+  outfile_wasm = in_temp('tsgen.wasm')
   emscripten.emscript(wasm_target, outfile_wasm, outfile_js, js_syms, finalize=False)
   # Build the flags needed by Node.js to properly run the output file.
   node_args = []

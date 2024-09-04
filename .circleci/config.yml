@@ -106,7 +106,7 @@ commands:
     description: "install canary version of node"
     steps:
       - install-node-version:
-         node_version: "22.0.0-v8-canary20240423a2eb2005bd"
+         node_version: "23.0.0-v8-canary20240819f52f1c2f1c"
          canary: true
   install-v8:
     description: "install v8 using jsvu"
@@ -625,6 +625,12 @@ jobs:
       - run: rm -rf $HOME/.jsvu
       - install-v8
       - install-node-canary
+      # When running wasm64 tests we need to make sure we use the testing
+      # version of node (node canary) when running the compiler output (e.g.
+      # in configure tests.
+      - run:
+          name: configure node canary
+          command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64"
           test_targets: "
@@ -651,6 +657,12 @@ jobs:
       - run: rm -rf $HOME/.jsvu
       - install-v8
       - install-node-canary
+      # When running wasm64 tests we need to make sure we use the testing
+      # version of node (node canary) when running the compiler output (e.g.
+      # in configure tests.
+      - run:
+          name: configure node canary
+          command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64_4gb"
           test_targets: "wasm64_4gb"
@@ -772,6 +784,7 @@ jobs:
     executor: bionic
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_WASM64: "1"
     steps:
       - run: apt-get install -q -y ninja-build scons
       - run-tests-linux:
@@ -796,7 +809,14 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser64"
-          test_targets: "browser64"
+          # Skip tests that depend on running the output in node
+          # (This bot doesn't have node canary installed which is required to
+          # run wasm64 output).
+          test_targets: "browser64
+            skip:browser64.test_worker
+            skip:browser64.test_2gb_fail
+            skip:browser64.test_4gb_fail
+            skip:browser64.test_4gb"
   test-browser-chrome-2gb:
     executor: bionic
     environment:
@@ -828,7 +848,15 @@ jobs:
           # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
           # are crashing Firefox (bugzil.la/1281796). The former case is
           # further blocked by issue #6897.
-          test_targets: "browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget"
+          test_targets: "
+            browser64.test_sdl_image
+            browser
+            skip:browser.test_sdl2_mouse
+            skip:browser.test_html5_webgl_create_context
+            skip:browser.test_webgl_offscreen_canvas_in_pthread
+            skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
+            skip:browser.test_glut_glutget
+            "
   # TODO(sbc): Re-enable once we figure out why the emrun tests are
   # locking up.
   #test-browser-chrome-emrun:
