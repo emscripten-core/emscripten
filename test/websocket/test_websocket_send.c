@@ -4,8 +4,7 @@
 #include <assert.h>
 
 // This test performs that same server communications using two different
-// sockets. This verifies that multiple sockets are supported at the
-// simultaneously.
+// sockets. This verifies that multiple sockets are supported simultaneously.
 EMSCRIPTEN_WEBSOCKET_T sock1;
 EMSCRIPTEN_WEBSOCKET_T sock2;
 
@@ -33,7 +32,6 @@ EM_BOOL WebSocketError(int eventType, const EmscriptenWebSocketErrorEvent *e, vo
 EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e, void *userData) {
   printf("message(socket=%d, eventType=%d, userData=%p data=%p, numBytes=%d, isText=%d)\n", e->socket, eventType, userData, e->data, e->numBytes, e->isText);
   static int text_received = 0;
-  static int binary_received = 0;
   assert(e->socket == sock1 || e->socket == sock2);
   if (e->isText) {
     printf("text data: \"%s\"\n", e->data);
@@ -41,13 +39,13 @@ EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e
     text_received++;
   } else {
     // We expect to receive the text message beofre the binary one
+    assert(text_received);
     printf("binary data:");
     for (int i = 0; i < e->numBytes; ++i) {
       printf(" %02X", e->data[i]);
       assert(e->data[i] == i);
     }
     printf("\n");
-    binary_received++;
     emscripten_websocket_close(e->socket, 0, 0);
     emscripten_websocket_delete(e->socket);
     if (e->socket == sock1) {
