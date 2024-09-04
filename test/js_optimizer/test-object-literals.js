@@ -7,8 +7,9 @@ var bar = {
   baz,
 };
 
-// Objects that don't use shorthand should also be preserved, as-is
+// Objects that could use shorthand are also converted where possible.
 var bar2 = {
   foo: foo,
-  baz: baz,
+  "baz": baz,
+  bar: foo,
 };

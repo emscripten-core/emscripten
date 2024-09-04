@@ -9,5 +9,6 @@ var bar = {
 
 var bar2 = {
   foo,
-  baz
+  baz,
+  bar: foo
 };

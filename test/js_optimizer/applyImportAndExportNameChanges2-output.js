@@ -246,9 +246,9 @@ env["__memory_base"] = STATIC_BASE;
 env["__table_base"] = 0;
 
 var imports = {
-  env: env,
+  env,
   global: {
-    NaN: NaN,
+    NaN,
     Infinity: Infinity
   },
   "global.Math": Math,
