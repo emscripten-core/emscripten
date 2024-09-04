@@ -217,7 +217,7 @@ var LibraryWebSocket = {
 #endif
       var eventPtr = WS.getSocketEvent(socketId);
       {{{ makeSetValue('eventPtr', C_STRUCTS.EmscriptenWebSocketCloseEvent.wasClean, 'e.wasClean', 'i8') }}},
-      {{{ makeSetValue('eventPtr', C_STRUCTS.EmscriptenWebSocketCloseEvent.wasClean, 'e.code', 'i16') }}},
+      {{{ makeSetValue('eventPtr', C_STRUCTS.EmscriptenWebSocketCloseEvent.code, 'e.code', 'i16') }}},
       stringToUTF8(e.reason, eventPtr + {{{ C_STRUCTS.EmscriptenWebSocketCloseEvent.reason }}}, 512);
       {{{ makeDynCall('iipp', 'callbackFunc') }}}(0/*TODO*/, eventPtr, userData);
     }
