@@ -1760,7 +1760,7 @@ def phase_linker_setup(options, state, newargs):
                                   'emscripten_stack_get_base',
                                   'emscripten_stack_get_end']
 
-  settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
+  settings.EMSCRIPTEN_VERSION = utils.EMSCRIPTEN_VERSION
   settings.SOURCE_MAP_BASE = options.source_map_base or ''
 
   settings.LINK_AS_CXX = (shared.run_via_emxx or settings.DEFAULT_TO_CXX) and '-nostdlib++' not in newargs

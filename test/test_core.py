@@ -20,7 +20,7 @@ if __name__ == '__main__':
 from tools.shared import PIPE
 from tools.shared import EMCC, EMAR, FILE_PACKAGER
 from tools.utils import WINDOWS, MACOS, write_file, delete_file
-from tools import shared, building, config, webassembly
+from tools import shared, building, config, utils, webassembly
 import common
 from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
 from common import skip_if, no_windows, no_mac, is_slow_test, parameterized, parameterize
@@ -1802,7 +1802,7 @@ int main() {
     self.do_runf(src, 'You must build with -sRETAIN_COMPILER_SETTINGS', assert_returncode=NON_ZERO)
     self.clear_setting('ASSERTIONS')
     self.set_setting('RETAIN_COMPILER_SETTINGS')
-    self.do_runf(src, read_file(output).replace('waka', shared.EMSCRIPTEN_VERSION))
+    self.do_runf(src, read_file(output).replace('waka', utils.EMSCRIPTEN_VERSION))
 
   def test_emscripten_has_asyncify(self):
     src = r'''
