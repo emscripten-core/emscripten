@@ -12,7 +12,6 @@
 #endif
 
 #include <emmintrin.h>
-#include <emscripten/console.h>
 #include <nmmintrin.h>
 #include <pmmintrin.h>
 #include <smmintrin.h>
@@ -341,10 +340,8 @@ _mm256_permutevar_ps(__m256 __a, __m256i __c) {
 }
 
 #define _mm_permute_pd(__a, __imm)                                             \
-  __extension__({                                                              \
-    (__m128d) wasm_i64x2_shuffle(                                              \
-      (__m128d)(__a), (__m128d)(__a), ((__imm) & 1), (((__imm) >> 1) & 1));    \
-  })
+  ((__m128d)wasm_i64x2_shuffle(                                                \
+    (__m128d)(__a), (__m128d)(__a), ((__imm) & 1), (((__imm) >> 1) & 1)))
 
 #define _mm256_permute_pd(__A, __imm)                                          \
   __extension__({                                                              \
@@ -354,14 +351,12 @@ _mm256_permutevar_ps(__m256 __a, __m256i __c) {
   })
 
 #define _mm_permute_ps(__a, __imm)                                             \
-  __extension__({                                                              \
-    (__m128) wasm_i32x4_shuffle((__m128)(__a),                                 \
-                                (__m128)(__a),                                 \
-                                ((__imm) & 3),                                 \
-                                (((__imm) >> 2) & 3),                          \
-                                (((__imm) >> 4) & 3),                          \
-                                (((__imm) >> 6) & 3));                         \
-  })
+  ((__m128)wasm_i32x4_shuffle((__m128)(__a),                                   \
+                              (__m128)(__a),                                   \
+                              ((__imm) & 3),                                   \
+                              (((__imm) >> 2) & 3),                            \
+                              (((__imm) >> 4) & 3),                            \
+                              (((__imm) >> 6) & 3)))
 
 #define _mm256_permute_ps(__A, __imm)                                          \
   __extension__({                                                              \
