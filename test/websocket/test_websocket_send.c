@@ -37,26 +37,27 @@ EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e
     printf("text data: \"%s\"\n", e->data);
     assert(strcmp((const char*)e->data, "hello on the other side") == 0);
     text_received++;
+    return 0;
+  }
+
+  // We expect to receive the text message before the binary one
+  assert(text_received);
+  printf("binary data:");
+  for (int i = 0; i < e->numBytes; ++i) {
+    printf(" %02X", e->data[i]);
+    assert(e->data[i] == i);
+  }
+  printf("\n");
+  emscripten_websocket_close(e->socket, 0, 0);
+  emscripten_websocket_delete(e->socket);
+  if (e->socket == sock1) {
+    sock1 = 0;
   } else {
-    // We expect to receive the text message beofre the binary one
-    assert(text_received);
-    printf("binary data:");
-    for (int i = 0; i < e->numBytes; ++i) {
-      printf(" %02X", e->data[i]);
-      assert(e->data[i] == i);
-    }
-    printf("\n");
-    emscripten_websocket_close(e->socket, 0, 0);
-    emscripten_websocket_delete(e->socket);
-    if (e->socket == sock1) {
-      sock1 = 0;
-    } else {
-      sock2 = 0;
-    }
-    // Once both sockets are closed we are done.
-    if (!sock1 && !sock2) {
-      emscripten_force_exit(0);
-    }
+    sock2 = 0;
+  }
+  // Once both sockets are closed we are done.
+  if (!sock1 && !sock2) {
+    emscripten_force_exit(0);
   }
 
   return 0;
@@ -125,4 +126,5 @@ int main() {
   sock1 = create_socket();
   sock2 = create_socket();
   emscripten_exit_with_live_runtime();
+  return 0;
 }
