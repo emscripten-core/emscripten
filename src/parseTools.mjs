@@ -949,18 +949,18 @@ function receiveI64ParamAsI53Unchecked(name) {
   return `var ${name} = convertI32PairToI53(${name}_low, ${name}_high);`;
 }
 
-// Any function called from wasm64 may have bigint args, this function takes
-// a list of variable names to convert to number.
+// Convert a pointer value under wasm64 from BigInt (used at local level API
+// level) to Number (used in JS library code).  No-op under wasm32.
 function from64(x) {
-  if (!MEMORY64) {
-    return '';
-  }
-  if (Array.isArray(x)) {
-    let ret = '';
-    for (e of x) ret += from64(e);
-    return ret;
-  }
+  if (!MEMORY64) return '';
   return `${x} = Number(${x});`;
+}
+
+// Like from64 above but generate an expression instead of an assignment
+// statement.
+function from64Expr(x, assign = true) {
+  if (!MEMORY64) return x;
+  return `Number(${x})`;
 }
 
 function to64(x) {
@@ -1118,6 +1118,7 @@ addToCompileTimeContext({
   expectToReceiveOnModule,
   formattedMinNodeVersion,
   from64,
+  from64Expr,
   getEntryFunction,
   getHeapForType,
   getHeapOffset,
