@@ -3153,8 +3153,10 @@ Module["preRun"] = () => {
 
   @parameterized({
     'asyncify': (['-sASYNCIFY=1'],),
+    'asyncify_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sASYNCIFY=1'],),
     'jspi': (['-sASYNCIFY=2', '-Wno-experimental'],),
     'jspi_wasm_bigint': (['-sASYNCIFY=2', '-sWASM_BIGINT', '-Wno-experimental'],),
+    'jspi_wasm_bigint_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sASYNCIFY=2', '-sWASM_BIGINT', '-Wno-experimental'],),
   })
   def test_async(self, args):
     if is_jspi(args) and not is_chrome():
