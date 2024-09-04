@@ -2471,12 +2471,13 @@ var LibraryHTML5 = {
   emscripten_cancel_animation_frame: (id) => cancelAnimationFrame(id),
 
   emscripten_request_animation_frame_loop: (cb, userData) => {
+    cb = {{{ makeDynCall('idp', 'cb') }}};
     function tick(timeStamp) {
-      if ({{{ makeDynCall('idp', 'cb') }}}(timeStamp, userData)) {
+      if (cb(timeStamp, userData)) {
         requestAnimationFrame(tick);
       }
     }
-    return requestAnimationFrame(tick);
+    requestAnimationFrame(tick);
   },
 
   emscripten_date_now: () => Date.now(),
