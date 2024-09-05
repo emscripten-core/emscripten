@@ -8,7 +8,7 @@
 
 // Endianness check
 #if !SUPPORT_BIG_ENDIAN
-(function() {
+(() => {
   var h16 = new Int16Array(1);
   var h8 = new Int8Array(h16.buffer);
   h16[0] = 0x6373;

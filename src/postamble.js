@@ -241,10 +241,8 @@ function run() {
 #if expectToReceiveOnModule('setStatus')
   if (Module['setStatus']) {
     Module['setStatus']('Running...');
-    setTimeout(function() {
-      setTimeout(function() {
-        Module['setStatus']('');
-      }, 1);
+    setTimeout(() => {
+      setTimeout(() => Module['setStatus'](''), 1);
       doRun();
     }, 1);
   } else
@@ -289,7 +287,7 @@ function checkUnflushedContent() {
 #endif
 #if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
     // also flush in the JS FS layer
-    ['stdout', 'stderr'].forEach(function(name) {
+    ['stdout', 'stderr'].forEach((name) => {
       var info = FS.analyzePath('/dev/' + name);
       if (!info) return;
       var stream = info.object;
@@ -342,7 +340,7 @@ run();
 
 var workerResponded = false, workerCallbackId = -1;
 
-(function() {
+(() => {
   var messageBuffer = null, buffer = 0, bufferSize = 0;
 
   function flushMessages() {
@@ -350,9 +348,7 @@ var workerResponded = false, workerCallbackId = -1;
     if (runtimeInitialized) {
       var temp = messageBuffer;
       messageBuffer = null;
-      temp.forEach(function(message) {
-        onmessage(message);
-      });
+      temp.forEach((message) => onmessage(message));
     }
   }
 

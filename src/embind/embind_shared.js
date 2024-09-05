@@ -59,9 +59,7 @@ var LibraryEmbindShared = {
     '$awaitingDependencies', '$registeredTypes',
     '$typeDependencies', '$throwInternalError'],
   $whenDependentTypesAreResolved: (myTypes, dependentTypes, getTypeConverters) => {
-    myTypes.forEach(function(type) {
-        typeDependencies[type] = dependentTypes;
-    });
+    myTypes.forEach((type) => typeDependencies[type] = dependentTypes);
 
     function onComplete(typeConverters) {
       var myTypeConverters = getTypeConverters(typeConverters);

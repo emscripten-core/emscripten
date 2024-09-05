@@ -336,13 +336,13 @@ var LibraryGLUT = {
     // Firefox
     window.addEventListener("DOMMouseScroll", GLUT.onMouseWheel, true);
 
-    Browser.resizeListeners.push(function(width, height) {
+    Browser.resizeListeners.push((width, height) => {
       if (GLUT.reshapeFunc) {
         {{{ makeDynCall('vii', 'GLUT.reshapeFunc') }}}(width, height);
       }
     });
 
-    __ATEXIT__.push(function() {
+    __ATEXIT__.push(() => {
       if (isTouchDevice) {
         window.removeEventListener("touchmove", GLUT.touchHandler, true);
         window.removeEventListener("touchstart", GLUT.touchHandler, true);
@@ -620,11 +620,9 @@ var LibraryGLUT = {
   glutPostRedisplay: () => {
     if (GLUT.displayFunc && !GLUT.requestedAnimationFrame) {
       GLUT.requestedAnimationFrame = true;
-      Browser.requestAnimationFrame(function() {
+      Browser.requestAnimationFrame(() => {
         GLUT.requestedAnimationFrame = false;
-        Browser.mainLoop.runIter(function() {
-          {{{ makeDynCall('v', 'GLUT.displayFunc') }}}();
-        });
+        Browser.mainLoop.runIter(() => {{{ makeDynCall('v', 'GLUT.displayFunc') }}}());
       });
     }
   },
