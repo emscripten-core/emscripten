@@ -1795,10 +1795,51 @@ void tostr_approx(__m256* m, char* outstr, bool approximate) {
 #define Ret_M256_M128_Tint(Ret_type, func)                                     \
   const_int8_unroll(Ret_type, Ret_M256_M128_Tint_body, func)
 
-#define Ret_M256d_M256d_Tint_5bits(Ret_type, func)                             \
-  const_int5_full_unroll(Ret_type, Ret_M256d_M256d_Tint_body, func)
-#define Ret_M256_M256_Tint_5bits(Ret_type, func)                               \
-  const_int5_full_unroll(Ret_type, Ret_M256_M256_Tint_body, func)
+#define const_int5_unroll_0_to_15(Ret_type, F, func)                           \
+  F(Ret_type, func, 0);                                                        \
+  F(Ret_type, func, 1);                                                        \
+  F(Ret_type, func, 2);                                                        \
+  F(Ret_type, func, 3);                                                        \
+  F(Ret_type, func, 4);                                                        \
+  F(Ret_type, func, 5);                                                        \
+  F(Ret_type, func, 6);                                                        \
+  F(Ret_type, func, 7);                                                        \
+  F(Ret_type, func, 8);                                                        \
+  F(Ret_type, func, 9);                                                        \
+  F(Ret_type, func, 10);                                                       \
+  F(Ret_type, func, 11);                                                       \
+  F(Ret_type, func, 12);                                                       \
+  F(Ret_type, func, 13);                                                       \
+  F(Ret_type, func, 14);                                                       \
+  F(Ret_type, func, 15);
+
+#define const_int5_unroll_16_to_31(Ret_type, F, func)                          \
+  F(Ret_type, func, 16);                                                       \
+  F(Ret_type, func, 17);                                                       \
+  F(Ret_type, func, 18);                                                       \
+  F(Ret_type, func, 19);                                                       \
+  F(Ret_type, func, 20);                                                       \
+  F(Ret_type, func, 21);                                                       \
+  F(Ret_type, func, 22);                                                       \
+  F(Ret_type, func, 23);                                                       \
+  F(Ret_type, func, 24);                                                       \
+  F(Ret_type, func, 25);                                                       \
+  F(Ret_type, func, 26);                                                       \
+  F(Ret_type, func, 27);                                                       \
+  F(Ret_type, func, 28);                                                       \
+  F(Ret_type, func, 29);                                                       \
+  F(Ret_type, func, 30);                                                       \
+  F(Ret_type, func, 31);
+
+#define Ret_M256d_M256d_Tint_5bits_0_to_15(Ret_type, func)                     \
+  const_int5_unroll_0_to_15(Ret_type, Ret_M256d_M256d_Tint_body, func)
+#define Ret_M256d_M256d_Tint_5bits_16_to_31(Ret_type, func)                    \
+  const_int5_unroll_16_to_31(Ret_type, Ret_M256d_M256d_Tint_body, func)
+
+#define Ret_M256_M256_Tint_5bits_0_to_15(Ret_type, func)                       \
+  const_int5_unroll_0_to_15(Ret_type, Ret_M256_M256_Tint_body, func)
+#define Ret_M256_M256_Tint_5bits_16_to_31(Ret_type, func)                      \
+  const_int5_unroll_16_to_31(Ret_type, Ret_M256_M256_Tint_body, func)
 
 #define void_OutDoublePtr_M256d(                                               \
   func, Ptr_type, numBytesWritten, alignmentBytes)                             \

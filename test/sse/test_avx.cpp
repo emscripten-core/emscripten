@@ -116,54 +116,80 @@ void test_logical(void) {
   Ret_M256i_M256i(int, _mm256_testnzc_si256);
 }
 
-void test_swizzle(void) {
+// split test_swizzle into multiple functions to avoid too many locals error
+void test_swizzle_128bit() {
   Ret_M128d_M128i(__m128d, _mm_permutevar_pd);
-  Ret_M256d_M256i(__m256d, _mm256_permutevar_pd);
-
   Ret_M128_M128i(__m128, _mm_permutevar_ps);
-  Ret_M256_M256i(__m256, _mm256_permutevar_ps);
-
   Ret_M128d_Tint(__m128d, _mm_permute_pd);
-  Ret_M256d_Tint(__m256d, _mm256_permute_pd);
-
   Ret_M128_Tint(__m128, _mm_permute_ps);
+}
+
+void test_swizzle_permute2f128() {
+  Ret_M256d_M256i(__m256d, _mm256_permutevar_pd);
+  Ret_M256_M256i(__m256, _mm256_permutevar_ps);
+  Ret_M256d_Tint(__m256d, _mm256_permute_pd);
   Ret_M256_Tint(__m256, _mm256_permute_ps);
 
   Ret_M256d_M256d_Tint(__m256d, _mm256_permute2f128_pd);
   Ret_M256_M256_Tint(__m256, _mm256_permute2f128_ps);
   Ret_M256i_M256i_Tint(__m256i, _mm256_permute2f128_si256);
+}
 
+void test_swizzle_blend() {
   Ret_M256d_M256d_Tint(__m256d, _mm256_blend_pd);
   Ret_M256_M256_Tint(__m256, _mm256_blend_ps);
-
   Ret_M256d_M256d_M256d(__m256d, _mm256_blendv_pd);
   Ret_M256_M256_M256(__m256, _mm256_blendv_ps);
+}
 
+void test_swizzle_shuffle() {
   Ret_M256d_M256d_Tint(__m256d, _mm256_shuffle_pd);
   Ret_M256_M256_Tint(__m256, _mm256_shuffle_ps);
+}
 
+void test_swizzle_extract_int() {
   Ret_M256i_Tint(int, _mm256_extract_epi32);
   Ret_M256i_Tint(int, _mm256_extract_epi16);
   Ret_M256i_Tint(int, _mm256_extract_epi8);
   Ret_M256i_Tint(int64_t, _mm256_extract_epi64);
+}
 
+void test_swizzle_insert_int() {
   Ret_M256i_int_Tint(__m256i, _mm256_insert_epi32);
   Ret_M256i_int_Tint(__m256i, _mm256_insert_epi16);
   Ret_M256i_int_Tint(__m256i, _mm256_insert_epi8);
   Ret_M256i_int_Tint(__m256i, _mm256_insert_epi64);
+}
 
+void test_swizzle_unpack() {
   Ret_M256d_M256d(__m256d, _mm256_unpackhi_pd);
   Ret_M256d_M256d(__m256d, _mm256_unpacklo_pd);
   Ret_M256_M256(__m256, _mm256_unpackhi_ps);
   Ret_M256_M256(__m256, _mm256_unpacklo_ps);
+}
 
+void test_swizzle_insertf128() {
   Ret_M256d_M128d_Tint(__m256d, _mm256_insertf128_pd);
   Ret_M256_M128_Tint(__m256, _mm256_insertf128_ps);
   Ret_M256i_M128i_Tint(__m256i, _mm256_insertf128_si256);
+}
 
+void test_swizzle_extractf128() {
   Ret_M256d_Tint(__m128d, _mm256_extractf128_pd);
   Ret_M256_Tint(__m128, _mm256_extractf128_ps);
   Ret_M256i_Tint(__m128i, _mm256_extractf128_si256);
+}
+
+void test_swizzle(void) {
+  test_swizzle_128bit();
+  test_swizzle_permute2f128();
+  test_swizzle_blend();
+  test_swizzle_shuffle();
+  test_swizzle_extract_int();
+  test_swizzle_insert_int();
+  test_swizzle_unpack();
+  test_swizzle_insertf128();
+  test_swizzle_extractf128();
 }
 
 void test_convert(void) {
@@ -194,14 +220,44 @@ void test_move(void) {
   Ret_M256d(__m256d, _mm256_movedup_pd);
 }
 
-void test_compare(void) {
+// split test_compare into multiple functions to avoid too many locals error
+void test_compare_128bit() {
   Ret_M128d_M128d_Tint_5bits(__m128d, _mm_cmp_pd);
   Ret_M128_M128_Tint_5bits(__m128, _mm_cmp_ps);
   Ret_M128d_M128d_Tint_5bits(__m128d, _mm_cmp_sd);
   Ret_M128_M128_Tint_5bits(__m128, _mm_cmp_ss);
+}
 
-  Ret_M256d_M256d_Tint_5bits(__m256d, _mm256_cmp_pd);
-  Ret_M256_M256_Tint_5bits(__m256, _mm256_cmp_ps);
+void test_mm256_cmp_pd_tint_0_to_15() {
+  Ret_M256d_M256d_Tint_5bits_0_to_15(__m256d, _mm256_cmp_pd);
+}
+
+void test_mm256_cmp_pd_tint_16_to_31() {
+  Ret_M256d_M256d_Tint_5bits_16_to_31(__m256d, _mm256_cmp_pd);
+}
+
+void test_mm256_cmp_pd() {
+  test_mm256_cmp_pd_tint_0_to_15();
+  test_mm256_cmp_pd_tint_16_to_31();
+}
+
+void test_mm256_cmp_ps_tint_0_to_15() {
+  Ret_M256_M256_Tint_5bits_0_to_15(__m256, _mm256_cmp_ps);
+}
+
+void test_mm256_cmp_ps_tint_16_to_31() {
+  Ret_M256_M256_Tint_5bits_16_to_31(__m256, _mm256_cmp_ps);
+}
+
+void test_mm256_cmp_ps() {
+  test_mm256_cmp_ps_tint_0_to_15();
+  test_mm256_cmp_ps_tint_16_to_31();
+}
+
+void test_compare(void) {
+  test_compare_128bit();
+  test_mm256_cmp_pd();
+  test_mm256_cmp_ps();
 }
 
 void test_misc(void) {
