@@ -337,7 +337,6 @@ commands:
         type: string
         default: ""
     steps:
-      - prepare-for-tests
       - run:
           name: download firefox
           command: |
@@ -837,6 +836,7 @@ jobs:
   test-browser-firefox:
     executor: bionic
     steps:
+      - prepare-for-tests
       - run-tests-firefox:
           title: "browser"
           # browser.test_sdl2_mouse and/or SDL2 should be fixed. The case happens
@@ -849,7 +849,6 @@ jobs:
           # are crashing Firefox (bugzil.la/1281796). The former case is
           # further blocked by issue #6897.
           test_targets: "
-            browser64.test_sdl_image
             browser
             skip:browser.test_sdl2_mouse
             skip:browser.test_html5_webgl_create_context
@@ -857,6 +856,18 @@ jobs:
             skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
             skip:browser.test_glut_glutget
             "
+  test-browser-firefox-wasm64:
+    executor: bionic
+    steps:
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
+      - pip-install
+      - install-emsdk
+      - run-tests-firefox:
+          title: "browser64"
+          test_targets: "browser64.test_sdl_image"
   # TODO(sbc): Re-enable once we figure out why the emrun tests are
   # locking up.
   #test-browser-chrome-emrun:
@@ -984,6 +995,7 @@ workflows:
       - test-browser-firefox:
           requires:
             - build-linux
+      - test-browser-firefox-wasm64
       - test-sockets-chrome:
           requires:
             - build-linux
