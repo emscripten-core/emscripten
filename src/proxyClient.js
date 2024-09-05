@@ -98,7 +98,7 @@ if (typeof window != 'undefined') {
 }
 
 /*
-(function() {
+(() => {
   var trueRAF = window.requestAnimationFrame;
   var tracker = new FPSTracker('client');
   window.requestAnimationFrame = (func) => {

@@ -41,11 +41,11 @@ addToLibrary({
       Array.prototype.forEach.call(mount.opts["files"] || [], function(file) {
         WORKERFS.createNode(ensureParent(file.name), base(file.name), WORKERFS.FILE_MODE, 0, file, file.lastModifiedDate);
       });
-      (mount.opts["blobs"] || []).forEach(function(obj) {
+      (mount.opts["blobs"] || []).forEach((obj) => {
         WORKERFS.createNode(ensureParent(obj["name"]), base(obj["name"]), WORKERFS.FILE_MODE, 0, obj["data"]);
       });
-      (mount.opts["packages"] || []).forEach(function(pack) {
-        pack['metadata'].files.forEach(function(file) {
+      (mount.opts["packages"] || []).forEach((pack) => {
+        pack['metadata'].files.forEach((file) => {
           var name = file.filename.substr(1); // remove initial slash
           WORKERFS.createNode(ensureParent(name), base(name), WORKERFS.FILE_MODE, 0, pack['blob'].slice(file.start, file.end));
         });

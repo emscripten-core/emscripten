@@ -366,7 +366,7 @@ var LibraryEGL = {
       // Run callbacks so that GL emulation works
       GL.makeContextCurrent(EGL.context);
       Browser.useWebGL = true;
-      Browser.moduleContextCreatedCallbacks.forEach(function(callback) { callback() });
+      Browser.moduleContextCreatedCallbacks.forEach((callback) => callback());
 
       // Note: This function only creates a context, but it shall not make it active.
       GL.makeContextCurrent(null);

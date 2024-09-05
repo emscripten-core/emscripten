@@ -866,7 +866,7 @@ var LibraryBrowser = {
             }
           };
           addEventListener("message", Browser_setImmediate_messageHandler, true);
-          Browser.setImmediate = /** @type{function(function(): ?, ...?): number} */(function Browser_emulated_setImmediate(func) {
+          Browser.setImmediate = /** @type{function(function(): ?, ...?): number} */((func) => {
             setImmediates.push(func);
             if (ENVIRONMENT_IS_WORKER) {
               Module['setImmediates'] ??= [];

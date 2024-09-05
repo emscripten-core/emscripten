@@ -104,7 +104,7 @@ addToLibrary({
       if (typeof flags == "string") {
         flags = FS_modeStringToFlags(flags)
       }
-      var pathTruncated = path.split('/').map(function(s) { return s.substr(0, 255); }).join('/');
+      var pathTruncated = path.split('/').map((s) => s.substr(0, 255)).join('/');
       var nfd = fs.openSync(pathTruncated, NODEFS.flagsForNode(flags), mode);
       var st = fs.fstatSync(nfd);
       if (flags & {{{ cDefs.O_DIRECTORY }}} && !st.isDirectory()) {
