@@ -577,7 +577,7 @@ def main():
 
   if options.depfile:
     with open(options.depfile, 'w') as f:
-      for target in [data_target, options.jsoutput]:
+      for target in (data_target, options.jsoutput):
         if target:
           f.write(escape_for_makefile(target))
           f.write(' \\\n')

@@ -876,7 +876,7 @@ base align: 0, 0, 0, 0'''])
     # Emscripten SjLj with and without Emscripten EH support
     self.set_setting('SUPPORT_LONGJMP', 'emscripten')
     self.set_setting('DEFAULT_TO_CXX') # See comments on @with_all_eh_sjlj
-    for disable_catching in [0, 1]:
+    for disable_catching in (0, 1):
       self.set_setting('DISABLE_EXCEPTION_CATCHING', disable_catching)
       self.do_core_test('test_longjmp.c')
     # Wasm SjLj with and without Wasm EH support
@@ -888,7 +888,7 @@ base align: 0, 0, 0, 0'''])
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('Wasm EH does not work with asan yet')
     self.emcc_args.append('-fwasm-exceptions')
-    for arg in ['-fwasm-exceptions', '-fno-exceptions']:
+    for arg in ('-fwasm-exceptions', '-fno-exceptions'):
       self.do_core_test('test_longjmp.c', emcc_args=[arg])
     # Wasm SjLj with and with new EH (exnref) support
     self.set_setting('WASM_EXNREF')
@@ -931,7 +931,7 @@ base align: 0, 0, 0, 0'''])
     self.do_core_test('test_longjmp_exc.c', assert_returncode=NON_ZERO)
 
   def test_longjmp_throw(self):
-    for disable_throw in [0, 1]:
+    for disable_throw in (0, 1):
       print(disable_throw)
       self.set_setting('DISABLE_EXCEPTION_CATCHING', disable_throw)
       self.do_core_test('test_longjmp_throw.cpp')
@@ -962,7 +962,7 @@ base align: 0, 0, 0, 0'''])
         return 0;
       }
     '''
-    for num in [1, 5, 20, 1000]:
+    for num in (1, 5, 20, 1000):
       print('NUM=%d' % num)
       self.do_run(src.replace('NUM', str(num)), '0\n' * num)
 
@@ -1015,7 +1015,7 @@ int main()
     self.maybe_closure()
     # Emscripten EH with and without Emscripten SjLj support
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    for support_longjmp in [0, 'emscripten']:
+    for support_longjmp in (0, 'emscripten'):
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
       self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
     # Wasm EH with and without Wasm SjLj support
@@ -1026,18 +1026,18 @@ int main()
     if '-fsanitize=address' in self.emcc_args:
       self.skipTest('Wasm EH does not work with asan yet')
     self.emcc_args.append('-fwasm-exceptions')
-    for support_longjmp in [0, 'wasm']:
+    for support_longjmp in (0, 'wasm'):
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
       self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
     # Wasm new EH (exnref) with and without Wasm SjLj support
     self.set_setting('WASM_EXNREF')
-    for support_longjmp in [0, 'wasm']:
+    for support_longjmp in (0, 'wasm'):
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
       self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
 
   def test_exceptions_off(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING')
-    for support_longjmp in [0, 1]:
+    for support_longjmp in (0, 1):
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
       self.do_runf('core/test_exceptions.cpp', assert_returncode=NON_ZERO)
 
@@ -1047,7 +1047,7 @@ int main()
     self.maybe_closure()
     self.set_setting('MINIMAL_RUNTIME')
     self.emcc_args += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    for support_longjmp in [0, 1]:
+    for support_longjmp in (0, 1):
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
@@ -1102,7 +1102,7 @@ int main()
 
   @with_all_eh_sjlj
   def test_exceptions_2(self):
-    for safe in [0, 1]:
+    for safe in (0, 1):
       print(safe)
       if safe and '-fsanitize=address' in self.emcc_args:
         # Can't use safe heap with ASan
@@ -1632,7 +1632,7 @@ int main() {
   def test_segfault(self):
     self.set_setting('SAFE_HEAP')
 
-    for addr in ['get_null()', 'new D2()']:
+    for addr in ('get_null()', 'new D2()'):
       print(addr)
       src = r'''
         #include <stdio.h>
@@ -5291,7 +5291,7 @@ Have even and odd!
 
   def test_sscanf_2(self):
     # doubles
-    for ftype in ['float', 'double']:
+    for ftype in ('float', 'double'):
       src = r'''
           #include <stdio.h>
 
@@ -5937,7 +5937,7 @@ Module.onRuntimeInitialized = () => {
   def test_unistd_access(self):
     self.uses_es6 = True
     orig_compiler_opts = self.emcc_args.copy()
-    for fs in ['MEMFS', 'NODEFS']:
+    for fs in ('MEMFS', 'NODEFS'):
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if self.get_setting('WASMFS'):
         if fs == 'NODEFS':
@@ -6089,7 +6089,7 @@ Module.onRuntimeInitialized = () => {
   @also_with_wasm_bigint
   def test_unistd_io(self):
     orig_compiler_opts = self.emcc_args.copy()
-    for fs in ['MEMFS', 'NODEFS']:
+    for fs in ('MEMFS', 'NODEFS'):
       self.clear()
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
@@ -6921,7 +6921,7 @@ void* operator new(size_t size) {
     # (but without the specific output, as it is logging the actual locals
     # used and so forth, which will change between opt modes and updates of
     # llvm etc.)
-    for msg in ['log_execution', 'get_i32', 'set_i32', 'load_ptr', 'load_val', 'store_ptr', 'store_val']:
+    for msg in ('log_execution', 'get_i32', 'set_i32', 'load_ptr', 'load_val', 'store_ptr', 'store_val'):
       self.assertIn(msg, output)
 
   ### Integration tests

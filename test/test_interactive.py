@@ -234,7 +234,7 @@ class interactive(BrowserCore):
   # Test that event backproxying works.
   def test_html5_callbacks_on_calling_thread(self):
     # TODO: Make this automatic by injecting mouse event in e.g. shell html file.
-    for args in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
+    for args in ([], ['-DTEST_SYNC_BLOCKING_LOOP=1']):
       self.btest('html5_callbacks_on_calling_thread.c', expected='1', args=args + ['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Test that it is possible to register HTML5 event callbacks on either main browser thread, or
@@ -261,7 +261,7 @@ class interactive(BrowserCore):
   # Tests that WebGL can be run on another thread after first having run it on one thread (and that thread has exited). The intent of this is to stress graceful deinit semantics, so that it is not possible to "taint" a Canvas
   # to a bad state after a rendering thread in a program quits and restarts. (perhaps e.g. between level loads, or subsystem loads/restarts or something like that)
   def test_webgl_offscreen_canvas_in_two_pthreads(self):
-    for args in [['-sOFFSCREENCANVAS_SUPPORT', '-DTEST_OFFSCREENCANVAS=1'], ['-sOFFSCREEN_FRAMEBUFFER']]:
+    for args in (['-sOFFSCREENCANVAS_SUPPORT', '-DTEST_OFFSCREENCANVAS=1'], ['-sOFFSCREEN_FRAMEBUFFER']):
       self.btest('gl_in_two_pthreads.cpp', expected='1', args=args + ['-pthread', '-lGL', '-sGL_DEBUG', '-sPROXY_TO_PTHREAD'])
 
   # Tests creating a Web Audio context using Emscripten library_webaudio.js feature.

@@ -1722,7 +1722,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
            'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', emcc_args=extra_args)
 
     extra_args = []
-    for libname in ['liba', 'libb', 'libc']:
+    for libname in ('liba', 'libb', 'libc'):
       extra_args += ['--embed-file', libname + so]
     do_run(r'''
       #include <assert.h>

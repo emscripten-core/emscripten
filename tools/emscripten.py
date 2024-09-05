@@ -82,7 +82,7 @@ def maybe_disable_filesystem(imports):
   not including the filesystem would mean not including the full JS libraries, and the same for
   MAIN_MODULE=1 since a side module might need the filesystem.
   """
-  if any(settings[s] for s in ['FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY']):
+  if any(settings[s] for s in ('FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY')):
     return
   if settings.MAIN_MODULE == 1:
     return
@@ -95,7 +95,7 @@ def maybe_disable_filesystem(imports):
     syscall_prefixes = ('__syscall_', 'fd_')
     side_module_imports = [shared.demangle_c_symbol_name(s) for s in settings.SIDE_MODULE_IMPORTS]
     all_imports = set(imports).union(side_module_imports)
-    syscalls = {d for d in all_imports if d.startswith(syscall_prefixes) or d in ['path_open']}
+    syscalls = {d for d in all_imports if d.startswith(syscall_prefixes) or d == 'path_open'}
     # check if the only filesystem syscalls are in: close, ioctl, llseek, write
     # (without open, etc.. nothing substantial can be done, so we can disable
     # extra filesystem support in that case)
