@@ -4,10 +4,10 @@
  * SPDX-License-Identifier: MIT
  */
 
-#if ASSERTIONS
 
+#if (ASSERTIONS || ENVIRONMENT_MAY_BE_NODE) && !SUPPORT_BIG_ENDIAN
 // Endianness check
-#if !SUPPORT_BIG_ENDIAN
+// Note that s390 node *occasionally* pops up and is big-endian.
 (function() {
   var h16 = new Int16Array(1);
   var h8 = new Int8Array(h16.buffer);
@@ -15,6 +15,8 @@
   if (h8[0] !== 0x73 || h8[1] !== 0x63) throw 'Runtime error: expected the system to be little-endian! (Run with -sSUPPORT_BIG_ENDIAN to bypass)';
 })();
 #endif
+
+#if ASSERTIONS
 
 function legacyModuleProp(prop, newName, incoming=true) {
   if (!Object.getOwnPropertyDescriptor(Module, prop)) {
