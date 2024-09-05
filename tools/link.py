@@ -2640,7 +2640,7 @@ def generate_html(target, options, js_target, target_basename, wasm_target):
 
 def generate_worker_js(target, js_target, target_basename):
   if settings.SINGLE_FILE:
-    # compiler output is embedded as base64
+    # compiler output is embedded as base64 data URL
     proxy_worker_filename = get_subresource_location(js_target)
   else:
     # compiler output goes in .worker.js file
@@ -2655,7 +2655,7 @@ def generate_worker_js(target, js_target, target_basename):
 def worker_js_script(proxy_worker_filename):
   web_gl_client_src = read_file(utils.path_from_root('src/webGLClient.js'))
   proxy_client_src = shared.read_and_preprocess(utils.path_from_root('src/proxyClient.js'), expand_macros=True)
-  if not os.path.dirname(proxy_worker_filename):
+  if not settings.SINGLE_FILE and not os.path.dirname(proxy_worker_filename):
     proxy_worker_filename = './' + proxy_worker_filename
   proxy_client_src = do_replace(proxy_client_src, '<<< filename >>>', proxy_worker_filename)
   return web_gl_client_src + '\n' + proxy_client_src

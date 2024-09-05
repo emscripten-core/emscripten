@@ -120,23 +120,12 @@ if (typeof window != 'undefined') {
 
 var frameId = 0;
 
-// Temporarily handling this at run-time pending Python preprocessor support
-
-var SUPPORT_BASE64_EMBEDDING;
-
 // Worker
 
 var filename;
 filename ||= '<<< filename >>>';
 
-var workerURL = filename;
-if (SUPPORT_BASE64_EMBEDDING) {
-  var fileBytes = tryParseAsDataURI(filename);
-  if (fileBytes) {
-    workerURL = URL.createObjectURL(new Blob([fileBytes], {type: 'application/javascript'}));
-  }
-}
-var worker = new Worker(workerURL);
+var worker = new Worker(filename);
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
@@ -166,7 +155,6 @@ worker.onmessage = (event) => {
   if (!workerResponded) {
     workerResponded = true;
     Module.setStatus?.('');
-    if (SUPPORT_BASE64_EMBEDDING && workerURL !== filename) URL.revokeObjectURL(workerURL);
   }
 
   var data = event.data;
