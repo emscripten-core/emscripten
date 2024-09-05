@@ -21,6 +21,18 @@ EM_BOOL WebSocketOpen(int eventType, const EmscriptenWebSocketOpenEvent *e, void
 
 EM_BOOL WebSocketClose(int eventType, const EmscriptenWebSocketCloseEvent *e, void *userData) {
   printf("close(socket=%d, eventType=%d, wasClean=%d, code=%d, reason=%s, userData=%p)\n", e->socket, eventType, e->wasClean, e->code, e->reason, userData);
+  assert(e->wasClean == 1);
+  assert(e->code == 1005 /* No Status Rcvd */);
+  emscripten_websocket_delete(e->socket);
+  if (e->socket == sock1) {
+    sock1 = 0;
+  } else if (e->socket == sock2) {
+    sock2 = 0;
+  }
+  // Once both sockets have been closed we are done.
+  if (!sock1 && !sock2) {
+    emscripten_force_exit(0);
+  }
   return 0;
 }
 
@@ -49,17 +61,6 @@ EM_BOOL WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e
   }
   printf("\n");
   emscripten_websocket_close(e->socket, 0, 0);
-  emscripten_websocket_delete(e->socket);
-  if (e->socket == sock1) {
-    sock1 = 0;
-  } else {
-    sock2 = 0;
-  }
-  // Once both sockets are closed we are done.
-  if (!sock1 && !sock2) {
-    emscripten_force_exit(0);
-  }
-
   return 0;
 }
 
