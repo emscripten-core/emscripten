@@ -2572,7 +2572,8 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     script.inline = js_contents
 
   shell = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
-  shell = shell.replace('{{{ SHELL_CSS }}}', utils.read_file(utils.path_from_root('src/shell.css')))
+  if '{{{ SHELL_CSS }}}' in shell:
+    shell = shell.replace('{{{ SHELL_CSS }}}', utils.read_file(utils.path_from_root('src/shell.css')))
   if '{{{ SHELL_LOGO }}}' in shell:
     logo_filename = utils.path_from_root('media/powered_by_logo_shell.png')
     logo_b64 = base64_encode(logo_filename)
