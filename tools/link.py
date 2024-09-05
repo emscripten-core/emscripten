@@ -33,7 +33,7 @@ from . import system_libs
 from . import utils
 from . import webassembly
 from . import extract_metadata
-from .utils import read_file, read_binary, write_file, delete_file
+from .utils import read_file, write_file, delete_file
 from .utils import removeprefix, exit_with_error
 from .shared import in_temp, safe_copy, do_replace, OFormat
 from .shared import DEBUG, WINDOWS, DYNAMICLIB_ENDINGS, STATICLIB_ENDINGS
@@ -144,8 +144,9 @@ def save_intermediate_with_wasm(name, wasm_binary):
   building.save_intermediate(wasm_binary, name + '.wasm')
 
 
-def base64_encode(b):
-  b64 = base64.b64encode(b)
+def base64_encode(filename):
+  data = utils.read_binary(filename)
+  b64 = base64.b64encode(data)
   return b64.decode('ascii')
 
 
@@ -2327,7 +2328,7 @@ def phase_binaryen(target, options, wasm_target):
     js = read_file(final_js)
 
     if settings.MINIMAL_RUNTIME:
-      js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(read_binary(wasm_target)))
+      js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(wasm_target))
     else:
       js = do_replace(js, '<<< WASM_BINARY_FILE >>>', get_subresource_location(wasm_target))
     delete_file(wasm_target)
@@ -2569,9 +2570,9 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
 
   shell = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
   shell = shell.replace('{{{ SHELL_CSS }}}', utils.read_file(utils.path_from_root('src/shell.css')))
-  shell_logo = utils.read_binary(utils.path_from_root('media/powered_by_logo_shell.png'))
-  shell_logo_b64 = base64_encode(shell_logo)
-  shell = shell.replace('{{{ SHELL_LOGO }}}', f'<img id="emscripten_logo" src="data:image/png;base64,{shell_logo_b64}">')
+  logo_filename = utils.path_from_root('media/powered_by_logo_shell.png')
+  logo_b64 = base64_encode(logo_filename)
+  shell = shell.replace('{{{ SHELL_LOGO }}}', f'<img id="emscripten_logo" src="data:image/png;base64,{logo_b64}">')
 
   check_output_file(target)
   write_file(target, shell)
@@ -2972,8 +2973,7 @@ def move_file(src, dst):
 # Returns the subresource location for run-time access
 def get_subresource_location(path):
   if settings.SINGLE_FILE:
-    data = base64.b64encode(utils.read_binary(path))
-    return 'data:application/octet-stream;base64,' + data.decode('ascii')
+    return 'data:application/octet-stream;base64,' + base64_encode(path)
   else:
     return os.path.basename(path)
 
