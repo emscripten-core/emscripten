@@ -125,14 +125,7 @@ var frameId = 0;
 var filename;
 filename ||= '<<< filename >>>';
 
-var workerURL = filename;
-#if SUPPORT_BASE64_EMBEDDING
-var fileBytes = tryParseAsDataURI(filename);
-if (fileBytes) {
-  workerURL = URL.createObjectURL(new Blob([fileBytes], {type: 'application/javascript'}));
-}
-#endif
-var worker = new Worker(workerURL);
+var worker = new Worker(filename);
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
@@ -162,9 +155,6 @@ worker.onmessage = (event) => {
   if (!workerResponded) {
     workerResponded = true;
     Module.setStatus?.('');
-#if SUPPORT_BASE64_EMBEDDING
-    if (workerURL !== filename) URL.revokeObjectURL(workerURL);
-#endif
   }
 
   var data = event.data;
