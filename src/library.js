@@ -1966,25 +1966,26 @@ addToLibrary({
   $setWasmTableEntry__internal: true,
   $setWasmTableEntry__deps: ['$wasmTableMirror', '$wasmTable'],
   $setWasmTableEntry: (idx, func) => {
-    wasmTable.set(idx, func);
+    wasmTable.set({{{ toIndexType('idx') }}}, func);
     // With ABORT_ON_WASM_EXCEPTIONS wasmTable.get is overridden to return wrapped
     // functions so we need to call it here to retrieve the potential wrapper correctly
     // instead of just storing 'func' directly into wasmTableMirror
-    wasmTableMirror[idx] = wasmTable.get(idx);
+    wasmTableMirror[idx] = wasmTable.get({{{ toIndexType('idx') }}});
   },
 
   $getWasmTableEntry__internal: true,
   $getWasmTableEntry__deps: ['$wasmTableMirror', '$wasmTable'],
   $getWasmTableEntry: (funcPtr) => {
 #if MEMORY64
-    // Function pointers are 64-bit, but wasmTable.get() requires a Number.
+    // Function pointers should show up as numbers, even under wasm64, but
+    // we still have some places where bigint values can flow here.
     // https://github.com/emscripten-core/emscripten/issues/18200
     funcPtr = Number(funcPtr);
 #endif
     var func = wasmTableMirror[funcPtr];
     if (!func) {
       if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
-      wasmTableMirror[funcPtr] = func = wasmTable.get(funcPtr);
+      wasmTableMirror[funcPtr] = func = wasmTable.get({{{ toIndexType('funcPtr') }}});
 #if ASYNCIFY == 2
       if (Asyncify.isAsyncExport(func)) {
         wasmTableMirror[funcPtr] = func = Asyncify.makeAsyncFunction(func);
@@ -1992,7 +1993,7 @@ addToLibrary({
 #endif
     }
 #if ASSERTIONS && ASYNCIFY != 2 // With JSPI the function stored in the table will be a wrapper.
-    assert(wasmTable.get(funcPtr) == func, 'JavaScript-side Wasm function table mirror is out of date!');
+    assert(wasmTable.get({{{ toIndexType('funcPtr') }}}) == func, 'JavaScript-side Wasm function table mirror is out of date!');
 #endif
     return func;
   },
@@ -2000,7 +2001,7 @@ addToLibrary({
 #else
 
   $setWasmTableEntry__deps: ['$wasmTable'],
-  $setWasmTableEntry: (idx, func) => wasmTable.set(idx, func),
+  $setWasmTableEntry: (idx, func) => wasmTable.set({{{ toIndexType('idx') }}}, func),
 
   $getWasmTableEntry__deps: ['$wasmTable'],
   $getWasmTableEntry: (funcPtr) => {
@@ -2391,9 +2392,9 @@ addToLibrary({
 #if RELOCATABLE
   // In RELOCATABLE mode we create the table in JS.
   $wasmTable: `=new WebAssembly.Table({
-  'initial': {{{ INITIAL_TABLE }}},
+  'initial': {{{ toIndexType(INITIAL_TABLE) }}},
 #if !ALLOW_TABLE_GROWTH
-  'maximum': {{{ INITIAL_TABLE }}},
+  'maximum': {{{ toIndexType(INITIAL_TABLE) }}},
 #endif
 #if MEMORY64 == 1
   'index': 'i64',

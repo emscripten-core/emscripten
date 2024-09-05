@@ -867,7 +867,10 @@ jobs:
       - install-emsdk
       - run-tests-firefox:
           title: "browser64"
-          test_targets: "browser64.test_sdl_image"
+          test_targets: "
+            browser64.test_sdl_image
+            browser64.test_dylink_many
+            "
   # TODO(sbc): Re-enable once we figure out why the emrun tests are
   # locking up.
   #test-browser-chrome-emrun:
