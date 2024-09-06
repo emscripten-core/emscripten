@@ -7975,25 +7975,29 @@ void* operator new(size_t size) {
         atexit(cleanup); // this atexit should still be called
         printf("hello, world!\n");
         // Unusual exit status to make sure it's working!
-        #ifdef CAPITAL_EXIT
-          _Exit(118);
+        #if defined(NORMAL_EXIT)
+          exit(117);
         #elif defined(UNDER_EXIT)
           _exit(118);
-        #elif defined(NORMAL_EXIT)
-          exit(118);
+        #elif defined(CAPITAL_EXIT)
+          _Exit(119);
         #endif
       }
     ''')
     create_file('pre.js', '''
-      Module.onExit = () => out('I see exit status: ' + EXITSTATUS);
+      Module.onExit = (status) => {
+        out('I see exit status: ' + status);
+        // The EXITSTATUS global should match what we are passed
+        assert(status == EXITSTATUS);
+      };
     ''')
     self.emcc_args += ['--pre-js', 'pre.js']
     print('.. exit')
-    self.do_runf('exit.c', 'hello, world!\ncleanup\nI see exit status: 118', assert_returncode=118, emcc_args=['-DNORMAL_EXIT'])
+    self.do_runf('exit.c', 'hello, world!\ncleanup\nI see exit status: 117', assert_returncode=117, emcc_args=['-DNORMAL_EXIT'])
     print('.. _exit')
     self.do_runf('exit.c', 'hello, world!\nI see exit status: 118', assert_returncode=118, emcc_args=['-DUNDER_EXIT'])
     print('.. _Exit')
-    self.do_runf('exit.c', 'hello, world!\nI see exit status: 118', assert_returncode=118, emcc_args=['-DCAPITAL_EXIT'])
+    self.do_runf('exit.c', 'hello, world!\nI see exit status: 119', assert_returncode=119, emcc_args=['-DCAPITAL_EXIT'])
 
   def test_minmax(self):
     self.do_runf('test_minmax.c', 'NAN != NAN\nSuccess!')
