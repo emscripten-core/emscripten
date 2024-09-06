@@ -554,6 +554,7 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
     dbg(`cleanupThread: ${ptrToString(pthread_ptr)}`)
 #endif
+    if (!PThread.pthreads[pthread_ptr]) return;
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! cleanupThread() can only ever be called from main application thread!');
     assert(pthread_ptr, 'Internal Error! Null pthread_ptr in cleanupThread!');
@@ -1094,11 +1095,8 @@ var LibraryPThread = {
       // emscripten_unwind_to_js_event_loop() in the pthread body.
       __emscripten_thread_exit(result);
 #else
-      if (keepRuntimeAlive()) {
-        EXITSTATUS = result;
-      } else {
-        __emscripten_thread_exit(result);
-      }
+      EXITSTATUS = result;
+      maybeExit();
 #endif
     }
 #if ASYNCIFY == 2

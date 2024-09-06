@@ -388,7 +388,6 @@ class TestCoreBase(RunnerCore):
   @node_pthreads
   def test_hello_argc_pthreads(self):
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_hello_argc.c', args=['hello', 'world'])
 
   @only_wasm2js('test shifts etc. on 64-bit integers')
@@ -1300,7 +1299,8 @@ int main(int argc, char **argv) {
   def test_exceptions_typed(self):
     # Depends on static destructors running
     self.set_setting('EXIT_RUNTIME')
-    self.clear_setting('SAFE_HEAP') # Throwing null will cause an ignorable null pointer access.
+    if self.get_setting('SAFE_HEAP'):
+      self.skipTest('Throwing null will cause an ignorable null pointer access')
     self.do_core_test('test_exceptions_typed.cpp')
 
   @with_all_eh_sjlj
@@ -1318,7 +1318,8 @@ int main(int argc, char **argv) {
 
   @with_all_eh_sjlj
   def test_exceptions_std(self):
-    self.clear_setting('SAFE_HEAP')
+    if self.get_setting('SAFE_HEAP'):
+      self.skipTest('Fails under SAFE_HEAP')
     self.do_core_test('test_exceptions_std.cpp')
 
   @with_all_eh_sjlj
@@ -1871,7 +1872,7 @@ int main(int argc, char **argv) {
   # they will also get tested in MAIN_THREAD_EM_ASM form.
   @parameterized({
     '': ([],),
-    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
   })
   def test_main_thread_em_asm(self, args):
     if args:
@@ -1933,8 +1934,8 @@ int main(int argc, char **argv) {
 
   @parameterized({
     '': ([], False),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], False),
-    'pthreads_dylink': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-sMAIN_MODULE=2', '-Wno-experimental'], False),
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'], False),
+    'pthreads_dylink': (['-pthread', '-sPROXY_TO_PTHREAD', '-sMAIN_MODULE=2', '-Wno-experimental'], False),
     'c': ([], True),
     'dylink': (['-sMAIN_MODULE=2'], False),
     'dylink_c': (['-sMAIN_MODULE=2'], True),
@@ -2500,7 +2501,6 @@ The current type of b is: 9
   @node_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/19795')
   def test_pthread_proxying_refcount(self):
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('PTHREAD_POOL_SIZE=1')
     self.set_setting('ASSERTIONS=0')
     self.do_run_in_out_file_test('pthread/test_pthread_proxying_refcount.c')
@@ -2524,7 +2524,6 @@ The current type of b is: 9
   @node_pthreads
   def test_pthread_thread_local_storage(self):
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '300mb')
     self.do_run_in_out_file_test('pthread/test_pthread_thread_local_storage.cpp')
@@ -2574,7 +2573,6 @@ The current type of b is: 9
   def test_pthread_emmalloc(self):
     self.emcc_args += ['-fno-builtin']
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('ASSERTIONS', 2)
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('test_emmalloc.c')
@@ -2589,7 +2587,6 @@ The current type of b is: 9
   @node_pthreads
   def test_pthread_proxy_to_pthread(self):
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('pthread/test_pthread_proxy_to_pthread.c')
 
   @node_pthreads
@@ -2606,7 +2603,6 @@ The current type of b is: 9
     # Run the test again with PROXY_TO_PTHREAD
     self.setup_node_pthreads()
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     self.do_runf('pthread/test_pthread_run_script.c')
 
   @node_pthreads
@@ -2903,7 +2899,7 @@ The current type of b is: 9
   @needs_dylink
   @parameterized({
     '': ([],),
-    'pthreads': (['-pthread', '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-Wno-experimental'],),
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-Wno-experimental'],),
   })
   def test_dlfcn_basic(self, args):
     if args:
@@ -6471,7 +6467,6 @@ void* operator new(size_t size) {
     # Same test with threading enabled so give is some basic sanity
     # checks of the locking on the internal data structures.
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '64mb')
     self.do_core_test('test_mmap_anon.c')
@@ -7364,7 +7359,7 @@ void* operator new(size_t size) {
     self.emcc_args += [
       '-lembind', '--post-js', 'post.js',
       # for extra coverage, test using pthreads
-      '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'
+      '-pthread', '-sPROXY_TO_PTHREAD'
     ]
     create_file('post.js', '''
       function printLerp() {
@@ -8314,7 +8309,6 @@ Module.onRuntimeInitialized = () => {
     self.require_jspi()
     self.do_runf('core/test_pthread_join_and_asyncify.c', 'joining thread!\njoined thread!',
                  emcc_args=['-sJSPI_EXPORTS=run_thread',
-                            '-sEXIT_RUNTIME=1',
                             '-pthread', '-sPROXY_TO_PTHREAD'])
 
   @no_asan('asyncify stack operations confuse asan')
@@ -9109,7 +9103,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @parameterized({
     '': ([],),
     'pooled': (['-sPTHREAD_POOL_SIZE=1'],),
-    'proxied': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+    'proxied': (['-sPROXY_TO_PTHREAD'],),
   })
   def test_pthread_c11_threads(self, args):
     self.emcc_args += args
@@ -9155,7 +9149,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_create_proxy(self):
     # with PROXY_TO_PTHREAD, we can synchronously depend on workers being available
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     self.emcc_args += ['-DALLOW_SYNC']
     self.do_run_in_out_file_test('core/pthread/create.c')
 
@@ -9206,7 +9199,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
   def test_pthread_offset_converter(self):
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_OFFSET_CONVERTER')
     if '-g' in self.emcc_args:
       self.emcc_args += ['-DDEBUG']
@@ -9216,7 +9208,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
   def test_pthread_offset_converter_modularize(self):
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('USE_OFFSET_CONVERTER')
     self.set_setting('MODULARIZE')
     self.set_setting('EXPORT_NAME', 'foo')
@@ -9250,7 +9241,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_dylink_basics(self):
     self.emcc_args.append('-Wno-experimental')
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     self.do_basic_dylink_test()
 
   @needs_dylink
@@ -9293,6 +9283,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
     self.emcc_args += ['--embed-file', 'liblib.so@libside.so']
     self.prep_dlfcn_main()
+    # Test depends on atexit()
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
     self.do_runf('core/pthread/test_pthread_dlopen.c',
@@ -9312,6 +9303,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       shutil.copyfile('liblib.so', f'liblib{i}.so')
 
     self.prep_dlfcn_main()
+    # Test depends on atexit()
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', 'jslib_func')
@@ -9334,7 +9326,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlsym_side.c'))
 
     self.prep_dlfcn_main()
-    self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
     self.do_runf('core/pthread/test_pthread_dlsym.c')
 
@@ -9361,7 +9352,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @parameterized({
     '': ([],),
-    'pthreads': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-pthread', '-Wno-experimental'],)
+    'pthreads': (['-sPROXY_TO_PTHREAD', '-pthread', '-Wno-experimental'],)
   })
   @with_dylink_reversed
   def test_Module_dynamicLibraries(self, args):
@@ -9514,7 +9505,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_abort_on_exceptions_pthreads(self):
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_hello_world.c')
 
   @needs_dylink

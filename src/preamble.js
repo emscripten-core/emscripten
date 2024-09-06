@@ -552,7 +552,7 @@ function makeAbortWrapper(original) {
         || e === Infinity // EXCEPTION_STACK_TRACES=0 will throw Infinity
 #endif // EXCEPTION_STACK_TRACES
 #endif
-        || e === 'unwind'
+        || (e instanceof ExitStatus || e == 'unwind')
       ) {
         throw e;
       }

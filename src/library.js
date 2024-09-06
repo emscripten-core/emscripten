@@ -85,6 +85,7 @@ addToLibrary({
 #endif
 #if PTHREADS
     '$exitOnMainThread',
+    '_emscripten_thread_cleanup',
 #endif
 #if PTHREADS_DEBUG
     '$runtimeKeepaliveCounter',
@@ -111,6 +112,17 @@ addToLibrary({
       // The pthread may have decided not to exit its own runtime, for example
       // because it runs a main loop, but that doesn't affect the main thread.
       exitOnMainThread(status);
+#if !EXIT_RUNTIME
+      // When EXIT_RUNTIME is enabled the main thread will take care of shutting
+      // down the runtime, and killing all the workers/threads.
+      // However when EXIT_RUNTIME is not enabled we don't want the existence
+      // of this running thread to prevent node from exiting, so we use
+      // `__emscripten_thread_cleanup` to take outselves out of the list of
+      // running threads, but without making outselves joinable.
+      if (!keepRuntimeAlive()) {
+        __emscripten_thread_cleanup(_pthread_self())
+      }
+#endif
       throw 'unwind';
     }
 #if PTHREADS_DEBUG
@@ -127,7 +139,7 @@ addToLibrary({
 #if ASSERTIONS
     // if exit() was called explicitly, warn the user if the runtime isn't actually being shut down
     if (keepRuntimeAlive() && !implicit) {
-      var msg = `program exited (with status: ${status}), but keepRuntimeAlive() is set (counter=${runtimeKeepaliveCounter}) due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)`;
+      var msg = `program exited (with status: ${status}), but keepRuntimeAlive() is set (counter=${runtimeKeepaliveCounter}), so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)`;
 #if MODULARIZE
       readyPromiseReject(msg);
 #endif // MODULARIZE
@@ -2217,7 +2229,7 @@ addToLibrary({
     }
 #endif
 #if RUNTIME_DEBUG
-    dbg(`maybeExit: user callback done: runtimeKeepaliveCounter=${runtimeKeepaliveCounter}`);
+    dbg(`maybeExit: runtimeKeepaliveCounter=${runtimeKeepaliveCounter}`);
 #endif
     if (!keepRuntimeAlive()) {
 #if RUNTIME_DEBUG

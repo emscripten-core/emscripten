@@ -219,7 +219,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
             throw ex;
           }
 #if RUNTIME_DEBUG
-          dbg(`worker: Pthread 0x${_pthread_self().toString(16)} completed its main entry point with an 'unwind', keeping the worker alive for asynchronous operation.`);
+          dbg(`worker: pthread completed its main entry point with an 'unwind'`);
 #endif
         }
       } else if (msgData.target === 'setimmediate') {
