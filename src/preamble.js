@@ -430,7 +430,6 @@ function abort(what) {
   err(what);
 
   ABORT = true;
-  EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
   what += '. Build with -sASSERTIONS for more info.';
