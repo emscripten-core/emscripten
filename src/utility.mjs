@@ -27,7 +27,7 @@ export function dump(item) {
       item.funcData = null;
     }
     return '// ' + JSON.stringify(item, null, '  ').replace(/\n/g, '\n// ');
-  } catch (e) {
+  } catch {
     const ret = [];
     for (const [i, j] of Object.entries(item)) {
       if (typeof j == 'string' || typeof j == 'number') {
