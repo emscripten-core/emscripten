@@ -122,9 +122,12 @@ let LibraryWebAudio = {
   },
 
 #if AUDIO_WORKLET
+  // emscripten_start_wasm_audio_worklet_thread_async() doesn't use stackAlloc,
+  // etc., but the created worklet does.
   emscripten_start_wasm_audio_worklet_thread_async__deps: [
     '$_wasmWorkersID',
-    '$_EmAudioDispatchProcessorCallback'],
+    '$_EmAudioDispatchProcessorCallback',
+    '$stackAlloc', '$stackRestore', '$stackSave'],
   emscripten_start_wasm_audio_worklet_thread_async: (contextHandle, stackLowestAddress, stackSize, callback, userData) => {
 
 #if ASSERTIONS
