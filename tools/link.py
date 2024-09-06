@@ -2711,11 +2711,13 @@ def map_to_js_libs(library_name):
     # This is the name of GNU's C++ standard library. We ignore it here
     # for compatibility with GNU toolchains.
     'stdc++': [],
+    'SDL2_mixer': [],
   }
   settings_map = {
     'glfw': {'USE_GLFW': 2},
     'glfw3': {'USE_GLFW': 3},
     'SDL': {'USE_SDL': 1},
+    'SDL2_mixer': {'USE_SDL_MIXER': 2},
   }
 
   if library_name in settings_map:
@@ -2731,26 +2733,6 @@ def map_to_js_libs(library_name):
     return [f'library_{library_name}']
 
   return None
-
-
-# Map a linker flag to a settings. This lets a user write -lSDL2 and it will
-# have the same effect as -sUSE_SDL=2.
-def map_and_apply_to_settings(library_name):
-  # most libraries just work, because the -l name matches the name of the
-  # library we build. however, if a library has variations, which cause us to
-  # build multiple versions with multiple names, then we need this mechanism.
-  library_map = {
-    # SDL2_mixer's built library name contains the specific codecs built in.
-    'SDL2_mixer': [('USE_SDL_MIXER', 2)],
-  }
-
-  if library_name in library_map:
-    for key, value in library_map[library_name]:
-      logger.debug('Mapping library `%s` to settings changes: %s = %s' % (library_name, key, value))
-      setattr(settings, key, value)
-    return True
-
-  return False
 
 
 def process_libraries(state, linker_inputs):
@@ -2781,9 +2763,6 @@ def process_libraries(state, linker_inputs):
       continue
 
     if js_libs is not None:
-      continue
-
-    if map_and_apply_to_settings(lib):
       continue
 
     path = None
