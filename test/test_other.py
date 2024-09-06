@@ -393,7 +393,7 @@ class other(RunnerCore):
                       test_file('hello_world.c'), '--closure=1'])
     src = read_file('hello_world.mjs')
     self.assertContained('new URL("hello_world.wasm", import.meta.url)', src)
-    self.assertContained('_in_out_file_testello, world!', self.run_js('hello_world.mjs'))
+    self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
   def test_emcc_output_mjs_web_no_import_meta(self):
     # Ensure we don't emit import.meta.url at all for:
