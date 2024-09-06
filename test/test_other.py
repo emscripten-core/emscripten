@@ -15141,3 +15141,12 @@ addToLibrary({
   def test_fs_writev_partial_write(self):
     self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test('fs/test_writev_partial_write.c')
+
+  @requires_v8
+  def test_fp16(self):
+    self.v8_args += ['--experimental-wasm-fp16']
+    # TODO Remove this. Liftoff is currently broken for this test.
+    self.v8_args += ['--no-liftoff']
+    # TODO Test this in a different optimization mode. Only O2 currently works.
+    self.emcc_args = ['-msimd128', '-mfp16', '-O2', '-sENVIRONMENT=shell']
+    self.do_runf('test_fp16.c')
