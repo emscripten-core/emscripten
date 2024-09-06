@@ -393,7 +393,7 @@ class other(RunnerCore):
                       test_file('hello_world.c'), '--closure=1'])
     src = read_file('hello_world.mjs')
     self.assertContained('new URL("hello_world.wasm", import.meta.url)', src)
-    self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
+    self.assertContained('_in_out_file_testello, world!', self.run_js('hello_world.mjs'))
 
   def test_emcc_output_mjs_web_no_import_meta(self):
     # Ensure we don't emit import.meta.url at all for:
@@ -2031,7 +2031,7 @@ Module['postRun'] = () => {
     self.assertEqual(self.run_js('a.out.js').strip(), '')
 
   def test_dylink_strict(self):
-    self.do_runf('hello_world.c', 'hello, world!', emcc_args=['-sSTRICT', '-sMAIN_MODULE=1'])
+    self.do_run_in_out_file_test('hello_world.c', emcc_args=['-sSTRICT', '-sMAIN_MODULE=1'])
 
   def test_dylink_exceptions_and_assetions(self):
     # Linking side modules using the STL and exceptions should not abort with
@@ -4495,7 +4495,7 @@ addToLibrary({
 });
 ''')
 
-    self.do_runf('hello_world.c', 'hello, world!', emcc_args=['--js-library', 'lib.js'])
+    self.do_run_in_out_file_test('hello_world.c', emcc_args=['--js-library', 'lib.js'])
 
   def test_js_lib_proxying(self):
     # Regression test for a bug we had where jsifier would find and use
@@ -11144,7 +11144,7 @@ int main () {
     # via the environment EMCC_STRICT=1 and from the command line `-sSTRICT`
     self.do_runf('hello_world.c', emcc_args=['-sSTRICT'])
     with env_modify({'EMCC_STRICT': '1'}):
-      self.do_runf('hello_world.c', 'hello, world!')
+      self.do_run_in_out_file_test('hello_world.c')
 
   def test_strict_mode_full_library(self):
     self.do_runf('hello_world.c', emcc_args=['-sSTRICT', '-sINCLUDE_FULL_LIBRARY'])
@@ -11449,23 +11449,21 @@ int main(void) {
                             '--profiling-funcs'])
 
   @parameterized({
-    '': [],
-    'sync': ['-sWASM_ASYNC_COMPILATION=0'],
+    '': ([],),
+    'sync': (['-sWASM_ASYNC_COMPILATION=0'],),
   })
-  def test_offset_converter(self, *args):
+  def test_offset_converter(self, args):
     self.set_setting('USE_OFFSET_CONVERTER')
-    self.emcc_args += ['--profiling-funcs']
-    self.do_runf('other/test_offset_converter.c', 'ok', emcc_args=list(args))
+    self.do_runf('other/test_offset_converter.c', 'ok', emcc_args=['--profiling-funcs'] + args)
 
   @parameterized({
-    '': [],
-    'sync': ['-sWASM_ASYNC_COMPILATION=0'],
+    '': ([],),
+    'sync': (['-sWASM_ASYNC_COMPILATION=0'],),
   })
   def test_offset_converter_source_map(self, *args):
     self.set_setting('USE_OFFSET_CONVERTER')
     self.set_setting('LOAD_SOURCE_MAP')
-    self.emcc_args += ['-gsource-map', '-DUSE_SOURCE_MAP']
-    self.do_runf('other/test_offset_converter.c', 'ok', emcc_args=list(args))
+    self.do_runf('other/test_offset_converter.c', 'ok', emcc_args=['-gsource-map', '-DUSE_SOURCE_MAP'] + args)
 
   @no_windows('ptys and select are not available on windows')
   def test_build_error_color(self):
@@ -12070,7 +12068,7 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
 
   @node_pthreads
   def test_pthread_relocatable(self):
-    self.do_runf('hello_world.c', 'hello, world!', emcc_args=['-sRELOCATABLE'])
+    self.do_run_in_out_file_test('hello_world.c', emcc_args=['-sRELOCATABLE'])
 
   def test_stdin_preprocess(self):
     create_file('temp.h', '#include <string>')
@@ -12653,7 +12651,7 @@ exec "$@"
       self.assertContained('WASM2JS is not compatible with relocatable output', err)
 
   def test_wasm2js_standalone(self):
-    self.do_runf('hello_world.c', 'hello, world!', emcc_args=['-sSTANDALONE_WASM', '-sWASM=0'])
+    self.do_run_in_out_file_test('hello_world.c', emcc_args=['-sSTANDALONE_WASM', '-sWASM=0'])
 
   def test_oformat(self):
     self.run_process([EMCC, test_file('hello_world.c'), '--oformat=wasm', '-o', 'out.foo'])
@@ -12897,8 +12895,7 @@ exec "$@"
   def test_shell_Oz(self):
     # regression test for -Oz working on non-web, non-node environments that
     # lack TextDecoder
-    self.emcc_args += ['-Oz']
-    self.do_runf('hello_world.c', 'hello, world!')
+    self.do_run_in_out_file_test('hello_world.c', emcc_args=['-Oz'])
 
   def test_runtime_keepalive(self):
     self.uses_es6 = True
@@ -13594,7 +13591,7 @@ Module.postRun = () => {{
     self.do_run_in_out_file_test('wasmfs/wasmfs_before_preload.c')
 
   def test_hello_world_above_2gb(self):
-    self.do_runf('hello_world.c', 'hello, world!', emcc_args=['-sGLOBAL_BASE=2GB', '-sINITIAL_MEMORY=3GB'])
+    self.do_run_in_out_file_test('hello_world.c', emcc_args=['-sGLOBAL_BASE=2GB', '-sINITIAL_MEMORY=3GB'])
 
   def test_hello_function(self):
     # hello_function.cpp is referenced/used in the docs.  This test ensures that it
@@ -13833,7 +13830,7 @@ int main() {
 
     # Try again with INCOMING_MODULE_JS_API set
     self.set_setting('INCOMING_MODULE_JS_API', 'fetchSettings')
-    self.do_runf('hello_world.c', 'hello, world')
+    self.do_run_in_out_file_test('hello_world.c')
     src = read_file('hello_world.js')
     self.assertContained("fetch(binaryFile, Module['fetchSettings'] || ", src)
 
@@ -14786,19 +14783,19 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.set_setting('EXIT_RUNTIME')
 
     # Normally, with EXIT_RUNTIME set we expect onExit to be called.
-    output = self.do_runf('hello_world.c', 'hello, world')
+    output = self.do_run_in_out_file_test('hello_world.c')
     self.assertContained(onexit_called, output)
 
     # However, if we set `Module.noExitRuntime = true`, then it should
     # not be called.
     create_file('noexit.js', 'Module.noExitRuntime = true;\n')
-    output = self.do_runf('hello_world.c', 'hello, world', emcc_args=['--pre-js=noexit.js'])
+    output = self.do_run_in_out_file_test('hello_world.c', emcc_args=['--pre-js=noexit.js'])
     self.assertNotContained(onexit_called, output)
 
     # Setting the internal `noExitRuntime` after startup should have the
     # same effect.
     create_file('noexit_oninit.js', 'Module.preRun = () => { noExitRuntime = true; }')
-    output = self.do_runf('hello_world.c', 'hello, world', emcc_args=['--pre-js=noexit_oninit.js'])
+    output = self.do_run_in_out_file_test('hello_world.c', emcc_args=['--pre-js=noexit_oninit.js'])
     self.assertNotContained(onexit_called, output)
 
   def test_noExitRuntime_deps(self):

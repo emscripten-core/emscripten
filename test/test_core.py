@@ -8713,7 +8713,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # compiler.  lsan also pulls in $FS
     if '-fsanitize=leak' not in self.emcc_args and extra_setting != 'FORCE_FILESYSTEM':
       self.maybe_closure()
-    self.do_runf('hello_world.c', 'hello, world!')
+    self.do_run_in_out_file_test('hello_world.c')
 
   # Tests that -sMINIMAL_RUNTIME works well with SAFE_HEAP
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
@@ -9011,7 +9011,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('USE_CLOSURE_COMPILER')
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.set_setting('INITIAL_MEMORY', '300mb')
-    self.do_runf('hello_world.c', expected_output='hello, world!')
+    self.do_run_in_out_file_test('hello_world.c')
 
   @no_asan('SAFE_HEAP cannot be used with ASan')
   @no_2gb('asan doesnt support GLOBAL_BASE')
