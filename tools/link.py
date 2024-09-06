@@ -301,7 +301,14 @@ def fix_windows_newlines(text):
 
 
 def read_js_files(files):
-  contents = '\n'.join(read_file(f) for f in files)
+  contents = []
+  for f in files:
+    content = read_file(f)
+    if content.startswith('#preprocess\n'):
+      contents.append(shared.read_and_preprocess(f, expand_macros=True))
+    else:
+      contents.append(content)
+  contents = '\n'.join(contents)
   return fix_windows_newlines(contents)
 
 

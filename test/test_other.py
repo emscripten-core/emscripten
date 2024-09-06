@@ -349,9 +349,8 @@ class other(RunnerCore):
     'node': (['-sENVIRONMENT=node'],),
   })
   def test_emcc_output_mjs(self, args):
-    create_file('extern-post.js', 'await Module();')
     self.run_process([EMCC, '-o', 'hello_world.mjs',
-                      '--extern-post-js', 'extern-post.js',
+                      '--extern-post-js', test_file('modularize_post_js.js'),
                       test_file('hello_world.c')] + args)
     src = read_file('hello_world.mjs')
     self.assertContained('export default Module;', src)
@@ -363,11 +362,10 @@ class other(RunnerCore):
   })
   @node_pthreads
   def test_emcc_output_worker_mjs(self, args):
-    create_file('extern-post.js', 'if (!isPthread) await Module();')
     os.mkdir('subdir')
     self.run_process([EMCC, '-o', 'subdir/hello_world.mjs',
                       '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '-O1',
-                      '--extern-post-js', 'extern-post.js',
+                      '--extern-post-js', test_file('modularize_post_js.js'),
                       test_file('hello_world.c')] + args)
     src = read_file('subdir/hello_world.mjs')
     self.assertContained("new URL('hello_world.wasm', import.meta.url)", src)
@@ -377,9 +375,8 @@ class other(RunnerCore):
 
   @node_pthreads
   def test_emcc_output_worker_mjs_single_file(self):
-    create_file('extern-post.js', 'await Module();')
     self.run_process([EMCC, '-o', 'hello_world.mjs', '-pthread',
-                     '--extern-post-js', 'extern-post.js',
+                      '--extern-post-js', test_file('modularize_post_js.js'),
                       test_file('hello_world.c'), '-sSINGLE_FILE'])
     src = read_file('hello_world.mjs')
     self.assertNotContained("new URL('data:", src)
@@ -387,9 +384,8 @@ class other(RunnerCore):
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
   def test_emcc_output_mjs_closure(self):
-    create_file('extern-post.js', 'await Module();')
     self.run_process([EMCC, '-o', 'hello_world.mjs',
-                      '--extern-post-js', 'extern-post.js',
+                      '--extern-post-js', test_file('modularize_post_js.js'),
                       test_file('hello_world.c'), '--closure=1'])
     src = read_file('hello_world.mjs')
     self.assertContained('new URL("hello_world.wasm", import.meta.url)', src)
@@ -1577,25 +1573,20 @@ int f() {
       EMSCRIPTEN_KEEPALIVE int libf1() { return 42; }
     ''')
 
-    def write_js_main():
-      """
-      With MINIMAL_RUNTIME, the module instantiation function isn't exported neither as a UMD nor as an ES6 module.
-      Thus, it's impossible to use `require` or `import`.
-
-      This function simply appends the instantiation code to the generated code.
-      """
-      runtime = read_file('test.js')
-      write_file('main.js', f'{runtime}\nModule().then((mod) => console.log(mod._libf1()));')
+    # With MINIMAL_RUNTIME, the module instantiation function isn't exported neither as a UMD nor as
+    # an ES6 module.
+    # Thus, it's impossible to use `require` or `import` and instead run the module
+    # as part of --extern-post-js.
+    create_file('post.js', 'Module().then((mod) => console.log(mod._libf1()));')
+    self.emcc_args += ['--extern-post-js=post.js']
 
     # By default, no symbols should be exported when using MINIMAL_RUNTIME.
-    self.emcc('main.c', [], output_filename='test.js')
-    write_js_main()
-    self.assertContained('TypeError: mod._libf1 is not a function', self.run_js('main.js', assert_returncode=NON_ZERO))
+    self.emcc('main.c', [])
+    self.assertContained('TypeError: mod._libf1 is not a function', self.run_js('a.out.js', assert_returncode=NON_ZERO))
 
     # Ensures that EXPORT_KEEPALIVE=1 exports the symbols.
-    self.emcc('main.c', ['-sEXPORT_KEEPALIVE=1'], output_filename='test.js')
-    write_js_main()
-    self.assertContained('42\n', self.run_js('main.js'))
+    self.emcc('main.c', ['-sEXPORT_KEEPALIVE=1'])
+    self.assertContained('42\n', self.run_js('a.out.js'))
 
   @crossplatform
   def test_minimal_runtime_export_all_modularize(self):
@@ -6682,7 +6673,12 @@ int main(void) {
     create_file('a.out.js', src)
     self.assertContained("define([], () => Module);", src)
 
-    create_file('run_module.js', 'var m; (global.define = (deps, factory) => { m = factory(); }).amd = true; require("./a.out.js"); m();')
+    create_file('run_module.js', '''
+var m;
+(global.define = (deps, factory) => { m = factory(); }).amd = true;
+require("./a.out.js");
+m();
+''')
     output = self.run_js('run_module.js')
     self.assertContained('hello, world!\n', output)
 
@@ -10385,7 +10381,7 @@ T6:(else) !ASSERTIONS""", output)
       create_file('moduleLoader.mjs', '''
         import test_module from "./subdir/module.mjs";
         test_module().then((test_module_instance) => {
-          test_module_instance._main();
+          console.log("done");
         });
         ''')
     else:
@@ -10393,7 +10389,7 @@ T6:(else) !ASSERTIONS""", output)
       create_file('moduleLoader.js', '''
         const test_module = require("./subdir/module.js");
         test_module().then((test_module_instance) => {
-          test_module_instance._main();
+          console.log("done");
         });
         ''')
     ensure_dir('subdir')
@@ -10403,7 +10399,7 @@ T6:(else) !ASSERTIONS""", output)
 
     # run the module
     ret = self.run_js('moduleLoader' + ext)
-    self.assertContained('hello, world!', ret)
+    self.assertContained('hello, world!\ndone\n', ret)
 
     create_file('workerLoader.js', f'''
       const {{ Worker, isMainThread }} = require('worker_threads');
@@ -10412,7 +10408,7 @@ T6:(else) !ASSERTIONS""", output)
 
     # run the same module, but inside of a worker
     ret = self.run_js('workerLoader.js')
-    self.assertContained('hello, world!', ret)
+    self.assertContained('hello, world!\ndone\n', ret)
 
   @no_windows('node system() does not seem to work, see https://github.com/emscripten-core/emscripten/pull/10547')
   @requires_node
@@ -12180,15 +12176,14 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
       self.assertContained(expected, self.run_js('test.wasm', engine))
 
   @parameterized({
-    'wasm2js': (['-sWASM=0'], ''),
-    'modularize': (['-sMODULARIZE'], 'Module()'),
+    'wasm2js': (['-sWASM=0'],),
+    'modularize': (['-sMODULARIZE', '--extern-post-js', test_file('modularize_post_js.js')],),
   })
-  def test_promise_polyfill(self, constant_args, extern_post_js):
+  def test_promise_polyfill(self, constant_args):
     def test(args, expect_fail):
       # legacy browsers may lack Promise, which wasm2js depends on. see what
       # happens when we kill the global Promise function.
-      create_file('extern-post.js', extern_post_js)
-      self.run_process([EMCC, test_file('hello_world.c')] + constant_args + args + ['--extern-post-js', 'extern-post.js'])
+      self.run_process([EMCC, test_file('hello_world.c')] + constant_args + args)
       js = read_file('a.out.js')
       create_file('a.out.js', 'Promise = undefined;\n' + js)
       return self.run_js('a.out.js', assert_returncode=NON_ZERO if expect_fail else 0)
