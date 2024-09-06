@@ -11461,7 +11461,7 @@ int main(void) {
     '': ([],),
     'sync': (['-sWASM_ASYNC_COMPILATION=0'],),
   })
-  def test_offset_converter_source_map(self, *args):
+  def test_offset_converter_source_map(self, args):
     self.set_setting('USE_OFFSET_CONVERTER')
     self.set_setting('LOAD_SOURCE_MAP')
     self.do_runf('other/test_offset_converter.c', 'ok', emcc_args=['-gsource-map', '-DUSE_SOURCE_MAP'] + args)
