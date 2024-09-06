@@ -1397,7 +1397,7 @@ simulateKeyUp(100);
 
   def test_idbstore(self):
     secret = str(time.time())
-    for stage in [0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5, 0, 4, 6, 5]:
+    for stage in (0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5, 0, 4, 6, 5):
       print(stage)
       self.btest_exit('test_idbstore.c',
                       args=['-lidbstore.js', f'-DSTAGE={stage}', f'-DSECRET="{secret}"'],
@@ -1552,7 +1552,7 @@ simulateKeyUp(100);
       </html>
     ''' % self.port)
 
-    for file_data in [1, 0]:
+    for file_data in (1, 0):
       cmd = [EMCC, test_file('hello_world_worker.cpp'), '-o', 'worker.js'] + self.get_emcc_args()
       if file_data:
         cmd += ['--preload-file', 'file.dat']
@@ -2565,7 +2565,7 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   def test_html5_webgl_destroy_context(self):
-    for opts in [[], ['-O2', '-g1'], ['-sFULL_ES2']]:
+    for opts in ([], ['-O2', '-g1'], ['-sFULL_ES2']):
       print(opts)
       self.btest_exit('webgl_destroy_context.cpp', args=opts + ['--shell-file', test_file('browser/webgl_destroy_context_shell.html'), '-lGL'])
 
@@ -2576,7 +2576,7 @@ Module["preRun"] = () => {
   # Test for PR#5373 (https://github.com/emscripten-core/emscripten/pull/5373)
   @requires_graphics_hardware
   def test_webgl_shader_source_length(self):
-    for opts in [[], ['-sFULL_ES2']]:
+    for opts in ([], ['-sFULL_ES2']):
       print(opts)
       self.btest_exit('webgl_shader_source_length.cpp', args=opts + ['-lGL'])
 
@@ -2793,7 +2793,7 @@ Module["preRun"] = () => {
     'gl_es': (['-DCLIENT_API=GLFW_OPENGL_ES_API', '-sGL_ENABLE_GET_PROC_ADDRESS'],)
   })
   def test_glfw3(self, args):
-    for opts in [[], ['-sLEGACY_GL_EMULATION'], ['-Os', '--closure=1']]:
+    for opts in ([], ['-sLEGACY_GL_EMULATION'], ['-Os', '--closure=1']):
       print(opts)
       self.btest('test_glfw3.c', args=['-sUSE_GLFW=3', '-lglfw', '-lGL'] + args + opts, expected='1')
 
@@ -3160,7 +3160,7 @@ Module["preRun"] = () => {
     if is_jspi(args) and not is_chrome():
       self.skipTest(f'Current browser ({EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
 
-    for opts in [0, 1, 2, 3]:
+    for opts in (0, 1, 2, 3):
       print(opts)
       self.btest_exit('async.cpp', args=['-O' + str(opts), '-g2'] + args)
 
@@ -3332,7 +3332,7 @@ Module["preRun"] = () => {
     self.ldflags.append('-Wno-error=closure')
     # amount of memory different from the default one that will be allocated for the emscripten heap
     totalMemory = 33554432
-    for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2'], ['-O2', '--closure=1']]:
+    for opts in ([], ['-O1'], ['-O2', '-profiling'], ['-O2'], ['-O2', '--closure=1']):
       # the main function simply checks that the amount of allocated heap memory is correct
       create_file('test.c', r'''
         #include <stdio.h>
@@ -3605,7 +3605,7 @@ Module["preRun"] = () => {
     'O3': (['-O3'],)
   })
   def test_pthread_64bit_cxx11_atomics(self, opt):
-    for pthreads in [[], ['-pthread']]:
+    for pthreads in ([], ['-pthread']):
       self.btest_exit('pthread/test_pthread_64bit_cxx11_atomics.cpp', args=opt + pthreads)
 
   # Test c++ std::thread::hardware_concurrency()
@@ -3686,7 +3686,7 @@ Module["preRun"] = () => {
   # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
   @also_with_wasm2js
   def test_pthread_gcc_spinlock(self):
-    for arg in [[], ['-DUSE_EMSCRIPTEN_INTRINSICS']]:
+    for arg in ([], ['-DUSE_EMSCRIPTEN_INTRINSICS']):
       self.btest_exit('pthread/test_pthread_gcc_spinlock.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + arg)
 
   @parameterized({
@@ -3715,7 +3715,7 @@ Module["preRun"] = () => {
 
   # Test that a pthread can spawn another pthread of its own.
   def test_pthread_create_pthread(self):
-    for modularize in [[], ['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')]]:
+    for modularize in ([], ['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')]):
       self.btest_exit('pthread/test_pthread_create_pthread.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=2'] + modularize)
 
   # Test another case of pthreads spawning pthreads, but this time the callers immediately join on the threads they created.
@@ -3855,7 +3855,7 @@ Module["preRun"] = () => {
     'mt': (['-pthread'],),
   })
   def test_pthread_gauge_available_memory(self, args):
-    for opts in [[], ['-O2']]:
+    for opts in ([], ['-O2']):
       self.btest('gauge_available_memory.cpp', expected='1', args=['-sABORTING_MALLOC=0'] + args + opts)
 
   # Test that the proxying operations of user code from pthreads to main thread
@@ -3889,7 +3889,7 @@ Module["preRun"] = () => {
   # Tests that spawning a new thread does not cause a reinitialization of the
   # global data section of the application memory area.
   def test_pthread_global_data_initialization(self):
-    for args in [['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')], ['-O3']]:
+    for args in (['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')], ['-O3']):
       self.btest_exit('pthread/test_pthread_global_data_initialization.c', args=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
 
   @requires_wasm2js
@@ -4024,7 +4024,7 @@ Module["preRun"] = () => {
     self.btest('custom_messages_proxy.c', expected='1', args=['--proxy-to-worker', '--shell-file', test_file('custom_messages_proxy_shell.html'), '--post-js', test_file('custom_messages_proxy_postjs.js')])
 
   def test_vanilla_html_when_proxying(self):
-    for opts in [0, 1, 2]:
+    for opts in (0, 1, 2):
       print(opts)
       self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '-O' + str(opts), '--proxy-to-worker'])
       create_file('test.html', '<script src="test.js"></script>')
@@ -4205,8 +4205,8 @@ Module["preRun"] = () => {
   # Also there is a known bug with Mac Intel baseInstance which can fail producing the expected image result.
   @requires_graphics_hardware
   def test_webgl_draw_base_vertex_base_instance(self):
-    for multiDraw in [0, 1]:
-      for drawElements in [0, 1]:
+    for multiDraw in (0, 1):
+      for drawElements in (0, 1):
         self.reftest('webgl_draw_base_vertex_base_instance_test.c', 'webgl_draw_instanced_base_vertex_base_instance.png',
                      args=['-lGL',
                            '-sMAX_WEBGL_VERSION=2',
@@ -4389,7 +4389,7 @@ Module["preRun"] = () => {
 
     # Test the positive case when the file URL exists. (http 200)
     shutil.copyfile(test_file('gears.png'), 'gears.png')
-    for arg in [[], ['-sFETCH_SUPPORT_INDEXEDDB=0']]:
+    for arg in ([], ['-sFETCH_SUPPORT_INDEXEDDB=0']):
       self.btest_exit('fetch/test_fetch_to_memory.cpp',
                       args=['-sFETCH_DEBUG', '-sFETCH'] + arg)
 
@@ -4961,7 +4961,7 @@ Module["preRun"] = () => {
   # Tests Wasm Worker thread stack setup
   @also_with_minimal_runtime
   def test_wasm_worker_thread_stack(self):
-    for mode in [0, 1, 2]:
+    for mode in (0, 1, 2):
       self.btest('wasm_worker/thread_stack.c', expected='0', args=['-sWASM_WORKERS', f'-sSTACK_OVERFLOW_CHECK={mode}'])
 
   # Tests emscripten_malloc_wasm_worker() and emscripten_current_thread_is_wasm_worker() functions

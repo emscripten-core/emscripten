@@ -516,7 +516,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   })
   def test_emcc_2(self, compiler, suffix):
     # emcc src.cpp -c    and   emcc -c src.cpp -o src.[o|foo|so] ==> should always give an object file
-    for args in [[], ['-o', 'src.o'], ['-o', 'src.foo'], ['-o', 'src.so']]:
+    for args in ([], ['-o', 'src.o'], ['-o', 'src.foo'], ['-o', 'src.so']):
       print('args:', args)
       target = args[1] if len(args) == 2 else 'hello_world.o'
       self.clear()
@@ -550,7 +550,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
     # emcc [..] -o [path] ==> should work with absolute paths
-    for path in [os.path.abspath(Path('../file1.js')), Path('b_dir/file2.js')]:
+    for path in (os.path.abspath(Path('../file1.js')), Path('b_dir/file2.js')):
       print(path)
       os.chdir(self.get_dir())
       self.clear()
@@ -859,7 +859,7 @@ f.close()
     #   emcc test/hello_world.c -Oz --closure 1 -o test/other/test_emsize.js
     expected = read_file(test_file('other/test_emsize.out'))
     cmd = [emsize, test_file('other/test_emsize.js')]
-    for command in [cmd, cmd + ['--format=sysv']]:
+    for command in (cmd, cmd + ['--format=sysv']):
       output = self.run_process(command, stdout=PIPE).stdout
       self.assertContained(expected, output)
 
@@ -1160,7 +1160,7 @@ f.close()
 
   @with_both_compilers
   def test_cxx11(self, compiler):
-    for std in ['-std=c++11', '--std=c++11']:
+    for std in ('-std=c++11', '--std=c++11'):
       self.run_process([compiler, std, test_file('hello_cxx11.cpp')])
 
   # Regression test for issue #4522: Incorrect CC vs CXX detection
@@ -1172,13 +1172,13 @@ f.close()
     self.run_process([compiler, '-c', '-lembind', '--embed-file', 'test.c', test_file('hello_world.cpp')])
 
   def test_odd_suffixes(self):
-    for suffix in ['CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC']:
+    for suffix in ('CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC'):
       self.clear()
       print(suffix)
       shutil.copyfile(test_file('hello_world.c'), 'test.' + suffix)
       self.do_runf('test.' + suffix, 'hello, world!')
 
-    for suffix in ['lo']:
+    for suffix in ('lo'):
       self.clear()
       print(suffix)
       self.run_process([EMCC, test_file('hello_world.c'), '-shared', '-o', 'binary.' + suffix])
@@ -1188,7 +1188,7 @@ f.close()
   def test_preprocessed_input(self):
     # .i and .ii files are assumed to be the output the pre-processor so clang doesn't add include
     # paths.  This means we can only compile and run things that don't contain includes.
-    for suffix in ['.i', '.ii']:
+    for suffix in ('.i', '.ii'):
       create_file('simple' + suffix, '''
         #ifdef __cplusplus
         extern "C" {
@@ -2779,7 +2779,7 @@ More info: https://emscripten.org
     self.assertNotContained('post-run\n', output)
 
     # noInitialRun prevents run
-    for no_initial_run, run_dep in [(0, 0), (1, 0), (0, 1)]:
+    for no_initial_run, run_dep in ((0, 0), (1, 0), (0, 1)):
       print(no_initial_run, run_dep)
       args = ['-sWASM_ASYNC_COMPILATION=0', '-sEXPORTED_RUNTIME_METHODS=callMain']
       if no_initial_run:
@@ -2928,15 +2928,15 @@ More info: https://emscripten.org
 
   def test_m_mm(self):
     create_file('foo.c', '#include <emscripten.h>')
-    for opt in ['M', 'MM']:
+    for opt in ('M', 'MM'):
       proc = self.run_process([EMCC, 'foo.c', '-' + opt], stdout=PIPE, stderr=PIPE)
       self.assertContained('foo.o: ', proc.stdout)
       self.assertNotContained('error', proc.stderr)
 
   @uses_canonical_tmp
   def test_emcc_debug_files(self):
-    for opts in [0, 1, 2, 3]:
-      for debug in [None, '1', '2']:
+    for opts in (0, 1, 2, 3):
+      for debug in (None, '1', '2'):
         print(opts, debug)
         if os.path.exists(self.canonical_temp_dir):
           shutil.rmtree(self.canonical_temp_dir)
@@ -4932,7 +4932,7 @@ int main(int argc, char **argv) {
 }
     ''')
 
-    for no_exit in [1, 0]:
+    for no_exit in (1, 0):
       print(no_exit)
       cmd = [EMXX] + opts + ['code.cpp', '-sEXIT_RUNTIME=' + str(1 - no_exit)] + self.get_emcc_args()
       if self.is_wasm():
@@ -5012,15 +5012,15 @@ int main() {
     test(cxx=0, no_exit=1, assertions=1, keepalive=1)
     test(cxx=0, no_exit=1, assertions=1, filesystem=0)
 
-    for cxx in [0, 1]:
-      for no_exit in [0, 1]:
-        for assertions in [0, 1]:
-          for flush in [0, 1]:
+    for cxx in (0, 1):
+      for no_exit in (0, 1):
+        for assertions in (0, 1):
+          for flush in (0, 1):
             test(cxx, no_exit, assertions, flush)
 
   def test_extra_opt_levels(self):
     # Opt levels that we don't tend to test elsewhere
-    for opt in ['-Og', '-Ofast']:
+    for opt in ('-Og', '-Ofast'):
       print(opt)
       proc = self.run_process([EMCC, '-v', test_file('hello_world.c'), opt], stderr=PIPE)
       self.assertContained(opt, proc.stderr)
@@ -5173,7 +5173,7 @@ Waste<3> *getMore() {
   def test_warn_dylibs(self):
     shared_suffixes = ['.so', '.dylib', '.dll']
 
-    for suffix in ['.o', '.bc', '.so', '.dylib', '.js', '.html']:
+    for suffix in ('.o', '.bc', '.so', '.dylib', '.js', '.html'):
       print(suffix)
       cmd = [EMCC, test_file('hello_world.c'), '-o', 'out' + suffix]
       if suffix in ['.o', '.bc']:
@@ -5341,9 +5341,9 @@ int main() {
 }
 ''')
 
-    for opts in [0, 1, 2]:
-      for emulate_casts in [0, 1]:
-        for relocatable in [0, 1]:
+    for opts in (0, 1, 2):
+      for emulate_casts in (0, 1):
+        for relocatable in (0, 1):
           # wasm2js is not compatible with relocatable mode
           if not wasm and relocatable:
             continue
@@ -5369,7 +5369,7 @@ int main() {
             self.assertContained('function signature mismatch', output)
 
   def test_bad_export(self):
-    for m in ['', ' ']:
+    for m in ('', ' '):
       self.clear()
       cmd = [EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=["' + m + '_main"]']
       print(cmd)
@@ -5477,9 +5477,9 @@ int main(int argc, char **argv) {
       #endif
       }
     ''')
-    for code in [0, 123]:
-      for call_exit in [0, 1]:
-        for async_compile in [0, 1]:
+    for code in (0, 123):
+      for call_exit in (0, 1):
+        for async_compile in (0, 1):
           self.run_process([EMCC, 'src.c', '-sENVIRONMENT=node,shell', '-DCODE=%d' % code, '-sEXIT_RUNTIME=%d' % (1 - no_exit), '-DCALL_EXIT=%d' % call_exit, '-sWASM_ASYNC_COMPILATION=%d' % async_compile])
           for engine in config.JS_ENGINES:
             # async compilation can't return a code in d8
@@ -5504,8 +5504,8 @@ int main(int argc, char **argv) {
       #endif
       }
     ''')
-    for no_exit in [0, 1]:
-      for call_exit in [0, 1]:
+    for no_exit in (0, 1):
+      for call_exit in (0, 1):
         self.run_process([EMCC, 'src.c', '-sEXIT_RUNTIME=%d' % (1 - no_exit), '-DCALL_EXIT=%d' % call_exit])
         print(no_exit, call_exit)
         out = self.run_js('a.out.js')
@@ -6572,7 +6572,7 @@ int main(void) {
     self.run_process([EMAR, 'rc', 'libtest.a', 'x.o'])
     self.run_process([EMRANLIB, 'libtest.a'])
 
-    for args in [[], ['-O2']]:
+    for args in ([], ['-O2']):
       print('args:', args)
       self.run_process([EMCC, 'z.o', 'libtest.a'] + args)
       self.run_js('a.out.js', assert_returncode=161)
@@ -6879,7 +6879,7 @@ int main() {
       ('', '', []),
       ('EM_ASM( Module.temp = _sbrk() );', 'EM_ASM( assert(Module.temp === _sbrk(), "must not adjust brk when an alloc fails!") );', []),
     ]:
-      for aborting_args in [[], ['-sABORTING_MALLOC=0']]:
+      for aborting_args in ([], ['-sABORTING_MALLOC=0']):
         create_file('main.cpp', r'''
 #include <stdio.h>
 #include <stdlib.h>
@@ -8349,9 +8349,9 @@ int main() {
 
   @crossplatform
   def test_output_eol(self):
-    for params in [[], ['--proxy-to-worker'], ['--proxy-to-worker', '-sWASM=0']]:
-      for output_suffix in ['html', 'js']:
-        for eol in ['windows', 'linux']:
+    for params in ([], ['--proxy-to-worker'], ['--proxy-to-worker', '-sWASM=0']):
+      for output_suffix in ('html', 'js'):
+        for eol in ('windows', 'linux'):
           files = ['a.js']
           if output_suffix == 'html':
             files += ['a.html']
@@ -8483,7 +8483,7 @@ int main() {
     ''')
     self.run_process([EMXX, 'src.cpp'])
     correct = self.run_js('a.out.js')
-    for args in [[], ['-sRELOCATABLE']]:
+    for args in ([], ['-sRELOCATABLE']):
       print(args)
       self.run_process([EMXX, 'src.cpp', '-o', 'b.out.js'] + args)
       seen = self.run_js('b.out.js')
@@ -8838,7 +8838,7 @@ int main() {
 
   @disabled('https://github.com/WebAssembly/binaryen/pull/6428')
   def test_no_legalize_js_ffi(self):
-    for legalizing in [0, 1]:
+    for legalizing in (0, 1):
       # test minimal JS FFI legalization for invoke and dyncalls
       args = ['-sMAIN_MODULE=2', '-O3', '-sDISABLE_EXCEPTION_CATCHING=0', '-g']
       if not legalizing:
@@ -9256,7 +9256,7 @@ int main() {
     self.assertContained('wasm-ld: error: initial memory too small', err)
 
   def test_o_level_clamp(self):
-    for level in [3, 4, 20]:
+    for level in (3, 4, 20):
       err = self.run_process([EMCC, '-O' + str(level), test_file('hello_world.c')], stderr=PIPE).stderr
       self.assertContainedIf("optimization level '-O" + str(level) + "' is not supported; using '-O3' instead", err, level > 3)
 
@@ -9327,7 +9327,7 @@ int main() {
         else:
           create_file('a.c', inc)
           create_file('b.c', inc)
-          for std in [[], ['-std=c89']]:
+          for std in ([], ['-std=c89']):
             self.run_process([EMCC] + std + ['-Werror', '-Wall', '-pedantic', 'a.c', 'b.c'])
 
   @is_slow_test
@@ -10848,7 +10848,7 @@ int main () {
       self.assertLess(obtained_size, expected_size)
 
     self.run_process([PYTHON, test_file('gen_many_js_functions.py'), 'library_long.js', 'main_long.c'])
-    for wasm in [[], ['-sWASM=0']]:
+    for wasm in ([], ['-sWASM=0']):
       # Currently we rely on Closure for full minification of every appearance of JS function names.
       # TODO: Add minification also for non-Closure users and add [] to this list to test minification without Closure.
       for closure in [['--closure=1']]:
@@ -10865,7 +10865,7 @@ int main () {
   # Checks that C++ exceptions managing invoke_*() wrappers will not be generated if exceptions are disabled
   def test_no_invoke_functions_are_generated_if_exception_catching_is_disabled(self):
     self.skipTest('Skipping other.test_no_invoke_functions_are_generated_if_exception_catching_is_disabled: Enable after new version of fastcomp has been tagged')
-    for args in [[], ['-sWASM=0']]:
+    for args in ([], ['-sWASM=0']):
       self.run_process([EMXX, test_file('hello_world.cpp'), '-sDISABLE_EXCEPTION_CATCHING', '-o', 'a.html'] + args)
       output = read_file('a.js')
       self.assertContained('_main', output) # Smoke test that we actually compiled
@@ -10874,7 +10874,7 @@ int main () {
   # Verifies that only the minimal needed set of invoke_*() functions will be generated when C++ exceptions are enabled
   def test_no_excessive_invoke_functions_are_generated_when_exceptions_are_enabled(self):
     self.skipTest('Skipping other.test_no_excessive_invoke_functions_are_generated_when_exceptions_are_enabled: Enable after new version of fastcomp has been tagged')
-    for args in [[], ['-sWASM=0']]:
+    for args in ([], ['-sWASM=0']):
       self.run_process([EMXX, test_file('invoke_i.cpp'), '-sDISABLE_EXCEPTION_CATCHING=0', '-o', 'a.html'] + args)
       output = read_file('a.js')
       self.assertContained('invoke_i', output)
@@ -11550,7 +11550,7 @@ int main(void) {
 
   def test_mmap_and_munmap(self):
     emcc_args = []
-    for f in ['data_ro.dat', 'data_rw.dat']:
+    for f in ('data_ro.dat', 'data_rw.dat'):
       create_file(f, 'Test file')
       emcc_args.extend(['--embed-file', f])
     self.do_other_test('test_mmap_and_munmap.c', emcc_args)
@@ -12645,7 +12645,7 @@ exec "$@"
     self.assertContained("Module['Foo'] = ", read_file('a.out.js'))
 
   def test_wasm2js_no_dylink(self):
-    for arg in ['-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE']:
+    for arg in ('-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE'):
       print(arg)
       err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sWASM=0', arg])
       self.assertContained('WASM2JS is not compatible with relocatable output', err)
@@ -13817,7 +13817,7 @@ int main() {
     # In strict mode the library function is not even available, so we get a build time error
     self.set_setting('STRICT')
     self.clear_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE')
-    for opt in ['-O0', '-O3']:
+    for opt in ('-O0', '-O3'):
       err = self.expect_fail([EMCC, test_file('other/test_legacy_runtime.c'), opt] + self.get_emcc_args())
       self.assertContained('warning: invalid item in EXPORTED_RUNTIME_METHODS: allocate', err)
 
@@ -14079,10 +14079,10 @@ int main() {
     )
     output = json.loads(self.run_js('test.js'))
     self.assertEqual(output['BigInt64Array_name'], 'createBigInt64Array')
-    for key in ['arr1_to_arr1', 'arr1_to_arr2', 'arr2_to_arr1']:
+    for key in ('arr1_to_arr1', 'arr1_to_arr2', 'arr2_to_arr1'):
       print(key + '_unsigned')
       self.assertEqual(output[key + '_unsigned'], bigint_list_unsigned_n)
-    for key in ['arr1_to_arr1', 'arr1_to_arr2', 'arr2_to_arr1']:
+    for key in ('arr1_to_arr1', 'arr1_to_arr2', 'arr2_to_arr1'):
       print(key + '_signed')
       self.assertEqual(output[key + '_signed'], bigint_list_signed_n)
 
