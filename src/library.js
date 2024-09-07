@@ -1987,7 +1987,7 @@ addToLibrary({
       if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
       wasmTableMirror[funcPtr] = func = wasmTable.get({{{ toIndexType('funcPtr') }}});
 #if ASYNCIFY == 2
-      if (Asyncify.isAsyncExport(func)) {
+      if (func && Asyncify.isAsyncExport(func)) {
         wasmTableMirror[funcPtr] = func = Asyncify.makeAsyncFunction(func);
       }
 #endif

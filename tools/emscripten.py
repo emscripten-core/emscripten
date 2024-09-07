@@ -335,6 +335,8 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
   if finalize:
     update_settings_glue(out_wasm, metadata, base_metadata)
 
+  settings.LLVM_ANNOTATIONS = metadata.llvm_annotations
+
   if not settings.WASM_BIGINT and metadata.em_js_funcs:
     import_map = {}
 

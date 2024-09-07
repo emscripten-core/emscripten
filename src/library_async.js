@@ -29,7 +29,9 @@ addToLibrary({
     'malloc', 'free',
 #endif
   ],
-
+#if ASYNCIFY == 2
+  $Asyncify__postset: 'Asyncify.init()',
+#endif
   $Asyncify: {
     //
     // Asyncify code that is shared between mode 1 (original) and mode 2 (JSPI).
@@ -116,7 +118,7 @@ addToLibrary({
 #if ASYNCIFY == 2
           // Wrap all exports with a promising WebAssembly function.
           let isAsyncifyExport = exportPattern.test(x);
-          if (isAsyncifyExport) {
+          if (isAsyncifyExport || Asyncify.asyncFunctionIndexes?.has(parseInt(original.name))) {
             Asyncify.asyncExports.add(original);
             original = Asyncify.makeAsyncFunction(original);
           }
@@ -429,12 +431,15 @@ addToLibrary({
     //
     // JSPI implementation of Asyncify.
     //
-
+    init() {
+      Asyncify.asyncFunctionIndexes = new Set({{{ JSON.stringify(LLVM_ANNOTATIONS['jspi'] || [] ) }}});
+    },
+    asyncFunctionIndexes: null,
     // Stores all the exported raw Wasm functions that are wrapped with async
     // WebAssembly.Functions.
     asyncExports: null,
     isAsyncExport(func) {
-      return Asyncify.asyncExports?.has(func);
+      return Asyncify.asyncExports?.has(func) || Asyncify.asyncFunctionIndexes?.has(parseInt(func.name));
     },
     handleAsync: async (startAsync) => {
       {{{ runtimeKeepalivePush(); }}}

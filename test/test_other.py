@@ -3364,6 +3364,42 @@ More info: https://emscripten.org
       '-Wno-experimental']
     self.do_runf('other/test_jspi_add_function.c', 'done')
 
+  @requires_jspi
+  def test_jspi_annotate(self):
+    create_file('library.js', r'''
+      addToLibrary({
+        async_import__async: true,
+        async_import: () => { return Promise.resolve(42); },
+        $call_async_func_ptr: (func_ptr) => { return {{{ makeDynCall('v', 'func_ptr') }}}(); }
+    });''')
+    create_file('test.js', r'''
+      let m = await Module();
+      let result = m._async_export();
+      console.log(`isPromise=${result instanceof Promise}`);
+      console.log(await result);
+      let func_ptr = m._get_func_ptr();
+      result = m.call_async_func_ptr(func_ptr);
+      console.log(`isPromise=${result instanceof Promise}`);
+      console.log(await result);
+      console.log('done');
+    ''')
+    self.run_process([EMCC, test_file('other/test_jspi_annotate.c'),
+                      '-o', 'a.out.mjs',
+                      '--js-library', 'library.js',
+                      '--extern-post-js', 'test.js',
+                      '-sJSPI',
+                      '-Wno-experimental',
+                      '-sEXPORTED_RUNTIME_METHODS=call_async_func_ptr'])
+    output = self.run_js('a.out.mjs', assert_returncode=0)
+    expected_output = '\n'.join([
+      'isPromise=true',
+      '42',
+      'isPromise=true',
+      '42',
+      'done\n'
+    ])
+    self.assertContained(output, expected_output)
+
   def test_embind_tsgen(self):
     # Check that TypeScript generation works and that the program is runs as
     # expected.
