@@ -75,7 +75,7 @@ var LibraryPThread = {
         ) {
           t = _pthread_self();
         }
-        return 'w:' + workerID + ',t:' + ptrToString(t) + ': ';
+        return `w:${workerID},t:${ptrToString(t)}: `;
       }
 
       // Prefix all err()/dbg() messages with the calling thread ID.
@@ -426,7 +426,7 @@ var LibraryPThread = {
 #if EXPORT_ES6 && USE_ES6_IMPORT_META
       // If we're using module output, use bundler-friendly pattern.
 #if PTHREADS_DEBUG
-      dbg('Allocating a new web worker from ' + import.meta.url);
+      dbg(`Allocating a new web worker from ${import.meta.url}`);
 #endif
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
@@ -738,10 +738,10 @@ var LibraryPThread = {
 #endif
 
     var offscreenCanvases = {}; // Dictionary of OffscreenCanvas objects we'll transfer to the created thread to own
-    var moduleCanvasId = Module['canvas'] ? Module['canvas'].id : '';
+    var moduleCanvasId = Module['canvas']?.id || '';
     // Note that transferredCanvasNames might be null (so we cannot do a for-of loop).
-    for (var i in transferredCanvasNames) {
-      var name = transferredCanvasNames[i].trim();
+    for (var name of transferredCanvasNames) {
+      name = name.trim();
       var offscreenCanvasInfo;
       try {
         if (name == '#canvas') {
@@ -773,7 +773,7 @@ var LibraryPThread = {
           }
           if (canvas.transferControlToOffscreen) {
 #if GL_DEBUG
-            dbg('pthread_create: canvas.transferControlToOffscreen(), transferring canvas by name "' + name + '" (DOM id="' + canvas.id + '") from main thread to pthread');
+            dbg(`pthread_create: canvas.transferControlToOffscreen(), transferring canvas by name "${name}" (DOM id="${canvas.id}") from main thread to pthread`);
 #endif
             // Create a shared information block in heap so that we can control
             // the canvas size from any thread.
