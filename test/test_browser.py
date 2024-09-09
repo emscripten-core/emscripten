@@ -3648,7 +3648,7 @@ Module["preRun"] = () => {
   })
   def test_pthread_gcc_atomic_fetch_and_op(self, args):
     self.emcc_args += ['-Wno-sync-fetch-and-nand-semantics-changed']
-    self.btest_exit('pthread/test_pthread_gcc_atomic_fetch_and_op.cpp', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_gcc_atomic_fetch_and_op.c', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
   @also_with_wasm2js
@@ -3658,7 +3658,7 @@ Module["preRun"] = () => {
     if self.is_wasm2js():
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4358')
     self.emcc_args += ['-Wno-sync-fetch-and-nand-semantics-changed']
-    self.btest_exit('pthread/test_pthread_gcc_64bit_atomic_fetch_and_op.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_gcc_64bit_atomic_fetch_and_op.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test the old GCC atomic __sync_op_and_fetch builtin operations.
   @also_with_wasm2js
@@ -3666,7 +3666,7 @@ Module["preRun"] = () => {
   @no_4gb('https://github.com/emscripten-core/emscripten/issues/21318')
   def test_pthread_gcc_atomic_op_and_fetch(self):
     self.emcc_args += ['-Wno-sync-fetch-and-nand-semantics-changed']
-    self.btest_exit('pthread/test_pthread_gcc_atomic_op_and_fetch.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_gcc_atomic_op_and_fetch.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
   @also_with_wasm2js
@@ -3676,18 +3676,18 @@ Module["preRun"] = () => {
     if self.is_wasm2js():
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4358')
     self.emcc_args += ['-Wno-sync-fetch-and-nand-semantics-changed', '--profiling-funcs']
-    self.btest_exit('pthread/test_pthread_gcc_64bit_atomic_op_and_fetch.cpp', args=['-pthread', '-O2', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_gcc_64bit_atomic_op_and_fetch.c', args=['-pthread', '-O2', '-sPTHREAD_POOL_SIZE=8'])
 
   # Tests the rest of the remaining GCC atomics after the two above tests.
   @also_with_wasm2js
   def test_pthread_gcc_atomics(self):
-    self.btest_exit('pthread/test_pthread_gcc_atomics.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_gcc_atomics.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
   @also_with_wasm2js
   def test_pthread_gcc_spinlock(self):
     for arg in ([], ['-DUSE_EMSCRIPTEN_INTRINSICS']):
-      self.btest_exit('pthread/test_pthread_gcc_spinlock.cpp', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + arg)
+      self.btest_exit('pthread/test_pthread_gcc_spinlock.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + arg)
 
   @parameterized({
     '': ([],),
