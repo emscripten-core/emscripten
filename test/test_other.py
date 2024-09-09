@@ -2198,6 +2198,7 @@ Module['postRun'] = () => {
   def test_dylink_pthread_bigint_em_js(self):
     self.set_setting('MAIN_MODULE', 2)
     self.set_setting('WASM_BIGINT')
+    self.set_setting('EXPORTED_FUNCTIONS', '_malloc,_main')
     self.emcc_args += ['-Wno-experimental', '-pthread']
     self.do_runf('core/test_em_js.cpp')
 

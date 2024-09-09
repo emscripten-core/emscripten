@@ -1943,9 +1943,7 @@ int main(int argc, char **argv) {
   def test_em_js(self, args, force_c):
     if '-sMAIN_MODULE=2' in args:
       self.check_dylink()
-    else:
-      self.emcc_args += ['-sEXPORTED_FUNCTIONS=_main,_malloc']
-    self.emcc_args += args
+    self.emcc_args += ['-sEXPORTED_FUNCTIONS=_main,_malloc'] + args
     if '-pthread' in args:
       self.setup_node_pthreads()
 
