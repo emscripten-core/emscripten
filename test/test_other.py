@@ -9802,7 +9802,7 @@ end
     # linking (i.e. null symbol addresses);
     self.do_other_test('test_extern_weak.c', emcc_args=['-sMAIN_MODULE=2'])
     self.run_process([EMCC, '-o', 'libside.wasm', test_file('other/test_extern_weak_side.c'), '-sSIDE_MODULE'])
-    self.do_run_in_out_file_test('other/test_extern_weak.c', out_suffix='.resolved', emcc_args=['-sMAIN_MODULE=2', 'libside.wasm'])
+    self.do_other_test('test_extern_weak.c', out_suffix='.resolved', emcc_args=['-sMAIN_MODULE=2', 'libside.wasm'])
 
   def test_main_module_without_main(self):
     create_file('pre.js', 'Module.onRuntimeInitialized = () => Module._foo();')
@@ -12044,14 +12044,14 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
   @node_pthreads
   def test_main_pthread_join_detach(self):
     # Verify that we're unable to join the main thread
-    self.do_run_in_out_file_test('other/test_pthread_self_join_detach.c')
+    self.do_other_test('test_pthread_self_join_detach.c')
 
   @node_pthreads
   def test_proxy_pthread_join_detach(self):
     # Verify that we're unable to detach or join the proxied main thread
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.do_run_in_out_file_test('other/test_pthread_self_join_detach.c')
+    self.do_other_test('test_pthread_self_join_detach.c')
 
   @node_pthreads
   def test_pthread_asyncify(self):
@@ -12060,12 +12060,12 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     self.set_setting('PTHREADS_DEBUG')
     self.set_setting('ASYNCIFY')
     self.set_setting('PTHREAD_POOL_SIZE', 2)
-    self.do_run_in_out_file_test('other/test_pthread_asyncify.c')
+    self.do_other_test('test_pthread_asyncify.c')
 
   @node_pthreads
   def test_pthread_reuse(self):
     self.set_setting('PTHREAD_POOL_SIZE', 1)
-    self.do_run_in_out_file_test('other/test_pthread_reuse.c')
+    self.do_other_test('test_pthread_reuse.c')
 
   @node_pthreads
   def test_pthread_relocatable(self):
