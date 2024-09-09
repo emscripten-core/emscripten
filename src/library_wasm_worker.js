@@ -20,20 +20,22 @@
 #error "Internal error! SHARED_MEMORY should be enabled when building with WASM_WORKERS"
 #endif
 #if SINGLE_FILE
-#error "-sSINGLE_FILE is not supported with -sWASM_WORKERS!"
+#error "-sSINGLE_FILE is not supported with -sWASM_WORKERS"
 #endif
 #if LINKABLE
-#error "-sLINKABLE is not supported with -sWASM_WORKERS!"
+#error "-sLINKABLE is not supported with -sWASM_WORKERS"
 #endif
-#if SIDE_MODULE
-#error "-sSIDE_MODULE is not supported with -sWASM_WORKERS!"
-#endif
-#if MAIN_MODULE
-#error "-sMAIN_MODULE is not supported with -sWASM_WORKERS!"
+#if RELOCATABLE
+#error "dynamic linking is not supported with -sWASM_WORKERS"
 #endif
 #if PROXY_TO_WORKER
-#error "-sPROXY_TO_WORKER is not supported with -sWASM_WORKERS!"
+#error "-sPROXY_TO_WORKER is not supported with -sWASM_WORKERS"
 #endif
+
+{{{
+  globalThis.workerSupportsFutexWait = () => AUDIO_WORKLET ? "typeof AudioWorkletGlobalScope === 'undefined'" : '1';
+  null;
+}}}
 
 #endif // ~WASM_WORKERS
 
@@ -73,7 +75,7 @@ addToLibrary({
     '$_wasmWorkerDelayedMessageQueue',
     '$_wasmWorkerRunPostMessage',
     '$_wasmWorkerAppendToQueue',
-    'emscripten_wasm_worker_initialize',
+    '_emscripten_wasm_worker_initialize',
 #if PTHREADS
     '__set_thread_state',
 #endif
@@ -96,10 +98,11 @@ addToLibrary({
     ___set_stack_limits(m['sb'] + m['sz'], m['sb']);
 #endif
     // Run the C side Worker initialization for stack and TLS.
-    _emscripten_wasm_worker_initialize(m['sb'], m['sz']);
+    __emscripten_wasm_worker_initialize(m['sb'], m['sz']);
 #if PTHREADS
-    // Record that this Wasm Worker supports synchronous blocking in emscripten_futex_wake().
-    ___set_thread_state(/*thread_ptr=*/0, /*is_main_thread=*/0, /*is_runtime_thread=*/0, /*supports_wait=*/0);
+    // Record the pthread configuration, and whether this Wasm Worker supports synchronous blocking in emscripten_futex_wait().
+    // (regular Wasm Workers do, AudioWorklets don't)
+    ___set_thread_state(/*thread_ptr=*/0, /*is_main_thread=*/0, /*is_runtime_thread=*/0, /*supports_wait=*/ {{{ workerSupportsFutexWait() }}});
 #endif
 #if STACK_OVERFLOW_CHECK >= 2
     // Fix up stack base. (TLS frame is created at the bottom address end of the stack)
@@ -143,7 +146,12 @@ addToLibrary({
 #endif
   ],
   _emscripten_create_wasm_worker__postset: `
-if (ENVIRONMENT_IS_WASM_WORKER) {
+if (ENVIRONMENT_IS_WASM_WORKER
+// AudioWorkletGlobalScope does not contain addEventListener
+#if AUDIO_WORKLET
+  && !ENVIRONMENT_IS_AUDIO_WORKLET
+#endif
+  ) {
   _wasmWorkers[0] = this;
   addEventListener("message", _wasmWorkerAppendToQueue);
 }`,
@@ -174,7 +182,7 @@ if (ENVIRONMENT_IS_WASM_WORKER) {
       'mem': wasmMemory,
 #else
       'wasm': wasmModule,
-      'js': Module['mainScriptUrlOrBlob'] || _scriptDir,
+      'js': Module['mainScriptUrlOrBlob'] || _scriptName,
       'wasmMemory': wasmMemory,
 #endif
       'sb': stackLowestAddress, // sb = stack bottom (lowest stack address, SP points at this when stack is full)
@@ -278,9 +286,9 @@ if (ENVIRONMENT_IS_WASM_WORKER) {
     };
     let tryAcquireLock = () => {
       do {
-        var val = Atomics.compareExchange(HEAP32, lock >> 2, 0/*zero represents lock being free*/, 1/*one represents lock being acquired*/);
+        var val = Atomics.compareExchange(HEAP32, {{{ getHeapOffset('lock', 'i32') }}}, 0/*zero represents lock being free*/, 1/*one represents lock being acquired*/);
         if (!val) return dispatch(0, 0/*'ok'*/);
-        var wait = Atomics.waitAsync(HEAP32, lock >> 2, val, maxWaitMilliseconds);
+        var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('lock', 'i32') }}}, val, maxWaitMilliseconds);
       } while (wait.value === 'not-equal');
 #if ASSERTIONS
       assert(wait.async || wait.value === 'timed-out');
@@ -301,12 +309,12 @@ if (ENVIRONMENT_IS_WASM_WORKER) {
     let tryAcquireSemaphore = () => {
       let val = num;
       do {
-        let ret = Atomics.compareExchange(HEAP32, sem >> 2,
-                                          val, /* We expect this many semaphore resoures to be available*/
+        let ret = Atomics.compareExchange(HEAP32, {{{ getHeapOffset('sem', 'i32') }}},
+                                          val, /* We expect this many semaphore resources to be available*/
                                           val - num /* Acquire 'num' of them */);
         if (ret == val) return dispatch(ret/*index of resource acquired*/, 0/*'ok'*/);
         val = ret;
-        let wait = Atomics.waitAsync(HEAP32, sem >> 2, ret, maxWaitMilliseconds);
+        let wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('sem', 'i32') }}}, ret, maxWaitMilliseconds);
       } while (wait.value === 'not-equal');
 #if ASSERTIONS
       assert(wait.async || wait.value === 'timed-out');

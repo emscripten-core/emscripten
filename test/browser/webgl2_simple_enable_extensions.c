@@ -61,6 +61,15 @@ int main()
   if (hasext(exts, "WEBGL_multi_draw_instanced_base_vertex_base_instance"))
     assert(emscripten_webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(context));
 
+  if (hasext(exts, "EXT_polygon_offset_clamp"))
+    assert(emscripten_webgl_enable_EXT_polygon_offset_clamp(context));
+
+  if (hasext(exts, "EXT_clip_control"))
+    assert(emscripten_webgl_enable_EXT_clip_control(context));
+
+  if (hasext(exts, "WEBGL_polygon_mode"))
+    assert(emscripten_webgl_enable_WEBGL_polygon_mode(context));
+
 #if WEBGL_SIMPLE_ENABLE_EXTENSION
   assert(hasext(exts, "ANGLE_instanced_arrays") == emscripten_webgl_enable_extension(context, "ANGLE_instanced_arrays"));
   assert(hasext(exts, "OES_vertex_array_object") == emscripten_webgl_enable_extension(context, "OES_vertex_array_object"));

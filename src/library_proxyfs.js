@@ -108,7 +108,6 @@ addToLibrary({
         try {
           oldNode.mount.opts.fs.rename(oldPath, newPath);
           oldNode.name = newName;
-          oldNode.parent = newDir;
         } catch(e) {
           if (!e.code) throw e;
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);

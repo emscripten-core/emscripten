@@ -22,7 +22,7 @@ static void *__memcpy(void *dest, const void *src, size_t n) {
 #elif defined(__wasm_bulk_memory__)
 
 static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
-  return emscripten_memcpy_bulkmem(dest, src, n);
+  return _emscripten_memcpy_bulkmem(dest, src, n);
 }
 
 #else
@@ -37,7 +37,7 @@ static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
 
 #if !defined(EMSCRIPTEN_STANDALONE_WASM)
   if (n >= 512) {
-    emscripten_memcpy_js(dest, src, n);
+    _emscripten_memcpy_js(dest, src, n);
     return dest;
   }
 #endif

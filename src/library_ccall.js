@@ -15,7 +15,7 @@ addToLibrary({
   },
 
   // C calling interface.
-  $ccall__deps: ['$getCFunc', '$writeArrayToMemory', '$stringToUTF8OnStack', 'stackSave', 'stackRestore', 'stackAlloc'],
+  $ccall__deps: ['$getCFunc', '$writeArrayToMemory', '$stringToUTF8OnStack', '$stackSave', '$stackRestore', '$stackAlloc'],
   $ccall__docs: `
   /**
    * @param {string|null=} returnType
@@ -46,8 +46,7 @@ addToLibrary({
 
     function convertReturnValue(ret) {
       if (returnType === 'string') {
-        {{{ from64('ret') }}}
-        return UTF8ToString(ret);
+        return UTF8ToString({{{ from64Expr('ret') }}});
       }
 #if MEMORY64
       if (returnType === 'pointer') return Number(ret);
@@ -143,8 +142,6 @@ addToLibrary({
       return getCFunc(ident);
     }
 #endif
-    return function() {
-      return ccall(ident, returnType, argTypes, arguments, opts);
-    }
+    return (...args) => ccall(ident, returnType, argTypes, args, opts);
   },
 });

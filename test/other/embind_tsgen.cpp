@@ -22,13 +22,21 @@ class Test {
 
   int getY() const { return y; }
 
+  std::string string_property;
+
   static int static_function(int x) { return 1; }
 
   static int static_property;
+  static std::string static_string_property;
 
 private:
   int x;
   int y;
+};
+
+class Foo {
+ public:
+  void process(const Test& input) {}
 };
 
 Test class_returning_fn() { return Test(); }
@@ -36,11 +44,6 @@ Test class_returning_fn() { return Test(); }
 std::unique_ptr<Test> class_unique_ptr_returning_fn() {
   return std::make_unique<Test>();
 }
-
-class Foo {
- public:
-  void process(const Test& input) {}
-};
 
 enum Bar { kValueOne, kValueTwo, kValueThree };
 
@@ -52,9 +55,14 @@ struct ValArr {
   int x, y, z;
 };
 
+EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
+
 struct ValObj {
   Foo foo;
   Bar bar;
+  std::string str;
+  CallbackType callback;
+  ValObj() : callback(val::undefined()) {}
 };
 
 class ClassWithConstructor {
@@ -81,7 +89,8 @@ int smart_ptr_function(std::shared_ptr<ClassWithSmartPtrConstructor>) {
   return 0;
 }
 
-EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
+struct Obj {};
+Obj* get_pointer(Obj* ptr) { return ptr; }
 
 int function_with_callback_param(CallbackType ct) {
   ct(val("hello"));
@@ -99,6 +108,10 @@ std::wstring wstring_test(std::wstring arg) {
 }
 
 std::optional<int> optional_test(std::optional<Foo> arg) {
+  return {};
+}
+
+std::optional<int> optional_and_nonoptional_test(std::optional<Foo> arg1, int arg2) {
   return {};
 }
 
@@ -126,14 +139,18 @@ EMSCRIPTEN_BINDINGS(Test) {
       .function("constFn", &Test::const_fn)
       .property("x", &Test::getX, &Test::setX)
       .property("y", &Test::getY)
+      .property("stringProperty", &Test::string_property)
       .class_function("staticFunction", &Test::static_function)
       .class_function("staticFunctionWithParam(x)", &Test::static_function)
       .class_property("staticProperty", &Test::static_property)
+      .class_property("staticStringProperty", &Test::static_string_property)
 	;
 
   function("class_returning_fn", &class_returning_fn);
   function("class_unique_ptr_returning_fn",
                    &class_unique_ptr_returning_fn);
+  class_<Obj>("Obj");
+  function("getPointer", &get_pointer, allow_raw_pointers());
 
   constant("an_int", 5);
   constant("a_bool", false);
@@ -161,7 +178,9 @@ EMSCRIPTEN_BINDINGS(Test) {
 
   value_object<ValObj>("ValObj")
       .field("foo", &ValObj::foo)
-      .field("bar", &ValObj::bar);
+      .field("bar", &ValObj::bar)
+      .field("str", &ValObj::str)
+      .field("callback", &ValObj::callback);
 
   register_vector<int>("IntVec");
 
@@ -174,6 +193,7 @@ EMSCRIPTEN_BINDINGS(Test) {
   register_optional<int>();
   register_optional<Foo>();
   function("optional_test", &optional_test);
+  function("optional_and_nonoptional_test", &optional_and_nonoptional_test);
 
   function("string_test", &string_test);
   function("wstring_test", &wstring_test);
@@ -208,6 +228,7 @@ EMSCRIPTEN_BINDINGS(Test) {
 }
 
 int Test::static_property = 42;
+std::string Test::static_string_property = "";
 
 int main() {
   // Main should not be run during TypeScript generation, but should run when

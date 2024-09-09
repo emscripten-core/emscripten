@@ -87,10 +87,9 @@ WebAssembly = {
     };
   },
 
-  RuntimeError: Error
-};
+  RuntimeError: Error,
 
 #if !MINIMAL_RUNTIME
-// We don't need to actually download a wasm binary, mark it as present but empty.
-wasmBinary = [];
+  isWasm2js: true,
 #endif
+};

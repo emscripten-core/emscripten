@@ -65,6 +65,7 @@ int _wasmfs_jsimpl_read(js_index_t backend,
                         size_t length,
                         off_t offset);
 int _wasmfs_jsimpl_get_size(js_index_t backend, js_index_t index);
+int _wasmfs_jsimpl_set_size(js_index_t backend, js_index_t index, off_t size);
 }
 
 namespace wasmfs {
@@ -101,7 +102,7 @@ class JSImplFile : public DataFile {
   }
 
   int setSize(off_t size) override {
-    WASMFS_UNREACHABLE("TODO: JSImpl setSize");
+    return _wasmfs_jsimpl_set_size(getBackendIndex(), getFileIndex(), size);
   }
 
 public:

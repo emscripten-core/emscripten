@@ -23,6 +23,7 @@ from tools import cache
 from tools import shared
 from tools import system_libs
 from tools import ports
+from tools import utils
 from tools.settings import settings
 from tools.system_libs import USE_NINJA
 
@@ -32,8 +33,10 @@ MINIMAL_TASKS = [
     'libbulkmemory',
     'libcompiler_rt',
     'libcompiler_rt-wasm-sjlj',
+    'libcompiler_rt-ww',
     'libc',
     'libc-debug',
+    'libc-ww-debug',
     'libc_optz',
     'libc_optz-debug',
     'libc++abi',
@@ -42,13 +45,16 @@ MINIMAL_TASKS = [
     'libc++abi-debug',
     'libc++abi-debug-except',
     'libc++abi-debug-noexcept',
+    'libc++abi-debug-ww-noexcept',
     'libc++',
     'libc++-except',
     'libc++-noexcept',
+    'libc++-ww-noexcept',
     'libal',
     'libdlmalloc',
     'libdlmalloc-tracing',
     'libdlmalloc-debug',
+    'libdlmalloc-ww',
     'libembind',
     'libembind-rtti',
     'libemmalloc',
@@ -60,8 +66,13 @@ MINIMAL_TASKS = [
     'libmimalloc-mt',
     'libGL',
     'libGL-getprocaddr',
+    'libGL-emu-getprocaddr',
+    'libGL-emu-webgl2-ofb-getprocaddr',
+    'libGL-webgl2-ofb-getprocaddr',
+    'libGL-ww-getprocaddr',
     'libhtml5',
     'libsockets',
+    'libsockets-ww',
     'libstubs',
     'libstubs-debug',
     'libstandalonewasm-nocatch',
@@ -169,6 +180,10 @@ def get_all_tasks():
   return get_system_tasks()[1] + PORTS
 
 
+def handle_port_error(target, message):
+  utils.exit_with_error(f'error building port `{target}` | {message}')
+
+
 def main():
   all_build_start_time = time.time()
 
@@ -227,7 +242,7 @@ def main():
   auto_tasks = False
   task_targets = dict.fromkeys(args.targets) # use dict to keep targets order
 
-  # subsitute
+  # substitute
   predefined_tasks = {
     'SYSTEM': system_tasks,
     'USER': PORTS,
@@ -289,6 +304,12 @@ def main():
         clear_port(what)
       if do_build:
         build_port(what)
+    elif ':' in what or what.endswith('.py'):
+      name = ports.handle_use_port_arg(settings, what, lambda message: handle_port_error(what, message))
+      if do_clear:
+        clear_port(name)
+      if do_build:
+        build_port(name)
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

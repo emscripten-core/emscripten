@@ -84,9 +84,8 @@ def write_binary(file_path, contents):
 
 def delete_file(filename):
   """Delete a file (if it exists)."""
-  if not os.path.exists(filename):
-    return
-  os.remove(filename)
+  if os.path.lexists(filename):
+    os.remove(filename)
 
 
 def delete_dir(dirname):
@@ -109,3 +108,12 @@ def delete_contents(dirname, exclude=None):
       delete_dir(entry)
     else:
       delete_file(entry)
+
+
+# TODO: Move this back to shared.py once importing that file becoming side effect free (i.e. it no longer requires a config).
+def set_version_globals():
+  global EMSCRIPTEN_VERSION, EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY
+  filename = path_from_root('emscripten-version.txt')
+  EMSCRIPTEN_VERSION = read_file(filename).strip().strip('"')
+  parts = [int(x) for x in EMSCRIPTEN_VERSION.split('-')[0].split('.')]
+  EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts

@@ -54,14 +54,7 @@ function initRuntime(wasmExports) {
 #endif
 
 #if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) {
-    // Export needed variables that worker.js needs to Module.
-    Module['HEAPU32'] = HEAPU32;
-    Module['__emscripten_thread_init'] = __emscripten_thread_init;
-    Module['__emscripten_thread_exit'] = __emscripten_thread_exit;
-    Module['_pthread_self'] = _pthread_self;
-    return;
-  }
+  if (ENVIRONMENT_IS_PTHREAD) return
 #endif
 
 #if WASM_WORKERS
@@ -89,15 +82,6 @@ function initRuntime(wasmExports) {
 
 // Initialize wasm (asynchronous)
 
-var imports = {
-#if MINIFY_WASM_IMPORTED_MODULES
-  'a': wasmImports,
-#else // MINIFY_WASM_IMPORTED_MODULES
-  'env': wasmImports,
-  '{{{ WASI_MODULE_NAME }}}': wasmImports,
-#endif // MINIFY_WASM_IMPORTED_MODULES
-};
-
 // In non-fastcomp non-asm.js builds, grab wasm exports to outer scope
 // for emscripten_get_exported_function() to be able to access them.
 #if LibraryManager.has('library_exports.js')
@@ -111,6 +95,20 @@ var wasmModule;
 #if DECLARE_ASM_MODULE_EXPORTS
 <<< WASM_MODULE_EXPORTS_DECLARES >>>
 #endif
+
+#if PTHREADS
+function loadModule() {
+  assignWasmImports();
+#endif
+
+var imports = {
+#if MINIFY_WASM_IMPORTED_MODULES
+  'a': wasmImports,
+#else // MINIFY_WASM_IMPORTED_MODULES
+  'env': wasmImports,
+  '{{{ WASI_MODULE_NAME }}}': wasmImports,
+#endif // MINIFY_WASM_IMPORTED_MODULES
+};
 
 #if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
@@ -216,16 +214,8 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
   wasmMemory = wasmExports['memory'];
 #if ASSERTIONS
   assert(wasmMemory);
-  assert(wasmMemory.buffer.byteLength === {{{ INITIAL_MEMORY }}});
 #endif
   updateMemoryViews();
-#endif
-
-#if !MEM_INIT_IN_WASM && !SINGLE_FILE
-#if ASSERTIONS
-  if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
-#endif
-  HEAPU8.set(new Uint8Array(Module['mem']), {{{ GLOBAL_BASE }}});
 #endif
 
   initRuntime(wasmExports);
@@ -260,3 +250,13 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 }
 #endif // ASSERTIONS || WASM == 2
 );
+
+#if PTHREADS
+}
+
+if (!ENVIRONMENT_IS_PTHREAD) {
+  // When running in a pthread we delay module loading untill we have
+  // received the module via postMessage
+  loadModule();
+}
+#endif

@@ -74,9 +74,23 @@ void __cxa_free_exception(void *thrown_object) throw() {
         ((char *)cxa_exception_from_thrown_object(thrown_object));
     free((void *)raw_buffer);
 }
+
+// This function is called from make_exception_ptr in libcxx unless
+// -fno-exceptions is not given. We have definitions of this function in
+// cxa_exception.cpp and cxa_exception_emscripten.cpp, but unlike other
+// platforms, we use those files only when one of Emscripten EH or Wasm EH is
+// used, and we use this cxa_noexceptions.cpp in case of -fignore-exceptions,
+// which is our default. So we add a definition here to prevent a link failure.
+__cxa_exception*
+__cxa_init_primary_exception(void* object,
+                             std::type_info* tinfo,
+                             void*(_LIBCXXABI_DTOR_FUNC* dest)(void*)) throw() {
+  __cxa_exception* exception_header = cxa_exception_from_thrown_object(object);
+  return exception_header;
+}
 #endif
 
-}  // extern "C"
+} // extern "C"
 
 // provide dummy implementations for the 'no exceptions' case.
 uint64_t __getExceptionClass  (const _Unwind_Exception*)           { return 0; }

@@ -137,8 +137,8 @@ weak_alias(dummy_tsd, __pthread_tsd_main);
 
 // See system/lib/README.md for static constructor ordering.
 __attribute__((constructor(48)))
-void __emscripten_init_main_thread(void) {
-  __emscripten_init_main_thread_js(&__main_pthread);
+void _emscripten_init_main_thread(void) {
+  _emscripten_init_main_thread_js(&__main_pthread);
 
   // The pthread struct has a field that points to itself - this is used as
   // a magic ID to detect whether the pthread_t structure is 'alive'.

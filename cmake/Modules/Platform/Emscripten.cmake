@@ -24,7 +24,7 @@ set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS FALSE)
 # CMAKE_SYSTEM_PROCESSOR=x86_64 for 64-bit platform), since some projects (e.g.
 # OpenCV) use this to detect bitness.
 # Allow users to ovewrite this on the command line with -DEMSCRIPTEN_SYSTEM_PROCESSOR=arm.
-if ("${EMSCRIPTEN_SYSTEM_PROCESSOR}" STREQUAL "")
+if (NOT DEFINED EMSCRIPTEN_SYSTEM_PROCESSOR)
   set(EMSCRIPTEN_SYSTEM_PROCESSOR x86)
 endif()
 set(CMAKE_SYSTEM_PROCESSOR ${EMSCRIPTEN_SYSTEM_PROCESSOR})
@@ -58,21 +58,18 @@ if (CMAKE_TOOLCHAIN_FILE)
 endif()
 
 # Locate where the Emscripten compiler resides in relative to this toolchain file.
-if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
+if (NOT DEFINED EMSCRIPTEN_ROOT_PATH)
   get_filename_component(GUESS_EMSCRIPTEN_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
   if (EXISTS "${GUESS_EMSCRIPTEN_ROOT_PATH}/emranlib")
     set(EMSCRIPTEN_ROOT_PATH "${GUESS_EMSCRIPTEN_ROOT_PATH}")
+  else()
+    # If not found by above search, locate using the EMSCRIPTEN environment variable.
+    set(EMSCRIPTEN_ROOT_PATH "$ENV{EMSCRIPTEN}")
+    # Abort if not found.
+    if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
+      message(FATAL_ERROR "Could not locate the Emscripten compiler toolchain directory! Either set the EMSCRIPTEN environment variable, or pass -DEMSCRIPTEN_ROOT_PATH=xxx to CMake to explicitly specify the location of the compiler!")
+    endif()
   endif()
-endif()
-
-# If not found by above search, locate using the EMSCRIPTEN environment variable.
-if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
-  set(EMSCRIPTEN_ROOT_PATH "$ENV{EMSCRIPTEN}")
-endif()
-
-# Abort if not found.
-if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
-  message(FATAL_ERROR "Could not locate the Emscripten compiler toolchain directory! Either set the EMSCRIPTEN environment variable, or pass -DEMSCRIPTEN_ROOT_PATH=xxx to CMake to explicitly specify the location of the compiler!")
 endif()
 
 # Normalize, convert Windows backslashes to forward slashes or CMake will crash.
@@ -284,7 +281,7 @@ set(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
 
 # Set a global EMSCRIPTEN variable that can be used in client CMakeLists.txt to
 # detect when building using Emscripten.
-set(EMSCRIPTEN 1 CACHE BOOL "If true, we are targeting Emscripten output.")
+set(EMSCRIPTEN 1 CACHE INTERNAL "If true, we are targeting Emscripten output.")
 
 # Hardwire support for cmake-2.8/Modules/CMakeBackwardsCompatibilityC.cmake
 # without having CMake to try complex things to autodetect these:
@@ -367,10 +364,9 @@ if (CMAKE_CROSSCOMPILING_EMULATOR)
 endif()
 
 # TODO: CMake appends <sysroot>/usr/include to implicit includes; switching to use usr/include will make this redundant.
-if ("${CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES}" STREQUAL "")
+if (NOT DEFINED CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES)
   set(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES "${EMSCRIPTEN_SYSROOT}/include")
 endif()
-if ("${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES}" STREQUAL "")
+if (NOT DEFINED CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES)
   set(CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES "${EMSCRIPTEN_SYSROOT}/include")
 endif()
-unset(_em_sysroot_include)

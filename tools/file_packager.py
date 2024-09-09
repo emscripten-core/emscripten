@@ -57,6 +57,8 @@ Usage:
 
   --no-node Whether to support Node.js. By default we do, which emits some extra code.
 
+  --quiet Suppress reminder about using `FORCE_FILESYSTEM`
+
 Notes:
 
   * The file packager generates unix-style file paths. So if you are on windows and a file is accessed at
@@ -110,6 +112,7 @@ class Options:
     self.obj_output = None
     self.depfile = None
     self.from_emcc = False
+    self.quiet = False
     self.force = True
     # If set to True, IndexedDB (IDBFS in library_idbfs.js) is used to locally
     # cache VFS XHR so that subsequent page loads can read the data from the
@@ -411,9 +414,11 @@ def main():
       if '=' in arg:
         options.export_name = arg.split('=', 1)[1]
       leading = ''
-    elif arg.startswith('--from-emcc'):
+    elif arg == '--from-emcc':
       options.from_emcc = True
       leading = ''
+    elif arg == '--quiet':
+      options.quiet = True
     elif arg.startswith('--plugin'):
       plugin = utils.read_file(arg.split('=', 1)[1])
       eval(plugin) # should append itself to plugins
@@ -454,7 +459,7 @@ def main():
           'and a specified --js-output')
       return 1
 
-  if not options.from_emcc:
+  if not options.from_emcc and not options.quiet:
     err('Remember to build the main file with `-sFORCE_FILESYSTEM` '
         'so that it includes support for loading this file package')
 
@@ -572,7 +577,7 @@ def main():
 
   if options.depfile:
     with open(options.depfile, 'w') as f:
-      for target in [data_target, options.jsoutput]:
+      for target in (data_target, options.jsoutput):
         if target:
           f.write(escape_for_makefile(target))
           f.write(' \\\n')
@@ -599,18 +604,20 @@ def generate_js(data_target, data_files, metadata):
     ret = ''
   else:
     ret = '''
-  var Module = typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": options.export_name}
+  var Module = typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": options.export_name}
 
   ret += '''
-  if (!Module.expectedDataFileDownloads) {
-    Module.expectedDataFileDownloads = 0;
+  if (!Module['expectedDataFileDownloads']) {
+    Module['expectedDataFileDownloads'] = 0;
   }
 
-  Module.expectedDataFileDownloads++;
-  (function() {
+  Module['expectedDataFileDownloads']++;
+  (() => {
     // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
-    if (Module['ENVIRONMENT_IS_PTHREAD'] || Module['$ww']) return;
-    var loadPackage = function(metadata) {\n'''
+    var isPthread = typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD;
+    var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER;
+    if (isPthread || isWasmWorker) return;
+    function loadPackage(metadata) {\n'''
 
   code = '''
       function assert(check, msg) {
@@ -652,11 +659,10 @@ def generate_js(data_target, data_files, metadata):
           % (start / (1024 * 1024)))
 
     create_preloaded = '''
-          Module['FS_createPreloadedFile'](this.name, null, byteArray, true, true, function() {
-            Module['removeRunDependency'](`fp ${that.name}`);
-          }, function() {
-            err(`Preloading file ${that.name} failed`);
-          }, false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change\n'''
+          Module['FS_createPreloadedFile'](this.name, null, byteArray, true, true,
+            () => Module['removeRunDependency'](`fp ${that.name}`),
+            () => err(`Preloading file ${that.name} failed`),
+            false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change\n'''
     create_data = '''// canOwn this data in the filesystem, it is a slide into the heap that will never change
           Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
           Module['removeRunDependency'](`fp ${that.name}`);'''
@@ -740,9 +746,8 @@ def generate_js(data_target, data_files, metadata):
       # LZ4FS usage
       temp = data_target + '.orig'
       shutil.move(data_target, temp)
-      meta = shared.run_js_tool(utils.path_from_root('tools/lz4-compress.js'),
-                                [utils.path_from_root('third_party/mini-lz4.js'),
-                                temp, data_target], stdout=PIPE)
+      meta = shared.run_js_tool(utils.path_from_root('tools/lz4-compress.mjs'),
+                                [temp, data_target], stdout=PIPE)
       os.unlink(temp)
       use_data = '''var compressedData = %s;
             compressedData['data'] = byteArray;
@@ -801,7 +806,7 @@ def generate_js(data_target, data_files, metadata):
           } catch (e) {
             return errback(e);
           }
-          openRequest.onupgradeneeded = function(event) {
+          openRequest.onupgradeneeded = (event) => {
             var db = /** @type {IDBDatabase} */ (event.target.result);
 
             if (db.objectStoreNames.contains(PACKAGE_STORE_NAME)) {
@@ -814,13 +819,11 @@ def generate_js(data_target, data_files, metadata):
             }
             var metadata = db.createObjectStore(METADATA_STORE_NAME);
           };
-          openRequest.onsuccess = function(event) {
+          openRequest.onsuccess = (event) => {
             var db = /** @type {IDBDatabase} */ (event.target.result);
             callback(db);
           };
-          openRequest.onerror = function(error) {
-            errback(error);
-          };
+          openRequest.onerror = (error) => errback(error);
         };
 
         // This is needed as chromium has a limit on per-entry files in IndexedDB
@@ -850,7 +853,7 @@ def generate_js(data_target, data_files, metadata):
               `package/${packageName}/${chunkId}`
             );
             chunkSliceStart = nextChunkSliceStart;
-            putPackageRequest.onsuccess = function(event) {
+            putPackageRequest.onsuccess = (event) => {
               finishedChunks++;
               if (finishedChunks == chunkCount) {
                 var transaction_metadata = db.transaction(
@@ -865,17 +868,11 @@ def generate_js(data_target, data_files, metadata):
                   },
                   `metadata/${packageName}`
                 );
-                putMetadataRequest.onsuccess = function(event) {
-                  callback(packageData);
-                };
-                putMetadataRequest.onerror = function(error) {
-                  errback(error);
-                };
+                putMetadataRequest.onsuccess = (event) =>  callback(packageData);
+                putMetadataRequest.onerror = (error) => errback(error);
               }
             };
-            putPackageRequest.onerror = function(error) {
-              errback(error);
-            };
+            putPackageRequest.onerror = (error) => errback(error);
           }
         }
 
@@ -884,7 +881,7 @@ def generate_js(data_target, data_files, metadata):
           var transaction = db.transaction([METADATA_STORE_NAME], IDB_RO);
           var metadata = transaction.objectStore(METADATA_STORE_NAME);
           var getRequest = metadata.get(`metadata/${packageName}`);
-          getRequest.onsuccess = function(event) {
+          getRequest.onsuccess = (event) => {
             var result = event.target.result;
             if (!result) {
               return callback(false, null);
@@ -892,9 +889,7 @@ def generate_js(data_target, data_files, metadata):
               return callback(PACKAGE_UUID === result['uuid'], result);
             }
           };
-          getRequest.onerror = function(error) {
-            errback(error);
-          };
+          getRequest.onerror = (error) => errback(error);
         }
 
         function fetchCachedPackage(db, packageName, metadata, callback, errback) {
@@ -908,7 +903,11 @@ def generate_js(data_target, data_files, metadata):
 
           for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
             var getRequest = packages.get(`package/${packageName}/${chunkId}`);
-            getRequest.onsuccess = function(event) {
+            getRequest.onsuccess = (event) => {
+              if (!event.target.result) {
+                errback(new Error(`CachedPackageNotFound for: ${packageName}`));
+                return;
+              }
               // If there's only 1 chunk, there's nothing to concatenate it with so we can just return it now
               if (chunkCount == 1) {
                 callback(event.target.result);
@@ -935,9 +934,7 @@ def generate_js(data_target, data_files, metadata):
                 }
               }
             };
-            getRequest.onerror = function(error) {
-              errback(error);
-            };
+            getRequest.onerror = (error) => errback(error);
           }
         }\n'''
 
@@ -946,7 +943,7 @@ def generate_js(data_target, data_files, metadata):
     if options.support_node:
       node_support_code = '''
         if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
-          require('fs').readFile(packageName, function(err, contents) {
+          require('fs').readFile(packageName, (err, contents) => {
             if (err) {
               errback(err);
             } else {
@@ -961,40 +958,40 @@ def generate_js(data_target, data_files, metadata):
         var xhr = new XMLHttpRequest();
         xhr.open('GET', packageName, true);
         xhr.responseType = 'arraybuffer';
-        xhr.onprogress = function(event) {
+        xhr.onprogress = (event) => {
           var url = packageName;
           var size = packageSize;
           if (event.total) size = event.total;
           if (event.loaded) {
             if (!xhr.addedTotal) {
               xhr.addedTotal = true;
-              if (!Module.dataFileDownloads) Module.dataFileDownloads = {};
-              Module.dataFileDownloads[url] = {
+              if (!Module['dataFileDownloads']) Module['dataFileDownloads'] = {};
+              Module['dataFileDownloads'][url] = {
                 loaded: event.loaded,
                 total: size
               };
             } else {
-              Module.dataFileDownloads[url].loaded = event.loaded;
+              Module['dataFileDownloads'][url].loaded = event.loaded;
             }
             var total = 0;
             var loaded = 0;
             var num = 0;
-            for (var download in Module.dataFileDownloads) {
-            var data = Module.dataFileDownloads[download];
+            for (var download in Module['dataFileDownloads']) {
+            var data = Module['dataFileDownloads'][download];
               total += data.total;
               loaded += data.loaded;
               num++;
             }
-            total = Math.ceil(total * Module.expectedDataFileDownloads/num);
-            if (Module['setStatus']) Module['setStatus'](`Downloading data... (${loaded}/${total})`);
-          } else if (!Module.dataFileDownloads) {
-            if (Module['setStatus']) Module['setStatus']('Downloading data...');
+            total = Math.ceil(total * Module['expectedDataFileDownloads']/num);
+            Module['setStatus']?.(`Downloading data... (${loaded}/${total})`);
+          } else if (!Module['dataFileDownloads']) {
+            Module['setStatus']?.('Downloading data...');
           }
         };
-        xhr.onerror = function(event) {
+        xhr.onerror = (event) => {
           throw new Error("NetworkError for: " + packageName);
         }
-        xhr.onload = function(event) {
+        xhr.onload = (event) => {
           if (xhr.status == 200 || xhr.status == 304 || xhr.status == 206 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
             var packageData = xhr.response;
             callback(packageData);
@@ -1022,7 +1019,7 @@ def generate_js(data_target, data_files, metadata):
     # we need to find the datafile in the same dir as the html file
 
     code += '''
-      if (!Module.preloadResults) Module.preloadResults = {};\n'''
+      if (!Module['preloadResults']) Module['preloadResults'] = {};\n'''
 
     if options.use_preload_cache:
       code += '''
@@ -1033,29 +1030,26 @@ def generate_js(data_target, data_files, metadata):
         };
 
         openDatabase(
-          function(db) {
-            checkCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME,
-              function(useCached, metadata) {
-                Module.preloadResults[PACKAGE_NAME] = {fromCache: useCached};
+          (db) => checkCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME,
+              (useCached, metadata) => {
+                Module['preloadResults'][PACKAGE_NAME] = {fromCache: useCached};
                 if (useCached) {
                   fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, metadata, processPackageData, preloadFallback);
                 } else {
                   fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE,
-                    function(packageData) {
+                    (packageData) => {
                       cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}, processPackageData,
-                        function(error) {
+                        (error) => {
                           console.error(error);
                           processPackageData(packageData);
                         });
                     }
                   , preloadFallback);
                 }
-              }
-            , preloadFallback);
-          }
+              }, preloadFallback)
         , preloadFallback);
 
-        if (Module['setStatus']) Module['setStatus']('Downloading...');\n'''
+        Module['setStatus']?.('Downloading...');\n'''
     else:
       # Not using preload cache, so we might as well start the xhr ASAP,
       # potentially before JS parsing of the main codebase if it's after us.
@@ -1065,7 +1059,7 @@ def generate_js(data_target, data_files, metadata):
       var fetchedCallback = null;
       var fetched = Module['getPreloadedPackage'] ? Module['getPreloadedPackage'](REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE) : null;
 
-      if (!fetched) fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, function(data) {
+      if (!fetched) fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, (data) => {
         if (fetchedCallback) {
           fetchedCallback(data);
           fetchedCallback = null;
@@ -1075,7 +1069,7 @@ def generate_js(data_target, data_files, metadata):
       }, handleError);\n'''
 
       code += '''
-      Module.preloadResults[PACKAGE_NAME] = {fromCache: false};
+      Module['preloadResults'][PACKAGE_NAME] = {fromCache: false};
       if (fetched) {
         processPackageData(fetched);
         fetched = null;
@@ -1084,12 +1078,12 @@ def generate_js(data_target, data_files, metadata):
       }\n'''
 
   ret += '''
-    function runWithFS() {\n'''
+    function runWithFS(Module) {\n'''
   ret += code
   ret += '''
     }
     if (Module['calledRun']) {
-      runWithFS();
+      runWithFS(Module);
     } else {
       if (!Module['preRun']) Module['preRun'] = [];
       Module["preRun"].push(runWithFS); // FS is not initialized yet, wait for it
@@ -1104,7 +1098,7 @@ def generate_js(data_target, data_files, metadata):
     Module['addRunDependency']('%(metadata_file)s');
     var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
     var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function() {
+    xhr.onreadystatechange = () => {
      if (xhr.readyState === 4 && xhr.status === 200) {
        loadPackage(JSON.parse(xhr.responseText));
      }

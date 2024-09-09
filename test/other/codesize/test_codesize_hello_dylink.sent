@@ -1,0 +1,9 @@
+__heap_base
+__indirect_function_table
+__memory_base
+__stack_pointer
+__table_base
+_emscripten_memcpy_js
+emscripten_resize_heap
+fd_write
+memory

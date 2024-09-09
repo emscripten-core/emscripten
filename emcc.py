@@ -27,6 +27,7 @@ import logging
 import os
 import re
 import shlex
+import shutil
 import sys
 import time
 import tarfile
@@ -39,7 +40,7 @@ from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, get_file_suffix
 from tools.shared import run_process, exit_with_error, DEBUG
 from tools.shared import in_temp, OFormat
-from tools.shared import DYNAMICLIB_ENDINGS, STATICLIB_ENDINGS
+from tools.shared import DYNAMICLIB_ENDINGS
 from tools.response_file import substitute_response_files
 from tools import config
 from tools import cache
@@ -81,7 +82,7 @@ LINK_ONLY_FLAGS = {
     '--bind', '--closure', '--cpuprofiler', '--embed-file',
     '--emit-symbol-map', '--emrun', '--exclude-file', '--extern-post-js',
     '--extern-pre-js', '--ignore-dynamic-linking', '--js-library',
-    '--js-transform', '--memory-init-file', '--oformat', '--output_eol',
+    '--js-transform', '--oformat', '--output_eol',
     '--post-js', '--pre-js', '--preload-file', '--profiling-funcs',
     '--proxy-to-worker', '--shell-file', '--source-map-base',
     '--threadprofiler', '--use-preload-plugins'
@@ -105,15 +106,26 @@ class EmccState:
     self.has_dash_c = False
     self.has_dash_E = False
     self.has_dash_S = False
+    # List of link options paired with their position on the command line [(i, option), ...].
     self.link_flags = []
     self.lib_dirs = []
-    self.forced_stdlibs = []
 
-  def add_link_flag(self, i, f):
-    if f.startswith('-L'):
-      self.lib_dirs.append(f[2:])
+  def has_link_flag(self, f):
+    return f in [x for _, x in self.link_flags]
 
-    self.link_flags.append((i, f))
+  def add_link_flag(self, i, flag):
+    if flag.startswith('-L'):
+      self.lib_dirs.append(flag[2:])
+    # Link flags should be adding in strictly ascending order
+    assert not self.link_flags or i > self.link_flags[-1][0], self.link_flags
+    self.link_flags.append((i, flag))
+
+  def append_link_flag(self, flag):
+    if self.link_flags:
+      index = self.link_flags[-1][0] + 1
+    else:
+      index = 1
+    self.add_link_flag(index, flag)
 
 
 class EmccOptions:
@@ -122,6 +134,7 @@ class EmccOptions:
     self.output_file = None
     self.no_minify = False
     self.post_link = False
+    self.save_temps = False
     self.executable = False
     self.compiler_wrapper = None
     self.oformat = None
@@ -140,11 +153,11 @@ class EmccOptions:
     self.ignore_dynamic_linking = False
     self.shell_path = None
     self.source_map_base = ''
+    self.emit_tsd = ''
     self.embind_emit_tsd = ''
     self.emrun = False
     self.cpu_profiler = False
     self.memory_profiler = False
-    self.memory_init_file = None
     self.use_preload_cache = False
     self.use_preload_plugins = False
     self.valid_abspaths = []
@@ -260,7 +273,7 @@ def apply_user_settings():
     filename = None
     if value and value[0] == '@':
       filename = removeprefix(value, '@')
-      if not os.path.exists(filename):
+      if not os.path.isfile(filename):
         exit_with_error('%s: file not found parsing argument: %s=%s' % (filename, key, value))
       value = read_file(filename).strip()
     else:
@@ -281,11 +294,18 @@ def apply_user_settings():
 
     if key == 'EXPORTED_FUNCTIONS':
       # used for warnings in emscripten.py
-      settings.USER_EXPORTED_FUNCTIONS = settings.EXPORTED_FUNCTIONS.copy()
+      settings.USER_EXPORTS = settings.EXPORTED_FUNCTIONS.copy()
 
     # TODO(sbc): Remove this legacy way.
     if key == 'WASM_OBJECT_FILES':
       settings.LTO = 0 if value else 'full'
+
+    if key == 'JSPI':
+      settings.ASYNCIFY = 2
+    if key == 'JSPI_IMPORTS':
+      settings.ASYNCIFY_IMPORTS = value
+    if key == 'JSPI_EXPORTS':
+      settings.ASYNCIFY_EXPORTS = value
 
 
 def cxx_to_c_compiler(cxx):
@@ -358,12 +378,13 @@ def get_clang_flags(user_args):
   if settings.RELOCATABLE and '-fPIC' not in user_args:
     flags.append('-fPIC')
 
-  # We use default visiibilty=default in emscripten even though the upstream
-  # backend defaults visibility=hidden.  This matched the expectations of C/C++
-  # code in the wild which expects undecorated symbols to be exported to other
-  # DSO's by default.
-  if not any(a.startswith('-fvisibility') for a in user_args):
-    flags.append('-fvisibility=default')
+  if settings.RELOCATABLE or settings.LINKABLE or '-fPIC' in user_args:
+    if not any(a.startswith('-fvisibility') for a in user_args):
+      # For relocatable code we default to visibility=default in emscripten even
+      # though the upstream backend defaults visibility=hidden.  This matches the
+      # expectations of C/C++ code in the wild which expects undecorated symbols
+      # to be exported to other DSO's by default.
+      flags.append('-fvisibility=default')
 
   if settings.LTO:
     if not any(a.startswith('-flto') for a in user_args):
@@ -548,7 +569,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return 0
 
   if '-dumpversion' in args: # gcc's doc states "Print the compiler version [...] and don't do anything else."
-    print(shared.EMSCRIPTEN_VERSION)
+    print(utils.EMSCRIPTEN_VERSION)
     return 0
 
   if '--cflags' in args:
@@ -577,7 +598,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   if 'EMMAKEN_COMPILER' in os.environ:
     exit_with_error('`EMMAKEN_COMPILER` is no longer supported.\n' +
-                    'Please use the `LLVM_ROOT` and/or `COMPILER_WRAPPER` config settings instread')
+                    'Please use the `LLVM_ROOT` and/or `COMPILER_WRAPPER` config settings instead')
 
   if 'EMMAKEN_CFLAGS' in os.environ:
     exit_with_error('`EMMAKEN_CFLAGS` is no longer supported, please use `EMCC_CFLAGS` instead')
@@ -600,6 +621,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
     return 0
 
+  if '-print-resource-dir' in newargs:
+    shared.check_call([clang] + newargs)
+    return 0
+
   if '-print-libgcc-file-name' in newargs or '--print-libgcc-file-name' in newargs:
     settings.limit_settings(None)
     compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt']
@@ -611,7 +636,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     libname = print_file_name[-1].split('=')[1]
     system_libpath = cache.get_lib_dir(absolute=True)
     fullpath = os.path.join(system_libpath, libname)
-    if os.path.exists(fullpath):
+    if os.path.isfile(fullpath):
       print(fullpath)
     else:
       print(libname)
@@ -663,6 +688,9 @@ def phase_parse_arguments(state):
   # warnings are properly printed during arg parse.
   newargs = diagnostics.capture_warnings(newargs)
 
+  if not diagnostics.is_enabled('deprecated'):
+    settings.WARN_DEPRECATED = 0
+
   for i in range(len(newargs)):
     if newargs[i] in ('-l', '-L', '-I', '-z'):
       # Scan for flags that can be written as either one or two arguments
@@ -705,7 +733,6 @@ def phase_setup(options, state, newargs):
   """
 
   if settings.RUNTIME_LINKED_LIBS:
-    diagnostics.warning('deprecated', 'RUNTIME_LINKED_LIBS is deprecated; you can simply list the libraries directly on the commandline now')
     newargs += settings.RUNTIME_LINKED_LIBS
 
   # Find input files
@@ -749,12 +776,6 @@ def phase_setup(options, state, newargs):
       file_suffix = get_file_suffix(arg)
       if file_suffix in HEADER_ENDINGS:
         has_header_inputs = True
-      if file_suffix in STATICLIB_ENDINGS and not building.is_ar(arg):
-        if building.is_bitcode(arg):
-          message = f'{arg}: File has a suffix of a static library {STATICLIB_ENDINGS}, but instead is an LLVM bitcode file! When linking LLVM bitcode files use .bc or .o.'
-        else:
-          message = arg + ': Unknown format, not a static library!'
-        exit_with_error(message)
       input_files.append((i, arg))
     elif arg.startswith('-L'):
       state.add_link_flag(i, arg)
@@ -965,6 +986,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
     # with -MF! (clang seems to not recognize it)
     logger.debug(('just preprocessor ' if state.has_dash_E else 'just dependencies: ') + ' '.join(cmd))
     shared.exec_process(cmd)
+    assert False, 'exec_process does not return'
 
   # Precompiled headers support
   if state.mode == Mode.PCH:
@@ -977,6 +999,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
       cmd += ['-o', options.output_file]
     logger.debug(f"running (for precompiled headers): {cmd[0]} {' '.join(cmd[1:])}")
     shared.exec_process(cmd)
+    assert False, 'exec_process does not return'
 
   if state.mode == Mode.COMPILE_ONLY:
     inputs = [i[1] for i in input_files]
@@ -989,6 +1012,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
       if get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
         diagnostics.warning('emcc', '.bc output file suffix used without -flto or -emit-llvm.  Consider using .o extension since emcc will output an object file, not a bitcode file')
     shared.exec_process(cmd)
+    assert False, 'exec_process does not return'
 
   # In COMPILE_AND_LINK we need to compile source files too, but we also need to
   # filter out the link flags
@@ -1035,8 +1059,10 @@ def phase_compile_inputs(options, state, newargs, input_files):
       cmd += ['-Xclang', '-split-dwarf-file', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
       cmd += ['-Xclang', '-split-dwarf-output', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
     shared.check_call(cmd)
-    if output_file not in ('-', os.devnull) and not shared.SKIP_SUBPROCS:
+    if not shared.SKIP_SUBPROCS:
       assert os.path.exists(output_file)
+      if options.save_temps:
+        shutil.copyfile(output_file, shared.unsuffixed_basename(input_file) + '.o')
 
   # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
   for i, input_file in input_files:
@@ -1073,7 +1099,7 @@ def version_string():
   elif os.path.exists(utils.path_from_root('emscripten-revision.txt')):
     rev = read_file(utils.path_from_root('emscripten-revision.txt')).strip()
     revision_suffix = ' (%s)' % rev
-  return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {shared.EMSCRIPTEN_VERSION}{revision_suffix}'
+  return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {utils.EMSCRIPTEN_VERSION}{revision_suffix}'
 
 
 def parse_args(newargs):
@@ -1144,6 +1170,12 @@ def parse_args(newargs):
         requested_level = 1
         settings.SHRINK_LEVEL = 0
         settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 1)
+      elif requested_level == 'fast':
+        # TODO(https://github.com/emscripten-core/emscripten/issues/21497):
+        # If we ever map `-ffast-math` to `wasm-opt --fast-math` then
+        # then we should enable that too here.
+        requested_level = 3
+        settings.SHRINK_LEVEL = 0
       else:
         settings.SHRINK_LEVEL = 0
       settings.OPT_LEVEL = validate_arg_level(requested_level, 3, 'invalid optimization level: ' + arg, clamp=True)
@@ -1159,6 +1191,8 @@ def parse_args(newargs):
         settings.LTO = 'full'
     elif arg == "-fno-lto":
       settings.LTO = 0
+    elif arg == "--save-temps":
+      options.save_temps = True
     elif check_arg('--llvm-lto'):
       logger.warning('--llvm-lto ignored when using llvm backend')
       consume_arg()
@@ -1252,6 +1286,8 @@ def parse_args(newargs):
     elif check_flag('--emit-symbol-map'):
       options.emit_symbol_map = True
       settings.EMIT_SYMBOL_MAP = 1
+    elif check_arg('--emit-minification-map'):
+      settings.MINIFICATION_MAP = consume_arg()
     elif check_arg('--embed-file'):
       options.embed_files.append(consume_arg())
     elif check_arg('--preload-file'):
@@ -1275,7 +1311,10 @@ def parse_args(newargs):
     elif check_arg('--source-map-base'):
       options.source_map_base = consume_arg()
     elif check_arg('--embind-emit-tsd'):
-      options.embind_emit_tsd = consume_arg()
+      diagnostics.warning('deprecated', '--embind-emit-tsd is deprecated.  Use --emit-tsd instead.')
+      options.emit_tsd = consume_arg()
+    elif check_arg('--emit-tsd'):
+      options.emit_tsd = consume_arg()
     elif check_flag('--no-entry'):
       options.no_entry = True
     elif check_arg('--js-library'):
@@ -1309,7 +1348,7 @@ def parse_args(newargs):
       ports.show_ports()
       should_exit = True
     elif check_arg('--memory-init-file'):
-      options.memory_init_file = int(consume_arg())
+      exit_with_error('--memory-init-file is no longer supported')
     elif check_flag('--proxy-to-worker'):
       settings_changes.append('PROXY_TO_WORKER=1')
     elif check_arg('--valid-abspath'):
@@ -1446,7 +1485,7 @@ def parse_symbol_list_file(contents):
   kind of quoting or escaping.
   """
   values = contents.splitlines()
-  return [v.strip() for v in values]
+  return [v.strip() for v in values if not v.startswith('#')]
 
 
 def parse_value(text, expected_type):

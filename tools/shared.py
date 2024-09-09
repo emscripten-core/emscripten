@@ -40,7 +40,7 @@ elif EMCC_LOGGING:
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=log_level)
 colored_logger.enable()
 
-from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
+from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS, set_version_globals
 from . import cache, tempfiles
 from . import diagnostics
 from . import config
@@ -59,7 +59,7 @@ SKIP_SUBPROCS = False
 # This version currently matches the node version that we ship with emsdk
 # which means that we can say for sure that this version is well supported.
 MINIMUM_NODE_VERSION = (16, 20, 0)
-EXPECTED_LLVM_VERSION = 19
+EXPECTED_LLVM_VERSION = 20
 
 # These get set by setup_temp_dirs
 TEMP_DIR = None
@@ -397,8 +397,13 @@ def node_memory64_flags():
   return ['--experimental-wasm-memory64']
 
 
-def node_exception_flags():
-  return ['--experimental-wasm-eh']
+def node_exception_flags(nodejs):
+  node_version = get_node_version(nodejs)
+  # Exception handling was enabled by default in node v17.
+  if node_version and node_version < (17, 0, 0):
+    return ['--experimental-wasm-eh']
+  else:
+    return []
 
 
 def node_pthread_flags(nodejs):
@@ -419,16 +424,8 @@ def check_node():
     exit_with_error('the configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
 
 
-def set_version_globals():
-  global EMSCRIPTEN_VERSION, EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY
-  filename = path_from_root('emscripten-version.txt')
-  EMSCRIPTEN_VERSION = utils.read_file(filename).strip().strip('"')
-  parts = [int(x) for x in EMSCRIPTEN_VERSION.split('-')[0].split('.')]
-  EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
-
-
 def generate_sanity():
-  return f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}\n'
+  return f'{utils.EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}\n'
 
 
 @memoize
@@ -451,7 +448,7 @@ def perform_sanity_checks():
   check_node()
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
-    for cmd in [CLANG_CC, LLVM_AR]:
+    for cmd in (CLANG_CC, LLVM_AR):
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
         exit_with_error('cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
 
@@ -666,10 +663,6 @@ def print_compiler_stage(cmd):
     sys.stderr.flush()
 
 
-def mangle_c_symbol_name(name):
-  return '_' + name if not name.startswith('$') else name[1:]
-
-
 def demangle_c_symbol_name(name):
   if not is_c_symbol(name):
     return '$' + name
@@ -677,15 +670,11 @@ def demangle_c_symbol_name(name):
 
 
 def is_c_symbol(name):
-  return name.startswith('_') or name in settings.WASM_SYSTEM_EXPORTS
+  return name.startswith('_')
 
 
 def treat_as_user_export(name):
-  if name.startswith('dynCall_'):
-    return False
-  if name in settings.WASM_SYSTEM_EXPORTS:
-    return False
-  return True
+  return not name.startswith('dynCall_')
 
 
 def asmjs_mangle(name):

@@ -21,7 +21,7 @@ def get(ports, settings, shared):
   ports.fetch_project('sdl2_gfx', f'https://github.com/svn2github/sdl2_gfx/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'sdl2_gfx', 'sdl2_gfx-' + TAG)
+    source_path = ports.get_dir('sdl2_gfx', 'sdl2_gfx-' + TAG)
     ports.build_port(source_path, final, 'sdl2_gfx', exclude_dirs=['test'], flags=['-sUSE_SDL=2'])
     ports.install_headers(source_path, target='SDL2')
 

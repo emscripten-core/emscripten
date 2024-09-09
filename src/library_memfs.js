@@ -198,7 +198,6 @@ addToLibrary({
         old_node.name = new_name;
         new_dir.contents[new_name] = old_node;
         new_dir.timestamp = old_node.parent.timestamp;
-        old_node.parent = new_dir;
       },
       unlink(parent, name) {
         delete parent.contents[name];
@@ -330,26 +329,28 @@ addToLibrary({
         var allocated;
         var contents = stream.node.contents;
         // Only make a new copy when MAP_PRIVATE is specified.
-        if (!(flags & {{{ cDefs.MAP_PRIVATE }}}) && contents.buffer === HEAP8.buffer) {
+        if (!(flags & {{{ cDefs.MAP_PRIVATE }}}) && contents && contents.buffer === HEAP8.buffer) {
           // We can't emulate MAP_SHARED when the file is not backed by the
           // buffer we're mapping to (e.g. the HEAP buffer).
           allocated = false;
           ptr = contents.byteOffset;
         } else {
-          // Try to avoid unnecessary slices.
-          if (position > 0 || position + length < contents.length) {
-            if (contents.subarray) {
-              contents = contents.subarray(position, position + length);
-            } else {
-              contents = Array.prototype.slice.call(contents, position, position + length);
-            }
-          }
           allocated = true;
           ptr = mmapAlloc(length);
           if (!ptr) {
             throw new FS.ErrnoError({{{ cDefs.ENOMEM }}});
           }
-          HEAP8.set(contents, ptr);
+          if (contents) {
+            // Try to avoid unnecessary slices.
+            if (position > 0 || position + length < contents.length) {
+              if (contents.subarray) {
+                contents = contents.subarray(position, position + length);
+              } else {
+                contents = Array.prototype.slice.call(contents, position, position + length);
+              }
+            }
+            HEAP8.set(contents, ptr);
+          }
         }
         return { ptr, allocated };
       },

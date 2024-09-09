@@ -18,7 +18,7 @@ def get(ports, settings, shared):
   ports.fetch_project('bullet', f'https://github.com/emscripten-ports/bullet/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'bullet', 'Bullet-' + TAG)
+    source_path = ports.get_dir('bullet', 'Bullet-' + TAG)
     src_path = os.path.join(source_path, 'bullet', 'src')
 
     dest_include_path = ports.get_include_dir('bullet')

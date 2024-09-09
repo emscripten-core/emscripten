@@ -1,5 +1,0 @@
-$__wasm_call_ctors
-$add
-$stackAlloc
-$stackRestore
-$stackSave

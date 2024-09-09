@@ -121,10 +121,10 @@ window.scrollX = window.scrollY = 0; // TODO: proxy these
 
 window.WebGLRenderingContext = WebGLWorker;
 
-window.requestAnimationFrame = (function() {
+window.requestAnimationFrame = (() => {
   // similar to Browser.requestAnimationFrame
   var nextRAF = 0;
-  return function(func) {
+  return (func) => {
     // try to keep 60fps between calls to here
     var now = Date.now();
     if (nextRAF === 0) {
@@ -371,7 +371,7 @@ var messageBuffer = null;
 var messageResenderTimeout = null;
 var calledMain = false;
 
-// Set calledMain to true during postRun which happens onces main returns
+// Set calledMain to true during postRun which happens once main returns
 Module['postRun'] ||= [];
 if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
 Module['postRun'].push(() => { calledMain = true; });
@@ -475,7 +475,7 @@ function onMessageFromMainEmscriptenThread(message) {
       break;
     }
     case 'setimmediate': {
-      if (Module['setImmediates']) Module['setImmediates'].shift()();
+      Module['setImmediates']?.shift()();
       break;
     }
     default: throw 'wha? ' + message.data.target;

@@ -1,0 +1,7 @@
+$__wasm_call_ctors
+$_emscripten_stack_alloc
+$_emscripten_stack_restore
+$_emscripten_tempret_get
+$_emscripten_tempret_set
+$add
+$emscripten_stack_get_current

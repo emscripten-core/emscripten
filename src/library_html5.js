@@ -5,7 +5,7 @@
  */
 
 var LibraryHTML5 = {
-  $JSEvents__deps: ['$withStackSave',
+  $JSEvents__deps: [
 #if PTHREADS
     '_emscripten_run_callback_on_thread',
 #endif
@@ -94,8 +94,7 @@ var LibraryHTML5 = {
         return true;
       }
       // Test if the given call was already queued, and if so, don't add it again.
-      for (var i in JSEvents.deferredCalls) {
-        var call = JSEvents.deferredCalls[i];
+      for (var call of JSEvents.deferredCalls) {
         if (call.targetFunction == targetFunction && arraysHaveEqualContent(call.argsList, argsList)) {
           return;
         }
@@ -111,12 +110,7 @@ var LibraryHTML5 = {
 
     // Erases all deferred calls to the given target function from the queue list.
     removeDeferredCalls(targetFunction) {
-      for (var i = 0; i < JSEvents.deferredCalls.length; ++i) {
-        if (JSEvents.deferredCalls[i].targetFunction == targetFunction) {
-          JSEvents.deferredCalls.splice(i, 1);
-          --i;
-        }
-      }
+      JSEvents.deferredCalls = JSEvents.deferredCalls.filter((call) => call.targetFunction != targetFunction);
     },
 
     canPerformEventHandlerRequests() {
@@ -136,10 +130,9 @@ var LibraryHTML5 = {
       if (!JSEvents.canPerformEventHandlerRequests()) {
         return;
       }
-      for (var i = 0; i < JSEvents.deferredCalls.length; ++i) {
-        var call = JSEvents.deferredCalls[i];
-        JSEvents.deferredCalls.splice(i, 1);
-        --i;
+      var deferredCalls = JSEvents.deferredCalls;
+      JSEvents.deferredCalls = [];
+      for (var call of deferredCalls) {
         call.targetFunction(...call.argsList);
       }
     },
@@ -274,17 +267,17 @@ var LibraryHTML5 = {
 #endif
       {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.timestamp, 'e.timeStamp', 'double') }}};
 
-      var idx ={{{ getHeapOffset('keyEventData', 'i32') }}};
+      var idx = {{{ getHeapOffset('keyEventData', 'i32') }}};
 
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.location / 4}}}] = e.location;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.ctrlKey / 4}}}] = e.ctrlKey;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.shiftKey / 4}}}] = e.shiftKey;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.altKey / 4}}}] = e.altKey;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.metaKey / 4}}}] = e.metaKey;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.repeat / 4}}}] = e.repeat;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charCode / 4}}}] = e.charCode;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.keyCode / 4}}}] = e.keyCode;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.which / 4}}}] = e.which;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.location / 4 }}}] = e.location;
+      HEAP8[keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.ctrlKey }}}] = e.ctrlKey;
+      HEAP8[keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.shiftKey }}}] = e.shiftKey;
+      HEAP8[keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.altKey }}}] = e.altKey;
+      HEAP8[keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.metaKey }}}] = e.metaKey;
+      HEAP8[keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.repeat }}}] = e.repeat;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charCode / 4 }}}] = e.charCode;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.keyCode / 4 }}}] = e.keyCode;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.which / 4 }}}] = e.which;
       stringToUTF8(e.key || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.key }}}, {{{ cDefs.EM_HTML5_SHORT_STRING_LEN_BYTES }}});
       stringToUTF8(e.code || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.code }}}, {{{ cDefs.EM_HTML5_SHORT_STRING_LEN_BYTES }}});
       stringToUTF8(e.char || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charValue }}}, {{{ cDefs.EM_HTML5_SHORT_STRING_LEN_BYTES }}});
@@ -315,6 +308,7 @@ var LibraryHTML5 = {
   // Users can also add more special event targets, basically by just doing something like
   //    specialHTMLTargets["!canvas"] = Module.canvas;
   // (that will let !canvas map to the canvas held in Module.canvas).
+  $specialHTMLTargets__docs: '/** @type {Object} */',
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL || PTHREADS
   $specialHTMLTargets: "[0, typeof document != 'undefined' ? document : 0, typeof window != 'undefined' ? window : 0]",
 #else
@@ -445,10 +439,10 @@ var LibraryHTML5 = {
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.screenY / 4 }}}] = e.screenY;
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.clientX / 4 }}}] = e.clientX;
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.clientY / 4 }}}] = e.clientY;
-    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.ctrlKey / 4 }}}] = e.ctrlKey;
-    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.shiftKey / 4 }}}] = e.shiftKey;
-    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.altKey / 4 }}}] = e.altKey;
-    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.metaKey / 4 }}}] = e.metaKey;
+    HEAP8[eventStruct + {{{ C_STRUCTS.EmscriptenMouseEvent.ctrlKey }}}] = e.ctrlKey;
+    HEAP8[eventStruct + {{{ C_STRUCTS.EmscriptenMouseEvent.shiftKey }}}] = e.shiftKey;
+    HEAP8[eventStruct + {{{ C_STRUCTS.EmscriptenMouseEvent.altKey }}}] = e.altKey;
+    HEAP8[eventStruct + {{{ C_STRUCTS.EmscriptenMouseEvent.metaKey }}}] = e.metaKey;
     HEAP16[idx*2 + {{{ C_STRUCTS.EmscriptenMouseEvent.button / 2 }}}] = e.button;
     HEAP16[idx*2 + {{{ C_STRUCTS.EmscriptenMouseEvent.buttons / 2 }}}] = e.buttons;
 
@@ -480,16 +474,17 @@ var LibraryHTML5 = {
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     if (Module['canvas']) {
       var rect = getBoundingClientRect(Module['canvas']);
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasX / 4 }}}] = e.clientX - rect.left;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasY / 4 }}}] = e.clientY - rect.top;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasX / 4 }}}] = e.clientX - (rect.left | 0);
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasY / 4 }}}] = e.clientY - (rect.top  | 0);
     } else { // Canvas is not initialized, return 0.
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasX / 4 }}}] = 0;
       HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.canvasY / 4 }}}] = 0;
     }
 #endif
+    // Note: rect contains doubles (truncated to placate SAFE_HEAP, which is the same behaviour when writing to HEAP32 anyway)
     var rect = getBoundingClientRect(target);
-    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetX / 4 }}}] = e.clientX - rect.left;
-    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetY / 4 }}}] = e.clientY - rect.top;
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetX / 4 }}}] = e.clientX - (rect.left | 0);
+    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.targetY / 4 }}}] = e.clientY - (rect.top  | 0);
 
 #if MIN_SAFARI_VERSION <= 80000 || MIN_CHROME_VERSION <= 21 // https://caniuse.com/#search=movementX
 #if MIN_CHROME_VERSION <= 76
@@ -709,15 +704,15 @@ var LibraryHTML5 = {
 #else
       var uiEvent = JSEvents.uiEvent;
 #endif
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.detail, 'e.detail', 'i32') }}};
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.detail, '0', 'i32') }}}; // always zero for resize and scroll
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientWidth, 'b.clientWidth', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientHeight, 'b.clientHeight', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerWidth, 'innerWidth', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerHeight, 'innerHeight', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterWidth, 'outerWidth', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterHeight, 'outerHeight', 'i32') }}};
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollTop, 'pageXOffset', 'i32') }}};
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollLeft, 'pageYOffset', 'i32') }}};
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollTop, 'pageXOffset | 0', 'i32') }}}; // scroll offsets are float
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollLeft, 'pageYOffset | 0', 'i32') }}};
 #if PTHREADS
       if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, uiEvent, userData);
       else
@@ -806,7 +801,7 @@ var LibraryHTML5 = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.alpha, 'e.alpha', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.beta, 'e.beta', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.gamma, 'e.gamma', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.absolute, 'e.absolute', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.absolute, 'e.absolute', 'i8') }}};
   },
 
   $registerDeviceOrientationEventCallback__deps: ['$JSEvents', '$fillDeviceOrientationEventData', '$findEventTarget'],
@@ -927,23 +922,39 @@ var LibraryHTML5 = {
   },
 
   $screenOrientation: () => {
-    if (!screen) return undefined;
-    return screen.orientation || screen.mozOrientation || screen.webkitOrientation || screen.msOrientation;
+    if (!window.screen) return undefined;
+    return screen.orientation || screen['mozOrientation'] || screen['webkitOrientation'];
   },
 
   $fillOrientationChangeEventData__deps: ['$screenOrientation'],
   $fillOrientationChangeEventData: (eventStruct) => {
-    var orientations  = ["portrait-primary", "portrait-secondary", "landscape-primary", "landscape-secondary"];
-    var orientations2 = ["portrait",         "portrait",           "landscape",         "landscape"];
+    // OrientationType enum
+    var orientationsType1 = ['portrait-primary', 'portrait-secondary', 'landscape-primary', 'landscape-secondary'];
+    // alternative selection from OrientationLockType enum
+    var orientationsType2 = ['portrait',         'portrait',           'landscape',         'landscape'];
 
-    var orientationString = screenOrientation();
-    var orientation = orientations.indexOf(orientationString);
-    if (orientation == -1) {
-      orientation = orientations2.indexOf(orientationString);
+    var orientationIndex = {{{ cDefs.EMSCRIPTEN_ORIENTATION_UNSUPPORTED }}};
+    var orientationAngle = 0;
+    var screenOrientObj  = screenOrientation();
+    if (typeof screenOrientObj === 'object') {
+      orientationIndex = orientationsType1.indexOf(screenOrientObj.type);
+      if (orientationIndex < 0) {
+        orientationIndex = orientationsType2.indexOf(screenOrientObj.type);
+      }
+      if (orientationIndex >= 0) {
+        orientationIndex = 1 << orientationIndex;
+      }
+      orientationAngle = screenOrientObj.angle;
     }
+#if MIN_SAFARI_VERSION < 0x100400
+    else {
+      // fallback for Safari earlier than 16.4 (March 2023)
+      orientationAngle = window.orientation;
+    }
+#endif
 
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationIndex, '1 << orientation', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationAngle, 'orientation', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationIndex, 'orientationIndex', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationAngle, 'orientationAngle', 'i32') }}};
   },
 
   $registerOrientationChangeEventCallback__deps: ['$JSEvents', '$fillOrientationChangeEventData', '$findEventTarget', 'malloc'],
@@ -969,10 +980,6 @@ var LibraryHTML5 = {
       if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, orientationChangeEvent, userData)) e.preventDefault();
     };
 
-    if (eventTypeId == {{{ cDefs.EMSCRIPTEN_EVENT_ORIENTATIONCHANGE }}} && screen.mozOrientation !== undefined) {
-      eventTypeString = "mozorientationchange";
-    }
-
     var eventHandler = {
       target,
       eventTypeString,
@@ -986,13 +993,14 @@ var LibraryHTML5 = {
   emscripten_set_orientationchange_callback_on_thread__proxy: 'sync',
   emscripten_set_orientationchange_callback_on_thread__deps: ['$registerOrientationChangeEventCallback'],
   emscripten_set_orientationchange_callback_on_thread: (userData, useCapture, callbackfunc, targetThread) => {
-    if (!screen || !screen['addEventListener']) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
-    return registerOrientationChangeEventCallback(screen, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_ORIENTATIONCHANGE }}}, "orientationchange", targetThread);
+    if (!window.screen || !screen.orientation) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    return registerOrientationChangeEventCallback(screen.orientation, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_ORIENTATIONCHANGE }}}, 'change', targetThread);
   },
 
   emscripten_get_orientation_status__proxy: 'sync',
   emscripten_get_orientation_status__deps: ['$fillOrientationChangeEventData', '$screenOrientation'],
   emscripten_get_orientation_status: (orientationChangeEvent) => {
+    // screenOrientation() resolving standard, window.orientation being the deprecated mobile-only
     if (!screenOrientation() && typeof orientation == 'undefined') return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     fillOrientationChangeEventData(orientationChangeEvent);
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
@@ -1012,8 +1020,6 @@ var LibraryHTML5 = {
       succeeded = screen.mozLockOrientation(orientations);
     } else if (screen.webkitLockOrientation) {
       succeeded = screen.webkitLockOrientation(orientations);
-    } else if (screen.msLockOrientation) {
-      succeeded = screen.msLockOrientation(orientations);
     } else {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }
@@ -1031,8 +1037,6 @@ var LibraryHTML5 = {
       screen.mozUnlockOrientation();
     } else if (screen.webkitUnlockOrientation) {
       screen.webkitUnlockOrientation();
-    } else if (screen.msUnlockOrientation) {
-      screen.msUnlockOrientation();
     } else {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }
@@ -1047,8 +1051,8 @@ var LibraryHTML5 = {
     // Assigning a boolean to HEAP32 with expected type coercion.
     /** @suppress{checkTypes} */
 #endif
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.isFullscreen, 'isFullscreen', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.fullscreenEnabled, 'JSEvents.fullscreenEnabled()', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.isFullscreen, 'isFullscreen', 'i8') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.fullscreenEnabled, 'JSEvents.fullscreenEnabled()', 'i8') }}};
     // If transitioning to fullscreen, report info about the element that is now fullscreen.
     // If transitioning to windowed mode, report info about the element that just was fullscreen.
     var reportedElement = isFullscreen ? fullscreenElement : JSEvents.previousFullscreenElement;
@@ -1337,8 +1341,8 @@ var LibraryHTML5 = {
 
   // Applies old visibility states, given a list of changes returned by hideEverythingExceptGivenElement().
   $restoreHiddenElements: (hiddenElements) => {
-    for (var i = 0; i < hiddenElements.length; ++i) {
-      hiddenElements[i].node.style.display = hiddenElements[i].displayState;
+    for (var elem of hiddenElements) {
+      elem.node.style.display = elem.displayState;
     }
   },
 
@@ -1435,10 +1439,9 @@ var LibraryHTML5 = {
     }
 
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
-    var canPerformRequests = JSEvents.canPerformEventHandlerRequests();
-
-    // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
-    if (!canPerformRequests) {
+    // Queue this function call if we're not currently in an event handler and
+    // the user saw it appropriate to do so.
+    if (!JSEvents.canPerformEventHandlerRequests()) {
       if (strategy.deferUntilInEventHandler) {
         JSEvents.deferCall(JSEvents_requestFullscreen, 1 /* priority over pointer lock */, [target, strategy]);
         return {{{ cDefs.EMSCRIPTEN_RESULT_DEFERRED }}};
@@ -1589,7 +1592,7 @@ var LibraryHTML5 = {
     // Assigning a boolean to HEAP32 with expected type coercion.
     /** @suppress{checkTypes} */
 #endif
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenPointerlockChangeEvent.isActive, 'isPointerlocked', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenPointerlockChangeEvent.isActive, 'isPointerlocked', 'i8') }}};
     var nodeName = JSEvents.getNodeNameForTarget(pointerLockElement);
     var id = pointerLockElement?.id || '';
     stringToUTF8(nodeName, eventStruct + {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.nodeName }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
@@ -1755,10 +1758,9 @@ var LibraryHTML5 = {
     }
 
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
-    var canPerformRequests = JSEvents.canPerformEventHandlerRequests();
-
-    // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
-    if (!canPerformRequests) {
+    // Queue this function call if we're not currently in an event handler and
+    // the user saw it appropriate to do so.
+    if (!JSEvents.canPerformEventHandlerRequests()) {
       if (deferUntilInEventHandler) {
         JSEvents.deferCall(requestPointerLock, 2 /* priority below fullscreen */, [target]);
         return {{{ cDefs.EMSCRIPTEN_RESULT_DEFERRED }}};
@@ -1822,7 +1824,7 @@ var LibraryHTML5 = {
     // Assigning a boolean to HEAP32 with expected type coercion.
     /** @suppress{checkTypes} */
 #endif
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.hidden, 'document.hidden', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.hidden, 'document.hidden', 'i8') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.visibilityState, 'visibilityState', 'i32') }}};
   },
 
@@ -1898,22 +1900,20 @@ var LibraryHTML5 = {
       // only changed touches in e.changedTouches, and touches on target at a.targetTouches), mark a boolean in
       // each Touch object so that we can later loop only once over all touches we see to marshall over to Wasm.
 
-      for (var i = 0; i < et.length; ++i) {
-        t = et[i];
+      for (let t of et) {
         // Browser might recycle the generated Touch objects between each frame (Firefox on Android), so reset any
         // changed/target states we may have set from previous frame.
         t.isChanged = t.onTarget = 0;
         touches[t.identifier] = t;
       }
       // Mark which touches are part of the changedTouches list.
-      for (var i = 0; i < e.changedTouches.length; ++i) {
-        t = e.changedTouches[i];
+      for (let t of e.changedTouches) {
         t.isChanged = 1;
         touches[t.identifier] = t;
       }
       // Mark which touches are part of the targetTouches list.
-      for (var i = 0; i < e.targetTouches.length; ++i) {
-        touches[e.targetTouches[i].identifier].onTarget = 1;
+      for (let t of e.targetTouches) {
+        touches[t.identifier].onTarget = 1;
       }
 
 #if PTHREADS
@@ -1922,36 +1922,35 @@ var LibraryHTML5 = {
       var touchEvent = JSEvents.touchEvent;
 #endif
       {{{ makeSetValue('touchEvent', C_STRUCTS.EmscriptenTouchEvent.timestamp, 'e.timeStamp', 'double') }}};
-      var idx ={{{ getHeapOffset('touchEvent', 'i32') }}};// Pre-shift the ptr to index to HEAP32 to save code size
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.ctrlKey / 4}}}] = e.ctrlKey;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.shiftKey / 4}}}] = e.shiftKey;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.altKey / 4}}}] = e.altKey;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.metaKey / 4}}}] = e.metaKey;
-      idx += {{{ C_STRUCTS.EmscriptenTouchEvent.touches / 4 }}}; // Advance to the start of the touch array.
+      HEAP8[touchEvent + {{{ C_STRUCTS.EmscriptenTouchEvent.ctrlKey }}}] = e.ctrlKey;
+      HEAP8[touchEvent + {{{ C_STRUCTS.EmscriptenTouchEvent.shiftKey }}}] = e.shiftKey;
+      HEAP8[touchEvent + {{{ C_STRUCTS.EmscriptenTouchEvent.altKey }}}] = e.altKey;
+      HEAP8[touchEvent + {{{ C_STRUCTS.EmscriptenTouchEvent.metaKey }}}] = e.metaKey;
+      var idx = touchEvent + {{{ C_STRUCTS.EmscriptenTouchEvent.touches }}};
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
       var canvasRect = Module['canvas'] ? getBoundingClientRect(Module['canvas']) : undefined;
 #endif
       var targetRect = getBoundingClientRect(target);
       var numTouches = 0;
-      for (var i in touches) {
-        t = touches[i];
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.identifier / 4}}}] = t.identifier;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenX / 4}}}] = t.screenX;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenY / 4}}}] = t.screenY;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.clientX / 4}}}] = t.clientX;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.clientY / 4}}}] = t.clientY;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.pageX / 4}}}] = t.pageX;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.pageY / 4}}}] = t.pageY;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.isChanged / 4}}}] = t.isChanged;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.onTarget / 4}}}] = t.onTarget;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.targetX / 4}}}] = t.clientX - targetRect.left;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.targetY / 4}}}] = t.clientY - targetRect.top;
+      for (let t of Object.values(touches)) {
+        var idx32 = {{{ getHeapOffset('idx', 'i32') }}}; // Pre-shift the ptr to index to HEAP32 to save code size
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.identifier / 4 }}}] = t.identifier;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.screenX / 4 }}}] = t.screenX;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.screenY / 4 }}}] = t.screenY;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.clientX / 4 }}}] = t.clientX;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.clientY / 4 }}}] = t.clientY;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.pageX / 4 }}}] = t.pageX;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.pageY / 4 }}}] = t.pageY;
+        HEAP8[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.isChanged }}}] = t.isChanged;
+        HEAP8[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.onTarget }}}] = t.onTarget;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.targetX / 4 }}}] = t.clientX - (targetRect.left | 0);
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.targetY / 4 }}}] = t.clientY - (targetRect.top  | 0);
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasX / 4}}}] = canvasRect ? t.clientX - canvasRect.left : 0;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasY / 4}}}] = canvasRect ? t.clientY - canvasRect.top : 0;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasX / 4 }}}] = canvasRect ? t.clientX - (canvasRect.left | 0) : 0;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasY / 4 }}}] = canvasRect ? t.clientY - (canvasRect.top  | 0) : 0;
 #endif
 
-        idx += {{{ C_STRUCTS.EmscriptenTouchPoint.__size__ / 4 }}};
+        idx += {{{ C_STRUCTS.EmscriptenTouchPoint.__size__ }}};
 
         if (++numTouches > 31) {
           break;
@@ -2014,16 +2013,16 @@ var LibraryHTML5 = {
     }
     for (var i = 0; i < e.buttons.length; ++i) {
       if (typeof e.buttons[i] == 'object') {
-        {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i32') }}};
+        {{{ makeSetValue('eventStruct+i', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i8') }}};
       } else {
 #if !SAFE_HEAP
         // Assigning a boolean to HEAP32, that's ok, but Closure would like to warn about it:
         /** @suppress {checkTypes} */
 #endif
-        {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i] == 1', 'i32') }}};
+        {{{ makeSetValue('eventStruct+i', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i] == 1', 'i8') }}};
       }
     }
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.connected, 'e.connected', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.connected, 'e.connected', 'i8') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.index, 'e.index', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.numAxes, 'e.axes.length', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.numButtons, 'e.buttons.length', 'i32') }}};
@@ -2166,7 +2165,7 @@ var LibraryHTML5 = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.chargingTime, 'e.chargingTime', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.dischargingTime, 'e.dischargingTime', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.level, 'e.level', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.charging, 'e.charging', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.charging, 'e.charging', 'i8') }}};
   },
 
   $battery: () => navigator.battery || navigator.mozBattery || navigator.webkitBattery,
@@ -2273,7 +2272,7 @@ var LibraryHTML5 = {
       }
 #if OFFSCREENCANVAS_SUPPORT
     } else if (canvas.canvasSharedPtr) {
-      var targetThread = {{{ makeGetValue('canvas.canvasSharedPtr', 8, 'i32') }}};
+      var targetThread = {{{ makeGetValue('canvas.canvasSharedPtr', 8, '*') }}};
       setOffscreenCanvasSizeOnTargetThread(targetThread, target, width, height);
       return {{{ cDefs.EMSCRIPTEN_RESULT_DEFERRED }}}; // This will have to be done asynchronously
 #endif
@@ -2292,7 +2291,7 @@ var LibraryHTML5 = {
 #if OFFSCREENCANVAS_SUPPORT
   _emscripten_set_offscreencanvas_size: 'emscripten_set_canvas_element_size',
 
-  $setOffscreenCanvasSizeOnTargetThread__deps: ['$stringToNewUTF8', '_emscripten_set_offscreencanvas_size_on_thread', '$withStackSave'],
+  $setOffscreenCanvasSizeOnTargetThread__deps: ['$stringToNewUTF8', '_emscripten_set_offscreencanvas_size_on_thread'],
   $setOffscreenCanvasSizeOnTargetThread: (targetThread, targetCanvas, width, height) => {
     targetCanvas = targetCanvas ? UTF8ToString(targetCanvas) : '';
     var targetCanvasPtr = 0;
@@ -2335,7 +2334,7 @@ var LibraryHTML5 = {
   },
 #endif
 
-  $setCanvasElementSize__deps: ['emscripten_set_canvas_element_size', '$withStackSave', '$stringToUTF8OnStack'],
+  $setCanvasElementSize__deps: ['emscripten_set_canvas_element_size', '$stackSave', '$stackRestore', '$stringToUTF8OnStack'],
   $setCanvasElementSize: (target, width, height) => {
 #if GL_DEBUG
     dbg(`setCanvasElementSize(target=${target},width=${width},height=${height}`);
@@ -2346,10 +2345,10 @@ var LibraryHTML5 = {
     } else {
       // This function is being called from high-level JavaScript code instead of asm.js/Wasm,
       // and it needs to synchronously proxy over to another thread, so marshal the string onto the heap to do the call.
-      withStackSave(() => {
-        var targetInt = stringToUTF8OnStack(target.id);
-        _emscripten_set_canvas_element_size(targetInt, width, height);
-      });
+      var sp = stackSave();
+      var targetInt = stringToUTF8OnStack(target.id);
+      _emscripten_set_canvas_element_size(targetInt, width, height);
+      stackRestore(sp);
     }
   },
 
@@ -2417,16 +2416,18 @@ var LibraryHTML5 = {
 #endif
 
   // JavaScript-friendly API, returns pair [width, height]
-  $getCanvasElementSize__deps: ['emscripten_get_canvas_element_size', '$withStackSave', '$stringToUTF8OnStack'],
-  $getCanvasElementSize: (target) => withStackSave(() => {
+  $getCanvasElementSize__deps: ['emscripten_get_canvas_element_size', '$stackSave', '$stackRestore', '$stringToUTF8OnStack'],
+  $getCanvasElementSize: (target) => {
+    var sp = stackSave();
     var w = stackAlloc(8);
     var h = w + 4;
 
     var targetInt = stringToUTF8OnStack(target.id);
     var ret = _emscripten_get_canvas_element_size(targetInt, w, h);
     var size = [{{{ makeGetValue('w', 0, 'i32')}}}, {{{ makeGetValue('h', 0, 'i32')}}}];
+    stackRestore(sp);
     return size;
-  }),
+  },
 
   emscripten_set_element_css_size__proxy: 'sync',
   emscripten_set_element_css_size__deps: ['$JSEvents', '$findEventTarget'],

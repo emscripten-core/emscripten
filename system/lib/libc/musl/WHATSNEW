@@ -2396,3 +2396,45 @@ arch-specific bugs fixed:
 - sigaction signal mask was bogus on or1k, microblaze, mips, and riscv
 - powerpc-sf longjmp asm clobbered value argument
 - or1k poll function passed timeout to syscall in wrong form
+
+
+
+1.2.5 release notes
+
+new features:
+- statx function (linux extension; via syscall and fallback using fstatat)
+- clone function is now usable and gives _Fork-like consistency in child
+- statvfs now provides f_type result
+- preadv2 and pwritev2 (linux extension) syscall wrappers
+- riscv64 TLSDESC support
+
+new ports:
+- loongarch64
+- riscv32
+
+compatibility:
+- DNS resolver can now handle answers with long CNAME chains
+- string.h no longer provides (C23-incompat) non-prototype decl of basename
+- fstatat statx backend now matches stat syscall non-automounting behavior
+- mntent interfaces now handle escaped whitespace in paths/options
+
+standards updates:
+- printf %lc of nul wchar now produces output
+- snprintf and swprintf no longer fail on n > INT_MAX
+- ppoll is now exposed in default feature profile
+
+bugs fixed:
+- some long DNS answers were wrongly rejected despite new TCP support
+- glob could wrongly return GLOB_NOMATCH if aborted before any matches
+- multithreaded set*id could malfunction from thread sequencing logic bug
+- certain use of threads after fork could deadlock thread-list lock
+- posix_spawn child could deadlock in race with async parent death
+- mbrtowc return value was wrong if argument n exceeded UINT_MAX
+- 80-bit extended acoshl and powl got some corner cases wrong
+- syslog incorrectly generated localized timestamps
+
+arch-specific bugs fixed:
+- arm (32-bit) TLSDESC malfunctioned due to addends being processed wrong
+- riscv64 icache flush operation was non-functional
+- sh sigsetjmp failed to properly restore call-saved register r8 on return
+- sh dlsym RTLD_NEXT did not identify calling module correctly

@@ -4,35 +4,74 @@
 # found in the LICENSE file.
 
 import os
+from typing import Union, Dict
 
-TAG = '1.0.4'
-HASH = 'c3c96718e5d2b37df434a46c4a93ddfd9a768330d33f0d6ce2d08c139752894c2421cdd0fefb800fe41fafc2bbe58c8f22b8aa2849dc4fc6dde686037215cfad'
+TAG = '3.4.0.20240907'
+HASH = '48aba179ef50b5efd564535cd549528d06f74d18f7028a06212fccc425b784106b0efb3aa7bf72da6fb80c32a31b410f13a87d4599417cad8dc3af15664fa1b2'
 
 # contrib port information (required)
 URL = 'https://github.com/pongasoft/emscripten-glfw'
-DESCRIPTION = 'This project is an emscripten port of GLFW written in C++ for the web/webassembly platform'
+DESCRIPTION = 'This project is an emscripten port of GLFW 3.4 written in C++ for the web/webassembly platform'
 LICENSE = 'Apache 2.0 license'
+
+VALID_OPTION_VALUES = {
+  'disableWarning': ['true', 'false'],
+  'disableJoystick': ['true', 'false'],
+  'disableMultiWindow': ['true', 'false'],
+  'optimizationLevel': ['0', '1', '2', '3', 'g', 's', 'z']  # all -OX possibilities
+}
+
+OPTIONS = {
+  'disableWarning': 'Boolean to disable warnings emitted by the library',
+  'disableJoystick': 'Boolean to disable support for joystick entirely',
+  'disableMultiWindow': 'Boolean to disable multi window support which makes the code smaller and faster',
+  'optimizationLevel': f'Optimization level: {VALID_OPTION_VALUES["optimizationLevel"]} (default to 2)',
+}
+
+# user options (from --use-port)
+opts: Dict[str, Union[str, bool]] = {
+  'disableWarning': False,
+  'disableJoystick': False,
+  'disableMultiWindow': False,
+  'optimizationLevel': '2'
+}
+
+port_name = 'contrib.glfw3'
 
 
 def get_lib_name(settings):
-  return 'lib_contrib.glfw3.a'
+  return (f'lib_{port_name}-O{opts["optimizationLevel"]}' +
+          ('-nw' if opts['disableWarning'] else '') +
+          ('-nj' if opts['disableJoystick'] else '') +
+          ('-sw' if opts['disableMultiWindow'] else '') +
+          '.a')
 
 
 def get(ports, settings, shared):
   # get the port
-  ports.fetch_project('contrib.glfw3', f'https://github.com/pongasoft/emscripten-glfw/releases/download/v{TAG}/emscripten-glfw3-{TAG}.zip', sha512hash=HASH)
+  ports.fetch_project(port_name,
+                      f'https://github.com/pongasoft/emscripten-glfw/releases/download/v{TAG}/emscripten-glfw3-{TAG}.zip',
+                      sha512hash=HASH)
 
   def create(final):
-    root_path = os.path.join(ports.get_dir(), 'contrib.glfw3')
+    root_path = os.path.join(ports.get_dir(), port_name)
     source_path = os.path.join(root_path, 'src', 'cpp')
-    source_include_paths = [os.path.join(root_path, 'external', 'GLFW'), os.path.join(root_path, 'include', 'GLFW')]
+    source_include_paths = [os.path.join(root_path, 'external'), os.path.join(root_path, 'include')]
     for source_include_path in source_include_paths:
-      ports.install_headers(source_include_path, target='GLFW')
+      ports.install_headers(os.path.join(source_include_path, 'GLFW'), target=os.path.join(port_name, 'GLFW'))
 
-    # this should be an option but better to disable for now...
-    flags = ['-DEMSCRIPTEN_GLFW3_DISABLE_WARNING']
+    flags = [f'-O{opts["optimizationLevel"]}']
 
-    ports.build_port(source_path, final, 'contrib.glfw3', includes=source_include_paths, flags=flags)
+    if opts['disableWarning']:
+      flags += ['-DEMSCRIPTEN_GLFW3_DISABLE_WARNING']
+
+    if opts['disableJoystick']:
+      flags += ['-DEMSCRIPTEN_GLFW3_DISABLE_JOYSTICK']
+
+    if opts['disableMultiWindow']:
+      flags += ['-DEMSCRIPTEN_GLFW3_DISABLE_MULTI_WINDOW_SUPPORT']
+
+    ports.build_port(source_path, final, port_name, includes=source_include_paths, flags=flags)
 
   return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
 
@@ -42,7 +81,7 @@ def clear(ports, settings, shared):
 
 
 def linker_setup(ports, settings):
-  root_path = os.path.join(ports.get_dir(), 'contrib.glfw3')
+  root_path = os.path.join(ports.get_dir(), port_name)
   source_js_path = os.path.join(root_path, 'src', 'js', 'lib_emscripten_glfw3.js')
   settings.JS_LIBRARIES += [source_js_path]
 
@@ -51,4 +90,17 @@ def linker_setup(ports, settings):
 # so that we don't conflict with the builtin GLFW headers that emscripten
 # includes
 def process_args(ports):
-  return ['-isystem', ports.get_include_dir('contrib.glfw3')]
+  return ['-isystem', ports.get_include_dir(port_name), f'-DEMSCRIPTEN_USE_PORT_CONTRIB_GLFW3={TAG.replace(".", "")}']
+
+
+def check_option(option, value, error_handler):
+  if value not in VALID_OPTION_VALUES[option]:
+    error_handler(f'[{option}] can be {list(VALID_OPTION_VALUES[option])}, got [{value}]')
+  if isinstance(opts[option], bool):
+    value = value == 'true'
+  return value
+
+
+def handle_options(options, error_handler):
+  for option, value in options.items():
+    opts[option] = check_option(option, value.lower(), error_handler)

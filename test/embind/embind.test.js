@@ -1160,6 +1160,14 @@ module({
             assert.equal(20, vec.get(1));
             vec.delete();
         });
+
+        test("vectors can contain pointers", function() {
+            var vec = cm.emval_test_return_vector_pointers();
+            var small = vec.get(0);
+            assert.equal(7, small.member);
+            small.delete();
+            vec.delete();
+        });
     });
 
     BaseFixture.extend("map", function() {
@@ -1226,6 +1234,15 @@ module({
 
         test("std::optional works with returning SmallClass", function() {
             var optional = cm.embind_test_return_optional_small_class(true);
+            assert.equal(7, optional.member);
+            optional.delete();
+
+            optional = cm.embind_test_return_optional_small_class(false);
+            assert.equal(undefined, optional);
+        });
+
+        test("std::optional works with returning SmallClass pointer", function() {
+            var optional = cm.embind_test_return_optional_small_class_pointer(true);
             assert.equal(7, optional.member);
             optional.delete();
 
@@ -1808,6 +1825,13 @@ module({
             var e = new cm.HasExternalConstructor("foo");
             assert.instanceof(e, cm.HasExternalConstructor);
             assert.equal("foo", e.getString());
+            e.delete();
+        });
+
+        test("can construct class with external constructor with no copy constructor", function() {
+            var e = new cm.HasExternalConstructorNoCopy(42);
+            assert.instanceof(e, cm.HasExternalConstructorNoCopy);
+            assert.equal(42, e.getInt());
             e.delete();
         });
     });

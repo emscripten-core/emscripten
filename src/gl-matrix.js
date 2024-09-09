@@ -1,4 +1,4 @@
-(function() {
+(() => {
 
 /**
  * @fileoverview gl-matrix - High performance matrix and vector operations for WebGL
@@ -6,7 +6,7 @@
  * @version 1.2.4
  */
 
-// Modifed for emscripten:
+// Modified for emscripten:
 // - Global scoping etc.
 // - Disabled some non-closure-compatible javadoc comments.
 
@@ -267,7 +267,7 @@ vec3.cross = function (vec, vec2, dest) {
 };
 
 /**
- * Caclulates the length of a vec3
+ * Calculates the length of a vec3
  *
  * _param {vec3} vec vec3 to calculate length of
  *
@@ -279,7 +279,7 @@ vec3.length = function (vec) {
 };
 
 /**
- * Caclulates the dot product of two vec3s
+ * Calculates the dot product of two vec3s
  *
  * _param {vec3} vec First operand
  * _param {vec3} vec2 Second operand
@@ -342,7 +342,7 @@ vec3.lerp = function (vec, vec2, lerp, dest) {
 };
 
 /**
- * Calculates the euclidian distance between two vec3
+ * Calculates the euclidean distance between two vec3
  *
  * Params:
  * _param {vec3} vec First vector

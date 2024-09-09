@@ -5,6 +5,10 @@
  */
 
 {{{
+  globalThis.copySigs = (func) => {
+    if (!RELOCATABLE) return '';
+    return ` _${func}.sig = _emscripten_${func}.sig = orig_${func}.sig;`;
+  };
   globalThis.fromPtr = (arg) => {
     if (CAN_ADDRESS_2GB) {
       return `${arg} >>>= 0`;
@@ -12,7 +16,7 @@
       return `${arg} = Number(${arg})`;
     }
     return '';
-  }
+  };
   null;
 }}}
 
@@ -199,7 +203,7 @@ var LibraryGLEmulation = {
         0x80A0: 1  // GL_SAMPLE_COVERAGE
       };
 
-      var glEnable = _glEnable;
+      var orig_glEnable = _glEnable;
       _glEnable = _emscripten_glEnable = (cap) => {
         // Clean up the renderer on any change to the rendering state. The optimization of
         // skipping renderer setup is aimed at the case of multiple glDraw* right after each other
@@ -247,10 +251,11 @@ var LibraryGLEmulation = {
         } else if (!(cap in validCapabilities)) {
           return;
         }
-        glEnable(cap);
+        orig_glEnable(cap);
       };
+      {{{ copySigs('glEnable') }}}
 
-      var glDisable = _glDisable;
+      var orig_glDisable = _glDisable;
       _glDisable = _emscripten_glDisable = (cap) => {
         GLImmediate.lastRenderer?.cleanup();
         if (cap == 0xB60 /* GL_FOG */) {
@@ -296,9 +301,11 @@ var LibraryGLEmulation = {
         } else if (!(cap in validCapabilities)) {
           return;
         }
-        glDisable(cap);
+        orig_glDisable(cap);
       };
+      {{{ copySigs('glDisable') }}}
 
+      var orig_glIsEnabled = _glIsEnabled;
       _glIsEnabled = _emscripten_glIsEnabled = (cap) => {
         if (cap == 0xB60 /* GL_FOG */) {
           return GLEmulation.fogEnabled ? 1 : 0;
@@ -317,8 +324,9 @@ var LibraryGLEmulation = {
         }
         return GLctx.isEnabled(cap);
       };
+      {{{ copySigs('glIsEnabled') }}}
 
-      var glGetBooleanv = _glGetBooleanv;
+      var orig_glGetBooleanv = _glGetBooleanv;
       _glGetBooleanv = _emscripten_glGetBooleanv = (pname, p) => {
         var attrib = GLEmulation.getAttributeFromCapability(pname);
         if (attrib !== null) {
@@ -327,10 +335,11 @@ var LibraryGLEmulation = {
           {{{ makeSetValue('p', '0', 'result === true ? 1 : 0', 'i8') }}};
           return;
         }
-        glGetBooleanv(pname, p);
+        orig_glGetBooleanv(pname, p);
       };
+      {{{ copySigs('glGetBooleanv') }}}
 
-      var glGetIntegerv = _glGetIntegerv;
+      var orig_glGetIntegerv = _glGetIntegerv;
       _glGetIntegerv = _emscripten_glGetIntegerv = (pname, params) => {
         {{{ fromPtr('params') }}}
         switch (pname) {
@@ -409,10 +418,11 @@ var LibraryGLEmulation = {
             return;
           }
         }
-        glGetIntegerv(pname, params);
+        orig_glGetIntegerv(pname, params);
       };
+      {{{ copySigs('glGetIntegerv') }}}
 
-      var glGetString = _glGetString;
+      var orig_glGetString = _glGetString;
       _glGetString = _emscripten_glGetString = (name_) => {
         if (GL.stringCache[name_]) return GL.stringCache[name_];
         switch (name_) {
@@ -424,8 +434,9 @@ var LibraryGLEmulation = {
             );
             return GL.stringCache[name_] = {{{ to64('ret') }}};
         }
-        return glGetString(name_);
+        return orig_glGetString(name_);
       };
+      {{{ copySigs('glGetString') }}}
 
       // Do some automatic rewriting to work around GLSL differences. Note that this must be done in
       // tandem with the rest of the program, by itself it cannot suffice.
@@ -435,15 +446,16 @@ var LibraryGLEmulation = {
       GL.shaderSources = {};
       GL.shaderOriginalSources = {};
 #endif
-      var glCreateShader = _glCreateShader;
+      var orig_glCreateShader = _glCreateShader;
       _glCreateShader = _emscripten_glCreateShader = (shaderType) => {
-        var id = glCreateShader(shaderType);
+        var id = orig_glCreateShader(shaderType);
         GL.shaderInfos[id] = {
           type: shaderType,
           ftransform: false
         };
         return id;
       };
+      {{{ copySigs('glCreateShader') }}}
 
       function ensurePrecision(source) {
         if (!/precision +(low|medium|high)p +float *;/.test(source)) {
@@ -452,7 +464,7 @@ var LibraryGLEmulation = {
         return source;
       }
 
-      var glShaderSource = _glShaderSource;
+      var orig_glShaderSource = _glShaderSource;
       _glShaderSource = _emscripten_glShaderSource = (shader, count, string, length) => {
         {{{ fromPtr('string') }}}
         {{{ fromPtr('length') }}}
@@ -566,8 +578,9 @@ var LibraryGLEmulation = {
 #endif
         GLctx.shaderSource(GL.shaders[shader], source);
       };
+      {{{ copySigs('glShaderSource') }}}
 
-      var glCompileShader = _glCompileShader;
+      var orig_glCompileShader = _glCompileShader;
       _glCompileShader = _emscripten_glCompileShader = (shader) => {
         GLctx.compileShader(GL.shaders[shader]);
 #if GL_DEBUG
@@ -580,16 +593,18 @@ var LibraryGLEmulation = {
         }
 #endif
       };
+      {{{ copySigs('glCompileShader') }}}
 
       GL.programShaders = {};
-      var glAttachShader = _glAttachShader;
+      var orig_glAttachShader = _glAttachShader;
       _glAttachShader = _emscripten_glAttachShader = (program, shader) => {
         GL.programShaders[program] ||= [];
         GL.programShaders[program].push(shader);
-        glAttachShader(program, shader);
+        orig_glAttachShader(program, shader);
       };
+      {{{ copySigs('glAttachShader') }}}
 
-      var glDetachShader = _glDetachShader;
+      var orig_glDetachShader = _glDetachShader;
       _glDetachShader = _emscripten_glDetachShader = (program, shader) => {
         var programShader = GL.programShaders[program];
         if (!programShader) {
@@ -598,10 +613,11 @@ var LibraryGLEmulation = {
         }
         var index = programShader.indexOf(shader);
         programShader.splice(index, 1);
-        glDetachShader(program, shader);
+        orig_glDetachShader(program, shader);
       };
+      {{{ copySigs('glDetachShader') }}}
 
-      var glUseProgram = _glUseProgram;
+      var orig_glUseProgram = _glUseProgram;
       _glUseProgram = _emscripten_glUseProgram = (program) => {
 #if GL_DEBUG
         if (GL.debug) {
@@ -618,38 +634,42 @@ var LibraryGLEmulation = {
           GLImmediate.currentRenderer = null; // This changes the FFP emulation shader program, need to recompute that.
           GL.currProgram = program;
           GLImmediate.fixedFunctionProgram = 0;
-          glUseProgram(program);
+          orig_glUseProgram(program);
         }
       }
+      {{{ copySigs('glUseProgram') }}}
 
-      var glDeleteProgram = _glDeleteProgram;
+      var orig_glDeleteProgram = _glDeleteProgram;
       _glDeleteProgram = _emscripten_glDeleteProgram = (program) => {
-        glDeleteProgram(program);
+        orig_glDeleteProgram(program);
         if (program == GL.currProgram) {
           GLImmediate.currentRenderer = null; // This changes the FFP emulation shader program, need to recompute that.
           GL.currProgram = 0;
         }
       };
+      {{{ copySigs('glDeleteProgram') }}}
 
       // If attribute 0 was not bound, bind it to 0 for WebGL performance reasons. Track if 0 is free for that.
       var zeroUsedPrograms = {};
-      var glBindAttribLocation = _glBindAttribLocation;
+      var orig_glBindAttribLocation = _glBindAttribLocation;
       _glBindAttribLocation = _emscripten_glBindAttribLocation = (program, index, name) => {
         if (index == 0) zeroUsedPrograms[program] = true;
-        glBindAttribLocation(program, index, name);
+        orig_glBindAttribLocation(program, index, name);
       };
+      {{{ copySigs('glBindAttribLocation') }}}
 
-      var glLinkProgram = _glLinkProgram;
+      var orig_glLinkProgram = _glLinkProgram;
       _glLinkProgram = _emscripten_glLinkProgram = (program) => {
         if (!(program in zeroUsedPrograms)) {
           GLctx.bindAttribLocation(GL.programs[program], 0, 'a_position');
         }
-        glLinkProgram(program);
+        orig_glLinkProgram(program);
       };
+      {{{ copySigs('glLinkProgram') }}}
 
-      var glBindBuffer = _glBindBuffer;
+      var orig_glBindBuffer = _glBindBuffer;
       _glBindBuffer = _emscripten_glBindBuffer = (target, buffer) => {
-        glBindBuffer(target, buffer);
+        orig_glBindBuffer(target, buffer);
         if (target == GLctx.ARRAY_BUFFER) {
           if (GLEmulation.currentVao) {
 #if ASSERTIONS
@@ -661,8 +681,9 @@ var LibraryGLEmulation = {
           if (GLEmulation.currentVao) GLEmulation.currentVao.elementArrayBuffer = buffer;
         }
       };
+      {{{ copySigs('glBindBuffer') }}}
 
-      var glGetFloatv = _glGetFloatv;
+      var orig_glGetFloatv = _glGetFloatv;
       _glGetFloatv = _emscripten_glGetFloatv = (pname, params) => {
         {{{ fromPtr('params') }}}
         if (pname == 0xBA6) { // GL_MODELVIEW_MATRIX
@@ -689,39 +710,44 @@ var LibraryGLEmulation = {
         } else if (pname == 0xBC2) { // GL_ALPHA_TEST_REF
           {{{ makeSetValue('params', '0', 'GLEmulation.alphaTestRef', 'float') }}};
         } else {
-          glGetFloatv(pname, params);
+          orig_glGetFloatv(pname, params);
         }
       };
+      {{{ copySigs('glGetFloatv') }}}
 
-      var glHint = _glHint;
+      var orig_glHint = _glHint;
       _glHint = _emscripten_glHint = (target, mode) => {
         if (target == 0x84EF) { // GL_TEXTURE_COMPRESSION_HINT
           return;
         }
-        glHint(target, mode);
+        orig_glHint(target, mode);
       };
+      {{{ copySigs('glHint') }}}
 
-      var glEnableVertexAttribArray = _glEnableVertexAttribArray;
+      var orig_glEnableVertexAttribArray = _glEnableVertexAttribArray;
       _glEnableVertexAttribArray = _emscripten_glEnableVertexAttribArray = (index) => {
-        glEnableVertexAttribArray(index);
+        orig_glEnableVertexAttribArray(index);
         GLEmulation.enabledVertexAttribArrays[index] = 1;
         if (GLEmulation.currentVao) GLEmulation.currentVao.enabledVertexAttribArrays[index] = 1;
       };
+      {{{ copySigs('glEnableVertexAttribArray') }}}
 
-      var glDisableVertexAttribArray = _glDisableVertexAttribArray;
+      var orig_glDisableVertexAttribArray = _glDisableVertexAttribArray;
       _glDisableVertexAttribArray = _emscripten_glDisableVertexAttribArray = (index) => {
-        glDisableVertexAttribArray(index);
+        orig_glDisableVertexAttribArray(index);
         delete GLEmulation.enabledVertexAttribArrays[index];
         if (GLEmulation.currentVao) delete GLEmulation.currentVao.enabledVertexAttribArrays[index];
       };
+      {{{ copySigs('glDisableVertexAttribArray') }}}
 
-      var glVertexAttribPointer = _glVertexAttribPointer;
+      var orig_glVertexAttribPointer = _glVertexAttribPointer;
       _glVertexAttribPointer = _emscripten_glVertexAttribPointer = (index, size, type, normalized, stride, pointer) => {
-        glVertexAttribPointer(index, size, type, normalized, stride, pointer);
+        orig_glVertexAttribPointer(index, size, type, normalized, stride, pointer);
         if (GLEmulation.currentVao) { // TODO: avoid object creation here? likely not hot though
           GLEmulation.currentVao.vertexAttribPointers[index] = [index, size, type, normalized, stride, pointer];
         }
       };
+      {{{ copySigs('glVertexAttribPointer') }}}
     },
 
     getAttributeFromCapability(cap) {
@@ -2821,7 +2847,7 @@ var LibraryGLEmulation = {
       err('WARNING: using emscripten GL immediate mode emulation. This is very limited in what it supports');
       GLImmediate.initted = true;
 
-      if (!Module.useWebGL) return; // a 2D canvas may be currently used TODO: make sure we are actually called in that case
+      if (!Browser.useWebGL) return; // a 2D canvas may be currently used TODO: make sure we are actually called in that case
 
       // User can override the maximum number of texture units that we emulate. Using fewer texture units increases runtime performance
       // slightly, so it is advantageous to choose as small value as needed.
@@ -3002,10 +3028,10 @@ var LibraryGLEmulation = {
       var renderer = GLImmediate.getRenderer();
 
       // Generate index data in a format suitable for GLES 2.0/WebGL
-      var numVertexes = 4 * GLImmediate.vertexCounter / GLImmediate.stride;
-      if (!numVertexes) return;
+      var numVertices = 4 * GLImmediate.vertexCounter / GLImmediate.stride;
+      if (!numVertices) return;
 #if ASSERTIONS
-      assert(numVertexes % 1 == 0, "`numVertexes` must be an integer.");
+      assert(numVertices % 1 == 0, "`numVertices` must be an integer.");
 #endif
       var emulatedElementArrayBuffer = false;
       var numIndexes = 0;
@@ -3047,7 +3073,7 @@ var LibraryGLEmulation = {
         assert(GLImmediate.firstVertex % 4 == 0);
 #endif
         ptr = GLImmediate.firstVertex * 3;
-        var numQuads = numVertexes / 4;
+        var numQuads = numVertices / 4;
         numIndexes = numQuads * 6; // 0 1 2, 0 2 3 pattern
 #if ASSERTIONS
         assert(ptr + (numIndexes << 1) <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (b)');
@@ -3062,7 +3088,7 @@ var LibraryGLEmulation = {
       if (numIndexes) {
         GLctx.drawElements(GLImmediate.mode, numIndexes, GLctx.UNSIGNED_SHORT, ptr);
       } else {
-        GLctx.drawArrays(GLImmediate.mode, startIndex, numVertexes);
+        GLctx.drawArrays(GLImmediate.mode, startIndex, numVertices);
       }
 
       if (emulatedElementArrayBuffer) {

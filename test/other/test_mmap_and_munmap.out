@@ -16,4 +16,6 @@ test_unmap_wrong_addr - START
 test_unmap_wrong_addr - PASSED
 test_unmap_zero_len - START
 test_unmap_zero_len - PASSED
-tests_run: 9 failures: 0
+test_unmap_after_close - START
+test_unmap_after_close - PASSED
+tests_run: 10 failures: 0

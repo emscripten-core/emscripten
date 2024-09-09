@@ -135,7 +135,9 @@ FS.init();
       }
 
       // Copy the file into a JS buffer on the heap.
-      var buf = withStackSave(() => __wasmfs_read_file(stringToUTF8OnStack(path)));
+      var sp = stackSave();
+      var buf = __wasmfs_read_file(stringToUTF8OnStack(path));
+      stackRestore(sp);
 
       // The signed integer length resides in the first 8 bytes of the buffer.
       var length = {{{ makeGetValue('buf', '0', 'i53') }}};
@@ -238,7 +240,7 @@ FS.init();
       var buf = FS.handleError(__wasmfs_mmap(length, prot, flags, stream.fd, {{{ splitI64('offset') }}}));
       return { ptr: buf, allocated: true };
     },
-    // offset is passed to msync to maintain backwards compatability with the legacy JS API but is not used by WasmFS.
+    // offset is passed to msync to maintain backwards compatibility with the legacy JS API but is not used by WasmFS.
     msync: (stream, bufferPtr, offset, length, mmapFlags) => {
       assert(offset === 0);
       // TODO: assert that stream has the fd corresponding to the mapped buffer (bufferPtr).
@@ -373,6 +375,8 @@ FS.init();
           wasmFSDeviceStreams[file] = undefined;
         },
         getSize: (file) => {},
+        // Devices cannot be resized.
+        setSize: (file, size) => 0,
         read: (file, buffer, length, offset) => {
           var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
           try {
@@ -519,8 +523,9 @@ FS.init();
     return FS_mknod(path, mode, 0);
   },
 
-  $FS_writeFile__deps: ['_wasmfs_write_file'],
-  $FS_writeFile: (path, data) => withStackSave(() => {
+  $FS_writeFile__deps: ['_wasmfs_write_file', '$stackSave', '$stackRestore'],
+  $FS_writeFile: (path, data) => {
+    var sp = stackSave();
     var pathBuffer = stringToUTF8OnStack(path);
     if (typeof data == 'string') {
       var buf = new Uint8Array(lengthBytesUTF8(data) + 1);
@@ -536,8 +541,9 @@ FS.init();
     }
     var ret = __wasmfs_write_file(pathBuffer, dataBuffer, data.length);
     _free(dataBuffer);
+    stackRestore(sp);
     return ret;
-  }),
+  },
 
   $FS_mkdir__deps: ['_wasmfs_mkdir'],
   $FS_mkdir: (path, mode = 511 /* 0777 */) => FS.handleError(withStackSave(() => {

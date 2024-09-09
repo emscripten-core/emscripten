@@ -23,7 +23,7 @@ import subprocess
 script_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(os.path.dirname(script_dir))
 
-sys.path.append(root_dir)
+sys.path.insert(0, root_dir)
 
 from tools.utils import path_from_root, read_file, safe_ensure_dirs
 
@@ -56,7 +56,7 @@ all_tags = {
 output_file = path_from_root('site/source/docs/tools_reference/settings_reference.rst')
 
 
-def write_setting(f, setting_name, comment, tags):
+def write_setting(f, setting_name, setting_default, comment, tags):
   # Convert markdown backticks to rst double backticks
   f.write('\n.. _' + setting_name.lower() + ':\n')
   f.write('\n' + setting_name + '\n')
@@ -66,6 +66,12 @@ def write_setting(f, setting_name, comment, tags):
     for t in tag.split():
       if all_tags[t]:
         f.write('\n.. note:: ' + all_tags[t] + '\n')
+  # TODO: Properly handle multi-line values, like for INCOMING_MODULE_JS_API,
+  #       which is [, newline, and then lines of content. For now print a
+  #       placeholder.
+  if setting_default == '[':
+    setting_default = '(multi-line value, see settings.js)'
+  f.write('\nDefault value: ' + setting_default + '\n')
 
 
 def write_file(f):
@@ -92,9 +98,12 @@ def write_file(f):
           continue
       current_comment.append(line)
     elif line.startswith('var'):
-      setting_name = line.split()[1]
+      # Format:
+      #   var NAME = DEFAULT;
+      # Split it and strip the final ';'.
+      _, setting_name, _, setting_default = line.strip(';').split()
       comment = '\n'.join(current_comment).strip()
-      write_setting(f, setting_name, comment, current_tags)
+      write_setting(f, setting_name, setting_default, comment, current_tags)
       current_comment = []
       current_tags = []
 

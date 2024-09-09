@@ -1,0 +1,536 @@
+[
+    // ===========================================
+    // WebGPU
+    //   NOTE: This file is auto-generated.
+    //   See system/include/webgpu/README.md for details.
+    // ===========================================
+    {
+        "file": "webgpu/webgpu.h",
+        "defines": [],
+        "structs": {
+            "WGPUChainedStruct": [
+                "next",
+                "sType"
+            ],
+            "WGPUAdapterInfo": [
+                "nextInChain",
+                "vendor",
+                "architecture",
+                "device",
+                "description",
+                "backendType",
+                "adapterType",
+                "vendorID",
+                "deviceID"
+            ],
+            "WGPUAdapterProperties": [
+                "nextInChain",
+                "vendorID",
+                "vendorName",
+                "architecture",
+                "deviceID",
+                "name",
+                "driverDescription",
+                "adapterType",
+                "backendType",
+                "compatibilityMode"
+            ],
+            "WGPUBindGroupEntry": [
+                "nextInChain",
+                "binding",
+                "buffer",
+                "offset",
+                "size",
+                "sampler",
+                "textureView"
+            ],
+            "WGPUBlendComponent": [
+                "operation",
+                "srcFactor",
+                "dstFactor"
+            ],
+            "WGPUBufferBindingLayout": [
+                "nextInChain",
+                "type",
+                "hasDynamicOffset",
+                "minBindingSize"
+            ],
+            "WGPUBufferDescriptor": [
+                "nextInChain",
+                "label",
+                "usage",
+                "size",
+                "mappedAtCreation"
+            ],
+            "WGPUBufferMapCallbackInfo": [
+                "nextInChain",
+                "mode",
+                "callback",
+                "userdata"
+            ],
+            "WGPUColor": [
+                "r",
+                "g",
+                "b",
+                "a"
+            ],
+            "WGPUCommandBufferDescriptor": [
+                "nextInChain",
+                "label"
+            ],
+            "WGPUCommandEncoderDescriptor": [
+                "nextInChain",
+                "label"
+            ],
+            "WGPUCompilationMessage": [
+                "nextInChain",
+                "message",
+                "type",
+                "lineNum",
+                "linePos",
+                "offset",
+                "length",
+                "utf16LinePos",
+                "utf16Offset",
+                "utf16Length"
+            ],
+            "WGPUComputePassTimestampWrites": [
+                "querySet",
+                "beginningOfPassWriteIndex",
+                "endOfPassWriteIndex"
+            ],
+            "WGPUConstantEntry": [
+                "nextInChain",
+                "key",
+                "value"
+            ],
+            "WGPUExtent3D": [
+                "width",
+                "height",
+                "depthOrArrayLayers"
+            ],
+            "WGPUFuture": [
+                "id"
+            ],
+            "WGPUInstanceFeatures": [
+                "nextInChain",
+                "timedWaitAnyEnable",
+                "timedWaitAnyMaxCount"
+            ],
+            "WGPULimits": [
+                "maxTextureDimension1D",
+                "maxTextureDimension2D",
+                "maxTextureDimension3D",
+                "maxTextureArrayLayers",
+                "maxBindGroups",
+                "maxBindGroupsPlusVertexBuffers",
+                "maxBindingsPerBindGroup",
+                "maxDynamicUniformBuffersPerPipelineLayout",
+                "maxDynamicStorageBuffersPerPipelineLayout",
+                "maxSampledTexturesPerShaderStage",
+                "maxSamplersPerShaderStage",
+                "maxStorageBuffersPerShaderStage",
+                "maxStorageTexturesPerShaderStage",
+                "maxUniformBuffersPerShaderStage",
+                "maxUniformBufferBindingSize",
+                "maxStorageBufferBindingSize",
+                "minUniformBufferOffsetAlignment",
+                "minStorageBufferOffsetAlignment",
+                "maxVertexBuffers",
+                "maxBufferSize",
+                "maxVertexAttributes",
+                "maxVertexBufferArrayStride",
+                "maxInterStageShaderComponents",
+                "maxInterStageShaderVariables",
+                "maxColorAttachments",
+                "maxColorAttachmentBytesPerSample",
+                "maxComputeWorkgroupStorageSize",
+                "maxComputeInvocationsPerWorkgroup",
+                "maxComputeWorkgroupSizeX",
+                "maxComputeWorkgroupSizeY",
+                "maxComputeWorkgroupSizeZ",
+                "maxComputeWorkgroupsPerDimension"
+            ],
+            "WGPUMultisampleState": [
+                "nextInChain",
+                "count",
+                "mask",
+                "alphaToCoverageEnabled"
+            ],
+            "WGPUOrigin3D": [
+                "x",
+                "y",
+                "z"
+            ],
+            "WGPUPipelineLayoutDescriptor": [
+                "nextInChain",
+                "label",
+                "bindGroupLayoutCount",
+                "bindGroupLayouts"
+            ],
+            "WGPUPrimitiveDepthClipControl": [
+                "chain",
+                "unclippedDepth"
+            ],
+            "WGPUPrimitiveState": [
+                "nextInChain",
+                "topology",
+                "stripIndexFormat",
+                "frontFace",
+                "cullMode"
+            ],
+            "WGPUQuerySetDescriptor": [
+                "nextInChain",
+                "label",
+                "type",
+                "count"
+            ],
+            "WGPUQueueDescriptor": [
+                "nextInChain",
+                "label"
+            ],
+            "WGPUQueueWorkDoneCallbackInfo": [
+                "nextInChain",
+                "mode",
+                "callback",
+                "userdata"
+            ],
+            "WGPURenderBundleDescriptor": [
+                "nextInChain",
+                "label"
+            ],
+            "WGPURenderBundleEncoderDescriptor": [
+                "nextInChain",
+                "label",
+                "colorFormatCount",
+                "colorFormats",
+                "depthStencilFormat",
+                "sampleCount",
+                "depthReadOnly",
+                "stencilReadOnly"
+            ],
+            "WGPURenderPassDepthStencilAttachment": [
+                "view",
+                "depthLoadOp",
+                "depthStoreOp",
+                "depthClearValue",
+                "depthReadOnly",
+                "stencilLoadOp",
+                "stencilStoreOp",
+                "stencilClearValue",
+                "stencilReadOnly"
+            ],
+            "WGPURenderPassDescriptorMaxDrawCount": [
+                "chain",
+                "maxDrawCount"
+            ],
+            "WGPURenderPassTimestampWrites": [
+                "querySet",
+                "beginningOfPassWriteIndex",
+                "endOfPassWriteIndex"
+            ],
+            "WGPURequestAdapterCallbackInfo": [
+                "nextInChain",
+                "mode",
+                "callback",
+                "userdata"
+            ],
+            "WGPURequestAdapterOptions": [
+                "nextInChain",
+                "compatibleSurface",
+                "powerPreference",
+                "backendType",
+                "forceFallbackAdapter",
+                "compatibilityMode"
+            ],
+            "WGPUSamplerBindingLayout": [
+                "nextInChain",
+                "type"
+            ],
+            "WGPUSamplerDescriptor": [
+                "nextInChain",
+                "label",
+                "addressModeU",
+                "addressModeV",
+                "addressModeW",
+                "magFilter",
+                "minFilter",
+                "mipmapFilter",
+                "lodMinClamp",
+                "lodMaxClamp",
+                "compare",
+                "maxAnisotropy"
+            ],
+            "WGPUShaderModuleSPIRVDescriptor": [
+                "chain",
+                "codeSize",
+                "code"
+            ],
+            "WGPUShaderModuleWGSLDescriptor": [
+                "chain",
+                "code"
+            ],
+            "WGPUShaderModuleDescriptor": [
+                "nextInChain",
+                "label"
+            ],
+            "WGPUStencilFaceState": [
+                "compare",
+                "failOp",
+                "depthFailOp",
+                "passOp"
+            ],
+            "WGPUStorageTextureBindingLayout": [
+                "nextInChain",
+                "access",
+                "format",
+                "viewDimension"
+            ],
+            "WGPUSurfaceCapabilities": [
+                "nextInChain",
+                "formatCount",
+                "formats",
+                "presentModeCount",
+                "presentModes",
+                "alphaModeCount",
+                "alphaModes"
+            ],
+            "WGPUSurfaceConfiguration": [
+                "nextInChain",
+                "device",
+                "format",
+                "usage",
+                "viewFormatCount",
+                "viewFormats",
+                "alphaMode",
+                "width",
+                "height",
+                "presentMode"
+            ],
+            "WGPUSurfaceDescriptor": [
+                "nextInChain",
+                "label"
+            ],
+            "WGPUSurfaceDescriptorFromCanvasHTMLSelector": [
+                "chain",
+                "selector"
+            ],
+            "WGPUSurfaceTexture": [
+                "texture",
+                "suboptimal",
+                "status"
+            ],
+            "WGPUSwapChainDescriptor": [
+                "nextInChain",
+                "label",
+                "usage",
+                "format",
+                "width",
+                "height",
+                "presentMode"
+            ],
+            "WGPUTextureBindingLayout": [
+                "nextInChain",
+                "sampleType",
+                "viewDimension",
+                "multisampled"
+            ],
+            "WGPUTextureBindingViewDimensionDescriptor": [
+                "chain",
+                "textureBindingViewDimension"
+            ],
+            "WGPUTextureDataLayout": [
+                "nextInChain",
+                "offset",
+                "bytesPerRow",
+                "rowsPerImage"
+            ],
+            "WGPUTextureViewDescriptor": [
+                "nextInChain",
+                "label",
+                "format",
+                "dimension",
+                "baseMipLevel",
+                "mipLevelCount",
+                "baseArrayLayer",
+                "arrayLayerCount",
+                "aspect"
+            ],
+            "WGPUVertexAttribute": [
+                "format",
+                "offset",
+                "shaderLocation"
+            ],
+            "WGPUBindGroupDescriptor": [
+                "nextInChain",
+                "label",
+                "layout",
+                "entryCount",
+                "entries"
+            ],
+            "WGPUBindGroupLayoutEntry": [
+                "nextInChain",
+                "binding",
+                "visibility",
+                "buffer",
+                "sampler",
+                "texture",
+                "storageTexture"
+            ],
+            "WGPUBlendState": [
+                "color",
+                "alpha"
+            ],
+            "WGPUCompilationInfo": [
+                "nextInChain",
+                "messageCount",
+                "messages"
+            ],
+            "WGPUComputePassDescriptor": [
+                "nextInChain",
+                "label",
+                "timestampWrites"
+            ],
+            "WGPUDepthStencilState": [
+                "nextInChain",
+                "format",
+                "depthWriteEnabled",
+                "depthCompare",
+                "stencilFront",
+                "stencilBack",
+                "stencilReadMask",
+                "stencilWriteMask",
+                "depthBias",
+                "depthBiasSlopeScale",
+                "depthBiasClamp"
+            ],
+            "WGPUFutureWaitInfo": [
+                "future",
+                "completed"
+            ],
+            "WGPUImageCopyBuffer": [
+                "nextInChain",
+                "layout",
+                "buffer"
+            ],
+            "WGPUImageCopyTexture": [
+                "nextInChain",
+                "texture",
+                "mipLevel",
+                "origin",
+                "aspect"
+            ],
+            "WGPUInstanceDescriptor": [
+                "nextInChain",
+                "features"
+            ],
+            "WGPUProgrammableStageDescriptor": [
+                "nextInChain",
+                "module",
+                "entryPoint",
+                "constantCount",
+                "constants"
+            ],
+            "WGPURenderPassColorAttachment": [
+                "nextInChain",
+                "view",
+                "depthSlice",
+                "resolveTarget",
+                "loadOp",
+                "storeOp",
+                "clearValue"
+            ],
+            "WGPURequiredLimits": [
+                "nextInChain",
+                "limits"
+            ],
+            "WGPUSupportedLimits": [
+                "nextInChain",
+                "limits"
+            ],
+            "WGPUTextureDescriptor": [
+                "nextInChain",
+                "label",
+                "usage",
+                "dimension",
+                "size",
+                "format",
+                "mipLevelCount",
+                "sampleCount",
+                "viewFormatCount",
+                "viewFormats"
+            ],
+            "WGPUVertexBufferLayout": [
+                "arrayStride",
+                "stepMode",
+                "attributeCount",
+                "attributes"
+            ],
+            "WGPUBindGroupLayoutDescriptor": [
+                "nextInChain",
+                "label",
+                "entryCount",
+                "entries"
+            ],
+            "WGPUColorTargetState": [
+                "nextInChain",
+                "format",
+                "blend",
+                "writeMask"
+            ],
+            "WGPUComputePipelineDescriptor": [
+                "nextInChain",
+                "label",
+                "layout",
+                "compute"
+            ],
+            "WGPUDeviceDescriptor": [
+                "nextInChain",
+                "label",
+                "requiredFeatureCount",
+                "requiredFeatures",
+                "requiredLimits",
+                "defaultQueue",
+                "deviceLostCallback",
+                "deviceLostUserdata"
+            ],
+            "WGPURenderPassDescriptor": [
+                "nextInChain",
+                "label",
+                "colorAttachmentCount",
+                "colorAttachments",
+                "depthStencilAttachment",
+                "occlusionQuerySet",
+                "timestampWrites"
+            ],
+            "WGPUVertexState": [
+                "nextInChain",
+                "module",
+                "entryPoint",
+                "constantCount",
+                "constants",
+                "bufferCount",
+                "buffers"
+            ],
+            "WGPUFragmentState": [
+                "nextInChain",
+                "module",
+                "entryPoint",
+                "constantCount",
+                "constants",
+                "targetCount",
+                "targets"
+            ],
+            "WGPURenderPipelineDescriptor": [
+                "nextInChain",
+                "label",
+                "layout",
+                "vertex",
+                "primitive",
+                "depthStencil",
+                "multisample",
+                "fragment"
+            ]
+        }
+    }
+]

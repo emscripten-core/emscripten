@@ -104,6 +104,7 @@ var LibraryBrowser = {
 #endif
       }
     },
+    useWebGL: false,
     isFullscreen: false,
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
@@ -124,7 +125,7 @@ var LibraryBrowser = {
 
       var imagePlugin = {};
       imagePlugin['canHandle'] = function imagePlugin_canHandle(name) {
-        return !Module.noImageDecoding && /\.(jpg|jpeg|png|bmp)$/i.test(name);
+        return !Module['noImageDecoding'] && /\.(jpg|jpeg|png|bmp|webp)$/i.test(name);
       };
       imagePlugin['handle'] = function imagePlugin_handle(byteArray, name, onload, onerror) {
         var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
@@ -138,7 +139,9 @@ var LibraryBrowser = {
 #endif
         var img = new Image();
         img.onload = () => {
+#if ASSERTIONS
           assert(img.complete, `Image ${name} could not be decoded`);
+#endif
           var canvas = /** @type {!HTMLCanvasElement} */ (document.createElement('canvas'));
           canvas.width = img.width;
           canvas.height = img.height;
@@ -158,7 +161,7 @@ var LibraryBrowser = {
 
       var audioPlugin = {};
       audioPlugin['canHandle'] = function audioPlugin_canHandle(name) {
-        return !Module.noAudioDecoding && name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
+        return !Module['noAudioDecoding'] && name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
       };
       audioPlugin['handle'] = function audioPlugin_handle(byteArray, name, onload, onerror) {
         var done = false;
@@ -302,18 +305,17 @@ var LibraryBrowser = {
       if (!ctx) return null;
 
       if (setInModule) {
+#if ASSERTIONS
         if (!useWebGL) assert(typeof GLctx == 'undefined', 'cannot set in module if GLctx is used, but we are a non-GL context that would replace it');
-
+#endif
         Module.ctx = ctx;
         if (useWebGL) GL.makeContextCurrent(contextHandle);
-        Module.useWebGL = useWebGL;
+        Browser.useWebGL = useWebGL;
         Browser.moduleContextCreatedCallbacks.forEach((callback) => callback());
         Browser.init();
       }
       return ctx;
     },
-
-    destroyContext(canvas, useWebGL, setInModule) {},
 
     fullscreenHandlersInstalled: false,
     lockPointer: undefined,
@@ -590,16 +592,9 @@ var LibraryBrowser = {
           Browser.mouseMovementY = Browser.getMovementY(event);
         }
 
-        // check if SDL is available
-        if (typeof SDL != "undefined") {
-          Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
-          Browser.mouseY = SDL.mouseY + Browser.mouseMovementY;
-        } else {
-          // just add the mouse delta to the current absolut mouse position
-          // FIXME: ideally this should be clamped against the canvas size and zero
-          Browser.mouseX += Browser.mouseMovementX;
-          Browser.mouseY += Browser.mouseMovementY;
-        }
+        // add the mouse delta to the current absolute mouse position
+        Browser.mouseX += Browser.mouseMovementX;
+        Browser.mouseY += Browser.mouseMovementY;
       } else {
         if (event.type === 'touchstart' || event.type === 'touchend' || event.type === 'touchmove') {
           var touch = event.touch;
@@ -774,41 +769,43 @@ var LibraryBrowser = {
   emscripten_async_load_script__deps: ['$UTF8ToString'],
   emscripten_async_load_script: (url, onload, onerror) => {
     url = UTF8ToString(url);
-    onload = {{{ makeDynCall('v', 'onload') }}};
-    onerror = {{{ makeDynCall('v', 'onerror') }}};
-
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
       err(`emscripten_async_load_script("${url}") failed, emscripten_async_load_script is currently not available in pthreads!`);
-      return onerror ? onerror() : undefined;
+      onerror && {{{ makeDynCall('v', 'onerror') }}}();
+      return;
     }
 #endif
+#if ASSERTIONS
     assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
-
+#endif
     {{{ runtimeKeepalivePush() }}}
 
     var loadDone = () => {
       {{{ runtimeKeepalivePop() }}}
       if (onload) {
+        var onloadCallback = () => callUserCallback({{{ makeDynCall('v', 'onload') }}});
         if (runDependencies > 0) {
-          dependenciesFulfilled = onload;
+          dependenciesFulfilled = onloadCallback;
         } else {
-          onload();
+          onloadCallback();
         }
       }
     }
 
     var loadError = () => {
       {{{ runtimeKeepalivePop() }}}
-      onerror?.();
+      if (onerror) {
+        callUserCallback({{{ makeDynCall('v', 'onerror') }}});
+      }
     };
 
 #if ENVIRONMENT_MAY_BE_NODE && DYNAMIC_EXECUTION
     if (ENVIRONMENT_IS_NODE) {
-      readAsync(url, (data) => {
+      readAsync(url, false).then((data) => {
         eval(data);
         loadDone();
-      }, loadError, false);
+      }, loadError);
       return;
     }
 #endif
@@ -869,10 +866,10 @@ var LibraryBrowser = {
             }
           };
           addEventListener("message", Browser_setImmediate_messageHandler, true);
-          Browser.setImmediate = /** @type{function(function(): ?, ...?): number} */(function Browser_emulated_setImmediate(func) {
+          Browser.setImmediate = /** @type{function(function(): ?, ...?): number} */((func) => {
             setImmediates.push(func);
             if (ENVIRONMENT_IS_WORKER) {
-              if (Module['setImmediates'] === undefined) Module['setImmediates'] = [];
+              Module['setImmediates'] ??= [];
               Module['setImmediates'].push(func);
               postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
             } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
@@ -901,7 +898,7 @@ var LibraryBrowser = {
 #if OFFSCREEN_FRAMEBUFFER
     'emscripten_webgl_commit_frame',
 #endif
-#if EXIT_RUNTIME && !MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME
     '$maybeExit',
 #endif
   ],
@@ -911,8 +908,9 @@ var LibraryBrowser = {
    * @param {boolean=} noSetTiming
    */`,
   $setMainLoop: (browserIterationFunc, fps, simulateInfiniteLoop, arg, noSetTiming) => {
+#if ASSERTIONS
     assert(!Browser.mainLoop.func, 'emscripten_set_main_loop: there can only be one main loop function at once: call emscripten_cancel_main_loop to cancel the previous one before setting a new one with different parameters.');
-
+#endif
     Browser.mainLoop.func = browserIterationFunc;
     Browser.mainLoop.arg = arg;
 
@@ -933,10 +931,10 @@ var LibraryBrowser = {
     function checkIsRunning() {
       if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) {
 #if RUNTIME_DEBUG
-        dbg('main loop exiting..');
+        dbg('main loop exiting');
 #endif
         {{{ runtimeKeepalivePop() }}}
-#if EXIT_RUNTIME && !MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME
         maybeExit();
 #endif
         return false;
@@ -1291,37 +1289,37 @@ var LibraryBrowser = {
     return info.awaited;
   },
 
-  emscripten_get_preloaded_image_data__deps: ['$PATH_FS', 'malloc'],
+  emscripten_get_preloaded_image_data__deps: ['$getPreloadedImageData', '$UTF8ToString'],
   emscripten_get_preloaded_image_data__proxy: 'sync',
-  emscripten_get_preloaded_image_data: (path, w, h) => {
-    if ((path | 0) === path) path = UTF8ToString(path);
+  emscripten_get_preloaded_image_data: (path, w, h) => getPreloadedImageData(UTF8ToString(path), w, h),
 
+  $getPreloadedImageData__internal: true,
+  $getPreloadedImageData__data: ['$PATH_FS', 'malloc'],
+  $getPreloadedImageData: (path, w, h) => {
     path = PATH_FS.resolve(path);
 
     var canvas = /** @type {HTMLCanvasElement} */(preloadedImages[path]);
-    if (canvas) {
-      var ctx = canvas.getContext("2d");
-      var image = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      var buf = _malloc(canvas.width * canvas.height * 4);
+    if (!canvas) return 0;
 
-      HEAPU8.set(image.data, buf);
+    var ctx = canvas.getContext("2d");
+    var image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    var buf = _malloc(canvas.width * canvas.height * 4);
 
-      {{{ makeSetValue('w', '0', 'canvas.width', 'i32') }}};
-      {{{ makeSetValue('h', '0', 'canvas.height', 'i32') }}};
-      return buf;
-    }
+    HEAPU8.set(image.data, buf);
 
-    return 0;
+    {{{ makeSetValue('w', '0', 'canvas.width', 'i32') }}};
+    {{{ makeSetValue('h', '0', 'canvas.height', 'i32') }}};
+    return buf;
   },
 
 #if !WASMFS // WasmFS implements this in wasm
-  emscripten_get_preloaded_image_data_from_FILE__deps: ['emscripten_get_preloaded_image_data', 'fileno'],
+  emscripten_get_preloaded_image_data_from_FILE__deps: ['$getPreloadedImageData', 'fileno'],
   emscripten_get_preloaded_image_data_from_FILE__proxy: 'sync',
   emscripten_get_preloaded_image_data_from_FILE: (file, w, h) => {
     var fd = _fileno(file);
     var stream = FS.getStream(fd);
     if (stream) {
-      return _emscripten_get_preloaded_image_data(stream.path, w, h);
+      return getPreloadedImageData(stream.path, w, h);
     }
 
     return 0;

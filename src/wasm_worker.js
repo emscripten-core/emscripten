@@ -17,15 +17,15 @@ if (ENVIRONMENT_IS_NODE) {
   parentPort.on('message', (data) => typeof onmessage === "function" && onmessage({ data: data }));
 
   var fs = require('fs');
+  var vm = require('vm');
 
   Object.assign(global, {
     self: global,
     require,
-    location: {
-      href: __filename
-    },
+    __filename,
+    __dirname,
     Worker: nodeWorkerThreads.Worker,
-    importScripts: (f) => (0, eval)(fs.readFileSync(f, 'utf8') + '//# sourceURL=' + f),
+    importScripts: (f) => vm.runInThisContext(fs.readFileSync(f, 'utf8'), {filename: f}),
     postMessage: (msg) => parentPort.postMessage(msg),
     performance: global.performance || { now: Date.now },
     addEventListener: (name, handler) => parentPort.on(name, handler),

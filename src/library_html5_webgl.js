@@ -14,8 +14,10 @@ var LibraryHtml5WebGL = {
     var len = arr.length;
     var writeLength = dstLength < len ? dstLength : len;
     var heap = heapType ? HEAPF32 : HEAP32;
+    // Works because HEAPF32 and HEAP32 have the same bytes-per-element
+    dst = {{{ getHeapOffset('dst', 'float') }}};
     for (var i = 0; i < writeLength; ++i) {
-      heap[(dst >> 2) + i] = arr[i];
+      heap[dst + i] = arr[i];
     }
     return len;
   },
@@ -57,24 +59,24 @@ var LibraryHtml5WebGL = {
 #if ASSERTIONS
     assert(attributes);
 #endif
-    var a = {{{ getHeapOffset('attributes', 'i32') }}};
-    var powerPreference = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.powerPreference }}}>>2)];
+    var attr32 = {{{ getHeapOffset('attributes', 'i32') }}};
+    var powerPreference = HEAP32[attr32 + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.powerPreference }}}>>2)];
     var contextAttributes = {
-      'alpha': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.alpha }}}>>2)],
-      'depth': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.depth }}}>>2)],
-      'stencil': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.stencil }}}>>2)],
-      'antialias': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.antialias }}}>>2)],
-      'premultipliedAlpha': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha }}}>>2)],
-      'preserveDrawingBuffer': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer }}}>>2)],
+      'alpha': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.alpha }}}],
+      'depth': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.depth }}}],
+      'stencil': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.stencil }}}],
+      'antialias': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.antialias }}}],
+      'premultipliedAlpha': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha }}}],
+      'preserveDrawingBuffer': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer }}}],
       'powerPreference': webglPowerPreferences[powerPreference],
-      'failIfMajorPerformanceCaveat': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat }}}>>2)],
+      'failIfMajorPerformanceCaveat': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat }}}],
       // The following are not predefined WebGL context attributes in the WebGL specification, so the property names can be minified by Closure.
-      majorVersion: HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)],
-      minorVersion: HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion }}}>>2)],
-      enableExtensionsByDefault: HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault }}}>>2)],
-      explicitSwapControl: HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl }}}>>2)],
-      proxyContextToMainThread: HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread }}}>>2)],
-      renderViaOffscreenBackBuffer: HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer }}}>>2)]
+      majorVersion: HEAP32[attr32 + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)],
+      minorVersion: HEAP32[attr32 + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion }}}>>2)],
+      enableExtensionsByDefault: HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault }}}],
+      explicitSwapControl: HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl }}}],
+      proxyContextToMainThread: HEAP32[attr32 + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread }}}>>2)],
+      renderViaOffscreenBackBuffer: HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer }}}]
     };
 
     var canvas = findCanvasEventTarget(target);
@@ -98,8 +100,8 @@ var LibraryHtml5WebGL = {
 #endif
         // We will be proxying - if OffscreenCanvas is supported, we can proxy a bit more efficiently by avoiding having to create an Offscreen FBO.
         if (!_emscripten_supports_offscreencanvas()) {
-          {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, '1', 'i32') }}};
-          {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, '1', 'i32') }}};
+          {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, '1', 'i8') }}};
+          {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, '1', 'i8') }}};
         }
         return _emscripten_webgl_create_context_proxied(target, attributes);
       }
@@ -262,22 +264,22 @@ var LibraryHtml5WebGL = {
     if (!t) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     t = t.getContextAttributes();
 
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.alpha, 't.alpha', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.depth, 't.depth', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.stencil, 't.stencil', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.antialias, 't.antialias', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha, 't.premultipliedAlpha', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, 't.preserveDrawingBuffer', 'i32') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.alpha, 't.alpha', 'i8') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.depth, 't.depth', 'i8') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.stencil, 't.stencil', 'i8') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.antialias, 't.antialias', 'i8') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha, 't.premultipliedAlpha', 'i8') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, 't.preserveDrawingBuffer', 'i8') }}};
     var power = t['powerPreference'] && webglPowerPreferences.indexOf(t['powerPreference']);
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.powerPreference, 'power', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat, 't.failIfMajorPerformanceCaveat', 'i32') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat, 't.failIfMajorPerformanceCaveat', 'i8') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion, 'c.version', 'i32') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion, 0, 'i32') }}};
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 'c.attributes.enableExtensionsByDefault', 'i32') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 'c.attributes.enableExtensionsByDefault', 'i8') }}};
 #endif
 #if GL_SUPPORT_EXPLICIT_SWAP_CONTROL
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl, 'c.attributes.explicitSwapControl', 'i32') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl, 'c.attributes.explicitSwapControl', 'i8') }}};
 #endif
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
@@ -309,6 +311,9 @@ var LibraryHtml5WebGL = {
     '$webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
     '$webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance',
 #endif
+    '$webgl_enable_EXT_polygon_offset_clamp',
+    '$webgl_enable_EXT_clip_control',
+    '$webgl_enable_WEBGL_polygon_mode',
     '$webgl_enable_WEBGL_multi_draw',
 #endif
   ],
@@ -337,21 +342,23 @@ var LibraryHtml5WebGL = {
 #endif
 
     if (extString == 'WEBGL_multi_draw') webgl_enable_WEBGL_multi_draw(GLctx);
+    if (extString == 'EXT_polygon_offset_clamp') webgl_enable_EXT_polygon_offset_clamp(GLctx);
+    if (extString == 'EXT_clip_control') webgl_enable_EXT_clip_control(GLctx);
+    if (extString == 'WEBGL_polygon_mode') webgl_enable_WEBGL_polygon_mode(GLctx);
 
-#else
-
-#if ASSERTIONS || GL_ASSERTIONS
+#elif ASSERTIONS || GL_ASSERTIONS
     if (['ANGLE_instanced_arrays',
          'OES_vertex_array_object',
          'WEBGL_draw_buffers',
          'WEBGL_multi_draw',
+         'EXT_polygon_offset_clamp',
+         'EXT_clip_control',
+         'WEBGL_polygon_mode',
          'WEBGL_draw_instanced_base_vertex_base_instance',
          'WEBGL_multi_draw_instanced_base_vertex_base_instance'].includes(extString)) {
       err('When building with -sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0, function emscripten_webgl_enable_extension() cannot be used to enable extension '
                     + extString + '! Use one of the functions emscripten_webgl_enable_*() to enable it!');
     }
-#endif
-
 #endif
 
     var ext = context.GLctx.getExtension(extString);
@@ -539,7 +546,7 @@ function handleWebGLProxying(funcs) {
       funcs[i + '_main_thread'] = i + '_calling_thread';
       funcs[i + '_main_thread__proxy'] = 'sync';
       funcs[i + '_main_thread__sig'] = sig;
-      if (!funcs[i + '__deps']) funcs[i + '__deps'] = [];
+      funcs[i + '__deps'] ??= [];
       funcs[i + '__deps'].push(i + '_calling_thread');
       funcs[i + '__deps'].push(i + '_main_thread');
       delete funcs[i + '__proxy'];

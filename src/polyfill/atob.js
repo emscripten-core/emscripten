@@ -9,7 +9,7 @@
 #endif
 
 #if !ENVIRONMENT_MAY_BE_SHELL && !ENVIRONMENT_MAY_BE_NODE
-#error "this polyfill should only be included when targetting node or shell"
+#error "this polyfill should only be included when targeting node or shell"
 #endif
 
 if (typeof atob == 'undefined') {

@@ -109,7 +109,7 @@ var WasiLibrary = {
     return 0;
   },
 
-  // In normal (non-standalone) mode arguments are passed direclty
+  // In normal (non-standalone) mode arguments are passed directly
   // to main, and the `mainArgs` global does not exist.
 #if STANDALONE_WASM
   args_sizes_get__nothrow: true,
@@ -207,7 +207,7 @@ var WasiLibrary = {
       if (curr < 0) return -1;
       ret += curr;
       if (curr < len) break; // nothing more to read
-      if (typeof offset !== 'undefined') {
+      if (typeof offset != 'undefined') {
         offset += curr;
       }
     }
@@ -223,7 +223,11 @@ var WasiLibrary = {
       var curr = FS.write(stream, HEAP8, ptr, len, offset);
       if (curr < 0) return -1;
       ret += curr;
-      if (typeof offset !== 'undefined') {
+      if (curr < len) {
+        // No more space to write.
+        break;
+      }
+      if (typeof offset != 'undefined') {
         offset += curr;
       }
     }

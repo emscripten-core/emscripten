@@ -169,3 +169,43 @@ interface LongLongTypes {
   readonly attribute unsigned long long[] lluArray;
   attribute long long ll;
 };
+
+[NoDelete]
+interface ISmallObject {
+  long getID(long number);
+};
+
+[JSImplementation="ISmallObject"]
+interface JSSmallObject {
+  void JSSmallObject();
+  long getID(long number);
+};
+
+[NoDelete]
+interface IObjectProvider {
+  ISmallObject getObject();
+};
+
+[JSImplementation="IObjectProvider"]
+interface JSObjectProvider {
+  void JSObjectProvider();
+  JSSmallObject getObject();
+};
+
+interface ObjectFactory {
+  void ObjectFactory();
+  IObjectProvider getProvider();
+};
+
+interface ArrayArgumentTest {
+  void ArrayArgumentTest();
+  boolean byteArrayTest([Const] byte[] arg);
+  boolean domStringTest([Const] DOMString arg);
+};
+
+[JSImplementation = "ArrayArgumentTest"] 
+interface JSArrayArgumentTest {
+  void JSArrayArgumentTest();
+  boolean byteArrayTest([Const] byte[] arg);
+  boolean domStringTest([Const] DOMString arg);
+};
