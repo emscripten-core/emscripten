@@ -4997,6 +4997,9 @@ int main() {
           for flush in (0, 1):
             test(cxx, no_exit, assertions, flush)
 
+  def test_no_exit_runtime_strict(self):
+    self.do_other_test('test_no_exit_runtime_strict.c', emcc_args=['-sSTRICT'])
+
   def test_extra_opt_levels(self):
     # Opt levels that we don't tend to test elsewhere
     for opt in ('-Og', '-Ofast'):
