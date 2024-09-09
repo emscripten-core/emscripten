@@ -2468,10 +2468,7 @@ The current type of b is: 9
     if modularize:
       self.set_setting('MODULARIZE')
       self.set_setting('EXPORT_NAME=ModuleFactory')
-      # Only instantiate the module on the main thread.
-      create_file('extern-post.js',
-                  'if (typeof importScripts != "function") ModuleFactory();')
-      args = ['--extern-post-js=extern-post.js']
+      args = ['--extern-post-js', test_file('modularize_post_js.js')]
     self.do_run_in_out_file_test('pthread/test_pthread_proxying.c',
                                  interleaved_output=False, emcc_args=args)
 
@@ -6266,8 +6263,7 @@ PORT: 3979
     err = self.expect_fail([PYTHON, 'expect_fail.py'], expect_traceback=True)
     self.assertContained('UnicodeDecodeError', err)
 
-    create_file('modularize_post.js', '(async function main(){await Module();})()')
-    self.emcc_args += ['-sMODULARIZE', '--js-library', test_file('unicode_library.js'), '--extern-post-js', 'modularize_post.js', '--post-js', test_file('unicode_postjs.js')]
+    self.emcc_args += ['-sMODULARIZE', '--js-library', test_file('unicode_library.js'), '--extern-post-js', test_file('modularize_post_js.js'), '--post-js', test_file('unicode_postjs.js')]
     self.do_run_in_out_file_test('test_unicode_js_library.c')
 
   def test_funcptr_import_type(self):
@@ -7924,14 +7920,13 @@ void* operator new(size_t size) {
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
     # closure should not minify the Module object in a way that the pre-js cannot use it.
-    create_file('post.js', 'var TheModule = Module();\n')
     if self.is_wasm2js():
       # TODO(sbc): Fix closure warnings with MODULARIZE + WASM=0
       self.ldflags.append('-Wno-error=closure')
 
     self.emcc_args += [
       '--pre-js', test_file('core/modularize_closure_pre.js'),
-      '--extern-post-js=post.js',
+      '--extern-post-js', test_file('modularize_post_js.js'),
       '--closure=1',
       '-g1',
       '-sMODULARIZE',
@@ -9222,8 +9217,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('USE_OFFSET_CONVERTER')
     self.set_setting('MODULARIZE')
     self.set_setting('EXPORT_NAME', 'foo')
-    create_file('post.js', 'if (!isPthread) foo();')
-    self.emcc_args += ['--extern-post-js', 'post.js']
+    self.emcc_args += ['--extern-post-js', test_file('modularize_post_js.js')]
     if '-g' in self.emcc_args:
       self.emcc_args += ['-DDEBUG']
     self.do_runf('core/test_return_address.c', 'passed')
