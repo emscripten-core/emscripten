@@ -94,8 +94,6 @@ var LibraryPThread = {
 #endif
       if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
         PThread.initMainThread();
-      } else {
-        PThread.initWorker();
       }
     },
     initMainThread() {
@@ -119,19 +117,6 @@ var LibraryPThread = {
       // Finished threads are threads that have finished running but we not yet
       // joined.
       PThread.finishedThreads = new Set();
-#endif
-    },
-
-    initWorker() {
-#if isSymbolNeeded('$noExitRuntime')
-      // The default behaviour for pthreads is always to exit once they return
-      // from their entry point (or call pthread_exit).  If we set noExitRuntime
-      // to true here on pthreads they would never complete and attempt to
-      // pthread_join to them would block forever.
-      // pthreads can still choose to set `noExitRuntime` explicitly, or
-      // call emscripten_unwind_to_js_event_loop to extend their lifetime beyond
-      // their main function.  See comment in src/runtime_pthread.js for more.
-      noExitRuntime = false;
 #endif
     },
 
@@ -1066,6 +1051,16 @@ var LibraryPThread = {
     // `runtimeKeepaliveCounter` to zero. Reset it now so the new thread won't
     // be affected.
     runtimeKeepaliveCounter = 0;
+
+#if isSymbolNeeded('$noExitRuntime')
+    // Same for noExitRuntime.  The default for pthreads should always be false
+    // otherwise pthreads would never complete and attempts to pthread_join to
+    // them would block forever.
+    // pthreads can still choose to set `noExitRuntime` explicitly, or
+    // call emscripten_unwind_to_js_event_loop to extend their lifetime beyond
+    // their main function.  See comment in src/runtime_pthread.js for more.
+    noExitRuntime = 0;
+#endif
 #endif
 
 #if MAIN_MODULE
