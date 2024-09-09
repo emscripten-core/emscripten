@@ -2864,37 +2864,40 @@ More info: https://emscripten.org
     self.assertGreater(len(js), 100 * SLACK)
 
   @parameterized({
-    'minifyGlobals': ('minifyGlobals.js', ['minifyGlobals']),
-    'minifyLocals': ('minifyLocals.js', ['minifyLocals']),
-    'JSDCE': ('JSDCE.js', ['JSDCE']),
-    'JSDCE-hasOwnProperty': ('JSDCE-hasOwnProperty.js', ['JSDCE']),
-    'JSDCE-defaultArg': ('JSDCE-defaultArg.js', ['JSDCE']),
-    'JSDCE-fors': ('JSDCE-fors.js', ['JSDCE']),
-    'JSDCE-objectPattern': ('JSDCE-objectPattern.js', ['JSDCE']),
-    'AJSDCE': ('AJSDCE.js', ['AJSDCE']),
-    'emitDCEGraph': ('emitDCEGraph.js', ['emitDCEGraph', '--no-print']),
-    'emitDCEGraph-closure': ('emitDCEGraph.js', ['emitDCEGraph', '--no-print', '--closure-friendly']),
-    'emitDCEGraph2': ('emitDCEGraph2.js', ['emitDCEGraph', '--no-print']),
-    'emitDCEGraph3': ('emitDCEGraph3.js', ['emitDCEGraph', '--no-print']),
-    'emitDCEGraph4': ('emitDCEGraph4.js', ['emitDCEGraph', '--no-print']),
-    'emitDCEGraph5': ('emitDCEGraph5.js', ['emitDCEGraph', '--no-print']),
-    'minimal-runtime-applyDCEGraphRemovals': ('minimal-runtime-applyDCEGraphRemovals.js', ['applyDCEGraphRemovals']),
-    'applyDCEGraphRemovals': ('applyDCEGraphRemovals.js', ['applyDCEGraphRemovals']),
-    'applyImportAndExportNameChanges': ('applyImportAndExportNameChanges.js', ['applyImportAndExportNameChanges']),
-    'applyImportAndExportNameChanges2': ('applyImportAndExportNameChanges2.js', ['applyImportAndExportNameChanges']),
-    'minimal-runtime-emitDCEGraph': ('minimal-runtime-emitDCEGraph.js', ['emitDCEGraph', '--no-print']),
-    'minimal-runtime-2-emitDCEGraph': ('minimal-runtime-2-emitDCEGraph.js', ['emitDCEGraph', '--no-print']),
-    'standalone-emitDCEGraph': ('standalone-emitDCEGraph.js', ['emitDCEGraph', '--no-print']),
-    'emittedJSPreservesParens': ('emittedJSPreservesParens.js', []),
-    'growableHeap': ('test-growableHeap.js', ['growableHeap']),
-    'unsignPointers': ('test-unsignPointers.js', ['unsignPointers', '--closure-friendly']),
-    'asanify': ('test-asanify.js', ['asanify']),
-    'safeHeap': ('test-safeHeap.js', ['safeHeap']),
-    'object_literals': ('test-object-literals.js', []),
-    'LittleEndianHeap': ('test-LittleEndianHeap.js', ['littleEndianHeap']),
+    'minifyGlobals': (['minifyGlobals'],),
+    'minifyLocals': (['minifyLocals'],),
+    'JSDCE': (['JSDCE'],),
+    'JSDCE-hasOwnProperty': (['JSDCE'],),
+    'JSDCE-defaultArg': (['JSDCE'],),
+    'JSDCE-fors': (['JSDCE'],),
+    'JSDCE-objectPattern': (['JSDCE'],),
+    'AJSDCE': (['AJSDCE'],),
+    'emitDCEGraph': (['emitDCEGraph', '--no-print'],),
+    'emitDCEGraph-closure': (['emitDCEGraph', '--no-print', '--closure-friendly'], 'emitDCEGraph.js'),
+    'emitDCEGraph2': (['emitDCEGraph', '--no-print'],),
+    'emitDCEGraph3': (['emitDCEGraph', '--no-print'],),
+    'emitDCEGraph4': (['emitDCEGraph', '--no-print'],),
+    'emitDCEGraph5': (['emitDCEGraph', '--no-print'],),
+    'minimal-runtime-applyDCEGraphRemovals': (['applyDCEGraphRemovals'],),
+    'applyDCEGraphRemovals': (['applyDCEGraphRemovals'],),
+    'applyImportAndExportNameChanges': (['applyImportAndExportNameChanges'],),
+    'applyImportAndExportNameChanges2': (['applyImportAndExportNameChanges'],),
+    'minimal-runtime-emitDCEGraph': (['emitDCEGraph', '--no-print'],),
+    'minimal-runtime-2-emitDCEGraph': (['emitDCEGraph', '--no-print'],),
+    'standalone-emitDCEGraph': (['emitDCEGraph', '--no-print'],),
+    'emittedJSPreservesParens': ([],),
+    'growableHeap': (['growableHeap'],),
+    'unsignPointers': (['unsignPointers', '--closure-friendly'],),
+    'asanify': (['asanify'],),
+    'safeHeap': (['safeHeap'],),
+    'object-literals': ([],),
+    'LittleEndianHeap': (['littleEndianHeap'],),
   })
   @crossplatform
-  def test_js_optimizer(self, filename, passes):
+  def test_js_optimizer(self, passes, filename=None):
+    if not filename:
+      testname = self.id().split('.')[-1]
+      filename = utils.removeprefix(testname, 'test_js_optimizer_') + '.js'
     filename = test_file('js_optimizer', filename)
     expected_file = shared.unsuffixed(filename) + '-output.js'
     # test calling optimizer
