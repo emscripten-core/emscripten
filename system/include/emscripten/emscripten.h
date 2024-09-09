@@ -38,7 +38,7 @@ char *emscripten_run_script_string(const char *script __attribute__((nonnull)));
 void emscripten_async_run_script(const char *script __attribute__((nonnull)), int millis);
 void emscripten_async_load_script(const char *script __attribute__((nonnull)), em_callback_func onload, em_callback_func onerror);
 
-void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop);
+void emscripten_set_main_loop(em_callback_func func, int fps, bool simulate_infinite_loop);
 
 #define EM_TIMING_SETTIMEOUT 0
 #define EM_TIMING_RAF 1
@@ -46,7 +46,7 @@ void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infin
 
 int emscripten_set_main_loop_timing(int mode, int value);
 void emscripten_get_main_loop_timing(int *mode, int *value); // Pass a null pointer to skip receiving that particular value
-void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, int simulate_infinite_loop);
+void emscripten_set_main_loop_arg(em_arg_callback_func func, void *arg, int fps, bool simulate_infinite_loop);
 void emscripten_pause_main_loop(void);
 void emscripten_resume_main_loop(void);
 void emscripten_cancel_main_loop(void);
