@@ -1242,7 +1242,7 @@ var LibraryPThread = {
   // new thread that has not had a chance to initialize itself and execute
   // Atomics.waitAsync to prepare for the notification.
   _emscripten_notify_mailbox_postmessage__deps: ['$checkMailbox'],
-  _emscripten_notify_mailbox_postmessage: (targetThreadId, currThreadId, mainThreadId) => {
+  _emscripten_notify_mailbox_postmessage: (targetThreadId, currThreadId) => {
     if (targetThreadId == currThreadId) {
       setTimeout(checkMailbox);
     } else if (ENVIRONMENT_IS_PTHREAD) {
