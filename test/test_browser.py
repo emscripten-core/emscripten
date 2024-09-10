@@ -3693,11 +3693,17 @@ Module["preRun"] = () => {
     '': ([],),
     'O3': (['-O3'],),
     'minimal_runtime': (['-sMINIMAL_RUNTIME'],),
+    'single_file': (['-sSINGLE_FILE'],),
   })
   def test_pthread_create(self, args):
     self.btest_exit('pthread/test_pthread_create.c',
                     args=['-pthread', '-sPTHREAD_POOL_SIZE=8'] + args,
                     extra_tries=0) # this should be 100% deterministic
+    files = os.listdir('.')
+    if '-sSINGLE_FILE' in args:
+      self.assertEqual(len(files), 1, files)
+    else:
+      self.assertEqual(len(files), 4, files)
 
   # Test that preallocating worker threads work.
   def test_pthread_preallocates_workers(self):

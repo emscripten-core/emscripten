@@ -2079,7 +2079,7 @@ def phase_final_emitting(options, state, target, wasm_target):
     return
 
   target_dir = os.path.dirname(os.path.abspath(target))
-  if settings.PTHREADS and not settings.STRICT:
+  if settings.PTHREADS and not settings.STRICT and not settings.SINGLE_FILE:
     worker_file = shared.replace_suffix(target, get_worker_js_suffix())
     write_file(worker_file, '''\
 // This file is no longer used by emscripten and has been created as a placeholder
@@ -2535,14 +2535,19 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     # Normal code generation path
     script.src = base_js_target
 
-  # inline script for SINGLE_FILE output
   if settings.SINGLE_FILE:
-    js_contents = script.inline or ''
-    if script.src:
-      js_contents += read_file(js_target)
+    # In SINGLE_FILE mode we either inline the script, or in the case
+    # of SHARED_MEMORY convert the entire thing into a data URL.
+    if settings.SHARED_MEMORY:
+      assert not script.inline
+      script.src = get_subresource_location(js_target)
+    else:
+      js_contents = script.inline or ''
+      if script.src:
+        js_contents += read_file(js_target)
+      script.src = None
+      script.inline = read_file(js_target)
     delete_file(js_target)
-    script.src = None
-    script.inline = js_contents
   else:
     if not settings.WASM_ASYNC_COMPILATION:
       # We need to load the wasm file before anything else, since it
@@ -2819,16 +2824,21 @@ class ScriptSource:
     """Returns the script tag to replace the {{{ SCRIPT }}} tag in the target"""
     assert (self.src or self.inline) and not (self.src and self.inline)
     if self.src:
-      quoted_src = quote(self.src)
+      src = self.src
+      if src.startswith('data:'):
+        filename = src
+      else:
+        src = quote(self.src)
+        filename = f'./{src}'
       if settings.EXPORT_ES6:
         return f'''
         <script type="module">
-          import initModule from "./{quoted_src}";
+          import initModule from "{filename}";
           initModule(Module);
         </script>
         '''
       else:
-        return f'<script async type="text/javascript" src="{quoted_src}"></script>'
+        return f'<script async type="text/javascript" src="{src}"></script>'
     else:
       return '<script>\n%s\n</script>' % self.inline
 
