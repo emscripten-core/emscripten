@@ -33,7 +33,8 @@ typedef struct {
   __m128i v1;
 } __m256i;
 
-typedef int64_t __m128i_u;
+typedef int64_t __m128i_u __attribute__((__vector_size__(16), __aligned__(1)));
+
 typedef struct {
   __m128i_u v0;
   __m128i_u v1;
