@@ -2535,7 +2535,15 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
     # Normal code generation path
     script.src = base_js_target
 
-  if not settings.SINGLE_FILE:
+  # inline script for SINGLE_FILE output
+  if settings.SINGLE_FILE:
+    js_contents = script.inline or ''
+    if script.src:
+      js_contents += read_file(js_target)
+    delete_file(js_target)
+    script.src = None
+    script.inline = js_contents
+  else:
     if not settings.WASM_ASYNC_COMPILATION:
       # We need to load the wasm file before anything else, since it
       # has be synchronously ready.
@@ -2568,15 +2576,6 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
             loadMainJs();
           }
 ''' % (script.inline, get_subresource_location(wasm_target) + '.js')
-
-  # inline script for SINGLE_FILE output
-  if settings.SINGLE_FILE:
-    js_contents = script.inline or ''
-    if script.src:
-      js_contents += read_file(js_target)
-    delete_file(js_target)
-    script.src = None
-    script.inline = js_contents
 
   shell = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
   shell = shell.replace('{{{ SHELL_CSS }}}', utils.read_file(utils.path_from_root('src/shell.css')))
