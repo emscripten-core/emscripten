@@ -29,12 +29,12 @@ EM_BOOL ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutpu
 EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext, EMSCRIPTEN_AUDIO_WORKLET_NODE_T audioWorkletNode), {
   audioContext = emscriptenGetAudioObject(audioContext);
   audioWorkletNode = emscriptenGetAudioObject(audioWorkletNode);
+  audioWorkletNode.connect(audioContext.destination);
   let startButton = document.createElement('button');
   startButton.innerHTML = 'Start playback';
   document.body.appendChild(startButton);
 
   startButton.onclick = () => {
-    audioWorkletNode.connect(audioContext.destination);
     audioContext.resume();
   };
 });
