@@ -136,8 +136,12 @@ if (ENVIRONMENT_IS_NODE) {
   // TODO: Swap all `require()`'s with `import()`'s?
 #if EXPORT_ES6 && ENVIRONMENT_MAY_BE_WEB
   const { createRequire } = await import('module');
+  let dirname = import.meta.url;
+  if (dirname.startsWith("data:")) {
+    dirname = '/';
+  }
   /** @suppress{duplicate} */
-  var require = createRequire(import.meta.url);
+  var require = createRequire(dirname);
 #endif
 
 #if PTHREADS || WASM_WORKERS
@@ -235,7 +239,9 @@ if (ENVIRONMENT_IS_NODE) {
   // EXPORT_ES6 + ENVIRONMENT_IS_NODE always requires use of import.meta.url,
   // since there's no way getting the current absolute path of the module when
   // support for that is not available.
-  scriptDirectory = nodePath.dirname(require('url').fileURLToPath(import.meta.url)) + '/';
+  if (!import.meta.url.startsWith('data:')) {
+    scriptDirectory = nodePath.dirname(require('url').fileURLToPath(import.meta.url)) + '/';
+  }
 #else
   scriptDirectory = __dirname + '/';
 #endif

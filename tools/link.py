@@ -2501,7 +2501,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   var filename = '%s';
   if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
     console.log('running code in a web worker');
-''' % get_subresource_location(proxy_worker_filename)) + worker_js + '''
+''' % get_subresource_location_js(proxy_worker_filename)) + worker_js + '''
   } else {
     console.log('running code on the main thread');
     var fileBytes = tryParseAsDataURI(filename);
@@ -2569,7 +2569,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
             // Current browser supports Wasm, proceed with loading the main JS runtime.
             loadMainJs();
           }
-''' % (script.inline, get_subresource_location(wasm_target) + '.js')
+''' % (script.inline, get_subresource_location_js(wasm_target + '.js'))
 
   shell = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
   shell = shell.replace('{{{ SHELL_CSS }}}', utils.read_file(utils.path_from_root('src/shell.css')))
@@ -2645,7 +2645,7 @@ def generate_html(target, options, js_target, target_basename, wasm_target):
 def generate_worker_js(target, js_target, target_basename):
   if settings.SINGLE_FILE:
     # compiler output is embedded as base64 data URL
-    proxy_worker_filename = get_subresource_location(js_target)
+    proxy_worker_filename = get_subresource_location_js(js_target)
   else:
     # compiler output goes in .worker.js file
     move_file(js_target, shared.replace_suffix(js_target, get_worker_js_suffix()))
@@ -2958,11 +2958,15 @@ def move_file(src, dst):
 
 
 # Returns the subresource location for run-time access
-def get_subresource_location(path):
+def get_subresource_location(path, mimetype='application/octet-stream'):
   if settings.SINGLE_FILE:
-    return 'data:application/octet-stream;base64,' + base64_encode(path)
+    return f'data:{mimetype};base64,{base64_encode(path)}'
   else:
     return os.path.basename(path)
+
+
+def get_subresource_location_js(path):
+  return get_subresource_location(path, 'text/javascript')
 
 
 @ToolchainProfiler.profile()
