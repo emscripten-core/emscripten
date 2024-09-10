@@ -15117,3 +15117,7 @@ addToLibrary({
   def test_fs_writev_partial_write(self):
     self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test('fs/test_writev_partial_write.c')
+
+  def test_proxy_to_worker_single_file(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sPROXY_TO_WORKER', '-sSINGLE_FILE'])
+    self.assertContained('error: cannot have both PROXY_TO_WORKER and SINGLE_FILE enabled at the same time', err)
