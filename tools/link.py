@@ -1999,7 +1999,7 @@ def phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata, linker_in
   filename = options.emit_tsd
   embind_tsd = ''
   if settings.EMBIND:
-    embind_tsd = run_embind_gen(wasm_target, js_syms, {'EMBIND_JS': False}, linker_inputs)
+    embind_tsd = run_embind_gen(wasm_target, js_syms, {'EMBIND_AOT': False}, linker_inputs)
   all_tsd = emscripten.create_tsd(metadata, embind_tsd)
   out_file = os.path.join(os.path.dirname(js_target), filename)
   write_file(out_file, all_tsd)
