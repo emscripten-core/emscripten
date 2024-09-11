@@ -253,9 +253,9 @@ let LibraryWebAudio = {
 
     EmAudio[contextHandle].audioWorklet.bootstrapMessage.port.postMessage({
       // Deliberately mangled and short names used here ('_wpn', the 'Worklet
-      // Processor Name', to not get accidentally mixed with user submitted
-      // messages, the remainder for space saving reasons, abbreviated from
-      // their variable names).
+      // Processor Name' used as a 'key' to verify the message type so as to
+      // not get accidentally mixed with user submitted messages, the remainder
+      // for space saving reasons, abbreviated from their variable names).
       '_wpn': UTF8ToString(HEAPU32[options]),
       'ap': audioParams,
       'ch': contextHandle,
