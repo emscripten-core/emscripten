@@ -635,13 +635,15 @@ added to the table. Otherwise by default the table has a fixed size.
    - ``'d'``: 64-bit float type
    - ``'p'``: 32-bit or 64-bit pointer (MEMORY64)
 
-   For example, if you add a function that takes an integer and does not return
-   anything, you can do ``addFunction(your_function, 'vi');``. See
-   `test/interop/test_add_function_post.js <https://github.com/emscripten-core/emscripten/blob/main/test/interop/test_add_function_post.js>`_ for an example.
-  ``'j'`` is used with the __i53abi decorator to simplify passing 64-bit numbers in Javascript libraries.
-  See `library_wasmfs_opfs.js <https://github.com/emscripten-core/emscripten/blob/main/src/library_wasmfs_opfs.js>`_
- for an example.  Using ``-sWASM_BIGINT`` when linking is an alternative method of handling 64-bit types.
- See `settings reference <https://emscripten.org/docs/tools_reference/settings_reference.html?highlight=environment#wasm-bigint>`_.
+For example, if you add a function that takes an integer and does not return
+anything, you can do ``addFunction(your_function, 'vi');``. See
+`test/interop/test_add_function_post.js <https://github.com/emscripten-core/emscripten/blob/main/test/interop/test_add_function_post.js>`_ for an example.
+
+``'j'`` must be used with the __i53abi decorator.  It simplifies passing 64-bit numbers in Javascript libraries.  It cannot be used with ``addFunction``.  See `library_wasmfs_opfs.js <https://github.com/emscripten-core/emscripten/blob/main/src/library_wasmfs_opfs.js>`_
+for an example.
+
+Using ``-sWASM_BIGINT`` when linking is an alternative method of handling 64-bit types in libraries.
+See `settings reference <https://emscripten.org/docs/tools_reference/settings_reference.html?highlight=environment#wasm-bigint>`_.
 
 .. _interacting-with-code-access-memory:
 
