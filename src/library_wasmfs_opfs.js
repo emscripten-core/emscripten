@@ -317,6 +317,8 @@ addToLibrary({
     wasmfsOPFSBlobs.free(blobID);
   },
 
+  _wasmfs_opfs_read_access__i53abi: true,
+  _wasmfs_opfs_read_access__sig: 'iipij',
   _wasmfs_opfs_read_access__deps: ['$wasmfsOPFSAccessHandles'],
   _wasmfs_opfs_read_access: {{{ asyncIf(!PTHREADS) }}}  function(accessID, bufPtr, len, pos) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
@@ -334,6 +336,8 @@ addToLibrary({
     }
   },
 
+  _wasmfs_opfs_read_blob__i53abi: true,
+  _wasmfs_opfs_read_blob__sig: 'vpipijp',
   _wasmfs_opfs_read_blob__deps: ['$wasmfsOPFSBlobs', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_read_blob: async function(ctx, blobID, bufPtr, len, pos, nreadPtr) {
     let blob = wasmfsOPFSBlobs.get(blobID);
@@ -363,6 +367,8 @@ addToLibrary({
     wasmfsOPFSProxyFinish(ctx);
   },
 
+  _wasmfs_opfs_write_access__i53abi: true,
+  _wasmfs_opfs_write_access__sig: 'iipij',
   _wasmfs_opfs_write_access__deps: ['$wasmfsOPFSAccessHandles'],
   _wasmfs_opfs_write_access: {{{ asyncIf(!PTHREADS) }}} function(accessID, bufPtr, len, pos) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
@@ -394,9 +400,10 @@ addToLibrary({
   },
 
   _wasmfs_opfs_get_size_blob__deps: ['$wasmfsOPFSBlobs'],
-  _wasmfs_opfs_get_size_blob: (blobID) => {
+  _wasmfs_opfs_get_size_blob: (blobID, sizePtr) => {
     // This cannot fail.
-    return wasmfsOPFSBlobs.get(blobID).size;
+	  let size = wasmfsOPFSBlobs.get(blobID).size;
+    {{{ makeSetValue('sizePtr', 0, 'size', 'i64') }}};
   },
 
   _wasmfs_opfs_get_size_file__deps: ['$wasmfsOPFSFileHandles', '$wasmfsOPFSProxyFinish'],
@@ -413,6 +420,7 @@ addToLibrary({
   },
 
   _wasmfs_opfs_set_size_access__i53abi: true,
+  _wasmfs_opfs_set_size_access__sig: 'vpijp',
   _wasmfs_opfs_set_size_access__deps: ['$wasmfsOPFSAccessHandles', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_set_size_access: async function(ctx, accessID, size, errPtr) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
@@ -426,6 +434,7 @@ addToLibrary({
   },
 
   _wasmfs_opfs_set_size_file__i53abi: true,
+  _wasmfs_opfs_set_size_file__sig: 'vpijp',
   _wasmfs_opfs_set_size_file__deps: ['$wasmfsOPFSFileHandles', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_set_size_file: async function(ctx, fileID, size, errPtr) {
     let fileHandle = wasmfsOPFSFileHandles.get(fileID);
