@@ -630,14 +630,17 @@ added to the table. Otherwise by default the table has a fixed size.
 
    - ``'v'``: void type
    - ``'i'``: 32-bit integer type
-   - ``'j'``: 64-bit integer type (currently does not exist in JavaScript)
+   - ``'j'``: 64-bit integer type (see note below)
    - ``'f'``: 32-bit float type
    - ``'d'``: 64-bit float type
+   - ``'p'``: 32-bit or 64-bit pointer (MEMORY64)
 
    For example, if you add a function that takes an integer and does not return
    anything, you can do ``addFunction(your_function, 'vi');``. See
    `test/interop/test_add_function_post.js <https://github.com/emscripten-core/emscripten/blob/main/test/interop/test_add_function_post.js>`_ for an example.
-
+  ``'j'`` is used with the __i53abi decorator to simplify handling 64-bit numbers in a 32-bit wasm build.
+  See library_wasmfs_opfs.js <https://github.com/emscripten-core/emscripten/blob/main/src/library_wasmfs_opfs.js>`_
+ for an example.
 
 .. _interacting-with-code-access-memory:
 
