@@ -114,11 +114,6 @@ int main() {
   a = wasm_f16x8_ge(wasm_f16x8_splat(2.0f), wasm_f16x8_splat(3.0f));
   assert_all_lanes_eq_uint16(a, 0);
 
-  // TODO Addition fails with duplicate splats, because of failure to promote
-  // tee in LLVM.
-  a = wasm_f16x8_add(wasm_f16x8_splat(2.0f), wasm_f16x8_splat(2.0f));
-  assert_all_lanes_eq(a, 4.0f);
-
   a = wasm_f16x8_add(wasm_f16x8_splat(2.0f), wasm_f16x8_splat(3.0f));
   assert_all_lanes_eq(a, 5.0f);
 
