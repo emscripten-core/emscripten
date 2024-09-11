@@ -10,8 +10,6 @@ addToLibrary({
     if (!ENVIRONMENT_IS_NODE) {
       throw new Error("NODERAWFS is currently only supported on Node.js environment.")
     }
-    // Use this to reference our in-memory filesystem
-    var VFS = Object.assign({}, FS);
     var _wrapNodeError = function(func) {
       return function(...args) {
         try {
@@ -24,11 +22,12 @@ addToLibrary({
         }
       }
     };
-
+    // Use this to reference our in-memory filesystem
+    /** @suppress {partialAlias} */
+    var VFS = Object.assign({}, FS);
     // Wrap the whole in-memory filesystem API with
     // our Node.js based functions
     for (var _key in NODERAWFS) {
-      /** @suppress {partialAlias} */
       FS[_key] = _wrapNodeError(NODERAWFS[_key]);
     }`,
   $NODERAWFS: {
