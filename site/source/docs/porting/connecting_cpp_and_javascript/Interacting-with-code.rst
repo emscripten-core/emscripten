@@ -622,7 +622,7 @@ See `test_add_function in test/test_core.py`_ for an example.
 You should build with ``-sALLOW_TABLE_GROWTH`` to allow new functions to be
 added to the table. Otherwise by default the table has a fixed size.
 
-When using ``addFunction`` on the LLVM Wasm backend, you need to provide
+When using ``addFunction`` with JavaScript function, you need to provide
 an additional second argument, a Wasm function signature string, explained below.
 See `test/interop/test_add_function_post.js <https://github.com/emscripten-core/emscripten/blob/main/test/interop/test_add_function_post.js>`_ for an example.
 
@@ -647,8 +647,7 @@ parameter types.
 For example, if you add a function that takes an integer and does not return
 anything, the signature is ``'vi'``.
 
-``'j'`` must be used with the ``__i53abi`` decorator.  It simplifies passing 64-bit numbers in JavaScript libraries.  It cannot be used with ``addFunction``.  Here is an example of a library function that sets the size of a file using a 64-bit value and returns
-an integer error code:
+When ``'j'`` is used there are several ways in which the parameter value will be passed to JavaScript. By default the value will either be passed as a single BigInt or a pair of JavaScript numbers (double) depending on whether the ``WASM_BIGINT`` settings is enabled. In addition, if you only require 53 bits of precision you can add the ``__i53abi`` decorator, which will ignore the upper bits and the value will be received as a single JavaScript number (double).  It cannot be used with ``addFunction``.  Here is an example of a library function that sets the size of a file using a 64-bit value passed as a 53 bit (double) and returns an integer error code:
 
 .. code-block:: c
 
