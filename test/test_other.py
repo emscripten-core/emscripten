@@ -9733,7 +9733,7 @@ end
   def test_noderawfs_readfile_prerun(self):
     create_file('foo', 'bar')
     create_file('pre.js', f'''
-      Module.preRun = () => console.log(FS.readFile('{os.path.abspath('foo')}', {{ encoding: 'utf8' }}));
+      Module.preRun = () => console.log(FS.readFile('foo', {{ encoding: 'utf8' }}));
     ''')
     self.do_runf(test_file('hello_world.c'), 'bar\n', emcc_args=['--pre-js', 'pre.js', '-sNODERAWFS', '-sFORCE_FILESYSTEM'])
 
