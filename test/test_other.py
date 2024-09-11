@@ -15148,5 +15148,6 @@ addToLibrary({
     # TODO Remove this. Liftoff is currently broken for this test.
     self.v8_args += ['--no-liftoff']
     # TODO Test this in a different optimization mode. Only O2 currently works.
-    self.emcc_args = ['-msimd128', '-mfp16', '-O2', '-sENVIRONMENT=shell']
+    self.emcc_args = ['-msimd128', '-mfp16', '-sENVIRONMENT=shell']
+    # self.emcc_args += [ '-O2']
     self.do_runf('test_fp16.c')
