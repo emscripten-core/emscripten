@@ -3359,7 +3359,12 @@ More info: https://emscripten.org
       '-Wno-experimental']
     self.do_runf('other/test_jspi_add_function.c', 'done')
 
-  def test_embind_tsgen(self):
+  @parameterized({
+    '': [[]],
+    'with_jsgen': [['-sEMBIND_AOT']]
+  })
+  def test_embind_tsgen(self, opts):
+    self.emcc_args += opts
     # Check that TypeScript generation works and that the program is runs as
     # expected.
     self.do_runf('other/embind_tsgen.cpp', 'main ran',
