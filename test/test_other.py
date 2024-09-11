@@ -4681,6 +4681,26 @@ addToLibrary({
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'])
     self.assertContained("lib.js: Decorator (jslibfunc__async} has wrong type. Expected 'boolean' not 'string'", err)
 
+  def test_js_lib_i53abi(self):
+    create_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  jslibfunc__i53abi: true,
+  jslibfunc: (x) => { return 42 },
+});
+''')
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'])
+    self.assertContained("error: JS library error: '__i53abi' decorator requires '__sig' decorator: 'jslibfunc'", err)
+
+    create_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  jslibfunc__i53abi: true,
+  jslibfunc__sig: 'ii',
+  jslibfunc: (x) => { return 42 },
+});
+''')
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'])
+    self.assertContained("error: JS library error: '__i53abi' only makes sense when '__sig' includes 'j' (int64): 'jslibfunc'", err)
+
   def test_js_lib_legacy(self):
     create_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
