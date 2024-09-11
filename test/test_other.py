@@ -9730,6 +9730,16 @@ end
     self.run_process([EMCC, 'access.c', '-sNODERAWFS'])
     self.run_js('a.out.js', args=[os.path.abspath('foo')])
 
+  def test_noderawfs_readfile_prerun(self):
+    create_file('foo', 'bar')
+    create_file('main.c', r'''
+      int main() { return 0; }
+    ''')
+    create_file('pre.js', f'''
+      Module.preRun = () => console.log(FS.readFile('{os.path.abspath('foo')}', {{ encoding: 'utf8' }}));
+    ''')
+    self.do_runf('main.c', 'bar\n', emcc_args=['--pre-js', 'pre.js', '-sNODERAWFS', '-sFORCE_FILESYSTEM'])
+
   @disabled('https://github.com/nodejs/node/issues/18265')
   def test_node_code_caching(self):
     self.run_process([EMCC, test_file('hello_world.c'),

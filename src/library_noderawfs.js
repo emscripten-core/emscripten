@@ -12,33 +12,26 @@ addToLibrary({
     }
     // Use this to reference our in-memory filesystem
     var VFS = Object.assign({}, FS);
-    // Override the init function with our own
-    FS.init = NODERAWFS.init;`,
-  $NODERAWFS: {
-    init() {
-      var _wrapNodeError = function(func) {
-        return function(...args) {
-          try {
-            return func(...args)
-          } catch (e) {
-            if (e.code) {
-              throw new FS.ErrnoError(ERRNO_CODES[e.code]);
-            }
-            throw e;
+    var _wrapNodeError = function(func) {
+      return function(...args) {
+        try {
+          return func(...args)
+        } catch (e) {
+          if (e.code) {
+            throw new FS.ErrnoError(ERRNO_CODES[e.code]);
           }
+          throw e;
         }
-      };
-
-      // Wrap the whole in-memory filesystem API with
-      // our Node.js based functions
-      for (var _key in NODERAWFS) {
-        /** @suppress {partialAlias} */
-        FS[_key] = _wrapNodeError(NODERAWFS[_key]);
       }
+    };
 
-      // Setup the stdin, stdout and stderr devices
-      FS.createStandardStreams();
-    },
+    // Wrap the whole in-memory filesystem API with
+    // our Node.js based functions
+    for (var _key in NODERAWFS) {
+      /** @suppress {partialAlias} */
+      FS[_key] = _wrapNodeError(NODERAWFS[_key]);
+    }`,
+  $NODERAWFS: {
     lookup(parent, name) {
 #if ASSERTIONS
       assert(parent)
