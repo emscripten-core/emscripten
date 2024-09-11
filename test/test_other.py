@@ -3364,11 +3364,10 @@ More info: https://emscripten.org
     'with_jsgen': [['-sEMBIND_AOT']]
   })
   def test_embind_tsgen(self, opts):
-    self.emcc_args += opts
     # Check that TypeScript generation works and that the program is runs as
     # expected.
     self.do_runf('other/embind_tsgen.cpp', 'main ran',
-                 emcc_args=['-lembind', '--emit-tsd', 'embind_tsgen.d.ts'])
+                 emcc_args=['-lembind', '--emit-tsd', 'embind_tsgen.d.ts'] + opts)
 
     # Test that the output compiles with a TS file that uses the defintions.
     cmd = shared.get_npm_cmd('tsc') + ['embind_tsgen.d.ts', '--noEmit']
