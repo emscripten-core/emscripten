@@ -87,7 +87,7 @@ void _wasmfs_opfs_get_size_access(em_proxying_ctx* ctx,
                                   int access_id,
                                   off_t* size);
 
-void _wasmfs_opfs_get_size_blob(int blob_id, off_t* size);
+off_t _wasmfs_opfs_get_size_blob(int blob_id);
 
 // Get the size of a file handle via a File Blob.
 void _wasmfs_opfs_get_size_file(em_proxying_ctx* ctx, int file_id, off_t* size);
