@@ -163,7 +163,7 @@ private:
         });
         break;
       case OpenState::Blob:
-        proxy([&]() { _wasmfs_opfs_get_size_blob(state.getBlobID(), &size); });
+        proxy([&]() { size = _wasmfs_opfs_get_size_blob(state.getBlobID()); });
         break;
       default:
         WASMFS_UNREACHABLE("Unexpected open state");
