@@ -424,7 +424,7 @@ sigs = {
   _wasmfs_opfs_get_child__sig: 'vpippp',
   _wasmfs_opfs_get_entries__sig: 'vpipp',
   _wasmfs_opfs_get_size_access__sig: 'vpip',
-  _wasmfs_opfs_get_size_blob__sig: 'ii',
+  _wasmfs_opfs_get_size_blob__sig: 'ji',
   _wasmfs_opfs_get_size_file__sig: 'vpip',
   _wasmfs_opfs_init_root_directory__sig: 'vp',
   _wasmfs_opfs_insert_directory__sig: 'vpipp',
