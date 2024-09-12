@@ -400,7 +400,7 @@ addToLibrary({
   _wasmfs_opfs_get_size_blob__deps: ['$wasmfsOPFSBlobs'],
   _wasmfs_opfs_get_size_blob: (blobID) => {
     // This cannot fail.
-	 return wasmfsOPFSBlobs.get(blobID).size;
+	  return wasmfsOPFSBlobs.get(blobID).size;
   },
 
   _wasmfs_opfs_get_size_file__deps: ['$wasmfsOPFSFileHandles', '$wasmfsOPFSProxyFinish'],
