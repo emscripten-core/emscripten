@@ -613,18 +613,18 @@ Calling JavaScript functions as function pointers from C
 ========================================================
 
 You can use ``addFunction`` to return an integer value that represents a
-function pointer. Passing that integer to C code then lets it call that value as
-a function pointer, and the JavaScript function you sent to ``addFunction`` will
-be called.
+function pointer. Passing that integer to C code then lets it call that value
+as a function pointer, and the JavaScript function you sent to ``addFunction``
+will be called.
 
 See `test_add_function in test/test_core.py`_ for an example.
 
 You should build with ``-sALLOW_TABLE_GROWTH`` to allow new functions to be
 added to the table. Otherwise by default the table has a fixed size.
 
-When using ``addFunction`` with JavaScript function, you need to provide
-an additional second argument, a Wasm function signature string, explained below.
-See `test/interop/test_add_function_post.js <https://github.com/emscripten-core/emscripten/blob/main/test/interop/test_add_function_post.js>`_ for an example.
+When using ``addFunction`` with a JavaScript function, you need to provide
+an additional second argument, a Wasm function signature string, explained
+below. See `test/interop/test_add_function_post.js <https://github.com/emscripten-core/emscripten/blob/main/test/interop/test_add_function_post.js>`_ for an example.
 
 
 .. _interacting-with-code-function-signatures:
@@ -632,10 +632,10 @@ See `test/interop/test_add_function_post.js <https://github.com/emscripten-core/
 Function Signatures
 ===================
 
-The LLVM Wasm backend requires a Wasm function signature string when using ``addFunction``
-and in JavaScript libraries. Each character within a signature string represents a type. The first character
-represents the return type of a function, and remaining characters are for
-parameter types.
+The LLVM Wasm backend requires a Wasm function signature string when using
+``addFunction`` and in JavaScript libraries. Each character within a signature
+string represents a type. The first character represents the return type of a
+function, and remaining characters are for parameter types.
 
    - ``'v'``: void type
    - ``'i'``: 32-bit integer type
@@ -647,7 +647,15 @@ parameter types.
 For example, if you add a function that takes an integer and does not return
 anything, the signature is ``'vi'``.
 
-When ``'j'`` is used there are several ways in which the parameter value will be passed to JavaScript. By default the value will either be passed as a single BigInt or a pair of JavaScript numbers (double) depending on whether the ``WASM_BIGINT`` settings is enabled. In addition, if you only require 53 bits of precision you can add the ``__i53abi`` decorator, which will ignore the upper bits and the value will be received as a single JavaScript number (double).  It cannot be used with ``addFunction``.  Here is an example of a library function that sets the size of a file using a 64-bit value passed as a 53 bit (double) and returns an integer error code:
+When ``'j'`` is used there are several ways in which the parameter value will
+be passed to JavaScript. By default the value will either be passed as a
+single BigInt or a pair of JavaScript numbers (double) depending on whether
+the ``WASM_BIGINT`` settings is enabled. In addition, if you only require 53
+bits of precision you can add the ``__i53abi`` decorator, which will ignore
+the upper bits and the value will be received as a single JavaScript number
+(double).  It cannot be used with ``addFunction``.  Here is an example of a
+library function that sets the size of a file using a 64-bit value passed as
+a 53 bit (double) and returns an integer error code:
 
 .. code-block:: c
 
@@ -659,8 +667,9 @@ When ``'j'`` is used there are several ways in which the parameter value will be
   _set_file_size__sig: 'iij',    // Function signature
   _set_file_size: function(handle, size) { ... return error; }
     
-Using ``-sWASM_BIGINT`` when linking is an alternative method of handling 64-bit types in libraries.  ```Number()``` may be needed on the JavaScript side to convert it to a useable value.
-See `settings reference <https://emscripten.org/docs/tools_reference/settings_reference.html?highlight=environment#wasm-bigint>`_.
+Using ``-sWASM_BIGINT`` when linking is an alternative method of handling
+64-bit types in libraries.  ```Number()``` may be needed on the JavaScript
+side to convert it to a useable value.  See `settings reference <https://emscripten.org/docs/tools_reference/settings_reference.html?highlight=environment#wasm-bigint>`_.
 
 
 .. _interacting-with-code-access-memory:
