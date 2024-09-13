@@ -85,6 +85,12 @@ export interface ClassWithSmartPtrConstructor {
   delete(): void;
 }
 
+export type ValObj = {
+  foo: Foo,
+  bar: Bar,
+  callback: (message: string) => void
+};
+
 export interface BaseClass {
   fn(_0: number): number;
   delete(): void;
@@ -96,14 +102,6 @@ export interface DerivedClass extends BaseClass {
 }
 
 export type ValArr = [ number, number, number ];
-
-export type ValObj = {
-  foo: Foo,
-  bar: Bar,
-  get str(): string,
-  set str(value: EmbindString),
-  callback: (message: string) => void
-};
 
 interface EmbindModule {
   Test: {
