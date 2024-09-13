@@ -1941,7 +1941,8 @@ var LibraryEmbind = {
                                     rawInvoker,
                                     context,
                                     isPureVirtual,
-                                    isAsync) => {
+                                    isAsync,
+                                    isNonnullReturn) => {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
     methodName = getFunctionName(methodName);
@@ -2077,7 +2078,8 @@ var LibraryEmbind = {
                                           invokerSignature,
                                           rawInvoker,
                                           fn,
-                                          isAsync) => {
+                                          isAsync,
+                                          isNonnullReturn) => {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
     methodName = getFunctionName(methodName);

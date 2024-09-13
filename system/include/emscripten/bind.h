@@ -105,7 +105,8 @@ void _embind_register_function(
     const char* signature,
     GenericFunction invoker,
     GenericFunction function,
-    bool isAsync);
+    bool isAsync,
+    bool isNonnullReturn);
 
 void _embind_register_value_array(
     TYPEID tupleType,
@@ -182,7 +183,8 @@ void _embind_register_class_function(
     GenericFunction invoker,
     void* context,
     unsigned isPureVirtual,
-    bool isAsync);
+    bool isAsync,
+    bool isNonnullReturn);
 
 void _embind_register_class_property(
     TYPEID classType,
@@ -204,7 +206,8 @@ void _embind_register_class_class_function(
     const char* invokerSignature,
     GenericFunction invoker,
     GenericFunction method,
-    bool isAsync);
+    bool isAsync,
+    bool isNonnullReturn);
 
 void _embind_register_class_class_property(
     TYPEID classType,
@@ -338,6 +341,15 @@ struct pure_virtual {
     };
 };
 
+template<typename Slot>
+struct nonnull {
+    static_assert(std::is_same<Slot, ret_val>::value, "Only nonnull return values are currently supported.");
+    template<typename InputType, int Index>
+    struct Transform {
+        typedef InputType type;
+    };
+};
+
 namespace return_value_policy {
 
 struct take_ownership : public allow_raw_pointers {};
@@ -377,6 +389,11 @@ struct isPolicy<allow_raw_pointers, Rest...> {
 
 template<typename... Rest>
 struct isPolicy<emscripten::pure_virtual, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename T, typename... Rest>
+struct isPolicy<emscripten::nonnull<T>, Rest...> {
     static constexpr bool value = true;
 };
 
@@ -425,6 +442,24 @@ struct isAsync<T, Rest...> {
 
 template<>
 struct isAsync<> {
+    static constexpr bool value = false;
+};
+
+template<typename... Policies>
+struct isNonnullReturn;
+
+template<typename... Rest>
+struct isNonnullReturn<nonnull<ret_val>, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename T, typename... Rest>
+struct isNonnullReturn<T, Rest...> {
+    static constexpr bool value = isNonnullReturn<Rest...>::value;
+};
+
+template<>
+struct isNonnullReturn<> {
     static constexpr bool value = false;
 };
 
@@ -640,7 +675,8 @@ void function(const char* name, ReturnType (*fn)(Args...), Policies...) {
         getSignature(invoke),
         reinterpret_cast<GenericFunction>(invoke),
         reinterpret_cast<GenericFunction>(fn),
-        isAsync<Policies...>::value);
+        isAsync<Policies...>::value,
+        isNonnullReturn<Policies...>::value);
 }
 
 namespace internal {
@@ -1516,7 +1552,8 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {
             reinterpret_cast<GenericFunction>(invoke),
             getContext(memberFunction),
             isPureVirtual<Policies...>::value,
-            isAsync<Policies...>::value);
+            isAsync<Policies...>::value,
+            isNonnullReturn<Policies...>::value);
     }
 };
 
@@ -1545,7 +1582,8 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
             reinterpret_cast<GenericFunction>(invoke),
             getContext(memberFunction),
             isPureVirtual<Policies...>::value,
-            isAsync<Policies...>::value);
+            isAsync<Policies...>::value,
+            isNonnullReturn<Policies...>::value);
     }
 };
 
@@ -1573,7 +1611,8 @@ struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
             reinterpret_cast<GenericFunction>(invoke),
             getContext(function),
             false,
-            isAsync<Policies...>::value);
+            isAsync<Policies...>::value,
+            isNonnullReturn<Policies...>::value);
     }
 };
 
@@ -1601,7 +1640,8 @@ struct RegisterClassMethod<std::function<ReturnType (ThisType, Args...)>> {
             reinterpret_cast<GenericFunction>(invoke),
             getContext(function),
             false,
-            isAsync<Policies...>::value);
+            isAsync<Policies...>::value,
+            isNonnullReturn<Policies...>::value);
     }
 };
 
@@ -1623,7 +1663,8 @@ struct RegisterClassMethod<ReturnType (ThisType, Args...)> {
             reinterpret_cast<GenericFunction>(invoke),
             getContext(callable),
             false,
-            isAsync<Policies...>::value);
+            isAsync<Policies...>::value,
+            isNonnullReturn<Policies...>::value);
     }
 };
 
@@ -1752,7 +1793,7 @@ public:
             class_function(
                 "implement",
                 &wrapped_new<WrapperType*, WrapperType, val, ConstructorArgs...>,
-                allow_raw_pointer<ret_val>())
+                allow_raw_pointer<ret_val>(), nonnull<ret_val>())
             .class_function(
                 "extend",
                 &wrapped_extend<WrapperType>)
@@ -1940,7 +1981,8 @@ public:
             getSignature(invoke),
             reinterpret_cast<GenericFunction>(invoke),
             reinterpret_cast<GenericFunction>(classMethod),
-            isAsync<Policies...>::value);
+            isAsync<Policies...>::value,
+            isNonnullReturn<Policies...>::value);
         return *this;
     }
 

@@ -104,6 +104,16 @@ export interface DerivedClass extends BaseClass {
   delete(): void;
 }
 
+export interface Interface {
+  invoke(_0: EmbindString): void;
+  delete(): void;
+}
+
+export interface InterfaceWrapper extends Interface {
+  notifyOnDestruction(): void;
+  delete(): void;
+}
+
 export type ValArr = [ number, number, number ];
 
 export type ValObj = {
@@ -126,6 +136,7 @@ interface EmbindModule {
   class_unique_ptr_returning_fn(): Test;
   Obj: {};
   getPointer(_0: Obj | null): Obj | null;
+  getNonnullPointer(): Obj;
   a_class_instance: Test;
   an_enum: Bar;
   Bar: {valueOne: BarValue<0>, valueTwo: BarValue<1>, valueThree: BarValue<2>};
@@ -150,6 +161,11 @@ interface EmbindModule {
   };
   BaseClass: {};
   DerivedClass: {};
+  Interface: {
+    implement(_0: any): InterfaceWrapper;
+    extend(_0: EmbindString, _1: any): any;
+  };
+  InterfaceWrapper: {};
   a_bool: boolean;
   an_int: number;
   optional_test(_0?: Foo): number | undefined;
