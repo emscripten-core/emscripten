@@ -98,10 +98,20 @@ var LibraryPThread = {
     },
     initMainThread() {
 #if PTHREAD_POOL_SIZE
-      var pthreadPoolSize = {{{ PTHREAD_POOL_SIZE }}};
-      // Start loading up the Worker pool, if requested.
-      while (pthreadPoolSize--) {
-        PThread.allocateUnusedWorker();
+      preallocateWorkers = () => {
+        var pthreadPoolSize = {{{ PTHREAD_POOL_SIZE }}};
+        // Start loading up the Worker pool, if requested.
+        while (pthreadPoolSize--) {
+         PThread.allocateUnusedWorker();
+        }
+      };
+#if expectToReceiveOnModule('mainScriptUrlOrBlobPromise')
+      if (Module['mainScriptUrlOrBlobPromise']) {
+        Module['mainScriptUrlOrBlobPromise'].then(preallocateWorkers);
+      } else 
+#endif
+      {
+        preallocateWorkers();
       }
 #endif
 #if !MINIMAL_RUNTIME

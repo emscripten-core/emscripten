@@ -182,7 +182,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
       'mem': wasmMemory,
 #else
       'wasm': wasmModule,
-      'js': Module['mainScriptUrlOrBlob'] || _scriptName,
+      'js': URL.createObjectURL(Module["mainScriptUrlOrBlob"]) || _scriptName,
       'wasmMemory': wasmMemory,
 #endif
       'sb': stackLowestAddress, // sb = stack bottom (lowest stack address, SP points at this when stack is full)
