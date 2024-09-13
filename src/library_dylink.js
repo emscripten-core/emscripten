@@ -363,7 +363,7 @@ var LibraryDylink = {
   // Allocate memory even if malloc isn't ready yet.  The allocated memory here
   // must be zero initialized since its used for all static data, including bss.
   $getMemory__noleakcheck: true,
-  $getMemory__deps: ['$GOT', '__heap_base', '$alignMemory', 'calloc'],
+  $getMemory__deps: ['$GOT', '__heap_base', '$zeroMemory', '$alignMemory', 'malloc'],
   $getMemory: (size) => {
     // After the runtime is initialized, we must only use sbrk() normally.
 #if DYLINK_DEBUG
@@ -373,7 +373,7 @@ var LibraryDylink = {
       // Currently we don't support freeing of static data when modules are
       // unloaded via dlclose.  This function is tagged as `noleakcheck` to
       // avoid having this reported as leak.
-      return _calloc(size, 1);
+      return zeroMemory(_malloc(size), size);
     }
     var ret = ___heap_base;
     // Keep __heap_base stack aligned.
@@ -599,7 +599,7 @@ var LibraryDylink = {
   $loadWebAssemblyModule__deps: [
     '$loadDynamicLibrary', '$getMemory',
     '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
-    '$getDylinkMetadata', '$alignMemory',
+    '$getDylinkMetadata', '$alignMemory', '$zeroMemory',
     '$currentModuleWeakSymbols',
     '$updateTableMap',
     '$wasmTable',
