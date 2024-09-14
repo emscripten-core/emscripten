@@ -608,7 +608,7 @@ function(${args}) {
         // Give the function the correct (mangled) name. Overwrite it if it's
         // already named.  This must happen after the last call to
         // modifyJSFunction which could have changed or removed the name.
-        if (contentText.match(/^\s*([^}]*)\s*=>/s)) {
+        if (contentText.match(/=>/s)) {
           // Handle arrow functions
           contentText = `var ${mangled} = ` + contentText + ';';
         } else if (contentText.startsWith('class ')) {
