@@ -488,9 +488,9 @@ FT_BEGIN_HEADER
 #if ( __GNUC__ >= 2                         || \
       defined( __IBM__TYPEOF__ )            || \
       ( __SUNPRO_C >= 0x5110 && !__STDC__ ) )
-#define TYPEOF( type )  (__typeof__ (type))
+#define FT_TYPEOF( type )  (__typeof__ (type))
 #else
-#define TYPEOF( type )  /* empty */
+#define FT_TYPEOF( type )  /* empty */
 #endif
 
 
