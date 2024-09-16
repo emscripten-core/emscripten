@@ -951,7 +951,7 @@ var LibraryEmbind = {
     '$craftInvokerFunction', '$exposePublicSymbol', '$heap32VectorToArray',
     '$readLatin1String', '$replacePublicSymbol', '$embind__requireFunction',
     '$throwUnboundTypeError', '$whenDependentTypesAreResolved', '$getFunctionName'],
-  _embind_register_function: (name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync) => {
+  _embind_register_function: (name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync, isNonnullReturn) => {
     var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = readLatin1String(name);
     name = getFunctionName(name);
@@ -1941,7 +1941,8 @@ var LibraryEmbind = {
                                     rawInvoker,
                                     context,
                                     isPureVirtual,
-                                    isAsync) => {
+                                    isAsync,
+                                    isNonnullReturn) => {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
     methodName = getFunctionName(methodName);
@@ -2077,7 +2078,8 @@ var LibraryEmbind = {
                                           invokerSignature,
                                           rawInvoker,
                                           fn,
-                                          isAsync) => {
+                                          isAsync,
+                                          isNonnullReturn) => {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
     methodName = getFunctionName(methodName);
