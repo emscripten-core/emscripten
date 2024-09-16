@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 3.1.67 (in development)
 -----------------------
+- Add option `nonnull<ret_val>()` to Embind to omit `| null` from TS definitions
+  for functions that return pointers.
 
 3.1.66 - 09/10/24
 -----------------
