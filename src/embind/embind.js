@@ -830,6 +830,13 @@ var LibraryEmbind = {
       if (args.length !== expectedArgCount) {
         throwBindingError(`function ${humanName} called with ${args.length} arguments, expected ${expectedArgCount}`);
       }
+#if EMBIND_DEBUG
+      if (Object.values(arguments).length > 0){
+          dbg('${humanName}(' + Object.values(arguments).join(',') + ')');
+      } else {
+          dbg('${humanName}()');
+      }
+#endif
 #if EMSCRIPTEN_TRACING
       Module.emscripten_trace_enter_context(`embind::${humanName}`);
 #endif
