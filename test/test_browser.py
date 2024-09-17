@@ -5594,12 +5594,12 @@ Module["preRun"] = () => {
 
     def test(args, expect_fail):
       self.compile_btest('main.cpp', args + ['--preload-file', path, '--shell-file', 'on_window_error_shell.html', '-o', 'a.out.html'])
-      js = read_file('a.out.js')
       if expect_fail:
+        js = read_file('a.out.js')
         create_file('a.out.js', 'fetch = undefined;\n' + js)
-        return self.run_browser('a.out.html', '/report_result?1')
+        return self.run_browser('a.out.html', '/report_result?0')
       else:
-         return self.run_browser('a.out.html', '/report_result?1')
+        return self.run_browser('a.out.html', '/report_result?1')
 
   def test_fetch_polyfill_shared_lib(self):
     create_file('library.c', r'''

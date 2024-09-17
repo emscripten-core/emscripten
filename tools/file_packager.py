@@ -972,69 +972,69 @@ def generate_js(data_target, data_files, metadata):
         Module.dataFileDownloads = Module.dataFileDownloads || {};
         const url = packageName;
         fetch(url)
-        .catch(cause => Promise.reject(new Error('Network Error : ' + url, {cause}))) // If fetch fails, rewrite the error to include the failing URL & the cause.
-        .then(response => {
+          .catch(cause => Promise.reject(new Error(`Network Error: ${url}`, {cause}))) // If fetch fails, rewrite the error to include the failing URL & the cause.
+          .then(response => {
 
-          let loaded = 0;
+            let loaded = 0;
 
-          if (!response.ok) {
-            return Promise.reject(new Error(response.statusText + ' : ' + response.url));
-          }
+            if (!response.ok) {
+              return Promise.reject(new Error(`${response.status}: ${response.url}`));
+            }
 
-          // If we're using the polyfill, readers won't be available...
-          if(!response.body && response.arrayBuffer) {
-            response.arrayBuffer().then(buffer => callback(buffer));
-            return;
-          }
+            // If we're using the polyfill, readers won't be available...
+            if (!response.body && response.arrayBuffer) {
+              response.arrayBuffer().then(buffer => callback(buffer));
+              return;
+            }
 
-          const reader = response.body.getReader();
-          const headers = response.headers;
+            const reader = response.body.getReader();
+            const headers = response.headers;
 
-          const size = headers.get('Content-Length') ?? packageSize;
-          const chunks = [];
+            const size = headers.get('Content-Length') ?? packageSize;
+            const chunks = [];
 
-          const iterate = () => reader.read().then(handleChunk).catch(cause => {
-            return Promise.reject(new Error('Unexpected error while handling : ' + response.url + ' ' + cause, {cause}));
-          });
+            const iterate = () => reader.read().then(handleChunk).catch(cause => {
+              return Promise.reject(new Error(`Unexpected error while handling : ${response.url} ${cause}`, {cause}));
+            });
 
-          const handleChunk = ({done, value}) => {
-            if (!done) {
-              chunks.push(value);
-              loaded += value.length;
-              Module.dataFileDownloads[url] = Module.dataFileDownloads[url] ?? {};
-              Module.dataFileDownloads[url].loaded = loaded;
-              Module.dataFileDownloads[url].total = size;
+            const handleChunk = ({done, value}) => {
+              if (!done) {
+                chunks.push(value);
+                loaded += value.length;
+                Module.dataFileDownloads[url] = Module.dataFileDownloads[url] ?? {};
+                Module.dataFileDownloads[url].loaded = loaded;
+                Module.dataFileDownloads[url].total = size;
 
-              let totalLoaded = 0;
-              let totalSize = 0;
+                let totalLoaded = 0;
+                let totalSize = 0;
 
-              for (const dowload of Object.values(Module.dataFileDownloads)) {
-                totalLoaded += dowload.loaded;
-                totalSize += dowload.total;
-              }
+                for (const dowload of Object.values(Module.dataFileDownloads)) {
+                  totalLoaded += dowload.loaded;
+                  totalSize += dowload.total;
+                }
 
-              if (totalSize) {
-                if (Module['setStatus']) Module['setStatus'](`Downloading data... (${totalLoaded}/${totalSize})`);
+                if (totalSize) {
+                  if (Module['setStatus']) Module['setStatus'](`Downloading data... (${totalLoaded}/${totalSize})`);
+                }
+                else {
+                  if (Module['setStatus']) Module['setStatus']('Downloading data...');
+                }
+                return iterate();
               }
               else {
-                if (Module['setStatus']) Module['setStatus']('Downloading data...');
-              }
-              return iterate();
-            }
-            else {
-              const size = chunks.map(c => c.length).reduce((a, b) => a + b, 0);
-              let index = 0;
-              const packageData = new Uint8Array(size);
-              for(const chunk of chunks) {
-                packageData.set(chunk, index);
-                index += chunk.length;
-              }
+                const size = chunks.map(c => c.length).reduce((a, b) => a + b, 0);
+                let index = 0;
+                const packageData = new Uint8Array(size);
+                for(const chunk of chunks) {
+                  packageData.set(chunk, index);
+                  index += chunk.length;
+                }
 
-              callback(packageData.buffer);
-            }
-          };
-          return iterate();
-        });
+                callback(packageData.buffer);
+              }
+            };
+            return iterate();
+          });
       };\n''' % {'node_support_code': node_support_code}
 
     ret += '''
@@ -1137,13 +1137,13 @@ def generate_js(data_target, data_files, metadata):
     Module['addRunDependency']('%(metadata_file)s');
     var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
     fetch(REMOTE_METADATA_NAME)
-    .then(response => {
-      if(response.ok) {
-        return response.json();
-      }
-      return Promise.reject(new Error(response.statusText + ' : ' + response.url));
-    })
-    .then(loadPackage);
+      .then(response => {
+        if (response.ok) {
+          return response.json();
+        }
+        return Promise.reject(new Error(`${response.status}: ${response.url}`));
+      })
+      .then(loadPackage);
   }
 
   if (Module['calledRun']) {
