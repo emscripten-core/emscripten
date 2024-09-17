@@ -5395,21 +5395,39 @@ Module["preRun"] = () => {
         fread(buf, 1, 20, f);
         buf[20] = 0;
         fclose(f);
-        printf("|%%s|\n", buf);
-        return 42;
+        printf("%%s\n", buf);
+        return 0;
       }
       ''' % path)
+    create_file('on_window_error_shell.html', r'''
+      <html>
+          <center><canvas id='canvas' width='256' height='256'></canvas></center>
+          <hr><div id='output'></div><hr>
+          <script type='text/javascript'>
+            window.addEventListener('error', event => {
+              const error = String(event.message);
+              console.log({error});
+              window.disableErrorReporting = true;
+              window.onerror = null;
+              var xhr = new XMLHttpRequest();
+              xhr.open('GET', 'http://localhost:8888/report_result?exception:' + error.substr(-23), true);
+              xhr.send();
+              setTimeout(function() { window.close() }, 1000);
+            });
+          </script>
+          {{{ SCRIPT }}}
+        </body>''')
 
     def test(args, expect_fail):
-      self.compile_btest('main.cpp', ['-sEXIT_RUNTIME', '--preload-file', path, '-o', 'a.out.html'] + args)
+      self.compile_btest('main.cpp', ['-sEXIT_RUNTIME', '--preload-file', path, '--shell-file', 'on_window_error_shell.html', '-o', 'a.out.html'] + args)
       if expect_fail:
         js = read_file('a.out.js')
         create_file('a.out.js', 'let origFetch = fetch; fetch = undefined;\n' + js)
         return self.run_browser('a.out.html', '/report_result?exception:fetch is not a function')
       else:
-        return self.run_browser('a.out.html', '/report_result?exit:42')
+        return self.run_browser('a.out.html', '/report_result?exit:0')
 
-    test([], expect_fail=False)
+    test([], expect_fail=True)
     test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
     test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
 
