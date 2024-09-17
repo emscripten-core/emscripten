@@ -15145,11 +15145,12 @@ addToLibrary({
   @requires_v8
   @parameterized({
     '': [[]],
-    'O2': [['-O2']]
+    'O3': [['-O3']]
   })
   def test_fp16(self, opts):
     self.v8_args += ['--experimental-wasm-fp16']
     # TODO Remove this. Liftoff is currently broken for this test.
+    # https://chromium-review.googlesource.com/c/v8/v8/+/5842546
     self.v8_args += ['--no-liftoff']
     self.emcc_args = ['-msimd128', '-mfp16', '-sENVIRONMENT=shell'] + opts
     self.do_runf('test_fp16.c')
