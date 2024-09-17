@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.67 (in development)
+3.1.68 (in development)
 -----------------------
+
+3.1.67 - 09/17/24
+-----------------
 - Add option `nonnull<ret_val>()` to Embind to omit `| null` from TS definitions
   for functions that return pointers.
 
