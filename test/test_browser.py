@@ -5428,6 +5428,7 @@ Module["preRun"] = () => {
       else:
         return self.run_browser('a.out.html', '/report_result?exit:0')
 
+    test([], expect_fail=False)
     test([], expect_fail=True)
     test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
     test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
