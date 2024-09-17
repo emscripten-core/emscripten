@@ -5416,7 +5416,8 @@ Module["preRun"] = () => {
             });
           </script>
           {{{ SCRIPT }}}
-        </body>''')
+        </body>
+      </html>''')
 
     def test(args, expect_fail):
       self.compile_btest('main.cpp', ['-sEXIT_RUNTIME', '--preload-file', path, '--shell-file', 'on_window_error_shell.html', '-o', 'a.out.html'] + args)
