@@ -5399,9 +5399,42 @@ Module["preRun"] = () => {
         return 0;
       }
       ''' % path)
+    create_file('on_window_error_shell.html', r'''
+      <html>
+          <center><canvas id='canvas' width='256' height='256'></canvas></center>
+          <hr><div id='output'></div><hr>
+          <script type='text/javascript'>
+            window.addEventListener('error', event => {
+              const error = String(event.message);
+              console.log({error});
+              window.disableErrorReporting = true;
+              window.onerror = null;
+              var xhr = new XMLHttpRequest();
+              xhr.open('GET', 'http://localhost:8888/report_result?' + (error.includes('fetch is not a function') ? 1 : 0), true);
+              xhr.send();
+              setTimeout(function() { window.close() }, 1000);
+            });
+            var Module = {
+              print: (function() {
+                var element = document.getElementById('output');
+                return function(text) {
+                  console.log({text});
+                  if(window.disableErrorReporting) return;
+                  element.innerHTML += text.replace('\n', '<br>', 'g') + '<br>';
+                  var xhr = new XMLHttpRequest();
+                  xhr.open('GET', 'http://localhost:8888/report_result?' + (text === '|hello, world!|' ? 1 : 0), true);
+                  xhr.send();
+                };
+              })(),
+              canvas: document.getElementById('canvas')
+            };
+          </script>
+          {{{ SCRIPT }}}
+        </body>
+      </html>''')
 
     def test(args, expect_fail):
-      self.compile_btest('main.cpp', args + ['--preload-file', path, '-o', 'a.out.html'])
+      self.compile_btest('main.cpp', args + ['--preload-file', path, '--shell-file', 'on_window_error_shell.html', '-o', 'a.out.html'])
       if expect_fail:
         js = read_file('a.out.js')
         create_file('a.out.js', 'fetch = undefined;\n' + js)
