@@ -25,15 +25,8 @@ var Module = moduleArg;
 #elif USE_CLOSURE_COMPILER
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
 var /** @type {{
-  noImageDecoding: boolean,
-  noAudioDecoding: boolean,
-  noWasmDecoding: boolean,
   canvas: HTMLCanvasElement,
   ctx: Object,
-  dataFileDownloads: Object,
-  preloadResults: Object,
-  useWebGL: boolean,
-  expectedDataFileDownloads: number,
 }}
  */ Module;
 if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
@@ -215,9 +208,7 @@ function locateFile(path) {
 }
 
 // Hooks that are implemented differently in different runtime environments.
-var read_,
-    readAsync,
-    readBinary;
+var readAsync, readBinary;
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
@@ -311,10 +302,6 @@ if (ENVIRONMENT_IS_SHELL) {
 #endif
 
 #if ENVIRONMENT_MAY_BE_SHELL
-  if (typeof read != 'undefined') {
-    read_ = read;
-  }
-
   readBinary = (f) => {
     if (typeof readbuffer == 'function') {
       return new Uint8Array(readbuffer(f));
@@ -324,8 +311,10 @@ if (ENVIRONMENT_IS_SHELL) {
     return data;
   };
 
-  readAsync = (f, onload, onerror) => {
-    setTimeout(() => onload(readBinary(f)));
+  readAsync = (f) => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => resolve(readBinary(f)));
+    });
   };
 
   if (typeof clearTimeout == 'undefined') {
@@ -481,7 +470,6 @@ checkIncomingModuleAPI();
 // minified.
 {{{ makeModuleReceive('arguments_', 'arguments') }}}
 {{{ makeModuleReceive('thisProgram') }}}
-{{{ makeModuleReceive('quit_', 'quit') }}}
 
 // perform assertions in shell.js after we set up out() and err(), as otherwise if an assertion fails it cannot print the message
 #if ASSERTIONS
@@ -490,13 +478,12 @@ assert(typeof Module['memoryInitializerPrefixURL'] == 'undefined', 'Module.memor
 assert(typeof Module['pthreadMainPrefixURL'] == 'undefined', 'Module.pthreadMainPrefixURL option was removed, use Module.locateFile instead');
 assert(typeof Module['cdInitializerPrefixURL'] == 'undefined', 'Module.cdInitializerPrefixURL option was removed, use Module.locateFile instead');
 assert(typeof Module['filePackagePrefixURL'] == 'undefined', 'Module.filePackagePrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['read'] == 'undefined', 'Module.read option was removed (modify read_ in JS)');
+assert(typeof Module['read'] == 'undefined', 'Module.read option was removed');
 assert(typeof Module['readAsync'] == 'undefined', 'Module.readAsync option was removed (modify readAsync in JS)');
 assert(typeof Module['readBinary'] == 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
 assert(typeof Module['setWindowTitle'] == 'undefined', 'Module.setWindowTitle option was removed (modify emscripten_set_window_title in JS)');
 assert(typeof Module['TOTAL_MEMORY'] == 'undefined', 'Module.TOTAL_MEMORY has been renamed Module.INITIAL_MEMORY');
 {{{ makeRemovedModuleAPIAssert('asm', 'wasmExports', false) }}}
-{{{ makeRemovedModuleAPIAssert('read', 'read_') }}}
 {{{ makeRemovedModuleAPIAssert('readAsync') }}}
 {{{ makeRemovedModuleAPIAssert('readBinary') }}}
 {{{ makeRemovedModuleAPIAssert('setWindowTitle') }}}

@@ -60,10 +60,6 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
 
   exports = [asmjs_mangle(x) for x in exports if x != building.WASM_CALL_CTORS]
 
-  # Decide whether we should generate the global dynCalls dictionary for the dynCall() function?
-  if settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and len([x for x in exports if x.startswith('dynCall_')]) > 0:
-    exports += ['dynCalls = {}']
-
   declares = 'var ' + ',\n '.join(exports) + ';'
   post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS_DECLARES >>>', declares)
 
@@ -86,7 +82,7 @@ def maybe_disable_filesystem(imports):
   not including the filesystem would mean not including the full JS libraries, and the same for
   MAIN_MODULE=1 since a side module might need the filesystem.
   """
-  if any(settings[s] for s in ['FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY']):
+  if any(settings[s] for s in ('FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY')):
     return
   if settings.MAIN_MODULE == 1:
     return
@@ -99,7 +95,7 @@ def maybe_disable_filesystem(imports):
     syscall_prefixes = ('__syscall_', 'fd_')
     side_module_imports = [shared.demangle_c_symbol_name(s) for s in settings.SIDE_MODULE_IMPORTS]
     all_imports = set(imports).union(side_module_imports)
-    syscalls = {d for d in all_imports if d.startswith(syscall_prefixes) or d in ['path_open']}
+    syscalls = {d for d in all_imports if d.startswith(syscall_prefixes) or d == 'path_open'}
     # check if the only filesystem syscalls are in: close, ioctl, llseek, write
     # (without open, etc.. nothing substantial can be done, so we can disable
     # extra filesystem support in that case)
@@ -647,8 +643,10 @@ def create_tsd_exported_runtime_methods(metadata):
   js_doc_file = in_temp('jsdoc.js')
   tsc_output_file = in_temp('jsdoc.d.ts')
   utils.write_file(js_doc_file, js_doc)
-  if shutil.which('tsc'):
-    tsc = ['tsc']
+  tsc = shutil.which('tsc')
+  if tsc:
+    # Use the full path from the which command so windows can find tsc.
+    tsc = [tsc]
   else:
     tsc = shared.get_npm_cmd('tsc')
   cmd = tsc + ['--outFile', tsc_output_file, '--declaration', '--emitDeclarationOnly', '--allowJs', js_doc_file]
@@ -1034,7 +1032,6 @@ def create_pointer_conversion_wrappers(metadata):
     'free': '_p',
     'webidl_free': '_p',
     '_emscripten_stack_restore': '_p',
-    '__cxa_is_pointer_type': '_p',
     'fflush': '_p',
     'emscripten_stack_get_end': 'p',
     'emscripten_stack_get_base': 'p',
@@ -1051,6 +1048,7 @@ def create_pointer_conversion_wrappers(metadata):
     '__cxa_can_catch': '_ppp',
     '__cxa_increment_exception_refcount': '_p',
     '__cxa_decrement_exception_refcount': '_p',
+    '__cxa_get_exception_ptr': 'pp',
     '_wasmfs_write_file': '_ppp',
     '_wasmfs_mknod': '_p__',
     '_wasmfs_get_cwd': 'p_',
@@ -1075,6 +1073,7 @@ def create_pointer_conversion_wrappers(metadata):
     'stbi_image_free': 'vp',
     'stbi_load': 'ppppp_',
     'stbi_load_from_memory': 'pp_ppp_',
+    'strerror': 'p_',
     'emscripten_proxy_finish': '_p',
     'emscripten_proxy_execute_queue': '_p',
     '_emval_coro_resume': '_pp',

@@ -18,11 +18,69 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.62 (in development)
+3.1.67 (in development)
 -----------------------
+- Add option `nonnull<ret_val>()` to Embind to omit `| null` from TS definitions
+  for functions that return pointers.
+
+3.1.66 - 09/10/24
+-----------------
+- The behaviour of the `pthread_kill` function was fixed to match the spec
+  and will now run the designated handler on the target thread. (#22467)
+- Added support for WebGL extensions EXT_clip_control, EXT_depth_clamp,
+  EXT_polygon_offset_clamp and WEBGL_polygon_mode (#20841)
+- New `emscripten_console_trace` and `emscripten_dbg_backtrace` APIs we were
+  added to `console.h`.  The former simply maps directly to `console.trace`.
+  The latter uses `dbg()` so it writes directly to stderr under node (better for
+  multi-threaded apps).
+
+3.1.65 - 08/22/24
+-----------------
+- A new `--emit-minification-map` command line flag was added, which can be used
+  to emit a minifiction map in the case that import/export minification is
+  performed (this happens at higher optimization levels). (#22428)
+- Remove `Module['quit']` handling.  This could be used to override the internal
+  method for shutting down the program, but it was neither documented nor
+  tested.  Programs that want to intercept the shutting down of a program can
+  use `Module['onExit']`. (#22371)
+- The `NODEJS_CATCH_EXIT` setting is now disabled by default.  This setting
+  is only useful under very specific circumstances, and has some downsides, so
+  disabling it by default makes sense. (#22257)
+- Add WebP (`.webp`) decoding support in file preloading. (#22282)
+
+3.1.64 - 07/22/24
+-----------------------
+- Updated the SCons tool to not require the `EMSCRIPTEN_ROOT` environment
+  variable, in which case it will assume that SCons will find the binaries in
+  (its) `PATH`.
+- Updated `emscons` to apply the `EMSCRIPTEN_ROOT`, `EMSCONS_PKG_CONFIG_LIBDIR`
+  and `EMSCONS_PKG_CONFIG_PATH` environment variables. The SCons tool will use
+  last two to set up `PKG_CONFIG_LIBDIR` and `PKG_CONFIG_PATH` respectively.
+
+3.1.63 - 07/12/24
+-----------------
+- Fix html5 input event bug that was introduced in 3.1.62. (#22201)
+- Fix webpack + pthreads bug that was introduced in 3.1.60. (#22165)
+
+3.1.62 - 07/02/24
+-----------------
+- The `EM_BOOL` type changed from `int/u32` to `bool/u8`.  This changes the
+  layout and size of some structs in the emscripten API. (#22157)
+- The `EMSCRIPTEN_FETCH_WAITABLE` flag along with the `emscripten_fetch_wait`
+  API were marked a deprecated.  These feature have not functions for several
+  years now. (#22138)
+- The internal `read_` function was removed.  We now just use `readBinary` or
+  `readAsync`. (#22080)
+- reference-types feature is now enabled by default in Emscripten, due to the
+  upstream LLVM change (https://github.com/llvm/llvm-project/pull/93261).
+- Emscripten now uses `strftime` from musl rather than using a custom
+  JavaScript implementation. (#21379)
+- Embind now supports return value policies for properties.
 
 3.1.61 - 05/31/24
 -----------------
+- The internal `readAsync` function now returns a promise rather than accepting
+  callback arguments.
 - The JSPI feature now uses the updated browser API for JSPI (available in
   Chrome v126+). To support older versions of Chrome use Emscripten version
   3.1.60 or earlier.
@@ -1245,7 +1303,7 @@ See docs/process.md for more on how version tagging works.
   their own secondary sysroot may be able to simplify their build system by
   removing this completely and relying on the new default.
 - Reinstated the warning on linker-only `-s` settings passed when not linking
-  (i.e. when compiling with `-c`).  As before this can disabled with
+  (i.e. when compiling with `-c`).  As before this can be disabled with
   `-Wno-unused-command-line-argument` (#14182).
 - Standalone wasm mode no longer does extra binaryen work during link. It used
   to remove unneeded imports, in hopes of avoiding nonstandard imports that

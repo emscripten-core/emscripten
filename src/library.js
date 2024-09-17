@@ -182,10 +182,6 @@ addToLibrary({
   },
 #endif // ABORTING_MALLOC
 
-#if TEST_MEMORY_GROWTH_FAILS
-  $growMemory: (size) => false,
-#else
-
   // Grows the wasm memory to the given byte size, and updates the JS views to
   // it. Returns 1 on success, 0 on error.
   $growMemory: (size) => {
@@ -215,10 +211,10 @@ addToLibrary({
     // implicit 0 return to save code size (caller will cast "undefined" into 0
     // anyhow)
   },
-#endif // ~TEST_MEMORY_GROWTH_FAILS
 
   emscripten_resize_heap__deps: [
     '$getHeapMax',
+    '$alignMemory',
 #if ASSERTIONS == 2
     'emscripten_get_now',
 #endif
@@ -289,8 +285,6 @@ addToLibrary({
 #endif
     }
 
-    var alignUp = (x, multiple) => x + (multiple - x % multiple) % multiple;
-
     // Loop through potential heap size increases. If we attempt a too eager
     // reservation that fails, cut down on the attempted size and reserve a
     // smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
@@ -306,7 +300,7 @@ addToLibrary({
       var overGrownHeapSize = oldSize + {{{ MEMORY_GROWTH_LINEAR_STEP }}} / cutDown; // ensure linear growth
 #endif
 
-      var newSize = Math.min(maxHeapSize, alignUp(Math.max(requestedSize, overGrownHeapSize), {{{ WASM_PAGE_SIZE }}}));
+      var newSize = Math.min(maxHeapSize, alignMemory(Math.max(requestedSize, overGrownHeapSize), {{{ WASM_PAGE_SIZE }}}));
 
 #if ASSERTIONS == 2
       var t0 = _emscripten_get_now();
@@ -370,15 +364,14 @@ addToLibrary({
         var signalToNumber = (sig) => {
           // implement only the most common ones, and fallback to SIGINT
           switch (sig) {
-            case 'SIGHUP': return 1;
-            case 'SIGINT': return 2;
-            case 'SIGQUIT': return 3;
-            case 'SIGFPE': return 8;
-            case 'SIGKILL': return 9;
-            case 'SIGALRM': return 14;
-            case 'SIGTERM': return 15;
+            case 'SIGHUP': return {{{ cDefs.SIGHUP }}};
+            case 'SIGQUIT': return {{{ cDefs.SIGQUIT }}};
+            case 'SIGFPE': return {{{ cDefs.SIGFPE }}};
+            case 'SIGKILL': return {{{ cDefs.SIGKILL }}};
+            case 'SIGALRM': return {{{ cDefs.SIGALRM }}};
+            case 'SIGTERM': return {{{ cDefs.SIGTERM }}};
+            default: return {{{ cDefs.SIGINT }}};
           }
-          return 2; // SIGINT
         }
         return _W_EXITCODE(0, signalToNumber(ret.signal));
       }
@@ -446,155 +439,15 @@ addToLibrary({
 
 #endif
 
+#if !STANDALONE_WASM
   // ==========================================================================
   // assert.h
   // ==========================================================================
 
-#if !STANDALONE_WASM
   __assert_fail: (condition, filename, line, func) => {
     abort(`Assertion failed: ${UTF8ToString(condition)}, at: ` + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
   },
 #endif
-
-  // ==========================================================================
-  // time.h
-  // ==========================================================================
-
-  _mktime_js__i53abi: true,
-  _mktime_js__deps: ['$ydayFromDate'],
-  _mktime_js: (tmPtr) => {
-    var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
-                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
-                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'i32') }}},
-                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'i32') }}},
-                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_min, 'i32') }}},
-                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
-                        0);
-
-    // There's an ambiguous hour when the time goes back; the tm_isdst field is
-    // used to disambiguate it.  Date() basically guesses, so we fix it up if it
-    // guessed wrong, or fill in tm_isdst with the guess if it's -1.
-    var dst = {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'i32') }}};
-    var guessedOffset = date.getTimezoneOffset();
-    var start = new Date(date.getFullYear(), 0, 1);
-    var summerOffset = new Date(date.getFullYear(), 6, 1).getTimezoneOffset();
-    var winterOffset = start.getTimezoneOffset();
-    var dstOffset = Math.min(winterOffset, summerOffset); // DST is in December in South
-    if (dst < 0) {
-      // Attention: some regions don't have DST at all.
-      {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'Number(summerOffset != winterOffset && dstOffset == guessedOffset)', 'i32') }}};
-    } else if ((dst > 0) != (dstOffset == guessedOffset)) {
-      var nonDstOffset = Math.max(winterOffset, summerOffset);
-      var trueOffset = dst > 0 ? dstOffset : nonDstOffset;
-      // Don't try setMinutes(date.getMinutes() + ...) -- it's messed up.
-      date.setTime(date.getTime() + (trueOffset - guessedOffset)*60000);
-    }
-
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getDay()', 'i32') }}};
-    var yday = ydayFromDate(date)|0;
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
-    // To match expected behavior, update fields from date
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getMinutes()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'date.getHours()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'date.getDate()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getMonth()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getYear()', 'i32') }}};
-
-    var timeMs = date.getTime();
-    if (isNaN(timeMs)) {
-      return -1;
-    }
-    // Return time in microseconds
-    return timeMs / 1000;
-  },
-
-  _gmtime_js__i53abi: true,
-  _gmtime_js: (time, tmPtr) => {
-    var date = new Date(time * 1000);
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getUTCMinutes()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'date.getUTCHours()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'date.getUTCDate()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getUTCMonth()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getUTCFullYear()-1900', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getUTCDay()', 'i32') }}};
-    var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
-    var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
-  },
-
-  _timegm_js__i53abi: true,
-  _timegm_js: (tmPtr) => {
-    var time = Date.UTC({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
-                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
-                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'i32') }}},
-                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'i32') }}},
-                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_min, 'i32') }}},
-                        {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
-                        0);
-    var date = new Date(time);
-
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getUTCDay()', 'i32') }}};
-    var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
-    var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
-
-    return date.getTime() / 1000;
-  },
-
-  _localtime_js__i53abi: true,
-  _localtime_js__deps: ['$ydayFromDate'],
-  _localtime_js: (time, tmPtr) => {
-    var date = new Date(time*1000);
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getMinutes()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'date.getHours()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'date.getDate()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getMonth()', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getFullYear()-1900', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getDay()', 'i32') }}};
-
-    var yday = ydayFromDate(date)|0;
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '-(date.getTimezoneOffset() * 60)', LONG_TYPE) }}};
-
-    // Attention: DST is in December in South, and some regions don't have DST at all.
-    var start = new Date(date.getFullYear(), 0, 1);
-    var summerOffset = new Date(date.getFullYear(), 6, 1).getTimezoneOffset();
-    var winterOffset = start.getTimezoneOffset();
-    var dst = (summerOffset != winterOffset && date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
-    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
-  },
-
-  // musl-internal function used to implement both `asctime` and `asctime_r`
-  __asctime_r: (tmPtr, buf) => {
-    var date = {
-      tm_sec: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
-      tm_min: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_min, 'i32') }}},
-      tm_hour: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'i32') }}},
-      tm_mday: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mday, 'i32') }}},
-      tm_mon: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'i32') }}},
-      tm_year: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}},
-      tm_wday: {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'i32') }}}
-    };
-    var days = [ "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" ];
-    var months = [ "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" ];
-    var s = days[date.tm_wday] + ' ' + months[date.tm_mon] +
-        (date.tm_mday < 10 ? '  ' : ' ') + date.tm_mday +
-        (date.tm_hour < 10 ? ' 0' : ' ') + date.tm_hour +
-        (date.tm_min < 10 ? ':0' : ':') + date.tm_min +
-        (date.tm_sec < 10 ? ':0' : ':') + date.tm_sec +
-        ' ' + (1900 + date.tm_year) + "\n";
-
-    // asctime_r is specced to behave in an undefined manner if the algorithm would attempt
-    // to write out more than 26 bytes (including the null terminator).
-    // See http://pubs.opengroup.org/onlinepubs/9699919799/functions/asctime.html
-    // Our undefined behavior is to truncate the write to at most 26 bytes, including null terminator.
-    stringToUTF8(s, buf, 26);
-    return buf;
-  },
 
 #if STACK_OVERFLOW_CHECK >= 2
   // Set stack limits used by binaryen's `StackCheck` pass.
@@ -624,632 +477,6 @@ addToLibrary({
     var ret = f();
     stackRestore(stack);
     return ret;
-  },
-
-  _tzset_js__deps: ['$stringToUTF8',
-#if ASSERTIONS
-    '$lengthBytesUTF8',
-#endif
-  ],
-  _tzset_js__internal: true,
-  _tzset_js: (timezone, daylight, std_name, dst_name) => {
-    // TODO: Use (malleable) environment variables instead of system settings.
-    var currentYear = new Date().getFullYear();
-    var winter = new Date(currentYear, 0, 1);
-    var summer = new Date(currentYear, 6, 1);
-    var winterOffset = winter.getTimezoneOffset();
-    var summerOffset = summer.getTimezoneOffset();
-
-    // Local standard timezone offset. Local standard time is not adjusted for
-    // daylight savings.  This code uses the fact that getTimezoneOffset returns
-    // a greater value during Standard Time versus Daylight Saving Time (DST).
-    // Thus it determines the expected output during Standard Time, and it
-    // compares whether the output of the given date the same (Standard) or less
-    // (DST).
-    var stdTimezoneOffset = Math.max(winterOffset, summerOffset);
-
-    // timezone is specified as seconds west of UTC ("The external variable
-    // `timezone` shall be set to the difference, in seconds, between
-    // Coordinated Universal Time (UTC) and local standard time."), the same
-    // as returned by stdTimezoneOffset.
-    // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
-    {{{ makeSetValue('timezone', '0', 'stdTimezoneOffset * 60', POINTER_TYPE) }}};
-
-    {{{ makeSetValue('daylight', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
-
-    var extractZone = (date) => date.toLocaleTimeString(undefined, {hour12:false, timeZoneName:'short'}).split(' ')[1];
-    var winterName = extractZone(winter);
-    var summerName = extractZone(summer);
-#if ASSERTIONS
-    assert(winterName);
-    assert(summerName);
-    assert(lengthBytesUTF8(winterName) <= {{{ cDefs.TZNAME_MAX }}}, `timezone name truncated to fit in TZNAME_MAX (${winterName})`);
-    assert(lengthBytesUTF8(summerName) <= {{{ cDefs.TZNAME_MAX }}}, `timezone name truncated to fit in TZNAME_MAX (${summerName})`);
-#endif
-    if (summerOffset < winterOffset) {
-      // Northern hemisphere
-      stringToUTF8(winterName, std_name, {{{ cDefs.TZNAME_MAX + 1 }}});
-      stringToUTF8(summerName, dst_name, {{{ cDefs.TZNAME_MAX + 1 }}});
-    } else {
-      stringToUTF8(winterName, dst_name, {{{ cDefs.TZNAME_MAX + 1 }}});
-      stringToUTF8(summerName, std_name, {{{ cDefs.TZNAME_MAX + 1 }}});
-    }
-  },
-
-  $MONTH_DAYS_REGULAR: [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
-  $MONTH_DAYS_LEAP: [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
-  $MONTH_DAYS_REGULAR_CUMULATIVE: [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334],
-  $MONTH_DAYS_LEAP_CUMULATIVE: [0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335],
-
-  $isLeapYear: (year) => year%4 === 0 && (year%100 !== 0 || year%400 === 0),
-
-  $ydayFromDate__deps: ['$isLeapYear', '$MONTH_DAYS_LEAP_CUMULATIVE', '$MONTH_DAYS_REGULAR_CUMULATIVE'],
-  $ydayFromDate: (date) => {
-    var leap = isLeapYear(date.getFullYear());
-    var monthDaysCumulative = (leap ? MONTH_DAYS_LEAP_CUMULATIVE : MONTH_DAYS_REGULAR_CUMULATIVE);
-    var yday = monthDaysCumulative[date.getMonth()] + date.getDate() - 1; // -1 since it's days since Jan 1
-
-    return yday;
-  },
-
-  $arraySum: (array, index) => {
-    var sum = 0;
-    for (var i = 0; i <= index; sum += array[i++]) {
-      // no-op
-    }
-    return sum;
-  },
-
-  $addDays__deps: ['$isLeapYear', '$MONTH_DAYS_LEAP', '$MONTH_DAYS_REGULAR'],
-  $addDays: (date, days) => {
-    var newDate = new Date(date.getTime());
-    while (days > 0) {
-      var leap = isLeapYear(newDate.getFullYear());
-      var currentMonth = newDate.getMonth();
-      var daysInCurrentMonth = (leap ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR)[currentMonth];
-
-      if (days > daysInCurrentMonth-newDate.getDate()) {
-        // we spill over to next month
-        days -= (daysInCurrentMonth-newDate.getDate()+1);
-        newDate.setDate(1);
-        if (currentMonth < 11) {
-          newDate.setMonth(currentMonth+1)
-        } else {
-          newDate.setMonth(0);
-          newDate.setFullYear(newDate.getFullYear()+1);
-        }
-      } else {
-        // we stay in current month
-        newDate.setDate(newDate.getDate()+days);
-        return newDate;
-      }
-    }
-
-    return newDate;
-  },
-
-  // Note: this is not used in STANDALONE_WASM mode, because it is more
-  //       compact to do it in JS.
-  strftime__deps: ['$isLeapYear', '$arraySum', '$addDays', '$MONTH_DAYS_REGULAR', '$MONTH_DAYS_LEAP',
-                   '$intArrayFromString', '$writeArrayToMemory'
-  ],
-  strftime: (s, maxsize, format, tm) => {
-    // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
-
-    var tm_zone = {{{ makeGetValue('tm', C_STRUCTS.tm.tm_zone, '*') }}};
-
-    var date = {
-      tm_sec: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_sec, 'i32') }}},
-      tm_min: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_min, 'i32') }}},
-      tm_hour: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_hour, 'i32') }}},
-      tm_mday: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_mday, 'i32') }}},
-      tm_mon: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_mon, 'i32') }}},
-      tm_year: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_year, 'i32') }}},
-      tm_wday: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_wday, 'i32') }}},
-      tm_yday: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_yday, 'i32') }}},
-      tm_isdst: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_isdst, 'i32') }}},
-      tm_gmtoff: {{{ makeGetValue('tm', C_STRUCTS.tm.tm_gmtoff, LONG_TYPE) }}},
-      tm_zone: tm_zone ? UTF8ToString(tm_zone) : ''
-    };
-    {{{ from64('date.tm_gmtoff') }}}
-
-    var pattern = UTF8ToString(format);
-
-    // expand format
-    var EXPANSION_RULES_1 = {
-      '%c': '%a %b %d %H:%M:%S %Y',     // Replaced by the locale's appropriate date and time representation - e.g., Mon Aug  3 14:02:01 2013
-      '%D': '%m/%d/%y',                 // Equivalent to %m / %d / %y
-      '%F': '%Y-%m-%d',                 // Equivalent to %Y - %m - %d
-      '%h': '%b',                       // Equivalent to %b
-      '%r': '%I:%M:%S %p',              // Replaced by the time in a.m. and p.m. notation
-      '%R': '%H:%M',                    // Replaced by the time in 24-hour notation
-      '%T': '%H:%M:%S',                 // Replaced by the time
-      '%x': '%m/%d/%y',                 // Replaced by the locale's appropriate date representation
-      '%X': '%H:%M:%S',                 // Replaced by the locale's appropriate time representation
-      // Modified Conversion Specifiers
-      '%Ec': '%c',                      // Replaced by the locale's alternative appropriate date and time representation.
-      '%EC': '%C',                      // Replaced by the name of the base year (period) in the locale's alternative representation.
-      '%Ex': '%m/%d/%y',                // Replaced by the locale's alternative date representation.
-      '%EX': '%H:%M:%S',                // Replaced by the locale's alternative time representation.
-      '%Ey': '%y',                      // Replaced by the offset from %EC (year only) in the locale's alternative representation.
-      '%EY': '%Y',                      // Replaced by the full alternative year representation.
-      '%Od': '%d',                      // Replaced by the day of the month, using the locale's alternative numeric symbols, filled as needed with leading zeros if there is any alternative symbol for zero; otherwise, with leading <space> characters.
-      '%Oe': '%e',                      // Replaced by the day of the month, using the locale's alternative numeric symbols, filled as needed with leading <space> characters.
-      '%OH': '%H',                      // Replaced by the hour (24-hour clock) using the locale's alternative numeric symbols.
-      '%OI': '%I',                      // Replaced by the hour (12-hour clock) using the locale's alternative numeric symbols.
-      '%Om': '%m',                      // Replaced by the month using the locale's alternative numeric symbols.
-      '%OM': '%M',                      // Replaced by the minutes using the locale's alternative numeric symbols.
-      '%OS': '%S',                      // Replaced by the seconds using the locale's alternative numeric symbols.
-      '%Ou': '%u',                      // Replaced by the weekday as a number in the locale's alternative representation (Monday=1).
-      '%OU': '%U',                      // Replaced by the week number of the year (Sunday as the first day of the week, rules corresponding to %U ) using the locale's alternative numeric symbols.
-      '%OV': '%V',                      // Replaced by the week number of the year (Monday as the first day of the week, rules corresponding to %V ) using the locale's alternative numeric symbols.
-      '%Ow': '%w',                      // Replaced by the number of the weekday (Sunday=0) using the locale's alternative numeric symbols.
-      '%OW': '%W',                      // Replaced by the week number of the year (Monday as the first day of the week) using the locale's alternative numeric symbols.
-      '%Oy': '%y',                      // Replaced by the year (offset from %C ) using the locale's alternative numeric symbols.
-    };
-    for (var rule in EXPANSION_RULES_1) {
-      pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_1[rule]);
-    }
-
-    var WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-    function leadingSomething(value, digits, character) {
-      var str = typeof value == 'number' ? value.toString() : (value || '');
-      while (str.length < digits) {
-        str = character[0]+str;
-      }
-      return str;
-    }
-
-    function leadingNulls(value, digits) {
-      return leadingSomething(value, digits, '0');
-    }
-
-    function compareByDay(date1, date2) {
-      function sgn(value) {
-        return value < 0 ? -1 : (value > 0 ? 1 : 0);
-      }
-
-      var compare;
-      if ((compare = sgn(date1.getFullYear()-date2.getFullYear())) === 0) {
-        if ((compare = sgn(date1.getMonth()-date2.getMonth())) === 0) {
-          compare = sgn(date1.getDate()-date2.getDate());
-        }
-      }
-      return compare;
-    }
-
-    function getFirstWeekStartDate(janFourth) {
-        switch (janFourth.getDay()) {
-          case 0: // Sunday
-            return new Date(janFourth.getFullYear()-1, 11, 29);
-          case 1: // Monday
-            return janFourth;
-          case 2: // Tuesday
-            return new Date(janFourth.getFullYear(), 0, 3);
-          case 3: // Wednesday
-            return new Date(janFourth.getFullYear(), 0, 2);
-          case 4: // Thursday
-            return new Date(janFourth.getFullYear(), 0, 1);
-          case 5: // Friday
-            return new Date(janFourth.getFullYear()-1, 11, 31);
-          case 6: // Saturday
-            return new Date(janFourth.getFullYear()-1, 11, 30);
-        }
-    }
-
-    function getWeekBasedYear(date) {
-        var thisDate = addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
-
-        var janFourthThisYear = new Date(thisDate.getFullYear(), 0, 4);
-        var janFourthNextYear = new Date(thisDate.getFullYear()+1, 0, 4);
-
-        var firstWeekStartThisYear = getFirstWeekStartDate(janFourthThisYear);
-        var firstWeekStartNextYear = getFirstWeekStartDate(janFourthNextYear);
-
-        if (compareByDay(firstWeekStartThisYear, thisDate) <= 0) {
-          // this date is after the start of the first week of this year
-          if (compareByDay(firstWeekStartNextYear, thisDate) <= 0) {
-            return thisDate.getFullYear()+1;
-          }
-          return thisDate.getFullYear();
-        }
-        return thisDate.getFullYear()-1;
-    }
-
-    var EXPANSION_RULES_2 = {
-      '%a': (date) => WEEKDAYS[date.tm_wday].substring(0,3) ,
-      '%A': (date) => WEEKDAYS[date.tm_wday],
-      '%b': (date) => MONTHS[date.tm_mon].substring(0,3),
-      '%B': (date) => MONTHS[date.tm_mon],
-      '%C': (date) => {
-        var year = date.tm_year+1900;
-        return leadingNulls((year/100)|0,2);
-      },
-      '%d': (date) => leadingNulls(date.tm_mday, 2),
-      '%e': (date) => leadingSomething(date.tm_mday, 2, ' '),
-      '%g': (date) => {
-        // %g, %G, and %V give values according to the ISO 8601:2000 standard week-based year.
-        // In this system, weeks begin on a Monday and week 1 of the year is the week that includes
-        // January 4th, which is also the week that includes the first Thursday of the year, and
-        // is also the first week that contains at least four days in the year.
-        // If the first Monday of January is the 2nd, 3rd, or 4th, the preceding days are part of
-        // the last week of the preceding year; thus, for Saturday 2nd January 1999,
-        // %G is replaced by 1998 and %V is replaced by 53. If December 29th, 30th,
-        // or 31st is a Monday, it and any following days are part of week 1 of the following year.
-        // Thus, for Tuesday 30th December 1997, %G is replaced by 1998 and %V is replaced by 01.
-
-        return getWeekBasedYear(date).toString().substring(2);
-      },
-      '%G': getWeekBasedYear,
-      '%H': (date) => leadingNulls(date.tm_hour, 2),
-      '%I': (date) => {
-        var twelveHour = date.tm_hour;
-        if (twelveHour == 0) twelveHour = 12;
-        else if (twelveHour > 12) twelveHour -= 12;
-        return leadingNulls(twelveHour, 2);
-      },
-      '%j': (date) => {
-        // Day of the year (001-366)
-        return leadingNulls(date.tm_mday + arraySum(isLeapYear(date.tm_year+1900) ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, date.tm_mon-1), 3);
-      },
-      '%m': (date) => leadingNulls(date.tm_mon+1, 2),
-      '%M': (date) => leadingNulls(date.tm_min, 2),
-      '%n': () => '\n',
-      '%p': (date) => {
-        if (date.tm_hour >= 0 && date.tm_hour < 12) {
-          return 'AM';
-        }
-        return 'PM';
-      },
-      '%S': (date) => leadingNulls(date.tm_sec, 2),
-      '%t': () => '\t',
-      '%u': (date) => date.tm_wday || 7,
-      '%U': (date) => {
-        var days = date.tm_yday + 7 - date.tm_wday;
-        return leadingNulls(Math.floor(days / 7), 2);
-      },
-      '%V': (date) => {
-        // Replaced by the week number of the year (Monday as the first day of the week)
-        // as a decimal number [01,53]. If the week containing 1 January has four
-        // or more days in the new year, then it is considered week 1.
-        // Otherwise, it is the last week of the previous year, and the next week is week 1.
-        // Both January 4th and the first Thursday of January are always in week 1. [ tm_year, tm_wday, tm_yday]
-        var val = Math.floor((date.tm_yday + 7 - (date.tm_wday + 6) % 7 ) / 7);
-        // If 1 Jan is just 1-3 days past Monday, the previous week
-        // is also in this year.
-        if ((date.tm_wday + 371 - date.tm_yday - 2) % 7 <= 2) {
-          val++;
-        }
-        if (!val) {
-          val = 52;
-          // If 31 December of prev year a Thursday, or Friday of a
-          // leap year, then the prev year has 53 weeks.
-          var dec31 = (date.tm_wday + 7 - date.tm_yday - 1) % 7;
-          if (dec31 == 4 || (dec31 == 5 && isLeapYear(date.tm_year%400-1))) {
-            val++;
-          }
-        } else if (val == 53) {
-          // If 1 January is not a Thursday, and not a Wednesday of a
-          // leap year, then this year has only 52 weeks.
-          var jan1 = (date.tm_wday + 371 - date.tm_yday) % 7;
-          if (jan1 != 4 && (jan1 != 3 || !isLeapYear(date.tm_year)))
-            val = 1;
-        }
-        return leadingNulls(val, 2);
-      },
-      '%w': (date) => date.tm_wday,
-      '%W': (date) => {
-        var days = date.tm_yday + 7 - ((date.tm_wday + 6) % 7);
-        return leadingNulls(Math.floor(days / 7), 2);
-      },
-      '%y': (date) => {
-        // Replaced by the last two digits of the year as a decimal number [00,99]. [ tm_year]
-        return (date.tm_year+1900).toString().substring(2);
-      },
-      // Replaced by the year as a decimal number (for example, 1997). [ tm_year]
-      '%Y': (date) => date.tm_year+1900,
-      '%z': (date) => {
-        // Replaced by the offset from UTC in the ISO 8601:2000 standard format ( +hhmm or -hhmm ).
-        // For example, "-0430" means 4 hours 30 minutes behind UTC (west of Greenwich).
-        var off = date.tm_gmtoff;
-        var ahead = off >= 0;
-        off = Math.abs(off) / 60;
-        // convert from minutes into hhmm format (which means 60 minutes = 100 units)
-        off = (off / 60)*100 + (off % 60);
-        return (ahead ? '+' : '-') + String("0000" + off).slice(-4);
-      },
-      '%Z': (date) => date.tm_zone,
-      '%%': () => '%'
-    };
-
-    // Replace %% with a pair of NULLs (which cannot occur in a C string), then
-    // re-inject them after processing.
-    pattern = pattern.replace(/%%/g, '\0\0')
-    for (var rule in EXPANSION_RULES_2) {
-      if (pattern.includes(rule)) {
-        pattern = pattern.replace(new RegExp(rule, 'g'), EXPANSION_RULES_2[rule](date));
-      }
-    }
-    pattern = pattern.replace(/\0\0/g, '%')
-
-    var bytes = intArrayFromString(pattern, false);
-    if (bytes.length > maxsize) {
-      return 0;
-    }
-
-    writeArrayToMemory(bytes, s);
-    return bytes.length-1;
-  },
-  strftime_l__deps: ['strftime'],
-  strftime_l: (s, maxsize, format, tm, loc) => {
-    return _strftime(s, maxsize, format, tm); // no locale support yet
-  },
-
-  strptime__deps: ['$isLeapYear', '$arraySum', '$addDays', '$MONTH_DAYS_REGULAR', '$MONTH_DAYS_LEAP',
-                   '$jstoi_q', '$intArrayFromString' ],
-  strptime: (buf, format, tm) => {
-    // char *strptime(const char *restrict buf, const char *restrict format, struct tm *restrict tm);
-    // http://pubs.opengroup.org/onlinepubs/009695399/functions/strptime.html
-    var pattern = UTF8ToString(format);
-
-    // escape special characters
-    // TODO: not sure we really need to escape all of these in JS regexps
-    var SPECIAL_CHARS = '\\!@#$^&*()+=-[]/{}|:<>?,.';
-    for (var i=0, ii=SPECIAL_CHARS.length; i<ii; ++i) {
-      pattern = pattern.replace(new RegExp('\\'+SPECIAL_CHARS[i], 'g'), '\\'+SPECIAL_CHARS[i]);
-    }
-
-    // reduce number of matchers
-    var EQUIVALENT_MATCHERS = {
-      'A':  '%a',
-      'B':  '%b',
-      'c':  '%a %b %d %H:%M:%S %Y',
-      'D':  '%m\\/%d\\/%y',
-      'e':  '%d',
-      'F':  '%Y-%m-%d',
-      'h':  '%b',
-      'R':  '%H\\:%M',
-      'r':  '%I\\:%M\\:%S\\s%p',
-      'T':  '%H\\:%M\\:%S',
-      'x':  '%m\\/%d\\/(?:%y|%Y)',
-      'X':  '%H\\:%M\\:%S'
-    };
-    // TODO: take care of locale
-
-    var DATE_PATTERNS = {
-      /* weekday name */    'a': '(?:Sun(?:day)?)|(?:Mon(?:day)?)|(?:Tue(?:sday)?)|(?:Wed(?:nesday)?)|(?:Thu(?:rsday)?)|(?:Fri(?:day)?)|(?:Sat(?:urday)?)',
-      /* month name */      'b': '(?:Jan(?:uary)?)|(?:Feb(?:ruary)?)|(?:Mar(?:ch)?)|(?:Apr(?:il)?)|May|(?:Jun(?:e)?)|(?:Jul(?:y)?)|(?:Aug(?:ust)?)|(?:Sep(?:tember)?)|(?:Oct(?:ober)?)|(?:Nov(?:ember)?)|(?:Dec(?:ember)?)',
-      /* century */         'C': '\\d\\d',
-      /* day of month */    'd': '0[1-9]|[1-9](?!\\d)|1\\d|2\\d|30|31',
-      /* hour (24hr) */     'H': '\\d(?!\\d)|[0,1]\\d|20|21|22|23',
-      /* hour (12hr) */     'I': '\\d(?!\\d)|0\\d|10|11|12',
-      /* day of year */     'j': '00[1-9]|0?[1-9](?!\\d)|0?[1-9]\\d(?!\\d)|[1,2]\\d\\d|3[0-6]\\d',
-      /* month */           'm': '0[1-9]|[1-9](?!\\d)|10|11|12',
-      /* minutes */         'M': '0\\d|\\d(?!\\d)|[1-5]\\d',
-      /* whitespace */      'n': ' ',
-      /* AM/PM */           'p': 'AM|am|PM|pm|A\\.M\\.|a\\.m\\.|P\\.M\\.|p\\.m\\.',
-      /* seconds */         'S': '0\\d|\\d(?!\\d)|[1-5]\\d|60',
-      /* week number */     'U': '0\\d|\\d(?!\\d)|[1-4]\\d|50|51|52|53',
-      /* week number */     'W': '0\\d|\\d(?!\\d)|[1-4]\\d|50|51|52|53',
-      /* weekday number */  'w': '[0-6]',
-      /* 2-digit year */    'y': '\\d\\d',
-      /* 4-digit year */    'Y': '\\d\\d\\d\\d',
-      /* whitespace */      't': ' ',
-      /* time zone */       'z': 'Z|(?:[\\+\\-]\\d\\d:?(?:\\d\\d)?)'
-    };
-
-    var MONTH_NUMBERS = {JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11};
-    var DAY_NUMBERS_SUN_FIRST = {SUN: 0, MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6};
-    var DAY_NUMBERS_MON_FIRST = {MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6};
-
-    var capture = [];
-    var pattern_out = pattern
-      .replace(/%(.)/g, (m, c) => EQUIVALENT_MATCHERS[c] || m)
-      .replace(/%(.)/g, (_, c) => {
-        let pat = DATE_PATTERNS[c];
-        if (pat){
-          capture.push(c);
-          return `(${pat})`;
-        } else {
-          return c;
-        }
-      })
-      .replace( // any number of space or tab characters match zero or more spaces
-        /\s+/g,'\\s*'
-      );
-
-    var matches = new RegExp('^'+pattern_out, "i").exec(UTF8ToString(buf))
-
-    function initDate() {
-      function fixup(value, min, max) {
-        return (typeof value != 'number' || isNaN(value)) ? min : (value>=min ? (value<=max ? value: max): min);
-      };
-      return {
-        year: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900 , 1970, 9999),
-        month: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_mon, 'i32') }}}, 0, 11),
-        day: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_mday, 'i32') }}}, 1, 31),
-        hour: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_hour, 'i32') }}}, 0, 23),
-        min: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_min, 'i32') }}}, 0, 59),
-        sec: fixup({{{ makeGetValue('tm', C_STRUCTS.tm.tm_sec, 'i32') }}}, 0, 59),
-        gmtoff: 0
-      };
-    };
-
-    if (matches) {
-      var date = initDate();
-      var value;
-
-      var getMatch = (symbol) => {
-        var pos = capture.indexOf(symbol);
-        // check if symbol appears in regexp
-        if (pos >= 0) {
-          // return matched value or null (falsy!) for non-matches
-          return matches[pos+1];
-        }
-        return;
-      };
-
-      // seconds
-      if ((value=getMatch('S'))) {
-        date.sec = jstoi_q(value);
-      }
-
-      // minutes
-      if ((value=getMatch('M'))) {
-        date.min = jstoi_q(value);
-      }
-
-      // hours
-      if ((value=getMatch('H'))) {
-        // 24h clock
-        date.hour = jstoi_q(value);
-      } else if ((value = getMatch('I'))) {
-        // AM/PM clock
-        var hour = jstoi_q(value);
-        if ((value=getMatch('p'))) {
-          hour += value.toUpperCase()[0] === 'P' ? 12 : 0;
-        }
-        date.hour = hour;
-      }
-
-      // year
-      if ((value=getMatch('Y'))) {
-        // parse from four-digit year
-        date.year = jstoi_q(value);
-      } else if ((value=getMatch('y'))) {
-        // parse from two-digit year...
-        var year = jstoi_q(value);
-        if ((value=getMatch('C'))) {
-          // ...and century
-          year += jstoi_q(value)*100;
-        } else {
-          // ...and rule-of-thumb
-          year += year<69 ? 2000 : 1900;
-        }
-        date.year = year;
-      }
-
-      // month
-      if ((value=getMatch('m'))) {
-        // parse from month number
-        date.month = jstoi_q(value)-1;
-      } else if ((value=getMatch('b'))) {
-        // parse from month name
-        date.month = MONTH_NUMBERS[value.substring(0,3).toUpperCase()] || 0;
-        // TODO: derive month from day in year+year, week number+day of week+year
-      }
-
-      // day
-      if ((value=getMatch('d'))) {
-        // get day of month directly
-        date.day = jstoi_q(value);
-      } else if ((value=getMatch('j'))) {
-        // get day of month from day of year ...
-        var day = jstoi_q(value);
-        var leapYear = isLeapYear(date.year);
-        for (var month=0; month<12; ++month) {
-          var daysUntilMonth = arraySum(leapYear ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, month-1);
-          if (day<=daysUntilMonth+(leapYear ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR)[month]) {
-            date.day = day-daysUntilMonth;
-          }
-        }
-      } else if ((value=getMatch('a'))) {
-        // get day of month from weekday ...
-        var weekDay = value.substring(0,3).toUpperCase();
-        if ((value=getMatch('U'))) {
-          // ... and week number (Sunday being first day of week)
-          // Week number of the year (Sunday as the first day of the week) as a decimal number [00,53].
-          // All days in a new year preceding the first Sunday are considered to be in week 0.
-          var weekDayNumber = DAY_NUMBERS_SUN_FIRST[weekDay];
-          var weekNumber = jstoi_q(value);
-
-          // January 1st
-          var janFirst = new Date(date.year, 0, 1);
-          var endDate;
-          if (janFirst.getDay() === 0) {
-            // Jan 1st is a Sunday, and, hence in the 1st CW
-            endDate = addDays(janFirst, weekDayNumber+7*(weekNumber-1));
-          } else {
-            // Jan 1st is not a Sunday, and, hence still in the 0th CW
-            endDate = addDays(janFirst, 7-janFirst.getDay()+weekDayNumber+7*(weekNumber-1));
-          }
-          date.day = endDate.getDate();
-          date.month = endDate.getMonth();
-        } else if ((value=getMatch('W'))) {
-          // ... and week number (Monday being first day of week)
-          // Week number of the year (Monday as the first day of the week) as a decimal number [00,53].
-          // All days in a new year preceding the first Monday are considered to be in week 0.
-          var weekDayNumber = DAY_NUMBERS_MON_FIRST[weekDay];
-          var weekNumber = jstoi_q(value);
-
-          // January 1st
-          var janFirst = new Date(date.year, 0, 1);
-          var endDate;
-          if (janFirst.getDay()===1) {
-            // Jan 1st is a Monday, and, hence in the 1st CW
-             endDate = addDays(janFirst, weekDayNumber+7*(weekNumber-1));
-          } else {
-            // Jan 1st is not a Monday, and, hence still in the 0th CW
-            endDate = addDays(janFirst, 7-janFirst.getDay()+1+weekDayNumber+7*(weekNumber-1));
-          }
-
-          date.day = endDate.getDate();
-          date.month = endDate.getMonth();
-        }
-      }
-
-      // time zone
-      if ((value = getMatch('z'))) {
-        // GMT offset as either 'Z' or +-HH:MM or +-HH or +-HHMM
-        if (value.toLowerCase() === 'z'){
-          date.gmtoff = 0;
-        } else {          
-          var match = value.match(/^((?:\-|\+)\d\d):?(\d\d)?/);
-          date.gmtoff = match[1] * 3600;
-          if (match[2]) {
-            date.gmtoff += date.gmtoff >0 ? match[2] * 60 : -match[2] * 60
-          }
-        }
-      }
-
-      /*
-      tm_sec  int seconds after the minute  0-61*
-      tm_min  int minutes after the hour  0-59
-      tm_hour int hours since midnight  0-23
-      tm_mday int day of the month  1-31
-      tm_mon  int months since January  0-11
-      tm_year int years since 1900
-      tm_wday int days since Sunday 0-6
-      tm_yday int days since January 1  0-365
-      tm_isdst  int Daylight Saving Time flag
-      tm_gmtoff long offset from GMT (seconds)
-      */
-
-      var fullDate = new Date(date.year, date.month, date.day, date.hour, date.min, date.sec, 0);
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_sec, 'fullDate.getSeconds()', 'i32') }}};
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_min, 'fullDate.getMinutes()', 'i32') }}};
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_hour, 'fullDate.getHours()', 'i32') }}};
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_mday, 'fullDate.getDate()', 'i32') }}};
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_mon, 'fullDate.getMonth()', 'i32') }}};
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_year, 'fullDate.getFullYear()-1900', 'i32') }}};
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_wday, 'fullDate.getDay()', 'i32') }}};
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_yday, 'arraySum(isLeapYear(fullDate.getFullYear()) ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, fullDate.getMonth()-1)+fullDate.getDate()-1', 'i32') }}};
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}};
-      {{{ makeSetValue('tm', C_STRUCTS.tm.tm_gmtoff, 'date.gmtoff', LONG_TYPE) }}};
- 
-      // we need to convert the matched sequence into an integer array to take care of UTF-8 characters > 0x7F
-      // TODO: not sure that intArrayFromString handles all unicode characters correctly
-      return buf+intArrayFromString(matches[0]).length-1;
-    }
-
-    return 0;
-  },
-  strptime_l__deps: ['strptime'],
-  strptime_l: (buf, format, tm, locale) => {
-    return _strptime(buf, format, tm); // no locale support yet
   },
 
   // ==========================================================================
@@ -1431,129 +658,15 @@ addToLibrary({
     'EOWNERDEAD': {{{ cDefs.EOWNERDEAD }}},
     'ESTRPIPE': {{{ cDefs.ESTRPIPE }}},
   }`,
-  $ERRNO_MESSAGES: {
-    0: 'Success',
-    {{{ cDefs.EPERM }}}: 'Not super-user',
-    {{{ cDefs.ENOENT }}}: 'No such file or directory',
-    {{{ cDefs.ESRCH }}}: 'No such process',
-    {{{ cDefs.EINTR }}}: 'Interrupted system call',
-    {{{ cDefs.EIO }}}: 'I/O error',
-    {{{ cDefs.ENXIO }}}: 'No such device or address',
-    {{{ cDefs.E2BIG }}}: 'Arg list too long',
-    {{{ cDefs.ENOEXEC }}}: 'Exec format error',
-    {{{ cDefs.EBADF }}}: 'Bad file number',
-    {{{ cDefs.ECHILD }}}: 'No children',
-    {{{ cDefs.EWOULDBLOCK }}}: 'No more processes',
-    {{{ cDefs.ENOMEM }}}: 'Not enough core',
-    {{{ cDefs.EACCES }}}: 'Permission denied',
-    {{{ cDefs.EFAULT }}}: 'Bad address',
-    {{{ cDefs.ENOTBLK }}}: 'Block device required',
-    {{{ cDefs.EBUSY }}}: 'Mount device busy',
-    {{{ cDefs.EEXIST }}}: 'File exists',
-    {{{ cDefs.EXDEV }}}: 'Cross-device link',
-    {{{ cDefs.ENODEV }}}: 'No such device',
-    {{{ cDefs.ENOTDIR }}}: 'Not a directory',
-    {{{ cDefs.EISDIR }}}: 'Is a directory',
-    {{{ cDefs.EINVAL }}}: 'Invalid argument',
-    {{{ cDefs.ENFILE }}}: 'Too many open files in system',
-    {{{ cDefs.EMFILE }}}: 'Too many open files',
-    {{{ cDefs.ENOTTY }}}: 'Not a typewriter',
-    {{{ cDefs.ETXTBSY }}}: 'Text file busy',
-    {{{ cDefs.EFBIG }}}: 'File too large',
-    {{{ cDefs.ENOSPC }}}: 'No space left on device',
-    {{{ cDefs.ESPIPE }}}: 'Illegal seek',
-    {{{ cDefs.EROFS }}}: 'Read only file system',
-    {{{ cDefs.EMLINK }}}: 'Too many links',
-    {{{ cDefs.EPIPE }}}: 'Broken pipe',
-    {{{ cDefs.EDOM }}}: 'Math arg out of domain of func',
-    {{{ cDefs.ERANGE }}}: 'Math result not representable',
-    {{{ cDefs.ENOMSG }}}: 'No message of desired type',
-    {{{ cDefs.EIDRM }}}: 'Identifier removed',
-    {{{ cDefs.ECHRNG }}}: 'Channel number out of range',
-    {{{ cDefs.EL2NSYNC }}}: 'Level 2 not synchronized',
-    {{{ cDefs.EL3HLT }}}: 'Level 3 halted',
-    {{{ cDefs.EL3RST }}}: 'Level 3 reset',
-    {{{ cDefs.ELNRNG }}}: 'Link number out of range',
-    {{{ cDefs.EUNATCH }}}: 'Protocol driver not attached',
-    {{{ cDefs.ENOCSI }}}: 'No CSI structure available',
-    {{{ cDefs.EL2HLT }}}: 'Level 2 halted',
-    {{{ cDefs.EDEADLK }}}: 'Deadlock condition',
-    {{{ cDefs.ENOLCK }}}: 'No record locks available',
-    {{{ cDefs.EBADE }}}: 'Invalid exchange',
-    {{{ cDefs.EBADR }}}: 'Invalid request descriptor',
-    {{{ cDefs.EXFULL }}}: 'Exchange full',
-    {{{ cDefs.ENOANO }}}: 'No anode',
-    {{{ cDefs.EBADRQC }}}: 'Invalid request code',
-    {{{ cDefs.EBADSLT }}}: 'Invalid slot',
-    {{{ cDefs.EDEADLOCK }}}: 'File locking deadlock error',
-    {{{ cDefs.EBFONT }}}: 'Bad font file fmt',
-    {{{ cDefs.ENOSTR }}}: 'Device not a stream',
-    {{{ cDefs.ENODATA }}}: 'No data (for no delay io)',
-    {{{ cDefs.ETIME }}}: 'Timer expired',
-    {{{ cDefs.ENOSR }}}: 'Out of streams resources',
-    {{{ cDefs.ENONET }}}: 'Machine is not on the network',
-    {{{ cDefs.ENOPKG }}}: 'Package not installed',
-    {{{ cDefs.EREMOTE }}}: 'The object is remote',
-    {{{ cDefs.ENOLINK }}}: 'The link has been severed',
-    {{{ cDefs.EADV }}}: 'Advertise error',
-    {{{ cDefs.ESRMNT }}}: 'Srmount error',
-    {{{ cDefs.ECOMM }}}: 'Communication error on send',
-    {{{ cDefs.EPROTO }}}: 'Protocol error',
-    {{{ cDefs.EMULTIHOP }}}: 'Multihop attempted',
-    {{{ cDefs.EDOTDOT }}}: 'Cross mount point (not really error)',
-    {{{ cDefs.EBADMSG }}}: 'Trying to read unreadable message',
-    {{{ cDefs.ENOTUNIQ }}}: 'Given log. name not unique',
-    {{{ cDefs.EBADFD }}}: 'f.d. invalid for this operation',
-    {{{ cDefs.EREMCHG }}}: 'Remote address changed',
-    {{{ cDefs.ELIBACC }}}: 'Can   access a needed shared lib',
-    {{{ cDefs.ELIBBAD }}}: 'Accessing a corrupted shared lib',
-    {{{ cDefs.ELIBSCN }}}: '.lib section in a.out corrupted',
-    {{{ cDefs.ELIBMAX }}}: 'Attempting to link in too many libs',
-    {{{ cDefs.ELIBEXEC }}}: 'Attempting to exec a shared library',
-    {{{ cDefs.ENOSYS }}}: 'Function not implemented',
-    {{{ cDefs.ENOTEMPTY }}}: 'Directory not empty',
-    {{{ cDefs.ENAMETOOLONG }}}: 'File or path name too long',
-    {{{ cDefs.ELOOP }}}: 'Too many symbolic links',
-    {{{ cDefs.EOPNOTSUPP }}}: 'Operation not supported on transport endpoint',
-    {{{ cDefs.EPFNOSUPPORT }}}: 'Protocol family not supported',
-    {{{ cDefs.ECONNRESET }}}: 'Connection reset by peer',
-    {{{ cDefs.ENOBUFS }}}: 'No buffer space available',
-    {{{ cDefs.EAFNOSUPPORT }}}: 'Address family not supported by protocol family',
-    {{{ cDefs.EPROTOTYPE }}}: 'Protocol wrong type for socket',
-    {{{ cDefs.ENOTSOCK }}}: 'Socket operation on non-socket',
-    {{{ cDefs.ENOPROTOOPT }}}: 'Protocol not available',
-    {{{ cDefs.ESHUTDOWN }}}: 'Can\'t send after socket shutdown',
-    {{{ cDefs.ECONNREFUSED }}}: 'Connection refused',
-    {{{ cDefs.EADDRINUSE }}}: 'Address already in use',
-    {{{ cDefs.ECONNABORTED }}}: 'Connection aborted',
-    {{{ cDefs.ENETUNREACH }}}: 'Network is unreachable',
-    {{{ cDefs.ENETDOWN }}}: 'Network interface is not configured',
-    {{{ cDefs.ETIMEDOUT }}}: 'Connection timed out',
-    {{{ cDefs.EHOSTDOWN }}}: 'Host is down',
-    {{{ cDefs.EHOSTUNREACH }}}: 'Host is unreachable',
-    {{{ cDefs.EINPROGRESS }}}: 'Connection already in progress',
-    {{{ cDefs.EALREADY }}}: 'Socket already connected',
-    {{{ cDefs.EDESTADDRREQ }}}: 'Destination address required',
-    {{{ cDefs.EMSGSIZE }}}: 'Message too long',
-    {{{ cDefs.EPROTONOSUPPORT }}}: 'Unknown protocol',
-    {{{ cDefs.ESOCKTNOSUPPORT }}}: 'Socket type not supported',
-    {{{ cDefs.EADDRNOTAVAIL }}}: 'Address not available',
-    {{{ cDefs.ENETRESET }}}: 'Connection reset by network',
-    {{{ cDefs.EISCONN }}}: 'Socket is already connected',
-    {{{ cDefs.ENOTCONN }}}: 'Socket is not connected',
-    {{{ cDefs.ETOOMANYREFS }}}: 'Too many references',
-    {{{ cDefs.EUSERS }}}: 'Too many users',
-    {{{ cDefs.EDQUOT }}}: 'Quota exceeded',
-    {{{ cDefs.ESTALE }}}: 'Stale file handle',
-    {{{ cDefs.ENOTSUP }}}: 'Not supported',
-    {{{ cDefs.ENOMEDIUM }}}: 'No medium (in tape drive)',
-    {{{ cDefs.EILSEQ }}}: 'Illegal byte sequence',
-    {{{ cDefs.EOVERFLOW }}}: 'Value too large for defined data type',
-    {{{ cDefs.ECANCELED }}}: 'Operation canceled',
-    {{{ cDefs.ENOTRECOVERABLE }}}: 'State not recoverable',
-    {{{ cDefs.EOWNERDEAD }}}: 'Previous owner died',
-    {{{ cDefs.ESTRPIPE }}}: 'Streams pipe error',
+
+#if PURE_WASI
+  $strError: (errno) => errno + '',
+#else
+  $strError__deps: ['strerror', '$UTF8ToString'],
+  $strError: (errno) => {
+    return UTF8ToString(_strerror(errno));
   },
+#endif
 
 #if PROXY_POSIX_SOCKETS == 0
   // ==========================================================================
@@ -2742,14 +1855,21 @@ addToLibrary({
   },
 
 #if DYNCALLS || !WASM_BIGINT
-#if MAIN_MODULE == 1
-  $dynCallLegacy__deps: ['$createDyncallWrapper'],
+#if MINIMAL_RUNTIME
+  $dynCalls: '{}',
 #endif
+  $dynCallLegacy__deps: [
+#if MAIN_MODULE == 1
+    '$createDyncallWrapper'
+#endif
+#if MINIMAL_RUNTIME
+    '$dynCalls',
+#endif
+  ],
   $dynCallLegacy: (sig, ptr, args) => {
     sig = sig.replace(/p/g, {{{ MEMORY64 ? "'j'" : "'i'" }}})
 #if ASSERTIONS
 #if MINIMAL_RUNTIME
-    assert(typeof dynCalls != 'undefined', 'Global dynCalls dictionary was not generated in the build! Pass -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$dynCall linker flag to include it!');
     assert(sig in dynCalls, `bad function pointer type - sig is not in dynCalls: '${sig}'`);
 #else
     assert(('dynCall_' + sig) in Module, `bad function pointer type - dynCall function not found for sig '${sig}'`);
@@ -2846,25 +1966,26 @@ addToLibrary({
   $setWasmTableEntry__internal: true,
   $setWasmTableEntry__deps: ['$wasmTableMirror', '$wasmTable'],
   $setWasmTableEntry: (idx, func) => {
-    wasmTable.set(idx, func);
+    wasmTable.set({{{ toIndexType('idx') }}}, func);
     // With ABORT_ON_WASM_EXCEPTIONS wasmTable.get is overridden to return wrapped
     // functions so we need to call it here to retrieve the potential wrapper correctly
     // instead of just storing 'func' directly into wasmTableMirror
-    wasmTableMirror[idx] = wasmTable.get(idx);
+    wasmTableMirror[idx] = wasmTable.get({{{ toIndexType('idx') }}});
   },
 
   $getWasmTableEntry__internal: true,
   $getWasmTableEntry__deps: ['$wasmTableMirror', '$wasmTable'],
   $getWasmTableEntry: (funcPtr) => {
 #if MEMORY64
-    // Function pointers are 64-bit, but wasmTable.get() requires a Number.
+    // Function pointers should show up as numbers, even under wasm64, but
+    // we still have some places where bigint values can flow here.
     // https://github.com/emscripten-core/emscripten/issues/18200
     funcPtr = Number(funcPtr);
 #endif
     var func = wasmTableMirror[funcPtr];
     if (!func) {
       if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
-      wasmTableMirror[funcPtr] = func = wasmTable.get(funcPtr);
+      wasmTableMirror[funcPtr] = func = wasmTable.get({{{ toIndexType('funcPtr') }}});
 #if ASYNCIFY == 2
       if (Asyncify.isAsyncExport(func)) {
         wasmTableMirror[funcPtr] = func = Asyncify.makeAsyncFunction(func);
@@ -2872,7 +1993,7 @@ addToLibrary({
 #endif
     }
 #if ASSERTIONS && ASYNCIFY != 2 // With JSPI the function stored in the table will be a wrapper.
-    assert(wasmTable.get(funcPtr) == func, 'JavaScript-side Wasm function table mirror is out of date!');
+    assert(wasmTable.get({{{ toIndexType('funcPtr') }}}) == func, 'JavaScript-side Wasm function table mirror is out of date!');
 #endif
     return func;
   },
@@ -2880,7 +2001,7 @@ addToLibrary({
 #else
 
   $setWasmTableEntry__deps: ['$wasmTable'],
-  $setWasmTableEntry: (idx, func) => wasmTable.set(idx, func),
+  $setWasmTableEntry: (idx, func) => wasmTable.set({{{ toIndexType('idx') }}}, func),
 
   $getWasmTableEntry__deps: ['$wasmTable'],
   $getWasmTableEntry: (funcPtr) => {
@@ -2901,7 +2022,6 @@ addToLibrary({
     throw 'unwind';
   },
 
-  _emscripten_runtime_keepalive_clear__proxy: 'sync',
   _emscripten_runtime_keepalive_clear: () => {
 #if isSymbolNeeded('$noExitRuntime')
     noExitRuntime = false;
@@ -2940,6 +2060,10 @@ addToLibrary({
 #if ASSERTIONS || RUNTIME_DEBUG
   emscripten_dbg: (str) => dbg(UTF8ToString(str)),
   emscripten_dbgn: (str, len) => dbg(UTF8ToString(str, len)),
+
+  emscripten_dbg_backtrace: (str) => {
+    dbg(UTF8ToString(str) + '\n' + new Error().stack);
+  },
 #endif
 
   // Use program_invocation_short_name and program_invocation_name in compiled
@@ -2968,6 +2092,13 @@ addToLibrary({
     assert(typeof str == 'number');
 #endif
     console.error(UTF8ToString(str));
+  },
+
+  emscripten_console_trace: (str) => {
+#if ASSERTIONS
+    assert(typeof str == 'number');
+#endif
+    console.trace(UTF8ToString(str));
   },
 
   emscripten_throw_number: (number) => {
@@ -3119,19 +2250,22 @@ addToLibrary({
   $asyncLoad__docs: '/** @param {boolean=} noRunDep */',
   $asyncLoad: (url, onload, onerror, noRunDep) => {
     var dep = !noRunDep ? getUniqueRunDependency(`al ${url}`) : '';
-    readAsync(url, (arrayBuffer) => {
+    readAsync(url).then(
+      (arrayBuffer) => {
 #if ASSERTIONS
-      assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
+        assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
 #endif
-      onload(new Uint8Array(arrayBuffer));
-      if (dep) removeRunDependency(dep);
-    }, (event) => {
-      if (onerror) {
-        onerror();
-      } else {
-        throw `Loading data file "${url}" failed.`;
+        onload(new Uint8Array(arrayBuffer));
+        if (dep) removeRunDependency(dep);
+      },
+      (err) => {
+        if (onerror) {
+          onerror();
+        } else {
+          throw `Loading data file "${url}" failed.`;
+        }
       }
-    });
+    );
     if (dep) addRunDependency(dep);
   },
 
@@ -3258,9 +2392,12 @@ addToLibrary({
 #if RELOCATABLE
   // In RELOCATABLE mode we create the table in JS.
   $wasmTable: `=new WebAssembly.Table({
-  'initial': {{{ INITIAL_TABLE }}},
+  'initial': {{{ toIndexType(INITIAL_TABLE) }}},
 #if !ALLOW_TABLE_GROWTH
-  'maximum': {{{ INITIAL_TABLE }}},
+  'maximum': {{{ toIndexType(INITIAL_TABLE) }}},
+#endif
+#if MEMORY64 == 1
+  'index': 'i64',
 #endif
   'element': 'anyfunc'
 });
@@ -3354,7 +2491,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   var canThrow = library[x + '__nothrow'] !== true;
 #endif
 
-  if (!library[x + '__deps']) library[x + '__deps'] = [];
+  library[x + '__deps'] ??= [];
 
 #if PURE_WASI
   // In PURE_WASI mode we can't assume the wasm binary was built by emscripten
@@ -3383,7 +2520,7 @@ function wrapSyscallFunction(x, library, isWasi) {
   pre += "var ret = (() => {";
   post += "})();\n";
   post += "if (ret && ret < 0 && canWarn) {\n";
-  post += "  dbg(`error: syscall may have failed with ${-ret} (${ERRNO_MESSAGES[-ret]})`);\n";
+  post += "  dbg(`error: syscall may have failed with ${-ret} (${strError(-ret)})`);\n";
   post += "}\n";
   post += "dbg(`syscall return: ${ret}`);\n";
   post += "return ret;\n";
@@ -3397,7 +2534,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     "  if (typeof FS == 'undefined' || !(e.name === 'ErrnoError')) throw e;\n";
 #if SYSCALL_DEBUG
     handler +=
-    "  dbg(`error: syscall failed with ${e.errno} (${ERRNO_MESSAGES[e.errno]})`);\n" +
+    "  dbg(`error: syscall failed with ${e.errno} (${strError(e.errno)})`);\n" +
     "  canWarn = false;\n";
 #endif
     // Musl syscalls are negated.

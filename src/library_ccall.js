@@ -46,8 +46,7 @@ addToLibrary({
 
     function convertReturnValue(ret) {
       if (returnType === 'string') {
-        {{{ from64('ret') }}}
-        return UTF8ToString(ret);
+        return UTF8ToString({{{ from64Expr('ret') }}});
       }
 #if MEMORY64
       if (returnType === 'pointer') return Number(ret);

@@ -66,6 +66,7 @@ void _emscripten_thread_set_strongref(pthread_t thread);
 int _emscripten_thread_is_valid(pthread_t thread);
 
 void _emscripten_thread_exit_joinable(pthread_t thread);
+void _emscripten_thread_exit(void* result);
 void _emscripten_process_dlopen_queue(void);
 
 #ifdef NDEBUG

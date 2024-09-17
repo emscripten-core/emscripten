@@ -68,7 +68,7 @@ var STACK_OVERFLOW_CHECK = 0;
 // When STACK_OVERFLOW_CHECK is enabled we also check writes to address zero.
 // This can help detect NULL pointer usage.  If you want to skip this extra
 // check (for example, if you want reads from the address zero to always return
-// zero) you can disabled this here.  This setting has no effect when
+// zero) you can disable this here.  This setting has no effect when
 // STACK_OVERFLOW_CHECK is disabled.
 var CHECK_NULL_WRITES = true;
 
@@ -273,7 +273,7 @@ var ALLOW_TABLE_GROWTH = false;
 // [link]
 var GLOBAL_BASE = 1024;
 
-// Where where table slots (function addresses) are allocated.
+// Where table slots (function addresses) are allocated.
 // This must be at least 1 to reserve the zero slot for the null pointer.
 // [link]
 var TABLE_BASE = 1;
@@ -336,10 +336,9 @@ var SAFE_HEAP_LOG = false;
 
 // Allows function pointers to be cast, wraps each call of an incorrect type
 // with a runtime correction.  This adds overhead and should not be used
-// normally.  It also forces ALIASING_FUNCTION_POINTERS to 0.  Aside from making
-// calls not fail, this tries to convert values as best it can.
-// We use 64 bits (i64) to represent values, as if we wrote the sent value to
-// memory and loaded the received type from the same memory (using
+// normally.  Aside from making calls not fail, this tries to convert values as
+// best it can.  We use 64 bits (i64) to represent values, as if we wrote the
+// sent value to memory and loaded the received type from the same memory (using
 // truncs/extends/ reinterprets). This means that when types do not match the
 // emulated values may not match (this is true of native too, for that matter -
 // this is all undefined behavior). This approaches appears good enough to
@@ -795,7 +794,7 @@ var WASM_EXNREF = false;
 // desirable.
 //
 // [link]
-var NODEJS_CATCH_EXIT = true;
+var NODEJS_CATCH_EXIT = false;
 
 // Catch unhandled rejections in node. This only effect versions of node older
 // than 15.  Without this, old version node will print a warning, but exit
@@ -1007,7 +1006,7 @@ var INCOMING_MODULE_JS_API = [
   'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
   'preMainLoop', 'preRun',
   'preinitializedWebGLContext', 'preloadPlugins',
-  'print', 'printErr', 'quit', 'setStatus', 'statusMessage', 'stderr',
+  'print', 'printErr', 'setStatus', 'statusMessage', 'stderr',
   'stdin', 'stdout', 'thisProgram', 'wasm', 'wasmBinary', 'websocket'
 ];
 
@@ -1636,9 +1635,13 @@ var USE_SQLITE3 = false;
 // [compile+link] - affects user code at compile and system libraries at link.
 var SHARED_MEMORY = false;
 
-// If true, enables support for Wasm Workers. Wasm Workers enable applications
+// If 1, enables support for Wasm Workers. Wasm Workers enable applications
 // to create threads using a lightweight web-specific API that builds on top
-// of Wasm SharedArrayBuffer + Atomics API.
+// of Wasm SharedArrayBuffer + Atomics API. When enabled, a new build output
+// file a.ww.js will be generated to bootstrap the Wasm Worker JS contexts.
+// If 2, enables support for Wasm Workers, but without using a separate a.ww.js
+// file on the side. This can simplify deployment of builds, but will have a
+// downside that the generated build will no longer be csp-eval compliant.
 // [compile+link] - affects user code at compile and system libraries at link.
 var WASM_WORKERS = 0;
 
@@ -1988,11 +1991,10 @@ var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = true;
 // transition or pointer lock require that the request originates from within
 // an user initiated event, such as mouse click or keyboard press. Refactoring
 // an application to follow this kind of program structure can be difficult, so
-// HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=1 flag allows transparent
-// emulation of this by deferring synchronous fullscreen mode and pointer lock
-// requests until a suitable event callback is generated. Set this to 0
-// to disable support for deferring to save code space if your application does
-// not need support for deferred calls.
+// HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS allows transparent emulation
+// of this by deferring such requests until a suitable event callback is
+// generated. Set this to 0 to disable support for deferring to on save code
+// size if your application does not need support for deferred calls.
 // [link]
 var HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS = true;
 
@@ -2172,10 +2174,6 @@ var SIGNATURE_CONVERSIONS = [];
 // Internal (testing only): Disables the blitOffscreenFramebuffer VAO path.
 // [link]
 var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = false;
-
-// Internal (testing only): Forces memory growing to fail.
-// [link]
-var TEST_MEMORY_GROWTH_FAILS = false;
 
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]

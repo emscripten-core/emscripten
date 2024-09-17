@@ -19,14 +19,14 @@ var LibraryDylink = {
     var wasmPlugin = {
       'promiseChainEnd': Promise.resolve(),
       'canHandle': (name) => {
-        return !Module.noWasmDecoding && name.endsWith('.so')
+        return !Module['noWasmDecoding'] && name.endsWith('.so')
       },
       'handle': (byteArray, name, onload, onerror) => {
         // loadWebAssemblyModule can not load modules out-of-order, so rather
         // than just running the promises in parallel, this makes a chain of
         // promises to run in series.
         wasmPlugin['promiseChainEnd'] = wasmPlugin['promiseChainEnd'].then(
-          () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true}, name)).then(
+          () => loadWebAssemblyModule(byteArray, {loadAsync: true, nodelete: true}, name, {})).then(
             (exports) => {
 #if DYLINK_DEBUG
               dbg(`registering preloadedWasm: ${name}`);
@@ -581,8 +581,10 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
   $dumpTable__deps: ['$wasmTable'],
   $dumpTable: () => {
-    for (var i = 0; i < wasmTable.length; i++)
+    var len = wasmTable.length;
+    for (var i = {{{ toIndexType(0) }}} ; i < len; i++) {
       dbg(`table: ${i} : ${wasmTable.get(i)}`);
+    }
   },
 #endif
 
@@ -641,7 +643,7 @@ var LibraryDylink = {
         tableBase = {{{ makeGetValue('handle', C_STRUCTS.dso.table_addr, '*') }}};
       }
 
-      var tableGrowthNeeded = tableBase + metadata.tableSize - wasmTable.length;
+      var tableGrowthNeeded = tableBase + metadata.tableSize - {{{ from64Expr('wasmTable.length') }}};
       if (tableGrowthNeeded > 0) {
 #if DYLINK_DEBUG
         dbg("loadModule: growing table: " + tableGrowthNeeded);
@@ -814,8 +816,7 @@ var LibraryDylink = {
         for (var name in moduleExports) {
           if (name.startsWith('__em_js__')) {
             var start = moduleExports[name]
-            {{{ from64('start') }}}
-            var jsString = UTF8ToString(start);
+            var jsString = UTF8ToString({{{ from64Expr('start') }}});
             // EM_JS strings are stored in the data section in the form
             // SIG<::>BODY.
             var parts = jsString.split('<::>');
@@ -877,7 +878,7 @@ var LibraryDylink = {
     if (flags.loadAsync) {
       return metadata.neededDynlibs
         .reduce((chain, dynNeeded) => chain.then(() =>
-          loadDynamicLibrary(dynNeeded, flags)
+          loadDynamicLibrary(dynNeeded, flags, localScope)
         ), Promise.resolve())
         .then(loadModule);
     }
@@ -1008,9 +1009,7 @@ var LibraryDylink = {
 
       var libFile = locateFile(libName);
       if (flags.loadAsync) {
-        return new Promise(function(resolve, reject) {
-          asyncLoad(libFile, resolve, reject);
-        });
+        return new Promise((resolve, reject) => asyncLoad(libFile, resolve, reject));
       }
 
       // load the binary synchronously

@@ -34,6 +34,14 @@ if (Module['doWasm2JS']) {
 #endif
 #endif
 
+#if MAYBE_WASM2JS
+if (WebAssembly.isWasm2js) {
+  // We don't need to actually download a wasm binary, mark it as present but
+  // empty.
+  wasmBinary = [];
+}
+#endif
+
 #if ASSERTIONS && WASM == 1
 if (typeof WebAssembly != 'object') {
   err('no native wasm support detected');
@@ -131,7 +139,7 @@ var HEAP,
 /* BigInt64Array type is not correctly defined in closure
 /** not-@type {!BigInt64Array} */
   HEAP64,
-/* BigUInt64Array type is not correctly defined in closure
+/* BigUint64Array type is not correctly defined in closure
 /** not-t@type {!BigUint64Array} */
   HEAPU64,
 #endif
@@ -163,7 +171,6 @@ assert(!Module['INITIAL_MEMORY'], 'Detected runtime INITIAL_MEMORY setting.  Use
 #endif // !IMPORTED_MEMORY && ASSERTIONS
 
 #include "runtime_stack_check.js"
-#include "runtime_assertions.js"
 
 var __ATPRERUN__  = []; // functions called before the runtime is initialized
 var __ATINIT__    = []; // functions called during startup
@@ -423,7 +430,6 @@ function abort(what) {
   err(what);
 
   ABORT = true;
-  EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
   what += '. Build with -sASSERTIONS for more info.';
@@ -524,15 +530,14 @@ function createExportWrapper(name, nargs) {
 // to ignore exceptions from there since they're handled by callMain directly.
 var abortWrapperDepth = 0;
 
-// Creates a wrapper in a closure so that each wrapper gets it's own copy of 'original'
 function makeAbortWrapper(original) {
   return (...args) => {
     // Don't allow this function to be called if we're aborted!
     if (ABORT) {
-      throw "program has already aborted!";
+      throw 'program has already aborted!';
     }
 
-    abortWrapperDepth += 1;
+    abortWrapperDepth++;
     try {
       return original(...args);
     } catch (e) {
@@ -551,10 +556,10 @@ function makeAbortWrapper(original) {
         throw e;
       }
 
-      abort("unhandled exception: " + [e, e.stack]);
+      abort('unhandled exception: ' + [e, e.stack]);
     }
     finally {
-      abortWrapperDepth -= 1;
+      abortWrapperDepth--;
     }
   }
 }
@@ -567,12 +572,12 @@ function instrumentWasmExportsWithAbort(exports) {
   // Override the exported functions with the wrappers and copy over any other symbols
   var instExports = {};
   for (var name in exports) {
-      var original = exports[name];
-      if (typeof original == 'function') {
-        instExports[name] = makeAbortWrapper(original);
-      } else {
-        instExports[name] = original;
-      }
+    var original = exports[name];
+    if (typeof original == 'function') {
+      instExports[name] = makeAbortWrapper(original);
+    } else {
+      instExports[name] = original;
+    }
   }
 
   return instExports;
@@ -648,15 +653,12 @@ function getBinaryPromise(binaryFile) {
       || isDataURI(binaryFile)
 #endif
       ) {
-    // Fetch the binary use readAsync
-    return new Promise((resolve, reject) => {
-      readAsync(binaryFile,
-        (response) => resolve(new Uint8Array(/** @type{!ArrayBuffer} */(response))),
-        (error) => {
-          try { resolve(getBinarySync(binaryFile)); }
-          catch (e) { reject(e); }
-        });
-    });
+    // Fetch the binary using readAsync
+    return readAsync(binaryFile).then(
+      (response) => new Uint8Array(/** @type{!ArrayBuffer} */(response)),
+      // Fall back to getBinarySync if readAsync fails
+      () => getBinarySync(binaryFile)
+    );
   }
 #endif
 

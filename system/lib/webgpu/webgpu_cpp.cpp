@@ -731,6 +731,30 @@ namespace wgpu {
     static_assert(offsetof(ChainedStruct, sType) == offsetof(WGPUChainedStruct, sType),
             "offsetof mismatch for ChainedStruct::sType");
 
+    // AdapterInfo
+
+    static_assert(sizeof(AdapterInfo) == sizeof(WGPUAdapterInfo), "sizeof mismatch for AdapterInfo");
+    static_assert(alignof(AdapterInfo) == alignof(WGPUAdapterInfo), "alignof mismatch for AdapterInfo");
+
+    static_assert(offsetof(AdapterInfo, nextInChain) == offsetof(WGPUAdapterInfo, nextInChain),
+            "offsetof mismatch for AdapterInfo::nextInChain");
+    static_assert(offsetof(AdapterInfo, vendor) == offsetof(WGPUAdapterInfo, vendor),
+            "offsetof mismatch for AdapterInfo::vendor");
+    static_assert(offsetof(AdapterInfo, architecture) == offsetof(WGPUAdapterInfo, architecture),
+            "offsetof mismatch for AdapterInfo::architecture");
+    static_assert(offsetof(AdapterInfo, device) == offsetof(WGPUAdapterInfo, device),
+            "offsetof mismatch for AdapterInfo::device");
+    static_assert(offsetof(AdapterInfo, description) == offsetof(WGPUAdapterInfo, description),
+            "offsetof mismatch for AdapterInfo::description");
+    static_assert(offsetof(AdapterInfo, backendType) == offsetof(WGPUAdapterInfo, backendType),
+            "offsetof mismatch for AdapterInfo::backendType");
+    static_assert(offsetof(AdapterInfo, adapterType) == offsetof(WGPUAdapterInfo, adapterType),
+            "offsetof mismatch for AdapterInfo::adapterType");
+    static_assert(offsetof(AdapterInfo, vendorID) == offsetof(WGPUAdapterInfo, vendorID),
+            "offsetof mismatch for AdapterInfo::vendorID");
+    static_assert(offsetof(AdapterInfo, deviceID) == offsetof(WGPUAdapterInfo, deviceID),
+            "offsetof mismatch for AdapterInfo::deviceID");
+
     // AdapterProperties
 
     static_assert(sizeof(AdapterProperties) == sizeof(WGPUAdapterProperties), "sizeof mismatch for AdapterProperties");
@@ -1924,6 +1948,55 @@ template <typename T>
     static_assert(offsetof(RenderPipelineDescriptor, fragment) == offsetof(WGPURenderPipelineDescriptor, fragment),
             "offsetof mismatch for RenderPipelineDescriptor::fragment");
 
+    // AdapterInfo implementation
+    AdapterInfo::~AdapterInfo() {
+        if (this->vendor != nullptr || this->architecture != nullptr || this->device != nullptr || this->description != nullptr) {
+            wgpuAdapterInfoFreeMembers(
+                *reinterpret_cast<WGPUAdapterInfo*>(this));
+        }
+    }
+
+    static void Reset(AdapterInfo& value) {
+        AdapterInfo defaultValue{};
+        AsNonConstReference(value.vendor) = defaultValue.vendor;
+        AsNonConstReference(value.architecture) = defaultValue.architecture;
+        AsNonConstReference(value.device) = defaultValue.device;
+        AsNonConstReference(value.description) = defaultValue.description;
+        AsNonConstReference(value.backendType) = defaultValue.backendType;
+        AsNonConstReference(value.adapterType) = defaultValue.adapterType;
+        AsNonConstReference(value.vendorID) = defaultValue.vendorID;
+        AsNonConstReference(value.deviceID) = defaultValue.deviceID;
+    }
+
+    AdapterInfo::AdapterInfo(AdapterInfo&& rhs)
+        : vendor(rhs.vendor),
+                architecture(rhs.architecture),
+                device(rhs.device),
+                description(rhs.description),
+                backendType(rhs.backendType),
+                adapterType(rhs.adapterType),
+                vendorID(rhs.vendorID),
+                deviceID(rhs.deviceID){
+        Reset(rhs);
+    }
+
+    AdapterInfo& AdapterInfo::operator=(AdapterInfo&& rhs) {
+        if (&rhs == this) {
+            return *this;
+        }
+        this->~AdapterInfo();
+        AsNonConstReference(this->vendor) = std::move(rhs.vendor);
+        AsNonConstReference(this->architecture) = std::move(rhs.architecture);
+        AsNonConstReference(this->device) = std::move(rhs.device);
+        AsNonConstReference(this->description) = std::move(rhs.description);
+        AsNonConstReference(this->backendType) = std::move(rhs.backendType);
+        AsNonConstReference(this->adapterType) = std::move(rhs.adapterType);
+        AsNonConstReference(this->vendorID) = std::move(rhs.vendorID);
+        AsNonConstReference(this->deviceID) = std::move(rhs.deviceID);
+        Reset(rhs);
+        return *this;
+    }
+
     // AdapterProperties
     AdapterProperties::~AdapterProperties() {
         if (this->vendorName != nullptr || this->architecture != nullptr || this->name != nullptr || this->driverDescription != nullptr) {
@@ -1986,6 +2059,10 @@ template <typename T>
     size_t Adapter::EnumerateFeatures(FeatureName * features) const {
         auto result = wgpuAdapterEnumerateFeatures(Get(), reinterpret_cast<WGPUFeatureName * >(features));
         return result;
+    }
+    void Adapter::GetInfo(AdapterInfo * info) const {
+        *info = AdapterInfo();
+        wgpuAdapterGetInfo(Get(), reinterpret_cast<WGPUAdapterInfo * >(info));
     }
     Bool Adapter::GetLimits(SupportedLimits * limits) const {
         auto result = wgpuAdapterGetLimits(Get(), reinterpret_cast<WGPUSupportedLimits * >(limits));

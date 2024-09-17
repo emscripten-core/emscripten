@@ -73,7 +73,13 @@ function optPassRemoveRedundantOperatorNews(ast) {
         // in emscripten with real side effects.  For example, see
         // loadWasmModuleToWorker which returns a `new Promise` that is never
         // referenced (a least in some builds).
-        if (n.expression.callee.name !== 'Promise') {
+        //
+        // Another exception is made for `new WebAssembly.*` since we create and
+        // unused `WebAssembly.Memory` when probing for wasm64 fatures.
+        if (
+          n.expression.callee.name !== 'Promise' &&
+          n.expression.callee.object?.name !== 'WebAssembly'
+        ) {
           nodeArray.splice(i--, 1);
         }
       }
@@ -217,7 +223,7 @@ function runOnJsText(js, pretty = false) {
   const output = terserAst.print_to_string({
     wrap_func_args: false,
     beautify: pretty,
-    indent_level: pretty ? 1 : 0,
+    indent_level: pretty ? 2 : 0,
   });
 
   return output;

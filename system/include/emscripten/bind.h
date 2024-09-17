@@ -105,7 +105,8 @@ void _embind_register_function(
     const char* signature,
     GenericFunction invoker,
     GenericFunction function,
-    bool isAsync);
+    bool isAsync,
+    bool isNonnullReturn);
 
 void _embind_register_value_array(
     TYPEID tupleType,
@@ -182,7 +183,8 @@ void _embind_register_class_function(
     GenericFunction invoker,
     void* context,
     unsigned isPureVirtual,
-    bool isAsync);
+    bool isAsync,
+    bool isNonnullReturn);
 
 void _embind_register_class_property(
     TYPEID classType,
@@ -204,7 +206,8 @@ void _embind_register_class_class_function(
     const char* invokerSignature,
     GenericFunction invoker,
     GenericFunction method,
-    bool isAsync);
+    bool isAsync,
+    bool isNonnullReturn);
 
 void _embind_register_class_class_property(
     TYPEID classType,
@@ -331,6 +334,22 @@ struct async {
     };
 };
 
+struct pure_virtual {
+    template<typename InputType, int Index>
+    struct Transform {
+        typedef InputType type;
+    };
+};
+
+template<typename Slot>
+struct nonnull {
+    static_assert(std::is_same<Slot, ret_val>::value, "Only nonnull return values are currently supported.");
+    template<typename InputType, int Index>
+    struct Transform {
+        typedef InputType type;
+    };
+};
+
 namespace return_value_policy {
 
 struct take_ownership : public allow_raw_pointers {};
@@ -339,6 +358,54 @@ struct reference : public allow_raw_pointers {};
 } // end namespace return_value_policy
 
 namespace internal {
+
+template<typename... Policies>
+struct isPolicy;
+
+template<typename... Rest>
+struct isPolicy<return_value_policy::take_ownership, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename... Rest>
+struct isPolicy<return_value_policy::reference, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename... Rest>
+struct isPolicy<emscripten::async, Rest...> {
+    static constexpr bool value = true;
+};
+
+template <typename T, typename... Rest>
+struct isPolicy<emscripten::allow_raw_pointer<T>, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename... Rest>
+struct isPolicy<allow_raw_pointers, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename... Rest>
+struct isPolicy<emscripten::pure_virtual, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename T, typename... Rest>
+struct isPolicy<emscripten::nonnull<T>, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename T, typename... Rest>
+struct isPolicy<T, Rest...> {
+    static constexpr bool value = isPolicy<Rest...>::value;
+};
+
+template<>
+struct isPolicy<> {
+    static constexpr bool value = false;
+};
 
 template<typename ReturnType, typename... Rest>
 struct GetReturnValuePolicy {
@@ -375,6 +442,24 @@ struct isAsync<T, Rest...> {
 
 template<>
 struct isAsync<> {
+    static constexpr bool value = false;
+};
+
+template<typename... Policies>
+struct isNonnullReturn;
+
+template<typename... Rest>
+struct isNonnullReturn<nonnull<ret_val>, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename T, typename... Rest>
+struct isNonnullReturn<T, Rest...> {
+    static constexpr bool value = isNonnullReturn<Rest...>::value;
+};
+
+template<>
+struct isNonnullReturn<> {
     static constexpr bool value = false;
 };
 
@@ -590,7 +675,8 @@ void function(const char* name, ReturnType (*fn)(Args...), Policies...) {
         getSignature(invoke),
         reinterpret_cast<GenericFunction>(invoke),
         reinterpret_cast<GenericFunction>(fn),
-        isAsync<Policies...>::value);
+        isAsync<Policies...>::value,
+        isNonnullReturn<Policies...>::value);
 }
 
 namespace internal {
@@ -691,12 +777,12 @@ struct MemberAccess {
     typedef internal::BindingType<MemberType> MemberBinding;
     typedef typename MemberBinding::WireType WireType;
 
-    template<typename ClassType>
+    template<typename ClassType, typename ReturnPolicy = rvp::default_tag>
     static WireType getWire(
         const MemberPointer& field,
-        const ClassType& ptr
+        ClassType& ptr
     ) {
-        return MemberBinding::toWireType(ptr.*field, rvp::default_tag{});
+        return MemberBinding::toWireType(ptr.*field, ReturnPolicy{});
     }
 
     template<typename ClassType>
@@ -748,9 +834,9 @@ struct GetterPolicy<GetterReturnType (GetterThisType::*)() const> {
     typedef internal::BindingType<ReturnType> Binding;
     typedef typename Binding::WireType WireType;
 
-    template<typename ClassType>
+    template<typename ClassType, typename ReturnPolicy>
     static WireType get(const Context& context, const ClassType& ptr) {
-        return Binding::toWireType((ptr.*context)(), rvp::default_tag{});
+        return Binding::toWireType((ptr.*context)(), ReturnPolicy{});
     }
 
     static void* getContext(Context context) {
@@ -772,9 +858,9 @@ struct GetterPolicy<GetterReturnType (*)(const GetterThisType&)> {
     typedef internal::BindingType<ReturnType> Binding;
     typedef typename Binding::WireType WireType;
 
-    template<typename ClassType>
+    template<typename ClassType, typename ReturnPolicy>
     static WireType get(const Context& context, const ClassType& ptr) {
-        return Binding::toWireType(context(ptr), rvp::default_tag{});
+        return Binding::toWireType(context(ptr), ReturnPolicy{});
     }
 
     static void* getContext(Context context) {
@@ -790,9 +876,9 @@ struct GetterPolicy<std::function<GetterReturnType(const GetterThisType&)>> {
     typedef internal::BindingType<ReturnType> Binding;
     typedef typename Binding::WireType WireType;
 
-    template<typename ClassType>
+    template<typename ClassType, typename ReturnPolicy>
     static WireType get(const Context& context, const ClassType& ptr) {
-        return Binding::toWireType(context(ptr), rvp::default_tag{});
+        return Binding::toWireType(context(ptr), ReturnPolicy{});
     }
 
     static void* getContext(const Context& context) {
@@ -808,9 +894,9 @@ struct GetterPolicy<PropertyTag<Getter, GetterReturnType>> {
     typedef internal::BindingType<ReturnType> Binding;
     typedef typename Binding::WireType WireType;
 
-    template<typename ClassType>
+    template<typename ClassType, typename ReturnPolicy>
     static WireType get(const Context& context, const ClassType& ptr) {
-        return Binding::toWireType(context(ptr), rvp::default_tag{});
+        return Binding::toWireType(context(ptr), ReturnPolicy{});
     }
 
     static void* getContext(const Context& context) {
@@ -899,6 +985,18 @@ struct SetterPolicy<PropertyTag<Setter, SetterArgumentType>> {
     }
 };
 
+// Helper available in C++14.
+template <bool _Test, class _T1, class _T2>
+using conditional_t = typename std::conditional<_Test, _T1, _T2>::type;
+
+// Conjunction is available in C++17
+template<class...> struct conjunction : std::true_type {};
+template<class B1> struct conjunction<B1> : B1 {};
+template<class B1, class... Bn>
+struct conjunction<B1, Bn...>
+    : conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
+
+
 class noncopyable {
 protected:
     noncopyable() {}
@@ -980,7 +1078,7 @@ public:
         typedef GetterPolicy<Getter> GP;
         typedef SetterPolicy<Setter> SP;
 
-        auto g = &GP::template get<ClassType>;
+        auto g = &GP::template get<ClassType, rvp::default_tag>;
         auto s = &SP::template set<ClassType>;
 
         _embind_register_value_array_element(
@@ -1106,7 +1204,7 @@ public:
         typedef GetterPolicy<Getter> GP;
         typedef SetterPolicy<Setter> SP;
 
-        auto g = &GP::template get<ClassType>;
+        auto g = &GP::template get<ClassType, rvp::default_tag>;
         auto s = &SP::template set<ClassType>;
 
         _embind_register_value_object_field(
@@ -1346,13 +1444,6 @@ val wrapped_extend(const std::string& name, const val& properties) {
 
 } // end namespace internal
 
-struct pure_virtual {
-    template<typename InputType, int Index>
-    struct Transform {
-        typedef InputType type;
-    };
-};
-
 namespace internal {
 
 template<typename... Policies>
@@ -1461,7 +1552,8 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {
             reinterpret_cast<GenericFunction>(invoke),
             getContext(memberFunction),
             isPureVirtual<Policies...>::value,
-            isAsync<Policies...>::value);
+            isAsync<Policies...>::value,
+            isNonnullReturn<Policies...>::value);
     }
 };
 
@@ -1490,7 +1582,8 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
             reinterpret_cast<GenericFunction>(invoke),
             getContext(memberFunction),
             isPureVirtual<Policies...>::value,
-            isAsync<Policies...>::value);
+            isAsync<Policies...>::value,
+            isNonnullReturn<Policies...>::value);
     }
 };
 
@@ -1518,7 +1611,8 @@ struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
             reinterpret_cast<GenericFunction>(invoke),
             getContext(function),
             false,
-            isAsync<Policies...>::value);
+            isAsync<Policies...>::value,
+            isNonnullReturn<Policies...>::value);
     }
 };
 
@@ -1546,7 +1640,8 @@ struct RegisterClassMethod<std::function<ReturnType (ThisType, Args...)>> {
             reinterpret_cast<GenericFunction>(invoke),
             getContext(function),
             false,
-            isAsync<Policies...>::value);
+            isAsync<Policies...>::value,
+            isNonnullReturn<Policies...>::value);
     }
 };
 
@@ -1568,7 +1663,8 @@ struct RegisterClassMethod<ReturnType (ThisType, Args...)> {
             reinterpret_cast<GenericFunction>(invoke),
             getContext(callable),
             false,
-            isAsync<Policies...>::value);
+            isAsync<Policies...>::value,
+            isNonnullReturn<Policies...>::value);
     }
 };
 
@@ -1697,7 +1793,7 @@ public:
             class_function(
                 "implement",
                 &wrapped_new<WrapperType*, WrapperType, val, ConstructorArgs...>,
-                allow_raw_pointer<ret_val>())
+                allow_raw_pointer<ret_val>(), nonnull<ret_val>())
             .class_function(
                 "extend",
                 &wrapped_extend<WrapperType>)
@@ -1741,15 +1837,24 @@ public:
         return *this;
     }
 
-    template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
-    EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, const FieldType ClassType::*field) const {
+    template<
+        typename FieldType,
+        typename... Policies,
+        // Prevent the template from wrongly matching the getter function
+        // overload.
+        typename = typename std::enable_if<
+            !std::is_function<FieldType>::value &&
+            internal::conjunction<internal::isPolicy<Policies>...>::value>::type>
+    EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, const FieldType ClassType::*field, Policies...) const {
         using namespace internal;
+        using ReturnPolicy = GetReturnValuePolicy<FieldType, Policies...>::tag;
+        typename WithPolicies<Policies...>::template ArgTypeList<FieldType> returnType;
 
-        auto getter = &MemberAccess<ClassType, FieldType>::template getWire<ClassType>;
+        auto getter = &MemberAccess<ClassType, FieldType>::template getWire<ClassType, ReturnPolicy>;
         _embind_register_class_property(
             TypeID<ClassType>::get(),
             fieldName,
-            TypeID<FieldType>::get(),
+            returnType.getTypes()[0],
             getSignature(getter),
             reinterpret_cast<GenericFunction>(getter),
             getContext(field),
@@ -1760,40 +1865,57 @@ public:
         return *this;
     }
 
-    template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
-    EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, FieldType ClassType::*field) const {
+    template<
+        typename FieldType,
+        typename... Policies,
+        // Prevent the template from wrongly matching the getter function
+        // overload.
+        typename = typename std::enable_if<
+            !std::is_function<FieldType>::value &&
+            internal::conjunction<internal::isPolicy<Policies>...>::value>::type>
+    EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, FieldType ClassType::*field, Policies...) const {
         using namespace internal;
+        using ReturnPolicy = GetReturnValuePolicy<FieldType, Policies...>::tag;
+        typename WithPolicies<Policies...>::template ArgTypeList<FieldType> returnType;
 
-        auto getter = &MemberAccess<ClassType, FieldType>::template getWire<ClassType>;
+        auto getter = &MemberAccess<ClassType, FieldType>::template getWire<ClassType, ReturnPolicy>;
         auto setter = &MemberAccess<ClassType, FieldType>::template setWire<ClassType>;
         _embind_register_class_property(
             TypeID<ClassType>::get(),
             fieldName,
-            TypeID<FieldType>::get(),
+            returnType.getTypes()[0],
             getSignature(getter),
             reinterpret_cast<GenericFunction>(getter),
             getContext(field),
-            TypeID<FieldType>::get(),
+            returnType.getTypes()[0],
             getSignature(setter),
             reinterpret_cast<GenericFunction>(setter),
             getContext(field));
         return *this;
     }
 
-    template<typename PropertyType = internal::DeduceArgumentsTag, typename Getter>
-    EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter) const {
+    template<
+        typename PropertyType = internal::DeduceArgumentsTag,
+        typename Getter,
+        typename... Policies,
+        // Prevent the template from wrongly matching the getter/setter overload
+        // of this function.
+        typename = typename std::enable_if<
+            internal::conjunction<internal::isPolicy<Policies>...>::value>::type>
+    EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter, Policies...) const {
         using namespace internal;
 
         typedef GetterPolicy<
             typename std::conditional<std::is_same<PropertyType, internal::DeduceArgumentsTag>::value,
                                                    Getter,
                                                    PropertyTag<Getter, PropertyType>>::type> GP;
-
-        auto gter = &GP::template get<ClassType>;
+        using ReturnPolicy = GetReturnValuePolicy<typename GP::ReturnType, Policies...>::tag;
+        auto gter = &GP::template get<ClassType, ReturnPolicy>;
+        typename WithPolicies<Policies...>::template ArgTypeList<typename GP::ReturnType> returnType;
         _embind_register_class_property(
             TypeID<ClassType>::get(),
             fieldName,
-            TypeID<typename GP::ReturnType>::get(),
+            returnType.getTypes()[0],
             getSignature(gter),
             reinterpret_cast<GenericFunction>(gter),
             GP::getContext(getter),
@@ -1804,9 +1926,18 @@ public:
         return *this;
     }
 
-    template<typename PropertyType = internal::DeduceArgumentsTag, typename Getter, typename Setter>
-    EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter, Setter setter) const {
+    template<
+        typename PropertyType = internal::DeduceArgumentsTag,
+        typename Getter,
+        typename Setter,
+        typename... Policies,
+        // Similar to the other variadic property overloads this can greedily
+        // match the wrong overload so we need to ensure the setter is not a
+        // policy argument.
+        typename = typename std::enable_if<!internal::isPolicy<Setter>::value>::type>
+    EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter, Setter setter, Policies...) const {
         using namespace internal;
+        using ReturnPolicy = GetReturnValuePolicy<PropertyType, Policies...>::tag;
 
         typedef GetterPolicy<
             typename std::conditional<std::is_same<PropertyType, internal::DeduceArgumentsTag>::value,
@@ -1818,7 +1949,7 @@ public:
                                                    PropertyTag<Setter, PropertyType>>::type> SP;
 
 
-        auto gter = &GP::template get<ClassType>;
+        auto gter = &GP::template get<ClassType, ReturnPolicy>;
         auto ster = &SP::template set<ClassType>;
 
         _embind_register_class_property(
@@ -1850,7 +1981,8 @@ public:
             getSignature(invoke),
             reinterpret_cast<GenericFunction>(invoke),
             reinterpret_cast<GenericFunction>(classMethod),
-            isAsync<Policies...>::value);
+            isAsync<Policies...>::value,
+            isNonnullReturn<Policies...>::value);
         return *this;
     }
 

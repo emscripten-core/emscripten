@@ -63,7 +63,6 @@ EMTEST_RETRY_FLAKY = None
 EMTEST_LACKS_NATIVE_CLANG = None
 EMTEST_VERBOSE = None
 EMTEST_REBASELINE = None
-EMTEST_FORCE64 = None
 
 # Verbosity level control for subprocess calls to configure + make.
 # 0: disabled.
@@ -248,6 +247,7 @@ def requires_native_clang(func):
 def requires_node(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_node()
     return func(self, *args, **kwargs)
@@ -258,6 +258,7 @@ def requires_node(func):
 def requires_node_canary(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_node_canary()
     return func(self, *args, **kwargs)
@@ -268,6 +269,7 @@ def requires_node_canary(func):
 def requires_wasm64(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_wasm64()
     return func(self, *args, **kwargs)
@@ -278,6 +280,7 @@ def requires_wasm64(func):
 def requires_wasm_eh(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_wasm_eh()
     return func(self, *args, **kwargs)
@@ -288,6 +291,7 @@ def requires_wasm_eh(func):
 def requires_wasm_exnref(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_wasm_exnref()
     return func(self, *args, **kwargs)
@@ -298,6 +302,7 @@ def requires_wasm_exnref(func):
 def requires_v8(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_v8()
     return func(self, *args, **kwargs)
@@ -317,6 +322,8 @@ def requires_wasm2js(f):
 
 
 def node_pthreads(f):
+  assert callable(f)
+
   @wraps(f)
   def decorated(self, *args, **kwargs):
     self.setup_node_pthreads()
@@ -362,6 +369,39 @@ def with_env_modify(updates):
     return modified
 
   return decorated
+
+
+def also_with_wasmfs(f):
+  assert callable(f)
+
+  @wraps(f)
+  def metafunc(self, wasmfs, *args, **kwargs):
+    if wasmfs:
+      self.set_setting('WASMFS')
+      self.emcc_args.append('-DWASMFS')
+      f(self, *args, **kwargs)
+    else:
+      f(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,),
+                          'wasmfs': (True,)})
+  return metafunc
+
+
+def also_with_noderawfs(func):
+  assert callable(func)
+
+  @wraps(func)
+  def metafunc(self, rawfs, *args, **kwargs):
+    if rawfs:
+      self.require_node()
+      self.emcc_args += ['-DNODERAWFS']
+      self.set_setting('NODERAWFS')
+    func(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,),
+                          'rawfs': (True,)})
+  return metafunc
 
 
 # Decorator version of env_modify
@@ -537,8 +577,8 @@ def with_all_eh_sjlj(f):
     else:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
-      # DISABLE_EXCEPTION_CATCHING=0 exports __cxa_can_catch and
-      # __cxa_is_pointer_type, so if we don't build in C++ mode, wasm-ld will
+      # DISABLE_EXCEPTION_CATCHING=0 exports __cxa_can_catch,
+      # so if we don't build in C++ mode, wasm-ld will
       # error out because libc++abi is not included. See
       # https://github.com/emscripten-core/emscripten/pull/14192 for details.
       self.set_setting('DEFAULT_TO_CXX')
@@ -796,6 +836,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('no dynamic linking support in wasm2js yet')
     if '-fsanitize=undefined' in self.emcc_args:
       self.skipTest('no dynamic linking support in UBSan yet')
+    # MEMORY64=2 mode doesn't currently support dynamic linking because
+    # The side modules are lowered to wasm32 when they are built, making
+    # them unlinkable with wasm64 binaries.
+    if self.get_setting('MEMORY64') == 2:
+      self.skipTest('MEMORY64=2 + dynamic linking is not currently supported')
 
   def require_v8(self):
     if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
@@ -827,8 +872,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def require_node_canary(self):
     nodejs = self.get_nodejs()
     if self.node_is_canary(nodejs):
-        self.require_engine(nodejs)
-        return
+      self.require_engine(nodejs)
+      return
 
     if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
       self.skipTest('test requires node canary and EMTEST_SKIP_NODE_CANARY is set')
@@ -844,10 +889,13 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.wasm_engines = []
 
   def require_wasm64(self):
+    if self.is_browser_test():
+      return
+
     nodejs = self.get_nodejs()
     if nodejs:
       version = shared.get_node_version(nodejs)
-      if version >= (16, 0, 0):
+      if version >= (23, 0, 0):
         self.js_engines = [nodejs]
         self.node_args += shared.node_memory64_flags()
         return
@@ -859,11 +907,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return
 
     if 'EMTEST_SKIP_WASM64' in os.environ:
-      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_WASM64 is set)')
+      self.skipTest('test requires node >= 23 or d8 (and EMTEST_SKIP_WASM64 is set)')
     else:
-      self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
+      self.fail('either d8 or node >= 23 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def require_simd(self):
+    if self.is_browser_test():
+      return
+
     nodejs = self.get_nodejs()
     if nodejs:
       version = shared.get_node_version(nodejs)
@@ -1151,7 +1202,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   #                  libraries, for example
   def get_emcc_args(self, main_file=False, compile_only=False, asm_only=False):
     def is_ldflag(f):
-      return any(f.startswith(s) for s in ['-sENVIRONMENT=', '--pre-js=', '--post-js='])
+      return any(f.startswith(s) for s in ['-sEXPORT_ES6', '-sPROXY_TO_PTHREAD', '-sENVIRONMENT=', '--pre-js=', '--post-js=', '-sPTHREAD_POOL_SIZE='])
 
     args = self.serialize_settings(compile_only or asm_only) + self.emcc_args
     if asm_only:
@@ -1284,10 +1335,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     long_lines = []
 
     def cleanup(line):
-      if len(line) > 2048:
-        # Sanity check that this is really the emscripten program/module on
-        # a single line.
-        assert line.startswith('var Module=typeof Module!="undefined"')
+      if len(line) > 2048 and line.startswith('var Module=typeof Module!="undefined"'):
         long_lines.append(line)
         line = '<REPLACED ENTIRE PROGRAM ON SINGLE LINE>'
       return line
@@ -1302,7 +1350,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return '\n'.join(lines)
 
   def run_js(self, filename, engine=None, args=None,
-             output_nicerizer=None,
              assert_returncode=0,
              interleaved_output=True):
     # use files, as PIPE can get too full and hang us
@@ -1343,8 +1390,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     ret = read_file(stdout_file)
     if not interleaved_output:
       ret += read_file(stderr_file)
-    if output_nicerizer:
-      ret = output_nicerizer(ret)
     if assert_returncode != 0:
       ret = self.clean_js_output(ret)
     if error or timeout_error or EMTEST_VERBOSE:
@@ -1362,7 +1407,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if assert_returncode == NON_ZERO:
         self.fail('JS subprocess unexpectedly succeeded (%s):  Output:\n%s' % (error.cmd, ret))
       else:
-        self.fail('JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
+        self.fail('JS subprocess failed (%s): %s (expected=%s).  Output:\n%s' % (error.cmd, error.returncode, assert_returncode, ret))
 
     #  We should pass all strict mode checks
     self.assertNotContained('strict warning:', ret)
@@ -1441,9 +1486,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     if regex:
       if type(values) is str:
-        self.assertTrue(re.search(values, string), 'Expected regex "%s" to match on:\n%s' % (values, string))
+        self.assertTrue(re.search(values, string, re.DOTALL), 'Expected regex "%s" to match on:\n%s' % (values, string))
       else:
-        match_any = any(re.search(o, string) for o in values)
+        match_any = any(re.search(o, string, re.DOTALL) for o in values)
         self.assertTrue(match_any, 'Expected at least one of "%s" to match on:\n%s' % (values, string))
       return
 
@@ -1677,7 +1722,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
            'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', emcc_args=extra_args)
 
     extra_args = []
-    for libname in ['liba', 'libb', 'libc']:
+    for libname in ('liba', 'libb', 'libc'):
       extra_args += ['--embed-file', libname + so]
     do_run(r'''
       #include <assert.h>
@@ -1735,7 +1780,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return output
 
   ## Does a complete test - builds, runs, checks output, etc.
-  def _build_and_run(self, filename, expected_output, args=None, output_nicerizer=None,
+  def _build_and_run(self, filename, expected_output, args=None,
                      no_build=False,
                      libraries=None,
                      includes=None,
@@ -1768,7 +1813,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.fail('No JS engine present to run this test with. Check %s and the paths therein.' % config.EM_CONFIG)
     for engine in engines:
       js_output = self.run_js(js_file, engine, args,
-                              output_nicerizer=output_nicerizer,
                               assert_returncode=assert_returncode,
                               interleaved_output=interleaved_output)
       js_output = js_output.replace('\r\n', '\n')

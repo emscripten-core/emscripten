@@ -23,7 +23,7 @@ import subprocess
 script_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(os.path.dirname(script_dir))
 
-sys.path.append(root_dir)
+sys.path.insert(0, root_dir)
 
 from tools.utils import path_from_root, read_file, safe_ensure_dirs
 

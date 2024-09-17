@@ -360,8 +360,8 @@ moves between languages. To make object ownership more explicit, *embind*
 supports smart pointers and return value policies. Return value
 polices dictate what happens to a C++ object when it is returned to JavaScript.
 
-To use a return value policy, pass the desired policy into function or method
-bindings. For example:
+To use a return value policy, pass the desired policy into function, method, or
+property bindings. For example:
 
 .. code:: cpp
 
@@ -826,6 +826,71 @@ To expose a C++ :cpp:func:`constant` to JavaScript, simply write:
 
 .. _embind-memory-view:
 
+Class Properties
+================
+
+.. warning:: By default ``property()`` bindings to objects use
+    ``return_value_policy::copy`` which can very easily lead to memory leaks
+    since each access to the property will create a new object that must be
+    deleted. Alternatively, use ``return_value_policy::reference``, so a new
+    object is not allocated and changes to the object will be reflected in the
+    original object.
+
+Class properties can be defined several ways as seen below.
+
+.. code:: cpp
+
+    struct Point {
+        float x;
+        float y;
+    };
+
+    struct Person {
+        Point location;
+        Point getLocation() const { // Note: const is required on getters
+            return location;
+        }
+        void setLocation(Point p) {
+            location = p;
+        }
+    };
+
+    EMSCRIPTEN_BINDINGS(xxx) {
+        class_<Person>("Person")
+            .constructor<>()
+            // Bind directly to a class member with automatically generated getters/setters using a
+            // reference return policy so the object does not need to be deleted JS.
+            .property("location", &Person::location, return_value_policy::reference())
+            // Same as above, but this will return a copy and the object must be deleted or it will
+            // leak!
+            .property("locationCopy", &Person::location)
+            // Bind using a only getter method for read only access.
+            .property("readOnlyLocation", &Person::getLocation, return_value_policy::reference())
+            // Bind using a getter and setter method.
+            .property("getterAndSetterLocation", &Person::getLocation, &Person::setLocation,
+                      return_value_policy::reference());
+        class_<Point>("Point")
+            .property("x", &Point::x)
+            .property("y", &Point::y);
+    }
+
+    int main() {
+        EM_ASM(
+            let person = new Module.Person();
+            person.location.x = 42;
+            console.log(person.location.x); // 42
+            let locationCopy = person.locationCopy;
+            // This is a copy so the original person's location will not be updated.
+            locationCopy.x = 99;
+            console.log(locationCopy.x); // 99
+            // Important: delete any copies!
+            locationCopy.delete();
+            console.log(person.readOnlyLocation.x); // 42
+            console.log(person.getterAndSetterLocation.x); // 42
+            person.delete();
+        );
+    }
+
 Memory views
 ============
 
@@ -1013,7 +1078,7 @@ For convenience, *embind* provides factory functions to register
     EMSCRIPTEN_BINDINGS(stl_wrappers) {
         register_vector<int>("VectorInt");
         register_map<int,int>("MapIntInt");
-        register_optional<std::string>("Optional);
+        register_optional<std::string>("Optional");
     }
 
 A full example is shown below:
@@ -1145,6 +1210,16 @@ registered using :cpp:func:`EMSCRIPTEN_DECLARE_VAL_TYPE` in combination with
         function("function_with_callback_param", &function_with_callback_param);
         register_type<CallbackType>("(message: string) => void");
     }
+
+
+``nonnull`` Pointers
+--------------------
+
+C++ functions that return pointers generate TS definitions with ``<SomeClass> |
+null`` to allow ``nullptr`` by default. If the C++ function is guaranteed to
+return a valid object, then a policy parameter of ``nonnull<ret_val>()`` can be
+added to the function binding to omit ``| null`` from TS. This avoids having to
+handle the ``null`` case in TS.
 
 Performance
 ===========

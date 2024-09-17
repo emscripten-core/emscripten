@@ -46,3 +46,19 @@ function updateMemoryViews() {
   {{{ maybeExportHeap('HEAPU64') }}}HEAPU64 = new BigUint64Array(b);
 #endif
 }
+
+#if MEMORY64 == 1
+var toIndexType = (function() {
+  // Probe for support of bigint bounds with memory64.
+  // TODO(sbc): Remove this once all browsers start requiring bigint here.
+  // See https://github.com/WebAssembly/memory64/issues/68
+  var bigintMemoryBounds = 1;
+  try {
+    /** @suppress {checkTypes} */
+    new WebAssembly.Memory({'initial': 1n, 'index': 'i64'});
+  } catch (e) {
+    bigintMemoryBounds = 0;
+  }
+  return (i) => bigintMemoryBounds ? BigInt(i) : i;
+})();
+#endif

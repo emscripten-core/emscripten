@@ -20,12 +20,6 @@ executors:
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
       EMTEST_BUILD_VERBOSE: "2"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
-  mac:
-    environment:
-      EMSDK_NOTTY: "1"
-    macos:
-      xcode: "13.4.1"
-    resource_class: macos.x86.medium.gen2
   mac-arm64:
     environment:
       EMSDK_NOTTY: "1"
@@ -112,7 +106,7 @@ commands:
     description: "install canary version of node"
     steps:
       - install-node-version:
-         node_version: "22.0.0-v8-canary20240423a2eb2005bd"
+         node_version: "23.0.0-v8-canary20240819f52f1c2f1c"
          canary: true
   install-v8:
     description: "install v8 using jsvu"
@@ -326,10 +320,8 @@ commands:
           environment:
             HOMEBREW_NO_AUTO_UPDATE: "1"
           command: |
-            brew list cmake || brew install cmake
-            brew list ninja || brew install ninja
-            brew list python3 || brew install python3
-            brew list pkg-config || brew install pkg-config
+            brew update
+            brew install cmake ninja python3 pkg-config
       - checkout
       - run:
           name: submodule update
@@ -345,7 +337,6 @@ commands:
         type: string
         default: ""
     steps:
-      - prepare-for-tests
       - run:
           name: download firefox
           command: |
@@ -622,17 +613,6 @@ jobs:
     steps:
       - run-tests-linux:
           test_targets: "wasm2js1"
-  test-wasm64l:
-    environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
-    executor: bionic
-    steps:
-      - run-tests-linux:
-          frozen_cache: false
-          # On older versions of node wasm64l.test_bigswitch uses a lot (~3.5Gb)
-          # of memory, so skip it here, but run it in test-wasm64 instead which
-          # has node canary installed.
-          test_targets: "wasm64l skip:wasm64l.test_bigswitch"
   test-wasm64:
     # We don't use `bionic` here since its tool old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
@@ -644,12 +624,19 @@ jobs:
       - run: rm -rf $HOME/.jsvu
       - install-v8
       - install-node-canary
+      # When running wasm64 tests we need to make sure we use the testing
+      # version of node (node canary) when running the compiler output (e.g.
+      # in configure tests.
+      - run:
+          name: configure node canary
+          command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64"
           test_targets: "
             wasm64
             core_2gb.test_*em_asm*
             core_2gb.test_*embind*
+            wasm64l.test_hello_world
             wasm64l.test_bigswitch
             other.test_memory64_proxies
             other.test_failing_growth_wasm64"
@@ -669,6 +656,12 @@ jobs:
       - run: rm -rf $HOME/.jsvu
       - install-v8
       - install-node-canary
+      # When running wasm64 tests we need to make sure we use the testing
+      # version of node (node canary) when running the compiler output (e.g.
+      # in configure tests.
+      - run:
+          name: configure node canary
+          command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64_4gb"
           test_targets: "wasm64_4gb"
@@ -790,6 +783,7 @@ jobs:
     executor: bionic
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_WASM64: "1"
     steps:
       - run: apt-get install -q -y ninja-build scons
       - run-tests-linux:
@@ -814,7 +808,14 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser64"
-          test_targets: "browser64"
+          # Skip tests that depend on running the output in node
+          # (This bot doesn't have node canary installed which is required to
+          # run wasm64 output).
+          test_targets: "browser64
+            skip:browser64.test_worker
+            skip:browser64.test_2gb_fail
+            skip:browser64.test_4gb_fail
+            skip:browser64.test_4gb"
   test-browser-chrome-2gb:
     executor: bionic
     environment:
@@ -835,6 +836,7 @@ jobs:
   test-browser-firefox:
     executor: bionic
     steps:
+      - prepare-for-tests
       - run-tests-firefox:
           title: "browser"
           # browser.test_sdl2_mouse and/or SDL2 should be fixed. The case happens
@@ -846,7 +848,29 @@ jobs:
           # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
           # are crashing Firefox (bugzil.la/1281796). The former case is
           # further blocked by issue #6897.
-          test_targets: "browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget"
+          test_targets: "
+            browser
+            skip:browser.test_sdl2_mouse
+            skip:browser.test_html5_webgl_create_context
+            skip:browser.test_webgl_offscreen_canvas_in_pthread
+            skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
+            skip:browser.test_glut_glutget
+            "
+  test-browser-firefox-wasm64:
+    executor: bionic
+    steps:
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
+      - pip-install
+      - install-emsdk
+      - run-tests-firefox:
+          title: "browser64"
+          test_targets: "
+            browser64.test_sdl_image
+            browser64.test_dylink_many
+            "
   # TODO(sbc): Re-enable once we figure out why the emrun tests are
   # locking up.
   #test-browser-chrome-emrun:
@@ -902,38 +926,6 @@ jobs:
           test_targets: "sockets.test_nodejs_sockets_echo*"
       - upload-test-results
 
-  test-mac:
-    executor: mac
-    environment:
-      # We don't install d8 or modern node on the mac runner so we skip any
-      # tests that depend on those.
-      EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_EH: "1"
-      EMTEST_SKIP_WASM64: "1"
-      EMTEST_SKIP_SCONS: "1"
-      EMCC_SKIP_SANITY_CHECK: "1"
-      # test_sse1 (the only @crossplatform native clang test) currently fails
-      # on the macOS bots).
-      EMTEST_LACKS_NATIVE_CLANG: "1"
-      EMTEST_SKIP_NODE_CANARY: "1"
-    steps:
-      - setup-macos
-      - attach_workspace:
-          at: ~/
-      - run:
-          name: Remove Linux binaries
-          command: |
-            rm -rf ~/emsdk ~/vms ~/.jsvu
-      # note we do *not* build all libraries and freeze the cache; as we run
-      # only limited tests here, it's more efficient to build on demand
-      - install-emsdk
-      - pip-install:
-          python: "$EMSDK_PYTHON"
-      - run-tests:
-          title: "crossplatform tests"
-          test_targets: "--crossplatform-only"
-      - upload-test-results
-
   test-mac-arm64:
     executor: mac-arm64
     environment:
@@ -985,9 +977,6 @@ workflows:
       - test-wasm64-4gb:
           requires:
             - build-linux
-      - test-wasm64l:
-          requires:
-            - build-linux
       - test-wasm2js1:
           requires:
             - build-linux
@@ -1009,6 +998,7 @@ workflows:
       - test-browser-firefox:
           requires:
             - build-linux
+      - test-browser-firefox-wasm64
       - test-sockets-chrome:
           requires:
             - build-linux
@@ -1017,9 +1007,3 @@ workflows:
       - test-node-compat
       - test-windows
       - test-mac-arm64
-      - test-mac:
-          # The mac tester also uses the libraries built on the linux builder to
-          # save total build time (this is fine because the libraries are wasm
-          # and do not depend on the underlying build platform)
-          requires:
-            - build-linux

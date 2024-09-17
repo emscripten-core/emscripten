@@ -19,8 +19,8 @@ def get(ports, settings, shared):
   ports.fetch_project('vorbis', f'https://github.com/emscripten-ports/vorbis/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'vorbis', 'Vorbis-' + TAG)
-    ports.install_header_dir(os.path.join(source_path, 'include', 'vorbis'))
+    source_path = ports.get_dir('vorbis', 'Vorbis-' + TAG)
+    ports.install_headers(os.path.join(source_path, 'include', 'vorbis'), target='vorbis')
     ports.build_port(os.path.join(source_path, 'lib'), final, 'vorbis',
                      flags=['-sUSE_OGG'],
                      exclude_files=['psytune', 'barkmel', 'tone', 'misc'])

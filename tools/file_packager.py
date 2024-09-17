@@ -577,7 +577,7 @@ def main():
 
   if options.depfile:
     with open(options.depfile, 'w') as f:
-      for target in [data_target, options.jsoutput]:
+      for target in (data_target, options.jsoutput):
         if target:
           f.write(escape_for_makefile(target))
           f.write(' \\\n')
@@ -607,11 +607,11 @@ def generate_js(data_target, data_files, metadata):
   var Module = typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": options.export_name}
 
   ret += '''
-  if (!Module.expectedDataFileDownloads) {
-    Module.expectedDataFileDownloads = 0;
+  if (!Module['expectedDataFileDownloads']) {
+    Module['expectedDataFileDownloads'] = 0;
   }
 
-  Module.expectedDataFileDownloads++;
+  Module['expectedDataFileDownloads']++;
   (() => {
     // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
     var isPthread = typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD;
@@ -659,11 +659,10 @@ def generate_js(data_target, data_files, metadata):
           % (start / (1024 * 1024)))
 
     create_preloaded = '''
-          Module['FS_createPreloadedFile'](this.name, null, byteArray, true, true, function() {
-            Module['removeRunDependency'](`fp ${that.name}`);
-          }, function() {
-            err(`Preloading file ${that.name} failed`);
-          }, false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change\n'''
+          Module['FS_createPreloadedFile'](this.name, null, byteArray, true, true,
+            () => Module['removeRunDependency'](`fp ${that.name}`),
+            () => err(`Preloading file ${that.name} failed`),
+            false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change\n'''
     create_data = '''// canOwn this data in the filesystem, it is a slide into the heap that will never change
           Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
           Module['removeRunDependency'](`fp ${that.name}`);'''
@@ -807,7 +806,7 @@ def generate_js(data_target, data_files, metadata):
           } catch (e) {
             return errback(e);
           }
-          openRequest.onupgradeneeded = function(event) {
+          openRequest.onupgradeneeded = (event) => {
             var db = /** @type {IDBDatabase} */ (event.target.result);
 
             if (db.objectStoreNames.contains(PACKAGE_STORE_NAME)) {
@@ -820,13 +819,11 @@ def generate_js(data_target, data_files, metadata):
             }
             var metadata = db.createObjectStore(METADATA_STORE_NAME);
           };
-          openRequest.onsuccess = function(event) {
+          openRequest.onsuccess = (event) => {
             var db = /** @type {IDBDatabase} */ (event.target.result);
             callback(db);
           };
-          openRequest.onerror = function(error) {
-            errback(error);
-          };
+          openRequest.onerror = (error) => errback(error);
         };
 
         // This is needed as chromium has a limit on per-entry files in IndexedDB
@@ -856,7 +853,7 @@ def generate_js(data_target, data_files, metadata):
               `package/${packageName}/${chunkId}`
             );
             chunkSliceStart = nextChunkSliceStart;
-            putPackageRequest.onsuccess = function(event) {
+            putPackageRequest.onsuccess = (event) => {
               finishedChunks++;
               if (finishedChunks == chunkCount) {
                 var transaction_metadata = db.transaction(
@@ -871,17 +868,11 @@ def generate_js(data_target, data_files, metadata):
                   },
                   `metadata/${packageName}`
                 );
-                putMetadataRequest.onsuccess = function(event) {
-                  callback(packageData);
-                };
-                putMetadataRequest.onerror = function(error) {
-                  errback(error);
-                };
+                putMetadataRequest.onsuccess = (event) =>  callback(packageData);
+                putMetadataRequest.onerror = (error) => errback(error);
               }
             };
-            putPackageRequest.onerror = function(error) {
-              errback(error);
-            };
+            putPackageRequest.onerror = (error) => errback(error);
           }
         }
 
@@ -890,7 +881,7 @@ def generate_js(data_target, data_files, metadata):
           var transaction = db.transaction([METADATA_STORE_NAME], IDB_RO);
           var metadata = transaction.objectStore(METADATA_STORE_NAME);
           var getRequest = metadata.get(`metadata/${packageName}`);
-          getRequest.onsuccess = function(event) {
+          getRequest.onsuccess = (event) => {
             var result = event.target.result;
             if (!result) {
               return callback(false, null);
@@ -898,9 +889,7 @@ def generate_js(data_target, data_files, metadata):
               return callback(PACKAGE_UUID === result['uuid'], result);
             }
           };
-          getRequest.onerror = function(error) {
-            errback(error);
-          };
+          getRequest.onerror = (error) => errback(error);
         }
 
         function fetchCachedPackage(db, packageName, metadata, callback, errback) {
@@ -914,7 +903,7 @@ def generate_js(data_target, data_files, metadata):
 
           for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
             var getRequest = packages.get(`package/${packageName}/${chunkId}`);
-            getRequest.onsuccess = function(event) {
+            getRequest.onsuccess = (event) => {
               if (!event.target.result) {
                 errback(new Error(`CachedPackageNotFound for: ${packageName}`));
                 return;
@@ -945,9 +934,7 @@ def generate_js(data_target, data_files, metadata):
                 }
               }
             };
-            getRequest.onerror = function(error) {
-              errback(error);
-            };
+            getRequest.onerror = (error) => errback(error);
           }
         }\n'''
 
@@ -956,7 +943,7 @@ def generate_js(data_target, data_files, metadata):
     if options.support_node:
       node_support_code = '''
         if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
-          require('fs').readFile(packageName, function(err, contents) {
+          require('fs').readFile(packageName, (err, contents) => {
             if (err) {
               errback(err);
             } else {
@@ -1055,7 +1042,7 @@ def generate_js(data_target, data_files, metadata):
     # we need to find the datafile in the same dir as the html file
 
     code += '''
-      if (!Module.preloadResults) Module.preloadResults = {};\n'''
+      if (!Module['preloadResults']) Module['preloadResults'] = {};\n'''
 
     if options.use_preload_cache:
       code += '''
@@ -1066,29 +1053,26 @@ def generate_js(data_target, data_files, metadata):
         };
 
         openDatabase(
-          function(db) {
-            checkCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME,
-              function(useCached, metadata) {
-                Module.preloadResults[PACKAGE_NAME] = {fromCache: useCached};
+          (db) => checkCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME,
+              (useCached, metadata) => {
+                Module['preloadResults'][PACKAGE_NAME] = {fromCache: useCached};
                 if (useCached) {
                   fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, metadata, processPackageData, preloadFallback);
                 } else {
                   fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE,
-                    function(packageData) {
+                    (packageData) => {
                       cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}, processPackageData,
-                        function(error) {
+                        (error) => {
                           console.error(error);
                           processPackageData(packageData);
                         });
                     }
                   , preloadFallback);
                 }
-              }
-            , preloadFallback);
-          }
+              }, preloadFallback)
         , preloadFallback);
 
-        if (Module['setStatus']) Module['setStatus']('Downloading...');\n'''
+        Module['setStatus']?.('Downloading...');\n'''
     else:
       # Not using preload cache, so we might as well start the xhr ASAP,
       # potentially before JS parsing of the main codebase if it's after us.
@@ -1098,7 +1082,7 @@ def generate_js(data_target, data_files, metadata):
       var fetchedCallback = null;
       var fetched = Module['getPreloadedPackage'] ? Module['getPreloadedPackage'](REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE) : null;
 
-      if (!fetched) fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, function(data) {
+      if (!fetched) fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, (data) => {
         if (fetchedCallback) {
           fetchedCallback(data);
           fetchedCallback = null;
@@ -1108,7 +1092,7 @@ def generate_js(data_target, data_files, metadata):
       }, handleError);\n'''
 
       code += '''
-      Module.preloadResults[PACKAGE_NAME] = {fromCache: false};
+      Module['preloadResults'][PACKAGE_NAME] = {fromCache: false};
       if (fetched) {
         processPackageData(fetched);
         fetched = null;
@@ -1117,12 +1101,12 @@ def generate_js(data_target, data_files, metadata):
       }\n'''
 
   ret += '''
-    function runWithFS() {\n'''
+    function runWithFS(Module) {\n'''
   ret += code
   ret += '''
     }
     if (Module['calledRun']) {
-      runWithFS();
+      runWithFS(Module);
     } else {
       if (!Module['preRun']) Module['preRun'] = [];
       Module["preRun"].push(runWithFS); // FS is not initialized yet, wait for it

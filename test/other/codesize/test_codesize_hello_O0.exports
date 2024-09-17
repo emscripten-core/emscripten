@@ -1,0 +1,14 @@
+__indirect_function_table
+__wasm_call_ctors
+_emscripten_stack_alloc
+_emscripten_stack_restore
+dynCall_jiji
+emscripten_stack_get_base
+emscripten_stack_get_current
+emscripten_stack_get_end
+emscripten_stack_get_free
+emscripten_stack_init
+fflush
+main
+memory
+strerror
