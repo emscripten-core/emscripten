@@ -5401,7 +5401,7 @@ Module["preRun"] = () => {
       ''' % path)
 
     def test(args, expect_fail):
-      self.compile_btest('main.cpp', ['--preload-file', path, '-o', '-sEXIT_RUNTIME', 'a.out.html'] + args)
+      self.compile_btest('main.cpp', ['-sEXIT_RUNTIME', '--preload-file', path, '-o', 'a.out.html'] + args)
       if expect_fail:
         js = read_file('a.out.js')
         create_file('a.out.js', 'let origFetch = fetch; fetch = undefined;\n' + js)
