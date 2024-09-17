@@ -5407,7 +5407,7 @@ Module["preRun"] = () => {
         create_file('a.out.js', 'let origFetch = fetch; fetch = undefined;\n' + js)
         return self.run_browser('a.out.html', '/report_result?exception:fetch is not a function')
       else:
-        return self.run_browser('a.out.html', '/report_result?42')
+        return self.run_browser('a.out.html', '/report_result?exit:42')
 
     test([], expect_fail=False)
     test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
