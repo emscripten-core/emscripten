@@ -5404,7 +5404,7 @@ Module["preRun"] = () => {
       self.compile_btest('main.cpp', args + ['--preload-file', path, '-o', 'a.out.html'])
       if expect_fail:
         js = read_file('a.out.js')
-        create_file('a.out.js', 'fetch = undefined;\n' + js)
+        create_file('a.out.js', 'let origFetch = fetch; fetch = undefined;\n' + js)
         return self.run_browser('a.out.html', '/report_result?exception:fetch is not a function')
       else:
         return self.run_browser('a.out.html', '/report_result?42')
