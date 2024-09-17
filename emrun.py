@@ -704,6 +704,8 @@ class HTTPHandler(SimpleHTTPRequestHandler):
         if not emrun_options.serve_after_exit:
           page_exit_code = int(data[6:])
           logv('Web page has quit with a call to exit() with return code ' + str(page_exit_code) + '. Shutting down web server. Pass --serve-after-exit to keep serving even after the page terminates with exit().')
+          if emrun_options.force_exit:
+            self.server.socket.setblocking(False)
           self.server.shutdown()
           return
       else:
@@ -1562,6 +1564,9 @@ def parse_args(args):
 
   parser.add_argument('--dump-out-directory', default='dump_out', type=str,
                       help='If specified, overrides the directory for dump files using emrun_file_dump method.')
+
+  parser.add_argument('--force-exit', action='store_true',
+                      help='If true, sets server socket to nonblocking on shutdown to avoid sporadic deadlocks.')
 
   parser.add_argument('serve', nargs='?', default='')
 
