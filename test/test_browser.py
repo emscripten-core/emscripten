@@ -5412,7 +5412,7 @@ Module["preRun"] = () => {
     test([], expect_fail=False)
     test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
     test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
-  
+
   @no_wasm64('https://github.com/llvm/llvm-project/issues/98778')
   def test_fetch_polyfill_shared_lib(self):
     create_file('library.c', r'''
