@@ -774,7 +774,7 @@ def generate_js(data_target, data_files, metadata):
       }
       var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;\n''' % (js_manipulation.escape_for_js_string(data_target), js_manipulation.escape_for_js_string(remote_package_name))
     metadata['remote_package_size'] = remote_package_size
-    ret += '''      var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];\n'''
+    ret += '''var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];\n'''
 
     if options.use_preload_cache:
       # Set the id to a hash of the preloaded data, so that caches survive over multiple builds
