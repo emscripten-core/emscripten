@@ -5408,7 +5408,7 @@ Module["preRun"] = () => {
         return self.run_browser('a.out.html', '/report_result?exception:fetch is not a function')
       else:
         return self.run_browser('a.out.html', '/report_result?42')
-  
+
     test([], expect_fail=False)
     test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
     test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
