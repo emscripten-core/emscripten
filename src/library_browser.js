@@ -44,7 +44,6 @@ var LibraryBrowser = {
       // main loop that is currently allowed to run. All previous main loops
       // will quit themselves. This is incremented whenever a new main loop is
       // created.
-      /** @type{number} */
       currentlyRunningMainloop: 0,
       // The main loop tick function that will be called at each iteration.
       func: null,
@@ -914,20 +913,7 @@ var LibraryBrowser = {
     Browser.mainLoop.func = browserIterationFunc;
     Browser.mainLoop.arg = arg;
 
-#if MAYBE_CLOSURE_COMPILER
-    // Closure compiler bug(?): Closure does not see that the assignment
-    //   var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop
-    // is a value copy of a number (even with the JSDoc @type annotation)
-    // but optimizeis the code as if the assignment was a reference assignment,
-    // which results in Browser.mainLoop.pause() not working. Hence use a
-    // workaround to make Closure believe this is a value copy that should occur:
-    // (TODO: Minimize this down to a small test case and report - was unable
-    // to reproduce in a small written test case)
-    /** @type{number} */
-    var thisMainLoopId = (() => Browser.mainLoop.currentlyRunningMainloop)();
-#else
     var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop;
-#endif
     function checkIsRunning() {
       if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) {
 #if RUNTIME_DEBUG
