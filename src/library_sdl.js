@@ -2821,6 +2821,7 @@ var LibrarySDL = {
   Mix_ReserveChannels: (num) => {
     SDL.channelMinimumNumber = num;
   },
+  Mix_PlayChannelTimed__deps: ['Mix_HaltChannel'],
   Mix_PlayChannelTimed__proxy: 'sync',
   Mix_PlayChannelTimed: (channel, id, loops, ticks) => {
     // TODO: handle fixed amount of N loops. Currently loops either 0 or infinite times.
@@ -2864,8 +2865,13 @@ var LibrarySDL = {
       audio.frequency = info.audio.frequency;
     }
     audio['onended'] = function() { // TODO: cache these
-      if (channelInfo.audio == this) { channelInfo.audio.paused = true; channelInfo.audio = null; }
+      if (channelInfo.audio === this || channelInfo.audio.webAudioNode === this) { 
+        channelInfo.audio.paused = true; channelInfo.audio = null; 
+      }
       if (SDL.channelFinished)  {{{ makeDynCall('vi', 'SDL.channelFinished') }}}(channel);
+    }
+    if (channelInfo.audio) {
+      _Mix_HaltChannel(channel);
     }
     channelInfo.audio = audio;
     // TODO: handle N loops. Behavior matches Mix_PlayMusic
@@ -2946,7 +2952,11 @@ var LibrarySDL = {
     } else if (info.audio) { // Play via the <audio> element
       audio = info.audio;
     }
-    audio['onended'] = function() { if (SDL.music.audio == this) _Mix_HaltMusic(); } // will send callback
+    audio['onended'] = function() { 
+      if (SDL.music.audio === this || SDL.music.audio?.webAudioNode === this) {
+        _Mix_HaltMusic(); // will send callback
+      }
+    }
     audio.loop = loops != 0 && loops != 1; // TODO: handle N loops for finite N
     audio.volume = SDL.music.volume;
     SDL.music.audio = audio;
