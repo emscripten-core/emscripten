@@ -956,11 +956,10 @@ def generate_js(data_target, data_files, metadata):
     ret += '''
       function fetchRemotePackage(packageName, packageSize, callback, errback) {
         %(node_support_code)s
-        Module.dataFileDownloads = Module.dataFileDownloads || {};
-        const url = packageName;
-        fetch(url)
-          .catch(cause => Promise.reject(new Error(`Network Error: ${url}`, {cause}))) // If fetch fails, rewrite the error to include the failing URL & the cause.
-          .then(response => {
+        Module.dataFileDownloads ??= {};
+        fetch(packageName)
+          .catch((cause) => Promise.reject(new Error(`Network Error: ${packageName}`, {cause}))) // If fetch fails, rewrite the error to include the failing URL & the cause.
+          .then((response) => {
 
             let loaded = 0;
 
@@ -970,7 +969,7 @@ def generate_js(data_target, data_files, metadata):
 
             // If we're using the polyfill, readers won't be available...
             if (!response.body && response.arrayBuffer) {
-              response.arrayBuffer().then(buffer => callback(buffer));
+              response.arrayBuffer().then(callback);
               return;
             }
 
@@ -988,9 +987,9 @@ def generate_js(data_target, data_files, metadata):
               if (!done) {
                 chunks.push(value);
                 loaded += value.length;
-                Module.dataFileDownloads[url] = Module.dataFileDownloads[url] ?? {};
-                Module.dataFileDownloads[url].loaded = loaded;
-                Module.dataFileDownloads[url].total = size;
+                Module.dataFileDownloads[packageName] = Module.dataFileDownloads[packageName] ?? {};
+                Module.dataFileDownloads[packageName].loaded = loaded;
+                Module.dataFileDownloads[packageName].total = size;
 
                 let totalLoaded = 0;
                 let totalSize = 0;
@@ -1022,12 +1021,11 @@ def generate_js(data_target, data_files, metadata):
             };
             return iterate();
           });
-      };\n''' % {'node_support_code': node_support_code}
+      };
 
-    ret += '''
       function handleError(error) {
         console.error('package error:', error);
-      };\n'''
+      };\n''' % {'node_support_code': node_support_code}
 
     code += '''
       function processPackageData(arrayBuffer) {

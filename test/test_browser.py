@@ -5383,22 +5383,22 @@ Module["preRun"] = () => {
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
 
   def test_fetch_polyfill_preload(self):
-    path = 'hello-world.txt'
-    create_file(path, 'hello, world!')
-    create_file('main.cpp', r'''
+    create_file('hello.txt', 'hello, world!')
+    create_file('main.c', r'''
       #include <stdio.h>
       #include <string.h>
       #include <emscripten.h>
       int main() {
-        FILE *f = fopen("%s", "r");
+        FILE *f = fopen("hello.txt", "r");
         char buf[100];
         fread(buf, 1, 20, f);
         buf[20] = 0;
         fclose(f);
-        printf("%%s\n", buf);
+        printf("%s\n", buf);
         return 0;
       }
-      ''' % path)
+    ''')
+
     create_file('on_window_error_shell.html', r'''
       <html>
           <center><canvas id='canvas' width='256' height='256'></canvas></center>
@@ -5421,7 +5421,7 @@ Module["preRun"] = () => {
     ''')
 
     def test(args, expect_fail):
-      self.compile_btest('main.cpp', ['-sEXIT_RUNTIME', '--preload-file', path, '--shell-file', 'on_window_error_shell.html', '-o', 'a.out.html'] + args)
+      self.compile_btest('main.c', ['-sEXIT_RUNTIME', '--preload-file', 'hello.txt', '--shell-file', 'on_window_error_shell.html', '-o', 'a.out.html'] + args)
       if expect_fail:
         js = read_file('a.out.js')
         create_file('a.out.js', 'let origFetch = fetch; fetch = undefined;\n' + js)
