@@ -13,7 +13,7 @@
     if (!shouldExport) {
       if (MODULARIZE && EXPORT_ALL) {
         shouldExport = true;
-      } else if (AUDIO_WORKLET && (x == 'HEAP32' || x == 'HEAPU32')) {
+      } else if (AUDIO_WORKLET && (x == 'HEAPU32' || x == 'HEAPF32')) {
         // Export to the AudioWorkletGlobalScope the needed variables to access
         // the heap. AudioWorkletGlobalScope is unable to access global JS vars
         // in the compiled main JS file.
