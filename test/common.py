@@ -2191,18 +2191,16 @@ class BrowserCore(RunnerCore):
   def make_reftest(self, expected, manually_trigger=False):
     # make sure the pngs used here have no color correction, using e.g.
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
-    basename = os.path.basename(expected)
-    if os.path.abspath(os.path.dirname(expected)) != self.get_dir():
-      shutil.copyfile(expected, self.in_dir(basename))
     reporting = read_file(test_file('browser_reporting.js'))
+    shutil.copyfile(expected, 'expected.png')
     create_file('reftest.js', '''
       function doReftest() {
         if (doReftest.done) return;
         doReftest.done = true;
         var img = new Image();
-        img.onload = function() {
-          assert(img.width == Module.canvas.width, 'Invalid width: ' + Module.canvas.width + ', should be ' + img.width);
-          assert(img.height == Module.canvas.height, 'Invalid height: ' + Module.canvas.height + ', should be ' + img.height);
+        img.onload = () => {
+          assert(img.width == Module.canvas.width, `Invalid width: ${Module.canvas.width}, should be ${img.width}`);
+          assert(img.height == Module.canvas.height, `Invalid height: ${Module.canvas.height}, should be ${img.height}`);
 
           var canvas = document.createElement('canvas');
           canvas.width = img.width;
@@ -2213,7 +2211,7 @@ class BrowserCore(RunnerCore):
 
           var actualUrl = Module.canvas.toDataURL();
           var actualImage = new Image();
-          actualImage.onload = function() {
+          actualImage.onload = () => {
             /*
             document.body.appendChild(img); // for comparisons
             var div = document.createElement('div');
@@ -2242,7 +2240,7 @@ class BrowserCore(RunnerCore):
             var wrong = Math.floor(total / (img.width*img.height*3)); // floor, to allow some margin of error for antialiasing
             // If the main JS file is in a worker, or modularize, then we need to supply our own reporting logic.
             if (typeof reportResultToServer === 'undefined') {
-              (function() {
+              (() => {
                 %s
                 reportResultToServer(wrong);
               })();
@@ -2252,7 +2250,7 @@ class BrowserCore(RunnerCore):
           };
           actualImage.src = actualUrl;
         }
-        img.src = '%s';
+        img.src = 'expected.png';
       };
 
       /** @suppress {uselessCode} */
@@ -2267,8 +2265,8 @@ class BrowserCore(RunnerCore):
             // trigger reftest from RAF as well, needed for workers where there is no pre|postRun on the main thread
             var realRAF = window.requestAnimationFrame;
             /** @suppress{checkTypes} */
-            window.requestAnimationFrame = function(func) {
-              return realRAF(function() {
+            window.requestAnimationFrame = (func) => {
+              return realRAF(() => {
                 func();
                 realRAF(doReftest);
               });
@@ -2276,7 +2274,7 @@ class BrowserCore(RunnerCore):
 
             // trigger reftest from canvas render too, for workers not doing GL
             var realWOM = worker.onmessage;
-            worker.onmessage = function(event) {
+            worker.onmessage = (event) => {
               realWOM(event);
               if (event.data.target === 'canvas' && event.data.op === 'render') {
                 realRAF(doReftest);
@@ -2290,14 +2288,12 @@ class BrowserCore(RunnerCore):
           // The user will call it.
           // Add an event loop iteration to ensure rendering, so users don't need to bother.
           var realDoReftest = doReftest;
-          doReftest = function() {
-            setTimeout(realDoReftest, 1);
-          };
+          doReftest = () => setTimeout(realDoReftest, 1);
         }
       }
 
       setupRefTest();
-''' % (reporting, basename, int(manually_trigger)))
+''' % (reporting, int(manually_trigger)))
 
   def compile_btest(self, filename, args, reporting=Reporting.FULL):
     # Inject support code for reporting results. This adds an include a header so testcases can
