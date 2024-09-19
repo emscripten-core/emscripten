@@ -976,7 +976,7 @@ def generate_js(data_target, data_files, metadata):
             const reader = response.body.getReader();
             const headers = response.headers;
 
-            const size = headers.get('Content-Length') ?? packageSize;
+            const size = Number(headers.get('Content-Length') ?? packageSize);
             const chunks = [];
 
             const iterate = () => reader.read().then(handleChunk).catch((cause) => {
@@ -1000,9 +1000,9 @@ def generate_js(data_target, data_files, metadata):
                 }
 
                 if (totalSize) {
-                  if (Module['setStatus']) Module['setStatus'](`Downloading data... (${totalLoaded}/${totalSize})`);
+                  Module.setStatus?.(`Downloading data... (${totalLoaded}/${totalSize})`);
                 } else {
-                  if (Module['setStatus']) Module['setStatus']('Downloading data...');
+                  Module.setStatus?.('Downloading data...');
                 }
                 return iterate();
               } else {
