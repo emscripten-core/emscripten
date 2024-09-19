@@ -1429,13 +1429,6 @@ addToLibrary({
   emscripten_random: () => Math.random(),
 
   emscripten_get_now: `;
-#if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 160000
-    // The performance global was added to node in v16.0.0:
-    // https://nodejs.org/api/globals.html#performance
-    if (ENVIRONMENT_IS_NODE) {
-      global.performance = require('perf_hooks').performance;
-    }
-#endif
 #if PTHREADS && !AUDIO_WORKLET
     // Pthreads need their clocks synchronized to the execution of the main
     // thread, so, when using them, make sure to adjust all timings to the

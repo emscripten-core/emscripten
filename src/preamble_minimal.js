@@ -12,10 +12,6 @@
 #include "runtime_asan.js"
 #endif
 
-#if PTHREADS
-#include "runtime_pthread.js"
-#endif
-
 #if ASSERTIONS
 /** @type {function(*, string=)} */
 function assert(condition, text) {
@@ -59,6 +55,10 @@ var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
   wasmMemory;
 
 #include "runtime_shared.js"
+
+#if PTHREADS
+#include "runtime_pthread.js"
+#endif
 
 #if IMPORTED_MEMORY
 #if PTHREADS
