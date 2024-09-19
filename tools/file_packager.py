@@ -979,7 +979,7 @@ def generate_js(data_target, data_files, metadata):
             const size = headers.get('Content-Length') ?? packageSize;
             const chunks = [];
 
-            const iterate = () => reader.read().then(handleChunk).catch(cause => {
+            const iterate = () => reader.read().then(handleChunk).catch((cause) => {
               return Promise.reject(new Error(`Unexpected error while handling : ${response.url} ${cause}`, {cause}));
             });
 
@@ -1008,7 +1008,7 @@ def generate_js(data_target, data_files, metadata):
                 return iterate();
               }
               else {
-                const size = chunks.map(c => c.length).reduce((a, b) => a + b, 0);
+                const size = chunks.map((c) => c.length).reduce((a, b) => a + b, 0);
                 let index = 0;
                 const packageData = new Uint8Array(size);
                 for(const chunk of chunks) {
@@ -1119,7 +1119,7 @@ def generate_js(data_target, data_files, metadata):
     Module['addRunDependency']('%(metadata_file)s');
     var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
     fetch(REMOTE_METADATA_NAME)
-      .then(response => {
+      .then((response) => {
         if (response.ok) {
           return response.json();
         }
