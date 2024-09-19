@@ -14494,6 +14494,21 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_wasi_sched_yield(self):
     self.run_wasi_test_suite_test('wasi_sched_yield')
 
+  def test_wasi_with_sjlj(self):
+    # When PURE_WASI is set and Wasm exception is not being used, we turn off
+    # SUPPORT_LONGJMP by default because it uses a JS-based simulation of
+    # longjmp.
+    self.set_setting('PURE_WASI')
+    err = self.expect_fail([EMCC, test_file('core/test_longjmp.c')] + self.get_emcc_args())
+    self.assertContained('error: longjmp support was disabled (SUPPORT_LONGJMP=0)', err)
+
+    # When using Wasm exception, SUPPORT_LONGJMP defaults to 'wasm', which does
+    # not use the JS-based support. This should succeed.
+    self.emcc_args.append('-fwasm-exceptions')
+    # -fwasm-exceptions exports __cpp_exception, so this is necessary
+    self.set_setting('DEFAULT_TO_CXX')
+    self.do_runf(test_file('core/test_longjmp.c'), emcc_args=self.get_emcc_args())
+
   def test_memops_bulk_memory(self):
     self.emcc_args += ['--profiling-funcs', '-fno-builtin']
 
