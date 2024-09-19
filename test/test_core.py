@@ -5609,6 +5609,10 @@ got: 10
     self.set_setting("FORCE_FILESYSTEM")
     self.do_runf('stat/test_statx.c', 'success')
 
+  def test_umask(self):
+    self.set_setting("FORCE_FILESYSTEM")
+    self.do_runf('stat/test_umask.c', 'success')
+
   def test_fstatat(self):
     self.do_runf('stat/test_fstatat.c', 'success')
 
