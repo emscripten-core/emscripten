@@ -428,14 +428,6 @@ if (!ENVIRONMENT_IS_AUDIO_WORKLET)
 }
 
 #if ENVIRONMENT_MAY_BE_NODE && PTHREADS
-if (ENVIRONMENT_IS_NODE) {
-  // Polyfill the performance object, which emscripten pthreads support
-  // depends on for good timing.
-  if (typeof performance == 'undefined') {
-    global.performance = require('perf_hooks').performance;
-  }
-}
-
 // Set up the out() and err() hooks, which are how we can print to stdout or
 // stderr, respectively.
 // Normally just binding console.log/console.error here works fine, but
