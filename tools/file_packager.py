@@ -1000,9 +1000,9 @@ def generate_js(data_target, data_files, metadata):
                 }
 
                 if (totalSize) {
-                  Module.setStatus?.(`Downloading data... (${totalLoaded}/${totalSize})`);
+                  Module['setStatus']?.(`Downloading data... (${totalLoaded}/${totalSize})`);
                 } else {
-                  Module.setStatus?.('Downloading data...');
+                  Module['setStatus']?.('Downloading data...');
                 }
                 return iterate();
               } else {
@@ -1016,6 +1016,7 @@ def generate_js(data_target, data_files, metadata):
                 callback(packageData.buffer);
               }
             };
+
             return iterate();
           });
       };
