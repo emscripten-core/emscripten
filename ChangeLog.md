@@ -22,8 +22,8 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - The freetype port was updated from v2.6 to v2.13.3. (#22585)
 - The number of arguments passed to Embind function calls is now only verified
-  with ASSERTIONS enabled.
-- Optional arguments can now be omitted from Embind function calls.
+  with ASSERTIONS enabled. (#22591)
+- Optional arguments can now be omitted from Embind function calls. (#22591)
 
 3.1.67 - 09/17/24
 -----------------

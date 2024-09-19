@@ -58,8 +58,7 @@ var LibraryEmbind = {
     // emval is passed into JS via an interface
   }`,
   $EmValOptionalType__deps: ['$EmValType'],
-  $EmValOptionalType: undefined,
-  $EmValOptionalType__postset: 'EmValOptionalType = Object.assign({optional: true}, EmValType);',
+  $EmValOptionalType: '=Object.assign({optional: true}, EmValType);',
   $init_embind__deps: [
     '$getInheritedInstanceCount', '$getLiveInheritedInstances',
     '$flushPendingDeletes', '$setDelayFunction'],
@@ -783,8 +782,8 @@ var LibraryEmbind = {
     '$Asyncify',
 #endif
 #if ASSERTIONS
-  '$getRequiredArgCount',
-  '$checkArgCount',
+    '$getRequiredArgCount',
+    '$checkArgCount',
 #endif
   ],
   $craftInvokerFunction: function(humanName, argTypes, classType, cppInvokerFunc, cppTargetFunc, /** boolean= */ isAsync) {
