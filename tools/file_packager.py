@@ -999,11 +999,7 @@ def generate_js(data_target, data_files, metadata):
                   totalSize += dowload.total;
                 }
 
-                if (totalSize) {
-                  Module['setStatus']?.(`Downloading data... (${totalLoaded}/${totalSize})`);
-                } else {
-                  Module['setStatus']?.('Downloading data...');
-                }
+                Module['setStatus']?.(`Downloading data... (${totalLoaded}/${totalSize})`);
                 return iterate();
               } else {
                 const packageData = new Uint8Array(chunks.map((c) => c.length).reduce((a, b) => a + b, 0));
@@ -1017,6 +1013,7 @@ def generate_js(data_target, data_files, metadata):
               }
             };
 
+            Module['setStatus']?.('Downloading data...');
             return iterate();
           });
       };
