@@ -2316,12 +2316,25 @@ class BrowserCore(RunnerCore):
       filename = test_file(filename)
     self.run_process([compiler_for(filename), filename] + self.get_emcc_args() + args)
 
-  def reftest(self, filename, reference, *args, **kwargs):
+  def reftest(self, filename, reference, reference_slack=0, manual_reference=False, manually_trigger_reftest=False, *args, **kwargs):
     """Special case of `btest` that uses reference image
     """
-    assert 'reference' not in kwargs
-    kwargs['reference'] = reference
-    return self.btest(filename, *args, **kwargs)
+    if self.proxied:
+      assert not manual_reference
+      manual_reference = True
+      manually_trigger_reftest = False
+      assert 'post_build' not in kwargs
+      kwargs['post_build'] = self.post_manual_reftest
+
+    reference = find_browser_test_file(reference)
+    assert 'expected' not in kwargs
+    expected = [str(i) for i in range(0, reference_slack + 1)]
+    self.make_reftest(reference, manually_trigger=manually_trigger_reftest)
+    if not manual_reference:
+      kwargs.setdefault('args', [])
+      kwargs['args'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
+
+    return self.btest(filename, expected=expected, *args, **kwargs)
 
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
     """Special case of `btest` that reports its result solely via exiting
@@ -2337,13 +2350,13 @@ class BrowserCore(RunnerCore):
     kwargs['expected'] = 'exit:%d' % assert_returncode
     return self.btest(filename, *args, **kwargs)
 
-  def btest(self, filename, expected=None, reference=None,
-            reference_slack=0, manual_reference=None, post_build=None,
+  def btest(self, filename, expected=None,
+            post_build=None,
             args=None, url_suffix='', timeout=None,
-            manually_trigger_reftest=False, extra_tries=1,
+            extra_tries=1,
             reporting=Reporting.FULL,
             output_basename='test'):
-    assert expected or reference, 'a btest must either expect an output, or have a reference image'
+    assert expected, 'a btest must have an expected output'
     if args is None:
       args = []
     args = args.copy()
@@ -2351,22 +2364,8 @@ class BrowserCore(RunnerCore):
 
     # Run via --proxy-to-worker.  This gets set by the @also_with_proxying.
     if self.proxied:
-      if reference:
-        assert not manual_reference
-        manual_reference = True
-        manually_trigger_reftest = False
-        assert not post_build
-        post_build = self.post_manual_reftest
       args += ['--proxy-to-worker', '-sGL_TESTING']
-    if reference:
-      reference = find_browser_test_file(reference)
-      expected = [str(i) for i in range(0, reference_slack + 1)]
-      self.make_reftest(reference, manually_trigger=manually_trigger_reftest)
-      if not manual_reference:
-        args += ['--pre-js', 'reftest.js', '-sGL_TESTING']
-    else:
-      # manual_reference only makes sense for reference tests
-      assert manual_reference is None
+
     outfile = output_basename + '.html'
     args += ['-o', outfile]
     # print('all args:', args)
