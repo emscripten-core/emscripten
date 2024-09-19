@@ -1001,17 +1001,14 @@ def generate_js(data_target, data_files, metadata):
 
                 if (totalSize) {
                   if (Module['setStatus']) Module['setStatus'](`Downloading data... (${totalLoaded}/${totalSize})`);
-                }
-                else {
+                } else {
                   if (Module['setStatus']) Module['setStatus']('Downloading data...');
                 }
                 return iterate();
-              }
-              else {
-                const size = chunks.map((c) => c.length).reduce((a, b) => a + b, 0);
+              } else {
                 let index = 0;
-                const packageData = new Uint8Array(size);
-                for(const chunk of chunks) {
+                const packageData = new Uint8Array(chunks.map((c) => c.length).reduce((a, b) => a + b, 0));
+                for (const chunk of chunks) {
                   packageData.set(chunk, index);
                   index += chunk.length;
                 }
