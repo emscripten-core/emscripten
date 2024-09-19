@@ -1428,14 +1428,14 @@ addToLibrary({
 
   emscripten_random: () => Math.random(),
 
-  emscripten_get_now: `;
 #if PTHREADS && !AUDIO_WORKLET
-    // Pthreads need their clocks synchronized to the execution of the main
-    // thread, so, when using them, make sure to adjust all timings to the
-    // respective time origins.
-    _emscripten_get_now = () => performance.timeOrigin + {{{ getPerformanceNow() }}}();
+  // Pthreads need their clocks synchronized to the execution of the main
+  // thread, so, when using them, make sure to adjust all timings to the
+  // respective time origins.
+  emscripten_get_now: () => performance.timeOrigin + {{{ getPerformanceNow() }}}(),
 #else
 #if MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 || AUDIO_WORKLET // https://caniuse.com/#feat=high-resolution-time
+  emscripten_get_now: `;
     // AudioWorkletGlobalScope does not have performance.now()
     // (https://github.com/WebAudio/web-audio-api/issues/2527), so if building
     // with
@@ -1449,14 +1449,14 @@ addToLibrary({
     } else {
       _emscripten_get_now = Date.now;
     }
-#else
-    // Modern environment where performance.now() is supported:
-    // N.B. a shorter form "_emscripten_get_now = performance.now;" is
-    // unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
-    _emscripten_get_now = () => {{{ getPerformanceNow() }}}();
-#endif
-#endif
 `,
+#else
+  // Modern environment where performance.now() is supported:
+  // N.B. a shorter form "_emscripten_get_now = performance.now;" is
+  // unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
+  emscripten_get_now: () => {{{ getPerformanceNow() }}}(),
+#endif
+#endif
 
   emscripten_get_now_res: () => { // return resolution of get_now, in nanoseconds
 #if ENVIRONMENT_MAY_BE_NODE
