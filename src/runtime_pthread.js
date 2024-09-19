@@ -40,7 +40,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
       },
       postMessage: (msg) => parentPort.postMessage(msg),
-      performance: global.performance || { now: Date.now },
     });
   }
 #endif // ENVIRONMENT_MAY_BE_NODE
