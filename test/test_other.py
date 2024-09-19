@@ -2487,34 +2487,17 @@ int main() {
     # copy the Liberation Sans Bold truetype file located in the
     # <emscripten_root>/test/freetype to the compilation folder
     shutil.copy2(test_file('freetype/LiberationSansBold.ttf'), os.getcwd())
+    self.emcc_args += ['--embed-file', 'LiberationSansBold.ttf']
     # the test program will print an ascii representation of a bitmap where the
-    # 'w' character has been rendered using the Liberation Sans Bold font
-    expectedOutput = '                \n' + \
-                     '                \n' + \
-                     '                \n' + \
-                     '                \n' + \
-                     '***    +***+    \n' + \
-                     '***+   *****   +\n' + \
-                     '+**+   *****   +\n' + \
-                     '+***  +**+**+  *\n' + \
-                     ' ***+ ***+**+ +*\n' + \
-                     ' +**+ *** *** +*\n' + \
-                     ' +**++**+ +**+**\n' + \
-                     '  ***+**+ +**+**\n' + \
-                     '  ******   *****\n' + \
-                     '  +****+   +****\n' + \
-                     '  +****+   +****\n' + \
-                     '   ****     ****'
-    # build test program with the font file embed in it
-    self.do_runf('freetype_test.c', expectedOutput,
-                 emcc_args=['-sUSE_FREETYPE', '--embed-file', 'LiberationSansBold.ttf'])
-    self.do_runf('freetype_test.c', expectedOutput,
-                 emcc_args=['--use-port=freetype', '--embed-file', 'LiberationSansBold.ttf'])
+    # 'w' character has been rendered using the Liberation Sans Bold font.
+    # See test_freetype.out
+    self.do_run_in_out_file_test('test_freetype.c', emcc_args=['-sUSE_FREETYPE'])
+    self.do_run_in_out_file_test('test_freetype.c', emcc_args=['--use-port=freetype'])
 
   @requires_network
   def test_freetype_with_pthreads(self):
     # Verify that freetype supports compilation requiring pthreads
-    self.emcc(test_file('freetype_test.c'), ['-pthread', '-sUSE_FREETYPE'], output_filename='a.out.js')
+    self.emcc(test_file('test_freetype.c'), ['-pthread', '-sUSE_FREETYPE'], output_filename='a.out.js')
 
   @requires_network
   def test_icu(self):
