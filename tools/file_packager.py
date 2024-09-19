@@ -956,7 +956,7 @@ def generate_js(data_target, data_files, metadata):
     ret += '''
       function fetchRemotePackage(packageName, packageSize, callback, errback) {
         %(node_support_code)s
-        Module.dataFileDownloads ??= {};
+        Module['dataFileDownloads'] ??= {};
         fetch(packageName)
           .catch((cause) => Promise.reject(new Error(`Network Error: ${packageName}`, {cause}))) // If fetch fails, rewrite the error to include the failing URL & the cause.
           .then((response) => {
@@ -987,14 +987,14 @@ def generate_js(data_target, data_files, metadata):
               if (!done) {
                 chunks.push(value);
                 loaded += value.length;
-                Module.dataFileDownloads[packageName] = Module.dataFileDownloads[packageName] ?? {};
-                Module.dataFileDownloads[packageName].loaded = loaded;
-                Module.dataFileDownloads[packageName].total = size;
+                Module['dataFileDownloads'][packageName] = Module['dataFileDownloads'][packageName] ?? {};
+                Module['dataFileDownloads'][packageName].loaded = loaded;
+                Module['dataFileDownloads'][packageName].total = size;
 
                 let totalLoaded = 0;
                 let totalSize = 0;
 
-                for (const dowload of Object.values(Module.dataFileDownloads)) {
+                for (const dowload of Object.values(Module['dataFileDownloads'])) {
                   totalLoaded += dowload.loaded;
                   totalSize += dowload.total;
                 }
