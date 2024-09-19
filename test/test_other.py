@@ -7673,6 +7673,10 @@ int main() {
     self.run_process([EMCC, 'src.c'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
+  def test_umask(self):
+    self.set_setting("FORCE_FILESYSTEM")
+    self.do_runf('stat/test_umask.c', 'success')
+
   def test_no_missing_symbols(self):
     # simple hello world should not show any missing symbols
     self.run_process([EMCC, test_file('hello_world.c')])
