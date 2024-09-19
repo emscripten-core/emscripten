@@ -3063,13 +3063,7 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   def test_sdl2_gl_frames_swap(self):
-    def post_build():
-      self.post_manual_reftest()
-      reftest = read_file('reftest.js')
-      reftest2 = reftest.replace("Module['postRun'] = doReftest;", '') # we don't want the very first frame
-      assert reftest != reftest2
-      create_file('reftest.js', reftest2)
-    self.reftest('test_sdl2_gl_frames_swap.c', 'test_sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-sGL_TESTING', '-sUSE_SDL=2'], manual_reference=True, post_build=post_build)
+    self.reftest('test_sdl2_gl_frames_swap.c', 'test_sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-sGL_TESTING', '-sUSE_SDL=2'], manual_reference=True, post_build=self.post_manual_reftest)
 
   @requires_graphics_hardware
   def test_sdl2_ttf(self):
