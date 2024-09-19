@@ -112,6 +112,17 @@ def also_with_proxying(f):
   return metafunc
 
 
+def proxied(f):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, *args, **kwargs):
+    self.proxied = True
+    return f(self, *args, **kwargs)
+
+  return decorated
+
+
 # This is similar to @core.no_wasmfs, but it disable WasmFS and runs the test
 # normally. That is, in core we skip the test if we are in the wasmfs.* mode,
 # while in browser we don't have such modes, so we force the test to run without
@@ -856,9 +867,11 @@ If manually bisecting:
 
   def post_manual_reftest(self):
     assert os.path.exists('reftest.js')
+    shutil.copy(test_file('browser_reporting.js'), '.')
     html = read_file('test.html')
     html = html.replace('</body>', '''
-<script src="reftest.js"/>
+<script src="browser_reporting.js"></script>
+<script src="reftest.js"></script>
 <script>
 var windowClose = window.close;
 window.close = () => {
@@ -872,9 +885,10 @@ window.close = () => {
 </body>''')
     create_file('test.html', html)
 
+  @proxied
   def test_sdl_canvas_proxy(self):
     create_file('data.txt', 'datum')
-    self.reftest('test_sdl_canvas_proxy.c', 'test_sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt', '-lSDL', '-lGL'], post_build=self.post_manual_reftest)
+    self.reftest('test_sdl_canvas_proxy.c', 'test_sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_glgears_proxy_jstarget(self):
@@ -2934,7 +2948,7 @@ Module["preRun"] = () => {
     if not self.proxied:
       # closure build current fails on proxying
       self.emcc_args += ['--closure=1', '-g1']
-    self.reftest('test_sdl2_glshader.c', 'test_sdl_glshader.png', args=['-sUSE_SDL=2', '-O2', '-sLEGACY_GL_EMULATION'])
+    self.reftest('test_sdl2_glshader.c', 'test_sdl_glshader.png', args=['-sUSE_SDL=2', '-sLEGACY_GL_EMULATION'])
 
   @requires_graphics_hardware
   def test_sdl2_canvas_blank(self):
@@ -2986,9 +3000,10 @@ Module["preRun"] = () => {
     self.reftest('test_sdl2_image_prepare_data.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2'])
 
   @requires_graphics_hardware
+  @proxied
   def test_sdl2_canvas_proxy(self):
     create_file('data.txt', 'datum')
-    self.reftest('test_sdl2_canvas_proxy.c', 'test_sdl2_canvas.png', args=['-sUSE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt'], post_build=self.post_manual_reftest)
+    self.reftest('test_sdl2_canvas_proxy.c', 'test_sdl2_canvas.png', args=['-sUSE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt'])
 
   def test_sdl2_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
@@ -3066,8 +3081,9 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl2_canvas_write.c', args=['-sUSE_SDL=2'])
 
   @requires_graphics_hardware
+  @proxied
   def test_sdl2_gl_frames_swap(self):
-    self.reftest('test_sdl2_gl_frames_swap.c', 'test_sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-sUSE_SDL=2'], post_build=self.post_manual_reftest)
+    self.reftest('test_sdl2_gl_frames_swap.c', 'test_sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_ttf(self):

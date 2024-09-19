@@ -2207,7 +2207,6 @@ class BrowserCore(RunnerCore):
   def make_reftest(self, expected):
     # make sure the pngs used here have no color correction, using e.g.
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
-    reporting = read_file(test_file('browser_reporting.js'))
     shutil.copy(expected, 'expected.png')
     create_file('reftest.js', '''
       function doReftest() {
@@ -2256,30 +2255,16 @@ class BrowserCore(RunnerCore):
             }
             // floor, to allow some margin of error for antialiasing
             var wrong = Math.floor(total / (img.width*img.height*3));
-
-            function reportResult(result) {
-              // If the main JS file is in a worker, or modularize, then we need to supply our own
-              // reporting logic.
-              if (typeof reportResultToServer === 'undefined') {
-                (() => {
-                  %s
-                  reportResultToServer(result);
-                })();
-              } else {
-                reportResultToServer(result);
-              }
-            }
-
             var rebaseline = %s;
             if (wrong || rebaseline) {
               // Generate a png of the actual rendered image and send it back
               // to the server.
               Module.canvas.toBlob((blob) => {
                 sendFileToServer('actual.png', blob);
-                reportResult(wrong);
+                reportResultToServer(wrong);
               })
             } else {
-              reportResult(wrong);
+              reportResultToServer(wrong);
             }
           };
           actualImage.src = actualUrl;
@@ -2314,7 +2299,7 @@ class BrowserCore(RunnerCore):
       }
 
       setupRefTest();
-''' % (reporting, EMTEST_REBASELINE))
+''' % EMTEST_REBASELINE)
 
   def compile_btest(self, filename, args, reporting=Reporting.FULL):
     # Inject support code for reporting results. This adds an include a header so testcases can
@@ -2340,16 +2325,17 @@ class BrowserCore(RunnerCore):
   def reftest(self, filename, reference, reference_slack=0, *args, **kwargs):
     """Special case of `btest` that uses reference image
     """
-    if self.proxied:
-      assert 'post_build' not in kwargs
-      kwargs['post_build'] = self.post_manual_reftest
-
     reference = find_browser_test_file(reference)
     assert 'expected' not in kwargs
     expected = [str(i) for i in range(0, reference_slack + 1)]
     self.make_reftest(reference)
-    kwargs.setdefault('args', [])
-    kwargs['args'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
+    if self.proxied:
+      print("XXXX")
+      assert 'post_build' not in kwargs
+      kwargs['post_build'] = self.post_manual_reftest
+    else:
+      kwargs.setdefault('args', [])
+      kwargs['args'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
 
     try:
       return self.btest(filename, expected=expected, *args, **kwargs)
