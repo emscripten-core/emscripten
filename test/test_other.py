@@ -7673,6 +7673,8 @@ int main() {
     self.run_process([EMCC, 'src.c'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
+  @crossplatform
+  @also_with_wasmfs
   def test_umask(self):
     self.set_setting("FORCE_FILESYSTEM")
     self.do_runf('stat/test_umask.c', 'success')
