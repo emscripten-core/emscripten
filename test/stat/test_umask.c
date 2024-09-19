@@ -17,9 +17,9 @@
 #include <sys/types.h>
 
 mode_t get_umask() {
-    mode_t current = umask(0);  // Set umask to 0 and get the old value
-    umask(current);  // Immediately set it back
-    return current;
+  mode_t current = umask(0);  // Set umask to 0 and get the old value
+  umask(current);  // Immediately set it back
+  return current;
 }
 
 void create_file(const char *path, const char *buffer) {
