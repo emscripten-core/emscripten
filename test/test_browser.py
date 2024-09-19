@@ -5406,7 +5406,6 @@ Module["preRun"] = () => {
           <script type='text/javascript'>
             window.addEventListener('error', event => {
               const error = String(event.message);
-              console.log({error});
               window.disableErrorReporting = true;
               window.onerror = null;
               var xhr = new XMLHttpRequest();
