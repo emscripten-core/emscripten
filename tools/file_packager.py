@@ -1006,11 +1006,11 @@ def generate_js(data_target, data_files, metadata):
                 }
                 return iterate();
               } else {
-                let index = 0;
                 const packageData = new Uint8Array(chunks.map((c) => c.length).reduce((a, b) => a + b, 0));
+                let offset = 0;
                 for (const chunk of chunks) {
-                  packageData.set(chunk, index);
-                  index += chunk.length;
+                  packageData.set(chunk, offset);
+                  offset += chunk.length;
                 }
 
                 callback(packageData.buffer);
