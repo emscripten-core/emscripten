@@ -1003,13 +1003,7 @@ def generate_js(data_target, data_files, metadata):
                 Module['setStatus']?.(`Downloading data... (${totalLoaded}/${totalSize})`);
                 return iterate();
               } else {
-                const packageData = new Uint8Array(chunks.map((c) => c.length).reduce((a, b) => a + b, 0));
-                let offset = 0;
-                for (const chunk of chunks) {
-                  packageData.set(chunk, offset);
-                  offset += chunk.length;
-                }
-
+                const packageData = new Uint8Array(chunks.reduce((a, b) => a.concat(b), []));
                 callback(packageData.buffer);
               }
             };
