@@ -5376,6 +5376,55 @@ Module["preRun"] = () => {
     shutil.copyfile('webpack/src/hello.wasm', 'webpack/dist/hello.wasm')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
 
+  def test_fetch_polyfill_preload(self):
+    create_file('hello.txt', 'hello, world!')
+    create_file('main.c', r'''
+      #include <stdio.h>
+      #include <string.h>
+      #include <emscripten.h>
+      int main() {
+        FILE *f = fopen("hello.txt", "r");
+        char buf[100];
+        fread(buf, 1, 20, f);
+        buf[20] = 0;
+        fclose(f);
+        printf("%s\n", buf);
+        return 0;
+      }''')
+
+    create_file('on_window_error_shell.html', r'''
+      <html>
+          <center><canvas id='canvas' width='256' height='256'></canvas></center>
+          <hr><div id='output'></div><hr>
+          <script type='text/javascript'>
+            window.addEventListener('error', event => {
+              const error = String(event.message);
+              window.disableErrorReporting = true;
+              window.onerror = null;
+              var xhr = new XMLHttpRequest();
+              xhr.open('GET', 'http://localhost:8888/report_result?exception:' + error.substr(-23), true);
+              xhr.send();
+              setTimeout(function() { window.close() }, 1000);
+            });
+          </script>
+          {{{ SCRIPT }}}
+        </body>
+      </html>''')
+
+    def test(args, expect_fail):
+      self.compile_btest('main.c', ['-sEXIT_RUNTIME', '--preload-file', 'hello.txt', '--shell-file', 'on_window_error_shell.html', '-o', 'a.out.html'] + args)
+      if expect_fail:
+        js = read_file('a.out.js')
+        create_file('a.out.js', 'let origFetch = fetch; fetch = undefined;\n' + js)
+        return self.run_browser('a.out.html', '/report_result?exception:fetch is not a function')
+      else:
+        return self.run_browser('a.out.html', '/report_result?exit:0')
+
+    test([], expect_fail=False)
+    test([], expect_fail=True)
+    test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
+    test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
+
   @no_wasm64('https://github.com/llvm/llvm-project/issues/98778')
   def test_fetch_polyfill_shared_lib(self):
     create_file('library.c', r'''
