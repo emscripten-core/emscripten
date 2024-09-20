@@ -669,7 +669,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     },
 
     hookWebGL: function(glCtx) {
-      if (!glCtx) glCtx = this.detectWebGLContext();
+      glCtx ??= this.detectWebGLContext();
       if (!glCtx) return;
       if (!((typeof WebGLRenderingContext != 'undefined' && glCtx instanceof WebGLRenderingContext)
             || (typeof WebGL2RenderingContext != 'undefined' && glCtx instanceof WebGL2RenderingContext))) {
@@ -4161,8 +4161,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     var mem = _malloc(length), binding = emscriptenWebGLGetBufferBinding(target);
     if (!mem) return 0;
 
-    if (!GL.mappedBuffers[binding]) GL.mappedBuffers[binding] = {};
-    binding = GL.mappedBuffers[binding];
+    binding = GL.mappedBuffers[binding] ??= {};
     binding.offset = offset;
     binding.length = length;
     binding.mem = mem;
