@@ -965,8 +965,7 @@ def generate_js(data_target, data_files, metadata):
             }
 
             if (!response.body && response.arrayBuffer) { // If we're using the polyfill, readers won't be available...
-              response.arrayBuffer().then(callback);
-              return;
+              return response.arrayBuffer().then(callback);
             }
 
             const reader = response.body.getReader();
