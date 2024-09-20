@@ -996,7 +996,7 @@ def generate_js(data_target, data_files, metadata):
                 Module['setStatus']?.(`Downloading data... (${totalLoaded}/${totalSize})`);
                 return iterate();
               } else {
-                const packageData = new Uint8Array(chunks.reduce((a, b) => a.concat(b), []));
+                const packageData = new Uint8Array([].concat(...chunks));
                 callback(packageData.buffer);
               }
             };
