@@ -3697,7 +3697,7 @@ Module["preRun"] = () => {
     if '-sSINGLE_FILE' in args:
       self.assertEqual(len(files), 1, files)
     else:
-      self.assertEqual(len(files), 4, files)
+      self.assertEqual(len(files), 3, files)
 
   # Test that preallocating worker threads work.
   def test_pthread_preallocates_workers(self):
