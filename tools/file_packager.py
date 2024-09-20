@@ -960,34 +960,32 @@ def generate_js(data_target, data_files, metadata):
         fetch(packageName)
           .catch((cause) => Promise.reject(new Error(`Network Error: ${packageName}`, {cause}))) // If fetch fails, rewrite the error to include the failing URL & the cause.
           .then((response) => {
-
-            let loaded = 0;
-
             if (!response.ok) {
               return Promise.reject(new Error(`${response.status}: ${response.url}`));
             }
 
-            // If we're using the polyfill, readers won't be available...
-            if (!response.body && response.arrayBuffer) {
+            if (!response.body && response.arrayBuffer) { // If we're using the polyfill, readers won't be available...
               response.arrayBuffer().then(callback);
               return;
             }
 
             const reader = response.body.getReader();
-            const headers = response.headers;
-
-            const size = Number(headers.get('Content-Length') ?? packageSize);
-            const chunks = [];
 
             const iterate = () => reader.read().then(handleChunk).catch((cause) => {
               return Promise.reject(new Error(`Unexpected error while handling : ${response.url} ${cause}`, {cause}));
             });
 
+            const chunks = [];
+            const headers = response.headers;
+            const total = Number(headers.get('Content-Length') ?? packageSize);
+
+            let loaded = 0;
+
             const handleChunk = ({done, value}) => {
               if (!done) {
                 chunks.push(value);
                 loaded += value.length;
-                Module['dataFileDownloads'][packageName] = {loaded, total: size};
+                Module['dataFileDownloads'][packageName] = {loaded, total};
 
                 let totalLoaded = 0;
                 let totalSize = 0;
