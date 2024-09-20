@@ -359,6 +359,27 @@ struct reference : public allow_raw_pointers {};
 
 namespace internal {
 
+#if __cplusplus >= 201703L
+template <typename... Args> using conjunction = std::conjunction<Args...>;
+template <typename... Args> using disjunction = std::disjunction<Args...>;
+#else
+// Helper available in C++14.
+template <bool _Test, class _T1, class _T2>
+using conditional_t = typename std::conditional<_Test, _T1, _T2>::type;
+
+template<class...> struct conjunction : std::true_type {};
+template<class B1> struct conjunction<B1> : B1 {};
+template<class B1, class... Bn>
+struct conjunction<B1, Bn...>
+    : conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
+
+template<class...> struct disjunction : std::false_type {};
+template<class B1> struct disjunction<B1> : B1 {};
+template<class B1, class... Bn>
+struct disjunction<B1, Bn...>
+    : conditional_t<bool(B1::value), disjunction<Bn...>, B1> {};
+#endif
+
 template<typename... Policies>
 struct isPolicy;
 
@@ -428,40 +449,10 @@ struct GetReturnValuePolicy<ReturnType, T, Rest...> {
 };
 
 template<typename... Policies>
-struct isAsync;
-
-template<typename... Rest>
-struct isAsync<async, Rest...> {
-    static constexpr bool value = true;
-};
-
-template<typename T, typename... Rest>
-struct isAsync<T, Rest...> {
-    static constexpr bool value = isAsync<Rest...>::value;
-};
-
-template<>
-struct isAsync<> {
-    static constexpr bool value = false;
-};
+using isAsync = disjunction<std::is_same<async, Policies>...>;
 
 template<typename... Policies>
-struct isNonnullReturn;
-
-template<typename... Rest>
-struct isNonnullReturn<nonnull<ret_val>, Rest...> {
-    static constexpr bool value = true;
-};
-
-template<typename T, typename... Rest>
-struct isNonnullReturn<T, Rest...> {
-    static constexpr bool value = isNonnullReturn<Rest...>::value;
-};
-
-template<>
-struct isNonnullReturn<> {
-    static constexpr bool value = false;
-};
+using isNonnullReturn = disjunction<std::is_same<nonnull<ret_val>, Policies>...>;
 
 }
 
@@ -984,18 +975,6 @@ struct SetterPolicy<PropertyTag<Setter, SetterArgumentType>> {
         return internal::getContext(context);
     }
 };
-
-// Helper available in C++14.
-template <bool _Test, class _T1, class _T2>
-using conditional_t = typename std::conditional<_Test, _T1, _T2>::type;
-
-// Conjunction is available in C++17
-template<class...> struct conjunction : std::true_type {};
-template<class B1> struct conjunction<B1> : B1 {};
-template<class B1, class... Bn>
-struct conjunction<B1, Bn...>
-    : conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
-
 
 class noncopyable {
 protected:
