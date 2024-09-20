@@ -4,30 +4,64 @@
  * SPDX-License-Identifier: MIT
  */
 
+{{{
+globalThis.maxEventSize = Math.max(
+  C_STRUCTS.EmscriptenKeyboardEvent.__size__,
+  C_STRUCTS.EmscriptenMouseEvent.__size__,
+  C_STRUCTS.EmscriptenWheelEvent.__size__,
+  C_STRUCTS.EmscriptenUiEvent.__size__,
+  C_STRUCTS.EmscriptenFocusEvent.__size__,
+  C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__,
+  C_STRUCTS.EmscriptenDeviceMotionEvent.__size__,
+  C_STRUCTS.EmscriptenOrientationChangeEvent.__size__,
+  C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__,
+  C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__,
+  C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__,
+  C_STRUCTS.EmscriptenTouchEvent.__size__,
+  C_STRUCTS.EmscriptenGamepadEvent.__size__,
+  C_STRUCTS.EmscriptenBatteryEvent.__size__
+);
+null;
+}}}
+
 var LibraryHTML5 = {
+  $JSEventCache__deps: ['malloc'],
+  $JSEventCache: {
+    memcpy(target, src, size) {
+      HEAP8.set(HEAP8.subarray(src, src + size), target);
+    },
+
+    // In addition to generic `eventStorage` we keep duplicates of certain
+    // events in this map of eventID to last generated event dat.  This allows
+    // certain event types to simulate a polling interface.  Specifically:
+    // - emscripten_get_mouse_status
+    // - emscripten_get_deviceorientation_status
+    // - emscripten_get_devicemotion_status
+    cachedEvents: {},
+    cacheEvent(eventTypeId, eventData, size) {
+      JSEventCache.cachedEvents[eventTypeId] ??= _malloc(size);
+      JSEventCache.memcpy(JSEventCache.cachedEvents[eventTypeId], eventData, size);
+    },
+
+    getCachedEvent(eventId, target, size) {
+      if (!JSEventCache.cachedEvents[eventId]) return {{{ cDefs.EMSCRIPTEN_RESULT_NO_DATA }}};
+      JSEventCache.memcpy(target, JSEventCache.cachedEvents[eventId], size);
+      return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
+    },
+  },
+
   $JSEvents__deps: [
+    'malloc',
 #if PTHREADS
     '_emscripten_run_callback_on_thread',
 #endif
   ],
   $JSEvents: {
-
 #if USE_CLOSURE_COMPILER
-    // pointers to structs malloc()ed to Emscripten HEAP for JS->C interop.
-    batteryEvent: 0,
-    gamepadEvent: 0,
-    keyEvent: 0,
-    mouseEvent: 0,
-    wheelEvent: 0,
-    uiEvent: 0,
-    focusEvent: 0,
-    deviceOrientationEvent: 0,
-    orientationChangeEvent: 0,
-    deviceMotionEvent: 0,
-    fullscreenChangeEvent: 0,
-    pointerlockChangeEvent: 0,
-    visibilityChangeEvent: 0,
-    touchEvent: 0,
+    // Pointer to dynamically allocated event storage.  This is always used
+    // as the eventData pointer in all callback and is allocated a
+    // `maxEventSize` bytes.
+    eventStorage: null,
 #endif
 
 /* We do not depend on the exact initial values of falsey member fields - these
@@ -58,8 +92,21 @@ var LibraryHTML5 = {
     currentEventHandler: null,
 #endif
 */
-    memcpy(target, src, size) {
-      HEAP8.set(HEAP8.subarray(src, src + size), target);
+    allocateEventStruct(targetThread) {
+#if PTHREADS
+      // This allocated block is passed as satellite data to the proxied event
+      // handle, which then frees the data block when done.
+      if (targetThread) return _malloc({{{ maxEventSize }}});
+#endif
+      return JSEvents.eventStorage ??= _malloc({{{ maxEventSize }}});
+    },
+
+    dispatchEvent(e, targetThread, callbackfunc, eventTypeId, eventData, userData) {
+#if PTHREADS
+      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, eventData, userData);
+      else
+#endif
+      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, eventData, userData)) e.preventDefault();
     },
 
     removeAllEventListeners() {
@@ -256,23 +303,18 @@ var LibraryHTML5 = {
     },
   },
 
-  $registerKeyEventCallback__deps: ['$JSEvents', '$findEventTarget', '$stringToUTF8', 'malloc'],
+  $registerKeyEventCallback__deps: ['$JSEvents', '$findEventTarget', '$stringToUTF8'],
   $registerKeyEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.keyEvent ||= _malloc({{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}});
 
     var keyEventHandlerFunc = (e) => {
 #if ASSERTIONS
       assert(e);
 #endif
 
-#if PTHREADS
-      var keyEventData = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}}) : JSEvents.keyEvent; // This allocated block is passed as satellite data to the proxied function call, so the call frees up the data block when done.
-#else
-      var keyEventData = JSEvents.keyEvent;
-#endif
+      var keyEventData = JSEvents.allocateEventStruct(targetThread);
       {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.timestamp, 'e.timeStamp', 'double') }}};
 
       var idx = {{{ getHeapOffset('keyEventData', 'i32') }}};
@@ -291,11 +333,7 @@ var LibraryHTML5 = {
       stringToUTF8(e.char || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charValue }}}, {{{ cDefs.EM_HTML5_SHORT_STRING_LEN_BYTES }}});
       stringToUTF8(e.locale || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.locale }}}, {{{ cDefs.EM_HTML5_SHORT_STRING_LEN_BYTES }}});
 
-#if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, keyEventData, userData);
-      else
-#endif
-      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, keyEventData, userData)) e.preventDefault();
+      JSEvents.dispatchEvent(e, targetThread, callbackfunc, eventTypeId, keyEventData, userData);
     };
 
     var eventHandler = {
@@ -510,26 +548,20 @@ var LibraryHTML5 = {
 #endif
   },
 
-  $registerMouseEventCallback__deps: ['$JSEvents', '$fillMouseEventData', '$findEventTarget', 'malloc'],
+  $registerMouseEventCallback__deps: ['$JSEvents', '$JSEventCache', '$fillMouseEventData', '$findEventTarget'],
   $registerMouseEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.mouseEvent ||= _malloc({{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}});
     target = findEventTarget(target);
 
     var mouseEventHandlerFunc = (e = event) => {
-      // TODO: Make this access thread safe, or this could update live while app is reading it.
-      fillMouseEventData(JSEvents.mouseEvent, e, target);
-
-#if PTHREADS
-      if (targetThread) {
-        var mouseEventData = _malloc({{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}}); // This allocated block is passed as satellite data to the proxied function call, so the call frees up the data block when done.
-        fillMouseEventData(mouseEventData, e, target);
-        __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, mouseEventData, userData);
-      } else
-#endif
-      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, JSEvents.mouseEvent, userData)) e.preventDefault();
+      var mouseEvent = JSEvents.allocateEventStruct(targetThread);
+      fillMouseEventData(mouseEvent, e, target);
+      // Cache the last event so that it can be polled via
+      // emscripten_get_deviceorientation_status
+      JSEventCache.cacheEvent({{{ cDefs.EMSCRIPTEN_EVENT_MOUSEDOWN }}}, mouseEvent, {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}});
+      JSEvents.dispatchEvent(e, targetThread, callbackfunc, eventTypeId, mouseEvent, userData);
     };
 
     var eventHandler = {
@@ -591,55 +623,42 @@ var LibraryHTML5 = {
     registerMouseEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_MOUSEOUT }}}, "mouseout", targetThread),
 
   emscripten_get_mouse_status__proxy: 'sync',
-  emscripten_get_mouse_status__deps: ['$JSEvents'],
+  emscripten_get_mouse_status__deps: ['$JSEventCache'],
   emscripten_get_mouse_status: (mouseState) => {
-    if (!JSEvents.mouseEvent) return {{{ cDefs.EMSCRIPTEN_RESULT_NO_DATA }}};
     // HTML5 does not really have a polling API for mouse events, so implement one manually by
     // returning the data from the most recently received event. This requires that user has registered
     // at least some no-op function as an event handler to any of the mouse function.
-    JSEvents.memcpy(mouseState, JSEvents.mouseEvent, {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}});
-    return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
+    return JSEventCache.getCachedEvent({{{ cDefs.EMSCRIPTEN_EVENT_MOUSEDOWN }}}, mouseState, {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}});
   },
 
-  $registerWheelEventCallback__deps: ['$JSEvents', '$fillMouseEventData', '$findEventTarget', 'malloc'],
+  $registerWheelEventCallback__deps: ['$JSEvents', '$fillMouseEventData', '$findEventTarget'],
   $registerWheelEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.wheelEvent ||= _malloc({{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}});
 
     // The DOM Level 3 events spec event 'wheel'
     var wheelHandlerFunc = (e = event) => {
-#if PTHREADS
-      var wheelEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}}) : JSEvents.wheelEvent; // This allocated block is passed as satellite data to the proxied function call, so the call frees up the data block when done.
-#else
-      var wheelEvent = JSEvents.wheelEvent;
-#endif
+      var wheelEvent = JSEvents.allocateEventStruct(targetThread);
       fillMouseEventData(wheelEvent, e, target);
       {{{ makeSetValue('wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["deltaX"]', 'double') }}};
       {{{ makeSetValue('wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, 'e["deltaY"]', 'double') }}};
       {{{ makeSetValue('wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, 'e["deltaZ"]', 'double') }}};
       {{{ makeSetValue('wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaMode, 'e["deltaMode"]', 'i32') }}};
-#if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, wheelEvent, userData);
-      else
-#endif
-      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, wheelEvent, userData)) e.preventDefault();
+      JSEvents.dispatchEvent(e, targetThread, callbackfunc, eventTypeId, wheelEvent, userData);
     };
 #if MIN_SAFARI_VERSION < 60100 // Browsers that do not support https://caniuse.com/#feat=mdn-api_wheelevent
     // The 'mousewheel' event as implemented in Safari 6.0.5
     var mouseWheelHandlerFunc = (e = event) => {
-      fillMouseEventData(JSEvents.wheelEvent, e, target);
-      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["wheelDeltaX"] || 0', 'double') }}};
+      var wheelEvent = JSEvents.allocateEventStruct(targetThread);
+      fillMouseEventData(wheelEvent, e, target);
+      {{{ makeSetValue('wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["wheelDeltaX"] || 0', 'double') }}};
       /* 1. Invert to unify direction with the DOM Level 3 wheel event. 2. MSIE does not provide wheelDeltaY, so wheelDelta is used as a fallback. */
       var wheelDeltaY = -(e["wheelDeltaY"] || e["wheelDelta"])
-      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, 'wheelDeltaY', 'double') }}};
-      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, '0 /* Not available */', 'double') }}};
-      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaMode, '0 /* DOM_DELTA_PIXEL */', 'i32') }}};
-      var shouldCancel = {{{ makeDynCall('iipp', 'callbackfunc') }}}( eventTypeId, JSEvents.wheelEvent, userData);
-      if (shouldCancel) {
-        e.preventDefault();
-      }
+      {{{ makeSetValue('wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, 'wheelDeltaY', 'double') }}};
+      {{{ makeSetValue('wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, '0 /* Not available */', 'double') }}};
+      {{{ makeSetValue('wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaMode, '0 /* DOM_DELTA_PIXEL */', 'i32') }}};
+      JSEvents.dispatchEvent(e, targetThread, callbackfunc, eventTypeId, wheelEvent, userData);
     };
 #endif
 
@@ -676,12 +695,11 @@ var LibraryHTML5 = {
     }
   },
 
-  $registerUiEventCallback__deps: ['$JSEvents', '$findEventTarget', 'malloc'],
+  $registerUiEventCallback__deps: ['$JSEvents', '$findEventTarget'],
   $registerUiEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.uiEvent ||= _malloc({{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}});
 
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     target = findEventTarget(target);
@@ -707,11 +725,7 @@ var LibraryHTML5 = {
         // During a page unload 'body' can be null, with "Cannot read property 'clientWidth' of null" being thrown
         return;
       }
-#if PTHREADS
-      var uiEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}}) : JSEvents.uiEvent;
-#else
-      var uiEvent = JSEvents.uiEvent;
-#endif
+      var uiEvent = JSEvents.allocateEventStruct(targetThread);
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.detail, '0', 'i32') }}}; // always zero for resize and scroll
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientWidth, 'b.clientWidth', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientHeight, 'b.clientHeight', 'i32') }}};
@@ -721,11 +735,7 @@ var LibraryHTML5 = {
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterHeight, 'outerHeight', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollTop, 'pageXOffset | 0', 'i32') }}}; // scroll offsets are float
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollLeft, 'pageYOffset | 0', 'i32') }}};
-#if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, uiEvent, userData);
-      else
-#endif
-      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, uiEvent, userData)) e.preventDefault();
+      JSEvents.dispatchEvent(e, targetThread, callbackfunc, eventTypeId, uiEvent, userData);
     };
 
     var eventHandler = {
@@ -748,30 +758,21 @@ var LibraryHTML5 = {
   emscripten_set_scroll_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) =>
     registerUiEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_SCROLL }}}, "scroll", targetThread),
 
-  $registerFocusEventCallback__deps: ['$JSEvents', '$findEventTarget', 'malloc', '$stringToUTF8'],
+  $registerFocusEventCallback__deps: ['$JSEvents', '$findEventTarget', '$stringToUTF8'],
   $registerFocusEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.focusEvent ||= _malloc({{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}});
 
     var focusEventHandlerFunc = (e = event) => {
       var nodeName = JSEvents.getNodeNameForTarget(e.target);
       var id = e.target.id ? e.target.id : '';
 
-#if PTHREADS
-      var focusEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}}) : JSEvents.focusEvent;
-#else
-      var focusEvent = JSEvents.focusEvent;
-#endif
+      var focusEvent = JSEvents.allocateEventStruct(targetThread);
       stringToUTF8(nodeName, focusEvent + {{{ C_STRUCTS.EmscriptenFocusEvent.nodeName }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
       stringToUTF8(id, focusEvent + {{{ C_STRUCTS.EmscriptenFocusEvent.id }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
 
-#if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, focusEvent, userData);
-      else
-#endif
-      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, focusEvent, userData)) e.preventDefault();
+      JSEvents.dispatchEvent(e, targetThread, callbackfunc, eventTypeId, focusEvent, userData);
     };
 
     var eventHandler = {
@@ -804,7 +805,6 @@ var LibraryHTML5 = {
   emscripten_set_focusout_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) =>
     registerFocusEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_FOCUSOUT }}}, "focusout", targetThread),
 
-  $fillDeviceOrientationEventData__deps: ['$JSEvents'],
   $fillDeviceOrientationEventData: (eventStruct, e, target) => {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.alpha, 'e.alpha', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.beta, 'e.beta', 'double') }}};
@@ -812,24 +812,21 @@ var LibraryHTML5 = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.absolute, 'e.absolute', 'i8') }}};
   },
 
-  $registerDeviceOrientationEventCallback__deps: ['$JSEvents', '$fillDeviceOrientationEventData', '$findEventTarget'],
-  $registerDeviceOrientationEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
+  $registerDeviceOrientationEventCallback__deps: ['$JSEvents', '$JSEventCache', '$fillDeviceOrientationEventData', '$findEventTarget'],
+  $registerDeviceOrientationEventCallback: (target, userData, useCapture, callbackfunc, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.deviceOrientationEvent ||= _malloc({{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}});
+    var eventTypeId = {{{ cDefs.EMSCRIPTEN_EVENT_DEVICEORIENTATION }}};
+    var eventTypeString = "deviceorientation";
 
     var deviceOrientationEventHandlerFunc = (e = event) => {
-      fillDeviceOrientationEventData(JSEvents.deviceOrientationEvent, e, target); // TODO: Thread-safety with respect to emscripten_get_deviceorientation_status()
-
-#if PTHREADS
-      if (targetThread) {
-        var deviceOrientationEvent = _malloc({{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}});
-        fillDeviceOrientationEventData(deviceOrientationEvent, e, target);
-        __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, deviceOrientationEvent, userData);
-      } else
-#endif
-      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, JSEvents.deviceOrientationEvent, userData)) e.preventDefault();
+      var deviceOrientationEvent = JSEvents.allocateEventStruct(targetThread);
+      fillDeviceOrientationEventData(deviceOrientationEvent, e, target);
+      // Cache the last event so that it can be polled via
+      // emscripten_get_deviceorientation_status
+      JSEventCache.cacheEvent(eventTypeId, deviceOrientationEvent, {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}});
+      JSEvents.dispatchEvent(e, targetThread, callbackfunc, eventTypeId, deviceOrientationEvent, userData);
     };
 
     var eventHandler = {
@@ -845,18 +842,16 @@ var LibraryHTML5 = {
   emscripten_set_deviceorientation_callback_on_thread__proxy: 'sync',
   emscripten_set_deviceorientation_callback_on_thread__deps: ['$registerDeviceOrientationEventCallback'],
   emscripten_set_deviceorientation_callback_on_thread: (userData, useCapture, callbackfunc, targetThread) => {
-    return registerDeviceOrientationEventCallback({{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}}, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_DEVICEORIENTATION }}}, "deviceorientation", targetThread);
+    return registerDeviceOrientationEventCallback({{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}}, userData, useCapture, callbackfunc, targetThread);
   },
 
   emscripten_get_deviceorientation_status__proxy: 'sync',
-  emscripten_get_deviceorientation_status__deps: ['$JSEvents', '$registerDeviceOrientationEventCallback'],
+  emscripten_get_deviceorientation_status__deps: ['$JSEventCache'],
   emscripten_get_deviceorientation_status: (orientationState) => {
-    if (!JSEvents.deviceOrientationEvent) return {{{ cDefs.EMSCRIPTEN_RESULT_NO_DATA }}};
     // HTML5 does not really have a polling API for device orientation events, so implement one manually by
     // returning the data from the most recently received event. This requires that user has registered
     // at least some no-op function as an event handler.
-    JSEvents.memcpy(orientationState, JSEvents.deviceOrientationEvent, {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}});
-    return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
+    return JSEventCache.getCachedEvent({{{ cDefs.EMSCRIPTEN_EVENT_DEVICEORIENTATION }}}, orientationState, {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}});
   },
 
   $fillDeviceMotionEventData__deps: ['$JSEvents'],
@@ -882,24 +877,22 @@ var LibraryHTML5 = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateGamma, 'rr["gamma"]', 'double') }}};
   },
 
-  $registerDeviceMotionEventCallback__deps: ['$JSEvents', '$fillDeviceMotionEventData', '$findEventTarget', 'malloc'],
-  $registerDeviceMotionEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
+  $registerDeviceMotionEventCallback__deps: ['$JSEvents', '$JSEventCache', '$fillDeviceMotionEventData', '$findEventTarget'],
+  $registerDeviceMotionEventCallback: (userData, useCapture, callbackfunc, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.deviceMotionEvent ||= _malloc({{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}});
+    var target = {{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}};
+    var eventTypeId = {{{ cDefs.EMSCRIPTEN_EVENT_DEVICEMOTION }}};
+    var eventTypeString = "devicemotion";
 
     var deviceMotionEventHandlerFunc = (e = event) => {
-      fillDeviceMotionEventData(JSEvents.deviceMotionEvent, e, target); // TODO: Thread-safety with respect to emscripten_get_devicemotion_status()
-
-#if PTHREADS
-      if (targetThread) {
-        var deviceMotionEvent = _malloc({{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}});
-        fillDeviceMotionEventData(deviceMotionEvent, e, target);
-        __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, deviceMotionEvent, userData);
-      } else
-#endif
-      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, JSEvents.deviceMotionEvent, userData)) e.preventDefault();
+      var deviceMotionEvent = JSEvents.allocateEventStruct(targetThread);
+      fillDeviceMotionEventData(deviceMotionEvent, e, target);
+      // Cache the last event so that it can be polled via
+      // emscripten_get_deviceorientation_status
+      JSEventCache.cacheEvent(eventTypeId, deviceMotionEvent, {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}});
+      JSEvents.dispatchEvent(e, targetThread, callbackfunc, eventTypeId, deviceMotionEvent, userData);
     };
 
     var eventHandler = {
@@ -915,18 +908,16 @@ var LibraryHTML5 = {
   emscripten_set_devicemotion_callback_on_thread__proxy: 'sync',
   emscripten_set_devicemotion_callback_on_thread__deps: ['$registerDeviceMotionEventCallback'],
   emscripten_set_devicemotion_callback_on_thread: (userData, useCapture, callbackfunc, targetThread) => {
-    return registerDeviceMotionEventCallback({{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}}, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_DEVICEMOTION }}}, "devicemotion", targetThread);
+    return registerDeviceMotionEventCallback(userData, useCapture, callbackfunc, targetThread);
   },
 
   emscripten_get_devicemotion_status__proxy: 'sync',
-  emscripten_get_devicemotion_status__deps: ['$JSEvents'],
+  emscripten_get_devicemotion_status__deps: ['$JSEventCache'],
   emscripten_get_devicemotion_status: (motionState) => {
-    if (!JSEvents.deviceMotionEvent) return {{{ cDefs.EMSCRIPTEN_RESULT_NO_DATA }}};
     // HTML5 does not really have a polling API for device motion events, so implement one manually by
     // returning the data from the most recently received event. This requires that user has registered
     // at least some no-op function as an event handler.
-    JSEvents.memcpy(motionState, JSEvents.deviceMotionEvent, {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}});
-    return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
+    return JSEventCache.getCachedEvent({{{ cDefs.EMSCRIPTEN_EVENT_DEVICEMOTION }}}, motionState, {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}});
   },
 
   $screenOrientation: () => {
@@ -965,27 +956,16 @@ var LibraryHTML5 = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationAngle, 'orientationAngle', 'i32') }}};
   },
 
-  $registerOrientationChangeEventCallback__deps: ['$JSEvents', '$fillOrientationChangeEventData', '$findEventTarget', 'malloc'],
+  $registerOrientationChangeEventCallback__deps: ['$JSEvents', '$fillOrientationChangeEventData', '$findEventTarget'],
   $registerOrientationChangeEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.orientationChangeEvent ||= _malloc({{{ C_STRUCTS.EmscriptenOrientationChangeEvent.__size__ }}});
 
     var orientationChangeEventHandlerFunc = (e = event) => {
-#if PTHREADS
-      var orientationChangeEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenOrientationChangeEvent.__size__ }}}) : JSEvents.orientationChangeEvent;
-#else
-      var orientationChangeEvent = JSEvents.orientationChangeEvent;
-#endif
-
+      var orientationChangeEvent = JSEvents.allocateEventStruct(targetThread);
       fillOrientationChangeEventData(orientationChangeEvent);
-
-#if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, orientationChangeEvent, userData);
-      else
-#endif
-      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, orientationChangeEvent, userData)) e.preventDefault();
+      JSEvents.dispatchEvent(e, targetThread, callbackfunc, eventTypeId, orientationChangeEvent, userData);
     };
 
     var eventHandler = {
@@ -1077,27 +1057,16 @@ var LibraryHTML5 = {
     }
   },
 
-  $registerFullscreenChangeEventCallback__deps: ['$JSEvents', '$fillFullscreenChangeEventData', '$findEventTarget', 'malloc'],
+  $registerFullscreenChangeEventCallback__deps: ['$JSEvents', '$fillFullscreenChangeEventData', '$findEventTarget'],
   $registerFullscreenChangeEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.fullscreenChangeEvent ||= _malloc({{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}});
 
     var fullscreenChangeEventhandlerFunc = (e = event) => {
-#if PTHREADS
-      var fullscreenChangeEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}}) : JSEvents.fullscreenChangeEvent;
-#else
-      var fullscreenChangeEvent = JSEvents.fullscreenChangeEvent;
-#endif
-
+      var fullscreenChangeEvent = JSEvents.allocateEventStruct(targetThread);
       fillFullscreenChangeEventData(fullscreenChangeEvent);
-
-#if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, fullscreenChangeEvent, userData);
-      else
-#endif
-      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, fullscreenChangeEvent, userData)) e.preventDefault();
+      JSEvents.dispatchEvent(e, targetThread, callbackfunc, eventTypeId, fullscreenChangeEvent, userData);
     };
 
     var eventHandler = {
@@ -1607,26 +1576,16 @@ var LibraryHTML5 = {
     stringToUTF8(id, eventStruct + {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.id }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
   },
 
-  $registerPointerlockChangeEventCallback__deps: ['$JSEvents', '$fillPointerlockChangeEventData', '$findEventTarget', 'malloc'],
+  $registerPointerlockChangeEventCallback__deps: ['$JSEvents', '$fillPointerlockChangeEventData', '$findEventTarget'],
   $registerPointerlockChangeEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.pointerlockChangeEvent ||= _malloc({{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}});
 
     var pointerlockChangeEventHandlerFunc = (e = event) => {
-#if PTHREADS
-      var pointerlockChangeEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}}) : JSEvents.pointerlockChangeEvent;
-#else
-      var pointerlockChangeEvent = JSEvents.pointerlockChangeEvent;
-#endif
+      var pointerlockChangeEvent = JSEvents.allocateEventStruct(targetThread);
       fillPointerlockChangeEventData(pointerlockChangeEvent);
-
-#if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, pointerlockChangeEvent, userData);
-      else
-#endif
-      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, pointerlockChangeEvent, userData)) e.preventDefault();
+      JSEvents.dispatchEvent(e, targetThread, callbackfunc, eventTypeId, pointerlockChangeEvent, userData);
     };
 
     var eventHandler = {
@@ -1667,11 +1626,7 @@ var LibraryHTML5 = {
 #endif
 
     var pointerlockErrorEventHandlerFunc = (e = event) => {
-#if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, 0, userData);
-      else
-#endif
-      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, 0, userData)) e.preventDefault();
+      JSEvents.dispatchEvent(e, targetThread, callbackfunc, eventTypeId, 0, userData);
     };
 
     var eventHandler = {
@@ -1836,27 +1791,16 @@ var LibraryHTML5 = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.visibilityState, 'visibilityState', 'i32') }}};
   },
 
-  $registerVisibilityChangeEventCallback__deps: ['$JSEvents', '$fillVisibilityChangeEventData', '$findEventTarget', 'malloc'],
+  $registerVisibilityChangeEventCallback__deps: ['$JSEvents', '$fillVisibilityChangeEventData', '$findEventTarget'],
   $registerVisibilityChangeEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.visibilityChangeEvent ||= _malloc({{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}});
 
     var visibilityChangeEventHandlerFunc = (e = event) => {
-#if PTHREADS
-      var visibilityChangeEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}}) : JSEvents.visibilityChangeEvent;
-#else
-      var visibilityChangeEvent = JSEvents.visibilityChangeEvent;
-#endif
-
+      var visibilityChangeEvent = JSEvents.allocateEventStruct(targetThread);
       fillVisibilityChangeEventData(visibilityChangeEvent);
-
-#if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, visibilityChangeEvent, userData);
-      else
-#endif
-      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, visibilityChangeEvent, userData)) e.preventDefault();
+      JSEvents.dispatchEvent(e, targetThread, callbackfunc, eventTypeId, visibilityChangeEvent, userData);
     };
 
     var eventHandler = {
@@ -1890,12 +1834,11 @@ var LibraryHTML5 = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  $registerTouchEventCallback__deps: ['$JSEvents', '$findEventTarget', '$getBoundingClientRect', 'malloc'],
+  $registerTouchEventCallback__deps: ['$JSEvents', '$findEventTarget', '$getBoundingClientRect'],
   $registerTouchEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.touchEvent ||= _malloc({{{ C_STRUCTS.EmscriptenTouchEvent.__size__ }}});
 
     target = findEventTarget(target);
 
@@ -1924,11 +1867,7 @@ var LibraryHTML5 = {
         touches[t.identifier].onTarget = 1;
       }
 
-#if PTHREADS
-      var touchEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenTouchEvent.__size__ }}}) : JSEvents.touchEvent;
-#else
-      var touchEvent = JSEvents.touchEvent;
-#endif
+      var touchEvent = JSEvents.allocateEventStruct(targetThread);
       {{{ makeSetValue('touchEvent', C_STRUCTS.EmscriptenTouchEvent.timestamp, 'e.timeStamp', 'double') }}};
       HEAP8[touchEvent + {{{ C_STRUCTS.EmscriptenTouchEvent.ctrlKey }}}] = e.ctrlKey;
       HEAP8[touchEvent + {{{ C_STRUCTS.EmscriptenTouchEvent.shiftKey }}}] = e.shiftKey;
@@ -1966,11 +1905,7 @@ var LibraryHTML5 = {
       }
       {{{ makeSetValue('touchEvent', C_STRUCTS.EmscriptenTouchEvent.numTouches, 'numTouches', 'i32') }}};
 
-#if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, touchEvent, userData);
-      else
-#endif
-      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, touchEvent, userData)) e.preventDefault();
+      JSEvents.dispatchEvent(e, targetThread, callbackfunc, eventTypeId, touchEvent, userData);
     };
 
     var eventHandler = {
@@ -2038,26 +1973,16 @@ var LibraryHTML5 = {
     stringToUTF8(e.mapping, eventStruct + {{{ C_STRUCTS.EmscriptenGamepadEvent.mapping }}}, {{{ cDefs.EM_HTML5_MEDIUM_STRING_LEN_BYTES }}});
   },
 
-  $registerGamepadEventCallback__deps: ['$JSEvents', '$fillGamepadEventData', '$findEventTarget', 'malloc'],
+  $registerGamepadEventCallback__deps: ['$JSEvents', '$fillGamepadEventData', '$findEventTarget'],
   $registerGamepadEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.gamepadEvent ||= _malloc({{{ C_STRUCTS.EmscriptenGamepadEvent.__size__ }}});
 
     var gamepadEventHandlerFunc = (e = event) => {
-#if PTHREADS
-      var gamepadEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenGamepadEvent.__size__ }}}) : JSEvents.gamepadEvent;
-#else
-      var gamepadEvent = JSEvents.gamepadEvent;
-#endif
+      var gamepadEvent = JSEvents.allocateEventStruct(targetThread);
       fillGamepadEventData(gamepadEvent, e["gamepad"]);
-
-#if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, gamepadEvent, userData);
-      else
-#endif
-      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, gamepadEvent, userData)) e.preventDefault();
+      JSEvents.dispatchEvent(e, targetThread, callbackfunc, eventTypeId, gamepadEvent, userData);
     };
 
     var eventHandler = {
@@ -2178,26 +2103,16 @@ var LibraryHTML5 = {
 
   $battery: () => navigator.battery || navigator.mozBattery || navigator.webkitBattery,
 
-  $registerBatteryEventCallback__deps: ['$JSEvents', '$fillBatteryEventData', '$battery', '$findEventTarget', 'malloc'],
+  $registerBatteryEventCallback__deps: ['$JSEvents', '$fillBatteryEventData', '$battery', '$findEventTarget'],
   $registerBatteryEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    JSEvents.batteryEvent ||= _malloc({{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}});
 
     var batteryEventHandlerFunc = (e = event) => {
-#if PTHREADS
-      var batteryEvent = targetThread ? _malloc({{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}}) : JSEvents.batteryEvent;
-#else
-      var batteryEvent = JSEvents.batteryEvent;
-#endif
+      var batteryEvent = JSEvents.allocateEventStruct(targetThread);
       fillBatteryEventData(batteryEvent, battery());
-
-#if PTHREADS
-      if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, batteryEvent, userData);
-      else
-#endif
-      if ({{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, batteryEvent, userData)) e.preventDefault();
+      JSEvents.dispatchEvent(e, targetThread, callbackfunc, eventTypeId, batteryEvent, userData);
     };
 
     var eventHandler = {

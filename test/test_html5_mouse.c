@@ -5,21 +5,11 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <emscripten.h>
 #include <string.h>
 #include <emscripten/html5.h>
-
-void report_result(int result) {
-  if (result == 0) {
-    printf("Test successful!\n");
-  } else {
-    printf("Test failed!\n");
-  }
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
-}
 
 static inline const char *emscripten_event_type_to_string(int eventType) {
   const char *events[] = { "(invalid)", "(none)", "keypress", "keydown", "keyup", "click", "mousedown", "mouseup", "dblclick", "mousemove", "wheel", "resize", 
@@ -62,7 +52,12 @@ void instruction() {
   if (!gotMouseMove) { printf("Please move the mouse on the canvas.\n"); return; }
   if (!gotWheel) { printf("Please scroll the mouse wheel.\n"); return; }
 
-  if (gotClick && gotMouseDown && gotMouseUp && gotDblClick && gotMouseMove && gotWheel) report_result(0);
+  if (gotClick && gotMouseDown && gotMouseUp && gotDblClick && gotMouseMove && gotWheel) {
+    printf("Test successful!\n");
+#ifdef REPORT_RESULT
+    REPORT_RESULT(0);
+#endif
+  }
 }
 
 bool mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
@@ -82,7 +77,7 @@ bool mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData
   if (eventType == EMSCRIPTEN_EVENT_CLICK && e->screenX == -500000) {
     printf("ERROR! Received an event to a callback that should have been unregistered!\n");
     gotClick = 0;
-    report_result(1);
+    assert(false && "Received an event to a callback that should have been unregistered");
   }
 
   instruction();
@@ -141,7 +136,7 @@ int main() {
   if (mouseEvent.screenX != 123 || mouseEvent.screenY != 456
     || mouseEvent.clientX != 123 || mouseEvent.clientY != 456) {
     printf("ERROR! Incorrect mouse status\n");
-    report_result(1);
+    assert(false && "Incorrect mouse status");
   }
 
   // Test that unregistering a callback works. Clicks should no longer be received.
