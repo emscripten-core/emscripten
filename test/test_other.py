@@ -439,11 +439,6 @@ class other(RunnerCore):
       Hello();
     ''')
 
-    if package_json:
-      # This makes node load all files in the directory as ES6 modules,
-      # including the worker.js file.
-      create_file('package.json', '{"type":"module"}')
-
     self.assertContained('hello, world!', self.run_js('runner.mjs'))
 
   def test_emcc_out_file(self):
@@ -14881,20 +14876,9 @@ addToLibrary({
     create_file('b.cpp', '#include <emscripten/bind.h>')
     self.run_process([EMXX, '-std=c++23', '-lembind', 'a.cpp', 'b.cpp'])
 
-  def test_legacy_pthread_worker_js(self):
-    self.do_runf('hello_world.c', emcc_args=['-pthread', '-sSTRICT'])
-    self.assertNotExists('hello_world.worker.js')
-    self.do_runf('hello_world.c', emcc_args=['-pthread'])
-    self.assertExists('hello_world.worker.js')
-    os.mkdir('out')
-    self.do_runf('hello_world.c', output_basename='out/foo', emcc_args=['-pthread'])
-    self.assertExists('out/foo.js')
-    self.assertExists('out/foo.worker.js')
-
   def test_no_pthread(self):
     self.do_runf('hello_world.c', emcc_args=['-pthread', '-no-pthread'])
     self.assertExists('hello_world.js')
-    self.assertNotExists('hello_world.worker.js')
     self.assertNotContained('Worker', read_file('hello_world.js'))
 
   def test_sysroot_includes_first(self):
