@@ -1942,15 +1942,15 @@ def harness_server_func(in_queue, out_queue, port):
     def do_POST(self):
       urlinfo = urlparse(self.path)
       query = parse_qs(urlinfo.query)
-      # Mirror behaviour of emrun which is to write POST'd files to dump_out/ by default
       if query['file']:
         print('do_POST: got file: %s' % query['file'])
-        ensure_dir('dump_out')
-        filename = os.path.join('dump_out', query['file'][0])
+        filename = query['file'][0]
         contentLength = int(self.headers['Content-Length'])
         create_file(filename, self.rfile.read(contentLength), binary=True)
         self.send_response(200)
         self.end_headers()
+      else:
+        print(f'do_POST: unexpected POST: {urlinfo.query}')
 
     def do_GET(self):
       if self.path == '/run_harness':
@@ -2237,15 +2237,32 @@ class BrowserCore(RunnerCore):
                 total += Math.abs(expected[y*width*4 + x*4 + 2] - actual[y*width*4 + x*4 + 2]);
               }
             }
-            var wrong = Math.floor(total / (img.width*img.height*3)); // floor, to allow some margin of error for antialiasing
-            // If the main JS file is in a worker, or modularize, then we need to supply our own reporting logic.
-            if (typeof reportResultToServer === 'undefined') {
-              (() => {
-                %s
-                reportResultToServer(wrong);
-              })();
+            // floor, to allow some margin of error for antialiasing
+            var wrong = Math.floor(total / (img.width*img.height*3));
+
+            function reportResult(result) {
+              // If the main JS file is in a worker, or modularize, then we need to supply our own
+              // reporting logic.
+              if (typeof reportResultToServer === 'undefined') {
+                (() => {
+                  %s
+                  reportResultToServer(result);
+                })();
+              } else {
+                reportResultToServer(result);
+              }
+            }
+
+            var rebaseline = %s;
+            if (wrong || rebaseline) {
+              // Generate a png of the actual rendered image and send it back
+              // to the server.
+              Module.canvas.toBlob((blob) => {
+                sendFileToServer('actual.png', blob);
+                reportResult(wrong);
+              })
             } else {
-              reportResultToServer(wrong);
+              reportResult(wrong);
             }
           };
           actualImage.src = actualUrl;
@@ -2256,7 +2273,8 @@ class BrowserCore(RunnerCore):
       /** @suppress {uselessCode} */
       function setupRefTest() {
         // Automatically trigger the reftest?
-        if (!%s) {
+        var manuallyTrigger = %s;
+        if (!manuallyTrigger) {
           // Yes, automatically
 
           Module['postRun'] = doReftest;
@@ -2293,7 +2311,7 @@ class BrowserCore(RunnerCore):
       }
 
       setupRefTest();
-''' % (reporting, int(manually_trigger)))
+''' % (reporting, EMTEST_REBASELINE, int(manually_trigger)))
 
   def compile_btest(self, filename, args, reporting=Reporting.FULL):
     # Inject support code for reporting results. This adds an include a header so testcases can
@@ -2334,7 +2352,12 @@ class BrowserCore(RunnerCore):
       kwargs.setdefault('args', [])
       kwargs['args'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
 
-    return self.btest(filename, expected=expected, *args, **kwargs)
+    try:
+      return self.btest(filename, expected=expected, *args, **kwargs)
+    finally:
+      if EMTEST_REBASELINE and os.path.exists('actual.png'):
+        print(f'overwriting expected image: {reference}')
+        self.run_process('pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB actual.png'.split() + [reference])
 
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
     """Special case of `btest` that reports its result solely via exiting
