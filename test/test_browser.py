@@ -5390,7 +5390,8 @@ Module["preRun"] = () => {
         fclose(f);
         printf("%s\n", buf);
         return 0;
-      }''')
+      }
+    ''')
 
     create_file('on_window_error_shell.html', r'''
       <html>
@@ -5409,7 +5410,8 @@ Module["preRun"] = () => {
           </script>
           {{{ SCRIPT }}}
         </body>
-      </html>''')
+      </html>
+    ''')
 
     def test(args, expect_fail):
       self.compile_btest('main.c', ['-sEXIT_RUNTIME', '--preload-file', 'hello.txt', '--shell-file', 'on_window_error_shell.html', '-o', 'a.out.html'] + args)
