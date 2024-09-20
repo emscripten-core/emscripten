@@ -1518,12 +1518,6 @@ def phase_linker_setup(options, state, newargs):
 
   if sanitize:
     settings.USE_OFFSET_CONVERTER = 1
-    settings.REQUIRED_EXPORTS += [
-        'memalign',
-        'emscripten_builtin_memalign',
-        'emscripten_builtin_malloc',
-        'emscripten_builtin_free',
-    ]
 
   if ('leak' in sanitize or 'address' in sanitize) and not settings.ALLOW_MEMORY_GROWTH:
     # Increase the minimum memory requirements to account for extra memory
