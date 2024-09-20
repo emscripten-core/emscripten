@@ -1357,7 +1357,7 @@ var LibrarySDL = {
     return SDL.version;
   },
 
-  SDL_Init__deps: ['$zeroMemory', 'memcpy'],
+  SDL_Init__deps: ['calloc', 'memcpy'],
   SDL_Init__proxy: 'sync',
   SDL_Init__docs: '/** @param{number} initFlags */',
   SDL_Init: (initFlags) => {
@@ -1376,8 +1376,7 @@ var LibrarySDL = {
     }
 
     window.addEventListener("unload", SDL.receiveEvent);
-    SDL.keyboardState = _malloc(0x10000); // Our SDL needs 512, but 64K is safe for older SDLs
-    zeroMemory(SDL.keyboardState, 0x10000);
+    SDL.keyboardState = _calloc(0x10000, 1); // Our SDL needs 512, but 64K is safe for older SDLs
     // Initialize this structure carefully for closure
     SDL.DOMEventToSDLEvent['keydown']    = 0x300  /* SDL_KEYDOWN */;
     SDL.DOMEventToSDLEvent['keyup']      = 0x301  /* SDL_KEYUP */;
@@ -1413,11 +1412,10 @@ var LibrarySDL = {
     return 1;
   },
 
-  SDL_GetVideoInfo__deps: ['$zeroMemory'],
+  SDL_GetVideoInfo__deps: ['calloc'],
   SDL_GetVideoInfo__proxy: 'sync',
   SDL_GetVideoInfo: () => {
-    var ret = _malloc({{{ C_STRUCTS.SDL_VideoInfo.__size__ }}});
-    zeroMemory(ret, {{{ C_STRUCTS.SDL_version.__size__ }}});
+    var ret = _calloc({{{ C_STRUCTS.SDL_VideoInfo.__size__ }}}, 1);
     {{{ makeSetValue('ret', C_STRUCTS.SDL_VideoInfo.current_w, 'Module["canvas"].width', 'i32') }}};
     {{{ makeSetValue('ret', C_STRUCTS.SDL_VideoInfo.current_h, 'Module["canvas"].height', 'i32') }}};
     return ret;
