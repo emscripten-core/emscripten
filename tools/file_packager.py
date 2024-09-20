@@ -970,7 +970,6 @@ def generate_js(data_target, data_files, metadata):
             }
 
             const reader = response.body.getReader();
-
             const iterate = () => reader.read().then(handleChunk).catch((cause) => {
               return Promise.reject(new Error(`Unexpected error while handling : ${response.url} ${cause}`, {cause}));
             });
