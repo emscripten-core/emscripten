@@ -23,6 +23,10 @@ function reportResultToServer(result, port) {
   }
 }
 
+function sendFileToServer(filename, contents) {
+  fetch(`http://localhost:8888/?file=${filename}`, {method: "POST", body: contents});
+}
+
 /**
  * @param {number=} port
  */
