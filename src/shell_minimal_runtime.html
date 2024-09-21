@@ -2,12 +2,9 @@
 <body>
 <canvas style='display:block; margin:auto;'></canvas>
 <script>
+
 #if !MODULARIZE
-  var {{{ EXPORT_NAME }}} = {
-#if PTHREADS
-    worker: '{{{ PTHREAD_WORKER_FILE }}}'
-#endif
-};
+var {{{ EXPORT_NAME }}} = {}
 #endif
 
 #if WASM == 2

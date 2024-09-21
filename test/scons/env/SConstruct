@@ -1,0 +1,34 @@
+import json
+import os
+
+
+def assert_(value, expected):
+  if value != expected:
+    print("assert failed:", value, expected)
+    Exit(1)
+
+
+env = Environment(toolpath=[os.environ.get('EMSCRIPTEN_TOOL_PATH')])
+env['ENV'] = dict()
+
+env.Tool('emscripten')
+
+AddOption(
+  '--expected-env',
+  dest='expected',
+  type='string',
+  nargs=1,
+  action='store',
+  help='JSON with the expected environment parameters',
+)
+
+expected_env = json.loads(GetOption('expected'))
+expected_env_env = expected_env.pop('ENV')
+
+for key in expected_env_env:
+  assert_(env['ENV'].get(key), expected_env_env[key])
+
+for key in expected_env:
+  assert_(env.get(key), expected_env[key])
+
+Exit(0)

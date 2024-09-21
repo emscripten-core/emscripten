@@ -1,5 +1,5 @@
-reading /working/symlink/test
-buffer is Link it
+readlink: '/working/directory'
+buffer: 'Link it'
 
-reading /direct-link/test
-failed to open file /direct-link/test
+readlink: '/working/directory'
+buffer: 'Link it'

@@ -11,7 +11,7 @@ import subprocess
 script_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(os.path.dirname(script_dir))
 
-sys.path.append(root_dir)
+sys.path.insert(0, root_dir)
 
 from tools import utils
 
@@ -40,7 +40,7 @@ def check_defines(info):
 
 
 def main():
-  json_file = utils.path_from_root('src/generated_struct_info32.json')
+  json_file = utils.path_from_root('src/struct_info_generated.json')
   info = json.loads(utils.read_file(json_file))
   check_structs(info)
   check_defines(info)

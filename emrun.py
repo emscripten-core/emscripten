@@ -1568,15 +1568,17 @@ def parse_args(args):
   parser.add_argument('cmdlineparams', nargs='*')
 
   # Support legacy argument names with `_` in them (but don't
-  # advertize these in the --help message.
-  newargs = []
-  for a in args:
+  # advertize these in the --help message).
+  for i, a in enumerate(args):
+    if a == '--':
+      break
     if a.startswith('--') and '_' in a:
-      newargs.append(a.replace('_', '-'))
-    else:
-      newargs.append(a)
+      # Only replace '_' in that argument name, not that its value
+      parts = a.split('=')
+      parts[0] = parts[0].replace('_', '-')
+      args[i] = '='.join(parts)
 
-  return parser.parse_args(newargs)
+  return parser.parse_args(args)
 
 
 def run(args):

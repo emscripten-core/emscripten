@@ -263,5 +263,5 @@ The following is a partial list of such unofficial emscripten packages:
  - maintainer: @chenrui333
 
 **Arch Linux**
- - package info: https://github.com/archlinux/svntogit-community/tree/packages/emscripten/trunk
- - maintainer: Sven-Hendrik Haase <svenstaro@gmail.com>
+ - package info: https://archlinux.org/packages/extra/x86_64/emscripten
+ - maintainer: Sven-Hendrik Haase <svenstaro@archlinux.org>

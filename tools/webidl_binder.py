@@ -376,9 +376,7 @@ def deref_if_nonpointer(m):
 
 
 def type_to_cdec(raw):
-  ret = type_to_c(raw.type.name, non_pointing=True)
-  if raw.getExtendedAttribute('Const'):
-    ret = 'const ' + ret
+  ret = type_to_c(full_typename(raw), non_pointing=True)
   if raw.type.name not in interfaces:
     return ret
   if raw.getExtendedAttribute('Ref'):
@@ -647,15 +645,16 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
       if i == max_args:
         dec_args = ', '.join([type_to_cdec(raw[j]) + ' ' + args[j] for j in range(i)])
         js_call_args = ', '.join(['%s%s' % (('(ptrdiff_t)' if sig[j] in interfaces else '') + take_addr_if_nonpointer(raw[j]), args[j]) for j in range(i)])
+        em_asm_macro = 'EM_ASM_%s' % ('PTR' if c_return_type[-1] == '*' else 'INT' if c_return_type not in C_FLOATS else 'DOUBLE')
 
         js_impl_methods.append(r'''  %s %s(%s) %s {
-    %sEM_ASM_%s({
+    %s (%s) %s({
       var self = Module['getCache'](Module['%s'])[$0];
       if (!self.hasOwnProperty('%s')) throw 'a JSImplementation must implement all functions, you forgot %s::%s.';
       %sself['%s'](%s)%s;
     }, (ptrdiff_t)this%s);
   }''' % (c_return_type, func_name, dec_args, maybe_const,
-          basic_return, 'INT' if c_return_type not in C_FLOATS else 'DOUBLE',
+          basic_return, c_return_type, em_asm_macro,
           class_name,
           func_name, class_name, func_name,
           return_prefix,

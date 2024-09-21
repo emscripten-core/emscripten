@@ -1,5 +1,6 @@
 // TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
 declare namespace RuntimeExports {
+    let HEAPF32: any;
     let HEAPF64: any;
     let HEAP_DATA_VIEW: any;
     let HEAP8: any;
@@ -17,4 +18,5 @@ interface WasmModule {
 interface EmbindModule {
   bigintFn(_0: bigint): bigint;
 }
+
 export type MainModule = WasmModule & typeof RuntimeExports & EmbindModule;

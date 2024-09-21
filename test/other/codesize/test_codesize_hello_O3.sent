@@ -1,0 +1,2 @@
+a (fd_write)
+b (_emscripten_memcpy_js)

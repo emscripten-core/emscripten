@@ -315,7 +315,7 @@ var LibraryEmVal = {
 #if MIN_CHROME_VERSION < 49 || MIN_FIREFOX_VERSION < 42 || MIN_SAFARI_VERSION < 100101
   $reflectConstruct: null,
   $reflectConstruct__postset: `
-    if (typeof Reflect !== 'undefined') {
+    if (typeof Reflect != 'undefined') {
       reflectConstruct = Reflect.construct;
     } else {
       reflectConstruct = function(target, args) {
@@ -347,7 +347,7 @@ var LibraryEmVal = {
       var offset = 0;
       for (var i = 0; i < argCount; ++i) {
         argN[i] = types[i]['readValueFromPointer'](args + offset);
-        offset += types[i]['argPackAdvance'];
+        offset += types[i].argPackAdvance;
       }
       var rv = kind === /* CONSTRUCTOR */ 1 ? reflectConstruct(func, argN) : func.apply(obj, argN);
       return emval_returnValue(retType, destructorsRef, rv);
@@ -369,7 +369,7 @@ var LibraryEmVal = {
       args.push(types[i]);
       functionBody +=
         `  var arg${i} = argType${i}.readValueFromPointer(args${offset ? "+" + offset : ""});\n`;
-      offset += types[i]['argPackAdvance'];
+      offset += types[i].argPackAdvance;
     }
     var invoker = kind === /* CONSTRUCTOR */ 1 ? 'new func' : 'func.call';
     functionBody +=

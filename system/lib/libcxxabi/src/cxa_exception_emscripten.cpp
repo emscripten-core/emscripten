@@ -17,8 +17,13 @@
 #include "cxa_exception.h"
 #include "include/atomic_support.h"
 #include "fallback_malloc.h"
+#include "private_typeinfo.h"
 #include "stdio.h"
 #include "assert.h"
+
+#ifdef __WASM_EXCEPTIONS__
+#error "This file should only be included when building with emscripten exceptions"
+#endif
 
 // Define to enable extra debugging on stderr.
 #if EXCEPTIONS_DEBUG
@@ -150,6 +155,15 @@ void __cxa_decrement_exception_refcount(void *thrown_object) throw() {
             __cxa_free_exception(thrown_object);
         }
     }
+}
+
+__cxa_exception* __cxa_init_primary_exception(void* object, std::type_info* tinfo,
+                                              void *(_LIBCXXABI_DTOR_FUNC* dest)(void*)) throw() {
+  __cxa_exception* exception_header = cxa_exception_from_thrown_object(object);
+  exception_header->referenceCount = 0;
+  exception_header->exceptionType = tinfo;
+  exception_header->exceptionDestructor = dest;
+  return exception_header;
 }
 
 }  // extern "C"

@@ -1140,8 +1140,9 @@ void *emmalloc_calloc(size_t num, size_t size) {
   }
   return ptr;
 }
-EMMALLOC_ALIAS(__libc_calloc, emmalloc_calloc);
-EMMALLOC_ALIAS(calloc,        emmalloc_calloc);
+EMMALLOC_ALIAS(emscripten_builtin_calloc, emmalloc_calloc);
+EMMALLOC_ALIAS(__libc_calloc,             emmalloc_calloc);
+EMMALLOC_ALIAS(calloc,                    emmalloc_calloc);
 
 static int count_linked_list_size(Region *list) {
   int size = 1;

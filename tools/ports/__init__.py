@@ -153,12 +153,12 @@ class Ports:
 
   @staticmethod
   def install_header_dir(src_dir, target=None):
+    """Like install_headers but recusively copied all files in a directory"""
     if not target:
       target = os.path.basename(src_dir)
     dest = Ports.get_include_dir(target)
-    utils.delete_dir(dest)
     logger.debug(f'installing headers: {dest}')
-    shutil.copytree(src_dir, dest)
+    shutil.copytree(src_dir, dest, dirs_exist_ok=True, copy_function=maybe_copy)
 
   @staticmethod
   def install_headers(src_dir, pattern='*.h', target=None):
@@ -221,8 +221,8 @@ class Ports:
     return output_path
 
   @staticmethod
-  def get_dir():
-    dirname = config.PORTS
+  def get_dir(*parts):
+    dirname = os.path.join(config.PORTS, *parts)
     shared.safe_ensure_dirs(dirname)
     return dirname
 
@@ -240,7 +240,7 @@ class Ports:
   @staticmethod
   def fetch_project(name, url, sha512hash=None):
     # To compute the sha512 hash, run `curl URL | sha512sum`.
-    fullname = os.path.join(Ports.get_dir(), name)
+    fullname = Ports.get_dir(name)
 
     if name not in Ports.name_cache: # only mention each port once in log
       logger.debug(f'including port: {name}')
@@ -369,6 +369,37 @@ class Ports:
     utils.write_file(filename, contents)
 
 
+class OrderedSet:
+  """Partial implementation of OrderedSet.  Just enough for what we need here."""
+  def __init__(self, items):
+    self.dict = dict()
+    for i in items:
+      self.dict[i] = True
+
+  def __repr__(self):
+    return f"OrderedSet({list(self.dict.keys())})"
+
+  def __len__(self):
+    return len(self.dict.keys())
+
+  def copy(self):
+    return OrderedSet(self.dict.keys())
+
+  def __iter__(self):
+    return iter(self.dict.keys())
+
+  def pop(self, index=-1):
+    key = list(self.dict.keys())[index]
+    self.dict.pop(key)
+    return key
+
+  def add(self, item):
+    self.dict[item] = True
+
+  def remove(self, item):
+    del self.dict[item]
+
+
 def dependency_order(port_list):
   # Perform topological sort of ports according to the dependency DAG
   port_map = {p.name: p for p in port_list}
@@ -376,7 +407,7 @@ def dependency_order(port_list):
   # Perform depth first search of dependecy graph adding nodes to
   # the stack only after all children have been explored.
   stack = []
-  unsorted = set(port_list)
+  unsorted = OrderedSet(port_list)
 
   def dfs(node):
     for dep in node.deps:
@@ -437,7 +468,8 @@ def handle_port_options(name, options, error_handler):
     error_handler(f'no options available for port `{name}`')
   else:
     options_dict = {}
-    for name_value in options.split(':'):
+    for name_value in options.replace('::', '\0').split(':'):
+      name_value = name_value.replace('\0', ':')
       nv = name_value.split('=', 1)
       if len(nv) != 2:
         error_handler(f'`{name_value}` is missing a value')
@@ -491,14 +523,14 @@ def handle_use_port_arg(settings, arg, error_handler=None):
 
 def get_needed_ports(settings):
   # Start with directly needed ports, and transitively add dependencies
-  needed = set(p for p in ports if p.needed(settings))
+  needed = OrderedSet(p for p in ports if p.needed(settings))
   resolve_dependencies(needed, settings)
   return needed
 
 
 def build_port(port_name, settings):
   port = ports_by_name[port_name]
-  port_set = {port}
+  port_set = OrderedSet([port])
   resolve_dependencies(port_set, settings)
   for port in dependency_order(port_set):
     port.get(Ports, settings, shared)

@@ -1,4 +1,4 @@
-var d = Module, g, h, k = new TextDecoder("utf8"), l;
+var d = Module, g, h, k = new TextDecoder, l;
 
 function e(b) {
     this.exports = function(r) {

@@ -1143,7 +1143,7 @@ var LibraryGLFW = {
       for (var i = 0; i < GLFW.windows.length; i++)
         if (GLFW.windows[i] !== null) return;
 
-      Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
+      delete Module.ctx;
     },
 
     swapBuffers: (winid) => {
@@ -1184,8 +1184,8 @@ var LibraryGLFW = {
             Browser.updateResizeListeners();
           }
         }
-        if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullscreen);
-        if (Module['onFullscreen']) Module['onFullscreen'](Browser.isFullscreen);
+        Module['onFullScreen']?.(Browser.isFullscreen);
+        Module['onFullscreen']?.(Browser.isFullscreen);
       }
 
       if (!Browser.fullscreenHandlersInstalled) {

@@ -151,7 +151,8 @@ addToLibrary({
 
   _wasmfs_opfs_get_entries__deps: [
     '$wasmfsOPFSProxyFinish',
-    '$withStackSave',
+    '$stackSave',
+    '$stackRestore',
     '_wasmfs_opfs_record_entry',
   ],
   _wasmfs_opfs_get_entries: async function(ctx, dirID, entriesPtr, errPtr) {
@@ -162,13 +163,13 @@ addToLibrary({
       let iter = dirHandle.entries();
       for (let entry; entry = await iter.next(), !entry.done;) {
         let [name, child] = entry.value;
-        withStackSave(() => {
-          let namePtr = stringToUTF8OnStack(name);
-          let type = child.kind == "file" ?
-              {{{ cDefine('File::DataFileKind') }}} :
-          {{{ cDefine('File::DirectoryKind') }}};
+        let sp = stackSave();
+        let namePtr = stringToUTF8OnStack(name);
+        let type = child.kind == "file" ?
+            {{{ cDefine('File::DataFileKind') }}} :
+        {{{ cDefine('File::DirectoryKind') }}};
           __wasmfs_opfs_record_entry(entriesPtr, namePtr, type)
-        });
+        stackRestore(sp);
       }
     } catch {
       let err = -{{{ cDefs.EIO }}};

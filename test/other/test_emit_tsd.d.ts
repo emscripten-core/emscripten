@@ -9,7 +9,8 @@ declare namespace RuntimeExports {
      * @param {number=} maxBytesToRead
      * @return {string}
      */
-    function UTF8ArrayToString(heapOrArray: any, idx: number, maxBytesToRead?: number): string;
+    function UTF8ArrayToString(heapOrArray: any, idx: number, maxBytesToRead?: number | undefined): string;
+    let wasmTable: WebAssembly.Table;
     let HEAPF32: any;
     let HEAPF64: any;
     let HEAP_DATA_VIEW: any;

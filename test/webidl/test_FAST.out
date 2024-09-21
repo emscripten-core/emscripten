@@ -108,5 +108,8 @@ struct_ptr_array[0]->attr2 == 101
 Parent:0
 Parent:42
 |abc|1|(null)|123|
+123
+true
+true
 
 done.

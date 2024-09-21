@@ -9,18 +9,10 @@
 {{{ throw "this file should not be be included when IMPORTED_MEMORY is set"; }}}
 #endif
 
-{{{ makeModuleReceiveWithVar('INITIAL_MEMORY', undefined, INITIAL_MEMORY) }}}
-
-#if ASSERTIONS
-assert(INITIAL_MEMORY >= {{{STACK_SIZE}}}, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + {{{STACK_SIZE}}} + ')');
-#endif
-  
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 
 #if PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) {
-  wasmMemory = Module['wasmMemory'];
-} else {
+if (!ENVIRONMENT_IS_PTHREAD) {
 #endif // PTHREADS
 
 #if expectToReceiveOnModule('wasmMemory')
@@ -29,17 +21,22 @@ if (ENVIRONMENT_IS_PTHREAD) {
   } else
 #endif
   {
+    {{{ makeModuleReceiveWithVar('INITIAL_MEMORY', undefined, INITIAL_MEMORY) }}}
+
+#if ASSERTIONS
+    assert(INITIAL_MEMORY >= {{{STACK_SIZE}}}, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + {{{STACK_SIZE}}} + ')');
+#endif
     wasmMemory = new WebAssembly.Memory({
-      'initial': INITIAL_MEMORY / {{{ WASM_PAGE_SIZE }}},
+      'initial': {{{ toIndexType(`INITIAL_MEMORY / ${WASM_PAGE_SIZE}`) }}},
 #if ALLOW_MEMORY_GROWTH
       // In theory we should not need to emit the maximum if we want "unlimited"
       // or 4GB of memory, but VMs error on that atm, see
       // https://github.com/emscripten-core/emscripten/issues/14130
       // And in the pthreads case we definitely need to emit a maximum. So
       // always emit one.
-      'maximum': {{{ MAXIMUM_MEMORY }}} / {{{ WASM_PAGE_SIZE }}},
+      'maximum': {{{ toIndexType(MAXIMUM_MEMORY / WASM_PAGE_SIZE) }}},
 #else
-      'maximum': INITIAL_MEMORY / {{{ WASM_PAGE_SIZE }}},
+      'maximum': {{{ toIndexType(`INITIAL_MEMORY / ${WASM_PAGE_SIZE}`) }}},
 #endif // ALLOW_MEMORY_GROWTH
 #if SHARED_MEMORY
       'shared': true,
@@ -59,15 +56,8 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
   }
 
+  updateMemoryViews();
 #if PTHREADS
 }
 #endif
 
-updateMemoryViews();
-
-// If the user provides an incorrect length, just use that length instead rather than providing the user to
-// specifically provide the memory length with Module['INITIAL_MEMORY'].
-INITIAL_MEMORY = wasmMemory.buffer.byteLength;
-#if ASSERTIONS
-assert(INITIAL_MEMORY % {{{ WASM_PAGE_SIZE }}} === 0);
-#endif

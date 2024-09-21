@@ -24,23 +24,23 @@ extern "C" {
 #error "EMTEST_PORT_NUMBER not defined"
 #endif
 
-void EMSCRIPTEN_KEEPALIVE _ReportResult(int result, int sync) {
+void EMSCRIPTEN_KEEPALIVE _ReportResult(int result) {
   EM_ASM({
-    reportResultToServer($0, $1, $2);
-  }, result, sync, EMTEST_PORT_NUMBER);
+    reportResultToServer($0, $1);
+  }, result, EMTEST_PORT_NUMBER);
 }
 
-void EMSCRIPTEN_KEEPALIVE _MaybeReportResult(int result, int sync) {
+void EMSCRIPTEN_KEEPALIVE _MaybeReportResult(int result) {
   EM_ASM({
-    maybeReportResultToServer($0, $1, $2);
-  }, result, sync, EMTEST_PORT_NUMBER);
+    maybeReportResultToServer($0, $1);
+  }, result, EMTEST_PORT_NUMBER);
 }
 
 #else
 
 static bool reported = false;
 
-void _ReportResult(int result, int sync) {
+void _ReportResult(int result) {
   if (reported) {
     printf("ERROR: result already reported\n");
     exit(1);
@@ -49,8 +49,8 @@ void _ReportResult(int result, int sync) {
   printf("RESULT: %d\n", result);
 }
 
-void _MaybeReportResult(int result, int sync) {
-  if (!reported) _ReportResult(result, sync);
+void _MaybeReportResult(int result) {
+  if (!reported) _ReportResult(result);
 }
 
 #endif // __EMSCRIPTEN__ && !defined EMTEST_NODE

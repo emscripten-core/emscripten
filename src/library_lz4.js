@@ -14,7 +14,7 @@ addToLibrary({
     codec: null,
     init() {
       if (LZ4.codec) return;
-      LZ4.codec = (function() {
+      LZ4.codec = (() => {
         {{{ read('../third_party/mini-lz4.js') }}};
         return MiniLZ4;
       })();

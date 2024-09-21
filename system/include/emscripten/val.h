@@ -259,7 +259,7 @@ inline void writeGenericWireTypes(GenericWireType*&) {
 
 template<typename First, typename... Rest>
 EMSCRIPTEN_ALWAYS_INLINE void writeGenericWireTypes(GenericWireType*& cursor, First&& first, Rest&&... rest) {
-  writeGenericWireType(cursor, BindingType<First>::toWireType(std::forward<First>(first)));
+  writeGenericWireType(cursor, BindingType<First>::toWireType(std::forward<First>(first), rvp::default_tag{}));
   writeGenericWireTypes(cursor, std::forward<Rest>(rest)...);
 }
 
@@ -676,7 +676,8 @@ private:
   pthread_t thread;
   EM_VAL handle;
 
-  friend struct internal::BindingType<val>;
+  template <typename T, typename>
+  friend struct ::emscripten::internal::BindingType;
 };
 
 struct val::iterator {
@@ -805,13 +806,13 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
 
   // Marshall to JS with move semantics when we can invalidate the temporary val
   // object.
-  static WireType toWireType(val&& v) {
+  static WireType toWireType(val&& v, rvp::default_tag) {
     return v.release_ownership();
   }
 
   // Marshal to JS with copy semantics when we cannot transfer the val objects
   // reference count.
-  static WireType toWireType(const val& v) {
+  static WireType toWireType(const val& v, rvp::default_tag) {
     EM_VAL handle = v.as_handle();
     if (v.uses_ref_count()) {
       _emval_incref(handle);

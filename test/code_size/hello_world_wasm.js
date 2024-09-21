@@ -1,4 +1,4 @@
-var d = Module, e, f, g = new TextDecoder("utf8"), h;
+var d = Module, e, f, g = new TextDecoder, h;
 
 WebAssembly.instantiate(d.wasm, {
     a: {

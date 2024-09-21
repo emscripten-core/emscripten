@@ -121,10 +121,10 @@ window.scrollX = window.scrollY = 0; // TODO: proxy these
 
 window.WebGLRenderingContext = WebGLWorker;
 
-window.requestAnimationFrame = (function() {
+window.requestAnimationFrame = (() => {
   // similar to Browser.requestAnimationFrame
   var nextRAF = 0;
-  return function(func) {
+  return (func) => {
     // try to keep 60fps between calls to here
     var now = Date.now();
     if (nextRAF === 0) {
@@ -475,7 +475,7 @@ function onMessageFromMainEmscriptenThread(message) {
       break;
     }
     case 'setimmediate': {
-      if (Module['setImmediates']) Module['setImmediates'].shift()();
+      Module['setImmediates']?.shift()();
       break;
     }
     default: throw 'wha? ' + message.data.target;

@@ -43,9 +43,9 @@ typedef struct thread_profiler_block {
 // the current time.
 void _emscripten_yield(double now);
 
-void __emscripten_init_main_thread_js(void* tb);
+void _emscripten_init_main_thread_js(void* tb);
 void _emscripten_thread_profiler_enable();
-void __emscripten_thread_cleanup(pthread_t thread);
+void _emscripten_thread_cleanup(pthread_t thread);
 
 hidden void* _emscripten_tls_init(void);
 hidden void _emscripten_tls_free(void);
@@ -66,6 +66,7 @@ void _emscripten_thread_set_strongref(pthread_t thread);
 int _emscripten_thread_is_valid(pthread_t thread);
 
 void _emscripten_thread_exit_joinable(pthread_t thread);
+void _emscripten_thread_exit(void* result);
 void _emscripten_process_dlopen_queue(void);
 
 #ifdef NDEBUG

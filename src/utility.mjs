@@ -7,11 +7,11 @@
 // General JS utilities - things that might be useful in any JS project.
 // Nothing specific to Emscripten appears here.
 
-import * as url from 'url';
-import * as path from 'path';
-import * as fs from 'fs';
-import * as vm from 'vm';
-import assert from 'assert';
+import * as url from 'node:url';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
+import * as vm from 'node:vm';
+import assert from 'node:assert';
 
 export {assert};
 
@@ -27,7 +27,7 @@ export function dump(item) {
       item.funcData = null;
     }
     return '// ' + JSON.stringify(item, null, '  ').replace(/\n/g, '\n// ');
-  } catch (e) {
+  } catch {
     const ret = [];
     for (const [i, j] of Object.entries(item)) {
       if (typeof j == 'string' || typeof j == 'number') {
@@ -301,10 +301,10 @@ export class Benchmarker {
  * global scope of the compiler itself which avoids exposing all of the compiler
  * internals to user JS library code.
  */
-export const compileTimeContext = {
+export const compileTimeContext = vm.createContext({
   process,
   console,
-};
+});
 
 /**
  * A symbols to the macro context.
@@ -328,7 +328,9 @@ export function loadSettingsFile(f) {
 }
 
 export function runInMacroContext(code, options) {
-  return vm.runInNewContext(code, compileTimeContext, options);
+  compileTimeContext['__filename'] = options.filename;
+  compileTimeContext['__dirname'] = path.dirname(options.filename);
+  return vm.runInContext(code, compileTimeContext, options);
 }
 
 addToCompileTimeContext({
