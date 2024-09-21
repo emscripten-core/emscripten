@@ -601,6 +601,7 @@ function instrumentWasmTableWithAbort() {
 }
 #endif
 
+#if WASM == 2 || !WASM2JS
 function findWasmBinary() {
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && !AUDIO_WORKLET
   if (Module['locateFile']) {
@@ -622,6 +623,7 @@ function findWasmBinary() {
   return new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).href;
 #endif
 }
+#endif
 
 var wasmBinaryFile;
 
@@ -1076,7 +1078,9 @@ function createWasm() {
   }
 #endif
 
+#if WASM == 2 || !WASM2JS
   if (!wasmBinaryFile) wasmBinaryFile = findWasmBinary();
+#endif
 
 #if WASM_ASYNC_COMPILATION
 #if RUNTIME_DEBUG
