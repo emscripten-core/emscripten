@@ -20,6 +20,12 @@ See docs/process.md for more on how version tagging works.
 
 3.1.68 (in development)
 -----------------------
+- Pthread-based programs no longer generates `.worker.js` file.  This file was
+  made redundant back in 3.1.58 and now is completely removed. (#22598)
+- The freetype port was updated from v2.6 to v2.13.3. (#22585)
+- The number of arguments passed to Embind function calls is now only verified
+  with ASSERTIONS enabled. (#22591)
+- Optional arguments can now be omitted from Embind function calls. (#22591)
 
 3.1.67 - 09/17/24
 -----------------
