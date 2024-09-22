@@ -952,15 +952,17 @@ def phase_linker_setup(options, state, newargs):
   if settings.WASM == 2 and settings.SINGLE_FILE:
     exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time')
 
+  if settings.PROXY_TO_WORKER and settings.SINGLE_FILE:
+    exit_with_error('cannot have both PROXY_TO_WORKER and SINGLE_FILE enabled at the same time')
+
   if settings.SEPARATE_DWARF and settings.WASM2JS:
     exit_with_error('cannot have both SEPARATE_DWARF and WASM2JS at the same time (as there is no wasm file)')
 
   if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
     exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION are mutually exclusive!')
 
-  if options.emrun:
-    if settings.MINIMAL_RUNTIME:
-      exit_with_error('--emrun is not compatible with MINIMAL_RUNTIME')
+  if options.emrun and settings.MINIMAL_RUNTIME:
+    exit_with_error('--emrun is not compatible with MINIMAL_RUNTIME')
 
   if options.use_closure_compiler:
     settings.USE_CLOSURE_COMPILER = 1
