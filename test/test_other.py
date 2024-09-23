@@ -2479,6 +2479,7 @@ int main() {
 
   @with_all_sjlj
   @requires_network
+  @crossplatform
   def test_freetype(self):
     # copy the Liberation Sans Bold truetype file located in the
     # <emscripten_root>/test/freetype to the compilation folder
@@ -7668,6 +7669,11 @@ int main() {
 ''')
     self.run_process([EMCC, 'src.c'])
     self.assertContained('hello, world!', self.run_js('a.out.js'))
+
+  @crossplatform
+  @also_with_wasmfs
+  def test_umask(self):
+    self.do_runf('other/test_umask.c', 'success')
 
   def test_no_missing_symbols(self):
     # simple hello world should not show any missing symbols

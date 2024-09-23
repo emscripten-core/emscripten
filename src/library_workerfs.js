@@ -12,7 +12,7 @@ addToLibrary({
     reader: null,
     mount(mount) {
       assert(ENVIRONMENT_IS_WORKER);
-      if (!WORKERFS.reader) WORKERFS.reader = new FileReaderSync();
+      WORKERFS.reader ??= new FileReaderSync();
       var root = WORKERFS.createNode(null, '/', WORKERFS.DIR_MODE, 0);
       var createdParents = {};
       function ensureParent(path) {
