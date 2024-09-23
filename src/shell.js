@@ -235,6 +235,8 @@ if (ENVIRONMENT_IS_NODE) {
   // EXPORT_ES6 + ENVIRONMENT_IS_NODE always requires use of import.meta.url,
   // since there's no way getting the current absolute path of the module when
   // support for that is not available.
+  // Using Object(import.meta).url here to prevent Webpack from trying to resolve the URL
+  // https://github.com/webpack/webpack/issues/16878
   scriptDirectory = require('url').fileURLToPath(new URL('./', Object(import.meta).url)); // includes trailing slash
 #else
   scriptDirectory = __dirname + '/';
