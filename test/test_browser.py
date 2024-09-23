@@ -3063,13 +3063,7 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   def test_sdl2_gl_frames_swap(self):
-    def post_build():
-      self.post_manual_reftest()
-      reftest = read_file('reftest.js')
-      reftest2 = reftest.replace("Module['postRun'] = doReftest;", '') # we don't want the very first frame
-      assert reftest != reftest2
-      create_file('reftest.js', reftest2)
-    self.reftest('test_sdl2_gl_frames_swap.c', 'test_sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-sGL_TESTING', '-sUSE_SDL=2'], manual_reference=True, post_build=post_build)
+    self.reftest('test_sdl2_gl_frames_swap.c', 'test_sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-sGL_TESTING', '-sUSE_SDL=2'], manual_reference=True, post_build=self.post_manual_reftest)
 
   @requires_graphics_hardware
   def test_sdl2_ttf(self):
@@ -3703,7 +3697,7 @@ Module["preRun"] = () => {
     if '-sSINGLE_FILE' in args:
       self.assertEqual(len(files), 1, files)
     else:
-      self.assertEqual(len(files), 4, files)
+      self.assertEqual(len(files), 3, files)
 
   # Test that preallocating worker threads work.
   def test_pthread_preallocates_workers(self):
@@ -5381,6 +5375,55 @@ Module["preRun"] = () => {
       self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
     shutil.copyfile('webpack/src/hello.wasm', 'webpack/dist/hello.wasm')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
+
+  def test_fetch_polyfill_preload(self):
+    create_file('hello.txt', 'hello, world!')
+    create_file('main.c', r'''
+      #include <stdio.h>
+      #include <string.h>
+      #include <emscripten.h>
+      int main() {
+        FILE *f = fopen("hello.txt", "r");
+        char buf[100];
+        fread(buf, 1, 20, f);
+        buf[20] = 0;
+        fclose(f);
+        printf("%s\n", buf);
+        return 0;
+      }''')
+
+    create_file('on_window_error_shell.html', r'''
+      <html>
+          <center><canvas id='canvas' width='256' height='256'></canvas></center>
+          <hr><div id='output'></div><hr>
+          <script type='text/javascript'>
+            window.addEventListener('error', event => {
+              const error = String(event.message);
+              window.disableErrorReporting = true;
+              window.onerror = null;
+              var xhr = new XMLHttpRequest();
+              xhr.open('GET', 'http://localhost:8888/report_result?exception:' + error.substr(-23), true);
+              xhr.send();
+              setTimeout(function() { window.close() }, 1000);
+            });
+          </script>
+          {{{ SCRIPT }}}
+        </body>
+      </html>''')
+
+    def test(args, expect_fail):
+      self.compile_btest('main.c', ['-sEXIT_RUNTIME', '--preload-file', 'hello.txt', '--shell-file', 'on_window_error_shell.html', '-o', 'a.out.html'] + args)
+      if expect_fail:
+        js = read_file('a.out.js')
+        create_file('a.out.js', 'let origFetch = fetch; fetch = undefined;\n' + js)
+        return self.run_browser('a.out.html', '/report_result?exception:fetch is not a function')
+      else:
+        return self.run_browser('a.out.html', '/report_result?exit:0')
+
+    test([], expect_fail=False)
+    test([], expect_fail=True)
+    test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
+    test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
 
   @no_wasm64('https://github.com/llvm/llvm-project/issues/98778')
   def test_fetch_polyfill_shared_lib(self):

@@ -1518,12 +1518,6 @@ def phase_linker_setup(options, state, newargs):
 
   if sanitize:
     settings.USE_OFFSET_CONVERTER = 1
-    settings.REQUIRED_EXPORTS += [
-        'memalign',
-        'emscripten_builtin_memalign',
-        'emscripten_builtin_malloc',
-        'emscripten_builtin_free',
-    ]
 
   if ('leak' in sanitize or 'address' in sanitize) and not settings.ALLOW_MEMORY_GROWTH:
     # Increase the minimum memory requirements to account for extra memory
@@ -2079,15 +2073,6 @@ def phase_final_emitting(options, state, target, wasm_target):
     return
 
   target_dir = os.path.dirname(os.path.abspath(target))
-  if settings.PTHREADS and not settings.STRICT and not settings.SINGLE_FILE:
-    worker_file = shared.replace_suffix(target, get_worker_js_suffix())
-    write_file(worker_file, '''\
-// This file is no longer used by emscripten and has been created as a placeholder
-// to allow build systems to transition away from depending on it.
-//
-// Future versions of emscripten will likely stop generating this file at all.
-throw new Error('Dummy worker.js file should never be used');
-''')
 
   # Deploy the Wasm Worker bootstrap file as an output file (*.ww.js)
   if settings.WASM_WORKERS == 1:

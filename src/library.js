@@ -1428,21 +1428,14 @@ addToLibrary({
 
   emscripten_random: () => Math.random(),
 
-  emscripten_get_now: `;
-#if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 160000
-    // The performance global was added to node in v16.0.0:
-    // https://nodejs.org/api/globals.html#performance
-    if (ENVIRONMENT_IS_NODE) {
-      global.performance = require('perf_hooks').performance;
-    }
-#endif
 #if PTHREADS && !AUDIO_WORKLET
-    // Pthreads need their clocks synchronized to the execution of the main
-    // thread, so, when using them, make sure to adjust all timings to the
-    // respective time origins.
-    _emscripten_get_now = () => performance.timeOrigin + {{{ getPerformanceNow() }}}();
+  // Pthreads need their clocks synchronized to the execution of the main
+  // thread, so, when using them, make sure to adjust all timings to the
+  // respective time origins.
+  emscripten_get_now: () => performance.timeOrigin + {{{ getPerformanceNow() }}}(),
 #else
 #if MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 || AUDIO_WORKLET // https://caniuse.com/#feat=high-resolution-time
+  emscripten_get_now: `;
     // AudioWorkletGlobalScope does not have performance.now()
     // (https://github.com/WebAudio/web-audio-api/issues/2527), so if building
     // with
@@ -1456,14 +1449,14 @@ addToLibrary({
     } else {
       _emscripten_get_now = Date.now;
     }
-#else
-    // Modern environment where performance.now() is supported:
-    // N.B. a shorter form "_emscripten_get_now = performance.now;" is
-    // unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
-    _emscripten_get_now = () => {{{ getPerformanceNow() }}}();
-#endif
-#endif
 `,
+#else
+  // Modern environment where performance.now() is supported:
+  // N.B. a shorter form "_emscripten_get_now = performance.now;" is
+  // unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
+  emscripten_get_now: () => {{{ getPerformanceNow() }}}(),
+#endif
+#endif
 
   emscripten_get_now_res: () => { // return resolution of get_now, in nanoseconds
 #if ENVIRONMENT_MAY_BE_NODE
@@ -1581,21 +1574,26 @@ addToLibrary({
 
 #if USE_ASAN || USE_LSAN || UBSAN_RUNTIME
   // When lsan or asan is enabled withBuiltinMalloc temporarily replaces calls
-  // to malloc, free, and memalign.
-  $withBuiltinMalloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'
-                            ],
+  // to malloc, calloc, free, and memalign.
+  $withBuiltinMalloc__deps: [
+    'malloc', 'calloc', 'free', 'memalign',
+    'emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'emscripten_builtin_calloc'
+  ],
   $withBuiltinMalloc__docs: '/** @suppress{checkTypes} */',
   $withBuiltinMalloc: (func) => {
     var prev_malloc = typeof _malloc != 'undefined' ? _malloc : undefined;
+    var prev_calloc = typeof _calloc != 'undefined' ? _calloc : undefined;
     var prev_memalign = typeof _memalign != 'undefined' ? _memalign : undefined;
     var prev_free = typeof _free != 'undefined' ? _free : undefined;
     _malloc = _emscripten_builtin_malloc;
+    _calloc = _emscripten_builtin_calloc;
     _memalign = _emscripten_builtin_memalign;
     _free = _emscripten_builtin_free;
     try {
       return func();
     } finally {
       _malloc = prev_malloc;
+      _calloc = prev_calloc;
       _memalign = prev_memalign;
       _free = prev_free;
     }

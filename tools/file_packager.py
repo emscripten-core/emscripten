@@ -359,7 +359,7 @@ def generate_object_file(data_files):
 
 def main():
   if len(sys.argv) == 1:
-    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins]
+    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node]
   See the source for more details.''')
     return 1
 
@@ -952,54 +952,62 @@ def generate_js(data_target, data_files, metadata):
           });
           return;
         }'''.strip()
+
     ret += '''
       function fetchRemotePackage(packageName, packageSize, callback, errback) {
         %(node_support_code)s
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', packageName, true);
-        xhr.responseType = 'arraybuffer';
-        xhr.onprogress = (event) => {
-          var url = packageName;
-          var size = packageSize;
-          if (event.total) size = event.total;
-          if (event.loaded) {
-            if (!xhr.addedTotal) {
-              xhr.addedTotal = true;
-              if (!Module['dataFileDownloads']) Module['dataFileDownloads'] = {};
-              Module['dataFileDownloads'][url] = {
-                loaded: event.loaded,
-                total: size
-              };
-            } else {
-              Module['dataFileDownloads'][url].loaded = event.loaded;
+        Module['dataFileDownloads'] ??= {};
+        fetch(packageName)
+          .catch((cause) => Promise.reject(new Error(`Network Error: ${packageName}`, {cause}))) // If fetch fails, rewrite the error to include the failing URL & the cause.
+          .then((response) => {
+            if (!response.ok) {
+              return Promise.reject(new Error(`${response.status}: ${response.url}`));
             }
-            var total = 0;
-            var loaded = 0;
-            var num = 0;
-            for (var download in Module['dataFileDownloads']) {
-            var data = Module['dataFileDownloads'][download];
-              total += data.total;
-              loaded += data.loaded;
-              num++;
+
+            if (!response.body && response.arrayBuffer) { // If we're using the polyfill, readers won't be available...
+              return response.arrayBuffer().then(callback);
             }
-            total = Math.ceil(total * Module['expectedDataFileDownloads']/num);
-            Module['setStatus']?.(`Downloading data... (${loaded}/${total})`);
-          } else if (!Module['dataFileDownloads']) {
+
+            const reader = response.body.getReader();
+            const iterate = () => reader.read().then(handleChunk).catch((cause) => {
+              return Promise.reject(new Error(`Unexpected error while handling : ${response.url} ${cause}`, {cause}));
+            });
+
+            const chunks = [];
+            const headers = response.headers;
+            const total = Number(headers.get('Content-Length') ?? packageSize);
+            let loaded = 0;
+
+            const handleChunk = ({done, value}) => {
+              if (!done) {
+                chunks.push(value);
+                loaded += value.length;
+                Module['dataFileDownloads'][packageName] = {loaded, total};
+
+                let totalLoaded = 0;
+                let totalSize = 0;
+
+                for (const download of Object.values(Module['dataFileDownloads'])) {
+                  totalLoaded += download.loaded;
+                  totalSize += download.total;
+                }
+
+                Module['setStatus']?.(`Downloading data... (${totalLoaded}/${totalSize})`);
+                return iterate();
+              } else {
+                const packageData = new Uint8Array(chunks.map((c) => c.length).reduce((a, b) => a + b, 0));
+                let offset = 0;
+                for (const chunk of chunks) {
+                  packageData.set(chunk, offset);
+                  offset += chunk.length;
+                }
+                callback(packageData.buffer);
+              }
+            };
+
             Module['setStatus']?.('Downloading data...');
-          }
-        };
-        xhr.onerror = (event) => {
-          throw new Error("NetworkError for: " + packageName);
-        }
-        xhr.onload = (event) => {
-          if (xhr.status == 200 || xhr.status == 304 || xhr.status == 206 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
-            var packageData = xhr.response;
-            callback(packageData);
-          } else {
-            throw new Error(xhr.statusText + " : " + xhr.responseURL);
-          }
-        };
-        xhr.send(null);
+            return iterate();
+          });
       };
 
       function handleError(error) {
@@ -1097,15 +1105,14 @@ def generate_js(data_target, data_files, metadata):
   function runMetaWithFS() {
     Module['addRunDependency']('%(metadata_file)s');
     var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
-    var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = () => {
-     if (xhr.readyState === 4 && xhr.status === 200) {
-       loadPackage(JSON.parse(xhr.responseText));
-     }
-    }
-    xhr.open('GET', REMOTE_METADATA_NAME, true);
-    xhr.overrideMimeType('application/json');
-    xhr.send(null);
+    fetch(REMOTE_METADATA_NAME)
+      .then((response) => {
+        if (response.ok) {
+          return response.json();
+        }
+        return Promise.reject(new Error(`${response.status}: ${response.url}`));
+      })
+      .then(loadPackage);
   }
 
   if (Module['calledRun']) {
@@ -1114,7 +1121,6 @@ def generate_js(data_target, data_files, metadata):
     if (!Module['preRun']) Module['preRun'] = [];
     Module["preRun"].push(runMetaWithFS);
   }\n''' % {'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
-
   else:
       _metadata_template = '''
     }

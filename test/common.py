@@ -1942,15 +1942,15 @@ def harness_server_func(in_queue, out_queue, port):
     def do_POST(self):
       urlinfo = urlparse(self.path)
       query = parse_qs(urlinfo.query)
-      # Mirror behaviour of emrun which is to write POST'd files to dump_out/ by default
       if query['file']:
         print('do_POST: got file: %s' % query['file'])
-        ensure_dir('dump_out')
-        filename = os.path.join('dump_out', query['file'][0])
+        filename = query['file'][0]
         contentLength = int(self.headers['Content-Length'])
         create_file(filename, self.rfile.read(contentLength), binary=True)
         self.send_response(200)
         self.end_headers()
+      else:
+        print(f'do_POST: unexpected POST: {urlinfo.query}')
 
     def do_GET(self):
       if self.path == '/run_harness':
@@ -2191,18 +2191,16 @@ class BrowserCore(RunnerCore):
   def make_reftest(self, expected, manually_trigger=False):
     # make sure the pngs used here have no color correction, using e.g.
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
-    basename = os.path.basename(expected)
-    if os.path.abspath(os.path.dirname(expected)) != self.get_dir():
-      shutil.copyfile(expected, self.in_dir(basename))
     reporting = read_file(test_file('browser_reporting.js'))
+    shutil.copyfile(expected, 'expected.png')
     create_file('reftest.js', '''
       function doReftest() {
         if (doReftest.done) return;
         doReftest.done = true;
         var img = new Image();
-        img.onload = function() {
-          assert(img.width == Module.canvas.width, 'Invalid width: ' + Module.canvas.width + ', should be ' + img.width);
-          assert(img.height == Module.canvas.height, 'Invalid height: ' + Module.canvas.height + ', should be ' + img.height);
+        img.onload = () => {
+          assert(img.width == Module.canvas.width, `Invalid width: ${Module.canvas.width}, should be ${img.width}`);
+          assert(img.height == Module.canvas.height, `Invalid height: ${Module.canvas.height}, should be ${img.height}`);
 
           var canvas = document.createElement('canvas');
           canvas.width = img.width;
@@ -2213,7 +2211,7 @@ class BrowserCore(RunnerCore):
 
           var actualUrl = Module.canvas.toDataURL();
           var actualImage = new Image();
-          actualImage.onload = function() {
+          actualImage.onload = () => {
             /*
             document.body.appendChild(img); // for comparisons
             var div = document.createElement('div');
@@ -2239,26 +2237,44 @@ class BrowserCore(RunnerCore):
                 total += Math.abs(expected[y*width*4 + x*4 + 2] - actual[y*width*4 + x*4 + 2]);
               }
             }
-            var wrong = Math.floor(total / (img.width*img.height*3)); // floor, to allow some margin of error for antialiasing
-            // If the main JS file is in a worker, or modularize, then we need to supply our own reporting logic.
-            if (typeof reportResultToServer === 'undefined') {
-              (function() {
-                %s
-                reportResultToServer(wrong);
-              })();
+            // floor, to allow some margin of error for antialiasing
+            var wrong = Math.floor(total / (img.width*img.height*3));
+
+            function reportResult(result) {
+              // If the main JS file is in a worker, or modularize, then we need to supply our own
+              // reporting logic.
+              if (typeof reportResultToServer === 'undefined') {
+                (() => {
+                  %s
+                  reportResultToServer(result);
+                })();
+              } else {
+                reportResultToServer(result);
+              }
+            }
+
+            var rebaseline = %s;
+            if (wrong || rebaseline) {
+              // Generate a png of the actual rendered image and send it back
+              // to the server.
+              Module.canvas.toBlob((blob) => {
+                sendFileToServer('actual.png', blob);
+                reportResult(wrong);
+              })
             } else {
-              reportResultToServer(wrong);
+              reportResult(wrong);
             }
           };
           actualImage.src = actualUrl;
         }
-        img.src = '%s';
+        img.src = 'expected.png';
       };
 
       /** @suppress {uselessCode} */
       function setupRefTest() {
         // Automatically trigger the reftest?
-        if (!%s) {
+        var manuallyTrigger = %s;
+        if (!manuallyTrigger) {
           // Yes, automatically
 
           Module['postRun'] = doReftest;
@@ -2267,8 +2283,8 @@ class BrowserCore(RunnerCore):
             // trigger reftest from RAF as well, needed for workers where there is no pre|postRun on the main thread
             var realRAF = window.requestAnimationFrame;
             /** @suppress{checkTypes} */
-            window.requestAnimationFrame = function(func) {
-              return realRAF(function() {
+            window.requestAnimationFrame = (func) => {
+              return realRAF(() => {
                 func();
                 realRAF(doReftest);
               });
@@ -2276,7 +2292,7 @@ class BrowserCore(RunnerCore):
 
             // trigger reftest from canvas render too, for workers not doing GL
             var realWOM = worker.onmessage;
-            worker.onmessage = function(event) {
+            worker.onmessage = (event) => {
               realWOM(event);
               if (event.data.target === 'canvas' && event.data.op === 'render') {
                 realRAF(doReftest);
@@ -2290,14 +2306,12 @@ class BrowserCore(RunnerCore):
           // The user will call it.
           // Add an event loop iteration to ensure rendering, so users don't need to bother.
           var realDoReftest = doReftest;
-          doReftest = function() {
-            setTimeout(realDoReftest, 1);
-          };
+          doReftest = () => setTimeout(realDoReftest, 1);
         }
       }
 
       setupRefTest();
-''' % (reporting, basename, int(manually_trigger)))
+''' % (reporting, EMTEST_REBASELINE, int(manually_trigger)))
 
   def compile_btest(self, filename, args, reporting=Reporting.FULL):
     # Inject support code for reporting results. This adds an include a header so testcases can
@@ -2320,12 +2334,30 @@ class BrowserCore(RunnerCore):
       filename = test_file(filename)
     self.run_process([compiler_for(filename), filename] + self.get_emcc_args() + args)
 
-  def reftest(self, filename, reference, *args, **kwargs):
+  def reftest(self, filename, reference, reference_slack=0, manual_reference=False, manually_trigger_reftest=False, *args, **kwargs):
     """Special case of `btest` that uses reference image
     """
-    assert 'reference' not in kwargs
-    kwargs['reference'] = reference
-    return self.btest(filename, *args, **kwargs)
+    if self.proxied:
+      assert not manual_reference
+      manual_reference = True
+      manually_trigger_reftest = False
+      assert 'post_build' not in kwargs
+      kwargs['post_build'] = self.post_manual_reftest
+
+    reference = find_browser_test_file(reference)
+    assert 'expected' not in kwargs
+    expected = [str(i) for i in range(0, reference_slack + 1)]
+    self.make_reftest(reference, manually_trigger=manually_trigger_reftest)
+    if not manual_reference:
+      kwargs.setdefault('args', [])
+      kwargs['args'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
+
+    try:
+      return self.btest(filename, expected=expected, *args, **kwargs)
+    finally:
+      if EMTEST_REBASELINE and os.path.exists('actual.png'):
+        print(f'overwriting expected image: {reference}')
+        self.run_process('pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB actual.png'.split() + [reference])
 
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
     """Special case of `btest` that reports its result solely via exiting
@@ -2341,13 +2373,13 @@ class BrowserCore(RunnerCore):
     kwargs['expected'] = 'exit:%d' % assert_returncode
     return self.btest(filename, *args, **kwargs)
 
-  def btest(self, filename, expected=None, reference=None,
-            reference_slack=0, manual_reference=None, post_build=None,
+  def btest(self, filename, expected=None,
+            post_build=None,
             args=None, url_suffix='', timeout=None,
-            manually_trigger_reftest=False, extra_tries=1,
+            extra_tries=1,
             reporting=Reporting.FULL,
             output_basename='test'):
-    assert expected or reference, 'a btest must either expect an output, or have a reference image'
+    assert expected, 'a btest must have an expected output'
     if args is None:
       args = []
     args = args.copy()
@@ -2355,22 +2387,8 @@ class BrowserCore(RunnerCore):
 
     # Run via --proxy-to-worker.  This gets set by the @also_with_proxying.
     if self.proxied:
-      if reference:
-        assert not manual_reference
-        manual_reference = True
-        manually_trigger_reftest = False
-        assert not post_build
-        post_build = self.post_manual_reftest
       args += ['--proxy-to-worker', '-sGL_TESTING']
-    if reference:
-      reference = find_browser_test_file(reference)
-      expected = [str(i) for i in range(0, reference_slack + 1)]
-      self.make_reftest(reference, manually_trigger=manually_trigger_reftest)
-      if not manual_reference:
-        args += ['--pre-js', 'reftest.js', '-sGL_TESTING']
-    else:
-      # manual_reference only makes sense for reference tests
-      assert manual_reference is None
+
     outfile = output_basename + '.html'
     args += ['-o', outfile]
     # print('all args:', args)
