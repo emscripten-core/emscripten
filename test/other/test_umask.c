@@ -33,11 +33,7 @@ void create_file(const char *path, const char *buffer) {
   close(fd);
 }
 
-void cleanup() {
-  unlink("umask_test_file");
-}
-
-void test() {
+int main() {
   // Get the default umask
   mode_t default_umask = get_umask();
   printf("default umask: %o\n", default_umask);
@@ -65,10 +61,5 @@ void test() {
   umask(old_umask);
   
   puts("success");
-}
-
-int main() {
-  signal(SIGABRT, cleanup);
-  test();
   return EXIT_SUCCESS;
 }

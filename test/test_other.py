@@ -7676,8 +7676,7 @@ int main() {
   @crossplatform
   @also_with_wasmfs
   def test_umask(self):
-    self.set_setting("FORCE_FILESYSTEM")
-    self.do_runf('stat/test_umask.c', 'success')
+    self.do_runf('other/test_umask.c', 'success')
 
   def test_no_missing_symbols(self):
     # simple hello world should not show any missing symbols
