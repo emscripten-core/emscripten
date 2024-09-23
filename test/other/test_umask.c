@@ -37,25 +37,25 @@ int main() {
   // Get the default umask
   mode_t default_umask = get_umask();
   printf("default umask: %o\n", default_umask);
-  assert(default_umask == 027);
+  assert(default_umask == 022);
 
   // Create a new file with default umask
   create_file("umask_test_file", "abcdef");
   struct stat st;
   stat("umask_test_file", &st);
   printf("default_umask - stat: %o\n", st.st_mode);
-  assert((st.st_mode & 0666) == 0640);
+  assert((st.st_mode & 0666) == 0644);
   unlink("umask_test_file");
 
   // Set new umask
-  mode_t new_umask = 022;
+  mode_t new_umask = 027;
   mode_t old_umask = umask(new_umask);
 
   // Create a new file with new umask
   create_file("umask_test_file", "abcdef");
   stat("umask_test_file", &st);
   printf("new_umask - stat: %o\n", st.st_mode);
-  assert((st.st_mode & 0666) == 0644);
+  assert((st.st_mode & 0666) == 0640);
 
   // Restore the old umask
   umask(old_umask);
