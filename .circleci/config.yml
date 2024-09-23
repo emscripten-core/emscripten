@@ -919,7 +919,7 @@ jobs:
           python: "$EMSDK_PYTHON"
       - run-tests:
           title: "crossplatform tests"
-          test_targets: "other.test_freetype_emscripten"
+          test_targets: "--crossplatform-only"
       - upload-test-results
       # Run a single websockify-based test to ensure it works on windows.
       - run-tests:
