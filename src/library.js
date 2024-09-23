@@ -1551,8 +1551,7 @@ addToLibrary({
     var ret = getCompilerSetting(name);
     if (typeof ret == 'number' || typeof ret == 'boolean') return ret;
 
-    if (!_emscripten_get_compiler_setting.cache) _emscripten_get_compiler_setting.cache = {};
-    var cache = _emscripten_get_compiler_setting.cache;
+    var cache = _emscripten_get_compiler_setting.cache ??= {};
     var fullret = cache[name];
     if (fullret) return fullret;
     return cache[name] = stringToNewUTF8(ret);
