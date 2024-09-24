@@ -81,10 +81,7 @@
         postRun: [],
 
         reportSuccess: function() {
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', 'http://localhost:8888/report_result?0');
-          xhr.send();
-          setTimeout(function() { window.close() }, 1000);
+          fetch('http://localhost:8888/report_result?0').then(() => window.close());
         },
 
         print: (function() {

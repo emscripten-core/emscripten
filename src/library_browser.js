@@ -44,7 +44,6 @@ var LibraryBrowser = {
       // main loop that is currently allowed to run. All previous main loops
       // will quit themselves. This is incremented whenever a new main loop is
       // created.
-      /** @type{number} */
       currentlyRunningMainloop: 0,
       // The main loop tick function that will be called at each iteration.
       func: null,
@@ -104,6 +103,7 @@ var LibraryBrowser = {
 #endif
       }
     },
+    useWebGL: false,
     isFullscreen: false,
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
@@ -124,7 +124,7 @@ var LibraryBrowser = {
 
       var imagePlugin = {};
       imagePlugin['canHandle'] = function imagePlugin_canHandle(name) {
-        return !Module.noImageDecoding && /\.(jpg|jpeg|png|bmp)$/i.test(name);
+        return !Module['noImageDecoding'] && /\.(jpg|jpeg|png|bmp|webp)$/i.test(name);
       };
       imagePlugin['handle'] = function imagePlugin_handle(byteArray, name, onload, onerror) {
         var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
@@ -160,7 +160,7 @@ var LibraryBrowser = {
 
       var audioPlugin = {};
       audioPlugin['canHandle'] = function audioPlugin_canHandle(name) {
-        return !Module.noAudioDecoding && name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
+        return !Module['noAudioDecoding'] && name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
       };
       audioPlugin['handle'] = function audioPlugin_handle(byteArray, name, onload, onerror) {
         var done = false;
@@ -309,14 +309,12 @@ var LibraryBrowser = {
 #endif
         Module.ctx = ctx;
         if (useWebGL) GL.makeContextCurrent(contextHandle);
-        Module.useWebGL = useWebGL;
+        Browser.useWebGL = useWebGL;
         Browser.moduleContextCreatedCallbacks.forEach((callback) => callback());
         Browser.init();
       }
       return ctx;
     },
-
-    destroyContext(canvas, useWebGL, setInModule) {},
 
     fullscreenHandlersInstalled: false,
     lockPointer: undefined,
@@ -770,13 +768,11 @@ var LibraryBrowser = {
   emscripten_async_load_script__deps: ['$UTF8ToString'],
   emscripten_async_load_script: (url, onload, onerror) => {
     url = UTF8ToString(url);
-    onload = {{{ makeDynCall('v', 'onload') }}};
-    onerror = {{{ makeDynCall('v', 'onerror') }}};
-
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
       err(`emscripten_async_load_script("${url}") failed, emscripten_async_load_script is currently not available in pthreads!`);
-      return onerror ? onerror() : undefined;
+      onerror && {{{ makeDynCall('v', 'onerror') }}}();
+      return;
     }
 #endif
 #if ASSERTIONS
@@ -787,25 +783,28 @@ var LibraryBrowser = {
     var loadDone = () => {
       {{{ runtimeKeepalivePop() }}}
       if (onload) {
+        var onloadCallback = () => callUserCallback({{{ makeDynCall('v', 'onload') }}});
         if (runDependencies > 0) {
-          dependenciesFulfilled = onload;
+          dependenciesFulfilled = onloadCallback;
         } else {
-          onload();
+          onloadCallback();
         }
       }
     }
 
     var loadError = () => {
       {{{ runtimeKeepalivePop() }}}
-      onerror?.();
+      if (onerror) {
+        callUserCallback({{{ makeDynCall('v', 'onerror') }}});
+      }
     };
 
 #if ENVIRONMENT_MAY_BE_NODE && DYNAMIC_EXECUTION
     if (ENVIRONMENT_IS_NODE) {
-      readAsync(url, (data) => {
+      readAsync(url, false).then((data) => {
         eval(data);
         loadDone();
-      }, loadError, false);
+      }, loadError);
       return;
     }
 #endif
@@ -866,10 +865,10 @@ var LibraryBrowser = {
             }
           };
           addEventListener("message", Browser_setImmediate_messageHandler, true);
-          Browser.setImmediate = /** @type{function(function(): ?, ...?): number} */(function Browser_emulated_setImmediate(func) {
+          Browser.setImmediate = /** @type{function(function(): ?, ...?): number} */((func) => {
             setImmediates.push(func);
             if (ENVIRONMENT_IS_WORKER) {
-              if (Module['setImmediates'] === undefined) Module['setImmediates'] = [];
+              Module['setImmediates'] ??= [];
               Module['setImmediates'].push(func);
               postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
             } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
@@ -898,7 +897,7 @@ var LibraryBrowser = {
 #if OFFSCREEN_FRAMEBUFFER
     'emscripten_webgl_commit_frame',
 #endif
-#if EXIT_RUNTIME && !MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME
     '$maybeExit',
 #endif
   ],
@@ -914,27 +913,14 @@ var LibraryBrowser = {
     Browser.mainLoop.func = browserIterationFunc;
     Browser.mainLoop.arg = arg;
 
-#if MAYBE_CLOSURE_COMPILER
-    // Closure compiler bug(?): Closure does not see that the assignment
-    //   var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop
-    // is a value copy of a number (even with the JSDoc @type annotation)
-    // but optimizeis the code as if the assignment was a reference assignment,
-    // which results in Browser.mainLoop.pause() not working. Hence use a
-    // workaround to make Closure believe this is a value copy that should occur:
-    // (TODO: Minimize this down to a small test case and report - was unable
-    // to reproduce in a small written test case)
-    /** @type{number} */
-    var thisMainLoopId = (() => Browser.mainLoop.currentlyRunningMainloop)();
-#else
     var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop;
-#endif
     function checkIsRunning() {
       if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) {
 #if RUNTIME_DEBUG
-        dbg('main loop exiting..');
+        dbg('main loop exiting');
 #endif
         {{{ runtimeKeepalivePop() }}}
-#if EXIT_RUNTIME && !MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME
         maybeExit();
 #endif
         return false;

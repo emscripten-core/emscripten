@@ -139,9 +139,11 @@ typedef void (*dispatch_mach_handler_function_t)(void *context,
                                                  dispatch_mach_reason reason,
                                                  dispatch_mach_msg_t message,
                                                  mach_error_t error);
+#  if !defined(MISSING_BLOCKS_SUPPORT)
 typedef void (^dispatch_mach_handler_t)(dispatch_mach_reason reason,
                                         dispatch_mach_msg_t message,
                                         mach_error_t error);
+#  endif
 
 // A wrapper for the ObjC blocks used to support libdispatch.
 typedef struct {
@@ -154,8 +156,7 @@ ALWAYS_INLINE
 void asan_register_worker_thread(int parent_tid, StackTrace *stack) {
   AsanThread *t = GetCurrentThread();
   if (!t) {
-    t = AsanThread::Create(/* start_routine */ nullptr, /* arg */ nullptr,
-                           parent_tid, stack, /* detached */ true);
+    t = AsanThread::Create(parent_tid, stack, /* detached */ true);
     t->Init();
     asanThreadRegistry().StartThread(t->tid(), GetTid(), ThreadType::Worker,
                                      nullptr);

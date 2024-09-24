@@ -1357,7 +1357,7 @@ var LibrarySDL = {
     return SDL.version;
   },
 
-  SDL_Init__deps: ['$zeroMemory', 'memcpy'],
+  SDL_Init__deps: ['calloc', 'memcpy'],
   SDL_Init__proxy: 'sync',
   SDL_Init__docs: '/** @param{number} initFlags */',
   SDL_Init: (initFlags) => {
@@ -1376,8 +1376,7 @@ var LibrarySDL = {
     }
 
     window.addEventListener("unload", SDL.receiveEvent);
-    SDL.keyboardState = _malloc(0x10000); // Our SDL needs 512, but 64K is safe for older SDLs
-    zeroMemory(SDL.keyboardState, 0x10000);
+    SDL.keyboardState = _calloc(0x10000, 1); // Our SDL needs 512, but 64K is safe for older SDLs
     // Initialize this structure carefully for closure
     SDL.DOMEventToSDLEvent['keydown']    = 0x300  /* SDL_KEYDOWN */;
     SDL.DOMEventToSDLEvent['keyup']      = 0x301  /* SDL_KEYUP */;
@@ -1413,11 +1412,10 @@ var LibrarySDL = {
     return 1;
   },
 
-  SDL_GetVideoInfo__deps: ['$zeroMemory'],
+  SDL_GetVideoInfo__deps: ['calloc'],
   SDL_GetVideoInfo__proxy: 'sync',
   SDL_GetVideoInfo: () => {
-    var ret = _malloc({{{ C_STRUCTS.SDL_VideoInfo.__size__ }}});
-    zeroMemory(ret, {{{ C_STRUCTS.SDL_version.__size__ }}});
+    var ret = _calloc({{{ C_STRUCTS.SDL_VideoInfo.__size__ }}}, 1);
     {{{ makeSetValue('ret', C_STRUCTS.SDL_VideoInfo.current_w, 'Module["canvas"].width', 'i32') }}};
     {{{ makeSetValue('ret', C_STRUCTS.SDL_VideoInfo.current_h, 'Module["canvas"].height', 'i32') }}};
     return ret;
@@ -2044,7 +2042,7 @@ var LibrarySDL = {
     SDL.eventHandlerContext = userdata;
 
     // All SDLEvents take the same amount of memory
-    if (!SDL.eventHandlerTemp) SDL.eventHandlerTemp = _malloc({{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
+    SDL.eventHandlerTemp ||= _malloc({{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
   },
 
   SDL_SetColors__proxy: 'sync',
@@ -2157,12 +2155,14 @@ var LibrarySDL = {
   // We support JPG, PNG, TIF because browsers do
   IMG_Init: (flags) => flags,
 
-  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', '$withStackSave', '$stringToUTF8OnStack', '$stackAlloc'],
+  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS', '$stackSave', '$stackRestore', '$stringToUTF8OnStack', '$stackAlloc'],
   IMG_Load_RW__proxy: 'sync',
   IMG_Load_RW: (rwopsID, freeSrc) => {
+    var sp = stackSave();
     try {
       // stb_image integration support
       var cleanup = () => {
+        stackRestore(sp);
         if (rwops && freeSrc) _SDL_FreeRW(rwopsID);
       }
       var addCleanup = (func) => {
@@ -2172,7 +2172,7 @@ var LibrarySDL = {
           func();
         }
       }
-      var callStbImage = (func, params) => withStackSave(() => {
+      var callStbImage = (func, params) => {
         var x = stackAlloc({{{ getNativeTypeSize('i32') }}});
         var y = stackAlloc({{{ getNativeTypeSize('i32') }}});
         var comp = stackAlloc({{{ getNativeTypeSize('i32') }}});
@@ -2187,7 +2187,7 @@ var LibrarySDL = {
           size: {{{ makeGetValue('x', 0, 'i32') }}} * {{{ makeGetValue('y', 0, 'i32') }}} * {{{ makeGetValue('comp', 0, 'i32') }}},
           bpp: {{{ makeGetValue('comp', 0, 'i32') }}}
         };
-      });
+      };
 
       var rwops = SDL.rwops[rwopsID];
       if (rwops === undefined) {
@@ -2699,7 +2699,7 @@ var LibrarySDL = {
       var raw = preloadedAudios[filename];
       if (!raw) {
         if (raw === null) err('Trying to reuse preloaded audio, but freePreloadedMediaOnUse is set!');
-        if (!Module.noAudioDecoding) warnOnce('Cannot find preloaded audio ' + filename);
+        if (!Module['noAudioDecoding']) warnOnce('Cannot find preloaded audio ' + filename);
 
         // see if we can read the file-contents from the in-memory FS
         try {
@@ -2905,14 +2905,14 @@ var LibrarySDL = {
     return SDL.setGetVolume(SDL.music, volume);
   },
 
-  Mix_LoadMUS_RW__docs: '/** @param {number} a1 */',
-  Mix_LoadMUS_RW: 'Mix_LoadWAV_RW',
+  Mix_LoadMUS_RW__deps: ['Mix_LoadWAV_RW'],
+  Mix_LoadMUS_RW: (filename) => _Mix_LoadWAV_RW(filename, 0),
 
   Mix_LoadMUS__deps: ['Mix_LoadMUS_RW', 'SDL_RWFromFile', 'SDL_FreeRW'],
   Mix_LoadMUS__proxy: 'sync',
   Mix_LoadMUS: (filename) => {
     var rwops = _SDL_RWFromFile(filename, 0);
-    var result = _Mix_LoadMUS_RW(rwops, 0);
+    var result = _Mix_LoadMUS_RW(rwops);
     _SDL_FreeRW(rwops);
     return result;
   },

@@ -301,7 +301,7 @@ def init():
     sys.exit(0)
 
   if os.path.isfile(EM_CONFIG):
-    logger.debug(f'using config file: ${EM_CONFIG}')
+    logger.debug(f'using config file: {EM_CONFIG}')
   else:
     logger.debug('config file not found; using default config')
 

@@ -44,24 +44,46 @@ var LibraryEmbind = {
   },
   $FunctionDefinition__deps: ['$createJsInvoker', '$createJsInvokerSignature', '$emittedFunctions'],
   $FunctionDefinition: class {
-    constructor(name, returnType, argumentTypes, functionIndex, thisType = null, isAsync = false) {
+    constructor(name, returnType, argumentTypes, functionIndex, thisType = null, isNonnullReturn = false, isAsync = false) {
       this.name = name;
       this.returnType = returnType;
       this.argumentTypes = argumentTypes;
       this.functionIndex = functionIndex;
       this.thisType = thisType;
+      this.isNonnullReturn = isNonnullReturn;
       this.isAsync = isAsync;
     }
 
     printSignature(nameMap, out) {
       out.push('(');
-
       const argOut = [];
-      for (const arg of this.argumentTypes) {
-        argOut.push(`${arg.name}: ${nameMap(arg.type)}`);
+      // Work backwards on the arguments, so optional types can be replaced
+      // with TS optional params until we see the first non-optional argument.
+      let seenNonOptional = false;
+      for (let i = this.argumentTypes.length - 1; i >= 0; i--) {
+        const arg = this.argumentTypes[i];
+        let argType;
+        let argName;
+        if (arg.type instanceof OptionalType && !seenNonOptional) {
+          argType = nameMap(arg.type.type);
+          argName = arg.name + '?';
+        } else {
+          seenNonOptional = true;
+          argType = nameMap(arg.type);
+          argName = arg.name;
+        }
+        argOut.unshift(`${argName}: ${argType}`);
       }
+
       out.push(argOut.join(', '));
-      out.push(`): ${nameMap(this.returnType, true)}`);
+      let returnType = this.returnType;
+      // Constructors can return a pointer, but it will be a non-null pointer.
+      // Change the return type to the class type so the TS output doesn't
+      // have `| null`.
+      if (this.isNonnullReturn && this.returnType instanceof PointerDefinition) {
+        returnType = this.returnType.classType;
+      }
+      out.push(`): ${nameMap(returnType, true)}`);
     }
 
     printFunction(nameMap, out) {
@@ -153,9 +175,11 @@ var LibraryEmbind = {
       }
       out.push(' {\n');
       for (const property of this.properties) {
-        out.push('  ');
-        property.print(nameMap, out);
-        out.push(';\n');
+        const props = [];
+        property.print(nameMap, props);
+        for (const formattedProp of props) {
+          out.push(`  ${formattedProp};\n`);
+        }
       }
       for (const method of this.methods) {
         out.push('  ');
@@ -169,7 +193,7 @@ var LibraryEmbind = {
     printModuleEntry(nameMap, out) {
       out.push(`  ${this.name}: {`);
       const entries = [];
-      for(const construct of this.constructors) {
+      for (const construct of this.constructors) {
         const entry = [];
         entry.push('new');
         construct.printSignature(nameMap, entry);
@@ -183,9 +207,15 @@ var LibraryEmbind = {
       for (const prop of this.staticProperties) {
         const entry = [];
         prop.print(nameMap, entry);
-        entries.push(entry.join(''));
+        entries.push(...entry);
       }
-      out.push(entries.join('; '));
+      if (entries.length) {
+        out.push('\n');
+        for (const entry of entries) {
+          out.push(`    ${entry};\n`);
+        }
+        out.push('  ');
+      }
       out.push('};\n');
     }
 
@@ -221,7 +251,15 @@ var LibraryEmbind = {
     }
 
     print(nameMap, out) {
-      out.push(`${this.readonly ? 'readonly ' : ''}${this.name}: ${nameMap(this.type)}`);
+      const setType = nameMap(this.type, false);
+      const getType = nameMap(this.type, true);
+      if (this.readonly || setType === getType) {
+        out.push(`${this.readonly ? 'readonly ' : ''}${this.name}: ${getType}`);
+        return;
+      }
+      // The getter/setter types don't match, so generate each get/set definition.
+      out.push(`get ${this.name}(): ${getType}`);
+      out.push(`set ${this.name}(value: ${setType})`);
     }
   },
   $ConstantDefinition: class {
@@ -311,7 +349,7 @@ var LibraryEmbind = {
   $TsPrinter: class {
     constructor(definitions) {
       this.definitions = definitions;
-      const jsString = 'ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string';
+      const jsString = 'EmbindString'; // Type alias for multiple types.
       // The mapping is in the format of '<c++ name>' => ['toWireType', 'fromWireType']
       // or if the to/from wire types are the same use a single element.
       this.builtInToJsName = new Map([
@@ -334,6 +372,8 @@ var LibraryEmbind = {
         ['std::u32string', ['string']],
         ['emscripten::val', ['any']],
       ]);
+      // Signal that the type alias for EmbindString is needed.
+      this.usedEmbindString = false;
     }
 
     typeToJsName(type, isFromWireType = false) {
@@ -345,10 +385,14 @@ var LibraryEmbind = {
           throw new Error(`Missing primitive type to TS type for '${type.name}'`);
         }
         const [toWireType, fromWireType = toWireType] = this.builtInToJsName.get(type.name);
-        return isFromWireType ? fromWireType : toWireType;
+        const tsName = isFromWireType ? fromWireType : toWireType;
+        if (tsName === 'EmbindString') {
+          this.usedEmbindString = true;
+        }
+        return tsName;
       }
       if (type instanceof PointerDefinition) {
-        return this.typeToJsName(type.classType);
+        return `${this.typeToJsName(type.classType)} | null`;
       }
       if (type instanceof OptionalType) {
         return `${this.typeToJsName(type.type)} | undefined`;
@@ -372,7 +416,10 @@ var LibraryEmbind = {
         }
         def.printModuleEntry(this.typeToJsName.bind(this), out);
       }
-      out.push('}');
+      out.push('}\n');
+      if (this.usedEmbindString) {
+        out.unshift('type EmbindString = ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string;\n');
+      }
       console.log(out.join(''));
     }
   },
@@ -409,7 +456,7 @@ var LibraryEmbind = {
     registerType(id, new IntegerType(id));
   },
   $createFunctionDefinition__deps: ['$FunctionDefinition', '$heap32VectorToArray', '$readLatin1String', '$Argument', '$whenDependentTypesAreResolved', '$getFunctionName', '$getFunctionArgsName', '$PointerDefinition', '$ClassDefinition'],
-  $createFunctionDefinition: (name, argCount, rawArgTypesAddr, functionIndex, hasThis, isAsync, cb) => {
+  $createFunctionDefinition: (name, argCount, rawArgTypesAddr, functionIndex, hasThis, isNonnullReturn, isAsync, cb) => {
     const argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = typeof name === 'string' ? name : readLatin1String(name);
 
@@ -439,7 +486,7 @@ var LibraryEmbind = {
           args.push(new Argument(`_${i - argStart}`, argTypes[i]));
         }
       }
-      const funcDef = new FunctionDefinition(name, returnType, args, functionIndex, thisType, isAsync);
+      const funcDef = new FunctionDefinition(name, returnType, args, functionIndex, thisType, isNonnullReturn, isAsync);
       cb(funcDef);
       return [];
     });
@@ -490,8 +537,8 @@ var LibraryEmbind = {
     // TODO
   },
   _embind_register_function__deps: ['$moduleDefinitions', '$createFunctionDefinition'],
-  _embind_register_function: (name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync) => {
-    createFunctionDefinition(name, argCount, rawArgTypesAddr, fn, false, isAsync, (funcDef) => {
+  _embind_register_function: (name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync, isNonnullReturn) => {
+    createFunctionDefinition(name, argCount, rawArgTypesAddr, fn, false, isNonnullReturn, isAsync, (funcDef) => {
       moduleDefinitions.push(funcDef);
     });
   },
@@ -536,7 +583,7 @@ var LibraryEmbind = {
   ) {
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
       classType = classType[0];
-      createFunctionDefinition(`constructor ${classType.name}`, argCount, rawArgTypesAddr, rawConstructor, false, false, (funcDef) => {
+      createFunctionDefinition(`constructor ${classType.name}`, argCount, rawArgTypesAddr, rawConstructor, false, true, false, (funcDef) => {
         classType.constructors.push(funcDef);
       });
       return [];
@@ -551,8 +598,9 @@ var LibraryEmbind = {
           rawInvoker,
           context,
           isPureVirtual,
-          isAsync) {
-    createFunctionDefinition(methodName, argCount, rawArgTypesAddr, context, true, isAsync, (funcDef) => {
+          isAsync,
+          isNonnullReturn) {
+    createFunctionDefinition(methodName, argCount, rawArgTypesAddr, context, true, isNonnullReturn, isAsync, (funcDef) => {
       const classDef = funcDef.thisType;
       classDef.methods.push(funcDef);
     });
@@ -590,10 +638,11 @@ var LibraryEmbind = {
                                                   invokerSignature,
                                                   rawInvoker,
                                                   fn,
-                                                  isAsync) {
+                                                  isAsync,
+                                                  isNonnullReturn) {
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
       classType = classType[0];
-      createFunctionDefinition(methodName, argCount, rawArgTypesAddr, fn, false, isAsync, (funcDef) => {
+      createFunctionDefinition(methodName, argCount, rawArgTypesAddr, fn, false, isNonnullReturn, isAsync, (funcDef) => {
         classType.staticMethods.push(funcDef);
       });
       return [];

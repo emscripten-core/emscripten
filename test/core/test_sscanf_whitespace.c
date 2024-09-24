@@ -19,5 +19,6 @@ int main() {
     printf("%d:%d,%d ", i, x, y);
   }
 
+  printf("\n");
   return 0;
 }

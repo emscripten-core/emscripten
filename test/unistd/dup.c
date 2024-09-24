@@ -43,11 +43,23 @@ int main() {
   printf("\n");
   errno = 0;
 
-  printf("DUP2 err\n");
+  printf("DUP2 bad fds\n");
   f = dup2(-2, -2);
   printf("f: %d\n", f == -1);
   printf("errno: %d\n", errno);
   printf("close(f): %d\n", close(f));
+  printf("\n");
+  errno = 0;
+
+  printf("DUP2 bad newfd\n");
+  f = open("/", O_RDONLY);
+  f3 = dup2(f, -1);
+  printf("f3: %d\n", f3);
+  printf("errno: %d\n", errno);
+  f3 = dup2(f, 256000);
+  printf("f3: %d\n", f3);
+  printf("errno: %d\n", errno);
+  printf("close(f1): %d\n", close(f));
   printf("\n");
   errno = 0;
 

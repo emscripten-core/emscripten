@@ -82,7 +82,7 @@ def get(ports, settings, shared):
   ports.fetch_project('harfbuzz', f'https://github.com/harfbuzz/harfbuzz/releases/download/{VERSION}/harfbuzz-{VERSION}.tar.xz', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'harfbuzz', 'harfbuzz-' + VERSION)
+    source_path = ports.get_dir('harfbuzz', 'harfbuzz-' + VERSION)
     freetype_include = ports.get_include_dir('freetype2')
     ports.install_headers(os.path.join(source_path, 'src'), target='harfbuzz')
 

@@ -151,7 +151,8 @@ addToLibrary({
 
   _wasmfs_opfs_get_entries__deps: [
     '$wasmfsOPFSProxyFinish',
-    '$withStackSave',
+    '$stackSave',
+    '$stackRestore',
     '_wasmfs_opfs_record_entry',
   ],
   _wasmfs_opfs_get_entries: async function(ctx, dirID, entriesPtr, errPtr) {
@@ -162,13 +163,13 @@ addToLibrary({
       let iter = dirHandle.entries();
       for (let entry; entry = await iter.next(), !entry.done;) {
         let [name, child] = entry.value;
-        withStackSave(() => {
-          let namePtr = stringToUTF8OnStack(name);
-          let type = child.kind == "file" ?
-              {{{ cDefine('File::DataFileKind') }}} :
-          {{{ cDefine('File::DirectoryKind') }}};
+        let sp = stackSave();
+        let namePtr = stringToUTF8OnStack(name);
+        let type = child.kind == "file" ?
+            {{{ cDefine('File::DataFileKind') }}} :
+        {{{ cDefine('File::DirectoryKind') }}};
           __wasmfs_opfs_record_entry(entriesPtr, namePtr, type)
-        });
+        stackRestore(sp);
       }
     } catch {
       let err = -{{{ cDefs.EIO }}};
@@ -316,6 +317,7 @@ addToLibrary({
     wasmfsOPFSBlobs.free(blobID);
   },
 
+  _wasmfs_opfs_read_access__i53abi: true,
   _wasmfs_opfs_read_access__deps: ['$wasmfsOPFSAccessHandles'],
   _wasmfs_opfs_read_access: {{{ asyncIf(!PTHREADS) }}}  function(accessID, bufPtr, len, pos) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
@@ -333,6 +335,7 @@ addToLibrary({
     }
   },
 
+  _wasmfs_opfs_read_blob__i53abi: true,
   _wasmfs_opfs_read_blob__deps: ['$wasmfsOPFSBlobs', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_read_blob: async function(ctx, blobID, bufPtr, len, pos, nreadPtr) {
     let blob = wasmfsOPFSBlobs.get(blobID);
@@ -362,6 +365,7 @@ addToLibrary({
     wasmfsOPFSProxyFinish(ctx);
   },
 
+  _wasmfs_opfs_write_access__i53abi: true,
   _wasmfs_opfs_write_access__deps: ['$wasmfsOPFSAccessHandles'],
   _wasmfs_opfs_write_access: {{{ asyncIf(!PTHREADS) }}} function(accessID, bufPtr, len, pos) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
@@ -392,10 +396,11 @@ addToLibrary({
     wasmfsOPFSProxyFinish(ctx);
   },
 
+  _wasmfs_opfs_get_size_blob__i53abi: true,
   _wasmfs_opfs_get_size_blob__deps: ['$wasmfsOPFSBlobs'],
   _wasmfs_opfs_get_size_blob: (blobID) => {
     // This cannot fail.
-    return wasmfsOPFSBlobs.get(blobID).size;
+	  return wasmfsOPFSBlobs.get(blobID).size;
   },
 
   _wasmfs_opfs_get_size_file__deps: ['$wasmfsOPFSFileHandles', '$wasmfsOPFSProxyFinish'],

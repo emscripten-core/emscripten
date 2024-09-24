@@ -52,7 +52,7 @@ def get(ports, settings, shared):
   libname = get_lib_name(settings)
 
   def create(final):
-    src_dir = os.path.join(ports.get_dir(), 'sdl2_image', 'SDL_image-' + TAG)
+    src_dir = ports.get_dir('sdl2_image', 'SDL_image-' + TAG)
     ports.install_headers(src_dir, target='SDL2')
     srcs = '''IMG.c IMG_bmp.c IMG_gif.c IMG_jpg.c IMG_lbm.c IMG_pcx.c IMG_png.c IMG_pnm.c IMG_tga.c
               IMG_tif.c IMG_xcf.c IMG_xpm.c IMG_xv.c IMG_webp.c IMG_ImageIO.m

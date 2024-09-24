@@ -124,6 +124,9 @@ function getTransitiveDeps(symbol, debug) {
       directDeps = directDeps.filter((d) => typeof d === 'string');
       for (const dep of directDeps) {
         const resolved = resolveAlias(dep);
+        if (VERBOSE && !transitiveDeps.has(dep)) {
+          printErr(`adding dependency ${symbol} -> ${dep}`);
+        }
         transitiveDeps.add(resolved);
         toVisit.push(resolved);
       }
@@ -172,9 +175,10 @@ export function runJSify(symbolsOnly) {
       symbolsNeeded.push('$' + sym);
     }
   }
-  if (INCLUDE_FULL_LIBRARY) {
-    for (const key of Object.keys(LibraryManager.library)) {
-      if (!isDecorator(key)) {
+
+  for (const key of Object.keys(LibraryManager.library)) {
+    if (!isDecorator(key)) {
+      if (INCLUDE_FULL_LIBRARY || EXPORTED_FUNCTIONS.has(mangleCSymbolName(key))) {
         symbolsNeeded.push(key);
       }
     }
@@ -295,6 +299,16 @@ function(${args}) {
 
     const sig = LibraryManager.library[symbol + '__sig'];
     const i53abi = LibraryManager.library[symbol + '__i53abi'];
+    if (i53abi) {
+      if (!sig) {
+        error(`JS library error: '__i53abi' decorator requires '__sig' decorator: '${symbol}'`);
+      }
+      if (!sig.includes('j')) {
+        error(
+          `JS library error: '__i53abi' only makes sense when '__sig' includes 'j' (int64): '${symbol}'`,
+        );
+      }
+    }
     if (
       sig &&
       ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')))
@@ -628,12 +642,8 @@ function(${args}) {
       if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
         contentText += `\nModule['${mangled}'] = ${mangled};`;
       }
-      // Relocatable code needs signatures to create proper wrappers. Stack
-      // switching needs signatures so we can create a proper
-      // WebAssembly.Function with the signature for the Promise API.
-      // TODO: For asyncify we could only add the signatures we actually need,
-      //       of async imports/exports.
-      if (sig && (RELOCATABLE || ASYNCIFY == 2)) {
+      // Relocatable code needs signatures to create proper wrappers.
+      if (sig && RELOCATABLE) {
         if (!WASM_BIGINT) {
           sig = sig[0].replace('j', 'i') + sig.slice(1).replace(/j/g, 'ii');
         }
@@ -661,8 +671,8 @@ function(${args}) {
 
       if (EMIT_TSD) {
         LibraryManager.libraryDefinitions[mangled] = {
-          docs: docs || '',
-          snippet,
+          docs: docs ?? null,
+          snippet: snippet ?? null,
         };
       }
 
@@ -703,7 +713,7 @@ function(${args}) {
       }
     }
 
-    postSets = postSets.concat(orderedPostSets);
+    postSets.push(...orderedPostSets);
 
     const shellFile = MINIMAL_RUNTIME ? 'shell_minimal.js' : 'shell.js';
     includeFile(shellFile);
@@ -742,6 +752,10 @@ var proxiedFunctionTable = [
 
     for (const fileName of POST_JS_FILES) {
       includeFile(fileName, shouldPreprocess(fileName));
+    }
+
+    if (MODULARIZE) {
+      includeFile('postamble_modularize.js');
     }
 
     print(

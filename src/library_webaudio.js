@@ -122,9 +122,12 @@ let LibraryWebAudio = {
   },
 
 #if AUDIO_WORKLET
+  // emscripten_start_wasm_audio_worklet_thread_async() doesn't use stackAlloc,
+  // etc., but the created worklet does.
   emscripten_start_wasm_audio_worklet_thread_async__deps: [
     '$_wasmWorkersID',
-    '$_EmAudioDispatchProcessorCallback'],
+    '$_EmAudioDispatchProcessorCallback',
+    '$stackAlloc', '$stackRestore', '$stackSave'],
   emscripten_start_wasm_audio_worklet_thread_async: (contextHandle, stackLowestAddress, stackSize, callback, userData) => {
 
 #if ASSERTIONS
@@ -202,7 +205,7 @@ let LibraryWebAudio = {
 #if MINIMAL_RUNTIME
         Module['js']
 #else
-        Module['mainScriptUrlOrBlob'] || _scriptDir
+        Module['mainScriptUrlOrBlob'] || _scriptName
 #endif
       );
     }).then(() => {
@@ -249,14 +252,15 @@ let LibraryWebAudio = {
 #endif
 
     EmAudio[contextHandle].audioWorklet.bootstrapMessage.port.postMessage({
-      // '_wpn' == 'Worklet Processor Name', use a deliberately mangled name so
-      // that this field won't accidentally be mixed with user submitted
-      // messages.
-      _wpn: UTF8ToString(HEAPU32[options]),
-      audioParams,
-      contextHandle,
-      callback,
-      userData
+      // Deliberately mangled and short names used here ('_wpn', the 'Worklet
+      // Processor Name' used as a 'key' to verify the message type so as to
+      // not get accidentally mixed with user submitted messages, the remainder
+      // for space saving reasons, abbreviated from their variable names).
+      '_wpn': UTF8ToString(HEAPU32[options]),
+      'ap': audioParams,
+      'ch': contextHandle,
+      'cb': callback,
+      'ud': userData
     });
   },
 

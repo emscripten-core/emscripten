@@ -13,7 +13,7 @@
 
 int result = 0;
 
-void one() {
+EMSCRIPTEN_KEEPALIVE void one() {
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
     switch (event.type) {
@@ -37,8 +37,8 @@ int main() {
   SDL_CreateWindow("window", 0, 0, 600, 450, 0);
   SDL_StartTextInput();
 
-  emscripten_run_script("simulateKeyEvent('a'.charCodeAt(0))"); // a
-  emscripten_run_script("simulateKeyEvent('A'.charCodeAt(0))"); // A
+  emscripten_run_script("simulateKeyDown('a'.charCodeAt(0))");
+  emscripten_run_script("simulateKeyDown('A'.charCodeAt(0))");
 
   one();
 

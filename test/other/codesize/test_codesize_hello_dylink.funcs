@@ -1,0 +1,16 @@
+$__emscripten_stdout_close
+$__emscripten_stdout_seek
+$__fwritex
+$__stdio_write
+$__towrite
+$__wasm_apply_data_relocs
+$__wasm_apply_global_relocs
+$__wasm_call_ctors
+$_emscripten_stack_alloc
+$_emscripten_stack_restore
+$dlcalloc
+$emscripten_stack_get_current
+$legalstub$dynCall_jiji
+$main
+$sbrk
+$setThrew

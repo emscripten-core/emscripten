@@ -150,7 +150,7 @@ class BootstrapMessages extends AudioWorkletProcessor {
     // scope to create the real AudioWorkletProcessors that call out to Wasm to
     // do audio processing.
     let p = globalThis['messagePort'] = this.port;
-    p.onmessage = (msg) => {
+    p.onmessage = async (msg) => {
       let d = msg.data;
       if (d['_wpn']) {
         // '_wpn' is short for 'Worklet Processor Node', using an identifier
@@ -161,25 +161,29 @@ class BootstrapMessages extends AudioWorkletProcessor {
         // MODULARIZE+AUDIO_WORKLET builds.
         if (globalThis.AudioWorkletModule) {
           // This populates the Module object with all the Wasm properties
-          AudioWorkletModule(Module);
+          globalThis.Module = await AudioWorkletModule(Module);
           // We have now instantiated the Module function, can discard it from
           // global scope
           delete globalThis.AudioWorkletModule;
         }
 #endif
         // Register a real AudioWorkletProcessor that will actually do audio processing.
-        registerProcessor(d['_wpn'], createWasmAudioWorkletProcessor(d['audioParams']));
+        // 'ap' being the audio params
+        registerProcessor(d['_wpn'], createWasmAudioWorkletProcessor(d['ap']));
 #if WEBAUDIO_DEBUG
-        console.log(`Registered a new WasmAudioWorkletProcessor "${d['_wpn']}" with AudioParams: ${d['audioParams']}`);
+        console.log(`Registered a new WasmAudioWorkletProcessor "${d['_wpn']}" with AudioParams: ${d['ap']}`);
 #endif
         // Post a Wasm Call message back telling that we have now registered the
-        // AudioWorkletProcessor class, and should trigger the user onSuccess
-        // callback of the
-        // emscripten_create_wasm_audio_worklet_processor_async() call.
-        p.postMessage({'_wsc': d['callback'], 'x': [d['contextHandle'], 1/*EM_TRUE*/, d['userData']] }); // "WaSm Call"
-      } else if (d['_wsc']) {
+        // AudioWorkletProcessor, and should trigger the user onSuccess callback
+        // of the emscripten_create_wasm_audio_worklet_processor_async() call.
+        //
         // '_wsc' is short for 'wasm call', using an identifier that will never
         // conflict with user messages
+        // 'cb' the callback function
+        // 'ch' the context handle
+        // 'ud' the passed user data
+        p.postMessage({'_wsc': d['cb'], 'x': [d['ch'], 1/*EM_TRUE*/, d['ud']] });
+      } else if (d['_wsc']) {
         Module['wasmTable'].get(d['_wsc'])(...d['x']);
       };
     }

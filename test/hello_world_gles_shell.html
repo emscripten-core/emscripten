@@ -8,6 +8,7 @@
     <hr>
     <div id='output'></div>
     <hr>
+    <script type='text/javascript' src='fake_events.js'></script>
     <script type='text/javascript'>
       /**
        * TODO: Encapsulate this part in a reusable token such as
@@ -26,21 +27,13 @@
       };
 
       // Test code
-      function simulateKeyEvent(keyCode) {
-        var event = new KeyboardEvent("KeyboardEvent", {
-          code: keyCode
-        });
-        document.body.dispatchEvent(event);
-      }
-      function reportResult(result) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', 'http://localhost:8888/report_gl_result?' + result, true);
-        xhr.send();
-        setTimeout(function() { window.close() }, 1000);
+      async function reportResult(result) {
+        await fetch('http://localhost:8888/report_gl_result?' + result);
+        window.close();
       }
       function doTest() {
         var firstImage = Module.canvas.toDataURL();
-        simulateKeyEvent(0x25 /* DOM_VK_LEFT */);
+        simulateKeyDown(0x25 /* DOM_VK_LEFT */);
         setTimeout(function() {
           var secondImage = Module.canvas.toDataURL();
           reportResult(firstImage != secondImage);

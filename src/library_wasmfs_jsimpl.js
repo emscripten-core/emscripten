@@ -53,6 +53,13 @@ addToLibrary({
     return wasmFS$backends[backend].getSize(file);
   },
 
+  _wasmfs_jsimpl_set_size: (backend, file, size) => {
+#if ASSERTIONS
+    assert(wasmFS$backends[backend]);
+#endif
+    return wasmFS$backends[backend].setSize(file, size);
+  },
+
   // ProxiedAsyncJSImpl. Each function receives a function pointer and a
   // parameter. We convert those into a convenient Promise API for the
   // implementors of backends: the hooks we call should return Promises, which
