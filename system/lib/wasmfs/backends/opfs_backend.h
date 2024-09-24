@@ -67,28 +67,27 @@ void _wasmfs_opfs_free_directory(int dir_id);
 int _wasmfs_opfs_read_access(int access_id,
                              uint8_t* buf,
                              uint32_t len,
-                             uint32_t pos);
+                             off_t pos);
 
 int _wasmfs_opfs_read_blob(em_proxying_ctx* ctx,
                            int blob_id,
                            uint8_t* buf,
                            uint32_t len,
-                           uint32_t pos,
+                           off_t pos,
                            int32_t* nread);
 
 // Synchronous write. Return the number of bytes written.
 int _wasmfs_opfs_write_access(int access_id,
                               const uint8_t* buf,
                               uint32_t len,
-                              uint32_t pos);
+                              off_t pos);
 
 // Get the size via an AccessHandle.
 void _wasmfs_opfs_get_size_access(em_proxying_ctx* ctx,
                                   int access_id,
                                   off_t* size);
 
-// TODO: return 64-byte off_t.
-uint32_t _wasmfs_opfs_get_size_blob(int blob_id);
+off_t _wasmfs_opfs_get_size_blob(int blob_id);
 
 // Get the size of a file handle via a File Blob.
 void _wasmfs_opfs_get_size_file(em_proxying_ctx* ctx, int file_id, off_t* size);
