@@ -541,164 +541,300 @@ _mm256_blendv_ps(__m256 __a, __m256 __b, __m256 __c) {
 #define _mm_cmp_pd(__a, __b, __imm)                                            \
   __extension__({                                                              \
     __m128d __ret;                                                             \
-    if ((__imm) == _CMP_EQ_OQ || (__imm) == _CMP_EQ_OS)                        \
-      __ret = _mm_cmpeq_pd((__a), (__b));                                      \
-    if ((__imm) == _CMP_EQ_UQ || (__imm) == _CMP_EQ_US)                        \
-      __ret =                                                                  \
-        _mm_or_pd(_mm_cmpeq_pd((__a), (__b)), _mm_cmpunord_pd((__a), (__b)));  \
-    if ((__imm) == _CMP_LT_OS || (__imm) == _CMP_LT_OQ)                        \
-      __ret = _mm_cmplt_pd((__a), (__b));                                      \
-    if ((__imm) == _CMP_LE_OS || (__imm) == _CMP_LE_OQ)                        \
-      __ret = _mm_cmple_pd((__a), (__b));                                      \
-    if ((__imm) == _CMP_UNORD_Q || (__imm) == _CMP_UNORD_S)                    \
-      __ret = _mm_cmpunord_pd((__a), (__b));                                   \
-    if ((__imm) == _CMP_NEQ_UQ || (__imm) == _CMP_NEQ_US)                      \
-      __ret = _mm_cmpneq_pd((__a), (__b));                                     \
-    if ((__imm) == _CMP_NEQ_OQ || (__imm) == _CMP_NEQ_OS)                      \
-      __ret = _mm_andnot_pd(_mm_cmpunord_pd((__a), (__b)),                     \
-                            _mm_cmpneq_pd((__a), (__b)));                      \
-    if ((__imm) == _CMP_NLT_US || (__imm) == _CMP_NLT_UQ)                      \
-      __ret = _mm_cmpnlt_pd((__a), (__b));                                     \
-    if ((__imm) == _CMP_ORD_Q || (__imm) == _CMP_ORD_S)                        \
-      __ret = _mm_cmpord_pd((__a), (__b));                                     \
-    if ((__imm) == _CMP_NGE_US || (__imm) == _CMP_NGE_UQ)                      \
-      __ret = _mm_cmpnge_pd((__a), (__b));                                     \
-    if ((__imm) == _CMP_NGT_US || (__imm) == _CMP_NGT_UQ)                      \
-      __ret = _mm_cmpngt_pd((__a), (__b));                                     \
-    if ((__imm) == _CMP_FALSE_OQ || (__imm) == _CMP_FALSE_OS)                  \
-      __ret = _mm_setzero_pd();                                                \
-    if ((__imm) == _CMP_GE_OS || (__imm) == _CMP_GE_OQ)                        \
-      __ret = _mm_cmpge_pd((__a), (__b));                                      \
-    if ((__imm) == _CMP_GT_OS || (__imm) == _CMP_GT_OQ)                        \
-      __ret = _mm_cmpgt_pd((__a), (__b));                                      \
-    if ((__imm) == _CMP_TRUE_UQ || (__imm) == _CMP_TRUE_US)                    \
-      __ret = (__m128d)wasm_i8x16_splat(0xFF);                                 \
-    if ((__imm) == _CMP_NLE_US || (__imm) == _CMP_NLE_UQ)                      \
-      __ret = _mm_cmpnle_pd((__a), (__b));                                     \
+    switch ((__imm)) {                                                         \
+      case _CMP_EQ_OQ:                                                         \
+      case _CMP_EQ_OS:                                                         \
+        __ret = _mm_cmpeq_pd((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_EQ_UQ:                                                         \
+      case _CMP_EQ_US:                                                         \
+        __ret = _mm_or_pd(_mm_cmpeq_pd((__a), (__b)),                          \
+                          _mm_cmpunord_pd((__a), (__b)));                      \
+        break;                                                                 \
+      case _CMP_LT_OS:                                                         \
+      case _CMP_LT_OQ:                                                         \
+        __ret = _mm_cmplt_pd((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_LE_OS:                                                         \
+      case _CMP_LE_OQ:                                                         \
+        __ret = _mm_cmple_pd((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_UNORD_Q:                                                       \
+      case _CMP_UNORD_S:                                                       \
+        __ret = _mm_cmpunord_pd((__a), (__b));                                 \
+        break;                                                                 \
+      case _CMP_NEQ_UQ:                                                        \
+      case _CMP_NEQ_US:                                                        \
+        __ret = _mm_cmpneq_pd((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_NEQ_OQ:                                                        \
+      case _CMP_NEQ_OS:                                                        \
+        __ret = _mm_andnot_pd(_mm_cmpunord_pd((__a), (__b)),                   \
+                              _mm_cmpneq_pd((__a), (__b)));                    \
+        break;                                                                 \
+      case _CMP_NLT_US:                                                        \
+      case _CMP_NLT_UQ:                                                        \
+        __ret = _mm_cmpnlt_pd((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_ORD_Q:                                                         \
+      case _CMP_ORD_S:                                                         \
+        __ret = _mm_cmpord_pd((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_NGE_US:                                                        \
+      case _CMP_NGE_UQ:                                                        \
+        __ret = _mm_cmpnge_pd((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_NGT_US:                                                        \
+      case _CMP_NGT_UQ:                                                        \
+        __ret = _mm_cmpngt_pd((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_FALSE_OQ:                                                      \
+      case _CMP_FALSE_OS:                                                      \
+        __ret = _mm_setzero_pd();                                              \
+        break;                                                                 \
+      case _CMP_GE_OS:                                                         \
+      case _CMP_GE_OQ:                                                         \
+        __ret = _mm_cmpge_pd((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_GT_OS:                                                         \
+      case _CMP_GT_OQ:                                                         \
+        __ret = _mm_cmpgt_pd((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_TRUE_UQ:                                                       \
+      case _CMP_TRUE_US:                                                       \
+        __ret = (__m128d)wasm_i8x16_splat(0xFF);                               \
+        break;                                                                 \
+      case _CMP_NLE_US:                                                        \
+      case _CMP_NLE_UQ:                                                        \
+        __ret = _mm_cmpnle_pd((__a), (__b));                                   \
+        break;                                                                 \
+    }                                                                          \
     __ret;                                                                     \
   })
 
 #define _mm_cmp_ps(__a, __b, __imm)                                            \
   __extension__({                                                              \
     __m128 __ret;                                                              \
-    if ((__imm) == _CMP_EQ_OQ || (__imm) == _CMP_EQ_OS)                        \
-      __ret = _mm_cmpeq_ps((__a), (__b));                                      \
-    if ((__imm) == _CMP_EQ_UQ || (__imm) == _CMP_EQ_US)                        \
-      __ret =                                                                  \
-        _mm_or_ps(_mm_cmpeq_ps((__a), (__b)), _mm_cmpunord_ps((__a), (__b)));  \
-    if ((__imm) == _CMP_LT_OS || (__imm) == _CMP_LT_OQ)                        \
-      __ret = _mm_cmplt_ps((__a), (__b));                                      \
-    if ((__imm) == _CMP_LE_OS || (__imm) == _CMP_LE_OQ)                        \
-      __ret = _mm_cmple_ps((__a), (__b));                                      \
-    if ((__imm) == _CMP_UNORD_Q || (__imm) == _CMP_UNORD_S)                    \
-      __ret = _mm_cmpunord_ps((__a), (__b));                                   \
-    if ((__imm) == _CMP_NEQ_UQ || (__imm) == _CMP_NEQ_US)                      \
-      __ret = _mm_cmpneq_ps((__a), (__b));                                     \
-    if ((__imm) == _CMP_NEQ_OQ || (__imm) == _CMP_NEQ_OS)                      \
-      __ret = _mm_andnot_ps(_mm_cmpunord_ps((__a), (__b)),                     \
-                            _mm_cmpneq_ps((__a), (__b)));                      \
-    if ((__imm) == _CMP_NLT_US || (__imm) == _CMP_NLT_UQ)                      \
-      __ret = _mm_cmpnlt_ps((__a), (__b));                                     \
-    if ((__imm) == _CMP_ORD_Q || (__imm) == _CMP_ORD_S)                        \
-      __ret = _mm_cmpord_ps((__a), (__b));                                     \
-    if ((__imm) == _CMP_NGE_US || (__imm) == _CMP_NGE_UQ)                      \
-      __ret = _mm_cmpnge_ps((__a), (__b));                                     \
-    if ((__imm) == _CMP_NGT_US || (__imm) == _CMP_NGT_UQ)                      \
-      __ret = _mm_cmpngt_ps((__a), (__b));                                     \
-    if ((__imm) == _CMP_FALSE_OQ || (__imm) == _CMP_FALSE_OS)                  \
-      __ret = _mm_setzero_ps();                                                \
-    if ((__imm) == _CMP_GE_OS || (__imm) == _CMP_GE_OQ)                        \
-      __ret = _mm_cmpge_ps((__a), (__b));                                      \
-    if ((__imm) == _CMP_GT_OS || (__imm) == _CMP_GT_OQ)                        \
-      __ret = _mm_cmpgt_ps((__a), (__b));                                      \
-    if ((__imm) == _CMP_TRUE_UQ || (__imm) == _CMP_TRUE_US)                    \
-      __ret = (__m128)wasm_i8x16_splat(0xFF);                                  \
-    if ((__imm) == _CMP_NLE_US || (__imm) == _CMP_NLE_UQ)                      \
-      __ret = _mm_cmpnle_ps((__a), (__b));                                     \
+    switch ((__imm)) {                                                         \
+      case _CMP_EQ_OQ:                                                         \
+      case _CMP_EQ_OS:                                                         \
+        __ret = _mm_cmpeq_ps((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_EQ_UQ:                                                         \
+      case _CMP_EQ_US:                                                         \
+        __ret = _mm_or_ps(_mm_cmpeq_ps((__a), (__b)),                          \
+                          _mm_cmpunord_ps((__a), (__b)));                      \
+        break;                                                                 \
+      case _CMP_LT_OS:                                                         \
+      case _CMP_LT_OQ:                                                         \
+        __ret = _mm_cmplt_ps((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_LE_OS:                                                         \
+      case _CMP_LE_OQ:                                                         \
+        __ret = _mm_cmple_ps((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_UNORD_Q:                                                       \
+      case _CMP_UNORD_S:                                                       \
+        __ret = _mm_cmpunord_ps((__a), (__b));                                 \
+        break;                                                                 \
+      case _CMP_NEQ_UQ:                                                        \
+      case _CMP_NEQ_US:                                                        \
+        __ret = _mm_cmpneq_ps((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_NEQ_OQ:                                                        \
+      case _CMP_NEQ_OS:                                                        \
+        __ret = _mm_andnot_ps(_mm_cmpunord_ps((__a), (__b)),                   \
+                              _mm_cmpneq_ps((__a), (__b)));                    \
+        break;                                                                 \
+      case _CMP_NLT_US:                                                        \
+      case _CMP_NLT_UQ:                                                        \
+        __ret = _mm_cmpnlt_ps((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_ORD_Q:                                                         \
+      case _CMP_ORD_S:                                                         \
+        __ret = _mm_cmpord_ps((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_NGE_US:                                                        \
+      case _CMP_NGE_UQ:                                                        \
+        __ret = _mm_cmpnge_ps((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_NGT_US:                                                        \
+      case _CMP_NGT_UQ:                                                        \
+        __ret = _mm_cmpngt_ps((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_FALSE_OQ:                                                      \
+      case _CMP_FALSE_OS:                                                      \
+        __ret = _mm_setzero_ps();                                              \
+        break;                                                                 \
+      case _CMP_GE_OS:                                                         \
+      case _CMP_GE_OQ:                                                         \
+        __ret = _mm_cmpge_ps((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_GT_OS:                                                         \
+      case _CMP_GT_OQ:                                                         \
+        __ret = _mm_cmpgt_ps((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_TRUE_UQ:                                                       \
+      case _CMP_TRUE_US:                                                       \
+        __ret = (__m128)wasm_i8x16_splat(0xFF);                                \
+        break;                                                                 \
+      case _CMP_NLE_US:                                                        \
+      case _CMP_NLE_UQ:                                                        \
+        __ret = _mm_cmpnle_ps((__a), (__b));                                   \
+        break;                                                                 \
+    }                                                                          \
     __ret;                                                                     \
   })
 
 #define _mm_cmp_sd(__a, __b, __imm)                                            \
   __extension__({                                                              \
     __m128d __ret;                                                             \
-    if ((__imm) == _CMP_EQ_OQ || (__imm) == _CMP_EQ_OS)                        \
-      __ret = _mm_cmpeq_sd((__a), (__b));                                      \
-    if ((__imm) == _CMP_EQ_UQ || (__imm) == _CMP_EQ_US)                        \
-      __ret = _mm_move_sd(                                                     \
-        (__a),                                                                 \
-        _mm_or_pd(_mm_cmpeq_sd((__a), (__b)), _mm_cmpunord_sd((__a), (__b)))); \
-    if ((__imm) == _CMP_LT_OS || (__imm) == _CMP_LT_OQ)                        \
-      __ret = _mm_cmplt_sd((__a), (__b));                                      \
-    if ((__imm) == _CMP_LE_OS || (__imm) == _CMP_LE_OQ)                        \
-      __ret = _mm_cmple_sd((__a), (__b));                                      \
-    if ((__imm) == _CMP_UNORD_Q || (__imm) == _CMP_UNORD_S)                    \
-      __ret = _mm_cmpunord_sd((__a), (__b));                                   \
-    if ((__imm) == _CMP_NEQ_UQ || (__imm) == _CMP_NEQ_US)                      \
-      __ret = _mm_cmpneq_sd((__a), (__b));                                     \
-    if ((__imm) == _CMP_NEQ_OQ || (__imm) == _CMP_NEQ_OS)                      \
-      __ret = _mm_move_sd((__a),                                               \
-                          _mm_andnot_pd(_mm_cmpunord_sd((__a), (__b)),         \
-                                        _mm_cmpneq_sd((__a), (__b))));         \
-    if ((__imm) == _CMP_NLT_US || (__imm) == _CMP_NLT_UQ)                      \
-      __ret = _mm_cmpnlt_sd((__a), (__b));                                     \
-    if ((__imm) == _CMP_ORD_Q || (__imm) == _CMP_ORD_S)                        \
-      __ret = _mm_cmpord_sd((__a), (__b));                                     \
-    if ((__imm) == _CMP_NGE_US || (__imm) == _CMP_NGE_UQ)                      \
-      __ret = _mm_cmpnge_sd((__a), (__b));                                     \
-    if ((__imm) == _CMP_NGT_US || (__imm) == _CMP_NGT_UQ)                      \
-      __ret = _mm_cmpngt_sd((__a), (__b));                                     \
-    if ((__imm) == _CMP_FALSE_OQ || (__imm) == _CMP_FALSE_OS)                  \
-      __ret = _mm_move_sd((__a), _mm_setzero_pd());                            \
-    if ((__imm) == _CMP_GE_OS || (__imm) == _CMP_GE_OQ)                        \
-      __ret = _mm_cmpge_sd((__a), (__b));                                      \
-    if ((__imm) == _CMP_GT_OS || (__imm) == _CMP_GT_OQ)                        \
-      __ret = _mm_cmpgt_sd((__a), (__b));                                      \
-    if ((__imm) == _CMP_TRUE_UQ || (__imm) == _CMP_TRUE_US)                    \
-      __ret = _mm_move_sd((__a), (__m128d)wasm_i8x16_splat(0xFF));             \
-    if ((__imm) == _CMP_NLE_US || (__imm) == _CMP_NLE_UQ)                      \
-      __ret = _mm_cmpnle_sd((__a), (__b));                                     \
+    switch ((__imm)) {                                                         \
+      case _CMP_EQ_OQ:                                                         \
+      case _CMP_EQ_OS:                                                         \
+        __ret = _mm_cmpeq_sd((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_EQ_UQ:                                                         \
+      case _CMP_EQ_US:                                                         \
+        __ret = _mm_move_sd((__a),                                             \
+                            _mm_or_pd(_mm_cmpeq_sd((__a), (__b)),              \
+                                      _mm_cmpunord_sd((__a), (__b))));         \
+        break;                                                                 \
+      case _CMP_LT_OS:                                                         \
+      case _CMP_LT_OQ:                                                         \
+        __ret = _mm_cmplt_sd((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_LE_OS:                                                         \
+      case _CMP_LE_OQ:                                                         \
+        __ret = _mm_cmple_sd((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_UNORD_Q:                                                       \
+      case _CMP_UNORD_S:                                                       \
+        __ret = _mm_cmpunord_sd((__a), (__b));                                 \
+        break;                                                                 \
+      case _CMP_NEQ_UQ:                                                        \
+      case _CMP_NEQ_US:                                                        \
+        __ret = _mm_cmpneq_sd((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_NEQ_OQ:                                                        \
+      case _CMP_NEQ_OS:                                                        \
+        __ret = _mm_move_sd((__a),                                             \
+                            _mm_andnot_pd(_mm_cmpunord_sd((__a), (__b)),       \
+                                          _mm_cmpneq_sd((__a), (__b))));       \
+        break;                                                                 \
+      case _CMP_NLT_US:                                                        \
+      case _CMP_NLT_UQ:                                                        \
+        __ret = _mm_cmpnlt_sd((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_ORD_Q:                                                         \
+      case _CMP_ORD_S:                                                         \
+        __ret = _mm_cmpord_sd((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_NGE_US:                                                        \
+      case _CMP_NGE_UQ:                                                        \
+        __ret = _mm_cmpnge_sd((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_NGT_US:                                                        \
+      case _CMP_NGT_UQ:                                                        \
+        __ret = _mm_cmpngt_sd((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_FALSE_OQ:                                                      \
+      case _CMP_FALSE_OS:                                                      \
+        __ret = _mm_move_sd((__a), _mm_setzero_pd());                          \
+        break;                                                                 \
+      case _CMP_GE_OS:                                                         \
+      case _CMP_GE_OQ:                                                         \
+        __ret = _mm_cmpge_sd((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_GT_OS:                                                         \
+      case _CMP_GT_OQ:                                                         \
+        __ret = _mm_cmpgt_sd((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_TRUE_UQ:                                                       \
+      case _CMP_TRUE_US:                                                       \
+        __ret = _mm_move_sd((__a), (__m128d)wasm_i8x16_splat(0xFF));           \
+        break;                                                                 \
+      case _CMP_NLE_US:                                                        \
+      case _CMP_NLE_UQ:                                                        \
+        __ret = _mm_cmpnle_sd((__a), (__b));                                   \
+        break;                                                                 \
+    }                                                                          \
     __ret;                                                                     \
   })
 
 #define _mm_cmp_ss(__a, __b, __imm)                                            \
   __extension__({                                                              \
     __m128 __ret;                                                              \
-    if ((__imm) == _CMP_EQ_OQ || (__imm) == _CMP_EQ_OS)                        \
-      __ret = _mm_cmpeq_ss((__a), (__b));                                      \
-    if ((__imm) == _CMP_EQ_UQ || (__imm) == _CMP_EQ_US)                        \
-      __ret = _mm_move_ss(                                                     \
-        (__a),                                                                 \
-        _mm_or_ps(_mm_cmpeq_ss((__a), (__b)), _mm_cmpunord_ss((__a), (__b)))); \
-    if ((__imm) == _CMP_LT_OS || (__imm) == _CMP_LT_OQ)                        \
-      __ret = _mm_cmplt_ss((__a), (__b));                                      \
-    if ((__imm) == _CMP_LE_OS || (__imm) == _CMP_LE_OQ)                        \
-      __ret = _mm_cmple_ss((__a), (__b));                                      \
-    if ((__imm) == _CMP_UNORD_Q || (__imm) == _CMP_UNORD_S)                    \
-      __ret = _mm_cmpunord_ss((__a), (__b));                                   \
-    if ((__imm) == _CMP_NEQ_UQ || (__imm) == _CMP_NEQ_US)                      \
-      __ret = _mm_cmpneq_ss((__a), (__b));                                     \
-    if ((__imm) == _CMP_NEQ_OQ || (__imm) == _CMP_NEQ_OS)                      \
-      __ret = _mm_move_ss((__a),                                               \
-                          _mm_andnot_ps(_mm_cmpunord_ss((__a), (__b)),         \
-                                        _mm_cmpneq_ss((__a), (__b))));         \
-    if ((__imm) == _CMP_NLT_US || (__imm) == _CMP_NLT_UQ)                      \
-      __ret = _mm_cmpnlt_ss((__a), (__b));                                     \
-    if ((__imm) == _CMP_ORD_Q || (__imm) == _CMP_ORD_S)                        \
-      __ret = _mm_cmpord_ss((__a), (__b));                                     \
-    if ((__imm) == _CMP_NGE_US || (__imm) == _CMP_NGE_UQ)                      \
-      __ret = _mm_cmpnge_ss((__a), (__b));                                     \
-    if ((__imm) == _CMP_NGT_US || (__imm) == _CMP_NGT_UQ)                      \
-      __ret = _mm_cmpngt_ss((__a), (__b));                                     \
-    if ((__imm) == _CMP_FALSE_OQ || (__imm) == _CMP_FALSE_OS)                  \
-      __ret = _mm_move_ss((__a), _mm_setzero_ps());                            \
-    if ((__imm) == _CMP_GE_OS || (__imm) == _CMP_GE_OQ)                        \
-      __ret = _mm_cmpge_ss((__a), (__b));                                      \
-    if ((__imm) == _CMP_GT_OS || (__imm) == _CMP_GT_OQ)                        \
-      __ret = _mm_cmpgt_ss((__a), (__b));                                      \
-    if ((__imm) == _CMP_TRUE_UQ || (__imm) == _CMP_TRUE_US)                    \
-      __ret = _mm_move_ss((__a), (__m128)wasm_i8x16_splat(0xFF));              \
-    if ((__imm) == _CMP_NLE_US || (__imm) == _CMP_NLE_UQ)                      \
-      __ret = _mm_cmpnle_ss((__a), (__b));                                     \
+    switch ((__imm)) {                                                         \
+      case _CMP_EQ_OQ:                                                         \
+      case _CMP_EQ_OS:                                                         \
+        __ret = _mm_cmpeq_ss((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_EQ_UQ:                                                         \
+      case _CMP_EQ_US:                                                         \
+        __ret = _mm_move_ss((__a),                                             \
+                            _mm_or_ps(_mm_cmpeq_ss((__a), (__b)),              \
+                                      _mm_cmpunord_ss((__a), (__b))));         \
+        break;                                                                 \
+      case _CMP_LT_OS:                                                         \
+      case _CMP_LT_OQ:                                                         \
+        __ret = _mm_cmplt_ss((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_LE_OS:                                                         \
+      case _CMP_LE_OQ:                                                         \
+        __ret = _mm_cmple_ss((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_UNORD_Q:                                                       \
+      case _CMP_UNORD_S:                                                       \
+        __ret = _mm_cmpunord_ss((__a), (__b));                                 \
+        break;                                                                 \
+      case _CMP_NEQ_UQ:                                                        \
+      case _CMP_NEQ_US:                                                        \
+        __ret = _mm_cmpneq_ss((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_NEQ_OQ:                                                        \
+      case _CMP_NEQ_OS:                                                        \
+        __ret = _mm_move_ss((__a),                                             \
+                            _mm_andnot_ps(_mm_cmpunord_ss((__a), (__b)),       \
+                                          _mm_cmpneq_ss((__a), (__b))));       \
+        break;                                                                 \
+      case _CMP_NLT_US:                                                        \
+      case _CMP_NLT_UQ:                                                        \
+        __ret = _mm_cmpnlt_ss((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_ORD_Q:                                                         \
+      case _CMP_ORD_S:                                                         \
+        __ret = _mm_cmpord_ss((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_NGE_US:                                                        \
+      case _CMP_NGE_UQ:                                                        \
+        __ret = _mm_cmpnge_ss((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_NGT_US:                                                        \
+      case _CMP_NGT_UQ:                                                        \
+        __ret = _mm_cmpngt_ss((__a), (__b));                                   \
+        break;                                                                 \
+      case _CMP_FALSE_OQ:                                                      \
+      case _CMP_FALSE_OS:                                                      \
+        __ret = _mm_move_ss((__a), _mm_setzero_ps());                          \
+        break;                                                                 \
+      case _CMP_GE_OS:                                                         \
+      case _CMP_GE_OQ:                                                         \
+        __ret = _mm_cmpge_ss((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_GT_OS:                                                         \
+      case _CMP_GT_OQ:                                                         \
+        __ret = _mm_cmpgt_ss((__a), (__b));                                    \
+        break;                                                                 \
+      case _CMP_TRUE_UQ:                                                       \
+      case _CMP_TRUE_US:                                                       \
+        __ret = _mm_move_ss((__a), (__m128)wasm_i8x16_splat(0xFF));            \
+        break;                                                                 \
+      case _CMP_NLE_US:                                                        \
+      case _CMP_NLE_UQ:                                                        \
+        __ret = _mm_cmpnle_ss((__a), (__b));                                   \
+        break;                                                                 \
+    }                                                                          \
     __ret;                                                                     \
   })
 
