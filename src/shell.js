@@ -240,7 +240,7 @@ if (ENVIRONMENT_IS_NODE) {
   scriptDirectory = __dirname;
 #endif
 
-scriptDirectory =+ '/' // scriptDirectory is expected to end in a "/"
+scriptDirectory += '/' // scriptDirectory is expected to end in a "/"
 
 #include "node_shell_read.js"
 
