@@ -802,7 +802,11 @@ def phase_linker_setup(options, state, newargs):
   if settings.PURE_WASI:
     settings.STANDALONE_WASM = 1
     settings.WASM_BIGINT = 1
-    settings.SUPPORT_LONGJMP = 0
+    # WASI does not support Emscripten (JS-based) exception catching, which the
+    # JS-based longjmp support also uses. Emscripten EH is by default disabled
+    # so we don't need to do anything here.
+    if not settings.WASM_EXCEPTIONS:
+      default_setting('SUPPORT_LONGJMP', 0)
 
   if options.no_entry:
     settings.EXPECT_MAIN = 0
