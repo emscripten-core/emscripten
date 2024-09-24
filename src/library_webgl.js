@@ -252,7 +252,17 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     '$webgl_enable_WEBGL_multi_draw',
     '$getEmscriptenSupportedExtensions',
 #endif // GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
+#if FULL_ES2 || LEGACY_GL_EMULATION
+    '$registerPreMainLoop',
+#endif
   ],
+#if FULL_ES2 || LEGACY_GL_EMULATION
+  $GL__postset: `
+    // Signal GL rendering layer that processing of a new frame is about to
+    // start. This helps it optimize VBO double-buffering and reduce GPU stalls.
+    registerPreMainLoop(() => GL.newRenderingFrameStarted());
+  `,
+#endif
   $GL: {
 #if GL_DEBUG
     debug: true,

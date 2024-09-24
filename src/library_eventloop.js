@@ -149,12 +149,23 @@ LibraryJSEventLoop = {
     clearInterval(id);
   },
 
+  $registerPostMainLoop: (f) => {
+    // Does nothing unless $MainLoop is included/used.
+    typeof MainLoop != 'undefined' && MainLoop.postMainLoop.push(f);
+  },
+
+  $registerPreMainLoop: (f) => {
+    // Does nothing unless $MainLoop is included/used.
+    typeof MainLoop != 'undefined' && MainLoop.preMainLoop.push(f);
+  },
+
   $MainLoop__internal: true,
   $MainLoop__deps: ['$setMainLoop', '$callUserCallback', 'emscripten_set_main_loop_timing'],
   $MainLoop__postset: `
     Module["requestAnimationFrame"] = MainLoop.requestAnimationFrame;
     Module["pauseMainLoop"] = MainLoop.pause;
-    Module["resumeMainLoop"] = MainLoop.resume;`,
+    Module["resumeMainLoop"] = MainLoop.resume;
+    MainLoop.init();`,
   $MainLoop: {
     running: false,
     scheduler: null,
@@ -173,6 +184,8 @@ LibraryJSEventLoop = {
     timingValue: 0,
     currentFrameNumber: 0,
     queue: [],
+    preMainLoop: [],
+    postMainLoop: [],
 
     pause() {
       MainLoop.scheduler = null;
@@ -211,19 +224,28 @@ LibraryJSEventLoop = {
 #endif
     },
 
+    init() {
+#if expectToReceiveOnModule('preMainLoop')
+      Module['preMainLoop'] && MainLoop.preMainLoop.push(Module['preMainLoop']);
+#endif
+#if expectToReceiveOnModule('postMainLoop')
+      Module['postMainLoop'] && MainLoop.postMainLoop.push(Module['postMainLoop']);
+#endif
+    },
+
     runIter(func) {
       if (ABORT) return;
-#if expectToReceiveOnModule('preMainLoop')
-      if (Module['preMainLoop']) {
-        var preRet = Module['preMainLoop']();
-        if (preRet === false) {
+      for (var pre of MainLoop.preMainLoop) {
+        if (pre() === false) {
           return; // |return false| skips a frame
         }
       }
-#endif
       callUserCallback(func);
-#if expectToReceiveOnModule('postMainLoop')
-      Module['postMainLoop']?.();
+      for (var post of MainLoop.postMainLoop) {
+        post();
+      }
+#if STACK_OVERFLOW_CHECK
+      checkStackCookie();
 #endif
     },
 
@@ -424,28 +446,6 @@ LibraryJSEventLoop = {
         MainLoop.tickStartTime = _emscripten_get_now();
       }
 
-      // Signal GL rendering layer that processing of a new frame is about to start. This helps it optimize
-      // VBO double-buffering and reduce GPU stalls.
-#if FULL_ES2 || LEGACY_GL_EMULATION
-      GL.newRenderingFrameStarted();
-#endif
-
-#if PTHREADS && OFFSCREEN_FRAMEBUFFER && GL_SUPPORT_EXPLICIT_SWAP_CONTROL
-      // If the current GL context is a proxied regular WebGL context, and was initialized with implicit swap mode on the main thread, and we are on the parent thread,
-      // perform the swap on behalf of the user.
-      if (typeof GL != 'undefined' && GL.currentContext && GL.currentContextIsProxied) {
-        var explicitSwapControl = {{{ makeGetValue('GL.currentContext', 0, 'i32') }}};
-        if (!explicitSwapControl) _emscripten_webgl_commit_frame();
-      }
-#endif
-
-#if OFFSCREENCANVAS_SUPPORT
-      // If the current GL context is an OffscreenCanvas, but it was initialized with implicit swap mode, perform the swap on behalf of the user.
-      if (typeof GL != 'undefined' && GL.currentContext && !GL.currentContextIsProxied && !GL.currentContext.attributes.explicitSwapControl && GL.currentContext.GLctx.commit) {
-        GL.currentContext.GLctx.commit();
-      }
-#endif
-
 #if ASSERTIONS
       if (MainLoop.method === 'timeout' && Module.ctx) {
         warnOnce('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
@@ -455,18 +455,8 @@ LibraryJSEventLoop = {
 
       MainLoop.runIter(iterFunc);
 
-#if STACK_OVERFLOW_CHECK
-      checkStackCookie();
-#endif
-
       // catch pauses from the main loop itself
       if (!checkIsRunning()) return;
-
-      // Queue new audio data. This is important to be right after the main loop invocation, so that we will immediately be able
-      // to queue the newest produced audio samples.
-      // TODO: Consider adding pre- and post- rAF callbacks so that GL.newRenderingFrameStarted() and SDL.audio.queueNewAudioData()
-      //       do not need to be hardcoded into this function, but can be more generic.
-      if (typeof SDL == 'object') SDL.audio?.queueNewAudioData?.();
 
       MainLoop.scheduler();
     }
