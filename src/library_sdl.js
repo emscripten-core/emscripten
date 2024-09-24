@@ -18,6 +18,7 @@
 var LibrarySDL = {
   $SDL__deps: [
     '$PATH', '$Browser', 'SDL_GetTicks', 'SDL_LockSurface',
+    '$MainLoop',
     // For makeCEvent().
     '$intArrayFromString',
     // Many SDL functions depend on malloc/free
@@ -789,10 +790,10 @@ var LibrarySDL = {
           event.preventDefault();
           break;
         case 'unload':
-          if (Browser.mainLoop.runner) {
+          if (MainLoop.runner) {
             SDL.events.push(event);
             // Force-run a main event loop, since otherwise this event will never be caught!
-            Browser.mainLoop.runner();
+            MainLoop.runner();
           }
           return;
         case 'resize':
@@ -3337,7 +3338,7 @@ var LibrarySDL = {
 
   SDL_GL_GetSwapInterval__proxy: 'sync',
   SDL_GL_GetSwapInterval: () => {
-    if (Browser.mainLoop.timingMode == {{{ cDefs.EM_TIMING_RAF }}}) return Browser.mainLoop.timingValue;
+    if (MainLoop.timingMode == {{{ cDefs.EM_TIMING_RAF }}}) return MainLoop.timingValue;
     else return 0;
   },
 

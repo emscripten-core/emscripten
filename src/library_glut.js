@@ -617,12 +617,13 @@ var LibraryGLUT = {
   glutSwapBuffers: () => {},
 
   glutPostRedisplay__proxy: 'sync',
+  glutPostRedisplay__deps: ['$MainLoop'],
   glutPostRedisplay: () => {
     if (GLUT.displayFunc && !GLUT.requestedAnimationFrame) {
       GLUT.requestedAnimationFrame = true;
-      Browser.requestAnimationFrame(() => {
+      MainLoop.requestAnimationFrame(() => {
         GLUT.requestedAnimationFrame = false;
-        Browser.mainLoop.runIter(() => {{{ makeDynCall('v', 'GLUT.displayFunc') }}}());
+        MainLoop.runIter(() => {{{ makeDynCall('v', 'GLUT.displayFunc') }}}());
       });
     }
   },
