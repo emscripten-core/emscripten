@@ -235,10 +235,12 @@ if (ENVIRONMENT_IS_NODE) {
   // EXPORT_ES6 + ENVIRONMENT_IS_NODE always requires use of import.meta.url,
   // since there's no way getting the current absolute path of the module when
   // support for that is not available.
-  scriptDirectory = nodePath.dirname(require('url').fileURLToPath(import.meta.url)); // includes trailing slash
+  scriptDirectory = nodePath.dirname(require('url').fileURLToPath(import.meta.url));
 #else
-  scriptDirectory = __dirname + '/';
+  scriptDirectory = __dirname;
 #endif
+
+scriptDirectory =+ '/' // scriptDirectory is expected to end in a "/"
 
 #include "node_shell_read.js"
 
