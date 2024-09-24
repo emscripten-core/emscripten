@@ -14722,8 +14722,13 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.emcc_args += ['-sSTANDALONE_WASM', '-pthread', '-Wl,--whole-archive', '-lbulkmemory', '-lstandalonewasm', '-Wl,--no-whole-archive']
     self.do_runf('hello_world.c')
 
-  def test_proxy_to_worker(self):
-    self.do_runf('hello_world.c', emcc_args=['--proxy-to-worker'])
+  @parameterized({
+    '':   ([],),
+    '_single_file': (['-sSINGLE_FILE'],),
+    '_single_file_es6': (['-sSINGLE_FILE', '-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')],),
+  })
+  def test_proxy_to_worker(self, args):
+    self.do_runf('hello_world.c', emcc_args=['--proxy-to-worker'] + args)
 
   @also_with_standalone_wasm()
   def test_console_out(self):
