@@ -2042,7 +2042,7 @@ var LibrarySDL = {
     SDL.eventHandlerContext = userdata;
 
     // All SDLEvents take the same amount of memory
-    if (!SDL.eventHandlerTemp) SDL.eventHandlerTemp = _malloc({{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
+    SDL.eventHandlerTemp ||= _malloc({{{ C_STRUCTS.SDL_KeyboardEvent.__size__ }}});
   },
 
   SDL_SetColors__proxy: 'sync',

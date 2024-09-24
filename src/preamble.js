@@ -1076,7 +1076,7 @@ function createWasm() {
   }
 #endif
 
-  if (!wasmBinaryFile) wasmBinaryFile = findWasmBinary();
+  wasmBinaryFile ??= findWasmBinary();
 
 #if WASM_ASYNC_COMPILATION
 #if RUNTIME_DEBUG

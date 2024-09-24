@@ -66,7 +66,9 @@ FS.staticInit();
     genericErrors: {},
     filesystems: null,
     syncFSRequests: 0, // we warn if there are multiple in flight at once
-
+#if expectToReceiveOnModule('logReadFiles')
+    readFiles: {},
+#endif
 #if ASSERTIONS
     ErrnoError: class extends Error {
 #else
@@ -1100,8 +1102,8 @@ FS.staticInit();
       if (stream.stream_ops.open) {
         stream.stream_ops.open(stream);
       }
+#if expectToReceiveOnModule('logReadFiles')
       if (Module['logReadFiles'] && !(flags & {{{ cDefs.O_WRONLY}}})) {
-        if (!FS.readFiles) FS.readFiles = {};
         if (!(path in FS.readFiles)) {
           FS.readFiles[path] = 1;
 #if FS_DEBUG
@@ -1109,6 +1111,7 @@ FS.staticInit();
 #endif
         }
       }
+#endif
 #if FS_DEBUG
       if (FS.trackingDelegate['onOpenFile']) {
         FS.trackingDelegate['onOpenFile'](path, trackingFlags);
@@ -1588,7 +1591,7 @@ FS.staticInit();
     createDevice(parent, name, input, output) {
       var path = PATH.join2(typeof parent == 'string' ? parent : FS.getPath(parent), name);
       var mode = FS_getMode(!!input, !!output);
-      if (!FS.createDevice.major) FS.createDevice.major = 64;
+      FS.createDevice.major ??= 64;
       var dev = FS.makedev(FS.createDevice.major++, 0);
       // Create a fake device that a set of stream ops to emulate
       // the old behavior.
