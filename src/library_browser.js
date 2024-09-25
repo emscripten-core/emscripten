@@ -701,34 +701,6 @@ var LibraryBrowser = {
     document.body.appendChild(script);
   },
 
-  $safeRequestAnimationFrame__deps: ['$MainLoop'],
-  $safeRequestAnimationFrame: (func) => {
-    {{{ runtimeKeepalivePush() }}}
-    return MainLoop.requestAnimationFrame(() => {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(func);
-    });
-  },
-
-  // Runs natively in pthread, no __proxy needed.
-  emscripten_async_call__deps: ['$safeSetTimeout', '$safeRequestAnimationFrame'],
-  emscripten_async_call: (func, arg, millis) => {
-    function wrapper() {
-      {{{ makeDynCall('vp', 'func') }}}(arg);
-    }
-
-    if (millis >= 0
-#if ENVIRONMENT_MAY_BE_NODE
-      // node does not support requestAnimationFrame
-      || ENVIRONMENT_IS_NODE
-#endif
-    ) {
-      safeSetTimeout(wrapper, millis);
-    } else {
-      safeRequestAnimationFrame(wrapper);
-    }
-  },
-
   emscripten_get_window_title__proxy: 'sync',
   emscripten_get_window_title: () => {
     var buflen = 256;
