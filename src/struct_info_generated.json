@@ -744,6 +744,22 @@
             "format": 0,
             "palette": 4
         },
+        "SDL_RWops": {
+            "__size__": 32,
+            "hidden": {
+                "__size__": 12,
+                "mem": {
+                    "__size__": 12,
+                    "base": 20,
+                    "stop": 28
+                },
+                "stdio": {
+                    "__size__": 8,
+                    "fp": 24
+                }
+            },
+            "type": 16
+        },
         "SDL_Rect": {
             "__size__": 16,
             "h": 12,
