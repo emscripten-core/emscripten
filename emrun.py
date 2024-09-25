@@ -704,6 +704,8 @@ class HTTPHandler(SimpleHTTPRequestHandler):
         if not emrun_options.serve_after_exit:
           page_exit_code = int(data[6:])
           logv('Web page has quit with a call to exit() with return code ' + str(page_exit_code) + '. Shutting down web server. Pass --serve-after-exit to keep serving even after the page terminates with exit().')
+          # Set server socket to nonblocking on shutdown to avoid sporadic deadlocks
+          self.server.socket.setblocking(False)
           self.server.shutdown()
           return
       else:

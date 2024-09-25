@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.68 (in development)
 -----------------------
+- Added support for compiling 256-bit wide AVX intrinsics, emulated on top
+  of 128-bit Wasm SIMD instruction set. (#22430). Pass `-msimd128 -mavx` to
+  enable targeting AVX.
 - Pthread-based programs no longer generates `.worker.js` file.  This file was
   made redundant back in 3.1.58 and now is completely removed. (#22598)
 - The freetype port was updated from v2.6 to v2.13.3. (#22585)
