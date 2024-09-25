@@ -219,6 +219,7 @@ addToLibrary({
       },
       statfs(path) {
         var stats = fs.statfsSync(path);
+        console.log(stats.type)
         return {
           bsize: stats.bsize,
           frsize: stats.bsize,
@@ -227,7 +228,7 @@ addToLibrary({
           bavail: stats.bavail,
           files: stats.files,
           ffree: stats.ffree,
-          fsid: stats.type
+          type: stats.type
         }
       }
     },

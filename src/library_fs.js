@@ -687,7 +687,7 @@ FS.staticInit();
         ffree: 1e6,
         fsid: 42,
         flags: 2,
-        namelen: 255
+        namelen: 255,
       };
 
       if (typeof parent.node_ops?.statfs === 'function') {
