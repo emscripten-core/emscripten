@@ -672,6 +672,30 @@ FS.staticInit();
       }
       return parent.node_ops.mknod(parent, name, mode, dev);
     },
+    statfs(path) {
+      var lookup = FS.lookupPath(path, { follow: true });
+      var parent = lookup.node
+
+      // Error handling
+      var defaults = {
+        bsize: 4096,
+        frsize: 4096,
+        blocks: 1e6,
+        bfree: 5e5,
+        bavail: 5e5,
+        files: FS.nextInode,
+        ffree: 1e6,
+        fsid: 42,
+        flags: 2,
+        namelen: 255
+      };
+
+      if (typeof parent.node_ops?.statfs === 'function') {
+        return { ...defaults, ...parent.node_ops.statfs(parent.mount.opts.root) };
+      } else {
+        return defaults;
+      }
+    },
     // helpers to create specific types of nodes
     create(path, mode) {
       mode = mode !== undefined ? mode : 438 /* 0666 */;

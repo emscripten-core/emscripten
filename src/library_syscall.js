@@ -802,22 +802,22 @@ var SyscallsLibrary = {
   },
 
   __syscall_statfs64: (path, size, buf) => {
-    path = SYSCALLS.getStr(path);
 #if ASSERTIONS
     assert(size === {{{ C_STRUCTS.statfs.__size__ }}});
 #endif
+    var defaults = FS.statfs(SYSCALLS.getStr(path));
     // NOTE: None of the constants here are true. We're just returning safe and
     //       sane values.
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bsize, '4096', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_frsize, '4096', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_blocks, '1000000', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bfree, '500000', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bavail, '500000', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_files, 'FS.nextInode', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_ffree, '1000000', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_fsid, '42', 'i32') }}};
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_flags, '2', 'i32') }}};  // ST_NOSUID
-    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_namelen, '255', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bsize, 'defaults.bsize', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_frsize, 'defaults.bsize', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_blocks, 'defaults.blocks', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bfree, 'defaults.bfree', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bavail, 'defaults.bavail', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_files, 'defaults.files', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_ffree, 'defaults.ffree', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_fsid, 'defaults.fsid', 'i32') }}};
+    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_flags, 'defaults.flags', 'i32') }}};  // ST_NOSUID
+    {{{ makeSetValue('buf', C_STRUCTS.statfs.f_namelen, 'defaults.namelen', 'i32') }}};
     return 0;
   },
   __syscall_fstatfs64__deps: ['__syscall_statfs64'],

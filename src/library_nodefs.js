@@ -118,6 +118,9 @@ addToLibrary({
       return newFlags;
     },
 
+    statfs: function(path) {
+      return fs.statfsSync(path);
+    },
     node_ops: {
       getattr(node) {
         var path = NODEFS.realPath(node);
@@ -214,6 +217,19 @@ addToLibrary({
         var path = NODEFS.realPath(node);
         return NODEFS.tryFSOperation(() => fs.readlinkSync(path));
       },
+      statfs(path) {
+        var stats = fs.statfsSync(path);
+        return {
+          bsize: stats.bsize,
+          frsize: stats.bsize,
+          blocks: stats.blocks,
+          bfree: stats.bfree,
+          bavail: stats.bavail,
+          files: stats.files,
+          ffree: stats.ffree,
+          fsid: stats.type
+        }
+      }
     },
     stream_ops: {
       open(stream) {
