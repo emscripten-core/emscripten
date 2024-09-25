@@ -2668,10 +2668,10 @@ var LibrarySDL = {
 
 #if USE_SDL == 2
     if (rwops === undefined) {
-      var type = {{{ makeGetValue('rwopsID', 20 /*type*/, 'i32') }}};
+      var type = {{{ makeGetValue('rwopsID', C_STRUCTS.SDL_RWops.type, 'i32') }}};
 
       if (type === 2/*SDL_RWOPS_STDFILE*/) {
-        var fp = {{{ makeGetValue('rwopsID', 28 /*hidden.stdio.fp*/, 'i32') }}};
+        var fp = {{{ makeGetValue('rwopsID', C_STRUCTS.SDL_RWops.hidden.stdio.fp, 'i32') }}};
         var fd = _fileno(fp);
         var stream = FS.getStream(fd);
         if (stream) {
@@ -2679,8 +2679,8 @@ var LibrarySDL = {
         }
       }
       else if (type === 4/*SDL_RWOPS_MEMORY*/ || type === 5/*SDL_RWOPS_MEMORY_RO*/) {
-        var base = {{{ makeGetValue('rwopsID', 24 /*hidden.mem.base*/, 'i32') }}};
-        var stop = {{{ makeGetValue('rwopsID', 32 /*hidden.mem.stop*/, 'i32') }}};
+        var base = {{{ makeGetValue('rwopsID', C_STRUCTS.SDL_RWops.hidden.mem.base, 'i32') }}};
+        var stop = {{{ makeGetValue('rwopsID', C_STRUCTS.SDL_RWops.hidden.mem.stop, 'i32') }}};
 
         rwops = { bytes: base, count: stop - base };
       }
