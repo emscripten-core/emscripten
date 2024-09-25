@@ -6510,15 +6510,15 @@ This locale is not the C locale.
     test(['-O3', '--closure=1', '-Wno-closure', '-sWASM=0'], 36000)
     test(['-O3', '--closure=2', '-Wno-closure', '-sWASM=0'], 33000) # might change now and then
 
-  def test_no_browser(self):
-    BROWSER_INIT = 'var Browser'
+  def test_no_main_loop(self):
+    MAINLOOP = 'var MainLoop'
 
     self.run_process([EMCC, test_file('hello_world.c')])
-    self.assertNotContained(BROWSER_INIT, read_file('a.out.js'))
+    self.assertNotContained(MAINLOOP, read_file('a.out.js'))
 
-    # uses emscripten_set_main_loop, which needs Browser
+    # uses emscripten_set_main_loop, which needs MainLoop
     self.run_process([EMCC, test_file('browser_main_loop.c')])
-    self.assertContained(BROWSER_INIT, read_file('a.out.js'))
+    self.assertContained(MAINLOOP, read_file('a.out.js'))
 
   def test_EXPORTED_RUNTIME_METHODS(self):
     def test(opts, has, not_has):

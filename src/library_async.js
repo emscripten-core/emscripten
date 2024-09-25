@@ -343,8 +343,8 @@ addToLibrary({
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
           runAndAbortIfError(() => _asyncify_start_rewind(Asyncify.currData));
-          if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
-            Browser.mainLoop.resume();
+          if (typeof MainLoop != 'undefined' && MainLoop.func) {
+            MainLoop.resume();
           }
           var asyncWasmReturnValue, isError = false;
           try {
@@ -391,8 +391,8 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
           dbg(`ASYNCIFY: start unwind ${Asyncify.currData}`);
 #endif
-          if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
-            Browser.mainLoop.pause();
+          if (typeof MainLoop != 'undefined' && MainLoop.func) {
+            MainLoop.pause();
           }
           runAndAbortIfError(() => _asyncify_start_unwind(Asyncify.currData));
         }
