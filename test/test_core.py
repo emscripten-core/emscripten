@@ -6620,7 +6620,7 @@ void* operator new(size_t size) {
   @no_asan('local count too large')
   def test_avx(self):
     src = test_file('sse/test_avx.cpp')
-    self.run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    self.run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_avx', stdout=PIPE).stdout
 
     self.emcc_args += ['-I' + test_file('sse'), '-mavx', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB']
