@@ -4385,18 +4385,38 @@ res64 - external 64\n''', header='''\
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
     ''', force_c=True)
 
+  @parameterized({
+    '': (False,),
+    'rtld_local': (True,),
+  })
   @needs_dylink
   @also_with_wasm_bigint
-  def test_dylink_i64_invoke(self):
+  def test_dylink_i64_invoke(self, rtld_local):
+    if rtld_local:
+      self.set_setting('NO_AUTOLOAD_DYLIBS')
+      self.emcc_args.append('-DUSE_DLOPEN')
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.dylink_test(r'''\
+    #include <assert.h>
     #include <stdio.h>
     #include <stdint.h>
 
+    #if USE_DLOPEN
+    #include <dlfcn.h>
+    typedef int64_t (*sidey_t)(int64_t arg);
+    #else
     extern "C" int64_t sidey(int64_t arg);
+    #endif
 
     int main(int argc, char *argv[]) {
         int64_t temp = 42;
+    #if USE_DLOPEN
+        void* lib = dlopen("liblib.so", RTLD_LAZY);
+        assert(lib);
+        sidey_t sidey = (sidey_t)dlsym(lib, "sidey");
+        assert(sidey);
+    #endif
+
         printf("got %lld\n", sidey(temp));
         printf("got %lld\n", sidey(0));
         return 0;
