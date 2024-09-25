@@ -9102,6 +9102,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('STRICT')
     self.do_run_in_out_file_test('core/pthread/create.c')
 
+  @flaky('https://github.com/emscripten-core/emscripten/issues/22617')
   @node_pthreads
   @parameterized({
     '': ([],),
