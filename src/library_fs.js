@@ -683,7 +683,8 @@ FS.staticInit();
         bfree: 5e5,
         bavail: 5e5,
         files: FS.nextInode,
-        ffree: 1e6,
+        // Free inodes can not be larger than total inodes so calculate a reasonable value here
+        ffree: () => Math.max(0, Math.floor(this.files * 0.9) - this.files),
         fsid: 42,
         flags: 2,
         namelen: 255,

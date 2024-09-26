@@ -10,12 +10,7 @@ void test_statfs(const char *path) {
 
     assert(result == 0 && "statvfs should succeed");
 
-    printf("File system block size: %lu\n", st.f_bsize);
-    printf("Total blocks: %lu\n", st.f_blocks);
-    printf("Free blocks: %lu\n", st.f_bfree);
-    printf("Available blocks: %lu\n", st.f_bavail);
-    printf("Total inodes: %lu\n", st.f_files);
-    printf("Free inodes: %lu\n", st.f_ffree);
+
 
     // Basic sanity checks
     assert(st.f_bsize > 0 && "Block size should be positive");
