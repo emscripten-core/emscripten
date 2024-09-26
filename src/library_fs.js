@@ -676,6 +676,7 @@ FS.staticInit();
 
       // NOTE: None of the defaults here are true. We're just returning safe and
       //       sane values.
+      var ffree = FS.nextInode - 1; // Free inodes can not be larger than total inodes
       var defaults = {
         bsize: 4096,
         frsize: 4096,
@@ -683,8 +684,7 @@ FS.staticInit();
         bfree: 5e5,
         bavail: 5e5,
         files: FS.nextInode,
-        // Free inodes can not be larger than total inodes so calculate a reasonable value here
-        ffree: () => Math.max(0, Math.floor(this.files * 0.9) - this.files),
+        ffree,
         fsid: 42,
         flags: 2,
         namelen: 255,
