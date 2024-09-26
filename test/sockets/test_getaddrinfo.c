@@ -293,6 +293,20 @@ int main() {
   assert(sa4->sin_port == ntohs(80));
   freeaddrinfo(servinfo);
 
+  // test loopback address
+  err = getaddrinfo("localhost", "89", &hints, &servinfo);
+  assert(!err);
+  print_addrinfo(servinfo);
+  sa4 = ((struct sockaddr_in*)servinfo->ai_addr);
+  assert(servinfo->ai_family == AF_INET);
+  assert(servinfo->ai_socktype == SOCK_STREAM);
+  assert(servinfo->ai_protocol == IPPROTO_TCP);
+  assert(sa4->sin_port == ntohs(89));
+  struct in_addr addr;
+  inet_aton("127.0.0.1", &addr);
+  assert(sa4->sin_addr.s_addr == addr.s_addr);
+  freeaddrinfo(servinfo);
+
 #ifdef __EMSCRIPTEN__
   // test gai_strerror
   CHECK_ERR(0, "Unknown error");

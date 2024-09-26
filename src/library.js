@@ -913,27 +913,24 @@ addToLibrary({
   $DNS: {
     address_map: {
       id: 1,
-      addrs: {},
-      names: {}
+      addrs: {'localhost': '127.0.0.1'},
+      names: {'127.0.0.1': 'localhost'}
     },
 
     lookup_name(name) {
       // If the name is already a valid ipv4 / ipv6 address, don't generate a fake one.
-      var res = inetPton4(name);
-      if (res !== null) {
+      if (inetPton4(name) != null) {
         return name;
       }
-      res = inetPton6(name);
-      if (res !== null) {
+      // Unlike the inetPton4 above we don't need and explict null comparison
+      // here since there are no valie v6 addresses that are falsey.
+      if (inetPton6(name)) {
         return name;
       }
 
       // See if this name is already mapped.
-      var addr;
-
-      if (DNS.address_map.addrs[name]) {
-        addr = DNS.address_map.addrs[name];
-      } else {
+      var addr = DNS.address_map.addrs[name];
+      if (!addr) {
         var id = DNS.address_map.id++;
         assert(id < 65535, 'exceeded max address mappings of 65535');
 
@@ -947,11 +944,8 @@ addToLibrary({
     },
 
     lookup_addr(addr) {
-      if (DNS.address_map.names[addr]) {
-        return DNS.address_map.names[addr];
-      }
-
-      return null;
+      // Returns `undefined` if that address is not in the map.
+      return DNS.address_map.names[addr];
     }
   },
 
