@@ -476,10 +476,9 @@ var LibraryEmbind = {
         }
         argStart = 2;
       }
-#if ASSERTIONS
-      if (argsName.length)
-        assert(argsName.length == (argTypes.length - hasThis - 1), 'Argument names should match number of parameters.');
-#endif
+      if (argsName.length && argsName.length != (argTypes.length - hasThis - 1))
+        throw new Error('Argument names should match number of parameters.');
+
       const args = [];
       for (let i = argStart, x = 0; i < argTypes.length; i++) {
         if (x < argsName.length) {
@@ -621,9 +620,9 @@ var LibraryEmbind = {
                                             setterContext) {
     fieldName = readLatin1String(fieldName);
     const readonly = setter === 0;
-#if ASSERTIONS
-    assert(readonly || getterReturnType === setterArgumentType, 'Mismatched getter and setter types are not supported.');
-#endif
+    if (!(readonly || getterReturnType === setterArgumentType))
+      throw new error('Mismatched getter and setter types are not supported.');
+
     whenDependentTypesAreResolved([], [classType], function(classType) {
       classType = classType[0];
       whenDependentTypesAreResolved([], [getterReturnType], function(types) {
@@ -724,9 +723,9 @@ var LibraryEmbind = {
     setterContext
   ) {
     const valueArray = tupleRegistrations[rawTupleType];
-#if ASSERTIONS
-    assert(getterReturnType === setterArgumentType, 'Mismatched getter and setter types are not supported.');
-#endif
+    if (getterReturnType !== setterArgumentType)
+      throw new Error('Mismatched getter and setter types are not supported.');
+
     valueArray.elementTypeIds.push(getterReturnType);
   },
   _embind_finalize_value_array__deps: ['$whenDependentTypesAreResolved', '$moduleDefinitions', '$tupleRegistrations'],
@@ -767,9 +766,9 @@ var LibraryEmbind = {
     setterContext
   ) {
     const valueObject = structRegistrations[structType];
-#if ASSERTIONS
-    assert(getterReturnType === setterArgumentType, 'Mismatched getter and setter types are not supported.');
-#endif
+    if (getterReturnType !== setterArgumentType)
+      throw new Error('Mismatched getter and setter types are not supported.');
+
     valueObject.fieldTypeIds.push(getterReturnType);
     valueObject.fieldNames.push(readLatin1String(fieldName));
   },
