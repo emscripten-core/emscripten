@@ -6638,6 +6638,7 @@ void* operator new(size_t size) {
   @requires_native_clang
   @is_slow_test
   @no_asan('local count too large')
+  @no_ubsan('local count too large')
   def test_avx(self):
     src = test_file('sse/test_avx.cpp')
     self.run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
