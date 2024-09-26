@@ -476,8 +476,10 @@ var LibraryEmbind = {
         }
         argStart = 2;
       }
+#if ASSERTIONS
       if (argsName.length)
         assert(argsName.length == (argTypes.length - hasThis - 1), 'Argument names should match number of parameters.');
+#endif
       const args = [];
       for (let i = argStart, x = 0; i < argTypes.length; i++) {
         if (x < argsName.length) {
@@ -619,7 +621,9 @@ var LibraryEmbind = {
                                             setterContext) {
     fieldName = readLatin1String(fieldName);
     const readonly = setter === 0;
+#if ASSERTIONS
     assert(readonly || getterReturnType === setterArgumentType, 'Mismatched getter and setter types are not supported.');
+#endif
     whenDependentTypesAreResolved([], [classType], function(classType) {
       classType = classType[0];
       whenDependentTypesAreResolved([], [getterReturnType], function(types) {
@@ -720,7 +724,9 @@ var LibraryEmbind = {
     setterContext
   ) {
     const valueArray = tupleRegistrations[rawTupleType];
+#if ASSERTIONS
     assert(getterReturnType === setterArgumentType, 'Mismatched getter and setter types are not supported.');
+#endif
     valueArray.elementTypeIds.push(getterReturnType);
   },
   _embind_finalize_value_array__deps: ['$whenDependentTypesAreResolved', '$moduleDefinitions', '$tupleRegistrations'],
@@ -761,7 +767,9 @@ var LibraryEmbind = {
     setterContext
   ) {
     const valueObject = structRegistrations[structType];
+#if ASSERTIONS
     assert(getterReturnType === setterArgumentType, 'Mismatched getter and setter types are not supported.');
+#endif
     valueObject.fieldTypeIds.push(getterReturnType);
     valueObject.fieldNames.push(readLatin1String(fieldName));
   },
@@ -822,10 +830,10 @@ var LibraryEmbind = {
 #endif
 
   // Stub functions used by eval, but not needed for TS generation:
-  $makeLegalFunctionName: () => assert(false, 'stub function should not be called'),
-  $newFunc: () => assert(false, 'stub function should not be called'),
-  $runDestructors: () => assert(false, 'stub function should not be called'),
-  $createNamedFunction: () => assert(false, 'stub function should not be called'),
+  $makeLegalFunctionName: () => { throw new Error('stub function should not be called'); },
+  $newFunc: () => { throw new Error('stub function should not be called'); },
+  $runDestructors: () => { throw new Error('stub function should not be called'); },
+  $createNamedFunction: () => { throw new Error('stub function should not be called'); },
 };
 
 #if EMBIND_AOT
