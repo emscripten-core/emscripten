@@ -986,8 +986,8 @@ class benchmark(common.RunnerCore):
       ret = self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init, force_rebuild=native)
       if native:
         return ret
-      shutil.copyfile(ret[0], ret[0] + '.bc')
-      ret[0] += '.bc'
+      shutil.copyfile(ret[0], ret[0] + '.o')
+      ret[0] += '.o'
       return ret
 
     self.do_benchmark('lua_' + benchmark, '', expected,
