@@ -690,8 +690,7 @@ FS.staticInit();
         namelen: 255,
       };
 
-      var lookup = FS.lookupPath(path, {follow: true});
-      var parent = lookup.node;
+      var parent = FS.lookupPath(path, {follow: true}).node;
       if (typeof parent.node_ops?.statfs !== 'function') {
         return defaults;
       }
