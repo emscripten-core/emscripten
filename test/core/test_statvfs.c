@@ -8,10 +8,13 @@
 #include <stdio.h>
 #include <errno.h>
 #include <sys/statvfs.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 int main() {
   struct statvfs s;
 
+  mkdir("/test", S_IRWXU | S_IRWXG | S_IRWXO);
   printf("result: %d\n", statvfs("/test", &s));
   printf("errno: %d\n", errno);
 

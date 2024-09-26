@@ -673,8 +673,6 @@ FS.staticInit();
       return parent.node_ops.mknod(parent, name, mode, dev);
     },
     statfs(path) {
-      var lookup = FS.lookupPath(path, { follow: true });
-      var parent = lookup.node
 
       // NOTE: None of the defaults here are true. We're just returning safe and
       //       sane values.
@@ -691,11 +689,13 @@ FS.staticInit();
         namelen: 255,
       };
 
-      if (typeof parent.node_ops?.statfs === 'function') {
-        return { ...defaults, ...parent.node_ops.statfs(parent.mount.opts.root) };
-      } else {
+      var lookup = FS.lookupPath(path, {follow: true});
+      var parent = lookup.node;
+      if (typeof parent.node_ops?.statfs !== 'function') {
         return defaults;
       }
+
+      return { ...defaults, ...parent.node_ops.statfs(parent.mount.opts.root) };
     },
     // helpers to create specific types of nodes
     create(path, mode) {
