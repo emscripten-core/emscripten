@@ -117,6 +117,7 @@ addToLibrary({
       }
       return newFlags;
     },
+
     node_ops: {
       getattr(node) {
         var path = NODEFS.realPath(node);
