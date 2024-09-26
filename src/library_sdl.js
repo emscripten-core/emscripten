@@ -2311,8 +2311,13 @@ var LibrarySDL = {
 
   // SDL_Audio
 
-  SDL_OpenAudio__deps: ['$autoResumeAudioContext', '$safeSetTimeout'],
+  SDL_OpenAudio__deps: ['$autoResumeAudioContext', '$safeSetTimeout', '$registerPostMainLoop'],
   SDL_OpenAudio__proxy: 'sync',
+  SDL_OpenAudio__postset: `
+    // Queue new audio data. This is important to be right after the main loop
+    // invocation, so that we will immediately be able to queue the newest
+    // produced audio samples.
+    registerPostMainLoop(() => SDL.audio?.queueNewAudioData?.());`,
   SDL_OpenAudio: (desired, obtained) => {
     try {
       SDL.audio = {
