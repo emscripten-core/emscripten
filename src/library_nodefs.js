@@ -218,18 +218,11 @@ addToLibrary({
         return NODEFS.tryFSOperation(() => fs.readlinkSync(path));
       },
       statfs(path) {
-        var stats = fs.statfsSync(path);
-        console.log(stats.type)
+        var stats = NODEFS.tryFSOperation(() => fs.statfsSync(path));
         return {
-          bsize: stats.bsize,
-          frsize: stats.bsize,
-          blocks: stats.blocks,
-          bfree: stats.bfree,
-          bavail: stats.bavail,
-          files: stats.files,
-          ffree: stats.ffree,
-          type: stats.type
-        }
+          ...stats,
+          frsize: stats.bsize
+        };
       }
     },
     stream_ops: {

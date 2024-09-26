@@ -806,8 +806,6 @@ var SyscallsLibrary = {
     assert(size === {{{ C_STRUCTS.statfs.__size__ }}});
 #endif
     var defaults = FS.statfs(SYSCALLS.getStr(path));
-    // NOTE: None of the constants here are true. We're just returning safe and
-    //       sane values.
     {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bsize, 'defaults.bsize', 'i32') }}};
     {{{ makeSetValue('buf', C_STRUCTS.statfs.f_frsize, 'defaults.bsize', 'i32') }}};
     {{{ makeSetValue('buf', C_STRUCTS.statfs.f_blocks, 'defaults.blocks', 'i32') }}};

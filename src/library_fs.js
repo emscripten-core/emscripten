@@ -676,7 +676,8 @@ FS.staticInit();
       var lookup = FS.lookupPath(path, { follow: true });
       var parent = lookup.node
 
-      // Error handling
+      // NOTE: None of the defaults here are true. We're just returning safe and
+      //       sane values.
       var defaults = {
         bsize: 4096,
         frsize: 4096,

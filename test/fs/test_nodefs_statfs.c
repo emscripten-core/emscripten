@@ -1,0 +1,42 @@
+#include <assert.h>
+#include <stdio.h>
+#include <sys/statvfs.h>
+#include <emscripten.h>
+
+void test_statfs(const char *path) {
+    printf("Testing statfs for path: %s\n", path);
+    struct statvfs st;
+    int result = statvfs(path, &st);
+
+    assert(result == 0 && "statvfs should succeed");
+
+    printf("File system block size: %lu\n", st.f_bsize);
+    printf("Total blocks: %lu\n", st.f_blocks);
+    printf("Free blocks: %lu\n", st.f_bfree);
+    printf("Available blocks: %lu\n", st.f_bavail);
+    printf("Total inodes: %lu\n", st.f_files);
+    printf("Free inodes: %lu\n", st.f_ffree);
+
+    // Basic sanity checks
+    assert(st.f_bsize > 0 && "Block size should be positive");
+    assert(st.f_blocks > 0 && "Total blocks should be positive");
+    assert(st.f_bfree <= st.f_blocks && "Free blocks should not exceed total blocks");
+    assert(st.f_bavail <= st.f_bfree && "Available blocks should not exceed free blocks");
+    assert(st.f_files > 0 && "Total inodes should be positive");
+    assert(st.f_ffree <= st.f_files && "Free inodes should not exceed total inodes");
+}
+
+int main() {
+    // Test the root filesystem (which should be MEMFS by default)
+    test_statfs("/");
+
+    // Mount NODEFS and test it
+    EM_ASM(
+        FS.mkdir('/working');
+        FS.mount(NODEFS, { root: '.' }, '/working');
+    );
+
+    test_statfs("/working");
+
+    puts("success");
+}
