@@ -3384,7 +3384,9 @@ More info: https://emscripten.org
     extra_args = ['-sMODULARIZE',
                   '--embed-file', 'fail.js',
                   '-sMINIMAL_RUNTIME=2',
-                  '-sEXPORT_ES6=1']
+                  '-sEXPORT_ES6=1',
+                  '-sASSERTIONS=0',
+                  '-sSTRICT=1']
     self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
     self.assertFileContents(test_file('other/embind_tsgen_ignore_2.d.ts'), read_file('embind_tsgen.d.ts'))
     # Also test this separately since it conflicts with other settings.
