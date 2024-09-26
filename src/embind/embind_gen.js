@@ -476,8 +476,9 @@ var LibraryEmbind = {
         }
         argStart = 2;
       }
-      if (argsName.length && argsName.length != (argTypes.length - hasThis - 1))
+      if (argsName.length && argsName.length != (argTypes.length - hasThis - 1)) {
         throw new Error('Argument names should match number of parameters.');
+      }
 
       const args = [];
       for (let i = argStart, x = 0; i < argTypes.length; i++) {
@@ -620,8 +621,9 @@ var LibraryEmbind = {
                                             setterContext) {
     fieldName = readLatin1String(fieldName);
     const readonly = setter === 0;
-    if (!(readonly || getterReturnType === setterArgumentType))
+    if (!(readonly || getterReturnType === setterArgumentType)) {
       throw new error('Mismatched getter and setter types are not supported.');
+    }
 
     whenDependentTypesAreResolved([], [classType], function(classType) {
       classType = classType[0];
@@ -723,8 +725,9 @@ var LibraryEmbind = {
     setterContext
   ) {
     const valueArray = tupleRegistrations[rawTupleType];
-    if (getterReturnType !== setterArgumentType)
+    if (getterReturnType !== setterArgumentType) {
       throw new Error('Mismatched getter and setter types are not supported.');
+    }
 
     valueArray.elementTypeIds.push(getterReturnType);
   },
@@ -766,8 +769,9 @@ var LibraryEmbind = {
     setterContext
   ) {
     const valueObject = structRegistrations[structType];
-    if (getterReturnType !== setterArgumentType)
+    if (getterReturnType !== setterArgumentType) {
       throw new Error('Mismatched getter and setter types are not supported.');
+    }
 
     valueObject.fieldTypeIds.push(getterReturnType);
     valueObject.fieldNames.push(readLatin1String(fieldName));
