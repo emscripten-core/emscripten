@@ -10,8 +10,6 @@ void test_statfs(const char *path) {
 
     assert(result == 0 && "statvfs should succeed");
 
-
-
     // Basic sanity checks
     assert(st.f_bsize > 0 && "Block size should be positive");
     assert(st.f_blocks > 0 && "Total blocks should be positive");
