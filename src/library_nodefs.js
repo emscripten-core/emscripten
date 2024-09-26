@@ -117,10 +117,6 @@ addToLibrary({
       }
       return newFlags;
     },
-
-    statfs: function(path) {
-      return fs.statfsSync(path);
-    },
     node_ops: {
       getattr(node) {
         var path = NODEFS.realPath(node);
