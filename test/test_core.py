@@ -556,7 +556,7 @@ class TestCoreBase(RunnerCore):
 
   def test_cube2md5(self):
     self.emcc_args += ['--embed-file', 'cube2md5.txt']
-    shutil.copyfile(test_file('cube2md5.txt'), 'cube2md5.txt')
+    shutil.copy(test_file('cube2md5.txt'), '.')
     self.do_run_in_out_file_test('cube2md5.cpp', assert_returncode=NON_ZERO)
 
   @also_with_standalone_wasm()
@@ -1155,7 +1155,7 @@ int main(int argc, char **argv) {
     size = os.path.getsize('test_exceptions_allowed.js')
     if self.is_wasm():
       size += os.path.getsize('test_exceptions_allowed.wasm')
-    shutil.copyfile('test_exceptions_allowed.js', 'orig.js')
+    shutil.copy('test_exceptions_allowed.js', 'orig.js')
 
     # check that an empty allow list works properly (as in, same as exceptions disabled)
 
@@ -1164,21 +1164,21 @@ int main(int argc, char **argv) {
     empty_size = os.path.getsize('test_exceptions_allowed.js')
     if self.is_wasm():
       empty_size += os.path.getsize('test_exceptions_allowed.wasm')
-    shutil.copyfile('test_exceptions_allowed.js', 'empty.js')
+    shutil.copy('test_exceptions_allowed.js', 'empty.js')
 
     self.set_setting('EXCEPTION_CATCHING_ALLOWED', ['fake'])
     self.do_run_in_out_file_test('core/test_exceptions_allowed.cpp', out_suffix='_empty', assert_returncode=NON_ZERO)
     fake_size = os.path.getsize('test_exceptions_allowed.js')
     if self.is_wasm():
       fake_size += os.path.getsize('test_exceptions_allowed.wasm')
-    shutil.copyfile('test_exceptions_allowed.js', 'fake.js')
+    shutil.copy('test_exceptions_allowed.js', 'fake.js')
 
     self.clear_setting('EXCEPTION_CATCHING_ALLOWED')
     self.do_run_in_out_file_test('core/test_exceptions_allowed.cpp', out_suffix='_empty', assert_returncode=NON_ZERO)
     disabled_size = os.path.getsize('test_exceptions_allowed.js')
     if self.is_wasm():
       disabled_size += os.path.getsize('test_exceptions_allowed.wasm')
-    shutil.copyfile('test_exceptions_allowed.js', 'disabled.js')
+    shutil.copy('test_exceptions_allowed.js', 'disabled.js')
 
     print('size: %d' % size)
     print('empty_size: %d' % empty_size)
@@ -2595,7 +2595,7 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_tls_dylink.c')
 
   def test_pthread_run_script(self):
-    shutil.copyfile(test_file('pthread/foo.js'), 'foo.js')
+    shutil.copy(test_file('pthread/foo.js'), '.')
     self.do_runf('pthread/test_pthread_run_script.c')
 
     # Run the test again with PROXY_TO_PTHREAD
@@ -3234,7 +3234,7 @@ Var: 42
     self.build_dlfcn_lib('liblib.c')
     for i in range(10):
       curr = '%d.so' % i
-      shutil.copyfile('liblib.so', curr)
+      shutil.copy('liblib.so', curr)
 
     self.prep_dlfcn_main()
     self.set_setting('INITIAL_MEMORY', '128mb')
@@ -6701,7 +6701,7 @@ void* operator new(size_t size) {
     ))
 
     # Not needed for js, but useful for debugging
-    shutil.copyfile(test_file('freetype/LiberationSansBold.ttf'), 'font.ttf')
+    shutil.copy(test_file('freetype/LiberationSansBold.ttf'), 'font.ttf')
     ftlib = self.get_freetype_library()
 
     # Main
@@ -6809,7 +6809,7 @@ void* operator new(size_t size) {
     # See https://github.com/emscripten-core/emscripten/issues/20757
     self.emcc_args.append('-Wno-deprecated-declarations')
     poppler = self.get_poppler_library()
-    shutil.copyfile(test_file('poppler/paper.pdf'), 'paper.pdf')
+    shutil.copy(test_file('poppler/paper.pdf'), '.')
 
     create_file('pre.js', '''
     Module.preRun = () => {
@@ -7804,7 +7804,7 @@ void* operator new(size_t size) {
 
     js_filename = 'a.out.js'
     wasm_filename = 'a.out.wasm'
-    shutil.copyfile(test_file('core/test_dwarf.c'), 'test_dwarf.c')
+    shutil.copy(test_file('core/test_dwarf.c'), '.')
 
     self.emcc('test_dwarf.c', output_filename=js_filename)
 
@@ -8391,7 +8391,7 @@ Module.onRuntimeInitialized = () => {
           break
       if wat is None:
         # $foo_end is not present in the wasm, nothing to break
-        shutil.copyfile(name, name + '.orig')
+        shutil.copy(name, name + '.orig')
         return False
       create_file('wat.wat', wat)
       shutil.move(name, name + '.orig')
@@ -8416,8 +8416,8 @@ Module.onRuntimeInitialized = () => {
     verify_broken(['0'])
 
     # restore
-    shutil.copyfile('emscripten_lazy_load_code.wasm.orig', 'emscripten_lazy_load_code.wasm')
-    shutil.copyfile('emscripten_lazy_load_code.wasm.lazy.wasm.orig', 'emscripten_lazy_load_code.wasm.lazy.wasm')
+    shutil.copy('emscripten_lazy_load_code.wasm.orig', 'emscripten_lazy_load_code.wasm')
+    shutil.copy('emscripten_lazy_load_code.wasm.lazy.wasm.orig', 'emscripten_lazy_load_code.wasm.lazy.wasm')
     verify_working(['0'])
 
     if conditional:
@@ -9327,7 +9327,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-Wno-experimental', '-pthread']
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_side.c'))
     for i in range(nthreads):
-      shutil.copyfile('liblib.so', f'liblib{i}.so')
+      shutil.copy('liblib.so', f'liblib{i}.so')
 
     self.prep_dlfcn_main()
     self.set_setting('EXIT_RUNTIME')
