@@ -519,7 +519,8 @@ jobs:
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
             lsan.test_pthread_create
-            lsan.test_pthread_exit_main_stub"
+            lsan.test_pthread_exit_main_stub
+            ubsan.test_externref_emjs_dynlink"
       - freeze-cache
       - run-tests:
           # also run a single test of EMTEST_BROWSER=node.
