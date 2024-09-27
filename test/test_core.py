@@ -5775,18 +5775,19 @@ got: 10
     # externally setup an existing folder structure: existing/a
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    os.makedirs(os.path.join(self.working_dir, 'existing', 'a'))
+    os.makedirs('existing/a')
     self.emcc_args += ['-lnodefs.js']
     self.do_runf('fs/test_nodefs_readdir.c', 'success')
 
   @requires_node
-  def test_fs_nodefs_statfs(self):
+  @crossplatform
+  def test_fs_nodefs_statvfs(self):
     # externally setup an existing folder structure: existing/a
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    os.makedirs(os.path.join(self.working_dir, 'existing', 'a'))
+    os.makedirs('existing/a')
     self.emcc_args += ['-lnodefs.js']
-    self.do_runf('fs/test_nodefs_statfs.c', 'success')
+    self.do_runf('fs/test_nodefs_statvfs.c', 'success')
 
   @no_windows('no symlink support on windows')
   @requires_node

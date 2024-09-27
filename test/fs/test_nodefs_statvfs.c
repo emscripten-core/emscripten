@@ -3,7 +3,7 @@
 #include <sys/statvfs.h>
 #include <emscripten.h>
 
-void test_statfs(const char *path) {
+void test_statvfs(const char *path) {
     printf("Testing statfs for path: %s\n", path);
     struct statvfs st;
     int result = statvfs(path, &st);
@@ -27,12 +27,9 @@ void setup() {
 }
 
 int main() {
-    // Test the root filesystem (which should be MEMFS by default)
-
-    test_statfs("/");
-
 	setup();
-    test_statfs("/working");
-
+    // Test the root filesystem (which should be MEMFS by default)
+    test_statvfs("/");
+    test_statvfs("/working");
     puts("success");
 }
