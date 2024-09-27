@@ -690,7 +690,7 @@ FS.staticInit();
       };
 
       var parent = FS.lookupPath(path, {follow: true}).node;
-      if (typeof parent.node_ops?.statfs) {
+      if (parent.node_ops.statfs) {
         Object.assign(rtn, parent.node_ops.statfs(parent.mount.opts.root));
       }
       return rtn;

@@ -19,16 +19,19 @@ void test_statfs(const char *path) {
     assert(st.f_ffree <= st.f_files && "Free inodes should not exceed total inodes");
 }
 
+void setup() {
+	EM_ASM(
+		FS.mkdir('/working');
+		FS.mount(NODEFS, { root: '.' }, '/working');
+	);
+}
+
 int main() {
     // Test the root filesystem (which should be MEMFS by default)
+
     test_statfs("/");
 
-    // Mount NODEFS and test it
-    EM_ASM(
-        FS.mkdir('/working');
-        FS.mount(NODEFS, { root: '.' }, '/working');
-    );
-
+	setup();
     test_statfs("/working");
 
     puts("success");
