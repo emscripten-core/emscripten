@@ -324,11 +324,8 @@ var SyscallsLibrary = {
 #endif
     return socket;
   },
-  /** @param {boolean=} allowNull */
   $getSocketAddress__deps: ['$readSockaddr', '$FS', '$DNS'],
-  $getSocketAddress__docs: '/** @param {boolean=} allowNull */',
-  $getSocketAddress: (addrp, addrlen, allowNull) => {
-    if (allowNull && addrp === 0) return null;
+  $getSocketAddress: (addrp, addrlen) => {
     var info = readSockaddr(addrp, addrlen);
     if (info.errno) throw new FS.ErrnoError(info.errno);
     info.addr = DNS.lookup_addr(info.addr) || info.addr;
@@ -421,11 +418,11 @@ var SyscallsLibrary = {
   __syscall_sendto__deps: ['$getSocketFromFD', '$getSocketAddress'],
   __syscall_sendto: (fd, message, length, flags, addr, addr_len) => {
     var sock = getSocketFromFD(fd);
-    var dest = getSocketAddress(addr, addr_len, true);
-    if (!dest) {
+    if (!addr) {
       // send, no address provided
       return FS.write(sock.stream, HEAP8, message, length);
     }
+    var dest = getSocketAddress(addr, addr_len);
     // sendto an address
     return sock.sock_ops.sendmsg(sock, HEAP8, message, length, dest.addr, dest.port);
   },
