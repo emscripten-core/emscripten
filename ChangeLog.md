@@ -29,6 +29,8 @@ See docs/process.md for more on how version tagging works.
 - The number of arguments passed to Embind function calls is now only verified
   with ASSERTIONS enabled. (#22591)
 - Optional arguments can now be omitted from Embind function calls. (#22591)
+- emrun now listens to localhost only by default.
+  Configure old behaviour by passing `--hostname 0.0.0.0` (#22077)
 
 3.1.67 - 09/17/24
 -----------------

@@ -84,9 +84,9 @@ page_exit_code = None
 processname_killed_atexit = ""
 
 # Using "0.0.0.0" means "all interfaces", which should allow connecting to this
-# server via LAN addresses. Using "localhost" should allow only connecting from
-# local computer.
-default_webserver_hostname = '0.0.0.0'
+# server via LAN or public Internet addresses, which might be a security risk.
+# Using "localhost" should allow only connecting from local computer.
+default_webserver_hostname = 'localhost'
 
 # If user does not specify a --port parameter, this port is used to launch the
 # server.
