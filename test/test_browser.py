@@ -5107,6 +5107,18 @@ Module["preRun"] = () => {
     self.btest('wasm_worker/no_proxied_js_functions.c', expected='0',
                args=['--js-library', test_file('wasm_worker/no_proxied_js_functions.js')])
 
+  # Tests that the proxying directives foo__proxy: 'abort' and foo__proxy: 'abort_debug' work.
+  @parameterized({
+    '': ('1', ['--js-library', test_file('wasm_worker/proxy_abort.js')],),
+    'debug': ('1', ['--js-library', test_file('wasm_worker/proxy_abort_debug.js'), '-sASSERTIONS'],),
+    'debug_no_assertions': ('0', ['--js-library', test_file('wasm_worker/proxy_abort_debug.js'), '-sASSERTIONS=0'],),
+  })
+  def test_proxy_abort(self, expect_result, args):
+    self.btest('pthread/proxy_abort.c', expected=expect_result, args=args + ['-pthread'])
+
+    self.set_setting('WASM_WORKERS')
+    self.btest('wasm_worker/proxy_abort.c', expected=expect_result, args=args)
+
   # Tests emscripten_semaphore_init(), emscripten_semaphore_waitinf_acquire() and emscripten_semaphore_release()
   @also_with_minimal_runtime
   def test_wasm_worker_semaphore_waitinf_acquire(self):

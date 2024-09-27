@@ -319,39 +319,40 @@ function(${args}) {
 
     const proxyingMode = LibraryManager.library[symbol + '__proxy'];
     if (proxyingMode) {
-      if (proxyingMode !== 'sync' && proxyingMode !== 'async' && proxyingMode !== 'none') {
-        throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
+      const possibleProxyingModes = ['sync', 'async', 'none', 'abort', 'abort_debug'];
+      if (!possibleProxyingModes.includes(proxyingMode)) {
+        throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified! Possible modes: ${possibleProxyingModes.join(',')}`);
       }
       if (SHARED_MEMORY) {
-        const sync = proxyingMode === 'sync';
-        if (PTHREADS) {
-          snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
-            if (oneliner) {
-              body = `return ${body}`;
+        snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
+          if (oneliner) {
+            body = `return ${body}`;
+          }
+          const rtnType = sig && sig.length ? sig[0] : null;
+          const proxyFunc =
+            MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
+          var prefix = '';
+
+          if (proxyingMode == 'sync' || proxyingMode == 'async') {
+            if (PTHREADS) {
+              deps.push('$' + proxyFunc);
+              prefix = `if (ENVIRONMENT_IS_PTHREAD) return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${+(proxyingMode === 'sync')}${args ? ', ' : ''}${args});`;
             }
-            const rtnType = sig && sig.length ? sig[0] : null;
-            const proxyFunc =
-              MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
-            deps.push('$' + proxyFunc);
-            return `
-function(${args}) {
-if (ENVIRONMENT_IS_PTHREAD)
-  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${+sync}${args ? ', ' : ''}${args});
+            if (WASM_WORKERS && ASSERTIONS) {
+              prefix += `\nassert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function '${mangled}' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");`;
+            }
+          } else if (proxyingMode == 'abort' || (proxyingMode == 'abort_debug' && ASSERTIONS)) {
+            const insideWorker = (PTHREADS && WASM_WORKERS)
+              ? '(ENVIRONMENT_IS_PTHREAD || ENVIRONMENT_IS_WASM_WORKER)'
+              : (PTHREADS ? 'ENVIRONMENT_IS_PTHREAD' : 'ENVIRONMENT_IS_WASM_WORKER');
+            prefix = `assert(!${insideWorker}, "Attempted to call function '${mangled}' inside a pthread/Wasm Worker, but this function has been declared to only be callable from the main browser thread");`;
+          }
+
+          return `function(${args}) {
+${prefix}
 ${body}
 }\n`;
-          });
-        } else if (WASM_WORKERS && ASSERTIONS) {
-          // In ASSERTIONS builds add runtime checks that proxied functions are not attempted to be called in Wasm Workers
-          // (since there is no automatic proxying architecture available)
-          snippet = modifyJSFunction(
-            snippet,
-            (args, body) => `
-function(${args}) {
-  assert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function '${mangled}' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");
-  ${body}
-}\n`,
-          );
-        }
+        });
         proxiedFunctionTable.push(mangled);
       }
     }
