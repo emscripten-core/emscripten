@@ -676,26 +676,24 @@ FS.staticInit();
 
       // NOTE: None of the defaults here are true. We're just returning safe and
       //       sane values.
-      var ffree = FS.nextInode - 1; // Free inodes can not be larger than total inodes
-      var defaults = {
+      var rtn = {
         bsize: 4096,
         frsize: 4096,
         blocks: 1e6,
         bfree: 5e5,
         bavail: 5e5,
         files: FS.nextInode,
-        ffree,
+        ffree: FS.nextInode - 1,
         fsid: 42,
         flags: 2,
         namelen: 255,
       };
 
       var parent = FS.lookupPath(path, {follow: true}).node;
-      if (typeof parent.node_ops?.statfs !== 'function') {
-        return defaults;
+      if (typeof parent.node_ops?.statfs) {
+        Object.assign(rtn, parent.node_ops.statfs(parent.mount.opts.root));
       }
-
-      return { ...defaults, ...parent.node_ops.statfs(parent.mount.opts.root) };
+      return rtn;
     },
     // helpers to create specific types of nodes
     create(path, mode) {
