@@ -2192,7 +2192,7 @@ class BrowserCore(RunnerCore):
     # make sure the pngs used here have no color correction, using e.g.
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
     reporting = read_file(test_file('browser_reporting.js'))
-    shutil.copyfile(expected, 'expected.png')
+    shutil.copy(expected, 'expected.png')
     create_file('reftest.js', '''
       function doReftest() {
         if (doReftest.done) return;

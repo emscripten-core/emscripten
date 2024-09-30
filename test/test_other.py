@@ -1166,7 +1166,7 @@ f.close()
     for suffix in ('CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC'):
       self.clear()
       print(suffix)
-      shutil.copyfile(test_file('hello_world.c'), 'test.' + suffix)
+      shutil.copy(test_file('hello_world.c'), 'test.' + suffix)
       self.do_runf('test.' + suffix, 'hello, world!')
 
     for suffix in ('lo'):
@@ -1743,10 +1743,8 @@ Module['postRun'] = () => {
     self.assertContained('zyx', self.run_process(config.JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
 
   def test_abspaths(self):
-    # Includes with absolute paths are generally dangerous, things like -I/usr/.. will get to system local headers, not our portable ones.
-
-    shutil.copyfile(test_file('hello_world.c'), 'main.c')
-
+    # Includes with absolute paths are generally dangerous, things like -I/usr/.. will get to system
+    # local headers, not our portable ones.
     for args, expected in [(['-I/usr/something', '-Wwarn-absolute-paths'], True),
                            (['-L/usr/something', '-Wwarn-absolute-paths'], True),
                            (['-I/usr/something'], False),
@@ -1757,7 +1755,7 @@ Module['postRun'] = () => {
                            (['-Lsubdir/something', '-Wwarn-absolute-paths'], False),
                            ([], False)]:
       print(args, expected)
-      proc = self.run_process([EMCC, 'main.c'] + args, stderr=PIPE)
+      proc = self.run_process([EMCC, test_file('hello_world.c')] + args, stderr=PIPE)
       WARNING = 'encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)'
       self.assertContainedIf(WARNING, proc.stderr, expected)
 
@@ -2118,7 +2116,7 @@ Module['postRun'] = () => {
       self.assertContained('*hello from lib\n|hello from lib|\n*\n', self.run_js('a.out.js'))
 
     test(['-lfile'], '') # -l, auto detection from library path
-    test([self.in_dir('libdir', 'libfile.so.3.1.4.1.5.9')], '.3.1.4.1.5.9') # handle libX.so.1.2.3 as well
+    test([self.in_dir('libdir/libfile.so.3.1.4.1.5.9')], '.3.1.4.1.5.9') # handle libX.so.1.2.3 as well
 
   @node_pthreads
   def test_dylink_pthread_static_data(self):
@@ -2417,7 +2415,7 @@ int main() {
 
   @requires_network
   def test_libpng(self):
-    shutil.copyfile(test_file('third_party/libpng/pngtest.png'), 'pngtest.png')
+    shutil.copy(test_file('third_party/libpng/pngtest.png'), '.')
     self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
                  emcc_args=['--embed-file', 'pngtest.png', '-sUSE_LIBPNG'])
     self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
@@ -2426,7 +2424,7 @@ int main() {
   @node_pthreads
   @requires_network
   def test_libpng_with_pthreads(self):
-    shutil.copyfile(test_file('third_party/libpng/pngtest.png'), 'pngtest.png')
+    shutil.copy(test_file('third_party/libpng/pngtest.png'), '.')
     self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
                  emcc_args=['--embed-file', 'pngtest.png', '-sUSE_LIBPNG', '-pthread'])
 
@@ -2434,7 +2432,7 @@ int main() {
   def test_giflib(self):
     # giftext.c contains a sprintf warning
     self.emcc_args += ['-Wno-fortify-source']
-    shutil.copyfile(test_file('third_party/giflib/treescap.gif'), 'treescap.gif')
+    shutil.copy(test_file('third_party/giflib/treescap.gif'), '.')
     self.do_runf('third_party/giflib/giftext.c',
                  'GIF file terminated normally',
                  emcc_args=['--embed-file', 'treescap.gif', '-sUSE_GIFLIB'],
@@ -2451,7 +2449,7 @@ int main() {
 
   @requires_network
   def test_libjpeg(self):
-    shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
+    shutil.copy(test_file('screenshot.jpg'), '.')
     self.do_runf('jpeg_test.c', 'Image is 600 by 450 with 3 components',
                  emcc_args=['--embed-file', 'screenshot.jpg', '-sUSE_LIBJPEG'],
                  args=['screenshot.jpg'])
@@ -2896,7 +2894,7 @@ More info: https://emscripten.org
     # run the js optimizer python script. this differs from test_js_optimizer
     # which runs the internal js optimizer JS script directly (which the python
     # script calls)
-    shutil.copyfile(test_file('js_optimizer', name + '.js'), name + '.js')
+    shutil.copy(test_file('js_optimizer', name + '.js'), '.')
     self.run_process([PYTHON, path_from_root('tools/js_optimizer.py'), name + '.js'] + passes)
     actual = read_file(name + '.js.jsopt.js')
     self.assertFileContents(test_file('js_optimizer', name + '-output.js'), actual)
@@ -3748,7 +3746,7 @@ More info: https://emscripten.org
     self.assertContained('|hello world|', result)
 
   def test_sdl_headless(self):
-    shutil.copyfile(test_file('screenshot.png'), 'example.png')
+    shutil.copy(test_file('screenshot.png'), 'example.png')
     self.do_other_test('test_sdl_headless.c', emcc_args=['-sHEADLESS'])
 
   def test_preprocess(self):
@@ -3888,7 +3886,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
 
     # Check that main.js (which requires test.js) completes successfully when run in node.js
     # in order to check that the exports are indeed functioning correctly.
-    shutil.copyfile(test_file('module_exports/main.js'), 'main.js')
+    shutil.copy(test_file('module_exports/main.js'), '.')
     self.assertContained('bufferTest finished', self.run_js('main.js'))
 
     # Delete test.js again and check it's gone.
@@ -4297,10 +4295,10 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
                       '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,FS,PROXYFS',
                       '-lproxyfs.js',
                       '-sWASM_ASYNC_COMPILATION=0'])
-    # Following shutil.copyfile just prevent 'require' of node.js from caching js-object.
+    # Following shutil.copy just prevent 'require' of node.js from caching js-object.
     # See https://nodejs.org/api/modules.html
-    shutil.copyfile('proxyfs_test.js', 'proxyfs_test1.js')
-    shutil.copyfile('proxyfs_test.js', 'proxyfs_test2.js')
+    shutil.copy('proxyfs_test.js', 'proxyfs_test1.js')
+    shutil.copy('proxyfs_test.js', 'proxyfs_test2.js')
     out = self.run_js('proxyfs_test_main.js')
     section = "child m1 reads and writes local file."
     self.assertContained(section + ":m1 read embed:test", out)
@@ -4369,21 +4367,21 @@ EMSCRIPTEN_KEEPALIVE int myreadSeekEnd() {
     self.assertContained('test.h', tail)
 
   def test_dependency_file_2(self):
-    shutil.copyfile(test_file('hello_world.c'), 'a.c')
+    shutil.copy(test_file('hello_world.c'), 'a.c')
     self.run_process([EMCC, 'a.c', '-MMD', '-MF', 'test.d', '-c'])
     self.assertContained('a.o: a.c\n', read_file('test.d'))
 
-    shutil.copyfile(test_file('hello_world.c'), 'a.c')
+    shutil.copy(test_file('hello_world.c'), 'a.c')
     self.run_process([EMCC, 'a.c', '-MMD', '-MF', 'test2.d', '-c', '-o', 'test.o'])
     self.assertContained('test.o: a.c\n', read_file('test2.d'))
 
-    shutil.copyfile(test_file('hello_world.c'), 'a.c')
+    shutil.copy(test_file('hello_world.c'), 'a.c')
     ensure_dir('obj')
     self.run_process([EMCC, 'a.c', '-MMD', '-MF', 'test3.d', '-c', '-o', 'obj/test.o'])
     self.assertContained('obj/test.o: a.c\n', read_file('test3.d'))
 
   def test_compilation_database(self):
-    shutil.copyfile(test_file('hello_world.c'), 'a.c')
+    shutil.copy(test_file('hello_world.c'), 'a.c')
     self.run_process([EMCC, 'a.c', '-MJ', 'hello.json', '-c', '-o', 'test.o'])
     self.assertContained('"file": "a.c", "output": "test.o"', read_file('hello.json'))
 
@@ -6424,7 +6422,7 @@ This locale is not the C locale.
     def test(args, be_clean):
       print(args)
       self.clear()
-      shutil.copyfile(test_file('hello_world.c'), 'a.c')
+      shutil.copy(test_file('hello_world.c'), 'a.c')
       create_file('b.c', ' ')
       self.run_process([EMCC, 'a.c', 'b.c'] + args)
       clutter = glob.glob('*.o')
@@ -8115,8 +8113,8 @@ int main() {
       create_file('src.cpp', src)
       self.run_process([EMXX, 'src.cpp', '-O2', '-sEVAL_CTORS', '-profiling-funcs'])
       self.assertContained('total is %s.' % hex(expected), self.run_js('a.out.js'))
-      shutil.copyfile('a.out.js', 'x' + hex(expected) + '.js')
-      shutil.copyfile('a.out.wasm', 'x' + hex(expected) + '.wasm')
+      shutil.copy('a.out.js', 'x' + hex(expected) + '.js')
+      shutil.copy('a.out.wasm', 'x' + hex(expected) + '.wasm')
       return os.path.getsize('a.out.wasm')
 
     print('no bad ctor')
@@ -9612,7 +9610,7 @@ end
   def test_closure_externs(self):
     # Test with relocate path to the externs file to ensure that incoming relative paths
     # are translated correctly (Since closure runs with a different CWD)
-    shutil.copyfile(test_file('test_closure_externs.js'), 'local_externs.js')
+    shutil.copy(test_file('test_closure_externs.js'), 'local_externs.js')
     test_cases = (
       ['--closure-args', '--externs "local_externs.js"'],
       ['--closure-args', '--externs=local_externs.js'],
@@ -9627,7 +9625,7 @@ end
   # Tests that it is possible to enable the Closure compiler via --closure=1 even if any of the input files reside in a path with unicode characters.
   def test_closure_cmdline_utf8_chars(self):
     test = "☃ äö Ć € ' 🦠.c"
-    shutil.copyfile(test_file('hello_world.c'), test)
+    shutil.copy(test_file('hello_world.c'), test)
     externs = '💩' + test
     create_file(externs, '')
     self.run_process([EMCC, test, '--closure=1', '--closure-args', '--externs "' + externs + '"'])
@@ -9955,7 +9953,7 @@ int main() {
 
   def test_wasm_sourcemap(self):
     # The no_main.c will be read (from relative location) due to speficied "-s"
-    shutil.copyfile(test_file('other/wasm_sourcemap/no_main.c'), 'no_main.c')
+    shutil.copy(test_file('other/wasm_sourcemap/no_main.c'), '.')
     wasm_map_cmd = [PYTHON, path_from_root('tools/wasm-sourcemap.py'),
                     '--sources', '--prefix', '=wasm-src://',
                     '--load-prefix', '/emscripten/test/other/wasm_sourcemap=.',
@@ -9993,7 +9991,7 @@ int main() {
       if source_map_added_dir:
         expected_source_map_path = source_map_added_dir + '/' + expected_source_map_path
       print(infile, expected_source_map_path)
-      shutil.copyfile(test_file('hello_123.c'), infile)
+      shutil.copy(test_file('hello_123.c'), infile)
       infiles = [
         infile,
         os.path.abspath(infile),
@@ -14800,7 +14798,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     temp = building.closure_compiler('a.out.js',
                                      advanced=True,
                                      extra_closure_args=['--formatting', 'PRETTY_PRINT'])
-    shutil.copyfile(temp, 'closured.js')
+    shutil.copy(temp, 'closured.js')
     self.assertContained('hello, world!', self.run_js('closured.js'))
 
   def test_table_base(self):
