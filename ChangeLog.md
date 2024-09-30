@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.68 (in development)
+3.1.69 (in development)
 -----------------------
+
+3.1.68 - 09/30/24
+-----------------
 - Added support for compiling 256-bit wide AVX intrinsics, emulated on top
   of 128-bit Wasm SIMD instruction set. (#22430). Pass `-msimd128 -mavx` to
   enable targeting AVX.
