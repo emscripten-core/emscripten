@@ -441,7 +441,7 @@ var SyscallsLibrary = {
     }
     return -{{{ cDefs.ENOPROTOOPT }}}; // The option is unknown at the level indicated.
   },
-  __syscall_sendmsg__deps: ['$getSocketFromFD', '$readSockaddr', '$DNS'],
+  __syscall_sendmsg__deps: ['$getSocketFromFD', '$getSocketAddress', '$DNS'],
   __syscall_sendmsg: (fd, message, flags, d1, d2, d3) => {
     var sock = getSocketFromFD(fd);
     var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
@@ -451,10 +451,9 @@ var SyscallsLibrary = {
     var name = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_name, '*') }}};
     var namelen = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_namelen, 'i32') }}};
     if (name) {
-      var info = readSockaddr(name, namelen);
-      if (info.errno) return -info.errno;
+      var info = getSocketAddress(name, namelen);
       port = info.port;
-      addr = DNS.lookup_addr(info.addr) || info.addr;
+      addr = info.addr;
     }
     // concatenate scatter-gather arrays into one message buffer
     var total = 0;
