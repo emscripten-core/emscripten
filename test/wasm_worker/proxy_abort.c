@@ -6,8 +6,7 @@
 
 void proxied_js_function(void);
 
-int might_throw(void(*func)())
-{
+int might_throw(void(*func)()) {
   int threw = EM_ASM_INT({
     // Patch over assert() so that it does not abort execution on assert failure, but instead
     // throws a catchable exception.
@@ -29,20 +28,17 @@ int might_throw(void(*func)())
   return threw;
 }
 
-void test()
-{
+void test() {
   proxied_js_function();
 }
 
-void worker_main()
-{
+void worker_main() {
   REPORT_RESULT(might_throw(test));
 }
 
 char stack[1024];
 
-int main()
-{
+int main() {
   proxied_js_function(); // Should be callable from main thread
   emscripten_wasm_worker_post_function_v(emscripten_malloc_wasm_worker(1024), worker_main);
 }
