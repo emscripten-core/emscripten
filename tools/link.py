@@ -1522,6 +1522,19 @@ def phase_linker_setup(options, state, newargs):
 
   if sanitize:
     settings.USE_OFFSET_CONVERTER = 1
+    # These symbols are needed by `withBuiltinMalloc` which used to implement
+    # the `__noleakcheck` attribute.  However this dependency is not yet represented in the JS
+    # symbol graph generated when we run the compiler with `--symbols-only`.
+    settings.REQUIRED_EXPORTS += [
+      'malloc',
+      'calloc',
+      'memalign',
+      'free',
+      'emscripten_builtin_malloc',
+      'emscripten_builtin_calloc',
+      'emscripten_builtin_memalign',
+      'emscripten_builtin_free',
+    ]
 
   if ('leak' in sanitize or 'address' in sanitize) and not settings.ALLOW_MEMORY_GROWTH:
     # Increase the minimum memory requirements to account for extra memory

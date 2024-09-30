@@ -35,6 +35,8 @@ See docs/process.md for more on how version tagging works.
   in non-ASSERTIONS builds will be no-op.
   Use these proxying directives to annotate JS functions that should not be
   getting called from Workers. (#22648)
+- Recent changes to Binaryen included in this version significantly improve
+  the speed at which the post-link optimizations run for some large programs.
 
 3.1.67 - 09/17/24
 -----------------
