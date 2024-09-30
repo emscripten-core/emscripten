@@ -345,7 +345,7 @@ function(${args}) {
             const insideWorker = (PTHREADS && WASM_WORKERS)
               ? '(ENVIRONMENT_IS_PTHREAD || ENVIRONMENT_IS_WASM_WORKER)'
               : (PTHREADS ? 'ENVIRONMENT_IS_PTHREAD' : 'ENVIRONMENT_IS_WASM_WORKER');
-            prefix = `assert(!${insideWorker}, "Attempted to call function '${mangled}' inside a pthread/Wasm Worker, but by using the proxying directive "'${proxyingMode}'", this function has been declared to only be callable from the main browser thread");`;
+            prefix = `assert(!${insideWorker}, "Attempted to call function '${mangled}' inside a pthread/Wasm Worker, but by using the proxying directive '${proxyingMode}', this function has been declared to only be callable from the main browser thread");`;
           }
 
           return `function(${args}) {
