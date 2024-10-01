@@ -1073,7 +1073,7 @@ addToLibrary({
         if (family === {{{ cDefs.AF_INET }}}) {
           addr = _htonl({{{ cDefs.INADDR_LOOPBACK }}});
         } else {
-          addr = [0, 0, 0, 1];
+          addr = [0, 0, 0, _htonl(1)];
         }
       }
       ai = allocaddrinfo(family, type, proto, null, addr, port);

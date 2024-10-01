@@ -122,10 +122,7 @@ int main() {
   print_addrinfo(servinfo);
   assert(servinfo->ai_family == AF_INET6);
   assert(servinfo->ai_socktype == SOCK_STREAM);
-#ifndef __EMSCRIPTEN__
-  // TODO(sbc): This assert currently fails under emscripten, but should not
   assert(memcmp(&sa6->sin6_addr, &in6addr_loopback, sizeof(in6addr_loopback)) == 0);
-#endif
   assert(sa6->sin6_port == ntohs(81));
   freeaddrinfo(servinfo);
 
