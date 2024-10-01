@@ -723,10 +723,10 @@ function WebGLWorker() {
       source = source.replace(/\n/g, '|\n'); // barrier between lines, to make regexing easier
       var newItems = source.match(new RegExp(type + '\\s+\\w+\\s+[\\w,\\s\[\\]]+;', 'g'));
       if (!newItems) return;
-      newItems.forEach(function(item) {
+      newItems.forEach((item) => {
         var m = new RegExp(type + '\\s+(\\w+)\\s+([\\w,\\s\[\\]]+);').exec(item);
         assert(m);
-        m[2].split(',').map(function(name) { name = name.trim(); return name.search(/\s/) >= 0 ? '' : name }).filter(function(name) { return !!name }).forEach(function(name) {
+        m[2].split(',').map((name) => { name = name.trim(); return name.search(/\s/) >= 0 ? '' : name }).filter((name) => !!name).forEach((name) => {
           var size = 1;
           var open = name.indexOf('[');
           var fullname = name;
@@ -754,7 +754,7 @@ function WebGLWorker() {
 
     var existingAttributes = {};
 
-    program.shaders.forEach(function(shader) {
+    program.shaders.forEach((shader) => {
       parseElementType(shader, 'uniform', program.uniforms, program.uniformVec);
       parseElementType(shader, 'attribute', existingAttributes, null);
     });
@@ -1153,8 +1153,8 @@ function WebGLWorker() {
   Browser.doSwapBuffers = postRAF;
 
   var trueRAF = window.requestAnimationFrame;
-  window.requestAnimationFrame = function(func) {
-    trueRAF(function() {
+  window.requestAnimationFrame = (func) => {
+    trueRAF(() => {
       if (preRAF() === false) {
         window.requestAnimationFrame(func); // skip this frame, do it later
         return;

@@ -229,7 +229,7 @@ var Audio = () => ({
   },
 });
 var Image = () => {
-  window.setTimeout(function() {
+  window.setTimeout(() => {
     this.complete = true;
     this.width = 64;
     this.height = 64;

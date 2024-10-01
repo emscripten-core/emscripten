@@ -84,6 +84,9 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL su
 
   EM_ASM({
     let audioContext = emscriptenGetAudioObject($0);
+    let audioWorkletNode = emscriptenGetAudioObject($1);
+    // Connect the audio worklet node to the graph.
+    audioWorkletNode.connect(audioContext.destination);
 
     // Add a button on the page to toggle playback as a response to user click.
     let startButton = document.createElement('button');
@@ -93,10 +96,6 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL su
     startButton.onclick = () => {
       if (audioContext.state != 'running') {
         audioContext.resume();
-        let audioWorkletNode = emscriptenGetAudioObject($1);
-
-        // Connect the audio worklet node to the graph.
-        audioWorkletNode.connect(audioContext.destination);
       } else {
         audioContext.suspend();
       }

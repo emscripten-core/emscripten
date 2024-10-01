@@ -29,6 +29,8 @@ type EmbindString = ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string;
 export interface Test {
   x: number;
   readonly y: number;
+  get stringProperty(): string;
+  set stringProperty(value: EmbindString);
   functionOne(_0: number, _1: number): number;
   functionTwo(_0: number, _1: number): number;
   functionFour(_0: boolean): number;
@@ -108,27 +110,60 @@ export interface DerivedClass extends BaseClass {
   delete(): void;
 }
 
+export interface Interface {
+  invoke(_0: EmbindString): void;
+  delete(): void;
+}
+
+export interface InterfaceWrapper extends Interface {
+  notifyOnDestruction(): void;
+  delete(): void;
+}
+
 export type ValArr = [ number, number, number ];
 
 interface EmbindModule {
-  Test: {staticFunction(_0: number): number; staticFunctionWithParam(x: number): number; staticProperty: number};
+  Test: {
+    staticFunction(_0: number): number;
+    staticFunctionWithParam(x: number): number;
+    staticProperty: number;
+    get staticStringProperty(): string;
+    set staticStringProperty(value: EmbindString);
+  };
   class_returning_fn(): Test;
   class_unique_ptr_returning_fn(): Test;
   Obj: {};
   getPointer(_0: Obj | null): Obj | null;
+  getNonnullPointer(): Obj;
   a_class_instance: Test;
   an_enum: Bar;
   Bar: {valueOne: BarValue<0>, valueTwo: BarValue<1>, valueThree: BarValue<2>};
   EmptyEnum: {};
   enum_returning_fn(): Bar;
-  IntVec: {new(): IntVec};
-  MapIntInt: {new(): MapIntInt};
+  IntVec: {
+    new(): IntVec;
+  };
+  MapIntInt: {
+    new(): MapIntInt;
+  };
   Foo: {};
-  ClassWithConstructor: {new(_0: number, _1: ValArr): ClassWithConstructor};
-  ClassWithTwoConstructors: {new(): ClassWithTwoConstructors; new(_0: number): ClassWithTwoConstructors};
-  ClassWithSmartPtrConstructor: {new(_0: number, _1: ValArr): ClassWithSmartPtrConstructor};
+  ClassWithConstructor: {
+    new(_0: number, _1: ValArr): ClassWithConstructor;
+  };
+  ClassWithTwoConstructors: {
+    new(): ClassWithTwoConstructors;
+    new(_0: number): ClassWithTwoConstructors;
+  };
+  ClassWithSmartPtrConstructor: {
+    new(_0: number, _1: ValArr): ClassWithSmartPtrConstructor;
+  };
   BaseClass: {};
   DerivedClass: {};
+  Interface: {
+    implement(_0: any): InterfaceWrapper;
+    extend(_0: EmbindString, _1: any): any;
+  };
+  InterfaceWrapper: {};
   a_bool: boolean;
   an_int: number;
   optional_test(_0?: Foo): number | undefined;

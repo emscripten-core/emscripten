@@ -40,7 +40,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
       },
       postMessage: (msg) => parentPort.postMessage(msg),
-      performance: global.performance || { now: Date.now },
     });
   }
 #endif // ENVIRONMENT_MAY_BE_NODE
@@ -103,10 +102,10 @@ if (ENVIRONMENT_IS_PTHREAD) {
     try {
       var msgData = e['data'];
       //dbg('msgData: ' + Object.keys(msgData));
-      var cmd = msgData['cmd'];
+      var cmd = msgData.cmd;
       if (cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if ASSERTIONS
-        workerID = msgData['workerID'];
+        workerID = msgData.workerID;
 #endif
 #if PTHREADS_DEBUG
         dbg('worker: loading module')
@@ -119,7 +118,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         // And add a callback for when the runtime is initialized.
         self.startWorker = (instance) => {
           // Notify the main thread that this thread has loaded.
-          postMessage({ 'cmd': 'loaded' });
+          postMessage({ cmd: 'loaded' });
           // Process any messages that were queued before the thread was ready.
           for (let msg of messageQueue) {
             handleMessage(msg);
@@ -129,16 +128,16 @@ if (ENVIRONMENT_IS_PTHREAD) {
         };
 
 #if MAIN_MODULE
-        dynamicLibraries = msgData['dynamicLibraries'];
-        sharedModules = msgData['sharedModules'];
+        dynamicLibraries = msgData.dynamicLibraries;
+        sharedModules = msgData.sharedModules;
 #if RUNTIME_DEBUG
-        dbg(`worker: received ${Object.keys(msgData['sharedModules']).length} shared modules: ${Object.keys(msgData.sharedModules)}`);
+        dbg(`worker: received ${Object.keys(msgData.sharedModules).length} shared modules: ${Object.keys(msgData.sharedModules)}`);
 #endif
 #endif
 
         // Use `const` here to ensure that the variable is scoped only to
         // that iteration, allowing safe reference from a closure.
-        for (const handler of msgData['handlers']) {
+        for (const handler of msgData.handlers) {
           // The the main module has a handler for a certain even, but no
           // handler exists on the pthread worker, then proxy that handler
           // back to the main thread.
@@ -161,38 +160,41 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
         }
 
-        wasmMemory = msgData['wasmMemory'];
+        wasmMemory = msgData.wasmMemory;
         updateMemoryViews();
 
 #if LOAD_SOURCE_MAP
-        wasmSourceMap = resetPrototype(WasmSourceMap, msgData['wasmSourceMap']);
+        wasmSourceMap = resetPrototype(WasmSourceMap, msgData.wasmSourceMap);
 #endif
 #if USE_OFFSET_CONVERTER
-        wasmOffsetConverter = resetPrototype(WasmOffsetConverter, msgData['wasmOffsetConverter']);
+        wasmOffsetConverter = resetPrototype(WasmOffsetConverter, msgData.wasmOffsetConverter);
 #endif
 
 #if MINIMAL_RUNTIME
         // Pass the shared Wasm module in the Module object for MINIMAL_RUNTIME.
-        Module['wasm'] = msgData['wasmModule'];
+        Module['wasm'] = msgData.wasmModule;
         loadModule();
 #else
-        wasmPromiseResolve(msgData['wasmModule']);
+        wasmPromiseResolve(msgData.wasmModule);
 #endif // MINIMAL_RUNTIME
       } else if (cmd === 'run') {
+#if ASSERTIONS
+        assert(msgData.pthread_ptr);
+#endif
+        // Call inside JS module to set up the stack frame for this pthread in JS module scope.
+        // This needs to be the first thing that we do, as we cannot call to any C/C++ functions
+        // until the thread stack is initialized.
+        establishStackSpace(msgData.pthread_ptr);
+
         // Pass the thread address to wasm to store it for fast access.
-        __emscripten_thread_init(msgData['pthread_ptr'], /*is_main=*/0, /*is_runtime=*/0, /*can_block=*/1, 0, 0);
+        __emscripten_thread_init(msgData.pthread_ptr, /*is_main=*/0, /*is_runtime=*/0, /*can_block=*/1, 0, 0);
+
+        PThread.receiveObjectTransfer(msgData);
+        PThread.threadInitTLS();
 
         // Await mailbox notifications with `Atomics.waitAsync` so we can start
         // using the fast `Atomics.notify` notification path.
-        __emscripten_thread_mailbox_await(msgData['pthread_ptr']);
-
-#if ASSERTIONS
-        assert(msgData['pthread_ptr']);
-#endif
-        // Also call inside JS module to set up the stack frame for this pthread in JS module scope
-        establishStackSpace();
-        PThread.receiveObjectTransfer(msgData);
-        PThread.threadInitTLS();
+        __emscripten_thread_mailbox_await(msgData.pthread_ptr);
 
         if (!initializedJS) {
 #if EMBIND
@@ -207,7 +209,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         }
 
         try {
-          invokeEntryPoint(msgData['start_routine'], msgData['arg']);
+          invokeEntryPoint(msgData.start_routine, msgData.arg);
         } catch(ex) {
           if (ex != 'unwind') {
             // The pthread "crashed".  Do not call `_emscripten_thread_exit` (which
@@ -218,10 +220,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #if RUNTIME_DEBUG
           dbg(`worker: Pthread 0x${_pthread_self().toString(16)} completed its main entry point with an 'unwind', keeping the worker alive for asynchronous operation.`);
 #endif
-        }
-      } else if (cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
-        if (_pthread_self()) {
-          __emscripten_thread_exit({{{ cDefs.PTHREAD_CANCELED }}});
         }
       } else if (msgData.target === 'setimmediate') {
         // no-op

@@ -100,20 +100,22 @@ void WebSocketMessageUnmaskPayload(uint8_t* payload,
   }
 }
 
-extern MUTEX_T webSocketSendLock;
+void lock_websocket_send_lock(void);
+void unlock_websocket_send_lock(void);
 
 void SendWebSocketMessage(int client_fd, void *buf, uint64_t numBytes) {
   // Guard send() calls to the client_fd socket so that two threads won't ever race to send to the
   // same socket. (This could be per-socket, currently global for simplicity)
-  LOCK_MUTEX(&webSocketSendLock);
-  uint8_t headerData[sizeof(WebSocketMessageHeader) + 8/*possible extended length*/] = {};
+  lock_websocket_send_lock();
+  uint8_t headerData[sizeof(WebSocketMessageHeader) + 8/*possible extended length*/];
+  memset(headerData, 0, sizeof(headerData));
   WebSocketMessageHeader *header = (WebSocketMessageHeader *)headerData;
   header->opcode = 0x02;
   header->fin = 1;
   int headerBytes = 2;
 
   if (numBytes < 126) {
-    header->payloadLength = numBytes;
+    header->payloadLength = (unsigned int)numBytes;
   } else if (numBytes <= 65535) {
     header->payloadLength = 126;
     *(uint16_t*)(headerData+headerBytes) = htons((unsigned short)numBytes);
@@ -139,7 +141,7 @@ void SendWebSocketMessage(int client_fd, void *buf, uint64_t numBytes) {
 
   send(client_fd, (const char*)headerData, headerBytes, 0); // header
   send(client_fd, (const char*)buf, (int)numBytes, 0); // payload
-  UNLOCK_MUTEX(&webSocketSendLock);
+  unlock_websocket_send_lock();
 }
 
 #define MUSL_PF_UNSPEC       0
@@ -967,7 +969,8 @@ void Accept(int client_fd, uint8_t *data, uint64_t numBytes) {
   } MSG;
   MSG *d = (MSG*)data;
 
-  uint8_t address[MAX_SOCKADDR_SIZE] = {};
+  uint8_t address[MAX_SOCKADDR_SIZE];
+  memset(address, 0, sizeof(address));
   socklen_t addressLen = (socklen_t)MAX(0, MIN(d->address_len, MAX_SOCKADDR_SIZE));
 
   SOCKET_T ret;
@@ -1444,7 +1447,8 @@ void Getaddrinfo(int client_fd, uint8_t *data, uint64_t numBytes) {
   if (errorCode) PRINT_SOCKET_ERROR(errorCode);
 #endif
 
-  char ai_canonname[MAX_NODE_LEN] = {};
+  char ai_canonname[MAX_NODE_LEN];
+  memset(ai_canonname, 0, sizeof(ai_canonname));
   int ai_addrTotalLen = 0;
   int addrCount = 0;
 

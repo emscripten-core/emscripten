@@ -364,15 +364,14 @@ addToLibrary({
         var signalToNumber = (sig) => {
           // implement only the most common ones, and fallback to SIGINT
           switch (sig) {
-            case 'SIGHUP': return 1;
-            case 'SIGINT': return 2;
-            case 'SIGQUIT': return 3;
-            case 'SIGFPE': return 8;
-            case 'SIGKILL': return 9;
-            case 'SIGALRM': return 14;
-            case 'SIGTERM': return 15;
+            case 'SIGHUP': return {{{ cDefs.SIGHUP }}};
+            case 'SIGQUIT': return {{{ cDefs.SIGQUIT }}};
+            case 'SIGFPE': return {{{ cDefs.SIGFPE }}};
+            case 'SIGKILL': return {{{ cDefs.SIGKILL }}};
+            case 'SIGALRM': return {{{ cDefs.SIGALRM }}};
+            case 'SIGTERM': return {{{ cDefs.SIGTERM }}};
+            default: return {{{ cDefs.SIGINT }}};
           }
-          return 2; // SIGINT
         }
         return _W_EXITCODE(0, signalToNumber(ret.signal));
       }
@@ -1074,7 +1073,7 @@ addToLibrary({
         if (family === {{{ cDefs.AF_INET }}}) {
           addr = _htonl({{{ cDefs.INADDR_LOOPBACK }}});
         } else {
-          addr = [0, 0, 0, 1];
+          addr = [0, 0, 0, _htonl(1)];
         }
       }
       ai = allocaddrinfo(family, type, proto, null, addr, port);
@@ -1429,21 +1428,14 @@ addToLibrary({
 
   emscripten_random: () => Math.random(),
 
-  emscripten_get_now: `;
-#if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 160000
-    // The performance global was added to node in v16.0.0:
-    // https://nodejs.org/api/globals.html#performance
-    if (ENVIRONMENT_IS_NODE) {
-      global.performance = require('perf_hooks').performance;
-    }
-#endif
 #if PTHREADS && !AUDIO_WORKLET
-    // Pthreads need their clocks synchronized to the execution of the main
-    // thread, so, when using them, make sure to adjust all timings to the
-    // respective time origins.
-    _emscripten_get_now = () => performance.timeOrigin + {{{ getPerformanceNow() }}}();
+  // Pthreads need their clocks synchronized to the execution of the main
+  // thread, so, when using them, make sure to adjust all timings to the
+  // respective time origins.
+  emscripten_get_now: () => performance.timeOrigin + {{{ getPerformanceNow() }}}(),
 #else
 #if MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 || AUDIO_WORKLET // https://caniuse.com/#feat=high-resolution-time
+  emscripten_get_now: `;
     // AudioWorkletGlobalScope does not have performance.now()
     // (https://github.com/WebAudio/web-audio-api/issues/2527), so if building
     // with
@@ -1457,14 +1449,14 @@ addToLibrary({
     } else {
       _emscripten_get_now = Date.now;
     }
-#else
-    // Modern environment where performance.now() is supported:
-    // N.B. a shorter form "_emscripten_get_now = performance.now;" is
-    // unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
-    _emscripten_get_now = () => {{{ getPerformanceNow() }}}();
-#endif
-#endif
 `,
+#else
+  // Modern environment where performance.now() is supported:
+  // N.B. a shorter form "_emscripten_get_now = performance.now;" is
+  // unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
+  emscripten_get_now: () => {{{ getPerformanceNow() }}}(),
+#endif
+#endif
 
   emscripten_get_now_res: () => { // return resolution of get_now, in nanoseconds
 #if ENVIRONMENT_MAY_BE_NODE
@@ -1559,8 +1551,7 @@ addToLibrary({
     var ret = getCompilerSetting(name);
     if (typeof ret == 'number' || typeof ret == 'boolean') return ret;
 
-    if (!_emscripten_get_compiler_setting.cache) _emscripten_get_compiler_setting.cache = {};
-    var cache = _emscripten_get_compiler_setting.cache;
+    var cache = _emscripten_get_compiler_setting.cache ??= {};
     var fullret = cache[name];
     if (fullret) return fullret;
     return cache[name] = stringToNewUTF8(ret);
@@ -1582,21 +1573,26 @@ addToLibrary({
 
 #if USE_ASAN || USE_LSAN || UBSAN_RUNTIME
   // When lsan or asan is enabled withBuiltinMalloc temporarily replaces calls
-  // to malloc, free, and memalign.
-  $withBuiltinMalloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'
-                            ],
+  // to malloc, calloc, free, and memalign.
+  $withBuiltinMalloc__deps: [
+    'malloc', 'calloc', 'free', 'memalign',
+    'emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'emscripten_builtin_calloc'
+  ],
   $withBuiltinMalloc__docs: '/** @suppress{checkTypes} */',
   $withBuiltinMalloc: (func) => {
     var prev_malloc = typeof _malloc != 'undefined' ? _malloc : undefined;
+    var prev_calloc = typeof _calloc != 'undefined' ? _calloc : undefined;
     var prev_memalign = typeof _memalign != 'undefined' ? _memalign : undefined;
     var prev_free = typeof _free != 'undefined' ? _free : undefined;
     _malloc = _emscripten_builtin_malloc;
+    _calloc = _emscripten_builtin_calloc;
     _memalign = _emscripten_builtin_memalign;
     _free = _emscripten_builtin_free;
     try {
       return func();
     } finally {
       _malloc = prev_malloc;
+      _calloc = prev_calloc;
       _memalign = prev_memalign;
       _free = prev_free;
     }
@@ -1967,25 +1963,26 @@ addToLibrary({
   $setWasmTableEntry__internal: true,
   $setWasmTableEntry__deps: ['$wasmTableMirror', '$wasmTable'],
   $setWasmTableEntry: (idx, func) => {
-    wasmTable.set(idx, func);
+    wasmTable.set({{{ toIndexType('idx') }}}, func);
     // With ABORT_ON_WASM_EXCEPTIONS wasmTable.get is overridden to return wrapped
     // functions so we need to call it here to retrieve the potential wrapper correctly
     // instead of just storing 'func' directly into wasmTableMirror
-    wasmTableMirror[idx] = wasmTable.get(idx);
+    wasmTableMirror[idx] = wasmTable.get({{{ toIndexType('idx') }}});
   },
 
   $getWasmTableEntry__internal: true,
   $getWasmTableEntry__deps: ['$wasmTableMirror', '$wasmTable'],
   $getWasmTableEntry: (funcPtr) => {
 #if MEMORY64
-    // Function pointers are 64-bit, but wasmTable.get() requires a Number.
+    // Function pointers should show up as numbers, even under wasm64, but
+    // we still have some places where bigint values can flow here.
     // https://github.com/emscripten-core/emscripten/issues/18200
     funcPtr = Number(funcPtr);
 #endif
     var func = wasmTableMirror[funcPtr];
     if (!func) {
       if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
-      wasmTableMirror[funcPtr] = func = wasmTable.get(funcPtr);
+      wasmTableMirror[funcPtr] = func = wasmTable.get({{{ toIndexType('funcPtr') }}});
 #if ASYNCIFY == 2
       if (Asyncify.isAsyncExport(func)) {
         wasmTableMirror[funcPtr] = func = Asyncify.makeAsyncFunction(func);
@@ -1993,7 +1990,7 @@ addToLibrary({
 #endif
     }
 #if ASSERTIONS && ASYNCIFY != 2 // With JSPI the function stored in the table will be a wrapper.
-    assert(wasmTable.get(funcPtr) == func, 'JavaScript-side Wasm function table mirror is out of date!');
+    assert(wasmTable.get({{{ toIndexType('funcPtr') }}}) == func, 'JavaScript-side Wasm function table mirror is out of date!');
 #endif
     return func;
   },
@@ -2001,7 +1998,7 @@ addToLibrary({
 #else
 
   $setWasmTableEntry__deps: ['$wasmTable'],
-  $setWasmTableEntry: (idx, func) => wasmTable.set(idx, func),
+  $setWasmTableEntry: (idx, func) => wasmTable.set({{{ toIndexType('idx') }}}, func),
 
   $getWasmTableEntry__deps: ['$wasmTable'],
   $getWasmTableEntry: (funcPtr) => {
@@ -2022,7 +2019,6 @@ addToLibrary({
     throw 'unwind';
   },
 
-  _emscripten_runtime_keepalive_clear__proxy: 'sync',
   _emscripten_runtime_keepalive_clear: () => {
 #if isSymbolNeeded('$noExitRuntime')
     noExitRuntime = false;
@@ -2061,6 +2057,10 @@ addToLibrary({
 #if ASSERTIONS || RUNTIME_DEBUG
   emscripten_dbg: (str) => dbg(UTF8ToString(str)),
   emscripten_dbgn: (str, len) => dbg(UTF8ToString(str, len)),
+
+  emscripten_dbg_backtrace: (str) => {
+    dbg(UTF8ToString(str) + '\n' + new Error().stack);
+  },
 #endif
 
   // Use program_invocation_short_name and program_invocation_name in compiled
@@ -2089,6 +2089,13 @@ addToLibrary({
     assert(typeof str == 'number');
 #endif
     console.error(UTF8ToString(str));
+  },
+
+  emscripten_console_trace: (str) => {
+#if ASSERTIONS
+    assert(typeof str == 'number');
+#endif
+    console.trace(UTF8ToString(str));
   },
 
   emscripten_throw_number: (number) => {
@@ -2382,9 +2389,12 @@ addToLibrary({
 #if RELOCATABLE
   // In RELOCATABLE mode we create the table in JS.
   $wasmTable: `=new WebAssembly.Table({
-  'initial': {{{ INITIAL_TABLE }}},
+  'initial': {{{ toIndexType(INITIAL_TABLE) }}},
 #if !ALLOW_TABLE_GROWTH
-  'maximum': {{{ INITIAL_TABLE }}},
+  'maximum': {{{ toIndexType(INITIAL_TABLE) }}},
+#endif
+#if MEMORY64 == 1
+  'index': 'i64',
 #endif
   'element': 'anyfunc'
 });

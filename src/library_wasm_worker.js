@@ -32,6 +32,11 @@
 #error "-sPROXY_TO_WORKER is not supported with -sWASM_WORKERS"
 #endif
 
+{{{
+  globalThis.workerSupportsFutexWait = () => AUDIO_WORKLET ? "typeof AudioWorkletGlobalScope === 'undefined'" : '1';
+  null;
+}}}
+
 #endif // ~WASM_WORKERS
 
 
@@ -95,8 +100,9 @@ addToLibrary({
     // Run the C side Worker initialization for stack and TLS.
     __emscripten_wasm_worker_initialize(m['sb'], m['sz']);
 #if PTHREADS
-    // Record that this Wasm Worker supports synchronous blocking in emscripten_futex_wake().
-    ___set_thread_state(/*thread_ptr=*/0, /*is_main_thread=*/0, /*is_runtime_thread=*/0, /*supports_wait=*/0);
+    // Record the pthread configuration, and whether this Wasm Worker supports synchronous blocking in emscripten_futex_wait().
+    // (regular Wasm Workers do, AudioWorklets don't)
+    ___set_thread_state(/*thread_ptr=*/0, /*is_main_thread=*/0, /*is_runtime_thread=*/0, /*supports_wait=*/ {{{ workerSupportsFutexWait() }}});
 #endif
 #if STACK_OVERFLOW_CHECK >= 2
     // Fix up stack base. (TLS frame is created at the bottom address end of the stack)

@@ -39,6 +39,7 @@
         "AL_VELOCITY": 4102,
         "ATOMICS_WAIT_NOT_EQUAL": 1,
         "ATOMICS_WAIT_TIMED_OUT": 2,
+        "AT_EACCESS": 512,
         "AT_EMPTY_PATH": 4096,
         "AT_FDCWD": -100,
         "AT_NO_AUTOMOUNT": 2048,
@@ -370,6 +371,12 @@
         "SEEK_SET": 0,
         "SIGALRM": 14,
         "SIGCANCEL": 33,
+        "SIGFPE": 8,
+        "SIGHUP": 1,
+        "SIGINT": 2,
+        "SIGKILL": 9,
+        "SIGQUIT": 3,
+        "SIGTERM": 15,
         "SOCK_CLOEXEC": 524288,
         "SOCK_DGRAM": 2,
         "SOCK_NONBLOCK": 2048,
@@ -408,6 +415,8 @@
         "TIOCSPGRP": 21520,
         "TIOCSWINSZ": 21524,
         "TZNAME_MAX": 16,
+        "UTIME_NOW": 1073741823,
+        "UTIME_OMIT": 1073741822,
         "UUID_TYPE_DCE_RANDOM": 4,
         "UUID_VARIANT_DCE": 1,
         "W_OK": 2,
@@ -734,6 +743,22 @@
             "__size__": 44,
             "format": 0,
             "palette": 4
+        },
+        "SDL_RWops": {
+            "__size__": 32,
+            "hidden": {
+                "__size__": 12,
+                "mem": {
+                    "__size__": 12,
+                    "base": 20,
+                    "stop": 28
+                },
+                "stdio": {
+                    "__size__": 8,
+                    "fp": 24
+                }
+            },
+            "type": 16
         },
         "SDL_Rect": {
             "__size__": 16,

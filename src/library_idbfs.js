@@ -313,7 +313,7 @@ addToLibrary({
       var total = 0;
 
       var create = [];
-      Object.keys(src.entries).forEach(function (key) {
+      Object.keys(src.entries).forEach((key) => {
         var e = src.entries[key];
         var e2 = dst.entries[key];
         if (!e2 || e['timestamp'].getTime() != e2['timestamp'].getTime()) {
@@ -323,7 +323,7 @@ addToLibrary({
       });
 
       var remove = [];
-      Object.keys(dst.entries).forEach(function (key) {
+      Object.keys(dst.entries).forEach((key) => {
         if (!src.entries[key]) {
           remove.push(key);
           total++;

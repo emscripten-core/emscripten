@@ -7,9 +7,15 @@
 /*
  * WebGPU support.
  *
- * This file implements the common C header <webgpu/webgpu.h> on top of the
+ * IMPORTANT NOTICE:
+ * These bindings are in a temporary **breaking-change freeze**.
+ * Bugfixes and small feature additions are still welcome.
+ * Please see system/include/webgpu/README.md for more information.
+ *
+ * This file and system/lib/webgpu/webgpu.cpp together implement the
+ * to-be-standardized C header <webgpu/webgpu.h> on top of the
  * browser's native JS WebGPU implementation. This allows applications targeting
- * wgpu-native (https://github.com/gfx-rs/wgpu) or
+ * wgpu-native (https://github.com/gfx-rs/wgpu-native) or
  * Dawn (https://dawn.googlesource.com/dawn/) to also target the Web with the
  * same graphics API and fairly minimal changes - similar to OpenGL ES 2.0/3.0
  * on WebGL 1.0/2.0.
@@ -103,6 +109,7 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
     CompositeAlphaMode: {
       Auto: 0,
       Opaque: 1,
+      Premultiplied: 2,
     },
     CreatePipelineAsyncStatus: {
       Success: 0,
@@ -430,6 +437,11 @@ var LibraryWebGPU = {
       'clamp-to-edge',
       'repeat',
       'mirror-repeat',
+    ],
+    AlphaMode: [
+      undefined, // "Auto" uses the default (which is always opaque according to the spec's IDL)
+      'opaque',
+      'premultiplied',
     ],
     BlendFactor: [
       undefined,
@@ -2747,10 +2759,6 @@ var LibraryWebGPU = {
     var viewFormatCount = {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.viewFormatCount) }}};
     var viewFormats = {{{ makeGetValue('config', C_STRUCTS.WGPUSurfaceConfiguration.viewFormats, '*') }}};
     assert(viewFormatCount === 0 && viewFormats === 0, "TODO: Support viewFormats.");
-    var alphaMode = {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.alphaMode) }}};
-    assert(alphaMode === {{{ gpu.CompositeAlphaMode.Auto }}} ||
-      alphaMode === {{{ gpu.CompositeAlphaMode.Opaque }}},
-      "TODO: Support WGPUCompositeAlphaMode_Premultiplied.");
     assert({{{ gpu.PresentMode.Fifo }}} ===
       {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.presentMode) }}});
 #endif
@@ -2773,7 +2781,8 @@ var LibraryWebGPU = {
       "format": WebGPU.TextureFormat[
         {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.format) }}}],
       "usage": {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.usage) }}},
-      "alphaMode": "opaque",
+      "alphaMode": WebGPU.AlphaMode[
+        {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.alphaMode) }}}],
     };
     context.configure(configuration);
   },
@@ -2874,7 +2883,10 @@ for (var value in LibraryWebGPU.$WebGPU.FeatureName) {
 
 for (const key of Object.keys(LibraryWebGPU)) {
   if (typeof LibraryWebGPU[key] === 'function') {
-    LibraryWebGPU[key + '__i53abi'] = true;
+    const sig = LibraryWebGPU[key + '__sig'];
+    if (sig?.includes('j')) {
+      LibraryWebGPU[key + '__i53abi'] = true;
+    }
   }
 }
 

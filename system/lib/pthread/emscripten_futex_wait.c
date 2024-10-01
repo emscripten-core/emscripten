@@ -21,7 +21,10 @@ static int futex_wait_main_browser_thread(volatile void* addr,
                                           uint32_t val,
                                           double timeout) {
   // Atomics.wait is not available in the main browser thread, so simulate it
-  // via busy spinning.
+  // via busy spinning. Only the main browser thread is allowed to call into
+  // this function. It is not thread-safe to be called from any other thread.
+  assert(emscripten_is_main_browser_thread());
+
   double now = emscripten_get_now();
   double end = now + timeout;
 

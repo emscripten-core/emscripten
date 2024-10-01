@@ -286,6 +286,7 @@ void* _aligned_malloc(size_t alignment, size_t size)    { return mi_aligned_allo
   void* emscripten_builtin_malloc(size_t size)                      MI_FORWARD1(mi_malloc, size)
   void* emscripten_builtin_free(void* p)                            MI_FORWARD0(mi_free, p)
   void* emscripten_builtin_memalign(size_t alignment, size_t size)  { return mi_memalign(alignment, size); }
+  void* emscripten_builtin_calloc(size_t nmemb, size_t size)        MI_FORWARD2(mi_calloc, nmemb, size)
 #endif
 
 #elif defined(__GLIBC__) && defined(__linux__)

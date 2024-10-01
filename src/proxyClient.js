@@ -16,9 +16,25 @@
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE
-var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string';
+var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
 if (ENVIRONMENT_IS_NODE) {
-  global.Worker = require('worker_threads').Worker;
+  var NodeWorker = require('worker_threads').Worker;
+  global.Worker = function(url, options) {
+    // Special handling for `data:` URL argument, to match the behaviour
+    // of the Web API.
+    if (typeof url == 'string' && url.startsWith('data:')) {
+#if EXPORT_ES6
+      // worker_threads always assume data URLs are ES6 modules
+      url = new URL(url);
+#else
+      // For class modules we decode the data URL and use `eval: true`.
+      url = Buffer.from(url.split(",")[1], 'base64').toString();
+      options ||= {}
+      options.eval = true;
+#endif
+    }
+    return new NodeWorker(url, options);
+  }
   var Module = Module || {}
 } else
 #endif
@@ -98,7 +114,7 @@ if (typeof window != 'undefined') {
 }
 
 /*
-(function() {
+(() => {
   var trueRAF = window.requestAnimationFrame;
   var tracker = new FPSTracker('client');
   window.requestAnimationFrame = (func) => {
@@ -120,23 +136,12 @@ if (typeof window != 'undefined') {
 
 var frameId = 0;
 
-// Temporarily handling this at run-time pending Python preprocessor support
-
-var SUPPORT_BASE64_EMBEDDING;
-
 // Worker
 
 var filename;
 filename ||= '<<< filename >>>';
 
-var workerURL = filename;
-if (SUPPORT_BASE64_EMBEDDING) {
-  var fileBytes = tryParseAsDataURI(filename);
-  if (fileBytes) {
-    workerURL = URL.createObjectURL(new Blob([fileBytes], {type: 'application/javascript'}));
-  }
-}
-var worker = new Worker(workerURL);
+var worker = new Worker(filename);
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
@@ -166,7 +171,6 @@ worker.onmessage = (event) => {
   if (!workerResponded) {
     workerResponded = true;
     Module.setStatus?.('');
-    if (SUPPORT_BASE64_EMBEDDING && workerURL !== filename) URL.revokeObjectURL(workerURL);
   }
 
   var data = event.data;

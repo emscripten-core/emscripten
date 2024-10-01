@@ -6,7 +6,7 @@
 
 #if ENVIRONMENT_MAY_BE_NODE
 // Node.js support
-var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string';
+var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
 if (ENVIRONMENT_IS_NODE) {
   // Create as web-worker-like an environment as we can.
 

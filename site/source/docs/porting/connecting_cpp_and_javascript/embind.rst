@@ -1078,7 +1078,7 @@ For convenience, *embind* provides factory functions to register
     EMSCRIPTEN_BINDINGS(stl_wrappers) {
         register_vector<int>("VectorInt");
         register_map<int,int>("MapIntInt");
-        register_optional<std::string>("Optional);
+        register_optional<std::string>("Optional");
     }
 
 A full example is shown below:
@@ -1210,6 +1210,16 @@ registered using :cpp:func:`EMSCRIPTEN_DECLARE_VAL_TYPE` in combination with
         function("function_with_callback_param", &function_with_callback_param);
         register_type<CallbackType>("(message: string) => void");
     }
+
+
+``nonnull`` Pointers
+--------------------
+
+C++ functions that return pointers generate TS definitions with ``<SomeClass> |
+null`` to allow ``nullptr`` by default. If the C++ function is guaranteed to
+return a valid object, then a policy parameter of ``nonnull<ret_val>()`` can be
+added to the function binding to omit ``| null`` from TS. This avoids having to
+handle the ``null`` case in TS.
 
 Performance
 ===========

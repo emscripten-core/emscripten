@@ -1377,6 +1377,7 @@ int embind_test_optional_small_class_arg(std::optional<SmallClass> arg) {
     }
     return -1;
 }
+void embind_test_optional_multiple_arg(int arg1, std::optional<int> arg2, std::optional<int> arg3) {}
 #endif
 
 val embind_test_getglobal() {
@@ -2412,6 +2413,7 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("embind_test_optional_float_arg", &embind_test_optional_float_arg);
     function("embind_test_optional_string_arg", &embind_test_optional_string_arg);
     function("embind_test_optional_small_class_arg", &embind_test_optional_small_class_arg);
+    function("embind_test_optional_multiple_arg", &embind_test_optional_multiple_arg);
 #endif
 
     register_map<std::string, int>("StringIntMap");

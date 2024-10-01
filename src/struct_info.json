@@ -33,7 +33,9 @@
             "S_IFCHR",
             "S_IRUSR",
             "S_IRGRP",
-            "S_IROTH"
+            "S_IROTH",
+            "UTIME_OMIT",
+            "UTIME_NOW"
         ],
         "structs": {
             "stat": [
@@ -99,6 +101,7 @@
             "F_DUPFD",
             "F_SETLK",
             "O_WRONLY",
+            "AT_EACCESS",
             "AT_FDCWD",
             "AT_SYMLINK_NOFOLLOW",
             "AT_REMOVEDIR",
@@ -277,7 +280,13 @@
     {
         "file": "signal.h",
         "defines": [
-            "SIGALRM"
+            "SIGALRM",
+            "SIGFPE",
+            "SIGHUP",
+            "SIGINT",
+            "SIGKILL",
+            "SIGQUIT",
+            "SIGTERM"
         ]
     },
     {
@@ -693,6 +702,29 @@
                 "major",
                 "minor",
                 "patch"
+            ]
+        }
+    },
+    {
+        "file": "SDL/SDL_rwops.h",
+        "structs": {
+            "SDL_RWops": [
+                "type",
+                {
+                  "hidden": [
+                    {
+                      "mem": [
+                         "base",
+                         "stop"
+                      ]
+                    },
+                    {
+                      "stdio": [
+                         "fp"
+                      ]
+                    }
+                  ]
+                }
             ]
         }
     },

@@ -151,14 +151,14 @@ addToLibrary({
     }
     // Grow the table
     try {
-      wasmTable.grow(1);
+      wasmTable.grow({{{ toIndexType('1') }}});
     } catch (err) {
       if (!(err instanceof RangeError)) {
         throw err;
       }
       throw 'Unable to grow wasm table. Set ALLOW_TABLE_GROWTH.';
     }
-    return wasmTable.length - 1;
+    return {{{ from64Expr('wasmTable.length') }}} - 1;
   },
 
   $updateTableMap__deps: ['$getWasmTableEntry'],
@@ -179,7 +179,7 @@ addToLibrary({
     // First, create the map if this is the first use.
     if (!functionsInTableMap) {
       functionsInTableMap = new WeakMap();
-      updateTableMap(0, wasmTable.length);
+      updateTableMap(0, {{{ from64Expr('wasmTable.length') }}});
     }
     return functionsInTableMap.get(func) || 0;
   },

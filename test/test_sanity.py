@@ -15,7 +15,7 @@ from subprocess import PIPE, STDOUT
 
 from common import RunnerCore, path_from_root, env_modify, test_file
 from common import create_file, ensure_dir, make_executable, with_env_modify
-from common import parameterized, EMBUILDER
+from common import crossplatform, parameterized, EMBUILDER
 from tools.config import EM_CONFIG
 from tools.shared import EMCC
 from tools.shared import config
@@ -26,7 +26,7 @@ from tools import response_file
 from tools import ports
 
 SANITY_FILE = cache.get_path('sanity.txt')
-commands = [[EMCC], [path_from_root('test/runner'), 'blahblah']]
+commands = [[EMCC], [shared.bat_suffix(path_from_root('test/runner')), 'blahblah']]
 expected_llvm_version = str(shared.EXPECTED_LLVM_VERSION) + '.0.0'
 
 
@@ -156,6 +156,7 @@ class sanity(RunnerCore):
     return output
 
   # this should be the very first thing that runs. if this fails, everything else is irrelevant!
+  @crossplatform
   def test_aaa_normal(self):
     for command in commands:
       # Your existing EM_CONFIG should work!
@@ -202,7 +203,7 @@ class sanity(RunnerCore):
     self.assertNotContained('}}}', config_data)
     self.assertContained('{{{', template_data)
     self.assertContained('}}}', template_data)
-    for content in ['LLVM_ROOT', 'NODE_JS', 'JS_ENGINES']:
+    for content in ('LLVM_ROOT', 'NODE_JS', 'JS_ENGINES'):
       self.assertContained(content, config_data)
 
     # The guessed config should be ok
@@ -213,7 +214,7 @@ class sanity(RunnerCore):
 
     for command in commands:
       # Second run, with bad EM_CONFIG
-      for settings in ['blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; NODE_JS=[]; SPIDERMONKEY_ENGINE=[]']:
+      for settings in ('blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; NODE_JS=[]; SPIDERMONKEY_ENGINE=[]'):
         try:
           utils.write_file(default_config, settings)
           output = self.do(command)
@@ -281,12 +282,12 @@ class sanity(RunnerCore):
 
     ensure_dir('fake')
 
-    for version, succeed in [('v0.8.0', False),
+    for version, succeed in (('v0.8.0', False),
                              ('v4.1.0', False),
                              ('v10.18.0', False),
                              ('v16.20.0', True),
                              ('v16.20.1-pre', True),
-                             ('cheez', False)]:
+                             ('cheez', False)):
       print(version, succeed)
       delete_file(SANITY_FILE)
       utils.write_file(self.in_dir('fake', 'nodejs'), '''#!/bin/sh
@@ -540,7 +541,7 @@ fi
 
     PORTS_DIR = ports.Ports.get_dir()
 
-    for i in [0, 1]:
+    for i in (0, 1):
       self.do([EMCC, '--clear-cache'])
       print(i)
       if i == 0:

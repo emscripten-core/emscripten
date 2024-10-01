@@ -1,10 +1,10 @@
 addToLibrary({
-	$classLike: {
-		fnptr: 0,
+  $classLike: {
+    fnptr: 0,
     call: function(val) {
       {{{ makeDynCall('vp', 'this.fnptr') }}}(val);
     }
-	},
+  },
 
   test__deps: ['$classLike'],
   test: function(fnptr, val) {
