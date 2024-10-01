@@ -2107,6 +2107,7 @@ if (!noPrint) {
     keep_quoted_props: closureFriendly, // for closure
     wrap_func_args: false, // don't add extra braces
     comments: true, // for closure as well
+    shorthand: true, // Use object literal shorthand notation
   });
 
   output += '\n';

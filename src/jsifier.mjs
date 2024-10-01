@@ -299,6 +299,16 @@ function(${args}) {
 
     const sig = LibraryManager.library[symbol + '__sig'];
     const i53abi = LibraryManager.library[symbol + '__i53abi'];
+    if (i53abi) {
+      if (!sig) {
+        error(`JS library error: '__i53abi' decorator requires '__sig' decorator: '${symbol}'`);
+      }
+      if (!sig.includes('j')) {
+        error(
+          `JS library error: '__i53abi' only makes sense when '__sig' includes 'j' (int64): '${symbol}'`,
+        );
+      }
+    }
     if (
       sig &&
       ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')))

@@ -60,7 +60,6 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
 struct ValObj {
   Foo foo;
   Bar bar;
-  std::string str;
   CallbackType callback;
   ValObj() : callback(val::undefined()) {}
 };
@@ -91,6 +90,7 @@ int smart_ptr_function(std::shared_ptr<ClassWithSmartPtrConstructor>) {
 
 struct Obj {};
 Obj* get_pointer(Obj* ptr) { return ptr; }
+Obj* get_nonnull_pointer() { return new Obj(); }
 
 int function_with_callback_param(CallbackType ct) {
   ct(val("hello"));
@@ -127,6 +127,18 @@ class DerivedClass : public BaseClass {
   int fn2(int x) { return 2; }
 };
 
+struct Interface {
+  virtual void invoke(const std::string& str) = 0;
+  virtual ~Interface() {}
+};
+
+struct InterfaceWrapper : public wrapper<Interface> {
+  EMSCRIPTEN_WRAPPER(InterfaceWrapper);
+  void invoke(const std::string& str) {
+      return call<void>("invoke", str);
+  }
+};
+
 EMSCRIPTEN_BINDINGS(Test) {
   class_<Test>("Test")
       .function("functionOne", &Test::function_one)
@@ -151,6 +163,7 @@ EMSCRIPTEN_BINDINGS(Test) {
                    &class_unique_ptr_returning_fn);
   class_<Obj>("Obj");
   function("getPointer", &get_pointer, allow_raw_pointers());
+  function("getNonnullPointer", &get_nonnull_pointer, allow_raw_pointers(), nonnull<ret_val>());
 
   constant("an_int", 5);
   constant("a_bool", false);
@@ -179,7 +192,6 @@ EMSCRIPTEN_BINDINGS(Test) {
   value_object<ValObj>("ValObj")
       .field("foo", &ValObj::foo)
       .field("bar", &ValObj::bar)
-      .field("str", &ValObj::str)
       .field("callback", &ValObj::callback);
 
   register_vector<int>("IntVec");
@@ -225,6 +237,11 @@ EMSCRIPTEN_BINDINGS(Test) {
 
   class_<DerivedClass, base<BaseClass>>("DerivedClass")
       .function("fn2", &DerivedClass::fn2);
+
+  class_<Interface>("Interface")
+    .function("invoke", &Interface::invoke, pure_virtual())
+    .allow_subclass<InterfaceWrapper>("InterfaceWrapper")
+    ;
 }
 
 int Test::static_property = 42;

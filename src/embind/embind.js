@@ -57,6 +57,8 @@ var LibraryEmbind = {
     // TODO: do we need a deleteObject here?  write a test where
     // emval is passed into JS via an interface
   }`,
+  $EmValOptionalType__deps: ['$EmValType'],
+  $EmValOptionalType: '=Object.assign({optional: true}, EmValType);',
   $init_embind__deps: [
     '$getInheritedInstanceCount', '$getLiveInheritedInstances',
     '$flushPendingDeletes', '$setDelayFunction'],
@@ -687,9 +689,9 @@ var LibraryEmbind = {
     __embind_register_emval(rawType);
   },
 
-  _embind_register_optional__deps: ['_embind_register_emval'],
+  _embind_register_optional__deps: ['$registerType', '$EmValOptionalType'],
   _embind_register_optional: (rawOptionalType, rawType) => {
-    __embind_register_emval(rawOptionalType);
+    registerType(rawOptionalType, EmValOptionalType);
   },
 
   _embind_register_memory_view__deps: ['$readLatin1String', '$registerType'],
@@ -779,6 +781,10 @@ var LibraryEmbind = {
 #if ASYNCIFY
     '$Asyncify',
 #endif
+#if ASSERTIONS
+    '$getRequiredArgCount',
+    '$checkArgCount',
+#endif
   ],
   $craftInvokerFunction: function(humanName, argTypes, classType, cppInvokerFunc, cppTargetFunc, /** boolean= */ isAsync) {
     // humanName: a human-readable string name for the function to be generated.
@@ -821,15 +827,18 @@ var LibraryEmbind = {
 
     var returns = (argTypes[0].name !== "void");
 
-#if DYNAMIC_EXECUTION == 0 && !EMBIND_AOT
     var expectedArgCount = argCount - 2;
+#if ASSERTIONS
+    var minArgs = getRequiredArgCount(argTypes);
+#endif
+#if DYNAMIC_EXECUTION == 0 && !EMBIND_AOT
     var argsWired = new Array(expectedArgCount);
     var invokerFuncArgs = [];
     var destructors = [];
     var invokerFn = function(...args) {
-      if (args.length !== expectedArgCount) {
-        throwBindingError(`function ${humanName} called with ${args.length} arguments, expected ${expectedArgCount}`);
-      }
+#if ASSERTIONS
+      checkArgCount(args.length, minArgs, expectedArgCount, humanName, throwBindingError);
+#endif
 #if EMSCRIPTEN_TRACING
       Module.emscripten_trace_enter_context(`embind::${humanName}`);
 #endif
@@ -901,6 +910,9 @@ var LibraryEmbind = {
       }
     }
   }
+#if ASSERTIONS
+  closureArgs.push(checkArgCount, minArgs, expectedArgCount);
+#endif
 
 #if EMBIND_AOT
   var signature = createJsInvokerSignature(argTypes, isClassMethodFunc, returns, isAsync);
@@ -951,7 +963,7 @@ var LibraryEmbind = {
     '$craftInvokerFunction', '$exposePublicSymbol', '$heap32VectorToArray',
     '$readLatin1String', '$replacePublicSymbol', '$embind__requireFunction',
     '$throwUnboundTypeError', '$whenDependentTypesAreResolved', '$getFunctionName'],
-  _embind_register_function: (name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync) => {
+  _embind_register_function: (name, argCount, rawArgTypesAddr, signature, rawInvoker, fn, isAsync, isNonnullReturn) => {
     var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     name = readLatin1String(name);
     name = getFunctionName(name);
@@ -1942,7 +1954,8 @@ var LibraryEmbind = {
                                     rawInvoker,
                                     context,
                                     isPureVirtual,
-                                    isAsync) => {
+                                    isAsync,
+                                    isNonnullReturn) => {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
     methodName = getFunctionName(methodName);
@@ -2078,7 +2091,8 @@ var LibraryEmbind = {
                                           invokerSignature,
                                           rawInvoker,
                                           fn,
-                                          isAsync) => {
+                                          isAsync,
+                                          isNonnullReturn) => {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     methodName = readLatin1String(methodName);
     methodName = getFunctionName(methodName);

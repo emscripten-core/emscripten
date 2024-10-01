@@ -59,9 +59,7 @@ var LibraryEmbindShared = {
     '$awaitingDependencies', '$registeredTypes',
     '$typeDependencies', '$throwInternalError'],
   $whenDependentTypesAreResolved: (myTypes, dependentTypes, getTypeConverters) => {
-    myTypes.forEach(function(type) {
-        typeDependencies[type] = dependentTypes;
-    });
+    myTypes.forEach((type) => typeDependencies[type] = dependentTypes);
 
     function onComplete(typeConverters) {
       var myTypeConverters = getTypeConverters(typeConverters);
@@ -206,7 +204,29 @@ var LibraryEmbindShared = {
     return signature.join('');
   },
 
-  $createJsInvoker__deps: ['$usesDestructorStack'],
+  $checkArgCount(numArgs, minArgs, maxArgs, humanName, throwBindingError) {
+    if (numArgs < minArgs || numArgs > maxArgs) {
+      var argCountMessage = minArgs == maxArgs ? minArgs : `${minArgs} to ${maxArgs}`;
+      throwBindingError(`function ${humanName} called with ${numArgs} arguments, expected ${argCountMessage}`);
+    }
+  },
+
+  $getRequiredArgCount(argTypes) {
+    var requiredArgCount = argTypes.length - 2;
+    for (var i = argTypes.length - 1; i >= 2; --i) {
+      if (!argTypes[i].optional) {
+        break;
+      }
+      requiredArgCount--;
+    }
+    return requiredArgCount;
+  },
+
+  $createJsInvoker__deps: ['$usesDestructorStack',
+#if ASSERTIONS
+    '$checkArgCount',
+#endif
+  ],
   $createJsInvoker(argTypes, isClassMethodFunc, returns, isAsync) {
     var needsDestructorStack = usesDestructorStack(argTypes);
     var argCount = argTypes.length - 2;
@@ -222,11 +242,11 @@ var LibraryEmbindShared = {
     argsList = argsList.join(',')
     argsListWired = argsListWired.join(',')
 
-    var invokerFnBody = `
-      return function (${argsList}) {
-      if (arguments.length !== ${argCount}) {
-        throwBindingError('function ' + humanName + ' called with ' + arguments.length + ' arguments, expected ${argCount}');
-      }`;
+    var invokerFnBody = `return function (${argsList}) {\n`;
+
+#if ASSERTIONS
+    invokerFnBody += "checkArgCount(arguments.length, minArgs, maxArgs, humanName, throwBindingError);\n";
+#endif
 
 #if EMSCRIPTEN_TRACING
     invokerFnBody += `Module.emscripten_trace_enter_context('embind::' + humanName );\n`;
@@ -297,6 +317,7 @@ var LibraryEmbindShared = {
     invokerFnBody += "}\n";
 
 #if ASSERTIONS
+    args1.push('checkArgCount', 'minArgs', 'maxArgs');
     invokerFnBody = `if (arguments.length !== ${args1.length}){ throw new Error(humanName + "Expected ${args1.length} closure arguments " + arguments.length + " given."); }\n${invokerFnBody}`;
 #endif
     return [args1, invokerFnBody];

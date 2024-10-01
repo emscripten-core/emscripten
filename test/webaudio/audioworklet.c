@@ -50,6 +50,8 @@ EM_BOOL ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutpu
 EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext, EMSCRIPTEN_AUDIO_WORKLET_NODE_T audioWorkletNode), {
   audioContext = emscriptenGetAudioObject(audioContext);
   audioWorkletNode = emscriptenGetAudioObject(audioWorkletNode);
+  // Connect the audio worklet node to the graph.
+  audioWorkletNode.connect(audioContext.destination);
 
   // Add a button on the page to toggle playback as a response to user click.
   let startButton = document.createElement('button');
@@ -59,8 +61,6 @@ EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext, EMSCRIPTEN_AUDIO_WO
   startButton.onclick = () => {
     if (audioContext.state != 'running') {
       audioContext.resume();
-      // Connect the audio worklet node to the graph.
-      audioWorkletNode.connect(audioContext.destination);
     } else {
       audioContext.suspend();
     }

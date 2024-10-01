@@ -114,7 +114,7 @@ def check_js_engines():
 
 def get_and_import_modules():
   modules = []
-  for filename in glob.glob(os.path.join(os.path.dirname(__file__), 'test*.py')):
+  for filename in glob.glob(os.path.join(common.TEST_ROOT, 'test*.py')):
     module_dir, module_file = os.path.split(filename)
     module_name, module_ext = os.path.splitext(module_file)
     __import__(module_name)
@@ -135,7 +135,7 @@ def get_all_tests(modules):
 
 
 def get_crossplatform_tests(modules):
-  suites = ['core0', 'other'] # We don't need all versions of every test
+  suites = ['core0', 'other', 'sanity'] # We don't need all versions of every test
   crossplatform_tests = []
   # Walk over the test suites and find the test functions with the
   # is_crossplatform_test attribute applied by @crossplatform decorator

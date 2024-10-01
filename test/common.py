@@ -376,6 +376,8 @@ def also_with_wasmfs(f):
 
   @wraps(f)
   def metafunc(self, wasmfs, *args, **kwargs):
+    if DEBUG:
+      print('parameterize:wasmfs=%d' % wasmfs)
     if wasmfs:
       self.set_setting('WASMFS')
       self.emcc_args.append('-DWASMFS')
@@ -393,6 +395,8 @@ def also_with_noderawfs(func):
 
   @wraps(func)
   def metafunc(self, rawfs, *args, **kwargs):
+    if DEBUG:
+      print('parameterize:rawfs=%d' % rawfs)
     if rawfs:
       self.require_node()
       self.emcc_args += ['-DNODERAWFS']
@@ -410,6 +414,8 @@ def also_with_env_modify(name_updates_mapping):
   def decorated(f):
     @wraps(f)
     def metafunc(self, updates, *args, **kwargs):
+      if DEBUG:
+        print('parameterize:env_modify=%s' % (updates))
       if updates:
         with env_modify(updates):
           return f(self, *args, **kwargs)
@@ -432,6 +438,8 @@ def also_with_minimal_runtime(f):
 
   @wraps(f)
   def metafunc(self, with_minimal_runtime, *args, **kwargs):
+    if DEBUG:
+      print('parameterize:minimal_runtime=%s' % with_minimal_runtime)
     assert self.get_setting('MINIMAL_RUNTIME') is None
     if with_minimal_runtime:
       self.set_setting('MINIMAL_RUNTIME', 1)
@@ -447,6 +455,8 @@ def also_with_wasm_bigint(f):
 
   @wraps(f)
   def metafunc(self, with_bigint, *args, **kwargs):
+    if DEBUG:
+      print('parameterize:bigint=%s' % with_bigint)
     if with_bigint:
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support WASM_BIGINT')
@@ -469,6 +479,8 @@ def also_with_wasm64(f):
 
   @wraps(f)
   def metafunc(self, with_wasm64, *args, **kwargs):
+    if DEBUG:
+      print('parameterize:wasm64=%s' % with_wasm64)
     if with_wasm64:
       self.require_wasm64()
       self.set_setting('MEMORY64')
@@ -488,6 +500,8 @@ def also_with_wasm2js(f):
   @wraps(f)
   def metafunc(self, with_wasm2js, *args, **kwargs):
     assert self.get_setting('WASM') is None
+    if DEBUG:
+      print('parameterize:wasm2js=%s' % with_wasm2js)
     if with_wasm2js:
       self.require_wasm2js()
       self.set_setting('WASM', 0)
@@ -522,6 +536,8 @@ def also_with_standalone_wasm(impure=False):
   def decorated(func):
     @wraps(func)
     def metafunc(self, standalone):
+      if DEBUG:
+        print('parameterize:standalone=%s' % standalone)
       if not standalone:
         func(self)
       else:
@@ -559,6 +575,8 @@ def with_all_eh_sjlj(f):
 
   @wraps(f)
   def metafunc(self, mode, *args, **kwargs):
+    if DEBUG:
+      print('parameterize:eh_mode=%s' % mode)
     if mode == 'wasm' or mode == 'wasm_exnref':
       # Wasm EH is currently supported only in wasm backend and V8
       if self.is_wasm2js():
@@ -719,7 +737,7 @@ def parameterize(func, parameters):
   if prev:
     # If we're parameterizing 2nd time, construct a cartesian product for various combinations.
     func._parameterize = {
-      '_'.join(filter(None, [k1, k2])): v1 + v2 for (k1, v1), (k2, v2) in itertools.product(prev.items(), parameters.items())
+      '_'.join(filter(None, [k1, k2])): v2 + v1 for (k1, v1), (k2, v2) in itertools.product(prev.items(), parameters.items())
     }
   else:
     func._parameterize = parameters
@@ -872,8 +890,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
   def require_node_canary(self):
     nodejs = self.get_nodejs()
     if self.node_is_canary(nodejs):
-        self.require_engine(nodejs)
-        return
+      self.require_engine(nodejs)
+      return
 
     if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
       self.skipTest('test requires node canary and EMTEST_SKIP_NODE_CANARY is set')
@@ -889,10 +907,13 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.wasm_engines = []
 
   def require_wasm64(self):
+    if self.is_browser_test():
+      return
+
     nodejs = self.get_nodejs()
     if nodejs:
       version = shared.get_node_version(nodejs)
-      if version >= (16, 0, 0):
+      if version >= (23, 0, 0):
         self.js_engines = [nodejs]
         self.node_args += shared.node_memory64_flags()
         return
@@ -904,11 +925,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       return
 
     if 'EMTEST_SKIP_WASM64' in os.environ:
-      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_WASM64 is set)')
+      self.skipTest('test requires node >= 23 or d8 (and EMTEST_SKIP_WASM64 is set)')
     else:
-      self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
+      self.fail('either d8 or node >= 23 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def require_simd(self):
+    if self.is_browser_test():
+      return
+
     nodejs = self.get_nodejs()
     if nodejs:
       version = shared.get_node_version(nodejs)
@@ -1716,7 +1740,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
            'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', emcc_args=extra_args)
 
     extra_args = []
-    for libname in ['liba', 'libb', 'libc']:
+    for libname in ('liba', 'libb', 'libc'):
       extra_args += ['--embed-file', libname + so]
     do_run(r'''
       #include <assert.h>
@@ -1936,15 +1960,15 @@ def harness_server_func(in_queue, out_queue, port):
     def do_POST(self):
       urlinfo = urlparse(self.path)
       query = parse_qs(urlinfo.query)
-      # Mirror behaviour of emrun which is to write POST'd files to dump_out/ by default
       if query['file']:
         print('do_POST: got file: %s' % query['file'])
-        ensure_dir('dump_out')
-        filename = os.path.join('dump_out', query['file'][0])
+        filename = query['file'][0]
         contentLength = int(self.headers['Content-Length'])
         create_file(filename, self.rfile.read(contentLength), binary=True)
         self.send_response(200)
         self.end_headers()
+      else:
+        print(f'do_POST: unexpected POST: {urlinfo.query}')
 
     def do_GET(self):
       if self.path == '/run_harness':
@@ -2185,18 +2209,16 @@ class BrowserCore(RunnerCore):
   def make_reftest(self, expected, manually_trigger=False):
     # make sure the pngs used here have no color correction, using e.g.
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
-    basename = os.path.basename(expected)
-    if os.path.abspath(os.path.dirname(expected)) != self.get_dir():
-      shutil.copyfile(expected, self.in_dir(basename))
     reporting = read_file(test_file('browser_reporting.js'))
+    shutil.copy(expected, 'expected.png')
     create_file('reftest.js', '''
       function doReftest() {
         if (doReftest.done) return;
         doReftest.done = true;
         var img = new Image();
-        img.onload = function() {
-          assert(img.width == Module.canvas.width, 'Invalid width: ' + Module.canvas.width + ', should be ' + img.width);
-          assert(img.height == Module.canvas.height, 'Invalid height: ' + Module.canvas.height + ', should be ' + img.height);
+        img.onload = () => {
+          assert(img.width == Module.canvas.width, `Invalid width: ${Module.canvas.width}, should be ${img.width}`);
+          assert(img.height == Module.canvas.height, `Invalid height: ${Module.canvas.height}, should be ${img.height}`);
 
           var canvas = document.createElement('canvas');
           canvas.width = img.width;
@@ -2207,7 +2229,7 @@ class BrowserCore(RunnerCore):
 
           var actualUrl = Module.canvas.toDataURL();
           var actualImage = new Image();
-          actualImage.onload = function() {
+          actualImage.onload = () => {
             /*
             document.body.appendChild(img); // for comparisons
             var div = document.createElement('div');
@@ -2233,26 +2255,44 @@ class BrowserCore(RunnerCore):
                 total += Math.abs(expected[y*width*4 + x*4 + 2] - actual[y*width*4 + x*4 + 2]);
               }
             }
-            var wrong = Math.floor(total / (img.width*img.height*3)); // floor, to allow some margin of error for antialiasing
-            // If the main JS file is in a worker, or modularize, then we need to supply our own reporting logic.
-            if (typeof reportResultToServer === 'undefined') {
-              (function() {
-                %s
-                reportResultToServer(wrong);
-              })();
+            // floor, to allow some margin of error for antialiasing
+            var wrong = Math.floor(total / (img.width*img.height*3));
+
+            function reportResult(result) {
+              // If the main JS file is in a worker, or modularize, then we need to supply our own
+              // reporting logic.
+              if (typeof reportResultToServer === 'undefined') {
+                (() => {
+                  %s
+                  reportResultToServer(result);
+                })();
+              } else {
+                reportResultToServer(result);
+              }
+            }
+
+            var rebaseline = %s;
+            if (wrong || rebaseline) {
+              // Generate a png of the actual rendered image and send it back
+              // to the server.
+              Module.canvas.toBlob((blob) => {
+                sendFileToServer('actual.png', blob);
+                reportResult(wrong);
+              })
             } else {
-              reportResultToServer(wrong);
+              reportResult(wrong);
             }
           };
           actualImage.src = actualUrl;
         }
-        img.src = '%s';
+        img.src = 'expected.png';
       };
 
       /** @suppress {uselessCode} */
       function setupRefTest() {
         // Automatically trigger the reftest?
-        if (!%s) {
+        var manuallyTrigger = %s;
+        if (!manuallyTrigger) {
           // Yes, automatically
 
           Module['postRun'] = doReftest;
@@ -2261,8 +2301,8 @@ class BrowserCore(RunnerCore):
             // trigger reftest from RAF as well, needed for workers where there is no pre|postRun on the main thread
             var realRAF = window.requestAnimationFrame;
             /** @suppress{checkTypes} */
-            window.requestAnimationFrame = function(func) {
-              return realRAF(function() {
+            window.requestAnimationFrame = (func) => {
+              return realRAF(() => {
                 func();
                 realRAF(doReftest);
               });
@@ -2270,7 +2310,7 @@ class BrowserCore(RunnerCore):
 
             // trigger reftest from canvas render too, for workers not doing GL
             var realWOM = worker.onmessage;
-            worker.onmessage = function(event) {
+            worker.onmessage = (event) => {
               realWOM(event);
               if (event.data.target === 'canvas' && event.data.op === 'render') {
                 realRAF(doReftest);
@@ -2284,14 +2324,12 @@ class BrowserCore(RunnerCore):
           // The user will call it.
           // Add an event loop iteration to ensure rendering, so users don't need to bother.
           var realDoReftest = doReftest;
-          doReftest = function() {
-            setTimeout(realDoReftest, 1);
-          };
+          doReftest = () => setTimeout(realDoReftest, 1);
         }
       }
 
       setupRefTest();
-''' % (reporting, basename, int(manually_trigger)))
+''' % (reporting, EMTEST_REBASELINE, int(manually_trigger)))
 
   def compile_btest(self, filename, args, reporting=Reporting.FULL):
     # Inject support code for reporting results. This adds an include a header so testcases can
@@ -2314,12 +2352,30 @@ class BrowserCore(RunnerCore):
       filename = test_file(filename)
     self.run_process([compiler_for(filename), filename] + self.get_emcc_args() + args)
 
-  def reftest(self, filename, reference, *args, **kwargs):
+  def reftest(self, filename, reference, reference_slack=0, manual_reference=False, manually_trigger_reftest=False, *args, **kwargs):
     """Special case of `btest` that uses reference image
     """
-    assert 'reference' not in kwargs
-    kwargs['reference'] = reference
-    return self.btest(filename, *args, **kwargs)
+    if self.proxied:
+      assert not manual_reference
+      manual_reference = True
+      manually_trigger_reftest = False
+      assert 'post_build' not in kwargs
+      kwargs['post_build'] = self.post_manual_reftest
+
+    reference = find_browser_test_file(reference)
+    assert 'expected' not in kwargs
+    expected = [str(i) for i in range(0, reference_slack + 1)]
+    self.make_reftest(reference, manually_trigger=manually_trigger_reftest)
+    if not manual_reference:
+      kwargs.setdefault('args', [])
+      kwargs['args'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
+
+    try:
+      return self.btest(filename, expected=expected, *args, **kwargs)
+    finally:
+      if EMTEST_REBASELINE and os.path.exists('actual.png'):
+        print(f'overwriting expected image: {reference}')
+        self.run_process('pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB actual.png'.split() + [reference])
 
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
     """Special case of `btest` that reports its result solely via exiting
@@ -2335,13 +2391,13 @@ class BrowserCore(RunnerCore):
     kwargs['expected'] = 'exit:%d' % assert_returncode
     return self.btest(filename, *args, **kwargs)
 
-  def btest(self, filename, expected=None, reference=None,
-            reference_slack=0, manual_reference=None, post_build=None,
+  def btest(self, filename, expected=None,
+            post_build=None,
             args=None, url_suffix='', timeout=None,
-            manually_trigger_reftest=False, extra_tries=1,
+            extra_tries=1,
             reporting=Reporting.FULL,
             output_basename='test'):
-    assert expected or reference, 'a btest must either expect an output, or have a reference image'
+    assert expected, 'a btest must have an expected output'
     if args is None:
       args = []
     args = args.copy()
@@ -2349,22 +2405,8 @@ class BrowserCore(RunnerCore):
 
     # Run via --proxy-to-worker.  This gets set by the @also_with_proxying.
     if self.proxied:
-      if reference:
-        assert not manual_reference
-        manual_reference = True
-        manually_trigger_reftest = False
-        assert not post_build
-        post_build = self.post_manual_reftest
       args += ['--proxy-to-worker', '-sGL_TESTING']
-    if reference:
-      reference = find_browser_test_file(reference)
-      expected = [str(i) for i in range(0, reference_slack + 1)]
-      self.make_reftest(reference, manually_trigger=manually_trigger_reftest)
-      if not manual_reference:
-        args += ['--pre-js', 'reftest.js', '-sGL_TESTING']
-    else:
-      # manual_reference only makes sense for reference tests
-      assert manual_reference is None
+
     outfile = output_basename + '.html'
     args += ['-o', outfile]
     # print('all args:', args)

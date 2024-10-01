@@ -706,6 +706,29 @@
         }
     },
     {
+        "file": "SDL/SDL_rwops.h",
+        "structs": {
+            "SDL_RWops": [
+                "type",
+                {
+                  "hidden": [
+                    {
+                      "mem": [
+                         "base",
+                         "stop"
+                      ]
+                    },
+                    {
+                      "stdio": [
+                         "fp"
+                      ]
+                    }
+                  ]
+                }
+            ]
+        }
+    },
+    {
         "file": "uuid/uuid.h",
         "defines": [
             "UUID_VARIANT_DCE",

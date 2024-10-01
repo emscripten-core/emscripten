@@ -46,7 +46,7 @@ var readyPromise = new Promise((resolve, reject) => {
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE
-var ENVIRONMENT_IS_NODE = typeof process == 'object';
+var ENVIRONMENT_IS_NODE = typeof process == 'object' && process.type != 'renderer';
 #endif
 
 #if ENVIRONMENT_MAY_BE_SHELL
