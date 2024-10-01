@@ -429,7 +429,7 @@ class other(RunnerCore):
     # load a worker before startup to check ES6 modules there as well
     'pthreads': (['-pthread', '-sPTHREAD_POOL_SIZE=1'],),
   })
-  def test_export_es6(self, args, package_json):
+  def test_export_es6(self, package_json, args):
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6',
                       '-o', 'hello.mjs'] + args)
     # In ES6 mode we use MODULARIZE, so we must instantiate an instance of the
@@ -1646,12 +1646,12 @@ int f() {
     self.emcc('lib.c', ['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'pre.js'], output_filename='a.out.js')
     self.assertContained('libfunc\n', self.run_js('a.out.js'))
 
+  @also_with_wasmfs
+  @crossplatform
   @parameterized({
     '': ([],),
     'closure': (['-O2', '--closure=1'],),
   })
-  @also_with_wasmfs
-  @crossplatform
   def test_stdin(self, args):
     create_file('in.txt', 'abcdef\nghijkl\n')
     self.set_setting('ENVIRONMENT', 'node,shell')
@@ -2642,7 +2642,7 @@ More info: https://emscripten.org
     'error': ['ERROR'],
     'ignore': [None]
   })
-  def test_undefined_symbols(self, action, args):
+  def test_undefined_symbols(self, args, action):
     create_file('main.c', r'''
       #include <stdio.h>
       #include <SDL.h>
@@ -4900,12 +4900,12 @@ int main() {
     os.remove('a.out.wasm') # trigger onAbort by intentionally causing startup to fail
     add_on_abort_and_verify()
 
+  @also_with_wasm2js
   @parameterized({
     '': ([],),
     '01': (['-O1', '-g2'],),
     'O2': (['-O2', '-g2', '-flto'],),
   })
-  @also_with_wasm2js
   def test_no_exit_runtime(self, opts):
     create_file('code.cpp', r'''
 #include <stdio.h>
@@ -5193,7 +5193,7 @@ Waste<3> *getMore() {
     'wasm2js': [0],
     'wasm2js_2': [2],
   })
-  def test_symbol_map(self, wasm, opts):
+  def test_symbol_map(self, opts, wasm):
     def get_symbols_lines(symbols_file):
       self.assertTrue(os.path.isfile(symbols_file), "Symbols file %s isn't created" % symbols_file)
       # check that the map is correct
@@ -8304,7 +8304,7 @@ int main() {}
     '': ([],),
     'O2': (['-O2'],),
   })
-  def test_warn_unexported_main(self, args, filename):
+  def test_warn_unexported_main(self, filename, args):
     warning = 'emcc: warning: `main` is defined in the input files, but `_main` is not in `EXPORTED_FUNCTIONS`. Add it to this list if you want `main` to run. [-Wunused-main]'
 
     proc = self.run_process([EMCC, test_file(filename), '-sEXPORTED_FUNCTIONS=[]'] + args, stderr=PIPE)
@@ -13064,10 +13064,10 @@ exec "$@"
     err = self.expect_fail([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('other/test_check_undefined.c')])
     self.assertContained('undefined symbol: foo', err)
 
+  @also_with_wasm64
   @parameterized({
     'asyncify': (['-sASYNCIFY'],),
   })
-  @also_with_wasm64
   def test_missing_symbols_at_runtime(self, args):
     # We deliberately pick a symbol there that takes a pointer as an argument.
     # We had a regression where the pointer-handling wrapper function could

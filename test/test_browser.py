@@ -27,7 +27,7 @@ from common import requires_wasm2js, also_with_wasm2js, parameterize
 from tools import shared
 from tools import ports
 from tools import utils
-from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE
+from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
 from tools.utils import delete_dir
 
 
@@ -82,6 +82,8 @@ def also_with_wasmfs(f):
 
   @wraps(f)
   def metafunc(self, wasmfs, *args, **kwargs):
+    if DEBUG:
+      print('parameterize:wasmfs=%d' % wasmfs)
     if wasmfs:
       self.set_setting('WASMFS')
       self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
@@ -100,6 +102,8 @@ def also_with_proxying(f):
 
   @wraps(f)
   def metafunc(self, proxied, *args, **kwargs):
+    if DEBUG:
+      print('parameterize:proxied=%d' % proxied)
     self.proxied = proxied
     f(self, *args, **kwargs)
 
@@ -901,7 +905,7 @@ window.close = () => {
     '': (False,),
     'delay': (True,)
   })
-  def test_sdl_key(self, delay, async_, defines):
+  def test_sdl_key(self, defines, async_, delay):
     if delay:
       settimeout_start = 'setTimeout(function() {'
       settimeout_end = '}, 1);'
@@ -1970,11 +1974,11 @@ simulateKeyUp(100);
   def test_cubegeom_pre3(self):
     self.reftest('third_party/cubegeom/cubegeom_pre3.c', 'third_party/cubegeom/cubegeom_pre2.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
+  @also_with_proxying
   @parameterized({
     '': ([],),
     'tracing': (['-sTRACE_WEBGL_CALLS'],),
   })
-  @also_with_proxying
   @requires_graphics_hardware
   def test_cubegeom(self, args):
     if self.proxied and args:
@@ -2725,11 +2729,11 @@ Module["preRun"] = () => {
     create_file('test.txt', 'emscripten')
     self.btest_exit('test_wget_data.c', args=['-O2', '-g2', '-sASYNCIFY'])
 
+  @also_with_wasm2js
   @parameterized({
     '': ([],),
     'es6': (['-sEXPORT_ES6'],),
   })
-  @also_with_wasm2js
   def test_locate_file(self, args):
     self.set_setting('EXIT_RUNTIME')
     create_file('src.c', r'''
@@ -4106,11 +4110,11 @@ Module["preRun"] = () => {
   def test_utf16_textdecoder(self):
     self.btest_exit('benchmark/benchmark_utf16.cpp', 0, args=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=UTF16ToString,stringToUTF16,lengthBytesUTF16'])
 
+  @also_with_threads
   @parameterized({
     '': ([],),
     'closure': (['--closure=1'],),
   })
-  @also_with_threads
   def test_TextDecoder(self, args):
     self.emcc_args += args
 
@@ -4338,7 +4342,7 @@ Module["preRun"] = () => {
     'enable': (1,),
     'disable': (0,),
   })
-  def test_webgl_simple_extensions(self, simple_enable_extensions, webgl_version):
+  def test_webgl_simple_extensions(self, webgl_version, simple_enable_extensions):
     cmd = ['-DWEBGL_CONTEXT_VERSION=' + str(webgl_version),
            '-DWEBGL_SIMPLE_ENABLE_EXTENSION=' + str(simple_enable_extensions),
            '-sMAX_WEBGL_VERSION=2',
@@ -4393,12 +4397,12 @@ Module["preRun"] = () => {
       self.btest_exit('fetch/test_fetch_to_memory.cpp',
                       args=['-sFETCH_DEBUG', '-sFETCH'] + arg)
 
+  @also_with_wasm2js
   @parameterized({
     '': ([],),
     'pthread_exit': (['-DDO_PTHREAD_EXIT'],),
   })
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  @also_with_wasm2js
   def test_fetch_from_thread(self, args):
     shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_from_thread.cpp',
@@ -4628,11 +4632,11 @@ Module["preRun"] = () => {
     self.assertNotExists('test.wasm')
 
   # Tests that SINGLE_FILE works as intended in generated HTML with MINIMAL_RUNTIME
+  @also_with_wasm2js
   @parameterized({
     '': ([],),
     'O3': (['-O3'],)
   })
-  @also_with_wasm2js
   def test_minimal_runtime_single_file_html(self, opts):
     self.btest('single_file_static_initializer.cpp', '19', args=opts + ['-sMINIMAL_RUNTIME', '-sSINGLE_FILE'])
     self.assertExists('test.html')
