@@ -7068,11 +7068,17 @@ void* operator new(size_t size) {
     # see that direct usage (not on module) works. we don't export, but the use
     # keeps it alive through JSDCE
     test(args=['-DDIRECT'])
+
+    # Test with ASSERTIONS=2 where we check the limits of value passed to setValue.
+    self.set_setting('ASSERTIONS', 2)
+    test(args=['-DDIRECT', '-DASSERTIONS_2'])
+
     # see that with assertions, we get a nice error message
     self.set_setting('EXPORTED_RUNTIME_METHODS', [])
     self.set_setting('ASSERTIONS')
     test(asserts=True)
     self.set_setting('ASSERTIONS', 0)
+
     # see that when we export them, things work on the module
     self.set_setting('EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue'])
     test()
