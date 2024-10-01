@@ -45,8 +45,20 @@ var LibraryHtml5WebGL = {
   emscripten_webgl_commit_frame: 'emscripten_webgl_do_commit_frame',
 #endif
 
+#if OFFSCREENCANVAS_SUPPORT
+  emscripten_webgl_do_create_context__postset: `
+  registerPreMainLoop(() => {
+    // If the current GL context is an OffscreenCanvas, but it was initialized
+    // with implicit swap mode, perform the swap on behalf of the user.
+    if (GL.currentContext && !GL.currentContextIsProxied && !GL.currentContext.attributes.explicitSwapControl && GL.currentContext.GLctx.commit) {
+      GL.currentContext.GLctx.commit();
+    }
+  });`,
+#endif
+
   emscripten_webgl_do_create_context__deps: [
 #if OFFSCREENCANVAS_SUPPORT
+  '$registerPreMainLoop',
   'malloc',
   'emscripten_supports_offscreencanvas',
 #endif
@@ -184,6 +196,7 @@ var LibraryHtml5WebGL = {
     var contextHandle = GL.createContext(canvas, contextAttributes);
     return contextHandle;
   },
+
 #if PTHREADS && OFFSCREEN_FRAMEBUFFER
   // Runs on the calling thread, proxies if needed.
   emscripten_webgl_make_context_current_calling_thread__sig: 'ip',
@@ -196,6 +209,19 @@ var LibraryHtml5WebGL = {
   // In this scenario, the pthread does not hold a high-level JS object to the GL context, because it lives on the main thread, in which case we record
   // an integer pointer as a token value to represent the GL context activation from another thread. (when this function is called, the main browser thread
   // has already accepted the GL context activation for our pthread, so that side is good)
+#if GL_SUPPORT_EXPLICIT_SWAP_CONTROL
+  _emscripten_proxied_gl_context_activated_from_main_browser_thread__deps: ['$registerPreMainLoop'],
+  _emscripten_proxied_gl_context_activated_from_main_browser_thread__postjs: `
+    // If the current GL context is a proxied regular WebGL context, and was
+    // initialized with implicit swap mode on the main thread, and we are on the
+    // parent thread, perform the swap on behalf of the user.
+    registerPreMainLoop(() => {
+      if (GL.currentContext && GL.currentContextIsProxied) {
+        var explicitSwapControl = {{{ makeGetValue('GL.currentContext', 0, 'i32') }}};
+        if (!explicitSwapControl) _emscripten_webgl_commit_frame();
+      }
+    });`,
+#endif
   _emscripten_proxied_gl_context_activated_from_main_browser_thread: (contextHandle) => {
     GLctx = Module.ctx = GL.currentContext = contextHandle;
     GL.currentContextIsProxied = true;
@@ -382,7 +408,7 @@ var LibraryHtml5WebGL = {
 #endif
 
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
-    if (!target) target = Module['canvas'];
+    target ||= Module['canvas'];
 #endif
 
     var webGlEventHandlerFunc = (e = event) => {

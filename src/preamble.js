@@ -14,10 +14,6 @@
 // An online HTML version (which may be of a different version of Emscripten)
 //    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
 
-#if PTHREADS
-#include "runtime_pthread.js"
-#endif
-
 #if RELOCATABLE
 {{{ makeModuleReceiveWithVar('dynamicLibraries', undefined, '[]', true) }}}
 #endif
@@ -151,6 +147,10 @@ var HEAP_DATA_VIEW;
 #endif
 
 #include "runtime_shared.js"
+
+#if PTHREADS
+#include "runtime_pthread.js"
+#endif
 
 #if ASSERTIONS
 assert(!Module['STACK_SIZE'], 'STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time')
@@ -1076,7 +1076,7 @@ function createWasm() {
   }
 #endif
 
-  if (!wasmBinaryFile) wasmBinaryFile = findWasmBinary();
+  wasmBinaryFile ??= findWasmBinary();
 
 #if WASM_ASYNC_COMPILATION
 #if RUNTIME_DEBUG

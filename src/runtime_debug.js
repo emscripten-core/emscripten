@@ -16,6 +16,10 @@
 })();
 #endif
 
+if (Module['ENVIRONMENT']) {
+  throw new Error('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)');
+}
+
 function legacyModuleProp(prop, newName, incoming=true) {
   if (!Object.getOwnPropertyDescriptor(Module, prop)) {
     Object.defineProperty(Module, prop, {
@@ -50,45 +54,61 @@ function isExportedByForceFilesystem(name) {
          name === 'removeRunDependency';
 }
 
-function missingGlobal(sym, msg) {
-  if (typeof globalThis != 'undefined') {
+/**
+ * Intercept access to a global symbol.  This enables us to give informative
+ * warnings/errors when folks attempt to use symbols they did not include in
+ * their build, or no symbols that no longer exist.
+ */
+function hookGlobalSymbolAccess(sym, func) {
+#if MODULARIZE && !EXPORT_ES6
+  // In MODULARIZE mode the generated code runs inside a function scope and not
+  // the global scope, and JavaScript does not provide access to function scopes
+  // so we cannot dynamically modify the scrope using `defineProperty` in this
+  // case.
+  //
+  // In this mode we simply ignore requests for `hookGlobalSymbolAccess`. Since
+  // this is a debug-only feature, skipping it is not major issue.
+#else
+  if (typeof globalThis != 'undefined' && !Object.getOwnPropertyDescriptor(globalThis, sym)) {
     Object.defineProperty(globalThis, sym, {
       configurable: true,
       get() {
-        warnOnce(`\`${sym}\` is not longer defined by emscripten. ${msg}`);
+        func();
         return undefined;
       }
     });
   }
+#endif
+}
+
+function missingGlobal(sym, msg) {
+  hookGlobalSymbolAccess(sym, () => {
+    warnOnce(`\`${sym}\` is not longer defined by emscripten. ${msg}`);
+  });
 }
 
 missingGlobal('buffer', 'Please use HEAP8.buffer or wasmMemory.buffer');
 missingGlobal('asm', 'Please use wasmExports instead');
 
 function missingLibrarySymbol(sym) {
-  if (typeof globalThis != 'undefined' && !Object.getOwnPropertyDescriptor(globalThis, sym)) {
-    Object.defineProperty(globalThis, sym, {
-      configurable: true,
-      get() {
-        // Can't `abort()` here because it would break code that does runtime
-        // checks.  e.g. `if (typeof SDL === 'undefined')`.
-        var msg = `\`${sym}\` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line`;
-        // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE requires the name as it appears in
-        // library.js, which means $name for a JS name with no prefix, or name
-        // for a JS name like _name.
-        var librarySymbol = sym;
-        if (!librarySymbol.startsWith('_')) {
-          librarySymbol = '$' + sym;
-        }
-        msg += ` (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='${librarySymbol}')`;
-        if (isExportedByForceFilesystem(sym)) {
-          msg += '. Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you';
-        }
-        warnOnce(msg);
-        return undefined;
-      }
-    });
-  }
+  hookGlobalSymbolAccess(sym, () => {
+    // Can't `abort()` here because it would break code that does runtime
+    // checks.  e.g. `if (typeof SDL === 'undefined')`.
+    var msg = `\`${sym}\` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line`;
+    // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE requires the name as it appears in
+    // library.js, which means $name for a JS name with no prefix, or name
+    // for a JS name like _name.
+    var librarySymbol = sym;
+    if (!librarySymbol.startsWith('_')) {
+      librarySymbol = '$' + sym;
+    }
+    msg += ` (e.g. -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='${librarySymbol}')`;
+    if (isExportedByForceFilesystem(sym)) {
+      msg += '. Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you';
+    }
+    warnOnce(msg);
+  });
+
   // Any symbol that is not included from the JS library is also (by definition)
   // not exported on the Module object.
   unexportedRuntimeSymbol(sym);

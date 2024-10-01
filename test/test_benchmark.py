@@ -983,12 +983,7 @@ class benchmark(common.RunnerCore):
     def lib_builder(name, native, env_init):
       # We force recomputation for the native benchmarker because this benchmark
       # uses native_exec=True, so we need to copy the native executable
-      ret = self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init, force_rebuild=native)
-      if native:
-        return ret
-      shutil.copyfile(ret[0], ret[0] + '.bc')
-      ret[0] += '.bc'
-      return ret
+      return self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init, force_rebuild=native)
 
     self.do_benchmark('lua_' + benchmark, '', expected,
                       force_c=True, args=[benchmark + '.lua', DEFAULT_ARG],

@@ -802,7 +802,11 @@ def phase_linker_setup(options, state, newargs):
   if settings.PURE_WASI:
     settings.STANDALONE_WASM = 1
     settings.WASM_BIGINT = 1
-    settings.SUPPORT_LONGJMP = 0
+    # WASI does not support Emscripten (JS-based) exception catching, which the
+    # JS-based longjmp support also uses. Emscripten EH is by default disabled
+    # so we don't need to do anything here.
+    if not settings.WASM_EXCEPTIONS:
+      default_setting('SUPPORT_LONGJMP', 0)
 
   if options.no_entry:
     settings.EXPECT_MAIN = 0
@@ -1518,11 +1522,18 @@ def phase_linker_setup(options, state, newargs):
 
   if sanitize:
     settings.USE_OFFSET_CONVERTER = 1
+    # These symbols are needed by `withBuiltinMalloc` which used to implement
+    # the `__noleakcheck` attribute.  However this dependency is not yet represented in the JS
+    # symbol graph generated when we run the compiler with `--symbols-only`.
     settings.REQUIRED_EXPORTS += [
-        'memalign',
-        'emscripten_builtin_memalign',
-        'emscripten_builtin_malloc',
-        'emscripten_builtin_free',
+      'malloc',
+      'calloc',
+      'memalign',
+      'free',
+      'emscripten_builtin_malloc',
+      'emscripten_builtin_calloc',
+      'emscripten_builtin_memalign',
+      'emscripten_builtin_free',
     ]
 
   if ('leak' in sanitize or 'address' in sanitize) and not settings.ALLOW_MEMORY_GROWTH:
@@ -2079,15 +2090,6 @@ def phase_final_emitting(options, state, target, wasm_target):
     return
 
   target_dir = os.path.dirname(os.path.abspath(target))
-  if settings.PTHREADS and not settings.STRICT and not settings.SINGLE_FILE:
-    worker_file = shared.replace_suffix(target, get_worker_js_suffix())
-    write_file(worker_file, '''\
-// This file is no longer used by emscripten and has been created as a placeholder
-// to allow build systems to transition away from depending on it.
-//
-// Future versions of emscripten will likely stop generating this file at all.
-throw new Error('Dummy worker.js file should never be used');
-''')
 
   # Deploy the Wasm Worker bootstrap file as an output file (*.ww.js)
   if settings.WASM_WORKERS == 1:
@@ -2512,7 +2514,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   var filename = '%s';
   if ((',' + window.location.search.substr(1) + ',').indexOf(',noProxy,') < 0) {
     console.log('running code in a web worker');
-''' % get_subresource_location(proxy_worker_filename)) + worker_js + '''
+''' % get_subresource_location_js(proxy_worker_filename)) + worker_js + '''
   } else {
     console.log('running code on the main thread');
     var fileBytes = tryParseAsDataURI(filename);
@@ -2580,7 +2582,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
             // Current browser supports Wasm, proceed with loading the main JS runtime.
             loadMainJs();
           }
-''' % (script.inline, get_subresource_location(wasm_target) + '.js')
+''' % (script.inline, get_subresource_location_js(wasm_target + '.js'))
 
   shell = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
   shell = shell.replace('{{{ SHELL_CSS }}}', utils.read_file(utils.path_from_root('src/shell.css')))
@@ -2656,7 +2658,7 @@ def generate_html(target, options, js_target, target_basename, wasm_target):
 def generate_worker_js(target, js_target, target_basename):
   if settings.SINGLE_FILE:
     # compiler output is embedded as base64 data URL
-    proxy_worker_filename = get_subresource_location(js_target)
+    proxy_worker_filename = get_subresource_location_js(js_target)
   else:
     # compiler output goes in .worker.js file
     move_file(js_target, shared.replace_suffix(js_target, get_worker_js_suffix()))
@@ -2969,11 +2971,15 @@ def move_file(src, dst):
 
 
 # Returns the subresource location for run-time access
-def get_subresource_location(path):
+def get_subresource_location(path, mimetype='application/octet-stream'):
   if settings.SINGLE_FILE:
-    return 'data:application/octet-stream;base64,' + base64_encode(path)
+    return f'data:{mimetype};base64,{base64_encode(path)}'
   else:
     return os.path.basename(path)
+
+
+def get_subresource_location_js(path):
+  return get_subresource_location(path, 'text/javascript')
 
 
 @ToolchainProfiler.profile()

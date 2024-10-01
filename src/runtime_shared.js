@@ -13,7 +13,7 @@
     if (!shouldExport) {
       if (MODULARIZE && EXPORT_ALL) {
         shouldExport = true;
-      } else if (AUDIO_WORKLET && (x == 'HEAP32' || x == 'HEAPU32')) {
+      } else if (AUDIO_WORKLET && (x == 'HEAPU32' || x == 'HEAPF32')) {
         // Export to the AudioWorkletGlobalScope the needed variables to access
         // the heap. AudioWorkletGlobalScope is unable to access global JS vars
         // in the compiled main JS file.
@@ -61,4 +61,16 @@ var toIndexType = (function() {
   }
   return (i) => bigintMemoryBounds ? BigInt(i) : i;
 })();
+#endif
+
+#if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 160000
+// The performance global was added to node in v16.0.0:
+// https://nodejs.org/api/globals.html#performance
+if (ENVIRONMENT_IS_NODE) {
+  // This is needed for emscripten_get_now and for pthreads support which
+  // depends on it for accurate timing.
+  // Use `global` rather than `globalThis` here since older versions of node
+  // don't have `globalThis`.
+  global.performance ??= require('perf_hooks').performance;
+}
 #endif

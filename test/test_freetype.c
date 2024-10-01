@@ -94,7 +94,7 @@ main( int     argc,
   int           target_height;
   int           n, num_chars;
 
-  filename      = "LiberationSansBold.ttf";                          
+  filename      = "LiberationSansBold.ttf";
   text          = "w";
   num_chars     = strlen( text );
   WIDTH         = 16;
@@ -143,6 +143,5 @@ main( int     argc,
   FT_Done_Face    ( face );
   FT_Done_FreeType( library );
 
-  
   return 0;
 }

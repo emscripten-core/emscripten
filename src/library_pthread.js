@@ -35,7 +35,7 @@ var LibraryPThread = {
   $PThread__postset: 'PThread.init();',
   $PThread__deps: ['_emscripten_thread_init',
                    '$terminateWorker',
-                   '$cleanupThread', '$zeroMemory',
+                   '$cleanupThread',
 #if MAIN_MODULE
                    '$markAsFinished',
 #endif
@@ -716,8 +716,10 @@ var LibraryPThread = {
       transferredCanvasNames = '{{{ OFFSCREENCANVASES_TO_PTHREAD }}}';
     } else
 #endif
-    transferredCanvasNames &&= UTF8ToString(transferredCanvasNames).trim();
-    transferredCanvasNames &&= transferredCanvasNames.split(',');
+    {
+      transferredCanvasNames = UTF8ToString(transferredCanvasNames).trim();
+    }
+    transferredCanvasNames = transferredCanvasNames ? transferredCanvasNames.split(',') : [];
 #if GL_DEBUG
     dbg(`pthread_create: transferredCanvasNames="${transferredCanvasNames}"`);
 #endif

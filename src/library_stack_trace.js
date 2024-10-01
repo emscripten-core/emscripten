@@ -58,8 +58,7 @@ var LibraryStackTrace = {
         lineno = parts[3];
         column = parts[4];
       } else {
-        parts = newFirefoxRe.exec(line);
-        if (!parts) parts = firefoxRe.exec(line);
+        parts = newFirefoxRe.exec(line) || firefoxRe.exec(line);
         if (parts && parts.length >= 4) {
           symbolName = parts[1];
           file = parts[2];
