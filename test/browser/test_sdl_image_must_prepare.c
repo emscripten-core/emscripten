@@ -36,8 +36,6 @@ void ready(const char *f) {
   testImage("screenshot.jpg", 1);
 
   SDL_Flip(screen);
-
-  EM_ASM({ doReftest() });
 }
 
 int main() {
