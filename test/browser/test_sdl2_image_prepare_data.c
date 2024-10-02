@@ -55,6 +55,8 @@ void ready(void *arg, const char *fileName) {
     free((void*)seenName); // As the API docs say, we are responsible for freeing the 'fake' names we are given
 
     SDL_RenderPresent(renderer);
+
+    EM_ASM(reftestUnblock());
   }
 }
 
@@ -75,6 +77,7 @@ int main() {
   emscripten_run_preload_plugins_data(buffer, SIZE, "jpg", (void*)25, ready, NULL);
   emscripten_run_preload_plugins_data(buffer, SIZE, "jpg", (void*)33, ready, NULL); // twice to see different filenames
 
+  EM_ASM(reftestBlock());
   return 0;
 }
 
