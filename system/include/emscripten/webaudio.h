@@ -129,6 +129,9 @@ typedef struct EmscriptenAudioWorkletNodeCreateOptions
 // userData4: A custom userdata pointer to pass to the callback function. This value will be passed on to the call to the given EmscriptenWorkletNodeProcessCallback callback function.
 EMSCRIPTEN_AUDIO_WORKLET_NODE_T emscripten_create_wasm_audio_worklet_node(EMSCRIPTEN_WEBAUDIO_T audioContext, const char *name, const EmscriptenAudioWorkletNodeCreateOptions *options, EmscriptenWorkletNodeProcessCallback processCallback, void *userData4);
 
+// Connects the audio worklet node to the audio context
+void emscripten_audio_worklet_node_connect(EMSCRIPTEN_WEBAUDIO_T audioContext, EMSCRIPTEN_AUDIO_WORKLET_NODE_T workletNode);
+
 // Returns true if the current thread is executing a Wasm AudioWorklet, false otherwise.
 // Note that calling this function can be relatively slow as it incurs a Wasm->JS transition,
 // so avoid calling it in hot paths.

@@ -26,14 +26,12 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
   return false;
 }
 
-EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext, EMSCRIPTEN_AUDIO_WORKLET_NODE_T audioWorkletNode), {
-  audioContext = emscriptenGetAudioObject(audioContext);
-  audioWorkletNode = emscriptenGetAudioObject(audioWorkletNode);
-  audioWorkletNode.connect(audioContext.destination);
+EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext), {
   let startButton = document.createElement('button');
   startButton.innerHTML = 'Start playback';
   document.body.appendChild(startButton);
 
+  audioContext = emscriptenGetAudioObject(audioContext);
   startButton.onclick = () => {
     audioContext.resume();
   };
@@ -54,7 +52,8 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool succe
   int outputChannelCounts[1] = { 1 };
   EmscriptenAudioWorkletNodeCreateOptions options = { .numberOfInputs = 0, .numberOfOutputs = 1, .outputChannelCounts = outputChannelCounts };
   EMSCRIPTEN_AUDIO_WORKLET_NODE_T wasmAudioWorklet = emscripten_create_wasm_audio_worklet_node(audioContext, "noise-generator", &options, &ProcessAudio, 0);
-  InitHtmlUi(audioContext, wasmAudioWorklet);
+  emscripten_audio_worklet_node_connect(audioContext, wasmAudioWorklet);
+  InitHtmlUi(audioContext);
 }
 
 void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {

@@ -47,17 +47,13 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
   return true;
 }
 
-EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext, EMSCRIPTEN_AUDIO_WORKLET_NODE_T audioWorkletNode), {
-  audioContext = emscriptenGetAudioObject(audioContext);
-  audioWorkletNode = emscriptenGetAudioObject(audioWorkletNode);
-  // Connect the audio worklet node to the graph.
-  audioWorkletNode.connect(audioContext.destination);
-
+EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext), {
   // Add a button on the page to toggle playback as a response to user click.
   let startButton = document.createElement('button');
   startButton.innerHTML = 'Toggle playback';
   document.body.appendChild(startButton);
 
+  audioContext = emscriptenGetAudioObject(audioContext);
   startButton.onclick = () => {
     if (audioContext.state != 'running') {
       audioContext.resume();
@@ -98,12 +94,14 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool succe
 
   // Instantiate the noise-generator Audio Worklet Processor.
   EMSCRIPTEN_AUDIO_WORKLET_NODE_T wasmAudioWorklet = emscripten_create_wasm_audio_worklet_node(audioContext, "noise-generator", &options, &ProcessAudio, 0);
+  // Connect the audio worklet node to the graph.
+  emscripten_audio_worklet_node_connect(audioContext, wasmAudioWorklet);
 
 #ifdef REPORT_RESULT
   emscripten_set_timeout_loop(main_thread_tls_access, 10, 0);
 #endif
 
-  InitHtmlUi(audioContext, wasmAudioWorklet);
+  InitHtmlUi(audioContext);
 }
 
 // This callback will fire when the Wasm Module has been shared to the
