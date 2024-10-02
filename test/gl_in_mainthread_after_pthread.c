@@ -1,4 +1,4 @@
-// Copyright 2018 The Emscripten Authors.  All rights reserved.
+// Copyright 2016 The Emscripten Authors.  All rights reserved.
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
@@ -11,7 +11,6 @@
 #include <assert.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
-#include <emscripten/threading.h>
 #include <bits/errno.h>
 #include <stdlib.h>
 
@@ -19,7 +18,7 @@ pthread_t thread;
 
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx;
 
-_Atomic int threadRunning = 0;
+_Atomic bool threadRunning = false;
 
 void *ThreadMain(void *arg)
 {
@@ -43,16 +42,9 @@ void *ThreadMain(void *arg)
     while(emscripten_get_now() - now < 16) /*no-op*/;
   }
 
-#if 0 // TODO: this doesn't work yet for some reason
-  unsigned char data[64];
-  glReadPixels(0, 0, 4, 4, GL_RGBA, GL_UNSIGNED_BYTE, data);
-  assert(glGetError() == 0);
-  printf("%d %d %d %d\n", data[0], data[1], data[2], data[3]);
-#endif
-
   emscripten_webgl_make_context_current(0);
   emscripten_webgl_destroy_context(ctx);
-  threadRunning = 0;
+  threadRunning = false;
   printf("Thread quit\n");
   pthread_exit(0);
 }
@@ -67,38 +59,63 @@ void CreateThread()
   {
     printf("Test Skipped! OffscreenCanvas is not supported!\n");
 #ifdef REPORT_RESULT
-    REPORT_RESULT(0); // for now, report a skip as success
+    REPORT_RESULT(0); // But report success, so that runs on non-supporting browsers don't raise noisy errors.
 #endif
-    exit(1);
+    exit(0);
   }
   pthread_attr_destroy(&attr);
-  threadRunning = 1;
+  threadRunning = true;
 }
 
-void PollThreadExit(void *)
+//#define TEST_MAIN_THREAD_EXPLICIT_COMMIT
+
+void MainThreadRender()
 {
-  if (!threadRunning)
+  static double color = 0;
+  color += 0.01;
+  glClearColor(0, color, 0, 1);
+  glClear(GL_COLOR_BUFFER_BIT);
+#ifdef TEST_MAIN_THREAD_EXPLICIT_COMMIT
+  EMSCRIPTEN_RESULT r = emscripten_webgl_commit_frame();
+  assert(r == EMSCRIPTEN_RESULT_SUCCESS);
+  // In explicit swap control mode, whatever we draw here shouldn't show up.
+  glClearColor(1, 0, 1, 1);
+  glClear(GL_COLOR_BUFFER_BIT);
+#endif
+#
+  if (color >= 1.0)
   {
     printf("Test finished.\n");
+    emscripten_cancel_main_loop();
 #ifdef REPORT_RESULT
     REPORT_RESULT(0);
 #endif
-  } else {
-    emscripten_async_call(PollThreadExit, 0, 100);
+  }
+}
+
+void PollThreadExit(void * arg)
+{
+  if (!threadRunning)
+  {
+    EmscriptenWebGLContextAttributes attr;
+    emscripten_webgl_init_context_attributes(&attr);
+#ifdef TEST_MAIN_THREAD_EXPLICIT_COMMIT
+    attr.explicitSwapControl = true;
+#endif
+    ctx = emscripten_webgl_create_context("#canvas", &attr);
+    emscripten_webgl_make_context_current(ctx);
+    printf("Main thread rendering. You should see the WebGL canvas fade from black to green.\n");
+    emscripten_set_main_loop(MainThreadRender, 0, 0);
+  }
+  else
+  {
+    emscripten_async_call(PollThreadExit, 0, 1000);
   }
 }
 
 int main()
 {
-  if (!emscripten_supports_offscreencanvas())
-  {
-    printf("Current browser does not support OffscreenCanvas. Skipping this test.\n");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
-    return 0;
-  }
   CreateThread();
-  emscripten_async_call(PollThreadExit, 0, 100);
+  emscripten_async_call(PollThreadExit, 0, 1000);
   return 0;
 }

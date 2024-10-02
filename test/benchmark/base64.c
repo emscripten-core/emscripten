@@ -152,4 +152,3 @@ int main(int argc, char **argv) {
   printf("decode: %d, %.2f\n", s, (float)(clock() - t)/CLOCKS_PER_SEC);
   return 0;
 }
-

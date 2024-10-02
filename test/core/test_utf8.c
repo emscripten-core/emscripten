@@ -6,8 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <wchar.h>
-#include <iostream>
-#include <cassert>
+#include <assert.h>
 #include <emscripten.h>
 
 EM_JS_DEPS(deps, "$UTF8ToString,$stringToUTF8,$AsciiToString,$stringToAscii");

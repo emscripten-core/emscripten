@@ -858,7 +858,7 @@ class benchmark(common.RunnerCore):
                       emcc_args=['-sSTACK_SIZE=1MB'])
 
   def test_base64(self):
-    src = read_file(test_file('base64.cpp'))
+    src = read_file(test_file('base64.c'))
     self.do_benchmark('base64', src, 'decode')
 
   @non_core

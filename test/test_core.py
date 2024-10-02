@@ -555,9 +555,8 @@ class TestCoreBase(RunnerCore):
     self.do_runf('core/test_core_types.c')
 
   def test_cube2md5(self):
-    self.emcc_args += ['--embed-file', 'cube2md5.txt']
-    shutil.copy(test_file('cube2md5.txt'), '.')
-    self.do_run_in_out_file_test('cube2md5.cpp', assert_returncode=NON_ZERO)
+    shutil.copy(test_file('core/test_cube2md5.txt'), '.')
+    self.do_core_test('test_cube2md5.c', emcc_args=['--embed-file', 'test_cube2md5.txt'])
 
   @also_with_standalone_wasm()
   @needs_make('make')
@@ -5681,15 +5680,15 @@ got: 10
     self.do_core_test('test_utf.c')
 
   def test_utf32(self):
-    self.do_runf('utf32.cpp', 'OK.')
-    self.do_runf('utf32.cpp', 'OK.', args=['-fshort-wchar'])
+    self.do_runf('core/test_utf32.c', 'OK.')
+    self.do_runf('core/test_utf32.c', 'OK.', args=['-fshort-wchar'])
 
   @crossplatform
   def test_utf16(self):
     self.do_runf('core/test_utf16.cpp', 'OK.')
 
   def test_utf8(self):
-    self.do_runf('utf8.cpp', 'OK.')
+    self.do_runf('core/test_utf8.c', 'OK.')
 
   @also_with_wasm_bigint
   def test_utf8_textdecoder(self):
@@ -6447,7 +6446,7 @@ void* operator new(size_t size) {
     self.do_core_test('test_dlmalloc_partial_2.c', assert_returncode=NON_ZERO)
 
   def test_libcxx(self):
-    self.do_runf('hashtest.cpp',
+    self.do_runf('core/test_libcxx_hash.cpp',
                  'june -> 30\nPrevious (in alphabetical order) is july\nNext (in alphabetical order) is march')
 
     self.do_run('''
