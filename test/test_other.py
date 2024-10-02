@@ -15160,3 +15160,6 @@ addToLibrary({
     self.v8_args += ['--no-liftoff']
     self.emcc_args = ['-msimd128', '-mfp16', '-sENVIRONMENT=shell'] + opts
     self.do_runf('test_fp16.c')
+
+  def test_embool(self):
+    self.do_other_test('test_embool.c')

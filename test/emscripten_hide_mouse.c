@@ -3,7 +3,7 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 
-EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
+bool mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
   printf("Mouse click on canvas.\n");
   emscripten_force_exit(0);
   return 0;

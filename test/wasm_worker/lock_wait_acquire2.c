@@ -11,7 +11,7 @@ emscripten_lock_t lock = EMSCRIPTEN_LOCK_T_STATIC_INITIALIZER;
 void worker1_main()
 {
   emscripten_console_log("worker1 main try_acquiring lock");
-  EM_BOOL success = emscripten_lock_try_acquire(&lock); // Expect no contention on free lock.
+  bool success = emscripten_lock_try_acquire(&lock); // Expect no contention on free lock.
   emscripten_console_log("worker1 try_acquire lock finished");
   assert(success);
   emscripten_console_log("worker1 try_acquire lock success, sleeping 1000 msecs");
@@ -27,7 +27,7 @@ void worker2_main()
   emscripten_console_log("worker2 main sleeping 500 msecs");
   emscripten_wasm_worker_sleep(500 * 1000000ull);
   emscripten_console_log("worker2 slept 500 msecs, try_acquiring lock");
-  EM_BOOL success = emscripten_lock_try_acquire(&lock); // At this time, the other thread should have the lock.
+  bool success = emscripten_lock_try_acquire(&lock); // At this time, the other thread should have the lock.
   emscripten_console_log("worker2 try_acquire lock finished");
   assert(!success);
 
