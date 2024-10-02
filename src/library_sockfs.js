@@ -241,7 +241,7 @@ addToLibrary({
           addr,
           port,
           socket: ws,
-          dgram_send_queue: []
+          msg_send_queue: []
         };
 
         SOCKFS.websocket_sock_ops.addPeer(sock, peer);
@@ -254,7 +254,7 @@ addToLibrary({
 #if SOCKET_DEBUG
           dbg('websocket: queuing port message (port ' + sock.sport + ')');
 #endif
-          peer.dgram_send_queue.push(new Uint8Array([
+          peer.msg_send_queue.push(new Uint8Array([
               255, 255, 255, 255,
               'p'.charCodeAt(0), 'o'.charCodeAt(0), 'r'.charCodeAt(0), 't'.charCodeAt(0),
               ((sock.sport & 0xff00) >> 8) , (sock.sport & 0xff)
@@ -283,13 +283,13 @@ addToLibrary({
           Module['websocket'].emit('open', sock.stream.fd);
 
           try {
-            var queued = peer.dgram_send_queue.shift();
+            var queued = peer.msg_send_queue.shift();
             while (queued) {
 #if SOCKET_DEBUG
               dbg('websocket: sending queued data (' + queued.byteLength + ' bytes): ' + [Array.prototype.slice.call(new Uint8Array(queued))]);
 #endif
               peer.socket.send(queued);
-              queued = peer.dgram_send_queue.shift();
+              queued = peer.msg_send_queue.shift();
             }
           } catch (e) {
             // not much we can do here in the way of proper error handling as we've already
@@ -493,8 +493,9 @@ addToLibrary({
         sock.daddr = peer.addr;
         sock.dport = peer.port;
 
-        // always "fail" in non-blocking mode
-        throw new FS.ErrnoError({{{ cDefs.EINPROGRESS }}});
+        // because we cannot synchronously block to wait for the WebSocket
+        // connection to complete, we return here pretending that the connection
+        // was a success.
       },
       listen(sock, backlog) {
         if (!ENVIRONMENT_IS_NODE) {
@@ -605,8 +606,10 @@ addToLibrary({
         if (sock.type === {{{ cDefs.SOCK_STREAM }}}) {
           if (!dest || dest.socket.readyState === dest.socket.CLOSING || dest.socket.readyState === dest.socket.CLOSED) {
             throw new FS.ErrnoError({{{ cDefs.ENOTCONN }}});
+#if SOCKET_DEBUG
           } else if (dest.socket.readyState === dest.socket.CONNECTING) {
-            throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+            dbg('socket sendmsg called while socket is still connecting.');
+#endif
           }
         }
 
@@ -631,21 +634,21 @@ addToLibrary({
         }
 #endif
 
-        // if we're emulating a connection-less dgram socket and don't have
-        // a cached connection, queue the buffer to send upon connect and
-        // lie, saying the data was sent now.
-        if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
-          if (!dest || dest.socket.readyState !== dest.socket.OPEN) {
-            // if we're not connected, open a new connection
+        // if we don't have a cached connectionless UDP datagram connection, or
+        // the TCP socket is still connecting, queue the message to be sent upon
+        // connect, and lie, saying the data was sent now.
+        if (!dest || dest.socket.readyState !== dest.socket.OPEN) {
+          // if we're not connected, open a new connection
+          if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
             if (!dest || dest.socket.readyState === dest.socket.CLOSING || dest.socket.readyState === dest.socket.CLOSED) {
               dest = SOCKFS.websocket_sock_ops.createPeer(sock, addr, port);
             }
-#if SOCKET_DEBUG
-            dbg('websocket: queuing (' + length + ' bytes): ' + [Array.prototype.slice.call(new Uint8Array(data))]);
-#endif
-            dest.dgram_send_queue.push(data);
-            return length;
           }
+#if SOCKET_DEBUG
+          dbg('websocket: queuing (' + length + ' bytes): ' + [Array.prototype.slice.call(new Uint8Array(data))]);
+#endif
+          dest.msg_send_queue.push(data);
+          return length;
         }
 
         try {

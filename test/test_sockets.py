@@ -350,6 +350,11 @@ class sockets(BrowserCore):
         # Build and run the TCP echo client program with Emscripten
         self.btest_exit('websocket/tcp_echo_client.c', args=['-lwebsocket', '-sPROXY_POSIX_SOCKETS', '-pthread', '-sPROXY_TO_PTHREAD'])
 
+  # Test that calling send() right after a socket connect() works.
+  def test_sockets_send_while_connecting(self):
+    with NodeJsWebSocketEchoServerProcess():
+      self.btest('sockets/test_sockets_send_while_connecting.c', args=['-DSOCKET_DEBUG'], expected='0')
+
 
 class sockets64(sockets):
   def setUp(self):
