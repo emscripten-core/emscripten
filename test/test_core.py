@@ -2695,10 +2695,10 @@ The current type of b is: 9
 
   @also_with_standalone_wasm()
   def test_memcpy_alignment(self):
-    self.do_runf('test_memcpy_alignment.cpp', 'OK.')
+    self.do_runf('test_memcpy_alignment.c', 'OK.')
 
   def test_memset_alignment(self):
-    self.do_runf('test_memset_alignment.cpp', 'OK.')
+    self.do_runf('test_memset_alignment.c', 'OK.')
 
   def test_memset(self):
     self.do_core_test('test_memset.c')
