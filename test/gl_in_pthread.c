@@ -85,7 +85,7 @@ void CreateThread()
   ++numThreadsCreated;
 }
 
-void *mymain(void*)
+void *mymain(void* arg)
 {
   for(int i = 0; i < 3; ++i)
   {

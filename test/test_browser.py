@@ -1904,7 +1904,7 @@ simulateKeyUp(100);
   })
   @requires_graphics_hardware
   def test_gl_textures(self, args):
-    self.btest_exit('gl_textures.cpp', args=['-lGL', '-g', '-sSTACK_SIZE=1MB'] + args)
+    self.btest_exit('gl_textures.c', args=['-lGL', '-g', '-sSTACK_SIZE=1MB'] + args)
 
   @requires_graphics_hardware
   def test_gl_ps(self):
@@ -4175,7 +4175,7 @@ Module["preRun"] = () => {
   @requires_offscreen_canvas
   @requires_graphics_hardware
   def test_webgl_offscreen_canvas_in_pthread(self, args):
-    self.btest('gl_in_pthread.cpp', expected='1', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
+    self.btest('gl_in_pthread.c', expected='1', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
 
   # Tests that it is possible to render WebGL content on a <canvas> on the main
   # thread, after it has once been used to render WebGL content in a pthread
@@ -4190,12 +4190,12 @@ Module["preRun"] = () => {
   @requires_graphics_hardware
   @disabled('This test is disabled because current OffscreenCanvas does not allow transfering it after a rendering context has been created for it.')
   def test_webgl_offscreen_canvas_in_mainthread_after_pthread(self, args):
-    self.btest('gl_in_mainthread_after_pthread.cpp', expected='0', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
+    self.btest('gl_in_mainthread_after_pthread.c', expected='0', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
 
   @requires_offscreen_canvas
   @requires_graphics_hardware
   def test_webgl_offscreen_canvas_only_in_pthread(self):
-    self.btest_exit('gl_only_in_pthread.cpp', args=['-pthread', '-sPTHREAD_POOL_SIZE', '-sOFFSCREENCANVAS_SUPPORT', '-lGL', '-sOFFSCREEN_FRAMEBUFFER'])
+    self.btest_exit('gl_only_in_pthread.c', args=['-pthread', '-sPTHREAD_POOL_SIZE', '-sOFFSCREENCANVAS_SUPPORT', '-lGL', '-sOFFSCREEN_FRAMEBUFFER'])
 
   # Tests that rendering from client side memory without default-enabling extensions works.
   @requires_graphics_hardware
@@ -4328,7 +4328,7 @@ Module["preRun"] = () => {
       # given the synchronous render loop here, asyncify is needed to see intermediate frames and
       # the gradual color change
       args += ['-sASYNCIFY', '-DASYNCIFY']
-    self.btest_exit('gl_in_proxy_pthread.cpp', args=args)
+    self.btest_exit('gl_in_proxy_pthread.c', args=args)
 
   @parameterized({
     '': ([],),
