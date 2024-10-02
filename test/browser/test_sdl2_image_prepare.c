@@ -40,6 +40,8 @@ void ready(const char *f) {
   testImage("screenshot.jpg"); // relative path
 
   SDL_RenderPresent(renderer);
+
+  EM_ASM(reftestUnblock());
 }
 
 int main() {
@@ -56,6 +58,7 @@ int main() {
 
   assert(emscripten_run_preload_plugins("screenshot.jpg", ready, NULL) == 0);
 
+  EM_ASM(reftestBlock());
   return 0;
 }
 

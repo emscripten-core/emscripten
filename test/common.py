@@ -2209,7 +2209,21 @@ class BrowserCore(RunnerCore):
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
     shutil.copy(expected, 'expected.png')
     create_file('reftest.js', '''
+      // We have some tests that don't perform rendering during `main` so
+      // the normal process of performing `doReftest` in `postRun` doesn't
+      // work.  These tests can delay the call to `doReftest` by calling
+      // `reftestBlock` and then calling `reftestUnblock` once they have
+      // done their rendering.
+      var reftestBlocked = false;
+      function reftestBlock() {
+        reftestBlocked = true;
+      }
+      function reftestUnblock() {
+        reftestBlocked = false;
+        doReftest();
+      }
       function doReftest() {
+        if (reftestBlocked) return;
         if (doReftest.done) return;
         doReftest.done = true;
         console.log('doReftest');
@@ -2330,9 +2344,10 @@ class BrowserCore(RunnerCore):
     expected = [str(i) for i in range(0, reference_slack + 1)]
     self.make_reftest(reference)
     if self.proxied:
-      print("XXXX")
       assert 'post_build' not in kwargs
       kwargs['post_build'] = self.post_manual_reftest
+      create_file('fakereftest.js', 'var reftestUnblock = () => {}; var reftestBlock = () => {};')
+      kwargs['args'] += ['--pre-js', 'fakereftest.js']
     else:
       kwargs.setdefault('args', [])
       kwargs['args'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
