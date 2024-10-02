@@ -51,8 +51,8 @@ The JSON input format is as follows:
   }
 ]
 
-Please note that the 'f' for 'FLOAT_DEFINE' is just the format passed to printf(), you can put anything printf() understands.
-If you call this script with the flag "-f" and pass a header file, it will create an automated boilerplate for you.
+Please note that the 'f' for 'FLOAT_DEFINE' is just the format passed to printf(), you can put
+anything printf() understands.
 """
 
 import sys

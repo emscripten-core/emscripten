@@ -15,8 +15,7 @@ SDL_Renderer *renderer;
 
 int testImage(const char* fileName) {
   SDL_Surface *image = IMG_Load(fileName);
-  if (!image)
-  {
+  if (!image) {
      printf("IMG_Load: %s\n", IMG_GetError());
      return 0;
   }
@@ -41,8 +40,6 @@ void ready(const char *f) {
   testImage("screenshot.jpg"); // relative path
 
   SDL_RenderPresent(renderer);
-
-  EM_ASM({ doReftest() });
 }
 
 int main() {

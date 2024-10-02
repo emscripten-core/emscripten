@@ -40,7 +40,6 @@ $main
 $memcmp
 $memmove
 $operator\20delete\28void*\29
-$operator\20delete\28void*\2c\20unsigned\20long\29
 $operator\20new\28unsigned\20long\29
 $pthread_mutex_init
 $sbrk

@@ -6,7 +6,6 @@ $__pthread_getspecific
 $__pthread_mutex_lock
 $__pthread_mutex_trylock
 $__pthread_mutex_unlock
-$__pthread_rwlock_rdlock
 $__pthread_rwlock_timedrdlock
 $__pthread_rwlock_tryrdlock
 $__pthread_rwlock_trywrlock

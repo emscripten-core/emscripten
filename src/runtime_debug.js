@@ -16,6 +16,10 @@
 })();
 #endif
 
+if (Module['ENVIRONMENT']) {
+  throw new Error('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)');
+}
+
 function legacyModuleProp(prop, newName, incoming=true) {
   if (!Object.getOwnPropertyDescriptor(Module, prop)) {
     Object.defineProperty(Module, prop, {
@@ -56,6 +60,15 @@ function isExportedByForceFilesystem(name) {
  * their build, or no symbols that no longer exist.
  */
 function hookGlobalSymbolAccess(sym, func) {
+#if MODULARIZE && !EXPORT_ES6
+  // In MODULARIZE mode the generated code runs inside a function scope and not
+  // the global scope, and JavaScript does not provide access to function scopes
+  // so we cannot dynamically modify the scrope using `defineProperty` in this
+  // case.
+  //
+  // In this mode we simply ignore requests for `hookGlobalSymbolAccess`. Since
+  // this is a debug-only feature, skipping it is not major issue.
+#else
   if (typeof globalThis != 'undefined' && !Object.getOwnPropertyDescriptor(globalThis, sym)) {
     Object.defineProperty(globalThis, sym, {
       configurable: true,
@@ -65,6 +78,7 @@ function hookGlobalSymbolAccess(sym, func) {
       }
     });
   }
+#endif
 }
 
 function missingGlobal(sym, msg) {
@@ -128,11 +142,11 @@ var MAX_UINT32 = (2 ** 32) - 1;
 var MAX_UINT53 = (2 ** 53) - 1;
 var MAX_UINT64 = (2 ** 64) - 1;
 
-var MIN_INT8  = - (2 ** ( 8 - 1)) + 1;
-var MIN_INT16 = - (2 ** (16 - 1)) + 1;
-var MIN_INT32 = - (2 ** (32 - 1)) + 1;
-var MIN_INT53 = - (2 ** (53 - 1)) + 1;
-var MIN_INT64 = - (2 ** (64 - 1)) + 1;
+var MIN_INT8  = - (2 ** ( 8 - 1));
+var MIN_INT16 = - (2 ** (16 - 1));
+var MIN_INT32 = - (2 ** (32 - 1));
+var MIN_INT53 = - (2 ** (53 - 1));
+var MIN_INT64 = - (2 ** (64 - 1));
 
 function checkInt(value, bits, min, max) {
   assert(Number.isInteger(Number(value)), `attempt to write non-integer (${value}) into integer heap`);

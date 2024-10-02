@@ -56,7 +56,7 @@ void CreateThread(int i, int n) {
 
 int threadNum = 0;
 
-EM_BOOL WaitToJoin(double time, void *userData) {
+bool WaitToJoin(double time, void *userData) {
   int threadsRunning = 0;
   // Join all threads.
   for (int i = 0; i < NUM_THREADS; ++i) {
@@ -81,9 +81,9 @@ EM_BOOL WaitToJoin(double time, void *userData) {
       emscripten_errf("All threads finished, but counter = %d != %d!", counter, numThreadsToCreateTotal);
     assert(counter == 50);
     emscripten_force_exit(0);
-    return EM_FALSE;
+    return false;
   }
-  return EM_TRUE;
+  return true;
 }
 
 int main() {

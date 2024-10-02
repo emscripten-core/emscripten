@@ -7,7 +7,7 @@
 
 volatile int32_t addr = 1;
 
-EM_BOOL testSucceeded = 1;
+bool testSucceeded = 1;
 
 void asyncWaitFinishedShouldNotBeCalled(int32_t *ptr, uint32_t val, ATOMICS_WAIT_RESULT_T waitResult, void *userData)
 {

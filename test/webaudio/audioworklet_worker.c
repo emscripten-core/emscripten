@@ -33,7 +33,7 @@ void MessageReceivedInAudioWorkletThread() {
   emscripten_futex_wake(&workletToWorkerFutexLocation, 1);
 }
 
-void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData) {
+void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
   emscripten_audio_worklet_post_function_v(audioContext, MessageReceivedInAudioWorkletThread);
 }
 
