@@ -83,7 +83,7 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool succe
   EMSCRIPTEN_AUDIO_WORKLET_NODE_T wasmAudioWorklet = emscripten_create_wasm_audio_worklet_node(audioContext, "tone-generator", &options, &ProcessAudio, 0);
 
   // Connect the audio worklet node to the graph.
-  emscripten_audio_worklet_node_connect(audioContext, wasmAudioWorklet);
+  emscripten_audio_node_connect(wasmAudioWorklet, audioContext, 0, 0);
   EM_ASM({
     // Add a button on the page to toggle playback as a response to user click.
     let startButton = document.createElement('button');

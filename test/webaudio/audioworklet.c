@@ -95,7 +95,7 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool succe
   // Instantiate the noise-generator Audio Worklet Processor.
   EMSCRIPTEN_AUDIO_WORKLET_NODE_T wasmAudioWorklet = emscripten_create_wasm_audio_worklet_node(audioContext, "noise-generator", &options, &ProcessAudio, 0);
   // Connect the audio worklet node to the graph.
-  emscripten_audio_worklet_node_connect(audioContext, wasmAudioWorklet);
+  emscripten_audio_node_connect(wasmAudioWorklet, audioContext, 0, 0);
 
 #ifdef REPORT_RESULT
   emscripten_set_timeout_loop(main_thread_tls_access, 10, 0);

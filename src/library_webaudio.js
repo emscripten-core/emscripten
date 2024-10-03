@@ -293,17 +293,19 @@ let LibraryWebAudio = {
   },
 #endif // ~AUDIO_WORKLET
 
-  emscripten_audio_worklet_node_connect: (contextHandle, workletNode) => {
+  emscripten_audio_node_connect: (source, destination, outputIndex, inputIndex) => {
+    var srcNode = EmAudio[source];
+    var dstNode = EmAudio[destination];
 #if ASSERTIONS
-    assert(EmAudio[contextHandle], `Called emscripten_audio_worklet_node_connect() with an invalid AudioContext handle ${contextHandle}!`);
-    assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_audio_worklet_node_connect() on context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]} (${EmAudio[contextHandle]})`);
-    assert(EmAudio[workletNode], `Called emscripten_audio_worklet_node_connect() with an invalid AudioWorkletNode handle ${workletNode}`);
-    assert(EmAudio[workletNode].connect, `Called emscripten_audio_worklet_node_connect() on a handle ${workletNode} that is not an AudioWorkletNode, but of type ${typeof EmAudio[workletNode]} (${EmAudio[workletNode]})`);
+    assert(srcNode, `Called emscripten_audio_node_connect() with an invalid AudioNode handle ${source}`);
+    assert(srcNode instanceof window.AudioNode, `Called emscripten_audio_node_connect() on handle ${source} that is not an AudiotNode, but of type ${srcNode}`);
+    assert(dstNode, `Called emscripten_audio_node_connect() with an invalid AudioNode handle ${destination}!`);
+    assert(dstNode instanceof (window.AudioContext || window.webkitAudioContext) || dstNode instanceof window.AudioNode, `Called emscripten_audio_node_connect() on handle ${destination} that is not an AudioContext or AudioNode, but of type ${dstNode}`);
 #endif
 #if WEBAUDIO_DEBUG
-    console.log(`Connecting worklet with node ID ${workletNode} to Web Audio context with ID ${contextHandle}`);
+    console.log(`Connecting audio node ID ${source} to audio node ID ${destination} (${srcNode} to ${dstNode})`);
 #endif
-    EmAudio[workletNode].connect(EmAudio[contextHandle].destination);
+    srcNode.connect(dstNode.destination || dstNode, outputIndex, inputIndex);
   },
 
   emscripten_current_thread_is_audio_worklet: () => typeof AudioWorkletGlobalScope !== 'undefined',

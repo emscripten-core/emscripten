@@ -126,7 +126,7 @@ which resumes the audio context when the user clicks on the DOM Canvas element t
                                                               "noise-generator", &options, &GenerateNoise, 0);
 
     // Connect it to audio context destination
-    emscripten_audio_worklet_node_connect(audioContext, wasmAudioWorklet);
+    emscripten_audio_node_connect(wasmAudioWorklet, audioContext, 0, 0);
 
     // Resume context on mouse click
     emscripten_set_click_callback("canvas", (void*)audioContext, 0, OnCanvasClick);
