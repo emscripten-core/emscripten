@@ -2204,14 +2204,6 @@ class BrowserCore(RunnerCore):
       time.sleep(5)
       print('(moving on..)')
 
-  def make_reftest(self, expected):
-    # make sure the pngs used here have no color correction, using e.g.
-    #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
-    shutil.copy(expected, 'expected.png')
-    create_file('reftest.js', f'''
-      const reftestRebaseline = {EMTEST_REBASELINE};
-    ''' + read_file(test_file('reftest.js')))
-
   def compile_btest(self, filename, args, reporting=Reporting.FULL):
     # Inject support code for reporting results. This adds an include a header so testcases can
     # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
@@ -2232,29 +2224,6 @@ class BrowserCore(RunnerCore):
     if not os.path.exists(filename):
       filename = test_file(filename)
     self.run_process([compiler_for(filename), filename] + self.get_emcc_args() + args)
-
-  def reftest(self, filename, reference, reference_slack=0, *args, **kwargs):
-    """Special case of `btest` that uses reference image
-    """
-    reference = find_browser_test_file(reference)
-    assert 'expected' not in kwargs
-    expected = [str(i) for i in range(0, reference_slack + 1)]
-    self.make_reftest(reference)
-    if self.proxied:
-      assert 'post_build' not in kwargs
-      kwargs['post_build'] = self.post_manual_reftest
-      create_file('fakereftest.js', 'var reftestUnblock = () => {}; var reftestBlock = () => {};')
-      kwargs['args'] += ['--pre-js', 'fakereftest.js']
-    else:
-      kwargs.setdefault('args', [])
-      kwargs['args'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
-
-    try:
-      return self.btest(filename, expected=expected, *args, **kwargs)
-    finally:
-      if EMTEST_REBASELINE and os.path.exists('actual.png'):
-        print(f'overwriting expected image: {reference}')
-        self.run_process('pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB actual.png'.split() + [reference])
 
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
     """Special case of `btest` that reports its result solely via exiting

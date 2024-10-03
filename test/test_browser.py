@@ -20,10 +20,11 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.request import urlopen
 
+import common
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
 from common import read_file, also_with_minimal_runtime, EMRUN, no_wasm64, no_2gb, no_4gb
-from common import requires_wasm2js, also_with_wasm2js, parameterize
+from common import requires_wasm2js, also_with_wasm2js, parameterize, find_browser_test_file
 from tools import shared
 from tools import ports
 from tools import utils
@@ -246,6 +247,57 @@ class browser(BrowserCore):
     if not is_chrome():
       self.skipTest(f'Current browser ({EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
     super(browser, self).require_jspi()
+
+  def post_manual_reftest(self):
+    assert os.path.exists('reftest.js')
+    shutil.copy(test_file('browser_reporting.js'), '.')
+    html = read_file('test.html')
+    html = html.replace('</body>', '''
+<script src="browser_reporting.js"></script>
+<script src="reftest.js"></script>
+<script>
+var windowClose = window.close;
+window.close = () => {
+  // wait for rafs to arrive and the screen to update before reftesting
+  setTimeout(() => {
+    doReftest();
+    setTimeout(windowClose, 5000);
+  }, 1000);
+};
+</script>
+</body>''')
+    create_file('test.html', html)
+
+  def make_reftest(self, expected):
+    # make sure the pngs used here have no color correction, using e.g.
+    #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
+    shutil.copy(expected, 'expected.png')
+    create_file('reftest.js', f'''
+      const reftestRebaseline = {common.EMTEST_REBASELINE};
+    ''' + read_file(test_file('reftest.js')))
+
+  def reftest(self, filename, reference, reference_slack=0, *args, **kwargs):
+    """Special case of `btest` that uses reference image
+    """
+    reference = find_browser_test_file(reference)
+    assert 'expected' not in kwargs
+    expected = [str(i) for i in range(0, reference_slack + 1)]
+    self.make_reftest(reference)
+    if self.proxied:
+      assert 'post_build' not in kwargs
+      kwargs['post_build'] = self.post_manual_reftest
+      create_file('fakereftest.js', 'var reftestUnblock = () => {}; var reftestBlock = () => {};')
+      kwargs['args'] += ['--pre-js', 'fakereftest.js']
+    else:
+      kwargs.setdefault('args', [])
+      kwargs['args'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
+
+    try:
+      return self.btest(filename, expected=expected, *args, **kwargs)
+    finally:
+      if common.EMTEST_REBASELINE and os.path.exists('actual.png'):
+        print(f'overwriting expected image: {reference}')
+        self.run_process('pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB actual.png'.split() + [reference])
 
   def test_sdl1_in_emscripten_nonstrict_mode(self):
     if 'EMCC_STRICT' in os.environ and int(os.environ['EMCC_STRICT']):
@@ -864,26 +916,6 @@ If manually bisecting:
   })
   def test_sdl_canvas(self, args):
     self.btest_exit('test_sdl_canvas.c', args=['-sLEGACY_GL_EMULATION', '-lSDL', '-lGL'] + args)
-
-  def post_manual_reftest(self):
-    assert os.path.exists('reftest.js')
-    shutil.copy(test_file('browser_reporting.js'), '.')
-    html = read_file('test.html')
-    html = html.replace('</body>', '''
-<script src="browser_reporting.js"></script>
-<script src="reftest.js"></script>
-<script>
-var windowClose = window.close;
-window.close = () => {
-  // wait for rafs to arrive and the screen to update before reftesting
-  setTimeout(() => {
-    doReftest();
-    setTimeout(windowClose, 5000);
-  }, 1000);
-};
-</script>
-</body>''')
-    create_file('test.html', html)
 
   @proxied
   def test_sdl_canvas_proxy(self):
