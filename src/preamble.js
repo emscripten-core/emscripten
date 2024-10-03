@@ -195,11 +195,10 @@ function preRun() {
   assert(!ENVIRONMENT_IS_PTHREAD); // PThreads reuse the runtime from the main thread.
 #endif
 #if expectToReceiveOnModule('preRun')
-  if (Module['preRun']) {
-    if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
-    while (Module['preRun'].length) {
-      addOnPreRun(Module['preRun'].shift());
-    }
+  var preRuns = Module['preRun'];
+  if (preRuns) {
+    if (typeof preRuns == 'function') preRuns = [preRuns];
+    preRuns.forEach(addOnPreRun);
   }
 #endif
   callRuntimeCallbacks(__ATPRERUN__);
@@ -289,11 +288,10 @@ function postRun() {
 #endif
 
 #if expectToReceiveOnModule('postRun')
-  if (Module['postRun']) {
-    if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
-    while (Module['postRun'].length) {
-      addOnPostRun(Module['postRun'].shift());
-    }
+  var postRuns = Module['postRun'];
+  if (postRuns) {
+    if (typeof postRuns == 'function') postRuns = [postRuns];
+    postRuns.forEach(addOnPostRun);
   }
 #endif
 
