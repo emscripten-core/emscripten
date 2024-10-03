@@ -9,38 +9,38 @@
 #define FALSE 0
 
 // Not used below, but helpful for debugging.
-void print_f16x8(v128_t v1) {
+void print_f16x8(v128_t v) {
   printf("[%g, %g, %g, %g, %g, %g, %g, %g]\n",
-         wasm_f16x8_extract_lane(v1, 0),
-         wasm_f16x8_extract_lane(v1, 1),
-         wasm_f16x8_extract_lane(v1, 2),
-         wasm_f16x8_extract_lane(v1, 3),
-         wasm_f16x8_extract_lane(v1, 4),
-         wasm_f16x8_extract_lane(v1, 5),
-         wasm_f16x8_extract_lane(v1, 6),
-         wasm_f16x8_extract_lane(v1, 7));
+         wasm_f16x8_extract_lane(v, 0),
+         wasm_f16x8_extract_lane(v, 1),
+         wasm_f16x8_extract_lane(v, 2),
+         wasm_f16x8_extract_lane(v, 3),
+         wasm_f16x8_extract_lane(v, 4),
+         wasm_f16x8_extract_lane(v, 5),
+         wasm_f16x8_extract_lane(v, 6),
+         wasm_f16x8_extract_lane(v, 7));
 }
-void print_i16x8(v128_t v1) {
+void print_i16x8(v128_t v) {
   printf("[%d, %d, %d, %d, %d, %d, %d, %d]\n",
-         wasm_i16x8_extract_lane(v1, 0),
-         wasm_i16x8_extract_lane(v1, 1),
-         wasm_i16x8_extract_lane(v1, 2),
-         wasm_i16x8_extract_lane(v1, 3),
-         wasm_i16x8_extract_lane(v1, 4),
-         wasm_u16x8_extract_lane(v1, 5),
-         wasm_i16x8_extract_lane(v1, 6),
-         wasm_i16x8_extract_lane(v1, 7));
+         wasm_i16x8_extract_lane(v, 0),
+         wasm_i16x8_extract_lane(v, 1),
+         wasm_i16x8_extract_lane(v, 2),
+         wasm_i16x8_extract_lane(v, 3),
+         wasm_i16x8_extract_lane(v, 4),
+         wasm_i16x8_extract_lane(v, 5),
+         wasm_i16x8_extract_lane(v, 6),
+         wasm_i16x8_extract_lane(v, 7));
 }
-void print_u16x8(v128_t v1) {
+void print_u16x8(v128_t v) {
   printf("[%d, %d, %d, %d, %d, %d, %d, %d]\n",
-         wasm_u16x8_extract_lane(v1, 0),
-         wasm_u16x8_extract_lane(v1, 1),
-         wasm_u16x8_extract_lane(v1, 2),
-         wasm_u16x8_extract_lane(v1, 3),
-         wasm_u16x8_extract_lane(v1, 4),
-         wasm_u16x8_extract_lane(v1, 5),
-         wasm_u16x8_extract_lane(v1, 6),
-         wasm_u16x8_extract_lane(v1, 7));
+         wasm_u16x8_extract_lane(v, 0),
+         wasm_u16x8_extract_lane(v, 1),
+         wasm_u16x8_extract_lane(v, 2),
+         wasm_u16x8_extract_lane(v, 3),
+         wasm_u16x8_extract_lane(v, 4),
+         wasm_u16x8_extract_lane(v, 5),
+         wasm_u16x8_extract_lane(v, 6),
+         wasm_u16x8_extract_lane(v, 7));
 }
 
 void assert_lanes_eq_uint16(v128_t v,
