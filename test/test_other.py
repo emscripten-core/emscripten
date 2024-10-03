@@ -114,11 +114,11 @@ def wasmfs_all_backends(f):
   assert callable(f)
 
   @wraps(f)
-  def metafunc(self, backend):
+  def metafunc(self, backend, *args, **kwargs):
     self.set_setting('WASMFS')
     self.emcc_args.append('-DWASMFS')
     self.emcc_args.append(f'-D{backend}')
-    f(self)
+    f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': ('WASMFS_MEMORY_BACKEND',),
                           'node': ('WASMFS_NODE_BACKEND',)})
@@ -129,14 +129,12 @@ def also_with_wasmfs_all_backends(f):
   assert callable(f)
 
   @wraps(f)
-  def metafunc(self, backend):
+  def metafunc(self, backend, *args, **kwargs):
     if backend:
       self.set_setting('WASMFS')
       self.emcc_args.append('-DWASMFS')
       self.emcc_args.append(f'-D{backend}')
-      f(self)
-    else:
-      f(self)
+    f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (None,),
                           'wasmfs': ('WASMFS_MEMORY_BACKEND',),
@@ -13564,15 +13562,9 @@ Module.postRun = () => {{
     self.do_run_in_out_file_test('wasmfs/wasmfs_getdents.c')
 
   @wasmfs_all_backends
+  @also_with_wasm_bigint
   def test_wasmfs_readfile(self):
     self.set_setting('FORCE_FILESYSTEM')
-    self.do_run_in_out_file_test('wasmfs/wasmfs_readfile.c')
-
-  @wasmfs_all_backends
-  def test_wasmfs_readfile_bigint(self):
-    self.set_setting('FORCE_FILESYSTEM')
-    self.set_setting('WASM_BIGINT')
-    self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_run_in_out_file_test('wasmfs/wasmfs_readfile.c')
 
   def test_wasmfs_jsfile(self):
