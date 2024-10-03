@@ -268,11 +268,16 @@ class interactive(BrowserCore):
   def test_emscripten_hide_mouse(self, args):
     self.btest('emscripten_hide_mouse.c', expected='0', args=args)
 
-  # Tests that WebGL can be run on another thread after first having run it on one thread (and that thread has exited). The intent of this is to stress graceful deinit semantics, so that it is not possible to "taint" a Canvas
-  # to a bad state after a rendering thread in a program quits and restarts. (perhaps e.g. between level loads, or subsystem loads/restarts or something like that)
-  def test_webgl_offscreen_canvas_in_two_pthreads(self):
-    for args in (['-sOFFSCREENCANVAS_SUPPORT', '-DTEST_OFFSCREENCANVAS=1'], ['-sOFFSCREEN_FRAMEBUFFER']):
-      self.btest('gl_in_two_pthreads.cpp', expected='1', args=args + ['-pthread', '-lGL', '-sGL_DEBUG', '-sPROXY_TO_PTHREAD'])
+  # Tests that WebGL can be run on another thread after first having run it on one thread (and that
+  # thread has exited). The intent of this is to stress graceful deinit semantics, so that it is not
+  # possible to "taint" a Canvas to a bad state after a rendering thread in a program quits and
+  # restarts. (perhaps e.g. between level loads, or subsystem loads/restarts or something like that)
+  @parameterized({
+    '': (['-sOFFSCREENCANVAS_SUPPORT', '-DTEST_OFFSCREENCANVAS=1'],),
+    'ofb': (['-sOFFSCREEN_FRAMEBUFFER'],),
+  })
+  def test_webgl_offscreen_canvas_in_two_pthreads(self, args):
+    self.btest('gl_in_two_pthreads.c', expected='1', args=args + ['-pthread', '-lGL', '-sGL_DEBUG', '-sPROXY_TO_PTHREAD'])
 
   # Tests creating a Web Audio context using Emscripten library_webaudio.js feature.
   @also_with_minimal_runtime

@@ -112,6 +112,17 @@ def also_with_proxying(f):
   return metafunc
 
 
+def proxied(f):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, *args, **kwargs):
+    self.proxied = True
+    return f(self, *args, **kwargs)
+
+  return decorated
+
+
 # This is similar to @core.no_wasmfs, but it disable WasmFS and runs the test
 # normally. That is, in core we skip the test if we are in the wasmfs.* mode,
 # while in browser we don't have such modes, so we force the test to run without
@@ -793,7 +804,7 @@ If manually bisecting:
   def test_sdl_image_prepare(self):
     # load an image file, get pixel data.
     shutil.copy(test_file('screenshot.jpg'), 'screenshot.not')
-    self.reftest('test_sdl_image_prepare.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'], manually_trigger_reftest=True)
+    self.reftest('test_sdl_image_prepare.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
   @parameterized({
     '': ([],),
@@ -805,12 +816,12 @@ If manually bisecting:
   def test_sdl_image_prepare_data(self, args):
     # load an image file, get pixel data.
     shutil.copy(test_file('screenshot.jpg'), 'screenshot.not')
-    self.reftest('test_sdl_image_prepare_data.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'] + args, manually_trigger_reftest=True)
+    self.reftest('test_sdl_image_prepare_data.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'] + args)
 
   def test_sdl_image_must_prepare(self):
     # load an image file, get pixel data.
     shutil.copy(test_file('screenshot.jpg'), 'screenshot.jpg')
-    self.reftest('test_sdl_image_must_prepare.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.jpg', '-lSDL', '-lGL'], manually_trigger_reftest=True)
+    self.reftest('test_sdl_image_must_prepare.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.jpg', '-lSDL', '-lGL'])
 
   def test_sdl_stb_image(self):
     # load an image file, get pixel data.
@@ -856,9 +867,11 @@ If manually bisecting:
 
   def post_manual_reftest(self):
     assert os.path.exists('reftest.js')
+    shutil.copy(test_file('browser_reporting.js'), '.')
     html = read_file('test.html')
     html = html.replace('</body>', '''
-<script src="reftest.js"/>
+<script src="browser_reporting.js"></script>
+<script src="reftest.js"></script>
 <script>
 var windowClose = window.close;
 window.close = () => {
@@ -872,9 +885,10 @@ window.close = () => {
 </body>''')
     create_file('test.html', html)
 
+  @proxied
   def test_sdl_canvas_proxy(self):
     create_file('data.txt', 'datum')
-    self.reftest('test_sdl_canvas_proxy.c', 'test_sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt', '-lSDL', '-lGL'], manual_reference=True, post_build=self.post_manual_reftest)
+    self.reftest('test_sdl_canvas_proxy.c', 'test_sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_glgears_proxy_jstarget(self):
@@ -1890,7 +1904,7 @@ simulateKeyUp(100);
   })
   @requires_graphics_hardware
   def test_gl_textures(self, args):
-    self.btest_exit('gl_textures.cpp', args=['-lGL', '-g', '-sSTACK_SIZE=1MB'] + args)
+    self.btest_exit('gl_textures.c', args=['-lGL', '-g', '-sSTACK_SIZE=1MB'] + args)
 
   @requires_graphics_hardware
   def test_gl_ps(self):
@@ -2934,7 +2948,7 @@ Module["preRun"] = () => {
     if not self.proxied:
       # closure build current fails on proxying
       self.emcc_args += ['--closure=1', '-g1']
-    self.reftest('test_sdl2_glshader.c', 'test_sdl_glshader.png', args=['-sUSE_SDL=2', '-O2', '-sLEGACY_GL_EMULATION'])
+    self.reftest('test_sdl2_glshader.c', 'test_sdl_glshader.png', args=['-sUSE_SDL=2', '-sLEGACY_GL_EMULATION'])
 
   @requires_graphics_hardware
   def test_sdl2_canvas_blank(self):
@@ -2977,18 +2991,19 @@ Module["preRun"] = () => {
   def test_sdl2_image_prepare(self):
     # load an image file, get pixel data.
     shutil.copy(test_file('screenshot.jpg'), 'screenshot.not')
-    self.reftest('test_sdl2_image_prepare.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2'], manually_trigger_reftest=True)
+    self.reftest('test_sdl2_image_prepare.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2'])
 
   @requires_graphics_hardware
   def test_sdl2_image_prepare_data(self):
     # load an image file, get pixel data.
     shutil.copy(test_file('screenshot.jpg'), 'screenshot.not')
-    self.reftest('test_sdl2_image_prepare_data.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2'], manually_trigger_reftest=True)
+    self.reftest('test_sdl2_image_prepare_data.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2'])
 
   @requires_graphics_hardware
+  @proxied
   def test_sdl2_canvas_proxy(self):
     create_file('data.txt', 'datum')
-    self.reftest('test_sdl2_canvas_proxy.c', 'test_sdl2_canvas.png', args=['-sUSE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt', '-sGL_TESTING'], manual_reference=True, post_build=self.post_manual_reftest)
+    self.reftest('test_sdl2_canvas_proxy.c', 'test_sdl2_canvas.png', args=['-sUSE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt'])
 
   def test_sdl2_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
@@ -3066,8 +3081,9 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl2_canvas_write.c', args=['-sUSE_SDL=2'])
 
   @requires_graphics_hardware
+  @proxied
   def test_sdl2_gl_frames_swap(self):
-    self.reftest('test_sdl2_gl_frames_swap.c', 'test_sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-sGL_TESTING', '-sUSE_SDL=2'], manual_reference=True, post_build=self.post_manual_reftest)
+    self.reftest('test_sdl2_gl_frames_swap.c', 'test_sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_ttf(self):
@@ -4159,7 +4175,7 @@ Module["preRun"] = () => {
   @requires_offscreen_canvas
   @requires_graphics_hardware
   def test_webgl_offscreen_canvas_in_pthread(self, args):
-    self.btest('gl_in_pthread.cpp', expected='1', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
+    self.btest('gl_in_pthread.c', expected='1', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
 
   # Tests that it is possible to render WebGL content on a <canvas> on the main
   # thread, after it has once been used to render WebGL content in a pthread
@@ -4174,12 +4190,12 @@ Module["preRun"] = () => {
   @requires_graphics_hardware
   @disabled('This test is disabled because current OffscreenCanvas does not allow transfering it after a rendering context has been created for it.')
   def test_webgl_offscreen_canvas_in_mainthread_after_pthread(self, args):
-    self.btest('gl_in_mainthread_after_pthread.cpp', expected='0', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
+    self.btest('gl_in_mainthread_after_pthread.c', expected='0', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
 
   @requires_offscreen_canvas
   @requires_graphics_hardware
   def test_webgl_offscreen_canvas_only_in_pthread(self):
-    self.btest_exit('gl_only_in_pthread.cpp', args=['-pthread', '-sPTHREAD_POOL_SIZE', '-sOFFSCREENCANVAS_SUPPORT', '-lGL', '-sOFFSCREEN_FRAMEBUFFER'])
+    self.btest_exit('gl_only_in_pthread.c', args=['-pthread', '-sPTHREAD_POOL_SIZE', '-sOFFSCREENCANVAS_SUPPORT', '-lGL', '-sOFFSCREEN_FRAMEBUFFER'])
 
   # Tests that rendering from client side memory without default-enabling extensions works.
   @requires_graphics_hardware
@@ -4312,7 +4328,7 @@ Module["preRun"] = () => {
       # given the synchronous render loop here, asyncify is needed to see intermediate frames and
       # the gradual color change
       args += ['-sASYNCIFY', '-DASYNCIFY']
-    self.btest_exit('gl_in_proxy_pthread.cpp', args=args)
+    self.btest_exit('gl_in_proxy_pthread.c', args=args)
 
   @parameterized({
     '': ([],),

@@ -25,7 +25,7 @@ void *ThreadMain(void *arg)
   printf("Thread started. You should see the WebGL canvas fade from black to red.\n");
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
-  attr.explicitSwapControl = EM_TRUE;
+  attr.explicitSwapControl = true;
   ctx = emscripten_webgl_create_context("#canvas", &attr);
   emscripten_webgl_make_context_current(ctx);
 
@@ -93,14 +93,14 @@ void MainThreadRender()
   }
 }
 
-void PollThreadExit(void *)
+void PollThreadExit(void * arg)
 {
-  if (!threadRunning))
+  if (!threadRunning)
   {
     EmscriptenWebGLContextAttributes attr;
     emscripten_webgl_init_context_attributes(&attr);
 #ifdef TEST_MAIN_THREAD_EXPLICIT_COMMIT
-    attr.explicitSwapControl = EM_TRUE;
+    attr.explicitSwapControl = true;
 #endif
     ctx = emscripten_webgl_create_context("#canvas", &attr);
     emscripten_webgl_make_context_current(ctx);

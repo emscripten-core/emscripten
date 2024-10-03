@@ -317,9 +317,9 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
     last_line = line
     last_column = column
   return {'version': 3,
-          'names': [],
           'sources': sources,
           'sourcesContent': sources_content,
+          'names': [],
           'mappings': ','.join(mappings)}
 
 

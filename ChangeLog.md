@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.69 (in development)
 -----------------------
+- The usage of `EM_BOOL` in the emscripten API has been replaced with C/C++
+  bool.  This change should not be observable since `EM_BOOL` has been
+  equivalent to `bool` since #22157. (#22155)
 
 3.1.68 - 09/30/24
 -----------------

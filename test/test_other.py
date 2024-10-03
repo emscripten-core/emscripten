@@ -2340,13 +2340,6 @@ int main() {
     self.do_runf('test.c', 'done\n', emcc_args=['-sLEGACY_GL_EMULATION', '-sMAIN_MODULE=2'])
 
   def test_js_link(self):
-    create_file('main.c', '''
-      #include <stdio.h>
-      int main() {
-        printf("hello from main\\n");
-        return 0;
-      }
-    ''')
     create_file('before.js', '''
       var MESSAGE = 'hello from js';
       // Module is initialized with empty object by default, so if there are no keys - nothing was run yet
@@ -2356,7 +2349,7 @@ int main() {
       out(MESSAGE);
     ''')
 
-    self.do_runf('main.c', 'hello from main\nhello from js\n',
+    self.do_runf(test_file('hello_world.c'), 'hello, world!\nhello from js\n',
                  emcc_args=['--pre-js', 'before.js', '--post-js', 'after.js', '-sWASM_ASYNC_COMPILATION=0'])
 
   def test_sdl_none(self):
@@ -2719,14 +2712,12 @@ More info: https://emscripten.org
     err = self.expect_fail([EMCC, '-sGL_ENABLE_GET_PROC_ADDRESS=0', test_file('other/test_GetProcAddress_LEGACY_GL_EMULATION.c')])
     self.assertContained('error: linker: Undefined symbol: SDL_GL_GetProcAddress(). Please pass -sGL_ENABLE_GET_PROC_ADDRESS at link time to link in SDL_GL_GetProcAddress().', err)
 
-  def test_prepost(self):
-    create_file('main.c', '''
-      #include <stdio.h>
-      int main() {
-        printf("hello from main\\n");
-        return 0;
-      }
-      ''')
+  @parameterized({
+    '': (False, False),
+    'no_initial_run': (True, False),
+    'run_dep': (False, True),
+  })
+  def test_prepost(self, no_initial_run, run_dep):
     create_file('pre.js', '''
       var Module = {
         preRun: () => out('pre-run'),
@@ -2734,43 +2725,41 @@ More info: https://emscripten.org
       };
       ''')
 
-    self.run_process([EMCC, 'main.c', '--pre-js', 'pre.js', '-sWASM_ASYNC_COMPILATION=0'])
-    self.assertContained('pre-run\nhello from main\npost-run\n', self.run_js('a.out.js'))
+    self.run_process([EMCC, test_file('hello_world.c'), '--pre-js', 'pre.js', '-sWASM_ASYNC_COMPILATION=0'])
+    self.assertContained('pre-run\nhello, world!\npost-run\n', self.run_js('a.out.js'))
 
     # addRunDependency during preRun should prevent main, and post-run from
     # running.
     with open('pre.js', 'a') as f:
       f.write('Module.preRun = () => { out("add-dep"); addRunDependency(); }\n')
-    self.run_process([EMCC, 'main.c', '--pre-js', 'pre.js', '-sWASM_ASYNC_COMPILATION=0'])
+    self.run_process([EMCC, test_file('hello_world.c'), '--pre-js', 'pre.js', '-sWASM_ASYNC_COMPILATION=0'])
     output = self.run_js('a.out.js')
     self.assertContained('add-dep\n', output)
-    self.assertNotContained('hello from main\n', output)
+    self.assertNotContained('hello, world!\n', output)
     self.assertNotContained('post-run\n', output)
 
     # noInitialRun prevents run
-    for no_initial_run, run_dep in ((0, 0), (1, 0), (0, 1)):
-      print(no_initial_run, run_dep)
-      args = ['-sWASM_ASYNC_COMPILATION=0', '-sEXPORTED_RUNTIME_METHODS=callMain']
-      if no_initial_run:
-        args += ['-sINVOKE_RUN=0']
-      if run_dep:
-        create_file('pre.js', 'Module.preRun = () => addRunDependency("test");')
-        create_file('post.js', 'removeRunDependency("test");')
-        args += ['--pre-js', 'pre.js', '--post-js', 'post.js']
+    args = ['-sWASM_ASYNC_COMPILATION=0', '-sEXPORTED_RUNTIME_METHODS=callMain']
+    if no_initial_run:
+      args += ['-sINVOKE_RUN=0']
+    if run_dep:
+      create_file('pre.js', 'Module.preRun = () => addRunDependency("test");')
+      create_file('post.js', 'removeRunDependency("test");')
+      args += ['--pre-js', 'pre.js', '--post-js', 'post.js']
 
-      self.run_process([EMCC, 'main.c'] + args)
-      output = self.run_js('a.out.js')
-      self.assertContainedIf('hello from main', output, not no_initial_run)
+    self.run_process([EMCC, test_file('hello_world.c')] + args)
+    output = self.run_js('a.out.js')
+    self.assertContainedIf('hello, world!', output, not no_initial_run)
 
-      if no_initial_run:
-        # Calling main later should still work, filesystem etc. must be set up.
-        print('call main later')
-        src = read_file('a.out.js')
-        src += '\nout("callMain -> " + Module.callMain());\n'
-        create_file('a.out.js', src)
-        self.assertContained('hello from main\ncallMain -> 0\n', self.run_js('a.out.js'))
+    if no_initial_run:
+      # Calling main later should still work, filesystem etc. must be set up.
+      print('call main later')
+      src = read_file('a.out.js')
+      src += '\nout("callMain -> " + Module.callMain());\n'
+      create_file('a.out.js', src)
+      self.assertContained('hello, world!\ncallMain -> 0\n', self.run_js('a.out.js'))
 
-    # Use postInit
+  def test_preinit(self):
     create_file('pre.js', '''
       var Module = {
         preRun: () => out('pre-run'),
@@ -2778,38 +2767,24 @@ More info: https://emscripten.org
         preInit: () => out('pre-init')
       };
     ''')
-    self.do_runf('main.c',
-                 'pre-init\npre-run\nhello from main\npost-run\n',
+    self.do_runf(test_file('hello_world.c'),
+                 'pre-init\npre-run\nhello, world!\npost-run\n',
                  emcc_args=['--pre-js', 'pre.js'])
 
   def test_prepost2(self):
-    create_file('main.c', '''
-      #include <stdio.h>
-      int main() {
-        printf("hello from main\\n");
-        return 0;
-      }
-    ''')
     create_file('pre.js', 'Module.preRun = () => out("pre-run");')
     create_file('pre2.js', 'Module.postRun = () => out("post-run");')
-    self.do_runf('main.c', 'pre-run\nhello from main\npost-run\n',
+    self.do_runf(test_file('hello_world.c'), 'pre-run\nhello, world!\npost-run\n',
                  emcc_args=['--pre-js', 'pre.js', '--pre-js', 'pre2.js'])
 
   def test_prepre(self):
-    create_file('main.c', '''
-      #include <stdio.h>
-      int main() {
-        printf("hello from main\\n");
-        return 0;
-      }
-    ''')
     create_file('pre.js', '''
       Module.preRun = [() => out('pre-run')];
     ''')
     create_file('pre2.js', '''
       Module.preRun.push(() => out('prepre'));
     ''')
-    self.do_runf('main.c', 'prepre\npre-run\nhello from main\n',
+    self.do_runf(test_file('hello_world.c'), 'prepre\npre-run\nhello, world!\n',
                  emcc_args=['--pre-js', 'pre.js', '--pre-js', 'pre2.js'])
 
   def test_extern_prepost(self):
@@ -15160,3 +15135,6 @@ addToLibrary({
     self.v8_args += ['--no-liftoff']
     self.emcc_args = ['-msimd128', '-mfp16', '-sENVIRONMENT=shell'] + opts
     self.do_runf('test_fp16.c')
+
+  def test_embool(self):
+    self.do_other_test('test_embool.c')

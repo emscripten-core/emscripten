@@ -2204,132 +2204,13 @@ class BrowserCore(RunnerCore):
       time.sleep(5)
       print('(moving on..)')
 
-  # @manually_trigger If set, we do not assume we should run the reftest when main() is done.
-  #                   Instead, call doReftest() in JS yourself at the right time.
-  def make_reftest(self, expected, manually_trigger=False):
+  def make_reftest(self, expected):
     # make sure the pngs used here have no color correction, using e.g.
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
-    reporting = read_file(test_file('browser_reporting.js'))
     shutil.copy(expected, 'expected.png')
-    create_file('reftest.js', '''
-      function doReftest() {
-        if (doReftest.done) return;
-        doReftest.done = true;
-        var img = new Image();
-        img.onload = () => {
-          assert(img.width == Module.canvas.width, `Invalid width: ${Module.canvas.width}, should be ${img.width}`);
-          assert(img.height == Module.canvas.height, `Invalid height: ${Module.canvas.height}, should be ${img.height}`);
-
-          var canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          var ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
-          var expected = ctx.getImageData(0, 0, img.width, img.height).data;
-
-          var actualUrl = Module.canvas.toDataURL();
-          var actualImage = new Image();
-          actualImage.onload = () => {
-            /*
-            document.body.appendChild(img); // for comparisons
-            var div = document.createElement('div');
-            div.innerHTML = '^=expected, v=actual';
-            document.body.appendChild(div);
-            document.body.appendChild(actualImage); // to grab it for creating the test reference
-            */
-
-            var actualCanvas = document.createElement('canvas');
-            actualCanvas.width = actualImage.width;
-            actualCanvas.height = actualImage.height;
-            var actualCtx = actualCanvas.getContext('2d');
-            actualCtx.drawImage(actualImage, 0, 0);
-            var actual = actualCtx.getImageData(0, 0, actualImage.width, actualImage.height).data;
-
-            var total = 0;
-            var width = img.width;
-            var height = img.height;
-            for (var x = 0; x < width; x++) {
-              for (var y = 0; y < height; y++) {
-                total += Math.abs(expected[y*width*4 + x*4 + 0] - actual[y*width*4 + x*4 + 0]);
-                total += Math.abs(expected[y*width*4 + x*4 + 1] - actual[y*width*4 + x*4 + 1]);
-                total += Math.abs(expected[y*width*4 + x*4 + 2] - actual[y*width*4 + x*4 + 2]);
-              }
-            }
-            // floor, to allow some margin of error for antialiasing
-            var wrong = Math.floor(total / (img.width*img.height*3));
-
-            function reportResult(result) {
-              // If the main JS file is in a worker, or modularize, then we need to supply our own
-              // reporting logic.
-              if (typeof reportResultToServer === 'undefined') {
-                (() => {
-                  %s
-                  reportResultToServer(result);
-                })();
-              } else {
-                reportResultToServer(result);
-              }
-            }
-
-            var rebaseline = %s;
-            if (wrong || rebaseline) {
-              // Generate a png of the actual rendered image and send it back
-              // to the server.
-              Module.canvas.toBlob((blob) => {
-                sendFileToServer('actual.png', blob);
-                reportResult(wrong);
-              })
-            } else {
-              reportResult(wrong);
-            }
-          };
-          actualImage.src = actualUrl;
-        }
-        img.src = 'expected.png';
-      };
-
-      /** @suppress {uselessCode} */
-      function setupRefTest() {
-        // Automatically trigger the reftest?
-        var manuallyTrigger = %s;
-        if (!manuallyTrigger) {
-          // Yes, automatically
-
-          Module['postRun'] = doReftest;
-
-          if (typeof WebGLClient !== 'undefined') {
-            // trigger reftest from RAF as well, needed for workers where there is no pre|postRun on the main thread
-            var realRAF = window.requestAnimationFrame;
-            /** @suppress{checkTypes} */
-            window.requestAnimationFrame = (func) => {
-              return realRAF(() => {
-                func();
-                realRAF(doReftest);
-              });
-            };
-
-            // trigger reftest from canvas render too, for workers not doing GL
-            var realWOM = worker.onmessage;
-            worker.onmessage = (event) => {
-              realWOM(event);
-              if (event.data.target === 'canvas' && event.data.op === 'render') {
-                realRAF(doReftest);
-              }
-            };
-          }
-
-        } else {
-          // Manually trigger the reftest.
-
-          // The user will call it.
-          // Add an event loop iteration to ensure rendering, so users don't need to bother.
-          var realDoReftest = doReftest;
-          doReftest = () => setTimeout(realDoReftest, 1);
-        }
-      }
-
-      setupRefTest();
-''' % (reporting, EMTEST_REBASELINE, int(manually_trigger)))
+    create_file('reftest.js', f'''
+      const reftestRebaseline = {EMTEST_REBASELINE};
+    ''' + read_file(test_file('reftest.js')))
 
   def compile_btest(self, filename, args, reporting=Reporting.FULL):
     # Inject support code for reporting results. This adds an include a header so testcases can
@@ -2352,21 +2233,19 @@ class BrowserCore(RunnerCore):
       filename = test_file(filename)
     self.run_process([compiler_for(filename), filename] + self.get_emcc_args() + args)
 
-  def reftest(self, filename, reference, reference_slack=0, manual_reference=False, manually_trigger_reftest=False, *args, **kwargs):
+  def reftest(self, filename, reference, reference_slack=0, *args, **kwargs):
     """Special case of `btest` that uses reference image
     """
-    if self.proxied:
-      assert not manual_reference
-      manual_reference = True
-      manually_trigger_reftest = False
-      assert 'post_build' not in kwargs
-      kwargs['post_build'] = self.post_manual_reftest
-
     reference = find_browser_test_file(reference)
     assert 'expected' not in kwargs
     expected = [str(i) for i in range(0, reference_slack + 1)]
-    self.make_reftest(reference, manually_trigger=manually_trigger_reftest)
-    if not manual_reference:
+    self.make_reftest(reference)
+    if self.proxied:
+      assert 'post_build' not in kwargs
+      kwargs['post_build'] = self.post_manual_reftest
+      create_file('fakereftest.js', 'var reftestUnblock = () => {}; var reftestBlock = () => {};')
+      kwargs['args'] += ['--pre-js', 'fakereftest.js']
+    else:
       kwargs.setdefault('args', [])
       kwargs['args'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
 
