@@ -97,17 +97,20 @@ void emscripten_create_wasm_audio_worklet_processor_async(EMSCRIPTEN_WEBAUDIO_T 
 
 typedef int EMSCRIPTEN_AUDIO_WORKLET_NODE_T;
 
+// Number of samples processed per channel in the AudioSampleFrame (fixed at 128 in the Web Audio API specification)
+#define WEBAUDIO_QUANTUM_SIZE 128
+
 typedef struct AudioSampleFrame
 {
 	const int numberOfChannels;
-	// An array of length numberOfChannels*128 elements, where data[channelIndex*128+i] locates the data of the i'th sample of channel channelIndex.
+	// An array of length numberOfChannels*128 elements (128 being WEBAUDIO_QUANTUM_SIZE), where data[channelIndex*128+i] locates the data of the i'th sample of channel channelIndex.
 	float *data;
 } AudioSampleFrame;
 
 typedef struct AudioParamFrame
 {
 	// Specifies the length of the input array data (in float elements). This will be guaranteed to either have
-	// a value of 1 or 128, depending on whether the audio parameter changed during this frame.
+	// a value of 1, for a parameter valid for the entire frame, or 128 (the WEBAUDIO_QUANTUM_SIZE), for a parameter that changes during the frame.
 	int length;
 	// An array of length specified in 'length'.
 	float *data;

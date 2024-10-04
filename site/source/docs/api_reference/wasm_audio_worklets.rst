@@ -45,7 +45,8 @@ processing graph as AudioWorkletNodes.
 
 Once a class type is instantiated on the Web Audio graph and the graph is
 running, a C/C++ function pointer callback will be invoked for each 128
-samples of the processed audio stream that flows through the node.
+samples (``WEBAUDIO_QUANTUM_SIZE``) of the processed audio stream that flows
+through the node.
 
 This callback will be executed on a dedicated separate audio processing
 thread with real-time processing priority. Each Web Audio context will
@@ -157,7 +158,7 @@ which resumes the audio context when the user clicks on the DOM Canvas element t
                         void *userData)
   {
     for(int i = 0; i < numOutputs; ++i)
-      for(int j = 0; j < 128*outputs[i].numberOfChannels; ++j)
+      for(int j = 0; j < WEBAUDIO_QUANTUM_SIZE*outputs[i].numberOfChannels; ++j)
         outputs[i].data[j] = emscripten_random() * 0.2 - 0.1; // Warning: scale down audio volume by factor of 0.2, raw noise can be really loud otherwise
 
     return true; // Keep the graph output going
