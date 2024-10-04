@@ -718,6 +718,7 @@ class MTLibrary(Library):
   def __init__(self, **kwargs):
     self.is_mt = kwargs.pop('is_mt')
     self.is_ww = kwargs.pop('is_ww') and not self.is_mt
+    self.is_sm = kwargs.pop('is_sm') and not self.is_mt and not self.is_ww
     super().__init__(**kwargs)
 
   def get_cflags(self):
@@ -726,6 +727,8 @@ class MTLibrary(Library):
       cflags += ['-pthread', '-sWASM_WORKERS']
     if self.is_ww:
       cflags += ['-sWASM_WORKERS']
+    if self.is_sm:
+      cflags += ['-sSHARED_MEMORY=1']
     return cflags
 
   def get_base_name(self):
@@ -734,21 +737,39 @@ class MTLibrary(Library):
       name += '-mt'
     if self.is_ww:
       name += '-ww'
+    if self.is_sm:
+      name += '-sm'
     return name
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_mt', 'is_ww']
+    return super().vary_on() + ['is_mt', 'is_ww', 'is_sm']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(is_mt=settings.PTHREADS, is_ww=settings.WASM_WORKERS and not settings.PTHREADS, **kwargs)
+    return super().get_default_variation(
+      is_mt=settings.PTHREADS,
+      is_ww=settings.WASM_WORKERS and not settings.PTHREADS,
+      is_sm=settings.SHARED_MEMORY and not settings.PTHREADS and not settings.WASM_WORKERS,
+      **kwargs
+    )
 
   @classmethod
   def variations(cls):
     combos = super(MTLibrary, cls).variations()
-    # To save on # of variations, pthreads and Wasm workers when used together, just use pthreads variation.
-    return [combo for combo in combos if not combo['is_mt'] or not combo['is_ww']]
+
+    # Each of these flags is mutually exclusive, so don't include any variations where more than
+    # one is set.
+    def is_valid(combo):
+      set_flags = 0
+      if combo['is_mt']:
+        set_flags += 1
+      if combo['is_ww']:
+        set_flags += 1
+      if combo['is_sm']:
+        set_flags += 1
+      return set_flags <= 1
+    return [combo for combo in combos if is_valid(combo)]
 
 
 class DebugLibrary(Library):
