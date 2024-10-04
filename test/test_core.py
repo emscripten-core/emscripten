@@ -5680,8 +5680,8 @@ got: 10
     self.do_core_test('test_utf.c')
 
   def test_utf32(self):
-    self.do_runf('core/test_utf32.c', 'OK.')
-    self.do_runf('core/test_utf32.c', 'OK.', args=['-fshort-wchar'])
+    self.do_runf('utf32.cpp', 'OK.')
+    self.do_runf('utf32.cpp', 'OK.', args=['-fshort-wchar'])
 
   @crossplatform
   def test_utf16(self):
