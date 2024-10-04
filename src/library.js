@@ -1947,10 +1947,8 @@ addToLibrary({
 
   $callRuntimeCallbacks__internal: true,
   $callRuntimeCallbacks: (callbacks) => {
-    while (callbacks.length > 0) {
-      // Pass the module as the first argument.
-      callbacks.shift()(Module);
-    }
+    // Pass the module as the first argument.
+    callbacks.forEach((f) => f(Module));
   },
 
 #if SHRINK_LEVEL == 0 || ASYNCIFY == 2
