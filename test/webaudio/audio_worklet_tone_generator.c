@@ -38,12 +38,12 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
 
   // Produce a sine wave tone of desired frequency to all output channels.
   for(int o = 0; o < numOutputs; ++o)
-    for(int i = 0; i < 128; ++i)
+    for(int i = 0; i < WEBAUDIO_QUANTUM_SIZE; ++i)
     {
       float s = emscripten_math_sin(phase);
       phase += phaseIncrement;
       for(int ch = 0; ch < outputs[o].numberOfChannels; ++ch)
-        outputs[o].data[ch*128 + i] = s * currentVolume;
+        outputs[o].data[ch*WEBAUDIO_QUANTUM_SIZE + i] = s * currentVolume;
     }
 
   // Range reduce to keep precision around zero.
