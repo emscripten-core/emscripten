@@ -9,16 +9,38 @@
 #define FALSE 0
 
 // Not used below, but helpful for debugging.
-void print_f16x8(v128_t v1) {
+void print_f16x8(v128_t v) {
   printf("[%g, %g, %g, %g, %g, %g, %g, %g]\n",
-         wasm_f16x8_extract_lane(v1, 0),
-         wasm_f16x8_extract_lane(v1, 1),
-         wasm_f16x8_extract_lane(v1, 2),
-         wasm_f16x8_extract_lane(v1, 3),
-         wasm_f16x8_extract_lane(v1, 4),
-         wasm_f16x8_extract_lane(v1, 5),
-         wasm_f16x8_extract_lane(v1, 6),
-         wasm_f16x8_extract_lane(v1, 7));
+         wasm_f16x8_extract_lane(v, 0),
+         wasm_f16x8_extract_lane(v, 1),
+         wasm_f16x8_extract_lane(v, 2),
+         wasm_f16x8_extract_lane(v, 3),
+         wasm_f16x8_extract_lane(v, 4),
+         wasm_f16x8_extract_lane(v, 5),
+         wasm_f16x8_extract_lane(v, 6),
+         wasm_f16x8_extract_lane(v, 7));
+}
+void print_i16x8(v128_t v) {
+  printf("[%d, %d, %d, %d, %d, %d, %d, %d]\n",
+         wasm_i16x8_extract_lane(v, 0),
+         wasm_i16x8_extract_lane(v, 1),
+         wasm_i16x8_extract_lane(v, 2),
+         wasm_i16x8_extract_lane(v, 3),
+         wasm_i16x8_extract_lane(v, 4),
+         wasm_i16x8_extract_lane(v, 5),
+         wasm_i16x8_extract_lane(v, 6),
+         wasm_i16x8_extract_lane(v, 7));
+}
+void print_u16x8(v128_t v) {
+  printf("[%d, %d, %d, %d, %d, %d, %d, %d]\n",
+         wasm_u16x8_extract_lane(v, 0),
+         wasm_u16x8_extract_lane(v, 1),
+         wasm_u16x8_extract_lane(v, 2),
+         wasm_u16x8_extract_lane(v, 3),
+         wasm_u16x8_extract_lane(v, 4),
+         wasm_u16x8_extract_lane(v, 5),
+         wasm_u16x8_extract_lane(v, 6),
+         wasm_u16x8_extract_lane(v, 7));
 }
 
 void assert_lanes_eq_uint16(v128_t v,
@@ -38,6 +60,25 @@ void assert_lanes_eq_uint16(v128_t v,
   assert(wasm_u16x8_extract_lane(v, 5) == l5);
   assert(wasm_u16x8_extract_lane(v, 6) == l6);
   assert(wasm_u16x8_extract_lane(v, 7) == l7);
+}
+
+void assert_lanes_eq_int16(v128_t v,
+                           int16_t l0,
+                           int16_t l1,
+                           int16_t l2,
+                           int16_t l3,
+                           int16_t l4,
+                           int16_t l5,
+                           int16_t l6,
+                           int16_t l7) {
+  assert(wasm_i16x8_extract_lane(v, 0) == l0);
+  assert(wasm_i16x8_extract_lane(v, 1) == l1);
+  assert(wasm_i16x8_extract_lane(v, 2) == l2);
+  assert(wasm_i16x8_extract_lane(v, 3) == l3);
+  assert(wasm_i16x8_extract_lane(v, 4) == l4);
+  assert(wasm_i16x8_extract_lane(v, 5) == l5);
+  assert(wasm_i16x8_extract_lane(v, 6) == l6);
+  assert(wasm_i16x8_extract_lane(v, 7) == l7);
 }
 
 void assert_lanes_eq_float(v128_t v,
@@ -93,6 +134,46 @@ v128_t create_f16x8(float l0,
   v = wasm_f16x8_replace_lane(v, 5, l5);
   v = wasm_f16x8_replace_lane(v, 6, l6);
   v = wasm_f16x8_replace_lane(v, 7, l7);
+  return v;
+}
+
+v128_t create_i16x8(int16_t l0,
+                    int16_t l1,
+                    int16_t l2,
+                    int16_t l3,
+                    int16_t l4,
+                    int16_t l5,
+                    int16_t l6,
+                    int16_t l7) {
+  v128_t v;
+  v = wasm_i16x8_replace_lane(v, 0, l0);
+  v = wasm_i16x8_replace_lane(v, 1, l1);
+  v = wasm_i16x8_replace_lane(v, 2, l2);
+  v = wasm_i16x8_replace_lane(v, 3, l3);
+  v = wasm_i16x8_replace_lane(v, 4, l4);
+  v = wasm_i16x8_replace_lane(v, 5, l5);
+  v = wasm_i16x8_replace_lane(v, 6, l6);
+  v = wasm_i16x8_replace_lane(v, 7, l7);
+  return v;
+}
+
+v128_t create_u16x8(uint16_t l0,
+                    uint16_t l1,
+                    uint16_t l2,
+                    uint16_t l3,
+                    uint16_t l4,
+                    uint16_t l5,
+                    uint16_t l6,
+                    uint16_t l7) {
+  v128_t v;
+  v = wasm_u16x8_replace_lane(v, 0, l0);
+  v = wasm_u16x8_replace_lane(v, 1, l1);
+  v = wasm_u16x8_replace_lane(v, 2, l2);
+  v = wasm_u16x8_replace_lane(v, 3, l3);
+  v = wasm_u16x8_replace_lane(v, 4, l4);
+  v = wasm_u16x8_replace_lane(v, 5, l5);
+  v = wasm_u16x8_replace_lane(v, 6, l6);
+  v = wasm_u16x8_replace_lane(v, 7, l7);
   return v;
 }
 
@@ -207,4 +288,18 @@ int main() {
                                create_f16x8(     1e4,  INFINITY, -1.0f, 0.0f, 1.0f,   1.5f,  4.0f,  1.0f),
                                create_f16x8(INFINITY,  INFINITY, -1.0f, 0.0f, 1.0f,   2.0f,  1.0f, -1.0f));
   assert_lanes_eq_float(a,                  INFINITY,  INFINITY, -2.0f, 0.0f, 0.0f, -0.25f,  9.0f, -2.0f);
+
+  a = wasm_i16x8_trunc_sat_f16x8(create_f16x8(42.0f, -42.0f, NAN, INFINITY, -INFINITY, 65504.0f, -65504.0f, 0));
+  assert_lanes_eq_int16(a,                      42,     -42,   0,    32767,    -32768,    32767,    -32768, 0);
+
+  a = wasm_u16x8_trunc_sat_f16x8(create_f16x8(42.0f, -42.0f, NAN, INFINITY, -INFINITY, 65504.0f, -65504.0f, 0));
+  assert_lanes_eq_uint16(a,                      42,      0,   0,    65535,         0,    65504,         0, 0);
+
+  // One confusing one below is 32767 which cannot be represented in FP16, so it becomes 32768.
+  a = wasm_f16x8_convert_i16x8(create_i16x8(0,    1,    -1,    32767,   -32768, 0, 0, 0));
+  assert_lanes_eq_float(a,                  0, 1.0f, -1.0f, 32768.0f,   -32768, 0, 0, 0);
+
+  // Another tricky one below is 65535, FP16 can't represent the max of uint16 so it becomes INFINITY.
+  a = wasm_f16x8_convert_u16x8(create_u16x8(0,    1,    65535,   65504U,   0, 0, 0, 0));
+  assert_lanes_eq_float(a,                  0, 1.0f, INFINITY, 65504.0f,   0, 0, 0, 0);
 }
