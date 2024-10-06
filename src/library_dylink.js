@@ -201,9 +201,30 @@ var LibraryDylink = {
 #endif
     ;
   },
+  $setGOTEntry__deps: ['$addFunction', '$getFunctionAddress'],
+  $setGOTEntry: (symName, value) => {
+    const entry = GOT[symName];
+#if DYLINK_DEBUG == 2
+    dbg(`setGOTEntry: before: ${symName} : ${entry.value}`);
+#endif
+    if (typeof value == 'function') {
+      entry.value = {{{ to64('addFunction(value, value.sig)') }}};
+    } else if (typeof value == 'number') {
+      entry.value = {{{ to64('value') }}};
+#if MEMORY64
+    } else if (typeof value == 'bigint') {
+      entry.value = value;
+#endif
+    } else {
+      throw new Error(`bad export type for '${symName}': ${typeof value}`);
+    }
+#if DYLINK_DEBUG == 2
+    dbg(`setGOTEntry:  after: ${symName} ${typeof value}: ${entry.value} (${value})`);
+#endif
+  },
 
   $updateGOT__internal: true,
-  $updateGOT__deps: ['$GOT', '$isInternalSym', '$addFunction', '$getFunctionAddress'],
+  $updateGOT__deps: ['$GOT', '$isInternalSym', '$setGOTEntry'],
   $updateGOT: (exports, replace) => {
 #if DYLINK_DEBUG
     dbg("updateGOT: adding " + Object.keys(exports).length + " symbols");
@@ -223,22 +244,7 @@ var LibraryDylink = {
 
       GOT[symName] ||= new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
       if (replace || GOT[symName].value == 0) {
-#if DYLINK_DEBUG == 2
-        dbg(`updateGOT: before: ${symName} : ${GOT[symName].value}`);
-#endif
-        if (typeof value == 'function') {
-          GOT[symName].value = {{{ to64('addFunction(value)') }}};
-#if DYLINK_DEBUG == 2
-          dbg(`updateGOT: FUNC: ${symName} : ${GOT[symName].value}`);
-#endif
-        } else if (typeof value == {{{ POINTER_JS_TYPE }}}) {
-          GOT[symName].value = value;
-        } else {
-          err(`unhandled export type for '${symName}': ${typeof value}`);
-        }
-#if DYLINK_DEBUG == 2
-        dbg(`updateGOT:  after: ${symName} : ${GOT[symName].value} (${value})`);
-#endif
+        setGOTEntry(symName, value);
       }
 #if DYLINK_DEBUG
       else if (GOT[symName].value != value) {
@@ -303,21 +309,7 @@ var LibraryDylink = {
 #if DYLINK_DEBUG == 2
         dbg(`assigning dynamic symbol from main module: ${symName} -> ${prettyPrint(value)}`);
 #endif
-        if (typeof value == 'function') {
-          /** @suppress {checkTypes} */
-          entry.value = {{{ to64('addFunction(value, value.sig)') }}};
-#if DYLINK_DEBUG == 2
-          dbg(`assigning table entry for : ${symName} -> ${entry.value}`);
-#endif
-        } else if (typeof value == 'number') {
-          entry.value = {{{ to64('value') }}};
-#if MEMORY64
-        } else if (typeof value == 'bigint') {
-          entry.value = value;
-#endif
-        } else {
-          throw new Error(`bad export type for '${symName}': ${typeof value}`);
-        }
+        setGOTEntry(symName, value);
       }
     }
 #if DYLINK_DEBUG
