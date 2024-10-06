@@ -181,6 +181,25 @@ std::wstring get_non_ascii_wstring() {
     return ws;
 }
 
+std::u8string get_non_ascii_u8string() {
+  std::u8string u8s(14, 0);
+  u8s[0] = 0xa;
+  u8s[1] = 0xd3;
+  u8s[2] = 0x92;
+  u8s[3] = 0xe0;
+  u8s[4] = 0xa4;
+  u8s[5] = 0xa9;
+  u8s[6] = 0xf0;
+  u8s[7] = 0x9f;
+  u8s[8] = 0x98;
+  u8s[9] = 0x81;
+  u8s[10] = 0xf0;
+  u8s[11] = 0x9f;
+  u8s[12] = 0x9a;
+  u8s[13] = 0x80;
+  return u8s;
+}
+
 std::u16string get_non_ascii_u16string() {
     std::u16string u16s(4, 0);
     u16s[0] = 10;
@@ -202,6 +221,10 @@ std::u32string get_non_ascii_u32string() {
 
 std::wstring get_literal_wstring() {
     return L"get_literal_wstring";
+}
+
+std::u8string get_literal_u8string() {
+    return u8"get_literal_u8string";
 }
 
 std::u16string get_literal_u16string() {
@@ -240,6 +263,10 @@ std::basic_string<unsigned char> emval_test_take_and_return_std_basic_string_uns
 }
 
 std::wstring take_and_return_std_wstring(std::wstring str) {
+    return str;
+}
+
+std::u8string take_and_return_std_u8string(std::u8string str) {
     return str;
 }
 
@@ -1956,10 +1983,13 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("emval_test_take_and_return_std_string_const_ref", &emval_test_take_and_return_std_string_const_ref);
     function("emval_test_take_and_return_std_basic_string_unsigned_char", &emval_test_take_and_return_std_basic_string_unsigned_char);
     function("take_and_return_std_wstring", &take_and_return_std_wstring);
+    function("take_and_return_std_u8string", &take_and_return_std_u8string);
     function("take_and_return_std_u16string", &take_and_return_std_u16string);
     function("take_and_return_std_u32string", &take_and_return_std_u32string);
+    function("get_non_ascii_u8string", &get_non_ascii_u8string);
     function("get_non_ascii_u16string", &get_non_ascii_u16string);
     function("get_non_ascii_u32string", &get_non_ascii_u32string);
+    function("get_literal_u8string", &get_literal_u8string);
     function("get_literal_u16string", &get_literal_u16string);
     function("get_literal_u32string", &get_literal_u32string);
 
