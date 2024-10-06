@@ -270,6 +270,7 @@ var WasiLibrary = {
 #else
   fd_write__deps: ['$printChar'],
 #endif
+  fd_write__proxy: 'none', // Each Worker can do stdout/stderr printing on its own, without needing to proxy to the main thread.
   fd_write: (fd, iov, iovcnt, pnum) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
@@ -295,6 +296,7 @@ var WasiLibrary = {
   fd_pwrite__deps: ['$doWritev'],
 #endif
   fd_pwrite__i53abi: true,
+  fd_pwrite__proxy: 'none', // Each Worker can do stdout/stderr printing on its own, without needing to proxy to the main thread.
   fd_pwrite: (fd, iov, iovcnt, offset, pnum) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
