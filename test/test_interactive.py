@@ -82,6 +82,16 @@ class interactive(BrowserCore):
 
     self.btest_exit('test_sdl_audio_mix_channels.c', args=['-O2', '--minify=0', '--preload-file', 'sound.ogg'] + args)
 
+  def test_sdl_audio_mix_channels_halt(self):
+    shutil.copy(test_file('sounds/the_entertainer.ogg'), '.')
+
+    self.btest_exit('test_sdl_audio_mix_channels_halt.c', args=['-O2', '--minify=0', '--preload-file', 'the_entertainer.ogg'])
+
+  def test_sdl_audio_mix_playing(self):
+    shutil.copy(test_file('sounds/noise.ogg'), '.')
+
+    self.btest_exit('test_sdl_audio_mix_playing.c', args=['-O2', '--minify=0', '--preload-file', 'noise.ogg'])
+
   @parameterized({
     '': ([],),
     'wasmfs': (['-sWASMFS'],),
