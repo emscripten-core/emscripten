@@ -23,6 +23,8 @@ See docs/process.md for more on how version tagging works.
 - The usage of `EM_BOOL` in the emscripten API has been replaced with C/C++
   bool.  This change should not be observable since `EM_BOOL` has been
   equivalent to `bool` since #22157. (#22155)
+- Fix regression introduced in 3.1.67 (#22557) which broke webgpu / int64
+  integration. (#22689)
 
 3.1.68 - 09/30/24
 -----------------
