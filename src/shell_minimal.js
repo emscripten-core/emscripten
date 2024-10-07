@@ -143,7 +143,7 @@ var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name == 'em-pthread';
 #if !MODULARIZE
 // In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
-var _scriptName = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
+var _scriptName = (typeof document != 'undefined' && document.currentScript?.tagName.toUpperCase() === 'SCRIPT') ? document.currentScript.src : undefined;
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE

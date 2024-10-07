@@ -2414,7 +2414,7 @@ def modularize():
     if settings.EXPORT_ES6 and settings.USE_ES6_IMPORT_META:
       script_url = 'import.meta.url'
     else:
-      script_url = "typeof document != 'undefined' ? document.currentScript?.src : undefined"
+      script_url = "(typeof document != 'undefined' && document.currentScript?.tagName.toUpperCase() === 'SCRIPT') ? document.currentScript.src : undefined"
       if shared.target_environment_may_be('node'):
         script_url_node = "if (typeof __filename != 'undefined') _scriptName = _scriptName || __filename;"
     src = '''%(node_imports)s

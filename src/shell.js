@@ -175,7 +175,7 @@ var quit_ = (status, toThrow) => {
 #if SHARED_MEMORY && !MODULARIZE
 // In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
-var _scriptName = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
+var _scriptName = (typeof document != 'undefined' && document.currentScript?.tagName.toUpperCase() === 'SCRIPT') ? document.currentScript.src : undefined;
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
@@ -375,7 +375,7 @@ if (ENVIRONMENT_IS_SHELL) {
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   if (ENVIRONMENT_IS_WORKER) { // Check worker, not web, since window could be polyfilled
     scriptDirectory = self.location.href;
-  } else if (typeof document != 'undefined' && document.currentScript) { // web
+  } else if (typeof document != 'undefined' && document.currentScript?.tagName.toUpperCase() === 'SCRIPT') { // web
     scriptDirectory = document.currentScript.src;
   }
 #if MODULARIZE
