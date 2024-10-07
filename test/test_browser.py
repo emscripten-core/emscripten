@@ -1915,12 +1915,10 @@ simulateKeyUp(100);
   def test_glframebufferattachmentinfo(self):
     self.btest('glframebufferattachmentinfo.c', '1', args=['-lGLESv2', '-lEGL'])
 
-  @no_wasm64('TODO: LEGACY_GL_EMULATION + wasm64')
   @requires_graphics_hardware
   def test_sdl_glshader(self):
     self.reftest('test_sdl_glshader.c', 'test_sdl_glshader.png', args=['-O2', '--closure=1', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
-  @no_wasm64('TODO: LEGACY_GL_EMULATION + wasm64')
   @requires_graphics_hardware
   @also_with_proxying
   def test_sdl_glshader2(self):
