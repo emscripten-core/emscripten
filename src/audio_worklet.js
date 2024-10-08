@@ -98,8 +98,8 @@ function createWasmAudioWorkletProcessor(audioParams) {
       dataPtr += numParams * {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
       for (i = 0; paramArray = parameters[i++];) {
         // Write the AudioParamFrame struct instance
-        HEAPU32[[k + {{{ C_STRUCTS.AudioParamFrame.length / 4 }}}] = paramArray.length;
-        HEAPU32[[k + {{{ C_STRUCTS.AudioParamFrame.data / 4 }}}] = dataPtr;
+        HEAPU32[k + {{{ C_STRUCTS.AudioParamFrame.length / 4 }}}] = paramArray.length;
+        HEAPU32[k + {{{ C_STRUCTS.AudioParamFrame.data / 4 }}}] = dataPtr;
         k += {{{ C_STRUCTS.AudioParamFrame.__size__ / 4}}};
         // Marshal the audio parameters array
         HEAPF32.set(paramArray, dataPtr>>2);
