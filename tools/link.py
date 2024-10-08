@@ -2458,7 +2458,7 @@ else if (typeof define === 'function' && define['amd'])
     # when running in MODULARIZE mode we need use this to know if we should
     # run the module constructor on startup (true only for pthreads).
     if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
-      src += "var isPthread = globalThis.self?.name === 'em-pthread';\n"
+      src += "var isPthread = globalThis.self?.name?.startsWith('em-pthread');\n"
       # In order to support both web and node we also need to detect node here.
       if settings.ENVIRONMENT_MAY_BE_NODE:
         src += "var isNode = typeof globalThis.process?.versions?.node == 'string';\n"
