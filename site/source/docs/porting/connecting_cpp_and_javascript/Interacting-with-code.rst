@@ -648,7 +648,7 @@ For example, if you add a function that takes an integer and does not return
 anything, the signature is ``'vi'``.
 
 When ``'j'`` is used there are several ways in which the parameter value will
-be passed to JavaScript. By default the value will either be passed as a
+be passed to JavaScript. By default, the value will either be passed as a
 single BigInt or a pair of JavaScript numbers (double) depending on whether
 the ``WASM_BIGINT`` settings is enabled. In addition, if you only require 53
 bits of precision you can add the ``__i53abi`` decorator, which will ignore
