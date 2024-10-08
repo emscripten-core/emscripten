@@ -25,7 +25,7 @@ float currentVolume = 0.3; // [local variable to the audio thread]
 volatile int audioProcessedCount = 0;
 #endif
 
-// This function will be called for every fixed 128 samples of audio to be processed.
+// This function will be called for every fixed-size buffer of audio samples to be processed.
 bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData) {
 #ifdef REPORT_RESULT
   ++audioProcessedCount;
@@ -38,12 +38,12 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
 
   // Produce a sine wave tone of desired frequency to all output channels.
   for(int o = 0; o < numOutputs; ++o)
-    for(int i = 0; i < WEBAUDIO_QUANTUM_SIZE; ++i)
+    for(int i = 0; i < outputs[o].quantumSize; ++i)
     {
       float s = emscripten_math_sin(phase);
       phase += phaseIncrement;
       for(int ch = 0; ch < outputs[o].numberOfChannels; ++ch)
-        outputs[o].data[ch*WEBAUDIO_QUANTUM_SIZE + i] = s * currentVolume;
+        outputs[o].data[ch*outputs[o].quantumSize + i] = s * currentVolume;
     }
 
   // Range reduce to keep precision around zero.
