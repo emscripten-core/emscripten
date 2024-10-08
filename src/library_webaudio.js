@@ -293,6 +293,16 @@ let LibraryWebAudio = {
   },
 #endif // ~AUDIO_WORKLET
 
+  emscripten_audio_context_quantum_size: (contextHandle) => {
+#if ASSERTIONS
+    assert(EmAudio[contextHandle], `Called emscripten_audio_context_quantum_size() with an invalid Web Audio Context handle ${contextHandle}`);
+    assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_audio_context_quantum_size() on handle ${contextHandle} that is not an AudioContext, but of type ${EmAudio[contextHandle]}`);
+#endif
+    // TODO: once the Web Audio 1.1 API is implemented we can query the context for its renderQuantumSize
+    // (With two caveats: it needs the hint when generating the context adding, plus it requires a secure context and fallback implementing)
+    return 128;
+  },
+
   emscripten_audio_node_connect: (source, destination, outputIndex, inputIndex) => {
     var srcNode = EmAudio[source];
     var dstNode = EmAudio[destination];
