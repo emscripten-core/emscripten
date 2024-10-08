@@ -68,6 +68,9 @@ bool observe_test_end(double time, void *userData) {
 void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
   if (!success) return;
 
+  // Get the buffer's quantum size, we'll report this later
+  int quantumSize = emscripten_audio_context_quantum_size(audioContext);
+
   // Specify the input and output node configurations for the Wasm Audio
   // Worklet. A simple setup with single mono output channel here, and no
   // inputs.
@@ -98,7 +101,12 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool succe
         audioContext.suspend();
       }
     };
-  }, audioContext);
+
+    // Report the buffer size out of interest
+    let quantumText = document.createElement('p');
+    quantumText.innerHTML += `(Buffer quantum size: ${$1})`;
+    document.body.appendChild(quantumText);
+  }, audioContext, quantumSize);
 
 #ifdef REPORT_RESULT
   emscripten_set_timeout_loop(observe_test_end, 10, 0);
