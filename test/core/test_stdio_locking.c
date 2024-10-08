@@ -13,25 +13,38 @@
 #include <string.h>
 #include <stdlib.h>
 
-#ifdef __EMSCRIPTEN_PTHREADS__
-#include <pthread.h>
-
-pthread_t thread[2];
-#elif defined(__EMSCRIPTEN_WASM_WORKERS__)
-#include <emscripten/wasm_worker.h>
-#include <emscripten/eventloop.h>
-
-emscripten_wasm_worker_t worker[2];
-#else
-#error Expected to be compiled with either -sWASM_WORKERS or -pthread.
-#endif
-
 #ifndef __wasm_atomics__
 #error Expected to be compiled with -matomics.
 #endif
 
 #ifndef __wasm_bulk_memory__
 #error Expected to be compiled with -mbulk-memory.
+#endif
+
+#ifdef __EMSCRIPTEN_PTHREADS__
+#include <pthread.h>
+
+pthread_t thread[2];
+
+void thread_func(void);
+
+void *thread_main(void *arg) {
+  thread_func();
+  return 0;
+}
+#elif defined(__EMSCRIPTEN_WASM_WORKERS__)
+#include <emscripten/wasm_worker.h>
+#include <emscripten/eventloop.h>
+
+emscripten_wasm_worker_t worker[2];
+
+void terminate_worker(void *userData)
+{
+  emscripten_terminate_all_wasm_workers();
+  printf("main done\n");
+}
+#else
+#error Expected to be compiled with either -sWASM_WORKERS or -pthread.
 #endif
 
 char *char_repeat(int n, char c) {
@@ -41,20 +54,12 @@ char *char_repeat(int n, char c) {
   return dest;
 }
 
-void thread_main() {
+void thread_func(void) {
   char *msg = char_repeat(100, 'a');
   for (int i = 0; i < 10; ++i)
     printf("%s\n", msg);
   free(msg);
 }
-
-#ifdef __EMSCRIPTEN_WASM_WORKERS__
-void terminate_worker(void *userData)
-{
-  emscripten_terminate_all_wasm_workers();
-  printf("main done\n");
-}
-#endif
 
 int main() {
   printf("in main\n");
@@ -62,10 +67,10 @@ int main() {
   void *thread_rtn;
   int rc;
 
-  rc = pthread_create(&thread[0], NULL, (void* (*)(void*))thread_main, NULL);
+  rc = pthread_create(&thread[0], NULL, thread_main, NULL);
   assert(rc == 0);
 
-  rc = pthread_create(&thread[1], NULL, (void* (*)(void*))thread_main, NULL);
+  rc = pthread_create(&thread[1], NULL, thread_main, NULL);
   assert(rc == 0);
 
   rc = pthread_join(thread[0], &thread_rtn);
@@ -80,8 +85,8 @@ int main() {
 #else
   worker[0] = emscripten_malloc_wasm_worker(/*stack size: */1024);
   worker[1] = emscripten_malloc_wasm_worker(/*stack size: */1024);
-  emscripten_wasm_worker_post_function_v(worker[0], (void (*))thread_main);
-  emscripten_wasm_worker_post_function_v(worker[1], (void (*))thread_main);
+  emscripten_wasm_worker_post_function_v(worker[0], thread_func);
+  emscripten_wasm_worker_post_function_v(worker[1], thread_func);
 
   // Terminate both workers after a small delay
   emscripten_set_timeout(terminate_worker, 1000, 0);
