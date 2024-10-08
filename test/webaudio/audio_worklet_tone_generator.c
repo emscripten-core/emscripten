@@ -82,17 +82,15 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool succe
   // Instantiate the noise-generator Audio Worklet Processor.
   EMSCRIPTEN_AUDIO_WORKLET_NODE_T wasmAudioWorklet = emscripten_create_wasm_audio_worklet_node(audioContext, "tone-generator", &options, &ProcessAudio, 0);
 
+  // Connect the audio worklet node to the graph.
+  emscripten_audio_node_connect(wasmAudioWorklet, audioContext, 0, 0);
   EM_ASM({
-    let audioContext = emscriptenGetAudioObject($0);
-    let audioWorkletNode = emscriptenGetAudioObject($1);
-    // Connect the audio worklet node to the graph.
-    audioWorkletNode.connect(audioContext.destination);
-
     // Add a button on the page to toggle playback as a response to user click.
     let startButton = document.createElement('button');
     startButton.innerHTML = 'Toggle playback';
     document.body.appendChild(startButton);
 
+    let audioContext = emscriptenGetAudioObject($0);
     startButton.onclick = () => {
       if (audioContext.state != 'running') {
         audioContext.resume();
@@ -100,7 +98,7 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool succe
         audioContext.suspend();
       }
     };
-  }, audioContext, wasmAudioWorklet);
+  }, audioContext);
 
 #ifdef REPORT_RESULT
   emscripten_set_timeout_loop(observe_test_end, 10, 0);

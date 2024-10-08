@@ -293,6 +293,21 @@ let LibraryWebAudio = {
   },
 #endif // ~AUDIO_WORKLET
 
+  emscripten_audio_node_connect: (source, destination, outputIndex, inputIndex) => {
+    var srcNode = EmAudio[source];
+    var dstNode = EmAudio[destination];
+#if ASSERTIONS
+    assert(srcNode, `Called emscripten_audio_node_connect() with an invalid AudioNode handle ${source}`);
+    assert(srcNode instanceof window.AudioNode, `Called emscripten_audio_node_connect() on handle ${source} that is not an AudiotNode, but of type ${srcNode}`);
+    assert(dstNode, `Called emscripten_audio_node_connect() with an invalid AudioNode handle ${destination}!`);
+    assert(dstNode instanceof (window.AudioContext || window.webkitAudioContext) || dstNode instanceof window.AudioNode, `Called emscripten_audio_node_connect() on handle ${destination} that is not an AudioContext or AudioNode, but of type ${dstNode}`);
+#endif
+#if WEBAUDIO_DEBUG
+    console.log(`Connecting audio node ID ${source} to audio node ID ${destination} (${srcNode} to ${dstNode})`);
+#endif
+    srcNode.connect(dstNode.destination || dstNode, outputIndex, inputIndex);
+  },
+
   emscripten_current_thread_is_audio_worklet: () => typeof AudioWorkletGlobalScope !== 'undefined',
 
   emscripten_audio_worklet_post_function_v: (audioContext, funcPtr) => {
