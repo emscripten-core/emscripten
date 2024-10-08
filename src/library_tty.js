@@ -106,7 +106,7 @@ addToLibrary({
       },
       put_char(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
-          out(UTF8ArrayToString(tty.output, 0));
+          out(UTF8ArrayToString(tty.output));
           tty.output = [];
         } else {
           if (val != 0) tty.output.push(val); // val == 0 would cut text output off in the middle.
@@ -114,7 +114,7 @@ addToLibrary({
       },
       fsync(tty) {
         if (tty.output && tty.output.length > 0) {
-          out(UTF8ArrayToString(tty.output, 0));
+          out(UTF8ArrayToString(tty.output));
           tty.output = [];
         }
       },
@@ -143,7 +143,7 @@ addToLibrary({
     default_tty1_ops: {
       put_char(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
-          err(UTF8ArrayToString(tty.output, 0));
+          err(UTF8ArrayToString(tty.output));
           tty.output = [];
         } else {
           if (val != 0) tty.output.push(val);
@@ -151,7 +151,7 @@ addToLibrary({
       },
       fsync(tty) {
         if (tty.output && tty.output.length > 0) {
-          err(UTF8ArrayToString(tty.output, 0));
+          err(UTF8ArrayToString(tty.output));
           tty.output = [];
         }
       }
