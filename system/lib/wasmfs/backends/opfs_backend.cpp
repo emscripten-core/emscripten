@@ -3,8 +3,10 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-#include <emscripten/threading.h>
 #include <stdlib.h>
+
+#include <emscripten/promise.h>
+#include <emscripten/threading.h>
 
 #include "backend.h"
 #include "file.h"
@@ -25,8 +27,25 @@ public:
 #ifdef __EMSCRIPTEN_PTHREADS__
   ProxyWorker proxy;
 
+  Worker(ProxyWorker::Synchronicity sync) : proxy(sync) {}
+
   template<typename T> void operator()(T func) { proxy(func); }
+
+  em_promise_t getPromise() { return proxy.getPromise(); }
+
 #else
+
+  em_promise_t promise;
+
+  Worker(ProxyWorker::Synchronicity sync)
+    : promise(emscripten_promise_create()) {
+    // No need to wait for worker startup, so just resolve this promise
+    // immediately.
+    emscripten_promise_resolve(promise, EM_PROMISE_FULFILL, nullptr);
+  }
+
+  ~Worker() { emscripten_promise_destroy(promise); }
+
   // When used with JSPI on the main thread the various wasmfs_opfs_* functions
   // can be directly executed since they are all async.
   template<typename T> void operator()(T func) {
@@ -38,6 +57,9 @@ public:
       func();
     }
   }
+
+  em_promise_t getPromise() { return promise; }
+
 #endif
 };
 
@@ -377,6 +399,9 @@ class OPFSBackend : public Backend {
 public:
   Worker proxy;
 
+  OPFSBackend(ProxyWorker::Synchronicity synchronicity)
+    : proxy(synchronicity) {}
+
   std::shared_ptr<DataFile> createFile(mode_t mode) override {
     // No way to support a raw file without a parent directory.
     // TODO: update the core system to document this as a possible result of
@@ -407,7 +432,21 @@ backend_t wasmfs_create_opfs_backend() {
     emscripten_has_asyncify() == 2 &&
       "Cannot safely create OPFS backend on main browser thread without JSPI");
 
-  return wasmFS.addBackend(std::make_unique<OPFSBackend>());
+  return wasmFS.addBackend(std::make_unique<OPFSBackend>(ProxyWorker::Sync));
+}
+
+static em_promise_result_t
+opfs_resolve_backend(void** result, void* data, void* value) {
+  // `data` contains the backend_t for the opfs backend.
+  *result = data;
+  return EM_PROMISE_FULFILL;
+}
+
+em_promise_t wasmfs_create_opfs_backend_async() {
+  auto opfs = std::make_unique<OPFSBackend>(ProxyWorker::Async);
+  auto started = opfs->proxy.getPromise();
+  backend_t backend = wasmFS.addBackend(std::move(opfs));
+  return emscripten_promise_then(started, opfs_resolve_backend, NULL, backend);
 }
 
 void EMSCRIPTEN_KEEPALIVE _wasmfs_opfs_record_entry(
