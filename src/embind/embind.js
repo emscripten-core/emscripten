@@ -59,16 +59,6 @@ var LibraryEmbind = {
   }`,
   $EmValOptionalType__deps: ['$EmValType'],
   $EmValOptionalType: '=Object.assign({optional: true}, EmValType);',
-  $init_embind__deps: [
-    '$getInheritedInstanceCount', '$getLiveInheritedInstances',
-    '$flushPendingDeletes', '$setDelayFunction'],
-  $init_embind__postset: 'init_embind();',
-  $init_embind: () => {
-    Module['getInheritedInstanceCount'] = getInheritedInstanceCount;
-    Module['getLiveInheritedInstances'] = getLiveInheritedInstances;
-    Module['flushPendingDeletes'] = flushPendingDeletes;
-    Module['setDelayFunction'] = setDelayFunction;
-  },
 
   $throwUnboundTypeError__deps: ['$registeredTypes', '$typeDependencies', '$UnboundTypeError', '$getTypeName'],
   $throwUnboundTypeError: (message, types) => {
@@ -219,7 +209,6 @@ var LibraryEmbind = {
   },
 
   // raw pointer -> instance
-  $registeredInstances__deps: ['$init_embind'],
   $registeredInstances: {},
 
   $getBasestPointer__deps: ['$throwBindingError'],
@@ -1582,6 +1571,8 @@ var LibraryEmbind = {
     '$releaseClassHandle',
     '$throwBindingError',
     '$detachFinalizer',
+    '$flushPendingDeletes',
+    '$delayFunction',
   ],
   $init_ClassHandle: () => {
     Object.assign(ClassHandle.prototype, {
