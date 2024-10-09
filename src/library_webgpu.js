@@ -30,8 +30,7 @@
   // Helper functions for code generation
   globalThis.gpu = {
     makeInitManager: function(type) {
-      var mgr = `WebGPU.mgr${type}`;
-      return `${mgr} = ${mgr} || new Manager();`;
+      return `WebGPU.mgr${type} = new Manager();`;
     },
 
     makeReferenceRelease: function(type) {
@@ -201,7 +200,9 @@ var LibraryWebGPU = {
     },
 
     initManagers: () => {
-      if (WebGPU.mgrDevice) return;
+#if ASSERTIONS
+      assert(!WebGPU.mgrDevice, 'initManagers already called');
+#endif
 
       /** @constructor */
       function Manager() {
