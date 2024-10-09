@@ -2032,9 +2032,9 @@ var LibraryWebGPU = {
 
     {{{ gpu.convertSentinelToUndefined('size') }}}
 
-    if (bufferWrapper.mapMode !== {{{ gpu.MapMode.Write }}}) {
+    if (bufferWrapper.mapMode !== {{{ gpu.MapMode.Read }}} && bufferWrapper.mapMode !== {{{ gpu.MapMode.Write }}}) {
 #if ASSERTIONS
-      abort("GetMappedRange called, but buffer not mapped for writing");
+      abort("GetMappedRange called, but buffer not mapped for reading or writing");
 #endif
       // TODO(kainino0x): Somehow inject a validation error?
       return 0;
@@ -2053,10 +2053,14 @@ var LibraryWebGPU = {
 
     var data = _memalign(16, mapped.byteLength);
     HEAPU8.fill(0, data, mapped.byteLength);
-    bufferWrapper.onUnmap.push(() => {
-      new Uint8Array(mapped).set(HEAPU8.subarray(data, data + mapped.byteLength));
-      _free(data);
-    });
+    if (bufferWrapper.mapMode === {{{ gpu.MapMode.Write }}}) {
+      bufferWrapper.onUnmap.push(() => {
+        new Uint8Array(mapped).set(HEAPU8.subarray(data, data + mapped.byteLength));
+        _free(data);
+      });
+    } else {
+      bufferWrapper.onUnmap.push(() => _free(data));
+    }
     return data;
   },
 
