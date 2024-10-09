@@ -755,6 +755,7 @@ class MTLibrary(Library):
     # These are mutually exclusive, only one flag will be set at any give time.
     return [combo for combo in combos if not combo['is_mt'] or not combo['is_sm']]
 
+
 class DebugLibrary(Library):
   def __init__(self, **kwargs):
     self.is_debug = kwargs.pop('is_debug')
@@ -1451,7 +1452,7 @@ class libwasm_workers(MTLibrary):
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['debug']
+    return super().vary_on() + ['debug', 'is_ww']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
