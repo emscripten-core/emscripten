@@ -5,11 +5,11 @@ declare namespace RuntimeExports {
      * array that contains uint8 values, returns a copy of that string as a
      * Javascript String object.
      * heapOrArray is either a regular array, or a JavaScript typed array view.
-     * @param {number} idx
+     * @param {number=} idx
      * @param {number=} maxBytesToRead
      * @return {string}
      */
-    function UTF8ArrayToString(heapOrArray: any, idx: number, maxBytesToRead?: number | undefined): string;
+    function UTF8ArrayToString(heapOrArray: any, idx?: number | undefined, maxBytesToRead?: number | undefined): string;
     let wasmTable: WebAssembly.Table;
     let HEAPF32: any;
     let HEAPF64: any;

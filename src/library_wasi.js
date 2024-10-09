@@ -245,7 +245,7 @@ var WasiLibrary = {
     assert(buffer);
 #endif
     if (curr === 0 || curr === {{{ charCode('\n') }}}) {
-      (stream === 1 ? out : err)(UTF8ArrayToString(buffer, 0));
+      (stream === 1 ? out : err)(UTF8ArrayToString(buffer));
       buffer.length = 0;
     } else {
       buffer.push(curr);

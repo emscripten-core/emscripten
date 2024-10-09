@@ -146,7 +146,7 @@ FS.init();
       // The buffer contents exist 8 bytes after the returned pointer.
       var ret = new Uint8Array(HEAPU8.subarray(buf + 8, buf + 8 + length));
       if (opts.encoding === 'utf8') {
-        ret = UTF8ArrayToString(ret, 0);
+        ret = UTF8ArrayToString(ret);
       }
 
       return ret;
