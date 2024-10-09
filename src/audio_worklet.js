@@ -31,6 +31,8 @@ function createWasmAudioWorkletProcessor(audioParams) {
       let opts = args.processorOptions;
       this.callbackFunction = Module['wasmTable'].get(opts['cb']);
       this.userData = opts['ud'];
+      // Plus the number of samples to process, fixed for the lifetime of the context that created this processor
+      this.quantumSize = opts['qs'];
     }
 
     static get parameterDescriptors() {
@@ -38,9 +40,6 @@ function createWasmAudioWorkletProcessor(audioParams) {
     }
 
     process(inputList, outputList, parameters) {
-      // hardcoding this until the Web Audio 1.1 API spec makes it into browsers and we can get the AudioWorkletProcessor's context quantum
-      const quantumSize = 128;
-
       // Marshal all inputs and parameters to the Wasm memory on the thread stack,
       // then perform the wasm audio worklet call,
       // and finally marshal audio output data back.
@@ -54,7 +53,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
         didProduceAudio, paramArray;
 
       // Calculate how much stack space is needed.
-      const quantumBytes = quantumSize * 4;
+      const quantumBytes = this.quantumSize * 4;
       for (i of inputList) stackMemoryNeeded += i.length * quantumBytes;
       for (i of outputList) stackMemoryNeeded += i.length * quantumBytes;
       for (i in parameters) stackMemoryNeeded += parameters[i].byteLength + {{{ C_STRUCTS.AudioParamFrame.__size__ }}}, ++numParams;
@@ -68,7 +67,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       for (i of inputList) {
         // Write the AudioSampleFrame struct instance
         HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.numberOfChannels / 4 }}}] = i.length;
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.quantumSize / 4 }}}] = quantumSize;
+        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.quantumSize / 4 }}}] = this.quantumSize;
         HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.data / 4 }}}] = dataPtr;
         k += {{{ C_STRUCTS.AudioSampleFrame.__size__ / 4 }}};
         // Marshal the input audio sample data for each audio channel of this input
@@ -85,7 +84,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       for (i of outputList) {
         // Write the AudioSampleFrame struct instance
         HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.numberOfChannels / 4 }}}] = i.length;
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.quantumSize / 4 }}}] = quantumSize;
+        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.quantumSize / 4 }}}] = this.quantumSize;
         HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.data / 4 }}}] = dataPtr;
         k += {{{ C_STRUCTS.AudioSampleFrame.__size__ / 4 }}};
         // Reserve space for the output data
@@ -114,7 +113,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
         // not have one, so manually copy all bytes in)
         for (i of outputList) {
           for (j of i) {
-            for (k = 0; k < quantumSize; ++k) {
+            for (k = 0; k < this.quantumSize; ++k) {
               j[k] = HEAPF32[outputDataPtr++];
             }
           }
