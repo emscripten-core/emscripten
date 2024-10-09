@@ -1949,6 +1949,7 @@ def run_embind_gen(wasm_target, js_syms, extra_settings, linker_inputs):
       if building.is_wasm_dylib(linker_input):
         safe_copy(linker_input, in_temp(''))
 
+  settings.EXPORTED_RUNTIME_METHODS = []
   # Ignore any options or settings that can conflict with running the TS
   # generation output.
   # Don't invoke the program's `main` function.
