@@ -1574,7 +1574,8 @@ var LibraryEmbind = {
     }));
   },
 
-  $init_ClassHandle__deps: [
+  // root of all pointer and smart pointer handles in embind
+  $ClassHandle__deps: [
     '$ClassHandle',
     '$shallowCopyInternalPointer',
     '$throwInstanceAlreadyDeleted',
@@ -1583,100 +1584,91 @@ var LibraryEmbind = {
     '$throwBindingError',
     '$detachFinalizer',
   ],
-  $init_ClassHandle: () => {
-    Object.assign(ClassHandle.prototype, {
-      "isAliasOf"(other) {
-        if (!(this instanceof ClassHandle)) {
-          return false;
-        }
-        if (!(other instanceof ClassHandle)) {
-          return false;
-        }
+  $ClassHandle: class {
+    "isAliasOf"(other) {
+      if (!(this instanceof ClassHandle)) {
+        return false;
+      }
+      if (!(other instanceof ClassHandle)) {
+        return false;
+      }
 
-        var leftClass = this.$$.ptrType.registeredClass;
-        var left = this.$$.ptr;
-        other.$$ = /** @type {Object} */ (other.$$);
-        var rightClass = other.$$.ptrType.registeredClass;
-        var right = other.$$.ptr;
+      var leftClass = this.$$.ptrType.registeredClass;
+      var left = this.$$.ptr;
+      other.$$ = /** @type {Object} */ (other.$$);
+      var rightClass = other.$$.ptrType.registeredClass;
+      var right = other.$$.ptr;
 
-        while (leftClass.baseClass) {
-          left = leftClass.upcast(left);
-          leftClass = leftClass.baseClass;
-        }
+      while (leftClass.baseClass) {
+        left = leftClass.upcast(left);
+        leftClass = leftClass.baseClass;
+      }
 
-        while (rightClass.baseClass) {
-          right = rightClass.upcast(right);
-          rightClass = rightClass.baseClass;
-        }
+      while (rightClass.baseClass) {
+        right = rightClass.upcast(right);
+        rightClass = rightClass.baseClass;
+      }
 
-        return leftClass === rightClass && left === right;
-      },
+      return leftClass === rightClass && left === right;
+    }
 
-      "clone"() {
-        if (!this.$$.ptr) {
-          throwInstanceAlreadyDeleted(this);
-        }
+    "clone"() {
+      if (!this.$$.ptr) {
+        throwInstanceAlreadyDeleted(this);
+      }
 
-        if (this.$$.preservePointerOnDelete) {
-          this.$$.count.value += 1;
-          return this;
-        } else {
-          var clone = attachFinalizer(Object.create(Object.getPrototypeOf(this), {
-            $$: {
-              value: shallowCopyInternalPointer(this.$$),
-            }
-          }));
-
-          clone.$$.count.value += 1;
-          clone.$$.deleteScheduled = false;
-          return clone;
-        }
-      },
-
-      "delete"() {
-        if (!this.$$.ptr) {
-          throwInstanceAlreadyDeleted(this);
-        }
-
-        if (this.$$.deleteScheduled && !this.$$.preservePointerOnDelete) {
-          throwBindingError('Object already scheduled for deletion');
-        }
-
-        detachFinalizer(this);
-        releaseClassHandle(this.$$);
-
-        if (!this.$$.preservePointerOnDelete) {
-          this.$$.smartPtr = undefined;
-          this.$$.ptr = undefined;
-        }
-      },
-
-      "isDeleted"() {
-        return !this.$$.ptr;
-      },
-
-      "deleteLater"() {
-        if (!this.$$.ptr) {
-          throwInstanceAlreadyDeleted(this);
-        }
-        if (this.$$.deleteScheduled && !this.$$.preservePointerOnDelete) {
-          throwBindingError('Object already scheduled for deletion');
-        }
-        deletionQueue.push(this);
-        if (deletionQueue.length === 1 && delayFunction) {
-          delayFunction(flushPendingDeletes);
-        }
-        this.$$.deleteScheduled = true;
+      if (this.$$.preservePointerOnDelete) {
+        this.$$.count.value += 1;
         return this;
-      },
-    });
-  },
+      } else {
+        var clone = attachFinalizer(Object.create(Object.getPrototypeOf(this), {
+          $$: {
+            value: shallowCopyInternalPointer(this.$$),
+          }
+        }));
 
-  $ClassHandle__docs: '/** @constructor */',
-  $ClassHandle__deps: ['$init_ClassHandle'],
-  $ClassHandle__postset: 'init_ClassHandle()',
-  // root of all pointer and smart pointer handles in embind
-  $ClassHandle: function() {
+        clone.$$.count.value += 1;
+        clone.$$.deleteScheduled = false;
+        return clone;
+      }
+    }
+
+    "delete"() {
+      if (!this.$$.ptr) {
+        throwInstanceAlreadyDeleted(this);
+      }
+
+      if (this.$$.deleteScheduled && !this.$$.preservePointerOnDelete) {
+        throwBindingError('Object already scheduled for deletion');
+      }
+
+      detachFinalizer(this);
+      releaseClassHandle(this.$$);
+
+      if (!this.$$.preservePointerOnDelete) {
+        this.$$.smartPtr = undefined;
+        this.$$.ptr = undefined;
+      }
+    }
+
+    "isDeleted"() {
+      return !this.$$.ptr;
+    }
+
+    "deleteLater"() {
+      if (!this.$$.ptr) {
+        throwInstanceAlreadyDeleted(this);
+      }
+      if (this.$$.deleteScheduled && !this.$$.preservePointerOnDelete) {
+        throwBindingError('Object already scheduled for deletion');
+      }
+      deletionQueue.push(this);
+      if (deletionQueue.length === 1 && delayFunction) {
+        delayFunction(flushPendingDeletes);
+      }
+      this.$$.deleteScheduled = true;
+      return this;
+    }
   },
 
   $throwInstanceAlreadyDeleted__deps: ['$throwBindingError'],
