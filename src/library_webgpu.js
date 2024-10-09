@@ -2052,13 +2052,14 @@ var LibraryWebGPU = {
     }
 
     var data = _memalign(16, mapped.byteLength);
-    HEAPU8.fill(0, data, mapped.byteLength);
     if (bufferWrapper.mapMode === {{{ gpu.MapMode.Write }}}) {
+      HEAPU8.fill(0, data, mapped.byteLength);
       bufferWrapper.onUnmap.push(() => {
         new Uint8Array(mapped).set(HEAPU8.subarray(data, data + mapped.byteLength));
         _free(data);
       });
     } else {
+      HEAPU8.set(new Uint8Array(mapped), data);
       bufferWrapper.onUnmap.push(() => _free(data));
     }
     return data;
