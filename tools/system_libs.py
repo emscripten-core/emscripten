@@ -1426,7 +1426,8 @@ class libwasm_workers(MTLibrary):
 
   def get_cflags(self):
     cflags = super().get_cflags()
-    cflags += ['-sWASM_WORKERS']
+    if self.is_ww:
+      cflags += ['-sWASM_WORKERS']
     if self.debug:
       cflags += ['-D_DEBUG']
       # library_wasm_worker.c contains an assert that a nonnull parameter
