@@ -45,15 +45,6 @@ if (!ENVIRONMENT_IS_PTHREAD) {
       'index': 'i64',
 #endif
     });
-#if SHARED_MEMORY
-    if (!(wasmMemory.buffer instanceof SharedArrayBuffer)) {
-      err('requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
-      if (ENVIRONMENT_IS_NODE) {
-        err('(on node you may need: --experimental-wasm-threads --experimental-wasm-bulk-memory and/or recent version)');
-      }
-      throw Error('bad memory');
-    }
-#endif
   }
 
   updateMemoryViews();
