@@ -937,6 +937,28 @@ def get_clang_output_extension(state):
     return '.o'
 
 
+def filter_out_link_flags(args):
+  rtn = []
+
+  def is_link_flag(flag):
+    if flag in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
+      return True
+    return flag.startswith(('-l', '-L', '-Wl,', '-z'))
+
+  skip = False
+  for arg in args:
+    if skip:
+      skip = False
+      continue
+    if is_link_flag(arg):
+      continue
+    if arg == '-Xlinker':
+      skip = True
+      continue
+    rtn.append(arg)
+  return rtn
+
+
 @ToolchainProfiler.profile_block('compile inputs')
 def phase_compile_inputs(options, state, newargs, input_files):
   if shared.run_via_emxx:
@@ -1016,13 +1038,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
 
   # In COMPILE_AND_LINK we need to compile source files too, but we also need to
   # filter out the link flags
-
-  def is_link_flag(flag):
-    if flag in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
-      return True
-    return flag.startswith(('-l', '-L', '-Wl,', '-z'))
-
-  compile_args = [a for a in compile_args if a and not is_link_flag(a)]
+  compile_args = filter_out_link_flags(compile_args)
   linker_inputs = []
   seen_names = {}
 
