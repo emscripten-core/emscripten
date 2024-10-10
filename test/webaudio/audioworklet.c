@@ -29,7 +29,7 @@ _Thread_local int testTlsVariable = 1;
 int lastTlsVariableValueInAudioThread = 1;
 #endif
 
-// This function will be called for every fixed 128 samples of audio to be processed.
+// This function will be called for every fixed-size buffer of audio samples to be processed.
 bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData) {
 #ifdef REPORT_RESULT
   assert(testTlsVariable == lastTlsVariableValueInAudioThread);
@@ -40,7 +40,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
 
   // Produce noise in all output channels.
   for(int i = 0; i < numOutputs; ++i)
-    for(int j = 0; j < 128*outputs[i].numberOfChannels; ++j)
+    for(int j = 0; j < outputs[i].quantumSize*outputs[i].numberOfChannels; ++j)
       outputs[i].data[j] = (rand() / (float)RAND_MAX * 2.0f - 1.0f) * 0.3f;
 
   // We generated audio and want to keep this processor going. Return false here to shut down.
