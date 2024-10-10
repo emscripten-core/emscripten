@@ -171,7 +171,7 @@ var runtimeDebug = true; // Switch to false at runtime to disable logging at the
 var printObjectList = [];
 
 function prettyPrint(arg) {
-  if (typeof arg == 'undefined') return '!UNDEFINED!';
+  if (typeof arg == 'undefined') return 'undefined';
   if (typeof arg == 'boolean') arg = arg + 0;
   if (!arg) return arg;
   var index = printObjectList.indexOf(arg);
