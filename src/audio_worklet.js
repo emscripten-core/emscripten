@@ -47,13 +47,13 @@ function createWasmAudioWorkletProcessor(audioParams) {
       let numInputs = inputList.length,
         numOutputs = outputList.length,
         numParams = 0, i, j, k, dataPtr,
+        quantumBytes = this.quantumSize * 4,
         stackMemoryNeeded = (numInputs + numOutputs) * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}},
         oldStackPtr = stackSave(),
         inputsPtr, outputsPtr, outputDataPtr, paramsPtr,
         didProduceAudio, paramArray;
 
       // Calculate how much stack space is needed.
-      const quantumBytes = this.quantumSize * 4;
       for (i of inputList) stackMemoryNeeded += i.length * quantumBytes;
       for (i of outputList) stackMemoryNeeded += i.length * quantumBytes;
       for (i in parameters) stackMemoryNeeded += parameters[i].byteLength + {{{ C_STRUCTS.AudioParamFrame.__size__ }}}, ++numParams;
