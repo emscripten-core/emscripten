@@ -180,18 +180,16 @@ var LibraryEmbind = {
     return errorClass;
   },
 
-  $createNamedFunction: (name, body) => Object.defineProperty(body, 'name', {
-    value: name
-  }),
+  $createNamedFunction: (name, func) => Object.defineProperty(func, 'name', { value: name }),
+#if MIN_CHROME_VERSION < 43 || MIN_SAFARI_VERSION < 100101 || MIN_FIREFOX_VERSION < 38
   // All browsers that support WebAssembly also support configurable function name,
   // but we might be building for very old browsers via WASM2JS.
-#if MIN_CHROME_VERSION < 43 || MIN_SAFARI_VERSION < 100101 || MIN_FIREFOX_VERSION < 38
   // In that case, check if configurable function name is supported at init time
   // and, if not, replace with a fallback that returns function as-is as those browsers
   // don't support other methods either.
   $createNamedFunction__postset: `
     if (!Object.getOwnPropertyDescriptor(Function.prototype, 'name').configurable) {
-      createNamedFunction = (name, body) => body;
+      createNamedFunction = (name, func) => func;
     }
   `,
 #endif
@@ -2226,9 +2224,7 @@ var LibraryEmbind = {
         }
       }.bind(this));
 
-      Object.defineProperty(this, '__parent', {
-        value: wrapperPrototype
-      });
+      this["__parent"] = wrapperPrototype;
       this["__construct"](...args);
     });
 
@@ -2244,9 +2240,7 @@ var LibraryEmbind = {
       var $$ = inner.$$;
       inner["notifyOnDestruction"]();
       $$.preservePointerOnDelete = true;
-      Object.defineProperties(this, { $$: {
-          value: $$
-      }});
+      this.$$ = $$;
       attachFinalizer(this);
       registerInheritedInstance(registeredClass, $$.ptr, this);
     };
