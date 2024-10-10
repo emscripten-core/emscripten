@@ -3050,8 +3050,6 @@ Module["preRun"] = () => {
     # SDL, OpenGL, readPixels
     self.btest_exit('test_sdl2_gl_read.c', args=['-sUSE_SDL=2'])
 
-  @no_4gb('https://github.com/libsdl-org/SDL/issues/9052')
-  @no_2gb('https://github.com/libsdl-org/SDL/issues/9052')
   @requires_graphics_hardware
   def test_sdl2_glmatrixmode_texture(self):
     self.reftest('test_sdl2_glmatrixmode_texture.c', 'test_sdl2_glmatrixmode_texture.png',
@@ -3105,8 +3103,6 @@ Module["preRun"] = () => {
   def test_sdl2_unwasteful(self):
     self.btest_exit('test_sdl2_unwasteful.c', args=['-sUSE_SDL=2', '-O1'])
 
-  @no_2gb('https://github.com/libsdl-org/SDL/issues/9052')
-  @no_4gb('https://github.com/libsdl-org/SDL/issues/9052')
   def test_sdl2_canvas_write(self):
     self.btest_exit('test_sdl2_canvas_write.c', args=['-sUSE_SDL=2'])
 
