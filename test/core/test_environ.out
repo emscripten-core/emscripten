@@ -3,5 +3,5 @@ LOGNAME=web_user
 PATH=/
 PWD=/
 HOME=/home/web_user
-LANG=(C|en_US).UTF-8
-_=.*(/test_environ.js|/this.program)
+LANG=C.UTF-8
+_=/private/var/folders/s1/hhcrhp756rdbjbgf81qqgd2000xtkc/T/emtest_jd83dqen/emscripten_test_core0___w85r0n/test_environ.js
