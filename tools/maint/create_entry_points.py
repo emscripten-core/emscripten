@@ -43,6 +43,7 @@ emdwp
 emnm
 emstrip
 emsymbolizer
+emscan-deps
 system/bin/sdl-config
 system/bin/sdl2-config
 tools/file_packager
