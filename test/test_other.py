@@ -12071,6 +12071,18 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
   def test_pthread_relocatable(self):
     self.do_run_in_out_file_test('hello_world.c', emcc_args=['-sRELOCATABLE'])
 
+  @node_pthreads
+  def test_pthread_unavailable(self):
+    # Run a simple hello world program that uses pthreads
+    self.emcc_args += ['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME']
+    self.do_run_in_out_file_test('hello_world.c')
+
+    # Now run the same program but with SharedArrayBuffer undefined, it should run
+    # fine and then fail on the first call to pthread_create.
+    create_file('pre.js', 'SharedArrayBuffer = undefined\n')
+    expected = 'pthread_create: environment does not support SharedArrayBuffer, pthreads are not available'
+    self.do_runf('hello_world.c', expected, assert_returncode=NON_ZERO, emcc_args=['--pre-js=pre.js'])
+
   def test_stdin_preprocess(self):
     create_file('temp.h', '#include <string>')
     outputStdin = self.run_process([EMCC, '-x', 'c++', '-dM', '-E', '-'], input="#include <string>", stdout=PIPE).stdout
