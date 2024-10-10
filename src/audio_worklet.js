@@ -31,7 +31,11 @@ function createWasmAudioWorkletProcessor(audioParams) {
       let opts = args.processorOptions;
       this.callbackFunction = Module['wasmTable'].get(opts['cb']);
       this.userData = opts['ud'];
-      // Plus the number of samples to process, fixed for the lifetime of the context that created this processor
+      // Plus the number of samples to process, fixed for the lifetime of the
+      // context that created this processor. Note for when moving to Web Audio
+      // 1.1: the typed array passed to process() should be the same size as the
+      // the quantum size, and this exercise of passing in the value shouldn't
+      // be required (to be verified).
       this.quantumSize = opts['qs'];
     }
 
