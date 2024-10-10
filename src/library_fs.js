@@ -1303,7 +1303,7 @@ FS.staticInit();
       var buf = new Uint8Array(length);
       FS.read(stream, buf, 0, length, 0);
       if (opts.encoding === 'utf8') {
-        ret = UTF8ArrayToString(buf, 0);
+        ret = UTF8ArrayToString(buf);
       } else if (opts.encoding === 'binary') {
         ret = buf;
       }

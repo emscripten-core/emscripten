@@ -587,6 +587,7 @@ sigs = {
   emscripten_atomic_wait_async__sig: 'ipippd',
   emscripten_atomics_is_lock_free__sig: 'ii',
   emscripten_audio_context_state__sig: 'ii',
+  emscripten_audio_node_connect__sig: 'viiii',
   emscripten_audio_worklet_post_function_sig__sig: 'vippp',
   emscripten_audio_worklet_post_function_v__sig: 'vip',
   emscripten_audio_worklet_post_function_vd__sig: 'vipd',

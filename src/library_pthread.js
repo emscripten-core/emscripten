@@ -405,7 +405,11 @@ var LibraryPThread = {
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
         // This is the way that we signal to the Web Worker that it is hosting
         // a pthread.
+#if ASSERTIONS
+        'name': 'em-pthread-' + PThread.nextWorkerID,
+#else
         'name': 'em-pthread',
+#endif
 #endif
       };
 #if EXPORT_ES6 && USE_ES6_IMPORT_META

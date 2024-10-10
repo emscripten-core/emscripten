@@ -23,6 +23,13 @@ See docs/process.md for more on how version tagging works.
 - The usage of `EM_BOOL` in the emscripten API has been replaced with C/C++
   bool.  This change should not be observable since `EM_BOOL` has been
   equivalent to `bool` since #22157. (#22155)
+- Fix regression introduced in 3.1.67 (#22557) which broke webgpu / int64
+  integration. (#22689)
+- SDL2 port updated from 2.28.4 to 2.30.8. (#22697)
+- embind no longer exports any library functions by default.  Previously we
+  would export getInheritedInstanceCount, getLiveInheritedInstances,
+  flushPendingDeletes and setDelayFunction.  If you need these library function
+  exprted they can be added to `EXPORTED_RUNTIME_METHODS`. (#22705)
 
 3.1.68 - 09/30/24
 -----------------

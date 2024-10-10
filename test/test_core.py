@@ -5680,8 +5680,13 @@ got: 10
     self.do_core_test('test_utf.c')
 
   def test_utf32(self):
-    self.do_runf('core/test_utf32.c', 'OK.')
-    self.do_runf('core/test_utf32.c', 'OK.', args=['-fshort-wchar'])
+    self.do_runf('utf32.cpp', 'OK (long).\n')
+
+  @no_sanitize('requires libc to be built with -fshort-char')
+  def test_utf32_short_wchar(self):
+    if '-flto' in self.emcc_args or '-flto=thin' in self.emcc_args:
+      self.skipTest('-fshort-wchar is not compatible with LTO (libraries would need rebuilting)')
+    self.do_runf('utf32.cpp', 'OK (short).\n', emcc_args=['-fshort-wchar'])
 
   @crossplatform
   def test_utf16(self):
