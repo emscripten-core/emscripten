@@ -1413,7 +1413,7 @@ def phase_linker_setup(options, state, newargs):
       'removeRunDependency',
     ]
 
-  if settings.SHARED_MEMORY or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE:
+  if settings.PTHREADS or settings.WASM_WORKERS or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE:
     settings.IMPORTED_MEMORY = 1
 
   set_initial_memory()
