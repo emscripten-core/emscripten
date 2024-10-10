@@ -5684,6 +5684,8 @@ got: 10
 
   @no_sanitize('requires libc to be built with -fshort-char')
   def test_utf32_short_wchar(self):
+    if '-flto' in self.emcc_args or '-flto=thin' in self.emcc_args:
+      self.skipTest('-fshort-wchar is not compatible with LTO (libraries would need rebuilting)')
     self.do_runf('utf32.cpp', 'OK (short).\n', emcc_args=['-fshort-wchar'])
 
   @crossplatform
