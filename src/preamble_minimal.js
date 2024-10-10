@@ -93,10 +93,6 @@ else {
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 
-#if ASSERTIONS && SHARED_MEMORY
-assert(wasmMemory.buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
-#endif
-
 updateMemoryViews();
 
 #if PTHREADS
