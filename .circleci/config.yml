@@ -25,7 +25,7 @@ executors:
       EMSDK_NOTTY: "1"
     macos:
       xcode: "14.2.0"
-    resource_class: macos.m2pro.medium
+    resource_class: m2pro.medium
 
 commands:
   download-chrome:
