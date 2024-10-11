@@ -27,7 +27,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
     // Create as web-worker-like an environment as we can.
 
     var parentPort = worker_threads['parentPort'];
-    parentPort.on('message', (data) => onmessage({ data: data }));
+    parentPort.on('message', (msg) => onmessage({ data: msg }));
 
     Object.assign(globalThis, {
       self: global,
