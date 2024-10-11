@@ -137,7 +137,6 @@ addToLibrary({
   // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/script-src#unsafe_eval_expressions
   $_wasmWorkerBlobUrl: "URL.createObjectURL(new Blob(['onmessage=function(d){onmessage=null;d=d.data;{{{ captureModuleArg() }}}{{{ instantiateWasm() }}}importScripts(d.js);{{{ instantiateModule() }}}d.wasm=d.mem=d.js=0;}'],{type:'application/javascript'}))",
 #endif
-
   _emscripten_create_wasm_worker__deps: [
     '$_wasmWorkers', '$_wasmWorkersID',
     '$_wasmWorkerAppendToQueue', '$_wasmWorkerRunPostMessage',
@@ -156,6 +155,12 @@ if (ENVIRONMENT_IS_WASM_WORKER
   addEventListener("message", _wasmWorkerAppendToQueue);
 }`,
   _emscripten_create_wasm_worker: (stackLowestAddress, stackSize) => {
+    if (typeof SharedArrayBuffer == 'undefined') {
+#if ASSERTIONS
+      dbg('create_wasm_worker: environment does not support SharedArrayBuffer, wasm workers are not available');
+#endif
+      return 0;
+    }
     let worker = _wasmWorkers[_wasmWorkersID] = new Worker(
 #if WASM_WORKERS == 2
       // WASM_WORKERS=2 mode embeds .ww.js file contents into the main .js file

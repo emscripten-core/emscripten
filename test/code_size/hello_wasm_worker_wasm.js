@@ -15,6 +15,7 @@ c && (m[0] = this, addEventListener("message", l));
 WebAssembly.instantiate(b.wasm, {
     a: {
         b: (a, d) => {
+            if ("undefined" == typeof SharedArrayBuffer) return 0;
             let r = m[n] = new Worker(b.$wb);
             r.postMessage({
                 $ww: n,
