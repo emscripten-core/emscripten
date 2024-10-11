@@ -11946,6 +11946,12 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     err = self.run_process([EMCC, test_file('hello_world.c'), '-c', '-lbar'], stderr=PIPE).stderr
     self.assertContained("warning: -lbar: 'linker' input unused [-Wunused-command-line-argument]", err)
 
+    # Check that we don't see these "input unused" errors for linker flags when
+    # compiling and linking in single step (i.e. ensure that we don't pass them to clang when
+    # compiling internally).
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-Wl,-static', '-Xlinker', '-static'], stderr=PIPE).stderr
+    self.assertNotContained("input unused", err)
+
   def test_linker_input_unused(self):
     self.run_process([EMCC, '-c', test_file('hello_world.c')])
     err = self.run_process([EMCC, 'hello_world.o', '-c', '-o', 'out.o'], stderr=PIPE).stderr
