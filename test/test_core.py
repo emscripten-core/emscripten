@@ -7363,9 +7363,9 @@ void* operator new(size_t size) {
     '': (['-lembind', '-sDYNAMIC_EXECUTION=0'],),
     'flag': (['--bind'],),
   })
-  def test_embind(self, args):
+  def test_embind_val_basics(self, args):
     self.maybe_closure()
-    create_file('test_embind.cpp', r'''
+    create_file('test.cpp', r'''
       #include <stdio.h>
       #include <emscripten/val.h>
 
@@ -7381,10 +7381,10 @@ void* operator new(size_t size) {
         return 0;
       }
     ''')
-    self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
+    self.do_runf('test.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
 
   @node_pthreads
-  def test_embind_2(self):
+  def test_embind_basics(self):
     self.maybe_closure()
     self.emcc_args += [
       '-lembind', '--post-js', 'post.js',
@@ -7396,7 +7396,7 @@ void* operator new(size_t size) {
         out('lerp ' + Module['lerp'](100, 200, 66) + '.');
       }
     ''')
-    create_file('test_embind_2.cpp', r'''
+    create_file('test.cpp', r'''
       #include <stdio.h>
       #include <emscripten.h>
       #include <emscripten/bind.h>
@@ -7414,9 +7414,9 @@ void* operator new(size_t size) {
         return 0;
       }
     ''')
-    self.do_runf('test_embind_2.cpp', 'lerp 166')
+    self.do_runf('test.cpp', 'lerp 166')
 
-  def test_embind_3(self):
+  def test_embind_unbound_types(self):
     self.emcc_args += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
       function ready() {
@@ -7427,7 +7427,7 @@ void* operator new(size_t size) {
         }
       }
     ''')
-    create_file('test_embind_3.cpp', r'''
+    create_file('test.cpp', r'''
       #include <emscripten.h>
       #include <emscripten/bind.h>
       using namespace emscripten;
@@ -7442,16 +7442,16 @@ void* operator new(size_t size) {
           return 0;
       }
     ''')
-    self.do_runf('test_embind_3.cpp', 'UnboundTypeError: Cannot call compute due to unbound types: Pi')
+    self.do_runf('test.cpp', 'UnboundTypeError: Cannot call compute due to unbound types: Pi')
 
-  def test_embind_4(self):
+  def test_embind_memory_view(self):
     self.emcc_args += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
       function printFirstElement() {
         out(Module['getBufferView']()[0]);
       }
     ''')
-    create_file('test_embind_4.cpp', r'''
+    create_file('test.cpp', r'''
       #include <emscripten.h>
       #include <emscripten/bind.h>
       #include <emscripten/val.h>
@@ -7474,35 +7474,30 @@ void* operator new(size_t size) {
         return 0;
       }
     ''')
-    self.do_runf('test_embind_4.cpp', '107')
+    self.do_runf('test.cpp', '107')
 
-  def test_embind_5(self):
-    self.do_core_test('test_embind_5.cpp', emcc_args=['-lembind'])
+  def test_embind_inheritance(self):
+    self.do_core_test('test_embind_inheritance.cpp', emcc_args=['-lembind'])
 
   def test_embind_custom_marshal(self):
     self.emcc_args += ['-lembind', '--pre-js', test_file('embind/test_custom_marshal.js')]
     self.do_run_in_out_file_test('embind/test_custom_marshal.cpp', assert_identical=True)
 
   def test_embind_float_constants(self):
-    self.emcc_args += ['-lembind']
-    self.do_run_in_out_file_test('embind/test_float_constants.cpp')
+    self.do_run_in_out_file_test('embind/test_float_constants.cpp', emcc_args=['-lembind'])
 
   def test_embind_negative_constants(self):
-    self.emcc_args += ['-lembind']
-    self.do_run_in_out_file_test('embind/test_negative_constants.cpp')
+    self.do_run_in_out_file_test('embind/test_negative_constants.cpp', emcc_args=['-lembind'])
 
   @also_with_wasm_bigint
   def test_embind_unsigned(self):
-    self.emcc_args += ['-lembind']
-    self.do_run_in_out_file_test('embind/test_unsigned.cpp')
+    self.do_run_in_out_file_test('embind/test_unsigned.cpp', emcc_args=['-lembind'])
 
   def test_embind_val(self):
-    self.emcc_args += ['-lembind']
-    self.do_run_in_out_file_test('embind/test_val.cpp')
+    self.do_run_in_out_file_test('embind/test_val.cpp', emcc_args=['-lembind'])
 
   def test_embind_val_read_pointer(self):
-    self.emcc_args += ['-lembind']
-    self.do_runf('embind/test_val_read_pointer.cpp')
+    self.do_runf('embind/test_val_read_pointer.cpp', emcc_args=['-lembind'])
 
   def test_embind_val_assignment(self):
     err = self.expect_fail([EMCC, test_file('embind/test_val_assignment.cpp'), '-lembind', '-c'])
