@@ -2006,7 +2006,7 @@ addToLibrary({
 #endif
     // In -Os and -Oz builds, do not implement a JS side wasm table mirror for small
     // code size, but directly access wasmTable, which is a bit slower as uncached.
-    return wasmTable.get(funcPtr);
+    return wasmTable.get({{{ toIndexType('funcPtr') }}});
   },
 #endif // SHRINK_LEVEL == 0
 
