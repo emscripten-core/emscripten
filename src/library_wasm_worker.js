@@ -143,6 +143,9 @@ addToLibrary({
 #if WASM_WORKERS == 2
     '$_wasmWorkerBlobUrl',
 #endif
+#if ASSERTIONS
+    'emscripten_has_threading_support',
+#endif
   ],
   _emscripten_create_wasm_worker__postset: `
 if (ENVIRONMENT_IS_WASM_WORKER
@@ -155,12 +158,12 @@ if (ENVIRONMENT_IS_WASM_WORKER
   addEventListener("message", _wasmWorkerAppendToQueue);
 }`,
   _emscripten_create_wasm_worker: (stackLowestAddress, stackSize) => {
-    if (typeof SharedArrayBuffer == 'undefined') {
 #if ASSERTIONS
-      dbg('create_wasm_worker: environment does not support SharedArrayBuffer, wasm workers are not available');
-#endif
+    if (!_emscripten_has_threading_support()) {
+      err('create_wasm_worker: environment does not support SharedArrayBuffer, wasm workers are not available');
       return 0;
     }
+#endif
     let worker = _wasmWorkers[_wasmWorkersID] = new Worker(
 #if WASM_WORKERS == 2
       // WASM_WORKERS=2 mode embeds .ww.js file contents into the main .js file
