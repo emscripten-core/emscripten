@@ -21,7 +21,7 @@ jobs:
         make dist
         version=`cat emscripten-version.txt | sed s/\"//g`
         echo "VERSION=$version" >> $GITHUB_ENV
-    - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+    - uses: actions/upload-artifact@0b2256b8c012f0828dc542b3febcab082c67f72b # v4.3.4
       with:
         name: emscripten-${{ env.VERSION }}
         path: emscripten-${{ env.VERSION }}.tar.bz2
