@@ -154,6 +154,18 @@ def requires_ninja(func):
   return decorated
 
 
+def requires_ccache(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    if not shutil.which('ccache'):
+      self.fail('test requires ccache to be installed (available in PATH)')
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def requires_scons(func):
   assert callable(func)
 
@@ -12553,6 +12565,11 @@ exec "$@"
     stdout = self.run_process([EMCC, '-c', test_file('core/test_hello_world.c'), '--compiler-wrapper=./wrapper.sh'], stdout=PIPE).stdout
     self.assertContained('wrapping compiler call: ', stdout)
     self.assertExists('test_hello_world.o')
+
+  @requires_ccache
+  @with_env_modify({'EM_COMPILER_WRAPPER': 'ccache'})
+  def test_compiler_wrapper_ccache(self):
+    self.do_runf('hello_world.c', 'hello, world!')
 
   def test_llvm_option_dash_o(self):
     # emcc used to interpret -mllvm's option value as the output file if it
