@@ -52,6 +52,9 @@ See docs/process.md for more on how version tagging works.
 - The `POLYFILL_OLD_MATH_FUNCTIONS` setting was removed.  The browser versions
   that require these polyfills are no longer supported by emscripten so the
   polyfills should never be needed. (#23262)
+- The pthread APIs now live in a separate libpthread (or libpthread-stub). This
+  library is automatically included so this change will only effect those
+  building with `-nostdlib` or `-nolibc`. (#22735)
 
 3.1.74 - 12/14/24
 -----------------
