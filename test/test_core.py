@@ -4625,10 +4625,10 @@ res64 - external 64\n''', header='''\
 
   @with_dylink_reversed
   @parameterized({
-    'libcxx': ('libc,libc++,libmalloc,libc++abi',),
+    'libcxx': ('libc,libpthread,libc++,libmalloc,libc++abi',),
     'all': ('1',),
-    'missing': ('libc,libmalloc,libc++abi', False, False, False),
-    'missing_assertions': ('libc,libmalloc,libc++abi', False, False, True),
+    'missing': ('libc,libpthread,libmalloc,libc++abi', False, False, False),
+    'missing_assertions': ('libc,libpthread,libmalloc,libc++abi', False, False, True),
   })
   def test_dylink_syslibs(self, syslibs, expect_pass=True, with_reversed=True, assertions=True):
     # one module uses libcxx, need to force its inclusion when it isn't the main
