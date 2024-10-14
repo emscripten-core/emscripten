@@ -138,8 +138,7 @@ class BootstrapMessages extends AudioWorkletProcessor {
     // initialize the Wasm Module.
     globalThis.Module['instantiateWasm'] = (info, receiveInstance) => {
       var instance = new WebAssembly.Instance(Module['wasm'], info);
-      receiveInstance(instance, Module['wasm']);
-      return instance.exports;
+      return receiveInstance(instance, Module['wasm']);
     };
 #endif
 #if WEBAUDIO_DEBUG
@@ -184,7 +183,12 @@ class BootstrapMessages extends AudioWorkletProcessor {
         // 'ud' the passed user data
         p.postMessage({'_wsc': d['cb'], 'x': [d['ch'], 1/*EM_TRUE*/, d['ud']] });
       } else if (d['_wsc']) {
-        Module['wasmTable'].get(d['_wsc'])(...d['x']);
+#if MEMORY64
+        var ptr = BigInt(d['_wsc']);
+#else
+        var ptr = d['_wsc'];
+#endif
+        Module['wasmTable'].get(ptr)(...d['x']);
       };
     }
   }
