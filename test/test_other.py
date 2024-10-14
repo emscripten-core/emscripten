@@ -3127,6 +3127,10 @@ More info: https://emscripten.org
     out = self.expect_fail([EMXX, test_file('embind/test_unsigned.cpp')])
     self.assertContained("undefined symbol: _embind_register_function", out)
 
+  def test_embind_invalid_overload(self):
+    expected = 'BindingError: Cannot register multiple overloads of a function with the same number of arguments'
+    self.do_runf(test_file('embind/test_embind_invalid_overload.cpp'), expected, emcc_args=['-lembind'], assert_returncode=NON_ZERO)
+
   def test_embind_asyncify(self):
     create_file('post.js', '''
       addOnPostRun(() => {
