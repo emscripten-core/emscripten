@@ -733,7 +733,7 @@ class MTLibrary(Library):
     if self.is_mt:
       name += '-mt'
     if self.is_sm:
-      name += '-sm'
+      name += '-ww'
     return name
 
   @classmethod
