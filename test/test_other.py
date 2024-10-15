@@ -142,43 +142,34 @@ def also_with_wasmfs_all_backends(f):
   return metafunc
 
 
+def requires_tool(tool):
+  assert not callable(tool)
+
+  def decorate(func):
+    assert callable(func)
+
+    @wraps(func)
+    def decorated(self, *args, **kwargs):
+      if not shutil.which(tool):
+        if f'EMTEST_SKIP_{tool.upper()}' in os.environ:
+          self.skipTest(f'test requires ccache and EMTEST_SKIP_{tool.upper()} is set')
+        else:
+          self.fail(f'{tool} required to run this test.  Use EMTEST_SKIP_{tool.upper()} to skip')
+      return func(self, *args, **kwargs)
+
+    return decorated
+
+  return decorate
+
+
 def requires_ninja(func):
   assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    if not shutil.which('ninja'):
-      self.fail('test requires ninja to be installed (available in PATH)')
-    return func(self, *args, **kwargs)
-
-  return decorated
-
-
-def requires_ccache(func):
-  assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    if not shutil.which('ccache'):
-      self.fail('test requires ccache to be installed (available in PATH)')
-    return func(self, *args, **kwargs)
-
-  return decorated
+  return requires_tool('ninja')(func)
 
 
 def requires_scons(func):
   assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    if not shutil.which('scons'):
-      if 'EMTEST_SKIP_SCONS' in os.environ:
-        self.skipTest('test requires scons and EMTEST_SKIP_SCONS is set')
-      else:
-        self.fail('scons required to run this test.  Use EMTEST_SKIP_SCONS to skip')
-    return func(self, *args, **kwargs)
-
-  return decorated
+  return requires_tool('scons')(func)
 
 
 def requires_pkg_config(func):
@@ -12566,7 +12557,7 @@ exec "$@"
     self.assertContained('wrapping compiler call: ', stdout)
     self.assertExists('test_hello_world.o')
 
-  @requires_ccache
+  @requires_tool('ccache')
   @with_env_modify({'EM_COMPILER_WRAPPER': 'ccache'})
   def test_compiler_wrapper_ccache(self):
     self.do_runf('hello_world.c', 'hello, world!')
