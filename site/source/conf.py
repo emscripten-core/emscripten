@@ -84,8 +84,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Emscripten'
-copyright = u'2015, '
+project = 'Emscripten'
+copyright = '2015, '
   # Note, theme was modified to allow this to display (fix breaks the translation code, which was breaking the above link and rendering it as text).
   # Also so I could link to specific copyright page.
 
@@ -259,8 +259,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'Emscripten.tex', u'Emscripten Documentation',
-   u'Hamish Willee', 'manual'),
+  ('index', 'Emscripten.tex', 'Emscripten Documentation',
+   'Hamish Willee', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -289,8 +289,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'emscripten', u'Emscripten Documentation',
-     [u'Hamish Willee'], 1)
+    ('index', 'emscripten', 'Emscripten Documentation',
+     ['Hamish Willee'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -303,8 +303,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'Emscripten', u'Emscripten Documentation',
-   u'Hamish Willee', 'Emscripten', 'One line description of project.',
+  ('index', 'Emscripten', 'Emscripten Documentation',
+   'Hamish Willee', 'Emscripten', 'One line description of project.',
    'Miscellaneous'),
 ]
 
@@ -324,13 +324,13 @@ texinfo_documents = [
 # -- Options for Epub output ----------------------------------------------
 
 # Bibliographic Dublin Core info.
-epub_title = u'Emscripten'
-epub_author = u'Hamish Willee'
-epub_publisher = u'Hamish Willee'
-epub_copyright = u'2014, Emscripten Contributors'
+epub_title = 'Emscripten'
+epub_author = 'Hamish Willee'
+epub_publisher = 'Hamish Willee'
+epub_copyright = '2014, Emscripten Contributors'
 
 # The basename for the epub file. It defaults to the project name.
-#epub_basename = u'Emscripten'
+#epub_basename = 'Emscripten'
 
 # The HTML theme for the epub output. Since the default themes are not optimized
 # for small screen space, using the same theme for HTML and epub output is
