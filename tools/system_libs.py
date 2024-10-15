@@ -717,14 +717,14 @@ class Library:
 class MTLibrary(Library):
   def __init__(self, **kwargs):
     self.is_mt = kwargs.pop('is_mt')
-    self.is_sm = kwargs.pop('is_sm') and not self.is_mt
+    self.is_ww = kwargs.pop('is_ww') and not self.is_mt
     super().__init__(**kwargs)
 
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.is_mt:
       cflags += ['-pthread', '-sWASM_WORKERS']
-    if self.is_sm:
+    if self.is_ww:
       cflags += ['-sSHARED_MEMORY=1']
     return cflags
 
@@ -732,19 +732,19 @@ class MTLibrary(Library):
     name = super().get_base_name()
     if self.is_mt:
       name += '-mt'
-    if self.is_sm:
+    if self.is_ww:
       name += '-ww'
     return name
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_mt', 'is_sm']
+    return super().vary_on() + ['is_mt', 'is_ww']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
       is_mt=settings.PTHREADS,
-      is_sm=settings.SHARED_MEMORY and not settings.PTHREADS,
+      is_ww=settings.SHARED_MEMORY and not settings.PTHREADS,
       **kwargs
     )
 
@@ -753,7 +753,7 @@ class MTLibrary(Library):
     combos = super(MTLibrary, cls).variations()
 
     # These are mutually exclusive, only one flag will be set at any give time.
-    return [combo for combo in combos if not combo['is_mt'] or not combo['is_sm']]
+    return [combo for combo in combos if not combo['is_mt'] or not combo['is_ww']]
 
 
 class DebugLibrary(Library):
@@ -1421,7 +1421,6 @@ class libwasm_workers(MTLibrary):
 
   def __init__(self, **kwargs):
     self.debug = kwargs.pop('debug')
-    self.is_ww = kwargs.pop('is_ww')
     super().__init__(**kwargs)
 
   def get_cflags(self):
@@ -1453,11 +1452,11 @@ class libwasm_workers(MTLibrary):
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['debug', 'is_ww']
+    return super().vary_on() + ['debug']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(is_ww=settings.WASM_WORKERS, debug=settings.ASSERTIONS >= 1, **kwargs)
+    return super().get_default_variation(debug=settings.ASSERTIONS >= 1, **kwargs)
 
   def get_files(self):
     files = []
@@ -1586,7 +1585,7 @@ class libcxxabi(NoExceptLibrary, MTLibrary, DebugLibrary):
 
   def get_cflags(self):
     cflags = super().get_cflags()
-    if not self.is_mt and not self.is_sm:
+    if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
     if self.eh_mode == Exceptions.NONE:
       cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
@@ -1700,7 +1699,7 @@ class libunwind(NoExceptLibrary, MTLibrary):
   def get_cflags(self):
     cflags = super().get_cflags()
     cflags.append('-DNDEBUG')
-    if not self.is_mt and not self.is_sm:
+    if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBUNWIND_HAS_NO_THREADS')
     if self.eh_mode == Exceptions.NONE:
       cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
