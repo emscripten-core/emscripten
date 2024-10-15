@@ -8,6 +8,27 @@
 {{{ exportRuntime() }}}
 
 #if HAS_MAIN // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
+
+#if EXIT_RUNTIME
+function exitRuntime(ret) {
+  callRuntimeCallbacks(__ATEXIT__);
+  <<< ATEXITS >>>
+#if PTHREADS
+  PThread.terminateAllThreads();
+#endif
+
+#if ASSERTIONS
+  runtimeExited = true;
+#endif
+
+  _proc_exit(ret);
+
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
+#endif
+}
+#endif
+
 function run() {
 #if MEMORYPROFILER
   emscriptenMemoryProfiler.onPreloadComplete();
@@ -19,28 +40,18 @@ function run() {
   // User requested the PROXY_TO_PTHREAD option, so call a stub main which
   // pthread_create()s a new thread that will call the user's real main() for
   // the application.
-  var ret = __emscripten_proxy_main();
+  __emscripten_proxy_main();
+#elif ASYNCIFY == 2 && EXIT_RUNTIME
+  // In JSPI-enabled build mode, the main() function will return a Promise,
+  // which resolves to the process exit code.
+  _main().then(exitRuntime);
+#elif EXIT_RUNTIME
+  // In regular exitRuntime mode, exit with the given return code from main().
+  exitRuntime(_main());
 #else
-  var ret = _main();
-
-#if EXIT_RUNTIME
-  callRuntimeCallbacks(__ATEXIT__);
-  <<< ATEXITS >>>
-#if PTHREADS
-  PThread.terminateAllThreads();
-#endif
-
-#endif
-
-#if EXIT_RUNTIME
-
-#if ASSERTIONS
-  runtimeExited = true;
-#endif
-
-  _proc_exit(ret);
-#endif
-#endif // PROXY_TO_PTHREAD
+  // Run a persistent (never-exiting) application starting at main().
+  _main();
+#endif 
 
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
@@ -101,6 +112,10 @@ function loadModule() {
   assignWasmImports();
 #endif
 
+#if ASYNCIFY
+Asyncify.instrumentWasmImports(wasmImports);
+#endif
+
 var imports = {
 #if MINIFY_WASM_IMPORTED_MODULES
   'a': wasmImports,
@@ -138,7 +153,7 @@ if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.w
 WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif
 
-#if !LibraryManager.has('library_exports.js')
+#if !LibraryManager.has('library_exports.js') && ASYNCIFY != 1
   // If not using the emscripten_get_exported_function() API, keep the
   // `wasmExports` variable in local scope to this instantiate function to save
   // code size.  (otherwise access it without to export it to outer scope)
@@ -167,6 +182,10 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #endif
 #else
   wasmExports = output.instance.exports;
+#endif
+
+#if ASYNCIFY
+  wasmExports = Asyncify.instrumentWasmExports(wasmExports);
 #endif
 
 #if MEMORY64 || CAN_ADDRESS_2GB
