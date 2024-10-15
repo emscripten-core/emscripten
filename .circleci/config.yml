@@ -787,7 +787,7 @@ jobs:
       EMTEST_SKIP_NODE_CANARY: "1"
       EMTEST_SKIP_WASM64: "1"
     steps:
-      - run: apt-get install -q -y ninja-build scons
+      - run: apt-get install -q -y ninja-build scons ccache
       - run-tests-linux:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
