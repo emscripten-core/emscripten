@@ -20,7 +20,9 @@ jobs:
         - name: Create Changelog PR
           uses: peter-evans/create-pull-request@v6
           with:
+            token: ${{ secrets.EMSCRIPTEN_BOT_TOKEN }}
             title: Mark ${{ env.RELEASE_VERSION }} as released
+            team-reviewers: release-reviewers
             delete-branch: true
         - name: Tag release sha
           uses: actions/github-script@v7
