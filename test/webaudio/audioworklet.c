@@ -40,7 +40,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
 
   // Produce noise in all output channels.
   for(int i = 0; i < numOutputs; ++i)
-    for(int j = 0; j < outputs[i].quantumSize*outputs[i].numberOfChannels; ++j)
+    for(int j = 0; j < outputs[i].samplesPerChannel*outputs[i].numberOfChannels; ++j)
       outputs[i].data[j] = (rand() / (float)RAND_MAX * 2.0f - 1.0f) * 0.3f;
 
   // We generated audio and want to keep this processor going. Return false here to shut down.

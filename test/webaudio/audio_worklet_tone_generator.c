@@ -40,12 +40,12 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
 
   // Produce a sine wave tone of desired frequency to all output channels.
   for(int o = 0; o < numOutputs; ++o)
-    for(int i = 0; i < outputs[o].quantumSize; ++i)
+    for(int i = 0; i < outputs[o].samplesPerChannel; ++i)
     {
       float s = emscripten_math_sin(phase);
       phase += phaseIncrement;
       for(int ch = 0; ch < outputs[o].numberOfChannels; ++ch)
-        outputs[o].data[ch*outputs[o].quantumSize + i] = s * currentVolume;
+        outputs[o].data[ch*outputs[o].samplesPerChannel + i] = s * currentVolume;
     }
 
   // Range reduce to keep precision around zero.
@@ -150,11 +150,11 @@ int main() {
 
   EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(&attrs);
 
-  // Get the context's quantum size. Once the audio API allows this to be user
-  // defined or exposes the hardware's own value, this will be needed to
+  // Get the context's render quantum size. Once the audio API allows this to be
+  // user defined or exposes the hardware's own value, this will be needed to
   // determine the worklet stack size.
   int quantumSize = emscripten_audio_context_quantum_size(context);
-  printf("Context quantum size: %d\n", quantumSize);
+  printf("Context render quantum size: %d\n", quantumSize);
 
   // and kick off Audio Worklet scope initialization, which shares the Wasm
   // Module and Memory to the AudioWorklet scope and initializes its stack.

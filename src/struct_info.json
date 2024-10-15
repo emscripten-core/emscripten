@@ -1203,7 +1203,7 @@
         "structs": {
             "AudioSampleFrame": [
               "numberOfChannels",
-              "quantumSize",
+              "samplesPerChannel",
               "data"
             ],
             "AudioParamFrame": [

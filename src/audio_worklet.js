@@ -31,12 +31,12 @@ function createWasmAudioWorkletProcessor(audioParams) {
       let opts = args.processorOptions;
       this.callbackFunction = Module['wasmTable'].get(opts['cb']);
       this.userData = opts['ud'];
-      // Plus the number of samples to process, fixed for the lifetime of the
+      // Then the samples per channel to process, fixed for the lifetime of the
       // context that created this processor. Note for when moving to Web Audio
-      // 1.1: the typed array passed to process() should be the same size as the
-      // the quantum size, and this exercise of passing in the value shouldn't
-      // be required (to be verified).
-      this.quantumSize = opts['qs'];
+      // 1.1: the typed array passed to process() should be the same size as this
+      // 'render quantum size', and this exercise of passing in the value
+      // shouldn't be required (to be verified).
+      this.samplesPerChannel = opts['qs'];
     }
 
     static get parameterDescriptors() {
@@ -51,15 +51,15 @@ function createWasmAudioWorkletProcessor(audioParams) {
       let numInputs = inputList.length,
         numOutputs = outputList.length,
         numParams = 0, i, j, k, dataPtr,
-        quantumBytes = this.quantumSize * 4,
+        bytesPerChannel = this.samplesPerChannel * 4,
         stackMemoryNeeded = (numInputs + numOutputs) * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}},
         oldStackPtr = stackSave(),
         inputsPtr, outputsPtr, outputDataPtr, paramsPtr,
         didProduceAudio, paramArray;
 
       // Calculate how much stack space is needed.
-      for (i of inputList) stackMemoryNeeded += i.length * quantumBytes;
-      for (i of outputList) stackMemoryNeeded += i.length * quantumBytes;
+      for (i of inputList) stackMemoryNeeded += i.length * bytesPerChannel;
+      for (i of outputList) stackMemoryNeeded += i.length * bytesPerChannel;
       for (i in parameters) stackMemoryNeeded += parameters[i].byteLength + {{{ C_STRUCTS.AudioParamFrame.__size__ }}}, ++numParams;
 
       // Allocate the necessary stack space.
@@ -71,13 +71,13 @@ function createWasmAudioWorkletProcessor(audioParams) {
       for (i of inputList) {
         // Write the AudioSampleFrame struct instance
         HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.numberOfChannels / 4 }}}] = i.length;
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.quantumSize / 4 }}}] = this.quantumSize;
+        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.samplesPerChannel / 4 }}}] = this.samplesPerChannel;
         HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.data / 4 }}}] = dataPtr;
         k += {{{ C_STRUCTS.AudioSampleFrame.__size__ / 4 }}};
         // Marshal the input audio sample data for each audio channel of this input
         for (j of i) {
           HEAPF32.set(j, dataPtr>>2);
-          dataPtr += quantumBytes;
+          dataPtr += bytesPerChannel;
         }
       }
 
@@ -88,11 +88,11 @@ function createWasmAudioWorkletProcessor(audioParams) {
       for (i of outputList) {
         // Write the AudioSampleFrame struct instance
         HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.numberOfChannels / 4 }}}] = i.length;
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.quantumSize / 4 }}}] = this.quantumSize;
+        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.samplesPerChannel / 4 }}}] = this.samplesPerChannel;
         HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.data / 4 }}}] = dataPtr;
         k += {{{ C_STRUCTS.AudioSampleFrame.__size__ / 4 }}};
         // Reserve space for the output data
-        dataPtr += quantumBytes * i.length;
+        dataPtr += bytesPerChannel * i.length;
       }
 
       // Copy parameters descriptor structs and data to Wasm
@@ -117,7 +117,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
         // not have one, so manually copy all bytes in)
         for (i of outputList) {
           for (j of i) {
-            for (k = 0; k < this.quantumSize; ++k) {
+            for (k = 0; k < this.samplesPerChannel; ++k) {
               j[k] = HEAPF32[outputDataPtr++];
             }
           }
