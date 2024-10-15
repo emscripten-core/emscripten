@@ -10,10 +10,7 @@
 #define UNSIGNED_MORECORE 1
 /* we can only grow the heap up anyhow, so don't try to trim */
 #define MORECORE_CANNOT_TRIM 1
-#ifndef DLMALLOC_DEBUG
-/* dlmalloc has many checks, calls to abort() increase code size,
-   leave them only in debug builds */
-#define ABORT __builtin_unreachable()
+#ifndef DEBUG
 /* allow malloc stats only in debug builds, which brings in stdio code. */
 #define NO_MALLOC_STATS 1
 #define MALLINFO_FIELD_TYPE int
