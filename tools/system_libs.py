@@ -725,7 +725,7 @@ class MTLibrary(Library):
     if self.is_mt:
       cflags += ['-pthread', '-sWASM_WORKERS']
     if self.is_ww:
-      cflags += ['-sSHARED_MEMORY=1']
+      cflags += ['-sWASM_WORKERS']
     return cflags
 
   def get_base_name(self):
@@ -1425,8 +1425,6 @@ class libwasm_workers(MTLibrary):
 
   def get_cflags(self):
     cflags = super().get_cflags()
-    if self.is_ww:
-      cflags += ['-sWASM_WORKERS']
     if self.debug:
       cflags += ['-D_DEBUG']
       # library_wasm_worker.c contains an assert that a nonnull parameter
