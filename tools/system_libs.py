@@ -1461,7 +1461,7 @@ class libwasm_workers(MTLibrary):
 
   def get_files(self):
     files = []
-    if (self.is_ww):
+    if self.is_ww:
       files = [
         'library_wasm_worker.c',
         'wasm_worker.S',
