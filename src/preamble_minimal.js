@@ -61,52 +61,7 @@ var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
 #endif
 
 #if IMPORTED_MEMORY
-// This code is largely a duplcate of src/runtime_init_memory.js
-// TODO(sbc): merge these two.
-#if PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) {
-#endif
-  wasmMemory =
-#if WASM_WORKERS
-    Module['mem'] ||
-#endif
-    new WebAssembly.Memory({
-      'initial': {{{ toIndexType(`${INITIAL_MEMORY} / ${WASM_PAGE_SIZE}`) }}},
-#if ALLOW_MEMORY_GROWTH
-      // In theory we should not need to emit the maximum if we want "unlimited"
-      // or 4GB of memory, but VMs error on that atm, see
-      // https://github.com/emscripten-core/emscripten/issues/14130
-      // And in the pthreads case we definitely need to emit a maximum. So
-      // always emit one.
-      'maximum': {{{ toIndexType(MAXIMUM_MEMORY / WASM_PAGE_SIZE) }}},
-#else
-      'maximum': {{{ toIndexType(`${INITIAL_MEMORY} / ${WASM_PAGE_SIZE}`) }}},
-#endif // ALLOW_MEMORY_GROWTH
-#if SHARED_MEMORY
-      'shared': true,
-#endif
-#if MEMORY64 == 1
-      'index': 'i64',
-#endif
-    });
-#if PTHREADS
-}
-#if MODULARIZE
-else {
-  wasmMemory = Module['wasmMemory'];
-}
-#endif // MODULARIZE
-#endif // PTHREADS
-
-#if PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) {
-#endif
-
-updateMemoryViews();
-
-#if PTHREADS
-}
-#endif
+#include "runtime_init_memory.js"
 #endif // IMPORTED_MEMORY
 
 #include "runtime_stack_check.js"
