@@ -855,12 +855,16 @@ def phase_setup(options, state, newargs):
     settings.BULK_MEMORY = 1
 
   if '-mbulk-memory' not in newargs and '-mno-bulk-memory' not in newargs:
-    print('newargs bulk')
     if feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY):
       newargs += ['-mbulk-memory']
       settings.BULK_MEMORY = 1
     else:
       newargs += ['-mno-bulk-memory']
+  if '-mnontrapping-fptoint' not in newargs and '-mno-nontrapping-fptoint' not in newargs:
+    if feature_matrix.caniuse(feature_matrix.Feature.NON_TRAPPING_FPTOINT):
+      newargs += ['-mnontrapping-fptoint']
+    else:
+      newargs += ['-mno-nontrapping-fptoint']
 
   if 'DISABLE_EXCEPTION_CATCHING' in user_settings and 'EXCEPTION_CATCHING_ALLOWED' in user_settings:
     # If we get here then the user specified both DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED
