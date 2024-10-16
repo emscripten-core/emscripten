@@ -6,8 +6,7 @@
 // Test emscripten_wasm_worker_post_function_*() API and EMSCRIPTEN_WASM_WORKER_ID_PARENT
 // to send a message back from Worker to its parent thread.
 
-void test_success(int i, double d)
-{
+void test_success(int i, double d) {
   emscripten_console_log("test_success");
   assert(!emscripten_current_thread_is_wasm_worker());
   assert(i == 10);
@@ -17,8 +16,7 @@ void test_success(int i, double d)
 #endif
 }
 
-void worker_main()
-{
+void worker_main() {
   emscripten_console_log("worker_main");
   assert(emscripten_current_thread_is_wasm_worker());
   emscripten_wasm_worker_post_function_sig(EMSCRIPTEN_WASM_WORKER_ID_PARENT, test_success, "id", 10, 0.5);
@@ -26,8 +24,7 @@ void worker_main()
 
 char stack[1024];
 
-int main()
-{
+int main() {
   emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
   emscripten_wasm_worker_post_function_v(worker, worker_main);
 }

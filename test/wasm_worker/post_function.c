@@ -7,29 +7,25 @@
 
 volatile int success = 0;
 
-void v()
-{
+void v() {
   emscripten_console_log("v");
   ++success;
 }
 
-void vi(int i)
-{
+void vi(int i) {
   emscripten_console_log("vi");
   assert(i == 1);
   ++success;
 }
 
-void vii(int i, int j)
-{
+void vii(int i, int j) {
   emscripten_console_log("vii");
   assert(i == 2);
   assert(j == 3);
   ++success;
 }
 
-void viii(int i, int j, int k)
-{
+void viii(int i, int j, int k) {
   emscripten_console_log("viii");
   assert(i == 4);
   assert(j == 5);
@@ -37,23 +33,20 @@ void viii(int i, int j, int k)
   ++success;
 }
 
-void vd(double i)
-{
+void vd(double i) {
   emscripten_console_log("vd");
   assert(i == 1.5);
   ++success;
 }
 
-void vdd(double i, double j)
-{
+void vdd(double i, double j) {
   emscripten_console_log("vdd");
   assert(i == 2.5);
   assert(j == 3.5);
   ++success;
 }
 
-void vddd(double i, double j, double k)
-{
+void vddd(double i, double j, double k) {
   emscripten_console_log("vddd");
   assert(i == 4.5);
   assert(j == 5.5);
@@ -61,8 +54,7 @@ void vddd(double i, double j, double k)
   ++success;
 }
 
-void viiiiiidddddd(int a, int b, int c, int d, int e, int f, double g, double h, double i, double j, double k, double l)
-{
+void viiiiiidddddd(int a, int b, int c, int d, int e, int f, double g, double h, double i, double j, double k, double l) {
   emscripten_console_log("viiiiiidddddd");
   assert(a == 10);
   assert(b == 11);
@@ -79,8 +71,7 @@ void viiiiiidddddd(int a, int b, int c, int d, int e, int f, double g, double h,
   ++success;
 }
 
-void test_finished()
-{
+void test_finished() {
 #ifdef REPORT_RESULT
   REPORT_RESULT(success);
 #endif
@@ -88,8 +79,7 @@ void test_finished()
 
 char stack[1024];
 
-int main()
-{
+int main() {
   assert(!emscripten_current_thread_is_wasm_worker());
   emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
   emscripten_wasm_worker_post_function_v(worker, v);
