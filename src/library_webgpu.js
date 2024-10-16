@@ -410,9 +410,9 @@ var LibraryWebGPU = {
       'mapped': 3,
     },
     Int_CompilationMessageType : {
-      'error': 0,
-      'warning': 1,
-      'info': 2,
+      'error': 1,
+      'warning': 2,
+      'info': 3,
     },
     Int_DeviceLostReason: {
       'undefined': 1,
