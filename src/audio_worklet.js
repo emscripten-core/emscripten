@@ -37,6 +37,9 @@ function createWasmAudioWorkletProcessor(audioParams) {
       // 'render quantum size', and this exercise of passing in the value
       // shouldn't be required (to be verified).
       this.samplesPerChannel = opts['sc'];
+      // Typed views of the output buffers on the worklet's stack, which after
+      // creation should not change (since the stack is passed externally once).
+      this.outputViews = null;
     }
 
     static get parameterDescriptors() {
@@ -64,9 +67,6 @@ function createWasmAudioWorkletProcessor(audioParams) {
 
       // Allocate the necessary stack space.
       inputsPtr = stackAlloc(stackMemoryNeeded);
-#if WEBAUDIO_DEBUG
-      console.log(`WasmAudioWorkletProcessorr::process() ${inputsPtr} (needed: ${stackMemoryNeeded})`);
-#endif
 
       // Copy input audio descriptor structs and data to Wasm
       k = inputsPtr >> 2;
@@ -97,6 +97,20 @@ function createWasmAudioWorkletProcessor(audioParams) {
         // Reserve space for the output data
         dataPtr += bytesPerChannel * i.length;
       }
+      if (!this.outputViews) {
+        this.outputViews = [];
+        k = outputDataPtr;
+        for (/*which output*/ i of outputList) {
+          for (/*which channel*/ j of i) {
+            this.outputViews.push({
+              // dataPtr is the sanity check (to be implemented)
+              // dataSub is the one-time subarray into the heap
+              dataPtr: k,
+              dataSub: HEAPF32.subarray(k, k += this.samplesPerChannel)
+            });
+          }
+        }
+      }
 
       // Copy parameters descriptor structs and data to Wasm
       paramsPtr = dataPtr;
@@ -115,14 +129,12 @@ function createWasmAudioWorkletProcessor(audioParams) {
       // Call out to Wasm callback to perform audio processing
       if (didProduceAudio = this.callbackFunction(numInputs, inputsPtr, numOutputs, outputsPtr, numParams, paramsPtr, this.userData)) {
         // Read back the produced audio data to all outputs and their channels.
-        // (A garbage-free function TypedArray.copy(dstTypedArray, dstOffset,
-        // srcTypedArray, srcOffset, count) would sure be handy..  but web does
-        // not have one, so manually copy all bytes in)
-        for (/*which output*/ i of outputList) {
-          for (/*which channel Float32Array<samplesPerChannel>*/ j of i) {
-            for (/*channel index*/ k = 0; k < this.samplesPerChannel; ++k) {
-              j[k] = HEAPF32[outputDataPtr++];
-            }
+        // The 'outputViews' are subarray views into the heap, each with the
+        // correct offset and size to be copied directly into the output.
+        k = 0;
+        for (i of outputList) {
+          for (j of i) {
+            j.set(this.outputViews[k++].dataSub);
           }
         }
       }
