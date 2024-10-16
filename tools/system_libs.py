@@ -1465,7 +1465,7 @@ class libwasm_workers(DebugLibrary):
     else:
       files = [
         'library_wasm_worker.c',
-        'wasm_worker.S',
+        'wasm_worker_initialize.S',
       ]
     return files_in_path(
         path='system/lib/wasm_worker',
