@@ -10,8 +10,7 @@ emscripten_lock_t lock = EMSCRIPTEN_LOCK_T_STATIC_INITIALIZER;
 
 volatile int sharedState = 0;
 
-void worker_main()
-{
+void worker_main() {
   emscripten_lock_busyspin_waitinf_acquire(&lock);
   emscripten_atomic_add_u32((void*)&sharedState, 1);
 #ifdef REPORT_RESULT
@@ -21,14 +20,12 @@ void worker_main()
 
 char stack[1024];
 
-void releaseLock(void *userData)
-{
+void releaseLock(void *userData) {
   emscripten_atomic_sub_u32((void*)&sharedState, 1);
   emscripten_lock_release(&lock);
 }
 
-int main()
-{
+int main() {
   // Acquire the lock at startup.
   emscripten_lock_busyspin_waitinf_acquire(&lock);
   emscripten_atomic_add_u32((void*)&sharedState, 1);

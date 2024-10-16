@@ -5011,9 +5011,13 @@ Module["preRun"] = () => {
 
   # Tests Wasm Worker thread stack setup
   @also_with_minimal_runtime
-  def test_wasm_worker_thread_stack(self):
-    for mode in (0, 1, 2):
-      self.btest('wasm_worker/thread_stack.c', expected='0', args=['-sWASM_WORKERS', f'-sSTACK_OVERFLOW_CHECK={mode}'])
+  @parameterized({
+    '0': (0,),
+    '1': (1,),
+    '2': (2,),
+  })
+  def test_wasm_worker_thread_stack(self, mode):
+    self.btest('wasm_worker/thread_stack.c', expected='0', args=['-sWASM_WORKERS', f'-sSTACK_OVERFLOW_CHECK={mode}'])
 
   # Tests emscripten_malloc_wasm_worker() and emscripten_current_thread_is_wasm_worker() functions
   @also_with_minimal_runtime

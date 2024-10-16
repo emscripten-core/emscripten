@@ -12,8 +12,7 @@ emscripten_semaphore_t threadsCompleted = EMSCRIPTEN_SEMAPHORE_T_STATIC_INITIALI
 
 int threadCounter = 0;
 
-void worker_main()
-{
+void worker_main() {
   emscripten_console_log("worker_main");
 
   // Increment semaphore to mark that this thread is waiting for a signal from control thread to start.
@@ -32,8 +31,7 @@ void worker_main()
   emscripten_semaphore_release(&threadsCompleted, 1);
 }
 
-void control_thread()
-{
+void control_thread() {
   // Wait until we have three threads available to start running.
   emscripten_console_log("control_thread: waiting for three threads to complete loading");
   emscripten_semaphore_waitinf_acquire(&threadsWaiting, 3);
@@ -69,16 +67,14 @@ void control_thread()
 #endif
 }
 
-int main()
-{
+int main() {
   emscripten_semaphore_init(&threadsWaiting, 0);
 
   emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(1024);
   emscripten_wasm_worker_post_function_v(worker, control_thread);
 
 #define NUM_THREADS 6
-  for(int i = 0; i < NUM_THREADS; ++i)
-  {
+  for (int i = 0; i < NUM_THREADS; ++i) {
     emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(1024);
     emscripten_wasm_worker_post_function_v(worker, worker_main);
   }
