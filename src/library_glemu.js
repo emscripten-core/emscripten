@@ -2047,7 +2047,7 @@ var LibraryGLEmulation = {
         GLImmediate.rendererComponents[name] = 1;
 #if ASSERTIONS
         if (GLImmediate.enabledClientAttributes[name]) {
-          out("Warning: glTexCoord used after EnableClientState for TEXTURE_COORD_ARRAY for TEXTURE0. Disabling TEXTURE_COORD_ARRAY...");
+          warnOnce("Warning: glTexCoord used after EnableClientState for TEXTURE_COORD_ARRAY for TEXTURE0. Disabling TEXTURE_COORD_ARRAY...");
         }
 #endif
         GLImmediate.enabledClientAttributes[name] = true;
@@ -2980,11 +2980,10 @@ var LibraryGLEmulation = {
           var attr = attributes[i];
           var srcStride = Math.max(attr.sizeBytes, attr.stride);
           if ((srcStride & 3) == 0 && (attr.sizeBytes & 3) == 0) {
-            var size4 = attr.sizeBytes>>2;
-            var srcStride4 = Math.max(attr.sizeBytes, attr.stride)>>2;
             for (var j = 0; j < count; j++) {
-              for (var k = 0; k < size4; k++) { // copy in chunks of 4 bytes, our alignment makes this possible
-                HEAP32[((start + attr.offset + bytes*j)>>2) + k] = HEAP32[(attr.pointer>>2) + j*srcStride4 + k];
+              for (var k = 0; k < attr.sizeBytes; k+=4) { // copy in chunks of 4 bytes, our alignment makes this possible
+                var val = {{{ makeGetValue('attr.pointer', 'j*srcStride + k', 'i32') }}};
+                {{{ makeSetValue('start + attr.offset', 'bytes*j + k', 'val', 'i32') }}};
               }
             }
           } else {
@@ -3533,7 +3532,7 @@ var LibraryGLEmulation = {
     if (!GLctx.currentElementArrayBufferBinding) {
       assert(type == GLctx.UNSIGNED_SHORT); // We can only emulate buffers of this kind, for now
     }
-    out("DrawElements doesn't actually prepareClientAttributes properly.");
+    warnOnce("DrawElements doesn't actually prepareClientAttributes properly.");
 #endif
     GLImmediate.prepareClientAttributes(count, false);
     GLImmediate.mode = mode;
