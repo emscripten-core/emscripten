@@ -1415,17 +1415,17 @@ class libprintf_long_double(libc):
     return super(libprintf_long_double, self).can_use() and settings.PRINTF_LONG_DOUBLE
 
 
-class libwasm_workers(MTLibrary):
+class libwasm_workers(DebugLibrary):
   name = 'libwasm_workers'
   includes = ['system/lib/libc']
 
   def __init__(self, **kwargs):
-    self.debug = kwargs.pop('debug')
+    self.is_stub = kwargs.pop('stub')
     super().__init__(**kwargs)
 
   def get_cflags(self):
     cflags = super().get_cflags()
-    if self.debug:
+    if self.is_debug:
       cflags += ['-D_DEBUG']
       # library_wasm_worker.c contains an assert that a nonnull parameter
       # is no NULL, which llvm now warns is redundant/tautological.
@@ -1438,34 +1438,34 @@ class libwasm_workers(MTLibrary):
       cflags += ['-DNDEBUG', '-Oz']
     if settings.MAIN_MODULE:
       cflags += ['-fPIC']
+    if not self.is_stub:
+      cflags += ['-sWASM_WORKERS']
     return cflags
 
   def get_base_name(self):
-    name = 'libwasm_workers'
-    if not self.is_ww and not self.is_mt:
-      name += '_stub'
-    if self.debug:
-      name += '-debug'
+    name = super().get_base_name()
+    if self.is_stub:
+      name += '-stub'
     return name
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['debug']
+    return super().vary_on() + ['stub']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(debug=settings.ASSERTIONS >= 1, **kwargs)
+    return super().get_default_variation(stub=not settings.WASM_WORKERS, **kwargs)
 
   def get_files(self):
     files = []
-    if self.is_ww:
+    if self.is_stub:
       files = [
-        'library_wasm_worker.c',
-        'wasm_worker.S',
+        'library_wasm_worker_stub.c'
       ]
     else:
       files = [
-        'library_wasm_worker_stub.c'
+        'library_wasm_worker.c',
+        'wasm_worker.S',
       ]
     return files_in_path(
         path='system/lib/wasm_worker',

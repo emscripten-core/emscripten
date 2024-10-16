@@ -30,8 +30,7 @@
   // Helper functions for code generation
   globalThis.gpu = {
     makeInitManager: function(type) {
-      var mgr = `WebGPU.mgr${type}`;
-      return `${mgr} = ${mgr} || new Manager();`;
+      return `WebGPU.mgr${type} = new Manager();`;
     },
 
     makeReferenceRelease: function(type) {
@@ -201,7 +200,9 @@ var LibraryWebGPU = {
     },
 
     initManagers: () => {
-      if (WebGPU.mgrDevice) return;
+#if ASSERTIONS
+      assert(!WebGPU.mgrDevice, 'initManagers already called');
+#endif
 
       /** @constructor */
       function Manager() {
@@ -409,9 +410,9 @@ var LibraryWebGPU = {
       'mapped': 3,
     },
     Int_CompilationMessageType : {
-      'error': 0,
-      'warning': 1,
-      'info': 2,
+      'error': 1,
+      'warning': 2,
+      'info': 3,
     },
     Int_DeviceLostReason: {
       'undefined': 1,
@@ -2023,7 +2024,7 @@ var LibraryWebGPU = {
 
   // In webgpu.h offset and size are passed in as size_t.
   // And library_webgpu assumes that size_t is always 32bit in emscripten.
-  wgpuBufferGetMappedRange__deps: ['$warnOnce', 'memalign', 'free'],
+  wgpuBufferGetMappedRange__deps: ['$warnOnce', '$zeroMemory', 'memalign', 'free'],
   wgpuBufferGetMappedRange: (bufferId, offset, size) => {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
     {{{ gpu.makeCheckDefined('bufferWrapper') }}}
@@ -2052,7 +2053,7 @@ var LibraryWebGPU = {
     }
 
     var data = _memalign(16, mapped.byteLength);
-    HEAPU8.fill(0, data, mapped.byteLength);
+    zeroMemory(data, mapped.byteLength);
     bufferWrapper.onUnmap.push(() => {
       new Uint8Array(mapped).set(HEAPU8.subarray(data, data + mapped.byteLength));
       _free(data);

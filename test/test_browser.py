@@ -3847,11 +3847,12 @@ Module["preRun"] = () => {
 
   # Test that pthreads are able to do printf.
   @parameterized({
-    '': (False,),
-    'debug': (True,),
+    '': ([],),
+    'O3': (['-O3'],),
+    'debug': (['-sLIBRARY_DEBUG'],),
   })
-  def test_pthread_printf(self, debug):
-     self.btest_exit('pthread/test_pthread_printf.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE', '-sLIBRARY_DEBUG=%d' % debug])
+  def test_pthread_printf(self, args):
+     self.btest_exit('pthread/test_pthread_printf.c', args=['-pthread', '-sPTHREAD_POOL_SIZE'] + args)
 
   # Test that pthreads are able to do cout. Failed due to https://bugzilla.mozilla.org/show_bug.cgi?id=1154858.
   def test_pthread_iostream(self):

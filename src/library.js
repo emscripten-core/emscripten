@@ -62,7 +62,6 @@ addToLibrary({
     }
 #endif
     HEAPU8.fill(0, address, address + size);
-    return address;
   },
 
 #if SAFE_HEAP
@@ -2007,7 +2006,7 @@ addToLibrary({
 #endif
     // In -Os and -Oz builds, do not implement a JS side wasm table mirror for small
     // code size, but directly access wasmTable, which is a bit slower as uncached.
-    return wasmTable.get(funcPtr);
+    return wasmTable.get({{{ toIndexType('funcPtr') }}});
   },
 #endif // SHRINK_LEVEL == 0
 
@@ -2278,8 +2277,8 @@ addToLibrary({
 #if hasExportedSymbol('emscripten_builtin_memalign')
     size = alignMemory(size, {{{ WASM_PAGE_SIZE }}});
     var ptr = _emscripten_builtin_memalign({{{ WASM_PAGE_SIZE }}}, size);
-    if (!ptr) return 0;
-    return zeroMemory(ptr, size);
+    if (ptr) zeroMemory(ptr, size);
+    return ptr;
 #elif ASSERTIONS
     abort('internal error: mmapAlloc called but `emscripten_builtin_memalign` native symbol not exported');
 #else

@@ -142,31 +142,34 @@ def also_with_wasmfs_all_backends(f):
   return metafunc
 
 
+def requires_tool(tool):
+  assert not callable(tool)
+
+  def decorate(func):
+    assert callable(func)
+
+    @wraps(func)
+    def decorated(self, *args, **kwargs):
+      if not shutil.which(tool):
+        if f'EMTEST_SKIP_{tool.upper()}' in os.environ:
+          self.skipTest(f'test requires ccache and EMTEST_SKIP_{tool.upper()} is set')
+        else:
+          self.fail(f'{tool} required to run this test.  Use EMTEST_SKIP_{tool.upper()} to skip')
+      return func(self, *args, **kwargs)
+
+    return decorated
+
+  return decorate
+
+
 def requires_ninja(func):
   assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    if not shutil.which('ninja'):
-      self.fail('test requires ninja to be installed (available in PATH)')
-    return func(self, *args, **kwargs)
-
-  return decorated
+  return requires_tool('ninja')(func)
 
 
 def requires_scons(func):
   assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    if not shutil.which('scons'):
-      if 'EMTEST_SKIP_SCONS' in os.environ:
-        self.skipTest('test requires scons and EMTEST_SKIP_SCONS is set')
-      else:
-        self.fail('scons required to run this test.  Use EMTEST_SKIP_SCONS to skip')
-    return func(self, *args, **kwargs)
-
-  return decorated
+  return requires_tool('scons')(func)
 
 
 def requires_pkg_config(func):
@@ -3126,6 +3129,10 @@ More info: https://emscripten.org
   def test_embind_fail(self):
     out = self.expect_fail([EMXX, test_file('embind/test_unsigned.cpp')])
     self.assertContained("undefined symbol: _embind_register_function", out)
+
+  def test_embind_invalid_overload(self):
+    expected = 'BindingError: Cannot register multiple overloads of a function with the same number of arguments'
+    self.do_runf(test_file('embind/test_embind_invalid_overload.cpp'), expected, emcc_args=['-lembind'], assert_returncode=NON_ZERO)
 
   def test_embind_asyncify(self):
     create_file('post.js', '''
@@ -11946,6 +11953,12 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     err = self.run_process([EMCC, test_file('hello_world.c'), '-c', '-lbar'], stderr=PIPE).stderr
     self.assertContained("warning: -lbar: 'linker' input unused [-Wunused-command-line-argument]", err)
 
+    # Check that we don't see these "input unused" errors for linker flags when
+    # compiling and linking in single step (i.e. ensure that we don't pass them to clang when
+    # compiling internally).
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-Wl,-static', '-Xlinker', '-static'], stderr=PIPE).stderr
+    self.assertNotContained("input unused", err)
+
   def test_linker_input_unused(self):
     self.run_process([EMCC, '-c', test_file('hello_world.c')])
     err = self.run_process([EMCC, 'hello_world.o', '-c', '-o', 'out.o'], stderr=PIPE).stderr
@@ -12064,6 +12077,18 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
   @node_pthreads
   def test_pthread_relocatable(self):
     self.do_run_in_out_file_test('hello_world.c', emcc_args=['-sRELOCATABLE'])
+
+  @node_pthreads
+  def test_pthread_unavailable(self):
+    # Run a simple hello world program that uses pthreads
+    self.emcc_args += ['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME']
+    self.do_run_in_out_file_test('hello_world.c')
+
+    # Now run the same program but with SharedArrayBuffer undefined, it should run
+    # fine and then fail on the first call to pthread_create.
+    create_file('pre.js', 'SharedArrayBuffer = undefined\n')
+    expected = 'pthread_create: environment does not support SharedArrayBuffer, pthreads are not available'
+    self.do_runf('hello_world.c', expected, assert_returncode=NON_ZERO, emcc_args=['--pre-js=pre.js'])
 
   def test_stdin_preprocess(self):
     create_file('temp.h', '#include <string>')
@@ -12531,6 +12556,11 @@ exec "$@"
     stdout = self.run_process([EMCC, '-c', test_file('core/test_hello_world.c'), '--compiler-wrapper=./wrapper.sh'], stdout=PIPE).stdout
     self.assertContained('wrapping compiler call: ', stdout)
     self.assertExists('test_hello_world.o')
+
+  @requires_tool('ccache')
+  @with_env_modify({'EM_COMPILER_WRAPPER': 'ccache'})
+  def test_compiler_wrapper_ccache(self):
+    self.do_runf('hello_world.c', 'hello, world!')
 
   def test_llvm_option_dash_o(self):
     # emcc used to interpret -mllvm's option value as the output file if it
