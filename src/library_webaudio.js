@@ -161,13 +161,13 @@ let LibraryWebAudio = {
 #if WEBAUDIO_DEBUG
     console.log(`emscripten_start_wasm_audio_worklet_thread_async() adding audioworklet.js...`);
 #endif
-#if WEBAUDIO_DEBUG
-    console.log(`emscripten_start_wasm_audio_worklet_thread_async() stack base/sb: ${stackLowestAddress}, size: ${stackSize} (${stackLowestAddress + stackSize})`);
-#endif
 
     let audioWorkletCreationFailed = () => {
 #if WEBAUDIO_DEBUG
-      console.error(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed!`);
+      // Note about Cross-Origin here: a lack of Cross-Origin-Opener-Policy and
+      // Cross-Origin-Embedder-Policy headers to the client request will result
+      // in the worklet file failing to load.
+      console.error(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed! Are the Cross-Origin headers being set?`);
 #endif
       {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
     };
