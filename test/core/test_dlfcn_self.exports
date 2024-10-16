@@ -9,9 +9,7 @@ __progname_full
 __sig_actions
 __sig_pending
 __signgam
-__stack_base
 __stack_chk_guard
-__stack_end
 __threwValue
 __timezone
 __tzname

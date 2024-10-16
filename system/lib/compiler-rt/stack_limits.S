@@ -15,7 +15,6 @@
 #endif
 
 .globaltype __stack_pointer, PTR
-.globl __stack_pointer
 
 .section .globals,"",@
 
@@ -23,9 +22,7 @@
 # using PTR.const rather than using the `emscripten_stack_init`
 .globaltype __stack_end, PTR
 __stack_end:
-.globl __stack_end
 .globaltype __stack_base, PTR
-.globl __stack_base
 __stack_base:
 
 .section .text,"",@
