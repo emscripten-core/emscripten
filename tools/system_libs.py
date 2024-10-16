@@ -742,12 +742,17 @@ class MTLibrary(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(is_mt=settings.PTHREADS, is_ww=settings.WASM_WORKERS and not settings.PTHREADS, **kwargs)
+    return super().get_default_variation(
+      is_mt=settings.PTHREADS,
+      is_ww=settings.SHARED_MEMORY and not settings.PTHREADS,
+      **kwargs
+    )
 
   @classmethod
   def variations(cls):
     combos = super(MTLibrary, cls).variations()
-    # To save on # of variations, pthreads and Wasm workers when used together, just use pthreads variation.
+
+    # These are mutually exclusive, only one flag will be set at any give time.
     return [combo for combo in combos if not combo['is_mt'] or not combo['is_ww']]
 
 
@@ -1452,9 +1457,19 @@ class libwasm_workers(DebugLibrary):
     return super().get_default_variation(stub=not settings.WASM_WORKERS, **kwargs)
 
   def get_files(self):
+    files = []
+    if self.is_stub:
+      files = [
+        'library_wasm_worker_stub.c'
+      ]
+    else:
+      files = [
+        'library_wasm_worker.c',
+        'wasm_worker_initialize.S',
+      ]
     return files_in_path(
         path='system/lib/wasm_worker',
-        filenames=['library_wasm_worker_stub.c' if self.is_stub else 'library_wasm_worker.c'])
+        filenames=files)
 
   def can_use(self):
     # see src/library_wasm_worker.js
