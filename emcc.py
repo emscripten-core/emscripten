@@ -35,7 +35,7 @@ from enum import Enum, auto, unique
 from subprocess import PIPE
 
 
-from tools import shared, system_libs, utils, ports
+from tools import shared, system_libs, utils, ports, feature_matrix
 from tools import colored_logger, diagnostics, building
 from tools.shared import unsuffixed, unsuffixed_basename, get_file_suffix
 from tools.shared import run_process, exit_with_error, DEBUG
@@ -853,6 +853,14 @@ def phase_setup(options, state, newargs):
 
   if settings.SHARED_MEMORY:
     settings.BULK_MEMORY = 1
+
+  if '-mbulk-memory' not in newargs and '-mno-bulk-memory' not in newargs:
+    print('newargs bulk')
+    if feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY):
+      newargs += ['-mbulk-memory']
+      settings.BULK_MEMORY = 1
+    else:
+      newargs += ['-mno-bulk-memory']
 
   if 'DISABLE_EXCEPTION_CATCHING' in user_settings and 'EXCEPTION_CATCHING_ALLOWED' in user_settings:
     # If we get here then the user specified both DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED
