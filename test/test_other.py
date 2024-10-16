@@ -10268,6 +10268,30 @@ int main() {
     self.run_process([EMCC, test_file('hello_world.c'), '-O2'] + args)
     self.verify_custom_sec_existence('a.out.wasm', 'target_features', False)
 
+  def test_wasm_features(self):
+    # Test that wasm features are explicitly enabled or disabled based on target engine version
+    def verify_features_sec(feature, expect_in):
+      with webassembly.Module('hello_world.o') as module:
+        features = module.get_target_features()
+      if expect_in:
+        self.assertTrue(feature in features and features[feature] == webassembly.TargetFeaturePrefix.USED)
+      else:
+        self.assertFalse(feature in features)
+
+    def compile(flag):
+      self.run_process([EMCC, test_file('hello_world.c'), '-c', flag])
+
+    compile('')
+    verify_features_sec('bulk-memory', False)
+    verify_features_sec('nontrapping-fptoint', False)
+    verify_features_sec('sign-ext', True)
+    verify_features_sec('mutable-globals', True)
+    verify_features_sec('multivalue', True)
+
+    compile('-sMIN_SAFARI_VERSION=150000')
+    verify_features_sec('bulk-memory', True)
+    verify_features_sec('nontrapping-fptoint', True)
+
   def test_js_preprocess(self):
     # Use stderr rather than stdout here because stdout is redirected to the output JS file itself.
     create_file('lib.js', '''
