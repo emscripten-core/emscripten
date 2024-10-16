@@ -10278,19 +10278,29 @@ int main() {
       else:
         self.assertFalse(feature in features)
 
-    def compile(flag):
-      self.run_process([EMCC, test_file('hello_world.c'), '-c', flag])
+    def compile(flags):
+      self.run_process([EMCC, test_file('hello_world.c'), '-c'] + flags)
 
-    compile('')
+    compile([])
     verify_features_sec('bulk-memory', False)
     verify_features_sec('nontrapping-fptoint', False)
     verify_features_sec('sign-ext', True)
     verify_features_sec('mutable-globals', True)
     verify_features_sec('multivalue', True)
+    verify_features_sec('reference-types', True)
 
-    compile('-sMIN_SAFARI_VERSION=150000')
+    compile(['-mnontrapping-fptoint'])
+    verify_features_sec('nontrapping-fptoint', True)
+
+    compile(['-sMIN_SAFARI_VERSION=150000'])
+    verify_features_sec('sign-ext', True)
+    verify_features_sec('mutable-globals', True)
+    verify_features_sec('multivalue', True)
     verify_features_sec('bulk-memory', True)
     verify_features_sec('nontrapping-fptoint', True)
+
+    compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
+    verify_features_sec('bulk-memory', False)
 
   def test_js_preprocess(self):
     # Use stderr rather than stdout here because stdout is redirected to the output JS file itself.
