@@ -3050,8 +3050,6 @@ Module["preRun"] = () => {
     # SDL, OpenGL, readPixels
     self.btest_exit('test_sdl2_gl_read.c', args=['-sUSE_SDL=2'])
 
-  @no_4gb('https://github.com/libsdl-org/SDL/issues/9052')
-  @no_2gb('https://github.com/libsdl-org/SDL/issues/9052')
   @requires_graphics_hardware
   def test_sdl2_glmatrixmode_texture(self):
     self.reftest('test_sdl2_glmatrixmode_texture.c', 'test_sdl2_glmatrixmode_texture.png',
@@ -3105,8 +3103,6 @@ Module["preRun"] = () => {
   def test_sdl2_unwasteful(self):
     self.btest_exit('test_sdl2_unwasteful.c', args=['-sUSE_SDL=2', '-O1'])
 
-  @no_2gb('https://github.com/libsdl-org/SDL/issues/9052')
-  @no_4gb('https://github.com/libsdl-org/SDL/issues/9052')
   def test_sdl2_canvas_write(self):
     self.btest_exit('test_sdl2_canvas_write.c', args=['-sUSE_SDL=2'])
 
@@ -5011,9 +5007,13 @@ Module["preRun"] = () => {
 
   # Tests Wasm Worker thread stack setup
   @also_with_minimal_runtime
-  def test_wasm_worker_thread_stack(self):
-    for mode in (0, 1, 2):
-      self.btest('wasm_worker/thread_stack.c', expected='0', args=['-sWASM_WORKERS', f'-sSTACK_OVERFLOW_CHECK={mode}'])
+  @parameterized({
+    '0': (0,),
+    '1': (1,),
+    '2': (2,),
+  })
+  def test_wasm_worker_thread_stack(self, mode):
+    self.btest('wasm_worker/thread_stack.c', expected='0', args=['-sWASM_WORKERS', f'-sSTACK_OVERFLOW_CHECK={mode}'])
 
   # Tests emscripten_malloc_wasm_worker() and emscripten_current_thread_is_wasm_worker() functions
   @also_with_minimal_runtime

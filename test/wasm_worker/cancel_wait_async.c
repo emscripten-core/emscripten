@@ -9,23 +9,20 @@ volatile int32_t addr = 1;
 
 bool testSucceeded = 1;
 
-void asyncWaitFinishedShouldNotBeCalled(int32_t *ptr, uint32_t val, ATOMICS_WAIT_RESULT_T waitResult, void *userData)
-{
+void asyncWaitFinishedShouldNotBeCalled(int32_t *ptr, uint32_t val, ATOMICS_WAIT_RESULT_T waitResult, void *userData) {
   emscripten_console_log("asyncWaitFinishedShouldNotBeCalled");
   testSucceeded = 0;
   assert(0); // We should not reach here
 }
 
-void asyncWaitFinishedShouldBeCalled(int32_t *ptr, uint32_t val, ATOMICS_WAIT_RESULT_T waitResult, void *userData)
-{
+void asyncWaitFinishedShouldBeCalled(int32_t *ptr, uint32_t val, ATOMICS_WAIT_RESULT_T waitResult, void *userData) {
   emscripten_console_log("asyncWaitFinishedShouldBeCalled");
 #ifdef REPORT_RESULT
   REPORT_RESULT(testSucceeded);
 #endif
 }
 
-int main()
-{
+int main() {
   emscripten_console_log("Async waiting on address should give a wait token");
   ATOMICS_WAIT_TOKEN_T ret = emscripten_atomic_wait_async((int32_t*)&addr, 1, asyncWaitFinishedShouldNotBeCalled, (void*)42, EMSCRIPTEN_WAIT_ASYNC_INFINITY);
   assert(EMSCRIPTEN_IS_VALID_WAIT_TOKEN(ret));

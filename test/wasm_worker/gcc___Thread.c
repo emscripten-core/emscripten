@@ -5,8 +5,7 @@
 
 __thread int tls = 1;
 
-void main_thread_func()
-{
+void main_thread_func() {
   assert(!emscripten_current_thread_is_wasm_worker());
   EM_ASM(out($0), tls);
 #ifdef REPORT_RESULT
@@ -14,8 +13,7 @@ void main_thread_func()
 #endif
 }
 
-void worker_main()
-{
+void worker_main() {
   assert(emscripten_current_thread_is_wasm_worker());
   assert(tls != 42);
   assert(tls != 0);
@@ -26,8 +24,7 @@ void worker_main()
 
 char stack[1024];
 
-int main()
-{
+int main() {
   EM_ASM(out($0), tls);
   assert(!emscripten_current_thread_is_wasm_worker());
   tls = 42;

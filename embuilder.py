@@ -113,7 +113,7 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'crtbegin',
     'libsanitizer_common_rt',
     'libubsan_rt',
-    'libwasm_workers_stub-debug',
+    'libwasm_workers-debug-stub',
     'libfetch',
     'libfetch-mt',
     'libwasmfs',

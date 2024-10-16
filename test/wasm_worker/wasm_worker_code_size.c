@@ -7,12 +7,10 @@ EM_JS(void, hello, (void), {
   console.log("Hello from wasm worker!");
 });
 
-void run_in_worker()
-{
+void run_in_worker() {
   hello();
 }
 
-int main()
-{
+int main() {
   emscripten_wasm_worker_post_function_v(emscripten_malloc_wasm_worker(1024), run_in_worker);
 }

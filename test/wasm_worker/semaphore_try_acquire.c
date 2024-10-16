@@ -9,8 +9,7 @@
 emscripten_semaphore_t unavailable = EMSCRIPTEN_SEMAPHORE_T_STATIC_INITIALIZER(0);
 emscripten_semaphore_t available = EMSCRIPTEN_SEMAPHORE_T_STATIC_INITIALIZER(1);
 
-int main()
-{
+int main() {
   emscripten_console_log("try_acquiring unavailable semaphore should fail");
   int idx = emscripten_semaphore_try_acquire(&unavailable, 1);
   assert(idx == -1);

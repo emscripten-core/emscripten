@@ -9,8 +9,7 @@
 
 static volatile int worker_started = 0;
 
-void this_function_should_not_be_called(void *userData)
-{
+void this_function_should_not_be_called(void *userData) {
   worker_started = -1;
   emscripten_err("this_function_should_not_be_called");
 #ifdef REPORT_RESULT
@@ -18,10 +17,8 @@ void this_function_should_not_be_called(void *userData)
 #endif
 }
 
-void test_passed(void *userData)
-{
-  if (worker_started == 2)
-  {
+void test_passed(void *userData) {
+  if (worker_started == 2) {
     emscripten_err("test_passed");
 #ifdef REPORT_RESULT
     REPORT_RESULT(0/*ok*/);
@@ -29,8 +26,7 @@ void test_passed(void *userData)
   }
 }
 
-void worker_main()
-{
+void worker_main() {
   ++worker_started;
   emscripten_err("Hello from wasm worker!");
   // Schedule a function to be called, that should never happen, since the Worker
@@ -41,8 +37,7 @@ void worker_main()
 char stack1[1024];
 char stack2[1024];
 
-int should_throw(void(*func)(emscripten_wasm_worker_t worker), emscripten_wasm_worker_t worker)
-{
+int should_throw(void(*func)(emscripten_wasm_worker_t worker), emscripten_wasm_worker_t worker) {
   int threw = EM_ASM_INT({
     try {
       dynCall('vi', $0, $1);
@@ -58,21 +53,18 @@ int should_throw(void(*func)(emscripten_wasm_worker_t worker), emscripten_wasm_w
 
 emscripten_wasm_worker_t worker[2];
 
-void post_bad_function(emscripten_wasm_worker_t worker)
-{
+void post_bad_function(emscripten_wasm_worker_t worker) {
   // Try to post a function to the worker, this should throw
   emscripten_wasm_worker_post_function_vi(worker, (void(*)(int))this_function_should_not_be_called, 0);
 }
 
-void terminate_worker(void *userData)
-{
+void terminate_worker(void *userData) {
   emscripten_terminate_all_wasm_workers();
   assert(should_throw(post_bad_function, worker[0]));
   assert(should_throw(post_bad_function, worker[1]));
 }
 
-int main()
-{
+int main() {
   worker[0] = emscripten_create_wasm_worker(stack1, sizeof(stack1));
   worker[1] = emscripten_create_wasm_worker(stack2, sizeof(stack2));
   emscripten_wasm_worker_post_function_v(worker[0], worker_main);
