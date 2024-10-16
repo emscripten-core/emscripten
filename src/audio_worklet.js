@@ -64,6 +64,9 @@ function createWasmAudioWorkletProcessor(audioParams) {
 
       // Allocate the necessary stack space.
       inputsPtr = stackAlloc(stackMemoryNeeded);
+#if WEBAUDIO_DEBUG
+      console.log(`WasmAudioWorkletProcessorr::process() ${inputsPtr} (needed: ${stackMemoryNeeded})`);
+#endif
 
       // Copy input audio descriptor structs and data to Wasm
       k = inputsPtr >> 2;
@@ -115,9 +118,9 @@ function createWasmAudioWorkletProcessor(audioParams) {
         // (A garbage-free function TypedArray.copy(dstTypedArray, dstOffset,
         // srcTypedArray, srcOffset, count) would sure be handy..  but web does
         // not have one, so manually copy all bytes in)
-        for (i of outputList) {
-          for (j of i) {
-            for (k = 0; k < this.samplesPerChannel; ++k) {
+        for (/*which output*/ i of outputList) {
+          for (/*which channel Float32Array<samplesPerChannel>*/ j of i) {
+            for (/*channel index*/ k = 0; k < this.samplesPerChannel; ++k) {
               j[k] = HEAPF32[outputDataPtr++];
             }
           }
