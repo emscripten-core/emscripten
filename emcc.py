@@ -375,6 +375,15 @@ def get_clang_flags(user_args):
   if settings.INLINING_LIMIT:
     flags.append('-fno-inline-functions')
 
+  if settings.PTHREADS:
+    if '-pthread' not in user_args:
+      flags.append('-pthread')
+  elif settings.SHARED_MEMORY:
+    if '-matomics' not in user_args:
+      flags.append('-matomics')
+    if '-mbulk-memory' not in user_args:
+      flags.append('-mbulk-memory')
+
   if settings.RELOCATABLE and '-fPIC' not in user_args:
     flags.append('-fPIC')
 
@@ -841,14 +850,6 @@ def phase_setup(options, state, newargs):
   # Pthreads and Wasm Workers require targeting shared Wasm memory (SAB).
   if settings.PTHREADS or settings.WASM_WORKERS:
     settings.SHARED_MEMORY = 1
-
-  if settings.PTHREADS and '-pthread' not in newargs:
-    newargs += ['-pthread']
-  elif settings.SHARED_MEMORY:
-    if '-matomics' not in newargs:
-      newargs += ['-matomics']
-    if '-mbulk-memory' not in newargs:
-      newargs += ['-mbulk-memory']
 
   if settings.SHARED_MEMORY:
     settings.BULK_MEMORY = 1
