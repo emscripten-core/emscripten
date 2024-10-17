@@ -3243,7 +3243,7 @@ More info: https://emscripten.org
     'o1': ['-O1'],
     'o2': ['-O2'],
     'o2_mem_growth': ['-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')],
-    'o2_closure': ['-O2', '--closure=1', '--closure-args', '--externs ' + shlex.quote(test_file('embind/underscore-externs.js'))],
+    'o2_closure': ['-O2', '--closure=1', '--closure-args', '--externs ' + shlex.quote(test_file('embind/underscore-externs.js')), '-sASSERTIONS=1'],
     'strict_js': ['-sSTRICT_JS']
   })
   def test_embind(self, *extra_args):
