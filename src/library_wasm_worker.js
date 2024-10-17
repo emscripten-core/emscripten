@@ -110,6 +110,12 @@ addToLibrary({
     ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
 #endif
 
+#if STACK_OVERFLOW_CHECK
+    // Write the stack cookie last, after we have set up the proper bounds and
+    // current position of the stack.
+    writeStackCookie();
+#endif
+
 #if AUDIO_WORKLET
     // Audio Worklets do not have postMessage()ing capabilities.
     if (typeof AudioWorkletGlobalScope === 'undefined') {

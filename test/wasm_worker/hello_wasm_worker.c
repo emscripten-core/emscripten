@@ -7,6 +7,7 @@
 
 void run_in_worker() {
   emscripten_console_log("Hello from wasm worker!\n");
+  EM_ASM(typeof checkStackCookie == 'function' && checkStackCookie());
 #ifdef REPORT_RESULT
   REPORT_RESULT(0);
 #endif
