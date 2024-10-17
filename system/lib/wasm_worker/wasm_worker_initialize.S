@@ -1,6 +1,4 @@
 .extern __stack_pointer
-.extern __stack_base
-.extern __stack_end
 
 #ifdef __wasm64__
 #define PTR i64
@@ -13,32 +11,37 @@
 #endif
 
 .globaltype __stack_pointer, PTR
-.globaltype __stack_end, PTR
-.globaltype __stack_base, PTR
+.globaltype __tls_size, PTR, immutable
+.functype emscripten_stack_set_limits (PTR /*base*/, PTR /*end*/) -> ()
 
 .globl _emscripten_wasm_worker_initialize
 _emscripten_wasm_worker_initialize:
   .functype _emscripten_wasm_worker_initialize (PTR /*stackLowestAddress*/, i32 /*stackSize*/) -> ()
+  .local PTR, PTR
 
-  // __stack_end = stackLowestAddress + (__builtin_wasm_tls_size() + 15) & -16;
+  // stack_end = stackLowestAddress + (__builtin_wasm_tls_size() + 15) & -16;
   local.get 0
-  .globaltype __tls_size, PTR, immutable
   global.get __tls_size
   PTR.add
   PTR.const 0xf
   PTR.add
   PTR.const -0x10
   PTR.and
-  global.set __stack_end
+  local.set 2
 
-  // __stack_base = stackLowestAddress + stackSize;
+  // stack_base = stackLowestAddress + stackSize;
   local.get 0
   local.get 1
 #ifdef __wasm64__
   i64.extend_i32_u
 #endif
   PTR.add
-  global.set __stack_base
+  local.set 3
+
+  local.get 3
+  local.get 2
+  // emscripten_stack_set_limits(stack_base, stack_end);
+  call emscripten_stack_set_limits
 
 // TODO: We'd like to do this here to avoid JS side calls to __set_stack_limits.
 //       (or even better, we'd like to avoid duplicate versions of the stack variables)
@@ -47,6 +50,7 @@ _emscripten_wasm_worker_initialize:
 //  global.get __stack_end
 //  .functype __set_stack_limits (PTR, PTR) -> ()
 //  call __set_stack_limits
+
 
   // __wasm_init_tls(stackLowestAddress);
   local.get 0
@@ -57,8 +61,8 @@ _emscripten_wasm_worker_initialize:
   // __stack_pointer initialized, and it destroys the value it was set to.
   // So we must initialize __stack_pointer only *after* completing __wasm_init_tls:
 
-  // __stack_pointer = __stack_base;
-  global.get __stack_base
+  // __stack_pointer = stack_base;
+  local.get 3
   global.set __stack_pointer
 
   end_function
