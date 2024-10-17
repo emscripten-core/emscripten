@@ -266,7 +266,7 @@ var LibraryEmbind = {
   $registerType__docs: '/** @param {Object=} options */',
   $registerType: function(rawType, registeredInstance, options = {}) {
 #if ASSERTIONS
-    if (!('argPackAdvance' in registeredInstance)) {
+    if (registeredInstance.argPackAdvance === undefined) {
       throw new TypeError('registerType registeredInstance requires argPackAdvance');
     }
 #endif
