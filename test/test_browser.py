@@ -5059,10 +5059,7 @@ Module["preRun"] = () => {
   # Tests emscripten_terminate_wasm_worker()
   @also_with_minimal_runtime
   def test_wasm_worker_terminate(self):
-    self.set_setting('WASM_WORKERS')
-    # Test uses the dynCall library function in its EM_ASM code
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall'])
-    self.btest('wasm_worker/terminate_wasm_worker.c', expected='0')
+    self.btest('wasm_worker/terminate_wasm_worker.c', expected='0', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_terminate_all_wasm_workers()
   @also_with_minimal_runtime
