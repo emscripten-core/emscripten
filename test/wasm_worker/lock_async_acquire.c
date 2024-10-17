@@ -1,4 +1,4 @@
-#include <emscripten.h>
+#include <emscripten/console.h>
 #include <emscripten/wasm_worker.h>
 #include <emscripten/threading.h>
 #include <stdlib.h>
@@ -18,7 +18,7 @@ int numTimesMainThreadAcquiredLock = 0;
 int numTimesWasmWorkerAcquiredLock = 0;
 
 void work() {
-  // emscripten_console_log("work");
+  // emscripten_out("work");
   volatile int x = sharedState0;
   volatile int y = sharedState1;
   assert(x == y+1 || y == x+1);
@@ -43,7 +43,7 @@ void work() {
 
     if (y > 100 && numTimesMainThreadAcquiredLock && numTimesWasmWorkerAcquiredLock) {
       if (!testFinished) {
-        emscripten_console_log("test finished");
+        emscripten_out("test finished");
 #ifdef REPORT_RESULT
         REPORT_RESULT(0);
 #endif
@@ -56,7 +56,7 @@ void work() {
 void schedule_work(void *userData);
 
 void lock_async_acquired(volatile void *addr, uint32_t val, ATOMICS_WAIT_RESULT_T waitResult, void *userData) {
-  // emscripten_console_log("async lock acquired");
+  // emscripten_out("async lock acquired");
   assert(addr == &lock);
   assert(val == 0 || val == 1);
   assert(waitResult == ATOMICS_WAIT_OK);
@@ -72,7 +72,7 @@ void lock_async_acquired(volatile void *addr, uint32_t val, ATOMICS_WAIT_RESULT_
 void schedule_work(void *userData) {
   if (emscripten_current_thread_is_wasm_worker() && emscripten_random() > 0.5) {
     emscripten_lock_waitinf_acquire(&lock);
-    // emscripten_console_log("sync lock acquired");
+    // emscripten_out("sync lock acquired");
     work();
     emscripten_lock_release(&lock);
     if (!testFinished)

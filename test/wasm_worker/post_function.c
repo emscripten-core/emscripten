@@ -1,4 +1,3 @@
-#include <emscripten.h>
 #include <emscripten/console.h>
 #include <emscripten/wasm_worker.h>
 #include <assert.h>
@@ -8,25 +7,25 @@
 volatile int success = 0;
 
 void v() {
-  emscripten_console_log("v");
+  emscripten_out("v");
   ++success;
 }
 
 void vi(int i) {
-  emscripten_console_log("vi");
+  emscripten_out("vi");
   assert(i == 1);
   ++success;
 }
 
 void vii(int i, int j) {
-  emscripten_console_log("vii");
+  emscripten_out("vii");
   assert(i == 2);
   assert(j == 3);
   ++success;
 }
 
 void viii(int i, int j, int k) {
-  emscripten_console_log("viii");
+  emscripten_out("viii");
   assert(i == 4);
   assert(j == 5);
   assert(k == 6);
@@ -34,20 +33,20 @@ void viii(int i, int j, int k) {
 }
 
 void vd(double i) {
-  emscripten_console_log("vd");
+  emscripten_out("vd");
   assert(i == 1.5);
   ++success;
 }
 
 void vdd(double i, double j) {
-  emscripten_console_log("vdd");
+  emscripten_out("vdd");
   assert(i == 2.5);
   assert(j == 3.5);
   ++success;
 }
 
 void vddd(double i, double j, double k) {
-  emscripten_console_log("vddd");
+  emscripten_out("vddd");
   assert(i == 4.5);
   assert(j == 5.5);
   assert(k == 6.5);
@@ -55,7 +54,7 @@ void vddd(double i, double j, double k) {
 }
 
 void viiiiiidddddd(int a, int b, int c, int d, int e, int f, double g, double h, double i, double j, double k, double l) {
-  emscripten_console_log("viiiiiidddddd");
+  emscripten_out("viiiiiidddddd");
   assert(a == 10);
   assert(b == 11);
   assert(c == 12);
