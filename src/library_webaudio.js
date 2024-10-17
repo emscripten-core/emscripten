@@ -296,7 +296,7 @@ let LibraryWebAudio = {
       processorOptions: {
         'cb': callback,
         'ud': userData,
-        'qs': emscriptenGetContextQuantumSize(contextHandle)
+        'sc': emscriptenGetContextQuantumSize(contextHandle)
       }
     } : void 0;
 

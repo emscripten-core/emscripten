@@ -36,7 +36,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       // 1.1: the typed array passed to process() should be the same size as this
       // 'render quantum size', and this exercise of passing in the value
       // shouldn't be required (to be verified).
-      this.samplesPerChannel = opts['qs'];
+      this.samplesPerChannel = opts['sc'];
     }
 
     static get parameterDescriptors() {
