@@ -597,6 +597,7 @@ implemented in JavaScript.
 .. code:: cpp
 
     struct Interface {
+        virtual ~Interface() {}
         virtual void invoke(const std::string& str) = 0;
     };
 
