@@ -38,8 +38,8 @@ function createWasmAudioWorkletProcessor(audioParams) {
       // shouldn't be required (to be verified).
       this.samplesPerChannel = opts['sc'];
       // Typed views of the output buffers on the worklet's stack, which after
-      // creation should not change (since the stack is passed externally once).
-      this.outputViews = null;
+      // creation should only change if the audio chain changes.
+      this.outputViews = [];
     }
 
     static get parameterDescriptors() {
@@ -57,7 +57,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
         bytesPerChannel = this.samplesPerChannel * 4,
         stackMemoryNeeded = (numInputs + numOutputs) * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}},
         oldStackPtr = stackSave(),
-        inputsPtr, outputsPtr, outputDataPtr, paramsPtr,
+        inputsPtr, outputsPtr, outputDataPtr, paramsPtr, requiredViews = 0,
         didProduceAudio, paramArray;
 
       // Calculate how much stack space is needed.
@@ -96,18 +96,22 @@ function createWasmAudioWorkletProcessor(audioParams) {
         k += {{{ C_STRUCTS.AudioSampleFrame.__size__ / 4 }}};
         // Reserve space for the output data
         dataPtr += bytesPerChannel * i.length;
+        // How many output views are needed in total?
+        requiredViews += i.length;
       }
-      if (!this.outputViews) {
+
+      // Verify we have enough views (it doesn't matter if we have too many, any
+      // excess won't be accessed) then also verify the views' start address
+      // hasn't changed.
+      // TODO: allocate space for outputDataPtr before any inputs?
+      k = outputDataPtr;
+      if (this.outputViews.length < requiredViews || (this.outputViews.length && this.outputViews[0].byteOffset != k << 2)) {
         this.outputViews = [];
-        k = outputDataPtr;
         for (/*which output*/ i of outputList) {
           for (/*which channel*/ j of i) {
-            this.outputViews.push({
-              // dataPtr is the sanity check (to be implemented)
-              // dataSub is the one-time subarray into the heap
-              dataPtr: k,
-              dataSub: HEAPF32.subarray(k, k += this.samplesPerChannel)
-            });
+            this.outputViews.push(
+              HEAPF32.subarray(k, k += this.samplesPerChannel)
+            );
           }
         }
       }
@@ -134,7 +138,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
         k = 0;
         for (i of outputList) {
           for (j of i) {
-            j.set(this.outputViews[k++].dataSub);
+            j.set(this.outputViews[k++]);
           }
         }
       }
