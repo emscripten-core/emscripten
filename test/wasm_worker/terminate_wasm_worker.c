@@ -1,5 +1,6 @@
 #include <emscripten/console.h>
 #include <emscripten/em_asm.h>
+#include <emscripten/em_js.h>
 #include <emscripten/eventloop.h>
 #include <emscripten/wasm_worker.h>
 #include <assert.h>
@@ -35,6 +36,8 @@ void worker_main() {
 }
 
 char stack[1024];
+
+EM_JS_DEPS(deps, "$dynCall");
 
 int should_throw(void(*func)()) {
   int threw = EM_ASM_INT({
