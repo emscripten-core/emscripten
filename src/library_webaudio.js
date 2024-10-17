@@ -37,7 +37,7 @@ let LibraryWebAudio = {
   // Wasm handle ID.
   $emscriptenGetAudioObject: (objectHandle) => EmAudio[objectHandle],
 
-  // Performs the work of getting the AudioContext's quantum size.
+  // Performs the work of getting the AudioContext's render quantum size.
   $emscriptenGetContextQuantumSize: (contextHandle) => {
     // TODO: in a future release this will be something like:
     //   return EmAudio[contextHandle].renderQuantumSize || 128;
@@ -296,7 +296,7 @@ let LibraryWebAudio = {
       processorOptions: {
         'cb': callback,
         'ud': userData,
-        'qs': emscriptenGetContextQuantumSize(contextHandle)
+        'sc': emscriptenGetContextQuantumSize(contextHandle)
       }
     } : void 0;
 
