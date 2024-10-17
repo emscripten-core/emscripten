@@ -37,7 +37,7 @@ let LibraryWebAudio = {
   // Wasm handle ID.
   $emscriptenGetAudioObject: (objectHandle) => EmAudio[objectHandle],
 
-  // Performs the work of getting the AudioContext's quantum size.
+  // Performs the work of getting the AudioContext's render quantum size.
   $emscriptenGetContextQuantumSize: (contextHandle) => {
     // TODO: in a future release this will be something like:
     //   return EmAudio[contextHandle].renderQuantumSize || 128;
@@ -164,7 +164,10 @@ let LibraryWebAudio = {
 
     let audioWorkletCreationFailed = () => {
 #if WEBAUDIO_DEBUG
-      console.error(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed!`);
+      // Note about Cross-Origin here: a lack of Cross-Origin-Opener-Policy and
+      // Cross-Origin-Embedder-Policy headers to the client request will result
+      // in the worklet file failing to load.
+      console.error(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed! Are the Cross-Origin headers being set?`);
 #endif
       {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
     };
@@ -296,7 +299,7 @@ let LibraryWebAudio = {
       processorOptions: {
         'cb': callback,
         'ud': userData,
-        'qs': emscriptenGetContextQuantumSize(contextHandle)
+        'sc': emscriptenGetContextQuantumSize(contextHandle)
       }
     } : void 0;
 

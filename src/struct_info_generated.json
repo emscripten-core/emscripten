@@ -479,7 +479,7 @@
             "__size__": 12,
             "data": 8,
             "numberOfChannels": 0,
-            "quantumSize": 4
+            "samplesPerChannel": 4
         },
         "EmscriptenBatteryEvent": {
             "__size__": 32,

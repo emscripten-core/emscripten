@@ -103,19 +103,19 @@ typedef int EMSCRIPTEN_AUDIO_WORKLET_NODE_T;
 
 typedef struct AudioSampleFrame
 {
-	// Number of audio channels to process (multiplied by quantumSize gives the elements in data)
+	// Number of audio channels to process (multiplied by samplesPerChannel gives the elements in data)
 	const int numberOfChannels;
 	// Number of samples per channel in data
-	const int quantumSize;
-	// An array of length numberOfChannels*quantumSize elements. Samples are always arranged in a planar fashion,
-	// where data[channelIndex*quantumSize+i] locates the data of the i'th sample of channel channelIndex.
+	const int samplesPerChannel;
+	// An array of length numberOfChannels*samplesPerChannel elements. Samples are always arranged in a planar fashion,
+	// where data[channelIndex*samplesPerChannel+i] locates the data of the i'th sample of channel channelIndex.
 	float *data;
 } AudioSampleFrame;
 
 typedef struct AudioParamFrame
 {
 	// Specifies the length of the input array data (in float elements). This will be guaranteed to either have
-	// a value of 1, for a parameter valid for the entire frame, or emscripten_audio_context_quantum_size() for a parameter that changes during the frame.
+	// a value of 1, for a parameter valid for the entire frame, or emscripten_audio_context_quantum_size() for a parameter that changes per sample during the frame.
 	int length;
 	// An array of length specified in 'length'.
 	float *data;
