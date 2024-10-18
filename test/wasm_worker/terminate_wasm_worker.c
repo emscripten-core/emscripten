@@ -1,3 +1,4 @@
+#include <emscripten/emscripten.h>
 #include <emscripten/console.h>
 #include <emscripten/em_asm.h>
 #include <emscripten/em_js.h>
@@ -13,17 +14,13 @@ static volatile int worker_started = 0;
 void this_function_should_not_be_called(void *userData) {
   worker_started = -1;
   emscripten_err("this_function_should_not_be_called");
-#ifdef REPORT_RESULT
-  REPORT_RESULT(1/*fail*/);
-#endif
+  emscripten_force_exit(1);
 }
 
 void test_passed(void *userData) {
   if (worker_started == 1) {
     emscripten_err("test_passed");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0/*ok*/);
-#endif
+    emscripten_force_exit(0);
   }
 }
 
