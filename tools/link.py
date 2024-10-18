@@ -2766,6 +2766,7 @@ def process_libraries(state, linker_inputs, nodefaultlibc):
       # similar. It's important to link libc after our other injected system
       # libraries like libbulkmemory, but user linked libraries go ahead of
       # system libraries, so if the user passes `-lc` then we can get crashes.
+      diagnostics.warning('emcc', 'ignoring explicitly passed -lc, if you want to control how libc is linked, pass -nolibc or -nostdlib')
       continue
 
     logger.debug('looking for library "%s"', lib)
