@@ -974,6 +974,138 @@ class libnoexit(Library):
   src_files = ['atexit_dummy.c']
 
 
+class libpthread(MuslInternalLibrary,
+                 DebugLibrary,
+                 AsanInstrumentedLibrary):
+  name = 'libpthread'
+  # See libc
+  cflags = ['-Os', '-fno-inline-functions', '-fno-builtin']
+  cflags += ['-Wno-unused-but-set-variable',
+             '-Wno-unused-variable',
+             '-Wno-shift-op-parentheses',
+             '-Wno-unused-label',
+             '-Wno-logical-op-parentheses',
+             '-Wno-bitwise-op-parentheses']
+
+  def __init__(self, **kwargs):
+    self.is_stub = kwargs.pop('stub')
+    super().__init__(**kwargs)
+
+  def get_cflags(self):
+    cflags = super().get_cflags()
+    if not self.is_stub:
+      cflags += ['-pthread']
+    return cflags
+
+  def get_base_name(self):
+    name = super().get_base_name()
+    if self.is_stub:
+      name += '-stub'
+    return name
+
+  @classmethod
+  def vary_on(cls):
+    return super().vary_on() + ['stub']
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super().get_default_variation(stub=not settings.PTHREADS, **kwargs)
+
+  def get_files(self):
+    files = files_in_path(
+        path='system/lib/pthread',
+        filenames=['thread_profiler.c'])
+
+    if self.is_stub:
+      # Include just a subset of the thread directory
+      files += files_in_path(
+        path='system/lib/libc/musl/src/thread',
+        filenames=[
+          'pthread_self.c',
+          'pthread_cleanup_push.c',
+          'pthread_attr_init.c',
+          'pthread_attr_destroy.c',
+          'pthread_attr_get.c',
+          'pthread_attr_setdetachstate.c',
+          'pthread_attr_setguardsize.c',
+          'pthread_attr_setinheritsched.c',
+          'pthread_attr_setschedparam.c',
+          'pthread_attr_setschedpolicy.c',
+          'pthread_attr_setscope.c',
+          'pthread_attr_setstack.c',
+          'pthread_attr_setstacksize.c',
+          'pthread_getconcurrency.c',
+          'pthread_getcpuclockid.c',
+          'pthread_getschedparam.c',
+          'pthread_setschedprio.c',
+          'pthread_setconcurrency.c',
+          'default_attr.c',
+          # C11 thread library functions
+          'call_once.c',
+          'tss_create.c',
+          'tss_delete.c',
+          'tss_set.c',
+          'cnd_broadcast.c',
+          'cnd_destroy.c',
+          'cnd_init.c',
+          'cnd_signal.c',
+          'cnd_timedwait.c',
+          'cnd_wait.c',
+          'mtx_destroy.c',
+          'mtx_init.c',
+          'mtx_lock.c',
+          'mtx_timedlock.c',
+          'mtx_trylock.c',
+          'mtx_unlock.c',
+          'thrd_create.c',
+          'thrd_exit.c',
+          'thrd_join.c',
+          'thrd_sleep.c',
+          'thrd_yield.c',
+        ])
+      files += files_in_path(
+        path='system/lib/pthread',
+        filenames=[
+          'library_pthread_stub.c',
+          'pthread_self_stub.c',
+          'proxying_stub.c',
+        ])
+    else:
+      files += glob_in_path(
+        path='system/lib/libc/musl/src/thread',
+        glob_pattern='*.c',
+        excludes=[
+          'clone.c',
+          'pthread_create.c',
+          'pthread_kill.c', 'pthread_sigmask.c',
+          '__set_thread_area.c', 'synccall.c',
+          '__syscall_cp.c', '__tls_get_addr.c',
+          '__unmapself.c',
+          # Empty files, simply ignore them.
+          'syscall_cp.c', 'tls.c',
+          # TODO: Support these. See #12216.
+          'pthread_setname_np.c',
+          'pthread_getname_np.c',
+        ])
+      files += files_in_path(
+        path='system/lib/pthread',
+        filenames=[
+          'library_pthread.c',
+          'em_task_queue.c',
+          'proxying.c',
+          'proxying_legacy.c',
+          'thread_mailbox.c',
+          'pthread_create.c',
+          'pthread_kill.c',
+          'emscripten_thread_init.c',
+          'emscripten_thread_state.S',
+          'emscripten_futex_wait.c',
+          'emscripten_futex_wake.c',
+          'emscripten_yield.c',
+        ])
+    return files
+
+
 class libc(MuslInternalLibrary,
            DebugLibrary,
            AsanInstrumentedLibrary,
@@ -1088,7 +1220,7 @@ class libc(MuslInternalLibrary,
     ignore = [
         'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
         'aio', 'exit', 'legacy', 'mq', 'setjmp',
-        'ldso', 'malloc'
+        'ldso', 'malloc', 'thread'
     ]
 
     # individual files
@@ -1110,91 +1242,6 @@ class libc(MuslInternalLibrary,
     ]
 
     ignore += LIBC_SOCKETS
-
-    if self.is_mt:
-      ignore += [
-        'clone.c',
-        'pthread_create.c',
-        'pthread_kill.c', 'pthread_sigmask.c',
-        '__set_thread_area.c', 'synccall.c',
-        '__syscall_cp.c', '__tls_get_addr.c',
-        '__unmapself.c',
-        # Empty files, simply ignore them.
-        'syscall_cp.c', 'tls.c',
-        # TODO: Support these. See #12216.
-        'pthread_setname_np.c',
-        'pthread_getname_np.c',
-      ]
-      libc_files += files_in_path(
-        path='system/lib/pthread',
-        filenames=[
-          'library_pthread.c',
-          'em_task_queue.c',
-          'proxying.c',
-          'proxying_legacy.c',
-          'thread_mailbox.c',
-          'pthread_create.c',
-          'pthread_kill.c',
-          'emscripten_thread_init.c',
-          'emscripten_thread_state.S',
-          'emscripten_futex_wait.c',
-          'emscripten_futex_wake.c',
-          'emscripten_yield.c',
-        ])
-    else:
-      ignore += ['thread']
-      libc_files += files_in_path(
-        path='system/lib/libc/musl/src/thread',
-        filenames=[
-          'pthread_self.c',
-          'pthread_cleanup_push.c',
-          'pthread_attr_init.c',
-          'pthread_attr_destroy.c',
-          'pthread_attr_get.c',
-          'pthread_attr_setdetachstate.c',
-          'pthread_attr_setguardsize.c',
-          'pthread_attr_setinheritsched.c',
-          'pthread_attr_setschedparam.c',
-          'pthread_attr_setschedpolicy.c',
-          'pthread_attr_setscope.c',
-          'pthread_attr_setstack.c',
-          'pthread_attr_setstacksize.c',
-          'pthread_getconcurrency.c',
-          'pthread_getcpuclockid.c',
-          'pthread_getschedparam.c',
-          'pthread_setschedprio.c',
-          'pthread_setconcurrency.c',
-          'default_attr.c',
-          # C11 thread library functions
-          'call_once.c',
-          'tss_create.c',
-          'tss_delete.c',
-          'tss_set.c',
-          'cnd_broadcast.c',
-          'cnd_destroy.c',
-          'cnd_init.c',
-          'cnd_signal.c',
-          'cnd_timedwait.c',
-          'cnd_wait.c',
-          'mtx_destroy.c',
-          'mtx_init.c',
-          'mtx_lock.c',
-          'mtx_timedlock.c',
-          'mtx_trylock.c',
-          'mtx_unlock.c',
-          'thrd_create.c',
-          'thrd_exit.c',
-          'thrd_join.c',
-          'thrd_sleep.c',
-          'thrd_yield.c',
-        ])
-      libc_files += files_in_path(
-        path='system/lib/pthread',
-        filenames=[
-          'library_pthread_stub.c',
-          'pthread_self_stub.c',
-          'proxying_stub.c',
-        ])
 
     # These files are in libc directories, but only built in libc_optz.
     ignore += [
@@ -1306,10 +1353,6 @@ class libc(MuslInternalLibrary,
 
     if settings.RELOCATABLE:
       libc_files += files_in_path(path='system/lib/libc', filenames=['dynlink.c'])
-
-    libc_files += files_in_path(
-        path='system/lib/pthread',
-        filenames=['thread_profiler.c'])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
 
@@ -2372,6 +2415,7 @@ def get_libs_to_link(args):
   if settings.ALLOW_UNIMPLEMENTED_SYSCALLS:
     add_library('libstubs')
   if '-nolibc' not in args:
+    add_library('libpthread')
     if not settings.EXIT_RUNTIME:
       add_library('libnoexit')
     add_library('libc')
