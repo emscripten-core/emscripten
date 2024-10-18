@@ -15169,3 +15169,6 @@ addToLibrary({
 
   def test_embool(self):
     self.do_other_test('test_embool.c')
+
+  def test_user_passed_lc(self):
+    self.run_process([EMCC, '-lc', '-sDISABLE_EXCEPTION_CATCHING=0', '-sMIN_SAFARI_VERSION=150000'])

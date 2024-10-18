@@ -2749,7 +2749,7 @@ def map_to_js_libs(library_name):
   return None
 
 
-def process_libraries(state, linker_inputs):
+def process_libraries(state, linker_inputs, nodefaultlibc):
   new_flags = []
   libraries = []
   suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
@@ -2761,6 +2761,12 @@ def process_libraries(state, linker_inputs):
       new_flags.append((i, flag))
       continue
     lib = removeprefix(flag, '-l')
+    if lib == 'c' and not nodefaultlibc:
+      # Drop explicitly passed -lc unless they also passed -nodefaultlibs or
+      # similar. It's important to link libc after our other injected system
+      # libraries like libbulkmemory, but user linked libraries go ahead of
+      # system libraries, so if the user passes `-lc` then we can get crashes.
+      continue
 
     logger.debug('looking for library "%s"', lib)
 
@@ -3026,12 +3032,12 @@ def package_files(options, target):
 
 
 @ToolchainProfiler.profile_block('calculate linker inputs')
-def phase_calculate_linker_inputs(options, state, linker_inputs):
+def phase_calculate_linker_inputs(options, state, linker_inputs, nodefaultlibc):
   using_lld = not (options.oformat == OFormat.OBJECT and settings.LTO)
   state.link_flags = filter_link_flags(state.link_flags, using_lld)
 
   # Decide what we will link
-  process_libraries(state, linker_inputs)
+  process_libraries(state, linker_inputs, nodefaultlibc)
 
   # Interleave the linker inputs with the linker flags while maintainging their
   # relative order on the command line (both of these list are pairs, with the
@@ -3072,8 +3078,10 @@ def run(linker_inputs, options, state, newargs):
 
   target, wasm_target = phase_linker_setup(options, state, newargs)
 
+  nodefaultlibc = '-nodefaultlibs' in newargs or '-nolibc' in newargs or '-nostdlib' in newargs
+
   # Link object files using wasm-ld or llvm-link (for bitcode linking)
-  linker_arguments = phase_calculate_linker_inputs(options, state, linker_inputs)
+  linker_arguments = phase_calculate_linker_inputs(options, state, linker_inputs, nodefaultlibc)
 
   # Embed and preload files
   if len(options.preload_files) or len(options.embed_files):
