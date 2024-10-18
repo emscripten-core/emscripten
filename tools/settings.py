@@ -96,6 +96,10 @@ COMPILE_TIME_SETTINGS = {
     'WASM_OBJECT_FILES',
     'WASM_WORKERS',
     'BULK_MEMORY',
+    'MIN_SAFARI_VERSION',
+    'MIN_CHROME_VERSION',
+    'MIN_FIREFOX_VERSION',
+    'MIN_NODE_VERSION',
 
     # Internal settings used during compilation
     'EXCEPTION_CATCHING_ALLOWED',
