@@ -33,9 +33,9 @@ function createWasmAudioWorkletProcessor(audioParams) {
       this.userData = opts['ud'];
       // Then the samples per channel to process, fixed for the lifetime of the
       // context that created this processor. Note for when moving to Web Audio
-      // 1.1: the typed array passed to process() should be the same size as this
-      // 'render quantum size', and this exercise of passing in the value
-      // shouldn't be required (to be verified).
+      // 1.1: the typed array passed to process() should be the same size as
+      // this 'render quantum size', and this exercise of passing in the value
+      // shouldn't be required (to be verified with the in/out data lengths).
       this.samplesPerChannel = opts['sc'];
       // Typed views of the output buffers on the worklet's stack, which after
       // creation should only change if the audio chain changes.
@@ -47,6 +47,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
     }
 
     process(inputList, outputList, parameters) {
+      var time = Date.now();
       // Marshal all inputs and parameters to the Wasm memory on the thread stack,
       // then perform the wasm audio worklet call,
       // and finally marshal audio output data back.
@@ -65,12 +66,47 @@ function createWasmAudioWorkletProcessor(audioParams) {
       for (i of outputList) stackMemoryNeeded += i.length * bytesPerChannel;
       for (i in parameters) stackMemoryNeeded += parameters[i].byteLength + {{{ C_STRUCTS.AudioParamFrame.__size__ }}}, ++numParams;
 
-      // Allocate the necessary stack space.
-      inputsPtr = stackAlloc(stackMemoryNeeded);
+      // Allocate the necessary stack space (dataPtr is always in bytes, and
+      // advances as space for structs as data is taken, but note the switching
+      // between bytes and indices into the various heaps).
+      dataPtr = stackAlloc(stackMemoryNeeded);
+
+      // But start the output view allocs first, since once views are created we
+      // want them to always start from the same address. Even if in the next
+      // process() the outputList is empty, as soon as there are channels again
+      // the views' addresses will still be the same (and only if more views are
+      // required we will recreate them).
+      outputDataPtr = dataPtr;
+      for (/*which output*/i of outputList) {
+#if ASSERTIONS
+        for (/*which channel*/ j of i) {
+          console.assert(j.byteLength === bytesPerChannel, `Unexpected AudioWorklet output buffer size (expected ${bytesPerChannel} got ${j.byteLength})`);
+        }
+#endif
+        // Keep advancing to make room for the output views
+        dataPtr += bytesPerChannel * i.length;
+        // How many output views are needed in total?
+        requiredViews += i.length;
+      }
+      // Verify we have enough views (it doesn't matter if we have too many, any
+      // excess won't be accessed) then also verify the views' start address
+      // haven't changed.
+      if (this.outputViews.length < requiredViews || (this.outputViews.length && this.outputViews[0].byteOffset != outputDataPtr)) {
+        this.outputViews = [];
+        k = outputDataPtr >> 2;
+        for (i of outputList) {
+          for (j of i) {
+            this.outputViews.push(
+              HEAPF32.subarray(k, k += this.samplesPerChannel)
+            );
+          }
+        }
+      }
 
       // Copy input audio descriptor structs and data to Wasm
+      inputsPtr = dataPtr;
       k = inputsPtr >> 2;
-      dataPtr = inputsPtr + numInputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
+      dataPtr += numInputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
       for (i of inputList) {
         // Write the AudioSampleFrame struct instance
         HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.numberOfChannels / 4 }}}] = i.length;
@@ -85,35 +121,18 @@ function createWasmAudioWorkletProcessor(audioParams) {
       }
 
       // Copy output audio descriptor structs to Wasm
+      // TODO: now dataPtr tracks the next address, move this above
       outputsPtr = dataPtr;
       k = outputsPtr >> 2;
-      outputDataPtr = (dataPtr += numOutputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}}) >> 2;
+      dataPtr += numOutputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
       for (i of outputList) {
         // Write the AudioSampleFrame struct instance
         HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.numberOfChannels / 4 }}}] = i.length;
         HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.samplesPerChannel / 4 }}}] = this.samplesPerChannel;
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.data / 4 }}}] = dataPtr;
+        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.data / 4 }}}] = outputDataPtr;
         k += {{{ C_STRUCTS.AudioSampleFrame.__size__ / 4 }}};
-        // Reserve space for the output data
-        dataPtr += bytesPerChannel * i.length;
-        // How many output views are needed in total?
-        requiredViews += i.length;
-      }
-
-      // Verify we have enough views (it doesn't matter if we have too many, any
-      // excess won't be accessed) then also verify the views' start address
-      // hasn't changed.
-      // TODO: allocate space for outputDataPtr before any inputs?
-      k = outputDataPtr;
-      if (this.outputViews.length < requiredViews || (this.outputViews.length && this.outputViews[0].byteOffset != k << 2)) {
-        this.outputViews = [];
-        for (/*which output*/ i of outputList) {
-          for (/*which channel*/ j of i) {
-            this.outputViews.push(
-              HEAPF32.subarray(k, k += this.samplesPerChannel)
-            );
-          }
-        }
+        // Advance the output pointer to the next output
+        outputDataPtr += bytesPerChannel * i.length;
       }
 
       // Copy parameters descriptor structs and data to Wasm
@@ -144,6 +163,9 @@ function createWasmAudioWorkletProcessor(audioParams) {
       }
 
       stackRestore(oldStackPtr);
+      
+      time = Date.now() - time;
+      //console.log(time);
 
       // Return 'true' to tell the browser to continue running this processor.
       // (Returning 1 or any other truthy value won't work in Chrome)
