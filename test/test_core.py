@@ -173,6 +173,14 @@ def also_with_wasmfs_js(func):
     func(self)
   return decorated
 
+def can_do_wasm2c(self):
+  return not self.get_setting('MEMORY64')
+
+
+def can_do_standalone(self, impure=True):
+  if self.get_setting('MEMORY64') and not impure:
+    return False
+
 
 def with_asyncify_and_jspi(f):
   assert callable(f)
