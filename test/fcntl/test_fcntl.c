@@ -57,6 +57,11 @@ int main() {
   printf("\n");
   errno = 0;
 
+  printf("F_SETFL/2: %d\n", fcntl(f, F_SETFL, O_NONBLOCK));
+  printf("errno: %d\n", errno);
+  printf("\n");
+  errno = 0;
+
   printf("F_GETFL/2: %d\n", !!(fcntl(f, F_GETFL) & (O_RDWR | O_APPEND)));
   printf("errno: %d\n", errno);
   printf("\n");
