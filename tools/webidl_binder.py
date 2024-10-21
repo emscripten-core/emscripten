@@ -629,7 +629,8 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
     if non_pointer:
       return_prefix += '&'
     if copy:
-      pre += '  static %s temp;\n' % type_to_c(return_type, non_pointing=True)
+      # Avoid sharing this static temp var between threads, which could race.
+      pre += '  static thread_local %s temp;\n' % type_to_c(return_type, non_pointing=True)
       return_prefix += '(temp = '
       return_postfix += ', &temp)'
 
