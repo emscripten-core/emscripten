@@ -30,7 +30,10 @@ addToLibrary({
       'pointer': (p) => {{{ to64('p') }}},
 #endif
       'string': (str) => {
-        var ret = 0;
+        var ret = 0;        
+         #if ASSERTIONS
+         assert(typeof str == 'string', 'Argument must be a string');
+         #endif
         if (str !== null && str !== undefined && str !== 0) { // null string
           ret = stringToUTF8OnStack(str);
         }
