@@ -572,7 +572,7 @@ class Module:
     self.seek(section.offset)
     assert self.read_string() == 'target_features'
     features = {}
-    feature_count = self.read_byte()
+    self.read_byte() # ignore feature count
     while self.tell() < section.offset + section.size:
       prefix = TargetFeaturePrefix(self.read_byte())
       feature = self.read_string()
