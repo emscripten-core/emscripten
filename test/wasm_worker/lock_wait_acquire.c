@@ -8,6 +8,12 @@
 
 emscripten_lock_t lock = EMSCRIPTEN_LOCK_T_STATIC_INITIALIZER;
 
+void do_exit() {
+  emscripten_out("do_exit");
+  emscripten_terminate_all_wasm_workers();
+  emscripten_force_exit(0);
+}
+
 void worker_main() {
   // Expect no contention on free lock.
   bool success = emscripten_lock_wait_acquire(&lock, 0);
@@ -40,9 +46,7 @@ void worker_main() {
   success = emscripten_lock_try_acquire(&lock);
   assert(success);
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, do_exit);
 }
 
 char stack[1024];
@@ -50,4 +54,5 @@ char stack[1024];
 int main() {
   emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
   emscripten_wasm_worker_post_function_v(worker, worker_main);
+  emscripten_exit_with_live_runtime();
 }

@@ -1,4 +1,4 @@
-#include <emscripten/console.h>
+#include <emscripten/emscripten.h>
 #include <emscripten/wasm_worker.h>
 #include <emscripten/stack.h>
 #include <emscripten/console.h>
@@ -12,6 +12,12 @@
 void *thread_stack[NUM_THREADS];
 
 volatile int threadsOk = 0;
+
+void do_exit() {
+  emscripten_out("do_exit");
+  emscripten_terminate_all_wasm_workers();
+  emscripten_force_exit(0);
+}
 
 void test_stack(int i) {
   emscripten_outf("In thread %d, stack low addr=%p, emscripten_stack_get_base()=%p, emscripten_stack_get_end()=%p, THREAD_STACK_SIZE=%d",
@@ -30,9 +36,7 @@ void test_stack(int i) {
   emscripten_outf("%d", ok);
   if (ok == 1) {
     emscripten_out("Test finished!");
-#ifdef REPORT_RESULT
-    REPORT_RESULT(0);
-#endif
+    emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, do_exit);
   }
 }
 
@@ -45,4 +49,6 @@ int main() {
     emscripten_outf("Created thread %d with stack ptr=%p, end=%p, size=%x", i, thread_stack[i], thread_stack[i] + THREAD_STACK_SIZE, THREAD_STACK_SIZE);
     emscripten_wasm_worker_post_function_vi(worker, test_stack, i);
   }
+
+  emscripten_exit_with_live_runtime();
 }
