@@ -17,6 +17,12 @@ bool testFinished = false;
 int numTimesMainThreadAcquiredLock = 0;
 int numTimesWasmWorkerAcquiredLock = 0;
 
+void do_exit() {
+  emscripten_out("do_exit");
+  emscripten_terminate_all_wasm_workers();
+  emscripten_force_exit(0);
+}
+
 void work() {
   // emscripten_out("work");
   volatile int x = sharedState0;
@@ -37,18 +43,17 @@ void work() {
     sharedState0 = x;
   } else {
     y = x + 1;
-    if (emscripten_current_thread_is_wasm_worker())
+    if (emscripten_current_thread_is_wasm_worker()) {
       emscripten_wasm_worker_sleep(/*nsecs=*/(rand()%100000));
+    }
     sharedState1 = y;
 
     if (y > 100 && numTimesMainThreadAcquiredLock && numTimesWasmWorkerAcquiredLock) {
       if (!testFinished) {
+        testFinished = true;
         emscripten_out("test finished");
-#ifdef REPORT_RESULT
-        REPORT_RESULT(0);
-#endif
+        emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, do_exit);
       }
-      testFinished = true;
     }
   }
 }
@@ -75,8 +80,9 @@ void schedule_work(void *userData) {
     // emscripten_out("sync lock acquired");
     work();
     emscripten_lock_release(&lock);
-    if (!testFinished)
+    if (!testFinished) {
       emscripten_set_timeout(schedule_work, 0, 0);
+    }
   } else {
     emscripten_lock_async_acquire(&lock, lock_async_acquired, (void*)42, EMSCRIPTEN_WAIT_ASYNC_INFINITY);
   }
@@ -94,4 +100,5 @@ int main() {
   }
 
   schedule_work(0);
+  emscripten_exit_with_live_runtime();
 }
