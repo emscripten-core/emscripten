@@ -614,7 +614,10 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
         # this function comes from an ancestor class; for operators, we must cast it
         cast_self = 'dynamic_cast<' + type_to_c(func_scope) + '>(' + cast_self + ')'
       maybe_deref = deref_if_nonpointer(raw[0])
-      if '=' in operator:
+      operator = operator.strip()
+      if operator in ["+", "-", "*", "/", "%", "^", "&", "|", "=",
+                      "<", ">", "+=", "-=", "*=", "/=", "%=", "^=", "&=", "|=", "<<", ">>", ">>=",
+                      "<<=", "==", "!=", "<=", ">=", "<=>", "&&", "||"]:
         call = '(*%s %s %s%s)' % (cast_self, operator, maybe_deref, args[0])
       elif operator == '[]':
         call = '((*%s)[%s%s])' % (cast_self, maybe_deref, args[0])
