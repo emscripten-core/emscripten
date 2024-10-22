@@ -15169,3 +15169,9 @@ addToLibrary({
 
   def test_embool(self):
     self.do_other_test('test_embool.c')
+
+  def test_user_passed_lc(self):
+    # Outputs warning:
+    # em++: warning: ignoring explicitly passed -lc, if you want to control how libc is linked, pass -nolibc or -nostdlib
+    self.emcc_args.remove('-Werror')
+    self.do_runf(test_file('hello_world.cpp'), 'hello, world!\n', emcc_args=['-lc', '-sDISABLE_EXCEPTION_CATCHING=0', '-sMIN_SAFARI_VERSION=150000'])
