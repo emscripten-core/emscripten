@@ -10,37 +10,33 @@ addToLibrary({
   },
   $SOCKFS__deps: ['$FS'],
   $SOCKFS: {
+    websocket: {},
+    callbacks: {},
+    on(event, callback) {
+      SOCKFS.callbacks[event] = callback;
+    },
+    emit(event, param) {
+      SOCKFS.callbacks[event]?.(param);
+    },
     mount(mount) {
+#if expectToReceiveOnModule('websocket')
       // If Module['websocket'] has already been defined (e.g. for configuring
-      // the subprotocol/url) use that, if not initialise it to a new object.
-      Module['websocket'] = (Module['websocket'] &&
-                             ('object' === typeof Module['websocket'])) ? Module['websocket'] : {};
-
+      // the subprotocol/url) use that.
+      Module['websocket'] = {{{ makeModuleReceiveExpr('websocket', '{}') }}}
       // Add the Event registration mechanism to the exported websocket configuration
       // object so we can register network callbacks from native JavaScript too.
       // For more documentation see system/include/emscripten/emscripten.h
-      Module['websocket']._callbacks = {};
-      Module['websocket']['on'] = /** @this{Object} */ function(event, callback) {
-        if ('function' === typeof callback) {
-          this._callbacks[event] = callback;
-        }
-        return this;
-      };
+      Module['websocket']['on'] = SOCKFS.on;
+#endif
 
-      Module['websocket'].emit = /** @this{Object} */ function(event, param) {
-        if ('function' === typeof this._callbacks[event]) {
-          this._callbacks[event].call(this, param);
-        }
-      };
-
-      // If debug is enabled register simple default logging callbacks for each Event.
 #if SOCKET_DEBUG
-      Module['websocket']['on']('error', (error) => dbg('websocket: error ' + error));
-      Module['websocket']['on']('open', (fd) => dbg('websocket: open fd = ' + fd));
-      Module['websocket']['on']('listen', (fd) => dbg('websocket: listen fd = ' + fd));
-      Module['websocket']['on']('connection', (fd) => dbg('websocket: connection fd = ' + fd));
-      Module['websocket']['on']('message', (fd) => dbg('websocket: message fd = ' + fd));
-      Module['websocket']['on']('close', (fd) => dbg('websocket: close fd = ' + fd));
+      // If debug is enabled register simple default logging callbacks for each Event.
+      SOCKFS.on('error', (error) => dbg('websocket: error ' + error));
+      SOCKFS.on('open', (fd) => dbg('websocket: open fd = ' + fd));
+      SOCKFS.on('listen', (fd) => dbg('websocket: listen fd = ' + fd));
+      SOCKFS.on('connection', (fd) => dbg('websocket: connection fd = ' + fd));
+      SOCKFS.on('message', (fd) => dbg('websocket: message fd = ' + fd));
+      SOCKFS.on('close', (fd) => dbg('websocket: close fd = ' + fd));
 #endif
 
       return FS.createNode(null, '/', {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */, 0);
@@ -169,17 +165,11 @@ addToLibrary({
         } else {
           // create the actual websocket object and connect
           try {
-            // runtimeConfig gets set to true if WebSocket runtime configuration is available.
-            var runtimeConfig = (Module['websocket'] && ('object' === typeof Module['websocket']));
-
             // The default value is 'ws://' the replace is needed because the compiler replaces '//' comments with '#'
             // comments without checking context, so we'd end up with ws:#, the replace swaps the '#' for '//' again.
             var url = '{{{ WEBSOCKET_URL }}}'.replace('#', '//');
-
-            if (runtimeConfig) {
-              if ('string' === typeof Module['websocket']['url']) {
-                url = Module['websocket']['url']; // Fetch runtime WebSocket URL config.
-              }
+            if (SOCKFS.websocket['url']) {
+              url = SOCKFS.websocket['url']; // Fetch runtime WebSocket URL config.
             }
 
             if (url === 'ws://' || url === 'wss://') { // Is the supplied URL config just a prefix, if so complete it.
@@ -189,11 +179,8 @@ addToLibrary({
 
             // Make the WebSocket subprotocol (Sec-WebSocket-Protocol) default to binary if no configuration is set.
             var subProtocols = '{{{ WEBSOCKET_SUBPROTOCOL }}}'; // The default value is 'binary'
-
-            if (runtimeConfig) {
-              if ('string' === typeof Module['websocket']['subprotocol']) {
-                subProtocols = Module['websocket']['subprotocol']; // Fetch runtime WebSocket subprotocol config.
-              }
+            if (SOCKFS.websocket['subprotocol']) {
+              subProtocols = SOCKFS.websocket['subprotocol']; // Fetch runtime WebSocket subprotocol config.
             }
 
             // The default WebSocket options
@@ -208,7 +195,7 @@ addToLibrary({
             }
 
             // some webservers (azure) does not support subprotocol header
-            if (runtimeConfig && null === Module['websocket']['subprotocol']) {
+            if (SOCKFS.websocket['subprotocol'] === null) {
               subProtocols = 'null';
               opts = undefined;
             }
@@ -280,7 +267,7 @@ addToLibrary({
           dbg('websocket: handle open');
 #endif
 
-          Module['websocket'].emit('open', sock.stream.fd);
+          SOCKFS.emit('open', sock.stream.fd);
 
           try {
             var queued = peer.msg_send_queue.shift();
@@ -333,7 +320,7 @@ addToLibrary({
           }
 
           sock.recv_queue.push({ addr: peer.addr, port: peer.port, data: data });
-          Module['websocket'].emit('message', sock.stream.fd);
+          SOCKFS.emit('message', sock.stream.fd);
         };
 
         if (ENVIRONMENT_IS_NODE) {
@@ -345,7 +332,7 @@ addToLibrary({
             handleMessage((new Uint8Array(data)).buffer); // copy from node Buffer -> ArrayBuffer
           });
           peer.socket.on('close', function() {
-            Module['websocket'].emit('close', sock.stream.fd);
+            SOCKFS.emit('close', sock.stream.fd);
           });
           peer.socket.on('error', function(error) {
             // Although the ws library may pass errors that may be more descriptive than
@@ -353,13 +340,13 @@ addToLibrary({
             // ENOTFOUND on getaddrinfo seems to be node.js specific, so using ECONNREFUSED
             // is still probably the most useful thing to do.
             sock.error = {{{ cDefs.ECONNREFUSED }}}; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
-            Module['websocket'].emit('error', [sock.stream.fd, sock.error, 'ECONNREFUSED: Connection refused']);
+            SOCKFS.emit('error', [sock.stream.fd, sock.error, 'ECONNREFUSED: Connection refused']);
             // don't throw
           });
         } else {
           peer.socket.onopen = handleOpen;
           peer.socket.onclose = function() {
-            Module['websocket'].emit('close', sock.stream.fd);
+            SOCKFS.emit('close', sock.stream.fd);
           };
           peer.socket.onmessage = function peer_socket_onmessage(event) {
             handleMessage(event.data);
@@ -368,7 +355,7 @@ addToLibrary({
             // The WebSocket spec only allows a 'simple event' to be thrown on error,
             // so we only really know as much as ECONNREFUSED.
             sock.error = {{{ cDefs.ECONNREFUSED }}}; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
-            Module['websocket'].emit('error', [sock.stream.fd, sock.error, 'ECONNREFUSED: Connection refused']);
+            SOCKFS.emit('error', [sock.stream.fd, sock.error, 'ECONNREFUSED: Connection refused']);
           };
         }
       },
@@ -515,7 +502,7 @@ addToLibrary({
           port: sock.sport
           // TODO support backlog
         });
-        Module['websocket'].emit('listen', sock.stream.fd); // Send Event with listen fd.
+        SOCKFS.emit('listen', sock.stream.fd); // Send Event with listen fd.
 
         sock.server.on('connection', function(ws) {
 #if SOCKET_DEBUG
@@ -531,17 +518,17 @@ addToLibrary({
 
             // push to queue for accept to pick up
             sock.pending.push(newsock);
-            Module['websocket'].emit('connection', newsock.stream.fd);
+            SOCKFS.emit('connection', newsock.stream.fd);
           } else {
             // create a peer on the listen socket so calling sendto
             // with the listen socket and an address will resolve
             // to the correct client
             SOCKFS.websocket_sock_ops.createPeer(sock, ws);
-            Module['websocket'].emit('connection', sock.stream.fd);
+            SOCKFS.emit('connection', sock.stream.fd);
           }
         });
         sock.server.on('close', function() {
-          Module['websocket'].emit('close', sock.stream.fd);
+          SOCKFS.emit('close', sock.stream.fd);
           sock.server = null;
         });
         sock.server.on('error', function(error) {
@@ -552,7 +539,7 @@ addToLibrary({
           // occur in a well written app as errors should get trapped in the compiled
           // app's own getaddrinfo call.
           sock.error = {{{ cDefs.EHOSTUNREACH }}}; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
-          Module['websocket'].emit('error', [sock.stream.fd, sock.error, 'EHOSTUNREACH: Host is unreachable']);
+          SOCKFS.emit('error', [sock.stream.fd, sock.error, 'EHOSTUNREACH: Host is unreachable']);
           // don't throw
         });
 #endif // ENVIRONMENT_MAY_BE_NODE
@@ -753,7 +740,7 @@ addToLibrary({
     // FIXME(sbc): This has no corresponding Pop so will currently keep the
     // runtime alive indefinitely.
     {{{ runtimeKeepalivePush() }}}
-    Module['websocket']['on'](event, callback ? _callback : null);
+    SOCKFS.on(event, callback ? _callback : null);
   },
   emscripten_set_socket_error_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_error_callback: (userData, callback) => {
