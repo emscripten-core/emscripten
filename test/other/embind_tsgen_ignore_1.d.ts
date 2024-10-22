@@ -94,12 +94,6 @@ export interface ClassWithSmartPtrConstructor {
   delete(): void;
 }
 
-export type ValObj = {
-  foo: Foo,
-  bar: Bar,
-  callback: (message: string) => void
-};
-
 export interface BaseClass {
   fn(_0: number): number;
   delete(): void;
@@ -121,6 +115,12 @@ export interface InterfaceWrapper extends Interface {
 }
 
 export type ValArr = [ number, number, number ];
+
+export type ValObj = {
+  string: EmbindString,
+  bar: Bar,
+  callback: (message: string) => void
+};
 
 interface EmbindModule {
   Test: {
@@ -172,6 +172,8 @@ interface EmbindModule {
   smart_ptr_function(_0: ClassWithSmartPtrConstructor | null): number;
   smart_ptr_function_with_params(foo: ClassWithSmartPtrConstructor | null): number;
   function_with_callback_param(_0: (message: string) => void): number;
+  getValObj(): ValObj;
+  setValObj(_0: ValObj): void;
   string_test(_0: EmbindString): string;
   wstring_test(_0: string): string;
 }
