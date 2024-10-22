@@ -1903,10 +1903,12 @@ addToLibrary({
   $setWasmTableEntry__internal: true,
   $setWasmTableEntry__deps: ['$wasmTableMirror', '$wasmTable'],
   $setWasmTableEntry: (idx, func) => {
+    /** @suppress {checkTypes} */
     wasmTable.set({{{ toIndexType('idx') }}}, func);
     // With ABORT_ON_WASM_EXCEPTIONS wasmTable.get is overridden to return wrapped
     // functions so we need to call it here to retrieve the potential wrapper correctly
     // instead of just storing 'func' directly into wasmTableMirror
+    /** @suppress {checkTypes} */
     wasmTableMirror[idx] = wasmTable.get({{{ toIndexType('idx') }}});
   },
 
@@ -1922,6 +1924,7 @@ addToLibrary({
     var func = wasmTableMirror[funcPtr];
     if (!func) {
       if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
+      /** @suppress {checkTypes} */
       wasmTableMirror[funcPtr] = func = wasmTable.get({{{ toIndexType('funcPtr') }}});
 #if ASYNCIFY == 2
       if (Asyncify.isAsyncExport(func)) {
@@ -1930,6 +1933,7 @@ addToLibrary({
 #endif
     }
 #if ASSERTIONS && ASYNCIFY != 2 // With JSPI the function stored in the table will be a wrapper.
+    /** @suppress {checkTypes} */
     assert(wasmTable.get({{{ toIndexType('funcPtr') }}}) == func, 'JavaScript-side Wasm function table mirror is out of date!');
 #endif
     return func;
@@ -1937,16 +1941,13 @@ addToLibrary({
 
 #else
 
+  $setWasmTableEntry__docs: '/** @suppress{checkTypes} */',
   $setWasmTableEntry__deps: ['$wasmTable'],
   $setWasmTableEntry: (idx, func) => wasmTable.set({{{ toIndexType('idx') }}}, func),
 
+  $getWasmTableEntry__docs: '/** @suppress{checkTypes} */',
   $getWasmTableEntry__deps: ['$wasmTable'],
   $getWasmTableEntry: (funcPtr) => {
-#if MEMORY64
-    // Function pointers are 64-bit, but wasmTable.get() requires a Number.
-    // https://github.com/emscripten-core/emscripten/issues/18200
-    funcPtr = Number(funcPtr);
-#endif
     // In -Os and -Oz builds, do not implement a JS side wasm table mirror for small
     // code size, but directly access wasmTable, which is a bit slower as uncached.
     return wasmTable.get({{{ toIndexType('funcPtr') }}});

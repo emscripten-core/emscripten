@@ -26,6 +26,7 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 #if ASSERTIONS
     assert(INITIAL_MEMORY >= {{{STACK_SIZE}}}, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + {{{STACK_SIZE}}} + ')');
 #endif
+    /** @suppress {checkTypes} */
 #if MINIMAL_RUNTIME && WASM_WORKERS
     wasmMemory = Module['mem'] || new WebAssembly.Memory({
 #else
