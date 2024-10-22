@@ -415,7 +415,7 @@ var LibraryEmbind = {
           'export interface ClassHandle {\n',
           '  isAliasOf(other: ClassHandle): boolean;\n',
           '  delete(): void;\n',
-          '  deleteLater(): void;\n',
+          '  deleteLater(): this;\n',
           '  isDeleted(): boolean;\n',
           '  clone(): this;\n',
           '}\n',

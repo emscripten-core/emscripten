@@ -20,7 +20,7 @@ type EmbindString = ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string;
 export interface ClassHandle {
   isAliasOf(other: ClassHandle): boolean;
   delete(): void;
-  deleteLater(): void;
+  deleteLater(): this;
   isDeleted(): boolean;
   clone(): this;
 }
