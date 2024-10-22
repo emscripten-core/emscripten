@@ -31,15 +31,33 @@ function createWasmAudioWorkletProcessor(audioParams) {
       let opts = args.processorOptions;
       this.callbackFunction = Module['wasmTable'].get(opts['cb']);
       this.userData = opts['ud'];
+
       // Then the samples per channel to process, fixed for the lifetime of the
-      // context that created this processor. Note for when moving to Web Audio
-      // 1.1: the typed array passed to process() should be the same size as
-      // this 'render quantum size', and this exercise of passing in the value
-      // shouldn't be required (to be verified with the in/out data lengths).
+      // context that created this processor. Even though this 'render quantum
+      // size' is fixed at 128 samples in the 1.0 spec, it will be variable in
+      // the 1.1 spec. It's passed in now, just to prove it's settable, but will
+      // eventually be a property of the  AudioWorkletGlobalScope (globalThis).
       this.samplesPerChannel = opts['sc'];
-      // Typed views of the output buffers on the worklet's stack, which after
-      // creation should only change if the audio chain changes.
+
+      // Create up-front as many typed views for marshalling the output data as
+      // may be required (with an arbitrary maximum of 16, for the case where a
+      // multi-MB stack is passed), allocated at the *top* of the worklet's
+      // stack (and whose addresses are fixed).
+      this.maxBuffers = Math.min((Module['sz'] / (this.samplesPerChannel * 4)) | 0, /*sensible limit*/ 16);
+      // These are still alloc'd to take advantage of the overflow checks, etc.
+      var oldStackPtr = stackSave();
+      var viewDataIdx = stackAlloc(this.maxBuffers * this.samplesPerChannel * 4) >> 2;
+#if WEBAUDIO_DEBUG
+      console.log(`AudioWorklet creating ${this.maxBuffers} buffer one-time views (for a stack size of ${Module['sz']})`);
+#endif
       this.outputViews = [];
+      for (var i = this.maxBuffers; i > 0; i--) {
+        // Added in reverse so the lowest indices are closest to the stack top
+        this.outputViews.unshift(
+          HEAPF32.subarray(viewDataIdx, viewDataIdx += this.samplesPerChannel)
+        );
+      }
+      stackRestore(oldStackPtr);
     }
 
     static get parameterDescriptors() {
@@ -47,7 +65,6 @@ function createWasmAudioWorkletProcessor(audioParams) {
     }
 
     process(inputList, outputList, parameters) {
-      var time = Date.now();
       // Marshal all inputs and parameters to the Wasm memory on the thread stack,
       // then perform the wasm audio worklet call,
       // and finally marshal audio output data back.
@@ -56,53 +73,42 @@ function createWasmAudioWorkletProcessor(audioParams) {
         numOutputs = outputList.length,
         numParams = 0, i, j, k, dataPtr,
         bytesPerChannel = this.samplesPerChannel * 4,
+        outputStackNeeded = 0, outputViewsNeeded = 0,
         stackMemoryNeeded = (numInputs + numOutputs) * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}},
         oldStackPtr = stackSave(),
-        inputsPtr, outputsPtr, outputDataPtr, paramsPtr, requiredViews = 0,
+        inputsPtr, outputsPtr, outputDataPtr, paramsPtr,
         didProduceAudio, paramArray;
 
-      // Calculate how much stack space is needed.
-      for (i of inputList) stackMemoryNeeded += i.length * bytesPerChannel;
-      for (i of outputList) stackMemoryNeeded += i.length * bytesPerChannel;
-      for (i in parameters) stackMemoryNeeded += parameters[i].byteLength + {{{ C_STRUCTS.AudioParamFrame.__size__ }}}, ++numParams;
-
-      // Allocate the necessary stack space (dataPtr is always in bytes, and
-      // advances as space for structs as data is taken, but note the switching
-      // between bytes and indices into the various heaps).
-      dataPtr = stackAlloc(stackMemoryNeeded);
-
-      // But start the output view allocs first, since once views are created we
-      // want them to always start from the same address. Even if in the next
-      // process() the outputList is empty, as soon as there are channels again
-      // the views' addresses will still be the same (and only if more views are
-      // required we will recreate them).
-      outputDataPtr = dataPtr;
-      for (/*which output*/i of outputList) {
+      // Calculate how much stack space is needed, first for the outputs
+      // pre-allocated in the constructor from the stack top.
+      for (i of outputList) {
+        outputStackNeeded += i.length * bytesPerChannel;
+        outputViewsNeeded += i.length;
 #if ASSERTIONS
         for (/*which channel*/ j of i) {
           console.assert(j.byteLength === bytesPerChannel, `Unexpected AudioWorklet output buffer size (expected ${bytesPerChannel} got ${j.byteLength})`);
         }
 #endif
-        // Keep advancing to make room for the output views
-        dataPtr += bytesPerChannel * i.length;
-        // How many output views are needed in total?
-        requiredViews += i.length;
       }
-      // Verify we have enough views (it doesn't matter if we have too many, any
-      // excess won't be accessed) then also verify the views' start address
-      // haven't changed.
-      if (this.outputViews.length < requiredViews || (this.outputViews.length && this.outputViews[0].byteOffset != outputDataPtr)) {
-        this.outputViews = [];
-        k = outputDataPtr >> 2;
-        for (i of outputList) {
-          for (j of i) {
-            this.outputViews.push(
-              HEAPF32.subarray(k, k += this.samplesPerChannel)
-            );
-          }
-        }
-      }
+      // Then the remaining space all together
+      for (i of inputList) stackMemoryNeeded += i.length * bytesPerChannel;
+      for (i in parameters) stackMemoryNeeded += parameters[i].byteLength + {{{ C_STRUCTS.AudioParamFrame.__size__ }}}, ++numParams;
 
+      outputDataPtr = stackAlloc(outputStackNeeded);
+//#if ASSERTIONS
+      console.assert(outputViewsNeeded <= this.outputViews.length, `Too many AudioWorklet outputs (need ${outputViewsNeeded} but have stack space for ${this.outputViews.length})`);
+      k = outputDataPtr;
+      for (i = outputViewsNeeded - 1; i >= 0; i--) {
+        console.assert(this.outputViews[i].byteOffset == k, 'Internal error in addresses of the output array views');
+        k += bytesPerChannel;
+      }
+//#endif
+
+      // Allocate the necessary stack space (dataPtr is always in bytes, and
+      // advances as space for structs as data is taken, but note the switching
+      // between bytes and indices into the various heaps).
+
+      dataPtr = stackAlloc(stackMemoryNeeded);
       // Copy input audio descriptor structs and data to Wasm
       inputsPtr = dataPtr;
       k = inputsPtr >> 2;
@@ -163,9 +169,6 @@ function createWasmAudioWorkletProcessor(audioParams) {
       }
 
       stackRestore(oldStackPtr);
-      
-      time = Date.now() - time;
-      //console.log(time);
 
       // Return 'true' to tell the browser to continue running this processor.
       // (Returning 1 or any other truthy value won't work in Chrome)
