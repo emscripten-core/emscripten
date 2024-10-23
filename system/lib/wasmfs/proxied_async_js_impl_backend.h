@@ -147,7 +147,8 @@ protected:
 public:
   // Receives as a parameter a function to call on the proxied thread, which is
   // useful for doing setup there.
-  ProxiedAsyncJSBackend(std::function<void(backend_t)> setupOnThread) {
+  ProxiedAsyncJSBackend(std::function<void(backend_t)> setupOnThread)
+    : proxy(emscripten::ProxyWorker::Sync) {
     proxy([&](auto ctx) {
       setupOnThread(this);
       ctx.finish();
