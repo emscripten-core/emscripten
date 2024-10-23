@@ -1,4 +1,5 @@
 #include <emscripten/console.h>
+#include <emscripten/emscripten.h>
 #include <emscripten/wasm_worker.h>
 #include <assert.h>
 
@@ -10,9 +11,8 @@ void test_success(int i, double d) {
   assert(!emscripten_current_thread_is_wasm_worker());
   assert(i == 10);
   assert(d == 0.5);
-#ifdef REPORT_RESULT
-  REPORT_RESULT(i);
-#endif
+  emscripten_terminate_all_wasm_workers();
+  emscripten_force_exit(0);
 }
 
 void worker_main() {
@@ -26,4 +26,5 @@ char stack[1024];
 int main() {
   emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
   emscripten_wasm_worker_post_function_v(worker, worker_main);
+  emscripten_exit_with_live_runtime();
 }

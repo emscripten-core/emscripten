@@ -25,6 +25,12 @@ void *thread_main(void *arg) {
   return 0;
 }
 
+void do_exit() {
+  emscripten_out("do_exit");
+  emscripten_terminate_all_wasm_workers();
+  emscripten_force_exit(0);
+}
+
 void worker_main() {
   emscripten_out("hello from wasm worker!");
   assert(!am_i_pthread());
@@ -34,9 +40,8 @@ void worker_main() {
 
   while(!emscripten_atomic_cas_u32((void*)&pthread_ran, 0, 1))
     emscripten_wasm_worker_sleep(10);
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+
+  emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, do_exit);
 }
 
 int main() {
@@ -45,4 +50,5 @@ int main() {
 
   emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(/*stack size: */1024);
   emscripten_wasm_worker_post_function_v(worker, worker_main);
+  emscripten_exit_with_live_runtime();
 }

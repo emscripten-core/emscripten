@@ -1,9 +1,10 @@
 // Test that emscripten_futex_wait() works in a Wasm Worker.
 
-#include <emscripten.h>
+#include <emscripten/emscripten.h>
 #include <emscripten/console.h>
 #include <emscripten/threading.h>
 #include <emscripten/wasm_worker.h>
+#include <assert.h>
 #include <limits.h>
 #include <stdio.h>
 #include <math.h>
@@ -20,16 +21,22 @@ void wake_worker() {
   emscripten_set_timeout(wake_worker_after_delay, 500, 0);
 }
 
+void do_exit() {
+  emscripten_out("do_exit");
+  emscripten_terminate_all_wasm_workers();
+  emscripten_force_exit(0);
+}
+
 void worker_main() {
   printf("Worker sleeping for futex wait.\n");
   emscripten_wasm_worker_post_function_v(0, wake_worker);
   int rc = emscripten_futex_wait(&futex_value, 0, INFINITY);
   printf("emscripten_futex_wait returned with code %d.\n", rc);
-#ifdef REPORT_RESULT
-  REPORT_RESULT(rc);
-#endif
+  assert(rc == 0);
+  emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, do_exit);
 }
 
 int main() {
   emscripten_wasm_worker_post_function_v(emscripten_malloc_wasm_worker(1024), worker_main);
+  emscripten_exit_with_live_runtime();
 }

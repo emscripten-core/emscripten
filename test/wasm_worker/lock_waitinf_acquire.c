@@ -15,12 +15,17 @@ volatile int sharedState1 = 1;
 
 volatile int numWorkersAlive = 0;
 
+void do_exit() {
+  emscripten_out("do_exit");
+  emscripten_terminate_all_wasm_workers();
+  emscripten_force_exit(0);
+}
+
 void test_ended() {
   emscripten_outf("Worker %d last thread to finish. Reporting test end with sharedState0=%d, sharedState1=%d", emscripten_wasm_worker_self_id(), sharedState0, sharedState1);
   assert(sharedState0 == sharedState1 + 1 || sharedState1 == sharedState0 + 1);
-#ifdef REPORT_RESULT
-  REPORT_RESULT(sharedState0);
-#endif
+  assert(sharedState0 == 4000);
+  emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, do_exit);
 }
 
 void worker_main() {
@@ -62,4 +67,6 @@ int main() {
     emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(1024);
     emscripten_wasm_worker_post_function_v(worker, worker_main);
   }
+
+  emscripten_exit_with_live_runtime();
 }

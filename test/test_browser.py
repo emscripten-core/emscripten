@@ -5003,7 +5003,7 @@ Module["preRun"] = () => {
     'pthread': (['-pthread'],),
   })
   def test_wasm_worker_futex_wait(self, args):
-    self.btest('wasm_worker/wasm_worker_futex_wait.c', expected='0', args=['-sWASM_WORKERS=1', '-sASSERTIONS'] + args)
+    self.btest_exit('wasm_worker/wasm_worker_futex_wait.c', args=['-sWASM_WORKERS=1', '-sASSERTIONS'] + args)
 
   # Tests Wasm Worker thread stack setup
   @also_with_minimal_runtime
@@ -5013,48 +5013,48 @@ Module["preRun"] = () => {
     '2': (2,),
   })
   def test_wasm_worker_thread_stack(self, mode):
-    self.btest('wasm_worker/thread_stack.c', expected='0', args=['-sWASM_WORKERS', f'-sSTACK_OVERFLOW_CHECK={mode}'])
+    self.btest_exit('wasm_worker/thread_stack.c', args=['-sWASM_WORKERS', f'-sSTACK_OVERFLOW_CHECK={mode}'])
 
   # Tests emscripten_malloc_wasm_worker() and emscripten_current_thread_is_wasm_worker() functions
   @also_with_minimal_runtime
   def test_wasm_worker_malloc(self):
-    self.btest('wasm_worker/malloc_wasm_worker.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/malloc_wasm_worker.c', args=['-sWASM_WORKERS'])
 
   # Tests Wasm Worker+pthreads simultaneously
   @also_with_minimal_runtime
   def test_wasm_worker_and_pthreads(self):
-    self.btest('wasm_worker/wasm_worker_and_pthread.c', expected='0', args=['-sWASM_WORKERS', '-pthread'])
+    self.btest_exit('wasm_worker/wasm_worker_and_pthread.c', args=['-sWASM_WORKERS', '-pthread'])
 
   # Tests emscripten_wasm_worker_self_id() function
   @also_with_minimal_runtime
   def test_wasm_worker_self_id(self):
-    self.btest('wasm_worker/wasm_worker_self_id.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/wasm_worker_self_id.c', args=['-sWASM_WORKERS'])
 
   # Tests direct Wasm Assembly .S file based TLS variables in Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_tls_wasm_assembly(self):
-    self.btest('wasm_worker/wasm_worker_tls_wasm_assembly.c',
-               expected='42', args=['-sWASM_WORKERS', test_file('wasm_worker/wasm_worker_tls_wasm_assembly.S')])
+    self.btest_exit('wasm_worker/wasm_worker_tls_wasm_assembly.c',
+                    args=['-sWASM_WORKERS', test_file('wasm_worker/wasm_worker_tls_wasm_assembly.S')])
 
   # Tests C++11 keyword thread_local for TLS in Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_cpp11_thread_local(self):
-    self.btest('wasm_worker/cpp11_thread_local.cpp', expected='42', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/cpp11_thread_local.cpp', args=['-sWASM_WORKERS'])
 
   # Tests C11 keyword _Thread_local for TLS in Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_c11__Thread_local(self):
-    self.btest('wasm_worker/c11__Thread_local.c', expected='42', args=['-sWASM_WORKERS', '-std=gnu11']) # Cannot test C11 - because of EM_ASM must test Gnu11.
+    self.btest_exit('wasm_worker/c11__Thread_local.c', args=['-sWASM_WORKERS', '-std=gnu11']) # Cannot test C11 - because of EM_ASM must test Gnu11.
 
   # Tests GCC specific extension keyword __thread for TLS in Wasm Workers
   @also_with_minimal_runtime
   def test_wasm_worker_gcc___thread(self):
-    self.btest('wasm_worker/gcc___Thread.c', expected='42', args=['-sWASM_WORKERS', '-std=gnu11'])
+    self.btest_exit('wasm_worker/gcc___Thread.c', args=['-sWASM_WORKERS', '-std=gnu11'])
 
   # Tests emscripten_wasm_worker_sleep()
   @also_with_minimal_runtime
   def test_wasm_worker_sleep(self):
-    self.btest('wasm_worker/wasm_worker_sleep.c', expected='1', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/wasm_worker_sleep.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_terminate_wasm_worker()
   @also_with_minimal_runtime
@@ -5064,71 +5064,70 @@ Module["preRun"] = () => {
   # Tests emscripten_terminate_all_wasm_workers()
   @also_with_minimal_runtime
   def test_wasm_worker_terminate_all(self):
-    self.set_setting('WASM_WORKERS')
     # Test uses the dynCall library function in its EM_ASM code
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall'])
-    self.btest('wasm_worker/terminate_all_wasm_workers.c', expected='0')
+    self.btest_exit('wasm_worker/terminate_all_wasm_workers.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_wasm_worker_post_function_*() API
   @also_with_minimal_runtime
   def test_wasm_worker_post_function(self):
-    self.btest('wasm_worker/post_function.c', expected='8', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/post_function.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_wasm_worker_post_function_*() API and EMSCRIPTEN_WASM_WORKER_ID_PARENT
   # to send a message back from Worker to its parent thread.
   @also_with_minimal_runtime
   def test_wasm_worker_post_function_to_main_thread(self):
-    self.btest('wasm_worker/post_function_to_main_thread.c', expected='10', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/post_function_to_main_thread.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_navigator_hardware_concurrency() and emscripten_atomics_is_lock_free()
   @also_with_minimal_runtime
   def test_wasm_worker_hardware_concurrency_is_lock_free(self):
-    self.btest('wasm_worker/hardware_concurrency_is_lock_free.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/hardware_concurrency_is_lock_free.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_wait_u32() and emscripten_atomic_notify() functions.
   @also_with_minimal_runtime
   def test_wasm_worker_wait32_notify(self):
-    self.btest('atomic/test_wait32_notify.c', expected='3', args=['-sWASM_WORKERS'])
+    self.btest_exit('atomic/test_wait32_notify.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_wait_u64() and emscripten_atomic_notify() functions.
   @also_with_minimal_runtime
   def test_wasm_worker_wait64_notify(self):
-    self.btest('atomic/test_wait64_notify.c', expected='3', args=['-sWASM_WORKERS'])
+    self.btest_exit('atomic/test_wait64_notify.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_wait_async() function.
   @also_with_minimal_runtime
   def test_wasm_worker_wait_async(self):
-    self.btest('atomic/test_wait_async.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('atomic/test_wait_async.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_cancel_wait_async() function.
   @also_with_minimal_runtime
   def test_wasm_worker_cancel_wait_async(self):
-    self.btest('wasm_worker/cancel_wait_async.c', expected='1', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/cancel_wait_async.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_cancel_all_wait_asyncs() function.
   @also_with_minimal_runtime
   def test_wasm_worker_cancel_all_wait_asyncs(self):
-    self.btest('wasm_worker/cancel_all_wait_asyncs.c', expected='1', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/cancel_all_wait_asyncs.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_cancel_all_wait_asyncs_at_address() function.
   @also_with_minimal_runtime
   def test_wasm_worker_cancel_all_wait_asyncs_at_address(self):
-    self.btest('wasm_worker/cancel_all_wait_asyncs_at_address.c', expected='1', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/cancel_all_wait_asyncs_at_address.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_lock_init(), emscripten_lock_waitinf_acquire() and emscripten_lock_release()
   @also_with_minimal_runtime
   def test_wasm_worker_lock_waitinf(self):
-    self.btest('wasm_worker/lock_waitinf_acquire.c', expected='4000', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/lock_waitinf_acquire.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_lock_wait_acquire() and emscripten_lock_try_acquire() in Worker.
   @also_with_minimal_runtime
   def test_wasm_worker_lock_wait(self):
-    self.btest('wasm_worker/lock_wait_acquire.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/lock_wait_acquire.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_lock_wait_acquire() between two Wasm Workers.
   @also_with_minimal_runtime
   def test_wasm_worker_lock_wait2(self):
-    self.btest('wasm_worker/lock_wait_acquire2.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/lock_wait_acquire2.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_lock_async_acquire() function.
   @also_with_minimal_runtime
@@ -5138,12 +5137,12 @@ Module["preRun"] = () => {
   # Tests emscripten_lock_busyspin_wait_acquire() in Worker and main thread.
   @also_with_minimal_runtime
   def test_wasm_worker_lock_busyspin_wait(self):
-    self.btest('wasm_worker/lock_busyspin_wait_acquire.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/lock_busyspin_wait_acquire.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_lock_busyspin_waitinf_acquire() in Worker and main thread.
   @also_with_minimal_runtime
   def test_wasm_worker_lock_busyspin_waitinf(self):
-    self.btest('wasm_worker/lock_busyspin_waitinf_acquire.c', expected='1', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/lock_busyspin_waitinf_acquire.c', args=['-sWASM_WORKERS'])
 
   # Tests that proxied JS functions cannot be called from Wasm Workers
   @also_with_minimal_runtime
@@ -5152,18 +5151,18 @@ Module["preRun"] = () => {
     self.set_setting('ASSERTIONS')
     # Test uses the dynCall library function in its EM_ASM code
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall'])
-    self.btest('wasm_worker/no_proxied_js_functions.c', expected='0',
-               args=['--js-library', test_file('wasm_worker/no_proxied_js_functions.js')])
+    self.btest_exit('wasm_worker/no_proxied_js_functions.c',
+                    args=['--js-library', test_file('wasm_worker/no_proxied_js_functions.js')])
 
   # Tests emscripten_semaphore_init(), emscripten_semaphore_waitinf_acquire() and emscripten_semaphore_release()
   @also_with_minimal_runtime
   def test_wasm_worker_semaphore_waitinf_acquire(self):
-    self.btest('wasm_worker/semaphore_waitinf_acquire.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/semaphore_waitinf_acquire.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_semaphore_try_acquire() on the main thread
   @also_with_minimal_runtime
   def test_wasm_worker_semaphore_try_acquire(self):
-    self.btest('wasm_worker/semaphore_try_acquire.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/semaphore_try_acquire.c', args=['-sWASM_WORKERS'])
 
   # Tests that calling any proxied function in a Wasm Worker will abort at runtime when ASSERTIONS are enabled.
   def test_wasm_worker_proxied_function(self):

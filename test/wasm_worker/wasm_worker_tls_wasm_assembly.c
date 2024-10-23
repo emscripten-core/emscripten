@@ -11,9 +11,9 @@ void set_tls_variable(int var);
 void main_thread_func() {
   assert(!emscripten_current_thread_is_wasm_worker());
   assert(globalData == 3);
-#ifdef REPORT_RESULT
-  REPORT_RESULT(get_tls_variable());
-#endif
+  assert(get_tls_variable() == 42);
+  emscripten_terminate_all_wasm_workers();
+  emscripten_force_exit(0);
 }
 
 void worker_main() {
@@ -34,4 +34,5 @@ int main() {
   set_tls_variable(42);
   emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
   emscripten_wasm_worker_post_function_v(worker, worker_main);
+  emscripten_exit_with_live_runtime();
 }
