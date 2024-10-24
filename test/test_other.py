@@ -3372,6 +3372,11 @@ More info: https://emscripten.org
     self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
     self.assertFileContents(test_file('other/embind_tsgen_ignore_3.d.ts'), read_file('embind_tsgen.d.ts'))
 
+    extra_args = ['-fsanitize=undefined',
+                  '-gsource-map']
+    self.emcc(test_file('other/embind_tsgen.cpp'), extra_args)
+    self.assertFileContents(test_file('other/embind_tsgen_ignore_3.d.ts'), read_file('embind_tsgen.d.ts'))
+
   def test_embind_tsgen_worker_env(self):
     self.emcc_args += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
     # Passing -sWASM_WORKERS or -sPROXY_TO_WORKER requires the 'worker' environment
