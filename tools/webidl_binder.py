@@ -614,7 +614,10 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
         # this function comes from an ancestor class; for operators, we must cast it
         cast_self = 'dynamic_cast<' + type_to_c(func_scope) + '>(' + cast_self + ')'
       maybe_deref = deref_if_nonpointer(raw[0])
-      if '=' in operator:
+      operator = operator.strip()
+      if operator in ["+", "-", "*", "/", "%", "^", "&", "|", "=",
+                      "<", ">", "+=", "-=", "*=", "/=", "%=", "^=", "&=", "|=", "<<", ">>", ">>=",
+                      "<<=", "==", "!=", "<=", ">=", "<=>", "&&", "||"]:
         call = '(*%s %s %s%s)' % (cast_self, operator, maybe_deref, args[0])
       elif operator == '[]':
         call = '((*%s)[%s%s])' % (cast_self, maybe_deref, args[0])
@@ -629,7 +632,8 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
     if non_pointer:
       return_prefix += '&'
     if copy:
-      pre += '  static %s temp;\n' % type_to_c(return_type, non_pointing=True)
+      # Avoid sharing this static temp var between threads, which could race.
+      pre += '  static thread_local %s temp;\n' % type_to_c(return_type, non_pointing=True)
       return_prefix += '(temp = '
       return_postfix += ', &temp)'
 

@@ -14,7 +14,19 @@ if (ENVIRONMENT_IS_NODE) {
 
   var parentPort = nodeWorkerThreads.parentPort;
 
-  parentPort.on('message', (data) => typeof onmessage === "function" && onmessage({ data: data }));
+  parentPort.on('message', (msg) => global.onmessage?.({ data: msg }));
+
+  // Weak map of handle functions to their wrapper. Used to implement
+  // addEventListener/removeEventListener.
+  var wrappedHandlers = new WeakMap();
+  function wrapMsgHandler(h) {
+    var f = wrappedHandlers.get(h)
+    if (!f) {
+      f = (msg) => h({data: msg});
+      wrappedHandlers.set(h, f);
+    }
+    return f;
+  }
 
   var fs = require('fs');
   var vm = require('vm');
@@ -28,8 +40,8 @@ if (ENVIRONMENT_IS_NODE) {
     importScripts: (f) => vm.runInThisContext(fs.readFileSync(f, 'utf8'), {filename: f}),
     postMessage: (msg) => parentPort.postMessage(msg),
     performance: global.performance || { now: Date.now },
-    addEventListener: (name, handler) => parentPort.on(name, handler),
-    removeEventListener: (name, handler) => parentPort.off(name, handler),
+    addEventListener: (name, handler) => parentPort.on(name, wrapMsgHandler(handler)),
+    removeEventListener: (name, handler) => parentPort.off(name, wrapMsgHandler(handler)),
   });
 }
 #endif // ENVIRONMENT_MAY_BE_NODE

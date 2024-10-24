@@ -318,7 +318,7 @@ You can bind to C++ operators using ``[Operator=]``:
 .. note::
 
   - The operator name can be anything (``add`` is just an example).
-  - Support is currently limited to operators that contain ``=``: ``+=``, ``*=``, ``-=`` etc., and to the array indexing operator ``[]``.
+  - Support is currently limited to the following binary operators: ``+``, ``-``, ``*``, ``/``, ``%``, ``^``, ``&``, ``|``, ``=``, ``<``, ``>``, ``+=``, ``-=``, ``*=``, ``/=``, ``%=``, ``^=``, ``&=``, ``|=``, ``<<``, ``>>``, ``>>=``, ``<<=``, ``==``, ``!=``, ``<=``, ``>=``, ``<=>``, ``&&``, ``||``, and to the array indexing operator ``[]``.
 
 
 enums

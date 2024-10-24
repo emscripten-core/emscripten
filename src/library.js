@@ -2136,10 +2136,24 @@ addToLibrary({
   $runtimeKeepaliveCounter__internal: true,
   $runtimeKeepaliveCounter: 0,
 
-  $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
 #if isSymbolNeeded('$noExitRuntime')
+  // If the `noExitRuntime` symbol is included in the build then
+  // keepRuntimeAlive is always conditional since its state can change
+  // at runtime.
+  $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
   $keepRuntimeAlive: () => noExitRuntime || runtimeKeepaliveCounter > 0,
+#elif !EXIT_RUNTIME
+  // When `noExitRuntime` is not include and EXIT_RUNTIME=0 then we know the
+  // runtime can never exit (i.e. should always be kept alive).
+  // However for pthreads we always default to allowing the runtime to exit
+  // otherwise threads never exit and are not joinable.
+#if PTHREADS
+  $keepRuntimeAlive: () => !ENVIRONMENT_IS_PTHREAD,
 #else
+  $keepRuntimeAlive: () => true,
+#endif
+#else
+  $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
   $keepRuntimeAlive: () => runtimeKeepaliveCounter > 0,
 #endif
 

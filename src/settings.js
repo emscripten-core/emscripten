@@ -781,7 +781,7 @@ var EXCEPTION_STACK_TRACES = false;
 // Emit instructions for the new Wasm exception handling proposal with exnref,
 // which was adopted on Oct 2023. The implementation of the new proposal is
 // still in progress and this feature is currently experimental.
-// [compile+link]
+// [link]
 var WASM_EXNREF = false;
 
 // Emscripten throws an ExitStatus exception to unwind when exit() is called.

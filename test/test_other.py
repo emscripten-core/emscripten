@@ -4997,6 +4997,9 @@ int main() {
           for flush in (0, 1):
             test(cxx, no_exit, assertions, flush)
 
+  def test_no_exit_runtime_strict(self):
+    self.do_other_test('test_no_exit_runtime_strict.c', emcc_args=['-sSTRICT'])
+
   def test_extra_opt_levels(self):
     # Opt levels that we don't tend to test elsewhere
     for opt in ('-Og', '-Ofast'):
@@ -13900,6 +13903,12 @@ int main() {
       self.assertContained('error: running limited binaryen optimizations because DWARF info requested (or indirectly required) [-Wlimited-postlink-optimizations]', err)
     else:
       self.run_process([EMCC, test_file('hello_world.c'), '-Werror'] + args)
+
+  def test_wasm_worker_hello(self):
+    self.do_runf(test_file('wasm_worker/hello_wasm_worker.c'), emcc_args=['-sWASM_WORKERS'])
+
+  def test_wasm_worker_terminate(self):
+    self.do_runf(test_file('wasm_worker/terminate_wasm_worker.c'), emcc_args=['-sWASM_WORKERS'])
 
   @also_with_minimal_runtime
   def test_wasm_worker_closure(self):
