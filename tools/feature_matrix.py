@@ -54,7 +54,7 @@ min_browser_versions = {
   Feature.BULK_MEMORY: {
     'chrome': 75,
     'firefox': 79,
-    'safari': 150000,
+    'safari': 140000,
   },
   Feature.MUTABLE_GLOBALS: {
     'chrome': 74,

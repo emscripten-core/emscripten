@@ -4625,7 +4625,7 @@ res64 - external 64\n''', header='''\
 
   @with_dylink_reversed
   @parameterized({
-    'libcxx': ('libc,libc++,libmalloc,libc++abi',),
+    'libcxx': ('libc,libc++,libmalloc,libc++abi,libbulkmemory',),
     'all': ('1',),
     'missing': ('libc,libmalloc,libc++abi', False, False, False),
     'missing_assertions': ('libc,libmalloc,libc++abi', False, False, True),
