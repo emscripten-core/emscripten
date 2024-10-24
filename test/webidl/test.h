@@ -242,3 +242,9 @@ public:
 private:
   const char* m_array;
 };
+
+class BindToTest {
+public:
+  int test(const char*) { return 1; }
+  int test(int) { return 2; }
+};

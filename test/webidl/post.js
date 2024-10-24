@@ -147,6 +147,10 @@ new TheModule.Inner().incInPlace(new TheModule.Inner());
 console.log('add: ' + new TheModule.Inner(1).add(new TheModule.Inner(2)).get_value());
 console.log('mul2: ' + new TheModule.Inner(10).mul2(5));
 
+let bindTo = new TheModule.BindToTest();
+console.log('testString: ' + bindTo.testString('hello'));
+console.log('testInt: ' + bindTo.testInt(10));
+
 console.log(TheModule.enum_value1);
 console.log(TheModule.enum_value2);
 
