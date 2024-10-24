@@ -55,7 +55,7 @@ var toIndexType = (function() {
   var bigintMemoryBounds = 1;
   try {
     /** @suppress {checkTypes} */
-    new WebAssembly.Memory({'initial': 1n, 'index': 'i64'});
+    new WebAssembly.Memory({'initial': 1n, 'index': 'i64', 'address': 'i64'});
   } catch (e) {
     bigintMemoryBounds = 0;
   }
