@@ -1053,7 +1053,6 @@ class libc(MuslInternalLibrary,
       filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
                  'emscripten_scan_stack.c',
                  'emscripten_get_heap_size.c',  # needed by malloc
-                 'sbrk.c',  # needed by malloc
                  'emscripten_memmove.c'])
     # Calls to iprintf can be generated during codegen. Ideally we wouldn't
     # compile these with -O2 like we do the rest of compiler-rt since its
@@ -1300,7 +1299,6 @@ class libc(MuslInternalLibrary,
           'sigaction.c',
           'sigtimedwait.c',
           'wasi-helpers.c',
-          'sbrk.c',
           'system.c',
         ])
 
@@ -1733,7 +1731,9 @@ class libmalloc(MTLibrary):
     malloc = utils.path_from_root('system/lib', {
       'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.c',
     }[malloc_base])
-    return [malloc]
+    # Include sbrk.c in libc, it uses tracing and libc itself doesn't have a tracing variant.
+    sbrk = utils.path_from_root('system/lib/libc/sbrk.c')
+    return [malloc, sbrk]
 
   def get_cflags(self):
     cflags = super().get_cflags()
@@ -1818,13 +1818,10 @@ class libmimalloc(MTLibrary):
     # mimalloc includes some files at the source level, so exclude them here.
     excludes=['alloc-override.c', 'page-queue.c', 'static.c']
   )
-  src_files += files_in_path(
-    path='system/lib/mimalloc/src/prim',
-    filenames=['prim.c']
-  )
-  src_files += files_in_path(
-    path='system/lib/',
-    filenames=['emmalloc.c'])
+  src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim.c')]
+  src_files += [utils.path_from_root('system/lib/emmalloc.c')]
+  # Include sbrk.c in libc, it uses tracing and libc itself doesn't have a tracing variant.
+  src_files += [utils.path_from_root('system/lib/libc/sbrk.c')]
 
   def can_use(self):
     return super().can_use() and settings.MALLOC == 'mimalloc'
