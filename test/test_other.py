@@ -10298,7 +10298,10 @@ int main() {
     compile(['-mnontrapping-fptoint', '-c'])
     verify_features_sec('nontrapping-fptoint', True)
 
-    # BIGINT causes binaryen to not run, and keeps the target_features section
+    # BIGINT causes binaryen to not run, and keeps the target_features section after link
+    # Setting this SAFARI_VERSION should enable bulk memory because it links in emscripten_memcpy_bulkmem
+    # However it does not enable nontrapping-fptoint yet because it has no effect at compile time and
+    # no libraries include nontrapping yet.
     compile(['-sMIN_SAFARI_VERSION=150000', '-sWASM_BIGINT'])
     verify_features_sec_linked('sign-ext', True)
     verify_features_sec_linked('mutable-globals', True)
