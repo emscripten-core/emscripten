@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.70 (in development)
 -----------------------
+- The pthread part of libc now live in a separate libpthread (or
+  libpthread-stub).  This library is automatically included so this change
+  will only effect those building with `-nostdlib` or `-nolibc`. (#22735)
 
 3.1.69 - 10/12/24
 -----------------

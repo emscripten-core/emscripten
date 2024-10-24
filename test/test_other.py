@@ -6001,9 +6001,9 @@ int main() {
     # partial list, but ok since we grab them as needed
     'parial': [{'EMCC_FORCE_STDLIBS': 'libc++'}, False],
     # fail! not enough stdlibs
-    'partial_only': [{'EMCC_FORCE_STDLIBS': 'libc++,libc,libc++abi', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, True],
+    'partial_only': [{'EMCC_FORCE_STDLIBS': 'libc++,libc,libpthread,libc++abi', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, True],
     # force all the needed stdlibs, so this works even though we ignore the input file
-    'full_only': [{'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, False],
+    'full_only': [{'EMCC_FORCE_STDLIBS': 'libc,libpthread,libc++abi,libc++,libmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, False],
   })
   def test_only_force_stdlibs(self, env, fail):
     cmd = [EMXX, test_file('hello_libcxx.cpp')]
@@ -6034,7 +6034,7 @@ int main()
   }
 }
 ''')
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libpthread,libc++abi,libc++,libmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       self.run_process([EMXX, 'src.cpp', '-sDISABLE_EXCEPTION_CATCHING=0'])
     self.assertContained('Caught exception: std::exception', self.run_js('a.out.js'))
 
@@ -12280,10 +12280,10 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nodefaultlibs']))
 
     # Build again but with explit system libraries
-    libs = ['-lc', '-lcompiler_rt']
+    libs = ['-lc', '-lpthread', '-lcompiler_rt']
     self.run_process([EMCC, test_file('unistd/close.c'), '-nostdlib'] + libs)
     self.run_process([EMCC, test_file('unistd/close.c'), '-nodefaultlibs'] + libs)
-    self.run_process([EMCC, test_file('unistd/close.c'), '-nolibc', '-lc'])
+    self.run_process([EMCC, test_file('unistd/close.c'), '-nolibc', '-lc', '-lpthread'])
     self.run_process([EMCC, test_file('unistd/close.c'), '-nostartfiles'])
 
   def test_argument_match(self):
@@ -13177,12 +13177,13 @@ kill -9 $$
 
   def test_standard_library_mapping(self):
     # Test the `-l` flags on the command line get mapped the correct libraries variant
-    libs = ['-lc', '-lbulkmemory', '-lcompiler_rt', '-lmalloc']
+    libs = ['-lc', '-lpthread', '-lbulkmemory', '-lcompiler_rt', '-lmalloc']
     err = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-nodefaultlibs', '-v'] + libs, stderr=PIPE).stderr
 
     # Check that the linker was run with `-mt` variants because `-pthread` was passed.
     self.assertContained(' -lc-mt-debug ', err)
     self.assertContained(' -ldlmalloc-mt ', err)
+    self.assertContained(' -lpthread-debug ', err)
     self.assertContained(' -lcompiler_rt-mt ', err)
 
   def test_explicit_gl_linking(self):
