@@ -14903,6 +14903,9 @@ addToLibrary({
   def test_hello_world_argv(self):
     self.do_runf('hello_world_argv.c', 'hello, world! (1)')
 
+  def test_strict_closure(self):
+    self.emcc(test_file('hello_world.c'), ['-sSTRICT', '--closure=1'])
+
   def test_arguments_global(self):
     self.emcc(test_file('hello_world_argv.c'), ['-sENVIRONMENT=web', '-sSTRICT', '--closure=1', '-O2'])
 
