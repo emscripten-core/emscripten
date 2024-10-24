@@ -8370,7 +8370,7 @@ int main() {
     self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-sWASM_ASYNC_COMPILATION=0', '-sIMPORTED_MEMORY'])
     out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('LinkError', out)
-    self.assertContained("memory import 1 has a larger maximum size 800 than the module's declared maximum", out)
+    self.assertContained("memory import 2 has a larger maximum size 800 than the module's declared maximum", out)
     self.assertNotContained('hello, world!', out)
     # and with memory growth, all should be good
     self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-sALLOW_MEMORY_GROWTH', '-sWASM_ASYNC_COMPILATION=0', '-sIMPORTED_MEMORY'])
@@ -10270,18 +10270,24 @@ int main() {
 
   def test_wasm_features(self):
     # Test that wasm features are explicitly enabled or disabled based on target engine version
-    def verify_features_sec(feature, expect_in):
-      with webassembly.Module('hello_world.o') as module:
+    def verify_features_sec(feature, expect_in, linked=False):
+      with webassembly.Module('a.out.wasm' if linked else 'hello_world.o') as module:
         features = module.get_target_features()
       if expect_in:
-        self.assertTrue(feature in features and features[feature] == webassembly.TargetFeaturePrefix.USED)
+        self.assertTrue(feature in features and
+                        features[feature] == webassembly.TargetFeaturePrefix.USED,
+                        f'{feature} missing from wasm file')
       else:
-        self.assertFalse(feature in features)
+        self.assertFalse(feature in features,
+                         f'{feature} unexpectedly found in wasm file')
+
+    def verify_features_sec_linked(feature, expect_in):
+      return verify_features_sec(feature, expect_in, linked=True)
 
     def compile(flags):
-      self.run_process([EMCC, test_file('hello_world.c'), '-c'] + flags)
+      self.run_process([EMCC, test_file('hello_world.c')] + flags)
 
-    compile([])
+    compile(['-c'])
     verify_features_sec('bulk-memory', False)
     verify_features_sec('nontrapping-fptoint', False)
     verify_features_sec('sign-ext', True)
@@ -10289,18 +10295,20 @@ int main() {
     verify_features_sec('multivalue', True)
     verify_features_sec('reference-types', True)
 
-    compile(['-mnontrapping-fptoint'])
+    compile(['-mnontrapping-fptoint', '-c'])
     verify_features_sec('nontrapping-fptoint', True)
 
-    compile(['-sMIN_SAFARI_VERSION=150000'])
-    verify_features_sec('sign-ext', True)
-    verify_features_sec('mutable-globals', True)
-    verify_features_sec('multivalue', True)
-    verify_features_sec('bulk-memory', True)
-    verify_features_sec('nontrapping-fptoint', True)
+    # BIGINT causes binaryen to not run, and keeps the target_features section
+    compile(['-sMIN_SAFARI_VERSION=150000', '-sWASM_BIGINT'])
+    verify_features_sec_linked('sign-ext', True)
+    verify_features_sec_linked('mutable-globals', True)
+    verify_features_sec_linked('multivalue', True)
+    verify_features_sec_linked('bulk-memory', True)
+    verify_features_sec_linked('nontrapping-fptoint', False)
 
-    compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
-    verify_features_sec('bulk-memory', False)
+    compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory', '-sWASM_BIGINT'])
+    # FIXME? -mno-bulk-memory at link time does not override MIN_SAFARI_VERSION. it probably should?
+    verify_features_sec_linked('bulk-memory', True)
 
   def test_js_preprocess(self):
     # Use stderr rather than stdout here because stdout is redirected to the output JS file itself.
@@ -12850,7 +12858,7 @@ exec "$@"
     self.assertExists('profile.data')
 
     wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
-    wasm_split_run = [wasm_split, '-g', '--enable-mutable-globals', '--enable-bulk-memory', '--export-prefix=%', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data']
+    wasm_split_run = [wasm_split, '-g', '--enable-mutable-globals', '--export-prefix=%', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data']
     if jspi:
       wasm_split_run += ['--jspi', '--enable-reference-types']
     self.run_process(wasm_split_run)
