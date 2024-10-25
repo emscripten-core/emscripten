@@ -503,7 +503,7 @@ var emscriptenMemoryProfiler = {
     html += '<br />STACK memory area used now (should be zero): ' + self.formatBytes(stackBase - stackCurrent) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + self.formatBytes(stackBase - self.stackTopWatermark);
 
     var heap_base = Module['___heap_base'];
-    var heap_end = _sbrk();
+    var heap_end = _sbrk({{{ to64('0') }}});
     html += "<br />DYNAMIC memory area size: " + self.formatBytes(heap_end - heap_base);
     html += ". start: " + toHex(heap_base, width);
     html += ". end: " + toHex(heap_end, width) + ".";
@@ -612,8 +612,8 @@ var emscriptenMemoryProfiler = {
             calls.sort((a,b) => b[sortIdx] - a[sortIdx]);
           }
           html += '<h4>Allocation sites with more than ' + self.formatBytes(self.trackedCallstackMinSizeBytes) + ' of accumulated allocations, or more than ' + self.trackedCallstackMinAllocCount + ' simultaneously outstanding allocations:</h4>'
-          for (var i in calls) {
-            html += "<b>" + self.formatBytes(calls[i][1]) + '/' + calls[i][0] + " allocs</b>: " + calls[i][2] + "<br />";
+          for (var call of calls) {
+            html += "<b>" + self.formatBytes(call[1]) + '/' + call[0] + " allocs</b>: " + call[2] + "<br />";
           }
         }
       }

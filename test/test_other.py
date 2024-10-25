@@ -2018,7 +2018,7 @@ Module['postRun'] = () => {
   def test_dylink_strict(self):
     self.do_run_in_out_file_test('hello_world.c', emcc_args=['-sSTRICT', '-sMAIN_MODULE=1'])
 
-  def test_dylink_exceptions_and_assetions(self):
+  def test_dylink_exceptions_and_assertions(self):
     # Linking side modules using the STL and exceptions should not abort with
     # "function in Table but not functionsInTableMap" when using ASSERTIONS=2
 
@@ -10268,6 +10268,51 @@ int main() {
     self.run_process([EMCC, test_file('hello_world.c'), '-O2'] + args)
     self.verify_custom_sec_existence('a.out.wasm', 'target_features', False)
 
+  def test_wasm_features(self):
+    # Test that wasm features are explicitly enabled or disabled based on target engine version
+    def verify_features_sec(feature, expect_in, linked=False):
+      with webassembly.Module('a.out.wasm' if linked else 'hello_world.o') as module:
+        features = module.get_target_features()
+      if expect_in:
+        self.assertTrue(feature in features and
+                        features[feature] == webassembly.TargetFeaturePrefix.USED,
+                        f'{feature} missing from wasm file')
+      else:
+        self.assertFalse(feature in features,
+                         f'{feature} unexpectedly found in wasm file')
+
+    def verify_features_sec_linked(feature, expect_in):
+      return verify_features_sec(feature, expect_in, linked=True)
+
+    def compile(flags):
+      self.run_process([EMCC, test_file('hello_world.c')] + flags)
+
+    compile(['-c'])
+    verify_features_sec('bulk-memory', False)
+    verify_features_sec('nontrapping-fptoint', False)
+    verify_features_sec('sign-ext', True)
+    verify_features_sec('mutable-globals', True)
+    verify_features_sec('multivalue', True)
+    verify_features_sec('reference-types', True)
+
+    compile(['-mnontrapping-fptoint', '-c'])
+    verify_features_sec('nontrapping-fptoint', True)
+
+    # BIGINT causes binaryen to not run, and keeps the target_features section after link
+    # Setting this SAFARI_VERSION should enable bulk memory because it links in emscripten_memcpy_bulkmem
+    # However it does not enable nontrapping-fptoint yet because it has no effect at compile time and
+    # no libraries include nontrapping yet.
+    compile(['-sMIN_SAFARI_VERSION=150000', '-sWASM_BIGINT'])
+    verify_features_sec_linked('sign-ext', True)
+    verify_features_sec_linked('mutable-globals', True)
+    verify_features_sec_linked('multivalue', True)
+    verify_features_sec_linked('bulk-memory', True)
+    verify_features_sec_linked('nontrapping-fptoint', False)
+
+    compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory', '-sWASM_BIGINT'])
+    # FIXME? -mno-bulk-memory at link time does not override MIN_SAFARI_VERSION. it probably should?
+    verify_features_sec_linked('bulk-memory', True)
+
   def test_js_preprocess(self):
     # Use stderr rather than stdout here because stdout is redirected to the output JS file itself.
     create_file('lib.js', '''
@@ -12768,13 +12813,11 @@ exec "$@"
 
   # Make sure that --memoryprofiler compiles with --closure 1
   def test_memoryprofiler_closure(self):
-    # TODO: Enable '-Werror=closure' in the following, but that has currently regressed.
-    self.run_process([EMCC, test_file('hello_world.c'), '-O2', '--closure=1', '--memoryprofiler'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-O2', '--closure=1', '--memoryprofiler'] + self.get_emcc_args())
 
   # Make sure that --threadprofiler compiles with --closure 1
   def test_threadprofiler_closure(self):
-    # TODO: Enable '-Werror=closure' in the following, but that has currently regressed.
-    self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-pthread', '--closure=1', '--threadprofiler', '-sASSERTIONS'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-pthread', '--closure=1', '--threadprofiler', '-sASSERTIONS'] + self.get_emcc_args())
 
   @node_pthreads
   def test_threadprofiler(self):
