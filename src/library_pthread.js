@@ -168,7 +168,7 @@ var LibraryPThread = {
       }
       PThread.unusedWorkers = [];
       PThread.runningWorkers = [];
-      PThread.pthreads = [];
+      PThread.pthreads = {};
     },
     returnWorkerToPool: (worker) => {
       // We don't want to run main thread queued calls here, since we are doing

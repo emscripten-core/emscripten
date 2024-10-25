@@ -12768,13 +12768,11 @@ exec "$@"
 
   # Make sure that --memoryprofiler compiles with --closure 1
   def test_memoryprofiler_closure(self):
-    # TODO: Enable '-Werror=closure' in the following, but that has currently regressed.
-    self.run_process([EMCC, test_file('hello_world.c'), '-O2', '--closure=1', '--memoryprofiler'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-O2', '--closure=1', '--memoryprofiler'] + self.get_emcc_args())
 
   # Make sure that --threadprofiler compiles with --closure 1
   def test_threadprofiler_closure(self):
-    # TODO: Enable '-Werror=closure' in the following, but that has currently regressed.
-    self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-pthread', '--closure=1', '--threadprofiler', '-sASSERTIONS'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-pthread', '--closure=1', '--threadprofiler', '-sASSERTIONS'] + self.get_emcc_args())
 
   @node_pthreads
   def test_threadprofiler(self):
