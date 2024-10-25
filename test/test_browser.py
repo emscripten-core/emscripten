@@ -5018,7 +5018,7 @@ Module["preRun"] = () => {
   # Tests emscripten_malloc_wasm_worker() and emscripten_current_thread_is_wasm_worker() functions
   @also_with_minimal_runtime
   def test_wasm_worker_malloc(self):
-    self.btest('wasm_worker/malloc_wasm_worker.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/malloc_wasm_worker.c', args=['-sWASM_WORKERS'])
 
   # Tests Wasm Worker+pthreads simultaneously
   @also_with_minimal_runtime
@@ -5098,7 +5098,7 @@ Module["preRun"] = () => {
   # Tests emscripten_atomic_wait_async() function.
   @also_with_minimal_runtime
   def test_wasm_worker_wait_async(self):
-    self.btest('atomic/test_wait_async.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('atomic/test_wait_async.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_cancel_wait_async() function.
   @also_with_minimal_runtime

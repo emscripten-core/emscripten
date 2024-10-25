@@ -172,6 +172,8 @@ var LibraryEmbind = {
       out.push(`export interface ${this.name}`);
       if (this.base) {
         out.push(` extends ${this.base.name}`);
+      } else {
+        out.push(' extends ClassHandle');
       }
       out.push(' {\n');
       for (const property of this.properties) {
@@ -186,7 +188,6 @@ var LibraryEmbind = {
         method.printFunction(nameMap, out);
         out.push(';\n');
       }
-      out.push('  delete(): void;\n');
       out.push('}\n\n');
     }
 
@@ -402,6 +403,24 @@ var LibraryEmbind = {
 
     print() {
       const out = [];
+      let hadClass = false;
+      for (const def of this.definitions) {
+        if (def instanceof ClassDefinition) {
+          hadClass = true;
+          break;
+        }
+      }
+      if (hadClass) {
+        out.push(
+          'export interface ClassHandle {\n',
+          '  isAliasOf(other: ClassHandle): boolean;\n',
+          '  delete(): void;\n',
+          '  deleteLater(): this;\n',
+          '  isDeleted(): boolean;\n',
+          '  clone(): this;\n',
+          '}\n',
+        );
+      }
       for (const def of this.definitions) {
         if (!def.print) {
           continue;
