@@ -212,3 +212,9 @@ interface JSArrayArgumentTest {
   boolean byteArrayTest([Const] byte[] arg);
   boolean domStringTest([Const] DOMString arg);
 };
+
+interface BindToTest {
+  void BindToTest();
+  [BindTo="test"] long testString([Const] DOMString arg);
+  [BindTo="test"] long testInt(long arg);
+};
