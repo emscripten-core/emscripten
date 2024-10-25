@@ -43,7 +43,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       // may be required (with an arbitrary maximum of 16, for the case where a
       // multi-MB stack is passed), allocated at the *top* of the worklet's
       // stack (and whose addresses are fixed).
-      this.maxBuffers = Math.min((Module['sz'] / (this.samplesPerChannel * 4)) | 0, /*sensible limit*/ 16);
+      this.maxBuffers = Math.min(((Module['sz'] - /*stack guards?*/ 16) / (this.samplesPerChannel * 4)) | 0, /*sensible limit*/ 16);
       // These are still alloc'd to take advantage of the overflow checks, etc.
       var oldStackPtr = stackSave();
       var viewDataIdx = stackAlloc(this.maxBuffers * this.samplesPerChannel * 4) >> 2;
@@ -144,6 +144,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       }
 
 #if ASSERTIONS
+      // TODO: addresses are now wrong
       k = outputDataPtr;
       for (i = outputViewsNeeded - 1; i >= 0; i--) {
         console.assert(this.outputViews[i].byteOffset == k, 'Internal error in addresses of the output array views');
