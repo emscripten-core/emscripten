@@ -162,6 +162,12 @@ class DylinkType(IntEnum):
   IMPORT_INFO = 4
 
 
+class TargetFeaturePrefix(IntEnum):
+  USED = 0x2b
+  DISALLOWED = 0x2d
+  REQUIRED = 0x3d
+
+
 class InvalidWasmError(BaseException):
   pass
 
@@ -560,6 +566,18 @@ class Module:
     else:
       func_type = self.get_function_types()[idx - self.num_imported_funcs()]
     return self.get_types()[func_type]
+
+  def get_target_features(self):
+    section = self.get_custom_section('target_features')
+    self.seek(section.offset)
+    assert self.read_string() == 'target_features'
+    features = {}
+    self.read_byte() # ignore feature count
+    while self.tell() < section.offset + section.size:
+      prefix = TargetFeaturePrefix(self.read_byte())
+      feature = self.read_string()
+      features[feature] = prefix
+    return features
 
 
 def parse_dylink_section(wasm_file):
