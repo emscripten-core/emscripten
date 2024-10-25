@@ -31,9 +31,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
 
     Object.assign(globalThis, {
       self: global,
-      // The presence of this global is used to detect
-      // that we are running on a Worker.
-      WorkerGlobalScope: global,
       postMessage: (msg) => parentPort.postMessage(msg),
     });
   }
