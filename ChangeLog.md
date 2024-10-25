@@ -18,9 +18,14 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.70 (in development)
+3.1.71 (in development)
 -----------------------
 
+3.1.70 - 10/25/24
+-----------------
+- Improvements to Audio Worklet support (#22731, #22681)
+- Small improvements to embind (#22734)
+  
 3.1.69 - 10/12/24
 -----------------
 - The usage of `EM_BOOL` in the emscripten API has been replaced with C/C++
