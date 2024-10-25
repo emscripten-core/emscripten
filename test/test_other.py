@@ -15169,3 +15169,6 @@ addToLibrary({
 
   def test_embool(self):
     self.do_other_test('test_embool.c')
+
+  def test_strict_closure(self):
+    self.emcc(test_file('hello_world.c'), ['-sSTRICT', '--closure=1'])

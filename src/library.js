@@ -85,7 +85,7 @@ addToLibrary({
 #if PTHREADS
     '$exitOnMainThread',
 #endif
-#if PTHREADS_DEBUG
+#if PTHREADS_DEBUG || ASSERTIONS
     '$runtimeKeepaliveCounter',
 #endif
   ],
@@ -2016,6 +2016,9 @@ addToLibrary({
     throw 'unwind';
   },
 
+#if !MINIMAL_RUNTIME
+  _emscripten_runtime_keepalive_clear__deps: ['$runtimeKeepaliveCounter'],
+#endif
   _emscripten_runtime_keepalive_clear: () => {
 #if isSymbolNeeded('$noExitRuntime')
     noExitRuntime = false;
