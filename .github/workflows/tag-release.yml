@@ -18,12 +18,17 @@ jobs:
         - name: Update Changelog
           run: python3 tools/maint/create_release.py --action
         - name: Create Changelog PR
+          id: cpr
           uses: peter-evans/create-pull-request@v6
           with:
             token: ${{ secrets.EMSCRIPTEN_BOT_TOKEN }}
             title: Mark ${{ env.RELEASE_VERSION }} as released
             team-reviewers: release-reviewers
             delete-branch: true
+        - name: Enable auto-merge
+          run: gh pr merge --squash --auto "${{ steps.cpr.outputs.pull-request-number }}"
+          env:
+            GH_TOKEN: ${{ secrets.EMSCRIPTEN_BOT_TOKEN }}
         - name: Tag release sha
           uses: actions/github-script@v7
           with:
