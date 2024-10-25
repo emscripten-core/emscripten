@@ -2686,6 +2686,13 @@ The current type of b is: 9
     # (llvm-gcc copies items one by one).
     self.do_core_test('test_copyop.cpp')
 
+  @parameterized({
+    '': ([],),
+    'bulkmem': (['-mbulk-memory'],),
+  })
+  def test_memcpy_zero_bytes(self, args):
+    self.do_core_test('test_memcpy_zero_bytes.c', emcc_args=['-fno-builtin'] + args)
+
   def test_memcpy2(self):
     self.do_core_test('test_memcpy2.c')
 
