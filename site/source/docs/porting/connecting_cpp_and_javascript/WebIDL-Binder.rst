@@ -419,7 +419,7 @@ When C++ code has a pointer to a ``Base`` instance and calls ``virtualFunc()``, 
 Function overloads
 ==================
 
-C++ allows function overloads, where multiple member functions have the same name but different arguments. *WebIDL Binder* allows you to bind overloaded functions only if they differ in the number of arguments:
+C++ allows function overloads, where multiple member functions have the same name but different arguments. By default, the *WebIDL Binder* allows you to bind overloaded functions if they differ only in the number of arguments:
 
 .. code-block:: cpp
 
@@ -439,7 +439,7 @@ C++ allows function overloads, where multiple member functions have the same nam
     void test(long arg);
   };
 
-If your functions don't differ in number of arguments, you can use the ``[BindTo]`` attribute:
+If your overloaded functions differ in some other way (say, in the types) then you can use the ``[BindTo]`` attribute to tell the tool what function name to bind to (that is, to call):
 
 .. code-block:: cpp
 
