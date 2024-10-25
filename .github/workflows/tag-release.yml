@@ -26,7 +26,7 @@ jobs:
             team-reviewers: release-reviewers
             delete-branch: true
         - name: Enable auto-merge
-          run: gh pr merge --merge --auto "${{ steps.cpr.outputs.pull-request-number }}"
+          run: gh pr merge --squash --auto "${{ steps.cpr.outputs.pull-request-number }}"
           env:
             GH_TOKEN: ${{ secrets.EMSCRIPTEN_BOT_TOKEN }}
         - name: Tag release sha
