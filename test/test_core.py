@@ -9647,23 +9647,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt', '--from-emcc', '--js-output=script2.js'])
     self.do_runf('test_emscripten_async_load_script.c', emcc_args=['-sFORCE_FILESYSTEM'])
 
-  def prep_wasm_worker_in_node(self):
-    # Auto exit after 3 seconds in Nodejs environment to get WASM Worker stdout
-    self.add_pre_run("setTimeout(()=>process.exit(), 3000);")
-
   @node_pthreads
   def test_wasm_worker_hello(self):
-    self.prep_wasm_worker_in_node()
     self.do_run_in_out_file_test('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
 
   @node_pthreads
   def test_wasm_worker_malloc(self):
-    self.prep_wasm_worker_in_node()
     self.do_run_in_out_file_test('wasm_worker/malloc_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
 
   @node_pthreads
   def test_wasm_worker_wait_async(self):
-    self.prep_wasm_worker_in_node()
     self.do_runf('atomic/test_wait_async.c', emcc_args=['-sWASM_WORKERS'])
 
 
