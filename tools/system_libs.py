@@ -1053,7 +1053,6 @@ class libc(MuslInternalLibrary,
       filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
                  'emscripten_scan_stack.c',
                  'emscripten_get_heap_size.c',  # needed by malloc
-                 'sbrk.c',  # needed by malloc
                  'emscripten_memmove.c'])
     # Calls to iprintf can be generated during codegen. Ideally we wouldn't
     # compile these with -O2 like we do the rest of compiler-rt since its
@@ -1300,7 +1299,6 @@ class libc(MuslInternalLibrary,
           'sigaction.c',
           'sigtimedwait.c',
           'wasi-helpers.c',
-          'sbrk.c',
           'system.c',
         ])
 
@@ -1733,7 +1731,9 @@ class libmalloc(MTLibrary):
     malloc = utils.path_from_root('system/lib', {
       'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.c',
     }[malloc_base])
-    return [malloc]
+    # Include sbrk.c in libc, it uses tracing and libc itself doesn't have a tracing variant.
+    sbrk = utils.path_from_root('system/lib/libc/sbrk.c')
+    return [malloc, sbrk]
 
   def get_cflags(self):
     cflags = super().get_cflags()
