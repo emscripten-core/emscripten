@@ -165,7 +165,6 @@ class DylinkType(IntEnum):
 class TargetFeaturePrefix(IntEnum):
   USED = 0x2b
   DISALLOWED = 0x2d
-  REQUIRED = 0x3d
 
 
 class InvalidWasmError(BaseException):
