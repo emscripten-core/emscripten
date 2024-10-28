@@ -18,7 +18,7 @@ int main() {
 
   struct tm tm;
 
-  // Use a timesamp corresponding to July 2024, to avoid depending on the
+  // Use a timestamp corresponding to July 2024, to avoid depending on the
   // current time (which may fail e.g. when DST/summer-time changes).
   const time_t now = 1719792000;
 
