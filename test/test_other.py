@@ -6044,6 +6044,53 @@ int main()
     # See https://github.com/emscripten-core/emscripten/issues/22161
     self.do_runf('hello_world.c', emcc_args=['-sWASM_BIGINT'])
 
+  @also_with_standalone_wasm()
+  def test_time(self):
+    self.do_other_test('test_time.c')
+
+  @parameterized({
+    '1': ('EST+05EDT',),
+    '2': ('UTC+0',),
+    '3': ('CET',),
+  })
+  def test_time_tz(self, tz):
+    print('testing with TZ=%s' % tz)
+    with env_modify({'TZ': tz}):
+      # Run the test with different time zone settings if
+      # possible. It seems that the TZ environment variable does not
+      # work all the time (at least it's not well respected by
+      # Node.js on Windows), but it does no harm either.
+      self.do_other_test('test_time.c')
+
+  def test_timeb(self):
+    # Confirms they are called in reverse order
+    self.do_other_test('test_timeb.c')
+
+  def test_time_c(self):
+    self.do_other_test('test_time_c.c')
+
+  def test_gmtime(self):
+    self.do_other_test('test_gmtime.c')
+
+  @also_with_standalone_wasm()
+  def test_strptime_tm(self):
+    if self.get_setting('STANDALONE_WASM'):
+      self.emcc_args += ['-DSTANDALONE']
+    self.do_other_test('test_strptime_tm.c')
+
+  def test_strptime_days(self):
+    self.do_other_test('test_strptime_days.c')
+
+  @also_with_standalone_wasm()
+  def test_strptime_reentrant(self):
+    if self.get_setting('STANDALONE_WASM'):
+      self.emcc_args += ['-DSTANDALONE']
+    self.do_other_test('test_strptime_reentrant.c')
+
+  @crossplatform
+  def test_strftime(self):
+    self.do_other_test('test_strftime.c')
+
   @crossplatform
   def test_strftime_zZ(self):
     if MACOS:
