@@ -4,8 +4,6 @@
 #include <time.h>
 
 int main() {
-  void tzset(void);
-
   // Buffer to hold the current hour of the day.  Format is HH + nul
   // character.
   char hour[3];
@@ -20,8 +18,9 @@ int main() {
 
   struct tm tm;
 
-  // Get the current timestamp.
-  const time_t now = time(NULL);
+  // Use a timesamp corresponding to July 2024, to avoid depending on the
+  // current time (which may fail e.g. when DST/summer-time changes).
+  const time_t now = 1719792000;
 
   // What time is that here?
   if (localtime_r(&now, &tm) == NULL) {
