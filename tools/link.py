@@ -1985,6 +1985,8 @@ def run_embind_gen(wasm_target, js_syms, extra_settings, linker_inputs):
   settings.JS_LIBRARIES[embind_index] = 'embind/embind_gen.js'
   if settings.MEMORY64:
     settings.MIN_NODE_VERSION = 160000
+  # Source maps haven't been generated yet and aren't needed to run embind_gen.
+  settings.LOAD_SOURCE_MAP = 0
   outfile_js = in_temp('tsgen.js')
   # The Wasm outfile may be modified by emscripten.emscript, so use a temporary file.
   outfile_wasm = in_temp('tsgen.wasm')
