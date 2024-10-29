@@ -135,7 +135,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
         dataPtr += paramArray.length*4;
       }
 
-      // Copy output audio descriptor structs to Wasm (not that dataPtr after
+      // Copy output audio descriptor structs to Wasm (note that dataPtr after
       // the struct offsets should now be 16-byte aligned).
       outputsPtr = dataPtr;
       dataPtr += numOutputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
@@ -153,12 +153,21 @@ function createWasmAudioWorkletProcessor(audioParams) {
 #if ASSERTIONS
       // If all the maths worked out, we arrived at the original stack address
       console.assert(dataPtr == oldStackPtr, `AudioWorklet stack missmatch (audio data finishes at ${dataPtr} instead of ${oldStackPtr})`);
-      // Sanity check the output view addresses
+
+      // Sanity checks. If these trip the most likely cause, beyond unforeseen
+      // stack shenanigans, is that the 'render quantum size' changed.
       if (numOutputs) {
+        // First that the output view addresses match the stack positions.
         k = dataPtr - bytesPerChannel;
         for (i = 0; i < outputViewsNeeded; i++) {
           console.assert(k == this.outputViews[i].byteOffset, 'AudioWorklet internal error in addresses of the output array views');
           k -= bytesPerChannel;
+        }
+        // And that the views' size match the passed in output buffers
+        for (i of outputList) {
+          for (j of i) {
+            console.assert(j.byteLength == bytesPerChannel, `AudioWorklet unexpected output buffer size (expected ${bytesPerChannel} got ${j.byteLength})`);
+          }
         }
       }
 #endif
