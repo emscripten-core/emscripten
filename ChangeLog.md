@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.71 (in development)
 -----------------------
+- LLVM's `-Wnontrivial-memaccess` warning has been updated to also warn about
+  passing non-trivially-copyable destrination parameter to `memcpy`,
+  `memset` and similar functions for which it is a documented undefined
+  behavior (#22798). See https://github.com/llvm/llvm-project/pull/111434
 
 3.1.70 - 10/25/24
 -----------------
