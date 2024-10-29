@@ -1206,6 +1206,10 @@ def phase_linker_setup(options, state, newargs):
     # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
     settings.FORCE_FILESYSTEM = 1
 
+  if options.preload_files:
+    # File preloading uses `Module['preRun']`.
+    settings.INCOMING_MODULE_JS_API.append('preRun')
+
   if settings.FORCE_FILESYSTEM and not settings.FILESYSTEM:
     exit_with_error('`-sFORCE_FILESYSTEM` cannot be used with `-sFILESYSTEM=0`')
 

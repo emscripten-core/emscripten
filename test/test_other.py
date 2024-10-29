@@ -1928,7 +1928,7 @@ Module['postRun'] = () => {
   @parameterized({
     'embed': (['--embed-file', 'somefile.txt'],),
     'embed_twice': (['--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt'],),
-    'preload': (['--preload-file', 'somefile.txt'],),
+    'preload': (['--preload-file', 'somefile.txt', '-sSTRICT'],),
     'preload_closure': (['--preload-file', 'somefile.txt', '-O2', '--closure=1'],),
     'preload_and_embed': (['--preload-file', 'somefile.txt', '--embed-file', 'hello.txt'],)
   })
