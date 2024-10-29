@@ -607,10 +607,7 @@ def generate_js(data_target, data_files, metadata):
   var Module = typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": options.export_name}
 
   ret += '''
-  if (!Module['expectedDataFileDownloads']) {
-    Module['expectedDataFileDownloads'] = 0;
-  }
-
+  Module['expectedDataFileDownloads'] ??= 0;
   Module['expectedDataFileDownloads']++;
   (() => {
     // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
@@ -1033,7 +1030,7 @@ def generate_js(data_target, data_files, metadata):
     # we need to find the datafile in the same dir as the html file
 
     code += '''
-      if (!Module['preloadResults']) Module['preloadResults'] = {};\n'''
+      Module['preloadResults'] ??= {};\n'''
 
     if options.use_preload_cache:
       code += '''
@@ -1099,8 +1096,7 @@ def generate_js(data_target, data_files, metadata):
     if (Module['calledRun']) {
       runWithFS(Module);
     } else {
-      if (!Module['preRun']) Module['preRun'] = [];
-      Module["preRun"].push(runWithFS); // FS is not initialized yet, wait for it
+      (Module['preRun'] ??= []).push(runWithFS); // FS is not initialized yet, wait for it
     }\n'''
 
   if options.separate_metadata:
@@ -1139,8 +1135,7 @@ def generate_js(data_target, data_files, metadata):
   if (Module['calledRun']) {
     runMetaWithFS();
   } else {
-    if (!Module['preRun']) Module['preRun'] = [];
-    Module["preRun"].push(runMetaWithFS);
+    (Module['preRun'] ??= []).push(runMetaWithFS);
   }\n''' % {'node_support_code': node_support_code, 'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
   else:
     ret += '''

@@ -21,7 +21,7 @@ See docs/process.md for more on how version tagging works.
 3.1.71 (in development)
 -----------------------
 - LLVM's `-Wnontrivial-memaccess` warning has been updated to also warn about
-  passing non-trivially-copyable destrination parameter to `memcpy`,
+  passing non-trivially-copyable destination parameter to `memcpy`,
   `memset` and similar functions for which it is a documented undefined
   behavior (#22798). See https://github.com/llvm/llvm-project/pull/111434
 - The automatic fallback to `$HOME/.emscripten_cache` when the emscripten
@@ -29,6 +29,11 @@ See docs/process.md for more on how version tagging works.
   confusion.  Anyone who really wants to use `$HOME/.emscripten_cache` can
   still do so either via an environment variable (`EMCC_CACHE`) or via a config
   file setting `CACHE`.
+- The standalone `file_packager.py` tool now outputs modern JS (specifically it
+  includes nullish assignment).  If you use this output directly and you want
+  to support older browsers you may need to transpile it.  If you use
+  `file_packager` via emcc the output will be transpiled as part of the emcc
+  output. (#22805)
 
 3.1.70 - 10/25/24
 -----------------
