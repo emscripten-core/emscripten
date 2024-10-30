@@ -5636,6 +5636,7 @@ int main(int argc, char **argv) {
 
   def test_readdir_r_silly(self):
     create_file('src.cpp', r'''
+#include <cassert>
 #include <iostream>
 #include <cstring>
 #include <cerrno>
@@ -5645,29 +5646,23 @@ int main(int argc, char **argv) {
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
 using std::endl;
+
 namespace
 {
-  void check(const bool result)
-  {
-    if(not result) {
-      std::cout << "Check failed!" << endl;
-      throw "bad";
-    }
-  }
   // Do a recursive directory listing of the directory whose path is specified
   // by \a name.
-  void ls(const std::string& name, std::size_t indent = 0)
-  {
-    ::DIR *dir;
-    struct ::dirent *entry;
-    if(indent == 0) {
+  void ls(const std::string& name, size_t indent = 0) {
+    DIR *dir;
+    struct dirent *entry;
+    if (indent == 0) {
       std::cout << name << endl;
       ++indent;
     }
     // Make sure we can open the directory.  This should also catch cases where
     // the empty string is passed in.
-    if (not (dir = ::opendir(name.c_str()))) {
+    if (not (dir = opendir(name.c_str()))) {
       const int error = errno;
       std::cout
         << "Failed to open directory: " << name << "; " << error << endl;
@@ -5678,17 +5673,17 @@ namespace
       std::cout
         << "Managed to open a directory whose name was the empty string.."
         << endl;
-      check(::closedir(dir) != -1);
+      assert(closedir(dir) != -1);
       return;
     }
     // Iterate over the entries in the directory.
-    while ((entry = ::readdir(dir))) {
-      const std::string entryName(entry->d_name);
+    while ((entry = readdir(dir))) {
+      std::string entryName(entry->d_name);
       if (entryName == "." || entryName == "..") {
         // Skip the dot entries.
         continue;
       }
-      const std::string indentStr(indent * 2, ' ');
+      std::string indentStr(indent * 2, ' ');
       if (entryName.empty()) {
         std::cout
           << indentStr << "\"\": Found empty string as a "
@@ -5706,18 +5701,18 @@ namespace
       }
     }
     // Close our handle.
-    check(::closedir(dir) != -1);
+    assert(closedir(dir) != -1);
   }
-  void touch(const std::string &path)
-  {
-    const int fd = ::open(path.c_str(), O_CREAT | O_TRUNC, 0644);
-    check(fd != -1);
-    check(::close(fd) != -1);
+
+  void touch(const char* path) {
+    int fd = open(path, O_CREAT | O_TRUNC, 0644);
+    assert(fd != -1);
+    assert(close(fd) != -1);
   }
 }
-int main()
-{
-  check(::mkdir("dir", 0755) == 0);
+
+int main() {
+  assert(mkdir("dir", 0755) == 0);
   touch("dir/a");
   touch("dir/b");
   touch("dir/c");
@@ -5727,26 +5722,25 @@ int main()
   ls("dir");
   std::cout << endl;
   // Attempt to delete entries as we walk the (single) directory.
-  ::DIR * const dir = ::opendir("dir");
-  check(dir != NULL);
-  struct ::dirent *entry;
-  while((entry = ::readdir(dir)) != NULL) {
-    const std::string name(entry->d_name);
+  DIR* dir = opendir("dir");
+  assert(dir != NULL);
+  struct dirent *entry;
+  while ((entry = readdir(dir)) != NULL) {
+    std::string name(entry->d_name);
     // Skip "." and "..".
-    if(name == "." || name == "..") {
+    if (name == "." || name == "..") {
       continue;
     }
     // Unlink it.
     std::cout << "Unlinking " << name << endl;
-    check(::unlink(("dir/" + name).c_str()) != -1);
+    assert(unlink(("dir/" + name).c_str()) != -1);
   }
-  check(::closedir(dir) != -1);
+  assert(closedir(dir) != -1);
   std::cout << "After:" << endl;
   ls("dir");
-  std::cout << endl;
+  std::cout << "done" << endl;
   return 0;
-}
-    ''')
+}''')
     # cannot symlink nonexistents
     self.do_runf('src.cpp', r'''Before:
 dir
@@ -5763,6 +5757,7 @@ Unlinking d
 Unlinking e
 After:
 dir
+done
 ''', args=['', 'abc'])
 
   def test_emversion(self):
