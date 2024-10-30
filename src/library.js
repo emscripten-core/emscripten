@@ -2362,12 +2362,8 @@ addToLibrary({
   },
 
   $HandleAllocator: class {
-    constructor() {
-      // TODO(https://github.com/emscripten-core/emscripten/issues/21414):
-      // Use inline field declarations.
-      this.allocated = [undefined];
-      this.freelist = [];
-    }
+    allocated = [undefined];
+    freelist = [];
     get(id) {
 #if ASSERTIONS
       assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);
