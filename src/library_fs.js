@@ -31,7 +31,7 @@ addToLibrary({
     '$strError', '$ERRNO_CODES',
 #endif
   ],
-  $FS__postset: function() {
+  $FS__postset: () => {
     // TODO: do we need noFSInit?
     addAtInit(`
 if (!Module['noFSInit'] && !FS.initialized)
