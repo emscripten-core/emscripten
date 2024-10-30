@@ -3620,6 +3620,21 @@ More info: https://emscripten.org
 
     self.assertEqual(metadata['package_uuid'], 'sha256-53ddc03623f867c7d4a631ded19c2613f2cb61d47b6aa214f47ff3cc15445bcd')
 
+    create_file('src.c', r'''
+    #include <assert.h>
+    #include <sys/stat.h>
+    #include <stdio.h>
+
+    int main() {
+      struct stat buf;
+      assert(stat("data1.txt", &buf) == 0);
+      assert(stat("subdir/data2.txt", &buf) == 0);
+      printf("done\n");
+      return 0;
+    }
+    ''')
+    self.do_runf('src.c', emcc_args=['--pre-js=immutable.js', '-sFORCE_FILESYSTEM'])
+
   def test_file_packager_unicode(self):
     unicode_name = 'unicode…☃'
     try:
