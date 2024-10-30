@@ -1561,7 +1561,7 @@ addToLibrary({
 
   emscripten_has_asyncify: () => {{{ ASYNCIFY }}},
 
-  emscripten_debugger: function() { debugger },
+  emscripten_debugger: () => { debugger },
 
   emscripten_print_double__deps: ['$stringToUTF8', '$lengthBytesUTF8'],
   emscripten_print_double: (x, to, max) => {
