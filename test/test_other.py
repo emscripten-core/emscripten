@@ -10355,7 +10355,7 @@ int main() {
       self.run_process([EMCC, test_file('hello_world.c')] + flags)
 
     compile(['-c'])
-    verify_features_sec('bulk-memory', False)
+    verify_features_sec('bulk-memory', True)
     verify_features_sec('nontrapping-fptoint', False)
     verify_features_sec('sign-ext', True)
     verify_features_sec('mutable-globals', True)
@@ -10364,6 +10364,10 @@ int main() {
 
     compile(['-mnontrapping-fptoint', '-c'])
     verify_features_sec('nontrapping-fptoint', True)
+
+    compile(['-sMIN_SAFARI_VERSION=140000'])
+    verify_features_sec_linked('bulk-memory', True)
+    verify_features_sec_linked('bulk-nontrapping-fptoint', True)
 
     # BIGINT causes binaryen to not run, and keeps the target_features section after link
     # Setting this SAFARI_VERSION should enable bulk memory because it links in emscripten_memcpy_bulkmem

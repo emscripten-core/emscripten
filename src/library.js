@@ -406,38 +406,6 @@ addToLibrary({
   // the initial values of the environment accessible by getenv.
   $ENV: {},
 
-  // In -Oz builds, we replace memcpy() altogether with a non-unrolled wasm
-  // variant, so we should never emit _emscripten_memcpy_js() in the build.
-  // In STANDALONE_WASM we avoid the _emscripten_memcpy_js dependency so keep
-  // the wasm file standalone.
-  // In BULK_MEMORY mode we include native versions of these functions based
-  // on memory.fill and memory.copy.
-  // In MAIN_MODULE=1 or EMCC_FORCE_STDLIBS mode all of libc is force included
-  // so we cannot override parts of it, and therefore cannot use libc_optz.
-#if (SHRINK_LEVEL < 2 || LINKABLE || process.env.EMCC_FORCE_STDLIBS) && !STANDALONE_WASM && !BULK_MEMORY
-
-#if MIN_CHROME_VERSION < 45 || MIN_FIREFOX_VERSION < 34 || MIN_SAFARI_VERSION < 100101
-  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/copyWithin lists browsers that support TypedArray.prototype.copyWithin, but it
-  // has outdated information for Safari, saying it would not support it.
-  // https://github.com/WebKit/webkit/commit/24a800eea4d82d6d595cdfec69d0f68e733b5c52#diff-c484911d8df319ba75fce0d8e7296333R1 suggests support was added on Aug 28, 2015.
-  // Manual testing suggests:
-  //   Safari/601.1 Version/9.0 on iPhone 4s with iOS 9.3.6 (released September 30, 2015) does not support copyWithin.
-  // but the following systems do:
-  //   AppleWebKit/602.2.14 Safari/602.1 Version/10.0 Mobile/14B100 iPhone OS 10_1_1 on iPhone 5s with iOS 10.1.1 (released October 31, 2016)
-  //   AppleWebKit/603.3.8 Safari/602.1 Version/10.0 on iPhone 5 with iOS 10.3.4 (released July 22, 2019)
-  //   AppleWebKit/605.1.15 iPhone OS 12_3_1 Version/12.1.1 Safari/604.1 on iPhone SE with iOS 12.3.1
-  //   AppleWebKit/605.1.15 Safari/604.1 Version/13.0.4 iPhone OS 13_3 on iPhone 6s with iOS 13.3
-  //   AppleWebKit/605.1.15 Version/13.0.3 Intel Mac OS X 10_15_1 on Safari 13.0.3 (15608.3.10.1.4) on macOS Catalina 10.15.1
-  // Hence the support status of .copyWithin() for Safari version range [10.0.0, 10.1.0] is unknown.
-  _emscripten_memcpy_js: `= Uint8Array.prototype.copyWithin
-    ? (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num)
-    : (dest, src, num) => HEAPU8.set(HEAPU8.subarray(src, src+num), dest)`,
-#else
-  _emscripten_memcpy_js: (dest, src, num) => HEAPU8.copyWithin(dest, src, src + num),
-#endif
-
-#endif
-
 #if !STANDALONE_WASM
   // ==========================================================================
   // assert.h

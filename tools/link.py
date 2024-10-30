@@ -340,6 +340,8 @@ def get_binaryen_passes():
   if not feature_matrix.caniuse(feature_matrix.Feature.SIGN_EXT):
     logger.debug('lowering sign-ext feature due to incompatible target browser engines')
     passes += ['--signext-lowering']
+  if not feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY):
+    logger.debug('lowering bulk-memory feature due to incompatible target browser engines')
   if optimizing:
     passes += ['--post-emscripten']
     if settings.SIDE_MODULE:

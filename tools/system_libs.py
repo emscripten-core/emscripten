@@ -1396,7 +1396,7 @@ class libbulkmemory(MuslInternalLibrary, AsanInstrumentedLibrary):
   cflags = ['-mbulk-memory']
 
   def can_use(self):
-    return super(libbulkmemory, self).can_use() and settings.BULK_MEMORY
+    return super(libbulkmemory, self).can_use()
 
 
 class libprintf_long_double(libc):
@@ -2361,8 +2361,8 @@ def get_libs_to_link(args):
   if settings.SHRINK_LEVEL >= 2 and not settings.LINKABLE and \
      not os.environ.get('EMCC_FORCE_STDLIBS'):
     add_library('libc_optz')
-  if settings.BULK_MEMORY:
-    add_library('libbulkmemory')
+  # TODO: Just move this into libc?
+  add_library('libbulkmemory')
   if settings.STANDALONE_WASM:
     add_library('libstandalonewasm')
   if settings.ALLOW_UNIMPLEMENTED_SYSCALLS:
