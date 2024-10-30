@@ -74,6 +74,7 @@ FS.staticInit();
 #else
     ErrnoError: class {
 #endif
+      name = 'ErrnoError';
       // We set the `name` property to be able to identify `FS.ErrnoError`
       // - the `name` is a standard ECMA-262 property of error objects. Kind of good to have it anyway.
       // - when using PROXYFS, an error can come from an underlying FS
@@ -84,9 +85,6 @@ FS.staticInit();
 #if ASSERTIONS
         super(runtimeInitialized ? strError(errno) : '');
 #endif
-        // TODO(sbc): Use the inline member declaration syntax once we
-        // support it in acorn and closure.
-        this.name = 'ErrnoError';
         this.errno = errno;
 #if ASSERTIONS
         for (var key in ERRNO_CODES) {
@@ -100,16 +98,11 @@ FS.staticInit();
     },
 
     FSStream: class {
-      constructor() {
-        // TODO(https://github.com/emscripten-core/emscripten/issues/21414):
-        // Use inline field declarations.
-        this.shared = {};
+      shared = {};
 #if USE_CLOSURE_COMPILER
-        // Closure compiler requires us to declare all properties in the
-        // constructor.
-        this.node = null;
+      // Closure compiler requires us to declare all properties ahead of time
+      node = null;
 #endif
-      }
       get object() {
         return this.node;
       }
@@ -139,21 +132,21 @@ FS.staticInit();
       }
     },
     FSNode: class {
+      node_ops = {};
+      stream_ops = {};
+      readMode = {{{ cDefs.S_IRUGO }}} | {{{ cDefs.S_IXUGO }}};
+      writeMode = {{{ cDefs.S_IWUGO }}};
+      mounted = null;
       constructor(parent, name, mode, rdev) {
         if (!parent) {
           parent = this;  // root node sets parent to itself
         }
         this.parent = parent;
         this.mount = parent.mount;
-        this.mounted = null;
         this.id = FS.nextInode++;
         this.name = name;
         this.mode = mode;
-        this.node_ops = {};
-        this.stream_ops = {};
         this.rdev = rdev;
-        this.readMode = {{{ cDefs.S_IRUGO }}} | {{{ cDefs.S_IXUGO }}};
-        this.writeMode = {{{ cDefs.S_IWUGO }}};
       }
       get read() {
         return (this.mode & this.readMode) === this.readMode;
@@ -1667,17 +1660,14 @@ FS.staticInit();
       // Lazy chunked Uint8Array (implements get and length from Uint8Array).
       // Actual getting is abstracted away for eventual reuse.
       class LazyUint8Array {
-        constructor() {
-          this.lengthKnown = false;
-          this.chunks = []; // Loaded chunks. Index is the chunk number
+        lengthKnown = false;
+        chunks = []; // Loaded chunks. Index is the chunk number
 #if USE_CLOSURE_COMPILER
-          // Closure compiler requires us to declare all properties in the
-          // constructor.
-          this.getter = undefined;
-          this._length = 0;
-          this._chunkSize = 0;
+        // Closure compiler requires us to declare all properties ahead of time.
+        getter = undefined;
+        _length = 0;
+        _chunkSize = 0;
 #endif
-        }
         get(idx) {
           if (idx > this.length-1 || idx < 0) {
             return undefined;
