@@ -1561,7 +1561,7 @@ addToLibrary({
 
   emscripten_has_asyncify: () => {{{ ASYNCIFY }}},
 
-  emscripten_debugger: function() { debugger },
+  emscripten_debugger: () => { debugger },
 
   emscripten_print_double__deps: ['$stringToUTF8', '$lengthBytesUTF8'],
   emscripten_print_double: (x, to, max) => {
@@ -1946,8 +1946,10 @@ addToLibrary({
 
   $callRuntimeCallbacks__internal: true,
   $callRuntimeCallbacks: (callbacks) => {
-    // Pass the module as the first argument.
-    callbacks.forEach((f) => f(Module));
+    while (callbacks.length > 0) {
+      // Pass the module as the first argument.
+      callbacks.shift()(Module);
+    }
   },
 
 #if SHRINK_LEVEL == 0 || ASYNCIFY == 2
@@ -2362,12 +2364,8 @@ addToLibrary({
   },
 
   $HandleAllocator: class {
-    constructor() {
-      // TODO(https://github.com/emscripten-core/emscripten/issues/21414):
-      // Use inline field declarations.
-      this.allocated = [undefined];
-      this.freelist = [];
-    }
+    allocated = [undefined];
+    freelist = [];
     get(id) {
 #if ASSERTIONS
       assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);

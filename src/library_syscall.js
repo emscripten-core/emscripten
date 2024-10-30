@@ -97,7 +97,7 @@ var SyscallsLibrary = {
   },
 
   $syscallGetVarargI__internal: true,
-  $syscallGetVarargI: function() {
+  $syscallGetVarargI: () => {
 #if ASSERTIONS
     assert(SYSCALLS.varargs != undefined);
 #endif
@@ -112,7 +112,7 @@ var SyscallsLibrary = {
 
   $syscallGetVarargP__internal: true,
 #if MEMORY64
-  $syscallGetVarargP: function() {
+  $syscallGetVarargP: () => {
 #if ASSERTIONS
     assert(SYSCALLS.varargs != undefined);
 #endif
@@ -568,9 +568,7 @@ var SyscallsLibrary = {
                   (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0) |
                   (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
 
-    var check = function(fd, low, high, val) {
-      return (fd < 32 ? (low & val) : (high & val));
-    };
+    var check = (fd, low, high, val) => fd < 32 ? (low & val) : (high & val);
 
     for (var fd = 0; fd < nfds; fd++) {
       var mask = 1 << (fd % 32);

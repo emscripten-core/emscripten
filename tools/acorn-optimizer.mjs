@@ -2037,8 +2037,7 @@ if (extraInfoStart > 0) {
 // outputted code if --closureFriendly was requested.
 const sourceComments = {};
 const params = {
-  // Keep in sync with --language_in that we pass to closure in building.py
-  ecmaVersion: 2021,
+  ecmaVersion: 'latest',
   sourceType: exportES6 ? 'module' : 'script',
   allowAwaitOutsideFunction: true,
 };
