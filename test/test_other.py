@@ -3593,8 +3593,11 @@ More info: https://emscripten.org
 
     self.assertTextDataIdentical(clean(proc.stdout), clean(proc2.stdout))
 
+  def test_file_packager_separate_metadata(self):
     # verify '--separate-metadata' option produces separate metadata file
-    os.chdir('..')
+    ensure_dir('subdir')
+    create_file('data1.txt', 'data1')
+    create_file('subdir/data2.txt', 'data2')
 
     self.run_process([FILE_PACKAGER, 'test.data', '--quiet', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata', '--use-preload-cache'])
     self.assertExists('immutable.js.metadata')
