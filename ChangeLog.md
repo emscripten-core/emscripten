@@ -24,6 +24,11 @@ See docs/process.md for more on how version tagging works.
   passing non-trivially-copyable destrination parameter to `memcpy`,
   `memset` and similar functions for which it is a documented undefined
   behavior (#22798). See https://github.com/llvm/llvm-project/pull/111434
+- The automatic fallback to `$HOME/.emscripten_cache` when the emscripten
+  directory is read-only was removed.  This automatic behaviour could cause
+  confusion.  Anyone who really wants to use `$HOME/.emscripten_cache` can
+  still do so either via an environment variable (`EMCC_CACHE`) or via a config
+  file setting `CACHE`.
 
 3.1.70 - 10/25/24
 -----------------

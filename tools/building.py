@@ -593,8 +593,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/dyncall-externs.js')]
 
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
-  # Keep in sync with ecmaVersion in tools/acorn-optimizer.mjs
-  args += ['--language_in', 'ECMASCRIPT_2021']
+  args += ['--language_in', 'UNSTABLE']
   # We do transpilation using babel
   args += ['--language_out', 'NO_TRANSPILE']
   # Tell closure never to inject the 'use strict' directive.
