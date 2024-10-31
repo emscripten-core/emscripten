@@ -281,6 +281,7 @@ addToLibrary({
 #endif
 
           Module['websocket'].emit('open', sock.stream.fd);
+          sock.connecting = false;
 
           try {
             var queued = peer.msg_send_queue.shift();
@@ -402,7 +403,15 @@ addToLibrary({
 
         if ((dest && dest.socket.readyState === dest.socket.CLOSING) ||
             (dest && dest.socket.readyState === dest.socket.CLOSED)) {
-          mask |= {{{ cDefs.POLLHUP }}};
+          // When an non-blocking connect fails mark the socket as writable.
+          // Its up to the calling code to then use getsockopt with SO_ERROR to
+          // retrieve the error.
+          // See https://man7.org/linux/man-pages/man2/connect.2.html
+          if (sock.connecting) {
+            mask |= {{{ cDefs.POLLOUT }}};
+          } else  {
+            mask |= {{{ cDefs.POLLHUP }}};
+          }
         }
 
         return mask;
@@ -496,6 +505,7 @@ addToLibrary({
         // because we cannot synchronously block to wait for the WebSocket
         // connection to complete, we return here pretending that the connection
         // was a success.
+        sock.connecting = true;
       },
       listen(sock, backlog) {
         if (!ENVIRONMENT_IS_NODE) {
