@@ -1098,7 +1098,6 @@ class libc(MuslInternalLibrary,
         'ppoll.c',
         'syscall.c', 'popen.c', 'pclose.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
-        'getentropy.c',
         'getauxval.c',
         'lookup_name.c',
         # 'process' exclusion
