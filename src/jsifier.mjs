@@ -326,7 +326,7 @@ function(${args}) {
       if (proxyingMode !== 'sync' && proxyingMode !== 'async' && proxyingMode !== 'none') {
         throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
       }
-      if (SHARED_MEMORY) {
+      if (SHARED_MEMORY && proxyingMode != 'none') {
         const sync = proxyingMode === 'sync';
         if (PTHREADS) {
           snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
