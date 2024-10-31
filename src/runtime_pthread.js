@@ -27,18 +27,10 @@ if (ENVIRONMENT_IS_PTHREAD) {
     // Create as web-worker-like an environment as we can.
 
     var parentPort = worker_threads['parentPort'];
-    parentPort.on('message', (data) => onmessage({ data: data }));
+    parentPort.on('message', (msg) => onmessage({ data: msg }));
 
     Object.assign(globalThis, {
       self: global,
-      // Dummy importScripts.  The presence of this global is used
-      // to detect that we are running on a Worker.
-      // TODO(sbc): Find another way?
-      importScripts: () => {
-#if ASSERTIONS
-        assert(false, 'dummy importScripts called');
-#endif
-      },
       postMessage: (msg) => parentPort.postMessage(msg),
     });
   }

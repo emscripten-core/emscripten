@@ -1199,6 +1199,20 @@
         }
     },
     {
+        "file": "emscripten/webaudio.h",
+        "structs": {
+            "AudioSampleFrame": [
+              "numberOfChannels",
+              "samplesPerChannel",
+              "data"
+            ],
+            "AudioParamFrame": [
+              "length",
+              "data"
+            ]
+        }
+    },
+    {
         "file": "AL/al.h",
         "defines": [
           "AL_TRUE",

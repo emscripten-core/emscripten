@@ -607,17 +607,17 @@ def generate_js(data_target, data_files, metadata):
   var Module = typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": options.export_name}
 
   ret += '''
-  if (!Module['expectedDataFileDownloads']) {
-    Module['expectedDataFileDownloads'] = 0;
-  }
-
+  Module['expectedDataFileDownloads'] ??= 0;
   Module['expectedDataFileDownloads']++;
   (() => {
     // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
     var isPthread = typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD;
     var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER;
-    if (isPthread || isWasmWorker) return;
-    function loadPackage(metadata) {\n'''
+    if (isPthread || isWasmWorker) return;\n'''
+
+  if options.support_node:
+    ret += "    var isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';\n"
+  ret += '    function loadPackage(metadata) {\n'
 
   code = '''
       function assert(check, msg) {
@@ -785,15 +785,6 @@ def generate_js(data_target, data_files, metadata):
 
       code += r'''
         var PACKAGE_UUID = metadata['package_uuid'];
-        var indexedDB;
-        if (typeof window === 'object') {
-          indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
-        } else if (typeof location !== 'undefined') {
-          // worker
-          indexedDB = self.indexedDB;
-        } else {
-          throw 'using IndexedDB to cache data can only be done on a web page or in a web worker';
-        }
         var IDB_RO = "readonly";
         var IDB_RW = "readwrite";
         var DB_NAME = "''' + options.indexeddb_name + '''";
@@ -801,6 +792,18 @@ def generate_js(data_target, data_files, metadata):
         var METADATA_STORE_NAME = 'METADATA';
         var PACKAGE_STORE_NAME = 'PACKAGES';
         function openDatabase(callback, errback) {
+          if (isNode) {
+            return errback();
+          }
+          var indexedDB;
+          if (typeof window === 'object') {
+            indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+          } else if (typeof location !== 'undefined') {
+            // worker
+            indexedDB = self.indexedDB;
+          } else {
+            throw 'using IndexedDB to cache data can only be done on a web page or in a web worker';
+          }
           try {
             var openRequest = indexedDB.open(DB_NAME, DB_VERSION);
           } catch (e) {
@@ -942,7 +945,7 @@ def generate_js(data_target, data_files, metadata):
     node_support_code = ''
     if options.support_node:
       node_support_code = '''
-        if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
+        if (isNode) {
           require('fs').readFile(packageName, (err, contents) => {
             if (err) {
               errback(err);
@@ -1027,7 +1030,7 @@ def generate_js(data_target, data_files, metadata):
     # we need to find the datafile in the same dir as the html file
 
     code += '''
-      if (!Module['preloadResults']) Module['preloadResults'] = {};\n'''
+      Module['preloadResults'] ??= {};\n'''
 
     if options.use_preload_cache:
       code += '''
@@ -1093,19 +1096,33 @@ def generate_js(data_target, data_files, metadata):
     if (Module['calledRun']) {
       runWithFS(Module);
     } else {
-      if (!Module['preRun']) Module['preRun'] = [];
-      Module["preRun"].push(runWithFS); // FS is not initialized yet, wait for it
+      (Module['preRun'] ??= []).push(runWithFS); // FS is not initialized yet, wait for it
     }\n'''
 
   if options.separate_metadata:
-      _metadata_template = '''
+    node_support_code = ''
+    if options.support_node:
+      node_support_code = '''
+        if (isNode) {
+          require('fs').readFile(metadataUrl, 'utf8', (err, contents) => {
+            if (err) {
+              return Promise.reject(err);
+            } else {
+              loadPackage(JSON.parse(contents));
+            }
+          });
+          return;
+        }'''.strip()
+
+    ret += '''
     Module['removeRunDependency']('%(metadata_file)s');
   }
 
   function runMetaWithFS() {
     Module['addRunDependency']('%(metadata_file)s');
-    var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
-    fetch(REMOTE_METADATA_NAME)
+    var metadataUrl = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
+    %(node_support_code)s
+    fetch(metadataUrl)
       .then((response) => {
         if (response.ok) {
           return response.json();
@@ -1118,16 +1135,15 @@ def generate_js(data_target, data_files, metadata):
   if (Module['calledRun']) {
     runMetaWithFS();
   } else {
-    if (!Module['preRun']) Module['preRun'] = [];
-    Module["preRun"].push(runMetaWithFS);
-  }\n''' % {'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
+    (Module['preRun'] ??= []).push(runMetaWithFS);
+  }\n''' % {'node_support_code': node_support_code, 'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
   else:
-      _metadata_template = '''
+    ret += '''
     }
     loadPackage(%s);\n''' % json.dumps(metadata)
 
-  ret += '''%s
-  })();\n''' % _metadata_template
+  ret += '''
+  })();\n'''
 
   return ret
 

@@ -2627,53 +2627,6 @@ The current type of b is: 9
   def test_tcgetattr(self):
     self.do_runf('termios/test_tcgetattr.c', 'success')
 
-  @also_with_standalone_wasm()
-  def test_time(self):
-    self.do_core_test('test_time.c')
-
-  @parameterized({
-    '1': ('EST+05EDT',),
-    '2': ('UTC+0',),
-    '3': ('CET',),
-  })
-  def test_time_tz(self, tz):
-    print('testing with TZ=%s' % tz)
-    with env_modify({'TZ': tz}):
-      # Run the test with different time zone settings if
-      # possible. It seems that the TZ environment variable does not
-      # work all the time (at least it's not well respected by
-      # Node.js on Windows), but it does no harm either.
-      self.do_core_test('test_time.c')
-
-  def test_timeb(self):
-    # Confirms they are called in reverse order
-    self.do_core_test('test_timeb.c')
-
-  def test_time_c(self):
-    self.do_core_test('test_time_c.c')
-
-  def test_gmtime(self):
-    self.do_core_test('test_gmtime.c')
-
-  @also_with_standalone_wasm()
-  def test_strptime_tm(self):
-    if self.get_setting('STANDALONE_WASM'):
-      self.emcc_args += ['-DSTANDALONE']
-    self.do_core_test('test_strptime_tm.c')
-
-  def test_strptime_days(self):
-    self.do_core_test('test_strptime_days.c')
-
-  @also_with_standalone_wasm()
-  def test_strptime_reentrant(self):
-    if self.get_setting('STANDALONE_WASM'):
-      self.emcc_args += ['-DSTANDALONE']
-    self.do_core_test('test_strptime_reentrant.c')
-
-  @crossplatform
-  def test_strftime(self):
-    self.do_core_test('test_strftime.c')
-
   def test_trickystring(self):
     self.do_core_test('test_trickystring.c')
 
@@ -2685,6 +2638,13 @@ The current type of b is: 9
     # memcpy for assignments, with hardcoded numbers of bytes
     # (llvm-gcc copies items one by one).
     self.do_core_test('test_copyop.cpp')
+
+  @parameterized({
+    '': ([],),
+    'bulkmem': (['-mbulk-memory'],),
+  })
+  def test_memcpy_zero_bytes(self, args):
+    self.do_core_test('test_memcpy_zero_bytes.c', emcc_args=['-fno-builtin'] + args)
 
   def test_memcpy2(self):
     self.do_core_test('test_memcpy2.c')
@@ -6788,6 +6748,7 @@ void* operator new(size_t size) {
       '-Wno-format',
       '-Wno-bitfield-constant-conversion',
       '-Wno-int-to-void-pointer-cast',
+      '-Wno-nontrivial-memaccess',
     ]
 
     # extra testing for ASSERTIONS == 2
@@ -6811,7 +6772,7 @@ void* operator new(size_t size) {
   @is_slow_test
   def test_poppler(self):
     # See https://github.com/emscripten-core/emscripten/issues/20757
-    self.emcc_args.append('-Wno-deprecated-declarations')
+    self.emcc_args.extend(['-Wno-deprecated-declarations', '-Wno-nontrivial-memaccess'])
     poppler = self.get_poppler_library()
     shutil.copy(test_file('poppler/paper.pdf'), '.')
 
@@ -7363,9 +7324,9 @@ void* operator new(size_t size) {
     '': (['-lembind', '-sDYNAMIC_EXECUTION=0'],),
     'flag': (['--bind'],),
   })
-  def test_embind(self, args):
+  def test_embind_val_basics(self, args):
     self.maybe_closure()
-    create_file('test_embind.cpp', r'''
+    create_file('test.cpp', r'''
       #include <stdio.h>
       #include <emscripten/val.h>
 
@@ -7381,10 +7342,10 @@ void* operator new(size_t size) {
         return 0;
       }
     ''')
-    self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
+    self.do_runf('test.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
 
   @node_pthreads
-  def test_embind_2(self):
+  def test_embind_basics(self):
     self.maybe_closure()
     self.emcc_args += [
       '-lembind', '--post-js', 'post.js',
@@ -7396,7 +7357,7 @@ void* operator new(size_t size) {
         out('lerp ' + Module['lerp'](100, 200, 66) + '.');
       }
     ''')
-    create_file('test_embind_2.cpp', r'''
+    create_file('test.cpp', r'''
       #include <stdio.h>
       #include <emscripten.h>
       #include <emscripten/bind.h>
@@ -7414,9 +7375,9 @@ void* operator new(size_t size) {
         return 0;
       }
     ''')
-    self.do_runf('test_embind_2.cpp', 'lerp 166')
+    self.do_runf('test.cpp', 'lerp 166')
 
-  def test_embind_3(self):
+  def test_embind_unbound_types(self):
     self.emcc_args += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
       function ready() {
@@ -7427,7 +7388,7 @@ void* operator new(size_t size) {
         }
       }
     ''')
-    create_file('test_embind_3.cpp', r'''
+    create_file('test.cpp', r'''
       #include <emscripten.h>
       #include <emscripten/bind.h>
       using namespace emscripten;
@@ -7442,16 +7403,16 @@ void* operator new(size_t size) {
           return 0;
       }
     ''')
-    self.do_runf('test_embind_3.cpp', 'UnboundTypeError: Cannot call compute due to unbound types: Pi')
+    self.do_runf('test.cpp', 'UnboundTypeError: Cannot call compute due to unbound types: Pi')
 
-  def test_embind_4(self):
+  def test_embind_memory_view(self):
     self.emcc_args += ['-lembind', '--post-js', 'post.js']
     create_file('post.js', '''
       function printFirstElement() {
         out(Module['getBufferView']()[0]);
       }
     ''')
-    create_file('test_embind_4.cpp', r'''
+    create_file('test.cpp', r'''
       #include <emscripten.h>
       #include <emscripten/bind.h>
       #include <emscripten/val.h>
@@ -7474,35 +7435,30 @@ void* operator new(size_t size) {
         return 0;
       }
     ''')
-    self.do_runf('test_embind_4.cpp', '107')
+    self.do_runf('test.cpp', '107')
 
-  def test_embind_5(self):
-    self.do_core_test('test_embind_5.cpp', emcc_args=['-lembind'])
+  def test_embind_inheritance(self):
+    self.do_core_test('test_embind_inheritance.cpp', emcc_args=['-lembind'])
 
   def test_embind_custom_marshal(self):
     self.emcc_args += ['-lembind', '--pre-js', test_file('embind/test_custom_marshal.js')]
     self.do_run_in_out_file_test('embind/test_custom_marshal.cpp', assert_identical=True)
 
   def test_embind_float_constants(self):
-    self.emcc_args += ['-lembind']
-    self.do_run_in_out_file_test('embind/test_float_constants.cpp')
+    self.do_run_in_out_file_test('embind/test_float_constants.cpp', emcc_args=['-lembind'])
 
   def test_embind_negative_constants(self):
-    self.emcc_args += ['-lembind']
-    self.do_run_in_out_file_test('embind/test_negative_constants.cpp')
+    self.do_run_in_out_file_test('embind/test_negative_constants.cpp', emcc_args=['-lembind'])
 
   @also_with_wasm_bigint
   def test_embind_unsigned(self):
-    self.emcc_args += ['-lembind']
-    self.do_run_in_out_file_test('embind/test_unsigned.cpp')
+    self.do_run_in_out_file_test('embind/test_unsigned.cpp', emcc_args=['-lembind'])
 
   def test_embind_val(self):
-    self.emcc_args += ['-lembind']
-    self.do_run_in_out_file_test('embind/test_val.cpp')
+    self.do_run_in_out_file_test('embind/test_val.cpp', emcc_args=['-lembind'])
 
   def test_embind_val_read_pointer(self):
-    self.emcc_args += ['-lembind']
-    self.do_runf('embind/test_val_read_pointer.cpp')
+    self.do_runf('embind/test_val_read_pointer.cpp', emcc_args=['-lembind'])
 
   def test_embind_val_assignment(self):
     err = self.expect_fail([EMCC, test_file('embind/test_val_assignment.cpp'), '-lembind', '-c'])
@@ -9652,23 +9608,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt', '--from-emcc', '--js-output=script2.js'])
     self.do_runf('test_emscripten_async_load_script.c', emcc_args=['-sFORCE_FILESYSTEM'])
 
-  def prep_wasm_worker_in_node(self):
-    # Auto exit after 3 seconds in Nodejs environment to get WASM Worker stdout
-    self.add_pre_run("setTimeout(()=>process.exit(), 3000);")
-
   @node_pthreads
   def test_wasm_worker_hello(self):
-    self.prep_wasm_worker_in_node()
     self.do_run_in_out_file_test('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
 
   @node_pthreads
   def test_wasm_worker_malloc(self):
-    self.prep_wasm_worker_in_node()
     self.do_run_in_out_file_test('wasm_worker/malloc_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
 
   @node_pthreads
   def test_wasm_worker_wait_async(self):
-    self.prep_wasm_worker_in_node()
     self.do_runf('atomic/test_wait_async.c', emcc_args=['-sWASM_WORKERS'])
 
 

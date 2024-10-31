@@ -85,7 +85,7 @@ addToLibrary({
 #if PTHREADS
     '$exitOnMainThread',
 #endif
-#if PTHREADS_DEBUG
+#if PTHREADS_DEBUG || ASSERTIONS
     '$runtimeKeepaliveCounter',
 #endif
   ],
@@ -1561,7 +1561,7 @@ addToLibrary({
 
   emscripten_has_asyncify: () => {{{ ASYNCIFY }}},
 
-  emscripten_debugger: function() { debugger },
+  emscripten_debugger: () => { debugger },
 
   emscripten_print_double__deps: ['$stringToUTF8', '$lengthBytesUTF8'],
   emscripten_print_double: (x, to, max) => {
@@ -1946,8 +1946,10 @@ addToLibrary({
 
   $callRuntimeCallbacks__internal: true,
   $callRuntimeCallbacks: (callbacks) => {
-    // Pass the module as the first argument.
-    callbacks.forEach((f) => f(Module));
+    while (callbacks.length > 0) {
+      // Pass the module as the first argument.
+      callbacks.shift()(Module);
+    }
   },
 
 #if SHRINK_LEVEL == 0 || ASYNCIFY == 2
@@ -2016,6 +2018,9 @@ addToLibrary({
     throw 'unwind';
   },
 
+#if !MINIMAL_RUNTIME
+  _emscripten_runtime_keepalive_clear__deps: ['$runtimeKeepaliveCounter'],
+#endif
   _emscripten_runtime_keepalive_clear: () => {
 #if isSymbolNeeded('$noExitRuntime')
     noExitRuntime = false;
@@ -2028,9 +2033,6 @@ addToLibrary({
   emscripten_force_exit__deps: ['exit', '_emscripten_runtime_keepalive_clear',
 #if !EXIT_RUNTIME && ASSERTIONS
     '$warnOnce',
-#endif
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepaliveCounter',
 #endif
   ],
   emscripten_force_exit__proxy: 'sync',
@@ -2136,10 +2138,24 @@ addToLibrary({
   $runtimeKeepaliveCounter__internal: true,
   $runtimeKeepaliveCounter: 0,
 
-  $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
 #if isSymbolNeeded('$noExitRuntime')
+  // If the `noExitRuntime` symbol is included in the build then
+  // keepRuntimeAlive is always conditional since its state can change
+  // at runtime.
+  $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
   $keepRuntimeAlive: () => noExitRuntime || runtimeKeepaliveCounter > 0,
+#elif !EXIT_RUNTIME
+  // When `noExitRuntime` is not include and EXIT_RUNTIME=0 then we know the
+  // runtime can never exit (i.e. should always be kept alive).
+  // However for pthreads we always default to allowing the runtime to exit
+  // otherwise threads never exit and are not joinable.
+#if PTHREADS
+  $keepRuntimeAlive: () => !ENVIRONMENT_IS_PTHREAD,
 #else
+  $keepRuntimeAlive: () => true,
+#endif
+#else
+  $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
   $keepRuntimeAlive: () => runtimeKeepaliveCounter > 0,
 #endif
 
@@ -2348,12 +2364,8 @@ addToLibrary({
   },
 
   $HandleAllocator: class {
-    constructor() {
-      // TODO(https://github.com/emscripten-core/emscripten/issues/21414):
-      // Use inline field declarations.
-      this.allocated = [undefined];
-      this.freelist = [];
-    }
+    allocated = [undefined];
+    freelist = [];
     get(id) {
 #if ASSERTIONS
       assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);

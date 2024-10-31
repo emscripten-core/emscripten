@@ -111,6 +111,7 @@ def get(ports, settings, shared):
     -fno-exceptions
     -O3
     -DNDEBUG
+    -Wno-nontrivial-memaccess
     '''.split()
 
     cflags += ['-I' + freetype_include, '-I' + os.path.join(freetype_include, 'config')]

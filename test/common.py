@@ -1890,6 +1890,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       # Avoid warning about ERROR_ON_UNDEFINED_SYMBOLS being used at compile time
       '-Wno-unused-command-line-argument',
       '-Wno-js-compiler',
+      '-Wno-nontrivial-memaccess',
     ]
     env_init = env_init.copy() if env_init else {}
     env_init['FONTCONFIG_CFLAGS'] = ' '

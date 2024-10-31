@@ -375,6 +375,24 @@ def get_clang_flags(user_args):
   if settings.INLINING_LIMIT:
     flags.append('-fno-inline-functions')
 
+  if settings.PTHREADS:
+    if '-pthread' not in user_args:
+      flags.append('-pthread')
+  elif settings.SHARED_MEMORY:
+    if '-matomics' not in user_args:
+      flags.append('-matomics')
+    if '-mbulk-memory' not in user_args:
+      flags.append('-mbulk-memory')
+
+  # In emscripten we currently disable bulk memory by default.
+  # This should be removed/updated when we als update the default browser targets.
+  if '-mbulk-memory' not in user_args and '-mno-bulk-memory' not in user_args:
+    # Bulk memory may be enabled via threads or directly via -s.
+    if not settings.BULK_MEMORY:
+      flags.append('-mno-bulk-memory')
+  if '-mnontrapping-fptoint' not in user_args and '-mno-nontrapping-fptoint' not in user_args:
+    flags.append('-mno-nontrapping-fptoint')
+
   if settings.RELOCATABLE and '-fPIC' not in user_args:
     flags.append('-fPIC')
 
@@ -841,14 +859,6 @@ def phase_setup(options, state, newargs):
   # Pthreads and Wasm Workers require targeting shared Wasm memory (SAB).
   if settings.PTHREADS or settings.WASM_WORKERS:
     settings.SHARED_MEMORY = 1
-
-  if settings.PTHREADS and '-pthread' not in newargs:
-    newargs += ['-pthread']
-  elif settings.SHARED_MEMORY:
-    if '-matomics' not in newargs:
-      newargs += ['-matomics']
-    if '-mbulk-memory' not in newargs:
-      newargs += ['-mbulk-memory']
 
   if settings.SHARED_MEMORY:
     settings.BULK_MEMORY = 1

@@ -3050,8 +3050,6 @@ Module["preRun"] = () => {
     # SDL, OpenGL, readPixels
     self.btest_exit('test_sdl2_gl_read.c', args=['-sUSE_SDL=2'])
 
-  @no_4gb('https://github.com/libsdl-org/SDL/issues/9052')
-  @no_2gb('https://github.com/libsdl-org/SDL/issues/9052')
   @requires_graphics_hardware
   def test_sdl2_glmatrixmode_texture(self):
     self.reftest('test_sdl2_glmatrixmode_texture.c', 'test_sdl2_glmatrixmode_texture.png',
@@ -3105,8 +3103,6 @@ Module["preRun"] = () => {
   def test_sdl2_unwasteful(self):
     self.btest_exit('test_sdl2_unwasteful.c', args=['-sUSE_SDL=2', '-O1'])
 
-  @no_2gb('https://github.com/libsdl-org/SDL/issues/9052')
-  @no_4gb('https://github.com/libsdl-org/SDL/issues/9052')
   def test_sdl2_canvas_write(self):
     self.btest_exit('test_sdl2_canvas_write.c', args=['-sUSE_SDL=2'])
 
@@ -4985,21 +4981,21 @@ Module["preRun"] = () => {
   # Tests the hello_wasm_worker.c documentation example code.
   @also_with_minimal_runtime
   def test_wasm_worker_hello(self):
-    self.btest('wasm_worker/hello_wasm_worker.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/hello_wasm_worker.c', args=['-sWASM_WORKERS'])
 
   def test_wasm_worker_hello_minimal_runtime_2(self):
-    self.btest('wasm_worker/hello_wasm_worker.c', expected='0', args=['-sWASM_WORKERS', '-sMINIMAL_RUNTIME=2'])
+    self.btest_exit('wasm_worker/hello_wasm_worker.c', args=['-sWASM_WORKERS', '-sMINIMAL_RUNTIME=2'])
 
   # Tests Wasm Workers build in Wasm2JS mode.
   @requires_wasm2js
   @also_with_minimal_runtime
   def test_wasm_worker_hello_wasm2js(self):
-    self.btest('wasm_worker/hello_wasm_worker.c', expected='0', args=['-sWASM_WORKERS', '-sWASM=0'])
+    self.btest_exit('wasm_worker/hello_wasm_worker.c', args=['-sWASM_WORKERS', '-sWASM=0'])
 
   # Tests the WASM_WORKERS=2 build mode, which embeds the Wasm Worker bootstrap JS script file to the main JS file.
   @also_with_minimal_runtime
-  def test_wasm_worker_embedded(self):
-    self.btest('wasm_worker/hello_wasm_worker.c', expected='0', args=['-sWASM_WORKERS=2'])
+  def test_wasm_worker_hello_embedded(self):
+    self.btest_exit('wasm_worker/hello_wasm_worker.c', args=['-sWASM_WORKERS=2'])
 
   # Tests that it is possible to call emscripten_futex_wait() in Wasm Workers.
   @parameterized({
@@ -5011,14 +5007,18 @@ Module["preRun"] = () => {
 
   # Tests Wasm Worker thread stack setup
   @also_with_minimal_runtime
-  def test_wasm_worker_thread_stack(self):
-    for mode in (0, 1, 2):
-      self.btest('wasm_worker/thread_stack.c', expected='0', args=['-sWASM_WORKERS', f'-sSTACK_OVERFLOW_CHECK={mode}'])
+  @parameterized({
+    '0': (0,),
+    '1': (1,),
+    '2': (2,),
+  })
+  def test_wasm_worker_thread_stack(self, mode):
+    self.btest('wasm_worker/thread_stack.c', expected='0', args=['-sWASM_WORKERS', f'-sSTACK_OVERFLOW_CHECK={mode}'])
 
   # Tests emscripten_malloc_wasm_worker() and emscripten_current_thread_is_wasm_worker() functions
   @also_with_minimal_runtime
   def test_wasm_worker_malloc(self):
-    self.btest('wasm_worker/malloc_wasm_worker.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/malloc_wasm_worker.c', args=['-sWASM_WORKERS'])
 
   # Tests Wasm Worker+pthreads simultaneously
   @also_with_minimal_runtime
@@ -5059,10 +5059,7 @@ Module["preRun"] = () => {
   # Tests emscripten_terminate_wasm_worker()
   @also_with_minimal_runtime
   def test_wasm_worker_terminate(self):
-    self.set_setting('WASM_WORKERS')
-    # Test uses the dynCall library function in its EM_ASM code
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall'])
-    self.btest('wasm_worker/terminate_wasm_worker.c', expected='0')
+    self.btest_exit('wasm_worker/terminate_wasm_worker.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_terminate_all_wasm_workers()
   @also_with_minimal_runtime
@@ -5101,7 +5098,7 @@ Module["preRun"] = () => {
   # Tests emscripten_atomic_wait_async() function.
   @also_with_minimal_runtime
   def test_wasm_worker_wait_async(self):
-    self.btest('atomic/test_wait_async.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('atomic/test_wait_async.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_cancel_wait_async() function.
   @also_with_minimal_runtime
@@ -5136,7 +5133,7 @@ Module["preRun"] = () => {
   # Tests emscripten_lock_async_acquire() function.
   @also_with_minimal_runtime
   def test_wasm_worker_lock_async_acquire(self):
-    self.btest('wasm_worker/lock_async_acquire.c', expected='0', args=['--closure=1', '-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/lock_async_acquire.c', args=['--closure=1', '-sWASM_WORKERS'])
 
   # Tests emscripten_lock_busyspin_wait_acquire() in Worker and main thread.
   @also_with_minimal_runtime

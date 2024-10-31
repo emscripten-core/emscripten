@@ -6,11 +6,12 @@
 
 var WasiLibrary = {
 #if !MINIMAL_RUNTIME
-  $ExitStatus__docs: '/** @constructor */',
-  $ExitStatus: function(status) {
-    this.name = 'ExitStatus';
-    this.message = `Program terminated with exit(${status})`;
-    this.status = status;
+  $ExitStatus: class {
+    name = 'ExitStatus';
+    constructor(status) {
+      this.message = `Program terminated with exit(${status})`;
+      this.status = status;
+    }
   },
   proc_exit__deps: ['$ExitStatus', '$keepRuntimeAlive'],
 #endif

@@ -26,7 +26,11 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 #if ASSERTIONS
     assert(INITIAL_MEMORY >= {{{STACK_SIZE}}}, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + {{{STACK_SIZE}}} + ')');
 #endif
+#if MINIMAL_RUNTIME && WASM_WORKERS
+    wasmMemory = Module['mem'] || new WebAssembly.Memory({
+#else
     wasmMemory = new WebAssembly.Memory({
+#endif
       'initial': {{{ toIndexType(`INITIAL_MEMORY / ${WASM_PAGE_SIZE}`) }}},
 #if ALLOW_MEMORY_GROWTH
       // In theory we should not need to emit the maximum if we want "unlimited"
@@ -42,6 +46,10 @@ if (!ENVIRONMENT_IS_PTHREAD) {
       'shared': true,
 #endif
 #if MEMORY64 == 1
+      'address': 'i64',
+      // TODO(sbc): remove this alias for `address` once both firefox and
+      // chrome roll out the spec change.
+      // See https://github.com/WebAssembly/memory64/pull/92
       'index': 'i64',
 #endif
     });

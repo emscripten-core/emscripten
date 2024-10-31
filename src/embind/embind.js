@@ -124,17 +124,14 @@ var LibraryEmbind = {
       // We are exposing a function with the same name as an existing function. Create an overload table and a function selector
       // that routes between the two.
       ensureOverloadTable(Module, name, name);
-      if (Module.hasOwnProperty(numArguments)) {
+      if (Module[name].overloadTable.hasOwnProperty(numArguments)) {
         throwBindingError(`Cannot register multiple overloads of a function with the same number of arguments (${numArguments})!`);
       }
       // Add the new function into the overload table.
       Module[name].overloadTable[numArguments] = value;
-    }
-    else {
+    } else {
       Module[name] = value;
-      if (undefined !== numArguments) {
-        Module[name].numArguments = numArguments;
-      }
+      Module[name].argCount = numArguments;
     }
   },
 
@@ -147,8 +144,7 @@ var LibraryEmbind = {
     // If there's an overload table for this symbol, replace the symbol in the overload table instead.
     if (undefined !== Module[name].overloadTable && undefined !== numArguments) {
       Module[name].overloadTable[numArguments] = value;
-    }
-    else {
+    } else {
       Module[name] = value;
       Module[name].argCount = numArguments;
     }
@@ -270,7 +266,7 @@ var LibraryEmbind = {
   $registerType__docs: '/** @param {Object=} options */',
   $registerType: function(rawType, registeredInstance, options = {}) {
 #if ASSERTIONS
-    if (!('argPackAdvance' in registeredInstance)) {
+    if (registeredInstance.argPackAdvance === undefined) {
       throw new TypeError('registerType registeredInstance requires argPackAdvance');
     }
 #endif

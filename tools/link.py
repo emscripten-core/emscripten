@@ -658,9 +658,6 @@ def phase_linker_setup(options, state, newargs):
     # Add `#!` line to output JS and make it executable.
     options.executable = True
 
-  if 'noExitRuntime' in settings.INCOMING_MODULE_JS_API:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$noExitRuntime')
-
   if settings.OPT_LEVEL >= 1:
     default_setting('ASSERTIONS', 0)
 
@@ -917,6 +914,9 @@ def phase_linker_setup(options, state, newargs):
       default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
     else:
       default_setting('INCOMING_MODULE_JS_API', [])
+
+  if 'noExitRuntime' in settings.INCOMING_MODULE_JS_API:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$noExitRuntime')
 
   if not settings.MINIMAL_RUNTIME and not settings.STRICT:
     # Export the HEAP object by default, when not running in STRICT mode
@@ -1206,6 +1206,10 @@ def phase_linker_setup(options, state, newargs):
     # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
     settings.FORCE_FILESYSTEM = 1
 
+  if options.preload_files:
+    # File preloading uses `Module['preRun']`.
+    settings.INCOMING_MODULE_JS_API.append('preRun')
+
   if settings.FORCE_FILESYSTEM and not settings.FILESYSTEM:
     exit_with_error('`-sFORCE_FILESYSTEM` cannot be used with `-sFILESYSTEM=0`')
 
@@ -1413,7 +1417,7 @@ def phase_linker_setup(options, state, newargs):
       'removeRunDependency',
     ]
 
-  if settings.SHARED_MEMORY or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE:
+  if settings.PTHREADS or settings.WASM_WORKERS or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE:
     settings.IMPORTED_MEMORY = 1
 
   set_initial_memory()
@@ -1985,6 +1989,8 @@ def run_embind_gen(wasm_target, js_syms, extra_settings, linker_inputs):
   settings.JS_LIBRARIES[embind_index] = 'embind/embind_gen.js'
   if settings.MEMORY64:
     settings.MIN_NODE_VERSION = 160000
+  # Source maps haven't been generated yet and aren't needed to run embind_gen.
+  settings.LOAD_SOURCE_MAP = 0
   outfile_js = in_temp('tsgen.js')
   # The Wasm outfile may be modified by emscripten.emscript, so use a temporary file.
   outfile_wasm = in_temp('tsgen.wasm')

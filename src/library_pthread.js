@@ -168,7 +168,7 @@ var LibraryPThread = {
       }
       PThread.unusedWorkers = [];
       PThread.runningWorkers = [];
-      PThread.pthreads = [];
+      PThread.pthreads = {};
     },
     returnWorkerToPool: (worker) => {
       // We don't want to run main thread queued calls here, since we are doing
@@ -646,14 +646,6 @@ var LibraryPThread = {
     worker.postMessage(msg, threadParams.transferList);
     return 0;
   },
-
-  emscripten_has_threading_support: () => typeof SharedArrayBuffer != 'undefined',
-
-  emscripten_num_logical_cores: () =>
-#if ENVIRONMENT_MAY_BE_NODE
-    ENVIRONMENT_IS_NODE ? require('os').cpus().length :
-#endif
-    navigator['hardwareConcurrency'],
 
   _emscripten_init_main_thread_js: (tb) => {
     // Pass the thread address to the native code where they stored in wasm

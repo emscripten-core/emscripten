@@ -95,19 +95,27 @@ typedef void (*EmscriptenWorkletProcessorCreatedCallback)(EMSCRIPTEN_WEBAUDIO_T 
 // userData3: A custom userdata pointer to pass to the callback function. This value will be passed on to the call to the given EmscriptenWorkletProcessorCreatedCallback callback function.
 void emscripten_create_wasm_audio_worklet_processor_async(EMSCRIPTEN_WEBAUDIO_T audioContext, const WebAudioWorkletProcessorCreateOptions *options, EmscriptenWorkletProcessorCreatedCallback callback, void *userData3);
 
+// Returns the number of samples processed per channel in an AudioSampleFrame, fixed at 128 in the Web Audio API 1.0 specification, and valid for the lifetime of the audio context.
+// For this to change from the default 128, the context would need creating with a yet unexposed WebAudioWorkletProcessorCreateOptions renderSizeHint, part of the 1.1 Web Audio API.
+int emscripten_audio_context_quantum_size(EMSCRIPTEN_WEBAUDIO_T audioContext);
+
 typedef int EMSCRIPTEN_AUDIO_WORKLET_NODE_T;
 
 typedef struct AudioSampleFrame
 {
+	// Number of audio channels to process (multiplied by samplesPerChannel gives the elements in data)
 	const int numberOfChannels;
-	// An array of length numberOfChannels*128 elements, where data[channelIndex*128+i] locates the data of the i'th sample of channel channelIndex.
+	// Number of samples per channel in data
+	const int samplesPerChannel;
+	// An array of length numberOfChannels*samplesPerChannel elements. Samples are always arranged in a planar fashion,
+	// where data[channelIndex*samplesPerChannel+i] locates the data of the i'th sample of channel channelIndex.
 	float *data;
 } AudioSampleFrame;
 
 typedef struct AudioParamFrame
 {
 	// Specifies the length of the input array data (in float elements). This will be guaranteed to either have
-	// a value of 1 or 128, depending on whether the audio parameter changed during this frame.
+	// a value of 1, for a parameter valid for the entire frame, or emscripten_audio_context_quantum_size() for a parameter that changes per sample during the frame.
 	int length;
 	// An array of length specified in 'length'.
 	float *data;

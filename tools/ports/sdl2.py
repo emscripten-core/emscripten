@@ -5,8 +5,11 @@
 
 import os
 
-TAG = 'release-2.30.8'
-HASH = '6e54c2f93c675b134ff311cb91e5f7b3ad77eb41335b172dc6d3e9774d2ea4728eba9d51667f799cfa1c52cc63169f88f0420c2330574ad3230ee0cb0642e3d4'
+# For now we pin to specific commit since we want to include
+# https://github.com/libsdl-org/SDL/pull/11127
+# Once the next version of SDL2 is tagged we can use that here instead.
+TAG = '3deb07ea395373204462130c1e062bc1f71fe060'
+HASH = '551082bffb28442ad20662c6963fb02701449d43e7da6aa68fbec922e47b060609e3cdf5f9e3bfde7458a92547e008f010af79ddadf448665e55ca8759cfbcdb'
 SUBDIR = 'SDL-' + TAG
 
 variants = {'sdl2-mt': {'PTHREADS': 1}}
@@ -71,9 +74,6 @@ def get(ports, settings, shared):
 
     srcs = [os.path.join(src_dir, 'src', s) for s in srcs]
     flags = ['-sUSE_SDL=0']
-    # SDL2 currently has the wrong definition of SDL_PRIs64 for emscripten.
-    # TODO: Remove this when we roll SDL2 to include https://github.com/libsdl-org/SDL/pull/11127
-    flags += ['-Wno-format']
     includes = [ports.get_include_dir('SDL2')]
     if settings.PTHREADS:
       flags += ['-pthread']

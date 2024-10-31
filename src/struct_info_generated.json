@@ -470,6 +470,17 @@
         "__WASI_RIGHTS_SOCK_SHUTDOWN": 268435456
     },
     "structs": {
+        "AudioParamFrame": {
+            "__size__": 8,
+            "data": 4,
+            "length": 0
+        },
+        "AudioSampleFrame": {
+            "__size__": 12,
+            "data": 8,
+            "numberOfChannels": 0,
+            "samplesPerChannel": 4
+        },
         "EmscriptenBatteryEvent": {
             "__size__": 32,
             "charging": 24,

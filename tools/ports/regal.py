@@ -108,6 +108,7 @@ def get(ports, settings, shared):
       '-I' + source_path_boost,
       '-Wno-deprecated-register',
       '-Wno-unused-parameter',
+      '-Wno-nontrivial-memaccess',
       '-fdelayed-template-parsing',
     ]
     if settings.PTHREADS:

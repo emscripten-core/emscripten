@@ -388,7 +388,8 @@ def type_to_cdec(raw):
 
 def render_function(class_name, func_name, sigs, return_type, non_pointer,
                     copy, operator, constructor, is_static, func_scope,
-                    call_content=None, const=False, array_attribute=False):
+                    call_content=None, const=False, array_attribute=False,
+                    bind_to=None):
   legacy_mode = CHECKS not in ['ALL', 'FAST']
   all_checks = CHECKS == 'ALL'
 
@@ -601,9 +602,10 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
     elif call_content is not None:
       call = call_content
     else:
-      call = func_name + '(' + call_args + ')'
+      if not bind_to:
+        bind_to = func_name
+      call = bind_to + '(' + call_args + ')'
       if is_static:
-
         call = c_class_name + '::' + call
       else:
         call = 'self->' + call
@@ -614,7 +616,10 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
         # this function comes from an ancestor class; for operators, we must cast it
         cast_self = 'dynamic_cast<' + type_to_c(func_scope) + '>(' + cast_self + ')'
       maybe_deref = deref_if_nonpointer(raw[0])
-      if '=' in operator:
+      operator = operator.strip()
+      if operator in ["+", "-", "*", "/", "%", "^", "&", "|", "=",
+                      "<", ">", "+=", "-=", "*=", "/=", "%=", "^=", "&=", "|=", "<<", ">>", ">>=",
+                      "<<=", "==", "!=", "<=", ">=", "<=>", "&&", "||"]:
         call = '(*%s %s %s%s)' % (cast_self, operator, maybe_deref, args[0])
       elif operator == '[]':
         call = '((*%s)[%s%s])' % (cast_self, maybe_deref, args[0])
@@ -629,7 +634,8 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
     if non_pointer:
       return_prefix += '&'
     if copy:
-      pre += '  static %s temp;\n' % type_to_c(return_type, non_pointing=True)
+      # Avoid sharing this static temp var between threads, which could race.
+      pre += '  static thread_local %s temp;\n' % type_to_c(return_type, non_pointing=True)
       return_prefix += '(temp = '
       return_postfix += ', &temp)'
 
@@ -767,7 +773,8 @@ for name in names:
                     constructor,
                     is_static=m.isStatic(),
                     func_scope=m.parentScope.identifier.name,
-                    const=m.getExtendedAttribute('Const'))
+                    const=m.getExtendedAttribute('Const'),
+                    bind_to=(m.getExtendedAttribute('BindTo') or [None])[0])
     mid_js += ['\n']
     if constructor:
       mid_js += build_constructor(name)
