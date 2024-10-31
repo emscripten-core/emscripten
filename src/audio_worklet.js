@@ -64,6 +64,11 @@ function createWasmAudioWorkletProcessor(audioParams) {
         );
       }
       stackRestore(oldStackPtr);
+  
+#if ASSERTIONS
+      // Explicitly verify this later in process()
+      this.ctorOldStackPtr = oldStackPtr;
+#endif
     }
 
     static get parameterDescriptors() {
@@ -92,6 +97,7 @@ function createWasmAudioWorkletProcessor(audioParams) {
       for (i in parameters) stackMemoryNeeded += parameters[i].byteLength + {{{ C_STRUCTS.AudioParamFrame.__size__ }}}, ++numParams;
 
 #if ASSERTIONS
+      console.assert(oldStackPtr == this.ctorOldStackPtr, 'AudioWorklet stack address has unexpectedly moved');
       console.assert(outputViewsNeeded <= this.outputViews.length, `Too many AudioWorklet outputs (need ${outputViewsNeeded} but have stack space for ${this.outputViews.length})`);
 #endif
 
