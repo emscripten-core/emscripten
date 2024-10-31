@@ -10220,7 +10220,7 @@ int main() {
     with webassembly.Module('subdir/output.wasm.debug.wasm') as debug_wasm:
       if not debug_wasm.has_name_section():
         self.fail('name section not found in separate dwarf file')
-      for sec in debug_wasm.sections():
+      for _sec in debug_wasm.sections():
         # TODO(https://github.com/emscripten-core/emscripten/issues/13084):
         # Re-enable this code once the debugger extension can handle wasm files
         # with name sections but no code sections.
