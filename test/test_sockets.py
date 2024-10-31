@@ -65,7 +65,10 @@ class WebsockifyServerHarness():
 
     # start the websocket proxy
     print('running websockify on %d, forward to tcp %d' % (self.listen_port, self.target_port), file=sys.stderr)
-    wsp = websockify.WebSocketProxy(verbose=True, listen_port=self.listen_port, target_host="127.0.0.1", target_port=self.target_port, run_once=True)
+    # source_is_ipv6=True here signals to websockify that it should prefer ipv6 address when
+    # resolving host names.  This matches what the node `ws` module does and means that `localhost`
+    # resolves to `::1` on IPv6 systems.
+    wsp = websockify.WebSocketProxy(verbose=True, source_is_ipv6=True, listen_port=self.listen_port, target_host="127.0.0.1", target_port=self.target_port, run_once=True)
     self.websockify = multiprocessing.Process(target=wsp.start_server)
     self.websockify.start()
     self.processes.append(self.websockify)
