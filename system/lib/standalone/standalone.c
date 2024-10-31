@@ -136,10 +136,22 @@ weak int __syscall_lstat64(intptr_t path, intptr_t buf) {
   return -ENOSYS;
 }
 
-// There is no good source of entropy without an import. Make this weak so that
-// it can be replaced with a pRNG or a proper import.
+// copied from wasi-libc's getentropy.c:
+// https://github.com/WebAssembly/wasi-libc/blob/main/libc-bottom-half/sources/getentropy.c
 weak int getentropy(void* buffer, size_t length) {
-  return __wasi_random_get(buffer, length);
+    if (length > 256) {
+        errno = EIO;
+        return -1;
+    }
+
+    int r = __wasi_random_get(buffer, length);
+
+    if (r != 0) {
+        errno = r;
+        return -1;
+    }
+
+    return 0;
 }
 
 // Emscripten additions
