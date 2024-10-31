@@ -10226,6 +10226,7 @@ int main() {
         # with name sections but no code sections.
         # if sec.type == webassembly.SecType.CODE:
         #   self.fail(f'section of type "{sec.type}" found in separate dwarf file')
+        pass
 
     # Check that dwarfdump can dump the debug info
     dwdump = self.run_process(
