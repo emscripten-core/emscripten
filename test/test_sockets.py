@@ -304,10 +304,11 @@ class sockets(BrowserCore):
       self.assertContained('do_msg_read: read 14 bytes', out)
       self.assertContained(['connect: ws://127.0.0.1:59166, base64,binary', 'connect: ws://127.0.0.1:59166/, base64,binary'], out)
 
+  @requires_native_clang
+  def test_nodejs_sockets_echo_subprotocol_runtime(self):
     # Test against a Websockified server with runtime WebSocket configuration. We specify both url and subprotocol.
     # In this test we have *deliberately* used the wrong port '-DSOCKK=12345' to configure the echo_client.c, so
     # the connection would fail without us specifying a valid WebSocket URL in the configuration.
-    print("\nTesting runtime WebSocket configuration.\n")
     create_file('websocket_pre.js', '''
       var Module = {
         websocket: {
