@@ -18,7 +18,7 @@ if __name__ == '__main__':
 import clang_native
 import common
 from common import BrowserCore, no_windows, create_file, test_file, read_file
-from common import parameterized, requires_native_clang, crossplatform, PYTHON
+from common import parameterized, requires_native_clang, crossplatform, PYTHON, NON_ZERO
 from tools import config, utils
 from tools.shared import EMCC, path_from_root, run_process, CLANG_CC
 
@@ -291,6 +291,9 @@ class sockets(BrowserCore):
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
       expected = 'do_msg_read: read 14 bytes'
       self.do_runf('sockets/test_sockets_echo_client.c', expected, emcc_args=['-DSOCKK=%d' % harness.listen_port] + args)
+
+  def test_nodejs_sockets_connect_failure(self):
+    self.do_runf('sockets/test_sockets_echo_client.c', 'connect failed: Connection refused', emcc_args=['-DSOCKK=666'], assert_returncode=NON_ZERO)
 
   @requires_native_clang
   def test_nodejs_sockets_echo_subprotocol(self):
