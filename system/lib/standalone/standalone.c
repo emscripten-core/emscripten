@@ -139,7 +139,7 @@ weak int __syscall_lstat64(intptr_t path, intptr_t buf) {
 // There is no good source of entropy without an import. Make this weak so that
 // it can be replaced with a pRNG or a proper import.
 weak int getentropy(void* buffer, size_t length) {
-  abort();
+  return __wasi_random_get(buffer, length);
 }
 
 // Emscripten additions
