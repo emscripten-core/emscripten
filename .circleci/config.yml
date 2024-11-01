@@ -814,7 +814,7 @@ jobs:
           # (This bot doesn't have node canary installed which is required to
           # run wasm64 output).
           test_targets: "browser64
-            skip:browser64.test_worker
+            skip:browser64.test_hello_world_worker*
             skip:browser64.test_2gb_fail
             skip:browser64.test_4gb_fail
             skip:browser64.test_4gb"

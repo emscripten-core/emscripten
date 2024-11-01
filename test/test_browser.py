@@ -1584,7 +1584,11 @@ simulateKeyUp(100);
   def test_egl_createcontext_error(self):
     self.btest_exit('test_egl_createcontext_error.c', args=['-lEGL', '-lGL'])
 
-  def test_worker(self):
+  @parameterized({
+    '': ([False],),
+    'preload': ([True],),
+  })
+  def test_hello_world_worker(self, file_data):
     # Test running in a web worker
     create_file('file.dat', 'data for worker')
     create_file('main.html', '''
@@ -1602,13 +1606,12 @@ simulateKeyUp(100);
       </html>
     ''' % self.port)
 
-    for file_data in (1, 0):
-      cmd = [EMCC, test_file('hello_world_worker.cpp'), '-o', 'worker.js'] + self.get_emcc_args()
-      if file_data:
-        cmd += ['--preload-file', 'file.dat']
-      self.run_process(cmd)
-      self.assertExists('worker.js')
-      self.run_browser('main.html', '/report_result?hello from worker, and :' + ('data for w' if file_data else '') + ':')
+    cmd = [EMCC, test_file('hello_world_worker.c'), '-o', 'worker.js'] + self.get_emcc_args()
+    if file_data:
+      cmd += ['--preload-file', 'file.dat']
+    self.run_process(cmd)
+    self.assertExists('worker.js')
+    self.run_browser('main.html', '/report_result?hello from worker, and :' + ('data for w' if file_data else '') + ':')
 
     # code should run standalone too
     # To great memories >4gb we need the canary version of node
