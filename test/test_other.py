@@ -14246,15 +14246,6 @@ int main() {
     ''')
     self.do_runf('main.c', 'warning: foo\ndone\n')
 
-  def test_dyncallwrapper(self):
-    self.set_setting("MAIN_MODULE", 1)
-    expected = """\
-2 7
-i: 2 j: 8589934599 f: 3.120000 d: 77.120000
-j1: 8589934599, j2: 30064771074, j3: 12884901891
-"""
-    self.do_runf("test_runtime_dyncall_wrapper.c", expected)
-
   def test_compile_with_cache_lock(self):
     # Verify that, after warming the cache, running emcc does not require the cache lock.
     # Previously we would acquire the lock during sanity checking (even when the check
