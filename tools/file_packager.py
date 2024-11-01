@@ -761,10 +761,10 @@ def generate_js(data_target, data_files, metadata):
     ret += '''
       var PACKAGE_PATH = '';
       if (typeof window === 'object') {
-        PACKAGE_PATH = window['encodeURIComponent'](window.location.pathname.toString().substring(0, window.location.pathname.toString().lastIndexOf('/')) + '/');
+        PACKAGE_PATH = window['encodeURIComponent'](window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')) + '/');
       } else if (typeof process === 'undefined' && typeof location !== 'undefined') {
         // web worker
-        PACKAGE_PATH = encodeURIComponent(location.pathname.toString().substring(0, location.pathname.toString().lastIndexOf('/')) + '/');
+        PACKAGE_PATH = encodeURIComponent(location.pathname.substring(0, location.pathname.lastIndexOf('/')) + '/');
       }
       var PACKAGE_NAME = '%s';
       var REMOTE_PACKAGE_BASE = '%s';
