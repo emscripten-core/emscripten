@@ -6,8 +6,17 @@
  * found in the LICENSE file.
  */
 
-Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': 256, 'maximum': 256,
+Module['wasmMemory'] = new WebAssembly.Memory({
 #if MEMORY64
-  'index': 'i64'
+  'initial': 256n,
+  'maximum': 256n,
+  'address': 'i64',
+   // TODO(sbc): remove this alias for `address` once both firefox and
+   // chrome roll out the spec change.
+   // See https://github.com/WebAssembly/memory64/pull/92
+  'index': 'i64',
+#else
+  'initial': 256,
+  'maximum': 256,
 #endif
 });

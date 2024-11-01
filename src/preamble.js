@@ -588,7 +588,7 @@ function instrumentWasmTableWithAbort() {
   var realGet = wasmTable.get;
   var wrapperCache = {};
   wasmTable.get = (i) => {
-    var func = realGet.call(wasmTable, i);
+    var func = realGet.call(wasmTable, {{{ toIndexType('i') }}});
     var cached = wrapperCache[i];
     if (!cached || cached.func !== func) {
       cached = wrapperCache[i] = {
