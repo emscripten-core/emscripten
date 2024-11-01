@@ -972,7 +972,6 @@ sigs = {
   filledEllipseColor__sig: 'ipiiiii',
   filledEllipseRGBA__sig: 'ipiiiiiiii',
   getaddrinfo__sig: 'ipppp',
-  getentropy__sig: 'ipp',
   getnameinfo__sig: 'ipipipii',
   getprotobyname__sig: 'pp',
   getprotobynumber__sig: 'pi',

@@ -15,6 +15,6 @@ env.emscripten_date_now
 env.emscripten_err
 env.emscripten_out
 env.emscripten_resize_heap
-env.getentropy
 wasi_snapshot_preview1.environ_get
 wasi_snapshot_preview1.environ_sizes_get
+wasi_snapshot_preview1.random_get
