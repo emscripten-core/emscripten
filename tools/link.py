@@ -2687,6 +2687,7 @@ def worker_js_script(proxy_worker_filename):
   proxy_client_src = do_replace(proxy_client_src, '<<< filename >>>', proxy_worker_filename)
   return web_gl_client_src + '\n' + proxy_client_src
 
+
 def replace_worker_options_placeholders():
   global final_js
   js = read_file(final_js)
@@ -2708,6 +2709,7 @@ def replace_worker_options_placeholders():
   # This is necessary to avoid issues with JS bundlers, like Vite.
   js = do_replace(js, '<<< WORKER_OPTIONS >>>', worker_options_str)
   write_file(final_js, js)
+
 
 def find_library(lib, lib_dirs):
   for lib_dir in lib_dirs:
