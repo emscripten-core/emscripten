@@ -2098,6 +2098,9 @@ def phase_final_emitting(options, state, target, wasm_target):
 
   target_dir = os.path.dirname(os.path.abspath(target))
 
+  if settings.PTHREADS:
+    replace_worker_options_placeholders(final_js)
+
   # Deploy the Wasm Worker bootstrap file as an output file (*.ww.js)
   if settings.WASM_WORKERS == 1:
     create_worker_file('src/wasm_worker.js', target_dir, settings.WASM_WORKER_FILE, options)
@@ -2684,6 +2687,27 @@ def worker_js_script(proxy_worker_filename):
   proxy_client_src = do_replace(proxy_client_src, '<<< filename >>>', proxy_worker_filename)
   return web_gl_client_src + '\n' + proxy_client_src
 
+def replace_worker_options_placeholders():
+  global final_js
+  js = read_file(final_js)
+  options = []
+
+  if settings.EXPORT_ES6:
+      options.append("type: 'module'")
+  if settings.ENVIRONMENT_MAY_BE_NODE:
+      options.append("workerData: 'em-pthread'")
+  if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
+      if settings.ASSERTIONS:
+          options.append("name: 'em-pthread-' + PThread.nextWorkerID")
+      else:
+          options.append("name: 'em-pthread'")
+
+  worker_options_str = "{ " + ", ".join(options) + " }"
+
+  # Replace placeholders with a worker options object literal
+  # This is necessary to avoid issues with JS bundlers, like Vite.
+  js = do_replace(js, '<<< WORKER_OPTIONS >>>', worker_options_str)
+  write_file(final_js, js)
 
 def find_library(lib, lib_dirs):
   for lib_dir in lib_dirs:
