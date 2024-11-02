@@ -2693,14 +2693,14 @@ def replace_worker_options_placeholders():
   options = []
 
   if settings.EXPORT_ES6:
-      options.append("type: 'module'")
+    options.append("type: 'module'")
   if settings.ENVIRONMENT_MAY_BE_NODE:
-      options.append("workerData: 'em-pthread'")
+    options.append("workerData: 'em-pthread'")
   if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
-      if settings.ASSERTIONS:
-          options.append("name: 'em-pthread-' + PThread.nextWorkerID")
-      else:
-          options.append("name: 'em-pthread'")
+    if settings.ASSERTIONS:
+      options.append("name: 'em-pthread-' + PThread.nextWorkerID")
+    else:
+      options.append("name: 'em-pthread'")
 
   worker_options_str = "{ " + ", ".join(options) + " }"
 
