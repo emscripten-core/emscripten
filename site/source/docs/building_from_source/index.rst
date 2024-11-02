@@ -13,6 +13,9 @@ before it can be used (e.g. ``npm install``).  The ``bootstrap`` script in the
 top level of the repository takes care of running these steps and ``emcc`` will
 error out if it detects that ``bootstrap`` needs to be run.
 
+Emscripten comes with its own versions some C/C++ system libaries which ``emcc``
+builds automatically as and when needed (In the emsdk builds, these are precompiled).
+
 In addition to the main emscripten repository you will also need to checkout
 and build LLVM and Binaryen (as detailed below).  After compiling these, you
 will need to edit your ``.emscripten`` file to point to their corresponding
