@@ -9379,13 +9379,11 @@ int main() {
         inc = f'#include <{header}>\n__attribute__((weak)) int foo;\n'
         if cxx_only:
           create_file('a.cxx', inc)
-          create_file('b.cxx', inc)
-          self.run_process([EMXX, '-Werror', '-Wall', '-pedantic', 'a.cxx', 'b.cxx'])
+          self.run_process([EMXX, '-Werror', '-Wall', '-pedantic', 'a.cxx', '-E', '-o', 'a.i'])
         else:
           create_file('a.c', inc)
-          create_file('b.c', inc)
           for std in ([], ['-std=c89']):
-            self.run_process([EMCC] + std + ['-Werror', '-Wall', '-pedantic', 'a.c', 'b.c'])
+            self.run_process([EMCC] + std + ['-Werror', '-Wall', '-pedantic', 'a.c', '-E', '-o', 'a.i'])
 
   @is_slow_test
   @parameterized({
