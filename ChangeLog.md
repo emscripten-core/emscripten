@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.71 (in development)
+3.1.72 (in development)
 -----------------------
+
+3.1.71 - 11/04/24
+-----------------
 - SDL2 port updated to 2.30.9. (#22830)
 - LLVM's `-Wnontrivial-memaccess` warning has been updated to also warn about
   passing non-trivially-copyable destination parameter to `memcpy`,
