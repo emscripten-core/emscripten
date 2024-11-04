@@ -15,6 +15,8 @@ error out if it detects that ``bootstrap`` needs to be run.
 
 Emscripten comes with its own versions some C/C++ system libaries which ``emcc``
 builds automatically as and when needed (In the emsdk builds, these are precompiled).
+You can also build them manually with the ``embuilder`` tool - see ``embuilder --help``
+for more information.
 
 In addition to the main emscripten repository you will also need to checkout
 and build LLVM and Binaryen (as detailed below).  After compiling these, you
