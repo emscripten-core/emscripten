@@ -12193,14 +12193,26 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
   @node_pthreads
   def test_pthread_unavailable(self):
     # Run a simple hello world program that uses pthreads
-    self.emcc_args += ['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME']
+    self.emcc_args += ['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$stringToNewUTF8,$UTF8ToString']
     self.do_run_in_out_file_test('hello_world.c')
 
     # Now run the same program but with SharedArrayBuffer undefined, it should run
     # fine and then fail on the first call to pthread_create.
-    create_file('pre.js', 'SharedArrayBuffer = undefined\n')
-    expected = 'pthread_create: environment does not support SharedArrayBuffer, pthreads are not available'
-    self.do_runf('hello_world.c', expected, assert_returncode=NON_ZERO, emcc_args=['--pre-js=pre.js'])
+    #
+    # We specifically test that we can call UTF8ToString, which in older emscripten
+    # versions had an instanceof check against SharedArrayBuffer which would cause
+    # a crash when SharedArrayBuffer was undefined.
+    create_file('pre.js', '''
+      SharedArrayBuffer = undefined;
+      Module.onRuntimeInitialized = () => {
+        var addr = stringToNewUTF8("hello world string, longer than 16 chars");
+        assert(addr);
+        var str = UTF8ToString(addr);
+        console.log("got: " + str);
+        assert(str == "hello world string, longer than 16 chars");
+      };''')
+    expected = ['got: hello world string, longer than 16 chars', 'pthread_create: environment does not support SharedArrayBuffer, pthreads are not available']
+    self.do_runf('hello_world.c', expected, assert_all=True, assert_returncode=NON_ZERO, emcc_args=['--pre-js=pre.js'])
 
   def test_stdin_preprocess(self):
     create_file('temp.h', '#include <string>')
