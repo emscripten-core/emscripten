@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.71 (in development)
 -----------------------
+- SDL2 port updated to 2.30.9. (#22830)
 - LLVM's `-Wnontrivial-memaccess` warning has been updated to also warn about
   passing non-trivially-copyable destination parameter to `memcpy`,
   `memset` and similar functions for which it is a documented undefined
