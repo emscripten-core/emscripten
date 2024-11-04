@@ -639,7 +639,7 @@ var LibraryDylink = {
         var memAlign = Math.pow(2, metadata.memoryAlign);
         // prepare memory
         var memoryBase = metadata.memorySize ? alignMemory(getMemory(metadata.memorySize + memAlign), memAlign) : 0; // TODO: add to cleanups
-        var tableBase = metadata.tableSize ? wasmTable.length : 0;
+        var tableBase = metadata.tableSize ? {{{ from64Expr('wasmTable.length') }}} : 0;
         if (handle) {
           {{{ makeSetValue('handle', C_STRUCTS.dso.mem_allocated, '1', 'i8') }}};
           {{{ makeSetValue('handle', C_STRUCTS.dso.mem_addr, 'memoryBase', '*') }}};
@@ -657,7 +657,7 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
         dbg("loadModule: growing table: " + tableGrowthNeeded);
 #endif
-        wasmTable.grow(tableGrowthNeeded);
+        wasmTable.grow({{{ toIndexType('tableGrowthNeeded') }}});
       }
 #if DYLINK_DEBUG
       dbg("loadModule: memory[" + memoryBase + ":" + (memoryBase + metadata.memorySize) + "]" +
