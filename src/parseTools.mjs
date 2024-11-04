@@ -1042,9 +1042,11 @@ function getUnsharedTextDecoderView(heap, start, end) {
   // then unconditionally do a .slice() for smallest code size.
   if (SHRINK_LEVEL == 2 || heap == 'HEAPU8') return shared;
 
-  // Otherwise, generate a runtime type check: must do a .slice() if looking at a SAB,
-  // or can use .subarray() otherwise.
-  return `${heap}.buffer instanceof SharedArrayBuffer ? ${shared} : ${unshared}`;
+  // Otherwise, generate a runtime type check: must do a .slice() if looking at
+  // a SAB, or can use .subarray() otherwise.  Note: We compare with
+  // `ArrayBuffer` here to avoid referencing `SharedArrayBuffer` which could be
+  // undefined.
+  return `${heap}.buffer instanceof ArrayBuffer ? ${unshared} : ${shared}`;
 }
 
 function getEntryFunction() {
