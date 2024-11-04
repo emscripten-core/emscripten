@@ -14,7 +14,7 @@ top level of the repository takes care of running these steps and ``emcc`` will
 error out if it detects that ``bootstrap`` needs to be run.
 
 Emscripten comes with its own versions some C/C++ system libaries which ``emcc``
-builds automatically as and when needed (In the emsdk builds, these are precompiled).
+builds automatically as and when needed (in the emsdk builds, these are precompiled).
 You can also build them manually with the ``embuilder`` tool - see ``embuilder --help``
 for more information.
 
