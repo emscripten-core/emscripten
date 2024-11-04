@@ -12898,13 +12898,19 @@ exec "$@"
     self.do_other_test('test_syscall_stubs.c')
 
   @parameterized({
-    '': (False, False),
-    'custom': (True, False),
-    'jspi': (False, True),
+    '': (False, False, False),
+    'custom': (True, False, False),
+    'jspi': (False, True, False),
+    'O3': (False, False, True)
   })
-  def test_split_module(self, customLoader, jspi):
+  def test_split_module(self, customLoader, jspi, opt):
     self.set_setting('SPLIT_MODULE')
-    self.emcc_args += ['-g', '-Wno-experimental']
+    self.emcc_args += ['-Wno-experimental']
+    if opt:
+      # Test that it works in the presence of export minification
+      self.emcc_args += ['-O3']
+    else:
+      self.emcc_args += ['-g']
     self.emcc_args += ['--post-js', test_file('other/test_split_module.post.js')]
     if customLoader:
       self.emcc_args += ['--pre-js', test_file('other/test_load_split_module.pre.js')]
