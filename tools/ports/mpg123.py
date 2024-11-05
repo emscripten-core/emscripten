@@ -17,7 +17,7 @@ def get(ports, settings, shared):
   ports.fetch_project('mpg123', f'https://www.mpg123.de/download/mpg123-{TAG}.tar.bz2', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'mpg123', 'mpg123-' + TAG)
+    source_path = ports.get_dir('mpg123', 'mpg123-' + TAG)
 
     src_path = os.path.join(source_path, 'src')
     libmpg123_path = os.path.join(src_path, 'libmpg123')
@@ -81,7 +81,7 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'mpg123 (USE_MPG123=1; zlib license)'
+  return 'mpg123 (-sUSE_MPG123=1 or --use-port=mpg123; zlib license)'
 
 
 config_h = r'''/* src/config.h.  Generated from config.h.in by configure.  */

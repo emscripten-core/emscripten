@@ -85,11 +85,14 @@ interface VoidPointerUser {
 
 [Prefix="Space::"]
 interface Inner {
-  void Inner();
+  void Inner(optional long value);
   long get();
+  long get_value();
   [Operator="*=", Ref] Inner mul(float x);
   [Operator="[]"] long getAsArray(long x);
   [Operator="+="] void incInPlace([Const, Ref] Inner i);
+  [Operator="+", Value] Inner add([Const, Ref] Inner i);
+  [Operator="*"] long mul2(long x);
 };
 
 [Prefix = "Space::"]
@@ -168,4 +171,50 @@ interface StoreArray {
 interface LongLongTypes {
   readonly attribute unsigned long long[] lluArray;
   attribute long long ll;
+};
+
+[NoDelete]
+interface ISmallObject {
+  long getID(long number);
+};
+
+[JSImplementation="ISmallObject"]
+interface JSSmallObject {
+  void JSSmallObject();
+  long getID(long number);
+};
+
+[NoDelete]
+interface IObjectProvider {
+  ISmallObject getObject();
+};
+
+[JSImplementation="IObjectProvider"]
+interface JSObjectProvider {
+  void JSObjectProvider();
+  JSSmallObject getObject();
+};
+
+interface ObjectFactory {
+  void ObjectFactory();
+  IObjectProvider getProvider();
+};
+
+interface ArrayArgumentTest {
+  void ArrayArgumentTest();
+  boolean byteArrayTest([Const] byte[] arg);
+  boolean domStringTest([Const] DOMString arg);
+};
+
+[JSImplementation = "ArrayArgumentTest"] 
+interface JSArrayArgumentTest {
+  void JSArrayArgumentTest();
+  boolean byteArrayTest([Const] byte[] arg);
+  boolean domStringTest([Const] DOMString arg);
+};
+
+interface BindToTest {
+  void BindToTest();
+  [BindTo="test"] long testString([Const] DOMString arg);
+  [BindTo="test"] long testInt(long arg);
 };

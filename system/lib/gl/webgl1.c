@@ -17,6 +17,28 @@
 
 #include "webgl_internal.h"
 
+void emscripten_webgl_init_context_attributes(EmscriptenWebGLContextAttributes *attributes) {
+  memset(attributes, 0, sizeof(*attributes));
+
+  attributes->alpha = 1;
+  attributes->depth = 1;
+  attributes->antialias = 1;
+  attributes->premultipliedAlpha = 1;
+  attributes->majorVersion = 1;
+  attributes->enableExtensionsByDefault = 1;
+
+  // Default context initialization state (user can override):
+  // - if main thread is creating the context, default to the context not being
+  //   shared between threads - enabling sharing has performance overhead,
+  //   because it forces the context to be OffscreenCanvas or
+  //   OffscreenFramebuffer.
+  // - if a web worker is creating the context, default to using OffscreenCanvas
+  //   if available, or proxying via Offscreen Framebuffer if not
+  if (!emscripten_is_main_runtime_thread()) {
+    attributes->proxyContextToMainThread = EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK;
+  }
+}
+
 #if defined(__EMSCRIPTEN_PTHREADS__) && defined(__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__)
 
 static pthread_key_t currentActiveWebGLContext;
@@ -55,7 +77,7 @@ EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *targ
   if (attributes->proxyContextToMainThread == EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS ||
     (attributes->proxyContextToMainThread == EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK && !emscripten_supports_offscreencanvas())) {
     EmscriptenWebGLContextAttributes attrs = *attributes;
-    attrs.renderViaOffscreenBackBuffer = EM_TRUE;
+    attrs.renderViaOffscreenBackBuffer = true;
     return (EMSCRIPTEN_WEBGL_CONTEXT_HANDLE)emscripten_sync_run_in_main_runtime_thread_ptr(EM_FUNC_SIG_PPP, &emscripten_webgl_do_create_context, target, &attrs);
   } else {
     return emscripten_webgl_do_create_context(target, attributes);
@@ -796,6 +818,9 @@ void *emscripten_webgl1_get_proc_address(const char *name) {
   RETURN_FN(glGetQueryObjectuivEXT);
   RETURN_FN(glGetQueryObjecti64vEXT);
   RETURN_FN(glGetQueryObjectui64vEXT);
+  RETURN_FN(glPolygonOffsetClampEXT);
+  RETURN_FN(glClipControlEXT);
+  RETURN_FN(glPolygonModeWEBGL);
 
   return 0;
 }

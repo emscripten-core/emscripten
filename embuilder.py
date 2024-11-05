@@ -13,6 +13,7 @@ running multiple build commands in parallel, confusion can occur).
 """
 
 import argparse
+import fnmatch
 import logging
 import sys
 import time
@@ -22,17 +23,20 @@ from tools import cache
 from tools import shared
 from tools import system_libs
 from tools import ports
+from tools import utils
 from tools.settings import settings
 from tools.system_libs import USE_NINJA
 
 
-# Minimal subset of targets used by CI systems to build enough to useful
+# Minimal subset of targets used by CI systems to build enough to be useful
 MINIMAL_TASKS = [
     'libbulkmemory',
     'libcompiler_rt',
     'libcompiler_rt-wasm-sjlj',
+    'libcompiler_rt-ww',
     'libc',
     'libc-debug',
+    'libc-ww-debug',
     'libc_optz',
     'libc_optz-debug',
     'libc++abi',
@@ -41,13 +45,16 @@ MINIMAL_TASKS = [
     'libc++abi-debug',
     'libc++abi-debug-except',
     'libc++abi-debug-noexcept',
+    'libc++abi-debug-ww-noexcept',
     'libc++',
     'libc++-except',
     'libc++-noexcept',
+    'libc++-ww-noexcept',
     'libal',
     'libdlmalloc',
     'libdlmalloc-tracing',
     'libdlmalloc-debug',
+    'libdlmalloc-ww',
     'libembind',
     'libembind-rtti',
     'libemmalloc',
@@ -59,8 +66,13 @@ MINIMAL_TASKS = [
     'libmimalloc-mt',
     'libGL',
     'libGL-getprocaddr',
+    'libGL-emu-getprocaddr',
+    'libGL-emu-webgl2-ofb-getprocaddr',
+    'libGL-webgl2-ofb-getprocaddr',
+    'libGL-ww-getprocaddr',
     'libhtml5',
     'libsockets',
+    'libsockets-ww',
     'libstubs',
     'libstubs-debug',
     'libstandalonewasm-nocatch',
@@ -101,7 +113,7 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'crtbegin',
     'libsanitizer_common_rt',
     'libubsan_rt',
-    'libwasm_workers_stub-debug',
+    'libwasm_workers-debug-stub',
     'libfetch',
     'libfetch-mt',
     'libwasmfs',
@@ -120,12 +132,13 @@ legacy_prefixes = {
 
 
 def get_help():
-  all_tasks = get_system_tasks()[1] + PORTS
+  all_tasks = get_all_tasks()
   all_tasks.sort()
   return '''
 Available targets:
 
-  build / clear %s
+  build / clear
+        %s
 
 Issuing 'embuilder build ALL' causes each task to be built.
 ''' % '\n        '.join(all_tasks)
@@ -161,6 +174,14 @@ def get_system_tasks():
   system_libraries = system_libs.Library.get_all_variations()
   system_tasks = list(system_libraries.keys())
   return system_libraries, system_tasks
+
+
+def get_all_tasks():
+  return get_system_tasks()[1] + PORTS
+
+
+def handle_port_error(target, message):
+  utils.exit_with_error(f'error building port `{target}` | {message}')
 
 
 def main():
@@ -221,7 +242,7 @@ def main():
   auto_tasks = False
   task_targets = dict.fromkeys(args.targets) # use dict to keep targets order
 
-  # subsitute
+  # substitute
   predefined_tasks = {
     'SYSTEM': system_tasks,
     'USER': PORTS,
@@ -239,7 +260,10 @@ def main():
   for name, targets in task_targets.items():
     if targets is None:
       # Use target name as task
-      tasks.append(name)
+      if '*' in name:
+        tasks.extend(fnmatch.filter(get_all_tasks(), name))
+      else:
+        tasks.append(name)
     else:
       # There are some ports that we don't want to build as part
       # of ALL since the are not well tested or widely used:
@@ -280,6 +304,12 @@ def main():
         clear_port(what)
       if do_build:
         build_port(what)
+    elif ':' in what or what.endswith('.py'):
+      name = ports.handle_use_port_arg(settings, what, lambda message: handle_port_error(what, message))
+      if do_clear:
+        clear_port(name)
+      if do_build:
+        build_port(name)
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

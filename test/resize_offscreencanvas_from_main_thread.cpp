@@ -14,8 +14,7 @@
 // If not defined, the pthread that owns the OffscreenCanvas is using emscripten_set_main_loop() so periodically yields back to the event loop.
 // #define TEST_SYNC_BLOCKING_LOOP
 
-void thread_local_main_loop()
-{
+void thread_local_main_loop() {
   int w = 0, h = 0;
   emscripten_get_canvas_element_size("#canvas", &w, &h);
   if (w == 699 && h == 299) {
@@ -27,14 +26,13 @@ void thread_local_main_loop()
 
     emscripten_force_exit(0);
   }
-  printf("%dx%d\n", w, h);
+  printf("thread_local_main_loop: %dx%d\n", w, h);
 }
 
-void *thread_main(void *arg)
-{
+void *thread_main(void *arg) {
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
-  attr.explicitSwapControl = EM_TRUE;
+  attr.explicitSwapControl = true;
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   assert(ctx);
 
@@ -57,14 +55,13 @@ void *thread_main(void *arg)
   return 0;
 }
 
-void resize_canvas(void *)
-{
+void resize_canvas(void* arg) {
   // Test that on the main thread, we can observe size changes to the canvas size.
   int w, h;
   emscripten_get_canvas_element_size("#canvas", &w, &h);
+  printf("Main thread saw canvas to get resized to %dx%d.\n", w, h);
   assert(w == 355 && "We did not observe the effect of pthread having resized OffscreenCanvas");
   assert(h == 233);
-  printf("Main thread saw canvas to get resized to %dx%d.\n", w, h);
 
   // Test that on the main thread, we can also change the size. (pthread listens to see this)
   printf("Main thread resizing OffscreenCanvas to size 699x299.\n");
@@ -72,16 +69,14 @@ void resize_canvas(void *)
 }
 
 //should be able to do this regardless of offscreen canvas support
-void get_canvas_size()
-{
+void get_canvas_size() {
   int w, h;
   emscripten_get_canvas_element_size("#canvas", &w, &h);
   assert(h == 150);
   assert(w == 300);
 }
 
-int main()
-{
+int main() {
   get_canvas_size();
   if (!emscripten_supports_offscreencanvas()) {
     printf("Current browser does not support OffscreenCanvas. Skipping the rest of the tests.\n");

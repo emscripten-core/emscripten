@@ -21,7 +21,7 @@ void *__memset(void *str, int c, size_t n) {
 #elif defined(__wasm_bulk_memory__)
 
 void *__memset(void *str, int c, size_t n) {
-  return emscripten_memset_bulkmem(str, c, n);
+  return _emscripten_memset_bulkmem(str, c, n);
 }
 
 #else

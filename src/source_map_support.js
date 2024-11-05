@@ -97,25 +97,20 @@ WasmSourceMap.prototype.normalizeOffset = function (offset) {
 }
 
 var wasmSourceMapFile = '{{{ WASM_BINARY_FILE }}}.map';
-if (!isDataURI(wasmBinaryFile)) {
+if (!isDataURI(wasmSourceMapFile)) {
   wasmSourceMapFile = locateFile(wasmSourceMapFile);
 }
 
 function getSourceMap() {
-  try {
-    return JSON.parse(read_(wasmSourceMapFile));
-  } catch (err) {
-    abort(err);
-  }
+  var buf = readBinary(wasmSourceMapFile);
+  return JSON.parse(UTF8ArrayToString(buf));
 }
 
 function getSourceMapPromise() {
   if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch == 'function') {
     return fetch(wasmSourceMapFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}})
-      .then((response) => response['json']())
+      .then((response) => response.json())
       .catch(getSourceMap);
   }
-  return new Promise(function(resolve, reject) {
-    resolve(getSourceMap());
-  });
+  return Promise.resolve(getSourceMap());
 }

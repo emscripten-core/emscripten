@@ -45,7 +45,7 @@ static int __pthread_timedjoin_np(pthread_t t, void **res, const struct timespec
 	if (res) *res = t->result;
 #ifdef __EMSCRIPTEN__
 	// Thread was exited during this call, be sure to clean it up.
-	if (state == DT_EXITED) __emscripten_thread_cleanup(t);
+	if (state == DT_EXITED) _emscripten_thread_cleanup(t);
 #else // XXX Emscripten map_base unused
 	if (t->map_base) __munmap(t->map_base, t->map_size);
 #endif

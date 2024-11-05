@@ -71,6 +71,10 @@ object
 198
 getAsArray: 24
 Inner::+= => 2
+add: 3
+mul2: 50
+testString: 1
+testInt: 2
 0
 1
 34,34
@@ -108,5 +112,8 @@ struct_ptr_array[0]->attr2 == 101
 Parent:0
 Parent:42
 |abc|1|(null)|123|
+123
+true
+true
 
 done.

@@ -22,13 +22,21 @@ class Test {
 
   int getY() const { return y; }
 
+  std::string string_property;
+
   static int static_function(int x) { return 1; }
 
   static int static_property;
+  static std::string static_string_property;
 
 private:
   int x;
   int y;
+};
+
+class Foo {
+ public:
+  void process(const Test& input) {}
 };
 
 Test class_returning_fn() { return Test(); }
@@ -36,11 +44,6 @@ Test class_returning_fn() { return Test(); }
 std::unique_ptr<Test> class_unique_ptr_returning_fn() {
   return std::make_unique<Test>();
 }
-
-class Foo {
- public:
-  void process(const Test& input) {}
-};
 
 enum Bar { kValueOne, kValueTwo, kValueThree };
 
@@ -52,9 +55,13 @@ struct ValArr {
   int x, y, z;
 };
 
+EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
+
 struct ValObj {
   Foo foo;
   Bar bar;
+  CallbackType callback;
+  ValObj() : callback(val::undefined()) {}
 };
 
 class ClassWithConstructor {
@@ -81,7 +88,9 @@ int smart_ptr_function(std::shared_ptr<ClassWithSmartPtrConstructor>) {
   return 0;
 }
 
-EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
+struct Obj {};
+Obj* get_pointer(Obj* ptr) { return ptr; }
+Obj* get_nonnull_pointer() { return new Obj(); }
 
 int function_with_callback_param(CallbackType ct) {
   ct(val("hello"));
@@ -102,6 +111,10 @@ std::optional<int> optional_test(std::optional<Foo> arg) {
   return {};
 }
 
+std::optional<int> optional_and_nonoptional_test(std::optional<Foo> arg1, int arg2) {
+  return {};
+}
+
 class BaseClass {
  public:
   virtual ~BaseClass() = default;
@@ -112,6 +125,18 @@ class DerivedClass : public BaseClass {
  public:
   int fn(int x) override { return 1; }
   int fn2(int x) { return 2; }
+};
+
+struct Interface {
+  virtual void invoke(const std::string& str) = 0;
+  virtual ~Interface() {}
+};
+
+struct InterfaceWrapper : public wrapper<Interface> {
+  EMSCRIPTEN_WRAPPER(InterfaceWrapper);
+  void invoke(const std::string& str) {
+      return call<void>("invoke", str);
+  }
 };
 
 EMSCRIPTEN_BINDINGS(Test) {
@@ -126,14 +151,19 @@ EMSCRIPTEN_BINDINGS(Test) {
       .function("constFn", &Test::const_fn)
       .property("x", &Test::getX, &Test::setX)
       .property("y", &Test::getY)
+      .property("stringProperty", &Test::string_property)
       .class_function("staticFunction", &Test::static_function)
       .class_function("staticFunctionWithParam(x)", &Test::static_function)
       .class_property("staticProperty", &Test::static_property)
+      .class_property("staticStringProperty", &Test::static_string_property)
 	;
 
   function("class_returning_fn", &class_returning_fn);
   function("class_unique_ptr_returning_fn",
                    &class_unique_ptr_returning_fn);
+  class_<Obj>("Obj");
+  function("getPointer", &get_pointer, allow_raw_pointers());
+  function("getNonnullPointer", &get_nonnull_pointer, allow_raw_pointers(), nonnull<ret_val>());
 
   constant("an_int", 5);
   constant("a_bool", false);
@@ -161,9 +191,12 @@ EMSCRIPTEN_BINDINGS(Test) {
 
   value_object<ValObj>("ValObj")
       .field("foo", &ValObj::foo)
-      .field("bar", &ValObj::bar);
+      .field("bar", &ValObj::bar)
+      .field("callback", &ValObj::callback);
 
   register_vector<int>("IntVec");
+
+  register_map<int, int>("MapIntInt");
 
   class_<Foo>("Foo").function("process", &Foo::process);
 
@@ -172,6 +205,7 @@ EMSCRIPTEN_BINDINGS(Test) {
   register_optional<int>();
   register_optional<Foo>();
   function("optional_test", &optional_test);
+  function("optional_and_nonoptional_test", &optional_and_nonoptional_test);
 
   function("string_test", &string_test);
   function("wstring_test", &wstring_test);
@@ -203,9 +237,15 @@ EMSCRIPTEN_BINDINGS(Test) {
 
   class_<DerivedClass, base<BaseClass>>("DerivedClass")
       .function("fn2", &DerivedClass::fn2);
+
+  class_<Interface>("Interface")
+    .function("invoke", &Interface::invoke, pure_virtual())
+    .allow_subclass<InterfaceWrapper>("InterfaceWrapper")
+    ;
 }
 
 int Test::static_property = 42;
+std::string Test::static_string_property = "";
 
 int main() {
   // Main should not be run during TypeScript generation, but should run when

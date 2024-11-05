@@ -21,13 +21,12 @@
 /* XXX Emscripten Tracing API. This defines away the code if tracing is disabled. */
 #include <emscripten/trace.h>
 
-#ifdef __EMSCRIPTEN_WASM_WORKERS__
+#ifdef __EMSCRIPTEN_SHARED_MEMORY__
 #define USE_LOCKS 1
 #endif
 
 /* Make malloc() and free() threadsafe by securing the memory allocations with pthread mutexes. */
 #if __EMSCRIPTEN_PTHREADS__
-#define USE_LOCKS 1
 #define USE_SPIN_LOCKS 0 // Ensure we use pthread_mutex_t.
 #endif
 
@@ -6083,6 +6082,7 @@ int mspace_mallopt(int param_number, int value) {
 // This allows an easy mechanism for hooking into memory allocation.
 #if defined(__EMSCRIPTEN__) && !ONLY_MSPACES
 extern __typeof(malloc) emscripten_builtin_malloc __attribute__((alias("dlmalloc")));
+extern __typeof(calloc) emscripten_builtin_calloc __attribute__((alias("dlcalloc")));
 extern __typeof(free) emscripten_builtin_free __attribute__((alias("dlfree")));
 extern __typeof(memalign) emscripten_builtin_memalign __attribute__((alias("dlmemalign")));
 #endif

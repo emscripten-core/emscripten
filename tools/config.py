@@ -55,10 +55,6 @@ def fix_js_engine(old, new):
   return new
 
 
-def root_is_writable():
-  return os.access(__rootpath__, os.W_OK)
-
-
 def normalize_config_settings():
   global CACHE, PORTS, LLVM_ADD_VERSION, CLANG_ADD_VERSION, CLOSURE_COMPILER
   global NODE_JS, NODE_JS_TEST, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
@@ -80,16 +76,7 @@ def normalize_config_settings():
   WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
   CLOSURE_COMPILER = listify(CLOSURE_COMPILER)
   if not CACHE:
-    if FROZEN_CACHE or root_is_writable():
-      CACHE = path_from_root('cache')
-    else:
-      # Use the legacy method of putting the cache in the user's home directory
-      # if the emscripten root is not writable.
-      # This is useful mostly for read-only installation and perhaps could
-      # be removed in the future since such installations should probably be
-      # setting a specific cache location.
-      logger.debug('Using home-directory for emscripten cache due to read-only root')
-      CACHE = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
+    CACHE = path_from_root('cache')
   if not PORTS:
     PORTS = os.path.join(CACHE, 'ports')
 
@@ -99,7 +86,7 @@ def set_config_from_tool_location(config_key, tool_binary, f):
   if val is None:
     path = shutil.which(tool_binary)
     if not path:
-      if not os.path.exists(EM_CONFIG):
+      if not os.path.isfile(EM_CONFIG):
         diagnostics.warn('config file not found: %s.  You can create one by hand or run `emcc --generate-config`', EM_CONFIG)
       exit_with_error('%s not set in config (%s), and `%s` not found in PATH', config_key, EM_CONFIG, tool_binary)
     globals()[config_key] = f(path)
@@ -155,11 +142,11 @@ def parse_config_file():
 
 
 def read_config():
-  if os.path.exists(EM_CONFIG):
+  if os.path.isfile(EM_CONFIG):
     parse_config_file()
 
-  # In the past the default-generated .emscripten config file would read certain environment
-  # variables.
+  # In the past the default-generated .emscripten config file would read
+  # certain environment variables.
   LEGACY_ENV_VARS = {
     'LLVM': 'EM_LLVM_ROOT',
     'BINARYEN': 'EM_BINARYEN_ROOT',
@@ -172,7 +159,8 @@ def read_config():
     env_value = os.environ.get(key)
     if env_value and new_key not in os.environ:
       msg = f'legacy environment variable found: `{key}`.  Please switch to using `{new_key}` instead`'
-      # Use `debug` instead of `warning` for `NODE` specifically since there can be false positives:
+      # Use `debug` instead of `warning` for `NODE` specifically
+      # since there can be false positives:
       # See https://github.com/emscripten-core/emsdk/issues/862
       if key == 'NODE':
         logger.debug(msg)
@@ -266,17 +254,13 @@ def find_config_file():
   if 'EM_CONFIG' in os.environ:
     return os.environ['EM_CONFIG']
 
-  if os.path.exists(embedded_config):
+  if os.path.isfile(embedded_config):
     return embedded_config
 
-  if os.path.exists(emsdk_embedded_config):
+  if os.path.isfile(emsdk_embedded_config):
     return emsdk_embedded_config
 
-  if os.path.exists(user_home_config):
-    return user_home_config
-
-  # No config file found.  Return the default location.
-  if not root_is_writable():
+  if os.path.isfile(user_home_config):
     return user_home_config
 
   return embedded_config
@@ -292,13 +276,17 @@ def init():
 
   EM_CONFIG = os.path.expanduser(EM_CONFIG)
 
-  # This command line flag needs to work even in the absence of a config file, so we must process it
-  # here at script import time (otherwise the error below will trigger).
+  # This command line flag needs to work even in the absence of a config
+  # file, so we must process it here at script import time (otherwise
+  # the error below will trigger).
   if '--generate-config' in sys.argv:
     generate_config(EM_CONFIG)
     sys.exit(0)
 
-  logger.debug('emscripten config is located in ' + EM_CONFIG)
+  if os.path.isfile(EM_CONFIG):
+    logger.debug(f'using config file: {EM_CONFIG}')
+  else:
+    logger.debug('config file not found; using default config')
 
   # Emscripten compiler spawns other processes, which can reimport shared.py, so
   # make sure that those child processes get the same configuration file by

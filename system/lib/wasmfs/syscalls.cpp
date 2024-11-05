@@ -159,7 +159,7 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     // The write was successful.
     bytesWritten += result;
     if (result < len) {
-      // The read was short, so stop here.
+      // The write was short, so stop here.
       break;
     }
   }
@@ -351,10 +351,6 @@ static timespec ms_to_timespec(double ms) {
   ts.tv_sec = seconds; // seconds
   ts.tv_nsec = (ms - (seconds * 1000)) * 1000 * 1000; // nanoseconds
   return ts;
-}
-
-static double timespec_to_ms(timespec ts) {
-  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec) / (1000 * 1000);
 }
 
 int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
@@ -1123,6 +1119,16 @@ int __syscall_readlinkat(int dirfd,
   return bytes;
 }
 
+static double timespec_to_ms(timespec ts) {
+  if (ts.tv_nsec == UTIME_OMIT) {
+    return INFINITY;
+  }
+  if (ts.tv_nsec == UTIME_NOW) {
+    return emscripten_date_now();
+  }
+  return double(ts.tv_sec) * 1000 + double(ts.tv_nsec) / (1000 * 1000);
+}
+
 // TODO: Test this with non-AT_FDCWD values.
 int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
   const char* path = (const char*)path_;
@@ -1148,7 +1154,7 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
   // TODO: Check for write access to the file (see man page for specifics).
   double aTime, mTime;
 
-  if (times == NULL) {
+  if (times == nullptr) {
     aTime = mTime = emscripten_date_now();
   } else {
     aTime = timespec_to_ms(times[0]);
@@ -1156,20 +1162,18 @@ int __syscall_utimensat(int dirFD, intptr_t path_, intptr_t times_, int flags) {
   }
 
   auto locked = parsed.getFile()->locked();
-  locked.setATime(aTime);
-  locked.setMTime(mTime);
+  if (aTime != INFINITY) {
+    locked.setATime(aTime);
+  }
+  if (mTime != INFINITY) {
+    locked.setMTime(mTime);
+  }
 
   return 0;
 }
 
 // TODO: Test this with non-AT_FDCWD values.
-int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
-  int flags = 0;
-  va_list v1;
-  va_start(v1, mode);
-  flags = va_arg(v1, int);
-  va_end(v1);
-
+int __syscall_fchmodat2(int dirfd, intptr_t path, int mode, int flags) {
   if (flags & ~AT_SYMLINK_NOFOLLOW) {
     // TODO: Test this case.
     return -EINVAL;
@@ -1186,7 +1190,7 @@ int __syscall_fchmodat(int dirfd, intptr_t path, int mode, ...) {
 }
 
 int __syscall_chmod(intptr_t path, int mode) {
-  return __syscall_fchmodat(AT_FDCWD, path, mode, 0);
+  return __syscall_fchmodat2(AT_FDCWD, path, mode, 0);
 }
 
 int __syscall_fchmod(int fd, int mode) {
@@ -1583,6 +1587,10 @@ int _mmap_js(size_t length,
   // PROT_READ or PROT_WRITE).
   if ((prot & PROT_EXEC)) {
     return -EPERM;
+  }
+
+  if (!length) {
+    return -EINVAL;
   }
 
   // One of MAP_PRIVATE, MAP_SHARED, or MAP_SHARED_VALIDATE must be used.

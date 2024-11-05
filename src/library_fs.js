@@ -28,73 +28,22 @@ addToLibrary({
     '$PROXYFS',
 #endif
 #if ASSERTIONS
-    '$ERRNO_MESSAGES', '$ERRNO_CODES',
-#endif
-#if ASSERTIONS && !MINIMAL_RUNTIME
-    '$demangleAll',
+    '$strError', '$ERRNO_CODES',
 #endif
   ],
-  $FS__postset: function() {
+  $FS__postset: () => {
     // TODO: do we need noFSInit?
     addAtInit(`
-if (!Module['noFSInit'] && !FS.init.initialized)
+if (!Module['noFSInit'] && !FS.initialized)
   FS.init();
 FS.ignorePermissions = false;
 `)
     addAtExit('FS.quit();');
-    // We must statically create FS.FSNode here so that it is created in a manner
-    // that is visible to Closure compiler. That lets us use type annotations for
-    // Closure to the "this" pointer in various node creation functions.
     return `
-var FSNode = /** @constructor */ function(parent, name, mode, rdev) {
-  if (!parent) {
-    parent = this;  // root node sets parent to itself
-  }
-  this.parent = parent;
-  this.mount = parent.mount;
-  this.mounted = null;
-  this.id = FS.nextInode++;
-  this.name = name;
-  this.mode = mode;
-  this.node_ops = {};
-  this.stream_ops = {};
-  this.rdev = rdev;
-};
-var readMode = 292/*{{{ cDefs.S_IRUGO }}}*/ | 73/*{{{ cDefs.S_IXUGO }}}*/;
-var writeMode = 146/*{{{ cDefs.S_IWUGO }}}*/;
-Object.defineProperties(FSNode.prototype, {
- read: {
-  get: /** @this{FSNode} */function() {
-   return (this.mode & readMode) === readMode;
-  },
-  set: /** @this{FSNode} */function(val) {
-   val ? this.mode |= readMode : this.mode &= ~readMode;
-  }
- },
- write: {
-  get: /** @this{FSNode} */function() {
-   return (this.mode & writeMode) === writeMode;
-  },
-  set: /** @this{FSNode} */function(val) {
-   val ? this.mode |= writeMode : this.mode &= ~writeMode;
-  }
- },
- isFolder: {
-  get: /** @this{FSNode} */function() {
-   return FS.isDir(this.mode);
-  }
- },
- isDevice: {
-  get: /** @this{FSNode} */function() {
-   return FS.isChrdev(this.mode);
-  }
- }
-});
-FS.FSNode = FSNode;
 FS.createPreloadedFile = FS_createPreloadedFile;
-FS.staticInit();` +
-           // Get module methods from settings
-           '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}';
+FS.staticInit();
+// Set module methods based on EXPORTED_RUNTIME_METHODS
+{{{ EXPORTED_RUNTIME_METHODS.filter((func) => func.startsWith('FS_')).map((func) => 'Module["' + func + '"] = FS.' + func.substr(3) + ";\n").reduce((str, func) => str + func, '') }}}`;
   },
   $FS: {
     root: null,
@@ -117,6 +66,107 @@ FS.staticInit();` +
     genericErrors: {},
     filesystems: null,
     syncFSRequests: 0, // we warn if there are multiple in flight at once
+#if expectToReceiveOnModule('logReadFiles')
+    readFiles: {},
+#endif
+#if ASSERTIONS
+    ErrnoError: class extends Error {
+#else
+    ErrnoError: class {
+#endif
+      name = 'ErrnoError';
+      // We set the `name` property to be able to identify `FS.ErrnoError`
+      // - the `name` is a standard ECMA-262 property of error objects. Kind of good to have it anyway.
+      // - when using PROXYFS, an error can come from an underlying FS
+      // as different FS objects have their own FS.ErrnoError each,
+      // the test `err instanceof FS.ErrnoError` won't detect an error coming from another filesystem, causing bugs.
+      // we'll use the reliable test `err.name == "ErrnoError"` instead
+      constructor(errno) {
+#if ASSERTIONS
+        super(runtimeInitialized ? strError(errno) : '');
+#endif
+        this.errno = errno;
+#if ASSERTIONS
+        for (var key in ERRNO_CODES) {
+          if (ERRNO_CODES[key] === errno) {
+            this.code = key;
+            break;
+          }
+        }
+#endif
+      }
+    },
+
+    FSStream: class {
+      shared = {};
+#if USE_CLOSURE_COMPILER
+      // Closure compiler requires us to declare all properties ahead of time
+      node = null;
+#endif
+      get object() {
+        return this.node;
+      }
+      set object(val) {
+        this.node = val;
+      }
+      get isRead() {
+        return (this.flags & {{{ cDefs.O_ACCMODE }}}) !== {{{ cDefs.O_WRONLY }}};
+      }
+      get isWrite() {
+        return (this.flags & {{{ cDefs.O_ACCMODE }}}) !== {{{ cDefs.O_RDONLY }}};
+      }
+      get isAppend() {
+        return (this.flags & {{{ cDefs.O_APPEND }}});
+      }
+      get flags() {
+        return this.shared.flags;
+      }
+      set flags(val) {
+        this.shared.flags = val;
+      }
+      get position() {
+        return this.shared.position;
+      }
+      set position(val) {
+        this.shared.position = val;
+      }
+    },
+    FSNode: class {
+      node_ops = {};
+      stream_ops = {};
+      readMode = {{{ cDefs.S_IRUGO }}} | {{{ cDefs.S_IXUGO }}};
+      writeMode = {{{ cDefs.S_IWUGO }}};
+      mounted = null;
+      constructor(parent, name, mode, rdev) {
+        if (!parent) {
+          parent = this;  // root node sets parent to itself
+        }
+        this.parent = parent;
+        this.mount = parent.mount;
+        this.id = FS.nextInode++;
+        this.name = name;
+        this.mode = mode;
+        this.rdev = rdev;
+      }
+      get read() {
+        return (this.mode & this.readMode) === this.readMode;
+      }
+      set read(val) {
+        val ? this.mode |= this.readMode : this.mode &= ~this.readMode;
+      }
+      get write() {
+        return (this.mode & this.writeMode) === this.writeMode;
+      }
+      set write(val) {
+        val ? this.mode |= this.writeMode : this.mode &= ~this.writeMode;
+      }
+      get isFolder() {
+        return FS.isDir(this.mode);
+      }
+      get isDevice() {
+        return FS.isChrdev(this.mode);
+      }
+    },
 
     //
     // paths
@@ -231,7 +281,7 @@ FS.staticInit();` +
     lookupNode(parent, name) {
       var errCode = FS.mayLookup(parent);
       if (errCode) {
-        throw new FS.ErrnoError(errCode, parent);
+        throw new FS.ErrnoError(errCode);
       }
       var hash = FS.hashName(parent.id, name);
 #if CASE_INSENSITIVE_FS
@@ -316,6 +366,7 @@ FS.staticInit();` +
       return 0;
     },
     mayLookup(dir) {
+      if (!FS.isDir(dir.mode)) return {{{ cDefs.ENOTDIR }}};
       var errCode = FS.nodePermissions(dir, 'x');
       if (errCode) return errCode;
       if (!dir.node_ops.lookup) return {{{ cDefs.EACCES }}};
@@ -393,44 +444,10 @@ FS.staticInit();` +
     // object isn't directly passed in. not possible until
     // SOCKFS is completed.
     createStream(stream, fd = -1) {
-      if (!FS.FSStream) {
-        FS.FSStream = /** @constructor */ function() {
-          this.shared = { };
-        };
-        FS.FSStream.prototype = {};
-        Object.defineProperties(FS.FSStream.prototype, {
-          object: {
-            /** @this {FS.FSStream} */
-            get() { return this.node; },
-            /** @this {FS.FSStream} */
-            set(val) { this.node = val; }
-          },
-          isRead: {
-            /** @this {FS.FSStream} */
-            get() { return (this.flags & {{{ cDefs.O_ACCMODE }}}) !== {{{ cDefs.O_WRONLY }}}; }
-          },
-          isWrite: {
-            /** @this {FS.FSStream} */
-            get() { return (this.flags & {{{ cDefs.O_ACCMODE }}}) !== {{{ cDefs.O_RDONLY }}}; }
-          },
-          isAppend: {
-            /** @this {FS.FSStream} */
-            get() { return (this.flags & {{{ cDefs.O_APPEND }}}); }
-          },
-          flags: {
-            /** @this {FS.FSStream} */
-            get() { return this.shared.flags; },
-            /** @this {FS.FSStream} */
-            set(val) { this.shared.flags = val; },
-          },
-          position : {
-            /** @this {FS.FSStream} */
-            get() { return this.shared.position; },
-            /** @this {FS.FSStream} */
-            set(val) { this.shared.position = val; },
-          },
-        });
-      }
+#if ASSERTIONS
+      assert(fd >= -1);
+#endif
+
       // clone it, so we can return an instance of FSStream
       stream = Object.assign(new FS.FSStream(), stream);
       if (fd == -1) {
@@ -442,6 +459,11 @@ FS.staticInit();` +
     },
     closeStream(fd) {
       FS.streams[fd] = null;
+    },
+    dupStream(origStream, fd = -1) {
+      var stream = FS.createStream(origStream, fd);
+      stream.stream_ops?.dup?.(stream);
+      return stream;
     },
 
     //
@@ -485,7 +507,7 @@ FS.staticInit();` +
 
         mounts.push(m);
 
-        check.push.apply(check, m.mounts);
+        check.push(...m.mounts);
       }
 
       return mounts;
@@ -717,7 +739,7 @@ FS.staticInit();` +
       // parents must exist
       var lookup, old_dir, new_dir;
 
-      // let the errors from non existant directories percolate up
+      // let the errors from non existent directories percolate up
       lookup = FS.lookupPath(old_path, { parent: true });
       old_dir = lookup.node;
       lookup = FS.lookupPath(new_path, { parent: true });
@@ -788,6 +810,9 @@ FS.staticInit();` +
       // do the underlying fs rename
       try {
         old_dir.node_ops.rename(old_node, new_dir, new_name);
+        // update old node (we do this here to avoid each backend 
+        // needing to)
+        old_node.parent = new_dir;
       } catch (e) {
         throw e;
       } finally {
@@ -990,8 +1015,8 @@ FS.staticInit();` +
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       }
       flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
-      mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
       if ((flags & {{{ cDefs.O_CREAT }}})) {
+        mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
         mode = (mode & {{{ cDefs.S_IALLUGO }}}) | {{{ cDefs.S_IFREG }}};
       } else {
         mode = 0;
@@ -1070,8 +1095,8 @@ FS.staticInit();` +
       if (stream.stream_ops.open) {
         stream.stream_ops.open(stream);
       }
+#if expectToReceiveOnModule('logReadFiles')
       if (Module['logReadFiles'] && !(flags & {{{ cDefs.O_WRONLY}}})) {
-        if (!FS.readFiles) FS.readFiles = {};
         if (!(path in FS.readFiles)) {
           FS.readFiles[path] = 1;
 #if FS_DEBUG
@@ -1079,6 +1104,7 @@ FS.staticInit();` +
 #endif
         }
       }
+#endif
 #if FS_DEBUG
       if (FS.trackingDelegate['onOpenFile']) {
         FS.trackingDelegate['onOpenFile'](path, trackingFlags);
@@ -1237,6 +1263,9 @@ FS.staticInit();` +
       if (!stream.stream_ops.mmap) {
         throw new FS.ErrnoError({{{ cDefs.ENODEV }}});
       }
+      if (!length) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
       return stream.stream_ops.mmap(stream, length, position, prot, flags);
     },
     msync(stream, buffer, offset, length, mmapFlags) {
@@ -1248,7 +1277,6 @@ FS.staticInit();` +
       }
       return stream.stream_ops.msync(stream, buffer, offset, length, mmapFlags);
     },
-    munmap: (stream) => 0,
     ioctl(stream, cmd, arg) {
       if (!stream.stream_ops.ioctl) {
         throw new FS.ErrnoError({{{ cDefs.ENOTTY }}});
@@ -1268,7 +1296,7 @@ FS.staticInit();` +
       var buf = new Uint8Array(length);
       FS.read(stream, buf, 0, length, 0);
       if (opts.encoding === 'utf8') {
-        ret = UTF8ArrayToString(buf, 0);
+        ret = UTF8ArrayToString(buf);
       } else if (opts.encoding === 'binary') {
         ret = buf;
       }
@@ -1371,7 +1399,7 @@ FS.staticInit();` +
         }
       }, {}, '/proc/self/fd');
     },
-    createStandardStreams() {
+    createStandardStreams(input, output, error) {
       // TODO deprecate the old functionality of a single
       // input / output callback and that utilizes FS.createDevice
       // and instead require a unique set of stream ops
@@ -1380,18 +1408,18 @@ FS.staticInit();` +
       // default tty devices. however, if the standard streams
       // have been overwritten we create a unique device for
       // them instead.
-      if (Module['stdin']) {
-        FS.createDevice('/dev', 'stdin', Module['stdin']);
+      if (input) {
+        FS.createDevice('/dev', 'stdin', input);
       } else {
         FS.symlink('/dev/tty', '/dev/stdin');
       }
-      if (Module['stdout']) {
-        FS.createDevice('/dev', 'stdout', null, Module['stdout']);
+      if (output) {
+        FS.createDevice('/dev', 'stdout', null, output);
       } else {
         FS.symlink('/dev/tty', '/dev/stdout');
       }
-      if (Module['stderr']) {
-        FS.createDevice('/dev', 'stderr', null, Module['stderr']);
+      if (error) {
+        FS.createDevice('/dev', 'stderr', null, error);
       } else {
         FS.symlink('/dev/tty1', '/dev/stderr');
       }
@@ -1406,55 +1434,12 @@ FS.staticInit();` +
       assert(stderr.fd === 2, `invalid handle for stderr (${stderr.fd})`);
 #endif
     },
-    ensureErrnoError() {
-      if (FS.ErrnoError) return;
-      FS.ErrnoError = /** @this{Object} */ function ErrnoError(errno, node) {
-        // We set the `name` property to be able to identify `FS.ErrnoError`
-        // - the `name` is a standard ECMA-262 property of error objects. Kind of good to have it anyway.
-        // - when using PROXYFS, an error can come from an underlying FS
-        // as different FS objects have their own FS.ErrnoError each,
-        // the test `err instanceof FS.ErrnoError` won't detect an error coming from another filesystem, causing bugs.
-        // we'll use the reliable test `err.name == "ErrnoError"` instead
-        this.name = 'ErrnoError';
-        this.node = node;
-        this.setErrno = /** @this{Object} */ function(errno) {
-          this.errno = errno;
-#if ASSERTIONS
-          for (var key in ERRNO_CODES) {
-            if (ERRNO_CODES[key] === errno) {
-              this.code = key;
-              break;
-            }
-          }
-#endif
-        };
-        this.setErrno(errno);
-#if ASSERTIONS
-        this.message = ERRNO_MESSAGES[errno];
-#else
-        this.message = 'FS error';
-#endif
-
-#if ASSERTIONS && !MINIMAL_RUNTIME
-        // Try to get a maximally helpful stack trace. On Node.js, getting Error.stack
-        // now ensures it shows what we want.
-        if (this.stack) {
-          // Define the stack property for Node.js 4, which otherwise errors on the next line.
-          Object.defineProperty(this, "stack", { value: (new Error).stack, writable: true });
-          this.stack = demangleAll(this.stack);
-        }
-#endif // ASSERTIONS
-      };
-      FS.ErrnoError.prototype = new Error();
-      FS.ErrnoError.prototype.constructor = FS.ErrnoError;
+    staticInit() {
       // Some errors may happen quite a bit, to avoid overhead we reuse them (and suffer a lack of stack info)
       [{{{ cDefs.ENOENT }}}].forEach((code) => {
         FS.genericErrors[code] = new FS.ErrnoError(code);
         FS.genericErrors[code].stack = '<generic error, no stack>';
       });
-    },
-    staticInit() {
-      FS.ensureErrnoError();
 
       FS.nameTable = new Array(4096);
 
@@ -1482,21 +1467,25 @@ FS.staticInit();` +
     },
     init(input, output, error) {
 #if ASSERTIONS
-      assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
+      assert(!FS.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
 #endif
-      FS.init.initialized = true;
-
-      FS.ensureErrnoError();
+      FS.initialized = true;
 
       // Allow Module.stdin etc. to provide defaults, if none explicitly passed to us here
-      Module['stdin'] = input || Module['stdin'];
-      Module['stdout'] = output || Module['stdout'];
-      Module['stderr'] = error || Module['stderr'];
+#if expectToReceiveOnModule('stdin')
+      input ??= Module['stdin'];
+#endif
+#if expectToReceiveOnModule('stdout')
+      output ??= Module['stdout'];
+#endif
+#if expectToReceiveOnModule('stderr')
+      error ??= Module['stderr'];
+#endif
 
-      FS.createStandardStreams();
+      FS.createStandardStreams(input, output, error);
     },
     quit() {
-      FS.init.initialized = false;
+      FS.initialized = false;
       // force-flush all streams, so we get musl std streams printed out
 #if hasExportedSymbol('fflush')
       _fflush(0);
@@ -1595,7 +1584,7 @@ FS.staticInit();` +
     createDevice(parent, name, input, output) {
       var path = PATH.join2(typeof parent == 'string' ? parent : FS.getPath(parent), name);
       var mode = FS_getMode(!!input, !!output);
-      if (!FS.createDevice.major) FS.createDevice.major = 64;
+      FS.createDevice.major ??= 64;
       var dev = FS.makedev(FS.createDevice.major++, 0);
       // Create a fake device that a set of stream ops to emulate
       // the old behavior.
@@ -1650,131 +1639,129 @@ FS.staticInit();` +
     // been loaded successfully. No-op for files that have been loaded already.
     forceLoadFile(obj) {
       if (obj.isDevice || obj.isFolder || obj.link || obj.contents) return true;
+ #if FS_DEBUG
+      dbg(`forceLoadFile: ${obj.url}`)
+ #endif
       if (typeof XMLHttpRequest != 'undefined') {
         throw new Error("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
-      } else if (read_) {
-        // Command-line.
+      } else { // Command-line.
         try {
-          // WARNING: Can't read binary files in V8's d8 or tracemonkey's js, as
-          //          read() will try to parse UTF8.
-          obj.contents = intArrayFromString(read_(obj.url), true);
+          obj.contents = readBinary(obj.url);
           obj.usedBytes = obj.contents.length;
         } catch (e) {
           throw new FS.ErrnoError({{{ cDefs.EIO }}});
         }
-      } else {
-        throw new Error('Cannot load without read() or XMLHttpRequest.');
       }
     },
     // Creates a file record for lazy-loading from a URL. XXX This requires a synchronous
     // XHR, which is not possible in browsers except in a web worker! Use preloading,
     // either --preload-file in emcc or FS.createPreloadedFile
     createLazyFile(parent, name, url, canRead, canWrite) {
-      // Lazy chunked Uint8Array (implements get and length from Uint8Array). Actual getting is abstracted away for eventual reuse.
-      /** @constructor */
-      function LazyUint8Array() {
-        this.lengthKnown = false;
-        this.chunks = []; // Loaded chunks. Index is the chunk number
-      }
-      LazyUint8Array.prototype.get = /** @this{Object} */ function LazyUint8Array_get(idx) {
-        if (idx > this.length-1 || idx < 0) {
-          return undefined;
-        }
-        var chunkOffset = idx % this.chunkSize;
-        var chunkNum = (idx / this.chunkSize)|0;
-        return this.getter(chunkNum)[chunkOffset];
-      };
-      LazyUint8Array.prototype.setDataGetter = function LazyUint8Array_setDataGetter(getter) {
-        this.getter = getter;
-      };
-      LazyUint8Array.prototype.cacheLength = function LazyUint8Array_cacheLength() {
-        // Find length
-        var xhr = new XMLHttpRequest();
-        xhr.open('HEAD', url, false);
-        xhr.send(null);
-        if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
-        var datalength = Number(xhr.getResponseHeader("Content-length"));
-        var header;
-        var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
-        var usesGzip = (header = xhr.getResponseHeader("Content-Encoding")) && header === "gzip";
-
-#if SMALL_XHR_CHUNKS
-        var chunkSize = 1024; // Chunk size in bytes
-#else
-        var chunkSize = 1024*1024; // Chunk size in bytes
+      // Lazy chunked Uint8Array (implements get and length from Uint8Array).
+      // Actual getting is abstracted away for eventual reuse.
+      class LazyUint8Array {
+        lengthKnown = false;
+        chunks = []; // Loaded chunks. Index is the chunk number
+#if USE_CLOSURE_COMPILER
+        // Closure compiler requires us to declare all properties ahead of time.
+        getter = undefined;
+        _length = 0;
+        _chunkSize = 0;
 #endif
-
-        if (!hasByteServing) chunkSize = datalength;
-
-        // Function to get a range from the remote URL.
-        var doXHR = (from, to) => {
-          if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
-          if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
-
-          // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', url, false);
-          if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
-
-          // Some hints to the browser that we want binary data.
-          xhr.responseType = 'arraybuffer';
-          if (xhr.overrideMimeType) {
-            xhr.overrideMimeType('text/plain; charset=x-user-defined');
+        get(idx) {
+          if (idx > this.length-1 || idx < 0) {
+            return undefined;
           }
-
+          var chunkOffset = idx % this.chunkSize;
+          var chunkNum = (idx / this.chunkSize)|0;
+          return this.getter(chunkNum)[chunkOffset];
+        }
+        setDataGetter(getter) {
+          this.getter = getter;
+        }
+        cacheLength() {
+          // Find length
+          var xhr = new XMLHttpRequest();
+          xhr.open('HEAD', url, false);
           xhr.send(null);
           if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
-          if (xhr.response !== undefined) {
-            return new Uint8Array(/** @type{Array<number>} */(xhr.response || []));
-          }
-          return intArrayFromString(xhr.responseText || '', true);
-        };
-        var lazyArray = this;
-        lazyArray.setDataGetter((chunkNum) => {
-          var start = chunkNum * chunkSize;
-          var end = (chunkNum+1) * chunkSize - 1; // including this byte
-          end = Math.min(end, datalength-1); // if datalength-1 is selected, this is the last block
-          if (typeof lazyArray.chunks[chunkNum] == 'undefined') {
-            lazyArray.chunks[chunkNum] = doXHR(start, end);
-          }
-          if (typeof lazyArray.chunks[chunkNum] == 'undefined') throw new Error('doXHR failed!');
-          return lazyArray.chunks[chunkNum];
-        });
+          var datalength = Number(xhr.getResponseHeader("Content-length"));
+          var header;
+          var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
+          var usesGzip = (header = xhr.getResponseHeader("Content-Encoding")) && header === "gzip";
 
-        if (usesGzip || !datalength) {
-          // if the server uses gzip or doesn't supply the length, we have to download the whole file to get the (uncompressed) length
-          chunkSize = datalength = 1; // this will force getter(0)/doXHR do download the whole file
-          datalength = this.getter(0).length;
-          chunkSize = datalength;
-          out("LazyFiles on gzip forces download of the whole file when length is accessed");
+  #if SMALL_XHR_CHUNKS
+          var chunkSize = 1024; // Chunk size in bytes
+  #else
+          var chunkSize = 1024*1024; // Chunk size in bytes
+  #endif
+
+          if (!hasByteServing) chunkSize = datalength;
+
+          // Function to get a range from the remote URL.
+          var doXHR = (from, to) => {
+            if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
+            if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
+
+            // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', url, false);
+            if (datalength !== chunkSize) xhr.setRequestHeader("Range", "bytes=" + from + "-" + to);
+
+            // Some hints to the browser that we want binary data.
+            xhr.responseType = 'arraybuffer';
+            if (xhr.overrideMimeType) {
+              xhr.overrideMimeType('text/plain; charset=x-user-defined');
+            }
+
+            xhr.send(null);
+            if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
+            if (xhr.response !== undefined) {
+              return new Uint8Array(/** @type{Array<number>} */(xhr.response || []));
+            }
+            return intArrayFromString(xhr.responseText || '', true);
+          };
+          var lazyArray = this;
+          lazyArray.setDataGetter((chunkNum) => {
+            var start = chunkNum * chunkSize;
+            var end = (chunkNum+1) * chunkSize - 1; // including this byte
+            end = Math.min(end, datalength-1); // if datalength-1 is selected, this is the last block
+            if (typeof lazyArray.chunks[chunkNum] == 'undefined') {
+              lazyArray.chunks[chunkNum] = doXHR(start, end);
+            }
+            if (typeof lazyArray.chunks[chunkNum] == 'undefined') throw new Error('doXHR failed!');
+            return lazyArray.chunks[chunkNum];
+          });
+
+          if (usesGzip || !datalength) {
+            // if the server uses gzip or doesn't supply the length, we have to download the whole file to get the (uncompressed) length
+            chunkSize = datalength = 1; // this will force getter(0)/doXHR do download the whole file
+            datalength = this.getter(0).length;
+            chunkSize = datalength;
+            out("LazyFiles on gzip forces download of the whole file when length is accessed");
+          }
+
+          this._length = datalength;
+          this._chunkSize = chunkSize;
+          this.lengthKnown = true;
         }
+        get length() {
+          if (!this.lengthKnown) {
+            this.cacheLength();
+          }
+          return this._length;
+        }
+        get chunkSize() {
+          if (!this.lengthKnown) {
+            this.cacheLength();
+          }
+          return this._chunkSize;
+        }
+      }
 
-        this._length = datalength;
-        this._chunkSize = chunkSize;
-        this.lengthKnown = true;
-      };
       if (typeof XMLHttpRequest != 'undefined') {
         if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
         var lazyArray = new LazyUint8Array();
-        Object.defineProperties(lazyArray, {
-          length: {
-            get: /** @this{Object} */ function() {
-              if (!this.lengthKnown) {
-                this.cacheLength();
-              }
-              return this._length;
-            }
-          },
-          chunkSize: {
-            get: /** @this{Object} */ function() {
-              if (!this.lengthKnown) {
-                this.cacheLength();
-              }
-              return this._chunkSize;
-            }
-          }
-        });
-
         var properties = { isDevice: false, contents: lazyArray };
       } else {
         var properties = { isDevice: false, url: url };
@@ -1793,7 +1780,7 @@ FS.staticInit();` +
       // Add a function that defers querying the file size until it is asked the first time.
       Object.defineProperties(node, {
         usedBytes: {
-          get: /** @this {FSNode} */ function() { return this.contents.length; }
+          get: function() { return this.contents.length; }
         }
       });
       // override each stream op with one that tries to force load the lazy file first
@@ -1801,9 +1788,9 @@ FS.staticInit();` +
       var keys = Object.keys(node.stream_ops);
       keys.forEach((key) => {
         var fn = node.stream_ops[key];
-        stream_ops[key] = function forceLoadLazyFile() {
+        stream_ops[key] = (...args) => {
           FS.forceLoadFile(node);
-          return fn.apply(null, arguments);
+          return fn(...args);
         };
       });
       function writeChunks(stream, buffer, offset, length, position) {
@@ -1882,4 +1869,7 @@ FS.staticInit();` +
    */`,
   $FS_mkdirTree__deps: ['$FS'],
   $FS_mkdirTree: (path, mode) => FS.mkdirTree(path, mode),
+
+  $FS_createLazyFile__deps: ['$FS'],
+  $FS_createLazyFile: 'FS.createLazyFile',
 });

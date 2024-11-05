@@ -6,11 +6,12 @@
 
 var WasiLibrary = {
 #if !MINIMAL_RUNTIME
-  $ExitStatus__docs: '/** @constructor */',
-  $ExitStatus: function(status) {
-    this.name = 'ExitStatus';
-    this.message = `Program terminated with exit(${status})`;
-    this.status = status;
+  $ExitStatus: class {
+    name = 'ExitStatus';
+    constructor(status) {
+      this.message = `Program terminated with exit(${status})`;
+      this.status = status;
+    }
   },
   proc_exit__deps: ['$ExitStatus', '$keepRuntimeAlive'],
 #endif
@@ -39,12 +40,6 @@ var WasiLibrary = {
 
   sched_yield__nothrow: true,
   sched_yield: () => 0,
-
-  random_get__deps: ['getentropy'],
-  random_get: (buf, buf_len) => {
-    _getentropy(buf, buf_len);
-    return 0;
-  },
 
   $getEnvStrings__deps: ['$ENV', '$getExecutableName'],
   $getEnvStrings: () => {
@@ -109,7 +104,7 @@ var WasiLibrary = {
     return 0;
   },
 
-  // In normal (non-standalone) mode arguments are passed direclty
+  // In normal (non-standalone) mode arguments are passed directly
   // to main, and the `mainArgs` global does not exist.
 #if STANDALONE_WASM
   args_sizes_get__nothrow: true,
@@ -207,7 +202,7 @@ var WasiLibrary = {
       if (curr < 0) return -1;
       ret += curr;
       if (curr < len) break; // nothing more to read
-      if (typeof offset !== 'undefined') {
+      if (typeof offset != 'undefined') {
         offset += curr;
       }
     }
@@ -223,7 +218,11 @@ var WasiLibrary = {
       var curr = FS.write(stream, HEAP8, ptr, len, offset);
       if (curr < 0) return -1;
       ret += curr;
-      if (typeof offset !== 'undefined') {
+      if (curr < len) {
+        // No more space to write.
+        break;
+      }
+      if (typeof offset != 'undefined') {
         offset += curr;
       }
     }
@@ -241,7 +240,7 @@ var WasiLibrary = {
     assert(buffer);
 #endif
     if (curr === 0 || curr === {{{ charCode('\n') }}}) {
-      (stream === 1 ? out : err)(UTF8ArrayToString(buffer, 0));
+      (stream === 1 ? out : err)(UTF8ArrayToString(buffer));
       buffer.length = 0;
     } else {
       buffer.push(curr);
@@ -563,6 +562,66 @@ var WasiLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
   fd_sync__async: true,
+
+  // random.h
+
+  $initRandomFill: () => {
+    if (typeof crypto == 'object' && typeof crypto['getRandomValues'] == 'function') {
+      // for modern web browsers
+#if SHARED_MEMORY
+      // like with most Web APIs, we can't use Web Crypto API directly on shared memory,
+      // so we need to create an intermediate buffer and copy it to the destination
+      return (view) => (
+        view.set(crypto.getRandomValues(new Uint8Array(view.byteLength))),
+        // Return the original view to match modern native implementations.
+        view
+      );
+#else
+      return (view) => crypto.getRandomValues(view);
+#endif
+    } else
+#if ENVIRONMENT_MAY_BE_NODE
+    if (ENVIRONMENT_IS_NODE) {
+      // for nodejs with or without crypto support included
+      try {
+        var crypto_module = require('crypto');
+        var randomFillSync = crypto_module['randomFillSync'];
+        if (randomFillSync) {
+          // nodejs with LTS crypto support
+          return (view) => crypto_module['randomFillSync'](view);
+        }
+        // very old nodejs with the original crypto API
+        var randomBytes = crypto_module['randomBytes'];
+        return (view) => (
+          view.set(randomBytes(view.byteLength)),
+          // Return the original view to match modern native implementations.
+          view
+        );
+      } catch (e) {
+        // nodejs doesn't have crypto support
+      }
+    }
+#endif // ENVIRONMENT_MAY_BE_NODE
+    // we couldn't find a proper implementation, as Math.random() is not suitable for /dev/random, see emscripten-core/emscripten/pull/7096
+#if ASSERTIONS
+    abort('no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: (array) => { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };');
+#else
+    abort('initRandomDevice');
+#endif
+  },
+
+  $randomFill__deps: ['$initRandomFill'],
+  $randomFill: (view) => {
+    // Lazily init on the first invocation.
+    return (randomFill = initRandomFill())(view);
+  },
+
+  random_get__proxy: 'none',
+  random_get__deps: ['$randomFill'],
+  random_get: (buffer, size) => {
+    randomFill(HEAPU8.subarray(buffer, buffer + size));
+    return 0;
+  },
 };
 
 for (var x in WasiLibrary) {

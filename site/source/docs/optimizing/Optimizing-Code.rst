@@ -4,7 +4,18 @@
 Optimizing Code
 ===============
 
-Generally you should first compile and run your code without optimizations (the default). Once you are sure that the code runs correctly, you can use the techniques in this article to make it load and run faster.
+Generally you should first compile and run your code without optimizations,
+which is the default when you just run ``emcc`` without specifying an
+optimization level. Such unoptimized builds contain some checks and assertions
+that can be very helpful in making sure that your code runs correctly. Once it
+does, it is highly recommended to optimize the builds that you ship, for
+several reasons: First, optimized builds are much smaller and faster, so they
+load quickly and run more smoothly, and second, **un**-optimized builds contain
+debug information such as the names of files and functions, code comments in
+JavaScript, etc. (which aside from increasing size may also contain things you
+do not want to ship to your users).
+
+The rest of this page explains how to optimize your code.
 
 How to optimize code
 ====================
@@ -73,7 +84,7 @@ There are several flags you can :ref:`pass to the compiler <emcc-s-option-value>
 WebAssembly
 ===========
 
-Emscripten will emit WebAssembly by default. You can switch that off with ``-sWASM=0`` (in which case emscripten emit JavaScript), which is necessary if you want the output to run in places where Wasm support is not present yet, but the downside is larger and slower code.
+Emscripten emits WebAssembly by default. You can switch that off with ``-sWASM=0`` (in which case emscripten will emit JavaScript), which is necessary if you want the output to run in places where Wasm support is not present yet, but the downside is larger and slower code.
 
 .. _optimizing-code-size:
 

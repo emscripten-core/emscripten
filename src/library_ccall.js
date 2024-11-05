@@ -15,7 +15,7 @@ addToLibrary({
   },
 
   // C calling interface.
-  $ccall__deps: ['$getCFunc', '$writeArrayToMemory', '$stringToUTF8OnStack', 'stackSave', 'stackRestore', 'stackAlloc'],
+  $ccall__deps: ['$getCFunc', '$writeArrayToMemory', '$stringToUTF8OnStack', '$stackSave', '$stackRestore', '$stackAlloc'],
   $ccall__docs: `
   /**
    * @param {string|null=} returnType
@@ -32,7 +32,6 @@ addToLibrary({
       'string': (str) => {
         var ret = 0;
         if (str !== null && str !== undefined && str !== 0) { // null string
-          // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
           ret = stringToUTF8OnStack(str);
         }
         return {{{ to64('ret') }}};
@@ -46,8 +45,7 @@ addToLibrary({
 
     function convertReturnValue(ret) {
       if (returnType === 'string') {
-        {{{ from64('ret') }}}
-        return UTF8ToString(ret);
+        return UTF8ToString({{{ from64Expr('ret') }}});
       }
 #if MEMORY64
       if (returnType === 'pointer') return Number(ret);
@@ -77,7 +75,7 @@ addToLibrary({
     // Data for a previous async operation that was in flight before us.
     var previousAsync = Asyncify.currData;
 #endif
-    var ret = func.apply(null, cArgs);
+    var ret = func(...cArgs);
     function onDone(ret) {
 #if ASYNCIFY == 1
       runtimeKeepalivePop();
@@ -143,8 +141,6 @@ addToLibrary({
       return getCFunc(ident);
     }
 #endif
-    return function() {
-      return ccall(ident, returnType, argTypes, arguments, opts);
-    }
+    return (...args) => ccall(ident, returnType, argTypes, args, opts);
   },
 });

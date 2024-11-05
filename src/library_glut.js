@@ -153,7 +153,7 @@ var LibraryGLUT = {
         case 191: return s ? 63 : 47; // forward slash
         case 219: return s ? 123 : 91; // open bracket
         case 220: return s ? 124 : 47; // back slash
-        case 221: return s ? 125 : 93; // close braket
+        case 221: return s ? 125 : 93; // close bracket
         case 222: return s ? 34 : 39; // single quote
       }
 
@@ -336,13 +336,13 @@ var LibraryGLUT = {
     // Firefox
     window.addEventListener("DOMMouseScroll", GLUT.onMouseWheel, true);
 
-    Browser.resizeListeners.push(function(width, height) {
+    Browser.resizeListeners.push((width, height) => {
       if (GLUT.reshapeFunc) {
         {{{ makeDynCall('vii', 'GLUT.reshapeFunc') }}}(width, height);
       }
     });
 
-    __ATEXIT__.push(function() {
+    __ATEXIT__.push(() => {
       if (isTouchDevice) {
         window.removeEventListener("touchmove", GLUT.touchHandler, true);
         window.removeEventListener("touchstart", GLUT.touchHandler, true);
@@ -573,7 +573,7 @@ var LibraryGLUT = {
   glutDestroyWindow__proxy: 'sync',
   glutDestroyWindow__deps: ['$Browser'],
   glutDestroyWindow: (name) => {
-    Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
+    delete Module.ctx;
     return 1;
   },
 
@@ -617,14 +617,13 @@ var LibraryGLUT = {
   glutSwapBuffers: () => {},
 
   glutPostRedisplay__proxy: 'sync',
+  glutPostRedisplay__deps: ['$MainLoop'],
   glutPostRedisplay: () => {
     if (GLUT.displayFunc && !GLUT.requestedAnimationFrame) {
       GLUT.requestedAnimationFrame = true;
-      Browser.requestAnimationFrame(function() {
+      MainLoop.requestAnimationFrame(() => {
         GLUT.requestedAnimationFrame = false;
-        Browser.mainLoop.runIter(function() {
-          {{{ makeDynCall('v', 'GLUT.displayFunc') }}}();
-        });
+        MainLoop.runIter(() => {{{ makeDynCall('v', 'GLUT.displayFunc') }}}());
       });
     }
   },

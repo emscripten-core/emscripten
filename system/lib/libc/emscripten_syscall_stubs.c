@@ -4,7 +4,7 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  *
- * Unimplemented/dummy syscall implemenations. These fall into 3 catagories.
+ * Unimplemented/dummy syscall implementations. These fall into 3 catagories.
  *
  * 1. Fake it, use dummy/placeholder values and return success.
  * 2. Fake it, as above but warn at runtime if called.
@@ -28,7 +28,7 @@ static int g_pid = 42;
 static int g_pgid = 42;
 static int g_ppid = 1;
 static int g_sid = 42;
-static mode_t g_umask = S_IRWXU | S_IRWXG | S_IRWXO;
+static mode_t g_umask = S_IWGRP | S_IWOTH;
 
 #ifdef NDEBUG
 #define REPORT(name)
@@ -38,7 +38,7 @@ static mode_t g_umask = S_IRWXU | S_IRWXG | S_IRWXO;
 #endif
 
 #define UNIMPLEMENTED(name, args) \
-  int __syscall_##name args { \
+  weak int __syscall_##name args { \
     REPORT(name); \
     return -ENOSYS; \
   }

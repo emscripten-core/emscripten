@@ -84,6 +84,7 @@ var LibraryGLFW = {
     },
 
   $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
+    '$MainLoop',
     '$stringToNewUTF8',
     'emscripten_set_window_title',
 #if FILESYSTEM
@@ -725,13 +726,13 @@ var LibraryGLFW = {
 
     joys: {}, // glfw joystick data
     lastGamepadState: [],
-    lastGamepadStateFrame: null, // The integer value of Browser.mainLoop.currentFrameNumber of when the last gamepad state was produced.
+    lastGamepadStateFrame: null, // The integer value of MainLoop.currentFrameNumber of when the last gamepad state was produced.
 
     refreshJoysticks: () => {
       // Produce a new Gamepad API sample if we are ticking a new game frame, or if not using emscripten_set_main_loop() at all to drive animation.
-      if (Browser.mainLoop.currentFrameNumber !== GLFW.lastGamepadStateFrame || !Browser.mainLoop.currentFrameNumber) {
+      if (MainLoop.currentFrameNumber !== GLFW.lastGamepadStateFrame || !MainLoop.currentFrameNumber) {
         GLFW.lastGamepadState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads || []);
-        GLFW.lastGamepadStateFrame = Browser.mainLoop.currentFrameNumber;
+        GLFW.lastGamepadStateFrame = MainLoop.currentFrameNumber;
 
         for (var joy = 0; joy < GLFW.lastGamepadState.length; ++joy) {
           var gamepad = GLFW.lastGamepadState[joy];
@@ -1143,7 +1144,7 @@ var LibraryGLFW = {
       for (var i = 0; i < GLFW.windows.length; i++)
         if (GLFW.windows[i] !== null) return;
 
-      Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
+      delete Module.ctx;
     },
 
     swapBuffers: (winid) => {
@@ -1184,8 +1185,8 @@ var LibraryGLFW = {
             Browser.updateResizeListeners();
           }
         }
-        if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullscreen);
-        if (Module['onFullscreen']) Module['onFullscreen'](Browser.isFullscreen);
+        Module['onFullScreen']?.(Browser.isFullscreen);
+        Module['onFullscreen']?.(Browser.isFullscreen);
       }
 
       if (!Browser.fullscreenHandlersInstalled) {

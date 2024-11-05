@@ -14,10 +14,17 @@ close(f1): 0
 close(f2): 0
 close(f3): -1
 
-DUP2 err
-f: 1
+DUP2 bad fds
+f: -1
 errno: 8
 close(f): -1
+
+DUP2 bad newfd
+f3: -1
+errno: 8
+f3: -1
+errno: 8
+close(f1): 0
 
 DUP2 pipe
 buf: abc

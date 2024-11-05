@@ -1,8 +1,0 @@
-__indirect_function_table
-__wasm_call_ctors
-dynCall_jiji
-main
-memory
-stackAlloc
-stackRestore
-stackSave

@@ -35,6 +35,7 @@ class Feature(IntEnum):
   THREADS = auto()
   GLOBALTHIS = auto()
   PROMISE_ANY = auto()
+  MEMORY64 = auto()
 
 
 default_features = {Feature.SIGN_EXT, Feature.MUTABLE_GLOBALS}
@@ -72,7 +73,6 @@ min_browser_versions = {
   },
   Feature.GLOBALTHIS: {
     'chrome': 71,
-    'edge': 79,
     'firefox': 65,
     'safari': 120100,
     'node': 120000,
@@ -82,6 +82,12 @@ min_browser_versions = {
     'firefox': 79,
     'safari': 140000,
     'node': 150000,
+  },
+  Feature.MEMORY64: {
+    'chrome': 128,
+    'firefox': 129,
+    'safari': UNSUPPORTED,
+    'node': 230000,
   },
 }
 
@@ -137,3 +143,5 @@ def apply_min_browser_versions():
     enable_feature(Feature.BULK_MEMORY, 'pthreads')
   if settings.AUDIO_WORKLET:
     enable_feature(Feature.GLOBALTHIS, 'AUDIO_WORKLET')
+  if settings.MEMORY64 == 1:
+    enable_feature(Feature.MEMORY64, 'MEMORY64')

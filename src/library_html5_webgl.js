@@ -14,38 +14,16 @@ var LibraryHtml5WebGL = {
     var len = arr.length;
     var writeLength = dstLength < len ? dstLength : len;
     var heap = heapType ? HEAPF32 : HEAP32;
+    // Works because HEAPF32 and HEAP32 have the same bytes-per-element
+    dst = {{{ getHeapOffset('dst', 'float') }}};
     for (var i = 0; i < writeLength; ++i) {
-      heap[(dst >> 2) + i] = arr[i];
+      heap[dst + i] = arr[i];
     }
     return len;
   },
 
-  // Execute in calling thread without proxying needed.
-  emscripten_webgl_init_context_attributes: (attributes) => {
-#if ASSERTIONS
-    assert(attributes);
-#endif
-    var a = attributes >> 2;
-    for (var i = 0; i < ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.__size__ }}}>>2); ++i) {
-      HEAP32[a+i] = 0;
-    }
-
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.alpha }}}>>2)] =
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.depth }}}>>2)] =
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.antialias }}}>>2)] =
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha }}}>>2)] =
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)] =
-    HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault }}}>>2)] = 1;
-
-#if PTHREADS
-    // Default context initialization state (user can override):
-    // - if main thread is creating the context, default to the context not being shared between threads - enabling sharing has performance overhead, because it forces the context to be OffscreenCanvas or OffscreenFramebuffer.
-    // - if a web worker is creating the context, default to using OffscreenCanvas if available, or proxying via Offscreen Framebuffer if not
-    if (ENVIRONMENT_IS_WORKER) {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread, 1/*EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK*/, 'i32') }}};
-#endif
-  },
-
-  $emscripten_webgl_power_preferences: "['default', 'low-power', 'high-performance']",
+  $webglPowerPreferences__internal: true,
+  $webglPowerPreferences: ['default', 'low-power', 'high-performance'],
 
 #if PTHREADS && OFFSCREEN_FRAMEBUFFER
   // In offscreen framebuffer mode, we implement a proxied version of the
@@ -67,37 +45,50 @@ var LibraryHtml5WebGL = {
   emscripten_webgl_commit_frame: 'emscripten_webgl_do_commit_frame',
 #endif
 
+#if OFFSCREENCANVAS_SUPPORT
+  emscripten_webgl_do_create_context__postset: `
+  registerPreMainLoop(() => {
+    // If the current GL context is an OffscreenCanvas, but it was initialized
+    // with implicit swap mode, perform the swap on behalf of the user.
+    if (GL.currentContext && !GL.currentContextIsProxied && !GL.currentContext.attributes.explicitSwapControl && GL.currentContext.GLctx.commit) {
+      GL.currentContext.GLctx.commit();
+    }
+  });`,
+#endif
+
   emscripten_webgl_do_create_context__deps: [
 #if OFFSCREENCANVAS_SUPPORT
+  '$registerPreMainLoop',
   'malloc',
+  'emscripten_supports_offscreencanvas',
 #endif
 #if PTHREADS && OFFSCREEN_FRAMEBUFFER
   'emscripten_webgl_create_context_proxied',
 #endif
-  '$JSEvents', '$emscripten_webgl_power_preferences', '$findEventTarget', '$findCanvasEventTarget'],
+  '$JSEvents', '$webglPowerPreferences', '$findEventTarget', '$findCanvasEventTarget'],
   // This function performs proxying manually, depending on the style of context that is to be created.
   emscripten_webgl_do_create_context: (target, attributes) => {
 #if ASSERTIONS
     assert(attributes);
 #endif
-    var a = attributes >> 2;
-    var powerPreference = HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.powerPreference }}}>>2)];
+    var attr32 = {{{ getHeapOffset('attributes', 'i32') }}};
+    var powerPreference = HEAP32[attr32 + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.powerPreference }}}>>2)];
     var contextAttributes = {
-      'alpha': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.alpha }}}>>2)],
-      'depth': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.depth }}}>>2)],
-      'stencil': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.stencil }}}>>2)],
-      'antialias': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.antialias }}}>>2)],
-      'premultipliedAlpha': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha }}}>>2)],
-      'preserveDrawingBuffer': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer }}}>>2)],
-      'powerPreference': emscripten_webgl_power_preferences[powerPreference],
-      'failIfMajorPerformanceCaveat': !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat }}}>>2)],
+      'alpha': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.alpha }}}],
+      'depth': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.depth }}}],
+      'stencil': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.stencil }}}],
+      'antialias': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.antialias }}}],
+      'premultipliedAlpha': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha }}}],
+      'preserveDrawingBuffer': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer }}}],
+      'powerPreference': webglPowerPreferences[powerPreference],
+      'failIfMajorPerformanceCaveat': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat }}}],
       // The following are not predefined WebGL context attributes in the WebGL specification, so the property names can be minified by Closure.
-      majorVersion: HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)],
-      minorVersion: HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion }}}>>2)],
-      enableExtensionsByDefault: HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault }}}>>2)],
-      explicitSwapControl: HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl }}}>>2)],
-      proxyContextToMainThread: HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread }}}>>2)],
-      renderViaOffscreenBackBuffer: HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer }}}>>2)]
+      majorVersion: HEAP32[attr32 + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)],
+      minorVersion: HEAP32[attr32 + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion }}}>>2)],
+      enableExtensionsByDefault: HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault }}}],
+      explicitSwapControl: HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl }}}],
+      proxyContextToMainThread: HEAP32[attr32 + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.proxyContextToMainThread }}}>>2)],
+      renderViaOffscreenBackBuffer: HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer }}}]
     };
 
     var canvas = findCanvasEventTarget(target);
@@ -120,9 +111,9 @@ var LibraryHtml5WebGL = {
         dbg('Performance warning: forcing renderViaOffscreenBackBuffer=true and preserveDrawingBuffer=true since proxying WebGL rendering.');
 #endif
         // We will be proxying - if OffscreenCanvas is supported, we can proxy a bit more efficiently by avoiding having to create an Offscreen FBO.
-        if (typeof OffscreenCanvas == 'undefined') {
-          {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, '1', 'i32') }}};
-          {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, '1', 'i32') }}};
+        if (!_emscripten_supports_offscreencanvas()) {
+          {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.renderViaOffscreenBackBuffer, '1', 'i8') }}};
+          {{{ makeSetValue('attributes', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, '1', 'i8') }}};
         }
         return _emscripten_webgl_create_context_proxied(target, attributes);
       }
@@ -140,12 +131,12 @@ var LibraryHtml5WebGL = {
     if (canvas.offscreenCanvas) canvas = canvas.offscreenCanvas;
 
 #if GL_DEBUG
-    if (typeof OffscreenCanvas != 'undefined' && canvas instanceof OffscreenCanvas) dbg(`emscripten_webgl_create_context: Creating an OffscreenCanvas-based WebGL context on target "${targetStr}"`);
+    if (_emscripten_supports_offscreencanvas() && canvas instanceof OffscreenCanvas) dbg(`emscripten_webgl_create_context: Creating an OffscreenCanvas-based WebGL context on target "${targetStr}"`);
     else if (typeof HTMLCanvasElement != 'undefined' && canvas instanceof HTMLCanvasElement) dbg(`emscripten_webgl_create_context: Creating an HTMLCanvasElement-based WebGL context on target "${targetStr}"`);
 #endif
 
     if (contextAttributes.explicitSwapControl) {
-      var supportsOffscreenCanvas = canvas.transferControlToOffscreen || (typeof OffscreenCanvas != 'undefined' && canvas instanceof OffscreenCanvas);
+      var supportsOffscreenCanvas = canvas.transferControlToOffscreen || (_emscripten_supports_offscreencanvas() && canvas instanceof OffscreenCanvas);
 
       if (!supportsOffscreenCanvas) {
 #if OFFSCREEN_FRAMEBUFFER
@@ -205,9 +196,10 @@ var LibraryHtml5WebGL = {
     var contextHandle = GL.createContext(canvas, contextAttributes);
     return contextHandle;
   },
+
 #if PTHREADS && OFFSCREEN_FRAMEBUFFER
   // Runs on the calling thread, proxies if needed.
-  emscripten_webgl_make_context_current_calling_thread__sig: 'ii',
+  emscripten_webgl_make_context_current_calling_thread__sig: 'ip',
   emscripten_webgl_make_context_current_calling_thread: (contextHandle) => {
     var success = GL.makeContextCurrent(contextHandle);
     if (success) GL.currentContextIsProxied = false; // If succeeded above, we will have a local GL context from this thread (worker or main).
@@ -217,6 +209,19 @@ var LibraryHtml5WebGL = {
   // In this scenario, the pthread does not hold a high-level JS object to the GL context, because it lives on the main thread, in which case we record
   // an integer pointer as a token value to represent the GL context activation from another thread. (when this function is called, the main browser thread
   // has already accepted the GL context activation for our pthread, so that side is good)
+#if GL_SUPPORT_EXPLICIT_SWAP_CONTROL
+  _emscripten_proxied_gl_context_activated_from_main_browser_thread__deps: ['$registerPreMainLoop'],
+  _emscripten_proxied_gl_context_activated_from_main_browser_thread__postjs: `
+    // If the current GL context is a proxied regular WebGL context, and was
+    // initialized with implicit swap mode on the main thread, and we are on the
+    // parent thread, perform the swap on behalf of the user.
+    registerPreMainLoop(() => {
+      if (GL.currentContext && GL.currentContextIsProxied) {
+        var explicitSwapControl = {{{ makeGetValue('GL.currentContext', 0, 'i32') }}};
+        if (!explicitSwapControl) _emscripten_webgl_commit_frame();
+      }
+    });`,
+#endif
   _emscripten_proxied_gl_context_activated_from_main_browser_thread: (contextHandle) => {
     GLctx = Module.ctx = GL.currentContext = contextHandle;
     GL.currentContextIsProxied = true;
@@ -276,7 +281,7 @@ var LibraryHtml5WebGL = {
   },
 
   emscripten_webgl_get_context_attributes__proxy: 'sync_on_webgl_context_handle_thread',
-  emscripten_webgl_get_context_attributes__deps: ['$emscripten_webgl_power_preferences'],
+  emscripten_webgl_get_context_attributes__deps: ['$webglPowerPreferences'],
   emscripten_webgl_get_context_attributes: (c, a) => {
     if (!a) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
     c = GL.contexts[c];
@@ -285,22 +290,22 @@ var LibraryHtml5WebGL = {
     if (!t) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
     t = t.getContextAttributes();
 
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.alpha, 't.alpha', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.depth, 't.depth', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.stencil, 't.stencil', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.antialias, 't.antialias', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha, 't.premultipliedAlpha', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, 't.preserveDrawingBuffer', 'i32') }}};
-    var power = t['powerPreference'] && emscripten_webgl_power_preferences.indexOf(t['powerPreference']);
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.alpha, 't.alpha', 'i8') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.depth, 't.depth', 'i8') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.stencil, 't.stencil', 'i8') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.antialias, 't.antialias', 'i8') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.premultipliedAlpha, 't.premultipliedAlpha', 'i8') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer, 't.preserveDrawingBuffer', 'i8') }}};
+    var power = t['powerPreference'] && webglPowerPreferences.indexOf(t['powerPreference']);
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.powerPreference, 'power', 'i32') }}};
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat, 't.failIfMajorPerformanceCaveat', 'i32') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat, 't.failIfMajorPerformanceCaveat', 'i8') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion, 'c.version', 'i32') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion, 0, 'i32') }}};
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 'c.attributes.enableExtensionsByDefault', 'i32') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.enableExtensionsByDefault, 'c.attributes.enableExtensionsByDefault', 'i8') }}};
 #endif
 #if GL_SUPPORT_EXPLICIT_SWAP_CONTROL
-    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl, 'c.attributes.explicitSwapControl', 'i32') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.explicitSwapControl, 'c.attributes.explicitSwapControl', 'i8') }}};
 #endif
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
@@ -332,6 +337,9 @@ var LibraryHtml5WebGL = {
     '$webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
     '$webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance',
 #endif
+    '$webgl_enable_EXT_polygon_offset_clamp',
+    '$webgl_enable_EXT_clip_control',
+    '$webgl_enable_WEBGL_polygon_mode',
     '$webgl_enable_WEBGL_multi_draw',
 #endif
   ],
@@ -360,21 +368,23 @@ var LibraryHtml5WebGL = {
 #endif
 
     if (extString == 'WEBGL_multi_draw') webgl_enable_WEBGL_multi_draw(GLctx);
+    if (extString == 'EXT_polygon_offset_clamp') webgl_enable_EXT_polygon_offset_clamp(GLctx);
+    if (extString == 'EXT_clip_control') webgl_enable_EXT_clip_control(GLctx);
+    if (extString == 'WEBGL_polygon_mode') webgl_enable_WEBGL_polygon_mode(GLctx);
 
-#else
-
-#if ASSERTIONS || GL_ASSERTIONS
+#elif ASSERTIONS || GL_ASSERTIONS
     if (['ANGLE_instanced_arrays',
          'OES_vertex_array_object',
          'WEBGL_draw_buffers',
          'WEBGL_multi_draw',
+         'EXT_polygon_offset_clamp',
+         'EXT_clip_control',
+         'WEBGL_polygon_mode',
          'WEBGL_draw_instanced_base_vertex_base_instance',
          'WEBGL_multi_draw_instanced_base_vertex_base_instance'].includes(extString)) {
       err('When building with -sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=0, function emscripten_webgl_enable_extension() cannot be used to enable extension '
                     + extString + '! Use one of the functions emscripten_webgl_enable_*() to enable it!');
     }
-#endif
-
 #endif
 
     var ext = context.GLctx.getExtension(extString);
@@ -398,7 +408,7 @@ var LibraryHtml5WebGL = {
 #endif
 
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
-    if (!target) target = Module['canvas'];
+    target ||= Module['canvas'];
 #endif
 
     var webGlEventHandlerFunc = (e = event) => {
@@ -562,7 +572,7 @@ function handleWebGLProxying(funcs) {
       funcs[i + '_main_thread'] = i + '_calling_thread';
       funcs[i + '_main_thread__proxy'] = 'sync';
       funcs[i + '_main_thread__sig'] = sig;
-      if (!funcs[i + '__deps']) funcs[i + '__deps'] = [];
+      funcs[i + '__deps'] ??= [];
       funcs[i + '__deps'].push(i + '_calling_thread');
       funcs[i + '__deps'].push(i + '_main_thread');
       delete funcs[i + '__proxy'];
@@ -576,7 +586,7 @@ function handleWebGLProxying(funcs) {
         funcBody = `${i}_before_on_calling_thread(${funcArgsString}); ` + funcBody;
       }
       funcArgs.push(funcBody);
-      funcs[i] = new (Function.prototype.bind.apply(Function, [Function].concat(funcArgs)));
+      funcs[i] = new (Function.prototype.bind.call(Function, Function, ...funcArgs));
     } else if (targetingOffscreenFramebuffer) {
       // When targeting only OFFSCREEN_FRAMEBUFFER, unconditionally proxy all GL calls to
       // main thread.

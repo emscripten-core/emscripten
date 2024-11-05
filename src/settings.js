@@ -68,7 +68,7 @@ var STACK_OVERFLOW_CHECK = 0;
 // When STACK_OVERFLOW_CHECK is enabled we also check writes to address zero.
 // This can help detect NULL pointer usage.  If you want to skip this extra
 // check (for example, if you want reads from the address zero to always return
-// zero) you can disabled this here.  This setting has no effect when
+// zero) you can disable this here.  This setting has no effect when
 // STACK_OVERFLOW_CHECK is disabled.
 var CHECK_NULL_WRITES = true;
 
@@ -154,15 +154,29 @@ var MALLOC = "dlmalloc";
 // [link]
 var ABORTING_MALLOC = true;
 
+// The initial amount of heap memory available to the program.  This is the
+// memory region available for dynamic allocations via `sbrk`, `malloc` and `new`.
+//
+// Unlike INITIAL_MEMORY, this setting allows the static and dynamic regions of
+// your programs memory to independently grow. In most cases we recommend using
+// this setting rather than `INITIAL_MEMORY`. However, this setting does not work
+// for imported memories (e.g. when dynamic linking is used).
+//
+// [link]
+var INITIAL_HEAP = 16777216;
+
 // The initial amount of memory to use. Using more memory than this will
 // cause us to expand the heap, which can be costly with typed arrays:
 // we need to copy the old heap into a new one in that case.
 // If ALLOW_MEMORY_GROWTH is set, this initial amount of memory can increase
 // later; if not, then it is the final and total amount of memory.
 //
+// By default, this value is calculated based on INITIAL_HEAP, STACK_SIZE,
+// as well the size of static data in input modules.
+//
 // (This option was formerly called TOTAL_MEMORY.)
 // [link]
-var INITIAL_MEMORY = 16777216;
+var INITIAL_MEMORY = -1;
 
 // Set the maximum size of memory in the wasm module (in bytes). This is only
 // relevant when ALLOW_MEMORY_GROWTH is set, as without growth, the size of
@@ -259,7 +273,7 @@ var ALLOW_TABLE_GROWTH = false;
 // [link]
 var GLOBAL_BASE = 1024;
 
-// Where where table slots (function addresses) are allocated.
+// Where table slots (function addresses) are allocated.
 // This must be at least 1 to reserve the zero slot for the null pointer.
 // [link]
 var TABLE_BASE = 1;
@@ -322,10 +336,9 @@ var SAFE_HEAP_LOG = false;
 
 // Allows function pointers to be cast, wraps each call of an incorrect type
 // with a runtime correction.  This adds overhead and should not be used
-// normally.  It also forces ALIASING_FUNCTION_POINTERS to 0.  Aside from making
-// calls not fail, this tries to convert values as best it can.
-// We use 64 bits (i64) to represent values, as if we wrote the sent value to
-// memory and loaded the received type from the same memory (using
+// normally.  Aside from making calls not fail, this tries to convert values as
+// best it can.  We use 64 bits (i64) to represent values, as if we wrote the
+// sent value to memory and loaded the received type from the same memory (using
 // truncs/extends/ reinterprets). This means that when types do not match the
 // emulated values may not match (this is true of native too, for that matter -
 // this is all undefined behavior). This approaches appears good enough to
@@ -337,9 +350,9 @@ var EMULATE_FUNCTION_POINTER_CASTS = false;
 // [link]
 var EXCEPTION_DEBUG = false;
 
-// If 1, build in libcxxabi's full c++ demangling code, to allow stackTrace()
-// to emit fully proper demangled c++ names
+// If 1, export `demangle` and `stackTrace` JS library functions.
 // [link]
+// [deprecated]
 var DEMANGLE_SUPPORT = false;
 
 // Print out when we enter a library call (library*.js). You can also unset
@@ -729,8 +742,7 @@ var EXCEPTION_CATCHING_ALLOWED = [];
 var DISABLE_EXCEPTION_THROWING = false;
 
 // Make the exception message printing function, 'getExceptionMessage' available
-// in the JS library for use, by adding necessary symbols to EXPORTED_FUNCTIONS
-// and DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.
+// in the JS library for use, by adding necessary symbols to EXPORTED_FUNCTIONS.
 //
 // This works with both Emscripten EH and Wasm EH. When you catch an exception
 // from JS, that gives you a user-thrown value in case of Emscripten EH, and a
@@ -766,6 +778,12 @@ var EXPORT_EXCEPTION_HANDLING_HELPERS = false;
 // [link]
 var EXCEPTION_STACK_TRACES = false;
 
+// Emit instructions for the new Wasm exception handling proposal with exnref,
+// which was adopted on Oct 2023. The implementation of the new proposal is
+// still in progress and this feature is currently experimental.
+// [link]
+var WASM_EXNREF = false;
+
 // Emscripten throws an ExitStatus exception to unwind when exit() is called.
 // Without this setting enabled this can show up as a top level unhandled
 // exception.
@@ -776,7 +794,7 @@ var EXCEPTION_STACK_TRACES = false;
 // desirable.
 //
 // [link]
-var NODEJS_CATCH_EXIT = true;
+var NODEJS_CATCH_EXIT = false;
 
 // Catch unhandled rejections in node. This only effect versions of node older
 // than 15.  Without this, old version node will print a warning, but exit
@@ -791,21 +809,16 @@ var NODEJS_CATCH_REJECTION = true;
 // Whether to support async operations in the compiled code. This makes it
 // possible to call JS functions from synchronous-looking code in C/C++.
 //
-// - Run binaryen's Asyncify pass to transform the code using asyncify. This
-//   emits a normal wasm file in the end, so it works everywhere, but it has a
-//   significant cost in terms of code size and speed.
+// - 1 (default): Run binaryen's Asyncify pass to transform the code using
+//   asyncify. This emits a normal wasm file in the end, so it works everywhere,
+//   but it has a significant cost in terms of code size and speed.
 //   See https://emscripten.org/docs/porting/asyncify.html
-// - Depend on VM support for the wasm stack switching proposal. This allows
-//   async operations to happen without the overhead of modifying the wasm.
-//   This is experimental atm while spec discussion is ongoing, see
-//   https://github.com/WebAssembly/js-promise-integration/
-//   TODO: document which of the following flags are still relevant in this
-//   mode (e.g. IGNORE_INDIRECT etc. are not needed)
+// - 2 (deprecated): Use ``-sJSPI`` instead.
 //
 // [link]
 var ASYNCIFY = 0;
 
-// Imports which can do an sync operation, in addition to the default ones that
+// Imports which can do an async operation, in addition to the default ones that
 // emscripten defines like emscripten_sleep. If you add more you will need to
 // mention them to here, or else they will not work (in ASSERTIONS builds an
 // error will be shown).
@@ -881,6 +894,12 @@ var ASYNCIFY_REMOVE = [];
 // [link]
 var ASYNCIFY_ADD = [];
 
+// If enabled, instrumentation status will be propagated from the add-list, ie.
+// their callers, and their callers' callers, and so on. If disabled then all
+// callers must be manually added to the add-list (like the only-list).
+// [link]
+var ASYNCIFY_PROPAGATE_ADD = true;
+
 // If the Asyncify only-list is provided, then *only* the functions in the list
 // will be instrumented. Like the remove-list, getting this wrong will break
 // your application.
@@ -907,11 +926,38 @@ var ASYNCIFY_LAZY_LOAD_CODE = false;
 // [link]
 var ASYNCIFY_DEBUG = 0;
 
-// Specify which of the exports will have JSPI applied to them and return a
-// promise.
-// Only supported for ASYNCIFY==2 mode.
-// [link]
+// Deprecated, use JSPI_EXPORTS instead.
+// [deprecated]
 var ASYNCIFY_EXPORTS = [];
+
+// Use VM support for the JavaScript Promise Integration proposal. This allows
+// async operations to happen without the overhead of modifying the wasm. This
+// is experimental atm while spec discussion is ongoing, see
+// https://github.com/WebAssembly/js-promise-integration/ TODO: document which
+// of the following flags are still relevant in this mode (e.g. IGNORE_INDIRECT
+// etc. are not needed)
+//
+// [link]
+var JSPI = 0;
+
+// A list of exported module functions that will be asynchronous. Each export
+// will return a ``Promise`` that will be resolved with the result. Any exports
+// that will call an asynchronous import (listed in ``JSPI_IMPORTS``) must be
+// included here.
+//
+// By default this includes ``main``.
+// [link]
+var JSPI_EXPORTS = [];
+
+
+// A list of imported module functions that will potentially do asynchronous
+// work. The imported function should return a ``Promise`` when doing
+// asynchronous work.
+//
+// Note when using ``--js-library``, the function can be marked with
+// ``<function_name>_async:: true`` in the library instead of this setting.
+// [link]
+var JSPI_IMPORTS = [];
 
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all. You should use
@@ -959,8 +1005,8 @@ var INCOMING_MODULE_JS_API = [
   'onCustomMessage', 'onExit', 'onFree', 'onFullScreen', 'onMalloc',
   'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
   'preMainLoop', 'preRun',
-  'preinitializedWebGLContext', 'memoryInitializerRequest', 'preloadPlugins',
-  'print', 'printErr', 'quit', 'setStatus', 'statusMessage', 'stderr',
+  'preinitializedWebGLContext', 'preloadPlugins',
+  'print', 'printErr', 'setStatus', 'statusMessage', 'stderr',
   'stdin', 'stdout', 'thisProgram', 'wasm', 'wasmBinary', 'websocket'
 ];
 
@@ -1017,14 +1063,16 @@ var NODERAWFS = false;
 // [link]
 var NODE_CODE_CACHING = false;
 
-// Functions that are explicitly exported. These functions are kept alive
-// through LLVM dead code elimination, and also made accessible outside of the
-// generated code even after running closure compiler (on "Module").  The
+// Symbols that are explicitly exported. These symbols are kept alive through
+// LLVM dead code elimination, and also made accessible outside of the
+// generated code even after running closure compiler (on "Module").  Native
 // symbols listed here require an ``_`` prefix.
 //
 // By default if this setting is not specified on the command line the
 // ``_main`` function will be implicitly exported.  In STANDALONE_WASM mode the
 // default export is ``__start`` (or ``__initialize`` if --no-entry is specified).
+//
+// JS Library symbols can also be added to this list (without the leading `$`).
 // [link]
 var EXPORTED_FUNCTIONS = [];
 
@@ -1049,13 +1097,16 @@ var EXPORT_KEEPALIVE = true;
 var RETAIN_COMPILER_SETTINGS = false;
 
 // JS library elements (C functions implemented in JS) that we include by
-// default. If you want to make sure something is included by the JS compiler,
+// default.  If you want to make sure something is included by the JS compiler,
 // add it here.  For example, if you do not use some ``emscripten_*`` C API call
-// from C, but you want to call it from JS, add it here (and in EXPORTED
-// FUNCTIONS with prefix "_", if you use closure compiler).  Note that the name
-// may be slightly misleading, as this is for any JS library element, and not
-// just functions. For example, you can include the Browser object by adding
-// "$Browser" to this list.
+// from C, but you want to call it from JS, add it here.
+// Note that the name may be slightly misleading, as this is for any JS
+// library element, and not just functions. For example, you can include the
+// Browser object by adding "$Browser" to this list.
+//
+// If you want to both include and export a JS library symbol, it is enough to
+// simply add it to EXPORTED_FUNCTIONS, without also adding it to
+// DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.
 // [link]
 var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [];
 
@@ -1093,6 +1144,7 @@ var SIDE_MODULE = 0;
 
 // Deprecated, list shared libraries directly on the command line instead.
 // [link]
+// [deprecated]
 var RUNTIME_LINKED_LIBS = [];
 
 // If set to 1, this is a worker library, a special kind of library that is run
@@ -1277,7 +1329,10 @@ var DETERMINISTIC = false;
 var MODULARIZE = false;
 
 // Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
-// be enabled for ES6 exports.
+// be enabled for ES6 exports and is implicitly enabled if not already set.
+//
+// This is implicitly enabled if the output suffix is set to 'mjs'.
+//
 // [link]
 var EXPORT_ES6 = false;
 
@@ -1385,7 +1440,7 @@ var WASM = 1;
 // means we don't need to legalize for JS (but this requires a new enough JS
 // VM).
 //
-// Standlone builds require a ``main`` entry point by default.  If you want to
+// Standalone builds require a ``main`` entry point by default.  If you want to
 // build a library (also known as a reactor) instead you can pass ``--no-entry``.
 // [link]
 var STANDALONE_WASM = false;
@@ -1447,6 +1502,7 @@ var EMIT_EMSCRIPTEN_LICENSE = false;
 // in order to interface with JavaScript.  For non-web/non-JS embeddings, setting
 // this to 0 may be desirable.
 // [link]
+// [deprecated]
 var LEGALIZE_JS_FFI = true;
 
 // Ports
@@ -1456,6 +1512,7 @@ var LEGALIZE_JS_FFI = true;
 // 2 is a port of the SDL C code on emscripten-ports
 // When AUTO_JS_LIBRARIES is set to 0 this defaults to 0 and SDL
 // is not linked in.
+// Alternate syntax for using the port: --use-port=sdl2
 // [compile+link]
 var USE_SDL = 0;
 
@@ -1476,54 +1533,67 @@ var USE_SDL_TTF = 1;
 var USE_SDL_NET = 1;
 
 // 1 = use icu from emscripten-ports
+// Alternate syntax: --use-port=icu
 // [compile+link]
 var USE_ICU = false;
 
 // 1 = use zlib from emscripten-ports
+// Alternate syntax: --use-port=zlib
 // [compile+link]
 var USE_ZLIB = false;
 
 // 1 = use bzip2 from emscripten-ports
+// Alternate syntax: --use-port=bzip2
 // [compile+link]
 var USE_BZIP2 = false;
 
 // 1 = use giflib from emscripten-ports
+// Alternate syntax: --use-port=giflib
 // [compile+link]
 var USE_GIFLIB = false;
 
 // 1 = use libjpeg from emscripten-ports
+// Alternate syntax: --use-port=libjpeg
 // [compile+link]
 var USE_LIBJPEG = false;
 
 // 1 = use libpng from emscripten-ports
+// Alternate syntax: --use-port=libpng
 // [compile+link]
 var USE_LIBPNG = false;
 
 // 1 = use Regal from emscripten-ports
+// Alternate syntax: --use-port=regal
 // [compile+link]
 var USE_REGAL = false;
 
 // 1 = use Boost headers from emscripten-ports
+// Alternate syntax: --use-port=boost_headers
 // [compile+link]
 var USE_BOOST_HEADERS = false;
 
 // 1 = use bullet from emscripten-ports
+// Alternate syntax: --use-port=bullet
 // [compile+link]
 var USE_BULLET = false;
 
 // 1 = use vorbis from emscripten-ports
+// Alternate syntax: --use-port=vorbis
 // [compile+link]
 var USE_VORBIS = false;
 
 // 1 = use ogg from emscripten-ports
+// Alternate syntax: --use-port=ogg
 // [compile+link]
 var USE_OGG = false;
 
 // 1 = use mpg123 from emscripten-ports
+// Alternate syntax: --use-port=mpg123
 // [compile+link]
 var USE_MPG123 = false;
 
 // 1 = use freetype from emscripten-ports
+// Alternate syntax: --use-port=freetype
 // [compile+link]
 var USE_FREETYPE = false;
 
@@ -1533,14 +1603,17 @@ var USE_FREETYPE = false;
 var USE_SDL_MIXER = 1;
 
 // 1 = use harfbuzz from harfbuzz upstream
+// Alternate syntax: --use-port=harfbuzz
 // [compile+link]
 var USE_HARFBUZZ = false;
 
 // 3 = use cocos2d v3 from emscripten-ports
+// Alternate syntax: --use-port=cocos2d
 // [compile+link]
 var USE_COCOS2D = 0;
 
 // 1 = use libmodplug from emscripten-ports
+// Alternate syntax: --use-port=libmodplug
 // [compile+link]
 var USE_MODPLUG = false;
 
@@ -1554,6 +1627,7 @@ var SDL2_IMAGE_FORMATS = [];
 var SDL2_MIXER_FORMATS = ["ogg"];
 
 // 1 = use sqlite3 from emscripten-ports
+// Alternate syntax: --use-port=sqlite3
 // [compile+link]
 var USE_SQLITE3 = false;
 
@@ -1561,9 +1635,13 @@ var USE_SQLITE3 = false;
 // [compile+link] - affects user code at compile and system libraries at link.
 var SHARED_MEMORY = false;
 
-// If true, enables support for Wasm Workers. Wasm Workers enable applications
+// If 1, enables support for Wasm Workers. Wasm Workers enable applications
 // to create threads using a lightweight web-specific API that builds on top
-// of Wasm SharedArrayBuffer + Atomics API.
+// of Wasm SharedArrayBuffer + Atomics API. When enabled, a new build output
+// file a.ww.js will be generated to bootstrap the Wasm Worker JS contexts.
+// If 2, enables support for Wasm Workers, but without using a separate a.ww.js
+// file on the side. This can simplify deployment of builds, but will have a
+// downside that the generated build will no longer be csp-eval compliant.
 // [compile+link] - affects user code at compile and system libraries at link.
 var WASM_WORKERS = 0;
 
@@ -1789,7 +1867,7 @@ var SINGLE_FILE = false;
 var AUTO_JS_LIBRARIES = true;
 
 // Like AUTO_JS_LIBRARIES but for the native libraries such as libgl, libal
-// and libhtml5.   If this is disabled it is necessary to explcitly add
+// and libhtml5.   If this is disabled it is necessary to explicitly add
 // e.g. -lhtml5 and also to first build the library using ``embuilder``.
 // [link]
 var AUTO_NATIVE_LIBRARIES = true;
@@ -1820,6 +1898,8 @@ var MIN_SAFARI_VERSION = 140100;
 
 // Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
 // drop support for Chrome 57 and older.
+// This setting also applies to modern Chromium-based Edge, which shares version
+// numbers with Chrome.
 // Chrome 85 was released on 2020-08-25.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 // Minimum supported value is 32, which was released on 2014-01-04.
@@ -1911,11 +1991,10 @@ var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = true;
 // transition or pointer lock require that the request originates from within
 // an user initiated event, such as mouse click or keyboard press. Refactoring
 // an application to follow this kind of program structure can be difficult, so
-// HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=1 flag allows transparent
-// emulation of this by deferring synchronous fullscreen mode and pointer lock
-// requests until a suitable event callback is generated. Set this to 0
-// to disable support for deferring to save code space if your application does
-// not need support for deferred calls.
+// HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS allows transparent emulation
+// of this by deferring such requests until a suitable event callback is
+// generated. Set this to 0 to disable support for deferring to on save code
+// size if your application does not need support for deferred calls.
 // [link]
 var HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS = true;
 
@@ -1940,7 +2019,7 @@ var MAYBE_WASM2JS = false;
 // calculated from INITIAL_MEMORY and MAXIMUM_MEMORY. Will be removed in a
 // future release.
 // [link]
-var ASAN_SHADOW_SIZE = -1
+var ASAN_SHADOW_SIZE = -1;
 
 // Whether we should use the offset converter.  This is needed for older
 // versions of v8 (<7.7) that does not give the hex module offset into wasm
@@ -1983,7 +2062,7 @@ var SEPARATE_DWARF_URL = '';
 // changes to the wasm after link. This can be useful in testing, for example.
 // Some example of features that require post-link wasm changes are:
 // - Lowering i64 to i32 pairs at the JS boundary (See WASM_BIGINT)
-// - Lowering sign-extnesion operation when targeting older browsers.
+// - Lowering sign-extension operation when targeting older browsers.
 var ERROR_ON_WASM_CHANGES_AFTER_LINK = false;
 
 // Abort on unhandled excptions that occur when calling exported WebAssembly
@@ -2005,7 +2084,7 @@ var ABORT_ON_WASM_EXCEPTIONS = false;
 
 // Build binaries that use as many WASI APIs as possible, and include additional
 // JS support libraries for those APIs.  This allows emscripten to produce binaries
-// are more WASI compilant and also allows it to process and execute WASI
+// are more WASI compliant and also allows it to process and execute WASI
 // binaries built with other SDKs (e.g.  wasi-sdk).
 // This setting is experimental and subject to change or removal.
 // Implies STANDALONE_WASM.
@@ -2095,10 +2174,6 @@ var SIGNATURE_CONVERSIONS = [];
 // Internal (testing only): Disables the blitOffscreenFramebuffer VAO path.
 // [link]
 var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = false;
-
-// Internal (testing only): Forces memory growing to fail.
-// [link]
-var TEST_MEMORY_GROWTH_FAILS = false;
 
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]

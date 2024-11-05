@@ -1,0 +1,5 @@
+b (memory)
+c (__wasm_call_ctors)
+d (__main_argc_argv)
+e (__indirect_function_table)
+f (_emscripten_stack_alloc)

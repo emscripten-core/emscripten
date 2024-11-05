@@ -11,7 +11,7 @@ var SyscallsLibrary = {
                    '$FS',
 #endif
 #if SYSCALL_DEBUG
-                   '$ERRNO_MESSAGES'
+                   '$strError',
 #endif
   ],
   $SYSCALLS: {
@@ -42,15 +42,7 @@ var SyscallsLibrary = {
     },
 
     doStat(func, path, buf) {
-      try {
-        var stat = func(path);
-      } catch (e) {
-        if (e && e.node && PATH.normalize(path) !== PATH.normalize(FS.getPath(e.node))) {
-          // an error occurred while trying to look up the path; we should just report ENOTDIR
-          return -{{{ cDefs.ENOTDIR }}};
-        }
-        throw e;
-      }
+      var stat = func(path);
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_nlink, 'stat.nlink', SIZE_TYPE) }}};
@@ -64,11 +56,11 @@ var SyscallsLibrary = {
       var mtime = stat.mtime.getTime();
       var ctime = stat.ctime.getTime();
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, 'Math.floor(atime / 1000)', 'i64') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '(atime % 1000) * 1000', SIZE_TYPE) }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '(atime % 1000) * 1000 * 1000', SIZE_TYPE) }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, 'Math.floor(mtime / 1000)', 'i64') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '(mtime % 1000) * 1000', SIZE_TYPE) }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '(mtime % 1000) * 1000 * 1000', SIZE_TYPE) }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, 'Math.floor(ctime / 1000)', 'i64') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '(ctime % 1000) * 1000', SIZE_TYPE) }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '(ctime % 1000) * 1000 * 1000', SIZE_TYPE) }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i64') }}};
       return 0;
     },
@@ -83,49 +75,6 @@ var SyscallsLibrary = {
       var buffer = HEAPU8.slice(addr, addr + len);
       FS.msync(stream, buffer, offset, len, flags);
     },
-#endif
-
-    // arguments handling
-
-    varargs: undefined,
-
-    get() {
-#if ASSERTIONS
-      assert(SYSCALLS.varargs != undefined);
-#endif
-      // the `+` prepended here is necessary to convince the JSCompiler that varargs is indeed a number.
-      var ret = {{{ makeGetValue('+SYSCALLS.varargs', 0, 'i32') }}};
-      SYSCALLS.varargs += 4;
-#if SYSCALL_DEBUG
-      dbg(`    (raw: "${ret}")`);
-#endif
-      return ret;
-    },
-
-#if MEMORY64
-    getp() {
-#if ASSERTIONS
-      assert(SYSCALLS.varargs != undefined);
-#endif
-      var ret = {{{ makeGetValue('SYSCALLS.varargs', 0, '*') }}};
-      SYSCALLS.varargs += {{{ POINTER_SIZE }}};
-#if SYSCALL_DEBUG
-      dbg(`    (raw: "${ret}")`);
-#endif
-      return ret;
-    },
-#else
-    getp() { return SYSCALLS.get() },
-#endif
-
-    getStr(ptr) {
-      var ret = UTF8ToString(ptr);
-#if SYSCALL_DEBUG
-      dbg(`    (str: "${ret}")`);
-#endif
-      return ret;
-    },
-#if SYSCALLS_REQUIRE_FILESYSTEM
     // Just like `FS.getStream` but will throw EBADF if stream is undefined.
     getStreamFromFD(fd) {
       var stream = FS.getStreamChecked(fd);
@@ -135,7 +84,48 @@ var SyscallsLibrary = {
       return stream;
     },
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
+
+    varargs: undefined,
+
+    getStr(ptr) {
+      var ret = UTF8ToString(ptr);
+#if SYSCALL_DEBUG
+      dbg(`    (str: "${ret}")`);
+#endif
+      return ret;
+    },
   },
+
+  $syscallGetVarargI__internal: true,
+  $syscallGetVarargI: () => {
+#if ASSERTIONS
+    assert(SYSCALLS.varargs != undefined);
+#endif
+    // the `+` prepended here is necessary to convince the JSCompiler that varargs is indeed a number.
+    var ret = {{{ makeGetValue('+SYSCALLS.varargs', 0, 'i32') }}};
+    SYSCALLS.varargs += 4;
+#if SYSCALL_DEBUG
+    dbg(`    (raw: "${ret}")`);
+#endif
+    return ret;
+  },
+
+  $syscallGetVarargP__internal: true,
+#if MEMORY64
+  $syscallGetVarargP: () => {
+#if ASSERTIONS
+    assert(SYSCALLS.varargs != undefined);
+#endif
+    var ret = {{{ makeGetValue('SYSCALLS.varargs', 0, '*') }}};
+    SYSCALLS.varargs += {{{ POINTER_SIZE }}};
+#if SYSCALL_DEBUG
+    dbg(`    (raw: "${ret}")`);
+#endif
+    return ret;
+  },
+#else
+  $syscallGetVarargP: '$syscallGetVarargI',
+#endif
 
   _mmap_js__i53abi: true,
   _mmap_js__deps: ['$SYSCALLS',
@@ -165,20 +155,12 @@ var SyscallsLibrary = {
   },
 
   _munmap_js__i53abi: true,
-  _munmap_js__deps: ['$SYSCALLS',
-#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-    '$FS',
-#endif
-  ],
   _munmap_js: (addr, len, prot, flags, fd, offset) => {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
     var stream = SYSCALLS.getStreamFromFD(fd);
     if (prot & {{{ cDefs.PROT_WRITE }}}) {
       SYSCALLS.doMsync(addr, stream, len, flags, offset);
     }
-    FS.munmap(stream);
-    // implicitly return 0
 #endif
   },
 
@@ -199,7 +181,7 @@ var SyscallsLibrary = {
   },
   __syscall_dup: (fd) => {
     var old = SYSCALLS.getStreamFromFD(fd);
-    return FS.createStream(old).fd;
+    return FS.dupStream(old).fd;
   },
   __syscall_pipe__deps: ['$PIPEFS'],
   __syscall_pipe: (fdPtr) => {
@@ -214,6 +196,10 @@ var SyscallsLibrary = {
 
     return 0;
   },
+
+#if SYSCALLS_REQUIRE_FILESYSTEM
+  __syscall_ioctl__deps: ['$syscallGetVarargP'],
+#endif
   __syscall_ioctl: (fd, op, varargs) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
@@ -234,7 +220,7 @@ var SyscallsLibrary = {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
         if (stream.tty.ops.ioctl_tcgets) {
           var termios = stream.tty.ops.ioctl_tcgets(stream);
-          var argp = SYSCALLS.getp();
+          var argp = syscallGetVarargP();
           {{{ makeSetValue('argp', C_STRUCTS.termios.c_iflag, 'termios.c_iflag || 0', 'i32') }}};
           {{{ makeSetValue('argp', C_STRUCTS.termios.c_oflag, 'termios.c_oflag || 0', 'i32') }}};
           {{{ makeSetValue('argp', C_STRUCTS.termios.c_cflag, 'termios.c_cflag || 0', 'i32') }}};
@@ -260,7 +246,7 @@ var SyscallsLibrary = {
       case {{{ cDefs.TCSETSF }}}: {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
         if (stream.tty.ops.ioctl_tcsets) {
-          var argp = SYSCALLS.getp();
+          var argp = syscallGetVarargP();
           var c_iflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_iflag, 'i32') }}};
           var c_oflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_oflag, 'i32') }}};
           var c_cflag = {{{ makeGetValue('argp', C_STRUCTS.termios.c_cflag, 'i32') }}};
@@ -275,7 +261,7 @@ var SyscallsLibrary = {
       }
       case {{{ cDefs.TIOCGPGRP }}}: {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
-        var argp = SYSCALLS.getp();
+        var argp = syscallGetVarargP();
         {{{ makeSetValue('argp', 0, 0, 'i32') }}};
         return 0;
       }
@@ -284,7 +270,7 @@ var SyscallsLibrary = {
         return -{{{ cDefs.EINVAL }}}; // not supported
       }
       case {{{ cDefs.FIONREAD }}}: {
-        var argp = SYSCALLS.getp();
+        var argp = syscallGetVarargP();
         return FS.ioctl(stream, op, argp);
       }
       case {{{ cDefs.TIOCGWINSZ }}}: {
@@ -293,7 +279,7 @@ var SyscallsLibrary = {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
         if (stream.tty.ops.ioctl_tiocgwinsz) {
           var winsize = stream.tty.ops.ioctl_tiocgwinsz(stream.tty);
-          var argp = SYSCALLS.getp();
+          var argp = syscallGetVarargP();
           {{{ makeSetValue('argp', 0, 'winsize[0]', 'i16') }}};
           {{{ makeSetValue('argp', 2, 'winsize[1]', 'i16') }}};
         }
@@ -338,11 +324,8 @@ var SyscallsLibrary = {
 #endif
     return socket;
   },
-  /** @param {boolean=} allowNull */
   $getSocketAddress__deps: ['$readSockaddr', '$FS', '$DNS'],
-  $getSocketAddress__docs: '/** @param {boolean=} allowNull */',
-  $getSocketAddress: (addrp, addrlen, allowNull) => {
-    if (allowNull && addrp === 0) return null;
+  $getSocketAddress: (addrp, addrlen) => {
     var info = readSockaddr(addrp, addrlen);
     if (info.errno) throw new FS.ErrnoError(info.errno);
     info.addr = DNS.lookup_addr(info.addr) || info.addr;
@@ -435,11 +418,11 @@ var SyscallsLibrary = {
   __syscall_sendto__deps: ['$getSocketFromFD', '$getSocketAddress'],
   __syscall_sendto: (fd, message, length, flags, addr, addr_len) => {
     var sock = getSocketFromFD(fd);
-    var dest = getSocketAddress(addr, addr_len, true);
-    if (!dest) {
+    if (!addr) {
       // send, no address provided
       return FS.write(sock.stream, HEAP8, message, length);
     }
+    var dest = getSocketAddress(addr, addr_len);
     // sendto an address
     return sock.sock_ops.sendmsg(sock, HEAP8, message, length, dest.addr, dest.port);
   },
@@ -458,7 +441,7 @@ var SyscallsLibrary = {
     }
     return -{{{ cDefs.ENOPROTOOPT }}}; // The option is unknown at the level indicated.
   },
-  __syscall_sendmsg__deps: ['$getSocketFromFD', '$readSockaddr', '$DNS'],
+  __syscall_sendmsg__deps: ['$getSocketFromFD', '$getSocketAddress', '$DNS'],
   __syscall_sendmsg: (fd, message, flags, d1, d2, d3) => {
     var sock = getSocketFromFD(fd);
     var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
@@ -468,10 +451,9 @@ var SyscallsLibrary = {
     var name = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_name, '*') }}};
     var namelen = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_namelen, 'i32') }}};
     if (name) {
-      var info = readSockaddr(name, namelen);
-      if (info.errno) return -info.errno;
+      var info = getSocketAddress(name, namelen);
       port = info.port;
-      addr = DNS.lookup_addr(info.addr) || info.addr;
+      addr = info.addr;
     }
     // concatenate scatter-gather arrays into one message buffer
     var total = 0;
@@ -586,9 +568,7 @@ var SyscallsLibrary = {
                   (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0) |
                   (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
 
-    var check = function(fd, low, high, val) {
-      return (fd < 32 ? (low & val) : (high & val));
-    };
+    var check = (fd, low, high, val) => fd < 32 ? (low & val) : (high & val);
 
     for (var fd = 0; fd < nfds; fd++) {
       var mask = 1 << (fd % 32);
@@ -758,6 +738,9 @@ var SyscallsLibrary = {
     FS.llseek(stream, idx * struct_size, {{{ cDefs.SEEK_SET }}});
     return pos;
   },
+#if SYSCALLS_REQUIRE_FILESYSTEM
+  __syscall_fcntl64__deps: ['$syscallGetVarargP', '$syscallGetVarargI'],
+#endif
   __syscall_fcntl64: (fd, cmd, varargs) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
@@ -768,7 +751,7 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     switch (cmd) {
       case {{{ cDefs.F_DUPFD }}}: {
-        var arg = SYSCALLS.get();
+        var arg = syscallGetVarargI();
         if (arg < 0) {
           return -{{{ cDefs.EINVAL }}};
         }
@@ -776,7 +759,7 @@ var SyscallsLibrary = {
           arg++;
         }
         var newStream;
-        newStream = FS.createStream(stream, arg);
+        newStream = FS.dupStream(stream, arg);
         return newStream.fd;
       }
       case {{{ cDefs.F_GETFD }}}:
@@ -785,12 +768,12 @@ var SyscallsLibrary = {
       case {{{ cDefs.F_GETFL }}}:
         return stream.flags;
       case {{{ cDefs.F_SETFL }}}: {
-        var arg = SYSCALLS.get();
+        var arg = syscallGetVarargI();
         stream.flags |= arg;
         return 0;
       }
       case {{{ cDefs.F_GETLK }}}: {
-        var arg = SYSCALLS.getp();
+        var arg = syscallGetVarargP();
         var offset = {{{ C_STRUCTS.flock.l_type }}};
         // We're always unlocked.
         {{{ makeSetValue('arg', 'offset', cDefs.F_UNLCK, 'i16') }}};
@@ -841,10 +824,11 @@ var SyscallsLibrary = {
   __syscall_fadvise64: (fd, offset, len, advice) => {
     return 0; // your advice is important to us (but we can't use it)
   },
+  __syscall_openat__deps: ['$syscallGetVarargI'],
   __syscall_openat: (dirfd, path, flags, varargs) => {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    var mode = varargs ? SYSCALLS.get() : 0;
+    var mode = varargs ? syscallGetVarargI() : 0;
     return FS.open(path, flags, mode).fd;
   },
   __syscall_mkdirat: (dirfd, path, mode) => {
@@ -947,13 +931,11 @@ var SyscallsLibrary = {
     HEAP8[buf+len] = endChar;
     return len;
   },
-  __syscall_fchmodat: (dirfd, path, mode, varargs) => {
-#if SYSCALL_DEBUG
-    dbg('warning: untested syscall');
-#endif
+  __syscall_fchmodat2: (dirfd, path, mode, flags) => {
+    var nofollow = flags & {{{ cDefs.AT_SYMLINK_NOFOLLOW }}};
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    FS.chmod(path, mode);
+    FS.chmod(path, mode, nofollow);
     return 0;
   },
   __syscall_faccessat: (dirfd, path, amode, flags) => {
@@ -962,7 +944,7 @@ var SyscallsLibrary = {
 #endif
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
-    assert(flags === 0);
+    assert(flags === 0 || flags == {{{ cDefs.AT_EACCESS }}});
 #endif
     path = SYSCALLS.calculateAt(dirfd, path);
     if (amode & ~{{{ cDefs.S_IRWXO }}}) {
@@ -990,19 +972,37 @@ var SyscallsLibrary = {
     assert(flags === 0);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path, true);
+    var now = Date.now(), atime, mtime;
     if (!times) {
-      var atime = Date.now();
-      var mtime = atime;
+      atime = now;
+      mtime = now;
     } else {
       var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i53') }}};
       var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-      atime = (seconds*1000) + (nanoseconds/(1000*1000));
+      if (nanoseconds == {{{ cDefs.UTIME_NOW }}}) {
+        atime = now;
+      } else if (nanoseconds == {{{ cDefs.UTIME_OMIT }}}) {
+        atime = -1;
+      } else {
+        atime = (seconds*1000) + (nanoseconds/(1000*1000));
+      }
       times += {{{ C_STRUCTS.timespec.__size__ }}};
       seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i53') }}};
       nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-      mtime = (seconds*1000) + (nanoseconds/(1000*1000));
+      if (nanoseconds == {{{ cDefs.UTIME_NOW }}}) {
+        mtime = now;
+      } else if (nanoseconds == {{{ cDefs.UTIME_OMIT }}}) {
+        mtime = -1;
+      } else {
+        mtime = (seconds*1000) + (nanoseconds/(1000*1000));
+      }
     }
-    FS.utime(path, atime, mtime);
+    // -1 here means UTIME_OMIT was passed.  FS.utime tables the max of these
+    // two values and sets the timestamp to that single value.  If both were
+    // set to UTIME_OMIT then we can skip the call completely.
+    if (mtime != -1 || atime != -1) {
+      FS.utime(path, atime, mtime);
+    }
     return 0;
   },
   __syscall_fallocate__i53abi: true,
@@ -1021,9 +1021,11 @@ var SyscallsLibrary = {
     assert(!flags);
 #endif
     if (old.fd === newfd) return -{{{ cDefs.EINVAL }}};
+    // Check newfd is within range of valid open file descriptors.
+    if (newfd < 0 || newfd >= FS.MAX_OPEN_FDS) return -{{{ cDefs.EBADF }}};
     var existing = FS.getStream(newfd);
     if (existing) FS.close(existing);
-    return FS.createStream(old, newfd).fd;
+    return FS.dupStream(old, newfd).fd;
   },
 };
 

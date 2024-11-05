@@ -8,17 +8,25 @@ import hashlib
 import os
 import shutil
 import glob
+import importlib.util
+import sys
+import subprocess
 from typing import Set
+from urllib.request import urlopen
+
 from tools import cache
 from tools import config
 from tools import shared
 from tools import system_libs
 from tools import utils
 from tools.settings import settings
+from tools.toolchain_profiler import ToolchainProfiler
 
 ports = []
 
 ports_by_name = {}
+
+ports_needed = set()
 
 # Variant builds that we want to support for certain ports
 # {variant_name: (port_name, extra_settings)}
@@ -29,38 +37,74 @@ ports_dir = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger('ports')
 
 
+def init_port(name, port):
+  ports.append(port)
+  port.is_contrib = name.startswith('contrib.')
+  port.name = name
+  ports_by_name[port.name] = port
+  if not hasattr(port, 'needed'):
+    port.needed = lambda s: name in ports_needed
+  else:
+    needed = port.needed
+    port.needed = lambda s: needed(s) or name in ports_needed
+  if not hasattr(port, 'process_dependencies'):
+    port.process_dependencies = lambda x: 0
+  if not hasattr(port, 'linker_setup'):
+    port.linker_setup = lambda x, y: 0
+  if not hasattr(port, 'deps'):
+    port.deps = []
+  if not hasattr(port, 'process_args'):
+    port.process_args = lambda x: []
+  if not hasattr(port, 'variants'):
+    # port variants (default: no variants)
+    port.variants = {}
+  if not hasattr(port, 'show'):
+    port.show = lambda: f'{port.name} (--use-port={port.name}; {port.LICENSE})'
+
+  for variant, extra_settings in port.variants.items():
+    if variant in port_variants:
+      utils.exit_with_error('duplicate port variant: `%s`' % variant)
+    port_variants[variant] = (port.name, extra_settings)
+
+  validate_port(port)
+
+
+def load_port(path, name=None):
+  if not name:
+    name = shared.unsuffixed_basename(path)
+  if name in ports_by_name:
+    utils.exit_with_error(f'port path [`{path}`] is invalid: duplicate port name `{name}`')
+  module_name = f'tools.ports.{name}'
+  spec = importlib.util.spec_from_file_location(module_name, path)
+  port = importlib.util.module_from_spec(spec)
+  spec.loader.exec_module(port)
+  init_port(name, port)
+  return name
+
+
+def validate_port(port):
+  expected_attrs = ['get', 'clear', 'show']
+  if port.is_contrib:
+    expected_attrs += ['URL', 'DESCRIPTION', 'LICENSE']
+  if hasattr(port, 'handle_options'):
+    expected_attrs += ['OPTIONS']
+  for a in expected_attrs:
+    assert hasattr(port, a), 'port %s is missing %s' % (port, a)
+
+
+@ToolchainProfiler.profile()
 def read_ports():
-  expected_attrs = ['get', 'clear', 'show', 'needed']
   for filename in os.listdir(ports_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
-    filename = os.path.splitext(filename)[0]
-    port = __import__(filename, globals(), level=1)
-    ports.append(port)
-    port.name = filename
-    ports_by_name[port.name] = port
-    for a in expected_attrs:
-      assert hasattr(port, a), 'port %s is missing %s' % (port, a)
-    if not hasattr(port, 'process_dependencies'):
-      port.process_dependencies = lambda x: 0
-    if not hasattr(port, 'linker_setup'):
-      port.linker_setup = lambda x, y: 0
-    if not hasattr(port, 'deps'):
-      port.deps = []
-    if not hasattr(port, 'process_args'):
-      port.process_args = lambda x: []
-    if not hasattr(port, 'variants'):
-      # port variants (default: no variants)
-      port.variants = {}
+    load_port(os.path.join(ports_dir, filename))
 
-    for variant, extra_settings in port.variants.items():
-      if variant in port_variants:
-        utils.exit_with_error('duplicate port variant: %s' % variant)
-      port_variants[variant] = (port.name, extra_settings)
-
-  for dep in port.deps:
-    if dep not in ports_by_name:
-      utils.exit_with_error('unknown dependency in port: %s' % dep)
+  contrib_dir = os.path.join(ports_dir, 'contrib')
+  for filename in os.listdir(contrib_dir):
+    if not filename.endswith('.py') or filename == '__init__.py':
+      continue
+    name = 'contrib.' + shared.unsuffixed(filename)
+    load_port(os.path.join(contrib_dir, filename), name)
 
 
 def get_all_files_under(dirname):
@@ -109,12 +153,12 @@ class Ports:
 
   @staticmethod
   def install_header_dir(src_dir, target=None):
+    """Like install_headers but recusively copied all files in a directory"""
     if not target:
       target = os.path.basename(src_dir)
     dest = Ports.get_include_dir(target)
-    utils.delete_dir(dest)
     logger.debug(f'installing headers: {dest}')
-    shutil.copytree(src_dir, dest)
+    shutil.copytree(src_dir, dest, dirs_exist_ok=True, copy_function=maybe_copy)
 
   @staticmethod
   def install_headers(src_dir, pattern='*.h', target=None):
@@ -177,8 +221,8 @@ class Ports:
     return output_path
 
   @staticmethod
-  def get_dir():
-    dirname = config.PORTS
+  def get_dir(*parts):
+    dirname = os.path.join(config.PORTS, *parts)
     shared.safe_ensure_dirs(dirname)
     return dirname
 
@@ -196,7 +240,7 @@ class Ports:
   @staticmethod
   def fetch_project(name, url, sha512hash=None):
     # To compute the sha512 hash, run `curl URL | sha512sum`.
-    fullname = os.path.join(Ports.get_dir(), name)
+    fullname = Ports.get_dir(name)
 
     if name not in Ports.name_cache: # only mention each port once in log
       logger.debug(f'including port: {name}')
@@ -254,12 +298,15 @@ class Ports:
     def retrieve():
       # retrieve from remote server
       logger.info(f'retrieving port: {name} from {url}')
-      try:
-        import requests
-        response = requests.get(url)
-        data = response.content
-      except ImportError:
-        from urllib.request import urlopen
+
+      if utils.MACOS:
+        # Use `curl` over `urllib` on macOS to avoid issues with
+        # certificate verification.
+        # https://stackoverflow.com/questions/40684543/how-to-make-python-use-ca-certificates-from-mac-os-truststore
+        # Unlike on Windows or Linux, curl is guaranteed to always be
+        # available on macOS.
+        data = subprocess.check_output(['curl', '-sSL', url])
+      else:
         f = urlopen(url)
         data = f.read()
 
@@ -322,6 +369,37 @@ class Ports:
     utils.write_file(filename, contents)
 
 
+class OrderedSet:
+  """Partial implementation of OrderedSet.  Just enough for what we need here."""
+  def __init__(self, items):
+    self.dict = dict()
+    for i in items:
+      self.dict[i] = True
+
+  def __repr__(self):
+    return f"OrderedSet({list(self.dict.keys())})"
+
+  def __len__(self):
+    return len(self.dict.keys())
+
+  def copy(self):
+    return OrderedSet(self.dict.keys())
+
+  def __iter__(self):
+    return iter(self.dict.keys())
+
+  def pop(self, index=-1):
+    key = list(self.dict.keys())[index]
+    self.dict.pop(key)
+    return key
+
+  def add(self, item):
+    self.dict[item] = True
+
+  def remove(self, item):
+    del self.dict[item]
+
+
 def dependency_order(port_list):
   # Perform topological sort of ports according to the dependency DAG
   port_map = {p.name: p for p in port_list}
@@ -329,10 +407,11 @@ def dependency_order(port_list):
   # Perform depth first search of dependecy graph adding nodes to
   # the stack only after all children have been explored.
   stack = []
-  unsorted = set(port_list)
+  unsorted = OrderedSet(port_list)
 
   def dfs(node):
     for dep in node.deps:
+      dep, _ = split_port_options(dep)
       child = port_map[dep]
       if child in unsorted:
         unsorted.remove(child)
@@ -349,6 +428,9 @@ def resolve_dependencies(port_set, settings):
   def add_deps(node):
     node.process_dependencies(settings)
     for d in node.deps:
+      d, _ = split_port_options(d)
+      if d not in ports_by_name:
+        utils.exit_with_error(f'unknown dependency `{d}` for port `{node.name}`')
       dep = ports_by_name[d]
       if dep not in port_set:
         port_set.add(dep)
@@ -358,16 +440,97 @@ def resolve_dependencies(port_set, settings):
     add_deps(port)
 
 
+def handle_use_port_error(arg, message):
+  utils.exit_with_error(f'error with `--use-port={arg}` | {message}')
+
+
+def show_port_help_and_exit(port):
+  print(port.show())
+  if hasattr(port, 'DESCRIPTION'):
+    print(port.DESCRIPTION)
+  if hasattr(port, 'OPTIONS'):
+    print("Options:")
+    for option, desc in port.OPTIONS.items():
+      print(f'* {option}: {desc}')
+  else:
+    print("No options.")
+  if hasattr(port, 'URL'):
+    print(f'More info: {port.URL}')
+  sys.exit(0)
+
+
+# extract dict and delegate to port.handle_options for handling (format is 'option1=value1:option2=value2')
+def handle_port_options(name, options, error_handler):
+  port = ports_by_name[name]
+  if options == 'help':
+    show_port_help_and_exit(port)
+  if not hasattr(port, 'handle_options'):
+    error_handler(f'no options available for port `{name}`')
+  else:
+    options_dict = {}
+    for name_value in options.replace('::', '\0').split(':'):
+      name_value = name_value.replace('\0', ':')
+      nv = name_value.split('=', 1)
+      if len(nv) != 2:
+        error_handler(f'`{name_value}` is missing a value')
+      if nv[0] not in port.OPTIONS:
+        error_handler(f'`{nv[0]}` is not supported; available options are {port.OPTIONS}')
+      if nv[0] in options_dict:
+        error_handler(f'duplicate option `{nv[0]}`')
+      options_dict[nv[0]] = nv[1]
+    port.handle_options(options_dict, error_handler)
+
+
+# handle port dependencies (ex: deps=['sdl2_image:formats=jpg'])
+def handle_port_deps(name, error_handler):
+  port = ports_by_name[name]
+  for dep in port.deps:
+    dep_name, dep_options = split_port_options(dep)
+    if dep_name not in ports_by_name:
+      error_handler(f'unknown dependency `{dep_name}`')
+    if dep_options:
+      handle_port_options(dep_name, dep_options, error_handler)
+    handle_port_deps(dep_name, error_handler)
+
+
+def split_port_options(arg):
+  # Ignore ':' in first or second char of string since we could be dealing with a windows drive separator
+  pos = arg.find(':', 2)
+  if pos != -1:
+    return arg[:pos], arg[pos + 1:]
+  else:
+    return arg, None
+
+
+def handle_use_port_arg(settings, arg, error_handler=None):
+  if not error_handler:
+    def error_handler(message):
+      handle_use_port_error(arg, message)
+  name, options = split_port_options(arg)
+  if name.endswith('.py'):
+    port_file_path = name
+    if not os.path.isfile(port_file_path):
+      error_handler(f'not a valid port path: {port_file_path}')
+    name = load_port(port_file_path)
+  elif name not in ports_by_name:
+    error_handler(f'invalid port name: `{name}`')
+  ports_needed.add(name)
+  if options:
+    handle_port_options(name, options, error_handler)
+  handle_port_deps(name, error_handler)
+  return name
+
+
 def get_needed_ports(settings):
   # Start with directly needed ports, and transitively add dependencies
-  needed = set(p for p in ports if p.needed(settings))
+  needed = OrderedSet(p for p in ports if p.needed(settings))
   resolve_dependencies(needed, settings)
   return needed
 
 
 def build_port(port_name, settings):
   port = ports_by_name[port_name]
-  port_set = {port}
+  port_set = OrderedSet([port])
   resolve_dependencies(port_set, settings)
   for port in dependency_order(port_set):
     port.get(Ports, settings, shared)
@@ -390,10 +553,9 @@ def get_libs(settings):
   needed = get_needed_ports(settings)
 
   for port in dependency_order(needed):
-    if port.needed(settings):
-      port.linker_setup(Ports, settings)
-      # port.get returns a list of libraries to link
-      ret += port.get(Ports, settings, shared)
+    port.linker_setup(Ports, settings)
+    # port.get returns a list of libraries to link
+    ret += port.get(Ports, settings, shared)
 
   ret.reverse()
   return ret
@@ -420,9 +582,15 @@ def add_cflags(args, settings): # noqa: U100
 
 
 def show_ports():
-  print('Available ports:')
-  for port in ports:
-    print('   ', port.show())
+  sorted_ports = sorted(ports, key=lambda p: p.name)
+  print('Available official ports:')
+  for port in sorted_ports:
+    if not port.is_contrib:
+      print('   ', port.show())
+  print('Available contrib ports:')
+  for port in sorted_ports:
+    if port.is_contrib:
+      print('   ', port.show())
 
 
 read_ports()

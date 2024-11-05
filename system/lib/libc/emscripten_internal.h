@@ -26,16 +26,20 @@
 extern "C" {
 #endif
 
+_Noreturn void _abort_js(void);
+
+void setThrew(uintptr_t threw, int value);
+
 // An external JS implementation that is efficient for very large copies, using
 // HEAPU8.set()
-void emscripten_memcpy_js(void* __restrict__ dest,
+void _emscripten_memcpy_js(void* __restrict__ dest,
                            const void* __restrict__ src,
-                           size_t n) EM_IMPORT(emscripten_memcpy_js);
+                           size_t n) EM_IMPORT(_emscripten_memcpy_js);
 
-void* emscripten_memcpy_bulkmem(void* __restrict__ dest,
-                                const void* __restrict__ src,
-                                size_t n);
-void* emscripten_memset_bulkmem(void* ptr, char value, size_t n);
+void* _emscripten_memcpy_bulkmem(void* __restrict__ dest,
+                                 const void* __restrict__ src,
+                                 size_t n);
+void* _emscripten_memset_bulkmem(void* ptr, char value, size_t n);
 
 void emscripten_notify_memory_growth(size_t memory_index);
 
@@ -44,14 +48,13 @@ time_t _mktime_js(struct tm* tm);
 void _localtime_js(time_t t, struct tm* __restrict__ tm);
 void _gmtime_js(time_t t, struct tm* __restrict__ tm);
 
-void _tzset_js(long* timezone, int* daylight, char** tzname);
+void _tzset_js(long* timezone, int* daylight, char* std_name, char* dst_name);
 
 const char* emscripten_pc_get_function(uintptr_t pc);
 const char* emscripten_pc_get_file(uintptr_t pc);
 int emscripten_pc_get_line(uintptr_t pc);
 int emscripten_pc_get_column(uintptr_t pc);
 
-char* emscripten_get_module_name(char* buf, size_t length);
 void* emscripten_builtin_mmap(
   void* addr, size_t length, int prot, int flags, int fd, off_t offset);
 int emscripten_builtin_munmap(void* addr, size_t length);

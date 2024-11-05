@@ -99,7 +99,7 @@ class Minifier:
 
       cmd = get_acorn_cmd() + [temp_file, 'minifyGlobals']
       if minify_whitespace:
-        cmd.append('minifyWhitespace')
+        cmd.append('--minify-whitespace')
       output = shared.run_process(cmd, stdout=subprocess.PIPE).stdout
 
     assert len(output) and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
@@ -220,7 +220,7 @@ EMSCRIPTEN_FUNCS();
         return True
 
       passes = [p for p in passes if check_symbol_mapping(p)]
-      asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes).split('EMSCRIPTEN_FUNCS();')
+      asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, '--minify-whitespace' in passes).split('EMSCRIPTEN_FUNCS();')
       asm_shell_post = asm_shell_post.replace('});', '})')
       pre += asm_shell_pre + '\n' + start_funcs_marker
       post = end_funcs_marker + asm_shell_post + post
@@ -291,14 +291,14 @@ EMSCRIPTEN_FUNCS();
         if closure:
           if DEBUG:
             print('running closure on shell code', file=sys.stderr)
-          cld = building.closure_compiler(cld, pretty='minifyWhitespace' not in passes)
+          cld = building.closure_compiler(cld, pretty='--minify-whitespace' not in passes)
           temp_files.note(cld)
         elif cleanup:
           if DEBUG:
             print('running cleanup on shell code', file=sys.stderr)
           acorn_passes = ['JSDCE']
-          if 'minifyWhitespace' in passes:
-            acorn_passes.append('minifyWhitespace')
+          if '--minify-whitespace' in passes:
+            acorn_passes.append('--minify-whitespace')
           cld = building.acorn_optimizer(cld, acorn_passes)
           temp_files.note(cld)
         coutput = utils.read_file(cld)

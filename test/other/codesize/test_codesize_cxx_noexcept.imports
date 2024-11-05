@@ -1,0 +1,11 @@
+env.__cxa_throw
+env._abort_js
+env._emscripten_memcpy_js
+env._tzset_js
+env.emscripten_resize_heap
+wasi_snapshot_preview1.environ_get
+wasi_snapshot_preview1.environ_sizes_get
+wasi_snapshot_preview1.fd_close
+wasi_snapshot_preview1.fd_read
+wasi_snapshot_preview1.fd_seek
+wasi_snapshot_preview1.fd_write

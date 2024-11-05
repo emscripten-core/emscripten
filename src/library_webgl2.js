@@ -118,7 +118,11 @@ var LibraryWebGL2 = {
       return;
     }
 #endif
+#if WEBGL_USE_GARBAGE_FREE_APIS
     size && GLctx.getBufferSubData(target, offset, HEAPU8, data, size);
+#else
+    size && GLctx.getBufferSubData(target, offset, HEAPU8.subarray(data, data+size));
+#endif
   },
 
   glInvalidateFramebuffer__deps: ['$tempFixedLengthArray'],
@@ -147,34 +151,42 @@ var LibraryWebGL2 = {
     GLctx.invalidateSubFramebuffer(target, list, x, y, width, height);
   },
 
-  glTexImage3D__deps: ['$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'],
+  glTexImage3D__deps: ['$heapObjectForWebGLType', '$toTypedArrayIndex',
+#if !WEBGL_USE_GARBAGE_FREE_APIS
+    '$emscriptenWebGLGetTexPixelData',
+#endif
+  ],
   glTexImage3D: (target, level, internalFormat, width, height, depth, border, format, type, pixels) => {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, pixels);
     } else if (pixels) {
       var heap = heapObjectForWebGLType(type);
-      GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
+#if WEBGL_USE_GARBAGE_FREE_APIS
+      GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, heap, toTypedArrayIndex(pixels, heap));
+#else
+      var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height * depth, pixels, internalFormat);
+      GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, pixelData);
+#endif
     } else {
       GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, null);
     }
   },
 
-  glTexSubImage3D__deps: ['$heapObjectForWebGLType', '$heapAccessShiftForWebGLHeap'],
+  glTexSubImage3D__deps: ['$heapObjectForWebGLType', '$toTypedArrayIndex'],
   glTexSubImage3D: (target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels) => {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
     } else if (pixels) {
       var heap = heapObjectForWebGLType(type);
-      GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, heap, pixels >> heapAccessShiftForWebGLHeap(heap));
+      GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, heap, toTypedArrayIndex(pixels, heap));
     } else {
       GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, null);
     }
   },
 
   // Queries
-  glGenQueries__deps: ['$__glGenObject'],
   glGenQueries: (n, ids) => {
-    __glGenObject(n, ids, 'createQuery', GL.queries
+    GL.genObject(n, ids, 'createQuery', GL.queries
 #if GL_ASSERTIONS
     , 'glGenQueries'
 #endif
@@ -246,9 +258,8 @@ var LibraryWebGL2 = {
   },
 
   // Sampler objects
-  glGenSamplers__deps: ['$__glGenObject'],
   glGenSamplers: (n, samplers) => {
-    __glGenObject(n, samplers, 'createSampler', GL.samplers
+    GL.genObject(n, samplers, 'createSampler', GL.samplers
 #if GL_ASSERTIONS
     , 'glGenSamplers'
 #endif
@@ -340,9 +351,8 @@ var LibraryWebGL2 = {
   },
 
   // Transform Feedback
-  glGenTransformFeedbacks__deps: ['$__glGenObject'],
   glGenTransformFeedbacks: (n, ids) => {
-    __glGenObject(n, ids, 'createTransformFeedback', GL.transformFeedbacks
+    GL.genObject(n, ids, 'createTransformFeedback', GL.transformFeedbacks
 #if GL_ASSERTIONS
     , 'glGenTransformFeedbacks'
 #endif
@@ -625,7 +635,7 @@ var LibraryWebGL2 = {
     assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferiv must be aligned to four bytes!');
 #endif
 
-    GLctx.clearBufferiv(buffer, drawbuffer, HEAP32, value>>2);
+    GLctx.clearBufferiv(buffer, drawbuffer, HEAP32, {{{ getHeapOffset('value', 'i32') }}});
   },
 
   glClearBufferuiv: (buffer, drawbuffer, value) => {
@@ -633,7 +643,7 @@ var LibraryWebGL2 = {
     assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferuiv must be aligned to four bytes!');
 #endif
 
-    GLctx.clearBufferuiv(buffer, drawbuffer, HEAPU32, value>>2);
+    GLctx.clearBufferuiv(buffer, drawbuffer, HEAPU32, {{{ getHeapOffset('value', 'u32') }}});
   },
 
   glClearBufferfv: (buffer, drawbuffer, value) => {
@@ -641,7 +651,7 @@ var LibraryWebGL2 = {
     assert((value & 3) == 0, 'Pointer to float data passed to glClearBufferfv must be aligned to four bytes!');
 #endif
 
-    GLctx.clearBufferfv(buffer, drawbuffer, HEAPF32, value>>2);
+    GLctx.clearBufferfv(buffer, drawbuffer, HEAPF32, {{{ getHeapOffset('value', 'float') }}});
   },
 
   glFenceSync: (condition, flags) => {
@@ -779,7 +789,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform1uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1uiv must be aligned to four bytes!');
 #endif
-    count && GLctx.uniform1uiv(webglGetUniformLocation(location), HEAPU32, value>>2, count);
+    count && GLctx.uniform1uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count);
   },
 
   glUniform2uiv__deps: ['$webglGetUniformLocation'],
@@ -788,7 +798,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform2uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2uiv must be aligned to four bytes!');
 #endif
-    count && GLctx.uniform2uiv(webglGetUniformLocation(location), HEAPU32, value>>2, count*2);
+    count && GLctx.uniform2uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count*2);
   },
 
   glUniform3uiv__deps: ['$webglGetUniformLocation'],
@@ -797,7 +807,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform3uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3uiv must be aligned to four bytes!');
 #endif
-    count && GLctx.uniform3uiv(webglGetUniformLocation(location), HEAPU32, value>>2, count*3);
+    count && GLctx.uniform3uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count*3);
   },
 
   glUniform4uiv__deps: ['$webglGetUniformLocation'],
@@ -806,7 +816,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform4uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4uiv must be aligned to four bytes!');
 #endif
-    count && GLctx.uniform4uiv(webglGetUniformLocation(location), HEAPU32, value>>2, count*4);
+    count && GLctx.uniform4uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count*4);
   },
 
   glUniformMatrix2x3fv__deps: ['$webglGetUniformLocation'],
@@ -815,7 +825,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix2x3fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x3fv must be aligned to four bytes!');
 #endif
-    count && GLctx.uniformMatrix2x3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*6);
+    count && GLctx.uniformMatrix2x3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*6);
   },
 
   glUniformMatrix3x2fv__deps: ['$webglGetUniformLocation'],
@@ -824,7 +834,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix3x2fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x2fv must be aligned to four bytes!');
 #endif
-    count && GLctx.uniformMatrix3x2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*6);
+    count && GLctx.uniformMatrix3x2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*6);
   },
 
   glUniformMatrix2x4fv__deps: ['$webglGetUniformLocation'],
@@ -833,7 +843,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix2x4fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x4fv must be aligned to four bytes!');
 #endif
-    count && GLctx.uniformMatrix2x4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*8);
+    count && GLctx.uniformMatrix2x4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*8);
   },
 
   glUniformMatrix4x2fv__deps: ['$webglGetUniformLocation'],
@@ -842,7 +852,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix4x2fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x2fv must be aligned to four bytes!');
 #endif
-    count && GLctx.uniformMatrix4x2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*8);
+    count && GLctx.uniformMatrix4x2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*8);
   },
 
   glUniformMatrix3x4fv__deps: ['$webglGetUniformLocation'],
@@ -851,7 +861,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix3x4fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x4fv must be aligned to four bytes!');
 #endif
-    count && GLctx.uniformMatrix3x4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*12);
+    count && GLctx.uniformMatrix3x4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*12);
   },
 
   glUniformMatrix4x3fv__deps: ['$webglGetUniformLocation'],
@@ -860,7 +870,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix4x3fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x3fv must be aligned to four bytes!');
 #endif
-    count && GLctx.uniformMatrix4x3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, value>>2, count*12);
+    count && GLctx.uniformMatrix4x3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*12);
   },
 
   glVertexAttribI4iv: (index, v) => {
@@ -971,13 +981,13 @@ var LibraryWebGL2 = {
     GLctx.mdibvbi['multiDrawArraysInstancedBaseInstanceWEBGL'](
       mode,
       HEAP32,
-      firsts >> 2,
+      {{{ getHeapOffset('firsts', 'i32') }}},
       HEAP32,
-      counts >> 2,
+      {{{ getHeapOffset('counts', 'i32') }}},
       HEAP32,
-      instanceCounts >> 2,
+      {{{ getHeapOffset('instanceCounts', 'i32') }}},
       HEAPU32,
-      baseInstances >> 2,
+      {{{ getHeapOffset('baseInstances', 'i32') }}},
       drawCount);
   },
   glMultiDrawArraysInstancedBaseInstanceANGLE: 'glMultiDrawArraysInstancedBaseInstanceWEBGL',
@@ -987,16 +997,16 @@ var LibraryWebGL2 = {
     GLctx.mdibvbi['multiDrawElementsInstancedBaseVertexBaseInstanceWEBGL'](
       mode,
       HEAP32,
-      counts >> 2,
+      {{{ getHeapOffset('counts', 'i32') }}},
       type,
       HEAP32,
-      offsets >> 2,
+      {{{ getHeapOffset('offsets', 'i32') }}},
       HEAP32,
-      instanceCounts >> 2,
+      {{{ getHeapOffset('instanceCounts', 'i32') }}},
       HEAP32,
-      baseVertices >> 2,
+      {{{ getHeapOffset('baseVertices', 'i32') }}},
       HEAPU32,
-      baseInstances >> 2,
+      {{{ getHeapOffset('baseInstances', 'i32') }}},
       drawCount);
   },
   glMultiDrawElementsInstancedBaseVertexBaseInstanceANGLE: 'glMultiDrawElementsInstancedBaseVertexBaseInstanceWEBGL',

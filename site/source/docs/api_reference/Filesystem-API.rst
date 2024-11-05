@@ -31,7 +31,7 @@ The JavaScript-based file system was originally written before pthreads were sup
 
 `Design Doc Link <https://docs.google.com/document/d/1-ZxybGvz0nCqygUDuWxCcCBhCebev3EbUSYoSOlc49Q/edit?usp=sharing>`_
 
-`Github Tracking Issue <https://github.com/emscripten-core/emscripten/issues/15041>`_
+`GitHub Tracking Issue <https://github.com/emscripten-core/emscripten/issues/15041>`_
 
 Differences you may notice with the original JS filesystem include:
 
@@ -112,6 +112,8 @@ IDBFS
 The *IDBFS* file system implements the :js:func:`FS.syncfs` interface, which when called will persist any operations to an ``IndexedDB`` instance.
 
 This is provided to overcome the limitation that browsers do not offer synchronous APIs for persistent storage, and so (by default) all writes exist only temporarily in-memory.
+
+If the mount option `autoPersist: true` is passed when mounting IDBFS, then whenever any changes are made to the IDBFS directory tree, they will be automatically persisted to the IndexedDB backend. This lets users avoid needing to manually call `FS.syncfs` to persist changes to the IDBFS mounted directory tree.
 
 .. _filesystem-api-workerfs:
 

@@ -12,39 +12,43 @@
 /*jslint sub:true*/ /* The symbols 'fromWireType' and 'toWireType' must be accessed via array notation to be closure-safe since craftInvokerFunction crafts functions as strings that can't be closured. */
 
 // -- jshint doesn't understand library syntax, so we need to mark the symbols exposed here
-/*global getStringOrSymbol, emval_handles, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_decref*/
+/*global getStringOrSymbol, emval_freelist, emval_handles, Emval, __emval_unregister, count_emval_handles, emval_symbols, __emval_decref*/
 /*global emval_addMethodCaller, emval_methodCallers, addToLibrary, global, emval_lookupTypes, makeLegalFunctionName*/
 /*global emval_get_global*/
 
+// Number of handles reserved for non-use (0) or common values w/o refcount.
+{{{ 
+  globalThis.EMVAL_RESERVED_HANDLES = 5;
+  globalThis.EMVAL_LAST_RESERVED_HANDLE = globalThis.EMVAL_RESERVED_HANDLES * 2 - 1;
+  null;
+}}}
 var LibraryEmVal = {
-  $emval_handles__deps: ['$HandleAllocator'],
-  $emval_handles: "new HandleAllocator();",
+  // Stack of handles available for reuse.
+  $emval_freelist: [],
+  // Array of alternating pairs (value, refcount).
+  $emval_handles: [],
   $emval_symbols: {}, // address -> string
 
   $init_emval__deps: ['$count_emval_handles', '$emval_handles'],
   $init_emval__postset: 'init_emval();',
   $init_emval: () => {
-    // reserve some special values. These never get de-allocated.
-    // The HandleAllocator takes care of reserving zero.
-    emval_handles.allocated.push(
-      {value: undefined},
-      {value: null},
-      {value: true},
-      {value: false},
+    // reserve 0 and some special values. These never get de-allocated.
+    emval_handles.push(
+      0, 1,
+      undefined, 1,
+      null, 1,
+      true, 1,
+      false, 1,
     );
-    Object.assign(emval_handles, /** @lends {emval_handles} */ { reserved: emval_handles.allocated.length }),
+  #if ASSERTIONS
+    assert(emval_handles.length === {{{ EMVAL_RESERVED_HANDLES }}} * 2);
+  #endif
     Module['count_emval_handles'] = count_emval_handles;
   },
 
-  $count_emval_handles__deps: ['$emval_handles'],
+  $count_emval_handles__deps: ['$emval_freelist', '$emval_handles'],
   $count_emval_handles: () => {
-    var count = 0;
-    for (var i = emval_handles.reserved; i < emval_handles.allocated.length; ++i) {
-      if (emval_handles.allocated[i] !== undefined) {
-        ++count;
-      }
-    }
-    return count;
+    return emval_handles.length / 2 - {{{ EMVAL_RESERVED_HANDLES }}} - emval_freelist.length;
   },
 
   _emval_register_symbol__deps: ['$emval_symbols', '$readLatin1String'],
@@ -61,23 +65,30 @@ var LibraryEmVal = {
     return symbol;
   },
 
-  $Emval__deps: ['$emval_handles', '$throwBindingError', '$init_emval'],
+  $Emval__deps: ['$emval_freelist', '$emval_handles', '$throwBindingError', '$init_emval'],
   $Emval: {
     toValue: (handle) => {
       if (!handle) {
           throwBindingError('Cannot use deleted val. handle = ' + handle);
       }
-      return emval_handles.get(handle).value;
+  #if ASSERTIONS
+      // handle 2 is supposed to be `undefined`.
+      assert(handle === 2 || emval_handles[handle] !== undefined && handle % 2 === 0, `invalid handle: ${handle}`);
+  #endif
+      return emval_handles[handle];
     },
 
     toHandle: (value) => {
       switch (value) {
-        case undefined: return 1;
-        case null: return 2;
-        case true: return 3;
-        case false: return 4;
+        case undefined: return 2;
+        case null: return 4;
+        case true: return 6;
+        case false: return 8;
         default:{
-          return emval_handles.allocate({refcount: 1, value: value});
+          const handle = emval_freelist.pop() || emval_handles.length;
+          emval_handles[handle] = value;
+          emval_handles[handle + 1] = 1;
+          return handle;
         }
       }
     }
@@ -85,15 +96,19 @@ var LibraryEmVal = {
 
   _emval_incref__deps: ['$emval_handles'],
   _emval_incref: (handle) => {
-    if (handle > 4) {
-      emval_handles.get(handle).refcount += 1;
+    if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}}) {
+      emval_handles[handle + 1] += 1;
     }
   },
 
-  _emval_decref__deps: ['$emval_handles'],
+  _emval_decref__deps: ['$emval_freelist', '$emval_handles'],
   _emval_decref: (handle) => {
-    if (handle >= emval_handles.reserved && 0 === --emval_handles.get(handle).refcount) {
-      emval_handles.free(handle);
+    if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}} && 0 === --emval_handles[handle + 1]) {
+  #if ASSERTIONS
+      assert(emval_handles[handle] !== undefined, `Decref for unallocated handle.`);
+  #endif
+      emval_handles[handle] = undefined;
+      emval_freelist.push(handle);
     }
   },
 
@@ -300,7 +315,7 @@ var LibraryEmVal = {
 #if MIN_CHROME_VERSION < 49 || MIN_FIREFOX_VERSION < 42 || MIN_SAFARI_VERSION < 100101
   $reflectConstruct: null,
   $reflectConstruct__postset: `
-    if (typeof Reflect !== 'undefined') {
+    if (typeof Reflect != 'undefined') {
       reflectConstruct = Reflect.construct;
     } else {
       reflectConstruct = function(target, args) {
@@ -332,7 +347,7 @@ var LibraryEmVal = {
       var offset = 0;
       for (var i = 0; i < argCount; ++i) {
         argN[i] = types[i]['readValueFromPointer'](args + offset);
-        offset += types[i]['argPackAdvance'];
+        offset += types[i].argPackAdvance;
       }
       var rv = kind === /* CONSTRUCTOR */ 1 ? reflectConstruct(func, argN) : func.apply(obj, argN);
       return emval_returnValue(retType, destructorsRef, rv);
@@ -354,7 +369,7 @@ var LibraryEmVal = {
       args.push(types[i]);
       functionBody +=
         `  var arg${i} = argType${i}.readValueFromPointer(args${offset ? "+" + offset : ""});\n`;
-      offset += types[i]['argPackAdvance'];
+      offset += types[i].argPackAdvance;
     }
     var invoker = kind === /* CONSTRUCTOR */ 1 ? 'new func' : 'func.call';
     functionBody +=
@@ -369,7 +384,7 @@ var LibraryEmVal = {
       "};\n";
 
     params.push(functionBody);
-    var invokerFunction = newFunc(Function, params).apply(null, args);
+    var invokerFunction = newFunc(Function, params)(...args);
 #endif
     var functionName = `methodCaller<(${types.map(t => t.name).join(', ')}) => ${retType.name}>`;
     return emval_addMethodCaller(createNamedFunction(functionName, invokerFunction));

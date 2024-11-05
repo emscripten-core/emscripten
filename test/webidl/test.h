@@ -95,14 +95,17 @@ struct VoidPointerUser {
 namespace Space {
   struct Inner {
     int value;
-    Inner() : value(1) {}
+    Inner(int x = 1) : value(x) {}
     int get() { return 198; }
+    int get_value() { return value; }
     Inner& operator*=(float x) { return *this; }
     int operator[](int x) { return x*2; }
     void operator+=(const Inner& other) {
       value += other.value;
       printf("Inner::+= => %d\n", value);
     }
+    Inner operator+(const Inner& other) { return Inner(value + other.value); }
+    int operator*(int x) { return value * x; }
   };
 
   // We test compilation of abstract base classes in a namespace here.
@@ -194,3 +197,54 @@ typedef struct LongLongTypes {
   unsigned long long* lluArray;
   long long ll;
 } LongLongTypes;
+
+// Returning child objects in a hierarchy
+
+struct ISmallObject {
+  virtual int getID(int number) = 0;
+};
+
+struct IObjectProvider {
+  virtual ISmallObject* getObject() = 0;
+};
+
+class SmallObject : public ISmallObject {
+public:
+  int getID(int number) {
+    return number;
+  }
+};
+
+class ObjectProvider : public IObjectProvider {
+public:
+  ISmallObject* getObject() {
+    return &m_smallObject;
+  }
+private:
+  SmallObject m_smallObject;
+};
+
+class ObjectFactory {
+public:
+  IObjectProvider* getProvider() {
+    return &m_ObjectProvider;
+  }
+private:
+  ObjectProvider m_ObjectProvider;
+};
+
+class ArrayArgumentTest {
+public:
+  ArrayArgumentTest() : m_array("I should match the member variable"){};
+  ~ArrayArgumentTest(){};
+  bool byteArrayTest(const char* arg) { return strcmp(arg, m_array) == 0; }
+  bool domStringTest(const char* arg) { return strcmp(arg, m_array) == 0; }
+private:
+  const char* m_array;
+};
+
+class BindToTest {
+public:
+  int test(const char*) { return 1; }
+  int test(int) { return 2; }
+};

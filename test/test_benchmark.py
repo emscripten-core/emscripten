@@ -10,6 +10,7 @@ import shutil
 import sys
 import time
 import unittest
+import json
 import zlib
 from pathlib import Path
 from typing import List
@@ -50,8 +51,15 @@ PROFILING = 0
 
 LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
 
+# A comma separated list of benchmarkers to run during test_benchmark tests. See
+# `named_benchmarkers` for what is available.
+EMTEST_BENCHMARKERS = os.getenv('EMTEST_BENCHMARKERS', 'clang,v8,v8-lto,v8-ctors')
+
 
 class Benchmarker():
+  # Whether to record statistics. Set by SizeBenchmarker.
+  record_stats = False
+
   # called when we init the object, which is during startup, even if we are
   # not running benchmarks
   def __init__(self, name):
@@ -108,13 +116,38 @@ class Benchmarker():
 
     # size
 
-    size = sum(os.path.getsize(f) for f in self.get_output_files())
-    gzip_size = sum(len(zlib.compress(read_binary(f))) for f in self.get_output_files())
+    recorded_stats = []
 
-    print('        size: %8s, compressed: %8s' % (size, gzip_size), end=' ')
+    def add_stat(name, size, gzip_size):
+      recorded_stats.append({
+        'value': name,
+        'measurement': size,
+      })
+      recorded_stats.append({
+        'value': name + ' (gzipped)',
+        'measurement': gzip_size,
+      })
+
+    total_size = 0
+    total_gzip_size = 0
+
+    for file in self.get_output_files():
+      size = os.path.getsize(file)
+      gzip_size = len(zlib.compress(read_binary(file)))
+      if self.record_stats:
+        add_stat(utils.removeprefix(os.path.basename(file), 'size_'), size, gzip_size)
+      total_size += size
+      total_gzip_size += gzip_size
+
+    if self.record_stats:
+      add_stat('total', total_size, total_gzip_size)
+
+    print('        size: %8s, compressed: %8s' % (total_size, total_gzip_size), end=' ')
     if self.get_size_text():
       print('  (' + self.get_size_text() + ')', end=' ')
     print()
+
+    return recorded_stats
 
   def get_size_text(self):
     return ''
@@ -236,6 +269,21 @@ class EmscriptenBenchmarker(Benchmarker):
     return ret
 
 
+# This benchmarker will make a test benchmark build with Emscripten and record
+# the file output sizes in out/test/stats.json. The file format is specified at
+# https://skia.googlesource.com/buildbot/+/refs/heads/main/perf/FORMAT.md
+# Running the benchmark will be skipped.
+class SizeBenchmarker(EmscriptenBenchmarker):
+  record_stats = True
+
+  def __init__(self, name):
+    # do not set an engine, as we will not run the code
+    super().__init__(name, engine=None)
+
+  # we will not actually run the benchmarks
+  run = None
+
+
 CHEERP_BIN = '/opt/cheerp/bin/'
 
 
@@ -305,56 +353,36 @@ class CheerpBenchmarker(Benchmarker):
 
 benchmarkers: List[Benchmarker] = []
 
-if not common.EMTEST_FORCE64:
-  benchmarkers += [
-    NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
-    # NativeBenchmarker('gcc',   ['gcc', '-no-pie'],  ['g++', '-no-pie'])
-  ]
+# avoid the baseline compiler running, because it adds a lot of noise
+# (the nondeterministic time it takes to get to the full compiler ends up
+# mattering as much as the actual benchmark)
+aot_v8 = (config.V8_ENGINE if config.V8_ENGINE else []) + ['--no-liftoff']
 
-if config.V8_ENGINE and config.V8_ENGINE in config.JS_ENGINES:
-  # avoid the baseline compiler running, because it adds a lot of noise
-  # (the nondeterministic time it takes to get to the full compiler ends up
-  # mattering as much as the actual benchmark)
-  aot_v8 = config.V8_ENGINE + ['--no-liftoff']
-  default_v8_name = os.environ.get('EMBENCH_NAME') or 'v8'
-  if common.EMTEST_FORCE64:
-    benchmarkers += [
-      EmscriptenBenchmarker(default_v8_name, aot_v8, ['-sMEMORY64=2']),
-    ]
-  else:
-    benchmarkers += [
-      EmscriptenBenchmarker(default_v8_name, aot_v8),
-      EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
-      EmscriptenBenchmarker(default_v8_name + '-ctors', aot_v8, ['-sEVAL_CTORS']),
-    ]
-  if os.path.exists(CHEERP_BIN):
-    benchmarkers += [
-      # CheerpBenchmarker('cheerp-v8-wasm', aot_v8),
-    ]
-
-if config.SPIDERMONKEY_ENGINE and config.SPIDERMONKEY_ENGINE in config.JS_ENGINES:
+named_benchmarkers = {
+  'clang': NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
+  'gcc': NativeBenchmarker('gcc',   ['gcc', '-no-pie'],  ['g++', '-no-pie']),
+  'size': SizeBenchmarker('size'),
+  'v8': EmscriptenBenchmarker('v8', aot_v8),
+  'v8-lto': EmscriptenBenchmarker('v8-lto', aot_v8, ['-flto']),
+  'v8-ctors': EmscriptenBenchmarker('v8-ctors', aot_v8, ['-sEVAL_CTORS']),
+  'v8-64': EmscriptenBenchmarker('v8-64', aot_v8, ['-sMEMORY64=2']),
+  'node': EmscriptenBenchmarker('node', config.NODE_JS),
+  'node-64': EmscriptenBenchmarker('node-64', config.NODE_JS, ['-sMEMORY64=2']),
+  'cherp-v8': CheerpBenchmarker('cheerp-v8-wasm', aot_v8),
   # TODO: ensure no baseline compiler is used, see v8
-  benchmarkers += [
-    # EmscriptenBenchmarker('sm', SPIDERMONKEY_ENGINE),
-  ]
-  if os.path.exists(CHEERP_BIN):
-    benchmarkers += [
-      # CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE),
-    ]
+  'sm': EmscriptenBenchmarker('sm', config.SPIDERMONKEY_ENGINE),
+  'cherp-sm': CheerpBenchmarker('cheerp-sm-wasm', config.SPIDERMONKEY_ENGINE)
+}
 
-if config.NODE_JS and config.NODE_JS in config.JS_ENGINES:
-  if common.EMTEST_FORCE64:
-    benchmarkers += [
-      EmscriptenBenchmarker('Node.js', config.NODE_JS, ['-sMEMORY64=2']),
-    ]
-  else:
-    benchmarkers += [
-      # EmscriptenBenchmarker('Node.js', config.NODE_JS),
-    ]
+for name in EMTEST_BENCHMARKERS.split(','):
+  if name not in named_benchmarkers:
+    raise Exception('error, unknown benchmarker ' + name)
+  benchmarkers.append(named_benchmarkers[name])
 
 
 class benchmark(common.RunnerCore):
   save_dir = True
+  stats = [] # type: ignore
 
   @classmethod
   def setUpClass(cls):
@@ -375,6 +403,17 @@ class benchmark(common.RunnerCore):
       pass
     fingerprint.append('llvm: ' + config.LLVM_ROOT)
     print('Running Emscripten benchmarks... [ %s ]' % ' | '.join(fingerprint))
+
+  @classmethod
+  def tearDownClass(cls):
+    super().tearDownClass()
+    if cls.stats:
+      output = {
+        'version': 1,
+        'git_hash': '',
+        'results': cls.stats
+      }
+      utils.write_file('stats.json', json.dumps(output, indent=2) + '\n')
 
   # avoid depending on argument reception from the commandline
   def hardcode_arguments(self, code):
@@ -415,11 +454,27 @@ class benchmark(common.RunnerCore):
     for b in benchmarkers:
       if skip_native and isinstance(b, NativeBenchmarker):
         continue
+      if not b.run:
+        # If we won't run the benchmark, we don't need repetitions.
+        reps = 0
       baseline = b
       print('Running benchmarker: %s: %s' % (b.__class__.__name__, b.name))
       b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser=output_parser is not None)
       b.bench(args, output_parser, reps, expected_output)
-      b.display(baseline)
+      recorded_stats = b.display(baseline)
+      if recorded_stats:
+        self.add_stats(name, recorded_stats)
+
+  def add_stats(self, name, stats):
+    self.stats.append({
+      'key': {
+        'test': name,
+        'units': 'bytes'
+      },
+      'measurements': {
+        'stats': stats
+      }
+    })
 
   def test_primes(self, check=True):
     src = r'''
@@ -803,7 +858,7 @@ class benchmark(common.RunnerCore):
                       emcc_args=['-sSTACK_SIZE=1MB'])
 
   def test_base64(self):
-    src = read_file(test_file('base64.cpp'))
+    src = read_file(test_file('base64.c'))
     self.do_benchmark('base64', src, 'decode')
 
   @non_core
@@ -928,12 +983,7 @@ class benchmark(common.RunnerCore):
     def lib_builder(name, native, env_init):
       # We force recomputation for the native benchmarker because this benchmark
       # uses native_exec=True, so we need to copy the native executable
-      ret = self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init, force_rebuild=native)
-      if native:
-        return ret
-      shutil.copyfile(ret[0], ret[0] + '.bc')
-      ret[0] += '.bc'
-      return ret
+      return self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init, force_rebuild=native)
 
     self.do_benchmark('lua_' + benchmark, '', expected,
                       force_c=True, args=[benchmark + '.lua', DEFAULT_ARG],

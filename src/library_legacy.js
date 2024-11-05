@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-addToLibrary({
+legacyFuncs = {
   $ALLOC_NORMAL: 0,  // Tries to use _malloc()
   $ALLOC_STACK: 1,  // Lives for the duration of the current function call
 
@@ -17,7 +17,7 @@ addToLibrary({
    * @param {(Uint8Array|Array<number>)} slab: An array of data.
    * @param {number=} allocator : How to allocate memory, see ALLOC_*
    */
-  $allocate__deps: ['$ALLOC_NORMAL', '$ALLOC_STACK', 'malloc', 'stackAlloc'],
+  $allocate__deps: ['$ALLOC_NORMAL', '$ALLOC_STACK', 'malloc', '$stackAlloc'],
   $allocate: (slab, allocator) => {
     var ret;
   #if ASSERTIONS
@@ -90,4 +90,59 @@ addToLibrary({
     return 0;
   },
 #endif
-});
+
+#if LINK_AS_CXX
+  $demangle__deps: ['$withStackSave', '__cxa_demangle', 'free', '$stringToUTF8OnStack'],
+  $demangle: (func) => {
+    // If demangle has failed before, stop demangling any further function names
+    // This avoids an infinite recursion with malloc()->abort()->stackTrace()->demangle()->malloc()->...
+    demangle.recursionGuard = (demangle.recursionGuard|0)+1;
+    if (demangle.recursionGuard > 1) return func;
+    return withStackSave(() => {
+      try {
+        var s = func;
+        if (s.startsWith('__Z'))
+          s = s.substr(1);
+        var buf = stringToUTF8OnStack(s);
+        var status = stackAlloc(4);
+        var ret = ___cxa_demangle(buf, 0, 0, status);
+        if ({{{ makeGetValue('status', '0', 'i32') }}} === 0 && ret) {
+          return UTF8ToString(ret);
+        }
+        // otherwise, libcxxabi failed
+      } catch(e) {
+      } finally {
+        _free(ret);
+        if (demangle.recursionGuard < 2) --demangle.recursionGuard;
+      }
+      // failure when using libcxxabi, don't demangle
+      return func;
+    });
+  },
+#endif
+
+  $stackTrace__deps: ['$jsStackTrace'],
+  $stackTrace: () => {
+    var js = jsStackTrace();
+    if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();
+    return js;
+  },
+
+  // Legacy names for runtime `out`/`err` symbols.
+  $print: 'out',
+  $printErr: 'err',
+};
+
+if (WARN_DEPRECATED && !INCLUDE_FULL_LIBRARY) {
+  for (const name of Object.keys(legacyFuncs)) {
+    if (!isDecorator(name)) {
+      depsKey = `${name}__deps`;
+      legacyFuncs[depsKey] = legacyFuncs[depsKey] || [];
+      legacyFuncs[depsKey].push(() => {
+        warn(`JS library symbol '${name}' is deprecated. Please open a bug if you have a continuing need for this symbol [-Wdeprecated]`);
+      });
+    }
+  }
+}
+
+addToLibrary(legacyFuncs);

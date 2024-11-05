@@ -46,10 +46,11 @@ extern "C" {
 void _emval_register_symbol(const char*);
 
 enum {
-  _EMVAL_UNDEFINED = 1,
-  _EMVAL_NULL = 2,
-  _EMVAL_TRUE = 3,
-  _EMVAL_FALSE = 4
+  _EMVAL_UNDEFINED = 2,
+  _EMVAL_NULL = 4,
+  _EMVAL_TRUE = 6,
+  _EMVAL_FALSE = 8,
+  _EMVAL_LAST_RESERVED_HANDLE = 8,
 };
 
 typedef struct _EM_DESTRUCTORS* EM_DESTRUCTORS;
@@ -206,7 +207,7 @@ union GenericWireType {
     unsigned u;
     size_t s;
     float f;
-    void* p;
+    const void* p;
   } w[2];
   double d;
   uint64_t u;
@@ -258,7 +259,7 @@ inline void writeGenericWireTypes(GenericWireType*&) {
 
 template<typename First, typename... Rest>
 EMSCRIPTEN_ALWAYS_INLINE void writeGenericWireTypes(GenericWireType*& cursor, First&& first, Rest&&... rest) {
-  writeGenericWireType(cursor, BindingType<First>::toWireType(std::forward<First>(first)));
+  writeGenericWireType(cursor, BindingType<First>::toWireType(std::forward<First>(first), rvp::default_tag{}));
   writeGenericWireTypes(cursor, std::forward<Rest>(rest)...);
 }
 
@@ -385,11 +386,13 @@ public:
   }
 
   val(const val& v) : val(v.as_handle()) {
-    internal::_emval_incref(handle);
+    if (uses_ref_count()) {
+      internal::_emval_incref(handle);
+    }
   }
 
   ~val() {
-    if (handle) {
+    if (uses_ref_count()) {
       internal::_emval_decref(as_handle());
       handle = 0;
     }
@@ -400,6 +403,13 @@ public:
     assert(pthread_equal(thread, pthread_self()) && "val accessed from wrong thread");
 #endif
     return handle;
+  }
+
+  // Takes ownership of the handle away from, and invalidates, this instance.
+  EM_VAL release_ownership() {
+    EM_VAL taken = as_handle();
+    handle = 0;
+    return taken;
   }
 
   val& operator=(val&& v) & {
@@ -630,6 +640,12 @@ private:
       : handle(handle), thread(pthread_self())
   {}
 
+  // Whether this value is a uses incref/decref (true) or is a special reserved
+  // value (false).
+  bool uses_ref_count() const {
+    return handle > reinterpret_cast<EM_VAL>(internal::_EMVAL_LAST_RESERVED_HANDLE);
+  }
+
   template<typename WrapperType>
   friend val internal::wrapped_extend(const std::string& , const val& );
 
@@ -660,7 +676,8 @@ private:
   pthread_t thread;
   EM_VAL handle;
 
-  friend struct internal::BindingType<val>;
+  template <typename T, typename>
+  friend struct ::emscripten::internal::BindingType;
 };
 
 struct val::iterator {
@@ -786,9 +803,20 @@ template<typename T>
 struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
                                               !std::is_const<T>::value>::type> {
   typedef EM_VAL WireType;
-  static WireType toWireType(const val& v) {
+
+  // Marshall to JS with move semantics when we can invalidate the temporary val
+  // object.
+  static WireType toWireType(val&& v, rvp::default_tag) {
+    return v.release_ownership();
+  }
+
+  // Marshal to JS with copy semantics when we cannot transfer the val objects
+  // reference count.
+  static WireType toWireType(const val& v, rvp::default_tag) {
     EM_VAL handle = v.as_handle();
-    _emval_incref(handle);
+    if (v.uses_ref_count()) {
+      _emval_incref(handle);
+    }
     return handle;
   }
   static T fromWireType(WireType v) {

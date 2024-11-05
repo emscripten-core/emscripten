@@ -34,7 +34,7 @@ def get(ports, settings, shared):
   ports.fetch_project('libpng', f'https://storage.googleapis.com/webassembly/emscripten-ports/libpng-{TAG}.tar.gz', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'libpng', 'libpng-' + TAG)
+    source_path = ports.get_dir('libpng', 'libpng-' + TAG)
     ports.write_file(os.path.join(source_path, 'pnglibconf.h'), pnglibconf_h)
     ports.install_headers(source_path)
 
@@ -58,7 +58,7 @@ def process_dependencies(settings):
 
 
 def show():
-  return 'libpng (-sUSE_LIBPNG; zlib license)'
+  return 'libpng (-sUSE_LIBPNG or --use-port=libpng; zlib license)'
 
 
 pnglibconf_h = r'''/* pnglibconf.h - library build configuration */

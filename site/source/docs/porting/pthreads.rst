@@ -146,8 +146,6 @@ The Emscripten implementation for the pthreads API should follow the POSIX stand
 
 - Pthreads + memory growth (``ALLOW_MEMORY_GROWTH``) is especially tricky, see `Wasm design issue #1271 <https://github.com/WebAssembly/design/issues/1271>`_. This currently causes JS accessing the Wasm memory to be slow - but this will likely only be noticeable if the JS does large amounts of memory reads and writes (Wasm runs at full speed, so moving work over can fix this). This also requires that your JS be aware that the HEAP* views may need to be updated - JS code embedded with ``--js-library`` etc will automatically be transformed to use the ``GROWABLE_HEAP_*`` helper functions where ``HEAP*`` are used, but external code that uses ``Module.HEAP*`` directly may encounter problems with views being smaller than memory.
 
-Also note that when compiling code that uses pthreads, an additional JavaScript file ``NAME.worker.js`` is generated alongside the output .js file (where ``NAME`` is the basename of the main file being emitted). That file must be deployed with the rest of the generated code files. By default, ``NAME.worker.js`` will be loaded relative to the main HTML page URL. If it is desirable to load the file from a different location e.g. in a CDN environment, then one can define the ``Module.locateFile(filename)`` function in the main HTML ``Module`` object to return the URL of the target location of the ``NAME.worker.js`` entry point. If this function is not defined in ``Module``, then the default location relative to the main HTML file is used.
-
 .. _Allocator_performance:
 
 Allocator performance

@@ -8,6 +8,7 @@ extern "C" {
 
 // Socket Registry remembers all the sockets created by incoming proxy connections, so that those sockets can be properly
 // shut down when an incoming proxy connection disconnects.
+void InitWebSocketRegistry();
 
 // Tracks that the given socket is part of the specified proxy connection. When proxyConnection disconnects, all sockets
 // used by it are shut down.

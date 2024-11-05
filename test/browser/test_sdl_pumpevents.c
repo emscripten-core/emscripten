@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <SDL/SDL.h>
@@ -16,8 +17,7 @@
 
 int result = 0;
 
-int loop1()
-{
+void loop1() {
    unsigned i;
    int r = 0;
 
@@ -26,51 +26,39 @@ int loop1()
    while (SDL_PollEvent(&e));
 
    const Uint8 *keys = SDL_GetKeyState(NULL);
-   if (keys[SDLK_LEFT])
-      r = 1;
-
-   return r;
+   assert(keys[SDLK_LEFT]);
 }
 
-int loop2()
-{
+void loop2() {
    unsigned i;
    int r = 0;
-   
+
    // method 2: SDL_PumpEvents
    SDL_PumpEvents();
 
    const Uint8 *keys = SDL_GetKeyState(NULL);
-   if (keys[SDLK_RIGHT])
-      r = 2;
-
-   return r;
+   assert(keys[SDLK_RIGHT]);
 }
 
-int alphakey()
-{
+void alphakey() {
    unsigned i;
    int r = 0;
 
    SDL_PumpEvents();
 
    const Uint8 *keys = SDL_GetKeyState(NULL);
-   if (keys[SDLK_a])
-      r = 4;
-
-   return r;
+   assert(keys[SDLK_a]);
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
    SDL_Init(SDL_INIT_EVERYTHING);
    SDL_SetVideoMode(600, 400, 32, SDL_SWSURFACE);
 
-   emscripten_run_script("keydown(37);"); // left
-   result += loop1();
-   emscripten_run_script("keydown(39);"); // right
-   result += loop2();
-   emscripten_run_script("keydown(65);"); // A
-   result += alphakey();
-   return result;
+   emscripten_run_script("simulateKeyDown(37);"); // left
+   loop1();
+   emscripten_run_script("simulateKeyDown(39);"); // right
+   loop2();
+   emscripten_run_script("simulateKeyDown(65);"); // A
+   alphakey();
+   return 0;
 }

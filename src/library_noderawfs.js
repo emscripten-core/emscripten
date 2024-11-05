@@ -7,25 +7,28 @@
 addToLibrary({
   $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$mmapAlloc', '$FS_modeStringToFlags'],
   $NODERAWFS__postset: `
-    if (ENVIRONMENT_IS_NODE) {
-      var _wrapNodeError = function(func) {
-        return function() {
-          try {
-            return func.apply(this, arguments)
-          } catch (e) {
-            if (e.code) {
-              throw new FS.ErrnoError(ERRNO_CODES[e.code]);
-            }
-            throw e;
-          }
-        }
-      };
-      var VFS = Object.assign({}, FS);
-      for (var _key in NODERAWFS) {
-        FS[_key] = _wrapNodeError(NODERAWFS[_key]);
-      }
-    } else {
+    if (!ENVIRONMENT_IS_NODE) {
       throw new Error("NODERAWFS is currently only supported on Node.js environment.")
+    }
+    var _wrapNodeError = function(func) {
+      return function(...args) {
+        try {
+          return func(...args)
+        } catch (e) {
+          if (e.code) {
+            throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          }
+          throw e;
+        }
+      }
+    };
+    // Use this to reference our in-memory filesystem
+    /** @suppress {partialAlias} */
+    var VFS = Object.assign({}, FS);
+    // Wrap the whole in-memory filesystem API with
+    // our Node.js based functions
+    for (var _key in NODERAWFS) {
+      FS[_key] = _wrapNodeError(NODERAWFS[_key]);
     }`,
   $NODERAWFS: {
     lookup(parent, name) {
@@ -44,14 +47,15 @@ addToLibrary({
       return { path, node: { id: st.ino, mode, node_ops: NODERAWFS, path }};
     },
     createStandardStreams() {
+      // FIXME: tty is set to true to appease isatty(), the underlying ioctl syscalls still needs to be implemented, see issue #22264.
       FS.createStream({ nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false }, 0);
       for (var i = 1; i < 3; i++) {
-        FS.createStream({ nfd: i, position: 0, path: '', flags: 577, tty: true, seekable: false }, i);
+        FS.createStream({ nfd: i, position: 0, path: '', flags: {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}}, tty: true, seekable: false }, i);
       }
     },
     // generic function for all node creation
     cwd() { return process.cwd(); },
-    chdir() { process.chdir.apply(void 0, arguments); },
+    chdir(...args) { process.chdir(...args); },
     mknod(path, mode) {
       if (FS.isDir(path)) {
         fs.mkdirSync(path, mode);
@@ -59,26 +63,26 @@ addToLibrary({
         fs.writeFileSync(path, '', { mode: mode });
       }
     },
-    mkdir() { fs.mkdirSync.apply(void 0, arguments); },
-    symlink() { fs.symlinkSync.apply(void 0, arguments); },
-    rename() { fs.renameSync.apply(void 0, arguments); },
-    rmdir() { fs.rmdirSync.apply(void 0, arguments); },
-    readdir() { return ['.', '..'].concat(fs.readdirSync.apply(void 0, arguments)); },
-    unlink() { fs.unlinkSync.apply(void 0, arguments); },
-    readlink() { return fs.readlinkSync.apply(void 0, arguments); },
-    stat() { return fs.statSync.apply(void 0, arguments); },
-    lstat() { return fs.lstatSync.apply(void 0, arguments); },
-    chmod() { fs.chmodSync.apply(void 0, arguments); },
+    mkdir(...args) { fs.mkdirSync(...args); },
+    symlink(...args) { fs.symlinkSync(...args); },
+    rename(...args) { fs.renameSync(...args); },
+    rmdir(...args) { fs.rmdirSync(...args); },
+    readdir(...args) { return ['.', '..'].concat(fs.readdirSync(...args)); },
+    unlink(...args) { fs.unlinkSync(...args); },
+    readlink(...args) { return fs.readlinkSync(...args); },
+    stat(...args) { return fs.statSync(...args); },
+    lstat(...args) { return fs.lstatSync(...args); },
+    chmod(...args) { fs.chmodSync(...args); },
     fchmod(fd, mode) {
       var stream = FS.getStreamChecked(fd);
       fs.fchmodSync(stream.nfd, mode);
     },
-    chown() { fs.chownSync.apply(void 0, arguments); },
+    chown(...args) { fs.chownSync(...args); },
     fchown(fd, owner, group) {
       var stream = FS.getStreamChecked(fd);
       fs.fchownSync(stream.nfd, owner, group);
     },
-    truncate() { fs.truncateSync.apply(void 0, arguments); },
+    truncate(...args) { fs.truncateSync(...args); },
     ftruncate(fd, len) {
       // See https://github.com/nodejs/node/issues/35632
       if (len < 0) {
@@ -87,12 +91,22 @@ addToLibrary({
       var stream = FS.getStreamChecked(fd);
       fs.ftruncateSync(stream.nfd, len);
     },
-    utime(path, atime, mtime) { fs.utimesSync(path, atime/1000, mtime/1000); },
+    utime(path, atime, mtime) {
+      // -1 here for atime or mtime means UTIME_OMIT was passed.  Since node
+      // doesn't support this concept we need to first find the existing
+      // timestamps in order to preserve them.
+      if (atime == -1 || mtime == -1) {
+        var st = fs.statSync(path);
+        if (atime == -1) atime = st.atimeMs;
+        if (mtime == -1) mtime = st.mtimeMs;
+      }
+      fs.utimesSync(path, atime/1000, mtime/1000);
+    },
     open(path, flags, mode) {
       if (typeof flags == "string") {
         flags = FS_modeStringToFlags(flags)
       }
-      var pathTruncated = path.split('/').map(function(s) { return s.substr(0, 255); }).join('/');
+      var pathTruncated = path.split('/').map((s) => s.substr(0, 255)).join('/');
       var nfd = fs.openSync(pathTruncated, NODEFS.flagsForNode(flags), mode);
       var st = fs.fstatSync(nfd);
       if (flags & {{{ cDefs.O_DIRECTORY }}} && !st.isDirectory()) {
@@ -148,7 +162,7 @@ addToLibrary({
       }
       var seeking = typeof position != 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
-      var bytesRead = fs.readSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), { position: position });
+      var bytesRead = fs.readSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position);
       // update position marker when non-seeking
       if (!seeking) stream.position += bytesRead;
       return bytesRead;
@@ -164,7 +178,7 @@ addToLibrary({
       }
       var seeking = typeof position != 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
-      var bytesWritten = fs.writeSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), { position: position });
+      var bytesWritten = fs.writeSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position);
       // update position marker when non-seeking
       if (!seeking) stream.position += bytesWritten;
       return bytesWritten;
@@ -173,6 +187,9 @@ addToLibrary({
       throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
     },
     mmap(stream, length, position, prot, flags) {
+      if (!length) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
       if (stream.stream_ops) {
         // this stream is created by in-memory filesystem
         return VFS.mmap(stream, length, position, prot, flags);
@@ -190,9 +207,6 @@ addToLibrary({
 
       FS.write(stream, buffer, 0, length, offset);
       // should we check if bytesWritten and length are the same?
-      return 0;
-    },
-    munmap() {
       return 0;
     },
     ioctl() {

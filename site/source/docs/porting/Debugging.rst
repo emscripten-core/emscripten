@@ -22,7 +22,7 @@ This article describes the main tools and settings provided by Emscripten for de
 Debugging in the browser
 ========================
 
-:ref:`Emcc <emccdoc>` can ouptut debug information in two formats, either as
+:ref:`Emcc <emccdoc>` can output debug information in two formats, either as
 DWARF symbols or as source maps. Both allow you to view and debug the
 *C/C++ source code* in a browser's debugger. DWARF offers the most precise and
 detailed debugging experience and is supported as an experiment in Chrome 88
@@ -137,11 +137,6 @@ Some important settings are:
     performance. Default value is 1 if ``ASSERTIONS=1`` is set, and disabled
     otherwise.
 
-  -
-    .. _debugging-DEMANGLE_SUPPORT:
-
-    ``DEMANGLE_SUPPORT=1`` links in code to automatically demangle stack traces, that is, emit human-readable C++ function names instead of ``_ZN..`` ones.
-
 A number of other useful debug settings are defined in `src/settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_. For more information, search that file for the keywords "check" and "debug".
 
 .. _debugging-sanitizers:
@@ -166,7 +161,7 @@ Manual print debugging
 
 You can also manually instrument the source code with ``printf()`` statements, then compile and run the code to investigate issues. Note that ``printf()`` is line-buffered, make sure to add ``\n`` to see output in the console.
 
-If you have a good idea of the problem line you can add ``print(new Error().stack)`` to the JavaScript to get a stack trace at that point. Also available is :js:func:`stackTrace`, which emits a stack trace and also tries to demangle C++ function names if ``DEMANGLE_SUPPORT`` is enabled (if you don't want or need C++ demangling in a specific stack trace, you can call :js:func:`jsStackTrace`).
+If you have a good idea of the problem line you can add ``print(new Error().stack)`` to the JavaScript to get a stack trace at that point.
 
 Debug printouts can even execute arbitrary JavaScript. For example::
 

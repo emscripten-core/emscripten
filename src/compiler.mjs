@@ -7,23 +7,11 @@
 
 // LLVM => JavaScript compiler, main entry point
 
-import * as fs from 'fs';
-import * as path from 'path';
-import * as vm from 'vm';
-import * as url from 'url';
-import assert from 'assert';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as url from 'node:url';
 
-globalThis.vm = vm;
-globalThis.assert = assert;
-globalThis.nodePath = path;
-
-globalThis.print = (x) => {
-  process.stdout.write(x + '\n');
-};
-
-globalThis.printErr = (x) => {
-  process.stderr.write(x + '\n');
-};
+import {Benchmarker, applySettings, assert, loadSettingsFile, printErr, read} from './utility.mjs';
 
 function find(filename) {
   assert(filename);
@@ -38,22 +26,9 @@ function find(filename) {
   return filename;
 }
 
-globalThis.read = (filename) => {
-  assert(filename);
-  const absolute = find(filename);
-  return fs.readFileSync(absolute).toString();
-};
-
-function load(f) {
-  (0, eval)(read(f) + '//# sourceURL=' + find(f));
-};
-
-// Basic utilities
-load('utility.js');
-
 // Load default settings
-load('./settings.js');
-load('./settings_internal.js');
+loadSettingsFile(find('settings.js'));
+loadSettingsFile(find('settings_internal.js'));
 
 const argv = process.argv.slice(2);
 const symbolsOnlyArg = argv.indexOf('--symbols-only');
@@ -64,16 +39,15 @@ if (symbolsOnlyArg != -1) {
 // Load settings from JSON passed on the command line
 const settingsFile = argv[0];
 assert(settingsFile);
+const user_settings = JSON.parse(read(settingsFile));
+applySettings(user_settings);
 
-const settings = JSON.parse(read(settingsFile));
-Object.assign(global, settings);
+export const symbolsOnly = symbolsOnlyArg != -1;
 
-globalThis.symbolsOnly = symbolsOnlyArg != -1;
-
-// In case compiler.js is run directly (as in gen_sig_info)
+// In case compiler.mjs is run directly (as in gen_sig_info)
 // ALL_INCOMING_MODULE_JS_API might not be populated yet.
 if (!ALL_INCOMING_MODULE_JS_API.length) {
-  ALL_INCOMING_MODULE_JS_API = INCOMING_MODULE_JS_API
+  ALL_INCOMING_MODULE_JS_API = INCOMING_MODULE_JS_API;
 }
 
 EXPORTED_FUNCTIONS = new Set(EXPORTED_FUNCTIONS);
@@ -81,22 +55,29 @@ WASM_EXPORTS = new Set(WASM_EXPORTS);
 SIDE_MODULE_EXPORTS = new Set(SIDE_MODULE_EXPORTS);
 INCOMING_MODULE_JS_API = new Set(INCOMING_MODULE_JS_API);
 ALL_INCOMING_MODULE_JS_API = new Set(ALL_INCOMING_MODULE_JS_API);
+EXPORTED_RUNTIME_METHODS = new Set(EXPORTED_RUNTIME_METHODS);
 WEAK_IMPORTS = new Set(WEAK_IMPORTS);
 if (symbolsOnly) {
   INCLUDE_FULL_LIBRARY = 1;
 }
 
 // Side modules are pure wasm and have no JS
-assert(!SIDE_MODULE || (ASYNCIFY && globalThis.symbolsOnly), 'JS compiler should only run on side modules if asyncify is used.');
+assert(
+  !SIDE_MODULE || (ASYNCIFY && symbolsOnly),
+  'JS compiler should only run on side modules if asyncify is used.',
+);
 
 // Load compiler code
 
-load('modules.js');
-load('parseTools.js');
-load('jsifier.js');
+// We can't use static import statements here because several of these
+// file depend on having the settings defined in the global scope (which
+// we do dynamically above.
+await import('./modules.mjs');
+await import('./parseTools.mjs');
 if (!STRICT) {
-  load('parseTools_legacy.js');
+  await import('./parseTools_legacy.mjs');
 }
+const jsifier = await import('./jsifier.mjs');
 
 // ===============================
 // Main
@@ -105,7 +86,7 @@ if (!STRICT) {
 const B = new Benchmarker();
 
 try {
-  runJSify();
+  jsifier.runJSify(symbolsOnly);
 
   B.print('glue');
 } catch (err) {
@@ -114,9 +95,12 @@ try {
     printErr(err);
   } else {
     // Compiler failed on internal compiler error!
-    printErr('Internal compiler error in src/compiler.js!');
+    printErr('Internal compiler error in src/compiler.mjs!');
     printErr('Please create a bug report at https://github.com/emscripten-core/emscripten/issues/');
-    printErr('with a log of the build and the input files used to run. Exception message: "' + (err.stack || err));
+    printErr(
+      'with a log of the build and the input files used to run. Exception message: "' +
+        (err.stack || err),
+    );
   }
 
   // Work around a node.js bug where stdout buffer is not flushed at process exit:

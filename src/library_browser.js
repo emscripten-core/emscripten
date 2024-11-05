@@ -7,11 +7,9 @@
 // Utilities for browser environments
 var LibraryBrowser = {
   $Browser__deps: [
-    '$setMainLoop',
     '$callUserCallback',
     '$safeSetTimeout',
     '$warnOnce',
-    'emscripten_set_main_loop_timing',
 #if FILESYSTEM
     '$preloadPlugins',
 #if MAIN_MODULE
@@ -25,79 +23,14 @@ var LibraryBrowser = {
 #if ASSERTIONS
     Module["requestFullScreen"] = Browser.requestFullScreen;
 #endif
-    Module["requestAnimationFrame"] = Browser.requestAnimationFrame;
     Module["setCanvasSize"] = Browser.setCanvasSize;
-    Module["pauseMainLoop"] = Browser.mainLoop.pause;
-    Module["resumeMainLoop"] = Browser.mainLoop.resume;
     Module["getUserMedia"] = Browser.getUserMedia;
     Module["createContext"] = Browser.createContext;
     var preloadedImages = {};
     var preloadedAudios = {};`,
 
   $Browser: {
-    mainLoop: {
-      running: false,
-      scheduler: null,
-      method: '',
-      // Each main loop is numbered with a ID in sequence order. Only one main
-      // loop can run at a time. This variable stores the ordinal number of the
-      // main loop that is currently allowed to run. All previous main loops
-      // will quit themselves. This is incremented whenever a new main loop is
-      // created.
-      /** @type{number} */
-      currentlyRunningMainloop: 0,
-      // The main loop tick function that will be called at each iteration.
-      func: null,
-      // The argument that will be passed to the main loop. (of type void*)
-      arg: 0,
-      timingMode: 0,
-      timingValue: 0,
-      currentFrameNumber: 0,
-      queue: [],
-      pause() {
-        Browser.mainLoop.scheduler = null;
-        // Incrementing this signals the previous main loop that it's now become old, and it must return.
-        Browser.mainLoop.currentlyRunningMainloop++;
-      },
-      resume() {
-        Browser.mainLoop.currentlyRunningMainloop++;
-        var timingMode = Browser.mainLoop.timingMode;
-        var timingValue = Browser.mainLoop.timingValue;
-        var func = Browser.mainLoop.func;
-        Browser.mainLoop.func = null;
-        // do not set timing and call scheduler, we will do it on the next lines
-        setMainLoop(func, 0, false, Browser.mainLoop.arg, true);
-        _emscripten_set_main_loop_timing(timingMode, timingValue);
-        Browser.mainLoop.scheduler();
-      },
-      updateStatus() {
-        if (Module['setStatus']) {
-          var message = Module['statusMessage'] || 'Please wait...';
-          var remaining = Browser.mainLoop.remainingBlockers;
-          var expected = Browser.mainLoop.expectedBlockers;
-          if (remaining) {
-            if (remaining < expected) {
-              Module['setStatus'](message + ' (' + (expected - remaining) + '/' + expected + ')');
-            } else {
-              Module['setStatus'](message);
-            }
-          } else {
-            Module['setStatus']('');
-          }
-        }
-      },
-      runIter(func) {
-        if (ABORT) return;
-        if (Module['preMainLoop']) {
-          var preRet = Module['preMainLoop']();
-          if (preRet === false) {
-            return; // |return false| skips a frame
-          }
-        }
-        callUserCallback(func);
-        Module['postMainLoop']?.();
-      }
-    },
+    useWebGL: false,
     isFullscreen: false,
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
@@ -118,7 +51,7 @@ var LibraryBrowser = {
 
       var imagePlugin = {};
       imagePlugin['canHandle'] = function imagePlugin_canHandle(name) {
-        return !Module.noImageDecoding && /\.(jpg|jpeg|png|bmp)$/i.test(name);
+        return !Module['noImageDecoding'] && /\.(jpg|jpeg|png|bmp|webp)$/i.test(name);
       };
       imagePlugin['handle'] = function imagePlugin_handle(byteArray, name, onload, onerror) {
         var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
@@ -132,7 +65,9 @@ var LibraryBrowser = {
 #endif
         var img = new Image();
         img.onload = () => {
+#if ASSERTIONS
           assert(img.complete, `Image ${name} could not be decoded`);
+#endif
           var canvas = /** @type {!HTMLCanvasElement} */ (document.createElement('canvas'));
           canvas.width = img.width;
           canvas.height = img.height;
@@ -152,7 +87,7 @@ var LibraryBrowser = {
 
       var audioPlugin = {};
       audioPlugin['canHandle'] = function audioPlugin_canHandle(name) {
-        return !Module.noAudioDecoding && name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
+        return !Module['noAudioDecoding'] && name.substr(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
       };
       audioPlugin['handle'] = function audioPlugin_handle(byteArray, name, onload, onerror) {
         var done = false;
@@ -296,18 +231,17 @@ var LibraryBrowser = {
       if (!ctx) return null;
 
       if (setInModule) {
+#if ASSERTIONS
         if (!useWebGL) assert(typeof GLctx == 'undefined', 'cannot set in module if GLctx is used, but we are a non-GL context that would replace it');
-
+#endif
         Module.ctx = ctx;
         if (useWebGL) GL.makeContextCurrent(contextHandle);
-        Module.useWebGL = useWebGL;
+        Browser.useWebGL = useWebGL;
         Browser.moduleContextCreatedCallbacks.forEach((callback) => callback());
         Browser.init();
       }
       return ctx;
     },
-
-    destroyContext(canvas, useWebGL, setInModule) {},
 
     fullscreenHandlersInstalled: false,
     lockPointer: undefined,
@@ -395,41 +329,6 @@ var LibraryBrowser = {
       return true;
     },
 
-    nextRAF: 0,
-
-    fakeRequestAnimationFrame(func) {
-      // try to keep 60fps between calls to here
-      var now = Date.now();
-      if (Browser.nextRAF === 0) {
-        Browser.nextRAF = now + 1000/60;
-      } else {
-        while (now + 2 >= Browser.nextRAF) { // fudge a little, to avoid timer jitter causing us to do lots of delay:0
-          Browser.nextRAF += 1000/60;
-        }
-      }
-      var delay = Math.max(Browser.nextRAF - now, 0);
-      setTimeout(func, delay);
-    },
-
-    requestAnimationFrame(func) {
-      if (typeof requestAnimationFrame == 'function') {
-        requestAnimationFrame(func);
-        return;
-      }
-      var RAF = Browser.fakeRequestAnimationFrame;
-#if LEGACY_VM_SUPPORT
-      if (typeof window != 'undefined') {
-        RAF = window['requestAnimationFrame'] ||
-              window['mozRequestAnimationFrame'] ||
-              window['webkitRequestAnimationFrame'] ||
-              window['msRequestAnimationFrame'] ||
-              window['oRequestAnimationFrame'] ||
-              RAF;
-      }
-#endif
-      RAF(func);
-    },
-
     // abort and pause-aware versions TODO: build main loop on top of this?
 
     safeSetTimeout(func, timeout) {
@@ -437,13 +336,6 @@ var LibraryBrowser = {
       // around at least until that is updated.
       // See https://github.com/libsdl-org/SDL/pull/6304
       return safeSetTimeout(func, timeout);
-    },
-    safeRequestAnimationFrame(func) {
-      {{{ runtimeKeepalivePush() }}}
-      return Browser.requestAnimationFrame(() => {
-        {{{ runtimeKeepalivePop() }}}
-        callUserCallback(func);
-      });
     },
 
     getMimetype(name) {
@@ -584,16 +476,9 @@ var LibraryBrowser = {
           Browser.mouseMovementY = Browser.getMovementY(event);
         }
 
-        // check if SDL is available
-        if (typeof SDL != "undefined") {
-          Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
-          Browser.mouseY = SDL.mouseY + Browser.mouseMovementY;
-        } else {
-          // just add the mouse delta to the current absolut mouse position
-          // FIXME: ideally this should be clamped against the canvas size and zero
-          Browser.mouseX += Browser.mouseMovementX;
-          Browser.mouseY += Browser.mouseMovementY;
-        }
+        // add the mouse delta to the current absolute mouse position
+        Browser.mouseX += Browser.mouseMovementX;
+        Browser.mouseY += Browser.mouseMovementY;
       } else {
         if (event.type === 'touchstart' || event.type === 'touchend' || event.type === 'touchmove') {
           var touch = event.touch;
@@ -768,41 +653,43 @@ var LibraryBrowser = {
   emscripten_async_load_script__deps: ['$UTF8ToString'],
   emscripten_async_load_script: (url, onload, onerror) => {
     url = UTF8ToString(url);
-    onload = {{{ makeDynCall('v', 'onload') }}};
-    onerror = {{{ makeDynCall('v', 'onerror') }}};
-
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
       err(`emscripten_async_load_script("${url}") failed, emscripten_async_load_script is currently not available in pthreads!`);
-      return onerror ? onerror() : undefined;
+      onerror && {{{ makeDynCall('v', 'onerror') }}}();
+      return;
     }
 #endif
+#if ASSERTIONS
     assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
-
+#endif
     {{{ runtimeKeepalivePush() }}}
 
     var loadDone = () => {
       {{{ runtimeKeepalivePop() }}}
       if (onload) {
+        var onloadCallback = () => callUserCallback({{{ makeDynCall('v', 'onload') }}});
         if (runDependencies > 0) {
-          dependenciesFulfilled = onload;
+          dependenciesFulfilled = onloadCallback;
         } else {
-          onload();
+          onloadCallback();
         }
       }
     }
 
     var loadError = () => {
       {{{ runtimeKeepalivePop() }}}
-      onerror?.();
+      if (onerror) {
+        callUserCallback({{{ makeDynCall('v', 'onerror') }}});
+      }
     };
 
 #if ENVIRONMENT_MAY_BE_NODE && DYNAMIC_EXECUTION
     if (ENVIRONMENT_IS_NODE) {
-      readAsync(url, (data) => {
+      readAsync(url, false).then((data) => {
         eval(data);
         loadDone();
-      }, loadError, false);
+      }, loadError);
       return;
     }
 #endif
@@ -814,289 +701,17 @@ var LibraryBrowser = {
     document.body.appendChild(script);
   },
 
-  // Runs natively in pthread, no __proxy needed.
-  emscripten_get_main_loop_timing: (mode, value) => {
-    if (mode) {{{ makeSetValue('mode', 0, 'Browser.mainLoop.timingMode', 'i32') }}};
-    if (value) {{{ makeSetValue('value', 0, 'Browser.mainLoop.timingValue', 'i32') }}};
+  $safeRequestAnimationFrame__deps: ['$MainLoop'],
+  $safeRequestAnimationFrame: (func) => {
+    {{{ runtimeKeepalivePush() }}}
+    return MainLoop.requestAnimationFrame(() => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(func);
+    });
   },
 
   // Runs natively in pthread, no __proxy needed.
-  emscripten_set_main_loop_timing: (mode, value) => {
-    Browser.mainLoop.timingMode = mode;
-    Browser.mainLoop.timingValue = value;
-
-    if (!Browser.mainLoop.func) {
-#if ASSERTIONS
-      err('emscripten_set_main_loop_timing: Cannot set timing mode for main loop since a main loop does not exist! Call emscripten_set_main_loop first to set one up.');
-#endif
-      return 1; // Return non-zero on failure, can't set timing mode when there is no main loop.
-    }
-
-    if (!Browser.mainLoop.running) {
-      {{{ runtimeKeepalivePush() }}}
-      Browser.mainLoop.running = true;
-    }
-    if (mode == {{{ cDefs.EM_TIMING_SETTIMEOUT }}}) {
-      Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler_setTimeout() {
-        var timeUntilNextTick = Math.max(0, Browser.mainLoop.tickStartTime + value - _emscripten_get_now())|0;
-        setTimeout(Browser.mainLoop.runner, timeUntilNextTick); // doing this each time means that on exception, we stop
-      };
-      Browser.mainLoop.method = 'timeout';
-    } else if (mode == {{{ cDefs.EM_TIMING_RAF }}}) {
-      Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler_rAF() {
-        Browser.requestAnimationFrame(Browser.mainLoop.runner);
-      };
-      Browser.mainLoop.method = 'rAF';
-    } else if (mode == {{{ cDefs.EM_TIMING_SETIMMEDIATE}}}) {
-      if (typeof Browser.setImmediate == 'undefined') {
-        if (typeof setImmediate == 'undefined') {
-          // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
-          var setImmediates = [];
-          var emscriptenMainLoopMessageId = 'setimmediate';
-          /** @param {Event} event */
-          var Browser_setImmediate_messageHandler = (event) => {
-            // When called in current thread or Worker, the main loop ID is structured slightly different to accommodate for --proxy-to-worker runtime listening to Worker events,
-            // so check for both cases.
-            if (event.data === emscriptenMainLoopMessageId || event.data.target === emscriptenMainLoopMessageId) {
-              event.stopPropagation();
-              setImmediates.shift()();
-            }
-          };
-          addEventListener("message", Browser_setImmediate_messageHandler, true);
-          Browser.setImmediate = /** @type{function(function(): ?, ...?): number} */(function Browser_emulated_setImmediate(func) {
-            setImmediates.push(func);
-            if (ENVIRONMENT_IS_WORKER) {
-              if (Module['setImmediates'] === undefined) Module['setImmediates'] = [];
-              Module['setImmediates'].push(func);
-              postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
-            } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
-          });
-        } else {
-          Browser.setImmediate = setImmediate;
-        }
-      }
-      Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler_setImmediate() {
-        Browser.setImmediate(Browser.mainLoop.runner);
-      };
-      Browser.mainLoop.method = 'immediate';
-    }
-    return 0;
-  },
-
-  emscripten_set_main_loop__deps: ['$setMainLoop'],
-  emscripten_set_main_loop: (func, fps, simulateInfiniteLoop) => {
-    var browserIterationFunc = {{{ makeDynCall('v', 'func') }}};
-    setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop);
-  },
-
-  // Runs natively in pthread, no __proxy needed.
-  $setMainLoop__deps: [
-    'emscripten_set_main_loop_timing', 'emscripten_get_now',
-#if OFFSCREEN_FRAMEBUFFER
-    'emscripten_webgl_commit_frame',
-#endif
-#if EXIT_RUNTIME && !MINIMAL_RUNTIME
-    '$maybeExit',
-#endif
-  ],
-  $setMainLoop__docs: `
-  /**
-   * @param {number=} arg
-   * @param {boolean=} noSetTiming
-   */`,
-  $setMainLoop: (browserIterationFunc, fps, simulateInfiniteLoop, arg, noSetTiming) => {
-    assert(!Browser.mainLoop.func, 'emscripten_set_main_loop: there can only be one main loop function at once: call emscripten_cancel_main_loop to cancel the previous one before setting a new one with different parameters.');
-
-    Browser.mainLoop.func = browserIterationFunc;
-    Browser.mainLoop.arg = arg;
-
-#if MAYBE_CLOSURE_COMPILER
-    // Closure compiler bug(?): Closure does not see that the assignment
-    //   var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop
-    // is a value copy of a number (even with the JSDoc @type annotation)
-    // but optimizeis the code as if the assignment was a reference assignment,
-    // which results in Browser.mainLoop.pause() not working. Hence use a
-    // workaround to make Closure believe this is a value copy that should occur:
-    // (TODO: Minimize this down to a small test case and report - was unable
-    // to reproduce in a small written test case)
-    /** @type{number} */
-    var thisMainLoopId = (() => Browser.mainLoop.currentlyRunningMainloop)();
-#else
-    var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop;
-#endif
-    function checkIsRunning() {
-      if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) {
-#if RUNTIME_DEBUG
-        dbg('main loop exiting..');
-#endif
-        {{{ runtimeKeepalivePop() }}}
-#if EXIT_RUNTIME && !MINIMAL_RUNTIME
-        maybeExit();
-#endif
-        return false;
-      }
-      return true;
-    }
-
-    // We create the loop runner here but it is not actually running until
-    // _emscripten_set_main_loop_timing is called (which might happen a
-    // later time).  This member signifies that the current runner has not
-    // yet been started so that we can call runtimeKeepalivePush when it
-    // gets it timing set for the first time.
-    Browser.mainLoop.running = false;
-    Browser.mainLoop.runner = function Browser_mainLoop_runner() {
-      if (ABORT) return;
-      if (Browser.mainLoop.queue.length > 0) {
-        var start = Date.now();
-        var blocker = Browser.mainLoop.queue.shift();
-        blocker.func(blocker.arg);
-        if (Browser.mainLoop.remainingBlockers) {
-          var remaining = Browser.mainLoop.remainingBlockers;
-          var next = remaining%1 == 0 ? remaining-1 : Math.floor(remaining);
-          if (blocker.counted) {
-            Browser.mainLoop.remainingBlockers = next;
-          } else {
-            // not counted, but move the progress along a tiny bit
-            next = next + 0.5; // do not steal all the next one's progress
-            Browser.mainLoop.remainingBlockers = (8*remaining + next)/9;
-          }
-        }
-#if RUNTIME_DEBUG
-        dbg(`main loop blocker "${blocker.name}" took '${Date.now() - start} ms`); //, left: ' + Browser.mainLoop.remainingBlockers);
-#endif
-        Browser.mainLoop.updateStatus();
-
-        // catches pause/resume main loop from blocker execution
-        if (!checkIsRunning()) return;
-
-        setTimeout(Browser.mainLoop.runner, 0);
-        return;
-      }
-
-      // catch pauses from non-main loop sources
-      if (!checkIsRunning()) return;
-
-      // Implement very basic swap interval control
-      Browser.mainLoop.currentFrameNumber = Browser.mainLoop.currentFrameNumber + 1 | 0;
-      if (Browser.mainLoop.timingMode == {{{ cDefs.EM_TIMING_RAF }}} && Browser.mainLoop.timingValue > 1 && Browser.mainLoop.currentFrameNumber % Browser.mainLoop.timingValue != 0) {
-        // Not the scheduled time to render this frame - skip.
-        Browser.mainLoop.scheduler();
-        return;
-      } else if (Browser.mainLoop.timingMode == {{{ cDefs.EM_TIMING_SETTIMEOUT }}}) {
-        Browser.mainLoop.tickStartTime = _emscripten_get_now();
-      }
-
-      // Signal GL rendering layer that processing of a new frame is about to start. This helps it optimize
-      // VBO double-buffering and reduce GPU stalls.
-#if FULL_ES2 || LEGACY_GL_EMULATION
-      GL.newRenderingFrameStarted();
-#endif
-
-#if PTHREADS && OFFSCREEN_FRAMEBUFFER && GL_SUPPORT_EXPLICIT_SWAP_CONTROL
-      // If the current GL context is a proxied regular WebGL context, and was initialized with implicit swap mode on the main thread, and we are on the parent thread,
-      // perform the swap on behalf of the user.
-      if (typeof GL != 'undefined' && GL.currentContext && GL.currentContextIsProxied) {
-        var explicitSwapControl = {{{ makeGetValue('GL.currentContext', 0, 'i32') }}};
-        if (!explicitSwapControl) _emscripten_webgl_commit_frame();
-      }
-#endif
-
-#if OFFSCREENCANVAS_SUPPORT
-      // If the current GL context is an OffscreenCanvas, but it was initialized with implicit swap mode, perform the swap on behalf of the user.
-      if (typeof GL != 'undefined' && GL.currentContext && !GL.currentContextIsProxied && !GL.currentContext.attributes.explicitSwapControl && GL.currentContext.GLctx.commit) {
-        GL.currentContext.GLctx.commit();
-      }
-#endif
-
-#if ASSERTIONS
-      if (Browser.mainLoop.method === 'timeout' && Module.ctx) {
-        warnOnce('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
-        Browser.mainLoop.method = ''; // just warn once per call to set main loop
-      }
-#endif
-
-      Browser.mainLoop.runIter(browserIterationFunc);
-
-#if STACK_OVERFLOW_CHECK
-      checkStackCookie();
-#endif
-
-      // catch pauses from the main loop itself
-      if (!checkIsRunning()) return;
-
-      // Queue new audio data. This is important to be right after the main loop invocation, so that we will immediately be able
-      // to queue the newest produced audio samples.
-      // TODO: Consider adding pre- and post- rAF callbacks so that GL.newRenderingFrameStarted() and SDL.audio.queueNewAudioData()
-      //       do not need to be hardcoded into this function, but can be more generic.
-      if (typeof SDL == 'object') SDL.audio?.queueNewAudioData?.();
-
-      Browser.mainLoop.scheduler();
-    }
-
-    if (!noSetTiming) {
-      if (fps && fps > 0) {
-        _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_SETTIMEOUT }}}, 1000.0 / fps);
-      } else {
-        // Do rAF by rendering each frame (no decimating)
-        _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, 1);
-      }
-
-      Browser.mainLoop.scheduler();
-    }
-
-    if (simulateInfiniteLoop) {
-      throw 'unwind';
-    }
-  },
-
-  // Runs natively in pthread, no __proxy needed.
-  emscripten_set_main_loop_arg__deps: ['$setMainLoop'],
-  emscripten_set_main_loop_arg: (func, arg, fps, simulateInfiniteLoop) => {
-    var browserIterationFunc = () => {{{ makeDynCall('vp', 'func') }}}(arg);
-    setMainLoop(browserIterationFunc, fps, simulateInfiniteLoop, arg);
-  },
-
-  // Runs natively in pthread, no __proxy needed.
-  emscripten_cancel_main_loop: () => {
-    Browser.mainLoop.pause();
-    Browser.mainLoop.func = null;
-  },
-
-  // Runs natively in pthread, no __proxy needed.
-  emscripten_pause_main_loop: () => {
-    Browser.mainLoop.pause();
-  },
-
-  // Runs natively in pthread, no __proxy needed.
-  emscripten_resume_main_loop: () => {
-    Browser.mainLoop.resume();
-  },
-
-  // Runs natively in pthread, no __proxy needed.
-  _emscripten_push_main_loop_blocker: (func, arg, name) => {
-    Browser.mainLoop.queue.push({ func: () => {
-      {{{ makeDynCall('vp', 'func') }}}(arg);
-    }, name: UTF8ToString(name), counted: true });
-    Browser.mainLoop.updateStatus();
-  },
-
-  // Runs natively in pthread, no __proxy needed.
-  _emscripten_push_uncounted_main_loop_blocker: (func, arg, name) => {
-    Browser.mainLoop.queue.push({ func: () => {
-      {{{ makeDynCall('vp', 'func') }}}(arg);
-    }, name: UTF8ToString(name), counted: false });
-    Browser.mainLoop.updateStatus();
-  },
-
-  // Runs natively in pthread, no __proxy needed.
-  emscripten_set_main_loop_expected_blockers: (num) => {
-    Browser.mainLoop.expectedBlockers = num;
-    Browser.mainLoop.remainingBlockers = num;
-    Browser.mainLoop.updateStatus();
-  },
-
-  // Runs natively in pthread, no __proxy needed.
-  emscripten_async_call__deps: ['$safeSetTimeout'],
+  emscripten_async_call__deps: ['$safeSetTimeout', '$safeRequestAnimationFrame'],
   emscripten_async_call: (func, arg, millis) => {
     function wrapper() {
       {{{ makeDynCall('vp', 'func') }}}(arg);
@@ -1110,7 +725,7 @@ var LibraryBrowser = {
     ) {
       safeSetTimeout(wrapper, millis);
     } else {
-      Browser.safeRequestAnimationFrame(wrapper);
+      safeRequestAnimationFrame(wrapper);
     }
   },
 
@@ -1285,37 +900,37 @@ var LibraryBrowser = {
     return info.awaited;
   },
 
-  emscripten_get_preloaded_image_data__deps: ['$PATH_FS', 'malloc'],
+  emscripten_get_preloaded_image_data__deps: ['$getPreloadedImageData', '$UTF8ToString'],
   emscripten_get_preloaded_image_data__proxy: 'sync',
-  emscripten_get_preloaded_image_data: (path, w, h) => {
-    if ((path | 0) === path) path = UTF8ToString(path);
+  emscripten_get_preloaded_image_data: (path, w, h) => getPreloadedImageData(UTF8ToString(path), w, h),
 
+  $getPreloadedImageData__internal: true,
+  $getPreloadedImageData__data: ['$PATH_FS', 'malloc'],
+  $getPreloadedImageData: (path, w, h) => {
     path = PATH_FS.resolve(path);
 
     var canvas = /** @type {HTMLCanvasElement} */(preloadedImages[path]);
-    if (canvas) {
-      var ctx = canvas.getContext("2d");
-      var image = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      var buf = _malloc(canvas.width * canvas.height * 4);
+    if (!canvas) return 0;
 
-      HEAPU8.set(image.data, buf);
+    var ctx = canvas.getContext("2d");
+    var image = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    var buf = _malloc(canvas.width * canvas.height * 4);
 
-      {{{ makeSetValue('w', '0', 'canvas.width', 'i32') }}};
-      {{{ makeSetValue('h', '0', 'canvas.height', 'i32') }}};
-      return buf;
-    }
+    HEAPU8.set(image.data, buf);
 
-    return 0;
+    {{{ makeSetValue('w', '0', 'canvas.width', 'i32') }}};
+    {{{ makeSetValue('h', '0', 'canvas.height', 'i32') }}};
+    return buf;
   },
 
 #if !WASMFS // WasmFS implements this in wasm
-  emscripten_get_preloaded_image_data_from_FILE__deps: ['emscripten_get_preloaded_image_data', 'fileno'],
+  emscripten_get_preloaded_image_data_from_FILE__deps: ['$getPreloadedImageData', 'fileno'],
   emscripten_get_preloaded_image_data_from_FILE__proxy: 'sync',
   emscripten_get_preloaded_image_data_from_FILE: (file, w, h) => {
     var fd = _fileno(file);
     var stream = FS.getStream(fd);
     if (stream) {
-      return _emscripten_get_preloaded_image_data(stream.path, w, h);
+      return getPreloadedImageData(stream.path, w, h);
     }
 
     return 0;

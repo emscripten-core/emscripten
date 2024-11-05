@@ -17,7 +17,7 @@ def get(ports, settings, shared):
   ports.fetch_project('libmodplug', f'https://github.com/jancc/libmodplug/archive/v{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'libmodplug', 'libmodplug-' + TAG)
+    source_path = ports.get_dir('libmodplug', 'libmodplug-' + TAG)
     src_dir = os.path.join(source_path, 'src')
     libmodplug_path = os.path.join(src_dir, 'libmodplug')
 
@@ -88,7 +88,7 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'libmodplug (USE_MODPLUG=1; public domain)'
+  return 'libmodplug (-sUSE_MODPLUG=1 or --use-port=libmodplug; public domain)'
 
 
 config_h = '''/* src/config.h.  Generated from config.h.in by configure.  */
