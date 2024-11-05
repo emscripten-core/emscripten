@@ -863,6 +863,9 @@ base align: 0, 0, 0, 0'''])
   def test_longjmp(self):
     self.do_core_test('test_longjmp.c')
 
+  def test_longjmp_wasm_workers(self):
+    self.do_core_test('test_longjmp.c', emcc_args=['-sWASM_WORKERS'])
+
   @with_all_sjlj
   def test_longjmp_zero(self):
     if '-fsanitize=undefined' in self.emcc_args and self.get_setting('SUPPORT_LONGJMP') == 'emscripten':

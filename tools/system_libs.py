@@ -2276,7 +2276,7 @@ def get_libs_to_link(args):
   if force_include:
     logger.debug(f'forcing stdlibs: {force_include}')
 
-  def add_library(libname):
+  def add_library(libname, whole_archive=False):
     lib = system_libs_map[libname]
     if lib.name in already_included:
       return
@@ -2285,7 +2285,7 @@ def get_libs_to_link(args):
     logger.debug('including %s (%s)' % (lib.name, lib.get_filename()))
 
     need_whole_archive = lib.name in force_include and lib.get_ext() == '.a'
-    libs_to_link.append((lib.get_link_flag(), need_whole_archive))
+    libs_to_link.append((lib.get_link_flag(), whole_archive or need_whole_archive))
 
   if '-nostartfiles' not in args:
     if settings.SHARED_MEMORY:
@@ -2396,7 +2396,10 @@ def get_libs_to_link(args):
   if settings.WASM_WORKERS and (not settings.SINGLE_FILE and
                                 not settings.RELOCATABLE and
                                 not settings.PROXY_TO_WORKER):
-    add_library('libwasm_workers')
+    # When we include libwasm_workers we use `--whole-archive` to ensure
+    # that the static constructor (`emscripten_wasm_worker_main_thread_initialize`)
+    # is run.
+    add_library('libwasm_workers', whole_archive=True)
 
   if settings.WASMFS:
     # Link in the no-fs version first, so that if it provides all the needed

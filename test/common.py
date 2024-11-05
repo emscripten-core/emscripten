@@ -614,7 +614,7 @@ def with_all_sjlj(f):
   assert callable(f)
 
   @wraps(f)
-  def metafunc(self, mode):
+  def metafunc(self, mode, *args, **kwargs):
     if mode == 'wasm' or mode == 'wasm_exnref':
       if self.is_wasm2js():
         self.skipTest('wasm2js does not support wasm SjLj')
@@ -627,10 +627,10 @@ def with_all_sjlj(f):
       if mode == 'wasm_exnref':
         self.require_wasm_exnref()
         self.set_setting('WASM_EXNREF')
-      f(self)
+      f(self, *args, **kwargs)
     else:
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
-      f(self)
+      f(self, *args, **kwargs)
 
   parameterize(metafunc, {'emscripten': ('emscripten',),
                           'wasm': ('wasm',),
