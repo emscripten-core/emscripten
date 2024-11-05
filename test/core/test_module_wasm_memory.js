@@ -7,7 +7,7 @@
  */
 
 Module['wasmMemory'] = new WebAssembly.Memory({
-#if MEMORY64
+#if MEMORY64 == 1
   'initial': 256n,
   'maximum': 256n,
   'address': 'i64',
