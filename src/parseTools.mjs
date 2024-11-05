@@ -964,7 +964,8 @@ function from64Expr(x, assign = true) {
 }
 
 function toIndexType(x) {
-  return to64(x);
+  if (MEMORY64 == 1) return `BigInt(${x})`;
+  return x;
 }
 
 function to64(x) {
