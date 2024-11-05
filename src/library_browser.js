@@ -26,8 +26,7 @@ var LibraryBrowser = {
     Module["setCanvasSize"] = Browser.setCanvasSize;
     Module["getUserMedia"] = Browser.getUserMedia;
     Module["createContext"] = Browser.createContext;
-    var preloadedImages = {};
-    var preloadedAudios = {};`,
+  `,
 
   $Browser: {
     useWebGL: false,
@@ -35,6 +34,8 @@ var LibraryBrowser = {
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
     workers: [],
+    preloadedImages: {},
+    preloadedAudios: {},
 
     init() {
       if (Browser.initted) return;
@@ -73,7 +74,7 @@ var LibraryBrowser = {
           canvas.height = img.height;
           var ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0);
-          preloadedImages[name] = canvas;
+          Browser.preloadedImages[name] = canvas;
           URL.revokeObjectURL(url);
           onload?.(byteArray);
         };
@@ -94,13 +95,13 @@ var LibraryBrowser = {
         function finish(audio) {
           if (done) return;
           done = true;
-          preloadedAudios[name] = audio;
+          Browser.preloadedAudios[name] = audio;
           onload?.(byteArray);
         }
         function fail() {
           if (done) return;
           done = true;
-          preloadedAudios[name] = new Audio(); // empty shim
+          Browser.preloadedAudios[name] = new Audio(); // empty shim
           onerror?.();
         }
         var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
@@ -881,7 +882,7 @@ var LibraryBrowser = {
   $getPreloadedImageData: (path, w, h) => {
     path = PATH_FS.resolve(path);
 
-    var canvas = /** @type {HTMLCanvasElement} */(preloadedImages[path]);
+    var canvas = /** @type {HTMLCanvasElement} */(Browser.preloadedImages[path]);
     if (!canvas) return 0;
 
     var ctx = canvas.getContext("2d");
