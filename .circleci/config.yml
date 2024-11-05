@@ -640,6 +640,7 @@ jobs:
             core_2gb.test_*embind*
             wasm64l.test_hello_world
             wasm64l.test_bigswitch
+            wasm64l.test_module_wasm_memory
             other.test_memory64_proxies
             other.test_failing_growth_wasm64"
       - upload-test-results
