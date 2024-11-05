@@ -47,22 +47,6 @@ function updateMemoryViews() {
 #endif
 }
 
-#if MEMORY64 == 1
-var toIndexType = (function() {
-  // Probe for support of bigint bounds with memory64.
-  // TODO(sbc): Remove this once all browsers start requiring bigint here.
-  // See https://github.com/WebAssembly/memory64/issues/68
-  var bigintMemoryBounds = 1;
-  try {
-    /** @suppress {checkTypes} */
-    new WebAssembly.Memory({'initial': 1n, 'index': 'i64', 'address': 'i64'});
-  } catch (e) {
-    bigintMemoryBounds = 0;
-  }
-  return (i) => bigintMemoryBounds ? BigInt(i) : i;
-})();
-#endif
-
 #if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 160000
 // The performance global was added to node in v16.0.0:
 // https://nodejs.org/api/globals.html#performance

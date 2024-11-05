@@ -151,6 +151,7 @@ addToLibrary({
     }
     // Grow the table
     try {
+      /** @suppress {checkTypes} */
       wasmTable.grow({{{ toIndexType('1') }}});
     } catch (err) {
       if (!(err instanceof RangeError)) {
