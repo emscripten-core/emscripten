@@ -123,6 +123,13 @@ def enable_feature(feature, reason):
     if settings[name] < min_version:
       if name in user_settings:
         # If the user explicitly chose an older version we issue a warning.
+        if name == 'MIN_SAFARI_VERSION' and feature == 'pthreads':
+          # But as a special case, don't warn when forcing on bulk memory on Safari.
+          # This is because Safari implemented part of bulk memory along with threads in 14.1,
+          # but not all of it. So bulk-mem is listed as supported in 15.0. So we want to
+          # continue enabling bulk memory via pthreads without a warning in 14.1, but without
+          # enabling other features requiring 15.0.
+          continue
         diagnostics.warning(
             'compatibility',
             f'{name}={user_settings[name]} is not compatible with {reason} '

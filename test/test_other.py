@@ -14647,34 +14647,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.set_setting('DEFAULT_TO_CXX')
     self.do_runf(test_file('core/test_longjmp.c'), emcc_args=self.get_emcc_args())
 
-  def test_memops_bulk_memory(self):
-    self.emcc_args += ['--profiling-funcs', '-fno-builtin']
-
-    def run(args, expect_bulk_mem):
-      self.do_runf('other/test_memops_bulk_memory.c', emcc_args=args)
-      funcs = self.parse_wasm('test_memops_bulk_memory.wasm')[2]
-      js = read_file('test_memops_bulk_memory.js')
-      if expect_bulk_mem:
-        self.assertNotContained('_emscripten_memcpy_js', js)
-        self.assertIn('$_emscripten_memcpy_bulkmem', funcs)
-      else:
-        self.assertContained('_emscripten_memcpy_js', js)
-        self.assertNotIn('$_emscripten_memcpy_bulkmem', funcs)
-
-    # By default we expect to find `_emscripten_memcpy_js` in the generaed JS
-    # and not to find the `emscripten_memcpy_bulkmem` function on the wasm
-    # side.
-    run([], expect_bulk_mem=False)
-
-    # With bulk memory enabled we expect *not* to find it.
-    run(['-mbulk-memory'], expect_bulk_mem=True)
-
-    run(['-mbulk-memory', '-mno-bulk-memory'], expect_bulk_mem=False)
-
-    # -pthread implicitly enables bulk memory too.
-    self.setup_node_pthreads()
-    run(['-pthread'], expect_bulk_mem=True)
-
   def test_memory_init_file_unsupported(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--memory-init-file=1'])
     self.assertContained('error: --memory-init-file is no longer supported', err)
