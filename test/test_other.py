@@ -10337,6 +10337,8 @@ int main() {
 
   def test_wasm_features(self):
     # Test that wasm features are explicitly enabled or disabled based on target engine version
+    # Here we are reading the features section and trusting that LLVM and/or Binaryen faithfully
+    # represent what features are used
     def verify_features_sec(feature, expect_in, linked=False):
       with webassembly.Module('a.out.wasm' if linked else 'hello_world.o') as module:
         features = module.get_target_features()
@@ -10365,9 +10367,16 @@ int main() {
     compile(['-mnontrapping-fptoint', '-c'])
     verify_features_sec('nontrapping-fptoint', True)
 
+    compile(['-sMIN_SAFARI_VERSION=120000'])
+    verify_features_sec_linked('sign-ext', False)
+
     compile(['-sMIN_SAFARI_VERSION=140000'])
+    verify_features_sec_linked('bulk-memory', True) # XXX fix before commit
+    verify_features_sec_linked('nontrapping-fptoint', False)
+
+    compile(['-sMIN_SAFARI_VERSION=140100', '-pthread'])
+    verify_features_sec_linked('atomics', True)
     verify_features_sec_linked('bulk-memory', True)
-    verify_features_sec_linked('bulk-nontrapping-fptoint', True)
 
     # BIGINT causes binaryen to not run, and keeps the target_features section after link
     # Setting this SAFARI_VERSION should enable bulk memory because it links in emscripten_memcpy_bulkmem
@@ -10381,7 +10390,7 @@ int main() {
     verify_features_sec_linked('nontrapping-fptoint', False)
 
     compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory', '-sWASM_BIGINT'])
-    # FIXME? -mno-bulk-memory at link time does not override MIN_SAFARI_VERSION. it probably should?
+    # FIXME? -mno-bulk-memory etc at link time do not override MIN_SAFARI_VERSION. should they?
     verify_features_sec_linked('bulk-memory', True)
 
   def test_js_preprocess(self):
@@ -13311,7 +13320,7 @@ kill -9 $$
 
   def test_standard_library_mapping(self):
     # Test the `-l` flags on the command line get mapped the correct libraries variant
-    libs = ['-lc', '-lbulkmemory', '-lcompiler_rt', '-lmalloc']
+    libs = ['-lc', '-lcompiler_rt', '-lmalloc']
     err = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-nodefaultlibs', '-v'] + libs, stderr=PIPE).stderr
 
     # Check that the linker was run with `-mt` variants because `-pthread` was passed.
@@ -14858,7 +14867,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   @node_pthreads
   def test_standalone_whole_archive(self):
-    self.emcc_args += ['-sSTANDALONE_WASM', '-pthread', '-Wl,--whole-archive', '-lbulkmemory', '-lstandalonewasm', '-Wl,--no-whole-archive']
+    self.emcc_args += ['-sSTANDALONE_WASM', '-pthread', '-Wl,--whole-archive', '-lstandalonewasm', '-Wl,--no-whole-archive']
     self.do_runf('hello_world.c')
 
   @parameterized({

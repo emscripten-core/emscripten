@@ -1051,6 +1051,7 @@ class libc(MuslInternalLibrary,
     other_files = files_in_path(
       path='system/lib/libc',
       filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
+                 'emscripten_memcpy_bulkmem.S', 'emscripten_memset_bulkmem.S',
                  'emscripten_scan_stack.c',
                  'emscripten_get_heap_size.c',  # needed by malloc
                  'emscripten_memmove.c'])
@@ -1287,6 +1288,8 @@ class libc(MuslInternalLibrary,
           'emscripten_memcpy.c',
           'emscripten_memmove.c',
           'emscripten_memset.c',
+          'emscripten_memcpy_bulkmem.S',
+          'emscripten_memset_bulkmem.S',
           'emscripten_mmap.c',
           'emscripten_scan_stack.c',
           'emscripten_time.c',
@@ -1386,17 +1389,6 @@ class libc_optz(libc):
     # and so optz is not that important.
     return super(libc_optz, self).can_use() and settings.SHRINK_LEVEL >= 2 and \
         not settings.LINKABLE and not os.environ.get('EMCC_FORCE_STDLIBS')
-
-
-class libbulkmemory(MuslInternalLibrary, AsanInstrumentedLibrary):
-  name = 'libbulkmemory'
-  src_dir = 'system/lib/libc'
-  src_files = ['emscripten_memcpy.c', 'emscripten_memset.c',
-               'emscripten_memcpy_bulkmem.S', 'emscripten_memset_bulkmem.S']
-  cflags = ['-mbulk-memory']
-
-  def can_use(self):
-    return super(libbulkmemory, self).can_use()
 
 
 class libprintf_long_double(libc):
@@ -2201,7 +2193,8 @@ class libstandalonewasm(MuslInternalLibrary):
                    '__main_void.c'])
     files += files_in_path(
         path='system/lib/libc',
-        filenames=['emscripten_memcpy.c', 'emscripten_memset.c'])
+        filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
+                   ]) # XXX why do we need the C files here but not the S files?
     # It is more efficient to use JS methods for time, normally.
     files += files_in_path(
         path='system/lib/libc/musl/src/time',
@@ -2361,8 +2354,6 @@ def get_libs_to_link(args):
   if settings.SHRINK_LEVEL >= 2 and not settings.LINKABLE and \
      not os.environ.get('EMCC_FORCE_STDLIBS'):
     add_library('libc_optz')
-  # TODO: Just move this into libc?
-  add_library('libbulkmemory')
   if settings.STANDALONE_WASM:
     add_library('libstandalonewasm')
   if settings.ALLOW_UNIMPLEMENTED_SYSCALLS:

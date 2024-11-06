@@ -7,10 +7,16 @@
 .globl _emscripten_memcpy_bulkmem
 _emscripten_memcpy_bulkmem:
   .functype _emscripten_memcpy_bulkmem (PTR, PTR, PTR) -> (PTR)
-  local.get 0
-  local.get 1
   local.get 2
-  memory.copy 0, 0
+#ifdef __wasm64__
+  i32.wrap_i64
+#endif
+  if
+    local.get 0
+    local.get 1
+    local.get 2
+    memory.copy 0, 0
+  end_if
   local.get 0
   end_function
 

@@ -7,10 +7,16 @@
 .globl _emscripten_memset_bulkmem
 _emscripten_memset_bulkmem:
   .functype _emscripten_memset_bulkmem (PTR, i32, PTR) -> (PTR)
-  local.get 0
-  local.get 1
   local.get 2
-  memory.fill 0
+#ifdef __wasm64__
+  i32.wrap_i64
+#endif
+  if
+   local.get 0
+   local.get 1
+   local.get 2
+   memory.fill 0
+  end_if
   local.get 0
   end_function
 
