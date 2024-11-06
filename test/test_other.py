@@ -10393,6 +10393,14 @@ int main() {
     # FIXME? -mno-bulk-memory etc at link time do not override MIN_SAFARI_VERSION. should they?
     verify_features_sec_linked('bulk-memory', True)
 
+    # feature_matrix has the (IMO strange) behavior that enabling one feature supported by 
+    # a particular browser version will cause all other features supported by that version
+    # to be enabled as well.
+    # TODO: is this test redundant with test_signext_lowering?
+    compile(['-sWASM_BIGINT'])
+    verify_features_sec_linked('bulk-memory', True)
+    verify_features_sec_linked('nontrapping-fptoint', True)
+
   def test_js_preprocess(self):
     # Use stderr rather than stdout here because stdout is redirected to the output JS file itself.
     create_file('lib.js', '''
