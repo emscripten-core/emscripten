@@ -757,8 +757,7 @@ def phase_linker_setup(options, state, newargs):
 
   if options.oformat == OFormat.MJS:
     settings.EXPORT_ES6 = 1
-    if not settings.MODULARIZE:
-      settings.MODULARIZE = 1
+    default_setting('MODULARIZE', 1)
 
   if settings.MODULARIZE == 'static':
     diagnostics.warning('experimental', '-sMODULARIZE=static is still experimental. Many features may not work or will change.')
@@ -2486,10 +2485,10 @@ var %(EXPORT_NAME)s = (() => {
     exports = settings.EXPORTED_FUNCTIONS + settings.EXPORTED_RUNTIME_METHODS
     # Declare a top level var for each export so that code in the init function
     # can assign to it and update the live module bindings.
-    src += "var " + ", ".join(['x_' + export for export in exports]) + ";\n"
+    src += 'var ' + ', '.join(['__exp_' + export for export in exports]) + ';\n'
     # Export the functions with their original name.
-    exports = ['x_' + export + ' as ' + export for export in exports]
-    src += "export {" + ", ".join(exports) + "};\n"
+    exports = ['__exp_' + export + ' as ' + export for export in exports]
+    src += 'export {' + ', '.join(exports) + '};\n'
 
   elif not settings.MINIMAL_RUNTIME:
     src += '''\

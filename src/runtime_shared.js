@@ -24,7 +24,7 @@
     }
     if (shouldExport) {
       if (MODULARIZE === 'static') {
-        return `x_${x} = `
+        return `__exp_${x} = `
       }
       return `Module['${x}'] = `;
     }

@@ -385,7 +385,7 @@ function exportRuntime() {
     // separately in updateMemoryViews
     if (EXPORTED_RUNTIME_METHODS.has(name) && !name.startsWith('HEAP')) {
       if (MODULARIZE === 'static') {
-        return `x_${name} = ${name};`;
+        return `__exp_${name} = ${name};`;
       }
       return `Module['${name}'] = ${name};`;
     }

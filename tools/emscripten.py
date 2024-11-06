@@ -915,7 +915,7 @@ def make_export_wrappers(function_exports):
     if (name.startswith('dynCall_') and settings.MODULARIZE != 'static') or should_export:
       if settings.MODULARIZE == 'static':
         # Update the export declared at the top level.
-        wrapper += f" x_{mangled} = "
+        wrapper += f" __exp_{mangled} = "
       else:
         exported = "Module['%s'] = " % mangled
     else:
