@@ -77,7 +77,7 @@ def ensure():
   if not os.path.isdir(cachedir):
     parent_dir = os.path.dirname(cachedir)
     if not is_writable(parent_dir):
-      utils.exit_with_error('unable to create cache directory "{cachdir}": parent directory not writable (see https://emscripten.org/docs/tools_reference/emcc.html for info on setting the cache directory)')
+      utils.exit_with_error(f'unable to create cache directory "{cachedir}": parent directory not writable (see https://emscripten.org/docs/tools_reference/emcc.html for info on setting the cache directory)')
     utils.safe_ensure_dirs(cachedir)
 
 
