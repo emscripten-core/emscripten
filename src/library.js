@@ -1796,9 +1796,6 @@ addToLibrary({
   $dynCalls: '{}',
 #endif
   $dynCallLegacy__deps: [
-#if MAIN_MODULE == 1
-    '$createDyncallWrapper'
-#endif
 #if MINIMAL_RUNTIME
     '$dynCalls',
 #endif
@@ -1828,11 +1825,6 @@ addToLibrary({
 #if MINIMAL_RUNTIME
     var f = dynCalls[sig];
 #else
-#if MAIN_MODULE == 1
-    if (!('dynCall_' + sig in Module)) {
-      Module['dynCall_' + sig] = createDyncallWrapper(sig);
-    }
-#endif
     var f = Module['dynCall_' + sig];
 #endif
     return f(ptr, ...args);
