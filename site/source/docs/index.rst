@@ -51,7 +51,6 @@ The full hierarchy of articles, opened to the second level, is shown below.
   compiling/index
   building_from_source/index
   contributing/index
-  api_reference/index
   tools_reference/index
   debugging/Sanitizers
   site/index
