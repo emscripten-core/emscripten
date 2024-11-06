@@ -442,6 +442,35 @@ class other(RunnerCore):
 
     self.assertContained('hello, world!', self.run_js('runner.mjs'))
 
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread'],),
+  })
+  def test_modularize_static(self, args):
+    create_file('library.js', '''\
+    addToLibrary({
+      $baz: function() { console.log('baz'); }
+    });''')
+    self.run_process([EMCC, test_file('modularize_static.cpp'),
+                      '-sMODULARIZE=static',
+                      '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit',
+                      '-sEXPORTED_FUNCTIONS=_bar,_main',
+                      '--js-library', 'library.js',
+                      '-o', 'modularize_static.mjs'] + args)
+
+    create_file('runner.mjs', '''
+      import { strict as assert } from 'assert';
+      import init, { _foo as foo, _bar as bar, baz, addOnExit, HEAP32 } from "./modularize_static.mjs";
+      await init();
+      foo(); // exported with EMSCRIPTEN_KEEPALIVE
+      bar(); // exported with EXPORTED_FUNCTIONS
+      baz(); // exported library function with EXPORTED_RUNTIME_METHODS
+      assert(typeof addOnExit === 'function'); // exported runtime function with EXPORTED_RUNTIME_METHODS
+      assert(typeof HEAP32 === 'object'); // exported runtime value by default
+    ''')
+
+    self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
+
   def test_emcc_out_file(self):
     # Verify that "-ofile" works in addition to "-o" "file"
     self.run_process([EMCC, '-c', '-ofoo.o', test_file('hello_world.c')])

@@ -1947,7 +1947,23 @@ factory function, you can use --extern-pre-js or --extern-post-js. While
 intended usage is to add code that is optimized with the rest of the emitted
 code, allowing better dead code elimination and minification.
 
-Default value: false
+Experimental Feature - Static ES Modules:
+
+Note this feature is still under active development and is subject to change!
+
+To enable this feature use -sMODULARIZE=static. Enabling this mode will
+produce an ES module that is a singleton with static ES module exports. The
+module will export a default value that is an async init function and will
+also export named values that correspond to the Wasm exports and runtime
+exports. The init function must be called before any of the exports can be
+used. An example of using the module is below.
+
+  import init, { foo, bar } from "./my_module.mjs"
+  await init(optionalArguments);
+  foo();
+  bar();
+
+Default value: ''
 
 .. _export_es6:
 

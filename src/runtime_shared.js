@@ -22,8 +22,13 @@
         shouldExport = true;
       }
     }
-
-    return shouldExport ? `Module['${x}'] = ` : '';
+    if (shouldExport) {
+      if (MODULARIZE === 'static') {
+        return `x_${x} = `
+      }
+      return `Module['${x}'] = `;
+    }
+    return '';
   };
   null;
 }}}

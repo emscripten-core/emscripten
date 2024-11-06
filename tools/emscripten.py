@@ -912,8 +912,12 @@ def make_export_wrappers(function_exports):
 
     # TODO(sbc): Can we avoid exporting the dynCall_ functions on the module.
     should_export = settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS
-    if name.startswith('dynCall_') or should_export:
-      exported = "Module['%s'] = " % mangled
+    if (name.startswith('dynCall_') and settings.MODULARIZE != 'static') or should_export:
+      if settings.MODULARIZE == 'static':
+        # Update the export declared at the top level.
+        wrapper += f" x_{mangled} = "
+      else:
+        exported = "Module['%s'] = " % mangled
     else:
       exported = ''
     wrapper += exported

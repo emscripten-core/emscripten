@@ -757,7 +757,13 @@ def phase_linker_setup(options, state, newargs):
 
   if options.oformat == OFormat.MJS:
     settings.EXPORT_ES6 = 1
-    settings.MODULARIZE = 1
+    if not settings.MODULARIZE:
+      settings.MODULARIZE = 1
+
+  if settings.MODULARIZE == 'static':
+    diagnostics.warning('experimental', '-sMODULARIZE=static is still experimental. Many features may not work or will change.')
+    if options.oformat != OFormat.MJS:
+      exit_with_error('emcc: MODULARIZE static is only compatible with .mjs output files')
 
   if options.oformat in (OFormat.WASM, OFormat.BARE):
     if options.emit_tsd:
@@ -2394,7 +2400,20 @@ def modularize():
   if async_emit != '' and settings.EXPORT_NAME == 'config':
     diagnostics.warning('emcc', 'EXPORT_NAME should not be named "config" when targeting Safari')
 
-  src = '''
+  if settings.MODULARIZE == 'static':
+    src = '''
+export default async function init(moduleArg = {}) {
+  var moduleRtn;
+
+%(src)s
+
+  return await moduleRtn;
+}
+''' % {
+      'src': src,
+    }
+  else:
+    src = '''
 %(maybe_async)sfunction(moduleArg = {}) {
   var moduleRtn;
 
@@ -2403,9 +2422,9 @@ def modularize():
   return moduleRtn;
 }
 ''' % {
-    'maybe_async': async_emit,
-    'src': src,
-  }
+      'maybe_async': async_emit,
+      'src': src,
+    }
 
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
     # Single threaded MINIMAL_RUNTIME programs do not need access to
@@ -2424,19 +2443,31 @@ def modularize():
       script_url = "typeof document != 'undefined' ? document.currentScript?.src : undefined"
       if shared.target_environment_may_be('node'):
         script_url_node = "if (typeof __filename != 'undefined') _scriptName = _scriptName || __filename;"
-    src = '''%(node_imports)s
+    if settings.MODULARIZE == 'static':
+      src = '''%(node_imports)s
+  var _scriptName = %(script_url)s;
+  %(script_url_node)s
+  %(src)s
+''' % {
+        'node_imports': node_es6_imports(),
+        'script_url': script_url,
+        'script_url_node': script_url_node,
+        'src': src,
+      }
+    else:
+      src = '''%(node_imports)s
 var %(EXPORT_NAME)s = (() => {
   var _scriptName = %(script_url)s;
   %(script_url_node)s
   return (%(src)s);
 })();
 ''' % {
-      'node_imports': node_es6_imports(),
-      'EXPORT_NAME': settings.EXPORT_NAME,
-      'script_url': script_url,
-      'script_url_node': script_url_node,
-      'src': src,
-    }
+        'node_imports': node_es6_imports(),
+        'EXPORT_NAME': settings.EXPORT_NAME,
+        'script_url': script_url,
+        'script_url_node': script_url_node,
+        'src': src,
+      }
 
   # Given the async nature of how the Module function and Module object
   # come into existence in AudioWorkletGlobalScope, store the Module
@@ -2448,8 +2479,17 @@ var %(EXPORT_NAME)s = (() => {
     src += f'globalThis.AudioWorkletModule = {settings.EXPORT_NAME};\n'
 
   # Export using a UMD style export, or ES6 exports if selected
-  if settings.EXPORT_ES6:
+  if settings.EXPORT_ES6 and settings.MODULARIZE != 'static':
     src += 'export default %s;\n' % settings.EXPORT_NAME
+
+  if settings.MODULARIZE == 'static':
+    exports = settings.EXPORTED_FUNCTIONS + settings.EXPORTED_RUNTIME_METHODS
+    # Declare a top level var for each export so that code in the init function
+    # can assign to it and update the live module bindings.
+    src += "var " + ", ".join(['x_' + export for export in exports]) + ";\n"
+    # Export the functions with their original name.
+    exports = ['x_' + export + ' as ' + export for export in exports]
+    src += "export {" + ", ".join(exports) + "};\n"
 
   elif not settings.MINIMAL_RUNTIME:
     src += '''\
@@ -2473,7 +2513,10 @@ else if (typeof define === 'function' && define['amd'])
     elif settings.ENVIRONMENT_MAY_BE_NODE:
       src += f'var isPthread = {node_pthread_detection()}\n'
     src += '// When running as a pthread, construct a new instance on startup\n'
-    src += 'isPthread && %s();\n' % settings.EXPORT_NAME
+    if settings.MODULARIZE == 'static':
+      src += 'isPthread && init();\n'
+    else:
+      src += 'isPthread && %s();\n' % settings.EXPORT_NAME
 
   final_js += '.modular.js'
   write_file(final_js, src)

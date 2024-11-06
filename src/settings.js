@@ -1325,8 +1325,25 @@ var DETERMINISTIC = false;
 // --pre-js and --post-js happen to do that in non-MODULARIZE mode, their
 // intended usage is to add code that is optimized with the rest of the emitted
 // code, allowing better dead code elimination and minification.
+//
+// Experimental Feature - Static ES Modules:
+//
+// Note this feature is still under active development and is subject to change!
+//
+// To enable this feature use -sMODULARIZE=static. Enabling this mode will
+// produce an ES module that is a singleton with static ES module exports. The
+// module will export a default value that is an async init function and will
+// also export named values that correspond to the Wasm exports and runtime
+// exports. The init function must be called before any of the exports can be
+// used. An example of using the module is below.
+//
+//   import init, { foo, bar } from "./my_module.mjs"
+//   await init(optionalArguments);
+//   foo();
+//   bar();
+//
 // [link]
-var MODULARIZE = false;
+var MODULARIZE = '';
 
 // Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
 // be enabled for ES6 exports and is implicitly enabled if not already set.
