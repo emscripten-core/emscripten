@@ -899,10 +899,8 @@ def phase_setup(options, state, newargs):
   if options.target.startswith('wasm64'):
     default_setting('MEMORY64', 1)
 
-  if settings.MEMORY64:
-    if options.target.startswith('wasm32'):
-      exit_with_error('wasm32 target is not compatible with -sMEMORY64')
-    diagnostics.warning('experimental', '-sMEMORY64 is still experimental. Many features may not work.')
+  if settings.MEMORY64 and options.target.startswith('wasm32'):
+    exit_with_error('wasm32 target is not compatible with -sMEMORY64')
 
   # Wasm SjLj cannot be used with Emscripten EH
   if settings.SUPPORT_LONGJMP == 'wasm':

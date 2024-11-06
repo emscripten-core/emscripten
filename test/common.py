@@ -484,7 +484,6 @@ def also_with_wasm64(f):
     if with_wasm64:
       self.require_wasm64()
       self.set_setting('MEMORY64')
-      self.emcc_args.append('-Wno-experimental')
       f(self, *args, **kwargs)
     else:
       f(self, *args, **kwargs)
