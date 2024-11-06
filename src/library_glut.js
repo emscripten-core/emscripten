@@ -566,8 +566,9 @@ var LibraryGLUT = {
     // TODO: Make glutCreateWindow explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
     GL.enableOffscreenFramebufferAttributes(contextAttributes);
 #endif
-    if (!Browser.createContext(Module['canvas'], /*useWebGL=*/true, /*setInModule=*/true, contextAttributes))
+    if (!Browser.createContext(Module['canvas'], /*useWebGL=*/true, /*setInModule=*/true, contextAttributes)) {
       return 0; // failure
+    }
     return 1; // a new GLUT window ID for the created context
   },
 
