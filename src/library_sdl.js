@@ -3330,7 +3330,8 @@ var LibrarySDL = {
   // SDL 2
 
   SDL_GL_ExtensionSupported__proxy: 'sync',
-  SDL_GL_ExtensionSupported: (extension) => Module.ctx.getExtension(extension) | 0,
+  SDL_GL_ExtensionSupported__deps: ['$GLctx', '$UTF8ToString'],
+  SDL_GL_ExtensionSupported: (extension) => GLctx?.getExtension(UTF8ToString(extension)) ? 1 : 0,
 
   SDL_DestroyWindow: (window) => {},
 

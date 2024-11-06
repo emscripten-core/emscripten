@@ -1480,6 +1480,10 @@ simulateKeyUp(100);
                           test_file('browser/test_sdl_canvas_size.html'), '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
+  def test_sdl_gl_extensions(self):
+    self.btest_exit('test_sdl_gl_extensions.c', args=['-lSDL', '-lGL'])
+
+  @requires_graphics_hardware
   def test_sdl_gl_read(self):
     # SDL, OpenGL, readPixels
     self.btest_exit('test_sdl_gl_read.c', args=['-lSDL', '-lGL'])
