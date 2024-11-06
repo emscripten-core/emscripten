@@ -37,8 +37,7 @@ static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
 
   if (n >= 512) {
     // TODO: Re-investigate the size threshold to enable this
-    _emscripten_memcpy_bulkmem(dest, src, n);
-    return dest;
+    return _emscripten_memcpy_bulkmem(dest, src, n);
   }
 
   d_end = d + n;
