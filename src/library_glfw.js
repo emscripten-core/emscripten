@@ -422,7 +422,7 @@ var LibraryGLFW = {
       // Prevent default backspace and tab behavior when the target 
       // is not an input or textarea. Otherwise, no text in the site can be deleted.
       if (event.target.tagName !== "INPUT" && event.target.tagName !== "TEXTAREA" &&
-        (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */)) {
+        (event.key == 'Backspace' || event.key == 'Tab')) {
         event.preventDefault();
       }
     },

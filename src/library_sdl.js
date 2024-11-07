@@ -689,8 +689,13 @@ var LibrarySDL = {
           // won't fire. However, it's fine (and in some cases necessary) to
           // preventDefault for keys that don't generate a character. Otherwise,
           // preventDefault is the right thing to do in general.
-          if (event.type !== 'keydown' || (!SDL.unicode && !SDL.textInput) || (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */)) {
-            event.preventDefault();
+          // Prevent default backspace and tab behavior when the target 
+          // is not an input or textarea. Otherwise, no text in the site can be deleted.
+          if (event.type !== 'keydown' ||
+              (!SDL.unicode && !SDL.textInput) ||
+              ((event.key == 'Backspace' || event.key == 'Tab') &&
+                  event.target.tagName !== "INPUT" && event.target.tagName !== "TEXTAREA")) {
+              event.preventDefault();
           }
 
           if (event.type == 'mousedown') {
