@@ -553,7 +553,7 @@ var LibrarySDL = {
     receiveEvent(event) {
       function unpressAllPressedKeys() {
         // Un-press all pressed keys: TODO
-        for (var keyCode of SDL.keyboardMap) {
+        for (var keyCode of Object.values(SDL.keyboardMap)) {
           SDL.events.push({
             type: 'keyup',
             keyCode,
