@@ -25,7 +25,6 @@ var Module = moduleArg;
 #elif USE_CLOSURE_COMPILER
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
 var /** @type {{
-  canvas: HTMLCanvasElement,
   ctx: Object,
 }}
  */ Module;
