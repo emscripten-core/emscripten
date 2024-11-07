@@ -1013,15 +1013,15 @@ simulateKeyDown(100);simulateKeyUp(100); // trigger the end
 <script src='fake_events.js'></script>
 <script>
 // Send 'A'.  The corresonding keypress event will not be prevented.
-simulateKeyDown(65);
-simulateKeyUp(65);
+simulateKeyDown(65, 'KeyA);
+simulateKeyUp(65, 'KeyA');
 
 // Send backspace.  The corresonding keypress event *will* be prevented due to proxyClient.js.
-simulateKeyDown(8);
-simulateKeyUp(8);
+simulateKeyDown(8, 'Backspace');
+simulateKeyUp(8, 'Backspace');
 
-simulateKeyDown(100);
-simulateKeyUp(100);
+simulateKeyDown(100, 'Numpad4');
+simulateKeyUp(100, 'Numpad4');
 </script>
 </body>''')
 
