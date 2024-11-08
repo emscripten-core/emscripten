@@ -1347,6 +1347,7 @@ FS.staticInit();
       FS.registerDevice(FS.makedev(1, 3), {
         read: () => 0,
         write: (stream, buffer, offset, length, pos) => length,
+        llseek: () => 0,
       });
       FS.mkdev('/dev/null', FS.makedev(1, 3));
       // setup /dev/tty and /dev/tty1
