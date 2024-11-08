@@ -313,6 +313,7 @@ class interactive(BrowserCore):
     shutil.copy(test_file('webaudio/audio_files/emscripten-bass.mp3'), 'audio_files/')
     self.btest('webaudio/audioworklet_in_out_stereo.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
 
+
 class interactive64(interactive):
   def setUp(self):
     super().setUp()
