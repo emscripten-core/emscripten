@@ -9,7 +9,11 @@ __attribute__((no_sanitize("address"))) void *__memset(void *str, int c, size_t 
 __attribute__((__weak__)) void *__musl_memset(void *str, int c, size_t n);
 __attribute__((__weak__)) void *__memset(void *str, int c, size_t n);
 
-#if defined(__wasm_bulk_memory__) || defined(EMSCRIPTEN_OPTIMIZE_FOR_OZ)
+#if !defined(__wasm_bulk_memory__)
+#error "This file must be compiled with bulk memory enabled"
+#endif
+
+#if defined(EMSCRIPTEN_OPTIMIZE_FOR_OZ)
 
 void *__memset(void *str, int c, size_t n) {
   return _emscripten_memset_bulkmem(str, c, n);

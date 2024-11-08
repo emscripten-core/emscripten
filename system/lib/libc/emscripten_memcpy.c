@@ -8,6 +8,10 @@
 #include "libc.h"
 #include "emscripten_internal.h"
 
+#if !defined(__wasm_bulk_memory__)
+#error "This file must be compile with bulk memory enabled"
+#endif
+
 // Use the simple/naive version of memcpy when building with asan
 #if __has_feature(address_sanitizer)
 
@@ -18,7 +22,7 @@ static void *__memcpy(void *dest, const void *src, size_t n) {
   return dest;
 }
 
-#elif defined(__wasm_bulk_memory__) || defined(EMSCRIPTEN_OPTIMIZE_FOR_OZ)
+#elif defined(EMSCRIPTEN_OPTIMIZE_FOR_OZ)
 
 static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
   // TODO: Ensure this is inlined with Binaryen or inline asm
