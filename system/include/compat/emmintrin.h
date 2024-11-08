@@ -431,9 +431,11 @@ _mm_cvttpd_epi32(__m128d __a)
   int m[2];
   for(int i = 0; i < 2; ++i)
   {
-    int x = lrint(__a[i]);
-    if (x != 0 || fabs(__a[i]) < 2.0)
-      m[i] = (int)__a[i];
+    float elem = __a[i];
+    if ((lrint(elem) != 0 || fabs(elem) < 2.0) && !isnanf(elem) && elem <= INT_MAX && elem >= INT_MIN)
+      // Use the trapping instruction here since we have explicit bounds checks
+      // above.
+      m[i] = __builtin_wasm_trunc_s_i32_f32(elem);
     else
       m[i] = (int)0x80000000;
   }
@@ -444,9 +446,12 @@ static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_cvttsd_si32(__m128d __a)
 {
   // TODO: OPTIMIZE!
-  int x = lrint(__a[0]);
-  if (x != 0 || fabs(__a[0]) < 2.0)
-    return (int)__a[0];
+  float elem = __a[0];
+  if (isnan(elem) || elem > INT_MAX || elem < INT_MIN) return (int)0x80000000;
+  if (lrint(elem) != 0 || fabs(elem) < 2.0)
+    // Use the trapping instruction here since we have explicit bounds checks
+    // above.
+    return __builtin_wasm_trunc_s_i32_f32(elem);
   else
     return (int)0x80000000;
 }
@@ -1013,10 +1018,13 @@ static __inline__ long long __attribute__((__always_inline__, __nodebug__))
 _mm_cvttsd_si64(__m128d __a)
 {
   // TODO: optimize
-  if (isnan(__a[0]) || isinf(__a[0])) return 0x8000000000000000LL;
-  long long x = llrint(__a[0]);
-  if (x != 0xFFFFFFFF00000000ULL && (x != 0 || fabsf(__a[0]) < 2.f))
-    return (long long)__a[0];
+  float e = __a[0];
+  if (isnan(e) || isinf(e) || e > LLONG_MAX || e < LLONG_MIN) return 0x8000000000000000LL;
+  long long x = llrint(e);
+  if (x != 0xFFFFFFFF00000000ULL && (x != 0 || fabsf(e) < 2.f))
+    // Use the trapping instruction here since we have explicit bounds checks
+    // above
+    return __builtin_wasm_trunc_s_i64_f32(e);
   else
     return 0x8000000000000000LL;
 }
@@ -1056,9 +1064,12 @@ _mm_cvttps_epi32(__m128 __a)
   } u;
   for(int i = 0; i < 4; ++i)
   {
-    int x = lrint(__a[i]);
-    if (x != 0 || fabs(__a[i]) < 2.0)
-      u.x[i] = (int)__a[i];
+    float e = __a[i];
+    int x = lrint(e);
+    if ((x != 0 || fabs(e) < 2.0) && !isnanf(e) && e <= INT_MAX && e >= INT_MIN)
+      // Use the trapping instruction here since we have explicit bounds checks
+      // above.
+      u.x[i] = __builtin_wasm_trunc_s_i32_f32(e);
     else
       u.x[i] = (int)0x80000000;
   }
