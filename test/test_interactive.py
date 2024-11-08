@@ -306,6 +306,12 @@ class interactive(BrowserCore):
   def test_audio_worklet_modularize(self):
     self.btest('webaudio/audioworklet.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMINIMAL_RUNTIME', '-sMODULARIZE'])
 
+  # Tests an AudioWorklet with multiple stereo inputs mixing to a single output
+  def test_audio_worklet_stereo_io(self):
+    os.mkdir('audio_files')
+    shutil.copy(test_file('webaudio/audio_files/emscripten-beat.mp3'), 'audio_files/')
+    shutil.copy(test_file('webaudio/audio_files/emscripten-bass.mp3'), 'audio_files/')
+    self.btest('webaudio/audioworklet_in_out_stereo.c', expected='0', args=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
 
 class interactive64(interactive):
   def setUp(self):
