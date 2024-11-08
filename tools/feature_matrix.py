@@ -123,7 +123,7 @@ def enable_feature(feature, reason):
     if settings[name] < min_version:
       if name in user_settings:
         # If the user explicitly chose an older version we issue a warning.
-        if name == 'MIN_SAFARI_VERSION' and feature == 'pthreads':
+        if name == 'MIN_SAFARI_VERSION' and reason == 'pthreads':
           # But as a special case, don't warn when forcing on bulk memory on Safari.
           # This is because Safari implemented part of bulk memory along with threads in 14.1,
           # but not all of it. So bulk-mem is listed as supported in 15.0. So we want to
@@ -148,7 +148,7 @@ def apply_min_browser_versions():
   if settings.PTHREADS:
     enable_feature(Feature.THREADS, 'pthreads')
     enable_feature(Feature.BULK_MEMORY, 'pthreads')
-  if settings.WASM_WORKERS:
+  if settings.WASM_WORKERS or settings.SHARED_MEMORY:
     enable_feature(Feature.BULK_MEMORY, 'wasm-workers')
   if settings.AUDIO_WORKLET:
     enable_feature(Feature.GLOBALTHIS, 'AUDIO_WORKLET')
