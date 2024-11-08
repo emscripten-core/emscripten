@@ -644,11 +644,11 @@ function(${args}) {
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
       // we also export library methods as necessary.
       if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
-        assert(
-          MODULARIZE !== 'static',
-          'Exports in jsifier not currently supported with static modules.',
-        );
-        contentText += `\nModule['${mangled}'] = ${mangled};`;
+        if (MODULARIZE === 'static') {
+          contentText += `\n__exp_${mangled} = ${mangled};`;
+        } else {
+          contentText += `\nModule['${mangled}'] = ${mangled};`;
+        }
       }
       // Relocatable code needs signatures to create proper wrappers.
       if (sig && RELOCATABLE) {

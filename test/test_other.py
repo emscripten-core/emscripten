@@ -449,22 +449,24 @@ class other(RunnerCore):
   def test_modularize_static(self, args):
     create_file('library.js', '''\
     addToLibrary({
-      $baz: function() { console.log('baz'); }
+      $baz: function() { console.log('baz'); },
+      $qux: function() { console.log('qux'); }
     });''')
     self.run_process([EMCC, test_file('modularize_static.cpp'),
                       '-sMODULARIZE=static',
                       '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit',
-                      '-sEXPORTED_FUNCTIONS=_bar,_main',
+                      '-sEXPORTED_FUNCTIONS=_bar,_main,qux',
                       '--js-library', 'library.js',
                       '-o', 'modularize_static.mjs'] + args)
 
     create_file('runner.mjs', '''
       import { strict as assert } from 'assert';
-      import init, { _foo as foo, _bar as bar, baz, addOnExit, HEAP32 } from "./modularize_static.mjs";
+      import init, { _foo as foo, _bar as bar, baz, qux, addOnExit, HEAP32 } from "./modularize_static.mjs";
       await init();
       foo(); // exported with EMSCRIPTEN_KEEPALIVE
       bar(); // exported with EXPORTED_FUNCTIONS
       baz(); // exported library function with EXPORTED_RUNTIME_METHODS
+      qux(); // exported library function with EXPORTED_FUNCTIONS
       assert(typeof addOnExit === 'function'); // exported runtime function with EXPORTED_RUNTIME_METHODS
       assert(typeof HEAP32 === 'object'); // exported runtime value by default
     ''')
