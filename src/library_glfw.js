@@ -1112,7 +1112,15 @@ var LibraryGLFW = {
 
       // Get non alive id
       const canvas = Module['canvas'];
-      var win = new GLFW_Window(id, canvas.clientWidth, canvas.clientHeight, canvas.width, canvas.height, title, monitor, share);
+
+      var clientWidth = canvas.clientWidth;
+      var clientHeight = canvas.clientHeight;
+      if(GLFW.isCSSScalingEnabled()) {
+        clientWidth = width;
+        clientHeight = height;
+      }
+
+      var win = new GLFW_Window(id, clientWidth, clientHeight, canvas.width, canvas.height, title, monitor, share);
 
       // Set window to array
       if (id - 1 == GLFW.windows.length) {
@@ -1266,6 +1274,11 @@ var LibraryGLFW = {
       var cw = Module["canvas"].clientWidth;
       var ch = Module["canvas"].clientHeight;
 
+      if(GLFW.isCSSScalingEnabled()) {
+        cw = GLFW.active.width;
+        ch = GLFW.active.height;
+      }
+
       // Neither .scrollX or .pageXOffset are defined in a spec, but
       // we prefer .scrollX because it is currently in a spec draft.
       // (see: http://www.w3.org/TR/2013/WD-cssom-view-20131217/)
@@ -1308,9 +1321,24 @@ var LibraryGLFW = {
         return false;
     },
 
+    /**
+     * CSS Scaling is a feature that is NOT part of the GLFW API, but for historical reasons, it is available
+     * in Emscripten.
+     * It is enabled by default but can be disabled by setting Module['EMSCRIPTEN_GLFW_DISABLE_CSS_SCALING'] to true.
+     * It is automatically disabled when using Hi DPI (the library overrides CSS sizes). */
+    isCSSScalingEnabled() {
+      return Module['EMSCRIPTEN_GLFW_DISABLE_CSS_SCALING'] !== true && !GLFW.isHiDPIAware();
+    },
+
     adjustCanvasDimensions() {
       const canvas = Module['canvas'];
-      Browser.updateCanvasDimensions(canvas, canvas.clientWidth, canvas.clientHeight);
+      var clientWidth = canvas.clientWidth;
+      var clientHeight = canvas.clientHeight;
+      if(GLFW.isCSSScalingEnabled()) {
+        clientWidth = GLFW.active.width;
+        clientHeight = GLFW.active.height;
+      }
+      Browser.updateCanvasDimensions(canvas, clientWidth, clientHeight);
       Browser.updateResizeListeners();
     },
 
