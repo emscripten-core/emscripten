@@ -1115,7 +1115,7 @@ var LibraryGLFW = {
 
       var clientWidth = canvas.clientWidth;
       var clientHeight = canvas.clientHeight;
-      if(GLFW.isCSSScalingEnabled()) {
+      if (GLFW.isCSSScalingEnabled()) {
         clientWidth = width;
         clientHeight = height;
       }
@@ -1274,7 +1274,7 @@ var LibraryGLFW = {
       var cw = Module["canvas"].clientWidth;
       var ch = Module["canvas"].clientHeight;
 
-      if(GLFW.isCSSScalingEnabled()) {
+      if (GLFW.isCSSScalingEnabled()) {
         cw = GLFW.active.width;
         ch = GLFW.active.height;
       }
@@ -1331,11 +1331,11 @@ var LibraryGLFW = {
     },
 
     adjustCanvasDimensions() {
-      if(GLFW.active) {
+      if (GLFW.active) {
         const canvas = Module['canvas'];
         var clientWidth = canvas.clientWidth;
         var clientHeight = canvas.clientHeight;
-        if(GLFW.isCSSScalingEnabled()) {
+        if (GLFW.isCSSScalingEnabled()) {
           clientWidth = GLFW.active.width;
           clientHeight = GLFW.active.height;
         }
