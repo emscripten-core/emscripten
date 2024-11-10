@@ -1331,15 +1331,17 @@ var LibraryGLFW = {
     },
 
     adjustCanvasDimensions() {
-      const canvas = Module['canvas'];
-      var clientWidth = canvas.clientWidth;
-      var clientHeight = canvas.clientHeight;
-      if(GLFW.isCSSScalingEnabled()) {
-        clientWidth = GLFW.active.width;
-        clientHeight = GLFW.active.height;
+      if(GLFW.active) {
+        const canvas = Module['canvas'];
+        var clientWidth = canvas.clientWidth;
+        var clientHeight = canvas.clientHeight;
+        if(GLFW.isCSSScalingEnabled()) {
+          clientWidth = GLFW.active.width;
+          clientHeight = GLFW.active.height;
+        }
+        Browser.updateCanvasDimensions(canvas, clientWidth, clientHeight);
+        Browser.updateResizeListeners();
       }
-      Browser.updateCanvasDimensions(canvas, clientWidth, clientHeight);
-      Browser.updateResizeListeners();
     },
 
     getHiDPIScale() {
