@@ -56,6 +56,7 @@ html_theme_path = ['_themes',]
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
+sys.path.insert(0, os.path.abspath('_themes'))
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
@@ -65,6 +66,7 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
     'sphinxcontrib.jquery',
+    'emscripten_sphinx_rtd_theme',
     # 'breathe', #added by HamishW
 ]
 
