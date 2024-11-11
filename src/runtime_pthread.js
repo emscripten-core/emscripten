@@ -17,9 +17,7 @@ var workerID = 0;
 if (ENVIRONMENT_IS_PTHREAD) {
 #if !MINIMAL_RUNTIME
   var wasmPromiseResolve;
-  var wasmPromiseReject;
 #endif
-  var receivedWasmModule;
 
 #if ENVIRONMENT_MAY_BE_NODE
   // Node.js support
@@ -66,7 +64,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
 
 #if !MINIMAL_RUNTIME
   Module['instantiateWasm'] = (info, receiveInstance) => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       wasmPromiseResolve = (module) => {
         // Instantiate from the module posted from the main thread.
         // We can just use sync instantiation in the worker.
@@ -81,7 +79,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
         resolve();
       };
-      wasmPromiseReject = reject;
     });
   }
 #endif
