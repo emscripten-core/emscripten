@@ -17,19 +17,19 @@ lxml==4.9.2
 
 # This version is mentioned in `site/source/docs/site/about.rst`.
 # Please keep them in sync.
-sphinx==8.1.3
+sphinx==7.1.2
 # See https://github.com/emscripten-core/emscripten/issues/21590
 sphinxcontrib-applehelp==1.0.7
 sphinxcontrib-devhelp==1.0.6
-sphinxcontrib-htmlhelp==2.0.6
-sphinxcontrib-serializinghtml==1.1.9
+sphinxcontrib-htmlhelp>=2.0.0
+sphinxcontrib-serializinghtml>=1.1.5
 sphinxcontrib-qthelp==1.0.6
 sphinxcontrib-jquery==4.0
-alabaster==0.7.14
-pygments==2.17.2
-jinja2==3.1
+alabaster<0.8,>=0.7
+pygments>=2.13
+jinja2>=3.0
 
-docutils==0.22
+docutils<0.21,>=0.18.1
 
 # Needed by test/test_sockets.py
 websockify==0.10.0
