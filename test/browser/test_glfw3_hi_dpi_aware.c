@@ -64,7 +64,7 @@ int main() {
 
   GLFWwindow* window;
 
-  assert(glfwInit() == GL_TRUE);
+  assert(glfwInit() == GLFW_TRUE);
 
   installMockDevicePixelRatio();
 
