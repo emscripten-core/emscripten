@@ -23,7 +23,7 @@
       }
     }
     if (shouldExport) {
-      if (MODULARIZE === 'static') {
+      if (MODULARIZE === 'instance') {
         return `__exp_${x} = `
       }
       return `Module['${x}'] = `;

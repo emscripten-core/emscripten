@@ -759,10 +759,13 @@ def phase_linker_setup(options, state, newargs):
     settings.EXPORT_ES6 = 1
     default_setting('MODULARIZE', 1)
 
-  if settings.MODULARIZE == 'static':
-    diagnostics.warning('experimental', '-sMODULARIZE=static is still experimental. Many features may not work or will change.')
+  if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
+    exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
+
+  if settings.MODULARIZE == 'instance':
+    diagnostics.warning('experimental', '-sMODULARIZE=instance is still experimental. Many features may not work or will change.')
     if options.oformat != OFormat.MJS:
-      exit_with_error('emcc: MODULARIZE static is only compatible with .mjs output files')
+      exit_with_error('emcc: MODULARIZE instance is only compatible with .mjs output files')
 
   if options.oformat in (OFormat.WASM, OFormat.BARE):
     if options.emit_tsd:
@@ -2399,7 +2402,7 @@ def modularize():
   if async_emit != '' and settings.EXPORT_NAME == 'config':
     diagnostics.warning('emcc', 'EXPORT_NAME should not be named "config" when targeting Safari')
 
-  if settings.MODULARIZE == 'static':
+  if settings.MODULARIZE == 'instance':
     src = '''
 export default async function init(moduleArg = {}) {
   var moduleRtn;
@@ -2442,7 +2445,7 @@ export default async function init(moduleArg = {}) {
       script_url = "typeof document != 'undefined' ? document.currentScript?.src : undefined"
       if shared.target_environment_may_be('node'):
         script_url_node = "if (typeof __filename != 'undefined') _scriptName = _scriptName || __filename;"
-    if settings.MODULARIZE == 'static':
+    if settings.MODULARIZE == 'instance':
       src = '''%(node_imports)s
   var _scriptName = %(script_url)s;
   %(script_url_node)s
@@ -2478,10 +2481,10 @@ var %(EXPORT_NAME)s = (() => {
     src += f'globalThis.AudioWorkletModule = {settings.EXPORT_NAME};\n'
 
   # Export using a UMD style export, or ES6 exports if selected
-  if settings.EXPORT_ES6 and settings.MODULARIZE != 'static':
+  if settings.EXPORT_ES6 and settings.MODULARIZE != 'instance':
     src += 'export default %s;\n' % settings.EXPORT_NAME
 
-  if settings.MODULARIZE == 'static':
+  if settings.MODULARIZE == 'instance':
     exports = settings.EXPORTED_FUNCTIONS + settings.EXPORTED_RUNTIME_METHODS
     # Declare a top level var for each export so that code in the init function
     # can assign to it and update the live module bindings.
@@ -2512,7 +2515,7 @@ else if (typeof define === 'function' && define['amd'])
     elif settings.ENVIRONMENT_MAY_BE_NODE:
       src += f'var isPthread = {node_pthread_detection()}\n'
     src += '// When running as a pthread, construct a new instance on startup\n'
-    if settings.MODULARIZE == 'static':
+    if settings.MODULARIZE == 'instance':
       src += 'isPthread && init();\n'
     else:
       src += 'isPthread && %s();\n' % settings.EXPORT_NAME

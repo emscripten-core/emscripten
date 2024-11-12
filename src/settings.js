@@ -1326,12 +1326,12 @@ var DETERMINISTIC = false;
 // intended usage is to add code that is optimized with the rest of the emitted
 // code, allowing better dead code elimination and minification.
 //
-// Experimental Feature - Static ES Modules:
+// Experimental Feature - Instance ES Modules:
 //
 // Note this feature is still under active development and is subject to change!
 //
-// To enable this feature use -sMODULARIZE=static. Enabling this mode will
-// produce an ES module that is a singleton with static ES module exports. The
+// To enable this feature use -sMODULARIZE=instance. Enabling this mode will
+// produce an ES module that is a singleton with ES module exports. The
 // module will export a default value that is an async init function and will
 // also export named values that correspond to the Wasm exports and runtime
 // exports. The init function must be called before any of the exports can be

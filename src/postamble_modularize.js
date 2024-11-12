@@ -18,7 +18,7 @@ moduleRtn = Module;
 
 #endif // WASM_ASYNC_COMPILATION
 
-#if ASSERTIONS && MODULARIZE != 'static'
+#if ASSERTIONS && MODULARIZE != 'instance'
 // Assertion for attempting to access module properties on the incoming
 // moduleArg.  In the past we used this object as the prototype of the module
 // and assigned properties to it, but now we return a distinct object.  This
