@@ -553,15 +553,16 @@ var LibrarySDL = {
     receiveEvent(event) {
       function unpressAllPressedKeys() {
         // Un-press all pressed keys: TODO
-        for (var code in SDL.keyboardMap) {
+        for (var keyCode of Object.values(SDL.keyboardMap)) {
           SDL.events.push({
             type: 'keyup',
-            keyCode: SDL.keyboardMap[code]
+            keyCode,
           });
         }
       };
       switch (event.type) {
-        case 'touchstart': case 'touchmove': {
+        case 'touchstart':
+        case 'touchmove': {
           event.preventDefault();
 
           var touches = [];
@@ -637,7 +638,9 @@ var LibrarySDL = {
           };
           break;
         }
-        case 'DOMMouseScroll': case 'mousewheel': case 'wheel':
+        case 'DOMMouseScroll':
+        case 'mousewheel':
+        case 'wheel':
           // Flip the wheel direction to translate from browser wheel direction
           // (+:down) to SDL direction (+:up)
           var delta = -Browser.getMouseWheelDelta(event);
@@ -684,7 +687,11 @@ var LibrarySDL = {
             }
           }
           // fall through
-        case 'keydown': case 'keyup': case 'keypress': case 'mousedown': case 'mouseup':
+        case 'keydown':
+        case 'keyup':
+        case 'keypress':
+        case 'mousedown':
+        case 'mouseup':
           // If we preventDefault on keydown events, the subsequent keypress events
           // won't fire. However, it's fine (and in some cases necessary) to
           // preventDefault for keys that don't generate a character. Otherwise,
@@ -834,11 +841,14 @@ var LibrarySDL = {
       event.handled = true;
 
       switch (event.type) {
-        case 'touchstart': case 'touchend': case 'touchmove': {
+        case 'touchstart':
+        case 'touchend':
+        case 'touchmove': {
           Browser.calculateMouseEvent(event);
           break;
         }
-        case 'keydown': case 'keyup': {
+        case 'keydown':
+        case 'keyup': {
           var down = event.type === 'keydown';
           var code = SDL.lookupKeyCodeForEvent(event);
 #if !SAFE_HEAP
@@ -863,7 +873,8 @@ var LibrarySDL = {
 
           break;
         }
-        case 'mousedown': case 'mouseup':
+        case 'mousedown':
+        case 'mouseup':
           if (event.type == 'mousedown') {
             // SDL_BUTTON(x) is defined as (1 << ((x)-1)).  SDL buttons are 1-3,
             // and DOM buttons are 0-2, so this means that the below formula is
@@ -1478,11 +1489,7 @@ var LibrarySDL = {
       SDL.addedResizeListener = true;
       Browser.resizeListeners.push((w, h) => {
         if (!SDL.settingVideoMode) {
-          SDL.receiveEvent({
-            type: 'resize',
-            w,
-            h
-          });
+          SDL.receiveEvent({ type: 'resize', w, h });
         }
       });
     }
@@ -3330,7 +3337,8 @@ var LibrarySDL = {
   // SDL 2
 
   SDL_GL_ExtensionSupported__proxy: 'sync',
-  SDL_GL_ExtensionSupported: (extension) => Module.ctx.getExtension(extension) | 0,
+  SDL_GL_ExtensionSupported__deps: ['$GLctx', '$UTF8ToString'],
+  SDL_GL_ExtensionSupported: (extension) => GLctx?.getExtension(UTF8ToString(extension)) ? 1 : 0,
 
   SDL_DestroyWindow: (window) => {},
 

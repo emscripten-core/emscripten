@@ -2645,7 +2645,8 @@ var LibraryWebGPU = {
       var requiredFeatureCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredFeatureCount) }}};
       if (requiredFeatureCount) {
         var requiredFeaturesPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredFeatures, '*') }}};
-        desc["requiredFeatures"] = Array.from({{{ makeHEAPView('32', 'requiredFeaturesPtr', `requiredFeaturesPtr + requiredFeatureCount * ${POINTER_SIZE}`) }}},
+        // requiredFeaturesPtr is a pointer to an array of FeatureName which is an enum of size uint32_t
+        desc["requiredFeatures"] = Array.from({{{ makeHEAPView('U32', 'requiredFeaturesPtr', `requiredFeaturesPtr + requiredFeatureCount * 4`) }}},
           (feature) => WebGPU.FeatureName[feature]);
       }
       var requiredLimitsPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredLimits, '*') }}};

@@ -231,10 +231,10 @@ bool emscripten_condvar_wait(emscripten_condvar_t *condvar, emscripten_lock_t *l
 }
 
 ATOMICS_WAIT_TOKEN_T emscripten_condvar_wait_async(emscripten_condvar_t *condvar,
-                                                  emscripten_lock_t *lock,
-                                                  void (*asyncWaitFinished)(int32_t *address, uint32_t value, ATOMICS_WAIT_RESULT_T waitResult, void *userData),
-                                                  void *userData,
-                                                  double maxWaitMilliseconds)
+                                                   emscripten_lock_t *lock,
+                                                   emscripten_async_wait_callback_t asyncWaitFinished,
+                                                   void *userData,
+                                                   double maxWaitMilliseconds)
 {
 	int val = emscripten_atomic_load_u32((void*)condvar);
 	emscripten_lock_release(lock);
