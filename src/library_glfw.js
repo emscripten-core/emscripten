@@ -1324,10 +1324,9 @@ var LibraryGLFW = {
     /**
      * CSS Scaling is a feature that is NOT part of the GLFW API, but for historical reasons, it is available
      * in Emscripten.
-     * It is enabled by default but can be disabled by setting Module['EMSCRIPTEN_GLFW_DISABLE_CSS_SCALING'] to true.
      * It is automatically disabled when using Hi DPI (the library overrides CSS sizes). */
     isCSSScalingEnabled() {
-      return Module['EMSCRIPTEN_GLFW_DISABLE_CSS_SCALING'] !== true && !GLFW.isHiDPIAware();
+      return !GLFW.isHiDPIAware();
     },
 
     adjustCanvasDimensions() {
