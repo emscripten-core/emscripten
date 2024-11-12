@@ -16,7 +16,7 @@ var workerID = 0;
 
 if (ENVIRONMENT_IS_PTHREAD) {
 #if !MINIMAL_RUNTIME
-  var wasmPromiseResolve;
+  var wasmModuleReceived;
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE
@@ -61,27 +61,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
     postMessage({cmd: 'alert', text, threadId: _pthread_self()});
   }
   self.alert = threadAlert;
-
-#if !MINIMAL_RUNTIME
-  Module['instantiateWasm'] = (info, receiveInstance) => {
-    return new Promise((resolve) => {
-      wasmPromiseResolve = (module) => {
-        // Instantiate from the module posted from the main thread.
-        // We can just use sync instantiation in the worker.
-        var instance = new WebAssembly.Instance(module, getWasmImports());
-#if RELOCATABLE || MAIN_MODULE
-        receiveInstance(instance, module);
-#else
-        // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193,
-        // the above line no longer optimizes out down to the following line.
-        // When the regression is fixed, we can remove this if/else.
-        receiveInstance(instance);
-#endif
-        resolve();
-      };
-    });
-  }
-#endif
 
   // Turn unhandled rejected promises into errors so that the main thread will be
   // notified about them.
@@ -164,7 +143,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         Module['wasm'] = msgData.wasmModule;
         loadModule();
 #else
-        wasmPromiseResolve(msgData.wasmModule);
+        wasmModuleReceived(msgData.wasmModule);
 #endif // MINIMAL_RUNTIME
       } else if (cmd === 'run') {
 #if ASSERTIONS
