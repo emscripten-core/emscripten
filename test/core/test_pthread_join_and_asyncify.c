@@ -21,7 +21,7 @@ void *run_thread(void *args) {
 
 int main() {
   pthread_t id;
-  // Test that JSPI works on main thread.
+  // Test that JSPI works on the main thread.
   emscripten_sleep(1);
   // Also test that JSPI works on other threads.
   pthread_create(&id, NULL, run_thread, NULL);
