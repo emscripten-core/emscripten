@@ -628,7 +628,7 @@ static __inline__ long long __attribute__((__always_inline__, __nodebug__, DIAGN
 _mm_cvtss_si64(__m128 __a)
 {
   if (isnan(((__f32x4)__a)[0]) || isinf(((__f32x4)__a)[0])) return 0x8000000000000000LL;
-  long long x = llrint(((__f32x4)__a)[0]);
+  long long x = llrintf(((__f32x4)__a)[0]);
   if (x != 0xFFFFFFFF00000000ULL && (x != 0 || fabsf(((__f32x4)__a)[0]) < 2.f))
     return x;
   else
@@ -640,7 +640,7 @@ _mm_cvttss_si64(__m128 __a)
 {
   float e = ((__f32x4)__a)[0];
   if (isnan(e) || isinf(e) || e > LLONG_MAX || e < LLONG_MIN) return 0x8000000000000000LL;
-  long long x = llrint(e);
+  long long x = llrintf(e);
   if (x != 0xFFFFFFFF00000000ULL && (x != 0 || fabsf(e) < 2.f))
     return (long long)e;
   else
