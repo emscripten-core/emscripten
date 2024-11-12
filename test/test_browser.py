@@ -1480,6 +1480,10 @@ simulateKeyUp(100);
                           test_file('browser/test_sdl_canvas_size.html'), '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
+  def test_sdl_gl_extensions(self):
+    self.btest_exit('test_sdl_gl_extensions.c', args=['-lSDL', '-lGL'])
+
+  @requires_graphics_hardware
   def test_sdl_gl_read(self):
     # SDL, OpenGL, readPixels
     self.btest_exit('test_sdl_gl_read.c', args=['-lSDL', '-lGL'])
@@ -5364,7 +5368,7 @@ Module["preRun"] = () => {
   # Tests the AudioWorklet demo
   @parameterized({
     '': ([],),
-    'memory64': (['-sMEMORY64', '-Wno-experimental'],),
+    'memory64': (['-sMEMORY64'],),
     'with_fs': (['--preload-file', test_file('hello_world.c') + '@/'],),
     'closure': (['--closure', '1', '-Oz'],),
     'asyncify': (['-sASYNCIFY'],),
@@ -5625,7 +5629,6 @@ class browser64(browser):
   def setUp(self):
     super().setUp()
     self.set_setting('MEMORY64')
-    self.emcc_args.append('-Wno-experimental')
     self.require_wasm64()
 
 
@@ -5635,7 +5638,6 @@ class browser64_4gb(browser):
     self.set_setting('MEMORY64')
     self.set_setting('INITIAL_MEMORY', '4200mb')
     self.set_setting('GLOBAL_BASE', '4gb')
-    self.emcc_args.append('-Wno-experimental')
     # Without this we get a warning about GLOBAL_BASE being ignored when used with SIDE_MODULE
     self.emcc_args.append('-Wno-unused-command-line-argument')
     self.require_wasm64()
@@ -5647,7 +5649,6 @@ class browser64_2gb(browser):
     self.set_setting('MEMORY64')
     self.set_setting('INITIAL_MEMORY', '2200mb')
     self.set_setting('GLOBAL_BASE', '2gb')
-    self.emcc_args.append('-Wno-experimental')
     self.require_wasm64()
 
 

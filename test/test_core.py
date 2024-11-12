@@ -6511,12 +6511,16 @@ void* operator new(size_t size) {
   @requires_native_clang
   @no_safe_heap('has unaligned 64-bit operations in wasm')
   @no_ubsan('test contains UB')
-  def test_sse1(self):
+  @parameterized({
+    '': ([],),
+    'nontrapping': (['-mnontrapping-fptoint'],)
+  })
+  def test_sse1(self, args):
     src = test_file('sse/test_sse1.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse1', stdout=PIPE).stdout
 
-    self.emcc_args += ['-I' + test_file('sse'), '-msse']
+    self.emcc_args += ['-I' + test_file('sse'), '-msse'] + args
     self.maybe_closure()
 
     self.do_runf(src, native_result)
@@ -6528,14 +6532,18 @@ void* operator new(size_t size) {
   @is_slow_test
   @no_ubsan('https://github.com/emscripten-core/emscripten/issues/19688')
   @no_asan('local count too large')
-  def test_sse2(self):
+  @parameterized({
+    '': ([],),
+    'nontrapping': (['-mnontrapping-fptoint'],)
+  })
+  def test_sse2(self, args):
     if self.is_wasm64():
       self.require_node_canary()
     src = test_file('sse/test_sse2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse2', stdout=PIPE).stdout
 
-    self.emcc_args += ['-I' + test_file('sse'), '-msse2', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB']
+    self.emcc_args += ['-I' + test_file('sse'), '-msse2', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
     self.maybe_closure()
     self.do_runf(src, native_result)
 
@@ -6587,8 +6595,8 @@ void* operator new(size_t size) {
   @wasm_simd
   @requires_native_clang
   @parameterized({
-      '': (False,),
-      '2': (True,)
+    '': (False,),
+    '2': (True,)
   })
   def test_sse4(self, use_4_2):
     msse4 = '-msse4.2' if use_4_2 else '-msse4'
@@ -6606,12 +6614,16 @@ void* operator new(size_t size) {
   @is_slow_test
   @no_asan('local count too large')
   @no_ubsan('local count too large')
-  def test_avx(self):
+  @parameterized({
+    '': ([],),
+    'nontrapping': (['-mnontrapping-fptoint'],)
+  })
+  def test_avx(self, args):
     src = test_file('sse/test_avx.cpp')
     self.run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_avx', stdout=PIPE).stdout
 
-    self.emcc_args += ['-I' + test_file('sse'), '-mavx', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB']
+    self.emcc_args += ['-I' + test_file('sse'), '-mavx', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
     self.maybe_closure()
     self.do_runf(src, native_result)
 
