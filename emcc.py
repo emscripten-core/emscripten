@@ -396,11 +396,11 @@ def get_clang_flags(user_args):
   if settings.RELOCATABLE and '-fPIC' not in user_args:
     flags.append('-fPIC')
 
-  # Whether this compile command is emitting something that will only be used in
-  # a whole-program link, that is, without dynamic linking being possible.
-  for_whole_program_link = not settings.RELOCATABLE and not settings.LINKABLE and '-fPIC' not in user_args
+  # Whether this compile command is emitting something that may be used in a
+  # dynamic linking context.
+  dylink_supported = settings.RELOCATABLE or settings.LINKABLE or '-fPIC' in user_args
 
-  if not for_whole_program_link:
+  if dylink_supported:
     if not any(a.startswith('-fvisibility') for a in user_args):
       # For relocatable code we default to visibility=default in emscripten even
       # though the upstream backend defaults visibility=hidden.  This matches the
@@ -418,9 +418,9 @@ def get_clang_flags(user_args):
     # enabled so that it can be added to the attributes in LLVM IR.
     if settings.SUPPORT_LONGJMP == 'wasm':
       flags.append('-mexception-handling')
-    # If this code will be used in a whole-program link then informing clang of
-    # that can help devirtualization.
-    if for_whole_program_link:
+    # If this code will be used in a whole-program link (no dynamically-linked
+    # code is relevant) then informing clang of that can help devirtualization.
+    if not dylink_supported:
       flags += ['-fwhole-program-vtables']
 
   else:
