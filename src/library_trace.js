@@ -58,15 +58,8 @@ var LibraryTracing = {
     },
 
     // Work around CORS issues ...
-    loadWorkerViaXHR: (url, ready, scope) => {
-      var req = new XMLHttpRequest();
-      req.addEventListener('load', function() {
-        var blob = new Blob([this.responseText], { type: 'text/javascript' });
-        var worker = new Worker(window.URL.createObjectURL(blob));
-        ready?.call(scope, worker);
-      }, req);
-      req.open("get", url, false);
-      req.send();
+    fetchBlob: (url) => {
+      return fetch(url).then((rsp) => rsp.blob());
     },
 
     configure: (collector_url, application) => {
@@ -74,9 +67,9 @@ var LibraryTracing = {
       var now = new Date();
       var session_id = now.getTime().toString() + '_' +
                           Math.floor((Math.random() * 100) + 1).toString();
-      EmscriptenTrace.loadWorkerViaXHR(collector_url + 'worker.js', function (worker) {
-        EmscriptenTrace.worker = worker;
-        EmscriptenTrace.worker.addEventListener('error', function (e) {
+      EmscriptenTrace.fetchBlob(collector_url + 'worker.js').then((blob) => {
+        EmscriptenTrace.worker = new Worker(window.URL.createObjectURL(blob));
+        EmscriptenTrace.worker.addEventListener('error', (e) => {
           out('TRACE WORKER ERROR:');
           out(e);
         }, false);
@@ -95,7 +88,7 @@ var LibraryTracing = {
     configureForTest: () => {
       EmscriptenTrace.postEnabled = true;
       EmscriptenTrace.testingEnabled = true;
-      EmscriptenTrace.now = function() { return 0.0; };
+      EmscriptenTrace.now = () => 0.0;
     },
 
     configureForGoogleWTF: () => {
@@ -217,7 +210,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_allocation: (address, size) => {
-    if (typeof Module['onMalloc'] == 'function') Module['onMalloc'](address, size);
+    Module['onMalloc']?.(address, size);
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_ALLOCATE,
@@ -226,7 +219,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_reallocation: (old_address, new_address, size) => {
-    if (typeof Module['onRealloc'] == 'function') Module['onRealloc'](old_address, new_address, size);
+    Module['onRealloc']?.(old_address, new_address, size);
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_REALLOCATE,
@@ -235,7 +228,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_free: (address) => {
-    if (typeof Module['onFree'] == 'function') Module['onFree'](address);
+    Module['onFree']?.(address);
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_FREE,
@@ -273,7 +266,7 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_report_off_heap_data: function () {
+  emscripten_trace_report_off_heap_data: () => {
     function openal_audiodata_size() {
       if (typeof AL == 'undefined' || !AL.currentContext) {
         return 0;

@@ -82,7 +82,7 @@ The :ref:`Emscripten Compiler Frontend (emcc) <emccdoc>` is a python script that
 - **emcc** then calls `emscripten.py <https://github.com/emscripten-core/emscripten/blob/main/emscripten.py>`_
   which performs the final transformation to Wasm (including invoking
   **wasm-emscripten-finalize** from Binaryen) and calls the JS compiler
-  (see ``src/compiler.js`` and related files) which emits the JS.
+  (see ``src/compiler.mjs`` and related files) which emits the JS.
 - If optimizing Wasm, **emcc** will then call **wasm-opt**, run meta-dce, and
   other useful things. It will also run JS optimizations on the JS that is
   emitted alongside the Wasm.

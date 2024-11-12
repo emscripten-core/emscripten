@@ -179,7 +179,7 @@ def find_segment_with_address(module, address):
 
 def data_to_string(data):
   data = data.decode('utf8')
-  # We have at least one test (test/utf8.cpp) that uses a double
+  # We have at least one test (test/core/test_utf8.c) that uses a double
   # backslash in the C++ source code, in order to represent a single backslash.
   # This is because these strings historically were written and read back via
   # JSON and a single slash is interpreted as an escape char there.
@@ -241,14 +241,8 @@ def get_main_reads_params(module, export_map):
 
 def get_global_exports(module, exports):
   global_exports = {}
-  internal_start_stop_symbols = set(['__start_em_asm', '__stop_em_asm',
-                                     '__start_em_lib_deps', '__stop_em_lib_deps',
-                                     '__em_lib_deps'])
-  internal_prefixes = ('__em_js__', '__em_lib_deps')
   for export in exports:
     if export.kind == webassembly.ExternType.GLOBAL:
-      if export.name in internal_start_stop_symbols or any(export.name.startswith(p) for p in internal_prefixes):
-        continue
       g = module.get_global(export.index)
       global_exports[export.name] = str(get_global_value(g))
   return global_exports

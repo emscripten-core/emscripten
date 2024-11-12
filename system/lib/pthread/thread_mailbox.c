@@ -70,7 +70,7 @@ void _emscripten_thread_mailbox_init(pthread_t thread) {
   thread->waiting_async = 0;
 }
 
-// Exported for use in worker.js, but otherwise an internal function.
+// Internal function, called from runtime_pthread.js
 void _emscripten_check_mailbox() {
   // Before we attempt to execute a request from another thread make sure we
   // are in sync with all the loaded code.
@@ -84,6 +84,9 @@ void _emscripten_check_mailbox() {
   notification_state expected = NOTIFICATION_RECEIVED;
   atomic_compare_exchange_strong(
     &mailbox->notification, &expected, NOTIFICATION_NONE);
+  // After every mailbox check we call `__pthread_testcancel` in case
+  // one of the proxied functions was from pthread_kill(SIGCANCEL).
+  __pthread_testcancel();
 }
 
 void emscripten_thread_mailbox_send(pthread_t thread, task t) {
@@ -105,8 +108,7 @@ void emscripten_thread_mailbox_send(pthread_t thread, task t) {
     if (thread->waiting_async) {
       __builtin_wasm_memory_atomic_notify((int*)thread, -1);
     } else {
-      _emscripten_notify_mailbox_postmessage(
-        thread, pthread_self(), emscripten_main_runtime_thread_id());
+      _emscripten_notify_mailbox_postmessage(thread, pthread_self());
     }
   }
 }

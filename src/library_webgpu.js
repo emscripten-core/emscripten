@@ -7,26 +7,30 @@
 /*
  * WebGPU support.
  *
- * This file implements the common C header <webgpu/webgpu.h> on top of the
+ * IMPORTANT NOTICE:
+ * These bindings are in a temporary **breaking-change freeze**.
+ * Bugfixes and small feature additions are still welcome.
+ * Please see system/include/webgpu/README.md for more information.
+ *
+ * This file and system/lib/webgpu/webgpu.cpp together implement the
+ * to-be-standardized C header <webgpu/webgpu.h> on top of the
  * browser's native JS WebGPU implementation. This allows applications targeting
- * wgpu-native (https://github.com/gfx-rs/wgpu) or
+ * wgpu-native (https://github.com/gfx-rs/wgpu-native) or
  * Dawn (https://dawn.googlesource.com/dawn/) to also target the Web with the
  * same graphics API and fairly minimal changes - similar to OpenGL ES 2.0/3.0
  * on WebGL 1.0/2.0.
  *
  * To test this, run the following tests:
- * - test/runner.py other.test_webgpu_compiletest
+ * - test/runner.py 'other.test_webgpu*'
  * - EMTEST_BROWSER="/path/to/chrome --user-data-dir=chromeuserdata --enable-unsafe-webgpu" \
- *   test/runner.py browser.test_webgpu_basic_rendering
- *   (requires WebGPU to be available - otherwise the test will skip itself and pass)
+ *   test/runner.py 'browser.test_webgpu*'
  */
 
 {{{
   // Helper functions for code generation
   globalThis.gpu = {
     makeInitManager: function(type) {
-      var mgr = `WebGPU.mgr${type}`;
-      return `${mgr} = ${mgr} || new Manager();`;
+      return `WebGPU.mgr${type} = new Manager();`;
     },
 
     makeReferenceRelease: function(type) {
@@ -78,6 +82,7 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
     MIP_LEVEL_COUNT_UNDEFINED: 0xFFFFFFFF,
     ARRAY_LAYER_COUNT_UNDEFINED: 0xFFFFFFFF,
     AdapterType: {
+      CPU: 3,
       Unknown: 4,
     },
     BackendType: {
@@ -99,6 +104,11 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       Error: 1,
       DeviceLost: 2,
       Unknown: 3,
+    },
+    CompositeAlphaMode: {
+      Auto: 0,
+      Opaque: 1,
+      Premultiplied: 2,
     },
     CreatePipelineAsyncStatus: {
       Success: 0,
@@ -155,6 +165,10 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
       RenderPassDescriptorMaxDrawCount: 0xF,
       TextureBindingViewDimensionDescriptor: 0x11,
     },
+    SurfaceGetCurrentTextureStatus: {
+      Success: 0,
+      DeviceLost: 5,
+    },
     QueueWorkDoneStatus: {
       Success: 0,
       Error: 1,
@@ -186,7 +200,9 @@ var LibraryWebGPU = {
     },
 
     initManagers: () => {
-      if (WebGPU.mgrDevice) return;
+#if ASSERTIONS
+      assert(!WebGPU.mgrDevice, 'initManagers already called');
+#endif
 
       /** @constructor */
       function Manager() {
@@ -339,20 +355,69 @@ var LibraryWebGPU = {
       return desc;
     },
 
+    fillLimitStruct: (limits, supportedLimitsOutPtr) => {
+      var limitsOutPtr = supportedLimitsOutPtr + {{{ C_STRUCTS.WGPUSupportedLimits.limits }}};
+
+      function setLimitValueU32(name, limitOffset) {
+        var limitValue = limits[name];
+        {{{ makeSetValue('limitsOutPtr', 'limitOffset', 'limitValue', 'i32') }}};
+      }
+      function setLimitValueU64(name, limitOffset) {
+        var limitValue = limits[name];
+        {{{ makeSetValue('limitsOutPtr', 'limitOffset', 'limitValue', 'i64') }}};
+      }
+  
+      setLimitValueU32('maxTextureDimension1D', {{{ C_STRUCTS.WGPULimits.maxTextureDimension1D }}});
+      setLimitValueU32('maxTextureDimension2D', {{{ C_STRUCTS.WGPULimits.maxTextureDimension2D }}});
+      setLimitValueU32('maxTextureDimension3D', {{{ C_STRUCTS.WGPULimits.maxTextureDimension3D }}});
+      setLimitValueU32('maxTextureArrayLayers', {{{ C_STRUCTS.WGPULimits.maxTextureArrayLayers }}});
+      setLimitValueU32('maxBindGroups', {{{ C_STRUCTS.WGPULimits.maxBindGroups }}});
+      setLimitValueU32('maxBindGroupsPlusVertexBuffers', {{{ C_STRUCTS.WGPULimits.maxBindGroupsPlusVertexBuffers }}});
+      setLimitValueU32('maxBindingsPerBindGroup', {{{ C_STRUCTS.WGPULimits.maxBindingsPerBindGroup }}});
+      setLimitValueU32('maxDynamicUniformBuffersPerPipelineLayout', {{{ C_STRUCTS.WGPULimits.maxDynamicUniformBuffersPerPipelineLayout }}});
+      setLimitValueU32('maxDynamicStorageBuffersPerPipelineLayout', {{{ C_STRUCTS.WGPULimits.maxDynamicStorageBuffersPerPipelineLayout }}});
+      setLimitValueU32('maxSampledTexturesPerShaderStage', {{{ C_STRUCTS.WGPULimits.maxSampledTexturesPerShaderStage }}});
+      setLimitValueU32('maxSamplersPerShaderStage', {{{ C_STRUCTS.WGPULimits.maxSamplersPerShaderStage }}});
+      setLimitValueU32('maxStorageBuffersPerShaderStage', {{{ C_STRUCTS.WGPULimits.maxStorageBuffersPerShaderStage }}});
+      setLimitValueU32('maxStorageTexturesPerShaderStage', {{{ C_STRUCTS.WGPULimits.maxStorageTexturesPerShaderStage }}});
+      setLimitValueU32('maxUniformBuffersPerShaderStage', {{{ C_STRUCTS.WGPULimits.maxUniformBuffersPerShaderStage }}});
+      setLimitValueU32('minUniformBufferOffsetAlignment', {{{ C_STRUCTS.WGPULimits.minUniformBufferOffsetAlignment }}});
+      setLimitValueU32('minStorageBufferOffsetAlignment', {{{ C_STRUCTS.WGPULimits.minStorageBufferOffsetAlignment }}});
+  
+      setLimitValueU64('maxUniformBufferBindingSize', {{{ C_STRUCTS.WGPULimits.maxUniformBufferBindingSize }}});
+      setLimitValueU64('maxStorageBufferBindingSize', {{{ C_STRUCTS.WGPULimits.maxStorageBufferBindingSize }}});
+  
+      setLimitValueU32('maxVertexBuffers', {{{ C_STRUCTS.WGPULimits.maxVertexBuffers }}});
+      setLimitValueU64('maxBufferSize', {{{ C_STRUCTS.WGPULimits.maxBufferSize }}});
+      setLimitValueU32('maxVertexAttributes', {{{ C_STRUCTS.WGPULimits.maxVertexAttributes }}});
+      setLimitValueU32('maxVertexBufferArrayStride', {{{ C_STRUCTS.WGPULimits.maxVertexBufferArrayStride }}});
+      setLimitValueU32('maxInterStageShaderComponents', {{{ C_STRUCTS.WGPULimits.maxInterStageShaderComponents }}});
+      setLimitValueU32('maxInterStageShaderVariables', {{{ C_STRUCTS.WGPULimits.maxInterStageShaderVariables }}});
+      setLimitValueU32('maxColorAttachments', {{{ C_STRUCTS.WGPULimits.maxColorAttachments }}});
+      setLimitValueU32('maxColorAttachmentBytesPerSample', {{{ C_STRUCTS.WGPULimits.maxColorAttachmentBytesPerSample }}});
+      setLimitValueU32('maxComputeWorkgroupStorageSize', {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupStorageSize }}});
+      setLimitValueU32('maxComputeInvocationsPerWorkgroup', {{{ C_STRUCTS.WGPULimits.maxComputeInvocationsPerWorkgroup }}});
+      setLimitValueU32('maxComputeWorkgroupSizeX', {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupSizeX }}});
+      setLimitValueU32('maxComputeWorkgroupSizeY', {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupSizeY }}});
+      setLimitValueU32('maxComputeWorkgroupSizeZ', {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupSizeZ }}});
+      setLimitValueU32('maxComputeWorkgroupsPerDimension', {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupsPerDimension }}});
+    },
+
     // Map from enum string back to enum number, for callbacks.
     Int_BufferMapState: {
-      'unmapped': 0,
-      'pending': 1,
-      'mapped': 2,
+      'unmapped': 1,
+      'pending': 2,
+      'mapped': 3,
     },
     Int_CompilationMessageType : {
-      'error': 0,
-      'warning': 1,
-      'info': 2,
+      'error': 1,
+      'warning': 2,
+      'info': 3,
     },
     Int_DeviceLostReason: {
-      'undefined': 0,
-      'destroyed': 1,
+      'undefined': 1,
+      'unknown': 1,
+      'destroyed': 2,
     },
     Int_PreferredFormat: {
       'rgba8unorm': 0x12,
@@ -373,6 +438,11 @@ var LibraryWebGPU = {
       'clamp-to-edge',
       'repeat',
       'mirror-repeat',
+    ],
+    AlphaMode: [
+      undefined, // "Auto" uses the default (which is always opaque according to the spec's IDL)
+      'opaque',
+      'premultiplied',
     ],
     BlendFactor: [
       undefined,
@@ -752,66 +822,27 @@ var LibraryWebGPU = {
   // wgpuDevice
 
   wgpuDeviceEnumerateFeatures: (deviceId, featuresOutPtr) => {
+    var offset = 0;
+    var numFeatures = 0;
     var device = WebGPU.mgrDevice.get(deviceId);
-    if (featuresOutPtr !== 0) {
-      var offset = 0;
-      device.features.forEach(feature => {
-        var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
-        {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
-        offset += 4;
-      });
-    }
-    return device.features.size;
+    device.features.forEach(feature => {
+      var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
+      if (featureEnumValue !== undefined) {
+        if (featuresOutPtr !== 0) {
+          {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
+          offset += 4;
+        }
+        numFeatures++;
+      }
+    });
+    return numFeatures;
   },
 
   wgpuDeviceDestroy: (deviceId) => WebGPU.mgrDevice.get(deviceId).destroy(),
 
   wgpuDeviceGetLimits: (deviceId, limitsOutPtr) => {
     var device = WebGPU.mgrDevice.objects[deviceId].object;
-    var limitsPtr = {{{ C_STRUCTS.WGPUSupportedLimits.limits }}};
-    function setLimitValueU32(name, limitOffset) {
-      var limitValue = device.limits[name];
-      {{{ makeSetValue('limitsOutPtr', 'limitsPtr + limitOffset', 'limitValue', 'i32') }}};
-    }
-    function setLimitValueU64(name, limitOffset) {
-      var limitValue = device.limits[name];
-      {{{ makeSetValue('limitsOutPtr', 'limitsPtr + limitOffset', 'limitValue', 'i64') }}};
-    }
-
-    setLimitValueU32('maxTextureDimension1D', {{{ C_STRUCTS.WGPULimits.maxTextureDimension1D }}});
-    setLimitValueU32('maxTextureDimension2D', {{{ C_STRUCTS.WGPULimits.maxTextureDimension2D }}});
-    setLimitValueU32('maxTextureDimension3D', {{{ C_STRUCTS.WGPULimits.maxTextureDimension3D }}});
-    setLimitValueU32('maxTextureArrayLayers', {{{ C_STRUCTS.WGPULimits.maxTextureArrayLayers }}});
-    setLimitValueU32('maxBindGroups', {{{ C_STRUCTS.WGPULimits.maxBindGroups }}});
-    setLimitValueU32('maxBindGroupsPlusVertexBuffers', {{{ C_STRUCTS.WGPULimits.maxBindGroupsPlusVertexBuffers }}});
-    setLimitValueU32('maxBindingsPerBindGroup', {{{ C_STRUCTS.WGPULimits.maxBindingsPerBindGroup }}});
-    setLimitValueU32('maxDynamicUniformBuffersPerPipelineLayout', {{{ C_STRUCTS.WGPULimits.maxDynamicUniformBuffersPerPipelineLayout }}});
-    setLimitValueU32('maxDynamicStorageBuffersPerPipelineLayout', {{{ C_STRUCTS.WGPULimits.maxDynamicStorageBuffersPerPipelineLayout }}});
-    setLimitValueU32('maxSampledTexturesPerShaderStage', {{{ C_STRUCTS.WGPULimits.maxSampledTexturesPerShaderStage }}});
-    setLimitValueU32('maxSamplersPerShaderStage', {{{ C_STRUCTS.WGPULimits.maxSamplersPerShaderStage }}});
-    setLimitValueU32('maxStorageBuffersPerShaderStage', {{{ C_STRUCTS.WGPULimits.maxStorageBuffersPerShaderStage }}});
-    setLimitValueU32('maxStorageTexturesPerShaderStage', {{{ C_STRUCTS.WGPULimits.maxStorageTexturesPerShaderStage }}});
-    setLimitValueU32('maxUniformBuffersPerShaderStage', {{{ C_STRUCTS.WGPULimits.maxUniformBuffersPerShaderStage }}});
-    setLimitValueU32('minUniformBufferOffsetAlignment', {{{ C_STRUCTS.WGPULimits.minUniformBufferOffsetAlignment }}});
-    setLimitValueU32('minStorageBufferOffsetAlignment', {{{ C_STRUCTS.WGPULimits.minStorageBufferOffsetAlignment }}});
-
-    setLimitValueU64('maxUniformBufferBindingSize', {{{ C_STRUCTS.WGPULimits.maxUniformBufferBindingSize }}});
-    setLimitValueU64('maxStorageBufferBindingSize', {{{ C_STRUCTS.WGPULimits.maxStorageBufferBindingSize }}});
-
-    setLimitValueU32('maxVertexBuffers', {{{ C_STRUCTS.WGPULimits.maxVertexBuffers }}});
-    setLimitValueU32('maxBufferSize', {{{ C_STRUCTS.WGPULimits.maxBufferSize }}});
-    setLimitValueU32('maxVertexAttributes', {{{ C_STRUCTS.WGPULimits.maxVertexAttributes }}});
-    setLimitValueU32('maxVertexBufferArrayStride', {{{ C_STRUCTS.WGPULimits.maxVertexBufferArrayStride }}});
-    setLimitValueU32('maxInterStageShaderComponents', {{{ C_STRUCTS.WGPULimits.maxInterStageShaderComponents }}});
-    setLimitValueU32('maxInterStageShaderVariables', {{{ C_STRUCTS.WGPULimits.maxInterStageShaderVariables }}});
-    setLimitValueU32('maxColorAttachments', {{{ C_STRUCTS.WGPULimits.maxColorAttachments }}});
-    setLimitValueU32('maxColorAttachmentBytesPerSample', {{{ C_STRUCTS.WGPULimits.maxColorAttachmentBytesPerSample }}});
-    setLimitValueU32('maxComputeWorkgroupStorageSize', {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupStorageSize }}});
-    setLimitValueU32('maxComputeInvocationsPerWorkgroup', {{{ C_STRUCTS.WGPULimits.maxComputeInvocationsPerWorkgroup }}});
-    setLimitValueU32('maxComputeWorkgroupSizeX', {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupSizeX }}});
-    setLimitValueU32('maxComputeWorkgroupSizeY', {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupSizeY }}});
-    setLimitValueU32('maxComputeWorkgroupSizeZ', {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupSizeZ }}});
-    setLimitValueU32('maxComputeWorkgroupsPerDimension', {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupsPerDimension }}});
+    WebGPU.fillLimitStruct(device.limits, limitsOutPtr);
     return 1;
   },
 
@@ -1230,7 +1261,8 @@ var LibraryWebGPU = {
     return WebGPU.mgrRenderBundleEncoder.create(device.createRenderBundleEncoder(desc));
   },
 
-  wgpuDeviceCreateComputePipeline: (deviceId, descriptor) => {
+  $generateComputePipelineDesc__internal: true,
+  $generateComputePipelineDesc: (descriptor) => {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
 
     var desc = {
@@ -1242,13 +1274,42 @@ var LibraryWebGPU = {
     };
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePipelineDescriptor.label, '*') }}};
     if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
+    return desc;
+  },
 
+  wgpuDeviceCreateComputePipeline__deps: ['$generateComputePipelineDesc'],
+  wgpuDeviceCreateComputePipeline: (deviceId, descriptor) => {
+    var desc = generateComputePipelineDesc(descriptor);
     var device = WebGPU.mgrDevice.get(deviceId);
     return WebGPU.mgrComputePipeline.create(device.createComputePipeline(desc));
   },
 
+  wgpuDeviceCreateComputePipelineAsync__deps: ['$callUserCallback', '$stringToUTF8OnStack', '$generateComputePipelineDesc'],
   wgpuDeviceCreateComputePipelineAsync: (deviceId, descriptor, callback, userdata) => {
-    abort('TODO: wgpuDeviceCreateComputePipelineAsync unimplemented');
+    var desc = generateComputePipelineDesc(descriptor);
+    var device = WebGPU.mgrDevice.get(deviceId);
+    {{{ runtimeKeepalivePush() }}}
+    device.createComputePipelineAsync(desc).then((pipeline) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        var pipelineId = WebGPU.mgrComputePipeline.create(pipeline);
+        {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Success }}}, pipelineId, 0, userdata);
+      });
+    }, (pipelineError) => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(() => {
+        var sp = stackSave();
+        var messagePtr = stringToUTF8OnStack(pipelineError.message);
+        if (pipelineError.reason === 'validation') {
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.ValidationError }}}, 0, messagePtr, userdata);
+        } else if (pipelineError.reason === 'internal') {
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.InternalError }}}, 0, messagePtr, userdata);
+        } else {
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Unknown }}}, 0, messagePtr, userdata);
+        }
+        stackRestore(sp);
+      });
+    });
   },
 
   $generateRenderPipelineDesc__internal: true,
@@ -1967,7 +2028,7 @@ var LibraryWebGPU = {
 
   // In webgpu.h offset and size are passed in as size_t.
   // And library_webgpu assumes that size_t is always 32bit in emscripten.
-  wgpuBufferGetMappedRange__deps: ['$warnOnce', 'memalign', 'free'],
+  wgpuBufferGetMappedRange__deps: ['$warnOnce', '$zeroMemory', 'memalign', 'free'],
   wgpuBufferGetMappedRange: (bufferId, offset, size) => {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
     {{{ gpu.makeCheckDefined('bufferWrapper') }}}
@@ -1996,7 +2057,7 @@ var LibraryWebGPU = {
     }
 
     var data = _memalign(16, mapped.byteLength);
-    HEAPU8.fill(0, data, mapped.byteLength);
+    zeroMemory(data, mapped.byteLength);
     bufferWrapper.onUnmap.push(() => {
       new Uint8Array(mapped).set(HEAPU8.subarray(data, data + mapped.byteLength));
       _free(data);
@@ -2511,19 +2572,46 @@ var LibraryWebGPU = {
   // WGPUAdapter
 
   wgpuAdapterEnumerateFeatures: (adapterId, featuresOutPtr) => {
+    var offset = 0;
+    var numFeatures = 0;
     var adapter = WebGPU.mgrAdapter.get(adapterId);
-    if (featuresOutPtr !== 0) {
-      var offset = 0;
-      adapter.features.forEach(feature => {
-        var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
-        {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
-        offset += 4;
-      });
-    }
-    return adapter.features.size;
+    adapter.features.forEach(feature => {
+      var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
+      if (featureEnumValue !== undefined) {
+        if (featuresOutPtr !== 0) {
+          {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
+          offset += 4;
+        }
+        numFeatures++;
+      }
+    });
+    return numFeatures;
   },
 
+  wgpuAdapterGetInfo__deps: ['$stringToNewUTF8'],
+  wgpuAdapterGetInfo: (adapterId, info) => {
+    var adapter = WebGPU.mgrAdapter.get(adapterId);
+    {{{ gpu.makeCheckDescriptor('info') }}}
+
+    var vendorPtr = stringToNewUTF8(adapter.info.vendor);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.vendor, 'vendorPtr', '*') }}};
+    var architecturePtr = stringToNewUTF8(adapter.info.architecture);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.architecture, 'architecturePtr', '*') }}};
+    var devicePtr = stringToNewUTF8(adapter.info.device);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.device, 'devicePtr', '*') }}};
+    var descriptionPtr = stringToNewUTF8(adapter.info.description);
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.description, 'descriptionPtr', '*') }}};
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.backendType, gpu.BackendType.WebGPU, 'i32') }}};
+    var adapterType = adapter.isFallbackAdapter ? {{{ gpu.AdapterType.CPU }}} : {{{ gpu.AdapterType.Unknown }}};
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.adapterType, 'adapterType', 'i32') }}};
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.vendorID, '0', 'i32') }}};
+    {{{ makeSetValue('info', C_STRUCTS.WGPUAdapterInfo.deviceID, '0', 'i32') }}};
+  },
+
+  wgpuAdapterGetProperties__deps: ['$warnOnce'],
   wgpuAdapterGetProperties: (adapterId, properties) => {
+    warnOnce('wgpuAdapterGetProperties is deprecated, use wgpuAdapterGetInfo instead');
+
     {{{ gpu.makeCheckDescriptor('properties') }}}
     {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.vendorID, '0', 'i32') }}};
     {{{ makeSetValue('properties', C_STRUCTS.WGPUAdapterProperties.vendorName, '0', 'i32') }}};
@@ -2537,8 +2625,9 @@ var LibraryWebGPU = {
   },
 
   wgpuAdapterGetLimits: (adapterId, limitsOutPtr) => {
-    abort('TODO: wgpuAdapterGetLimits unimplemented');
-    return 0;
+    var adapter = WebGPU.mgrAdapter.get(adapterId);
+    WebGPU.fillLimitStruct(adapter.limits, limitsOutPtr);
+    return 1;
   },
 
   wgpuAdapterHasFeature: (adapterId, featureEnumValue) => {
@@ -2556,7 +2645,8 @@ var LibraryWebGPU = {
       var requiredFeatureCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredFeatureCount) }}};
       if (requiredFeatureCount) {
         var requiredFeaturesPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredFeatures, '*') }}};
-        desc["requiredFeatures"] = Array.from({{{ makeHEAPView('32', 'requiredFeaturesPtr', `requiredFeaturesPtr + requiredFeatureCount * ${POINTER_SIZE}`) }}},
+        // requiredFeaturesPtr is a pointer to an array of FeatureName which is an enum of size uint32_t
+        desc["requiredFeatures"] = Array.from({{{ makeHEAPView('U32', 'requiredFeaturesPtr', `requiredFeaturesPtr + requiredFeatureCount * 4`) }}},
           (feature) => WebGPU.FeatureName[feature]);
       }
       var requiredLimitsPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredLimits, '*') }}};
@@ -2599,11 +2689,13 @@ var LibraryWebGPU = {
         setLimitU64IfDefined("maxUniformBufferBindingSize", {{{ C_STRUCTS.WGPULimits.maxUniformBufferBindingSize }}});
         setLimitU64IfDefined("maxStorageBufferBindingSize", {{{ C_STRUCTS.WGPULimits.maxStorageBufferBindingSize }}});
         setLimitU32IfDefined("maxVertexBuffers", {{{ C_STRUCTS.WGPULimits.maxVertexBuffers }}});
+        setLimitU64IfDefined("maxBufferSize", {{{ C_STRUCTS.WGPULimits.maxBufferSize }}});
         setLimitU32IfDefined("maxVertexAttributes", {{{ C_STRUCTS.WGPULimits.maxVertexAttributes }}});
         setLimitU32IfDefined("maxVertexBufferArrayStride", {{{ C_STRUCTS.WGPULimits.maxVertexBufferArrayStride }}});
         setLimitU32IfDefined("maxInterStageShaderComponents", {{{ C_STRUCTS.WGPULimits.maxInterStageShaderComponents }}});
         setLimitU32IfDefined("maxInterStageShaderVariables", {{{ C_STRUCTS.WGPULimits.maxInterStageShaderVariables }}});
         setLimitU32IfDefined("maxColorAttachments", {{{ C_STRUCTS.WGPULimits.maxColorAttachments }}});
+        setLimitU32IfDefined("maxColorAttachmentBytesPerSample", {{{ C_STRUCTS.WGPULimits.maxColorAttachmentBytesPerSample }}});
         setLimitU32IfDefined("maxComputeWorkgroupStorageSize", {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupStorageSize }}});
         setLimitU32IfDefined("maxComputeInvocationsPerWorkgroup", {{{ C_STRUCTS.WGPULimits.maxComputeInvocationsPerWorkgroup }}});
         setLimitU32IfDefined("maxComputeWorkgroupSizeX", {{{ C_STRUCTS.WGPULimits.maxComputeWorkgroupSizeX }}});
@@ -2656,7 +2748,7 @@ var LibraryWebGPU = {
   // WGPUAdapterProperties
 
   wgpuAdapterPropertiesFreeMembers: (value) => {
-    // wgpuAdapterGetProperties does currently allocate anything
+    // wgpuAdapterGetProperties doesn't currently allocate anything.
   },
 
   // WGPUSampler
@@ -2668,9 +2760,78 @@ var LibraryWebGPU = {
 
   // WGPUSurface
 
+  wgpuSurfaceConfigure: (surfaceId, config) => {
+    {{{ gpu.makeCheckDescriptor('config') }}}
+    var deviceId = {{{ makeGetValue('config', C_STRUCTS.WGPUSurfaceConfiguration.device, '*') }}};
+    var context = WebGPU.mgrSurface.get(surfaceId);
+
+#if ASSERTIONS
+    var viewFormatCount = {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.viewFormatCount) }}};
+    var viewFormats = {{{ makeGetValue('config', C_STRUCTS.WGPUSurfaceConfiguration.viewFormats, '*') }}};
+    assert(viewFormatCount === 0 && viewFormats === 0, "TODO: Support viewFormats.");
+    assert({{{ gpu.PresentMode.Fifo }}} ===
+      {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.presentMode) }}});
+#endif
+
+    var canvasSize = [
+      {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.width) }}},
+      {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.height) }}}
+    ];
+
+    if (canvasSize[0] !== 0) {
+      context["canvas"]["width"] = canvasSize[0];
+    }
+
+    if (canvasSize[1] !== 0) {
+      context["canvas"]["height"] = canvasSize[1];
+    }
+
+    var configuration = {
+      "device": WebGPU.mgrDevice.get(deviceId),
+      "format": WebGPU.TextureFormat[
+        {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.format) }}}],
+      "usage": {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.usage) }}},
+      "alphaMode": WebGPU.AlphaMode[
+        {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.alphaMode) }}}],
+    };
+    context.configure(configuration);
+  },
+
+  wgpuSurfaceGetCurrentTexture: (surfaceId, surfaceTexturePtr) => {
+    {{{ gpu.makeCheck('surfaceTexturePtr') }}}
+    var context = WebGPU.mgrSurface.get(surfaceId);
+
+    try {
+      var texture = WebGPU.mgrTexture.create(context.getCurrentTexture());
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.texture, 'texture', '*') }}};
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.suboptimal, '0', 'i32') }}};
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.status, 
+        gpu.SurfaceGetCurrentTextureStatus.Success, 'i32') }}};
+    } catch (ex) {
+#if ASSERTIONS
+      err(`wgpuSurfaceGetCurrentTexture() failed: ${ex}`);
+#endif
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.texture, '0', '*') }}};
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.suboptimal, '0', 'i32') }}};
+      // TODO(https://github.com/webgpu-native/webgpu-headers/issues/291): What should the status be here?
+      {{{ makeSetValue('surfaceTexturePtr', C_STRUCTS.WGPUSurfaceTexture.status,
+        gpu.SurfaceGetCurrentTextureStatus.DeviceLost, 'i32') }}};
+    }
+  },
+
   wgpuSurfaceGetPreferredFormat: (surfaceId, adapterId) => {
     var format = navigator["gpu"]["getPreferredCanvasFormat"]();
     return WebGPU.Int_PreferredFormat[format];
+  },
+
+  wgpuSurfacePresent: (surfaceId) => {
+    // TODO: This could probably be emulated with ASYNCIFY.
+    abort('wgpuSurfacePresent is unsupported (use requestAnimationFrame via html5.h instead)');
+  },
+
+  wgpuSurfaceUnconfigure: (surfaceId) => {
+    var context = WebGPU.mgrSurface.get(surfaceId);
+    context.unconfigure();
   },
 
   // WGPUSwapChain
@@ -2732,7 +2893,10 @@ for (var value in LibraryWebGPU.$WebGPU.FeatureName) {
 
 for (const key of Object.keys(LibraryWebGPU)) {
   if (typeof LibraryWebGPU[key] === 'function') {
-    LibraryWebGPU[key + '__i53abi'] = true;
+    const sig = LibraryManager.library[key + '__sig'];
+    if (sig?.includes('j')) {
+      LibraryManager.library[key + '__i53abi'] = true;
+    }
   }
 }
 

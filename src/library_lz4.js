@@ -14,7 +14,7 @@ addToLibrary({
     codec: null,
     init() {
       if (LZ4.codec) return;
-      LZ4.codec = (function() {
+      LZ4.codec = (() => {
         {{{ read('../third_party/mini-lz4.js') }}};
         return MiniLZ4;
       })();
@@ -22,8 +22,7 @@ addToLibrary({
     },
     loadPackage(pack, preloadPlugin) {
       LZ4.init();
-      var compressedData = pack['compressedData'];
-      if (!compressedData) compressedData = LZ4.codec.compressPackage(pack['data']);
+      var compressedData = pack['compressedData'] || LZ4.codec.compressPackage(pack['data']);
       assert(compressedData['cachedIndexes'].length === compressedData['cachedChunks'].length);
       for (var i = 0; i < compressedData['cachedIndexes'].length; i++) {
         compressedData['cachedIndexes'][i] = -1;

@@ -317,6 +317,7 @@ addToLibrary({
     wasmfsOPFSBlobs.free(blobID);
   },
 
+  _wasmfs_opfs_read_access__i53abi: true,
   _wasmfs_opfs_read_access__deps: ['$wasmfsOPFSAccessHandles'],
   _wasmfs_opfs_read_access: {{{ asyncIf(!PTHREADS) }}}  function(accessID, bufPtr, len, pos) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
@@ -334,6 +335,7 @@ addToLibrary({
     }
   },
 
+  _wasmfs_opfs_read_blob__i53abi: true,
   _wasmfs_opfs_read_blob__deps: ['$wasmfsOPFSBlobs', '$wasmfsOPFSProxyFinish'],
   _wasmfs_opfs_read_blob: async function(ctx, blobID, bufPtr, len, pos, nreadPtr) {
     let blob = wasmfsOPFSBlobs.get(blobID);
@@ -363,6 +365,7 @@ addToLibrary({
     wasmfsOPFSProxyFinish(ctx);
   },
 
+  _wasmfs_opfs_write_access__i53abi: true,
   _wasmfs_opfs_write_access__deps: ['$wasmfsOPFSAccessHandles'],
   _wasmfs_opfs_write_access: {{{ asyncIf(!PTHREADS) }}} function(accessID, bufPtr, len, pos) {
     let accessHandle = wasmfsOPFSAccessHandles.get(accessID);
@@ -393,10 +396,11 @@ addToLibrary({
     wasmfsOPFSProxyFinish(ctx);
   },
 
+  _wasmfs_opfs_get_size_blob__i53abi: true,
   _wasmfs_opfs_get_size_blob__deps: ['$wasmfsOPFSBlobs'],
   _wasmfs_opfs_get_size_blob: (blobID) => {
     // This cannot fail.
-    return wasmfsOPFSBlobs.get(blobID).size;
+	  return wasmfsOPFSBlobs.get(blobID).size;
   },
 
   _wasmfs_opfs_get_size_file__deps: ['$wasmfsOPFSFileHandles', '$wasmfsOPFSProxyFinish'],

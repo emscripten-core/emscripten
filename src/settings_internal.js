@@ -125,8 +125,8 @@ var EMIT_NAME_SECTION = false;
 // Whether we are emitting a symbol map.
 var EMIT_SYMBOL_MAP = false;
 
-// List of function explicitly exported by user on the command line.
-var USER_EXPORTED_FUNCTIONS = [];
+// List of symbols explicitly exported by user on the command line.
+var USER_EXPORTS = [];
 
 // name of the file containing wasm binary, if relevant
 var WASM_BINARY_FILE = '';
@@ -265,3 +265,7 @@ var WARN_DEPRECATED = true;
 // We currently set this to false for certain browser when large memory sizes
 // (2gb+ or 4gb+) are used
 var WEBGL_USE_GARBAGE_FREE_APIS = false;
+
+var INCLUDE_WEBGL1_FALLBACK = true;
+
+var MINIFICATION_MAP = '';

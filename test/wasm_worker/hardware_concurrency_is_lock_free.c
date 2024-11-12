@@ -4,8 +4,7 @@
 
 // Test emscripten_navigator_hardware_concurrency() and emscripten_atomics_is_lock_free() functions
 
-void test()
-{
+void test() {
   // Assume that test suite does have navigator.hardwareConcurrency.
   assert(emscripten_navigator_hardware_concurrency() >= 2);
   assert(emscripten_atomics_is_lock_free(1));
@@ -17,8 +16,7 @@ void test()
   assert(!emscripten_atomics_is_lock_free(31));
 }
 
-void worker_main()
-{
+void worker_main() {
   test();
 #ifdef REPORT_RESULT
   REPORT_RESULT(0);
@@ -27,8 +25,7 @@ void worker_main()
 
 char stack[1024];
 
-int main()
-{
+int main() {
   test();
   emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
   emscripten_wasm_worker_post_function_v(worker, worker_main);

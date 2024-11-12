@@ -71,6 +71,10 @@ object
 198
 getAsArray: 24
 Inner::+= => 2
+add: 3
+mul2: 50
+testString: 1
+testInt: 2
 0
 1
 34,34
@@ -109,3 +113,6 @@ Aborted(Assertion failed: [CHECK FAILED] Parent::Parent(val:val): Expecting <int
 Parent:42
 Aborted(Assertion failed: [CHECK FAILED] Parent::voidStar(something:something): Expecting <pointer>)
 Aborted(Assertion failed: [CHECK FAILED] StringUser::Print(anotherString:anotherString): Expecting <string>)
+123
+true
+true

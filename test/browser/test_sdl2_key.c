@@ -62,13 +62,13 @@ int main(int argc, char **argv) {
 
   SDL_StartTextInput();
 
-  emscripten_run_script("keydown(38,  'ArrowUp');   keyup(38,  'ArrowUp')"); // up
-  emscripten_run_script("keydown(40,  'ArrowDown'); keyup(40,  'ArrowDown')"); // down
-  emscripten_run_script("keydown(37,  'ArrowLeft'); keyup(37,  'ArrowLeft');"); // left
-  emscripten_run_script("keydown(39,  'ArrowRight');keyup(39,  'ArrowRight');"); // right
-  emscripten_run_script("keydown(65,  'KeyA');      keyup(65,  'KeyA');"); // a
-  emscripten_run_script("keydown(66,  'KeyB');      keyup(66,  'KeyB');"); // b
-  emscripten_run_script("keydown(100, 'Numpad4');   keyup(100, 'Numpad4');"); // trigger the end
+  emscripten_run_script("simulateKeyDown(38,  'ArrowUp');   simulateKeyUp(38,  'ArrowUp')"); // up
+  emscripten_run_script("simulateKeyDown(40,  'ArrowDown'); simulateKeyUp(40,  'ArrowDown')"); // down
+  emscripten_run_script("simulateKeyDown(37,  'ArrowLeft'); simulateKeyUp(37,  'ArrowLeft');"); // left
+  emscripten_run_script("simulateKeyDown(39,  'ArrowRight');simulateKeyUp(39,  'ArrowRight');"); // right
+  emscripten_run_script("simulateKeyDown(65,  'KeyA');      simulateKeyUp(65,  'KeyA');"); // a
+  emscripten_run_script("simulateKeyDown(66,  'KeyB');      simulateKeyUp(66,  'KeyB');"); // b
+  emscripten_run_script("simulateKeyDown(100, 'Numpad4');   simulateKeyUp(100, 'Numpad4');"); // trigger the end
 
   emscripten_set_main_loop(pump_events, 3, 0);
   return 99;

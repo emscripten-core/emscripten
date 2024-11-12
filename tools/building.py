@@ -39,7 +39,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 117
+EXPECTED_BINARYEN_VERSION = 119
 
 _is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
@@ -194,6 +194,12 @@ def lld_flags_for_executable(external_symbols):
   if settings.RELOCATABLE:
     cmd.append('--experimental-pic')
     cmd.append('--unresolved-symbols=import-dynamic')
+    if not settings.WASM_BIGINT:
+      # When we don't have WASM_BIGINT available, JS signature legalization
+      # in binaryen will mutate the signatures of the imports/exports of our
+      # shared libraries.  Because of this we need to disabled signature
+      # checking of shared library functions in this case.
+      cmd.append('--no-shlib-sigcheck')
     if settings.SIDE_MODULE:
       cmd.append('-shared')
     else:
@@ -258,7 +264,7 @@ def link_lld(args, target, external_symbols=None):
     args.insert(0, '--whole-archive')
     args.append('--no-whole-archive')
 
-  if settings.STRICT:
+  if settings.STRICT and '--no-fatal-warnings' not in args:
     args.append('--fatal-warnings')
 
   if any(a in args for a in ('--strip-all', '-s')):
@@ -339,7 +345,7 @@ def js_optimizer(filename, passes):
 
 
 # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
-def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
+def acorn_optimizer(filename, passes, extra_info=None, return_output=False, worker_js=False):
   optimizer = path_from_root('tools/acorn-optimizer.mjs')
   original_filename = filename
   if extra_info is not None:
@@ -350,12 +356,13 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
       f.write('// EXTRA_INFO: ' + extra_info)
     filename = temp
   cmd = config.NODE_JS + [optimizer, filename] + passes
-  # Keep JS code comments intact through the acorn optimization pass so that
-  # JSDoc comments will be carried over to a later Closure run.
-  if settings.MAYBE_CLOSURE_COMPILER:
-    cmd += ['--closure-friendly']
-  if settings.EXPORT_ES6:
-    cmd += ['--export-es6']
+  if not worker_js:
+    # Keep JS code comments intact through the acorn optimization pass so that
+    # JSDoc comments will be carried over to a later Closure run.
+    if settings.MAYBE_CLOSURE_COMPILER:
+      cmd += ['--closure-friendly']
+    if settings.EXPORT_ES6:
+      cmd += ['--export-es6']
   if settings.VERBOSE:
     cmd += ['--verbose']
   if return_output:
@@ -586,8 +593,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/dyncall-externs.js')]
 
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
-  # Keep in sync with ecmaVersion in tools/acorn-optimizer.mjs
-  args += ['--language_in', 'ECMASCRIPT_2021']
+  args += ['--language_in', 'UNSTABLE']
   # We do transpilation using babel
   args += ['--language_out', 'NO_TRANSPILE']
   # Tell closure never to inject the 'use strict' directive.
@@ -718,7 +724,10 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
     # if we are optimizing for size, shrink the combined wasm+JS
     # TODO: support this when a symbol map is used
     if expensive_optimizations:
-      js_file = metadce(js_file, wasm_file, debug_info=debug_info)
+      js_file = metadce(js_file,
+                        wasm_file,
+                        debug_info=debug_info,
+                        last=not settings.MINIFY_WASM_IMPORTS_AND_EXPORTS)
       # now that we removed unneeded communication between js and wasm, we can clean up
       # the js some more.
       passes = ['AJSDCE']
@@ -733,8 +742,25 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
   return js_file
 
 
+def is_internal_global(name):
+  internal_start_stop_symbols = set(['__start_em_asm', '__stop_em_asm',
+                                     '__start_em_js', '__stop_em_js',
+                                     '__start_em_lib_deps', '__stop_em_lib_deps',
+                                     '__em_lib_deps'])
+  internal_prefixes = ('__em_js__', '__em_lib_deps')
+  return name in internal_start_stop_symbols or any(name.startswith(p) for p in internal_prefixes)
+
+
+# get the flags to pass into the very last binaryen tool invocation, that runs
+# the final set of optimizations
+def get_last_binaryen_opts():
+  return [f'--optimize-level={settings.OPT_LEVEL}',
+          f'--shrink-level={settings.SHRINK_LEVEL}',
+          '--optimize-stack-ir']
+
+
 # run binaryen's wasm-metadce to dce both js and wasm
-def metadce(js_file, wasm_file, debug_info):
+def metadce(js_file, wasm_file, debug_info, last):
   logger.debug('running meta-DCE')
   temp_files = shared.get_temp_files()
   # first, get the JS part of the graph
@@ -781,30 +807,38 @@ def metadce(js_file, wasm_file, debug_info):
     'clock_res_get',
     'clock_time_get',
     'path_open',
+    'random_get',
   }
   for item in graph:
     if 'import' in item and item['import'][1] in WASI_IMPORTS:
       item['import'][0] = settings.WASI_MODULE_NAME
 
-  # map import names from wasm to JS, using the actual name the wasm uses for the import
+  # map import/export names to native wasm symbols.
   import_name_map = {}
+  export_name_map = {}
   for item in graph:
     if 'import' in item:
       name = item['import'][1]
-      import_name_map[item['name']] = 'emcc$import$' + name
+      import_name_map[item['name']] = name
       if asmjs_mangle(name) in settings.SIDE_MODULE_IMPORTS:
         item['root'] = True
+    elif 'export' in item:
+      export_name_map[item['name']] = item['export']
   temp = temp_files.get('.json', prefix='emcc_dce_graph_').name
   utils.write_file(temp, json.dumps(graph, indent=2))
   # run wasm-metadce
+  args = ['--graph-file=' + temp]
+  if last:
+    args += get_last_binaryen_opts()
   out = run_binaryen_command('wasm-metadce',
                              wasm_file,
                              wasm_file,
-                             ['--graph-file=' + temp],
+                             args,
                              debug=debug_info,
                              stdout=PIPE)
   # find the unused things in js
-  unused = []
+  unused_imports = []
+  unused_exports = []
   PREFIX = 'unused: '
   for line in out.splitlines():
     if line.startswith(PREFIX):
@@ -814,21 +848,25 @@ def metadce(js_file, wasm_file, debug_info):
       if settings.MAIN_MODULE and name.split('$')[-1] in ('wasmMemory', 'wasmTable'):
         continue
       # we only remove imports and exports in applyDCEGraphRemovals
-      if name in import_name_map:
-        name = import_name_map[name]
-        unused.append(name)
+      if name.startswith('emcc$import$'):
+        native_name = import_name_map[name]
+        unused_imports.append(native_name)
       elif name.startswith('emcc$export$'):
-        unused.append(name)
-  if not unused:
+        if settings.DECLARE_ASM_MODULE_EXPORTS:
+          native_name = export_name_map[name]
+          if not is_internal_global(native_name):
+            unused_exports.append(native_name)
+  if not unused_exports and not unused_imports:
     # nothing found to be unused, so we have nothing to remove
     return js_file
   # remove them
   passes = ['applyDCEGraphRemovals']
   if settings.MINIFY_WHITESPACE:
     passes.append('--minify-whitespace')
-  extra_info = {'unused': unused}
   if DEBUG:
-    logger.debug("unused: %s", str(unused))
+    logger.debug("unused_imports: %s", str(unused_imports))
+    logger.debug("unused_exports: %s", str(unused_exports))
+  extra_info = {'unusedImports': unused_imports, 'unusedExports': unused_exports}
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
 
@@ -860,23 +898,19 @@ def asyncify_lazy_load_code(wasm_target, debug):
 def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_info):
   logger.debug('minifying wasm imports and exports')
   # run the pass
+  args = []
   if minify_exports:
     # standalone wasm mode means we need to emit a wasi import module.
     # otherwise, minify even the imported module names.
     if settings.MINIFY_WASM_IMPORTED_MODULES:
-      pass_name = '--minify-imports-and-exports-and-modules'
+      args.append('--minify-imports-and-exports-and-modules')
     else:
-      pass_name = '--minify-imports-and-exports'
+      args.append('--minify-imports-and-exports')
   else:
-    pass_name = '--minify-imports'
-  out = run_wasm_opt(wasm_file, wasm_file,
-                     [pass_name],
-                     debug=debug_info,
-                     stdout=PIPE)
-  # TODO this is the last tool we run, after normal opts and metadce. it
-  # might make sense to run Stack IR optimizations here or even -O (as
-  # metadce which runs before us might open up new general optimization
-  # opportunities). however, the benefit is less than 0.5%.
+    args.append('--minify-imports')
+  # this is always the last tool we run (if we run it)
+  args += get_last_binaryen_opts()
+  out = run_wasm_opt(wasm_file, wasm_file, args, debug=debug_info, stdout=PIPE)
 
   # get the mapping
   SEP = ' => '
@@ -891,6 +925,9 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_in
   if settings.MINIFY_WHITESPACE:
     passes.append('--minify-whitespace')
   extra_info = {'mapping': mapping}
+  if settings.MINIFICATION_MAP:
+    lines = [f'{new}:{old}' for old, new in mapping.items()]
+    utils.write_file(settings.MINIFICATION_MAP, '\n'.join(lines) + '\n')
   return acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
 
@@ -916,7 +953,6 @@ def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, sym
         passes += ['symbolMap=%s' % symbols_file_js]
     if settings.MINIFY_WHITESPACE:
       passes += ['--minify-whitespace']
-    passes += ['last']
     if passes:
       # hackish fixups to work around wasm2js style and the js optimizer FIXME
       wasm2js_js = f'// EMSCRIPTEN_START_ASM\n{wasm2js_js}// EMSCRIPTEN_END_ASM\n'
@@ -1040,15 +1076,18 @@ def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
   args = []
   if symbols_file:
     args += ['--print-function-map']
-  if not debug_info:
-    # to remove debug info, we just write to that same file, and without -g
-    args += ['-o', wasm_file]
   else:
     # suppress the wasm-opt warning regarding "no output file specified"
     args += ['--quiet']
   output = run_wasm_opt(wasm_file, args=args, stdout=PIPE)
   if symbols_file:
     utils.write_file(symbols_file, output)
+  if not debug_info:
+    # strip the names section using llvm-objcopy. this is slightly slower than
+    # using wasm-opt (we could run wasm-opt without -g here and just tell it to
+    # write the file back out), but running wasm-opt would undo StackIR
+    # optimizations, if we did those.
+    strip(wasm_file, wasm_file, sections=['name'])
 
 
 def is_ar(filename):

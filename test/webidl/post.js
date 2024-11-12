@@ -144,6 +144,12 @@ console.log(new TheModule.Inner().get());
 console.log('getAsArray: ' + new TheModule.Inner().getAsArray(12));
 new TheModule.Inner().mul(2);
 new TheModule.Inner().incInPlace(new TheModule.Inner());
+console.log('add: ' + new TheModule.Inner(1).add(new TheModule.Inner(2)).get_value());
+console.log('mul2: ' + new TheModule.Inner(10).mul2(5));
+
+let bindTo = new TheModule.BindToTest();
+console.log('testString: ' + bindTo.testString('hello'));
+console.log('testInt: ' + bindTo.testInt(10));
 
 console.log(TheModule.enum_value1);
 console.log(TheModule.enum_value2);
@@ -243,6 +249,36 @@ try {
   s.Print(123, null); // Expects a string or a wrapped pointer
 } catch (e) {}
 
+// Returned pointers (issue 14745)
+
+var factory = new TheModule.ObjectFactory();
+var objectProvider = factory.getProvider();
+var smallObject = objectProvider.getObject();
+
+// This will print 123 if we managed to access the object, which means that integers
+// were correctly typecast to ObjectProvider pointer and SmallObject pointer.
+console.log(smallObject.getID(123));
+
+TheModule.destroy(factory)
+
+// end of issue 14745
+
+// octet[] to char* (issue 14827)
+
+const arrayTestObj = new TheModule.ArrayArgumentTest();
+const bufferAddr = TheModule._malloc(35);
+TheModule.stringToUTF8('I should match the member variable', bufferAddr, 35);
+
+const arrayTestResult = arrayTestObj.byteArrayTest(bufferAddr);
+const arrayDomStringResult = arrayTestObj.domStringTest('I should match the member variable');
+console.log(arrayTestResult);
+console.log(arrayDomStringResult);
+
+TheModule.destroy(arrayTestObj)
+TheModule._free(bufferAddr);
+	
+// end of issue 14827
+
 // Check for overflowing the stack
 
 var before = Date.now();
@@ -284,8 +320,6 @@ if (isMemoryGrowthAllowed) {
     console.log('ERROR: An array was not copied to HEAP32 after memory reallocation');
   }
 }
-
-//
 
 console.log('\ndone.')
 })();

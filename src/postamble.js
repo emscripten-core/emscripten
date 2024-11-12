@@ -84,7 +84,7 @@ function callMain() {
   try {
 #if ABORT_ON_WASM_EXCEPTIONS
     // See abortWrapperDepth in preamble.js!
-    abortWrapperDepth += 1;
+    abortWrapperDepth++;
 #endif
 
 #if STANDALONE_WASM
@@ -117,7 +117,7 @@ function callMain() {
 #if ABORT_ON_WASM_EXCEPTIONS
   finally {
     // See abortWrapperDepth in preamble.js!
-    abortWrapperDepth -= 1;
+    abortWrapperDepth--;
   }
 #endif
 }
@@ -161,13 +161,6 @@ function run() {
     return;
   }
 
-#if STACK_OVERFLOW_CHECK
-#if PTHREADS
-  if (!ENVIRONMENT_IS_PTHREAD)
-#endif
-    stackCheckInit();
-#endif
-
 #if WASM_WORKERS
   if (ENVIRONMENT_IS_WASM_WORKER) {
 #if MODULARIZE
@@ -189,6 +182,10 @@ function run() {
     startWorker(Module);
     return;
   }
+#endif
+
+#if STACK_OVERFLOW_CHECK
+  stackCheckInit();
 #endif
 
   preRun();
@@ -220,7 +217,7 @@ function run() {
     readyPromiseResolve(Module);
 #endif
 #if expectToReceiveOnModule('onRuntimeInitialized')
-    if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
+    Module['onRuntimeInitialized']?.();
 #endif
 
 #if HAS_MAIN
@@ -241,10 +238,8 @@ function run() {
 #if expectToReceiveOnModule('setStatus')
   if (Module['setStatus']) {
     Module['setStatus']('Running...');
-    setTimeout(function() {
-      setTimeout(function() {
-        Module['setStatus']('');
-      }, 1);
+    setTimeout(() => {
+      setTimeout(() => Module['setStatus'](''), 1);
       doRun();
     }, 1);
   } else
@@ -289,7 +284,7 @@ function checkUnflushedContent() {
 #endif
 #if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
     // also flush in the JS FS layer
-    ['stdout', 'stderr'].forEach(function(name) {
+    ['stdout', 'stderr'].forEach((name) => {
       var info = FS.analyzePath('/dev/' + name);
       if (!info) return;
       var stream = info.object;
@@ -342,7 +337,7 @@ run();
 
 var workerResponded = false, workerCallbackId = -1;
 
-(function() {
+(() => {
   var messageBuffer = null, buffer = 0, bufferSize = 0;
 
   function flushMessages() {
@@ -350,9 +345,7 @@ var workerResponded = false, workerCallbackId = -1;
     if (runtimeInitialized) {
       var temp = messageBuffer;
       messageBuffer = null;
-      temp.forEach(function(message) {
-        onmessage(message);
-      });
+      temp.forEach((message) => onmessage(message));
     }
   }
 

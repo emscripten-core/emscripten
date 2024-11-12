@@ -336,13 +336,13 @@ var LibraryGLUT = {
     // Firefox
     window.addEventListener("DOMMouseScroll", GLUT.onMouseWheel, true);
 
-    Browser.resizeListeners.push(function(width, height) {
+    Browser.resizeListeners.push((width, height) => {
       if (GLUT.reshapeFunc) {
         {{{ makeDynCall('vii', 'GLUT.reshapeFunc') }}}(width, height);
       }
     });
 
-    __ATEXIT__.push(function() {
+    __ATEXIT__.push(() => {
       if (isTouchDevice) {
         window.removeEventListener("touchmove", GLUT.touchHandler, true);
         window.removeEventListener("touchstart", GLUT.touchHandler, true);
@@ -566,14 +566,16 @@ var LibraryGLUT = {
     // TODO: Make glutCreateWindow explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
     GL.enableOffscreenFramebufferAttributes(contextAttributes);
 #endif
-    Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
-    return Module.ctx ? 1 /* a new GLUT window ID for the created context */ : 0 /* failure */;
+    if (!Browser.createContext(Module['canvas'], /*useWebGL=*/true, /*setInModule=*/true, contextAttributes)) {
+      return 0; // failure
+    }
+    return 1; // a new GLUT window ID for the created context
   },
 
   glutDestroyWindow__proxy: 'sync',
   glutDestroyWindow__deps: ['$Browser'],
   glutDestroyWindow: (name) => {
-    Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
+    delete Module.ctx;
     return 1;
   },
 
@@ -617,14 +619,13 @@ var LibraryGLUT = {
   glutSwapBuffers: () => {},
 
   glutPostRedisplay__proxy: 'sync',
+  glutPostRedisplay__deps: ['$MainLoop'],
   glutPostRedisplay: () => {
     if (GLUT.displayFunc && !GLUT.requestedAnimationFrame) {
       GLUT.requestedAnimationFrame = true;
-      Browser.requestAnimationFrame(function() {
+      MainLoop.requestAnimationFrame(() => {
         GLUT.requestedAnimationFrame = false;
-        Browser.mainLoop.runIter(function() {
-          {{{ makeDynCall('v', 'GLUT.displayFunc') }}}();
-        });
+        MainLoop.runIter(() => {{{ makeDynCall('v', 'GLUT.displayFunc') }}}());
       });
     }
   },

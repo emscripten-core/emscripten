@@ -58,7 +58,7 @@ __cxa_init_primary_exception(void* object, std::type_info* tinfo, void(_LIBCXXAB
 // 2.4.3 Throwing the Exception Object
 extern _LIBCXXABI_FUNC_VIS _LIBCXXABI_NORETURN void
 __cxa_throw(void *thrown_exception, std::type_info *tinfo,
-#ifdef __USING_WASM_EXCEPTIONS__
+#ifdef __wasm__
             void *(_LIBCXXABI_DTOR_FUNC *dest)(void *));
 #else
             void (_LIBCXXABI_DTOR_FUNC *dest)(void *));

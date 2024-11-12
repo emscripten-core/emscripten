@@ -1,20 +1,18 @@
-#include <emscripten.h>
+#include <emscripten/console.h>
 #include <emscripten/wasm_worker.h>
 #include <assert.h>
 
 thread_local int tls = 1;
 
-void main_thread_func()
-{
+void main_thread_func() {
   assert(!emscripten_current_thread_is_wasm_worker());
-  EM_ASM(out($0), tls);
+  emscripten_outf("%d", tls);
 #ifdef REPORT_RESULT
   REPORT_RESULT(tls);
 #endif
 }
 
-void worker_main()
-{
+void worker_main() {
   assert(emscripten_current_thread_is_wasm_worker());
   assert(tls != 42);
   assert(tls != 0);
@@ -25,9 +23,8 @@ void worker_main()
 
 char stack[1024];
 
-int main()
-{
-  EM_ASM(out($0), tls);
+int main() {
+  emscripten_outf("%d", tls);
   assert(!emscripten_current_thread_is_wasm_worker());
   tls = 42;
   emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));

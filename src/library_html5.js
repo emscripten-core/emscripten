@@ -12,22 +12,27 @@ var LibraryHTML5 = {
   ],
   $JSEvents: {
 
-/* We do not depend on the exact initial values of falsey member fields - these
-   fields can be populated on-demand to save code size.
-   (but still documented here to keep track of what is supposed to be present)
-
+#if USE_CLOSURE_COMPILER
     // pointers to structs malloc()ed to Emscripten HEAP for JS->C interop.
+    batteryEvent: 0,
+    gamepadEvent: 0,
     keyEvent: 0,
     mouseEvent: 0,
     wheelEvent: 0,
     uiEvent: 0,
     focusEvent: 0,
     deviceOrientationEvent: 0,
+    orientationChangeEvent: 0,
     deviceMotionEvent: 0,
     fullscreenChangeEvent: 0,
     pointerlockChangeEvent: 0,
     visibilityChangeEvent: 0,
     touchEvent: 0,
+#endif
+
+/* We do not depend on the exact initial values of falsey member fields - these
+   fields can be populated on-demand to save code size.
+   (but still documented here to keep track of what is supposed to be present)
 
     // When we transition from fullscreen to windowed mode, we remember here the
     // element that was just in fullscreen mode so that we can report
@@ -53,6 +58,9 @@ var LibraryHTML5 = {
     currentEventHandler: null,
 #endif
 */
+    memcpy(target, src, size) {
+      HEAP8.set(HEAP8.subarray(src, src + size), target);
+    },
 
     removeAllEventListeners() {
       while (JSEvents.eventHandlers.length) {
@@ -94,8 +102,7 @@ var LibraryHTML5 = {
         return true;
       }
       // Test if the given call was already queued, and if so, don't add it again.
-      for (var i in JSEvents.deferredCalls) {
-        var call = JSEvents.deferredCalls[i];
+      for (var call of JSEvents.deferredCalls) {
         if (call.targetFunction == targetFunction && arraysHaveEqualContent(call.argsList, argsList)) {
           return;
         }
@@ -111,12 +118,7 @@ var LibraryHTML5 = {
 
     // Erases all deferred calls to the given target function from the queue list.
     removeDeferredCalls(targetFunction) {
-      for (var i = 0; i < JSEvents.deferredCalls.length; ++i) {
-        if (JSEvents.deferredCalls[i].targetFunction == targetFunction) {
-          JSEvents.deferredCalls.splice(i, 1);
-          --i;
-        }
-      }
+      JSEvents.deferredCalls = JSEvents.deferredCalls.filter((call) => call.targetFunction != targetFunction);
     },
 
     canPerformEventHandlerRequests() {
@@ -136,10 +138,9 @@ var LibraryHTML5 = {
       if (!JSEvents.canPerformEventHandlerRequests()) {
         return;
       }
-      for (var i = 0; i < JSEvents.deferredCalls.length; ++i) {
-        var call = JSEvents.deferredCalls[i];
-        JSEvents.deferredCalls.splice(i, 1);
-        --i;
+      var deferredCalls = JSEvents.deferredCalls;
+      JSEvents.deferredCalls = [];
+      for (var call of deferredCalls) {
         call.targetFunction(...call.argsList);
       }
     },
@@ -260,7 +261,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    if (!JSEvents.keyEvent) JSEvents.keyEvent = _malloc({{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}});
+    JSEvents.keyEvent ||= _malloc({{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}});
 
     var keyEventHandlerFunc = (e) => {
 #if ASSERTIONS
@@ -274,17 +275,17 @@ var LibraryHTML5 = {
 #endif
       {{{ makeSetValue('keyEventData', C_STRUCTS.EmscriptenKeyboardEvent.timestamp, 'e.timeStamp', 'double') }}};
 
-      var idx ={{{ getHeapOffset('keyEventData', 'i32') }}};
+      var idx = {{{ getHeapOffset('keyEventData', 'i32') }}};
 
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.location / 4}}}] = e.location;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.ctrlKey / 4}}}] = e.ctrlKey;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.shiftKey / 4}}}] = e.shiftKey;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.altKey / 4}}}] = e.altKey;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.metaKey / 4}}}] = e.metaKey;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.repeat / 4}}}] = e.repeat;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charCode / 4}}}] = e.charCode;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.keyCode / 4}}}] = e.keyCode;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.which / 4}}}] = e.which;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.location / 4 }}}] = e.location;
+      HEAP8[keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.ctrlKey }}}] = e.ctrlKey;
+      HEAP8[keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.shiftKey }}}] = e.shiftKey;
+      HEAP8[keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.altKey }}}] = e.altKey;
+      HEAP8[keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.metaKey }}}] = e.metaKey;
+      HEAP8[keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.repeat }}}] = e.repeat;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charCode / 4 }}}] = e.charCode;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.keyCode / 4 }}}] = e.keyCode;
+      HEAP32[idx + {{{ C_STRUCTS.EmscriptenKeyboardEvent.which / 4 }}}] = e.which;
       stringToUTF8(e.key || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.key }}}, {{{ cDefs.EM_HTML5_SHORT_STRING_LEN_BYTES }}});
       stringToUTF8(e.code || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.code }}}, {{{ cDefs.EM_HTML5_SHORT_STRING_LEN_BYTES }}});
       stringToUTF8(e.char || '', keyEventData + {{{ C_STRUCTS.EmscriptenKeyboardEvent.charValue }}}, {{{ cDefs.EM_HTML5_SHORT_STRING_LEN_BYTES }}});
@@ -446,10 +447,10 @@ var LibraryHTML5 = {
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.screenY / 4 }}}] = e.screenY;
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.clientX / 4 }}}] = e.clientX;
     HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.clientY / 4 }}}] = e.clientY;
-    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.ctrlKey / 4 }}}] = e.ctrlKey;
-    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.shiftKey / 4 }}}] = e.shiftKey;
-    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.altKey / 4 }}}] = e.altKey;
-    HEAP32[idx + {{{ C_STRUCTS.EmscriptenMouseEvent.metaKey / 4 }}}] = e.metaKey;
+    HEAP8[eventStruct + {{{ C_STRUCTS.EmscriptenMouseEvent.ctrlKey }}}] = e.ctrlKey;
+    HEAP8[eventStruct + {{{ C_STRUCTS.EmscriptenMouseEvent.shiftKey }}}] = e.shiftKey;
+    HEAP8[eventStruct + {{{ C_STRUCTS.EmscriptenMouseEvent.altKey }}}] = e.altKey;
+    HEAP8[eventStruct + {{{ C_STRUCTS.EmscriptenMouseEvent.metaKey }}}] = e.metaKey;
     HEAP16[idx*2 + {{{ C_STRUCTS.EmscriptenMouseEvent.button / 2 }}}] = e.button;
     HEAP16[idx*2 + {{{ C_STRUCTS.EmscriptenMouseEvent.buttons / 2 }}}] = e.buttons;
 
@@ -514,7 +515,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    if (!JSEvents.mouseEvent) JSEvents.mouseEvent = _malloc({{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}});
+    JSEvents.mouseEvent ||= _malloc({{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}});
     target = findEventTarget(target);
 
     var mouseEventHandlerFunc = (e = event) => {
@@ -596,7 +597,7 @@ var LibraryHTML5 = {
     // HTML5 does not really have a polling API for mouse events, so implement one manually by
     // returning the data from the most recently received event. This requires that user has registered
     // at least some no-op function as an event handler to any of the mouse function.
-    HEAP8.set(HEAP8.subarray(JSEvents.mouseEvent, JSEvents.mouseEvent + {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}}), mouseState);
+    JSEvents.memcpy(mouseState, JSEvents.mouseEvent, {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}});
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
@@ -605,7 +606,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    if (!JSEvents.wheelEvent) JSEvents.wheelEvent = _malloc({{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}});
+    JSEvents.wheelEvent ||= _malloc({{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}});
 
     // The DOM Level 3 events spec event 'wheel'
     var wheelHandlerFunc = (e = event) => {
@@ -680,7 +681,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    if (!JSEvents.uiEvent) JSEvents.uiEvent = _malloc({{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}});
+    JSEvents.uiEvent ||= _malloc({{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}});
 
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     target = findEventTarget(target);
@@ -752,7 +753,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    if (!JSEvents.focusEvent) JSEvents.focusEvent = _malloc({{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}});
+    JSEvents.focusEvent ||= _malloc({{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}});
 
     var focusEventHandlerFunc = (e = event) => {
       var nodeName = JSEvents.getNodeNameForTarget(e.target);
@@ -808,7 +809,7 @@ var LibraryHTML5 = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.alpha, 'e.alpha', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.beta, 'e.beta', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.gamma, 'e.gamma', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.absolute, 'e.absolute', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.absolute, 'e.absolute', 'i8') }}};
   },
 
   $registerDeviceOrientationEventCallback__deps: ['$JSEvents', '$fillDeviceOrientationEventData', '$findEventTarget'],
@@ -816,7 +817,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    if (!JSEvents.deviceOrientationEvent) JSEvents.deviceOrientationEvent = _malloc({{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}});
+    JSEvents.deviceOrientationEvent ||= _malloc({{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}});
 
     var deviceOrientationEventHandlerFunc = (e = event) => {
       fillDeviceOrientationEventData(JSEvents.deviceOrientationEvent, e, target); // TODO: Thread-safety with respect to emscripten_get_deviceorientation_status()
@@ -854,7 +855,7 @@ var LibraryHTML5 = {
     // HTML5 does not really have a polling API for device orientation events, so implement one manually by
     // returning the data from the most recently received event. This requires that user has registered
     // at least some no-op function as an event handler.
-    HEAP32.set(HEAP32.subarray(JSEvents.deviceOrientationEvent, {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}}), orientationState);
+    JSEvents.memcpy(orientationState, JSEvents.deviceOrientationEvent, {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}});
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
@@ -886,7 +887,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    if (!JSEvents.deviceMotionEvent) JSEvents.deviceMotionEvent = _malloc({{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}});
+    JSEvents.deviceMotionEvent ||= _malloc({{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}});
 
     var deviceMotionEventHandlerFunc = (e = event) => {
       fillDeviceMotionEventData(JSEvents.deviceMotionEvent, e, target); // TODO: Thread-safety with respect to emscripten_get_devicemotion_status()
@@ -924,7 +925,7 @@ var LibraryHTML5 = {
     // HTML5 does not really have a polling API for device motion events, so implement one manually by
     // returning the data from the most recently received event. This requires that user has registered
     // at least some no-op function as an event handler.
-    HEAP32.set(HEAP32.subarray(JSEvents.deviceMotionEvent, {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}}), motionState);
+    JSEvents.memcpy(motionState, JSEvents.deviceMotionEvent, {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}});
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
@@ -969,7 +970,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    if (!JSEvents.orientationChangeEvent) JSEvents.orientationChangeEvent = _malloc({{{ C_STRUCTS.EmscriptenOrientationChangeEvent.__size__ }}});
+    JSEvents.orientationChangeEvent ||= _malloc({{{ C_STRUCTS.EmscriptenOrientationChangeEvent.__size__ }}});
 
     var orientationChangeEventHandlerFunc = (e = event) => {
 #if PTHREADS
@@ -1058,8 +1059,8 @@ var LibraryHTML5 = {
     // Assigning a boolean to HEAP32 with expected type coercion.
     /** @suppress{checkTypes} */
 #endif
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.isFullscreen, 'isFullscreen', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.fullscreenEnabled, 'JSEvents.fullscreenEnabled()', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.isFullscreen, 'isFullscreen', 'i8') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.fullscreenEnabled, 'JSEvents.fullscreenEnabled()', 'i8') }}};
     // If transitioning to fullscreen, report info about the element that is now fullscreen.
     // If transitioning to windowed mode, report info about the element that just was fullscreen.
     var reportedElement = isFullscreen ? fullscreenElement : JSEvents.previousFullscreenElement;
@@ -1081,7 +1082,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    if (!JSEvents.fullscreenChangeEvent) JSEvents.fullscreenChangeEvent = _malloc({{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}});
+    JSEvents.fullscreenChangeEvent ||= _malloc({{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}});
 
     var fullscreenChangeEventhandlerFunc = (e = event) => {
 #if PTHREADS
@@ -1207,9 +1208,9 @@ var LibraryHTML5 = {
 
     // If we are adding padding, must choose a background color or otherwise Chrome will give the
     // padding a default white color. Do it only if user has not customized their own background color.
-    if (!target.style.backgroundColor) target.style.backgroundColor = 'black';
+    target.style.backgroundColor ||= 'black';
     // IE11 does the same, but requires the color to be set in the document body.
-    if (!document.body.style.backgroundColor) document.body.style.backgroundColor = 'black'; // IE11
+    document.body.style.backgroundColor ||= 'black'; // IE11
     // Firefox always shows black letterboxes independent of style color.
 
     target.style.width = cssWidth + 'px';
@@ -1348,8 +1349,8 @@ var LibraryHTML5 = {
 
   // Applies old visibility states, given a list of changes returned by hideEverythingExceptGivenElement().
   $restoreHiddenElements: (hiddenElements) => {
-    for (var i = 0; i < hiddenElements.length; ++i) {
-      hiddenElements[i].node.style.display = hiddenElements[i].displayState;
+    for (var elem of hiddenElements) {
+      elem.node.style.display = elem.displayState;
     }
   },
 
@@ -1428,7 +1429,7 @@ var LibraryHTML5 = {
   $doRequestFullscreen: (target, strategy) => {
     if (!JSEvents.fullscreenEnabled()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
-    if (!target) target = '#canvas';
+    target ||= '#canvas';
 #endif
     target = findEventTarget(target);
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
@@ -1446,10 +1447,9 @@ var LibraryHTML5 = {
     }
 
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
-    var canPerformRequests = JSEvents.canPerformEventHandlerRequests();
-
-    // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
-    if (!canPerformRequests) {
+    // Queue this function call if we're not currently in an event handler and
+    // the user saw it appropriate to do so.
+    if (!JSEvents.canPerformEventHandlerRequests()) {
       if (strategy.deferUntilInEventHandler) {
         JSEvents.deferCall(JSEvents_requestFullscreen, 1 /* priority over pointer lock */, [target, strategy]);
         return {{{ cDefs.EMSCRIPTEN_RESULT_DEFERRED }}};
@@ -1600,7 +1600,7 @@ var LibraryHTML5 = {
     // Assigning a boolean to HEAP32 with expected type coercion.
     /** @suppress{checkTypes} */
 #endif
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenPointerlockChangeEvent.isActive, 'isPointerlocked', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenPointerlockChangeEvent.isActive, 'isPointerlocked', 'i8') }}};
     var nodeName = JSEvents.getNodeNameForTarget(pointerLockElement);
     var id = pointerLockElement?.id || '';
     stringToUTF8(nodeName, eventStruct + {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.nodeName }}}, {{{ cDefs.EM_HTML5_LONG_STRING_LEN_BYTES }}});
@@ -1612,7 +1612,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    if (!JSEvents.pointerlockChangeEvent) JSEvents.pointerlockChangeEvent = _malloc({{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}});
+    JSEvents.pointerlockChangeEvent ||= _malloc({{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}});
 
     var pointerlockChangeEventHandlerFunc = (e = event) => {
 #if PTHREADS
@@ -1750,7 +1750,7 @@ var LibraryHTML5 = {
   emscripten_request_pointerlock__deps: ['$JSEvents', '$requestPointerLock', '$findEventTarget'],
   emscripten_request_pointerlock: (target, deferUntilInEventHandler) => {
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
-    if (!target) target = '#canvas';
+    target ||= '#canvas';
 #endif
     target = findEventTarget(target);
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
@@ -1766,10 +1766,9 @@ var LibraryHTML5 = {
     }
 
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
-    var canPerformRequests = JSEvents.canPerformEventHandlerRequests();
-
-    // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
-    if (!canPerformRequests) {
+    // Queue this function call if we're not currently in an event handler and
+    // the user saw it appropriate to do so.
+    if (!JSEvents.canPerformEventHandlerRequests()) {
       if (deferUntilInEventHandler) {
         JSEvents.deferCall(requestPointerLock, 2 /* priority below fullscreen */, [target]);
         return {{{ cDefs.EMSCRIPTEN_RESULT_DEFERRED }}};
@@ -1833,7 +1832,7 @@ var LibraryHTML5 = {
     // Assigning a boolean to HEAP32 with expected type coercion.
     /** @suppress{checkTypes} */
 #endif
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.hidden, 'document.hidden', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.hidden, 'document.hidden', 'i8') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.visibilityState, 'visibilityState', 'i32') }}};
   },
 
@@ -1842,7 +1841,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    if (!JSEvents.visibilityChangeEvent) JSEvents.visibilityChangeEvent = _malloc({{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}});
+    JSEvents.visibilityChangeEvent ||= _malloc({{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}});
 
     var visibilityChangeEventHandlerFunc = (e = event) => {
 #if PTHREADS
@@ -1896,7 +1895,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    if (!JSEvents.touchEvent) JSEvents.touchEvent = _malloc({{{ C_STRUCTS.EmscriptenTouchEvent.__size__ }}});
+    JSEvents.touchEvent ||= _malloc({{{ C_STRUCTS.EmscriptenTouchEvent.__size__ }}});
 
     target = findEventTarget(target);
 
@@ -1909,22 +1908,20 @@ var LibraryHTML5 = {
       // only changed touches in e.changedTouches, and touches on target at a.targetTouches), mark a boolean in
       // each Touch object so that we can later loop only once over all touches we see to marshall over to Wasm.
 
-      for (var i = 0; i < et.length; ++i) {
-        t = et[i];
+      for (let t of et) {
         // Browser might recycle the generated Touch objects between each frame (Firefox on Android), so reset any
         // changed/target states we may have set from previous frame.
         t.isChanged = t.onTarget = 0;
         touches[t.identifier] = t;
       }
       // Mark which touches are part of the changedTouches list.
-      for (var i = 0; i < e.changedTouches.length; ++i) {
-        t = e.changedTouches[i];
+      for (let t of e.changedTouches) {
         t.isChanged = 1;
         touches[t.identifier] = t;
       }
       // Mark which touches are part of the targetTouches list.
-      for (var i = 0; i < e.targetTouches.length; ++i) {
-        touches[e.targetTouches[i].identifier].onTarget = 1;
+      for (let t of e.targetTouches) {
+        touches[t.identifier].onTarget = 1;
       }
 
 #if PTHREADS
@@ -1933,36 +1930,35 @@ var LibraryHTML5 = {
       var touchEvent = JSEvents.touchEvent;
 #endif
       {{{ makeSetValue('touchEvent', C_STRUCTS.EmscriptenTouchEvent.timestamp, 'e.timeStamp', 'double') }}};
-      var idx ={{{ getHeapOffset('touchEvent', 'i32') }}};// Pre-shift the ptr to index to HEAP32 to save code size
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.ctrlKey / 4}}}] = e.ctrlKey;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.shiftKey / 4}}}] = e.shiftKey;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.altKey / 4}}}] = e.altKey;
-      HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchEvent.metaKey / 4}}}] = e.metaKey;
-      idx += {{{ C_STRUCTS.EmscriptenTouchEvent.touches / 4 }}}; // Advance to the start of the touch array.
+      HEAP8[touchEvent + {{{ C_STRUCTS.EmscriptenTouchEvent.ctrlKey }}}] = e.ctrlKey;
+      HEAP8[touchEvent + {{{ C_STRUCTS.EmscriptenTouchEvent.shiftKey }}}] = e.shiftKey;
+      HEAP8[touchEvent + {{{ C_STRUCTS.EmscriptenTouchEvent.altKey }}}] = e.altKey;
+      HEAP8[touchEvent + {{{ C_STRUCTS.EmscriptenTouchEvent.metaKey }}}] = e.metaKey;
+      var idx = touchEvent + {{{ C_STRUCTS.EmscriptenTouchEvent.touches }}};
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
       var canvasRect = Module['canvas'] ? getBoundingClientRect(Module['canvas']) : undefined;
 #endif
       var targetRect = getBoundingClientRect(target);
       var numTouches = 0;
-      for (var i in touches) {
-        t = touches[i];
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.identifier / 4}}}] = t.identifier;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenX / 4}}}] = t.screenX;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.screenY / 4}}}] = t.screenY;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.clientX / 4}}}] = t.clientX;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.clientY / 4}}}] = t.clientY;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.pageX / 4}}}] = t.pageX;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.pageY / 4}}}] = t.pageY;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.isChanged / 4}}}] = t.isChanged;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.onTarget / 4}}}] = t.onTarget;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.targetX / 4}}}] = t.clientX - (targetRect.left | 0);
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.targetY / 4}}}] = t.clientY - (targetRect.top  | 0);
+      for (let t of Object.values(touches)) {
+        var idx32 = {{{ getHeapOffset('idx', 'i32') }}}; // Pre-shift the ptr to index to HEAP32 to save code size
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.identifier / 4 }}}] = t.identifier;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.screenX / 4 }}}] = t.screenX;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.screenY / 4 }}}] = t.screenY;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.clientX / 4 }}}] = t.clientX;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.clientY / 4 }}}] = t.clientY;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.pageX / 4 }}}] = t.pageX;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.pageY / 4 }}}] = t.pageY;
+        HEAP8[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.isChanged }}}] = t.isChanged;
+        HEAP8[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.onTarget }}}] = t.onTarget;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.targetX / 4 }}}] = t.clientX - (targetRect.left | 0);
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.targetY / 4 }}}] = t.clientY - (targetRect.top  | 0);
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasX / 4}}}] = canvasRect ? t.clientX - (canvasRect.left | 0) : 0;
-        HEAP32[idx + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasY / 4}}}] = canvasRect ? t.clientY - (canvasRect.top  | 0) : 0;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasX / 4 }}}] = canvasRect ? t.clientX - (canvasRect.left | 0) : 0;
+        HEAP32[idx32 + {{{ C_STRUCTS.EmscriptenTouchPoint.canvasY / 4 }}}] = canvasRect ? t.clientY - (canvasRect.top  | 0) : 0;
 #endif
 
-        idx += {{{ C_STRUCTS.EmscriptenTouchPoint.__size__ / 4 }}};
+        idx += {{{ C_STRUCTS.EmscriptenTouchPoint.__size__ }}};
 
         if (++numTouches > 31) {
           break;
@@ -2025,16 +2021,16 @@ var LibraryHTML5 = {
     }
     for (var i = 0; i < e.buttons.length; ++i) {
       if (typeof e.buttons[i] == 'object') {
-        {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i32') }}};
+        {{{ makeSetValue('eventStruct+i', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i8') }}};
       } else {
 #if !SAFE_HEAP
         // Assigning a boolean to HEAP32, that's ok, but Closure would like to warn about it:
         /** @suppress {checkTypes} */
 #endif
-        {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i] == 1', 'i32') }}};
+        {{{ makeSetValue('eventStruct+i', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i] == 1', 'i8') }}};
       }
     }
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.connected, 'e.connected', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.connected, 'e.connected', 'i8') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.index, 'e.index', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.numAxes, 'e.axes.length', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.numButtons, 'e.buttons.length', 'i32') }}};
@@ -2047,7 +2043,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    if (!JSEvents.gamepadEvent) JSEvents.gamepadEvent = _malloc({{{ C_STRUCTS.EmscriptenGamepadEvent.__size__ }}});
+    JSEvents.gamepadEvent ||= _malloc({{{ C_STRUCTS.EmscriptenGamepadEvent.__size__ }}});
 
     var gamepadEventHandlerFunc = (e = event) => {
 #if PTHREADS
@@ -2177,7 +2173,7 @@ var LibraryHTML5 = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.chargingTime, 'e.chargingTime', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.dischargingTime, 'e.dischargingTime', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.level, 'e.level', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.charging, 'e.charging', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.charging, 'e.charging', 'i8') }}};
   },
 
   $battery: () => navigator.battery || navigator.mozBattery || navigator.webkitBattery,
@@ -2187,7 +2183,7 @@ var LibraryHTML5 = {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
-    if (!JSEvents.batteryEvent) JSEvents.batteryEvent = _malloc({{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}});
+    JSEvents.batteryEvent ||= _malloc({{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}});
 
     var batteryEventHandlerFunc = (e = event) => {
 #if PTHREADS

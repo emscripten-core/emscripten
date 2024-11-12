@@ -25,7 +25,7 @@ void MessageReceivedInAudioWorkletThread(int a, int b) {
 }
 
 // This callback will fire when the audio worklet thread has been initialized.
-void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, EM_BOOL success, void *userData) {
+void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
   printf("WebAudioWorkletThreadInitialized\n");
   emscripten_audio_worklet_post_function_vii(audioContext, MessageReceivedInAudioWorkletThread, /*a=*/42, /*b=*/9000);
 }

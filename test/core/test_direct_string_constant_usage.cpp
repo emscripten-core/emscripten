@@ -8,7 +8,7 @@
 #include <iostream>
 template <int i>
 void printText(const char (&text)[i]) {
-  std::cout << text;
+  std::cout << text << "\n";
 }
 int main() {
   printText("some string constant");

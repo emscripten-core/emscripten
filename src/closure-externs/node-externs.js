@@ -104,3 +104,18 @@ Buffer.prototype.toString = function(encoding, start, end) {};
 
 Worker.prototype.ref = function() {};
 Worker.prototype.unref = function() {};
+
+/**
+ * @type {number}
+ */
+fs.Stats.prototype.atimeMs;
+
+/**
+ * @type {number}
+ */
+fs.Stats.prototype.mtimeMs;
+
+/**
+ * @type {number}
+ */
+fs.Stats.prototype.ctimeMs;

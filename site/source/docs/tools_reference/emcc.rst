@@ -241,6 +241,15 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note:: When used with ``-sWASM=2``, two symbol files are created. ``[name].js.symbols`` (with WASM symbols) and ``[name].wasm.js.symbols`` (with ASM.js symbols)
 
+.. _emcc-emit-minification-map:
+
+``--emit-minification-map <file>``
+  [link]
+  In cases where emscripten performs import/export minificiton this option can
+  be used to output a file that maps minified names back to their original
+  names.  The format of this file is single line per import/export of the form
+  ``<minname>:<origname>``.
+
 .. _emcc-lto:
 
 ``-flto``

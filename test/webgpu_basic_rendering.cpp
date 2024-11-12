@@ -20,39 +20,6 @@
 
 static const wgpu::Instance instance = wgpuCreateInstance(nullptr);
 
-void GetDevice(void (*callback)(wgpu::Device)) {
-    instance.RequestAdapter(nullptr, [](WGPURequestAdapterStatus status, WGPUAdapter cAdapter, const char* message, void* userdata) {
-        if (message) {
-            printf("RequestAdapter: %s\n", message);
-        }
-        if (status == WGPURequestAdapterStatus_Unavailable) {
-            printf("WebGPU unavailable; exiting cleanly\n");
-            // exit(0) (rather than emscripten_force_exit(0)) ensures there is
-            // no dangling keepalive.
-#if _REENTRANT
-            // FIXME: In multi-threaded builds this callback runs on the main
-            // which seems to be causing the runtime to stay alive here and
-            // results in the 99 being returned.
-            emscripten_force_exit(0);
-#else
-            exit(0);
-#endif
-        }
-        assert(status == WGPURequestAdapterStatus_Success);
-
-        wgpu::Adapter adapter = wgpu::Adapter::Acquire(cAdapter);
-        adapter.RequestDevice(nullptr, [](WGPURequestDeviceStatus status, WGPUDevice cDevice, const char* message, void* userdata) {
-            if (message) {
-                printf("RequestDevice: %s\n", message);
-            }
-            assert(status == WGPURequestDeviceStatus_Success);
-
-            wgpu::Device device = wgpu::Device::Acquire(cDevice);
-            reinterpret_cast<void (*)(wgpu::Device)>(userdata)(device);
-        }, userdata);
-    }, reinterpret_cast<void*>(callback));
-}
-
 static const char shaderCode[] = R"(
     @vertex
     fn main_v(@builtin(vertex_index) idx: u32) -> @builtin(position) vec4<f32> {
@@ -67,11 +34,36 @@ static const char shaderCode[] = R"(
     }
 )";
 
+static wgpu::Adapter adapter;
 static wgpu::Device device;
 static wgpu::Queue queue;
 static wgpu::Buffer readbackBuffer;
 static wgpu::RenderPipeline pipeline;
 static int testsCompleted = 0;
+
+void GetAdapter(void (*callback)(wgpu::Adapter)) {
+    instance.RequestAdapter(nullptr, [](WGPURequestAdapterStatus status, WGPUAdapter cAdapter, const char* message, void* userdata) {
+        if (message) {
+            printf("RequestAdapter: %s\n", message);
+        }
+        assert(status == WGPURequestAdapterStatus_Success);
+
+        wgpu::Adapter adapter = wgpu::Adapter::Acquire(cAdapter);
+        reinterpret_cast<void (*)(wgpu::Adapter)>(userdata)(adapter);
+  }, reinterpret_cast<void*>(callback));
+}
+
+void GetDevice(void (*callback)(wgpu::Device)) {
+    adapter.RequestDevice(nullptr, [](WGPURequestDeviceStatus status, WGPUDevice cDevice, const char* message, void* userdata) {
+        if (message) {
+            printf("RequestDevice: %s\n", message);
+        }
+        assert(status == WGPURequestDeviceStatus_Success);
+
+        wgpu::Device device = wgpu::Device::Acquire(cDevice);
+        reinterpret_cast<void (*)(wgpu::Device)>(userdata)(device);
+    }, reinterpret_cast<void*>(callback));
+}
 
 void init() {
     device.SetUncapturedErrorCallback(
@@ -233,6 +225,11 @@ void doCopyTestMappedAtCreation(bool useRange) {
         dst = device.CreateBuffer(&descriptor);
     }
 
+    // Write some random data to the buffer, just to verify that
+    // wgpuQueueWriteBuffer works.
+    char data[4];
+    queue.WriteBuffer(dst, 0, data, sizeof(data));
+
     wgpu::CommandBuffer commands;
     {
         wgpu::CommandEncoder encoder = device.CreateCommandEncoder();
@@ -363,13 +360,16 @@ void doRenderTest() {
     issueContentsCheck(__FUNCTION__, readbackBuffer, expectData);
 }
 
-wgpu::SwapChain swapChain;
+wgpu::Surface surface;
 wgpu::TextureView canvasDepthStencilView;
 const uint32_t kWidth = 300;
 const uint32_t kHeight = 150;
 
 void frame() {
-    wgpu::TextureView backbuffer = swapChain.GetCurrentTextureView();
+    wgpu::SurfaceTexture surfaceTexture;
+    surface.GetCurrentTexture(&surfaceTexture);
+
+    wgpu::TextureView backbuffer = surfaceTexture.texture.CreateView();
     render(backbuffer, canvasDepthStencilView);
 
     // TODO: Read back from the canvas with drawImage() (or something) and
@@ -396,15 +396,20 @@ void run() {
 
         wgpu::SurfaceDescriptor surfDesc{};
         surfDesc.nextInChain = &canvasDesc;
-        wgpu::Surface surface = instance.CreateSurface(&surfDesc);
+        surface = instance.CreateSurface(&surfDesc);
 
-        wgpu::SwapChainDescriptor scDesc{};
-        scDesc.usage = wgpu::TextureUsage::RenderAttachment;
-        scDesc.format = wgpu::TextureFormat::BGRA8Unorm;
-        scDesc.width = kWidth;
-        scDesc.height = kHeight;
-        scDesc.presentMode = wgpu::PresentMode::Fifo;
-        swapChain = device.CreateSwapChain(surface, &scDesc);
+        wgpu::SurfaceCapabilities capabilities;
+        surface.GetCapabilities(adapter, &capabilities);
+
+        wgpu::SurfaceConfiguration config{
+            .device = device,
+            .format = capabilities.formats[0],
+            .usage = wgpu::TextureUsage::RenderAttachment,
+            .alphaMode = wgpu::CompositeAlphaMode::Auto,
+            .width = kWidth,
+            .height = kHeight,
+            .presentMode = wgpu::PresentMode::Fifo};
+        surface.Configure(&config);
 
         {
             wgpu::TextureDescriptor descriptor{};
@@ -418,9 +423,20 @@ void run() {
 }
 
 int main() {
-    GetDevice([](wgpu::Device dev) {
-        device = dev;
-        run();
+    GetAdapter([](wgpu::Adapter a) {
+        adapter = a;
+
+        wgpu::AdapterInfo info;
+        adapter.GetInfo(&info);
+        printf("adapter vendor: %s\n", info.vendor);
+        printf("adapter architecture: %s\n", info.architecture);
+        printf("adapter device: %s\n", info.device);
+        printf("adapter description: %s\n", info.description);
+
+        GetDevice([](wgpu::Device dev) {
+            device = dev;
+            run();
+        });
     });
 
     // The test result will be reported when the main_loop completes.

@@ -1294,6 +1294,20 @@ module({
             value = cm.embind_test_optional_small_class_arg(undefined);
             assert.equal(-1, value);
         });
+
+        test("std::optional args can be omitted", function() {
+            if (cm.getCompilerSetting('ASSERTIONS')) {
+                // Argument length is only validated with assertions enabled.
+                assert.throws(cm.BindingError, function() {
+                    cm.embind_test_optional_multiple_arg();
+                });
+                assert.throws(cm.BindingError, function() {
+                    cm.embind_test_optional_multiple_arg(1, 2, 3, 4);
+                });
+            }
+            cm.embind_test_optional_multiple_arg(1);
+            cm.embind_test_optional_multiple_arg(1, 2);
+        });
     });
 
     BaseFixture.extend("functors", function() {
@@ -1825,6 +1839,13 @@ module({
             var e = new cm.HasExternalConstructor("foo");
             assert.instanceof(e, cm.HasExternalConstructor);
             assert.equal("foo", e.getString());
+            e.delete();
+        });
+
+        test("can construct class with external constructor with no copy constructor", function() {
+            var e = new cm.HasExternalConstructorNoCopy(42);
+            assert.instanceof(e, cm.HasExternalConstructorNoCopy);
+            assert.equal(42, e.getInt());
             e.delete();
         });
     });

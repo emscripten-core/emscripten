@@ -1530,10 +1530,16 @@ __base_class_type_info::search_below_dst(__dynamic_cast_info* info,
                                       not_public_path,
                                   use_strcmp);
 }
+}  // __cxxabiv1
+
 
 // XXX EMSCRIPTEN
+#ifndef __WASM_EXCEPTIONS__
 
-#ifndef __USING_WASM_EXCEPTIONS__
+#include "cxa_exception.h"
+
+namespace __cxxabiv1
+{
 
 // These functions are used by the emscripten-style exception handling
 // mechanism.
@@ -1555,11 +1561,33 @@ int __cxa_can_catch(__shim_type_info* catchType, __shim_type_info* excpType, voi
   return ret;
 }
 
-int __cxa_is_pointer_type(__shim_type_info* type) {
-  return !!dynamic_cast<__pointer_type_info*>(type);
+static
+inline
+__cxa_exception*
+cxa_exception_from_thrown_object(void* thrown_object)
+{
+    return static_cast<__cxa_exception*>(thrown_object) - 1;
+}
+
+void *__cxa_get_exception_ptr(void *thrown_object) throw() {
+    // Get pointer which is expected to be received by catch clause in C++ code.
+    // It may be adjusted when the pointer is casted to some of the exception
+    // object base classes (e.g. when virtual inheritance is used). When a pointer
+    // is thrown this method should return the thrown pointer itself.
+    // Work around a fastcomp bug, this code is still included for some reason in
+    // a build without exceptions support.
+    __cxa_exception* ex = cxa_exception_from_thrown_object(thrown_object);
+    bool is_pointer = !!dynamic_cast<__pointer_type_info*>(ex->exceptionType);
+    if (is_pointer)
+        return *(void**)thrown_object;
+    if (ex->adjustedPtr)
+        return ex->adjustedPtr;
+    return ex;
 }
 
 }
-#endif // __USING_EMSCRIPTEN_EXCEPTIONS__
 
 }  // __cxxabiv1
+
+#endif // !__WASM_EXCEPTIONS__
+

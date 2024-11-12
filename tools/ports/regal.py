@@ -23,7 +23,7 @@ def get(ports, settings, shared):
   ports.fetch_project('regal', f'https://github.com/emscripten-ports/regal/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG)
+    source_path = ports.get_dir('regal', 'regal-' + TAG)
 
     # copy sources
     # only what is needed is copied: regal, boost, lookup3
@@ -107,7 +107,9 @@ def get(ports, settings, shared):
       '-I' + source_path_lookup3,
       '-I' + source_path_boost,
       '-Wno-deprecated-register',
-      '-Wno-unused-parameter'
+      '-Wno-unused-parameter',
+      '-Wno-nontrivial-memaccess',
+      '-fdelayed-template-parsing',
     ]
     if settings.PTHREADS:
       flags += ['-pthread']

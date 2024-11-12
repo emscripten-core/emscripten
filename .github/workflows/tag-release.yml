@@ -1,0 +1,45 @@
+# Tag release and update changelog
+name: Tag release and update Changelog
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-sha:
+        required: true
+        type: string
+
+jobs:
+    create-release:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout repo
+          uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
+        # Updates changelog and writes the release version into the environment
+        - name: Update Changelog
+          run: python3 tools/maint/create_release.py --action
+        - name: Create Changelog PR
+          uses: peter-evans/create-pull-request@v6
+          with:
+            token: ${{ secrets.EMSCRIPTEN_BOT_TOKEN }}
+            title: Mark ${{ env.RELEASE_VERSION }} as released
+            team-reviewers: release-reviewers
+            delete-branch: true
+        - name: Tag release sha
+          uses: actions/github-script@v7
+          with:
+            github-token: ${{ secrets.EMSCRIPTEN_BOT_TOKEN }}
+            script: |
+              const tag_sha = '${{ inputs.release-sha }}';
+              const release_version = '${{ env.RELEASE_VERSION }}';
+              console.log(`Version ${release_version} at SHA ${tag_sha}`);
+              const regex = /^[0-9]+.[0-9]+.[0-9]+$/;
+              const match = release_version.match(regex);
+              if (!match) {
+                throw new Error('Malformed release version');
+              }
+              await github.rest.git.createRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `refs/tags/${release_version}`,
+                sha: tag_sha
+              });

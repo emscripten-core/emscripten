@@ -132,7 +132,9 @@ export function preprocess(filename) {
             }
           }
         } else if (first === '#else') {
-          assert(showStack.length > 0);
+          if (showStack.length == 0) {
+            error(`${filename}:${i + 1}: #else without matching #if`);
+          }
           const curr = showStack.pop();
           if (curr == IGNORE) {
             showStack.push(SHOW);
@@ -140,7 +142,9 @@ export function preprocess(filename) {
             showStack.push(IGNORE);
           }
         } else if (first === '#endif') {
-          assert(showStack.length > 0);
+          if (showStack.length == 0) {
+            error(`${filename}:${i + 1}: #endif without matching #if`);
+          }
           showStack.pop();
         } else if (first === '#warning') {
           if (showCurrentLine()) {
@@ -808,7 +812,7 @@ function isSymbolNeeded(symName) {
   if (DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.includes(symName)) {
     return true;
   }
-  if (symName.startsWith('$') && symName.slice(1) in EXPORTED_RUNTIME_METHODS) {
+  if (symName.startsWith('$') && EXPORTED_RUNTIME_METHODS.has(symName.slice(1))) {
     return true;
   }
   return false;
@@ -862,8 +866,7 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert)
     if (defaultValue) {
       ret += ` = Module['${moduleName}'] || ${defaultValue};`;
     } else {
-      ret += `; ${makeModuleReceive(localName, moduleName)}`;
-      return ret;
+      ret += ` = Module['${moduleName}'];`;
     }
   }
   if (!noAssert) {
@@ -913,7 +916,7 @@ function hasExportedSymbol(sym) {
 // wasmTable are set. In this case we maybe need to re-export them on the
 // Module object.
 function receivedSymbol(sym) {
-  if (EXPORTED_RUNTIME_METHODS.includes(sym)) {
+  if (EXPORTED_RUNTIME_METHODS.has(sym)) {
     return `Module['${sym}'] = ${sym};`;
   }
   return '';
@@ -946,18 +949,23 @@ function receiveI64ParamAsI53Unchecked(name) {
   return `var ${name} = convertI32PairToI53(${name}_low, ${name}_high);`;
 }
 
-// Any function called from wasm64 may have bigint args, this function takes
-// a list of variable names to convert to number.
+// Convert a pointer value under wasm64 from BigInt (used at local level API
+// level) to Number (used in JS library code).  No-op under wasm32.
 function from64(x) {
-  if (!MEMORY64) {
-    return '';
-  }
-  if (Array.isArray(x)) {
-    let ret = '';
-    for (e of x) ret += from64(e);
-    return ret;
-  }
+  if (!MEMORY64) return '';
   return `${x} = Number(${x});`;
+}
+
+// Like from64 above but generate an expression instead of an assignment
+// statement.
+function from64Expr(x, assign = true) {
+  if (!MEMORY64) return x;
+  return `Number(${x})`;
+}
+
+function toIndexType(x) {
+  if (MEMORY64 == 1) return `BigInt(${x})`;
+  return x;
 }
 
 function to64(x) {
@@ -1034,9 +1042,11 @@ function getUnsharedTextDecoderView(heap, start, end) {
   // then unconditionally do a .slice() for smallest code size.
   if (SHRINK_LEVEL == 2 || heap == 'HEAPU8') return shared;
 
-  // Otherwise, generate a runtime type check: must do a .slice() if looking at a SAB,
-  // or can use .subarray() otherwise.
-  return `${heap}.buffer instanceof SharedArrayBuffer ? ${shared} : ${unshared}`;
+  // Otherwise, generate a runtime type check: must do a .slice() if looking at
+  // a SAB, or can use .subarray() otherwise.  Note: We compare with
+  // `ArrayBuffer` here to avoid referencing `SharedArrayBuffer` which could be
+  // undefined.
+  return `${heap}.buffer instanceof ArrayBuffer ? ${unshared} : ${shared}`;
 }
 
 function getEntryFunction() {
@@ -1077,6 +1087,15 @@ function implicitSelf() {
   return ENVIRONMENT.includes('node') ? 'self.' : '';
 }
 
+function ENVIRONMENT_IS_MAIN_THREAD() {
+  var envs = [];
+  if (PTHREADS) envs.push('ENVIRONMENT_IS_PTHREAD');
+  if (WASM_WORKERS) envs.push('ENVIRONMENT_IS_WASM_WORKER');
+  if (AUDIO_WORKLET) envs.push('ENVIRONMENT_IS_AUDIO_WORKLET');
+  if (envs.length == 0) return 'true';
+  return '(!(' + envs.join('||') + '))';
+}
+
 addToCompileTimeContext({
   ATEXITS,
   ATINITS,
@@ -1094,6 +1113,7 @@ addToCompileTimeContext({
   STACK_ALIGN,
   TARGET_NOT_SUPPORTED,
   WASM_PAGE_SIZE,
+  ENVIRONMENT_IS_MAIN_THREAD,
   addAtExit,
   addAtInit,
   addReadyPromiseAssertions,
@@ -1105,6 +1125,7 @@ addToCompileTimeContext({
   expectToReceiveOnModule,
   formattedMinNodeVersion,
   from64,
+  from64Expr,
   getEntryFunction,
   getHeapForType,
   getHeapOffset,
@@ -1139,4 +1160,5 @@ addToCompileTimeContext({
   splitI64,
   storeException,
   to64,
+  toIndexType,
 });

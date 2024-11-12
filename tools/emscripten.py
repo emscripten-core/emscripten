@@ -57,15 +57,10 @@ def compute_minimal_runtime_initializer_and_exports(post, exports, receiving):
   # Declare all exports out to global JS scope so that JS library functions can access them in a
   # way that minifies well with Closure
   # e.g. var a,b,c,d,e,f;
-  exports_that_are_not_initializers = [x for x in exports if x not in building.WASM_CALL_CTORS]
-  # In Wasm backend the exports are still unmangled at this point, so mangle the names here
-  exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
 
-  # Decide whether we should generate the global dynCalls dictionary for the dynCall() function?
-  if settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE and len([x for x in exports_that_are_not_initializers if x.startswith('dynCall_')]) > 0:
-    exports_that_are_not_initializers += ['dynCalls = {}']
+  exports = [asmjs_mangle(x) for x in exports if x != building.WASM_CALL_CTORS]
 
-  declares = 'var ' + ',\n '.join(exports_that_are_not_initializers) + ';'
+  declares = 'var ' + ',\n '.join(exports) + ';'
   post = shared.do_replace(post, '<<< WASM_MODULE_EXPORTS_DECLARES >>>', declares)
 
   # Generate assignments from all wasm exports out to the JS variables above: e.g. a = wasmExports['a']; b = wasmExports['b'];
@@ -87,7 +82,7 @@ def maybe_disable_filesystem(imports):
   not including the filesystem would mean not including the full JS libraries, and the same for
   MAIN_MODULE=1 since a side module might need the filesystem.
   """
-  if any(settings[s] for s in ['FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY']):
+  if any(settings[s] for s in ('FORCE_FILESYSTEM', 'INCLUDE_FULL_LIBRARY')):
     return
   if settings.MAIN_MODULE == 1:
     return
@@ -100,7 +95,7 @@ def maybe_disable_filesystem(imports):
     syscall_prefixes = ('__syscall_', 'fd_')
     side_module_imports = [shared.demangle_c_symbol_name(s) for s in settings.SIDE_MODULE_IMPORTS]
     all_imports = set(imports).union(side_module_imports)
-    syscalls = {d for d in all_imports if d.startswith(syscall_prefixes) or d in ['path_open']}
+    syscalls = {d for d in all_imports if d.startswith(syscall_prefixes) or d == 'path_open'}
     # check if the only filesystem syscalls are in: close, ioctl, llseek, write
     # (without open, etc.. nothing substantial can be done, so we can disable
     # extra filesystem support in that case)
@@ -231,7 +226,7 @@ def set_memory(static_bump):
 def report_missing_exports_wasm_only(metadata):
   if diagnostics.is_enabled('undefined'):
     defined_symbols = set(asmjs_mangle(e) for e in metadata.all_exports)
-    missing = set(settings.USER_EXPORTED_FUNCTIONS) - defined_symbols
+    missing = set(settings.USER_EXPORTS) - defined_symbols
     for symbol in sorted(missing):
       diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
 
@@ -241,7 +236,7 @@ def report_missing_exports(js_symbols):
     # Report any symbol that was explicitly exported but is present neither
     # as a native function nor as a JS library function.
     defined_symbols = set(asmjs_mangle(e) for e in settings.WASM_EXPORTS).union(js_symbols)
-    missing = set(settings.USER_EXPORTED_FUNCTIONS) - defined_symbols
+    missing = set(settings.USER_EXPORTS) - defined_symbols
     for symbol in sorted(missing):
       diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
 
@@ -296,6 +291,9 @@ def trim_asm_const_body(body):
 def create_global_exports(global_exports):
   lines = []
   for k, v in global_exports.items():
+    if building.is_internal_global(k):
+      continue
+
     v = int(v)
     if settings.RELOCATABLE:
       v += settings.GLOBAL_BASE
@@ -598,7 +596,7 @@ def finalize_wasm(infile, outfile, js_syms):
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
 
   if not settings.STANDALONE_WASM and 'main' in metadata.all_exports or '__main_argc_argv' in metadata.all_exports:
-    if 'EXPORTED_FUNCTIONS' in user_settings and '_main' not in settings.USER_EXPORTED_FUNCTIONS:
+    if 'EXPORTED_FUNCTIONS' in user_settings and '_main' not in settings.USER_EXPORTS:
       # If `_main` was unexpectedly exported we assume it was added to
       # EXPORT_IF_DEFINED by `phase_linker_setup` in order that we can detect
       # it and report this warning.  After reporting the warning we explicitly
@@ -645,8 +643,10 @@ def create_tsd_exported_runtime_methods(metadata):
   js_doc_file = in_temp('jsdoc.js')
   tsc_output_file = in_temp('jsdoc.d.ts')
   utils.write_file(js_doc_file, js_doc)
-  if shutil.which('tsc'):
-    tsc = ['tsc']
+  tsc = shutil.which('tsc')
+  if tsc:
+    # Use the full path from the which command so windows can find tsc.
+    tsc = [tsc]
   else:
     tsc = shared.get_npm_cmd('tsc')
   cmd = tsc + ['--outFile', tsc_output_file, '--declaration', '--emitDeclarationOnly', '--allowJs', js_doc_file]
@@ -660,18 +660,18 @@ def create_tsd(metadata, embind_tsd):
     out += create_tsd_exported_runtime_methods(metadata)
   # Manually generate defintions for any Wasm function exports.
   out += 'interface WasmModule {\n'
-  for name, types in metadata.function_exports.items():
+  for name, functype in metadata.function_exports.items():
     mangled = asmjs_mangle(name)
     should_export = settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS
     if not should_export:
       continue
     arguments = []
-    for index, type in enumerate(types.params):
+    for index, type in enumerate(functype.params):
       arguments.append(f"_{index}: {type_to_ts_type(type)}")
     out += f'  {mangled}({", ".join(arguments)}): '
-    assert len(types.returns) <= 1, 'One return type only supported'
-    if types.returns:
-      out += f'{type_to_ts_type(types.returns[0])}'
+    assert len(functype.returns) <= 1, 'One return type only supported'
+    if functype.returns:
+      out += f'{type_to_ts_type(functype.returns[0])}'
     else:
       out += 'void'
     out += ';\n'
@@ -789,6 +789,8 @@ def add_standard_wasm_imports(send_items_map):
 
   if settings.RELOCATABLE:
     send_items_map['__indirect_function_table'] = 'wasmTable'
+    if settings.MEMORY64:
+      send_items_map['__table_base32'] = '___table_base32'
 
   if settings.AUTODEBUG:
     extra_sent_items += [
@@ -1020,7 +1022,9 @@ def create_pointer_conversion_wrappers(metadata):
     'sbrk': 'pP',
     '_emscripten_stack_alloc': 'pp',
     'emscripten_builtin_malloc': 'pp',
+    'emscripten_builtin_calloc': 'ppp',
     'malloc': 'pp',
+    'calloc': 'ppp',
     'webidl_malloc': 'pp',
     'memalign': 'ppp',
     'memcmp': '_ppp',
@@ -1030,7 +1034,6 @@ def create_pointer_conversion_wrappers(metadata):
     'free': '_p',
     'webidl_free': '_p',
     '_emscripten_stack_restore': '_p',
-    '__cxa_is_pointer_type': '_p',
     'fflush': '_p',
     'emscripten_stack_get_end': 'p',
     'emscripten_stack_get_base': 'p',
@@ -1047,6 +1050,7 @@ def create_pointer_conversion_wrappers(metadata):
     '__cxa_can_catch': '_ppp',
     '__cxa_increment_exception_refcount': '_p',
     '__cxa_decrement_exception_refcount': '_p',
+    '__cxa_get_exception_ptr': 'pp',
     '_wasmfs_write_file': '_ppp',
     '_wasmfs_mknod': '_p__',
     '_wasmfs_get_cwd': 'p_',
@@ -1071,12 +1075,14 @@ def create_pointer_conversion_wrappers(metadata):
     'stbi_image_free': 'vp',
     'stbi_load': 'ppppp_',
     'stbi_load_from_memory': 'pp_ppp_',
+    'strerror': 'p_',
     'emscripten_proxy_finish': '_p',
     'emscripten_proxy_execute_queue': '_p',
     '_emval_coro_resume': '_pp',
     'emscripten_main_runtime_thread_id': 'p',
     '_emscripten_set_offscreencanvas_size_on_thread': '_pp__',
     'fileno': '_p',
+    '_emscripten_run_callback_on_thread': '_pp_pp',
   }
 
   for function in settings.SIGNATURE_CONVERSIONS:
@@ -1097,7 +1103,17 @@ function applySignatureConversions(wasmExports) {
 
   sigs_seen = set()
   wrap_functions = []
-  for symbol in metadata.function_exports:
+  for symbol, functype in metadata.function_exports.items():
+    # dynCall_ functions are generated by binaryen.  They all take a
+    # function pointer as their first argument.
+    # The second part of this check can be removed once the table64
+    # llvm changs lands.
+    if symbol.startswith('dynCall_') and functype.params[0] == webassembly.Type.I64:
+      sig = symbol.split('_')[-1]
+      sig = ['p' if t == 'p' else '_' for t in sig]
+      sig.insert(1, 'p')
+      sig = ''.join(sig)
+      mapping[symbol] = sig
     sig = mapping.get(symbol)
     if sig:
       if settings.MEMORY64:
@@ -1114,6 +1130,6 @@ function applySignatureConversions(wasmExports) {
   for f in wrap_functions:
     sig = mapping[f]
     wrappers += f"\n  wasmExports['{f}'] = makeWrapper_{sig}(wasmExports['{f}']);"
-  wrappers += 'return wasmExports;\n}'
+  wrappers += '\n  return wasmExports;\n}'
 
   return wrappers

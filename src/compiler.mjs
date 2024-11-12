@@ -7,9 +7,9 @@
 
 // LLVM => JavaScript compiler, main entry point
 
-import * as fs from 'fs';
-import * as path from 'path';
-import * as url from 'url';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as url from 'node:url';
 
 import {Benchmarker, applySettings, assert, loadSettingsFile, printErr, read} from './utility.mjs';
 
@@ -44,7 +44,7 @@ applySettings(user_settings);
 
 export const symbolsOnly = symbolsOnlyArg != -1;
 
-// In case compiler.js is run directly (as in gen_sig_info)
+// In case compiler.mjs is run directly (as in gen_sig_info)
 // ALL_INCOMING_MODULE_JS_API might not be populated yet.
 if (!ALL_INCOMING_MODULE_JS_API.length) {
   ALL_INCOMING_MODULE_JS_API = INCOMING_MODULE_JS_API;
@@ -55,6 +55,7 @@ WASM_EXPORTS = new Set(WASM_EXPORTS);
 SIDE_MODULE_EXPORTS = new Set(SIDE_MODULE_EXPORTS);
 INCOMING_MODULE_JS_API = new Set(INCOMING_MODULE_JS_API);
 ALL_INCOMING_MODULE_JS_API = new Set(ALL_INCOMING_MODULE_JS_API);
+EXPORTED_RUNTIME_METHODS = new Set(EXPORTED_RUNTIME_METHODS);
 WEAK_IMPORTS = new Set(WEAK_IMPORTS);
 if (symbolsOnly) {
   INCLUDE_FULL_LIBRARY = 1;
@@ -94,7 +95,7 @@ try {
     printErr(err);
   } else {
     // Compiler failed on internal compiler error!
-    printErr('Internal compiler error in src/compiler.js!');
+    printErr('Internal compiler error in src/compiler.mjs!');
     printErr('Please create a bug report at https://github.com/emscripten-core/emscripten/issues/');
     printErr(
       'with a log of the build and the input files used to run. Exception message: "' +
