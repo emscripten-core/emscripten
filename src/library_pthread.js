@@ -1079,11 +1079,9 @@ var LibraryPThread = {
     // *ThreadMain(void *arg) form, or try linking with the Emscripten linker
     // flag -sEMULATE_FUNCTION_POINTER_CASTS to add in emulation for this x86
     // ABI extension.
-#if ASYNCIFY == 2
-    var result = WebAssembly.promising({{{ makeDynCall('pp', 'ptr') }}})(arg);
-#else
-    var result = {{{ makeDynCall('pp', 'ptr') }}}(arg);
-#endif
+
+    var result = {{{ makeDynCall('pp', 'ptr', ASYNCIFY == 2) }}}(arg);
+
 #if STACK_OVERFLOW_CHECK
     checkStackCookie();
 #endif
