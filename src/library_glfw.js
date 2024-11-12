@@ -1113,14 +1113,7 @@ var LibraryGLFW = {
       // Get non alive id
       const canvas = Module['canvas'];
 
-      var clientWidth = canvas.clientWidth;
-      var clientHeight = canvas.clientHeight;
-      if (GLFW.isCSSScalingEnabled()) {
-        clientWidth = width;
-        clientHeight = height;
-      }
-
-      var win = new GLFW_Window(id, clientWidth, clientHeight, canvas.width, canvas.height, title, monitor, share);
+      var win = new GLFW_Window(id, width, height, canvas.width, canvas.height, title, monitor, share);
 
       // Set window to array
       if (id - 1 == GLFW.windows.length) {
@@ -1331,14 +1324,7 @@ var LibraryGLFW = {
 
     adjustCanvasDimensions() {
       if (GLFW.active) {
-        const canvas = Module['canvas'];
-        var clientWidth = canvas.clientWidth;
-        var clientHeight = canvas.clientHeight;
-        if (GLFW.isCSSScalingEnabled()) {
-          clientWidth = GLFW.active.width;
-          clientHeight = GLFW.active.height;
-        }
-        Browser.updateCanvasDimensions(canvas, clientWidth, clientHeight);
+        Browser.updateCanvasDimensions(Module['canvas'], GLFW.active.width, GLFW.active.height);
         Browser.updateResizeListeners();
       }
     },
