@@ -383,9 +383,10 @@ _mm_cvtpd_epi32(__m128d __a)
   int m[2];
   for(int i = 0; i < 2; ++i)
   {
-    int x = lrint(__a[i]);
-    if (x != 0 || fabs(__a[i]) < 2.0)
-      m[i] = (int)x;
+    double e = __a[i];
+    int x = lrint(e);
+    if ((x != 0 || fabs(e) < 2.0) && !isnan(e) && e <= INT_MAX && e >= INT_MIN)
+      m[i] = x;
     else
       m[i] = (int)0x80000000;
   }
@@ -396,9 +397,10 @@ static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm_cvtsd_si32(__m128d __a)
 {
   // TODO: OPTIMIZE!
-  int x = lrint(__a[0]);
-  if (x != 0 || fabs(__a[0]) < 2.0)
-    return (int)x;
+  double e = __a[0];
+  int x = lrint(e);
+  if ((x != 0 || fabs(e) < 2.0) && !isnan(e) && e <= INT_MAX && e >= INT_MIN)
+    return x;
   else
     return (int)0x80000000;
 }
@@ -1045,8 +1047,9 @@ _mm_cvtps_epi32(__m128 __a)
   } u;
   for(int i = 0; i < 4; ++i)
   {
-    int x = lrint(__a[i]);
-    if (x != 0 || fabs(__a[i]) < 2.0)
+    double e = __a[i];
+    int x = lrint(e);
+    if ((x != 0 || fabs(e) < 2.0) && !isnan(e) && e <= INT_MAX && e >= INT_MIN)
       u.x[i] = x;
     else
       u.x[i] = (int)0x80000000;
