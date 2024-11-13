@@ -1001,7 +1001,7 @@ simulateKeyDown(100);simulateKeyUp(100); // trigger the end
 </body>''')
       create_file('test.html', html)
 
-    self.btest_exit('test_sdl_key_proxy.c', 223092870, args=['--proxy-to-worker', '--pre-js', 'pre.js', '-lSDL', '-lGL'], post_build=post)
+    self.btest_exit('test_sdl_key_proxy.c', 223092870, args=['--proxy-to-worker', '--pre-js', 'pre.js', '-lSDL', '-lGL', '-sRUNTIME_DEBUG'], post_build=post)
 
   def test_canvas_focus(self):
     self.btest_exit('canvas_focus.c')

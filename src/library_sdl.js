@@ -826,6 +826,9 @@ var LibrarySDL = {
       if (code >= 65 && code <= 90) {
         code += 32; // make lowercase for SDL
       } else {
+#if RUNTIME_DEBUG
+        if (!(event.keyCode in SDL.keyCodes)) dbg('unknown keyCode: ', event.keyCode);
+#endif
         code = SDL.keyCodes[event.keyCode] || event.keyCode;
         // If this is one of the modifier keys (224 | 1<<10 - 227 | 1<<10), and the event specifies that it is
         // a right key, add 4 to get the right key SDL key code.
@@ -931,7 +934,9 @@ var LibrarySDL = {
       switch (event.type) {
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
-          //dbg('Received key event: ' + event.keyCode);
+#if RUNTIME_DEBUG
+          dbg(`received ${event.type} event: keyCode=${event.keyCode}, key=${event.key}, code=${event.code}`);
+#endif
           var key = SDL.lookupKeyCodeForEvent(event);
           var scan;
           if (key >= 1024) {
