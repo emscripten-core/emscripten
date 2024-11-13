@@ -579,7 +579,7 @@ Struct
   The event structure passed in DOM element `UIEvent <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#interface-UIEvent>`_ events: `resize <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-resize>`_ and `scroll <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-scroll>`_.
 
 
-  .. c:member:: long detail
+  .. c:member:: int detail
 
     For resize and scroll events this is always zero.
 
