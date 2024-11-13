@@ -1004,7 +1004,7 @@ simulateKeyDown(100);simulateKeyUp(100); // trigger the end
     self.btest_exit('test_sdl_key_proxy.c', 223092870, args=['--proxy-to-worker', '--pre-js', 'pre.js', '-lSDL', '-lGL', '-sRUNTIME_DEBUG'], post_build=post)
 
   def test_canvas_focus(self):
-    self.btest_exit('canvas_focus.c')
+    self.btest_exit('test_canvas_focus.c', args=['--pre-js', test_file('browser/fake_events.js')])
 
   def test_keydown_preventdefault_proxy(self):
     def post():
@@ -2858,7 +2858,7 @@ Module["preRun"] = () => {
   })
   @requires_graphics_hardware
   def test_glfw_events(self, args):
-    self.btest_exit('test_glfw_events.c', args=args + ['-lglfw', '-lGL'])
+    self.btest_exit('test_glfw_events.c', args=args + ['-lglfw', '-lGL', '--pre-js', test_file('browser/fake_events.js')])
 
   @requires_graphics_hardware
   def test_glfw3_hi_dpi_aware(self):
