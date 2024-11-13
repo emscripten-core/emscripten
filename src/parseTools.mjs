@@ -597,11 +597,12 @@ function charCode(char) {
   return char.charCodeAt(0);
 }
 
-function makeDynCall(sig, funcPtr) {
+function makeDynCall(sig, funcPtr, promising = false) {
   assert(
     !sig.includes('j'),
     'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!',
   );
+  assert(!(DYNCALLS && promising), 'DYNCALLS cannot be used with JSPI.');
 
   let args = [];
   for (let i = 1; i < sig.length; ++i) {
@@ -672,10 +673,15 @@ Please update to new syntax.`);
     return `(() => ${dyncall}(${funcPtr}))`;
   }
 
-  if (needArgConversion) {
-    return `((${args}) => getWasmTableEntry(${funcPtr}).call(null, ${callArgs}))`;
+  let getWasmTableEntry = `getWasmTableEntry(${funcPtr})`;
+  if (promising) {
+    getWasmTableEntry = `WebAssembly.promising(${getWasmTableEntry})`;
   }
-  return `getWasmTableEntry(${funcPtr})`;
+
+  if (needArgConversion) {
+    return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}))`;
+  }
+  return getWasmTableEntry;
 }
 
 function makeEval(code) {

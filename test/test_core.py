@@ -8312,7 +8312,7 @@ Module.onRuntimeInitialized = () => {
     # TODO Test with ASYNCIFY=1 https://github.com/emscripten-core/emscripten/issues/17552
     self.require_jspi()
     self.do_runf('core/test_pthread_join_and_asyncify.c', 'joining thread!\njoined thread!',
-                 emcc_args=['-sJSPI_EXPORTS=run_thread',
+                 emcc_args=['-sJSPI',
                             '-sEXIT_RUNTIME=1',
                             '-pthread', '-sPROXY_TO_PTHREAD'])
 
