@@ -1767,9 +1767,16 @@ var LibrarySDL = {
   SDL_GetKeyState: () => _SDL_GetKeyboardState(0),
 
   SDL_GetKeyName__proxy: 'sync',
-  SDL_GetKeyName__deps: ['$stringToNewUTF8'],
+  SDL_GetKeyName__deps: ['$stringToUTF8', 'realloc'],
   SDL_GetKeyName: (key) => {
-    SDL.keyName ||= stringToNewUTF8('unknown key');
+    var name = '';
+    /* ASCII A-Z or 0-9 */
+    if ((key >= 97 && key <= 122) || (key >= 48 && key <= 57)) {
+      name = String.fromCharCode(key);
+    }
+    var size = lengthBytesUTF8(name) + 1;
+    SDL.keyName = _realloc(SDL.keyName, size);
+    stringToUTF8(name, SDL.keyName, size);
     return SDL.keyName;
   },
 
