@@ -371,6 +371,7 @@
         "RTLD_NOW": 2,
         "R_OK": 4,
         "SDLK_LALT": 1250,
+        "SDLK_LCTRL": 1248,
         "SDLK_LSHIFT": 1249,
         "SDLK_RALT": 1254,
         "SDLK_RCTRL": 1252,
