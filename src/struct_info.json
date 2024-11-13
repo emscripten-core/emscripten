@@ -773,6 +773,7 @@
           "KMOD_RALT",
           "KMOD_LSHIFT",
           "KMOD_RSHIFT",
+          "SDLK_LCTRL",
           "SDLK_LSHIFT",
           "SDLK_LALT",
           "SDLK_RCTRL",

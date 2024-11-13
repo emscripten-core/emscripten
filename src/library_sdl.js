@@ -859,7 +859,8 @@ var LibrarySDL = {
 #endif
           {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
           // TODO: lmeta, rmeta, numlock, capslock, KMOD_MODE, KMOD_RESERVED
-          SDL.modState = ({{{ makeGetValue('SDL.keyboardState', '1248', 'i8') }}} ? {{{ cDefs.KMOD_LCTRL }}} : 0) |
+          SDL.modState =
+            ({{{ makeGetValue('SDL.keyboardState', cDefs.SDLK_LCTRL, 'i8') }}} ? {{{ cDefs.KMOD_LCTRL }}} : 0) |
             ({{{ makeGetValue('SDL.keyboardState', cDefs.SDLK_LSHIFT, 'i8') }}} ? {{{ cDefs.KMOD_LSHIFT }}} : 0) |
             ({{{ makeGetValue('SDL.keyboardState', cDefs.SDLK_LALT, 'i8') }}} ? {{{ cDefs.KMOD_LALT }}} : 0) |
             ({{{ makeGetValue('SDL.keyboardState', cDefs.SDLK_RCTRL, 'i8') }}} ? {{{ cDefs.KMOD_RCTRL }}} : 0) |
