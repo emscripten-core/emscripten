@@ -5762,6 +5762,7 @@ got: 10
     # externally setup an existing folder structure: existing/a
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
+    os.mkfifo(os.path.join(self.working_dir, 'named_pipe'))
     os.makedirs(os.path.join(self.working_dir, 'existing', 'a'))
     self.emcc_args += ['-lnodefs.js']
     self.do_runf('fs/test_nodefs_readdir.c', 'success')
