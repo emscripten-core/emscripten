@@ -2858,7 +2858,7 @@ Module["preRun"] = () => {
   })
   @requires_graphics_hardware
   def test_glfw_events(self, args):
-    self.btest('test_glfw_events.c', args=args + ['-lglfw', '-lGL'], expected='1')
+    self.btest_exit('test_glfw_events.c', args=args + ['-lglfw', '-lGL'])
 
   @requires_graphics_hardware
   def test_glfw3_hi_dpi_aware(self):
