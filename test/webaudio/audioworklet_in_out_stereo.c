@@ -11,6 +11,40 @@ void playedAndMixed(void* data) {
 }
 #endif
 
+// ID to the beat and bass loops
+EMSCRIPTEN_WEBAUDIO_T beatHnd = 0;
+EMSCRIPTEN_WEBAUDIO_T bassHnd = 0;
+
+// Creates a MediaElementAudioSourceNode with the supplied URL (which is
+// registered as an internal audio object and the ID returned).
+EM_JS(EMSCRIPTEN_WEBAUDIO_T, createTrack, (EMSCRIPTEN_WEBAUDIO_T ctxHnd, const char* url, bool looping), {
+	var context = emscriptenGetAudioObject(ctxHnd);
+	if (context) {
+		var audio = document.createElement('audio');
+		audio.src = UTF8ToString(url);
+		audio.loop = looping;
+		var track = context.createMediaElementSource(audio);
+		return emscriptenRegisterAudioObject(track);
+	}
+	return 0;
+});
+
+// Toggles the play/pause of a MediaElementAudioSourceNode given its ID
+EM_JS(void, toggleTrack, (EMSCRIPTEN_WEBAUDIO_T srcHnd), {
+	var source = emscriptenGetAudioObject(srcHnd);
+	if (source) {
+		var audio = source.mediaElement;
+		if (audio) {
+			if (audio.paused) {
+				audio.currentTime = 0;
+				audio.play();
+			} else {
+				audio.pause();
+			}
+		}
+	}
+});
+
 // Adds a button to play and stop an audio file
 EM_JS(bool, addAudio, (EMSCRIPTEN_WEBAUDIO_T ctxHnd, EMSCRIPTEN_AUDIO_WORKLET_NODE_T nodeHnd, int index, const char* url, const char* label), {
 	var context = emscriptenGetAudioObject(ctxHnd);
@@ -55,6 +89,18 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
 	return true;
 }
 
+bool onClick(int type, const EmscriptenMouseEvent* e, void* data) {
+  printf("Click event!\n");
+  EMSCRIPTEN_WEBAUDIO_T ctx = (EMSCRIPTEN_WEBAUDIO_T) (data);
+  if (emscripten_audio_context_state(ctx) != AUDIO_CONTEXT_STATE_RUNNING) {
+    emscripten_resume_audio_context_sync(ctx);
+    
+    toggleTrack(beatHnd);
+    toggleTrack(bassHnd);
+  }
+  return false;
+}
+
 void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
 	if (success) {
 		printf("Audio worklet processor created\n");
@@ -68,8 +114,18 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
 		EMSCRIPTEN_AUDIO_WORKLET_NODE_T worklet = emscripten_create_wasm_audio_worklet_node(context, "mixer", &opts, &process, NULL);
 		emscripten_audio_node_connect(worklet, context, 0, 0);
 
-		addAudio(context, worklet, 0, "audio_files/emscripten-beat.mp3", "Toggle Beat");
-		addAudio(context, worklet, 1, "audio_files/emscripten-bass.mp3", "Toggle Bass");
+		beatHnd = createTrack(context, "audio_files/emscripten-beat.mp3", true);
+		if (beatHnd) {
+			emscripten_audio_node_connect(beatHnd, worklet, 0, 0);
+		}
+		EMSCRIPTEN_WEBAUDIO_T bassHnd = createTrack(context, "audio_files/emscripten-bass.mp3", true);
+		if (bassHnd) {
+			emscripten_audio_node_connect(bassHnd, worklet, 0, 1);
+		}
+		
+		emscripten_set_click_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, (void*) (context), false, &onClick);
+		//addAudio(context, worklet, 0, "audio_files/emscripten-beat.mp3", "Toggle Beat");
+		//addAudio(context, worklet, 1, "audio_files/emscripten-bass.mp3", "Toggle Bass");
 	} else {
 		printf("Audio worklet node creation failed\n");
 	}
