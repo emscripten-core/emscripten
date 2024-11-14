@@ -2160,7 +2160,7 @@ addToLibrary({
       return;
     }
 #endif
-#if RUNTIME_DEBUG
+#if RUNTIME_DEBUG >= 2
     dbg(`maybeExit: user callback done: runtimeKeepaliveCounter=${runtimeKeepaliveCounter}`);
 #endif
     if (!keepRuntimeAlive()) {

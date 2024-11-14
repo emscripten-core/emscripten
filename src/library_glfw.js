@@ -419,7 +419,7 @@ var LibraryGLFW = {
       // This logic comes directly from the sdl implementation. We cannot
       // call preventDefault on all keydown events otherwise onKeyPress will
       // not get called
-      if (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */) {
+      if (event.key == 'Backspace' || event.key == 'Tab') {
         event.preventDefault();
       }
     },
