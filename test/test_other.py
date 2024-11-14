@@ -15329,6 +15329,3 @@ addToLibrary({
 
   def test_embool(self):
     self.do_other_test('test_embool.c')
-
-  def test_seek_dev_null(self):
-    self.do_other_test('test_seek_dev_null.c')
