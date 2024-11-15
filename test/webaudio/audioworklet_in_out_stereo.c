@@ -92,7 +92,7 @@ bool onClick(int type, const EmscriptenMouseEvent* e, void* data) {
 void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
 	if (success) {
 		printf("Audio worklet processor created\n");
-		printf("Click the toggle audio playback\n");
+		printf("Click to toggle audio playback\n");
 
 		// Stereo output, two inputs
 		int outputChannelCounts[1] = { 2 };
