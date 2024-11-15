@@ -2865,6 +2865,10 @@ Module["preRun"] = () => {
     self.btest_exit('test_glfw3_hi_dpi_aware.c', args=['-sUSE_GLFW=3', '-lGL'])
 
   @requires_graphics_hardware
+  def test_glfw3_css_scaling(self):
+    self.btest_exit('test_glfw3_css_scaling.c', args=['-sUSE_GLFW=3'])
+
+  @requires_graphics_hardware
   @also_with_wasm2js
   def test_sdl2_image(self):
     # load an image file, get pixel data. Also O2 coverage for --preload-file
