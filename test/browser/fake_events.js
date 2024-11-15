@@ -2,24 +2,25 @@
  * Helper function used in browser tests to simulate HTML5 events
  */
 
-function simulateKeyEvent(eventType, keyCode, code) {
+function simulateKeyEvent(eventType, keyCode, code, key) {
   var props = { keyCode, charCode: keyCode, view: window, bubbles: true, cancelable: true };
   if (code) props['code'] = code;
+  if (key) props['key'] = key;
   var event = new KeyboardEvent(eventType, props);
   return document.dispatchEvent(event);
 }
 
-function simulateKeyDown(keyCode, code = undefined) {
-  var doDefault = simulateKeyEvent('keydown', keyCode, code);
+function simulateKeyDown(keyCode, code = undefined, key = undefined) {
+  var doDefault = simulateKeyEvent('keydown', keyCode, code, key);
   // As long as not handler called `preventDefault` we also send a keypress
   // event.
   if (doDefault) {
-    simulateKeyEvent('keypress', keyCode, code);
+    simulateKeyEvent('keypress', keyCode, code, key);
   }
 }
 
-function simulateKeyUp(keyCode, code = undefined) {
-  simulateKeyEvent('keyup', keyCode, code);
+function simulateKeyUp(keyCode, code = undefined, key = undefined) {
+  simulateKeyEvent('keyup', keyCode, code, key);
 }
 
 function simulateMouseEvent(x, y, button, absolute) {
