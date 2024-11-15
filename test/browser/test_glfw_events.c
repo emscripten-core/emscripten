@@ -10,7 +10,9 @@
 #else
     #include <GLFW/glfw3.h>
 #endif
+#include <assert.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <emscripten.h>
 
 #define MULTILINE(...) #__VA_ARGS__
@@ -82,24 +84,22 @@ test_t g_tests[] = {
     #endif
 };
 
-static unsigned int g_test_actual = 0;
+static bool g_callback_received;
+static unsigned int g_current_test;
 static unsigned int g_test_count = sizeof(g_tests) / sizeof(test_t);
-static unsigned int g_state = 0;
 
 #if USE_GLFW == 2
 static void on_mouse_button_callback(int button, int action) {
 #else
 static void on_mouse_button_callback(GLFWwindow* window, int button, int action, int modify) {
 #endif
-    test_args_t args = g_tests[g_test_actual].args;
-    if (args.button == button && args.action == action)
-    {
-        g_state |= 1 << g_test_actual;
-    }
-    else
-    {
-        printf("Test %d: FAIL\n", g_test_actual);
-    }
+  test_args_t args = g_tests[g_current_test].args;
+  if (args.button == button && args.action == action) {
+    g_callback_received = true;
+  } else {
+    printf("Test %d: FAIL\n", g_current_test);
+    exit(1);
+  }
 }
 
 #if USE_GLFW == 2
@@ -107,15 +107,13 @@ static void on_mouse_move(int x, int y) {
 #else
 static void on_mouse_move(GLFWwindow* window, double x, double y) {
 #endif
-    test_args_t args = g_tests[g_test_actual].args;
-    if (args.x == x && args.y == y)
-    {
-        g_state |= 1 << g_test_actual;
-    }
-    else
-    {
-        printf("Test %d: FAIL\n", g_test_actual);
-    }
+  test_args_t args = g_tests[g_current_test].args;
+  if (args.x == x && args.y == y) {
+    g_callback_received = true;
+  } else {
+    printf("Test %d: FAIL\n", g_current_test);
+    exit(1);
+  }
 }
 
 #if USE_GLFW == 2
@@ -123,15 +121,13 @@ static void on_key_callback(int key, int action) {
 #else
 static void on_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 #endif
-    test_args_t args = g_tests[g_test_actual].args;
-    if (args.button == key && args.action == action)
-    {
-        g_state |= 1 << g_test_actual;
-    }
-    else
-    {
-        printf("Test %d: FAIL\n", g_test_actual);
-    }
+  test_args_t args = g_tests[g_current_test].args;
+  if (args.button == key && args.action == action) {
+    g_callback_received = true;
+  } else {
+    printf("Test %d: FAIL\n", g_current_test);
+    exit(1);
+  }
 }
 
 #if USE_GLFW == 2
@@ -139,22 +135,25 @@ static void on_char_callback(int character, int action) {
 #else
 static void on_char_callback(GLFWwindow* window, unsigned int character) {
 #endif
-  test_args_t args = g_tests[g_test_actual].args;
+  printf("got character: %d\n", character);
+  test_args_t args = g_tests[g_current_test].args;
   if (args.character != -1 && args.character == character) {
-    g_state |= 1 << g_test_actual;
+    g_callback_received = true;
   } else {
-    printf("Test %d: FAIL\n", g_test_actual);
+    printf("Test %d: FAIL\n", g_current_test);
+    exit(1);
   }
 
 }
 
 #if USE_GLFW == 3
 static void on_mouse_wheel(GLFWwindow* window, double x, double y) {
-  test_args_t args = g_tests[g_test_actual].args;
+  test_args_t args = g_tests[g_current_test].args;
   if (args.x == x && args.y == y) {
-    g_state |= 1 << g_test_actual;
+    g_callback_received = true;
   } else {
-    printf("Test %d: FAIL\n", g_test_actual);
+    printf("Test %d: FAIL\n", g_current_test);
+    exit(1);
   }
 }
 
@@ -197,15 +196,11 @@ int main() {
     glfwSetMouseButtonCallback(_mainWindow, p == 0 ? NULL : on_mouse_button_callback);
     glfwSetKeyCallback(_mainWindow, p == 0 ? NULL : on_key_callback);
 #endif
-    g_state = p == 0 ? success : 0;
 
     for (int i = 0; i < g_test_count; ++i) {
-      g_test_actual = i;
-      test_t test = g_tests[g_test_actual];
-
-      if (test.args.character == -1) {
-         g_state |= 1 << g_test_actual;
-      }
+      g_current_test = i;
+      test_t test = g_tests[g_current_test];
+      g_callback_received = false;
 
       emscripten_run_script(test.cmd);
 
@@ -215,8 +210,8 @@ int main() {
       #else
         if (glfwGetMouseButton(_mainWindow, test.args.button) != test.args.action) {
       #endif
-          printf("Test %d: FAIL\n", g_test_actual);
-            g_state &= ~(1 << g_test_actual);
+          printf("Test %d: FAIL\n", g_current_test);
+          exit(1);
         }
       } else {
         // Keyboard.
@@ -225,23 +220,22 @@ int main() {
       #else
         if (test.args.action != -1 && glfwGetKey(_mainWindow, test.args.button) != test.args.action) {
       #endif
-          printf("Test %d: FAIL\n", g_test_actual);
-          g_state &= ~(1 << g_test_actual);
+          printf("Test %d: FAIL\n", g_current_test);
+          exit(1);
         }
       }
-    }
-    if (g_state != success) {
-      break;
+
+      if (p == 1) {
+        if (test.args.character != -1 && !g_callback_received) {
+          printf("Test %d: FAIL (event not received)\n", g_current_test);
+          exit(1);
+        }
+        printf("Test %d: PASSED\n", g_current_test);
+      }
     }
   }
 
   glfwTerminate();
-
-  printf("%d == %d = %d", g_state, success, g_state == success);
-  if (g_state != success) {
-    printf("test failed\n");
-    return 1;
-  }
-  printf("success\n");
+  printf("done\n");
   return 0;
 }
