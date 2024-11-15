@@ -321,9 +321,11 @@ class other(RunnerCore):
 
   def test_skip_subcommands(self):
     # The -### flag is like `-v` but it doesn't actaully execute the sub-commands
-    proc = self.run_process([EMCC, '-###', test_file('hello_world.c')], stdout=PIPE, stderr=PIPE)
+    proc = self.run_process([EMCC, '-###', '-O3', test_file('hello_world.c')], stdout=PIPE, stderr=PIPE)
     self.assertContained(CLANG_CC, proc.stderr)
     self.assertContained(WASM_LD, proc.stderr)
+    self.assertContained('wasm-opt', proc.stderr)
+    self.assertContained('acorn-optimizer.mjs', proc.stderr)
     self.assertNotExists('a.out.js')
 
   def test_emcc_check(self):
@@ -2389,6 +2391,28 @@ int main() {
       }
     ''')
     self.do_runf('main.c', '204\n')
+
+  def test_sdl_get_key_name(self):
+    create_file('main.c', r'''
+      #include <stdio.h>
+      #include <SDL/SDL_keyboard.h>
+
+      int main() {
+        printf("a -> '%s'\n", SDL_GetKeyName(SDLK_a));
+        printf("z -> '%s'\n", SDL_GetKeyName(SDLK_z));
+        printf("0 -> '%s'\n", SDL_GetKeyName(SDLK_0));
+        printf("0 -> '%s'\n", SDL_GetKeyName(SDLK_9));
+        printf("F1 -> '%s'\n", SDL_GetKeyName(SDLK_F1));
+        return 0;
+      }
+    ''')
+    self.do_runf('main.c', '''\
+a -> 'a'
+z -> 'z'
+0 -> '0'
+0 -> '9'
+F1 -> ''
+''')
 
   @requires_network
   def test_sdl2_mixer_wav(self):
@@ -8756,7 +8780,7 @@ int main() {
 
   @node_pthreads
   def test_codesize_minimal_pthreads(self):
-    self.run_codesize_test('minimal_main.c', ['-Oz', '-pthread', '-sPROXY_TO_PTHREAD'])
+    self.run_codesize_test('minimal_main.c', ['-Oz', '-pthread', '-sPROXY_TO_PTHREAD', '-sSTRICT'])
 
   @parameterized({
     'noexcept': (['-O2'],                    [], ['waka']), # noqa
@@ -13616,8 +13640,12 @@ void foo() {}
     self.do_other_test('test_pthread_icu.cpp')
 
   @node_pthreads
-  def test_pthread_set_main_loop(self):
-    self.do_other_test('test_pthread_set_main_loop.c')
+  @parameterized({
+    '': ([],),
+    'strict': (['-sSTRICT'],),
+  })
+  def test_pthread_set_main_loop(self, args):
+    self.do_other_test('test_pthread_set_main_loop.c', emcc_args=args)
 
   # unistd tests
 

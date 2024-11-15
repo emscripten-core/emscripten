@@ -634,6 +634,7 @@ var LibraryEGL = {
   eglGetCurrentDisplay: () => EGL.currentContext ? {{{ eglDefaultDisplay }}} : 0,
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglSwapBuffers(EGLDisplay dpy, EGLSurface surface);
+  eglSwapBuffers__deps: ['$GLctx'],
   eglSwapBuffers__proxy: 'sync',
   eglSwapBuffers: (dpy, surface) => {
 #if PROXY_TO_WORKER
@@ -642,9 +643,9 @@ var LibraryEGL = {
 
     if (!EGL.defaultDisplayInitialized) {
       EGL.setErrorCode(0x3001 /* EGL_NOT_INITIALIZED */);
-    } else if (!Module.ctx) {
+    } else if (!GLctx) {
       EGL.setErrorCode(0x3002 /* EGL_BAD_ACCESS */);
-    } else if (Module.ctx.isContextLost()) {
+    } else if (GLctx.isContextLost()) {
       EGL.setErrorCode(0x300E /* EGL_CONTEXT_LOST */);
     } else {
       // According to documentation this does an implicit flush.
