@@ -5,6 +5,9 @@
 #include <emscripten/em_js.h>
 #include <emscripten/webaudio.h>
 
+// Tests processing two stereo audio inputs being mixed to a single stereo audio
+// output in process() (by adding the inputs together).
+
 // This needs to be big enough for the stereo output, 2x inputs and the worker stack
 #define AUDIO_STACK_SIZE 4096
 
