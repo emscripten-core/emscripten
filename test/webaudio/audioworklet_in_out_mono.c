@@ -5,10 +5,11 @@
 #include <emscripten/em_js.h>
 #include <emscripten/webaudio.h>
 
-// Tests two stereo audio inputs being copied to two stereo outputs.
+// Tests processing two mono audio inputs being mixed to a single mono audio
+// output in process() (by adding the inputs together).
 
-// This needs to be big enough for the 2x stereo outputs, 2x inputs and the worker stack
-#define AUDIO_STACK_SIZE 6144
+// This needs to be big enough for the mono output, 2x inputs and the worker stack
+#define AUDIO_STACK_SIZE 2048
 
 // REPORT_RESULT is defined when running in Emscripten test harness.
 #ifdef REPORT_RESULT
@@ -57,23 +58,34 @@ EM_JS(void, toggleTrack, (EMSCRIPTEN_WEBAUDIO_T srcID), {
 	}
 });
 
-// Callback to process and copy the audio tracks
+// Callback to process and mix the audio tracks
 bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, AudioSampleFrame* outputs, int numParams, const AudioParamFrame* params, void* data) {
 #ifdef REPORT_RESULT
 	audioProcessedCount++;
 #endif
-	// Twin stereo in and out
-	assert(numInputs == 2 && numOutputs == 2);
-	assert(inputs[0].numberOfChannels == 2 && inputs[1].numberOfChannels == 2);
-	assert(outputs[0].numberOfChannels == 2 && outputs[1].numberOfChannels == 2);
-	// All with the same number of samples
-	assert(inputs[0].samplesPerChannel == inputs[1].samplesPerChannel);
-	assert(inputs[0].samplesPerChannel == outputs[0].samplesPerChannel);
-	assert(outputs[0].samplesPerChannel == outputs[1].samplesPerChannel);
-	// Now with all known quantities we can memcpy the data
-	int totalSamples = outputs[0].samplesPerChannel * outputs[0].numberOfChannels;
-	memcpy(outputs[0].data, inputs[0].data, totalSamples * sizeof(float));
-	memcpy(outputs[1].data, inputs[1].data, totalSamples * sizeof(float));
+	// Single mono output
+	assert(numOutputs == 1 && outputs[0].numberOfChannels == 1);
+	for (int n = 0; n < numInputs; n++) {
+		// And all inputs are also stereo
+		assert(inputs[n].numberOfChannels == 1 || inputs[n].numberOfChannels == 0);
+		// This should always be the case
+		assert(inputs[n].samplesPerChannel == outputs[0].samplesPerChannel);
+	}
+	// We can now do a quick mix since we know the layouts
+	if (numInputs > 0) {
+		int totalSamples = outputs[0].samplesPerChannel * outputs[0].numberOfChannels;
+		float* outputData = outputs[0].data;
+		memcpy(outputData, inputs[0].data, totalSamples * sizeof(float));
+		for (int n = 1; n < numInputs; n++) {
+			// It's possible to have an input with no channels
+			if (inputs[n].numberOfChannels == 1) {
+				float* inputData = inputs[n].data;
+				for (int i = totalSamples - 1; i >= 0; i--) {
+					outputData[i] += inputData[i];
+				}
+			}
+		}
+	}
 	return true;
 }
 
@@ -96,25 +108,23 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
 		printf("Audio worklet processor created\n");
 		printf("Click to toggle audio playback\n");
 
-		// Two stereo outputs, two inputs
-		int outputChannelCounts[2] = { 2, 2 };
+		// Mono output, two inputs
+		int outputChannelCounts[1] = { 1 };
 		EmscriptenAudioWorkletNodeCreateOptions opts = {
 			.numberOfInputs  = 2,
-			.numberOfOutputs = 2,
+			.numberOfOutputs = 1,
 			.outputChannelCounts = outputChannelCounts
 		};
 		EMSCRIPTEN_AUDIO_WORKLET_NODE_T worklet = emscripten_create_wasm_audio_worklet_node(context, "mixer", &opts, &process, NULL);
-		// Both outputs connected to the context
 		emscripten_audio_node_connect(worklet, context, 0, 0);
-		emscripten_audio_node_connect(worklet, context, 1, 0);
 
-		// Create the two stereo source nodes and connect them to the two inputs
+		// Create the two mono source nodes and connect them to the two inputs
 		// Note: we can connect the sources to the same input and it'll get mixed for us, but that's not the point
-		beatID = createTrack(context, "audio_files/emscripten-beat.mp3", true);
+		beatID = createTrack(context, "audio_files/emscripten-beat-mono.mp3", true);
 		if (beatID) {
 			emscripten_audio_node_connect(beatID, worklet, 0, 0);
 		}
-		bassID = createTrack(context, "audio_files/emscripten-bass.mp3", true);
+		bassID = createTrack(context, "audio_files/emscripten-bass-mono.mp3", true);
 		if (bassID) {
 			emscripten_audio_node_connect(bassID, worklet, 0, 1);
 		}
