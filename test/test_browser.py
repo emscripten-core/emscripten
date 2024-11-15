@@ -990,8 +990,8 @@ If manually bisecting:
       html = html.replace('</body>', '''
 <script src='fake_events.js'></script>
 <script>
-simulateKeyDown(1250);simulateKeyDown(38);simulateKeyUp(38);simulateKeyUp(1250); // alt, up
-simulateKeyDown(1248);simulateKeyDown(1249);simulateKeyDown(40);simulateKeyUp(40);simulateKeyUp(1249);simulateKeyUp(1248); // ctrl, shift, down
+simulateKeyDown(18);simulateKeyDown(38);simulateKeyUp(38);simulateKeyUp(18); // alt, up
+simulateKeyDown(17);simulateKeyDown(16);simulateKeyDown(40);simulateKeyUp(40);simulateKeyUp(16);simulateKeyUp(17); // ctrl, shift, down
 simulateKeyDown(37);simulateKeyUp(37); // left
 simulateKeyDown(39);simulateKeyUp(39); // right
 simulateKeyDown(65);simulateKeyUp(65); // a
