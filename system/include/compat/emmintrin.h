@@ -7,6 +7,7 @@
 #ifndef __emscripten_emmintrin_h__
 #define __emscripten_emmintrin_h__
 
+#include <climits>
 #ifndef __SSE2__
 #error "SSE2 instruction set not enabled"
 #endif
@@ -1008,9 +1009,10 @@ static __inline__ long long __attribute__((__always_inline__, __nodebug__))
 _mm_cvtsd_si64(__m128d __a)
 {
   // TODO: optimize
-  if (isnan(__a[0]) || isinf(__a[0])) return 0x8000000000000000LL;
-  long long x = llrint(__a[0]);
-  if (x != 0xFFFFFFFF00000000ULL && (x != 0 || fabs(__a[0]) < 2.f))
+  double e = __a[0];
+  if (isnan(e) || isinf(e)) return 0x8000000000000000LL;
+  long long x = llrint(e);
+  if (x != 0xFFFFFFFF00000000ULL && (x != 0 || fabs(e) < 2.f) && e <= LLONG_MAX && e >= LLONG_MIN)
     return x;
   else
     return 0x8000000000000000LL;

@@ -596,8 +596,9 @@ _mm_cvtsi32_ss(__m128 __a, int __b)
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW)) _mm_cvtss_si32(__m128 __a)
 {
-  int x = lrint(((__f32x4)__a)[0]);
-  if (x != 0 || fabsf(((__f32x4)__a)[0]) < 2.f)
+  float e = ((__f32x4)__a)[0];
+  int x = lrint(e);
+  if ((x != 0 || fabsf(e)) < 2.f && !isnan(e) && e <= (float)INT_MAX && e >= INT_MIN)
     return x;
   else
     return (int)0x80000000;
@@ -627,9 +628,10 @@ _mm_cvtsi64_ss(__m128 __a, long long __b)
 static __inline__ long long __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW))
 _mm_cvtss_si64(__m128 __a)
 {
-  if (isnan(((__f32x4)__a)[0]) || isinf(((__f32x4)__a)[0])) return 0x8000000000000000LL;
-  long long x = llrintf(((__f32x4)__a)[0]);
-  if (x != 0xFFFFFFFF00000000ULL && (x != 0 || fabsf(((__f32x4)__a)[0]) < 2.f))
+  float e = ((__f32x4)__a)[0];
+  if (isnan(e) || isinf(e)) return 0x8000000000000000LL;
+  long long x = llrintf(e);
+  if ((x != 0xFFFFFFFF00000000ULL && (x != 0 || fabsf(e) < 2.f)) && e <= (float)LLONG_MAX && e >= LLONG_MIN)
     return x;
   else
     return 0x8000000000000000LL;
