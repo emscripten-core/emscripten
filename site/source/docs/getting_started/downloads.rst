@@ -52,7 +52,7 @@ GitHub and set them as :term:`active <Active Tool/SDK>`:
     # Activate PATH and other environment variables in the current terminal
     source ./emsdk_env.sh
 
-  .. tip:: If you want to avoid to execute ``source /path/to/emsdk/emsdk_env.sh`` everytime you open a new terminal, run ``echo source /path/to/emsdk/emsdk_env.sh >> ~/.bashrc``.
+  .. tip:: If you want to avoid executing `source ./emsdk_env.sh` every time you open a new terminal you can follow the intstructions given by the `emsdk activate` command above to add this command to your startup scripts.
 
   .. note:: On Windows, run ``emsdk.bat`` instead of ``./emsdk``, and ``emsdk_env.bat`` instead of ``source ./emsdk_env.sh``.
 
