@@ -684,7 +684,7 @@ FS.staticInit();
       };
 
       var parent = FS.lookupPath(path, {follow: true}).node;
-      if (parent.node_ops.statfs) {
+      if (parent?.node_ops.statfs) {
         Object.assign(rtn, parent.node_ops.statfs(parent.mount.opts.root));
       }
       return rtn;
@@ -832,7 +832,7 @@ FS.staticInit();
       // do the underlying fs rename
       try {
         old_dir.node_ops.rename(old_node, new_dir, new_name);
-        // update old node (we do this here to avoid each backend 
+        // update old node (we do this here to avoid each backend
         // needing to)
         old_node.parent = new_dir;
       } catch (e) {
