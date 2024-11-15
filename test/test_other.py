@@ -3320,6 +3320,14 @@ More info: https://emscripten.org
 
     self.do_runf('embind/test_return_value_policy.cpp')
 
+  @parameterized({
+    '': [[]],
+    'asyncify': [['-sASYNCIFY=1']]
+  })
+  def test_embind_long_long(self, args):
+    self.do_runf('embind/test_embind_long_long.cpp', '1000000000000n\n-1000000000000n',
+                 emcc_args=['-lembind', '-sWASM_BIGINT'] + args)
+
   @requires_jspi
   @parameterized({
     '': [['-sJSPI_EXPORTS=async*']],
