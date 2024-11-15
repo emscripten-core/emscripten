@@ -77,7 +77,7 @@ EXTRA_INCOMING_JS_API = [
   'fetchSettings'
 ]
 
-SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx']
+SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 LINK_ONLY_FLAGS = {
     '--bind', '--closure', '--cpuprofiler', '--embed-file',
@@ -486,6 +486,9 @@ def get_cflags(user_args, is_cxx):
 
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[7:]):
     cflags += ['-D__AVX__=1']
+
+  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[8:]):
+    cflags += ['-D__AVX2__=1']
 
   if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     cflags += ['-D__ARM_NEON__=1']
