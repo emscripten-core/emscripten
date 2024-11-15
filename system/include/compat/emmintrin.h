@@ -449,8 +449,7 @@ _mm_cvttsd_si32(__m128d __a)
 {
   // TODO: OPTIMIZE!
   float elem = __a[0];
-  if (isnan(elem) || elem > INT_MAX || elem < INT_MIN) return (int)0x80000000;
-  if (lrint(elem) != 0 || fabs(elem) < 2.0)
+  if ((lrint(elem) != 0 || fabs(elem) < 2.0) && !isnanf(elem) && elem <= INT_MAX && elem >= INT_MIN)
     // Use the trapping instruction here since we have explicit bounds checks
     // above.
     return __builtin_wasm_trunc_s_i32_f32(elem);
