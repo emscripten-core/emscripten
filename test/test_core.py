@@ -1954,10 +1954,8 @@ int main(int argc, char **argv) {
 
   @no_wasm2js('WASM_BIGINT is not compatible with wasm2js')
   def test_em_js_i64(self):
-    err = self.expect_fail([EMCC, '-Werror', test_file('core/test_em_js_i64.c')])
+    err = self.expect_fail([EMCC, '-Werror', '-sWASM_BIGINT=0', test_file('core/test_em_js_i64.c')])
     self.assertContained('emcc: error: using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `foo`', err)
-
-    self.set_setting('WASM_BIGINT')
     self.node_args += shared.node_bigint_flags(self.get_nodejs())
     self.do_core_test('test_em_js_i64.c')
 
@@ -6995,11 +6993,10 @@ void* operator new(size_t size) {
   def test_dyncall_specific(self, *args):
     if self.get_setting('MEMORY64'):
       self.skipTest('not compatible with MEMORY64')
-    if self.get_setting('WASM_BIGINT'):
-      # define DYNCALLS because this test does test calling them directly, and
-      # in WASM_BIGINT mode we do not enable them by default (since we can do
-      # more without them - we don't need to legalize)
-      args = list(args) + ['-sDYNCALLS', '-DWASM_BIGINT']
+    # define DYNCALLS because this test does test calling them directly, and
+    # in WASM_BIGINT mode we do not enable them by default (since we can do
+    # more without them - we don't need to legalize)
+    args = list(args) + ['-sDYNCALLS', '-DWASM_BIGINT']
     cases = [
         ('DIRECT', []),
         ('DYNAMIC_SIG', ['-sDYNCALLS']),
@@ -8417,6 +8414,7 @@ Module.onRuntimeInitialized = () => {
     if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
     self.set_setting('WASM', 0)
+    self.set_setting('WASM_BIGINT', 0)
     self.do_core_test('test_hello_world.c')
     self.assertNotExists('test_hello_world.js.mem')
 
@@ -8448,7 +8446,7 @@ Module.onRuntimeInitialized = () => {
     if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
 
-    cmd = [EMCC, test_file('small_hello_world.c'), '-sWASM=2'] + args
+    cmd = [EMCC, test_file('small_hello_world.c'), '-sWASM=2', '-sWASM_BIGINT=0'] + args
     self.run_process(cmd)
 
     # First run with WebAssembly support enabled

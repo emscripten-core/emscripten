@@ -53,6 +53,7 @@ addToLibrary({
     return wasmFS$backends[backend].getSize(file);
   },
 
+  _wasmfs_jsimpl_set_size__i53abi: true,
   _wasmfs_jsimpl_set_size: (backend, file, size) => {
 #if ASSERTIONS
     assert(wasmFS$backends[backend]);

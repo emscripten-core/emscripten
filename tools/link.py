@@ -786,6 +786,10 @@ def phase_linker_setup(options, state, newargs):
     # to js.
     settings.WASM = 1
     settings.WASM2JS = 1
+    # Wasm bigint doesn't make sense with wasm2js, since it controls how the
+    # wasm and JS interact.
+    settings.WASM_BIGINT = 0
+    feature_matrix.disable_feature(feature_matrix.Feature.JS_BIGINT_INTEGRATION)
   if settings.WASM == 2:
     # Requesting both Wasm and Wasm2JS support
     settings.WASM2JS = 1
@@ -1386,6 +1390,8 @@ def phase_linker_setup(options, state, newargs):
   settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(feature_matrix.Feature.PROMISE_ANY)
   if not settings.BULK_MEMORY:
     settings.BULK_MEMORY = feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY)
+  if 'WASM_BIGINT' not in user_settings:
+    settings.WASM_BIGINT = feature_matrix.caniuse(feature_matrix.Feature.JS_BIGINT_INTEGRATION)
 
   if settings.AUDIO_WORKLET:
     if settings.AUDIO_WORKLET == 1:

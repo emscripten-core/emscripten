@@ -66,7 +66,7 @@ min_browser_versions = {
   Feature.JS_BIGINT_INTEGRATION: {
     'chrome': 67,
     'firefox': 68,
-    'safari': 150000,
+    'safari': 140100,
   },
   Feature.THREADS: {
     'chrome': 74,
