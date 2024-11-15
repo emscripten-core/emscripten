@@ -13640,8 +13640,12 @@ void foo() {}
     self.do_other_test('test_pthread_icu.cpp')
 
   @node_pthreads
-  def test_pthread_set_main_loop(self):
-    self.do_other_test('test_pthread_set_main_loop.c')
+  @parameterized({
+    '': ([],),
+    'strict': (['-sSTRICT'],),
+  })
+  def test_pthread_set_main_loop(self, args):
+    self.do_other_test('test_pthread_set_main_loop.c', emcc_args=args)
 
   # unistd tests
 

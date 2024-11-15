@@ -823,13 +823,16 @@ var LibrarySDL = {
 
     lookupKeyCodeForEvent(event) {
       var code = event.keyCode;
-      if (code >= 65 && code <= 90) {
+      if (code >= 65 && code <= 90) { // ASCII A-Z
         code += 32; // make lowercase for SDL
       } else {
+        // Look up DOM code in the keyCodes table with fallback for ASCII codes
+        // which can match between DOM codes and SDL keycodes (allows keyCodes
+        // to be smaller).
+        code = SDL.keyCodes[code] || (code < 128 ? code : 0);
 #if RUNTIME_DEBUG
-        if (!(event.keyCode in SDL.keyCodes)) dbg('unknown keyCode: ', event.keyCode);
+        if (!code) dbg('unmapped keyCode: ', event.keyCode);
 #endif
-        code = SDL.keyCodes[event.keyCode] || event.keyCode;
         // If this is one of the modifier keys (224 | 1<<10 - 227 | 1<<10), and the event specifies that it is
         // a right key, add 4 to get the right key SDL key code.
         if (event.location === 2 /*KeyboardEvent.DOM_KEY_LOCATION_RIGHT*/ && code >= (224 | 1<<10) && code <= (227 | 1<<10)) {
@@ -854,6 +857,8 @@ var LibrarySDL = {
         case 'keyup': {
           var down = event.type === 'keydown';
           var code = SDL.lookupKeyCodeForEvent(event);
+          // Ignore key events that we don't (yet) map to SDL keys
+          if (!code) return;
 #if !SAFE_HEAP
           // Assigning a boolean to HEAP8, that's alright but Closure would like to warn about it.
           // TODO(https://github.com/emscripten-core/emscripten/issues/16311):
@@ -938,6 +943,8 @@ var LibrarySDL = {
           dbg(`received ${event.type} event: keyCode=${event.keyCode}, key=${event.key}, code=${event.code}`);
 #endif
           var key = SDL.lookupKeyCodeForEvent(event);
+          // Ignore key events that we don't (yet) map to SDL keys
+          if (!key) return false;
           var scan;
           if (key >= 1024) {
             scan = key - 1024;

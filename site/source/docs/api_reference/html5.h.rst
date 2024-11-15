@@ -244,7 +244,7 @@ Struct
 
     Maximum size 32 ``char`` (i.e. ``EM_UTF8 code[32]``).
 
-  .. c:member:: unsigned long location
+  .. c:member:: unsigned int location
 
     Indicates the location of the key on the keyboard. One of the :c:data:`DOM_KEY_LOCATION <DOM_KEY_LOCATION_STANDARD>` values.
 
@@ -273,20 +273,20 @@ Struct
 
     .. warning:: This attribute has been dropped from DOM Level 3 events.
 
-  .. c:member:: unsigned long charCode
+  .. c:member:: unsigned int charCode
 
     The Unicode reference number of the key; this attribute is used only by the keypress event. For keys whose ``char`` attribute contains multiple characters, this is the Unicode value of the first character in that attribute.
 
     .. warning:: This attribute is deprecated, you should use the field ``key`` instead, if available.
 
-  .. c:member:: unsigned long keyCode
+  .. c:member:: unsigned int keyCode
 
     A system and implementation dependent numerical code identifying the unmodified value of the pressed key.
 
     .. warning:: This attribute is deprecated, you should use the field ``key`` instead, if available.
 
 
-  .. c:member:: unsigned long which
+  .. c:member:: unsigned int which
 
     A system and implementation dependent numeric code identifying the unmodified value of the pressed key; this is usually the same as ``keyCode``.
 
@@ -364,13 +364,13 @@ Struct
 
     Absolute wallclock time when the data was recorded (milliseconds).
 
-  .. c:member:: long screenX
-    long screenY
+  .. c:member:: int screenX
+    int screenY
 
     The coordinates relative to the browser screen coordinate system.
 
-  .. c:member:: long clientX
-    long clientY
+  .. c:member:: int clientX
+    int clientY
 
     The coordinates relative to the viewport associated with the event.
 
@@ -396,24 +396,24 @@ Struct
 
     A bitmask that indicates which combinations of mouse buttons were being held down at the time of the event.
 
-  .. c:member:: long movementX
-    long movementY;
+  .. c:member:: int movementX
+    int movementY;
 
     If pointer lock is active, these two extra fields give relative mouse movement since the last event.
 
-  .. c:member:: long targetX
-     long targetY
+  .. c:member:: int targetX
+     int targetY
 
     These fields give the mouse coordinates mapped relative to the coordinate space of the target DOM element receiving the input events (Emscripten-specific extension; coordinates are rounded down to the nearest integer).
 
 
-  .. c:member:: long canvasX
-     long canvasY
+  .. c:member:: int canvasX
+     int canvasY
 
     These fields give the mouse coordinates mapped to the Emscripten canvas client area (Emscripten-specific extension; coordinates are rounded down the nearest integer).
 
 
-  .. c:member:: long padding
+  .. c:member:: int padding
 
     Internal, and can be ignored.
 
@@ -517,7 +517,7 @@ Struct
     in scroll values of 0. The positive Y scroll direction is when scrolling the page downwards (page CSS pixel +Y direction), which corresponds to scrolling
     the mouse wheel downwards (away from the screen) on Windows, Linux, and also on macOS when the 'natural scroll' option is disabled.
 
-  .. c:member:: unsigned long deltaMode
+  .. c:member:: unsigned int deltaMode
 
     One of the :c:data:`DOM_DELTA_<DOM_DELTA_PIXEL>` values that indicates the units of measurement for the delta values.
 
@@ -1487,22 +1487,22 @@ Struct
 
   Specifies the status of a single `touch point <http://www.w3.org/TR/touch-events/#touch-interface>`_ on the page.
 
-  .. c:member:: long identifier
+  .. c:member:: int identifier
 
     An identification number for each touch point.
 
-  .. c:member:: long screenX
-    long screenY
+  .. c:member:: int screenX
+    int screenY
 
     The touch coordinate relative to the whole screen origin, in pixels.
 
-  .. c:member:: long clientX
-    long clientY
+  .. c:member:: int clientX
+    int clientY
 
     The touch coordinate relative to the viewport, in pixels.
 
-  .. c:member:: long pageX
-    long pageY
+  .. c:member:: int pageX
+    int pageY
 
     The touch coordinate relative to the viewport, in pixels, and including any scroll offset.
 
@@ -1514,13 +1514,13 @@ Struct
 
     Specifies whether this touch point is still above the original target on which it was initially pressed.
 
-  .. c:member:: long targetX
-     long targetY
+  .. c:member:: int targetX
+     int targetY
 
     These fields give the touch coordinates mapped relative to the coordinate space of the target DOM element receiving the input events (Emscripten-specific extension).
 
-  .. c:member:: long canvasX
-    long canvasY
+  .. c:member:: int canvasX
+    int canvasY
 
     The touch coordinates mapped to the Emscripten canvas client area, in pixels (Emscripten-specific extension).
 
@@ -1643,7 +1643,7 @@ Struct
 
     Specifies whether this gamepad is connected to the browser page.
 
-  .. c:member:: long index
+  .. c:member:: int index
 
     An ordinal associated with this gamepad, zero-based.
 
