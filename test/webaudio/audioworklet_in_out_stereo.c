@@ -5,11 +5,19 @@
 #include <emscripten/em_js.h>
 #include <emscripten/webaudio.h>
 
+// This needs to be big enough for the stereo output, 2x inputs and the worker stack
 #define AUDIO_STACK_SIZE 4096
 
+// REPORT_RESULT is defined when running in Emscripten test harness.
 #ifdef REPORT_RESULT
-void playedAndMixed(void* data) {
-	REPORT_RESULT(0);
+// Count the mixed frames and return after 375 frames (1 second with the default 128 size)
+volatile int audioProcessedCount = 0;
+bool playedAndMixed(double time, void* data) {
+	if (audioProcessedCount >= 375) {
+		REPORT_RESULT(0);
+		return false;
+	}
+	return true;
 }
 #endif
 
@@ -49,6 +57,9 @@ EM_JS(void, toggleTrack, (EMSCRIPTEN_WEBAUDIO_T srcID), {
 
 // Callback to process and mix the audio tracks
 bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, AudioSampleFrame* outputs, int numParams, const AudioParamFrame* params, void* data) {
+#ifdef REPORT_RESULT
+	audioProcessedCount++;
+#endif
 	// Single stereo output
 	assert(numOutputs == 1 && outputs[0].numberOfChannels == 2);
 	for (int n = 0; n < numInputs; n++) {
@@ -116,6 +127,10 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
 		}
 		
 		emscripten_set_click_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, (void*) (context), false, &onClick);
+		
+#ifdef REPORT_RESULT
+		emscripten_set_timeout_loop(&playedAndMixed, 16, NULL);
+#endif
 	} else {
 		printf("Audio worklet node creation failed\n");
 	}
