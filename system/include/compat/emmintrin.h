@@ -7,7 +7,6 @@
 #ifndef __emscripten_emmintrin_h__
 #define __emscripten_emmintrin_h__
 
-#include <climits>
 #ifndef __SSE2__
 #error "SSE2 instruction set not enabled"
 #endif
