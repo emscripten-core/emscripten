@@ -1110,9 +1110,8 @@ var LibraryGLFW = {
       // If context creation failed, do not return a valid window
       if (!Module.ctx && useWebGL) return 0;
 
-      // Get non alive id
+      // Initializes the framebuffer size from the canvas
       const canvas = Module['canvas'];
-
       var win = new GLFW_Window(id, width, height, canvas.width, canvas.height, title, monitor, share);
 
       // Set window to array

@@ -59,61 +59,62 @@ static void checkWindowSize(GLFWwindow *window, int expectedWidth, int expectedH
   assert(fbw == (int) (expectedWidth * ratio) && fbh == (int) (expectedHeight * ratio));
 }
 
-int main() {
+// Create a window without HiDPI support and without CSS rule => expected sizes to match
+void use_case_1() {
+  printf("Use case #1\n");
+  GLFWwindow* window = glfwCreateWindow(640, 480, "test_glfw3_css_scaling.c", NULL, NULL);
+  assert(window);
+  checkWindowSize(window, 640, 480, 1.0);
+  double w, h;
+  emscripten_get_element_css_size("#canvas", &w, &h);
+  printf("CSS Size=%.0fx%.0f\n", w, h);
+  assert(w == 640 && h == 480);
+  glfwDestroyWindow(window);
+}
 
+// Create a window without HiDPI support, and with CSS rule =>
+// the window size should match the creation size, but the CSS size should match the rule.
+void use_case_2() {
+  printf("Use case #2\n");
+  GLFWwindow* window = glfwCreateWindow(640, 480, "test_glfw3_css_scaling.c", NULL, NULL);
+  assert(window);
+  checkWindowSize(window, 640, 480, 1.0);
+  double w, h;
+  emscripten_get_element_css_size("#canvas", &w, &h);
+  printf("CSS Size=%.0fx%.0f\n", w, h);
+  assert(w == 700 && h == 500); // Rule is "#canvas { width: 700px; height: 500px; }"
+  glfwDestroyWindow(window);
+}
+
+// Create a window with HiDPI support, and with CSS rule =>
+// the window size and framebuffer size should match the creation size (CSS rule is ignored)
+void use_case_3() {
+  printf("Use case #3\n");
+  glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
+  GLFWwindow* window = glfwCreateWindow(640, 480, "test_glfw3_css_scaling.c", NULL, NULL);
+  assert(window);
+  double dpr = getDevicePixelRatio();
+  printf("devicePixelRatio=%.0f\n", dpr);
+  checkWindowSize(window, 640, 480, dpr);
+  double w, h;
+  emscripten_get_element_css_size("#canvas", &w, &h);
+  printf("CSS Size=%.0fx%.0f\n", w, h);
+  assert(w == 640 && h == 480);
+  glfwDestroyWindow(window);
+}
+
+int main() {
   assert(glfwInit() == GLFW_TRUE);
 
-  // Use Case #1
-  // Create a window without HiDPI support and without CSS rule => expected sizes to match
-  {
-    printf("Use case #1\n");
-    GLFWwindow* window = glfwCreateWindow(640, 480, "test_glfw3_css_scaling.c", NULL, NULL);
-    assert(window);
-    checkWindowSize(window, 640, 480, 1.0);
-    double w, h;
-    emscripten_get_element_css_size("#canvas", &w, &h);
-    printf("CSS Size=%.0fx%.0f\n", w, h);
-    assert(w == 640 && h == 480);
-    glfwDestroyWindow(window);
-  }
+  use_case_1();
 
-  // Use Case #2
-  // Create a window without HiDPI support, and with CSS rule =>
-  // the window size should match the creation size, but the CSS size should match the rule.
-  {
-    printf("Use case #2\n");
-    addCSSScalingRule();
-    GLFWwindow* window = glfwCreateWindow(640, 480, "test_glfw3_css_scaling.c", NULL, NULL);
-    assert(window);
-    checkWindowSize(window, 640, 480, 1.0);
-    double w, h;
-    emscripten_get_element_css_size("#canvas", &w, &h);
-    printf("CSS Size=%.0fx%.0f\n", w, h);
-    assert(w == 700 && h == 500); // Rule is "#canvas { width: 700px; height: 500px; }"
-    glfwDestroyWindow(window);
-  }
+  // Add CSS rule for the following use cases
+  addCSSScalingRule();
 
-  // Use Case #3
-  // Create a window with HiDPI support, and with CSS rule =>
-  // the window size and framebuffer size should match the creation size (CSS rule is ignored)
-  {
-    printf("Use case #3\n");
-    glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
-    GLFWwindow* window = glfwCreateWindow(640, 480, "test_glfw3_css_scaling.c", NULL, NULL);
-    assert(window);
-    double dpr = getDevicePixelRatio();
-    printf("devicePixelRatio=%.0f\n", dpr);
-    checkWindowSize(window, 640, 480, dpr);
-    double w, h;
-    emscripten_get_element_css_size("#canvas", &w, &h);
-    printf("CSS Size=%.0fx%.0f\n", w, h);
-    assert(w == 640 && h == 480);
-    glfwDestroyWindow(window);
-  }
+  use_case_2();
+  use_case_3();
 
   printf("All tests complete\n");
-
   glfwTerminate();
-
   return 0;
 }
