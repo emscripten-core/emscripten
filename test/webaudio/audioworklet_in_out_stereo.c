@@ -1,3 +1,5 @@
+#include <assert.h>
+#include <string.h>
 #include <stdio.h>
 
 #include <emscripten/em_js.h>
@@ -12,13 +14,13 @@ void playedAndMixed(void* data) {
 #endif
 
 // ID to the beat and bass loops
-EMSCRIPTEN_WEBAUDIO_T beatHnd = 0;
-EMSCRIPTEN_WEBAUDIO_T bassHnd = 0;
+EMSCRIPTEN_WEBAUDIO_T beatID = 0;
+EMSCRIPTEN_WEBAUDIO_T bassID = 0;
 
 // Creates a MediaElementAudioSourceNode with the supplied URL (which is
 // registered as an internal audio object and the ID returned).
-EM_JS(EMSCRIPTEN_WEBAUDIO_T, createTrack, (EMSCRIPTEN_WEBAUDIO_T ctxHnd, const char* url, bool looping), {
-	var context = emscriptenGetAudioObject(ctxHnd);
+EM_JS(EMSCRIPTEN_WEBAUDIO_T, createTrack, (EMSCRIPTEN_WEBAUDIO_T ctxID, const char* url, bool looping), {
+	var context = emscriptenGetAudioObject(ctxID);
 	if (context) {
 		var audio = document.createElement('audio');
 		audio.src = UTF8ToString(url);
@@ -30,8 +32,8 @@ EM_JS(EMSCRIPTEN_WEBAUDIO_T, createTrack, (EMSCRIPTEN_WEBAUDIO_T ctxHnd, const c
 });
 
 // Toggles the play/pause of a MediaElementAudioSourceNode given its ID
-EM_JS(void, toggleTrack, (EMSCRIPTEN_WEBAUDIO_T srcHnd), {
-	var source = emscriptenGetAudioObject(srcHnd);
+EM_JS(void, toggleTrack, (EMSCRIPTEN_WEBAUDIO_T srcID), {
+	var source = emscriptenGetAudioObject(srcID);
 	if (source) {
 		var audio = source.mediaElement;
 		if (audio) {
@@ -45,66 +47,54 @@ EM_JS(void, toggleTrack, (EMSCRIPTEN_WEBAUDIO_T srcHnd), {
 	}
 });
 
-// Adds a button to play and stop an audio file
-EM_JS(bool, addAudio, (EMSCRIPTEN_WEBAUDIO_T ctxHnd, EMSCRIPTEN_AUDIO_WORKLET_NODE_T nodeHnd, int index, const char* url, const char* label), {
-	var context = emscriptenGetAudioObject(ctxHnd);
-	if (context) {
-		var audio = document.createElement('audio');
-		audio.src = UTF8ToString(url);
-		audio.loop = true;
-		var track = context.createMediaElementSource(audio);
-
-		var worklet = emscriptenGetAudioObject(nodeHnd);
-		track.connect(worklet ? worklet : context.destination, 0, index);
-
-		var button = document.createElement('button');
-		button.innerHTML = UTF8ToString(label);
-		button.onclick = () => {
-			if (context.state == 'suspended') {
-				context.resume();
-			}
-			if (audio.paused) {
-				audio.currentTime = 0;
-				audio.play();
-			} else {
-				audio.pause();
-			}
-			
-		};
-		document.body.appendChild(button);
-		return true;
-	}
-	return false;
-});
-
+// Callback to process and mix the audio tracks
 bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, AudioSampleFrame* outputs, int numParams, const AudioParamFrame* params, void* data) {
-	for (int o = 0; o < numOutputs; o++) {
-		for (int n = outputs[o].samplesPerChannel * outputs[o].numberOfChannels - 1; n >= 0; n--) {
-			outputs[o].data[n] = 0.0f;
-			for (int i = 0; i < numInputs; i++) {
-				outputs[o].data[n] += inputs[i].data[n] * 0.75f;
+	// Single stereo output
+	assert(numOutputs == 1 && outputs[0].numberOfChannels == 2);
+	for (int n = 0; n < numInputs; n++) {
+		// And all inputs are also stereo
+		assert(inputs[n].numberOfChannels == 2 || inputs[n].numberOfChannels == 0);
+		// This should always be the case
+		assert(inputs[n].samplesPerChannel == outputs[0].samplesPerChannel);
+	}
+	// We can now do a quick mix since we know the layouts
+	if (numInputs > 0) {
+		int totalSamples = outputs[0].samplesPerChannel * outputs[0].numberOfChannels;
+		float* outputData = outputs[0].data;
+		memcpy(outputData, inputs[0].data, totalSamples * sizeof(float));
+		for (int n = 1; n < numInputs; n++) {
+			// It's possible to have an input with no channels
+			if (inputs[n].numberOfChannels == 2) {
+				float* inputData = inputs[n].data;
+				for (int i = totalSamples - 1; i >= 0; i--) {
+					outputData[i] += inputData[i];
+				}
 			}
 		}
 	}
 	return true;
 }
 
+// Registered click even to (1) enable audio playback and (2) toggle playing the tracks
 bool onClick(int type, const EmscriptenMouseEvent* e, void* data) {
-  printf("Click event!\n");
-  EMSCRIPTEN_WEBAUDIO_T ctx = (EMSCRIPTEN_WEBAUDIO_T) (data);
-  if (emscripten_audio_context_state(ctx) != AUDIO_CONTEXT_STATE_RUNNING) {
-    emscripten_resume_audio_context_sync(ctx);
-    
-    toggleTrack(beatHnd);
-    toggleTrack(bassHnd);
-  }
-  return false;
+	EMSCRIPTEN_WEBAUDIO_T ctx = (EMSCRIPTEN_WEBAUDIO_T) (data);
+	if (emscripten_audio_context_state(ctx) != AUDIO_CONTEXT_STATE_RUNNING) {
+		printf("Resuming playback\n");
+		emscripten_resume_audio_context_sync(ctx);
+	}
+	printf("Toggling audio playback\n");
+	toggleTrack(beatID);
+    toggleTrack(bassID);
+	return false;
 }
 
+// Audio processor created, now register the audio callback
 void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
 	if (success) {
 		printf("Audio worklet processor created\n");
+		printf("Click the toggle audio playback\n");
 
+		// Stereo output, two inputs
 		int outputChannelCounts[1] = { 2 };
 		EmscriptenAudioWorkletNodeCreateOptions opts = {
 			.numberOfInputs  = 2,
@@ -114,23 +104,24 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
 		EMSCRIPTEN_AUDIO_WORKLET_NODE_T worklet = emscripten_create_wasm_audio_worklet_node(context, "mixer", &opts, &process, NULL);
 		emscripten_audio_node_connect(worklet, context, 0, 0);
 
-		beatHnd = createTrack(context, "audio_files/emscripten-beat.mp3", true);
-		if (beatHnd) {
-			emscripten_audio_node_connect(beatHnd, worklet, 0, 0);
+		// Create the two stereo source nodes and connect them to the two inputs
+		// Note: we can connect the sources to the same input and it'll get mixed for us, but that's not the point
+		beatID = createTrack(context, "audio_files/emscripten-beat.mp3", true);
+		if (beatID) {
+			emscripten_audio_node_connect(beatID, worklet, 0, 0);
 		}
-		EMSCRIPTEN_WEBAUDIO_T bassHnd = createTrack(context, "audio_files/emscripten-bass.mp3", true);
-		if (bassHnd) {
-			emscripten_audio_node_connect(bassHnd, worklet, 0, 1);
+		bassID = createTrack(context, "audio_files/emscripten-bass.mp3", true);
+		if (bassID) {
+			emscripten_audio_node_connect(bassID, worklet, 0, 1);
 		}
 		
 		emscripten_set_click_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, (void*) (context), false, &onClick);
-		//addAudio(context, worklet, 0, "audio_files/emscripten-beat.mp3", "Toggle Beat");
-		//addAudio(context, worklet, 1, "audio_files/emscripten-bass.mp3", "Toggle Bass");
 	} else {
 		printf("Audio worklet node creation failed\n");
 	}
 }
 
+// Worklet thread inited, now create the audio processor
 void initialised(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
 	if (success) {
 		printf("Audio worklet initialised\n");
@@ -147,7 +138,6 @@ void initialised(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
 int main() {
 	static char workletStack[AUDIO_STACK_SIZE];
 	EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(NULL);
-	emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, sizeof(workletStack), initialised, NULL);
-	
+	emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, sizeof workletStack, &initialised, NULL);
 	return 0;
 }
