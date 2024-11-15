@@ -375,6 +375,24 @@ def get_clang_flags(user_args):
   if settings.INLINING_LIMIT:
     flags.append('-fno-inline-functions')
 
+  if settings.PTHREADS:
+    if '-pthread' not in user_args:
+      flags.append('-pthread')
+  elif settings.SHARED_MEMORY:
+    if '-matomics' not in user_args:
+      flags.append('-matomics')
+    if '-mbulk-memory' not in user_args:
+      flags.append('-mbulk-memory')
+
+  # In emscripten we currently disable bulk memory by default.
+  # This should be removed/updated when we als update the default browser targets.
+  if '-mbulk-memory' not in user_args and '-mno-bulk-memory' not in user_args:
+    # Bulk memory may be enabled via threads or directly via -s.
+    if not settings.BULK_MEMORY:
+      flags.append('-mno-bulk-memory')
+  if '-mnontrapping-fptoint' not in user_args and '-mno-nontrapping-fptoint' not in user_args:
+    flags.append('-mno-nontrapping-fptoint')
+
   if settings.RELOCATABLE and '-fPIC' not in user_args:
     flags.append('-fPIC')
 
@@ -842,14 +860,6 @@ def phase_setup(options, state, newargs):
   if settings.PTHREADS or settings.WASM_WORKERS:
     settings.SHARED_MEMORY = 1
 
-  if settings.PTHREADS and '-pthread' not in newargs:
-    newargs += ['-pthread']
-  elif settings.SHARED_MEMORY:
-    if '-matomics' not in newargs:
-      newargs += ['-matomics']
-    if '-mbulk-memory' not in newargs:
-      newargs += ['-mbulk-memory']
-
   if settings.SHARED_MEMORY:
     settings.BULK_MEMORY = 1
 
@@ -889,10 +899,8 @@ def phase_setup(options, state, newargs):
   if options.target.startswith('wasm64'):
     default_setting('MEMORY64', 1)
 
-  if settings.MEMORY64:
-    if options.target.startswith('wasm32'):
-      exit_with_error('wasm32 target is not compatible with -sMEMORY64')
-    diagnostics.warning('experimental', '-sMEMORY64 is still experimental. Many features may not work.')
+  if settings.MEMORY64 and options.target.startswith('wasm32'):
+    exit_with_error('wasm32 target is not compatible with -sMEMORY64')
 
   # Wasm SjLj cannot be used with Emscripten EH
   if settings.SUPPORT_LONGJMP == 'wasm':
@@ -935,6 +943,28 @@ def get_clang_output_extension(state):
     return '.s'
   else:
     return '.o'
+
+
+def filter_out_link_flags(args):
+  rtn = []
+
+  def is_link_flag(flag):
+    if flag in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
+      return True
+    return flag.startswith(('-l', '-L', '-Wl,', '-z'))
+
+  skip = False
+  for arg in args:
+    if skip:
+      skip = False
+      continue
+    if is_link_flag(arg):
+      continue
+    if arg == '-Xlinker':
+      skip = True
+      continue
+    rtn.append(arg)
+  return rtn
 
 
 @ToolchainProfiler.profile_block('compile inputs')
@@ -1016,13 +1046,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
 
   # In COMPILE_AND_LINK we need to compile source files too, but we also need to
   # filter out the link flags
-
-  def is_link_flag(flag):
-    if flag in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
-      return True
-    return flag.startswith(('-l', '-L', '-Wl,', '-z'))
-
-  compile_args = [a for a in compile_args if a and not is_link_flag(a)]
+  compile_args = filter_out_link_flags(compile_args)
   linker_inputs = []
   seen_names = {}
 

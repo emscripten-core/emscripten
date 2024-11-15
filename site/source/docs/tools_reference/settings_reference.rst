@@ -1166,8 +1166,6 @@ Emit instructions for the new Wasm exception handling proposal with exnref,
 which was adopted on Oct 2023. The implementation of the new proposal is
 still in progress and this feature is currently experimental.
 
-.. note:: Applicable during both linking and compilation
-
 Default value: false
 
 .. _nodejs_catch_exit:
@@ -3299,7 +3297,9 @@ Default value: true
 RUNTIME_DEBUG
 =============
 
-If true, add tracing to core runtime functions.
+If non-zero, add tracing to core runtime functions.  Can be set to 2 for
+extra tracing (for example, tracing that occurs on each turn of the event
+loop or each user callback, which can flood the console).
 This setting is enabled by default if any of the following debugging settings
 are enabled:
 - PTHREADS_DEBUG
@@ -3313,7 +3313,7 @@ are enabled:
 - SOCKET_DEBUG
 - FETCH_DEBUG
 
-Default value: false
+Default value: 0
 
 .. _legacy_runtime:
 

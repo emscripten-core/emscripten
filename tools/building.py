@@ -348,7 +348,7 @@ def js_optimizer(filename, passes):
 def acorn_optimizer(filename, passes, extra_info=None, return_output=False, worker_js=False):
   optimizer = path_from_root('tools/acorn-optimizer.mjs')
   original_filename = filename
-  if extra_info is not None:
+  if extra_info is not None and not shared.SKIP_SUBPROCS:
     temp_files = shared.get_temp_files()
     temp = temp_files.get('.js', prefix='emcc_acorn_info_').name
     shutil.copyfile(filename, temp)
@@ -366,6 +366,9 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False, work
   if settings.VERBOSE:
     cmd += ['--verbose']
   if return_output:
+    shared.print_compiler_stage(cmd)
+    if shared.SKIP_SUBPROCS:
+      return ''
     return check_call(cmd, stdout=PIPE).stdout
 
   acorn_optimizer.counter += 1
@@ -375,6 +378,9 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False, work
   output_file = basename + '.jso%d.js' % acorn_optimizer.counter
   shared.get_temp_files().note(output_file)
   cmd += ['-o', output_file]
+  shared.print_compiler_stage(cmd)
+  if shared.SKIP_SUBPROCS:
+    return output_file
   check_call(cmd)
   save_intermediate(output_file, '%s.js' % passes[0])
   return output_file
@@ -593,8 +599,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/dyncall-externs.js')]
 
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
-  # Keep in sync with ecmaVersion in tools/acorn-optimizer.mjs
-  args += ['--language_in', 'ECMASCRIPT_2021']
+  args += ['--language_in', 'UNSTABLE']
   # We do transpilation using babel
   args += ['--language_out', 'NO_TRANSPILE']
   # Tell closure never to inject the 'use strict' directive.
@@ -781,6 +786,9 @@ def metadce(js_file, wasm_file, debug_info, last):
   extra_info = '{ "exports": [' + ','.join(f'["{asmjs_mangle(x)}", "{x}"]' for x in exports) + ']}'
 
   txt = acorn_optimizer(js_file, ['emitDCEGraph', '--no-print'], return_output=True, extra_info=extra_info)
+  if shared.SKIP_SUBPROCS:
+    # The next steps depend on the output from this step, so we can't do them if we aren't actually running.
+    return js_file
   graph = json.loads(txt)
   # ensure that functions expected to be exported to the outside are roots
   required_symbols = user_requested_exports.union(set(settings.SIDE_MODULE_IMPORTS))
@@ -808,6 +816,7 @@ def metadce(js_file, wasm_file, debug_info, last):
     'clock_res_get',
     'clock_time_get',
     'path_open',
+    'random_get',
   }
   for item in graph:
     if 'import' in item and item['import'][1] in WASI_IMPORTS:
@@ -1209,6 +1218,9 @@ def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, std
   if settings.GENERATE_SOURCE_MAP and outfile and tool in ['wasm-opt', 'wasm-emscripten-finalize']:
     cmd += [f'--input-source-map={infile}.map']
     cmd += [f'--output-source-map={outfile}.map']
+  shared.print_compiler_stage(cmd)
+  if shared.SKIP_SUBPROCS:
+    return ''
   ret = check_call(cmd, stdout=stdout).stdout
   if outfile:
     save_intermediate(outfile, '%s.wasm' % tool)

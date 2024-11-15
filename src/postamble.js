@@ -161,13 +161,6 @@ function run() {
     return;
   }
 
-#if STACK_OVERFLOW_CHECK
-#if PTHREADS
-  if (!ENVIRONMENT_IS_PTHREAD)
-#endif
-    stackCheckInit();
-#endif
-
 #if WASM_WORKERS
   if (ENVIRONMENT_IS_WASM_WORKER) {
 #if MODULARIZE
@@ -189,6 +182,10 @@ function run() {
     startWorker(Module);
     return;
   }
+#endif
+
+#if STACK_OVERFLOW_CHECK
+  stackCheckInit();
 #endif
 
   preRun();

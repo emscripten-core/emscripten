@@ -55,18 +55,13 @@ addToLibrary({
   },
 
   // Executes a wasm function call received via a postMessage.
+  $_wasmWorkerRunPostMessage__deps: ['$callUserCallback'],
   $_wasmWorkerRunPostMessage: (e) => {
     // '_wsc' is short for 'wasm call', trying to use an identifier name that
     // will never conflict with user code
-#if ENVIRONMENT_MAY_BE_NODE
-    // In Node.js environment, message event 'e' containing the actual data sent,
-    // while in the browser environment it's contained by 'e.data'.
-    let data = ENVIRONMENT_IS_NODE ? e : e.data;
-#else
     let data = e.data;
-#endif
     let wasmCall = data['_wsc'];
-    wasmCall && getWasmTableEntry(wasmCall)(...data['x']);
+    wasmCall && callUserCallback(() => getWasmTableEntry(wasmCall)(...data['x']));
   },
 
   // src/postamble_minimal.js brings this symbol in to the build, and calls this
@@ -85,6 +80,11 @@ addToLibrary({
 #if ASSERTIONS
     assert(m['sb'] % 16 == 0);
     assert(m['sz'] % 16 == 0);
+#endif
+
+#if !MINIMAL_RUNTIME && isSymbolNeeded('$noExitRuntime')
+    // Wasm workers basically never exit their runtime
+    noExitRuntime = 1;
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
@@ -108,6 +108,12 @@ addToLibrary({
     // Fix up stack base. (TLS frame is created at the bottom address end of the stack)
     // See https://github.com/emscripten-core/emscripten/issues/16496
     ___set_stack_limits(_emscripten_stack_get_base(), _emscripten_stack_get_end());
+#endif
+
+#if STACK_OVERFLOW_CHECK
+    // Write the stack cookie last, after we have set up the proper bounds and
+    // current position of the stack.
+    writeStackCookie();
 #endif
 
 #if AUDIO_WORKLET
@@ -137,12 +143,14 @@ addToLibrary({
   // https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/script-src#unsafe_eval_expressions
   $_wasmWorkerBlobUrl: "URL.createObjectURL(new Blob(['onmessage=function(d){onmessage=null;d=d.data;{{{ captureModuleArg() }}}{{{ instantiateWasm() }}}importScripts(d.js);{{{ instantiateModule() }}}d.wasm=d.mem=d.js=0;}'],{type:'application/javascript'}))",
 #endif
-
   _emscripten_create_wasm_worker__deps: [
     '$_wasmWorkers', '$_wasmWorkersID',
     '$_wasmWorkerAppendToQueue', '$_wasmWorkerRunPostMessage',
 #if WASM_WORKERS == 2
     '$_wasmWorkerBlobUrl',
+#endif
+#if ASSERTIONS
+    'emscripten_has_threading_support',
 #endif
   ],
   _emscripten_create_wasm_worker__postset: `
@@ -156,6 +164,12 @@ if (ENVIRONMENT_IS_WASM_WORKER
   addEventListener("message", _wasmWorkerAppendToQueue);
 }`,
   _emscripten_create_wasm_worker: (stackLowestAddress, stackSize) => {
+#if ASSERTIONS
+    if (!_emscripten_has_threading_support()) {
+      err('create_wasm_worker: environment does not support SharedArrayBuffer, wasm workers are not available');
+      return 0;
+    }
+#endif
     let worker = _wasmWorkers[_wasmWorkersID] = new Worker(
 #if WASM_WORKERS == 2
       // WASM_WORKERS=2 mode embeds .ww.js file contents into the main .js file
@@ -195,6 +209,12 @@ if (ENVIRONMENT_IS_WASM_WORKER
 #endif
     });
     worker.onmessage = _wasmWorkerRunPostMessage;
+#if ENVIRONMENT_MAY_BE_NODE
+    if (ENVIRONMENT_IS_NODE) {
+      /** @suppress {checkTypes} */
+      worker.on('message', (msg) => worker.onmessage({ data: msg }));
+    }
+#endif
     return _wasmWorkersID++;
   },
 
@@ -212,9 +232,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_WASM_WORKER, 'emscripten_terminate_all_wasm_workers() cannot be called from a Wasm Worker: only the main browser thread has visibility to terminate all Workers!');
 #endif
-    Object.values(_wasmWorkers).forEach((worker) => {
-      worker.terminate();
-    });
+    Object.values(_wasmWorkers).forEach((worker) => worker.terminate());
     _wasmWorkers = {};
   },
 

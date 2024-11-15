@@ -25,7 +25,6 @@ var Module = moduleArg;
 #elif USE_CLOSURE_COMPILER
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
 var /** @type {{
-  canvas: HTMLCanvasElement,
   ctx: Object,
 }}
  */ Module;
@@ -84,7 +83,7 @@ var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined
 var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT === 'web' }}};
 #if PTHREADS && ENVIRONMENT_MAY_BE_NODE
 // node+pthreads always supports workers; detect which we are at runtime
-var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function';
+var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != 'undefined';
 #else
 var ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT === 'worker' }}};
 #endif
@@ -93,22 +92,16 @@ var ENVIRONMENT_IS_SHELL = {{{ ENVIRONMENT === 'shell' }}};
 #else // ENVIRONMENT
 // Attempt to auto-detect the environment
 var ENVIRONMENT_IS_WEB = typeof window == 'object';
-var ENVIRONMENT_IS_WORKER = typeof importScripts == 'function';
+var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != 'undefined';
 // N.b. Electron.js environment is simultaneously a NODE-environment, but
 // also a web environment.
-var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string';
+var ENVIRONMENT_IS_NODE = typeof process == 'object' && typeof process.versions == 'object' && typeof process.versions.node == 'string' && process.type != 'renderer';
 #if AUDIO_WORKLET
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER && !ENVIRONMENT_IS_AUDIO_WORKLET;
 #else
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 #endif
 #endif // ENVIRONMENT
-
-#if ASSERTIONS
-if (Module['ENVIRONMENT']) {
-  throw new Error('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)');
-}
-#endif
 
 #if PTHREADS
 // Three configurations we can be running in:
@@ -118,7 +111,7 @@ if (Module['ENVIRONMENT']) {
 
 // The way we signal to a worker that it is hosting a pthread is to construct
 // it with a specific name.
-var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name == 'em-pthread';
+var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name?.startsWith('em-pthread');
 
 #if MODULARIZE && ASSERTIONS
 if (ENVIRONMENT_IS_PTHREAD) {
@@ -136,8 +129,12 @@ if (ENVIRONMENT_IS_NODE) {
   // TODO: Swap all `require()`'s with `import()`'s?
 #if EXPORT_ES6 && ENVIRONMENT_MAY_BE_WEB
   const { createRequire } = await import('module');
+  let dirname = import.meta.url;
+  if (dirname.startsWith("data:")) {
+    dirname = '/';
+  }
   /** @suppress{duplicate} */
-  var require = createRequire(import.meta.url);
+  var require = createRequire(dirname);
 #endif
 
 #if PTHREADS || WASM_WORKERS
@@ -235,7 +232,9 @@ if (ENVIRONMENT_IS_NODE) {
   // EXPORT_ES6 + ENVIRONMENT_IS_NODE always requires use of import.meta.url,
   // since there's no way getting the current absolute path of the module when
   // support for that is not available.
-  scriptDirectory = require('url').fileURLToPath(new URL('./', import.meta.url)); // includes trailing slash
+  if (!import.meta.url.startsWith('data:')) {
+    scriptDirectory = nodePath.dirname(require('url').fileURLToPath(import.meta.url)) + '/';
+  }
 #else
   scriptDirectory = __dirname + '/';
 #endif
@@ -298,7 +297,7 @@ if (ENVIRONMENT_IS_NODE) {
 if (ENVIRONMENT_IS_SHELL) {
 
 #if ENVIRONMENT && ASSERTIONS
-  if ((typeof process == 'object' && typeof require === 'function') || typeof window == 'object' || typeof importScripts == 'function') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+  if ((typeof process == 'object' && typeof require === 'function') || typeof window == 'object' || typeof WorkerGlobalScope != 'undefined') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -317,20 +316,13 @@ if (ENVIRONMENT_IS_SHELL) {
     });
   };
 
-  if (typeof clearTimeout == 'undefined') {
-    globalThis.clearTimeout = (id) => {};
-  }
+  globalThis.clearTimeout ??= (id) => {};
 
-  if (typeof setTimeout == 'undefined') {
-    // spidermonkey lacks setTimeout but we use it above in readAsync.
-    globalThis.setTimeout = (f) => (typeof f == 'function') ? f() : abort();
-  }
+  // spidermonkey lacks setTimeout but we use it above in readAsync.
+  globalThis.setTimeout ??= (f) => (typeof f == 'function') ? f() : abort();
 
-  if (typeof scriptArgs != 'undefined') {
-    arguments_ = scriptArgs;
-  } else if (typeof arguments != 'undefined') {
-    arguments_ = arguments;
-  }
+  // v8 uses `arguments_` whereas spidermonkey uses `scriptArgs`
+  arguments_ = globalThis.arguments || globalThis.scriptArgs;
 
   if (typeof quit == 'function') {
     quit_ = (status, toThrow) => {
@@ -359,9 +351,9 @@ if (ENVIRONMENT_IS_SHELL) {
 
   if (typeof print != 'undefined') {
     // Prefer to use print/printErr where they exist, as they usually work better.
-    if (typeof console == 'undefined') console = /** @type{!Console} */({});
+    globalThis.console ??= /** @type{!Console} */({});
     console.log = /** @type{!function(this:Console, ...*): undefined} */ (print);
-    console.warn = console.error = /** @type{!function(this:Console, ...*): undefined} */ (typeof printErr != 'undefined' ? printErr : print);
+    console.warn = console.error = /** @type{!function(this:Console, ...*): undefined} */ (globalThis.printErr ?? print);
   }
 
 #if WASM == 2
@@ -405,7 +397,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   }
 
 #if ENVIRONMENT && ASSERTIONS
-  if (!(typeof window == 'object' || typeof importScripts == 'function')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+  if (!(typeof window == 'object' || typeof WorkerGlobalScope != 'undefined')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 
 #if PTHREADS && ENVIRONMENT_MAY_BE_NODE

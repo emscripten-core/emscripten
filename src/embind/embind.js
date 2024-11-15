@@ -57,16 +57,8 @@ var LibraryEmbind = {
     // TODO: do we need a deleteObject here?  write a test where
     // emval is passed into JS via an interface
   }`,
-  $init_embind__deps: [
-    '$getInheritedInstanceCount', '$getLiveInheritedInstances',
-    '$flushPendingDeletes', '$setDelayFunction'],
-  $init_embind__postset: 'init_embind();',
-  $init_embind: () => {
-    Module['getInheritedInstanceCount'] = getInheritedInstanceCount;
-    Module['getLiveInheritedInstances'] = getLiveInheritedInstances;
-    Module['flushPendingDeletes'] = flushPendingDeletes;
-    Module['setDelayFunction'] = setDelayFunction;
-  },
+  $EmValOptionalType__deps: ['$EmValType'],
+  $EmValOptionalType: '=Object.assign({optional: true}, EmValType);',
 
   $throwUnboundTypeError__deps: ['$registeredTypes', '$typeDependencies', '$UnboundTypeError', '$getTypeName'],
   $throwUnboundTypeError: (message, types) => {
@@ -132,17 +124,14 @@ var LibraryEmbind = {
       // We are exposing a function with the same name as an existing function. Create an overload table and a function selector
       // that routes between the two.
       ensureOverloadTable(Module, name, name);
-      if (Module.hasOwnProperty(numArguments)) {
+      if (Module[name].overloadTable.hasOwnProperty(numArguments)) {
         throwBindingError(`Cannot register multiple overloads of a function with the same number of arguments (${numArguments})!`);
       }
       // Add the new function into the overload table.
       Module[name].overloadTable[numArguments] = value;
-    }
-    else {
+    } else {
       Module[name] = value;
-      if (undefined !== numArguments) {
-        Module[name].numArguments = numArguments;
-      }
+      Module[name].argCount = numArguments;
     }
   },
 
@@ -155,8 +144,7 @@ var LibraryEmbind = {
     // If there's an overload table for this symbol, replace the symbol in the overload table instead.
     if (undefined !== Module[name].overloadTable && undefined !== numArguments) {
       Module[name].overloadTable[numArguments] = value;
-    }
-    else {
+    } else {
       Module[name] = value;
       Module[name].argCount = numArguments;
     }
@@ -217,7 +205,6 @@ var LibraryEmbind = {
   },
 
   // raw pointer -> instance
-  $registeredInstances__deps: ['$init_embind'],
   $registeredInstances: {},
 
   $getBasestPointer__deps: ['$throwBindingError'],
@@ -279,7 +266,7 @@ var LibraryEmbind = {
   $registerType__docs: '/** @param {Object=} options */',
   $registerType: function(rawType, registeredInstance, options = {}) {
 #if ASSERTIONS
-    if (!('argPackAdvance' in registeredInstance)) {
+    if (registeredInstance.argPackAdvance === undefined) {
       throw new TypeError('registerType registeredInstance requires argPackAdvance');
     }
 #endif
@@ -687,9 +674,9 @@ var LibraryEmbind = {
     __embind_register_emval(rawType);
   },
 
-  _embind_register_optional__deps: ['_embind_register_emval'],
+  _embind_register_optional__deps: ['$registerType', '$EmValOptionalType'],
   _embind_register_optional: (rawOptionalType, rawType) => {
-    __embind_register_emval(rawOptionalType);
+    registerType(rawOptionalType, EmValOptionalType);
   },
 
   _embind_register_memory_view__deps: ['$readLatin1String', '$registerType'],
@@ -779,6 +766,10 @@ var LibraryEmbind = {
 #if ASYNCIFY
     '$Asyncify',
 #endif
+#if ASSERTIONS
+    '$getRequiredArgCount',
+    '$checkArgCount',
+#endif
   ],
   $craftInvokerFunction: function(humanName, argTypes, classType, cppInvokerFunc, cppTargetFunc, /** boolean= */ isAsync) {
     // humanName: a human-readable string name for the function to be generated.
@@ -821,15 +812,18 @@ var LibraryEmbind = {
 
     var returns = (argTypes[0].name !== "void");
 
-#if DYNAMIC_EXECUTION == 0 && !EMBIND_AOT
     var expectedArgCount = argCount - 2;
+#if ASSERTIONS
+    var minArgs = getRequiredArgCount(argTypes);
+#endif
+#if DYNAMIC_EXECUTION == 0 && !EMBIND_AOT
     var argsWired = new Array(expectedArgCount);
     var invokerFuncArgs = [];
     var destructors = [];
     var invokerFn = function(...args) {
-      if (args.length !== expectedArgCount) {
-        throwBindingError(`function ${humanName} called with ${args.length} arguments, expected ${expectedArgCount}`);
-      }
+#if ASSERTIONS
+      checkArgCount(args.length, minArgs, expectedArgCount, humanName, throwBindingError);
+#endif
 #if EMSCRIPTEN_TRACING
       Module.emscripten_trace_enter_context(`embind::${humanName}`);
 #endif
@@ -901,6 +895,9 @@ var LibraryEmbind = {
       }
     }
   }
+#if ASSERTIONS
+  closureArgs.push(checkArgCount, minArgs, expectedArgCount);
+#endif
 
 #if EMBIND_AOT
   var signature = createJsInvokerSignature(argTypes, isClassMethodFunc, returns, isAsync);
@@ -1510,7 +1507,7 @@ var LibraryEmbind = {
     // at run-time, not build-time.
     finalizationRegistry = new FinalizationRegistry((info) => {
 #if ASSERTIONS
-      console.warn(info.leakWarning.stack.replace(/^Error: /, ''));
+      console.warn(info.leakWarning);
 #endif
       releaseClassHandle(info.$$);
     });
@@ -1526,13 +1523,14 @@ var LibraryEmbind = {
         // This is more useful than the empty stacktrace of `FinalizationRegistry`
         // callback.
         var cls = $$.ptrType.registeredClass;
-        info.leakWarning = new Error(`Embind found a leaked C++ instance ${cls.name} <${ptrToString($$.ptr)}>.\n` +
+        var err = new Error(`Embind found a leaked C++ instance ${cls.name} <${ptrToString($$.ptr)}>.\n` +
         "We'll free it automatically in this case, but this functionality is not reliable across various environments.\n" +
         "Make sure to invoke .delete() manually once you're done with the instance instead.\n" +
         "Originally allocated"); // `.stack` will add "at ..." after this sentence
         if ('captureStackTrace' in Error) {
-          Error.captureStackTrace(info.leakWarning, RegisteredPointer_fromWireType);
+          Error.captureStackTrace(err, RegisteredPointer_fromWireType);
         }
+        info.leakWarning = err.stack.replace(/^Error: /, '');
 #endif
         finalizationRegistry.register(handle, info, handle);
       }
@@ -1569,6 +1567,8 @@ var LibraryEmbind = {
     '$releaseClassHandle',
     '$throwBindingError',
     '$detachFinalizer',
+    '$flushPendingDeletes',
+    '$delayFunction',
   ],
   $init_ClassHandle: () => {
     Object.assign(ClassHandle.prototype, {
@@ -2265,9 +2265,9 @@ var LibraryEmbind = {
   $char_9: '9'.charCodeAt(0),
   $makeLegalFunctionName__deps: ['$char_0', '$char_9'],
   $makeLegalFunctionName: (name) => {
-    if (undefined === name) {
-      return '_unknown';
-    }
+#if ASSERTIONS
+    assert(typeof name === 'string');
+#endif
     name = name.replace(/[^a-zA-Z0-9_]/g, '$');
     var f = name.charCodeAt(0);
     if (f >= char_0 && f <= char_9) {

@@ -20,14 +20,15 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.request import urlopen
 
+import common
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, EMTEST_BROWSER, Reporting
 from common import create_file, parameterized, ensure_dir, disabled, test_file, WEBIDL_BINDER
 from common import read_file, also_with_minimal_runtime, EMRUN, no_wasm64, no_2gb, no_4gb
-from common import requires_wasm2js, also_with_wasm2js, parameterize
+from common import requires_wasm2js, also_with_wasm2js, parameterize, find_browser_test_file
 from tools import shared
 from tools import ports
 from tools import utils
-from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE
+from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
 from tools.utils import delete_dir
 
 
@@ -82,6 +83,8 @@ def also_with_wasmfs(f):
 
   @wraps(f)
   def metafunc(self, wasmfs, *args, **kwargs):
+    if DEBUG:
+      print('parameterize:wasmfs=%d' % wasmfs)
     if wasmfs:
       self.set_setting('WASMFS')
       self.emcc_args = self.emcc_args.copy() + ['-DWASMFS']
@@ -100,12 +103,25 @@ def also_with_proxying(f):
 
   @wraps(f)
   def metafunc(self, proxied, *args, **kwargs):
+    if DEBUG:
+      print('parameterize:proxied=%d' % proxied)
     self.proxied = proxied
     f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'proxied': (True,)})
   return metafunc
+
+
+def proxied(f):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, *args, **kwargs):
+    self.proxied = True
+    return f(self, *args, **kwargs)
+
+  return decorated
 
 
 # This is similar to @core.no_wasmfs, but it disable WasmFS and runs the test
@@ -231,6 +247,57 @@ class browser(BrowserCore):
     if not is_chrome():
       self.skipTest(f'Current browser ({EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
     super(browser, self).require_jspi()
+
+  def post_manual_reftest(self):
+    assert os.path.exists('reftest.js')
+    shutil.copy(test_file('browser_reporting.js'), '.')
+    html = read_file('test.html')
+    html = html.replace('</body>', '''
+<script src="browser_reporting.js"></script>
+<script src="reftest.js"></script>
+<script>
+var windowClose = window.close;
+window.close = () => {
+  // wait for rafs to arrive and the screen to update before reftesting
+  setTimeout(() => {
+    doReftest();
+    setTimeout(windowClose, 5000);
+  }, 1000);
+};
+</script>
+</body>''')
+    create_file('test.html', html)
+
+  def make_reftest(self, expected):
+    # make sure the pngs used here have no color correction, using e.g.
+    #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
+    shutil.copy(expected, 'expected.png')
+    create_file('reftest.js', f'''
+      const reftestRebaseline = {common.EMTEST_REBASELINE};
+    ''' + read_file(test_file('reftest.js')))
+
+  def reftest(self, filename, reference, reference_slack=0, *args, **kwargs):
+    """Special case of `btest` that uses reference image
+    """
+    reference = find_browser_test_file(reference)
+    assert 'expected' not in kwargs
+    expected = [str(i) for i in range(0, reference_slack + 1)]
+    self.make_reftest(reference)
+    if self.proxied:
+      assert 'post_build' not in kwargs
+      kwargs['post_build'] = self.post_manual_reftest
+      create_file('fakereftest.js', 'var reftestUnblock = () => {}; var reftestBlock = () => {};')
+      kwargs['args'] += ['--pre-js', 'fakereftest.js']
+    else:
+      kwargs.setdefault('args', [])
+      kwargs['args'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
+
+    try:
+      return self.btest(filename, expected=expected, *args, **kwargs)
+    finally:
+      if common.EMTEST_REBASELINE and os.path.exists('actual.png'):
+        print(f'overwriting expected image: {reference}')
+        self.run_process('pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB actual.png'.split() + [reference])
 
   def test_sdl1_in_emscripten_nonstrict_mode(self):
     if 'EMCC_STRICT' in os.environ and int(os.environ['EMCC_STRICT']):
@@ -442,7 +509,7 @@ If manually bisecting:
     create_file('file.txt', 'Hello!')
 
     self.compile_btest('browser/test_manual_download_data.c', ['-sEXIT_RUNTIME', '-o', 'out.js', '--preload-file', 'file.txt@/file.txt'] + args)
-    shutil.copyfile(test_file('browser/test_manual_download_data.html'), 'test_manual_download_data.html')
+    shutil.copy(test_file('browser/test_manual_download_data.html'), '.')
 
     # Move .data file out of server root to ensure that getPreloadedPackage is actually used
     os.mkdir('test')
@@ -758,7 +825,7 @@ If manually bisecting:
   @also_with_wasmfs
   def test_sdl_image(self):
     # load an image file, get pixel data. Also O2 coverage for --preload-file
-    shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
+    shutil.copy(test_file('screenshot.jpg'), '.')
     src = test_file('browser/test_sdl_image.c')
     for dest, dirname, basename in [('screenshot.jpg', '/', 'screenshot.jpg'),
                                     ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
@@ -769,7 +836,7 @@ If manually bisecting:
 
   @also_with_wasmfs
   def test_sdl_image_jpeg(self):
-    shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpeg')
+    shutil.copy(test_file('screenshot.jpg'), 'screenshot.jpeg')
     self.btest_exit('test_sdl_image.c', args=[
       '--preload-file', 'screenshot.jpeg',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"', '--use-preload-plugins',
@@ -777,7 +844,7 @@ If manually bisecting:
     ])
 
   def test_sdl_image_webp(self):
-    shutil.copyfile(test_file('screenshot.webp'), 'screenshot.webp')
+    shutil.copy(test_file('screenshot.webp'), '.')
     self.btest_exit('test_sdl_image.c', args=[
       '--preload-file', 'screenshot.webp',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.webp"', '--use-preload-plugins',
@@ -788,8 +855,8 @@ If manually bisecting:
   @also_with_proxying
   def test_sdl_image_prepare(self):
     # load an image file, get pixel data.
-    shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
-    self.reftest('test_sdl_image_prepare.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'], manually_trigger_reftest=True)
+    shutil.copy(test_file('screenshot.jpg'), 'screenshot.not')
+    self.reftest('test_sdl_image_prepare.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
   @parameterized({
     '': ([],),
@@ -800,46 +867,46 @@ If manually bisecting:
   })
   def test_sdl_image_prepare_data(self, args):
     # load an image file, get pixel data.
-    shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
-    self.reftest('test_sdl_image_prepare_data.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'] + args, manually_trigger_reftest=True)
+    shutil.copy(test_file('screenshot.jpg'), 'screenshot.not')
+    self.reftest('test_sdl_image_prepare_data.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-lSDL', '-lGL'] + args)
 
   def test_sdl_image_must_prepare(self):
     # load an image file, get pixel data.
-    shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
-    self.reftest('test_sdl_image_must_prepare.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.jpg', '-lSDL', '-lGL'], manually_trigger_reftest=True)
+    shutil.copy(test_file('screenshot.jpg'), 'screenshot.jpg')
+    self.reftest('test_sdl_image_must_prepare.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.jpg', '-lSDL', '-lGL'])
 
   def test_sdl_stb_image(self):
     # load an image file, get pixel data.
-    shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
+    shutil.copy(test_file('screenshot.jpg'), 'screenshot.not')
     self.reftest('test_sdl_stb_image.c', 'screenshot.jpg', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
   def test_sdl_stb_image_bpp(self):
     # load grayscale image without alpha
-    shutil.copyfile(test_file('browser/test_sdl-stb-bpp1.png'), 'screenshot.not')
+    shutil.copy(test_file('browser/test_sdl-stb-bpp1.png'), 'screenshot.not')
     self.reftest('test_sdl_stb_image.c', 'test_sdl-stb-bpp1.png', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
     # load grayscale image with alpha
     self.clear()
-    shutil.copyfile(test_file('browser/test_sdl-stb-bpp2.png'), 'screenshot.not')
+    shutil.copy(test_file('browser/test_sdl-stb-bpp2.png'), 'screenshot.not')
     self.reftest('test_sdl_stb_image.c', 'test_sdl-stb-bpp2.png', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
     # load RGB image
     self.clear()
-    shutil.copyfile(test_file('browser/test_sdl-stb-bpp3.png'), 'screenshot.not')
+    shutil.copy(test_file('browser/test_sdl-stb-bpp3.png'), 'screenshot.not')
     self.reftest('test_sdl_stb_image.c', 'test_sdl-stb-bpp3.png', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
     # load RGBA image
     self.clear()
-    shutil.copyfile(test_file('browser/test_sdl-stb-bpp4.png'), 'screenshot.not')
+    shutil.copy(test_file('browser/test_sdl-stb-bpp4.png'), 'screenshot.not')
     self.reftest('test_sdl_stb_image.c', 'test_sdl-stb-bpp4.png', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
   def test_sdl_stb_image_data(self):
     # load an image file, get pixel data.
-    shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
+    shutil.copy(test_file('screenshot.jpg'), 'screenshot.not')
     self.reftest('test_sdl_stb_image_data.c', 'screenshot.jpg', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL'])
 
   def test_sdl_stb_image_cleanup(self):
-    shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
+    shutil.copy(test_file('screenshot.jpg'), 'screenshot.not')
     self.btest_exit('test_sdl_stb_image_cleanup.c', args=['-sSTB_IMAGE', '--preload-file', 'screenshot.not', '-lSDL', '-lGL', '--memoryprofiler'])
 
   @parameterized({
@@ -850,27 +917,10 @@ If manually bisecting:
   def test_sdl_canvas(self, args):
     self.btest_exit('test_sdl_canvas.c', args=['-sLEGACY_GL_EMULATION', '-lSDL', '-lGL'] + args)
 
-  def post_manual_reftest(self):
-    assert os.path.exists('reftest.js')
-    html = read_file('test.html')
-    html = html.replace('</body>', '''
-<script src="reftest.js"/>
-<script>
-var windowClose = window.close;
-window.close = () => {
-  // wait for rafs to arrive and the screen to update before reftesting
-  setTimeout(() => {
-    doReftest();
-    setTimeout(windowClose, 5000);
-  }, 1000);
-};
-</script>
-</body>''')
-    create_file('test.html', html)
-
+  @proxied
   def test_sdl_canvas_proxy(self):
     create_file('data.txt', 'datum')
-    self.reftest('test_sdl_canvas_proxy.c', 'test_sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt', '-lSDL', '-lGL'], manual_reference=True, post_build=self.post_manual_reftest)
+    self.reftest('test_sdl_canvas_proxy.c', 'test_sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_glgears_proxy_jstarget(self):
@@ -901,7 +951,7 @@ window.close = () => {
     '': (False,),
     'delay': (True,)
   })
-  def test_sdl_key(self, delay, async_, defines):
+  def test_sdl_key(self, defines, async_, delay):
     if delay:
       settimeout_start = 'setTimeout(function() {'
       settimeout_end = '}, 1);'
@@ -924,7 +974,7 @@ window.close = () => {
     self.btest_exit('test_sdl_key.c', 223092870, args=defines + async_ + ['--pre-js', test_file('browser/fake_events.js'), '--pre-js=pre.js', '-lSDL', '-lGL'])
 
   def test_sdl_key_proxy(self):
-    shutil.copyfile(test_file('browser/fake_events.js'), 'fake_events.js')
+    shutil.copy(test_file('browser/fake_events.js'), '.')
     create_file('pre.js', '''
       Module.postRun = () => {
         function doOne() {
@@ -940,8 +990,8 @@ window.close = () => {
       html = html.replace('</body>', '''
 <script src='fake_events.js'></script>
 <script>
-simulateKeyDown(1250);simulateKeyDown(38);simulateKeyUp(38);simulateKeyUp(1250); // alt, up
-simulateKeyDown(1248);simulateKeyDown(1249);simulateKeyDown(40);simulateKeyUp(40);simulateKeyUp(1249);simulateKeyUp(1248); // ctrl, shift, down
+simulateKeyDown(18);simulateKeyDown(38);simulateKeyUp(38);simulateKeyUp(18); // alt, up
+simulateKeyDown(17);simulateKeyDown(16);simulateKeyDown(40);simulateKeyUp(40);simulateKeyUp(16);simulateKeyUp(17); // ctrl, shift, down
 simulateKeyDown(37);simulateKeyUp(37); // left
 simulateKeyDown(39);simulateKeyUp(39); // right
 simulateKeyDown(65);simulateKeyUp(65); // a
@@ -951,7 +1001,7 @@ simulateKeyDown(100);simulateKeyUp(100); // trigger the end
 </body>''')
       create_file('test.html', html)
 
-    self.btest_exit('test_sdl_key_proxy.c', 223092870, args=['--proxy-to-worker', '--pre-js', 'pre.js', '-lSDL', '-lGL'], post_build=post)
+    self.btest_exit('test_sdl_key_proxy.c', 223092870, args=['--proxy-to-worker', '--pre-js', 'pre.js', '-lSDL', '-lGL', '-sRUNTIME_DEBUG'], post_build=post)
 
   def test_canvas_focus(self):
     self.btest_exit('canvas_focus.c')
@@ -963,21 +1013,21 @@ simulateKeyDown(100);simulateKeyUp(100); // trigger the end
 <script src='fake_events.js'></script>
 <script>
 // Send 'A'.  The corresonding keypress event will not be prevented.
-simulateKeyDown(65);
-simulateKeyUp(65);
+simulateKeyDown(65, 'a', 'KeyA');
+simulateKeyUp(65, 'a', 'KeyA');
 
 // Send backspace.  The corresonding keypress event *will* be prevented due to proxyClient.js.
-simulateKeyDown(8);
-simulateKeyUp(8);
+simulateKeyDown(8, 'Backspace', 'Backspace');
+simulateKeyUp(8, 'Backspace', 'Backspace');
 
-simulateKeyDown(100);
-simulateKeyUp(100);
+simulateKeyDown(100, undefined, 'Numpad4');
+simulateKeyUp(100, undefined, 'Numpad4');
 </script>
 </body>''')
 
       create_file('test.html', html)
 
-    shutil.copyfile(test_file('browser/fake_events.js'), 'fake_events.js')
+    shutil.copy(test_file('browser/fake_events.js'), '.')
     self.btest_exit('browser/test_keydown_preventdefault_proxy.c', 300, args=['--proxy-to-worker'], post_build=post)
 
   def test_sdl_text(self):
@@ -1211,7 +1261,7 @@ simulateKeyUp(100);
     # Copy common code file to temporary directory
     filepath = test_file('browser/test_webgl_context_attributes_common.c')
     temp_filepath = os.path.basename(filepath)
-    shutil.copyfile(filepath, temp_filepath)
+    shutil.copy(filepath, temp_filepath)
 
     # testAntiAliasing uses a window-sized buffer on the stack
     self.set_setting('STACK_SIZE', '1MB')
@@ -1380,9 +1430,9 @@ simulateKeyUp(100);
       os.mkdir('files')
     except OSError:
       pass
-    shutil.copyfile('file1.txt', Path('files/file1.txt'))
-    shutil.copyfile('file2.txt', Path('files/file2.txt'))
-    shutil.copyfile('file3.txt', Path('files/file3.txt'))
+    shutil.copy('file1.txt', 'files/'))
+    shutil.copy('file2.txt', 'files/'))
+    shutil.copy('file3.txt', 'files/'))
     out = subprocess.check_output([FILE_PACKAGER, 'files.data', '--preload', 'files/file1.txt', 'files/file2.txt', 'files/file3.txt'])
     create_file('files.js', out, binary=True)
     self.btest_exit('fs/test_lz4fs.cpp', 2, args=['--pre-js', 'files.js'])'''
@@ -1430,6 +1480,10 @@ simulateKeyUp(100);
                           test_file('browser/test_sdl_canvas_size.html'), '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
+  def test_sdl_gl_extensions(self):
+    self.btest_exit('test_sdl_gl_extensions.c', args=['-lSDL', '-lGL'])
+
+  @requires_graphics_hardware
   def test_sdl_gl_read(self):
     # SDL, OpenGL, readPixels
     self.btest_exit('test_sdl_gl_read.c', args=['-lSDL', '-lGL'])
@@ -1440,62 +1494,62 @@ simulateKeyUp(100);
 
   @requires_graphics_hardware
   def test_sdl_ogl(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('test_sdl_ogl.c', 'screenshot-gray-purple.png', reference_slack=1,
                  args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_ogl_regal(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('test_sdl_ogl.c', 'screenshot-gray-purple.png', reference_slack=1,
                  args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sUSE_REGAL', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL', '-lc++', '-lc++abi'])
 
   @requires_graphics_hardware
   def test_sdl_ogl_defaultmatrixmode(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('test_sdl_ogl_defaultMatrixMode.c', 'screenshot-gray-purple.png', reference_slack=1,
                  args=['--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_ogl_p(self):
     # Immediate mode with pointers
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('test_sdl_ogl_p.c', 'screenshot-gray.png', reference_slack=1,
                  args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_ogl_proc_alias(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('test_sdl_ogl_proc_alias.c', 'screenshot-gray-purple.png', reference_slack=1,
                  args=['-O2', '-g2', '-sINLINING_LIMIT', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-sGL_ENABLE_GET_PROC_ADDRESS', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_fog_simple(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('test_sdl_fog_simple.c', 'screenshot-fog-simple.png',
                  args=['-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_fog_negative(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('test_sdl_fog_negative.c', 'screenshot-fog-negative.png',
                  args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_fog_density(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('test_sdl_fog_density.c', 'screenshot-fog-density.png',
                  args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_fog_exp2(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('test_sdl_fog_exp2.c', 'screenshot-fog-exp2.png',
                  args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_fog_linear(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('test_sdl_fog_linear.c', 'screenshot-fog-linear.png', reference_slack=1,
                  args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins', '-lSDL', '-lGL'])
 
@@ -1534,7 +1588,11 @@ simulateKeyUp(100);
   def test_egl_createcontext_error(self):
     self.btest_exit('test_egl_createcontext_error.c', args=['-lEGL', '-lGL'])
 
-  def test_worker(self):
+  @parameterized({
+    '': ([False],),
+    'preload': ([True],),
+  })
+  def test_hello_world_worker(self, file_data):
     # Test running in a web worker
     create_file('file.dat', 'data for worker')
     create_file('main.html', '''
@@ -1552,13 +1610,12 @@ simulateKeyUp(100);
       </html>
     ''' % self.port)
 
-    for file_data in (1, 0):
-      cmd = [EMCC, test_file('hello_world_worker.cpp'), '-o', 'worker.js'] + self.get_emcc_args()
-      if file_data:
-        cmd += ['--preload-file', 'file.dat']
-      self.run_process(cmd)
-      self.assertExists('worker.js')
-      self.run_browser('main.html', '/report_result?hello from worker, and :' + ('data for w' if file_data else '') + ':')
+    cmd = [EMCC, test_file('hello_world_worker.c'), '-o', 'worker.js'] + self.get_emcc_args()
+    if file_data:
+      cmd += ['--preload-file', 'file.dat']
+    self.run_process(cmd)
+    self.assertExists('worker.js')
+    self.run_browser('main.html', '/report_result?hello from worker, and :' + ('data for w' if file_data else '') + ':')
 
     # code should run standalone too
     # To great memories >4gb we need the canary version of node
@@ -1682,7 +1739,7 @@ simulateKeyUp(100);
     'full_944': ('hello_world_gles_full_944.c',),
   })
   def test_glgears_animation(self, filename):
-    shutil.copyfile(test_file('browser/fake_events.js'), 'fake_events.js')
+    shutil.copy(test_file('browser/fake_events.js'), '.')
     args = ['-o', 'something.html',
             '-DHAVE_BUILTIN_SINCOS', '-sGL_TESTING', '-lGL', '-lglut',
             '--shell-file', test_file('hello_world_gles_shell.html')]
@@ -1723,11 +1780,11 @@ simulateKeyUp(100);
       basename = os.path.basename(program)
       args = ['-lGL', '-lEGL', '-lX11']
       if basename == 'CH10_MultiTexture.o':
-        shutil.copyfile(book_path('Chapter_10/MultiTexture/basemap.tga'), 'basemap.tga')
-        shutil.copyfile(book_path('Chapter_10/MultiTexture/lightmap.tga'), 'lightmap.tga')
+        shutil.copy(book_path('Chapter_10/MultiTexture/basemap.tga'), '.')
+        shutil.copy(book_path('Chapter_10/MultiTexture/lightmap.tga'), '.')
         args += ['--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga']
       elif basename == 'CH13_ParticleSystem.o':
-        shutil.copyfile(book_path('Chapter_13/ParticleSystem/smoke.tga'), 'smoke.tga')
+        shutil.copy(book_path('Chapter_13/ParticleSystem/smoke.tga'), '.')
         args += ['--preload-file', 'smoke.tga', '-O2'] # test optimizations and closure here as well for more coverage
 
       self.reftest(program, book_path(basename.replace('.o', '.png')), args=args)
@@ -1739,9 +1796,9 @@ simulateKeyUp(100);
     'full_es3': (['-sFULL_ES3'],)
   })
   def test_gles2_emulation(self, args):
-    shutil.copyfile(test_file('third_party/glbook/Chapter_10/MultiTexture/basemap.tga'), 'basemap.tga')
-    shutil.copyfile(test_file('third_party/glbook/Chapter_10/MultiTexture/lightmap.tga'), 'lightmap.tga')
-    shutil.copyfile(test_file('third_party/glbook/Chapter_13/ParticleSystem/smoke.tga'), 'smoke.tga')
+    shutil.copy(test_file('third_party/glbook/Chapter_10/MultiTexture/basemap.tga'), '.')
+    shutil.copy(test_file('third_party/glbook/Chapter_10/MultiTexture/lightmap.tga'), '.')
+    shutil.copy(test_file('third_party/glbook/Chapter_13/ParticleSystem/smoke.tga'), '.')
 
     for source, reference in [
       ('third_party/glbook/Chapter_2/Hello_Triangle/Hello_Triangle_orig.c', 'third_party/glbook/CH02_HelloTriangle.png'),
@@ -1787,7 +1844,7 @@ simulateKeyUp(100);
     setup()
     ensure_dir('sub')
     self.run_process([FILE_PACKAGER, 'sub/test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w'))
-    shutil.copyfile(Path('sub/test.data'), 'test.data')
+    shutil.copy(Path('sub/test.data'), '.')
     self.btest_exit('test_emscripten_async_load_script.c', args=['-sFORCE_FILESYSTEM'])
 
   def test_emscripten_api_infloop(self):
@@ -1795,7 +1852,7 @@ simulateKeyUp(100);
 
   @also_with_wasmfs
   def test_emscripten_fs_api(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png') # preloaded *after* run
+    shutil.copy(test_file('screenshot.png'), '.') # preloaded *after* run
     self.btest_exit('emscripten_fs_api_browser.c', assert_returncode=1, args=['-lSDL'])
 
   def test_emscripten_fs_api2(self):
@@ -1865,12 +1922,10 @@ simulateKeyUp(100);
   def test_glframebufferattachmentinfo(self):
     self.btest('glframebufferattachmentinfo.c', '1', args=['-lGLESv2', '-lEGL'])
 
-  @no_wasm64('TODO: LEGACY_GL_EMULATION + wasm64')
   @requires_graphics_hardware
   def test_sdl_glshader(self):
     self.reftest('test_sdl_glshader.c', 'test_sdl_glshader.png', args=['-O2', '--closure=1', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
-  @no_wasm64('TODO: LEGACY_GL_EMULATION + wasm64')
   @requires_graphics_hardware
   @also_with_proxying
   def test_sdl_glshader2(self):
@@ -1886,29 +1941,29 @@ simulateKeyUp(100);
   })
   @requires_graphics_hardware
   def test_gl_textures(self, args):
-    self.btest_exit('gl_textures.cpp', args=['-lGL', '-g', '-sSTACK_SIZE=1MB'] + args)
+    self.btest_exit('gl_textures.c', args=['-lGL', '-g', '-sSTACK_SIZE=1MB'] + args)
 
   @requires_graphics_hardware
   def test_gl_ps(self):
     # pointers and a shader
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('gl_ps.c', 'gl_ps.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1)
 
   @requires_graphics_hardware
   def test_gl_ps_packed(self):
     # packed data that needs to be strided
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('gl_ps_packed.c', 'gl_ps.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1)
 
   @requires_graphics_hardware
   def test_gl_ps_strides(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('gl_ps_strides.c', 'gl_ps_strides.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   @also_with_proxying
   def test_gl_ps_worker(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('gl_ps_worker.c', 'gl_ps.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1)
 
   @requires_graphics_hardware
@@ -1970,11 +2025,11 @@ simulateKeyUp(100);
   def test_cubegeom_pre3(self):
     self.reftest('third_party/cubegeom/cubegeom_pre3.c', 'third_party/cubegeom/cubegeom_pre2.png', args=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
+  @also_with_proxying
   @parameterized({
     '': ([],),
     'tracing': (['-sTRACE_WEBGL_CALLS'],),
   })
-  @also_with_proxying
   @requires_graphics_hardware
   def test_cubegeom(self, args):
     if self.proxied and args:
@@ -2128,7 +2183,7 @@ void *getBindBuffer() {
     self.reftest('test_sdl_create_rgb_surface_from.c', 'test_sdl_create_rgb_surface_from.png', args=['-lSDL', '-lGL'])
 
   def test_sdl_rotozoom(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('test_sdl_rotozoom.c', 'test_sdl_rotozoom.png', args=['--preload-file', 'screenshot.png', '--use-preload-plugins', '-lSDL', '-lGL'], reference_slack=3)
 
   def test_sdl_gfx_primitives(self):
@@ -2171,17 +2226,17 @@ void *getBindBuffer() {
 
   @requires_graphics_hardware
   def test_glbegin_points(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('glbegin_points.c', 'glbegin_points.png', args=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_s3tc(self):
-    shutil.copyfile(test_file('screenshot.dds'), 'screenshot.dds')
+    shutil.copy(test_file('screenshot.dds'), '.')
     self.reftest('s3tc.c', 's3tc.png', args=['--preload-file', 'screenshot.dds', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   def test_s3tc_ffp_only(self):
-    shutil.copyfile(test_file('screenshot.dds'), 'screenshot.dds')
+    shutil.copy(test_file('screenshot.dds'), '.')
     self.reftest('s3tc.c', 's3tc.png', args=['--preload-file', 'screenshot.dds', '-sLEGACY_GL_EMULATION', '-sGL_FFP_ONLY', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
@@ -2190,7 +2245,7 @@ void *getBindBuffer() {
     'subimage': (['-DTEST_TEXSUBIMAGE'],),
   })
   def test_anisotropic(self, args):
-    shutil.copyfile(test_file('browser/water.dds'), 'water.dds')
+    shutil.copy(test_file('browser/water.dds'), '.')
     self.reftest('test_anisotropic.c', 'test_anisotropic.png', reference_slack=2, args=['--preload-file', 'water.dds', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-Wno-incompatible-pointer-types'] + args)
 
   @requires_graphics_hardware
@@ -2725,11 +2780,11 @@ Module["preRun"] = () => {
     create_file('test.txt', 'emscripten')
     self.btest_exit('test_wget_data.c', args=['-O2', '-g2', '-sASYNCIFY'])
 
+  @also_with_wasm2js
   @parameterized({
     '': ([],),
     'es6': (['-sEXPORT_ES6'],),
   })
-  @also_with_wasm2js
   def test_locate_file(self, args):
     self.set_setting('EXIT_RUNTIME')
     create_file('src.c', r'''
@@ -2803,7 +2858,7 @@ Module["preRun"] = () => {
   })
   @requires_graphics_hardware
   def test_glfw_events(self, args):
-    self.btest('test_glfw_events.c', args=args + ['-lglfw', '-lGL'], expected='1')
+    self.btest_exit('test_glfw_events.c', args=args + ['-lglfw', '-lGL'])
 
   @requires_graphics_hardware
   def test_glfw3_hi_dpi_aware(self):
@@ -2813,7 +2868,7 @@ Module["preRun"] = () => {
   @also_with_wasm2js
   def test_sdl2_image(self):
     # load an image file, get pixel data. Also O2 coverage for --preload-file
-    shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
+    shutil.copy(test_file('screenshot.jpg'), '.')
 
     for dest, dirname, basename in [('screenshot.jpg', '/', 'screenshot.jpg'),
                                     ('screenshot.jpg@/assets/screenshot.jpg', '/assets', 'screenshot.jpg')]:
@@ -2827,7 +2882,7 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   def test_sdl2_image_jpeg(self):
-    shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpeg')
+    shutil.copy(test_file('screenshot.jpg'), 'screenshot.jpeg')
     self.btest_exit('test_sdl2_image.c', 600, args=[
       '--preload-file', 'screenshot.jpeg',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.jpeg"',
@@ -2837,8 +2892,8 @@ Module["preRun"] = () => {
   @also_with_wasmfs
   @requires_graphics_hardware
   def test_sdl2_image_formats(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
-    shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.jpg')
+    shutil.copy(test_file('screenshot.png'), '.')
+    shutil.copy(test_file('screenshot.jpg'), '.')
     self.btest_exit('test_sdl2_image.c', 512, args=[
       '--preload-file', 'screenshot.png',
       '-DSCREENSHOT_DIRNAME="/"', '-DSCREENSHOT_BASENAME="screenshot.png"', '-DNO_PRELOADED',
@@ -2930,7 +2985,7 @@ Module["preRun"] = () => {
     if not self.proxied:
       # closure build current fails on proxying
       self.emcc_args += ['--closure=1', '-g1']
-    self.reftest('test_sdl2_glshader.c', 'test_sdl_glshader.png', args=['-sUSE_SDL=2', '-O2', '-sLEGACY_GL_EMULATION'])
+    self.reftest('test_sdl2_glshader.c', 'test_sdl_glshader.png', args=['-sUSE_SDL=2', '-sLEGACY_GL_EMULATION'])
 
   @requires_graphics_hardware
   def test_sdl2_canvas_blank(self):
@@ -2972,19 +3027,20 @@ Module["preRun"] = () => {
   @requires_graphics_hardware
   def test_sdl2_image_prepare(self):
     # load an image file, get pixel data.
-    shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
-    self.reftest('test_sdl2_image_prepare.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2'], manually_trigger_reftest=True)
+    shutil.copy(test_file('screenshot.jpg'), 'screenshot.not')
+    self.reftest('test_sdl2_image_prepare.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2'])
 
   @requires_graphics_hardware
   def test_sdl2_image_prepare_data(self):
     # load an image file, get pixel data.
-    shutil.copyfile(test_file('screenshot.jpg'), 'screenshot.not')
-    self.reftest('test_sdl2_image_prepare_data.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2'], manually_trigger_reftest=True)
+    shutil.copy(test_file('screenshot.jpg'), 'screenshot.not')
+    self.reftest('test_sdl2_image_prepare_data.c', 'screenshot.jpg', args=['--preload-file', 'screenshot.not', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2'])
 
   @requires_graphics_hardware
+  @proxied
   def test_sdl2_canvas_proxy(self):
     create_file('data.txt', 'datum')
-    self.reftest('test_sdl2_canvas_proxy.c', 'test_sdl2_canvas.png', args=['-sUSE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt', '-sGL_TESTING'], manual_reference=True, post_build=self.post_manual_reftest)
+    self.reftest('test_sdl2_canvas_proxy.c', 'test_sdl2_canvas.png', args=['-sUSE_SDL=2', '--proxy-to-worker', '--preload-file', 'data.txt'])
 
   def test_sdl2_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
@@ -3001,8 +3057,6 @@ Module["preRun"] = () => {
     # SDL, OpenGL, readPixels
     self.btest_exit('test_sdl2_gl_read.c', args=['-sUSE_SDL=2'])
 
-  @no_4gb('https://github.com/libsdl-org/SDL/issues/9052')
-  @no_2gb('https://github.com/libsdl-org/SDL/issues/9052')
   @requires_graphics_hardware
   def test_sdl2_glmatrixmode_texture(self):
     self.reftest('test_sdl2_glmatrixmode_texture.c', 'test_sdl2_glmatrixmode_texture.png',
@@ -3025,45 +3079,44 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   def test_sdl2_fog_simple(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('test_sdl2_fog_simple.c', 'screenshot-fog-simple.png',
                  args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '-O2', '--minify=0', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_sdl2_fog_negative(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('test_sdl2_fog_negative.c', 'screenshot-fog-negative.png',
                  args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_sdl2_fog_density(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('test_sdl2_fog_density.c', 'screenshot-fog-density.png',
                  args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_sdl2_fog_exp2(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('test_sdl2_fog_exp2.c', 'screenshot-fog-exp2.png',
                  args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   @requires_graphics_hardware
   def test_sdl2_fog_linear(self):
-    shutil.copyfile(test_file('screenshot.png'), 'screenshot.png')
+    shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('test_sdl2_fog_linear.c', 'screenshot-fog-linear.png', reference_slack=1,
                  args=['-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2', '--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '--use-preload-plugins'])
 
   def test_sdl2_unwasteful(self):
     self.btest_exit('test_sdl2_unwasteful.c', args=['-sUSE_SDL=2', '-O1'])
 
-  @no_2gb('https://github.com/libsdl-org/SDL/issues/9052')
-  @no_4gb('https://github.com/libsdl-org/SDL/issues/9052')
   def test_sdl2_canvas_write(self):
     self.btest_exit('test_sdl2_canvas_write.c', args=['-sUSE_SDL=2'])
 
   @requires_graphics_hardware
+  @proxied
   def test_sdl2_gl_frames_swap(self):
-    self.reftest('test_sdl2_gl_frames_swap.c', 'test_sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-sGL_TESTING', '-sUSE_SDL=2'], manual_reference=True, post_build=self.post_manual_reftest)
+    self.reftest('test_sdl2_gl_frames_swap.c', 'test_sdl2_gl_frames_swap.png', args=['--proxy-to-worker', '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_ttf(self):
@@ -3078,7 +3131,7 @@ Module["preRun"] = () => {
                  args=['-O2', '-sUSE_SDL=2', '-sUSE_SDL_TTF=2', '--embed-file', 'NotoNaskhArabic-Regular.ttf'])
 
   def test_sdl2_custom_cursor(self):
-    shutil.copyfile(test_file('cursor.bmp'), 'cursor.bmp')
+    shutil.copy(test_file('cursor.bmp'), '.')
     self.btest_exit('test_sdl2_custom_cursor.c', args=['--preload-file', 'cursor.bmp', '-sUSE_SDL=2'])
 
   def test_sdl2_misc(self):
@@ -3098,7 +3151,7 @@ Module["preRun"] = () => {
   })
   @requires_sound_hardware
   def test_sdl2_mixer_wav(self, flags):
-    shutil.copyfile(test_file('sounds/the_entertainer.wav'), 'sound.wav')
+    shutil.copy(test_file('sounds/the_entertainer.wav'), 'sound.wav')
     self.btest_exit('test_sdl2_mixer_wav.c', args=['--preload-file', 'sound.wav'] + flags)
 
   @parameterized({
@@ -3111,7 +3164,7 @@ Module["preRun"] = () => {
   })
   @requires_sound_hardware
   def test_sdl2_mixer_music(self, formats, flags, music_name):
-    shutil.copyfile(test_file('sounds', music_name), music_name)
+    shutil.copy(test_file('sounds', music_name), '.')
     args = [
       '--preload-file', music_name,
       '-DSOUND_PATH="%s"' % music_name,
@@ -3392,7 +3445,7 @@ Module["preRun"] = () => {
       }
     ''')
     self.emcc('side.c', ['-sSIDE_MODULE', '-O2', '-o', 'side.wasm'])
-    self.btest_exit(self.in_dir('main.c'), args=['-sMAIN_MODULE=2', '-O2', 'side.wasm'] + args)
+    self.btest_exit('main.c', args=['-sMAIN_MODULE=2', '-O2', 'side.wasm'] + args)
 
   def test_dlopen_async(self):
     create_file('side.c', 'int foo = 42;\n')
@@ -3447,7 +3500,7 @@ Module["preRun"] = () => {
       # --proxy-to-worker only on main
       if inworker:
         emcc_args += ['--proxy-to-worker']
-      self.btest_exit(self.in_dir('test_dylink_dso_needed.c'), args=['--post-js', 'post.js'] + emcc_args)
+      self.btest_exit('test_dylink_dso_needed.c', args=['--post-js', 'post.js'] + emcc_args)
 
     self._test_dylink_dso_needed(do_run)
 
@@ -3477,7 +3530,7 @@ Module["preRun"] = () => {
     ''')
     self.emcc('side.c', ['-sSIDE_MODULE', '-O2', '-o', 'side.wasm', '-lSDL'])
 
-    self.btest_exit(self.in_dir('main.c'), args=['-sMAIN_MODULE=2', '-O2', '-sLEGACY_GL_EMULATION', '-lSDL', '-lGL', 'side.wasm'])
+    self.btest_exit('main.c', args=['-sMAIN_MODULE=2', '-O2', '-sLEGACY_GL_EMULATION', '-lSDL', '-lGL', 'side.wasm'])
 
   def test_dylink_many(self):
     # test asynchronously loading two side modules during startup
@@ -3499,7 +3552,7 @@ Module["preRun"] = () => {
     ''')
     self.emcc('side1.c', ['-sSIDE_MODULE', '-o', 'side1.wasm'])
     self.emcc('side2.c', ['-sSIDE_MODULE', '-o', 'side2.wasm'])
-    self.btest_exit(self.in_dir('main.c'), args=['-sMAIN_MODULE=2', 'side1.wasm', 'side2.wasm'])
+    self.btest_exit('main.c', args=['-sMAIN_MODULE=2', 'side1.wasm', 'side2.wasm'])
 
   def test_dylink_pthread_many(self):
     # Test asynchronously loading two side modules during startup
@@ -3697,7 +3750,7 @@ Module["preRun"] = () => {
     if '-sSINGLE_FILE' in args:
       self.assertEqual(len(files), 1, files)
     else:
-      self.assertEqual(len(files), 4, files)
+      self.assertEqual(len(files), 3, files)
 
   # Test that preallocating worker threads work.
   def test_pthread_preallocates_workers(self):
@@ -3797,11 +3850,12 @@ Module["preRun"] = () => {
 
   # Test that pthreads are able to do printf.
   @parameterized({
-    '': (False,),
-    'debug': (True,),
+    '': ([],),
+    'O3': (['-O3'],),
+    'debug': (['-sLIBRARY_DEBUG'],),
   })
-  def test_pthread_printf(self, debug):
-     self.btest_exit('pthread/test_pthread_printf.c', args=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE', '-sLIBRARY_DEBUG=%d' % debug])
+  def test_pthread_printf(self, args):
+     self.btest_exit('pthread/test_pthread_printf.c', args=['-pthread', '-sPTHREAD_POOL_SIZE'] + args)
 
   # Test that pthreads are able to do cout. Failed due to https://bugzilla.mozilla.org/show_bug.cgi?id=1154858.
   def test_pthread_iostream(self):
@@ -4005,7 +4059,7 @@ Module["preRun"] = () => {
     self.btest_exit('core/test_main_thread_async_em_asm.cpp', args=['-O3', '-pthread', '-sPROXY_TO_PTHREAD', '-sASSERTIONS'])
 
   def test_main_thread_em_asm_blocking(self):
-    shutil.copyfile(test_file('browser/test_em_asm_blocking.html'), 'page.html')
+    shutil.copy(test_file('browser/test_em_asm_blocking.html'), 'page.html')
 
     self.compile_btest('browser/test_em_asm_blocking.cpp', ['-O2', '-o', 'wasm.js', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
     self.run_browser('page.html', '/report_result?exit:8')
@@ -4087,7 +4141,7 @@ Module["preRun"] = () => {
       if self.is_2gb() or self.is_4gb():
         self.skipTest('asan doesnt support GLOBAL_BASE')
     self.compile_btest('manual_wasm_instantiate.cpp', ['-o', 'manual_wasm_instantiate.js'] + args)
-    shutil.copyfile(test_file('manual_wasm_instantiate.html'), 'manual_wasm_instantiate.html')
+    shutil.copy(test_file('manual_wasm_instantiate.html'), '.')
     self.run_browser('manual_wasm_instantiate.html', '/report_result?1')
 
   def test_wasm_locate_file(self):
@@ -4106,11 +4160,11 @@ Module["preRun"] = () => {
   def test_utf16_textdecoder(self):
     self.btest_exit('benchmark/benchmark_utf16.cpp', 0, args=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=UTF16ToString,stringToUTF16,lengthBytesUTF16'])
 
+  @also_with_threads
   @parameterized({
     '': ([],),
     'closure': (['--closure=1'],),
   })
-  @also_with_threads
   def test_TextDecoder(self, args):
     self.emcc_args += args
 
@@ -4155,7 +4209,7 @@ Module["preRun"] = () => {
   @requires_offscreen_canvas
   @requires_graphics_hardware
   def test_webgl_offscreen_canvas_in_pthread(self, args):
-    self.btest('gl_in_pthread.cpp', expected='1', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
+    self.btest('gl_in_pthread.c', expected='1', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
 
   # Tests that it is possible to render WebGL content on a <canvas> on the main
   # thread, after it has once been used to render WebGL content in a pthread
@@ -4170,12 +4224,12 @@ Module["preRun"] = () => {
   @requires_graphics_hardware
   @disabled('This test is disabled because current OffscreenCanvas does not allow transfering it after a rendering context has been created for it.')
   def test_webgl_offscreen_canvas_in_mainthread_after_pthread(self, args):
-    self.btest('gl_in_mainthread_after_pthread.cpp', expected='0', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
+    self.btest('gl_in_mainthread_after_pthread.c', expected='0', args=args + ['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
 
   @requires_offscreen_canvas
   @requires_graphics_hardware
   def test_webgl_offscreen_canvas_only_in_pthread(self):
-    self.btest_exit('gl_only_in_pthread.cpp', args=['-pthread', '-sPTHREAD_POOL_SIZE', '-sOFFSCREENCANVAS_SUPPORT', '-lGL', '-sOFFSCREEN_FRAMEBUFFER'])
+    self.btest_exit('gl_only_in_pthread.c', args=['-pthread', '-sPTHREAD_POOL_SIZE', '-sOFFSCREENCANVAS_SUPPORT', '-lGL', '-sOFFSCREEN_FRAMEBUFFER'])
 
   # Tests that rendering from client side memory without default-enabling extensions works.
   @requires_graphics_hardware
@@ -4308,7 +4362,7 @@ Module["preRun"] = () => {
       # given the synchronous render loop here, asyncify is needed to see intermediate frames and
       # the gradual color change
       args += ['-sASYNCIFY', '-DASYNCIFY']
-    self.btest_exit('gl_in_proxy_pthread.cpp', args=args)
+    self.btest_exit('gl_in_proxy_pthread.c', args=args)
 
   @parameterized({
     '': ([],),
@@ -4338,7 +4392,7 @@ Module["preRun"] = () => {
     'enable': (1,),
     'disable': (0,),
   })
-  def test_webgl_simple_extensions(self, simple_enable_extensions, webgl_version):
+  def test_webgl_simple_extensions(self, webgl_version, simple_enable_extensions):
     cmd = ['-DWEBGL_CONTEXT_VERSION=' + str(webgl_version),
            '-DWEBGL_SIMPLE_ENABLE_EXTENSION=' + str(simple_enable_extensions),
            '-sMAX_WEBGL_VERSION=2',
@@ -4388,38 +4442,38 @@ Module["preRun"] = () => {
                     args=['-sFETCH_DEBUG', '-sFETCH', '-DFILE_DOES_NOT_EXIST'])
 
     # Test the positive case when the file URL exists. (http 200)
-    shutil.copyfile(test_file('gears.png'), 'gears.png')
+    shutil.copy(test_file('gears.png'), '.')
     for arg in ([], ['-sFETCH_SUPPORT_INDEXEDDB=0']):
       self.btest_exit('fetch/test_fetch_to_memory.cpp',
                       args=['-sFETCH_DEBUG', '-sFETCH'] + arg)
 
+  @also_with_wasm2js
   @parameterized({
     '': ([],),
     'pthread_exit': (['-DDO_PTHREAD_EXIT'],),
   })
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  @also_with_wasm2js
   def test_fetch_from_thread(self, args):
-    shutil.copyfile(test_file('gears.png'), 'gears.png')
+    shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_from_thread.cpp',
                     args=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sFETCH_DEBUG', '-sFETCH', '-DFILE_DOES_NOT_EXIST'])
 
   @also_with_wasm2js
   def test_fetch_to_indexdb(self):
-    shutil.copyfile(test_file('gears.png'), 'gears.png')
+    shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_to_indexeddb.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
 
   # Tests emscripten_fetch() usage to persist an XHR into IndexedDB and subsequently load up from there.
   @also_with_wasm2js
   def test_fetch_cached_xhr(self):
-    shutil.copyfile(test_file('gears.png'), 'gears.png')
+    shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_cached_xhr.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
 
   # Tests that response headers get set on emscripten_fetch_t values.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @also_with_wasm2js
   def test_fetch_response_headers(self):
-    shutil.copyfile(test_file('gears.png'), 'gears.png')
+    shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_response_headers.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Test emscripten_fetch() usage to stream a XHR in to memory without storing the full file in memory
@@ -4441,7 +4495,7 @@ Module["preRun"] = () => {
     self.btest_exit('fetch/test_fetch_headers_received.c', args=['-sFETCH_DEBUG', '-sFETCH'])
 
   def test_fetch_xhr_abort(self):
-    shutil.copyfile(test_file('gears.png'), 'gears.png')
+    shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_xhr_abort.cpp', args=['-sFETCH_DEBUG', '-sFETCH'])
 
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
@@ -4449,20 +4503,20 @@ Module["preRun"] = () => {
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @also_with_wasm2js
   def test_fetch_sync_xhr(self):
-    shutil.copyfile(test_file('gears.png'), 'gears.png')
+    shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_sync_xhr.cpp', args=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Tests synchronous emscripten_fetch() usage from pthread
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   def test_fetch_sync(self):
-    shutil.copyfile(test_file('gears.png'), 'gears.png')
+    shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_sync.c', args=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Tests that the Fetch API works for synchronous XHRs when used with --proxy-to-worker.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @also_with_wasm2js
   def test_fetch_sync_xhr_in_proxy_to_worker(self):
-    shutil.copyfile(test_file('gears.png'), 'gears.png')
+    shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_sync_xhr.cpp',
                     args=['-sFETCH_DEBUG', '-sFETCH', '--proxy-to-worker'])
 
@@ -4472,7 +4526,7 @@ Module["preRun"] = () => {
 
   @disabled('https://github.com/emscripten-core/emscripten/issues/16746')
   def test_fetch_idb_delete(self):
-    shutil.copyfile(test_file('gears.png'), 'gears.png')
+    shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_idb_delete.cpp', args=['-pthread', '-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
 
   def test_fetch_post(self):
@@ -4528,7 +4582,7 @@ Module["preRun"] = () => {
     'mt': (['-pthread', '-sPROXY_TO_PTHREAD'],),
   })
   def test_pthread_run_script(self, args):
-    shutil.copyfile(test_file('pthread/foo.js'), 'foo.js')
+    shutil.copy(test_file('pthread/foo.js'), '.')
     self.btest_exit('pthread/test_pthread_run_script.c', args=['-O3'] + args)
 
   # Tests emscripten_set_canvas_element_size() and OffscreenCanvas functionality in different build configurations.
@@ -4615,7 +4669,7 @@ Module["preRun"] = () => {
     # Now run the test with the JS file renamed and with its content
     # stored in Module['mainScriptUrlOrBlob'].
     shutil.move('out.js', 'hello_thread_with_blob_url.js')
-    shutil.copyfile(test_file('pthread/main_js_as_blob_loader.html'), 'hello_thread_with_blob_url.html')
+    shutil.copy(test_file('pthread/main_js_as_blob_loader.html'), 'hello_thread_with_blob_url.html')
     self.run_browser('hello_thread_with_blob_url.html', '/report_result?exit:0')
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
@@ -4628,11 +4682,11 @@ Module["preRun"] = () => {
     self.assertNotExists('test.wasm')
 
   # Tests that SINGLE_FILE works as intended in generated HTML with MINIMAL_RUNTIME
+  @also_with_wasm2js
   @parameterized({
     '': ([],),
     'O3': (['-O3'],)
   })
-  @also_with_wasm2js
   def test_minimal_runtime_single_file_html(self, opts):
     self.btest('single_file_static_initializer.cpp', '19', args=opts + ['-sMINIMAL_RUNTIME', '-sSINGLE_FILE'])
     self.assertExists('test.html')
@@ -4925,7 +4979,7 @@ Module["preRun"] = () => {
 
     # Restore the .wasm.js file, then corrupt the .wasm file, that should trigger the Wasm2js fallback to run
     os.rename('test.wasm.js.unused', 'test.wasm.js')
-    shutil.copyfile('test.js', 'test.wasm')
+    shutil.copy('test.js', 'test.wasm')
     self.run_browser('test.html', '/report_result?exit:0')
 
   def test_system(self):
@@ -4934,21 +4988,21 @@ Module["preRun"] = () => {
   # Tests the hello_wasm_worker.c documentation example code.
   @also_with_minimal_runtime
   def test_wasm_worker_hello(self):
-    self.btest('wasm_worker/hello_wasm_worker.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/hello_wasm_worker.c', args=['-sWASM_WORKERS'])
 
   def test_wasm_worker_hello_minimal_runtime_2(self):
-    self.btest('wasm_worker/hello_wasm_worker.c', expected='0', args=['-sWASM_WORKERS', '-sMINIMAL_RUNTIME=2'])
+    self.btest_exit('wasm_worker/hello_wasm_worker.c', args=['-sWASM_WORKERS', '-sMINIMAL_RUNTIME=2'])
 
   # Tests Wasm Workers build in Wasm2JS mode.
   @requires_wasm2js
   @also_with_minimal_runtime
   def test_wasm_worker_hello_wasm2js(self):
-    self.btest('wasm_worker/hello_wasm_worker.c', expected='0', args=['-sWASM_WORKERS', '-sWASM=0'])
+    self.btest_exit('wasm_worker/hello_wasm_worker.c', args=['-sWASM_WORKERS', '-sWASM=0'])
 
   # Tests the WASM_WORKERS=2 build mode, which embeds the Wasm Worker bootstrap JS script file to the main JS file.
   @also_with_minimal_runtime
-  def test_wasm_worker_embedded(self):
-    self.btest('wasm_worker/hello_wasm_worker.c', expected='0', args=['-sWASM_WORKERS=2'])
+  def test_wasm_worker_hello_embedded(self):
+    self.btest_exit('wasm_worker/hello_wasm_worker.c', args=['-sWASM_WORKERS=2'])
 
   # Tests that it is possible to call emscripten_futex_wait() in Wasm Workers.
   @parameterized({
@@ -4960,14 +5014,18 @@ Module["preRun"] = () => {
 
   # Tests Wasm Worker thread stack setup
   @also_with_minimal_runtime
-  def test_wasm_worker_thread_stack(self):
-    for mode in (0, 1, 2):
-      self.btest('wasm_worker/thread_stack.c', expected='0', args=['-sWASM_WORKERS', f'-sSTACK_OVERFLOW_CHECK={mode}'])
+  @parameterized({
+    '0': (0,),
+    '1': (1,),
+    '2': (2,),
+  })
+  def test_wasm_worker_thread_stack(self, mode):
+    self.btest('wasm_worker/thread_stack.c', expected='0', args=['-sWASM_WORKERS', f'-sSTACK_OVERFLOW_CHECK={mode}'])
 
   # Tests emscripten_malloc_wasm_worker() and emscripten_current_thread_is_wasm_worker() functions
   @also_with_minimal_runtime
   def test_wasm_worker_malloc(self):
-    self.btest('wasm_worker/malloc_wasm_worker.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/malloc_wasm_worker.c', args=['-sWASM_WORKERS'])
 
   # Tests Wasm Worker+pthreads simultaneously
   @also_with_minimal_runtime
@@ -5008,10 +5066,7 @@ Module["preRun"] = () => {
   # Tests emscripten_terminate_wasm_worker()
   @also_with_minimal_runtime
   def test_wasm_worker_terminate(self):
-    self.set_setting('WASM_WORKERS')
-    # Test uses the dynCall library function in its EM_ASM code
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall'])
-    self.btest('wasm_worker/terminate_wasm_worker.c', expected='0')
+    self.btest_exit('wasm_worker/terminate_wasm_worker.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_terminate_all_wasm_workers()
   @also_with_minimal_runtime
@@ -5050,7 +5105,7 @@ Module["preRun"] = () => {
   # Tests emscripten_atomic_wait_async() function.
   @also_with_minimal_runtime
   def test_wasm_worker_wait_async(self):
-    self.btest('atomic/test_wait_async.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('atomic/test_wait_async.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_cancel_wait_async() function.
   @also_with_minimal_runtime
@@ -5085,7 +5140,7 @@ Module["preRun"] = () => {
   # Tests emscripten_lock_async_acquire() function.
   @also_with_minimal_runtime
   def test_wasm_worker_lock_async_acquire(self):
-    self.btest('wasm_worker/lock_async_acquire.c', expected='0', args=['--closure=1', '-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/lock_async_acquire.c', args=['--closure=1', '-sWASM_WORKERS'])
 
   # Tests emscripten_lock_busyspin_wait_acquire() in Worker and main thread.
   @also_with_minimal_runtime
@@ -5313,7 +5368,7 @@ Module["preRun"] = () => {
   # Tests the AudioWorklet demo
   @parameterized({
     '': ([],),
-    'memory64': (['-sMEMORY64', '-Wno-experimental'],),
+    'memory64': (['-sMEMORY64'],),
     'with_fs': (['--preload-file', test_file('hello_world.c') + '@/'],),
     'closure': (['--closure', '1', '-Oz'],),
     'asyncify': (['-sASYNCIFY'],),
@@ -5373,8 +5428,57 @@ Module["preRun"] = () => {
     with utils.chdir('webpack'):
       self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sMODULARIZE', '-sENVIRONMENT=web,worker', '-o', outfile])
       self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
-    shutil.copyfile('webpack/src/hello.wasm', 'webpack/dist/hello.wasm')
+    shutil.copy('webpack/src/hello.wasm', 'webpack/dist/')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
+
+  def test_fetch_polyfill_preload(self):
+    create_file('hello.txt', 'hello, world!')
+    create_file('main.c', r'''
+      #include <stdio.h>
+      #include <string.h>
+      #include <emscripten.h>
+      int main() {
+        FILE *f = fopen("hello.txt", "r");
+        char buf[100];
+        fread(buf, 1, 20, f);
+        buf[20] = 0;
+        fclose(f);
+        printf("%s\n", buf);
+        return 0;
+      }''')
+
+    create_file('on_window_error_shell.html', r'''
+      <html>
+          <center><canvas id='canvas' width='256' height='256'></canvas></center>
+          <hr><div id='output'></div><hr>
+          <script type='text/javascript'>
+            window.addEventListener('error', event => {
+              const error = String(event.message);
+              window.disableErrorReporting = true;
+              window.onerror = null;
+              var xhr = new XMLHttpRequest();
+              xhr.open('GET', 'http://localhost:8888/report_result?exception:' + error.substr(-23), true);
+              xhr.send();
+              setTimeout(function() { window.close() }, 1000);
+            });
+          </script>
+          {{{ SCRIPT }}}
+        </body>
+      </html>''')
+
+    def test(args, expect_fail):
+      self.compile_btest('main.c', ['-sEXIT_RUNTIME', '--preload-file', 'hello.txt', '--shell-file', 'on_window_error_shell.html', '-o', 'a.out.html'] + args)
+      if expect_fail:
+        js = read_file('a.out.js')
+        create_file('a.out.js', 'let origFetch = fetch; fetch = undefined;\n' + js)
+        return self.run_browser('a.out.html', '/report_result?exception:fetch is not a function')
+      else:
+        return self.run_browser('a.out.html', '/report_result?exit:0')
+
+    test([], expect_fail=False)
+    test([], expect_fail=True)
+    test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
+    test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
 
   @no_wasm64('https://github.com/llvm/llvm-project/issues/98778')
   def test_fetch_polyfill_shared_lib(self):
@@ -5525,7 +5629,6 @@ class browser64(browser):
   def setUp(self):
     super().setUp()
     self.set_setting('MEMORY64')
-    self.emcc_args.append('-Wno-experimental')
     self.require_wasm64()
 
 
@@ -5535,7 +5638,6 @@ class browser64_4gb(browser):
     self.set_setting('MEMORY64')
     self.set_setting('INITIAL_MEMORY', '4200mb')
     self.set_setting('GLOBAL_BASE', '4gb')
-    self.emcc_args.append('-Wno-experimental')
     # Without this we get a warning about GLOBAL_BASE being ignored when used with SIDE_MODULE
     self.emcc_args.append('-Wno-unused-command-line-argument')
     self.require_wasm64()
@@ -5547,7 +5649,6 @@ class browser64_2gb(browser):
     self.set_setting('MEMORY64')
     self.set_setting('INITIAL_MEMORY', '2200mb')
     self.set_setting('GLOBAL_BASE', '2gb')
-    self.emcc_args.append('-Wno-experimental')
     self.require_wasm64()
 
 

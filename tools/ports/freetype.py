@@ -28,7 +28,7 @@ def get(ports, settings, shared):
 
   def create(final):
     source_path = ports.get_dir('freetype', f'freetype-{TAG}')
-    ports.write_file(os.path.join(source_path, 'include/ftconfig.h'), ftconf_h)
+    # Overwrite the default config file with our own.
     ports.install_header_dir(os.path.join(source_path, 'include'),
                              target=os.path.join('freetype2'))
 
@@ -78,8 +78,9 @@ def get(ports, settings, shared):
 
     flags = [
       '-DFT2_BUILD_LIBRARY',
-      '-DFT_CONFIG_CONFIG_H=<ftconfig.h>',
       '-DFT_CONFIG_OPTION_SYSTEM_ZLIB',
+      '-DHAVE_UNISTD_H',
+      '-DHAVE_FCNTL_H',
       '-I' + source_path + '/include',
       '-I' + source_path + '/truetype',
       '-I' + source_path + '/sfnt',
@@ -110,38 +111,3 @@ def process_args(ports):
 
 def show():
   return 'freetype (-sUSE_FREETYPE=1 or --use-port=freetype; freetype license)'
-
-
-ftconf_h = r'''
-  /**************************************************************************
-   *
-   * This header file contains a number of macro definitions that are used by
-   * the rest of the engine.  Most of the macros here are automatically
-   * determined at compile time, and you should not need to change it to port
-   * FreeType, except to compile the library with a non-ANSI compiler.
-   *
-   * Note however that if some specific modifications are needed, we advise
-   * you to place a modified copy in your build directory.
-   *
-   * The build directory is usually `builds/<system>`, and contains
-   * system-specific files that are always included first when building the
-   * library.
-   *
-   */
-
-#ifndef FTCONFIG_H_
-#define FTCONFIG_H_
-
-#include <ft2build.h>
-#include FT_CONFIG_OPTIONS_H
-#include FT_CONFIG_STANDARD_LIBRARY_H
-
-#define HAVE_UNISTD_H
-#define HAVE_FCNTL_H
-
-#include <freetype/config/integer-types.h>
-#include <freetype/config/public-macros.h>
-#include <freetype/config/mac-support.h>
-
-#endif /* FTCONFIG_H_ */
-'''

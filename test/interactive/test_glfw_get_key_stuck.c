@@ -45,7 +45,7 @@ void render() {
 }
 
 #ifdef __EMSCRIPTEN__
-EM_BOOL on_focuspocus(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData) {
+bool on_focuspocus(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData) {
     switch(eventType) {
         case EMSCRIPTEN_EVENT_BLUR:
             printf("blur\n");
@@ -78,7 +78,7 @@ EM_BOOL on_focuspocus(int eventType, const EmscriptenFocusEvent *focusEvent, voi
             printf("focus event %d\n", eventType);
             break;
     }
-    return EM_FALSE;
+    return false;
 }
 
 #endif
@@ -98,10 +98,10 @@ int main() {
     printf("%d. Press and hold spacebar\n", step);
 
 #ifdef __EMSCRIPTEN__
-    emscripten_set_blur_callback(NULL, NULL, EM_TRUE, on_focuspocus);
-    emscripten_set_focus_callback(NULL, NULL, EM_TRUE, on_focuspocus);
-    emscripten_set_focusin_callback(NULL, NULL, EM_TRUE, on_focuspocus);
-    emscripten_set_focusout_callback(NULL, NULL, EM_TRUE, on_focuspocus);
+    emscripten_set_blur_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, true, on_focuspocus);
+    emscripten_set_focus_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, true, on_focuspocus);
+    emscripten_set_focusin_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, true, on_focuspocus);
+    emscripten_set_focusout_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, true, on_focuspocus);
 
     emscripten_set_main_loop(render, 0, 1);
     __builtin_trap();

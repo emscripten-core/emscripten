@@ -62,7 +62,6 @@ addToLibrary({
     }
 #endif
     HEAPU8.fill(0, address, address + size);
-    return address;
   },
 
 #if SAFE_HEAP
@@ -86,7 +85,7 @@ addToLibrary({
 #if PTHREADS
     '$exitOnMainThread',
 #endif
-#if PTHREADS_DEBUG
+#if PTHREADS_DEBUG || ASSERTIONS
     '$runtimeKeepaliveCounter',
 #endif
   ],
@@ -186,7 +185,7 @@ addToLibrary({
   // it. Returns 1 on success, 0 on error.
   $growMemory: (size) => {
     var b = wasmMemory.buffer;
-    var pages = (size - b.byteLength + {{{ WASM_PAGE_SIZE - 1 }}}) / {{{ WASM_PAGE_SIZE }}};
+    var pages = ((size - b.byteLength + {{{ WASM_PAGE_SIZE - 1 }}}) / {{{ WASM_PAGE_SIZE }}}) | 0;
 #if RUNTIME_DEBUG
     dbg(`growMemory: ${size} (+${size - b.byteLength} bytes / ${pages} pages)`);
 #endif
@@ -195,7 +194,7 @@ addToLibrary({
 #endif
     try {
       // round size grow request up to wasm page size (fixed 64KB per spec)
-      wasmMemory.grow(pages); // .grow() takes a delta compared to the previous size
+      wasmMemory.grow({{{ toIndexType('pages') }}}); // .grow() takes a delta compared to the previous size
       updateMemoryViews();
 #if MEMORYPROFILER
       if (typeof emscriptenMemoryProfiler != 'undefined') {
@@ -1073,7 +1072,7 @@ addToLibrary({
         if (family === {{{ cDefs.AF_INET }}}) {
           addr = _htonl({{{ cDefs.INADDR_LOOPBACK }}});
         } else {
-          addr = [0, 0, 0, 1];
+          addr = [0, 0, 0, _htonl(1)];
         }
       }
       ai = allocaddrinfo(family, type, proto, null, addr, port);
@@ -1293,65 +1292,6 @@ addToLibrary({
 
 #endif // PROXY_POSIX_SOCKETS == 0
 
-  // random.h
-
-  $initRandomFill: () => {
-    if (typeof crypto == 'object' && typeof crypto['getRandomValues'] == 'function') {
-      // for modern web browsers
-#if SHARED_MEMORY
-      // like with most Web APIs, we can't use Web Crypto API directly on shared memory,
-      // so we need to create an intermediate buffer and copy it to the destination
-      return (view) => (
-        view.set(crypto.getRandomValues(new Uint8Array(view.byteLength))),
-        // Return the original view to match modern native implementations.
-        view
-      );
-#else
-      return (view) => crypto.getRandomValues(view);
-#endif
-    } else
-#if ENVIRONMENT_MAY_BE_NODE
-    if (ENVIRONMENT_IS_NODE) {
-      // for nodejs with or without crypto support included
-      try {
-        var crypto_module = require('crypto');
-        var randomFillSync = crypto_module['randomFillSync'];
-        if (randomFillSync) {
-          // nodejs with LTS crypto support
-          return (view) => crypto_module['randomFillSync'](view);
-        }
-        // very old nodejs with the original crypto API
-        var randomBytes = crypto_module['randomBytes'];
-        return (view) => (
-          view.set(randomBytes(view.byteLength)),
-          // Return the original view to match modern native implementations.
-          view
-        );
-      } catch (e) {
-        // nodejs doesn't have crypto support
-      }
-    }
-#endif // ENVIRONMENT_MAY_BE_NODE
-    // we couldn't find a proper implementation, as Math.random() is not suitable for /dev/random, see emscripten-core/emscripten/pull/7096
-#if ASSERTIONS
-    abort('no cryptographic support found for randomDevice. consider polyfilling it if you want to use something insecure like Math.random(), e.g. put this in a --pre-js: var crypto = { getRandomValues: (array) => { for (var i = 0; i < array.length; i++) array[i] = (Math.random()*256)|0 } };');
-#else
-    abort('initRandomDevice');
-#endif
-  },
-
-  $randomFill__deps: ['$initRandomFill'],
-  $randomFill: (view) => {
-    // Lazily init on the first invocation.
-    return (randomFill = initRandomFill())(view);
-  },
-
-  getentropy__deps: ['$randomFill'],
-  getentropy: (buffer, size) => {
-    randomFill(HEAPU8.subarray(buffer, buffer + size));
-    return 0;
-  },
-
   $timers: {},
 
   // Helper function for setitimer that registers timers with the eventloop.
@@ -1534,7 +1474,7 @@ addToLibrary({
   emscripten_log__deps: ['$formatString', '$emscriptenLog'],
   emscripten_log: (flags, format, varargs) => {
     var result = formatString(format, varargs);
-    var str = UTF8ArrayToString(result, 0);
+    var str = UTF8ArrayToString(result);
     emscriptenLog(flags, str);
   },
 
@@ -1551,8 +1491,7 @@ addToLibrary({
     var ret = getCompilerSetting(name);
     if (typeof ret == 'number' || typeof ret == 'boolean') return ret;
 
-    if (!_emscripten_get_compiler_setting.cache) _emscripten_get_compiler_setting.cache = {};
-    var cache = _emscripten_get_compiler_setting.cache;
+    var cache = _emscripten_get_compiler_setting.cache ??= {};
     var fullret = cache[name];
     if (fullret) return fullret;
     return cache[name] = stringToNewUTF8(ret);
@@ -1563,7 +1502,7 @@ addToLibrary({
 
   emscripten_has_asyncify: () => {{{ ASYNCIFY }}},
 
-  emscripten_debugger: function() { debugger },
+  emscripten_debugger: () => { debugger },
 
   emscripten_print_double__deps: ['$stringToUTF8', '$lengthBytesUTF8'],
   emscripten_print_double: (x, to, max) => {
@@ -1857,9 +1796,6 @@ addToLibrary({
   $dynCalls: '{}',
 #endif
   $dynCallLegacy__deps: [
-#if MAIN_MODULE == 1
-    '$createDyncallWrapper'
-#endif
 #if MINIMAL_RUNTIME
     '$dynCalls',
 #endif
@@ -1889,11 +1825,6 @@ addToLibrary({
 #if MINIMAL_RUNTIME
     var f = dynCalls[sig];
 #else
-#if MAIN_MODULE == 1
-    if (!('dynCall_' + sig in Module)) {
-      Module['dynCall_' + sig] = createDyncallWrapper(sig);
-    }
-#endif
     var f = Module['dynCall_' + sig];
 #endif
     return f(ptr, ...args);
@@ -1964,10 +1895,12 @@ addToLibrary({
   $setWasmTableEntry__internal: true,
   $setWasmTableEntry__deps: ['$wasmTableMirror', '$wasmTable'],
   $setWasmTableEntry: (idx, func) => {
+    /** @suppress {checkTypes} */
     wasmTable.set({{{ toIndexType('idx') }}}, func);
     // With ABORT_ON_WASM_EXCEPTIONS wasmTable.get is overridden to return wrapped
     // functions so we need to call it here to retrieve the potential wrapper correctly
     // instead of just storing 'func' directly into wasmTableMirror
+    /** @suppress {checkTypes} */
     wasmTableMirror[idx] = wasmTable.get({{{ toIndexType('idx') }}});
   },
 
@@ -1983,6 +1916,7 @@ addToLibrary({
     var func = wasmTableMirror[funcPtr];
     if (!func) {
       if (funcPtr >= wasmTableMirror.length) wasmTableMirror.length = funcPtr + 1;
+      /** @suppress {checkTypes} */
       wasmTableMirror[funcPtr] = func = wasmTable.get({{{ toIndexType('funcPtr') }}});
 #if ASYNCIFY == 2
       if (Asyncify.isAsyncExport(func)) {
@@ -1991,6 +1925,7 @@ addToLibrary({
 #endif
     }
 #if ASSERTIONS && ASYNCIFY != 2 // With JSPI the function stored in the table will be a wrapper.
+    /** @suppress {checkTypes} */
     assert(wasmTable.get({{{ toIndexType('funcPtr') }}}) == func, 'JavaScript-side Wasm function table mirror is out of date!');
 #endif
     return func;
@@ -1998,19 +1933,16 @@ addToLibrary({
 
 #else
 
+  $setWasmTableEntry__docs: '/** @suppress{checkTypes} */',
   $setWasmTableEntry__deps: ['$wasmTable'],
   $setWasmTableEntry: (idx, func) => wasmTable.set({{{ toIndexType('idx') }}}, func),
 
+  $getWasmTableEntry__docs: '/** @suppress{checkTypes} */',
   $getWasmTableEntry__deps: ['$wasmTable'],
   $getWasmTableEntry: (funcPtr) => {
-#if MEMORY64
-    // Function pointers are 64-bit, but wasmTable.get() requires a Number.
-    // https://github.com/emscripten-core/emscripten/issues/18200
-    funcPtr = Number(funcPtr);
-#endif
     // In -Os and -Oz builds, do not implement a JS side wasm table mirror for small
     // code size, but directly access wasmTable, which is a bit slower as uncached.
-    return wasmTable.get(funcPtr);
+    return wasmTable.get({{{ toIndexType('funcPtr') }}});
   },
 #endif // SHRINK_LEVEL == 0
 
@@ -2020,6 +1952,9 @@ addToLibrary({
     throw 'unwind';
   },
 
+#if !MINIMAL_RUNTIME
+  _emscripten_runtime_keepalive_clear__deps: ['$runtimeKeepaliveCounter'],
+#endif
   _emscripten_runtime_keepalive_clear: () => {
 #if isSymbolNeeded('$noExitRuntime')
     noExitRuntime = false;
@@ -2032,9 +1967,6 @@ addToLibrary({
   emscripten_force_exit__deps: ['exit', '_emscripten_runtime_keepalive_clear',
 #if !EXIT_RUNTIME && ASSERTIONS
     '$warnOnce',
-#endif
-#if !MINIMAL_RUNTIME
-    '$runtimeKeepaliveCounter',
 #endif
   ],
   emscripten_force_exit__proxy: 'sync',
@@ -2140,10 +2072,20 @@ addToLibrary({
   $runtimeKeepaliveCounter__internal: true,
   $runtimeKeepaliveCounter: 0,
 
-  $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
 #if isSymbolNeeded('$noExitRuntime')
+  // If the `noExitRuntime` symbol is included in the build then
+  // keepRuntimeAlive is always conditional since its state can change
+  // at runtime.
+  $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
   $keepRuntimeAlive: () => noExitRuntime || runtimeKeepaliveCounter > 0,
+#elif !EXIT_RUNTIME && !PTHREADS
+  // When `noExitRuntime` is not included and EXIT_RUNTIME=0 then we know the
+  // runtime can never exit (i.e. should always be kept alive).
+  // However, since pthreads themselves always need to be able to exit we
+  // have to track `runtimeKeepaliveCounter` in that case.
+  $keepRuntimeAlive: () => true,
 #else
+  $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
   $keepRuntimeAlive: () => runtimeKeepaliveCounter > 0,
 #endif
 
@@ -2214,7 +2156,7 @@ addToLibrary({
       return;
     }
 #endif
-#if RUNTIME_DEBUG
+#if RUNTIME_DEBUG >= 2
     dbg(`maybeExit: user callback done: runtimeKeepaliveCounter=${runtimeKeepaliveCounter}`);
 #endif
     if (!keepRuntimeAlive()) {
@@ -2281,8 +2223,8 @@ addToLibrary({
 #if hasExportedSymbol('emscripten_builtin_memalign')
     size = alignMemory(size, {{{ WASM_PAGE_SIZE }}});
     var ptr = _emscripten_builtin_memalign({{{ WASM_PAGE_SIZE }}}, size);
-    if (!ptr) return 0;
-    return zeroMemory(ptr, size);
+    if (ptr) zeroMemory(ptr, size);
+    return ptr;
 #elif ASSERTIONS
     abort('internal error: mmapAlloc called but `emscripten_builtin_memalign` native symbol not exported');
 #else
@@ -2352,12 +2294,8 @@ addToLibrary({
   },
 
   $HandleAllocator: class {
-    constructor() {
-      // TODO(https://github.com/emscripten-core/emscripten/issues/21414):
-      // Use inline field declarations.
-      this.allocated = [undefined];
-      this.freelist = [];
-    }
+    allocated = [undefined];
+    freelist = [];
     get(id) {
 #if ASSERTIONS
       assert(this.allocated[id] !== undefined, `invalid handle: ${id}`);
@@ -2395,6 +2333,10 @@ addToLibrary({
   'maximum': {{{ toIndexType(INITIAL_TABLE) }}},
 #endif
 #if MEMORY64 == 1
+  'address': 'i64',
+   // TODO(sbc): remove this alias for 'address' once both firefox and
+   // chrome roll out the spec change.
+   // See https://github.com/WebAssembly/memory64/pull/92
   'index': 'i64',
 #endif
   'element': 'anyfunc'

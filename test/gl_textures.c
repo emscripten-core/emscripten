@@ -38,7 +38,7 @@ void draw()
       unsigned char red = imageData[(y*256+x)*4];
       float expectedRed = PIX(x, y);
       unsigned char eRed = (unsigned char)(expectedRed * 255.0f);
-      assert(fabs((int)eRed - red) <= 2);
+      assert(abs((int)eRed - red) <= 2);
     }
   emscripten_cancel_main_loop();
   printf("Test successful!\n");
@@ -73,7 +73,7 @@ int main()
   {
     GLint maxLength = 0;
     glGetShaderiv(vs, GL_INFO_LOG_LENGTH, &maxLength);
-    char *buf = new char[maxLength];
+    char *buf = malloc(maxLength);
     glGetShaderInfoLog(vs, maxLength, &maxLength, buf);
     printf("%s\n", buf);
     return 1;
@@ -88,7 +88,7 @@ int main()
   {
     GLint maxLength = 0;
     glGetShaderiv(ps, GL_INFO_LOG_LENGTH, &maxLength);
-    char *buf = new char[maxLength];
+    char *buf = malloc(maxLength);
     glGetShaderInfoLog(ps, maxLength, &maxLength, buf);
     printf("%s\n", buf);
     return 1;
@@ -105,7 +105,7 @@ int main()
   {
     GLint maxLength = 0;
     glGetShaderiv(program, GL_INFO_LOG_LENGTH, &maxLength);
-    char *buf = new char[maxLength];
+    char *buf = malloc(maxLength);
     glGetProgramInfoLog(program, maxLength, &maxLength, buf);
     printf("%s\n", buf);
     return 1;

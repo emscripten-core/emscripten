@@ -210,7 +210,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_allocation: (address, size) => {
-    if (typeof Module['onMalloc'] == 'function') Module['onMalloc'](address, size);
+    Module['onMalloc']?.(address, size);
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_ALLOCATE,
@@ -219,7 +219,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_reallocation: (old_address, new_address, size) => {
-    if (typeof Module['onRealloc'] == 'function') Module['onRealloc'](old_address, new_address, size);
+    Module['onRealloc']?.(old_address, new_address, size);
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_REALLOCATE,
@@ -228,7 +228,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_free: (address) => {
-    if (typeof Module['onFree'] == 'function') Module['onFree'](address);
+    Module['onFree']?.(address);
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_FREE,
@@ -266,7 +266,7 @@ var LibraryTracing = {
     }
   },
 
-  emscripten_trace_report_off_heap_data: function () {
+  emscripten_trace_report_off_heap_data: () => {
     function openal_audiodata_size() {
       if (typeof AL == 'undefined' || !AL.currentContext) {
         return 0;

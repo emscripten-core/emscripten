@@ -148,4 +148,12 @@ addToLibrary({
     });
     return numCancelled;
   },
+
+  emscripten_has_threading_support: () => typeof SharedArrayBuffer != 'undefined',
+
+  emscripten_num_logical_cores: () =>
+#if ENVIRONMENT_MAY_BE_NODE
+    ENVIRONMENT_IS_NODE ? require('os').cpus().length :
+#endif
+    navigator['hardwareConcurrency'],
 });

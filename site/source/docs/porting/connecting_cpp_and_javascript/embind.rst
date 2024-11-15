@@ -597,6 +597,7 @@ implemented in JavaScript.
 .. code:: cpp
 
     struct Interface {
+        virtual ~Interface() {}
         virtual void invoke(const std::string& str) = 0;
     };
 
@@ -1078,7 +1079,7 @@ For convenience, *embind* provides factory functions to register
     EMSCRIPTEN_BINDINGS(stl_wrappers) {
         register_vector<int>("VectorInt");
         register_map<int,int>("MapIntInt");
-        register_optional<std::string>("Optional");
+        register_optional<std::string>();
     }
 
 A full example is shown below:

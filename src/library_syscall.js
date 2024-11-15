@@ -97,7 +97,7 @@ var SyscallsLibrary = {
   },
 
   $syscallGetVarargI__internal: true,
-  $syscallGetVarargI: function() {
+  $syscallGetVarargI: () => {
 #if ASSERTIONS
     assert(SYSCALLS.varargs != undefined);
 #endif
@@ -112,7 +112,7 @@ var SyscallsLibrary = {
 
   $syscallGetVarargP__internal: true,
 #if MEMORY64
-  $syscallGetVarargP: function() {
+  $syscallGetVarargP: () => {
 #if ASSERTIONS
     assert(SYSCALLS.varargs != undefined);
 #endif
@@ -324,11 +324,8 @@ var SyscallsLibrary = {
 #endif
     return socket;
   },
-  /** @param {boolean=} allowNull */
   $getSocketAddress__deps: ['$readSockaddr', '$FS', '$DNS'],
-  $getSocketAddress__docs: '/** @param {boolean=} allowNull */',
-  $getSocketAddress: (addrp, addrlen, allowNull) => {
-    if (allowNull && addrp === 0) return null;
+  $getSocketAddress: (addrp, addrlen) => {
     var info = readSockaddr(addrp, addrlen);
     if (info.errno) throw new FS.ErrnoError(info.errno);
     info.addr = DNS.lookup_addr(info.addr) || info.addr;
@@ -421,11 +418,11 @@ var SyscallsLibrary = {
   __syscall_sendto__deps: ['$getSocketFromFD', '$getSocketAddress'],
   __syscall_sendto: (fd, message, length, flags, addr, addr_len) => {
     var sock = getSocketFromFD(fd);
-    var dest = getSocketAddress(addr, addr_len, true);
-    if (!dest) {
+    if (!addr) {
       // send, no address provided
       return FS.write(sock.stream, HEAP8, message, length);
     }
+    var dest = getSocketAddress(addr, addr_len);
     // sendto an address
     return sock.sock_ops.sendmsg(sock, HEAP8, message, length, dest.addr, dest.port);
   },
@@ -444,7 +441,7 @@ var SyscallsLibrary = {
     }
     return -{{{ cDefs.ENOPROTOOPT }}}; // The option is unknown at the level indicated.
   },
-  __syscall_sendmsg__deps: ['$getSocketFromFD', '$readSockaddr', '$DNS'],
+  __syscall_sendmsg__deps: ['$getSocketFromFD', '$getSocketAddress', '$DNS'],
   __syscall_sendmsg: (fd, message, flags, d1, d2, d3) => {
     var sock = getSocketFromFD(fd);
     var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
@@ -454,10 +451,9 @@ var SyscallsLibrary = {
     var name = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_name, '*') }}};
     var namelen = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_namelen, 'i32') }}};
     if (name) {
-      var info = readSockaddr(name, namelen);
-      if (info.errno) return -info.errno;
+      var info = getSocketAddress(name, namelen);
       port = info.port;
-      addr = DNS.lookup_addr(info.addr) || info.addr;
+      addr = info.addr;
     }
     // concatenate scatter-gather arrays into one message buffer
     var total = 0;
@@ -572,9 +568,7 @@ var SyscallsLibrary = {
                   (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0) |
                   (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
 
-    var check = function(fd, low, high, val) {
-      return (fd < 32 ? (low & val) : (high & val));
-    };
+    var check = (fd, low, high, val) => fd < 32 ? (low & val) : (high & val);
 
     for (var fd = 0; fd < nfds; fd++) {
       var mask = 1 << (fd % 32);

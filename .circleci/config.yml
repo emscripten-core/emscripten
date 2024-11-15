@@ -106,7 +106,7 @@ commands:
     description: "install canary version of node"
     steps:
       - install-node-version:
-         node_version: "23.0.0-v8-canary20240819f52f1c2f1c"
+         node_version: "24.0.0-v8-canary202411045365c9d9be"
          canary: true
   install-v8:
     description: "install v8 using jsvu"
@@ -519,7 +519,8 @@ jobs:
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
             lsan.test_pthread_create
-            lsan.test_pthread_exit_main_stub"
+            lsan.test_pthread_exit_main_stub
+            ubsan.test_externref_emjs_dynlink"
       - freeze-cache
       - run-tests:
           # also run a single test of EMTEST_BROWSER=node.
@@ -543,6 +544,7 @@ jobs:
           test_targets: "
             lto2.test_dylink_syslibs_all
             lto2.test_float_builtins
+            lto2.test_avx_nontrapping
             lto0.test_exceptions_allowed_uncaught
             lto0.test_longjmp_standalone_standalone
             lto0.test_embind_i64_val
@@ -639,6 +641,8 @@ jobs:
             core_2gb.test_*embind*
             wasm64l.test_hello_world
             wasm64l.test_bigswitch
+            wasm64l.test_module_wasm_memory
+            wasm64l.test_longjmp2_emscripten
             other.test_memory64_proxies
             other.test_failing_growth_wasm64"
       - upload-test-results
@@ -786,7 +790,7 @@ jobs:
       EMTEST_SKIP_NODE_CANARY: "1"
       EMTEST_SKIP_WASM64: "1"
     steps:
-      - run: apt-get install -q -y ninja-build scons
+      - run: apt-get install -q -y ninja-build scons ccache
       - run-tests-linux:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
@@ -813,7 +817,7 @@ jobs:
           # (This bot doesn't have node canary installed which is required to
           # run wasm64 output).
           test_targets: "browser64
-            skip:browser64.test_worker
+            skip:browser64.test_hello_world_worker*
             skip:browser64.test_2gb_fail
             skip:browser64.test_4gb_fail
             skip:browser64.test_4gb"

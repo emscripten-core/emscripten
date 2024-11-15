@@ -6,6 +6,15 @@
 
 addToLibrary({
   $MEMFS__deps: ['$FS', '$mmapAlloc'],
+#if !ASSERTIONS
+  $MEMFS__postset: `
+    // This error may happen quite a bit. To avoid overhead we reuse it (and
+    // suffer a lack of stack info).
+    MEMFS.doesNotExistError = new FS.ErrnoError({{{ cDefs.ENOENT }}});
+    /** @suppress {checkTypes} */
+    MEMFS.doesNotExistError.stack = '<generic error, no stack>';
+    `,
+#endif
   $MEMFS: {
     ops_table: null,
     mount(mount) {
@@ -173,7 +182,11 @@ addToLibrary({
         }
       },
       lookup(parent, name) {
-        throw FS.genericErrors[{{{ cDefs.ENOENT }}}];
+#if ASSERTIONS
+        throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
+#else
+        throw MEMFS.doesNotExistError;
+#endif
       },
       mknod(parent, name, mode, dev) {
         return MEMFS.createNode(parent, name, mode, dev);

@@ -168,7 +168,7 @@ var LibraryPThread = {
       }
       PThread.unusedWorkers = [];
       PThread.runningWorkers = [];
-      PThread.pthreads = [];
+      PThread.pthreads = {};
     },
     returnWorkerToPool: (worker) => {
       // We don't want to run main thread queued calls here, since we are doing
@@ -405,7 +405,11 @@ var LibraryPThread = {
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
         // This is the way that we signal to the Web Worker that it is hosting
         // a pthread.
+#if ASSERTIONS
+        'name': 'em-pthread-' + PThread.nextWorkerID,
+#else
         'name': 'em-pthread',
+#endif
 #endif
       };
 #if EXPORT_ES6 && USE_ES6_IMPORT_META
@@ -643,14 +647,6 @@ var LibraryPThread = {
     return 0;
   },
 
-  emscripten_has_threading_support: () => typeof SharedArrayBuffer != 'undefined',
-
-  emscripten_num_logical_cores: () =>
-#if ENVIRONMENT_MAY_BE_NODE
-    ENVIRONMENT_IS_NODE ? require('os').cpus().length :
-#endif
-    navigator['hardwareConcurrency'],
-
   _emscripten_init_main_thread_js: (tb) => {
     // Pass the thread address to the native code where they stored in wasm
     // globals which act as a form of TLS. Global constructors trying
@@ -686,13 +682,16 @@ var LibraryPThread = {
   __pthread_create_js__noleakcheck: true,
 #endif
   __pthread_create_js__deps: ['$spawnThread', 'pthread_self', '$pthreadCreateProxied',
+    'emscripten_has_threading_support',
 #if OFFSCREENCANVAS_SUPPORT
     'malloc',
 #endif
   ],
   __pthread_create_js: (pthread_ptr, attr, startRoutine, arg) => {
-    if (typeof SharedArrayBuffer == 'undefined') {
-      err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
+    if (!_emscripten_has_threading_support()) {
+#if ASSERTIONS
+      dbg('pthread_create: environment does not support SharedArrayBuffer, pthreads are not available');
+#endif
       return {{{ cDefs.EAGAIN }}};
     }
 #if PTHREADS_DEBUG
@@ -716,8 +715,10 @@ var LibraryPThread = {
       transferredCanvasNames = '{{{ OFFSCREENCANVASES_TO_PTHREAD }}}';
     } else
 #endif
-    transferredCanvasNames &&= UTF8ToString(transferredCanvasNames).trim();
-    transferredCanvasNames &&= transferredCanvasNames.split(',');
+    {
+      transferredCanvasNames = UTF8ToString(transferredCanvasNames).trim();
+    }
+    transferredCanvasNames = transferredCanvasNames ? transferredCanvasNames.split(',') : [];
 #if GL_DEBUG
     dbg(`pthread_create: transferredCanvasNames="${transferredCanvasNames}"`);
 #endif
@@ -1042,7 +1043,7 @@ var LibraryPThread = {
     '$runtimeKeepaliveCounter',
 #endif
   ],
-  $invokeEntryPoint: (ptr, arg) => {
+  $invokeEntryPoint: {{{ asyncIf(ASYNCIFY == 2) }}} (ptr, arg) => {
 #if PTHREADS_DEBUG
     dbg(`invokeEntryPoint: ${ptrToString(ptr)}`);
 #endif
@@ -1078,7 +1079,9 @@ var LibraryPThread = {
     // *ThreadMain(void *arg) form, or try linking with the Emscripten linker
     // flag -sEMULATE_FUNCTION_POINTER_CASTS to add in emulation for this x86
     // ABI extension.
-    var result = {{{ makeDynCall('pp', 'ptr') }}}(arg);
+
+    var result = {{{ makeDynCall('pp', 'ptr', ASYNCIFY == 2) }}}(arg);
+
 #if STACK_OVERFLOW_CHECK
     checkStackCookie();
 #endif
@@ -1097,10 +1100,9 @@ var LibraryPThread = {
 #endif
     }
 #if ASYNCIFY == 2
-    Promise.resolve(result).then(finish);
-#else
-    finish(result);
+    result = await result;
 #endif
+    finish(result);
   },
 
 #if MAIN_MODULE

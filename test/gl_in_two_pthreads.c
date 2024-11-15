@@ -16,9 +16,9 @@ void fill(int color)
 {
   switch(color)
   {
-    case 1: glClearColor(1, 0, 0, 1); printf("On thread %ld: you should see a red canvas.\n", (long)pthread_self()); break;
-    case 2: glClearColor(0, 1, 0, 1); printf("On thread %ld: you should see a green canvas.\n", (long)pthread_self()); break;
-    case 3: glClearColor(0, 0, 1, 1); printf("On thread %ld: you should see a blue canvas.\n", (long)pthread_self()); break;
+    case 1: glClearColor(1, 0, 0, 1); printf("On thread %p: you should see a red canvas.\n", pthread_self()); break;
+    case 2: glClearColor(0, 1, 0, 1); printf("On thread %p: you should see a green canvas.\n", pthread_self()); break;
+    case 3: glClearColor(0, 0, 1, 1); printf("On thread %p: you should see a blue canvas.\n", pthread_self()); break;
   }
   glClear(GL_COLOR_BUFFER_BIT);
   EMSCRIPTEN_RESULT r = emscripten_webgl_commit_frame();
@@ -31,7 +31,7 @@ void *thread_main(void *param)
 {
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
-  attr.explicitSwapControl = EM_TRUE;
+  attr.explicitSwapControl = true;
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   assert(ctx);
 
@@ -74,7 +74,7 @@ int main()
   // Create a context
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
-  attr.explicitSwapControl = EM_TRUE;
+  attr.explicitSwapControl = true;
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   assert(ctx);
 

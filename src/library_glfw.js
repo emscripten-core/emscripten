@@ -84,6 +84,7 @@ var LibraryGLFW = {
     },
 
   $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
+    '$MainLoop',
     '$stringToNewUTF8',
     'emscripten_set_window_title',
 #if FILESYSTEM
@@ -418,7 +419,7 @@ var LibraryGLFW = {
       // This logic comes directly from the sdl implementation. We cannot
       // call preventDefault on all keydown events otherwise onKeyPress will
       // not get called
-      if (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */) {
+      if (event.key == 'Backspace' || event.key == 'Tab') {
         event.preventDefault();
       }
     },
@@ -725,13 +726,13 @@ var LibraryGLFW = {
 
     joys: {}, // glfw joystick data
     lastGamepadState: [],
-    lastGamepadStateFrame: null, // The integer value of Browser.mainLoop.currentFrameNumber of when the last gamepad state was produced.
+    lastGamepadStateFrame: null, // The integer value of MainLoop.currentFrameNumber of when the last gamepad state was produced.
 
     refreshJoysticks: () => {
       // Produce a new Gamepad API sample if we are ticking a new game frame, or if not using emscripten_set_main_loop() at all to drive animation.
-      if (Browser.mainLoop.currentFrameNumber !== GLFW.lastGamepadStateFrame || !Browser.mainLoop.currentFrameNumber) {
+      if (MainLoop.currentFrameNumber !== GLFW.lastGamepadStateFrame || !MainLoop.currentFrameNumber) {
         GLFW.lastGamepadState = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads || []);
-        GLFW.lastGamepadStateFrame = Browser.mainLoop.currentFrameNumber;
+        GLFW.lastGamepadStateFrame = MainLoop.currentFrameNumber;
 
         for (var joy = 0; joy < GLFW.lastGamepadState.length; ++joy) {
           var gamepad = GLFW.lastGamepadState[joy];
@@ -1100,7 +1101,7 @@ var LibraryGLFW = {
           // TODO: Make GLFW explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
           GL.enableOffscreenFramebufferAttributes(contextAttributes);
 #endif
-          Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
+          Browser.createContext(Module['canvas'], /*useWebGL=*/true, /*setInModule=*/true, contextAttributes);
         } else {
           Browser.init();
         }

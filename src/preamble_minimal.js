@@ -61,47 +61,7 @@ var HEAP8, HEAP16, HEAP32, HEAPU8, HEAPU16, HEAPU32, HEAPF32, HEAPF64,
 #endif
 
 #if IMPORTED_MEMORY
-#if PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) {
-#endif
-  wasmMemory =
-#if WASM_WORKERS
-    Module['mem'] ||
-#endif
-    new WebAssembly.Memory({
-      'initial': {{{ INITIAL_MEMORY / WASM_PAGE_SIZE }}},
-#if SHARED_MEMORY || !ALLOW_MEMORY_GROWTH || MAXIMUM_MEMORY != FOUR_GB
-      'maximum': {{{ (ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != FOUR_GB ? MAXIMUM_MEMORY : INITIAL_MEMORY) / WASM_PAGE_SIZE }}},
-#endif
-#if SHARED_MEMORY
-      'shared': true,
-#endif
-#if MEMORY64 == 1
-      'index': 'i64',
-#endif
-    });
-#if PTHREADS
-}
-#if MODULARIZE
-else {
-  wasmMemory = Module['wasmMemory'];
-}
-#endif // MODULARIZE
-#endif // PTHREADS
-
-#if PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) {
-#endif
-
-#if ASSERTIONS && SHARED_MEMORY
-assert(wasmMemory.buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
-#endif
-
-updateMemoryViews();
-
-#if PTHREADS
-}
-#endif
+#include "runtime_init_memory.js"
 #endif // IMPORTED_MEMORY
 
 #include "runtime_stack_check.js"

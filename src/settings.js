@@ -781,7 +781,7 @@ var EXCEPTION_STACK_TRACES = false;
 // Emit instructions for the new Wasm exception handling proposal with exnref,
 // which was adopted on Oct 2023. The implementation of the new proposal is
 // still in progress and this feature is currently experimental.
-// [compile+link]
+// [link]
 var WASM_EXNREF = false;
 
 // Emscripten throws an ExitStatus exception to unwind when exit() is called.
@@ -2137,7 +2137,9 @@ var TRUSTED_TYPES = false;
 // settings is *only* needed when also explicitly targeting older browsers.
 var POLYFILL = true;
 
-// If true, add tracing to core runtime functions.
+// If non-zero, add tracing to core runtime functions.  Can be set to 2 for
+// extra tracing (for example, tracing that occurs on each turn of the event
+// loop or each user callback, which can flood the console).
 // This setting is enabled by default if any of the following debugging settings
 // are enabled:
 // - PTHREADS_DEBUG
@@ -2151,7 +2153,7 @@ var POLYFILL = true;
 // - SOCKET_DEBUG
 // - FETCH_DEBUG
 // [link]
-var RUNTIME_DEBUG = false;
+var RUNTIME_DEBUG = 0;
 
 // Include JS library symbols that were previously part of the default runtime.
 // Without this, such symbols can be made available by adding them to

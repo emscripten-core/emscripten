@@ -30,8 +30,7 @@
   // Helper functions for code generation
   globalThis.gpu = {
     makeInitManager: function(type) {
-      var mgr = `WebGPU.mgr${type}`;
-      return `${mgr} = ${mgr} || new Manager();`;
+      return `WebGPU.mgr${type} = new Manager();`;
     },
 
     makeReferenceRelease: function(type) {
@@ -201,7 +200,9 @@ var LibraryWebGPU = {
     },
 
     initManagers: () => {
-      if (WebGPU.mgrDevice) return;
+#if ASSERTIONS
+      assert(!WebGPU.mgrDevice, 'initManagers already called');
+#endif
 
       /** @constructor */
       function Manager() {
@@ -409,9 +410,9 @@ var LibraryWebGPU = {
       'mapped': 3,
     },
     Int_CompilationMessageType : {
-      'error': 0,
-      'warning': 1,
-      'info': 2,
+      'error': 1,
+      'warning': 2,
+      'info': 3,
     },
     Int_DeviceLostReason: {
       'undefined': 1,
@@ -821,16 +822,20 @@ var LibraryWebGPU = {
   // wgpuDevice
 
   wgpuDeviceEnumerateFeatures: (deviceId, featuresOutPtr) => {
+    var offset = 0;
+    var numFeatures = 0;
     var device = WebGPU.mgrDevice.get(deviceId);
-    if (featuresOutPtr !== 0) {
-      var offset = 0;
-      device.features.forEach(feature => {
-        var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
-        {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
-        offset += 4;
-      });
-    }
-    return device.features.size;
+    device.features.forEach(feature => {
+      var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
+      if (featureEnumValue !== undefined) {
+        if (featuresOutPtr !== 0) {
+          {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
+          offset += 4;
+        }
+        numFeatures++;
+      }
+    });
+    return numFeatures;
   },
 
   wgpuDeviceDestroy: (deviceId) => WebGPU.mgrDevice.get(deviceId).destroy(),
@@ -2023,7 +2028,7 @@ var LibraryWebGPU = {
 
   // In webgpu.h offset and size are passed in as size_t.
   // And library_webgpu assumes that size_t is always 32bit in emscripten.
-  wgpuBufferGetMappedRange__deps: ['$warnOnce', 'memalign', 'free'],
+  wgpuBufferGetMappedRange__deps: ['$warnOnce', '$zeroMemory', 'memalign', 'free'],
   wgpuBufferGetMappedRange: (bufferId, offset, size) => {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
     {{{ gpu.makeCheckDefined('bufferWrapper') }}}
@@ -2052,7 +2057,7 @@ var LibraryWebGPU = {
     }
 
     var data = _memalign(16, mapped.byteLength);
-    HEAPU8.fill(0, data, mapped.byteLength);
+    zeroMemory(data, mapped.byteLength);
     bufferWrapper.onUnmap.push(() => {
       new Uint8Array(mapped).set(HEAPU8.subarray(data, data + mapped.byteLength));
       _free(data);
@@ -2567,16 +2572,20 @@ var LibraryWebGPU = {
   // WGPUAdapter
 
   wgpuAdapterEnumerateFeatures: (adapterId, featuresOutPtr) => {
+    var offset = 0;
+    var numFeatures = 0;
     var adapter = WebGPU.mgrAdapter.get(adapterId);
-    if (featuresOutPtr !== 0) {
-      var offset = 0;
-      adapter.features.forEach(feature => {
-        var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
-        {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
-        offset += 4;
-      });
-    }
-    return adapter.features.size;
+    adapter.features.forEach(feature => {
+      var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
+      if (featureEnumValue !== undefined) {
+        if (featuresOutPtr !== 0) {
+          {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
+          offset += 4;
+        }
+        numFeatures++;
+      }
+    });
+    return numFeatures;
   },
 
   wgpuAdapterGetInfo__deps: ['$stringToNewUTF8'],
@@ -2636,7 +2645,8 @@ var LibraryWebGPU = {
       var requiredFeatureCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredFeatureCount) }}};
       if (requiredFeatureCount) {
         var requiredFeaturesPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredFeatures, '*') }}};
-        desc["requiredFeatures"] = Array.from({{{ makeHEAPView('32', 'requiredFeaturesPtr', `requiredFeaturesPtr + requiredFeatureCount * ${POINTER_SIZE}`) }}},
+        // requiredFeaturesPtr is a pointer to an array of FeatureName which is an enum of size uint32_t
+        desc["requiredFeatures"] = Array.from({{{ makeHEAPView('U32', 'requiredFeaturesPtr', `requiredFeaturesPtr + requiredFeatureCount * 4`) }}},
           (feature) => WebGPU.FeatureName[feature]);
       }
       var requiredLimitsPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredLimits, '*') }}};
@@ -2883,9 +2893,9 @@ for (var value in LibraryWebGPU.$WebGPU.FeatureName) {
 
 for (const key of Object.keys(LibraryWebGPU)) {
   if (typeof LibraryWebGPU[key] === 'function') {
-    const sig = LibraryWebGPU[key + '__sig'];
+    const sig = LibraryManager.library[key + '__sig'];
     if (sig?.includes('j')) {
-      LibraryWebGPU[key + '__i53abi'] = true;
+      LibraryManager.library[key + '__i53abi'] = true;
     }
   }
 }

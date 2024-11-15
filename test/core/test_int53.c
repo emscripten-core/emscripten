@@ -21,6 +21,14 @@ void writeI53ToI64_int64(int64_t *heapAddress, int64_t num) {
 #endif
 }
 
+void writeI53ToI64_uint64(uint64_t *heapAddress, uint64_t num) {
+#ifdef GENERATE_ANSWERS
+  *heapAddress = num;
+#else
+  EM_ASM(writeI53ToI64($0, $1), heapAddress, (double)num);
+#endif
+}
+
 void writeI53ToI64_double(int64_t *heapAddress, double num) {
 #ifdef GENERATE_ANSWERS
   if (num > 0 || num <= -9223372036854775808.0 /* underflow, garbage in-garbage out situation: just produce a value that matches current JS impl*/)
@@ -119,6 +127,14 @@ int64_t readI53FromU64_toInt64(uint64_t *heapAddress) {
 #endif
 }
 
+uint64_t readI53FromU64_toUInt64(uint64_t *heapAddress) {
+#ifdef GENERATE_ANSWERS
+  return (uint64_t)*heapAddress;
+#else
+  return (uint64_t)EM_ASM_DOUBLE(return readI53FromU64($0), heapAddress);
+#endif
+}
+
 double readI53FromU64(uint64_t *heapAddress) {
 #ifdef GENERATE_ANSWERS
   return (double)*heapAddress;
@@ -137,13 +153,13 @@ int64_t convertI32PairToI53(int32_t lo, int32_t hi) {
 #endif
 }
 
-int64_t convertU32PairToI53(uint32_t lo, uint32_t hi) {
+uint64_t convertU32PairToI53(uint32_t lo, uint32_t hi) {
 #ifdef GENERATE_ANSWERS
   uint64_t val = (uint32_t)lo;
   val |= ((uint64_t)(uint32_t)hi) << 32;
   return val;
 #else
-  return (int64_t)EM_ASM_DOUBLE(return convertU32PairToI53($0, $1), lo, hi);
+  return (uint64_t)EM_ASM_DOUBLE(return convertU32PairToI53($0, $1), lo, hi);
 #endif
 }
 
@@ -154,7 +170,7 @@ int64_t testconvertI32PairToI53(int64_t val) {
   return convertI32PairToI53(lo, hi);
 }
 
-int64_t testconvertU32PairToI53(uint64_t val) {
+uint64_t testconvertU32PairToI53(uint64_t val) {
   uint32_t lo = (uint32_t)val;
   uint32_t hi = val >> 32;
   return convertU32PairToI53(lo, hi);
@@ -174,8 +190,8 @@ int64_t testReadWriteI64AsI53(int64_t num) {
 
 uint64_t testReadWriteU64AsI53(uint64_t num) {
   uint64_t addr = 0;
-  writeI53ToI64_int64((int64_t*)&addr, num);
-  return readI53FromU64_toInt64(&addr);
+  writeI53ToI64_uint64((uint64_t*)&addr, num);
+  return readI53FromU64_toUInt64(&addr);
 }
 
 int main() {

@@ -18,9 +18,61 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.68 (in development)
+3.1.72 (in development)
 -----------------------
+- The `MEMORY64` setting is no longer experimental. At time of writing all
+  browsers still require a flag to run the resulting binaries but that should
+  change in the coming months since the proposal is now at stage 4. (#22864)
+
+3.1.71 - 11/04/24
+-----------------
+- SDL2 port updated to 2.30.9. (#22830)
+- LLVM's `-Wnontrivial-memaccess` warning has been updated to also warn about
+  passing non-trivially-copyable destination parameter to `memcpy`,
+  `memset` and similar functions for which it is a documented undefined
+  behavior (#22798). See https://github.com/llvm/llvm-project/pull/111434
+- The automatic fallback to `$HOME/.emscripten_cache` when the emscripten
+  directory is read-only was removed.  This automatic behaviour could cause
+  confusion.  Anyone who really wants to use `$HOME/.emscripten_cache` can
+  still do so either via an environment variable (`EMCC_CACHE`) or via a config
+  file setting `CACHE`.
+- The standalone `file_packager.py` tool now outputs modern JS (specifically it
+  includes nullish assignment).  If you use this output directly and you want
+  to support older browsers you may need to transpile it.  If you use
+  `file_packager` via emcc the output will be transpiled as part of the emcc
+  output. (#22805)
+
+3.1.70 - 10/25/24
+-----------------
+- Improvements to Audio Worklet support (#22731, #22681)
+- Small improvements to embind (#22734)
+  
+3.1.69 - 10/12/24
+-----------------
+- The usage of `EM_BOOL` in the emscripten API has been replaced with C/C++
+  bool.  This change should not be observable since `EM_BOOL` has been
+  equivalent to `bool` since #22157. (#22155)
+- Fix regression introduced in 3.1.67 (#22557) which broke webgpu / int64
+  integration. (#22689)
+- SDL2 port updated from 2.28.4 to 2.30.8. (#22697)
+- embind no longer exports any library functions by default.  Previously we
+  would export getInheritedInstanceCount, getLiveInheritedInstances,
+  flushPendingDeletes and setDelayFunction.  If you need these library function
+  exprted they can be added to `EXPORTED_RUNTIME_METHODS`. (#22705)
+
+3.1.68 - 09/30/24
+-----------------
+- Added support for compiling 256-bit wide AVX intrinsics, emulated on top
+  of 128-bit Wasm SIMD instruction set. (#22430). Pass `-msimd128 -mavx` to
+  enable targeting AVX.
+- Pthread-based programs no longer generates `.worker.js` file.  This file was
+  made redundant back in 3.1.58 and now is completely removed. (#22598)
 - The freetype port was updated from v2.6 to v2.13.3. (#22585)
+- The number of arguments passed to Embind function calls is now only verified
+  with ASSERTIONS enabled. (#22591)
+- Optional arguments can now be omitted from Embind function calls. (#22591)
+- Recent changes to Binaryen included in this version significantly improve
+  the speed at which the post-link optimizations run for some large programs.
 
 3.1.67 - 09/17/24
 -----------------

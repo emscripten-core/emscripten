@@ -5,18 +5,19 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 FILE *file;
-bool getline(char *str, int len) { return fgets(str, len, file)!=NULL; }
+bool mygetline(char *str, int len) { return fgets(str, len, file)!=NULL; }
 
 int main() {
-  file = fopen("cube2md5.txt", "r");
+  file = fopen("test_cube2md5.txt", "r");
   char buf[1024];
   int tmp;
-  getline(buf, sizeof(buf));
+  mygetline(buf, sizeof(buf));
   if (sscanf(buf, " frame %d", &tmp)==1) {
     printf("frame %d\n", tmp);
-    for (int numdata = 0; getline(buf, sizeof(buf)) && buf[0]!='}';) {
+    for (int numdata = 0; mygetline(buf, sizeof(buf)) && buf[0]!='}';) {
       printf("frameline\n");
       for (char *src = buf, *next = src; numdata < 198; numdata++, src = next) {
         double x = strtod(src, &next);
@@ -25,5 +26,5 @@ int main() {
       }
     }
   }
-  return 1;
+  return 0;
 }
