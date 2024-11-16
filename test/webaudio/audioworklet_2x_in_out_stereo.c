@@ -10,6 +10,11 @@
 // This needs to be big enough for the 2x stereo outputs, 2x inputs and the worker stack
 #define AUDIO_STACK_SIZE 6144
 
+// Helper for MEMORY64 to cast an audio context or type to a void*
+#define WA_2_VOIDP(ctx) ((void*) (intptr_t) ctx)
+// Helper for MEMORY64 to cast a void* to an audio context or type
+#define VOIDP_2_WA(ptr) ((EMSCRIPTEN_WEBAUDIO_T) (intptr_t) ptr)
+
 // REPORT_RESULT is defined when running in Emscripten test harness.
 #ifdef REPORT_RESULT
 // Count the mixed frames and return after 375 frames (1 second with the default 128 size)
@@ -79,7 +84,7 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
 
 // Registered click even to (1) enable audio playback and (2) toggle playing the tracks
 bool onClick(int type, const EmscriptenMouseEvent* e, void* data) {
-	EMSCRIPTEN_WEBAUDIO_T ctx = (EMSCRIPTEN_WEBAUDIO_T) (data);
+	EMSCRIPTEN_WEBAUDIO_T ctx = VOIDP_2_WA(data);
 	if (emscripten_audio_context_state(ctx) != AUDIO_CONTEXT_STATE_RUNNING) {
 		printf("Resuming playback\n");
 		emscripten_resume_audio_context_sync(ctx);
@@ -119,7 +124,7 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
 			emscripten_audio_node_connect(bassID, worklet, 0, 1);
 		}
 		
-		emscripten_set_click_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, (void*) (context), false, &onClick);
+		emscripten_set_click_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, WA_2_VOIDP(context), false, &onClick);
 		
 #ifdef REPORT_RESULT
 		emscripten_set_timeout_loop(&playedAndMixed, 16, NULL);
