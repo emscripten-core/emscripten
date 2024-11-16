@@ -19,17 +19,17 @@ lxml==4.9.2
 # Please keep them in sync.
 sphinx==7.1.2
 # See https://github.com/emscripten-core/emscripten/issues/21590
-sphinxcontrib-applehelp==1.0.7
-sphinxcontrib-devhelp==1.0.6
-sphinxcontrib-htmlhelp>=2.0.0
-sphinxcontrib-serializinghtml>=1.1.5
-sphinxcontrib-qthelp==1.0.6
+sphinxcontrib-applehelp==1.0.4
+sphinxcontrib-devhelp==1.0.2
+sphinxcontrib-htmlhelp==2.0.1
+sphinxcontrib-serializinghtml==1.1.5
+sphinxcontrib-qthelp==1.0.3
 sphinxcontrib-jquery==4.0
-alabaster<0.8,>=0.7
-pygments>=2.13
-jinja2>=3.0
+alabaster==0.7.13
+pygments==2.17.2
+jinja2==3.0
 
-docutils<0.21,>=0.18.1
+docutils==0.20.1
 
 # Needed by test/test_sockets.py
 websockify==0.10.0
