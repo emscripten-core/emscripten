@@ -2854,7 +2854,7 @@ Module["preRun"] = () => {
 
   @parameterized({
     '': (['-sUSE_GLFW=2', '-DUSE_GLFW=2'],),
-    'glfw3': (['-sUSE_GLFW=2', '-DUSE_GLFW=2'],),
+    'glfw3': (['-sUSE_GLFW=3', '-DUSE_GLFW=3'],),
   })
   @requires_graphics_hardware
   def test_glfw_events(self, args):
