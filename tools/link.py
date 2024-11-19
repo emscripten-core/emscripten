@@ -2481,18 +2481,17 @@ var %(EXPORT_NAME)s = (() => {
     src += f'globalThis.AudioWorkletModule = {settings.EXPORT_NAME};\n'
 
   # Export using a UMD style export, or ES6 exports if selected
-  if settings.EXPORT_ES6 and settings.MODULARIZE != 'instance':
-    src += 'export default %s;\n' % settings.EXPORT_NAME
-
-  if settings.MODULARIZE == 'instance':
-    exports = settings.EXPORTED_FUNCTIONS + settings.EXPORTED_RUNTIME_METHODS
-    # Declare a top level var for each export so that code in the init function
-    # can assign to it and update the live module bindings.
-    src += 'var ' + ', '.join(['__exp_' + export for export in exports]) + ';\n'
-    # Export the functions with their original name.
-    exports = ['__exp_' + export + ' as ' + export for export in exports]
-    src += 'export {' + ', '.join(exports) + '};\n'
-
+  if settings.EXPORT_ES6:
+    if settings.MODULARIZE == 'instance':
+      exports = settings.EXPORTED_FUNCTIONS + settings.EXPORTED_RUNTIME_METHODS
+      # Declare a top level var for each export so that code in the init function
+      # can assign to it and update the live module bindings.
+      src += 'var ' + ', '.join(['__exp_' + export for export in exports]) + ';\n'
+      # Export the functions with their original name.
+      exports = ['__exp_' + export + ' as ' + export for export in exports]
+      src += 'export {' + ', '.join(exports) + '};\n'
+    else:
+      src += 'export default %s;\n' % settings.EXPORT_NAME
   elif not settings.MINIMAL_RUNTIME:
     src += '''\
 if (typeof exports === 'object' && typeof module === 'object')

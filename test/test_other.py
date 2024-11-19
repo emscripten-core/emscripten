@@ -454,7 +454,7 @@ class other(RunnerCore):
       $baz: function() { console.log('baz'); },
       $qux: function() { console.log('qux'); }
     });''')
-    self.run_process([EMCC, test_file('modularize_instance.cpp'),
+    self.run_process([EMCC, test_file('modularize_instance.c'),
                       '-sMODULARIZE=instance',
                       '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit',
                       '-sEXPORTED_FUNCTIONS=_bar,_main,qux',
