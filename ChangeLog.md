@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.72 (in development)
+3.1.73 (in development)
 -----------------------
+
+3.1.72 - 11/19/24
+-----------------
 - The `MEMORY64` setting is no longer experimental. At time of writing all
   browsers still require a flag to run the resulting binaries but that should
   change in the coming months since the proposal is now at stage 4. (#22864)
