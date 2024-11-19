@@ -384,6 +384,9 @@ function exportRuntime() {
     // If requested to be exported, export it.  HEAP objects are exported
     // separately in updateMemoryViews
     if (EXPORTED_RUNTIME_METHODS.has(name) && !name.startsWith('HEAP')) {
+      if (MODULARIZE === 'instance') {
+        return `__exp_${name} = ${name};`;
+      }
       return `Module['${name}'] = ${name};`;
     }
   }
