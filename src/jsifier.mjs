@@ -284,21 +284,35 @@ ${argConversions}
 
     // apply LIBRARY_DEBUG if relevant
     if (LIBRARY_DEBUG && !isJsOnlySymbol(symbol)) {
-      snippet = modifyJSFunction(
-        snippet,
-        (args, body, async) => `\
+      snippet = modifyJSFunction(snippet, (args, body, async, oneliner) => {
+        var run_func;
+        if (oneliner) {
+          run_func = `var ret = ${body}`;
+        } else {
+          run_func = `var ret = (() => { ${body} })();`;
+        }
+        return `\
 function(${args}) {
-  var ret = (() => { if (runtimeDebug) err("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
-  ${body}
-  })();
-  if (runtimeDebug && typeof ret != "undefined") err("  [     return:" + prettyPrint(ret));
+  if (runtimeDebug) err("[library call:${mangled}: " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");
+  ${run_func}
+  if (runtimeDebug) err("  [     return:" + prettyPrint(ret));
   return ret;
-}`,
-      );
+}`;
+      });
     }
 
     const sig = LibraryManager.library[symbol + '__sig'];
     const i53abi = LibraryManager.library[symbol + '__i53abi'];
+    if (i53abi) {
+      if (!sig) {
+        error(`JS library error: '__i53abi' decorator requires '__sig' decorator: '${symbol}'`);
+      }
+      if (!sig.includes('j')) {
+        error(
+          `JS library error: '__i53abi' only makes sense when '__sig' includes 'j' (int64): '${symbol}'`,
+        );
+      }
+    }
     if (
       sig &&
       ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')))
@@ -312,7 +326,7 @@ function(${args}) {
       if (proxyingMode !== 'sync' && proxyingMode !== 'async' && proxyingMode !== 'none') {
         throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
       }
-      if (SHARED_MEMORY) {
+      if (SHARED_MEMORY && proxyingMode != 'none') {
         const sync = proxyingMode === 'sync';
         if (PTHREADS) {
           snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {

@@ -20,7 +20,7 @@ def get(ports, settings, shared):
 
   def create(final):
     # includes
-    source_path = os.path.join(ports.get_dir(), 'boost_headers')
+    source_path = ports.get_dir('boost_headers')
     source_path_include = os.path.join(source_path, 'boost')
     ports.install_header_dir(source_path_include, 'boost')
 

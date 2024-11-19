@@ -40,7 +40,7 @@ elif EMCC_LOGGING:
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=log_level)
 colored_logger.enable()
 
-from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS
+from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS, set_version_globals
 from . import cache, tempfiles
 from . import diagnostics
 from . import config
@@ -59,7 +59,7 @@ SKIP_SUBPROCS = False
 # This version currently matches the node version that we ship with emsdk
 # which means that we can say for sure that this version is well supported.
 MINIMUM_NODE_VERSION = (16, 20, 0)
-EXPECTED_LLVM_VERSION = 19
+EXPECTED_LLVM_VERSION = 20
 
 # These get set by setup_temp_dirs
 TEMP_DIR = None
@@ -249,7 +249,7 @@ def exec_process(cmd):
   else:
     sys.stdout.flush()
     sys.stderr.flush()
-    os.execv(cmd[0], cmd)
+    os.execvp(cmd[0], cmd)
 
 
 def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: mutable default args
@@ -424,16 +424,8 @@ def check_node():
     exit_with_error('the configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
 
 
-def set_version_globals():
-  global EMSCRIPTEN_VERSION, EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY
-  filename = path_from_root('emscripten-version.txt')
-  EMSCRIPTEN_VERSION = utils.read_file(filename).strip().strip('"')
-  parts = [int(x) for x in EMSCRIPTEN_VERSION.split('-')[0].split('.')]
-  EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
-
-
 def generate_sanity():
-  return f'{EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}\n'
+  return f'{utils.EMSCRIPTEN_VERSION}|{config.LLVM_ROOT}\n'
 
 
 @memoize
@@ -456,7 +448,7 @@ def perform_sanity_checks():
   check_node()
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
-    for cmd in [CLANG_CC, LLVM_AR]:
+    for cmd in (CLANG_CC, LLVM_AR):
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
         exit_with_error('cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
 

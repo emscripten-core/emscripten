@@ -221,8 +221,8 @@ class Ports:
     return output_path
 
   @staticmethod
-  def get_dir():
-    dirname = config.PORTS
+  def get_dir(*parts):
+    dirname = os.path.join(config.PORTS, *parts)
     shared.safe_ensure_dirs(dirname)
     return dirname
 
@@ -240,7 +240,7 @@ class Ports:
   @staticmethod
   def fetch_project(name, url, sha512hash=None):
     # To compute the sha512 hash, run `curl URL | sha512sum`.
-    fullname = os.path.join(Ports.get_dir(), name)
+    fullname = Ports.get_dir(name)
 
     if name not in Ports.name_cache: # only mention each port once in log
       logger.debug(f'including port: {name}')

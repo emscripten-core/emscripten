@@ -12,7 +12,7 @@ Emscripten supports the `WebAssembly SIMD <https://github.com/webassembly/simd/>
 1. Enable LLVM/Clang SIMD autovectorizer to automatically target WebAssembly SIMD, without requiring changes to C/C++ source code.
 2. Write SIMD code using the GCC/Clang SIMD Vector Extensions (``__attribute__((vector_size(16)))``)
 3. Write SIMD code using the WebAssembly SIMD intrinsics (``#include <wasm_simd128.h>``)
-4. Compile existing SIMD code that uses the x86 SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2 or 128-bit subset of the AVX intrinsics (``#include <*mmintrin.h>``)
+4. Compile existing SIMD code that uses the x86 SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2 or AVX intrinsics (``#include <*mmintrin.h>``)
 5. Compile existing SIMD code that uses the ARM NEON intrinsics (``#include <arm_neon.h>``)
 
 These techniques can be freely combined in a single program.
@@ -54,9 +54,9 @@ LLVM maintains a WebAssembly SIMD Intrinsics header file that is provided with E
 
        int main() {
        #ifdef __wasm_simd128__
-         v128 v1 = wasm_f32x4_make(1.2f, 3.4f, 5.6f, 7.8f);
-         v128 v2 = wasm_f32x4_make(2.1f, 4.3f, 6.5f, 8.7f);
-         v128 v3 = v1 + v2;
+         v128_t v1 = wasm_f32x4_make(1.2f, 3.4f, 5.6f, 7.8f);
+         v128_t v2 = wasm_f32x4_make(2.1f, 4.3f, 6.5f, 8.7f);
+         v128_t v3 = wasm_f32x4_add(v1, v2);
          // Prints "v3: [3.3, 7.7, 12.1, 16.5]"
          printf("v3: [%.1f, %.1f, %.1f, %.1f]\n",
                 wasm_f32x4_extract_lane(v3, 0),
@@ -153,7 +153,7 @@ Emscripten supports compiling existing codebases that use x86 SSE instructions b
 * **SSE4.2**: pass ``-msse4.2`` and ``#include <nmmintrin.h>``. Use ``#ifdef __SSE4_2__`` to gate code.
 * **AVX**: pass ``-mavx`` and ``#include <immintrin.h>``. Use ``#ifdef __AVX__`` to gate code.
 
-Currently only the SSE1, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, and 128-bit AVX instruction sets are supported. Each of these instruction sets add on top of the previous ones, so e.g. when targeting SSE3, the instruction sets SSE1 and SSE2 are also available.
+Currently only the SSE1, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, and AVX instruction sets are supported. Each of these instruction sets add on top of the previous ones, so e.g. when targeting SSE3, the instruction sets SSE1 and SSE2 are also available.
 
 The following tables highlight the availability and expected performance of different SSE* intrinsics. This can be useful for understanding the performance limitations that the Wasm SIMD specification has when running on x86 hardware.
 
@@ -1136,7 +1136,7 @@ The following table highlights the availability and expected performance of diff
    * - _mm_testz_ps
      - 💣 emulated with complex SIMD+scalar sequence
 
-Only the 128-bit wide instructions from AVX instruction set are available. 256-bit wide AVX instructions are not provided.
+Only the 128-bit wide instructions from AVX instruction set are listed. The 256-bit wide AVX instructions are emulated by two 128-bit wide instructions.
 
 
 ====================================================== 

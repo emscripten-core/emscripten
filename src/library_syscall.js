@@ -56,11 +56,11 @@ var SyscallsLibrary = {
       var mtime = stat.mtime.getTime();
       var ctime = stat.ctime.getTime();
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_sec, 'Math.floor(atime / 1000)', 'i64') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '(atime % 1000) * 1000', SIZE_TYPE) }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_atim.tv_nsec, '(atime % 1000) * 1000 * 1000', SIZE_TYPE) }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_sec, 'Math.floor(mtime / 1000)', 'i64') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '(mtime % 1000) * 1000', SIZE_TYPE) }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '(mtime % 1000) * 1000 * 1000', SIZE_TYPE) }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, 'Math.floor(ctime / 1000)', 'i64') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '(ctime % 1000) * 1000', SIZE_TYPE) }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '(ctime % 1000) * 1000 * 1000', SIZE_TYPE) }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i64') }}};
       return 0;
     },
@@ -97,7 +97,7 @@ var SyscallsLibrary = {
   },
 
   $syscallGetVarargI__internal: true,
-  $syscallGetVarargI: function() {
+  $syscallGetVarargI: () => {
 #if ASSERTIONS
     assert(SYSCALLS.varargs != undefined);
 #endif
@@ -112,7 +112,7 @@ var SyscallsLibrary = {
 
   $syscallGetVarargP__internal: true,
 #if MEMORY64
-  $syscallGetVarargP: function() {
+  $syscallGetVarargP: () => {
 #if ASSERTIONS
     assert(SYSCALLS.varargs != undefined);
 #endif
@@ -324,11 +324,8 @@ var SyscallsLibrary = {
 #endif
     return socket;
   },
-  /** @param {boolean=} allowNull */
   $getSocketAddress__deps: ['$readSockaddr', '$FS', '$DNS'],
-  $getSocketAddress__docs: '/** @param {boolean=} allowNull */',
-  $getSocketAddress: (addrp, addrlen, allowNull) => {
-    if (allowNull && addrp === 0) return null;
+  $getSocketAddress: (addrp, addrlen) => {
     var info = readSockaddr(addrp, addrlen);
     if (info.errno) throw new FS.ErrnoError(info.errno);
     info.addr = DNS.lookup_addr(info.addr) || info.addr;
@@ -421,11 +418,11 @@ var SyscallsLibrary = {
   __syscall_sendto__deps: ['$getSocketFromFD', '$getSocketAddress'],
   __syscall_sendto: (fd, message, length, flags, addr, addr_len) => {
     var sock = getSocketFromFD(fd);
-    var dest = getSocketAddress(addr, addr_len, true);
-    if (!dest) {
+    if (!addr) {
       // send, no address provided
       return FS.write(sock.stream, HEAP8, message, length);
     }
+    var dest = getSocketAddress(addr, addr_len);
     // sendto an address
     return sock.sock_ops.sendmsg(sock, HEAP8, message, length, dest.addr, dest.port);
   },
@@ -444,7 +441,7 @@ var SyscallsLibrary = {
     }
     return -{{{ cDefs.ENOPROTOOPT }}}; // The option is unknown at the level indicated.
   },
-  __syscall_sendmsg__deps: ['$getSocketFromFD', '$readSockaddr', '$DNS'],
+  __syscall_sendmsg__deps: ['$getSocketFromFD', '$getSocketAddress', '$DNS'],
   __syscall_sendmsg: (fd, message, flags, d1, d2, d3) => {
     var sock = getSocketFromFD(fd);
     var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
@@ -454,10 +451,9 @@ var SyscallsLibrary = {
     var name = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_name, '*') }}};
     var namelen = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_namelen, 'i32') }}};
     if (name) {
-      var info = readSockaddr(name, namelen);
-      if (info.errno) return -info.errno;
+      var info = getSocketAddress(name, namelen);
       port = info.port;
-      addr = DNS.lookup_addr(info.addr) || info.addr;
+      addr = info.addr;
     }
     // concatenate scatter-gather arrays into one message buffer
     var total = 0;
@@ -572,9 +568,7 @@ var SyscallsLibrary = {
                   (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0) |
                   (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
 
-    var check = function(fd, low, high, val) {
-      return (fd < 32 ? (low & val) : (high & val));
-    };
+    var check = (fd, low, high, val) => fd < 32 ? (low & val) : (high & val);
 
     for (var fd = 0; fd < nfds; fd++) {
       var mask = 1 << (fd % 32);
@@ -950,7 +944,7 @@ var SyscallsLibrary = {
 #endif
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
-    assert(flags === 0);
+    assert(flags === 0 || flags == {{{ cDefs.AT_EACCESS }}});
 #endif
     path = SYSCALLS.calculateAt(dirfd, path);
     if (amode & ~{{{ cDefs.S_IRWXO }}}) {
@@ -978,19 +972,37 @@ var SyscallsLibrary = {
     assert(flags === 0);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path, true);
+    var now = Date.now(), atime, mtime;
     if (!times) {
-      var atime = Date.now();
-      var mtime = atime;
+      atime = now;
+      mtime = now;
     } else {
       var seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i53') }}};
       var nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-      atime = (seconds*1000) + (nanoseconds/(1000*1000));
+      if (nanoseconds == {{{ cDefs.UTIME_NOW }}}) {
+        atime = now;
+      } else if (nanoseconds == {{{ cDefs.UTIME_OMIT }}}) {
+        atime = -1;
+      } else {
+        atime = (seconds*1000) + (nanoseconds/(1000*1000));
+      }
       times += {{{ C_STRUCTS.timespec.__size__ }}};
       seconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_sec, 'i53') }}};
       nanoseconds = {{{ makeGetValue('times', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
-      mtime = (seconds*1000) + (nanoseconds/(1000*1000));
+      if (nanoseconds == {{{ cDefs.UTIME_NOW }}}) {
+        mtime = now;
+      } else if (nanoseconds == {{{ cDefs.UTIME_OMIT }}}) {
+        mtime = -1;
+      } else {
+        mtime = (seconds*1000) + (nanoseconds/(1000*1000));
+      }
     }
-    FS.utime(path, atime, mtime);
+    // -1 here means UTIME_OMIT was passed.  FS.utime tables the max of these
+    // two values and sets the timestamp to that single value.  If both were
+    // set to UTIME_OMIT then we can skip the call completely.
+    if (mtime != -1 || atime != -1) {
+      FS.utime(path, atime, mtime);
+    }
     return 0;
   },
   __syscall_fallocate__i53abi: true,

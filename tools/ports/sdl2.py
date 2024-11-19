@@ -5,8 +5,8 @@
 
 import os
 
-TAG = 'release-2.28.4'
-HASH = '8dd593fd7d8660efdeb53b7d1706f5743eb68491a29eb0cf0c028d8f8b8a7945c0dc5bf1117b5e4e871d7622be277c0838d08cc6eabdecb563000dfcc0c94639'
+TAG = 'release-2.30.9'
+HASH = '00079415bd3aab9ab2cf67c466ca0ab96076ff8b9c8ed6d4e11db15e10f5cf91f49da6356cf3ed9adc91e185c1aada3886baa80d14d421729805adaa98563e36'
 SUBDIR = 'SDL-' + TAG
 
 variants = {'sdl2-mt': {'PTHREADS': 1}}
@@ -26,7 +26,7 @@ def get(ports, settings, shared):
 
   def create(final):
     # copy includes to a location so they can be used as 'SDL2/'
-    src_dir = os.path.join(ports.get_dir(), 'sdl2', SUBDIR)
+    src_dir = ports.get_dir('sdl2', SUBDIR)
     source_include_path = os.path.join(src_dir, 'include')
     ports.install_headers(source_include_path, target='SDL2')
 
@@ -39,6 +39,7 @@ def get(ports, settings, shared):
     events/SDL_scancode_tables.c events/SDL_mouse.c events/SDL_quit.c
     events/SDL_touch.c events/SDL_windowevents.c file/SDL_rwops.c haptic/SDL_haptic.c
     joystick/controller_type.c joystick/SDL_gamecontroller.c joystick/SDL_joystick.c
+    joystick/SDL_steam_virtual_gamepad.c
     power/SDL_power.c render/SDL_d3dmath.c render/SDL_render.c
     render/SDL_yuv_sw.c render/direct3d/SDL_render_d3d.c render/direct3d11/SDL_render_d3d11.c
     render/opengl/SDL_render_gl.c render/opengl/SDL_shaders_gl.c render/opengles/SDL_render_gles.c
@@ -58,7 +59,7 @@ def get(ports, settings, shared):
     video/emscripten/SDL_emscriptenframebuffer.c video/emscripten/SDL_emscriptenmouse.c
     video/emscripten/SDL_emscriptenopengles.c video/emscripten/SDL_emscriptenvideo.c
     audio/emscripten/SDL_emscriptenaudio.c video/dummy/SDL_nullevents.c
-    video/dummy/SDL_nullframebuffer.c video/dummy/SDL_nullvideo.c video/yuv2rgb/yuv_rgb.c
+    video/dummy/SDL_nullframebuffer.c video/dummy/SDL_nullvideo.c video/yuv2rgb/yuv_rgb_std.c
     audio/disk/SDL_diskaudio.c audio/dummy/SDL_dummyaudio.c loadso/dlopen/SDL_sysloadso.c
     power/emscripten/SDL_syspower.c joystick/emscripten/SDL_sysjoystick.c
     filesystem/emscripten/SDL_sysfilesystem.c timer/unix/SDL_systimer.c haptic/dummy/SDL_syshaptic.c

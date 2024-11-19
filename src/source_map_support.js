@@ -103,7 +103,7 @@ if (!isDataURI(wasmSourceMapFile)) {
 
 function getSourceMap() {
   var buf = readBinary(wasmSourceMapFile);
-  return JSON.parse(UTF8ArrayToString(buf, 0, buf.length));
+  return JSON.parse(UTF8ArrayToString(buf));
 }
 
 function getSourceMapPromise() {

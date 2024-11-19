@@ -336,10 +336,9 @@ var SAFE_HEAP_LOG = false;
 
 // Allows function pointers to be cast, wraps each call of an incorrect type
 // with a runtime correction.  This adds overhead and should not be used
-// normally.  It also forces ALIASING_FUNCTION_POINTERS to 0.  Aside from making
-// calls not fail, this tries to convert values as best it can.
-// We use 64 bits (i64) to represent values, as if we wrote the sent value to
-// memory and loaded the received type from the same memory (using
+// normally.  Aside from making calls not fail, this tries to convert values as
+// best it can.  We use 64 bits (i64) to represent values, as if we wrote the
+// sent value to memory and loaded the received type from the same memory (using
 // truncs/extends/ reinterprets). This means that when types do not match the
 // emulated values may not match (this is true of native too, for that matter -
 // this is all undefined behavior). This approaches appears good enough to
@@ -782,7 +781,7 @@ var EXCEPTION_STACK_TRACES = false;
 // Emit instructions for the new Wasm exception handling proposal with exnref,
 // which was adopted on Oct 2023. The implementation of the new proposal is
 // still in progress and this feature is currently experimental.
-// [compile+link]
+// [link]
 var WASM_EXNREF = false;
 
 // Emscripten throws an ExitStatus exception to unwind when exit() is called.
@@ -795,7 +794,7 @@ var WASM_EXNREF = false;
 // desirable.
 //
 // [link]
-var NODEJS_CATCH_EXIT = true;
+var NODEJS_CATCH_EXIT = false;
 
 // Catch unhandled rejections in node. This only effect versions of node older
 // than 15.  Without this, old version node will print a warning, but exit
@@ -1007,7 +1006,7 @@ var INCOMING_MODULE_JS_API = [
   'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
   'preMainLoop', 'preRun',
   'preinitializedWebGLContext', 'preloadPlugins',
-  'print', 'printErr', 'quit', 'setStatus', 'statusMessage', 'stderr',
+  'print', 'printErr', 'setStatus', 'statusMessage', 'stderr',
   'stdin', 'stdout', 'thisProgram', 'wasm', 'wasmBinary', 'websocket'
 ];
 
@@ -1636,9 +1635,13 @@ var USE_SQLITE3 = false;
 // [compile+link] - affects user code at compile and system libraries at link.
 var SHARED_MEMORY = false;
 
-// If true, enables support for Wasm Workers. Wasm Workers enable applications
+// If 1, enables support for Wasm Workers. Wasm Workers enable applications
 // to create threads using a lightweight web-specific API that builds on top
-// of Wasm SharedArrayBuffer + Atomics API.
+// of Wasm SharedArrayBuffer + Atomics API. When enabled, a new build output
+// file a.ww.js will be generated to bootstrap the Wasm Worker JS contexts.
+// If 2, enables support for Wasm Workers, but without using a separate a.ww.js
+// file on the side. This can simplify deployment of builds, but will have a
+// downside that the generated build will no longer be csp-eval compliant.
 // [compile+link] - affects user code at compile and system libraries at link.
 var WASM_WORKERS = 0;
 
@@ -2134,7 +2137,9 @@ var TRUSTED_TYPES = false;
 // settings is *only* needed when also explicitly targeting older browsers.
 var POLYFILL = true;
 
-// If true, add tracing to core runtime functions.
+// If non-zero, add tracing to core runtime functions.  Can be set to 2 for
+// extra tracing (for example, tracing that occurs on each turn of the event
+// loop or each user callback, which can flood the console).
 // This setting is enabled by default if any of the following debugging settings
 // are enabled:
 // - PTHREADS_DEBUG
@@ -2148,7 +2153,7 @@ var POLYFILL = true;
 // - SOCKET_DEBUG
 // - FETCH_DEBUG
 // [link]
-var RUNTIME_DEBUG = false;
+var RUNTIME_DEBUG = 0;
 
 // Include JS library symbols that were previously part of the default runtime.
 // Without this, such symbols can be made available by adding them to
@@ -2171,10 +2176,6 @@ var SIGNATURE_CONVERSIONS = [];
 // Internal (testing only): Disables the blitOffscreenFramebuffer VAO path.
 // [link]
 var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = false;
-
-// Internal (testing only): Forces memory growing to fail.
-// [link]
-var TEST_MEMORY_GROWTH_FAILS = false;
 
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]

@@ -6,6 +6,15 @@
 
 addToLibrary({
   $MEMFS__deps: ['$FS', '$mmapAlloc'],
+#if !ASSERTIONS
+  $MEMFS__postset: `
+    // This error may happen quite a bit. To avoid overhead we reuse it (and
+    // suffer a lack of stack info).
+    MEMFS.doesNotExistError = new FS.ErrnoError({{{ cDefs.ENOENT }}});
+    /** @suppress {checkTypes} */
+    MEMFS.doesNotExistError.stack = '<generic error, no stack>';
+    `,
+#endif
   $MEMFS: {
     ops_table: null,
     mount(mount) {
@@ -173,7 +182,11 @@ addToLibrary({
         }
       },
       lookup(parent, name) {
-        throw FS.genericErrors[{{{ cDefs.ENOENT }}}];
+#if ASSERTIONS
+        throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
+#else
+        throw MEMFS.doesNotExistError;
+#endif
       },
       mknod(parent, name, mode, dev) {
         return MEMFS.createNode(parent, name, mode, dev);
@@ -329,26 +342,28 @@ addToLibrary({
         var allocated;
         var contents = stream.node.contents;
         // Only make a new copy when MAP_PRIVATE is specified.
-        if (!(flags & {{{ cDefs.MAP_PRIVATE }}}) && contents.buffer === HEAP8.buffer) {
+        if (!(flags & {{{ cDefs.MAP_PRIVATE }}}) && contents && contents.buffer === HEAP8.buffer) {
           // We can't emulate MAP_SHARED when the file is not backed by the
           // buffer we're mapping to (e.g. the HEAP buffer).
           allocated = false;
           ptr = contents.byteOffset;
         } else {
-          // Try to avoid unnecessary slices.
-          if (position > 0 || position + length < contents.length) {
-            if (contents.subarray) {
-              contents = contents.subarray(position, position + length);
-            } else {
-              contents = Array.prototype.slice.call(contents, position, position + length);
-            }
-          }
           allocated = true;
           ptr = mmapAlloc(length);
           if (!ptr) {
             throw new FS.ErrnoError({{{ cDefs.ENOMEM }}});
           }
-          HEAP8.set(contents, ptr);
+          if (contents) {
+            // Try to avoid unnecessary slices.
+            if (position > 0 || position + length < contents.length) {
+              if (contents.subarray) {
+                contents = contents.subarray(position, position + length);
+              } else {
+                contents = Array.prototype.slice.call(contents, position, position + length);
+              }
+            }
+            HEAP8.set(contents, ptr);
+          }
         }
         return { ptr, allocated };
       },

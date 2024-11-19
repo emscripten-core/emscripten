@@ -19,7 +19,7 @@ var LibraryDylink = {
     var wasmPlugin = {
       'promiseChainEnd': Promise.resolve(),
       'canHandle': (name) => {
-        return !Module.noWasmDecoding && name.endsWith('.so')
+        return !Module['noWasmDecoding'] && name.endsWith('.so')
       },
       'handle': (byteArray, name, onload, onerror) => {
         // loadWebAssemblyModule can not load modules out-of-order, so rather
@@ -363,7 +363,7 @@ var LibraryDylink = {
   // Allocate memory even if malloc isn't ready yet.  The allocated memory here
   // must be zero initialized since its used for all static data, including bss.
   $getMemory__noleakcheck: true,
-  $getMemory__deps: ['$GOT', '__heap_base', '$zeroMemory', '$alignMemory', 'malloc'],
+  $getMemory__deps: ['$GOT', '__heap_base', '$alignMemory', 'calloc'],
   $getMemory: (size) => {
     // After the runtime is initialized, we must only use sbrk() normally.
 #if DYLINK_DEBUG
@@ -373,7 +373,7 @@ var LibraryDylink = {
       // Currently we don't support freeing of static data when modules are
       // unloaded via dlclose.  This function is tagged as `noleakcheck` to
       // avoid having this reported as leak.
-      return zeroMemory(_malloc(size), size);
+      return _calloc(size, 1);
     }
     var ret = ___heap_base;
     // Keep __heap_base stack aligned.
@@ -526,9 +526,22 @@ var LibraryDylink = {
     return customSection;
   },
 
+#if DYNCALLS || !WASM_BIGINT
+  $registerDynCallSymbols: (exports) => {
+    for (var [sym, exp] of Object.entries(exports)) {
+      if (sym.startsWith('dynCall_') && !Module.hasOwnProperty(sym)) {
+        Module[sym] = exp;
+      }
+    }
+  },
+#endif
+
   // Module.symbols <- libModule.symbols (flags.global handler)
   $mergeLibSymbols__deps: ['$isSymbolDefined'],
   $mergeLibSymbols: (exports, libName) => {
+#if DYNCALLS || !WASM_BIGINT
+    registerDynCallSymbols(exports);
+#endif
     // add symbols into global namespace TODO: weak linking etc.
     for (var [sym, exp] of Object.entries(exports)) {
 #if ASSERTIONS == 2
@@ -571,18 +584,16 @@ var LibraryDylink = {
         setImport('main')
       }
 #endif
-
-      if (sym.startsWith('dynCall_') && !Module.hasOwnProperty(sym)) {
-        Module[sym] = exp;
-      }
     }
   },
 
 #if DYLINK_DEBUG
   $dumpTable__deps: ['$wasmTable'],
   $dumpTable: () => {
-    for (var i = 0; i < wasmTable.length; i++)
+    var len = wasmTable.length;
+    for (var i = {{{ toIndexType(0) }}} ; i < len; i++) {
       dbg(`table: ${i} : ${wasmTable.get(i)}`);
+    }
   },
 #endif
 
@@ -597,7 +608,7 @@ var LibraryDylink = {
   $loadWebAssemblyModule__deps: [
     '$loadDynamicLibrary', '$getMemory',
     '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
-    '$getDylinkMetadata', '$alignMemory', '$zeroMemory',
+    '$getDylinkMetadata', '$alignMemory',
     '$currentModuleWeakSymbols',
     '$updateTableMap',
     '$wasmTable',
@@ -628,7 +639,7 @@ var LibraryDylink = {
         var memAlign = Math.pow(2, metadata.memoryAlign);
         // prepare memory
         var memoryBase = metadata.memorySize ? alignMemory(getMemory(metadata.memorySize + memAlign), memAlign) : 0; // TODO: add to cleanups
-        var tableBase = metadata.tableSize ? wasmTable.length : 0;
+        var tableBase = metadata.tableSize ? {{{ from64Expr('wasmTable.length') }}} : 0;
         if (handle) {
           {{{ makeSetValue('handle', C_STRUCTS.dso.mem_allocated, '1', 'i8') }}};
           {{{ makeSetValue('handle', C_STRUCTS.dso.mem_addr, 'memoryBase', '*') }}};
@@ -641,12 +652,12 @@ var LibraryDylink = {
         tableBase = {{{ makeGetValue('handle', C_STRUCTS.dso.table_addr, '*') }}};
       }
 
-      var tableGrowthNeeded = tableBase + metadata.tableSize - wasmTable.length;
+      var tableGrowthNeeded = tableBase + metadata.tableSize - {{{ from64Expr('wasmTable.length') }}};
       if (tableGrowthNeeded > 0) {
 #if DYLINK_DEBUG
         dbg("loadModule: growing table: " + tableGrowthNeeded);
 #endif
-        wasmTable.grow(tableGrowthNeeded);
+        wasmTable.grow({{{ toIndexType('tableGrowthNeeded') }}});
       }
 #if DYLINK_DEBUG
       dbg("loadModule: memory[" + memoryBase + ":" + (memoryBase + metadata.memorySize) + "]" +
@@ -814,8 +825,7 @@ var LibraryDylink = {
         for (var name in moduleExports) {
           if (name.startsWith('__em_js__')) {
             var start = moduleExports[name]
-            {{{ from64('start') }}}
-            var jsString = UTF8ToString(start);
+            var jsString = UTF8ToString({{{ from64Expr('start') }}});
             // EM_JS strings are stored in the data section in the form
             // SIG<::>BODY.
             var parts = jsString.split('<::>');
@@ -938,6 +948,9 @@ var LibraryDylink = {
 #if FILESYSTEM
                               '$preloadedWasm',
 #endif
+#if DYNCALLS || !WASM_BIGINT
+                              '$registerDynCallSymbols',
+#endif
   ],
   $loadDynamicLibrary__docs: `
     /**
@@ -962,6 +975,9 @@ var LibraryDylink = {
         if (localScope) {
           Object.assign(localScope, dso.exports);
         }
+#if DYNCALLS || !WASM_BIGINT
+        registerDynCallSymbols(dso.exports);
+#endif
       } else if (!dso.global) {
         // The library was previously loaded only locally but not
         // we have a request with global=true.
@@ -1008,9 +1024,7 @@ var LibraryDylink = {
 
       var libFile = locateFile(libName);
       if (flags.loadAsync) {
-        return new Promise(function(resolve, reject) {
-          asyncLoad(libFile, resolve, reject);
-        });
+        return new Promise((resolve, reject) => asyncLoad(libFile, resolve, reject));
       }
 
       // load the binary synchronously
@@ -1047,6 +1061,9 @@ var LibraryDylink = {
         mergeLibSymbols(exports, libName);
       } else if (localScope) {
         Object.assign(localScope, exports);
+#if DYNCALLS || !WASM_BIGINT
+        registerDynCallSymbols(exports);
+#endif
       }
       dso.exports = exports;
     }

@@ -14,10 +14,6 @@
 // An online HTML version (which may be of a different version of Emscripten)
 //    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
 
-#if PTHREADS
-#include "runtime_pthread.js"
-#endif
-
 #if RELOCATABLE
 {{{ makeModuleReceiveWithVar('dynamicLibraries', undefined, '[]', true) }}}
 #endif
@@ -32,6 +28,14 @@ if (Module['doWasm2JS']) {
 #if !WASM2JS
 }
 #endif
+#endif
+
+#if MAYBE_WASM2JS
+if (WebAssembly.isWasm2js) {
+  // We don't need to actually download a wasm binary, mark it as present but
+  // empty.
+  wasmBinary = [];
+}
 #endif
 
 #if ASSERTIONS && WASM == 1
@@ -131,7 +135,7 @@ var HEAP,
 /* BigInt64Array type is not correctly defined in closure
 /** not-@type {!BigInt64Array} */
   HEAP64,
-/* BigUInt64Array type is not correctly defined in closure
+/* BigUint64Array type is not correctly defined in closure
 /** not-t@type {!BigUint64Array} */
   HEAPU64,
 #endif
@@ -143,6 +147,10 @@ var HEAP_DATA_VIEW;
 #endif
 
 #include "runtime_shared.js"
+
+#if PTHREADS
+#include "runtime_pthread.js"
+#endif
 
 #if ASSERTIONS
 assert(!Module['STACK_SIZE'], 'STACK_SIZE can no longer be set at runtime.  Use -sSTACK_SIZE at link time')
@@ -163,7 +171,6 @@ assert(!Module['INITIAL_MEMORY'], 'Detected runtime INITIAL_MEMORY setting.  Use
 #endif // !IMPORTED_MEMORY && ASSERTIONS
 
 #include "runtime_stack_check.js"
-#include "runtime_assertions.js"
 
 var __ATPRERUN__  = []; // functions called before the runtime is initialized
 var __ATINIT__    = []; // functions called during startup
@@ -423,7 +430,6 @@ function abort(what) {
   err(what);
 
   ABORT = true;
-  EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
   what += '. Build with -sASSERTIONS for more info.';
@@ -524,15 +530,14 @@ function createExportWrapper(name, nargs) {
 // to ignore exceptions from there since they're handled by callMain directly.
 var abortWrapperDepth = 0;
 
-// Creates a wrapper in a closure so that each wrapper gets it's own copy of 'original'
 function makeAbortWrapper(original) {
   return (...args) => {
     // Don't allow this function to be called if we're aborted!
     if (ABORT) {
-      throw "program has already aborted!";
+      throw 'program has already aborted!';
     }
 
-    abortWrapperDepth += 1;
+    abortWrapperDepth++;
     try {
       return original(...args);
     } catch (e) {
@@ -551,10 +556,10 @@ function makeAbortWrapper(original) {
         throw e;
       }
 
-      abort("unhandled exception: " + [e, e.stack]);
+      abort('unhandled exception: ' + [e, e.stack]);
     }
     finally {
-      abortWrapperDepth -= 1;
+      abortWrapperDepth--;
     }
   }
 }
@@ -567,12 +572,12 @@ function instrumentWasmExportsWithAbort(exports) {
   // Override the exported functions with the wrappers and copy over any other symbols
   var instExports = {};
   for (var name in exports) {
-      var original = exports[name];
-      if (typeof original == 'function') {
-        instExports[name] = makeAbortWrapper(original);
-      } else {
-        instExports[name] = original;
-      }
+    var original = exports[name];
+    if (typeof original == 'function') {
+      instExports[name] = makeAbortWrapper(original);
+    } else {
+      instExports[name] = original;
+    }
   }
 
   return instExports;
@@ -583,7 +588,7 @@ function instrumentWasmTableWithAbort() {
   var realGet = wasmTable.get;
   var wrapperCache = {};
   wasmTable.get = (i) => {
-    var func = realGet.call(wasmTable, i);
+    var func = realGet.call(wasmTable, {{{ toIndexType('i') }}});
     var cached = wrapperCache[i];
     if (!cached || cached.func !== func) {
       cached = wrapperCache[i] = {
@@ -925,7 +930,6 @@ function getWasmImports() {
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm() {
-  var info = getWasmImports();
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup
@@ -1049,6 +1053,8 @@ function createWasm() {
   }
 #endif // WASM_ASYNC_COMPILATION
 
+  var info = getWasmImports();
+
 #if expectToReceiveOnModule('instantiateWasm')
   // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
   // to manually instantiate the Wasm module themselves. This allows pages to
@@ -1071,7 +1077,21 @@ function createWasm() {
   }
 #endif
 
-  if (!wasmBinaryFile) wasmBinaryFile = findWasmBinary();
+#if PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) {
+    return new Promise((resolve) => {
+      wasmModuleReceived = (module) => {
+        // Instantiate from the module posted from the main thread.
+        // We can just use sync instantiation in the worker.
+        var instance = new WebAssembly.Instance(module, getWasmImports());
+        receiveInstance(instance, module);
+        resolve();
+      };
+    });
+  }
+#endif
+
+  wasmBinaryFile ??= findWasmBinary();
 
 #if WASM_ASYNC_COMPILATION
 #if RUNTIME_DEBUG

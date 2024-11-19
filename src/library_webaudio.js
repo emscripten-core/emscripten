@@ -37,11 +37,21 @@ let LibraryWebAudio = {
   // Wasm handle ID.
   $emscriptenGetAudioObject: (objectHandle) => EmAudio[objectHandle],
 
-  // emscripten_create_audio_context() does not itself use
+  // Performs the work of getting the AudioContext's render quantum size.
+  $emscriptenGetContextQuantumSize: (contextHandle) => {
+    // TODO: in a future release this will be something like:
+    //   return EmAudio[contextHandle].renderQuantumSize || 128;
+    // It comes two caveats: it needs the hint when generating the context adding to
+    // emscripten_create_audio_context(), and altering the quantum requires a secure
+    // context and fallback implementing. Until then we simply use the 1.0 API value:
+    return 128;
+  },
+
+  // emscripten_create_audio_context() does not itself use the
   // emscriptenGetAudioObject() function, but mark it as a dependency, because
   // the user will not be able to utilize the node unless they call
   // emscriptenGetAudioObject() on it on JS side to connect it to the graph, so
-  // this avoids the user needing to manually do it on the command line.
+  // this avoids the user needing to manually add the dependency on the command line.
   emscripten_create_audio_context__deps: ['$emscriptenRegisterAudioObject', '$emscriptenGetAudioObject'],
   emscripten_create_audio_context: (options) => {
     let ctx = window.AudioContext || window.webkitAudioContext;
@@ -122,9 +132,12 @@ let LibraryWebAudio = {
   },
 
 #if AUDIO_WORKLET
+  // emscripten_start_wasm_audio_worklet_thread_async() doesn't use stackAlloc,
+  // etc., but the created worklet does.
   emscripten_start_wasm_audio_worklet_thread_async__deps: [
     '$_wasmWorkersID',
-    '$_EmAudioDispatchProcessorCallback'],
+    '$_EmAudioDispatchProcessorCallback',
+    '$stackAlloc', '$stackRestore', '$stackSave'],
   emscripten_start_wasm_audio_worklet_thread_async: (contextHandle, stackLowestAddress, stackSize, callback, userData) => {
 
 #if ASSERTIONS
@@ -249,17 +262,19 @@ let LibraryWebAudio = {
 #endif
 
     EmAudio[contextHandle].audioWorklet.bootstrapMessage.port.postMessage({
-      // '_wpn' == 'Worklet Processor Name', use a deliberately mangled name so
-      // that this field won't accidentally be mixed with user submitted
-      // messages.
-      _wpn: UTF8ToString(HEAPU32[options]),
-      audioParams,
-      contextHandle,
-      callback,
-      userData
+      // Deliberately mangled and short names used here ('_wpn', the 'Worklet
+      // Processor Name' used as a 'key' to verify the message type so as to
+      // not get accidentally mixed with user submitted messages, the remainder
+      // for space saving reasons, abbreviated from their variable names).
+      '_wpn': UTF8ToString(HEAPU32[options]),
+      'ap': audioParams,
+      'ch': contextHandle,
+      'cb': callback,
+      'ud': userData
     });
   },
 
+  emscripten_create_wasm_audio_worklet_node__deps: ['$emscriptenGetContextQuantumSize'],
   emscripten_create_wasm_audio_worklet_node: (contextHandle, name, options, callback, userData) => {
 #if ASSERTIONS
     assert(contextHandle, `Called emscripten_create_wasm_audio_worklet_node() with a null Web Audio Context handle!`);
@@ -278,7 +293,11 @@ let LibraryWebAudio = {
       numberOfInputs: HEAP32[options],
       numberOfOutputs: HEAP32[options+1],
       outputChannelCount: HEAPU32[options+2] ? readChannelCountArray(HEAPU32[options+2]>>2, HEAP32[options+1]) : void 0,
-      processorOptions: { 'cb': callback, 'ud': userData }
+      processorOptions: {
+        'cb': callback,
+        'ud': userData,
+        'sc': emscriptenGetContextQuantumSize(contextHandle)
+      }
     } : void 0;
 
 #if WEBAUDIO_DEBUG
@@ -288,6 +307,30 @@ let LibraryWebAudio = {
     return emscriptenRegisterAudioObject(new AudioWorkletNode(EmAudio[contextHandle], UTF8ToString(name), opts));
   },
 #endif // ~AUDIO_WORKLET
+
+  emscripten_audio_context_quantum_size__deps: ['$emscriptenGetContextQuantumSize'],
+  emscripten_audio_context_quantum_size: (contextHandle) => {
+#if ASSERTIONS
+    assert(EmAudio[contextHandle], `Called emscripten_audio_context_quantum_size() with an invalid Web Audio Context handle ${contextHandle}`);
+    assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_audio_context_quantum_size() on handle ${contextHandle} that is not an AudioContext, but of type ${EmAudio[contextHandle]}`);
+#endif
+    return emscriptenGetContextQuantumSize(contextHandle);
+  },
+
+  emscripten_audio_node_connect: (source, destination, outputIndex, inputIndex) => {
+    var srcNode = EmAudio[source];
+    var dstNode = EmAudio[destination];
+#if ASSERTIONS
+    assert(srcNode, `Called emscripten_audio_node_connect() with an invalid AudioNode handle ${source}`);
+    assert(srcNode instanceof window.AudioNode, `Called emscripten_audio_node_connect() on handle ${source} that is not an AudiotNode, but of type ${srcNode}`);
+    assert(dstNode, `Called emscripten_audio_node_connect() with an invalid AudioNode handle ${destination}!`);
+    assert(dstNode instanceof (window.AudioContext || window.webkitAudioContext) || dstNode instanceof window.AudioNode, `Called emscripten_audio_node_connect() on handle ${destination} that is not an AudioContext or AudioNode, but of type ${dstNode}`);
+#endif
+#if WEBAUDIO_DEBUG
+    console.log(`Connecting audio node ID ${source} to audio node ID ${destination} (${srcNode} to ${dstNode})`);
+#endif
+    srcNode.connect(dstNode.destination || dstNode, outputIndex, inputIndex);
+  },
 
   emscripten_current_thread_is_audio_worklet: () => typeof AudioWorkletGlobalScope !== 'undefined',
 

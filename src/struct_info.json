@@ -33,7 +33,9 @@
             "S_IFCHR",
             "S_IRUSR",
             "S_IRGRP",
-            "S_IROTH"
+            "S_IROTH",
+            "UTIME_OMIT",
+            "UTIME_NOW"
         ],
         "structs": {
             "stat": [
@@ -99,6 +101,7 @@
             "F_DUPFD",
             "F_SETLK",
             "O_WRONLY",
+            "AT_EACCESS",
             "AT_FDCWD",
             "AT_SYMLINK_NOFOLLOW",
             "AT_REMOVEDIR",
@@ -277,7 +280,13 @@
     {
         "file": "signal.h",
         "defines": [
-            "SIGALRM"
+            "SIGALRM",
+            "SIGFPE",
+            "SIGHUP",
+            "SIGINT",
+            "SIGKILL",
+            "SIGQUIT",
+            "SIGTERM"
         ]
     },
     {
@@ -529,13 +538,31 @@
     // SDL
     // ===========================================
     {
+        "file": "SDL/SDL.h",
+        "defines": [
+          "SDL_INIT_JOYSTICK"
+        ]
+    },
+    {
         "file": "SDL/SDL_compat.h",
         "structs": {
             "SDL_VideoInfo": [
                 "current_w",
                 "current_h"
             ]
-        }
+        },
+        "defines": [
+          "SDL_APPMOUSEFOCUS",
+          "SDL_APPINPUTFOCUS",
+          "SDL_APPACTIVE",
+          "SDL_VIDEORESIZE",
+          "SDL_SRCALPHA",
+          "SDL_HWPALETTE",
+          "SDL_HWSURFACE",
+          "SDL_OPENGL",
+          "SDL_BUTTON_WHEELUP",
+          "SDL_BUTTON_WHEELDOWN"
+        ]
     },
     {
         "file": "SDL/SDL_rect.h",
@@ -661,7 +688,25 @@
                 "w",
                 "h"
             ]
-        }
+        },
+        "defines": [
+          "SDL_VIDEORESIZE",
+          "SDL_WINDOWEVENT",
+          "SDL_MOUSEBUTTONDOWN",
+          "SDL_MOUSEBUTTONUP",
+          "SDL_MOUSEMOTION",
+          "SDL_MOUSEWHEEL",
+          "SDL_FINGERDOWN",
+          "SDL_FINGERUP",
+          "SDL_FINGERMOTION",
+          "SDL_QUIT",
+          "SDL_JOYBUTTONUP",
+          "SDL_JOYBUTTONDOWN",
+          "SDL_JOYAXISMOTION",
+          "SDL_TEXTINPUT",
+          "SDL_KEYUP",
+          "SDL_KEYDOWN"
+        ]
     },
     {
         "file": "SDL/SDL_touch.h",
@@ -695,6 +740,60 @@
                 "patch"
             ]
         }
+    },
+    {
+        "file": "SDL/SDL_rwops.h",
+        "structs": {
+            "SDL_RWops": [
+                "type",
+                {
+                  "hidden": [
+                    {
+                      "mem": [
+                         "base",
+                         "stop"
+                      ]
+                    },
+                    {
+                      "stdio": [
+                         "fp"
+                      ]
+                    }
+                  ]
+                }
+            ]
+        }
+    },
+    {
+        "file": "SDL/SDL_keycode.h",
+        "defines": [
+          "KMOD_LCTRL",
+          "KMOD_RCTRL",
+          "KMOD_LALT",
+          "KMOD_RALT",
+          "KMOD_LSHIFT",
+          "KMOD_RSHIFT",
+          "SDLK_LCTRL",
+          "SDLK_LSHIFT",
+          "SDLK_LALT",
+          "SDLK_RCTRL",
+          "SDLK_RSHIFT",
+          "SDLK_RALT"
+        ]
+    },
+    {
+        "file": "SDL/SDL_video.h",
+        "defines": [
+          "SDL_GL_DEPTH_SIZE",
+          "SDL_GL_STENCIL_SIZE",
+          "SDL_GL_ALPHA_SIZE",
+          "SDL_GL_MULTISAMPLEBUFFERS",
+          "SDL_GL_MULTISAMPLESAMPLES",
+          "SDL_WINDOWEVENT_HIDDEN",
+          "SDL_WINDOWEVENT_SHOWN",
+          "SDL_WINDOWEVENT_FOCUS_LOST",
+          "SDL_WINDOWEVENT_FOCUS_GAINED"
+        ]
     },
     {
         "file": "uuid/uuid.h",
@@ -1163,6 +1262,20 @@
             ],
             "EmscriptenWebSocketCreateAttributes": [
                 "protocols"
+            ]
+        }
+    },
+    {
+        "file": "emscripten/webaudio.h",
+        "structs": {
+            "AudioSampleFrame": [
+              "numberOfChannels",
+              "samplesPerChannel",
+              "data"
+            ],
+            "AudioParamFrame": [
+              "length",
+              "data"
             ]
         }
     },

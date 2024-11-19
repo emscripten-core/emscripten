@@ -462,10 +462,9 @@ EMULATE_FUNCTION_POINTER_CASTS
 
 Allows function pointers to be cast, wraps each call of an incorrect type
 with a runtime correction.  This adds overhead and should not be used
-normally.  It also forces ALIASING_FUNCTION_POINTERS to 0.  Aside from making
-calls not fail, this tries to convert values as best it can.
-We use 64 bits (i64) to represent values, as if we wrote the sent value to
-memory and loaded the received type from the same memory (using
+normally.  Aside from making calls not fail, this tries to convert values as
+best it can.  We use 64 bits (i64) to represent values, as if we wrote the
+sent value to memory and loaded the received type from the same memory (using
 truncs/extends/ reinterprets). This means that when types do not match the
 emulated values may not match (this is true of native too, for that matter -
 this is all undefined behavior). This approaches appears good enough to
@@ -1167,8 +1166,6 @@ Emit instructions for the new Wasm exception handling proposal with exnref,
 which was adopted on Oct 2023. The implementation of the new proposal is
 still in progress and this feature is currently experimental.
 
-.. note:: Applicable during both linking and compilation
-
 Default value: false
 
 .. _nodejs_catch_exit:
@@ -1185,7 +1182,7 @@ catch and handle ExitStatus exceptions.  However, this means all other
 uncaught exceptions are also caught and re-thrown, which is not always
 desirable.
 
-Default value: true
+Default value: false
 
 .. _nodejs_catch_rejection:
 
@@ -2526,9 +2523,13 @@ Default value: false
 WASM_WORKERS
 ============
 
-If true, enables support for Wasm Workers. Wasm Workers enable applications
+If 1, enables support for Wasm Workers. Wasm Workers enable applications
 to create threads using a lightweight web-specific API that builds on top
-of Wasm SharedArrayBuffer + Atomics API.
+of Wasm SharedArrayBuffer + Atomics API. When enabled, a new build output
+file a.ww.js will be generated to bootstrap the Wasm Worker JS contexts.
+If 2, enables support for Wasm Workers, but without using a separate a.ww.js
+file on the side. This can simplify deployment of builds, but will have a
+downside that the generated build will no longer be csp-eval compliant.
 [compile+link] - affects user code at compile and system libraries at link.
 
 Default value: 0
@@ -3296,7 +3297,9 @@ Default value: true
 RUNTIME_DEBUG
 =============
 
-If true, add tracing to core runtime functions.
+If non-zero, add tracing to core runtime functions.  Can be set to 2 for
+extra tracing (for example, tracing that occurs on each turn of the event
+loop or each user callback, which can flood the console).
 This setting is enabled by default if any of the following debugging settings
 are enabled:
 - PTHREADS_DEBUG
@@ -3310,7 +3313,7 @@ are enabled:
 - SOCKET_DEBUG
 - FETCH_DEBUG
 
-Default value: false
+Default value: 0
 
 .. _legacy_runtime:
 

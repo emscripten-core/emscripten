@@ -72,8 +72,8 @@ int main(int argc, char **argv) {
 
   emscripten_set_main_loop(one, 0, 0);
 
-  EM_ASM({keydown(1250);keydown(38);keyup(38);keyup(1250);}); // alt, up
-  EM_ASM({keydown(1248);keydown(1249);keydown(40);keyup(40);keyup(1249);keyup(1248);}); // ctrl, shift, down
+  EM_ASM({keydown(18);keydown(38);keyup(38);keyup(18);}); // alt, up
+  EM_ASM({keydown(17);keydown(16);keydown(40);keyup(40);keyup(16);keyup(17);}); // ctrl, shift, down
   EM_ASM({keydown(37);keyup(37);}); // left
   EM_ASM({keydown(39);keyup(39);}); // right
 

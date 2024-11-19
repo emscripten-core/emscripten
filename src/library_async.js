@@ -343,8 +343,8 @@ addToLibrary({
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
           runAndAbortIfError(() => _asyncify_start_rewind(Asyncify.currData));
-          if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
-            Browser.mainLoop.resume();
+          if (typeof MainLoop != 'undefined' && MainLoop.func) {
+            MainLoop.resume();
           }
           var asyncWasmReturnValue, isError = false;
           try {
@@ -391,8 +391,8 @@ addToLibrary({
 #if ASYNCIFY_DEBUG
           dbg(`ASYNCIFY: start unwind ${Asyncify.currData}`);
 #endif
-          if (typeof Browser != 'undefined' && Browser.mainLoop.func) {
-            Browser.mainLoop.pause();
+          if (typeof MainLoop != 'undefined' && MainLoop.func) {
+            MainLoop.pause();
           }
           runAndAbortIfError(() => _asyncify_start_unwind(Asyncify.currData));
         }
@@ -632,7 +632,7 @@ addToLibrary({
   emscripten_scan_registers: (func) => {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';
   },
-  emscripten_fiber_swap: function(oldFiber, newFiber) {
+  emscripten_fiber_swap: (oldFiber, newFiber) => {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_swap';
   },
 #endif // ASYNCIFY

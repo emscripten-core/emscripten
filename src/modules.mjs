@@ -57,7 +57,6 @@ export const LibraryManager = {
       'library_html5.js',
       'library_stack_trace.js',
       'library_wasi.js',
-      'library_makeDynCall.js',
       'library_eventloop.js',
       'library_promise.js',
     ];
@@ -73,6 +72,10 @@ export const LibraryManager = {
     if (!MINIMAL_RUNTIME) {
       libraries.push('library_browser.js');
       libraries.push('library_wget.js');
+    }
+
+    if (!STANDALONE_WASM) {
+      libraries.push('library_time.js');
     }
 
     if (EMSCRIPTEN_TRACING) {
@@ -285,15 +288,23 @@ function addToLibrary(obj, options = null) {
 let structs = {};
 let defines = {};
 
+/**
+ * Read JSON file containing struct and macro/define information
+ * that can then be used in JavaScript via macros.
+ */
+function loadStructInfo(filename) {
+  const temp = JSON.parse(read(filename));
+  Object.assign(structs, temp.structs);
+  Object.assign(defines, temp.defines);
+}
+
 if (!BOOTSTRAPPING_STRUCT_INFO) {
-  let structInfoFile = 'struct_info_generated.json';
-  if (MEMORY64) {
-    structInfoFile = 'struct_info_generated_wasm64.json';
-  }
   // Load struct and define information.
-  const temp = JSON.parse(read(structInfoFile));
-  structs = temp.structs;
-  defines = temp.defines;
+  if (MEMORY64) {
+    loadStructInfo('struct_info_generated_wasm64.json');
+  } else {
+    loadStructInfo('struct_info_generated.json');
+  }
 }
 
 // Use proxy objects for C_DEFINES and C_STRUCTS so that we can give useful
@@ -510,6 +521,7 @@ function exportRuntime() {
 
 addToCompileTimeContext({
   exportRuntime,
+  loadStructInfo,
   LibraryManager,
   librarySymbols,
   addToLibrary,

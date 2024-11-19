@@ -31,19 +31,19 @@ addToLibrary({
     '$strError', '$ERRNO_CODES',
 #endif
   ],
-  $FS__postset: function() {
+  $FS__postset: () => {
     // TODO: do we need noFSInit?
     addAtInit(`
-if (!Module['noFSInit'] && !FS.init.initialized)
+if (!Module['noFSInit'] && !FS.initialized)
   FS.init();
 FS.ignorePermissions = false;
 `)
     addAtExit('FS.quit();');
     return `
 FS.createPreloadedFile = FS_createPreloadedFile;
-FS.staticInit();` +
-           // Get module methods from settings
-           '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}';
+FS.staticInit();
+// Set module methods based on EXPORTED_RUNTIME_METHODS
+{{{ EXPORTED_RUNTIME_METHODS.filter((func) => func.startsWith('FS_')).map((func) => 'Module["' + func + '"] = FS.' + func.substr(3) + ";\n").reduce((str, func) => str + func, '') }}}`;
   },
   $FS: {
     root: null,
@@ -63,15 +63,17 @@ FS.staticInit();` +
     trackingDelegate: {},
 #endif
     ErrnoError: null, // set during init
-    genericErrors: {},
     filesystems: null,
     syncFSRequests: 0, // we warn if there are multiple in flight at once
-
+#if expectToReceiveOnModule('logReadFiles')
+    readFiles: {},
+#endif
 #if ASSERTIONS
     ErrnoError: class extends Error {
 #else
     ErrnoError: class {
 #endif
+      name = 'ErrnoError';
       // We set the `name` property to be able to identify `FS.ErrnoError`
       // - the `name` is a standard ECMA-262 property of error objects. Kind of good to have it anyway.
       // - when using PROXYFS, an error can come from an underlying FS
@@ -82,9 +84,6 @@ FS.staticInit();` +
 #if ASSERTIONS
         super(runtimeInitialized ? strError(errno) : '');
 #endif
-        // TODO(sbc): Use the inline member declaration syntax once we
-        // support it in acorn and closure.
-        this.name = 'ErrnoError';
         this.errno = errno;
 #if ASSERTIONS
         for (var key in ERRNO_CODES) {
@@ -98,16 +97,11 @@ FS.staticInit();` +
     },
 
     FSStream: class {
-      constructor() {
-        // TODO(https://github.com/emscripten-core/emscripten/issues/21414):
-        // Use inline field declarations.
-        this.shared = {};
+      shared = {};
 #if USE_CLOSURE_COMPILER
-        // Closure compiler requires us to declare all properties in the
-        // constructor.
-        this.node = null;
+      // Closure compiler requires us to declare all properties ahead of time
+      node = null;
 #endif
-      }
       get object() {
         return this.node;
       }
@@ -137,21 +131,21 @@ FS.staticInit();` +
       }
     },
     FSNode: class {
+      node_ops = {};
+      stream_ops = {};
+      readMode = {{{ cDefs.S_IRUGO }}} | {{{ cDefs.S_IXUGO }}};
+      writeMode = {{{ cDefs.S_IWUGO }}};
+      mounted = null;
       constructor(parent, name, mode, rdev) {
         if (!parent) {
           parent = this;  // root node sets parent to itself
         }
         this.parent = parent;
         this.mount = parent.mount;
-        this.mounted = null;
         this.id = FS.nextInode++;
         this.name = name;
         this.mode = mode;
-        this.node_ops = {};
-        this.stream_ops = {};
         this.rdev = rdev;
-        this.readMode = 292/*{{{ cDefs.S_IRUGO }}}*/ | 73/*{{{ cDefs.S_IXUGO }}}*/;
-        this.writeMode = 146/*{{{ cDefs.S_IWUGO }}}*/;
       }
       get read() {
         return (this.mode & this.readMode) === this.readMode;
@@ -1100,8 +1094,8 @@ FS.staticInit();` +
       if (stream.stream_ops.open) {
         stream.stream_ops.open(stream);
       }
+#if expectToReceiveOnModule('logReadFiles')
       if (Module['logReadFiles'] && !(flags & {{{ cDefs.O_WRONLY}}})) {
-        if (!FS.readFiles) FS.readFiles = {};
         if (!(path in FS.readFiles)) {
           FS.readFiles[path] = 1;
 #if FS_DEBUG
@@ -1109,6 +1103,7 @@ FS.staticInit();` +
 #endif
         }
       }
+#endif
 #if FS_DEBUG
       if (FS.trackingDelegate['onOpenFile']) {
         FS.trackingDelegate['onOpenFile'](path, trackingFlags);
@@ -1267,6 +1262,9 @@ FS.staticInit();` +
       if (!stream.stream_ops.mmap) {
         throw new FS.ErrnoError({{{ cDefs.ENODEV }}});
       }
+      if (!length) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
       return stream.stream_ops.mmap(stream, length, position, prot, flags);
     },
     msync(stream, buffer, offset, length, mmapFlags) {
@@ -1297,7 +1295,7 @@ FS.staticInit();` +
       var buf = new Uint8Array(length);
       FS.read(stream, buf, 0, length, 0);
       if (opts.encoding === 'utf8') {
-        ret = UTF8ArrayToString(buf, 0);
+        ret = UTF8ArrayToString(buf);
       } else if (opts.encoding === 'binary') {
         ret = buf;
       }
@@ -1349,6 +1347,7 @@ FS.staticInit();` +
       FS.registerDevice(FS.makedev(1, 3), {
         read: () => 0,
         write: (stream, buffer, offset, length, pos) => length,
+        llseek: () => 0,
       });
       FS.mkdev('/dev/null', FS.makedev(1, 3));
       // setup /dev/tty and /dev/tty1
@@ -1400,7 +1399,7 @@ FS.staticInit();` +
         }
       }, {}, '/proc/self/fd');
     },
-    createStandardStreams() {
+    createStandardStreams(input, output, error) {
       // TODO deprecate the old functionality of a single
       // input / output callback and that utilizes FS.createDevice
       // and instead require a unique set of stream ops
@@ -1409,18 +1408,18 @@ FS.staticInit();` +
       // default tty devices. however, if the standard streams
       // have been overwritten we create a unique device for
       // them instead.
-      if (Module['stdin']) {
-        FS.createDevice('/dev', 'stdin', Module['stdin']);
+      if (input) {
+        FS.createDevice('/dev', 'stdin', input);
       } else {
         FS.symlink('/dev/tty', '/dev/stdin');
       }
-      if (Module['stdout']) {
-        FS.createDevice('/dev', 'stdout', null, Module['stdout']);
+      if (output) {
+        FS.createDevice('/dev', 'stdout', null, output);
       } else {
         FS.symlink('/dev/tty', '/dev/stdout');
       }
-      if (Module['stderr']) {
-        FS.createDevice('/dev', 'stderr', null, Module['stderr']);
+      if (error) {
+        FS.createDevice('/dev', 'stderr', null, error);
       } else {
         FS.symlink('/dev/tty1', '/dev/stderr');
       }
@@ -1436,12 +1435,6 @@ FS.staticInit();` +
 #endif
     },
     staticInit() {
-      // Some errors may happen quite a bit, to avoid overhead we reuse them (and suffer a lack of stack info)
-      [{{{ cDefs.ENOENT }}}].forEach((code) => {
-        FS.genericErrors[code] = new FS.ErrnoError(code);
-        FS.genericErrors[code].stack = '<generic error, no stack>';
-      });
-
       FS.nameTable = new Array(4096);
 
       FS.mount(MEMFS, {}, '/');
@@ -1468,19 +1461,25 @@ FS.staticInit();` +
     },
     init(input, output, error) {
 #if ASSERTIONS
-      assert(!FS.init.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
+      assert(!FS.initialized, 'FS.init was previously called. If you want to initialize later with custom parameters, remove any earlier calls (note that one is automatically added to the generated code)');
 #endif
-      FS.init.initialized = true;
+      FS.initialized = true;
 
       // Allow Module.stdin etc. to provide defaults, if none explicitly passed to us here
-      Module['stdin'] = input || Module['stdin'];
-      Module['stdout'] = output || Module['stdout'];
-      Module['stderr'] = error || Module['stderr'];
+#if expectToReceiveOnModule('stdin')
+      input ??= Module['stdin'];
+#endif
+#if expectToReceiveOnModule('stdout')
+      output ??= Module['stdout'];
+#endif
+#if expectToReceiveOnModule('stderr')
+      error ??= Module['stderr'];
+#endif
 
-      FS.createStandardStreams();
+      FS.createStandardStreams(input, output, error);
     },
     quit() {
-      FS.init.initialized = false;
+      FS.initialized = false;
       // force-flush all streams, so we get musl std streams printed out
 #if hasExportedSymbol('fflush')
       _fflush(0);
@@ -1579,7 +1578,7 @@ FS.staticInit();` +
     createDevice(parent, name, input, output) {
       var path = PATH.join2(typeof parent == 'string' ? parent : FS.getPath(parent), name);
       var mode = FS_getMode(!!input, !!output);
-      if (!FS.createDevice.major) FS.createDevice.major = 64;
+      FS.createDevice.major ??= 64;
       var dev = FS.makedev(FS.createDevice.major++, 0);
       // Create a fake device that a set of stream ops to emulate
       // the old behavior.
@@ -1655,17 +1654,14 @@ FS.staticInit();` +
       // Lazy chunked Uint8Array (implements get and length from Uint8Array).
       // Actual getting is abstracted away for eventual reuse.
       class LazyUint8Array {
-        constructor() {
-          this.lengthKnown = false;
-          this.chunks = []; // Loaded chunks. Index is the chunk number
+        lengthKnown = false;
+        chunks = []; // Loaded chunks. Index is the chunk number
 #if USE_CLOSURE_COMPILER
-          // Closure compiler requires us to declare all properties in the
-          // constructor.
-          this.getter = undefined;
-          this._length = 0;
-          this._chunkSize = 0;
+        // Closure compiler requires us to declare all properties ahead of time.
+        getter = undefined;
+        _length = 0;
+        _chunkSize = 0;
 #endif
-        }
         get(idx) {
           if (idx > this.length-1 || idx < 0) {
             return undefined;

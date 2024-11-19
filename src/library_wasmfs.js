@@ -146,7 +146,7 @@ FS.init();
       // The buffer contents exist 8 bytes after the returned pointer.
       var ret = new Uint8Array(HEAPU8.subarray(buf + 8, buf + 8 + length));
       if (opts.encoding === 'utf8') {
-        ret = UTF8ArrayToString(ret, 0);
+        ret = UTF8ArrayToString(ret);
       }
 
       return ret;
@@ -375,6 +375,8 @@ FS.init();
           wasmFSDeviceStreams[file] = undefined;
         },
         getSize: (file) => {},
+        // Devices cannot be resized.
+        setSize: (file, size) => 0,
         read: (file, buffer, length, offset) => {
           var bufferArray = Module.HEAP8.subarray(buffer, buffer + length);
           try {
@@ -407,7 +409,7 @@ FS.init();
       }
       var path = PATH.join2(parent, name);
       var mode = FS_getMode(!!input, !!output);
-      if (!FS.createDevice.major) FS.createDevice.major = 64;
+      FS.createDevice.major ??= 64;
       var dev = FS.makedev(FS.createDevice.major++, 0);
       // Create a fake device with a set of stream ops to emulate
       // the old API's createDevice().

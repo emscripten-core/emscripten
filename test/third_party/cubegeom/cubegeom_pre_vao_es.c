@@ -311,11 +311,18 @@ int main(int argc, char *argv[])
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, (void*)12);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, (void*) 0);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, (void*)24);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, (void*)36);
 
     glBindVertexArray(0);
 
     glDeleteVertexArrays(1, &vao);
+
+    // Validate glDrawElements when a client side vertex array is used.
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 32, arrayData);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 32, arrayData + 16);
+    glEnableVertexAttribArray(1);
+
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, elementData + 18);
 
     // END
 

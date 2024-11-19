@@ -7,9 +7,15 @@
 /*
  * WebGPU support.
  *
- * This file implements the common C header <webgpu/webgpu.h> on top of the
+ * IMPORTANT NOTICE:
+ * These bindings are in a temporary **breaking-change freeze**.
+ * Bugfixes and small feature additions are still welcome.
+ * Please see system/include/webgpu/README.md for more information.
+ *
+ * This file and system/lib/webgpu/webgpu.cpp together implement the
+ * to-be-standardized C header <webgpu/webgpu.h> on top of the
  * browser's native JS WebGPU implementation. This allows applications targeting
- * wgpu-native (https://github.com/gfx-rs/wgpu) or
+ * wgpu-native (https://github.com/gfx-rs/wgpu-native) or
  * Dawn (https://dawn.googlesource.com/dawn/) to also target the Web with the
  * same graphics API and fairly minimal changes - similar to OpenGL ES 2.0/3.0
  * on WebGL 1.0/2.0.
@@ -24,8 +30,7 @@
   // Helper functions for code generation
   globalThis.gpu = {
     makeInitManager: function(type) {
-      var mgr = `WebGPU.mgr${type}`;
-      return `${mgr} = ${mgr} || new Manager();`;
+      return `WebGPU.mgr${type} = new Manager();`;
     },
 
     makeReferenceRelease: function(type) {
@@ -103,6 +108,7 @@ wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
     CompositeAlphaMode: {
       Auto: 0,
       Opaque: 1,
+      Premultiplied: 2,
     },
     CreatePipelineAsyncStatus: {
       Success: 0,
@@ -194,7 +200,9 @@ var LibraryWebGPU = {
     },
 
     initManagers: () => {
-      if (WebGPU.mgrDevice) return;
+#if ASSERTIONS
+      assert(!WebGPU.mgrDevice, 'initManagers already called');
+#endif
 
       /** @constructor */
       function Manager() {
@@ -397,14 +405,14 @@ var LibraryWebGPU = {
 
     // Map from enum string back to enum number, for callbacks.
     Int_BufferMapState: {
-      'unmapped': 0,
-      'pending': 1,
-      'mapped': 2,
+      'unmapped': 1,
+      'pending': 2,
+      'mapped': 3,
     },
     Int_CompilationMessageType : {
-      'error': 0,
-      'warning': 1,
-      'info': 2,
+      'error': 1,
+      'warning': 2,
+      'info': 3,
     },
     Int_DeviceLostReason: {
       'undefined': 1,
@@ -430,6 +438,11 @@ var LibraryWebGPU = {
       'clamp-to-edge',
       'repeat',
       'mirror-repeat',
+    ],
+    AlphaMode: [
+      undefined, // "Auto" uses the default (which is always opaque according to the spec's IDL)
+      'opaque',
+      'premultiplied',
     ],
     BlendFactor: [
       undefined,
@@ -809,16 +822,20 @@ var LibraryWebGPU = {
   // wgpuDevice
 
   wgpuDeviceEnumerateFeatures: (deviceId, featuresOutPtr) => {
+    var offset = 0;
+    var numFeatures = 0;
     var device = WebGPU.mgrDevice.get(deviceId);
-    if (featuresOutPtr !== 0) {
-      var offset = 0;
-      device.features.forEach(feature => {
-        var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
-        {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
-        offset += 4;
-      });
-    }
-    return device.features.size;
+    device.features.forEach(feature => {
+      var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
+      if (featureEnumValue !== undefined) {
+        if (featuresOutPtr !== 0) {
+          {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
+          offset += 4;
+        }
+        numFeatures++;
+      }
+    });
+    return numFeatures;
   },
 
   wgpuDeviceDestroy: (deviceId) => WebGPU.mgrDevice.get(deviceId).destroy(),
@@ -2011,7 +2028,7 @@ var LibraryWebGPU = {
 
   // In webgpu.h offset and size are passed in as size_t.
   // And library_webgpu assumes that size_t is always 32bit in emscripten.
-  wgpuBufferGetMappedRange__deps: ['$warnOnce', 'memalign', 'free'],
+  wgpuBufferGetMappedRange__deps: ['$warnOnce', '$zeroMemory', 'memalign', 'free'],
   wgpuBufferGetMappedRange: (bufferId, offset, size) => {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
     {{{ gpu.makeCheckDefined('bufferWrapper') }}}
@@ -2040,7 +2057,7 @@ var LibraryWebGPU = {
     }
 
     var data = _memalign(16, mapped.byteLength);
-    HEAPU8.fill(0, data, mapped.byteLength);
+    zeroMemory(data, mapped.byteLength);
     bufferWrapper.onUnmap.push(() => {
       new Uint8Array(mapped).set(HEAPU8.subarray(data, data + mapped.byteLength));
       _free(data);
@@ -2555,16 +2572,20 @@ var LibraryWebGPU = {
   // WGPUAdapter
 
   wgpuAdapterEnumerateFeatures: (adapterId, featuresOutPtr) => {
+    var offset = 0;
+    var numFeatures = 0;
     var adapter = WebGPU.mgrAdapter.get(adapterId);
-    if (featuresOutPtr !== 0) {
-      var offset = 0;
-      adapter.features.forEach(feature => {
-        var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
-        {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
-        offset += 4;
-      });
-    }
-    return adapter.features.size;
+    adapter.features.forEach(feature => {
+      var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
+      if (featureEnumValue !== undefined) {
+        if (featuresOutPtr !== 0) {
+          {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
+          offset += 4;
+        }
+        numFeatures++;
+      }
+    });
+    return numFeatures;
   },
 
   wgpuAdapterGetInfo__deps: ['$stringToNewUTF8'],
@@ -2624,7 +2645,8 @@ var LibraryWebGPU = {
       var requiredFeatureCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredFeatureCount) }}};
       if (requiredFeatureCount) {
         var requiredFeaturesPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredFeatures, '*') }}};
-        desc["requiredFeatures"] = Array.from({{{ makeHEAPView('32', 'requiredFeaturesPtr', `requiredFeaturesPtr + requiredFeatureCount * ${POINTER_SIZE}`) }}},
+        // requiredFeaturesPtr is a pointer to an array of FeatureName which is an enum of size uint32_t
+        desc["requiredFeatures"] = Array.from({{{ makeHEAPView('U32', 'requiredFeaturesPtr', `requiredFeaturesPtr + requiredFeatureCount * 4`) }}},
           (feature) => WebGPU.FeatureName[feature]);
       }
       var requiredLimitsPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredLimits, '*') }}};
@@ -2747,10 +2769,6 @@ var LibraryWebGPU = {
     var viewFormatCount = {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.viewFormatCount) }}};
     var viewFormats = {{{ makeGetValue('config', C_STRUCTS.WGPUSurfaceConfiguration.viewFormats, '*') }}};
     assert(viewFormatCount === 0 && viewFormats === 0, "TODO: Support viewFormats.");
-    var alphaMode = {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.alphaMode) }}};
-    assert(alphaMode === {{{ gpu.CompositeAlphaMode.Auto }}} ||
-      alphaMode === {{{ gpu.CompositeAlphaMode.Opaque }}},
-      "TODO: Support WGPUCompositeAlphaMode_Premultiplied.");
     assert({{{ gpu.PresentMode.Fifo }}} ===
       {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.presentMode) }}});
 #endif
@@ -2773,7 +2791,8 @@ var LibraryWebGPU = {
       "format": WebGPU.TextureFormat[
         {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.format) }}}],
       "usage": {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.usage) }}},
-      "alphaMode": "opaque",
+      "alphaMode": WebGPU.AlphaMode[
+        {{{ gpu.makeGetU32('config', C_STRUCTS.WGPUSurfaceConfiguration.alphaMode) }}}],
     };
     context.configure(configuration);
   },
@@ -2874,7 +2893,10 @@ for (var value in LibraryWebGPU.$WebGPU.FeatureName) {
 
 for (const key of Object.keys(LibraryWebGPU)) {
   if (typeof LibraryWebGPU[key] === 'function') {
-    LibraryWebGPU[key + '__i53abi'] = true;
+    const sig = LibraryManager.library[key + '__sig'];
+    if (sig?.includes('j')) {
+      LibraryManager.library[key + '__i53abi'] = true;
+    }
   }
 }
 

@@ -23,11 +23,11 @@ how best to do that.
 Running tests
 =============
 
-Run the test suite runner (`test/runner <https://github.com/emscripten-core/emscripten/blob/main/test/runner.py>`_) with no arguments to see the help message:
+Run the test suite runner (`test/runner <https://github.com/emscripten-core/emscripten/blob/main/test/runner.py>`_) with ``--help`` to see the help message:
 
 .. code-block:: bash
 
-    test/runner
+    test/runner --help
 
 The tests are divided into *modes*. You can run either an entire mode or an
 individual test, or use wildcards to run some tests in some modes. For example:

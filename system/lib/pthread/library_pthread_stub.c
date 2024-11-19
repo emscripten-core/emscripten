@@ -21,10 +21,6 @@ int emscripten_has_threading_support() { return 0; }
 
 int emscripten_num_logical_cores() { return 1; }
 
-void emscripten_force_num_logical_cores(int cores) {
-  // no-op, in singlethreaded builds we will always report exactly one core.
-}
-
 int emscripten_futex_wait(
   volatile void /*uint32_t*/* addr, uint32_t val, double maxWaitMilliseconds) {
   // nop

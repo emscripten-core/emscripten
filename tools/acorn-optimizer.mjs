@@ -2037,8 +2037,7 @@ if (extraInfoStart > 0) {
 // outputted code if --closureFriendly was requested.
 const sourceComments = {};
 const params = {
-  // Keep in sync with --language_in that we pass to closure in building.py
-  ecmaVersion: 2021,
+  ecmaVersion: 'latest',
   sourceType: exportES6 ? 'module' : 'script',
   allowAwaitOutsideFunction: true,
 };
@@ -2107,6 +2106,7 @@ if (!noPrint) {
     keep_quoted_props: closureFriendly, // for closure
     wrap_func_args: false, // don't add extra braces
     comments: true, // for closure as well
+    shorthand: true, // Use object literal shorthand notation
   });
 
   output += '\n';

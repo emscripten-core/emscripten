@@ -13,7 +13,7 @@ import tempfile
 from subprocess import Popen
 
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(__rootpath__)
+sys.path.insert(0, __rootpath__)
 
 from tools.shared import WINDOWS, CLANG_CXX, EMCC, PIPE
 from tools.shared import run_process

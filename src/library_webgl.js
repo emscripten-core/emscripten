@@ -96,6 +96,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   $webgl_enable_ANGLE_instanced_arrays: (ctx) => {
     // Extension available in WebGL 1 from Firefox 26 and Google Chrome 30 onwards. Core feature in WebGL 2.
     var ext = ctx.getExtension('ANGLE_instanced_arrays');
+    // Because this extension is a core function in WebGL 2, assign the extension entry points in place of
+    // where the core functions will reside in WebGL 2. This way the calling code can call these without
+    // having to dynamically branch depending if running against WebGL 1 or WebGL 2.
     if (ext) {
       ctx['vertexAttribDivisor'] = (index, divisor) => ext['vertexAttribDivisorANGLE'](index, divisor);
       ctx['drawArraysInstanced'] = (mode, first, count, primcount) => ext['drawArraysInstancedANGLE'](mode, first, count, primcount);
@@ -143,6 +146,27 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   emscripten_webgl_enable_WEBGL_multi_draw__deps: ['$webgl_enable_WEBGL_multi_draw'],
   emscripten_webgl_enable_WEBGL_multi_draw: (ctx) => webgl_enable_WEBGL_multi_draw(GL.contexts[ctx].GLctx),
 
+  $webgl_enable_EXT_polygon_offset_clamp: (ctx) => {
+    return !!(ctx.extPolygonOffsetClamp = ctx.getExtension('EXT_polygon_offset_clamp'));
+  },
+
+  emscripten_webgl_enable_EXT_polygon_offset_clamp__deps: ['$webgl_enable_EXT_polygon_offset_clamp'],
+  emscripten_webgl_enable_EXT_polygon_offset_clamp: (ctx) => webgl_enable_EXT_polygon_offset_clamp(GL.contexts[ctx].GLctx),
+
+  $webgl_enable_EXT_clip_control: (ctx) => {
+    return !!(ctx.extClipControl = ctx.getExtension('EXT_clip_control'));
+  },
+
+  emscripten_webgl_enable_EXT_clip_control__deps: ['$webgl_enable_EXT_clip_control'],
+  emscripten_webgl_enable_EXT_clip_control: (ctx) => webgl_enable_EXT_clip_control(GL.contexts[ctx].GLctx),
+
+  $webgl_enable_WEBGL_polygon_mode: (ctx) => {
+    return !!(ctx.webglPolygonMode = ctx.getExtension('WEBGL_polygon_mode'));
+  },
+
+  emscripten_webgl_enable_WEBGL_polygon_mode__deps: ['$webgl_enable_WEBGL_polygon_mode'],
+  emscripten_webgl_enable_WEBGL_polygon_mode: (ctx) => webgl_enable_WEBGL_polygon_mode(GL.contexts[ctx].GLctx),
+
   $getEmscriptenSupportedExtensions__internal: true,
   $getEmscriptenSupportedExtensions: (ctx) => {
     // Restrict the list of advertised extensions to those that we actually
@@ -177,9 +201,11 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       'WEBGL_clip_cull_distance',
 #endif
       // WebGL 1 and WebGL 2 extensions
+      'EXT_clip_control',
       'EXT_color_buffer_half_float',
       'EXT_depth_clamp',
       'EXT_float_blend',
+      'EXT_polygon_offset_clamp',
       'EXT_texture_compression_bptc',
       'EXT_texture_compression_rgtc',
       'EXT_texture_filter_anisotropic',
@@ -195,15 +221,18 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       'WEBGL_debug_shaders',
       'WEBGL_lose_context',
       'WEBGL_multi_draw',
+      'WEBGL_polygon_mode'
     ];
     // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
     return (ctx.getSupportedExtensions() || []).filter(ext => supportedExtensions.includes(ext));
   },
 
-  $GL__postset: 'var GLctx;',
+  $GLctx__internal: true,
+  $GLctx: undefined,
+  $GL__deps: [
+    '$GLctx',
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
   // If GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS is enabled, GL.initExtensions() will call to initialize these.
-  $GL__deps: [
 #if PTHREADS
     'malloc', // Needed by registerContext
     'free', // Needed by deleteContext
@@ -217,10 +246,23 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     '$webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance',
     '$webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance',
 #endif
+    '$webgl_enable_EXT_polygon_offset_clamp',
+    '$webgl_enable_EXT_clip_control',
+    '$webgl_enable_WEBGL_polygon_mode',
     '$webgl_enable_WEBGL_multi_draw',
     '$getEmscriptenSupportedExtensions',
-  ],
 #endif // GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
+#if FULL_ES2 || LEGACY_GL_EMULATION
+    '$registerPreMainLoop',
+#endif
+  ],
+#if FULL_ES2 || LEGACY_GL_EMULATION
+  $GL__postset: `
+    // Signal GL rendering layer that processing of a new frame is about to
+    // start. This helps it optimize VBO double-buffering and reduce GPU stalls.
+    registerPreMainLoop(() => GL.newRenderingFrameStarted());
+  `,
+#endif
   $GL: {
 #if GL_DEBUG
     debug: true,
@@ -637,7 +679,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     },
 
     hookWebGL: function(glCtx) {
-      if (!glCtx) glCtx = this.detectWebGLContext();
+      glCtx ??= this.detectWebGLContext();
       if (!glCtx) return;
       if (!((typeof WebGLRenderingContext != 'undefined' && glCtx instanceof WebGLRenderingContext)
             || (typeof WebGL2RenderingContext != 'undefined' && glCtx instanceof WebGL2RenderingContext))) {
@@ -800,6 +842,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       }
       disableHalfFloatExtensionIfBroken(ctx);
 #endif
+
       return handle;
     },
 
@@ -1182,6 +1225,11 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       context.anisotropicExt = GLctx.getExtension('EXT_texture_filter_anisotropic');
 #endif
 
+      // Extensions that are available in both WebGL 1 and WebGL 2
+      webgl_enable_WEBGL_multi_draw(GLctx);
+      webgl_enable_EXT_polygon_offset_clamp(GLctx);
+      webgl_enable_EXT_clip_control(GLctx);
+      webgl_enable_WEBGL_polygon_mode(GLctx);
 #if MIN_WEBGL_VERSION == 1
       // Extensions that are only available in WebGL 1 (the calls will be no-ops
       // if called on a WebGL 2 context active)
@@ -1193,9 +1241,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       // Extensions that are available from WebGL >= 2 (no-op if called on a WebGL 1 context active)
       webgl_enable_WEBGL_draw_instanced_base_vertex_base_instance(GLctx);
       webgl_enable_WEBGL_multi_draw_instanced_base_vertex_base_instance(GLctx);
-#endif
 
-#if MAX_WEBGL_VERSION >= 2
       // On WebGL 2, EXT_disjoint_timer_query is replaced with an alternative
       // that's based on core APIs, and exposes only the queryCounterEXT()
       // entrypoint.
@@ -1211,8 +1257,6 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       {
         GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
       }
-
-      webgl_enable_WEBGL_multi_draw(GLctx);
 
       getEmscriptenSupportedExtensions(GLctx).forEach((ext) => {
         // WEBGL_lose_context, WEBGL_debug_renderer_info and WEBGL_debug_shaders
@@ -1277,15 +1321,12 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
 #if GL_EMULATE_GLES_VERSION_STRING_FORMAT
         case 0x1F02 /* GL_VERSION */:
-          var glVersion = GLctx.getParameter(0x1F02 /*GL_VERSION*/);
+          var webGLVersion = GLctx.getParameter(0x1F02 /*GL_VERSION*/);
           // return GLES version string corresponding to the version of the WebGL context
+          var glVersion = `OpenGL ES 2.0 (${webGLVersion})`;
 #if MAX_WEBGL_VERSION >= 2
-          if ({{{ isCurrentContextWebGL2() }}}) glVersion = `OpenGL ES 3.0 (${glVersion})`;
-          else
+          if ({{{ isCurrentContextWebGL2() }}}) glVersion = `OpenGL ES 3.0 (${webGLVersion})`;
 #endif
-          {
-            glVersion = `OpenGL ES 2.0 (${glVersion})`;
-          }
           ret = stringToNewUTF8(glVersion);
           break;
         case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
@@ -1521,6 +1562,11 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   },
 
   glCompressedTexImage2D: (target, level, internalFormat, width, height, border, imageSize, data) => {
+    // `data` may be null here, which means "allocate uniniitalized space but
+    // don't upload" in GLES parlance, but `compressedTexImage2D` requires the
+    // final data parameter, so we simply pass a heap view starting at zero
+    // effectively uploading whatever happens to be near address zero.  See
+    // https://github.com/emscripten-core/emscripten/issues/19300.
 #if MAX_WEBGL_VERSION >= 2
     if ({{{ isCurrentContextWebGL2() }}}) {
       if (GLctx.currentPixelUnpackBufferBinding || !imageSize) {
@@ -1533,7 +1579,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
     }
 #endif
-    GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
+#if INCLUDE_WEBGL1_FALLBACK
+    GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}});
+#endif
   },
 
 
@@ -1550,7 +1598,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
     }
 #endif
-    GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
+#if INCLUDE_WEBGL1_FALLBACK
+    GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}});
+#endif
   },
 
   $computeUnpackAlignedImageSize: (width, height, sizePerPixel) => {
@@ -1714,6 +1764,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
     }
 #endif
+#if INCLUDE_WEBGL1_FALLBACK
     var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, format);
     if (!pixelData) {
       GL.recordError(0x500/*GL_INVALID_ENUM*/);
@@ -1723,6 +1774,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       return;
     }
     GLctx.readPixels(x, y, width, height, format, type, pixelData);
+#endif
   },
 
   glBindTexture: (target, texture) => {
@@ -1862,11 +1914,13 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       return;
     }
 #endif
+#if INCLUDE_WEBGL1_FALLBACK
     // N.b. here first form specifies a heap subarray, second form an integer
     // size, so the ?: code here is polymorphic. It is advised to avoid
     // randomly mixing both uses in calling code, to avoid any potential JS
     // engine JIT issues.
     GLctx.bufferData(target, data ? HEAPU8.subarray(data, data+size) : size, usage);
+#endif
   },
 
   glBufferSubData: (target, offset, size, data) => {
@@ -1876,7 +1930,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       return;
     }
 #endif
+#if INCLUDE_WEBGL1_FALLBACK
     GLctx.bufferSubData(target, offset, HEAPU8.subarray(data, data+size));
+#endif
   },
 
   // Queries EXT
@@ -2168,7 +2224,8 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       // maps integer locations back to uniform name strings, so that we can lazily fetch uniform array locations
       program.uniformArrayNamesById = {};
 
-      for (i = 0; i < GLctx.getProgramParameter(program, 0x8B86/*GL_ACTIVE_UNIFORMS*/); ++i) {
+      var numActiveUniforms = GLctx.getProgramParameter(program, 0x8B86/*GL_ACTIVE_UNIFORMS*/);
+      for (i = 0; i < numActiveUniforms; ++i) {
         var u = GLctx.getActiveUniform(program, i);
         var nm = u.name;
         var sz = u.size;
@@ -2485,8 +2542,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 2 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = miniTempWebGLIntBuffers[2*count];
-      for (var i = 0; i < 2*count; i += 2) {
+      count *= 2;
+      var view = miniTempWebGLIntBuffers[count];
+      for (var i = 0; i < count; i += 2) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
       }
@@ -2527,8 +2585,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 3 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = miniTempWebGLIntBuffers[3*count];
-      for (var i = 0; i < 3*count; i += 3) {
+      count *= 3;
+      var view = miniTempWebGLIntBuffers[count];
+      for (var i = 0; i < count; i += 3) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
         view[i+2] = {{{ makeGetValue('value', '4*i+8', 'i32') }}};
@@ -2570,8 +2629,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = miniTempWebGLIntBuffers[4*count];
-      for (var i = 0; i < 4*count; i += 4) {
+      count *= 4;
+      var view = miniTempWebGLIntBuffers[count];
+      for (var i = 0; i < count; i += 4) {
         view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
         view[i+2] = {{{ makeGetValue('value', '4*i+8', 'i32') }}};
@@ -2655,8 +2715,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 2 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = miniTempWebGLFloatBuffers[2*count];
-      for (var i = 0; i < 2*count; i += 2) {
+      count *= 2;
+      var view = miniTempWebGLFloatBuffers[count];
+      for (var i = 0; i < count; i += 2) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
       }
@@ -2697,8 +2758,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 3 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = miniTempWebGLFloatBuffers[3*count];
-      for (var i = 0; i < 3*count; i += 3) {
+      count *= 3;
+      var view = miniTempWebGLFloatBuffers[count];
+      for (var i = 0; i < count; i += 3) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
         view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
@@ -2744,7 +2806,8 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
       value = {{{ getHeapOffset('value', 'float') }}};
-      for (var i = 0; i < 4 * count; i += 4) {
+      count *= 4;
+      for (var i = 0; i < count; i += 4) {
         var dst = value + i;
         view[i] = heap[dst];
         view[i + 1] = heap[dst + 1];
@@ -2788,8 +2851,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 4 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = miniTempWebGLFloatBuffers[4*count];
-      for (var i = 0; i < 4*count; i += 4) {
+      count *= 4;
+      var view = miniTempWebGLFloatBuffers[count];
+      for (var i = 0; i < count; i += 4) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
         view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
@@ -2832,8 +2896,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if GL_POOL_TEMP_BUFFERS
     if (count <= {{{ GL_POOL_TEMP_BUFFERS_SIZE / 9 }}}) {
       // avoid allocation when uploading few enough uniforms
-      var view = miniTempWebGLFloatBuffers[9*count];
-      for (var i = 0; i < 9*count; i += 9) {
+      count *= 9;
+      var view = miniTempWebGLFloatBuffers[count];
+      for (var i = 0; i < count; i += 9) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
         view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
@@ -2885,7 +2950,8 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
       value = {{{ getHeapOffset('value', 'float') }}};
-      for (var i = 0; i < 16 * count; i += 16) {
+      count *= 16;
+      for (var i = 0; i < count; i += 16) {
         var dst = value + i;
         view[i] = heap[dst];
         view[i + 1] = heap[dst + 1];
@@ -3337,21 +3403,24 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       {{{ makeSetValue('p', '0', 'log.length + 1', 'i32') }}};
     } else if (pname == 0x8B87 /* GL_ACTIVE_UNIFORM_MAX_LENGTH */) {
       if (!program.maxUniformLength) {
-        for (var i = 0; i < GLctx.getProgramParameter(program, 0x8B86/*GL_ACTIVE_UNIFORMS*/); ++i) {
+        var numActiveUniforms = GLctx.getProgramParameter(program, 0x8B86/*GL_ACTIVE_UNIFORMS*/);
+        for (var i = 0; i < numActiveUniforms; ++i) {
           program.maxUniformLength = Math.max(program.maxUniformLength, GLctx.getActiveUniform(program, i).name.length+1);
         }
       }
       {{{ makeSetValue('p', '0', 'program.maxUniformLength', 'i32') }}};
     } else if (pname == 0x8B8A /* GL_ACTIVE_ATTRIBUTE_MAX_LENGTH */) {
       if (!program.maxAttributeLength) {
-        for (var i = 0; i < GLctx.getProgramParameter(program, 0x8B89/*GL_ACTIVE_ATTRIBUTES*/); ++i) {
+        var numActiveAttributes = GLctx.getProgramParameter(program, 0x8B89/*GL_ACTIVE_ATTRIBUTES*/);
+        for (var i = 0; i < numActiveAttributes; ++i) {
           program.maxAttributeLength = Math.max(program.maxAttributeLength, GLctx.getActiveAttrib(program, i).name.length+1);
         }
       }
       {{{ makeSetValue('p', '0', 'program.maxAttributeLength', 'i32') }}};
     } else if (pname == 0x8A35 /* GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH */) {
       if (!program.maxUniformBlockNameLength) {
-        for (var i = 0; i < GLctx.getProgramParameter(program, 0x8A36/*GL_ACTIVE_UNIFORM_BLOCKS*/); ++i) {
+        var numActiveUniformBlocks = GLctx.getProgramParameter(program, 0x8A36/*GL_ACTIVE_UNIFORM_BLOCKS*/);
+        for (var i = 0; i < numActiveUniformBlocks; ++i) {
           program.maxUniformBlockNameLength = Math.max(program.maxUniformBlockNameLength, GLctx.getActiveUniformBlockName(program, i).length+1);
         }
       }
@@ -3794,6 +3863,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   glDrawElements: (mode, count, type, indices) => {
 #if FULL_ES2
     var buf;
+    var vertexes = 0;
     if (!GLctx.currentElementArrayBufferBinding) {
       var size = GL.calcBufLength(1, type, 0, count);
       buf = GL.getTempIndexBuffer(size);
@@ -3801,12 +3871,39 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       GLctx.bufferSubData(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/,
                           0,
                           HEAPU8.subarray(indices, indices + size));
+      
+      // Calculating vertex count if shader's attribute data is on client side
+      if (count > 0) {
+        for (var i = 0; i < GL.currentContext.maxVertexAttribs; ++i) {
+          var cb = GL.currentContext.clientBuffers[i];
+          if (cb.clientside && cb.enabled) {
+            let arrayClass;
+            switch(type) {
+              case 0x1401 /* GL_UNSIGNED_BYTE */: arrayClass = Uint8Array; break;
+              case 0x1403 /* GL_UNSIGNED_SHORT */: arrayClass = Uint16Array; break;
+#if FULL_ES3
+              case 0x1405 /* GL_UNSIGNED_INT */: arrayClass = Uint32Array; break;
+#endif
+              default:
+                GL.recordError(0x502 /* GL_INVALID_OPERATION */);
+#if GL_ASSERTIONS
+                err('type is not supported in glDrawElements');
+#endif
+                return;
+            }
+
+            vertexes = new arrayClass(HEAPU8.buffer, indices, count).reduce((max, current) => Math.max(max, current)) + 1;
+            break;
+          }
+        }
+      }
+
       // the index is now 0
       indices = 0;
     }
 
     // bind any client-side buffers
-    GL.preDrawHandleClientVertexAttribBindings(count);
+    GL.preDrawHandleClientVertexAttribBindings(vertexes);
 #endif
 
     GLctx.drawElements(mode, count, type, indices);
@@ -4074,8 +4171,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     var mem = _malloc(length), binding = emscriptenWebGLGetBufferBinding(target);
     if (!mem) return 0;
 
-    if (!GL.mappedBuffers[binding]) GL.mappedBuffers[binding] = {};
-    binding = GL.mappedBuffers[binding];
+    binding = GL.mappedBuffers[binding] ??= {};
     binding.offset = offset;
     binding.length = length;
     binding.mem = mem;
@@ -4159,6 +4255,30 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     return 1;
   },
 #endif
+
+  glPolygonOffsetClampEXT__sig: 'vfff',
+  glPolygonOffsetClampEXT: (factor, units, clamp) => {
+#if GL_ASSERTIONS
+    assert(GLctx.extPolygonOffsetClamp, "EXT_polygon_offset_clamp not supported, or not enabled. Before calling glPolygonOffsetClampEXT(), call emscripten_webgl_enable_EXT_polygon_offset_clamp() to enable this extension, and verify that it returns true to indicate support. (alternatively, build with -sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=1 to enable all GL extensions by default)");
+#endif
+    GLctx.extPolygonOffsetClamp['polygonOffsetClampEXT'](factor, units, clamp);
+  },
+
+  glClipControlEXT__sig: 'vii',
+  glClipControlEXT: (origin, depth) => {
+#if GL_ASSERTIONS
+    assert(GLctx.extClipControl, "EXT_clip_control not supported, or not enabled. Before calling glClipControlEXT(), call emscripten_webgl_enable_EXT_clip_control() to enable this extension, and verify that it returns true to indicate support. (alternatively, build with -sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=1 to enable all GL extensions by default)");
+#endif
+    GLctx.extClipControl['clipControlEXT'](origin, depth);
+  },
+
+  glPolygonModeWEBGL__sig: 'vii',
+  glPolygonModeWEBGL: (face, mode) => {
+#if GL_ASSERTIONS
+    assert(GLctx.webglPolygonMode, "WEBGL_polygon_mode not supported, or not enabled. Before calling glPolygonModeWEBGL(), call emscripten_webgl_enable_WEBGL_polygon_mode() to enable this extension, and verify that it returns true to indicate support. (alternatively, build with -sGL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=1 to enable all GL extensions by default)");
+#endif
+    GLctx.webglPolygonMode['polygonModeWEBGL'](face, mode);
+  },
 };
 
 #if !GL_ENABLE_GET_PROC_ADDRESS
