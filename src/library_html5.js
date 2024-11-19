@@ -344,7 +344,7 @@ var LibraryHTML5 = {
   },
 
 #if OFFSCREENCANVAS_SUPPORT
-  $findCanvasEventTarget__deps: ['$GL', '$maybeCStringToJsString'],
+  $findCanvasEventTarget__deps: ['$GL', '$maybeCStringToJsString', "$findEventTarget"],
   $findCanvasEventTarget: (target) => {
     target = maybeCStringToJsString(target);
 
@@ -362,13 +362,9 @@ var LibraryHTML5 = {
     return GL.offscreenCanvases[target.substr(1)] // Remove '#' prefix
     // If not found, if one is querying by using DOM tag name selector 'canvas', grab the first
     // OffscreenCanvas that we can find.
-     || (target == 'canvas' && Object.keys(GL.offscreenCanvases)[0])
+     || (target == 'canvas' && Object.keys(GL.offscreenCanvases) && GL.offscreenCanvases[Object.keys(GL.offScreenCanvases)[0]])
     // If that is not found either, query via the regular DOM selector.
-#if PTHREADS
-     || (typeof document != 'undefined' && document.querySelector(target));
-#else
-     || document.querySelector(target);
-#endif
+     || findEventTarget(target);
   },
 #else
   $findCanvasEventTarget: '$findEventTarget',
