@@ -987,8 +987,8 @@ var LibraryWebGPU = {
     if (viewFormatCount) {
       var viewFormatsPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUTextureDescriptor.viewFormats, '*') }}};
       // viewFormatsPtr pointer to an array of TextureFormat which is an enum of size uint32_t
-      desc["viewFormats"] = Array.from({{{ makeHEAPView('32', 'viewFormatsPtr', `viewFormatsPtr + viewFormatCount * 4`) }}},
-        function(format) { return WebGPU.TextureFormat[format]; });
+      desc['viewFormats'] = Array.from({{{ makeHEAPView('32', 'viewFormatsPtr', 'viewFormatsPtr + viewFormatCount * 4') }}},
+        format => WebGPU.TextureFormat[format]);
     }
 
     var device = WebGPU.mgrDevice.get(deviceId);
