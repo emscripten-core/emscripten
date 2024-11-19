@@ -1,7 +1,7 @@
 llvm's libunwind
 ----------------
 
-These files are from the llvm-project based on release 17.0.4.
+These files are from the llvm-project based on release 19.1.3.
 
 We maintain a local fork of llvm-project that contains any emscripten
 specific patches:
