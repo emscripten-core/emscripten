@@ -1963,7 +1963,7 @@ used. An example of using the module is below.
   foo();
   bar();
 
-Default value: ''
+Default value: false
 
 .. _export_es6:
 
