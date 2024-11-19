@@ -22,7 +22,7 @@ static void *__memcpy(void *dest, const void *src, size_t n) {
 #elif defined(__wasm_bulk_memory__)
 
 static void *__memcpy(void *restrict dest, const void *restrict src, size_t n) {
-  return _emscripten_memcpy_bulkmem(dest, src, n);
+  return n ? _emscripten_memcpy_bulkmem(dest, src, n) : dest;
 }
 
 #else

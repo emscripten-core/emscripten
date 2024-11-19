@@ -27,7 +27,6 @@ if (ENVIRONMENT_IS_WORKER) {
 {{{ exportRuntime() }}}
 
 var calledRun;
-var calledPrerun;
 
 #if STANDALONE_WASM && MAIN_READS_PARAMS
 var mainArgs = undefined;
@@ -47,7 +46,7 @@ function callMain() {
 #endif
 #if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
-  assert(calledPrerun, 'cannot call main without calling preRun first');
+  assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
 #endif
 
   var entryFunction = {{{ getEntryFunction() }}};
@@ -189,25 +188,22 @@ function run() {
   stackCheckInit();
 #endif
 
-  if (!calledPrerun) {
-    calledPrerun = 1;
-    preRun();
+  preRun();
 
-    // a preRun added a dependency, run will be called later
-    if (runDependencies > 0) {
+  // a preRun added a dependency, run will be called later
+  if (runDependencies > 0) {
 #if RUNTIME_DEBUG
-      dbg('run() called, but dependencies remain, so not running');
+    dbg('run() called, but dependencies remain, so not running');
 #endif
-      return;
-    }
+    return;
   }
 
   function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
     // or while the async setStatus time below was happening
     if (calledRun) return;
-    calledRun = 1;
-    Module['calledRun'] = 1;
+    calledRun = true;
+    Module['calledRun'] = true;
 
     if (ABORT) return;
 

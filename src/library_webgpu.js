@@ -822,16 +822,20 @@ var LibraryWebGPU = {
   // wgpuDevice
 
   wgpuDeviceEnumerateFeatures: (deviceId, featuresOutPtr) => {
+    var offset = 0;
+    var numFeatures = 0;
     var device = WebGPU.mgrDevice.get(deviceId);
-    if (featuresOutPtr !== 0) {
-      var offset = 0;
-      device.features.forEach(feature => {
-        var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
-        {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
-        offset += 4;
-      });
-    }
-    return device.features.size;
+    device.features.forEach(feature => {
+      var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
+      if (featureEnumValue !== undefined) {
+        if (featuresOutPtr !== 0) {
+          {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
+          offset += 4;
+        }
+        numFeatures++;
+      }
+    });
+    return numFeatures;
   },
 
   wgpuDeviceDestroy: (deviceId) => WebGPU.mgrDevice.get(deviceId).destroy(),
@@ -2568,16 +2572,20 @@ var LibraryWebGPU = {
   // WGPUAdapter
 
   wgpuAdapterEnumerateFeatures: (adapterId, featuresOutPtr) => {
+    var offset = 0;
+    var numFeatures = 0;
     var adapter = WebGPU.mgrAdapter.get(adapterId);
-    if (featuresOutPtr !== 0) {
-      var offset = 0;
-      adapter.features.forEach(feature => {
-        var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
-        {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
-        offset += 4;
-      });
-    }
-    return adapter.features.size;
+    adapter.features.forEach(feature => {
+      var featureEnumValue = WebGPU.FeatureNameString2Enum[feature];
+      if (featureEnumValue !== undefined) {
+        if (featuresOutPtr !== 0) {
+          {{{ makeSetValue('featuresOutPtr', 'offset', 'featureEnumValue', 'i32') }}};
+          offset += 4;
+        }
+        numFeatures++;
+      }
+    });
+    return numFeatures;
   },
 
   wgpuAdapterGetInfo__deps: ['$stringToNewUTF8'],
@@ -2637,7 +2645,8 @@ var LibraryWebGPU = {
       var requiredFeatureCount = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredFeatureCount) }}};
       if (requiredFeatureCount) {
         var requiredFeaturesPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredFeatures, '*') }}};
-        desc["requiredFeatures"] = Array.from({{{ makeHEAPView('32', 'requiredFeaturesPtr', `requiredFeaturesPtr + requiredFeatureCount * ${POINTER_SIZE}`) }}},
+        // requiredFeaturesPtr is a pointer to an array of FeatureName which is an enum of size uint32_t
+        desc["requiredFeatures"] = Array.from({{{ makeHEAPView('U32', 'requiredFeaturesPtr', `requiredFeaturesPtr + requiredFeatureCount * 4`) }}},
           (feature) => WebGPU.FeatureName[feature]);
       }
       var requiredLimitsPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUDeviceDescriptor.requiredLimits, '*') }}};

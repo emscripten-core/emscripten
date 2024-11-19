@@ -41,7 +41,7 @@ opts = sys.argv[3:]
 
 # main
 
-cmd = [os.path.join(building.get_binaryen_bin(), 'wasm2js'), '--emscripten', wasm_file]
+cmd = [os.path.join(building.get_binaryen_bin(), 'wasm2js'), '--emscripten', '-all', wasm_file]
 cmd += opts
 js = shared.run_process(cmd, stdout=subprocess.PIPE).stdout
 # assign the instantiate function to where it will be used

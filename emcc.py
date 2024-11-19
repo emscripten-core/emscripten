@@ -384,6 +384,15 @@ def get_clang_flags(user_args):
     if '-mbulk-memory' not in user_args:
       flags.append('-mbulk-memory')
 
+  # In emscripten we currently disable bulk memory by default.
+  # This should be removed/updated when we als update the default browser targets.
+  if '-mbulk-memory' not in user_args and '-mno-bulk-memory' not in user_args:
+    # Bulk memory may be enabled via threads or directly via -s.
+    if not settings.BULK_MEMORY:
+      flags.append('-mno-bulk-memory')
+  if '-mnontrapping-fptoint' not in user_args and '-mno-nontrapping-fptoint' not in user_args:
+    flags.append('-mno-nontrapping-fptoint')
+
   if settings.RELOCATABLE and '-fPIC' not in user_args:
     flags.append('-fPIC')
 
@@ -890,10 +899,8 @@ def phase_setup(options, state, newargs):
   if options.target.startswith('wasm64'):
     default_setting('MEMORY64', 1)
 
-  if settings.MEMORY64:
-    if options.target.startswith('wasm32'):
-      exit_with_error('wasm32 target is not compatible with -sMEMORY64')
-    diagnostics.warning('experimental', '-sMEMORY64 is still experimental. Many features may not work.')
+  if settings.MEMORY64 and options.target.startswith('wasm32'):
+    exit_with_error('wasm32 target is not compatible with -sMEMORY64')
 
   # Wasm SjLj cannot be used with Emscripten EH
   if settings.SUPPORT_LONGJMP == 'wasm':

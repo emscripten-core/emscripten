@@ -597,11 +597,12 @@ function charCode(char) {
   return char.charCodeAt(0);
 }
 
-function makeDynCall(sig, funcPtr) {
+function makeDynCall(sig, funcPtr, promising = false) {
   assert(
     !sig.includes('j'),
     'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!',
   );
+  assert(!(DYNCALLS && promising), 'DYNCALLS cannot be used with JSPI.');
 
   let args = [];
   for (let i = 1; i < sig.length; ++i) {
@@ -672,10 +673,15 @@ Please update to new syntax.`);
     return `(() => ${dyncall}(${funcPtr}))`;
   }
 
-  if (needArgConversion) {
-    return `((${args}) => getWasmTableEntry(${funcPtr}).call(null, ${callArgs}))`;
+  let getWasmTableEntry = `getWasmTableEntry(${funcPtr})`;
+  if (promising) {
+    getWasmTableEntry = `WebAssembly.promising(${getWasmTableEntry})`;
   }
-  return `getWasmTableEntry(${funcPtr})`;
+
+  if (needArgConversion) {
+    return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}))`;
+  }
+  return getWasmTableEntry;
 }
 
 function makeEval(code) {
@@ -964,8 +970,8 @@ function from64Expr(x, assign = true) {
 }
 
 function toIndexType(x) {
-  if (MEMORY64 != 1) return x;
-  return `toIndexType(${x})`;
+  if (MEMORY64 == 1) return `BigInt(${x})`;
+  return x;
 }
 
 function to64(x) {
@@ -1042,9 +1048,11 @@ function getUnsharedTextDecoderView(heap, start, end) {
   // then unconditionally do a .slice() for smallest code size.
   if (SHRINK_LEVEL == 2 || heap == 'HEAPU8') return shared;
 
-  // Otherwise, generate a runtime type check: must do a .slice() if looking at a SAB,
-  // or can use .subarray() otherwise.
-  return `${heap}.buffer instanceof SharedArrayBuffer ? ${shared} : ${unshared}`;
+  // Otherwise, generate a runtime type check: must do a .slice() if looking at
+  // a SAB, or can use .subarray() otherwise.  Note: We compare with
+  // `ArrayBuffer` here to avoid referencing `SharedArrayBuffer` which could be
+  // undefined.
+  return `${heap}.buffer instanceof ArrayBuffer ? ${unshared} : ${shared}`;
 }
 
 function getEntryFunction() {

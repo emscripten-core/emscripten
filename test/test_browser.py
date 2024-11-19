@@ -990,8 +990,8 @@ If manually bisecting:
       html = html.replace('</body>', '''
 <script src='fake_events.js'></script>
 <script>
-simulateKeyDown(1250);simulateKeyDown(38);simulateKeyUp(38);simulateKeyUp(1250); // alt, up
-simulateKeyDown(1248);simulateKeyDown(1249);simulateKeyDown(40);simulateKeyUp(40);simulateKeyUp(1249);simulateKeyUp(1248); // ctrl, shift, down
+simulateKeyDown(18);simulateKeyDown(38);simulateKeyUp(38);simulateKeyUp(18); // alt, up
+simulateKeyDown(17);simulateKeyDown(16);simulateKeyDown(40);simulateKeyUp(40);simulateKeyUp(16);simulateKeyUp(17); // ctrl, shift, down
 simulateKeyDown(37);simulateKeyUp(37); // left
 simulateKeyDown(39);simulateKeyUp(39); // right
 simulateKeyDown(65);simulateKeyUp(65); // a
@@ -1001,10 +1001,10 @@ simulateKeyDown(100);simulateKeyUp(100); // trigger the end
 </body>''')
       create_file('test.html', html)
 
-    self.btest_exit('test_sdl_key_proxy.c', 223092870, args=['--proxy-to-worker', '--pre-js', 'pre.js', '-lSDL', '-lGL'], post_build=post)
+    self.btest_exit('test_sdl_key_proxy.c', 223092870, args=['--proxy-to-worker', '--pre-js', 'pre.js', '-lSDL', '-lGL', '-sRUNTIME_DEBUG'], post_build=post)
 
   def test_canvas_focus(self):
-    self.btest_exit('canvas_focus.c')
+    self.btest_exit('test_canvas_focus.c', args=['--pre-js', test_file('browser/fake_events.js')])
 
   def test_keydown_preventdefault_proxy(self):
     def post():
@@ -1013,15 +1013,15 @@ simulateKeyDown(100);simulateKeyUp(100); // trigger the end
 <script src='fake_events.js'></script>
 <script>
 // Send 'A'.  The corresonding keypress event will not be prevented.
-simulateKeyDown(65);
-simulateKeyUp(65);
+simulateKeyDown(65, 'a', 'KeyA');
+simulateKeyUp(65, 'a', 'KeyA');
 
 // Send backspace.  The corresonding keypress event *will* be prevented due to proxyClient.js.
-simulateKeyDown(8);
-simulateKeyUp(8);
+simulateKeyDown(8, 'Backspace', 'Backspace');
+simulateKeyUp(8, 'Backspace', 'Backspace');
 
-simulateKeyDown(100);
-simulateKeyUp(100);
+simulateKeyDown(100, undefined, 'Numpad4');
+simulateKeyUp(100, undefined, 'Numpad4');
 </script>
 </body>''')
 
@@ -1480,6 +1480,10 @@ simulateKeyUp(100);
                           test_file('browser/test_sdl_canvas_size.html'), '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
+  def test_sdl_gl_extensions(self):
+    self.btest_exit('test_sdl_gl_extensions.c', args=['-lSDL', '-lGL'])
+
+  @requires_graphics_hardware
   def test_sdl_gl_read(self):
     # SDL, OpenGL, readPixels
     self.btest_exit('test_sdl_gl_read.c', args=['-lSDL', '-lGL'])
@@ -1584,7 +1588,11 @@ simulateKeyUp(100);
   def test_egl_createcontext_error(self):
     self.btest_exit('test_egl_createcontext_error.c', args=['-lEGL', '-lGL'])
 
-  def test_worker(self):
+  @parameterized({
+    '': ([False],),
+    'preload': ([True],),
+  })
+  def test_hello_world_worker(self, file_data):
     # Test running in a web worker
     create_file('file.dat', 'data for worker')
     create_file('main.html', '''
@@ -1602,13 +1610,12 @@ simulateKeyUp(100);
       </html>
     ''' % self.port)
 
-    for file_data in (1, 0):
-      cmd = [EMCC, test_file('hello_world_worker.cpp'), '-o', 'worker.js'] + self.get_emcc_args()
-      if file_data:
-        cmd += ['--preload-file', 'file.dat']
-      self.run_process(cmd)
-      self.assertExists('worker.js')
-      self.run_browser('main.html', '/report_result?hello from worker, and :' + ('data for w' if file_data else '') + ':')
+    cmd = [EMCC, test_file('hello_world_worker.c'), '-o', 'worker.js'] + self.get_emcc_args()
+    if file_data:
+      cmd += ['--preload-file', 'file.dat']
+    self.run_process(cmd)
+    self.assertExists('worker.js')
+    self.run_browser('main.html', '/report_result?hello from worker, and :' + ('data for w' if file_data else '') + ':')
 
     # code should run standalone too
     # To great memories >4gb we need the canary version of node
@@ -2847,15 +2854,19 @@ Module["preRun"] = () => {
 
   @parameterized({
     '': (['-sUSE_GLFW=2', '-DUSE_GLFW=2'],),
-    'glfw3': (['-sUSE_GLFW=2', '-DUSE_GLFW=2'],),
+    'glfw3': (['-sUSE_GLFW=3', '-DUSE_GLFW=3'],),
   })
   @requires_graphics_hardware
   def test_glfw_events(self, args):
-    self.btest('test_glfw_events.c', args=args + ['-lglfw', '-lGL'], expected='1')
+    self.btest_exit('test_glfw_events.c', args=args + ['-lglfw', '-lGL', '--pre-js', test_file('browser/fake_events.js')])
 
   @requires_graphics_hardware
   def test_glfw3_hi_dpi_aware(self):
     self.btest_exit('test_glfw3_hi_dpi_aware.c', args=['-sUSE_GLFW=3', '-lGL'])
+
+  @requires_graphics_hardware
+  def test_glfw3_css_scaling(self):
+    self.btest_exit('test_glfw3_css_scaling.c', args=['-sUSE_GLFW=3'])
 
   @requires_graphics_hardware
   @also_with_wasm2js
@@ -5018,7 +5029,7 @@ Module["preRun"] = () => {
   # Tests emscripten_malloc_wasm_worker() and emscripten_current_thread_is_wasm_worker() functions
   @also_with_minimal_runtime
   def test_wasm_worker_malloc(self):
-    self.btest('wasm_worker/malloc_wasm_worker.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/malloc_wasm_worker.c', args=['-sWASM_WORKERS'])
 
   # Tests Wasm Worker+pthreads simultaneously
   @also_with_minimal_runtime
@@ -5098,7 +5109,7 @@ Module["preRun"] = () => {
   # Tests emscripten_atomic_wait_async() function.
   @also_with_minimal_runtime
   def test_wasm_worker_wait_async(self):
-    self.btest('atomic/test_wait_async.c', expected='0', args=['-sWASM_WORKERS'])
+    self.btest_exit('atomic/test_wait_async.c', args=['-sWASM_WORKERS'])
 
   # Tests emscripten_atomic_cancel_wait_async() function.
   @also_with_minimal_runtime
@@ -5361,7 +5372,7 @@ Module["preRun"] = () => {
   # Tests the AudioWorklet demo
   @parameterized({
     '': ([],),
-    'memory64': (['-sMEMORY64', '-Wno-experimental'],),
+    'memory64': (['-sMEMORY64'],),
     'with_fs': (['--preload-file', test_file('hello_world.c') + '@/'],),
     'closure': (['--closure', '1', '-Oz'],),
     'asyncify': (['-sASYNCIFY'],),
@@ -5622,7 +5633,6 @@ class browser64(browser):
   def setUp(self):
     super().setUp()
     self.set_setting('MEMORY64')
-    self.emcc_args.append('-Wno-experimental')
     self.require_wasm64()
 
 
@@ -5632,7 +5642,6 @@ class browser64_4gb(browser):
     self.set_setting('MEMORY64')
     self.set_setting('INITIAL_MEMORY', '4200mb')
     self.set_setting('GLOBAL_BASE', '4gb')
-    self.emcc_args.append('-Wno-experimental')
     # Without this we get a warning about GLOBAL_BASE being ignored when used with SIDE_MODULE
     self.emcc_args.append('-Wno-unused-command-line-argument')
     self.require_wasm64()
@@ -5644,7 +5653,6 @@ class browser64_2gb(browser):
     self.set_setting('MEMORY64')
     self.set_setting('INITIAL_MEMORY', '2200mb')
     self.set_setting('GLOBAL_BASE', '2gb')
-    self.emcc_args.append('-Wno-experimental')
     self.require_wasm64()
 
 

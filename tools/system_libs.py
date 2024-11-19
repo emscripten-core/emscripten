@@ -1053,7 +1053,6 @@ class libc(MuslInternalLibrary,
       filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
                  'emscripten_scan_stack.c',
                  'emscripten_get_heap_size.c',  # needed by malloc
-                 'sbrk.c',  # needed by malloc
                  'emscripten_memmove.c'])
     # Calls to iprintf can be generated during codegen. Ideally we wouldn't
     # compile these with -O2 like we do the rest of compiler-rt since its
@@ -1099,7 +1098,6 @@ class libc(MuslInternalLibrary,
         'ppoll.c',
         'syscall.c', 'popen.c', 'pclose.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
-        'getentropy.c',
         'getauxval.c',
         'lookup_name.c',
         # 'process' exclusion
@@ -1300,7 +1298,6 @@ class libc(MuslInternalLibrary,
           'sigaction.c',
           'sigtimedwait.c',
           'wasi-helpers.c',
-          'sbrk.c',
           'system.c',
         ])
 
@@ -1733,7 +1730,9 @@ class libmalloc(MTLibrary):
     malloc = utils.path_from_root('system/lib', {
       'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.c',
     }[malloc_base])
-    return [malloc]
+    # Include sbrk.c in libc, it uses tracing and libc itself doesn't have a tracing variant.
+    sbrk = utils.path_from_root('system/lib/libc/sbrk.c')
+    return [malloc, sbrk]
 
   def get_cflags(self):
     cflags = super().get_cflags()
@@ -1818,13 +1817,10 @@ class libmimalloc(MTLibrary):
     # mimalloc includes some files at the source level, so exclude them here.
     excludes=['alloc-override.c', 'page-queue.c', 'static.c']
   )
-  src_files += files_in_path(
-    path='system/lib/mimalloc/src/prim',
-    filenames=['prim.c']
-  )
-  src_files += files_in_path(
-    path='system/lib/',
-    filenames=['emmalloc.c'])
+  src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim.c')]
+  src_files += [utils.path_from_root('system/lib/emmalloc.c')]
+  # Include sbrk.c in libc, it uses tracing and libc itself doesn't have a tracing variant.
+  src_files += [utils.path_from_root('system/lib/libc/sbrk.c')]
 
   def can_use(self):
     return super().can_use() and settings.MALLOC == 'mimalloc'
@@ -2280,7 +2276,7 @@ def get_libs_to_link(args):
   if force_include:
     logger.debug(f'forcing stdlibs: {force_include}')
 
-  def add_library(libname):
+  def add_library(libname, whole_archive=False):
     lib = system_libs_map[libname]
     if lib.name in already_included:
       return
@@ -2289,7 +2285,7 @@ def get_libs_to_link(args):
     logger.debug('including %s (%s)' % (lib.name, lib.get_filename()))
 
     need_whole_archive = lib.name in force_include and lib.get_ext() == '.a'
-    libs_to_link.append((lib.get_link_flag(), need_whole_archive))
+    libs_to_link.append((lib.get_link_flag(), whole_archive or need_whole_archive))
 
   if '-nostartfiles' not in args:
     if settings.SHARED_MEMORY:
@@ -2400,7 +2396,10 @@ def get_libs_to_link(args):
   if settings.WASM_WORKERS and (not settings.SINGLE_FILE and
                                 not settings.RELOCATABLE and
                                 not settings.PROXY_TO_WORKER):
-    add_library('libwasm_workers')
+    # When we include libwasm_workers we use `--whole-archive` to ensure
+    # that the static constructor (`emscripten_wasm_worker_main_thread_initialize`)
+    # is run.
+    add_library('libwasm_workers', whole_archive=True)
 
   if settings.WASMFS:
     # Link in the no-fs version first, so that if it provides all the needed

@@ -15,11 +15,12 @@ assert(Object.keys(LibraryManager.library).length === 0);
 addToLibrary({
   $callRuntimeCallbacks: () => {},
 
-  $ExitStatus__docs: '/** @constructor */',
-  $ExitStatus: function(status) {
-    this.name = 'ExitStatus';
-    this.message = 'Program terminated with exit(' + status + ')';
-    this.status = status;
+  $ExitStatus: class {
+    name = 'ExitStatus';
+    constructor(status) {
+      this.message = `Program terminated with exit(${status})`;
+      this.status = status;
+    }
   },
 
   $exitJS__deps: ['$ExitStatus'],

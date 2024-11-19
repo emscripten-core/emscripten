@@ -495,10 +495,6 @@ def setup_pthreads():
 
   default_setting('DEFAULT_PTHREAD_STACK_SIZE', settings.STACK_SIZE)
 
-  if not settings.MINIMAL_RUNTIME and 'instantiateWasm' not in settings.INCOMING_MODULE_JS_API:
-    # pthreads runtime depends on overriding instantiateWasm
-    settings.INCOMING_MODULE_JS_API.append('instantiateWasm')
-
   # Functions needs by runtime_pthread.js
   settings.REQUIRED_EXPORTS += [
     '_emscripten_thread_free_data',
@@ -670,18 +666,19 @@ def phase_linker_setup(options, state, newargs):
   if options.cpu_profiler:
     options.post_js.append(utils.path_from_root('src/cpuprofiler.js'))
 
-  if not settings.RUNTIME_DEBUG:
-    settings.RUNTIME_DEBUG = bool(settings.LIBRARY_DEBUG or
-                                  settings.GL_DEBUG or
-                                  settings.DYLINK_DEBUG or
-                                  settings.OPENAL_DEBUG or
-                                  settings.SYSCALL_DEBUG or
-                                  settings.WEBSOCKET_DEBUG or
-                                  settings.SOCKET_DEBUG or
-                                  settings.FETCH_DEBUG or
-                                  settings.EXCEPTION_DEBUG or
-                                  settings.PTHREADS_DEBUG or
-                                  settings.ASYNCIFY_DEBUG)
+  # Unless RUNTIME_DEBUG is explicitly set then we enable it when any of the
+  # more specfic debug settings are present.
+  default_setting('RUNTIME_DEBUG', int(settings.LIBRARY_DEBUG or
+                                       settings.GL_DEBUG or
+                                       settings.DYLINK_DEBUG or
+                                       settings.OPENAL_DEBUG or
+                                       settings.SYSCALL_DEBUG or
+                                       settings.WEBSOCKET_DEBUG or
+                                       settings.SOCKET_DEBUG or
+                                       settings.FETCH_DEBUG or
+                                       settings.EXCEPTION_DEBUG or
+                                       settings.PTHREADS_DEBUG or
+                                       settings.ASYNCIFY_DEBUG))
 
   if options.memory_profiler:
     settings.MEMORYPROFILER = 1
@@ -1205,6 +1202,10 @@ def phase_linker_setup(options, state, newargs):
       exit_with_error('--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem')
     # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
     settings.FORCE_FILESYSTEM = 1
+
+  if options.preload_files:
+    # File preloading uses `Module['preRun']`.
+    settings.INCOMING_MODULE_JS_API.append('preRun')
 
   if settings.FORCE_FILESYSTEM and not settings.FILESYSTEM:
     exit_with_error('`-sFORCE_FILESYSTEM` cannot be used with `-sFILESYSTEM=0`')
@@ -1985,6 +1986,8 @@ def run_embind_gen(wasm_target, js_syms, extra_settings, linker_inputs):
   settings.JS_LIBRARIES[embind_index] = 'embind/embind_gen.js'
   if settings.MEMORY64:
     settings.MIN_NODE_VERSION = 160000
+  # Source maps haven't been generated yet and aren't needed to run embind_gen.
+  settings.LOAD_SOURCE_MAP = 0
   outfile_js = in_temp('tsgen.js')
   # The Wasm outfile may be modified by emscripten.emscript, so use a temporary file.
   outfile_wasm = in_temp('tsgen.wasm')

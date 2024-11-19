@@ -58,6 +58,9 @@ var LibraryHTML5 = {
     currentEventHandler: null,
 #endif
 */
+    memcpy(target, src, size) {
+      HEAP8.set(HEAP8.subarray(src, src + size), target);
+    },
 
     removeAllEventListeners() {
       while (JSEvents.eventHandlers.length) {
@@ -594,7 +597,7 @@ var LibraryHTML5 = {
     // HTML5 does not really have a polling API for mouse events, so implement one manually by
     // returning the data from the most recently received event. This requires that user has registered
     // at least some no-op function as an event handler to any of the mouse function.
-    HEAP8.set(HEAP8.subarray(JSEvents.mouseEvent, JSEvents.mouseEvent + {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}}), mouseState);
+    JSEvents.memcpy(mouseState, JSEvents.mouseEvent, {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}});
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
@@ -852,7 +855,7 @@ var LibraryHTML5 = {
     // HTML5 does not really have a polling API for device orientation events, so implement one manually by
     // returning the data from the most recently received event. This requires that user has registered
     // at least some no-op function as an event handler.
-    HEAP32.set(HEAP32.subarray(JSEvents.deviceOrientationEvent, {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}}), orientationState);
+    JSEvents.memcpy(orientationState, JSEvents.deviceOrientationEvent, {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}});
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
@@ -922,7 +925,7 @@ var LibraryHTML5 = {
     // HTML5 does not really have a polling API for device motion events, so implement one manually by
     // returning the data from the most recently received event. This requires that user has registered
     // at least some no-op function as an event handler.
-    HEAP32.set(HEAP32.subarray(JSEvents.deviceMotionEvent, {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}}), motionState);
+    JSEvents.memcpy(motionState, JSEvents.deviceMotionEvent, {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}});
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 

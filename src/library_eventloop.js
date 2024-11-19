@@ -33,6 +33,15 @@ LibraryJSEventLoop = {
     return id;
   },
 
+  $safeRequestAnimationFrame__deps: ['$MainLoop'],
+  $safeRequestAnimationFrame: (func) => {
+    {{{ runtimeKeepalivePush() }}}
+    return MainLoop.requestAnimationFrame(() => {
+      {{{ runtimeKeepalivePop() }}}
+      callUserCallback(func);
+    });
+  },
+
   // Just like clearImmediate but takes an i32 rather than an object.
   $clearImmediateWrapped: (id) => {
 #if ASSERTIONS
@@ -147,6 +156,22 @@ LibraryJSEventLoop = {
   emscripten_clear_interval: (id) => {
     {{{ runtimeKeepalivePop() }}}
     clearInterval(id);
+  },
+
+  emscripten_async_call__deps: ['$safeSetTimeout', '$safeRequestAnimationFrame'],
+  emscripten_async_call: (func, arg, millis) => {
+    var wrapper = () => {{{ makeDynCall('vp', 'func') }}}(arg);
+
+    if (millis >= 0
+#if ENVIRONMENT_MAY_BE_NODE
+      // node does not support requestAnimationFrame
+      || ENVIRONMENT_IS_NODE
+#endif
+    ) {
+      safeSetTimeout(wrapper, millis);
+    } else {
+      safeRequestAnimationFrame(wrapper);
+    }
   },
 
   $registerPostMainLoop: (f) => {

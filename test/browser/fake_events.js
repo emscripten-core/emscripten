@@ -2,51 +2,59 @@
  * Helper function used in browser tests to simulate HTML5 events
  */
 
-function simulateKeyEvent(eventType, keyCode, code) {
+function simulateKeyEvent(eventType, keyCode, code, key, target) {
   var props = { keyCode, charCode: keyCode, view: window, bubbles: true, cancelable: true };
   if (code) props['code'] = code;
+  if (key) props['key'] = key;
   var event = new KeyboardEvent(eventType, props);
-  return document.dispatchEvent(event);
+  if (!target) target = document;
+  return target.dispatchEvent(event);
 }
 
-function simulateKeyDown(keyCode, code = undefined) {
-  var doDefault = simulateKeyEvent('keydown', keyCode, code);
+function simulateKeyDown(keyCode, code = undefined, key = undefined, target = undefined) {
+  var doDefault = simulateKeyEvent('keydown', keyCode, code, key, target);
   // As long as not handler called `preventDefault` we also send a keypress
   // event.
   if (doDefault) {
-    simulateKeyEvent('keypress', keyCode, code);
+    simulateKeyEvent('keypress', keyCode, code, key, target);
   }
 }
 
-function simulateKeyUp(keyCode, code = undefined) {
-  simulateKeyEvent('keyup', keyCode, code);
+function simulateKeyUp(keyCode, code = undefined, target = undefined) {
+  simulateKeyEvent('keyup', keyCode, code, target);
 }
 
-function simulateMouseEvent(x, y, button, absolute) {
+function simulateKeyDownUp(keyCode, code = undefined, target = undefined) {
+  simulateKeyDown(keyCode, code, target);
+  simulateKeyUp(keyCode, code, target);
+}
+
+function simulateMouseEvent(eventType, x, y, button, absolute) {
   if (!absolute) {
     x += Module['canvas'].offsetLeft;
     y += Module['canvas'].offsetTop;
   }
   var event = document.createEvent("MouseEvents");
-  if (button >= 0) {
-    var event1 = document.createEvent("MouseEvents");
-    event1.initMouseEvent('mousedown', true, true, window,
-               1, x, y, x, y,
-               0, 0, 0, 0,
-               button, null);
-    Module['canvas'].dispatchEvent(event1);
-    var event2 = document.createEvent("MouseEvents");
-    event2.initMouseEvent('mouseup', true, true, window,
-               1, x, y, x, y,
-               0, 0, 0, 0,
-               button, null);
-    Module['canvas'].dispatchEvent(event2);
-  } else {
-    var event1 = document.createEvent("MouseEvents");
-    event1.initMouseEvent('mousemove', true, true, window,
-               1, x, y, x, y,
-               0, 0, 0, 0,
-               0, null);
-    Module['canvas'].dispatchEvent(event1);
-  }
+  event.initMouseEvent(eventType, true, true, window,
+             1, x, y, x, y,
+             0, 0, 0, 0,
+             button, null);
+  Module['canvas'].dispatchEvent(event);
+}
+
+function simulateMouseDown(x, y, button, absolute) {
+  simulateMouseEvent('mousedown', x, y, button, absolute);
+}
+
+function simulateMouseUp(x, y, button, absolute) {
+  simulateMouseEvent('mouseup', x, y, button, absolute);
+}
+
+function simulateMouseMove(x, y, absolute) {
+  simulateMouseEvent('mousemove', x, y, 0, absolute);
+}
+
+function simulateMouseClick(x, y, button, absolute) {
+  simulateMouseDown(x, y, button, absolute);
+  simulateMouseUp(x, y, button, absolute);
 }

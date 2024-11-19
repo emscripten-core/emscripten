@@ -17,4 +17,4 @@ emscripten_out
 emscripten_resize_heap
 environ_get
 environ_sizes_get
-getentropy
+random_get

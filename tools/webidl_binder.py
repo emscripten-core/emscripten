@@ -388,7 +388,8 @@ def type_to_cdec(raw):
 
 def render_function(class_name, func_name, sigs, return_type, non_pointer,
                     copy, operator, constructor, is_static, func_scope,
-                    call_content=None, const=False, array_attribute=False):
+                    call_content=None, const=False, array_attribute=False,
+                    bind_to=None):
   legacy_mode = CHECKS not in ['ALL', 'FAST']
   all_checks = CHECKS == 'ALL'
 
@@ -601,9 +602,10 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
     elif call_content is not None:
       call = call_content
     else:
-      call = func_name + '(' + call_args + ')'
+      if not bind_to:
+        bind_to = func_name
+      call = bind_to + '(' + call_args + ')'
       if is_static:
-
         call = c_class_name + '::' + call
       else:
         call = 'self->' + call
@@ -694,7 +696,7 @@ for name, interface in interfaces.items():
 # Compute the height in the inheritance tree of each node. Note that the order of interation
 # of `implements` is irrelevant.
 #
-# After one iteration of the loop, all ancestors of child are guaranteed to have a a larger
+# After one iteration of the loop, all ancestors of child are guaranteed to have a larger
 # height number than the child, and this is recursively true for each ancestor. If the height
 # of child is later increased, all its ancestors will be readjusted at that time to maintain
 # that invariant. Further, the height of a node never decreases. Therefore, when the loop
@@ -771,7 +773,8 @@ for name in names:
                     constructor,
                     is_static=m.isStatic(),
                     func_scope=m.parentScope.identifier.name,
-                    const=m.getExtendedAttribute('Const'))
+                    const=m.getExtendedAttribute('Const'),
+                    bind_to=(m.getExtendedAttribute('BindTo') or [None])[0])
     mid_js += ['\n']
     if constructor:
       mid_js += build_constructor(name)

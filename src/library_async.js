@@ -632,7 +632,7 @@ addToLibrary({
   emscripten_scan_registers: (func) => {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';
   },
-  emscripten_fiber_swap: function(oldFiber, newFiber) {
+  emscripten_fiber_swap: (oldFiber, newFiber) => {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_swap';
   },
 #endif // ASYNCIFY

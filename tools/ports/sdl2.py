@@ -5,11 +5,8 @@
 
 import os
 
-# For now we pin to specific commit since we want to include
-# https://github.com/libsdl-org/SDL/pull/11127
-# Once the next version of SDL2 is tagged we can use that here instead.
-TAG = '3deb07ea395373204462130c1e062bc1f71fe060'
-HASH = '551082bffb28442ad20662c6963fb02701449d43e7da6aa68fbec922e47b060609e3cdf5f9e3bfde7458a92547e008f010af79ddadf448665e55ca8759cfbcdb'
+TAG = 'release-2.30.9'
+HASH = '00079415bd3aab9ab2cf67c466ca0ab96076ff8b9c8ed6d4e11db15e10f5cf91f49da6356cf3ed9adc91e185c1aada3886baa80d14d421729805adaa98563e36'
 SUBDIR = 'SDL-' + TAG
 
 variants = {'sdl2-mt': {'PTHREADS': 1}}

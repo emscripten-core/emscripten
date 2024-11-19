@@ -57,7 +57,6 @@ export const LibraryManager = {
       'library_html5.js',
       'library_stack_trace.js',
       'library_wasi.js',
-      'library_makeDynCall.js',
       'library_eventloop.js',
       'library_promise.js',
     ];

@@ -399,13 +399,13 @@ var LibraryGLUT = {
         var now = Date.now();
         return now - GLUT.initTime;
       case 0x0069: /* GLUT_WINDOW_STENCIL_SIZE */
-        return Module.ctx.getContextAttributes().stencil ? 8 : 0;
+        return GLctx.getContextAttributes().stencil ? 8 : 0;
       case 0x006A: /* GLUT_WINDOW_DEPTH_SIZE */
-        return Module.ctx.getContextAttributes().depth ? 8 : 0;
+        return GLctx.getContextAttributes().depth ? 8 : 0;
       case 0x006E: /* GLUT_WINDOW_ALPHA_SIZE */
-        return Module.ctx.getContextAttributes().alpha ? 8 : 0;
+        return GLctx.getContextAttributes().alpha ? 8 : 0;
       case 0x0078: /* GLUT_WINDOW_NUM_SAMPLES */
-        return Module.ctx.getContextAttributes().antialias ? 1 : 0;
+        return GLctx.getContextAttributes().antialias ? 1 : 0;
 
       default:
         throw "glutGet(" + type + ") not implemented yet";
@@ -566,8 +566,10 @@ var LibraryGLUT = {
     // TODO: Make glutCreateWindow explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
     GL.enableOffscreenFramebufferAttributes(contextAttributes);
 #endif
-    Module.ctx = Browser.createContext(Module['canvas'], true, true, contextAttributes);
-    return Module.ctx ? 1 /* a new GLUT window ID for the created context */ : 0 /* failure */;
+    if (!Browser.createContext(Module['canvas'], /*useWebGL=*/true, /*setInModule=*/true, contextAttributes)) {
+      return 0; // failure
+    }
+    return 1; // a new GLUT window ID for the created context
   },
 
   glutDestroyWindow__proxy: 'sync',

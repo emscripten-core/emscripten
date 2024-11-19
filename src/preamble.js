@@ -195,10 +195,11 @@ function preRun() {
   assert(!ENVIRONMENT_IS_PTHREAD); // PThreads reuse the runtime from the main thread.
 #endif
 #if expectToReceiveOnModule('preRun')
-  var preRuns = Module['preRun'];
-  if (preRuns) {
-    if (typeof preRuns == 'function') preRuns = [preRuns];
-    preRuns.forEach(addOnPreRun);
+  if (Module['preRun']) {
+    if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
+    while (Module['preRun'].length) {
+      addOnPreRun(Module['preRun'].shift());
+    }
   }
 #endif
   callRuntimeCallbacks(__ATPRERUN__);
@@ -288,10 +289,11 @@ function postRun() {
 #endif
 
 #if expectToReceiveOnModule('postRun')
-  var postRuns = Module['postRun'];
-  if (postRuns) {
-    if (typeof postRuns == 'function') postRuns = [postRuns];
-    postRuns.forEach(addOnPostRun);
+  if (Module['postRun']) {
+    if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
+    while (Module['postRun'].length) {
+      addOnPostRun(Module['postRun'].shift());
+    }
   }
 #endif
 
@@ -586,7 +588,7 @@ function instrumentWasmTableWithAbort() {
   var realGet = wasmTable.get;
   var wrapperCache = {};
   wasmTable.get = (i) => {
-    var func = realGet.call(wasmTable, i);
+    var func = realGet.call(wasmTable, {{{ toIndexType('i') }}});
     var cached = wrapperCache[i];
     if (!cached || cached.func !== func) {
       cached = wrapperCache[i] = {
@@ -928,7 +930,6 @@ function getWasmImports() {
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm() {
-  var info = getWasmImports();
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup
@@ -1052,6 +1053,8 @@ function createWasm() {
   }
 #endif // WASM_ASYNC_COMPILATION
 
+  var info = getWasmImports();
+
 #if expectToReceiveOnModule('instantiateWasm')
   // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
   // to manually instantiate the Wasm module themselves. This allows pages to
@@ -1071,6 +1074,20 @@ function createWasm() {
         return false;
       #endif
     }
+  }
+#endif
+
+#if PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) {
+    return new Promise((resolve) => {
+      wasmModuleReceived = (module) => {
+        // Instantiate from the module posted from the main thread.
+        // We can just use sync instantiation in the worker.
+        var instance = new WebAssembly.Instance(module, getWasmImports());
+        receiveInstance(instance, module);
+        resolve();
+      };
+    });
   }
 #endif
 

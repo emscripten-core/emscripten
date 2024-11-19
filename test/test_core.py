@@ -863,6 +863,9 @@ base align: 0, 0, 0, 0'''])
   def test_longjmp(self):
     self.do_core_test('test_longjmp.c')
 
+  def test_longjmp_wasm_workers(self):
+    self.do_core_test('test_longjmp.c', emcc_args=['-sWASM_WORKERS'])
+
   @with_all_sjlj
   def test_longjmp_zero(self):
     if '-fsanitize=undefined' in self.emcc_args and self.get_setting('SUPPORT_LONGJMP') == 'emscripten':
@@ -2627,53 +2630,6 @@ The current type of b is: 9
   def test_tcgetattr(self):
     self.do_runf('termios/test_tcgetattr.c', 'success')
 
-  @also_with_standalone_wasm()
-  def test_time(self):
-    self.do_core_test('test_time.c')
-
-  @parameterized({
-    '1': ('EST+05EDT',),
-    '2': ('UTC+0',),
-    '3': ('CET',),
-  })
-  def test_time_tz(self, tz):
-    print('testing with TZ=%s' % tz)
-    with env_modify({'TZ': tz}):
-      # Run the test with different time zone settings if
-      # possible. It seems that the TZ environment variable does not
-      # work all the time (at least it's not well respected by
-      # Node.js on Windows), but it does no harm either.
-      self.do_core_test('test_time.c')
-
-  def test_timeb(self):
-    # Confirms they are called in reverse order
-    self.do_core_test('test_timeb.c')
-
-  def test_time_c(self):
-    self.do_core_test('test_time_c.c')
-
-  def test_gmtime(self):
-    self.do_core_test('test_gmtime.c')
-
-  @also_with_standalone_wasm()
-  def test_strptime_tm(self):
-    if self.get_setting('STANDALONE_WASM'):
-      self.emcc_args += ['-DSTANDALONE']
-    self.do_core_test('test_strptime_tm.c')
-
-  def test_strptime_days(self):
-    self.do_core_test('test_strptime_days.c')
-
-  @also_with_standalone_wasm()
-  def test_strptime_reentrant(self):
-    if self.get_setting('STANDALONE_WASM'):
-      self.emcc_args += ['-DSTANDALONE']
-    self.do_core_test('test_strptime_reentrant.c')
-
-  @crossplatform
-  def test_strftime(self):
-    self.do_core_test('test_strftime.c')
-
   def test_trickystring(self):
     self.do_core_test('test_trickystring.c')
 
@@ -2685,6 +2641,13 @@ The current type of b is: 9
     # memcpy for assignments, with hardcoded numbers of bytes
     # (llvm-gcc copies items one by one).
     self.do_core_test('test_copyop.cpp')
+
+  @parameterized({
+    '': ([],),
+    'bulkmem': (['-mbulk-memory'],),
+  })
+  def test_memcpy_zero_bytes(self, args):
+    self.do_core_test('test_memcpy_zero_bytes.c', emcc_args=['-fno-builtin'] + args)
 
   def test_memcpy2(self):
     self.do_core_test('test_memcpy2.c')
@@ -6548,12 +6511,16 @@ void* operator new(size_t size) {
   @requires_native_clang
   @no_safe_heap('has unaligned 64-bit operations in wasm')
   @no_ubsan('test contains UB')
-  def test_sse1(self):
+  @parameterized({
+    '': ([],),
+    'nontrapping': (['-mnontrapping-fptoint'],)
+  })
+  def test_sse1(self, args):
     src = test_file('sse/test_sse1.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse1', stdout=PIPE).stdout
 
-    self.emcc_args += ['-I' + test_file('sse'), '-msse']
+    self.emcc_args += ['-I' + test_file('sse'), '-msse'] + args
     self.maybe_closure()
 
     self.do_runf(src, native_result)
@@ -6565,14 +6532,18 @@ void* operator new(size_t size) {
   @is_slow_test
   @no_ubsan('https://github.com/emscripten-core/emscripten/issues/19688')
   @no_asan('local count too large')
-  def test_sse2(self):
+  @parameterized({
+    '': ([],),
+    'nontrapping': (['-mnontrapping-fptoint'],)
+  })
+  def test_sse2(self, args):
     if self.is_wasm64():
       self.require_node_canary()
     src = test_file('sse/test_sse2.cpp')
     self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse2', stdout=PIPE).stdout
 
-    self.emcc_args += ['-I' + test_file('sse'), '-msse2', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB']
+    self.emcc_args += ['-I' + test_file('sse'), '-msse2', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
     self.maybe_closure()
     self.do_runf(src, native_result)
 
@@ -6624,8 +6595,8 @@ void* operator new(size_t size) {
   @wasm_simd
   @requires_native_clang
   @parameterized({
-      '': (False,),
-      '2': (True,)
+    '': (False,),
+    '2': (True,)
   })
   def test_sse4(self, use_4_2):
     msse4 = '-msse4.2' if use_4_2 else '-msse4'
@@ -6643,12 +6614,16 @@ void* operator new(size_t size) {
   @is_slow_test
   @no_asan('local count too large')
   @no_ubsan('local count too large')
-  def test_avx(self):
+  @parameterized({
+    '': ([],),
+    'nontrapping': (['-mnontrapping-fptoint'],)
+  })
+  def test_avx(self, args):
     src = test_file('sse/test_avx.cpp')
     self.run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_avx', stdout=PIPE).stdout
 
-    self.emcc_args += ['-I' + test_file('sse'), '-mavx', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB']
+    self.emcc_args += ['-I' + test_file('sse'), '-mavx', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
     self.maybe_closure()
     self.do_runf(src, native_result)
 
@@ -6788,6 +6763,7 @@ void* operator new(size_t size) {
       '-Wno-format',
       '-Wno-bitfield-constant-conversion',
       '-Wno-int-to-void-pointer-cast',
+      '-Wno-nontrivial-memaccess',
     ]
 
     # extra testing for ASSERTIONS == 2
@@ -6811,7 +6787,7 @@ void* operator new(size_t size) {
   @is_slow_test
   def test_poppler(self):
     # See https://github.com/emscripten-core/emscripten/issues/20757
-    self.emcc_args.append('-Wno-deprecated-declarations')
+    self.emcc_args.extend(['-Wno-deprecated-declarations', '-Wno-nontrivial-memaccess'])
     poppler = self.get_poppler_library()
     shutil.copy(test_file('poppler/paper.pdf'), '.')
 
@@ -8336,7 +8312,7 @@ Module.onRuntimeInitialized = () => {
     # TODO Test with ASYNCIFY=1 https://github.com/emscripten-core/emscripten/issues/17552
     self.require_jspi()
     self.do_runf('core/test_pthread_join_and_asyncify.c', 'joining thread!\njoined thread!',
-                 emcc_args=['-sJSPI_EXPORTS=run_thread',
+                 emcc_args=['-sJSPI',
                             '-sEXIT_RUNTIME=1',
                             '-pthread', '-sPROXY_TO_PTHREAD'])
 
@@ -9647,23 +9623,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt', '--from-emcc', '--js-output=script2.js'])
     self.do_runf('test_emscripten_async_load_script.c', emcc_args=['-sFORCE_FILESYSTEM'])
 
-  def prep_wasm_worker_in_node(self):
-    # Auto exit after 3 seconds in Nodejs environment to get WASM Worker stdout
-    self.add_pre_run("setTimeout(()=>process.exit(), 3000);")
-
   @node_pthreads
   def test_wasm_worker_hello(self):
-    self.prep_wasm_worker_in_node()
     self.do_run_in_out_file_test('wasm_worker/hello_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
 
   @node_pthreads
   def test_wasm_worker_malloc(self):
-    self.prep_wasm_worker_in_node()
     self.do_run_in_out_file_test('wasm_worker/malloc_wasm_worker.c', emcc_args=['-sWASM_WORKERS'])
 
   @node_pthreads
   def test_wasm_worker_wait_async(self):
-    self.prep_wasm_worker_in_node()
     self.do_runf('atomic/test_wait_async.c', emcc_args=['-sWASM_WORKERS'])
 
 
