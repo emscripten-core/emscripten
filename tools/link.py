@@ -495,10 +495,6 @@ def setup_pthreads():
 
   default_setting('DEFAULT_PTHREAD_STACK_SIZE', settings.STACK_SIZE)
 
-  if not settings.MINIMAL_RUNTIME and 'instantiateWasm' not in settings.INCOMING_MODULE_JS_API:
-    # pthreads runtime depends on overriding instantiateWasm
-    settings.INCOMING_MODULE_JS_API.append('instantiateWasm')
-
   # Functions needs by runtime_pthread.js
   settings.REQUIRED_EXPORTS += [
     '_emscripten_thread_free_data',
@@ -670,18 +666,19 @@ def phase_linker_setup(options, state, newargs):
   if options.cpu_profiler:
     options.post_js.append(utils.path_from_root('src/cpuprofiler.js'))
 
-  if not settings.RUNTIME_DEBUG:
-    settings.RUNTIME_DEBUG = bool(settings.LIBRARY_DEBUG or
-                                  settings.GL_DEBUG or
-                                  settings.DYLINK_DEBUG or
-                                  settings.OPENAL_DEBUG or
-                                  settings.SYSCALL_DEBUG or
-                                  settings.WEBSOCKET_DEBUG or
-                                  settings.SOCKET_DEBUG or
-                                  settings.FETCH_DEBUG or
-                                  settings.EXCEPTION_DEBUG or
-                                  settings.PTHREADS_DEBUG or
-                                  settings.ASYNCIFY_DEBUG)
+  # Unless RUNTIME_DEBUG is explicitly set then we enable it when any of the
+  # more specfic debug settings are present.
+  default_setting('RUNTIME_DEBUG', int(settings.LIBRARY_DEBUG or
+                                       settings.GL_DEBUG or
+                                       settings.DYLINK_DEBUG or
+                                       settings.OPENAL_DEBUG or
+                                       settings.SYSCALL_DEBUG or
+                                       settings.WEBSOCKET_DEBUG or
+                                       settings.SOCKET_DEBUG or
+                                       settings.FETCH_DEBUG or
+                                       settings.EXCEPTION_DEBUG or
+                                       settings.PTHREADS_DEBUG or
+                                       settings.ASYNCIFY_DEBUG))
 
   if options.memory_profiler:
     settings.MEMORYPROFILER = 1

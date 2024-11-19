@@ -2078,16 +2078,12 @@ addToLibrary({
   // at runtime.
   $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
   $keepRuntimeAlive: () => noExitRuntime || runtimeKeepaliveCounter > 0,
-#elif !EXIT_RUNTIME
-  // When `noExitRuntime` is not include and EXIT_RUNTIME=0 then we know the
+#elif !EXIT_RUNTIME && !PTHREADS
+  // When `noExitRuntime` is not included and EXIT_RUNTIME=0 then we know the
   // runtime can never exit (i.e. should always be kept alive).
-  // However for pthreads we always default to allowing the runtime to exit
-  // otherwise threads never exit and are not joinable.
-#if PTHREADS
-  $keepRuntimeAlive: () => !ENVIRONMENT_IS_PTHREAD,
-#else
+  // However, since pthreads themselves always need to be able to exit we
+  // have to track `runtimeKeepaliveCounter` in that case.
   $keepRuntimeAlive: () => true,
-#endif
 #else
   $keepRuntimeAlive__deps: ['$runtimeKeepaliveCounter'],
   $keepRuntimeAlive: () => runtimeKeepaliveCounter > 0,
@@ -2160,7 +2156,7 @@ addToLibrary({
       return;
     }
 #endif
-#if RUNTIME_DEBUG
+#if RUNTIME_DEBUG >= 2
     dbg(`maybeExit: user callback done: runtimeKeepaliveCounter=${runtimeKeepaliveCounter}`);
 #endif
     if (!keepRuntimeAlive()) {

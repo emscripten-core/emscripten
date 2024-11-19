@@ -16,7 +16,7 @@ var workerID = 0;
 
 if (ENVIRONMENT_IS_PTHREAD) {
 #if !MINIMAL_RUNTIME
-  var wasmPromiseResolve;
+  var wasmModuleReceived;
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE
@@ -62,32 +62,11 @@ if (ENVIRONMENT_IS_PTHREAD) {
   }
   self.alert = threadAlert;
 
-#if !MINIMAL_RUNTIME
-  Module['instantiateWasm'] = (info, receiveInstance) => {
-    return new Promise((resolve) => {
-      wasmPromiseResolve = (module) => {
-        // Instantiate from the module posted from the main thread.
-        // We can just use sync instantiation in the worker.
-        var instance = new WebAssembly.Instance(module, getWasmImports());
-#if RELOCATABLE || MAIN_MODULE
-        receiveInstance(instance, module);
-#else
-        // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193,
-        // the above line no longer optimizes out down to the following line.
-        // When the regression is fixed, we can remove this if/else.
-        receiveInstance(instance);
-#endif
-        resolve();
-      };
-    });
-  }
-#endif
-
   // Turn unhandled rejected promises into errors so that the main thread will be
   // notified about them.
   self.onunhandledrejection = (e) => { throw e.reason || e; };
 
-  function handleMessage(e) {
+  {{{ asyncIf(ASYNCIFY == 2) }}} function handleMessage(e) {
     try {
       var msgData = e['data'];
       //dbg('msgData: ' + Object.keys(msgData));
@@ -164,7 +143,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         Module['wasm'] = msgData.wasmModule;
         loadModule();
 #else
-        wasmPromiseResolve(msgData.wasmModule);
+        wasmModuleReceived(msgData.wasmModule);
 #endif // MINIMAL_RUNTIME
       } else if (cmd === 'run') {
 #if ASSERTIONS
@@ -198,7 +177,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         }
 
         try {
-          invokeEntryPoint(msgData.start_routine, msgData.arg);
+          {{{ awaitIf(ASYNCIFY == 2) }}} invokeEntryPoint(msgData.start_routine, msgData.arg);
         } catch(ex) {
           if (ex != 'unwind') {
             // The pthread "crashed".  Do not call `_emscripten_thread_exit` (which

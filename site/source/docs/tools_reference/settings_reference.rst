@@ -3313,7 +3313,9 @@ Default value: true
 RUNTIME_DEBUG
 =============
 
-If true, add tracing to core runtime functions.
+If non-zero, add tracing to core runtime functions.  Can be set to 2 for
+extra tracing (for example, tracing that occurs on each turn of the event
+loop or each user callback, which can flood the console).
 This setting is enabled by default if any of the following debugging settings
 are enabled:
 - PTHREADS_DEBUG
@@ -3327,7 +3329,7 @@ are enabled:
 - SOCKET_DEBUG
 - FETCH_DEBUG
 
-Default value: false
+Default value: 0
 
 .. _legacy_runtime:
 

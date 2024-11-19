@@ -2423,6 +2423,28 @@ int main() {
     ''')
     self.do_runf('main.c', '204\n')
 
+  def test_sdl_get_key_name(self):
+    create_file('main.c', r'''
+      #include <stdio.h>
+      #include <SDL/SDL_keyboard.h>
+
+      int main() {
+        printf("a -> '%s'\n", SDL_GetKeyName(SDLK_a));
+        printf("z -> '%s'\n", SDL_GetKeyName(SDLK_z));
+        printf("0 -> '%s'\n", SDL_GetKeyName(SDLK_0));
+        printf("0 -> '%s'\n", SDL_GetKeyName(SDLK_9));
+        printf("F1 -> '%s'\n", SDL_GetKeyName(SDLK_F1));
+        return 0;
+      }
+    ''')
+    self.do_runf('main.c', '''\
+a -> 'a'
+z -> 'z'
+0 -> '0'
+0 -> '9'
+F1 -> ''
+''')
+
   @requires_network
   def test_sdl2_mixer_wav(self):
     self.emcc(test_file('browser/test_sdl2_mixer_wav.c'), ['-sUSE_SDL_MIXER=2'], output_filename='a.out.js')
@@ -3328,6 +3350,14 @@ More info: https://emscripten.org
     self.emcc_args += ['-lembind']
 
     self.do_runf('embind/test_return_value_policy.cpp')
+
+  @parameterized({
+    '': [[]],
+    'asyncify': [['-sASYNCIFY=1']]
+  })
+  def test_embind_long_long(self, args):
+    self.do_runf('embind/test_embind_long_long.cpp', '1000000000000n\n-1000000000000n',
+                 emcc_args=['-lembind', '-sWASM_BIGINT'] + args)
 
   @requires_jspi
   @parameterized({
@@ -13649,8 +13679,12 @@ void foo() {}
     self.do_other_test('test_pthread_icu.cpp')
 
   @node_pthreads
-  def test_pthread_set_main_loop(self):
-    self.do_other_test('test_pthread_set_main_loop.c')
+  @parameterized({
+    '': ([],),
+    'strict': (['-sSTRICT'],),
+  })
+  def test_pthread_set_main_loop(self, args):
+    self.do_other_test('test_pthread_set_main_loop.c', emcc_args=args)
 
   # unistd tests
 

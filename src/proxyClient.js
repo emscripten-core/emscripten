@@ -313,7 +313,7 @@ if (!ENVIRONMENT_IS_NODE) {
 // Only prevent default on backspace/tab because we don't want unexpected navigation.
 // Do not prevent default on the rest as we need the keypress event.
 function shouldPreventDefault(event) {
-  if (event.type === 'keydown' && event.keyCode !== 8 /* backspace */ && event.keyCode !== 9 /* tab */) {
+  if (event.type === 'keydown' && event.key != 'Backspace' && event.key != 'Tab') {
     return false; // keypress, back navigation
   } else {
     return true; // NO keypress, NO back navigation

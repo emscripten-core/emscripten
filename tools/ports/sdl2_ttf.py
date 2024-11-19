@@ -8,9 +8,15 @@ HASH = '8a625d29bef2ab7cbfe2143136a303c0fdb066ecd802d6c725de1b73ad8b056908cb524f
 
 deps = ['freetype', 'sdl2', 'harfbuzz']
 
+variants = {'sdl2_ttf-mt': {'PTHREADS': 1}}
+
 
 def needed(settings):
   return settings.USE_SDL_TTF == 2
+
+
+def get_lib_name(settings):
+  return 'libSDL2_ttf' + ('-mt' if settings.PTHREADS else '') + '.a'
 
 
 def get(ports, settings, shared):
@@ -20,13 +26,15 @@ def get(ports, settings, shared):
     src_root = ports.get_dir('sdl2_ttf', 'SDL_ttf-' + TAG)
     ports.install_headers(src_root, target='SDL2')
     flags = ['-DTTF_USE_HARFBUZZ=1', '-sUSE_SDL=2', '-sUSE_FREETYPE', '-sUSE_HARFBUZZ']
+    if settings.PTHREADS:
+      flags += ['-pthread']
     ports.build_port(src_root, final, 'sdl2_ttf', flags=flags, srcs=['SDL_ttf.c'])
 
-  return [shared.cache.get_lib('libSDL2_ttf.a', create, what='port')]
+  return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.cache.erase_lib('libSDL2_ttf.a')
+  shared.cache.erase_lib(get_lib_name(settings))
 
 
 def process_dependencies(settings):
