@@ -2445,6 +2445,7 @@ void SignalContext::DumpAllRegisters(void *context) {
 #    else
   (void)ucontext;
 #    endif
+  (void)ucontext;
 #  endif
   // FIXME: Implement this for other OSes and architectures.
 }
