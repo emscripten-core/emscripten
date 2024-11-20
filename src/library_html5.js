@@ -2486,10 +2486,6 @@ var LibraryHTML5 = {
     return requestAnimationFrame(tick);
   },
 
-  emscripten_date_now: () => Date.now(),
-
-  emscripten_performance_now: () => {{{ getPerformanceNow() }}}(),
-
   emscripten_get_device_pixel_ratio__proxy: 'sync',
   emscripten_get_device_pixel_ratio: () => {
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
