@@ -3391,8 +3391,8 @@ More info: https://emscripten.org
 
     # Test that the output compiles with a TS file that uses the defintions.
     shutil.copyfile(test_file('other/embind_tsgen_main.ts'), 'main.ts')
-    # A package file with type=module is needed to tell the TSC that we're
-    # using modules.
+    # A package file with type=module is needed to enabled ES modules in TSC and
+    # also run the output JS file as a module in node.
     shutil.copyfile(test_file('other/embind_tsgen_package.json'), 'package.json')
     cmd = shared.get_npm_cmd('tsc') + ['embind_tsgen.d.ts', 'main.ts', '--module', 'NodeNext', '--moduleResolution', 'nodenext']
     shared.check_call(cmd)
