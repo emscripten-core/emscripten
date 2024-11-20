@@ -738,9 +738,7 @@ var LibraryBrowser = {
   },
 
   emscripten_set_canvas_size__proxy: 'sync',
-  emscripten_set_canvas_size: (width, height) => {
-    Browser.setCanvasSize(width, height);
-  },
+  emscripten_set_canvas_size: (width, height) => Browser.setCanvasSize(width, height),
 
   emscripten_get_canvas_size__proxy: 'sync',
   emscripten_get_canvas_size: (width, height, isFullscreen) => {

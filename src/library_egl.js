@@ -146,15 +146,13 @@ var LibraryEGL = {
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigs(EGLDisplay dpy, EGLConfig *configs, EGLint config_size, EGLint *num_config);
   eglGetConfigs__proxy: 'sync',
-  eglGetConfigs: (display, configs, config_size, numConfigs) => {
-    return EGL.chooseConfig(display, 0, configs, config_size, numConfigs);
-  },
+  eglGetConfigs: (display, configs, config_size, numConfigs) =>
+    EGL.chooseConfig(display, 0, configs, config_size, numConfigs),
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglChooseConfig(EGLDisplay dpy, const EGLint *attrib_list, EGLConfig *configs, EGLint config_size, EGLint *num_config);
   eglChooseConfig__proxy: 'sync',
-  eglChooseConfig: (display, attrib_list, configs, config_size, numConfigs) => {
-    return EGL.chooseConfig(display, attrib_list, configs, config_size, numConfigs);
-  },
+  eglChooseConfig: (display, attrib_list, configs, config_size, numConfigs) =>
+    EGL.chooseConfig(display, attrib_list, configs, config_size, numConfigs),
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglGetConfigAttrib(EGLDisplay dpy, EGLConfig config, EGLint attribute, EGLint *value);
   eglGetConfigAttrib__proxy: 'sync',
