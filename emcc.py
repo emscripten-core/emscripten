@@ -1408,7 +1408,7 @@ def parse_args(newargs):
       settings.BULK_MEMORY = 0
     elif arg == '-msign-ext':
       settings.SIGN_EXT = 1
-      feature_matrix.enable_feature(feature_matrix.Feature.SIGN_EXT, 'SIGN_EXT')
+      feature_matrix.enable_feature(feature_matrix.Feature.SIGN_EXT, '-msign-ext')
     elif arg == '-mno-sign-ext':
       feature_matrix.disable_feature(feature_matrix.Feature.SIGN_EXT)
     elif arg == '-fexceptions':
