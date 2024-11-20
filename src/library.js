@@ -1363,6 +1363,10 @@ addToLibrary({
 
   emscripten_random: () => Math.random(),
 
+  emscripten_date_now: () => Date.now(),
+
+  emscripten_performance_now: () => {{{ getPerformanceNow() }}}(),
+
 #if PTHREADS && !AUDIO_WORKLET
   // Pthreads need their clocks synchronized to the execution of the main
   // thread, so, when using them, make sure to adjust all timings to the
