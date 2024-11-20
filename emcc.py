@@ -46,6 +46,7 @@ from tools import config
 from tools import cache
 from tools.settings import default_setting, user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
 from tools.utils import read_file, removeprefix
+from tools import feature_matrix
 
 logger = logging.getLogger('emcc')
 
@@ -1405,6 +1406,11 @@ def parse_args(newargs):
       settings.BULK_MEMORY = 1
     elif arg == '-mno-bulk-memory':
       settings.BULK_MEMORY = 0
+    elif arg == '-msign-ext':
+      settings.SIGN_EXT = 1
+      feature_matrix.enable_feature(feature_matrix.Feature.SIGN_EXT, 'SIGN_EXT')
+    elif arg == '-mno-sign-ext':
+      feature_matrix.disable_feature(feature_matrix.Feature.SIGN_EXT)
     elif arg == '-fexceptions':
       # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
       # exception handling by default when -fexceptions is given when wasm

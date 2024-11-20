@@ -10425,6 +10425,11 @@ int main() {
     verify_features_sec('multivalue', True)
     verify_features_sec('reference-types', True)
 
+    compile(['-mno-sign-ext', '-c'])
+    verify_features_sec('sign-ext', False)
+    compile(['-mno-sign-ext'])
+    verify_features_sec_linked('sign-ext', False)
+
     compile(['-mnontrapping-fptoint', '-c'])
     verify_features_sec('nontrapping-fptoint', True)
 

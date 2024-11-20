@@ -254,6 +254,8 @@ var PTHREADS = false;
 
 var BULK_MEMORY = false;
 
+var SIGN_EXT = true;
+
 var MINIFY_WHITESPACE = true;
 
 var ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS = [];
