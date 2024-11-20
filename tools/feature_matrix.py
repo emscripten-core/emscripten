@@ -40,6 +40,7 @@ class Feature(IntEnum):
 
 default_features = {Feature.SIGN_EXT, Feature.MUTABLE_GLOBALS}
 disable_override_features = set()
+enable_override_features = set()
 
 min_browser_versions = {
   Feature.NON_TRAPPING_FPTOINT: {
@@ -96,6 +97,8 @@ min_browser_versions = {
 def caniuse(feature):
   if feature in disable_override_features:
     return False
+  if feature in enable_override_features:
+    return True
 
   min_versions = min_browser_versions[feature]
 
@@ -118,10 +121,12 @@ def caniuse(feature):
   return True
 
 
-def enable_feature(feature, reason):
+def enable_feature(feature, reason, is_explicit=False):
   """Updates default settings for browser versions such that the given
   feature is available everywhere.
   """
+  if is_explicit:
+    enable_override_features.add(feature)
   for name, min_version in min_browser_versions[feature].items():
     name = f'MIN_{name.upper()}_VERSION'
     if settings[name] < min_version:
