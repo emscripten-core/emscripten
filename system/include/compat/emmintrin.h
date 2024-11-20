@@ -449,8 +449,7 @@ _mm_cvttsd_si32(__m128d __a)
 {
   // TODO: OPTIMIZE!
   float elem = __a[0];
-  if (isnan(elem) || elem > INT_MAX || elem < INT_MIN) return (int)0x80000000;
-  if (lrint(elem) != 0 || fabs(elem) < 2.0)
+  if ((lrint(elem) != 0 || fabs(elem) < 2.0) && !isnanf(elem) && elem <= INT_MAX && elem >= INT_MIN)
     // Use the trapping instruction here since we have explicit bounds checks
     // above.
     return __builtin_wasm_trunc_s_i32_f32(elem);
@@ -1008,9 +1007,10 @@ static __inline__ long long __attribute__((__always_inline__, __nodebug__))
 _mm_cvtsd_si64(__m128d __a)
 {
   // TODO: optimize
-  if (isnan(__a[0]) || isinf(__a[0])) return 0x8000000000000000LL;
-  long long x = llrint(__a[0]);
-  if (x != 0xFFFFFFFF00000000ULL && (x != 0 || fabs(__a[0]) < 2.f))
+  double e = __a[0];
+  if (isnan(e) || isinf(e)) return 0x8000000000000000LL;
+  long long x = llrint(e);
+  if (x != 0xFFFFFFFF00000000ULL && (x != 0 || fabs(e) < 2.f) && e <= LLONG_MAX && e >= LLONG_MIN)
     return x;
   else
     return 0x8000000000000000LL;
