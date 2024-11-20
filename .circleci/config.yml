@@ -70,6 +70,15 @@ commands:
       - run:
           name: pip install
           command: << parameters.python >> -m pip install -r requirements-dev.txt
+  install-rust:
+    steps:
+      - run:
+          name: install rust
+          command: |
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+            export PATH=${HOME}/.cargo/bin:${PATH}
+            rustup target add wasm32-unknown-emscripten
+            echo "export PATH=\"\$HOME/.cargo/bin:\$PATH\"" >> $BASH_ENV
   install-node-version:
     description: "install a specific version of node"
     parameters:
@@ -544,6 +553,7 @@ jobs:
           test_targets: "
             lto2.test_dylink_syslibs_all
             lto2.test_float_builtins
+            lto2.test_avx_nontrapping
             lto0.test_exceptions_allowed_uncaught
             lto0.test_longjmp_standalone_standalone
             lto0.test_embind_i64_val
@@ -787,8 +797,10 @@ jobs:
     executor: bionic
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_WASM64: "1"
     steps:
+      - install-rust
       - run: apt-get install -q -y ninja-build scons ccache
       - run-tests-linux:
           # some native-dependent tests fail because of the lack of native
@@ -904,6 +916,7 @@ jobs:
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SIMD: "1"
       EMTEST_SKIP_SCONS: "1"
+      EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_NODE_CANARY: "1"
       EMTEST_BROWSER: "0"
     steps:
@@ -939,6 +952,7 @@ jobs:
       EMTEST_SKIP_EH: "1"
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
+      EMTEST_SKIP_RUST: "1"
       # Some native clang tests assume x86 clang (e.g. -sse2)
       EMTEST_LACKS_NATIVE_CLANG: "1"
       EMCC_SKIP_SANITY_CHECK: "1"

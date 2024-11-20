@@ -192,7 +192,7 @@ var LibraryBrowser = {
     },
 
     createContext(/** @type {HTMLCanvasElement} */ canvas, useWebGL, setInModule, webGLContextAttributes) {
-      if (useWebGL && Module.ctx && canvas == Module.canvas) return Module.ctx; // no need to recreate GL context if it's already been created for this canvas.
+      if (useWebGL && Module.ctx && canvas == Module['canvas']) return Module.ctx; // no need to recreate GL context if it's already been created for this canvas.
 
       var ctx;
       var contextHandle;
@@ -738,9 +738,7 @@ var LibraryBrowser = {
   },
 
   emscripten_set_canvas_size__proxy: 'sync',
-  emscripten_set_canvas_size: (width, height) => {
-    Browser.setCanvasSize(width, height);
-  },
+  emscripten_set_canvas_size: (width, height) => Browser.setCanvasSize(width, height),
 
   emscripten_get_canvas_size__proxy: 'sync',
   emscripten_get_canvas_size: (width, height, isFullscreen) => {

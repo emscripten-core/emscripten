@@ -59,7 +59,7 @@ int main() {
     TEST_GLFW3_DEFAULTS_HINTS[0x00022008] = 0;
   );
 
-  assert(glfwInit() == GL_TRUE);
+  assert(glfwInit() == GLFW_TRUE);
 
   // Use case: after glfwInit, default window hints are correct
   {

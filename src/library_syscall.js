@@ -821,9 +821,7 @@ var SyscallsLibrary = {
   },
   __syscall_fadvise64__nothrow: true,
   __syscall_fadvise64__proxy: 'none',
-  __syscall_fadvise64: (fd, offset, len, advice) => {
-    return 0; // your advice is important to us (but we can't use it)
-  },
+  __syscall_fadvise64: (fd, offset, len, advice) => 0,
   __syscall_openat__deps: ['$syscallGetVarargI'],
   __syscall_openat: (dirfd, path, flags, varargs) => {
     path = SYSCALLS.getStr(path);

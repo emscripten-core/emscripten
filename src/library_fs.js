@@ -63,7 +63,6 @@ FS.staticInit();
     trackingDelegate: {},
 #endif
     ErrnoError: null, // set during init
-    genericErrors: {},
     filesystems: null,
     syncFSRequests: 0, // we warn if there are multiple in flight at once
 #if expectToReceiveOnModule('logReadFiles')
@@ -1348,6 +1347,7 @@ FS.staticInit();
       FS.registerDevice(FS.makedev(1, 3), {
         read: () => 0,
         write: (stream, buffer, offset, length, pos) => length,
+        llseek: () => 0,
       });
       FS.mkdev('/dev/null', FS.makedev(1, 3));
       // setup /dev/tty and /dev/tty1
@@ -1435,12 +1435,6 @@ FS.staticInit();
 #endif
     },
     staticInit() {
-      // Some errors may happen quite a bit, to avoid overhead we reuse them (and suffer a lack of stack info)
-      [{{{ cDefs.ENOENT }}}].forEach((code) => {
-        FS.genericErrors[code] = new FS.ErrnoError(code);
-        FS.genericErrors[code].stack = '<generic error, no stack>';
-      });
-
       FS.nameTable = new Array(4096);
 
       FS.mount(MEMFS, {}, '/');

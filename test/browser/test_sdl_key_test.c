@@ -7,8 +7,9 @@
 
 #include <stdio.h>
 #include <SDL/SDL.h>
-#include <SDL/SDL_ttf.h>
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#endif
 
 int result = 1;
 
@@ -21,13 +22,13 @@ void one() {
       case SDL_KEYDOWN:
         if (!keys[event.key.keysym.sym]) {
           keys[event.key.keysym.sym] = 1;
-          printf("key down: sym %d scancode %d\n", event.key.keysym.sym, event.key.keysym.scancode);
+          printf("key down: sym=%d scancode=%d name=%s\n", event.key.keysym.sym, event.key.keysym.scancode, SDL_GetKeyName(event.key.keysym.sym));
         }
         break;
       case SDL_KEYUP:
         if (keys[event.key.keysym.sym]) {
           keys[event.key.keysym.sym] = 0;
-          printf("key up: sym %d scancode %d\n", event.key.keysym.sym, event.key.keysym.scancode);
+          printf("key up: sym=%d scancode=%d name=%s\n", event.key.keysym.sym, event.key.keysym.scancode, SDL_GetKeyName(event.key.keysym.sym));
         }
         break;
     }
@@ -40,7 +41,11 @@ int main(int argc, char **argv) {
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);
 
+#if __EMSCRIPTEN__
   emscripten_set_main_loop(one, 0, 0);
+#else
+  while (1) one();
+#endif
 
   return 0;
 }

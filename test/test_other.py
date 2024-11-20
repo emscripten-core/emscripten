@@ -172,6 +172,11 @@ def requires_scons(func):
   return requires_tool('scons')(func)
 
 
+def requires_rust(func):
+  assert callable(func)
+  return requires_tool('cargo')(func)
+
+
 def requires_pkg_config(func):
   assert callable(func)
 
@@ -321,9 +326,11 @@ class other(RunnerCore):
 
   def test_skip_subcommands(self):
     # The -### flag is like `-v` but it doesn't actaully execute the sub-commands
-    proc = self.run_process([EMCC, '-###', test_file('hello_world.c')], stdout=PIPE, stderr=PIPE)
+    proc = self.run_process([EMCC, '-###', '-O3', test_file('hello_world.c')], stdout=PIPE, stderr=PIPE)
     self.assertContained(CLANG_CC, proc.stderr)
     self.assertContained(WASM_LD, proc.stderr)
+    self.assertContained('wasm-opt', proc.stderr)
+    self.assertContained('acorn-optimizer.mjs', proc.stderr)
     self.assertNotExists('a.out.js')
 
   def test_emcc_check(self):
@@ -441,6 +448,37 @@ class other(RunnerCore):
     ''')
 
     self.assertContained('hello, world!', self.run_js('runner.mjs'))
+
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread'],),
+  })
+  def test_modularize_instance(self, args):
+    create_file('library.js', '''\
+    addToLibrary({
+      $baz: function() { console.log('baz'); },
+      $qux: function() { console.log('qux'); }
+    });''')
+    self.run_process([EMCC, test_file('modularize_instance.c'),
+                      '-sMODULARIZE=instance',
+                      '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit',
+                      '-sEXPORTED_FUNCTIONS=_bar,_main,qux',
+                      '--js-library', 'library.js',
+                      '-o', 'modularize_instance.mjs'] + args)
+
+    create_file('runner.mjs', '''
+      import { strict as assert } from 'assert';
+      import init, { _foo as foo, _bar as bar, baz, qux, addOnExit, HEAP32 } from "./modularize_instance.mjs";
+      await init();
+      foo(); // exported with EMSCRIPTEN_KEEPALIVE
+      bar(); // exported with EXPORTED_FUNCTIONS
+      baz(); // exported library function with EXPORTED_RUNTIME_METHODS
+      qux(); // exported library function with EXPORTED_FUNCTIONS
+      assert(typeof addOnExit === 'function'); // exported runtime function with EXPORTED_RUNTIME_METHODS
+      assert(typeof HEAP32 === 'object'); // exported runtime value by default
+    ''')
+
+    self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
   def test_emcc_out_file(self):
     # Verify that "-ofile" works in addition to "-o" "file"
@@ -2390,6 +2428,28 @@ int main() {
     ''')
     self.do_runf('main.c', '204\n')
 
+  def test_sdl_get_key_name(self):
+    create_file('main.c', r'''
+      #include <stdio.h>
+      #include <SDL/SDL_keyboard.h>
+
+      int main() {
+        printf("a -> '%s'\n", SDL_GetKeyName(SDLK_a));
+        printf("z -> '%s'\n", SDL_GetKeyName(SDLK_z));
+        printf("0 -> '%s'\n", SDL_GetKeyName(SDLK_0));
+        printf("0 -> '%s'\n", SDL_GetKeyName(SDLK_9));
+        printf("F1 -> '%s'\n", SDL_GetKeyName(SDLK_F1));
+        return 0;
+      }
+    ''')
+    self.do_runf('main.c', '''\
+a -> 'a'
+z -> 'z'
+0 -> '0'
+0 -> '9'
+F1 -> ''
+''')
+
   @requires_network
   def test_sdl2_mixer_wav(self):
     self.emcc(test_file('browser/test_sdl2_mixer_wav.c'), ['-sUSE_SDL_MIXER=2'], output_filename='a.out.js')
@@ -3295,6 +3355,14 @@ More info: https://emscripten.org
     self.emcc_args += ['-lembind']
 
     self.do_runf('embind/test_return_value_policy.cpp')
+
+  @parameterized({
+    '': [[]],
+    'asyncify': [['-sASYNCIFY=1']]
+  })
+  def test_embind_long_long(self, args):
+    self.do_runf('embind/test_embind_long_long.cpp', '1000000000000n\n-1000000000000n',
+                 emcc_args=['-lembind', '-sWASM_BIGINT'] + args)
 
   @requires_jspi
   @parameterized({
@@ -8756,7 +8824,7 @@ int main() {
 
   @node_pthreads
   def test_codesize_minimal_pthreads(self):
-    self.run_codesize_test('minimal_main.c', ['-Oz', '-pthread', '-sPROXY_TO_PTHREAD'])
+    self.run_codesize_test('minimal_main.c', ['-Oz', '-pthread', '-sPROXY_TO_PTHREAD', '-sSTRICT'])
 
   @parameterized({
     'noexcept': (['-O2'],                    [], ['waka']), # noqa
@@ -13616,8 +13684,12 @@ void foo() {}
     self.do_other_test('test_pthread_icu.cpp')
 
   @node_pthreads
-  def test_pthread_set_main_loop(self):
-    self.do_other_test('test_pthread_set_main_loop.c')
+  @parameterized({
+    '': ([],),
+    'strict': (['-sSTRICT'],),
+  })
+  def test_pthread_set_main_loop(self, args):
+    self.do_other_test('test_pthread_set_main_loop.c', emcc_args=args)
 
   # unistd tests
 
@@ -15293,3 +15365,18 @@ addToLibrary({
 
   def test_embool(self):
     self.do_other_test('test_embool.c')
+
+  @requires_rust
+  def test_rust_integration_basics(self):
+    shutil.copytree(test_file('rust/basics'), 'basics')
+    self.run_process(['cargo', 'build', '--target=wasm32-unknown-emscripten'], cwd='basics')
+    lib = 'basics/target/wasm32-unknown-emscripten/debug/libbasics.a'
+    self.assertExists(lib)
+
+    create_file('main.cpp', '''
+    extern "C" void say_hello();
+    int main() {
+       say_hello();
+       return 0;
+    }''')
+    self.do_runf('main.cpp', 'Hello from rust!', emcc_args=[lib])

@@ -1325,6 +1325,23 @@ var DETERMINISTIC = false;
 // --pre-js and --post-js happen to do that in non-MODULARIZE mode, their
 // intended usage is to add code that is optimized with the rest of the emitted
 // code, allowing better dead code elimination and minification.
+//
+// Experimental Feature - Instance ES Modules:
+//
+// Note this feature is still under active development and is subject to change!
+//
+// To enable this feature use -sMODULARIZE=instance. Enabling this mode will
+// produce an ES module that is a singleton with ES module exports. The
+// module will export a default value that is an async init function and will
+// also export named values that correspond to the Wasm exports and runtime
+// exports. The init function must be called before any of the exports can be
+// used. An example of using the module is below.
+//
+//   import init, { foo, bar } from "./my_module.mjs"
+//   await init(optionalArguments);
+//   foo();
+//   bar();
+//
 // [link]
 var MODULARIZE = false;
 
@@ -2137,7 +2154,9 @@ var TRUSTED_TYPES = false;
 // settings is *only* needed when also explicitly targeting older browsers.
 var POLYFILL = true;
 
-// If true, add tracing to core runtime functions.
+// If non-zero, add tracing to core runtime functions.  Can be set to 2 for
+// extra tracing (for example, tracing that occurs on each turn of the event
+// loop or each user callback, which can flood the console).
 // This setting is enabled by default if any of the following debugging settings
 // are enabled:
 // - PTHREADS_DEBUG
@@ -2151,7 +2170,7 @@ var POLYFILL = true;
 // - SOCKET_DEBUG
 // - FETCH_DEBUG
 // [link]
-var RUNTIME_DEBUG = false;
+var RUNTIME_DEBUG = 0;
 
 // Include JS library symbols that were previously part of the default runtime.
 // Without this, such symbols can be made available by adding them to
