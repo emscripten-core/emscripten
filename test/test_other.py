@@ -3400,7 +3400,6 @@ More info: https://emscripten.org
     self.assertFileContents(test_file('other/embind_tsgen_module.d.ts'), actual)
     self.assertContained('main ran\nts ran', self.run_js('main.js'))
 
-
   def test_embind_tsgen_ignore(self):
     create_file('fail.js', 'assert(false);')
     self.emcc_args += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
