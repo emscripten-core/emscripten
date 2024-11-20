@@ -20,7 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.73 (in development)
 -----------------------
-- libunwind was updated to LLVM 19.1.3. (#22394)
+- libunwind was updated to LLVM 19.1.4. (#22394)
 
 3.1.72 - 11/19/24
 -----------------
