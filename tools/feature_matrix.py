@@ -121,11 +121,11 @@ def caniuse(feature):
   return True
 
 
-def enable_feature(feature, reason, is_explicit=False):
+def enable_feature(feature, reason, override=False):
   """Updates default settings for browser versions such that the given
   feature is available everywhere.
   """
-  if is_explicit:
+  if override:
     enable_override_features.add(feature)
   for name, min_version in min_browser_versions[feature].items():
     name = f'MIN_{name.upper()}_VERSION'
