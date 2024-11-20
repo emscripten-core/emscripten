@@ -515,14 +515,10 @@ LibraryJSEventLoop = {
   },
 
   emscripten_pause_main_loop__deps: ['$MainLoop'],
-  emscripten_pause_main_loop: () => {
-    MainLoop.pause();
-  },
+  emscripten_pause_main_loop: () => MainLoop.pause(),
 
   emscripten_resume_main_loop__deps: ['$MainLoop'],
-  emscripten_resume_main_loop: () => {
-    MainLoop.resume();
-  },
+  emscripten_resume_main_loop: () => MainLoop.resume(),
 
   _emscripten_push_main_loop_blocker__deps: ['$MainLoop'],
   _emscripten_push_main_loop_blocker: (func, arg, name) => {
