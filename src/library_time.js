@@ -516,7 +516,5 @@ addToLibrary({
     return 0;
   },
   strptime_l__deps: ['strptime'],
-  strptime_l: (buf, format, tm, locale) => {
-    return _strptime(buf, format, tm); // no locale support yet
-  },
+  strptime_l: (buf, format, tm, locale) => _strptime(buf, format, tm), // no locale support yet
 });
