@@ -10432,7 +10432,7 @@ int main() {
 
     compile(['-c'])
     verify_features_sec('bulk-memory', False)
-    verify_features_sec('nontrapping-fptoint', False)
+    verify_features_sec('nontrapping-fptoint', True)
     verify_features_sec('sign-ext', True)
     verify_features_sec('mutable-globals', True)
     verify_features_sec('multivalue', True)
@@ -10453,8 +10453,8 @@ int main() {
     compile(['-sMIN_FIREFOX_VERSION=61', '-msign-ext'])
     verify_features_sec_linked('sign-ext', True)
 
-    compile(['-mnontrapping-fptoint', '-c'])
-    verify_features_sec('nontrapping-fptoint', True)
+    compile(['-mno-nontrapping-fptoint'])
+    verify_features_sec_linked('nontrapping-fptoint', False)
 
     # Setting this SAFARI_VERSION should enable bulk memory because it links in emscripten_memcpy_bulkmem
     # However it does not enable nontrapping-fptoint yet because it has no effect at compile time and
@@ -10464,7 +10464,7 @@ int main() {
     verify_features_sec_linked('mutable-globals', True)
     verify_features_sec_linked('multivalue', True)
     verify_features_sec_linked('bulk-memory', True)
-    verify_features_sec_linked('nontrapping-fptoint', False)
+    verify_features_sec_linked('nontrapping-fptoint', True)
 
     compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
     # -mno-bulk-memory at link time overrides MIN_SAFARI_VERSION
