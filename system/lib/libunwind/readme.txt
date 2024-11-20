@@ -8,7 +8,7 @@ specific patches:
 
   https://github.com/emscripten-core/llvm-project
 
-The current patch is based on the emscripten-libs-17 branch.
+The current patch is based on the emscripten-libs-19 branch.
 
 Update Instructions
 -------------------
@@ -20,4 +20,4 @@ Modifications
 
 For a list of changes from upstream see the libunwind files that are part of:
 
-https://github.com/llvm/llvm-project/compare/llvmorg-19.1.4...emscripten-core:emscripten-libs-17
+https://github.com/llvm/llvm-project/compare/llvmorg-19.1.4...emscripten-core:emscripten-libs-19
