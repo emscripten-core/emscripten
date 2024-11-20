@@ -20,8 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 3.1.73 (in development)
 -----------------------
-- compiler-rt was updated to LLVM 19.1.4. (#22937)
-- libunwind was updated to LLVM 19.1.4. (#22394)
+- libunwind and compiler-rt was updated to LLVM 19.1.4. (#22394 and #22937)
 
 3.1.72 - 11/19/24
 -----------------
