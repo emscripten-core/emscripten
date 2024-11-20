@@ -84,12 +84,6 @@ export interface ClassWithSmartPtrConstructor extends ClassHandle {
   fn(_0: number): number;
 }
 
-export type ValObj = {
-  foo: Foo,
-  bar: Bar,
-  callback: (message: string) => void
-};
-
 export interface BaseClass extends ClassHandle {
   fn(_0: number): number;
 }

@@ -3396,10 +3396,10 @@ More info: https://emscripten.org
     shutil.copyfile(test_file('other/embind_tsgen_package.json'), 'package.json')
     cmd = shared.get_npm_cmd('tsc') + ['embind_tsgen.d.ts', 'main.ts', '--module', 'NodeNext', '--moduleResolution', 'nodenext']
     shared.check_call(cmd)
-    self.assertContained('main ran\nts ran', self.run_js('main.js'))
-
     actual = read_file('embind_tsgen.d.ts')
     self.assertFileContents(test_file('other/embind_tsgen_module.d.ts'), actual)
+    self.assertContained('main ran\nts ran', self.run_js('main.js'))
+
 
   def test_embind_tsgen_ignore(self):
     create_file('fail.js', 'assert(false);')
