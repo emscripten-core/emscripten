@@ -3391,15 +3391,19 @@ More info: https://emscripten.org
   def test_embind_tsgen(self, opts):
     # Check that TypeScript generation works and that the program is runs as
     # expected.
-    self.do_runf('other/embind_tsgen.cpp', 'main ran',
-                 emcc_args=['-lembind', '--emit-tsd', 'embind_tsgen.d.ts'] + opts)
+    self.emcc(test_file('other/embind_tsgen.cpp'),
+              ['-o', 'embind_tsgen.mjs', '-lembind', '--emit-tsd', 'embind_tsgen.d.ts'] + opts)
 
     # Test that the output compiles with a TS file that uses the defintions.
-    cmd = shared.get_npm_cmd('tsc') + ['embind_tsgen.d.ts', '--noEmit']
+    shutil.copyfile(test_file('other/embind_tsgen_main.ts'), 'main.ts')
+    # A package file with type=module is needed to enabled ES modules in TSC and
+    # also run the output JS file as a module in node.
+    shutil.copyfile(test_file('other/embind_tsgen_package.json'), 'package.json')
+    cmd = shared.get_npm_cmd('tsc') + ['embind_tsgen.d.ts', 'main.ts', '--module', 'NodeNext', '--moduleResolution', 'nodenext']
     shared.check_call(cmd)
-
     actual = read_file('embind_tsgen.d.ts')
-    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), actual)
+    self.assertFileContents(test_file('other/embind_tsgen_module.d.ts'), actual)
+    self.assertContained('main ran\nts ran', self.run_js('main.js'))
 
   def test_embind_tsgen_ignore(self):
     create_file('fail.js', 'assert(false);')

@@ -11,18 +11,9 @@ declare namespace RuntimeExports {
     let HEAPU32: any;
     let HEAP64: any;
     let HEAPU64: any;
-    let FS_createPath: any;
-    function FS_createDataFile(parent: any, name: any, fileData: any, canRead: any, canWrite: any, canOwn: any): void;
-    function FS_createPreloadedFile(parent: any, name: any, url: any, canRead: any, canWrite: any, onload: any, onerror: any, dontCreateFile: any, canOwn: any, preFinish: any): void;
-    function FS_unlink(path: any): any;
-    let FS_createLazyFile: any;
-    let FS_createDevice: any;
-    let addRunDependency: any;
-    let removeRunDependency: any;
 }
 interface WasmModule {
   _main(_0: number, _1: number): number;
-  __emscripten_proxy_main(_0: number, _1: number): number;
 }
 
 type EmbindString = ArrayBuffer|Uint8Array|Uint8ClampedArray|Int8Array|string;
@@ -174,3 +165,4 @@ interface EmbindModule {
 }
 
 export type MainModule = WasmModule & typeof RuntimeExports & EmbindModule;
+export default function MainModuleFactory (options?: unknown): Promise<MainModule>;
