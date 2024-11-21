@@ -363,7 +363,7 @@ var LibraryHTML5 = {
     // If not found, if one is querying by using DOM tag name selector 'canvas', grab the first
     // OffscreenCanvas that we can find.
      || (target == 'canvas' && Object.values(GL.offscreenCanvases)[0])
-    // If that is not found either, query via the regular DOM selector.
+    // If that is not found either, query via the regular findEventTarget mechanism.
      || findEventTarget(target);
   },
 #else

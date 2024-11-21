@@ -2618,6 +2618,18 @@ Module["preRun"] = () => {
   def test_html5_special_event_targets(self):
     self.btest_exit('html5_special_event_targets.cpp', args=['-lGL'])
 
+  @parameterized({
+    '': ([],),
+    'offscreen_no_pthread': (['-sOFFSCREENCANVAS_SUPPORT'],),
+    'offscreen_pthread': (['-sOFFSCREENCANVAS_SUPPORT', '-sPROXY_TO_PTHREAD', '-pthread'],),
+  })
+  @requires_graphics_hardware
+  # Verify bug https://github.com/emscripten-core/emscripten/issues/22942: findCanvasEventTarget doesn't use specialHTMLTargets
+  def test_html5_special_canvas_event_targets(self, args):
+    self.btest_exit('html5_special_canvas_event_targets.cpp', args=args + ['-lGL', '-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1', '-DWHICH_TARGET=0'])
+    self.btest_exit('html5_special_canvas_event_targets.cpp', args=args + ['-lGL', '-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1', '-DWHICH_TARGET=1'])
+    self.btest_exit('html5_special_canvas_event_targets.cpp', args=args + ['-lGL', '-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1', '-DWHICH_TARGET=2'])
+
   @requires_graphics_hardware
   def test_html5_webgl_destroy_context(self):
     for opts in ([], ['-O2', '-g1'], ['-sFULL_ES2']):
