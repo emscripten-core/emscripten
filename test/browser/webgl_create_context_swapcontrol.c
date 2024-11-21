@@ -14,9 +14,9 @@ int main() {
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
   attrs.explicitSwapControl = true;
-  #ifdef USE_OFFSCREEN_FRAMEBUFFER
+#ifdef USE_OFFSCREEN_FRAMEBUFFER
   attrs.renderViaOffscreenBackBuffer = true;
-  #endif
+#endif
   // Test that creating a context succeeds
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
   assert(context > 0); // Must have received a valid context.
