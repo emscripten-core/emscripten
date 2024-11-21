@@ -142,7 +142,7 @@ def also_with_wasmfs_all_backends(f):
   return metafunc
 
 
-def requires_tool(tool):
+def requires_tool(tool, env_name=None):
   assert not callable(tool)
 
   def decorate(func):
@@ -150,11 +150,15 @@ def requires_tool(tool):
 
     @wraps(func)
     def decorated(self, *args, **kwargs):
+      if env_name:
+        env_var = f'EMTEST_SKIP_{env_name}'
+      else:
+        env_var = f'EMTEST_SKIP_{tool.upper()}'
       if not shutil.which(tool):
-        if f'EMTEST_SKIP_{tool.upper()}' in os.environ:
-          self.skipTest(f'test requires ccache and EMTEST_SKIP_{tool.upper()} is set')
+        if env_var in os.environ:
+          self.skipTest(f'test requires ccache and {env_var} is set')
         else:
-          self.fail(f'{tool} required to run this test.  Use EMTEST_SKIP_{tool.upper()} to skip')
+          self.fail(f'{tool} required to run this test.  Use {env_var} to skip')
       return func(self, *args, **kwargs)
 
     return decorated
@@ -174,7 +178,7 @@ def requires_scons(func):
 
 def requires_rust(func):
   assert callable(func)
-  return requires_tool('cargo')(func)
+  return requires_tool('cargo', 'RUST')(func)
 
 
 def requires_pkg_config(func):
