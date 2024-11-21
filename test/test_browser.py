@@ -2617,7 +2617,7 @@ Module["preRun"] = () => {
   @parameterized({
     'offscreencanvas': (['-sOFFSCREENCANVAS_SUPPORT'],),
     'offscreenframebuffer': (['-sOFFSCREEN_FRAMEBUFFER', '-DUSE_OFFSCREEN_FRAMEBUFFER'],),
-    })
+  })
   def test_html5_webgl_create_context_swapcontrol(self, args):
     self.btest_exit('browser/webgl_create_context_swapcontrol.c', args=args)
 
