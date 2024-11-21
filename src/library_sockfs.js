@@ -33,12 +33,12 @@ addToLibrary({
 
 #if SOCKET_DEBUG
       // If debug is enabled register simple default logging callbacks for each Event.
-      SOCKFS.on('error', (error) => dbg('websocket: error ' + error));
-      SOCKFS.on('open', (fd) => dbg('websocket: open fd = ' + fd));
-      SOCKFS.on('listen', (fd) => dbg('websocket: listen fd = ' + fd));
-      SOCKFS.on('connection', (fd) => dbg('websocket: connection fd = ' + fd));
-      SOCKFS.on('message', (fd) => dbg('websocket: message fd = ' + fd));
-      SOCKFS.on('close', (fd) => dbg('websocket: close fd = ' + fd));
+      SOCKFS.on('error', (error) => dbg(`websocket: error ${error}`));
+      SOCKFS.on('open', (fd) => dbg(`websocket: open fd = ${fd}`));
+      SOCKFS.on('listen', (fd) => dbg(`websocket: listen fd = ${fd}`));
+      SOCKFS.on('connection', (fd) => dbg(`websocket: connection fd = ${fd}`));
+      SOCKFS.on('message', (fd) => dbg(`websocket: message fd = ${fd}`));
+      SOCKFS.on('close', (fd) => dbg(`websocket: close fd = ${fd}`));
 #endif
 
       return FS.createNode(null, '/', {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */, 0);
@@ -127,7 +127,7 @@ addToLibrary({
       if (!SOCKFS.nextname.current) {
         SOCKFS.nextname.current = 0;
       }
-      return 'socket[' + (SOCKFS.nextname.current++) + ']';
+      return `socket[${SOCKFS.nextname.current++}]`;
     },
     // backend-specific stream ops
     websocket_sock_ops: {
@@ -202,7 +202,7 @@ addToLibrary({
             }
 
 #if SOCKET_DEBUG
-            dbg('websocket: connect: ' + url + ', ' + subProtocols.toString());
+            dbg(`websocket: connect: ${url}, ${subProtocols.toString()}`);
 #endif
             // If node we use the ws library.
             var WebSocketConstructor;
@@ -222,7 +222,7 @@ addToLibrary({
         }
 
 #if SOCKET_DEBUG
-        dbg('websocket: adding peer: ' + addr + ':' + port);
+        dbg(`websocket: adding peer: ${addr}:${port}`);
 #endif
 
         var peer = {
@@ -240,7 +240,7 @@ addToLibrary({
         // remote end.
         if (sock.type === {{{ cDefs.SOCK_DGRAM }}} && typeof sock.sport != 'undefined') {
 #if SOCKET_DEBUG
-          dbg('websocket: queuing port message (port ' + sock.sport + ')');
+          dbg(`websocket: queuing port message (port ${sock.sport})`);
 #endif
           peer.msg_send_queue.push(new Uint8Array([
               255, 255, 255, 255,
@@ -275,7 +275,7 @@ addToLibrary({
             var queued = peer.msg_send_queue.shift();
             while (queued) {
 #if SOCKET_DEBUG
-              dbg('websocket: sending queued data (' + queued.byteLength + ' bytes): ' + [Array.prototype.slice.call(new Uint8Array(queued))]);
+              dbg(`websocket: sending queued data (${queued.byteLength} bytes): ${new Uint8Array(queued)}`);
 #endif
               peer.socket.send(queued);
               queued = peer.msg_send_queue.shift();
@@ -303,7 +303,7 @@ addToLibrary({
           }
 
 #if SOCKET_DEBUG
-          dbg('websocket: handle message (' + data.byteLength + ' bytes): ' + [Array.prototype.slice.call(data)]);
+          dbg(`websocket: handle message (${data.byteLength} bytes): ${data}`);
 #endif
 
           // if this is the port message, override the peer's port with it
@@ -506,7 +506,7 @@ addToLibrary({
         var WebSocketServer = require('ws').Server;
         var host = sock.saddr;
 #if SOCKET_DEBUG
-        dbg('websocket: listen: ' + host + ':' + sock.sport);
+        dbg(`websocket: listen: ${host}:${sock.sport}`);
 #endif
         sock.server = new WebSocketServer({
           host,
@@ -517,7 +517,7 @@ addToLibrary({
 
         sock.server.on('connection', function(ws) {
 #if SOCKET_DEBUG
-          dbg('websocket: received connection from: ' + ws._socket.remoteAddress + ':' + ws._socket.remotePort);
+          dbg(`websocket: received connection from: ${ws._socket.remoteAddress}:${ws._socket.remotePort}`);
 #endif
           if (sock.type === {{{ cDefs.SOCK_STREAM }}}) {
             var newsock = SOCKFS.createSocket(sock.family, sock.type, sock.protocol);
@@ -643,7 +643,7 @@ addToLibrary({
             }
           }
 #if SOCKET_DEBUG
-          dbg('websocket: queuing (' + length + ' bytes): ' + [Array.prototype.slice.call(new Uint8Array(data))]);
+          dbg(`websocket: queuing (${length} bytes): ${new Uint8Array(data)}`);
 #endif
           dest.msg_send_queue.push(data);
           return length;
@@ -651,7 +651,7 @@ addToLibrary({
 
         try {
 #if SOCKET_DEBUG
-          dbg('websocket: send (' + length + ' bytes): ' + [Array.prototype.slice.call(new Uint8Array(data))]);
+          dbg(`websocket: send (${length} bytes): ${new Uint8Array(data)}`);
 #endif
           // send the actual data
           dest.socket.send(data);
@@ -699,14 +699,14 @@ addToLibrary({
         };
 
 #if SOCKET_DEBUG
-        dbg('websocket: read (' + bytesRead + ' bytes): ' + [Array.prototype.slice.call(res.buffer)]);
+        dbg(`websocket: read (${bytesRead} bytes): ${res.buffer}`);
 #endif
 
         // push back any unread data for TCP connections
         if (sock.type === {{{ cDefs.SOCK_STREAM }}} && bytesRead < queuedLength) {
           var bytesRemaining = queuedLength - bytesRead;
 #if SOCKET_DEBUG
-          dbg('websocket: read: put back ' + bytesRemaining + ' bytes');
+          dbg(`websocket: read: put back ${bytesRemaining} bytes`);
 #endif
           queued.data = new Uint8Array(queuedBuffer, queuedOffset + bytesRead, bytesRemaining);
           sock.recv_queue.unshift(queued);
