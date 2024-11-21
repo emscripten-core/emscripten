@@ -444,9 +444,8 @@ var LibraryHtml5WebGL = {
   },
 
   emscripten_is_webgl_context_lost__proxy: 'sync_on_webgl_context_handle_thread',
-  emscripten_is_webgl_context_lost: (contextHandle) => {
-    return !GL.contexts[contextHandle] || GL.contexts[contextHandle].GLctx.isContextLost(); // No context ~> lost context.
-  },
+  emscripten_is_webgl_context_lost: (contextHandle) =>
+    !GL.contexts[contextHandle] || GL.contexts[contextHandle].GLctx.isContextLost(), // No context ~> lost context.
 
   emscripten_webgl_get_supported_extensions__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_supported_extensions__deps: ['$stringToNewUTF8'],

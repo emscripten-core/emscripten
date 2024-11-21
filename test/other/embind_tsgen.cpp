@@ -58,11 +58,18 @@ struct ValArr {
 EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
 
 struct ValObj {
-  Foo foo;
   Bar bar;
+  std::string string;
   CallbackType callback;
   ValObj() : callback(val::undefined()) {}
 };
+
+ValObj getValObj() {
+  ValObj o;
+  return o;
+}
+
+void setValObj(ValObj v) {}
 
 class ClassWithConstructor {
  public:
@@ -190,9 +197,11 @@ EMSCRIPTEN_BINDINGS(Test) {
     .element(emscripten::index<3>());
 
   value_object<ValObj>("ValObj")
-      .field("foo", &ValObj::foo)
+      .field("string", &ValObj::string)
       .field("bar", &ValObj::bar)
       .field("callback", &ValObj::callback);
+  function("getValObj", &getValObj);
+  function("setValObj", &setValObj);
 
   register_vector<int>("IntVec");
 

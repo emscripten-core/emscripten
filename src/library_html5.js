@@ -914,9 +914,8 @@ var LibraryHTML5 = {
 
   emscripten_set_devicemotion_callback_on_thread__proxy: 'sync',
   emscripten_set_devicemotion_callback_on_thread__deps: ['$registerDeviceMotionEventCallback'],
-  emscripten_set_devicemotion_callback_on_thread: (userData, useCapture, callbackfunc, targetThread) => {
-    return registerDeviceMotionEventCallback({{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}}, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_DEVICEMOTION }}}, "devicemotion", targetThread);
-  },
+  emscripten_set_devicemotion_callback_on_thread: (userData, useCapture, callbackfunc, targetThread) =>
+    registerDeviceMotionEventCallback({{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}}, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_DEVICEMOTION }}}, "devicemotion", targetThread),
 
   emscripten_get_devicemotion_status__proxy: 'sync',
   emscripten_get_devicemotion_status__deps: ['$JSEvents'],
@@ -2486,10 +2485,6 @@ var LibraryHTML5 = {
     }
     return requestAnimationFrame(tick);
   },
-
-  emscripten_date_now: () => Date.now(),
-
-  emscripten_performance_now: () => {{{ getPerformanceNow() }}}(),
 
   emscripten_get_device_pixel_ratio__proxy: 'sync',
   emscripten_get_device_pixel_ratio: () => {
