@@ -174,7 +174,7 @@ def requires_scons(func):
 
 def requires_rust(func):
   assert callable(func)
-  return requires_tool('cargo')(func)
+  return requires_tool('rust')(func)
 
 
 def requires_pkg_config(func):
