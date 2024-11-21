@@ -2491,9 +2491,11 @@ var %(EXPORT_NAME)s = (() => {
       src += 'export default %s;\n' % settings.EXPORT_NAME
   elif not settings.MINIMAL_RUNTIME:
     src += '''\
-if (typeof exports === 'object' && typeof module === 'object')
+if (typeof exports === 'object' && typeof module === 'object') {
   module.exports = %(EXPORT_NAME)s;
-else if (typeof define === 'function' && define['amd'])
+  // This default export allows TS to import this commonjs style module.
+  module.exports.default = %(EXPORT_NAME)s;
+} else if (typeof define === 'function' && define['amd'])
   define([], () => %(EXPORT_NAME)s);
 ''' % {'EXPORT_NAME': settings.EXPORT_NAME}
 
