@@ -2613,6 +2613,15 @@ Module["preRun"] = () => {
     self.btest_exit('webgl_create_context2.cpp')
 
   @requires_graphics_hardware
+  # Verify bug https://github.com/emscripten-core/emscripten/issues/22943: creating a WebGL context with explicit swap control and offscreenCanvas
+  @parameterized({
+    'offscreencanvas': (['-sOFFSCREENCANVAS_SUPPORT'],),
+    'offscreenframebuffer': (['-sOFFSCREEN_FRAMEBUFFER', '-DUSE_OFFSCREEN_FRAMEBUFFER'],),
+    })
+  def test_html5_webgl_create_context_swapcontrol(self, args):
+    self.btest_exit('browser/webgl_create_context_swapcontrol.c', args=args)
+
+  @requires_graphics_hardware
   # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
   # (this only makes sense in the old deprecated -sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0 mode)
   def test_html5_special_event_targets(self):
