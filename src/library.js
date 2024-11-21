@@ -393,13 +393,12 @@ addToLibrary({
   // Used to implement the native `abort` symbol.  Note that we use the
   // JavaScript `abort` helper in order to implement this function, but we use a
   // distinct name here to avoid confusing the two.
-  _abort_js: () => {
+  _abort_js: () =>
 #if ASSERTIONS
-    abort('native code called abort()');
+    abort('native code called abort()'),
 #else
-    abort('');
+    abort(''),
 #endif
-  },
 #endif
 
   // This object can be modified by the user during startup, which affects
@@ -411,9 +410,8 @@ addToLibrary({
   // assert.h
   // ==========================================================================
 
-  __assert_fail: (condition, filename, line, func) => {
-    abort(`Assertion failed: ${UTF8ToString(condition)}, at: ` + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']);
-  },
+  __assert_fail: (condition, filename, line, func) =>
+    abort(`Assertion failed: ${UTF8ToString(condition)}, at: ` + [filename ? UTF8ToString(filename) : 'unknown filename', line, func ? UTF8ToString(func) : 'unknown function']),
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
@@ -630,9 +628,7 @@ addToLibrary({
   $strError: (errno) => errno + '',
 #else
   $strError__deps: ['strerror', '$UTF8ToString'],
-  $strError: (errno) => {
-    return UTF8ToString(_strerror(errno));
-  },
+  $strError: (errno) => UTF8ToString(_strerror(errno)),
 #endif
 
 #if PROXY_POSIX_SOCKETS == 0
@@ -649,9 +645,8 @@ addToLibrary({
     }
     return (b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)) >>> 0;
   },
-  $inetNtop4: (addr) => {
-    return (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff)
-  },
+  $inetNtop4: (addr) =>
+    (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff),
   $inetPton6__deps: ['htons', '$jstoi_q'],
   $inetPton6: (str) => {
     var words;
@@ -1336,6 +1331,10 @@ addToLibrary({
 
   emscripten_random: () => Math.random(),
 
+  emscripten_date_now: () => Date.now(),
+
+  emscripten_performance_now: () => {{{ getPerformanceNow() }}}(),
+
 #if PTHREADS && !AUDIO_WORKLET
   // Pthreads need their clocks synchronized to the execution of the main
   // thread, so, when using them, make sure to adjust all timings to the
@@ -1692,9 +1691,7 @@ addToLibrary({
     return ___cxa_throw(ex, 0, 0);
   },
 
-  _Unwind_DeleteException: (ex) => {
-    err('TODO: Unwind_DeleteException');
-  },
+  _Unwind_DeleteException: (ex) => err('TODO: Unwind_DeleteException'),
 #endif
 
   // special runtime support
@@ -1711,29 +1708,28 @@ addToLibrary({
   },
 #endif
 
-  $getExecutableName: () => {
 #if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global runtime variable thisProgram
+  $getExecutableName: () => {
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE && process.argv.length > 1) {
       return process.argv[1].replace(/\\/g, '/');
     }
 #endif
     return "./this.program";
-#else
-    return thisProgram || './this.program';
-#endif
   },
+#else
+  $getExecutableName: () => thisProgram || './this.program',
+#endif
 
-  $listenOnce: (object, event, func) => {
+  $listenOnce: (object, event, func) =>
 #if MIN_CHROME_VERSION < 55 || MIN_FIREFOX_VERSION < 50 // https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
     object.addEventListener(event, function handler() {
       func();
       object.removeEventListener(event, handler);
-    });
+    }),
 #else
-    object.addEventListener(event, func, { 'once': true });
+    object.addEventListener(event, func, { 'once': true }),
 #endif
-  },
 
   // Receives a Web Audio context plus a set of elements to listen for user
   // input events on, and registers a context resume() for them. This lets
@@ -1967,9 +1963,7 @@ addToLibrary({
   // Use program_invocation_short_name and program_invocation_name in compiled
   // programs. This function is for implementing them.
   _emscripten_get_progname__deps: ['$getExecutableName', '$stringToUTF8'],
-  _emscripten_get_progname: (str, len) => {
-    stringToUTF8(getExecutableName(), str, len);
-  },
+  _emscripten_get_progname: (str, len) => stringToUTF8(getExecutableName(), str, len),
 
   emscripten_console_log: (str) => {
 #if ASSERTIONS

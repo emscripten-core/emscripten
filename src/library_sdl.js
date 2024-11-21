@@ -2936,9 +2936,7 @@ var LibrarySDL = {
   },
 
   Mix_VolumeMusic__proxy: 'sync',
-  Mix_VolumeMusic: (volume) => {
-    return SDL.setGetVolume(SDL.music, volume);
-  },
+  Mix_VolumeMusic: (volume) => SDL.setGetVolume(SDL.music, volume),
 
   Mix_LoadMUS_RW__deps: ['Mix_LoadWAV_RW'],
   Mix_LoadMUS_RW: (filename) => _Mix_LoadWAV_RW(filename, 0),
@@ -3019,9 +3017,7 @@ var LibrarySDL = {
   Mix_FadeOutMusic: 'Mix_HaltMusic', // XXX ignore fading out effect
 
   Mix_PlayingMusic__proxy: 'sync',
-  Mix_PlayingMusic: () => {
-    return (SDL.music.audio && !SDL.music.audio.paused) ? 1 : 0;
-  },
+  Mix_PlayingMusic: () => (SDL.music.audio && !SDL.music.audio.paused),
 
   // http://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer_38.html#SEC38
   // "Note: Does not check if the channel has been paused."
@@ -3346,9 +3342,8 @@ var LibrarySDL = {
   },
 
   SDL_GL_SwapBuffers__proxy: 'sync',
-  SDL_GL_SwapBuffers: () => {
-    Browser.doSwapBuffers?.(); // in workers, this is used to send out a buffered frame
-  },
+  // in workers, this is used to send out a buffered frame
+  SDL_GL_SwapBuffers: () => Browser.doSwapBuffers?.(),
 
   // SDL 2
 
@@ -3382,9 +3377,7 @@ var LibrarySDL = {
   },
 
   SDL_GL_SetSwapInterval__deps: ['emscripten_set_main_loop_timing'],
-  SDL_GL_SetSwapInterval: (state) => {
-    _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, state);
-  },
+  SDL_GL_SetSwapInterval: (state) => _emscripten_set_main_loop_timing({{{ cDefs.EM_TIMING_RAF }}}, state),
 
   SDL_SetWindowTitle__proxy: 'sync',
   SDL_SetWindowTitle: (window, title) => {

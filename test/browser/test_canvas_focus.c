@@ -22,10 +22,8 @@ bool key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userDat
 int main() {
   emscripten_set_keypress_callback("#canvas", 0, 1, key_callback);
   EM_ASM({
-    var event = new KeyboardEvent("keypress", { 'keyCode': 38, 'charCode': 38, 'view': window, 'bubbles': true, 'cancelable': true });
-    // Focus, then send an event, same as if the user clicked on it for focus.
     Module.canvas.focus();
-    document.activeElement.dispatchEvent(event);
+    simulateKeyEvent("keypress", 38, undefined, undefined, /*target=*/document.activeElement);
   });
   emscripten_exit_with_live_runtime();
   __builtin_trap();
