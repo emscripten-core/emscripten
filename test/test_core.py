@@ -7155,7 +7155,7 @@ void* operator new(size_t size) {
         return 0;
       }
     '''
-    create_file('exps', '["_main","_other_function"]')
+    create_file('exps', '_main\n_other_function\n')
 
     self.set_setting('EXPORTED_FUNCTIONS', '@exps')
     self.do_run(src, '''waka 5!''')
@@ -7170,12 +7170,12 @@ void* operator new(size_t size) {
       extern "C" {
       '''
 
-    js_funcs = []
+    rsp_file_lines = []
     num_exports = 5000
     count = 0
     while count < num_exports:
       src += 'int exported_func_from_response_file_%d () { return %d;}\n' % (count, count)
-      js_funcs.append('_exported_func_from_response_file_%d' % count)
+      rsp_file_lines.append('_exported_func_from_response_file_%d' % count)
       count += 1
 
     src += r'''
@@ -7191,8 +7191,8 @@ void* operator new(size_t size) {
       }
     '''
 
-    js_funcs.append('_main')
-    create_file('large_exported_response.json', json.dumps(js_funcs))
+    rsp_file_lines.append('_main')
+    create_file('large_exported_response.json', '\n'.join(rsp_file_lines) + '\n')
 
     self.set_setting('EXPORTED_FUNCTIONS', '@large_exported_response.json')
     self.do_run(src, 'waka 4999!')
@@ -8193,8 +8193,8 @@ Module.onRuntimeInitialized = () => {
     'onlylist_b': (['-sASYNCIFY_ONLY=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'], True),
     'onlylist_c': (['-sASYNCIFY_ONLY=["main","__original_main","foo(int, double)","baz()","c_baz"]'], False),
     'onlylist_d': (['-sASYNCIFY_ONLY=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False),
-    'onlylist_b_response': ([], True,  '["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'),
-    'onlylist_c_response': ([], False, '["main","__original_main","foo(int, double)","baz()","c_baz"]'),
+    'onlylist_b_response': ([], True,  'main\n__original_main\nfoo(int, double)\nbaz()\nc_baz\nStructy::funcy()\n'),
+    'onlylist_c_response': ([], False, 'main\n__original_main\nfoo(int, double)\nbaz()\nc_baz\n'),
   })
   def test_asyncify_lists(self, args, should_pass, response=None):
     if response is not None:
