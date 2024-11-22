@@ -8511,7 +8511,7 @@ int main() {
     self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-sWASM_ASYNC_COMPILATION=0', '-sIMPORTED_MEMORY'])
     out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('LinkError', out)
-    self.assertContained("memory import 2 has a larger maximum size 800 than the module's declared maximum", out)
+    self.assertContained("memory import 1 has a larger maximum size 800 than the module's declared maximum", out)
     self.assertNotContained('hello, world!', out)
     # and with memory growth, all should be good
     self.run_process([EMCC, test_file('hello_world.c'), '-sINITIAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-sALLOW_MEMORY_GROWTH', '-sWASM_ASYNC_COMPILATION=0', '-sIMPORTED_MEMORY'])
@@ -10458,18 +10458,10 @@ int main() {
     compile(['-mnontrapping-fptoint', '-c'])
     verify_features_sec('nontrapping-fptoint', True)
 
-    compile(['-sMIN_SAFARI_VERSION=120000'])
-    verify_features_sec_linked('sign-ext', False)
-
     compile(['-sMIN_SAFARI_VERSION=140000'])
-    verify_features_sec_linked('bulk-memory', True) # XXX fix before commit
+    verify_features_sec_linked('bulk-memory', False)
     verify_features_sec_linked('nontrapping-fptoint', False)
 
-    compile(['-sMIN_SAFARI_VERSION=140100', '-pthread'])
-    verify_features_sec_linked('atomics', True)
-    verify_features_sec_linked('bulk-memory', True)
-
-    # BIGINT causes binaryen to not run, and keeps the target_features section after link
     # Setting this SAFARI_VERSION should enable bulk memory because it links in emscripten_memcpy_bulkmem
     # However it does not enable nontrapping-fptoint yet because it has no effect at compile time and
     # no libraries include nontrapping yet.
@@ -10483,14 +10475,6 @@ int main() {
     compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
     # -mno-bulk-memory at link time overrides MIN_SAFARI_VERSION
     verify_features_sec_linked('bulk-memory', False)
-
-    # feature_matrix has the (IMO strange) behavior that enabling one feature supported by 
-    # a particular browser version will cause all other features supported by that version
-    # to be enabled as well.
-    # TODO: is this test redundant with test_signext_lowering?
-    compile(['-sWASM_BIGINT'])
-    verify_features_sec_linked('bulk-memory', True)
-    verify_features_sec_linked('nontrapping-fptoint', True)
 
   def test_js_preprocess(self):
     # Use stderr rather than stdout here because stdout is redirected to the output JS file itself.

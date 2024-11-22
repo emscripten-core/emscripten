@@ -2191,10 +2191,6 @@ class libstandalonewasm(MuslInternalLibrary):
         filenames=['standalone.c',
                    'standalone_wasm_stdio.c',
                    '__main_void.c'])
-    files += files_in_path(
-        path='system/lib/libc',
-        filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
-                   ]) # XXX why do we need the C files here but not the S files?
     # It is more efficient to use JS methods for time, normally.
     files += files_in_path(
         path='system/lib/libc/musl/src/time',

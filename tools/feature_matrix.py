@@ -56,7 +56,7 @@ min_browser_versions = {
   Feature.BULK_MEMORY: {
     'chrome': 75,
     'firefox': 79,
-    'safari': 150000,
+    'safari': 140100, # TODO: Reset this to 150000 when we update the default.
   },
   Feature.MUTABLE_GLOBALS: {
     'chrome': 74,
