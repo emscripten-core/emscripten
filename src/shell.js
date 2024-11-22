@@ -319,7 +319,7 @@ if (ENVIRONMENT_IS_SHELL) {
   globalThis.clearTimeout ??= (id) => {};
 
   // spidermonkey lacks setTimeout but we use it above in readAsync.
-  globalThis.setTimeout ??= (f) => (typeof f == 'function') ? f() : abort();
+  globalThis.setTimeout ??= (f) => f();
 
   // v8 uses `arguments_` whereas spidermonkey uses `scriptArgs`
   arguments_ = globalThis.arguments || globalThis.scriptArgs;

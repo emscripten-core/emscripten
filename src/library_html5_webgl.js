@@ -171,7 +171,7 @@ var LibraryHtml5WebGL = {
 #endif
           return 0;
         }
-        canvas = GL.offscreenCanvases[canvas.id];
+        canvas = GL.offscreenCanvases[canvas.id].canvas;
       }
     }
 #else // !OFFSCREENCANVAS_SUPPORT
