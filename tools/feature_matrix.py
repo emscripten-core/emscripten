@@ -47,16 +47,19 @@ min_browser_versions = {
     'chrome': 75,
     'firefox': 65,
     'safari': 150000,
+    'node': 130000,
   },
   Feature.SIGN_EXT: {
     'chrome': 74,
     'firefox': 62,
     'safari': 140100,
+    'node': 120000,
   },
   Feature.BULK_MEMORY: {
     'chrome': 75,
     'firefox': 79,
     'safari': 140100, # TODO: Reset this to 150000 when we update the default.
+    'node': 130000,
   },
   Feature.MUTABLE_GLOBALS: {
     'chrome': 74,
@@ -67,6 +70,7 @@ min_browser_versions = {
     'chrome': 67,
     'firefox': 68,
     'safari': 150000,
+    'node': 110000,
   },
   Feature.THREADS: {
     'chrome': 74,
