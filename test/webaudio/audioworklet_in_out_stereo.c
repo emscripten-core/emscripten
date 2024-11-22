@@ -161,6 +161,9 @@ int main() {
   static char workletStack[AUDIO_STACK_SIZE];
   EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(NULL);
   emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, sizeof workletStack, &initialised, NULL);
+#ifndef BROWSER_TEST
+  // Special case: browser tests need to exit instantly, interactive tests need to wait
   emscripten_runtime_keepalive_push();
+#endif
   return 0;
 }
