@@ -3088,7 +3088,7 @@ More info: https://emscripten.org
       (['-sASYNCIFY=1', '-gsource-map'], False, True, True),
       (['-g', '-gsource-map'], True, True, True),
       (['-g2', '-gsource-map'], False, True, True),
-      # (['-gsplit-dwarf', '-gsource-map'], True, True, True), TODO this currently fails!
+      (['-gsplit-dwarf', '-gsource-map'], True, True, True),
       (['-gsource-map', '-sWASM_BIGINT', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, True),
     ]:
       print(flags, expect_dwarf, expect_sourcemap, expect_names)
