@@ -1,6 +1,9 @@
 // Example TS program that consumes the emscripten-generated module to to
 // illustrate how the type definitions are used and test they are workings as
 // expected.
+
+// The imported file will either be an ES module or a CommonJS module depending
+// on the test.
 import moduleFactory from './embind_tsgen.js';
 
 // Async IIFE is required for TSC with commonjs modules. This is not needed for

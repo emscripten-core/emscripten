@@ -2493,7 +2493,8 @@ var %(EXPORT_NAME)s = (() => {
     src += '''\
 if (typeof exports === 'object' && typeof module === 'object') {
   module.exports = %(EXPORT_NAME)s;
-  // This default export allows TS to import this commonjs style module.
+  // This default export looks redundant, but it allows TS to import this
+  // commonjs style module.
   module.exports.default = %(EXPORT_NAME)s;
 } else if (typeof define === 'function' && define['amd'])
   define([], () => %(EXPORT_NAME)s);
