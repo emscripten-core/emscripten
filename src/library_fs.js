@@ -199,7 +199,16 @@ FS.staticInit();
           break;
         }
 
-        current = FS.lookupNode(current, parts[i]);
+        try {
+          current = FS.lookupNode(current, parts[i]);
+        } catch(e) {
+          // If we're not the last entry, then it's specifically a missing
+          // directory and we need to raise ENOTDIR instead of ENOENT.
+          if (!islast && e.errno === {{{ cDefs.ENOENT }}}) {
+            throw new FS.ErrnoError({{{ cDefs.ENOTDIR }}});
+          }
+          throw e;
+        }
         current_path = PATH.join2(current_path, parts[i]);
 
         // jump to the mount's root node if this is a mountpoint
@@ -1021,6 +1030,7 @@ FS.staticInit();
         mode = 0;
       }
       var node;
+      var errno;
       if (typeof path == 'object') {
         node = path;
       } else {
@@ -1031,6 +1041,7 @@ FS.staticInit();
           });
           node = lookup.node;
         } catch (e) {
+          errno = e?.errno;
           // ignore
         }
       }
@@ -1049,6 +1060,10 @@ FS.staticInit();
         }
       }
       if (!node) {
+        // Throw ENOTDIR or ENOENT as appropriate.
+        if (errno === {{{ cDefs.ENOTDIR }}}) {
+          throw new FS.ErrnoError({{{ cDefs.ENOTDIR }}});
+        }
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       }
       // can't truncate a device

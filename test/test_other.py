@@ -15402,3 +15402,6 @@ addToLibrary({
        return 0;
     }''')
     self.do_runf('main.cpp', 'Hello from rust!', emcc_args=[lib])
+
+  def test_enotdir(self):
+    self.do_other_test("test_enotdir.c")
