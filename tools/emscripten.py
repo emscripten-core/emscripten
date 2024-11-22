@@ -566,12 +566,17 @@ def finalize_wasm(infile, outfile, js_syms):
                infile]
         shared.check_call(cmd)
 
-  if not settings.GENERATE_DWARF or not settings.EMIT_PRODUCERS_SECTION:
-    # For sections we no longer need, strip now to speed subsequent passes
+  # For sections we no longer need, strip now to speed subsequent passes
+  strip_sections = []
+  if not settings.EMIT_PRODUCERS_SECTION:
+    strip_sections += ['producers']
+  if not settings.EMIT_NAME_SECTION:
+    strip_sections += ['name']
+
+  if strip_sections or not settings.GENERATE_DWARF:
     building.save_intermediate(outfile, 'strip.wasm')
-    sections = ['producers'] if not settings.EMIT_PRODUCERS_SECTION else []
     building.strip(infile, outfile, debug=not settings.GENERATE_DWARF,
-                   sections=sections)
+                   sections=strip_sections)
 
   metadata = get_metadata(outfile, outfile, modify_wasm, args)
 
