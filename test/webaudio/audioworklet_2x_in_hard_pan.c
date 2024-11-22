@@ -16,18 +16,19 @@
 // Helper for MEMORY64 to cast a void* to an audio context or type
 #define VOIDP_2_WA(ptr) ((EMSCRIPTEN_WEBAUDIO_T) (intptr_t) ptr)
 
-// REPORT_RESULT is defined when running in Emscripten test harness.
-#ifdef REPORT_RESULT
-// Count the mixed frames and return after 375 frames (1 second with the default 128 size)
+
+// Count the audio callbacks and return after 375 frames (1 second with the default 128 size)
+//
+// *** Remove this in your own code ***
+//
 volatile int audioProcessedCount = 0;
 bool playedAndMixed(double time, void* data) {
   if (audioProcessedCount >= 375) {
-    REPORT_RESULT(0);
+    emscripten_force_exit(0);
     return false;
   }
   return true;
 }
-#endif
 
 // ID to the beat and bass loops
 EMSCRIPTEN_WEBAUDIO_T beatID = 0;
@@ -65,9 +66,8 @@ EM_JS(void, toggleTrack, (EMSCRIPTEN_WEBAUDIO_T srcID), {
 
 // Callback to process and copy the audio tracks
 bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, AudioSampleFrame* outputs, int numParams, const AudioParamFrame* params, void* data) {
-#ifdef REPORT_RESULT
   audioProcessedCount++;
-#endif
+
   // Twin mono in, single stereo out
   assert(numInputs == 2 && numOutputs == 1);
   assert(inputs[0].numberOfChannels == 1 && inputs[1].numberOfChannels == 1);
@@ -121,12 +121,12 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
     if (bassID) {
       emscripten_audio_node_connect(bassID, worklet, 0, 1);
     }
-    
+
+    // Register a click to start playback
     emscripten_set_click_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, WA_2_VOIDP(context), false, &onClick);
-    
-#ifdef REPORT_RESULT
+
+    // Register the counter that exits the test after one second of mixing
     emscripten_set_timeout_loop(&playedAndMixed, 16, NULL);
-#endif
   } else {
     printf("Audio worklet node creation failed\n");
   }
@@ -150,5 +150,6 @@ int main() {
   static char workletStack[AUDIO_STACK_SIZE];
   EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(NULL);
   emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, sizeof workletStack, &initialised, NULL);
+  emscripten_runtime_keepalive_push();
   return 0;
 }
