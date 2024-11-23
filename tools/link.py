@@ -1757,7 +1757,7 @@ def phase_linker_setup(options, state, newargs):
       exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
     if settings.MEMORY64:
       exit_with_error('wasm2js does not support MEMORY64')
-    if settings.WASM_BIGINT:
+    if settings.WASM_BIGINT and 'WASM_BIGINT' in user_settings:
       exit_with_error('wasm2js does not support WASM_BIGINT')
     if settings.CAN_ADDRESS_2GB:
       exit_with_error('wasm2js does not support >2gb address space')
