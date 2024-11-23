@@ -1,0 +1,10 @@
+// Set the LIBCPP ABI version 2 under emscripten so that we get nicely aligned string
+// data and other nice fixes.
+#define _LIBCPP_ABI_VERSION 2
+#define _LIBCPP_HAS_NO_VENDOR_AVAILABILITY_ANNOTATIONS
+#define _LIBCPP_HAS_MUSL_LIBC
+#define _LIBCPP_ABI_NAMESPACE __2
+// Emscripten doesn't use PSTL at the moment.
+#define _LIBCPP_PSTL_CPU_BACKEND_SERIAL
+#define _LIBCPP_HARDENING_MODE _LIBCPP_HARDENING_MODE_NONE
+#define _LIBCPP_HAS_NO_TIME_ZONE_DATABASE
