@@ -1800,6 +1800,9 @@ class libmimalloc(MTLibrary):
     '-DMI_MALLOC_OVERRIDE',
     # TODO: add build modes that include debug checks 1,2,3
     '-DMI_DEBUG=0',
+    # avoid use of `__builtin_thread_pointer()`
+    # FIXME: https://github.com/llvm/llvm-project/issues/117433
+    '-DMI_LIBC_MUSL',
   ]
 
   # malloc/free/calloc are runtime functions and can be generated during LTO
