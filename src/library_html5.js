@@ -332,11 +332,12 @@ var LibraryHTML5 = {
     return cString > 2 ? UTF8ToString(cString) : cString;
   },
 
+  // Find a DOM element with the given ID, or null if none is found.
   $findEventTarget__deps: ['$maybeCStringToJsString', '$specialHTMLTargets'],
   $findEventTarget: (target) => {
     target = maybeCStringToJsString(target);
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE
-    var domElement = specialHTMLTargets[target] || (typeof document != 'undefined' ? document.querySelector(target) : undefined);
+    var domElement = specialHTMLTargets[target] || (typeof document != 'undefined' ? document.querySelector(target) : null);
 #else
     var domElement = specialHTMLTargets[target] || document.querySelector(target);
 #endif
@@ -375,28 +376,28 @@ var LibraryHTML5 = {
 #endif
 
 #else
-  // Find a DOM element with the given ID.
+  // Find a DOM element with the given ID, or null if none is found.
   $findEventTarget__deps: ['$specialHTMLTargets'],
   $findEventTarget: (target) => {
 #if ASSERTIONS
     warnOnce('Rules for selecting event targets in HTML5 API are changing: instead of using document.getElementById() that only can refer to elements by their DOM ID, new event target selection mechanism uses the more flexible function document.querySelector() that can look up element names, classes, and complex CSS selectors. Build with -sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR to change to the new lookup rules. See https://github.com/emscripten-core/emscripten/pull/7977 for more details.');
 #endif
-    try {
-      // The sensible "default" target varies between events, but use window as the default
-      // since DOM events mostly can default to that. Specific callback registrations
-      // override their own defaults.
-      if (!target) return window;
-      if (typeof target == "number") target = specialHTMLTargets[target] || UTF8ToString(target);
-      if (target === '#window') return window;
-      else if (target === '#document') return document;
-      else if (target === '#screen') return screen;
-      else if (target === '#canvas') return Module['canvas'];
-      return (typeof target == 'string') ? document.getElementById(target) : target;
-    } catch(e) {
-      // In Web Workers, some objects above, such as '#document' do not exist. Gracefully
-      // return null for them.
-      return null;
-    }
+    // The sensible "default" target varies between events, but use window as the default
+    // since DOM events mostly can default to that. Specific callback registrations
+    // override their own defaults.
+    if (!target) return window;
+    if (typeof target == "number") target = specialHTMLTargets[target] || UTF8ToString(target);
+    if (target === '#window') return window;
+    else if (target === '#document') return document;
+    else if (target === '#screen') return screen;
+    else if (target === '#canvas') return Module['canvas'];
+    else if (typeof target == 'string')
+#if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE
+      return (typeof document != 'undefined') ? document.getElementById(target) : null;
+#else
+      return document.getElementById(target);
+#endif
+    return target;
   },
 
   // Like findEventTarget, but looks for OffscreenCanvas elements first

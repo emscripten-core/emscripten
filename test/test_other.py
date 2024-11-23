@@ -142,7 +142,7 @@ def also_with_wasmfs_all_backends(f):
   return metafunc
 
 
-def requires_tool(tool):
+def requires_tool(tool, env_name=None):
   assert not callable(tool)
 
   def decorate(func):
@@ -150,11 +150,15 @@ def requires_tool(tool):
 
     @wraps(func)
     def decorated(self, *args, **kwargs):
+      if env_name:
+        env_var = f'EMTEST_SKIP_{env_name}'
+      else:
+        env_var = f'EMTEST_SKIP_{tool.upper()}'
       if not shutil.which(tool):
-        if f'EMTEST_SKIP_{tool.upper()}' in os.environ:
-          self.skipTest(f'test requires ccache and EMTEST_SKIP_{tool.upper()} is set')
+        if env_var in os.environ:
+          self.skipTest(f'test requires ccache and {env_var} is set')
         else:
-          self.fail(f'{tool} required to run this test.  Use EMTEST_SKIP_{tool.upper()} to skip')
+          self.fail(f'{tool} required to run this test.  Use {env_var} to skip')
       return func(self, *args, **kwargs)
 
     return decorated
@@ -174,7 +178,7 @@ def requires_scons(func):
 
 def requires_rust(func):
   assert callable(func)
-  return requires_tool('cargo')(func)
+  return requires_tool('cargo', 'RUST')(func)
 
 
 def requires_pkg_config(func):
@@ -10435,23 +10439,37 @@ int main() {
     verify_features_sec('multivalue', True)
     verify_features_sec('reference-types', True)
 
+    # Disable a feature
+    compile(['-mno-sign-ext', '-c'])
+    verify_features_sec('sign-ext', False)
+    # Disabling overrides default browser versions
+    compile(['-mno-sign-ext'])
+    verify_features_sec_linked('sign-ext', False)
+    # Disabling overrides manual browser versions
+    compile(['-sMIN_SAFARI_VERSION=150000', '-mno-sign-ext'])
+    # Disable via browser selection
+    compile(['-sMIN_FIREFOX_VERSION=61'])
+    verify_features_sec_linked('sign-ext', False)
+    # Manual enable overrides browser version
+    compile(['-sMIN_FIREFOX_VERSION=61', '-msign-ext'])
+    verify_features_sec_linked('sign-ext', True)
+
     compile(['-mnontrapping-fptoint', '-c'])
     verify_features_sec('nontrapping-fptoint', True)
 
-    # BIGINT causes binaryen to not run, and keeps the target_features section after link
     # Setting this SAFARI_VERSION should enable bulk memory because it links in emscripten_memcpy_bulkmem
     # However it does not enable nontrapping-fptoint yet because it has no effect at compile time and
     # no libraries include nontrapping yet.
-    compile(['-sMIN_SAFARI_VERSION=150000', '-sWASM_BIGINT'])
+    compile(['-sMIN_SAFARI_VERSION=150000'])
     verify_features_sec_linked('sign-ext', True)
     verify_features_sec_linked('mutable-globals', True)
     verify_features_sec_linked('multivalue', True)
     verify_features_sec_linked('bulk-memory', True)
     verify_features_sec_linked('nontrapping-fptoint', False)
 
-    compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory', '-sWASM_BIGINT'])
-    # FIXME? -mno-bulk-memory at link time does not override MIN_SAFARI_VERSION. it probably should?
-    verify_features_sec_linked('bulk-memory', True)
+    compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
+    # -mno-bulk-memory at link time overrides MIN_SAFARI_VERSION
+    verify_features_sec_linked('bulk-memory', False)
 
   def test_js_preprocess(self):
     # Use stderr rather than stdout here because stdout is redirected to the output JS file itself.
