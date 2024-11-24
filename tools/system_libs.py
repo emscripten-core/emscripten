@@ -1799,6 +1799,10 @@ class libmimalloc(MTLibrary):
     # build emmalloc as only a system allocator, without exporting itself onto
     # malloc/free in the global scope
     '-DEMMALLOC_NO_STD_EXPORTS',
+    # halve the page size to 32KiB on wasm64 and to 16KiB on wasm32
+    # https://github.com/microsoft/mimalloc/issues/647#issuecomment-1324109021
+    # https://github.com/emscripten-core/emscripten/issues/20645#issuecomment-1962964755
+    '-DMI_SEGMENT_SLICE_SHIFT=(12 + MI_INTPTR_SHIFT)',
     # build mimalloc with an override of malloc/free
     '-DMI_MALLOC_OVERRIDE',
     # TODO: add build modes that include debug checks 1,2,3
