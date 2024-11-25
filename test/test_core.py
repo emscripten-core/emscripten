@@ -5916,25 +5916,24 @@ Module.onRuntimeInitialized = () => {
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @requires_node
-  def test_unistd_access(self):
+  @parameterized({
+    '': (['-DMEMFS'],),
+    'nodefs': (['-DNODEFS', '-lnodefs.js'],),
+    'noderawfs': (['-DNODERAWFS', '-sNODERAWFS'],)
+  })
+  def test_unistd_access(self, args):
     self.uses_es6 = True
-    orig_compiler_opts = self.emcc_args.copy()
-    for fs in ('MEMFS', 'NODEFS'):
-      self.emcc_args = orig_compiler_opts + ['-D' + fs]
-      if self.get_setting('WASMFS'):
-        if fs == 'NODEFS':
-          # TODO: NODEFS in WasmFS
-          continue
-        self.emcc_args += ['-sFORCE_FILESYSTEM']
-      if fs == 'NODEFS':
-        self.emcc_args += ['-lnodefs.js']
-      self.do_run_in_out_file_test('unistd/access.c')
+    self.emcc_args += args
+    if self.get_setting('WASMFS'):
+      if '-DNODEFS' in args or '-DNODERAWFS' in args:
+        self.skipTest('NODEFS in WasmFS')
+      self.emcc_args += ['-sFORCE_FILESYSTEM']
+
     # Node.js fs.chmod is nearly no-op on Windows
-    # TODO: NODERAWFS in WasmFS
-    if not WINDOWS and not self.get_setting('WASMFS'):
-      self.emcc_args = orig_compiler_opts + ['-DNODERAWFS']
-      self.set_setting('NODERAWFS')
-      self.do_run_in_out_file_test('unistd/access.c')
+    if '-DNODERAWFS' in args and WINDOWS:
+      self.skipTest('NODERAWFS on windows')
+
+    self.do_run_in_out_file_test('unistd/access.c')
 
   def test_unistd_curdir(self):
     self.uses_es6 = True
