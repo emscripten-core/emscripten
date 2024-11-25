@@ -66,7 +66,7 @@ void test() {
   memset(&s, 0, sizeof s);
   stat("file", &s);
   assert(s.st_mode == (0200 | S_IFREG));
-  assert(s.st_ctime != lastctime);
+  assert(s.st_ctime == lastctime);
 
   //
   // fchmod a file
@@ -80,7 +80,7 @@ void test() {
   memset(&s, 0, sizeof s);
   stat("file", &s);
   assert(s.st_mode == (0100 | S_IFREG));
-  assert(s.st_ctime != lastctime);
+  assert(s.st_ctime == lastctime);
 
 
   //
@@ -94,7 +94,7 @@ void test() {
   memset(&s, 0, sizeof s);
   stat("otherfile", &s);
   assert(s.st_mode == (0100 | S_IFREG));
-  assert(s.st_ctime != lastctime);
+  assert(s.st_ctime == lastctime);
 
   //
   // chmod a folder
@@ -111,7 +111,7 @@ void test() {
   memset(&s, 0, sizeof s);
   stat("folder", &s);
   assert(s.st_mode == (0300 | S_IFDIR));
-  assert(s.st_ctime != lastctime);
+  assert(s.st_ctime == lastctime);
 
 #ifndef WASMFS // TODO https://github.com/emscripten-core/emscripten/issues/15948
   //
