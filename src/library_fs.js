@@ -933,7 +933,6 @@ FS.staticInit();
       }
       node.node_ops.setattr(node, {
         mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (node.mode & ~{{{ cDefs.S_IALLUGO }}}),
-        timestamp: Date.now()
       });
     },
     lchmod(path, mode) {
