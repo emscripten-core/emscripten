@@ -23,6 +23,7 @@ $__unlockfile
 $__vfprintf_internal
 $__wasi_syscall_ret
 $__wasm_call_ctors
+$_emscripten_memcpy_bulkmem
 $_emscripten_stack_alloc
 $_emscripten_stack_restore
 $_emscripten_tempret_get
