@@ -66,30 +66,34 @@ int main() {
   printf("F_OK(%s): %d\n", "renamedfile", faccessat(AT_FDCWD, "renamedfile", F_OK, 0));
   printf("errno: %d\n", errno);
 
+  chmod("fchmodtest", 0666);
   struct stat fileStats;
   stat("fchmodtest", &fileStats);
-  chmod("fchmodtest", 0666);
-  assert(fileStats.st_mode & 0666);
-  
+  assert((fileStats.st_mode & 0777) == 0666);
+
   EM_ASM(
     var fchmodstream = FS.open("fchmodtest", "r");
     FS.fchmod(fchmodstream.fd, 0777);
   );
   stat("fchmodtest", &fileStats);
-  assert(fileStats.st_mode & 0777);
+  assert((fileStats.st_mode & 0777) == 0777);
 
+#if !defined(NODEFS) && !defined(NODERAWFS)
+  // Node (and indeed linux) does not support lchmod
+  // so skip this part of the test.
   EM_ASM(
     FS.symlink('writeable', 'symlinkfile');
     FS.lchmod('symlinkfile', 0777);
   );
-  
+
   struct stat symlinkStats;
 
   lstat("symlinkfile", &symlinkStats);
-  assert(symlinkStats.st_mode & 0777);
+  assert((symlinkStats.st_mode & 0777) == 0777);
 
   stat("writeable", &fileStats);
-  assert(fileStats.st_mode & 0222);
+  assert((fileStats.st_mode & 0777) == 0222);
+#endif
 
   EM_ASM(
     var ex;
@@ -99,7 +103,7 @@ int main() {
       ex = err;
     }
     assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
-    
+
     try {
       FS.fchmod(99, 0777);
     } catch (err) {
@@ -114,7 +118,7 @@ int main() {
     }
     assert(ex.name === "ErrnoError" && ex.errno === 44 /* ENOENT */);
   );
-  
+
 
   // Restore full permissions on all created files so that python test runner rmtree
   // won't have problems on deleting the files. On Windows, calling shutil.rmtree()
