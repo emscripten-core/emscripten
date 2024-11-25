@@ -199,8 +199,14 @@ FS.staticInit();
           break;
         }
 
-        current = FS.lookupNode(current, parts[i]);
         current_path = PATH.join2(current_path, parts[i]);
+        try {
+          current = FS.lookupNode(current, parts[i]);
+        } catch (e) {
+          if ((e?.errno === {{{ cDefs.ENOENT }}}) && islast && opts.handleBrokenLink) {
+            return { path: current_path };
+          }
+        }
 
         // jump to the mount's root node if this is a mountpoint
         if (FS.isMountpoint(current)) {
@@ -213,11 +219,17 @@ FS.staticInit();
         // setting opts.follow = true will override this behavior.
         if (!islast || opts.follow) {
           var count = 0;
-          while (FS.isLink(current.mode)) {
-            var link = FS.readlink(current_path);
+          while (current && FS.isLink(current.mode)) {
+            if (!current.node_ops.readlink) {
+              throw new FS.ErrnoError({{{ cDefs.ENOSYS }}});
+            }
+            var link = current.node_ops.readlink(current);
             current_path = PATH_FS.resolve(PATH.dirname(current_path), link);
 
-            var lookup = FS.lookupPath(current_path, { recurse_count: opts.recurse_count + 1 });
+            var lookup = FS.lookupPath(current_path, {
+              recurse_count: opts.recurse_count + 1,
+              handleBrokenLink: islast && opts.handleBrokenLink
+            });
             current = lookup.node;
 
             if (count++ > 40) {  // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
@@ -1027,9 +1039,11 @@ FS.staticInit();
         path = PATH.normalize(path);
         try {
           var lookup = FS.lookupPath(path, {
-            follow: !(flags & {{{ cDefs.O_NOFOLLOW }}})
+            follow: !(flags & {{{ cDefs.O_NOFOLLOW }}}),
+            handleBrokenLink: true
           });
           node = lookup.node;
+          path = lookup.path;
         } catch (e) {
           // ignore
         }
