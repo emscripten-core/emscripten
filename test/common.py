@@ -381,9 +381,7 @@ def also_with_wasmfs(f):
     if wasmfs:
       self.set_setting('WASMFS')
       self.emcc_args.append('-DWASMFS')
-      f(self, *args, **kwargs)
-    else:
-      f(self, *args, **kwargs)
+    f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'wasmfs': (True,)})

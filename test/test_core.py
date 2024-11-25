@@ -5593,7 +5593,10 @@ got: 10
     self.do_runf('stat/test_fstatat.c', 'success')
 
   @also_with_wasmfs
+  @also_with_noderawfs
   def test_stat_chmod(self):
+    if self.get_setting('WASMFS') and self.get_setting('NODERAWFS'):
+      self.skipTest('test requires symlink creation which currently missing from wasmfs+noderawfs')
     self.do_runf('stat/test_chmod.c', 'success')
 
   @also_with_wasmfs
