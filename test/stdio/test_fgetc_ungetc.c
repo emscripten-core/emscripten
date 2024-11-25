@@ -9,10 +9,12 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#endif
 
 static void create_file(const char *path, const char *buffer, int mode) {
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
@@ -26,10 +28,6 @@ static void create_file(const char *path, const char *buffer, int mode) {
 
 void setup() {
   create_file("/tmp/file.txt", "cd", 0666);
-}
-
-void cleanup() {
-  unlink("/tmp/file.txt");
 }
 
 void test() {
@@ -90,14 +88,14 @@ void test() {
 }
 
 int main() {
+#ifdef __EMSCRIPTEN__
 #ifdef NODEFS
   EM_ASM(FS.mount(NODEFS, { root: '.' }, '/tmp'));
 #elif MEMFS
   EM_ASM(FS.mount(MEMFS, {}, '/tmp'));
 #endif
-  atexit(cleanup);
-  signal(SIGABRT, cleanup);
+#endif
   setup();
   test();
-  return EXIT_SUCCESS;
+  return 0;
 }

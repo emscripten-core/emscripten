@@ -143,8 +143,6 @@ void test() {
 }
 
 int main() {
-  atexit(cleanup);
-  signal(SIGABRT, cleanup);
   setup();
   test();
   return EXIT_SUCCESS;
