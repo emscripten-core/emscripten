@@ -5318,6 +5318,7 @@ Module["preRun"] = () => {
     create_file('subdir/backendfile2', 'file 2')
     self.btest_exit('wasmfs/wasmfs_fetch.c',
                     args=['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD',
+                          '-sFORCE_FILESYSTEM', '-lfetchfs.js',
                           '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
 
   @no_firefox('no OPFS support yet')

@@ -12,17 +12,41 @@
 
 namespace wasmfs {
 
+const uint32_t DEFAULT_CHUNK_SIZE = 16*1024*1024;
+
+class FetchBackend : public wasmfs::ProxiedAsyncJSBackend {
+  std::string baseUrl;
+  uint32_t chunkSize;
+ public:
+  FetchBackend(const std::string& baseUrl,
+               uint32_t chunkSize,
+               std::function<void(backend_t)> setupOnThread)
+    : ProxiedAsyncJSBackend(setupOnThread), baseUrl(baseUrl), chunkSize(chunkSize)
+      // TODO manifest
+  {}
+  std::shared_ptr<DataFile> createFile(mode_t mode) override;
+  std::shared_ptr<Directory> createDirectory(mode_t mode) override;
+  const std::string getFileURL(const std::string& filePath);
+  uint32_t getChunkSize();
+};
+
+  
 class FetchFile : public ProxiedAsyncJSImplFile {
   std::string filePath;
+  std::string fileUrl;
 
 public:
   FetchFile(const std::string& path,
             mode_t mode,
             backend_t backend,
             emscripten::ProxyWorker& proxy)
-    : ProxiedAsyncJSImplFile(mode, backend, proxy), filePath(path) {}
+    : ProxiedAsyncJSImplFile(mode, backend, proxy), filePath(path) {
+    this->fileUrl = dynamic_cast<FetchBackend*>(getBackend())->getFileURL(filePath);
+  }
 
   const std::string& getPath() const { return filePath; }
+  const std::string& getURL() const { return fileUrl; }
+  const uint32_t getChunkSize() const { return dynamic_cast<FetchBackend*>(getBackend())->getChunkSize(); }
 };
 
 class FetchDirectory : public MemoryDirectory {
@@ -59,37 +83,49 @@ public:
   }
 };
 
-class FetchBackend : public ProxiedAsyncJSBackend {
-  std::string baseUrl;
+std::shared_ptr<DataFile> FetchBackend::createFile(mode_t mode) {
+  return std::make_shared<FetchFile>("", mode, this, proxy);
+}
 
-public:
-  FetchBackend(const std::string& baseUrl,
-               std::function<void(backend_t)> setupOnThread)
-    : ProxiedAsyncJSBackend(setupOnThread), baseUrl(baseUrl) {}
+std::shared_ptr<Directory> FetchBackend::createDirectory(mode_t mode) {
+  return std::make_shared<FetchDirectory>("", mode, this, proxy);
+}
 
-  std::shared_ptr<DataFile> createFile(mode_t mode) override {
-    return std::make_shared<FetchFile>(baseUrl, mode, this, proxy);
+const std::string FetchBackend::getFileURL(const std::string& filePath) {
+  // TODO use manifest
+  if(filePath == "") {
+    return baseUrl;
   }
-
-  std::shared_ptr<Directory> createDirectory(mode_t mode) override {
-    return std::make_shared<FetchDirectory>(baseUrl, mode, this, proxy);
-  }
-};
+  return baseUrl + "/" + filePath;
+}
+uint32_t FetchBackend::getChunkSize() {
+  return chunkSize;
+}
 
 extern "C" {
-backend_t wasmfs_create_fetch_backend(const char* base_url) {
+  backend_t wasmfs_create_fetch_backend(const char* base_url, uint32_t chunkSize /* TODO manifest */) {
   // ProxyWorker cannot safely be synchronously spawned from the main browser
   // thread. See comment in thread_utils.h for more details.
   assert(!emscripten_is_main_browser_thread() &&
          "Cannot safely create fetch backend on main browser thread");
   return wasmFS.addBackend(std::make_unique<FetchBackend>(
     base_url ? base_url : "",
+    chunkSize != 0 ? chunkSize : DEFAULT_CHUNK_SIZE,
+    /* TODO manifest */
     [](backend_t backend) { _wasmfs_create_fetch_backend_js(backend); }));
-}
+  }
 
 const char* EMSCRIPTEN_KEEPALIVE _wasmfs_fetch_get_file_path(void* ptr) {
   auto* file = reinterpret_cast<wasmfs::FetchFile*>(ptr);
   return file ? file->getPath().data() : nullptr;
+}
+const char* EMSCRIPTEN_KEEPALIVE _wasmfs_fetch_get_file_url(void* ptr) {
+  auto* file = reinterpret_cast<wasmfs::FetchFile*>(ptr);
+  return file ? file->getURL().data() : nullptr;
+}
+uint32_t EMSCRIPTEN_KEEPALIVE _wasmfs_fetch_get_chunk_size(void* ptr) {
+  auto* file = reinterpret_cast<wasmfs::FetchFile*>(ptr);
+  return file ? file->getChunkSize() : DEFAULT_CHUNK_SIZE;
 }
 }
 
