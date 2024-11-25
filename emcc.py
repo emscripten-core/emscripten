@@ -1416,8 +1416,8 @@ def parse_args(newargs):
       feature_matrix.disable_feature(feature_matrix.Feature.SIGN_EXT)
     elif arg == '-mnontrappting-fptoint':
       feature_matrix.enable_feature(feature_matrix.Feature.NON_TRAPPING_FPTOINT,
-                                     '-mnontrapping-fptoint',
-                                     override=True)
+                                    '-mnontrapping-fptoint',
+                                    override=True)
     elif arg == '-mno-nontrapping-fptoint':
       feature_matrix.disable_feature(feature_matrix.Feature.NON_TRAPPING_FPTOINT)
     elif arg == '-fexceptions':
