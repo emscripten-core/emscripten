@@ -1038,16 +1038,12 @@ FS.staticInit();
         node = path;
       } else {
         path = PATH.normalize(path);
-        try {
-          var lookup = FS.lookupPath(path, {
-            follow: !(flags & {{{ cDefs.O_NOFOLLOW }}}),
-            handleBrokenLink: true
-          });
-          node = lookup.node;
-          path = lookup.path;
-        } catch (e) {
-          // ignore
-        }
+        var lookup = FS.lookupPath(path, {
+          follow: !(flags & {{{ cDefs.O_NOFOLLOW }}}),
+          handleBrokenLink: true
+        });
+        node = lookup.node;
+        path = lookup.path;
       }
       // perhaps we need to create the node
       var created = false;
