@@ -41,7 +41,7 @@ addToLibrary({
       SOCKFS.on('close', (fd) => dbg(`websocket: close fd = ${fd}`));
 #endif
 
-      return FS.createNode(null, '/', {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */, 0);
+      return FS.createNode(null, '/', {{{ cDefs.S_IFDIR | 0o777 }}}, 0);
     },
     createSocket(family, type, protocol) {
       type &= ~{{{ cDefs.SOCK_CLOEXEC | cDefs.SOCK_NONBLOCK }}}; // Some applications may pass it; it makes no sense for a single process.
