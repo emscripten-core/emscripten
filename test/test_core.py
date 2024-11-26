@@ -5769,21 +5769,10 @@ got: 10
       os.mkfifo(os.path.join(self.working_dir, 'named_pipe'))
     os.makedirs(os.path.join(self.working_dir, 'existing', 'a'))
     self.emcc_args += ['-lnodefs.js']
-    result = self.do_runf('fs/test_nodefs_readdir.c')
-    assert result.endswith("success\n")
-
-    result = result.removesuffix("success\n")
-    split = result.split("listing contents of ")
-    root_result = split[1].splitlines()
-    working_result = split[2].splitlines()
+    suffix = ""
     if self.get_setting('WASMFS'):
-      self.assertEqual(root_result, ['dir=/', '.', '..', 'dev', 'tmp'])
-    else:
-      self.assertEqual(root_result, ['dir=/', '.', '..', 'tmp', 'home', 'dev', 'proc'])
-    if self.get_setting('WASMFS'):
-      self.assertEqual(working_result, ['dir=/working', '.', '..', 'existing', 'named_pipe', 'stdout', 'test_nodefs_readdir.js', 'test_nodefs_readdir.wasm'])
-    else:
-      self.assertEqual(working_result, ['dir=/working', 'existing', 'stdout', 'test_nodefs_readdir.js', 'test_nodefs_readdir.wasm'])
+      suffix = ".wasm"
+    self.do_run_in_out_file_test('fs/test_nodefs_readdir.c', out_suffix=suffix)
 
   @no_windows('no symlink support on windows')
   @requires_node
