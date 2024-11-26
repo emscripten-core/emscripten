@@ -103,7 +103,7 @@ addToLibrary({
         };
       },
       setattr(node, attr) {
-        for (const key of ["mode", "atime", "mtime", "ctime"]) {
+        for (const key of ['mode', 'atime', 'mtime', 'ctime']) {
           if (attr[key]) {
             node[key] = attr[key];
           }
