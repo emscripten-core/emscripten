@@ -1805,6 +1805,8 @@ class libmimalloc(MTLibrary):
     '-DMI_DEBUG=0',
     # disable `assert()` in the underlying emmalloc allocator
     '-DNDEBUG',
+    # avoid use of `__builtin_thread_pointer()`
+    '-DMI_LIBC_MUSL',
   ]
 
   # malloc/free/calloc are runtime functions and can be generated during LTO
@@ -1820,7 +1822,7 @@ class libmimalloc(MTLibrary):
     path='system/lib/mimalloc/src',
     glob_pattern='*.c',
     # mimalloc includes some files at the source level, so exclude them here.
-    excludes=['alloc-override.c', 'page-queue.c', 'static.c']
+    excludes=['alloc-override.c', 'free.c', 'page-queue.c', 'static.c']
   )
   src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim.c')]
   src_files += [utils.path_from_root('system/lib/emmalloc.c')]
