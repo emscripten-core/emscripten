@@ -728,24 +728,19 @@ addToLibrary({
    * Passing a NULL callback function to a emscripten_set_socket_*_callback call
    * will deregister the callback registered for that Event.
    */
-  $_setNetworkCallback__deps: ['$stackSave', '$stackRestore', '$stringToUTF8OnStack'],
+  $_setNetworkCallback__deps: ['$withStackSave', '$callUserCallback', '$stringToUTF8OnStack'],
   $_setNetworkCallback: (event, userData, callback) => {
     function _callback(data) {
-      try {
+      callUserCallback(() => {
         if (event === 'error') {
-          var sp = stackSave();
-          var msg = stringToUTF8OnStack(data[2]);
-          {{{ makeDynCall('viiii', 'callback') }}}(data[0], data[1], msg, userData);
-          stackRestore(sp);
+          withStackSave(() => {
+            var msg = stringToUTF8OnStack(data[2]);
+            {{{ makeDynCall('viiii', 'callback') }}}(data[0], data[1], msg, userData);
+          });
         } else {
           {{{ makeDynCall('vii', 'callback') }}}(data, userData);
         }
-      } catch (e) {
-        if (!(e instanceof ExitStatus)) {
-          if (e && typeof e == 'object' && e.stack) err('exception thrown: ' + [e, e.stack]);
-          throw e;
-        }
-      }
+      });
     };
 
     // FIXME(sbc): This has no corresponding Pop so will currently keep the
