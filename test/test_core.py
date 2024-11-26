@@ -5911,8 +5911,8 @@ Module.onRuntimeInitialized = () => {
       assert_returncode=exit_code
     )
 
-  @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @requires_node
+  @crossplatform
   @parameterized({
     '': (['-DMEMFS'],),
     'nodefs': (['-DNODEFS', '-lnodefs.js'],),
@@ -5920,16 +5920,22 @@ Module.onRuntimeInitialized = () => {
   })
   def test_unistd_access(self, args):
     self.emcc_args += args
+    nodefs = '-DNODEFS' in args or '-DNODERAWFS' in args
     if self.get_setting('WASMFS'):
-      if '-DNODEFS' in args or '-DNODERAWFS' in args:
+      if nodefs:
         self.skipTest('NODEFS in WasmFS')
       self.emcc_args += ['-sFORCE_FILESYSTEM']
-
-    # Node.js fs.chmod is nearly no-op on Windows
-    if '-DNODERAWFS' in args and WINDOWS:
-      self.skipTest('NODERAWFS on windows')
-
-    self.do_run_in_out_file_test('unistd/access.c')
+    # On windows we have slighly different output because we the same
+    # level of permissions are not available. For example, on windows
+    # its not possible have a file that is not readable, but writable.
+    # We also report all files as executable since there is no x bit
+    # recorded there.
+    # See https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod?view=msvc-170#remarks
+    if WINDOWS and '-DNODERAWFS' in args:
+      out_suffix = '.win'
+    else:
+      out_suffix = ''
+    self.do_run_in_out_file_test('unistd/access.c', out_suffix=out_suffix)
 
   def test_unistd_curdir(self):
     if self.get_setting('WASMFS'):
