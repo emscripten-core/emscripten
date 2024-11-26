@@ -146,7 +146,7 @@ FS.staticInit();
         this.name = name;
         this.mode = mode;
         this.rdev = rdev;
-        this.atime = this.mtime = this.ctime = Date.now();
+        this.timestamp = Date.now();
       }
       get read() {
         return (this.mode & this.readMode) === this.readMode;
