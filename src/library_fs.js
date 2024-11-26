@@ -653,14 +653,12 @@ FS.staticInit();
       return parent.node_ops.mknod(parent, name, mode, dev);
     },
     // helpers to create specific types of nodes
-    create(path, mode) {
-      mode = mode !== undefined ? mode : 438 /* 0666 */;
+    create(path, mode = 0o666) {
       mode &= {{{ cDefs.S_IALLUGO }}};
       mode |= {{{ cDefs.S_IFREG }}};
       return FS.mknod(path, mode, 0);
     },
-    mkdir(path, mode) {
-      mode = mode !== undefined ? mode : 511 /* 0777 */;
+    mkdir(path, mode = 0o777) {
       mode &= {{{ cDefs.S_IRWXUGO }}} | {{{ cDefs.S_ISVTX }}};
       mode |= {{{ cDefs.S_IFDIR }}};
 #if FS_DEBUG
@@ -687,7 +685,7 @@ FS.staticInit();
     mkdev(path, mode, dev) {
       if (typeof dev == 'undefined') {
         dev = mode;
-        mode = 438 /* 0666 */;
+        mode = 0o666;
       }
       mode |= {{{ cDefs.S_IFCHR }}};
       return FS.mknod(path, mode, dev);
@@ -995,13 +993,12 @@ FS.staticInit();
         timestamp: Math.max(atime, mtime)
       });
     },
-    open(path, flags, mode) {
+    open(path, flags, mode = 0o666) {
       if (path === "") {
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       }
       flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
       if ((flags & {{{ cDefs.O_CREAT }}})) {
-        mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
         mode = (mode & {{{ cDefs.S_IALLUGO }}}) | {{{ cDefs.S_IFREG }}};
       } else {
         mode = 0;
@@ -1367,7 +1364,7 @@ FS.staticInit();
       FS.mkdir('/proc/self/fd');
       FS.mount({
         mount() {
-          var node = FS.createNode(proc_self, 'fd', {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */, {{{ cDefs.S_IXUGO }}});
+          var node = FS.createNode(proc_self, 'fd', {{{ cDefs.S_IFDIR }}} | {{{ 0777 }}}, {{{ cDefs.S_IXUGO }}});
           node.node_ops = {
             lookup(parent, name) {
               var fd = +name;

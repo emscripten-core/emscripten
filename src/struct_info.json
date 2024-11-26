@@ -23,6 +23,12 @@
     {
         "file": "sys/stat.h",
         "defines": [
+            "S_IALLUGO",
+            "S_IWUSR",
+            "S_IWUGO",
+            "S_IRUGO",
+            "S_IRWXUGO",
+            "S_IXUGO",
             "S_IFDIR",
             "S_IFREG",
             "S_IFMT",
@@ -468,16 +474,6 @@
             "SEEK_END",
             "SEEK_CUR",
             "SEEK_SET"
-        ]
-    },
-    {
-        "file": "sys/stat.h",
-        "defines": [
-            "S_IALLUGO",
-            "S_IWUGO",
-            "S_IRUGO",
-            "S_IRWXUGO",
-            "S_IXUGO"
         ]
     },
     {

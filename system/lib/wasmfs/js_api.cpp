@@ -151,7 +151,7 @@ int _wasmfs_unlink(char* path) {
 int _wasmfs_chdir(char* path) { return __syscall_chdir((intptr_t)path); }
 
 int _wasmfs_symlink(char* old_path, char* new_path) {
-  return __syscall_symlink((intptr_t)old_path, (intptr_t)new_path);
+  return __syscall_symlinkat((intptr_t)old_path, AT_FDCWD, (intptr_t)new_path);
 }
 
 intptr_t _wasmfs_readlink(char* path) {
