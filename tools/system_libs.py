@@ -1792,6 +1792,9 @@ class libmimalloc(MTLibrary):
 
   cflags = [
     '-fno-builtin',
+    '-Wno-unused-function',
+    '-Wno-unused-but-set-variable',
+    '-Wno-unused-variable',
     '-Wno-deprecated-pragma',
     # build emmalloc as only a system allocator, without exporting itself onto
     # malloc/free in the global scope
@@ -1800,6 +1803,8 @@ class libmimalloc(MTLibrary):
     '-DMI_MALLOC_OVERRIDE',
     # TODO: add build modes that include debug checks 1,2,3
     '-DMI_DEBUG=0',
+    # disable `assert()` in the underlying emmalloc allocator
+    '-DNDEBUG',
   ]
 
   # malloc/free/calloc are runtime functions and can be generated during LTO
