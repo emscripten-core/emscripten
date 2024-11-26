@@ -895,7 +895,7 @@ FS.staticInit();
       }
 #endif
     },
-    readlink(path, opts = {}) {
+    readlink(path) {
       var lookup = FS.lookupPath(path);
       var link = lookup.node;
       if (!link) {
@@ -904,10 +904,7 @@ FS.staticInit();
       if (!link.node_ops.readlink) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
-      const target = link.node_ops.readlink(link);
-      if (opts.noResolve) {
-        return target;
-      }
+      var target = link.node_ops.readlink(link);
       return PATH_FS.resolve(FS.getPath(link.parent), target);
     },
     stat(path, dontFollow) {

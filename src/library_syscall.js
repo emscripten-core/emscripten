@@ -919,7 +919,7 @@ var SyscallsLibrary = {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
     if (bufsize <= 0) return -{{{ cDefs.EINVAL }}};
-    var ret = FS.readlink(path, {noResolve: true});
+    var ret = FS.readlink(path);
 
     var len = Math.min(bufsize, lengthBytesUTF8(ret));
     var endChar = HEAP8[buf+len];
