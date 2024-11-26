@@ -167,7 +167,7 @@ def apply_min_browser_versions():
   if settings.PTHREADS:
     enable_feature(Feature.THREADS, 'pthreads')
     enable_feature(Feature.BULK_MEMORY, 'pthreads')
-  if settings.WASM_WORKERS or settings.SHARED_MEMORY:
+  elif settings.WASM_WORKERS or settings.SHARED_MEMORY:
     enable_feature(Feature.BULK_MEMORY, 'wasm-workers')
   if settings.AUDIO_WORKLET:
     enable_feature(Feature.GLOBALTHIS, 'AUDIO_WORKLET')
