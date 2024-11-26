@@ -5785,7 +5785,6 @@ got: 10
     else:
       self.assertEqual(working_result, ['dir=/working', 'existing', 'stdout', 'test_nodefs_readdir.js', 'test_nodefs_readdir.wasm'])
 
-
   @no_windows('no symlink support on windows')
   @requires_node
   def test_fs_noderawfs_nofollow(self):
