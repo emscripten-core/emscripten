@@ -5708,7 +5708,6 @@ got: 10
 
   def test_fs_base(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
-    self.uses_es6 = True
     self.add_pre_run(read_file(test_file('filesystem/src.js')))
     src = 'int main() {return 0;}\n'
     expected = read_file(test_file('filesystem/output.txt'))
@@ -5718,10 +5717,6 @@ got: 10
   @is_slow_test
   @requires_node
   def test_fs_nodefs_rw(self):
-    # TODO(sbc): This test exposes in issue in the way we run closure compiler and
-    # causes it to generate non-ES5 output.
-    # Remove this line once we fix: https://github.com/emscripten-core/emscripten/issues/12628
-    self.uses_es6 = True
     self.emcc_args += ['-lnodefs.js']
     self.set_setting('SYSCALL_DEBUG')
     self.do_runf('fs/test_nodefs_rw.c', 'success')
@@ -5811,7 +5806,6 @@ got: 10
     'wasmfs': ['WASMFS']
   })
   def test_fs_mmap(self, fs):
-    self.uses_es6 = True
     if fs == 'NODEFS':
       self.require_node()
       self.emcc_args += ['-lnodefs.js']
@@ -5922,7 +5916,6 @@ Module.onRuntimeInitialized = () => {
     'noderawfs': (['-DNODERAWFS', '-sNODERAWFS'],)
   })
   def test_unistd_access(self, args):
-    self.uses_es6 = True
     self.emcc_args += args
     if self.get_setting('WASMFS'):
       if '-DNODEFS' in args or '-DNODERAWFS' in args:
@@ -5936,7 +5929,6 @@ Module.onRuntimeInitialized = () => {
     self.do_run_in_out_file_test('unistd/access.c')
 
   def test_unistd_curdir(self):
-    self.uses_es6 = True
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test('unistd/curdir.c')
@@ -5961,7 +5953,6 @@ Module.onRuntimeInitialized = () => {
     'nodefs': (['NODEFS'])
   })
   def test_unistd_truncate(self, fs):
-    self.uses_es6 = True
     orig_compiler_opts = self.emcc_args.copy()
     self.emcc_args = orig_compiler_opts + ['-D' + fs]
     if self.get_setting('WASMFS'):
@@ -5977,7 +5968,6 @@ Module.onRuntimeInitialized = () => {
   @unittest.skipIf(WINDOWS or os.geteuid() == 0, "Root access invalidates this test by being able to write on readonly files")
   @requires_node
   def test_unistd_truncate_noderawfs(self):
-    self.uses_es6 = True
     self.set_setting('NODERAWFS')
     self.maybe_closure()
     self.do_run_in_out_file_test('unistd/truncate.c')
@@ -7640,7 +7630,6 @@ void* operator new(size_t size) {
     'all_growth': ('ALL', True),
   })
   def test_webidl(self, mode, allow_memory_growth):
-    self.uses_es6 = True
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     if self.maybe_closure():
       # avoid closure minified names competing with our test code in the global name space
@@ -9538,7 +9527,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'no_dynamic_execution': (['-sDYNAMIC_EXECUTION=0'],)
   })
   def test_embind_lib_with_asyncify(self, args):
-    self.uses_es6 = True
     self.emcc_args += [
       '-lembind',
       '-sASYNCIFY',
@@ -9552,7 +9540,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_asan('asyncify stack operations confuse asan')
   @with_asyncify_and_jspi
   def test_em_async_js(self):
-    self.uses_es6 = True
     if not self.get_setting('ASYNCIFY'):
       self.set_setting('ASYNCIFY')
     self.set_setting('EXPORTED_RUNTIME_METHODS', 'ccall')
