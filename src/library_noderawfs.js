@@ -72,7 +72,14 @@ addToLibrary({
     readlink(...args) { return fs.readlinkSync(...args); },
     stat(...args) { return fs.statSync(...args); },
     lstat(...args) { return fs.lstatSync(...args); },
-    chmod(...args) { fs.chmodSync(...args); },
+    chmod(path, mode, dontFollow) {
+      if (dontFollow && fs.lstatSync(path).isSymbolicLink()) {
+        // Node (and indeed linux) does not support chmod on symlinks
+        // https://nodejs.org/api/fs.html#fslchmodsyncpath-mode
+        throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+      }
+      fs.chmodSync(path, mode);
+    },
     fchmod(fd, mode) {
       var stream = FS.getStreamChecked(fd);
       fs.fchmodSync(stream.nfd, mode);
