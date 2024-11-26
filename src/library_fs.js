@@ -174,14 +174,10 @@ FS.staticInit();
       path = PATH_FS.resolve(path);
 
       if (!path) return { path: '', node: null };
-
-      var defaults = {
-        follow_mount: true,
-      };
-      opts = Object.assign(defaults, opts)
+      opts.follow_mount ??= true
 
       // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
-      linkloop: for (var nlinks = 0; nlinks < 40; nlinks ++) {
+      linkloop: for (var nlinks = 0; nlinks < 40; nlinks++) {
         // split the absolute path
         var parts = path.split('/').filter((p) => !!p);
 
