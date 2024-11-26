@@ -206,6 +206,7 @@ FS.staticInit();
           if ((e?.errno === {{{ cDefs.ENOENT }}}) && islast && opts.handleBrokenLink) {
             return { path: current_path };
           }
+          throw e;
         }
 
         // jump to the mount's root node if this is a mountpoint
