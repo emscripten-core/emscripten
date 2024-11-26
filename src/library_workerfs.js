@@ -57,7 +57,7 @@ addToLibrary({
       node.mode = mode;
       node.node_ops = WORKERFS.node_ops;
       node.stream_ops = WORKERFS.stream_ops;
-      node.timestamp = (mtime || new Date).getTime();
+      node.atime = node.mtime = node.ctime = (mtime || new Date).getTime();
       assert(WORKERFS.FILE_MODE !== WORKERFS.DIR_MODE);
       if (mode === WORKERFS.FILE_MODE) {
         node.size = contents.size;
@@ -82,19 +82,18 @@ addToLibrary({
           gid: 0,
           rdev: 0,
           size: node.size,
-          atime: new Date(node.timestamp),
-          mtime: new Date(node.timestamp),
-          ctime: new Date(node.timestamp),
+          atime: new Date(node.atime),
+          mtime: new Date(node.mtime),
+          ctime: new Date(node.ctime),
           blksize: 4096,
           blocks: Math.ceil(node.size / 4096),
         };
       },
       setattr(node, attr) {
-        if (attr.mode !== undefined) {
-          node.mode = attr.mode;
-        }
-        if (attr.timestamp !== undefined) {
-          node.timestamp = attr.timestamp;
+        for (const key of ["mode", "atime", "mtime", "ctime"]) {
+          if (attr[key]) {
+            node[key] = attr[key];
+          }
         }
       },
       lookup(parent, name) {

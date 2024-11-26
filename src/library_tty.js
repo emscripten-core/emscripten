@@ -79,7 +79,7 @@ addToLibrary({
           buffer[offset+i] = result;
         }
         if (bytesRead) {
-          stream.node.timestamp = Date.now();
+          stream.node.atime = Date.now();
         }
         return bytesRead;
       },
@@ -95,7 +95,7 @@ addToLibrary({
           throw new FS.ErrnoError({{{ cDefs.EIO }}});
         }
         if (length) {
-          stream.node.timestamp = Date.now();
+          stream.node.mtime = stream.node.ctime = Date.now();
         }
         return i;
       }

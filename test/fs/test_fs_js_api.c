@@ -439,17 +439,10 @@ void test_fs_utime() {
     assert(utimeStats.st_atime == 10);
     assert(utimeStats.st_atim.tv_sec == 10);
 
-    // WasmFS correctly sets both times, but the legacy API sets both times to the max of atime and mtime
-    // and does not correctly handle nanseconds.
-#if WASMFS
     assert(utimeStats.st_atim.tv_nsec == 500000000);
     
     assert(utimeStats.st_mtime == 8);
     assert(utimeStats.st_mtim.tv_sec == 8);
-#else
-    assert(utimeStats.st_mtime == 10);
-    assert(utimeStats.st_mtim.tv_sec == 10);
-#endif
 
     remove("utimetest");
 }

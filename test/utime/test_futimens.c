@@ -105,12 +105,6 @@ void test() {
   err = futimens(fd, newtimes);
   assert(!err);
 
-#if defined(__EMSCRIPTEN__) && !defined(WASMFS) && !defined(NODERAWFS)
-  // The original emscripten FS (in JS) only supports a single timestamp so both
-  // mtime and atime will always be the same.
-  times[0].tv_sec = 42;
-  times[0].tv_nsec = 88;
-#endif
   times[1].tv_sec = 42;
   times[1].tv_nsec = 88;
   check_times(fd, times, 0);

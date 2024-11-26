@@ -95,10 +95,10 @@ addToLibrary({
       // -1 here for atime or mtime means UTIME_OMIT was passed.  Since node
       // doesn't support this concept we need to first find the existing
       // timestamps in order to preserve them.
-      if (atime == -1 || mtime == -1) {
+      if (atime === undefined || mtime === undefined) {
         var st = fs.statSync(path);
-        if (atime == -1) atime = st.atimeMs;
-        if (mtime == -1) mtime = st.mtimeMs;
+        atime ||= st.atimeMs;
+        mtime ||= st.mtimeMs;
       }
       fs.utimesSync(path, atime/1000, mtime/1000);
     },
