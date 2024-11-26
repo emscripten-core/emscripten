@@ -232,7 +232,7 @@ FS.staticInit();
 
             var lookup = FS.lookupPath(current_path, {
               recurse_count: opts.recurse_count + 1,
-              handleBrokenLink: islast && opts.handleBrokenLink
+              noent_okay: islast && opts.noent_okay
             });
             current = lookup.node;
 
