@@ -70,9 +70,22 @@ addToLibrary({
     readdir(...args) { return ['.', '..'].concat(fs.readdirSync(...args)); },
     unlink(...args) { fs.unlinkSync(...args); },
     readlink(...args) { return fs.readlinkSync(...args); },
-    stat(...args) { return fs.statSync(...args); },
-    lstat(...args) { return fs.lstatSync(...args); },
+    stat(path, dontFollow) {
+      var stat = dontFollow ? fs.lstatSync(path) : fs.statSync(path);
+      if (NODEFS.isWindows) {
+        // Windows does not report the 'x' permission bit, so propagate read
+        // bits to execute bits.
+        stat.mode |= (stat.mode & {{{ cDefs.S_IRUGO }}}) >> 2;
+      }
+      return stat;
+    },
     chmod(path, mode, dontFollow) {
+      mode &= {{{ cDefs.S_IALLUGO }}};
+      if (NODEFS.isWindows) {
+        // Windows only supports S_IREAD / S_IWRITE (S_IRUSR / S_IWUSR)
+        // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod
+        mode &= {{{ cDefs.S_IRUSR | cDefs.S_IWUSR }}};
+      }
       if (dontFollow && fs.lstatSync(path).isSymbolicLink()) {
         // Node (and indeed linux) does not support chmod on symlinks
         // https://nodejs.org/api/fs.html#fslchmodsyncpath-mode

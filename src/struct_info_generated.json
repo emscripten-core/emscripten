@@ -447,6 +447,7 @@
         "S_IRWXUGO": 511,
         "S_ISVTX": 512,
         "S_IWUGO": 146,
+        "S_IWUSR": 128,
         "S_IXUGO": 73,
         "TCFLSH": 21515,
         "TCGETA": 21509,
