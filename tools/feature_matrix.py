@@ -46,7 +46,7 @@ min_browser_versions = {
   Feature.NON_TRAPPING_FPTOINT: {
     'chrome': 75,
     'firefox': 65,
-    'safari': 140100, #TODO: Reset back to 150000 when the default changes
+    'safari': 140100, # TODO: Reset back to 150000 when the default changes
   },
   Feature.SIGN_EXT: {
     'chrome': 74,
