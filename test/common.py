@@ -2049,16 +2049,31 @@ def harness_server_func(in_queue, out_queue, port):
     # Request header handler for default do_GET() path in
     # SimpleHTTPRequestHandler.do_GET(self) below.
     def send_head(self):
+      path = self.translate_path(self.path)
+      try:
+        f = open(path, 'rb')
+        fs = os.fstat(f.fileno())
+      except IOError:
+        self.send_error(404, "File not found: " + path)
+        return None
       if self.path.endswith('.js'):
-        path = self.translate_path(self.path)
-        try:
-          f = open(path, 'rb')
-        except IOError:
-          self.send_error(404, "File not found: " + path)
-          return None
         self.send_response(200)
         self.send_header('Content-type', 'application/javascript')
         self.send_header('Connection', 'close')
+        self.send_header('Content-length', fs[6])
+        self.end_headers()
+        return f
+      elif self.headers.get("Range"):
+        self.send_response(206)
+        ctype = self.guess_type(path)
+        self.send_header('Content-Type', ctype)
+        pieces = self.headers.get("Range").split("=")[1].split("-")
+        start = int(pieces[0]) if pieces[0] != '' else 0
+        end = int(pieces[1]) if pieces[1] != '' else fs[6] - 1
+        end = min(fs[6] - 1, end)
+        length = end - start + 1
+        self.send_header('Content-Range', "bytes " + str(start) + "-" + str(end) + "/" + str(fs[6]))
+        self.send_header('Content-Length', str(length))
         self.end_headers()
         return f
       else:
@@ -2066,6 +2081,7 @@ def harness_server_func(in_queue, out_queue, port):
 
     # Add COOP, COEP, CORP, and no-caching headers
     def end_headers(self):
+      self.send_header('Accept-Ranges', 'bytes')
       self.send_header('Access-Control-Allow-Origin', '*')
       self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
       self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
@@ -2160,7 +2176,23 @@ def harness_server_func(in_queue, out_queue, port):
         # Use SimpleHTTPServer default file serving operation for GET.
         if DEBUG:
           print('[simple HTTP serving:', unquote_plus(self.path), ']')
-        SimpleHTTPRequestHandler.do_GET(self)
+        if self.headers.get("Range"):
+          self.send_response(206)
+          path = self.translate_path(self.path)
+          data = read_binary(path)
+          ctype = self.guess_type(path)
+          self.send_header('Content-type', ctype)
+          pieces = self.headers.get("range").split("=")[1].split("-")
+          start = int(pieces[0]) if pieces[0] != '' else 0
+          end = int(pieces[1]) if pieces[1] != '' else len(data) - 1
+          end = min(len(data) - 1, end)
+          length = end - start + 1
+          self.send_header('Content-Length', str(length))
+          self.send_header('Content-Range', "bytes " + str(start) + "-" + str(end) + "/" + str(len(data)))
+          self.end_headers()
+          self.wfile.write(data[start:end + 1])
+        else:
+          SimpleHTTPRequestHandler.do_GET(self)
 
     def log_request(code=0, size=0):
       # don't log; too noisy
