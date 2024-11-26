@@ -1784,6 +1784,9 @@ class libmimalloc(MTLibrary):
 
   cflags = [
     '-fno-builtin',
+    '-Wno-unused-function',
+    '-Wno-unused-but-set-variable',
+    '-Wno-unused-variable',
     '-Wno-deprecated-pragma',
     # build emmalloc as only a system allocator, without exporting itself onto
     # malloc/free in the global scope
@@ -1792,6 +1795,10 @@ class libmimalloc(MTLibrary):
     '-DMI_MALLOC_OVERRIDE',
     # TODO: add build modes that include debug checks 1,2,3
     '-DMI_DEBUG=0',
+    # disable `assert()` in the underlying emmalloc allocator
+    '-DNDEBUG',
+    # avoid use of `__builtin_thread_pointer()`
+    '-DMI_LIBC_MUSL',
   ]
 
   # malloc/free/calloc are runtime functions and can be generated during LTO
@@ -1807,7 +1814,7 @@ class libmimalloc(MTLibrary):
     path='system/lib/mimalloc/src',
     glob_pattern='*.c',
     # mimalloc includes some files at the source level, so exclude them here.
-    excludes=['alloc-override.c', 'page-queue.c', 'static.c']
+    excludes=['alloc-override.c', 'free.c', 'page-queue.c', 'static.c']
   )
   src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim.c')]
   src_files += [utils.path_from_root('system/lib/emmalloc.c')]

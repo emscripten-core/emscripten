@@ -13151,7 +13151,6 @@ exec "$@"
     self.do_run_in_out_file_test('hello_world.c', emcc_args=['-Oz'])
 
   def test_runtime_keepalive(self):
-    self.uses_es6 = True
     # Depends on Module['onExit']
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_runtime_keepalive.cpp')
@@ -13928,7 +13927,6 @@ myMethod: 43
 
     create_file('test.c', 'extern void foo(); int main() { foo(); }')
     self.emcc_args += ['--js-library', 'es6_library.js']
-    self.uses_es6 = True
 
     def check_for_es6(filename, expect):
       js = read_file(filename)
