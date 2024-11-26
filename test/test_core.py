@@ -6059,6 +6059,7 @@ Module.onRuntimeInitialized = () => {
 
     self.do_run_in_out_file_test('unistd/links.c', emcc_args=args)
 
+  @also_with_noderawfs
   def test_unistd_write_broken_link(self):
     self.do_run_in_out_file_test('unistd/write_broken_link.c')
 
