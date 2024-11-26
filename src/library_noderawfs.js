@@ -92,10 +92,10 @@ addToLibrary({
       fs.ftruncateSync(stream.nfd, len);
     },
     utime(path, atime, mtime) {
-      // -1 here for atime or mtime means UTIME_OMIT was passed.  Since node
+      // null here for atime or mtime means UTIME_OMIT was passed.  Since node
       // doesn't support this concept we need to first find the existing
       // timestamps in order to preserve them.
-      if (atime === undefined || mtime === undefined) {
+      if ((atime === null) || (mtime === null)) {
         var st = fs.statSync(path);
         atime ||= st.atimeMs;
         mtime ||= st.mtimeMs;

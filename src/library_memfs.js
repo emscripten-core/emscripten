@@ -92,7 +92,7 @@ addToLibrary({
         node.node_ops = MEMFS.ops_table.chrdev.node;
         node.stream_ops = MEMFS.ops_table.chrdev.stream;
       }
-      node.atime = node.mtime = node.ctime = Date.now();
+      node.timestamp = Date.now();
       // add the new node to the parent
       if (parent) {
         parent.contents[name] = node;

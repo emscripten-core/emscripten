@@ -980,7 +980,7 @@ var SyscallsLibrary = {
       if (nanoseconds == {{{ cDefs.UTIME_NOW }}}) {
         atime = now;
       } else if (nanoseconds == {{{ cDefs.UTIME_OMIT }}}) {
-        atime = undefined;
+        atime = null;
       } else {
         atime = (seconds*1000) + (nanoseconds/(1000*1000));
       }
@@ -990,14 +990,14 @@ var SyscallsLibrary = {
       if (nanoseconds == {{{ cDefs.UTIME_NOW }}}) {
         mtime = now;
       } else if (nanoseconds == {{{ cDefs.UTIME_OMIT }}}) {
-        mtime = undefined;
+        mtime = null;
       } else {
         mtime = (seconds*1000) + (nanoseconds/(1000*1000));
       }
     }
-    // undefined here means UTIME_OMIT was passed. If both were set to UTIME_OMIT then
+    // null here means UTIME_OMIT was passed. If both were set to UTIME_OMIT then
     // we can skip the call completely.
-    if (mtime !== undefined || atime !== undefined) {
+    if ((mtime ?? atime) !== null) {
       FS.utime(path, atime, mtime);
     }
     return 0;
