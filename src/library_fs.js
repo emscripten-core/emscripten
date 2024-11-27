@@ -376,6 +376,9 @@ FS.staticInit();
         var node = FS.lookupNode(dir, name);
         return {{{ cDefs.EEXIST }}};
       } catch (e) {
+        if (e.errno === {{{ cDefs.ENOTDIR }}}) {
+          return {{{ cDefs.ENOTDIR }}};
+        }
       }
       return FS.nodePermissions(dir, 'wx');
     },
