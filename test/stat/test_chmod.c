@@ -32,9 +32,6 @@ void setup() {
   create_file("file", "abcdef", 0777);
   create_file("otherfile", "abcdef", 0777);
   symlink("file", "file-link");
-  // some platforms use 777, some use 755 by default for symlinks
-  // make sure we're using 777 for the test
-  lchmod("file-link", 0777);
   mkdir("folder", 0777);
 }
 
@@ -113,6 +110,10 @@ void test() {
   assert(s.st_ctime != lastctime);
 
 #ifndef WASMFS // TODO https://github.com/emscripten-core/emscripten/issues/15948
+  lstat("file-link", &s);
+  int link_mode = s.st_mode;
+  assert((link_mode & 0777) != S_IRUSR);
+
   //
   // chmod a symlink's target
   //
@@ -125,7 +126,7 @@ void test() {
 
   // but the link didn't
   lstat("file-link", &s);
-  assert(s.st_mode == (0777 | S_IFLNK));
+  assert(s.st_mode == link_mode);
 
   //
   // chmod the actual symlink
