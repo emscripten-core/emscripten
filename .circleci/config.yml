@@ -737,7 +737,6 @@ jobs:
     environment:
       LANG: "C.UTF-8"
       EMTEST_SKIP_V8: "1"
-      EMCC_CFLAGS: "-sMIN_NODE_VERSION=101900"
     steps:
       - checkout
       - run:
