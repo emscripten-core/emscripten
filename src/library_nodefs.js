@@ -76,15 +76,14 @@ addToLibrary({
       return node;
     },
     getMode(path) {
-      var stat;
       return NODEFS.tryFSOperation(() => {
-        stat = fs.lstatSync(path);
+        var mode = fs.lstatSync(path).mode;
         if (NODEFS.isWindows) {
-          // Node.js on Windows never represents permission bit 'x', so
-          // propagate read bits to execute bits
-          stat.mode |= (stat.mode & {{{ cDefs.S_IRUSR | cDefs.S_IRGRP | cDefs.S_IROTH }}}) >> 2;
+          // Windows does not report the 'x' permission bit, so propagate read
+          // bits to execute bits.
+          mode |= (mode & {{{ cDefs.S_IRUGO }}}) >> 2;
         }
-        return stat.mode;
+        return mode;
       });
     },
     realPath(node) {
@@ -133,9 +132,9 @@ addToLibrary({
           if (!stat.blocks) {
             stat.blocks = (stat.size+stat.blksize-1)/stat.blksize|0;
           }
-          // Node.js on Windows never represents permission bit 'x', so
-          // propagate read bits to execute bits.
-          stat.mode |= (stat.mode & {{{ cDefs.S_IRUSR | cDefs.S_IRGRP | cDefs.S_IROTH }}}) >> 2;
+          // Windows does not report the 'x' permission bit, so propagate read
+          // bits to execute bits.
+          stat.mode |= (stat.mode & {{{ cDefs.S_IRUGO }}}) >> 2;
         }
         return {
           dev: stat.dev,
@@ -157,7 +156,13 @@ addToLibrary({
         var path = NODEFS.realPath(node);
         NODEFS.tryFSOperation(() => {
           if (attr.mode !== undefined) {
-            fs.chmodSync(path, attr.mode);
+            var mode = attr.mode;
+            if (NODEFS.isWindows) {
+              // Windows only supports S_IREAD / S_IWRITE (S_IRUSR / S_IWUSR)
+              // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod
+              mode &= {{{ cDefs.S_IRUSR | cDefs.S_IWUSR }}};
+            }
+            fs.chmodSync(path, mode);
             // update the common node structure mode as well
             node.mode = attr.mode;
           }

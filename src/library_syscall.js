@@ -300,12 +300,6 @@ var SyscallsLibrary = {
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
-  __syscall_symlink: (target, linkpath) => {
-    target = SYSCALLS.getStr(target);
-    linkpath = SYSCALLS.getStr(linkpath);
-    FS.symlink(target, linkpath);
-    return 0;
-  },
   __syscall_fchmod: (fd, mode) => {
     FS.fchmod(fd, mode);
     return 0;
@@ -830,9 +824,6 @@ var SyscallsLibrary = {
     return FS.open(path, flags, mode).fd;
   },
   __syscall_mkdirat: (dirfd, path, mode) => {
-#if SYSCALL_DEBUG
-    dbg('warning: untested syscall');
-#endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
     // remove a trailing slash, if one - /a/b/ has basename of '', but
@@ -843,9 +834,6 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_mknodat: (dirfd, path, mode, dev) => {
-#if SYSCALL_DEBUG
-    dbg('warning: untested syscall');
-#endif
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
     // we don't want this in the JS API as it uses mknod to create all nodes.
@@ -862,9 +850,6 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_fchownat: (dirfd, path, owner, group, flags) => {
-#if SYSCALL_DEBUG
-    dbg('warning: untested syscall');
-#endif
     path = SYSCALLS.getStr(path);
     var nofollow = flags & {{{ cDefs.AT_SYMLINK_NOFOLLOW }}};
     flags = flags & (~{{{ cDefs.AT_SYMLINK_NOFOLLOW }}});
@@ -906,11 +891,10 @@ var SyscallsLibrary = {
     FS.rename(oldpath, newpath);
     return 0;
   },
-  __syscall_symlinkat: (target, newdirfd, linkpath) => {
-#if SYSCALL_DEBUG
-    dbg('warning: untested syscall');
-#endif
-    linkpath = SYSCALLS.calculateAt(newdirfd, linkpath);
+  __syscall_symlinkat: (target, dirfd, linkpath) => {
+    target = SYSCALLS.getStr(target);
+    linkpath = SYSCALLS.getStr(linkpath);
+    linkpath = SYSCALLS.calculateAt(dirfd, linkpath);
     FS.symlink(target, linkpath);
     return 0;
   },
@@ -937,9 +921,6 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_faccessat: (dirfd, path, amode, flags) => {
-#if SYSCALL_DEBUG
-    dbg('warning: untested syscall');
-#endif
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
     assert(flags === 0 || flags == {{{ cDefs.AT_EACCESS }}});

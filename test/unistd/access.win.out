@@ -1,11 +1,11 @@
 F_OK('readable'): OK
 R_OK('readable'): OK
-X_OK('readable'): Permission denied
+X_OK('readable'): OK
 W_OK('readable'): Permission denied
 
 F_OK('writeable'): OK
-R_OK('writeable'): Permission denied
-X_OK('writeable'): Permission denied
+R_OK('writeable'): OK
+X_OK('writeable'): OK
 W_OK('writeable'): OK
 
 F_OK('allaccess'): OK
@@ -14,8 +14,8 @@ X_OK('allaccess'): OK
 W_OK('allaccess'): OK
 
 F_OK('forbidden'): OK
-R_OK('forbidden'): Permission denied
-X_OK('forbidden'): Permission denied
+R_OK('forbidden'): OK
+X_OK('forbidden'): OK
 W_OK('forbidden'): Permission denied
 
 F_OK('nonexistent'): No such file or directory

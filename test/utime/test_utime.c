@@ -22,11 +22,6 @@ void setup() {
   mkdir("unwriteable", 0111);
 }
 
-void cleanup() {
-  rmdir("writeable");
-  rmdir("unwriteable");
-}
-
 void test() {
   struct stat s;
   // currently, the most recent timestamp is shared for atime,
@@ -73,9 +68,7 @@ void test() {
 }
 
 int main() {
-  atexit(cleanup);
-  signal(SIGABRT, cleanup);
   setup();
   test();
-  return EXIT_SUCCESS;
+  return 0;
 }

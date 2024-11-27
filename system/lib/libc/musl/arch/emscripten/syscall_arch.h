@@ -31,7 +31,6 @@ int __syscall_getpgrp(void);
 int __syscall_setsid(void);
 int __syscall_setrlimit(int resource, intptr_t limit);
 int __syscall_getrusage(int who, intptr_t usage);
-int __syscall_symlink(intptr_t target, intptr_t linkpath);
 int __syscall_munmap(intptr_t addr, size_t len);
 int __syscall_fchmod(int fd, int mode);
 int __syscall_getpriority(int which, int who);

@@ -50,7 +50,7 @@ void test() {
   int lastctime;
   int lastmtime;
   struct stat s;
-  
+
   //
   // chmod a file
   //
@@ -62,12 +62,12 @@ void test() {
   sleep(1);
 
   // do the actual chmod
-  err = chmod("file", 0200);
+  err = chmod("file", S_IWUSR);
   assert(!err);
 
   memset(&s, 0, sizeof s);
   stat("file", &s);
-  assert(s.st_mode == (0200 | S_IFREG));
+  assert(s.st_mode == (S_IWUSR | S_IFREG));
   assert(s.st_ctime != lastctime);
   assert(s.st_mtime == lastmtime);
 
@@ -78,15 +78,14 @@ void test() {
   lastmtime = s.st_mtime;
   sleep(1);
 
-  err = fchmod(open("file", O_WRONLY), 0100);
+  err = fchmod(open("file", O_WRONLY), S_IXUSR);
   assert(!err);
 
   memset(&s, 0, sizeof s);
   stat("file", &s);
-  assert(s.st_mode == (0100 | S_IFREG));
+  assert(s.st_mode == (S_IXUSR | S_IFREG));
   assert(s.st_ctime != lastctime);
   assert(s.st_mtime == lastmtime);
-
 
   //
   // fchmodat a file
@@ -94,12 +93,12 @@ void test() {
   lastctime = s.st_ctime;
   lastmtime = s.st_mtime;
   sleep(1);
-  err = fchmodat(AT_FDCWD, "otherfile", 0100, 0);
+  err = fchmodat(AT_FDCWD, "otherfile", S_IXUSR, 0);
   assert(!err);
 
   memset(&s, 0, sizeof s);
   stat("otherfile", &s);
-  assert(s.st_mode == (0100 | S_IFREG));
+  assert(s.st_mode == (S_IXUSR | S_IFREG));
   assert(s.st_ctime != lastctime);
   assert(s.st_mtime == lastmtime);
 
@@ -114,11 +113,11 @@ void test() {
   sleep(1);
 
   // do the actual chmod
-  err = chmod("folder", 0300);
+  err = chmod("folder", S_IWUSR | S_IXUSR);
   assert(!err);
   memset(&s, 0, sizeof s);
   stat("folder", &s);
-  assert(s.st_mode == (0300 | S_IFDIR));
+  assert(s.st_mode == (S_IWUSR | S_IXUSR | S_IFDIR));
   assert(s.st_ctime != lastctime);
   assert(s.st_mtime == lastmtime);
 
@@ -126,12 +125,12 @@ void test() {
   //
   // chmod a symlink's target
   //
-  err = chmod("file-link", 0400);
+  err = chmod("file-link", S_IRUSR);
   assert(!err);
 
   // make sure the file it references changed
   stat("file-link", &s);
-  assert(s.st_mode == (0400 | S_IFREG));
+  assert(s.st_mode == (S_IRUSR | S_IFREG));
 
   // but the link didn't
   lstat("file-link", &s);
@@ -140,20 +139,20 @@ void test() {
   //
   // chmod the actual symlink
   //
-  err = lchmod("file-link", 0500);
-  assert(!err);
+  err = lchmod("file-link", S_IRUSR | S_IXUSR);
+  // On linux lchmod is not supported so allow that here.
+  assert(!err || errno == ENOTSUP);
+  printf("lchmod -> %s\n", strerror(errno));
 
   // make sure the file it references didn't change
   stat("file-link", &s);
-  assert(s.st_mode == (0400 | S_IFREG));
+  assert(s.st_mode == (S_IRUSR | S_IFREG));
 #endif // WASMFS
 
   puts("success");
 }
 
 int main() {
-  atexit(cleanup);
-  signal(SIGABRT, cleanup);
   setup();
   test();
   return EXIT_SUCCESS;
