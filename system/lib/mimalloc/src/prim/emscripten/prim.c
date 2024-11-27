@@ -71,8 +71,8 @@ int _mi_prim_free(void* addr, size_t size) {
 extern void* emmalloc_memalign(size_t alignment, size_t size);
 
 // Note: the `try_alignment` is just a hint and the returned pointer is not guaranteed to be aligned.
-int _mi_prim_alloc(size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, void** addr) {
-  MI_UNUSED(allow_large); MI_UNUSED(commit);
+int _mi_prim_alloc(void* hint_addr, size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, void** addr) {
+  MI_UNUSED(try_alignment); MI_UNUSED(allow_large); MI_UNUSED(commit); MI_UNUSED(hint_addr);
   *is_large = false;
   // TODO: Track the highest address ever seen; first uses of it are zeroes.
   //       That assumes no one else uses sbrk but us (they could go up,
@@ -83,8 +83,12 @@ int _mi_prim_alloc(size_t size, size_t try_alignment, bool commit, bool allow_la
   if (try_alignment < MIN_EMMALLOC_ALIGN) {
     try_alignment = MIN_EMMALLOC_ALIGN;
   }
-  *addr = emmalloc_memalign(try_alignment, size);
-  return (*addr != NULL ? 0 : ENOMEM);
+  void* p = emmalloc_memalign(try_alignment, size);
+  *addr = p;
+  if (p == 0) {
+    return ENOMEM;
+  }
+  return 0;
 }
 
 
@@ -165,7 +169,7 @@ void _mi_prim_process_info(mi_process_info_t* pinfo)
 #include <emscripten/console.h>
 
 void _mi_prim_out_stderr( const char* msg) {
-  emscripten_err(msg);
+  emscripten_console_error(msg);
 }
 
 
@@ -196,7 +200,7 @@ bool _mi_prim_random_buf(void* buf, size_t buf_len) {
 // Thread init/done
 //----------------------------------------------------------------
 
-#ifdef __EMSCRIPTEN_SHARED_MEMORY__
+#if defined(MI_USE_PTHREADS)
 
 // use pthread local storage keys to detect thread ending
 // (and used with MI_TLS_PTHREADS for the default heap)
@@ -214,9 +218,7 @@ void _mi_prim_thread_init_auto_done(void) {
 }
 
 void _mi_prim_thread_done_auto_done(void) {
-  if (_mi_heap_default_key != (pthread_key_t)(-1)) {  // do not leak the key, see issue #809
-    pthread_key_delete(_mi_heap_default_key);
-  }
+  // nothing to do
 }
 
 void _mi_prim_thread_associate_default_heap(mi_heap_t* heap) {

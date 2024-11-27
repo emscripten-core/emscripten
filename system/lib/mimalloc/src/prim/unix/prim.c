@@ -22,7 +22,6 @@ terms of the MIT license. A copy of the license can be found in the file
 
 #include "mimalloc.h"
 #include "mimalloc/internal.h"
-#include "mimalloc/atomic.h"
 #include "mimalloc/prim.h"
 
 #include <sys/mman.h>  // mmap
@@ -31,9 +30,9 @@ terms of the MIT license. A copy of the license can be found in the file
 
 #if defined(__linux__)
   #include <features.h>
-  #if defined(MI_NO_THP)
-  #include <sys/prctl.h>
-  #endif
+  //#if defined(MI_NO_THP)
+  #include <sys/prctl.h>  // THP disable
+  //#endif
   #if defined(__GLIBC__)
   #include <linux/mman.h> // linux mmap flags
   #else
@@ -140,6 +139,12 @@ void _mi_prim_mem_init( mi_os_mem_config_t* config )
   if (psize > 0) {
     config->page_size = (size_t)psize;
     config->alloc_granularity = (size_t)psize;
+    #if defined(_SC_PHYS_PAGES)
+    long pphys = sysconf(_SC_PHYS_PAGES);
+    if (pphys > 0 && (size_t)pphys < (SIZE_MAX/(size_t)psize)) {
+      config->physical_memory = (size_t)pphys * (size_t)psize;
+    }
+    #endif
   }
   config->large_page_size = 2*MI_MiB; // TODO: can we query the OS for this?
   config->has_overcommit = unix_detect_overcommit();
@@ -182,10 +187,11 @@ int _mi_prim_free(void* addr, size_t size ) {
 
 static int unix_madvise(void* addr, size_t size, int advice) {
   #if defined(__sun)
-  return madvise((caddr_t)addr, size, advice);  // Solaris needs cast (issue #520)
+  int res = madvise((caddr_t)addr, size, advice);  // Solaris needs cast (issue #520)
   #else
-  return madvise(addr, size, advice);
+  int res = madvise(addr, size, advice);
   #endif
+  return (res==0 ? 0 : errno);
 }
 
 static void* unix_mmap_prim(void* addr, size_t size, size_t try_alignment, int protect_flags, int flags, int fd) {
@@ -332,7 +338,7 @@ static void* unix_mmap(void* addr, size_t size, size_t try_alignment, int protec
       // when large OS pages are enabled for mimalloc, we call `madvise` anyways.
       if (allow_large && _mi_os_use_large_page(size, try_alignment)) {
         if (unix_madvise(p, size, MADV_HUGEPAGE) == 0) {
-          *is_large = true; // possibly
+          // *is_large = true; // possibly
         };
       }
       #elif defined(__sun)
@@ -341,7 +347,7 @@ static void* unix_mmap(void* addr, size_t size, size_t try_alignment, int protec
         cmd.mha_pagesize = _mi_os_large_page_size();
         cmd.mha_cmd = MHA_MAPSIZE_VA;
         if (memcntl((caddr_t)p, size, MC_HAT_ADVISE, (caddr_t)&cmd, 0, 0) == 0) {
-          *is_large = true;
+          // *is_large = true; // possibly
         }
       }
       #endif
@@ -351,14 +357,14 @@ static void* unix_mmap(void* addr, size_t size, size_t try_alignment, int protec
 }
 
 // Note: the `try_alignment` is just a hint and the returned pointer is not guaranteed to be aligned.
-int _mi_prim_alloc(size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, void** addr) {
+int _mi_prim_alloc(void* hint_addr, size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, void** addr) {
   mi_assert_internal(size > 0 && (size % _mi_os_page_size()) == 0);
   mi_assert_internal(commit || !allow_large);
   mi_assert_internal(try_alignment > 0);
 
   *is_zero = true;
   int protect_flags = (commit ? (PROT_WRITE | PROT_READ) : PROT_NONE);
-  *addr = unix_mmap(NULL, size, try_alignment, protect_flags, false, allow_large, is_large);
+  *addr = unix_mmap(hint_addr, size, try_alignment, protect_flags, false, allow_large, is_large);
   return (*addr != NULL ? 0 : errno);
 }
 
@@ -378,6 +384,10 @@ static void unix_mprotect_hint(int err) {
   MI_UNUSED(err);
   #endif
 }
+
+
+
+
 
 int _mi_prim_commit(void* start, size_t size, bool* is_zero) {
   // commit: ensure we can access the area

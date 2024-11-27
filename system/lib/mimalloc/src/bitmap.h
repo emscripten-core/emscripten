@@ -35,14 +35,13 @@ typedef mi_bitmap_field_t*  mi_bitmap_t;
 typedef size_t mi_bitmap_index_t;
 
 // Create a bit index.
-static inline mi_bitmap_index_t mi_bitmap_index_create(size_t idx, size_t bitidx) {
-  mi_assert_internal(bitidx < MI_BITMAP_FIELD_BITS);
+static inline mi_bitmap_index_t mi_bitmap_index_create_ex(size_t idx, size_t bitidx) {
+  mi_assert_internal(bitidx <= MI_BITMAP_FIELD_BITS);
   return (idx*MI_BITMAP_FIELD_BITS) + bitidx;
 }
-
-// Create a bit index.
-static inline mi_bitmap_index_t mi_bitmap_index_create_from_bit(size_t full_bitidx) {  
-  return mi_bitmap_index_create(full_bitidx / MI_BITMAP_FIELD_BITS, full_bitidx % MI_BITMAP_FIELD_BITS);
+static inline mi_bitmap_index_t mi_bitmap_index_create(size_t idx, size_t bitidx) {
+  mi_assert_internal(bitidx < MI_BITMAP_FIELD_BITS);
+  return mi_bitmap_index_create_ex(idx,bitidx);
 }
 
 // Get the field index from a bit index.
@@ -71,10 +70,6 @@ bool _mi_bitmap_try_find_claim_field(mi_bitmap_t bitmap, size_t idx, const size_
 // Starts at idx, and wraps around to search in all `bitmap_fields` fields.
 // For now, `count` can be at most MI_BITMAP_FIELD_BITS and will never cross fields.
 bool _mi_bitmap_try_find_from_claim(mi_bitmap_t bitmap, const size_t bitmap_fields, const size_t start_field_idx, const size_t count, mi_bitmap_index_t* bitmap_idx);
-
-// Like _mi_bitmap_try_find_from_claim but with an extra predicate that must be fullfilled
-typedef bool (mi_cdecl *mi_bitmap_pred_fun_t)(mi_bitmap_index_t bitmap_idx, void* pred_arg);
-bool _mi_bitmap_try_find_from_claim_pred(mi_bitmap_t bitmap, const size_t bitmap_fields, const size_t start_field_idx, const size_t count, mi_bitmap_pred_fun_t pred_fun, void* pred_arg, mi_bitmap_index_t* bitmap_idx);
 
 // Set `count` bits at `bitmap_idx` to 0 atomically
 // Returns `true` if all `count` bits were 1 previously.

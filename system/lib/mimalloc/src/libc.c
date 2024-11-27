@@ -130,7 +130,7 @@ static void mi_out_alignright(char fill, char* start, size_t len, size_t extra, 
 }
 
 
-static void mi_out_num(uintptr_t x, size_t base, char prefix, char** out, char* end) 
+static void mi_out_num(uintmax_t x, size_t base, char prefix, char** out, char* end) 
 {
   if (x == 0 || base == 0 || base > 16) {
     if (prefix != 0) { mi_outc(prefix, out, end); }
@@ -206,12 +206,13 @@ void _mi_vsnprintf(char* buf, size_t bufsize, const char* fmt, va_list args) {
       }
       else if (c == 'p' || c == 'x' || c == 'u') {
         // unsigned
-        uintptr_t x = 0;
+        uintmax_t x = 0;
         if (c == 'x' || c == 'u') {
           if (numtype == 'z')       x = va_arg(args, size_t);
           else if (numtype == 't')  x = va_arg(args, uintptr_t); // unsigned ptrdiff_t
-          else if (numtype == 'L')  x = (uintptr_t)va_arg(args, unsigned long long);
-                               else x = va_arg(args, unsigned long);
+          else if (numtype == 'L')  x = va_arg(args, unsigned long long);
+          else if (numtype == 'l')  x = va_arg(args, unsigned long);
+                               else x = va_arg(args, unsigned int);
         }
         else if (c == 'p') {
           x = va_arg(args, uintptr_t);
@@ -228,20 +229,21 @@ void _mi_vsnprintf(char* buf, size_t bufsize, const char* fmt, va_list args) {
       }
       else if (c == 'i' || c == 'd') {
         // signed
-        intptr_t x = 0;
+        intmax_t x = 0;
         if (numtype == 'z')       x = va_arg(args, intptr_t );
         else if (numtype == 't')  x = va_arg(args, ptrdiff_t);
-        else if (numtype == 'L')  x = (intptr_t)va_arg(args, long long);
-                             else x = va_arg(args, long);
+        else if (numtype == 'L')  x = va_arg(args, long long);
+        else if (numtype == 'l')  x = va_arg(args, long);
+                             else x = va_arg(args, int);
         char pre = 0;
         if (x < 0) {
           pre = '-';
-          if (x > INTPTR_MIN) { x = -x; }
+          if (x > INTMAX_MIN) { x = -x; }
         }
         else if (numplus != 0) {
           pre = numplus;
         }
-        mi_out_num((uintptr_t)x, 10, pre, &out, end);
+        mi_out_num((uintmax_t)x, 10, pre, &out, end);
       }
       else if (c >= ' ' && c <= '~') {
         // unknown format

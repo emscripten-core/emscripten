@@ -28,20 +28,25 @@ terms of the MIT license. A copy of the license can be found in the file
 // Fast allocation in a page: just pop from the free list.
 // Fall back to generic allocation only if the list is empty.
 // Note: in release mode the (inlined) routine is about 7 instructions with a single test.
-extern inline void* _mi_page_malloc_zero(mi_heap_t* heap, mi_page_t* page, size_t size, bool zero) mi_attr_noexcept 
+extern inline void* _mi_page_malloc_zero(mi_heap_t* heap, mi_page_t* page, size_t size, bool zero) mi_attr_noexcept
 {
   mi_assert_internal(page->block_size == 0 /* empty heap */ || mi_page_block_size(page) >= size);
+
+  // check the free list
   mi_block_t* const block = page->free;
   if mi_unlikely(block == NULL) {
     return _mi_malloc_generic(heap, size, zero, 0);
   }
   mi_assert_internal(block != NULL && _mi_ptr_page(block) == page);
+
   // pop from the free list
   page->free = mi_block_next(page, block);
   page->used++;
   mi_assert_internal(page->free == NULL || _mi_ptr_page(page->free) == page);
+  mi_assert_internal(page->block_size < MI_MAX_ALIGN_SIZE || _mi_is_aligned(block, MI_MAX_ALIGN_SIZE));
+
   #if MI_DEBUG>3
-  if (page->free_is_zero) {
+  if (page->free_is_zero && size > sizeof(*block)) {
     mi_assert_expensive(mi_mem_is_zero(block+1,size - sizeof(*block)));
   }
   #endif
@@ -54,7 +59,10 @@ extern inline void* _mi_page_malloc_zero(mi_heap_t* heap, mi_page_t* page, size_
   // zero the block? note: we need to zero the full block size (issue #63)
   if mi_unlikely(zero) {
     mi_assert_internal(page->block_size != 0); // do not call with zero'ing for huge blocks (see _mi_malloc_generic)
+    mi_assert_internal(!mi_page_is_huge(page));
+    #if MI_PADDING
     mi_assert_internal(page->block_size >= MI_PADDING_SIZE);
+    #endif
     if (page->free_is_zero) {
       block->next = 0;
       mi_track_mem_defined(block, page->block_size - MI_PADDING_SIZE);
@@ -74,7 +82,7 @@ extern inline void* _mi_page_malloc_zero(mi_heap_t* heap, mi_page_t* page, size_
 
   #if (MI_STAT>0)
   const size_t bsize = mi_page_usable_block_size(page);
-  if (bsize <= MI_MEDIUM_OBJ_SIZE_MAX) {
+  if (bsize <= MI_LARGE_OBJ_SIZE_MAX) {
     mi_heap_stat_increase(heap, normal, bsize);
     mi_heap_stat_counter_increase(heap, normal_count, 1);
     #if (MI_STAT>1)
@@ -91,7 +99,7 @@ extern inline void* _mi_page_malloc_zero(mi_heap_t* heap, mi_page_t* page, size_
     mi_assert_internal(delta >= 0 && mi_page_usable_block_size(page) >= (size - MI_PADDING_SIZE + delta));
     #endif
     mi_track_mem_defined(padding,sizeof(mi_padding_t));  // note: re-enable since mi_page_usable_block_size may set noaccess
-    padding->canary = (uint32_t)(mi_ptr_encode(page,block,page->keys));
+    padding->canary = mi_ptr_encode_canary(page,block,page->keys);
     padding->delta  = (uint32_t)(delta);
     #if MI_PADDING_CHECK
     if (!mi_page_is_huge(page)) {
@@ -113,19 +121,29 @@ extern void* _mi_page_malloc_zeroed(mi_heap_t* heap, mi_page_t* page, size_t siz
   return _mi_page_malloc_zero(heap,page,size,true);
 }
 
+#if MI_GUARDED
+mi_decl_restrict void* _mi_heap_malloc_guarded(mi_heap_t* heap, size_t size, bool zero) mi_attr_noexcept;
+#endif
+
 static inline mi_decl_restrict void* mi_heap_malloc_small_zero(mi_heap_t* heap, size_t size, bool zero) mi_attr_noexcept {
   mi_assert(heap != NULL);
+  mi_assert(size <= MI_SMALL_SIZE_MAX);
   #if MI_DEBUG
   const uintptr_t tid = _mi_thread_id();
   mi_assert(heap->thread_id == 0 || heap->thread_id == tid); // heaps are thread local
   #endif
-  mi_assert(size <= MI_SMALL_SIZE_MAX);
-  #if (MI_PADDING)
+  #if (MI_PADDING || MI_GUARDED)
   if (size == 0) { size = sizeof(void*); }
   #endif
+  #if MI_GUARDED
+  if (mi_heap_malloc_use_guarded(heap,size)) {
+    return _mi_heap_malloc_guarded(heap, size, zero);
+  }
+  #endif
 
+  // get page in constant time, and allocate from it
   mi_page_t* page = _mi_heap_get_free_small_page(heap, size + MI_PADDING_SIZE);
-  void* const p = _mi_page_malloc_zero(heap, page, size + MI_PADDING_SIZE, zero);  
+  void* const p = _mi_page_malloc_zero(heap, page, size + MI_PADDING_SIZE, zero);
   mi_track_malloc(p,size,zero);
 
   #if MI_STAT>1
@@ -153,15 +171,23 @@ mi_decl_nodiscard extern inline mi_decl_restrict void* mi_malloc_small(size_t si
 
 // The main allocation function
 extern inline void* _mi_heap_malloc_zero_ex(mi_heap_t* heap, size_t size, bool zero, size_t huge_alignment) mi_attr_noexcept {
+  // fast path for small objects
   if mi_likely(size <= MI_SMALL_SIZE_MAX) {
     mi_assert_internal(huge_alignment == 0);
     return mi_heap_malloc_small_zero(heap, size, zero);
   }
+  #if MI_GUARDED
+  else if (huge_alignment==0 && mi_heap_malloc_use_guarded(heap,size)) {
+    return _mi_heap_malloc_guarded(heap, size, zero);
+  }
+  #endif
   else {
+    // regular allocation
     mi_assert(heap!=NULL);
     mi_assert(heap->thread_id == 0 || heap->thread_id == _mi_thread_id());   // heaps are thread local
     void* const p = _mi_malloc_generic(heap, size + MI_PADDING_SIZE, zero, huge_alignment);  // note: size can overflow but it is detected in malloc_generic
     mi_track_malloc(p,size,zero);
+
     #if MI_STAT>1
     if (p != NULL) {
       if (!mi_heap_is_initialized(heap)) { heap = mi_prim_get_default_heap(); }
@@ -362,7 +388,7 @@ mi_decl_nodiscard mi_decl_restrict char* mi_strndup(const char* s, size_t n) mi_
 #ifndef PATH_MAX
 #define PATH_MAX MAX_PATH
 #endif
-#include <windows.h>
+
 mi_decl_nodiscard mi_decl_restrict char* mi_heap_realpath(mi_heap_t* heap, const char* fname, char* resolved_name) mi_attr_noexcept {
   // todo: use GetFullPathNameW to allow longer file names
   char buf[PATH_MAX];
@@ -530,7 +556,7 @@ mi_decl_nodiscard mi_decl_restrict void* mi_heap_alloc_new_n(mi_heap_t* heap, si
 }
 
 mi_decl_nodiscard mi_decl_restrict void* mi_new_n(size_t count, size_t size) {
-  return mi_heap_alloc_new_n(mi_prim_get_default_heap(), size, count);
+  return mi_heap_alloc_new_n(mi_prim_get_default_heap(), count, size);
 }
 
 
@@ -577,6 +603,82 @@ mi_decl_nodiscard void* mi_new_reallocn(void* p, size_t newcount, size_t size) {
   }
 }
 
+#if MI_GUARDED
+// We always allocate a guarded allocation at an offset (`mi_page_has_aligned` will be true).
+// We then set the first word of the block to `0` for regular offset aligned allocations (in `alloc-aligned.c`)
+// and the first word to `~0` for guarded allocations to have a correct `mi_usable_size`
+
+static void* mi_block_ptr_set_guarded(mi_block_t* block, size_t obj_size) {
+  // TODO: we can still make padding work by moving it out of the guard page area
+  mi_page_t* const page = _mi_ptr_page(block);
+  mi_page_set_has_aligned(page, true);
+  block->next = MI_BLOCK_TAG_GUARDED;
+
+  // set guard page at the end of the block
+  mi_segment_t* const segment = _mi_page_segment(page);
+  const size_t block_size = mi_page_block_size(page);  // must use `block_size` to match `mi_free_local`
+  const size_t os_page_size = _mi_os_page_size();
+  mi_assert_internal(block_size >= obj_size + os_page_size + sizeof(mi_block_t));
+  if (block_size < obj_size + os_page_size + sizeof(mi_block_t)) {
+    // should never happen
+    mi_free(block);
+    return NULL;
+  }
+  uint8_t* guard_page = (uint8_t*)block + block_size - os_page_size;
+  mi_assert_internal(_mi_is_aligned(guard_page, os_page_size));
+  if (segment->allow_decommit && _mi_is_aligned(guard_page, os_page_size)) {
+    _mi_os_protect(guard_page, os_page_size);
+  }
+  else {
+    _mi_warning_message("unable to set a guard page behind an object due to pinned memory (large OS pages?) (object %p of size %zu)\n", block, block_size);
+  }
+
+  // align pointer just in front of the guard page
+  size_t offset = block_size - os_page_size - obj_size;
+  mi_assert_internal(offset > sizeof(mi_block_t));
+  if (offset > MI_BLOCK_ALIGNMENT_MAX) {
+    // give up to place it right in front of the guard page if the offset is too large for unalignment
+    offset = MI_BLOCK_ALIGNMENT_MAX;
+  }
+  void* p = (uint8_t*)block + offset;  
+  mi_track_align(block, p, offset, obj_size);
+  mi_track_mem_defined(block, sizeof(mi_block_t));
+  return p;
+}
+
+mi_decl_restrict void* _mi_heap_malloc_guarded(mi_heap_t* heap, size_t size, bool zero) mi_attr_noexcept
+{
+  #if defined(MI_PADDING_SIZE)
+  mi_assert(MI_PADDING_SIZE==0);
+  #endif
+  // allocate multiple of page size ending in a guard page
+  // ensure minimal alignment requirement?
+  const size_t os_page_size = _mi_os_page_size();
+  const size_t obj_size = (mi_option_is_enabled(mi_option_guarded_precise) ? size : _mi_align_up(size, MI_MAX_ALIGN_SIZE));
+  const size_t bsize    = _mi_align_up(_mi_align_up(obj_size, MI_MAX_ALIGN_SIZE) + sizeof(mi_block_t), MI_MAX_ALIGN_SIZE);
+  const size_t req_size = _mi_align_up(bsize + os_page_size, os_page_size);
+  mi_block_t* const block = (mi_block_t*)_mi_malloc_generic(heap, req_size, zero, 0 /* huge_alignment */);
+  if (block==NULL) return NULL;
+  void* const p   = mi_block_ptr_set_guarded(block, obj_size);
+
+  // stats
+  mi_track_malloc(p, size, zero);  
+  if (p != NULL) {
+    if (!mi_heap_is_initialized(heap)) { heap = mi_prim_get_default_heap(); }
+    #if MI_STAT>1
+    mi_heap_stat_increase(heap, malloc, mi_usable_size(p));
+    #endif
+    _mi_stat_counter_increase(&heap->tld->stats.guarded_alloc_count, 1);
+  }
+  #if MI_DEBUG>3
+  if (p != NULL && zero) {
+    mi_assert_expensive(mi_mem_is_zero(p, size));
+  }
+  #endif
+  return p;
+}
+#endif
+
 // ------------------------------------------------------
 // ensure explicit external inline definitions are emitted!
 // ------------------------------------------------------
@@ -584,6 +686,7 @@ mi_decl_nodiscard void* mi_new_reallocn(void* p, size_t newcount, size_t size) {
 #ifdef __cplusplus
 void* _mi_externs[] = {
   (void*)&_mi_page_malloc,
+  (void*)&_mi_page_malloc_zero,
   (void*)&_mi_heap_malloc_zero,
   (void*)&_mi_heap_malloc_zero_ex,
   (void*)&mi_malloc,
@@ -591,7 +694,7 @@ void* _mi_externs[] = {
   (void*)&mi_zalloc_small,
   (void*)&mi_heap_malloc,
   (void*)&mi_heap_zalloc,
-  (void*)&mi_heap_malloc_small,
+  (void*)&mi_heap_malloc_small
   // (void*)&mi_heap_alloc_new,
   // (void*)&mi_heap_alloc_new_n
 };

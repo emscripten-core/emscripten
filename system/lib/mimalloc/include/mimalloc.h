@@ -8,7 +8,7 @@ terms of the MIT license. A copy of the license can be found in the file
 #ifndef MIMALLOC_H
 #define MIMALLOC_H
 
-#define MI_MALLOC_VERSION 217   // major + 2 digits minor
+#define MI_MALLOC_VERSION 188   // major + 2 digits minor
 
 // ------------------------------------------------------
 // Compiler specific attributes
@@ -97,7 +97,6 @@ terms of the MIT license. A copy of the license can be found in the file
 
 #include <stddef.h>     // size_t
 #include <stdbool.h>    // bool
-#include <stdint.h>     // INTPTR_MAX
 
 #ifdef __cplusplus
 extern "C" {
@@ -149,6 +148,7 @@ typedef void (mi_cdecl mi_error_fun)(int err, void* arg);
 mi_decl_export void mi_register_error(mi_error_fun* fun, void* arg);
 
 mi_decl_export void mi_collect(bool force)    mi_attr_noexcept;
+mi_decl_export void mi_collect_reduce(size_t target_thread_owned) mi_attr_noexcept;
 mi_decl_export int  mi_version(void)          mi_attr_noexcept;
 mi_decl_export void mi_stats_reset(void)      mi_attr_noexcept;
 mi_decl_export void mi_stats_merge(void)      mi_attr_noexcept;
@@ -259,11 +259,12 @@ typedef struct mi_heap_area_s {
   size_t used;        // number of allocated blocks
   size_t block_size;  // size in bytes of each block
   size_t full_block_size; // size in bytes of a full block including padding and metadata.
+  int    heap_tag;    // heap tag associated with this area
 } mi_heap_area_t;
 
 typedef bool (mi_cdecl mi_block_visit_fun)(const mi_heap_t* heap, const mi_heap_area_t* area, void* block, size_t block_size, void* arg);
 
-mi_decl_export bool mi_heap_visit_blocks(const mi_heap_t* heap, bool visit_all_blocks, mi_block_visit_fun* visitor, void* arg);
+mi_decl_export bool mi_heap_visit_blocks(const mi_heap_t* heap, bool visit_blocks, mi_block_visit_fun* visitor, void* arg);
 
 // Experimental
 mi_decl_nodiscard mi_decl_export bool mi_is_in_heap_region(const void* p) mi_attr_noexcept;
@@ -289,8 +290,31 @@ mi_decl_export bool  mi_manage_os_memory_ex(void* start, size_t size, bool is_co
 mi_decl_nodiscard mi_decl_export mi_heap_t* mi_heap_new_in_arena(mi_arena_id_t arena_id);
 #endif
 
+
+// Experimental: allow sub-processes whose memory segments stay separated (and no reclamation between them)
+// Used for example for separate interpreter's in one process.
+typedef void* mi_subproc_id_t;
+mi_decl_export mi_subproc_id_t mi_subproc_main(void);
+mi_decl_export mi_subproc_id_t mi_subproc_new(void);
+mi_decl_export void mi_subproc_delete(mi_subproc_id_t subproc);
+mi_decl_export void mi_subproc_add_current_thread(mi_subproc_id_t subproc); // this should be called right after a thread is created (and no allocation has taken place yet)
+
+// Experimental: visit abandoned heap areas (from threads that have been terminated)
+mi_decl_export bool mi_abandoned_visit_blocks(mi_subproc_id_t subproc_id, int heap_tag, bool visit_blocks, mi_block_visit_fun* visitor, void* arg);
+
+// Experimental: create a new heap with a specified heap tag. Set `allow_destroy` to false to allow the thread
+// to reclaim abandoned memory (with a compatible heap_tag and arena_id) but in that case `mi_heap_destroy` will
+// fall back to `mi_heap_delete`.
+mi_decl_nodiscard mi_decl_export mi_heap_t* mi_heap_new_ex(int heap_tag, bool allow_destroy, mi_arena_id_t arena_id);
+
 // deprecated
-mi_decl_export int  mi_reserve_huge_os_pages(size_t pages, double max_secs, size_t* pages_reserved) mi_attr_noexcept;
+mi_decl_export int mi_reserve_huge_os_pages(size_t pages, double max_secs, size_t* pages_reserved) mi_attr_noexcept;
+
+// Experimental: objects followed by a guard page.
+// A sample rate of 0 disables guarded objects, while 1 uses a guard page for every object.
+// A seed of 0 uses a random start point. Only objects within the size bound are eligable for guard pages.
+mi_decl_export void mi_heap_guarded_set_sample_rate(mi_heap_t* heap, size_t sample_rate, size_t seed);
+mi_decl_export void mi_heap_guarded_set_size_bound(mi_heap_t* heap, size_t min, size_t max);
 
 
 // ------------------------------------------------------
@@ -332,7 +356,7 @@ typedef enum mi_option_e {
   mi_option_deprecated_segment_cache,
   mi_option_deprecated_page_reset,
   mi_option_abandoned_page_purge,       // immediately purge delayed purges on thread termination
-  mi_option_deprecated_segment_reset, 
+  mi_option_deprecated_segment_reset,
   mi_option_eager_commit_delay,         // the first N segments per thread are not eagerly committed (but per page in the segment on demand)
   mi_option_purge_delay,                // memory purging is delayed by N milli seconds; use 0 for immediate purging or -1 for no purging at all. (=10)
   mi_option_use_numa_nodes,             // 0 = use all available numa nodes, otherwise use at most N nodes.
@@ -348,6 +372,13 @@ typedef enum mi_option_e {
   mi_option_abandoned_reclaim_on_free,  // allow to reclaim an abandoned segment on a free (=1)
   mi_option_disallow_arena_alloc,       // 1 = do not use arena's for allocation (except if using specific arena id's)
   mi_option_retry_on_oom,               // retry on out-of-memory for N milli seconds (=400), set to 0 to disable retries. (only on windows)
+  mi_option_visit_abandoned,            // allow visiting heap blocks from abandoned threads (=0)
+  mi_option_guarded_min,                // only used when building with MI_GUARDED: minimal rounded object size for guarded objects (=0)
+  mi_option_guarded_max,                // only used when building with MI_GUARDED: maximal rounded object size for guarded objects (=0)
+  mi_option_guarded_precise,            // disregard minimal alignment requirement to always place guarded blocks exactly in front of a guard page (=0)
+  mi_option_guarded_sample_rate,        // 1 out of N allocations in the min/max range will be guarded (=1000)
+  mi_option_guarded_sample_seed,        // can be set to allow for a (more) deterministic re-execution when a guard page is triggered (=0)
+  mi_option_target_segments_per_thread, // experimental (=0)
   _mi_option_last,
   // legacy option names
   mi_option_large_os_pages = mi_option_allow_large_os_pages,

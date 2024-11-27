@@ -9,7 +9,6 @@ terms of the MIT license. A copy of the license can be found in the file
 
 #include "mimalloc.h"
 #include "mimalloc/internal.h"
-#include "mimalloc/atomic.h"
 #include "mimalloc/prim.h"
 #include <stdio.h>   // fputs, stderr
 
@@ -119,6 +118,18 @@ void _mi_prim_mem_init( mi_os_mem_config_t* config )
   GetSystemInfo(&si);
   if (si.dwPageSize > 0) { config->page_size = si.dwPageSize; }
   if (si.dwAllocationGranularity > 0) { config->alloc_granularity = si.dwAllocationGranularity; }
+  // get virtual address bits
+  if ((uintptr_t)si.lpMaximumApplicationAddress > 0) {
+    const size_t vbits = MI_INTPTR_BITS - mi_clz((uintptr_t)si.lpMaximumApplicationAddress);
+    config->virtual_address_bits = vbits;
+  }
+  // get physical memory
+  ULONGLONG memInKiB = 0;
+  if (GetPhysicallyInstalledSystemMemory(&memInKiB)) {
+    if (memInKiB > 0 && memInKiB < (SIZE_MAX / MI_KiB)) {
+      config->physical_memory = memInKiB * MI_KiB;
+    }
+  }
   // get the VirtualAlloc2 function
   HINSTANCE  hDll;
   hDll = LoadLibrary(TEXT("kernelbase.dll"));
@@ -192,7 +203,7 @@ static void* win_virtual_alloc_prim_once(void* addr, size_t size, size_t try_ali
   }
   #endif
   // on modern Windows try use VirtualAlloc2 for aligned allocation
-  if (try_alignment > 1 && (try_alignment % _mi_os_page_size()) == 0 && pVirtualAlloc2 != NULL) {
+  if (addr == NULL && try_alignment > 1 && (try_alignment % _mi_os_page_size()) == 0 && pVirtualAlloc2 != NULL) {
     MI_MEM_ADDRESS_REQUIREMENTS reqs = { 0, 0, 0 };
     reqs.Alignment = try_alignment;
     MI_MEM_EXTENDED_PARAMETER param = { {0, 0}, {0} };
@@ -231,7 +242,7 @@ static void* win_virtual_alloc_prim(void* addr, size_t size, size_t try_alignmen
     else if (max_retry_msecs > 0 && (try_alignment <= 2*MI_SEGMENT_ALIGN) &&
               (flags&MEM_COMMIT) != 0 && (flags&MEM_LARGE_PAGES) == 0 &&
               win_is_out_of_memory_error(GetLastError())) {
-      // if committing regular memory and being out-of-memory, 
+      // if committing regular memory and being out-of-memory,
       // keep trying for a bit in case memory frees up after all. See issue #894
       _mi_warning_message("out-of-memory on OS allocation, try again... (attempt %lu, 0x%zx bytes, error code: 0x%x, address: %p, alignment: 0x%zx, flags: 0x%x)\n", tries, size, GetLastError(), addr, try_alignment, flags);
       long sleep_msecs = tries*40;  // increasing waits
@@ -280,14 +291,14 @@ static void* win_virtual_alloc(void* addr, size_t size, size_t try_alignment, DW
   return p;
 }
 
-int _mi_prim_alloc(size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, void** addr) {
+int _mi_prim_alloc(void* hint_addr, size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, void** addr) {
   mi_assert_internal(size > 0 && (size % _mi_os_page_size()) == 0);
   mi_assert_internal(commit || !allow_large);
   mi_assert_internal(try_alignment > 0);
   *is_zero = true;
   int flags = MEM_RESERVE;
   if (commit) { flags |= MEM_COMMIT; }
-  *addr = win_virtual_alloc(NULL, size, try_alignment, flags, false, allow_large, is_large);
+  *addr = win_virtual_alloc(hint_addr, size, try_alignment, flags, false, allow_large, is_large);
   return (*addr != NULL ? 0 : (int)GetLastError());
 }
 
@@ -316,7 +327,7 @@ int _mi_prim_commit(void* addr, size_t size, bool* is_zero) {
   return 0;
 }
 
-int _mi_prim_decommit(void* addr, size_t size, bool* needs_recommit) {  
+int _mi_prim_decommit(void* addr, size_t size, bool* needs_recommit) {
   BOOL ok = VirtualFree(addr, size, MEM_DECOMMIT);
   *needs_recommit = true;  // for safety, assume always decommitted even in the case of an error.
   return (ok ? 0 : (int)GetLastError());
@@ -468,7 +479,6 @@ mi_msecs_t _mi_prim_clock_now(void) {
 // Process Info
 //----------------------------------------------------------------
 
-#include <windows.h>
 #include <psapi.h>
 
 static mi_msecs_t filetime_msecs(const FILETIME* ftime) {
@@ -491,7 +501,7 @@ void _mi_prim_process_info(mi_process_info_t* pinfo)
   GetProcessTimes(GetCurrentProcess(), &ct, &et, &st, &ut);
   pinfo->utime = filetime_msecs(&ut);
   pinfo->stime = filetime_msecs(&st);
-  
+
   // load psapi on demand
   if (pGetProcessMemoryInfo == NULL) {
     HINSTANCE hDll = LoadLibrary(TEXT("psapi.dll"));
@@ -501,11 +511,10 @@ void _mi_prim_process_info(mi_process_info_t* pinfo)
   }
 
   // get process info
-  PROCESS_MEMORY_COUNTERS info;
-  memset(&info, 0, sizeof(info));
+  PROCESS_MEMORY_COUNTERS info; _mi_memzero_var(info);
   if (pGetProcessMemoryInfo != NULL) {
     pGetProcessMemoryInfo(GetCurrentProcess(), &info, sizeof(info));
-  } 
+  }
   pinfo->current_rss    = (size_t)info.WorkingSetSize;
   pinfo->peak_rss       = (size_t)info.PeakWorkingSetSize;
   pinfo->current_commit = (size_t)info.PagefileUsage;
@@ -517,7 +526,7 @@ void _mi_prim_process_info(mi_process_info_t* pinfo)
 // Output
 //----------------------------------------------------------------
 
-void _mi_prim_out_stderr( const char* msg ) 
+void _mi_prim_out_stderr( const char* msg )
 {
   // on windows with redirection, the C runtime cannot handle locale dependent output
   // after the main thread closes so we use direct console output.
@@ -564,7 +573,6 @@ bool _mi_prim_getenv(const char* name, char* result, size_t result_size) {
 }
 
 
-
 //----------------------------------------------------------------
 // Random
 //----------------------------------------------------------------
@@ -600,64 +608,200 @@ bool _mi_prim_random_buf(void* buf, size_t buf_len) {
     }
     if (pBCryptGenRandom == NULL) return false;
   }
-  return (pBCryptGenRandom(NULL, (PUCHAR)buf, (ULONG)buf_len, BCRYPT_USE_SYSTEM_PREFERRED_RNG) >= 0);  
+  return (pBCryptGenRandom(NULL, (PUCHAR)buf, (ULONG)buf_len, BCRYPT_USE_SYSTEM_PREFERRED_RNG) >= 0);
 }
 
 #endif  // MI_USE_RTLGENRANDOM
 
+
+
 //----------------------------------------------------------------
-// Thread init/done
+// Process & Thread Init/Done
 //----------------------------------------------------------------
 
-#if !defined(MI_SHARED_LIB)
-
-// use thread local storage keys to detect thread ending
-// note: another design could be to use special linker sections (see issue #869)
-#include <fibersapi.h>
-#if (_WIN32_WINNT < 0x600)  // before Windows Vista
-WINBASEAPI DWORD WINAPI FlsAlloc( _In_opt_ PFLS_CALLBACK_FUNCTION lpCallback );
-WINBASEAPI PVOID WINAPI FlsGetValue( _In_ DWORD dwFlsIndex );
-WINBASEAPI BOOL  WINAPI FlsSetValue( _In_ DWORD dwFlsIndex, _In_opt_ PVOID lpFlsData );
-WINBASEAPI BOOL  WINAPI FlsFree(_In_ DWORD dwFlsIndex);
-#endif
-
-static DWORD mi_fls_key = (DWORD)(-1);
-
-static void NTAPI mi_fls_done(PVOID value) {
-  mi_heap_t* heap = (mi_heap_t*)value;
-  if (heap != NULL) {
-    _mi_thread_done(heap);
-    FlsSetValue(mi_fls_key, NULL);  // prevent recursion as _mi_thread_done may set it back to the main heap, issue #672
+static void NTAPI mi_win_main(PVOID module, DWORD reason, LPVOID reserved) {
+  MI_UNUSED(reserved);
+  MI_UNUSED(module);
+  if (reason==DLL_PROCESS_ATTACH) {
+    _mi_process_load();
+  }
+  else if (reason==DLL_PROCESS_DETACH) {
+    _mi_process_done();
+  }
+  else if (reason==DLL_THREAD_DETACH && !_mi_is_redirected()) {
+    _mi_thread_done(NULL);
   }
 }
 
-void _mi_prim_thread_init_auto_done(void) {
-  mi_fls_key = FlsAlloc(&mi_fls_done);
-}
 
-void _mi_prim_thread_done_auto_done(void) {
-  // call thread-done on all threads (except the main thread) to prevent 
-  // dangling callback pointer if statically linked with a DLL; Issue #208
-  FlsFree(mi_fls_key);  
-}
+#if defined(MI_SHARED_LIB)
+  #define MI_PRIM_HAS_PROCESS_ATTACH  1
 
-void _mi_prim_thread_associate_default_heap(mi_heap_t* heap) {
-  mi_assert_internal(mi_fls_key != (DWORD)(-1));
-  FlsSetValue(mi_fls_key, heap);
-}
+  // Windows DLL: easy to hook into process_init and thread_done
+  __declspec(dllexport) BOOL WINAPI DllMain(HINSTANCE inst, DWORD reason, LPVOID reserved) {
+    mi_win_main((PVOID)inst,reason,reserved);
+    return TRUE;
+  }
 
-#else
+  // nothing to do since `_mi_thread_done` is handled through the DLL_THREAD_DETACH event.
+  void _mi_prim_thread_init_auto_done(void) { }
+  void _mi_prim_thread_done_auto_done(void) { }
+  void _mi_prim_thread_associate_default_heap(mi_heap_t* heap) {
+    MI_UNUSED(heap);
+  }
 
-// Dll; nothing to do as in that case thread_done is handled through the DLL_THREAD_DETACH event.
+#elif !defined(MI_WIN_USE_FLS)
+  #define MI_PRIM_HAS_PROCESS_ATTACH  1
 
-void _mi_prim_thread_init_auto_done(void) {
-}
+  static void NTAPI mi_win_main_attach(PVOID module, DWORD reason, LPVOID reserved) {
+    if (reason == DLL_PROCESS_ATTACH || reason == DLL_THREAD_ATTACH) {
+      mi_win_main(module, reason, reserved);
+    }
+  }
+  static void NTAPI mi_win_main_detach(PVOID module, DWORD reason, LPVOID reserved) {
+    if (reason == DLL_PROCESS_DETACH || reason == DLL_THREAD_DETACH) {
+      mi_win_main(module, reason, reserved);
+    }
+  }
 
-void _mi_prim_thread_done_auto_done(void) {
-}
+  // Set up TLS callbacks in a statically linked library by using special data sections.
+  // See <https://stackoverflow.com/questions/14538159/tls-callback-in-windows>
+  // We use 2 entries to ensure we call attach events before constructors
+  // are called, and detach events after destructors are called.
+  #if defined(__cplusplus)
+  extern "C" {
+  #endif
 
-void _mi_prim_thread_associate_default_heap(mi_heap_t* heap) {
-  MI_UNUSED(heap);
-}
+  #if defined(_WIN64)
+    #pragma comment(linker, "/INCLUDE:_tls_used")
+    #pragma comment(linker, "/INCLUDE:_mi_tls_callback_pre")
+    #pragma comment(linker, "/INCLUDE:_mi_tls_callback_post")
+    #pragma const_seg(".CRT$XLB")
+    extern const PIMAGE_TLS_CALLBACK _mi_tls_callback_pre[];
+    const PIMAGE_TLS_CALLBACK _mi_tls_callback_pre[] = { &mi_win_main_attach };
+    #pragma const_seg()
+    #pragma const_seg(".CRT$XLY")
+    extern const PIMAGE_TLS_CALLBACK _mi_tls_callback_post[];
+    const PIMAGE_TLS_CALLBACK _mi_tls_callback_post[] = { &mi_win_main_detach };
+    #pragma const_seg()
+  #else
+    #pragma comment(linker, "/INCLUDE:__tls_used")
+    #pragma comment(linker, "/INCLUDE:__mi_tls_callback_pre")
+    #pragma comment(linker, "/INCLUDE:__mi_tls_callback_post")
+    #pragma data_seg(".CRT$XLB")
+    PIMAGE_TLS_CALLBACK _mi_tls_callback_pre[] = { &mi_win_main_attach };
+    #pragma data_seg()
+    #pragma data_seg(".CRT$XLY")
+    PIMAGE_TLS_CALLBACK _mi_tls_callback_post[] = { &mi_win_main_detach };
+    #pragma data_seg()
+  #endif
 
+  #if defined(__cplusplus)
+  }
+  #endif
+
+  // nothing to do since `_mi_thread_done` is handled through the DLL_THREAD_DETACH event.
+  void _mi_prim_thread_init_auto_done(void) { }
+  void _mi_prim_thread_done_auto_done(void) { }
+  void _mi_prim_thread_associate_default_heap(mi_heap_t* heap) {
+    MI_UNUSED(heap);
+  }
+
+#else // deprecated: statically linked, use fiber api
+
+  #if defined(_MSC_VER) // on clang/gcc use the constructor attribute (in `src/prim/prim.c`)
+    // MSVC: use data section magic for static libraries
+    // See <https://www.codeguru.com/cpp/misc/misc/applicationcontrol/article.php/c6945/Running-Code-Before-and-After-Main.htm>
+    #define MI_PRIM_HAS_PROCESS_ATTACH 1
+
+    static int mi_process_attach(void) {
+      mi_win_main(NULL,DLL_PROCESS_ATTACH,NULL);
+      atexit(&_mi_process_done);
+      return 0;
+    }
+    typedef int(*mi_crt_callback_t)(void);
+    #if defined(_WIN64)
+      #pragma comment(linker, "/INCLUDE:_mi_tls_callback")
+      #pragma section(".CRT$XIU", long, read)
+    #else
+      #pragma comment(linker, "/INCLUDE:__mi_tls_callback")
+    #endif
+    #pragma data_seg(".CRT$XIU")
+    mi_decl_externc mi_crt_callback_t _mi_tls_callback[] = { &mi_process_attach };
+    #pragma data_seg()
+  #endif
+
+  // use the fiber api for calling `_mi_thread_done`.
+  #include <fibersapi.h>
+  #if (_WIN32_WINNT < 0x600)  // before Windows Vista
+  WINBASEAPI DWORD WINAPI FlsAlloc( _In_opt_ PFLS_CALLBACK_FUNCTION lpCallback );
+  WINBASEAPI PVOID WINAPI FlsGetValue( _In_ DWORD dwFlsIndex );
+  WINBASEAPI BOOL  WINAPI FlsSetValue( _In_ DWORD dwFlsIndex, _In_opt_ PVOID lpFlsData );
+  WINBASEAPI BOOL  WINAPI FlsFree(_In_ DWORD dwFlsIndex);
+  #endif
+
+  static DWORD mi_fls_key = (DWORD)(-1);
+
+  static void NTAPI mi_fls_done(PVOID value) {
+    mi_heap_t* heap = (mi_heap_t*)value;
+    if (heap != NULL) {
+      _mi_thread_done(heap);
+      FlsSetValue(mi_fls_key, NULL);  // prevent recursion as _mi_thread_done may set it back to the main heap, issue #672
+    }
+  }
+
+  void _mi_prim_thread_init_auto_done(void) {
+    mi_fls_key = FlsAlloc(&mi_fls_done);
+  }
+
+  void _mi_prim_thread_done_auto_done(void) {
+    // call thread-done on all threads (except the main thread) to prevent
+    // dangling callback pointer if statically linked with a DLL; Issue #208
+    FlsFree(mi_fls_key);
+  }
+
+  void _mi_prim_thread_associate_default_heap(mi_heap_t* heap) {
+    mi_assert_internal(mi_fls_key != (DWORD)(-1));
+    FlsSetValue(mi_fls_key, heap);
+  }
+#endif
+
+// ----------------------------------------------------
+// Communicate with the redirection module on Windows
+// ----------------------------------------------------
+#if defined(MI_SHARED_LIB) && !defined(MI_WIN_NOREDIRECT)
+  #define MI_PRIM_HAS_ALLOCATOR_INIT 1
+
+  static bool mi_redirected = false;   // true if malloc redirects to mi_malloc
+
+  bool _mi_is_redirected(void) {
+    return mi_redirected;
+  }
+
+  #ifdef __cplusplus
+  extern "C" {
+  #endif
+  mi_decl_export void _mi_redirect_entry(DWORD reason) {
+    // called on redirection; careful as this may be called before DllMain
+    if (reason == DLL_PROCESS_ATTACH) {
+      mi_redirected = true;
+    }
+    else if (reason == DLL_PROCESS_DETACH) {
+      mi_redirected = false;
+    }
+    else if (reason == DLL_THREAD_DETACH) {
+      _mi_thread_done(NULL);
+    }
+  }
+  __declspec(dllimport) bool mi_cdecl mi_allocator_init(const char** message);
+  __declspec(dllimport) void mi_cdecl mi_allocator_done(void);
+  #ifdef __cplusplus
+  }
+  #endif
+  bool _mi_allocator_init(const char** message) {
+    return mi_allocator_init(message);
+  }
+  void _mi_allocator_done(void) {
+    mi_allocator_done();
+  }
 #endif

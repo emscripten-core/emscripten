@@ -25,6 +25,8 @@ typedef struct mi_os_mem_config_s {
   size_t  page_size;            // default to 4KiB
   size_t  large_page_size;      // 0 if not supported, usually 2MiB (4MiB on Windows)
   size_t  alloc_granularity;    // smallest allocation size (usually 4KiB, on Windows 64KiB)
+  size_t  physical_memory;      // physical memory size
+  size_t  virtual_address_bits; // usually 48 or 56 bits on 64-bit systems. (used to determine secure randomization)
   bool    has_overcommit;       // can we reserve more memory than can be actually committed?
   bool    has_partial_free;     // can allocated blocks be freed partially? (true for mmap, false for VirtualAlloc)
   bool    has_virtual_reserve;  // supports virtual address space reservation? (if true we can reserve virtual address space without using commit or physical memory)
@@ -41,9 +43,10 @@ int _mi_prim_free(void* addr, size_t size );
 // If `commit` is false, the virtual memory range only needs to be reserved (with no access)
 // which will later be committed explicitly using `_mi_prim_commit`.
 // `is_zero` is set to true if the memory was zero initialized (as on most OS's)
+// The `hint_addr` address is either `NULL` or a preferred allocation address but can be ignored.
 // pre: !commit => !allow_large
 //      try_alignment >= _mi_os_page_size() and a power of 2
-int _mi_prim_alloc(size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, void** addr);
+int _mi_prim_alloc(void* hint_addr, size_t size, size_t try_alignment, bool commit, bool allow_large, bool* is_large, bool* is_zero, void** addr);
 
 // Commit memory. Returns error code or 0 on success.
 // For example, on Linux this would make the memory PROT_READ|PROT_WRITE.
@@ -115,6 +118,7 @@ void _mi_prim_thread_done_auto_done(void);
 void _mi_prim_thread_associate_default_heap(mi_heap_t* heap);
 
 
+
 //-------------------------------------------------------------------
 // Thread id: `_mi_prim_thread_id()`
 //
@@ -134,9 +138,9 @@ void _mi_prim_thread_associate_default_heap(mi_heap_t* heap);
 // but unfortunately we can not detect support reliably (see issue #883)
 // We also use it on Apple OS as we use a TLS slot for the default heap there.
 #if defined(__GNUC__) && ( \
-           (defined(__GLIBC__)   && (defined(__x86_64__) || defined(__i386__) || defined(__arm__) || defined(__aarch64__))) \
+           (defined(__GLIBC__)   && (defined(__x86_64__) || defined(__i386__) || (defined(__arm__) && __ARM_ARCH >= 7) || defined(__aarch64__))) \
         || (defined(__APPLE__)   && (defined(__x86_64__) || defined(__aarch64__) || defined(__POWERPC__))) \
-        || (defined(__BIONIC__)  && (defined(__x86_64__) || defined(__i386__) || defined(__arm__) || defined(__aarch64__))) \
+        || (defined(__BIONIC__)  && (defined(__x86_64__) || defined(__i386__) || (defined(__arm__) && __ARM_ARCH >= 7) || defined(__aarch64__))) \
         || (defined(__FreeBSD__) && (defined(__x86_64__) || defined(__i386__) || defined(__aarch64__))) \
         || (defined(__OpenBSD__) && (defined(__x86_64__) || defined(__i386__) || defined(__aarch64__))) \
       )
@@ -235,10 +239,6 @@ static inline mi_threadid_t _mi_prim_thread_id(void) mi_attr_noexcept {
 
 #elif defined(_WIN32)
 
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
 static inline mi_threadid_t _mi_prim_thread_id(void) mi_attr_noexcept {
   // Windows: works on Intel and ARM in both 32- and 64-bit
   return (uintptr_t)NtCurrentTeb();
@@ -367,6 +367,8 @@ static inline mi_heap_t* mi_prim_get_default_heap(void) {
 }
 
 #endif  // mi_prim_get_default_heap()
+
+
 
 
 
