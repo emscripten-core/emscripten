@@ -372,14 +372,13 @@ FS.staticInit();
       return 0;
     },
     mayCreate(dir, name) {
+      if (!FS.isDir(dir)) {
+        return {{{ cDefs.ENOTDIR }}};
+      }
       try {
         var node = FS.lookupNode(dir, name);
         return {{{ cDefs.EEXIST }}};
-      } catch (e) {
-        if (e.errno === {{{ cDefs.ENOTDIR }}}) {
-          return {{{ cDefs.ENOTDIR }}};
-        }
-      }
+      } catch (e) { }
       return FS.nodePermissions(dir, 'wx');
     },
     mayDelete(dir, name, isdir) {
