@@ -378,7 +378,8 @@ FS.staticInit();
       try {
         var node = FS.lookupNode(dir, name);
         return {{{ cDefs.EEXIST }}};
-      } catch (e) { }
+      } catch (e) {
+      }
       return FS.nodePermissions(dir, 'wx');
     },
     mayDelete(dir, name, isdir) {
