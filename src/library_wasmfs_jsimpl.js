@@ -106,6 +106,7 @@ addToLibrary({
     _emscripten_proxy_finish(ctx);
   },
 
+  _wasmfs_jsimpl_async_get_size__i53abi: true,
   _wasmfs_jsimpl_async_get_size__deps: ['emscripten_proxy_finish'],
   _wasmfs_jsimpl_async_get_size: async function(ctx, backend, file, size_p) {
 #if ASSERTIONS
