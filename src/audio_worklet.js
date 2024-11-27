@@ -112,8 +112,8 @@ function createWasmAudioWorkletProcessor(audioParams) {
 
       // Copy input audio descriptor structs and data to Wasm
       inputsPtr = dataPtr;
-      dataPtr += numInputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
       k = inputsPtr >> 2;
+      dataPtr += numInputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
       for (i of inputList) {
         // Write the AudioSampleFrame struct instance
         HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.numberOfChannels / 4 }}}] = i.length;
@@ -129,8 +129,8 @@ function createWasmAudioWorkletProcessor(audioParams) {
 
       // Copy parameters descriptor structs and data to Wasm
       paramsPtr = dataPtr;
-      dataPtr += numParams * {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
       k = paramsPtr >> 2;
+      dataPtr += numParams * {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
       for (i = 0; paramArray = parameters[i++];) {
         // Write the AudioParamFrame struct instance
         HEAPU32[k + {{{ C_STRUCTS.AudioParamFrame.length / 4 }}}] = paramArray.length;
@@ -144,8 +144,8 @@ function createWasmAudioWorkletProcessor(audioParams) {
       // Copy output audio descriptor structs to Wasm (note that dataPtr after
       // the struct offsets should now be 16-byte aligned).
       outputsPtr = dataPtr;
-      dataPtr += numOutputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
       k = outputsPtr >> 2;
+      dataPtr += numOutputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
       for (i of outputList) {
         // Write the AudioSampleFrame struct instance
         HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.numberOfChannels / 4 }}}] = i.length;
