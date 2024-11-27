@@ -666,6 +666,29 @@ FS.staticInit();
       }
       return parent.node_ops.mknod(parent, name, mode, dev);
     },
+    statfs(path) {
+
+      // NOTE: None of the defaults here are true. We're just returning safe and
+      //       sane values.
+      var rtn = {
+        bsize: 4096,
+        frsize: 4096,
+        blocks: 1e6,
+        bfree: 5e5,
+        bavail: 5e5,
+        files: FS.nextInode,
+        ffree: FS.nextInode - 1,
+        fsid: 42,
+        flags: 2,
+        namelen: 255,
+      };
+
+      var parent = FS.lookupPath(path, {follow: true}).node;
+      if (parent?.node_ops.statfs) {
+        Object.assign(rtn, parent.node_ops.statfs(parent.mount.opts.root));
+      }
+      return rtn;
+    },
     // helpers to create specific types of nodes
     create(path, mode = 0o666) {
       mode &= {{{ cDefs.S_IALLUGO }}};
@@ -807,7 +830,7 @@ FS.staticInit();
       // do the underlying fs rename
       try {
         old_dir.node_ops.rename(old_node, new_dir, new_name);
-        // update old node (we do this here to avoid each backend 
+        // update old node (we do this here to avoid each backend
         // needing to)
         old_node.parent = new_dir;
       } catch (e) {
