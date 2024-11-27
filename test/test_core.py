@@ -5794,6 +5794,8 @@ got: 10
     suffix = ''
     if self.get_setting('WASMFS'):
       suffix = '.wasmfs'
+    elif self.is_wasm2js():
+      suffix = ".wasm2js"
     self.do_run_in_out_file_test('fs/test_nodefs_readdir.c', out_suffix=suffix)
 
   @requires_node
