@@ -220,6 +220,13 @@ addToLibrary({
         var path = NODEFS.realPath(node);
         return NODEFS.tryFSOperation(() => fs.readlinkSync(path));
       },
+      statfs(path) {
+        var stats = NODEFS.tryFSOperation(() => fs.statfsSync(path));
+        // Node.js doesn't provide frsize (fragment size). Set it to bsize (block size)
+        // as they're often the same in many file systems. May not be accurate for all.
+        stats.frsize = stats.bsize;
+        return stats;
+      }
     },
     stream_ops: {
       open(stream) {

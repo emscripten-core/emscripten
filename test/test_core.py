@@ -4435,6 +4435,27 @@ res64 - external 64\n''', header='''\
       int x = 123;
     ''', expected=['extern is 123.\n'], force_c=True)
 
+  @needs_dylink
+  def test_dylink_global_var_export(self):
+    self.do_run(r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <emscripten.h>
+      #include <emscripten/em_asm.h>
+
+      EMSCRIPTEN_KEEPALIVE int my_number = 123456;
+
+      int main(void) {
+        void* js_address = EM_ASM_PTR({
+          console.log("JS:_my_number:", _my_number, HEAP32[_my_number/4]);
+          return _my_number;
+        });
+        printf("C: my_number: %ld %d\n", (long)&my_number, my_number);
+        assert(js_address == &my_number);
+        return 0;
+      }
+    ''', emcc_args=['-sMAIN_MODULE'], force_c=True)
+
   @with_dylink_reversed
   def test_dylink_global_var_modded(self):
     self.dylink_test(main=r'''
@@ -5763,9 +5784,19 @@ got: 10
     # externally setup an existing folder structure: existing/a
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    os.makedirs(os.path.join(self.working_dir, 'existing', 'a'))
+    os.makedirs('existing/a')
     self.emcc_args += ['-lnodefs.js']
     self.do_runf('fs/test_nodefs_readdir.c', 'success')
+
+  @requires_node
+  @crossplatform
+  def test_fs_nodefs_statvfs(self):
+    # externally setup an existing folder structure: existing/a
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+    os.makedirs('existing/a')
+    self.emcc_args += ['-lnodefs.js']
+    self.do_runf('fs/test_nodefs_statvfs.c', 'success')
 
   @no_windows('no symlink support on windows')
   @requires_node
