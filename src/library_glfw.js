@@ -419,7 +419,7 @@ var LibraryGLFW = {
       // This logic comes directly from the sdl implementation. We cannot
       // call preventDefault on all keydown events otherwise onKeyPress will
       // not get called
-      if (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */) {
+      if (event.key == 'Backspace' || event.key == 'Tab') {
         event.preventDefault();
       }
     },
@@ -1108,11 +1108,11 @@ var LibraryGLFW = {
       }
 
       // If context creation failed, do not return a valid window
-      if (!Module.ctx && useWebGL) return 0;
+      if (!Module['ctx'] && useWebGL) return 0;
 
-      // Get non alive id
+      // Initializes the framebuffer size from the canvas
       const canvas = Module['canvas'];
-      var win = new GLFW_Window(id, canvas.clientWidth, canvas.clientHeight, canvas.width, canvas.height, title, monitor, share);
+      var win = new GLFW_Window(id, width, height, canvas.width, canvas.height, title, monitor, share);
 
       // Set window to array
       if (id - 1 == GLFW.windows.length) {
@@ -1144,7 +1144,7 @@ var LibraryGLFW = {
       for (var i = 0; i < GLFW.windows.length; i++)
         if (GLFW.windows[i] !== null) return;
 
-      delete Module.ctx;
+      delete Module['ctx'];
     },
 
     swapBuffers: (winid) => {
@@ -1248,7 +1248,7 @@ var LibraryGLFW = {
       if (canvas.width  != wNativeScaled) canvas.width  = wNativeScaled;
       if (canvas.height != hNativeScaled) canvas.height = hNativeScaled;
       if (typeof canvas.style != 'undefined') {
-        if (wNativeScaled != wNative || hNativeScaled != hNative) {
+        if (!GLFW.isCSSScalingEnabled()) {
           canvas.style.setProperty( "width", wNative + "px", "important");
           canvas.style.setProperty("height", hNative + "px", "important");
         } else {
@@ -1258,13 +1258,11 @@ var LibraryGLFW = {
       }
     },
 
-    // Overrides Browser.calculateMouseCoords to account for hi dpi scaling
+    // Overrides Browser.calculateMouseCoords to account for HiDPI scaling and CSS scaling
     calculateMouseCoords(pageX, pageY) {
       // Calculate the movement based on the changes
       // in the coordinates.
-      var rect = Module["canvas"].getBoundingClientRect();
-      var cw = Module["canvas"].clientWidth;
-      var ch = Module["canvas"].clientHeight;
+      const rect = Module["canvas"].getBoundingClientRect();
 
       // Neither .scrollX or .pageXOffset are defined in a spec, but
       // we prefer .scrollX because it is currently in a spec draft.
@@ -1279,11 +1277,14 @@ var LibraryGLFW = {
       var adjustedX = pageX - (scrollX + rect.left);
       var adjustedY = pageY - (scrollY + rect.top);
 
-      // the canvas might be CSS-scaled compared to its backbuffer;
-      // SDL-using content will want mouse coordinates in terms
-      // of backbuffer units.
-      adjustedX = adjustedX * (cw / rect.width);
-      adjustedY = adjustedY * (ch / rect.height);
+      // getBoundingClientRect() returns dimension affected by CSS, so as a result:
+      // - when CSS scaling is enabled, this will fix the mouse coordinates to match the width/height of the window
+      // - otherwise the CSS width/height are forced to the width/height of the GLFW window (see updateCanvasDimensions),
+      //   so there is no need to adjust the position
+      if (GLFW.isCSSScalingEnabled() && GLFW.active) {
+        adjustedX = adjustedX * (GLFW.active.width / rect.width);
+        adjustedY = adjustedY * (GLFW.active.height / rect.height);
+      }
 
       return { x: adjustedX, y: adjustedY };
     },
@@ -1308,10 +1309,19 @@ var LibraryGLFW = {
         return false;
     },
 
+    /**
+     * CSS Scaling is a feature that is NOT part of the GLFW API, but for historical reasons, it is available
+     * in Emscripten.
+     * It is automatically disabled when using Hi DPI (the library overrides CSS sizes). */
+    isCSSScalingEnabled() {
+      return !GLFW.isHiDPIAware();
+    },
+
     adjustCanvasDimensions() {
-      const canvas = Module['canvas'];
-      Browser.updateCanvasDimensions(canvas, canvas.clientWidth, canvas.clientHeight);
-      Browser.updateResizeListeners();
+      if (GLFW.active) {
+        Browser.updateCanvasDimensions(Module['canvas'], GLFW.active.width, GLFW.active.height);
+        Browser.updateResizeListeners();
+      }
     },
 
     getHiDPIScale() {

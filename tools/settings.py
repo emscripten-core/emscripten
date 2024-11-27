@@ -267,7 +267,8 @@ class SettingsManager:
     self.attrs[name] = value
 
   def check_type(self, name, value):
-    if name in ('SUPPORT_LONGJMP', 'PTHREAD_POOL_SIZE', 'SEPARATE_DWARF', 'LTO'):
+    # These settings have a variable type so cannot be easily type checked.
+    if name in ('SUPPORT_LONGJMP', 'PTHREAD_POOL_SIZE', 'SEPARATE_DWARF', 'LTO', 'MODULARIZE'):
       return
     expected_type = self.types.get(name)
     if not expected_type:

@@ -98,10 +98,10 @@ int main() {
     printf("%d. Press and hold spacebar\n", step);
 
 #ifdef __EMSCRIPTEN__
-    emscripten_set_blur_callback(NULL, NULL, true, on_focuspocus);
-    emscripten_set_focus_callback(NULL, NULL, true, on_focuspocus);
-    emscripten_set_focusin_callback(NULL, NULL, true, on_focuspocus);
-    emscripten_set_focusout_callback(NULL, NULL, true, on_focuspocus);
+    emscripten_set_blur_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, true, on_focuspocus);
+    emscripten_set_focus_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, true, on_focuspocus);
+    emscripten_set_focusin_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, true, on_focuspocus);
+    emscripten_set_focusout_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, true, on_focuspocus);
 
     emscripten_set_main_loop(render, 0, 1);
     __builtin_trap();

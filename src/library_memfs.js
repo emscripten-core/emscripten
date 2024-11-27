@@ -6,10 +6,19 @@
 
 addToLibrary({
   $MEMFS__deps: ['$FS', '$mmapAlloc'],
+#if !ASSERTIONS
+  $MEMFS__postset: `
+    // This error may happen quite a bit. To avoid overhead we reuse it (and
+    // suffer a lack of stack info).
+    MEMFS.doesNotExistError = new FS.ErrnoError({{{ cDefs.ENOENT }}});
+    /** @suppress {checkTypes} */
+    MEMFS.doesNotExistError.stack = '<generic error, no stack>';
+    `,
+#endif
   $MEMFS: {
     ops_table: null,
     mount(mount) {
-      return MEMFS.createNode(null, '/', {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */, 0);
+      return MEMFS.createNode(null, '/', {{{ cDefs.S_IFDIR | 0o777 }}}, 0);
     },
     createNode(parent, name, mode, dev) {
       if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
@@ -173,7 +182,11 @@ addToLibrary({
         }
       },
       lookup(parent, name) {
-        throw FS.genericErrors[{{{ cDefs.ENOENT }}}];
+#if ASSERTIONS
+        throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
+#else
+        throw MEMFS.doesNotExistError;
+#endif
       },
       mknod(parent, name, mode, dev) {
         return MEMFS.createNode(parent, name, mode, dev);
@@ -219,7 +232,7 @@ addToLibrary({
         return entries;
       },
       symlink(parent, newname, oldpath) {
-        var node = MEMFS.createNode(parent, newname, 511 /* 0777 */ | {{{ cDefs.S_IFLNK }}}, 0);
+        var node = MEMFS.createNode(parent, newname, 0o777 | {{{ cDefs.S_IFLNK }}}, 0);
         node.link = oldpath;
         return node;
       },

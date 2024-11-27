@@ -103,7 +103,7 @@ function renderFrame() {
       dst[i] = renderFrameData[i];
     }
   }
-  Module.ctx.putImageData(Module.canvasData, 0, 0);
+  Module['ctx'].putImageData(Module.canvasData, 0, 0);
   renderFrameData = null;
 }
 
@@ -190,9 +190,9 @@ worker.onmessage = (event) => {
     case 'canvas': {
       switch (data.op) {
         case 'getContext': {
-          Module.ctx = Module['canvas'].getContext(data.type, data.attributes);
+          Module['ctx'] = Module['canvas'].getContext(data.type, data.attributes);
           if (data.type !== '2d') {
-            // possible GL_DEBUG entry point: Module.ctx = wrapDebugGL(Module.ctx);
+            // possible GL_DEBUG entry point: Module['ctx'] = wrapDebugGL(Module['ctx']);
             Module.glClient = new WebGLClient();
           }
           break;
@@ -200,7 +200,7 @@ worker.onmessage = (event) => {
         case 'resize': {
           Module['canvas'].width = data.width;
           Module['canvas'].height = data.height;
-          if (Module.ctx?.getImageData) Module.canvasData = Module.ctx.getImageData(0, 0, data.width, data.height);
+          if (Module['ctx']?.getImageData) Module.canvasData = Module['ctx'].getImageData(0, 0, data.width, data.height);
           worker.postMessage({ target: 'canvas', boundingClientRect: cloneObject(Module['canvas'].getBoundingClientRect()) });
           break;
         }
@@ -313,7 +313,7 @@ if (!ENVIRONMENT_IS_NODE) {
 // Only prevent default on backspace/tab because we don't want unexpected navigation.
 // Do not prevent default on the rest as we need the keypress event.
 function shouldPreventDefault(event) {
-  if (event.type === 'keydown' && event.keyCode !== 8 /* backspace */ && event.keyCode !== 9 /* tab */) {
+  if (event.type === 'keydown' && event.key != 'Backspace' && event.key != 'Tab') {
     return false; // keypress, back navigation
   } else {
     return true; // NO keypress, NO back navigation

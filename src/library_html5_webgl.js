@@ -171,7 +171,7 @@ var LibraryHtml5WebGL = {
 #endif
           return 0;
         }
-        canvas = GL.offscreenCanvases[canvas.id];
+        canvas = GL.offscreenCanvases[canvas.id].canvas;
       }
     }
 #else // !OFFSCREENCANVAS_SUPPORT
@@ -223,7 +223,7 @@ var LibraryHtml5WebGL = {
     });`,
 #endif
   _emscripten_proxied_gl_context_activated_from_main_browser_thread: (contextHandle) => {
-    GLctx = Module.ctx = GL.currentContext = contextHandle;
+    GLctx = Module['ctx'] = GL.currentContext = contextHandle;
     GL.currentContextIsProxied = true;
   },
 #else
@@ -444,9 +444,8 @@ var LibraryHtml5WebGL = {
   },
 
   emscripten_is_webgl_context_lost__proxy: 'sync_on_webgl_context_handle_thread',
-  emscripten_is_webgl_context_lost: (contextHandle) => {
-    return !GL.contexts[contextHandle] || GL.contexts[contextHandle].GLctx.isContextLost(); // No context ~> lost context.
-  },
+  emscripten_is_webgl_context_lost: (contextHandle) =>
+    !GL.contexts[contextHandle] || GL.contexts[contextHandle].GLctx.isContextLost(), // No context ~> lost context.
 
   emscripten_webgl_get_supported_extensions__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_supported_extensions__deps: ['$stringToNewUTF8'],

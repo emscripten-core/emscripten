@@ -495,10 +495,6 @@ def setup_pthreads():
 
   default_setting('DEFAULT_PTHREAD_STACK_SIZE', settings.STACK_SIZE)
 
-  if not settings.MINIMAL_RUNTIME and 'instantiateWasm' not in settings.INCOMING_MODULE_JS_API:
-    # pthreads runtime depends on overriding instantiateWasm
-    settings.INCOMING_MODULE_JS_API.append('instantiateWasm')
-
   # Functions needs by runtime_pthread.js
   settings.REQUIRED_EXPORTS += [
     '_emscripten_thread_free_data',
@@ -670,18 +666,19 @@ def phase_linker_setup(options, state, newargs):
   if options.cpu_profiler:
     options.post_js.append(utils.path_from_root('src/cpuprofiler.js'))
 
-  if not settings.RUNTIME_DEBUG:
-    settings.RUNTIME_DEBUG = bool(settings.LIBRARY_DEBUG or
-                                  settings.GL_DEBUG or
-                                  settings.DYLINK_DEBUG or
-                                  settings.OPENAL_DEBUG or
-                                  settings.SYSCALL_DEBUG or
-                                  settings.WEBSOCKET_DEBUG or
-                                  settings.SOCKET_DEBUG or
-                                  settings.FETCH_DEBUG or
-                                  settings.EXCEPTION_DEBUG or
-                                  settings.PTHREADS_DEBUG or
-                                  settings.ASYNCIFY_DEBUG)
+  # Unless RUNTIME_DEBUG is explicitly set then we enable it when any of the
+  # more specfic debug settings are present.
+  default_setting('RUNTIME_DEBUG', int(settings.LIBRARY_DEBUG or
+                                       settings.GL_DEBUG or
+                                       settings.DYLINK_DEBUG or
+                                       settings.OPENAL_DEBUG or
+                                       settings.SYSCALL_DEBUG or
+                                       settings.WEBSOCKET_DEBUG or
+                                       settings.SOCKET_DEBUG or
+                                       settings.FETCH_DEBUG or
+                                       settings.EXCEPTION_DEBUG or
+                                       settings.PTHREADS_DEBUG or
+                                       settings.ASYNCIFY_DEBUG))
 
   if options.memory_profiler:
     settings.MEMORYPROFILER = 1
@@ -757,7 +754,15 @@ def phase_linker_setup(options, state, newargs):
 
   if options.oformat == OFormat.MJS:
     settings.EXPORT_ES6 = 1
-    settings.MODULARIZE = 1
+    default_setting('MODULARIZE', 1)
+
+  if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
+    exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
+
+  if settings.MODULARIZE == 'instance':
+    diagnostics.warning('experimental', '-sMODULARIZE=instance is still experimental. Many features may not work or will change.')
+    if options.oformat != OFormat.MJS:
+      exit_with_error('emcc: MODULARIZE instance is only compatible with .mjs output files')
 
   if options.oformat in (OFormat.WASM, OFormat.BARE):
     if options.emit_tsd:
@@ -2394,7 +2399,20 @@ def modularize():
   if async_emit != '' and settings.EXPORT_NAME == 'config':
     diagnostics.warning('emcc', 'EXPORT_NAME should not be named "config" when targeting Safari')
 
-  src = '''
+  if settings.MODULARIZE == 'instance':
+    src = '''
+export default async function init(moduleArg = {}) {
+  var moduleRtn;
+
+%(src)s
+
+  return await moduleRtn;
+}
+''' % {
+      'src': src,
+    }
+  else:
+    src = '''
 %(maybe_async)sfunction(moduleArg = {}) {
   var moduleRtn;
 
@@ -2403,9 +2421,9 @@ def modularize():
   return moduleRtn;
 }
 ''' % {
-    'maybe_async': async_emit,
-    'src': src,
-  }
+      'maybe_async': async_emit,
+      'src': src,
+    }
 
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
     # Single threaded MINIMAL_RUNTIME programs do not need access to
@@ -2424,19 +2442,31 @@ def modularize():
       script_url = "typeof document != 'undefined' ? document.currentScript?.src : undefined"
       if shared.target_environment_may_be('node'):
         script_url_node = "if (typeof __filename != 'undefined') _scriptName = _scriptName || __filename;"
-    src = '''%(node_imports)s
+    if settings.MODULARIZE == 'instance':
+      src = '''%(node_imports)s
+  var _scriptName = %(script_url)s;
+  %(script_url_node)s
+  %(src)s
+''' % {
+        'node_imports': node_es6_imports(),
+        'script_url': script_url,
+        'script_url_node': script_url_node,
+        'src': src,
+      }
+    else:
+      src = '''%(node_imports)s
 var %(EXPORT_NAME)s = (() => {
   var _scriptName = %(script_url)s;
   %(script_url_node)s
   return (%(src)s);
 })();
 ''' % {
-      'node_imports': node_es6_imports(),
-      'EXPORT_NAME': settings.EXPORT_NAME,
-      'script_url': script_url,
-      'script_url_node': script_url_node,
-      'src': src,
-    }
+        'node_imports': node_es6_imports(),
+        'EXPORT_NAME': settings.EXPORT_NAME,
+        'script_url': script_url,
+        'script_url_node': script_url_node,
+        'src': src,
+      }
 
   # Given the async nature of how the Module function and Module object
   # come into existence in AudioWorkletGlobalScope, store the Module
@@ -2449,8 +2479,16 @@ var %(EXPORT_NAME)s = (() => {
 
   # Export using a UMD style export, or ES6 exports if selected
   if settings.EXPORT_ES6:
-    src += 'export default %s;\n' % settings.EXPORT_NAME
-
+    if settings.MODULARIZE == 'instance':
+      exports = settings.EXPORTED_FUNCTIONS + settings.EXPORTED_RUNTIME_METHODS
+      # Declare a top level var for each export so that code in the init function
+      # can assign to it and update the live module bindings.
+      src += 'var ' + ', '.join(['__exp_' + export for export in exports]) + ';\n'
+      # Export the functions with their original name.
+      exports = ['__exp_' + export + ' as ' + export for export in exports]
+      src += 'export {' + ', '.join(exports) + '};\n'
+    else:
+      src += 'export default %s;\n' % settings.EXPORT_NAME
   elif not settings.MINIMAL_RUNTIME:
     src += '''\
 if (typeof exports === 'object' && typeof module === 'object')
@@ -2473,7 +2511,10 @@ else if (typeof define === 'function' && define['amd'])
     elif settings.ENVIRONMENT_MAY_BE_NODE:
       src += f'var isPthread = {node_pthread_detection()}\n'
     src += '// When running as a pthread, construct a new instance on startup\n'
-    src += 'isPthread && %s();\n' % settings.EXPORT_NAME
+    if settings.MODULARIZE == 'instance':
+      src += 'isPthread && init();\n'
+    else:
+      src += 'isPthread && %s();\n' % settings.EXPORT_NAME
 
   final_js += '.modular.js'
   write_file(final_js, src)

@@ -441,7 +441,9 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   if base_metadata:
     function_exports = base_metadata.function_exports
-    global_exports = base_metadata.global_exports
+    # We want the real values from the final metadata but we only want to
+    # include names from the base_metadata.  See phase_link() in link.py.
+    global_exports = {k: v for k, v in metadata.global_exports.items() if k in base_metadata.global_exports}
   else:
     function_exports = metadata.function_exports
     global_exports = metadata.global_exports
@@ -912,8 +914,12 @@ def make_export_wrappers(function_exports):
 
     # TODO(sbc): Can we avoid exporting the dynCall_ functions on the module.
     should_export = settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS
-    if name.startswith('dynCall_') or should_export:
-      exported = "Module['%s'] = " % mangled
+    if (name.startswith('dynCall_') and settings.MODULARIZE != 'instance') or should_export:
+      if settings.MODULARIZE == 'instance':
+        # Update the export declared at the top level.
+        wrapper += f" __exp_{mangled} = "
+      else:
+        exported = "Module['%s'] = " % mangled
     else:
       exported = ''
     wrapper += exported

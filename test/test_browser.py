@@ -990,8 +990,8 @@ If manually bisecting:
       html = html.replace('</body>', '''
 <script src='fake_events.js'></script>
 <script>
-simulateKeyDown(1250);simulateKeyDown(38);simulateKeyUp(38);simulateKeyUp(1250); // alt, up
-simulateKeyDown(1248);simulateKeyDown(1249);simulateKeyDown(40);simulateKeyUp(40);simulateKeyUp(1249);simulateKeyUp(1248); // ctrl, shift, down
+simulateKeyDown(18);simulateKeyDown(38);simulateKeyUp(38);simulateKeyUp(18); // alt, up
+simulateKeyDown(17);simulateKeyDown(16);simulateKeyDown(40);simulateKeyUp(40);simulateKeyUp(16);simulateKeyUp(17); // ctrl, shift, down
 simulateKeyDown(37);simulateKeyUp(37); // left
 simulateKeyDown(39);simulateKeyUp(39); // right
 simulateKeyDown(65);simulateKeyUp(65); // a
@@ -1001,10 +1001,10 @@ simulateKeyDown(100);simulateKeyUp(100); // trigger the end
 </body>''')
       create_file('test.html', html)
 
-    self.btest_exit('test_sdl_key_proxy.c', 223092870, args=['--proxy-to-worker', '--pre-js', 'pre.js', '-lSDL', '-lGL'], post_build=post)
+    self.btest_exit('test_sdl_key_proxy.c', 223092870, args=['--proxy-to-worker', '--pre-js', 'pre.js', '-lSDL', '-lGL', '-sRUNTIME_DEBUG'], post_build=post)
 
   def test_canvas_focus(self):
-    self.btest_exit('canvas_focus.c')
+    self.btest_exit('test_canvas_focus.c', args=['--pre-js', test_file('browser/fake_events.js')])
 
   def test_keydown_preventdefault_proxy(self):
     def post():
@@ -1013,15 +1013,15 @@ simulateKeyDown(100);simulateKeyUp(100); // trigger the end
 <script src='fake_events.js'></script>
 <script>
 // Send 'A'.  The corresonding keypress event will not be prevented.
-simulateKeyDown(65);
-simulateKeyUp(65);
+simulateKeyDown(65, 'a', 'KeyA');
+simulateKeyUp(65, 'a', 'KeyA');
 
 // Send backspace.  The corresonding keypress event *will* be prevented due to proxyClient.js.
-simulateKeyDown(8);
-simulateKeyUp(8);
+simulateKeyDown(8, 'Backspace', 'Backspace');
+simulateKeyUp(8, 'Backspace', 'Backspace');
 
-simulateKeyDown(100);
-simulateKeyUp(100);
+simulateKeyDown(100, undefined, 'Numpad4');
+simulateKeyUp(100, undefined, 'Numpad4');
 </script>
 </body>''')
 
@@ -2613,6 +2613,15 @@ Module["preRun"] = () => {
     self.btest_exit('webgl_create_context2.cpp')
 
   @requires_graphics_hardware
+  # Verify bug https://github.com/emscripten-core/emscripten/issues/22943: creating a WebGL context with explicit swap control and offscreenCanvas
+  @parameterized({
+    'offscreencanvas': (['-sOFFSCREENCANVAS_SUPPORT'],),
+    'offscreenframebuffer': (['-sOFFSCREEN_FRAMEBUFFER', '-DUSE_OFFSCREEN_FRAMEBUFFER'],),
+  })
+  def test_html5_webgl_create_context_swapcontrol(self, args):
+    self.btest_exit('browser/webgl_create_context_swapcontrol.c', args=args)
+
+  @requires_graphics_hardware
   # Verify bug https://github.com/emscripten-core/emscripten/issues/4556: creating a WebGL context to Module.canvas without an ID explicitly assigned to it.
   # (this only makes sense in the old deprecated -sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0 mode)
   def test_html5_special_event_targets(self):
@@ -2854,15 +2863,19 @@ Module["preRun"] = () => {
 
   @parameterized({
     '': (['-sUSE_GLFW=2', '-DUSE_GLFW=2'],),
-    'glfw3': (['-sUSE_GLFW=2', '-DUSE_GLFW=2'],),
+    'glfw3': (['-sUSE_GLFW=3', '-DUSE_GLFW=3'],),
   })
   @requires_graphics_hardware
   def test_glfw_events(self, args):
-    self.btest('test_glfw_events.c', args=args + ['-lglfw', '-lGL'], expected='1')
+    self.btest_exit('test_glfw_events.c', args=args + ['-lglfw', '-lGL', '--pre-js', test_file('browser/fake_events.js')])
 
   @requires_graphics_hardware
   def test_glfw3_hi_dpi_aware(self):
     self.btest_exit('test_glfw3_hi_dpi_aware.c', args=['-sUSE_GLFW=3', '-lGL'])
+
+  @requires_graphics_hardware
+  def test_glfw3_css_scaling(self):
+    self.btest_exit('test_glfw3_css_scaling.c', args=['-sUSE_GLFW=3'])
 
   @requires_graphics_hardware
   @also_with_wasm2js

@@ -1,62 +1,34 @@
-F_OK(readable): 0
-errno: 0
-R_OK(readable): 0
-errno: 0
-X_OK(readable): -1
-errno: 2
-W_OK(readable): -1
-errno: 2
+F_OK('readable'): OK
+R_OK('readable'): OK
+X_OK('readable'): Permission denied
+W_OK('readable'): Permission denied
 
-F_OK(writeable): 0
-errno: 0
-R_OK(writeable): -1
-errno: 2
-X_OK(writeable): -1
-errno: 2
-W_OK(writeable): 0
-errno: 0
+F_OK('writeable'): OK
+R_OK('writeable'): Permission denied
+X_OK('writeable'): Permission denied
+W_OK('writeable'): OK
 
-F_OK(allaccess): 0
-errno: 0
-R_OK(allaccess): 0
-errno: 0
-X_OK(allaccess): 0
-errno: 0
-W_OK(allaccess): 0
-errno: 0
+F_OK('allaccess'): OK
+R_OK('allaccess'): OK
+X_OK('allaccess'): OK
+W_OK('allaccess'): OK
 
-F_OK(forbidden): 0
-errno: 0
-R_OK(forbidden): -1
-errno: 2
-X_OK(forbidden): -1
-errno: 2
-W_OK(forbidden): -1
-errno: 2
+F_OK('forbidden'): OK
+R_OK('forbidden'): Permission denied
+X_OK('forbidden'): Permission denied
+W_OK('forbidden'): Permission denied
 
-F_OK(nonexistent): -1
-errno: 44
-R_OK(nonexistent): -1
-errno: 44
-X_OK(nonexistent): -1
-errno: 44
-W_OK(nonexistent): -1
-errno: 44
+F_OK('nonexistent'): No such file or directory
+R_OK('nonexistent'): No such file or directory
+X_OK('nonexistent'): No such file or directory
+W_OK('nonexistent'): No such file or directory
 
-F_OK(): -1
-errno: 44
-R_OK(): -1
-errno: 44
-X_OK(): -1
-errno: 44
-W_OK(): -1
-errno: 44
+F_OK(''): No such file or directory
+R_OK(''): No such file or directory
+X_OK(''): No such file or directory
+W_OK(''): No such file or directory
 
-F_OK(filetorename): -1
-errno: 44
-F_OK(renamedfile): 0
-errno: 0
-F_OK(filetorename): -1
-errno: 44
-F_OK(renamedfile): 0
-errno: 0
+F_OK('filetorename'): -1
+F_OK('renamedfile'): 0
+F_OK('filetorename'): -1
+F_OK('renamedfile'): 0
