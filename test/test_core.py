@@ -5823,7 +5823,7 @@ got: 10
     self.do_run_in_out_file_test('fs/test_emptyPath.c')
 
   @also_with_noderawfs
-  def test_enotdir(self):
+  def test_fs_enotdir(self):
     self.do_run_in_out_file_test('fs/test_enotdir.c')
 
   @also_with_noderawfs
