@@ -67,6 +67,7 @@ min_browser_versions = {
     'chrome': 67,
     'firefox': 68,
     'safari': 140100, # TODO(features): set this back to 15 after we update the default targets.
+    'node': 130000,
   },
   Feature.THREADS: {
     'chrome': 74,
