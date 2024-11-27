@@ -372,7 +372,7 @@ FS.staticInit();
       return 0;
     },
     mayCreate(dir, name) {
-      if (!FS.isDir(dir)) {
+      if (!FS.isDir(dir.mode)) {
         return {{{ cDefs.ENOTDIR }}};
       }
       try {
