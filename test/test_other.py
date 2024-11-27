@@ -1273,6 +1273,10 @@ f.close()
     err = self.expect_fail(cmd + ['-sGLOBAL_BASE=1024'])
     self.assertContained('error: --stack-first is not compatible with -sGLOBAL_BASE', err)
 
+  def test_side_module_global_base(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '-sGLOBAL_BASE=1024', '-sSIDE_MODULE'])
+    self.assertContained('emcc: error: GLOBAL_BASE is not compatible with SIDE_MODULE', err)
+
   @parameterized({
     # In a simple -O0 build we do not set --low-memory-unused (as the stack is
     # first, which is nice for debugging but bad for code size (larger globals)
