@@ -1378,7 +1378,7 @@ FS.staticInit();
       FS.mkdir('/proc/self/fd');
       FS.mount({
         mount() {
-          var node = FS.createNode(proc_self, 'fd', {{{ cDefs.S_IFDIR }}} | {{{ 0777 }}}, {{{ cDefs.S_IXUGO }}});
+          var node = FS.createNode(proc_self, 'fd', {{{ cDefs.S_IFDIR | 0o777 }}}, {{{ cDefs.S_IXUGO }}});
           node.node_ops = {
             lookup(parent, name) {
               var fd = +name;
