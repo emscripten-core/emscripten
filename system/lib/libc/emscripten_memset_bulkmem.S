@@ -11,6 +11,7 @@ _emscripten_memset_bulkmem:
 #ifdef __wasm64__
   i32.wrap_i64
 #endif
+  // memory.fill traps on OOB zero-length sets, but memset must not.
   if
    local.get 0
    local.get 1

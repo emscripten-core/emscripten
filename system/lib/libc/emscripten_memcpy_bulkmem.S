@@ -11,6 +11,7 @@ _emscripten_memcpy_bulkmem:
 #ifdef __wasm64__
   i32.wrap_i64
 #endif
+  // memory.copy traps on OOB zero-length copies, but memcpy must not.
   if
     local.get 0
     local.get 1
