@@ -1796,6 +1796,7 @@ class libmimalloc(MTLibrary):
     '-Wno-unused-but-set-variable',
     '-Wno-unused-variable',
     '-Wno-deprecated-pragma',
+    '-Wno-constant-conversion',
     # build emmalloc as only a system allocator, without exporting itself onto
     # malloc/free in the global scope
     '-DEMMALLOC_NO_STD_EXPORTS',
