@@ -81,15 +81,7 @@ void test_reading_existing_symlinks() {
       continue;
     }
 
-    // WASMFS behaves the same as Linux (and as best as I can tell, the spec),
-    // seeing the symlink as a string. The old JS FS instead normalizes it and
-    // returns something modified.
-    // The same happens in the assertions below.
-#if !defined(__EMSCRIPTEN__) || defined(WASMFS)
     assert(strcmp(buffer, "../test/../there!") == 0);
-#else
-    assert(strcmp(buffer, "/there!") == 0);
-#endif
     assert(strlen(buffer) == rtn);
     errno = 0;
   }
@@ -111,11 +103,7 @@ void test_creating_symlink() {
   char buffer[256] = {0};
   rtn = readlink("directory/link", buffer, 256);
   assert(errno == 0);
-#if !defined(__EMSCRIPTEN__) || defined(WASMFS)
   assert(strcmp(buffer, "new-nonexistent-path") == 0);
-#else
-  assert(strcmp(buffer, "/working/directory/new-nonexistent-path") == 0);
-#endif
   assert(strlen(buffer) == rtn);
   errno = 0;
 }
@@ -127,11 +115,7 @@ void test_reading_shortened_symlink() {
   int rtn = readlink("link", buffer, 4);
   assert(errno == 0);
   assert(rtn == 4);
-#if !defined(__EMSCRIPTEN__) || defined(WASMFS)
   assert(strcmp(buffer, "../t**nexistent-path") == 0);
-#else
-  assert(strcmp(buffer, "/the**ng/directory/new-nonexistent-path") == 0);
-#endif
   errno = 0;
 }
 
