@@ -4435,6 +4435,27 @@ res64 - external 64\n''', header='''\
       int x = 123;
     ''', expected=['extern is 123.\n'], force_c=True)
 
+  @needs_dylink
+  def test_dylink_global_var_export(self):
+    self.do_run(r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <emscripten.h>
+      #include <emscripten/em_asm.h>
+
+      EMSCRIPTEN_KEEPALIVE int my_number = 123456;
+
+      int main(void) {
+        void* js_address = EM_ASM_PTR({
+          console.log("JS:_my_number:", _my_number, HEAP32[_my_number/4]);
+          return _my_number;
+        });
+        printf("C: my_number: %ld %d\n", (long)&my_number, my_number);
+        assert(js_address == &my_number);
+        return 0;
+      }
+    ''', emcc_args=['-sMAIN_MODULE'], force_c=True)
+
   @with_dylink_reversed
   def test_dylink_global_var_modded(self):
     self.dylink_test(main=r'''
@@ -5592,8 +5613,14 @@ got: 10
   def test_fstatat(self):
     self.do_runf('stat/test_fstatat.c', 'success')
 
+  @crossplatform
   @also_with_wasmfs
+  @also_with_noderawfs
   def test_stat_chmod(self):
+    if self.get_setting('NODERAWFS') and WINDOWS:
+      self.skipTest('mode bits work differently on windows')
+    if self.get_setting('WASMFS') and self.get_setting('NODERAWFS'):
+      self.skipTest('test requires symlink creation which currently missing from wasmfs+noderawfs')
     self.do_runf('stat/test_chmod.c', 'success')
 
   @also_with_wasmfs
@@ -5708,7 +5735,6 @@ got: 10
 
   def test_fs_base(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
-    self.uses_es6 = True
     self.add_pre_run(read_file(test_file('filesystem/src.js')))
     src = 'int main() {return 0;}\n'
     expected = read_file(test_file('filesystem/output.txt'))
@@ -5718,10 +5744,6 @@ got: 10
   @is_slow_test
   @requires_node
   def test_fs_nodefs_rw(self):
-    # TODO(sbc): This test exposes in issue in the way we run closure compiler and
-    # causes it to generate non-ES5 output.
-    # Remove this line once we fix: https://github.com/emscripten-core/emscripten/issues/12628
-    self.uses_es6 = True
     self.emcc_args += ['-lnodefs.js']
     self.set_setting('SYSCALL_DEBUG')
     self.do_runf('fs/test_nodefs_rw.c', 'success')
@@ -5762,9 +5784,19 @@ got: 10
     # externally setup an existing folder structure: existing/a
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    os.makedirs(os.path.join(self.working_dir, 'existing', 'a'))
+    os.makedirs('existing/a')
     self.emcc_args += ['-lnodefs.js']
     self.do_runf('fs/test_nodefs_readdir.c', 'success')
+
+  @requires_node
+  @crossplatform
+  def test_fs_nodefs_statvfs(self):
+    # externally setup an existing folder structure: existing/a
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+    os.makedirs('existing/a')
+    self.emcc_args += ['-lnodefs.js']
+    self.do_runf('fs/test_nodefs_statvfs.c', 'success')
 
   @no_windows('no symlink support on windows')
   @requires_node
@@ -5811,7 +5843,6 @@ got: 10
     'wasmfs': ['WASMFS']
   })
   def test_fs_mmap(self, fs):
-    self.uses_es6 = True
     if fs == 'NODEFS':
       self.require_node()
       self.emcc_args += ['-lnodefs.js']
@@ -5914,30 +5945,33 @@ Module.onRuntimeInitialized = () => {
       assert_returncode=exit_code
     )
 
-  @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @requires_node
-  def test_unistd_access(self):
-    self.uses_es6 = True
-    orig_compiler_opts = self.emcc_args.copy()
-    for fs in ('MEMFS', 'NODEFS'):
-      self.emcc_args = orig_compiler_opts + ['-D' + fs]
-      if self.get_setting('WASMFS'):
-        if fs == 'NODEFS':
-          # TODO: NODEFS in WasmFS
-          continue
-        self.emcc_args += ['-sFORCE_FILESYSTEM']
-      if fs == 'NODEFS':
-        self.emcc_args += ['-lnodefs.js']
-      self.do_run_in_out_file_test('unistd/access.c')
-    # Node.js fs.chmod is nearly no-op on Windows
-    # TODO: NODERAWFS in WasmFS
-    if not WINDOWS and not self.get_setting('WASMFS'):
-      self.emcc_args = orig_compiler_opts + ['-DNODERAWFS']
-      self.set_setting('NODERAWFS')
-      self.do_run_in_out_file_test('unistd/access.c')
+  @crossplatform
+  @parameterized({
+    '': (['-DMEMFS'],),
+    'nodefs': (['-DNODEFS', '-lnodefs.js'],),
+    'noderawfs': (['-DNODERAWFS', '-sNODERAWFS'],)
+  })
+  def test_unistd_access(self, args):
+    self.emcc_args += args
+    nodefs = '-DNODEFS' in args or '-DNODERAWFS' in args
+    if self.get_setting('WASMFS'):
+      if nodefs:
+        self.skipTest('NODEFS in WasmFS')
+      self.emcc_args += ['-sFORCE_FILESYSTEM']
+    # On windows we have slighly different output because we the same
+    # level of permissions are not available. For example, on windows
+    # its not possible have a file that is not readable, but writable.
+    # We also report all files as executable since there is no x bit
+    # recorded there.
+    # See https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod?view=msvc-170#remarks
+    if WINDOWS and '-DNODERAWFS' in args:
+      out_suffix = '.win'
+    else:
+      out_suffix = ''
+    self.do_run_in_out_file_test('unistd/access.c', out_suffix=out_suffix)
 
   def test_unistd_curdir(self):
-    self.uses_es6 = True
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test('unistd/curdir.c')
@@ -5962,7 +5996,6 @@ Module.onRuntimeInitialized = () => {
     'nodefs': (['NODEFS'])
   })
   def test_unistd_truncate(self, fs):
-    self.uses_es6 = True
     orig_compiler_opts = self.emcc_args.copy()
     self.emcc_args = orig_compiler_opts + ['-D' + fs]
     if self.get_setting('WASMFS'):
@@ -5978,7 +6011,6 @@ Module.onRuntimeInitialized = () => {
   @unittest.skipIf(WINDOWS or os.geteuid() == 0, "Root access invalidates this test by being able to write on readonly files")
   @requires_node
   def test_unistd_truncate_noderawfs(self):
-    self.uses_es6 = True
     self.set_setting('NODERAWFS')
     self.maybe_closure()
     self.do_run_in_out_file_test('unistd/truncate.c')
@@ -7641,7 +7673,6 @@ void* operator new(size_t size) {
     'all_growth': ('ALL', True),
   })
   def test_webidl(self, mode, allow_memory_growth):
-    self.uses_es6 = True
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     if self.maybe_closure():
       # avoid closure minified names competing with our test code in the global name space
@@ -9539,7 +9570,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'no_dynamic_execution': (['-sDYNAMIC_EXECUTION=0'],)
   })
   def test_embind_lib_with_asyncify(self, args):
-    self.uses_es6 = True
     self.emcc_args += [
       '-lembind',
       '-sASYNCIFY',
@@ -9553,7 +9583,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_asan('asyncify stack operations confuse asan')
   @with_asyncify_and_jspi
   def test_em_async_js(self):
-    self.uses_es6 = True
     if not self.get_setting('ASYNCIFY'):
       self.set_setting('ASYNCIFY')
     self.set_setting('EXPORTED_RUNTIME_METHODS', 'ccall')

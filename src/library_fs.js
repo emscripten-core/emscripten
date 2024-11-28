@@ -666,15 +666,36 @@ FS.staticInit();
       }
       return parent.node_ops.mknod(parent, name, mode, dev);
     },
+    statfs(path) {
+
+      // NOTE: None of the defaults here are true. We're just returning safe and
+      //       sane values.
+      var rtn = {
+        bsize: 4096,
+        frsize: 4096,
+        blocks: 1e6,
+        bfree: 5e5,
+        bavail: 5e5,
+        files: FS.nextInode,
+        ffree: FS.nextInode - 1,
+        fsid: 42,
+        flags: 2,
+        namelen: 255,
+      };
+
+      var parent = FS.lookupPath(path, {follow: true}).node;
+      if (parent?.node_ops.statfs) {
+        Object.assign(rtn, parent.node_ops.statfs(parent.mount.opts.root));
+      }
+      return rtn;
+    },
     // helpers to create specific types of nodes
-    create(path, mode) {
-      mode = mode !== undefined ? mode : 438 /* 0666 */;
+    create(path, mode = 0o666) {
       mode &= {{{ cDefs.S_IALLUGO }}};
       mode |= {{{ cDefs.S_IFREG }}};
       return FS.mknod(path, mode, 0);
     },
-    mkdir(path, mode) {
-      mode = mode !== undefined ? mode : 511 /* 0777 */;
+    mkdir(path, mode = 0o777) {
       mode &= {{{ cDefs.S_IRWXUGO }}} | {{{ cDefs.S_ISVTX }}};
       mode |= {{{ cDefs.S_IFDIR }}};
 #if FS_DEBUG
@@ -701,7 +722,7 @@ FS.staticInit();
     mkdev(path, mode, dev) {
       if (typeof dev == 'undefined') {
         dev = mode;
-        mode = 438 /* 0666 */;
+        mode = 0o666;
       }
       mode |= {{{ cDefs.S_IFCHR }}};
       return FS.mknod(path, mode, dev);
@@ -809,7 +830,7 @@ FS.staticInit();
       // do the underlying fs rename
       try {
         old_dir.node_ops.rename(old_node, new_dir, new_name);
-        // update old node (we do this here to avoid each backend 
+        // update old node (we do this here to avoid each backend
         // needing to)
         old_node.parent = new_dir;
       } catch (e) {
@@ -904,7 +925,7 @@ FS.staticInit();
       if (!link.node_ops.readlink) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
-      return PATH_FS.resolve(FS.getPath(link.parent), link.node_ops.readlink(link));
+      return link.node_ops.readlink(link);
     },
     stat(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
@@ -1009,13 +1030,12 @@ FS.staticInit();
         timestamp: Math.max(atime, mtime)
       });
     },
-    open(path, flags, mode) {
+    open(path, flags, mode = 0o666) {
       if (path === "") {
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       }
       flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
       if ((flags & {{{ cDefs.O_CREAT }}})) {
-        mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
         mode = (mode & {{{ cDefs.S_IALLUGO }}}) | {{{ cDefs.S_IFREG }}};
       } else {
         mode = 0;
@@ -1381,7 +1401,7 @@ FS.staticInit();
       FS.mkdir('/proc/self/fd');
       FS.mount({
         mount() {
-          var node = FS.createNode(proc_self, 'fd', {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */, {{{ cDefs.S_IXUGO }}});
+          var node = FS.createNode(proc_self, 'fd', {{{ cDefs.S_IFDIR | 0o777 }}}, {{{ cDefs.S_IXUGO }}});
           node.node_ops = {
             lookup(parent, name) {
               var fd = +name;

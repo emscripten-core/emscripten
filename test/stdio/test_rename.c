@@ -10,7 +10,6 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -51,39 +50,6 @@ void setup() {
   mkdir("dir/b/", 0777);
   mkdir("dir/b/c", 0777);
   create_file("dir-nonempty/file", "abcdef", 0777);
-}
-
-void cleanup() {
-  // We're hulk-smashing and removing original + renamed files to
-  // make sure we get it all regardless of anything failing
-  unlink("file");
-  unlink("dir/file");
-  unlink("dir/file1");
-  unlink("dir/file2");
-  rmdir("dir/subdir/subsubdir");
-  rmdir("dir/subdir");
-  rmdir("dir/subdir1");
-  rmdir("dir/subdir2");
-  rmdir("dir/subdir3/subdir3_1/subdir1 renamed");
-  rmdir("dir/subdir3/subdir3_1");
-  rmdir("dir/subdir3");
-  rmdir("dir/subdir4/");
-  rmdir("dir/subdir5/");
-  rmdir("dir/b/c");
-  rmdir("dir/b");
-  rmdir("dir/rename-dir/subdir/subsubdir");
-  rmdir("dir/rename-dir/subdir");
-  rmdir("dir/rename-dir");
-  rmdir("dir");
-#ifndef WASMFS
-  chmod("dir-readonly2", 0777);
-#endif
-  rmdir("dir-readonly2/somename");
-  rmdir("dir-readonly2");
-  rmdir("new-dir");
-  rmdir("dir-readonly");
-  unlink("dir-nonempty/file");
-  rmdir("dir-nonempty");
 }
 
 void test() {
@@ -254,9 +220,7 @@ void test() {
 }
 
 int main() {
-  atexit(cleanup);
-  signal(SIGABRT, cleanup);
   setup();
   test();
-  return EXIT_SUCCESS;
+  return 0;
 }

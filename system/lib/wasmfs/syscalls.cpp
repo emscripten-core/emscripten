@@ -1095,10 +1095,6 @@ int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath) {
   return 0;
 }
 
-int __syscall_symlink(intptr_t target, intptr_t linkpath) {
-  return __syscall_symlinkat(target, AT_FDCWD, linkpath);
-}
-
 // TODO: Test this with non-AT_FDCWD values.
 int __syscall_readlinkat(int dirfd,
                          intptr_t path,

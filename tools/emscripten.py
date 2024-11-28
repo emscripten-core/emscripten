@@ -441,7 +441,9 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   if base_metadata:
     function_exports = base_metadata.function_exports
-    global_exports = base_metadata.global_exports
+    # We want the real values from the final metadata but we only want to
+    # include names from the base_metadata.  See phase_link() in link.py.
+    global_exports = {k: v for k, v in metadata.global_exports.items() if k in base_metadata.global_exports}
   else:
     function_exports = metadata.function_exports
     global_exports = metadata.global_exports

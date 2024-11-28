@@ -2762,11 +2762,13 @@ var LibrarySDL = {
 
     if (bytes !== undefined && SDL.webAudioAvailable() && canPlayWithWebAudio) {
       audio = undefined;
-      webAudio = {};
-      // The audio decoding process is asynchronous, which gives trouble if user code plays the audio data back immediately
-      // after loading. Therefore prepare an array of callback handlers to run when this audio decoding is complete, which
-      // will then start the playback (with some delay).
-      webAudio.onDecodeComplete = []; // While this member array exists, decoding hasn't finished yet.
+      webAudio = {
+        // The audio decoding process is asynchronous, which gives trouble if user
+        // code plays the audio data back immediately after loading. Therefore
+        // prepare an array of callback handlers to run when this audio decoding
+        // is complete, which will then start the playback (with some delay).
+        onDecodeComplete: [], // While this member array exists, decoding hasn't finished yet.
+      }
       var onDecodeComplete = (data) => {
         webAudio.decodedBuffer = data;
         // Call all handlers that were waiting for this decode to finish, and clear the handler list.
@@ -2815,8 +2817,7 @@ var LibrarySDL = {
     }
 
     if (SDL.webAudioAvailable()) {
-      webAudio = {};
-      webAudio.decodedBuffer = buffer;
+      webAudio = { decodedBuffer: buffer };
     } else {
       audio = new Audio();
       audio.mozAudioChannelType = 'content'; // bugzilla 910340
@@ -2873,13 +2874,14 @@ var LibrarySDL = {
     var audio;
     if (info.webAudio) {
       // Create an instance of the WebAudio object.
-      audio = {};
-      audio.resource = info; // This new object is an instance that refers to this existing resource.
-      audio.paused = false;
-      audio.currentPosition = 0;
       // Make our instance look similar to the instance of a <media> to make api simple.
-      audio.play = function() { SDL.playWebAudio(this); }
-      audio.pause = function() { SDL.pauseWebAudio(this); }
+      audio = {
+        resource: info, // This new object is an instance that refers to this existing resource.
+        paused: false,
+        currentPosition: 0,
+        play() { SDL.playWebAudio(this); },
+        pause() { SDL.pauseWebAudio(this); },
+      };
     } else {
       // We clone the audio node to utilize the preloaded audio buffer, since
       // the browser has already preloaded the audio file.
@@ -2964,12 +2966,13 @@ var LibrarySDL = {
     var audio;
     if (info.webAudio) { // Play via Web Audio API
       // Create an instance of the WebAudio object.
-      audio = {};
-      audio.resource = info; // This new webAudio object is an instance that refers to this existing resource.
-      audio.paused = false;
-      audio.currentPosition = 0;
-      audio.play = function() { SDL.playWebAudio(this); }
-      audio.pause = function() { SDL.pauseWebAudio(this); }
+      audio = {
+        resource: info, // This new webAudio object is an instance that refers to this existing resource.
+        paused: false,
+        currentPosition: 0,
+        play() { SDL.playWebAudio(this); },
+        pause() { SDL.pauseWebAudio(this); },
+      };
     } else if (info.audio) { // Play via the <audio> element
       audio = info.audio;
     }
