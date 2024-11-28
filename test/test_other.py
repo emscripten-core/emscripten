@@ -922,6 +922,9 @@ f.close()
     'post_build':    ('post_build',     'hello.js',              []),
   })
   def test_cmake(self, test_dir, output_file, cmake_args):
+    if test_dir == 'whole_archive' and 'EMTEST_SKIP_NEW_CMAKE' in os.environ:
+      self.skipTest('EMTEST_SKIP_NEW_CMAKE set')
+
     # Test all supported generators.
     if WINDOWS:
       generators = ['MinGW Makefiles', 'NMake Makefiles']
