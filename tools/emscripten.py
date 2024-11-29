@@ -620,7 +620,7 @@ def finalize_wasm(infile, outfile, js_syms):
 
 
 def create_tsd_exported_runtime_methods(metadata):
-  # Use the TypeScript compiler to generate defintions for all of the runtime
+  # Use the TypeScript compiler to generate definitions for all of the runtime
   # exports. The JS from the library any JS docs are included in the file used
   # for generation.
   js_doc = 'var RuntimeExports = {};\n'
@@ -660,7 +660,7 @@ def create_tsd(metadata, embind_tsd):
   out = '// TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.\n'
   if settings.EXPORTED_RUNTIME_METHODS:
     out += create_tsd_exported_runtime_methods(metadata)
-  # Manually generate defintions for any Wasm function exports.
+  # Manually generate definitions for any Wasm function exports.
   out += 'interface WasmModule {\n'
   for name, functype in metadata.function_exports.items():
     mangled = asmjs_mangle(name)
@@ -683,7 +683,7 @@ def create_tsd(metadata, embind_tsd):
   export_interfaces = 'WasmModule'
   if settings.EXPORTED_RUNTIME_METHODS:
     export_interfaces += ' & typeof RuntimeExports'
-  # Add in embind defintions.
+  # Add in embind definitions.
   if embind_tsd:
     export_interfaces += ' & EmbindModule'
   out += f'export type MainModule = {export_interfaces};\n'

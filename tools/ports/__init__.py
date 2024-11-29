@@ -153,7 +153,7 @@ class Ports:
 
   @staticmethod
   def install_header_dir(src_dir, target=None):
-    """Like install_headers but recusively copied all files in a directory"""
+    """Like install_headers but recursively copied all files in a directory"""
     if not target:
       target = os.path.basename(src_dir)
     dest = Ports.get_include_dir(target)
@@ -404,7 +404,7 @@ def dependency_order(port_list):
   # Perform topological sort of ports according to the dependency DAG
   port_map = {p.name: p for p in port_list}
 
-  # Perform depth first search of dependecy graph adding nodes to
+  # Perform depth first search of dependency graph adding nodes to
   # the stack only after all children have been explored.
   stack = []
   unsorted = OrderedSet(port_list)

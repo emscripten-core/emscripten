@@ -590,7 +590,7 @@ def set_max_memory():
     if initial_memory_known:
       settings.MAXIMUM_MEMORY = settings.INITIAL_MEMORY
 
-  # Automaticaly up the default maximum when the user requested a large minimum.
+  # Automatically up the default maximum when the user requested a large minimum.
   if 'MAXIMUM_MEMORY' not in user_settings:
     if settings.ALLOW_MEMORY_GROWTH:
       if any([settings.INITIAL_HEAP != -1 and settings.INITIAL_HEAP >= 2 * 1024 * 1024 * 1024,
@@ -667,7 +667,7 @@ def phase_linker_setup(options, state, newargs):
     options.post_js.append(utils.path_from_root('src/cpuprofiler.js'))
 
   # Unless RUNTIME_DEBUG is explicitly set then we enable it when any of the
-  # more specfic debug settings are present.
+  # more specific debug settings are present.
   default_setting('RUNTIME_DEBUG', int(settings.LIBRARY_DEBUG or
                                        settings.GL_DEBUG or
                                        settings.DYLINK_DEBUG or
@@ -1934,7 +1934,7 @@ def phase_emscript(in_wasm, wasm_target, js_syms, base_metadata):
   # Emscripten
   logger.debug('emscript')
 
-  # No need to support base64 embeddeding in wasm2js mode since
+  # No need to support base64 embedding in wasm2js mode since
   # the module is already in JS format.
   settings.SUPPORT_BASE64_EMBEDDING = settings.SINGLE_FILE and not settings.WASM2JS
 

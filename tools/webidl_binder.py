@@ -693,7 +693,7 @@ for name, interface in interfaces.items():
     continue
   implements[name] = [js_impl[0]]
 
-# Compute the height in the inheritance tree of each node. Note that the order of interation
+# Compute the height in the inheritance tree of each node. Note that the order of iteration
 # of `implements` is irrelevant.
 #
 # After one iteration of the loop, all ancestors of child are guaranteed to have a larger
