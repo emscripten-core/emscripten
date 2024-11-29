@@ -330,9 +330,7 @@ EMSCRIPTEN_FUNCS();
 
     with ToolchainProfiler.profile_block('sort_or_concat'):
       # sort functions by size, to make diffing easier and to improve aot times
-      funcses = []
-      for out_file in filenames:
-        funcses.append(split_funcs(utils.read_file(out_file)))
+      funcses = [split_funcs(utils.read_file(out_file)) for out_file in filenames]
       funcs = [item for sublist in funcses for item in sublist]
       funcses = None
       if not os.environ.get('EMCC_NO_OPT_SORT'):

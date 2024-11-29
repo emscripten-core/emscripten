@@ -106,16 +106,16 @@ def caniuse(feature):
     setting_value = getattr(settings, setting_name)
     logger.debug(f'cannot use {feature.name} because {setting_name} is too old: {setting_value}')
 
-  if settings.MIN_CHROME_VERSION < min_versions['chrome']:
+  if min_versions['chrome'] > settings.MIN_CHROME_VERSION:
     report_missing('MIN_CHROME_VERSION')
     return False
-  if settings.MIN_FIREFOX_VERSION < min_versions['firefox']:
+  if min_versions['firefox'] > settings.MIN_FIREFOX_VERSION:
     report_missing('MIN_FIREFOX_VERSION')
     return False
-  if settings.MIN_SAFARI_VERSION < min_versions['safari']:
+  if min_versions['safari'] > settings.MIN_SAFARI_VERSION:
     report_missing('MIN_SAFARI_VERSION')
     return False
-  if 'node' in min_versions and settings.MIN_NODE_VERSION < min_versions['node']:
+  if 'node' in min_versions and min_versions['node'] > settings.MIN_NODE_VERSION:
     report_missing('MIN_NODE_VERSION')
     return False
   return True

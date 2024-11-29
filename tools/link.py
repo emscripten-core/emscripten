@@ -166,7 +166,7 @@ def will_metadce():
 def setup_environment_settings():
   # Environment setting based on user input
   environments = settings.ENVIRONMENT.split(',')
-  if any([x for x in environments if x not in VALID_ENVIRONMENTS]):
+  if any(x for x in environments if x not in VALID_ENVIRONMENTS):
     exit_with_error(f'Invalid environment specified in "ENVIRONMENT": {settings.ENVIRONMENT}. Should be one of: {",".join(VALID_ENVIRONMENTS)}')
 
   settings.ENVIRONMENT_MAY_BE_WEB = not settings.ENVIRONMENT or 'web' in environments
@@ -216,8 +216,8 @@ def get_js_sym_info():
   # and can contain full paths to temporary files.
   skip_settings = {'PRE_JS_FILES', 'POST_JS_FILES'}
   input_files = [json.dumps(settings.external_dict(skip_keys=skip_settings), sort_keys=True, indent=2)]
-  for jslib in sorted(glob.glob(utils.path_from_root('src') + '/library*.js')):
-    input_files.append(read_file(jslib))
+  jslibs = glob.glob(utils.path_from_root('src') + '/library*.js')
+  input_files.extend(read_file(jslib) for jslib in sorted(jslibs))
   for jslib in settings.JS_LIBRARIES:
     if not os.path.isabs(jslib):
       jslib = utils.path_from_root('src', jslib)
@@ -626,7 +626,7 @@ def check_browser_versions():
 
   if settings.LEGACY_VM_SUPPORT:
     # Default all browser versions to zero
-    for key in min_version_settings.keys():
+    for key in min_version_settings:
       default_setting(key, 0)
 
   for key, oldest in min_version_settings.items():
@@ -967,9 +967,8 @@ def phase_linker_setup(options, state, newargs):
   if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
     exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION are mutually exclusive!')
 
-  if options.emrun:
-    if settings.MINIMAL_RUNTIME:
-      exit_with_error('--emrun is not compatible with MINIMAL_RUNTIME')
+  if options.emrun and settings.MINIMAL_RUNTIME:
+    exit_with_error('--emrun is not compatible with MINIMAL_RUNTIME')
 
   if options.use_closure_compiler:
     settings.USE_CLOSURE_COMPILER = 1
@@ -2942,7 +2941,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
   dylibs += extras
   for dylib in dylibs:
     exports = webassembly.get_exports(dylib)
-    exports = set(e.name for e in exports)
+    exports = {e.name for e in exports}
     # EM_JS function are exports with a special prefix.  We need to strip
     # this prefix to get the actual symbol name.  For the main module, this
     # is handled by extract_metadata.py.
@@ -2956,7 +2955,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
     # TODO(sbc): Integrate with metadata.invoke_funcs that comes from the
     # main module to avoid creating new invoke functions at runtime.
     imports = set(imports)
-    imports = set(i for i in imports if not i.startswith('invoke_'))
+    imports = {i for i in imports if not i.startswith('invoke_')}
     weak_imports = webassembly.get_weak_imports(dylib)
     strong_imports = sorted(imports.difference(weak_imports))
     logger.debug('Adding symbols requirements from `%s`: %s', dylib, imports)

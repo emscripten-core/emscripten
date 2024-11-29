@@ -125,7 +125,7 @@ first_js = sys.argv[3]
 window_location = sys.argv[4] if len(sys.argv) >= 5 else ''
 on_idle = sys.argv[5] if len(sys.argv) >= 6 else ''
 
-shell = not not window_location
+shell = bool(window_location)
 
 dirs_to_drop = 0 if not os.path.dirname(first_js) else len(os.path.dirname(first_js).split('/'))
 
