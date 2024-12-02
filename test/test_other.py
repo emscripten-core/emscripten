@@ -913,14 +913,18 @@ f.close()
     # would take 10 minutes+ to finish (CMake feature detection is slow), so
     # combine multiple features into one to try to cover as much as possible
     # while still keeping this test in sensible time limit.
-    'js':          ('target_js',      'test_cmake.js',         ['-DCMAKE_BUILD_TYPE=Debug']),
-    'html':        ('target_html',    'hello_world_gles.html', ['-DCMAKE_BUILD_TYPE=Release']),
-    'library':     ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=MinSizeRel']),
-    'static_cpp':  ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DCPP_LIBRARY_TYPE=STATIC']),
-    'stdproperty': ('stdproperty',    'helloworld.js',         []),
-    'post_build':  ('post_build',     'hello.js',              []),
+    'js':            ('target_js',      'test_cmake.js',         ['-DCMAKE_BUILD_TYPE=Debug']),
+    'html':          ('target_html',    'hello_world_gles.html', ['-DCMAKE_BUILD_TYPE=Release']),
+    'library':       ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=MinSizeRel']),
+    'static_cpp':    ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DCPP_LIBRARY_TYPE=STATIC']),
+    'whole_archive': ('whole_archive',  'whole.js',              []),
+    'stdproperty':   ('stdproperty',    'helloworld.js',         []),
+    'post_build':    ('post_build',     'hello.js',              []),
   })
   def test_cmake(self, test_dir, output_file, cmake_args):
+    if test_dir == 'whole_archive' and 'EMTEST_SKIP_NEW_CMAKE' in os.environ:
+      self.skipTest('EMTEST_SKIP_NEW_CMAKE set')
+
     # Test all supported generators.
     if WINDOWS:
       generators = ['MinGW Makefiles', 'NMake Makefiles']
