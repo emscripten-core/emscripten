@@ -1710,7 +1710,7 @@ class libmalloc(MTLibrary):
 
   cflags = ['-fno-builtin', '-Wno-unused-function', '-Wno-unused-but-set-variable', '-Wno-unused-variable']
   # malloc/free/calloc are runtime functions and can be generated during LTO
-  # Therefor they cannot themselves be part of LTO.
+  # Therefore they cannot themselves be part of LTO.
   force_object_files = True
 
   def __init__(self, **kwargs):
@@ -1810,7 +1810,7 @@ class libmimalloc(MTLibrary):
   ]
 
   # malloc/free/calloc are runtime functions and can be generated during LTO
-  # Therefor they cannot themselves be part of LTO.
+  # Therefore they cannot themselves be part of LTO.
   force_object_files = True
 
   includes = ['system/lib/mimalloc/include']

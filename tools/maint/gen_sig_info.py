@@ -374,8 +374,8 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
 def main(args):
   parser = argparse.ArgumentParser()
   parser.add_argument('-o', '--output', default='src/library_sigs.js')
-  parser.add_argument('-r', '--remove', action='store_true', help='remove from JS library files any `__sig` entires that are part of the auto-generated file')
-  parser.add_argument('-u', '--update', action='store_true', help='update with JS library files any `__sig` entires that are part of the auto-generated file')
+  parser.add_argument('-r', '--remove', action='store_true', help='remove from JS library files any `__sig` entries that are part of the auto-generated file')
+  parser.add_argument('-u', '--update', action='store_true', help='update with JS library files any `__sig` entries that are part of the auto-generated file')
   args = parser.parse_args()
 
   print('generating signatures ...')

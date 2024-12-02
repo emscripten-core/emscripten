@@ -116,7 +116,7 @@ def shlex_join(cmd):
 def run_process(cmd, check=True, input=None, *args, **kw):
   """Runs a subprocess returning the exit code.
 
-  By default this function will raise an exception on failure.  Therefor this should only be
+  By default this function will raise an exception on failure.  Therefore this should only be
   used if you want to handle such failures.  For most subprocesses, failures are not recoverable
   and should be fatal.  In those cases the `check_call` wrapper should be preferred.
   """
@@ -511,7 +511,7 @@ def check_sanity(force=False):
     return
 
   with cache.lock('sanity'):
-    # Check again once the cache lock as aquired
+    # Check again once the cache lock as acquired
     if sanity_is_correct():
       return
 
