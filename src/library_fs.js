@@ -372,6 +372,9 @@ FS.staticInit();
       return 0;
     },
     mayCreate(dir, name) {
+      if (!FS.isDir(dir.mode)) {
+        return {{{ cDefs.ENOTDIR }}};
+      }
       try {
         var node = FS.lookupNode(dir, name);
         return {{{ cDefs.EEXIST }}};
