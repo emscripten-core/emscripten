@@ -226,7 +226,7 @@ size_t __strftime_l(char *restrict s, size_t n, const char *restrict f, const st
 			s[l] = 0;
 			return l;
 		}
-		if (*f != '%') {
+		if (*f != '%' || !f[1]) {
 			s[l++] = *f;
 			continue;
 		}
