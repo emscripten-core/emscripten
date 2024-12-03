@@ -2003,7 +2003,7 @@ def run_embind_gen(wasm_target, js_syms, extra_settings, linker_inputs):
   # Build the flags needed by Node.js to properly run the output file.
   node_args = []
   if settings.MEMORY64:
-    # The final version of memory64 proposal is not yet implement in any
+    # The final version of the memory64 proposal is not yet implemented in any
     # shipping version of node, so we need to lower it away in order to
     # execute the binary at built time.
     building.run_wasm_opt(outfile_wasm, outfile_wasm, ['--memory64-lowering', '--table64-lowering'])
