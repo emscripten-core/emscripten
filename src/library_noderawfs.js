@@ -79,6 +79,10 @@ addToLibrary({
       }
       return stat;
     },
+    fstat(fd) {
+      var stream = SYSCALLS.getStreamFromFD(fd);
+      return fs.fstatSync(stream.nfd);
+    },
     chmod(path, mode, dontFollow) {
       mode &= {{{ cDefs.S_IALLUGO }}};
       if (NODEFS.isWindows) {

@@ -5921,6 +5921,7 @@ Module.onRuntimeInitialized = () => {
       self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_64bit.c', 'success')
 
+  @also_with_noderawfs
   def test_fs_stat_unnamed_file_descriptor(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')

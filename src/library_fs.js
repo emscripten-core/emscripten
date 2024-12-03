@@ -938,6 +938,10 @@ FS.staticInit();
       }
       return node.node_ops.getattr(node);
     },
+    fstat(fd) {
+      var stream = SYSCALLS.getStreamFromFD(fd);
+      return stream.node.node_ops.getattr(stream.node);
+    },
     lstat(path) {
       return FS.stat(path, true);
     },
