@@ -794,7 +794,7 @@ def generate_js(data_target, data_files, metadata):
         var PACKAGE_STORE_NAME = 'PACKAGES';
         function openDatabase(callback, errback) {'''
       if options.support_node:
-        code =+ '''
+        code += '''
             if (isNode) {
               return errback();
             }'''
