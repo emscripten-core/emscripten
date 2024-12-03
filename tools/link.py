@@ -2003,11 +2003,10 @@ def run_embind_gen(wasm_target, js_syms, extra_settings, linker_inputs):
   # Build the flags needed by Node.js to properly run the output file.
   node_args = []
   if settings.MEMORY64:
-    node_args += shared.node_memory64_flags()
-    # Currently we don't have any engines that support table64 so we need
-    # to lower it in order to run the output.
-    # In the normal flow this happens later in `phase_binaryen`
-    building.run_wasm_opt(outfile_wasm, outfile_wasm, ['--table64-lowering'])
+    # The final version of memory64 proposal is not yet implement in any
+    # shipping version of node, so we need to lower it away in order to
+    # execute the binary at built time.
+    building.run_wasm_opt(outfile_wasm, outfile_wasm, ['--memory64-lowering', '--table64-lowering'])
   if settings.WASM_EXCEPTIONS:
     node_args += shared.node_exception_flags(config.NODE_JS)
   # Run the generated JS file with the proper flags to generate the TypeScript bindings.
