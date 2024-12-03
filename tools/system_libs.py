@@ -1662,7 +1662,8 @@ class libcxx(NoExceptLibrary, MTLibrary):
     'compiler_rt_shims.cpp',
     # Emscripten does not have C++20's time zone support which requires access
     # to IANA Time Zone Database. TODO Implement this using JS timezone
-    'tz.cpp',
+    'time_zone.cpp',
+    'tzdb.cpp',
     'tzdb_list.cpp',
   ]
 
