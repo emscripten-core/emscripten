@@ -174,60 +174,46 @@ FS.staticInit();
       path = PATH_FS.resolve(path);
 
       if (!path) return { path: '', node: null };
+      opts.follow_mount ??= true
 
-      var defaults = {
-        follow_mount: true,
-        recurse_count: 0
-      };
-      opts = Object.assign(defaults, opts)
+      // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
+      linkloop: for (var nlinks = 0; nlinks < 40; nlinks++) {
+        // split the absolute path
+        var parts = path.split('/').filter((p) => !!p);
 
-      if (opts.recurse_count > 8) {  // max recursive lookup of 8
-        throw new FS.ErrnoError({{{ cDefs.ELOOP }}});
-      }
+        // start at the root
+        var current = FS.root;
+        var current_path = '/';
 
-      // split the absolute path
-      var parts = path.split('/').filter((p) => !!p);
+        for (var i = 0; i < parts.length; i++) {
+          var islast = (i === parts.length-1);
+          if (islast && opts.parent) {
+            // stop resolving
+            break;
+          }
 
-      // start at the root
-      var current = FS.root;
-      var current_path = '/';
+          current = FS.lookupNode(current, parts[i]);
+          current_path = PATH.join2(current_path, parts[i]);
 
-      for (var i = 0; i < parts.length; i++) {
-        var islast = (i === parts.length-1);
-        if (islast && opts.parent) {
-          // stop resolving
-          break;
-        }
-
-        current = FS.lookupNode(current, parts[i]);
-        current_path = PATH.join2(current_path, parts[i]);
-
-        // jump to the mount's root node if this is a mountpoint
-        if (FS.isMountpoint(current)) {
-          if (!islast || (islast && opts.follow_mount)) {
+          // jump to the mount's root node if this is a mountpoint
+          if (FS.isMountpoint(current) && (!islast || opts.follow_mount)) {
             current = current.mounted.root;
           }
-        }
 
-        // by default, lookupPath will not follow a symlink if it is the final path component.
-        // setting opts.follow = true will override this behavior.
-        if (!islast || opts.follow) {
-          var count = 0;
-          while (FS.isLink(current.mode)) {
-            var link = FS.readlink(current_path);
-            current_path = PATH_FS.resolve(PATH.dirname(current_path), link);
-
-            var lookup = FS.lookupPath(current_path, { recurse_count: opts.recurse_count + 1 });
-            current = lookup.node;
-
-            if (count++ > 40) {  // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
-              throw new FS.ErrnoError({{{ cDefs.ELOOP }}});
+          // by default, lookupPath will not follow a symlink if it is the final path component.
+          // setting opts.follow = true will override this behavior.
+          if (FS.isLink(current.mode) && (!islast || opts.follow)) {
+            if (!current.node_ops.readlink) {
+              throw new FS.ErrnoError({{{ cDefs.ENOSYS }}});
             }
+            var link = current.node_ops.readlink(current);
+            path = PATH_FS.resolve(PATH.dirname(current_path), link, ...parts.slice(i + 1));
+            continue linkloop;
           }
         }
+        return { path: current_path, node: current };
       }
-
-      return { path: current_path, node: current };
+      throw new FS.ErrnoError({{{ cDefs.ELOOP }}});
     },
     getPath(node) {
       var path;
