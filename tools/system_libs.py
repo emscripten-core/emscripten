@@ -1653,11 +1653,13 @@ class libcxx(NoExceptLibrary, MTLibrary):
     'xlocale_zos.cpp',
     'mbsnrtowcs.cpp',
     'wcsnrtombs.cpp',
+    'int128_builtins.cpp',
+    'libdispatch.cpp',
+    # Win32-specific files
     'locale_win32.cpp',
     'thread_win32.cpp',
     'support.cpp',
-    'int128_builtins.cpp',
-    'libdispatch.cpp',
+    'compiler_rt_shims.cpp',
     # Emscripten does not have C++20's time zone support which requires access
     # to IANA Time Zone Database. TODO Implement this using JS timezone
     'tz.cpp',
