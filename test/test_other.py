@@ -6194,6 +6194,10 @@ int main()
     self.do_other_test('test_strftime.c')
 
   @crossplatform
+  def test_wcsftime(self):
+    self.do_other_test('test_wcsftime.c')
+
+  @crossplatform
   def test_strftime_zZ(self):
     if MACOS:
       self.skipTest('setting LC_ALL is not compatible with macOS python')
