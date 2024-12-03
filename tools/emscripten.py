@@ -704,7 +704,7 @@ def create_asm_consts(metadata):
     for i in range(max_arity):
       if f'${i}' in const:
         arity = i + 1
-    args = ', '.join(f"${i}" for i in range(arity))
+    args = ', '.join(f'${i}' for i in range(arity))
     if 'arguments' in body:
       # arrow functions don't bind `arguments` so we have to use
       # the old function syntax in this case
