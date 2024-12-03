@@ -5921,6 +5921,11 @@ Module.onRuntimeInitialized = () => {
       self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_64bit.c', 'success')
 
+  def test_fs_stat_unnamed_file_descriptor(self):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+    self.do_runf('fs/test_stat_unnamed_file_descriptor.c', 'success')
+
   def test_sigalrm(self):
     self.do_runf('test_sigalrm.c', 'Received alarm!')
     self.set_setting('EXIT_RUNTIME')
