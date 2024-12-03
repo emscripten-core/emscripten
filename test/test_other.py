@@ -358,13 +358,23 @@ class other(RunnerCore):
   @parameterized({
     '': ([],),
     'node': (['-sENVIRONMENT=node'],),
+    # load a worker before startup to check ES6 modules there as well
+    'pthreads': (['-pthread', '-sPTHREAD_POOL_SIZE=1'],),
   })
   def test_esm(self, args):
     self.run_process([EMCC, '-o', 'hello_world.mjs',
                       '--extern-post-js', test_file('modularize_post_js.js'),
                       test_file('hello_world.c')] + args)
-    src = read_file('hello_world.mjs')
-    self.assertContained('export default Module;', src)
+    self.assertContained('export default Module;', read_file('hello_world.mjs'))
+    self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
+
+  @requires_node_canary
+  def test_esm_source_phase_imports(self):
+    self.node_args += ['--experimental-wasm-modules']
+    self.run_process([EMCC, '-o', 'hello_world.mjs', '-sSOURCE_PHASE_IMPORTS',
+                      '--extern-post-js', test_file('modularize_post_js.js'),
+                      test_file('hello_world.c')])
+    self.assertContained('import source wasmModule from', read_file('hello_world.mjs'))
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
   @parameterized({

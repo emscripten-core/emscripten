@@ -2182,6 +2182,13 @@ var LEGACY_RUNTIME = false;
 // [link]
 var SIGNATURE_CONVERSIONS = [];
 
+// Experimental support for wasm source phase imports.
+// This is only currently implemented in the pre-release/nightly version of node,
+// and not yet supported by browsers.
+// Requires EXPORT_ES6
+// [link]
+var SOURCE_PHASE_IMPORTS = false;
+
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
 // For removed settings (which now effectively have a fixed value and can no
