@@ -939,7 +939,7 @@ FS.staticInit();
       return node.node_ops.getattr(node);
     },
     fstat(fd) {
-      var stream = SYSCALLS.getStreamFromFD(fd);
+      var stream = FS.getStreamChecked(fd);
       return stream.node.node_ops.getattr(stream.node);
     },
     lstat(path) {

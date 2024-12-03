@@ -80,7 +80,7 @@ addToLibrary({
       return stat;
     },
     fstat(fd) {
-      var stream = SYSCALLS.getStreamFromFD(fd);
+      var stream = FS.getStreamChecked(fd);
       return fs.fstatSync(stream.nfd);
     },
     chmod(path, mode, dontFollow) {
