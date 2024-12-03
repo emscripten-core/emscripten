@@ -940,7 +940,13 @@ FS.staticInit();
     },
     fstat(fd) {
       var stream = FS.getStreamChecked(fd);
-      return stream.node.node_ops.getattr(stream.node);
+      var node = stream.node;
+      if (stream.stream_ops.getattr) {
+        return stream.stream_ops.getattr(stream);
+      } else if (node.node_ops.getattr) {
+        return node.node_ops.getattr(node);
+      }
+      throw new FS.ErrnoError({{{ cDefs.EPERM }}});
     },
     lstat(path) {
       return FS.stat(path, true);
@@ -966,7 +972,17 @@ FS.staticInit();
     },
     fchmod(fd, mode) {
       var stream = FS.getStreamChecked(fd);
-      FS.chmod(stream.node, mode);
+      var node = stream.node;
+      var attrs = {
+        mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (node.mode & ~{{{ cDefs.S_IALLUGO }}}),
+        timestamp: Date.now()
+      };
+      if (stream.stream_ops.getattr) {
+        return stream.stream_ops.setattr(stream, attrs);
+      } else if (node.node_ops.getattr) {
+        return node.node_ops.setattr(node, attrs);
+      }
+      throw new FS.ErrnoError({{{ cDefs.EPERM }}});
     },
     chown(path, uid, gid, dontFollow) {
       var node;
@@ -989,7 +1005,17 @@ FS.staticInit();
     },
     fchown(fd, uid, gid) {
       var stream = FS.getStreamChecked(fd);
-      FS.chown(stream.node, uid, gid);
+      var node = stream.node;
+      var attrs = {
+        timestamp: Date.now()
+        // we ignore the uid / gid for now
+      };
+      if (stream.stream_ops.getattr) {
+        return stream.stream_ops.setattr(stream, attrs);
+      } else if (node.node_ops.getattr) {
+        return node.node_ops.setattr(node, attrs);
+      }
+      throw new FS.ErrnoError({{{ cDefs.EPERM }}});
     },
     truncate(path, len) {
       if (len < 0) {
@@ -1022,10 +1048,32 @@ FS.staticInit();
     },
     ftruncate(fd, len) {
       var stream = FS.getStreamChecked(fd);
+      var node = stream.node;
       if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
-      FS.truncate(stream.node, len);
+      if (!node.node_ops.setattr && !stream.stream_ops.setattr) {
+        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
+      }
+      if (FS.isDir(node.mode)) {
+        throw new FS.ErrnoError({{{ cDefs.EISDIR }}});
+      }
+      if (!FS.isFile(node.mode)) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
+      var errCode = FS.nodePermissions(node, 'w');
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
+      }
+      var attrs = {
+        size: len,
+        timestamp: Date.now()
+      };
+      if (stream.stream_ops.setattr) {
+        stream.stream_ops.setattr(stream, attrs);
+      } else {
+        node.node_ops.setattr(node, attrs);
+      }
     },
     utime(path, atime, mtime) {
       var lookup = FS.lookupPath(path, { follow: true });

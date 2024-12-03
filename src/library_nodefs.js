@@ -116,64 +116,68 @@ addToLibrary({
       }
       return newFlags;
     },
-
+    getattr(func) {
+        var stat = NODEFS.tryFSOperation(func);
+        if (NODEFS.isWindows) {
+        // node.js v0.10.20 doesn't report blksize and blocks on Windows. Fake
+        // them with default blksize of 4096.
+        // See http://support.microsoft.com/kb/140365
+        if (!stat.blksize) {
+          stat.blksize = 4096;
+        }
+        if (!stat.blocks) {
+          stat.blocks = (stat.size+stat.blksize-1)/stat.blksize|0;
+        }
+        // Windows does not report the 'x' permission bit, so propagate read
+        // bits to execute bits.
+        stat.mode |= (stat.mode & {{{ cDefs.S_IRUGO }}}) >> 2;
+      }
+      return {
+        dev: stat.dev,
+        ino: stat.ino,
+        mode: stat.mode,
+        nlink: stat.nlink,
+        uid: stat.uid,
+        gid: stat.gid,
+        rdev: stat.rdev,
+        size: stat.size,
+        atime: stat.atime,
+        mtime: stat.mtime,
+        ctime: stat.ctime,
+        blksize: stat.blksize,
+        blocks: stat.blocks
+      };
+    },
+    setattr(path, node, attr, chmod, utimes, truncate) {
+      NODEFS.tryFSOperation(() => {
+        if (attr.mode !== undefined) {
+          var mode = attr.mode;
+          if (NODEFS.isWindows) {
+            // Windows only supports S_IREAD / S_IWRITE (S_IRUSR / S_IWUSR)
+            // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod
+            mode &= {{{ cDefs.S_IRUSR | cDefs.S_IWUSR }}};
+          }
+          chmod(path, mode);
+          // update the common node structure mode as well
+          node.mode = attr.mode;
+        }
+        if (attr.timestamp !== undefined) {
+          var date = new Date(attr.timestamp);
+          utimes(path, date, date);
+        }
+        if (attr.size !== undefined) {
+          truncate(path, attr.size);
+        }
+      });
+    },
     node_ops: {
       getattr(node) {
         var path = NODEFS.realPath(node);
-        var stat;
-        NODEFS.tryFSOperation(() => stat = fs.lstatSync(path));
-        if (NODEFS.isWindows) {
-          // node.js v0.10.20 doesn't report blksize and blocks on Windows. Fake
-          // them with default blksize of 4096.
-          // See http://support.microsoft.com/kb/140365
-          if (!stat.blksize) {
-            stat.blksize = 4096;
-          }
-          if (!stat.blocks) {
-            stat.blocks = (stat.size+stat.blksize-1)/stat.blksize|0;
-          }
-          // Windows does not report the 'x' permission bit, so propagate read
-          // bits to execute bits.
-          stat.mode |= (stat.mode & {{{ cDefs.S_IRUGO }}}) >> 2;
-        }
-        return {
-          dev: stat.dev,
-          ino: stat.ino,
-          mode: stat.mode,
-          nlink: stat.nlink,
-          uid: stat.uid,
-          gid: stat.gid,
-          rdev: stat.rdev,
-          size: stat.size,
-          atime: stat.atime,
-          mtime: stat.mtime,
-          ctime: stat.ctime,
-          blksize: stat.blksize,
-          blocks: stat.blocks
-        };
+        return NODEFS.getattr(() => fs.lstatSync(path));
       },
       setattr(node, attr) {
         var path = NODEFS.realPath(node);
-        NODEFS.tryFSOperation(() => {
-          if (attr.mode !== undefined) {
-            var mode = attr.mode;
-            if (NODEFS.isWindows) {
-              // Windows only supports S_IREAD / S_IWRITE (S_IRUSR / S_IWUSR)
-              // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod
-              mode &= {{{ cDefs.S_IRUSR | cDefs.S_IWUSR }}};
-            }
-            fs.chmodSync(path, mode);
-            // update the common node structure mode as well
-            node.mode = attr.mode;
-          }
-          if (attr.timestamp !== undefined) {
-            var date = new Date(attr.timestamp);
-            fs.utimesSync(path, date, date);
-          }
-          if (attr.size !== undefined) {
-            fs.truncateSync(path, attr.size);
-          }
-        });
+        NODEFS.setattr(path, node, attr, fs.chmodSync, fs.utimesSync, fs.truncateSync);
       },
       lookup(parent, name) {
         var path = PATH.join2(NODEFS.realPath(parent), name);
@@ -228,6 +232,12 @@ addToLibrary({
       }
     },
     stream_ops: {
+      getattr(stream) {
+        return NODEFS.getattr(() => fs.fstatSync(stream.nfd));
+      },
+      setattr(stream, attr) {
+        NODEFS.setattr(stream.nfd, stream.node, attr, fs.fchmodSync, fs.futimesSync, fs.ftruncateSync);
+      },
       open(stream) {
         var path = NODEFS.realPath(stream.node);
         NODEFS.tryFSOperation(() => {

@@ -5921,9 +5921,18 @@ Module.onRuntimeInitialized = () => {
       self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_64bit.c', 'success')
 
-  @also_with_noderawfs
-  def test_fs_stat_unnamed_file_descriptor(self):
+  @requires_node
+  @parameterized({
+    '': ([],),
+    'nodefs': (['-DNODEFS', '-lnodefs.js'],),
+    'noderawfs':(['-sNODERAWFS'],),
+  })
+  def test_fs_stat_unnamed_file_descriptor(self, args):
+    self.emcc_args += args
+    nodefs = '-DNODEFS' in args or '-DNODERAWFS' in args
     if self.get_setting('WASMFS'):
+      if nodefs:
+        self.skipTest('NODEFS in WasmFS')
       self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_stat_unnamed_file_descriptor.c', 'success')
 
