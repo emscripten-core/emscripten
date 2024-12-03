@@ -1233,7 +1233,9 @@ class libc(MuslInternalLibrary,
           '__tm_to_secs.c',
           '__year_to_secs.c',
           '__month_to_secs.c',
+          'wcsftime.c',
         ])
+
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/legacy',
         filenames=['getpagesize.c', 'err.c', 'euidaccess.c'])
