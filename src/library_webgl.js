@@ -940,7 +940,6 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       gl.uniform1i(gl.getUniformLocation(blitProgram, "sampler"), 0);
       gl.useProgram(null);
 
-      context.defaultVao = undefined;
       if (gl.createVertexArray) {
         context.defaultVao = gl.createVertexArray();
         gl.bindVertexArray(context.defaultVao);
@@ -1020,17 +1019,13 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
           gl.drawArrays(5/*GL_TRIANGLE_STRIP*/, 0, 4);
         }
 
-#if !OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH
         if (context.defaultVao) {
           // WebGL 2 or OES_vertex_array_object
           var prevVAO = gl.getParameter(0x85B5 /*GL_VERTEX_ARRAY_BINDING*/);
           gl.bindVertexArray(context.defaultVao);
           draw();
           gl.bindVertexArray(prevVAO);
-        }
-        else
-#endif
-        {
+        } else {
           var prevVertexAttribPointer = {
             buffer: gl.getVertexAttrib(context.blitPosLoc, 0x889F /*GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING*/),
             size: gl.getVertexAttrib(context.blitPosLoc, 0x8623 /*GL_VERTEX_ATTRIB_ARRAY_SIZE*/),

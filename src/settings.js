@@ -2186,14 +2186,6 @@ var LEGACY_RUNTIME = false;
 // [link]
 var SIGNATURE_CONVERSIONS = [];
 
-//===========================================
-// Internal, used for testing only, from here
-//===========================================
-
-// Internal (testing only): Disables the blitOffscreenFramebuffer VAO path.
-// [link]
-var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = false;
-
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
 // For removed settings (which now effectively have a fixed value and can no

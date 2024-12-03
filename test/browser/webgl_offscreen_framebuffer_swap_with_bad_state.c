@@ -27,6 +27,13 @@ int main() {
 
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   emscripten_webgl_make_context_current(ctx);
+#ifdef TEST_DISABLE_VAO
+  EM_ASM({
+    console.log(GL.currentContext.defaultVao);
+    assert(GL.currentContext.defaultVao);
+    GL.currentContext.defaultVao = undefined;
+  });
+#endif
 
 #if !TEST_WEBGL2 && TEST_VERIFY_WEBGL1_VAO_SUPPORT
   // This test cannot run without browser support for OES_vertex_array_object.
