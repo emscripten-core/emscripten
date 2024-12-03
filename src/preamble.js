@@ -603,6 +603,37 @@ function instrumentWasmTableWithAbort() {
 }
 #endif
 
+#if LOAD_SOURCE_MAP
+var wasmSourceMap;
+#include "source_map_support.js"
+
+function receiveSourceMapJSON(sourceMap) {
+  wasmSourceMap = new WasmSourceMap(sourceMap);
+  {{{ runIfMainThread("removeRunDependency('source-map');") }}}
+}
+#endif
+
+#if (PTHREADS || WASM_WORKERS) && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
+// When using postMessage to send an object, it is processed by the structured
+// clone algorithm.  The prototype, and hence methods, on that object is then
+// lost. This function adds back the lost prototype.  This does not work with
+// nested objects that has prototypes, but it suffices for WasmSourceMap and
+// WasmOffsetConverter.
+function resetPrototype(constructor, attrs) {
+  var object = Object.create(constructor.prototype);
+  return Object.assign(object, attrs);
+}
+#endif
+
+#if USE_OFFSET_CONVERTER
+var wasmOffsetConverter;
+#include "wasm_offset_converter.js"
+#endif
+
+#if SOURCE_PHASE_IMPORTS
+// import source wasmModule from './{{{ WASM_BINARY_FILE }}}';
+var wasmModule = await WebAssembly.compileStreaming(readAsync('{{{ WASM_BINARY_FILE }}}'));
+#else
 function findWasmBinary() {
 #if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && !AUDIO_WORKLET
   if (Module['locateFile']) {
@@ -669,16 +700,6 @@ async function getWasmBinary(binaryFile) {
   return getBinarySync(binaryFile);
 }
 
-#if LOAD_SOURCE_MAP
-var wasmSourceMap;
-#include "source_map_support.js"
-#endif
-
-#if USE_OFFSET_CONVERTER
-var wasmOffsetConverter;
-#include "wasm_offset_converter.js"
-#endif
-
 #if SPLIT_MODULE
 {{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync',  true) }}}
 var splitModuleProxyHandler = {
@@ -705,13 +726,6 @@ var splitModuleProxyHandler = {
     }
   }
 };
-#endif
-
-#if LOAD_SOURCE_MAP
-function receiveSourceMapJSON(sourceMap) {
-  wasmSourceMap = new WasmSourceMap(sourceMap);
-  {{{ runIfMainThread("removeRunDependency('source-map');") }}}
-}
 #endif
 
 #if SPLIT_MODULE || !WASM_ASYNC_COMPILATION
@@ -758,18 +772,6 @@ function instantiateSync(file, info) {
   receiveSourceMapJSON(getSourceMap());
 #endif
   return [instance, module];
-}
-#endif
-
-#if (PTHREADS || WASM_WORKERS) && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
-// When using postMessage to send an object, it is processed by the structured
-// clone algorithm.  The prototype, and hence methods, on that object is then
-// lost. This function adds back the lost prototype.  This does not work with
-// nested objects that has prototypes, but it suffices for WasmSourceMap and
-// WasmOffsetConverter.
-function resetPrototype(constructor, attrs) {
-  var object = Object.create(constructor.prototype);
-  return Object.assign(object, attrs);
 }
 #endif
 
@@ -873,6 +875,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
   return instantiateArrayBuffer(binaryFile, imports);
 }
 #endif // WASM_ASYNC_COMPILATION
+#endif // SOURCE_PHASE_IMPORTS
 
 function getWasmImports() {
 #if PTHREADS
@@ -1075,8 +1078,10 @@ function getWasmImports() {
   }
 #endif
 
+#if SOURCE_PHASE_IMPORTS
+  return WebAssembly.instantiate(wasmModule, info);
+#else
   wasmBinaryFile ??= findWasmBinary();
-
 #if WASM_ASYNC_COMPILATION
 #if RUNTIME_DEBUG
   dbg('asynchronously preparing wasm');
@@ -1108,6 +1113,7 @@ function getWasmImports() {
   return receiveInstance(result[0]);
 #endif
 #endif // WASM_ASYNC_COMPILATION
+#endif // SOURCE_PHASE_IMPORTS
 }
 
 #if !WASM_BIGINT

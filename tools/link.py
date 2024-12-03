@@ -1178,7 +1178,8 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
     settings.TRANSPILE = (settings.MIN_FIREFOX_VERSION < 79 or
                           settings.MIN_CHROME_VERSION < 85 or
                           settings.MIN_SAFARI_VERSION < 140000 or
-                          settings.MIN_NODE_VERSION < 160000)
+                          settings.MIN_NODE_VERSION < 160000 or
+                          settings.SOURCE_PHASE_IMPORTS)
 
   # https://caniuse.com/class: FF:45 CHROME:49 SAFARI:9
   supports_es6_classes = (settings.MIN_FIREFOX_VERSION >= 45 and
@@ -2396,14 +2397,10 @@ def modularize():
 
   # Multi-environment ES6 builds require an async function
   async_emit = ''
-  if settings.EXPORT_ES6 and \
+  if settings.EXPORT_ES6 and (settings.SOURCE_PHASE_IMPORTS or \
      settings.ENVIRONMENT_MAY_BE_NODE and \
      settings.ENVIRONMENT_MAY_BE_WEB:
     async_emit = 'async '
-
-  # TODO: Remove when https://bugs.webkit.org/show_bug.cgi?id=223533 is resolved.
-  if async_emit != '' and settings.EXPORT_NAME == 'config':
-    diagnostics.warning('emcc', 'EXPORT_NAME should not be named "config" when targeting Safari')
 
   if settings.MODULARIZE == 'instance':
     src = '''

@@ -516,8 +516,13 @@ def version_split(v):
 def transpile(filename):
   config = {
     'sourceType': 'script',
-    'targets': {}
+    'targets': {},
+    #'plugins': [
+    #  '@babel/plugin-proposal-import-wasm-source'
+    #],
   }
+  if settings.EXPORT_ES6:
+    config['sourceType'] = 'module'
   if settings.MIN_CHROME_VERSION != UNSUPPORTED:
     config['targets']['chrome'] = str(settings.MIN_CHROME_VERSION)
   if settings.MIN_FIREFOX_VERSION != UNSUPPORTED:
@@ -533,7 +538,8 @@ def transpile(filename):
   config_file = shared.get_temp_files().get('babel_config.json').name
   logger.debug(config_json)
   utils.write_file(config_file, config_json)
-  cmd = shared.get_npm_cmd('babel') + [filename, '-o', outfile, '--presets', '@babel/preset-env', '--config-file', config_file]
+  cmd = shared.get_npm_cmd('babel') + [filename, '-o', outfile,
+  '--plugins=@babel/plugin-proposal-import-wasm-source', '--presets', '@babel/preset-env', '--config-file', config_file]
   check_call(cmd, cwd=path_from_root())
   return outfile
 

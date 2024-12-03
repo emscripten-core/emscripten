@@ -1,6 +1,7 @@
 {
   "private": true,
   "devDependencies": {
+    "@babel/plugin-proposal-import-wasm-source": "^7.25.9",
     "@eslint/eslintrc": "^3.1.0",
     "@eslint/js": "^9.9.1",
     "es-check": "^7.2.1",
