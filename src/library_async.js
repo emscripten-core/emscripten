@@ -520,9 +520,7 @@ addToLibrary({
     var imports = {'primary': wasmExports};
     // Replace '.wasm' suffix with '.deferred.wasm'.
     var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm';
-    await new Promise((resolve) => {
-      instantiateAsync(null, deferred, imports, resolve);
-    });
+    await instantiateAsync(null, deferred, imports);
   },
 
   $Fibers__deps: ['$Asyncify', 'emscripten_stack_set_limits', '$stackRestore'],
