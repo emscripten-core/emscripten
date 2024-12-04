@@ -117,8 +117,8 @@ addToLibrary({
       return newFlags;
     },
     getattr(func) {
-        var stat = NODEFS.tryFSOperation(func);
-        if (NODEFS.isWindows) {
+      var stat = NODEFS.tryFSOperation(func);
+      if (NODEFS.isWindows) {
         // node.js v0.10.20 doesn't report blksize and blocks on Windows. Fake
         // them with default blksize of 4096.
         // See http://support.microsoft.com/kb/140365
