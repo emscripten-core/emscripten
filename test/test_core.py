@@ -5928,13 +5928,12 @@ Module.onRuntimeInitialized = () => {
     'noderawfs':(['-sNODERAWFS'],),
   })
   def test_fs_stat_unnamed_file_descriptor(self, args):
-    self.emcc_args += args
     nodefs = '-DNODEFS' in args or '-DNODERAWFS' in args
     if self.get_setting('WASMFS'):
       if nodefs:
         self.skipTest('NODEFS in WasmFS')
       self.set_setting('FORCE_FILESYSTEM')
-    self.do_runf('fs/test_stat_unnamed_file_descriptor.c', 'success')
+    self.do_runf('fs/test_stat_unnamed_file_descriptor.c', 'success', emcc_args=args)
 
   def test_sigalrm(self):
     self.do_runf('test_sigalrm.c', 'Received alarm!')
