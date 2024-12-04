@@ -651,7 +651,11 @@ def create_tsd_exported_runtime_methods(metadata):
     tsc = [tsc]
   else:
     tsc = shared.get_npm_cmd('tsc')
-  cmd = tsc + ['--outFile', tsc_output_file, '--declaration', '--emitDeclarationOnly', '--allowJs', js_doc_file]
+  cmd = tsc + ['--outFile', tsc_output_file,
+               '--skipLibCheck', # Avoid checking any of the user's types e.g. node_modules/@types.
+               '--declaration',
+               '--emitDeclarationOnly',
+               '--allowJs', js_doc_file]
   shared.check_call(cmd, cwd=path_from_root())
   return utils.read_file(tsc_output_file)
 
