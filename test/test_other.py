@@ -4922,6 +4922,7 @@ int main() {
     # legacy + disabling wasm works
     test('hello, world!', ['-sLEGACY_VM_SUPPORT', '-sWASM=0'])
 
+  @crossplatform
   def test_on_abort(self):
     expected_output = 'Module.onAbort was called'
 

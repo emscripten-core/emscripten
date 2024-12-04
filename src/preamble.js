@@ -771,54 +771,56 @@ function resetPrototype(constructor, attrs) {
 #endif
 
 #if WASM_ASYNC_COMPILATION
-function instantiateArrayBuffer(binaryFile, imports, receiver) {
+function instantiateArrayBuffer(binaryFile, imports) {
 #if USE_OFFSET_CONVERTER
   var savedBinary;
 #endif
-  return getBinaryPromise(binaryFile).then((binary) => {
+  return new Promise((resolve, reject) => {
+    getBinaryPromise(binaryFile).then((binary) => {
 #if USE_OFFSET_CONVERTER
-    savedBinary = binary;
+      savedBinary = binary;
 #endif
-    return WebAssembly.instantiate(binary, imports);
+      return WebAssembly.instantiate(binary, imports);
 #if USE_OFFSET_CONVERTER
-  }).then((instance) => {
-    // wasmOffsetConverter needs to be assigned before calling the receiver
-    // (receiveInstantiationResult).  See comments below in instantiateAsync.
-    wasmOffsetConverter = new WasmOffsetConverter(savedBinary, instance.module);
-    return instance;
+    }).then((instance) => {
+      // wasmOffsetConverter needs to be assigned before calling resolve.
+      // See comments below in instantiateAsync.
+      wasmOffsetConverter = new WasmOffsetConverter(savedBinary, instance.module);
+      return instance;
 #endif
-  }).then(receiver, (reason) => {
-    err(`failed to asynchronously prepare wasm: ${reason}`);
+    }).then(resolve, (reason) => {
+      err(`failed to asynchronously prepare wasm: ${reason}`);
 
 #if WASM == 2
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-    if (typeof location != 'undefined') {
+      if (typeof location != 'undefined') {
 #endif
-      // WebAssembly compilation failed, try running the JS fallback instead.
-      var search = location.search;
-      if (search.indexOf('_rwasm=0') < 0) {
-        location.href += (search ? search + '&' : '?') + '_rwasm=0';
-        // Return here to avoid calling abort() below.  The application
-        // still has a chance to start successfully do we don't want to
-        // trigger onAbort or onExit handlers.
-        return;
-      }
+        // WebAssembly compilation failed, try running the JS fallback instead.
+        var search = location.search;
+        if (search.indexOf('_rwasm=0') < 0) {
+          location.href += (search ? search + '&' : '?') + '_rwasm=0';
+          // Return here to avoid calling abort() below.  The application
+          // still has a chance to start successfully do we don't want to
+          // trigger onAbort or onExit handlers.
+          return;
+        }
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-    }
+      }
 #endif
 #endif // WASM == 2
 
 #if ASSERTIONS
-    // Warn on some common problems.
-    if (isFileURI(wasmBinaryFile)) {
-      err(`warning: Loading from a file URI (${wasmBinaryFile}) is not supported in most browsers. See https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-run-a-local-webserver-for-testing-why-does-my-program-stall-in-downloading-or-preparing`);
-    }
+      // Warn on some common problems.
+      if (isFileURI(wasmBinaryFile)) {
+        err(`warning: Loading from a file URI (${wasmBinaryFile}) is not supported in most browsers. See https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-run-a-local-webserver-for-testing-why-does-my-program-stall-in-downloading-or-preparing`);
+      }
 #endif
-    abort(reason);
+      abort(reason);
+    });
   });
 }
 
-function instantiateAsync(binary, binaryFile, imports, callback) {
+function instantiateAsync(binary, binaryFile, imports) {
 #if !SINGLE_FILE
   if (!binary &&
       typeof WebAssembly.instantiateStreaming == 'function' &&
@@ -837,56 +839,59 @@ function instantiateAsync(binary, binaryFile, imports, callback) {
       !ENVIRONMENT_IS_NODE &&
 #endif
       typeof fetch == 'function') {
-    return fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}}).then((response) => {
-      // Suppress closure warning here since the upstream definition for
-      // instantiateStreaming only allows Promise<Repsponse> rather than
-      // an actual Response.
-      // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure is fixed.
-      /** @suppress {checkTypes} */
-      var result = WebAssembly.instantiateStreaming(response, imports);
+    return new Promise((resolve) => {
+      fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}}).then((response) => {
+        // Suppress closure warning here since the upstream definition for
+        // instantiateStreaming only allows Promise<Repsponse> rather than
+        // an actual Response.
+        // TODO(https://github.com/google/closure-compiler/pull/3913): Remove if/when upstream closure is fixed.
+        /** @suppress {checkTypes} */
+        var result = WebAssembly.instantiateStreaming(response, imports);
 
 #if USE_OFFSET_CONVERTER
-      // We need the wasm binary for the offset converter. Clone the response
-      // in order to get its arrayBuffer (cloning should be more efficient
-      // than doing another entire request).
-      // (We must clone the response now in order to use it later, as if we
-      // try to clone it asynchronously lower down then we will get a
-      // "response was already consumed" error.)
-      var clonedResponsePromise = response.clone().arrayBuffer();
+        // We need the wasm binary for the offset converter. Clone the response
+        // in order to get its arrayBuffer (cloning should be more efficient
+        // than doing another entire request).
+        // (We must clone the response now in order to use it later, as if we
+        // try to clone it asynchronously lower down then we will get a
+        // "response was already consumed" error.)
+        var clonedResponsePromise = response.clone().arrayBuffer();
 #endif
 
-      return result.then(
-#if !USE_OFFSET_CONVERTER
-        callback,
+        result.then(
+#if USE_OFFSET_CONVERTER
+          (instantiationResult) => {
+            // When using the offset converter, we must interpose here. First,
+            // the instantiation result must arrive (if it fails, the error
+            // handling later down will handle it). Once it arrives, we can
+            // initialize the offset converter. And only then is it valid to
+            // call receiveInstantiationResult, as that function will use the
+            // offset converter (in the case of pthreads, it will create the
+            // pthreads and send them the offsets along with the wasm instance).
+
+            clonedResponsePromise.then((arrayBufferResult) => {
+                wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(arrayBufferResult), instantiationResult.module);
+                resolve(instantiationResult);
+              },
+              (reason) => err(`failed to initialize offset-converter: ${reason}`)
+            );
+          },
 #else
-        function(instantiationResult) {
-          // When using the offset converter, we must interpose here. First,
-          // the instantiation result must arrive (if it fails, the error
-          // handling later down will handle it). Once it arrives, we can
-          // initialize the offset converter. And only then is it valid to
-          // call receiveInstantiationResult, as that function will use the
-          // offset converter (in the case of pthreads, it will create the
-          // pthreads and send them the offsets along with the wasm instance).
-
-          clonedResponsePromise.then((arrayBufferResult) => {
-              wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(arrayBufferResult), instantiationResult.module);
-              callback(instantiationResult);
-            },
-            (reason) => err(`failed to initialize offset-converter: ${reason}`)
-          );
-        },
+          resolve,
 #endif
-        function(reason) {
-          // We expect the most common failure cause to be a bad MIME type for the binary,
-          // in which case falling back to ArrayBuffer instantiation should work.
-          err(`wasm streaming compile failed: ${reason}`);
-          err('falling back to ArrayBuffer instantiation');
-          return instantiateArrayBuffer(binaryFile, imports, callback);
-        });
+          (reason) => {
+            // We expect the most common failure cause to be a bad MIME type for the binary,
+            // in which case falling back to ArrayBuffer instantiation should work.
+            err(`wasm streaming compile failed: ${reason}`);
+            err('falling back to ArrayBuffer instantiation');
+            return resolve(instantiateArrayBuffer(binaryFile, imports));
+          }
+        );
+      });
     });
   }
 #endif
-  return instantiateArrayBuffer(binaryFile, imports, callback);
+  return instantiateArrayBuffer(binaryFile, imports);
 }
 #endif // WASM_ASYNC_COMPILATION
 
@@ -1097,12 +1102,12 @@ function createWasm() {
 #if RUNTIME_DEBUG
   dbg('asynchronously preparing wasm');
 #endif
+  instantiateAsync(wasmBinary, wasmBinaryFile, info).then(receiveInstantiationResult)
 #if MODULARIZE
   // If instantiation fails, reject the module ready promise.
-  instantiateAsync(wasmBinary, wasmBinaryFile, info, receiveInstantiationResult).catch(readyPromiseReject);
-#else
-  instantiateAsync(wasmBinary, wasmBinaryFile, info, receiveInstantiationResult);
+  .catch(readyPromiseReject)
 #endif
+  ;
 #if LOAD_SOURCE_MAP
   getSourceMapPromise().then(receiveSourceMapJSON);
 #endif
