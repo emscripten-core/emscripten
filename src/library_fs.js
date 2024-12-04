@@ -1017,45 +1017,25 @@ FS.staticInit();
       }
       throw new FS.ErrnoError({{{ cDefs.EPERM }}});
     },
-    truncate(path, len) {
+    truncateCommon(arg, len, ftruncate) {
       if (len < 0) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
       var node;
-      if (typeof path == 'string') {
-        var lookup = FS.lookupPath(path, { follow: true });
+      var stream;
+      if (ftruncate) {
+        stream = FS.getStreamChecked(arg);
+        if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
+          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+        }  
+        node = stream.node;
+      } else if (typeof arg == 'string') {
+        var lookup = FS.lookupPath(arg, { follow: true });
         node = lookup.node;
       } else {
-        node = path;
+        node = arg;
       }
-      if (!node.node_ops.setattr) {
-        throw new FS.ErrnoError({{{ cDefs.EPERM }}});
-      }
-      if (FS.isDir(node.mode)) {
-        throw new FS.ErrnoError({{{ cDefs.EISDIR }}});
-      }
-      if (!FS.isFile(node.mode)) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
-      }
-      var errCode = FS.nodePermissions(node, 'w');
-      if (errCode) {
-        throw new FS.ErrnoError(errCode);
-      }
-      node.node_ops.setattr(node, {
-        size: len,
-        timestamp: Date.now()
-      });
-    },
-    ftruncate(fd, len) {
-      if (len < 0) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
-      }
-      var stream = FS.getStreamChecked(fd);
-      var node = stream.node;
-      if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
-      }
-      if (!node.node_ops.setattr && !stream.stream_ops.setattr) {
+      if (!node.node_ops.setattr && !stream?.stream_ops.setattr) {
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       }
       if (FS.isDir(node.mode)) {
@@ -1072,11 +1052,17 @@ FS.staticInit();
         size: len,
         timestamp: Date.now()
       };
-      if (stream.stream_ops.setattr) {
+      if (stream?.stream_ops.setattr) {
         stream.stream_ops.setattr(stream, attrs);
       } else {
         node.node_ops.setattr(node, attrs);
       }
+    },
+    truncate(path, len) {
+      FS.truncateCommon(path, len, false);
+    },
+    ftruncate(fd, len) {
+      FS.truncateCommon(fd, len, true);
     },
     utime(path, atime, mtime) {
       var lookup = FS.lookupPath(path, { follow: true });
