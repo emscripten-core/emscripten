@@ -248,15 +248,13 @@ addToLibrary({
       open(stream) {
         var path = NODEFS.realPath(stream.node);
         NODEFS.tryFSOperation(() => {
-          if (FS.isFile(stream.node.mode)) {
-            stream.shared.refcount = 1;
-            stream.nfd = fs.openSync(path, NODEFS.flagsForNode(stream.flags));
-          }
+          stream.shared.refcount = 1;
+          stream.nfd = fs.openSync(path, NODEFS.flagsForNode(stream.flags));
         });
       },
       close(stream) {
         NODEFS.tryFSOperation(() => {
-          if (FS.isFile(stream.node.mode) && stream.nfd && --stream.shared.refcount === 0) {
+          if (stream.nfd && --stream.shared.refcount === 0) {
             fs.closeSync(stream.nfd);
           }
         });
