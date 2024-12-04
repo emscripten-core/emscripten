@@ -5925,7 +5925,7 @@ Module.onRuntimeInitialized = () => {
   @parameterized({
     '': ([],),
     'nodefs': (['-DNODEFS', '-lnodefs.js'],),
-    'noderawfs':(['-sNODERAWFS'],),
+    'noderawfs': (['-sNODERAWFS'],),
   })
   def test_fs_stat_unnamed_file_descriptor(self, args):
     nodefs = '-DNODEFS' in args or '-DNODERAWFS' in args
