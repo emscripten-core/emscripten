@@ -968,7 +968,7 @@ var SyscallsLibrary = {
       if (nanoseconds == {{{ cDefs.UTIME_NOW }}}) {
         atime = now;
       } else if (nanoseconds == {{{ cDefs.UTIME_OMIT }}}) {
-        atime = -1;
+        atime = null;
       } else {
         atime = (seconds*1000) + (nanoseconds/(1000*1000));
       }
@@ -978,15 +978,14 @@ var SyscallsLibrary = {
       if (nanoseconds == {{{ cDefs.UTIME_NOW }}}) {
         mtime = now;
       } else if (nanoseconds == {{{ cDefs.UTIME_OMIT }}}) {
-        mtime = -1;
+        mtime = null;
       } else {
         mtime = (seconds*1000) + (nanoseconds/(1000*1000));
       }
     }
-    // -1 here means UTIME_OMIT was passed.  FS.utime tables the max of these
-    // two values and sets the timestamp to that single value.  If both were
-    // set to UTIME_OMIT then we can skip the call completely.
-    if (mtime != -1 || atime != -1) {
+    // null here means UTIME_OMIT was passed. If both were set to UTIME_OMIT then
+    // we can skip the call completely.
+    if ((mtime ?? atime) !== null) {
       FS.utime(path, atime, mtime);
     }
     return 0;

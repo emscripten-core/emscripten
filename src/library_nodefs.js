@@ -166,9 +166,10 @@ addToLibrary({
             // update the common node structure mode as well
             node.mode = attr.mode;
           }
-          if (attr.timestamp !== undefined) {
-            var date = new Date(attr.timestamp);
-            fs.utimesSync(path, date, date);
+          if (attr.atime || attr.mtime) {
+            var atime = attr.atime && new Date(attr.atime);
+            var mtime = attr.mtime && new Date(attr.mtime);
+            fs.utimesSync(path, atime, mtime);
           }
           if (attr.size !== undefined) {
             fs.truncateSync(path, attr.size);
