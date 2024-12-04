@@ -695,9 +695,9 @@ var SyscallsLibrary = {
     var pos = 0;
     var off = FS.llseek(stream, 0, {{{ cDefs.SEEK_CUR }}});
 
-    var idx = Math.floor(off / struct_size);
-
-    while (idx < stream.getdents.length && pos + struct_size <= count) {
+    var startIdx = Math.floor(off / struct_size);
+    var endIdx = Math.min(stream.getdents.length, startIdx + Math.floor(count/struct_size))
+    for (var idx = startIdx; idx < endIdx; idx++) {
       var id;
       var type;
       var name = stream.getdents[idx];
@@ -711,7 +711,17 @@ var SyscallsLibrary = {
         type = 4; // DT_DIR
       }
       else {
-        var child = FS.lookupNode(stream.node, name);
+        var child;
+        try {
+          child = FS.lookupNode(stream.node, name);
+        } catch (e) {
+          // If the entry is not a directory, file, or symlink, nodefs
+          // lookupNode will raise EINVAL. Skip these and continue.
+          if (e?.errno === {{{ cDefs.EINVAL }}}) {
+            continue;
+          }
+          throw e;
+        }
         id = child.id;
         type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
                FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
@@ -727,7 +737,6 @@ var SyscallsLibrary = {
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_type, 'type', 'i8') }}};
       stringToUTF8(name, dirp + pos + {{{ C_STRUCTS.dirent.d_name }}}, 256);
       pos += struct_size;
-      idx += 1;
     }
     FS.llseek(stream, idx * struct_size, {{{ cDefs.SEEK_SET }}});
     return pos;
