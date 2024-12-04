@@ -193,8 +193,8 @@ addToLibrary({
       },
       rename(old_node, new_dir, new_name) {
         // if we're overwriting a directory at new_name, make sure it's empty.
+        var new_node;
         if (FS.isDir(old_node.mode)) {
-          var new_node;
           try {
             new_node = FS.lookupNode(new_dir, new_name);
           } catch (e) {
@@ -205,6 +205,10 @@ addToLibrary({
             }
           }
         }
+        try {
+          new_node = FS.lookupNode(new_dir, new_name);
+          FS.hashRemoveNode(new_node);
+        } catch (e) {}
         // do the internal rewiring
         delete old_node.parent.contents[old_node.name];
         old_node.parent.timestamp = Date.now()
