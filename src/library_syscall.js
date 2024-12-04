@@ -40,9 +40,10 @@ var SyscallsLibrary = {
       }
       return PATH.join2(dir, path);
     },
-
-    doStat(func, path, buf) {
-      var stat = func(path);
+    // When called by stat, arg is a path. When called by fstat, arg is a file
+    // descriptor.
+    doStat(func, arg, buf) {
+      var stat = func(arg);
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_nlink, 'stat.nlink', SIZE_TYPE) }}};

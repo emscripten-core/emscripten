@@ -148,7 +148,14 @@ addToLibrary({
         blocks: stat.blocks
       };
     },
-    setattr(path, node, attr, chmod, utimes, truncate) {
+    // Common code for both node and stream setattr
+    // For node getatrr:
+    //  - arg is a native path
+    //  - chmod, utimes, truncate are fs.chmodSync,  fs.utimesSync,  fs.truncateSync
+    // For stream getatrr:
+    //  - arg is a native file descriptor
+    //  - chmod, utimes, truncate are fs.fchmodSync, fs.futimesSync, fs.ftruncateSync
+    setattr(arg, node, attr, chmod, utimes, truncate) {
       NODEFS.tryFSOperation(() => {
         if (attr.mode !== undefined) {
           var mode = attr.mode;
@@ -157,16 +164,16 @@ addToLibrary({
             // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod
             mode &= {{{ cDefs.S_IRUSR | cDefs.S_IWUSR }}};
           }
-          chmod(path, mode);
+          chmod(arg, mode);
           // update the common node structure mode as well
           node.mode = attr.mode;
         }
         if (attr.timestamp !== undefined) {
           var date = new Date(attr.timestamp);
-          utimes(path, date, date);
+          utimes(arg, date, date);
         }
         if (attr.size !== undefined) {
-          truncate(path, attr.size);
+          truncate(arg, attr.size);
         }
       });
     },
