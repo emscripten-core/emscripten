@@ -192,23 +192,19 @@ addToLibrary({
         return MEMFS.createNode(parent, name, mode, dev);
       },
       rename(old_node, new_dir, new_name) {
-        // if we're overwriting a directory at new_name, make sure it's empty.
         var new_node;
-        if (FS.isDir(old_node.mode)) {
-          try {
-            new_node = FS.lookupNode(new_dir, new_name);
-          } catch (e) {
-          }
-          if (new_node) {
+        try {
+          new_node = FS.lookupNode(new_dir, new_name);
+        } catch (e) {}
+        if (new_node) {
+          if (FS.isDir(old_node.mode)) {
+            // if we're overwriting a directory at new_name, make sure it's empty.
             for (var i in new_node.contents) {
               throw new FS.ErrnoError({{{ cDefs.ENOTEMPTY }}});
             }
           }
-        }
-        try {
-          new_node = FS.lookupNode(new_dir, new_name);
           FS.hashRemoveNode(new_node);
-        } catch (e) {}
+        }
         // do the internal rewiring
         delete old_node.parent.contents[old_node.name];
         old_node.parent.timestamp = Date.now()
