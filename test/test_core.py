@@ -6097,7 +6097,7 @@ Module.onRuntimeInitialized = () => {
 
   @also_with_noderawfs
   def test_unistd_write_broken_link(self):
-    self.do_run_in_out_file_test('unistd/write_broken_link.c')
+    self.do_run_in_out_file_test('unistd/test_unistd_write_broken_link.c')
 
   @no_windows('Skipping NODEFS test, since it would require administrative privileges.')
   @requires_node
