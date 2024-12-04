@@ -279,6 +279,10 @@ set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES 1)
 set(CMAKE_C_RESPONSE_FILE_LINK_FLAG "@")
 set(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
 
+# Enable $<LINK_LIBRARY:WHOLE_ARCHIVE,static_lib> for CMake 3.24+
+set(CMAKE_LINK_LIBRARY_USING_WHOLE_ARCHIVE "-Wl,--whole-archive" "<LINK_ITEM>" "-Wl,--no-whole-archive")
+set(CMAKE_LINK_LIBRARY_USING_WHOLE_ARCHIVE_SUPPORTED True)
+
 # Set a global EMSCRIPTEN variable that can be used in client CMakeLists.txt to
 # detect when building using Emscripten.
 set(EMSCRIPTEN 1 CACHE INTERNAL "If true, we are targeting Emscripten output.")

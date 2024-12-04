@@ -499,10 +499,6 @@ def setup_pthreads():
   settings.REQUIRED_EXPORTS += [
     '_emscripten_thread_free_data',
     '_emscripten_thread_crashed',
-    'emscripten_main_runtime_thread_id',
-    'emscripten_main_thread_process_queued_calls',
-    '_emscripten_run_on_main_thread_js',
-    'emscripten_stack_set_limits',
   ]
 
   if settings.EMBIND:
@@ -590,7 +586,7 @@ def set_max_memory():
     if initial_memory_known:
       settings.MAXIMUM_MEMORY = settings.INITIAL_MEMORY
 
-  # Automaticaly up the default maximum when the user requested a large minimum.
+  # Automatically up the default maximum when the user requested a large minimum.
   if 'MAXIMUM_MEMORY' not in user_settings:
     if settings.ALLOW_MEMORY_GROWTH:
       if any([settings.INITIAL_HEAP != -1 and settings.INITIAL_HEAP >= 2 * 1024 * 1024 * 1024,
@@ -667,7 +663,7 @@ def phase_linker_setup(options, state, newargs):
     options.post_js.append(utils.path_from_root('src/cpuprofiler.js'))
 
   # Unless RUNTIME_DEBUG is explicitly set then we enable it when any of the
-  # more specfic debug settings are present.
+  # more specific debug settings are present.
   default_setting('RUNTIME_DEBUG', int(settings.LIBRARY_DEBUG or
                                        settings.GL_DEBUG or
                                        settings.DYLINK_DEBUG or
@@ -687,6 +683,7 @@ def phase_linker_setup(options, state, newargs):
     if not settings.ASSERTIONS:
       exit_with_error('PTHREADS_PROFILING only works with ASSERTIONS enabled')
     options.post_js.append(utils.path_from_root('src/threadprofiler.js'))
+    settings.REQUIRED_EXPORTS.append('emscripten_main_runtime_thread_id')
 
   options.extern_pre_js = read_js_files(options.extern_pre_js)
   options.extern_post_js = read_js_files(options.extern_post_js)
@@ -1934,7 +1931,7 @@ def phase_emscript(in_wasm, wasm_target, js_syms, base_metadata):
   # Emscripten
   logger.debug('emscript')
 
-  # No need to support base64 embeddeding in wasm2js mode since
+  # No need to support base64 embedding in wasm2js mode since
   # the module is already in JS format.
   settings.SUPPORT_BASE64_EMBEDDING = settings.SINGLE_FILE and not settings.WASM2JS
 
@@ -2003,11 +2000,10 @@ def run_embind_gen(wasm_target, js_syms, extra_settings, linker_inputs):
   # Build the flags needed by Node.js to properly run the output file.
   node_args = []
   if settings.MEMORY64:
-    node_args += shared.node_memory64_flags()
-    # Currently we don't have any engines that support table64 so we need
-    # to lower it in order to run the output.
-    # In the normal flow this happens later in `phase_binaryen`
-    building.run_wasm_opt(outfile_wasm, outfile_wasm, ['--table64-lowering'])
+    # The final version of the memory64 proposal is not yet implemented in any
+    # shipping version of node, so we need to lower it away in order to
+    # execute the binary at built time.
+    building.run_wasm_opt(outfile_wasm, outfile_wasm, ['--memory64-lowering', '--table64-lowering'])
   if settings.WASM_EXCEPTIONS:
     node_args += shared.node_exception_flags(config.NODE_JS)
   # Run the generated JS file with the proper flags to generate the TypeScript bindings.

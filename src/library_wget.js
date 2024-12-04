@@ -64,7 +64,8 @@ var LibraryWget = {
   emscripten_async_wget_data__proxy: 'sync',
   emscripten_async_wget_data: (url, userdata, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
-    asyncLoad(UTF8ToString(url), (byteArray) => {
+    /* no need for run dependency, this is async but will not do any prepare etc. step */
+    asyncLoad(UTF8ToString(url), /*noRunDep=*/true).then((byteArray) => {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
         var buffer = _malloc(byteArray.length);
@@ -79,7 +80,7 @@ var LibraryWget = {
           {{{ makeDynCall('vp', 'onerror') }}}(userdata);
         });
       }
-    }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
+    });
   },
 
   emscripten_async_wget2__deps: ['$PATH_FS', '$wget', '$stackRestore', '$stringToUTF8OnStack'],

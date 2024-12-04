@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.73 (in development)
+3.1.74 (in development)
 -----------------------
+
+3.1.73 - 11/28/24
+-----------------
 - libunwind was updated to LLVM 19.1.4. (#22394)
 - mimalloc was updated to 2.1.7. (#21548)
 - The file system was updated to independently track atime, mtime and ctime

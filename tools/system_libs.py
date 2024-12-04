@@ -1223,7 +1223,10 @@ class libc(MuslInternalLibrary,
           'gmtime.c',
           'localtime.c',
           'nanosleep.c',
+          'clock.c',
           'clock_nanosleep.c',
+          'clock_getres.c',
+          'clock_gettime.c',
           'ctime_r.c',
           'timespec_get.c',
           'utime.c',
@@ -1233,7 +1236,9 @@ class libc(MuslInternalLibrary,
           '__tm_to_secs.c',
           '__year_to_secs.c',
           '__month_to_secs.c',
+          'wcsftime.c',
         ])
+
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/legacy',
         filenames=['getpagesize.c', 'err.c', 'euidaccess.c'])
@@ -1710,7 +1715,7 @@ class libmalloc(MTLibrary):
 
   cflags = ['-fno-builtin', '-Wno-unused-function', '-Wno-unused-but-set-variable', '-Wno-unused-variable']
   # malloc/free/calloc are runtime functions and can be generated during LTO
-  # Therefor they cannot themselves be part of LTO.
+  # Therefore they cannot themselves be part of LTO.
   force_object_files = True
 
   def __init__(self, **kwargs):
@@ -1810,7 +1815,7 @@ class libmimalloc(MTLibrary):
   ]
 
   # malloc/free/calloc are runtime functions and can be generated during LTO
-  # Therefor they cannot themselves be part of LTO.
+  # Therefore they cannot themselves be part of LTO.
   force_object_files = True
 
   includes = ['system/lib/mimalloc/include']
@@ -2214,8 +2219,6 @@ class libstandalonewasm(MuslInternalLibrary):
         path='system/lib/libc/musl/src/time',
         filenames=['__secs_to_tm.c',
                    '__tz.c',
-                   'clock.c',
-                   'clock_gettime.c',
                    'gettimeofday.c',
                    'localtime_r.c',
                    'gmtime_r.c',
