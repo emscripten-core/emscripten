@@ -26,7 +26,7 @@ def convert_line_endings_in_file(filename, from_eol, to_eol):
 
 
 def check_line_endings(filename, expect_only=None, print_errors=True, print_info=False):
-  """Detect inconsitent/invalid line endings.
+  """Detect inconsistent/invalid line endings.
 
   This function checks and prints out the detected line endings in the given
   file. If the file only contains either Windows \\r\\n line endings or Unix \\n

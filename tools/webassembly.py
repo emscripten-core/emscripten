@@ -3,7 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Utilties for manipulating WebAssembly binaries from python.
+"""Utilities for manipulating WebAssembly binaries from python.
 """
 
 from collections import namedtuple

@@ -11,7 +11,6 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <utime.h>
@@ -20,13 +19,6 @@
 
 void setup() {
   mkdir("folder-readonly", 0555);
-}
-
-void cleanup() {
-  unlink("mknod-file");
-  unlink("mknod-device");
-  rmdir("folder");
-  rmdir("folder-readonly");
 }
 
 void test() {
@@ -93,9 +85,7 @@ void test() {
 }
 
 int main() {
-  atexit(cleanup);
-  signal(SIGABRT, cleanup);
   setup();
   test();
-  return EXIT_SUCCESS;
+  return 0;
 }

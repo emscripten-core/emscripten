@@ -75,7 +75,7 @@ function optPassRemoveRedundantOperatorNews(ast) {
         // referenced (a least in some builds).
         //
         // Another exception is made for `new WebAssembly.*` since we create and
-        // unused `WebAssembly.Memory` when probing for wasm64 fatures.
+        // unused `WebAssembly.Memory` when probing for wasm64 features.
         if (
           n.expression.callee.name !== 'Promise' &&
           n.expression.callee.object?.name !== 'WebAssembly'

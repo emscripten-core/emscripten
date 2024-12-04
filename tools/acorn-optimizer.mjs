@@ -397,7 +397,7 @@ function JSDCE(ast, aggressive) {
               if (elem) traverse(elem);
             }
           } else {
-            assertAt(id.type === 'Identifier', id, `expected Indentifier but found ${id.type}`);
+            assertAt(id.type === 'Identifier', id, `expected Identifier but found ${id.type}`);
             const name = id.name;
             ensureData(scopes[scopes.length - 1], name).def = 1;
           }
@@ -862,7 +862,7 @@ function emitDCEGraph(ast) {
   // must find the info we need
   assert(
     foundWasmImportsAssign,
-    'could not find the assigment to "wasmImports". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)',
+    'could not find the assignment to "wasmImports". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)',
   );
   // Read exports that were declared in extraInfo
   if (extraInfo) {
@@ -932,7 +932,7 @@ function emitDCEGraph(ast) {
           if (infos[reached]) {
             infos[reached].root = true; // in global scope, root it
           } else {
-            // An info might not exist for the identifer if it is missing, for
+            // An info might not exist for the identifier if it is missing, for
             // example, we might call Module.dynCall_vi in library code, but it
             // won't exist in a standalone (non-JS) build anyhow. We can ignore
             // it in that case as the JS won't be used, but warn to be safe.

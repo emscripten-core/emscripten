@@ -239,7 +239,7 @@ def hash_all(k1, k2):
   return (hashes, str_to_hash)
 
 
-# Find an approprite hash function that is collision free within the set of all input strings
+# Find an appropriate hash function that is collision free within the set of all input strings
 # Try hash function format h_i = ((h_(i-1) ^ k_1) << k_2) ^ s_i, where h_i is the hash function
 # value at step i, k_1 and k_2 are the constants we are searching, and s_i is the i'th input
 # character
