@@ -15412,3 +15412,25 @@ addToLibrary({
        return 0;
     }''')
     self.do_runf('main.cpp', 'Hello from rust!', emcc_args=[lib])
+
+  @crossplatform
+  def test_create_cache_directory(self):
+    if config.FROZEN_CACHE:
+      self.skipTest("test doesn't work with frozen cache")
+
+    # Test that the cache directory (including parent directories) is
+    # created on demand.
+    with env_modify({'EM_CACHE': os.path.abspath('foo/bar')}):
+      self.run_process([EMCC, '-c', test_file('hello_world.c')])
+      self.assertExists('foo/bar/sysroot_install.stamp')
+
+    if not WINDOWS:
+      # Test that we generate a nice error when we cannot create the cache
+      # because it is in a read-only location.
+      # For some reason this doesn't work on windows, at least not in CI.
+      os.mkdir('rodir')
+      os.chmod('rodir', 0o444)
+      self.assertFalse(os.access('rodir', os.W_OK))
+      with env_modify({'EM_CACHE': os.path.abspath('rodir/foo')}):
+        err = self.expect_fail([EMCC, '-c', test_file('hello_world.c')])
+        self.assertContained('emcc: error: unable to create cache directory', err)
