@@ -1047,6 +1047,9 @@ FS.staticInit();
       });
     },
     ftruncate(fd, len) {
+      if (len < 0) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
       var stream = FS.getStreamChecked(fd);
       var node = stream.node;
       if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
