@@ -663,7 +663,7 @@ function getBinaryPromise(binaryFile) {
 #endif
 
   // Otherwise, getBinarySync should be able to get it synchronously
-  return Promise.resolve().then(() => getBinarySync(binaryFile));
+  return Promise.resolve(getBinarySync(binaryFile));
 }
 
 #if LOAD_SOURCE_MAP
