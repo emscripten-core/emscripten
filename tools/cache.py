@@ -75,10 +75,10 @@ def lock(reason):
 def ensure():
   ensure_setup()
   if not os.path.isdir(cachedir):
-    parent_dir = os.path.dirname(cachedir)
-    if not is_writable(parent_dir):
-      utils.exit_with_error(f'unable to create cache directory "{cachedir}": parent directory not writable (see https://emscripten.org/docs/tools_reference/emcc.html for info on setting the cache directory)')
-    utils.safe_ensure_dirs(cachedir)
+    try:
+      utils.safe_ensure_dirs(cachedir)
+    except Exception as e:
+      utils.exit_with_error(f'unable to create cache directory "{cachedir}": {e} (see https://emscripten.org/docs/tools_reference/emcc.html for info on setting the cache directory)')
 
 
 def erase():
