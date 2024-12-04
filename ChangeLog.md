@@ -27,7 +27,6 @@ See docs/process.md for more on how version tagging works.
 - mimalloc was updated to 2.1.7. (#21548)
 - The file system was updated to independently track atime, mtime and ctime
   instead of using the same time for all three. (#22998)
-- mimalloc was updated to 2.1.7. (#21548)
 
 3.1.72 - 11/19/24
 -----------------
