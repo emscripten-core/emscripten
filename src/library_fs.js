@@ -146,7 +146,7 @@ FS.staticInit();
         this.name = name;
         this.mode = mode;
         this.rdev = rdev;
-        this.timestamp = Date.now();
+        this.atime = this.mtime = this.ctime = Date.now();
       }
       get read() {
         return (this.mode & this.readMode) === this.readMode;
@@ -165,12 +165,6 @@ FS.staticInit();
       }
       get isDevice() {
         return FS.isChrdev(this.mode);
-      }
-      get timestamp() {
-        return this.atime;
-      }
-      set timestamp(val) {
-        this.atime = this.mtime = this.ctime = val;
       }
     },
 

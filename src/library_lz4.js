@@ -70,7 +70,7 @@ addToLibrary({
       node.mode = mode;
       node.node_ops = LZ4.node_ops;
       node.stream_ops = LZ4.stream_ops;
-      node.timestamp = (mtime || new Date).getTime();
+      this.atime = this.mtime = this.ctime = (mtime || new Date).getTime();
       assert(LZ4.FILE_MODE !== LZ4.DIR_MODE);
       if (mode === LZ4.FILE_MODE) {
         node.size = contents.end - contents.start;

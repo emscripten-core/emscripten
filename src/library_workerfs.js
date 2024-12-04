@@ -57,7 +57,7 @@ addToLibrary({
       node.mode = mode;
       node.node_ops = WORKERFS.node_ops;
       node.stream_ops = WORKERFS.stream_ops;
-      node.timestamp = (mtime || new Date).getTime();
+      node.atime = node.mtime = node.ctime = (mtime || new Date).getTime();
       assert(WORKERFS.FILE_MODE !== WORKERFS.DIR_MODE);
       if (mode === WORKERFS.FILE_MODE) {
         node.size = contents.size;
