@@ -989,7 +989,10 @@ function assignWasmImports() {
     module.append('var wasmImports = %s;\n' % sending)
 
   if not settings.MINIMAL_RUNTIME:
-    module.append("var wasmExports = createWasm();\n")
+    if settings.WASM_ASYNC_COMPILATION:
+      module.append("var wasmExports;\ncreateWasm();\n")
+    else:
+      module.append("var wasmExports = createWasm();\n")
 
   module.append(receiving)
   if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
