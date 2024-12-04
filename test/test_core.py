@@ -5925,6 +5925,20 @@ Module.onRuntimeInitialized = () => {
       self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_64bit.c', 'success')
 
+  @requires_node
+  @parameterized({
+    '': ([],),
+    'nodefs': (['-DNODEFS', '-lnodefs.js'],),
+    'noderawfs': (['-sNODERAWFS'],),
+  })
+  def test_fs_symlink_resolution(self, args):
+    nodefs = '-DNODEFS' in args or '-sNODERAWFS' in args
+    if self.get_setting('WASMFS'):
+      if nodefs:
+        self.skipTest('NODEFS in WasmFS')
+      self.set_setting('FORCE_FILESYSTEM')
+    self.do_runf('fs/test_symlink_resolution.c', 'success', emcc_args=args)
+
   def test_sigalrm(self):
     self.do_runf('test_sigalrm.c', 'Received alarm!')
     self.set_setting('EXIT_RUNTIME')
