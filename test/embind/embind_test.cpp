@@ -246,10 +246,6 @@ std::string emval_test_take_and_return_std_string_const_ref(const std::string& s
   return str;
 }
 
-std::basic_string<unsigned char> emval_test_take_and_return_std_basic_string_unsigned_char(std::basic_string<unsigned char> str) {
-  return str;
-}
-
 std::wstring take_and_return_std_wstring(std::wstring str) {
   return str;
 }
@@ -1914,7 +1910,6 @@ EMSCRIPTEN_BINDINGS(tests) {
   //function("emval_test_take_and_return_const_char_star", &emval_test_take_and_return_const_char_star);
   function("emval_test_take_and_return_std_string", &emval_test_take_and_return_std_string);
   function("emval_test_take_and_return_std_string_const_ref", &emval_test_take_and_return_std_string_const_ref);
-  function("emval_test_take_and_return_std_basic_string_unsigned_char", &emval_test_take_and_return_std_basic_string_unsigned_char);
   function("take_and_return_std_wstring", &take_and_return_std_wstring);
   function("take_and_return_std_u16string", &take_and_return_std_u16string);
   function("take_and_return_std_u32string", &take_and_return_std_u32string);

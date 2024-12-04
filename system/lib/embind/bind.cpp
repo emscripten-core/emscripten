@@ -149,8 +149,6 @@ EMSCRIPTEN_BINDINGS(builtin) {
   register_float<double>("double");
 
   _embind_register_std_string(TypeID<std::string>::get(), "std::string");
-  _embind_register_std_string(
-    TypeID<std::basic_string<unsigned char>>::get(), "std::basic_string<unsigned char>");
   _embind_register_std_wstring(TypeID<std::wstring>::get(), sizeof(wchar_t), "std::wstring");
   _embind_register_std_wstring(TypeID<std::u16string>::get(), sizeof(char16_t), "std::u16string");
   _embind_register_std_wstring(TypeID<std::u32string>::get(), sizeof(char32_t), "std::u32string");
