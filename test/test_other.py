@@ -913,14 +913,18 @@ f.close()
     # would take 10 minutes+ to finish (CMake feature detection is slow), so
     # combine multiple features into one to try to cover as much as possible
     # while still keeping this test in sensible time limit.
-    'js':          ('target_js',      'test_cmake.js',         ['-DCMAKE_BUILD_TYPE=Debug']),
-    'html':        ('target_html',    'hello_world_gles.html', ['-DCMAKE_BUILD_TYPE=Release']),
-    'library':     ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=MinSizeRel']),
-    'static_cpp':  ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DCPP_LIBRARY_TYPE=STATIC']),
-    'stdproperty': ('stdproperty',    'helloworld.js',         []),
-    'post_build':  ('post_build',     'hello.js',              []),
+    'js':            ('target_js',      'test_cmake.js',         ['-DCMAKE_BUILD_TYPE=Debug']),
+    'html':          ('target_html',    'hello_world_gles.html', ['-DCMAKE_BUILD_TYPE=Release']),
+    'library':       ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=MinSizeRel']),
+    'static_cpp':    ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DCPP_LIBRARY_TYPE=STATIC']),
+    'whole_archive': ('whole_archive',  'whole.js',              []),
+    'stdproperty':   ('stdproperty',    'helloworld.js',         []),
+    'post_build':    ('post_build',     'hello.js',              []),
   })
   def test_cmake(self, test_dir, output_file, cmake_args):
+    if test_dir == 'whole_archive' and 'EMTEST_SKIP_NEW_CMAKE' in os.environ:
+      self.skipTest('EMTEST_SKIP_NEW_CMAKE set')
+
     # Test all supported generators.
     if WINDOWS:
       generators = ['MinGW Makefiles', 'NMake Makefiles']
@@ -1272,6 +1276,10 @@ f.close()
     self.assertContained('error: --stack-first is not compatible with asan', err)
     err = self.expect_fail(cmd + ['-sGLOBAL_BASE=1024'])
     self.assertContained('error: --stack-first is not compatible with -sGLOBAL_BASE', err)
+
+  def test_side_module_global_base(self):
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Werror', '-sGLOBAL_BASE=1024', '-sSIDE_MODULE'])
+    self.assertContained('emcc: error: GLOBAL_BASE is not compatible with SIDE_MODULE', err)
 
   @parameterized({
     # In a simple -O0 build we do not set --low-memory-unused (as the stack is
@@ -6184,6 +6192,10 @@ int main()
   @crossplatform
   def test_strftime(self):
     self.do_other_test('test_strftime.c')
+
+  @crossplatform
+  def test_wcsftime(self):
+    self.do_other_test('test_wcsftime.c')
 
   @crossplatform
   def test_strftime_zZ(self):
@@ -13145,7 +13157,6 @@ exec "$@"
     self.do_run_in_out_file_test('hello_world.c', emcc_args=['-Oz'])
 
   def test_runtime_keepalive(self):
-    self.uses_es6 = True
     # Depends on Module['onExit']
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_runtime_keepalive.cpp')
@@ -13922,7 +13933,6 @@ myMethod: 43
 
     create_file('test.c', 'extern void foo(); int main() { foo(); }')
     self.emcc_args += ['--js-library', 'es6_library.js']
-    self.uses_es6 = True
 
     def check_for_es6(filename, expect):
       js = read_file(filename)
@@ -15402,3 +15412,25 @@ addToLibrary({
        return 0;
     }''')
     self.do_runf('main.cpp', 'Hello from rust!', emcc_args=[lib])
+
+  @crossplatform
+  def test_create_cache_directory(self):
+    if config.FROZEN_CACHE:
+      self.skipTest("test doesn't work with frozen cache")
+
+    # Test that the cache directory (including parent directories) is
+    # created on demand.
+    with env_modify({'EM_CACHE': os.path.abspath('foo/bar')}):
+      self.run_process([EMCC, '-c', test_file('hello_world.c')])
+      self.assertExists('foo/bar/sysroot_install.stamp')
+
+    if not WINDOWS:
+      # Test that we generate a nice error when we cannot create the cache
+      # because it is in a read-only location.
+      # For some reason this doesn't work on windows, at least not in CI.
+      os.mkdir('rodir')
+      os.chmod('rodir', 0o444)
+      self.assertFalse(os.access('rodir', os.W_OK))
+      with env_modify({'EM_CACHE': os.path.abspath('rodir/foo')}):
+        err = self.expect_fail([EMCC, '-c', test_file('hello_world.c')])
+        self.assertContained('emcc: error: unable to create cache directory', err)

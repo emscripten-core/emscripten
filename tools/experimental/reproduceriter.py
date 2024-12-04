@@ -96,7 +96,7 @@ Examples
    make a browser build, record a trace, then make a shell build and copy the trace
    there so you can run it.
 
-   The last parameter specifies what to do when the event loop is idle: We fire an event and then set onIdle (which was this function) to null, so this is a one-time occurence.
+   The last parameter specifies what to do when the event loop is idle: We fire an event and then set onIdle (which was this function) to null, so this is a one-time occurrence.
 
 Notes
 

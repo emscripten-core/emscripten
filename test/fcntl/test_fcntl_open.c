@@ -10,7 +10,6 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -34,20 +33,6 @@ void setup() {
   create_file("test-file", "abcdef", 0777);
   mkdir("test-folder", 0777);
   symlink("test-file", "test-link");
-  assert(!errno);
-}
-
-void cleanup() {
-  unlink("test-file");
-  rmdir("test-folder");
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 32; j++) {
-      sprintf(nonexistent_name, "noexist-%c%d", 'a' + i, j);
-      unlink(nonexistent_name);
-    }
-  }
-  errno = 0;
-  unlink("creat-me");
   assert(!errno);
 }
 
@@ -167,9 +152,7 @@ void test() {
 }
 
 int main() {
-  atexit(cleanup);
-  signal(SIGABRT, cleanup);
   setup();
   test();
-  return EXIT_SUCCESS;
+  return 0;
 }

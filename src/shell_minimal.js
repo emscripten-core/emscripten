@@ -7,9 +7,10 @@
 #if MODULARIZE
 var Module = moduleArg;
 #elif USE_CLOSURE_COMPILER
+/** @type{Object} */
+var Module;
 // if (!Module)` is crucial for Closure Compiler here as it will
 // otherwise replace every `Module` occurrence with the object below
-var /** @type{Object} */ Module;
 if (!Module) /** @suppress{checkTypes}*/Module = 
 #if AUDIO_WORKLET
   globalThis.{{{ EXPORT_NAME }}} || 

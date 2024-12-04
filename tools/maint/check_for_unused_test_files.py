@@ -81,7 +81,7 @@ def check_file(dirpath, filename):
     if ext == '.json' and grep("'" + os.path.basename(stem) + "'"):
       return
 
-  # test_asan builds it pathnames programatically based on the basename, so just
+  # test_asan builds it pathnames programmatically based on the basename, so just
   # search for the basename.
   if filename.startswith('test_asan_'):
     relpath = os.path.basename(relpath)

@@ -174,76 +174,56 @@ FS.staticInit();
       path = PATH_FS.resolve(path);
 
       if (!path) return { path: '', node: null };
+      opts.follow_mount ??= true
 
-      var defaults = {
-        follow_mount: true,
-        recurse_count: 0
-      };
-      opts = Object.assign(defaults, opts)
+      // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
+      linkloop: for (var nlinks = 0; nlinks < 40; nlinks++) {
+        // split the absolute path
+        var parts = path.split('/').filter((p) => !!p);
 
-      if (opts.recurse_count > 8) {  // max recursive lookup of 8
-        throw new FS.ErrnoError({{{ cDefs.ELOOP }}});
-      }
+        // start at the root
+        var current = FS.root;
+        var current_path = '/';
 
-      // split the absolute path
-      var parts = path.split('/').filter((p) => !!p);
-
-      // start at the root
-      var current = FS.root;
-      var current_path = '/';
-
-      for (var i = 0; i < parts.length; i++) {
-        var islast = (i === parts.length-1);
-        if (islast && opts.parent) {
-          // stop resolving
-          break;
-        }
-
-        current_path = PATH.join2(current_path, parts[i]);
-        try {
-          current = FS.lookupNode(current, parts[i]);
-        } catch (e) {
-          // if noent_okay is true, suppress a ENOENT in the last component
-          // and return an object with an undefined node. This is needed for
-          // resolving symlinks in the path when creating a file.
-          if ((e?.errno === {{{ cDefs.ENOENT }}}) && islast && opts.noent_okay) {
-            return { path: current_path };
+        for (var i = 0; i < parts.length; i++) {
+          var islast = (i === parts.length-1);
+          if (islast && opts.parent) {
+            // stop resolving
+            break;
           }
-          throw e;
-        }
 
-        // jump to the mount's root node if this is a mountpoint
-        if (FS.isMountpoint(current)) {
-          if (!islast || (islast && opts.follow_mount)) {
+          current_path = PATH.join2(current_path, parts[i]);
+          try {
+            current = FS.lookupNode(current, parts[i]);
+          } catch (e) {
+            // if noent_okay is true, suppress a ENOENT in the last component
+            // and return an object with an undefined node. This is needed for
+            // resolving symlinks in the path when creating a file.
+            if ((e?.errno === {{{ cDefs.ENOENT }}}) && islast && opts.noent_okay) {
+              return { path: current_path };
+            }
+            throw e;
+          }
+
+          // jump to the mount's root node if this is a mountpoint
+          if (FS.isMountpoint(current) && (!islast || opts.follow_mount)) {
             current = current.mounted.root;
           }
-        }
 
-        // by default, lookupPath will not follow a symlink if it is the final path component.
-        // setting opts.follow = true will override this behavior.
-        if (!islast || opts.follow) {
-          var count = 0;
-          while (current && FS.isLink(current.mode)) {
+          // by default, lookupPath will not follow a symlink if it is the final path component.
+          // setting opts.follow = true will override this behavior.
+          if (FS.isLink(current.mode) && (!islast || opts.follow)) {
             if (!current.node_ops.readlink) {
               throw new FS.ErrnoError({{{ cDefs.ENOSYS }}});
             }
             var link = current.node_ops.readlink(current);
-            current_path = PATH_FS.resolve(PATH.dirname(current_path), link);
-
-            var lookup = FS.lookupPath(current_path, {
-              recurse_count: opts.recurse_count + 1,
-              noent_okay: islast && opts.noent_okay
-            });
-            current = lookup.node;
-
-            if (count++ > 40) {  // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
-              throw new FS.ErrnoError({{{ cDefs.ELOOP }}});
-            }
+            path = PATH_FS.resolve(PATH.dirname(current_path), link, ...parts.slice(i + 1));
+            continue linkloop;
           }
         }
+        return { path: current_path, node: current };
       }
-
-      return { path: current_path, node: current };
+      throw new FS.ErrnoError({{{ cDefs.ELOOP }}});
     },
     getPath(node) {
       var path;
@@ -388,6 +368,9 @@ FS.staticInit();
       return 0;
     },
     mayCreate(dir, name) {
+      if (!FS.isDir(dir.mode)) {
+        return {{{ cDefs.ENOTDIR }}};
+      }
       try {
         var node = FS.lookupNode(dir, name);
         return {{{ cDefs.EEXIST }}};
@@ -682,15 +665,36 @@ FS.staticInit();
       }
       return parent.node_ops.mknod(parent, name, mode, dev);
     },
+    statfs(path) {
+
+      // NOTE: None of the defaults here are true. We're just returning safe and
+      //       sane values.
+      var rtn = {
+        bsize: 4096,
+        frsize: 4096,
+        blocks: 1e6,
+        bfree: 5e5,
+        bavail: 5e5,
+        files: FS.nextInode,
+        ffree: FS.nextInode - 1,
+        fsid: 42,
+        flags: 2,
+        namelen: 255,
+      };
+
+      var parent = FS.lookupPath(path, {follow: true}).node;
+      if (parent?.node_ops.statfs) {
+        Object.assign(rtn, parent.node_ops.statfs(parent.mount.opts.root));
+      }
+      return rtn;
+    },
     // helpers to create specific types of nodes
-    create(path, mode) {
-      mode = mode !== undefined ? mode : 438 /* 0666 */;
+    create(path, mode = 0o666) {
       mode &= {{{ cDefs.S_IALLUGO }}};
       mode |= {{{ cDefs.S_IFREG }}};
       return FS.mknod(path, mode, 0);
     },
-    mkdir(path, mode) {
-      mode = mode !== undefined ? mode : 511 /* 0777 */;
+    mkdir(path, mode = 0o777) {
       mode &= {{{ cDefs.S_IRWXUGO }}} | {{{ cDefs.S_ISVTX }}};
       mode |= {{{ cDefs.S_IFDIR }}};
 #if FS_DEBUG
@@ -717,7 +721,7 @@ FS.staticInit();
     mkdev(path, mode, dev) {
       if (typeof dev == 'undefined') {
         dev = mode;
-        mode = 438 /* 0666 */;
+        mode = 0o666;
       }
       mode |= {{{ cDefs.S_IFCHR }}};
       return FS.mknod(path, mode, dev);
@@ -825,7 +829,7 @@ FS.staticInit();
       // do the underlying fs rename
       try {
         old_dir.node_ops.rename(old_node, new_dir, new_name);
-        // update old node (we do this here to avoid each backend 
+        // update old node (we do this here to avoid each backend
         // needing to)
         old_node.parent = new_dir;
       } catch (e) {
@@ -920,7 +924,7 @@ FS.staticInit();
       if (!link.node_ops.readlink) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
-      return PATH_FS.resolve(FS.getPath(link.parent), link.node_ops.readlink(link));
+      return link.node_ops.readlink(link);
     },
     stat(path, dontFollow) {
       var lookup = FS.lookupPath(path, { follow: !dontFollow });
@@ -1025,13 +1029,12 @@ FS.staticInit();
         timestamp: Math.max(atime, mtime)
       });
     },
-    open(path, flags, mode) {
+    open(path, flags, mode = 0o666) {
       if (path === "") {
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       }
       flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
       if ((flags & {{{ cDefs.O_CREAT }}})) {
-        mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
         mode = (mode & {{{ cDefs.S_IALLUGO }}}) | {{{ cDefs.S_IFREG }}};
       } else {
         mode = 0;
@@ -1398,7 +1401,7 @@ FS.staticInit();
       FS.mkdir('/proc/self/fd');
       FS.mount({
         mount() {
-          var node = FS.createNode(proc_self, 'fd', {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */, {{{ cDefs.S_IXUGO }}});
+          var node = FS.createNode(proc_self, 'fd', {{{ cDefs.S_IFDIR | 0o777 }}}, {{{ cDefs.S_IXUGO }}});
           node.node_ops = {
             lookup(parent, name) {
               var fd = +name;
