@@ -1697,7 +1697,7 @@ int main() {
     self.do_run_in_out_file_test('stdio/test_rename.c')
 
   def test_remove(self):
-   self.do_run_in_out_file_test('cstdio/test_remove.cpp')
+   self.do_run_in_out_file_test('stdio/test_remove.c')
 
   def test_alloca_stack(self):
     self.do_core_test('test_alloca_stack.c')
