@@ -1721,7 +1721,7 @@ class libmalloc(MTLibrary):
   def __init__(self, **kwargs):
     self.malloc = kwargs.pop('malloc')
     if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'mimalloc', 'none'):
-      raise Exception('malloc must be one of "emmalloc[-debug|-memvalidate][-verbose]", "dlmalloc" or "none", see settings.js')
+      raise Exception('malloc must be one of "emmalloc[-debug|-memvalidate][-verbose]", "mimalloc", "dlmalloc" or "none", see settings.js')
 
     self.is_tracing = kwargs.pop('is_tracing')
     self.memvalidate = kwargs.pop('memvalidate')
