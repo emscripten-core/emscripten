@@ -827,9 +827,6 @@ var SyscallsLibrary = {
   __syscall_mkdirat: (dirfd, path, mode) => {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    // remove a trailing slash, if one - /a/b/ has basename of '', but
-    // we want to create b in the context of this function
-    if (path[path.length-1] === '/') path = path.substr(0, path.length-1);
     FS.mkdir(path, mode, 0);
     return 0;
   },
