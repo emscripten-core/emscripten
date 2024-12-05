@@ -799,6 +799,7 @@ jobs:
       EMTEST_SKIP_NODE_CANARY: "1"
       EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_NEW_CMAKE: "1"
     steps:
       - install-rust
       - run: apt-get install -q -y ninja-build scons ccache

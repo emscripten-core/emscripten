@@ -162,8 +162,8 @@ def merge_entry_to_existing(existing_data, new_entry, total_source_set_size):
   name = new_entry['unminified_name']
   if name in existing_data:
     ex = existing_data[name]
-    num_times_occurs_1 = ex['num_times_occurs'] if 'num_times_occurs' in ex else 1
-    num_times_occurs_2 = new_entry['num_times_occurs'] if 'num_times_occurs' in new_entry else 1
+    num_times_occurs_1 = ex.get('num_times_occurs', 1)
+    num_times_occurs_2 = new_entry.get('num_times_occurs', 1)
     existing_data[name] = {
       'lines': ex['lines'] + new_entry['lines'],
       'bytes': ex['bytes'] + new_entry['bytes'],
@@ -212,7 +212,7 @@ def analyze_javascript_file_contents(filename, file_contents, total_source_set_s
   if asm_start >= 0:
     asm_start_brace = file_contents.rfind('{', 0, asm_start)
     if asm_start_brace >= 0:
-      asm_end_brace = brace_map[asm_start_brace] if asm_start_brace in brace_map else file_len
+      asm_end_brace = brace_map.get(asm_start_brace, file_len)
 
   func_pos = -1
   var_pos = -1
@@ -516,7 +516,7 @@ def print_symbol_info(data, total_source_set_size):
       continue
     if options.only_common and (not e['in_set_1'] or not e['in_set_2']):
       continue
-    prev_bytes = e['prev_bytes'] if 'prev_bytes' in e else 0
+    prev_bytes = e.get('prev_bytes', 0)
     if max(e['bytes'], prev_bytes) < options.filter_size:
       continue
     if e['bytes'] == prev_bytes and options.only_changes:

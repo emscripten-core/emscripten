@@ -5,8 +5,7 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <cstdio>
-#include <iostream>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -30,38 +29,29 @@ void setup() {
   mkdir("dir/subdir", 0777);
 }
 
-void cleanup() {
-  // make sure we get it all regardless of anything failing
-  unlink("file");
-  unlink("dir/file");
-  rmdir("dir/subdir");
-  rmdir("dir");
-}
-
 void test() {
   int err;
-  
-  err = std::remove("dir/file");
+
+  err = remove("dir/file");
   assert(!err);
 
-  err = std::remove("file");
+  err = remove("file");
   assert(!err);
 
   // should fail, folder is not empty
-  err = std::remove("dir");
+  err = remove("dir");
   assert(err);
 
-  err = std::remove("dir/subdir");
+  err = remove("dir/subdir");
   assert(!err);
 
-  err = std::remove("dir");
+  err = remove("dir");
   assert(!err);
 
-  std::cout << "success\n";
+  printf("success\n");
 }
 
 int main() {
-  atexit(cleanup);
   setup();
   test();
   return 0;

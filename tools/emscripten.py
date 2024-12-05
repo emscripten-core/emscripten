@@ -225,7 +225,7 @@ def set_memory(static_bump):
 
 def report_missing_exports_wasm_only(metadata):
   if diagnostics.is_enabled('undefined'):
-    defined_symbols = set(asmjs_mangle(e) for e in metadata.all_exports)
+    defined_symbols = {asmjs_mangle(e) for e in metadata.all_exports}
     missing = set(settings.USER_EXPORTS) - defined_symbols
     for symbol in sorted(missing):
       diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
@@ -235,7 +235,7 @@ def report_missing_exports(js_symbols):
   if diagnostics.is_enabled('undefined'):
     # Report any symbol that was explicitly exported but is present neither
     # as a native function nor as a JS library function.
-    defined_symbols = set(asmjs_mangle(e) for e in settings.WASM_EXPORTS).union(js_symbols)
+    defined_symbols = {asmjs_mangle(e) for e in settings.WASM_EXPORTS}.union(js_symbols)
     missing = set(settings.USER_EXPORTS) - defined_symbols
     for symbol in sorted(missing):
       diagnostics.warning('undefined', f'undefined exported symbol: "{symbol}"')
@@ -620,7 +620,7 @@ def finalize_wasm(infile, outfile, js_syms):
 
 
 def create_tsd_exported_runtime_methods(metadata):
-  # Use the TypeScript compiler to generate defintions for all of the runtime
+  # Use the TypeScript compiler to generate definitions for all of the runtime
   # exports. The JS from the library any JS docs are included in the file used
   # for generation.
   js_doc = 'var RuntimeExports = {};\n'
@@ -651,7 +651,11 @@ def create_tsd_exported_runtime_methods(metadata):
     tsc = [tsc]
   else:
     tsc = shared.get_npm_cmd('tsc')
-  cmd = tsc + ['--outFile', tsc_output_file, '--declaration', '--emitDeclarationOnly', '--allowJs', js_doc_file]
+  cmd = tsc + ['--outFile', tsc_output_file,
+               '--skipLibCheck', # Avoid checking any of the user's types e.g. node_modules/@types.
+               '--declaration',
+               '--emitDeclarationOnly',
+               '--allowJs', js_doc_file]
   shared.check_call(cmd, cwd=path_from_root())
   return utils.read_file(tsc_output_file)
 
@@ -660,7 +664,7 @@ def create_tsd(metadata, embind_tsd):
   out = '// TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.\n'
   if settings.EXPORTED_RUNTIME_METHODS:
     out += create_tsd_exported_runtime_methods(metadata)
-  # Manually generate defintions for any Wasm function exports.
+  # Manually generate definitions for any Wasm function exports.
   out += 'interface WasmModule {\n'
   for name, functype in metadata.function_exports.items():
     mangled = asmjs_mangle(name)
@@ -683,7 +687,7 @@ def create_tsd(metadata, embind_tsd):
   export_interfaces = 'WasmModule'
   if settings.EXPORTED_RUNTIME_METHODS:
     export_interfaces += ' & typeof RuntimeExports'
-  # Add in embind defintions.
+  # Add in embind definitions.
   if embind_tsd:
     export_interfaces += ' & EmbindModule'
   out += f'export type MainModule = {export_interfaces};\n'
@@ -699,15 +703,12 @@ def create_asm_consts(metadata):
   asm_consts = {}
   for addr, const in metadata.em_asm_consts.items():
     body = trim_asm_const_body(const)
-    args = []
     max_arity = 16
     arity = 0
     for i in range(max_arity):
-      if ('$' + str(i)) in const:
+      if f'${i}' in const:
         arity = i + 1
-    for i in range(arity):
-      args.append('$' + str(i))
-    args = ', '.join(args)
+    args = ', '.join(f'${i}' for i in range(arity))
     if 'arguments' in body:
       # arrow functions don't bind `arguments` so we have to use
       # the old function syntax in this case
@@ -717,8 +718,7 @@ def create_asm_consts(metadata):
     if settings.RELOCATABLE:
       addr += settings.GLOBAL_BASE
     asm_consts[addr] = func
-  asm_consts = [(key, value) for key, value in asm_consts.items()]
-  asm_consts.sort()
+  asm_consts = sorted(asm_consts.items())
   return asm_consts
 
 
@@ -836,10 +836,8 @@ def add_standard_wasm_imports(send_items_map):
 
 def create_sending(metadata, library_symbols):
   # Map of wasm imports to mangled/external/JS names
-  send_items_map = {}
+  send_items_map = {name: name for name in metadata.invoke_funcs}
 
-  for name in metadata.invoke_funcs:
-    send_items_map[name] = name
   for name in metadata.imports:
     if name in metadata.em_js_funcs:
       send_items_map[name] = name
@@ -903,9 +901,7 @@ def make_export_wrappers(function_exports):
     # pthread_self and _emscripten_proxy_execute_task_queue are currently called in some
     # cases after the runtime has exited.
     # TODO: Look into removing these, and improving our robustness around thread termination.
-    if sym in ('__trap', 'pthread_self', '_emscripten_proxy_execute_task_queue'):
-      return False
-    return True
+    return sym not in {'__trap', 'pthread_self', '_emscripten_proxy_execute_task_queue'}
 
   for name, types in function_exports.items():
     nargs = len(types.params)

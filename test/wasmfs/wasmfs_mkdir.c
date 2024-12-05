@@ -81,13 +81,7 @@ int main() {
   // Try to make a directory with a path component that is not a directory.
   errno = 0;
   mkdir("/dev/stdout/fake-directory", 0777);
-  // TODO: This may have to change when access modes are implemented, depending
-  // on if we check access mode before file type.
-#ifdef WASMFS
   assert(errno == ENOTDIR);
-#else
-  assert(errno == EACCES);
-#endif
 
   // Try to make a directory with a path component that does not exist.
   errno = 0;

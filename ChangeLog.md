@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 3.1.74 (in development)
 -----------------------
+- The file system was updated to independently track atime, mtime and ctime
+  instead of using the same time for all three. (#22998)
+- The minimum supported chrome version was bumped from 32 to 33. (#23077)
 
 3.1.73 - 11/28/24
 -----------------

@@ -160,7 +160,7 @@ class SettingsManager:
       with open(filename) as fh:
         settings = fh.read()
       # Use a bunch of regexs to convert the file from JS to python
-      # TODO(sbc): This is kind hacky and we should probably covert
+      # TODO(sbc): This is kind hacky and we should probably convert
       # this file in format that python can read directly (since we
       # no longer read this file from JS at all).
       settings = settings.replace('//', '#')
@@ -273,7 +273,7 @@ class SettingsManager:
     expected_type = self.types.get(name)
     if not expected_type:
       return
-    # Allow itegers 1 and 0 for type `bool`
+    # Allow integers 1 and 0 for type `bool`
     if expected_type == bool:
       if value in (1, 0):
         value = bool(value)

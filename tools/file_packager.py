@@ -172,10 +172,7 @@ def should_ignore(fullname):
   if has_hidden_attribute(fullname):
     return True
 
-  for p in excluded_patterns:
-    if fnmatch.fnmatch(fullname, p):
-      return True
-  return False
+  return any(fnmatch.fnmatch(fullname, p) for p in excluded_patterns)
 
 
 def add(mode, rootpathsrc, rootpathdst):
@@ -501,7 +498,7 @@ def main():
         err('Error: Embedding "%s" which is not contained within the current directory '
             '"%s".  This is invalid since the current directory becomes the '
             'root that the generated code will see.  To include files outside of the current '
-            'working directoty you can use the `--preload-file srcpath@dstpath` syntax to '
+            'working directory you can use the `--preload-file srcpath@dstpath` syntax to '
             'explicitly specify the target location.' % (path, curr_abspath))
         sys.exit(1)
       file_.dstpath = abspath[len(curr_abspath) + 1:]
@@ -702,7 +699,7 @@ def generate_js(data_target, data_files, metadata):
       }\n''' % (create_preloaded if options.use_preload_plugins else create_data)
 
   if options.has_embedded and not options.obj_output:
-    err('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more effecient than JS encoding')
+    err('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more efficient than JS encoding')
 
   for counter, file_ in enumerate(data_files):
     filename = file_.dstpath

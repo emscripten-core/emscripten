@@ -4322,22 +4322,22 @@ Module["preRun"] = () => {
 
   # Tests that offscreen framebuffer state restoration works
   @requires_graphics_hardware
-  def test_webgl_offscreen_framebuffer_state_restoration(self):
-    for args in [
-        # full state restoration path on WebGL 1.0
-        ['-sMAX_WEBGL_VERSION', '-sOFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH'],
-        # VAO path on WebGL 1.0
-        ['-sMAX_WEBGL_VERSION'],
-        ['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=0'],
-        # VAO path on WebGL 2.0
-        ['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-DTEST_REQUIRE_VAO=1'],
-        # full state restoration path on WebGL 2.0
-        ['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-sOFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH'],
-        # blitFramebuffer path on WebGL 2.0 (falls back to VAO on Firefox < 67)
-        ['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=0'],
-      ]:
-      cmd = args + ['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1']
-      self.btest_exit('webgl_offscreen_framebuffer_swap_with_bad_state.c', args=cmd)
+  @parameterized({
+    # full state restoration path on WebGL 1.0
+    'gl1_no_vao': (['-sMAX_WEBGL_VERSION=1', '-sOFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH'],),
+    # VAO path on WebGL 1.0
+    'gl1': (['-sMAX_WEBGL_VERSION=1', '-DTEST_VERIFY_WEBGL1_VAO_SUPPORT=1'],),
+    'gl1_max_gl2': (['-sMAX_WEBGL_VERSION=2'],),
+    # VAO path on WebGL 2.0
+    'gl2': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1'],),
+    # full state restoration path on WebGL 2.0
+    'gl2_no_vao': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-sOFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH'],),
+    # blitFramebuffer path on WebGL 2.0 (falls back to VAO on Firefox < 67)
+    'gl2_no_aa': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=0'],),
+  })
+  def test_webgl_offscreen_framebuffer_state_restoration(self, args, skip_vao=False):
+    cmd = args + ['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1']
+    self.btest_exit('webgl_offscreen_framebuffer_swap_with_bad_state.c', args=cmd)
 
   @parameterized({
     '': ([],),

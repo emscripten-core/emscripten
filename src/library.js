@@ -2182,25 +2182,19 @@ addToLibrary({
   },
 
   $asyncLoad__docs: '/** @param {boolean=} noRunDep */',
-  $asyncLoad: (url, onload, onerror, noRunDep) => {
-    var dep = !noRunDep ? getUniqueRunDependency(`al ${url}`) : '';
-    readAsync(url).then(
-      (arrayBuffer) => {
-#if ASSERTIONS
-        assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
-#endif
-        onload(new Uint8Array(arrayBuffer));
-        if (dep) removeRunDependency(dep);
-      },
-      (err) => {
-        if (onerror) {
-          onerror();
-        } else {
-          throw `Loading data file "${url}" failed.`;
-        }
-      }
-    );
-    if (dep) addRunDependency(dep);
+  $asyncLoad: (url, noRunDep) => {
+    return new Promise((resolve, reject) => {
+      var dep = !noRunDep ? getUniqueRunDependency(`al ${url}`) : '';
+      if (dep) addRunDependency(dep);
+      readAsync(url).then(
+        (arrayBuffer) => {
+  #if ASSERTIONS
+          assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
+  #endif
+          resolve(new Uint8Array(arrayBuffer));
+          if (dep) removeRunDependency(dep);
+        }, reject);
+    });
   },
 
   $alignMemory: (size, alignment) => {
