@@ -37,11 +37,11 @@ static void create_file(const char *path, const char *buffer) {
 
 
 void setup() {
-  makedir("working");
 #if defined(__EMSCRIPTEN__) && defined(NODEFS)
+  makedir("working");
   EM_ASM(FS.mount(NODEFS, { root: '.' }, 'working'));
-#endif
   changedir("working");
+#endif
 }
 
 int main() {
