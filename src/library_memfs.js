@@ -223,11 +223,7 @@ addToLibrary({
         parent.ctime = parent.mtime = Date.now();
       },
       readdir(node) {
-        var entries = ['.', '..'];
-        for (var key of Object.keys(node.contents)) {
-          entries.push(key);
-        }
-        return entries;
+        return ['.', '..', ...Object.keys(node.contents)];
       },
       symlink(parent, newname, oldpath) {
         var node = MEMFS.createNode(parent, newname, 0o777 | {{{ cDefs.S_IFLNK }}}, 0);
