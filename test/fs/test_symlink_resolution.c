@@ -34,24 +34,24 @@ void setup() {
   EM_ASM(FS.mount(NODEFS, { root: '.' }, 'working'));
   changedir("working");
 #endif
-    makedir("a");
-    makedir("b");
-    makedir("b/c");
-    symlink("../b/c", "a/link");
+  makedir("a");
+  makedir("b");
+  makedir("b/c");
+  symlink("../b/c", "a/link");
 }
 
 
 int main() {
-    setup();
-    create_file("a/link/../x.txt");
-    struct stat statBuf;
-    assert(stat("a/link/../x.txt", &statBuf) == 0);
-    assert(stat("b/x.txt", &statBuf) == 0);
-    makedir("a/link/../d");
-    assert(stat("a/link/../d", &statBuf) == 0);
-    assert(stat("b/d", &statBuf) == 0);
+  setup();
+  create_file("a/link/../x.txt");
+  struct stat statBuf;
+  assert(stat("a/link/../x.txt", &statBuf) == 0);
+  assert(stat("b/x.txt", &statBuf) == 0);
+  makedir("a/link/../d");
+  assert(stat("a/link/../d", &statBuf) == 0);
+  assert(stat("b/d", &statBuf) == 0);
 
-    assert(truncate("a/link/../x.txt", 0) == 0);
-    assert(chmod("a/link/../x.txt", 0777) == 0);
-    printf("success\n");
+  assert(truncate("a/link/../x.txt", 0) == 0);
+  assert(chmod("a/link/../x.txt", 0777) == 0);
+  printf("success\n");
 }
