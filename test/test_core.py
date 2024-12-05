@@ -5943,7 +5943,7 @@ Module.onRuntimeInitialized = () => {
   def test_fs_rename_on_existing(self, args):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    self.do_runf('fs/test_rename_on_existing.c', 'success', emcc_args=args)
+    self.do_runf('fs/test_fs_rename_on_existing.c', 'success', emcc_args=args)
 
   def test_sigalrm(self):
     self.do_runf('test_sigalrm.c', 'Received alarm!')
