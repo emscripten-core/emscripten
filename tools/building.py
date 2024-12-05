@@ -114,7 +114,7 @@ def side_module_external_deps(external_symbols):
     sym = demangle_c_symbol_name(sym)
     if sym in external_symbols:
       deps = deps.union(external_symbols[sym])
-  return sorted(list(deps))
+  return sorted(deps)
 
 
 def create_stub_object(external_symbols):
@@ -184,12 +184,11 @@ def lld_flags_for_executable(external_symbols):
     c_exports += side_module_external_deps(external_symbols)
   for export in c_exports:
     if settings.ERROR_ON_UNDEFINED_SYMBOLS:
-      cmd.append('--export=' + export)
+      cmd.append(f'--export={export}')
     else:
-      cmd.append('--export-if-defined=' + export)
+      cmd.append(f'--export-if-defined={export}')
 
-  for e in settings.EXPORT_IF_DEFINED:
-    cmd.append('--export-if-defined=' + e)
+  cmd.extend(f'--export-if-defined={e}' for e in settings.EXPORT_IF_DEFINED)
 
   if settings.RELOCATABLE:
     cmd.append('--experimental-pic')
@@ -749,10 +748,10 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
 
 
 def is_internal_global(name):
-  internal_start_stop_symbols = set(['__start_em_asm', '__stop_em_asm',
-                                     '__start_em_js', '__stop_em_js',
-                                     '__start_em_lib_deps', '__stop_em_lib_deps',
-                                     '__em_lib_deps'])
+  internal_start_stop_symbols = {'__start_em_asm', '__stop_em_asm',
+                                 '__start_em_js', '__stop_em_js',
+                                 '__start_em_lib_deps', '__stop_em_lib_deps',
+                                 '__em_lib_deps'}
   internal_prefixes = ('__em_js__', '__em_lib_deps')
   return name in internal_start_stop_symbols or any(name.startswith(p) for p in internal_prefixes)
 

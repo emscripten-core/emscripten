@@ -146,6 +146,7 @@ FS.staticInit();
         this.name = name;
         this.mode = mode;
         this.rdev = rdev;
+        this.atime = this.mtime = this.ctime = Date.now();
       }
       get read() {
         return (this.mode & this.readMode) === this.readMode;
@@ -200,8 +201,18 @@ FS.staticInit();
             continue;
           }
 
-          current = FS.lookupNode(current, parts[i]);
           current_path = PATH.join2(current_path, parts[i]);
+          try {
+            current = FS.lookupNode(current, parts[i]);
+          } catch (e) {
+            // if noent_okay is true, suppress a ENOENT in the last component
+            // and return an object with an undefined node. This is needed for
+            // resolving symlinks in the path when creating a file.
+            if ((e?.errno === {{{ cDefs.ENOENT }}}) && islast && opts.noent_okay) {
+              return { path: current_path };
+            }
+            throw e;
+          }
 
           // jump to the mount's root node if this is a mountpoint
           if (FS.isMountpoint(current) && (!islast || opts.follow_mount)) {
@@ -954,7 +965,7 @@ FS.staticInit();
       }
       node.node_ops.setattr(node, {
         mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (node.mode & ~{{{ cDefs.S_IALLUGO }}}),
-        timestamp: Date.now()
+        ctime: Date.now()
       });
     },
     lchmod(path, mode) {
@@ -1027,7 +1038,8 @@ FS.staticInit();
       var lookup = FS.lookupPath(path, { follow: true });
       var node = lookup.node;
       node.node_ops.setattr(node, {
-        timestamp: Math.max(atime, mtime)
+        atime: atime,
+        mtime: mtime
       });
     },
     open(path, flags, mode = 0o666) {
@@ -1044,14 +1056,15 @@ FS.staticInit();
       if (typeof path == 'object') {
         node = path;
       } else {
-        try {
-          var lookup = FS.lookupPath(path, {
-            follow: !(flags & {{{ cDefs.O_NOFOLLOW }}})
-          });
-          node = lookup.node;
-        } catch (e) {
-          // ignore
-        }
+        // noent_okay makes it so that if the final component of the path
+        // doesn't exist, lookupPath returns `node: undefined`. `path` will be
+        // updated to point to the target of all symlinks.
+        var lookup = FS.lookupPath(path, {
+          follow: !(flags & {{{ cDefs.O_NOFOLLOW }}}),
+          noent_okay: true
+        });
+        node = lookup.node;
+        path = lookup.path;
       }
       // perhaps we need to create the node
       var created = false;
@@ -1401,6 +1414,9 @@ FS.staticInit();
       FS.mount({
         mount() {
           var node = FS.createNode(proc_self, 'fd', {{{ cDefs.S_IFDIR | 0o777 }}}, {{{ cDefs.S_IXUGO }}});
+          node.stream_ops = {
+            llseek: MEMFS.stream_ops.llseek,
+          };
           node.node_ops = {
             lookup(parent, name) {
               var fd = +name;
@@ -1409,9 +1425,15 @@ FS.staticInit();
                 parent: null,
                 mount: { mountpoint: 'fake' },
                 node_ops: { readlink: () => stream.path },
+                id: fd + 1,
               };
               ret.parent = ret; // make it look like a simple root node
               return ret;
+            },
+            readdir() {
+              return Array.from(FS.streams.entries())
+                .filter(([k, v]) => v)
+                .map(([k, v]) => k.toString());
             }
           };
           return node;
@@ -1628,7 +1650,7 @@ FS.staticInit();
             buffer[offset+i] = result;
           }
           if (bytesRead) {
-            stream.node.timestamp = Date.now();
+            stream.node.atime = Date.now();
           }
           return bytesRead;
         },
@@ -1641,7 +1663,7 @@ FS.staticInit();
             }
           }
           if (length) {
-            stream.node.timestamp = Date.now();
+            stream.node.mtime = stream.node.ctime = Date.now();
           }
           return i;
         }

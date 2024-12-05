@@ -172,10 +172,7 @@ def should_ignore(fullname):
   if has_hidden_attribute(fullname):
     return True
 
-  for p in excluded_patterns:
-    if fnmatch.fnmatch(fullname, p):
-      return True
-  return False
+  return any(fnmatch.fnmatch(fullname, p) for p in excluded_patterns)
 
 
 def add(mode, rootpathsrc, rootpathdst):

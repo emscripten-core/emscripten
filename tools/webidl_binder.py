@@ -454,10 +454,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,
     return (t.isArray() or t.isAny() or t.isString() or t.isObject() or t.isInterface())
 
   for i, (js_arg, arg) in enumerate(zip(args, all_args)):
-    if i >= min_args:
-      optional = True
-    else:
-      optional = False
+    optional = i >= min_args
     do_default = False
     # Filter out arguments we don't know how to parse. Fast casing only common cases.
     compatible_arg = isinstance(arg, Dummy) or (isinstance(arg, WebIDL.IDLArgument) and arg.optional is False)

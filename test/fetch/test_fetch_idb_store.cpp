@@ -21,7 +21,6 @@ int main()
   strcpy(attr.requestMethod, "EM_IDB_STORE");
   attr.attributes = EMSCRIPTEN_FETCH_REPLACE | EMSCRIPTEN_FETCH_SYNCHRONOUS | EMSCRIPTEN_FETCH_PERSIST_FILE;
   uint8_t *data = (uint8_t*)malloc(TEST_SIZE);
-  srand(time(NULL));
   for(int i = 0; i < TEST_SIZE; ++i)
     data[i] = (uint8_t)rand() | 0x40;
   attr.requestData = (char *)data;
