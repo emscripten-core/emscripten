@@ -119,3 +119,15 @@ fs.Stats.prototype.mtimeMs;
  * @type {number}
  */
 fs.Stats.prototype.ctimeMs;
+
+/**
+ * @param {string} p
+ * @return {boolean}
+ * @nosideeffects
+ */
+path.isAbsolute;
+
+/**
+ * @type {Object.<string,*>}
+ */
+path.posix;
