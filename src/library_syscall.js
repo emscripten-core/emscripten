@@ -38,8 +38,8 @@ var SyscallsLibrary = {
         }
         return dir;
       }
-      if (!dir.endsWith("/")) {
-        dir += "/"
+      if (!dir.endsWith('/')) {
+        dir += '/'
       }
       return dir + path;
     },
