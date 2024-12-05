@@ -38,10 +38,7 @@ var SyscallsLibrary = {
         }
         return dir;
       }
-      if (!dir.endsWith('/')) {
-        dir += '/'
-      }
-      return dir + path;
+      return dir + '/' + path;
     },
 
     doStat(func, path, buf) {
