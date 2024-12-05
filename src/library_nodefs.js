@@ -197,6 +197,9 @@ addToLibrary({
       rename(oldNode, newDir, newName) {
         var oldPath = NODEFS.realPath(oldNode);
         var newPath = PATH.join2(NODEFS.realPath(newDir), newName);
+        try {
+          FS.unlink(newPath);
+        } catch(e) {}
         NODEFS.tryFSOperation(() => fs.renameSync(oldPath, newPath));
         oldNode.name = newName;
       },
