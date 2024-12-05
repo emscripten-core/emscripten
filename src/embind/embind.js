@@ -496,8 +496,7 @@ var LibraryEmbind = {
     name = readLatin1String(name);
     var stdStringIsUTF8
 #if EMBIND_STD_STRING_IS_UTF8
-    //process only std::string bindings with UTF8 support, in contrast to e.g. std::basic_string<unsigned char>
-    = (name === "std::string");
+    = true;
 #else
     = false;
 #endif
