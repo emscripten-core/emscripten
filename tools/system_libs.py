@@ -502,7 +502,7 @@ class Library:
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
       ext = shared.suffix(src)
-      if ext in ('.s', '.S', '.c'):
+      if ext in {'.s', '.S', '.c'}:
         cmd = shared.EMCC
       else:
         cmd = shared.EMXX

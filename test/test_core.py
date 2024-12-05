@@ -1697,7 +1697,7 @@ int main() {
     self.do_run_in_out_file_test('stdio/test_rename.c')
 
   def test_remove(self):
-   self.do_run_in_out_file_test('cstdio/test_remove.cpp')
+   self.do_run_in_out_file_test('stdio/test_remove.c')
 
   def test_alloca_stack(self):
     self.do_core_test('test_alloca_stack.c')
@@ -5779,14 +5779,24 @@ got: 10
     self.emcc_args += ['-lnodefs.js']
     self.do_runf('fs/test_nodefs_nofollow.c', 'success')
 
+  @crossplatform
   @requires_node
   def test_fs_nodefs_readdir(self):
     # externally setup an existing folder structure: existing/a
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
+    if not WINDOWS:
+      # Add an entry that isn't a directory, file, or link to test that we handle
+      # it correctly.
+      os.mkfifo('named_pipe')
     os.makedirs('existing/a')
     self.emcc_args += ['-lnodefs.js']
-    self.do_runf('fs/test_nodefs_readdir.c', 'success')
+    suffix = ''
+    if self.get_setting('WASMFS'):
+      suffix = '.wasmfs'
+    elif self.is_wasm2js():
+      suffix = ".wasm2js"
+    self.do_run_in_out_file_test('fs/test_nodefs_readdir.c', out_suffix=suffix)
 
   @requires_node
   @crossplatform

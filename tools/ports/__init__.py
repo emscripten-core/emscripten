@@ -116,10 +116,10 @@ def get_all_files_under(dirname):
 def dir_is_newer(dir_a, dir_b):
   assert os.path.exists(dir_a)
   assert os.path.exists(dir_b)
-  files_a = [(x, os.path.getmtime(x)) for x in get_all_files_under(dir_a)]
-  files_b = [(x, os.path.getmtime(x)) for x in get_all_files_under(dir_b)]
-  newest_a = max([f for f in files_a], key=lambda f: f[1])
-  newest_b = max([f for f in files_b], key=lambda f: f[1])
+  files_a = ((x, os.path.getmtime(x)) for x in get_all_files_under(dir_a))
+  files_b = ((x, os.path.getmtime(x)) for x in get_all_files_under(dir_b))
+  newest_a = max(files_a, key=lambda f: f[1])
+  newest_b = max(files_b, key=lambda f: f[1])
   logger.debug('newest_a: %s %s', *newest_a)
   logger.debug('newest_b: %s %s', *newest_b)
   return newest_a[1] > newest_b[1]
@@ -326,10 +326,7 @@ class Ports:
       utils.write_file(marker, url + '\n')
 
     def up_to_date():
-      if os.path.exists(marker):
-        if utils.read_file(marker).strip() == url:
-          return True
-      return False
+      return os.path.exists(marker) and utils.read_file(marker).strip() == url
 
     # before acquiring the lock we have an early out if the port already exists
     if up_to_date():
@@ -372,7 +369,7 @@ class Ports:
 class OrderedSet:
   """Partial implementation of OrderedSet.  Just enough for what we need here."""
   def __init__(self, items):
-    self.dict = dict()
+    self.dict = {}
     for i in items:
       self.dict[i] = True
 

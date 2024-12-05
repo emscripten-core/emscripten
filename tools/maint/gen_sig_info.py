@@ -181,9 +181,7 @@ def ignore_symbol(s, cxx):
            'stackSave', 'stackRestore', 'stackAlloc', 'getTempRet0', 'setTempRet0',
            }:
     return True
-  if cxx and s in ('__asctime_r') or s.startswith('__cxa_find_matching_catch'):
-    return True
-  return False
+  return cxx and s == '__asctime_r' or s.startswith('__cxa_find_matching_catch')
 
 
 def create_c_file(filename, symbol_list, header):
@@ -263,7 +261,7 @@ def update_sigs(sig_info):
 def remove_sigs(sig_info):
   print("removing __sig attributes ...")
 
-  to_remove = [f'{sym}__sig:' for sym in sig_info.keys()]
+  to_remove = [f'{sym}__sig:' for sym in sig_info]
 
   def strip_line(l):
     l = l.strip()
@@ -362,12 +360,11 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
       assert sym in sig_info64
       sig64 = sig_info64[sym]
       sig_string = functype_to_str(sig32, sig64)
-      if sym in sig_info:
-        if sig_info[sym] != sig_string:
-          print(sym)
-          print(sig_string)
-          print(sig_info[sym])
-          assert sig_info[sym] == sig_string
+      if sym in sig_info and sig_info[sym] != sig_string:
+        print(sym)
+        print(sig_string)
+        print(sig_info[sym])
+        assert sig_info[sym] == sig_string
       sig_info[sym] = sig_string
 
 
