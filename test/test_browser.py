@@ -812,8 +812,8 @@ If manually bisecting:
     # test()
 
   @also_with_wasmfs
-  def test_dev_random(self):
-    self.btest_exit('filesystem/test_dev_random.c')
+  def test_fs_dev_random(self):
+    self.btest_exit('fs/test_fs_dev_random.c')
 
   def test_sdl_swsurface(self):
     self.btest_exit('test_sdl_swsurface.c', args=['-lSDL', '-lGL'])

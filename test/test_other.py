@@ -6097,8 +6097,16 @@ int main() {
     ''')
     self.run_process([EMXX, 'src.cpp', '-O2', '-sSAFE_HEAP'])
 
-  def test_bad_lookup(self):
-    self.do_runf(path_from_root('test/filesystem/bad_lookup.cpp'), expected_output='ok')
+  @also_with_wasmfs
+  @also_with_noderawfs
+  @crossplatform
+  def test_fs_bad_lookup(self):
+    self.do_runf(path_from_root('test/fs/test_fs_bad_lookup.c'), expected_output='ok')
+
+  @also_with_wasmfs
+  @also_with_noderawfs
+  def test_fs_dev_random(self):
+    self.do_runf('fs/test_fs_dev_random.c', 'success')
 
   @parameterized({
     'none': [{'EMCC_FORCE_STDLIBS': None}, False],
