@@ -1393,6 +1393,9 @@ FS.staticInit();
       FS.mount({
         mount() {
           var node = FS.createNode(proc_self, 'fd', {{{ cDefs.S_IFDIR | 0o777 }}}, {{{ cDefs.S_IXUGO }}});
+          node.stream_ops = {
+            llseek: MEMFS.stream_ops.llseek,
+          };
           node.node_ops = {
             lookup(parent, name) {
               var fd = +name;
@@ -1401,9 +1404,15 @@ FS.staticInit();
                 parent: null,
                 mount: { mountpoint: 'fake' },
                 node_ops: { readlink: () => stream.path },
+                id: fd + 1,
               };
               ret.parent = ret; // make it look like a simple root node
               return ret;
+            },
+            readdir() {
+              return Array.from(FS.streams.entries())
+                .filter(([k, v]) => v)
+                .map(([k, v]) => k.toString());
             }
           };
           return node;
