@@ -5937,7 +5937,7 @@ Module.onRuntimeInitialized = () => {
       if nodefs:
         self.skipTest('NODEFS in WasmFS')
       self.set_setting('FORCE_FILESYSTEM')
-    self.do_runf('fs/test_symlink_resolution.c', 'success', emcc_args=args)
+    self.do_runf('fs/test_fs_symlink_resolution.c', 'success', emcc_args=args)
 
   def test_sigalrm(self):
     self.do_runf('test_sigalrm.c', 'Received alarm!')
