@@ -12428,29 +12428,6 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
       self.assertContained(expected, self.run_js('test.wasm', engine))
 
   @parameterized({
-    'wasm2js': (['-sWASM=0'],),
-    'modularize': (['-sMODULARIZE', '--extern-post-js', test_file('modularize_post_js.js')],),
-  })
-  def test_promise_polyfill(self, constant_args):
-    def test(args, expect_fail):
-      # legacy browsers may lack Promise, which wasm2js depends on. see what
-      # happens when we kill the global Promise function.
-      self.run_process([EMCC, test_file('hello_world.c')] + constant_args + args)
-      js = read_file('a.out.js')
-      create_file('a.out.js', 'Promise = undefined;\n' + js)
-      return self.run_js('a.out.js', assert_returncode=NON_ZERO if expect_fail else 0)
-
-    # we fail without legacy support
-    test([], expect_fail=True)
-
-    # but work with it
-    output = test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
-    self.assertContained('hello, world!', output)
-
-    # unless we explicitly disable polyfills
-    test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
-
-  @parameterized({
     '': ([],),
     'assertions': (['-sASSERTIONS'],),
     'closure': (['-sASSERTIONS', '--closure=1'],),
@@ -15265,7 +15242,7 @@ addToLibrary({
 
   def test_browser_too_old(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMIN_CHROME_VERSION=10'])
-    self.assertContained('emcc: error: MIN_CHROME_VERSION older than 32 is not supported', err)
+    self.assertContained('emcc: error: MIN_CHROME_VERSION older than 33 is not supported', err)
 
   def test_js_only_settings(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '-o', 'foo.wasm', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=emscripten_get_heap_max'], stderr=PIPE).stderr
