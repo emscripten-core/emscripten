@@ -386,10 +386,18 @@ def type_to_cdec(raw):
   return ret + '*'
 
 
-def render_function(class_name, func_name, sigs, return_type, non_pointer,
+def render_function(class_name, func_name, sigs, return_type, non_pointer,  # noqa: C901, PLR0912, PLR0915
                     copy, operator, constructor, is_static, func_scope,
                     call_content=None, const=False, array_attribute=False,
                     bind_to=None):
+  """Future modifications should consider refactoring to reduce complexity.
+
+  * The McCabe cyclomatiic complexity is currently 67 vs 10 recommended.
+  * There are currently 79 branches vs 12 recommended.
+  * There are currently 195 statements vs 50 recommended.
+
+  To revalidate these numbers, run `ruff check --select=C901,PLR091`.
+  """
   legacy_mode = CHECKS not in ['ALL', 'FAST']
   all_checks = CHECKS == 'ALL'
 

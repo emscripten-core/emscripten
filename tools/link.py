@@ -631,7 +631,15 @@ def check_browser_versions():
 
 
 @ToolchainProfiler.profile_block('linker_setup')
-def phase_linker_setup(options, state, newargs):
+def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
+  """Future modifications should consider refactoring to reduce complexity.
+
+  * The McCabe cyclomatiic complexity is currently 251 vs 10 recommended.
+  * There are currently 262 branches vs 12 recommended.
+  * There are currently 578 statements vs 50 recommended.
+
+  To revalidate these numbers, run `ruff check --select=C901,PLR091`.
+  """
   system_libpath = '-L' + str(cache.get_lib_dir(absolute=True))
   state.append_link_flag(system_libpath)
 
