@@ -975,7 +975,7 @@ FS.staticInit();
       var node = stream.node;
       var attrs = {
         mode: (mode & {{{ cDefs.S_IALLUGO }}}) | (node.mode & ~{{{ cDefs.S_IALLUGO }}}),
-        timestamp: Date.now()
+        ctime: Date.now()
       };
       if (stream.stream_ops.getattr) {
         return stream.stream_ops.setattr(stream, attrs);
