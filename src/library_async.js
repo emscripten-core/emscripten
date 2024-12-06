@@ -31,16 +31,28 @@ addToLibrary({
   ],
 
   $Asyncify: {
-    // Async Task Queue
-    sleepTasks: [],
-    addSleepTask(task) {
-      Asyncify.sleepTasks.push(task);
+    // Sleep Tasks
+    sleepTasksOnce: [],
+    addSleepTaskOnce(task) {
+      Asyncify.sleepTasksOnce.push(task);
     },
-    getSleepTasks() {
-      return Asyncify.sleepTasks;
+    getSleepTasksOnce() {
+      return Asyncify.sleepTasksOnce;
     },
-    clearSleepTasks() {
-      Asyncify.sleepTasks = [];
+    clearSleepTasksOnce() {
+      Asyncify.sleepTasksOnce = [];
+    },
+    
+    // Sleep Callbacks
+    sleepCallbacksOnce: [],
+    addSleepCallbackOnce(callback) {
+      Asyncify.sleepCallbacksOnce.push(callback);
+    },
+    getSleepCallbacksOnce() {
+      return Asyncify.sleepCallbacksOnce;
+    },
+    clearSleepCallbacksOnce() {
+      Asyncify.sleepCallbacksOnce = [];
     },
   
     //
@@ -418,6 +430,14 @@ addToLibrary({
         _free(Asyncify.currData);
         Asyncify.currData = null;
         // Call all sleep callbacks now that the sleep-resume is all done.
+        
+        // Single calls
+        const callbacksOnce = Asyncify.getSleepCallbacksOnce();
+        console.log('callbacksOnce', callbacksOnce);
+        callbacksOnce.forEach(callUserCallback);
+        Asyncify.clearSleepCallbacksOnce();
+        
+        // Saved calls
         Asyncify.sleepCallbacks.forEach(callUserCallback);
       } else {
         abort(`invalid state: ${Asyncify.state}`);
@@ -474,8 +494,8 @@ addToLibrary({
     // Initial sleep promise, ignore duration and use 0 instead
     const sleepPromise = new Promise((resolve) => safeSetTimeout(resolve, 0));
 
-    // Get sleepTasks, a list of promises
-    const tasks = Asyncify.getSleepTasks();
+    // Get sleepTasksOnce, a list of promises
+    const tasks = Asyncify.getSleepTasksOnce();
     console.log('tasks', tasks);
     // Create a promise that executes all tasks sequentially
     const completeAllTasksPromise = tasks.reduce((p, task) => p.then(task), sleepPromise);
@@ -483,7 +503,7 @@ addToLibrary({
     // Handle sleep for the duration of the promise
     return Asyncify.handleSleep((wakeUp) => {
       completeAllTasksPromise.then(() => {
-        Asyncify.clearSleepTasks();
+        Asyncify.clearSleepTasksOnce();
         wakeUp();
       });
     });

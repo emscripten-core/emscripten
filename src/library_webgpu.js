@@ -1633,7 +1633,7 @@ var LibraryWebGPU = {
 
     if (WebGPU._HAS_PENDING_QUEUE === false) {
       WebGPU._HAS_PENDING_QUEUE = true;
-      Asyncify.addSleepTask(async () => {
+      Asyncify.addSleepTaskOnce(async () => {
         await queue.onSubmittedWorkDone();
         WebGPU._HAS_PENDING_QUEUE = false;
       });
