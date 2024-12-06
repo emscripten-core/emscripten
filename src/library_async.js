@@ -32,12 +32,15 @@ addToLibrary({
 
   $Asyncify: {
     // Async Task Queue
-    tasks: [],
-    addTask(task) {
-      Asyncify.tasks.push(task);
+    sleepTasks: [],
+    addSleepTask(task) {
+      Asyncify.sleepTasks.push(task);
     },
-    getTasks() {
-      return Asyncify.tasks;
+    getSleepTasks() {
+      return Asyncify.sleepTasks;
+    },
+    clearSleepTasks() {
+      Asyncify.sleepTasks = [];
     },
   
     //
@@ -471,14 +474,18 @@ addToLibrary({
     // Initial sleep promise, ignore duration and use 0 instead
     const sleepPromise = new Promise((resolve) => safeSetTimeout(resolve, 0));
 
-    // Get tasks, a list of Promises
-    const tasks = Asyncify.getTasks(); 
+    // Get sleepTasks, a list of promises
+    const tasks = Asyncify.getSleepTasks();
+    console.log('tasks', tasks);
     // Create a promise that executes all tasks sequentially
     const completeAllTasksPromise = tasks.reduce((p, task) => p.then(task), sleepPromise);
 
     // Handle sleep for the duration of the promise
     return Asyncify.handleSleep((wakeUp) => {
-      completeAllTasksPromise.then(wakeUp);
+      completeAllTasksPromise.then(() => {
+        Asyncify.clearSleepTasks();
+        wakeUp();
+      });
     });
   },
 
