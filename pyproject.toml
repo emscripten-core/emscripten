@@ -1,0 +1,35 @@
+[tool.coverage.run]
+source = [ "." ]
+omit = [
+  "./test/*",
+  "./third_party/*",
+  "./tools/emcoverage.py",
+  "test.py",
+]
+
+[tool.mypy]
+mypy_path = "third_party/,third_party/ply,third_party/websockify"
+files = [ "." ]
+exclude = '''
+(?x)(
+cache |
+third_party |
+conf\.py |
+emrun\.py |
+site/source/_themes/ |
+tools/scons/site_scons/site_tools/emscripten/__init__\.py |
+site/source/get_wiki\.py |
+test/parse_benchmark_output\.py
+)'''
+
+[[tool.mypy.overrides]]
+module = [
+  "tools.create_dom_pk_codes",
+  "tools.webidl_binder",
+  "tools.toolchain_profiler",
+  "tools.filelock",
+  "tools.find_bigvars",
+  "leb128",
+  "ply.*",
+]
+ignore_errors = true
