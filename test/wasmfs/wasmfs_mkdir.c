@@ -66,11 +66,7 @@ int main() {
   // Try to make the root directory.
   errno = 0;
   mkdir("/", 0777);
-#ifdef WASMFS
   assert(errno == EEXIST);
-#else
-  assert(errno == EINVAL);
-#endif
 
   // Try to make a directory that exists already.
   errno = 0;
