@@ -471,7 +471,7 @@ addToLibrary({
   emscripten_wget_data: (url, pbuffer, pnum, perror) => {
     return Asyncify.handleSleep((wakeUp) => {
       /* no need for run dependency, this is async but will not do any prepare etc. step */
-      asyncLoad(UTF8ToString(url), /*noRunDep=*/true).then((byteArray) => {
+      asyncLoad(UTF8ToString(url)).then((byteArray) => {
         // can only allocate the buffer after the wakeUp, not during an asyncing
         var buffer = _malloc(byteArray.length); // must be freed by caller!
         HEAPU8.set(byteArray, buffer);
