@@ -36,7 +36,11 @@
     makeReferenceRelease: function(type) {
       return `
 wgpu${type}Reference: (id) => WebGPU.mgr${type}.reference(id),
-wgpu${type}Release: (id) => WebGPU.mgr${type}.release(id),`;
+wgpu${type}Release: (id) => {
+  Asyncify.addSleepTaskOnce(() => {
+    WebGPU.mgr${type}.release(id);
+  })
+},`;
     },
 
     convertSentinelToUndefined: function(name) {
@@ -192,7 +196,7 @@ var LibraryWebGPU = {
   $WebGPU__postset: 'WebGPU.initManagers();',
   $WebGPU__deps: ['$stackSave', '$stackRestore', '$stringToUTF8OnStack'],
   $WebGPU: {
-    _HAS_PENDING_QUEUE: false,
+    _QUEUES_SUBMITTED: {},
 
     errorCallback: (callback, type, message, userdata) => {
       var sp = stackSave();
@@ -872,31 +876,33 @@ var LibraryWebGPU = {
   wgpuDevicePopErrorScope: (deviceId, callback, userdata) => {
     var device = WebGPU.mgrDevice.get(deviceId);
     {{{ runtimeKeepalivePush() }}}
-    device.popErrorScope().then((gpuError) => {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {
-        if (!gpuError) {
-          {{{ makeDynCall('vipp', 'callback') }}}(
-            {{{ gpu.ErrorType.NoError }}}, 0, userdata);
-        } else if (gpuError instanceof GPUOutOfMemoryError) {
-          {{{ makeDynCall('vipp', 'callback') }}}(
-            {{{ gpu.ErrorType.OutOfMemory }}}, 0, userdata);
-        } else {
-#if ASSERTIONS
-          // TODO: Implement GPUInternalError
-          assert(gpuError instanceof GPUValidationError);
-#endif
-          WebGPU.errorCallback(callback, {{{ gpu.ErrorType.Validation }}}, gpuError.message, userdata);
-        }
-      });
-    }, (ex) => {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {
-        // TODO: This can mean either the device was lost or the error scope stack was empty. Figure
-        // out how to synthesize the DeviceLost error type. (Could be by simply tracking the error
-        // scope depth, but that isn't ideal.)
-        WebGPU.errorCallback(callback, {{{ gpu.ErrorType.Unknown }}}, ex.message, userdata);
-      });
+    Asyncify.addSleepTaskOnce(async () => {
+      await device.popErrorScope().then((gpuError) => {
+        {{{ runtimeKeepalivePop() }}}
+        callUserCallback(() => {
+          if (!gpuError) {
+            {{{ makeDynCall('vipp', 'callback') }}}(
+              {{{ gpu.ErrorType.NoError }}}, 0, userdata);
+          } else if (gpuError instanceof GPUOutOfMemoryError) {
+            {{{ makeDynCall('vipp', 'callback') }}}(
+              {{{ gpu.ErrorType.OutOfMemory }}}, 0, userdata);
+          } else {
+  #if ASSERTIONS
+            // TODO: Implement GPUInternalError
+            assert(gpuError instanceof GPUValidationError);
+  #endif
+            WebGPU.errorCallback(callback, {{{ gpu.ErrorType.Validation }}}, gpuError.message, userdata);
+          }
+        });
+      }, (ex) => {
+        {{{ runtimeKeepalivePop() }}}
+        callUserCallback(() => {
+          // TODO: This can mean either the device was lost or the error scope stack was empty. Figure
+          // out how to synthesize the DeviceLost error type. (Could be by simply tracking the error
+          // scope depth, but that isn't ideal.)
+          WebGPU.errorCallback(callback, {{{ gpu.ErrorType.Unknown }}}, ex.message, userdata);
+        });
+      })
     });
   },
 
@@ -1291,25 +1297,27 @@ var LibraryWebGPU = {
     var desc = generateComputePipelineDesc(descriptor);
     var device = WebGPU.mgrDevice.get(deviceId);
     {{{ runtimeKeepalivePush() }}}
-    device.createComputePipelineAsync(desc).then((pipeline) => {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {
-        var pipelineId = WebGPU.mgrComputePipeline.create(pipeline);
-        {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Success }}}, pipelineId, 0, userdata);
-      });
-    }, (pipelineError) => {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {
-        var sp = stackSave();
-        var messagePtr = stringToUTF8OnStack(pipelineError.message);
-        if (pipelineError.reason === 'validation') {
-          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.ValidationError }}}, 0, messagePtr, userdata);
-        } else if (pipelineError.reason === 'internal') {
-          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.InternalError }}}, 0, messagePtr, userdata);
-        } else {
-          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Unknown }}}, 0, messagePtr, userdata);
-        }
-        stackRestore(sp);
+    Asyncify.addSleepTaskOnce(async () => {
+      await device.createComputePipelineAsync(desc).then((pipeline) => {
+        {{{ runtimeKeepalivePop() }}}
+        callUserCallback(() => {
+          var pipelineId = WebGPU.mgrComputePipeline.create(pipeline);
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Success }}}, pipelineId, 0, userdata);
+        });
+      }, (pipelineError) => {
+        {{{ runtimeKeepalivePop() }}}
+        callUserCallback(() => {
+          var sp = stackSave();
+          var messagePtr = stringToUTF8OnStack(pipelineError.message);
+          if (pipelineError.reason === 'validation') {
+            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.ValidationError }}}, 0, messagePtr, userdata);
+          } else if (pipelineError.reason === 'internal') {
+            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.InternalError }}}, 0, messagePtr, userdata);
+          } else {
+            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Unknown }}}, 0, messagePtr, userdata);
+          }
+          stackRestore(sp);
+        });
       });
     });
   },
@@ -1531,25 +1539,27 @@ var LibraryWebGPU = {
     var desc = generateRenderPipelineDesc(descriptor);
     var device = WebGPU.mgrDevice.get(deviceId);
     {{{ runtimeKeepalivePush() }}}
-    device.createRenderPipelineAsync(desc).then((pipeline) => {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {
-        var pipelineId = WebGPU.mgrRenderPipeline.create(pipeline);
-        {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Success }}}, pipelineId, 0, userdata);
-      });
-    }, (pipelineError) => {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {
-        var sp = stackSave();
-        var messagePtr = stringToUTF8OnStack(pipelineError.message);
-        if (pipelineError.reason === 'validation') {
-          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.ValidationError }}}, 0, messagePtr, userdata);
-        } else if (pipelineError.reason === 'internal') {
-          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.InternalError }}}, 0, messagePtr, userdata);
-        } else {
-          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Unknown }}}, 0, messagePtr, userdata);
-        }
-        stackRestore(sp);
+    Asyncify.addSleepTaskOnce(async () => {
+      await device.createRenderPipelineAsync(desc).then((pipeline) => {
+        {{{ runtimeKeepalivePop() }}}
+        callUserCallback(() => {
+          var pipelineId = WebGPU.mgrRenderPipeline.create(pipeline);
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Success }}}, pipelineId, 0, userdata);
+        });
+      }, (pipelineError) => {
+        {{{ runtimeKeepalivePop() }}}
+        callUserCallback(() => {
+          var sp = stackSave();
+          var messagePtr = stringToUTF8OnStack(pipelineError.message);
+          if (pipelineError.reason === 'validation') {
+            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.ValidationError }}}, 0, messagePtr, userdata);
+          } else if (pipelineError.reason === 'internal') {
+            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.InternalError }}}, 0, messagePtr, userdata);
+          } else {
+            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.CreatePipelineAsyncStatus.Unknown }}}, 0, messagePtr, userdata);
+          }
+          stackRestore(sp);
+        });
       });
     });
   },
@@ -1629,14 +1639,16 @@ var LibraryWebGPU = {
     var queue = WebGPU.mgrQueue.get(queueId);
     var cmds = Array.from({{{ makeHEAPView(`${POINTER_BITS}`, 'commands', `commands + commandCount * ${POINTER_SIZE}`)}}},
       (id) => WebGPU.mgrCommandBuffer.get(id));
-    queue.submit(cmds);
 
-    if (WebGPU._HAS_PENDING_QUEUE === false) {
-      WebGPU._HAS_PENDING_QUEUE = true;
+    Asyncify.addSleepTaskOnce(async () => {
+      queue.submit(cmds);
+    });
+    if (!WebGPU._QUEUES_SUBMITTED[queueId]) {
+      WebGPU._QUEUES_SUBMITTED[queueId] = true;
       Asyncify.addSleepTaskOnce(async () => {
         await queue.onSubmittedWorkDone();
-        WebGPU._HAS_PENDING_QUEUE = false;
-      });
+        delete WebGPU._QUEUES_SUBMITTED[queueId];
+      }, 1);
     }
   },
 
@@ -1644,6 +1656,8 @@ var LibraryWebGPU = {
   wgpuQueueOnSubmittedWorkDone: (queueId, callback, userdata) => {
     var queue = WebGPU.mgrQueue.get(queueId);
 
+    // The queue won't be completed until sleep task anyway
+    // It should be safe to run this immediately
     {{{ runtimeKeepalivePush() }}}
     queue.onSubmittedWorkDone().then(() => {
       {{{ runtimeKeepalivePop() }}}
@@ -1923,42 +1937,44 @@ var LibraryWebGPU = {
   wgpuShaderModuleGetCompilationInfo: (shaderModuleId, callback, userdata) => {
     var shaderModule = WebGPU.mgrShaderModule.get(shaderModuleId);
     {{{ runtimeKeepalivePush() }}}
-    shaderModule.getCompilationInfo().then((compilationInfo) => {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {
-        var compilationMessagesPtr = _malloc({{{ C_STRUCTS.WGPUCompilationMessage.__size__ }}} * compilationInfo.messages.length);
-        var messageStringPtrs = []; // save these to free later
-        for (var i = 0; i < compilationInfo.messages.length; ++i) {
-          var compilationMessage = compilationInfo.messages[i];
-          var compilationMessagePtr = compilationMessagesPtr + {{{ C_STRUCTS.WGPUCompilationMessage.__size__ }}} * i;
-          var messageSize = lengthBytesUTF8(compilationMessage.message) + 1;
-          var messagePtr = _malloc(messageSize);
-          messageStringPtrs.push(messagePtr);
-          stringToUTF8(compilationMessage.message, messagePtr, messageSize);
-          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.message, 'messagePtr', '*') }}};
-          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.type, 'WebGPU.Int_CompilationMessageType[compilationMessage.type]', 'i32') }}};
-          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.lineNum, 'compilationMessage.lineNum', 'i64') }}};
-          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.linePos, 'compilationMessage.linePos', 'i64') }}};
-          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.offset, 'compilationMessage.offset', 'i64') }}};
-          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.length, 'compilationMessage.length', 'i64') }}};
-          // TODO: Convert JavaScript's UTF-16-code-unit offsets to UTF-8-code-unit offsets.
-          // https://github.com/webgpu-native/webgpu-headers/issues/246
-          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.utf16LinePos, 'compilationMessage.linePos', 'i64') }}};
-          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.utf16Offset, 'compilationMessage.offset', 'i64') }}};
-          {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.utf16Length, 'compilationMessage.length', 'i64') }}};
-        }
-        var compilationInfoPtr = _malloc({{{ C_STRUCTS.WGPUCompilationInfo.__size__ }}});
-        {{{ makeSetValue('compilationInfoPtr', C_STRUCTS.WGPUCompilationInfo.messageCount, 'compilationInfo.messages.length', '*') }}}
-        {{{ makeSetValue('compilationInfoPtr', C_STRUCTS.WGPUCompilationInfo.messages, 'compilationMessagesPtr', '*') }}};
+    Asyncify.addSleepTaskOnce(async () => {
+      await shaderModule.getCompilationInfo().then((compilationInfo) => {
+        {{{ runtimeKeepalivePop() }}}
+        callUserCallback(() => {
+          var compilationMessagesPtr = _malloc({{{ C_STRUCTS.WGPUCompilationMessage.__size__ }}} * compilationInfo.messages.length);
+          var messageStringPtrs = []; // save these to free later
+          for (var i = 0; i < compilationInfo.messages.length; ++i) {
+            var compilationMessage = compilationInfo.messages[i];
+            var compilationMessagePtr = compilationMessagesPtr + {{{ C_STRUCTS.WGPUCompilationMessage.__size__ }}} * i;
+            var messageSize = lengthBytesUTF8(compilationMessage.message) + 1;
+            var messagePtr = _malloc(messageSize);
+            messageStringPtrs.push(messagePtr);
+            stringToUTF8(compilationMessage.message, messagePtr, messageSize);
+            {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.message, 'messagePtr', '*') }}};
+            {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.type, 'WebGPU.Int_CompilationMessageType[compilationMessage.type]', 'i32') }}};
+            {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.lineNum, 'compilationMessage.lineNum', 'i64') }}};
+            {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.linePos, 'compilationMessage.linePos', 'i64') }}};
+            {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.offset, 'compilationMessage.offset', 'i64') }}};
+            {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.length, 'compilationMessage.length', 'i64') }}};
+            // TODO: Convert JavaScript's UTF-16-code-unit offsets to UTF-8-code-unit offsets.
+            // https://github.com/webgpu-native/webgpu-headers/issues/246
+            {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.utf16LinePos, 'compilationMessage.linePos', 'i64') }}};
+            {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.utf16Offset, 'compilationMessage.offset', 'i64') }}};
+            {{{ makeSetValue('compilationMessagePtr', C_STRUCTS.WGPUCompilationMessage.utf16Length, 'compilationMessage.length', 'i64') }}};
+          }
+          var compilationInfoPtr = _malloc({{{ C_STRUCTS.WGPUCompilationInfo.__size__ }}});
+          {{{ makeSetValue('compilationInfoPtr', C_STRUCTS.WGPUCompilationInfo.messageCount, 'compilationInfo.messages.length', '*') }}}
+          {{{ makeSetValue('compilationInfoPtr', C_STRUCTS.WGPUCompilationInfo.messages, 'compilationMessagesPtr', '*') }}};
 
-        {{{ makeDynCall('vipp', 'callback') }}}({{{ gpu.CompilationInfoRequestStatus.Success }}}, compilationInfoPtr, userdata);
+          {{{ makeDynCall('vipp', 'callback') }}}({{{ gpu.CompilationInfoRequestStatus.Success }}}, compilationInfoPtr, userdata);
 
-        messageStringPtrs.forEach((ptr) => {
-          _free(ptr);
+          messageStringPtrs.forEach((ptr) => {
+            _free(ptr);
+          });
+          _free(compilationMessagesPtr);
+          _free(compilationInfoPtr);
         });
-        _free(compilationMessagesPtr);
-        _free(compilationInfoPtr);
-      });
+      })
     });
   },
   wgpuShaderModuleSetLabel: (shaderModuleId, labelPtr) => {
@@ -2090,16 +2106,18 @@ var LibraryWebGPU = {
     // `callback` takes (WGPUBufferMapAsyncStatus status, void * userdata)
 
     {{{ runtimeKeepalivePush() }}}
-    buffer.mapAsync(mode, offset, size).then(() => {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {
-        {{{ makeDynCall('vip', 'callback') }}}({{{ gpu.BufferMapAsyncStatus.Success }}}, userdata);
-      });
-    }, () => {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {
-        // TODO(kainino0x): Figure out how to pick other error status values.
-        {{{ makeDynCall('vip', 'callback') }}}({{{ gpu.BufferMapAsyncStatus.ValidationError }}}, userdata);
+    Asyncify.addSleepTaskOnce(async () => {
+      await buffer.mapAsync(mode, offset, size).then(() => {
+        {{{ runtimeKeepalivePop() }}}
+        callUserCallback(() => {
+          {{{ makeDynCall('vip', 'callback') }}}({{{ gpu.BufferMapAsyncStatus.Success }}}, userdata);
+        });
+      }, () => {
+        {{{ runtimeKeepalivePop() }}}
+        callUserCallback(() => {
+          // TODO(kainino0x): Figure out how to pick other error status values.
+          {{{ makeDynCall('vip', 'callback') }}}({{{ gpu.BufferMapAsyncStatus.ValidationError }}}, userdata);
+        });
       });
     });
   },
