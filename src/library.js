@@ -2181,16 +2181,12 @@ addToLibrary({
     return x.startsWith('dynCall_') ? x : '_' + x;
   },
 
-  $asyncLoad: (url) => {
-    return new Promise((resolve, reject) => {
-      readAsync(url).then(
-        (arrayBuffer) => {
+  $asyncLoad: async (url) => {
+    var arrayBuffer = await readAsync(url);
   #if ASSERTIONS
-          assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
+    assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
   #endif
-          resolve(new Uint8Array(arrayBuffer));
-        }, reject);
-    });
+    return new Uint8Array(arrayBuffer);
   },
 
   $alignMemory: (size, alignment) => {
