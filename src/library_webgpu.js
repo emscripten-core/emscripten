@@ -192,6 +192,8 @@ var LibraryWebGPU = {
   $WebGPU__postset: 'WebGPU.initManagers();',
   $WebGPU__deps: ['$stackSave', '$stackRestore', '$stringToUTF8OnStack'],
   $WebGPU: {
+    _HAS_PENDING_QUEUE: false,
+
     errorCallback: (callback, type, message, userdata) => {
       var sp = stackSave();
       var messagePtr = stringToUTF8OnStack(message);
@@ -1628,6 +1630,14 @@ var LibraryWebGPU = {
     var cmds = Array.from({{{ makeHEAPView(`${POINTER_BITS}`, 'commands', `commands + commandCount * ${POINTER_SIZE}`)}}},
       (id) => WebGPU.mgrCommandBuffer.get(id));
     queue.submit(cmds);
+
+    if (WebGPU._HAS_PENDING_QUEUE === false) {
+      WebGPU._HAS_PENDING_QUEUE = true;
+      Asyncify.addSleepTask(async () => {
+        await queue.onSubmittedWorkDone();
+        WebGPU._HAS_PENDING_QUEUE = false;
+      });
+    }
   },
 
   wgpuQueueOnSubmittedWorkDone__deps: ['$callUserCallback'],
