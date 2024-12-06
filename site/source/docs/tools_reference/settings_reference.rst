@@ -2939,7 +2939,7 @@ This setting also applies to modern Chromium-based Edge, which shares version
 numbers with Chrome.
 Chrome 85 was released on 2020-08-25.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 32, which was released on 2014-01-04.
+Minimum supported value is 33, which was released on 2014-02-18.
 
 Default value: 85
 

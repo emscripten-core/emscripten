@@ -23,11 +23,9 @@
 #if MODULARIZE
 var Module = moduleArg;
 #elif USE_CLOSURE_COMPILER
+/** @type{Object} */
+var Module;
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
-var /** @type {{
-  ctx: Object,
-}}
- */ Module;
 if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
 #elif AUDIO_WORKLET
 var Module = globalThis.Module || (typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {});
@@ -36,14 +34,6 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #endif // USE_CLOSURE_COMPILER
 
 #if POLYFILL
-#if ((MAYBE_WASM2JS && WASM != 2) || MODULARIZE) && (MIN_CHROME_VERSION < 33 || MIN_FIREFOX_VERSION < 29 || MIN_SAFARI_VERSION < 80000)
-// Include a Promise polyfill for legacy browsers. This is needed either for
-// wasm2js, where we polyfill the wasm API which needs Promises, or when using
-// modularize which creates a Promise for when the module is ready.
-// See https://caniuse.com/#feat=promises
-#include "polyfill/promise.js"
-#endif
-
 #if MIN_CHROME_VERSION < 45 || MIN_FIREFOX_VERSION < 34 || MIN_SAFARI_VERSION < 90000
 // See https://caniuse.com/mdn-javascript_builtins_object_assign
 #include "polyfill/objassign.js"

@@ -575,7 +575,7 @@ var LibraryGLUT = {
   glutDestroyWindow__proxy: 'sync',
   glutDestroyWindow__deps: ['$Browser'],
   glutDestroyWindow: (name) => {
-    delete Module.ctx;
+    delete Module['ctx'];
     return 1;
   },
 

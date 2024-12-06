@@ -41,7 +41,7 @@ addToLibrary({
       SOCKFS.on('close', (fd) => dbg(`websocket: close fd = ${fd}`));
 #endif
 
-      return FS.createNode(null, '/', {{{ cDefs.S_IFDIR }}} | 511 /* 0777 */, 0);
+      return FS.createNode(null, '/', {{{ cDefs.S_IFDIR | 0o777 }}}, 0);
     },
     createSocket(family, type, protocol) {
       type &= ~{{{ cDefs.SOCK_CLOEXEC | cDefs.SOCK_NONBLOCK }}}; // Some applications may pass it; it makes no sense for a single process.
@@ -619,16 +619,13 @@ addToLibrary({
           buffer = buffer.buffer;
         }
 
-        var data;
+        var data = buffer.slice(offset, offset + length);
 #if PTHREADS
-        // WebSockets .send() does not allow passing a SharedArrayBuffer, so clone the portion of the SharedArrayBuffer as a regular
-        // ArrayBuffer that we want to send.
-        if (buffer instanceof SharedArrayBuffer) {
-          data = new Uint8Array(new Uint8Array(buffer.slice(offset, offset + length))).buffer;
-        } else {
-#endif
-          data = buffer.slice(offset, offset + length);
-#if PTHREADS
+        // WebSockets .send() does not allow passing a SharedArrayBuffer, so
+        // clone the the SharedArrayBuffer as regular ArrayBuffer before
+        // sending.
+        if (data instanceof SharedArrayBuffer) {
+          data = new Uint8Array(new Uint8Array(data)).buffer;
         }
 #endif
 

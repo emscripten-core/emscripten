@@ -47,6 +47,7 @@ from . import config
 from . import filelock
 from . import utils
 from .settings import settings
+import contextlib
 
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
@@ -116,7 +117,7 @@ def shlex_join(cmd):
 def run_process(cmd, check=True, input=None, *args, **kw):
   """Runs a subprocess returning the exit code.
 
-  By default this function will raise an exception on failure.  Therefor this should only be
+  By default this function will raise an exception on failure.  Therefore this should only be
   used if you want to handle such failures.  For most subprocesses, failures are not recoverable
   and should be fatal.  In those cases the `check_call` wrapper should be preferred.
   """
@@ -493,10 +494,8 @@ def check_sanity(force=False):
     # We can't simply check for the existence of sanity_file and then read from
     # it here because we don't hold the cache lock yet and some other process
     # could clear the cache between checking for, and reading from, the file.
-    try:
+    with contextlib.suppress(Exception):
       sanity_data = utils.read_file(sanity_file)
-    except Exception:
-      pass
     if sanity_data == expected:
       logger.debug(f'sanity file up-to-date: {sanity_file}')
       # Even if the sanity file is up-to-date we still run the checks
@@ -511,7 +510,7 @@ def check_sanity(force=False):
     return
 
   with cache.lock('sanity'):
-    # Check again once the cache lock as aquired
+    # Check again once the cache lock as acquired
     if sanity_is_correct():
       return
 

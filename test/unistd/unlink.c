@@ -10,7 +10,6 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -57,26 +56,6 @@ void setup() {
   chmod("file-readonly", 0555);
   mkdir("dir-full", 0777);
   create_file("dir-full/anotherfile", "test", 0777);
-}
-
-void cleanup() {
-  unlink("file");
-  unlink("file1");
-#ifndef NO_SYMLINK
-  unlink("file1-link");
-#endif
-  rmdir("dir-empty");
-#ifndef NO_SYMLINK
-  unlink("dir-empty-link");
-#endif
-  chmod("dir-readonly", 0777);
-  chmod("file-readonly", 0777);
-  unlink("file-readonly");
-  unlink("dir-readonly/anotherfile");
-  rmdir("dir-readonly/anotherdir");
-  rmdir("dir-readonly");
-  unlink("dir-full/anotherfile");
-  rmdir("dir-full");
 }
 
 void test() {
@@ -201,10 +180,8 @@ void test() {
 }
 
 int main() {
-  atexit(cleanup);
-  signal(SIGABRT, cleanup);
   setup();
   test();
 
-  return EXIT_SUCCESS;
+  return 0;
 }

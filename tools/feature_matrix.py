@@ -18,7 +18,7 @@ UNSUPPORTED = 0x7FFFFFFF
 # Oldest support browser versions.  These have been set somewhat
 # arbitrarily for now.
 # TODO(sbc): Design a of policy for managing these values.
-OLDEST_SUPPORTED_CHROME = 32
+OLDEST_SUPPORTED_CHROME = 33
 OLDEST_SUPPORTED_FIREFOX = 34
 OLDEST_SUPPORTED_SAFARI = 90000
 # 10.19.0 is the oldest version of node that we do any testing with.

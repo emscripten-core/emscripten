@@ -381,9 +381,7 @@ def also_with_wasmfs(f):
     if wasmfs:
       self.set_setting('WASMFS')
       self.emcc_args.append('-DWASMFS')
-      f(self, *args, **kwargs)
-    else:
-      f(self, *args, **kwargs)
+    f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'wasmfs': (True,)})
@@ -1091,7 +1089,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.v8_args = ['--wasm-staging']
     self.env = {}
     self.temp_files_before_run = []
-    self.uses_es6 = False
     self.required_engine = None
     self.wasm_engines = config.WASM_ENGINES.copy()
     self.use_all_engines = EMTEST_ALL_ENGINES

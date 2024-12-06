@@ -40,7 +40,7 @@ addToLibrary({
     },
     lookupPath(path, opts = {}) {
       if (opts.parent) {
-        path = nodePath.dirname(path);
+        path = PATH.dirname(path);
       }
       var st = fs.lstatSync(path);
       var mode = NODEFS.getMode(path);
@@ -70,9 +70,29 @@ addToLibrary({
     readdir(...args) { return ['.', '..'].concat(fs.readdirSync(...args)); },
     unlink(...args) { fs.unlinkSync(...args); },
     readlink(...args) { return fs.readlinkSync(...args); },
-    stat(...args) { return fs.statSync(...args); },
-    lstat(...args) { return fs.lstatSync(...args); },
-    chmod(...args) { fs.chmodSync(...args); },
+    stat(path, dontFollow) {
+      var stat = dontFollow ? fs.lstatSync(path) : fs.statSync(path);
+      if (NODEFS.isWindows) {
+        // Windows does not report the 'x' permission bit, so propagate read
+        // bits to execute bits.
+        stat.mode |= (stat.mode & {{{ cDefs.S_IRUGO }}}) >> 2;
+      }
+      return stat;
+    },
+    chmod(path, mode, dontFollow) {
+      mode &= {{{ cDefs.S_IALLUGO }}};
+      if (NODEFS.isWindows) {
+        // Windows only supports S_IREAD / S_IWRITE (S_IRUSR / S_IWUSR)
+        // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod
+        mode &= {{{ cDefs.S_IRUSR | cDefs.S_IWUSR }}};
+      }
+      if (dontFollow && fs.lstatSync(path).isSymbolicLink()) {
+        // Node (and indeed linux) does not support chmod on symlinks
+        // https://nodejs.org/api/fs.html#fslchmodsyncpath-mode
+        throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+      }
+      fs.chmodSync(path, mode);
+    },
     fchmod(fd, mode) {
       var stream = FS.getStreamChecked(fd);
       fs.fchmodSync(stream.nfd, mode);
@@ -92,13 +112,13 @@ addToLibrary({
       fs.ftruncateSync(stream.nfd, len);
     },
     utime(path, atime, mtime) {
-      // -1 here for atime or mtime means UTIME_OMIT was passed.  Since node
+      // null here for atime or mtime means UTIME_OMIT was passed.  Since node
       // doesn't support this concept we need to first find the existing
       // timestamps in order to preserve them.
-      if (atime == -1 || mtime == -1) {
+      if ((atime === null) || (mtime === null)) {
         var st = fs.statSync(path);
-        if (atime == -1) atime = st.atimeMs;
-        if (mtime == -1) mtime = st.mtimeMs;
+        atime ||= st.atimeMs;
+        mtime ||= st.mtimeMs;
       }
       fs.utimesSync(path, atime/1000, mtime/1000);
     },

@@ -76,15 +76,14 @@ addToLibrary({
       return node;
     },
     getMode(path) {
-      var stat;
       return NODEFS.tryFSOperation(() => {
-        stat = fs.lstatSync(path);
+        var mode = fs.lstatSync(path).mode;
         if (NODEFS.isWindows) {
-          // Node.js on Windows never represents permission bit 'x', so
-          // propagate read bits to execute bits
-          stat.mode |= (stat.mode & {{{ cDefs.S_IRUSR | cDefs.S_IRGRP | cDefs.S_IROTH }}}) >> 2;
+          // Windows does not report the 'x' permission bit, so propagate read
+          // bits to execute bits.
+          mode |= (mode & {{{ cDefs.S_IRUGO }}}) >> 2;
         }
-        return stat.mode;
+        return mode;
       });
     },
     realPath(node) {
@@ -133,9 +132,9 @@ addToLibrary({
           if (!stat.blocks) {
             stat.blocks = (stat.size+stat.blksize-1)/stat.blksize|0;
           }
-          // Node.js on Windows never represents permission bit 'x', so
-          // propagate read bits to execute bits.
-          stat.mode |= (stat.mode & {{{ cDefs.S_IRUSR | cDefs.S_IRGRP | cDefs.S_IROTH }}}) >> 2;
+          // Windows does not report the 'x' permission bit, so propagate read
+          // bits to execute bits.
+          stat.mode |= (stat.mode & {{{ cDefs.S_IRUGO }}}) >> 2;
         }
         return {
           dev: stat.dev,
@@ -157,13 +156,20 @@ addToLibrary({
         var path = NODEFS.realPath(node);
         NODEFS.tryFSOperation(() => {
           if (attr.mode !== undefined) {
-            fs.chmodSync(path, attr.mode);
+            var mode = attr.mode;
+            if (NODEFS.isWindows) {
+              // Windows only supports S_IREAD / S_IWRITE (S_IRUSR / S_IWUSR)
+              // https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod
+              mode &= {{{ cDefs.S_IRUSR | cDefs.S_IWUSR }}};
+            }
+            fs.chmodSync(path, mode);
             // update the common node structure mode as well
             node.mode = attr.mode;
           }
-          if (attr.timestamp !== undefined) {
-            var date = new Date(attr.timestamp);
-            fs.utimesSync(path, date, date);
+          if (attr.atime || attr.mtime) {
+            var atime = attr.atime && new Date(attr.atime);
+            var mtime = attr.mtime && new Date(attr.mtime);
+            fs.utimesSync(path, atime, mtime);
           }
           if (attr.size !== undefined) {
             fs.truncateSync(path, attr.size);
@@ -191,6 +197,9 @@ addToLibrary({
       rename(oldNode, newDir, newName) {
         var oldPath = NODEFS.realPath(oldNode);
         var newPath = PATH.join2(NODEFS.realPath(newDir), newName);
+        try {
+          FS.unlink(newPath);
+        } catch(e) {}
         NODEFS.tryFSOperation(() => fs.renameSync(oldPath, newPath));
         oldNode.name = newName;
       },
@@ -214,6 +223,13 @@ addToLibrary({
         var path = NODEFS.realPath(node);
         return NODEFS.tryFSOperation(() => fs.readlinkSync(path));
       },
+      statfs(path) {
+        var stats = NODEFS.tryFSOperation(() => fs.statfsSync(path));
+        // Node.js doesn't provide frsize (fragment size). Set it to bsize (block size)
+        // as they're often the same in many file systems. May not be accurate for all.
+        stats.frsize = stats.bsize;
+        return stats;
+      }
     },
     stream_ops: {
       open(stream) {

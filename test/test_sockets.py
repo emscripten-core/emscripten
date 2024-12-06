@@ -285,6 +285,7 @@ class sockets(BrowserCore):
     'native': [WebsockifyServerHarness, 59160, ['-DTEST_DGRAM=0']],
     'tcp': [CompiledServerHarness, 59162, ['-DTEST_DGRAM=0']],
     'udp': [CompiledServerHarness, 59164, ['-DTEST_DGRAM=1']],
+    'pthread': [CompiledServerHarness, 59165, ['-pthread', '-sPROXY_TO_PTHREAD']],
   })
   def test_nodejs_sockets_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:

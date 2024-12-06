@@ -124,8 +124,6 @@ void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool s
 uint8_t wasmAudioWorkletStack[4096];
 
 int main() {
-  srand(time(NULL));
-
   assert(!emscripten_current_thread_is_audio_worklet());
 
   // Create an audio context

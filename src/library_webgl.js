@@ -1170,7 +1170,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       // Active Emscripten GL layer context object.
       GL.currentContext = GL.contexts[contextHandle];
       // Active WebGL context object.
-      Module.ctx = GLctx = GL.currentContext?.GLctx;
+      Module['ctx'] = GLctx = GL.currentContext?.GLctx;
       return !(contextHandle && !GLctx);
     },
 

@@ -66,8 +66,7 @@ def get(ports, settings, shared):
 
     formats = get_formats(settings)
 
-    for fmt in formats:
-      flags.append('-DLOAD_' + fmt.upper())
+    flags.extend(f'-DLOAD_{fmt.upper()}' for fmt in formats)
 
     if 'png' in formats:
       flags += ['-sUSE_LIBPNG']
