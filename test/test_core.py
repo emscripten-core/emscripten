@@ -5781,6 +5781,7 @@ got: 10
   def test_fs_emptyPath(self):
     self.do_run_in_out_file_test('fs/test_emptyPath.c')
 
+  @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @also_with_noderawfs
   def test_fs_enotdir(self):
     self.do_run_in_out_file_test('fs/test_enotdir.c')
