@@ -5883,9 +5883,9 @@ Module.onRuntimeInitialized = () => {
   })
   def test_fs_symlink_resolution(self, args):
     nodefs = '-DNODEFS' in args or '-sNODERAWFS' in args
+    if nodefs and WINDOWS:
+      self.skipTest('No symlinks on Windows')
     if self.get_setting('WASMFS'):
-      if WINDOWS:
-        self.skipTest('No symlinks on Windows')
       if nodefs:
         self.skipTest('NODEFS in WasmFS')
       self.set_setting('FORCE_FILESYSTEM')
