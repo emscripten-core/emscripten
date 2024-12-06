@@ -14,7 +14,7 @@ function reportResultToServer(result, port) {
     out(`RESULT: ${result}`);
   } else {
     let doFetch = typeof origFetch != 'undefined' ? origFetch : fetch;
-    doFetch(`http://localhost:${port}/report_result?${result}`).then(() => {
+    doFetch(`http://localhost:${port}/report_result?${encodeURIComponent(result)}`).then(() => {
       if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
         /* for easy debugging, don't close window on failure */
         window.close();
@@ -24,7 +24,7 @@ function reportResultToServer(result, port) {
 }
 
 function sendFileToServer(filename, contents) {
-  fetch(`http://localhost:8888/?file=${filename}`, {method: "POST", body: contents});
+  fetch(`http://localhost:8888/?file=${encodeURIComponent(filename)}`, {method: "POST", body: contents});
 }
 
 /**
@@ -39,7 +39,7 @@ function reportErrorToServer(message) {
   if (typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) {
     err(message);
   } else {
-    fetch(encodeURI(`http://localhost:8888?stderr=${message}`));
+    fetch(`http://localhost:8888?stderr=${encodeURIComponent(message)}`);
   }
 }
 

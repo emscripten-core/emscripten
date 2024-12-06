@@ -3397,21 +3397,24 @@ More info: https://emscripten.org
     self.do_runf('other/test_jspi_add_function.c', 'done')
 
   @parameterized({
-    '': [[]],
-    'with_jsgen': [['-sEMBIND_AOT']]
+    'commonjs': [['-sMODULARIZE'], ['--module', 'commonjs', '--moduleResolution', 'node']],
+    'esm': [['-sEXPORT_ES6'], ['--module', 'NodeNext', '--moduleResolution', 'nodenext']],
+    'esm_with_jsgen': [['-sEXPORT_ES6', '-sEMBIND_AOT'], ['--module', 'NodeNext', '--moduleResolution', 'nodenext']]
   })
-  def test_embind_tsgen(self, opts):
+  def test_embind_tsgen_end_to_end(self, opts, tsc_opts):
     # Check that TypeScript generation works and that the program is runs as
     # expected.
     self.emcc(test_file('other/embind_tsgen.cpp'),
-              ['-o', 'embind_tsgen.mjs', '-lembind', '--emit-tsd', 'embind_tsgen.d.ts'] + opts)
+              ['-o', 'embind_tsgen.js', '-lembind', '--emit-tsd', 'embind_tsgen.d.ts'] + opts)
 
     # Test that the output compiles with a TS file that uses the defintions.
     shutil.copyfile(test_file('other/embind_tsgen_main.ts'), 'main.ts')
-    # A package file with type=module is needed to enabled ES modules in TSC and
-    # also run the output JS file as a module in node.
-    shutil.copyfile(test_file('other/embind_tsgen_package.json'), 'package.json')
-    cmd = shared.get_npm_cmd('tsc') + ['embind_tsgen.d.ts', 'main.ts', '--module', 'NodeNext', '--moduleResolution', 'nodenext']
+    if '-sEXPORT_ES6' in opts:
+      # A package file with type=module is needed to enabled ES modules in TSC and
+      # also run the output JS file as a module in node.
+      shutil.copyfile(test_file('other/embind_tsgen_package.json'), 'package.json')
+
+    cmd = shared.get_npm_cmd('tsc') + ['embind_tsgen.d.ts', 'main.ts', '--target', 'es2021'] + tsc_opts
     shared.check_call(cmd)
     actual = read_file('embind_tsgen.d.ts')
     self.assertFileContents(test_file('other/embind_tsgen_module.d.ts'), actual)
@@ -4919,6 +4922,7 @@ int main() {
     # legacy + disabling wasm works
     test('hello, world!', ['-sLEGACY_VM_SUPPORT', '-sWASM=0'])
 
+  @crossplatform
   def test_on_abort(self):
     expected_output = 'Module.onAbort was called'
 
@@ -12424,29 +12428,6 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
       self.assertContained(expected, self.run_js('test.wasm', engine))
 
   @parameterized({
-    'wasm2js': (['-sWASM=0'],),
-    'modularize': (['-sMODULARIZE', '--extern-post-js', test_file('modularize_post_js.js')],),
-  })
-  def test_promise_polyfill(self, constant_args):
-    def test(args, expect_fail):
-      # legacy browsers may lack Promise, which wasm2js depends on. see what
-      # happens when we kill the global Promise function.
-      self.run_process([EMCC, test_file('hello_world.c')] + constant_args + args)
-      js = read_file('a.out.js')
-      create_file('a.out.js', 'Promise = undefined;\n' + js)
-      return self.run_js('a.out.js', assert_returncode=NON_ZERO if expect_fail else 0)
-
-    # we fail without legacy support
-    test([], expect_fail=True)
-
-    # but work with it
-    output = test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
-    self.assertContained('hello, world!', output)
-
-    # unless we explicitly disable polyfills
-    test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
-
-  @parameterized({
     '': ([],),
     'assertions': (['-sASSERTIONS'],),
     'closure': (['-sASSERTIONS', '--closure=1'],),
@@ -15261,7 +15242,7 @@ addToLibrary({
 
   def test_browser_too_old(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMIN_CHROME_VERSION=10'])
-    self.assertContained('emcc: error: MIN_CHROME_VERSION older than 32 is not supported', err)
+    self.assertContained('emcc: error: MIN_CHROME_VERSION older than 33 is not supported', err)
 
   def test_js_only_settings(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '-o', 'foo.wasm', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=emscripten_get_heap_max'], stderr=PIPE).stderr
