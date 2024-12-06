@@ -31,6 +31,15 @@ addToLibrary({
   ],
 
   $Asyncify: {
+    // Async Task Queue
+    tasks: [],
+    addTask(task) {
+      Asyncify.tasks.push(task);
+    },
+    getTasks() {
+      return Asyncify.tasks;
+    },
+  
     //
     // Asyncify code that is shared between mode 1 (original) and mode 2 (JSPI).
     //
@@ -459,11 +468,18 @@ addToLibrary({
   emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep__async: true,
   emscripten_sleep: (ms) => {
-    // emscripten_sleep() does not return a value, but we still need a |return|
-    // here for stack switching support (ASYNCIFY=2). In that mode this function
-    // returns a Promise instead of nothing, and that Promise is what tells the
-    // wasm VM to pause the stack.
-    return Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
+    // Initial sleep promise, ignore duration and use 0 instead
+    const sleepPromise = new Promise((resolve) => safeSetTimeout(resolve, 0));
+
+    // Get tasks, a list of Promises
+    const tasks = Asyncify.getTasks(); 
+    // Create a promise that executes all tasks sequentially
+    const completeAllTasksPromise = tasks.reduce((p, task) => p.then(task), sleepPromise);
+
+    // Handle sleep for the duration of the promise
+    return Asyncify.handleSleep((wakeUp) => {
+      completeAllTasksPromise.then(wakeUp);
+    });
   },
 
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
