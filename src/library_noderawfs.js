@@ -40,7 +40,7 @@ addToLibrary({
     },
     lookupPath(path, opts = {}) {
       if (opts.parent) {
-        path = nodePath.dirname(path);
+        path = PATH.dirname(path);
       }
       var st = fs.lstatSync(path);
       var mode = NODEFS.getMode(path);

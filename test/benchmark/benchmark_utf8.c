@@ -54,9 +54,6 @@ char *randomString(int len) {
 }
 
 int main() {
-  time_t seed = time(NULL);
-  printf("Random seed: %lld\n", seed);
-  srand(seed);
   double t = 0;
   double t2 = emscripten_get_now();
   for (int i = 0; i < 100000; ++i) {

@@ -193,8 +193,18 @@ FS.staticInit();
             break;
           }
 
-          current = FS.lookupNode(current, parts[i]);
           current_path = PATH.join2(current_path, parts[i]);
+          try {
+            current = FS.lookupNode(current, parts[i]);
+          } catch (e) {
+            // if noent_okay is true, suppress a ENOENT in the last component
+            // and return an object with an undefined node. This is needed for
+            // resolving symlinks in the path when creating a file.
+            if ((e?.errno === {{{ cDefs.ENOENT }}}) && islast && opts.noent_okay) {
+              return { path: current_path };
+            }
+            throw e;
+          }
 
           // jump to the mount's root node if this is a mountpoint
           if (FS.isMountpoint(current) && (!islast || opts.follow_mount)) {
@@ -1036,14 +1046,15 @@ FS.staticInit();
         node = path;
       } else {
         path = PATH.normalize(path);
-        try {
-          var lookup = FS.lookupPath(path, {
-            follow: !(flags & {{{ cDefs.O_NOFOLLOW }}})
-          });
-          node = lookup.node;
-        } catch (e) {
-          // ignore
-        }
+        // noent_okay makes it so that if the final component of the path
+        // doesn't exist, lookupPath returns `node: undefined`. `path` will be
+        // updated to point to the target of all symlinks.
+        var lookup = FS.lookupPath(path, {
+          follow: !(flags & {{{ cDefs.O_NOFOLLOW }}}),
+          noent_okay: true
+        });
+        node = lookup.node;
+        path = lookup.path;
       }
       // perhaps we need to create the node
       var created = false;
