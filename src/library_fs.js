@@ -172,15 +172,17 @@ FS.staticInit();
     // paths
     //
     lookupPath(path, opts = {}) {
-      path = PATH_FS.resolve(path);
-
       if (!path) return { path: '', node: null };
       opts.follow_mount ??= true
+
+      if (!PATH.isAbs(path)) {
+        path = FS.cwd() + '/' + path;
+      }
 
       // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
       linkloop: for (var nlinks = 0; nlinks < 40; nlinks++) {
         // split the absolute path
-        var parts = path.split('/').filter((p) => !!p);
+        var parts = path.split('/').filter((p) => !!p && (p !== '.'));
 
         // start at the root
         var current = FS.root;
@@ -191,6 +193,12 @@ FS.staticInit();
           if (islast && opts.parent) {
             // stop resolving
             break;
+          }
+
+          if (parts[i] === '..') {
+            current_path = PATH.dirname(current_path);
+            current = current.parent;
+            continue;
           }
 
           current_path = PATH.join2(current_path, parts[i]);
@@ -218,7 +226,10 @@ FS.staticInit();
               throw new FS.ErrnoError({{{ cDefs.ENOSYS }}});
             }
             var link = current.node_ops.readlink(current);
-            path = PATH_FS.resolve(PATH.dirname(current_path), link, ...parts.slice(i + 1));
+            if (!PATH.isAbs(link)) {
+              link = PATH.dirname(current_path) + '/' + link;
+            }
+            path = link + '/' + parts.slice(i + 1).join('/');
             continue linkloop;
           }
         }
@@ -1045,7 +1056,6 @@ FS.staticInit();
       if (typeof path == 'object') {
         node = path;
       } else {
-        path = PATH.normalize(path);
         // noent_okay makes it so that if the final component of the path
         // doesn't exist, lookupPath returns `node: undefined`. `path` will be
         // updated to point to the target of all symlinks.
