@@ -32,15 +32,20 @@ addToLibrary({
 
   $Asyncify: {
     // Sleep Tasks
-    sleepTasksOnce: [],
-    addSleepTaskOnce(task) {
-      Asyncify.sleepTasksOnce.push(task);
+    sleepTasksOnce: {
+      // priority: [task, ...]
+    },
+    addSleepTaskOnce(task, priority = 0) {
+      Asyncify.sleepTasksOnce[priority] = Asyncify.sleepTasksOnce[priority]?.concat(task) || [task];
     },
     getSleepTasksOnce() {
-      return Asyncify.sleepTasksOnce;
+      return Object.entries(Asyncify.sleepTasksOnce)
+        .sort(([indexA,], [indexB,]) => indexA - indexB)
+        .map(([, tasks]) => tasks)
+        .flat();
     },
     clearSleepTasksOnce() {
-      Asyncify.sleepTasksOnce = [];
+      Asyncify.sleepTasksOnce = {};
     },
     
     // Sleep Callbacks
