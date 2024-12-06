@@ -651,9 +651,7 @@ static size_t validate_alloc_size(size_t size) {
   return validatedSize;
 }
 
-#ifdef EMMALLOC_VERBOSE
 EM_JS_DEPS(deps, "$ptrToString");
-#endif
 
 static void *allocate_memory(size_t alignment, size_t size) {
   ASSERT_MALLOC_IS_ACQUIRED();

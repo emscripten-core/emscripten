@@ -798,7 +798,6 @@ base align: 0, 0, 0, 0'''])
   })
   def test_emmalloc(self, *args):
     self.maybe_closure()
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$ptrToString'])
     # in newer clang+llvm, the internal calls to malloc in emmalloc may be optimized under
     # the assumption that they are external, so like in system_libs.py where we build
     # malloc, we need to disable builtin here too
