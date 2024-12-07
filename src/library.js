@@ -2181,18 +2181,14 @@ addToLibrary({
     return x.startsWith('dynCall_') ? x : '_' + x;
   },
 
-  $asyncLoad__docs: '/** @param {boolean=} noRunDep */',
-  $asyncLoad: (url, noRunDep) => {
+  $asyncLoad: (url) => {
     return new Promise((resolve, reject) => {
-      var dep = !noRunDep ? getUniqueRunDependency(`al ${url}`) : '';
-      if (dep) addRunDependency(dep);
       readAsync(url).then(
         (arrayBuffer) => {
   #if ASSERTIONS
           assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
   #endif
           resolve(new Uint8Array(arrayBuffer));
-          if (dep) removeRunDependency(dep);
         }, reject);
     });
   },

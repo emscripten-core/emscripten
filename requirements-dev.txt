@@ -7,7 +7,7 @@
 flake8==5.0.4
 flake8-bugbear==22.9.23
 flake8-unused-arguments==0.0.11
-coverage==5.5
+coverage[toml]==5.5
 mypy==0.971
 types-requests==2.27.14
 unittest-xml-reporting==3.1.0

@@ -298,6 +298,7 @@ mi_decl_weak int reallocarr(void* p, size_t count, size_t size)    { return mi_r
 
 #ifdef __EMSCRIPTEN__ // emscripten adds some more on top of WASI
   void* emscripten_builtin_malloc(size_t size)                      MI_FORWARD1(mi_malloc, size)
+  void* emscripten_builtin_realloc(void* p, size_t size)            MI_FORWARD2(mi_realloc, p, size)
   void* emscripten_builtin_free(void* p)                            MI_FORWARD0(mi_free, p)
   void* emscripten_builtin_memalign(size_t alignment, size_t size)  { return mi_memalign(alignment, size); }
   void* emscripten_builtin_calloc(size_t nmemb, size_t size)        MI_FORWARD2(mi_calloc, nmemb, size)
