@@ -1094,12 +1094,21 @@ function implicitSelf() {
 }
 
 function ENVIRONMENT_IS_MAIN_THREAD() {
+  assert(PTHREADS || WASM_WORKERS);
   var envs = [];
   if (PTHREADS) envs.push('ENVIRONMENT_IS_PTHREAD');
   if (WASM_WORKERS) envs.push('ENVIRONMENT_IS_WASM_WORKER');
-  if (AUDIO_WORKLET) envs.push('ENVIRONMENT_IS_AUDIO_WORKLET');
   if (envs.length == 0) return 'true';
   return '(!(' + envs.join('||') + '))';
+}
+
+function ENVIRONMENT_IS_WORKER_THREAD() {
+  assert(PTHREADS || WASM_WORKERS);
+  var envs = [];
+  if (PTHREADS) envs.push('ENVIRONMENT_IS_PTHREAD');
+  if (WASM_WORKERS) envs.push('ENVIRONMENT_IS_WASM_WORKER');
+  if (envs.length == 0) return 'true';
+  return '(' + envs.join('||') + ')';
 }
 
 addToCompileTimeContext({
@@ -1120,6 +1129,7 @@ addToCompileTimeContext({
   TARGET_NOT_SUPPORTED,
   WASM_PAGE_SIZE,
   ENVIRONMENT_IS_MAIN_THREAD,
+  ENVIRONMENT_IS_WORKER_THREAD,
   addAtExit,
   addAtInit,
   addReadyPromiseAssertions,

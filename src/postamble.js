@@ -161,25 +161,9 @@ function run() {
     return;
   }
 
-#if WASM_WORKERS
-  if (ENVIRONMENT_IS_WASM_WORKER) {
-#if MODULARIZE
-    readyPromiseResolve(Module);
-#endif // MODULARIZE
-    return initRuntime();
-  }
-#endif
-
-#if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) {
-#if MODULARIZE
-    // The promise resolve function typically gets called as part of the execution
-    // of `doRun` below. The workers/pthreads don't execute `doRun` so the
-    // creation promise can be resolved, marking the pthread-Module as initialized.
-    readyPromiseResolve(Module);
-#endif // MODULARIZE
+#if PTHREADS || WASM_WORKERS
+  if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
     initRuntime();
-    startWorker(Module);
     return;
   }
 #endif
@@ -213,9 +197,6 @@ function run() {
     preMain();
 #endif
 
-#if MODULARIZE
-    readyPromiseResolve(Module);
-#endif
 #if expectToReceiveOnModule('onRuntimeInitialized')
     Module['onRuntimeInitialized']?.();
 #endif
