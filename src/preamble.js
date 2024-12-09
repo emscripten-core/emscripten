@@ -334,10 +334,10 @@ function addOnPostRun(cb) {
 // it happens right before run - run will be postponed until
 // the dependencies are met.
 var runDependencies = 0;
-var runDependencyWatcher = null;
 var dependenciesFulfilled = null; // overridden to take different actions when all run dependencies are fulfilled
 #if ASSERTIONS
 var runDependencyTracking = {};
+var runDependencyWatcher = null;
 #endif
 
 function getUniqueRunDependency(id) {
@@ -406,10 +406,12 @@ function removeRunDependency(id) {
   }
 #endif
   if (runDependencies == 0) {
+#if ASSERTIONS
     if (runDependencyWatcher !== null) {
       clearInterval(runDependencyWatcher);
       runDependencyWatcher = null;
     }
+#endif
     if (dependenciesFulfilled) {
       var callback = dependenciesFulfilled;
       dependenciesFulfilled = null;
