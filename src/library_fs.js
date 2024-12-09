@@ -1028,24 +1028,7 @@ FS.staticInit();
       }
       throw new FS.ErrnoError({{{ cDefs.EPERM }}});
     },
-    truncateCommon(arg, len, ftruncate) {
-      if (len < 0) {
-        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
-      }
-      var node;
-      var stream;
-      if (ftruncate) {
-        stream = FS.getStreamChecked(arg);
-        if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
-          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
-        }  
-        node = stream.node;
-      } else if (typeof arg == 'string') {
-        var lookup = FS.lookupPath(arg, { follow: true });
-        node = lookup.node;
-      } else {
-        node = arg;
-      }
+    truncateCommon(node, stream, len) {
       if (!node.node_ops.setattr && !stream?.stream_ops.setattr) {
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       }
@@ -1070,10 +1053,24 @@ FS.staticInit();
       }
     },
     truncate(path, len) {
-      FS.truncateCommon(path, len, false);
+      if (len < 0) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
+      var node;
+      if (typeof path == 'string') {
+        var lookup = FS.lookupPath(path, { follow: true });
+        node = lookup.node;
+      } else {
+        node = path;
+      }
+      FS.truncateCommon(node, undefined, len, false);
     },
     ftruncate(fd, len) {
-      FS.truncateCommon(fd, len, true);
+      if (len < 0) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
+      stream = FS.getStreamChecked(fd);
+      FS.truncateCommon(stream.node, stream, len);
     },
     utime(path, atime, mtime) {
       var lookup = FS.lookupPath(path, { follow: true });
