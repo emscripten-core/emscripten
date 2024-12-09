@@ -661,28 +661,16 @@ var LibraryBrowser = {
       return;
     }
 #endif
-#if ASSERTIONS
-    assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
-#endif
     {{{ runtimeKeepalivePush() }}}
 
     var loadDone = () => {
       {{{ runtimeKeepalivePop() }}}
-      if (onload) {
-        var onloadCallback = () => callUserCallback({{{ makeDynCall('v', 'onload') }}});
-        if (runDependencies > 0) {
-          dependenciesFulfilled = onloadCallback;
-        } else {
-          onloadCallback();
-        }
-      }
-    }
+      onload && callUserCallback({{{ makeDynCall('v', 'onload') }}});
+    };
 
     var loadError = () => {
       {{{ runtimeKeepalivePop() }}}
-      if (onerror) {
-        callUserCallback({{{ makeDynCall('v', 'onerror') }}});
-      }
+      onerror && callUserCallback({{{ makeDynCall('v', 'onerror') }}});
     };
 
 #if ENVIRONMENT_MAY_BE_NODE && DYNAMIC_EXECUTION
