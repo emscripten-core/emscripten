@@ -219,7 +219,7 @@ function initRuntime() {
 #endif
 
 #if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return;
+  if (ENVIRONMENT_IS_PTHREAD) return startWorker(Module);
 #endif
 
 #if STACK_OVERFLOW_CHECK
