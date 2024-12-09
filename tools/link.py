@@ -664,7 +664,11 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
   if options.emrun:
     options.pre_js.append(utils.path_from_root('src/emrun_prejs.js'))
     options.post_js.append(utils.path_from_root('src/emrun_postjs.js'))
+    if settings.MINIMAL_RUNTIME:
+      exit_with_error('--emrun is not compatible with MINIMAL_RUNTIME')
     # emrun mode waits on program exit
+    if user_settings.get('EXIT_RUNTIME') == '0':
+      exit_with_error('--emrun is not compatible with EXIT_RUNTIME=0')
     settings.EXIT_RUNTIME = 1
 
   if options.cpu_profiler:
@@ -971,9 +975,6 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
 
   if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
     exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION are mutually exclusive!')
-
-  if options.emrun and settings.MINIMAL_RUNTIME:
-    exit_with_error('--emrun is not compatible with MINIMAL_RUNTIME')
 
   if options.use_closure_compiler:
     settings.USE_CLOSURE_COMPILER = 1
