@@ -262,7 +262,8 @@ void test_statisticsa(void) {
   Ret_M256i_M256i(__m256i, _mm256_avg_epu8);
 }
 
-void test_shift(void) {
+// Split test_shift into two functions to reduce memory consumption
+void test_shift1(void) {
   Ret_M256i_Tint(__m256i, _mm256_slli_si256);
   Ret_M256i_Tint(__m256i, _mm256_bslli_epi128);
 
@@ -277,7 +278,9 @@ void test_shift(void) {
   Ret_M256i_Tint(__m256i, _mm256_srai_epi32);
   Ret_M256i_M128i(__m256i, _mm256_sra_epi16);
   Ret_M256i_M128i(__m256i, _mm256_sra_epi32);
+}
 
+void test_shift2(void) {
   Ret_M256i_Tint(__m256i, _mm256_srli_si256);
   Ret_M256i_Tint(__m256i, _mm256_bsrli_epi128);
 
@@ -300,6 +303,11 @@ void test_shift(void) {
   Ret_M256i_M256i(__m256i, _mm256_srlv_epi32);
   Ret_M128i_M128i(__m128i, _mm_srlv_epi64);
   Ret_M256i_M256i(__m256i, _mm256_srlv_epi64);
+}
+
+void test_shift(void) {
+  test_shift1();
+  test_shift2();
 }
 
 int main() {

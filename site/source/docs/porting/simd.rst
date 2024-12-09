@@ -1227,7 +1227,9 @@ The following table highlights the availability and expected performance of diff
    * - _mm_i64gather_epi64
      - ❌ scalarized
 
-All the 128-bit wide instructions from AVX2 instruction set are listed. Only a small part of the 256-bit AVX2 instruction set are listed, most of the 256-bit wide AVX2 instructions are emulated by two 128-bit wide instructions.
+All the 128-bit wide instructions from AVX2 instruction set are listed.
+Only a small part of the 256-bit AVX2 instruction set are listed, most of the
+256-bit wide AVX2 instructions are emulated by two 128-bit wide instructions.
 
 ====================================================== 
 Compiling SIMD code targeting ARM NEON instruction set

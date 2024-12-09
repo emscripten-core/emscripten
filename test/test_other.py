@@ -9527,7 +9527,8 @@ int main() {
         print('header: ' + header)
         # These headers cannot be included in isolation.
         # e.g: error: unknown type name 'EGLDisplay'
-        if header in ['eglext.h', 'SDL_config_macosx.h', 'glext.h', 'gl2ext.h']:
+        # Don't include avxintrin.h and avx2inrin.h directly, include immintrin.h instead
+        if header in ['eglext.h', 'SDL_config_macosx.h', 'glext.h', 'gl2ext.h', 'avxintrin.h', 'avx2intrin.h']:
           continue
         # These headers are C++ only and cannot be included from C code.
         # But we still want to check they can be included on there own without
@@ -9541,7 +9542,9 @@ int main() {
         if directory and directory != 'compat':
           header = f'{directory}/{header}'
         inc = f'#include <{header}>\n__attribute__((weak)) int foo;\n'
-        cflags = ['-Werror', '-Wall', '-pedantic', '-mavx', '-msimd128', '-msse3']
+        cflags = ['-Werror', '-Wall', '-pedantic', '-msimd128', '-msse4']
+        if header == 'immintrin.h':
+          cflags.append('-mavx2')
         if cxx_only:
           create_file('a.cxx', inc)
           create_file('b.cxx', inc)
