@@ -5674,10 +5674,8 @@ got: 10
 
   def test_fs_base(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
-    self.add_pre_run(read_file(test_file('filesystem/src.js')))
-    src = 'int main() {return 0;}\n'
-    expected = read_file(test_file('filesystem/output.txt'))
-    self.do_run(src, expected)
+    self.add_pre_run(read_file(test_file('fs/test_fs_base.js')))
+    self.do_run_in_out_file_test('fs/test_fs_base.c')
 
   @also_with_noderawfs
   @is_slow_test
@@ -5781,6 +5779,8 @@ got: 10
   def test_fs_emptyPath(self):
     self.do_run_in_out_file_test('fs/test_emptyPath.c')
 
+  @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
+  @crossplatform
   @also_with_noderawfs
   def test_fs_enotdir(self):
     self.do_run_in_out_file_test('fs/test_enotdir.c')
@@ -5887,6 +5887,23 @@ Module.onRuntimeInitialized = () => {
         self.skipTest('NODEFS in WasmFS')
       self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_stat_unnamed_file_descriptor.c', 'success', emcc_args=args)
+
+  @requires_node
+  @crossplatform
+  @parameterized({
+    '': ([],),
+    'nodefs': (['-DNODEFS', '-lnodefs.js'],),
+    'noderawfs': (['-sNODERAWFS'],),
+  })
+  def test_fs_symlink_resolution(self, args):
+    nodefs = '-DNODEFS' in args or '-sNODERAWFS' in args
+    if nodefs and WINDOWS:
+      self.skipTest('No symlinks on Windows')
+    if self.get_setting('WASMFS'):
+      if nodefs:
+        self.skipTest('NODEFS in WasmFS')
+      self.set_setting('FORCE_FILESYSTEM')
+    self.do_runf('fs/test_fs_symlink_resolution.c', 'success', emcc_args=args)
 
   @parameterized({
     '': ([],),
@@ -8608,8 +8625,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @no_asan('cannot replace malloc/free with ASan')
   @no_lsan('cannot replace malloc/free with LSan')
-  def test_wrap_malloc(self):
-    self.do_runf('core/test_wrap_malloc.c', 'OK.')
+  @parameterized({
+    '': ([],),
+    'emmalloc': (['-sMALLOC=emmalloc'],),
+    # FIXME(https://github.com/emscripten-core/emscripten/issues/23090)
+    # 'mimalloc': (['-sMALLOC=mimalloc'],),
+  })
+  def test_wrap_malloc(self, args):
+    self.do_runf('core/test_wrap_malloc.c', 'OK.', emcc_args=args)
 
   def test_environment(self):
     self.set_setting('ASSERTIONS')

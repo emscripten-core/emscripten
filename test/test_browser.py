@@ -812,8 +812,8 @@ If manually bisecting:
     # test()
 
   @also_with_wasmfs
-  def test_dev_random(self):
-    self.btest_exit('filesystem/test_dev_random.c')
+  def test_fs_dev_random(self):
+    self.btest_exit('fs/test_fs_dev_random.c')
 
   def test_sdl_swsurface(self):
     self.btest_exit('test_sdl_swsurface.c', args=['-lSDL', '-lGL'])
@@ -4948,8 +4948,12 @@ Module["preRun"] = () => {
   def test_minimal_runtime_hello_world(self, args):
     self.btest_exit('small_hello_world.c', args=args + ['-sMINIMAL_RUNTIME'])
 
-  def test_offset_converter(self, *args):
-    self.btest_exit('test_offset_converter.c', assert_returncode=1, args=['-sUSE_OFFSET_CONVERTER', '-gsource-map', '-sPROXY_TO_PTHREAD', '-pthread'])
+  @parameterized({
+    '': ([],),
+    'pthread': (['-sPROXY_TO_PTHREAD', '-pthread'],)
+  })
+  def test_offset_converter(self, args):
+    self.btest_exit('test_offset_converter.c', args=['-sUSE_OFFSET_CONVERTER', '-gsource-map'] + args)
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self, *args):

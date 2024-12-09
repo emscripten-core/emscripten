@@ -38,7 +38,7 @@ var SyscallsLibrary = {
         }
         return dir;
       }
-      return PATH.join2(dir, path);
+      return dir + '/' + path;
     },
     // When called by stat, arg is a path. When called by fstat, arg is a file
     // descriptor.
@@ -833,10 +833,6 @@ var SyscallsLibrary = {
   __syscall_mkdirat: (dirfd, path, mode) => {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    // remove a trailing slash, if one - /a/b/ has basename of '', but
-    // we want to create b in the context of this function
-    path = PATH.normalize(path);
-    if (path[path.length-1] === '/') path = path.substr(0, path.length-1);
     FS.mkdir(path, mode, 0);
     return 0;
   },

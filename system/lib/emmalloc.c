@@ -1113,6 +1113,7 @@ void *emmalloc_aligned_realloc_uninitialized(void *ptr, size_t alignment, size_t
 void *emmalloc_realloc(void *ptr, size_t size) {
   return emmalloc_aligned_realloc(ptr, MALLOC_ALIGNMENT, size);
 }
+EMMALLOC_ALIAS(emscripten_builtin_realloc, emmalloc_realloc);
 EMMALLOC_ALIAS(__libc_realloc, emmalloc_realloc);
 EMMALLOC_ALIAS(realloc,        emmalloc_realloc);
 
