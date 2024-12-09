@@ -102,7 +102,8 @@ void test_logical(void) {
   Ret_M256i_M256i(__m256i, _mm256_xor_si256);
 }
 
-void test_swizzle(void) {
+// Split test_swizzle to reduce memory consumption
+void test_swizzle1(void) {
   Ret_M256i_M256i_M256i(__m256i, _mm256_blendv_epi8);
   Ret_M256i_M256i_Tint(__m256i, _mm256_blend_epi16);
 
@@ -110,7 +111,9 @@ void test_swizzle(void) {
   Ret_M256i_Tint(__m256i, _mm256_shuffle_epi32);
   Ret_M256i_Tint(__m256i, _mm256_shufflehi_epi16);
   Ret_M256i_Tint(__m256i, _mm256_shufflelo_epi16);
+}
 
+void test_swizzle2(void) {
   Ret_M256i_M256i(__m256i, _mm256_unpackhi_epi8);
   Ret_M256i_M256i(__m256i, _mm256_unpackhi_epi16);
   Ret_M256i_M256i(__m256i, _mm256_unpackhi_epi32);
@@ -143,11 +146,20 @@ void test_swizzle(void) {
   Ret_M256i_M256i(__m256i, _mm256_permutevar8x32_epi32);
   Ret_M256_M256i(__m256, _mm256_permutevar8x32_ps);
   Ret_M256i_Tint(__m256i, _mm256_permute4x64_epi64);
+}
+
+void test_swizzle3(void) {
   Ret_M256d_Tint(__m256d, _mm256_permute4x64_pd);
   Ret_M256i_M256i_Tint(__m256i, _mm256_permute2x128_si256);
 
   Ret_M256i_Tint(__m128i, _mm256_extracti128_si256);
   Ret_M256i_M128i_Tint(__m256i, _mm256_inserti128_si256);
+}
+
+void test_swizzle(void) {
+  test_swizzle1();
+  test_swizzle2();
+  test_swizzle3();
 }
 
 void test_convert(void) {
@@ -191,7 +203,8 @@ void test_misc(void) {
   Ret_M256i(int, _mm256_movemask_epi8);
 }
 
-void test_load(void) {
+// Split test_load to reduce memory consumption
+void test_load1(void) {
   Ret_IntPtr(__m256i, _mm256_stream_load_si256, __m256i*, 8, 8);
 
   Ret_IntPtr_M128i(__m128i, _mm_maskload_epi32, int32_t*, 4, 4);
@@ -228,7 +241,9 @@ void test_load(void) {
     __m128i, _mm_mask_i64gather_epi64, 8);
   Ret_M256i_Int64Ptr_I64x4_M256i_Tint_body(
     __m256i, _mm256_mask_i64gather_epi64, 8);
+}
 
+void test_load2(void) {
   Ret_DoublePtr_I32x4_Tint_body(__m128d, _mm_i32gather_pd, 8);
   Ret_DoublePtr_I32x4_Tint_body(__m256d, _mm256_i32gather_pd, 8);
   Ret_DoublePtr_I64x2_Tint_body(__m128d, _mm_i64gather_pd, 8);
@@ -250,6 +265,11 @@ void test_load(void) {
   Ret_Int64Ptr_I64x4_Tint_body(__m256i, _mm256_i64gather_epi64, 8);
 }
 
+void test_load(void) {
+  test_load1();
+  test_load2();
+}
+
 void test_store(void) {
   void_OutIntPtr_M128i_M128i(_mm_maskstore_epi32, int*, 16, 4);
   void_OutIntPtr_M256i_M256i(_mm256_maskstore_epi32, int*, 32, 4);
@@ -262,13 +282,16 @@ void test_statisticsa(void) {
   Ret_M256i_M256i(__m256i, _mm256_avg_epu8);
 }
 
-// Split test_shift into two functions to reduce memory consumption
+// Split test_shift to reduce memory consumption
 void test_shift1(void) {
   Ret_M256i_Tint(__m256i, _mm256_slli_si256);
   Ret_M256i_Tint(__m256i, _mm256_bslli_epi128);
 
   Ret_M256i_Tint(__m256i, _mm256_slli_epi16);
   Ret_M256i_Tint(__m256i, _mm256_slli_epi32);
+}
+
+void test_shift2(void) {
   Ret_M256i_Tint(__m256i, _mm256_slli_epi64);
   Ret_M256i_M128i(__m256i, _mm256_sll_epi16);
   Ret_M256i_M128i(__m256i, _mm256_sll_epi32);
@@ -278,10 +301,11 @@ void test_shift1(void) {
   Ret_M256i_Tint(__m256i, _mm256_srai_epi32);
   Ret_M256i_M128i(__m256i, _mm256_sra_epi16);
   Ret_M256i_M128i(__m256i, _mm256_sra_epi32);
+
+  Ret_M256i_Tint(__m256i, _mm256_srli_si256);
 }
 
-void test_shift2(void) {
-  Ret_M256i_Tint(__m256i, _mm256_srli_si256);
+void test_shift3(void) {
   Ret_M256i_Tint(__m256i, _mm256_bsrli_epi128);
 
   Ret_M256i_Tint(__m256i, _mm256_srli_epi16);
@@ -308,6 +332,7 @@ void test_shift2(void) {
 void test_shift(void) {
   test_shift1();
   test_shift2();
+  test_shift3();
 }
 
 int main() {
