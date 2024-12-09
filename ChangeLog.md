@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 4.0.0 (in development)
 ----------------------
+- Added support for compiling AVX2 intrinsics, 256-bit wide intrinsic is emulated
+  on top of 128-bit Wasm SIMD instruction set. (#23035). Pass `-msimd128 -mavx2`
+  to enable targeting AVX2.
 - compiler-rt, libcxx, libcxxabi, and libunwind were updated to LLVM 19.1.6.
   (#22937, #22994, and #23294)
 - The default Safari version targeted by Emscripten has been raised from 14.1
