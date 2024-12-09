@@ -171,7 +171,7 @@ addToLibrary({
         if (attr.atime || attr.mtime) {
           var atime = attr.atime && new Date(attr.atime);
           var mtime = attr.mtime && new Date(attr.mtime);
-          fs.utimesSync(path, atime, mtime);
+          fs.utimesSync(arg, atime, mtime);
         }
         if (attr.size !== undefined) {
           truncate(arg, attr.size);
