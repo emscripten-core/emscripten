@@ -11194,8 +11194,7 @@ int main () {
                                '-Oz',
                                '--closure=1',
                                '-DNDEBUG',
-                               '-ffast-math',
-                               '--profiling-funcs']
+                               '-ffast-math']
 
     wasm2js = ['-sWASM=0']
 
