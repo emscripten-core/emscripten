@@ -22,6 +22,8 @@ $__cxxabiv1::__vmi_class_type_info::has_unambiguous_public_base\28__cxxabiv1::__
 $__cxxabiv1::__vmi_class_type_info::search_above_dst\28__cxxabiv1::__dynamic_cast_info*\2c\20void\20const*\2c\20void\20const*\2c\20int\2c\20bool\29\20const
 $__cxxabiv1::__vmi_class_type_info::search_below_dst\28__cxxabiv1::__dynamic_cast_info*\2c\20void\20const*\2c\20int\2c\20bool\29\20const
 $__lockfile
+$__memcpy
+$__memset
 $__pthread_mutex_lock
 $__throw_bad_alloc_shim\28\29
 $__unlockfile
@@ -36,6 +38,7 @@ $fflush
 $is_equal\28std::type_info\20const*\2c\20std::type_info\20const*\2c\20bool\29
 $main
 $memcmp
+$memmove
 $operator\20delete\28void*\29
 $operator\20new\28unsigned\20long\29
 $pthread_mutex_init
