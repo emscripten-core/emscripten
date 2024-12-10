@@ -657,7 +657,6 @@ async function getWasmBinary(binaryFile) {
       ) {
     // Fetch the binary using readAsync
     try {
-      /** @type{!ArrayBuffer} */
       var response = await readAsync(binaryFile);
       return new Uint8Array(response);
     } catch {
@@ -845,7 +844,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
       // "response was already consumed" error.)
       var clonedResponse = (await response).clone();
 #endif
-      var result = WebAssembly.instantiateStreaming(response, imports);
+      var instantiationResult = await WebAssembly.instantiateStreaming(response, imports);
 #if USE_OFFSET_CONVERTER
       // When using the offset converter, we must interpose here. First,
       // the instantiation result must arrive (if it fails, the error
@@ -854,17 +853,14 @@ async function instantiateAsync(binary, binaryFile, imports) {
       // call receiveInstantiationResult, as that function will use the
       // offset converter (in the case of pthreads, it will create the
       // pthreads and send them the offsets along with the wasm instance).
-      var instantiationResult = await result;
       var arrayBufferResult = await clonedResponse.arrayBuffer();
       try {
         wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(arrayBufferResult), instantiationResult.module);
       } catch (reason) {
         err(`failed to initialize offset-converter: ${reason}`);
       }
-      return instantiationResult;
-#else
-      return await result;
 #endif
+      return instantiationResult;
     } catch (reason) {
       // We expect the most common failure cause to be a bad MIME type for the binary,
       // in which case falling back to ArrayBuffer instantiation should work.
@@ -1098,7 +1094,7 @@ function getWasmImports() {
   } catch (e) {
     // If instantiation fails, reject the module ready promise.
     readyPromiseReject(e);
-    throw e;
+    return;
   }
 #endif
 #else // WASM_ASYNC_COMPILATION
