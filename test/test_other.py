@@ -6105,6 +6105,7 @@ int main() {
 
   @also_with_wasmfs
   @also_with_noderawfs
+  @crossplatform
   def test_fs_dev_random(self):
     self.do_runf('fs/test_fs_dev_random.c', 'success')
 
