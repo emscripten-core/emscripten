@@ -1036,11 +1036,11 @@ function getWasmImports() {
     trueModule = null;
 #endif
 #if SHARED_MEMORY || RELOCATABLE
-    receiveInstance(result['instance'], result['module']);
+    return receiveInstance(result['instance'], result['module']);
 #else
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.
     // When the regression is fixed, can restore the above PTHREADS-enabled path.
-    receiveInstance(result['instance']);
+    return receiveInstance(result['instance']);
 #endif
   }
 #endif // WASM_ASYNC_COMPILATION
@@ -1076,8 +1076,7 @@ function getWasmImports() {
         // Instantiate from the module posted from the main thread.
         // We can just use sync instantiation in the worker.
         var instance = new WebAssembly.Instance(module, getWasmImports());
-        receiveInstance(instance, module);
-        resolve();
+        resolve(receiveInstance(instance, module));
       };
     });
   }
@@ -1095,16 +1094,16 @@ function getWasmImports() {
   try {
 #endif
     var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
-    receiveInstantiationResult(result);
+    var exports = receiveInstantiationResult(result);
 #if LOAD_SOURCE_MAP
     receiveSourceMapJSON(await getSourceMapAsync());
 #endif
-    return result;
+    return exports;
 #if MODULARIZE
   } catch (e) {
     // If instantiation fails, reject the module ready promise.
     readyPromiseReject(e);
-    return;
+    return Promise.reject(e);
   }
 #endif
 #else // WASM_ASYNC_COMPILATION
