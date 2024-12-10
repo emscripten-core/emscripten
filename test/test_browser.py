@@ -4321,14 +4321,14 @@ Module["preRun"] = () => {
   @requires_graphics_hardware
   @parameterized({
     # full state restoration path on WebGL 1.0
-    'gl1_no_vao': (['-sMAX_WEBGL_VERSION=1', '-sOFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH'],),
+    'gl1_no_vao': (['-sMAX_WEBGL_VERSION=1', '-DTEST_DISABLE_VAO'],),
     # VAO path on WebGL 1.0
     'gl1': (['-sMAX_WEBGL_VERSION=1', '-DTEST_VERIFY_WEBGL1_VAO_SUPPORT=1'],),
     'gl1_max_gl2': (['-sMAX_WEBGL_VERSION=2'],),
     # VAO path on WebGL 2.0
     'gl2': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1'],),
     # full state restoration path on WebGL 2.0
-    'gl2_no_vao': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-sOFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH'],),
+    'gl2_no_vao': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-DTEST_DISABLE_VAO'],),
     # blitFramebuffer path on WebGL 2.0 (falls back to VAO on Firefox < 67)
     'gl2_no_aa': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=0'],),
   })
