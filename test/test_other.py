@@ -6105,7 +6105,10 @@ int main() {
 
   @also_with_wasmfs
   @also_with_noderawfs
+  @crossplatform
   def test_fs_dev_random(self):
+    if WINDOWS and self.get_setting('NODERAWFS'):
+      self.skipTest('Crashes on Windows and NodeFS')
     self.do_runf('fs/test_fs_dev_random.c', 'success')
 
   @parameterized({
