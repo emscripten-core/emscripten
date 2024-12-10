@@ -1608,7 +1608,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
         </script>
       </body>
       </html>
-    ''' % self.port)
+    ''' % self.PORT)
 
     cmd = [EMCC, test_file('hello_world_worker.c'), '-o', 'worker.js'] + self.get_emcc_args()
     if file_data:
@@ -1671,7 +1671,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
         </script>
       </body>
       </html>
-    """ % (worker_filename, self.port))
+    """ % (worker_filename, self.PORT))
 
     create_file('worker_prejs.js', r"""
       Module.arguments = ["/bigfile"];
@@ -1688,7 +1688,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     data = os.urandom(10 * chunkSize + 1) # 10 full chunks and one 1 byte chunk
     checksum = zlib.adler32(data) & 0xffffffff # Python 2 compatibility: force bigint
 
-    server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True, chunkSize, data, checksum, self.port))
+    server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True, chunkSize, data, checksum, self.PORT))
     server.start()
 
     # block until the server is actually ready
@@ -2422,7 +2422,7 @@ void *getBindBuffer() {
         doCwrapCall(200);
         doDirectCall(300);
       }
-    ''' % self.port
+    ''' % self.PORT
 
     create_file('pre_runtime.js', r'''
       Module.onRuntimeInitialized = myJSCallback;
@@ -2569,7 +2569,7 @@ Module["preRun"] = () => {
       window.disableErrorReporting = true;
       window.addEventListener('error', (event) => {
         if (!event.message.includes('exception:fullscreen error')) {
-          report_error(event);
+          reportTopLevelError(event);
         }
       });
       ''')
