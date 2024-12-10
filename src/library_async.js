@@ -35,8 +35,12 @@ addToLibrary({
     sleepTasksOnce: {
       // priority: [task, ...]
     },
-    addSleepTaskOnce(task, priority = 0) {
-      Asyncify.sleepTasksOnce[priority] = Asyncify.sleepTasksOnce[priority]?.concat(task) || [task];
+    addSleepTaskOnce(taskName, taskPromise, priority = 0) {
+      const taskItem = {
+        name: taskName,
+        promise: taskPromise,
+      }
+      Asyncify.sleepTasksOnce[priority] = Asyncify.sleepTasksOnce[priority]?.concat(taskItem) || [taskItem];
     },
     getSleepTasksOnce() {
       return Object.entries(Asyncify.sleepTasksOnce)
@@ -496,14 +500,15 @@ addToLibrary({
   emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep__async: true,
   emscripten_sleep: (ms) => {
-    // Initial sleep promise, ignore duration and use 0 instead
+    // Initial sleep promise; ignore duration and use 0 instead
     const sleepPromise = new Promise((resolve) => safeSetTimeout(resolve, 0));
 
     // Get sleepTasksOnce, a list of promises
-    const tasks = Asyncify.getSleepTasksOnce();
-    console.log('tasks', tasks);
+    const taskItems = Asyncify.getSleepTasksOnce();
+    console.log('tasks', taskItems.map(task => task.name));
     // Create a promise that executes all tasks sequentially
-    const completeAllTasksPromise = tasks.reduce((p, task) => p.then(task), sleepPromise);
+    const promises = taskItems.map(task => task.promise);
+    const completeAllTasksPromise = promises.reduce((last, next) => last.then(next), sleepPromise);
 
     // Handle sleep for the duration of the promise
     return Asyncify.handleSleep((wakeUp) => {

@@ -37,7 +37,7 @@
       return `
 wgpu${type}Reference: (id) => WebGPU.mgr${type}.reference(id),
 wgpu${type}Release: (id) => {
-  Asyncify.addSleepTaskOnce(() => {
+  Asyncify.addSleepTaskOnce('${type}Release', () => {
     WebGPU.mgr${type}.release(id);
   })
 },`;
@@ -876,7 +876,7 @@ var LibraryWebGPU = {
   wgpuDevicePopErrorScope: (deviceId, callback, userdata) => {
     var device = WebGPU.mgrDevice.get(deviceId);
     {{{ runtimeKeepalivePush() }}}
-    Asyncify.addSleepTaskOnce(async () => {
+    Asyncify.addSleepTaskOnce("DevicePopErrorScope", async  () => {
       await device.popErrorScope().then((gpuError) => {
         {{{ runtimeKeepalivePop() }}}
         callUserCallback(() => {
@@ -1297,7 +1297,7 @@ var LibraryWebGPU = {
     var desc = generateComputePipelineDesc(descriptor);
     var device = WebGPU.mgrDevice.get(deviceId);
     {{{ runtimeKeepalivePush() }}}
-    Asyncify.addSleepTaskOnce(async () => {
+    Asyncify.addSleepTaskOnce("DeviceCreateComputePipelineAsync", async  () => {
       await device.createComputePipelineAsync(desc).then((pipeline) => {
         {{{ runtimeKeepalivePop() }}}
         callUserCallback(() => {
@@ -1539,7 +1539,7 @@ var LibraryWebGPU = {
     var desc = generateRenderPipelineDesc(descriptor);
     var device = WebGPU.mgrDevice.get(deviceId);
     {{{ runtimeKeepalivePush() }}}
-    Asyncify.addSleepTaskOnce(async () => {
+    Asyncify.addSleepTaskOnce("DeviceCreateRenderPipelineAsync", async  () => {
       await device.createRenderPipelineAsync(desc).then((pipeline) => {
         {{{ runtimeKeepalivePop() }}}
         callUserCallback(() => {
@@ -1640,12 +1640,12 @@ var LibraryWebGPU = {
     var cmds = Array.from({{{ makeHEAPView(`${POINTER_BITS}`, 'commands', `commands + commandCount * ${POINTER_SIZE}`)}}},
       (id) => WebGPU.mgrCommandBuffer.get(id));
 
-    Asyncify.addSleepTaskOnce(async () => {
+    Asyncify.addSleepTaskOnce(`QueueSubmit[${queueId}]`, async  () => {
       queue.submit(cmds);
     });
     if (!WebGPU._QUEUES_SUBMITTED[queueId]) {
       WebGPU._QUEUES_SUBMITTED[queueId] = true;
-      Asyncify.addSleepTaskOnce(async () => {
+      Asyncify.addSleepTaskOnce(`QueueOnSubmittedWorkDone[${queueId}]`, async  () => {
         await queue.onSubmittedWorkDone();
         delete WebGPU._QUEUES_SUBMITTED[queueId];
       }, 1);
@@ -1937,7 +1937,7 @@ var LibraryWebGPU = {
   wgpuShaderModuleGetCompilationInfo: (shaderModuleId, callback, userdata) => {
     var shaderModule = WebGPU.mgrShaderModule.get(shaderModuleId);
     {{{ runtimeKeepalivePush() }}}
-    Asyncify.addSleepTaskOnce(async () => {
+    Asyncify.addSleepTaskOnce("ShaderModuleGetCompilationInfo", async  () => {
       await shaderModule.getCompilationInfo().then((compilationInfo) => {
         {{{ runtimeKeepalivePop() }}}
         callUserCallback(() => {
@@ -2106,7 +2106,7 @@ var LibraryWebGPU = {
     // `callback` takes (WGPUBufferMapAsyncStatus status, void * userdata)
 
     {{{ runtimeKeepalivePush() }}}
-    Asyncify.addSleepTaskOnce(async () => {
+    Asyncify.addSleepTaskOnce("BufferMapAsync", async  () => {
       await buffer.mapAsync(mode, offset, size).then(() => {
         {{{ runtimeKeepalivePop() }}}
         callUserCallback(() => {
@@ -2573,27 +2573,29 @@ var LibraryWebGPU = {
     }
 
     {{{ runtimeKeepalivePush() }}}
-    navigator["gpu"]["requestAdapter"](opts).then((adapter) => {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {
-        if (adapter) {
-          var adapterId = WebGPU.mgrAdapter.create(adapter);
-          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Success }}}, adapterId, 0, userdata);
-        } else {
+    Asyncify.addSleepTaskOnce("InstanceProcessEvents", async  () => {
+      await navigator["gpu"]["requestAdapter"](opts).then((adapter) => {
+        {{{ runtimeKeepalivePop() }}}
+        callUserCallback(() => {
+          if (adapter) {
+            var adapterId = WebGPU.mgrAdapter.create(adapter);
+            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Success }}}, adapterId, 0, userdata);
+          } else {
+            var sp = stackSave();
+            var messagePtr = stringToUTF8OnStack('WebGPU not available on this system (requestAdapter returned null)');
+            {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Unavailable }}}, 0, messagePtr, userdata);
+            stackRestore(sp);
+          }
+        });
+      }, (ex) => {
+        {{{ runtimeKeepalivePop() }}}
+        callUserCallback(() => {
           var sp = stackSave();
-          var messagePtr = stringToUTF8OnStack('WebGPU not available on this system (requestAdapter returned null)');
-          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Unavailable }}}, 0, messagePtr, userdata);
+          var messagePtr = stringToUTF8OnStack(ex.message);
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Error }}}, 0, messagePtr, userdata);
           stackRestore(sp);
-        }
-      });
-    }, (ex) => {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {
-        var sp = stackSave();
-        var messagePtr = stringToUTF8OnStack(ex.message);
-        {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestAdapterStatus.Error }}}, 0, messagePtr, userdata);
-        stackRestore(sp);
-      });
+        });
+      })
     });
   },
 
@@ -2749,27 +2751,29 @@ var LibraryWebGPU = {
     }
 
     {{{ runtimeKeepalivePush() }}}
-    adapter.requestDevice(desc).then((device) => {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {
-        var deviceWrapper = { queueId: WebGPU.mgrQueue.create(device.queue) };
-        var deviceId = WebGPU.mgrDevice.create(device, deviceWrapper);
-        if (deviceLostCallbackPtr) {
-          device.lost.then((info) => {
-            callUserCallback(() => WebGPU.errorCallback(deviceLostCallbackPtr,
-              WebGPU.Int_DeviceLostReason[info.reason], info.message, deviceLostUserdataPtr));
-          });
-        }
-        {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestDeviceStatus.Success }}}, deviceId, 0, userdata);
-      });
-    }, function(ex) {
-      {{{ runtimeKeepalivePop() }}}
-      callUserCallback(() => {
-        var sp = stackSave();
-        var messagePtr = stringToUTF8OnStack(ex.message);
-        {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestDeviceStatus.Error }}}, 0, messagePtr, userdata);
-        stackRestore(sp);
-      });
+    Asyncify.addSleepTaskOnce("AdapterRequestDevice", async  () => {
+      await adapter.requestDevice(desc).then((device) => {
+        {{{ runtimeKeepalivePop() }}}
+        callUserCallback(() => {
+          var deviceWrapper = { queueId: WebGPU.mgrQueue.create(device.queue) };
+          var deviceId = WebGPU.mgrDevice.create(device, deviceWrapper);
+          if (deviceLostCallbackPtr) {
+            device.lost.then((info) => {
+              callUserCallback(() => WebGPU.errorCallback(deviceLostCallbackPtr,
+                WebGPU.Int_DeviceLostReason[info.reason], info.message, deviceLostUserdataPtr));
+            });
+          }
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestDeviceStatus.Success }}}, deviceId, 0, userdata);
+        });
+      }, function(ex) {
+        {{{ runtimeKeepalivePop() }}}
+        callUserCallback(() => {
+          var sp = stackSave();
+          var messagePtr = stringToUTF8OnStack(ex.message);
+          {{{ makeDynCall('vippp', 'callback') }}}({{{ gpu.RequestDeviceStatus.Error }}}, 0, messagePtr, userdata);
+          stackRestore(sp);
+        });
+      })
     });
   },
 
