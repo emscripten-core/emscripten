@@ -1066,10 +1066,10 @@ FS.staticInit();
       FS.truncateCommon(node, undefined, len, false);
     },
     ftruncate(fd, len) {
-      if (len < 0) {
+      stream = FS.getStreamChecked(fd);
+      if (len < 0 || (stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
-      stream = FS.getStreamChecked(fd);
       FS.truncateCommon(stream.node, stream, len);
     },
     utime(path, atime, mtime) {
