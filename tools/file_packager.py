@@ -354,7 +354,15 @@ def generate_object_file(data_files):
   shared.check_call(cmd)
 
 
-def main():
+def main():  # noqa: C901, PLR0912, PLR0915
+  """Future modifications should consider refactoring to reduce complexity.
+
+  * The McCabe cyclomatiic complexity is currently 60 vs 10 recommended.
+  * There are currently 63 branches vs 12 recommended.
+  * There are currently 151 statements vs 50 recommended.
+
+  To revalidate these numbers, run `ruff check --select=C901,PLR091`.
+  """
   if len(sys.argv) == 1:
     err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node]
   See the source for more details.''')

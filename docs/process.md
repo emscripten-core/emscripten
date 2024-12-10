@@ -55,8 +55,8 @@ pre-processor.  See [`.clang-format`][clang-format] for more details.
 ### Python Code
 
 We generally follow the pep8 standard with the major exception that we use 2
-spaces for indentation.  `flake8` is run on all PRs to ensure that python code
-conforms to this style.  See [`.flake8`][flake8] for more details.
+spaces for indentation.  `ruff` is run on all PRs to ensure that Python code
+conforms to this style.  See [`pyproject.toml`][pyproject.toml] for more details.
 
 #### Static Type Checking
 
@@ -304,7 +304,7 @@ To update our libraries to a newer musl release:
 [emsdk_tags]: https://github.com/emscripten-core/emsdk/tags
 [emscripten_tags]: https://github.com/emscripten-core/emscripten/tags
 [clang-format]: https://github.com/emscripten-core/emscripten/blob/main/.clang-format
-[flake8]: https://github.com/emscripten-core/emscripten/blob/main/.flake8
+[pyproject.toml]: https://github.com/emscripten-core/emscripten/blob/main/pyproject.toml
 [mypy]: https://github.com/emscripten-core/emscripten/blob/main/.mypy
 [update_docs]: https://github.com/emscripten-core/emscripten/blob/main/tools/maint/update_docs.py
 [llvm_repo]: https://github.com/llvm/llvm-project

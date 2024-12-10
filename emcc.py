@@ -1023,7 +1023,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
   if state.mode == Mode.PCH:
     inputs = [i[1] for i in input_files]
     for header in inputs:
-      if not shared.suffix(header) in HEADER_ENDINGS:
+      if shared.suffix(header) not in HEADER_ENDINGS:
         exit_with_error(f'cannot mix precompiled headers with non-header inputs: {inputs} : {header}')
     cmd = get_clang_command() + inputs
     if options.output_file:
@@ -1127,7 +1127,15 @@ def version_string():
   return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {utils.EMSCRIPTEN_VERSION}{revision_suffix}'
 
 
-def parse_args(newargs):
+def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
+  """Future modifications should consider refactoring to reduce complexity.
+
+  * The McCabe cyclomatiic complexity is currently 117 vs 10 recommended.
+  * There are currently 115 branches vs 12 recommended.
+  * There are currently 302 statements vs 50 recommended.
+
+  To revalidate these numbers, run `ruff check --select=C901,PLR091`.
+  """
   options = EmccOptions()
   settings_changes = []
   user_js_defines = []

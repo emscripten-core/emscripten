@@ -3342,9 +3342,10 @@ Module["preRun"] = () => {
       self.run_browser('a.html', '/report_result?0')
 
   def test_modularize_network_error(self):
-    browser_reporting_js_path = test_file('browser_reporting.js')
-    self.compile_btest('browser_test_hello_world.c', ['-sMODULARIZE', '-sEXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path], reporting=Reporting.NONE)
+    self.compile_btest('browser_test_hello_world.c', ['-sMODULARIZE', '-sEXPORT_NAME=createModule'], reporting=Reporting.NONE)
+    shutil.copy(test_file('browser_reporting.js'), '.')
     create_file('a.html', '''
+      <script src="browser_reporting.js"></script>
       <script src="a.out.js"></script>
       <script>
         createModule()
@@ -3361,16 +3362,12 @@ Module["preRun"] = () => {
     self.run_browser('a.html', '/report_result?Aborted(both async and sync fetching of the wasm failed)')
 
   def test_modularize_init_error(self):
-    browser_reporting_js_path = test_file('browser_reporting.js')
-    self.compile_btest('browser/test_modularize_init_error.cpp', ['-sMODULARIZE', '-sEXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path], reporting=Reporting.NONE)
+    self.compile_btest('browser/test_modularize_init_error.cpp', ['-sMODULARIZE', '-sEXPORT_NAME=createModule'], reporting=Reporting.NONE)
+    shutil.copy(test_file('browser_reporting.js'), '.')
     create_file('a.html', '''
+      <script src="browser_reporting.js"></script>
       <script src="a.out.js"></script>
       <script>
-        if (typeof window === 'object') {
-          window.addEventListener('unhandledrejection', function(event) {
-            reportResultToServer("Unhandled promise rejection: " + event.reason.message);
-          });
-        }
         createModule()
           .then(() => {
             reportResultToServer("Module creation succeeded when it should have failed");
@@ -4948,8 +4945,12 @@ Module["preRun"] = () => {
   def test_minimal_runtime_hello_world(self, args):
     self.btest_exit('small_hello_world.c', args=args + ['-sMINIMAL_RUNTIME'])
 
-  def test_offset_converter(self, *args):
-    self.btest_exit('test_offset_converter.c', assert_returncode=1, args=['-sUSE_OFFSET_CONVERTER', '-gsource-map', '-sPROXY_TO_PTHREAD', '-pthread'])
+  @parameterized({
+    '': ([],),
+    'pthread': (['-sPROXY_TO_PTHREAD', '-pthread'],)
+  })
+  def test_offset_converter(self, args):
+    self.btest_exit('test_offset_converter.c', args=['-sUSE_OFFSET_CONVERTER', '-gsource-map'] + args)
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self, *args):
