@@ -11,8 +11,7 @@ function reportResultToServer(result) {
   if ((typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) || (typeof ENVIRONMENT_IS_AUDIO_WORKLET !== 'undefined' && ENVIRONMENT_IS_AUDIO_WORKLET)) {
     out(`RESULT: ${result}`);
   } else {
-    let doFetch = typeof origFetch != 'undefined' ? origFetch : fetch;
-    doFetch(`${reportingURL}/report_result?${encodeURIComponent(result)}`).then(() => {
+    fetch(`${reportingURL}/report_result?${encodeURIComponent(result)}`).then(() => {
       if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
         /* for easy debugging, don't close window on failure */
         window.close();
