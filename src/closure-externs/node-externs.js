@@ -87,6 +87,12 @@ Buffer.from = function(arrayBufferOrString, byteOffsetOrEncoding, length) {};
 Buffer.alloc = function(size, fill, encoding) {};
 
 /**
+ * @return {boolean}
+ * @nosideeffects
+ */
+Buffer.isBuffer = function(obj) {};
+
+/**
  * @param {number=} start
  * @param {number=} end
  * @return {Buffer}

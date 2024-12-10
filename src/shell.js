@@ -300,11 +300,7 @@ if (ENVIRONMENT_IS_SHELL) {
     return data;
   };
 
-  readAsync = (f) => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => resolve(readBinary(f)));
-    });
-  };
+  readAsync = async (f) => readBinary(f);
 
   globalThis.clearTimeout ??= (id) => {};
 
