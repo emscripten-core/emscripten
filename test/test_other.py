@@ -2955,20 +2955,25 @@ More info: https://emscripten.org
       self.assertNotContained('error', proc.stderr)
 
   @uses_canonical_tmp
-  def test_emcc_debug_files(self):
-    for opts in (0, 1, 2, 3):
-      for debug in (None, '1', '2'):
-        print(opts, debug)
-        if os.path.exists(self.canonical_temp_dir):
-          shutil.rmtree(self.canonical_temp_dir)
+  @parameterized({
+    'O0': ('-O0',),
+    'O1': ('-O1',),
+    'O2': ('-O2',),
+    'O3': ('-O3',),
+  })
+  def test_emcc_debug_files(self, opt):
+    for debug in (None, '1', '2'):
+      print('debug =', debug)
+      if os.path.exists(self.canonical_temp_dir):
+        shutil.rmtree(self.canonical_temp_dir)
 
-        with env_modify({'EMCC_DEBUG': debug}):
-          self.run_process([EMCC, test_file('hello_world.c'), '-O' + str(opts)], stderr=PIPE)
-          if debug is None:
-            self.assertFalse(os.path.exists(self.canonical_temp_dir))
-          else:
-            print(sorted(os.listdir(self.canonical_temp_dir)))
-            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-03-original.js'))
+      with env_modify({'EMCC_DEBUG': debug}):
+        self.run_process([EMCC, test_file('hello_world.c'), opt], stderr=PIPE)
+        if debug is None:
+          self.assertFalse(os.path.exists(self.canonical_temp_dir))
+        else:
+          print(sorted(os.listdir(self.canonical_temp_dir)))
+          self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-03-original.js'))
 
   def test_debuginfo_line_tables_only(self):
     def test(do_compile):
@@ -6097,8 +6102,19 @@ int main() {
     ''')
     self.run_process([EMXX, 'src.cpp', '-O2', '-sSAFE_HEAP'])
 
-  def test_bad_lookup(self):
-    self.do_runf(path_from_root('test/filesystem/bad_lookup.cpp'), expected_output='ok')
+  @also_with_wasmfs
+  @also_with_noderawfs
+  @crossplatform
+  def test_fs_bad_lookup(self):
+    self.do_runf(path_from_root('test/fs/test_fs_bad_lookup.c'), expected_output='ok')
+
+  @also_with_wasmfs
+  @also_with_noderawfs
+  @crossplatform
+  def test_fs_dev_random(self):
+    if WINDOWS and self.get_setting('NODERAWFS'):
+      self.skipTest('Crashes on Windows and NodeFS')
+    self.do_runf('fs/test_fs_dev_random.c', 'success')
 
   @parameterized({
     'none': [{'EMCC_FORCE_STDLIBS': None}, False],

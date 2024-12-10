@@ -65,7 +65,7 @@ var LibraryWget = {
   emscripten_async_wget_data: (url, userdata, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
     /* no need for run dependency, this is async but will not do any prepare etc. step */
-    asyncLoad(UTF8ToString(url), /*noRunDep=*/true).then((byteArray) => {
+    asyncLoad(UTF8ToString(url)).then((byteArray) => {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
         var buffer = _malloc(byteArray.length);

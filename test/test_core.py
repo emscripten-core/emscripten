@@ -797,8 +797,7 @@ base align: 0, 0, 0, 0'''])
     'memvalidate_verbose': ['-DEMMALLOC_MEMVALIDATE', '-DEMMALLOC_VERBOSE', '-DRANDOM_ITERS=130'],
   })
   def test_emmalloc(self, *args):
-    if '-DEMMALLOC_VERBOSE' in args and self.is_wasm64():
-      self.skipTest('EMMALLOC_VERBOSE is not compatible with wasm64')
+    self.maybe_closure()
     # in newer clang+llvm, the internal calls to malloc in emmalloc may be optimized under
     # the assumption that they are external, so like in system_libs.py where we build
     # malloc, we need to disable builtin here too
@@ -1697,7 +1696,7 @@ int main() {
     self.do_run_in_out_file_test('stdio/test_rename.c')
 
   def test_remove(self):
-   self.do_run_in_out_file_test('cstdio/test_remove.cpp')
+   self.do_run_in_out_file_test('stdio/test_remove.c')
 
   def test_alloca_stack(self):
     self.do_core_test('test_alloca_stack.c')
@@ -5155,68 +5154,7 @@ int main()
     self.do_run(src, '956867869')
 
   def test_rand(self):
-    src = r'''#include <stdlib.h>
-#include <stdio.h>
-#include <assert.h>
-int main()
-{
-    // we need RAND_MAX to be a bitmask (power of 2 minus 1). this assertions guarantees
-    // if RAND_MAX changes the test failure will focus attention on that issue here.
-    assert(RAND_MAX == 0x7fffffff);
-
-    srand(0xdeadbeef);
-    for(int i = 0; i < 10; ++i)
-        printf("%d\n", rand());
-
-    unsigned int seed = 0xdeadbeef;
-    for(int i = 0; i < 10; ++i)
-        printf("%d\n", rand_r(&seed));
-
-    bool haveEvenAndOdd = true;
-    for(int i = 1; i <= 30; ++i)
-    {
-        int mask = 1 << i;
-        if (mask > RAND_MAX) break;
-        bool haveEven = false;
-        bool haveOdd = false;
-        for(int j = 0; j < 1000 && (!haveEven || !haveOdd); ++j)
-        {
-            if ((rand() & mask) == 0)
-                haveEven = true;
-            else
-                haveOdd = true;
-        }
-        haveEvenAndOdd = haveEvenAndOdd && haveEven && haveOdd;
-    }
-    if (haveEvenAndOdd)
-        printf("Have even and odd!\n");
-
-    return 0;
-}
-'''
-    expected = '''490242850
-2074599277
-1480056542
-1912638067
-931112055
-2110392489
-2053422194
-1614832492
-216117595
-174823244
-760368382
-602359081
-1121118963
-1291018924
-1608306807
-352705809
-958258461
-1182561381
-114276303
-1481323674
-Have even and odd!
-'''
-    self.do_run(src, expected)
+    self.do_core_test('test_rand.c')
 
   def test_strtod(self):
     self.do_core_test('test_strtod.c')
@@ -5735,10 +5673,8 @@ got: 10
 
   def test_fs_base(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
-    self.add_pre_run(read_file(test_file('filesystem/src.js')))
-    src = 'int main() {return 0;}\n'
-    expected = read_file(test_file('filesystem/output.txt'))
-    self.do_run(src, expected)
+    self.add_pre_run(read_file(test_file('fs/test_fs_base.js')))
+    self.do_run_in_out_file_test('fs/test_fs_base.c')
 
   @also_with_noderawfs
   @is_slow_test
@@ -5842,6 +5778,8 @@ got: 10
   def test_fs_emptyPath(self):
     self.do_run_in_out_file_test('fs/test_emptyPath.c')
 
+  @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
+  @crossplatform
   @also_with_noderawfs
   def test_fs_enotdir(self):
     self.do_run_in_out_file_test('fs/test_enotdir.c')
@@ -5934,6 +5872,33 @@ Module.onRuntimeInitialized = () => {
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_64bit.c', 'success')
+
+  @requires_node
+  @crossplatform
+  @parameterized({
+    '': ([],),
+    'nodefs': (['-DNODEFS', '-lnodefs.js'],),
+    'noderawfs': (['-sNODERAWFS'],),
+  })
+  def test_fs_symlink_resolution(self, args):
+    nodefs = '-DNODEFS' in args or '-sNODERAWFS' in args
+    if nodefs and WINDOWS:
+      self.skipTest('No symlinks on Windows')
+    if self.get_setting('WASMFS'):
+      if nodefs:
+        self.skipTest('NODEFS in WasmFS')
+      self.set_setting('FORCE_FILESYSTEM')
+    self.do_runf('fs/test_fs_symlink_resolution.c', 'success', emcc_args=args)
+
+  @parameterized({
+    '': ([],),
+    'nodefs': (['-DNODEFS', '-lnodefs.js'],),
+    'noderawfs': (['-sNODERAWFS'],)
+  })
+  def test_fs_rename_on_existing(self, args):
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+    self.do_runf('fs/test_fs_rename_on_existing.c', 'success', emcc_args=args)
 
   def test_sigalrm(self):
     self.do_runf('test_sigalrm.c', 'Received alarm!')
@@ -6104,6 +6069,10 @@ Module.onRuntimeInitialized = () => {
       self.emcc_args += ['-sFORCE_FILESYSTEM']
 
     self.do_run_in_out_file_test('unistd/links.c', emcc_args=args)
+
+  @also_with_noderawfs
+  def test_unistd_write_broken_link(self):
+    self.do_run_in_out_file_test('unistd/test_unistd_write_broken_link.c')
 
   @no_windows('Skipping NODEFS test, since it would require administrative privileges.')
   @requires_node
@@ -8641,8 +8610,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @no_asan('cannot replace malloc/free with ASan')
   @no_lsan('cannot replace malloc/free with LSan')
-  def test_wrap_malloc(self):
-    self.do_runf('core/test_wrap_malloc.c', 'OK.')
+  @parameterized({
+    '': ([],),
+    'emmalloc': (['-sMALLOC=emmalloc'],),
+    # FIXME(https://github.com/emscripten-core/emscripten/issues/23090)
+    # 'mimalloc': (['-sMALLOC=mimalloc'],),
+  })
+  def test_wrap_malloc(self, args):
+    self.do_runf('core/test_wrap_malloc.c', 'OK.', emcc_args=args)
 
   def test_environment(self):
     self.set_setting('ASSERTIONS')

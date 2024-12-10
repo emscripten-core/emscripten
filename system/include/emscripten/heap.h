@@ -46,6 +46,7 @@ size_t emscripten_get_heap_max(void);
 // dlmalloc and emmalloc.
 void *emscripten_builtin_memalign(size_t alignment, size_t size);
 void *emscripten_builtin_malloc(size_t size);
+void *emscripten_builtin_realloc(void *ptr, size_t size);
 void *emscripten_builtin_calloc(size_t nmemb, size_t size);
 void emscripten_builtin_free(void *ptr);
 
