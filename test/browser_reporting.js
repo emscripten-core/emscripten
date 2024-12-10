@@ -2,7 +2,7 @@ var hasModule = typeof Module === 'object' && Module;
 
 var reportingURL = 'http://localhost:8888/';
 
-function reportResultToServer(result) {
+async function reportResultToServer(result) {
   if (reportResultToServer.reported) {
     // Only report one result per test, even if the test misbehaves and tries to report more.
     reportErrorToServer(`excessive reported results, sending ${result}, test will fail`);
@@ -11,12 +11,11 @@ function reportResultToServer(result) {
   if ((typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) || (typeof ENVIRONMENT_IS_AUDIO_WORKLET !== 'undefined' && ENVIRONMENT_IS_AUDIO_WORKLET)) {
     out(`RESULT: ${result}`);
   } else {
-    fetch(`${reportingURL}/report_result?${encodeURIComponent(result)}`).then(() => {
-      if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
-        /* for easy debugging, don't close window on failure */
-        window.close();
-      }
-    });
+    await fetch(`${reportingURL}/report_result?${encodeURIComponent(result)}`);
+    if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
+      /* for easy debugging, don't close window on failure */
+      window.close();
+    }
   }
 }
 

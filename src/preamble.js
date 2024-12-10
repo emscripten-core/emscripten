@@ -1091,7 +1091,7 @@ function getWasmImports() {
     var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
     receiveInstantiationResult(result);
 #if LOAD_SOURCE_MAP
-    receiveSourceMapJSON(await getSourceMapPromise());
+    receiveSourceMapJSON(await getSourceMapAsync());
 #endif
     return result;
 #if MODULARIZE

@@ -106,11 +106,14 @@ function getSourceMap() {
   return JSON.parse(UTF8ArrayToString(buf));
 }
 
-function getSourceMapPromise() {
+async function getSourceMapAsync() {
   if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
-    return fetch(wasmSourceMapFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}})
-      .then((response) => response.json())
-      .catch(getSourceMap);
+    try {
+      var response = await fetch(wasmSourceMapFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
+      return response.json();
+    } catch {
+      // Fall back to getSourceMap below
+    }
   }
-  return Promise.resolve(getSourceMap());
+  return getSourceMap();
 }
