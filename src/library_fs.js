@@ -1066,7 +1066,7 @@ FS.staticInit();
       FS.truncateCommon(node, undefined, len, false);
     },
     ftruncate(fd, len) {
-      stream = FS.getStreamChecked(fd);
+      var stream = FS.getStreamChecked(fd);
       if (len < 0 || (stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_RDONLY}}}) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
