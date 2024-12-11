@@ -22,7 +22,7 @@ export interface ClassHandle {
   delete(): void;
   deleteLater(): this;
   isDeleted(): boolean;
-  clone(): this;
+  clone(): ThisType<this>;
 }
 export interface Test extends ClassHandle {
   x: number;
@@ -100,6 +100,10 @@ export interface InterfaceWrapper extends Interface {
   notifyOnDestruction(): void;
 }
 
+export interface Override extends ClassHandle {
+  clone(): Override;
+}
+
 export type ValArr = [ number, number, number ];
 
 export type ValObj = {
@@ -150,6 +154,9 @@ interface EmbindModule {
     extend(_0: EmbindString, _1: any): any;
   };
   InterfaceWrapper: {};
+  Override: {
+    new(): Override;
+  };
   a_bool: boolean;
   an_int: number;
   optional_test(_0?: Foo): number | undefined;
