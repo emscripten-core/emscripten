@@ -1076,7 +1076,7 @@ FS.staticInit();
           }
         } else {
           // node doesn't exist, try to create it
-          node = FS.mknod(path, mode, 0);
+          node = FS.mknod(path, mode | 0o777, 0);
           created = true;
         }
       }
@@ -1125,6 +1125,9 @@ FS.staticInit();
       // call the new stream's open function
       if (stream.stream_ops.open) {
         stream.stream_ops.open(stream);
+      }
+      if (created) {
+        FS.chmod(node, mode & 0o777);
       }
 #if expectToReceiveOnModule('logReadFiles')
       if (Module['logReadFiles'] && !(flags & {{{ cDefs.O_WRONLY}}})) {
