@@ -469,6 +469,7 @@ class Library:
     utils.safe_ensure_dirs(build_dir)
 
     cflags = self.get_cflags()
+    cflags += ['-no-canonical-prefixes']
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
       relative_source_dir = os.path.relpath(source_dir, build_dir)
@@ -492,6 +493,7 @@ class Library:
     commands = []
     objects = set()
     cflags = self.get_cflags()
+    cflags += ['-no-canonical-prefixes']
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
       if batch_inputs:
