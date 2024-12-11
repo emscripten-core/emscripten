@@ -290,6 +290,12 @@ FS.staticInit();
       if (errCode) {
         throw new FS.ErrnoError(errCode);
       }
+      if (name === "..") {
+        return parent.parent;
+      }
+      if (name === ".") {
+        return parent;
+      }
       var hash = FS.hashName(parent.id, name);
 #if CASE_INSENSITIVE_FS
       name = name.toLowerCase();
@@ -664,8 +670,8 @@ FS.staticInit();
     mknod(path, mode, dev) {
       var lookup = FS.lookupPath(path, { parent: true });
       var parent = lookup.node;
-      var name = PATH.basename(path);
-      if (!name || name === '.' || name === '..') {
+      var name = path.split('/').filter((p) => !!p && (p !== '.')).at(-1);
+      if (!name) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
       var errCode = FS.mayCreate(parent, name);
