@@ -797,8 +797,7 @@ base align: 0, 0, 0, 0'''])
     'memvalidate_verbose': ['-DEMMALLOC_MEMVALIDATE', '-DEMMALLOC_VERBOSE', '-DRANDOM_ITERS=130'],
   })
   def test_emmalloc(self, *args):
-    if '-DEMMALLOC_VERBOSE' in args and self.is_wasm64():
-      self.skipTest('EMMALLOC_VERBOSE is not compatible with wasm64')
+    self.maybe_closure()
     # in newer clang+llvm, the internal calls to malloc in emmalloc may be optimized under
     # the assumption that they are external, so like in system_libs.py where we build
     # malloc, we need to disable builtin here too

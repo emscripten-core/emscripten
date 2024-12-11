@@ -2072,6 +2072,9 @@ class BrowserCore(RunnerCore):
   # suite early, as otherwise we will wait for the timeout on every
   # single test (hundreds of minutes)
   MAX_UNRESPONSIVE_TESTS = 10
+  PORT = 8888
+  HARNESS_URL = 'http://localhost:%s/run_harness' % PORT
+  BROWSER_TIMEOUT = 60
 
   unresponsive_tests = 0
 
@@ -2091,7 +2094,7 @@ class BrowserCore(RunnerCore):
       logger.info('Browser did not respond to `terminate`.  Using `kill`')
       cls.browser_proc.kill()
       cls.browser_proc.wait()
-    cls.browser_open(cls.harness_url)
+    cls.browser_open(cls.HARNESS_URL)
 
   @classmethod
   def browser_open(cls, url):
@@ -2106,17 +2109,14 @@ class BrowserCore(RunnerCore):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
-    cls.port = int(os.getenv('EMTEST_BROWSER_PORT', '8888'))
     if not has_browser() or EMTEST_BROWSER == 'node':
       return
-    cls.browser_timeout = 60
     cls.harness_in_queue = multiprocessing.Queue()
     cls.harness_out_queue = multiprocessing.Queue()
-    cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.port))
+    cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.PORT))
     cls.harness_server.start()
     print('[Browser harness server on process %d]' % cls.harness_server.pid)
-    cls.harness_url = 'http://localhost:%s/run_harness' % cls.port
-    cls.browser_open(cls.harness_url)
+    cls.browser_open(cls.HARNESS_URL)
 
   @classmethod
   def tearDownClass(cls):
@@ -2158,11 +2158,11 @@ class BrowserCore(RunnerCore):
     if expected is not None:
       try:
         self.harness_in_queue.put((
-          'http://localhost:%s/%s' % (self.port, html_file),
+          'http://localhost:%s/%s' % (self.PORT, html_file),
           self.get_dir()
         ))
         if timeout is None:
-          timeout = self.browser_timeout
+          timeout = self.BROWSER_TIMEOUT
         try:
           output = self.harness_out_queue.get(block=True, timeout=timeout)
         except queue.Empty:
@@ -2213,7 +2213,6 @@ class BrowserCore(RunnerCore):
         # If C reporting (i.e. the REPORT_RESULT macro) is required we
         # also include report_result.c and force-include report_result.h
         self.run_process([EMCC, '-c', '-I' + TEST_ROOT,
-                          '-DEMTEST_PORT_NUMBER=%d' % self.port,
                           test_file('report_result.c')] + self.get_emcc_args(compile_only=True) + (['-fPIC'] if '-fPIC' in args else []))
         args += ['report_result.o', '-include', test_file('report_result.h')]
     if EMTEST_BROWSER == 'node':

@@ -1608,7 +1608,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
         </script>
       </body>
       </html>
-    ''' % self.port)
+    ''' % self.PORT)
 
     cmd = [EMCC, test_file('hello_world_worker.c'), '-o', 'worker.js'] + self.get_emcc_args()
     if file_data:
@@ -1671,7 +1671,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
         </script>
       </body>
       </html>
-    """ % (worker_filename, self.port))
+    """ % (worker_filename, self.PORT))
 
     create_file('worker_prejs.js', r"""
       Module.arguments = ["/bigfile"];
@@ -1688,7 +1688,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     data = os.urandom(10 * chunkSize + 1) # 10 full chunks and one 1 byte chunk
     checksum = zlib.adler32(data) & 0xffffffff # Python 2 compatibility: force bigint
 
-    server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True, chunkSize, data, checksum, self.port))
+    server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True, chunkSize, data, checksum, self.PORT))
     server.start()
 
     # block until the server is actually ready
@@ -2422,7 +2422,7 @@ void *getBindBuffer() {
         doCwrapCall(200);
         doDirectCall(300);
       }
-    ''' % self.port
+    ''' % self.PORT
 
     create_file('pre_runtime.js', r'''
       Module.onRuntimeInitialized = myJSCallback;
@@ -2569,7 +2569,7 @@ Module["preRun"] = () => {
       window.disableErrorReporting = true;
       window.addEventListener('error', (event) => {
         if (!event.message.includes('exception:fullscreen error')) {
-          report_error(event);
+          reportTopLevelError(event);
         }
       });
       ''')
@@ -4321,14 +4321,14 @@ Module["preRun"] = () => {
   @requires_graphics_hardware
   @parameterized({
     # full state restoration path on WebGL 1.0
-    'gl1_no_vao': (['-sMAX_WEBGL_VERSION=1', '-sOFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH'],),
+    'gl1_no_vao': (['-sMAX_WEBGL_VERSION=1', '-DTEST_DISABLE_VAO'],),
     # VAO path on WebGL 1.0
     'gl1': (['-sMAX_WEBGL_VERSION=1', '-DTEST_VERIFY_WEBGL1_VAO_SUPPORT=1'],),
     'gl1_max_gl2': (['-sMAX_WEBGL_VERSION=2'],),
     # VAO path on WebGL 2.0
     'gl2': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1'],),
     # full state restoration path on WebGL 2.0
-    'gl2_no_vao': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-sOFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH'],),
+    'gl2_no_vao': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-DTEST_DISABLE_VAO'],),
     # blitFramebuffer path on WebGL 2.0 (falls back to VAO on Firefox < 67)
     'gl2_no_aa': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=0'],),
   })
@@ -5519,7 +5519,7 @@ Module["preRun"] = () => {
       if expect_fail:
         js = read_file('a.out.js')
         create_file('a.out.js', 'let origFetch = fetch; fetch = undefined;\n' + js)
-        return self.run_browser('a.out.html', '/report_result?exception:fetch is not a function')
+        return self.run_browser('a.out.html', '/report_result?abort:both async and sync fetching of the wasm failed')
       else:
         return self.run_browser('a.out.html', '/report_result?exit:42')
 
