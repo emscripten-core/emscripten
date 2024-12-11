@@ -153,6 +153,9 @@ addToLibrary({
         };
       },
       setattr(node, attr) {
+        if (attr.dontFollow) {
+          throw new FS.ErrnoError({{{ cDefs.ENOSYS }}});
+        }
         var path = NODEFS.realPath(node);
         NODEFS.tryFSOperation(() => {
           if (attr.mode !== undefined) {

@@ -5524,8 +5524,7 @@ got: 10
     self.do_runf('stat/test_fstatat.c', 'success')
 
   @crossplatform
-  @also_with_wasmfs
-  @also_with_noderawfs
+  @with_all_fs
   def test_stat_chmod(self):
     if self.get_setting('NODERAWFS') and WINDOWS:
       self.skipTest('mode bits work differently on windows')
