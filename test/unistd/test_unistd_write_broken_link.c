@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -16,7 +17,9 @@ int main() {
     int target_fd = open("link_target", O_RDONLY);
     printf("target_fd: %d, errno: %d %s\n", target_fd, errno, strerror(errno));
     char buf[10];
-    read(target_fd, buf, 10);
+    memset(buf, 0, 10);
+    size_t r = read(target_fd, buf, 10);
+    assert(r == 3);
     printf("buf: '%s'\n", buf);
     close(target_fd);
   }
@@ -24,7 +27,9 @@ int main() {
     int target_fd = open("link_source", O_RDONLY);
     printf("target_fd: %d, errno: %d %s\n", target_fd, errno, strerror(errno));
     char buf[10];
-    read(target_fd, buf, 10);
+    memset(buf, 0, 10);
+    size_t r = read(target_fd, buf, 10);
+    assert(r == 3);
     printf("buf: '%s'\n", buf);
     close(target_fd);
   }
