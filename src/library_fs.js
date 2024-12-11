@@ -1053,6 +1053,7 @@ FS.staticInit();
         mode = 0;
       }
       var node;
+      var isDirPath = path.endsWith("/");
       if (typeof path == 'object') {
         node = path;
       } else {
@@ -1074,6 +1075,8 @@ FS.staticInit();
           if ((flags & {{{ cDefs.O_EXCL }}})) {
             throw new FS.ErrnoError({{{ cDefs.EEXIST }}});
           }
+        } else if(isDirPath) {
+          throw new FS.ErrnoError({{{ cDefs.EISDIR }}});
         } else {
           // node doesn't exist, try to create it
           node = FS.mknod(path, mode, 0);
