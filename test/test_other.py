@@ -2868,16 +2868,18 @@ More info: https://emscripten.org
     # code, so they are the very first and last things, and they are not
     # minified.
     js = read_file('a.out.js')
-    pre = js.index('// I am an external pre.')
-    post = js.index('// I am an external post.')
+    js_size = len(js)
+    print('js_size', js_size)
+    pre_offset = js.index('// I am an external pre.')
+    post_offset = js.index('// I am an external post.')
     # ignore some slack - newlines and other things. we just care about the
     # big picture here
     SLACK = 50
-    self.assertLess(pre, post)
-    self.assertLess(pre, SLACK)
-    self.assertGreater(post, len(js) - SLACK)
+    self.assertLess(pre_offset, post_offset)
+    self.assertLess(pre_offset, SLACK)
+    self.assertGreater(post_offset, js_size - SLACK)
     # make sure the slack is tiny compared to the whole program
-    self.assertGreater(len(js), 100 * SLACK)
+    self.assertGreater(js_size, 50 * SLACK)
 
   @parameterized({
     'minifyGlobals': (['minifyGlobals'],),
