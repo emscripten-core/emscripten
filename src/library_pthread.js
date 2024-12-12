@@ -31,6 +31,28 @@ globalThis.MAX_PTR = (2 ** 32) - 1
 #endif
 }}}
 
+{{{
+globalThis.WORKER_OPTIONS = {
+#if EXPORT_ES6
+  'type': 'module',
+#endif
+#if ENVIRONMENT_MAY_BE_NODE
+  // This is the way that we signal to the node worker that it is hosting
+  // a pthread.
+  'workerData': 'em-pthread',
+#endif
+#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
+  // This is the way that we signal to the Web Worker that it is hosting
+  // a pthread.
+#if ASSERTIONS
+  'name': 'em-pthread-' + PThread.nextWorkerID,
+#else
+  'name': 'em-pthread',
+#endif
+#endif
+};
+}}}
+
 var LibraryPThread = {
   $PThread__postset: 'PThread.init();',
   $PThread__deps: ['_emscripten_thread_init',
