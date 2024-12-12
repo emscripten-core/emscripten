@@ -41,7 +41,6 @@ LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
 # Setting EMCC_USE_NINJA=2 means that ninja will automatically be run for each library needed at
 # link time.
 USE_NINJA = int(os.environ.get('EMCC_USE_NINJA', '0'))
-CIRCLECI = bool(os.environ.get('CIRCLECI', False))
 
 
 def files_in_path(path, filenames):
@@ -425,12 +424,10 @@ class Library:
 
     This will trigger a build if this library is not in the cache.
     """
-    print(f'system_libs: build: deterministic_paths = {deterministic_paths}  CIRCLECI = {CIRCLECI}')
     self.deterministic_paths = deterministic_paths
     return cache.get(self.get_path(), self.do_build, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def generate(self):
-    print(f'system_libs: generate: CIRCLECI = {CIRCLECI}')
     self.deterministic_paths = False
     return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA,
                      deferred=True)
@@ -468,7 +465,6 @@ class Library:
     raise NotImplementedError()
 
   def generate_ninja(self, build_dir, libname):
-    print(f'system_libs: generate_ninja: deterministic_paths = {self.deterministic_paths}  CIRCLECI = {CIRCLECI}')
     ensure_sysroot()
     utils.safe_ensure_dirs(build_dir)
 
