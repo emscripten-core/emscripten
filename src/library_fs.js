@@ -670,7 +670,7 @@ FS.staticInit();
     mknod(path, mode, dev) {
       var lookup = FS.lookupPath(path, { parent: true });
       var parent = lookup.node;
-      var name = path.split('/').filter((p) => !!p && (p !== '.')).at(-1);
+      var name = path.split('/').filter((p) => !!p && (p !== '.')).pop();
       if (!name) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
