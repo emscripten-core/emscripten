@@ -41,6 +41,7 @@ LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
 # Setting EMCC_USE_NINJA=2 means that ninja will automatically be run for each library needed at
 # link time.
 USE_NINJA = int(os.environ.get('EMCC_USE_NINJA', '0'))
+CIRCLECI = bool(os.environ.get('CIRCLECI', False))
 
 
 def files_in_path(path, filenames):
@@ -438,7 +439,7 @@ class Library:
 
     This will trigger a build if this library is not in the cache.
     """
-    fullpath = self.build()
+    fullpath = self.build(CIRCLECI)
     # For non-libraries (e.g. crt1.o) we pass the entire path to the linker
     if self.get_ext() != '.a':
       return fullpath
