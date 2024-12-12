@@ -806,8 +806,7 @@ jobs:
       - run-tests-linux:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
-          test_targets: "
-            other.test_minimal_runtime_code_size_hello_embind"
+          test_targets: "other skip:other.test_native_link_error_message"
   test-browser-chrome:
     executor: bionic
     environment:
@@ -942,8 +941,7 @@ jobs:
       # Run a single websockify-based test to ensure it works on windows.
       - run-tests:
           title: "sockets.test_nodejs_sockets_echo*"
-          test_targets: "
-            other.test_minimal_runtime_code_size_hello_embind"
+          test_targets: "sockets.test_nodejs_sockets_echo*"
       - upload-test-results
 
   test-mac-arm64:
@@ -966,7 +964,7 @@ jobs:
       # are currently missing arm64 macos binaries.
       - run-tests:
           title: "crossplatform tests"
-          test_targets: "other.test_minimal_runtime_code_size_hello_embind"
+          test_targets: "--crossplatform-only"
       - upload-test-results
 
 workflows:
