@@ -32,12 +32,14 @@ globalThis.MAX_PTR = (2 ** 32) - 1
 }}}
 
 {{{
+#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 #if ASSERTIONS
 // Configure Vite Ignore Comment so Vite can compile non-static worker options.
 // Vite will always interpret the worker type as classic.
 globalThis.VITE_IGNORE_COMMENT = '/* @vite-ignore */';
 #else
 globalThis.VITE_IGNORE_COMMENT = '';
+#endif
 #endif
 }}}
 
