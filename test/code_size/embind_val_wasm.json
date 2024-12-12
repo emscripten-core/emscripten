@@ -3,8 +3,8 @@
   "a.html.gz": 380,
   "a.js": 6724,
   "a.js.gz": 2900,
-  "a.wasm": 9528,
-  "a.wasm.gz": 4896,
-  "total": 16804,
-  "total_gz": 8176
+  "a.wasm": 9268,
+  "a.wasm.gz": 4765,
+  "total": 16544,
+  "total_gz": 8045
 }
