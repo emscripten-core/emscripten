@@ -418,23 +418,23 @@ var LibraryPThread = {
           }
         );
         worker = new Worker(p.createScriptURL('ignored'), {{{VITE_IGNORE_COMMENT}}}{
-          #if EXPORT_ES6
+#if EXPORT_ES6
             'type': 'module',
-          #endif
-          #if ENVIRONMENT_MAY_BE_NODE
+#endif
+#if ENVIRONMENT_MAY_BE_NODE
             // This is the way that we signal to the node worker that it is hosting
             // a pthread.
             'workerData': 'em-pthread',
-          #endif
-          #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
+#endif
+#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
             // This is the way that we signal to the Web Worker that it is hosting
             // a pthread.
-          #if ASSERTIONS
+#if ASSERTIONS
             'name': 'em-pthread-' + PThread.nextWorkerID,
-          #else
+#else
             'name': 'em-pthread',
-          #endif
-          #endif
+#endif
+#endif
         });
       } else
 #endif
@@ -443,23 +443,23 @@ var LibraryPThread = {
       // the first case in their bundling step. The latter ends up producing an invalid
       // URL to import from the server (e.g., for webpack the file:// path).
       worker = new Worker(new URL('{{{ TARGET_JS_NAME }}}', import.meta.url), {{{VITE_IGNORE_COMMENT}}}{
-        #if EXPORT_ES6
+#if EXPORT_ES6
           'type': 'module',
-        #endif
-        #if ENVIRONMENT_MAY_BE_NODE
+#endif
+#if ENVIRONMENT_MAY_BE_NODE
           // This is the way that we signal to the node worker that it is hosting
           // a pthread.
           'workerData': 'em-pthread',
-        #endif
-        #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
+#endif
+#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
           // This is the way that we signal to the Web Worker that it is hosting
           // a pthread.
-        #if ASSERTIONS
+#if ASSERTIONS
           'name': 'em-pthread-' + PThread.nextWorkerID,
-        #else
+#else
           'name': 'em-pthread',
-        #endif
-        #endif
+#endif
+#endif
       });
 #else
       var pthreadMainJs = _scriptName;
@@ -481,44 +481,44 @@ var LibraryPThread = {
       if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
         var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: (ignored) => pthreadMainJs });
         worker = new Worker(p.createScriptURL('ignored'), {{{VITE_IGNORE_COMMENT}}}{
-          #if EXPORT_ES6
+#if EXPORT_ES6
             'type': 'module',
-          #endif
-          #if ENVIRONMENT_MAY_BE_NODE
+#endif
+#if ENVIRONMENT_MAY_BE_NODE
             // This is the way that we signal to the node worker that it is hosting
             // a pthread.
             'workerData': 'em-pthread',
-          #endif
-          #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
+#endif
+#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
             // This is the way that we signal to the Web Worker that it is hosting
             // a pthread.
-          #if ASSERTIONS
+#if ASSERTIONS
             'name': 'em-pthread-' + PThread.nextWorkerID,
-          #else
+#else
             'name': 'em-pthread',
-          #endif
-          #endif
+#endif
+#endif
         });
       } else
 #endif
       worker = new Worker(pthreadMainJs, {{{VITE_IGNORE_COMMENT}}}{
-        #if EXPORT_ES6
+#if EXPORT_ES6
           'type': 'module',
-        #endif
-        #if ENVIRONMENT_MAY_BE_NODE
+#endif
+#if ENVIRONMENT_MAY_BE_NODE
           // This is the way that we signal to the node worker that it is hosting
           // a pthread.
           'workerData': 'em-pthread',
-        #endif
-        #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
+#endif
+#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
           // This is the way that we signal to the Web Worker that it is hosting
           // a pthread.
-        #if ASSERTIONS
+#if ASSERTIONS
           'name': 'em-pthread-' + PThread.nextWorkerID,
-        #else
+#else
           'name': 'em-pthread',
-        #endif
-        #endif
+#endif
+#endif
       });
 #endif // EXPORT_ES6 && USE_ES6_IMPORT_META
       PThread.unusedWorkers.push(worker);
