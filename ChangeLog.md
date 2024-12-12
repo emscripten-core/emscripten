@@ -23,6 +23,13 @@ See docs/process.md for more on how version tagging works.
 - The file system was updated to independently track atime, mtime and ctime
   instead of using the same time for all three. (#22998)
 - The minimum supported chrome version was bumped from 32 to 33. (#23077)
+- Emscripten-generated code will now use async/await internally when loading
+  the Wasm module.  This will be lowered away by babel when targeting older
+  browsers. (#23068)
+- Due to the discontinued support for invalid specializations of
+- `std::basic_string` (https://github.com/llvm/llvm-project/pull/72694), the
+  support for `std::basic_string<unsigned char>` was removed from embind.
+  (#23070)
 
 3.1.73 - 11/28/24
 -----------------

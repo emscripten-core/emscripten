@@ -1,14 +1,12 @@
 # TODO(sbc): switch to using Pipenv since it seems like that way to go
 # these day managing python deps.
-# These requirements are only needed for developers who want to run flake8 on
+# These requirements are only needed for developers who want to run ruff on
 # the codebase and generate docs using Sphinx, not for users of emscripten.
 # Install with `pip3 install -r requirements-dev.txt`
 
-flake8==5.0.4
-flake8-bugbear==22.9.23
-flake8-unused-arguments==0.0.11
 coverage[toml]==5.5
 mypy==0.971
+ruff==0.8.2
 types-requests==2.27.14
 unittest-xml-reporting==3.1.0
 
