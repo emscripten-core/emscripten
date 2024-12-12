@@ -32,25 +32,13 @@ globalThis.MAX_PTR = (2 ** 32) - 1
 }}}
 
 {{{
-globalThis.WORKER_OPTIONS = {
-#if EXPORT_ES6
-  'type': 'module',
-#endif
-#if ENVIRONMENT_MAY_BE_NODE
-  // This is the way that we signal to the node worker that it is hosting
-  // a pthread.
-  'workerData': 'em-pthread',
-#endif
-#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
-  // This is the way that we signal to the Web Worker that it is hosting
-  // a pthread.
 #if ASSERTIONS
-  'name': 'em-pthread-' + PThread.nextWorkerID,
+// Configure Vite Ignore Comment so Vite can compile non-static worker options.
+// Vite will always interpret the worker type as classic.
+globalThis.VITE_IGNORE_COMMENT = '/* @vite-ignore */';
 #else
-  'name': 'em-pthread',
+globalThis.VITE_IGNORE_COMMENT = '';
 #endif
-#endif
-};
 }}}
 
 var LibraryPThread = {
@@ -429,14 +417,50 @@ var LibraryPThread = {
             createScriptURL: (ignored) => new URL("{{{ TARGET_JS_NAME }}}", import.meta.url)
           }
         );
-        worker = new Worker(p.createScriptURL('ignored'), {{{ WORKER_OPTIONS }}});
+        worker = new Worker(p.createScriptURL('ignored'), {{{VITE_IGNORE_COMMENT}}}{
+          #if EXPORT_ES6
+            'type': 'module',
+          #endif
+          #if ENVIRONMENT_MAY_BE_NODE
+            // This is the way that we signal to the node worker that it is hosting
+            // a pthread.
+            'workerData': 'em-pthread',
+          #endif
+          #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
+            // This is the way that we signal to the Web Worker that it is hosting
+            // a pthread.
+          #if ASSERTIONS
+            'name': 'em-pthread-' + PThread.nextWorkerID,
+          #else
+            'name': 'em-pthread',
+          #endif
+          #endif
+        });
       } else
 #endif
       // We need to generate the URL with import.meta.url as the base URL of the JS file
       // instead of just using new URL(import.meta.url) because bundler's only recognize
       // the first case in their bundling step. The latter ends up producing an invalid
       // URL to import from the server (e.g., for webpack the file:// path).
-      worker = new Worker(new URL('{{{ TARGET_JS_NAME }}}', import.meta.url), {{{ WORKER_OPTIONS }}});
+      worker = new Worker(new URL('{{{ TARGET_JS_NAME }}}', import.meta.url), {{{VITE_IGNORE_COMMENT}}}{
+        #if EXPORT_ES6
+          'type': 'module',
+        #endif
+        #if ENVIRONMENT_MAY_BE_NODE
+          // This is the way that we signal to the node worker that it is hosting
+          // a pthread.
+          'workerData': 'em-pthread',
+        #endif
+        #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
+          // This is the way that we signal to the Web Worker that it is hosting
+          // a pthread.
+        #if ASSERTIONS
+          'name': 'em-pthread-' + PThread.nextWorkerID,
+        #else
+          'name': 'em-pthread',
+        #endif
+        #endif
+      });
 #else
       var pthreadMainJs = _scriptName;
 #if expectToReceiveOnModule('mainScriptUrlOrBlob')
@@ -456,10 +480,46 @@ var LibraryPThread = {
       // Use Trusted Types compatible wrappers.
       if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
         var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: (ignored) => pthreadMainJs });
-        worker = new Worker(p.createScriptURL('ignored'), {{{ WORKER_OPTIONS }}});
+        worker = new Worker(p.createScriptURL('ignored'), {{{VITE_IGNORE_COMMENT}}}{
+          #if EXPORT_ES6
+            'type': 'module',
+          #endif
+          #if ENVIRONMENT_MAY_BE_NODE
+            // This is the way that we signal to the node worker that it is hosting
+            // a pthread.
+            'workerData': 'em-pthread',
+          #endif
+          #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
+            // This is the way that we signal to the Web Worker that it is hosting
+            // a pthread.
+          #if ASSERTIONS
+            'name': 'em-pthread-' + PThread.nextWorkerID,
+          #else
+            'name': 'em-pthread',
+          #endif
+          #endif
+        });
       } else
 #endif
-      worker = new Worker(pthreadMainJs, {{{ WORKER_OPTIONS }}});
+      worker = new Worker(pthreadMainJs, {{{VITE_IGNORE_COMMENT}}}{
+        #if EXPORT_ES6
+          'type': 'module',
+        #endif
+        #if ENVIRONMENT_MAY_BE_NODE
+          // This is the way that we signal to the node worker that it is hosting
+          // a pthread.
+          'workerData': 'em-pthread',
+        #endif
+        #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
+          // This is the way that we signal to the Web Worker that it is hosting
+          // a pthread.
+        #if ASSERTIONS
+          'name': 'em-pthread-' + PThread.nextWorkerID,
+        #else
+          'name': 'em-pthread',
+        #endif
+        #endif
+      });
 #endif // EXPORT_ES6 && USE_ES6_IMPORT_META
       PThread.unusedWorkers.push(worker);
     },
