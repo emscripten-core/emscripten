@@ -291,8 +291,10 @@ def main():
         library.erase()
       if do_build:
         if USE_NINJA:
+          print('embuilder: USE_NINJA: library.generate()')
           library.generate()
         else:
+          print('embuilder: USE_NINJA: library.build(deterministic_paths=True)')
           library.build(deterministic_paths=True)
     elif what == 'sysroot':
       if do_clear:
