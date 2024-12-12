@@ -63,6 +63,6 @@ Instructions
 
   .. include:: ../../../../../test/test_browser.py
     :literal:
-    :start-after: create_file('main.html',
-    :end-before: """ % (worker_filename, self.port))
+    :start-after: create_file('main.html', '''
+    :end-before: ''' % self.PORT)
     :code: html

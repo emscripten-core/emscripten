@@ -80,7 +80,7 @@ def write_file(f):
   current_comment = []
   current_tags = []
   for line in read_file(path_from_root('src/settings.js')).splitlines():
-    if 'Internal, used for testing only, from here' in line:
+    if 'LEGACY_SETTINGS' in line:
       break
     if not line:
       current_comment = []

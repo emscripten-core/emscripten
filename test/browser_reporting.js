@@ -1,10 +1,8 @@
 var hasModule = typeof Module === 'object' && Module;
 
-/**
- * @param {number=} port
- */
-function reportResultToServer(result, port) {
-  port = port || 8888;
+var reportingURL = 'http://localhost:8888/';
+
+function reportResultToServer(result) {
   if (reportResultToServer.reported) {
     // Only report one result per test, even if the test misbehaves and tries to report more.
     reportErrorToServer(`excessive reported results, sending ${result}, test will fail`);
@@ -14,7 +12,7 @@ function reportResultToServer(result, port) {
     out(`RESULT: ${result}`);
   } else {
     let doFetch = typeof origFetch != 'undefined' ? origFetch : fetch;
-    doFetch(`http://localhost:${port}/report_result?${encodeURIComponent(result)}`).then(() => {
+    doFetch(`${reportingURL}/report_result?${encodeURIComponent(result)}`).then(() => {
       if (typeof window === 'object' && window && hasModule && !Module['pageThrewException']) {
         /* for easy debugging, don't close window on failure */
         window.close();
@@ -24,26 +22,24 @@ function reportResultToServer(result, port) {
 }
 
 function sendFileToServer(filename, contents) {
-  fetch(`http://localhost:8888/?file=${encodeURIComponent(filename)}`, {method: "POST", body: contents});
+  fetch(`${reportingURL}/?file=${encodeURIComponent(filename)}`, {method: "POST", body: contents});
 }
 
-/**
- * @param {number=} port
- */
-function maybeReportResultToServer(result, port) {
-  if (reportResultToServer.reported) return;
-  reportResultToServer(result, port);
+function maybeReportResultToServer(result) {
+  if (!reportResultToServer.reported) {
+    reportResultToServer(result);
+  }
 }
 
 function reportErrorToServer(message) {
   if (typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) {
     err(message);
   } else {
-    fetch(`http://localhost:8888?stderr=${encodeURIComponent(message)}`);
+    fetch(`${reportingURL}?stderr=${encodeURIComponent(message)}`);
   }
 }
 
-function report_error(e) {
+function reportTopLevelError(e) {
   // MINIMAL_RUNTIME doesn't handle exit or call the below onExit handler
   // so we detect the exit by parsing the uncaught exception message.
   var message = e.message || e;
@@ -68,9 +64,9 @@ function report_error(e) {
 
 if (typeof window === 'object' && window) {
   window.addEventListener('error', event => {
-    report_error(event.error || event)
+    reportTopLevelError(event.error || event)
   });
-  window.addEventListener('unhandledrejection', event => report_error(event.reason));
+  window.addEventListener('unhandledrejection', event => reportTopLevelError(event.reason));
 }
 
 if (hasModule) {

@@ -1,3 +1,70 @@
+[tool.ruff]
+exclude = [
+  "./cache/",
+  "./node_modules/",
+  "./site/source/_themes/",
+  "./site/source/conf.py",
+  "./system/lib/",
+  "./test/third_party/",
+  "./third_party/",
+  "./tools/filelock.py",
+  "./tools/scons/",
+  ".git",
+]
+
+lint.select = [
+  "ARG",
+  "ASYNC",
+  "B",
+  "C90",
+  "E",
+  "F",
+  "PERF",
+  "PL",
+  "W",
+  "YTT",
+]
+
+lint.ignore = [
+  "ARG001",
+  "ARG002",
+  "ARG005",
+  "B006",
+  "B011",
+  "B018",
+  "B023",
+  "B026",
+  "B904",
+  "E402",
+  "E501",
+  "E721",
+  "E741",
+  "PERF203",
+  "PERF401",
+  "PLR1704",
+  "PLR1714",
+  "PLR5501",
+  "PLW0602",
+  "PLW0603",
+  "PLW1510",
+  "PLW2901",
+]
+
+lint.per-file-ignores."emrun.py" = [ "PLE0704" ]
+
+lint.mccabe.max-complexity = 48 # Recommended: 10
+
+lint.pylint.allow-magic-value-types = [
+  "bytes",
+  "float",
+  "int",
+  "str",
+]
+lint.pylint.max-args = 15 # Recommended: 5
+lint.pylint.max-branches = 49 # Recommended: 12
+lint.pylint.max-returns = 16 # Recommended: 6
+lint.pylint.max-statements = 142 # Recommended: 50
+
 [tool.coverage.run]
 source = [ "." ]
 omit = [

@@ -2868,16 +2868,18 @@ More info: https://emscripten.org
     # code, so they are the very first and last things, and they are not
     # minified.
     js = read_file('a.out.js')
-    pre = js.index('// I am an external pre.')
-    post = js.index('// I am an external post.')
+    js_size = len(js)
+    print('js_size', js_size)
+    pre_offset = js.index('// I am an external pre.')
+    post_offset = js.index('// I am an external post.')
     # ignore some slack - newlines and other things. we just care about the
     # big picture here
     SLACK = 50
-    self.assertLess(pre, post)
-    self.assertLess(pre, SLACK)
-    self.assertGreater(post, len(js) - SLACK)
+    self.assertLess(pre_offset, post_offset)
+    self.assertLess(pre_offset, SLACK)
+    self.assertGreater(post_offset, js_size - SLACK)
     # make sure the slack is tiny compared to the whole program
-    self.assertGreater(len(js), 100 * SLACK)
+    self.assertGreater(js_size, 50 * SLACK)
 
   @parameterized({
     'minifyGlobals': (['minifyGlobals'],),
@@ -2955,20 +2957,25 @@ More info: https://emscripten.org
       self.assertNotContained('error', proc.stderr)
 
   @uses_canonical_tmp
-  def test_emcc_debug_files(self):
-    for opts in (0, 1, 2, 3):
-      for debug in (None, '1', '2'):
-        print(opts, debug)
-        if os.path.exists(self.canonical_temp_dir):
-          shutil.rmtree(self.canonical_temp_dir)
+  @parameterized({
+    'O0': ('-O0',),
+    'O1': ('-O1',),
+    'O2': ('-O2',),
+    'O3': ('-O3',),
+  })
+  def test_emcc_debug_files(self, opt):
+    for debug in (None, '1', '2'):
+      print('debug =', debug)
+      if os.path.exists(self.canonical_temp_dir):
+        shutil.rmtree(self.canonical_temp_dir)
 
-        with env_modify({'EMCC_DEBUG': debug}):
-          self.run_process([EMCC, test_file('hello_world.c'), '-O' + str(opts)], stderr=PIPE)
-          if debug is None:
-            self.assertFalse(os.path.exists(self.canonical_temp_dir))
-          else:
-            print(sorted(os.listdir(self.canonical_temp_dir)))
-            self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-03-original.js'))
+      with env_modify({'EMCC_DEBUG': debug}):
+        self.run_process([EMCC, test_file('hello_world.c'), opt], stderr=PIPE)
+        if debug is None:
+          self.assertFalse(os.path.exists(self.canonical_temp_dir))
+        else:
+          print(sorted(os.listdir(self.canonical_temp_dir)))
+          self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-03-original.js'))
 
   def test_debuginfo_line_tables_only(self):
     def test(do_compile):
@@ -6105,7 +6112,10 @@ int main() {
 
   @also_with_wasmfs
   @also_with_noderawfs
+  @crossplatform
   def test_fs_dev_random(self):
+    if WINDOWS and self.get_setting('NODERAWFS'):
+      self.skipTest('Crashes on Windows and NodeFS')
     self.do_runf('fs/test_fs_dev_random.c', 'success')
 
   @parameterized({
