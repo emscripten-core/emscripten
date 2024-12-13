@@ -65,9 +65,13 @@ function simpleWalk(node, cs) {
   }
 }
 
-// Full post-order walk, calling a single function for all types.
-function fullWalk(node, c) {
-  visitChildren(node, (child) => fullWalk(child, c));
+// Full post-order walk, calling a single function for all types. If |pre| is
+// provided, it is called in pre-order (before children).
+function fullWalk(node, c, pre) {
+  if (pre) {
+    pre(node);
+  }
+  visitChildren(node, (child) => fullWalk(child, c, pre));
   c(node);
 }
 
@@ -699,6 +703,13 @@ function emitDCEGraph(ast) {
     }
   }
 
+  // We track defined functions very carefully, so that we can remove them and
+  // the things they call, but other function scopes (like arrow functions and
+  // object methods) are trickier to track (object methods require knowing what
+  // object a function name is called on), so we do not track those. We consider
+  // all content inside them as top-level, which means it is used.
+  var specialScopes = 0;
+
   fullWalk(ast, (node) => {
     if (isWasmImportsAssign(node)) {
       const assignedObject = getWasmImportsValue(node);
@@ -788,11 +799,14 @@ function emitDCEGraph(ast) {
         emptyOut(node);
       }
     } else if (node.type === 'FunctionDeclaration') {
-      defuns.push(node);
-      const name = node.id.name;
-      nameToGraphName[name] = getGraphName(name, 'defun');
-      emptyOut(node); // ignore this in the second pass; we scan defuns separately
+      if (!specialScopes) {
+        defuns.push(node);
+        const name = node.id.name;
+        nameToGraphName[name] = getGraphName(name, 'defun');
+        emptyOut(node); // ignore this in the second pass; we scan defuns separately
+      }
     } else if (node.type === 'ArrowFunctionExpression') {
+      specialScopes--;
       // Check if this is the minimal runtime exports function, which looks like
       //   (output) => { var wasmExports = output.instance.exports;
       if (
@@ -857,9 +871,19 @@ function emitDCEGraph(ast) {
           }
         }
       }
+    } else if (node.type === 'Property' && node.method) {
+      specialScopes--;
+    }
+  }, (node) => {
+    // Pre-walking logic. We note special scopes (see above).
+    if (node.type === 'ArrowFunctionExpression' ||
+        (node.type === 'Property' && node.method)) {
+      specialScopes++;
     }
   });
-  // must find the info we need
+  // Scoping must balance out.
+  assert(specialScopes === 0);
+  // We must have found the info we need.
   assert(
     foundWasmImportsAssign,
     'could not find the assignment to "wasmImports". perhaps --pre-js or --post-js code moved it out of the global scope? (things like that should be done after emcc runs, as they do not need to be run through the optimizer which is the special thing about --pre-js/--post-js code)',
@@ -870,6 +894,7 @@ function emitDCEGraph(ast) {
       saveAsmExport(exp[0], exp[1]);
     }
   }
+
   // Second pass: everything used in the toplevel scope is rooted;
   // things used in defun scopes create links
   function getGraphName(name, what) {
