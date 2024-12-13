@@ -5910,7 +5910,6 @@ Module.onRuntimeInitialized = () => {
       self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success', emcc_args=args)
 
-
   def test_sigalrm(self):
     self.do_runf('test_sigalrm.c', 'Received alarm!')
     self.set_setting('EXIT_RUNTIME')
