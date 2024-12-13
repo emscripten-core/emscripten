@@ -8712,16 +8712,6 @@ int main() {
     # adding --metrics should not affect code size
     self.assertEqual(base_size, os.path.getsize('a.out.wasm'))
 
-  def check_expected_size_in_file(self, desc, filename, size):
-    if common.EMTEST_REBASELINE:
-      create_file(filename, f'{size}\n', absolute=True)
-    size_slack = 0.05
-    expected_size = int(read_file(filename).strip())
-    delta = size - expected_size
-    ratio = abs(delta) / float(expected_size)
-    print('  seen %s size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (desc, size, expected_size, delta, ratio))
-    self.assertLess(ratio, size_slack)
-
   @crossplatform
   def test_unoptimized_code_size(self):
     # We don't care too about unoptimized code size but we would like to keep it
