@@ -2892,7 +2892,7 @@ More info: https://emscripten.org
     'AJSDCE': (['AJSDCE'],),
     'emitDCEGraph': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph-closure': (['emitDCEGraph', '--no-print', '--closure-friendly'], 'emitDCEGraph.js'),
-    'emitDCEGraph2': (['emitDCEGraph', '--no-print'],),
+    'emitDCEGraph-dynCall': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph3': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph4': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph5': (['emitDCEGraph', '--no-print'],),
