@@ -808,6 +808,7 @@ function emitDCEGraph(ast) {
           emptyOut(node); // ignore this in the second pass; we scan defuns separately
         }
       } else if (node.type === 'ArrowFunctionExpression') {
+        assert(specialScopes > 0);
         specialScopes--;
         // Check if this is the minimal runtime exports function, which looks like
         //   (output) => { var wasmExports = output.instance.exports;
@@ -874,6 +875,7 @@ function emitDCEGraph(ast) {
           }
         }
       } else if (node.type === 'Property' && node.method) {
+        assert(specialScopes > 0);
         specialScopes--;
       }
     },
