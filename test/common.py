@@ -1537,6 +1537,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.assertEqual(read_binary(file1),
                      read_binary(file2))
 
+  def check_expected_size_in_file(self, desc, filename, size):
+    if EMTEST_REBASELINE:
+      create_file(filename, f'{size}\n', absolute=True)
+    size_slack = 0.05
+    expected_size = int(read_file(filename).strip())
+    delta = size - expected_size
+    ratio = abs(delta) / float(expected_size)
+    print('  seen %s size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (desc, size, expected_size, delta, ratio))
+    self.assertLess(ratio, size_slack)
+
   library_cache: Dict[str, Tuple[str, object]] = {}
 
   def get_build_dir(self):

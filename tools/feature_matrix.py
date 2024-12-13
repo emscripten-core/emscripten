@@ -18,9 +18,9 @@ UNSUPPORTED = 0x7FFFFFFF
 # Oldest support browser versions.  These have been set somewhat
 # arbitrarily for now.
 # TODO(sbc): Design a of policy for managing these values.
-OLDEST_SUPPORTED_CHROME = 33
-OLDEST_SUPPORTED_FIREFOX = 34
-OLDEST_SUPPORTED_SAFARI = 90000
+OLDEST_SUPPORTED_CHROME = 45  # September 1, 2015
+OLDEST_SUPPORTED_FIREFOX = 40  # August 11, 2015
+OLDEST_SUPPORTED_SAFARI = 101000  # September 20, 2016
 # 10.19.0 is the oldest version of node that we do any testing with.
 # Keep this in sync with the test-node-compat in .circleci/config.yml.
 OLDEST_SUPPORTED_NODE = 101900
