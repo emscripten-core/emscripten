@@ -1,7 +1,7 @@
 a (memory)
 b (emscripten_get_now)
 c (exit)
-d (_emscripten_thread_set_strongref)
+d (emscripten_thread_set_strongref)
 e (fd_write)
 f (emscripten_runtime_keepalive_check)
 g (emscripten_resize_heap)
