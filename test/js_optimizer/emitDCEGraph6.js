@@ -1,4 +1,3 @@
-
 function foo() {}
 
 function bar() {}
@@ -32,4 +31,3 @@ var arrow = () => {
 }
 
 wasmImports = {};
-
