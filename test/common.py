@@ -1085,7 +1085,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if node_version < emcc_min_node_version:
         self.emcc_args += building.get_emcc_node_flags(node_version)
         self.emcc_args.append('-Wno-transpile')
-      if node_version < feature_matrix.min_browser_versions[feature_matrix.Feature.JS_BIGINT_INTEGRATION]
+      if node_version[0] < feature_matrix.min_browser_versions[feature_matrix.Feature.JS_BIGINT_INTEGRATION]['node'] / 10000:
         self.emcc_args.append('-sWASM_BIGINT=0')
 
     self.v8_args = ['--wasm-staging']
