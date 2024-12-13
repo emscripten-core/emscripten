@@ -697,22 +697,23 @@ var SyscallsLibrary = {
 
     var startIdx = Math.floor(off / struct_size);
     var endIdx = Math.min(stream.getdents.length, startIdx + Math.floor(count/struct_size))
-    var node;
     for (var idx = startIdx; idx < endIdx; idx++) {
+      var id;
       var type;
       var name = stream.getdents[idx];
       if (name === '.') {
-        node = stream.node;
+        id = stream.node.id;
         type = 4; // DT_DIR
       }
       else if (name === '..') {
         var lookup = FS.lookupPath(stream.path, { parent: true });
-        node = lookup.node;
+        id = lookup.node.id;
         type = 4; // DT_DIR
       }
       else {
+        var child;
         try {
-          node = FS.lookupNode(stream.node, name);
+          child = FS.lookupNode(stream.node, name);
         } catch (e) {
           // If the entry is not a directory, file, or symlink, nodefs
           // lookupNode will raise EINVAL. Skip these and continue.
@@ -721,17 +722,16 @@ var SyscallsLibrary = {
           }
           throw e;
         }
-        type = FS.isChrdev(node.mode) ? 2 :  // DT_CHR, character device.
-               FS.isDir(node.mode) ? 4 :     // DT_DIR, directory.
-               FS.isLink(node.mode) ? 10 :   // DT_LNK, symbolic link.
+        id = child.id;
+        type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
+               FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
+               FS.isLink(child.mode) ? 10 :   // DT_LNK, symbolic link.
                8;                             // DT_REG, regular file.
       }
-      // We use getattr to decide which ino we return to stat, so make sure to
-      // use it to decide which ino we return to readdir too. noderawfs puts the
-      // native inode into node.id and doesn't define node_ops.getattr so use
-      // that as a fallback.
-      var ino = node.node_ops.getattr?.(node).ino ?? node.id;
-      {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_ino, 'ino', 'i64') }}};
+#if ASSERTIONS
+      assert(id);
+#endif
+      {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_ino, 'id', 'i64') }}};
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_off, '(idx + 1) * struct_size', 'i64') }}};
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_reclen, C_STRUCTS.dirent.__size__, 'i16') }}};
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_type, 'type', 'i8') }}};
