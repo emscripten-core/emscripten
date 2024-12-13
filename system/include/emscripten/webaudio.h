@@ -62,7 +62,7 @@ void emscripten_destroy_web_audio_node(EMSCRIPTEN_WEBAUDIO_T objectHandle);
 // Create Wasm AudioWorklet thread. Call this function once at application startup to establish an AudioWorkletGlobalScope for your app.
 // After the scope has been initialized, the given callback will fire.
 // audioContext: The Web Audio context object to initialize the Wasm AudioWorklet thread on. Each AudioContext can have only one AudioWorklet
-//               thread running, so do not call this function a multiple times on the same AudioContext.
+//               thread running, so do not call this function multiple times on the same AudioContext.
 // stackLowestAddress: The base address for the thread's stack. Must be aligned to 16 bytes. Use e.g. memalign(16, 1024) to allocate a 1KB stack for the thread.
 // stackSize: The size of the thread's stack. Must be a multiple of 16 bytes.
 // callback: The callback function that will be run when thread creation either succeeds or fails.
@@ -76,8 +76,8 @@ typedef int WEBAUDIO_PARAM_AUTOMATION_RATE;
 typedef struct WebAudioParamDescriptor
 {
 	float defaultValue; // Default == 0.0
-	float minValue; // Default = -3.4028235e38;
-	float maxValue; // Default = 3.4028235e38;
+	float minValue; // Default = -3.4028235e38
+	float maxValue; // Default = 3.4028235e38
 	WEBAUDIO_PARAM_AUTOMATION_RATE automationRate; // Either WEBAUDIO_PARAM_A_RATE or WEBAUDIO_PARAM_K_RATE. Default = WEBAUDIO_PARAM_A_RATE
 } WebAudioParamDescriptor;
 
@@ -96,7 +96,7 @@ typedef void (*EmscriptenWorkletProcessorCreatedCallback)(EMSCRIPTEN_WEBAUDIO_T 
 void emscripten_create_wasm_audio_worklet_processor_async(EMSCRIPTEN_WEBAUDIO_T audioContext, const WebAudioWorkletProcessorCreateOptions *options, EmscriptenWorkletProcessorCreatedCallback callback, void *userData3);
 
 // Returns the number of samples processed per channel in an AudioSampleFrame, fixed at 128 in the Web Audio API 1.0 specification, and valid for the lifetime of the audio context.
-// For this to change from the default 128, the context would need creating with a yet unexposed WebAudioWorkletProcessorCreateOptions renderSizeHint, part of the 1.1 Web Audio API.
+// For this to change from the default 128, the context would need to be created with a yet unexposed WebAudioWorkletProcessorCreateOptions renderSizeHint, part of the 1.1 Web Audio API.
 int emscripten_audio_context_quantum_size(EMSCRIPTEN_WEBAUDIO_T audioContext);
 
 typedef int EMSCRIPTEN_AUDIO_WORKLET_NODE_T;
@@ -148,15 +148,15 @@ bool emscripten_current_thread_is_audio_worklet(void);
 
 #define EMSCRIPTEN_AUDIO_MAIN_THREAD 0
 
-/* emscripten_audio_worklet_function_*: Post a pointer to a C/C++ function to be executed either
-  on the Audio Worklet thread of the given Web Audio context. Notes:
+/* emscripten_audio_worklet_function_*: Post a pointer to a C/C++ function to be executed on the Audio Worklet 
+   thread of the given Web Audio context. Notes:
  - If running inside an Audio Worklet thread, specify ID EMSCRIPTEN_AUDIO_MAIN_THREAD (== 0) to pass a message
    from the audio worklet to the main thread.
  - When specifying non-zero ID, the Audio Context denoted by the ID must have been created by the calling thread.
  - Passing messages between audio thread and main thread with this family of functions is relatively slow and has
    a really high latency cost compared to direct coordination using atomics and synchronization primitives like
-   mutexes and synchronization primitives. Additionally these functions will generate garbage on the JS heap.
-   Therefore avoid using these functions where performance is critical. */
+   mutexes. Additionally these functions will generate garbage on the JS heap. Therefore avoid using these
+   functions where performance is critical. */
 void emscripten_audio_worklet_post_function_v(EMSCRIPTEN_WEBAUDIO_T id, void (*funcPtr)(void));
 void emscripten_audio_worklet_post_function_vi(EMSCRIPTEN_WEBAUDIO_T id, void (*funcPtr)(int), int arg0);
 void emscripten_audio_worklet_post_function_vii(EMSCRIPTEN_WEBAUDIO_T id, void (*funcPtr)(int, int), int arg0, int arg1);

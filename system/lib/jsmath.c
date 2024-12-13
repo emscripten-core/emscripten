@@ -6,13 +6,13 @@
 #include <math.h>
 #include <stdlib.h>
 
-#define CALL_JS_1(cname, jsname, type, casttype) \
+#define CALL_JS_1(cname, jsname, type) \
   EM_JS(type, JS_##cname, (type x), { return jsname(x) }); \
-  type cname(type x) { return JS_##cname((casttype)x); }
+  type cname(type x) { return JS_##cname(x); }
 
 #define CALL_JS_1_TRIPLE(cname, jsname) \
-  CALL_JS_1(cname, jsname, double, double) \
-  CALL_JS_1(cname##f, jsname, float, float)
+  CALL_JS_1(cname, jsname, double) \
+  CALL_JS_1(cname##f, jsname, float)
 
 CALL_JS_1_TRIPLE(cos, Math.cos)
 CALL_JS_1_TRIPLE(sin, Math.sin)
@@ -27,24 +27,24 @@ CALL_JS_1_TRIPLE(fabs, Math.abs)
 CALL_JS_1_TRIPLE(ceil, Math.ceil)
 CALL_JS_1_TRIPLE(floor, Math.floor)
 
-#define CALL_JS_2(cname, jsname, type, casttype) \
+#define CALL_JS_2(cname, jsname, type) \
   EM_JS(type, JS_##cname, (type x, type y), { return jsname(x, y) }); \
-  type cname(type x, type y) { return JS_##cname((casttype)x, (casttype)y); }
+  type cname(type x, type y) { return JS_##cname(x, y); }
 
 #define CALL_JS_2_TRIPLE(cname, jsname) \
-  CALL_JS_2(cname, jsname, double, double) \
-  CALL_JS_2(cname##f, jsname, float, float)
+  CALL_JS_2(cname, jsname, double) \
+  CALL_JS_2(cname##f, jsname, float)
 
 CALL_JS_2_TRIPLE(atan2, Math.atan2)
 CALL_JS_2_TRIPLE(pow, Math.pow)
 
-#define CALL_JS_1_IMPL(cname, type, casttype, impl) \
+#define CALL_JS_1_IMPL(cname, type, impl) \
   EM_JS(type, JS_##cname, (type x), impl); \
-  type cname(type x) { return JS_##cname((casttype)x); }
+  type cname(type x) { return JS_##cname(x); }
 
 #define CALL_JS_1_IMPL_TRIPLE(cname, impl) \
-  CALL_JS_1_IMPL(cname, double, double, impl) \
-  CALL_JS_1_IMPL(cname##f, float, float, impl)
+  CALL_JS_1_IMPL(cname, double, impl) \
+  CALL_JS_1_IMPL(cname##f, float, impl)
 
 CALL_JS_1_IMPL_TRIPLE(round, {
   return x >= 0 ? Math.floor(x + 0.5) : Math.ceil(x - 0.5);
