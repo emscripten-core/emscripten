@@ -23,9 +23,6 @@ CALL_JS_1_TRIPLE(atan, Math.atan)
 CALL_JS_1_TRIPLE(exp, Math.exp)
 CALL_JS_1_TRIPLE(log, Math.log)
 CALL_JS_1_TRIPLE(sqrt, Math.sqrt)
-CALL_JS_1_TRIPLE(fabs, Math.abs)
-CALL_JS_1_TRIPLE(ceil, Math.ceil)
-CALL_JS_1_TRIPLE(floor, Math.floor)
 
 #define CALL_JS_2(cname, jsname, type) \
   EM_JS(type, JS_##cname, (type x, type y), { return jsname(x, y) }); \
@@ -55,6 +52,3 @@ CALL_JS_1_IMPL_TRIPLE(rint,  {
   }
   return (x - Math.floor(x) != .5) ? round(x) : round(x / 2) * 2;
 })
-
-double nearbyint(double x) { return rint(x); }
-float nearbyintf(float x) { return rintf(x); }
