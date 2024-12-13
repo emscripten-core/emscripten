@@ -32,7 +32,7 @@ void _emscripten_yield(double now) {
       // Mark the crashed thread as strongly referenced so that Node.js doesn't
       // exit while the pthread is propagating the uncaught exception back to
       // the main thread.
-      _emscripten_thread_set_strongref(crashed_thread_id);
+      emscripten_thread_set_strongref(crashed_thread_id);
       // Return the event loop so we can handle the message from the crashed
       // thread.
       emscripten_exit_with_live_runtime();

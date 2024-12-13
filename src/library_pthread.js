@@ -188,12 +188,11 @@ var LibraryPThread = {
       // worker pool as an unused worker.
       worker.pthread_ptr = 0;
 
-#if ENVIRONMENT_MAY_BE_NODE && PROXY_TO_PTHREAD
+#if ENVIRONMENT_MAY_BE_NODE
       if (ENVIRONMENT_IS_NODE) {
-        // Once the proxied main thread has finished, mark it as weakly
-        // referenced so that its existence does not prevent Node.js from
-        // exiting.  This has no effect if the worker is already weakly
-        // referenced.
+        // Mark the worker as weakly referenced so that its existence does
+        // not prevent Node.js from exiting. This has no effect if the
+        // worker is already weakly referenced.
         worker.unref();
       }
 #endif
@@ -526,9 +525,9 @@ var LibraryPThread = {
     else postMessage({ cmd: 'cleanupThread', thread });
   },
 
-  _emscripten_thread_set_strongref: (thread) => {
+  emscripten_thread_set_strongref: (thread) => {
     // Called when a thread needs to be strongly referenced.
-    // Currently only used for:
+    // Internally used for:
     // - keeping the "main" thread alive in PROXY_TO_PTHREAD mode;
     // - crashed threads that needs to propagate the uncaught exception
     //   back to the main thread.

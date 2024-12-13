@@ -77,6 +77,15 @@ pthread_t emscripten_main_runtime_thread_id(void);
 //         Asyncify builds.
 void emscripten_thread_sleep(double msecs);
 
+// Marks the given thread as strongly referenced. This is used to prevent the
+// Node.js application from exiting as long as there are strongly referenced
+// threads still running. Normally you don't need to call this function, and
+// the pthread behaviour will match native in that background threads won't
+// keep runtime alive, but waiting for them via e.g. pthread_join will.
+// However, this is useful for features like PROXY_TO_PTHREAD where we want to
+// keep running as long as the detached pthread is.
+void emscripten_thread_set_strongref(pthread_t thread);
+
 // Sets the name of the given thread. Pass pthread_self() as the thread ID to
 // set the name of the calling thread.
 // The name parameter is a UTF-8 encoded string which is truncated to 32 bytes.
