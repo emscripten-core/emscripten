@@ -37,7 +37,7 @@ from tools.shared import EMCC, EMXX, DEBUG, EMCONFIGURE, EMCMAKE
 from tools.shared import get_canonical_temp_dir, path_from_root
 from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
 from tools.settings import COMPILE_TIME_SETTINGS
-from tools import shared, line_endings, building, config, utils
+from tools import shared, feature_matrix, line_endings, building, config, utils
 
 logger = logging.getLogger('common')
 
@@ -1085,6 +1085,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       if node_version < emcc_min_node_version:
         self.emcc_args += building.get_emcc_node_flags(node_version)
         self.emcc_args.append('-Wno-transpile')
+      if node_version < feature_matrix.min_browser_versions[feature_matrix.Feature.JS_BIGINT_INTEGRATION]
+        self.emcc_args.append('-sWASM_BIGINT=0')
 
     self.v8_args = ['--wasm-staging']
     self.env = {}
