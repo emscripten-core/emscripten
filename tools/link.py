@@ -797,11 +797,13 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
     settings.WASM2JS = 1
     # Wasm bigint doesn't make sense with wasm2js, since it controls how the
     # wasm and JS interact.
-    if settings.WASM_BIGINT:
-      exit_with_error('WASM_BIGINT is not compatible with WASM=0')
+    settings.WASM_BIGINT = 0
+    feature_matrix.disable_feature(feature_matrix.Feature.JS_BIGINT_INTEGRATION)
   if settings.WASM == 2:
     # Requesting both Wasm and Wasm2JS support
     settings.WASM2JS = 1
+    settings.WASM_BIGINT = 0
+    feature_matrix.disable_feature(feature_matrix.Feature.JS_BIGINT_INTEGRATION)
 
   if options.oformat == OFormat.WASM and not settings.SIDE_MODULE:
     # if the output is just a wasm file, it will normally be a standalone one,
@@ -1764,7 +1766,7 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
     if settings.MEMORY64:
       exit_with_error('wasm2js does not support MEMORY64')
-    if settings.WASM_BIGINT and 'WASM_BIGINT' in user_settings:
+    if settings.WASM_BIGINT:
       exit_with_error('wasm2js does not support WASM_BIGINT')
     if settings.CAN_ADDRESS_2GB:
       exit_with_error('wasm2js does not support >2gb address space')

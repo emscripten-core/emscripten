@@ -7005,6 +7005,7 @@ void* operator new(size_t size) {
     '': [],
     'minimal_runtime': ['-sMINIMAL_RUNTIME=1']
   })
+  @no_wasm2js('wasm2js incompatible with Bigint')
   def test_dyncall_specific(self, *args):
     if self.get_setting('MEMORY64'):
       self.skipTest('not compatible with MEMORY64')
@@ -8428,6 +8429,7 @@ Module.onRuntimeInitialized = () => {
     if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
     self.set_setting('WASM', 0)
+    self.set_setting('WASM_BIGINT', 0)
     self.do_core_test('test_hello_world.c')
     self.assertNotExists('test_hello_world.js.mem')
 

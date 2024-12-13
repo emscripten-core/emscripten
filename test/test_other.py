@@ -12902,7 +12902,7 @@ exec "$@"
       self.assertContained('WASM2JS is not compatible with relocatable output', err)
 
   def test_wasm2js_standalone(self):
-    self.do_run_in_out_file_test('hello_world.c', emcc_args=['-sSTANDALONE_WASM', '-sWASM=0'])
+    self.do_run_in_out_file_test('hello_world.c', emcc_args=['-sSTANDALONE_WASM', '-sWASM=0', '-sWASM_BIGINT=0'])
 
   def test_oformat(self):
     self.run_process([EMCC, test_file('hello_world.c'), '--oformat=wasm', '-o', 'out.foo'])
