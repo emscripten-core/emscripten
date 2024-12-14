@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.74 (in development)
+3.1.75 (in development)
 -----------------------
+
+3.1.74 - 12/14/24
+-----------------
 - The file system was updated to independently track atime, mtime and ctime
   instead of using the same time for all three. (#22998)
 - Emscripten-generated code will now use async/await internally when loading
