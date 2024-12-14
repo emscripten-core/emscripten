@@ -152,8 +152,6 @@ def disable_feature(feature):
 # a user requests a feature that we know is only supported in browsers
 # from a specific version and above, we can assume that browser version.
 def apply_min_browser_versions():
-  if settings.WASM_BIGINT:
-    enable_feature(Feature.JS_BIGINT_INTEGRATION, 'WASM_BIGINT')
   if settings.PTHREADS:
     enable_feature(Feature.THREADS, 'pthreads')
     enable_feature(Feature.BULK_MEMORY, 'pthreads')
