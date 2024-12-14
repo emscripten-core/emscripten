@@ -2895,7 +2895,7 @@ More info: https://emscripten.org
     'emitDCEGraph-dynCall': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph-eval': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph-sig': (['emitDCEGraph', '--no-print'],),
-    'emitDCEGraph5': (['emitDCEGraph', '--no-print'],),
+    'emitDCEGraph-prefixing': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph-scopes': (['emitDCEGraph', '--no-print'],),
     'minimal-runtime-applyDCEGraphRemovals': (['applyDCEGraphRemovals'],),
     'applyDCEGraphRemovals': (['applyDCEGraphRemovals'],),
