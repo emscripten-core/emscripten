@@ -107,7 +107,7 @@ function getSourceMap() {
 }
 
 function getSourceMapPromise() {
-  if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch == 'function') {
+  if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     return fetch(wasmSourceMapFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}})
       .then((response) => response.json())
       .catch(getSourceMap);
