@@ -29,8 +29,8 @@ void setup() {
 }
 
 int main() {
-    setup();
-    open("./does-not-exist/", O_CREAT);
-    assert(errno == EISDIR);
-    printf("success\n");
+  setup();
+  open("./does-not-exist/", O_CREAT);
+  assert(errno == EISDIR);
+  printf("success\n");
 }

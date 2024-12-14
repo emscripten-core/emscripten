@@ -1076,7 +1076,7 @@ FS.staticInit();
           if ((flags & {{{ cDefs.O_EXCL }}})) {
             throw new FS.ErrnoError({{{ cDefs.EEXIST }}});
           }
-        } else if(isDirPath) {
+        } else if (isDirPath) {
           throw new FS.ErrnoError({{{ cDefs.EISDIR }}});
         } else {
           // node doesn't exist, try to create it
