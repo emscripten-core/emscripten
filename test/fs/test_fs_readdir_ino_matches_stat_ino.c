@@ -31,8 +31,6 @@ void setup() {
   EM_ASM(FS.mount(NODEFS, { root: '.' }, 'working'));
   changedir("working");
 #endif
-  mkdir("sub", 0775);
-  changedir("sub");
 }
 
 int main() {
