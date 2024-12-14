@@ -128,6 +128,11 @@ def enable_feature(feature, reason, override=False):
   """
   if override:
     enable_override_features.add(feature)
+  if check_feature(feature, reason):
+      # If no conflict, bump the minimum version to accommodate the feature.
+      setattr(settings, name, min_version)
+
+def check_feature(feature, reason):
   for name, min_version in min_browser_versions[feature].items():
     name = f'MIN_{name.upper()}_VERSION'
     if settings[name] < min_version:
@@ -137,9 +142,10 @@ def enable_feature(feature, reason, override=False):
             'compatibility',
             f'{name}={user_settings[name]} is not compatible with {reason} '
             f'({min_version} or above required)')
+        return False
       else:
-        # Otherwise we bump the minimum version to accommodate the feature.
-        setattr(settings, name, min_version)
+        return True
+
 
 
 def disable_feature(feature):
@@ -152,6 +158,9 @@ def disable_feature(feature):
 # a user requests a feature that we know is only supported in browsers
 # from a specific version and above, we can assume that browser version.
 def apply_min_browser_versions():
+  if settings.WASM_BIGINT:
+    # WASM_BIGINT is enabled by default, so don't use it to enable other features.
+    check_feature(Feature.JS_BIGINT_INTEGRATION, 'WASM_BIGINT')
   if settings.PTHREADS:
     enable_feature(Feature.THREADS, 'pthreads')
     enable_feature(Feature.BULK_MEMORY, 'pthreads')
