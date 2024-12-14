@@ -1447,7 +1447,7 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
       if 'MODULARIZE' in user_settings:
         exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
       settings.MODULARIZE = 1
-    if shared.target_environment_may_be('node') and not settings.USE_ES6_IMPORT_META:
+    if settings.ENVIRONMENT_MAY_BE_NODE and not settings.USE_ES6_IMPORT_META:
       # EXPORT_ES6 + ENVIRONMENT=*node* requires the use of import.meta.url
       if 'USE_ES6_IMPORT_META' in user_settings:
         exit_with_error('EXPORT_ES6 and ENVIRONMENT=*node* requires USE_ES6_IMPORT_META to be set')
@@ -1774,7 +1774,7 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
   if settings.NODE_CODE_CACHING:
     if settings.WASM_ASYNC_COMPILATION:
       exit_with_error('NODE_CODE_CACHING requires sync compilation (WASM_ASYNC_COMPILATION=0)')
-    if not shared.target_environment_may_be('node'):
+    if not settings.ENVIRONMENT_MAY_BE_NODE:
       exit_with_error('NODE_CODE_CACHING only works in node, but target environments do not include it')
     if settings.SINGLE_FILE:
       exit_with_error('NODE_CODE_CACHING saves a file on the side and is not compatible with SINGLE_FILE')
@@ -2373,11 +2373,11 @@ def phase_binaryen(target, options, wasm_target):
 
 
 def node_es6_imports():
-  if not settings.EXPORT_ES6 or not shared.target_environment_may_be('node'):
+  if not settings.EXPORT_ES6 or not settings.ENVIRONMENT_MAY_BE_NODE:
     return ''
 
   # Multi-environment builds uses `await import` in `shell.js`
-  if shared.target_environment_may_be('web'):
+  if settings.ENVIRONMENT_MAY_BE_WEB:
     return ''
 
   # Use static import declaration if we only target Node.js
@@ -2404,8 +2404,8 @@ def modularize():
   # Multi-environment ES6 builds require an async function
   async_emit = ''
   if settings.EXPORT_ES6 and \
-     shared.target_environment_may_be('node') and \
-     shared.target_environment_may_be('web'):
+     settings.ENVIRONMENT_MAY_BE_NODE and \
+     settings.ENVIRONMENT_MAY_BE_WEB:
     async_emit = 'async '
 
   # TODO: Remove when https://bugs.webkit.org/show_bug.cgi?id=223533 is resolved.
@@ -2453,7 +2453,7 @@ export default async function init(moduleArg = {}) {
       script_url = 'import.meta.url'
     else:
       script_url = "typeof document != 'undefined' ? document.currentScript?.src : undefined"
-      if shared.target_environment_may_be('node'):
+      if settings.ENVIRONMENT_MAY_BE_NODE:
         script_url_node = "if (typeof __filename != 'undefined') _scriptName = _scriptName || __filename;"
     if settings.MODULARIZE == 'instance':
       src = '''%(node_imports)s

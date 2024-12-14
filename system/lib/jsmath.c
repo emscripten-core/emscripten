@@ -45,9 +45,3 @@ CALL_JS_2_TRIPLE(pow)
 CALL_JS_1_IMPL_TRIPLE(round, {
   return x >= 0 ? Math.floor(x + 0.5) : Math.ceil(x - 0.5);
 })
-CALL_JS_1_IMPL_TRIPLE(rint,  {
-  function round(x) {
-    return x >= 0 ? Math.floor(x + 0.5) : Math.ceil(x - 0.5);
-  }
-  return (x - Math.floor(x) != .5) ? round(x) : round(x / 2) * 2;
-})
