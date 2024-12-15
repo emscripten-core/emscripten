@@ -65,7 +65,7 @@ function findIncludeFile(filename, currentDir) {
 // Also handles #include x.js (similar to C #include <file>)
 export function preprocess(filename) {
   let text = readFile(filename);
-  if (EXPORT_ES6 && USE_ES6_IMPORT_META) {
+  if (EXPORT_ES6) {
     // `eval`, Terser and Closure don't support module syntax; to allow it,
     // we need to temporarily replace `import.meta` and `await import` usages
     // with placeholders during preprocess phase, and back after all the other ops.

@@ -27,6 +27,10 @@ See docs/process.md for more on how version tagging works.
   (#20735)
 - Added Lua contrib port (`--use-port=contrib.lua`) to easily embed the Lua
   scripting language in any C/C++ Emscripten project (#23682)
+- The `USE_ES6_IMPORT_META` settings was removed.  This setting was always
+  on by default, but now it cannot be disabled.  This setting was originally
+  added in 2019 as a temporary measure while engines and bundlers learned to
+  deal with `import.meta`. (#23171)
 
 4.0.3 - 02/07/25
 ----------------

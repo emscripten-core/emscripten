@@ -1353,13 +1353,6 @@ var MODULARIZE = false;
 // [link]
 var EXPORT_ES6 = false;
 
-// Use the ES6 Module relative import feature 'import.meta.url'
-// to auto-detect WASM Module path.
-// It might not be supported on old browsers / toolchains. This setting
-// may not be disabled when Node.js is targeted (-sENVIRONMENT=*node*).
-// [link]
-var USE_ES6_IMPORT_META = true;
-
 // Global variable to export the module as for environments without a
 // standardized module loading system (e.g. the browser and SM shell).
 // [link]
@@ -2270,4 +2263,5 @@ var LEGACY_SETTINGS = [
   ['MIN_IE_VERSION', [0x7FFFFFFF], 'No longer supported'],
   ['WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG', [0], 'No longer supported'],
   ['AUTO_ARCHIVE_INDEXES', [0, 1], 'No longer needed'],
+  ['USE_ES6_IMPORT_META', [1], 'Disabling is no longer supported'],
 ];
