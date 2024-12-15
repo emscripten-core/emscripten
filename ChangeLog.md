@@ -25,6 +25,10 @@ See docs/process.md for more on how version tagging works.
   `PATH.basename("a/b/..")` returns `".."` instead of `"a"`. This is in line with
   the behaviour of both node and coreutils, and is already the case when using
   NODERAWFS". (#23180)
+- The `USE_ES6_IMPORT_META` settings was removed.  This setting was always
+  on by default, but now it cannot be disabled.  This setting was originally
+  added in 2019 as a temporary measure while engines and bundlers learned to
+  deal with `import meta`. (#23171)
 
 3.1.74 - 12/14/24
 -----------------

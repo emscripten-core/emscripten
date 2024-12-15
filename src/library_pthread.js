@@ -412,7 +412,7 @@ var LibraryPThread = {
 #endif
 #endif
       };
-#if EXPORT_ES6 && USE_ES6_IMPORT_META
+#if EXPORT_ES6
       // If we're using module output, use bundler-friendly pattern.
 #if PTHREADS_DEBUG
       dbg(`Allocating a new web worker from ${import.meta.url}`);
@@ -434,7 +434,7 @@ var LibraryPThread = {
       // the first case in their bundling step. The latter ends up producing an invalid
       // URL to import from the server (e.g., for webpack the file:// path).
       worker = new Worker(new URL('{{{ TARGET_JS_NAME }}}', import.meta.url), workerOptions);
-#else
+#else // EXPORT_ES6
       var pthreadMainJs = _scriptName;
 #if expectToReceiveOnModule('mainScriptUrlOrBlob')
       // We can't use makeModuleReceiveWithVar here since we want to also
@@ -457,7 +457,7 @@ var LibraryPThread = {
       } else
 #endif
       worker = new Worker(pthreadMainJs, workerOptions);
-#endif // EXPORT_ES6 && USE_ES6_IMPORT_META
+#endif // EXPORT_ES6
       PThread.unusedWorkers.push(worker);
     },
 
