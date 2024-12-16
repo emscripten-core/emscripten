@@ -52,7 +52,8 @@ FS.staticInit();
     streams: [],
     nextInode: 1,
     nameTable: null,
-    currentPath: '/',
+    currentPath: null,
+    currentNode: null,
     initialized: false,
     // Whether we are currently ignoring permissions. Useful when preparing the
     // filesystem and creating files inside read-only folders.
@@ -173,21 +174,22 @@ FS.staticInit();
     //
     lookupPath(path, opts = {}) {
       if (!path) return { path: '', node: null };
-      opts.follow_mount ??= true
+      opts.follow_mount ??= true;
 
-      if (!PATH.isAbs(path)) {
-        path = FS.cwd() + '/' + path;
+      var current;
+      var current_path;
+      if (PATH.isAbs(path)) {
+        current = FS.root;
+        current_path = "/";
+      } else {
+        current = FS.currentNode;
+        current_path = FS.currentPath;
       }
+      var pathParts = (x) => x.split('/').filter((p) => !!p && (p !== '.'));
+      var parts = pathParts(path);
 
       // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
       linkloop: for (var nlinks = 0; nlinks < 40; nlinks++) {
-        // split the absolute path
-        var parts = path.split('/').filter((p) => !!p && (p !== '.'));
-
-        // start at the root
-        var current = FS.root;
-        var current_path = '/';
-
         for (var i = 0; i < parts.length; i++) {
           var islast = (i === parts.length-1);
           if (islast && opts.parent) {
@@ -226,10 +228,14 @@ FS.staticInit();
               throw new FS.ErrnoError({{{ cDefs.ENOSYS }}});
             }
             var link = current.node_ops.readlink(current);
-            if (!PATH.isAbs(link)) {
-              link = PATH.dirname(current_path) + '/' + link;
+            if (PATH.isAbs(link)) {
+              current = FS.root;
+              current_path = "/";
+            } else {
+              current = current.parent;
+              current_path = PATH.dirname(current_path);
             }
-            path = link + '/' + parts.slice(i + 1).join('/');
+            parts = [].concat(pathParts(link), parts.slice(i + 1));
             continue linkloop;
           }
         }
@@ -405,7 +411,7 @@ FS.staticInit();
         if (!FS.isDir(node.mode)) {
           return {{{ cDefs.ENOTDIR }}};
         }
-        if (FS.isRoot(node) || FS.getPath(node) === FS.cwd()) {
+        if (FS.isRoot(node) || node === FS.currentNode) {
           return {{{ cDefs.EBUSY }}};
         }
       } else {
@@ -886,8 +892,9 @@ FS.staticInit();
 #endif
     },
     readdir(path) {
-      var lookup = FS.lookupPath(path, { follow: true });
-      var node = lookup.node;
+      FS.readdirNode(FS.lookupPath(path, { follow: true }).node);
+    },
+    readdirNode(node) {
       if (!node.node_ops.readdir) {
         throw new FS.ErrnoError({{{ cDefs.ENOTDIR }}});
       }
@@ -944,6 +951,9 @@ FS.staticInit();
       if (!node) {
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       }
+      return FS.statNode(node);
+    },
+    statNode(node) {
       if (!node.node_ops.getattr) {
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       }
@@ -1366,6 +1376,7 @@ FS.staticInit();
         throw new FS.ErrnoError(errCode);
       }
       FS.currentPath = lookup.path;
+      FS.currentNode = lookup.node;
     },
     createDefaultDirectories() {
       FS.mkdir('/tmp');
@@ -1479,6 +1490,7 @@ FS.staticInit();
       FS.nameTable = new Array(4096);
 
       FS.mount(MEMFS, {}, '/');
+      FS.chdir('/');
 
       FS.createDefaultDirectories();
       FS.createDefaultDevices();

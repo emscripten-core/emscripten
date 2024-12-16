@@ -526,7 +526,11 @@ var SyscallsLibrary = {
 #endif // ~PROXY_POSIX_SOCKETS==0
   __syscall_fchdir: (fd) => {
     var stream = SYSCALLS.getStreamFromFD(fd);
-    FS.chdir(stream.path);
+    if (!FS.isDir(stream.node.mode)) {
+      return -{{{ cDefs.ENOTDIR }}};
+    }
+    FS.currentPath = stream.path;
+    FS.currentNode = stream.node;
     return 0;
   },
   __syscall__newselect: (nfds, readfds, writefds, exceptfds, timeout) => {
@@ -689,7 +693,7 @@ var SyscallsLibrary = {
   __syscall_getdents64__deps: ['$stringToUTF8'],
   __syscall_getdents64: (fd, dirp, count) => {
     var stream = SYSCALLS.getStreamFromFD(fd)
-    stream.getdents ||= FS.readdir(stream.path);
+    stream.getdents ||= FS.readdirNode(stream.node);
 
     var struct_size = {{{ C_STRUCTS.dirent.__size__ }}};
     var pos = 0;
@@ -706,8 +710,7 @@ var SyscallsLibrary = {
         type = 4; // DT_DIR
       }
       else if (name === '..') {
-        var lookup = FS.lookupPath(stream.path, { parent: true });
-        id = lookup.node.id;
+        id = stream.node.parent.id;
         type = 4; // DT_DIR
       }
       else {
