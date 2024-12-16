@@ -182,7 +182,7 @@ FS.staticInit();
       // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
       linkloop: for (var nlinks = 0; nlinks < 40; nlinks++) {
         // split the absolute path
-        var parts = path.split('/').filter((p) => !!p && (p !== '.'));
+        var parts = path.split('/').filter((p) => !!p);
 
         // start at the root
         var current = FS.root;
@@ -193,6 +193,10 @@ FS.staticInit();
           if (islast && opts.parent) {
             // stop resolving
             break;
+          }
+
+          if (parts[i] === '.') {
+            continue;
           }
 
           if (parts[i] === '..') {

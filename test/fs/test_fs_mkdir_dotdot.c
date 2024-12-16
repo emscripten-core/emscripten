@@ -39,6 +39,12 @@ int main() {
   mkdir("test/a/.", 0777);
   printf("error: %s\n", strerror(errno));
   assert(errno == EEXIST);
+  mkdir("test/a/b/..", 0777);
+  printf("error: %s\n", strerror(errno));
+  assert(errno == ENOENT);
+  mkdir("test/a/b/.", 0777);
+  printf("error: %s\n", strerror(errno));
+  assert(errno == ENOENT);
   printf("success\n");
 }
 
