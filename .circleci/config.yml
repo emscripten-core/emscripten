@@ -448,7 +448,6 @@ jobs:
             tar xvf wasi-sysroot-11.0.tar.gz -C ~/wasi-sdk/
       - install-v8
       - install-emsdk
-      - build-libs
       - persist
   test-other:
     executor: bionic
