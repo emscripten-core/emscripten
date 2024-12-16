@@ -410,6 +410,41 @@ commands:
       - upload-test-results
 
 jobs:
+  build-docs:
+    executor: bionic
+    steps:
+      - checkout
+      - pip-install
+      - run: tools/maint/update_settings_docs.py --check
+      - run: make -C site text
+      - run: tools/maint/check_emcc_help_text.py
+      - run: make -C site html
+  ruff:
+    executor: bionic
+    steps:
+      - checkout
+      - pip-install
+      - run: ruff check
+  mypy:
+    executor: bionic
+    steps:
+      - checkout
+      - pip-install
+      - run: mypy
+  eslint:
+    executor: linux-node
+    steps:
+      - checkout
+      - npm-install
+      - run: |
+          npm run lint
+          npm run check
+  test-sanity:
+    executor: bionic
+    steps:
+      - run-tests-linux:
+          frozen_cache: false
+          test_targets: "sanity"
   build-linux:
     executor: bionic
     # xlarge has 4x the cores of the default medium, costs 4x as much, and runs
@@ -450,6 +485,315 @@ jobs:
       - install-emsdk
       - build-libs
       - persist
+  # Perhaps we don't need to run this suite with every commit. Consider moving this to FYI bot.
+  test-posixtest:
+    executor: bionic
+    steps:
+      - run-tests-linux:
+          test_targets: "posixtest"
+  test-core0:
+    executor: bionic
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
+    steps:
+      - run-tests-linux:
+          test_targets: "core0"
+  test-core2:
+    executor: bionic
+    environment:
+      EMTEST_BROWSER: "node"
+      EMTEST_SKIP_NODE_CANARY: "1"
+    steps:
+      - run-tests-linux:
+          # also run a few asan tests.  Run these with frozen_cache disabled
+          # since we don't pre-build all the asan libraries.
+          frozen_cache: false
+          title: "asan+lsan"
+          test_targets: "
+            asan.test_stat
+            asan.test_float_builtins
+            asan.test_embind*
+            asan.test_abort_on_exceptions
+            asan.test_ubsan_full_left_shift_fsanitize_integer
+            asan.test_pthread*
+            asan.test_dyncall_specific_minimal_runtime
+            asan.test_async_hello
+            asan.test_dlfcn_basic
+            asan.test_async_hello_jspi
+            asan.test_cubescript
+            asan.test_wasm_worker_hello
+            asan.test_externref_emjs_dynlink
+            asan.test_asyncify_longjmp
+            asan.test_pthread_run_on_main_thread
+            lsan.test_dylink_dso_needed
+            lsan.test_stdio_locking
+            lsan.test_dlfcn_basic
+            lsan.test_pthread_create
+            lsan.test_pthread_exit_main_stub
+            ubsan.test_externref_emjs_dynlink"
+      - freeze-cache
+      - run-tests:
+          # also run a single test of EMTEST_BROWSER=node.
+          # also run a corez test of dynamic linking + forced syslibs.
+          title: "core2+extras"
+          test_targets: "
+            core2
+            browser.test_pthread_join
+            corez.test_dylink_syslibs_all"
+      - upload-test-results
+  test-core3:
+    executor: bionic
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
+    steps:
+      - run-tests-linux:
+          frozen_cache: false
+          # also add a little select testing for wasm2js in -O3
+          # also add a little select wasmfs testing
+          title: "core3+extras"
+          test_targets: "
+            lto2.test_dylink_syslibs_all
+            lto2.test_float_builtins
+            lto2.test_avx_nontrapping
+            lto0.test_exceptions_allowed_uncaught
+            lto0.test_longjmp_standalone_standalone
+            lto0.test_embind_i64_val
+            core3
+            core2g.test_externref
+            corez.test_dylink_iostream
+            core2ss.test_pthread_dylink
+            core2ss.test_pthread_thread_local_storage
+            core2s.test_dylink_syslibs_missing_assertions
+            core2s.test_module_wasm_memory
+            wasm2js3.test_memorygrowth_2
+            wasmfs.test_hello_world
+            wasmfs.test_unistd_links*
+            wasmfs.test_atexit_standalone
+            wasmfs.test_emscripten_get_now
+            wasmfs.test_dyncall_specific_minimal_runtime
+            wasmfs.test_fcntl_misc
+            wasmfs.test_readdir_rawfs
+            wasmfs.test_utime
+            wasmfs.test_unistd_unlink
+            wasmfs.test_unistd_access
+            wasmfs.test_unistd_close
+            wasmfs.test_unistd_truncate
+            wasmfs.test_readdir
+            wasmfs.test_readdir_unlink
+            wasmfs.test_unistd_pipe
+            wasmfs.test_unistd_io
+            wasmfs.test_unistd_curdir
+            wasmfs.test_poll
+            wasmfs.test_fs_64bit
+            wasmfs.test_fs_write
+            wasmfs.test_fs_writev
+            wasmfs.test_fs_writev_rawfs
+            wasmfs.test_fs_writeFile
+            wasmfs.test_fs_writeFile_rawfs
+            wasmfs.test_fs_readv
+            wasmfs.test_fs_write
+            wasmfs.test_fs_readv_rawfs
+            wasmfs.test_fs_nodefs_nofollow
+            wasmfs.test_fs_nodefs_readdir
+            wasmfs.test_fs_nodefs_home
+            wasmfs.test_fs_nodefs_cloexec
+            wasmfs.test_fs_nodefs_cloexec_rawfs
+            wasmfs.test_fs_errorstack
+            wasmfs.test_fs_errorstack_rawfs
+            wasmfs.test_fs_emptyPath
+            wasmfs.test_webidl
+            wasmfs.test_dlfcn_self
+            wasmfs.test_dlfcn_unique_sig
+            wasmfs.test_dylink_basics
+            wasmfs.test_exit_status
+            wasmfs.test_minimal_runtime_memorygrowth
+            wasmfs.test_mmap_anon*
+            wasmfs.test_mount
+            wasmfs.test_getcwd_with_non_ascii_name
+            wasmfs.test_stat
+            wasmfs.test_fstatat
+            wasmfs.test_futimens
+            wasmfs.test_unistd_links
+            wasmfs.test_fcntl_open
+            wasmfs.test_fs_js_api
+            wasmfs.test_fs_llseek
+            wasmfs.test_fs_llseek_rawfs
+            wasmfs.test_freetype"
+  test-wasm2js1:
+    environment:
+      EMTEST_SKIP_NODE_CANARY: "1"
+    executor: bionic
+    steps:
+      - run-tests-linux:
+          test_targets: "wasm2js1"
+  test-wasm64:
+    # We don't use `bionic` here since its tool old to run recent node versions:
+    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
+    executor: linux-python
+    steps:
+      - prepare-for-tests
+      # The linux-python image uses /home/circleci rather than /root and jsvu
+      # hardcodes /root into its launcher scripts so we need to reinstall v8.
+      - run: rm -rf $HOME/.jsvu
+      - install-v8
+      - install-node-canary
+      # When running wasm64 tests we need to make sure we use the testing
+      # version of node (node canary) when running the compiler output (e.g.
+      # in configure tests.
+      - run:
+          name: configure node canary
+          command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
+      - run-tests:
+          title: "wasm64"
+          test_targets: "
+            wasm64
+            core_2gb.test_*em_asm*
+            core_2gb.test_*embind*
+            wasm64l.test_hello_world
+            wasm64l.test_bigswitch
+            wasm64l.test_module_wasm_memory
+            wasm64l.test_longjmp2_emscripten
+            other.test_memory64_proxies
+            other.test_failing_growth_wasm64"
+      - upload-test-results
+  test-wasm64-4gb:
+    environment:
+      LANG: "C.UTF-8"
+      # Only run 2 tests at a time to avoid OOM (since each tests used >4gb)
+      EMCC_CORES: "2"
+    # We don't use `bionic` here since its too old to run recent node versions:
+    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
+    executor: linux-python
+    steps:
+      - prepare-for-tests
+      # The linux-python image uses /home/circleci rather than /root and jsvu
+      # hardcodes /root into its launcher scripts so we need to reinstall v8.
+      - run: rm -rf $HOME/.jsvu
+      - install-v8
+      - install-node-canary
+      # When running wasm64 tests we need to make sure we use the testing
+      # version of node (node canary) when running the compiler output (e.g.
+      # in configure tests.
+      - run:
+          name: configure node canary
+          command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
+      - run-tests:
+          title: "wasm64_4gb"
+          test_targets: "wasm64_4gb"
+      - upload-test-results
+  test-jsc:
+    executor: linux-python
+    steps:
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
+      - pip-install
+      - install-emsdk
+      - run:
+          name: install jsc
+          command: |
+            cd $HOME
+            wget https://nodejs.org/dist/v18.12.0/node-v18.12.0-linux-x64.tar.xz
+            tar -xf node-v18.12.0-linux-x64.tar.xz
+            export PATH="`pwd`/node-v18.12.0-linux-x64/bin:${PATH}"
+            npm install jsvu -g
+            jsvu --os=default --engines=javascriptcore
+            echo "JSC_ENGINE = [os.path.expanduser('~/.jsvu/bin/javascriptcore')]" >> ~/emsdk/.emscripten
+            echo "JS_ENGINES = [JSC_ENGINE]" >> ~/emsdk/.emscripten
+      - run-tests:
+          test_targets: "
+            core0.test_hello_argc
+            other.test_modularize_incoming
+            other.test_modularize_incoming_export_name"
+  test-spidermonkey:
+    executor: linux-python
+    steps:
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
+      - pip-install
+      - install-emsdk
+      - run:
+          name: install spidermonkey
+          command: |
+            cd $HOME
+            wget https://nodejs.org/dist/v18.12.0/node-v18.12.0-linux-x64.tar.xz
+            tar -xf node-v18.12.0-linux-x64.tar.xz
+            export PATH="`pwd`/node-v18.12.0-linux-x64/bin:${PATH}"
+            npm install jsvu -g
+            jsvu --os=default --engines=spidermonkey
+            echo "SPIDERMONKEY_ENGINE = [os.path.expanduser('~/.jsvu/bin/spidermonkey')]" >> ~/emsdk/.emscripten
+            echo "JS_ENGINES = [SPIDERMONKEY_ENGINE]" >> ~/emsdk/.emscripten
+      - run-tests:
+          test_targets: "
+            core0.test_hello_argc
+            core2.test_demangle_stacks_symbol_map"
+      - upload-test-results
+  test-node-compat:
+    # We don't use `bionic` here since its too old to run recent node versions:
+    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
+    executor: linux-python
+    environment:
+      LANG: "C.UTF-8"
+      EMTEST_SKIP_V8: "1"
+    steps:
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
+      - pip-install
+      - install-emsdk
+      - install-node-canary
+      - run-tests:
+          title: "node (canary)"
+          test_targets: "
+            other.test_deterministic
+            other.test_gen_struct_info
+            other.test_native_call_before_init
+            other.test_node_unhandled_rejection
+            core2.test_hello_world
+            core0.test_pthread_join_and_asyncify
+            core0.test_async_ccall_promise_jspi
+            core0.test_async_ccall_promise_exit_runtime_jspi
+            core0.test_cubescript_jspi"
+      # Run some basic tests with the minimum version of node that we currently
+      # support.
+      - install-node-version:
+          node_version: "10.19.0"
+      - run-tests:
+          title: "node (oldest / 10.19.0)"
+          test_targets: "
+            other.test_gen_struct_info
+            other.test_native_call_before_init
+            other.test_js_optimizer_verbose
+            other.test_node_unhandled_rejection
+            other.test_full_js_library*
+            core2.test_hello_world
+            core2.test_fs_write_rawfs"
+      # Run a few test with the most recent version of node
+      # In particular we have some tests that require node flags on older
+      # versions of node but not with the most recent version.
+      - install-node-latest
+      - run-tests:
+          # Run tests that on older versions of node would require flags, but
+          # those flags should not be injected on newer versions.
+          title: "node (latest)"
+          test_targets: "-v
+            other.test_gen_struct_info
+            other.test_native_call_before_init
+            other.test_node_unhandled_rejection
+            other.test_js_optimizer_verbose
+            other.test_min_node_version
+            other.test_node_emscripten_num_logical_cores
+            core2.test_pthread_create
+            core2.test_i64_invoke_bigint
+            core2.test_sse2
+            core2.test_source_map
+            core2.test_exceptions_wasm
+            core2.test_pthread_unhandledrejection"
+      - upload-test-results
   test-other:
     executor: bionic
     environment:
@@ -466,11 +810,223 @@ jobs:
           # headers on emsdk-bundled clang
           test_targets: "
             other.test_minimal_runtime_code_size_hello_embind"
+  test-browser-chrome:
+    executor: bionic
+    environment:
+      EMTEST_LACKS_WEBGPU: "1"
+    steps:
+      - run-tests-chrome:
+          title: "browser"
+          # Skip test_4gb_fail as it OOMs on the current bot
+          test_targets: "
+            browser skip:browser.test_4gb_fail
+            "
+  test-browser-chrome-wasm64:
+    executor: bionic
+    environment:
+      EMTEST_LACKS_WEBGPU: "1"
+    steps:
+      - run-tests-chrome:
+          title: "browser64"
+          # Skip tests that depend on running the output in node
+          # (This bot doesn't have node canary installed which is required to
+          # run wasm64 output).
+          test_targets: "browser64
+            skip:browser64.test_hello_world_worker*
+            skip:browser64.test_2gb_fail
+            skip:browser64.test_4gb_fail
+            skip:browser64.test_4gb"
+  test-browser-chrome-2gb:
+    executor: bionic
+    environment:
+      EMTEST_LACKS_WEBGPU: "1"
+    steps:
+      - run-tests-chrome:
+          title: "browser_2gb"
+          test_targets: "browser_2gb"
+  test-browser-chrome-wasm64-4gb:
+    executor: bionic
+    environment:
+      EMTEST_LACKS_WEBGPU: "1"
+      EMTEST_SKIP_NODE_CANARY: "1"
+    steps:
+      - run-tests-chrome:
+          title: "browser64_4gb"
+          test_targets: "browser64_4gb"
+  test-browser-firefox:
+    executor: bionic
+    steps:
+      - prepare-for-tests
+      - run-tests-firefox:
+          title: "browser"
+          # browser.test_sdl2_mouse and/or SDL2 should be fixed. The case happens
+          # to be failing here, and the root cause might be related with the
+          # initial position of the mouse pointer relative to the canvas.
+          # browser.test_html5_webgl_create_context is skipped because
+          # anti-aliasing is not well supported.
+          # browser.test_webgl_offscreen_canvas_in_pthread and
+          # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
+          # are crashing Firefox (bugzil.la/1281796). The former case is
+          # further blocked by issue #6897.
+          test_targets: "
+            browser
+            skip:browser.test_sdl2_mouse
+            skip:browser.test_html5_webgl_create_context
+            skip:browser.test_webgl_offscreen_canvas_in_pthread
+            skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
+            skip:browser.test_glut_glutget
+            "
+  test-browser-firefox-wasm64:
+    executor: bionic
+    steps:
+      - checkout
+      - run:
+          name: submodule update
+          command: git submodule update --init
+      - pip-install
+      - install-emsdk
+      - run-tests-firefox:
+          title: "browser64"
+          test_targets: "
+            browser64.test_sdl_image
+            browser64.test_dylink_many
+            "
+  # TODO(sbc): Re-enable once we figure out why the emrun tests are
+  # locking up.
+  #test-browser-chrome-emrun:
+  #  executor: bionic
+  #  steps:
+  #    - run-tests-chrome:
+  #        test_targets: "emrun"
+  test-sockets-chrome:
+    executor: bionic
+    steps:
+      - test-sockets-chrome
+  # windows and mac do not have separate build and test jobs, as they only run
+  # a limited set of tests; it is simpler and faster to do it all in one job.
+  test-windows:
+    working_directory: "~/path with spaces"
+    executor:
+      name: win/server-2019
+      shell: bash.exe -eo pipefail
+    environment:
+      PYTHONUNBUFFERED: "1"
+      EMSDK_NOTTY: "1"
+      # clang can compile but not link in the current setup, see
+      # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
+      EMTEST_LACKS_NATIVE_CLANG: "1"
+      EMTEST_SKIP_V8: "1"
+      EMTEST_SKIP_EH: "1"
+      EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_SIMD: "1"
+      EMTEST_SKIP_SCONS: "1"
+      EMTEST_SKIP_RUST: "1"
+      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_BROWSER: "0"
+    steps:
+      - checkout
+      - run:
+          name: Install packages
+          command: |
+            choco install -y cmake.portable ninja pkgconfiglite
+      - run:
+          name: Add python to bash path
+          command: echo "export PATH=\"$PATH:/c/Python27amd64/\"" >> $BASH_ENV
+      # note we do *not* build all libraries and freeze the cache; as we run
+      # only limited tests here, it's more efficient to build on demand
+      - install-emsdk
+      - pip-install:
+          python: "$EMSDK_PYTHON"
+      - run-tests:
+          title: "crossplatform tests"
+          test_targets: "--crossplatform-only"
+      - upload-test-results
+      # Run a single websockify-based test to ensure it works on windows.
+      - run-tests:
+          title: "sockets.test_nodejs_sockets_echo*"
+          test_targets: "
+            other.test_minimal_runtime_code_size_hello_embind"
+      - upload-test-results
+
+  test-mac-arm64:
+    executor: mac-arm64
+    environment:
+      # We don't install d8 or modern node on the mac runner so we skip any
+      # tests that depend on those.
+      EMTEST_SKIP_V8: "1"
+      EMTEST_SKIP_EH: "1"
+      EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_SCONS: "1"
+      EMTEST_SKIP_RUST: "1"
+      # Some native clang tests assume x86 clang (e.g. -sse2)
+      EMTEST_LACKS_NATIVE_CLANG: "1"
+      EMCC_SKIP_SANITY_CHECK: "1"
+    steps:
+      - setup-macos
+      - install-emsdk
+      # TODO: We can't currently do pip install here since numpy and other packages
+      # are currently missing arm64 macos binaries.
+      - run-tests:
+          title: "crossplatform tests"
+          test_targets: "other.test_minimal_runtime_code_size_hello_embind"
+      - upload-test-results
 
 workflows:
   build-test:
     jobs:
+      - ruff
+      - mypy
+      - eslint
+      - build-docs
       - build-linux
+      - test-sanity:
+          requires:
+            - build-linux
+      - test-posixtest:
+          requires:
+            - build-linux
+      - test-core0:
+          requires:
+            - build-linux
+      - test-core2:
+          requires:
+            - build-linux
+      - test-core3:
+          requires:
+            - build-linux
+      - test-wasm64:
+          requires:
+            - build-linux
+      - test-wasm64-4gb:
+          requires:
+            - build-linux
+      - test-wasm2js1:
+          requires:
+            - build-linux
       - test-other:
           requires:
             - build-linux
+      - test-browser-chrome:
+          requires:
+            - build-linux
+      - test-browser-chrome-2gb:
+          requires:
+            - build-linux
+      - test-browser-chrome-wasm64:
+          requires:
+            - build-linux
+      - test-browser-chrome-wasm64-4gb:
+          requires:
+            - build-linux
+      - test-browser-firefox:
+          requires:
+            - build-linux
+      - test-browser-firefox-wasm64
+      - test-sockets-chrome:
+          requires:
+            - build-linux
+      - test-jsc
+      - test-spidermonkey
+      - test-node-compat
+      - test-windows
+      - test-mac-arm64
