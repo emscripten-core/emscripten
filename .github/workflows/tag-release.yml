@@ -22,8 +22,8 @@ jobs:
           uses: peter-evans/create-pull-request@v6
           with:
             token: ${{ secrets.EMSCRIPTEN_BOT_TOKEN }}
-            title: Mark ${{ env.RELEASE_VERSION }} as released [ci skip]
-            body: Update changelog and emscripten-version.txt
+            title: Mark ${{ env.RELEASE_VERSION }} as released
+            body: Update changelog and emscripten-version.txt [ci skip]
             team-reviewers: release-reviewers
             delete-branch: true
         - name: Enable auto-merge
