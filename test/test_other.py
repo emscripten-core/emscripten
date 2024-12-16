@@ -9475,7 +9475,7 @@ int main() {
           'wire.h', 'val.h', 'bind.h',
           'webgpu_cpp.h', 'webgpu_cpp_chained_struct.h', 'webgpu_enum_class_bitmasks.h',
           # Some headers are not yet C compatible
-          'arm_neon.h', 'avxintrin.h', 'immintrin.h',
+          'arm_neon.h',
         ]
         if directory and directory != 'compat':
           header = f'{directory}/{header}'
