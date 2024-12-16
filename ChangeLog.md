@@ -29,7 +29,7 @@ See docs/process.md for more on how version tagging works.
   the Wasm module.  This will be lowered away by babel when targeting older
   browsers. (#23068)
 - Due to the discontinued support for invalid specializations of
-- `std::basic_string` (https://github.com/llvm/llvm-project/pull/72694), the
+  `std::basic_string` (https://github.com/llvm/llvm-project/pull/72694), the
   support for `std::basic_string<unsigned char>` was removed from embind.
   (#23070)
 - The minimum supported versions of browser engines that we support were updated
