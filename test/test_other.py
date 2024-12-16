@@ -2892,10 +2892,10 @@ More info: https://emscripten.org
     'AJSDCE': (['AJSDCE'],),
     'emitDCEGraph': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph-closure': (['emitDCEGraph', '--no-print', '--closure-friendly'], 'emitDCEGraph.js'),
-    'emitDCEGraph2': (['emitDCEGraph', '--no-print'],),
-    'emitDCEGraph3': (['emitDCEGraph', '--no-print'],),
-    'emitDCEGraph4': (['emitDCEGraph', '--no-print'],),
-    'emitDCEGraph5': (['emitDCEGraph', '--no-print'],),
+    'emitDCEGraph-dynCall': (['emitDCEGraph', '--no-print'],),
+    'emitDCEGraph-eval': (['emitDCEGraph', '--no-print'],),
+    'emitDCEGraph-sig': (['emitDCEGraph', '--no-print'],),
+    'emitDCEGraph-prefixing': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph-scopes': (['emitDCEGraph', '--no-print'],),
     'minimal-runtime-applyDCEGraphRemovals': (['applyDCEGraphRemovals'],),
     'applyDCEGraphRemovals': (['applyDCEGraphRemovals'],),
@@ -9014,7 +9014,7 @@ int main() {
     self.run_process(cmd)
 
     # build main module
-    args = ['-g', '-sEXPORTED_FUNCTIONS=_main,_foo', '-sMAIN_MODULE=2', '-lnodefs.js']
+    args = ['-g', '-sEXPORTED_FUNCTIONS=_main,_foo', '-sMAIN_MODULE=2', '-sNODERAWFS']
     cmd = [EMCC, test_file('other/alias/main.c'), '-o', 'main.js'] + args
     print(' '.join(cmd))
     self.run_process(cmd)
@@ -9474,7 +9474,7 @@ int main() {
           'wire.h', 'val.h', 'bind.h',
           'webgpu_cpp.h', 'webgpu_cpp_chained_struct.h', 'webgpu_enum_class_bitmasks.h',
           # Some headers are not yet C compatible
-          'arm_neon.h', 'avxintrin.h', 'immintrin.h',
+          'arm_neon.h',
         ]
         if directory and directory != 'compat':
           header = f'{directory}/{header}'
@@ -14784,10 +14784,8 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
     void setup() {
       EM_ASM(
-        FS.mkdir('/working');
-        FS.mount(NODEFS, { root: '.' }, '/working');
-        FS.mkdir('/working/new-dir');
-        FS.writeFile('/working/new-dir/test.txt', 'test');
+        FS.mkdir('new-dir');
+        FS.writeFile('new-dir/test.txt', 'test');
       );
     }
 
@@ -14795,13 +14793,13 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       int err;
       struct stat s;
       memset(&s, 0, sizeof(s));
-      err = stat("/working/new-dir", &s);
+      err = stat("new-dir", &s);
       assert(S_ISDIR(s.st_mode));
       assert(s.st_mode & S_IXUSR);
       assert(s.st_mode & S_IXGRP);
       assert(s.st_mode & S_IXOTH);
 
-      err = stat("/working/new-dir/test.txt", &s);
+      err = stat("new-dir/test.txt", &s);
       assert(s.st_mode & S_IXUSR);
       assert(s.st_mode & S_IXGRP);
       assert(s.st_mode & S_IXOTH);
@@ -14815,7 +14813,8 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       return EXIT_SUCCESS;
     }
     '''
-    self.do_run(src, emcc_args=['-lnodefs.js'])
+    self.setup_nodefs_test()
+    self.do_run(src)
 
   @parameterized({
     'wasm2js': (True,),

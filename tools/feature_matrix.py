@@ -128,11 +128,10 @@ def enable_feature(feature, reason, override=False):
   """
   if override:
     enable_override_features.add(feature)
-  if check_feature(feature, reason):
-      # If no conflict, bump the minimum version to accommodate the feature.
-      setattr(settings, name, min_version)
+  return check_feature(feature, reason, enable=True)
 
-def check_feature(feature, reason):
+
+def check_feature(feature, reason, enable=False):
   for name, min_version in min_browser_versions[feature].items():
     name = f'MIN_{name.upper()}_VERSION'
     if settings[name] < min_version:
@@ -142,10 +141,9 @@ def check_feature(feature, reason):
             'compatibility',
             f'{name}={user_settings[name]} is not compatible with {reason} '
             f'({min_version} or above required)')
-        return False
-      else:
-        return True
-
+      elif enable:
+        # If no conflict, bump the minimum version to accommodate the feature.
+        setattr(settings, name, min_version)
 
 
 def disable_feature(feature):

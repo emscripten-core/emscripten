@@ -1023,6 +1023,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.is_2gb() or self.is_4gb():
       self.skipTest('wasm2js does not support over 2gb of memory')
 
+  def setup_nodefs_test(self):
+    self.require_node()
+    self.emcc_args += ['-lnodefs.js', '--pre-js', test_file('setup_nodefs.js')]
+
   def setup_node_pthreads(self):
     self.require_node()
     self.emcc_args += ['-Wno-pthreads-mem-growth', '-pthread']

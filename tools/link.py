@@ -2372,21 +2372,6 @@ def phase_binaryen(target, options, wasm_target):
     write_file(final_js, js)
 
 
-def node_es6_imports():
-  if not settings.EXPORT_ES6 or not settings.ENVIRONMENT_MAY_BE_NODE:
-    return ''
-
-  # Multi-environment builds uses `await import` in `shell.js`
-  if settings.ENVIRONMENT_MAY_BE_WEB:
-    return ''
-
-  # Use static import declaration if we only target Node.js
-  return '''
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-'''
-
-
 def node_pthread_detection():
   # Under node we detect that we are running in a pthread by checking the
   # workerData property.
@@ -2401,11 +2386,10 @@ def modularize():
   logger.debug(f'Modularizing, assigning to var {settings.EXPORT_NAME}')
   src = read_file(final_js)
 
-  # Multi-environment ES6 builds require an async function
+  # When targetting node and ES6 we use `await import ..` in the generated code
+  # so the outer function needs to be marked as async.
   async_emit = ''
-  if settings.EXPORT_ES6 and \
-     settings.ENVIRONMENT_MAY_BE_NODE and \
-     settings.ENVIRONMENT_MAY_BE_WEB:
+  if settings.EXPORT_ES6 and settings.ENVIRONMENT_MAY_BE_NODE:
     async_emit = 'async '
 
   # TODO: Remove when https://bugs.webkit.org/show_bug.cgi?id=223533 is resolved.
@@ -2456,25 +2440,23 @@ export default async function init(moduleArg = {}) {
       if settings.ENVIRONMENT_MAY_BE_NODE:
         script_url_node = "if (typeof __filename != 'undefined') _scriptName = _scriptName || __filename;"
     if settings.MODULARIZE == 'instance':
-      src = '''%(node_imports)s
+      src = '''\
   var _scriptName = %(script_url)s;
   %(script_url_node)s
   %(src)s
 ''' % {
-        'node_imports': node_es6_imports(),
         'script_url': script_url,
         'script_url_node': script_url_node,
         'src': src,
       }
     else:
-      src = '''%(node_imports)s
+      src = '''\
 var %(EXPORT_NAME)s = (() => {
   var _scriptName = %(script_url)s;
   %(script_url_node)s
   return (%(src)s);
 })();
 ''' % {
-        'node_imports': node_es6_imports(),
         'EXPORT_NAME': settings.EXPORT_NAME,
         'script_url': script_url,
         'script_url_node': script_url_node,
