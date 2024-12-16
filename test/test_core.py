@@ -5908,6 +5908,8 @@ Module.onRuntimeInitialized = () => {
     'noderawfs': (['-sNODERAWFS'],)
   })
   def test_fs_mkdir_dotdot(self, args):
+    if '-DNODEFS' in args:
+      self.setup_nodefs_test()
     self.do_runf('fs/test_fs_mkdir_dotdot.c', 'success', emcc_args=args)
 
   def test_sigalrm(self):
