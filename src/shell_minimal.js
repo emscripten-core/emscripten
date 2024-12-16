@@ -41,9 +41,6 @@ var readyPromise = new Promise((resolve, reject) => {
   readyPromiseResolve = resolve;
   readyPromiseReject = reject;
 });
-#if ASSERTIONS
-{{{ addReadyPromiseAssertions() }}}
-#endif
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE

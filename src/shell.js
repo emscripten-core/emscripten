@@ -47,9 +47,6 @@ var readyPromise = new Promise((resolve, reject) => {
   readyPromiseResolve = resolve;
   readyPromiseReject = reject;
 });
-#if ASSERTIONS
-{{{ addReadyPromiseAssertions() }}}
-#endif
 #endif
 
 // Determine the runtime environment we are in. You can customize this by

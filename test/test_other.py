@@ -11962,31 +11962,6 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
 '''
     self.do_runf('src.cpp', expected, emcc_args=['-sASSERTIONS'])
 
-  def test_modularize_assertions_on_ready_promise(self):
-    # check that when assertions are on we give useful error messages for
-    # mistakenly thinking the Promise is an instance. I.e., once you could do
-    # Module()._main to get an instance and the main function, but after
-    # the breaking change in #10697 Module() now returns a promise, and to get
-    # the instance you must use .then() to get a callback with the instance.
-    create_file('test.js', r'''
-      try {
-        Module()._main;
-      } catch(e) {
-        console.log(e);
-      }
-      try {
-        Module().onRuntimeInitialized = 42;
-      } catch(e) {
-        console.log(e);
-      }
-    ''')
-    self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sASSERTIONS', '--extern-post-js', 'test.js'])
-    # A return code of 1 is from an uncaught exception not handled by
-    # the domain or the 'uncaughtException' event handler.
-    out = self.run_js('a.out.js', assert_returncode=1)
-    self.assertContained('You are getting _main on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js', out)
-    self.assertContained('You are setting onRuntimeInitialized on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js', out)
-
   def test_modularize_assertions_on_reject_promise(self):
     # Check that there is an uncaught exception in modularize mode.
     # Once we added an `uncaughtException` handler to the global process
