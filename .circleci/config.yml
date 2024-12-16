@@ -388,7 +388,7 @@ commands:
             #  "Firefox is already running, but is not responding."
             # TODO: find out a way to shut down and restart firefox
       - upload-test-results
-  test-sockets-chrome-command:
+  test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
       - prepare-for-tests
@@ -628,7 +628,7 @@ jobs:
       - run-tests-linux:
           test_targets: "wasm2js1"
   test-wasm64:
-    # We don't use `focal` here since its tool old to run recent node versions:
+    # We don't use `bionic` here since its tool old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
     executor: linux-python
     steps:
@@ -662,7 +662,7 @@ jobs:
       LANG: "C.UTF-8"
       # Only run 2 tests at a time to avoid OOM (since each tests used >4gb)
       EMCC_CORES: "2"
-    # We don't use `focal` here since its too old to run recent node versions:
+    # We don't use `bionic` here since its too old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
     executor: linux-python
     steps:
@@ -733,7 +733,7 @@ jobs:
             core2.test_demangle_stacks_symbol_map"
       - upload-test-results
   test-node-compat:
-    # We don't use `focal` here since its too old to run recent node versions:
+    # We don't use `bionic` here since its too old to run recent node versions:
     # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
     executor: linux-python
     environment:
@@ -900,7 +900,7 @@ jobs:
   test-sockets-chrome:
     executor: focal
     steps:
-      - test-sockets-chrome-command
+      - test-sockets-chrome
   # windows and mac do not have separate build and test jobs, as they only run
   # a limited set of tests; it is simpler and faster to do it all in one job.
   test-windows:
