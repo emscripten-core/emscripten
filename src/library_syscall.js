@@ -692,7 +692,7 @@ var SyscallsLibrary = {
   },
   __syscall_getdents64__deps: ['$stringToUTF8'],
   __syscall_getdents64: (fd, dirp, count) => {
-    var stream = SYSCALLS.getStreamFromFD(fd)
+    var stream = SYSCALLS.getStreamFromFD(fd);
     stream.getdents ||= FS.readdirNode(stream.node);
 
     var struct_size = {{{ C_STRUCTS.dirent.__size__ }}};
@@ -710,7 +710,10 @@ var SyscallsLibrary = {
         type = 4; // DT_DIR
       }
       else if (name === '..') {
-        id = stream.node.parent.id;
+        // In Node rawfs, node.parent is null so we fall back to calling
+        // lookupPath.
+        var parent = stream.node.parent ?? FS.lookupPath(stream.path, { parent: true }).node;
+        id = parent.id;
         type = 4; // DT_DIR
       }
       else {

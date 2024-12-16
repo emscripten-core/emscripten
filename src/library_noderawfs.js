@@ -68,6 +68,7 @@ addToLibrary({
     rename(...args) { fs.renameSync(...args); },
     rmdir(...args) { fs.rmdirSync(...args); },
     readdir(...args) { return ['.', '..'].concat(fs.readdirSync(...args)); },
+    readdirNode(node) { return ['.', '..'].concat(fs.readdirSync(node.path)); },
     unlink(...args) { fs.unlinkSync(...args); },
     readlink(...args) { return fs.readlinkSync(...args); },
     stat(path, dontFollow) {
