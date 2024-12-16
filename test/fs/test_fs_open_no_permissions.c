@@ -32,13 +32,13 @@ void setup() {
 }
 
 int main() {
-    setup();
-    
-    int res = open("a", O_CREAT, 0);
-    printf("error: %s\n", strerror(errno));
-    assert(res >= 0);
-    struct stat st;
-    assert(stat("a", &st) == 0);
-    assert((st.st_mode & 0777) == 0);
-    printf("success\n");
+  setup();
+
+  int res = open("a", O_CREAT, 0);
+  printf("error: %s\n", strerror(errno));
+  assert(res >= 0);
+  struct stat st;
+  assert(stat("a", &st) == 0);
+  assert((st.st_mode & 0777) == 0);
+  printf("success\n");
 }
