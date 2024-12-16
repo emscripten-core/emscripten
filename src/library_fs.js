@@ -885,6 +885,7 @@ FS.staticInit();
 #endif
       parent.node_ops.rmdir(parent, name);
       FS.destroyNode(node);
+      node.parent = null;
 #if FS_DEBUG
       if (FS.trackingDelegate['onDeletePath']) {
         FS.trackingDelegate['onDeletePath'](path);
@@ -895,6 +896,9 @@ FS.staticInit();
       FS.readdirNode(FS.lookupPath(path, { follow: true }).node);
     },
     readdirNode(node) {
+      if (!node.parent) {
+        return [];
+      }
       if (!node.node_ops.readdir) {
         throw new FS.ErrnoError({{{ cDefs.ENOTDIR }}});
       }
