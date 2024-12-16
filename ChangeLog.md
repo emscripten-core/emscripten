@@ -22,7 +22,7 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - `FS.basename()` no longer calls `PATH.normalize()`, so that
   `FS.basename("a/.")` returns `"."` instead of `"a"` and `FS.basename("a/b/..")`
-  returns `".."` instead of `"a"`.
+  returns `".."` instead of `"a"`. (#23180)
 
 3.1.74 - 12/14/24
 -----------------
