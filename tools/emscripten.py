@@ -501,12 +501,14 @@ def finalize_wasm(infile, outfile, js_syms):
 
   # if we don't need to modify the wasm, don't tell finalize to emit a wasm file
   modify_wasm = False
+  need_name_section = False
 
   if settings.WASM2JS:
     # wasm2js requires full legalization (and will do extra wasm binary
     # later processing later anyhow)
     modify_wasm = True
   if settings.DEBUG_LEVEL >= 2 or settings.ASYNCIFY_ADD or settings.ASYNCIFY_ADVISE or settings.ASYNCIFY_ONLY or settings.ASYNCIFY_REMOVE or settings.EMIT_SYMBOL_MAP or settings.EMIT_NAME_SECTION:
+    need_name_section = True
     args.append('-g')
   if settings.WASM_BIGINT:
     args.append('--bigint')
@@ -568,12 +570,18 @@ def finalize_wasm(infile, outfile, js_syms):
                infile]
         shared.check_call(cmd)
 
-  if not settings.GENERATE_DWARF or not settings.EMIT_PRODUCERS_SECTION:
-    # For sections we no longer need, strip now to speed subsequent passes
+  # For sections we no longer need, strip now to speed subsequent passes.
+  # If Binaryen is not needed, this is also our last chance to strip.
+  strip_sections = []
+  if not settings.EMIT_PRODUCERS_SECTION:
+    strip_sections += ['producers']
+  if not need_name_section:
+    strip_sections += ['name']
+
+  if strip_sections or not settings.GENERATE_DWARF:
     building.save_intermediate(outfile, 'strip.wasm')
-    sections = ['producers'] if not settings.EMIT_PRODUCERS_SECTION else []
     building.strip(infile, outfile, debug=not settings.GENERATE_DWARF,
-                   sections=sections)
+                   sections=strip_sections)
 
   metadata = get_metadata(outfile, outfile, modify_wasm, args)
 

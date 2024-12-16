@@ -1268,6 +1268,13 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       if is_int(requested_level):
         # the -gX value is the debug level (-g1, -g2, etc.)
         settings.DEBUG_LEVEL = validate_arg_level(requested_level, 4, 'invalid debug level: ' + arg)
+        if settings.DEBUG_LEVEL == 0:
+          # Set these explicitly so -g0 overrides previous -g on the cmdline
+          settings.GENERATE_DWARF = 0
+          settings.GENERATE_SOURCE_MAP = 0
+          settings.EMIT_NAME_SECTION = 0
+        elif settings.DEBUG_LEVEL > 1:
+          settings.EMIT_NAME_SECTION = 1
         # if we don't need to preserve LLVM debug info, do not keep this flag
         # for clang
         if settings.DEBUG_LEVEL < 3:
@@ -1298,17 +1305,20 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
           settings.GENERATE_DWARF = 1
         elif requested_level == 'source-map':
           settings.GENERATE_SOURCE_MAP = 1
+          settings.EMIT_NAME_SECTION = 1
           newargs[i] = '-g'
         else:
           # Other non-integer levels (e.g. -gline-tables-only or -gdwarf-5) are
           # usually clang flags that emit DWARF. So we pass them through to
           # clang and make the emscripten code treat it like any other DWARF.
           settings.GENERATE_DWARF = 1
+          settings.EMIT_NAME_SECTION = 1
         # In all cases set the emscripten debug level to 3 so that we do not
         # strip during link (during compile, this does not make a difference).
         settings.DEBUG_LEVEL = 3
     elif check_flag('-profiling') or check_flag('--profiling'):
       settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 2)
+      settings.EMIT_NAME_SECTION = 1
     elif check_flag('-profiling-funcs') or check_flag('--profiling-funcs'):
       settings.EMIT_NAME_SECTION = 1
     elif newargs[i] == '--tracing' or newargs[i] == '--memoryprofiler':
