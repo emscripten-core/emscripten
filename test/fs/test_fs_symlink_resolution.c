@@ -6,9 +6,6 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#if defined(__EMSCRIPTEN__)
-#include "emscripten.h"
-#endif
 
 void makedir(const char *dir) {
   int rtn = mkdir(dir, 0777);
@@ -29,11 +26,6 @@ static void create_file(const char *path) {
 }
 
 void setup() {
-#if defined(__EMSCRIPTEN__) && defined(NODEFS)
-  makedir("working");
-  EM_ASM(FS.mount(NODEFS, { root: '.' }, 'working'));
-  changedir("working");
-#endif
   makedir("a");
   makedir("b");
   makedir("b/c");

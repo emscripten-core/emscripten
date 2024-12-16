@@ -2896,6 +2896,7 @@ More info: https://emscripten.org
     'emitDCEGraph3': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph4': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph5': (['emitDCEGraph', '--no-print'],),
+    'emitDCEGraph-scopes': (['emitDCEGraph', '--no-print'],),
     'minimal-runtime-applyDCEGraphRemovals': (['applyDCEGraphRemovals'],),
     'applyDCEGraphRemovals': (['applyDCEGraphRemovals'],),
     'applyImportAndExportNameChanges': (['applyImportAndExportNameChanges'],),
@@ -8712,16 +8713,6 @@ int main() {
     # adding --metrics should not affect code size
     self.assertEqual(base_size, os.path.getsize('a.out.wasm'))
 
-  def check_expected_size_in_file(self, desc, filename, size):
-    if common.EMTEST_REBASELINE:
-      create_file(filename, f'{size}\n', absolute=True)
-    size_slack = 0.05
-    expected_size = int(read_file(filename).strip())
-    delta = size - expected_size
-    ratio = abs(delta) / float(expected_size)
-    print('  seen %s size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (desc, size, expected_size, delta, ratio))
-    self.assertLess(ratio, size_slack)
-
   @crossplatform
   def test_unoptimized_code_size(self):
     # We don't care too about unoptimized code size but we would like to keep it
@@ -9024,7 +9015,7 @@ int main() {
     self.run_process(cmd)
 
     # build main module
-    args = ['-g', '-sEXPORTED_FUNCTIONS=_main,_foo', '-sMAIN_MODULE=2', '-lnodefs.js']
+    args = ['-g', '-sEXPORTED_FUNCTIONS=_main,_foo', '-sMAIN_MODULE=2', '-sNODERAWFS']
     cmd = [EMCC, test_file('other/alias/main.c'), '-o', 'main.js'] + args
     print(' '.join(cmd))
     self.run_process(cmd)
@@ -9484,7 +9475,7 @@ int main() {
           'wire.h', 'val.h', 'bind.h',
           'webgpu_cpp.h', 'webgpu_cpp_chained_struct.h', 'webgpu_enum_class_bitmasks.h',
           # Some headers are not yet C compatible
-          'arm_neon.h', 'avxintrin.h', 'immintrin.h',
+          'arm_neon.h',
         ]
         if directory and directory != 'compat':
           header = f'{directory}/{header}'
@@ -14792,10 +14783,8 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
     void setup() {
       EM_ASM(
-        FS.mkdir('/working');
-        FS.mount(NODEFS, { root: '.' }, '/working');
-        FS.mkdir('/working/new-dir');
-        FS.writeFile('/working/new-dir/test.txt', 'test');
+        FS.mkdir('new-dir');
+        FS.writeFile('new-dir/test.txt', 'test');
       );
     }
 
@@ -14803,13 +14792,13 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       int err;
       struct stat s;
       memset(&s, 0, sizeof(s));
-      err = stat("/working/new-dir", &s);
+      err = stat("new-dir", &s);
       assert(S_ISDIR(s.st_mode));
       assert(s.st_mode & S_IXUSR);
       assert(s.st_mode & S_IXGRP);
       assert(s.st_mode & S_IXOTH);
 
-      err = stat("/working/new-dir/test.txt", &s);
+      err = stat("new-dir/test.txt", &s);
       assert(s.st_mode & S_IXUSR);
       assert(s.st_mode & S_IXGRP);
       assert(s.st_mode & S_IXOTH);
@@ -14823,7 +14812,8 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       return EXIT_SUCCESS;
     }
     '''
-    self.do_run(src, emcc_args=['-lnodefs.js'])
+    self.setup_nodefs_test()
+    self.do_run(src)
 
   @parameterized({
     'wasm2js': (True,),
@@ -15260,7 +15250,7 @@ addToLibrary({
 
   def test_browser_too_old(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sMIN_CHROME_VERSION=10'])
-    self.assertContained('emcc: error: MIN_CHROME_VERSION older than 33 is not supported', err)
+    self.assertContained('emcc: error: MIN_CHROME_VERSION older than 45 is not supported', err)
 
   def test_js_only_settings(self):
     err = self.run_process([EMCC, test_file('hello_world.c'), '-o', 'foo.wasm', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=emscripten_get_heap_max'], stderr=PIPE).stderr
