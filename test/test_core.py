@@ -1951,7 +1951,7 @@ int main(int argc, char **argv) {
     self.do_core_test('test_em_js.cpp', force_c=force_c)
     self.assertContained("no args returning int", read_file('test_em_js.js'))
 
-  @no_wasm2js('WASM_BIGINT is not compatible with wasm2js')
+  @no_wasm2js('using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported')
   def test_em_js_i64(self):
     err = self.expect_fail([EMCC, '-Werror', '-sWASM_BIGINT=0', test_file('core/test_em_js_i64.c')])
     self.assertContained('emcc: error: using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `foo`', err)
@@ -8432,7 +8432,6 @@ Module.onRuntimeInitialized = () => {
     if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
     self.set_setting('WASM', 0)
-    self.set_setting('WASM_BIGINT', 0)
     self.do_core_test('test_hello_world.c')
     self.assertNotExists('test_hello_world.js.mem')
 

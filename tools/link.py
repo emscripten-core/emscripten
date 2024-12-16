@@ -797,11 +797,15 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
     settings.WASM2JS = 1
     # Wasm bigint doesn't make sense with wasm2js, since it controls how the
     # wasm and JS interact.
+    if user_settings.get('WASM_BIGINT'):
+      exit_with_error('WASM_BIGINT=1 is not compatible with WASM=0 (wasm2js)')
     settings.WASM_BIGINT = 0
     feature_matrix.disable_feature(feature_matrix.Feature.JS_BIGINT_INTEGRATION)
   if settings.WASM == 2:
     # Requesting both Wasm and Wasm2JS support
     settings.WASM2JS = 1
+    if user_settings.get('WASM_BIGINT'):
+      exit_with_error('WASM_BIGINT=1 is not compatible with WASM=0 (wasm2js)')
     settings.WASM_BIGINT = 0
     feature_matrix.disable_feature(feature_matrix.Feature.JS_BIGINT_INTEGRATION)
 
