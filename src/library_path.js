@@ -66,7 +66,6 @@ addToLibrary({
     basename: (path) => {
       // EMSCRIPTEN return '/'' for '/', not an empty string
       if (path === '/') return '/';
-      path = PATH.normalize(path);
       path = path.replace(/\/$/, "");
       var lastSlash = path.lastIndexOf('/');
       if (lastSlash === -1) return path;
