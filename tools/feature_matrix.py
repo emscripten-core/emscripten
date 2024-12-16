@@ -66,7 +66,7 @@ min_browser_versions = {
   Feature.JS_BIGINT_INTEGRATION: {
     'chrome': 67,
     'firefox': 68,
-    'safari': 140100, # TODO(features): set this back to 15 after we update the default targets.
+    'safari': 140100, # TODO(https://github.com/emscripten-core/emscripten/issues/23184): set this back to 15 after we update the default targets.
     'node': 130000,
   },
   Feature.THREADS: {

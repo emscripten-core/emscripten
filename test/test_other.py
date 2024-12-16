@@ -12396,7 +12396,8 @@ Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value 
     # plain -O0
     legalization_message = 'to disable int64 legalization (which requires changes after link) use -sWASM_BIGINT'
     fail(['-sWASM_BIGINT=0'], legalization_message)
-    fail(['-sMIN_SAFARI_VERSION=140000'], legalization_message) # TODO(features): change this back to 140100 after 15 is default
+    # TODO(https://github.com/emscripten-core/emscripten/issues/23184): change this back to 140100 after 15 is default
+    fail(['-sMIN_SAFARI_VERSION=140000'], legalization_message)
     # optimized builds even without legalization
     optimization_message = '-O2+ optimizations always require changes, build with -O0 or -O1 instead'
     fail(['-O2'], optimization_message)
@@ -14470,7 +14471,7 @@ foo/version.txt
 
   def test_min_browser_version(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=120000'])
-    # TODO(features): fix back to 15000 once Safari 15 is default
+    # TODO(# TODO(https://github.com/emscripten-core/emscripten/issues/23184): change this back to 140100 after 15 is default): fix back to 15000 once Safari 15 is default
     self.assertContained('emcc: error: MIN_SAFARI_VERSION=120000 is not compatible with WASM_BIGINT (140100 or above required)', err)
 
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_CHROME_VERSION=73'])
