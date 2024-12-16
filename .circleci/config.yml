@@ -254,12 +254,6 @@ commands:
             env
             ./test/runner << parameters.test_targets >>
             $EMSDK_PYTHON ./test/check_clean.py
-  freeze-cache:
-    description: "Freeze emscripten cache"
-    steps:
-      - run:
-          name: Add EM_FROZEN_CACHE to bash env
-          command: echo "export EM_FROZEN_CACHE=1" >> $BASH_ENV
   set-retry-flaky-tests:
     description: "Set EMTEST_RETRY_FLAKY"
     steps:
@@ -282,10 +276,6 @@ commands:
         default: ""
     steps:
       - prepare-for-tests
-      - when:
-          condition: << parameters.frozen_cache >>
-          steps:
-            - freeze-cache
       - run-tests:
           test_targets: << parameters.test_targets >>
           title: << parameters.title >>
