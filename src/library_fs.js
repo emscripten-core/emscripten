@@ -294,9 +294,6 @@ FS.staticInit();
       if (errCode) {
         throw new FS.ErrnoError(errCode);
       }
-      if (name === "..") {
-        return parent.parent;
-      }
       var hash = FS.hashName(parent.id, name);
 #if CASE_INSENSITIVE_FS
       name = name.toLowerCase();
