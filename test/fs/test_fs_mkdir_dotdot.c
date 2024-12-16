@@ -30,15 +30,15 @@ void setup() {
 }
 
 int main() {
-    setup();
-    mkdir("test", 0777);
-    mkdir("test/a", 0777);
-    mkdir("test/a/..", 0777);
-    printf("error: %s\n", strerror(errno));
-    assert(errno == EEXIST);
-    mkdir("test/a/.", 0777);
-    printf("error: %s\n", strerror(errno));
-    assert(errno == EEXIST);
-    printf("success\n");
+  setup();
+  mkdir("test", 0777);
+  mkdir("test/a", 0777);
+  mkdir("test/a/..", 0777);
+  printf("error: %s\n", strerror(errno));
+  assert(errno == EEXIST);
+  mkdir("test/a/.", 0777);
+  printf("error: %s\n", strerror(errno));
+  assert(errno == EEXIST);
+  printf("success\n");
 }
 

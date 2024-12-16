@@ -293,9 +293,6 @@ FS.staticInit();
       if (name === "..") {
         return parent.parent;
       }
-      if (name === ".") {
-        return parent;
-      }
       var hash = FS.hashName(parent.id, name);
 #if CASE_INSENSITIVE_FS
       name = name.toLowerCase();

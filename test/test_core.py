@@ -5906,8 +5906,6 @@ Module.onRuntimeInitialized = () => {
     'noderawfs': (['-sNODERAWFS'],)
   })
   def test_fs_mkdir_dotdot(self, args):
-    if self.get_setting('WASMFS'):
-      self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_fs_mkdir_dotdot.c', 'success', emcc_args=args)
 
   def test_sigalrm(self):
