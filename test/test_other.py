@@ -14471,7 +14471,7 @@ foo/version.txt
 
   def test_min_browser_version(self):
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=120000'])
-    # TODO(# TODO(https://github.com/emscripten-core/emscripten/issues/23184): change this back to 140100 after 15 is default): fix back to 15000 once Safari 15 is default
+    # TODO(https://github.com/emscripten-core/emscripten/issues/23184): fix back to 15000 once Safari 15 is default
     self.assertContained('emcc: error: MIN_SAFARI_VERSION=120000 is not compatible with WASM_BIGINT (140100 or above required)', err)
 
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_CHROME_VERSION=73'])
