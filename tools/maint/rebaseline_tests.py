@@ -83,7 +83,6 @@ def main(argv):
     status, filename = line.strip().split(' ', 1)
     filenames.append(filename)
 
-
   commit_message = f'''
 Automatic rebaseline of codesize expectations. NFC
 
