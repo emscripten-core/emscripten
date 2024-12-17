@@ -85,8 +85,9 @@ def main(argv):
   output = run(['git', 'status', '-uno', '--porcelain'])
   filenames = []
   for line in output.splitlines():
-    status, filename = line.strip().split(' ', 1)
-    filenames.append(filename)
+    status, filename = line.strip().rsplit(' ', 1)
+    if filename.startswith('test/'):
+      filenames.append(filename)
 
   commit_message = f'''
 Automatic rebaseline of codesize expectations. NFC

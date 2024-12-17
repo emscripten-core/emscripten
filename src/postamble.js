@@ -26,17 +26,13 @@ if (ENVIRONMENT_IS_WORKER) {
 
 {{{ exportRuntime() }}}
 
+#if ASSERTIONS
 var calledRun;
+#endif
 
 #if STANDALONE_WASM && MAIN_READS_PARAMS
 var mainArgs = undefined;
 #endif
-
-dependenciesFulfilled = function runCaller() {
-  // If run has never been called, and we should call run (INVOKE_RUN is true, and Module.noInitialRun is not false)
-  if (!calledRun) run();
-  if (!calledRun) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
-};
 
 #if HAS_MAIN
 #if MAIN_READS_PARAMS
@@ -152,6 +148,7 @@ function run() {
 #if RUNTIME_DEBUG
     dbg('run() called, but dependencies remain, so not running');
 #endif
+    dependenciesFulfilled = run;
     return;
   }
 
@@ -176,14 +173,17 @@ function run() {
 #if RUNTIME_DEBUG
     dbg('run() called, but dependencies remain, so not running');
 #endif
+    dependenciesFulfilled = run;
     return;
   }
 
   function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
     // or while the async setStatus time below was happening
-    if (calledRun) return;
+#if ASSERTIONS
+    assert(!calledRun);
     calledRun = true;
+#endif
     Module['calledRun'] = true;
 
     if (ABORT) return;
