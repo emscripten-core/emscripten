@@ -424,12 +424,10 @@ class Library:
 
     This will trigger a build if this library is not in the cache.
     """
-    print(f'system_libs: build: deterministic_paths = {deterministic_paths}  CIRCLECI = {CIRCLECI}')
     self.deterministic_paths = deterministic_paths
     return cache.get(self.get_path(), self.do_build, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def generate(self):
-    print(f'system_libs: generate: CIRCLECI = {CIRCLECI}')
     self.deterministic_paths = False
     return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA,
                      deferred=True)
@@ -467,7 +465,6 @@ class Library:
     raise NotImplementedError()
 
   def generate_ninja(self, build_dir, libname):
-    print(f'system_libs: generate_ninja: deterministic_paths = {self.deterministic_paths}  CIRCLECI = {CIRCLECI}')
     ensure_sysroot()
     utils.safe_ensure_dirs(build_dir)
 
@@ -475,9 +472,6 @@ class Library:
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
       relative_source_dir = os.path.relpath(source_dir, build_dir)
-      print(f'  source_dir = {source_dir}')
-      print(f'  build_dir = {build_dir}')
-      print(f'  relative_source_dir = {relative_source_dir}')
       cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
                  f'-ffile-prefix-map={relative_source_dir}/=',
                  '-fdebug-compilation-dir=/emsdk/emscripten']
@@ -493,7 +487,6 @@ class Library:
     By default, this builds all the source files returned by `self.get_files()`,
     with the `cflags` returned by `self.get_cflags()`.
     """
-    print(f'system_libs: build_objects: deterministic_paths = {self.deterministic_paths}  CIRCLECI = {CIRCLECI}')
     batch_inputs = int(os.environ.get('EMCC_BATCH_BUILD', '1'))
     batches = {}
     commands = []
@@ -501,12 +494,8 @@ class Library:
     cflags = self.get_cflags()
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
-      print(f'  source_dir = {source_dir}')
-      print(f'  build_dir = {build_dir}')
       if batch_inputs:
-        print('batch_inputs')
         relative_source_dir = os.path.relpath(source_dir, build_dir)
-        print(f'  relative_source_dir = {relative_source_dir}')
         cflags += [f'-ffile-prefix-map={relative_source_dir}/=']
       cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
                  '-fdebug-compilation-dir=/emsdk/emscripten']
