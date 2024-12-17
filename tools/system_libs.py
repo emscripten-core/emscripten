@@ -765,6 +765,9 @@ class DebugLibrary(Library):
     cflags = super().get_cflags()
     if not self.is_debug:
       cflags += ['-DNDEBUG']
+      # To make reproducible builds and the results of code size tests
+      # consistent, don't embed the actual __FILE__ paths in release builds.
+      cflags += ['-D__FILE__=""', '-Wno-builtin-macro-redefined']
     return cflags
 
   def get_base_name(self):
