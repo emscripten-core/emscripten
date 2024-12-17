@@ -41,11 +41,11 @@ void changedir(const char *dir) {
 }
 
 void setup() {
-  makedir("working");
+  makedir("/working");
 #if defined(__EMSCRIPTEN__) && defined(NODEFS)
-  EM_ASM(FS.mount(NODEFS, { root: '.' }, 'working'));
+  EM_ASM(FS.mount(NODEFS, { root: '.' }, '/working'));
 #endif
-  changedir("working");
+  changedir("/working");
   makelink("../test/../there!", "link");
   makefile("file", "test");
   makedir("directory");

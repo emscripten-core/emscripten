@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 3.1.75 (in development)
 -----------------------
+- `PATH.basename()` no longer calls `PATH.normalize()`, so that
+  `PATH.basename("a/.")` returns `"."` instead of `"a"` and
+  `PATH.basename("a/b/..")` returns `".."` instead of `"a"`. This is in line with
+  the behaviour of both node and coreutils, and is already the case when using
+  NODERAWFS". (#23180)
 
 3.1.74 - 12/14/24
 -----------------
