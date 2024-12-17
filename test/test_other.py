@@ -115,8 +115,7 @@ def wasmfs_all_backends(f):
 
   @wraps(f)
   def metafunc(self, backend, *args, **kwargs):
-    self.set_setting('WASMFS')
-    self.emcc_args.append('-DWASMFS')
+    self.setup_wasmfs_test()
     self.emcc_args.append(f'-D{backend}')
     f(self, *args, **kwargs)
 
@@ -131,8 +130,7 @@ def also_with_wasmfs_all_backends(f):
   @wraps(f)
   def metafunc(self, backend, *args, **kwargs):
     if backend:
-      self.set_setting('WASMFS')
-      self.emcc_args.append('-DWASMFS')
+      self.setup_wasmfs_test()
       self.emcc_args.append(f'-D{backend}')
     f(self, *args, **kwargs)
 
