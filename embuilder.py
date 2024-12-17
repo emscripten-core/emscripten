@@ -292,7 +292,7 @@ def main():
       if do_build:
         if USE_NINJA:
           print('embuilder: USE_NINJA: library.generate()')
-          library.generate(deterministic_paths=True)
+          library.generate()
         else:
           print('embuilder: NOT USE_NINJA: library.build(deterministic_paths=True)')
           library.build(deterministic_paths=True)

@@ -429,9 +429,9 @@ class Library:
     self.deterministic_paths = deterministic_paths
     return cache.get(self.get_path(), self.do_build, force=USE_NINJA == 2, quiet=USE_NINJA)
 
-  def generate(self, deterministic_paths=False):
-    print(f'system_libs: generate: deterministic_paths = {deterministic_paths}  CIRCLECI = {CIRCLECI}')
-    self.deterministic_paths = deterministic_paths
+  def generate(self):
+    print(f'system_libs: generate: CIRCLECI = {CIRCLECI}')
+    self.deterministic_paths = False
     return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA,
                      deferred=True)
 
