@@ -479,9 +479,9 @@ class Library:
       print(f'  source_dir = {source_dir}')
       print(f'  build_dir = {build_dir}')
       print(f'  relative_source_dir = {relative_source_dir}')
-      #cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
-      #           f'-ffile-prefix-map={relative_source_dir}/=',
-      #           '-fdebug-compilation-dir=/emsdk/emscripten']
+      cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
+                 f'-ffile-prefix-map={relative_source_dir}/=',
+                 '-fdebug-compilation-dir=/emsdk/emscripten']
     asflags = get_base_cflags(preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
@@ -508,9 +508,9 @@ class Library:
         print('batch_inputs')
         relative_source_dir = os.path.relpath(source_dir, build_dir)
         print(f'  relative_source_dir = {relative_source_dir}')
-        #cflags += [f'-ffile-prefix-map={relative_source_dir}/=']
-      #cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
-      #           '-fdebug-compilation-dir=/emsdk/emscripten']
+        cflags += [f'-ffile-prefix-map={relative_source_dir}/=']
+      cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
+                 '-fdebug-compilation-dir=/emsdk/emscripten']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
       ext = shared.suffix(src)
