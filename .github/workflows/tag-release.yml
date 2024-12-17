@@ -23,6 +23,7 @@ jobs:
           with:
             token: ${{ secrets.EMSCRIPTEN_BOT_TOKEN }}
             title: Mark ${{ env.RELEASE_VERSION }} as released
+            body: Update changelog and emscripten-version.txt [ci skip]
             team-reviewers: release-reviewers
             delete-branch: true
         - name: Enable auto-merge

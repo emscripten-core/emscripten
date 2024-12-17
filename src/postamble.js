@@ -40,9 +40,9 @@ dependenciesFulfilled = function runCaller() {
 
 #if HAS_MAIN
 #if MAIN_READS_PARAMS
-function callMain(args = []) {
+{{{ asyncIf(ASYNCIFY == 2) }}} function callMain(args = []) {
 #else
-function callMain() {
+{{{ asyncIf(ASYNCIFY == 2) }}} function callMain() {
 #endif
 #if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
@@ -100,18 +100,12 @@ function callMain() {
     // The current spec of JSPI returns a promise only if the function suspends
     // and a plain value otherwise. This will likely change:
     // https://github.com/WebAssembly/js-promise-integration/issues/11
-    Promise.resolve(ret).then((result) => {
-      exitJS(result, /* implicit = */ true);
-    }).catch((e) => {
-      handleException(e);
-    });
-#else
+    ret = await ret;
+#endif // ASYNCIFY == 2
     // if we're not running an evented main loop, it's time to exit
     exitJS(ret, /* implicit = */ true);
-#endif // ASYNCIFY == 2
     return ret;
-  }
-  catch (e) {
+  } catch (e) {
     return handleException(e);
   }
 #if ABORT_ON_WASM_EXCEPTIONS
