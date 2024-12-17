@@ -202,10 +202,11 @@ function run() {
 #endif
 
 #if HAS_MAIN
+    {{{ makeModuleReceiveWithVar('noInitialRun', undefined, !INVOKE_RUN) }}}
 #if MAIN_READS_PARAMS
-    if (shouldRunNow) callMain(args);
+    if (!noInitialRun) callMain(args);
 #else
-    if (shouldRunNow) callMain();
+    if (!noInitialRun) callMain();
 #endif
 #else
 #if ASSERTIONS
@@ -297,20 +298,6 @@ if (Module['preInit']) {
   }
 }
 #endif
-
-#if HAS_MAIN
-// shouldRunNow refers to calling main(), not run().
-#if INVOKE_RUN
-var shouldRunNow = true;
-#else
-var shouldRunNow = false;
-#endif
-
-#if expectToReceiveOnModule('noInitialRun')
-if (Module['noInitialRun']) shouldRunNow = false;
-#endif
-
-#endif // HAS_MAIN
 
 run();
 
