@@ -5882,7 +5882,7 @@ Module.onRuntimeInitialized = () => {
     )
 
   @crossplatform
-  @also_with_nodefs_both
+  @with_all_fs
   def test_unistd_access(self):
     nodefs = '-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args
     if self.get_setting('WASMFS'):
