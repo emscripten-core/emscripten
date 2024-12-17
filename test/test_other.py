@@ -8048,8 +8048,8 @@ extraLibraryFuncs.push('jsfunc');
     self.do_other_test('test_malloc_multithreading.cpp', emcc_args=args)
 
   @parameterized({
-    '': ([], 'testbind_bigint.js'),
-    'nobigint': (['-sWASM_BIGINT=0'], 'testbind.js'),
+    '': ([], 'testbind.js'),
+    'nobigint': (['-sWASM_BIGINT=0'], 'testbind_nobigint.js'),
   })
   @requires_node
   def test_i64_return_value(self, args, bind_js):
@@ -12894,7 +12894,7 @@ exec "$@"
       self.assertContained('WASM2JS is not compatible with relocatable output', err)
 
   def test_wasm2js_standalone(self):
-    self.do_run_in_out_file_test('hello_world.c', emcc_args=['-sSTANDALONE_WASM', '-sWASM=0', '-sWASM_BIGINT=0'])
+    self.do_run_in_out_file_test('hello_world.c', emcc_args=['-sSTANDALONE_WASM', '-sWASM=0'])
 
   def test_oformat(self):
     self.run_process([EMCC, test_file('hello_world.c'), '--oformat=wasm', '-o', 'out.foo'])

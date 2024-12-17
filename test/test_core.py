@@ -7008,14 +7008,15 @@ void* operator new(size_t size) {
     '': [],
     'minimal_runtime': ['-sMINIMAL_RUNTIME=1']
   })
-  @no_wasm2js('wasm2js incompatible with Bigint')
   def test_dyncall_specific(self, *args):
     if self.get_setting('MEMORY64'):
       self.skipTest('not compatible with MEMORY64')
-    # define DYNCALLS because this test does test calling them directly, and
-    # in WASM_BIGINT mode we do not enable them by default (since we can do
-    # more without them - we don't need to legalize)
-    args = list(args) + ['-sDYNCALLS', '-DWASM_BIGINT']
+    if self.get_setting('WASM_BIGINT'):
+      print('bigint on')
+      # define DYNCALLS because this test does test calling them directly, and
+      # in WASM_BIGINT mode we do not enable them by default (since we can do
+      # more without them - we don't need to legalize)
+      args = list(args) + ['-sDYNCALLS', '-DWASM_BIGINT']
     cases = [
         ('DIRECT', []),
         ('DYNAMIC_SIG', ['-sDYNCALLS']),
@@ -8463,7 +8464,7 @@ Module.onRuntimeInitialized = () => {
     if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
 
-    cmd = [EMCC, test_file('small_hello_world.c'), '-sWASM=2', '-sWASM_BIGINT=0'] + args
+    cmd = [EMCC, test_file('small_hello_world.c'), '-sWASM=2'] + args
     self.run_process(cmd)
 
     # First run with WebAssembly support enabled
