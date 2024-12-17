@@ -457,7 +457,6 @@ jobs:
     environment:
       EMCC_CORES: 16
       EMCC_USE_NINJA: 1
-      EMCC_DEBUG: 1
     steps:
       - checkout
       - run:
@@ -803,7 +802,6 @@ jobs:
       EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_NEW_CMAKE: "1"
-      EMCC_DEBUG: 1
     steps:
       - install-rust
       - run: apt-get install -q -y ninja-build scons ccache
