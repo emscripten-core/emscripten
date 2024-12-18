@@ -5764,7 +5764,7 @@ got: 10
   @crossplatform
   @also_with_noderawfs
   def test_fs_enotdir(self):
-    self.do_run_in_out_file_test('fs/test_enotdir.c')
+    self.do_runf('fs/test_fs_enotdir.c', 'success', emcc_args=args)
 
   @also_with_noderawfs
   def test_fs_append(self):
