@@ -29,9 +29,8 @@ int main() {
   struct stat sta, stb;
   assert(lstat("a", &sta) == 0);
   assert(lstat("b", &stb) == 0);
-  // Remove execute permission from directory. This prevents us from stat'ing
-  // files in the directory in the implementation of readdir which we tried to
-  // use to fix this.
+  // Test that removing permissions from the directory does not effect the
+  // already open directory handle that we have (dirp).
   assert(chmod(".", 0675) == 0);
   int a_ino = -1;
   int b_ino = -1;
