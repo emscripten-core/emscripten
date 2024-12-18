@@ -8,6 +8,8 @@
 #include <errno.h>
 #include <string.h>
 
+// TODO: Combine this with test_fcntl_open.c. First requires fixing
+// test_fcntl_open.c on noderawfs.
 int main() {
   int res = open("a", O_CREAT, 0);
   printf("error: %s\n", strerror(errno));
