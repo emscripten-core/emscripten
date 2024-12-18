@@ -338,7 +338,7 @@ function(${args}) {
               MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
             deps.push('$' + proxyFunc);
             return `
-function(${args}) {
+${async_}function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
   return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${+sync}${args ? ', ' : ''}${args});
 ${body}

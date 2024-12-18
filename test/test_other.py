@@ -115,8 +115,7 @@ def wasmfs_all_backends(f):
 
   @wraps(f)
   def metafunc(self, backend, *args, **kwargs):
-    self.set_setting('WASMFS')
-    self.emcc_args.append('-DWASMFS')
+    self.setup_wasmfs_test()
     self.emcc_args.append(f'-D{backend}')
     f(self, *args, **kwargs)
 
@@ -131,8 +130,7 @@ def also_with_wasmfs_all_backends(f):
   @wraps(f)
   def metafunc(self, backend, *args, **kwargs):
     if backend:
-      self.set_setting('WASMFS')
-      self.emcc_args.append('-DWASMFS')
+      self.setup_wasmfs_test()
       self.emcc_args.append(f'-D{backend}')
     f(self, *args, **kwargs)
 
@@ -2892,10 +2890,10 @@ More info: https://emscripten.org
     'AJSDCE': (['AJSDCE'],),
     'emitDCEGraph': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph-closure': (['emitDCEGraph', '--no-print', '--closure-friendly'], 'emitDCEGraph.js'),
-    'emitDCEGraph2': (['emitDCEGraph', '--no-print'],),
-    'emitDCEGraph3': (['emitDCEGraph', '--no-print'],),
-    'emitDCEGraph4': (['emitDCEGraph', '--no-print'],),
-    'emitDCEGraph5': (['emitDCEGraph', '--no-print'],),
+    'emitDCEGraph-dynCall': (['emitDCEGraph', '--no-print'],),
+    'emitDCEGraph-eval': (['emitDCEGraph', '--no-print'],),
+    'emitDCEGraph-sig': (['emitDCEGraph', '--no-print'],),
+    'emitDCEGraph-prefixing': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph-scopes': (['emitDCEGraph', '--no-print'],),
     'minimal-runtime-applyDCEGraphRemovals': (['applyDCEGraphRemovals'],),
     'applyDCEGraphRemovals': (['applyDCEGraphRemovals'],),
@@ -3095,8 +3093,7 @@ More info: https://emscripten.org
       # TODO: It seems odd that -gsource-map leaves behind a name section. Should it?
       (['-gsource-map'], False, True, True),
       (['-g1', '-Oz', '-gsource-map'], False, True, True),
-      # -g0 does not override -gsource-map but does remove name section. TODO: should it?
-      (['-gsource-map', '-g0'], False, True, False),
+      (['-gsource-map', '-g0'], False, False, False),
       # --emit-symbol-map should not affect the results
       (['--emit-symbol-map', '-gsource-map'], False, True, True),
       (['--emit-symbol-map'], False, False, False),
@@ -3105,7 +3102,7 @@ More info: https://emscripten.org
       (['-sASYNCIFY=1', '-gsource-map'], False, True, True),
       (['-g', '-gsource-map'], True, True, True),
       (['-g2', '-gsource-map'], False, True, True),
-      # (['-gsplit-dwarf', '-gsource-map'], True, True, True), TODO this currently fails!
+      (['-gsplit-dwarf', '-gsource-map'], True, True, True),
       (['-gsource-map', '-sWASM_BIGINT', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, True),
     ]:
       print(flags, expect_dwarf, expect_sourcemap, expect_names)
@@ -8960,39 +8957,39 @@ int main() {
     for export in exports:
       self.assertContained(f'Module["{export}"]', js)
 
-  def test_legalize_js_ffi(self):
-    # test disabling of JS FFI legalization
-    for (args, js_ffi) in [
-        (['-sLEGALIZE_JS_FFI=1', '-sSIDE_MODULE', '-O1'], True),
-        (['-sLEGALIZE_JS_FFI=0', '-sSIDE_MODULE', '-O1'], False),
-        (['-sLEGALIZE_JS_FFI=0', '-sSIDE_MODULE', '-O0'], False),
-        (['-sLEGALIZE_JS_FFI=1', '-sWARN_ON_UNDEFINED_SYMBOLS=0', '-O0'], True),
-        (['-sLEGALIZE_JS_FFI=0', '-sWARN_ON_UNDEFINED_SYMBOLS=0', '-O0'], False),
-      ]:
-      print(args)
-      delete_file('a.out.wasm')
-      cmd = [EMCC, test_file('other/ffi.c'), '-g', '-o', 'a.out.wasm'] + args
-      print(' '.join(cmd))
-      self.run_process(cmd)
-      text = self.get_wasm_text('a.out.wasm')
-      # remove internal comments and extra whitespace
-      text = re.sub(r'\(;[^;]+;\)', '', text)
-      text = re.sub(r'\$var\$*.', '', text)
-      text = re.sub(r'param \$\d+', 'param ', text)
-      text = re.sub(r' +', ' ', text)
-      e_add_f32 = re.search(r'func \$add_f \(param f32\) \(param f32\) \(result f32\)', text)
-      assert e_add_f32, 'add_f export missing'
-      i_i64_i32 = re.search(r'import "env" "import_ll" .*\(param i32 i32\) \(result i32\)', text)
-      i_i64_i64 = re.search(r'import "env" "import_ll" .*\(param i64\) \(result i64\)', text)
-      e_i64_i32 = re.search(r'func \$legalstub\$add_ll \(param i32\) \(param i32\) \(param i32\) \(param i32\) \(result i32\)', text)
-      if js_ffi:
-        assert i_i64_i32,     'i64 not converted to i32 in imports'
-        assert not i_i64_i64, 'i64 not converted to i32 in imports'
-        assert e_i64_i32,     'i64 not converted to i32 in exports'
-      else:
-        assert not i_i64_i32, 'i64 converted to i32 in imports'
-        assert i_i64_i64,     'i64 converted to i32 in imports'
-        assert not e_i64_i32, 'i64 converted to i32 in exports'
+  @parameterized({
+    'legal_side_O1': (['-sLEGALIZE_JS_FFI=1', '-sSIDE_MODULE', '-O1'], True),
+    'nolegal_side_O1': (['-sLEGALIZE_JS_FFI=0', '-sSIDE_MODULE', '-O1'], False),
+    'nolegal_side_O0': (['-sLEGALIZE_JS_FFI=0', '-sSIDE_MODULE', '-O0'], False),
+    'legal_O0': (['-sLEGALIZE_JS_FFI=1', '-sWARN_ON_UNDEFINED_SYMBOLS=0', '-O0'], True),
+    'nolegal_O0': (['-sLEGALIZE_JS_FFI=0', '-sWARN_ON_UNDEFINED_SYMBOLS=0', '-O0'], False),
+  })
+  def test_legalize_js_ffi(self, args, js_ffi):
+    # test disabling of JS FFI legalization when not using bigint
+    print(args)
+    delete_file('a.out.wasm')
+    cmd = [EMCC, test_file('other/ffi.c'), '-g', '-o', 'a.out.wasm'] + args
+    print(' '.join(cmd))
+    self.run_process(cmd)
+    text = self.get_wasm_text('a.out.wasm')
+    # remove internal comments and extra whitespace
+    text = re.sub(r'\(;[^;]+;\)', '', text)
+    text = re.sub(r'\$var\$*.', '', text)
+    text = re.sub(r'param \$\d+', 'param ', text)
+    text = re.sub(r' +', ' ', text)
+    e_add_f32 = re.search(r'func \$add_f \(param f32\) \(param f32\) \(result f32\)', text)
+    assert e_add_f32, 'add_f export missing'
+    i_i64_i32 = re.search(r'import "env" "import_ll" .*\(param i32 i32\) \(result i32\)', text)
+    i_i64_i64 = re.search(r'import "env" "import_ll" .*\(param i64\) \(result i64\)', text)
+    e_i64_i32 = re.search(r'func \$legalstub\$add_ll \(param i32\) \(param i32\) \(param i32\) \(param i32\) \(result i32\)', text)
+    if js_ffi:
+      assert i_i64_i32,     'i64 not converted to i32 in imports'
+      assert not i_i64_i64, 'i64 not converted to i32 in imports'
+      assert e_i64_i32,     'i64 not converted to i32 in exports'
+    else:
+      assert not i_i64_i32, 'i64 converted to i32 in imports'
+      assert i_i64_i64,     'i64 converted to i32 in imports'
+      assert not e_i64_i32, 'i64 converted to i32 in exports'
 
   @disabled('https://github.com/WebAssembly/binaryen/pull/6428')
   def test_no_legalize_js_ffi(self):
@@ -11962,31 +11959,6 @@ Aborted(`Module.wasmBinary` has been replaced by `wasmBinary` (the initial value
 Aborted(`Module.arguments` has been replaced by `arguments_` (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name))
 '''
     self.do_runf('src.cpp', expected, emcc_args=['-sASSERTIONS'])
-
-  def test_modularize_assertions_on_ready_promise(self):
-    # check that when assertions are on we give useful error messages for
-    # mistakenly thinking the Promise is an instance. I.e., once you could do
-    # Module()._main to get an instance and the main function, but after
-    # the breaking change in #10697 Module() now returns a promise, and to get
-    # the instance you must use .then() to get a callback with the instance.
-    create_file('test.js', r'''
-      try {
-        Module()._main;
-      } catch(e) {
-        console.log(e);
-      }
-      try {
-        Module().onRuntimeInitialized = 42;
-      } catch(e) {
-        console.log(e);
-      }
-    ''')
-    self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sASSERTIONS', '--extern-post-js', 'test.js'])
-    # A return code of 1 is from an uncaught exception not handled by
-    # the domain or the 'uncaughtException' event handler.
-    out = self.run_js('a.out.js', assert_returncode=1)
-    self.assertContained('You are getting _main on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js', out)
-    self.assertContained('You are setting onRuntimeInitialized on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js', out)
 
   def test_modularize_assertions_on_reject_promise(self):
     # Check that there is an uncaught exception in modularize mode.

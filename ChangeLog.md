@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 3.1.75 (in development)
 -----------------------
+- `PATH.basename()` no longer calls `PATH.normalize()`, so that
+  `PATH.basename("a/.")` returns `"."` instead of `"a"` and
+  `PATH.basename("a/b/..")` returns `".."` instead of `"a"`. This is in line with
+  the behaviour of both node and coreutils, and is already the case when using
+  NODERAWFS". (#23180)
 
 3.1.74 - 12/14/24
 -----------------
@@ -29,7 +34,7 @@ See docs/process.md for more on how version tagging works.
   the Wasm module.  This will be lowered away by babel when targeting older
   browsers. (#23068)
 - Due to the discontinued support for invalid specializations of
-- `std::basic_string` (https://github.com/llvm/llvm-project/pull/72694), the
+  `std::basic_string` (https://github.com/llvm/llvm-project/pull/72694), the
   support for `std::basic_string<unsigned char>` was removed from embind.
   (#23070)
 - The minimum supported versions of browser engines that we support were updated
