@@ -42,6 +42,8 @@ LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
 # link time.
 USE_NINJA = int(os.environ.get('EMCC_USE_NINJA', '0'))
 
+FAKE_EMSCRIPTEN_PATH = '/emsdk/emscripten'
+
 
 def files_in_path(path, filenames):
   srcdir = utils.path_from_root(path)
@@ -427,8 +429,8 @@ class Library:
     self.deterministic_paths = deterministic_paths
     return cache.get(self.get_path(), self.do_build, force=USE_NINJA == 2, quiet=USE_NINJA)
 
-  def generate(self):
-    self.deterministic_paths = False
+  def generate(self, deterministic_paths=False):
+    self.deterministic_paths = deterministic_paths
     return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA,
                      deferred=True)
 
@@ -469,12 +471,15 @@ class Library:
     utils.safe_ensure_dirs(build_dir)
 
     cflags = self.get_cflags()
+    source_dir = utils.path_from_root()
+    relative_source_dir = os.path.relpath(source_dir, build_dir)
     if self.deterministic_paths:
-      source_dir = utils.path_from_root()
-      relative_source_dir = os.path.relpath(source_dir, build_dir)
-      cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
-                 f'-ffile-prefix-map={relative_source_dir}/=',
-                 '-fdebug-compilation-dir=/emsdk/emscripten']
+      cflags += [f'-ffile-prefix-map={source_dir}={FAKE_EMSCRIPTEN_PATH}',
+                 f'-ffile-prefix-map={relative_source_dir}={FAKE_EMSCRIPTEN_PATH}',
+                 '-fdebug-compilation-dir={FAKE_EMSCRIPTEN_PATH}']
+    else:
+      cflags += [f'-fmacro-prefix-map={source_dir}={FAKE_EMSCRIPTEN_PATH}',
+                 f'-fmacro-prefix-map={relative_source_dir}={FAKE_EMSCRIPTEN_PATH}']
     asflags = get_base_cflags(preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
@@ -492,13 +497,15 @@ class Library:
     commands = []
     objects = set()
     cflags = self.get_cflags()
+    source_dir = utils.path_from_root()
+    relative_source_dir = os.path.relpath(source_dir, build_dir)
     if self.deterministic_paths:
-      source_dir = utils.path_from_root()
-      if batch_inputs:
-        relative_source_dir = os.path.relpath(source_dir, build_dir)
-        cflags += [f'-ffile-prefix-map={relative_source_dir}/=']
-      cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
-                 '-fdebug-compilation-dir=/emsdk/emscripten']
+      cflags += [f'-ffile-prefix-map={relative_source_dir}={FAKE_EMSCRIPTEN_PATH}']
+      cflags += [f'-ffile-prefix-map={source_dir}={FAKE_EMSCRIPTEN_PATH}',
+                 '-fdebug-compilation-dir={FAKE_EMSCRIPTEN_PATH}']
+    else:
+      cflags += [f'-fmacro-prefix-map={relative_source_dir}={FAKE_EMSCRIPTEN_PATH}']
+      cflags += [f'-fmacro-prefix-map={source_dir}={FAKE_EMSCRIPTEN_PATH}']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
       ext = shared.suffix(src)
