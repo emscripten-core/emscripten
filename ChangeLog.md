@@ -23,6 +23,11 @@ See docs/process.md for more on how version tagging works.
 - The `WASM_BIGINT` feature has been enabled by default. This has the effect that
   Wasm i64 values are passed and returned between Wasm and JS as BigInt values
   rather than being split by Binaryen into pairs of Numbers.
+- When using `-sMODULARIZE` we now assert if the factory function is called with
+  the JS `new` keyword.  e.g. `a = new Module()` rather than `b = Module()`.
+  This paves the way for marking the function as `async` which does not allow
+  `new` to be used.  This usage of `new` here was never documented and is
+  considered and antipattern. (#23210)
 - `PATH.basename()` no longer calls `PATH.normalize()`, so that
   `PATH.basename("a/.")` returns `"."` instead of `"a"` and
   `PATH.basename("a/b/..")` returns `".."` instead of `"a"`. This is in line with

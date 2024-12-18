@@ -6774,6 +6774,12 @@ int main(void) {
     output = self.run_js('run.js')
     self.assertEqual(output, 'hello, world!\n')
 
+  def test_modularize_new_misuse(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sMODULARIZE', '-sEXPORT_NAME=Foo'])
+    create_file('run.js', 'var m = require("./a.out.js"); new m();')
+    err = self.run_js('run.js', assert_returncode=NON_ZERO)
+    self.assertContained('Error: Foo() should not be called with `new Foo()`', err)
+
   @parameterized({
     '': ([],),
     'export_name': (['-sEXPORT_NAME=Foo'],),
