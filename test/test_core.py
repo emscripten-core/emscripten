@@ -5756,9 +5756,9 @@ got: 10
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @crossplatform
-  @also_with_noderawfs
+  @also_with_nodefs_both
   def test_fs_enotdir(self):
-    self.do_runf('fs/test_fs_enotdir.c', 'success', emcc_args=args)
+    self.do_runf('fs/test_fs_enotdir.c', 'success')
 
   @also_with_noderawfs
   def test_fs_append(self):
