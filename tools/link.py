@@ -2385,10 +2385,6 @@ def modularize():
   if settings.EXPORT_ES6 and settings.ENVIRONMENT_MAY_BE_NODE:
     async_emit = 'async '
 
-  # TODO: Remove when https://bugs.webkit.org/show_bug.cgi?id=223533 is resolved.
-  if async_emit != '' and settings.EXPORT_NAME == 'config':
-    diagnostics.warning('emcc', 'EXPORT_NAME should not be named "config" when targeting Safari')
-
   if settings.MODULARIZE == 'instance':
     src = '''
 export default async function init(moduleArg = {}) {
