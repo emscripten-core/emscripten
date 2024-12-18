@@ -5858,6 +5858,10 @@ Module.onRuntimeInitialized = () => {
       self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_fs_rename_on_existing.c', 'success')
 
+  @also_with_nodefs_both
+  def test_fs_mkdir_dotdot(self):
+    self.do_runf('fs/test_fs_mkdir_dotdot.c', 'success')
+
   def test_sigalrm(self):
     self.do_runf('test_sigalrm.c', 'Received alarm!')
     self.do_runf('test_sigalrm.c', 'Received alarm!', emcc_args=['-sEXIT_RUNTIME'])
