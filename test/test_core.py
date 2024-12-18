@@ -5754,9 +5754,11 @@ got: 10
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @crossplatform
-  @also_with_noderawfs
+  @also_with_nodefs_both
   def test_fs_enotdir(self):
-    self.do_run_in_out_file_test('fs/test_enotdir.c')
+    if MACOS and '-DNODERAWFS' in self.emcc_args:
+      self.skipTest('BSD libc sets a different errno')
+    self.do_runf('fs/test_fs_enotdir.c', 'success')
 
   @also_with_noderawfs
   def test_fs_append(self):
