@@ -29,7 +29,7 @@ int main() {
   struct stat sta, stb;
   assert(lstat("a", &sta) == 0);
   assert(lstat("b", &stb) == 0);
-  // Test that removing permissions from the directory does not effect the
+  // Test that removing permissions from the directory does not affect the
   // already open directory handle that we have (dirp).
   assert(chmod(".", 0675) == 0);
   int a_ino = -1;
