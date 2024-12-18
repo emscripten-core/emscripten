@@ -2452,6 +2452,19 @@ var %(EXPORT_NAME)s = (() => {
         'wrapper_function': wrapper_function,
       }
 
+  if settings.ASSERTIONS and settings.MODULARIZE != 'instance':
+    src += '''\
+(() => {
+  // Create a small, never-async wrapper around %(EXPORT_NAME)s which
+  // checks for callers incorrectly using it with `new`.
+  var real_%(EXPORT_NAME)s = %(EXPORT_NAME)s;
+  %(EXPORT_NAME)s = function(arg) {
+    if (new.target) throw new Error("%(EXPORT_NAME)s() should not be called with `new %(EXPORT_NAME)s()`");
+    return real_%(EXPORT_NAME)s(arg);
+  }
+})();
+''' % {'EXPORT_NAME': settings.EXPORT_NAME}
+
   # Given the async nature of how the Module function and Module object
   # come into existence in AudioWorkletGlobalScope, store the Module
   # function under a different variable name so that AudioWorkletGlobalScope

@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 3.1.75 (in development)
 -----------------------
+- When using `-sMODULARIZE` we now assert if the factory function is called with
+  the JS `new` keyword.  e.g. `a = new Module()` rather than `b = Module()`.
+  This paves the way for marking the function as `async` which does not allow
+  `new` to be used.  This usage of `new` here was never documented and is
+  considered and antipattern. (#23210)
 - `PATH.basename()` no longer calls `PATH.normalize()`, so that
   `PATH.basename("a/.")` returns `"."` instead of `"a"` and
   `PATH.basename("a/b/..")` returns `".."` instead of `"a"`. This is in line with
