@@ -139,9 +139,9 @@ var quit_ = (status, toThrow) => {
   throw toThrow;
 };
 
-#if SHARED_MEMORY && !MODULARIZE
-// In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
-// before the page load. In non-MODULARIZE modes generate it here.
+#if !MODULARIZE
+// In MODULARIZE mode, _scriptName is captured already in the outer scope
+// In non-MODULARIZE mode, we simply calculate it here.
 var _scriptName = (typeof document != 'undefined') ? document.currentScript?.src : undefined;
 
 #if ENVIRONMENT_MAY_BE_NODE
@@ -156,10 +156,26 @@ if (ENVIRONMENT_IS_NODE) {
 if (ENVIRONMENT_IS_WORKER) {
   _scriptName = self.location.href;
 }
-#endif // SHARED_MEMORY && !MODULARIZE
+#endif // MODULARIZE
 
 // `/` should be present at the end if `scriptDirectory` is not empty
 var scriptDirectory = '';
+#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
+// blob urls look like blob:http://site.com/etc/etc and we cannot infer anything from them.
+// otherwise, slice off the final part of the url to find the script directory.
+// if scriptDirectory does not contain a slash, lastIndexOf will return -1,
+// and scriptDirectory will correctly be replaced with an empty string.
+// If scriptDirectory contains a query (starting with ?) or a fragment (starting with #),
+// they are removed because they could contain a slash.
+if (_scriptName && !_scriptName.startsWith('blob:')) {
+  scriptDirectory = _scriptName.substr(0, _scriptName.replace(/[?#].*/, '').lastIndexOf('/')+1);
+}
+#else
+if (_scriptName) {
+  scriptDirectory = _scriptName.substr(0, _scriptName.lastIndexOf('/')+1);
+}
+#endif
+
 function locateFile(path) {
 #if RUNTIME_DEBUG
   dbg('locateFile:', path, 'scriptDirectory:', scriptDirectory);
@@ -191,22 +207,14 @@ if (ENVIRONMENT_IS_NODE) {
   }
 #endif
 
+  // These modules will usually be used on Node.js. Load them eagerly to avoid
+  // the complexity of lazy-loading.
 #if EXPORT_ES6
   var fs = await import('fs');
   var nodePath = await import('path');
-  var url = await import('url');
-  // EXPORT_ES6 + ENVIRONMENT_IS_NODE always requires use of import.meta.url,
-  // since there's no way getting the current absolute path of the module when
-  // support for that is not available.
-  if (!import.meta.url.startsWith('data:')) {
-    scriptDirectory = nodePath.dirname(url.fileURLToPath(import.meta.url)) + '/';
-  }
 #else
-  // These modules will usually be used on Node.js. Load them eagerly to avoid
-  // the complexity of lazy-loading.
   var fs = require('fs');
   var nodePath = require('path');
-  scriptDirectory = __dirname + '/';
 #endif
 
 #include "node_shell_read.js"
@@ -338,30 +346,6 @@ if (ENVIRONMENT_IS_SHELL) {
 // ENVIRONMENT_IS_NODE.
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
-  if (ENVIRONMENT_IS_WORKER) { // Check worker, not web, since window could be polyfilled
-    scriptDirectory = self.location.href;
-  } else if (typeof document != 'undefined' && document.currentScript) { // web
-    scriptDirectory = document.currentScript.src;
-  }
-#if MODULARIZE
-  // When MODULARIZE, this JS may be executed later, after document.currentScript
-  // is gone, so we saved it, and we use it here instead of any other info.
-  if (_scriptName) {
-    scriptDirectory = _scriptName;
-  }
-#endif
-  // blob urls look like blob:http://site.com/etc/etc and we cannot infer anything from them.
-  // otherwise, slice off the final part of the url to find the script directory.
-  // if scriptDirectory does not contain a slash, lastIndexOf will return -1,
-  // and scriptDirectory will correctly be replaced with an empty string.
-  // If scriptDirectory contains a query (starting with ?) or a fragment (starting with #),
-  // they are removed because they could contain a slash.
-  if (scriptDirectory.startsWith('blob:')) {
-    scriptDirectory = '';
-  } else {
-    scriptDirectory = scriptDirectory.substr(0, scriptDirectory.replace(/[?#].*/, '').lastIndexOf('/')+1);
-  }
-
 #if ENVIRONMENT && ASSERTIONS
   if (!(typeof window == 'object' || typeof WorkerGlobalScope != 'undefined')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
