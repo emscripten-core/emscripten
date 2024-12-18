@@ -252,7 +252,7 @@ Options that are modified or new in *emcc* are listed below:
 "--closure 0|1|2"
    [link] Runs the *Closure Compiler*. Possible values are:
 
-      * "0": No closure compiler (default in "-O2" and below).
+      * "0": No closure compiler (default).
 
       * "1": Run closure compiler. This greatly reduces the size of
         the support JavaScript code (everything but the WebAssembly or
@@ -276,9 +276,6 @@ Options that are modified or new in *emcc* are listed below:
        to make sure a global variable called *Module* already exists
        before the closure-compiled code runs, because then it will
        reuse that variable.
-
-     * Closure is only run if JavaScript opts are being done ("-O2" or
-       above).
 
 "--closure-args=<args>"
    [link] Pass arguments to the *Closure compiler*. This is an

@@ -379,12 +379,75 @@ def also_with_wasmfs(f):
     if DEBUG:
       print('parameterize:wasmfs=%d' % wasmfs)
     if wasmfs:
-      self.set_setting('WASMFS')
-      self.emcc_args.append('-DWASMFS')
+      self.setup_wasmfs_test()
+    else:
+      self.emcc_args += ['-DMEMFS']
     f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'wasmfs': (True,)})
+  return metafunc
+
+
+def also_with_nodefs(func):
+  @wraps(func)
+  def metafunc(self, fs, *args, **kwargs):
+    if DEBUG:
+      print('parameterize:fs=%s' % (fs))
+    if fs == 'nodefs':
+      self.setup_nodefs_test()
+    else:
+      self.emcc_args += ['-DMEMFS']
+      assert fs is None
+    func(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (None,),
+                          'nodefs': ('nodefs',)})
+  return metafunc
+
+
+def also_with_nodefs_both(func):
+  @wraps(func)
+  def metafunc(self, fs, *args, **kwargs):
+    if DEBUG:
+      print('parameterize:fs=%s' % (fs))
+    if fs == 'nodefs':
+      self.setup_nodefs_test()
+    elif fs == 'rawfs':
+      self.setup_noderawfs_test()
+    else:
+      self.emcc_args += ['-DMEMFS']
+      assert fs is None
+    func(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (None,),
+                          'nodefs': ('nodefs',),
+                          'rawfs': ('rawfs',)})
+  return metafunc
+
+
+def with_all_fs(func):
+  @wraps(func)
+  def metafunc(self, fs, *args, **kwargs):
+    if DEBUG:
+      print('parameterize:fs=%s' % (fs))
+    if fs == 'nodefs':
+      self.setup_nodefs_test()
+    elif fs == 'rawfs':
+      self.setup_noderawfs_test()
+    elif fs == 'wasmfs':
+      self.setup_wasmfs_test()
+    else:
+      self.emcc_args += ['-DMEMFS']
+      assert fs is None
+    func(self, *args, **kwargs)
+
+  # TODO(sbc): rather than treat WASMFS as orthogonal we should
+  # probably make it combinatorial with nodefs and noderawfs.
+  parameterize(metafunc, {'': (None,),
+                          'nodefs': ('nodefs',),
+                          'rawfs': ('rawfs',),
+                          'wasmfs': ('wasmfs',)})
   return metafunc
 
 
@@ -396,9 +459,9 @@ def also_with_noderawfs(func):
     if DEBUG:
       print('parameterize:rawfs=%d' % rawfs)
     if rawfs:
-      self.require_node()
-      self.emcc_args += ['-DNODERAWFS']
-      self.set_setting('NODERAWFS')
+      self.setup_noderawfs_test()
+    else:
+      self.emcc_args += ['-DMEMFS']
     func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
@@ -1012,6 +1075,22 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     if self.is_2gb() or self.is_4gb():
       self.skipTest('wasm2js does not support over 2gb of memory')
 
+  def setup_nodefs_test(self):
+    self.require_node()
+    if self.get_setting('WASMFS'):
+      # without this the JS setup code in setup_nodefs.js doesn't work
+      self.set_setting('FORCE_FILESYSTEM')
+    self.emcc_args += ['-DNODEFS', '-lnodefs.js', '--pre-js', test_file('setup_nodefs.js')]
+
+  def setup_noderawfs_test(self):
+    self.require_node()
+    self.emcc_args += ['-DNODERAWFS']
+    self.set_setting('NODERAWFS')
+
+  def setup_wasmfs_test(self):
+    self.set_setting('WASMFS')
+    self.emcc_args += ['-DWASMFS']
+
   def setup_node_pthreads(self):
     self.require_node()
     self.emcc_args += ['-Wno-pthreads-mem-growth', '-pthread']
@@ -1525,6 +1604,16 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
                      os.path.getsize(file2))
     self.assertEqual(read_binary(file1),
                      read_binary(file2))
+
+  def check_expected_size_in_file(self, desc, filename, size):
+    if EMTEST_REBASELINE:
+      create_file(filename, f'{size}\n', absolute=True)
+    size_slack = 0.05
+    expected_size = int(read_file(filename).strip())
+    delta = size - expected_size
+    ratio = abs(delta) / float(expected_size)
+    print('  seen %s size: %d (expected: %d) (delta: %d), ratio to expected: %f' % (desc, size, expected_size, delta, ratio))
+    self.assertLess(ratio, size_slack)
 
   library_cache: Dict[str, Tuple[str, object]] = {}
 

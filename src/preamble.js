@@ -603,8 +603,13 @@ function instrumentWasmTableWithAbort() {
 }
 #endif
 
+#if SINGLE_FILE
+// In SINGLE_FILE mode the wasm binary is encoded inline here as a data: URL.
+var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
+#else
+var wasmBinaryFile;
 function findWasmBinary() {
-#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && !AUDIO_WORKLET
+#if EXPORT_ES6 && USE_ES6_IMPORT_META && !AUDIO_WORKLET
   if (Module['locateFile']) {
 #endif
     var f = '{{{ WASM_BINARY_FILE }}}';
@@ -614,7 +619,7 @@ function findWasmBinary() {
     }
 #endif
     return f;
-#if EXPORT_ES6 && USE_ES6_IMPORT_META && !SINGLE_FILE && !AUDIO_WORKLET // In single-file mode, repeating WASM_BINARY_FILE would emit the contents again. For an Audio Worklet, we cannot use `new URL()`.
+#if EXPORT_ES6 && USE_ES6_IMPORT_META && !AUDIO_WORKLET // In single-file mode, repeating WASM_BINARY_FILE would emit the contents again. For an Audio Worklet, we cannot use `new URL()`.
   }
 #if ENVIRONMENT_MAY_BE_SHELL
   if (ENVIRONMENT_IS_SHELL)
@@ -624,8 +629,7 @@ function findWasmBinary() {
   return new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).href;
 #endif
 }
-
-var wasmBinaryFile;
+#endif
 
 function getBinarySync(file) {
   if (file == wasmBinaryFile && wasmBinary) {
@@ -818,10 +822,10 @@ async function instantiateAsync(binary, binaryFile, imports) {
 #if !SINGLE_FILE
   if (!binary &&
       typeof WebAssembly.instantiateStreaming == 'function' &&
-      !isDataURI(binaryFile) &&
+      !isDataURI(binaryFile)
 #if ENVIRONMENT_MAY_BE_WEBVIEW
       // Don't use streaming for file:// delivered objects in a webview, fetch them synchronously.
-      !isFileURI(binaryFile) &&
+      && !isFileURI(binaryFile)
 #endif
 #if ENVIRONMENT_MAY_BE_NODE
       // Avoid instantiateStreaming() on Node.js environment for now, as while
@@ -830,9 +834,13 @@ async function instantiateAsync(binary, binaryFile, imports) {
       //
       // Reference:
       //   https://github.com/emscripten-core/emscripten/pull/16917
-      !ENVIRONMENT_IS_NODE &&
+      && !ENVIRONMENT_IS_NODE
 #endif
-      typeof fetch == 'function') {
+#if ENVIRONMENT_MAY_BE_SHELL
+      // Shell environments don't have fetch.
+      && !ENVIRONMENT_IS_SHELL
+#endif
+     ) {
     try {
       var response = fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
 #if USE_OFFSET_CONVERTER
@@ -1075,7 +1083,9 @@ function getWasmImports() {
   }
 #endif
 
+#if !SINGLE_FILE
   wasmBinaryFile ??= findWasmBinary();
+#endif
 
 #if WASM_ASYNC_COMPILATION
 #if RUNTIME_DEBUG
@@ -1087,7 +1097,7 @@ function getWasmImports() {
     var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
     receiveInstantiationResult(result);
 #if LOAD_SOURCE_MAP
-    receiveSourceMapJSON(await getSourceMapPromise());
+    receiveSourceMapJSON(await getSourceMapAsync());
 #endif
     return result;
 #if MODULARIZE

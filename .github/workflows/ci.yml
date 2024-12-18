@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  create:
+    tags:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
+    - name: make dist
+      run: |
+        make dist
+        version=`cat emscripten-version.txt | sed s/\"//g`
+        echo "VERSION=$version" >> $GITHUB_ENV
+    - uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+      with:
+        name: emscripten-${{ env.VERSION }}
+        path: emscripten-${{ env.VERSION }}.tar.bz2
+
+  check-expectations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # We want access to other branches, specifically `main`
+      - name: pip install
+        run: |
+          which python3
+          python3 --version
+          python3 -m pip install -r requirements-dev.txt
+      - name: Install emsdk
+        run: |
+          EM_CONFIG=$HOME/emsdk/.emscripten
+          echo $EM_CONFIG
+          echo "EM_CONFIG=$EM_CONFIG" >> $GITHUB_ENV
+          curl -# -L -o ~/emsdk-main.tar.gz https://github.com/emscripten-core/emsdk/archive/main.tar.gz
+          tar -C ~ -xf ~/emsdk-main.tar.gz
+          mv ~/emsdk-main ~/emsdk
+          cd ~/emsdk
+          ./emsdk install tot
+          ./emsdk activate tot
+          echo "JS_ENGINES = [NODE_JS]" >> $EM_CONFIG
+          echo "final config:"
+          cat $EM_CONFIG
+      - name: Check test expectations on main
+        run: |
+          git checkout origin/main
+          # Hack to honor changes to rebaseline_tests.py in the current PR
+          git checkout - ./tools/maint/rebaseline_tests.py
+          ./bootstrap
+          if ! ./tools/maint/rebaseline_tests.py --check-only; then
+            echo "Test expectations are out-of-date on the main branch."
+            echo "You can run `./tools/maint/rebaseline_tests.py --new-branch`"
+            echo "and use it to create a seperate PR."
+            exit 1
+          fi

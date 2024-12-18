@@ -640,10 +640,6 @@ def get_temp_files():
     return tempfiles.TempFiles(TEMP_DIR, save_debug_files=False)
 
 
-def target_environment_may_be(environment):
-  return not settings.ENVIRONMENT or environment in settings.ENVIRONMENT.split(',')
-
-
 def print_compiler_stage(cmd):
   """Emulate the '-v/-###' flags of clang/gcc by printing the sub-commands
   that we run."""
