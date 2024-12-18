@@ -5858,15 +5858,9 @@ Module.onRuntimeInitialized = () => {
       self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_fs_rename_on_existing.c', 'success')
 
-  @parameterized({
-    '': ([],),
-    'nodefs': (['-DNODEFS', '-lnodefs.js'],),
-    'noderawfs': (['-sNODERAWFS'],)
-  })
+  @also_with_nodefs_both
   def test_fs_readdir_ino_matches_stat_ino(self, args):
-    if self.get_setting('WASMFS'):
-      self.set_setting('FORCE_FILESYSTEM')
-    self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success', emcc_args=args)
+    self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success')
 
   def test_sigalrm(self):
     self.do_runf('test_sigalrm.c', 'Received alarm!')
