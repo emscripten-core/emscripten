@@ -4795,28 +4795,19 @@ Module["preRun"] = () => {
 
   # Similar to `test_browser_run_from_different_directory`, but asynchronous because of `-sMODULARIZE`
   def test_browser_run_from_different_directory_async(self):
-    for args, creations in [
-      (['-sMODULARIZE'], [
-        'Module();',    # documented way for using modularize
-        'new Module();' # not documented as working, but we support it
-       ]),
-    ]:
-      print(args)
-      # compile the code with the modularize feature and the preload-file option enabled
-      self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '-O3'] + args)
-      ensure_dir('subdir')
-      shutil.move('test.js', Path('subdir/test.js'))
-      shutil.move('test.wasm', Path('subdir/test.wasm'))
-      for creation in creations:
-        print(creation)
-        # Make sure JS is loaded from subdirectory
-        create_file('test-subdir.html', '''
-          <script src="subdir/test.js"></script>
-          <script>
-            %s
-          </script>
-        ''' % creation)
-        self.run_browser('test-subdir.html', '/report_result?0')
+    # compile the code with the modularize feature and the preload-file option enabled
+    self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '-O3', '-sMODULARIZE'])
+    ensure_dir('subdir')
+    shutil.move('test.js', Path('subdir/test.js'))
+    shutil.move('test.wasm', Path('subdir/test.wasm'))
+    # Make sure JS is loaded from subdirectory
+    create_file('test-subdir.html', '''
+      <script src="subdir/test.js"></script>
+      <script>
+        Module();
+      </script>
+    ''')
+    self.run_browser('test-subdir.html', '/report_result?0')
 
   # Similar to `test_browser_run_from_different_directory`, but
   # also also we eval the initial code, so currentScript is not present. That prevents us
