@@ -2414,7 +2414,7 @@ export default async function init(moduleArg = {}) {
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
     # Single threaded MINIMAL_RUNTIME programs do not need access to
     # document.currentScript, so a simple export declaration is enough.
-    src = f'/** @nocollapse */ var {settings.EXPORT_NAME} = {wrapper_function};'
+    src = f'var {settings.EXPORT_NAME} = {wrapper_function};'
   else:
     script_url_node = ''
     # When MODULARIZE this JS may be executed later,
