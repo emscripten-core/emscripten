@@ -5862,6 +5862,10 @@ Module.onRuntimeInitialized = () => {
   def test_fs_open_no_permissions(self):
     self.do_runf('fs/test_fs_open_no_permissions.c', 'success')
 
+  @also_with_nodefs_both
+  def test_fs_mkdir_dotdot(self):
+    self.do_runf('fs/test_fs_mkdir_dotdot.c', 'success')
+
   def test_sigalrm(self):
     self.do_runf('test_sigalrm.c', 'Received alarm!')
     self.do_runf('test_sigalrm.c', 'Received alarm!', emcc_args=['-sEXIT_RUNTIME'])
