@@ -2392,7 +2392,7 @@ export default async function init(moduleArg = {}) {
 
 %(generated_js)s
 
-  return await moduleRtn;
+  return moduleRtn;
 }
 ''' % {
       'generated_js': generated_js
