@@ -1076,6 +1076,9 @@ FS.staticInit();
           }
         } else {
           // node doesn't exist, try to create it
+          // Ignore the permission bits here to ensure we can `open` this new
+          // file below. We use chmod below the apply the permissions once the
+          // file is open.
           node = FS.mknod(path, mode | 0o777, 0);
           created = true;
         }
