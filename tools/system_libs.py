@@ -764,7 +764,7 @@ class DebugLibrary(Library):
   def get_cflags(self):
     cflags = super().get_cflags()
     if not self.is_debug:
-      cflags += ['-DNDEBUG', '-D__FILE__=""', '-Wno-builtin-macro-redefined']
+      cflags += ['-DNDEBUG']
     return cflags
 
   def get_base_name(self):
