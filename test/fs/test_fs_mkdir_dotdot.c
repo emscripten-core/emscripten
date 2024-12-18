@@ -25,4 +25,3 @@ int main() {
   assert(errno == ENOENT);
   printf("success\n");
 }
-
