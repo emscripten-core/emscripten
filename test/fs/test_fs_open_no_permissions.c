@@ -8,32 +8,7 @@
 #include <errno.h>
 #include <string.h>
 
-
-#if defined(__EMSCRIPTEN__)
-#include <emscripten.h>
-#endif
-
-void makedir(const char *dir) {
-  int rtn = mkdir(dir, 0777);
-  assert(rtn == 0);
-}
-
-void changedir(const char *dir) {
-  int rtn = chdir(dir);
-  assert(rtn == 0);
-}
-
-void setup() {
-#if defined(__EMSCRIPTEN__) && defined(NODEFS)
-  makedir("working");
-  EM_ASM(FS.mount(NODEFS, { root: '.' }, 'working'));
-  changedir("working");
-#endif
-}
-
 int main() {
-  setup();
-
   int res = open("a", O_CREAT, 0);
   printf("error: %s\n", strerror(errno));
   assert(res >= 0);
