@@ -4,7 +4,7 @@ Note that version numbers do not necessarily reflect the amount of changes
 between versions. A version number reflects a release that is known to pass all
 tests, and versions may be tagged more or less frequently at different times.
 
-Note that there is *no* ABI compatibility guarantee between versions - the ABI
+nNote that there is *no* ABI compatibility guarantee between versions - the ABI
 may change, so that we can keep improving and optimizing it. The compiler will
 automatically invalidate system caches when the version number updates, so that
 libc etc. are rebuilt for you. You should also rebuild object files and
@@ -22,7 +22,7 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - The `WASM_BIGINT` feature has been enabled by default. This has the effect that
   Wasm i64 values are passed and returned between Wasm and JS as BigInt values
-  rather than being split by Binaryen into pairs of Numbers.
+  rather than being split by Binaryen into pairs of Numbers. (#22993)
 - When using `-sMODULARIZE` we now assert if the factory function is called with
   the JS `new` keyword.  e.g. `a = new Module()` rather than `b = Module()`.
   This paves the way for marking the function as `async` which does not allow
