@@ -14,6 +14,7 @@
 
 if (typeof atob == 'undefined') {
   if (typeof global != 'undefined' && typeof globalThis == 'undefined') {
+    /** @suppress{checkTypes} */
     globalThis = global;
   }
 
