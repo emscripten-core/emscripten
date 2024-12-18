@@ -14,6 +14,11 @@
 // tests can be merged .
 
 void setup() {
+  // If the node working directory does not have execute permissions, then
+  // `fs.readdir` will fail. For that reason we have to work in a subdirectory
+  // and remove execute permissions from that.
+  mkdir("sub", 0775);
+  assert(chdir("sub") == 0);
   int res = open("b", O_CREAT, 0777);
   assert(res >= 0);
   assert(close(res) == 0);
