@@ -13,13 +13,9 @@ $__wasi_syscall_ret
 $__wasm_call_ctors
 $_emscripten_stack_alloc
 $_emscripten_stack_restore
-$_emscripten_tempret_get
-$_emscripten_tempret_set
-$dynCall_jiji
 $emscripten_stack_get_current
 $fputs
 $fwrite
-$legalstub$dynCall_jiji
 $main
 $puts
 $strlen
