@@ -153,7 +153,8 @@ def disable_feature(feature):
 # from a specific version and above, we can assume that browser version.
 def apply_min_browser_versions():
   if settings.WASM_BIGINT and 'WASM_BIGINT' in user_settings:
-    # WASM_BIGINT is enabled by default, so don't use it to enable other features.
+    # WASM_BIGINT is enabled by default, don't use it to enable other features
+    # unless the user explicitly enabled it.
     enable_feature(Feature.JS_BIGINT_INTEGRATION, 'WASM_BIGINT')
   if settings.PTHREADS:
     enable_feature(Feature.THREADS, 'pthreads')
