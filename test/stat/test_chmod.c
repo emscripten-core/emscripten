@@ -45,6 +45,7 @@ void cleanup() {
 void test() {
   int err;
   int lastctime;
+  int lastmtime;
   struct stat s;
 
   //
@@ -54,6 +55,7 @@ void test() {
   memset(&s, 0, sizeof s);
   stat("file", &s);
   lastctime = s.st_ctime;
+  lastmtime = s.st_mtime;
   sleep(1);
 
   // do the actual chmod
@@ -64,11 +66,13 @@ void test() {
   stat("file", &s);
   assert(s.st_mode == (S_IWUSR | S_IFREG));
   assert(s.st_ctime != lastctime);
+  assert(s.st_mtime == lastmtime);
 
   //
   // fchmod a file
   //
   lastctime = s.st_ctime;
+  lastmtime = s.st_mtime;
   sleep(1);
 
   err = fchmod(open("file", O_WRONLY), S_IXUSR);
@@ -78,11 +82,13 @@ void test() {
   stat("file", &s);
   assert(s.st_mode == (S_IXUSR | S_IFREG));
   assert(s.st_ctime != lastctime);
+  assert(s.st_mtime == lastmtime);
 
   //
   // fchmodat a file
   //
   lastctime = s.st_ctime;
+  lastmtime = s.st_mtime;
   sleep(1);
   err = fchmodat(AT_FDCWD, "otherfile", S_IXUSR, 0);
   assert(!err);
@@ -91,6 +97,7 @@ void test() {
   stat("otherfile", &s);
   assert(s.st_mode == (S_IXUSR | S_IFREG));
   assert(s.st_ctime != lastctime);
+  assert(s.st_mtime == lastmtime);
 
   //
   // chmod a folder
@@ -99,6 +106,7 @@ void test() {
   memset(&s, 0, sizeof s);
   stat("folder", &s);
   lastctime = s.st_ctime;
+  lastmtime = s.st_mtime;
   sleep(1);
 
   // do the actual chmod
@@ -108,6 +116,7 @@ void test() {
   stat("folder", &s);
   assert(s.st_mode == (S_IWUSR | S_IXUSR | S_IFDIR));
   assert(s.st_ctime != lastctime);
+  assert(s.st_mtime == lastmtime);
 
 #ifndef WASMFS // TODO https://github.com/emscripten-core/emscripten/issues/15948
   lstat("file-link", &s);

@@ -67,7 +67,6 @@ $em_task_queue_free
 $em_task_queue_is_empty
 $emscripten_builtin_free
 $emscripten_builtin_malloc
-$emscripten_current_thread_process_queued_calls
 $emscripten_futex_wait
 $emscripten_futex_wake
 $emscripten_stack_get_current

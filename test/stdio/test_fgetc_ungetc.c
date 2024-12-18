@@ -12,10 +12,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-#endif
-
 static void create_file(const char *path, const char *buffer, int mode) {
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
   assert(fd >= 0);
@@ -27,7 +23,7 @@ static void create_file(const char *path, const char *buffer, int mode) {
 }
 
 void setup() {
-  create_file("/tmp/file.txt", "cd", 0666);
+  create_file("file.txt", "cd", 0666);
 }
 
 void test() {
@@ -35,7 +31,7 @@ void test() {
   int err;
   char buffer[256];
 
-  file = fopen("/tmp/file.txt", "r");
+  file = fopen("file.txt", "r");
   assert(file);
 
   // pushing EOF always returns EOF
@@ -88,13 +84,6 @@ void test() {
 }
 
 int main() {
-#ifdef __EMSCRIPTEN__
-#ifdef NODEFS
-  EM_ASM(FS.mount(NODEFS, { root: '.' }, '/tmp'));
-#elif MEMFS
-  EM_ASM(FS.mount(MEMFS, {}, '/tmp'));
-#endif
-#endif
   setup();
   test();
   return 0;

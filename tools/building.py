@@ -39,7 +39,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 119
+EXPECTED_BINARYEN_VERSION = 121
 
 _is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
@@ -114,7 +114,7 @@ def side_module_external_deps(external_symbols):
     sym = demangle_c_symbol_name(sym)
     if sym in external_symbols:
       deps = deps.union(external_symbols[sym])
-  return sorted(list(deps))
+  return sorted(deps)
 
 
 def create_stub_object(external_symbols):
@@ -184,12 +184,11 @@ def lld_flags_for_executable(external_symbols):
     c_exports += side_module_external_deps(external_symbols)
   for export in c_exports:
     if settings.ERROR_ON_UNDEFINED_SYMBOLS:
-      cmd.append('--export=' + export)
+      cmd.append(f'--export={export}')
     else:
-      cmd.append('--export-if-defined=' + export)
+      cmd.append(f'--export-if-defined={export}')
 
-  for e in settings.EXPORT_IF_DEFINED:
-    cmd.append('--export-if-defined=' + e)
+  cmd.extend(f'--export-if-defined={e}' for e in settings.EXPORT_IF_DEFINED)
 
   if settings.RELOCATABLE:
     cmd.append('--experimental-pic')
@@ -573,7 +572,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     CLOSURE_EXTERNS += [exports_file.name]
 
   # Node.js specific externs
-  if shared.target_environment_may_be('node'):
+  if settings.ENVIRONMENT_MAY_BE_NODE:
     NODE_EXTERNS_BASE = path_from_root('third_party/closure-compiler/node-externs')
     NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
     NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
@@ -581,13 +580,13 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/node-externs.js')] + NODE_EXTERNS
 
   # V8/SpiderMonkey shell specific externs
-  if shared.target_environment_may_be('shell'):
+  if settings.ENVIRONMENT_MAY_BE_SHELL:
     V8_EXTERNS = [path_from_root('src/closure-externs/v8-externs.js')]
     SPIDERMONKEY_EXTERNS = [path_from_root('src/closure-externs/spidermonkey-externs.js')]
     CLOSURE_EXTERNS += V8_EXTERNS + SPIDERMONKEY_EXTERNS
 
   # Web environment specific externs
-  if shared.target_environment_may_be('web') or shared.target_environment_may_be('worker'):
+  if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
     BROWSER_EXTERNS_BASE = path_from_root('src/closure-externs/browser-externs')
     if os.path.isdir(BROWSER_EXTERNS_BASE):
       BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
@@ -749,10 +748,10 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
 
 
 def is_internal_global(name):
-  internal_start_stop_symbols = set(['__start_em_asm', '__stop_em_asm',
-                                     '__start_em_js', '__stop_em_js',
-                                     '__start_em_lib_deps', '__stop_em_lib_deps',
-                                     '__em_lib_deps'])
+  internal_start_stop_symbols = {'__start_em_asm', '__stop_em_asm',
+                                 '__start_em_js', '__stop_em_js',
+                                 '__start_em_lib_deps', '__stop_em_lib_deps',
+                                 '__em_lib_deps'}
   internal_prefixes = ('__em_js__', '__em_lib_deps')
   return name in internal_start_stop_symbols or any(name.startswith(p) for p in internal_prefixes)
 

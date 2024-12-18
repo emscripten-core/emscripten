@@ -812,8 +812,8 @@ If manually bisecting:
     # test()
 
   @also_with_wasmfs
-  def test_dev_random(self):
-    self.btest_exit('filesystem/test_dev_random.c')
+  def test_fs_dev_random(self):
+    self.btest_exit('fs/test_fs_dev_random.c')
 
   def test_sdl_swsurface(self):
     self.btest_exit('test_sdl_swsurface.c', args=['-lSDL', '-lGL'])
@@ -1608,7 +1608,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
         </script>
       </body>
       </html>
-    ''' % self.port)
+    ''' % self.PORT)
 
     cmd = [EMCC, test_file('hello_world_worker.c'), '-o', 'worker.js'] + self.get_emcc_args()
     if file_data:
@@ -1671,7 +1671,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
         </script>
       </body>
       </html>
-    """ % (worker_filename, self.port))
+    """ % (worker_filename, self.PORT))
 
     create_file('worker_prejs.js', r"""
       Module.arguments = ["/bigfile"];
@@ -1688,7 +1688,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     data = os.urandom(10 * chunkSize + 1) # 10 full chunks and one 1 byte chunk
     checksum = zlib.adler32(data) & 0xffffffff # Python 2 compatibility: force bigint
 
-    server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True, chunkSize, data, checksum, self.port))
+    server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True, chunkSize, data, checksum, self.PORT))
     server.start()
 
     # block until the server is actually ready
@@ -2422,7 +2422,7 @@ void *getBindBuffer() {
         doCwrapCall(200);
         doDirectCall(300);
       }
-    ''' % self.port
+    ''' % self.PORT
 
     create_file('pre_runtime.js', r'''
       Module.onRuntimeInitialized = myJSCallback;
@@ -2569,7 +2569,7 @@ Module["preRun"] = () => {
       window.disableErrorReporting = true;
       window.addEventListener('error', (event) => {
         if (!event.message.includes('exception:fullscreen error')) {
-          report_error(event);
+          reportTopLevelError(event);
         }
       });
       ''')
@@ -3342,9 +3342,10 @@ Module["preRun"] = () => {
       self.run_browser('a.html', '/report_result?0')
 
   def test_modularize_network_error(self):
-    browser_reporting_js_path = test_file('browser_reporting.js')
-    self.compile_btest('browser_test_hello_world.c', ['-sMODULARIZE', '-sEXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path], reporting=Reporting.NONE)
+    self.compile_btest('browser_test_hello_world.c', ['-sMODULARIZE', '-sEXPORT_NAME=createModule'], reporting=Reporting.NONE)
+    shutil.copy(test_file('browser_reporting.js'), '.')
     create_file('a.html', '''
+      <script src="browser_reporting.js"></script>
       <script src="a.out.js"></script>
       <script>
         createModule()
@@ -3361,16 +3362,12 @@ Module["preRun"] = () => {
     self.run_browser('a.html', '/report_result?Aborted(both async and sync fetching of the wasm failed)')
 
   def test_modularize_init_error(self):
-    browser_reporting_js_path = test_file('browser_reporting.js')
-    self.compile_btest('browser/test_modularize_init_error.cpp', ['-sMODULARIZE', '-sEXPORT_NAME="createModule"', '--extern-pre-js', browser_reporting_js_path], reporting=Reporting.NONE)
+    self.compile_btest('browser/test_modularize_init_error.cpp', ['-sMODULARIZE', '-sEXPORT_NAME=createModule'], reporting=Reporting.NONE)
+    shutil.copy(test_file('browser_reporting.js'), '.')
     create_file('a.html', '''
+      <script src="browser_reporting.js"></script>
       <script src="a.out.js"></script>
       <script>
-        if (typeof window === 'object') {
-          window.addEventListener('unhandledrejection', function(event) {
-            reportResultToServer("Unhandled promise rejection: " + event.reason.message);
-          });
-        }
         createModule()
           .then(() => {
             reportResultToServer("Module creation succeeded when it should have failed");
@@ -4207,7 +4204,9 @@ Module["preRun"] = () => {
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
     if not self.is_wasm64() and not self.is_2gb():
-      self.assertLess(abs(size - 4477), 100)
+      self.check_expected_size_in_file('js',
+                                       test_file('browser/test_small_js_flags.js.size'),
+                                       size)
 
   # Tests that it is possible to initialize and render WebGL content in a
   # pthread by using OffscreenCanvas.
@@ -4322,22 +4321,22 @@ Module["preRun"] = () => {
 
   # Tests that offscreen framebuffer state restoration works
   @requires_graphics_hardware
-  def test_webgl_offscreen_framebuffer_state_restoration(self):
-    for args in [
-        # full state restoration path on WebGL 1.0
-        ['-sMAX_WEBGL_VERSION', '-sOFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH'],
-        # VAO path on WebGL 1.0
-        ['-sMAX_WEBGL_VERSION'],
-        ['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=0'],
-        # VAO path on WebGL 2.0
-        ['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-DTEST_REQUIRE_VAO=1'],
-        # full state restoration path on WebGL 2.0
-        ['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-sOFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH'],
-        # blitFramebuffer path on WebGL 2.0 (falls back to VAO on Firefox < 67)
-        ['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=0'],
-      ]:
-      cmd = args + ['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1']
-      self.btest_exit('webgl_offscreen_framebuffer_swap_with_bad_state.c', args=cmd)
+  @parameterized({
+    # full state restoration path on WebGL 1.0
+    'gl1_no_vao': (['-sMAX_WEBGL_VERSION=1', '-DTEST_DISABLE_VAO'],),
+    # VAO path on WebGL 1.0
+    'gl1': (['-sMAX_WEBGL_VERSION=1', '-DTEST_VERIFY_WEBGL1_VAO_SUPPORT=1'],),
+    'gl1_max_gl2': (['-sMAX_WEBGL_VERSION=2'],),
+    # VAO path on WebGL 2.0
+    'gl2': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1'],),
+    # full state restoration path on WebGL 2.0
+    'gl2_no_vao': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-DTEST_DISABLE_VAO'],),
+    # blitFramebuffer path on WebGL 2.0 (falls back to VAO on Firefox < 67)
+    'gl2_no_aa': (['-sMAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=0'],),
+  })
+  def test_webgl_offscreen_framebuffer_state_restoration(self, args, skip_vao=False):
+    cmd = args + ['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP=1']
+    self.btest_exit('webgl_offscreen_framebuffer_swap_with_bad_state.c', args=cmd)
 
   @parameterized({
     '': ([],),
@@ -4796,28 +4795,19 @@ Module["preRun"] = () => {
 
   # Similar to `test_browser_run_from_different_directory`, but asynchronous because of `-sMODULARIZE`
   def test_browser_run_from_different_directory_async(self):
-    for args, creations in [
-      (['-sMODULARIZE'], [
-        'Module();',    # documented way for using modularize
-        'new Module();' # not documented as working, but we support it
-       ]),
-    ]:
-      print(args)
-      # compile the code with the modularize feature and the preload-file option enabled
-      self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '-O3'] + args)
-      ensure_dir('subdir')
-      shutil.move('test.js', Path('subdir/test.js'))
-      shutil.move('test.wasm', Path('subdir/test.wasm'))
-      for creation in creations:
-        print(creation)
-        # Make sure JS is loaded from subdirectory
-        create_file('test-subdir.html', '''
-          <script src="subdir/test.js"></script>
-          <script>
-            %s
-          </script>
-        ''' % creation)
-        self.run_browser('test-subdir.html', '/report_result?0')
+    # compile the code with the modularize feature and the preload-file option enabled
+    self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '-O3', '-sMODULARIZE'])
+    ensure_dir('subdir')
+    shutil.move('test.js', Path('subdir/test.js'))
+    shutil.move('test.wasm', Path('subdir/test.wasm'))
+    # Make sure JS is loaded from subdirectory
+    create_file('test-subdir.html', '''
+      <script src="subdir/test.js"></script>
+      <script>
+        Module();
+      </script>
+    ''')
+    self.run_browser('test-subdir.html', '/report_result?0')
 
   # Similar to `test_browser_run_from_different_directory`, but
   # also also we eval the initial code, so currentScript is not present. That prevents us
@@ -4948,8 +4938,12 @@ Module["preRun"] = () => {
   def test_minimal_runtime_hello_world(self, args):
     self.btest_exit('small_hello_world.c', args=args + ['-sMINIMAL_RUNTIME'])
 
-  def test_offset_converter(self, *args):
-    self.btest_exit('test_offset_converter.c', assert_returncode=1, args=['-sUSE_OFFSET_CONVERTER', '-gsource-map', '-sPROXY_TO_PTHREAD', '-pthread'])
+  @parameterized({
+    '': ([],),
+    'pthread': (['-sPROXY_TO_PTHREAD', '-pthread'],)
+  })
+  def test_offset_converter(self, args):
+    self.btest_exit('test_offset_converter.c', args=['-sUSE_OFFSET_CONVERTER', '-gsource-map'] + args)
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self, *args):
@@ -5443,88 +5437,6 @@ Module["preRun"] = () => {
       self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
     shutil.copy('webpack/src/hello.wasm', 'webpack/dist/')
     self.run_browser('webpack/dist/index.html', '/report_result?exit:0')
-
-  def test_fetch_polyfill_preload(self):
-    create_file('hello.txt', 'hello, world!')
-    create_file('main.c', r'''
-      #include <stdio.h>
-      #include <string.h>
-      #include <emscripten.h>
-      int main() {
-        FILE *f = fopen("hello.txt", "r");
-        char buf[100];
-        fread(buf, 1, 20, f);
-        buf[20] = 0;
-        fclose(f);
-        printf("%s\n", buf);
-        return 0;
-      }''')
-
-    create_file('on_window_error_shell.html', r'''
-      <html>
-          <center><canvas id='canvas' width='256' height='256'></canvas></center>
-          <hr><div id='output'></div><hr>
-          <script type='text/javascript'>
-            window.addEventListener('error', event => {
-              const error = String(event.message);
-              window.disableErrorReporting = true;
-              window.onerror = null;
-              var xhr = new XMLHttpRequest();
-              xhr.open('GET', 'http://localhost:8888/report_result?exception:' + error.substr(-23), true);
-              xhr.send();
-              setTimeout(function() { window.close() }, 1000);
-            });
-          </script>
-          {{{ SCRIPT }}}
-        </body>
-      </html>''')
-
-    def test(args, expect_fail):
-      self.compile_btest('main.c', ['-sEXIT_RUNTIME', '--preload-file', 'hello.txt', '--shell-file', 'on_window_error_shell.html', '-o', 'a.out.html'] + args)
-      if expect_fail:
-        js = read_file('a.out.js')
-        create_file('a.out.js', 'let origFetch = fetch; fetch = undefined;\n' + js)
-        return self.run_browser('a.out.html', '/report_result?exception:fetch is not a function')
-      else:
-        return self.run_browser('a.out.html', '/report_result?exit:0')
-
-    test([], expect_fail=False)
-    test([], expect_fail=True)
-    test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
-    test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
-
-  @no_wasm64('https://github.com/llvm/llvm-project/issues/98778')
-  def test_fetch_polyfill_shared_lib(self):
-    create_file('library.c', r'''
-      int library_func() {
-        return 42;
-      }
-    ''')
-    create_file('main.c', r'''
-      #include <dlfcn.h>
-      #include <stdio.h>
-      int main() {
-        void *lib_handle = dlopen("/library.so", RTLD_NOW);
-        typedef int (*voidfunc)();
-        voidfunc x = (voidfunc)dlsym(lib_handle, "library_func");
-        return x();
-      }
-    ''')
-
-    self.emcc('library.c', ['-sSIDE_MODULE', '-O2', '-o', 'library.so'])
-
-    def test(args, expect_fail):
-      self.compile_btest('main.c', ['-fPIC', 'library.so', '-sMAIN_MODULE=2', '-sEXIT_RUNTIME', '-o', 'a.out.html'] + args)
-      if expect_fail:
-        js = read_file('a.out.js')
-        create_file('a.out.js', 'let origFetch = fetch; fetch = undefined;\n' + js)
-        return self.run_browser('a.out.html', '/report_result?exception:fetch is not a function')
-      else:
-        return self.run_browser('a.out.html', '/report_result?exit:42')
-
-    test([], expect_fail=True)
-    test(['-sLEGACY_VM_SUPPORT'], expect_fail=False)
-    test(['-sLEGACY_VM_SUPPORT', '-sNO_POLYFILL'], expect_fail=True)
 
 
 class emrun(RunnerCore):

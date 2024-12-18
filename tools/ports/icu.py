@@ -39,6 +39,8 @@ def get(ports, settings, shared):
         # TODO: investigate why this is needed and remove
         '-Wno-macro-redefined',
         '-Wno-deprecated-declarations',
+        '-Wno-array-compare',
+        '-Wno-unknown-warning-option',
         # usage of 'using namespace icu' is deprecated: icu v61
         '-DU_USING_ICU_NAMESPACE=0',
         # make explicit inclusion of utf header: ref utf.h
