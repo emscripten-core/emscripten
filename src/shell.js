@@ -34,19 +34,9 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #endif // USE_CLOSURE_COMPILER
 
 #if POLYFILL
-#if MIN_CHROME_VERSION < 45 || MIN_FIREFOX_VERSION < 34 || MIN_SAFARI_VERSION < 90000
-// See https://caniuse.com/mdn-javascript_builtins_object_assign
-#include "polyfill/objassign.js"
-#endif
-
 #if WASM_BIGINT && MIN_SAFARI_VERSION < 150000
 // See https://caniuse.com/mdn-javascript_builtins_bigint64array
 #include "polyfill/bigint64array.js"
-#endif
-
-#if MIN_CHROME_VERSION < 40 || MIN_FIREFOX_VERSION < 39 || MIN_SAFARI_VERSION < 103000
-// See https://caniuse.com/fetch
-#include "polyfill/fetch.js"
 #endif
 #endif // POLYFILL
 
@@ -57,9 +47,6 @@ var readyPromise = new Promise((resolve, reject) => {
   readyPromiseResolve = resolve;
   readyPromiseReject = reject;
 });
-#if ASSERTIONS
-{{{ addReadyPromiseAssertions() }}}
-#endif
 #endif
 
 // Determine the runtime environment we are in. You can customize this by
@@ -113,22 +100,12 @@ if (ENVIRONMENT_IS_PTHREAD) {
 
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
-  // `require()` is no-op in an ESM module, use `createRequire()` to construct
-  // the require()` function.  This is only necessary for multi-environment
-  // builds, `-sENVIRONMENT=node` emits a static import declaration instead.
-  // TODO: Swap all `require()`'s with `import()`'s?
-#if EXPORT_ES6 && ENVIRONMENT_MAY_BE_WEB
-  const { createRequire } = await import('module');
-  let dirname = import.meta.url;
-  if (dirname.startsWith("data:")) {
-    dirname = '/';
-  }
-  /** @suppress{duplicate} */
-  var require = createRequire(dirname);
-#endif
-
 #if PTHREADS || WASM_WORKERS
+#if EXPORT_ES6
+  var worker_threads = await import('worker_threads');
+#else
   var worker_threads = require('worker_threads');
+#endif
   global.Worker = worker_threads.Worker;
   ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
 #if PTHREADS
@@ -213,19 +190,21 @@ if (ENVIRONMENT_IS_NODE) {
   }
 #endif
 
-  // These modules will usually be used on Node.js. Load them eagerly to avoid
-  // the complexity of lazy-loading.
-  var fs = require('fs');
-  var nodePath = require('path');
-
 #if EXPORT_ES6
+  var fs = await import('fs');
+  var nodePath = await import('path');
+  var url = await import('url');
   // EXPORT_ES6 + ENVIRONMENT_IS_NODE always requires use of import.meta.url,
   // since there's no way getting the current absolute path of the module when
   // support for that is not available.
   if (!import.meta.url.startsWith('data:')) {
-    scriptDirectory = nodePath.dirname(require('url').fileURLToPath(import.meta.url)) + '/';
+    scriptDirectory = nodePath.dirname(url.fileURLToPath(import.meta.url)) + '/';
   }
 #else
+  // These modules will usually be used on Node.js. Load them eagerly to avoid
+  // the complexity of lazy-loading.
+  var fs = require('fs');
+  var nodePath = require('path');
   scriptDirectory = __dirname + '/';
 #endif
 
@@ -300,11 +279,7 @@ if (ENVIRONMENT_IS_SHELL) {
     return data;
   };
 
-  readAsync = (f) => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => resolve(readBinary(f)));
-    });
-  };
+  readAsync = async (f) => readBinary(f);
 
   globalThis.clearTimeout ??= (id) => {};
 

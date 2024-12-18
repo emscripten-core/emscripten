@@ -21,11 +21,11 @@ extern "C" {
 
 #if defined __EMSCRIPTEN__ && !defined EMTEST_NODE
 
-void EMSCRIPTEN_KEEPALIVE _ReportResult(int result) {
+void _ReportResult(int result) {
   EM_ASM(reportResultToServer($0), result);
 }
 
-void EMSCRIPTEN_KEEPALIVE _MaybeReportResult(int result) {
+void _MaybeReportResult(int result) {
   EM_ASM(maybeReportResultToServer($0), result);
 }
 
