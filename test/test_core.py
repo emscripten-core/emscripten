@@ -5758,6 +5758,8 @@ got: 10
   @crossplatform
   @also_with_nodefs_both
   def test_fs_enotdir(self):
+    if MACOS and '-DNODERAWFS' in self.emcc_args:
+      self.skipTest('BSD libc sets a different errno')
     self.do_runf('fs/test_fs_enotdir.c', 'success')
 
   @also_with_noderawfs
