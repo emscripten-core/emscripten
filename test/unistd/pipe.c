@@ -58,7 +58,7 @@ void test_poll(int *fd, int data_available) {
   assert(pfds[1].revents == POLLOUT);
 }
 
-int main() {
+int test_most() {
   int fd[2];
   unsigned char wchar = 0;
   unsigned char rchar = 0;
@@ -152,5 +152,38 @@ int main() {
   assert(errno == EBADF);
 
   puts("success");
+  return 0;
+}
+
+int test_redirect_stderr_to_pipe() {
+  int stderrfd = fileno(stderr);
+  int pipefd[2];
+  int original_fd = dup(stderrfd); // duplicate stderr to original_fd, and original_fd is used to restore stderr later
+  assert(original_fd >= 0);
+  assert(pipe(pipefd) == 0);
+
+  int read_end_fd = pipefd[0];
+  int write_end_fd = pipefd[1];
+
+  assert(dup2(write_end_fd, stderrfd) == stderrfd); // now things write to fd(stderr) is redirected to write_end_fd
+  assert(close(write_end_fd) == 0); // close the write end of the pipe after duplicating
+
+  assert(write(stderrfd, "xyz", 3) == 3); // write to the stderr, expected to be read from pipe
+
+  assert(dup2(original_fd, stderrfd) == stderrfd); //  restore fd (stderr) to its original state
+  assert(close(original_fd) == 0);
+
+  char buffer[10];
+  memset(buffer, 0, 10);
+  assert(read(read_end_fd, buffer, 10) == 3);
+  assert(strcmp(buffer, "xyz") == 0);
+  assert(close(read_end_fd) == 0); // Close the read end of the pipe
+  printf("success\n");
+  return 0;
+}
+
+int main() {
+  test_most();
+  test_redirect_stderr_to_pipe();
   return 0;
 }

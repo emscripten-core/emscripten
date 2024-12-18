@@ -2388,7 +2388,7 @@ def node_pthread_detection():
 def modularize():
   global final_js
   logger.debug(f'Modularizing, assigning to var {settings.EXPORT_NAME}')
-  src = read_file(final_js)
+  generated_js = read_file(final_js)
 
   # When targetting node and ES6 we use `await import ..` in the generated code
   # so the outer function needs to be marked as async.
@@ -2396,40 +2396,36 @@ def modularize():
   if settings.EXPORT_ES6 and settings.ENVIRONMENT_MAY_BE_NODE:
     async_emit = 'async '
 
-  # TODO: Remove when https://bugs.webkit.org/show_bug.cgi?id=223533 is resolved.
-  if async_emit != '' and settings.EXPORT_NAME == 'config':
-    diagnostics.warning('emcc', 'EXPORT_NAME should not be named "config" when targeting Safari')
-
   if settings.MODULARIZE == 'instance':
-    src = '''
+    wrapper_function = '''
 export default async function init(moduleArg = {}) {
   var moduleRtn;
 
-%(src)s
+%(generated_js)s
 
   return await moduleRtn;
 }
 ''' % {
-      'src': src,
+      'generated_js': generated_js
     }
   else:
-    src = '''
+    wrapper_function = '''
 %(maybe_async)sfunction(moduleArg = {}) {
   var moduleRtn;
 
-%(src)s
+%(generated_js)s
 
   return moduleRtn;
 }
 ''' % {
       'maybe_async': async_emit,
-      'src': src,
+      'generated_js': generated_js
     }
 
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
     # Single threaded MINIMAL_RUNTIME programs do not need access to
     # document.currentScript, so a simple export declaration is enough.
-    src = '/** @nocollapse */ var %s = %s' % (settings.EXPORT_NAME, src)
+    src = f'/** @nocollapse */ var {settings.EXPORT_NAME} = {wrapper_function};'
   else:
     script_url_node = ''
     # When MODULARIZE this JS may be executed later,
@@ -2447,24 +2443,24 @@ export default async function init(moduleArg = {}) {
       src = '''\
   var _scriptName = %(script_url)s;
   %(script_url_node)s
-  %(src)s
+  %(wrapper_function)s
 ''' % {
         'script_url': script_url,
         'script_url_node': script_url_node,
-        'src': src,
+        'wrapper_function': wrapper_function,
       }
     else:
       src = '''\
 var %(EXPORT_NAME)s = (() => {
   var _scriptName = %(script_url)s;
   %(script_url_node)s
-  return (%(src)s);
+  return (%(wrapper_function)s);
 })();
 ''' % {
         'EXPORT_NAME': settings.EXPORT_NAME,
         'script_url': script_url,
         'script_url_node': script_url_node,
-        'src': src,
+        'wrapper_function': wrapper_function,
       }
 
   # Given the async nature of how the Module function and Module object

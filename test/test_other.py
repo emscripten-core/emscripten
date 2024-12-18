@@ -8846,6 +8846,7 @@ int main() {
     '64': (['-Oz', '-sMEMORY64'], [], []), # noqa
     # WasmFS should not be fully linked into a minimal program.
     'wasmfs': (['-Oz', '-sWASMFS'], [], []), # noqa
+    'esm': (['-Oz', '-sEXPORT_ES6'], [], []), # noqa
   })
   def test_codesize_minimal(self, *args):
     self.set_setting('STRICT')
