@@ -77,6 +77,9 @@ addToLibrary({
 
         return 0;
       },
+      dup(stream) {
+        stream.node.pipe.refcnt++;
+      },
       ioctl(stream, request, varargs) {
         return {{{ cDefs.EINVAL }}};
       },
