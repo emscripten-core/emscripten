@@ -9,6 +9,10 @@
 #include <string.h>
 #include <dirent.h>
 
+// TODO: Consider merging this with test/dirent/test_readdir.c?
+// That test doesn't work on nodefs, which has to be fixed before these two
+// tests can be merged .
+
 void setup() {
   int res = open("b", O_CREAT, 0777);
   assert(res >= 0);
