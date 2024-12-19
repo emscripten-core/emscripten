@@ -471,14 +471,9 @@ class Library:
   def generate_ninja(self, build_dir, libname):
     ensure_sysroot()
     utils.safe_ensure_dirs(build_dir)
+    self.batch_inputs = True
 
     cflags = self.get_cflags()
-    if self.deterministic_paths:
-      source_dir = utils.path_from_root()
-      relative_source_dir = os.path.relpath(source_dir, build_dir)
-      cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
-                 f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}',
-                 f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
     asflags = get_base_cflags(preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
@@ -491,18 +486,11 @@ class Library:
     By default, this builds all the source files returned by `self.get_files()`,
     with the `cflags` returned by `self.get_cflags()`.
     """
-    batch_inputs = int(os.environ.get('EMCC_BATCH_BUILD', '1'))
+    self.batch_inputs = int(os.environ.get('EMCC_BATCH_BUILD', '1'))
     batches = {}
     commands = []
     objects = set()
     cflags = self.get_cflags()
-    if self.deterministic_paths:
-      source_dir = utils.path_from_root()
-      if batch_inputs:
-        relative_source_dir = os.path.relpath(source_dir, build_dir)
-        cflags += [f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}']
-      cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
-                 f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
       ext = shared.suffix(src)
@@ -537,7 +525,7 @@ class Library:
           object_uuid += 1
           o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
         commands.append(cmd + [src, '-o', o])
-      elif batch_inputs:
+      elif self.batch_inputs:
         # Use relative paths to reduce the length of the command line.
         # This allows to avoid switching to a response file as often.
         src = os.path.relpath(src, build_dir)
@@ -547,7 +535,7 @@ class Library:
         commands.append(cmd + [src, '-o', o])
       objects.add(o)
 
-    if batch_inputs:
+    if self.batch_inputs:
       # Choose a chunk size that is large enough to avoid too many subprocesses
       # but not too large to avoid task starvation.
       # For now the heuristic is to split inputs by 2x number of cores.
@@ -611,6 +599,13 @@ class Library:
     if self.includes:
       cflags += ['-I' + utils.path_from_root(i) for i in self._inherit_list('includes')]
 
+    if self.deterministic_paths:
+      source_dir = utils.path_from_root()
+      if self.batch_inputs:
+        relative_source_dir = os.path.relpath(source_dir, build_dir)
+        cflags += [f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}']
+      cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
+                 f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
     return cflags
 
   def get_base_name_prefix(self):
