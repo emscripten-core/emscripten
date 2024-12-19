@@ -340,6 +340,9 @@ def get_binaryen_passes():
   if not feature_matrix.caniuse(feature_matrix.Feature.SIGN_EXT):
     logger.debug('lowering sign-ext feature due to incompatible target browser engines')
     passes += ['--signext-lowering']
+  # nontrapping-fp is enabled by default in llvm. Lower it away if requested.
+  if not feature_matrix.caniuse(feature_matrix.Feature.NON_TRAPPING_FPTOINT):
+    passes += ['--llvm-nontrapping-fptoint-lowering']
   if optimizing:
     passes += ['--post-emscripten']
     if settings.SIDE_MODULE:
