@@ -1087,7 +1087,10 @@ FS.staticInit();
           throw new FS.ErrnoError({{{ cDefs.EISDIR }}});
         } else {
           // node doesn't exist, try to create it
-          node = FS.mknod(path, mode, 0);
+          // Ignore the permission bits here to ensure we can `open` this new
+          // file below. We use chmod below the apply the permissions once the
+          // file is open.
+          node = FS.mknod(path, mode | 0o777, 0);
           created = true;
         }
       }
@@ -1136,6 +1139,9 @@ FS.staticInit();
       // call the new stream's open function
       if (stream.stream_ops.open) {
         stream.stream_ops.open(stream);
+      }
+      if (created) {
+        FS.chmod(node, mode & 0o777);
       }
 #if expectToReceiveOnModule('logReadFiles')
       if (Module['logReadFiles'] && !(flags & {{{ cDefs.O_WRONLY}}})) {
