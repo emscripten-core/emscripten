@@ -5866,7 +5866,10 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success')
 
   @also_with_nodefs_both
+  @crossplatform
   def test_fs_open_no_permissions(self):
+    if ('-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args) and WINDOWS:
+      self.skipTest('fs_open_no_permissions fails on windows')
     self.do_runf('fs/test_fs_open_no_permissions.c', 'success')
 
   @also_with_nodefs_both
