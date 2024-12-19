@@ -151,7 +151,6 @@ void test() {
   errno = 0;
 }
 
-
 void test_open_create_no_permissions() {
   int res = open("a", O_CREAT, 0);
   printf("error: %s\n", strerror(errno));
@@ -165,8 +164,5 @@ int main() {
   setup();
   test();
   test_open_create_no_permissions();
-  // We say "success" a bunch of times further up so we need to match on
-  // something else.
-  printf("it worked!\n");
   return 0;
 }
