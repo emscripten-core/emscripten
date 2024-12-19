@@ -55,6 +55,7 @@ jobs:
           cat $EM_CONFIG
       - name: Check test expectations on target branch
         run: |
+          echo "Checking out ${{ github.base_ref }}"
           git checkout ${{ github.base_ref }}
           git rev-parse HEAD
           # Hack to honor changes to rebaseline_tests.py in the current PR
@@ -62,7 +63,24 @@ jobs:
           ./bootstrap
           if ! ./tools/maint/rebaseline_tests.py --check-only; then
             echo "Test expectations are out-of-date on the target branch."
-            echo "You can run `./tools/maint/rebaseline_tests.py --new-branch`"
+            echo "You can run './tools/maint/rebaseline_tests.py --new-branch'"
             echo "and use it to create a seperate PR."
+            echo "-- This failure is only a warning and can be ignored"
+            exit 1
+          fi
+      - name: Check test expectations on PR branch
+        run: |
+          echo "Checking out ${{ github.ref }} (${{ github.sha }})"
+          # For some reason we cannot pass ${{ github.ref }} direclty to git
+          # since it doesn't recognise it.
+          git checkout ${{ github.sha }}
+          git rev-parse HEAD
+          ./bootstrap
+          if ! ./tools/maint/rebaseline_tests.py --check-only --clear-cache; then
+            echo "Test expectations are out-of-date on the PR branch."
+            echo "You can run './tools/maint/rebaseline_tests.py' to"
+            echo "create a commit updating the expectations."
+            echo "Be sure to have `emsdk install tot` first."
+            echo "-- This failure is only a warning and can be ignored"
             exit 1
           fi
