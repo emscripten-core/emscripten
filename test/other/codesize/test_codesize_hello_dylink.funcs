@@ -10,7 +10,6 @@ $_emscripten_stack_alloc
 $_emscripten_stack_restore
 $dlcalloc
 $emscripten_stack_get_current
-$legalstub$dynCall_jiji
 $main
 $sbrk
 $setThrew

@@ -66,7 +66,8 @@ min_browser_versions = {
   Feature.JS_BIGINT_INTEGRATION: {
     'chrome': 67,
     'firefox': 68,
-    'safari': 150000,
+    'safari': 140100, # TODO(https://github.com/emscripten-core/emscripten/issues/23184): set this back to 15 after we update the default targets.
+    'node': 130000,
   },
   Feature.THREADS: {
     'chrome': 74,
@@ -137,7 +138,7 @@ def enable_feature(feature, reason, override=False):
             f'{name}={user_settings[name]} is not compatible with {reason} '
             f'({min_version} or above required)')
       else:
-        # Otherwise we bump the minimum version to accommodate the feature.
+        # If no conflict, bump the minimum version to accommodate the feature.
         setattr(settings, name, min_version)
 
 
@@ -151,7 +152,9 @@ def disable_feature(feature):
 # a user requests a feature that we know is only supported in browsers
 # from a specific version and above, we can assume that browser version.
 def apply_min_browser_versions():
-  if settings.WASM_BIGINT:
+  if settings.WASM_BIGINT and 'WASM_BIGINT' in user_settings:
+    # WASM_BIGINT is enabled by default, don't use it to enable other features
+    # unless the user explicitly enabled it.
     enable_feature(Feature.JS_BIGINT_INTEGRATION, 'WASM_BIGINT')
   if settings.PTHREADS:
     enable_feature(Feature.THREADS, 'pthreads')

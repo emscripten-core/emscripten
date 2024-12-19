@@ -4,18 +4,14 @@
 // returned via the accessor method getTempRet0()
 
 Module['runtest'] = function() {
-  // Use eval to create BigInt, as no support for Xn notation yet in JS
-  // optimizer.
-  var bigint = _test_return64(eval('0xaabbccdd11223344n'));
-  var low = Number(bigint & 0xffffffffn);
-  var high = Number(bigint >> 32n);
+  var low = _test_return64(0x11223344, 0xaabbccdd);
+  var high = getTempRet0();
   console.log("low = " + low);
   console.log("high = " + high);
 
   var ptr = _get_func_ptr();
-  bigint = dynCall('jj', ptr, [eval('0xabcdef1912345678n')]);
-  low = Number(bigint & 0xffffffffn);
-  high = Number(bigint >> 32n);
+  low = dynCall_jj(ptr, 0x12345678, 0xabcdef19);
+  high = getTempRet0();
   console.log("low = " + low);
   console.log("high = " + high);
 };
