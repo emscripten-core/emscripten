@@ -478,7 +478,7 @@ class Library:
       relative_source_dir = os.path.relpath(source_dir, build_dir)
       cflags += [f'-ffile-prefix-map={source_dir}={FAKE_EMSCRIPTEN_PATH}',
                  f'-ffile-prefix-map={relative_source_dir}={FAKE_EMSCRIPTEN_PATH}',
-                 '-fdebug-compilation-dir={FAKE_EMSCRIPTEN_PATH}']
+                 f'-fdebug-compilation-dir={FAKE_EMSCRIPTEN_PATH}']
     asflags = get_base_cflags(preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
@@ -502,7 +502,7 @@ class Library:
         relative_source_dir = os.path.relpath(source_dir, build_dir)
         cflags += [f'-ffile-prefix-map={relative_source_dir}={FAKE_EMSCRIPTEN_PATH}']
       cflags += [f'-ffile-prefix-map={source_dir}={FAKE_EMSCRIPTEN_PATH}',
-                 '-fdebug-compilation-dir={FAKE_EMSCRIPTEN_PATH}']
+                 f'-fdebug-compilation-dir={FAKE_EMSCRIPTEN_PATH}']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
       ext = shared.suffix(src)
