@@ -10441,9 +10441,10 @@ int main() {
     self.verify_custom_sec_existence('a.out.wasm', 'target_features', False)
 
   def test_wasm_features(self):
-    # Test that wasm features are explicitly enabled or disabled based on target engine version
-    # Here we are reading the features section and trusting that LLVM and/or Binaryen faithfully
-    # represent what features are used
+    # Test that wasm features are explicitly enabled or disabled based on
+    # target engine version. Here we are reading the features section and
+    # trusting that LLVM and/or Binaryen faithfully represent what features
+    #  are used
     def verify_features_sec(feature, expect_in, linked=False):
       with webassembly.Module('a.out.wasm' if linked else 'hello_world.o') as module:
         features = module.get_target_features()

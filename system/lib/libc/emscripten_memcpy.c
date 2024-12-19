@@ -8,10 +8,6 @@
 #include "libc.h"
 #include "emscripten_internal.h"
 
-#if !defined(__wasm_bulk_memory__)
-#error "This file must be compile with bulk memory enabled"
-#endif
-
 // Use the simple/naive version of memcpy when building with asan
 #if __has_feature(address_sanitizer)
 
