@@ -529,7 +529,7 @@ class Library:
       elif batch_inputs:
         # Use relative paths to reduce the length of the command line.
         # This allows to avoid switching to a response file as often.
-        src = os.path.relpath(src, self.build_dir)
+        src = os.path.relpath(src, build_dir)
         src = utils.normalize_path(src)
         batches.setdefault(tuple(cmd), []).append(src)
       else:
