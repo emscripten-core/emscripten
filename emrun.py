@@ -1583,7 +1583,15 @@ def parse_args(args):
   return parser.parse_args(args)
 
 
-def run(args):
+def run(args):  # noqa: C901, PLR0912, PLR0915
+  """Future modifications should consider refactoring to reduce complexity.
+
+  * The McCabe cyclomatiic complexity is currently 74 vs 10 recommended.
+  * There are currently 86 branches vs 12 recommended.
+  * There are currently 202 statements vs 50 recommended.
+
+  To revalidate these numbers, run `ruff check --select=C901,PLR091`.
+  """
   global browser_process, browser_exe, processname_killed_atexit, emrun_options, emrun_not_enabled_nag_printed
 
   options = emrun_options = parse_args(args)

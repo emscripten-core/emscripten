@@ -273,7 +273,6 @@ sigs = {
   __syscall_socket__sig: 'iiiiiii',
   __syscall_stat64__sig: 'ipp',
   __syscall_statfs64__sig: 'ippp',
-  __syscall_symlink__sig: 'ipp',
   __syscall_symlinkat__sig: 'ipip',
   __syscall_truncate64__sig: 'ipj',
   __syscall_unlinkat__sig: 'iipi',

@@ -63,9 +63,10 @@ addToLibrary({
             // update the common node structure mode as well
             node.mode = attr.mode;
           }
-          if (attr.timestamp !== undefined) {
-            var date = new Date(attr.timestamp);
-            node.mount.opts.fs.utime(path, date, date);
+          if (attr.atime || attr.mtime) {
+            var atime = new Date(attr.atime || attr.mtime);
+            var mtime = new Date(attr.mtime || attr.atime);
+            node.mount.opts.fs.utime(path, atime, mtime);
           }
           if (attr.size !== undefined) {
             node.mount.opts.fs.truncate(path, attr.size);

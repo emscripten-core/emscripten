@@ -18,9 +18,9 @@ UNSUPPORTED = 0x7FFFFFFF
 # Oldest support browser versions.  These have been set somewhat
 # arbitrarily for now.
 # TODO(sbc): Design a of policy for managing these values.
-OLDEST_SUPPORTED_CHROME = 32
-OLDEST_SUPPORTED_FIREFOX = 34
-OLDEST_SUPPORTED_SAFARI = 90000
+OLDEST_SUPPORTED_CHROME = 45  # September 1, 2015
+OLDEST_SUPPORTED_FIREFOX = 40  # August 11, 2015
+OLDEST_SUPPORTED_SAFARI = 101000  # September 20, 2016
 # 10.19.0 is the oldest version of node that we do any testing with.
 # Keep this in sync with the test-node-compat in .circleci/config.yml.
 OLDEST_SUPPORTED_NODE = 101900
@@ -39,6 +39,8 @@ class Feature(IntEnum):
 
 
 default_features = {Feature.SIGN_EXT, Feature.MUTABLE_GLOBALS}
+disable_override_features = set()
+enable_override_features = set()
 
 min_browser_versions = {
   Feature.NON_TRAPPING_FPTOINT: {
@@ -64,7 +66,8 @@ min_browser_versions = {
   Feature.JS_BIGINT_INTEGRATION: {
     'chrome': 67,
     'firefox': 68,
-    'safari': 150000,
+    'safari': 140100, # TODO(https://github.com/emscripten-core/emscripten/issues/23184): set this back to 15 after we update the default targets.
+    'node': 130000,
   },
   Feature.THREADS: {
     'chrome': 74,
@@ -93,6 +96,11 @@ min_browser_versions = {
 
 
 def caniuse(feature):
+  if feature in disable_override_features:
+    return False
+  if feature in enable_override_features:
+    return True
+
   min_versions = min_browser_versions[feature]
 
   def report_missing(setting_name):
@@ -114,10 +122,12 @@ def caniuse(feature):
   return True
 
 
-def enable_feature(feature, reason):
+def enable_feature(feature, reason, override=False):
   """Updates default settings for browser versions such that the given
   feature is available everywhere.
   """
+  if override:
+    enable_override_features.add(feature)
   for name, min_version in min_browser_versions[feature].items():
     name = f'MIN_{name.upper()}_VERSION'
     if settings[name] < min_version:
@@ -128,15 +138,23 @@ def enable_feature(feature, reason):
             f'{name}={user_settings[name]} is not compatible with {reason} '
             f'({min_version} or above required)')
       else:
-        # Otherwise we bump the minimum version to accommodate the feature.
+        # If no conflict, bump the minimum version to accommodate the feature.
         setattr(settings, name, min_version)
+
+
+def disable_feature(feature):
+  """Allow the user to disable a feature that would otherwise be on by default.
+  """
+  disable_override_features.add(feature)
 
 
 # apply minimum browser version defaults based on user settings. if
 # a user requests a feature that we know is only supported in browsers
 # from a specific version and above, we can assume that browser version.
 def apply_min_browser_versions():
-  if settings.WASM_BIGINT:
+  if settings.WASM_BIGINT and 'WASM_BIGINT' in user_settings:
+    # WASM_BIGINT is enabled by default, don't use it to enable other features
+    # unless the user explicitly enabled it.
     enable_feature(Feature.JS_BIGINT_INTEGRATION, 'WASM_BIGINT')
   if settings.PTHREADS:
     enable_feature(Feature.THREADS, 'pthreads')

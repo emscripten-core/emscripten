@@ -16,7 +16,7 @@
   }
 #endif
 
-  readAsync = (url) => {
+  readAsync = async (url) => {
 #if ENVIRONMENT_MAY_BE_WEBVIEW
     // Fetch has some additional restrictions over XHR, like it can't be used on a file:// url.
     // See https://github.com/github/fetch/pull/92#issuecomment-140665932
@@ -41,11 +41,9 @@
 #elif ASSERTIONS
     assert(!isFileURI(url), "readAsync does not work with file:// URLs");
 #endif
-    return fetch(url, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}})
-      .then((response) => {
-        if (response.ok) {
-          return response.arrayBuffer();
-        }
-        return Promise.reject(new Error(response.status + ' : ' + response.url));
-      })
+    var response = await fetch(url, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
+    if (response.ok) {
+      return response.arrayBuffer();
+    }
+    throw new Error(response.status + ' : ' + response.url);
   };

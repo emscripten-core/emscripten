@@ -31,3 +31,4 @@
   docs/optimizing/Profiling-Toolchain
 
   docs/site/about
+  genindex

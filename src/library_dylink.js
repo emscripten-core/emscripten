@@ -1024,7 +1024,7 @@ var LibraryDylink = {
 
       var libFile = locateFile(libName);
       if (flags.loadAsync) {
-        return new Promise((resolve, reject) => asyncLoad(libFile, resolve, reject));
+        return asyncLoad(libFile);
       }
 
       // load the binary synchronously

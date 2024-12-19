@@ -87,6 +87,12 @@ Buffer.from = function(arrayBufferOrString, byteOffsetOrEncoding, length) {};
 Buffer.alloc = function(size, fill, encoding) {};
 
 /**
+ * @return {boolean}
+ * @nosideeffects
+ */
+Buffer.isBuffer = function(obj) {};
+
+/**
  * @param {number=} start
  * @param {number=} end
  * @return {Buffer}
@@ -119,3 +125,15 @@ fs.Stats.prototype.mtimeMs;
  * @type {number}
  */
 fs.Stats.prototype.ctimeMs;
+
+/**
+ * @param {string} p
+ * @return {boolean}
+ * @nosideeffects
+ */
+path.isAbsolute;
+
+/**
+ * @type {Object.<string,*>}
+ */
+path.posix;

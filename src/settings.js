@@ -1498,7 +1498,7 @@ var DYNCALLS = false;
 // i64 is used. If WASM_BIGINT is present, the default minimum supported browser
 // versions will be increased to the min version that supports BigInt.
 // [link]
-var WASM_BIGINT = false;
+var WASM_BIGINT = true;
 
 // WebAssembly defines a "producers section" which compilers and tools can
 // annotate themselves in, and LLVM emits this by default.
@@ -1919,7 +1919,7 @@ var MIN_SAFARI_VERSION = 140100;
 // numbers with Chrome.
 // Chrome 85 was released on 2020-08-25.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 32, which was released on 2014-01-04.
+// Minimum supported value is 33, which was released on 2014-02-18.
 // [link]
 var MIN_CHROME_VERSION = 85;
 
@@ -2185,14 +2185,6 @@ var LEGACY_RUNTIME = false;
 // Example use -sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p
 // [link]
 var SIGNATURE_CONVERSIONS = [];
-
-//===========================================
-// Internal, used for testing only, from here
-//===========================================
-
-// Internal (testing only): Disables the blitOffscreenFramebuffer VAO path.
-// [link]
-var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = false;
 
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]

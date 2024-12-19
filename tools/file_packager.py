@@ -172,10 +172,7 @@ def should_ignore(fullname):
   if has_hidden_attribute(fullname):
     return True
 
-  for p in excluded_patterns:
-    if fnmatch.fnmatch(fullname, p):
-      return True
-  return False
+  return any(fnmatch.fnmatch(fullname, p) for p in excluded_patterns)
 
 
 def add(mode, rootpathsrc, rootpathdst):
@@ -357,7 +354,15 @@ def generate_object_file(data_files):
   shared.check_call(cmd)
 
 
-def main():
+def main():  # noqa: C901, PLR0912, PLR0915
+  """Future modifications should consider refactoring to reduce complexity.
+
+  * The McCabe cyclomatiic complexity is currently 60 vs 10 recommended.
+  * There are currently 63 branches vs 12 recommended.
+  * There are currently 151 statements vs 50 recommended.
+
+  To revalidate these numbers, run `ruff check --select=C901,PLR091`.
+  """
   if len(sys.argv) == 1:
     err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node]
   See the source for more details.''')
@@ -501,7 +506,7 @@ def main():
         err('Error: Embedding "%s" which is not contained within the current directory '
             '"%s".  This is invalid since the current directory becomes the '
             'root that the generated code will see.  To include files outside of the current '
-            'working directoty you can use the `--preload-file srcpath@dstpath` syntax to '
+            'working directory you can use the `--preload-file srcpath@dstpath` syntax to '
             'explicitly specify the target location.' % (path, curr_abspath))
         sys.exit(1)
       file_.dstpath = abspath[len(curr_abspath) + 1:]
@@ -702,7 +707,7 @@ def generate_js(data_target, data_files, metadata):
       }\n''' % (create_preloaded if options.use_preload_plugins else create_data)
 
   if options.has_embedded and not options.obj_output:
-    err('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more effecient than JS encoding')
+    err('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more efficient than JS encoding')
 
   for counter, file_ in enumerate(data_files):
     filename = file_.dstpath

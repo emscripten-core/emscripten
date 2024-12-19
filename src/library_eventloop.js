@@ -472,7 +472,7 @@ LibraryJSEventLoop = {
       }
 
 #if ASSERTIONS
-      if (MainLoop.method === 'timeout' && Module.ctx) {
+      if (MainLoop.method === 'timeout' && Module['ctx']) {
         warnOnce('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
         MainLoop.method = ''; // just warn once per call to set main loop
       }

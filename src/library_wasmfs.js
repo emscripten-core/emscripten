@@ -178,9 +178,8 @@ FS.init();
     rmdir: (path) => FS.handleError(
       withStackSave(() => __wasmfs_rmdir(stringToUTF8OnStack(path)))
     ),
-    open: (path, flags, mode) => withStackSave(() => {
+    open: (path, flags, mode = 0o666) => withStackSave(() => {
       flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
-      mode = typeof mode == 'undefined' ? 438 /* 0666 */ : mode;
       var buffer = stringToUTF8OnStack(path);
       var fd = FS.handleError(__wasmfs_open(buffer, flags, mode));
       return { fd : fd };
@@ -199,7 +198,7 @@ FS.init();
 
       var bytesRead;
       if (seeking) {
-        bytesRead = __wasmfs_pread(stream.fd, dataBuffer, length, position);
+        bytesRead = __wasmfs_pread(stream.fd, dataBuffer, length, {{{ splitI64('position') }}});
       } else {
         bytesRead = __wasmfs_read(stream.fd, dataBuffer, length);
       }
@@ -223,7 +222,7 @@ FS.init();
 
       var bytesRead;
       if (seeking) {
-        bytesRead = __wasmfs_pwrite(stream.fd, dataBuffer, length, position);
+        bytesRead = __wasmfs_pwrite(stream.fd, dataBuffer, length, {{{ splitI64('position') }}});
       } else {
         bytesRead = __wasmfs_write(stream.fd, dataBuffer, length);
       }
@@ -449,7 +448,7 @@ FS.init();
     mkdev(path, mode, dev) {
       if (typeof dev === 'undefined') {
         dev = mode;
-        mode = 438 /* 0666 */;
+        mode = 0o666;
       }
 
       var deviceBackend = wasmFSDevices[dev];
@@ -517,7 +516,7 @@ FS.init();
 
   $FS_create__deps: ['$FS_mknod'],
   // Default settings copied from the legacy JS FS API.
-  $FS_create: (path, mode = 438 /* 0666 */) => {
+  $FS_create: (path, mode = 0o666) => {
     mode &= {{{ cDefs.S_IALLUGO }}};
     mode |= {{{ cDefs.S_IFREG }}};
     return FS_mknod(path, mode, 0);
@@ -546,7 +545,7 @@ FS.init();
   },
 
   $FS_mkdir__deps: ['_wasmfs_mkdir'],
-  $FS_mkdir: (path, mode = 511 /* 0777 */) => FS.handleError(withStackSave(() => {
+  $FS_mkdir: (path, mode = 0o777) => FS.handleError(withStackSave(() => {
     var buffer = stringToUTF8OnStack(path);
     return __wasmfs_mkdir(buffer, mode);
   })),

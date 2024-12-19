@@ -192,7 +192,7 @@ var LibraryBrowser = {
     },
 
     createContext(/** @type {HTMLCanvasElement} */ canvas, useWebGL, setInModule, webGLContextAttributes) {
-      if (useWebGL && Module.ctx && canvas == Module['canvas']) return Module.ctx; // no need to recreate GL context if it's already been created for this canvas.
+      if (useWebGL && Module['ctx'] && canvas == Module['canvas']) return Module['ctx']; // no need to recreate GL context if it's already been created for this canvas.
 
       var ctx;
       var contextHandle;
@@ -235,7 +235,7 @@ var LibraryBrowser = {
 #if ASSERTIONS
         if (!useWebGL) assert(typeof GLctx == 'undefined', 'cannot set in module if GLctx is used, but we are a non-GL context that would replace it');
 #endif
-        Module.ctx = ctx;
+        Module['ctx'] = ctx;
         if (useWebGL) GL.makeContextCurrent(contextHandle);
         Browser.useWebGL = useWebGL;
         Browser.moduleContextCreatedCallbacks.forEach((callback) => callback());
@@ -652,7 +652,7 @@ var LibraryBrowser = {
 
   // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
   emscripten_async_load_script__deps: ['$UTF8ToString'],
-  emscripten_async_load_script: (url, onload, onerror) => {
+  emscripten_async_load_script: async (url, onload, onerror) => {
     url = UTF8ToString(url);
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
@@ -687,10 +687,13 @@ var LibraryBrowser = {
 
 #if ENVIRONMENT_MAY_BE_NODE && DYNAMIC_EXECUTION
     if (ENVIRONMENT_IS_NODE) {
-      readAsync(url, false).then((data) => {
+      try {
+        var data = await readAsync(url, false);
         eval(data);
         loadDone();
-      }, loadError);
+      } catch {
+        loadError();
+      }
       return;
     }
 #endif

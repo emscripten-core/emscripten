@@ -46,6 +46,7 @@ from tools import config
 from tools import cache
 from tools.settings import default_setting, user_settings, settings, MEM_SIZE_SETTINGS, COMPILE_TIME_SETTINGS
 from tools.utils import read_file, removeprefix
+from tools import feature_matrix
 
 logger = logging.getLogger('emcc')
 
@@ -390,6 +391,7 @@ def get_clang_flags(user_args):
     # Bulk memory may be enabled via threads or directly via -s.
     if not settings.BULK_MEMORY:
       flags.append('-mno-bulk-memory')
+      flags.append('-mno-bulk-memory-opt')
   if '-mnontrapping-fptoint' not in user_args and '-mno-nontrapping-fptoint' not in user_args:
     flags.append('-mno-nontrapping-fptoint')
 
@@ -1022,7 +1024,7 @@ def phase_compile_inputs(options, state, newargs, input_files):
   if state.mode == Mode.PCH:
     inputs = [i[1] for i in input_files]
     for header in inputs:
-      if not shared.suffix(header) in HEADER_ENDINGS:
+      if shared.suffix(header) not in HEADER_ENDINGS:
         exit_with_error(f'cannot mix precompiled headers with non-header inputs: {inputs} : {header}')
     cmd = get_clang_command() + inputs
     if options.output_file:
@@ -1126,7 +1128,15 @@ def version_string():
   return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {utils.EMSCRIPTEN_VERSION}{revision_suffix}'
 
 
-def parse_args(newargs):
+def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
+  """Future modifications should consider refactoring to reduce complexity.
+
+  * The McCabe cyclomatiic complexity is currently 117 vs 10 recommended.
+  * There are currently 115 branches vs 12 recommended.
+  * There are currently 302 statements vs 50 recommended.
+
+  To revalidate these numbers, run `ruff check --select=C901,PLR091`.
+  """
   options = EmccOptions()
   settings_changes = []
   user_js_defines = []
@@ -1258,6 +1268,13 @@ def parse_args(newargs):
       if is_int(requested_level):
         # the -gX value is the debug level (-g1, -g2, etc.)
         settings.DEBUG_LEVEL = validate_arg_level(requested_level, 4, 'invalid debug level: ' + arg)
+        if settings.DEBUG_LEVEL == 0:
+          # Set these explicitly so -g0 overrides previous -g on the cmdline
+          settings.GENERATE_DWARF = 0
+          settings.GENERATE_SOURCE_MAP = 0
+          settings.EMIT_NAME_SECTION = 0
+        elif settings.DEBUG_LEVEL > 1:
+          settings.EMIT_NAME_SECTION = 1
         # if we don't need to preserve LLVM debug info, do not keep this flag
         # for clang
         if settings.DEBUG_LEVEL < 3:
@@ -1288,17 +1305,20 @@ def parse_args(newargs):
           settings.GENERATE_DWARF = 1
         elif requested_level == 'source-map':
           settings.GENERATE_SOURCE_MAP = 1
+          settings.EMIT_NAME_SECTION = 1
           newargs[i] = '-g'
         else:
           # Other non-integer levels (e.g. -gline-tables-only or -gdwarf-5) are
           # usually clang flags that emit DWARF. So we pass them through to
           # clang and make the emscripten code treat it like any other DWARF.
           settings.GENERATE_DWARF = 1
+          settings.EMIT_NAME_SECTION = 1
         # In all cases set the emscripten debug level to 3 so that we do not
         # strip during link (during compile, this does not make a difference).
         settings.DEBUG_LEVEL = 3
     elif check_flag('-profiling') or check_flag('--profiling'):
       settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 2)
+      settings.EMIT_NAME_SECTION = 1
     elif check_flag('-profiling-funcs') or check_flag('--profiling-funcs'):
       settings.EMIT_NAME_SECTION = 1
     elif newargs[i] == '--tracing' or newargs[i] == '--memoryprofiler':
@@ -1403,8 +1423,18 @@ def parse_args(newargs):
       settings.WASM_EXCEPTIONS = 0
     elif arg == '-mbulk-memory':
       settings.BULK_MEMORY = 1
+      feature_matrix.enable_feature(feature_matrix.Feature.BULK_MEMORY,
+                                    '-mbulk-memory',
+                                    override=True)
     elif arg == '-mno-bulk-memory':
       settings.BULK_MEMORY = 0
+      feature_matrix.disable_feature(feature_matrix.Feature.BULK_MEMORY)
+    elif arg == '-msign-ext':
+      feature_matrix.enable_feature(feature_matrix.Feature.SIGN_EXT,
+                                    '-msign-ext',
+                                    override=True)
+    elif arg == '-mno-sign-ext':
+      feature_matrix.disable_feature(feature_matrix.Feature.SIGN_EXT)
     elif arg == '-fexceptions':
       # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
       # exception handling by default when -fexceptions is given when wasm

@@ -171,7 +171,7 @@ var LibraryHtml5WebGL = {
 #endif
           return 0;
         }
-        canvas = GL.offscreenCanvases[canvas.id];
+        canvas = GL.offscreenCanvases[canvas.id].canvas;
       }
     }
 #else // !OFFSCREENCANVAS_SUPPORT
@@ -223,7 +223,7 @@ var LibraryHtml5WebGL = {
     });`,
 #endif
   _emscripten_proxied_gl_context_activated_from_main_browser_thread: (contextHandle) => {
-    GLctx = Module.ctx = GL.currentContext = contextHandle;
+    GLctx = Module['ctx'] = GL.currentContext = contextHandle;
     GL.currentContextIsProxied = true;
   },
 #else

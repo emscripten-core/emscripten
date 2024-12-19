@@ -1363,6 +1363,10 @@ addToLibrary({
 
   emscripten_random: () => Math.random(),
 
+  emscripten_date_now: () => Date.now(),
+
+  emscripten_performance_now: () => {{{ getPerformanceNow() }}}(),
+
 #if PTHREADS && !AUDIO_WORKLET
   // Pthreads need their clocks synchronized to the execution of the main
   // thread, so, when using them, make sure to adjust all timings to the
@@ -2177,26 +2181,12 @@ addToLibrary({
     return x.startsWith('dynCall_') ? x : '_' + x;
   },
 
-  $asyncLoad__docs: '/** @param {boolean=} noRunDep */',
-  $asyncLoad: (url, onload, onerror, noRunDep) => {
-    var dep = !noRunDep ? getUniqueRunDependency(`al ${url}`) : '';
-    readAsync(url).then(
-      (arrayBuffer) => {
-#if ASSERTIONS
-        assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
-#endif
-        onload(new Uint8Array(arrayBuffer));
-        if (dep) removeRunDependency(dep);
-      },
-      (err) => {
-        if (onerror) {
-          onerror();
-        } else {
-          throw `Loading data file "${url}" failed.`;
-        }
-      }
-    );
-    if (dep) addRunDependency(dep);
+  $asyncLoad: async (url) => {
+    var arrayBuffer = await readAsync(url);
+  #if ASSERTIONS
+    assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
+  #endif
+    return new Uint8Array(arrayBuffer);
   },
 
   $alignMemory: (size, alignment) => {
