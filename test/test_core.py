@@ -5860,6 +5860,10 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('fs/test_fs_rename_on_existing.c', 'success')
 
   @also_with_nodefs_both
+  def test_fs_readdir_ino_matches_stat_ino(self):
+    self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success')
+
+  @also_with_nodefs_both
   def test_fs_open_no_permissions(self):
     self.do_runf('fs/test_fs_open_no_permissions.c', 'success')
 
