@@ -5839,12 +5839,8 @@ Module.onRuntimeInitialized = () => {
       self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_64bit.c', 'success')
 
-  @requires_node
-  @parameterized({
-    '': ([],),
-    'nodefs': (['-DNODEFS', '-lnodefs.js'],),
-    'noderawfs': (['-sNODERAWFS'],),
-  })
+  @crossplatform
+  @also_with_nodefs_both
   def test_fs_stat_unnamed_file_descriptor(self, args):
     nodefs = '-DNODEFS' in args or '-DNODERAWFS' in args
     if self.get_setting('WASMFS'):
