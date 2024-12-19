@@ -471,7 +471,6 @@ class Library:
   def generate_ninja(self, build_dir, libname):
     ensure_sysroot()
     utils.safe_ensure_dirs(build_dir)
-    self.batch_inputs = True
     self.build_dir = build_dir
 
     cflags = self.get_cflags()
@@ -487,7 +486,7 @@ class Library:
     By default, this builds all the source files returned by `self.get_files()`,
     with the `cflags` returned by `self.get_cflags()`.
     """
-    self.batch_inputs = int(os.environ.get('EMCC_BATCH_BUILD', '1'))
+    batch_inputs = int(os.environ.get('EMCC_BATCH_BUILD', '1'))
     self.build_dir = build_dir
     batches = {}
     commands = []
@@ -527,7 +526,7 @@ class Library:
           object_uuid += 1
           o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
         commands.append(cmd + [src, '-o', o])
-      elif self.batch_inputs:
+      elif batch_inputs:
         # Use relative paths to reduce the length of the command line.
         # This allows to avoid switching to a response file as often.
         src = os.path.relpath(src, self.build_dir)
@@ -537,7 +536,7 @@ class Library:
         commands.append(cmd + [src, '-o', o])
       objects.add(o)
 
-    if self.batch_inputs:
+    if batch_inputs:
       # Choose a chunk size that is large enough to avoid too many subprocesses
       # but not too large to avoid task starvation.
       # For now the heuristic is to split inputs by 2x number of cores.
@@ -603,9 +602,8 @@ class Library:
 
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
-      if self.batch_inputs:
-        relative_source_dir = os.path.relpath(source_dir, self.build_dir)
-        cflags += [f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}']
+      relative_source_dir = os.path.relpath(source_dir, self.build_dir)
+      cflags += [f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}']
       cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
                  f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
     return cflags
