@@ -476,7 +476,7 @@ class Library:
     if self.deterministic_paths:
       cflags += [f'-ffile-prefix-map={source_dir}={FAKE_EMSCRIPTEN_PATH}',
                  f'-ffile-prefix-map={relative_source_dir}={FAKE_EMSCRIPTEN_PATH}',
-                 '-fdebug-compilation-dir={FAKE_EMSCRIPTEN_PATH}']
+                 f'-fdebug-compilation-dir={FAKE_EMSCRIPTEN_PATH}']
     else:
       cflags += [f'-fmacro-prefix-map={source_dir}={FAKE_EMSCRIPTEN_PATH}',
                  f'-fmacro-prefix-map={relative_source_dir}={FAKE_EMSCRIPTEN_PATH}']
@@ -502,7 +502,7 @@ class Library:
     if self.deterministic_paths:
       cflags += [f'-ffile-prefix-map={relative_source_dir}={FAKE_EMSCRIPTEN_PATH}']
       cflags += [f'-ffile-prefix-map={source_dir}={FAKE_EMSCRIPTEN_PATH}',
-                 '-fdebug-compilation-dir={FAKE_EMSCRIPTEN_PATH}']
+                 f'-fdebug-compilation-dir={FAKE_EMSCRIPTEN_PATH}']
     else:
       cflags += [f'-fmacro-prefix-map={relative_source_dir}={FAKE_EMSCRIPTEN_PATH}']
       cflags += [f'-fmacro-prefix-map={source_dir}={FAKE_EMSCRIPTEN_PATH}']
