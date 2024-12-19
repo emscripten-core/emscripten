@@ -222,7 +222,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then((output) => {
 #if PTHREADS
   // Export Wasm module for pthread creation to access.
   wasmModule = output.module || Module['wasm'];
-  PThread.loadWasmModuleToAllWorkers(ready);
+  PThread.loadWasmModuleToAllWorkers().then(ready);
 #else
   ready();
 #endif
