@@ -40,8 +40,6 @@ var SyscallsLibrary = {
       }
       return dir + '/' + path;
     },
-    // When called by stat, arg is a path. When called by fstat, arg is a file
-    // descriptor.
     writeStat(buf, stat) {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}};
