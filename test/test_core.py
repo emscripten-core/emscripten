@@ -5543,6 +5543,7 @@ got: 10
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl/test_fcntl.c')
 
+  @also_with_nodefs_both
   def test_fcntl_open(self):
     self.do_run_in_out_file_test('fcntl/test_fcntl_open.c')
 

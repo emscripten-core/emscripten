@@ -426,8 +426,8 @@ FS.staticInit();
       if (FS.isLink(node.mode)) {
         return {{{ cDefs.ELOOP }}};
       } else if (FS.isDir(node.mode)) {
-        if (FS.flagsToPermissionString(flags) !== 'r' || // opening for write
-            (flags & {{{ cDefs.O_TRUNC }}})) { // TODO: check for O_SEARCH? (== search for dir only)
+        if (FS.flagsToPermissionString(flags) !== 'r' // opening for write
+            || (flags & ({{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_CREAT }}}))) { // TODO: check for O_SEARCH? (== search for dir only)
           return {{{ cDefs.EISDIR }}};
         }
       }
