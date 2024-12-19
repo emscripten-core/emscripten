@@ -5859,6 +5859,8 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('fs/test_fs_rename_on_existing.c', 'success')
 
   @also_with_nodefs_both
+  @crossplatform
+  @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_fs_mkdir_dotdot(self):
     self.do_runf('fs/test_fs_mkdir_dotdot.c', 'success')
 
