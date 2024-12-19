@@ -795,9 +795,19 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
     # to js.
     settings.WASM = 1
     settings.WASM2JS = 1
+    # Wasm bigint doesn't make sense with wasm2js, since it controls how the
+    # wasm and JS interact.
+    if user_settings.get('WASM_BIGINT') and settings.WASM_BIGINT:
+      exit_with_error('WASM_BIGINT=1 is not compatible with WASM=0 (wasm2js)')
+    settings.WASM_BIGINT = 0
+    feature_matrix.disable_feature(feature_matrix.Feature.JS_BIGINT_INTEGRATION)
   if settings.WASM == 2:
     # Requesting both Wasm and Wasm2JS support
     settings.WASM2JS = 1
+    if user_settings.get('WASM_BIGINT') and settings.WASM_BIGINT:
+      exit_with_error('WASM_BIGINT=1 is not compatible with WASM=2 (wasm2js)')
+    settings.WASM_BIGINT = 0
+    feature_matrix.disable_feature(feature_matrix.Feature.JS_BIGINT_INTEGRATION)
 
   if options.oformat == OFormat.WASM and not settings.SIDE_MODULE:
     # if the output is just a wasm file, it will normally be a standalone one,
@@ -1391,6 +1401,7 @@ def phase_linker_setup(options, state, newargs):  # noqa: C901, PLR0912, PLR0915
   settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(feature_matrix.Feature.PROMISE_ANY)
   if not settings.BULK_MEMORY:
     settings.BULK_MEMORY = feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY)
+  default_setting('WASM_BIGINT', feature_matrix.caniuse(feature_matrix.Feature.JS_BIGINT_INTEGRATION))
 
   if settings.AUDIO_WORKLET:
     if settings.AUDIO_WORKLET == 1:
@@ -2377,44 +2388,46 @@ def node_pthread_detection():
 def modularize():
   global final_js
   logger.debug(f'Modularizing, assigning to var {settings.EXPORT_NAME}')
-  src = read_file(final_js)
+  generated_js = read_file(final_js)
 
   # When targetting node and ES6 we use `await import ..` in the generated code
   # so the outer function needs to be marked as async.
-  async_emit = ''
-  if settings.EXPORT_ES6 and settings.ENVIRONMENT_MAY_BE_NODE:
-    async_emit = 'async '
+  if settings.WASM_ASYNC_COMPILATION or (settings.EXPORT_ES6 and settings.ENVIRONMENT_MAY_BE_NODE):
+    maybe_async = 'async '
+  else:
+    maybe_async = ''
 
   if settings.MODULARIZE == 'instance':
-    src = '''
-export default async function init(moduleArg = {}) {
+    wrapper_function = '''
+export default %(maybe_async)s function init(moduleArg = {}) {
   var moduleRtn;
 
-%(src)s
-
-  return await moduleRtn;
-}
-''' % {
-      'src': src,
-    }
-  else:
-    src = '''
-%(maybe_async)sfunction(moduleArg = {}) {
-  var moduleRtn;
-
-%(src)s
+%(generated_js)s
 
   return moduleRtn;
 }
 ''' % {
-      'maybe_async': async_emit,
-      'src': src,
+      'generated_js': generated_js,
+      'maybe_async': maybe_async,
+    }
+  else:
+    wrapper_function = '''
+%(maybe_async)sfunction(moduleArg = {}) {
+  var moduleRtn;
+
+%(generated_js)s
+
+  return moduleRtn;
+}
+''' % {
+      'maybe_async': maybe_async,
+      'generated_js': generated_js
     }
 
   if settings.MINIMAL_RUNTIME and not settings.PTHREADS:
     # Single threaded MINIMAL_RUNTIME programs do not need access to
     # document.currentScript, so a simple export declaration is enough.
-    src = '/** @nocollapse */ var %s = %s' % (settings.EXPORT_NAME, src)
+    src = f'/** @nocollapse */ var {settings.EXPORT_NAME} = {wrapper_function};'
   else:
     script_url_node = ''
     # When MODULARIZE this JS may be executed later,
@@ -2432,25 +2445,38 @@ export default async function init(moduleArg = {}) {
       src = '''\
   var _scriptName = %(script_url)s;
   %(script_url_node)s
-  %(src)s
+  %(wrapper_function)s
 ''' % {
         'script_url': script_url,
         'script_url_node': script_url_node,
-        'src': src,
+        'wrapper_function': wrapper_function,
       }
     else:
       src = '''\
 var %(EXPORT_NAME)s = (() => {
   var _scriptName = %(script_url)s;
   %(script_url_node)s
-  return (%(src)s);
+  return (%(wrapper_function)s);
 })();
 ''' % {
         'EXPORT_NAME': settings.EXPORT_NAME,
         'script_url': script_url,
         'script_url_node': script_url_node,
-        'src': src,
+        'wrapper_function': wrapper_function,
       }
+
+  if settings.ASSERTIONS and settings.MODULARIZE != 'instance':
+    src += '''\
+(() => {
+  // Create a small, never-async wrapper around %(EXPORT_NAME)s which
+  // checks for callers incorrectly using it with `new`.
+  var real_%(EXPORT_NAME)s = %(EXPORT_NAME)s;
+  %(EXPORT_NAME)s = function(arg) {
+    if (new.target) throw new Error("%(EXPORT_NAME)s() should not be called with `new %(EXPORT_NAME)s()`");
+    return real_%(EXPORT_NAME)s(arg);
+  }
+})();
+''' % {'EXPORT_NAME': settings.EXPORT_NAME}
 
   # Given the async nature of how the Module function and Module object
   # come into existence in AudioWorkletGlobalScope, store the Module

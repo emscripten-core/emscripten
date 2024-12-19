@@ -116,7 +116,7 @@ addToLibrary({
       }
       return newFlags;
     },
-    getattr(func) {
+    getattr(func, node) {
       var stat = NODEFS.tryFSOperation(func);
       if (NODEFS.isWindows) {
         // node.js v0.10.20 doesn't report blksize and blocks on Windows. Fake
@@ -134,7 +134,7 @@ addToLibrary({
       }
       return {
         dev: stat.dev,
-        ino: stat.ino,
+        ino: node.ino,
         mode: stat.mode,
         nlink: stat.nlink,
         uid: stat.uid,
@@ -171,7 +171,7 @@ addToLibrary({
         if (attr.atime || attr.mtime) {
           var atime = attr.atime && new Date(attr.atime);
           var mtime = attr.mtime && new Date(attr.mtime);
-          fs.utimesSync(arg, atime, mtime);
+          utimes(arg, atime, mtime);
         }
         if (attr.size !== undefined) {
           truncate(arg, attr.size);
@@ -181,7 +181,7 @@ addToLibrary({
     node_ops: {
       getattr(node) {
         var path = NODEFS.realPath(node);
-        return NODEFS.getattr(() => fs.lstatSync(path));
+        return NODEFS.getattr(() => fs.lstatSync(path), node);
       },
       setattr(node, attr) {
         var path = NODEFS.realPath(node);
@@ -244,7 +244,7 @@ addToLibrary({
     },
     stream_ops: {
       getattr(stream) {
-        return NODEFS.getattr(() => fs.fstatSync(stream.nfd));
+        return NODEFS.getattr(() => fs.fstatSync(stream.nfd), stream.node);
       },
       setattr(stream, attr) {
         NODEFS.setattr(stream.nfd, stream.node, attr, fs.fchmodSync, fs.futimesSync, fs.ftruncateSync);
