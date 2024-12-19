@@ -137,6 +137,9 @@ void test() {
   lstat("file-link", &s);
   assert(s.st_mode == link_mode);
 
+  // TODO: lchmod is not supported in NODEFS but it chmods the link target
+  // instead of raising an error. Will fix in a follow up to #23058.
+  #ifndef NODEFS
   //
   // chmod the actual symlink
   //
@@ -148,6 +151,7 @@ void test() {
   // make sure the file it references didn't change
   stat("file-link", &s);
   assert(s.st_mode == (S_IRUSR | S_IFREG));
+  #endif
 #endif // WASMFS
 
   puts("success");

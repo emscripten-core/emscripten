@@ -5524,7 +5524,7 @@ got: 10
 
   @crossplatform
   @also_with_wasmfs
-  @also_with_noderawfs
+  @also_with_nodefs_both
   def test_stat_chmod(self):
     if self.get_setting('NODERAWFS') and WINDOWS:
       self.skipTest('mode bits work differently on windows')
