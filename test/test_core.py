@@ -5545,7 +5545,7 @@ got: 10
 
   @also_with_nodefs_both
   def test_fcntl_open(self):
-    self.do_run_in_out_file_test('fcntl/test_fcntl_open.c')
+    self.do_run_in_out_file_test('fcntl/test_fcntl_open.c', 'it worked!')
 
   @also_with_wasm_bigint
   def test_fcntl_misc(self):
@@ -5862,10 +5862,6 @@ Module.onRuntimeInitialized = () => {
   @also_with_nodefs_both
   def test_fs_readdir_ino_matches_stat_ino(self):
     self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success')
-
-  @also_with_nodefs_both
-  def test_fs_open_no_permissions(self):
-    self.do_runf('fs/test_fs_open_no_permissions.c', 'success')
 
   @also_with_nodefs_both
   @crossplatform
