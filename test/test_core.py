@@ -5519,6 +5519,7 @@ got: 10
     self.set_setting("FORCE_FILESYSTEM")
     self.do_runf('stat/test_statx.c', 'success')
 
+  @also_with_nodefs_both
   def test_fstatat(self):
     self.do_runf('stat/test_fstatat.c', 'success')
 
