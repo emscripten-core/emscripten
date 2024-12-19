@@ -742,27 +742,16 @@ def make_executable(name):
 
 
 def make_dir_writeable(dirname):
-  # Ensure all files are readable and writable by the current user.
-  permission_bits = stat.S_IWRITE | stat.S_IREAD
-
-  def is_writable(path):
-    return (os.stat(path).st_mode & permission_bits) != permission_bits
-
-  def make_writable(path):
-    new_mode = os.stat(path).st_mode | permission_bits
-    os.chmod(path, new_mode)
-
   # Some tests make files and subdirectories read-only, so rmtree/unlink will not delete
   # them. Force-make everything writable in the subdirectory to make it
   # removable and re-attempt.
-  if not is_writable(dirname):
-    make_writable(dirname)
+  os.chmod(dirname, 0o777)
 
   for directory, subdirs, files in os.walk(dirname):
     for item in files + subdirs:
       i = os.path.join(directory, item)
       if not os.path.islink(i):
-        make_writable(i)
+        os.chmod(i, 0o777)
 
 
 def force_delete_dir(dirname):

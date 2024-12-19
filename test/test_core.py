@@ -5543,6 +5543,7 @@ got: 10
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl/test_fcntl.c')
 
+  @also_with_nodefs_both
   def test_fcntl_open(self):
     self.do_run_in_out_file_test('fcntl/test_fcntl_open.c')
 
@@ -5859,6 +5860,16 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('fs/test_fs_rename_on_existing.c', 'success')
 
   @also_with_nodefs_both
+  def test_fs_readdir_ino_matches_stat_ino(self):
+    self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success')
+
+  @also_with_nodefs_both
+  def test_fs_open_no_permissions(self):
+    self.do_runf('fs/test_fs_open_no_permissions.c', 'success')
+
+  @also_with_nodefs_both
+  @crossplatform
+  @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_fs_mkdir_dotdot(self):
     self.do_runf('fs/test_fs_mkdir_dotdot.c', 'success')
 

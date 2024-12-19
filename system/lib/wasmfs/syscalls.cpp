@@ -520,7 +520,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     return -EEXIST;
   }
 
-  if (child->is<Directory>() && accessMode != O_RDONLY) {
+  if (child->is<Directory>() && (accessMode != O_RDONLY || (flags & O_CREAT))) {
     return -EISDIR;
   }
 

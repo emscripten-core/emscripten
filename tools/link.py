@@ -2395,13 +2395,14 @@ def modularize():
 
   # When targetting node and ES6 we use `await import ..` in the generated code
   # so the outer function needs to be marked as async.
-  async_emit = ''
-  if settings.EXPORT_ES6 and settings.ENVIRONMENT_MAY_BE_NODE:
-    async_emit = 'async '
+  if settings.WASM_ASYNC_COMPILATION or (settings.EXPORT_ES6 and settings.ENVIRONMENT_MAY_BE_NODE):
+    maybe_async = 'async '
+  else:
+    maybe_async = ''
 
   if settings.MODULARIZE == 'instance':
     wrapper_function = '''
-export default async function init(moduleArg = {}) {
+export default %(maybe_async)s function init(moduleArg = {}) {
   var moduleRtn;
 
 %(generated_js)s
@@ -2409,7 +2410,8 @@ export default async function init(moduleArg = {}) {
   return moduleRtn;
 }
 ''' % {
-      'generated_js': generated_js
+      'generated_js': generated_js,
+      'maybe_async': maybe_async,
     }
   else:
     wrapper_function = '''
@@ -2421,7 +2423,7 @@ export default async function init(moduleArg = {}) {
   return moduleRtn;
 }
 ''' % {
-      'maybe_async': async_emit,
+      'maybe_async': maybe_async,
       'generated_js': generated_js
     }
 

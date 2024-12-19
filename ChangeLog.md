@@ -41,6 +41,12 @@ See docs/process.md for more on how version tagging works.
   `PATH.basename("a/b/..")` returns `".."` instead of `"a"`. This is in line with
   the behaviour of both node and coreutils, and is already the case when using
   NODERAWFS". (#23180)
+- The factory function exposed in `-sMODULARIZE` mode is now marked as `async`
+  when `WASM_ASYNC_COMPILATION` is enabled (the default). This allows us to use
+  `await` during module creation.  One side effect of this is that code in
+  `--post-js` files will now be delayed until after module creation and after
+  `main` runs.  This matches the existing behaviour when using sync instantation
+  (`-sWASM_ASYNC_COMPILATION=0`) but is an observable difference. (#23157)
 
 3.1.74 - 12/14/24
 -----------------
