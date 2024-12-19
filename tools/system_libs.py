@@ -472,6 +472,7 @@ class Library:
     ensure_sysroot()
     utils.safe_ensure_dirs(build_dir)
     self.batch_inputs = True
+    self.build_dir = build_dir
 
     cflags = self.get_cflags()
     asflags = get_base_cflags(preprocess=False)
@@ -487,6 +488,7 @@ class Library:
     with the `cflags` returned by `self.get_cflags()`.
     """
     self.batch_inputs = int(os.environ.get('EMCC_BATCH_BUILD', '1'))
+    self.build_dir = build_dir
     batches = {}
     commands = []
     objects = set()
@@ -602,7 +604,7 @@ class Library:
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
       if self.batch_inputs:
-        relative_source_dir = os.path.relpath(source_dir, build_dir)
+        relative_source_dir = os.path.relpath(source_dir, self.build_dir)
         cflags += [f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}']
       cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
                  f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
