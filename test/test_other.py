@@ -10473,36 +10473,36 @@ int main() {
     # Disable a feature
     compile(['-mno-sign-ext', '-c'])
     verify_features_sec('sign-ext', False)
-    # Disabling overrides default browser versions
-    compile(['-mno-sign-ext'])
-    verify_features_sec_linked('sign-ext', False)
-    # Disabling overrides manual browser versions
-    compile(['-sMIN_SAFARI_VERSION=150000', '-mno-sign-ext'])
     # Disable via browser selection
     compile(['-sMIN_FIREFOX_VERSION=61'])
     verify_features_sec_linked('sign-ext', False)
-    # Manual enable overrides browser version
+    # Flag disabling overrides default browser versions
+    compile(['-mno-sign-ext'])
+    verify_features_sec_linked('sign-ext', False)
+    # Flag disabling overrides explicit browser version
+    compile(['-sMIN_SAFARI_VERSION=150000', '-mno-sign-ext'])
+    verify_features_sec_linked('sign-ext', False)
+    # Flag enabling overrides explicit browser version
     compile(['-sMIN_FIREFOX_VERSION=61', '-msign-ext'])
     verify_features_sec_linked('sign-ext', True)
+    # Flag disabling overrides explicit version for bulk memory
+    compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
+    verify_features_sec_linked('bulk-memory-opt', False)
 
-    compile(['-mnontrapping-fptoint', '-c'])
-    verify_features_sec('nontrapping-fptoint', True)
-
+    # TODO(https://github.com/emscripten-core/emscripten/issues/23184) set this back to 14.1
+    # Also the section below can be deleted/updated once the default is 15.1
     compile(['-sMIN_SAFARI_VERSION=140000'])
-    verify_features_sec_linked('bulk-memory', False)
+    verify_features_sec_linked('bulk-memory-opt', False)
     verify_features_sec_linked('nontrapping-fptoint', False)
 
-    # Setting this SAFARI_VERSION should enable bulk memory because it links in emscripten_memcpy_bulkmem
     compile(['-sMIN_SAFARI_VERSION=150000'])
     verify_features_sec_linked('sign-ext', True)
     verify_features_sec_linked('mutable-globals', True)
     verify_features_sec_linked('multivalue', True)
-    verify_features_sec_linked('bulk-memory', True)
+    verify_features_sec_linked('bulk-memory-opt', True)
     verify_features_sec_linked('nontrapping-fptoint', True)
 
-    compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
-    # -mno-bulk-memory at link time overrides MIN_SAFARI_VERSION
-    verify_features_sec_linked('bulk-memory', False)
+
 
   def test_js_preprocess(self):
     # Use stderr rather than stdout here because stdout is redirected to the output JS file itself.
