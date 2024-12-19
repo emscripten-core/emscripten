@@ -28,6 +28,7 @@ jobs:
 
   check-expectations:
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -52,14 +53,15 @@ jobs:
           echo "JS_ENGINES = [NODE_JS]" >> $EM_CONFIG
           echo "final config:"
           cat $EM_CONFIG
-      - name: Check test expectations on main
+      - name: Check test expectations on target branch
         run: |
-          git checkout origin/main
+          git checkout ${{ github.base_ref }}
+          git rev-parse HEAD
           # Hack to honor changes to rebaseline_tests.py in the current PR
           git checkout - ./tools/maint/rebaseline_tests.py
           ./bootstrap
           if ! ./tools/maint/rebaseline_tests.py --check-only; then
-            echo "Test expectations are out-of-date on the main branch."
+            echo "Test expectations are out-of-date on the target branch."
             echo "You can run `./tools/maint/rebaseline_tests.py --new-branch`"
             echo "and use it to create a seperate PR."
             exit 1

@@ -893,6 +893,16 @@ def create_sending(metadata, library_symbols):
   return '{\n  ' + ',\n  '.join(elems) + '\n}'
 
 
+def can_use_await():
+  # In MODULARIZE mode we can use `await` since the factory function itself
+  # is marked as `async` and the generated code all lives inside that factory
+  # function.
+  # However, because closure does not see this (it runs only on the inner code),
+  # it sees this as a top-level-await, which it does not yet support.
+  # FIXME(https://github.com/emscripten-core/emscripten/issues/23158)
+  return settings.MODULARIZE and not settings.USE_CLOSURE_COMPILER
+
+
 def make_export_wrappers(function_exports):
   assert not settings.MINIMAL_RUNTIME
 
@@ -932,7 +942,7 @@ def make_export_wrappers(function_exports):
       # With assertions enabled we create a wrapper that are calls get routed through, for
       # the lifetime of the program.
       wrapper += f"createExportWrapper('{name}', {nargs});"
-    elif settings.WASM_ASYNC_COMPILATION or settings.PTHREADS:
+    elif (settings.WASM_ASYNC_COMPILATION and not can_use_await()) or settings.PTHREADS:
       # With WASM_ASYNC_COMPILATION wrapper will replace the global var and Module var on
       # first use.
       args = [f'a{i}' for i in range(nargs)]
@@ -998,7 +1008,11 @@ function assignWasmImports() {
 
   if not settings.MINIMAL_RUNTIME:
     if settings.WASM_ASYNC_COMPILATION:
-      module.append("var wasmExports;\ncreateWasm();\n")
+      if can_use_await():
+        # In modularize mode the generated code is within a factory function.
+        module.append("var wasmExports = await createWasm();\n")
+      else:
+        module.append("var wasmExports;\ncreateWasm();\n")
     else:
       module.append("var wasmExports = createWasm();\n")
 
