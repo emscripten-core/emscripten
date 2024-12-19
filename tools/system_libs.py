@@ -42,6 +42,10 @@ LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
 # link time.
 USE_NINJA = int(os.environ.get('EMCC_USE_NINJA', '0'))
 
+# A (fake) deterministic emscripten path to use in __FILE__ macro and debug info
+# to produce reproducible builds across platforms.
+DETERMINISITIC_PREFIX = '/emsdk/emscripten'
+
 
 def files_in_path(path, filenames):
   srcdir = utils.path_from_root(path)
@@ -472,9 +476,9 @@ class Library:
     if self.deterministic_paths:
       source_dir = utils.path_from_root()
       relative_source_dir = os.path.relpath(source_dir, build_dir)
-      cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
-                 f'-ffile-prefix-map={relative_source_dir}/=',
-                 '-fdebug-compilation-dir=/emsdk/emscripten']
+      cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
+                 f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}',
+                 f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
     asflags = get_base_cflags(preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
@@ -496,13 +500,13 @@ class Library:
       source_dir = utils.path_from_root()
       if batch_inputs:
         relative_source_dir = os.path.relpath(source_dir, build_dir)
-        cflags += [f'-ffile-prefix-map={relative_source_dir}/=']
-      cflags += [f'-ffile-prefix-map={source_dir}=/emsdk/emscripten',
-                 '-fdebug-compilation-dir=/emsdk/emscripten']
+        cflags += [f'-ffile-prefix-map={relative_source_dir}={DETERMINISITIC_PREFIX}']
+      cflags += [f'-ffile-prefix-map={source_dir}={DETERMINISITIC_PREFIX}',
+                 f'-fdebug-compilation-dir={DETERMINISITIC_PREFIX}']
     case_insensitive = is_case_insensitive(build_dir)
     for src in self.get_files():
       ext = shared.suffix(src)
-      if ext in ('.s', '.S', '.c'):
+      if ext in {'.s', '.S', '.c'}:
         cmd = shared.EMCC
       else:
         cmd = shared.EMXX
@@ -1224,7 +1228,10 @@ class libc(MuslInternalLibrary,
           'gmtime.c',
           'localtime.c',
           'nanosleep.c',
+          'clock.c',
           'clock_nanosleep.c',
+          'clock_getres.c',
+          'clock_gettime.c',
           'ctime_r.c',
           'timespec_get.c',
           'utime.c',
@@ -1234,7 +1241,9 @@ class libc(MuslInternalLibrary,
           '__tm_to_secs.c',
           '__year_to_secs.c',
           '__month_to_secs.c',
+          'wcsftime.c',
         ])
+
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/legacy',
         filenames=['getpagesize.c', 'err.c', 'euidaccess.c'])
@@ -1702,13 +1711,13 @@ class libmalloc(MTLibrary):
 
   cflags = ['-fno-builtin', '-Wno-unused-function', '-Wno-unused-but-set-variable', '-Wno-unused-variable']
   # malloc/free/calloc are runtime functions and can be generated during LTO
-  # Therefor they cannot themselves be part of LTO.
+  # Therefore they cannot themselves be part of LTO.
   force_object_files = True
 
   def __init__(self, **kwargs):
     self.malloc = kwargs.pop('malloc')
     if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'mimalloc', 'none'):
-      raise Exception('malloc must be one of "emmalloc[-debug|-memvalidate][-verbose]", "dlmalloc" or "none", see settings.js')
+      raise Exception('malloc must be one of "emmalloc[-debug|-memvalidate][-verbose]", "mimalloc", "dlmalloc" or "none", see settings.js')
 
     self.is_tracing = kwargs.pop('is_tracing')
     self.memvalidate = kwargs.pop('memvalidate')
@@ -1802,7 +1811,7 @@ class libmimalloc(MTLibrary):
   ]
 
   # malloc/free/calloc are runtime functions and can be generated during LTO
-  # Therefor they cannot themselves be part of LTO.
+  # Therefore they cannot themselves be part of LTO.
   force_object_files = True
 
   includes = ['system/lib/mimalloc/include']
@@ -2203,8 +2212,6 @@ class libstandalonewasm(MuslInternalLibrary):
         path='system/lib/libc/musl/src/time',
         filenames=['__secs_to_tm.c',
                    '__tz.c',
-                   'clock.c',
-                   'clock_gettime.c',
                    'gettimeofday.c',
                    'localtime_r.c',
                    'gmtime_r.c',

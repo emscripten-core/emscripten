@@ -20,20 +20,13 @@ extern "C" {
 #endif
 
 #if defined __EMSCRIPTEN__ && !defined EMTEST_NODE
-#ifndef EMTEST_PORT_NUMBER
-#error "EMTEST_PORT_NUMBER not defined"
-#endif
 
-void EMSCRIPTEN_KEEPALIVE _ReportResult(int result) {
-  EM_ASM({
-    reportResultToServer($0, $1);
-  }, result, EMTEST_PORT_NUMBER);
+void _ReportResult(int result) {
+  EM_ASM(reportResultToServer($0), result);
 }
 
-void EMSCRIPTEN_KEEPALIVE _MaybeReportResult(int result) {
-  EM_ASM({
-    maybeReportResultToServer($0, $1);
-  }, result, EMTEST_PORT_NUMBER);
+void _MaybeReportResult(int result) {
+  EM_ASM(maybeReportResultToServer($0), result);
 }
 
 #else

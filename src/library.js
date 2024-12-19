@@ -2149,26 +2149,12 @@ addToLibrary({
     return x.startsWith('dynCall_') ? x : '_' + x;
   },
 
-  $asyncLoad__docs: '/** @param {boolean=} noRunDep */',
-  $asyncLoad: (url, onload, onerror, noRunDep) => {
-    var dep = !noRunDep ? getUniqueRunDependency(`al ${url}`) : '';
-    readAsync(url).then(
-      (arrayBuffer) => {
-#if ASSERTIONS
-        assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
-#endif
-        onload(new Uint8Array(arrayBuffer));
-        if (dep) removeRunDependency(dep);
-      },
-      (err) => {
-        if (onerror) {
-          onerror();
-        } else {
-          throw `Loading data file "${url}" failed.`;
-        }
-      }
-    );
-    if (dep) addRunDependency(dep);
+  $asyncLoad: async (url) => {
+    var arrayBuffer = await readAsync(url);
+  #if ASSERTIONS
+    assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
+  #endif
+    return new Uint8Array(arrayBuffer);
   },
 
   $alignMemory: (size, alignment) => {

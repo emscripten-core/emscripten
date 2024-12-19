@@ -470,7 +470,8 @@ addToLibrary({
   emscripten_wget_data__async: true,
   emscripten_wget_data: (url, pbuffer, pnum, perror) => {
     return Asyncify.handleSleep((wakeUp) => {
-      asyncLoad(UTF8ToString(url), (byteArray) => {
+      /* no need for run dependency, this is async but will not do any prepare etc. step */
+      asyncLoad(UTF8ToString(url)).then((byteArray) => {
         // can only allocate the buffer after the wakeUp, not during an asyncing
         var buffer = _malloc(byteArray.length); // must be freed by caller!
         HEAPU8.set(byteArray, buffer);
@@ -481,7 +482,7 @@ addToLibrary({
       }, () => {
         {{{ makeSetValue('perror',  0, '1', 'i32') }}};
         wakeUp();
-      }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
+      });
     });
   },
 
@@ -519,9 +520,7 @@ addToLibrary({
     var imports = {'primary': wasmExports};
     // Replace '.wasm' suffix with '.deferred.wasm'.
     var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm';
-    await new Promise((resolve) => {
-      instantiateAsync(null, deferred, imports, resolve);
-    });
+    await instantiateAsync(null, deferred, imports);
   },
 
   $Fibers__deps: ['$Asyncify', 'emscripten_stack_set_limits', '$stackRestore'],

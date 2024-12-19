@@ -785,24 +785,16 @@ export function modifyJSFunction(text, func) {
 }
 
 export function runIfMainThread(text) {
-  if (WASM_WORKERS && PTHREADS) {
-    return `if (!ENVIRONMENT_IS_WASM_WORKER && !ENVIRONMENT_IS_PTHREAD) { ${text} }`;
-  } else if (WASM_WORKERS) {
-    return `if (!ENVIRONMENT_IS_WASM_WORKER) { ${text} }`;
-  } else if (PTHREADS) {
-    return `if (!ENVIRONMENT_IS_PTHREAD) { ${text} }`;
+  if (WASM_WORKERS || PTHREADS) {
+    return `if (${ENVIRONMENT_IS_MAIN_THREAD()}) { ${text} }`;
   } else {
     return text;
   }
 }
 
 function runIfWorkerThread(text) {
-  if (WASM_WORKERS && PTHREADS) {
-    return `if (ENVIRONMENT_IS_WASM_WORKER || ENVIRONMENT_IS_PTHREAD) { ${text} }`;
-  } else if (WASM_WORKERS) {
-    return `if (ENVIRONMENT_IS_WASM_WORKER) { ${text} }`;
-  } else if (PTHREADS) {
-    return `if (ENVIRONMENT_IS_PTHREAD) { ${text} }`;
+  if (WASM_WORKERS || PTHREADS) {
+    return `if (${ENVIRONMENT_IS_WORKER_THREAD()}) { ${text} }`;
   } else {
     return '';
   }
@@ -979,34 +971,6 @@ function to64(x) {
   return `BigInt(${x})`;
 }
 
-// Add assertions to catch common errors when using the Promise object we
-// return from MODULARIZE Module() invocations.
-function addReadyPromiseAssertions() {
-  // Warn on someone doing
-  //
-  //  var instance = Module();
-  //  ...
-  //  instance._main();
-  const properties = Array.from(EXPORTED_FUNCTIONS.values());
-  // Also warn on onRuntimeInitialized which might be a common pattern with
-  // older MODULARIZE-using codebases.
-  properties.push('onRuntimeInitialized');
-  const warningEnding =
-    ' on the Promise object, instead of the instance. Use .then() to get called back with the instance, see the MODULARIZE docs in src/settings.js';
-  const res = JSON.stringify(properties);
-  return (
-    res +
-    `.forEach((prop) => {
-  if (!Object.getOwnPropertyDescriptor(readyPromise, prop)) {
-    Object.defineProperty(readyPromise, prop, {
-      get: () => abort('You are getting ' + prop + '${warningEnding}'),
-      set: () => abort('You are setting ' + prop + '${warningEnding}'),
-    });
-  }
-});`
-  );
-}
-
 function asyncIf(condition) {
   return condition ? 'async' : '';
 }
@@ -1094,12 +1058,15 @@ function implicitSelf() {
 }
 
 function ENVIRONMENT_IS_MAIN_THREAD() {
+  return `(!${ENVIRONMENT_IS_WORKER_THREAD()})`;
+}
+
+function ENVIRONMENT_IS_WORKER_THREAD() {
+  assert(PTHREADS || WASM_WORKERS);
   var envs = [];
   if (PTHREADS) envs.push('ENVIRONMENT_IS_PTHREAD');
   if (WASM_WORKERS) envs.push('ENVIRONMENT_IS_WASM_WORKER');
-  if (AUDIO_WORKLET) envs.push('ENVIRONMENT_IS_AUDIO_WORKLET');
-  if (envs.length == 0) return 'true';
-  return '(!(' + envs.join('||') + '))';
+  return '(' + envs.join('||') + ')';
 }
 
 addToCompileTimeContext({
@@ -1120,9 +1087,9 @@ addToCompileTimeContext({
   TARGET_NOT_SUPPORTED,
   WASM_PAGE_SIZE,
   ENVIRONMENT_IS_MAIN_THREAD,
+  ENVIRONMENT_IS_WORKER_THREAD,
   addAtExit,
   addAtInit,
-  addReadyPromiseAssertions,
   asyncIf,
   awaitIf,
   buildStringArray,

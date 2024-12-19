@@ -92,11 +92,11 @@ addToLibrary({
         node.node_ops = MEMFS.ops_table.chrdev.node;
         node.stream_ops = MEMFS.ops_table.chrdev.stream;
       }
-      node.timestamp = Date.now();
+      node.atime = node.mtime = node.ctime = Date.now();
       // add the new node to the parent
       if (parent) {
         parent.contents[name] = node;
-        parent.timestamp = node.timestamp;
+        parent.atime = parent.mtime = parent.ctime = node.atime;
       }
       return node;
     },
@@ -161,9 +161,9 @@ addToLibrary({
         } else {
           attr.size = 0;
         }
-        attr.atime = new Date(node.timestamp);
-        attr.mtime = new Date(node.timestamp);
-        attr.ctime = new Date(node.timestamp);
+        attr.atime = new Date(node.atime);
+        attr.mtime = new Date(node.mtime);
+        attr.ctime = new Date(node.ctime);
         // NOTE: In our implementation, st_blocks = Math.ceil(st_size/st_blksize),
         //       but this is not required by the standard.
         attr.blksize = 4096;
@@ -171,11 +171,10 @@ addToLibrary({
         return attr;
       },
       setattr(node, attr) {
-        if (attr.mode !== undefined) {
-          node.mode = attr.mode;
-        }
-        if (attr.timestamp !== undefined) {
-          node.timestamp = attr.timestamp;
+        for (const key of ["mode", "atime", "mtime", "ctime"]) {
+          if (attr[key]) {
+            node[key] = attr[key];
+          }
         }
         if (attr.size !== undefined) {
           MEMFS.resizeFileStorage(node, attr.size);
@@ -192,29 +191,28 @@ addToLibrary({
         return MEMFS.createNode(parent, name, mode, dev);
       },
       rename(old_node, new_dir, new_name) {
-        // if we're overwriting a directory at new_name, make sure it's empty.
-        if (FS.isDir(old_node.mode)) {
-          var new_node;
-          try {
-            new_node = FS.lookupNode(new_dir, new_name);
-          } catch (e) {
-          }
-          if (new_node) {
+        var new_node;
+        try {
+          new_node = FS.lookupNode(new_dir, new_name);
+        } catch (e) {}
+        if (new_node) {
+          if (FS.isDir(old_node.mode)) {
+            // if we're overwriting a directory at new_name, make sure it's empty.
             for (var i in new_node.contents) {
               throw new FS.ErrnoError({{{ cDefs.ENOTEMPTY }}});
             }
           }
+          FS.hashRemoveNode(new_node);
         }
         // do the internal rewiring
         delete old_node.parent.contents[old_node.name];
-        old_node.parent.timestamp = Date.now()
-        old_node.name = new_name;
         new_dir.contents[new_name] = old_node;
-        new_dir.timestamp = old_node.parent.timestamp;
+        old_node.name = new_name;
+        new_dir.ctime = new_dir.mtime = old_node.parent.ctime = old_node.parent.mtime = Date.now();
       },
       unlink(parent, name) {
         delete parent.contents[name];
-        parent.timestamp = Date.now();
+        parent.ctime = parent.mtime = Date.now();
       },
       rmdir(parent, name) {
         var node = FS.lookupNode(parent, name);
@@ -222,14 +220,10 @@ addToLibrary({
           throw new FS.ErrnoError({{{ cDefs.ENOTEMPTY }}});
         }
         delete parent.contents[name];
-        parent.timestamp = Date.now();
+        parent.ctime = parent.mtime = Date.now();
       },
       readdir(node) {
-        var entries = ['.', '..'];
-        for (var key of Object.keys(node.contents)) {
-          entries.push(key);
-        }
-        return entries;
+        return ['.', '..', ...Object.keys(node.contents)];
       },
       symlink(parent, newname, oldpath) {
         var node = MEMFS.createNode(parent, newname, 0o777 | {{{ cDefs.S_IFLNK }}}, 0);
@@ -282,7 +276,7 @@ addToLibrary({
 
         if (!length) return 0;
         var node = stream.node;
-        node.timestamp = Date.now();
+        node.mtime = node.ctime = Date.now();
 
         if (buffer.subarray && (!node.contents || node.contents.subarray)) { // This write is from a typed array to a typed array?
           if (canOwn) {

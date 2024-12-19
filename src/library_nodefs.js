@@ -138,7 +138,7 @@ addToLibrary({
         }
         return {
           dev: stat.dev,
-          ino: stat.ino,
+          ino: node.id,
           mode: stat.mode,
           nlink: stat.nlink,
           uid: stat.uid,
@@ -166,9 +166,10 @@ addToLibrary({
             // update the common node structure mode as well
             node.mode = attr.mode;
           }
-          if (attr.timestamp !== undefined) {
-            var date = new Date(attr.timestamp);
-            fs.utimesSync(path, date, date);
+          if (attr.atime || attr.mtime) {
+            var atime = attr.atime && new Date(attr.atime);
+            var mtime = attr.mtime && new Date(attr.mtime);
+            fs.utimesSync(path, atime, mtime);
           }
           if (attr.size !== undefined) {
             fs.truncateSync(path, attr.size);
@@ -196,6 +197,9 @@ addToLibrary({
       rename(oldNode, newDir, newName) {
         var oldPath = NODEFS.realPath(oldNode);
         var newPath = PATH.join2(NODEFS.realPath(newDir), newName);
+        try {
+          FS.unlink(newPath);
+        } catch(e) {}
         NODEFS.tryFSOperation(() => fs.renameSync(oldPath, newPath));
         oldNode.name = newName;
       },
@@ -219,6 +223,13 @@ addToLibrary({
         var path = NODEFS.realPath(node);
         return NODEFS.tryFSOperation(() => fs.readlinkSync(path));
       },
+      statfs(path) {
+        var stats = NODEFS.tryFSOperation(() => fs.statfsSync(path));
+        // Node.js doesn't provide frsize (fragment size). Set it to bsize (block size)
+        // as they're often the same in many file systems. May not be accurate for all.
+        stats.frsize = stats.bsize;
+        return stats;
+      }
     },
     stream_ops: {
       open(stream) {

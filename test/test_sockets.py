@@ -285,7 +285,7 @@ class sockets(BrowserCore):
     'native': [WebsockifyServerHarness, 59160, ['-DTEST_DGRAM=0']],
     'tcp': [CompiledServerHarness, 59162, ['-DTEST_DGRAM=0']],
     'udp': [CompiledServerHarness, 59164, ['-DTEST_DGRAM=1']],
-    'pthread': [CompiledServerHarness, 59165, ['-pthread', '-sPROXY_TO_PTHREAD']],
+    'pthread': [CompiledServerHarness, 59166, ['-pthread', '-sPROXY_TO_PTHREAD']],
   })
   def test_nodejs_sockets_echo(self, harness_class, port, args):
     if harness_class == WebsockifyServerHarness and common.EMTEST_LACKS_NATIVE_CLANG:
@@ -304,12 +304,12 @@ class sockets(BrowserCore):
     # Test against a Websockified server with compile time configured WebSocket subprotocol. We use a Websockified
     # server because as long as the subprotocol list contains binary it will configure itself to accept binary
     # This test also checks that the connect url contains the correct subprotocols.
-    with WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 59166):
-      self.run_process([EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '-sSOCKET_DEBUG', '-sWEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59166'])
+    with WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 59168):
+      self.run_process([EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '-sSOCKET_DEBUG', '-sWEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59168'])
 
       out = self.run_js('client.js')
       self.assertContained('do_msg_read: read 14 bytes', out)
-      self.assertContained(['connect: ws://127.0.0.1:59166, base64,binary', 'connect: ws://127.0.0.1:59166/, base64,binary'], out)
+      self.assertContained(['connect: ws://127.0.0.1:59168, base64,binary', 'connect: ws://127.0.0.1:59168/, base64,binary'], out)
 
   @requires_native_clang
   def test_nodejs_sockets_echo_subprotocol_runtime(self):
