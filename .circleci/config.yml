@@ -750,6 +750,8 @@ jobs:
       - install-node-canary
       - run-tests:
           title: "node (canary)"
+          environment:
+            EMCC_CFLAGS: "-sMIN_NODE_VERSION=101900"
           test_targets: "
             other.test_deterministic
             other.test_gen_struct_info
