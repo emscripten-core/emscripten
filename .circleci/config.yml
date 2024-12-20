@@ -755,7 +755,6 @@ jobs:
       - install-node-canary
       - run-tests:
           title: "node (canary)"
-          extra-cflags: "-sMIN_NODE_VERSION=101900"
           test_targets: "
             other.test_deterministic
             other.test_gen_struct_info
@@ -772,6 +771,7 @@ jobs:
           node_version: "10.19.0"
       - run-tests:
           title: "node (oldest / 10.19.0)"
+          extra-cflags: "-sMIN_NODE_VERSION=101900"
           test_targets: "
             other.test_gen_struct_info
             other.test_native_call_before_init
