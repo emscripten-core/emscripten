@@ -10502,8 +10502,6 @@ int main() {
     verify_features_sec_linked('bulk-memory-opt', True)
     verify_features_sec_linked('nontrapping-fptoint', True)
 
-
-
   def test_js_preprocess(self):
     # Use stderr rather than stdout here because stdout is redirected to the output JS file itself.
     create_file('lib.js', '''
