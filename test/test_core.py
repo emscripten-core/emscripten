@@ -5543,7 +5543,11 @@ got: 10
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
     self.do_run_in_out_file_test('fcntl/test_fcntl.c')
 
+  @also_with_nodefs_both
+  @crossplatform
   def test_fcntl_open(self):
+    if '-DNODERAWFS' in self.emcc_args and WINDOWS:
+      self.skipTest('currently failing under windows and noderawfs')
     self.do_run_in_out_file_test('fcntl/test_fcntl_open.c')
 
   @also_with_wasm_bigint
@@ -5857,6 +5861,19 @@ Module.onRuntimeInitialized = () => {
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
     self.do_runf('fs/test_fs_rename_on_existing.c', 'success')
+
+  @also_with_nodefs_both
+  @no_windows('stat ino values dont match on windows')
+  @crossplatform
+  def test_fs_readdir_ino_matches_stat_ino(self):
+    self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success')
+
+  @also_with_nodefs_both
+  @crossplatform
+  def test_fs_open_no_permissions(self):
+    if ('-DNODEFS' in self.emcc_args or '-DNODERAWFS' in self.emcc_args) and WINDOWS:
+      self.skipTest('fs_open_no_permissions fails on windows')
+    self.do_runf('fs/test_fs_open_no_permissions.c', 'success')
 
   @also_with_nodefs_both
   @crossplatform

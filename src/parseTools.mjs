@@ -972,11 +972,11 @@ function to64(x) {
 }
 
 function asyncIf(condition) {
-  return condition ? 'async' : '';
+  return condition ? 'async ' : '';
 }
 
 function awaitIf(condition) {
-  return condition ? 'await' : '';
+  return condition ? 'await ' : '';
 }
 
 // Adds a call to runtimeKeepalivePush, if needed by the current build

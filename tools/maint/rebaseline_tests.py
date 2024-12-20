@@ -71,7 +71,7 @@ def main(argv):
   args = parser.parse_args()
 
   if args.clear_cache:
-    run(['emcc', '--clear-cache'])
+    run(['./emcc', '--clear-cache'])
 
   if not args.skip_tests:
     if not args.check_only and run(['git', 'status', '-uno', '--porcelain']).strip():
