@@ -65,6 +65,7 @@ min_browser_versions = {
     'chrome': 74,
     'firefox': 61,
     'safari': 120000,
+    'node': 120000,
   },
   Feature.JS_BIGINT_INTEGRATION: {
     'chrome': 67,
@@ -76,6 +77,7 @@ min_browser_versions = {
     'chrome': 74,
     'firefox': 79,
     'safari': 140100,
+    'node': 160400,
   },
   Feature.GLOBALTHIS: {
     'chrome': 71,
