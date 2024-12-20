@@ -7801,7 +7801,7 @@ void* operator new(size_t size) {
 
     # Get the wat, printing with -g which has binary offsets
     wat = self.run_process([Path(building.get_binaryen_bin(), 'wasm-opt'),
-                           wasm_filename, '-g', '--print'], stdout=PIPE).stdout
+                           wasm_filename, '-g', '--print', '-all'], stdout=PIPE).stdout
 
     # We expect to see a pattern like this in optimized builds (there isn't
     # much that can change with such calls to JS (they can't be reordered or
