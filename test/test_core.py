@@ -5544,7 +5544,10 @@ got: 10
     self.do_run_in_out_file_test('fcntl/test_fcntl.c')
 
   @also_with_nodefs_both
+  @crossplatform
   def test_fcntl_open(self):
+    if '-DNODERAWFS' in self.emcc_args and WINDOWS:
+      self.skipTest('currently failing under windows and noderawfs')
     self.do_run_in_out_file_test('fcntl/test_fcntl_open.c')
 
   @also_with_wasm_bigint
